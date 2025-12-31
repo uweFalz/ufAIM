@@ -1,6 +1,6 @@
 // app/main.js
 
-import * as THREE from "three";
+import { makeThreeViewer } from "./threeViewer.js";
 import { createStore } from "./viewSync.js";
 import { clamp01, curvature } from "./transitionModel.js";
 import { sampleAlignment, evalAtStation } from "./transitionEmbed.js";
@@ -101,61 +101,15 @@ function setPreset(p) {
 const teView = makeTransitionEditorView(store);
 let teInited = false;
 
-// ---------- 3D setup ----------
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0e14);
+// ---------- 3D viewer (separate module) ----------
+const three = makeThreeViewer({ canvas });
+window.addEventListener("resize", () => three.resize());
 
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 10000);
-camera.position.set(0, -220, 160);
-camera.lookAt(0, 0, 0);
-
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.position.set(200, -100, 300);
-scene.add(dirLight);
-scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-scene.add(new THREE.GridHelper(600, 30));
-scene.add(new THREE.AxesHelper(120));
-
-const trackMat = new THREE.LineBasicMaterial();
-let trackLine = null;
-
-const marker = new THREE.Mesh(
-new THREE.SphereGeometry(4, 18, 12),
-new THREE.MeshStandardMaterial()
-);
-scene.add(marker);
-
-// raw orbit
-let isDrag = false, lastX = 0, lastY = 0;
-let yaw = 0.3, pitch = 0.55, radius = 320;
-
-canvas.addEventListener("mousedown", (e) => { isDrag = true; lastX = e.clientX; lastY = e.clientY; });
-window.addEventListener("mouseup", () => { isDrag = false; });
-
-window.addEventListener("mousemove", (e) => {
-	if (!isDrag) return;
-	const dx = e.clientX - lastX;
-	const dy = e.clientY - lastY;
-	lastX = e.clientX; lastY = e.clientY;
-	yaw += dx * 0.005;
-	pitch = Math.min(1.45, Math.max(0.15, pitch + dy * 0.005));
+// Hook: marker click -> props snapshot
+three.onMarkerClick(() => {
+	const st = store.getState();
+	showProps({ type: "marker click", u: clamp01(st.u), note: "selection confirmed" });
 });
-
-canvas.addEventListener("wheel", (e) => {
-	e.preventDefault();
-	radius = Math.min(1200, Math.max(80, radius + e.deltaY * 0.4));
-}, { passive: false });
-
-function resize3D() {
-	const rect = canvas.getBoundingClientRect();
-	const w = Math.max(1, Math.floor(rect.width));
-	const h = Math.max(1, Math.floor(rect.height));
-	renderer.setSize(w, h, false);
-	camera.aspect = w / h;
-	camera.updateProjectionMatrix();
-}
-window.addEventListener("resize", resize3D);
 
 // ---------- 2D alignment band view ----------
 let bandView = null;
@@ -204,26 +158,18 @@ function applyStateToViews(st) {
 	latestSample = sample;
 
 	// update 3D track
-	const pts3 = sample.pts.map(p => new THREE.Vector3(p.x, p.y, 0));
-	const geo = new THREE.BufferGeometry().setFromPoints(pts3);
-	if (trackLine) {
-		trackLine.geometry.dispose();
-		trackLine.geometry = geo;
-	} else {
-		trackLine = new THREE.Line(geo, trackMat);
-		scene.add(trackLine);
-	}
+	three.setTrackFromXY(sample.pts);
 
 	// station embedding: transition-only (demo)
 	const station = sample.lead + u * st.L;
 	sValEl.textContent = `s≈ ${Math.round(station)} m`;
 
 	const ev = evalAtStation(sample, station);
-	marker.position.set(ev.x, ev.y, 0);
+	three.setMarker(ev.x, ev.y, 0);
 
 	// expose for 2D band view (read-only bridge)
 	window.__ufAIM_latestSample = latestSample;
-	window.__ufAIM_marker = { x: marker.position.x, y: marker.position.y };
+	window.__ufAIM_marker = three.getMarkerXY();
 
 	// physical curvature at u (for readout)
 	const params = { w: st.w };
@@ -264,23 +210,6 @@ btnReset.addEventListener("click", () => {
 	log("reset: u/L/R");
 });
 
-// 3D marker click -> props snapshot
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-canvas.addEventListener("click", (e) => {
-	const rect = canvas.getBoundingClientRect();
-	mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-	mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-	raycaster.setFromCamera(mouse, camera);
-	const hits = raycaster.intersectObject(marker);
-	if (!hits.length) return;
-
-	const st = store.getState();
-	showProps({ type: "marker click", u: clamp01(st.u), note: "selection confirmed" });
-});
-
 // Transition overlay events
 btnTransEl.addEventListener("click", () => {
 	const st = store.getState();
@@ -316,21 +245,8 @@ store.subscribe((st) => {
 	}
 });
 
-// ---------- render loop ----------
-function animate() {
-	const cx = Math.cos(yaw) * Math.sin(pitch) * radius;
-	const cy = Math.sin(yaw) * Math.sin(pitch) * radius;
-	const cz = Math.cos(pitch) * radius;
-
-	camera.position.set(cx, cy, cz);
-	camera.lookAt(0, 0, 0);
-
-	renderer.render(scene, camera);
-	requestAnimationFrame(animate);
-}
-
 // ---------- boot ----------
-resize3D();
+three.resize();
 setStatus("ready ✅");
 log("Kapselung aktiv: model (norm) + embed (meter) + sync (store)");
 
@@ -339,4 +255,4 @@ init2D()
 .catch(e => log("2D failed: " + String(e)));
 
 setPreset("clothoid"); // initial preset for overlay
-animate();
+three.start();
