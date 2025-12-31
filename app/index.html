@@ -68,10 +68,7 @@
 								<option value="linear">linear (v0)</option>
 								<option value="berlin" disabled>berlin (soon)</option>
 							</select>
-							<div class="label">w (halfWave)</div>
-							<input id="w" type="range" min="20" max="450" value="180" />
-							<div class="value mono" id="wVal">0.180</div>
-							<div class="hint">Anteil je Seite (0.02..0.45)</div>
+							<div class="hint">Formfamilie (v0: Demo)</div>
 						</div>
 						<div class="cell">
 							<div class="label">Embed</div>
@@ -109,10 +106,10 @@
 
 		<footer class="footer">
 			<div class="controls">
-				<label for="u">u</label>
-				<input id="u" type="range" min="0" max="1000" value="250" />
-				<span class="mono" id="uVal">0.250</span>
+				<label for="s">s</label>
+				<input id="s" type="range" min="0" max="1000" value="250" />
 				<span class="mono" id="sVal">s≈ … m</span>
+				<span class="mono" id="uVal">u≈ 0.250</span>
 
 				<label for="L">L</label>
 				<input id="L" type="range" min="30" max="400" value="120" />
@@ -133,7 +130,10 @@
 		
 		<div id="transOverlay" class="overlay hidden">
 			<div class="overlayHead">
-				<div class="overlayTitle">Transition Editor (normiert)</div>
+				<div class="overlayTitle">
+					Transition Editor (normiert)
+					<span id="teLegend" class="mono" style="margin-left:12px; opacity:.8; font-size:.9em;"></span>
+				</div>
 				<button id="btnTransClose">×</button>
 			</div>
 
@@ -141,6 +141,13 @@
 				<div id="transBoard" class="transBoard"></div>
 
 				<div class="transControls">
+					<div class="plotMode">
+						<label class="chk"><input type="radio" name="tePlot" id="plotK" checked /> κ</label>
+						<label class="chk"><input type="radio" name="tePlot" id="plotK1" /> κ′</label>
+						<label class="chk"><input type="radio" name="tePlot" id="plotK2" /> κ″</label>
+					</div>
+
+					<!-- existing controls -->
 					<label>w1</label>
 					<input id="w1" type="range" min="0" max="1000" value="0" />
 					<span class="mono" id="w1Val">0.000</span>

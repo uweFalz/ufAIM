@@ -44,6 +44,10 @@ const w1ValEl = document.getElementById("w1Val");
 const w2ValEl = document.getElementById("w2Val");
 const presetEl = document.getElementById("preset");
 
+const plotKEl = document.getElementById("plotK");
+const plotK1El = document.getElementById("plotK1");
+const plotK2El = document.getElementById("plotK2");
+
 // ---------- helpers ----------
 function setStatus(s) {
 	statusEl.textContent = s;
@@ -64,6 +68,7 @@ const store = createStore({
 	te_w1: 0.0,
 	te_w2: 1.0,
 	te_preset: "clothoid",
+	te_plot: "k", // "k" | "k1" | "k2"
 
 	// Embedded transition demo state
 	u: 0.25,     // normalized position in transition (editor language)
@@ -184,7 +189,13 @@ function applyStateToViews(st) {
 
 	// station in world space (viewer language)
 	const station = stationFromState(sample, st);
-	const u_eff = uFromStation(sample, st, station); // derived u used for eval/curvature
+	const u_eff = uFromStation(sample, st, station);
+
+	// IMPORTANT: keep store.u synchronized when s_abs dominates,
+	// so the TransitionEditor cursor follows the viewer slider.
+	if (st.s_abs != null && Math.abs(st.u - u_eff) > 1e-6) {
+		store.setState({ u: u_eff });
+	}
 
 	// keep UI label in sync (even if s_abs dominates)
 	if (sValEl) sValEl.textContent = `s≈ ${Math.round(station)} m`;
@@ -246,6 +257,17 @@ btnReset.addEventListener("click", () => {
 	log("reset: s/u/L/R");
 });
 
+function syncPlotRadios(st) {
+	if (!plotKEl) return;
+	plotKEl.checked  = (st.te_plot === "k");
+	plotK1El.checked = (st.te_plot === "k1");
+	plotK2El.checked = (st.te_plot === "k2");
+}
+
+plotKEl?.addEventListener("change", () => plotKEl.checked && store.setState({ te_plot: "k" }));
+plotK1El?.addEventListener("change", () => plotK1El.checked && store.setState({ te_plot: "k1" }));
+plotK2El?.addEventListener("change", () => plotK2El.checked && store.setState({ te_plot: "k2" }));
+
 // Transition overlay events
 btnTransEl.addEventListener("click", () => {
 	const st = store.getState();
@@ -272,6 +294,8 @@ store.subscribe((st) => {
 	// Transition Editor overlay
 	overlayEl.classList.toggle("hidden", !st.te_visible);
 	applyTransUI(st);
+	
+	syncPlotRadios(st);
 
 	if (st.te_visible && !teInited) {
 		teInited = true;
