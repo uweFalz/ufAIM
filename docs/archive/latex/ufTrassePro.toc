@@ -1,0 +1,143 @@
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{\numberline {1}Basics}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Characteristic parameters}{4}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Differentialgeometrie / Theoretische Physik}{5}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Kurven}{5}{subsection.1.2.1}%
+\contentsline {paragraph}{Parameterdarstellungen}{5}{section*.3}%
+\contentsline {paragraph}{Parametertransformation}{5}{section*.4}%
+\contentsline {paragraph}{Gerichtete Kurven}{5}{section*.5}%
+\contentsline {paragraph}{Glatte Kurven}{6}{section*.6}%
+\contentsline {paragraph}{Gleichungsdarstellungen}{6}{section*.7}%
+\contentsline {paragraph}{Funktionsgraphen}{6}{section*.8}%
+\contentsline {paragraph}{Differenzierbare Kurven, Krümmung}{6}{section*.9}%
+\contentsline {paragraph}{Geschlossene Kurven}{6}{section*.10}%
+\contentsline {paragraph}{Raumkurven}{7}{section*.11}%
+\contentsline {paragraph}{Kurven als eigenständige Objekte}{7}{section*.12}%
+\contentsline {subsection}{\numberline {1.2.2}Algebraische Kurve}{7}{subsection.1.2.2}%
+\contentsline {paragraph}{Definition und wichtige Eigenschaften}{8}{section*.13}%
+\contentsline {paragraph}{Irreduzibilität}{8}{section*.14}%
+\contentsline {paragraph}{Singularitäten}{9}{section*.15}%
+\contentsline {paragraph}{Projektive Kurven}{9}{section*.16}%
+\contentsline {paragraph}{Schnitte zweier Kurven}{9}{section*.17}%
+\contentsline {paragraph}{Beispiele für algebraische Kurven}{10}{section*.18}%
+\contentsline {subparagraph}{Kurven nach Grad geordnet}{10}{section*.19}%
+\contentsline {subparagraph}{Kurven nach Geschlecht geordnet}{10}{section*.20}%
+\contentsline {paragraph}{Duale Kurve}{10}{section*.21}%
+\contentsline {section}{\numberline {1.3}Kinematik}{11}{section.1.3}%
+\contentsline {subsection}{\numberline {1.3.1}Bewegungszustand}{11}{subsection.1.3.1}%
+\contentsline {subsection}{\numberline {1.3.2}Geschwindigkeit}{12}{subsection.1.3.2}%
+\contentsline {paragraph}{Definition}{12}{section*.22}%
+\contentsline {paragraph}{Anfangsgeschwindigkeit}{13}{section*.23}%
+\contentsline {paragraph}{Endgeschwindigkeit}{13}{section*.24}%
+\contentsline {paragraph}{Einfache Sonderfälle}{13}{section*.25}%
+\contentsline {subparagraph}{Geradlinig gleichförmige Bewegung}{13}{section*.26}%
+\contentsline {subparagraph}{Gleichmäßig beschleunigte Bewegung}{14}{section*.27}%
+\contentsline {subparagraph}{Kreisbewegung}{14}{section*.28}%
+\contentsline {paragraph}{Beziehungen zu anderen physikalischen Größen}{14}{section*.29}%
+\contentsline {subparagraph}{Beziehung zum Ort}{14}{section*.30}%
+\contentsline {subparagraph}{Beziehung zur Wegstrecke}{14}{section*.31}%
+\contentsline {subparagraph}{Beziehung zu Beschleunigung und Ruck}{15}{section*.32}%
+\contentsline {subparagraph}{Beziehung zu Impuls und kinetischer Energie}{15}{section*.33}%
+\contentsline {paragraph}{Geschwindigkeiten und Bezugssystem}{15}{section*.34}%
+\contentsline {paragraph}{Geschwindigkeit zahlreicher Teilchen}{16}{section*.35}%
+\contentsline {paragraph}{Strömungsgeschwindigkeit eines Fluids}{16}{section*.36}%
+\contentsline {paragraph}{Geschwindigkeit von Wellen}{16}{section*.37}%
+\contentsline {paragraph}{Relativitätstheorie}{17}{section*.38}%
+\contentsline {subsection}{\numberline {1.3.3}Beschleunigung}{18}{subsection.1.3.3}%
+\contentsline {paragraph}{Einführung}{18}{section*.39}%
+\contentsline {paragraph}{Gleichmäßig beschleunigte Bewegung}{19}{section*.40}%
+\contentsline {paragraph}{Allgemeine Definition}{19}{section*.41}%
+\contentsline {paragraph}{Gekrümmte Wege}{19}{section*.42}%
+\contentsline {subparagraph}{Spezialfall: Kreisbewegung}{20}{section*.43}%
+\contentsline {subparagraph}{Allgemeiner Fall}{20}{section*.44}%
+\contentsline {subparagraph}{Ruck}{21}{section*.45}%
+\contentsline {paragraph}{Zusammenhang zwischen Beschleunigung und Kraft}{21}{section*.46}%
+\contentsline {subparagraph}{Trägheitskräfte}{21}{section*.47}%
+\contentsline {paragraph}{Beschleunigung in der speziellen Relativitätstheorie}{21}{section*.48}%
+\contentsline {paragraph}{Äquivalenzprinzip und allgemeine Relativitätstheorie}{21}{section*.49}%
+\contentsline {subsection}{\numberline {1.3.4}Ruck}{22}{subsection.1.3.4}%
+\contentsline {paragraph}{Definition}{22}{section*.50}%
+\contentsline {paragraph}{Praxis / Anwendungen}{22}{section*.51}%
+\contentsline {subparagraph}{Landfahrzeuge}{22}{section*.52}%
+\contentsline {subparagraph}{Längsruck}{23}{section*.53}%
+\contentsline {subparagraph}{Querruck}{23}{section*.54}%
+\contentsline {subparagraph}{Trassenbau}{24}{section*.55}%
+\contentsline {paragraph}{Ruckänderung}{24}{section*.56}%
+\contentsline {section}{\numberline {1.4}Optimierungstheorie}{25}{section.1.4}%
+\contentsline {subsection}{\numberline {1.4.1}Grundlagen der Optimierungstheorie}{25}{subsection.1.4.1}%
+\contentsline {subsubsection}{Aufgabenstellung}{25}{section*.58}%
+\contentsline {subsubsection}{Notwendige Bedingungen für restringierte Optimierungsprobleme}{27}{section*.59}%
+\contentsline {subsubsection}{Hinreichende Bedingungen für restringierte Optimierungsprobleme}{29}{section*.60}%
+\contentsline {subsubsection}{Verfahren für unrestringierte Optimierungsprobleme}{30}{section*.61}%
+\contentsline {subsubsection}{Überblick}{31}{section*.62}%
+\contentsline {subsection}{\numberline {1.4.2}Penalty- und Multiplikator-Verfahren}{32}{subsection.1.4.2}%
+\contentsline {subsubsection}{Penalty-Verfahren}{32}{section*.63}%
+\contentsline {subsubsection}{Schätzung der Lagrange-Multiplikatoren}{34}{section*.64}%
+\contentsline {subsubsection}{Multiplikator-Penalty-Verfahren}{34}{section*.65}%
+\contentsline {subsubsection}{Anwendung auf Ungleichungen}{36}{section*.66}%
+\contentsline {subsection}{\numberline {1.4.3}SQP-Verfahren}{37}{subsection.1.4.3}%
+\contentsline {subsubsection}{Das lokale SQP-Verfahren}{37}{section*.67}%
+\contentsline {subsubsection}{Globalisierung des SQP-Verfahrens}{40}{section*.68}%
+\contentsline {subsubsection}{Inkonsistentes QP Problem}{44}{section*.69}%
+\contentsline {subsubsection}{Quadratische Optimierung}{45}{section*.70}%
+\contentsline {subsection}{\numberline {1.4.4}Aktive-Mengen-Strategie (2)}{49}{subsection.1.4.4}%
+\contentsline {paragraph}{Herleitung des Verfahrens}{49}{section*.71}%
+\contentsline {paragraph}{Aktive-Mengen-Methode}{52}{section*.72}%
+\contentsline {subsection}{\numberline {1.4.5}Active-Set-Methoden (3)}{52}{subsection.1.4.5}%
+\contentsline {subsubsection}{Mathematische Problemstellung}{53}{section*.73}%
+\contentsline {paragraph}{Active Set}{53}{section*.74}%
+\contentsline {subsubsection}{Algorithmus}{53}{section*.75}%
+\contentsline {paragraph}{Berechnung der Suchrichtung $d^{[k]}$}{54}{section*.76}%
+\contentsline {paragraph}{Berechnung der Lagrange-Multiplikatoren $\mu _i$}{54}{section*.77}%
+\contentsline {paragraph}{Berechnung der Schrittlänge $\alpha _k$}{54}{section*.78}%
+\contentsline {subsection}{\numberline {1.4.6}Verfahren der konjugierten Gradienten}{55}{subsection.1.4.6}%
+\contentsline {subsection}{\numberline {1.4.7}Methode der kleinsten Quadrate}{56}{subsection.1.4.7}%
+\contentsline {subsubsection}{Das Verfahren}{57}{section*.79}%
+\contentsline {paragraph}{Voraussetzungen}{57}{section*.80}%
+\contentsline {paragraph}{Minimierung der Summe der Fehlerquadrate}{57}{section*.81}%
+\contentsline {paragraph}{Zusammenhang mit dem zentralen Grenzwertsatz}{58}{section*.82}%
+\contentsline {subsubsection}{Lineare Modellfunktion}{58}{section*.83}%
+\contentsline {paragraph}{Spezialfall einer einfachen linearen Ausgleichsgeraden}{58}{section*.84}%
+\contentsline {subparagraph}{Herleitung und Verfahren}{58}{section*.85}%
+\contentsline {paragraph}{Spezialfall einer linearen Ausgleichsfunktion mit mehreren Variablen}{59}{section*.86}%
+\contentsline {paragraph}{Der allgemeine lineare Fall}{60}{section*.87}%
+\contentsline {paragraph}{Lösung des Minimierungsproblems}{61}{section*.88}%
+\contentsline {subparagraph}{Herleitung und Verfahren}{61}{section*.89}%
+\contentsline {subparagraph}{Numerische Behandlung der Lösung}{62}{section*.90}%
+\contentsline {paragraph}{Probleme mit Nebenbedingungen}{63}{section*.91}%
+\contentsline {subsubsection}{Nichtlineare Modellfunktionen}{63}{section*.92}%
+\contentsline {paragraph}{Grundgedanke und Verfahren}{63}{section*.93}%
+\contentsline {subsubsection}{Fehlverhalten bei Nichterfüllung der Voraussetzungen}{64}{section*.94}%
+\contentsline {paragraph}{Multikollinearität}{64}{section*.95}%
+\contentsline {paragraph}{Ausreißer}{64}{section*.96}%
+\contentsline {paragraph}{Heteroskedastische Fehler}{65}{section*.97}%
+\contentsline {subsubsection}{Verallgemeinerte Kleinste-Quadrate-Modelle}{65}{section*.98}%
+\contentsline {chapter}{\numberline {2}ufPro}{66}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Pending Tasks / ToDos}{66}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Basics and Preview}{66}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}2D-Kurven}{66}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Anfangswertproblem}{67}{subsection.2.2.2}%
+\contentsline {subsection}{\numberline {2.2.3}Die Trassenelemente}{68}{subsection.2.2.3}%
+\contentsline {subsubsection}{Parametrisierungen}{68}{section*.99}%
+\contentsline {subsubsection}{Übergangsbögen}{68}{section*.100}%
+\contentsline {paragraph}{lesson learned}{77}{section*.101}%
+\contentsline {subsubsection}{ADDITIONAL SPIRAL CONCEPTS:}{77}{section*.102}%
+\contentsline {section}{\numberline {2.3}alignment data transfer}{78}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Numerik der genutzten Wertebereiche}{78}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Längenangaben und darauf aufbauende Werte}{78}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Krümmung}{79}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Winkel}{79}{subsection.2.4.3}%
+\contentsline {section}{\numberline {2.5}Notwendige vs. redundante Parametrisierung}{79}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}AWP-Input}{79}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Tangentenschnitte}{80}{subsection.2.5.2}%
+\contentsline {section}{\numberline {2.6}Segmentberechnung}{80}{section.2.6}%
+\contentsline {subsection}{\numberline {2.6.1}a}{80}{subsection.2.6.1}%
+\contentsline {subsection}{\numberline {2.6.2}b}{80}{subsection.2.6.2}%
+\contentsline {section}{\numberline {2.7}Trassenfindung}{80}{section.2.7}%
+\contentsline {subsection}{\numberline {2.7.1}a}{80}{subsection.2.7.1}%
+\contentsline {subsection}{\numberline {2.7.2}b}{80}{subsection.2.7.2}%
+\contentsline {section}{\numberline {2.8}Trassenoptimierung}{80}{section.2.8}%
+\contentsline {subsection}{\numberline {2.8.1}und noch mal}{81}{subsection.2.8.1}%
+\contentsline {subsection}{\numberline {2.8.2}Anwendungsfälle}{82}{subsection.2.8.2}%
+\contentsline {subsubsection}{Einrechnen}{82}{section*.103}%
+\contentsline {chapter}{Index}{84}{section*.104}%
