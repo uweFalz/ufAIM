@@ -2,10 +2,12 @@
 
 import * as THREE from "three";
 import { createStore } from "./viewSync.js";
-import { clamp01, kappa, curvature, defaultBerlinParams } from "./transitionModel.js";
+import { clamp01, curvature } from "./transitionModel.js";
 import { sampleAlignment, evalAtStation } from "./transitionEmbed.js";
 import { makeTransitionEditorView } from "./transitionEditorView.js";
+import { makeAlignmentBandView } from "./alignmentBandView.js";
 
+// ---------- DOM ----------
 const statusEl = document.getElementById("status");
 const logEl = document.getElementById("log");
 const propsEl = document.getElementById("props");
@@ -23,16 +25,15 @@ const RValEl = document.getElementById("RVal");
 const btnReset = document.getElementById("btnReset");
 const canvas = document.getElementById("view3d");
 
+// 3×3 panel (status readout)
 const k0ValEl = document.getElementById("k0Val");
 const k1ValEl = document.getElementById("k1Val");
 const kappaValEl = document.getElementById("kappaVal");
 const LShowEl = document.getElementById("LShow");
 const RShowEl = document.getElementById("RShow");
-const familySelEl = document.getElementById("familySel");
+const familySelEl = document.getElementById("familySel"); // TODO: wire to model families later
 
-const wEl = document.getElementById("w");
-const wValEl = document.getElementById("wVal");
-
+// Transition overlay
 const btnTransEl = document.getElementById("btnTrans");
 const overlayEl = document.getElementById("transOverlay");
 const btnTransCloseEl = document.getElementById("btnTransClose");
@@ -43,46 +44,64 @@ const w1ValEl = document.getElementById("w1Val");
 const w2ValEl = document.getElementById("w2Val");
 const presetEl = document.getElementById("preset");
 
-function setStatus(s) { statusEl.textContent = s; }
+// ---------- helpers ----------
+function setStatus(s) {
+	statusEl.textContent = s;
+}
 function log(msg) {
 	logEl.textContent = (logEl.textContent ? logEl.textContent + "\n" : "") + msg;
 }
 function showProps(obj) {
 	propsEl.textContent = Object.entries(obj)
-	.map(([k,v]) => `${k}: ${typeof v === "number" ? v.toFixed(6) : v}`)
+	.map(([k, v]) => `${k}: ${typeof v === "number" ? v.toFixed(6) : v}`)
 	.join("\n");
-}
-
-// --- Wait until JSXGraph is available (loaded via defer script) ---
-function waitForJXG() {
-	return new Promise((resolve) => {
-		const tick = () => (window.JXG ? resolve(window.JXG) : requestAnimationFrame(tick));
-		tick();
-	});
 }
 
 // ---------- STORE (single source of truth) ----------
 const store = createStore({
+	// Transition overlay state
 	te_visible: false,
 	te_w1: 0.0,
 	te_w2: 1.0,
 	te_preset: "clothoid",
-	u: 0.25,      // normalized position in transition
-	L: 120,       // embedding length (m)
-	R: 800,       // embedding radius (m)
+
+	// Embedded transition demo state
+	u: 0.25, // normalized position in transition
+	L: 120,  // embedding length (m)
+	R: 800,  // embedding radius (m)
+
+	// reserved for future “shape family params”
 	w: 0.18,
+
+	// embed extras (demo track = lead + transition + arc)
 	lead: 60,
 	arcLen: 220,
-	slope: 0.0    // keep for later 4D (not used yet)
+
+	// future 4D
+	slope: 0.0
 });
 
-// TransitionEditorView ...
-setPreset("clothoid");
+// ---------- Transition overlay UI helpers ----------
+function applyTransUI(st) {
+	if (!w1El) return;
+	w1El.value = String(Math.round(st.te_w1 * 1000));
+	w2El.value = String(Math.round(st.te_w2 * 1000));
+	w1ValEl.textContent = st.te_w1.toFixed(3);
+	w2ValEl.textContent = st.te_w2.toFixed(3);
+	presetEl.value = st.te_preset;
+}
 
+function setPreset(p) {
+	if (p === "clothoid") store.setState({ te_preset: p, te_w1: 0.0, te_w2: 1.0 });
+	if (p === "bloss")    store.setState({ te_preset: p, te_w1: 0.5, te_w2: 0.5 });
+	if (p === "berlin")   store.setState({ te_preset: p, te_w1: 0.18, te_w2: 0.82 });
+}
+
+// ---------- TransitionEditorView (overlay) ----------
 const teView = makeTransitionEditorView(store);
 let teInited = false;
 
-// ---------- 3D ----------
+// ---------- 3D setup ----------
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b0e14);
@@ -108,22 +127,25 @@ new THREE.MeshStandardMaterial()
 scene.add(marker);
 
 // raw orbit
-let isDrag = false, lastX=0, lastY=0;
+let isDrag = false, lastX = 0, lastY = 0;
 let yaw = 0.3, pitch = 0.55, radius = 320;
-canvas.addEventListener("mousedown", (e) => { isDrag=true; lastX=e.clientX; lastY=e.clientY; });
-window.addEventListener("mouseup", () => { isDrag=false; });
+
+canvas.addEventListener("mousedown", (e) => { isDrag = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener("mouseup", () => { isDrag = false; });
+
 window.addEventListener("mousemove", (e) => {
-	if(!isDrag) return;
+	if (!isDrag) return;
 	const dx = e.clientX - lastX;
 	const dy = e.clientY - lastY;
 	lastX = e.clientX; lastY = e.clientY;
 	yaw += dx * 0.005;
 	pitch = Math.min(1.45, Math.max(0.15, pitch + dy * 0.005));
 });
+
 canvas.addEventListener("wheel", (e) => {
 	e.preventDefault();
 	radius = Math.min(1200, Math.max(80, radius + e.deltaY * 0.4));
-},{ passive:false });
+}, { passive: false });
 
 function resize3D() {
 	const rect = canvas.getBoundingClientRect();
@@ -135,51 +157,20 @@ function resize3D() {
 }
 window.addEventListener("resize", resize3D);
 
-// ---------- 2D (JSXGraph) ----------
-let board, centerCurve, kappaCurve, marker2d;
+// ---------- 2D alignment band view ----------
+let bandView = null;
 let latestSample = null;
 
 async function init2D() {
-	const JXG = await waitForJXG();
-	board = JXG.JSXGraph.initBoard("board2d", {
-		boundingbox: [-40, 200, 520, -200],
-		axis: true,
-		showNavigation: false,
-		showCopyright: false
-	});
-
-	// centerline polyline
-	const pts2d = () => (latestSample?.pts || []).map(p => [p.x, p.y]);
-
-	centerCurve = board.create("curve", [
-	() => pts2d().map(p => p[0]),
-	() => pts2d().map(p => p[1])
-	], { strokeWidth: 3 });
-
-	// kappa(u) band on [0,1]x[0,1] mapped into this board area
-	// Here: x=20..440, y=150..50  (simple)
-	kappaCurve = board.create("curve", [
-	(t) => 20 + t * 420,
-	(t) => {
-		const { w } = store.getState();
-		return 150 - kappa(t, { w }) * 100;
-	},
-	0, 1
-	], { strokeWidth: 2, dash: 2 });
-
-	marker2d = board.create("point", [
-	() => marker.position.x,
-	() => marker.position.y
-	], { name:"", size:4, fixed:true });
-
-	board.update();
+	bandView = makeAlignmentBandView(store);
+	await bandView.init("board2d");
 }
 
 function update2D() {
-	if(board) board.update();
+	if (bandView) bandView.update();
 }
 
-// ---------- render/update pipeline ----------
+// ---------- compute/update pipeline ----------
 function computeSample(st) {
 	const k0 = 0;
 	const k1 = 1 / Math.max(1e-9, st.R);
@@ -191,6 +182,7 @@ function computeSample(st) {
 		arcLen: st.arcLen,
 		ds: 1.5
 	});
+
 	return { sample, k0, k1 };
 }
 
@@ -214,7 +206,7 @@ function applyStateToViews(st) {
 	// update 3D track
 	const pts3 = sample.pts.map(p => new THREE.Vector3(p.x, p.y, 0));
 	const geo = new THREE.BufferGeometry().setFromPoints(pts3);
-	if(trackLine) {
+	if (trackLine) {
 		trackLine.geometry.dispose();
 		trackLine.geometry = geo;
 	} else {
@@ -222,28 +214,31 @@ function applyStateToViews(st) {
 		scene.add(trackLine);
 	}
 
-	// station embedding: transition-only
+	// station embedding: transition-only (demo)
 	const station = sample.lead + u * st.L;
 	sValEl.textContent = `s≈ ${Math.round(station)} m`;
 
 	const ev = evalAtStation(sample, station);
 	marker.position.set(ev.x, ev.y, 0);
 
+	// expose for 2D band view (read-only bridge)
+	window.__ufAIM_latestSample = latestSample;
+	window.__ufAIM_marker = { x: marker.position.x, y: marker.position.y };
+
+	// physical curvature at u (for readout)
 	const params = { w: st.w };
 	const k_phys = curvature(u, { k0, k1, params });
-	const kappa_norm = (k_phys - k0) / (k1 - k0);   // should be ~u for v0
+	const kappa_norm = (k_phys - k0) / (k1 - k0);
 
-	// update editor UI
-	if(k0ValEl) {
-		k0ValEl.textContent = k0.toFixed(6) + " 1/m";
-		k1ValEl.textContent = k1.toFixed(6) + " 1/m";
-		kappaValEl.textContent = kappa_norm.toFixed(6);
-		LShowEl.textContent = `${st.L} m`;
-		RShowEl.textContent = `${st.R} m`;
-	}
-	
+	// update 3×3 readout
+	k0ValEl.textContent = k0.toFixed(6) + " 1/m";
+	k1ValEl.textContent = k1.toFixed(6) + " 1/m";
+	kappaValEl.textContent = kappa_norm.toFixed(6);
+	LShowEl.textContent = `${st.L} m`;
+	RShowEl.textContent = `${st.R} m`;
+
 	showProps({
-		type: "transition (normed core)",
+		type: "transition (embedded demo)",
 		u,
 		kappa_u: kappa_norm,
 		k0_1_per_m: k0,
@@ -259,43 +254,20 @@ function applyStateToViews(st) {
 	update2D();
 }
 
-
-
-function applyTransUI(st){
-	if(!w1El) return;
-	w1El.value = String(Math.round(st.te_w1 * 1000));
-	w2El.value = String(Math.round(st.te_w2 * 1000));
-	w1ValEl.textContent = st.te_w1.toFixed(3);
-	w2ValEl.textContent = st.te_w2.toFixed(3);
-	presetEl.value = st.te_preset;
-}
-
-function setPreset(p){
-	if(p === "clothoid") store.setState({ te_preset:p, te_w1:0.0, te_w2:1.0 });
-	if(p === "bloss")    store.setState({ te_preset:p, te_w1:0.5, te_w2:0.5 });
-	if(p === "berlin")   store.setState({ te_preset:p, te_w1:0.18, te_w2:0.82 });
-}
-
-
 // ---------- UI events ----------
-uEl.addEventListener("input", () => {
-	store.setState({ u: Number(uEl.value)/1000 });
-});
-LEl.addEventListener("input", () => {
-	store.setState({ L: Number(LEl.value) });
-});
-REl.addEventListener("input", () => {
-	store.setState({ R: Number(REl.value) });
-});
+uEl.addEventListener("input", () => store.setState({ u: Number(uEl.value) / 1000 }));
+LEl.addEventListener("input", () => store.setState({ L: Number(LEl.value) }));
+REl.addEventListener("input", () => store.setState({ R: Number(REl.value) }));
 
 btnReset.addEventListener("click", () => {
 	store.setState({ u: 0.25, L: 120, R: 800 });
 	log("reset: u/L/R");
 });
 
-// Marker click -> props snapshot
+// 3D marker click -> props snapshot
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+
 canvas.addEventListener("click", (e) => {
 	const rect = canvas.getBoundingClientRect();
 	mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -303,37 +275,55 @@ canvas.addEventListener("click", (e) => {
 
 	raycaster.setFromCamera(mouse, camera);
 	const hits = raycaster.intersectObject(marker);
-	if(!hits.length) return;
+	if (!hits.length) return;
 
 	const st = store.getState();
-	const u = clamp01(st.u);
-	showProps({ type: "marker click", u, note: "selection confirmed" });
+	showProps({ type: "marker click", u: clamp01(st.u), note: "selection confirmed" });
 });
+
+// Transition overlay events
+btnTransEl.addEventListener("click", () => {
+	const st = store.getState();
+	store.setState({ te_visible: !st.te_visible });
+});
+btnTransCloseEl.addEventListener("click", () => store.setState({ te_visible: false }));
+
+w1El.addEventListener("input", () => store.setState({ te_w1: Number(w1El.value) / 1000 }));
+w2El.addEventListener("input", () => store.setState({ te_w2: Number(w2El.value) / 1000 }));
+presetEl.addEventListener("change", () => setPreset(presetEl.value));
+
+if (familySelEl) {
+	familySelEl.addEventListener("change", () => {
+		log("family: " + familySelEl.value + " (v0 only)");
+		showProps({ type: "family change", value: familySelEl.value });
+	});
+}
 
 // ---------- main subscription ----------
 store.subscribe((st) => {
 	applyStateToUI(st);
 	applyStateToViews(st);
-	
-	// Transition Editor overlay
-	if (overlayEl) {
-		overlayEl.classList.toggle("hidden", !st.te_visible);
-		applyTransUI(st);
 
-		if (st.te_visible && !teInited) {
-			teInited = true;
-			teView.init().then(()=>log("TransEditor ready")).catch(e=>log("TransEditor failed: "+String(e)));
-		}
+	// Transition Editor overlay
+	overlayEl.classList.toggle("hidden", !st.te_visible);
+	applyTransUI(st);
+
+	if (st.te_visible && !teInited) {
+		teInited = true;
+		teView.init()
+		.then(() => log("TransEditor ready"))
+		.catch(e => log("TransEditor failed: " + String(e)));
 	}
 });
 
 // ---------- render loop ----------
 function animate() {
-	const cx = Math.cos(yaw)*Math.sin(pitch)*radius;
-	const cy = Math.sin(yaw)*Math.sin(pitch)*radius;
-	const cz = Math.cos(pitch)*radius;
+	const cx = Math.cos(yaw) * Math.sin(pitch) * radius;
+	const cy = Math.sin(yaw) * Math.sin(pitch) * radius;
+	const cz = Math.cos(pitch) * radius;
+
 	camera.position.set(cx, cy, cz);
-	camera.lookAt(0,0,0);
+	camera.lookAt(0, 0, 0);
 
 	renderer.render(scene, camera);
 	requestAnimationFrame(animate);
@@ -343,28 +333,10 @@ function animate() {
 resize3D();
 setStatus("ready ✅");
 log("Kapselung aktiv: model (norm) + embed (meter) + sync (store)");
-init2D().then(() => log("2D ready")).catch(e => log("2D failed: "+String(e)));
 
+init2D()
+.then(() => log("2D ready"))
+.catch(e => log("2D failed: " + String(e)));
 
-btnTransEl.addEventListener("click", ()=>{
-	const st = store.getState();
-	store.setState({ te_visible: !st.te_visible });
-});
-btnTransCloseEl.addEventListener("click", ()=>{
-	store.setState({ te_visible: false });
-});
-
-w1El.addEventListener("input", ()=> store.setState({ te_w1: Number(w1El.value)/1000 }));
-w2El.addEventListener("input", ()=> store.setState({ te_w2: Number(w2El.value)/1000 }));
-presetEl.addEventListener("change", ()=> setPreset(presetEl.value));
-
-
-
-if(familySelEl) {
-	familySelEl.addEventListener("change", () => {
-		log("family: " + familySelEl.value + " (v0 only)");
-		showProps({ type:"family change", value: familySelEl.value });
-	});
-}
-
+setPreset("clothoid"); // initial preset for overlay
 animate();
