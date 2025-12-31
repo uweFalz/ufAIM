@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width,initial-scale=1" />
+		<title>ufAIM Sandbox (raw 2D/3D)</title>
+
+		<link rel="stylesheet" href="./styles.css" />
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+
+		<!-- JSXGraph (2D) -->
+		<script defer src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+
+		<!-- three.js (3D) via importmap -->
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "https://unpkg.com/three/build/three.module.js"
+				}
+			}
+		</script>
+		<!-- vorher: "https://unpkg.com/three@0.160.0/build/three.module.js" -->
+	</head>
+
+	<body>
+		<header class="topbar">
+			<div class="brand">ufAIM • raw sandbox</div>
+			<div class="status" id="status">boot…</div>
+		</header>
+
+		<main class="stage">
+			<section class="pane">
+				<div class="paneHead">
+					<div class="paneTitle">2D (JSXGraph) — Elementals</div>
+					<div class="paneHint">Zieh die Punkte A, B, C • Klick zeigt Properties</div>
+				</div>
+				<div id="board2d" class="board"></div>
+				<div class="editor" id="transEditor">
+					<div class="grid3x3">
+						<div class="cell head">Eingang</div>
+						<div class="cell head">Übergang</div>
+						<div class="cell head">Ausgang</div>
+
+						<div class="cell">
+							<div class="label">k₀</div>
+							<div class="value mono" id="k0Val">…</div>
+							<div class="hint">Startkrümmung (physisch)</div>
+						</div>
+						<div class="cell">
+							<div class="label">κ(u)</div>
+							<div class="value mono" id="kappaVal">…</div>
+							<div class="hint">Norm-Image (0..1)</div>
+						</div>
+						<div class="cell">
+							<div class="label">k₁</div>
+							<div class="value mono" id="k1Val">…</div>
+							<div class="hint">Endkrümmung (physisch)</div>
+						</div>
+
+						<div class="cell">
+							<div class="label">Domain</div>
+							<div class="value mono">u ∈ [0,1]</div>
+							<div class="hint">Editor-Sprache</div>
+						</div>
+						<div class="cell">
+							<div class="label">Family</div>
+							<select id="familySel">
+								<option value="linear">linear (v0)</option>
+								<option value="berlin" disabled>berlin (soon)</option>
+							</select>
+							<div class="label">w (halfWave)</div>
+							<input id="w" type="range" min="20" max="450" value="180" />
+							<div class="value mono" id="wVal">0.180</div>
+							<div class="hint">Anteil je Seite (0.02..0.45)</div>
+						</div>
+						<div class="cell">
+							<div class="label">Embed</div>
+							<div class="value mono">s = lead + u·L</div>
+							<div class="hint">Welt-Einbettung</div>
+						</div>
+
+						<div class="cell">
+							<div class="label">L</div>
+							<div class="value mono" id="LShow">…</div>
+							<div class="hint">Länge (Welt)</div>
+						</div>
+						<div class="cell">
+							<div class="label">Flags</div>
+							<label class="chk"><input type="checkbox" id="viennaChk" disabled> Vienna (später)</label>
+							<div class="hint">Überhöhung getrennt</div>
+						</div>
+						<div class="cell">
+							<div class="label">R</div>
+							<div class="value mono" id="RShow">…</div>
+							<div class="hint">Radius (Welt)</div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="pane">
+				<div class="paneHead">
+					<div class="paneTitle">3D (three.js) — Viewer</div>
+					<div class="paneHint">Drag zum Drehen • Scroll zum Zoomen • Klick Marker → Properties</div>
+				</div>
+				<canvas id="view3d" class="canvas3d"></canvas>
+			</section>
+		</main>
+
+		<footer class="footer">
+			<div class="controls">
+				<label for="u">u</label>
+				<input id="u" type="range" min="0" max="1000" value="250" />
+				<span class="mono" id="uVal">0.250</span>
+				<span class="mono" id="sVal">s≈ … m</span>
+
+				<label for="L">L</label>
+				<input id="L" type="range" min="30" max="400" value="120" />
+				<span class="mono" id="LVal">120</span>
+
+				<label for="R">R</label>
+				<input id="R" type="range" min="200" max="3000" value="800" />
+				<span class="mono" id="RVal">800</span>
+				
+				<button id="btnTrans">TransEditor</button>
+
+				<button id="btnReset">Reset</button>
+			</div>
+
+			<div class="mono props" id="props">click an element…</div>
+			<div class="mono" id="log"></div>
+		</footer>
+		
+		<div id="transOverlay" class="overlay hidden">
+			<div class="overlayHead">
+				<div class="overlayTitle">Transition Editor (normiert)</div>
+				<button id="btnTransClose">×</button>
+			</div>
+
+			<div class="overlayBody">
+				<div id="transBoard" class="transBoard"></div>
+
+				<div class="transControls">
+					<label>w1</label>
+					<input id="w1" type="range" min="0" max="1000" value="0" />
+					<span class="mono" id="w1Val">0.000</span>
+
+					<label>w2</label>
+					<input id="w2" type="range" min="0" max="1000" value="1000" />
+					<span class="mono" id="w2Val">1.000</span>
+
+					<label>Preset</label>
+					<select id="preset">
+						<option value="clothoid">Klothoide (w1=0,w2=1)</option>
+						<option value="bloss">Bloss (w1=w2=0.5)</option>
+						<option value="berlin">Berlin (w1=0.18,w2=0.82)</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<script type="module" src="./main.js"></script>
+	</body>
+</html>
