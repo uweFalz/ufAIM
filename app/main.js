@@ -12,9 +12,9 @@ const statusEl = document.getElementById("status");
 const logEl = document.getElementById("log");
 const propsEl = document.getElementById("props");
 
-const uEl = document.getElementById("u");
-const uValEl = document.getElementById("uVal");
+const sEl = document.getElementById("s");
 const sValEl = document.getElementById("sVal");
+const uValEl = document.getElementById("uVal");
 
 const LEl = document.getElementById("L");
 const LValEl = document.getElementById("LVal");
@@ -66,11 +66,12 @@ const store = createStore({
 	te_preset: "clothoid",
 
 	// Embedded transition demo state
-	u: 0.25, // normalized position in transition
-	L: 120,  // embedding length (m)
-	R: 800,  // embedding radius (m)
+	u: 0.25,     // normalized position in transition (editor language)
+	s_abs: null, // if set: viewer language dominates (world station in meters)
+	L: 120,      // embedding length (m)
+	R: 800,      // embedding radius (m)
 
-	// reserved for future “shape family params”
+	// reserved for future “shape family params” (no UI control right now)
 	w: 0.18,
 
 	// embed extras (demo track = lead + transition + arc)
@@ -140,30 +141,56 @@ function computeSample(st) {
 	return { sample, k0, k1 };
 }
 
-function applyStateToUI(st) {
-	uEl.value = String(Math.round(clamp01(st.u) * 1000));
-	uValEl.textContent = clamp01(st.u).toFixed(3);
+function stationFromState(sample, st) {
+	const u = clamp01(st.u);
+	if (st.s_abs == null) {
+		return sample.lead + u * st.L;
+	}
+	return st.s_abs;
+}
 
+function uFromStation(sample, st, station) {
+	return clamp01((station - sample.lead) / Math.max(1e-9, st.L));
+}
+
+function applyStateToUI(st) {
+	// L/R sliders
 	LEl.value = String(st.L);
 	LValEl.textContent = String(st.L);
 
 	REl.value = String(st.R);
 	RValEl.textContent = String(st.R);
+
+	// Footer uses s (viewer language)
+	if (sEl && latestSample) {
+		const total = Math.max(1, latestSample.totalLen || 1);
+		sEl.min = "0";
+		sEl.max = String(Math.round(total));
+
+		const station = stationFromState(latestSample, st);
+		sEl.value = String(Math.round(station));
+
+		sValEl.textContent = `s≈ ${Math.round(station)} m`;
+		uValEl.textContent = `u≈ ${clamp01(st.u).toFixed(3)}`;
+	}
 }
 
 function applyStateToViews(st) {
-	const u = clamp01(st.u);
-
 	const { sample, k0, k1 } = computeSample(st);
 	latestSample = sample;
 
 	// update 3D track
 	three.setTrackFromXY(sample.pts);
 
-	// station embedding: transition-only (demo)
-	const station = sample.lead + u * st.L;
-	sValEl.textContent = `s≈ ${Math.round(station)} m`;
+	// station in world space (viewer language)
+	const station = stationFromState(sample, st);
+	const u_eff = uFromStation(sample, st, station); // derived u used for eval/curvature
 
+	// keep UI label in sync (even if s_abs dominates)
+	if (sValEl) sValEl.textContent = `s≈ ${Math.round(station)} m`;
+	if (uValEl) uValEl.textContent = `u≈ ${u_eff.toFixed(3)}`;
+
+	// embedded evaluation
 	const ev = evalAtStation(sample, station);
 	three.setMarker(ev.x, ev.y, 0);
 
@@ -171,9 +198,9 @@ function applyStateToViews(st) {
 	window.__ufAIM_latestSample = latestSample;
 	window.__ufAIM_marker = three.getMarkerXY();
 
-	// physical curvature at u (for readout)
+	// physical curvature at u_eff (for readout)
 	const params = { w: st.w };
-	const k_phys = curvature(u, { k0, k1, params });
+	const k_phys = curvature(u_eff, { k0, k1, params });
 	const kappa_norm = (k_phys - k0) / (k1 - k0);
 
 	// update 3×3 readout
@@ -185,14 +212,14 @@ function applyStateToViews(st) {
 
 	showProps({
 		type: "transition (embedded demo)",
-		u,
+		station_m: station,
+		u: u_eff,
 		kappa_u: kappa_norm,
 		k0_1_per_m: k0,
 		k1_1_per_m: k1,
 		k_u_1_per_m: k_phys,
 		L_m: st.L,
 		R_m: st.R,
-		station_m: station,
 		x: ev.x, y: ev.y,
 		heading_rad: ev.yaw
 	});
@@ -201,13 +228,22 @@ function applyStateToViews(st) {
 }
 
 // ---------- UI events ----------
-uEl.addEventListener("input", () => store.setState({ u: Number(uEl.value) / 1000 }));
-LEl.addEventListener("input", () => store.setState({ L: Number(LEl.value) }));
-REl.addEventListener("input", () => store.setState({ R: Number(REl.value) }));
+sEl.addEventListener("input", () => {
+	store.setState({ s_abs: Number(sEl.value) });
+});
+
+LEl.addEventListener("input", () => {
+	// When L changes, fixed station becomes ambiguous -> let u dominate again
+	store.setState({ L: Number(LEl.value), s_abs: null });
+});
+
+REl.addEventListener("input", () => {
+	store.setState({ R: Number(REl.value), s_abs: null });
+});
 
 btnReset.addEventListener("click", () => {
-	store.setState({ u: 0.25, L: 120, R: 800 });
-	log("reset: u/L/R");
+	store.setState({ u: 0.25, s_abs: null, L: 120, R: 800 });
+	log("reset: s/u/L/R");
 });
 
 // Transition overlay events
