@@ -108,6 +108,8 @@ The angular jerk about roll axis is equal to the third time derivative of the ca
 
 \subsection{Kurven}
 
+refer to Wikipedia!
+
 In der Mathematik ist eine Kurve (von lateinisch curvus „gebogen, gekrümmt“) ein eindimensionales Objekt. Im Gegensatz etwa zu einer Geraden muss eine Kurve grundsätzlich keinen geraden, sondern kann vielmehr jeden beliebigen Verlauf annehmen.
 
 Eindimensional bedeutet dabei informell, dass man sich auf der Kurve nur in eine Richtung (bzw. in die Gegenrichtung) bewegen kann. Ob die Kurve in der zweidimensionalen Ebene liegt (ebene Kurve), in einem höherdimensionalen Raum (siehe Raumkurve), oder gar in einer Mannigfaltigkeit (beispielsweise in einer \textsc{Lorentz}schen Mannigfaltigkeit) ist in diesem begrifflichen Zusammenhang unerheblich.
@@ -300,6 +302,8 @@ Die duale Kurve der dualen Kurve ist wieder die ursprüngliche Kurve.
 \ldots
 
 \section{Kinematik}
+
+refer to Wikipedia!
 
 \subsection{Bewegungszustand}
 
@@ -2729,21 +2733,22 @@ pV3 &&&& \\
 
 \begin{itemize}
 \item wie schon bei den Vienna's ersichtlich, sind Kombinationen der Funktionen miteinander, aber auch mit Null-Funktionen denkbar.
-\item die Änderung des Wertebereichs weg von $[0,\ 1]$ auf $[-1,\ 1]$, und besser sogar auf $[a,\ b]$ ist für die Analyse offensichtlich hilfreich! $a$, $b$? Mit $\kappa'' (\sigma) = (a + \sigma)^{m_a} \sigma^n (b - \sigma)^{m_b}$ sind alle polynomialen Fälle von oben redundant erfasst ($a < 0 < 1$)
+\item die Änderung des Wertebereichs weg von $[0,\ 1]$ auf $[-1,\ 1]$, und besser sogar auf $[a,\ b]$ ist für die Analyse offensichtlich hilfreich! $a$, $b$? Mit $\kappa'' (\sigma) = (a + \sigma)^{m_a} \sigma^n (b - \sigma)^{m_b}$ sind alle polynomialen Fälle von oben redundant erfasst ($a < 0 < b$)
 \item direkte Anschlussfrage: Ist Symmetrie $a+b=0$ hilfreich???
 \item \textsc{Gubar} und \textsc{Ruch} curve führen uns zum Berlin-Dogma: Ein Übergangsbogen setzt sich aus den drei Teilen halfWave1 - clothoid - halfWave2 zusammen, mit jeweils glatten Übergängen (außer ...). Und: Erster und dritter Teil müssen nicht zwingend gleicher Herkunft sein, sogar der mittlere Wendepunkt ist wie bei Biquadratic verzichtbar. Damit ist jedes Polynom mit mindestens Grad zwei Transition-Atom. Sine und Cosine als $C^\infty$-Polynome bedürfen hier weiterer Betrachtungen.
-\item Plus Schwerpunkttrassierung ... falls gwollt.
+\item Plus Schwerpunkttrassierung ... falls gewollt.
 \end{itemize}
 
 Der letzte Punkt ist recht entspannt - SPT an oder aus. Fertig. Na gut, wir brauchen dazu die Originalfunktion plus zweiter Ableitung - Haben wir ja.
 
-Schauen wir uns die Waves an. Eigentlich ja nur halfWave1, weil halfWave2 sich per Drehung / Verschiebung aus einer halfWave1 ergibt (siehe Biquadratic). Eine passende halfWave1 $f$ hat am Startwert $a$ einen Scheitel- oder Wendepunkt mit $f' (a) = 0$, und mündet stetig wachsend im Endwert $b$ (ohne weitere Anforderungen)
-
-\ldots
+Schauen wir uns die Waves an. Eigentlich ja nur halfWave1, weil halfWave2 sich per Drehung / Verschiebung aus einer halfWave1 ergibt (siehe Biquadratic). Eine passende halfWave1 $f$ hat am Startwert $a$ einen Scheitel- oder Wendepunkt mit $f' (a) = 0$, und mündet stetig wachsend im Endwert $b$ (ohne weitere Anforderungen, wünschenswert dort Wendepunkt)
 
 \ldots
 
 \subsubsection{ADDITIONAL SPIRAL CONCEPTS:}
+
+refer Klauder2012
+
 An important spiral design conceptual advance of a different kind was achieved by the German engineer Donges (\textsc{Donges} 1968). His insight was that the forces needed to rotate a vehicle between its pre- and post-spiral bank angles will be less if the vehicle is rotated not about a longitudinal axis in the plane of the track but rather about a longitudinal axis through its so-called center-of-percussion with respect to a transverse impulse applied by the rails. (The center-of-percussion is above
 the center of mass.) To implement Donges’ idea computationally one can choose a track roll axis height above a typical vehicle center of mass height, calculate the coordinates of each point on the path of that roll axis using any of the spiral types from Table 1 (although the last 5 that have second derivative of curvature zero at each end of the spiral may be preferred), and then note that the corresponding track point is shifted laterally by the roll axis height times the sine of the bank angle at the point. Spiral geometry of this type (but using a curvature function not illustrated in Table 1) was studied and successfully tested by the Austrian Railways as reported in
 \textsc{Presle} \& \textsc{Hasslinger} (1998).
@@ -2759,8 +2764,6 @@ where $\mathcal{V}$ denotes a balancing speed and $\mathcal{G}$ denotes the acce
 % \centerline{\includegraphics{transitionTypes.png}}
 
 \ldots
-
-
 
 \section{alignment data transfer}
 

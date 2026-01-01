@@ -61,9 +61,11 @@ const fileImport = document.getElementById("fileImport");
 function setStatus(s) {
 	statusEl.textContent = s;
 }
+
 function log(msg) {
 	logEl.textContent = (logEl.textContent ? logEl.textContent + "\n" : "") + msg;
 }
+
 function showProps(obj) {
 	propsEl.textContent = Object.entries(obj)
 	.map(([k, v]) => `${k}: ${typeof v === "number" ? v.toFixed(6) : v}`)
@@ -336,10 +338,21 @@ btnTransEl.addEventListener("click", () => {
 	const st = store.getState();
 	store.setState({ te_visible: !st.te_visible });
 });
+
 btnTransCloseEl.addEventListener("click", () => store.setState({ te_visible: false }));
 
-w1El.addEventListener("input", () => store.setState({ te_w1: Number(w1El.value) / 1000 }));
-w2El.addEventListener("input", () => store.setState({ te_w2: Number(w2El.value) / 1000 }));
+w1El.addEventListener("input", () => {
+	const st = store.getState();
+	const w1 = Number(w1El.value) / 1000;
+	store.setState({ te_w1: Math.min(w1, st.te_w2) });
+});
+
+w2El.addEventListener("input", () => {
+	const st = store.getState();
+	const w2 = Number(w2El.value) / 1000;
+	store.setState({ te_w2: Math.max(w2, st.te_w1) });
+});
+
 presetEl.addEventListener("change", () => setPreset(presetEl.value));
 
 if (familySelEl) {

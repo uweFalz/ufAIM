@@ -9,18 +9,20 @@
 import { clamp01 } from "./transitionModel.js"; // keep one clamp impl only
 
 // halfWave1: f(0)=0,f(1)=1,f'(0)=0,f'(1)=1
-function halfIn(t) { return -t*t*t + 2*t*t; }
-function halfIn1(t) { return -3*t*t + 4*t; }
-function halfIn2(t) { return -6*t + 4; }
+function halfIn(t) { return t*(3 - t)/2; }
+function halfIn1(t) { return 3*t*(2 - t)/2; }
+function halfIn2(t) { return 3*(1 - t); }
 
 // halfWave2: g(0)=0,g(1)=1,g'(0)=1,g'(1)=0
-function halfOut(t) { return -t*t*t + t*t + t; }
-function halfOut1(t) { return -3*t*t + 2*t + 1; }
-function halfOut2(t) { return -6*t + 2; }
+function halfOut(t) { return 1 - halfIn(1 - t); }
+function halfOut1(t) { return halfIn1(1 - t); }
+function halfOut2(t) { return halfIn2(1 - t); }
 
 export function makeTransitionEditorView(store){
 	let board = null;
-	let curve = null;
+	let curveIn = null;
+	let curveMid = null;
+	let curveOut = null;
 
 	let vline1 = null, vline2 = null;
 	let hline0 = null, hline1 = null;
@@ -58,6 +60,7 @@ export function makeTransitionEditorView(store){
 		u = clamp01(u);
 		w1 = clamp01(w1);
 		w2 = clamp01(w2);
+		
 		if (w2 < w1) { const tmp=w1; w1=w2; w2=tmp; }
 
 		// special: if middle collapsed (bloss-like), still define piecewise
@@ -80,6 +83,7 @@ export function makeTransitionEditorView(store){
 		u = clamp01(u);
 		w1 = clamp01(w1);
 		w2 = clamp01(w2);
+		
 		if (w2 < w1) { const tmp=w1; w1=w2; w2=tmp; }
 
 		if (u <= w1) {
@@ -100,6 +104,7 @@ export function makeTransitionEditorView(store){
 		u = clamp01(u);
 		w1 = clamp01(w1);
 		w2 = clamp01(w2);
+		
 		if (w2 < w1) { const tmp=w1; w1=w2; w2=tmp; }
 
 		if (u <= w1) {
@@ -107,7 +112,7 @@ export function makeTransitionEditorView(store){
 			const t = u / w1;
 			return halfIn2(t) / w1;
 		}
-		if(u >= w2){
+		if (u >= w2){
 			if ((1 - w2) <= 1e-9) return 0;
 			const t = (u - w2) / (1 - w2);
 			return halfOut2(t) / (1 - w2);
@@ -121,6 +126,7 @@ export function makeTransitionEditorView(store){
 
 		if (st.te_plot === "k1") return kappa1(u, w1, w2);
 		if (st.te_plot === "k2") return kappa2(u, w1, w2);
+		
 		return kappaCore(u, w1, w2);
 	}
 
@@ -135,6 +141,7 @@ export function makeTransitionEditorView(store){
 		// rounding to avoid re-sampling on tiny slider jitter
 		const w1 = Math.round(clamp01(st.te_w1) * 1000) / 1000;
 		const w2 = Math.round(clamp01(st.te_w2) * 1000) / 1000;
+		
 		return `${st.te_plot}|${w1}|${w2}`;
 	}
 
@@ -210,15 +217,45 @@ export function makeTransitionEditorView(store){
 			showCopyright: false
 		});
 
-		// Main curve (mode-dependent)
-		curve = board.create("curve", [
+		// --- 3 segment curves (didactic Berlin-dogma) ---
+		// We draw the SAME function, but as 3 separate visible segments.
+		// Outside the segment we return NaN → JSXGraph breaks the curve nicely.
+
+		function segY(t, st, a, b){
+			if (t < a || t > b) return NaN;
+			return yMap(plotValue(t, st), st);
+		}
+
+		curveIn = board.create("curve", [
 		(t) => t,
 		(t) => {
 			const st = store.getState();
-			return yMap(plotValue(t, st), st);
+			const w1 = st.te_w1;
+			return segY(t, st, 0, w1);
 		},
 		0, 1
-		], { strokeWidth: 3 });
+		], { strokeWidth: 2, dash: 2 });
+
+		curveMid = board.create("curve", [
+		(t) => t,
+		(t) => {
+			const st = store.getState();
+			const w1 = st.te_w1;
+			const w2 = st.te_w2;
+			return segY(t, st, w1, w2);
+		},
+		0, 1
+		], { strokeWidth: 4 });
+
+		curveOut = board.create("curve", [
+		(t) => t,
+		(t) => {
+			const st = store.getState();
+			const w2 = st.te_w2;
+			return segY(t, st, w2, 1);
+		},
+		0, 1
+		], { strokeWidth: 2, dash: 2 });
 
 		// Domain split lines (vertical at w1/w2)
 		vline1 = board.create("line", [
