@@ -9,6 +9,7 @@ import { makeAlignmentBandView } from "./alignmentBandView.js";
 import { createProjectModel } from "./model/projectModel.js";
 import { defaultProject, downloadProject } from "./io/projectIO.js";
 import { applyModelToStore, readStoreToModel } from "./io/modelAdapter.js";
+import { loadProjectFromFile } from "./io/projectIO.js"; // <- zusätzlich zu den bestehenden imports
 
 // ---------- DOM ----------
 const statusEl = document.getElementById("status");
@@ -51,6 +52,10 @@ const plotKEl = document.getElementById("plotK");
 const plotK1El = document.getElementById("plotK1");
 const plotK2El = document.getElementById("plotK2");
 
+const btnImport = document.getElementById("btnImport");
+const btnExport = document.getElementById("btnExport");
+const fileImport = document.getElementById("fileImport");
+
 // ---------- helpers ----------
 function setStatus(s) {
 	statusEl.textContent = s;
@@ -62,6 +67,26 @@ function showProps(obj) {
 	propsEl.textContent = Object.entries(obj)
 	.map(([k, v]) => `${k}: ${typeof v === "number" ? v.toFixed(6) : v}`)
 	.join("\n");
+}
+
+async function doImportFile(file) {
+  try {
+    const proj = await loadProjectFromFile(file);
+    projectModel.set(proj);
+    applyModelToStore(projectModel, store);
+
+    log(`import: ${file.name}`);
+    showProps({ type: "import", file: file.name, format: proj.format, name: proj.meta?.name });
+  } catch (e) {
+    log("import failed: " + (e?.message || String(e)));
+    showProps({ type: "import failed", error: e?.message || String(e) });
+  }
+}
+
+function doExport() {
+  readStoreToModel(store, projectModel);
+  downloadProject(projectModel.get(), "ufAIM");
+  log("export: download");
 }
 
 // ---------- STORE (single source of truth) ----------
@@ -300,6 +325,17 @@ if (familySelEl) {
 	});
 }
 
+btnImport?.addEventListener("click", () => fileImport?.click());
+
+fileImport?.addEventListener("change", () => {
+  const f = fileImport.files?.[0];
+  if (!f) return;
+  doImportFile(f);
+  fileImport.value = ""; // allow re-import same filename
+});
+
+btnExport?.addEventListener("click", () => doExport());
+
 // ---------- main subscription ----------
 store.subscribe((st) => {
 	applyStateToUI(st);
@@ -330,3 +366,38 @@ init2D()
 
 setPreset("clothoid"); // initial preset for overlay
 three.start();
+
+function isJsonFile(file) {
+  const name = (file?.name || "").toLowerCase();
+  return name.endsWith(".json") || file?.type === "application/json";
+}
+
+function setDropActive(active) {
+  document.body.classList.toggle("dropActive", !!active);
+}
+
+window.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  setDropActive(true);
+});
+
+window.addEventListener("dragleave", (e) => {
+  // when leaving window
+  if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+    setDropActive(false);
+  }
+});
+
+window.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  setDropActive(false);
+
+  const file = e.dataTransfer?.files?.[0];
+  if (!file) return;
+
+  if (!isJsonFile(file)) {
+    log("drop ignored: not a .json");
+    return;
+  }
+  await doImportFile(file);
+});
