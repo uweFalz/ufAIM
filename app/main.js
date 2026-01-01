@@ -7,7 +7,7 @@ import { sampleAlignment, evalAtStation } from "./transitionEmbed.js";
 import { makeTransitionEditorView } from "./transitionEditorView.js";
 import { makeAlignmentBandView } from "./alignmentBandView.js";
 import { createProjectModel } from "./model/projectModel.js";
-import { defaultProject, downloadProject } from "./io/projectIO.js";
+import { defaultProject, downloadProject, normalizeProject } from "./io/projectIO.js";
 import { applyModelToStore, readStoreToModel } from "./io/modelAdapter.js";
 import { loadProjectFromFile } from "./io/projectIO.js"; // <- zusätzlich zu den bestehenden imports
 
@@ -53,6 +53,7 @@ const plotK1El = document.getElementById("plotK1");
 const plotK2El = document.getElementById("plotK2");
 
 const btnImport = document.getElementById("btnImport");
+const btnDemo = document.getElementById("btnDemo");
 const btnExport = document.getElementById("btnExport");
 const fileImport = document.getElementById("fileImport");
 
@@ -70,23 +71,46 @@ function showProps(obj) {
 }
 
 async function doImportFile(file) {
-  try {
-    const proj = await loadProjectFromFile(file);
-    projectModel.set(proj);
-    applyModelToStore(projectModel, store);
+	try {
+		const proj = await loadProjectFromFile(file);
+		
+		if (proj.format !== "ufAIM.project.v0") {
+			log(`import: warning format=${proj.format} (normalized to ufAIM.project.v0)`);
+		}
+		
+		projectModel.set(proj);
+		applyModelToStore(projectModel, store);
 
-    log(`import: ${file.name}`);
-    showProps({ type: "import", file: file.name, format: proj.format, name: proj.meta?.name });
-  } catch (e) {
-    log("import failed: " + (e?.message || String(e)));
-    showProps({ type: "import failed", error: e?.message || String(e) });
-  }
+		log(`import: ${file.name}`);
+		showProps({ type: "import", file: file.name, format: proj.format, name: proj.meta?.name });
+	} catch (e) {
+		log("import failed: " + (e?.message || String(e)));
+		showProps({ type: "import failed", error: e?.message || String(e) });
+	}
 }
 
 function doExport() {
-  readStoreToModel(store, projectModel);
-  downloadProject(projectModel.get(), "ufAIM");
-  log("export: download");
+	readStoreToModel(store, projectModel);
+	downloadProject(projectModel.get(), "ufAIM");
+	log("export: download");
+}
+
+async function doLoadDemo() {
+	try {
+		const res = await fetch("./examples/demo.project.json", { cache: "no-store" });
+		if (!res.ok) throw new Error(`Demo fetch failed (${res.status})`);
+		const raw = await res.json();
+
+		const proj = normalizeProject(raw);
+		projectModel.set(proj);
+		applyModelToStore(projectModel, store);
+
+		log("demo: loaded examples/demo.project.json");
+		showProps({ type: "demo", name: proj.meta?.name, preset: proj.alignment?.transition?.preset, plot: proj.alignment?.transition?.plot });
+	} catch (e) {
+		log("demo failed: " + (e?.message || String(e)));
+		showProps({ type: "demo failed", error: e?.message || String(e) });
+	}
 }
 
 // ---------- STORE (single source of truth) ----------
@@ -122,8 +146,8 @@ applyModelToStore(projectModel, store);
 // quick dev helpers (v0): export current state anytime from console
 window.__ufAIM_projectModel = projectModel;
 window.__ufAIM_exportProject = () => {
-  readStoreToModel(store, projectModel);
-  downloadProject(projectModel.get(), "ufAIM");
+	readStoreToModel(store, projectModel);
+	downloadProject(projectModel.get(), "ufAIM");
 };
 
 // ---------- Transition overlay UI helpers ----------
@@ -328,13 +352,15 @@ if (familySelEl) {
 btnImport?.addEventListener("click", () => fileImport?.click());
 
 fileImport?.addEventListener("change", () => {
-  const f = fileImport.files?.[0];
-  if (!f) return;
-  doImportFile(f);
-  fileImport.value = ""; // allow re-import same filename
+	const f = fileImport.files?.[0];
+	if (!f) return;
+	doImportFile(f);
+	fileImport.value = ""; // allow re-import same filename
 });
 
 btnExport?.addEventListener("click", () => doExport());
+
+btnDemo?.addEventListener("click", () => doLoadDemo());
 
 // ---------- main subscription ----------
 store.subscribe((st) => {
@@ -368,36 +394,36 @@ setPreset("clothoid"); // initial preset for overlay
 three.start();
 
 function isJsonFile(file) {
-  const name = (file?.name || "").toLowerCase();
-  return name.endsWith(".json") || file?.type === "application/json";
+	const name = (file?.name || "").toLowerCase();
+	return name.endsWith(".json") || file?.type === "application/json";
 }
 
 function setDropActive(active) {
-  document.body.classList.toggle("dropActive", !!active);
+	document.body.classList.toggle("dropActive", !!active);
 }
 
 window.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  setDropActive(true);
+	e.preventDefault();
+	setDropActive(true);
 });
 
 window.addEventListener("dragleave", (e) => {
-  // when leaving window
-  if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
-    setDropActive(false);
-  }
+	// when leaving window
+	if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+		setDropActive(false);
+	}
 });
 
 window.addEventListener("drop", async (e) => {
-  e.preventDefault();
-  setDropActive(false);
+	e.preventDefault();
+	setDropActive(false);
 
-  const file = e.dataTransfer?.files?.[0];
-  if (!file) return;
+	const file = e.dataTransfer?.files?.[0];
+	if (!file) return;
 
-  if (!isJsonFile(file)) {
-    log("drop ignored: not a .json");
-    return;
-  }
-  await doImportFile(file);
+	if (!isJsonFile(file)) {
+		log("drop ignored: not a .json");
+		return;
+	}
+	await doImportFile(file);
 });

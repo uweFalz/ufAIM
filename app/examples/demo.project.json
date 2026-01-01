@@ -1,0 +1,13 @@
+{
+	"format": "ufAIM.project.v0",
+	"meta": {
+		"name": "berlin_demo",
+		"crs": "LOCAL",
+		"units": "m"
+	},
+	"alignment": {
+		"embed": { "lead": 60, "L": 140, "R": 900, "arcLen": 220 },
+		"transition": { "preset": "berlin", "w1": 0.18, "w2": 0.82, "plot": "k1" }
+	},
+	"ui": { "s_abs": 110, "u": 0.25 }
+}
