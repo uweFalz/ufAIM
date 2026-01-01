@@ -6,6 +6,9 @@ import { clamp01, curvature } from "./transitionModel.js";
 import { sampleAlignment, evalAtStation } from "./transitionEmbed.js";
 import { makeTransitionEditorView } from "./transitionEditorView.js";
 import { makeAlignmentBandView } from "./alignmentBandView.js";
+import { createProjectModel } from "./model/projectModel.js";
+import { defaultProject, downloadProject } from "./io/projectIO.js";
+import { applyModelToStore, readStoreToModel } from "./io/modelAdapter.js";
 
 // ---------- DOM ----------
 const statusEl = document.getElementById("status");
@@ -86,6 +89,17 @@ const store = createStore({
 	// future 4D
 	slope: 0.0
 });
+
+// ---------- PROJECT MODEL (persistent) ----------
+const projectModel = createProjectModel(defaultProject());
+applyModelToStore(projectModel, store);
+
+// quick dev helpers (v0): export current state anytime from console
+window.__ufAIM_projectModel = projectModel;
+window.__ufAIM_exportProject = () => {
+  readStoreToModel(store, projectModel);
+  downloadProject(projectModel.get(), "ufAIM");
+};
 
 // ---------- Transition overlay UI helpers ----------
 function applyTransUI(st) {
