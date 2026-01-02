@@ -11,6 +11,11 @@ import { defaultProject, downloadProject, normalizeProject } from "./io/projectI
 import { applyModelToStore, readStoreToModel } from "./io/modelAdapter.js";
 import { loadProjectFromFile } from "./io/projectIO.js"; // <- zusätzlich zu den bestehenden imports
 
+import { registerTransitionFamily, getTransitionFamily } from "./transition/transitionFamily.js";
+import { transitionFamilies } from "./transition/families/index.js";
+
+transitionFamilies.forEach(registerTransitionFamily);
+
 // ---------- DOM ----------
 const statusEl = document.getElementById("status");
 const logEl = document.getElementById("log");
@@ -122,7 +127,10 @@ const store = createStore({
 	te_w1: 0.0,
 	te_w2: 1.0,
 	te_preset: "clothoid",
-	te_plot: "k", // "k" | "k1" | "k2"
+	
+	te_family: "linear-clothoid",
+	te_plot: "k",       // "k" | "k1" | "k2"
+	te_m: 1.0,          // slope parameter for v0 family
 
 	// Embedded transition demo state
 	u: 0.25,     // normalized position in transition (editor language)
@@ -163,12 +171,34 @@ function applyTransUI(st) {
 }
 
 function setPreset(p) {
-	if (p === "clothoid") store.setState({ te_preset: p, te_w1: 0.0, te_w2: 1.0 });
-	if (p === "bloss")    store.setState({ te_preset: p, te_w1: 0.5, te_w2: 0.5 });
-	if (p === "berlin")   store.setState({ te_preset: p, te_w1: 0.18, te_w2: 0.82 });
+	if (p === "clothoid") store.setState({ te_preset: p, te_family: "linear-clothoid", te_w1: 0.0, te_w2: 1.0 });
+	if (p === "bloss")    store.setState({ te_preset: p, te_family: "linear-clothoid", te_w1: 0.5, te_w2: 0.5 });
+	if (p === "berlin")   store.setState({ te_preset: p, te_family: "linear-clothoid", te_w1: 0.18, te_w2: 0.82 });
 }
 
 // ---------- TransitionEditorView (overlay) ----------
+if (familySelEl) {
+	// init UI from store
+	familySelEl.value = store.getState().te_family;
+
+	familySelEl.addEventListener("change", () => {
+		const id = familySelEl.value;
+		const fam = getTransitionFamily(id);
+		if (!fam) return;
+
+		const def = fam.defaults();
+		store.setState({
+			te_family: id,
+			te_w1: def.w1,
+			te_w2: def.w2,
+			te_m: def.m ?? 1.0
+		});
+
+		log("family: " + id);
+		showProps({ type: "family change", id });
+	});
+}
+
 const teView = makeTransitionEditorView(store);
 let teInited = false;
 

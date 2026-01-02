@@ -13,7 +13,10 @@ export function defaultProject() {
 		},
 		alignment: {
 			embed: { lead: 60, L: 120, R: 800, arcLen: 220 },
-			transition: { preset: "clothoid", w1: 0.0, w2: 1.0, plot: "k" }
+			transition: { 
+				preset: "clothoid", w1: 0.0, w2: 1.0, plot: "k", 
+				"family": "linear-clothoid", "m": 1.0
+			}
 		},
 		ui: {
 			// viewer language: station in meters; null means "use u"
@@ -74,6 +77,9 @@ export function normalizeProject(raw) {
 		w2: clamp01(num(tr.w2, base.alignment.transition.w2)),
 		plot: str(tr.plot, base.alignment.transition.plot)
 	};
+	out.alignment.transition.family = str(tr.family, "linear-clothoid");
+	out.alignment.transition.m = num(tr.m, 1.0);
+	out.alignment.transition.plot = str(tr.plot, base.alignment.transition.plot);
 
 	// ui
 	const ui = raw.ui ?? {};

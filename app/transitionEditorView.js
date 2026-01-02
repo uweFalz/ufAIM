@@ -6,17 +6,8 @@
 //   te_plot="k2" -> κ''(u) (scaled into view)
 // Stückweise: halfWave1 auf [0,w1], linear auf [w1,w2], halfWave2 auf [w2,1]
 
-import { clamp01 } from "./transitionModel.js"; // keep one clamp impl only
-
-// halfWave1: f(0)=0,f(1)=1,f'(0)=0,f'(1)=1
-function halfIn(t) { return t*(3 - t)/2; }
-function halfIn1(t) { return 3*t*(2 - t)/2; }
-function halfIn2(t) { return 3*(1 - t); }
-
-// halfWave2: g(0)=0,g(1)=1,g'(0)=1,g'(1)=0
-function halfOut(t) { return 1 - halfIn(1 - t); }
-function halfOut1(t) { return halfIn1(1 - t); }
-function halfOut2(t) { return halfIn2(1 - t); }
+import { clamp01 } from "./transitionModel.js";
+import { getTransitionFamily } from "./transition/transitionFamily.js";
 
 export function makeTransitionEditorView(store){
 	let board = null;
@@ -55,79 +46,36 @@ export function makeTransitionEditorView(store){
 		`${modeLabel(st)}  |  auto-range: y∈[${ymin.toFixed(3)} .. ${ymax.toFixed(3)}] → [0..1]`;
 	}
 
-	// κ(u) piecewise (Berlin-dogma core)
-	function kappaCore(u, w1, w2) {
-		u = clamp01(u);
-		w1 = clamp01(w1);
-		w2 = clamp01(w2);
-		
-		if (w2 < w1) { const tmp=w1; w1=w2; w2=tmp; }
+	function getFamilyAndParams(st) {
+		const fam = getTransitionFamily(st.te_family) || getTransitionFamily("linear-clothoid");
+		const def = fam.defaults();
 
-		// special: if middle collapsed (bloss-like), still define piecewise
-		if (u <= w1) {
-			if (w1 <= 1e-9) return 0;
-			const t = u / w1;
-			return w1 * halfIn(t);
-		}
-		if (u >= w2) {
-			if ((1 - w2) <= 1e-9) return 1;
-			const t = (u - w2) / (1 - w2);
-			return w2 + (1 - w2) * halfOut(t);
-		}
-		// middle linear: κ(u)=u
-		return u;
+		const p = {
+			w1: st.te_w1 ?? def.w1,
+			w2: st.te_w2 ?? def.w2,
+			m:  st.te_m  ?? def.m ?? 1.0
+		};
+
+		// safety
+		p.w1 = clamp01(p.w1);
+		p.w2 = clamp01(p.w2);
+		if (p.w2 < p.w1) { const tmp = p.w1; p.w1 = p.w2; p.w2 = tmp; }
+
+		return { fam, p };
 	}
 
-	// κ'(u)
-	function kappa1(u, w1, w2) {
-		u = clamp01(u);
-		w1 = clamp01(w1);
-		w2 = clamp01(w2);
-		
-		if (w2 < w1) { const tmp=w1; w1=w2; w2=tmp; }
-
-		if (u <= w1) {
-			if (w1 <= 1e-9) return 1;
-			const t = u / w1;
-			return halfIn1(t);
-		}
-		if (u >= w2) {
-			if((1 - w2) <= 1e-9) return 1;
-			const t = (u - w2) / (1 - w2);
-			return halfOut1(t);
-		}
-		return 1;
-	}
-
-	// κ''(u)
-	function kappa2(u, w1, w2) {
-		u = clamp01(u);
-		w1 = clamp01(w1);
-		w2 = clamp01(w2);
-		
-		if (w2 < w1) { const tmp=w1; w1=w2; w2=tmp; }
-
-		if (u <= w1) {
-			if (w1 <= 1e-9) return 0;
-			const t = u / w1;
-			return halfIn2(t) / w1;
-		}
-		if (u >= w2){
-			if ((1 - w2) <= 1e-9) return 0;
-			const t = (u - w2) / (1 - w2);
-			return halfOut2(t) / (1 - w2);
-		}
-		return 0;
+	function updateSplitVisibility(st) {
+		const show = (st.te_plot === "k");
+		if (hsplit1) hsplit1.setAttribute({ visible: show });
+		if (hsplit2) hsplit2.setAttribute({ visible: show });
 	}
 
 	function plotValue(u, st) {
-		const w1 = st.te_w1;
-		const w2 = st.te_w2;
+		const { fam, p } = getFamilyAndParams(st);
 
-		if (st.te_plot === "k1") return kappa1(u, w1, w2);
-		if (st.te_plot === "k2") return kappa2(u, w1, w2);
-		
-		return kappaCore(u, w1, w2);
+		if (st.te_plot === "k1") return fam.dkappa(u, p);
+		if (st.te_plot === "k2") return fam.d2kappa(u, p);
+		return fam.kappa(u, p);
 	}
 
 	// --- auto-range cache for derivative plots (k1/k2) ---
@@ -138,11 +86,11 @@ export function makeTransitionEditorView(store){
 	};
 
 	function makeKey(st) {
-		// rounding to avoid re-sampling on tiny slider jitter
 		const w1 = Math.round(clamp01(st.te_w1) * 1000) / 1000;
 		const w2 = Math.round(clamp01(st.te_w2) * 1000) / 1000;
-		
-		return `${st.te_plot}|${w1}|${w2}`;
+		const m  = Math.round((st.te_m ?? 1.0) * 1000) / 1000;
+		const fam = st.te_family ?? "linear-clothoid";
+		return `${fam}|${st.te_plot}|${w1}|${w2}|${m}`;
 	}
 
 	function computeRange(st) {
@@ -230,8 +178,8 @@ export function makeTransitionEditorView(store){
 		(t) => t,
 		(t) => {
 			const st = store.getState();
-			const w1 = st.te_w1;
-			return segY(t, st, 0, w1);
+			const { p } = getFamilyAndParams(st);
+			return segY(t, st, 0, p.w1);
 		},
 		0, 1
 		], { strokeWidth: 2, dash: 2 });
@@ -240,9 +188,8 @@ export function makeTransitionEditorView(store){
 		(t) => t,
 		(t) => {
 			const st = store.getState();
-			const w1 = st.te_w1;
-			const w2 = st.te_w2;
-			return segY(t, st, w1, w2);
+			const { p } = getFamilyAndParams(st);
+			return segY(t, st, p.w1, p.w2);
 		},
 		0, 1
 		], { strokeWidth: 4 });
@@ -251,21 +198,33 @@ export function makeTransitionEditorView(store){
 		(t) => t,
 		(t) => {
 			const st = store.getState();
-			const w2 = st.te_w2;
-			return segY(t, st, w2, 1);
+			const { p } = getFamilyAndParams(st);
+			return segY(t, st, p.w2, 1);
 		},
 		0, 1
 		], { strokeWidth: 2, dash: 2 });
 
 		// Domain split lines (vertical at w1/w2)
 		vline1 = board.create("line", [
-		() => [store.getState().te_w1, 0],
-		() => [store.getState().te_w1, 1]
+		() => {
+			const { p } = getFamilyAndParams(store.getState());
+			return [p.w1, 0];
+		},
+		() => {
+			const { p } = getFamilyAndParams(store.getState());
+			return [p.w1, 1];
+		}
 		], { straightFirst:false, straightLast:false, dash:2 });
 
 		vline2 = board.create("line", [
-		() => [store.getState().te_w2, 0],
-		() => [store.getState().te_w2, 1]
+		() => {
+			const { p } = getFamilyAndParams(store.getState());
+			return [p.w2, 0];
+		},
+		() => {
+			const { p } = getFamilyAndParams(store.getState());
+			return [p.w2, 1];
+		}
 		], { straightFirst:false, straightLast:false, dash:2 });
 
 		// Frame (0 and 1)
@@ -285,24 +244,23 @@ export function makeTransitionEditorView(store){
 
 		// Cursor point at (u, plot(u))
 		cursor = board.create("point", [
-		() => clamp01(store.getState().u),
+		() => store.getState().u,
 		() => {
 			const st = store.getState();
-			const u = clamp01(st.u);
-			return yMap(plotValue(u, st), st);
+			return yMap(plotValue(st.u, st), st);
 		}
 		], { name:"", size:4, fixed:true });
 
 		store.subscribe(() => {
-			// keep legend in sync with plot/mode + w1/w2
-			updateLegend(store.getState());
+			const st = store.getState();
+			updateLegend(st);
+			updateSplitVisibility(st);
 			board.update();
 		}, { immediate: true });
 	}
 
 	return {
 		init,
-		// export for debugging if you want
-		kappaCore, kappa1, kappa2
+		_debug: { getFamilyAndParams, plotValue, ensureRange, autoRange }
 	};
 }
