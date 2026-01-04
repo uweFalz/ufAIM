@@ -21,9 +21,12 @@
 		</script>
 		
 		<script>
-			if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+			if (
+			location.hostname === "localhost" ||
+			location.hostname === "127.0.0.1"
+			) {
 				navigator.serviceWorker?.register("./sw-nocache.js")
-				.then(() => console.log("sw-nocache active ✅"))
+				.then(() => console.log("sw-nocache active (DEV) ✅"))
 				.catch(err => console.warn("sw-nocache failed", err));
 			}
 		</script>
@@ -114,9 +117,9 @@
 		<footer class="footer">
 			<div class="controls">
 				<label for="s">s</label>
-<input id="s" type="range" min="0" max="500" value="90" />
-<span class="mono" id="sVal">s≈ … m</span>
-<span class="mono" id="uVal">u=…</span>
+				<input id="s" type="range" min="0" max="500" value="90" />
+				<span class="mono" id="sVal">s≈ … m</span>
+				<span class="mono" id="uVal">u=…</span>
 
 				<label for="L">L</label>
 				<input id="L" type="range" min="30" max="400" value="120" />
