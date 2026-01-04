@@ -94,5 +94,6 @@ export function evalAtStation(sample, station) {
 	}
 
 	const last = pts[pts.length - 1];
+	
 	return { x: last.x, y: last.y, yaw: 0 };
 }

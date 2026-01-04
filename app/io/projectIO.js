@@ -1,11 +1,59 @@
 // app/io/projectIO.js
 // Import/Export for ufAIM.project.v0 (JSON)
 
-export const PROJECT_FORMAT = "ufAIM.project.v0";
+import { makeProjectModel } from "../model/projectModel.js";
+import { migrateProject } from "./migrations.js";
+
+// app/io/projectIO.js
+const LS_KEY = "ufAIM.project.v0";
+
+export function saveProjectLocal(project) {
+  localStorage.setItem(LS_KEY, JSON.stringify(project, null, 2));
+}
+
+export function loadProjectLocal() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+export function exportProjectFile(project, filename = "ufAIM-project.json") {
+  const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
+}
+
+export async function importProjectFile(file) {
+  const text = await file.text();
+  return JSON.parse(text);
+}
+
+
+
+export function exportProject(project) {
+  const out = structuredClone(project);
+  out.meta.createdAt = out.meta.createdAt || new Date().toISOString();
+  return JSON.stringify(out, null, 2);
+}
+
+export function importProject(jsonText) {
+  const raw = JSON.parse(jsonText);
+  const migrated = migrateProject(raw);
+  return makeProjectModel(migrated);
+}
 
 export function defaultProject() {
 	return {
-		format: PROJECT_FORMAT,
+		// format: PROJECT_FORMAT,
+		format: LS_KEY,
 		meta: {
 			name: "demo",
 			crs: "LOCAL",

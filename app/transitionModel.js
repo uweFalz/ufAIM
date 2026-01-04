@@ -62,11 +62,11 @@ export function kappa1(u, params = defaultBerlinParams()) {
 	u = clamp01(u);
 	const { w } = clampParams(params);
 
-	if(u <= w){
+	if (u <= w) {
 		const t = u / w;
 		return smootherstep1(t); // because d/du [w * s(t)] = s'(t)
 	}
-	if(u >= 1 - w){
+	if (u >= 1 - w) {
 		const t = (u - (1 - w)) / w;
 		return smootherstep1(t);
 	}
@@ -111,6 +111,7 @@ export function dkappa(u, opts = {}) {
 	const u2 = Math.max(0, Math.min(1, u + eps));
 	const f1 = kappa(u1, opts);
 	const f2 = kappa(u2, opts);
+	
 	return (f2 - f1) / (u2 - u1 || 1e-9);
 }
 
@@ -123,5 +124,6 @@ export function d2kappa(u, opts = {}) {
 	const f1 = kappa(u1, opts);
 	const f2 = kappa(u2, opts);
 	const h = (u2 - u0) || 1e-9;
+	
 	return (f2 - 2 * f0 + f1) / (h * h);
 }

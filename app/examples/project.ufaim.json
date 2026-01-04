@@ -1,0 +1,24 @@
+{
+	"schema": "ufaim.project.v0",
+	"meta": {
+		"createdAt": "2026-01-04T00:00:00.000Z",
+		"app": "ufAIM",
+		"note": ""
+	},
+	"view": {
+		"u": 0.25,
+		"L": 120,
+		"R": 800,
+		"lead": 60,
+		"arcLen": 220
+	},
+	"transition": {
+		"family": "linear-clothoid",
+		"params": {
+			"w1": 0.18,
+			"w2": 0.82,
+			"m": 1.0
+		},
+		"plot": "k"
+	}
+}
