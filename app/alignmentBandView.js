@@ -60,6 +60,7 @@ export function makeAlignmentBandView(store) {
 
 		const xMin = 20;
 		const xMax = 520;
+		
 		return xMin + (s / total) * (xMax - xMin);
 	}
 
@@ -68,6 +69,7 @@ export function makeAlignmentBandView(store) {
 		// We map k=0 near y=170 and increasing k downwards.
 		const y0 = 170;
 		const scale = 45000; // tweakable
+		
 		return y0 - k * scale;
 	}
 
