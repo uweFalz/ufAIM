@@ -6,10 +6,16 @@ import { clamp01, curvature } from "./transitionModel.js";
 import { sampleAlignment, evalAtStation } from "./transitionEmbed.js";
 import { makeTransitionEditorView } from "./transitionEditorView.js";
 import { makeAlignmentBandView } from "./alignmentBandView.js";
+
 import { createProjectModel } from "./model/projectModel.js";
+import { makeProjectModel } from "./model/projectModel.js";
+
 import { defaultProject, downloadProject, normalizeProject } from "./io/projectIO.js";
-import { applyModelToStore, readStoreToModel } from "./io/modelAdapter.js";
 import { loadProjectFromFile } from "./io/projectIO.js"; // <- zusätzlich zu den bestehenden imports
+import { exportProject } from "./io/projectIO.js";
+import { saveProjectLocal, loadProjectLocal, exportProjectFile } from "./io/projectIO.js";
+import { applyModelToStore, readStoreToModel } from "./io/modelAdapter.js";
+import { attachFileDrop } from "./io/fileDrop.js";
 
 import { registerTransitionFamily, getTransitionFamily } from "./transition/transitionFamily.js";
 import { transitionFamilies } from "./transition/families/index.js";
@@ -58,9 +64,12 @@ const plotK1El = document.getElementById("plotK1");
 const plotK2El = document.getElementById("plotK2");
 
 const btnImport = document.getElementById("btnImport");
-const btnDemo = document.getElementById("btnDemo");
-const btnExport = document.getElementById("btnExport");
+const btnImportEl = document.getElementById("btnImport");
 const fileImport = document.getElementById("fileImport");
+const fileImportEl = document.getElementById("fileImport");
+const btnDemo = document.getElementById("btnDemo");
+const btnSaveEl = document.getElementById("btnSave");
+const btnExportEl = document.getElementById("btnExport");
 
 // ---------- helpers ----------
 function setStatus(s) {
@@ -99,7 +108,7 @@ async function doImportFile(file) {
 function doExport() {
 	readStoreToModel(store, projectModel);
 	downloadProject(projectModel.get(), "ufAIM");
-	log("export: download");
+	log("save: project downloaded");
 }
 
 async function doLoadDemo() {
@@ -159,6 +168,70 @@ window.__ufAIM_exportProject = () => {
 	readStoreToModel(store, projectModel);
 	downloadProject(projectModel.get(), "ufAIM");
 };
+
+function applyProjectToStore(project) {
+	store.setState({
+		u: project.view.u,
+		L: project.view.L,
+		R: project.view.R,
+		lead: project.view.lead,
+		arcLen: project.view.arcLen,
+
+		te_family: project.transition.family,
+		te_w1: project.transition.params.w1,
+		te_w2: project.transition.params.w2,
+		te_m: project.transition.params.m,
+		te_plot: project.transition.plot
+	});
+}
+
+function readProjectFromStore() {
+	const st = store.getState();
+	return makeProjectModel({
+		meta: { note: "sandbox" },
+		view: {
+			// viewer language: station slider drives
+			u: st.u,
+			s_abs: st.s_abs ?? null,
+			L: st.L,
+			R: st.R,
+			lead: st.lead,
+			arcLen: st.arcLen
+		},
+		alignment: {
+			kind: "demo-embedded-transition",
+			params: { L: st.L, R: st.R, lead: st.lead, arcLen: st.arcLen }
+		},
+		transition: {
+			family: st.te_family,
+			params: { w1: st.te_w1, w2: st.te_w2, m: st.te_m ?? 1.0 },
+			plot: st.te_plot ?? "k"
+		}
+	});
+}
+
+function writeStoreFromProject(project) {
+	const view = project?.view ?? {};
+	const tr = project?.transition ?? {};
+	const p = tr.params ?? {};
+
+	store.setState({
+		// view
+		u: view.u ?? 0.25,
+		s_abs: view.s_abs ?? null,
+		L: view.L ?? 120,
+		R: view.R ?? 800,
+		lead: view.lead ?? 60,
+		arcLen: view.arcLen ?? 220,
+
+		// transition editor
+		te_family: tr.family ?? "linear-clothoid",
+		te_w1: p.w1 ?? 0.0,
+		te_w2: p.w2 ?? 1.0,
+		te_m: p.m ?? 1.0,
+		te_plot: tr.plot ?? "k"
+	});
+}
 
 // ---------- Transition overlay UI helpers ----------
 function applyTransUI(st) {
@@ -405,6 +478,19 @@ btnExport?.addEventListener("click", () => doExport());
 
 btnDemo?.addEventListener("click", () => doLoadDemo());
 
+btnSaveEl?.addEventListener("click", () => {
+	const project = readProjectFromStore();
+	saveProjectLocal(project);
+	log("save: localStorage");
+});
+
+btnExportEl?.addEventListener("click", () => {
+	const project = readProjectFromStore();
+	exportProjectFile(project, "ufAIM-project.json");
+	log("export: downloaded JSON");
+});
+
+
 // ---------- main subscription ----------
 store.subscribe((st) => {
 	applyStateToUI(st);
@@ -428,6 +514,12 @@ store.subscribe((st) => {
 three.resize();
 setStatus("ready ✅");
 log("Kapselung aktiv: model (norm) + embed (meter) + sync (store)");
+
+const loaded = loadProjectLocal();
+if (loaded) {
+	writeStoreFromProject(loaded);
+	log("loaded: local project");
+}
 
 init2D()
 .then(() => log("2D ready"))
@@ -470,3 +562,19 @@ window.addEventListener("drop", async (e) => {
 	}
 	await doImportFile(file);
 });
+
+
+
+// ---- später -----------
+
+function downloadText(filename, text) {
+	const a = document.createElement("a");
+	a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(a.href);
+}
+
+attachFileDrop(document.body, (project) => {
+	applyProjectToStore(project);
+}, log);
