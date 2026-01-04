@@ -32,3 +32,37 @@ export function attachFileDrop(targetEl, onProject, onLog) {
 		}
 	});
 }
+
+// app/io/fileDrop.js
+export function installFileDrop({ onFiles, element = document.documentElement }) {
+	function prevent(e) {
+		e.preventDefault();
+		e.stopPropagation();
+	}
+
+	element.addEventListener("dragenter", prevent);
+	element.addEventListener("dragover", (e) => {
+		prevent(e);
+		// optional UX: show overlay
+		element.classList.add("dragover");
+	});
+
+	element.addEventListener("dragleave", (e) => {
+		prevent(e);
+		element.classList.remove("dragover");
+	});
+
+	element.addEventListener("drop", async (e) => {
+		prevent(e);
+		element.classList.remove("dragover");
+
+		const files = Array.from(e.dataTransfer?.files ?? []);
+		if (!files.length) return;
+
+		await onFiles(files);
+	});
+
+	return () => {
+		// (optional) uninstall – not needed now
+	};
+}
