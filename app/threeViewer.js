@@ -112,19 +112,36 @@ export function makeThreeViewer({ canvas }) {
 	}
 
 	function start() {
-		function loop() {
-			render();
-			requestAnimationFrame(loop);
-		}
+		resize();
+		function loop() { render(); requestAnimationFrame(loop); }
 		loop();
 	}
+	
+	function setTrackPoints(points) {
+		// points: [{x,y,z?}, ...]
+		setTrackFromXY(points); // z ignorieren wir erstmal (0)
+	}
+
+	function setMarkerObj(p) {
+		if (!p) return;
+		setMarker(p.x ?? 0, p.y ?? 0, p.z ?? 0);
+	}
+	
+	window.addEventListener("resize", resize);
 
 	return {
 		THREE,
 		resize,
 		start,
+
+		// new AppCore-friendly API
+		setTrackPoints,
+		setMarker: setMarkerObj,
+
+		// keep old API for now (optional)
 		setTrackFromXY,
-		setMarker,
+		setMarkerXYZ: setMarker,
+
 		getMarkerXY: () => ({ x: marker.position.x, y: marker.position.y }),
 		onMarkerClick
 	};
