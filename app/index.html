@@ -19,7 +19,14 @@
 				}
 			}
 		</script>
-		<!-- vorher: "https://unpkg.com/three@0.160.0/build/three.module.js" -->
+		
+		<script>
+			if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+				navigator.serviceWorker?.register("./sw-nocache.js")
+				.then(() => console.log("sw-nocache active ✅"))
+				.catch(err => console.warn("sw-nocache failed", err));
+			}
+		</script>
 	</head>
 
 	<body>
@@ -107,9 +114,9 @@
 		<footer class="footer">
 			<div class="controls">
 				<label for="s">s</label>
-				<input id="s" type="range" min="0" max="1000" value="250" />
-				<span class="mono" id="sVal">s≈ … m</span>
-				<span class="mono" id="uVal">u≈ 0.250</span>
+<input id="s" type="range" min="0" max="500" value="90" />
+<span class="mono" id="sVal">s≈ … m</span>
+<span class="mono" id="uVal">u=…</span>
 
 				<label for="L">L</label>
 				<input id="L" type="range" min="30" max="400" value="120" />

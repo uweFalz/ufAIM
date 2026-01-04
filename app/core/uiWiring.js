@@ -7,6 +7,7 @@ export function wireUI(store, hooks = {}) {
 		log: document.getElementById("log"),
 		props: document.getElementById("props"),
 
+		s: document.getElementById("s"),
 		u: document.getElementById("u"),
 		uVal: document.getElementById("uVal"),
 		sVal: document.getElementById("sVal"),
@@ -61,14 +62,15 @@ export function wireUI(store, hooks = {}) {
 	}
 
 	// sliders
+	el.s?.addEventListener("input", () => store.setState({ s: Number(el.s.value) }));
 	el.u?.addEventListener("input", () => store.setState({ u: Number(el.u.value) / 1000 }));
 	el.L?.addEventListener("input", () => store.setState({ L: Number(el.L.value) }));
 	el.R?.addEventListener("input", () => store.setState({ R: Number(el.R.value) }));
 
 	// reset
 	el.btnReset?.addEventListener("click", () => {
-		store.setState({ u: 0.25, L: 120, R: 800 });
-		log("reset: u/L/R");
+		store.setState({ s: 90, L: 120, R: 800 });
+		log("reset: s/L/R");
 	});
 
 	// overlay toggle
@@ -128,8 +130,13 @@ export function wireUI(store, hooks = {}) {
 		showProps,
 		updateReadouts({ st, marker, readout }) {
 			// footer readout
-			if (el.uVal) el.uVal.textContent = clamp01(st.u).toFixed(3);
-			if (el.sVal) el.sVal.textContent = `s≈ ${Math.round(marker.s)} m`;
+			const u = clamp01((st.s - st.lead) / Math.max(1e-9, st.L));
+
+			if (el.sVal) el.sVal.textContent = `s≈ ${Math.round(st.s)} m`;
+			if (el.uVal) el.uVal.textContent = `u=${u.toFixed(3)}`;
+
+			if (el.s) el.s.value = String(Math.round(st.s));
+			
 			if (el.LVal) el.LVal.textContent = String(st.L);
 			if (el.RVal) el.RVal.textContent = String(st.R);
 

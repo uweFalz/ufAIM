@@ -31,8 +31,11 @@ export function buildDemoAlignmentFromState(st) {
 export function sampleAndEvalDemo(alignment, st) {
 	const sampled = sampleAlignmentModel(alignment, { ds: 2.0 });
 
-	const u = clamp01(st.u);
-	const station = st.lead + u * st.L;
+	const station = Number.isFinite(st.s)
+  ? st.s
+  : (st.lead + clamp01(st.u) * st.L);
+
+const u = clamp01((station - st.lead) / Math.max(1e-9, st.L));
 
 	const ev = evalAlignmentAt(alignment, station, { ds: 0.75 });
 
