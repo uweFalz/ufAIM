@@ -32,6 +32,7 @@ export function makeThreeViewer({ canvas }) {
 	// orbit
 	let isDrag = false, lastX = 0, lastY = 0;
 	let yaw = 0.3, pitch = 0.55, radius = 320;
+const target = new THREE.Vector3(0, 0, 0);
 
 	canvas.addEventListener("mousedown", (e) => {
 		isDrag = true; lastX = e.clientX; lastY = e.clientY;
@@ -105,8 +106,8 @@ export function makeThreeViewer({ canvas }) {
 		const cy = Math.sin(yaw) * Math.sin(pitch) * radius;
 		const cz = Math.cos(pitch) * radius;
 		
-		camera.position.set(cx, cy, cz);
-		camera.lookAt(0, 0, 0);
+		camera.position.set(target.x + cx, target.y + cy, target.z + cz);
+camera.lookAt(target);
 
 		renderer.render(scene, camera);
 	}
@@ -127,12 +128,45 @@ export function makeThreeViewer({ canvas }) {
 		setMarker(p.x ?? 0, p.y ?? 0, p.z ?? 0);
 	}
 	
+	function zoomToFitBox(bbox, opts = {}) {
+	if (!bbox) return;
+	const pad = Number.isFinite(opts.padding) ? opts.padding : 1.25;
+
+	const minX = bbox.minX, minY = bbox.minY, maxX = bbox.maxX, maxY = bbox.maxY;
+	if (![minX, minY, maxX, maxY].every(Number.isFinite)) return;
+
+	// center becomes new orbit target
+	target.set((minX + maxX) * 0.5, (minY + maxY) * 0.5, 0);
+
+	// compute a radius so the box fits the vertical fov (good enough for now)
+	const dx = Math.max(1e-6, maxX - minX);
+	const dy = Math.max(1e-6, maxY - minY);
+
+	// consider aspect: width fitting needs larger distance if aspect < 1
+	const aspect = camera.aspect || 1;
+	const boxHeight = dy;
+	const boxWidth = dx;
+
+	// fit in vertical FOV and also in horizontal FOV
+	const vFov = THREE.MathUtils.degToRad(camera.fov);
+	const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+
+	const distV = (boxHeight / 2) / Math.tan(vFov / 2);
+	const distH = (boxWidth  / 2) / Math.tan(hFov / 2);
+
+	radius = Math.max(distV, distH) * pad;
+
+	// keep within your wheel clamp
+	radius = Math.min(1200, Math.max(80, radius));
+}
+	
 	window.addEventListener("resize", resize);
 
 	return {
 		THREE,
 		resize,
 		start,
+		zoomToFitBox,
 
 		// new AppCore-friendly API
 		setTrackPoints,

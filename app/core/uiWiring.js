@@ -1,4 +1,5 @@
 // app/core/uiWiring.js
+
 import { clamp01 } from "../transitionModel.js";
 
 export function wireUI(store, hooks = {}) {

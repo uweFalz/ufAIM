@@ -9,7 +9,7 @@
 import { clamp01 } from "./transitionModel.js";
 import { getTransitionFamily } from "./transition/transitionFamily.js";
 
-export function makeTransitionEditorView(store){
+export function makeTransitionEditorView(store) {
 	let board = null;
 	let curveIn = null;
 	let curveMid = null;
@@ -154,7 +154,7 @@ export function makeTransitionEditorView(store){
 
 	async function init() {
 		const JXG = await new Promise((resolve) => {
-			const tick=() => (window.JXG ? resolve(window.JXG) : requestAnimationFrame(tick));
+			const tick = () => (window.JXG ? resolve(window.JXG) : requestAnimationFrame(tick));
 			tick();
 		});
 
@@ -169,7 +169,7 @@ export function makeTransitionEditorView(store){
 		// We draw the SAME function, but as 3 separate visible segments.
 		// Outside the segment we return NaN → JSXGraph breaks the curve nicely.
 
-		function segY(t, st, a, b){
+		function segY(t, st, a, b) {
 			if (t < a || t > b) return NaN;
 			return yMap(plotValue(t, st), st);
 		}

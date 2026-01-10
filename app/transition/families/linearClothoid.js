@@ -28,7 +28,7 @@ export const linearClothoidFamily = {
 			const hw = mirrorHalfWave(cubicHalfWave(m));
 			return w2 + (1 - w2) * hw.f(t);
 		}
-		return m * u + (1 - m * w1); // affine Mitte
+		return m * u; // affine Mitte
 	},
 
 	dkappa(u, p) {

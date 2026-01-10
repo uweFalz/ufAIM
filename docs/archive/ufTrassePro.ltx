@@ -2514,7 +2514,7 @@ k_H (s) & = & k_1 + (k_2 - k_1) \cdot f (\frac{s}{l}) - h \cdot \Delta \Psi \cdo
 $$
 f ( \sigma ) = \sigma^4 \left( 35 - 84 \sigma + 70 \sigma^2 - 20 \sigma^3 \right)
 $$
-(!!! Fortschreibung von Bloss, Watorek nach 7. Ordnung)
+(!!! Fortschreibung von \textsc{Bloss}, \textsc{Watorek} nach 7. Ordnung)
 
 \item[(V3)] mit $\sigma := \frac{s}{l} \in [0,\ 1]$ und $\tan \frac{Z}{2} = \frac{Z}{2} \approx 4.49340946$:
 $$
@@ -2540,7 +2540,7 @@ $$
 $$
 f ( \sigma ) = \sigma^5 ( 126 - 420 \sigma + 540 \sigma^2 - 315 \sigma^3 + 70 \sigma^4 )
 $$
-(!!! Fortschreibung von Bloss, Watorek, (V2) nach 9. Ordnung)
+(!!! Fortschreibung von \textsc{Bloss}, \textsc{Watorek}, (V2) nach 9. Ordnung)
 
 \end{itemize}
 
@@ -2608,13 +2608,13 @@ y & = & scale \cdot  \sin(2 \cdot t) / 2
 
 % \newgeometry{landscape}
 
-\begin{landscape}
+% \begin{landscape}
 
-Werfen wir einen Blick auf die Ableitungen erster Ordnung auf $[0,\ 1]$ \ldots 
 \begin{center}
+Werfen wir einen Blick auf die Ableitungen erster Ordnung  \ldots \\
 \begin{tabular}[h]{|c|c|c|c|c|}
 \hline
-& $\tau (\sigma) = \int \kappa (\sigma)$ & $\kappa ( \sigma ) $ & const $\kappa' ( \sigma ) $ & \\ 
+auf $\mathbf{[0,\ 1]}$ & $\tau (\sigma) = \int \kappa (\sigma)$ & $\kappa ( \sigma ) $ & const $\kappa' ( \sigma ) $ & $\kappa''$ \\ 
 \hline \hline
 Clothoid && $\sigma$ & 1 & \\ 
 \hline
@@ -2662,47 +2662,46 @@ pV3 &&&& \\
 \end{tabular}
 \end{center}
 
-\ldots und zweiter Ordnung auf $[-1,\ 1]$:
-
 \begin{center}
+\ldots und zweiter Ordnung \ldots \\
 \begin{tabular}{|c|c|c|c|c|}
 \hline
-&&& const $\kappa' ( \sigma ) $ & const $\kappa'' ( \sigma ) $ \\ 
+auf $\mathbf{[-1,\ 1]}$ & $\tau$ & $\kappa$ & const $\kappa' ( \sigma ) $ & const $\kappa'' ( \sigma ) $ \\ 
 \hline \hline
-Clothoid &&& $(1+ \sigma)^0 (1- \sigma)^0$ & 0 \\ 
-\hline
-Biquadratic &&& $(1+ \sigma)^1 (1- \sigma)^0$ & $\sigma^0$ \\ 
-\hline
+Clothoid &&& $(1+ \sigma)^0 (1- \sigma)^0$ & 0 \\
+\hline \hline
+Biquadratic &&& $(1+ \sigma)^1 (1- \sigma)^0$ & $\sigma^0$ \\
+\hline \hline
 Bloss &&& $(1+ \sigma)^1 (1- \sigma)^1$ & \\ 
 %\hline
 pol\_0\_1 &&&& $(1+ \sigma)^0 \sigma^1 (1- \sigma)^0$ \\ 
-\hline
+\hline \hline
 pV6 &&& $(1+ \sigma) (\sigma^2 -5) (1- \sigma)$ & $(\sqrt{3} + \sigma) \sigma (\sqrt{3} - \sigma)$ \\ 
 \hline
 Watorek &&& $(1+ \sigma)^2 (1- \sigma)^2$ & \\ 
-%\hline
+%\line
 pol\_1\_1 &&&& $(1+ \sigma)^1 \sigma^1 (1- \sigma)^1$ \\ 
-\hline
+\hline \hline
 MieKoc &&& $(1+ \sigma)^2 (1- \sigma)^3$ & $(1+ \sigma) (5 \sigma + 1) (1- \sigma)^2$ \\ 
-\hline
+\hline \hline
 Vienna2 &&& $(1+ \sigma)^3 (1- \sigma)^3$ & \\ 
 % \hline
 pol\_2\_1 &&&& $(1+ \sigma)^2 \sigma^1 (1- \sigma)^2$ \\ 
-\hline
+\hline \hline
 Vienna7 &&& $(1+ \sigma)^4 (1- \sigma)^4$ & \\ 
 % \hline
 pol\_3\_1 &&&& $(1+ \sigma)^3 \sigma^1 (1- \sigma)^3$ \\ 
 \hline
 pol\_2\_3 &&& $(1+ \sigma)^3 (3 \sigma^2 +1) (1- \sigma)^3$ & $(1+ \sigma)^2 \sigma^3 (1- \sigma)^2$ \\ 
-\hline
+\hline \hline
 pol\_4\_1 &&& $(1+ \sigma)^5 (1- \sigma)^5$ & $(1+ \sigma)^4 \sigma^1 (1- \sigma)^4$ \\ 
 \hline
 pol\_2\_5 &&& $(1+ \sigma)^4 ( 6 \sigma^4 + 3 \sigma^2 +1 ) (1- \sigma)^4$ & $(1+ \sigma)^2 \sigma^5 (1- \sigma)^2$ \\ 
-\hline
+\hline \hline
 pol\_5\_1 &&&$ (1+ \sigma)^6 (1- \sigma)^6$ & $(1+ \sigma)^5 \sigma^1 (1- \sigma)^5$ \\ 
 \hline
 pol\_2\_7 &&& $(1+ \sigma)^3 (10 \sigma^6 + 6 \sigma^4 + 3 \sigma^2 +1) (1- \sigma)^3$ & $(1+ \sigma)^2 \sigma^7 (1- \sigma)^2$ \\ 
-\hline
+\hline \hline
 pol\_6\_1 &&& $(1+ \sigma)^7 (1- \sigma)^7$ & $(1+ \sigma)^6 \sigma^1 (1- \sigma)^6$ \\ 
 \hline
 pol\_2\_9 &&& $(1+ \sigma)^3 (15 \sigma^8 +10 \sigma^6 + 6 \sigma^4 + 3 \sigma^2 +1) (1- \sigma)^3$ & $(1+ \sigma)^2 \sigma^9 (1- \sigma)^2$ \\ 
@@ -2716,18 +2715,7 @@ pV3 &&&& \\
 \end{tabular}
 \end{center}
 
-\begin{eqnarray*}
-\int (1+ \sigma)^2 \sigma^9 (1- \sigma)^2 d \sigma & = & \int (1- s^2)^2 s^9 ds \\
-& = & \int (1 - 2s^2 + s^4) s^9 ds \\
-& = & \int (s^9 -2s^{11} +s^{13}) ds \\
-& = & \frac{s^{10}}{10} - 2 \frac{s^{12}}{12} + \frac{s^{14}}{14} + const \\ \\
-21 s^{10} - 35 s^{12} + 15 s^{14} + const &=& s^{10} (15 s^4 - 35 s^2 +21) -1 \\ \\
-15 s^{14} - 35 s^{12} + 21 s^{10} -1 &=& (15 s^{12} -20 s^{10} + s^8 + s^6 + s^4 + s^2 +1) (s^2 -1) \\
-&=& (15 s^{10} - 5 s^8 -4 s^6 -3 s^4 -2 s^2 -1) (s^2 -1)^2 \\
-&=& (15 s^8 +10 s^6 + 6 s^4 + 3 x^2 +1) (s^2 -1)^3
-\end{eqnarray*}
-
-\end{landscape}
+% \end{landscape}
 
 \paragraph{lesson learned}
 
@@ -2741,7 +2729,7 @@ pV3 &&&& \\
 
 Der letzte Punkt ist recht entspannt - SPT an oder aus. Fertig. Na gut, wir brauchen dazu die Originalfunktion plus zweiter Ableitung - Haben wir ja.
 
-Schauen wir uns die Waves an. Eigentlich ja nur halfWave1, weil halfWave2 sich per Drehung / Verschiebung aus einer halfWave1 ergibt (siehe Biquadratic). Eine passende halfWave1 $f$ hat am Startwert $a$ einen Scheitel- oder Wendepunkt mit $f' (a) = 0$, und mündet stetig wachsend im Endwert $b$ (ohne weitere Anforderungen, wünschenswert dort Wendepunkt)
+Schauen wir uns die Waves an. Eigentlich ja nur halfWave1, weil halfWave2 sich per Drehung / Verschiebung aus einer halfWave1 ergibt (siehe Biquadratic). Eine passende halfWave1 $f$ hat am Startwert $a$ einen Scheitel- oder Wendepunkt mit $f' (a) = 0$, und mündet stetig wachsend im Endwert $b$ (ohne weitere Anforderungen, wünschenswert dort Wendepunkt) \ldots
 
 \ldots
 
@@ -2759,8 +2747,6 @@ There is another conceptual advance that is worth noting even though with the sm
 \end{eqnarray*}
 where $\mathcal{V}$ denotes a balancing speed and $\mathcal{G}$ denotes the acceleration of gravity. With the formula for curvature as a function of path length along the spiral established, integrations to obtain the compass bearings and coordinates of successive points along the spiral are done as already outlined.
 
-\ldots
-
 % \centerline{\includegraphics{transitionTypes.png}}
 
 \ldots
@@ -2771,7 +2757,7 @@ where $\mathcal{V}$ denotes a balancing speed and $\mathcal{G}$ denotes the acce
 \begin{tabular}{|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|c|}
 \hline
 & \multicolumn{3}{|c|}{ fix } & \multicolumn{3}{|c|}{ zero } & \multicolumn{3}{|c|}{ approx } & \multicolumn{10}{|c|}{ transitions } \\ 
-& \rotatebox{-90}{ fixElement } & \rotatebox{-90}{ line } & \rotatebox{-90}{ arc } & \rotatebox{-90}{ Km-Sprung } & \rotatebox{-90}{ kink } & \rotatebox{-90}{ immidiate } & \rotatebox{-90}{ cubParabola } & \rotatebox{-90}{ ??? } & \rotatebox{-90}{ ??? } & \rotatebox{-90}{ clotho } & \rotatebox{-90}{ biquadratic } & \rotatebox{-90}{ bloss } & \rotatebox{-90}{ kauder } & \rotatebox{-90}{ sine } & \rotatebox{-90}{ cose } & \rotatebox{-90}{ ? radioid ? } & \rotatebox{-90}{ viennese } & \rotatebox{-90}{ \ldots } & \rotatebox{-90}{ selfmade } \\ 
+& \rotatebox{90}{ fixElement } & \rotatebox{90}{ line } & \rotatebox{90}{ arc } & \rotatebox{90}{ Km-Sprung } & \rotatebox{90}{ kink } & \rotatebox{90}{ immidiate } & \rotatebox{90}{ cubParabola } & \rotatebox{90}{ ??? } & \rotatebox{90}{ ??? } & \rotatebox{90}{ clotho } & \rotatebox{90}{ biquadratic } & \rotatebox{90}{ bloss } & \rotatebox{90}{ klauder } & \rotatebox{90}{ sine } & \rotatebox{90}{ cose } & \rotatebox{90}{ ? radioid ? } & \rotatebox{90}{ viennese } & \rotatebox{90}{ \ldots } & \rotatebox{90}{ selfmade } \\ 
 \hline
 AIMv0 & x & - & - & x & x & x &-&-&-& x & x & x & x & x & x &-& x && x \\ 
 \hline
@@ -2781,11 +2767,11 @@ landXML & - & x & x & (x) & (x) & (x) &&&& x & x & x & - & x & x && - && \\
 \hline
 infraGML & - & x & x & (x) & (x) & (x) &&&& x &&&&&&&&& \\ 
 \hline
-ifcAlignment & - & x & x & (x) & (x) & (x) &&&& x &&&&&&&&& \\ 
+IFCalignment & - & x & x & (x) & (x) & (x) &&&& x &&&&&&&&& \\ 
 \hline
 railML & - & x & x & ? &&& ? &&& x &&&&&&&&& \\ 
 \hline
-\ldots \\
+\ldots &&& &&& &&& &&&&&&&&&& \\
 \hline
 \end{tabular}
 \end{center}
