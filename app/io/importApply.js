@@ -1,42 +1,48 @@
 // app/io/importApply.js
 
 export function applyImportToProject({ project, store, imp, draft, slot, ui }) {
-	// 1) Always: basic feedback per file
-	ui?.log?.(`import ok: ${imp.kind} ${imp.name} bytes=${imp.meta?.bytes ?? "?"}`);
+	const effects = [];
 
-	// show per-file meta, but keep it light (draft will override)
-	ui?.showProps?.({
-		kind: imp.kind,
-		name: imp.name,
-		meta: imp.meta ?? null
+	if (imp.kind === "TRA" && (imp.meta?.points ?? 0) < 2) {
+		effects.push({ type: "warn", line: `TRA has no usable points (${imp.name})` });
+	}
+
+	if (draft) {
+		effects.push({ type: "toast", level: "info", text: `Import paired: ${draft.id}`, ms: 1800 });
+	}
+
+	// per-file feedback
+	effects.push({
+		type: "log",
+		line: `import ok: ${imp.kind} ${imp.name} bytes=${imp.meta?.bytes ?? "?"}`
 	});
 
-	// 2) If no paired draft yet -> no more side effects
-	if (!draft) return null;
+	effects.push({
+		type: "props",
+		data: { kind: imp.kind, name: imp.name, meta: imp.meta ?? null }
+	});
 
-	// 3) Draft ready -> drive the "import bridge" (single place!)
+	if (!draft) return effects;
+
+	// draft ready -> store patch
 	const poly = draft?.right?.polyline2d ?? [];
 	const center = draft?.right?.bboxCenter ?? null;
 
-	store.setState({
-		import_polyline: poly,
-		import_marker: center
-	});
+	effects.push({ type: "state", patch: { import_polyline: poly, import_marker: center } });
 
-	// expose for debugging
+	// debug exposure (kein store/ui-effect; das ist ok als side-effect im apply)
 	window.__sevenLinesDraft = draft;
 
-	// props now show the full draft
-	ui?.showProps?.(draft);
-	ui?.log?.(`SevenLinesDraft ready: ${draft.id} ✅`);
+	effects.push({ type: "props", data: draft });
+	effects.push({ type: "log", line: `SevenLinesDraft ready: ${draft.id} ✅` });
 
-	// 4) Zoom-to-fit: only once per base (optional but recommended)
+	// zoom only once per base
 	if (slot) {
-		if (slot.fitted) return null;
+		if (slot.fitted) return effects;
 		slot.fitted = true;
 	}
 
-	return {
-		zoomBBox: draft?.right?.bbox ?? null
-	};
+	effects.push({ type: "zoom", bbox: draft?.right?.bbox ?? null, padding: 1.35 });
+
+	return effects;
 }

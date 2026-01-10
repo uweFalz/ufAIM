@@ -1,25 +1,24 @@
 // app/core/appCore.js
 
+import { makeThreeViewer } from "../threeViewer.js";
+import { makeAlignmentBandView } from "../alignmentBandView.js";
+import { makeTransitionEditorView } from "../transitionEditorView.js";
 import { createStore } from "../viewSync.js";
-
 import { registerTransitionFamily } from "../transition/transitionFamily.js";
 import { transitionFamilies } from "../transition/families/index.js";
 
 import { makeProjectModel } from "../model/projectModel.js";
 import { DEFAULT_PROJECT } from "../model/defaults.js";
-import { loadProjectLocal, saveProjectLocal, exportProjectFile } from "../io/projectIO.js";
-
-import { makeThreeViewer } from "../threeViewer.js";
-import { makeAlignmentBandView } from "../alignmentBandView.js";
-import { makeTransitionEditorView } from "../transitionEditorView.js";
 
 import { buildDemoAlignmentFromState, sampleAndEvalDemo } from "./demoAlignmentBridge.js";
 import { wireUI } from "./uiWiring.js";
 
+import { loadProjectLocal, saveProjectLocal, exportProjectFile } from "../io/projectIO.js";
 import { installFileDrop } from "../io/fileDrop.js";
 import { importFileAuto } from "../io/importTRA_GRA.js";
 import { applyImportToProject } from "../io/importApply.js";
 import { makeImportSession } from "../io/importSession.js";
+import { runImportEffects } from "../io/importEffects.js";
 
 function registerFamilies() {
 	for (const fam of transitionFamilies) registerTransitionFamily(fam);
@@ -180,9 +179,7 @@ export async function bootApp() {
 						ui
 					});
 
-					if (effects?.zoomBBox) {
-						three.zoomToFitBox?.(effects.zoomBBox, { padding: 1.35 });
-					}
+					runImportEffects({ effects, store, ui, three });
 				} catch (e) {
 					ui.log(`import failed: ${f.name} ❌ ${String(e)}`);
 				}

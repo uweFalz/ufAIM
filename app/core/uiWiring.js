@@ -122,6 +122,27 @@ export function wireUI(store, hooks = {}) {
 		}
 	});
 
+	function toast({ text, level = "info", ms = 2500 }) {
+		const host = document.getElementById("toasts");
+		if (!host) {
+			// fallback
+			log(`🔔 ${level}: ${text}`);
+			return;
+		}
+
+		const el = document.createElement("div");
+		el.className = "toast";
+		el.dataset.level = level;
+		el.textContent = text;
+
+		host.appendChild(el);
+
+		// simple lifetime
+		setTimeout(() => {
+			el.remove();
+		}, ms);
+	}
+
 	setStatus("ready ✅");
 
 	return {
@@ -155,6 +176,8 @@ export function wireUI(store, hooks = {}) {
 			if (el.w2) el.w2.value = String(Math.round((st.te_w2 ?? 1) * 1000));
 			if (el.w1Val) el.w1Val.textContent = (st.te_w1 ?? 0).toFixed(3);
 			if (el.w2Val) el.w2Val.textContent = (st.te_w2 ?? 1).toFixed(3);
-		}
+		},
+		toast,
+		hooks
 	};
 }
