@@ -1,38 +1,50 @@
-# ufAIM — alignment-based information modelling
+# ufAIM — Alignment Engineering for Infrastructure & BIM
 
-ufAIM ist eine wissensbasierte Ingenieur-Umgebung für Trassierung,
-Geometrie, Dynamik und Optimierung — mit Fokus auf Eisenbahn.
+ufAIM is an engineering-focused framework and reference application
+for alignment-based infrastructure planning.
 
-Der Kern von ufAIM ist **nicht** ein Viewer, **nicht** ein CAD-Tool
-und **nicht** ein Format.
+Unlike conventional BIM tools, ufAIM treats alignments
+(track geometry, transitions, gradients, cant)
+as first-class, deterministic engineering objects —
+not as derived geometry.
 
-Der Kern ist:
-> **explizites Wissen über Geometrie und ihre Wirkung.**
+ufAIM ist ein ingenieurzentriertes Framework mit Referenzanwendung
+für trassierungsbasierte Infrastrukturplanung.
 
-## Was ufAIM ist
-- eine Denk- und Arbeitsumgebung für Trasseningenieure
-- ein Baukasten für Übergangsbögen und Geometrie-Familien
-- eine Brücke zwischen Mathematik, BIM und Optimierung
-- ein Spielplatz zum Verstehen, nicht zum Verstecken
+Im Gegensatz zu klassischen BIM-Werkzeugen werden Achsen und
+Übergangsbögen nicht als abgeleitete Geometrie,
+sondern als explizite, deterministische Engineering-Objekte behandelt.
 
-## Was ufAIM nicht ist
-- kein Ersatz für bestehende CAD-Systeme
-- kein weiteres „Zeichenprogramm“
-- kein Automat, der Entscheidungen abnimmt
+## Why Alignments?
 
-ufAIM macht Entscheidungen **sichtbar**.
+In railway and road infrastructure projects,
+the alignment is the governing design element.
+It defines geometry, kinematics, comfort, and feasibility.
 
-## Zentrale Idee
-Alle komplexen Trassenelemente lassen sich auf
-**normierte Funktionsräume** zurückführen.
-Einbettung in die reale Welt ist ein separater, lösbarer Schritt.
+However, most BIM tools treat alignments as secondary artifacts,
+often losing semantic information such as curvature continuity,
+transition logic, or design intent.
 
-## Einstieg
-- Theorie & Sprache: `docs/theory/notation.md`
-- Übergangsbogen-Prinzip: `docs/theory/berlin-dogma.md`
-- Optimierungs-Brücke: `docs/theory/sqp-bridge.md`
-- Werkzeug: `docs/tools/transition-editor.md`
+ufAIM addresses this gap by introducing a sparse, parametric
+alignment core designed for engineering-grade analysis and optimization.
 
-## Status
-ufAIM ist **work in progress**.
-Wir zeigen früh, um gemeinsam besser zu werden.
+## Tool and Framework
+
+ufAIM serves two roles:
+
+- An **alignment core framework** (sparse alignment, transition families, math & geometry utilities)
+- A **reference application** demonstrating import, visualization, and workflow integration
+
+The application is intentionally kept lightweight.
+Its primary purpose is to validate and expose the underlying alignment core.
+
+## BIM and IFC
+
+ufAIM currently treats IFC models primarily as contextual geometry
+(e.g. terrain, structures, existing assets).
+
+Support for IFC-based alignment entities is planned,
+but deliberately postponed until the sparse alignment core
+and validation workflows are stable.
+
+This avoids premature coupling between representation and engineering logic.
