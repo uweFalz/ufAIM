@@ -1,16 +1,45 @@
-// app/io/importSession.js
-// Minimal pairing + draft builder (NO side effects)
+export function makeImportSession() {
+	const cacheByBase = new Map(); // baseName -> { tra?, gra?, ts }
 
-function baseNameOf(name) {
-	const m = String(name).match(/^(.+?)\.(TRA|GRA)$/i);
-	return m ? m[1] : null;
+	function ingest(importObject) {
+		const base = importObject?.name ?? "unknown";
+		const entry = cacheByBase.get(base) ?? { base, ts: Date.now(), tra: null, gra: null };
+
+		if (importObject.kind === "TRA") entry.tra = importObject;
+		if (importObject.kind === "GRA") entry.gra = importObject;
+		entry.ts = Date.now();
+
+		cacheByBase.set(base, entry);
+
+		// Provide a "slot" concept (right/left later); for now always "right".
+		const slot = "right";
+
+		// Draft: if TRA exists, create a minimal draft object.
+		const draft = entry.tra ? buildSevenLinesDraft(base, entry.tra, entry.gra) : null;
+
+		return { imp: importObject, base, slot, draft };
+	}
+
+	function getState() {
+		return Array.from(cacheByBase.values()).sort((a, b) => b.ts - a.ts);
+	}
+
+	return { ingest, getState };
 }
 
-function buildSevenLinesDraft(base, traImp, graImp) {
-	const rawPts = traImp?.geometry?.pts ?? [];
-	const polyline2d = rawPts
-	.map(p => ({ x: p.x, y: p.y }))
-	.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+function buildSevenLinesDraft(base, traImport, graImport) {
+	const rawPoints =
+		traImport?.geometry?.pts ??
+		traImport?.geometry ??
+		traImport?.pts ??
+		[];
+
+	const polyline2d = [];
+	for (const p of rawPoints) {
+		const x = p?.x ?? p?.[0];
+		const y = p?.y ?? p?.[1];
+		if (Number.isFinite(x) && Number.isFinite(y)) polyline2d.push({ x, y });
+	}
 
 	let bbox = null;
 	let bboxCenter = null;
@@ -29,37 +58,11 @@ function buildSevenLinesDraft(base, traImp, graImp) {
 	return {
 		type: "SevenLinesDraft",
 		id: base,
-		source: { tra: traImp?.name, gra: graImp?.name },
+		source: { tra: traImport?.name, gra: graImport?.name ?? null },
 		kmLine: { alignmentRef: "right" },
 		right: { polyline2d, bbox, bboxCenter },
 		left: null,
-		grade: graImp?.profile ?? null,
-		cant: null
-	};
-}
-
-export function makeImportSession() {
-	const cache = new Map(); // base -> { tra, gra, fitted }
-
-	return {
-		ingest(imp) {
-			const base = baseNameOf(imp?.name);
-			if (!base) return { base: null, imp, draft: null, slot: null };
-
-			const slot = cache.get(base) ?? { fitted: false };
-			if (imp.kind === "TRA") slot.tra = imp;
-			if (imp.kind === "GRA") slot.gra = imp;
-			cache.set(base, slot);
-
-			if (slot.tra && slot.gra) {
-				const draft = buildSevenLinesDraft(base, slot.tra, slot.gra);
-				return { base, imp, draft, slot };
-			}
-			return { base, imp, draft: null, slot };
-		},
-
-		// optional helpers (nice for debugging)
-		get(base) { return cache.get(base) ?? null; },
-		clear() { cache.clear(); }
+		grade: graImport?.grade ?? null,
+		cant: graImport?.cant ?? null,
 	};
 }

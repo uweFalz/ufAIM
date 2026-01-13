@@ -2,16 +2,12 @@
 <html lang="de">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>ufAIM Sandbox (raw 2D/3D)</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>ufAIM – Sandbox</title>
 
 		<link rel="stylesheet" href="./styles.css" />
-		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
 
-		<!-- JSXGraph (2D) -->
-		<script defer src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
-
-		<!-- three.js (3D) via importmap -->
+		<!-- Optional: Import maps if you use them in your project; keep if needed -->
 		<script type="importmap">
 			{
 				"imports": {
@@ -34,155 +30,135 @@
 
 	<body>
 		<header class="topbar">
-			<div class="brand">ufAIM • raw sandbox</div>
-			<div class="status" id="status">boot…</div>
+			<div class="brand">
+				<div class="brand__title">ufAIM</div>
+				<div class="brand__subtitle" id="status">…</div>
+			</div>
+
+			<div class="actions">
+				<button id="btnReset" class="btn">Reset</button>
+
+				<button id="btnSave" class="btn">Save (local)</button>
+				<button id="btnExport" class="btn">Export JSON</button>
+
+				<button id="btnImport" class="btn btn--primary">Import…</button>
+				<input
+				id="fileImport"
+				type="file"
+				accept=".json,.ufaim.json,.tra,.gra,application/json,text/plain"
+				style="display:none"
+				/>
+
+				<button id="btnTrans" class="btn">Transition</button>
+			</div>
 		</header>
 
-		<main class="stage">
-			<section class="pane">
-				<div class="paneHead">
-					<div class="paneTitle">2D (JSXGraph) — Elementals</div>
-					<div class="paneHint">Zieh die Punkte A, B, C • Klick zeigt Properties</div>
+		<main class="layout">
+			<section class="panel panel--left">
+				<h2 class="panel__title">Controls</h2>
+
+				<div class="control">
+					<label for="s">s (Station)</label>
+					<input id="s" type="range" min="0" max="1000" step="1" />
+					<div class="hint" id="sVal">—</div>
 				</div>
-				<div id="board2d" class="board"></div>
-				<div class="editor" id="transEditor">
-					<div class="grid3x3">
-						<div class="cell head">Eingang</div>
-						<div class="cell head">Übergang</div>
-						<div class="cell head">Ausgang</div>
 
-						<div class="cell">
-							<div class="label">k₀</div>
-							<div class="value mono" id="k0Val">…</div>
-							<div class="hint">Startkrümmung (physisch)</div>
-						</div>
-						<div class="cell">
-							<div class="label">κ(u)</div>
-							<div class="value mono" id="kappaVal">…</div>
-							<div class="hint">Norm-Image (0..1)</div>
-						</div>
-						<div class="cell">
-							<div class="label">k₁</div>
-							<div class="value mono" id="k1Val">…</div>
-							<div class="hint">Endkrümmung (physisch)</div>
-						</div>
+				<div class="control">
+					<label for="u">u (0…1)</label>
+					<input id="u" type="range" min="0" max="1000" step="1" />
+					<div class="hint" id="uVal">—</div>
+				</div>
 
-						<div class="cell">
-							<div class="label">Domain</div>
-							<div class="value mono">u ∈ [0,1]</div>
-							<div class="hint">Editor-Sprache</div>
-						</div>
-						<div class="cell">
-							<div class="label">Family</div>
-							<select id="familySel">
-								<option value="linear">linear (v0)</option>
-								<option value="berlin" disabled>berlin (soon)</option>
-							</select>
-							<div class="hint">Formfamilie (v0: Demo)</div>
-						</div>
-						<div class="cell">
-							<div class="label">Embed</div>
-							<div class="value mono">s = lead + u·L</div>
-							<div class="hint">Welt-Einbettung</div>
-						</div>
+				<div class="control">
+					<label for="L">L</label>
+					<input id="L" type="range" min="10" max="2000" step="1" />
+					<div class="hint" id="LVal">—</div>
+				</div>
 
-						<div class="cell">
-							<div class="label">L</div>
-							<div class="value mono" id="LShow">…</div>
-							<div class="hint">Länge (Welt)</div>
-						</div>
-						<div class="cell">
-							<div class="label">Flags</div>
-							<label class="chk"><input type="checkbox" id="viennaChk" disabled> Vienna (später)</label>
-							<div class="hint">Überhöhung getrennt</div>
-						</div>
-						<div class="cell">
-							<div class="label">R</div>
-							<div class="value mono" id="RShow">…</div>
-							<div class="hint">Radius (Welt)</div>
-						</div>
+				<div class="control">
+					<label for="R">R</label>
+					<input id="R" type="range" min="10" max="10000" step="1" />
+					<div class="hint" id="RVal">—</div>
+				</div>
+
+				<hr />
+
+				<h3 class="panel__subtitle">Readout</h3>
+				<div class="readout3x3">
+					<div class="readout__label">k0</div><div class="readout__value" id="k0Val">—</div>
+					<div class="readout__label">k1</div><div class="readout__value" id="k1Val">—</div>
+					<div class="readout__label">‖k‖</div><div class="readout__value" id="kappaVal">—</div>
+
+					<div class="readout__label">L</div><div class="readout__value" id="LShow">—</div>
+					<div class="readout__label">R</div><div class="readout__value" id="RShow">—</div>
+					<div class="readout__label">—</div><div class="readout__value"> </div>
+				</div>
+
+				<hr />
+
+				<h3 class="panel__subtitle">Log</h3>
+				<pre id="log" class="log"></pre>
+			</section>
+
+			<section class="panel panel--center">
+				<h2 class="panel__title">Views</h2>
+
+				<div class="views">
+					<div class="view view--3d">
+						<div class="view__title">3D</div>
+						<canvas id="view3d"></canvas>
+					</div>
+
+					<div class="view view--2d">
+						<div class="view__title">2D</div>
+						<div id="board2d" class="board2d"></div>
 					</div>
 				</div>
 			</section>
 
-			<section class="pane">
-				<div class="paneHead">
-					<div class="paneTitle">3D (three.js) — Viewer</div>
-					<div class="paneHint">Drag zum Drehen • Scroll zum Zoomen • Klick Marker → Properties</div>
-				</div>
-				<canvas id="view3d" class="canvas3d"></canvas>
+			<section class="panel panel--right">
+				<h2 class="panel__title">Props</h2>
+				<pre id="props" class="props"></pre>
+
+				<div id="toasts" class="toasts"></div>
 			</section>
 		</main>
 
-		<footer class="footer">
-			<div class="controls">
-				<label for="s">s</label>
-				<input id="s" type="range" min="0" max="500" value="90" />
-				<span class="mono" id="sVal">s≈ … m</span>
-				<span class="mono" id="uVal">u=…</span>
+		<!-- Transition Overlay -->
+		<section id="transOverlay" class="overlay hidden">
+			<div class="overlay__card">
+				<header class="overlay__header">
+					<div class="overlay__title">Transition Editor</div>
+					<button id="btnTransClose" class="btn">Close</button>
+				</header>
 
-				<label for="L">L</label>
-				<input id="L" type="range" min="30" max="400" value="120" />
-				<span class="mono" id="LVal">120</span>
-
-				<label for="R">R</label>
-				<input id="R" type="range" min="200" max="3000" value="800" />
-				<span class="mono" id="RVal">800</span>
-				
-				<button id="btnImport">Import…</button>
-				<button id="btnDemo">Demo</button>
-				<button id="btnSave">Save…</button>
-				<button id="btnExport">Export…</button>
-				
-				<input id="fileImport" type="file" accept=".json,.ufaim.json,application/json" style="display:none" />
-
-				<button id="btnTrans">TransEditor</button>
-				<button id="btnReset">Reset</button>
-			</div>
-
-			<div class="mono props" id="props">click an element…</div>
-			<div class="mono" id="log"></div>
-		</footer>
-		
-		<div id="transOverlay" class="overlay hidden">
-			<div class="overlayHead">
-				<div class="overlayTitle">
-					Transition Editor (normiert)
-					<span id="teLegend" class="mono" style="margin-left:12px; opacity:.8; font-size:.9em;"></span>
+				<div class="control">
+					<label for="familySel">Family</label>
+					<select id="familySel"></select>
 				</div>
-				<button id="btnTransClose">×</button>
-			</div>
 
-			<div class="overlayBody">
-				<div id="transBoard" class="transBoard"></div>
-
-				<div class="transControls">
-					<div class="plotMode">
-						<label class="chk"><input type="radio" name="tePlot" id="plotK" checked /> κ</label>
-						<label class="chk"><input type="radio" name="tePlot" id="plotK1" /> κ′</label>
-						<label class="chk"><input type="radio" name="tePlot" id="plotK2" /> κ″</label>
-					</div>
-
-					<!-- existing controls -->
-					<label>w1</label>
-					<input id="w1" type="range" min="0" max="1000" value="0" />
-					<span class="mono" id="w1Val">0.000</span>
-
-					<label>w2</label>
-					<input id="w2" type="range" min="0" max="1000" value="1000" />
-					<span class="mono" id="w2Val">1.000</span>
-
-					<label>Preset</label>
+				<div class="control">
+					<label for="preset">Preset</label>
 					<select id="preset">
-						<option value="clothoid">Klothoide (w1=0,w2=1)</option>
-						<option value="bloss">Bloss (w1=w2=0.5)</option>
-						<option value="berlin">Berlin (w1=0.18,w2=0.82)</option>
+						<option value="clothoid">clothoid</option>
+						<option value="bloss">bloss</option>
+						<option value="berlin">berlin</option>
 					</select>
 				</div>
-			</div>
-		</div>
 
-<div id="toasts" class="toasts"></div>
+				<div class="control">
+					<label for="w1">w1</label>
+					<input id="w1" type="range" min="0" max="1000" step="1" />
+					<div class="hint" id="w1Val">—</div>
+				</div>
+
+				<div class="control">
+					<label for="w2">w2</label>
+					<input id="w2" type="range" min="0" max="1000" step="1" />
+					<div class="hint" id="w2Val">—</div>
+				</div>
+			</div>
+		</section>
 
 		<script type="module" src="./main.js"></script>
 	</body>

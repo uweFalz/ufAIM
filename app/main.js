@@ -1,8 +1,10 @@
 // app/main.js
-import { bootApp } from "./core/appCore.js";
 
-bootApp().catch((e) => {
-  console.error(e);
-  const log = document.getElementById("log");
-  if (log) log.textContent += "\nBOOT FAILED: " + String(e);
+import { bootApp } from "./core/appCore.js";
+import { t } from "./i18n/strings.js";
+
+bootApp().catch((error) => {
+	console.error(error);
+	const logElement = document.getElementById("log");
+	if (logElement) logElement.textContent = `${t("boot_failed")} ❌\n${String(error)}`;
 });

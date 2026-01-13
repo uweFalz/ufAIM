@@ -1,176 +1,107 @@
-// app/io/importTRA_GRA.js
+function getExtensionLower(filename = "") {
+	const match = /\.([a-z0-9]+)$/i.exec(String(filename));
+	return match ? match[1].toLowerCase() : "";
+}
 
-function extOf(name = "") {
-	const m = /\.([a-z0-9]+)$/i.exec(name.trim());
-	return m ? m[1].toLowerCase() : "";
+function baseName(filename = "") {
+	return String(filename).replace(/\.[^/.]+$/, "");
+}
+
+// Heuristic: find plausible GK/UTM coordinate pairs inside float64 stream.
+// This is intentionally permissive; it just needs to make the import "visible".
+function extractPlausibleXYFromFloat64(buffer) {
+	const view = new DataView(buffer);
+	const bytes = buffer.byteLength;
+
+	const candidates = [];
+	const step = 8; // float64
+	const maxPairs = 8000; // cap for safety
+
+	function readFloat64LE(offset) {
+		return view.getFloat64(offset, true);
+	}
+
+	// Plausible ranges (Germany-ish):
+	// GK: RW ~ 3e6..5e6, HW ~ 5e6..6e6
+	// UTM: E  ~ 1e5..9e5, N  ~ 5e6..6.2e6
+	function looksLikeXY(x, y) {
+		const isFinite = Number.isFinite(x) && Number.isFinite(y);
+		if (!isFinite) return false;
+
+		const absX = Math.abs(x), absY = Math.abs(y);
+		if (absX < 1e4 || absY < 1e4) return false;
+
+		const gk = (x > 2.5e6 && x < 6.0e6 && y > 4.5e6 && y < 6.5e6);
+		const utm = (x > 5.0e4 && x < 9.5e5 && y > 4.5e6 && y < 6.8e6);
+
+		return gk || utm;
+	}
+
+	// scan sequential float64 pairs
+	for (let offset = 0; offset + 16 <= bytes; offset += step) {
+		const x = readFloat64LE(offset);
+		const y = readFloat64LE(offset + 8);
+
+		if (looksLikeXY(x, y)) {
+			candidates.push({ x, y });
+			if (candidates.length >= maxPairs) break;
+		}
+	}
+
+	// de-duplicate noisy runs by simple distance threshold
+	const result = [];
+	const minDist2 = 0.01; // very small; only removes exact repeats
+	let last = null;
+	for (const p of candidates) {
+		if (!last) {
+			result.push(p);
+			last = p;
+			continue;
+		}
+		const dx = p.x - last.x;
+		const dy = p.y - last.y;
+		if (dx * dx + dy * dy > minDist2) {
+			result.push(p);
+			last = p;
+		}
+	}
+
+	return result;
 }
 
 export async function importFileAuto(file) {
-	const name = file?.name ?? "unnamed";
-	const ext = extOf(name);
+	const extension = getExtensionLower(file.name);
+	const name = baseName(file.name);
 
-	if (ext === "tra" || ext === "gra") {
-		const buf = await file.arrayBuffer();
-		if (ext === "tra") return importTRA_bin({ name, buf });
-		if (ext === "gra") return importGRA_bin({ name, buf });
-	}
+	if (extension === "tra") {
+		const buffer = await file.arrayBuffer();
+		const polyline2d = extractPlausibleXYFromFloat64(buffer);
 
-	// fallback for text-ish
-	const text = await file.text();
-	return {
-		kind: "unknown",
-		name,
-		meta: { ext },
-		raw: text.slice(0, 2000)
-	};
-}
-
-const TRA_BYTE_LAYOUT = [
-{ name: "radiusA",        offSet: 0,  bytes: 8 },
-{ name: "radiusE",        offSet: 8,  bytes: 8 },
-{ name: "easting",        offSet: 16, bytes: 8 },
-{ name: "northing",       offSet: 24, bytes: 8 },
-{ name: "direction",      offSet: 32, bytes: 8 },
-{ name: "station",        offSet: 40, bytes: 8 },
-{ name: "elementType",    offSet: 48, bytes: 2 },
-{ name: "arclength",      offSet: 50, bytes: 8 },
-{ name: "cantA",          offSet: 58, bytes: 8 },
-{ name: "cantE",          offSet: 66, bytes: 8 },
-{ name: "pointKeyNumber", offSet: 74, bytes: 4 }
-];
-const traCycle = TRA_BYTE_LAYOUT.reduce((s, e) => s + e.bytes, 0);
-
-const GRA_BYTE_LAYOUT = [
-{ name: "station",     offSet: 0,  bytes: 8 },
-{ name: "height",      offSet: 8,  bytes: 8 },
-{ name: "radius",      offSet: 16, bytes: 8 },
-{ name: "tangentL",    offSet: 24, bytes: 8 },
-{ name: "pointNumber", offSet: 32, bytes: 2 },
-{ name: "pointKey",    offSet: 34, bytes: 2 }
-];
-const graCycle = GRA_BYTE_LAYOUT.reduce((s, e) => s + e.bytes, 0);
-
-function getValueFromHex(dv, base, entry) {
-	const off = base + entry.offSet;
-	switch (entry.bytes) {
-		case 2: return dv.getUint16(off, true);
-		case 4: return dv.getFloat32(off, true);
-		default: return dv.getFloat64(off, true);
-	}
-}
-
-function sanitizeHeader(str) {
-	if (!str) return "";
-	let printable = 0, total = 0;
-	for (let i = 0; i < str.length; i++) {
-		const c = str.charCodeAt(i);
-		if ((c >= 32 && c <= 126) || c === 9) printable++;
-		total++;
-	}
-	if (!total || printable / total < 0.7) return "";
-	return str.trim();
-}
-
-function parseTraBuffer(arrayBuffer) {
-	const dv = new DataView(arrayBuffer);
-	const len = dv.byteLength;
-
-	// header (best effort)
-	const headerChars = [];
-	for (let off = 0; off < traCycle && off < len; off += 2) {
-		headerChars.push(String.fromCharCode(dv.getUint8(off)));
-	}
-	const header = sanitizeHeader(headerChars.join(""));
-
-	const elements = [];
-	for (let idx = traCycle; idx + traCycle <= len; idx += traCycle) {
-		const row = [];
-		for (const entry of TRA_BYTE_LAYOUT) row.push(getValueFromHex(dv, idx, entry));
-
-		const el = {
-			radiusAorBeta: row[0],
-			radiusE: row[1],
-			easting: row[2],
-			northing: row[3],
-			directionRad: row[4],
-			station: row[5],
-			type: row[6],
-			arcLength: row[7],
-			cantA: row[8],
-			cantE: row[9],
-			pointNumber: row[10]
+		return {
+			kind: "TRA",
+			name,
+			meta: {
+				bytes: buffer.byteLength,
+				points: polyline2d.length,
+				note: "heuristic float64 XY scan (GK/UTM-like)",
+			},
+			geometry: { pts: polyline2d },
+			raw: { filename: file.name },
 		};
-
-		el.directionGon = (el.directionRad / Math.PI) * 200.0;
-		elements.push(el);
 	}
 
-	return { header, elements };
-}
-
-function parseGraBuffer(arrayBuffer) {
-	const dv = new DataView(arrayBuffer);
-	const len = dv.byteLength;
-
-	const headerChars = [];
-	for (let off = 0; off < graCycle && off < len; off += 2) {
-		headerChars.push(String.fromCharCode(dv.getUint8(off)));
-	}
-	const header = sanitizeHeader(headerChars.join(""));
-
-	const elements = [];
-	for (let idx = graCycle; idx + graCycle <= len; idx += graCycle) {
-		const row = [];
-		for (const entry of GRA_BYTE_LAYOUT) row.push(getValueFromHex(dv, idx, entry));
-		elements.push({
-			station: row[0],
-			height: row[1],
-			radius: row[2],
-			tangentL: row[3],
-			pointNr: row[4],
-			pointKey: row[5]
-		});
+	if (extension === "gra") {
+		// For now: just carry binary, make it visible; later parse real grade/cant.
+		const buffer = await file.arrayBuffer();
+		return {
+			kind: "GRA",
+			name,
+			meta: { bytes: buffer.byteLength },
+			grade: null,
+			cant: null,
+			raw: { filename: file.name },
+		};
 	}
 
-	return { header, elements };
-}
-
-export function importTRA_bin({ name, buf }) {
-	const parsed = parseTraBuffer(buf);
-
-	// minimal: polyline from element start points
-	const pts = parsed.elements
-	.map(e => ({ x: e.easting, y: e.northing }))
-	.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
-
-console.log( pts );
-
-	return {
-		kind: "TRA",
-		name,
-		meta: {
-			bytes: buf.byteLength,
-			header: parsed.header || null,
-			elements: parsed.elements.length,
-			points: pts.length
-		},
-		geometry: pts.length ? { type: "polyline", pts } : null,
-		_parsed: parsed
-	};
-}
-
-export function importGRA_bin({ name, buf }) {
-	const parsed = parseGraBuffer(buf);
-
-	return {
-		kind: "GRA",
-		name,
-		meta: {
-			bytes: buf.byteLength,
-			header: parsed.header || null,
-			elements: parsed.elements.length
-		},
-		profile: { type: "gra-raw", elements: parsed.elements },
-		_parsed: parsed
-	};
+	throw new Error(`Unsupported import: ${file.name}`);
 }

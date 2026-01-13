@@ -1,178 +1,25 @@
-// app/io/projectIO.js
-// Import/Export for ufAIM.project.v0 (JSON)
-
-import { makeProjectModel } from "../model/projectModel.js";
-import { migrateProject } from "./migrations.js";
-
-// app/io/projectIO.js
-const LS_KEY = "ufAIM.project.v0";
-
-export function saveProjectLocal(project) {
-  localStorage.setItem(LS_KEY, JSON.stringify(project, null, 2));
-}
+const LOCAL_KEY = "ufAIM.project";
 
 export function loadProjectLocal() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
-
-export function exportProjectFile(project, filename = "ufAIM-project.json") {
-  const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-
-  URL.revokeObjectURL(url);
-}
-
-export async function importProjectFile(file) {
-  const text = await file.text();
-  return JSON.parse(text);
-}
-
-
-
-export function exportProject(project) {
-  const out = structuredClone(project);
-  out.meta.createdAt = out.meta.createdAt || new Date().toISOString();
-  return JSON.stringify(out, null, 2);
-}
-
-export function importProject(jsonText) {
-  const raw = JSON.parse(jsonText);
-  const migrated = migrateProject(raw);
-  return makeProjectModel(migrated);
-}
-
-export function defaultProject() {
-	return {
-		// format: PROJECT_FORMAT,
-		format: LS_KEY,
-		meta: {
-			name: "demo",
-			crs: "LOCAL",
-			units: "m"
-		},
-		alignment: {
-			embed: { lead: 60, L: 120, R: 800, arcLen: 220 },
-			transition: { 
-				preset: "clothoid", w1: 0.0, w2: 1.0, plot: "k", 
-				"family": "linear-clothoid", "m": 1.0
-			}
-		},
-		ui: {
-			// viewer language: station in meters; null means "use u"
-			s_abs: null,
-			// editor language:
-			u: 0.25
-		}
-	};
-}
-
-function clamp01(x) {
-	return Math.max(0, Math.min(1, x));
-}
-
-function num(x, fallback) {
-	const v = Number(x);
-	return Number.isFinite(v) ? v : fallback;
-}
-
-function str(x, fallback) {
-	return typeof x === "string" ? x : fallback;
-}
-
-// Minimal, forgiving validator + normalizer (v0)
-export function normalizeProject(raw) {
-	const base = defaultProject();
-
-	if (!raw || typeof raw !== "object") return base;
-
-	// format gate: allow missing during early trials, but normalize to our format
-	const fmt = str(raw.format, PROJECT_FORMAT);
-	const out = { ...base, format: PROJECT_FORMAT };
-
-	// meta
-	out.meta = {
-		...base.meta,
-		...(raw.meta && typeof raw.meta === "object" ? raw.meta : {})
-	};
-	out.meta.name = str(out.meta.name, base.meta.name);
-	out.meta.crs = str(out.meta.crs, base.meta.crs);
-	out.meta.units = str(out.meta.units, base.meta.units);
-
-	// alignment.embed
-	const embed = raw.alignment?.embed ?? {};
-	out.alignment = structuredClone(base.alignment);
-	out.alignment.embed = {
-		lead: num(embed.lead, base.alignment.embed.lead),
-		L: num(embed.L, base.alignment.embed.L),
-		R: num(embed.R, base.alignment.embed.R),
-		arcLen: num(embed.arcLen, base.alignment.embed.arcLen)
-	};
-
-	// alignment.transition
-	const tr = raw.alignment?.transition ?? {};
-	out.alignment.transition = {
-		preset: str(tr.preset, base.alignment.transition.preset),
-		w1: clamp01(num(tr.w1, base.alignment.transition.w1)),
-		w2: clamp01(num(tr.w2, base.alignment.transition.w2)),
-		plot: str(tr.plot, base.alignment.transition.plot)
-	};
-	out.alignment.transition.family = str(tr.family, "linear-clothoid");
-	out.alignment.transition.m = num(tr.m, 1.0);
-	out.alignment.transition.plot = str(tr.plot, base.alignment.transition.plot);
-
-	// ui
-	const ui = raw.ui ?? {};
-	out.ui = {
-		s_abs: (ui.s_abs == null ? null : num(ui.s_abs, null)),
-		u: clamp01(num(ui.u, base.ui.u))
-	};
-
-	// If someone provided te_* legacy keys, accept them (optional)
-	if (raw.te_w1 != null || raw.te_w2 != null || raw.te_plot != null || raw.te_preset != null) {
-		out.alignment.transition.w1 = clamp01(num(raw.te_w1, out.alignment.transition.w1));
-		out.alignment.transition.w2 = clamp01(num(raw.te_w2, out.alignment.transition.w2));
-		out.alignment.transition.plot = str(raw.te_plot, out.alignment.transition.plot);
-		out.alignment.transition.preset = str(raw.te_preset, out.alignment.transition.preset);
-	}
-
-	// ensure w1<=w2 (for sanity)
-	if (out.alignment.transition.w2 < out.alignment.transition.w1) {
-		const tmp = out.alignment.transition.w1;
-		out.alignment.transition.w1 = out.alignment.transition.w2;
-		out.alignment.transition.w2 = tmp;
-	}
-
-	// allow unknown fmt for now, but keep our normalized format
-	void fmt;
-	return out;
-}
-
-export async function loadProjectFromFile(file) {
-	const text = await file.text();
-	let raw;
 	try {
-		raw = JSON.parse(text);
-	} catch (e) {
-		throw new Error("Invalid JSON");
+		const raw = localStorage.getItem(LOCAL_KEY);
+		if (!raw) return null;
+		return JSON.parse(raw);
+	} catch {
+		return null;
 	}
-	return normalizeProject(raw);
 }
 
-export function downloadProject(projectData, filenameBase = "ufAIM") {
-	const name = (projectData?.meta?.name || "project").replace(/[^\w\-]+/g, "_");
-	const filename = `${filenameBase}_${name}.project.json`;
-	const json = JSON.stringify(projectData, null, 2);
+export function saveProjectLocal(projectObject) {
+	try {
+		localStorage.setItem(LOCAL_KEY, JSON.stringify(projectObject));
+	} catch {
+		// ignore
+	}
+}
 
-	const blob = new Blob([json], { type: "application/json" });
+export function exportProjectFile(projectObject, filename = "project.json") {
+	const blob = new Blob([JSON.stringify(projectObject, null, 2)], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
 
 	const a = document.createElement("a");
@@ -182,5 +29,9 @@ export function downloadProject(projectData, filenameBase = "ufAIM") {
 	a.click();
 	a.remove();
 
-	URL.revokeObjectURL(url);
+	setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function importProject(text) {
+	return JSON.parse(text);
 }

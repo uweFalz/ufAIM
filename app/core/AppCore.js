@@ -1,9 +1,39 @@
 // app/core/appCore.js
 
+import { wireUI } from "./uiWiring.js";
+import { t } from "../i18n/strings.js";
+
+export async function bootApp() {
+	const logElement = document.getElementById("log");
+	const statusElement = document.getElementById("status");
+
+	if (statusElement) statusElement.textContent = t("booting");
+	if (logElement) logElement.textContent = `${t("boot_start")}\n`;
+
+	// UI verdrahten (sollte selbst robust sein)
+	const ui = wireUI({ logElement, statusElement });
+
+	if (statusElement) statusElement.textContent = t("boot_ok");
+	if (logElement) logElement.textContent += `${t("boot_ready")}\n`;
+
+	return ui; // optional – hilfreich zum Debuggen
+}
+
+
+
+
+
+
+
+
+
+/*
+
 import { makeThreeViewer } from "../threeViewer.js";
 import { makeAlignmentBandView } from "../alignmentBandView.js";
 import { makeTransitionEditorView } from "../transitionEditorView.js";
 import { createStore } from "../viewSync.js";
+
 import { registerTransitionFamily } from "../transition/transitionFamily.js";
 import { transitionFamilies } from "../transition/families/index.js";
 
@@ -13,81 +43,102 @@ import { DEFAULT_PROJECT } from "../model/defaults.js";
 import { buildDemoAlignmentFromState, sampleAndEvalDemo } from "./demoAlignmentBridge.js";
 import { wireUI } from "./uiWiring.js";
 
-import { loadProjectLocal, saveProjectLocal, exportProjectFile } from "../io/projectIO.js";
+import { loadProjectLocal, saveProjectLocal, exportProjectFile, importProject } from "../io/projectIO.js";
 import { installFileDrop } from "../io/fileDrop.js";
+
 import { importFileAuto } from "../io/importTRA_GRA.js";
 import { applyImportToProject } from "../io/importApply.js";
 import { makeImportSession } from "../io/importSession.js";
 import { runImportEffects } from "../io/importEffects.js";
 
-function registerFamilies() {
-	for (const fam of transitionFamilies) registerTransitionFamily(fam);
+import { getStrings } from "../i18n/strings.js";
+
+function registerTransitionFamilies() {
+	for (const family of transitionFamilies) registerTransitionFamily(family);
 }
 
-function makeInitialProject() {
+function makeInitialProjectModel() {
 	const loaded = loadProjectLocal();
 	if (loaded) return makeProjectModel(loaded);
-	// structuredClone is available in modern browsers; fallback if needed
+
 	const base = typeof structuredClone === "function"
-	? structuredClone(DEFAULT_PROJECT)
-	: JSON.parse(JSON.stringify(DEFAULT_PROJECT));
+		? structuredClone(DEFAULT_PROJECT)
+		: JSON.parse(JSON.stringify(DEFAULT_PROJECT));
+
 	return makeProjectModel(base);
 }
 
-function applyProjectToStore(project, store) {
-	const v = project?.view ?? {};
-	const tr = project?.transition ?? {};
-	const p = tr?.params ?? {};
-	
-	const L = v.L ?? 120;
-	const lead = v.lead ?? 60;
-	const u = v.u ?? 0.25;
+function applyProjectToState(projectModel, stateStore) {
+	const view = projectModel?.view ?? {};
+	const transition = projectModel?.transition ?? {};
+	const params = transition?.params ?? {};
 
-	const s = (v.s != null) ? v.s : (lead + u * L);
+	const L = view.L ?? 120;
+	const lead = view.lead ?? 60;
+	const u = view.u ?? 0.25;
 
-	store.setState({
+	const s = (view.s != null) ? view.s : (lead + u * L);
+
+	stateStore.setState({
 		s,
-		// demo “world embedding”
-		u: v.u ?? 0.25,
-		L: v.L ?? 120,
-		R: v.R ?? 800,
-		lead: v.lead ?? 60,
-		arcLen: v.arcLen ?? 220,
+		u: view.u ?? 0.25,
+		L: view.L ?? 120,
+		R: view.R ?? 800,
+		lead: view.lead ?? 60,
+		arcLen: view.arcLen ?? 220,
 
-		// transition editor
 		te_visible: false,
-		te_family: tr.family ?? "linear-clothoid",
-		te_w1: p.w1 ?? 0.0,
-		te_w2: p.w2 ?? 1.0,
-		te_m: p.m ?? 1.0,
-		te_plot: tr.plot ?? "k"
+		te_family: transition.family ?? "linear-clothoid",
+		te_w1: params.w1 ?? 0.0,
+		te_w2: params.w2 ?? 1.0,
+		te_m: params.m ?? 1.0,
+		te_plot: transition.plot ?? "k",
 	});
 }
 
-function readProjectFromStore(store) {
-	const st = store.getState();
+function readProjectFromState(stateStore) {
+	const state = stateStore.getState();
 	return makeProjectModel({
 		view: {
-			u: st.u,
-			L: st.L,
-			R: st.R,
-			lead: st.lead,
-			arcLen: st.arcLen
+			u: state.u,
+			L: state.L,
+			R: state.R,
+			lead: state.lead,
+			arcLen: state.arcLen,
+			s: state.s,
 		},
 		transition: {
-			family: st.te_family,
-			params: { w1: st.te_w1, w2: st.te_w2, m: st.te_m ?? 1.0 },
-			plot: st.te_plot ?? "k"
-		}
+			family: state.te_family,
+			params: { w1: state.te_w1, w2: state.te_w2, m: state.te_m ?? 1.0 },
+			plot: state.te_plot ?? "k",
+		},
 	});
 }
 
 export async function bootApp() {
-	// 1) register transition families
-	registerFamilies();
+	const status = document.getElementById("status");
+	const log = document.getElementById("log");
 
-	// 2) store (single source of truth)
-	const store = createStore({
+	if (status) status.textContent = "boot ok";
+	if (log) log.textContent = "appCore alive\n";
+
+	document.addEventListener("drop", (ev) => {
+		ev.preventDefault();
+		log.textContent += "drop detected\n";
+	});
+	document.addEventListener("dragover", (ev) => ev.preventDefault());
+}
+
+export async function bootApp_ORG() {
+	console.log("bootApp(): start");
+	
+	const t = getStrings("de");
+
+	// 1) register transition families
+	registerTransitionFamilies();
+
+	// 2) state store (single source of truth)
+	const stateStore = createStore({
 		te_visible: false,
 		te_family: "linear-clothoid",
 		te_w1: 0.0,
@@ -95,204 +146,184 @@ export async function bootApp() {
 		te_m: 1.0,
 		te_plot: "k",
 
-		s: 90, // meters (station)
+		s: 90,
 		u: 0.25,
 		L: 120,
 		R: 800,
 		lead: 60,
-		arcLen: 220
+		arcLen: 220,
 	});
 
 	// 3) load project and apply to store
-	const project = makeInitialProject();
-	applyProjectToStore(project, store);
+	const projectModel = makeInitialProjectModel();
+	applyProjectToState(projectModel, stateStore);
 
 	// 4) build views
-	const canvas = document.getElementById("view3d");
-	if (!canvas) throw new Error("Missing <canvas id='view3d'>");
+	const canvas3d = document.getElementById("view3d");
+	if (!canvas3d) throw new Error("Missing <canvas id='view3d'>");
 
-	const three = makeThreeViewer({ canvas });
-	const band = makeAlignmentBandView(store);
-	await band.init("board2d");
+	const threeViewer = makeThreeViewer({ canvas: canvas3d });
+	const bandView = makeAlignmentBandView(stateStore);
+	await bandView.init("board2d");
 
-	const teView = makeTransitionEditorView(store);
-	let teInited = false;
+	const transitionEditorView = makeTransitionEditorView(stateStore);
+	let transitionEditorInitialized = false;
+
+	// import session
+	const importSession = makeImportSession();
 
 	// 5) UI wiring (DOM -> store + IO buttons)
-	const ui = wireUI(store, {
+	const ui = wireUI(stateStore, {
 		onSave: () => {
-			const p = readProjectFromStore(store);
+			const p = readProjectFromState(stateStore);
 			saveProjectLocal(p);
 		},
 		onExport: () => {
-			const p = readProjectFromStore(store);
+			const p = readProjectFromState(stateStore);
 			exportProjectFile(p, "ufAIM-project.json");
 		},
-		onProjectLoaded: (obj) => {
-			const p = makeProjectModel(obj);
-			applyProjectToStore(p, store);
-			// optional: auto-save after import
-			saveProjectLocal(readProjectFromStore(store));
+		onProjectLoaded: (object) => {
+			const p = makeProjectModel(object);
+			applyProjectToState(p, stateStore);
+			saveProjectLocal(readProjectFromState(stateStore));
 		},
 		onToggleTransEditor: async (visible) => {
-			if (visible && !teInited) {
-				teInited = true;
-				await teView.init();
+			if (visible && !transitionEditorInitialized) {
+				transitionEditorInitialized = true;
+				await transitionEditorView.init();
 			}
 		},
+
+		// IMPORTANT: file picker intercept for TRA/GRA
+		onImportFile: async (file) => {
+			const ext = (file.name.split(".").pop() || "").toLowerCase();
+			if (ext !== "tra" && ext !== "gra") return false;
+
+			const imported = await importFileAuto(file);
+			window.__ufAIM_lastImport = imported;
+
+			const ingestResult = importSession.ingest(imported);
+			const effects = applyImportToProject({
+				project: projectModel,
+				store: stateStore,
+				imp: ingestResult.imp,
+				draft: ingestResult.draft,
+				slot: ingestResult.slot,
+				ui,
+			});
+
+			runImportEffects({ effects, store: stateStore, ui, three: threeViewer });
+			ui.toast?.({ level: "success", text: `${t.toastImportOk}: ${file.name}` });
+			return true;
+		},
+
 		onMarkerClick: () => {
-			const st = store.getState();
+			const last = window.__ufAIM_lastImport;
 			ui.showProps({
 				type: "marker click",
-				u: st.u,
-				note: "selection confirmed"
+				lastImport: last?.name ?? "-",
 			});
-			// ???
-			ui.log(`TRA: elems=${imp.meta?.elements ?? "?"} pts=${imp.meta?.points ?? "?"} header=${imp.meta?.header ?? "-"}`);
-		}
+		},
 	});
 
-	// also allow 3D viewer marker click -> UI
-	three.onMarkerClick(() => ui.hooks?.onMarkerClick?.());
-
-	const importCache = new Map(); 
-	// key: baseName ("401"), value: { tra?, gra?, ts }
-	
-	const importSession = makeImportSession();
+	// 3D viewer marker click -> UI hook
+	threeViewer.onMarkerClick(() => ui.hooks?.onMarkerClick?.());
 
 	// --- Drag&Drop import (TRA/GRA minimal) ---
 	installFileDrop({
 		element: document.documentElement,
 		onFiles: async (files) => {
-			for (const f of files) {
-				ui.log(`drop: ${f.name} (${f.size} bytes)`);
+			for (const file of files) {
+				ui.log(`drop: ${file.name} (${file.size} bytes)`);
 				try {
-					const imp = await importFileAuto(f);
-					const res = importSession.ingest(imp);
+					const ext = (file.name.split(".").pop() || "").toLowerCase();
 
-					const effects = applyImportToProject({
-						project,
-						store,
-						imp: res.imp,
-						draft: res.draft,
-						slot: res.slot,
-						ui
-					});
+					// JSON project import
+					if (ext === "json") {
+						const text = await file.text();
+						const project = importProject(text);
+						ui.hooks?.onProjectLoaded?.(project);
+						ui.log(`${t.logImportOk} ${file.name}`);
+						continue;
+					}
 
-					runImportEffects({ effects, store, ui, three });
-				} catch (e) {
-					ui.log(`import failed: ${f.name} ❌ ${String(e)}`);
+					// TRA/GRA import
+					if (ext === "tra" || ext === "gra") {
+						const imported = await importFileAuto(file);
+						window.__ufAIM_lastImport = imported;
+
+						const ingestResult = importSession.ingest(imported);
+						const effects = applyImportToProject({
+							project: projectModel,
+							store: stateStore,
+							imp: ingestResult.imp,
+							draft: ingestResult.draft,
+							slot: ingestResult.slot,
+							ui,
+						});
+
+						runImportEffects({ effects, store: stateStore, ui, three: threeViewer });
+						ui.log(`${t.logImportOk} ${file.name}`);
+						continue;
+					}
+
+					ui.log(`${t.logDropIgnored}: ${file.name}`);
+				} catch (error) {
+					ui.log(`${t.logImportFailed} ${file.name} ${String(error)}`);
+					ui.toast?.({ level: "error", text: `${t.toastImportFailed}: ${file.name}` });
 				}
 			}
-		}
+		},
 	});
 
-
 	// 6) subscription: compute -> render
-	store.subscribe((st) => {
-		const alignment = buildDemoAlignmentFromState(st);
-		const { pts, marker, k0, k1, kappaNorm } = sampleAndEvalDemo(alignment, st);
+	stateStore.subscribe((state) => {
+		// If import polyline exists, it overrides demo rendering.
+		const importedPolyline = state.import_polyline;
+		if (Array.isArray(importedPolyline) && importedPolyline.length >= 2) {
+			const points3d = importedPolyline.map(p => ({ x: p.x, y: p.y, z: 0 }));
+			threeViewer.setTrackPoints?.(points3d);
 
-		// 3D
-		three.setTrackPoints(pts);
-		three.setMarker(marker);
-		
-		const importedPts = st.import_polyline;
-		if (Array.isArray(importedPts) && importedPts.length >= 2) {
-			const pts = importedPts.map(p => ({ x: p.x, y: p.y, z: 0 }));
-			three.setTrackPoints?.(pts);
-
-			const m = st.import_marker;
+			const m = state.import_marker;
 			const marker = (m && Number.isFinite(m.x) && Number.isFinite(m.y))
-			? { x: m.x, y: m.y, z: 0, s: 0 }
-			: { x: pts[0].x, y: pts[0].y, z: 0, s: 0 };
+				? { x: m.x, y: m.y, z: 0, s: 0 }
+				: { x: points3d[0].x, y: points3d[0].y, z: 0, s: 0 };
 
-			three.setMarker?.(marker);
+			threeViewer.setMarker?.(marker);
 
-			band.update();
-			ui.updateReadouts({ st, marker: { s: 0 }, readout: { k0: 0, k1: 0, kappaNorm: 0 } });
+			bandView.update();
+			ui.updateReadouts({ state, marker: { s: 0 }, readout: { k0: 0, k1: 0, kappaNorm: 0 } });
 			return;
 		}
 
-		// Temporary bridge for bandView (until bandView reads model directly)
+		// Demo path (fallback)
+		const alignment = buildDemoAlignmentFromState(state);
+		const { pts, marker, k0, k1, kappaNorm } = sampleAndEvalDemo(alignment, state);
+
+		threeViewer.setTrackPoints(pts);
+		threeViewer.setMarker(marker);
+
+		// bridge for bandView (until bandView reads model directly)
 		window.__ufAIM_latestSample = {
 			pts: pts.map(p => ({ x: p.x, y: p.y })),
-			lead: st.lead,
-			totalLen: alignment.totalLength
+			lead: state.lead,
+			totalLen: alignment.totalLength,
 		};
+
 		window.__ufAIM_marker = { x: marker.x, y: marker.y };
 
-		// 2D
-		band.update();
+		bandView.update();
 
-		// UI readouts
 		ui.updateReadouts({
-			st,
+			state,
 			marker,
-			readout: {
-				k0,
-				k1,
-				kappaNorm
-			}
+			readout: { k0, k1, kappaNorm },
 		});
 	}, { immediate: true });
 
-	// 7) start render loop (viewer calls resize internally if you applied that patch)
-	three.start();
-
-	ui.log("boot: AppCore online ✅");
+	// 7) start render loop
+	threeViewer.start();
+	ui.log(t.logBootOnline);
 }
 
-function buildSevenLinesDraft(base, traImp, graImp) {
-	const rawPts =
-	traImp?.geometry?.pts ??
-	traImp?.geometry ??
-	traImp?.pts ??
-	[];
-
-	// normalize to [{x,y},...]
-	const polyline2d = [];
-	for (const p of rawPts) {
-		const x = p?.x ?? p?.[0];
-		const y = p?.y ?? p?.[1];
-		if (Number.isFinite(x) && Number.isFinite(y)) polyline2d.push({ x, y });
-	}
-
-	// bbox + center (for marker)
-	let bbox = null;
-	let bboxCenter = null;
-	if (polyline2d.length >= 2) {
-		let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-		for (const p of polyline2d) {
-			if (p.x < minX) minX = p.x;
-			if (p.y < minY) minY = p.y;
-			if (p.x > maxX) maxX = p.x;
-			if (p.y > maxY) maxY = p.y;
-		}
-		bbox = { minX, minY, maxX, maxY };
-		bboxCenter = { x: (minX + maxX) * 0.5, y: (minY + maxY) * 0.5 };
-	}
-
-	return {
-		type: "SevenLinesDraft",
-		id: base,
-		source: { tra: traImp?.name, gra: graImp?.name },
-
-		kmLine: { alignmentRef: "right" },
-
-		right: {
-			polyline2d,
-			bbox,
-			bboxCenter
-		},
-
-		left: null,
-		grade: graImp?.grade ?? graImp?.profile ?? null,
-		cant: graImp?.cant ?? null,
-
-		raw: {
-			traKeys: traImp ? Object.keys(traImp) : [],
-			graKeys: graImp ? Object.keys(graImp) : []
-		}
-	};
-}
+*/
