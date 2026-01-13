@@ -1,8 +1,6 @@
-// app/viewSync.js
-
-export function createStore(initialState) {
-	let state = structuredClone(initialState);
-	const subs = new Set();
+export function createStore(initialState = {}) {
+	let state = { ...initialState };
+	const listeners = new Set();
 
 	function getState() {
 		return state;
@@ -10,13 +8,13 @@ export function createStore(initialState) {
 
 	function setState(patch) {
 		state = { ...state, ...patch };
-		for (const fn of subs) fn(state);
+		for (const fn of listeners) fn(state);
 	}
 
-	function subscribe(fn, { immediate = true } = {}) {
-		subs.add(fn);
+	function subscribe(fn, { immediate = false } = {}) {
+		listeners.add(fn);
 		if (immediate) fn(state);
-		return () => subs.delete(fn);
+		return () => listeners.delete(fn);
 	}
 
 	return { getState, setState, subscribe };

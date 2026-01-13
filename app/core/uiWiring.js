@@ -2,7 +2,6 @@
 
 // import { setupFileDrop } from "../io/fileDrop.js";
 import { installFileDrop } from "../io/fileDrop.js";
-
 import { t } from "../i18n/strings.js";
 
 export function wireUI({ logElement, statusElement }) {
@@ -12,36 +11,25 @@ export function wireUI({ logElement, statusElement }) {
 		dropZone: document.getElementById("dropZone"),
 	};
 
-	if (elements.log) elements.log.textContent += `${t("boot_ui")} \n`;
+	if (elements.log) elements.log.textContent += `${t("boot_ui")}\n`;
 
-	// Drop-Zone robust initialisieren
 	try {
 		installFileDrop({
 			element: elements.dropZone ?? document.body,
-			onFiles: (files) => {
+			onFiles: async (files) => {
 				if (elements.log) elements.log.textContent += `files: ${files.length}\n`;
 			},
 		});
 	} catch (error) {
-		if (elements.log) elements.log.textContent += `${t("drop_files")}: ${files.length}\n`;
+		if (elements.log) elements.log.textContent += `installFileDrop failed: ${String(error)}\n`;
 	}
 
 	if (elements.status) elements.status.textContent = t("boot_ui_ok");
-
 	return { elements };
 }
 
 
-
-
-
-
-
-
-
-
 /*
-
 
 import { clamp01 } from "../transitionModel.js";
 import { getStrings } from "../i18n/strings.js";
