@@ -47,10 +47,12 @@
 
 				<button id="btnTrans" class="btn">Transition</button>
 
+				<div class="divider"></div>
+
 				<div class="cursor">
+					<button id="btnCursorMinus" class="btn btn--ghost" title="s minus">−</button>
 					<label class="cursor__label" for="inputCursorS">s</label>
 					<input id="inputCursorS" class="cursor__input" type="number" step="1" value="0" />
-					<button id="btnCursorMinus" class="btn btn--ghost" title="s minus">−</button>
 					<button id="btnCursorPlus" class="btn btn--ghost" title="s plus">+</button>
 				</div>
 				
@@ -58,6 +60,15 @@
 					<label class="picker__label" for="routeProjectSelect">RP</label>
 					<select id="routeProjectSelect" class="picker__select">
 						<option value="">(none)</option>
+					</select>
+				</div>
+				
+				<div class="picker">
+					<label class="picker__label" for="slotSelect">Slot</label>
+					<select id="slotSelect" class="picker__select">
+						<option value="right">right</option>
+						<option value="left">left</option>
+						<option value="km">km</option>
 					</select>
 				</div>
 

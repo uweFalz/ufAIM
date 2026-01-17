@@ -6,12 +6,9 @@ export function createWorkspaceState(initial) {
 	let state = ensureStateShape(initial ?? makeInitialState());
 	const listeners = new Set();
 
-	function getState() {
-		return state;
-	}
+	function getState() { return state; }
 
 	function setState(patch) {
-		// Patch darf Objekt oder Funktion(state)->patch sein (optional nice-to-have)
 		const nextPatch = typeof patch === "function" ? patch(state) : patch;
 		state = ensureStateShape({ ...state, ...(nextPatch ?? {}) });
 		for (const fn of listeners) fn(state);
@@ -27,13 +24,20 @@ export function createWorkspaceState(initial) {
 			setState({ activeRouteProjectId: id ?? null });
 		},
 
-		setCursor(patch) {
-  setState((s) => ({ cursor: { ...s.cursor, ...(patch ?? {}) } }));
-},
+		// G: NEW
+		setActiveSlot(slot) {
+			const v = String(slot ?? "right");
+			const safe = (v === "left" || v === "km" || v === "right") ? v : "right";
+			setState({ activeSlot: safe });
+		},
 
-setPick(pick) {
-  setState((s) => ({ cursor: { ...s.cursor, pick } }));
-},
+		setCursor(patch) {
+			setState({ cursor: { ...state.cursor, ...(patch ?? {}) } });
+		},
+
+		setPick(pick) {
+			setState({ cursor: { ...state.cursor, pick } });
+		},
 	};
 
 	return { getState, setState, subscribe, actions };

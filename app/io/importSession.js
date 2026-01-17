@@ -1,52 +1,31 @@
 // app/io/importSession.js
+// ImportSession = Matching/Grouping (nicht: Store schreiben)
 //
-// ImportSession: caches partial imports (TRA/GRA) by baseId and emits
-// a "best available" SevenLinesDraft on every ingest.
-// - TRA provides: geometry.pts (polyline2d), cant1d
-// - GRA provides: profile1d, grade
-//
-// The draft is kept intentionally lightweight and "view-friendly".
-// Real RouteProject/Registry wiring can come later.
-
-function nowIso() {
-	return new Date().toISOString();
-}
+// Ergebnis: { baseId, slot, source, artifacts[] }
 
 export function makeImportSession() {
 	const cacheByBase = new Map(); // base -> { base, ts, tra?, gra? }
 
 	function ingest(importObject) {
-		const base = importObject?.name ?? "unknown";
-		const prev = cacheByBase.get(base);
+		const baseId = importObject?.name ?? "unknown";
+		const entry = cacheByBase.get(baseId) ?? { baseId, ts: Date.now(), tra: null, gra: null };
 
-		const entry = prev ?? {
-			base,
-			ts: Date.now(),
-			tra: null,
-			gra: null,
-			createdAt: nowIso(),
-		};
-
-		// Update cache
 		if (importObject?.kind === "TRA") entry.tra = importObject;
 		if (importObject?.kind === "GRA") entry.gra = importObject;
+
 		entry.ts = Date.now();
+		cacheByBase.set(baseId, entry);
 
-		cacheByBase.set(base, entry);
-
-		// Slot concept: for now always right
 		const slot = "right";
 
-		// Build "best available" draft every time
-		const draft = buildSevenLinesDraft(base, entry.tra, entry.gra);
-
-		return {
-			imp: importObject,
-			base,
-			slot,
-			draft,
-			entry, // optional for debugging
+		const source = {
+			tra: entry.tra?.name ?? null,
+			gra: entry.gra?.name ?? null,
 		};
+
+		const artifacts = buildArtifactsFromEntry(entry, { slot, source });
+
+		return { baseId, slot, source, artifacts, imp: importObject };
 	}
 
 	function getState() {
@@ -56,150 +35,91 @@ export function makeImportSession() {
 	return { ingest, getState };
 }
 
-function normalizePolyline2d(traImport) {
-	const rawPoints =
-		traImport?.geometry?.pts ??
-		traImport?.geometry ??
-		traImport?.pts ??
-		[];
+function buildArtifactsFromEntry(entry, { slot, source }) {
+	const arts = [];
 
-	const polyline2d = [];
-	for (const p of rawPoints) {
+	// Alignment from TRA
+	const polyline2d =
+	entry?.tra?.geometry?.pts ??
+	entry?.tra?.geometry ??
+	entry?.tra?.pts ??
+	null;
+
+	if (Array.isArray(polyline2d) && polyline2d.length >= 2) {
+		const { bbox, bboxCenter } = computeBbox(polyline2d);
+		arts.push({
+			domain: "alignment2d",
+			kind: "TRA",
+			source,
+			meta: entry.tra?.meta ?? null,
+			payload: { polyline2d, bbox, bboxCenter },
+		});
+	}
+
+	// Profile from GRA
+	const profile1d =
+	entry?.gra?.profile1d ??
+	entry?.gra?.profile ??
+	null;
+
+	if (Array.isArray(profile1d) && profile1d.length >= 2) {
+		arts.push({
+			domain: "profile1d",
+			kind: "GRA",
+			source,
+			meta: entry.gra?.meta ?? null,
+			payload: { profile1d },
+		});
+	}
+
+	// Cant from TRA (in deinem Importer aus TRA abgeleitet)
+	const cant1d =
+	entry?.tra?.cant ??
+	entry?.tra?.cant1d ??
+	null;
+
+	if (Array.isArray(cant1d) && cant1d.length >= 2) {
+		arts.push({
+			domain: "cant1d",
+			kind: "TRA",
+			source,
+			meta: entry.tra?.meta ?? null,
+			payload: { cant1d },
+		});
+	}
+
+	// fallback: if nothing renderable yet, still keep a meta artifact
+	if (arts.length === 0) {
+		arts.push({
+			domain: "unknown",
+			kind: entry.tra ? "TRA" : (entry.gra ? "GRA" : "unknown"),
+			source,
+			meta: { note: "meta only (no renderable payload yet)" },
+			payload: null,
+		});
+	}
+
+	return arts;
+}
+
+function computeBbox(polyline2d) {
+	let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+	for (const p of polyline2d) {
 		const x = p?.x ?? p?.[0];
 		const y = p?.y ?? p?.[1];
-		if (Number.isFinite(x) && Number.isFinite(y)) polyline2d.push({ x, y });
+		if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+		if (x < minX) minX = x;
+		if (y < minY) minY = y;
+		if (x > maxX) maxX = x;
+		if (y > maxY) maxY = y;
 	}
+	const bbox = Number.isFinite(minX)
+	? { minX, minY, maxX, maxY }
+	: null;
 
-	return polyline2d.length ? polyline2d : null;
-}
-
-function computeBBox(polyline2d) {
-	if (!Array.isArray(polyline2d) || polyline2d.length < 2) {
-		return { bbox: null, bboxCenter: null };
-	}
-
-	let minX = Infinity,
-		minY = Infinity,
-		maxX = -Infinity,
-		maxY = -Infinity;
-
-	for (const p of polyline2d) {
-		if (p.x < minX) minX = p.x;
-		if (p.y < minY) minY = p.y;
-		if (p.x > maxX) maxX = p.x;
-		if (p.y > maxY) maxY = p.y;
-	}
-
-	const bbox = { minX, minY, maxX, maxY };
-	const bboxCenter = { x: (minX + maxX) * 0.5, y: (minY + maxY) * 0.5 };
+	const bboxCenter = bbox
+	? { x: (bbox.minX + bbox.maxX) * 0.5, y: (bbox.minY + bbox.maxY) * 0.5 }
+	: null;
 
 	return { bbox, bboxCenter };
-}
-
-function normalizeProfile1d(graImport) {
-	// prefer new importer payloads
-	const profile =
-		graImport?.profile1d ??
-		graImport?.profilePts ??
-		graImport?.gradient1d ??
-		graImport?.pts ??
-		null;
-
-	if (!Array.isArray(profile) || profile.length < 2) return null;
-
-	// normalize minimal shape: {s,z}
-	const out = [];
-	for (const p of profile) {
-		const s = p?.s ?? p?.station ?? p?.[0];
-		const z = p?.z ?? p?.height ?? p?.[1];
-		if (Number.isFinite(s) && Number.isFinite(z)) out.push({ ...p, s, z });
-	}
-
-	out.sort((a, b) => a.s - b.s);
-	return out.length >= 2 ? out : null;
-}
-
-function normalizeGrade1d(graImport) {
-	const grade = graImport?.grade ?? graImport?.grade1d ?? null;
-	if (!Array.isArray(grade) || grade.length < 2) return null;
-
-	const out = [];
-	for (const p of grade) {
-		const s = p?.s ?? p?.station ?? p?.[0];
-		const i = p?.i ?? p?.slope ?? p?.[1];
-		if (Number.isFinite(s) && Number.isFinite(i)) out.push({ ...p, s, i });
-	}
-	out.sort((a, b) => a.s - b.s);
-	return out.length >= 2 ? out : null;
-}
-
-function normalizeCant1d(traImport, graImport) {
-	// Cant comes from TRA right now (cant1d).
-	// Keep hook for future: if later GRA provides ramps etc.
-	const cant =
-		traImport?.cant1d ??
-		traImport?.cant ??
-		graImport?.cant1d ??
-		graImport?.cant ??
-		null;
-
-	if (!Array.isArray(cant) || cant.length < 2) return null;
-
-	const out = [];
-	for (const p of cant) {
-		const s = p?.s ?? p?.station ?? p?.[0];
-		const u = p?.u ?? p?.cant ?? p?.[1];
-		if (Number.isFinite(s) && Number.isFinite(u)) out.push({ ...p, s, u });
-	}
-	out.sort((a, b) => a.s - b.s);
-	return out.length >= 2 ? out : null;
-}
-
-function buildSevenLinesDraft(base, traImport, graImport) {
-	const polyline2d = normalizePolyline2d(traImport);
-	const { bbox, bboxCenter } = computeBBox(polyline2d);
-
-	const profile1d = normalizeProfile1d(graImport);
-	const grade1d = normalizeGrade1d(graImport);
-	const cant1d = normalizeCant1d(traImport, graImport);
-
-	return {
-		type: "SevenLinesDraft",
-		id: base,
-
-		// raw origin info
-		source: {
-			tra: traImport?.name ?? null,
-			gra: graImport?.name ?? null,
-		},
-
-		// km-line concept (later); for now kmLine references right alignment
-		kmLine: { alignmentRef: "right" },
-
-		// Right track (minimal)
-		right: {
-			polyline2d: polyline2d ?? null,
-			bbox,
-			bboxCenter,
-
-			// bands on alignment (s->z, s->u, ...)
-			profile1d: profile1d ?? null,
-			grade1d: grade1d ?? null,
-			cant1d: cant1d ?? null,
-		},
-
-		// Left optional later
-		left: null,
-
-		// convenient top-level mirrors (optional; keep them for backward compat)
-		profile1d: profile1d ?? null,
-		cant1d: cant1d ?? null,
-		grade1d: grade1d ?? null,
-
-		meta: {
-			hasTRA: Boolean(traImport),
-			hasGRA: Boolean(graImport),
-			updatedAt: nowIso(),
-		},
-	};
 }

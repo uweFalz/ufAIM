@@ -1,176 +1,199 @@
 // app/io/importApply.js
-// Apply Import -> Store
-// - Creates/updates RouteProject registry (minimal, no artifacts yet)
-// - Writes quick-render hooks for 3D + Bands + Cant
-// - Does NOT depend on any other helpers
+// Registry Apply (format-agnostisch)
+//
+// Input: { baseId, slot, source, artifacts[] }
+// Output: store.patch + effects (log/props)
+//
+// NOTE: QuickHooks sind nur View-Cache (für 3D/Overlays), NICHT die eigentliche Datenhaltung.
 
 function nowIso() {
 	return new Date().toISOString();
 }
 
-function detectKind({ imp, draft }) {
-	const k = imp?.kind || imp?.type || draft?.kind || draft?.type || "unknown";
-	const s = String(k).toLowerCase();
-	if (s.includes("tra")) return "TRA";
-	if (s.includes("gra")) return "GRA";
-	return String(k).toUpperCase();
+function makeArtifactId({ baseId, slot, domain, kind }) {
+	return `${baseId}::${slot}::${domain}::${kind}::${Date.now()}`;
 }
 
-function pickBaseId({ imp, draft }) {
-	// prefer draft.id (importSession sets it), else imp.name, else fallback
-	return draft?.id || imp?.name || imp?.id || imp?.baseId || "unknown";
+function ensureObject(x) {
+	return (x && typeof x === "object") ? x : {};
 }
 
-function ensureRouteProject(routeProjects, baseId) {
-	const existing = routeProjects?.[baseId];
+function ensureStoreShape(state) {
+	const s = ensureObject(state);
+	return {
+		activeRouteProjectId: s.activeRouteProjectId ?? null,
+		cursor: ensureObject(s.cursor),
+
+		routeProjects: ensureObject(s.routeProjects),
+		artifacts: ensureObject(s.artifacts),
+
+		// quick-render hooks (View Cache)
+		import_polyline2d: s.import_polyline2d ?? null,
+		import_marker2d: s.import_marker2d ?? null,
+		import_profile1d: s.import_profile1d ?? null,
+		import_cant1d: s.import_cant1d ?? null,
+		import_meta: s.import_meta ?? null,
+	};
+}
+
+function upsertRouteProject(routeProjects, baseId) {
+	const existing = routeProjects[baseId];
 	if (existing) return existing;
 
-	return {
+	const created = {
 		id: baseId,
 		createdAt: nowIso(),
 		updatedAt: nowIso(),
+
+		// Slots nach 7-Linien-Modell (minimal start)
 		slots: {
-			right: {},
+			right: {}, // { alignmentArtifactId, profileArtifactId, cantArtifactId, otherArtifactIds[] }
 			left: {},
 			km: {},
 		},
+
 		meta: {},
 	};
+
+	routeProjects[baseId] = created;
+	return created;
 }
 
-function extractAlignmentPolyline({ draft, slot = "right" }) {
-	return (
-	draft?.[slot]?.polyline2d ??
-	draft?.right?.polyline2d ??
-	draft?.polyline2d ??
-	null
-	);
-}
+function attachArtifactToSlot({ rp, slot, artifact }) {
+	rp.updatedAt = nowIso();
+	const s = rp.slots?.[slot] ?? (rp.slots[slot] = {});
 
-function extractMarker({ draft, polyline2d, slot = "right" }) {
-	return (
-	draft?.[slot]?.bboxCenter ??
-	draft?.right?.bboxCenter ??
-	draft?.bboxCenter ??
-	(Array.isArray(polyline2d) ? polyline2d[0] : null)
-	);
-}
-
-function extractProfile({ draft, slot = "right" }) {
-	return (
-	// current (your draft uses right.profile1d)
-	draft?.[slot]?.profile1d ??
-	draft?.right?.profile1d ??
-	draft?.profile1d ??
-
-	// legacy aliases
-	draft?.[slot]?.gradient1d ??
-	draft?.right?.gradient1d ??
-	draft?.gradient1d ??
-
-	draft?.[slot]?.profilePts ??
-	draft?.right?.profilePts ??
-	draft?.profilePts ??
-
-	draft?.[slot]?.gradientPts ??
-	draft?.right?.gradientPts ??
-	draft?.gradientPts ??
-
-	null
-	);
-}
-
-function extractCant({ draft, slot = "right" }) {
-	return (
-	draft?.[slot]?.cant1d ??
-	draft?.right?.cant1d ??
-	draft?.cant1d ??
-	null
-	);
-}
-
-export function applyImportToProject({ store, imp, draft, slot = "right" }) {
-	if (!store?.setState || !store?.getState) {
-		return [{ type: "log", level: "error", message: "importApply: missing store" }];
+	// Domain routing (minimal)
+	if (artifact.domain === "alignment2d") s.alignmentArtifactId = artifact.id;
+	else if (artifact.domain === "profile1d") s.profileArtifactId = artifact.id;
+	else if (artifact.domain === "cant1d") s.cantArtifactId = artifact.id;
+	else {
+		if (!Array.isArray(s.otherArtifactIds)) s.otherArtifactIds = [];
+		s.otherArtifactIds.push(artifact.id);
 	}
 
-	const baseId = pickBaseId({ imp, draft });
-	const kind = detectKind({ imp, draft });
-	const source = draft?.source ?? imp?.source ?? { file: imp?.name ?? null };
+	// meta hints
+	rp.meta.lastDomain = artifact.domain;
+	rp.meta.lastKind = artifact.kind;
+}
 
-	// Extract payloads (optional)
-	const polyline2d = extractAlignmentPolyline({ draft, slot });
-	const marker2d = extractMarker({ draft, polyline2d, slot });
-	const profile1d = extractProfile({ draft, slot });
-	const cant1d = extractCant({ draft, slot });
+function pickMarkerFromPolyline(polyline2d) {
+	if (!Array.isArray(polyline2d) || polyline2d.length < 1) return null;
+	return polyline2d[0];
+}
 
-	// Pull previous state
-	const prev = store.getState() ?? {};
-	const routeProjects = { ...(prev.routeProjects ?? {}) };
+function applyQuickHooksFromActiveRP(state) {
+	const s = ensureStoreShape(state);
 
-	// Upsert RP + minimal flags into slots
-	const rp = ensureRouteProject(routeProjects, baseId);
-	rp.updatedAt = nowIso();
+	const baseId = s.activeRouteProjectId;
+	if (!baseId) return s;
 
-	const slotObj = rp.slots?.[slot] ?? (rp.slots[slot] = {});
-	if (Array.isArray(polyline2d) && polyline2d.length >= 2) slotObj.hasAlignment = true;
-	if (Array.isArray(profile1d) && profile1d.length >= 2) slotObj.hasProfile = true;
-	if (Array.isArray(cant1d) && cant1d.length >= 2) slotObj.hasCant = true;
+	const rp = s.routeProjects?.[baseId];
+	if (!rp) return s;
 
-	routeProjects[baseId] = rp;
+	const slot = "right"; // später: rp.activeSlot etc.
+	const slotObj = rp.slots?.[slot] ?? null;
+	if (!slotObj) return s;
 
-	// Patch (always creates RP + selects it)
-	const patch = {
-		routeProjects,
-		activeRouteProjectId: baseId,
+	const patch = { ...s };
 
-		import_meta: {
-			base: baseId,
-			slot,
-			kind,
-			source,
-			at: nowIso(),
-		},
-	};
+	// alignment quickhook
+	const aId = slotObj.alignmentArtifactId;
+	const a = aId ? s.artifacts?.[aId] : null;
+	if (a?.payload?.polyline2d) {
+		patch.import_polyline2d = a.payload.polyline2d;
+		patch.import_marker2d = a.payload.bboxCenter ?? pickMarkerFromPolyline(a.payload.polyline2d);
+	}
+
+	// profile quickhook
+	const pId = slotObj.profileArtifactId;
+	const p = pId ? s.artifacts?.[pId] : null;
+	if (p?.payload?.profile1d) patch.import_profile1d = p.payload.profile1d;
+
+	// cant quickhook
+	const cId = slotObj.cantArtifactId;
+	const c = cId ? s.artifacts?.[cId] : null;
+	if (c?.payload?.cant1d) patch.import_cant1d = c.payload.cant1d;
+
+	return patch;
+}
+
+export function applyImportToProject({ store, baseId, slot = "right", source = null, artifacts = [], ui }) {
+	if (!store?.getState || !store?.setState) {
+		return [{ type: "log", level: "error", message: "importApply: missing store" }];
+	}
+	if (!baseId) {
+		return [{ type: "log", level: "error", message: "importApply: missing baseId" }];
+	}
+
+	const prev = ensureStoreShape(store.getState());
+
+	// clone maps
+	const nextArtifacts = { ...prev.artifacts };
+	const nextRouteProjects = { ...prev.routeProjects };
+	const rp = upsertRouteProject(nextRouteProjects, baseId);
 
 	const effects = [];
 
-	// QuickHooks
-	if (Array.isArray(polyline2d) && polyline2d.length >= 2) {
-		patch.import_polyline2d = polyline2d;
-		patch.import_marker2d = marker2d;
+	// commit artifacts
+	for (const inArt of artifacts) {
+		if (!inArt) continue;
 
-		effects.push({ type: "log", level: "info", message: `applyImport[TRA]: ${baseId} pts=${polyline2d.length}` });
-		effects.push({ type: "props", object: { import: baseId, kind: "TRA", pts: polyline2d.length, slot } });
+		const domain = inArt.domain ?? "unknown";
+		const kind = inArt.kind ?? "unknown";
+
+		const id = inArt.id ?? makeArtifactId({ baseId, slot, domain, kind });
+
+		const artifact = {
+			id,
+			baseId,
+			slot,
+			domain,      // alignment2d | profile1d | cant1d | unknown
+			kind,        // TRA | GRA | ...
+			createdAt: nowIso(),
+			source: inArt.source ?? source ?? null,
+			meta: inArt.meta ?? null,
+			payload: inArt.payload ?? null,
+		};
+
+		nextArtifacts[id] = artifact;
+		attachArtifactToSlot({ rp, slot, artifact });
+
+		effects.push({ type: "log", level: "info", message: `artifact: + ${id}` });
 	}
 
-	if (Array.isArray(profile1d) && profile1d.length >= 2) {
-		patch.import_profile1d = profile1d;
+	// selection: if none yet, pick this
+	const nextActive = prev.activeRouteProjectId ?? baseId;
 
-		effects.push({ type: "log", level: "info", message: `applyImport[GRA]: ${baseId} pts=${profile1d.length}` });
-		effects.push({ type: "props", object: { import: baseId, kind: "GRA", pts: profile1d.length, slot } });
-	}
+	const patchBase = {
+		activeRouteProjectId: nextActive,
+		routeProjects: nextRouteProjects,
+		artifacts: nextArtifacts,
+		import_meta: {
+			base: baseId,
+			slot,
+			at: nowIso(),
+			source,
+			artifacts: artifacts.map(a => ({ domain: a?.domain, kind: a?.kind })),
+		},
+	};
 
-	if (Array.isArray(cant1d) && cant1d.length >= 2) {
-		patch.import_cant1d = cant1d;
+	// now mirror quickhooks from active RP
+	const patchFinal = applyQuickHooksFromActiveRP({ ...prev, ...patchBase });
 
-		effects.push({ type: "log", level: "info", message: `applyImport[CANT]: ${baseId} pts=${cant1d.length}` });
-		effects.push({ type: "props", object: { import: baseId, kind: "CANT", pts: cant1d.length, slot } });
-	}
+	store.setState(patchFinal);
 
-	const any =
-	(Array.isArray(polyline2d) && polyline2d.length >= 2) ||
-	(Array.isArray(profile1d) && profile1d.length >= 2) ||
-	(Array.isArray(cant1d) && cant1d.length >= 2);
+	// props effect
+	effects.push({
+		type: "props",
+		object: {
+			active: patchFinal.activeRouteProjectId,
+			base: baseId,
+			slot,
+			artifactCount: Object.keys(patchFinal.artifacts ?? {}).length,
+			rpCount: Object.keys(patchFinal.routeProjects ?? {}).length,
+		},
+	});
 
-	if (!any) {
-		effects.push({
-			type: "log",
-			level: "info",
-			message: `applyImport: stored meta only (no renderable payload) base=${baseId} kind=${kind}`,
-		});
-	}
-
-	store.setState(patch);
 	return effects;
 }
