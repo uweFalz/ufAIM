@@ -7,7 +7,6 @@
 
 		<link rel="stylesheet" href="./styles.css" />
 
-		<!-- Optional: Import maps if you use them in your project; keep if needed -->
 		<script type="importmap">
 			{
 				"imports": {
@@ -15,12 +14,9 @@
 				}
 			}
 		</script>
-		
+
 		<script>
-			if (
-			location.hostname === "localhost" ||
-			location.hostname === "127.0.0.1"
-			) {
+			if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
 				navigator.serviceWorker?.register("./sw-nocache.js")
 				.then(() => console.log("sw-nocache active (DEV) ✅"))
 				.catch(err => console.warn("sw-nocache failed", err));
@@ -38,8 +34,8 @@
 			<div class="actions">
 				<button id="btnReset" class="btn">Reset</button>
 
-				<button id="btnSave" class="btn">Save (local)</button>
-				<button id="btnExport" class="btn">Export JSON</button>
+				<button id="btnSave" class="btn">Save</button>
+				<button id="btnExport" class="btn">Export</button>
 
 				<button id="btnImport" class="btn btn--primary">Import…</button>
 				<input
@@ -50,81 +46,66 @@
 				/>
 
 				<button id="btnTrans" class="btn">Transition</button>
+
+				<div class="cursor">
+					<label class="cursor__label" for="inputCursorS">s</label>
+					<input id="inputCursorS" class="cursor__input" type="number" step="1" value="0" />
+					<button id="btnCursorMinus" class="btn btn--ghost" title="s minus">−</button>
+					<button id="btnCursorPlus" class="btn btn--ghost" title="s plus">+</button>
+				</div>
+				
+				<div class="picker">
+					<label class="picker__label" for="routeProjectSelect">RP</label>
+					<select id="routeProjectSelect" class="picker__select">
+						<option value="">(none)</option>
+					</select>
+				</div>
+
+				<div class="divider"></div>
+
+				<button id="btnToggleBands" class="btn">Bänder</button>
+				<button id="btnToggleSection" class="btn">Schnitt</button>
 			</div>
 		</header>
 
-		<main class="layout">
-			<section class="panel panel--left">
-				<h2 class="panel__title">Controls</h2>
-
-				<div class="control">
-					<label for="s">s (Station)</label>
-					<input id="s" type="range" min="0" max="1000" step="1" />
-					<div class="hint" id="sVal">—</div>
+		<main class="shell">
+			<section class="stage">
+				<div class="view view--3d view--full">
+					<div class="view__title">3D</div>
+					<canvas id="view3d"></canvas>
 				</div>
 
-				<div class="control">
-					<label for="u">u (0…1)</label>
-					<input id="u" type="range" min="0" max="1000" step="1" />
-					<div class="hint" id="uVal">—</div>
+				<!-- Floating Overlays -->
+				<div id="overlayBands" class="overlayPane overlayPane--hidden">
+					<header class="overlayPane__header">
+						<div class="overlayPane__title">Bänder</div>
+						<button id="btnCloseBands" class="btn btn--ghost">×</button>
+					</header>
+					<div id="board2d" class="overlayPane__body">(Bands)</div>
 				</div>
 
-				<div class="control">
-					<label for="L">L</label>
-					<input id="L" type="range" min="10" max="2000" step="1" />
-					<div class="hint" id="LVal">—</div>
-				</div>
-
-				<div class="control">
-					<label for="R">R</label>
-					<input id="R" type="range" min="10" max="10000" step="1" />
-					<div class="hint" id="RVal">—</div>
-				</div>
-
-				<hr />
-
-				<h3 class="panel__subtitle">Readout</h3>
-				<div class="readout3x3">
-					<div class="readout__label">k0</div><div class="readout__value" id="k0Val">—</div>
-					<div class="readout__label">k1</div><div class="readout__value" id="k1Val">—</div>
-					<div class="readout__label">‖k‖</div><div class="readout__value" id="kappaVal">—</div>
-
-					<div class="readout__label">L</div><div class="readout__value" id="LShow">—</div>
-					<div class="readout__label">R</div><div class="readout__value" id="RShow">—</div>
-					<div class="readout__label">—</div><div class="readout__value"> </div>
-				</div>
-
-				<hr />
-
-				<h3 class="panel__subtitle">Log</h3>
-				<pre id="log" class="log"></pre>
-			</section>
-
-			<section class="panel panel--center">
-				<h2 class="panel__title">Views</h2>
-
-				<div class="views">
-					<div class="view view--3d">
-						<div class="view__title">3D</div>
-						<canvas id="view3d"></canvas>
-					</div>
-
-					<div class="view view--2d">
-						<div class="view__title">2D</div>
-						<div id="board2d" class="board2d"></div>
-					</div>
+				<div id="overlaySection" class="overlayPane overlayPane--hidden">
+					<header class="overlayPane__header">
+						<div class="overlayPane__title">Schnitt</div>
+						<button id="btnCloseSection" class="btn btn--ghost">×</button>
+					</header>
+					<div id="boardSection" class="overlayPane__body">(Section)</div>
 				</div>
 			</section>
 
-			<section class="panel panel--right">
-				<h2 class="panel__title">Props</h2>
-				<pre id="props" class="props"></pre>
-
-				<div id="toasts" class="toasts"></div>
-			</section>
+			<footer class="footer">
+				<div class="footer__pane">
+					<div class="footer__title">Log</div>
+					<pre id="log" class="log log--footer"></pre>
+				</div>
+				<div class="footer__pane">
+					<div class="footer__title">Props</div>
+					<pre id="props" class="props props--footer"></pre>
+				</div>
+			</footer>
 		</main>
 
-		<!-- Transition Overlay -->
+		<!-- Transition Overlay (optional / legacy) -->
 		<section id="transOverlay" class="overlay hidden">
 			<div class="overlay__card">
 				<header class="overlay__header">

@@ -9,4 +9,8 @@ export const de = {
 	
 	boot_ui: "UI wiring …",
 	boot_ui_ok: "UI OK",
+	
+	status_ready: "status_ready",
+	status_busy: "Import …",
+	status_error: "Fehler",
 };
