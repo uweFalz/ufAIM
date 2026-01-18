@@ -1,2 +1,14 @@
 .DS_Store
 *.log
+
+# LaTeX build artefacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.pdf
+*.run.xml
+
+# scratch / experiments
+app/empty.js
