@@ -1,20 +1,18 @@
 // app/core/uiWiring.js
 //
-// UI-only wiring for ufAIM sandbox
-// - find DOM elements
-// - addEventListener (buttons, inputs, selects)
-// - write status/log/boards/props
-// - manage overlay panes (Bands/Section + Transition legacy)
+// UI only:
+// - find elements
+// - wire buttons / inputs
+// - write status/log/boards
 //
-// Rule of thumb:
-// - appCore provides callbacks (onSetS, onStep, onRouteProjectChange, ...)
-// - uiWiring owns ALL DOM listeners
+// i18n: all UI strings via t(...)
 
 import { t } from "../i18n/strings.js";
 
 function resolveElement(explicit, fallbackId) {
 	if (explicit) return explicit;
-	return fallbackId ? document.getElementById(fallbackId) : null;
+	if (!fallbackId) return null;
+	return document.getElementById(fallbackId);
 }
 
 function setText(target, text) {
@@ -30,8 +28,8 @@ function appendLine(target, line) {
 
 function toggleHiddenByClass(element, hiddenClass) {
 	if (!element) return false;
-	const isHiddenNow = element.classList.toggle(hiddenClass);
-	return !isHiddenNow; // true => visible
+	const isHidden = element.classList.toggle(hiddenClass);
+	return !isHidden; // returns "now visible"
 }
 
 function setPrimary(button, isOn) {
@@ -40,47 +38,46 @@ function setPrimary(button, isOn) {
 }
 
 export function wireUI({ logElement, statusElement } = {}) {
-	// -------------------------------------------------------------------------
-	// Elements
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// Element lookup
+	// ------------------------------------------------------------
 	const elements = {
-		// status + debug panes
 		log: resolveElement(logElement, "log"),
 		status: resolveElement(statusElement, "status"),
 		props: document.getElementById("props"),
 
-		// overlays + boards
+		// boards
 		boardBands: document.getElementById("board2d"),
 		boardSection: document.getElementById("boardSection"),
+
+		// overlay toggles
+		buttonBands: document.getElementById("btnToggleBands"),
+		buttonSection: document.getElementById("btnToggleSection"),
 
 		overlayBands: document.getElementById("overlayBands"),
 		overlaySection: document.getElementById("overlaySection"),
 
-		buttonBands: document.getElementById("btnToggleBands"),
-		buttonSection: document.getElementById("btnToggleSection"),
-
 		closeBands: document.getElementById("btnCloseBands"),
 		closeSection: document.getElementById("btnCloseSection"),
 
-		// cursor controls (topbar)
+		// transition overlay
+		transitionOverlay: document.getElementById("transOverlay"),
+		buttonTransition: document.getElementById("btnTrans"),
+		buttonTransitionClose: document.getElementById("btnTransClose"),
+
+		// cursor controls
 		cursorSInput: document.getElementById("inputCursorS"),
 		cursorMinus: document.getElementById("btnCursorMinus"),
 		cursorPlus: document.getElementById("btnCursorPlus"),
 
-		// RP select (topbar)
+		// RP select
 		routeProjectSelect: document.getElementById("routeProjectSelect"),
-		// G: NEW slot picker
 		slotSelect: document.getElementById("slotSelect"),
-
-		// Transition overlay (legacy / optional)
-		transitionOverlay: document.getElementById("transOverlay"),
-		buttonTransition: document.getElementById("btnTrans"),
-		buttonTransitionClose: document.getElementById("btnTransClose"),
 	};
 
-	// -------------------------------------------------------------------------
-	// Logging + status
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// logging + status
+	// ------------------------------------------------------------
 	function logLine(line) {
 		appendLine(elements.log, line);
 	}
@@ -110,21 +107,9 @@ export function wireUI({ logElement, statusElement } = {}) {
 		setText(elements.status, t("status_error"));
 	}
 
-	// -------------------------------------------------------------------------
-	// Props (debug)
-	// -------------------------------------------------------------------------
-	function showProps(object) {
-		if (!elements.props) return;
-		try {
-			elements.props.textContent = JSON.stringify(object ?? null, null, 2);
-		} catch {
-			elements.props.textContent = String(object);
-		}
-	}
-
-	// -------------------------------------------------------------------------
-	// Boards (text-only right now)
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// boards (text-only)
+	// ------------------------------------------------------------
 	function setBoardBandsText(text) {
 		if (!elements.boardBands) return;
 		elements.boardBands.textContent = String(text ?? "");
@@ -135,33 +120,44 @@ export function wireUI({ logElement, statusElement } = {}) {
 		elements.boardSection.textContent = String(text ?? "");
 	}
 
-	// -------------------------------------------------------------------------
-	// Cursor input helpers
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// props (debug helper)
+	// ------------------------------------------------------------
+	function showProps(object) {
+		if (!elements.props) return;
+		try {
+			elements.props.textContent = JSON.stringify(object ?? null, null, 2);
+		} catch {
+			elements.props.textContent = String(object);
+		}
+	}
+
+	// ------------------------------------------------------------
+	// cursor input helper
+	// ------------------------------------------------------------
 	function setCursorSInputValue(value) {
 		if (!elements.cursorSInput) return;
 		elements.cursorSInput.value = String(value ?? "");
 	}
 
-	// -------------------------------------------------------------------------
-	// RouteProject select helpers
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// RP select helper
+	// ------------------------------------------------------------
 	function setRouteProjectOptions(ids, activeId) {
 		const sel = elements.routeProjectSelect;
 		if (!sel) return;
 
-		const list = Array.isArray(ids) ? ids.slice() : [];
-		list.sort((a, b) => String(a).localeCompare(String(b)));
-
-		const wanted = activeId && list.includes(activeId) ? activeId : "";
+		const safeIds = Array.isArray(ids) ? ids : [];
+		const wanted = activeId && safeIds.includes(activeId) ? activeId : "";
 
 		sel.innerHTML = "";
+
 		const none = document.createElement("option");
 		none.value = "";
 		none.textContent = "(none)";
 		sel.appendChild(none);
 
-		for (const id of list) {
+		for (const id of safeIds) {
 			const opt = document.createElement("option");
 			opt.value = id;
 			opt.textContent = id;
@@ -170,10 +166,15 @@ export function wireUI({ logElement, statusElement } = {}) {
 
 		sel.value = wanted;
 	}
+	
+	function setSlotSelectValue(value) {
+		if (!elements.slotSelect) return;
+		elements.slotSelect.value = String(value ?? "right");
+	}
 
-	// -------------------------------------------------------------------------
-	// Overlay panes (Bands / Section)
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// overlays
+	// ------------------------------------------------------------
 	function openBands() {
 		if (!elements.overlayBands) return;
 		elements.overlayBands.classList.remove("overlayPane--hidden");
@@ -210,9 +211,6 @@ export function wireUI({ logElement, statusElement } = {}) {
 		setPrimary(elements.buttonSection, visible);
 	}
 
-	// -------------------------------------------------------------------------
-	// Transition overlay (legacy)
-	// -------------------------------------------------------------------------
 	function openTransition() {
 		if (!elements.transitionOverlay) return;
 		elements.transitionOverlay.classList.remove("hidden");
@@ -223,63 +221,69 @@ export function wireUI({ logElement, statusElement } = {}) {
 		elements.transitionOverlay.classList.add("hidden");
 	}
 
-	// -------------------------------------------------------------------------
-	// Wiring hooks (callbacks injected by appCore)
-	// -------------------------------------------------------------------------
-	function wireCursorControls({ onSetS, onStep } = {}) {
-		const input = elements.cursorSInput;
-		const minus = elements.cursorMinus;
-		const plus = elements.cursorPlus;
-
-		if (input) {
-			input.addEventListener("change", () => onSetS?.(input.value));
-			input.addEventListener("keydown", (ev) => {
-				if (ev.key === "Enter") onSetS?.(input.value);
-			});
-		}
-		minus?.addEventListener("click", () => onStep?.(-10));
-		plus?.addEventListener("click", () => onStep?.(+10));
-	}
-
-	function wireRouteProjectSelect({ onChange } = {}) {
-		const sel = elements.routeProjectSelect;
-		if (!sel) return;
-		sel.addEventListener("change", () => onChange?.(sel.value || ""));
-	}
-
-	// G: NEW
-	function setSlotSelectValue(value) {
-		if (!elements.slotSelect) return;
-		elements.slotSelect.value = String(value ?? "right");
-	}
-
-	// -------------------------------------------------------------------------
-	// Default UI state + built-in UI-only listeners
-	// -------------------------------------------------------------------------
-	// start hidden
+	// initial UI state
 	closeBands();
 	closeSection();
 	closeTransition();
 
-	// overlay buttons
+	// wire overlay buttons
 	elements.buttonBands?.addEventListener("click", toggleBands);
 	elements.buttonSection?.addEventListener("click", toggleSection);
 	elements.closeBands?.addEventListener("click", closeBands);
 	elements.closeSection?.addEventListener("click", closeSection);
 
-	// transition buttons
 	elements.buttonTransition?.addEventListener("click", openTransition);
 	elements.buttonTransitionClose?.addEventListener("click", closeTransition);
 
-	// click on backdrop closes transition (but not clicks inside card)
+	// click backdrop closes (but not clicks inside card)
 	elements.transitionOverlay?.addEventListener("click", (event) => {
 		if (event.target === elements.transitionOverlay) closeTransition();
 	});
 
-	// ESC closes transition
+	// ESC closes transition overlay
 	window.addEventListener("keydown", (event) => {
 		if (event.key === "Escape") closeTransition();
 	});
+
+	// ------------------------------------------------------------
+	// wiring helpers (so appCore doesn't touch addEventListener)
+	// ------------------------------------------------------------
+	function wireCursorControls({ onSetCursorS, onNudgeMinus, onNudgePlus } = {}) {
+		const input = elements.cursorSInput;
+
+		if (input && typeof onSetCursorS === "function") {
+			input.addEventListener("change", () => onSetCursorS(input.value));
+			input.addEventListener("keydown", (ev) => {
+				if (ev.key === "Enter") onSetCursorS(input.value);
+			});
+		}
+
+		if (elements.cursorMinus && typeof onNudgeMinus === "function") {
+			elements.cursorMinus.addEventListener("click", () => onNudgeMinus());
+		}
+
+		if (elements.cursorPlus && typeof onNudgePlus === "function") {
+			elements.cursorPlus.addEventListener("click", () => onNudgePlus());
+		}
+	}
+
+	function wireRouteProjectSelect({ onChange } = {}) {
+		const sel = elements.routeProjectSelect;
+		if (!sel || typeof onChange !== "function") return;
+
+		sel.addEventListener("change", () => {
+			onChange(sel.value || "");
+		});
+	}
+	
+	function wireSlotSelect({ onChange } = {}) {
+		const sel = elements.slotSelect;
+		if (!sel || typeof onChange !== "function") return;
+
+		sel.addEventListener("change", () => {
+			onChange(sel.value || "right");
+		});
+	}
 
 	// small boot feedback
 	logLine(t("boot_ui"));
@@ -292,7 +296,6 @@ export function wireUI({ logElement, statusElement } = {}) {
 		logLine,
 		logInfo,
 		logError,
-
 		setStatus,
 		setStatusOk,
 		setStatusBusy,
@@ -305,27 +308,26 @@ export function wireUI({ logElement, statusElement } = {}) {
 		setBoardBandsText,
 		setBoardSectionText,
 
-		// cursor
+		// cursor helpers
 		setCursorSInputValue,
-		wireCursorControls,
 
-		// RP select
+		// RP helpers
 		setRouteProjectOptions,
-		wireRouteProjectSelect,
-		
-		// G: NEW
 		setSlotSelectValue,
+		wireSlotSelect,
 
-		// overlays (optional external control)
+		// overlays
 		openBands,
 		closeBands,
 		toggleBands,
-
 		openSection,
 		closeSection,
 		toggleSection,
-
 		openTransition,
 		closeTransition,
+
+		// wiring helpers
+		wireCursorControls,
+		wireRouteProjectSelect,
 	};
 }

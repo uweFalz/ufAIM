@@ -1,30 +1,24 @@
 // app/core/appCore.js
-//
-// ufAIM sandbox boot
-// - Store (workspaceState) as SPOT for UI state
-// - Import (TRA/GRA) via importSession + applyImportToProject
-// - ThreeView is master view (3D)
-// - Overlays are "read-only text docks" for now (Bands / Section)
-//
 // QuickHooks mode (stable freeze):
 // - applyImportToProject writes to store.import_* (import_polyline2d, import_profile1d, import_cant1d, import_meta)
-// - appCore mirrors those quickhooks into routeProjects[baseId].hooks for later re-activation via RP select
-// - switching RP restores quickhooks into store.import_* (cheap + robust)
+// - RouteProjectSelect (RP) switches activeRouteProjectId and mirrors rp.hooks -> store.import_*
+// - 3D master renders from store.import_polyline2d (+ marker + section line debug)
+// - overlays are text-only (bands + section)
 
 import { wireUI } from "./uiWiring.js";
 import { t } from "../i18n/strings.js";
 
 import { installFileDrop } from "../io/fileDrop.js";
-import { importFileAuto } from "../io/importTRA_GRA.js";
+import { importFileAuto } from "../io/importTRA_GRA.js"; // <-- muss hier raus!!!
 import { makeImportSession } from "../io/importSession.js";
-import { applyImportToProject } from "../io/importApply.js";
+import { applyImportToProject, mirrorQuickHooksFromActive } from "../io/importApply.js";
 
 import { createWorkspaceState } from "./workspaceState.js";
 import { makeThreeViewer } from "../view/threeViewer.js";
 
-// -----------------------------------------------------------------------------
-// Small helpers
-// -----------------------------------------------------------------------------
+// ------------------------------------------------------------
+// helpers
+// ------------------------------------------------------------
 function clampNumber(value, min, max) {
 	const v = Number(value);
 	if (!Number.isFinite(v)) return min;
@@ -35,12 +29,8 @@ function formatNum(v, digits = 3) {
 	return Number.isFinite(v) ? v.toFixed(digits) : "—";
 }
 
-function nowIso() {
-	return new Date().toISOString();
-}
-
-// cumulative chainage along polyline vertices: [0, ..., total]
 function computeChainage(polyline2d) {
+	// cumulative length per vertex
 	if (!Array.isArray(polyline2d) || polyline2d.length < 2) return null;
 
 	const cum = new Array(polyline2d.length);
@@ -54,14 +44,14 @@ function computeChainage(polyline2d) {
 	return cum;
 }
 
-// sample point + tangent at chainage s (m)
 function samplePointAndTangent(polyline2d, cum, s) {
+	// s in meters along polyline
 	if (!cum || !Array.isArray(polyline2d) || polyline2d.length < 2) return null;
 
 	const total = cum[cum.length - 1];
 	const ss = clampNumber(s, 0, total);
 
-	// find segment containing ss
+	// find segment
 	let i = 1;
 	while (i < cum.length && cum[i] < ss) i++;
 	if (i >= cum.length) i = cum.length - 1;
@@ -80,14 +70,13 @@ function samplePointAndTangent(polyline2d, cum, s) {
 	let tx = (b.x - a.x);
 	let ty = (b.y - a.y);
 	const len = Math.hypot(tx, ty) || 1e-9;
-	tx /= len;
-	ty /= len;
+	tx /= len; ty /= len;
 
 	return { x, y, tx, ty, s: ss, total };
 }
 
-// debug section line (perpendicular)
 function makeSectionLine(sample, halfWidth = 20) {
+	// normal is (-ty, tx)
 	const nx = -sample.ty;
 	const ny = sample.tx;
 	return {
@@ -96,21 +85,19 @@ function makeSectionLine(sample, halfWidth = 20) {
 	};
 }
 
-// -----------------------------------------------------------------------------
-// Overlay renderers (text only, no plotting yet)
-// -----------------------------------------------------------------------------
-function renderBandsText(profile1d, cant1d, cursorS) {
+function renderBandsText(state) {
+	const profile = state.import_profile1d;
+	const cant = state.import_cant1d;
+
 	const lines = [];
-	lines.push(`(Bands) cursor.s=${formatNum(cursorS ?? 0, 1)} m`);
+	lines.push(`(Bands) cursor.s=${formatNum(state.cursor?.s ?? 0, 1)} m`);
 
 	// z(s)
-	if (Array.isArray(profile1d) && profile1d.length >= 2) {
+	if (Array.isArray(profile) && profile.length >= 2) {
 		lines.push("");
-		lines.push(`z(s) (Profile) pts=${profile1d.length}`);
-		for (const p of profile1d.slice(0, 10)) {
-			lines.push(
-				`  s=${formatNum(p.s, 1)}  z=${formatNum(p.z, 3)}  R=${p.R ?? "—"}  T=${p.T ?? "—"}`
-			);
+		lines.push(`z(s) (Profile) pts=${profile.length}`);
+		for (const p of profile.slice(0, 10)) {
+			lines.push(`  s=${formatNum(p.s, 1)}  z=${formatNum(p.z, 3)}  R=${p.R ?? "—"}  T=${p.T ?? "—"}`);
 		}
 	} else {
 		lines.push("");
@@ -118,10 +105,10 @@ function renderBandsText(profile1d, cant1d, cursorS) {
 	}
 
 	// u(s)
-	if (Array.isArray(cant1d) && cant1d.length >= 2) {
+	if (Array.isArray(cant) && cant.length >= 2) {
 		lines.push("");
-		lines.push(`u(s) (Cant/Überhöhung) pts=${cant1d.length}`);
-		for (const p of cant1d.slice(0, 10)) {
+		lines.push(`u(s) (Cant/Überhöhung) pts=${cant.length}`);
+		for (const p of cant.slice(0, 10)) {
 			lines.push(`  s=${formatNum(p.s, 1)}  u=${formatNum(p.u, 4)} m`);
 		}
 	} else {
@@ -132,14 +119,15 @@ function renderBandsText(profile1d, cant1d, cursorS) {
 	return lines.join("\n");
 }
 
-function renderSectionText(sectionInfo, cursorS) {
+function renderSectionText(state, sectionInfo) {
+	const s = state.cursor?.s ?? 0;
+
 	const lines = [];
-	lines.push(`(Section) at cursor.s=${formatNum(cursorS ?? 0, 1)} m`);
+	lines.push(`(Section) at cursor.s=${formatNum(s, 1)} m`);
 	lines.push("");
 
 	if (!sectionInfo) {
 		lines.push("No alignment sampling yet.");
-		lines.push("Need alignment2d → then local (t,n) basis.");
 		return lines.join("\n");
 	}
 
@@ -152,74 +140,16 @@ function renderSectionText(sectionInfo, cursorS) {
 	return lines.join("\n");
 }
 
-// -----------------------------------------------------------------------------
-// QuickHooks <-> RouteProject hooks
-// -----------------------------------------------------------------------------
-function upsertRouteProject(prevRouteProjects, baseId) {
-	const routeProjects = { ...(prevRouteProjects ?? {}) };
-	const existing = routeProjects[baseId];
-
-	if (existing) {
-		routeProjects[baseId] = {
-			...existing,
-			updatedAt: nowIso(),
-		};
-		return { routeProjects, rp: routeProjects[baseId] };
-	}
-
-	const created = {
-		id: baseId,
-		createdAt: nowIso(),
-		updatedAt: nowIso(),
-		hooks: {
-			meta: null,
-			polyline2d: null,
-			marker2d: null,
-			profile1d: null,
-			cant1d: null,
-		},
-		// slots/artifacts registry later – for now we only freeze UI-level hooks here
-		slots: { right: {}, left: {}, km: {} },
-	};
-
-	routeProjects[baseId] = created;
-	return { routeProjects, rp: created };
-}
-
-function restoreHooksIntoQuickState(baseId, rp) {
-	if (!baseId || !rp) {
-		return {
-			activeRouteProjectId: null,
-			import_meta: null,
-			import_polyline2d: null,
-			import_marker2d: null,
-			import_profile1d: null,
-			import_cant1d: null,
-		};
-	}
-
-	return {
-		activeRouteProjectId: baseId,
-		import_meta: rp.hooks?.meta ?? null,
-		import_polyline2d: rp.hooks?.polyline2d ?? null,
-		import_marker2d: rp.hooks?.marker2d ?? null,
-		import_profile1d: rp.hooks?.profile1d ?? null,
-		import_cant1d: rp.hooks?.cant1d ?? null,
-	};
-}
-
-// -----------------------------------------------------------------------------
-// Boot
-// -----------------------------------------------------------------------------
+// ------------------------------------------------------------
+// module core
+// ------------------------------------------------------------
 export async function bootApp() {
-	// prevent double boot (sw-nocache/dev reloads etc.)
 	if (window.__ufAIM_booted) return;
 	window.__ufAIM_booted = true;
 
 	const store = createWorkspaceState();
 	if (location.hostname === "localhost") window.__ufAIM_store = store;
 
-	// DOM basics (still OK here: just grabbing elements once)
 	const logElement = document.getElementById("log");
 	const statusElement = document.getElementById("status");
 	const propsElement = document.getElementById("props");
@@ -232,7 +162,7 @@ export async function bootApp() {
 	if (statusElement) statusElement.textContent = t("booting");
 	logLine(t("boot_start"));
 
-	// UI wiring (owns ALL addEventListener)
+	// UI wiring (DOM + listeners)
 	const ui = wireUI({ logElement, statusElement });
 	ui.setStatus(t("boot_ok"));
 	logLine(t("boot_ready"));
@@ -240,56 +170,79 @@ export async function bootApp() {
 	// 3D master view
 	const canvas = document.getElementById("view3d");
 	if (!canvas) throw new Error("Missing <canvas id='view3d'>");
+
 	const three = makeThreeViewer({ canvas });
 	three.start?.();
 
-	// Import session (pairs TRA+GRA by base name)
+	// Import session
 	const importSession = makeImportSession();
 
-	// -------------------------------------------------------------------------
-	// UI callbacks -> Store
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// Cursor controls (UI owns listeners, appCore supplies callback)
+	// ------------------------------------------------------------
 	function setCursorS(nextS) {
 		store.actions?.setCursor?.({ s: Number(nextS) || 0 });
-		ui.setCursorSInputValue?.(nextS);
+		ui.setCursorSInputValue(nextS);
 	}
 
 	ui.wireCursorControls({
-		onSetS: (v) => setCursorS(v),
-		onStep: (delta) => setCursorS((store.getState().cursor?.s ?? 0) + Number(delta || 0)),
+		onSetCursorS: setCursorS,
+		onNudgeMinus: () => setCursorS((store.getState().cursor?.s ?? 0) - 10),
+		onNudgePlus: () => setCursorS((store.getState().cursor?.s ?? 0) + 10),
 	});
+
+	// ------------------------------------------------------------
+	// RP select wiring (UI owns listeners, appCore supplies callback)
+	// ------------------------------------------------------------
+	function activateRouteProject(baseId) {
+		store.setState({
+			activeRouteProjectId: baseId || null,
+			import_meta: null, // optional: meta “selection”
+		});
+	}
 
 	ui.wireRouteProjectSelect({
 		onChange: (baseId) => {
-			store.setState((prev) => {
-				if (!baseId) return restoreHooksIntoQuickState(null, null);
-				const rp = prev.routeProjects?.[baseId] ?? null;
-				if (!rp) return { activeRouteProjectId: baseId };
-				return restoreHooksIntoQuickState(baseId, rp);
-			});
+			activateRouteProject(baseId);
+			// 1x spiegeln reicht
+			mirrorQuickHooksFromActive(store);
+		},
+	});
+	
+	ui.wireSlotSelect?.({
+		onChange: (slot) => {
+			store.actions?.setActiveSlot?.(slot);
+			mirrorQuickHooksFromActive(store);
 		},
 	});
 
-	// -------------------------------------------------------------------------
-	// Drag & Drop import (live)
-	// -------------------------------------------------------------------------
+	// Default slot (optional)
+	store.actions?.setActiveSlot?.("right");
+	ui.setSlotSelectValue?.("right");
+	mirrorQuickHooksFromActive(store); // optional: initial sync
+
+	// ------------------------------------------------------------
+	// Drag & Drop import
+	// ------------------------------------------------------------
 	installFileDrop({
 		element: document.documentElement,
 		onFiles: async (files) => {
 			for (const file of files) {
 				logLine(`drop: ${file.name}`);
+
 				try {
 					const imported = await importFileAuto(file);
 					logLine(`kind=${imported.kind}`);
 
 					const ingest = importSession.ingest(imported);
 
-					// minimal apply (writes import_* quickhooks + import_meta)
+					// NOTE: current importApply signature (your stable one):
 					const effects = applyImportToProject({
 						store,
-						imp: ingest.imp,
-						draft: ingest.draft,
+						baseId: ingest.baseId,
 						slot: ingest.slot,
+						source: ingest.source,
+						artifacts: ingest.artifacts,
 						ui,
 					});
 
@@ -298,33 +251,11 @@ export async function bootApp() {
 						if (e.type === "props") ui.logInfo(JSON.stringify(e.object));
 					}
 
-					// Mirror quickhooks into RouteProject hooks (for RP select switching)
+					// When a new RP appears, ensure RP select isn't stuck on "(none)"
 					const st = store.getState();
-					const baseId = st.import_meta?.base ?? ingest.base ?? ingest.draft?.id ?? imported.name ?? null;
-
-					if (baseId) {
-						store.setState((prev) => {
-							const { routeProjects } = upsertRouteProject(prev.routeProjects, baseId);
-							const rp = routeProjects[baseId];
-
-							routeProjects[baseId] = {
-								...rp,
-								updatedAt: nowIso(),
-								hooks: {
-									meta: prev.import_meta ?? null,
-									polyline2d: prev.import_polyline2d ?? null,
-									marker2d: prev.import_marker2d ?? null,
-									profile1d: prev.import_profile1d ?? null,
-									cant1d: prev.import_cant1d ?? null,
-								},
-							};
-
-							// "Apple-ish": switch active RP to the last imported base
-							return {
-								routeProjects,
-								activeRouteProjectId: baseId,
-							};
-						});
+					if (!st.activeRouteProjectId) {
+						const keys = Object.keys(st.routeProjects ?? {});
+						if (keys.length === 1) activateRouteProject(keys[0]);
 					}
 				} catch (err) {
 					logLine(`❌ import failed: ${file.name}`);
@@ -335,73 +266,63 @@ export async function bootApp() {
 		},
 	});
 
-	// -------------------------------------------------------------------------
-	// Store -> UI + 3D (read-only)
-	// -------------------------------------------------------------------------
+	// ------------------------------------------------------------
+	// Store → UI + 3D
+	// ------------------------------------------------------------
 	let cachedCum = null;
-	let cachedPolyRef = null;
 
-	function renderFromState(state) {
-		// RP select options
+	store.subscribe((state) => {
+		// 0) keep RP select up to date
 		const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
 		ui.setRouteProjectOptions(ids, state.activeRouteProjectId);
 
-		// Props (small + useful)
+		// 1) props (debug)
 		if (propsElement) {
 			propsElement.textContent = JSON.stringify(
-				{
-					activeRouteProjectId: state.activeRouteProjectId ?? null,
-					cursor: state.cursor ?? {},
-					import_meta: state.import_meta ?? null,
-					hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
-					hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
-					hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
-				},
-				null,
-				2
+			{
+				activeRouteProjectId: state.activeRouteProjectId ?? null,
+				cursor: state.cursor ?? {},
+				import_meta: state.import_meta ?? null,
+
+				hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
+				hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
+				hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
+			},
+			null,
+			2
 			);
 		}
 
-		const cursorS = Number(state.cursor?.s ?? 0);
+		// 2) bands overlay
+		ui.setBoardBandsText(renderBandsText(state));
 
-		// Bands overlay (z(s), u(s), later k(s), v(s), ...)
-		ui.setBoardBandsText(
-			renderBandsText(state.import_profile1d, state.import_cant1d, cursorS)
-		);
-
-		// Section overlay + 3D debug marker/line
+		// 3) section overlay + 3D debug
 		const polyline2d = state.import_polyline2d;
-		let sectionInfo = null;
 
+		let sectionInfo = null;
 		if (Array.isArray(polyline2d) && polyline2d.length >= 2) {
-			// chainage cache (invalidate when polyline ref changes)
-			if (cachedPolyRef !== polyline2d) {
-				cachedPolyRef = polyline2d;
+			if (!cachedCum || cachedCum.length !== polyline2d.length) {
 				cachedCum = computeChainage(polyline2d);
 			}
 
+			const cursorS = Number(state.cursor?.s ?? 0);
 			sectionInfo = samplePointAndTangent(polyline2d, cachedCum, cursorS);
 
 			if (sectionInfo) {
 				three.setMarker?.({ x: sectionInfo.x, y: sectionInfo.y, z: 0, s: sectionInfo.s });
-
 				const line = makeSectionLine(sectionInfo, 30);
 				three.setSectionLine?.(line.p0, line.p1);
 			}
+		}
 
-			// 3D track
+		ui.setBoardSectionText(renderSectionText(state, sectionInfo));
+
+		// 4) 3D: alignment render
+		if (Array.isArray(polyline2d) && polyline2d.length >= 2) {
 			const pts3 = polyline2d.map((p) => ({ x: p.x, y: p.y, z: 0 }));
 			three.setTrackPoints?.(pts3);
 		}
-
-		ui.setBoardSectionText(
-			renderSectionText(sectionInfo, cursorS)
-		);
-	}
-
-	// subscribe + initial render
-	store.subscribe((s) => renderFromState(s));
-	renderFromState(store.getState());
+	}, { immediate: true });
 
 	return ui;
 }

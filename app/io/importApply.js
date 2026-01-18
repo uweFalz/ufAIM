@@ -22,6 +22,7 @@ function ensureStoreShape(state) {
 	const s = ensureObject(state);
 	return {
 		activeRouteProjectId: s.activeRouteProjectId ?? null,
+		activeSlot: s.activeSlot ?? "right",
 		cursor: ensureObject(s.cursor),
 
 		routeProjects: ensureObject(s.routeProjects),
@@ -82,42 +83,70 @@ function pickMarkerFromPolyline(polyline2d) {
 	return polyline2d[0];
 }
 
-function applyQuickHooksFromActiveRP(state) {
+// -----------------------------------------------------------------------------
+// QuickHooks mirroring: activeRouteProjectId + activeSlot → store.import_*
+// -----------------------------------------------------------------------------
+export function applyQuickHooksFromActive(state) {
 	const s = ensureStoreShape(state);
 
 	const baseId = s.activeRouteProjectId;
-	if (!baseId) return s;
+	if (!baseId) {
+		return {
+			...s,
+			import_polyline2d: null,
+			import_marker2d: null,
+			import_profile1d: null,
+			import_cant1d: null,
+		};
+	}
 
 	const rp = s.routeProjects?.[baseId];
 	if (!rp) return s;
 
-	const slot = "right"; // später: rp.activeSlot etc.
+	const slot = s.activeSlot ?? "right";
 	const slotObj = rp.slots?.[slot] ?? null;
-	if (!slotObj) return s;
+
+	// Slot existiert, aber noch nix drin → QuickHooks leeren
+	if (!slotObj) {
+		return {
+			...s,
+			import_polyline2d: null,
+			import_marker2d: null,
+			import_profile1d: null,
+			import_cant1d: null,
+		};
+	}
 
 	const patch = { ...s };
 
 	// alignment quickhook
-	const aId = slotObj.alignmentArtifactId;
+	const aId = slotObj.alignmentArtifactId ?? null;
 	const a = aId ? s.artifacts?.[aId] : null;
 	if (a?.payload?.polyline2d) {
 		patch.import_polyline2d = a.payload.polyline2d;
 		patch.import_marker2d = a.payload.bboxCenter ?? pickMarkerFromPolyline(a.payload.polyline2d);
+	} else {
+		patch.import_polyline2d = null;
+		patch.import_marker2d = null;
 	}
 
 	// profile quickhook
-	const pId = slotObj.profileArtifactId;
+	const pId = slotObj.profileArtifactId ?? null;
 	const p = pId ? s.artifacts?.[pId] : null;
-	if (p?.payload?.profile1d) patch.import_profile1d = p.payload.profile1d;
+	patch.import_profile1d = p?.payload?.profile1d ?? null;
 
 	// cant quickhook
-	const cId = slotObj.cantArtifactId;
+	const cId = slotObj.cantArtifactId ?? null;
 	const c = cId ? s.artifacts?.[cId] : null;
-	if (c?.payload?.cant1d) patch.import_cant1d = c.payload.cant1d;
+	patch.import_cant1d = c?.payload?.cant1d ?? null;
 
 	return patch;
 }
 
+// -----------------------------------------------------------------------------
+// Main apply: writes artifacts + routeProjects, keeps selection stable,
+// then mirrors QuickHooks from current (activeRouteProjectId + activeSlot).
+// -----------------------------------------------------------------------------
 export function applyImportToProject({ store, baseId, slot = "right", source = null, artifacts = [], ui }) {
 	if (!store?.getState || !store?.setState) {
 		return [{ type: "log", level: "error", message: "importApply: missing store" }];
@@ -141,7 +170,6 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 
 		const domain = inArt.domain ?? "unknown";
 		const kind = inArt.kind ?? "unknown";
-
 		const id = inArt.id ?? makeArtifactId({ baseId, slot, domain, kind });
 
 		const artifact = {
@@ -162,13 +190,20 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 		effects.push({ type: "log", level: "info", message: `artifact: + ${id}` });
 	}
 
-	// selection: if none yet, pick this
+	// selection:
+	// - keep current active RP if already set
+	// - else select the incoming baseId
 	const nextActive = prev.activeRouteProjectId ?? baseId;
 
+	// IMPORTANT:
+	// we do NOT auto-switch activeSlot here (user/UI controls it)
 	const patchBase = {
 		activeRouteProjectId: nextActive,
+		activeSlot: prev.activeSlot ?? "right",
+
 		routeProjects: nextRouteProjects,
 		artifacts: nextArtifacts,
+
 		import_meta: {
 			base: baseId,
 			slot,
@@ -178,8 +213,8 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 		},
 	};
 
-	// now mirror quickhooks from active RP
-	const patchFinal = applyQuickHooksFromActiveRP({ ...prev, ...patchBase });
+	// mirror quickhooks from active selection (RP + slot)
+	const patchFinal = applyQuickHooksFromActive({ ...prev, ...patchBase });
 
 	store.setState(patchFinal);
 
@@ -188,6 +223,7 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 		type: "props",
 		object: {
 			active: patchFinal.activeRouteProjectId,
+			activeSlot: patchFinal.activeSlot,
 			base: baseId,
 			slot,
 			artifactCount: Object.keys(patchFinal.artifacts ?? {}).length,
@@ -196,4 +232,12 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 	});
 
 	return effects;
+}
+
+// Convenience: call after changing activeRouteProjectId or activeSlot
+export function mirrorQuickHooksFromActive(store) {
+	if (!store?.getState || !store?.setState) return;
+	const prev = store.getState();
+	const next = applyQuickHooksFromActive(prev);
+	store.setState(next);
 }
