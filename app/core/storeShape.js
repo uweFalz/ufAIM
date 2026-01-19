@@ -3,7 +3,7 @@
 export function makeInitialState() {
 	return {
 		activeRouteProjectId: null,
-		activeSlot: "right",          // <— G: NEW
+		activeSlot: "right",
 
 		cursor: {},
 
@@ -17,6 +17,9 @@ export function makeInitialState() {
 		import_cant1d: null,
 
 		import_meta: null,
+
+		// MS8: deterministic active artifact ids for current (RP,slot)
+		import_activeArtifacts: null, // { baseId, slot, alignmentArtifactId, profileArtifactId, cantArtifactId }
 	};
 }
 
@@ -24,7 +27,7 @@ export function ensureStateShape(state) {
 	const s = state ?? {};
 	return {
 		activeRouteProjectId: s.activeRouteProjectId ?? null,
-		activeSlot: s.activeSlot ?? "right",    // <— G: NEW
+		activeSlot: s.activeSlot ?? "right",
 
 		cursor: s.cursor ?? {},
 
@@ -38,5 +41,7 @@ export function ensureStateShape(state) {
 		import_cant1d: s.import_cant1d ?? null,
 
 		import_meta: s.import_meta ?? null,
+
+		import_activeArtifacts: s.import_activeArtifacts ?? null,
 	};
 }

@@ -34,7 +34,80 @@ function ensureStoreShape(state) {
 		import_profile1d: s.import_profile1d ?? null,
 		import_cant1d: s.import_cant1d ?? null,
 		import_meta: s.import_meta ?? null,
+
+		// MS8: deterministic active artifact ids
+		import_activeArtifacts: s.import_activeArtifacts ?? null,
 	};
+}
+
+function computeBbox2d(polyline2d) {
+	let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+	for (const p of (polyline2d ?? [])) {
+		const x = Number(p?.x);
+		const y = Number(p?.y);
+		if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+
+		if (x < minX) minX = x;
+		if (y < minY) minY = y;
+		if (x > maxX) maxX = x;
+		if (y > maxY) maxY = y;
+	}
+
+	if (!Number.isFinite(minX)) return null;
+	return { minX, minY, maxX, maxY };
+}
+
+function bboxCenter2d(bbox) {
+	if (!bbox) return null;
+	const cx = (Number(bbox.minX) + Number(bbox.maxX)) * 0.5;
+	const cy = (Number(bbox.minY) + Number(bbox.maxY)) * 0.5;
+	if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+	return { x: cx, y: cy };
+}
+
+/**
+* Normalize + enrich artifact payloads so View hooks are stable.
+* - alignment2d: ensures payload.polyline2d, payload.bbox, payload.bboxCenter
+* - profile1d: (optional later) ranges, etc.
+* - cant1d:    (optional later) ranges, etc.
+*/
+function normalizeArtifactPayload({ domain, payload }) {
+	const p = ensureObject(payload);
+
+	// ---- alignment2d ----
+	if (domain === "alignment2d") {
+		// accept a couple of legacy aliases (future-proof)
+		const polyline2d =
+		p.polyline2d ??
+		p.pts ??                 // optional alias if later used
+		p.geometry?.pts ??        // optional alias
+		null;
+
+		const bbox = p.bbox ?? computeBbox2d(polyline2d);
+		const center = p.bboxCenter ?? bboxCenter2d(bbox) ?? pickMarkerFromPolyline(polyline2d);
+
+		return {
+			...p,
+			polyline2d,
+			bbox,
+			bboxCenter: center,
+		};
+	}
+
+	// ---- profile1d ----
+	if (domain === "profile1d") {
+		// keep as-is; (optional later: add range)
+		return p;
+	}
+
+	// ---- cant1d ----
+	if (domain === "cant1d") {
+		// keep as-is; (optional later: add range)
+		return p;
+	}
+
+	return p;
 }
 
 function upsertRouteProject(routeProjects, baseId) {
@@ -48,7 +121,7 @@ function upsertRouteProject(routeProjects, baseId) {
 
 		// Slots nach 7-Linien-Modell (minimal start)
 		slots: {
-			right: {}, // { alignmentArtifactId, profileArtifactId, cantArtifactId, otherArtifactIds[] }
+			right: {},
 			left: {},
 			km: {},
 		},
@@ -64,7 +137,6 @@ function attachArtifactToSlot({ rp, slot, artifact }) {
 	rp.updatedAt = nowIso();
 	const s = rp.slots?.[slot] ?? (rp.slots[slot] = {});
 
-	// Domain routing (minimal)
 	if (artifact.domain === "alignment2d") s.alignmentArtifactId = artifact.id;
 	else if (artifact.domain === "profile1d") s.profileArtifactId = artifact.id;
 	else if (artifact.domain === "cant1d") s.cantArtifactId = artifact.id;
@@ -73,7 +145,6 @@ function attachArtifactToSlot({ rp, slot, artifact }) {
 		s.otherArtifactIds.push(artifact.id);
 	}
 
-	// meta hints
 	rp.meta.lastDomain = artifact.domain;
 	rp.meta.lastKind = artifact.kind;
 }
@@ -83,71 +154,91 @@ function pickMarkerFromPolyline(polyline2d) {
 	return polyline2d[0];
 }
 
-// -----------------------------------------------------------------------------
-// QuickHooks mirroring: activeRouteProjectId + activeSlot → store.import_*
-// -----------------------------------------------------------------------------
-export function applyQuickHooksFromActive(state) {
+// MS8: public helper (optional use)
+export function getActiveArtifactIds(state) {
 	const s = ensureStoreShape(state);
 
 	const baseId = s.activeRouteProjectId;
-	if (!baseId) {
-		return {
-			...s,
-			import_polyline2d: null,
-			import_marker2d: null,
-			import_profile1d: null,
-			import_cant1d: null,
-		};
-	}
+	if (!baseId) return null;
 
 	const rp = s.routeProjects?.[baseId];
-	if (!rp) return s;
+	if (!rp) return null;
 
 	const slot = s.activeSlot ?? "right";
 	const slotObj = rp.slots?.[slot] ?? null;
-
-	// Slot existiert, aber noch nix drin → QuickHooks leeren
 	if (!slotObj) {
+		return { baseId, slot, alignmentArtifactId: null, profileArtifactId: null, cantArtifactId: null };
+	}
+
+	return {
+		baseId,
+		slot,
+		alignmentArtifactId: slotObj.alignmentArtifactId ?? null,
+		profileArtifactId: slotObj.profileArtifactId ?? null,
+		cantArtifactId: slotObj.cantArtifactId ?? null,
+	};
+}
+
+// ...
+export function applyQuickHooksFromActive(state) {
+	const s = ensureStoreShape(state);
+
+	const active = getActiveArtifactIds(s);
+	if (!active) {
 		return {
 			...s,
 			import_polyline2d: null,
 			import_marker2d: null,
 			import_profile1d: null,
 			import_cant1d: null,
+			import_activeArtifacts: null,
 		};
 	}
 
+	const { alignmentArtifactId, profileArtifactId, cantArtifactId } = active;
+
 	const patch = { ...s };
 
+	// MS8: always set deterministic ids (even if payload missing)
+	patch.import_activeArtifacts = active;
+
 	// alignment quickhook
-	const aId = slotObj.alignmentArtifactId ?? null;
-	const a = aId ? s.artifacts?.[aId] : null;
-	if (a?.payload?.polyline2d) {
-		patch.import_polyline2d = a.payload.polyline2d;
-		patch.import_marker2d = a.payload.bboxCenter ?? pickMarkerFromPolyline(a.payload.polyline2d);
+	const a = alignmentArtifactId ? s.artifacts?.[alignmentArtifactId] : null;
+
+	const poly =
+	a?.payload?.polyline2d ??
+	a?.payload?.pts ??
+	null;
+
+	if (poly) {
+		patch.import_polyline2d = poly;
+		patch.import_marker2d = a.payload?.bboxCenter ?? pickMarkerFromPolyline(poly);
 	} else {
 		patch.import_polyline2d = null;
 		patch.import_marker2d = null;
 	}
 
 	// profile quickhook
-	const pId = slotObj.profileArtifactId ?? null;
-	const p = pId ? s.artifacts?.[pId] : null;
+	const p = profileArtifactId ? s.artifacts?.[profileArtifactId] : null;
 	patch.import_profile1d = p?.payload?.profile1d ?? null;
 
 	// cant quickhook
-	const cId = slotObj.cantArtifactId ?? null;
-	const c = cId ? s.artifacts?.[cId] : null;
+	const c = cantArtifactId ? s.artifacts?.[cantArtifactId] : null;
 	patch.import_cant1d = c?.payload?.cant1d ?? null;
 
 	return patch;
 }
 
-// -----------------------------------------------------------------------------
-// Main apply: writes artifacts + routeProjects, keeps selection stable,
-// then mirrors QuickHooks from current (activeRouteProjectId + activeSlot).
-// -----------------------------------------------------------------------------
-export function applyImportToProject({ store, baseId, slot = "right", source = null, artifacts = [], ui }) {
+// ...
+export function applyImportToProject({
+	store,
+	baseId,
+	slot = "right",
+	source = null,
+	artifacts = [],
+	ui,
+	emitProps = false,     // ✅ MS10.3: default AUS
+} = {}) {
 	if (!store?.getState || !store?.setState) {
 		return [{ type: "log", level: "error", message: "importApply: missing store" }];
 	}
@@ -157,14 +248,12 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 
 	const prev = ensureStoreShape(store.getState());
 
-	// clone maps
 	const nextArtifacts = { ...prev.artifacts };
 	const nextRouteProjects = { ...prev.routeProjects };
 	const rp = upsertRouteProject(nextRouteProjects, baseId);
 
 	const effects = [];
 
-	// commit artifacts
 	for (const inArt of artifacts) {
 		if (!inArt) continue;
 
@@ -176,12 +265,12 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 			id,
 			baseId,
 			slot,
-			domain,      // alignment2d | profile1d | cant1d | unknown
-			kind,        // TRA | GRA | ...
+			domain,
+			kind,
 			createdAt: nowIso(),
 			source: inArt.source ?? source ?? null,
 			meta: inArt.meta ?? null,
-			payload: inArt.payload ?? null,
+			payload: normalizeArtifactPayload({ domain, payload: inArt.payload ?? null }),
 		};
 
 		nextArtifacts[id] = artifact;
@@ -190,20 +279,12 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 		effects.push({ type: "log", level: "info", message: `artifact: + ${id}` });
 	}
 
-	// selection:
-	// - keep current active RP if already set
-	// - else select the incoming baseId
-	const nextActive = prev.activeRouteProjectId ?? baseId;
+	const nextActive = baseId; // statt prev.activeRouteProjectId ?? baseId
 
-	// IMPORTANT:
-	// we do NOT auto-switch activeSlot here (user/UI controls it)
 	const patchBase = {
 		activeRouteProjectId: nextActive,
-		activeSlot: prev.activeSlot ?? "right",
-
 		routeProjects: nextRouteProjects,
 		artifacts: nextArtifacts,
-
 		import_meta: {
 			base: baseId,
 			slot,
@@ -213,28 +294,27 @@ export function applyImportToProject({ store, baseId, slot = "right", source = n
 		},
 	};
 
-	// mirror quickhooks from active selection (RP + slot)
 	const patchFinal = applyQuickHooksFromActive({ ...prev, ...patchBase });
-
 	store.setState(patchFinal);
 
-	// props effect
-	effects.push({
-		type: "props",
-		object: {
-			active: patchFinal.activeRouteProjectId,
-			activeSlot: patchFinal.activeSlot,
-			base: baseId,
-			slot,
-			artifactCount: Object.keys(patchFinal.artifacts ?? {}).length,
-			rpCount: Object.keys(patchFinal.routeProjects ?? {}).length,
-		},
-	});
+	// props effect (optional / DEV)
+	if (emitProps) {
+		effects.push({
+			type: "props",
+			object: {
+				active: patchFinal.activeRouteProjectId,
+				base: baseId,
+				slot,
+				activeArtifacts: patchFinal.import_activeArtifacts ?? null,
+				artifactCount: Object.keys(patchFinal.artifacts ?? {}).length,
+				rpCount: Object.keys(patchFinal.routeProjects ?? {}).length,
+			},
+		});
+	}
 
 	return effects;
 }
 
-// Convenience: call after changing activeRouteProjectId or activeSlot
 export function mirrorQuickHooksFromActive(store) {
 	if (!store?.getState || !store?.setState) return;
 	const prev = store.getState();

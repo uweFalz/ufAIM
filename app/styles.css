@@ -129,41 +129,50 @@ body {
 
 /* --- Footer (hard separation) --- */
 .footer {
-	flex: 0 0 160px;             /* adjust: 160..260 */
-	border-top: 1px solid var(--borderSoft);
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: 10px;
-	padding: 10px;
+	flex: 0 0 160px;            /* adjust: 160..260 */
 	min-height: 0;
+
+	border-top: 1px solid var(--borderSoft);
 	background: rgba(0,0,0,0.18);
+
+	display: flex;
+	gap: 12px;
+	align-items: stretch;
+	padding: 10px;
 }
 
+/* beide Pane dürfen schrumpfen, sonst drückt <pre> alles weg */
 .footer__pane {
+	flex: 1 1 0;
+	min-width: 0;
 	min-height: 0;
+
 	display: flex;
 	flex-direction: column;
 }
 
-.footer__title {
-	font-size: 12px;
-	color: var(--muted);
-	margin-bottom: 6px;
-}
+/* Log breiter als Props (optional) */
+.footer__pane:nth-child(1) { flex: 2 1 0; } /* Log */
+.footer__pane:nth-child(2) { flex: 1 1 0; } /* Props */
 
 .log--footer,
 .props--footer {
 	flex: 1 1 auto;
 	min-height: 0;
+	min-width: 0;
+
 	overflow: auto;
 	margin: 0;
 	padding: 8px;
+
 	border-radius: 12px;
 	background: rgba(0,0,0,0.25);
 	border: 1px solid var(--borderSoft);
+
 	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 	font-size: 12px;
-	white-space: pre-wrap;
+
+	white-space: pre;          /* wichtig: kein “wrap-breiter-werden” */
 }
 
 /* --- Floating overlay panes --- */

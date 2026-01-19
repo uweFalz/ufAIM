@@ -4,9 +4,9 @@
 // Ergebnis: { baseId, slot, source, artifacts[] }
 
 export function makeImportSession() {
-	const cacheByBase = new Map(); // base -> { base, ts, tra?, gra? }
+	const cacheByBase = new Map(); // base -> { baseId, ts, tra?, gra? }
 
-	function ingest(importObject) {
+	function ingest(importObject, opts = {}) {
 		const baseId = importObject?.name ?? "unknown";
 		const entry = cacheByBase.get(baseId) ?? { baseId, ts: Date.now(), tra: null, gra: null };
 
@@ -16,7 +16,8 @@ export function makeImportSession() {
 		entry.ts = Date.now();
 		cacheByBase.set(baseId, entry);
 
-		const slot = "right";
+		// MS4: slot comes from caller (store.activeSlot), fallback right
+		const slot = (opts.slot === "left" || opts.slot === "km" || opts.slot === "right") ? opts.slot : "right";
 
 		const source = {
 			tra: entry.tra?.name ?? null,
@@ -72,7 +73,7 @@ function buildArtifactsFromEntry(entry, { slot, source }) {
 		});
 	}
 
-	// Cant from TRA (in deinem Importer aus TRA abgeleitet)
+	// Cant from TRA
 	const cant1d =
 	entry?.tra?.cant ??
 	entry?.tra?.cant1d ??
@@ -88,7 +89,6 @@ function buildArtifactsFromEntry(entry, { slot, source }) {
 		});
 	}
 
-	// fallback: if nothing renderable yet, still keep a meta artifact
 	if (arts.length === 0) {
 		arts.push({
 			domain: "unknown",
@@ -113,13 +113,7 @@ function computeBbox(polyline2d) {
 		if (x > maxX) maxX = x;
 		if (y > maxY) maxY = y;
 	}
-	const bbox = Number.isFinite(minX)
-	? { minX, minY, maxX, maxY }
-	: null;
-
-	const bboxCenter = bbox
-	? { x: (bbox.minX + bbox.maxX) * 0.5, y: (bbox.minY + bbox.maxY) * 0.5 }
-	: null;
-
+	const bbox = Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+	const bboxCenter = bbox ? { x: (bbox.minX + bbox.maxX) * 0.5, y: (bbox.minY + bbox.maxY) * 0.5 } : null;
 	return { bbox, bboxCenter };
 }

@@ -37,7 +37,10 @@ function setPrimary(button, isOn) {
 	button.classList.toggle("btn--primary", Boolean(isOn));
 }
 
-export function wireUI({ logElement, statusElement } = {}) {
+// ...
+export function wireUI({ logElement, statusElement, prefs } = {}) {
+	// prefs optional – später für UI-Debug-Features nützlich
+
 	// ------------------------------------------------------------
 	// Element lookup
 	// ------------------------------------------------------------
@@ -59,6 +62,10 @@ export function wireUI({ logElement, statusElement } = {}) {
 
 		closeBands: document.getElementById("btnCloseBands"),
 		closeSection: document.getElementById("btnCloseSection"),
+		
+		// import picker
+		buttonImport: document.getElementById("btnImport"),
+		fileImport: document.getElementById("fileImport"),
 
 		// transition overlay
 		transitionOverlay: document.getElementById("transOverlay"),
@@ -73,22 +80,39 @@ export function wireUI({ logElement, statusElement } = {}) {
 		// RP select
 		routeProjectSelect: document.getElementById("routeProjectSelect"),
 		slotSelect: document.getElementById("slotSelect"),
+		
+		// ...
+		buttonFit: document.getElementById("btnFit"),
 	};
+	
+	// ------------------------------------------------------------
+	// log ringbuffer (prevents DOM from growing forever)
+	// ------------------------------------------------------------
+	const MAX_LOG_LINES = 400;
+	const logBuf = [];
+
+	function pushLog(line) {
+		logBuf.push(String(line ?? ""));
+		if (logBuf.length > MAX_LOG_LINES) {
+			logBuf.splice(0, logBuf.length - MAX_LOG_LINES);
+		}
+		if (elements.log) elements.log.textContent = logBuf.join("\n") + "\n";
+	}
 
 	// ------------------------------------------------------------
 	// logging + status
 	// ------------------------------------------------------------
 	function logLine(line) {
-		appendLine(elements.log, line);
+		pushLog(line);
 	}
 
 	function logInfo(line) {
-		appendLine(elements.log, `ℹ️ ${String(line ?? "")}`);
+		pushLog(`ℹ️ ${String(line ?? "")}`);
 	}
 
 	function logError(error) {
 		const msg = error instanceof Error ? (error.stack || error.message) : String(error);
-		appendLine(elements.log, `❌ ${msg}`);
+		pushLog(`❌ ${msg}`);
 	}
 
 	function setStatus(text) {
@@ -171,6 +195,20 @@ export function wireUI({ logElement, statusElement } = {}) {
 		if (!elements.slotSelect) return;
 		elements.slotSelect.value = String(value ?? "right");
 	}
+	
+	// ------------------------------------------------------------
+	// ...
+	// ------------------------------------------------------------
+	function wireFitButton({ onClick } = {}) {
+		if (!elements.buttonFit) {
+			logLine("uiWiring: btnFit not found");
+			return;
+		}
+		elements.buttonFit.onclick = (e) => {
+			e?.preventDefault?.();
+			onClick?.();
+		};
+	}
 
 	// ------------------------------------------------------------
 	// overlays
@@ -239,6 +277,29 @@ export function wireUI({ logElement, statusElement } = {}) {
 	elements.transitionOverlay?.addEventListener("click", (event) => {
 		if (event.target === elements.transitionOverlay) closeTransition();
 	});
+	
+	// ------------------------------------------------------------
+	// import picker (button opens hidden <input type=file>)
+	// ------------------------------------------------------------
+	function wireImportPicker({ onFiles } = {}) {
+		const btn = elements.buttonImport;
+		const input = elements.fileImport;
+
+		if (!btn || !input || typeof onFiles !== "function") return;
+
+		// click button -> open file dialog
+		btn.addEventListener("click", () => {
+			// ensure re-selecting same file triggers change
+			input.value = "";
+			input.click();
+		});
+
+		// file dialog selected -> feed files to caller
+		input.addEventListener("change", () => {
+			const files = Array.from(input.files ?? []);
+			if (files.length) onFiles(files);
+		});
+	}
 
 	// ESC closes transition overlay
 	window.addEventListener("keydown", (event) => {
@@ -284,6 +345,12 @@ export function wireUI({ logElement, statusElement } = {}) {
 			onChange(sel.value || "right");
 		});
 	}
+	
+	function emitProps(obj) {
+		const pre = document.getElementById("props");
+		if (!pre) return;
+		pre.textContent = JSON.stringify(obj ?? null, null, 2);
+	}
 
 	// small boot feedback
 	logLine(t("boot_ui"));
@@ -307,6 +374,8 @@ export function wireUI({ logElement, statusElement } = {}) {
 		// boards
 		setBoardBandsText,
 		setBoardSectionText,
+		
+		wireImportPicker,
 
 		// cursor helpers
 		setCursorSInputValue,
@@ -329,5 +398,11 @@ export function wireUI({ logElement, statusElement } = {}) {
 		// wiring helpers
 		wireCursorControls,
 		wireRouteProjectSelect,
+		
+		// ...
+		wireFitButton,
+		
+		// ...
+		emitProps,
 	};
 }
