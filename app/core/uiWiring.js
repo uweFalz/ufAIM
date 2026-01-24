@@ -82,6 +82,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		slotSelect: document.getElementById("slotSelect"),
 		
 		// ...
+		chkAutoFit: document.getElementById("chkAutoFit"),
+		// ...
 		buttonFit: document.getElementById("btnFit"),
 	};
 	
@@ -199,6 +201,26 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ------------------------------------------------------------
 	// ...
 	// ------------------------------------------------------------
+	function setAutoFitToggleVisible(isVisible) {
+		if (!elements.chkAutoFit) return;
+		const host = elements.chkAutoFit.closest(".toggle");
+		if (host) host.style.display = isVisible ? "" : "none";
+	}
+
+	function setAutoFitToggleValue(isOn) {
+		if (!elements.chkAutoFit) return;
+		elements.chkAutoFit.checked = Boolean(isOn);
+	}
+
+	function wireAutoFitToggle({ onChange } = {}) {
+		const el = elements.chkAutoFit;
+		if (!el || typeof onChange !== "function") return;
+
+		el.addEventListener("change", () => {
+			onChange(Boolean(el.checked));
+		});
+	}
+
 	function wireFitButton({ onClick } = {}) {
 		if (!elements.buttonFit) {
 			logLine("uiWiring: btnFit not found");
@@ -399,6 +421,10 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		wireCursorControls,
 		wireRouteProjectSelect,
 		
+		// ...
+		setAutoFitToggleVisible,
+		setAutoFitToggleValue,
+		wireAutoFitToggle,
 		// ...
 		wireFitButton,
 		

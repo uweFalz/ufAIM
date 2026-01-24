@@ -10,9 +10,15 @@ export function makeSystemPrefs() {
 		isDev,
 
 		debug: {
-			// MS10.4: Should importApply emit "props" effects at all?
-			// DEV: yes (handy), PROD: no (quiet).
 			emitImportPropsEffects: isDev,
 		},
+
+		view: {
+			onGeomChange: "softfit",          // MS13.2 (ohne target-jump)
+			// onGeomChange: "softfitanimated", // MS13.2b (smooth zoom)
+			fitPadding: 1.35,
+			fitDurationMs: 240,              // MS13.2b default anim duration
+			autoFitOnGeomChange: false,
+		}
 	};
 }

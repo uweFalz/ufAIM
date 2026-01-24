@@ -5,7 +5,11 @@
 // - computes sectionInfo from import_polyline2d + cursor.s
 // - updates overlays (bands/section text)
 // - updates three viewer via ThreeAdapter (floating origin)
-// - detects "active geometry changed" and re-centers/zoom-to-fit
+// - detects "active geometry changed" and applies policy:
+//    off | recenter | fit | softfit | softfitanimated
+// - MS12.x: fitActive()
+// - MS13.2: softfit (no target jump)
+// - MS13.2b: softfitanimated (smooth zoom animation)
 
 function clampNumber(value, min, max) {
 	const v = Number(value);
@@ -143,83 +147,91 @@ function renderSectionText(state, sectionInfo) {
 function makeActiveGeomKey(state) {
 	const aa = state.import_activeArtifacts;
 	if (aa) {
-		// deterministisch, exakt das was wir rendern wollen
 		return `${aa.baseId ?? ""}::${aa.slot ?? ""}::${aa.alignmentArtifactId ?? ""}`;
 	}
-
-	// Fallback (sollte nur in Übergangsphasen passieren)
 	const rpId = state.activeRouteProjectId ?? "";
 	const slot = state.activeSlot ?? "right";
 	return `${rpId}::${slot}::(no-activeArtifacts)`;
 }
 
-// ...
+function pickBboxFromArtifactOrPolyline(art, poly) {
+	const b =
+	art?.payload?.bbox ??
+	art?.payload?.bboxENU ??
+	art?.payload?.bbox?.bbox ??
+	null;
+
+	if (b?.minX != null) return b;
+	return computeBbox(poly);
+}
+
 export function makeViewController({ store, ui, threeA, propsElement, prefs } = {}) {
 	if (!store?.getState || !store?.subscribe) throw new Error("ViewController: missing store");
 	if (!ui) throw new Error("ViewController: missing ui");
 	if (!threeA) throw new Error("ViewController: missing three adapter");
 
+	const defaultFitPadding = Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35;
+
+	// policy: off | recenter | fit | softfit | softfitanimated
+	let onGeomChange = String(prefs?.view?.onGeomChange ?? "recenter").toLowerCase();
+
+	// legacy toggle (kept, but policy is the primary behavior)
+	let autoFitOnGeomChange =
+	(prefs?.view?.autoFitOnGeomChange !== undefined)
+	? Boolean(prefs.view.autoFitOnGeomChange)
+	: false;
+
 	let cachedCum = null;
 	let lastGeomKey = null;
+	let lastPolyRef = null;
 
-	// --- helpers ------------------------------------------------
+	// MS13.5: click-to-chainage (track pick) -> cursor.s
+	function setCursorS(s, opts = {}) {
+		const ss = Number(s);
+		if (!Number.isFinite(ss)) return false;
 
-	function getActiveAlignmentArtifact(state) {
-		const aa = state?.import_activeArtifacts;
-		const id = aa?.alignmentArtifactId;
-		if (!id) return null;
-		return state?.artifacts?.[id] ?? null;
-	}
+		if (store.actions?.setCursor) {
+			store.actions.setCursor({ s: ss });
+		} else {
+			const prev = store.getState();
+			store.setState({ ...prev, cursor: { ...(prev.cursor ?? {}), s: ss } });
+		}
 
-	function extractBboxFromAlignmentArtifact(art) {
-		// support both shapes:
-		// A) payload.bbox = {minX,minY,maxX,maxY}
-		// B) payload.bbox = { bbox: {minX,...} }   (your "box patch")
-		const p = art?.payload;
-		const b = p?.bbox;
-
-		const bbox =
-			(b && b.bbox) ? b.bbox :
-			(b ?? null);
-
-		if (!bbox) return null;
-
-		const minX = Number(bbox.minX);
-		const minY = Number(bbox.minY);
-		const maxX = Number(bbox.maxX);
-		const maxY = Number(bbox.maxY);
-
-		if (![minX, minY, maxX, maxY].every(Number.isFinite)) return null;
-		return { minX, minY, maxX, maxY };
-	}
-
-	function fitToBboxENU(bbox) {
-		if (!bbox) return false;
-		threeA.setOriginFromBbox?.(bbox);
-		threeA.zoomToFitWorldBbox?.(bbox, { padding: 1.35 });
+		if (opts.fit === true) {
+			// shift-click convenience
+			fitActive({ mode: "softFit" });
+		}
 		return true;
 	}
 
-	// --- props --------------------------------------------------
+	// Install pick handler once (if supported by adapter/viewer)
+	threeA.onTrackClick?.(({ s, event }) => {
+		if (!setCursorS(s)) return;
+		// Convenience: Shift+click gives a gentle animated zoom without target jump.
+		if (event?.shiftKey) softFitActiveAnimated({ durationMs: prefs?.view?.fitDurationMs ?? 240 });
+	});
+	function getActiveAlignmentArtifact(state) {
+		const aa = state.import_activeArtifacts;
+		if (!aa?.alignmentArtifactId) return null;
+		return state.artifacts?.[aa.alignmentArtifactId] ?? null;
+	}
 
 	function updateProps(state) {
 		if (!propsElement) return;
-
 		propsElement.textContent = JSON.stringify(
-			{
-				activeRouteProjectId: state.activeRouteProjectId ?? null,
-				activeSlot: state.activeSlot ?? "right",
-				cursor: state.cursor ?? {},
-				import_meta: state.import_meta ?? null,
+		{
+			activeRouteProjectId: state.activeRouteProjectId ?? null,
+			activeSlot: state.activeSlot ?? "right",
+			cursor: state.cursor ?? {},
+			import_meta: state.import_meta ?? null,
+			activeArtifacts: state.import_activeArtifacts ?? null,
 
-				import_activeArtifacts: state.import_activeArtifacts ?? null,
-
-				hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
-				hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
-				hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
-			},
-			null,
-			2
+			hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
+			hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
+			hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
+		},
+		null,
+		2
 		);
 	}
 
@@ -229,32 +241,98 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		threeA.clearSectionLine?.();
 	}
 
-	// --- PUBLIC: Fit button action ------------------------------
+	// ---- public methods (closures, no globals) ----
+	function recenterToActive() {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-	function fitActive() {
-		const state = store.getState();
+		const art = getActiveAlignmentArtifact(st);
+		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		if (!bbox) return false;
 
-		// 1) deterministisch: activeArtifacts -> alignmentArtifact
-		const art = getActiveAlignmentArtifact(state);
-		if (!art) {
-			ui.logInfo?.("fitActive: no active alignment artifact");
-			return false;
-		}
-
-		// 2) bbox aus Artifact
-		const bbox = extractBboxFromAlignmentArtifact(art);
-		if (!bbox) {
-			ui.logInfo?.(`fitActive: missing bbox for ${art.id ?? "(no-id)"}`);
-			return false;
-		}
-
-		// 3) origin + fit
-		const ok = fitToBboxENU(bbox);
-		if (!ok) ui.logInfo?.("fitActive: bbox invalid");
-		return ok;
+		threeA.setOriginFromBbox(bbox);
+		return true;
 	}
 
-	// --- subscribe ---------------------------------------------
+	function fitActive(opts = {}) {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const art = getActiveAlignmentArtifact(st);
+		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		if (!bbox) return false;
+
+		const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
+
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBbox?.(bbox, { padding });
+		return true;
+	}
+
+	// MS13.2: zoom only (no target jump)
+	function softFitActive(opts = {}) {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const art = getActiveAlignmentArtifact(st);
+		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		if (!bbox) return false;
+
+		const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
+
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBboxSoft?.(bbox, { padding });
+		return true;
+	}
+
+	// MS13.2b: zoom only, animated
+	function softFitActiveAnimated(opts = {}) {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const art = getActiveAlignmentArtifact(st);
+		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		if (!bbox) return false;
+
+		const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
+		const durationMs = Number.isFinite(opts.durationMs) ? opts.durationMs : 240;
+
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBboxSoftAnimated?.(bbox, { padding, durationMs });
+		return true;
+	}
+
+	function setOnGeomChange(mode) {
+		const m = String(mode || "").toLowerCase();
+		if (["off", "recenter", "fit", "softfit", "softfitanimated"].includes(m)) onGeomChange = m;
+	}
+
+	function setAutoFitEnabled(on) {
+		autoFitOnGeomChange = Boolean(on);
+	}
+
+	function applyGeomChangePolicy() {
+		switch (onGeomChange) {
+			case "fit":
+			fitActive();
+			return true;
+			case "softfit":
+			softFitActive();
+			return true;
+			case "softfitanimated":
+			softFitActiveAnimated();
+			return true;
+			case "recenter":
+			recenterToActive();
+			return true;
+			default:
+			return false; // off
+		}
+	}
 
 	function subscribe() {
 		return store.subscribe((state) => {
@@ -269,36 +347,41 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			ui.setBoardBandsText(renderBandsText(state));
 
 			const poly = state.import_polyline2d;
+
 			const geomKey = makeActiveGeomKey(state);
 			const geomChanged = geomKey !== lastGeomKey;
 			lastGeomKey = geomKey;
 
 			if (!Array.isArray(poly) || poly.length < 2) {
 				cachedCum = null;
+				lastPolyRef = null;
 				ui.setBoardSectionText(renderSectionText(state, null));
 				clear3D();
 				return;
 			}
 
-			// 3) recenter + zoom on active geometry change
+			// 3) geom change policy (MS13.1/13.2/13.2b)
 			if (geomChanged) {
-				// Prefer bbox from active artifact if present (more stable than recomputing)
-				const art = getActiveAlignmentArtifact(state);
-				const bboxFromArt = extractBboxFromAlignmentArtifact(art);
-
-				if (bboxFromArt) {
-					fitToBboxENU(bboxFromArt);
-				} else {
-					// fallback: compute bbox from polyline
-					const bbox = computeBbox(poly);
-					if (bbox) fitToBboxENU(bbox);
-				}
 				cachedCum = null;
+				lastPolyRef = null;
+
+				applyGeomChangePolicy();
+
+				// legacy toggle (optional)
+				if (autoFitOnGeomChange) {
+					const art = getActiveAlignmentArtifact(state);
+					const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+					if (bbox) {
+						threeA.setOriginFromBbox(bbox);
+						threeA.zoomToFitWorldBbox?.(bbox, { padding: defaultFitPadding });
+					}
+				}
 			}
 
 			// 4) section sampling
-			if (!cachedCum || cachedCum.length !== poly.length) {
+			if (!cachedCum || lastPolyRef !== poly) {
 				cachedCum = computeChainage(poly);
+				lastPolyRef = poly;
 			}
 
 			const cursorS = Number(state.cursor?.s ?? 0);
@@ -321,6 +404,19 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		}, { immediate: true });
 	}
 
-	return { subscribe, fitActive };
-}
+	return {
+		subscribe,
 
+		// MS12.x
+		recenterToActive,
+		fitActive,
+
+		// MS13.2 / MS13.2b
+		softFitActive,
+		softFitActiveAnimated,
+
+		// switches
+		setAutoFitEnabled,
+		setOnGeomChange,
+	};
+}

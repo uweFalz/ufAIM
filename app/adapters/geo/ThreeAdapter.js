@@ -86,12 +86,54 @@ export function makeThreeAdapter({ three, transform } = {}) {
 
 		three.zoomToFitBox(bboxLocal, opts);
 	}
+	
+	function zoomToFitWorldBboxSoft(bboxENU, opts) {
+		if (!bboxENU || !three.zoomToFitBoxSoft) return;
+
+		const o = xform.getOrigin();
+		const bboxLocal = {
+			minX: (Number(bboxENU.minX) || 0) - o.x,
+			minY: (Number(bboxENU.minY) || 0) - o.y,
+			maxX: (Number(bboxENU.maxX) || 0) - o.x,
+			maxY: (Number(bboxENU.maxY) || 0) - o.y,
+		};
+
+		three.zoomToFitBoxSoft(bboxLocal, opts);
+	}
+	
+	function zoomToFitWorldBboxSoftAnimated(bboxENU, opts) {
+		if (!bboxENU || !three.zoomToFitBoxSoftAnimated) return;
+
+		const o = xform.getOrigin();
+		const bboxLocal = {
+			minX: (Number(bboxENU.minX) || 0) - o.x,
+			minY: (Number(bboxENU.minY) || 0) - o.y,
+			maxX: (Number(bboxENU.maxX) || 0) - o.x,
+			maxY: (Number(bboxENU.maxY) || 0) - o.y,
+		};
+
+		three.zoomToFitBoxSoftAnimated(bboxLocal, opts);
+	}
+
+	// MS13.5: click-to-chainage (track picking)
+	function onTrackClick(handler) {
+		if (!three.onTrackClick) return;
+		three.onTrackClick?.((hit) => {
+			const s = Number(hit?.s);
+			const pLocal = hit?.point ?? null;
+			const pWorld = pLocal ? xform.toWorld(pLocal) : null;
+			handler?.({ s, pointLocal: pLocal, pointWorld: pWorld, event: hit?.event ?? null });
+		});
+	}
 
 	return {
 		transform: xform,
 
 		setOriginFromBbox,
 		zoomToFitWorldBbox,
+		zoomToFitWorldBboxSoft, // ✅ MS13.2
+		zoomToFitWorldBboxSoftAnimated, // ✅ MS13.2b
+		onTrackClick, // ✅ MS13.5
 
 		setTrackFromWorldPolyline,
 		setMarkerFromWorld,

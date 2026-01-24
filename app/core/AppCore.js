@@ -69,11 +69,31 @@ export async function bootApp({ prefs } = {}) {
 	ui.wireImportPicker?.({ onFiles: (files) => importer.importFiles(files) });
 
 	// ViewController
-	const viewC = makeViewController({ store, ui, threeA, propsElement, prefs });
+	// ... bis viewC
+
+	const viewC = makeViewController({
+		store,
+		ui,
+		threeA,
+		propsElement,
+		prefs, // ✅ MS12.y inject
+	});
+
 	viewC.subscribe();
+	
+	// DEV-only: AutoFit toggle
+	ui.setAutoFitToggleVisible?.(Boolean(prefs.isDev));
+	ui.setAutoFitToggleValue?.(Boolean(prefs.view?.autoFitOnGeomChange));
+
+	ui.wireAutoFitToggle?.({
+		onChange: (on) => {
+			viewC.setAutoFitEnabled?.(on);
+			ui.logInfo?.(`AutoFit=${on ? "ON" : "OFF"}`);
+		},
+	});
 
 	ui.wireFitButton?.({
-		onClick: () => viewC.fitActive?.(),
+		onClick: () => viewC.fitActive?.(), // padding kommt jetzt aus prefs.view.fitPadding
 	});
 
 	return ui;
