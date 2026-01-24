@@ -14,8 +14,7 @@ export function makeSystemPrefs() {
 		},
 
 		view: {
-			onGeomChange: "softfit",          // MS13.2 (ohne target-jump)
-			// onGeomChange: "softfitanimated", // MS13.2b (smooth zoom)
+			onGeomChange: "softfitanimated", // MS13.2b (smooth zoom, no target-jump)
 			fitPadding: 1.35,
 			fitDurationMs: 240,              // MS13.2b default anim duration
 			autoFitOnGeomChange: false,

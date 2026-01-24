@@ -340,6 +340,12 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
 			ui.setRouteProjectOptions(ids, state.activeRouteProjectId);
 
+			// MS13.7: keep cursor input in sync (but never fight user typing)
+			const cursorInput = ui.elements?.cursorSInput;
+			if (cursorInput && document.activeElement !== cursorInput) {
+				ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
+			}
+
 			// 1) props
 			updateProps(state);
 

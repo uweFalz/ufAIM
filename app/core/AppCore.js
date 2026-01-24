@@ -64,6 +64,28 @@ export async function bootApp({ prefs } = {}) {
 	ui.setSlotSelectValue?.("right");
 	mirrorQuickHooksFromActive(store);
 
+	// ------------------------------------------------------------
+	// MS13.7: Cursor wiring (revive cursor input/buttons)
+	// ------------------------------------------------------------
+	ui.wireCursorControls?.({
+		onSetCursorS: (value) => {
+			const s = Number(value);
+			if (!Number.isFinite(s)) return;
+			store.actions?.setCursor?.({ s: Math.max(0, s) });
+		},
+		onNudgeMinus: () => {
+			const cur = Number(store.getState()?.cursor?.s ?? 0);
+			const step = 1;
+			store.actions?.setCursor?.({ s: Math.max(0, cur - step) });
+		},
+		onNudgePlus: () => {
+			const cur = Number(store.getState()?.cursor?.s ?? 0);
+			const step = 1;
+			store.actions?.setCursor?.({ s: Math.max(0, cur + step) });
+		},
+	});
+	ui.setCursorSInputValue?.(store.getState()?.cursor?.s ?? 0);
+
 	// Drop + Picker
 	importer.installDrop({ element: document.documentElement });
 	ui.wireImportPicker?.({ onFiles: (files) => importer.importFiles(files) });
