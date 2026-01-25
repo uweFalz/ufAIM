@@ -83,8 +83,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		
 		// ...
 		chkAutoFit: document.getElementById("chkAutoFit"),
-		buttonFit: document.getElementById("btnFit"),
 		// ...
+		buttonFit: document.getElementById("btnFit"),
 		buttonPinToggle: document.getElementById("btnPinToggle"),
 		buttonPinsClear: document.getElementById("btnPinsClear"),
 		pinsInfo: document.getElementById("pinsInfo"),
@@ -241,22 +241,38 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// MS13.12: pinned controls (small helpers)
 	// ------------------------------------------------------------
 	function setPinsInfoText(text) {
-		if (!elements.pinsInfo) return;
-		elements.pinsInfo.textContent = String(text ?? '');
+		const t = String(text ?? '');
+		// be robust against accidental duplicate ids while developing
+		const nodes = document.querySelectorAll('#pinsInfo');
+		if (nodes?.length) {
+			nodes.forEach(n => { if (n) n.textContent = t; });
+			return;
+		}
+		if (elements.pinsInfo) elements.pinsInfo.textContent = t;
 	}
 
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
-		if (elements.buttonPinToggle && typeof onTogglePin === 'function') {
-			elements.buttonPinToggle.addEventListener('click', (e) => {
-				e?.preventDefault?.();
-				onTogglePin();
-			});
+		const toggleNodes = document.querySelectorAll('#btnPinToggle');
+		const clearNodes = document.querySelectorAll('#btnPinsClear');
+
+		if (typeof onTogglePin === 'function') {
+			(toggleNodes?.length ? Array.from(toggleNodes) : [elements.buttonPinToggle]).filter(Boolean)
+				.forEach((btn) => {
+					btn.addEventListener('click', (e) => {
+						e?.preventDefault?.();
+						onTogglePin();
+					});
+				});
 		}
-		if (elements.buttonPinsClear && typeof onClearPins === 'function') {
-			elements.buttonPinsClear.addEventListener('click', (e) => {
-				e?.preventDefault?.();
-				onClearPins();
-			});
+
+		if (typeof onClearPins === 'function') {
+			(clearNodes?.length ? Array.from(clearNodes) : [elements.buttonPinsClear]).filter(Boolean)
+				.forEach((btn) => {
+					btn.addEventListener('click', (e) => {
+						e?.preventDefault?.();
+						onClearPins();
+					});
+				});
 		}
 	}
 
@@ -405,29 +421,6 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// small boot feedback
 	logLine(t("boot_ui"));
 	setStatus(t("boot_ui_ok"));
-
-	// ------------------------------------------------------------
-	// MS13.12: pinned controls
-	// ------------------------------------------------------------
-	function setPinsInfoText(text) {
-		if (!elements.pinsInfo) return;
-		elements.pinsInfo.textContent = String(text ?? "");
-	}
-
-	function wirePinControls({ onTogglePin, onClearPins } = {}) {
-		if (elements.buttonPinToggle && typeof onTogglePin === "function") {
-			elements.buttonPinToggle.addEventListener("click", (e) => {
-				e?.preventDefault?.();
-				onTogglePin();
-			});
-		}
-		if (elements.buttonPinsClear && typeof onClearPins === "function") {
-			elements.buttonPinsClear.addEventListener("click", (e) => {
-				e?.preventDefault?.();
-				onClearPins();
-			});
-		}
-	}
 
 	return {
 		elements,

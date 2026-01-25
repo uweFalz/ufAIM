@@ -87,6 +87,14 @@ body {
 	padding: 4px 8px;
 }
 
+/* MS13.12b: compact button variant (used e.g. in props pin list) */
+.btn--xs {
+	padding: 2px 6px;
+	min-height: 22px;
+	font-size: 12px;
+	line-height: 16px;
+}
+
 /* --- Shell: Stage + Footer --- */
 .shell {
 	flex: 1 1 auto;
@@ -173,6 +181,40 @@ body {
 	font-size: 12px;
 
 	white-space: pre;          /* wichtig: kein “wrap-breiter-werden” */
+}
+
+/* MS13.12b: Pins in props panel */
+.propsPins {
+	white-space: normal;
+	margin: 0 0 8px 0;
+	padding: 0 0 8px 0;
+	border-bottom: 1px solid var(--borderSoft);
+}
+
+.propsPins__title {
+	font-size: 12px;
+	opacity: 0.9;
+	margin-bottom: 6px;
+}
+
+.pinRow {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 0;
+}
+
+.pinRow__text {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.pinRow__slot {
+	opacity: 0.75;
+	margin-left: 6px;
 }
 
 /* --- Floating overlay panes --- */

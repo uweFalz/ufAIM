@@ -43,12 +43,15 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setSectionLine?.(null, null);
 	}
 
-	// MS13.9/13.11: background tracks (multiple alignments)
+	// MS13.9/13.11/13.14: background tracks (multiple alignments / pins)
 	function clearAuxTracks() {
-		// prefer viewer API, fallback to legacy alias if needed
-		three.clearAuxTracks?.();
-		three.setAuxTracks?.(null);
-		three.setAuxTracksPoints?.(null);
+		// Be robust across viewer iterations:
+		// - older viewers: setAuxTrackPoints([{ key, pts }])
+		// - newer viewers: setAuxTracks([{ id, pointsXY }])
+		// - compat alias: setAuxTracksPoints(...)
+		three.setAuxTracks?.([]);
+		three.setAuxTracksPoints?.([]);
+		three.setAuxTrackPoints?.([]);
 	}
 
 	function setTrackFromWorldPolyline(polylineENU) {
@@ -79,24 +82,41 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setSectionLine?.(p0l, p1l);
 	}
 
-	// tracks: [{ id, points:[{x,y,z?}...] }]
-	function setAuxTracksFromWorld(tracksENU) {
-		if (!Array.isArray(tracksENU) || tracksENU.length === 0) {
+	function setAuxTracksFromWorldPolylines(list) {
+		// Accept multiple shapes (world/canonical ENU):
+		// - older:   [{ key, pts:[{x,y,z?}...] }, ...]
+		// - newer VC [{ id, points:[{x,y,z?}...] }, ...]
+		// - viewer expects local:
+		//     - newer: setAuxTracks([{ id, pointsXY:[{x,y,z?}...] }])
+		//     - older: setAuxTrackPoints([{ key, pts:[...] }])
+		if (!Array.isArray(list) || list.length === 0) {
 			clearAuxTracks();
 			return;
 		}
 
-		const out = [];
-		for (const t of tracksENU) {
-			const pts = t?.points;
-			if (!Array.isArray(pts) || pts.length < 2) continue;
-			out.push({
-				id: String(t.id ?? ""),
-				points: xform.toLocalPolyline(pts).map(toThreeLocal),
-			});
+		const outNew = []; // [{id, pointsXY}]
+		const outOld = []; // [{key, pts}]
+
+		for (const item of list) {
+			const id = String(item?.id ?? item?.key ?? "");
+			const ptsWorld = item?.points ?? item?.pointsXY ?? item?.pts;
+			if (!id || !Array.isArray(ptsWorld) || ptsWorld.length < 2) continue;
+
+			const local = xform.toLocalPolyline(ptsWorld).map(toThreeLocal);
+			outNew.push({ id, pointsXY: local });
+			outOld.push({ key: id, pts: local });
 		}
-		const setFn = three.setAuxTracks ?? three.setAuxTracksPoints;
-		setFn?.(out);
+
+		// Prefer the newer API when available
+		if (three.setAuxTracks) {
+			three.setAuxTracks(outNew);
+			return;
+		}
+		if (three.setAuxTracksPoints) {
+			three.setAuxTracksPoints(outNew);
+			return;
+		}
+		three.setAuxTrackPoints?.(outOld);
 	}
 
 	// Optional: keep using your viewer's bbox zoom helper,
@@ -164,7 +184,7 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		onTrackClick, // ✅ MS13.5
 
 		setTrackFromWorldPolyline,
-		setAuxTracksFromWorld, // ✅ MS13.9/13.11
+		setAuxTracksFromWorldPolylines, // ✅ MS13.9/13.11
 		setMarkerFromWorld,
 		setSectionLineFromWorld,
 

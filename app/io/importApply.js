@@ -37,6 +37,10 @@ function ensureStoreShape(state) {
 
 		// MS8: deterministic active artifact ids
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
+
+		// MS13.12+: pins (persisted UI state)
+		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
+		view_activePinnedIndex: Number.isFinite(s.view_activePinnedIndex) ? s.view_activePinnedIndex : -1,
 	};
 }
 

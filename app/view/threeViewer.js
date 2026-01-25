@@ -1,12 +1,18 @@
 import * as THREE from "three";
 
 export function makeThreeViewer({ canvas }) {
+	// MS13.13: align viewer coordinates with ENU (Z-up)
+	// Project convention: x=east, y=north, z=up.
+	// three.js defaults to Y-up, which puts GridHelper into XZ and is very confusing here.
+	THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 	const scene = new THREE.Scene();
 
 	scene.background = new THREE.Color(0x0b0e14);
 
 	const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100000);
+	camera.up.set(0, 0, 1);
 	camera.position.set(0, -220, 160);
 	camera.lookAt(0, 0, 0);
 
@@ -15,20 +21,35 @@ export function makeThreeViewer({ canvas }) {
 
 	scene.add(dirLight);
 	scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-	scene.add(new THREE.GridHelper(600, 30));
+	const grid = new THREE.GridHelper(600, 30);
+	// GridHelper is created in XZ by default; rotate it into the XY plane (Z-up world).
+	grid.rotation.x = Math.PI / 2;
+	scene.add(grid);
 	scene.add(new THREE.AxesHelper(120));
 
-	const trackMat = new THREE.LineBasicMaterial();
+	// Visual language:
+	// - active track: solid + bright
+	// - aux tracks (pinned/background): dashed + muted
+	// NOTE: linewidth is ignored in most WebGL implementations; we rely on color/opacity.
+	const trackMat = new THREE.LineBasicMaterial({
+		color: 0x00d7ff,
+		transparent: true,
+		opacity: 0.98,
+		depthTest: true,
+		depthWrite: true,
+	});
 	let trackLine = null;
 
-
-
-	// MS13.9: aux tracks (other alignments)
+	// MS13.9+: aux tracks (pinned/background) — keep them visible but subdued.
+	// We also disable depth test/write so dashed tracks don't disappear behind the grid.
 	const auxMat = new THREE.LineDashedMaterial({
+		color: 0x9ca3af,
 		dashSize: 12,
 		gapSize: 8,
 		transparent: true,
-		opacity: 0.35,
+		opacity: 0.78,
+		depthTest: false,
+		depthWrite: false,
 	});
 	const auxLines = new Map(); // id -> THREE.Line
 
@@ -38,7 +59,7 @@ export function makeThreeViewer({ canvas }) {
 
 	const marker = new THREE.Mesh(
 		new THREE.SphereGeometry(4, 18, 12),
-		new THREE.MeshStandardMaterial()
+		new THREE.MeshStandardMaterial({ color: 0xffc107 })
 	);
 	scene.add(marker);
 
@@ -101,6 +122,8 @@ export function makeThreeViewer({ canvas }) {
 			trackLine.geometry = geo;
 		} else {
 			trackLine = new THREE.Line(geo, trackMat);
+			trackLine.renderOrder = 10;
+			trackLine.position.z = 0.10;
 			scene.add(trackLine);
 		}
 	}
@@ -133,6 +156,9 @@ export function makeThreeViewer({ canvas }) {
 			let line = auxLines.get(id);
 			if (!line) {
 				line = new THREE.Line(geo, auxMat);
+				line.renderOrder = 5;
+				line.position.z = 0.05;
+				line.frustumCulled = false;
 				line.computeLineDistances();
 				auxLines.set(id, line);
 				scene.add(line);

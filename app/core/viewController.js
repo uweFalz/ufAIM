@@ -11,6 +11,8 @@
 // - MS13.2: softfit (no target jump)
 // - MS13.2b: softfitanimated (smooth zoom animation)
 
+import { mirrorQuickHooksFromActive } from "../io/importApply.js";
+
 function clampNumber(value, min, max) {
 	const v = Number(value);
 	if (!Number.isFinite(v)) return min;
@@ -19,6 +21,15 @@ function clampNumber(value, min, max) {
 
 function formatNum(v, digits = 3) {
 	return Number.isFinite(v) ? v.toFixed(digits) : "—";
+}
+
+function escapeHtml(text) {
+	return String(text ?? "")
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/\"/g, "&quot;")
+		.replace(/'/g, "&#39;");
 }
 
 function computeChainage(polyline2d) {
@@ -89,6 +100,17 @@ function computeBbox(polyline2d) {
 
 	if (!Number.isFinite(minX)) return null;
 	return { minX, minY, maxX, maxY };
+}
+
+function unionBbox(a, b) {
+	if (!a) return b ?? null;
+	if (!b) return a ?? null;
+	return {
+		minX: Math.min(a.minX, b.minX),
+		minY: Math.min(a.minY, b.minY),
+		maxX: Math.max(a.maxX, b.maxX),
+		maxY: Math.max(a.maxY, b.maxY),
+	};
 }
 
 function renderBandsText(state) {
@@ -165,12 +187,41 @@ function pickBboxFromArtifactOrPolyline(art, poly) {
 	return computeBbox(poly);
 }
 
+// ---- MS13.12x: pins helpers (support legacy string pins + new object pins) ----
+function normalizePins(pins) {
+	const arr = Array.isArray(pins) ? pins : [];
+	const out = [];
+	for (const p of arr) {
+		if (!p) continue;
+		if (typeof p === "string") {
+			const [rpId, slot] = String(p).split("::");
+			if (rpId) out.push({ rpId, slot: slot || "right" });
+			continue;
+		}
+		if (typeof p === "object") {
+			const rpId = p.rpId ?? p.baseId ?? null;
+			if (!rpId) continue;
+			out.push({ rpId: String(rpId), slot: String(p.slot ?? "right") });
+		}
+	}
+	return out;
+}
+
+function makePinKey(pin) {
+	if (!pin?.rpId) return "";
+	return `${pin.rpId}::${pin.slot ?? "right"}`;
+}
+
 export function makeViewController({ store, ui, threeA, propsElement, prefs } = {}) {
 	if (!store?.getState || !store?.subscribe) throw new Error("ViewController: missing store");
 	if (!ui) throw new Error("ViewController: missing ui");
 	if (!threeA) throw new Error("ViewController: missing three adapter");
 
 	const defaultFitPadding = Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35;
+	const defaultFitDurationMs = Number.isFinite(prefs?.view?.fitDurationMs) ? prefs.view.fitDurationMs : 240;
+	const defaultFitIncludesPins = (prefs?.view?.fitIncludesPins !== undefined)
+		? Boolean(prefs.view.fitIncludesPins)
+		: true;
 	const showAuxTracks = (prefs?.view?.showAuxTracks !== undefined)
 		? Boolean(prefs.view.showAuxTracks)
 		: true;
@@ -222,21 +273,55 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 	function updateProps(state) {
 		if (!propsElement) return;
-		propsElement.textContent = JSON.stringify(
-		{
-			activeRouteProjectId: state.activeRouteProjectId ?? null,
-			activeSlot: state.activeSlot ?? "right",
-			cursor: state.cursor ?? {},
-			import_meta: state.import_meta ?? null,
-			activeArtifacts: state.import_activeArtifacts ?? null,
 
-			hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
-			hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
-			hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
-		},
-		null,
-		2
+		const pins = normalizePins(state.view_pins);
+		const pinsHtml = pins.length
+			? pins.map((pin) => {
+				const key = `${pin.rpId}::${pin.slot}`;
+				const safeRp = escapeHtml(pin.rpId ?? "");
+				const safeSlot = escapeHtml(pin.slot ?? "right");
+				const safeKey = escapeHtml(key);
+
+				const isActive = (pin.rpId === state.activeRouteProjectId) && (pin.slot === (state.activeSlot ?? "right"));
+				const activeBadge = isActive ? `<span class="propsPins__badge">active</span>` : ``;
+
+				return `
+					<div class="propsPins__row">
+						<button class="btn btn--ghost btn--xs" data-pin-jump="${safeKey}" title="Jump to this pinned alignment">Jump</button>
+						<div class="propsPins__label">
+							<span class="propsPins__rp">${safeRp}</span>
+							<span class="propsPins__slot">${safeSlot}</span>
+							${activeBadge}
+						</div>
+						<button class="btn btn--ghost btn--xs" data-pin-unpin="${safeKey}" title="Unpin">×</button>
+					</div>
+				`;
+			}).join("")
+			: `<div class="propsPins__empty">(no pins yet)</div>`;
+
+		const json = JSON.stringify(
+			{
+				activeRouteProjectId: state.activeRouteProjectId ?? null,
+				activeSlot: state.activeSlot ?? "right",
+				cursor: state.cursor ?? {},
+				import_meta: state.import_meta ?? null,
+				activeArtifacts: state.import_activeArtifacts ?? null,
+
+				hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
+				hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
+				hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
+			},
+			null,
+			2
 		);
+
+		propsElement.innerHTML = `
+			<div class="propsPins">
+				<div class="propsPins__title">Pinned</div>
+				${pinsHtml}
+			</div>
+			<div class="propsJson"><pre>${escapeHtml(json)}</pre></div>
+		`;
 	}
 
 	function clear3D() {
@@ -245,6 +330,58 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		threeA.clearMarker?.();
 		threeA.clearSectionLine?.();
 	}
+
+	// ------------------------------------------------------------
+	// MS13.12b: interactive pin list in props panel
+	// ------------------------------------------------------------
+	function parsePinKey(key) {
+		const parts = String(key ?? "").split("::");
+		if (parts.length < 2) return null;
+		const slot = parts.pop();
+		const rpId = parts.join("::");
+		if (!rpId || !slot) return null;
+		return { rpId, slot };
+	}
+
+	function wirePropsPins() {
+		if (!propsElement || propsElement.__ufAIM_pinsWired) return;
+		propsElement.__ufAIM_pinsWired = true;
+
+		propsElement.addEventListener("click", (ev) => {
+			const t = ev?.target;
+			if (!t || typeof t.closest !== "function") return;
+
+			const jumpBtn = t.closest("[data-pin-jump]");
+			const unpinBtn = t.closest("[data-pin-unpin]") || t.closest("[data-pin-remove]"); // legacy attr
+			const key =
+				jumpBtn?.getAttribute?.("data-pin-jump") ??
+				unpinBtn?.getAttribute?.("data-pin-unpin") ??
+				unpinBtn?.getAttribute?.("data-pin-remove") ??
+				null;
+			if (!key) return;
+			ev.preventDefault?.();
+
+			if (unpinBtn) {
+				const st = store.getState?.() ?? {};
+				const pins = normalizePins(st.view_pins);
+				const parsed = parsePinKey(key);
+				if (!parsed) return;
+				const next = pins.filter(p => !(p.rpId === parsed.rpId && p.slot === parsed.slot));
+				store.setState?.({ view_pins: next });
+				return;
+			}
+
+			const parsed = parsePinKey(key);
+			if (!parsed) return;
+
+			store.actions?.setActiveRouteProject?.(parsed.rpId);
+			store.actions?.setActiveSlot?.(parsed.slot);
+			mirrorQuickHooksFromActive(store);
+		});
+	}
+
+	// do it once
+	wirePropsPins();
 
 	// MS13.9: collect background alignments
 	function collectAuxTracks(state) {
@@ -267,11 +404,11 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 		// pinned scope (MS13.12)
 		if (auxTracksScope === "pinned") {
-			const pins = Array.isArray(state.view_pins) ? state.view_pins : [];
+			const pins = normalizePins(state.view_pins);
 			const ids = new Set();
-			for (const key of pins) {
-				if (!key || typeof key !== "string") continue;
-				const [rpId, slotName] = key.split("::");
+			for (const p of pins) {
+				const rpId = p?.rpId;
+				const slotName = p?.slot;
 				if (!rpId || !slotName) continue;
 				const rp = state.routeProjects?.[rpId];
 				const aId = rp?.slots?.[slotName]?.alignmentArtifactId;
@@ -312,6 +449,24 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		return out;
 	}
 
+	function computeFitBboxFromState(state, poly, opts = {}) {
+		const includePins = (opts.includePins !== undefined)
+			? Boolean(opts.includePins)
+			: defaultFitIncludesPins;
+
+		const activeArt = getActiveAlignmentArtifact(state);
+		let bbox = pickBboxFromArtifactOrPolyline(activeArt, poly);
+
+		if (includePins) {
+			const aux = collectAuxTracks(state);
+			for (const t of aux) {
+				const b = computeBbox(t.points);
+				bbox = unionBbox(bbox, b);
+			}
+		}
+		return bbox;
+	}
+
 	// ---- public methods (closures, no globals) ----
 	function recenterToActive() {
 		const st = store.getState();
@@ -331,8 +486,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		const poly = st.import_polyline2d;
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const art = getActiveAlignmentArtifact(st);
-		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		const bbox = computeFitBboxFromState(st, poly, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
@@ -348,8 +502,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		const poly = st.import_polyline2d;
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const art = getActiveAlignmentArtifact(st);
-		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		const bbox = computeFitBboxFromState(st, poly, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
@@ -365,12 +518,11 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		const poly = st.import_polyline2d;
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const art = getActiveAlignmentArtifact(st);
-		const bbox = pickBboxFromArtifactOrPolyline(art, poly);
+		const bbox = computeFitBboxFromState(st, poly, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
-		const durationMs = Number.isFinite(opts.durationMs) ? opts.durationMs : 240;
+		const durationMs = Number.isFinite(opts.durationMs) ? opts.durationMs : defaultFitDurationMs;
 
 		threeA.setOriginFromBbox(bbox);
 		threeA.zoomToFitWorldBboxSoftAnimated?.(bbox, { padding, durationMs });
@@ -413,36 +565,34 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 			// 1) props
 			updateProps(state);
-			// cursor UI sync (safe: ui ignores while input focused)
-			ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
 
-		// MS13.8: keep cursor input in sync with state (but don't fight while user edits)
-		const cursorEl = ui.elements?.cursorSInput;
-		if (cursorEl && document.activeElement !== cursorEl) {
-			ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
-		}
+			// MS13.8: keep cursor input in sync with state (but don't fight while user edits)
+			const cursorEl = ui.elements?.cursorSInput;
+			if (cursorEl && document.activeElement !== cursorEl) {
+				ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
+			}
 
 			// 2) overlays
 			ui.setBoardBandsText(renderBandsText(state));
 
-			const poly = state.import_polyline2d;
+			// MS13.14a: pin counter in topbar
+			const pinsNow = normalizePins(state.view_pins);
+			ui.setPinsInfoText?.(`Pins: ${pinsNow.length}`);
 
+			const poly = state.import_polyline2d;
 			const geomKey = makeActiveGeomKey(state);
 			const geomChanged = geomKey !== lastGeomKey;
 			lastGeomKey = geomKey;
 
 			if (!Array.isArray(poly) || poly.length < 2) {
+				// Pinned tracks should stay visible even if no active geometry is selected.
+				threeA.setAuxTracksFromWorldPolylines?.(collectAuxTracks(state));
+
 				cachedCum = null;
 				lastPolyRef = null;
 				ui.setBoardSectionText(renderSectionText(state, null));
 				clear3D();
 				return;
-			}
-
-			// MS13.9: render background tracks (before main track)
-			if (threeA.setAuxTracksFromWorld) {
-				const aux = collectAuxTracks(state);
-				threeA.setAuxTracksFromWorld(aux);
 			}
 
 			// 3) geom change policy (MS13.1/13.2/13.2b)
@@ -463,6 +613,10 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 				}
 			}
 
+			// MS13.15a: render pinned background tracks AFTER any origin/fit change
+			// (otherwise they may be transformed with the previous origin and look “stuck”)
+			threeA.setAuxTracksFromWorldPolylines?.(collectAuxTracks(state));
+
 			// 4) section sampling
 			if (!cachedCum || lastPolyRef !== poly) {
 				cachedCum = computeChainage(poly);
@@ -470,8 +624,6 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			}
 
 			const cursorS = Number(state.cursor?.s ?? 0);
-			// MS13.7: keep cursor UI in sync (without fighting active typing)
-			ui.setCursorSInputValue?.(cursorS);
 			const sectionInfo = samplePointAndTangent(poly, cachedCum, cursorS);
 
 			if (sectionInfo) {
