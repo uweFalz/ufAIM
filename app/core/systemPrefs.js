@@ -14,9 +14,16 @@ export function makeSystemPrefs() {
 		},
 
 		view: {
-			onGeomChange: "softfitanimated", // MS13.2b (smooth zoom, no target-jump)
+			onGeomChange: "softfit",          // MS13.2 (ohne target-jump)
+			// onGeomChange: "softfitanimated", // MS13.2b (smooth zoom)
 			fitPadding: 1.35,
 			fitDurationMs: 240,              // MS13.2b default anim duration
+			cursorStepS: 10,                 // MS13.8: +/- step (meters)
+
+			// MS13.9: show background tracks (other alignments) alongside the active one
+			showAuxTracks: true,
+			auxTracksScope: "pinned",        // "active" | "all" | "routeProject" | "pinned"
+			auxTracksMax: 12,
 			autoFitOnGeomChange: false,
 		}
 	};

@@ -58,33 +58,40 @@ export async function bootApp({ prefs } = {}) {
 			mirrorQuickHooksFromActive(store);
 		},
 	});
+
+	// ------------------------------------------------------------
+	// Cursor wiring (MS13.8)
+	// - revive cursor input + +/- buttons
+	// - cursor.s drives overlays + section marker
+	// ------------------------------------------------------------
+	const cursorStepS = Math.max(1, Number(prefs?.view?.cursorStepS ?? 10));
+	const parseCursorS = (value) => {
+		const v = Number(value);
+		if (!Number.isFinite(v)) return 0;
+		return Math.max(0, v);
+	};
+
+	ui.wireCursorControls?.({
+		onSetCursorS: (value) => {
+			store.actions?.setCursorS?.(parseCursorS(value));
+		},
+		onNudgeMinus: () => {
+			const s0 = Number(store.getState()?.cursor?.s ?? 0) || 0;
+			store.actions?.setCursorS?.(Math.max(0, s0 - cursorStepS));
+		},
+		onNudgePlus: () => {
+			const s0 = Number(store.getState()?.cursor?.s ?? 0) || 0;
+			store.actions?.setCursorS?.(Math.max(0, s0 + cursorStepS));
+		},
+	});
 	
 	// Default slot
 	store.actions?.setActiveSlot?.("right");
 	ui.setSlotSelectValue?.("right");
+	// Default cursor
+	store.actions?.setCursorS?.(0);
+	ui.setCursorSInputValue?.(0);
 	mirrorQuickHooksFromActive(store);
-
-	// ------------------------------------------------------------
-	// MS13.7: Cursor wiring (revive cursor input/buttons)
-	// ------------------------------------------------------------
-	ui.wireCursorControls?.({
-		onSetCursorS: (value) => {
-			const s = Number(value);
-			if (!Number.isFinite(s)) return;
-			store.actions?.setCursor?.({ s: Math.max(0, s) });
-		},
-		onNudgeMinus: () => {
-			const cur = Number(store.getState()?.cursor?.s ?? 0);
-			const step = 1;
-			store.actions?.setCursor?.({ s: Math.max(0, cur - step) });
-		},
-		onNudgePlus: () => {
-			const cur = Number(store.getState()?.cursor?.s ?? 0);
-			const step = 1;
-			store.actions?.setCursor?.({ s: Math.max(0, cur + step) });
-		},
-	});
-	ui.setCursorSInputValue?.(store.getState()?.cursor?.s ?? 0);
 
 	// Drop + Picker
 	importer.installDrop({ element: document.documentElement });
@@ -117,6 +124,21 @@ export async function bootApp({ prefs } = {}) {
 	ui.wireFitButton?.({
 		onClick: () => viewC.fitActive?.(), // padding kommt jetzt aus prefs.view.fitPadding
 	});
+
+		// MS13.12: pin/unpin current + clear pins
+		ui.wirePinControls?.({
+			onTogglePin: () => {
+				const st = store.getState();
+				const rpId = st.activeRouteProjectId;
+				const slot = st.activeSlot ?? "right";
+				if (!rpId) return;
+				const key = `${rpId}::${slot}`;
+				const pins = new Set(Array.isArray(st.view_pins) ? st.view_pins : []);
+				if (pins.has(key)) pins.delete(key); else pins.add(key);
+				store.setState({ view_pins: [...pins] });
+			},
+			onClearPins: () => store.setState({ view_pins: [] }),
+		});
 
 	return ui;
 }

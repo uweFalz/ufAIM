@@ -43,6 +43,14 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setSectionLine?.(null, null);
 	}
 
+	// MS13.9/13.11: background tracks (multiple alignments)
+	function clearAuxTracks() {
+		// prefer viewer API, fallback to legacy alias if needed
+		three.clearAuxTracks?.();
+		three.setAuxTracks?.(null);
+		three.setAuxTracksPoints?.(null);
+	}
+
 	function setTrackFromWorldPolyline(polylineENU) {
 		if (!Array.isArray(polylineENU) || polylineENU.length < 2) {
 			clearTrack();
@@ -69,6 +77,26 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		const p0l = toThreeLocal(xform.toLocal(p0ENU));
 		const p1l = toThreeLocal(xform.toLocal(p1ENU));
 		three.setSectionLine?.(p0l, p1l);
+	}
+
+	// tracks: [{ id, points:[{x,y,z?}...] }]
+	function setAuxTracksFromWorld(tracksENU) {
+		if (!Array.isArray(tracksENU) || tracksENU.length === 0) {
+			clearAuxTracks();
+			return;
+		}
+
+		const out = [];
+		for (const t of tracksENU) {
+			const pts = t?.points;
+			if (!Array.isArray(pts) || pts.length < 2) continue;
+			out.push({
+				id: String(t.id ?? ""),
+				points: xform.toLocalPolyline(pts).map(toThreeLocal),
+			});
+		}
+		const setFn = three.setAuxTracks ?? three.setAuxTracksPoints;
+		setFn?.(out);
 	}
 
 	// Optional: keep using your viewer's bbox zoom helper,
@@ -136,10 +164,12 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		onTrackClick, // ✅ MS13.5
 
 		setTrackFromWorldPolyline,
+		setAuxTracksFromWorld, // ✅ MS13.9/13.11
 		setMarkerFromWorld,
 		setSectionLineFromWorld,
 
 		clearTrack,
+		clearAuxTracks, // ✅ MS13.9/13.11
 		clearMarker,
 		clearSectionLine,
 	};

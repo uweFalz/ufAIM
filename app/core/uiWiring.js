@@ -83,8 +83,11 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		
 		// ...
 		chkAutoFit: document.getElementById("chkAutoFit"),
-		// ...
 		buttonFit: document.getElementById("btnFit"),
+		// ...
+		buttonPinToggle: document.getElementById("btnPinToggle"),
+		buttonPinsClear: document.getElementById("btnPinsClear"),
+		pinsInfo: document.getElementById("pinsInfo"),
 	};
 	
 	// ------------------------------------------------------------
@@ -163,6 +166,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ------------------------------------------------------------
 	function setCursorSInputValue(value) {
 		if (!elements.cursorSInput) return;
+		// don't fight the user while typing
+		if (document.activeElement === elements.cursorSInput) return;
 		elements.cursorSInput.value = String(value ?? "");
 	}
 
@@ -230,6 +235,29 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 			e?.preventDefault?.();
 			onClick?.();
 		};
+	}
+
+	// ------------------------------------------------------------
+	// MS13.12: pinned controls (small helpers)
+	// ------------------------------------------------------------
+	function setPinsInfoText(text) {
+		if (!elements.pinsInfo) return;
+		elements.pinsInfo.textContent = String(text ?? '');
+	}
+
+	function wirePinControls({ onTogglePin, onClearPins } = {}) {
+		if (elements.buttonPinToggle && typeof onTogglePin === 'function') {
+			elements.buttonPinToggle.addEventListener('click', (e) => {
+				e?.preventDefault?.();
+				onTogglePin();
+			});
+		}
+		if (elements.buttonPinsClear && typeof onClearPins === 'function') {
+			elements.buttonPinsClear.addEventListener('click', (e) => {
+				e?.preventDefault?.();
+				onClearPins();
+			});
+		}
 	}
 
 	// ------------------------------------------------------------
@@ -378,6 +406,29 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	logLine(t("boot_ui"));
 	setStatus(t("boot_ui_ok"));
 
+	// ------------------------------------------------------------
+	// MS13.12: pinned controls
+	// ------------------------------------------------------------
+	function setPinsInfoText(text) {
+		if (!elements.pinsInfo) return;
+		elements.pinsInfo.textContent = String(text ?? "");
+	}
+
+	function wirePinControls({ onTogglePin, onClearPins } = {}) {
+		if (elements.buttonPinToggle && typeof onTogglePin === "function") {
+			elements.buttonPinToggle.addEventListener("click", (e) => {
+				e?.preventDefault?.();
+				onTogglePin();
+			});
+		}
+		if (elements.buttonPinsClear && typeof onClearPins === "function") {
+			elements.buttonPinsClear.addEventListener("click", (e) => {
+				e?.preventDefault?.();
+				onClearPins();
+			});
+		}
+	}
+
 	return {
 		elements,
 
@@ -427,6 +478,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		wireAutoFitToggle,
 		// ...
 		wireFitButton,
+		wirePinControls,
+		setPinsInfoText,
 		
 		// ...
 		emitProps,

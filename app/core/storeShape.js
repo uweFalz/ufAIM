@@ -43,5 +43,6 @@ export function ensureStateShape(state) {
 		import_meta: s.import_meta ?? null,
 
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
+		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
 	};
 }

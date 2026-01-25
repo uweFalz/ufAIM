@@ -171,6 +171,10 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	if (!threeA) throw new Error("ViewController: missing three adapter");
 
 	const defaultFitPadding = Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35;
+	const showAuxTracks = (prefs?.view?.showAuxTracks !== undefined)
+		? Boolean(prefs.view.showAuxTracks)
+		: true;
+	const auxTracksScope = String(prefs?.view?.auxTracksScope ?? "routeProject").toLowerCase();
 
 	// policy: off | recenter | fit | softfit | softfitanimated
 	let onGeomChange = String(prefs?.view?.onGeomChange ?? "recenter").toLowerCase();
@@ -237,8 +241,75 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 	function clear3D() {
 		threeA.clearTrack?.();
+		threeA.clearAuxTracks?.();
 		threeA.clearMarker?.();
 		threeA.clearSectionLine?.();
+	}
+
+	// MS13.9: collect background alignments
+	function collectAuxTracks(state) {
+		if (!showAuxTracks) return [];
+
+		const activeId = state.import_activeArtifacts?.alignmentArtifactId ?? null;
+		const out = [];
+
+		// Scope: "routeProject" (default) or "all"
+		if (auxTracksScope === "all") {
+			for (const [id, art] of Object.entries(state.artifacts ?? {})) {
+				if (!art || id === activeId) continue;
+				if (art.domain !== "alignment2d") continue;
+				const pts = art.payload?.polyline2d;
+				if (!Array.isArray(pts) || pts.length < 2) continue;
+				out.push({ id, points: pts });
+			}
+			return out;
+		}
+
+		// pinned scope (MS13.12)
+		if (auxTracksScope === "pinned") {
+			const pins = Array.isArray(state.view_pins) ? state.view_pins : [];
+			const ids = new Set();
+			for (const key of pins) {
+				if (!key || typeof key !== "string") continue;
+				const [rpId, slotName] = key.split("::");
+				if (!rpId || !slotName) continue;
+				const rp = state.routeProjects?.[rpId];
+				const aId = rp?.slots?.[slotName]?.alignmentArtifactId;
+				if (aId) ids.add(aId);
+			}
+			for (const id of ids) {
+				if (!id || id === activeId) continue;
+				const art = state.artifacts?.[id];
+				if (!art || art.domain !== "alignment2d") continue;
+				const pts = art.payload?.polyline2d;
+				if (!Array.isArray(pts) || pts.length < 2) continue;
+				out.push({ id, points: pts });
+			}
+			return out;
+		}
+
+		// routeProject scope
+		const rpId = state.activeRouteProjectId;
+		const rp = rpId ? state.routeProjects?.[rpId] : null;
+		if (!rp?.slots) return out;
+
+		const ids = new Set();
+		for (const slot of Object.values(rp.slots)) {
+			const aId = slot?.alignmentArtifactId;
+			if (aId) ids.add(aId);
+			const other = slot?.otherArtifactIds;
+			if (Array.isArray(other)) for (const x of other) ids.add(x);
+		}
+
+		for (const id of ids) {
+			if (!id || id === activeId) continue;
+			const art = state.artifacts?.[id];
+			if (!art || art.domain !== "alignment2d") continue;
+			const pts = art.payload?.polyline2d;
+			if (!Array.isArray(pts) || pts.length < 2) continue;
+			out.push({ id, points: pts });
+		}
+		return out;
 	}
 
 	// ---- public methods (closures, no globals) ----
@@ -340,14 +411,16 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
 			ui.setRouteProjectOptions(ids, state.activeRouteProjectId);
 
-			// MS13.7: keep cursor input in sync (but never fight user typing)
-			const cursorInput = ui.elements?.cursorSInput;
-			if (cursorInput && document.activeElement !== cursorInput) {
-				ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
-			}
-
 			// 1) props
 			updateProps(state);
+			// cursor UI sync (safe: ui ignores while input focused)
+			ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
+
+		// MS13.8: keep cursor input in sync with state (but don't fight while user edits)
+		const cursorEl = ui.elements?.cursorSInput;
+		if (cursorEl && document.activeElement !== cursorEl) {
+			ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
+		}
 
 			// 2) overlays
 			ui.setBoardBandsText(renderBandsText(state));
@@ -364,6 +437,12 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 				ui.setBoardSectionText(renderSectionText(state, null));
 				clear3D();
 				return;
+			}
+
+			// MS13.9: render background tracks (before main track)
+			if (threeA.setAuxTracksFromWorld) {
+				const aux = collectAuxTracks(state);
+				threeA.setAuxTracksFromWorld(aux);
 			}
 
 			// 3) geom change policy (MS13.1/13.2/13.2b)
@@ -391,6 +470,8 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			}
 
 			const cursorS = Number(state.cursor?.s ?? 0);
+			// MS13.7: keep cursor UI in sync (without fighting active typing)
+			ui.setCursorSInputValue?.(cursorS);
 			const sectionInfo = samplePointAndTangent(poly, cachedCum, cursorS);
 
 			if (sectionInfo) {

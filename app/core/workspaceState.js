@@ -35,6 +35,23 @@ export function createWorkspaceState(initial) {
 			setState({ cursor: { ...state.cursor, ...(patch ?? {}) } });
 		},
 
+		// MS13.7+: cursor helpers used by UI wiring
+		setCursorS(value) {
+			const n = Number(value);
+			if (!Number.isFinite(n)) return;
+			// keep it simple: s is non-negative meters
+			const s = Math.max(0, n);
+			setState({ cursor: { ...state.cursor, s } });
+		},
+
+		nudgeCursorS(delta) {
+			const d = Number(delta);
+			if (!Number.isFinite(d)) return;
+			const s0 = Number(state.cursor?.s ?? 0);
+			const s1 = Math.max(0, (Number.isFinite(s0) ? s0 : 0) + d);
+			setState({ cursor: { ...state.cursor, s: s1 } });
+		},
+
 		setPick(pick) {
 			setState({ cursor: { ...state.cursor, pick } });
 		},
