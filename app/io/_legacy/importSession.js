@@ -1,4 +1,5 @@
-// app/io/importSession.js
+// app/io/_legacy/importSession.js
+//
 // ImportSession = Matching/Grouping (nicht: Store schreiben)
 //
 // Ergebnis: { baseId, slot, source, artifacts[] }

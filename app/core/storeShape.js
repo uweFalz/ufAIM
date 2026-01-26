@@ -18,38 +18,15 @@ export function makeInitialState() {
 
 		import_meta: null,
 
-		// MS8: deterministic active artifact ids for current (RP,slot)
-		import_activeArtifacts: null, // { baseId, slot, alignmentArtifactId, profileArtifactId, cantArtifactId }
+		import_activeArtifacts: null,
 
-			// MS13.12: pinned artifacts (for multi-track view)
-			view_pins: [], // [{ baseId, slot, alignmentArtifactId, pinnedAt }]
+		// ✅ MS14.1: pins must survive ensureStateShape()
+		view_pins: [], // [{rpId, slot, at}]
 	};
 }
 
 export function ensureStateShape(state) {
 	const s = state ?? {};
-
-	// MS13.12c: allow legacy string pins ("rpId::slot") but normalize to objects
-	let pins = Array.isArray(s.view_pins) ? s.view_pins : [];
-	pins = pins.map((p) => {
-		if (!p) return null;
-		if (typeof p === "string") {
-			const [rpId, slot] = p.split("::");
-			if (!rpId) return null;
-			return { rpId, slot: slot ?? "right", createdAt: null };
-		}
-		if (typeof p === "object") {
-			const rpId = p.rpId ?? p.baseId ?? null;
-			if (!rpId) return null;
-			return {
-				rpId,
-				slot: p.slot ?? "right",
-				createdAt: p.createdAt ?? null,
-			};
-		}
-		return null;
-	}).filter(Boolean);
-
 	return {
 		activeRouteProjectId: s.activeRouteProjectId ?? null,
 		activeSlot: s.activeSlot ?? "right",
@@ -68,6 +45,8 @@ export function ensureStateShape(state) {
 		import_meta: s.import_meta ?? null,
 
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
-		view_pins: pins,
+
+		// ✅ keep pins
+		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
 	};
 }

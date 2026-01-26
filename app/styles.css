@@ -289,6 +289,28 @@ body {
 	padding: 12px;
 }
 
+.overlay__card--wide {
+	width: min(980px, 94vw);
+}
+
+.docsBody {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
+}
+
+.docsText {
+	white-space: pre-wrap;
+	border: 1px solid var(--borderSoft);
+	border-radius: 12px;
+	padding: 10px;
+	background: rgba(255,255,255,0.02);
+	color: var(--text);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 12px;
+	line-height: 1.35;
+}
+
 .overlay__header {
 	display: flex;
 	justify-content: space-between;

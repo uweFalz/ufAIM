@@ -28,19 +28,16 @@ function ensureStoreShape(state) {
 		routeProjects: ensureObject(s.routeProjects),
 		artifacts: ensureObject(s.artifacts),
 
-		// quick-render hooks (View Cache)
 		import_polyline2d: s.import_polyline2d ?? null,
 		import_marker2d: s.import_marker2d ?? null,
 		import_profile1d: s.import_profile1d ?? null,
 		import_cant1d: s.import_cant1d ?? null,
 		import_meta: s.import_meta ?? null,
 
-		// MS8: deterministic active artifact ids
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
 
-		// MS13.12+: pins (persisted UI state)
+		// ✅ MS14.1 pins survive patching too
 		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
-		view_activePinnedIndex: Number.isFinite(s.view_activePinnedIndex) ? s.view_activePinnedIndex : -1,
 	};
 }
 

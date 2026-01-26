@@ -1,21 +1,73 @@
+# ------------------------------------------------------------
+# OS / Editor noise
+# ------------------------------------------------------------
 .DS_Store
+**/.DS_Store
+.metadata/
+
+# ------------------------------------------------------------
+# Git housekeeping
+# ------------------------------------------------------------
 .gitignore
 app/.gitignore
-.metadata/
+
+# ------------------------------------------------------------
+# Build / runtime artefacts (Web / JS)
+# ------------------------------------------------------------
+node_modules/
+dist/
+build/
+coverage/
+*.map
+
+# temporary bundles / local dumps
+*.tgz
+*.tar.gz
+
+# ------------------------------------------------------------
+# Service Worker / local dev helpers
+# ------------------------------------------------------------
+sw-nocache.js
+sw-nocache.*.js
+
+# ------------------------------------------------------------
+# Logs
+# ------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ------------------------------------------------------------
+# Scratch / experiments / local helpers
+# ------------------------------------------------------------
 scripts/
-docs/archive/
+sample/
 legacy/
+app/empty.js
+
+# ------------------------------------------------------------
+# Docs
+# ------------------------------------------------------------
+docs/archive/
 docs/.DS_Store
 
-
-# LaTeX build artefacts
+# ------------------------------------------------------------
+# LaTeX build artefacts (historic but still useful)
+# ------------------------------------------------------------
 *.aux
-*.log
 *.out
 *.toc
 *.synctex.gz
-*.pdf
 *.run.xml
+*.fdb_latexmk
 
-# scratch / experiments
-app/empty.js
+# (bewusst NICHT ignoriert:)
+# *.pdf  ← falls ihr PDFs versionieren wollt
+
+# local history / dumps / generated
+_legacy/
+**/_legacy/
+var/
+samples/
+*.sh

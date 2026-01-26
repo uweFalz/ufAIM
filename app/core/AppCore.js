@@ -47,15 +47,14 @@ export async function bootApp({ prefs } = {}) {
 	// RP + Slot
 	ui.wireRouteProjectSelect({
 		onChange: (baseId) => {
-			store.setState({ activeRouteProjectId: baseId || null, import_meta: null });
-			mirrorQuickHooksFromActive(store);
+			store.actions?.setActiveRouteProject?.(baseId || null);
+			store.setState({ import_meta: null });
 		},
 	});
 
 	ui.wireSlotSelect?.({
 		onChange: (slot) => {
 			store.actions?.setActiveSlot?.(slot);
-			mirrorQuickHooksFromActive(store);
 		},
 	});
 
@@ -125,28 +124,11 @@ export async function bootApp({ prefs } = {}) {
 		onClick: () => viewC.fitActive?.(), // padding kommt jetzt aus prefs.view.fitPadding
 	});
 
-		// MS13.12: pin/unpin current + clear pins
-		ui.wirePinControls?.({
-			onTogglePin: () => {
-				const st = store.getState();
-				const rpId = st.activeRouteProjectId;
-				const slot = st.activeSlot ?? "right";
-				if (!rpId) return;
-				const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
-				const has = pins.some(p => (p && typeof p === "object") ? (p.rpId === rpId && (p.slot ?? "right") === slot) : (String(p) === `${rpId}::${slot}`));
-				let next;
-				if (has) {
-					next = pins.filter(p => {
-						if (p && typeof p === "object") return !(p.rpId === rpId && (p.slot ?? "right") === slot);
-						return String(p) !== `${rpId}::${slot}`;
-					});
-				} else {
-					next = [...pins, { rpId, slot, createdAt: new Date().toISOString() }];
-				}
-				store.setState({ view_pins: next });
-			},
-			onClearPins: () => store.setState({ view_pins: [] }),
-		});
+	// MS13.12+: pin/unpin current + clear pins
+	ui.wirePinControls?.({
+		onTogglePin: () => store.actions.togglePinFromActive?.(),
+		onClearPins: () => store.actions?.clearPins?.(),
+	});
 
 	return ui;
 }

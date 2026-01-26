@@ -78,9 +78,10 @@
 					<span>AutoFit</span>
 				</label>		
 				<button id="btnFit" class="btn btn--ghost" title="Zoom to active alignment">Fit</button>
-					<button id="btnPinToggle" class="btn" title="Pin/unpin current (RP+Slot)">Pin</button>
-					<button id="btnPinsClear" class="btn btn--ghost" title="Clear all pinned">Unpin all</button>
-					<span id="pinsInfo" class="hint" style="margin-left:6px">Pins: 0</span>
+				<button id="btnPinToggle" class="btn" title="Pin/unpin current (RP+Slot)">Pin</button>
+				<button id="btnPinsClear" class="btn btn--ghost" title="Clear all pinned">Unpin all</button>
+				<span id="pinsInfo" class="hint" style="margin-left:6px">Pins: 0</span>
+				<button id="btnDocs" class="btn btn--ghost" title="Show project docs (Vision/Roadmap/Freeze)">Docs</button>
 
 				<div class="divider"></div>
 
@@ -159,6 +160,24 @@
 					<input id="w2" type="range" min="0" max="1000" step="1" />
 					<div class="hint" id="w2Val">—</div>
 				</div>
+			</div>
+		</section>
+
+		<!-- Docs Overlay (Vision/Roadmap/Freeze) -->
+		<section id="docsOverlay" class="overlay hidden">
+			<div class="overlay__card overlay__card--wide">
+				<header class="overlay__header">
+					<div class="overlay__title">Docs</div>
+					<div class="overlay__headerRight">
+						<select id="docsSelect" class="select">
+							<option value="vision">Vision</option>
+							<option value="roadmap">Roadmap</option>
+							<option value="freeze">Architecture Freeze</option>
+						</select>
+						<button id="btnDocsClose" class="btn">Close</button>
+					</div>
+				</header>
+				<pre id="docsText" class="docsText">Loading…</pre>
 			</div>
 		</section>
 

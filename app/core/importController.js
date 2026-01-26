@@ -9,7 +9,7 @@
 
 import { installFileDrop } from "../io/fileDrop.js";
 import { importFileAuto } from "../io/importTRA_GRA.js";
-import { makeImportSession } from "../io/importSession.js";
+import { makeImportSession } from "../io/_legacy/importSession.js";
 import { applyImportToProject } from "../io/importApply.js";
 
 export function makeImportController({ store, ui, logLine, prefs } = {}) {

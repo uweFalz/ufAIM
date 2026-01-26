@@ -42,7 +42,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// prefs optional – später für UI-Debug-Features nützlich
 
 	// ------------------------------------------------------------
-	// Element lookup
+	// Element lookup / cacheElements()
 	// ------------------------------------------------------------
 	const elements = {
 		log: resolveElement(logElement, "log"),
@@ -88,6 +88,13 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		buttonPinToggle: document.getElementById("btnPinToggle"),
 		buttonPinsClear: document.getElementById("btnPinsClear"),
 		pinsInfo: document.getElementById("pinsInfo"),
+
+		// docs overlay
+		buttonDocs: document.getElementById("btnDocs"),
+		overlayDocs: document.getElementById("docsOverlay"),
+		docsSelect: document.getElementById("docsSelect"),
+		docsText: document.getElementById("docsText"),
+		buttonDocsClose: document.getElementById("btnDocsClose"),
 	};
 	
 	// ------------------------------------------------------------
@@ -250,30 +257,37 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		}
 		if (elements.pinsInfo) elements.pinsInfo.textContent = t;
 	}
+	
+	function defaultTogglePin() {
+		const st = store.getState();
+		const rpId = st.activeRouteProjectId;
+		const slot = st.activeSlot ?? "right";
+		if (!rpId) return;
+
+		const pins = Array.isArray(st.view_pins) ? st.view_pins.slice() : [];
+		const key = `${rpId}::${slot}`;
+
+		const idx = pins.findIndex(p => (typeof p === "string" ? p : `${p.rpId}::${p.slot}`) === key);
+		if (idx >= 0) pins.splice(idx, 1);
+		else pins.push({ rpId, slot });
+
+		store.setState({ view_pins: pins });
+	}
+
+	function defaultClearPins() {
+		store.setState({ view_pins: [] });
+	}
 
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
-		const toggleNodes = document.querySelectorAll('#btnPinToggle');
-		const clearNodes = document.querySelectorAll('#btnPinsClear');
+		elements.buttonPinToggle?.addEventListener("click", (e) => {
+			e?.preventDefault?.();
+			(onTogglePin ?? defaultTogglePin)();
+		});
 
-		if (typeof onTogglePin === 'function') {
-			(toggleNodes?.length ? Array.from(toggleNodes) : [elements.buttonPinToggle]).filter(Boolean)
-				.forEach((btn) => {
-					btn.addEventListener('click', (e) => {
-						e?.preventDefault?.();
-						onTogglePin();
-					});
-				});
-		}
-
-		if (typeof onClearPins === 'function') {
-			(clearNodes?.length ? Array.from(clearNodes) : [elements.buttonPinsClear]).filter(Boolean)
-				.forEach((btn) => {
-					btn.addEventListener('click', (e) => {
-						e?.preventDefault?.();
-						onClearPins();
-					});
-				});
-		}
+		elements.buttonPinsClear?.addEventListener("click", (e) => {
+			e?.preventDefault?.();
+			(onClearPins ?? defaultClearPins)();
+		});
 	}
 
 	// ------------------------------------------------------------
@@ -325,10 +339,83 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		elements.transitionOverlay.classList.add("hidden");
 	}
 
+	// ------------------------------------------------------------
+	// docs overlay (Vision/Roadmap/Freeze)
+	// ------------------------------------------------------------
+	const docsMap = {
+		vision: new URL("../../docs/vision/VISION.md", import.meta.url),
+		roadmap: new URL("../../docs/roadmap/ROADMAP.md", import.meta.url),
+		freeze: new URL("../../docs/architecture/ARCHITEKTUR_FREEZE.md", import.meta.url),
+	};
+
+	async function loadDocs(kind) {
+		const k = String(kind || "").toLowerCase();
+		const url = docsMap[k] ?? docsMap.roadmap;
+		if (!elements.docsText) return;
+
+		try {
+			elements.docsText.textContent = "Loading…";
+			const res = await fetch(url);
+			if (!res.ok) throw new Error(`HTTP ${res.status}`);
+			const text = await res.text();
+			elements.docsText.textContent = text;
+		} catch (err) {
+			elements.docsText.textContent = `Failed to load docs: ${err?.message ?? err}`;
+		}
+	}
+
+	function show(el) {
+		console.debug("show", el);
+		if (!el) return;
+		el.classList.remove("hidden");
+		el.classList.remove("overlayPane--hidden");
+	}
+	function hide(el) {
+		// console.debug("hide", el);
+		if (!el) return;
+		el.classList.add("hidden");
+		el.classList.add("overlayPane--hidden");
+	}
+
+	function openDocs()  { show(elements.overlayDocs); }
+	function closeDocs() { hide(elements.overlayDocs); }
+	function toggleDocs() {
+		if (!elements.overlayDocs) return;
+		if (elements.overlayDocs.classList.contains("hidden")) openDocs();
+		else closeDocs();
+	}
+
+	function wireDocs() {
+		// ✅ guard: prevent double (or x14) wiring
+		if (elements.__docsWired) return;
+		elements.__docsWired = true;
+
+		elements.buttonDocs?.addEventListener("click", (e) => {
+			e?.preventDefault?.();
+			e?.stopPropagation?.(); // optional, but harmless
+			toggleDocs();
+		});
+
+		elements.buttonDocsClose?.addEventListener("click", (e) => {
+			e?.preventDefault?.();
+			e?.stopPropagation?.(); // optional
+			closeDocs();
+		});
+
+		elements.overlayDocs?.addEventListener("click", (event) => {
+			if (event.target === elements.overlayDocs) closeDocs();
+		});
+
+		elements.docsSelect?.addEventListener("change", () => {
+			loadDocs(elements.docsSelect.value);
+		});
+	}
+
 	// initial UI state
 	closeBands();
 	closeSection();
 	closeTransition();
+	closeDocs();
 
 	// wire overlay buttons
 	elements.buttonBands?.addEventListener("click", toggleBands);
@@ -338,6 +425,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 	elements.buttonTransition?.addEventListener("click", openTransition);
 	elements.buttonTransitionClose?.addEventListener("click", closeTransition);
+
+	// Docs overlay (MS14.1)
+	wireDocs?.({ defaultDoc: String(prefs?.view?.docsDefault ?? "roadmap") });
 
 	// click backdrop closes (but not clicks inside card)
 	elements.transitionOverlay?.addEventListener("click", (event) => {
@@ -367,9 +457,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		});
 	}
 
-	// ESC closes transition overlay
+	// ESC closes overlays
 	window.addEventListener("keydown", (event) => {
-		if (event.key === "Escape") closeTransition();
+		if (event.key === "Escape") {
+			closeTransition();
+			closeDocs();
+		}
 	});
 
 	// ------------------------------------------------------------
@@ -460,6 +553,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		toggleSection,
 		openTransition,
 		closeTransition,
+		
+		// docs overlay
+		openDocs,
+		closeDocs,
+		toggleDocs,
+		wireDocs,
 
 		// wiring helpers
 		wireCursorControls,

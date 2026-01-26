@@ -21,9 +21,27 @@ export function makeThreeViewer({ canvas }) {
 
 	scene.add(dirLight);
 	scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+
+	// Grid is a great spatial cue, but it must not dominate the scene.
+	// Keep it subtle and let tracks win visually.
 	const grid = new THREE.GridHelper(600, 30);
 	// GridHelper is created in XZ by default; rotate it into the XY plane (Z-up world).
 	grid.rotation.x = Math.PI / 2;
+	// Subtle look + avoid z-fighting dominating the tracks
+	if (Array.isArray(grid.material)) {
+		for (const m of grid.material) {
+			m.transparent = true;
+			m.opacity = 0.18;
+			m.depthWrite = false;
+			m.depthTest = true;
+		}
+	} else if (grid.material) {
+		grid.material.transparent = true;
+		grid.material.opacity = 0.18;
+		grid.material.depthWrite = false;
+		grid.material.depthTest = true;
+	}
+	grid.renderOrder = 0;
 	scene.add(grid);
 	scene.add(new THREE.AxesHelper(120));
 
@@ -35,8 +53,9 @@ export function makeThreeViewer({ canvas }) {
 		color: 0x00d7ff,
 		transparent: true,
 		opacity: 0.98,
-		depthTest: true,
-		depthWrite: true,
+		// keep the active track readable even with the grid below
+		depthTest: false,
+		depthWrite: false,
 	});
 	let trackLine = null;
 
@@ -54,13 +73,19 @@ export function makeThreeViewer({ canvas }) {
 	const auxLines = new Map(); // id -> THREE.Line
 
 	// section line
-	const sectionMat = new THREE.LineBasicMaterial();
+	const sectionMat = new THREE.LineBasicMaterial({
+		transparent: true,
+		opacity: 0.95,
+		depthTest: false,
+		depthWrite: false,
+	});
 	let sectionLine = null;
 
 	const marker = new THREE.Mesh(
 		new THREE.SphereGeometry(4, 18, 12),
-		new THREE.MeshStandardMaterial({ color: 0xffc107 })
+		new THREE.MeshStandardMaterial({ color: 0xffc107, depthTest: false, depthWrite: false })
 	);
+	marker.renderOrder = 30;
 	scene.add(marker);
 
 	// orbit
@@ -122,8 +147,8 @@ export function makeThreeViewer({ canvas }) {
 			trackLine.geometry = geo;
 		} else {
 			trackLine = new THREE.Line(geo, trackMat);
-			trackLine.renderOrder = 10;
-			trackLine.position.z = 0.10;
+			trackLine.renderOrder = 20;
+			trackLine.position.z = 0.12;
 			scene.add(trackLine);
 		}
 	}
@@ -156,8 +181,8 @@ export function makeThreeViewer({ canvas }) {
 			let line = auxLines.get(id);
 			if (!line) {
 				line = new THREE.Line(geo, auxMat);
-				line.renderOrder = 5;
-				line.position.z = 0.05;
+				line.renderOrder = 12;
+				line.position.z = 0.08;
 				line.frustumCulled = false;
 				line.computeLineDistances();
 				auxLines.set(id, line);
@@ -202,6 +227,8 @@ export function makeThreeViewer({ canvas }) {
 			sectionLine.geometry = geo;
 		} else {
 			sectionLine = new THREE.Line(geo, sectionMat);
+			sectionLine.renderOrder = 25;
+			sectionLine.position.z = 0.14;
 			scene.add(sectionLine);
 		}
 	}
