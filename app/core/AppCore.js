@@ -58,6 +58,9 @@ export async function bootApp({ prefs } = {}) {
 		},
 	});
 
+	// Docs overlay (MS14.1)
+	ui.wireDocs?.({ defaultDoc: String(prefs?.view?.docsDefault ?? "roadmap") });
+
 	// ------------------------------------------------------------
 	// Cursor wiring (MS13.8)
 	// - revive cursor input + +/- buttons

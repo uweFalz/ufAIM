@@ -75,3 +75,80 @@ yarn-error.log*
 
 # (bewusst NICHT ignoriert:)
 # *.pdf  ← falls ihr PDFs versionieren wollt
+
+
+
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# local tooling / dumps / scratch
+scripts/
+samples/
+sample0/
+var/
+dump_repo_full.sh
+setup_structure.sh
+
+# big legacy depots / staging parks
+_legacy/
+**/_legacy/
+src_prep/
+
+# docs archives are not part of the living docs
+docs/archive/
+
+# LaTeX build artefacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.pdf
+*.run.xml
+
+# scratch / experiments
+app/empty.js
+
+# optional: ignore app/src symlink (recommended)
+app/src
+
+
+
+
+# --- OS / Editor junk ---
+.DS_Store
+**/.DS_Store
+*.swp
+*.swo
+
+# --- local runtime / temp ---
+.metadata/
+var/
+samples/
+_dump/
+dump_*/
+*.tgz
+*.tar.gz
+
+# --- docs / archives ---
+docs/archive/
+
+# --- staging / prep areas (keep out of git) ---
+src_prep/
+scripts/
+
+# --- latex artefacts ---
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.pdf
+*.run.xml
+
+# --- scratch / experiments ---
+app/empty.js
+
+

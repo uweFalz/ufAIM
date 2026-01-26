@@ -279,15 +279,22 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
-		elements.buttonPinToggle?.addEventListener("click", (e) => {
-			e?.preventDefault?.();
-			(onTogglePin ?? defaultTogglePin)();
-		});
+		const btnToggle = elements.buttonPinToggle;
+		const btnClear = elements.buttonPinsClear;
 
-		elements.buttonPinsClear?.addEventListener("click", (e) => {
-			e?.preventDefault?.();
-			(onClearPins ?? defaultClearPins)();
-		});
+		if (btnToggle) {
+			btnToggle.addEventListener("click", (e) => {
+				e?.preventDefault?.();
+				(onTogglePin ?? defaultTogglePin)();
+			});
+		}
+
+		if (btnClear) {
+			btnClear.addEventListener("click", (e) => {
+				e?.preventDefault?.();
+				(onClearPins ?? defaultClearPins)();
+			});
+		}
 	}
 
 	// ------------------------------------------------------------
@@ -385,20 +392,18 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		else closeDocs();
 	}
 
-	function wireDocs() {
+	function wireDocs({ defaultDoc } = {}) {
 		// ✅ guard: prevent double (or x14) wiring
 		if (elements.__docsWired) return;
 		elements.__docsWired = true;
 
 		elements.buttonDocs?.addEventListener("click", (e) => {
 			e?.preventDefault?.();
-			e?.stopPropagation?.(); // optional, but harmless
 			toggleDocs();
 		});
 
 		elements.buttonDocsClose?.addEventListener("click", (e) => {
 			e?.preventDefault?.();
-			e?.stopPropagation?.(); // optional
 			closeDocs();
 		});
 
@@ -409,6 +414,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		elements.docsSelect?.addEventListener("change", () => {
 			loadDocs(elements.docsSelect.value);
 		});
+
+		// optional: default doc
+		if (elements.docsSelect && defaultDoc) {
+			elements.docsSelect.value = String(defaultDoc);
+			loadDocs(elements.docsSelect.value);
+		}
 	}
 
 	// initial UI state
@@ -427,7 +438,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	elements.buttonTransitionClose?.addEventListener("click", closeTransition);
 
 	// Docs overlay (MS14.1)
-	wireDocs?.({ defaultDoc: String(prefs?.view?.docsDefault ?? "roadmap") });
+	// wireDocs?.({ defaultDoc: String(prefs?.view?.docsDefault ?? "roadmap") });
 
 	// click backdrop closes (but not clicks inside card)
 	elements.transitionOverlay?.addEventListener("click", (event) => {
