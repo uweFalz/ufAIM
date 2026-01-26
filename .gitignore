@@ -42,9 +42,15 @@ yarn-error.log*
 # Scratch / experiments / local helpers
 # ------------------------------------------------------------
 scripts/
-sample/
 legacy/
 app/empty.js
+
+# local history / dumps / generated
+_legacy/
+**/_legacy/
+var/
+samples/
+*.sh
 
 # ------------------------------------------------------------
 # Docs
@@ -64,10 +70,3 @@ docs/.DS_Store
 
 # (bewusst NICHT ignoriert:)
 # *.pdf  ← falls ihr PDFs versionieren wollt
-
-# local history / dumps / generated
-_legacy/
-**/_legacy/
-var/
-samples/
-*.sh
