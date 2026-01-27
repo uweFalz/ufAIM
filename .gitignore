@@ -120,26 +120,21 @@ app/src
 # --- OS / Editor junk ---
 .DS_Store
 **/.DS_Store
-*.swp
-*.swo
+Thumbs.db
 
-# --- local runtime / temp ---
-.metadata/
+# --- Local scratch / outputs ---
 var/
-samples/
-_dump/
-dump_*/
-*.tgz
-*.tar.gz
+.metadata/
+# (samples/ NICHT ignorieren, weil du ggf. echte Samples willst)
 
-# --- docs / archives ---
+# --- Archives / big legacy dumps ---
 docs/archive/
+legacy/
+_legacy/   # wenn du das dauerhaft als "externes Altarchiv" halten willst
+# Falls _legacy im Repo bleiben soll, aber nicht versioniert:
+# -> dann so lassen. Wenn _legacy versioniert werden soll: diese Zeile entfernen.
 
-# --- staging / prep areas (keep out of git) ---
-src_prep/
-scripts/
-
-# --- latex artefacts ---
+# --- Build artefacts / LaTeX ---
 *.aux
 *.log
 *.out
@@ -148,7 +143,21 @@ scripts/
 *.pdf
 *.run.xml
 
-# --- scratch / experiments ---
+# --- Node-ish (falls später) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Temporary / swap ---
+*.swp
+*.swo
+*~
+*.tmp
+
+# --- Project-specific scratch / experiments ---
 app/empty.js
 
-
+# --- macOS bundles / maps (optional) ---
+*.dSYM
