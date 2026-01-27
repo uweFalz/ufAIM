@@ -258,43 +258,16 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		if (elements.pinsInfo) elements.pinsInfo.textContent = t;
 	}
 	
-	function defaultTogglePin() {
-		const st = store.getState();
-		const rpId = st.activeRouteProjectId;
-		const slot = st.activeSlot ?? "right";
-		if (!rpId) return;
-
-		const pins = Array.isArray(st.view_pins) ? st.view_pins.slice() : [];
-		const key = `${rpId}::${slot}`;
-
-		const idx = pins.findIndex(p => (typeof p === "string" ? p : `${p.rpId}::${p.slot}`) === key);
-		if (idx >= 0) pins.splice(idx, 1);
-		else pins.push({ rpId, slot });
-
-		store.setState({ view_pins: pins });
-	}
-
-	function defaultClearPins() {
-		store.setState({ view_pins: [] });
-	}
-
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
-		const btnToggle = elements.buttonPinToggle;
-		const btnClear = elements.buttonPinsClear;
+		elements.buttonPin?.addEventListener("click", () => {
+			if (typeof onTogglePin === "function") onTogglePin();
+			else logInfo("Pin toggle: no handler wired");
+		});
 
-		if (btnToggle) {
-			btnToggle.addEventListener("click", (e) => {
-				e?.preventDefault?.();
-				(onTogglePin ?? defaultTogglePin)();
-			});
-		}
-
-		if (btnClear) {
-			btnClear.addEventListener("click", (e) => {
-				e?.preventDefault?.();
-				(onClearPins ?? defaultClearPins)();
-			});
-		}
+		elements.buttonPinsClear?.addEventListener("click", () => {
+			if (typeof onClearPins === "function") onClearPins();
+			else logInfo("Pins clear: no handler wired");
+		});
 	}
 
 	// ------------------------------------------------------------

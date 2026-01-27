@@ -1,7 +1,7 @@
 // app/core/workspaceState.js
 
 import { makeInitialState, ensureStateShape } from "./storeShape.js";
-import { mirrorQuickHooksFromActive } from "../io/importApply.js";
+import { mirrorQuickHooksFromActive, applyIngestResult } from "../io/importApply.js";
 
 export function createWorkspaceState(initial) {
 	let state = ensureStateShape(initial ?? makeInitialState());
@@ -21,12 +21,22 @@ export function createWorkspaceState(initial) {
 	}
 
 	const actions = {
+		applyIngest(ingest, opts = {}) {
+			if (!ingest) return [{ type: "log", level: "error", message: "applyIngest: missing ingest" }];
+
+			return applyIngestResult({
+				store: { getState, setState },
+				ui: opts.ui,
+				ingest,
+				emitProps: Boolean(opts.emitProps),
+			});
+		},
+
 		setActiveRouteProject(id) {
 			setState({ activeRouteProjectId: id ?? null });
 			mirrorQuickHooksFromActive({ getState, setState });
 		},
 
-		// G: NEW
 		setActiveSlot(slot) {
 			const v = String(slot ?? "right");
 			const safe = (v === "left" || v === "km" || v === "right") ? v : "right";
@@ -34,7 +44,29 @@ export function createWorkspaceState(initial) {
 			mirrorQuickHooksFromActive({ getState, setState });
 		},
 
-		// MS14.1: view pins live in state (UX + future data-console)
+		// ------------------------------------------------------------
+		// MS14.2: pins lifecycle helpers
+		// ------------------------------------------------------------
+		setPins(pins) {
+			const arr = Array.isArray(pins) ? pins : [];
+			// normalize lightly
+			const next = arr
+			.filter(Boolean)
+			.map((p) => ({
+				rpId: String(p.rpId ?? p.baseId ?? ""),
+				slot: (p.slot === "left" || p.slot === "km" || p.slot === "right") ? p.slot : "right",
+				at: Number.isFinite(p.at) ? p.at : Date.now(),
+			}))
+			.filter((p) => p.rpId);
+
+			setState({ view_pins: next });
+		},
+
+		clearPins() {
+			setState({ view_pins: [] });
+		},
+
+		// MS14.1: view pins live in state
 		pinRouteProject({ rpId, slot = "right" } = {}) {
 			const id = String(rpId ?? "");
 			if (!id) return;
@@ -58,23 +90,13 @@ export function createWorkspaceState(initial) {
 				return { ...st, view_pins: next };
 			});
 		},
-		
-		togglePinFromActive() {
-			const rpId = state.activeRouteProjectId;
-			if (!rpId) return;
-			const slot = state.activeSlot ?? "right";
-			actions.togglePinRouteProject({ rpId, slot });
-		},
 
-		togglePinRouteProject({ rpId, slot = "right" } = {}) {
-			const id = String(rpId ?? "");
-			if (!id) return;
-			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
-			const key = `${id}::${s}`;
-			const pins = Array.isArray(state.view_pins) ? state.view_pins : [];
-			const has = pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
-			if (has) actions.unpinRouteProject({ rpId: id, slot: s });
-			else actions.pinRouteProject({ rpId: id, slot: s });
+		togglePinFromActive() {
+			const st = getState();
+			const rpId = st.activeRouteProjectId;
+			if (!rpId) return;
+			const slot = st.activeSlot ?? "right";
+			actions.togglePinRouteProject({ rpId, slot });
 		},
 
 		// MS14.1: allow simple delete for cleanup during tests
@@ -116,29 +138,53 @@ export function createWorkspaceState(initial) {
 			mirrorQuickHooksFromActive({ getState, setState });
 		},
 
-		setCursor(patch) {
-			setState({ cursor: { ...state.cursor, ...(patch ?? {}) } });
+		togglePinRouteProject({ rpId, slot = "right" } = {}) {
+			const id = String(rpId ?? "");
+			if (!id) return;
+			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
+			const key = `${id}::${s}`;
+			const st = getState();
+			const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
+			const has = pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
+			if (has) actions.unpinRouteProject({ rpId: id, slot: s });
+			else actions.pinRouteProject({ rpId: id, slot: s });
 		},
 
-		// MS13.7+: cursor helpers used by UI wiring
+		// ------------------------------------------------------------
+		// MS14.2: “AppCore darf kein store.setState({import_meta:null})”
+		// ------------------------------------------------------------
+		clearImportMeta() {
+			setState({ import_meta: null });
+		},
+
+		// ------------------------------------------------------------
+		// cursor
+		// ------------------------------------------------------------
+		setCursor(patch) {
+			const st = getState();
+			setState({ cursor: { ...st.cursor, ...(patch ?? {}) } });
+		},
+
 		setCursorS(value) {
+			const st = getState();
 			const n = Number(value);
 			if (!Number.isFinite(n)) return;
-			// keep it simple: s is non-negative meters
 			const s = Math.max(0, n);
-			setState({ cursor: { ...state.cursor, s } });
+			setState({ cursor: { ...st.cursor, s } });
 		},
 
 		nudgeCursorS(delta) {
+			const st = getState();
 			const d = Number(delta);
 			if (!Number.isFinite(d)) return;
-			const s0 = Number(state.cursor?.s ?? 0);
+			const s0 = Number(st.cursor?.s ?? 0);
 			const s1 = Math.max(0, (Number.isFinite(s0) ? s0 : 0) + d);
-			setState({ cursor: { ...state.cursor, s: s1 } });
+			setState({ cursor: { ...st.cursor, s: s1 } });
 		},
 
 		setPick(pick) {
-			setState({ cursor: { ...state.cursor, pick } });
+			const st = getState();
+			setState({ cursor: { ...st.cursor, pick } });
 		},
 	};
 

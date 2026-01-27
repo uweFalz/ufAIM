@@ -25,11 +25,11 @@ function formatNum(v, digits = 3) {
 
 function escapeHtml(text) {
 	return String(text ?? "")
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/\"/g, "&quot;")
-		.replace(/'/g, "&#39;");
+	.replace(/&/g, "&amp;")
+	.replace(/</g, "&lt;")
+	.replace(/>/g, "&gt;")
+	.replace(/\"/g, "&quot;")
+	.replace(/'/g, "&#39;");
 }
 
 function computeChainage(polyline2d) {
@@ -220,11 +220,11 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	const defaultFitPadding = Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35;
 	const defaultFitDurationMs = Number.isFinite(prefs?.view?.fitDurationMs) ? prefs.view.fitDurationMs : 240;
 	const defaultFitIncludesPins = (prefs?.view?.fitIncludesPins !== undefined)
-		? Boolean(prefs.view.fitIncludesPins)
-		: true;
+	? Boolean(prefs.view.fitIncludesPins)
+	: true;
 	const showAuxTracks = (prefs?.view?.showAuxTracks !== undefined)
-		? Boolean(prefs.view.showAuxTracks)
-		: true;
+	? Boolean(prefs.view.showAuxTracks)
+	: true;
 	const auxTracksScope = String(prefs?.view?.auxTracksScope ?? "routeProject").toLowerCase();
 
 	// policy: off | recenter | fit | softfit | softfitanimated
@@ -242,22 +242,23 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 	// MS13.5: click-to-chainage (track pick) -> cursor.s
 	function setCursorS(s, opts = {}) {
-		const ss = Number(s);
-		if (!Number.isFinite(ss)) return false;
+  const ss = Number(s);
+  if (!Number.isFinite(ss)) return false;
 
-		if (store.actions?.setCursor) {
-			store.actions.setCursor({ s: ss });
-		} else {
-			const prev = store.getState();
-			store.setState({ ...prev, cursor: { ...(prev.cursor ?? {}), s: ss } });
-		}
+  if (store.actions?.setCursorS) {
+    store.actions.setCursorS(ss);
+  } else if (store.actions?.setCursor) {
+    store.actions.setCursor({ s: ss });
+  } else {
+    // MS14.2: ViewController never writes store directly
+    return false;
+  }
 
-		if (opts.fit === true) {
-			// shift-click convenience
-			fitActive({ mode: "softFit" });
-		}
-		return true;
-	}
+  if (opts.fit === true) {
+    fitActive({ mode: "softFit" });
+  }
+  return true;
+}
 
 	// Install pick handler once (if supported by adapter/viewer)
 	threeA.onTrackClick?.(({ s, event }) => {
@@ -276,51 +277,51 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 		const pins = normalizePins(state.view_pins);
 		const pinsHtml = pins.length
-			? pins.map((pin) => {
-				const key = `${pin.rpId}::${pin.slot}`;
-				const safeRp = escapeHtml(pin.rpId ?? "");
-				const safeSlot = escapeHtml(pin.slot ?? "right");
-				const safeKey = escapeHtml(key);
+		? pins.map((pin) => {
+			const key = `${pin.rpId}::${pin.slot}`;
+			const safeRp = escapeHtml(pin.rpId ?? "");
+			const safeSlot = escapeHtml(pin.slot ?? "right");
+			const safeKey = escapeHtml(key);
 
-				const isActive = (pin.rpId === state.activeRouteProjectId) && (pin.slot === (state.activeSlot ?? "right"));
-				const activeBadge = isActive ? `<span class="propsPins__badge">active</span>` : ``;
+			const isActive = (pin.rpId === state.activeRouteProjectId) && (pin.slot === (state.activeSlot ?? "right"));
+			const activeBadge = isActive ? `<span class="propsPins__badge">active</span>` : ``;
 
-				return `
-					<div class="propsPins__row">
-						<button class="btn btn--ghost btn--xs" data-pin-jump="${safeKey}" title="Jump to this pinned alignment">Jump</button>
-						<div class="propsPins__label">
-							<span class="propsPins__rp">${safeRp}</span>
-							<span class="propsPins__slot">${safeSlot}</span>
-							${activeBadge}
-						</div>
-						<button class="btn btn--ghost btn--xs" data-pin-unpin="${safeKey}" title="Unpin">×</button>
-					</div>
-				`;
-			}).join("")
-			: `<div class="propsPins__empty">(no pins yet)</div>`;
+			return `
+			<div class="propsPins__row">
+			<button class="btn btn--ghost btn--xs" data-pin-jump="${safeKey}" title="Jump to this pinned alignment">Jump</button>
+			<div class="propsPins__label">
+			<span class="propsPins__rp">${safeRp}</span>
+			<span class="propsPins__slot">${safeSlot}</span>
+			${activeBadge}
+			</div>
+			<button class="btn btn--ghost btn--xs" data-pin-unpin="${safeKey}" title="Unpin">×</button>
+			</div>
+			`;
+		}).join("")
+		: `<div class="propsPins__empty">(no pins yet)</div>`;
 
 		const json = JSON.stringify(
-			{
-				activeRouteProjectId: state.activeRouteProjectId ?? null,
-				activeSlot: state.activeSlot ?? "right",
-				cursor: state.cursor ?? {},
-				import_meta: state.import_meta ?? null,
-				activeArtifacts: state.import_activeArtifacts ?? null,
+		{
+			activeRouteProjectId: state.activeRouteProjectId ?? null,
+			activeSlot: state.activeSlot ?? "right",
+			cursor: state.cursor ?? {},
+			import_meta: state.import_meta ?? null,
+			activeArtifacts: state.import_activeArtifacts ?? null,
 
-				hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
-				hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
-				hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
-			},
-			null,
-			2
+			hasAlignment: Array.isArray(state.import_polyline2d) && state.import_polyline2d.length >= 2,
+			hasProfile: Array.isArray(state.import_profile1d) && state.import_profile1d.length >= 2,
+			hasCant: Array.isArray(state.import_cant1d) && state.import_cant1d.length >= 2,
+		},
+		null,
+		2
 		);
 
 		propsElement.innerHTML = `
-			<div class="propsPins">
-				<div class="propsPins__title">Pinned</div>
-				${pinsHtml}
-			</div>
-			<div class="propsJson"><pre>${escapeHtml(json)}</pre></div>
+		<div class="propsPins">
+		<div class="propsPins__title">Pinned</div>
+		${pinsHtml}
+		</div>
+		<div class="propsJson"><pre>${escapeHtml(json)}</pre></div>
 		`;
 	}
 
@@ -354,20 +355,32 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			const jumpBtn = t.closest("[data-pin-jump]");
 			const unpinBtn = t.closest("[data-pin-unpin]") || t.closest("[data-pin-remove]"); // legacy attr
 			const key =
-				jumpBtn?.getAttribute?.("data-pin-jump") ??
-				unpinBtn?.getAttribute?.("data-pin-unpin") ??
-				unpinBtn?.getAttribute?.("data-pin-remove") ??
-				null;
+			jumpBtn?.getAttribute?.("data-pin-jump") ??
+			unpinBtn?.getAttribute?.("data-pin-unpin") ??
+			unpinBtn?.getAttribute?.("data-pin-remove") ??
+			null;
 			if (!key) return;
+			
 			ev.preventDefault?.();
+			ev.stopPropagation?.();
 
 			if (unpinBtn) {
-				const st = store.getState?.() ?? {};
-				const pins = normalizePins(st.view_pins);
 				const parsed = parsePinKey(key);
 				if (!parsed) return;
-				const next = pins.filter(p => !(p.rpId === parsed.rpId && p.slot === parsed.slot));
-				store.setState?.({ view_pins: next });
+
+				// ✅ bevorzugt: konkrete Action
+				if (store.actions?.unpinRouteProject) {
+					store.actions.unpinRouteProject(parsed);
+				} else if (store.actions?.setPins) {
+					// fallback: pins neu setzen (wenn du setPins eingebaut hast)
+					const st = store.getState?.() ?? {};
+					const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
+					const next = pins.filter(p => !(p?.rpId === parsed.rpId && (p?.slot ?? "right") === parsed.slot));
+					store.actions.setPins(next);
+				} else {
+					ui?.logInfo?.("unpin: missing store.actions.unpinRouteProject (MS14.2 expected)");
+					// hard: throw new Error("ViewController: missing actions.unpinRouteProject");
+				}
 				return;
 			}
 
@@ -451,8 +464,8 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 	function computeFitBboxFromState(state, poly, opts = {}) {
 		const includePins = (opts.includePins !== undefined)
-			? Boolean(opts.includePins)
-			: defaultFitIncludesPins;
+		? Boolean(opts.includePins)
+		: defaultFitIncludesPins;
 
 		const activeArt = getActiveAlignmentArtifact(state);
 		let bbox = pickBboxFromArtifactOrPolyline(activeArt, poly);
@@ -558,7 +571,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	}
 
 	function subscribe() {
-		return store.subscribe((state) => {
+		const handler = (state) => {
 			// 0) RP select options
 			const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
 			ui.setRouteProjectOptions(ids, state.activeRouteProjectId);
@@ -640,7 +653,14 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 			// 5) track render (WORLD -> LOCAL via adapter)
 			threeA.setTrackFromWorldPolyline(poly);
-		}, { immediate: true });
+		};
+
+		const unsub = store.subscribe(handler);
+
+		// ✅ immediate (Store unterstützt kein {immediate:true})
+		handler(store.getState());
+
+		return unsub;
 	}
 
 	return {
