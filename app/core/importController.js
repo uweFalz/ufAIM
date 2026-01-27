@@ -10,7 +10,7 @@
 import { installFileDrop } from "../io/fileDrop.js";
 import { importFileAuto } from "../io/importTRA_GRA.js";
 import { makeImportSession } from "../io/importSession.js";
-import { applyImportToProject } from "../io/importApply.js";
+import { applyIngestResult } from "../io/importApply.js";
 
 export function makeImportController({ store, ui, logLine, prefs } = {}) {
 	const safeLog = typeof logLine === "function"
@@ -58,17 +58,7 @@ export function makeImportController({ store, ui, logLine, prefs } = {}) {
 
 				const ingest = importSession.ingest(imported);
 
-				// ✅ HIER war bei dir sehr wahrscheinlich das Problem:
-				// irgendein Refactor hat "store" aus dem Scope gekegelt.
-				const effects = applyImportToProject({
-					store,                      // <— muss im Closure existieren
-					baseId: ingest.baseId,
-					slot: ingest.slot,
-					source: ingest.source,
-					artifacts: ingest.artifacts,
-					ui,
-					emitProps,                  // ✅ MS10.x
-				});
+				const effects = applyIngestResult({ store, ui, ingest, emitProps });
 
 				handleEffects(effects);
 			} catch (err) {

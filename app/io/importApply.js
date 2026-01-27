@@ -322,3 +322,21 @@ export function mirrorQuickHooksFromActive(store) {
 	const next = applyQuickHooksFromActive(prev);
 	store.setState(next);
 }
+
+// app/io/importApply.js
+
+// New: tiny "single entry" wrapper for controllers.
+// Keeps ImportController minimal and future-proof.
+export function applyIngestResult({ store, ui, ingest, emitProps } = {}) {
+	if (!store || !ingest) return [{ type: "log", message: "applyIngestResult: missing store/ingest" }];
+
+	return applyImportToProject({
+		store,
+		baseId: ingest.baseId,
+		slot: ingest.slot,
+		source: ingest.source,
+		artifacts: ingest.artifacts,
+		ui,
+		emitProps: Boolean(emitProps),
+	});
+}
