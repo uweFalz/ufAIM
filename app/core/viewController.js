@@ -242,23 +242,23 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 	// MS13.5: click-to-chainage (track pick) -> cursor.s
 	function setCursorS(s, opts = {}) {
-  const ss = Number(s);
-  if (!Number.isFinite(ss)) return false;
+		const ss = Number(s);
+		if (!Number.isFinite(ss)) return false;
 
-  if (store.actions?.setCursorS) {
-    store.actions.setCursorS(ss);
-  } else if (store.actions?.setCursor) {
-    store.actions.setCursor({ s: ss });
-  } else {
-    // MS14.2: ViewController never writes store directly
-    return false;
-  }
+		if (store.actions?.setCursorS) {
+			store.actions.setCursorS(ss);
+		} else if (store.actions?.setCursor) {
+			store.actions.setCursor({ s: ss });
+		} else {
+			// MS14.2: ViewController never writes store directly
+			return false;
+		}
 
-  if (opts.fit === true) {
-    fitActive({ mode: "softFit" });
-  }
-  return true;
-}
+		if (opts.fit === true) {
+			fitActive({ mode: "softFit" });
+		}
+		return true;
+	}
 
 	// Install pick handler once (if supported by adapter/viewer)
 	threeA.onTrackClick?.(({ s, event }) => {

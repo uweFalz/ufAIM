@@ -22,28 +22,15 @@ export function makeImportController({ store, ui, logLine, prefs } = {}) {
 	}
 
 	const importSession = makeImportSession();
-
-	// MS10.x: props-effects nur wenn DEV (oder explizit)
 	const emitProps = Boolean(prefs?.debug?.emitImportPropsEffects);
 
 	function handleEffects(effects) {
 		for (const e of (effects ?? [])) {
 			if (!e) continue;
-
-			// Log bleibt ruhig: nur logs
-			if (e.type === "log") {
-				// optional: level auswerten
-				safeLog(e.message);
-				continue;
-			}
-
-			// Props NICHT ins Log, sondern nur ins Props-Panel (oder gar nicht)
+			if (e.type === "log") { safeLog(e.message); continue; }
 			if (e.type === "props") {
-				// bevorzugt: ui.showProps
 				if (typeof ui?.showProps === "function") ui.showProps(e.object);
 				else if (typeof ui?.emitProps === "function") ui.emitProps(e.object);
-				// sonst: still ignore
-				continue;
 			}
 		}
 	}
@@ -56,11 +43,25 @@ export function makeImportController({ store, ui, logLine, prefs } = {}) {
 				const imported = await importFileAuto(file);
 				safeLog(`kind=${imported.kind}`);
 
-				const ingest = importSession.ingest(imported);
+				const st = store.getState?.() ?? {};
+				const slotHint = st.activeSlot ?? "right";
 
-				const effects = applyIngestResult({ store, ui, ingest, emitProps });
+				const env = importSession.ingest(imported, {
+					slotHint,
+					originFile: file.name,
+					sourceRef: { name: file.name },
+				});
 
-				handleEffects(effects);
+				// 1) apply ingests
+				for (const ingest of (env.ingests ?? [])) {
+					const effects = applyIngestResult({ store, ui, ingest, emitProps });
+					handleEffects(effects);
+				}
+
+				// 2) 🔑 UI-Update NACH dieser Datei
+				const inbox = importSession.getUIState?.({ slotHint });
+				ui?.showImportInbox?.(inbox); // oder emitProps / showProps
+
 			} catch (err) {
 				safeLog(`❌ import failed: ${file.name}`);
 				safeLog(String(err?.stack || err));

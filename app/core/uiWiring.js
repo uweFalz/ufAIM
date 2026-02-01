@@ -259,7 +259,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 	
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
-		elements.buttonPin?.addEventListener("click", () => {
+		elements.buttonPinToggle?.addEventListener("click", () => {
 			if (typeof onTogglePin === "function") onTogglePin();
 			else logInfo("Pin toggle: no handler wired");
 		});

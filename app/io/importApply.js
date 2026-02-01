@@ -332,13 +332,24 @@ export function applyIngestResult({ store, ui, ingest, emitProps } = {}) {
 		return [{ type: "log", level: "error", message: "applyIngestResult: missing store/ingest" }];
 	}
 
-	return applyImportToProject({
-		store,
-		baseId: ingest.baseId,
-		slot: ingest.slot,
-		source: ingest.source,
-		artifacts: ingest.artifacts,
-		ui,
-		emitProps: Boolean(emitProps),
-	});
+	if (!store) return [{ type: "log", message: "applyIngestResult: missing store" }];
+
+	// ✅ accept envelope or single ingest
+	const ingests = Array.isArray(ingest?.ingests) ? ingest.ingests : [ingest].filter(Boolean);
+
+	const effects = [];
+	for (const one of ingests) {
+		effects.push(
+		...applyImportToProject({
+			store,
+			baseId: one.baseId,
+			slot: one.slot,
+			source: one.source,
+			artifacts: one.artifacts,
+			ui,
+			emitProps: Boolean(emitProps),
+		})
+		);
+	}
+	return effects;
 }

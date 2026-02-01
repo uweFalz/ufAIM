@@ -43,20 +43,20 @@ export async function bootApp({ prefs } = {}) {
 
 	// ImportController (prefs rein!)
 	const importer = makeImportController({ store, ui, logLine, prefs });
+	
+	// Drop + Picker
+	importer.installDrop({ element: document.documentElement });
+	ui.wireImportPicker?.({ onFiles: (files) => importer.importFiles(files) });
 
 	// RP + Slot
 	ui.wireRouteProjectSelect({
 		onChange: (baseId) => {
 			store.actions?.setActiveRouteProject?.(baseId || null);
-			store.setState({ import_meta: null });
+			store.actions?.clearImportMeta?.();
 		},
 	});
 
-	ui.wireSlotSelect?.({
-		onChange: (slot) => {
-			store.actions?.setActiveSlot?.(slot);
-		},
-	});
+	ui.wireSlotSelect?.({ onChange: (slot) => store.actions?.setActiveSlot?.(slot) });
 
 	// Docs overlay (MS14.1)
 	ui.wireDocs?.({ defaultDoc: String(prefs?.view?.docsDefault ?? "roadmap") });
@@ -74,30 +74,19 @@ export async function bootApp({ prefs } = {}) {
 	};
 
 	ui.wireCursorControls?.({
-		onSetCursorS: (value) => {
-			store.actions?.setCursorS?.(parseCursorS(value));
-		},
-		onNudgeMinus: () => {
-			const s0 = Number(store.getState()?.cursor?.s ?? 0) || 0;
-			store.actions?.setCursorS?.(Math.max(0, s0 - cursorStepS));
-		},
-		onNudgePlus: () => {
-			const s0 = Number(store.getState()?.cursor?.s ?? 0) || 0;
-			store.actions?.setCursorS?.(Math.max(0, s0 + cursorStepS));
-		},
+		onSetCursorS: (value) => store.actions?.setCursorS?.(parseCursorS(value)),
+		onNudgeMinus: () => store.actions?.nudgeCursorS?.(-cursorStepS),
+		onNudgePlus:  () => store.actions?.nudgeCursorS?.(+cursorStepS),
 	});
 	
 	// Default slot
 	store.actions?.setActiveSlot?.("right");
 	ui.setSlotSelectValue?.("right");
-	// Default cursor
+
 	store.actions?.setCursorS?.(0);
 	ui.setCursorSInputValue?.(0);
-	mirrorQuickHooksFromActive(store);
 
-	// Drop + Picker
-	importer.installDrop({ element: document.documentElement });
-	ui.wireImportPicker?.({ onFiles: (files) => importer.importFiles(files) });
+	// mirrorQuickHooksFromActive(store);  // ❌ raus
 
 	// ViewController
 	// ... bis viewC
@@ -129,7 +118,7 @@ export async function bootApp({ prefs } = {}) {
 
 	// MS13.12+: pin/unpin current + clear pins
 	ui.wirePinControls?.({
-		onTogglePin: () => store.actions.togglePinFromActive?.(),
+		onTogglePin: () => store.actions?.togglePinFromActive?.(),
 		onClearPins: () => store.actions?.clearPins?.(),
 	});
 
