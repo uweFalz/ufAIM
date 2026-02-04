@@ -272,7 +272,8 @@ export function makeImportSession(opts = {}) {
 		};
 	}
 
-	return { ingest, getState, getUIState };
+	function getSpotState(opts) { return getUIState(opts); }
+return { ingest, getState, getUIState, getSpotState };
 }
 
 // ---------------------------------------------------------------------------

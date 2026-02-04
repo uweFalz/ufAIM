@@ -58,9 +58,19 @@ export function makeImportController({ store, ui, logLine, prefs } = {}) {
 					handleEffects(effects);
 				}
 
+				// ✅ MS14.3.3: refresh grabbeltisch AFTER this file is processed
+				if (typeof ui?.setSpotState === "function") {
+					ui.setSpotState(importSession.getUIState({ slotHint }));
+				}
+
+				/*
+				// ✅ UI update: “live Datei für Datei”
+				ui?.setImportSessionState?.(importSession.getUIState({ slotHint }));
+
 				// 2) 🔑 UI-Update NACH dieser Datei
 				const inbox = importSession.getUIState?.({ slotHint });
 				ui?.showImportInbox?.(inbox); // oder emitProps / showProps
+				*/
 
 			} catch (err) {
 				safeLog(`❌ import failed: ${file.name}`);

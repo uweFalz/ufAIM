@@ -3,6 +3,31 @@
 import { makeInitialState, ensureStateShape } from "./storeShape.js";
 import { mirrorQuickHooksFromActive, applyIngestResult } from "../io/importApply.js";
 
+function spotKey(spotId, slot) {
+	return `${spotId}::${slot ?? "right"}`;
+}
+
+function makeChunkId() {
+	return `chunk_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function normalizeSlot(slot) {
+	const v = String(slot ?? "right");
+	return (v === "left" || v === "km" || v === "right") ? v : "right";
+}
+
+function clamp01range(a, b) {
+	const s0 = Number(a), s1 = Number(b);
+	if (!Number.isFinite(s0) || !Number.isFinite(s1)) return null;
+	const lo = Math.min(s0, s1);
+	const hi = Math.max(s0, s1);
+	if (!(hi > lo)) return null; // require non-zero length (you can relax this later)
+	return { s0: lo, s1: hi };
+}
+
+//
+// ...
+//
 export function createWorkspaceState(initial) {
 	let state = ensureStateShape(initial ?? makeInitialState());
 	const listeners = new Set();
@@ -12,7 +37,14 @@ export function createWorkspaceState(initial) {
 	function setState(patch) {
 		const nextPatch = typeof patch === "function" ? patch(state) : patch;
 		state = ensureStateShape({ ...state, ...(nextPatch ?? {}) });
-		for (const fn of listeners) fn(state);
+		for (const fn of listeners) {
+			try {
+				fn(state);
+			} catch (err) {
+				// Never let UI/render listeners break core state transitions (import/apply, etc.)
+				console.error("[workspaceState] listener crashed (isolated):", err);
+			}
+		}
 	}
 
 	function subscribe(fn) {
@@ -42,6 +74,24 @@ export function createWorkspaceState(initial) {
 			const safe = (v === "left" || v === "km" || v === "right") ? v : "right";
 			setState({ activeSlot: safe });
 			mirrorQuickHooksFromActive({ getState, setState });
+		},
+		
+		setSpotDecision({ spotId, slot, decision }) {
+			const key = spotKey(spotId, slot);
+			const d = decision == null ? null : String(decision).toLowerCase();
+
+			if (d !== null && !["accept", "defer", "ignore"].includes(d)) return;
+
+			setState((s) => {
+				const next = { ...(s.spot_decisions ?? {}) };
+				if (d === null) delete next[key];
+				else next[key] = d;
+				return { ...s, spot_decisions: next };
+			});
+		},
+
+		clearSpotDecisions() {
+			setState((s) => ({ ...s, spot_decisions: {} }));
 		},
 
 		// ------------------------------------------------------------
@@ -185,6 +235,47 @@ export function createWorkspaceState(initial) {
 		setPick(pick) {
 			const st = getState();
 			setState({ cursor: { ...st.cursor, pick } });
+		},
+		
+		// ------------------------------------------------------------
+		// MS15.1: chunks (viewer-defined chainage ranges)
+		// ------------------------------------------------------------
+		addChunk({ alignmentArtifactId, rpId, slot, s0, s1, label } = {}) {
+			const aId = alignmentArtifactId ? String(alignmentArtifactId) : null;
+			const range = clamp01range(s0, s1);
+			if (!aId || !range) return;
+
+			const ch = {
+				id: makeChunkId(),
+				alignmentArtifactId: aId,
+				// optional context (helpful for UI, not the “identity”):
+				rpId: rpId != null ? String(rpId) : null,
+				slot: normalizeSlot(slot),
+				s0: range.s0,
+				s1: range.s1,
+				label: label != null ? String(label) : null,
+				at: Date.now(),
+				source: "viewer",
+			};
+
+			setState((st) => {
+				const arr = Array.isArray(st.view_chunks) ? st.view_chunks.slice() : [];
+				arr.push(ch);
+				return { ...st, view_chunks: arr };
+			});
+		},
+
+		removeChunk(chunkId) {
+			const id = String(chunkId ?? "");
+			if (!id) return;
+			setState((st) => {
+				const arr = Array.isArray(st.view_chunks) ? st.view_chunks : [];
+				return { ...st, view_chunks: arr.filter((c) => c?.id !== id) };
+			});
+		},
+
+		clearChunks() {
+			setState({ view_chunks: [] });
 		},
 	};
 

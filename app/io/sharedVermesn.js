@@ -11,37 +11,37 @@ Speicherformat der Trassen (Endung .TRA)
 
 Datensatz RANDOM-Format
 TYPE TrassenTyp
-	R1 AS DOUBLE '64 Bit IEEE-Format Radius am Elementanfang
-	R2 AS DOUBLE '64 Bit IEEE-Format Radius am Elementende
-	Y AS DOUBLE '64 Bit IEEE-Format Rechtswert am Elementanfang
-	X AS DOUBLE '64 Bit IEEE-Format Hochwert am Elementanfang
-	T AS DOUBLE '64 Bit IEEE-Format Richtung am Elementanfang
-	S AS DOUBLE '64 Bit IEEE-Format Station am Elementanfang
-	Kz AS INTEGER '16 Bit Kennzeichen des Elementes
-	L AS DOUBLE '64 Bit IEEE-Format Länge des Elementes
-	U1 AS DOUBLE '64 Bit IEEE-Format Überhöhung am Elementanfang
-	U2 AS DOUBLE '64 Bit IEEE-Format Überhöhung am Elementanfang
-	C AS SINGLE '32 Bit IEEE-Format Abstand zur Trasse,i.d.R. 0 nur für Parallelübergangsbögen <== changed!!!
+R1 AS DOUBLE '64 Bit IEEE-Format Radius am Elementanfang
+R2 AS DOUBLE '64 Bit IEEE-Format Radius am Elementende
+Y AS DOUBLE '64 Bit IEEE-Format Rechtswert am Elementanfang
+X AS DOUBLE '64 Bit IEEE-Format Hochwert am Elementanfang
+T AS DOUBLE '64 Bit IEEE-Format Richtung am Elementanfang
+S AS DOUBLE '64 Bit IEEE-Format Station am Elementanfang
+Kz AS INTEGER '16 Bit Kennzeichen des Elementes
+L AS DOUBLE '64 Bit IEEE-Format Länge des Elementes
+U1 AS DOUBLE '64 Bit IEEE-Format Überhöhung am Elementanfang
+U2 AS DOUBLE '64 Bit IEEE-Format Überhöhung am Elementanfang
+C AS SINGLE '32 Bit IEEE-Format Abstand zur Trasse,i.d.R. 0 nur für Parallelübergangsbögen <== changed!!!
 END TYPE
 
 Trassenkennzeichen
-	Kz 0 = Gerade R1=0 R2=0
-	Kz 1 = Kreis R2=R1
-	Kz 2 = Klotoide
-	Kz 3 = ÜB S-Form
-	Kz 4 = Bloss
-	Kz 5 = Gerade/Knick	R1=Knickwinkel am Ende der Gerade (199.937-200.063Gon)
-	Kz 6 = KSprung	L=Überlänge bzw. Fehllänge
-	Kz 7 = S-Form (1f geschw.)
-	Kz 8 = Bloss (1f geschw.)
+Kz 0 = Gerade R1=0 R2=0
+Kz 1 = Kreis R2=R1
+Kz 2 = Klotoide
+Kz 3 = ÜB S-Form
+Kz 4 = Bloss
+Kz 5 = Gerade/Knick	R1=Knickwinkel am Ende der Gerade (199.937-200.063Gon)
+Kz 6 = KSprung	L=Überlänge bzw. Fehllänge
+Kz 7 = S-Form (1f geschw.)
+Kz 8 = Bloss (1f geschw.)
 
 Trasse einlesen
-	Fvon = 1
-	GET FFileNum, 1, Tr(0)
-	FBis = Tr(0).Kz
-	FOR N = Fvon TO FBis + 1
-		GET FFileNum, N - Fvon + 2, Tr(N)
-	NEXT
+Fvon = 1
+GET FFileNum, 1, Tr(0)
+FBis = Tr(0).Kz
+FOR N = Fvon TO FBis + 1
+GET FFileNum, N - Fvon + 2, Tr(N)
+NEXT
 
 Datensatz 0:	In Kz steht die Anzahl der Elemente
 Datensatz 1:	1 Trassenelement mit Ausgangskoordinaten und Richtung
@@ -57,33 +57,33 @@ Speicherformat der Gradienten (Endung .GRA)
 
 Datensatz RANDOM-Format
 TYPE GradientenTyp
-	S AS DOUBLE '64 Bit IEEE-Format Station NW oder Station RE1
-	H AS DOUBLE '64 Bit IEEE-Format Höhe NW oder Station RA
-	R AS DOUBLE '64 Bit IEEE-Format Ausrundungsradius oder Station RE2
-	T AS DOUBLE '64 Bit IEEE-Format Tangentenlänge oder Überhöhung1+Kz
-	Pkt AS LONG '32 Bit Long Integer Punktnummer *10000 oder Überhöhung2 <== changed!!!
+S AS DOUBLE '64 Bit IEEE-Format Station NW oder Station RE1
+H AS DOUBLE '64 Bit IEEE-Format Höhe NW oder Station RA
+R AS DOUBLE '64 Bit IEEE-Format Ausrundungsradius oder Station RE2
+T AS DOUBLE '64 Bit IEEE-Format Tangentenlänge oder Überhöhung1+Kz
+Pkt AS LONG '32 Bit Long Integer Punktnummer *10000 oder Überhöhung2 <== changed!!!
 END TYPE
 
 Gleisscheren
-	Inhalt von Gra(N).S:	Station RE1
-	Inhalt von Gra(N).H:	Station RA
-	Inhalt von Gra(N).R:	Station RE2
-	Inhalt von Gra(N).T:	Überhöhung 1+ Kennzeichen Rampe * 1000
-	Inhalt von Gra(N).Pkt:	Überhöhung 2 * 10
+Inhalt von Gra(N).S:	Station RE1
+Inhalt von Gra(N).H:	Station RA
+Inhalt von Gra(N).R:	Station RE2
+Inhalt von Gra(N).T:	Überhöhung 1+ Kennzeichen Rampe * 1000
+Inhalt von Gra(N).Pkt:	Überhöhung 2 * 10
 
 SELECT CASE Gra(N).T
-	CASE 3000 TO 3999, 7000 TO 7999: A$ = "geschw. Rampe"
-	CASE 4000 TO 4999, 8000 TO 8999: A$ = "BLOSS Rampe"
-	CASE ELSE : A$ = "Gerade Rampe"
+CASE 3000 TO 3999, 7000 TO 7999: A$ = "geschw. Rampe"
+CASE 4000 TO 4999, 8000 TO 8999: A$ = "BLOSS Rampe"
+CASE ELSE : A$ = "Gerade Rampe"
 END SELECT
 
 Gradiente einlesen
-	GET FFileNum, 1, Gra(0)
-	AnzNw = Gra(0).S
-	AnzScheren = Gra(0).Pkt
-	FOR N = 1 TO AnzNW + AnzScheren
-		GET FFileNum, N + 1, Gra(N)
-	NEXT
+GET FFileNum, 1, Gra(0)
+AnzNw = Gra(0).S
+AnzScheren = Gra(0).Pkt
+FOR N = 1 TO AnzNW + AnzScheren
+GET FFileNum, N + 1, Gra(N)
+NEXT
 
 Datensatz 0:	In S steht die Anzahl der Neigungswechsel, In Pkt steht die Anzahl der Gleisscheren
 Datensatz 1:	1. NW mit Station, Höhe und Punktnummer
@@ -111,7 +111,23 @@ const KENNZEICHEN = {
 	"8": "Bloss (1f geschw.)",
 };
 
-const RANDOM_LAYOUT = {
+/*
+const DECODE = {
+	'u16' : " ",
+	'f32' : "  ",
+	'f64' : "   ",
+};
+*/
+
+const technetRANDOM = {
+	XXX : {
+		CYCLE_SIZE : 123,
+		BYTE_LAYOUT : [
+		{}, // ...
+		{}, // ...
+		{}  // ...
+		],
+	},
 	GRA: [
 	{ id: 'S',   kind: 'f64', off:  0, bytes: 8 }, // [m] Station NW || Station RE1
 	{ id: 'H',   kind: 'f64', off:  8, bytes: 8 }, // [m] Höhe NW || Station RA

@@ -50,6 +50,9 @@ export function makeInitialState() {
 		// registry
 		routeProjects: {},      // rpId -> {id, slots, meta, ...}
 		artifacts: {},          // artifactId -> artifact
+		
+		// state
+		spot_decisions: {}, // key -> "accept" | "defer" | "ignore"
 
 		// view cache (quick hooks)
 		import_activeArtifacts: null,
@@ -61,6 +64,7 @@ export function makeInitialState() {
 
 		// view state
 		view_pins: [],          // [{rpId, slot, at}]
+		view_chunks: [],   // ✅ neu
 	};
 }
 
@@ -73,9 +77,13 @@ export function ensureStateShape(state) {
 
 		routeProjects: s.routeProjects ?? {},
 		artifacts: s.artifacts ?? {},
+		
+		// state
+		spot_decisions: s.spot_decisions ?? {}, // key -> "accept" | "defer" | "ignore"
 
 		// pins must survive
 		view_pins: normalizePins(s.view_pins),
+		view_chunks : s.view_chunks ?? [],
 
 		// cursor
 		cursor: { ...(s.cursor ?? {}), s: Number.isFinite(s.cursor?.s) ? s.cursor.s : 0 },

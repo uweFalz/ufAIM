@@ -1,4 +1,4 @@
-/* styles.css */
+/* app/styles.css */
 
 :root {
 	--bg: #0b0e14;
@@ -147,6 +147,11 @@ body {
 	gap: 12px;
 	align-items: stretch;
 	padding: 10px;
+}
+.footer {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* ✅ 3 panes */
+  gap: 10px;
 }
 
 /* beide Pane dürfen schrumpfen, sonst drückt <pre> alles weg */
@@ -367,3 +372,30 @@ body {
 
 /* hard override: hidden must always win */
 .hidden { display: none !important; }
+
+.spot__row { display:flex; gap:10px; padding:6px 0; border-top:1px solid rgba(255,255,255,0.08); }
+.spot__btns { display:flex; gap:6px; flex:0 0 auto; }
+.spot__main { flex:1 1 auto; }
+.spot__title { display:flex; gap:8px; align-items:center; }
+.spot__badge { font-size:11px; opacity:0.8; padding:0 6px; border:1px solid rgba(255,255,255,0.15); border-radius:999px; }
+.spot__meta { opacity:0.75; display:flex; gap:10px; font-size:12px; }
+.spot__warn { margin-top:2px; opacity:0.9; }
+.spot__notes { margin-top:2px; opacity:0.65; }
+.spot__head { opacity:0.85; padding-bottom:6px; }
+.spot__empty { opacity:0.7; padding:6px 0; }
+.spot__row.is-active { background: rgba(255,255,255,0.05); }
+
+.spotHost{
+  white-space: normal;
+}
+.spotHost .spot{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+.propsChunks { margin-top: 10px; }
+.propsChunks__title { font-weight: 600; margin: 6px 0; }
+.propsChunks__row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+.propsChunks__label { flex:1; display:flex; gap:8px; }
+.propsChunks__pending { opacity:0.85; font-style: italic; margin: 4px 0; }
+.propsChunks__empty { opacity:0.7; }
+.propsChunks__actions { margin-top: 6px; }

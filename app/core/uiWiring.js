@@ -9,6 +9,9 @@
 
 import { t } from "../i18n/strings.js";
 
+// ------------------------------------------------------------
+// helpers ...
+// ------------------------------------------------------------
 function resolveElement(explicit, fallbackId) {
 	if (explicit) return explicit;
 	if (!fallbackId) return null;
@@ -18,12 +21,6 @@ function resolveElement(explicit, fallbackId) {
 function setText(target, text) {
 	if (!target) return;
 	target.textContent = String(text ?? "");
-}
-
-function appendLine(target, line) {
-	if (!target) return;
-	const text = String(line ?? "");
-	target.textContent = (target.textContent ?? "") + text + (text.endsWith("\n") ? "" : "\n");
 }
 
 function toggleHiddenByClass(element, hiddenClass) {
@@ -37,7 +34,107 @@ function setPrimary(button, isOn) {
 	button.classList.toggle("btn--primary", Boolean(isOn));
 }
 
+// ------------------------------------------------------------
+// SPOT (Grabbeltisch) HTML renderer (top-level helper)
+// ------------------------------------------------------------
+
+function escapeHtml(s) {
+	return String(s ?? "")
+	.replace(/&/g, "&amp;")
+	.replace(/</g, "&lt;")
+	.replace(/>/g, "&gt;")
+	.replace(/\"/g, "&quot;")
+	.replace(/'/g, "&#39;");
+}
+
+function formatPct01(x) {
+	const v = Number(x);
+	if (!Number.isFinite(v)) return "—";
+	return `${Math.round(v * 100)}%`;
+}
+
+function pinKey(rpId, slot) {
+	return `${rpId}::${slot ?? "right"}`;
+}
+
+function decisionKey(spotId, slot) {
+	return `${spotId}::${slot ?? "right"}`;
+}
+
+function isPinned(state, rpId, slot) {
+	const pins = Array.isArray(state?.view_pins) ? state.view_pins : [];
+	const key = pinKey(rpId, slot);
+	return pins.some(p => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
+}
+
+export function renderSpotHtml({ spotState, storeState }) {
+	const rows = Array.isArray(spotState?.rows) ? spotState.rows : [];
+
+	const header = [
+	`SPOT (Grabbeltisch)`,
+	`groups=${spotState?.stats?.groupsTotal ?? rows.length} files=${spotState?.stats?.filesSeen ?? "—"}`,
+	].join(" · ");
+
+	if (!rows.length) {
+		return `<div class="spot">
+		<div class="spot__head">${escapeHtml(header)}</div>
+		<div class="spot__empty">(drop files to create spots)</div>
+		</div>`;
+	}
+
+	const activeRp = storeState?.activeRouteProjectId ?? null;
+	const activeSlot = storeState?.activeSlot ?? "right";
+
+	const decisions = storeState?.spot_decisions ?? {};
+
+	const body = rows.map((r) => {
+		const rpId = r.groupKey;
+		const slot = r.suggestedSlot ?? r.slotHint ?? "right";
+		const spotId = r.spotId ?? rpId;
+
+		// const key = pinKey(rpId, slot);
+
+		const active = (rpId === activeRp) && (slot === activeSlot);
+		const pinned = isPinned(storeState, rpId, slot);
+
+		const keyPin = pinKey(rpId, slot);          // rpId::slot  (Activate/Pin)
+		const keyDec = decisionKey(spotId, slot);   // spotId::slot (Decisions)
+
+		// ✅ fallback so old decisions (rpId::slot) still show up:
+		const decision = decisions[keyDec] ?? decisions[keyPin] ?? null;
+
+		const missing = Array.isArray(r.missing) && r.missing.length ? r.missing.join(", ") : "";
+		const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.slice(0, 2).join(" · ") : "";
+
+		const decisionBadge = decision
+		? `<span class="spot__badge spot__badge--${escapeHtml(decision)}">${escapeHtml(decision)}</span>`
+		: ``;
+
+		return `
+		<div class="spot__row ${active ? "is-active" : ""}">
+		<div class="spot__btns">
+		<button class="btn btn--ghost btn--xs" data-spot-activate="${escapeHtml(keyPin)}">Activate</button>
+		<button class="btn btn--ghost btn--xs" data-spot-pin="${escapeHtml(keyPin)}">${pinned ? "Unpin" : "Pin"}</button>
+
+		<!-- ✅ decision uses spotId-key -->
+		<button class="btn btn--ghost btn--xs" data-spot-decision="accept" data-spot-key="${escapeHtml(keyDec)}">Accept</button>
+		<button class="btn btn--ghost btn--xs" data-spot-decision="defer"  data-spot-key="${escapeHtml(keyDec)}">Defer</button>
+		<button class="btn btn--ghost btn--xs" data-spot-decision="ignore" data-spot-key="${escapeHtml(keyDec)}">Ignore</button>
+		<button class="btn btn--ghost btn--xs" data-spot-decision="" data-spot-key="${escapeHtml(keyDec)}" title="Clear decision">×</button>
+		</div>
+		...
+		</div>`;
+	}).join("");
+
+	return `<div class="spot">
+	<div class="spot__head">${escapeHtml(header)}</div>
+	<div class="spot__list">${body}</div>
+	</div>`;
+}
+
+// ------------------------------------------------------------
 // ...
+// ------------------------------------------------------------
 export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// prefs optional – später für UI-Debug-Features nützlich
 
@@ -48,6 +145,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		log: resolveElement(logElement, "log"),
 		status: resolveElement(statusElement, "status"),
 		props: document.getElementById("props"),
+		// ✅ NEW
+		importSession: document.getElementById("importSession"),
 
 		// boards
 		boardBands: document.getElementById("board2d"),
@@ -142,7 +241,49 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setStatusError() {
 		setText(elements.status, t("status_error"));
 	}
+	
+	// ------------------------------------------------------------
+	// SPOT (Grabbeltisch) state (store-free)
+	// ------------------------------------------------------------
+	let _spotState = null;
 
+	function setSpotState(spotState) {
+		const s = spotState ?? null;
+		if (!s) { _spotState = null; return; }
+
+		const rows0 = Array.isArray(s.rows) ? s.rows : [];
+		const rows = rows0.map((r) => {
+			if (!r) return r;
+			const groupKey = r.groupKey ?? r.rpId ?? r.baseId ?? "";
+			const spotId = String(r.spotId ?? groupKey);      // ✅ MS14.3.4b
+			return { ...r, spotId };
+		});
+
+		_spotState = { ...s, rows };
+		// DEV: quick sanity check
+		// console.debug("spot rows", _spotState.rows?.slice(0, 3));
+	}
+
+	function getSpotState() {
+		return _spotState;
+	}
+
+	let _lastSpotHtml = null;
+	
+	function setSpotHtml(html) {
+		if (!elements.importSession) return;
+		const safe = (html == null || html === "") ? `<div class="spot"><div class="spot__empty">(drop files to create spots)</div></div>` : String(html);
+		if (safe === _lastSpotHtml) return;   // ✅ prevents x80 spam
+		_lastSpotHtml = safe;
+		elements.importSession.innerHTML = safe;
+	}
+
+	// Optional DEV fallback (wenn du wirklich willst)
+	function setSpotText(text) {
+		if (!elements.importSession) return;
+		elements.importSession.textContent = String(text ?? "");
+	}
+	
 	// ------------------------------------------------------------
 	// boards (text-only)
 	// ------------------------------------------------------------
@@ -345,7 +486,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function show(el) {
-		console.debug("show", el);
+		// console.debug("show", el);
 		if (!el) return;
 		el.classList.remove("hidden");
 		el.classList.remove("overlayPane--hidden");
@@ -513,6 +654,13 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		// props
 		showProps,
+		
+		// ...
+		setSpotState,
+		getSpotState,
+		setSpotHtml,
+		renderSpotHtml,  // ja: exportieren, damit ViewController ihn nutzen kann
+		renderSpotState: renderSpotHtml,
 
 		// boards
 		setBoardBandsText,
