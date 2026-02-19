@@ -5,12 +5,19 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<title>ufAIM – Sandbox</title>
 
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
 		<link rel="stylesheet" href="./styles.css" />
 
 		<script type="importmap">
 			{
 				"imports": {
-					"three": "https://unpkg.com/three/build/three.module.js"
+					"three":             "https://unpkg.com/three/build/three.module.js",
+					"OrbitControls":     "https://unpkg.com/three/examples/jsm/controls/OrbitControls.js",
+					"TransformControls": "https://unpkg.com/three/examples/jsm/controls/TransformControls.js",
+					"jsxgraph":          "https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.mjs",
+					"maplibregl":        "https://unpkg.com/maplibre-gl/dist/maplibre-gl.js",
+					"proj4js":           "https://cdn.jsdelivr.net/npm/proj4/dist/proj4.js",
+					"fflate":            "https://cdn.jsdelivr.net/npm/fflate/esm/browser.js"
 				}
 			}
 		</script>
@@ -136,36 +143,42 @@
 
 		<!-- Transition Overlay (optional / legacy) -->
 		<section id="transOverlay" class="overlay hidden">
-			<div class="overlay__card">
+			<div class="overlay__card overlay__card--wide">
 				<header class="overlay__header">
 					<div class="overlay__title">Transition Editor</div>
-					<button id="btnTransClose" class="btn">Close</button>
+					<div class="overlay__headerRight">
+						<span id="teLegend" class="hint"></span>
+						<button id="btnTransClose" class="btn">Close</button>
+					</div>
 				</header>
 
-				<div class="control">
-					<label for="familySel">Family</label>
-					<select id="familySel"></select>
-				</div>
+				<div class="overlay__body overlay__body--grid">
+					<div class="overlay__controls">
+						<div class="control">
+							<label for="tePresetSelMain">Preset</label>
+							<select id="tePresetSelMain"></select>
+							<!--select id="tePresetSelAlt"></select-->
+							<label><input type="radio" name="tePlot" id="tePlotK"  value="k"> κ</label>
+<label><input type="radio" name="tePlot" id="tePlotK1" value="k1"> κ′</label>
+<label><input type="radio" name="tePlot" id="tePlotK2" value="k2"> κ″</label>
+						</div>
 
-				<div class="control">
-					<label for="preset">Preset</label>
-					<select id="preset">
-						<option value="clothoid">clothoid</option>
-						<option value="bloss">bloss</option>
-						<option value="berlin">berlin</option>
-					</select>
-				</div>
+						<div class="control">
+							<label for="teW1">w1</label>
+							<input type="range" id="teW1" min="0" max="1000" />
+							<span id="teW1Val">—</span>
+						</div>
 
-				<div class="control">
-					<label for="w1">w1</label>
-					<input id="w1" type="range" min="0" max="1000" step="1" />
-					<div class="hint" id="w1Val">—</div>
-				</div>
+						<div class="control">
+							<label for="teW2">w2</label>
+							<input type="range" id="teW2" min="0" max="1000" />
+							<span id="teW2Val">—</span>
+						</div>
+					</div>
 
-				<div class="control">
-					<label for="w2">w2</label>
-					<input id="w2" type="range" min="0" max="1000" step="1" />
-					<div class="hint" id="w2Val">—</div>
+					<div class="overlay__stage">
+						<div id="transBoard" class="jxgbox"></div>
+					</div>
 				</div>
 			</div>
 		</section>

@@ -1,4 +1,5 @@
 // app/core/appCore.js
+
 import { wireUI } from "./uiWiring.js";
 import { t } from "../i18n/strings.js";
 
@@ -10,6 +11,14 @@ import { makeThreeAdapter } from "../adapters/geo/ThreeAdapter.js";
 import { makeThreeViewer } from "../view/threeViewer.js";
 import { makeViewController } from "./viewController.js"; // falls bei dir schon so ist
 
+import transitionLookup from "../src/alignment/transition/transitionLookup.json" with { type: "json" };
+import { RegistryCompiler } from "../src/alignment/transition/registry/RegistryCompiler.js";
+import { makeTransitionEditorBridge } from "./transitionEditorBridge.js";
+import { makeTransitionEditorView } from "../view/transitionEditorView.js";
+
+//
+// ...
+//
 export async function bootApp({ prefs } = {}) {
 	if (window.__ufAIM_booted) return;
 	window.__ufAIM_booted = true;
@@ -18,6 +27,11 @@ export async function bootApp({ prefs } = {}) {
 
 	const store = createWorkspaceState();
 	if (prefs.isDev) window.__ufAIM_store = store;
+	
+	const transitionRegistry = new RegistryCompiler(transitionLookup);
+	const transV = makeTransitionEditorView(store, transitionRegistry);
+	// transV.init?.(); // oder lazy via bridge/view injection
+	// if (prefs.isDev) window.__ufAIM_transitionRegistry = transitionRegistry;
 
 	const logElement = document.getElementById("log");
 	const statusElement = document.getElementById("status");
@@ -31,6 +45,8 @@ export async function bootApp({ prefs } = {}) {
 	const ui = wireUI({ logElement, statusElement, prefs }); // prefs weitergeben (optional, aber sauber)
 	ui.setStatus(t("boot_ok"));
 	logLine(t("boot_ready"));
+	
+	ui.logInfo?.(`btnTrans=${!!ui.elements.buttonTransition} overlay=${!!ui.elements.transitionOverlay}`);
 
 	// 3D
 	const canvas = document.getElementById("view3d");
@@ -40,7 +56,7 @@ export async function bootApp({ prefs } = {}) {
 	three.start?.();
 
 	const threeA = makeThreeAdapter({ three });
-
+	
 	// ImportController (prefs rein!)
 	const importer = makeImportController({ store, ui, logLine, prefs });
 	
@@ -86,11 +102,6 @@ export async function bootApp({ prefs } = {}) {
 	store.actions?.setCursorS?.(0);
 	ui.setCursorSInputValue?.(0);
 
-	// mirrorQuickHooksFromActive(store);  // ❌ raus
-
-	// ViewController
-	// ... bis viewC
-
 	const viewC = makeViewController({
 		store,
 		ui,
@@ -100,6 +111,9 @@ export async function bootApp({ prefs } = {}) {
 	});
 
 	viewC.subscribe();
+	
+	const teBridge = makeTransitionEditorBridge({ store, ui, registry: transitionRegistry, view: transV });
+	teBridge.wire();
 	
 	// DEV-only: AutoFit toggle
 	ui.setAutoFitToggleVisible?.(Boolean(prefs.isDev));

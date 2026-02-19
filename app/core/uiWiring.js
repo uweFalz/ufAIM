@@ -7,6 +7,7 @@
 //
 // i18n: all UI strings via t(...)
 
+import { clamp01, escapeHtml } from "../utils/helpers.js";
 import { t } from "../i18n/strings.js";
 
 // ------------------------------------------------------------
@@ -37,15 +38,6 @@ function setPrimary(button, isOn) {
 // ------------------------------------------------------------
 // SPOT (Grabbeltisch) HTML renderer (top-level helper)
 // ------------------------------------------------------------
-
-function escapeHtml(s) {
-	return String(s ?? "")
-	.replace(/&/g, "&amp;")
-	.replace(/</g, "&lt;")
-	.replace(/>/g, "&gt;")
-	.replace(/\"/g, "&quot;")
-	.replace(/'/g, "&#39;");
-}
 
 function formatPct01(x) {
 	const v = Number(x);
@@ -194,6 +186,22 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		docsSelect: document.getElementById("docsSelect"),
 		docsText: document.getElementById("docsText"),
 		buttonDocsClose: document.getElementById("btnDocsClose"),
+		
+		// transition overlay controls (transEd legacy)
+		tePresetSelMain: document.getElementById("tePresetSelMain"),
+		tePresetSelAlt:  document.getElementById("tePresetSelAlt"),
+		teW1: document.getElementById("teW1"),
+		teW2: document.getElementById("teW2"),
+		teW1Val: document.getElementById("teW1Val"),
+		teW2Val: document.getElementById("teW2Val"),
+		
+		// transition plot controls
+		tePlotK:  document.getElementById("tePlotK"),
+		tePlotK1: document.getElementById("tePlotK1"),
+		tePlotK2: document.getElementById("tePlotK2"),
+		
+		// optional robust fallback (wenn du keine IDs willst):
+		tePlotNodes: document.querySelectorAll('input[name="tePlot"]'),
 	};
 	
 	// ------------------------------------------------------------
@@ -295,6 +303,34 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setBoardSectionText(text) {
 		if (!elements.boardSection) return;
 		elements.boardSection.textContent = String(text ?? "");
+	}
+	
+	//
+	// ...
+	//
+	function setSelectOptions(selectEl, items, activeValue = "") {
+		if (!selectEl) return;
+		selectEl.innerHTML = "";
+		for (const it of (items ?? [])) {
+			const opt = document.createElement("option");
+			opt.value = String(it.value ?? "");
+			opt.textContent = String(it.label ?? it.value ?? "");
+			selectEl.appendChild(opt);
+		}
+		if (activeValue != null) selectEl.value = String(activeValue);
+	}
+
+	function setSlider01(sliderEl, value01) {
+		if (!sliderEl) return;
+		const v = Math.round(clamp01(value01) * 1000);
+		sliderEl.value = String(v);
+	}
+
+	function readSlider01(sliderEl) {
+		if (!sliderEl) return 0;
+		const v = Number(sliderEl.value);
+		if (!Number.isFinite(v)) return 0;
+		return clamp01(v / 1000);
 	}
 
 	// ------------------------------------------------------------
@@ -460,6 +496,22 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		elements.transitionOverlay.classList.add("hidden");
 	}
 
+	//
+	// ...
+	//
+	function show(el) {
+		// console.debug("show", el);
+		if (!el) return;
+		el.classList.remove("hidden");
+		el.classList.remove("overlayPane--hidden");
+	}
+	function hide(el) {
+		// console.debug("hide", el);
+		if (!el) return;
+		el.classList.add("hidden");
+		el.classList.add("overlayPane--hidden");
+	}
+
 	// ------------------------------------------------------------
 	// docs overlay (Vision/Roadmap/Freeze)
 	// ------------------------------------------------------------
@@ -483,19 +535,6 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		} catch (err) {
 			elements.docsText.textContent = `Failed to load docs: ${err?.message ?? err}`;
 		}
-	}
-
-	function show(el) {
-		// console.debug("show", el);
-		if (!el) return;
-		el.classList.remove("hidden");
-		el.classList.remove("overlayPane--hidden");
-	}
-	function hide(el) {
-		// console.debug("hide", el);
-		if (!el) return;
-		el.classList.add("hidden");
-		el.classList.add("overlayPane--hidden");
 	}
 
 	function openDocs()  { show(elements.overlayDocs); }
@@ -547,18 +586,14 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	elements.buttonSection?.addEventListener("click", toggleSection);
 	elements.closeBands?.addEventListener("click", closeBands);
 	elements.closeSection?.addEventListener("click", closeSection);
-
-	elements.buttonTransition?.addEventListener("click", openTransition);
-	elements.buttonTransitionClose?.addEventListener("click", closeTransition);
-
-	// Docs overlay (MS14.1)
-	// wireDocs?.({ defaultDoc: String(prefs?.view?.docsDefault ?? "roadmap") });
-
-	// click backdrop closes (but not clicks inside card)
-	elements.transitionOverlay?.addEventListener("click", (event) => {
-		if (event.target === elements.transitionOverlay) closeTransition();
-	});
 	
+	// ✅ Transition overlay wiring (was removed during refactor)
+	//elements.buttonTransition?.addEventListener("click", openTransition);
+	//elements.buttonTransitionClose?.addEventListener("click", closeTransition);
+	//elements.transitionOverlay?.addEventListener("click", (event) => {
+	//	if (event.target === elements.transitionOverlay) closeTransition();
+	//});
+
 	// ------------------------------------------------------------
 	// import picker (button opens hidden <input type=file>)
 	// ------------------------------------------------------------
@@ -585,7 +620,6 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ESC closes overlays
 	window.addEventListener("keydown", (event) => {
 		if (event.key === "Escape") {
-			closeTransition();
 			closeDocs();
 		}
 	});
@@ -691,7 +725,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		closeDocs,
 		toggleDocs,
 		wireDocs,
-
+		
 		// wiring helpers
 		wireCursorControls,
 		wireRouteProjectSelect,

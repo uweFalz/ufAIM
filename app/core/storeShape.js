@@ -65,11 +65,24 @@ export function makeInitialState() {
 		// view state
 		view_pins: [],          // [{rpId, slot, at}]
 		view_chunks: [],   // ✅ neu
+		
+		// Transition Editor (canonical)
+		te_open: false,
+		te_presetId: "",
+		te_w1: 0.25,
+		te_w2: 0.75,
+		te_plot: "k",   // "k" | "k1" | "k2"
+		te_u: 0.0,      // 0..1
 	};
 }
 
 export function ensureStateShape(state) {
 	const s = state ?? {};
+	const w1 = Number.isFinite(s.te_w1) ? Math.max(0, Math.min(1, s.te_w1)) : 0.25;
+	const w2 = Number.isFinite(s.te_w2) ? Math.max(0, Math.min(1, s.te_w2)) : 0.75;
+	const plot = (s.te_plot === "k" || s.te_plot === "k1" || s.te_plot === "k2") ? s.te_plot : "k";
+	const u = Number.isFinite(s.te_u) ? Math.max(0, Math.min(1, s.te_u)) : 0.0;
+
 	return {
 		// SPOT
 		activeRouteProjectId: s.activeRouteProjectId ?? null,
@@ -94,6 +107,14 @@ export function ensureStateShape(state) {
 		import_profile1d: s.import_profile1d ?? null,
 		import_cant1d: s.import_cant1d ?? null,
 		import_meta: s.import_meta ?? null,
-		import_activeArtifacts: s.import_activeArtifacts ?? null,
+		import_activeArtifacts: s.import_activeArtifacts ?? null,		
+
+		// Transition Editor (canonical, survives reload)
+		te_open: Boolean(s.te_open),
+		te_presetId: String(s.te_presetId ?? ""),
+		te_w1: Math.min(w1, w2),
+		te_w2: Math.max(w1, w2),
+		te_plot: plot,
+		te_u: u,
 	};
 }

@@ -39,7 +39,7 @@ A sparse alignment represents a two-dimensional curve
 parametrized by arc length s.
 
 The curve is defined indirectly through its curvature function \kappa(s)
-and an initial pose (x_0, y_0, \theta_0).
+and an initial pose (x_0, y_0, cos \theta_0, sin \theta_0).
 
 Position and direction are obtained by integration:
 
@@ -78,12 +78,12 @@ Fix Elements
 A fixed element represents a segment with constant curvature.
 
 Types:
-	•	straight line: \kappa = 0
-	•	circular arc: \kappa = const \neq 0
+	•	straight line: K = 0
+	•	circular arc: K = const \neq 0
 
 Parameters:
 	•	arc length L
-	•	curvature \kappa
+	•	curvature K
 
 A fixed element contributes a constant segment to the curvature function.
 
@@ -94,13 +94,13 @@ Transition Elements
 A transition element represents a segment with variable curvature.
 
 Instead of defining curvature analytically,
-transition elements reference a transition family
+transition elements reference a transition type
 that defines how curvature evolves over arc length.
 
 Parameters:
 	•	arc length L
-	•	family identifier
-	•	family-specific parameters
+	•	type identifier
+	•	type-specific parameters
 
 ⸻
 
@@ -166,7 +166,7 @@ Sparse alignments form the geometric backbone
 for all multiband representations.
 
 Derived bands include:
-	•	curvature \kappa(s)
+	•	curvature k(s)
 	•	gradient i(s)
 	•	cant u(s)
 	•	speed and comfort metrics
@@ -232,3 +232,52 @@ strict continuity constraints,
 and transition families,
 it enables robust analysis, visualization, and optimization
 without sacrificing engineering intent.
+
+⸻
+
+# Ergänzung 15.02.2026
+
+# ufAIM sparse (alignment2D) – v0.1
+
+## Ziel
+Kleines, internes Austauschformat für Alignment2D:
+- Elemente sind bogenlängen-parametrisiert (arcLength)
+- Jedes Element ist einzeln nutzbar (hat poseA)
+- Transition-Krümmungsgrenzen werden NICHT im Transition gespeichert, sondern aus Nachbar-Fixed übernommen
+- Alternation: ... fixed – transition – fixed ... (Transition steht nie allein)
+
+## Grundtypen
+
+### Pose2D
+- point: { x:number, y:number }
+- dir:   { x:number, y:number }  // Einheitsvektor (cos, sin), mathematisches Backend (kein Grad/Gon)
+
+### Element (Base)
+Pflicht:
+- type: "fixed" | "transition"
+- arcLength: number  // >= 0
+- poseA: Pose2D
+
+Optional:
+- meta: object
+
+### FixedElement (type="fixed")
+Pflicht:
+- curvature: number  // 1/m, auch bei arcLength==0 (curvatureHolder)
+
+Optional:
+- deltaDir: number   // rad, nur falls "Kink" (arcLength==0) als Element geführt wird
+
+### TransitionElement (type="transition")
+Pflicht:
+- transType: string  // name_of_normalizedChangeFcn (transDB key)
+
+Nicht enthalten:
+- curvatureA/curvatureE  // kommen aus Nachbar-Fixed
+
+## Konventionen / Invarianten
+- arcLength==0 ist zulässig:
+  - fixed: curvatureHolder oder Kink (wenn deltaDir gesetzt)
+  - transition: Immediate (Factory normalisiert)
+- Factory darf fehlende curvatureHolder vor/nach Transition ergänzen (L=0)
+- Richtung in Radiant wird NICHT gespeichert; dir-Vektor ist primär

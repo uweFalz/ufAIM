@@ -1,4 +1,85 @@
-ARCHITEKTUR_FREEZE
+# ARCHITEKTUR_FREEZE – ufAIM Core (Alignment-first, didactic BIMinfra)
+
+Stand: 2026-02-14
+
+## 0. Mission (nicht verhandelbar)
+ufAIM ist ein visuelles, didaktisches BIMinfra-Tool mit Alignment-Fokus:
+Import → CRS-verstehen → Visualisieren → Editieren → Exportieren.
+Transitions sind erstklassige Domänenobjekte; interne Semantik ist Superset (Berlinish) gegenüber Format-Restriktionen.
+
+## 1. Domänen-Kern ist ThirdParty-frei
+Alles unter `src/alignment/**` darf keine direkten Imports von THREE/mapLibre/proj4/jsxgraph enthalten.
+Domäne = Datenstrukturen + Evaluatoren + Invarianten + Tests.
+
+## 2. Single Source of Truth: Store/Model
+UI/Views sind Projektionen.
+Kein View hält “eigene Wahrheit” über Alignment/Transition-Parameter, sondern liest/schreibt über State/Actions.
+
+## 3. Klare Paketgrenzen (Core Packages)
+- `src/alignment/`  Domäne: Elemente, Transition-Typen, Registry, Evaluator, Invarianten
+- `src/crs/`        CoordinateAgent, Transform-Pipelines, CRS-Meta, Passpunkte/Referenzen
+- `src/io/`         Import/Export: Parser, Mapper, Validation, Reports (Format ↔ Domäne)
+- `src/view/`       Views: 3D-Editor, Bänder, Schnitt, TransEd (nur UI-Logik + Rendering-Adapter)
+- `src/engine/`     Rendering Engines / ThirdParty-Kapseln (THREE/mapLibre/etc.)
+- `src/solver/`     SQP/AXTRAN-Revival: Objective/Constraints, Differentiation, Fit-Pipelines
+- `src/shared/`     Querschnitts-Services (Messaging, Logger, Utils, FeatureFlags)
+
+## 4. Transition ist Kern-IP
+- TransitionType-DB (Registry + Presets) ist Bestandteil des Domänenkerns.
+- TransEd ist der autorisierte UI-Einstieg für: Typ anlegen/prüfen/analysieren.
+- Registry liefert “kompilierte” Typen (kappa, kappa', kappa'', integral, cuts/meta).
+
+## 5. Berlinish-Prinzip
+Interne Transition-Semantik ist nicht Format-gebunden:
+- normierter Parameter u∈[0,1]
+- definierte Stetigkeit (mindestens C1, optional C2+ je Typ)
+- segmentiertes Modell (z.B. halfWave1 / linear / halfWave2) ist erlaubt und üblich
+- Format-Restriktionen werden beim Export gemappt, nicht im Kernmodell erzwungen.
+
+## 6. Import = Erkenntnis-Pipeline, nicht File-Load
+Import erzeugt: (a) Domänenobjekte, (b) Meta/CRS-Kontext, (c) Quality/Warnings.
+Containerformate (LandXML/IFC) werden in Subdatensätze zerlegt; Spezialformate (TRA/GRA) sind file-level.
+
+## 7. Export ist bewusst (Mapping + Loss-Policy)
+Jeder Exportpfad definiert:
+- Zielschema/Restrictions
+- Mapping-Strategie Berlinish→Target
+- Loss-Policy: lossless | controlled-loss (mit Report) | reject
+
+## 8. CRS ist Feature
+Kein Alignment ohne CRS-Kontext.
+CoordinateAgent ist zentraler Dienst; Views zeigen CRS-Zustand und Transformationen nachvollziehbar an.
+
+## 9. Rendering ist austauschbar
+mapLibre/THREE/jsxgraph sind Implementierungen hinter Interfaces/Adapters.
+Views sprechen nur mit Engine-Interfaces, nie direkt mit ThirdParty (Ausnahme: View-spezifische Mini-Renderer, wenn klar abgegrenzt).
+
+## 10. MultiView/MultiWindow ist vorgesehen
+Views dürfen nicht “singleton-annahmen”.
+Kommunikation über Messaging/EventBus/Router; Model/Store bleibt zentral (ggf. Worker).
+
+## 11. Solver (SQP) ist separate Domäne
+SQP/AXTRAN-Revival lebt in `src/solver/` und operiert auf Domänenobjekten.
+Keine Solver-Logik in Views oder Importern.
+
+## 12. Invarianten & Tests (Pflicht bei Kernobjekten)
+- AlignmentElement/TransitionElement: Validierung + Normalisierung
+- Registry/Compiler: deterministisch, pure functions soweit möglich
+- Import-Mapping: testbare Golden-Cases (LandXML/IFC/TRA)
+
+## 13. “No quick hacks” Regel
+Temporäre Fixes dürfen Paketgrenzen nicht verletzen.
+Wenn ein Fix nötig ist: Interface erweitern → Implementierung anpassen → erst dann nutzen.
+
+## 14. Naming & Struktur
+Klar, beschreibend, langlebig. Keine “witzigen” Namen für Core.
+Dateipfade spiegeln Rollen: `alignment/elements`, `alignment/transition`, `io/parsers`, `io/mappers`, …
+
+## 15. UI-Prinzip (didaktisch)
+Jede Editor-Funktion muss “sehen lassen, was sie tut”:
+Plot/Derivative/Integral/Continuity/Constraints sichtbar, nicht nur Ergebnis.
+
+⸻
 
 Projekt: ufAIM
 

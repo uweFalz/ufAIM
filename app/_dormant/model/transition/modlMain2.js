@@ -755,7 +755,7 @@ console.log("✅ Transition function generators set up.");
 class AlignmentElement {
 	constructor(A, C, E) {
 		this.A = A; // { point, direction, curvature }
-		this.C = C; // { type, length }
+		this.C = C; // { type, arcLength }
 		this.E = E; // { point, direction, curvature }
 	}
 
@@ -958,68 +958,6 @@ class Transition extends AlignmentElement {
 console.log("✅ Transition class refactored.");
 
 // =============================
-// 📐 Horizontal Alignment Model (refactored)
-// =============================
-
-class HorizontalAlignmentModel {
-	constructor(elements = []) {
-		this.elements = elements;
-	}
-
-	addElement(element) {
-		this.elements.push(element);
-	}
-
-	getPointAt(s) {
-		let acc = 0;
-		for (let el of this.elements) {
-			if (s <= acc + el.C.arclength) return el.getPointAt(s - acc);
-			acc += el.C.arclength;
-		}
-		return null;
-	}
-
-	getDirecAt(s) {
-		let acc = 0;
-		for (let el of this.elements) {
-			if (s <= acc + el.C.arclength) return el.getDirecAt(s - acc);
-			acc += el.C.arclength;
-		}
-		return null;
-	}
-
-	getCrvtrAt(s) {
-		let acc = 0;
-		for (let el of this.elements) {
-			if (s <= acc + el.C.arclength) return el.getCrvtrAt(s - acc);
-			acc += el.C.arclength;
-		}
-		return null;
-	}
-
-	trForm(pntT) {
-		let acc = 0;
-		for (let el of this.elements) {
-			if (pntT.s <= el.C.arclength) return el.trForm(pntT);
-			pntT.s -= el.C.arclength;
-		}
-		return null;
-	}
-
-	umForm(pntX) {
-		let acc = 0;
-		for (let el of this.elements) {
-			const local = el.umForm(pntX);
-			if (local !== null) return { s: acc + local.s, q: local.q };
-			acc += el.C.arclength;
-		}
-		return null;
-	}
-}
-
-console.log("✅ HorizontalAlignmentModel is ready.");
-
-// =============================
 // 📦 Model Classes
 // =============================
 
@@ -1162,65 +1100,3 @@ function exportAlignmentJSON(alignmentModel) {
 	);
 }
 
-// console.log("📤 Alignment JSON Export Preview:\n", exportAlignmentJSON(alignment));
-
-// =============================
-// 🎥 Three.js Hook Placeholder
-// =============================
-
-function renderAlignment3D(alignmentModel, scene) {
-	alignmentModel.elements.forEach(el => {
-		const points = [];
-		for (let s = 0; s <= el.C.length; s += 2) {
-			const p = el.getPointAt(s);
-			points.push(new THREE.Vector3(p.x, p.y, p.z));
-		}
-		const geometry = new THREE.BufferGeometry().setFromPoints(points);
-		const material = new THREE.LineBasicMaterial({ color: 0xff6600 });
-		const line = new THREE.Line(geometry, material);
-		scene.add(line);
-	});
-}
-
-console.log("🎥 Three.js hook available via renderAlignment3D(alignment, scene)");
-
-// =============================
-// 📈 JSXGraph Hook (2D Viewer + Control Points)
-// =============================
-
-function renderAlignment2D(alignmentModel, board) {
-	board.removeObject(board.objectsList);
-
-	alignmentModel.elements.forEach((el, index) => {
-		const data = [];
-		for (let s = 0; s <= el.C.length; s += 1) {
-			const p = el.getPointAt(s);
-			data.push([p.x, p.y]);
-		}
-		board.create('curve', [
-		data.map(p => p[0]),
-		data.map(p => p[1])
-		], {
-			strokeColor: '#0066cc',
-			strokeWidth: 2,
-			name: `Element ${index}`
-		});
-
-		const startPnt = el.A.point;
-		const cp = board.create('point', [startPnt.x, startPnt.y], {
-			name: `P${index}`,
-			size: 3,
-			color: '#ff0000',
-			fixed: false,
-			snapToGrid: true
-		});
-
-		cp.on('drag', () => {
-			el.A.point = Vector.create(cp.X(), cp.Y());
-			el.update();
-			renderAlignment2D(alignmentModel, board);
-		});
-	});
-}
-
-console.log("📈 JSXGraph hook now includes control point editing.");

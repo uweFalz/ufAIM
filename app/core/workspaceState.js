@@ -1,5 +1,6 @@
 // app/core/workspaceState.js
 
+import { clamp01range, clamp01 } from "../utils/helpers.js";
 import { makeInitialState, ensureStateShape } from "./storeShape.js";
 import { mirrorQuickHooksFromActive, applyIngestResult } from "../io/importApply.js";
 
@@ -14,15 +15,6 @@ function makeChunkId() {
 function normalizeSlot(slot) {
 	const v = String(slot ?? "right");
 	return (v === "left" || v === "km" || v === "right") ? v : "right";
-}
-
-function clamp01range(a, b) {
-	const s0 = Number(a), s1 = Number(b);
-	if (!Number.isFinite(s0) || !Number.isFinite(s1)) return null;
-	const lo = Math.min(s0, s1);
-	const hi = Math.max(s0, s1);
-	if (!(hi > lo)) return null; // require non-zero length (you can relax this later)
-	return { s0: lo, s1: hi };
 }
 
 //
@@ -276,6 +268,44 @@ export function createWorkspaceState(initial) {
 
 		clearChunks() {
 			setState({ view_chunks: [] });
+		},
+		
+		// ------------------------------------------------------------
+		// TransitionEditor (te_*)
+		// ------------------------------------------------------------
+		
+		setTeOpen(on) {
+			setState({ te_open: !!on });
+		},
+		
+		setTePresetId(id) {
+			setState({ te_presetId: String(id || "") });
+		},
+		
+		setTeW1(x) {
+			const w1 = clamp01(+x);
+			setState((st) => {
+				const w2 = clamp01(st.te_w2);
+				return { te_w1: w1, te_w2: Math.max(w1, w2) }; // keep invariant w1<=w2
+			});
+		},
+		
+		setTeW2(x) {
+			const w2 = clamp01(+x);
+			setState((st) => {
+				const w1 = clamp01(st.te_w1);
+				return { te_w2: w2, te_w1: Math.min(w1, w2) }; // keep invariant w1<=w2
+			});
+		},
+		
+		setTePlot(v) {
+			const p = String(v || "k");
+			if (!["k", "k1", "k2"].includes(p)) return;
+			setState({ te_plot: p });
+		},
+
+		setTeU(u) {
+			setState({ te_u: clamp01(+u) });
 		},
 	};
 

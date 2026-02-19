@@ -119,14 +119,14 @@ export function makeAlignmentBandView(store) {
 			const st = store.getState();
 			const sample = getSample();
 			if (!sample) return bandMapX(0);
-			const s = (sample.lead ?? st.lead ?? 60) + clamp01(st.u) * (sample.L ?? st.L ?? 120);
+			const s = (sample.lead ?? st.lead ?? 60) + clamp01(st.te_u) * (sample.L ?? st.L ?? 120);
 			return bandMapX(s);
 		},
 		() => {
 			const st = store.getState();
 			const sample = getSample();
 			if (!sample) return bandMapY(0);
-			const s = (sample.lead ?? st.lead ?? 60) + clamp01(st.u) * (sample.L ?? st.L ?? 120);
+			const s = (sample.lead ?? st.lead ?? 60) + clamp01(st.te_u) * (sample.L ?? st.L ?? 120);
 			const k = k_of_s(s);
 			return bandMapY(k);
 		}

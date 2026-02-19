@@ -1,5 +1,8 @@
 import * as THREE from "three";
 
+//
+// ...
+///
 export function makeThreeViewer({ canvas }) {
 	// MS13.13: align viewer coordinates with ENU (Z-up)
 	// Project convention: x=east, y=north, z=up.

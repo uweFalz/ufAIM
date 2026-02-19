@@ -7,9 +7,6 @@
 // - updates three viewer via ThreeAdapter (floating origin)
 // - detects "active geometry changed" and applies policy:
 //    off | recenter | fit | softfit | softfitanimated
-// - MS12.x: fitActive()
-// - MS13.2: softfit (no target jump)
-// - MS13.2b: softfitanimated (smooth zoom animation)
 //
 // MS15.x:
 // - viewer-only "chunks" (ephemeral), rendered as aux tracks
@@ -18,24 +15,39 @@
 import { mirrorQuickHooksFromActive } from "../io/importApply.js";
 
 // ------------------------------------------------------------
-// Refactor v4:
-// - consolidate prefs into a single cfg block
-// - group state/selector helpers (keep subscribe handler “flat”)
-// - remove accidental duplicate helper definitions (buildChunkAuxTracks)
-// - avoid wiring side-effects before subscribe() (only wire in subscribe)
+// Pure helpers (NO cfg / NO inner closures here)
 // ------------------------------------------------------------
 
-// ------------------------------------------------------------
-// Refactor v3:
-// - wiring extracted (props panel + spot panel + track click)
-// - key parsing unified (rpId/spotId keys share same parser)
-// - duplicate buildChunkAuxTracks removed (keep the small helpers)
-// ------------------------------------------------------------
+function nowMs() { return Date.now(); }
 
 function clampNumber(value, min, max) {
 	const v = Number(value);
 	if (!Number.isFinite(v)) return min;
 	return Math.max(min, Math.min(max, v));
+}
+
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+function radToDeg(r) { return r * 180 / Math.PI; }
+
+function normDeg180(deg) {
+	let d = ((deg + 180) % 360 + 360) % 360 - 180;
+	return d;
+}
+
+function headingDegFromPoints(a, b) {
+	const dx = (b?.x ?? 0) - (a?.x ?? 0);
+	const dy = (b?.y ?? 0) - (a?.y ?? 0);
+	return radToDeg(Math.atan2(dy, dx));
+}
+
+function polylineLength(pts) {
+	let L = 0;
+	for (let i = 1; i < (pts?.length ?? 0); i++) {
+		const a = pts[i - 1], b = pts[i];
+		L += Math.hypot((b.x - a.x), (b.y - a.y));
+	}
+	return L;
 }
 
 function formatNum(v, digits = 3) {
@@ -52,7 +64,6 @@ function escapeHtml(text) {
 }
 
 // key parser for strings like "<id>::<slot>" where <id> can contain "::"
-// returns { id, slot } or null
 function parseIdSlotKey(key) {
 	const parts = String(key ?? "").split("::");
 	if (parts.length < 2) return null;
@@ -133,7 +144,6 @@ function pointAtS(polyline2d, cum, s) {
 	return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) };
 }
 
-// Returns a world polyline representing the segment [sA..sB]
 function clipPolylineByChainage(polyline2d, cum, sA, sB) {
 	if (!Array.isArray(polyline2d) || polyline2d.length < 2) return null;
 	if (!Array.isArray(cum) || cum.length !== polyline2d.length) return null;
@@ -154,15 +164,12 @@ function clipPolylineByChainage(polyline2d, cum, sA, sB) {
 
 	out.push(pStart);
 
-	// include intermediate vertices strictly inside (s0, s1)
 	for (let i = 1; i < cum.length - 1; i++) {
 		const si = cum[i];
 		if (si > s0 && si < s1) out.push(polyline2d[i]);
 	}
 
 	out.push(pEnd);
-
-	// degenerate safeguard
 	if (out.length < 2) return null;
 	return out;
 }
@@ -202,6 +209,86 @@ function unionBbox(a, b) {
 		minY: Math.min(a.minY, b.minY),
 		maxX: Math.max(a.maxX, b.maxX),
 		maxY: Math.max(a.maxY, b.maxY),
+	};
+}
+
+function computeBboxUnionFromTracks(tracks) {
+	let bbox = null;
+	for (const t of (tracks ?? [])) {
+		const pts = t?.points;
+		if (!Array.isArray(pts) || pts.length < 2) continue;
+		const b = computeBbox(pts);
+		bbox = unionBbox(bbox, b);
+	}
+	return bbox;
+}
+
+function pickBboxFromArtifactOrPolyline(art, poly) {
+	const b =
+	art?.payload?.bbox ??
+	art?.payload?.bboxENU ??
+	art?.payload?.bbox?.bbox ??
+	null;
+
+	if (b?.minX != null) return b;
+	return computeBbox(poly);
+}
+
+// pins: legacy string or object
+function normalizePins(pins) {
+	const arr = Array.isArray(pins) ? pins : [];
+	const out = [];
+	for (const p of arr) {
+		if (!p) continue;
+		if (typeof p === "string") {
+			const [rpId, slot] = String(p).split("::");
+			if (rpId) out.push({ rpId, slot: slot || "right" });
+			continue;
+		}
+		if (typeof p === "object") {
+			const rpId = p.rpId ?? p.baseId ?? null;
+			if (!rpId) continue;
+			out.push({ rpId: String(rpId), slot: String(p.slot ?? "right") });
+		}
+	}
+	return out;
+}
+
+// age-fade calc (pure)
+function computeAuxAlphaByAge(ageSec, { minA, maxA, fadeSec }) {
+	const t = clamp01(ageSec / Math.max(1e-6, fadeSec));
+	return maxA + (minA - maxA) * t;
+}
+
+// factory: cfg + PREVIEW_ID are closures
+function makeStyleForAuxTrack(cfg, PREVIEW_ID) {
+	return function styleForAuxTrack(id, meta = {}) {
+		if (!cfg.auxStyleByAge) return null;
+
+		const now = Date.now();
+		const ageSec = Math.max(0, (now - (meta.at ?? now)) / 1000);
+
+		let alpha = computeAuxAlphaByAge(ageSec, {
+			minA: cfg.auxMinAlpha,
+			maxA: cfg.auxMaxAlpha,
+			fadeSec: cfg.auxFadeSec,
+		});
+
+		let width = (ageSec > cfg.auxFadeSec * 0.6) ? cfg.auxWidthOld : cfg.auxWidth;
+		let dashed = false;
+
+		if (id === PREVIEW_ID) {
+			alpha = 0.95;
+			width = Math.max(width, 2.5);
+			dashed = true;
+		}
+
+		if (meta.frozen) {
+			alpha = Math.max(alpha, 0.7);
+			width = Math.max(width, 2.0);
+		}
+
+		return { alpha, width, dashed };
 	};
 }
 
@@ -268,66 +355,36 @@ function makeActiveGeomKey(state) {
 	return `${rpId}::${slot}::(no-activeArtifacts)`;
 }
 
-function pickBboxFromArtifactOrPolyline(art, poly) {
-	const b =
-	art?.payload?.bbox ??
-	art?.payload?.bboxENU ??
-	art?.payload?.bbox?.bbox ??
-	null;
+// ------------------------------------------------------------
+// ViewController
+// ------------------------------------------------------------
 
-	if (b?.minX != null) return b;
-	return computeBbox(poly);
-}
-
-// ---- MS13.12x: pins helpers (support legacy string pins + new object pins) ----
-function normalizePins(pins) {
-	const arr = Array.isArray(pins) ? pins : [];
-	const out = [];
-	for (const p of arr) {
-		if (!p) continue;
-		if (typeof p === "string") {
-			const [rpId, slot] = String(p).split("::");
-			if (rpId) out.push({ rpId, slot: slot || "right" });
-			continue;
-		}
-		if (typeof p === "object") {
-			const rpId = p.rpId ?? p.baseId ?? null;
-			if (!rpId) continue;
-			out.push({ rpId: String(rpId), slot: String(p.slot ?? "right") });
-		}
-	}
-	return out;
-}
-
-function makePinKey(pin) {
-	if (!pin?.rpId) return "";
-	return `${pin.rpId}::${pin.slot ?? "right"}`;
-}
-
-//
-// ...
-//
 export function makeViewController({ store, ui, threeA, propsElement, prefs } = {}) {
 	if (!store?.getState || !store?.subscribe) throw new Error("ViewController: missing store");
 	if (!ui) throw new Error("ViewController: missing ui");
 	if (!threeA) throw new Error("ViewController: missing three adapter");
-	
-	// ------------------------------------------------------------
-	// cfg (prefs normalization)
-	// ------------------------------------------------------------
+
 	const cfg = {
 		fitPadding: Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35,
 		fitDurationMs: Number.isFinite(prefs?.view?.fitDurationMs) ? prefs.view.fitDurationMs : 240,
 		fitIncludesPins: (prefs?.view?.fitIncludesPins !== undefined) ? Boolean(prefs.view.fitIncludesPins) : true,
+
 		showAuxTracks: (prefs?.view?.showAuxTracks !== undefined) ? Boolean(prefs.view.showAuxTracks) : true,
 		auxTracksScope: String(prefs?.view?.auxTracksScope ?? "routeProject").toLowerCase(),
 		auxTracksMax: Number.isFinite(prefs?.view?.auxTracksMax) ? prefs.view.auxTracksMax : 12,
+
+		// v4.6 aux styling by age
+		auxStyleByAge: (prefs?.view?.auxStyleByAge !== undefined) ? Boolean(prefs.view.auxStyleByAge) : true,
+		auxMaxAlpha: Number.isFinite(prefs?.view?.auxMaxAlpha) ? prefs.view.auxMaxAlpha : 0.85,
+		auxMinAlpha: Number.isFinite(prefs?.view?.auxMinAlpha) ? prefs.view.auxMinAlpha : 0.15,
+		auxFadeSec:  Number.isFinite(prefs?.view?.auxFadeSec)  ? prefs.view.auxFadeSec  : 45,
+		auxWidth:    Number.isFinite(prefs?.view?.auxWidth)    ? prefs.view.auxWidth    : 2.0,
+		auxWidthOld: Number.isFinite(prefs?.view?.auxWidthOld) ? prefs.view.auxWidthOld : 1.0,
 	};
-	
+
 	// policy: off | recenter | fit | softfit | softfitanimated
 	let onGeomChange = String(prefs?.view?.onGeomChange ?? "recenter").toLowerCase();
-	
-	// legacy toggle (kept, but policy is the primary behavior)
+
 	let autoFitOnGeomChange =
 	(prefs?.view?.autoFitOnGeomChange !== undefined)
 	? Boolean(prefs.view.autoFitOnGeomChange)
@@ -337,16 +394,15 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	let lastGeomKey = null;
 	let lastPolyRef = null;
 
-	// MS15.3: ephemeral chunks rendered in viewer only (no store)
-	let pendingChunkStartS = null; // MS15.2: shift two-click range start
-	
-	const chunkTracks = []; // each: { id, points:[{x,y},...], s0,s1, at }
+	// viewer-only chunks
+	let pendingChunkStartS = null;
+	const chunkTracks = []; // {id,points,s0,s1,at,frozen,hidden}
 	const MAX_CHUNKS = 12;
 	const PREVIEW_ID = "chunk_preview";
-	
-	// ------------------------------------------------------------
-	// selectors (state-derived helpers)
-	// ------------------------------------------------------------
+
+	const styleForAuxTrack = makeStyleForAuxTrack(cfg, PREVIEW_ID);
+
+	// selectors
 	const selectors = {
 		activeAlignmentArtifact(state) {
 			const aa = state.import_activeArtifacts;
@@ -357,7 +413,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			return pickBboxFromArtifactOrPolyline(art, poly);
 		},
 	};
-	
+
 	function ensureChainageCache(poly) {
 		if (!poly) return null;
 		if (!cachedCum || lastPolyRef !== poly) {
@@ -366,124 +422,638 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		}
 		return cachedCum;
 	}
+
+	// ------------------------------------------------------------
+	// ThreeAdapter aux tracks (styled if supported)
+	// ------------------------------------------------------------
+
+	function setAuxTracks(tracks) {
+		if (typeof threeA.setAuxTracksFromWorldPolylinesStyled === "function") {
+			threeA.setAuxTracksFromWorldPolylinesStyled(tracks);
+		} else {
+			threeA.setAuxTracksFromWorldPolylines?.(tracks.map(t => ({ id: t.id, points: t.points })));
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Aux tracks collection (v4.2 split)
+	// ------------------------------------------------------------
+
+	function pushAlignmentTrack(out, state, id, activeId) {
+		if (!id || id === activeId) return;
+		const art = state.artifacts?.[id];
+		if (!art || art.domain !== "alignment2d") return;
+		const pts = art.payload?.polyline2d;
+		if (!Array.isArray(pts) || pts.length < 2) return;
+		out.push({ id, points: pts });
+	}
+
+	function collectAuxAll(state, activeId) {
+		const out = [];
+		for (const [id, art] of Object.entries(state.artifacts ?? {})) {
+			if (!art || id === activeId) continue;
+			if (art.domain !== "alignment2d") continue;
+			const pts = art.payload?.polyline2d;
+			if (!Array.isArray(pts) || pts.length < 2) continue;
+			out.push({ id, points: pts });
+		}
+		return out;
+	}
+
+	function collectAuxPinned(state, activeId) {
+		const out = [];
+		const pins = normalizePins(state.view_pins);
+
+		const ids = new Set();
+		for (const p of pins) {
+			const rpId = p?.rpId;
+			const slotName = p?.slot;
+			if (!rpId || !slotName) continue;
+			const rp = state.routeProjects?.[rpId];
+			const aId = rp?.slots?.[slotName]?.alignmentArtifactId;
+			if (aId) ids.add(aId);
+		}
+
+		for (const id of ids) pushAlignmentTrack(out, state, id, activeId);
+		return out;
+	}
+
+	function collectAuxRouteProject(state, activeId) {
+		const out = [];
+		const rpId = state.activeRouteProjectId;
+		const rp = rpId ? state.routeProjects?.[rpId] : null;
+		if (!rp?.slots) return out;
+
+		const ids = new Set();
+		for (const slot of Object.values(rp.slots)) {
+			const aId = slot?.alignmentArtifactId;
+			if (aId) ids.add(aId);
+			const other = slot?.otherArtifactIds;
+			if (Array.isArray(other)) for (const x of other) ids.add(x);
+		}
+
+		for (const id of ids) pushAlignmentTrack(out, state, id, activeId);
+		return out;
+	}
+
+	function collectAuxTracks(state) {
+		if (!cfg.showAuxTracks) return [];
+
+		const activeId = state.import_activeArtifacts?.alignmentArtifactId ?? null;
+
+		switch (cfg.auxTracksScope) {
+			case "all":
+			return collectAuxAll(state, activeId);
+			case "pinned":
+			return collectAuxPinned(state, activeId);
+			case "routeproject":
+			case "routeproject".toLowerCase():
+			default:
+			return collectAuxRouteProject(state, activeId);
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Chunk tracks (viewer-only)
+	// ------------------------------------------------------------
 	
+	function buildChunkMetrics(points, s0, s1) {
+		if (!Array.isArray(points) || points.length < 2) return null;
+
+		const h0 = headingDegFromPoints(points[0], points[1]);
+		const h1 = headingDegFromPoints(points[points.length - 2], points[points.length - 1]);
+		const dH = normDeg180(h1 - h0);
+
+		return {
+			s0,
+			s1,
+			len: polylineLength(points),
+
+			p0: { x: points[0].x, y: points[0].y },
+			p1: { x: points[points.length - 1].x, y: points[points.length - 1].y },
+
+			h0,
+			h1,
+			dH,
+		};
+	}
+
 	function buildChunkPreviewTrack(state) {
 		if (pendingChunkStartS == null) return null;
-		
+
 		const poly = state.import_polyline2d;
 		if (!isPolylineValid(poly)) return null;
-		
+
 		const cum = ensureChainageCache(poly);
 		if (!cum) return null;
-		
+
 		const s0 = pendingChunkStartS;
 		const s1 = Number(state.cursor?.s ?? 0);
 		const pts = clipPolylineByChainage(poly, cum, s0, s1);
 		if (!pts || pts.length < 2) return null;
+
 		return { id: PREVIEW_ID, points: pts };
 	}
-	
-	function buildChunkAuxTracks(state) {
-		const aux = collectAuxTracks(state);
-		const chunks = chunkTracks.map((c) => ({ id: c.id, points: c.points }));
+
+	function buildAuxTracksOnly(state) {
+		const aux = collectAuxTracks(state).slice(0, cfg.auxTracksMax);
+		const now = nowMs();
+
+		return aux.map(t => ({
+			...t,
+			style: styleForAuxTrack(t.id, { at: now }),
+		}));
+	}
+
+	function buildChunkTracksOnly(state) {
+		const chunks = chunkTracks
+		.filter(c => c && !c.hidden)
+		.map(c => ({
+			id: c.id,
+			points: c.points,
+			style: styleForAuxTrack(c.id, c),
+		}));
+
 		const preview = buildChunkPreviewTrack(state);
-		return preview ? [...aux, ...chunks, preview] : [...aux, ...chunks];
+		if (preview) {
+			return [...chunks, { ...preview, style: styleForAuxTrack(PREVIEW_ID, { at: nowMs() }) }];
+		}
+		return chunks;
+	}
+
+	function buildChunkAuxTracks(state) {
+		return [
+		...buildAuxTracksOnly(state),
+		...buildChunkTracksOnly(state),
+		];
+	}
+
+	function redrawAuxFromState(state) {
+		setAuxTracks(buildChunkAuxTracks(state));
 	}
 
 	function makeChunkId() {
 		return `chunk_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 	}
-	
-	function redrawAuxFromState(state) {
-		threeA.setAuxTracksFromWorldPolylines?.(buildChunkAuxTracks(state));
+
+	function pruneChunksIfNeeded() {
+		if (chunkTracks.length <= MAX_CHUNKS) return;
+
+		const frozen = chunkTracks.filter(c => c?.frozen);
+		const live = chunkTracks.filter(c => !c?.frozen);
+
+		while ((frozen.length + live.length) > MAX_CHUNKS) {
+			live.pop(); // drop oldest live
+		}
+
+		chunkTracks.length = 0;
+		chunkTracks.push(...frozen, ...live);
+		chunkTracks.sort((a, b) => (b?.at ?? 0) - (a?.at ?? 0));
 	}
 
-	// MS13.5: click-to-chainage (track pick) -> cursor.s
+	function findChunkIndexById(id) {
+		if (!id) return -1;
+		return chunkTracks.findIndex(c => c?.id === id);
+	}
+
+	function toggleChunkFrozen(id) {
+		const idx = findChunkIndexById(id);
+		if (idx < 0) return false;
+		chunkTracks[idx].frozen = !chunkTracks[idx].frozen;
+		return true;
+	}
+
+	function toggleChunkHidden(id) {
+		const idx = findChunkIndexById(id);
+		if (idx < 0) return false;
+		chunkTracks[idx].hidden = !chunkTracks[idx].hidden;
+		return true;
+	}
+
+	// ------------------------------------------------------------
+	// Fit bbox helpers (IN-CLOSURE! uses cfg/selectors/collect/buildChunk)
+	// ------------------------------------------------------------
+
+	function computeAuxBboxUnion(state) {
+		return computeBboxUnionFromTracks(collectAuxTracks(state));
+	}
+
+	function computeChunkBboxUnion(state) {
+		return computeBboxUnionFromTracks(buildChunkTracksOnly(state));
+	}
+
+	function computeFitBboxFromState(state, poly, opts = {}) {
+		const includePins = (opts.includePins !== undefined) ? Boolean(opts.includePins) : cfg.fitIncludesPins;
+		const includeChunks = (opts.includeChunks !== undefined) ? Boolean(opts.includeChunks) : true;
+
+		const activeArt = selectors.activeAlignmentArtifact(state);
+		let bbox = selectors.pickBbox(activeArt, poly);
+
+		if (includePins) bbox = unionBbox(bbox, computeAuxBboxUnion(state));
+		if (includeChunks) bbox = unionBbox(bbox, computeChunkBboxUnion(state));
+
+		return bbox;
+	}
+
+	// ------------------------------------------------------------
+	// Public methods (closures)
+	// ------------------------------------------------------------
+
+	function recenterToActive() {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const art = selectors.activeAlignmentArtifact(st);
+		const bbox = selectors.pickBbox(art, poly);
+		if (!bbox) return false;
+
+		threeA.setOriginFromBbox(bbox);
+		return true;
+	}
+
+	function fitActive(opts = {}) {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const bbox = computeFitBboxFromState(st, poly, opts);
+		if (!bbox) return false;
+
+		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
+
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBbox?.(bbox, { padding });
+		return true;
+	}
+
+	function softFitActive(opts = {}) {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const bbox = computeFitBboxFromState(st, poly, opts);
+		if (!bbox) return false;
+
+		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
+
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBboxSoft?.(bbox, { padding }) ?? threeA.zoomToFitWorldBbox?.(bbox, { padding });
+		return true;
+	}
+
+	function softFitActiveAnimated(opts = {}) {
+		const st = store.getState();
+		const poly = st.import_polyline2d;
+		if (!Array.isArray(poly) || poly.length < 2) return false;
+
+		const bbox = computeFitBboxFromState(st, poly, opts);
+		if (!bbox) return false;
+
+		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
+		const durationMs = Number.isFinite(opts.durationMs) ? opts.durationMs : cfg.fitDurationMs;
+
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBboxSoftAnimated?.(bbox, { padding, durationMs });
+		return true;
+	}
+
+	function setOnGeomChange(mode) {
+		const m = String(mode || "").toLowerCase();
+		if (["off", "recenter", "fit", "softfit", "softfitanimated"].includes(m)) onGeomChange = m;
+	}
+
+	function setAutoFitEnabled(on) {
+		autoFitOnGeomChange = Boolean(on);
+	}
+
+	function applyGeomChangePolicy() {
+		switch (onGeomChange) {
+			case "fit": return fitActive();
+			case "softfit": return softFitActive();
+			case "softfitanimated": return softFitActiveAnimated();
+			case "recenter": return recenterToActive();
+			default: return false;
+		}
+	}
+
+	// ------------------------------------------------------------
+	// UI wiring
+	// ------------------------------------------------------------
+
 	function setCursorS(s, opts = {}) {
 		const ss = Number(s);
 		if (!Number.isFinite(ss)) return false;
 
-		if (store.actions?.setCursorS) {
-			store.actions.setCursorS(ss);
-		} else if (store.actions?.setCursor) {
-			store.actions.setCursor({ s: ss });
-		} else {
-			// MS14.2: ViewController never writes store directly
-			return false;
-		}
+		if (store.actions?.setCursorS) store.actions.setCursorS(ss);
+		else if (store.actions?.setCursor) store.actions.setCursor({ s: ss });
+		else return false;
 
-		if (opts.fit === true) {
-			fitActive({ mode: "softFit" });
-		}
+		if (opts.fit === true) softFitActive({ includePins: true, includeChunks: true });
 		return true;
 	}
 
 	function handleTrackClick({ s, event }) {
 		const ss = Number(s);
 		if (!Number.isFinite(ss)) return;
-		
-		// always set cursor (useful)
+
 		setCursorS(ss);
-		
-		// MS15.3: SHIFT = local two-click chunk creation (viewer-only)
+
 		if (event?.shiftKey) {
 			const st = store.getState?.() ?? {};
 			const poly = st.import_polyline2d;
 			const cum = ensureChainageCache(poly);
-			
+
 			if (!isPolylineValid(poly) || !cum) {
 				ui?.logInfo?.("Chunk: no active polyline.");
 				return;
 			}
-			
+
 			if (pendingChunkStartS == null) {
 				pendingChunkStartS = ss;
 				ui?.logInfo?.(`Chunk start set at s=${formatNum(ss, 1)} (Shift+click end)`);
-				redrawAuxFromState(st); // show preview immediately
-				updateProps(st);        // keep props in sync even without store tick
+				redrawAuxFromState(st);
+				updateProps(st);
 				return;
 			}
-			
-			// second click => create chunk polyline
+
 			const s0 = pendingChunkStartS;
 			const s1 = ss;
 			pendingChunkStartS = null;
-			
+
 			const points = clipPolylineByChainage(poly, cum, s0, s1);
+			
 			if (!points) {
 				ui?.logInfo?.("Chunk: invalid range.");
 				updateProps(st);
 				redrawAuxFromState(st);
 				return;
 			}
-			
+
+			const sMin = Math.min(s0, s1);
+			const sMax = Math.max(s0, s1);
+
+			const metrics = buildChunkMetrics(points, sMin, sMax);
+
 			chunkTracks.unshift({
 				id: makeChunkId(),
 				points,
-				s0: Math.min(s0, s1),
-				s1: Math.max(s0, s1),
+				s0: sMin,
+				s1: sMax,
 				at: Date.now(),
+
+				frozen: false,
+				hidden: false,
+
+				// MS16:
+				metrics,
+				label: "",
 			});
-			if (chunkTracks.length > MAX_CHUNKS) chunkTracks.length = MAX_CHUNKS;
-			
-			// force immediate redraw without waiting for next store tick:
+
+			pruneChunksIfNeeded();
 			redrawAuxFromState(st);
 			updateProps(st);
-			
-			ui?.logInfo?.(`Chunk created: s=${formatNum(Math.min(s0, s1), 1)}..${formatNum(Math.max(s0, s1), 1)}`);
+
+			ui?.logInfo?.(`Chunk created: s=${formatNum(sMin, 1)}..${formatNum(sMax, 1)}`);
 			return;
 		}
-		
-		// keep your old “animated zoom” on ALT now (since SHIFT is chunk)
+
 		if (event?.altKey) softFitActiveAnimated({ durationMs: cfg.fitDurationMs });
 	}
-	
+
 	function wireTrackClickOnce() {
 		if (threeA.__ufAIM_trackClickWired) return;
 		threeA.__ufAIM_trackClickWired = true;
 		threeA.onTrackClick?.(handleTrackClick);
 	}
-	
+
+	function handlePropsPanelClick(ev) {
+		const t = ev?.target;
+		if (!t || typeof t.closest !== "function") return;
+
+		const st = store.getState?.() ?? {};
+
+		// chunks
+		const jumpChunkBtn = t.closest("[data-chunk-jump]");
+		const removeChunkBtn = t.closest("[data-chunk-remove]");
+		const clearChunksBtn = t.closest("[data-chunks-clear]");
+		const freezeChunkBtn = t.closest("[data-chunk-freeze]");
+		const hideChunkBtn = t.closest("[data-chunk-hide]");
+		const copyChunkBtn = t.closest("[data-chunk-copy]");
+
+		if (jumpChunkBtn || removeChunkBtn || clearChunksBtn || freezeChunkBtn || hideChunkBtn) {
+			ev.preventDefault?.();
+			ev.stopPropagation?.();
+
+			if (clearChunksBtn) {
+				chunkTracks.length = 0;
+				pendingChunkStartS = null;
+				updateProps(st);
+				redrawAuxFromState(st);
+				return;
+			}
+
+			if (removeChunkBtn) {
+				const id = removeChunkBtn.getAttribute("data-chunk-remove");
+				if (id) {
+					const idx = findChunkIndexById(id);
+					if (idx >= 0) chunkTracks.splice(idx, 1);
+					updateProps(st);
+					redrawAuxFromState(st);
+				}
+				return;
+			}
+
+			if (freezeChunkBtn) {
+				const id = freezeChunkBtn.getAttribute("data-chunk-freeze");
+				if (id) {
+					toggleChunkFrozen(id);
+					pruneChunksIfNeeded();
+					updateProps(st);
+					redrawAuxFromState(st);
+				}
+				return;
+			}
+
+			if (hideChunkBtn) {
+				const id = hideChunkBtn.getAttribute("data-chunk-hide");
+				if (id) {
+					toggleChunkHidden(id);
+					updateProps(st);
+					redrawAuxFromState(st);
+				}
+				return;
+			}
+
+			if (jumpChunkBtn) {
+				const mid = Number(jumpChunkBtn.getAttribute("data-chunk-mid"));
+				if (Number.isFinite(mid)) {
+					setCursorS(mid, { fit: true });
+					softFitActiveAnimated({ durationMs: cfg.fitDurationMs });
+				}
+				return;
+			}
+			
+			if (copyChunkBtn) {
+				const id = copyChunkBtn.getAttribute("data-chunk-copy");
+				const idx = findChunkIndexById(id);
+
+				if (idx >= 0) {
+					const c = chunkTracks[idx];
+
+					const payload = {
+						id: c.id,
+						at: c.at,
+						frozen: !!c.frozen,
+						hidden: !!c.hidden,
+						label: c.label ?? "",
+
+						s0: c.s0,
+						s1: c.s1,
+
+						metrics: c.metrics ?? null,
+					};
+
+					const txt = JSON.stringify(payload, null, 2);
+
+					if (navigator?.clipboard?.writeText) {
+						navigator.clipboard.writeText(txt).then(
+						() => ui?.logInfo?.("Chunk copied (JSON)."),
+						() => ui?.logInfo?.("Copy failed (clipboard blocked).")
+						);
+					} else {
+						// Safari fallback
+						try {
+							window.prompt("Copy chunk JSON:", txt);
+						} catch {
+							ui?.logInfo?.("Clipboard API not available.");
+						}
+					}
+				}
+
+				return;
+			}
+		}
+
+		// pins
+		const jumpBtn = t.closest("[data-pin-jump]");
+		const unpinBtn = t.closest("[data-pin-unpin]") || t.closest("[data-pin-remove]");
+		const key =
+		jumpBtn?.getAttribute?.("data-pin-jump") ??
+		unpinBtn?.getAttribute?.("data-pin-unpin") ??
+		unpinBtn?.getAttribute?.("data-pin-remove") ??
+		null;
+		if (!key) return;
+
+		ev.preventDefault?.();
+		ev.stopPropagation?.();
+
+		const parsed = parseIdSlotKey(key);
+		if (!parsed) return;
+		const rpId = parsed.id;
+		const slot = parsed.slot;
+
+		if (unpinBtn) {
+			if (store.actions?.unpinRouteProject) {
+				store.actions.unpinRouteProject({ rpId, slot });
+			} else if (store.actions?.setPins) {
+				const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
+				const next = pins.filter((p) => !(p?.rpId === rpId && (p?.slot ?? "right") === slot));
+				store.actions.setPins(next);
+			} else {
+				ui?.logInfo?.("unpin: missing store.actions.unpinRouteProject");
+			}
+			return;
+		}
+
+		store.actions?.setActiveRouteProject?.(rpId);
+		store.actions?.setActiveSlot?.(slot);
+		mirrorQuickHooksFromActive(store);
+	}
+
+	function wirePropsPanelOnce() {
+		if (!propsElement || propsElement.__ufAIM_propsWired) return;
+		propsElement.__ufAIM_propsWired = true;
+		propsElement.addEventListener("click", handlePropsPanelClick);
+	}
+
+	function handleSpotPanelClick(ev) {
+		const t = ev?.target;
+		if (!t || typeof t.closest !== "function") return;
+
+		const decisionBtn = t.closest("[data-spot-decision]");
+		if (decisionBtn) {
+			const key = decisionBtn.getAttribute("data-spot-key");
+			const decRaw = decisionBtn.getAttribute("data-spot-decision");
+			if (!key) return;
+
+			ev.preventDefault?.();
+
+			const parsed = parseIdSlotKey(key);
+			if (!parsed) return;
+
+			const decision = decRaw ? decRaw : null;
+			if (store.actions?.setSpotDecision) {
+				store.actions.setSpotDecision({ spotId: parsed.id, slot: parsed.slot, decision });
+			} else {
+				ui?.logInfo?.("Spot decision: missing store.actions.setSpotDecision");
+			}
+			return;
+		}
+
+		const activate = t.closest("[data-spot-activate]");
+		const pin = t.closest("[data-spot-pin]");
+		const key =
+		activate?.getAttribute("data-spot-activate") ??
+		pin?.getAttribute("data-spot-pin") ??
+		null;
+		if (!key) return;
+
+		ev.preventDefault?.();
+
+		const parsed = parseIdSlotKey(key);
+		if (!parsed) return;
+
+		if (activate) {
+			store.actions?.setActiveRouteProject?.(parsed.id);
+			store.actions?.setActiveSlot?.(parsed.slot);
+			return;
+		}
+
+		if (pin) {
+			if (store.actions?.togglePinRouteProject) store.actions.togglePinRouteProject({ rpId: parsed.id, slot: parsed.slot });
+			else if (store.actions?.togglePinFromActive) {
+				store.actions.setActiveRouteProject?.(parsed.id);
+				store.actions.setActiveSlot?.(parsed.slot);
+				store.actions.togglePinFromActive?.();
+			} else {
+				ui.logInfo?.("pin: missing action");
+			}
+		}
+	}
+
+	function wireSpotPanelOnce() {
+		const el = ui.elements?.importSession;
+		if (!el || el.__spotWired) return;
+		el.__spotWired = true;
+		el.addEventListener("click", handleSpotPanelClick);
+	}
+
+	function renderSpotPanel(state) {
+		const spotState = ui.getSpotState?.();
+		if (!spotState) {
+			ui.setSpotHtml?.(`<div class="spot"><div class="spot__empty">(drop files to create spots)</div></div>`);
+			return;
+		}
+
+		const html = ui.renderSpotState?.({ spotState, storeState: state });
+		ui.setSpotHtml?.(html);
+	}
+
+	// ------------------------------------------------------------
+	// Props rendering (FIXED: no misplaced blocks / no inner defs)
+	// ------------------------------------------------------------
+
 	function updateProps(state) {
 		if (!propsElement) return;
 
@@ -495,7 +1065,9 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			const safeSlot = escapeHtml(pin.slot ?? "right");
 			const safeKey = escapeHtml(key);
 
-			const isActive = (pin.rpId === state.activeRouteProjectId) && (pin.slot === (state.activeSlot ?? "right"));
+			const isActive =
+			(pin.rpId === state.activeRouteProjectId) &&
+			(pin.slot === (state.activeSlot ?? "right"));
 			const activeBadge = isActive ? `<span class="propsPins__badge">active</span>` : ``;
 
 			return `
@@ -511,29 +1083,44 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			`;
 		}).join("")
 		: `<div class="propsPins__empty">(no pins yet)</div>`;
-		
-		// MS15.x: viewer-only chunks (local, not in store)
-		const chunks = chunkTracks;
+
 		const pendingHtml = (pendingChunkStartS != null)
 		? `<div class="propsChunks__pending">Shift-chunk start: s=${escapeHtml(formatNum(pendingChunkStartS, 1))} (click end)</div>`
 		: ``;
 
 		const chunksHtml = chunkTracks.length
-		? chunks
-		.slice() // show newest first
+		? chunkTracks
+		.slice()
 		.sort((a, b) => (b?.at ?? 0) - (a?.at ?? 0))
 		.map((c) => {
 			const mid = (Number(c.s0) + Number(c.s1)) * 0.5;
-			const len = Math.abs(Number(c.s1) - Number(c.s0));
+			const m = c.metrics ?? {};
+			const len = Number.isFinite(m.len) ? m.len : Math.abs(Number(c.s1) - Number(c.s0));
+			const dH = Number.isFinite(m.dH) ? m.dH : null;
+			const headingHtml = (dH != null)
+			? `<span class="propsChunks__meta">ΔH=${escapeHtml(formatNum(dH,1))}°</span>`
+			: ``;
 			const safeId = escapeHtml(c.id ?? "");
+			const ageSec = Math.max(0, Math.round((Date.now() - (c.at ?? 0)) / 1000));
+			const frozenBadge = c.frozen ? `<span class="propsChunks__badge">frozen</span>` : ``;
+			const hiddenBadge = c.hidden ? `<span class="propsChunks__badge">hidden</span>` : ``;
+
 			return `
 			<div class="propsChunks__row">
 			<div class="propsChunks__label">
 			<span class="propsChunks__range">s=${escapeHtml(formatNum(c.s0,1))}..${escapeHtml(formatNum(c.s1,1))}</span>
-			<span class="propsChunks__meta">len=${escapeHtml(formatNum(len,1))}m</span>
+			<span class="propsChunks__meta">
+			len=${escapeHtml(formatNum(len,1))}m · age=${escapeHtml(String(ageSec))}s</span>
+			${headingHtml}
+			${frozenBadge}${hiddenBadge}
 			</div>
-			<button class="btn btn--ghost btn--xs" data-chunk-jump="${safeId}" data-chunk-mid="${escapeHtml(String(mid))}">Jump</button>
+			<button class="btn btn--ghost btn--xs" data-chunk-jump="${safeId}" data-chunk-mid="${escapeHtml(String(mid))}">
+			Jump</button>
+			<button class="btn btn--ghost btn--xs" data-chunk-freeze="${safeId}" title="Freeze (protect from auto-drop)">❄︎</button>
+			<button class="btn btn--ghost btn--xs" data-chunk-hide="${safeId}" title="Hide/Show">👁</button>
 			<button class="btn btn--ghost btn--xs" data-chunk-remove="${safeId}">×</button>
+			<button class="btn btn--ghost btn--xs" data-chunk-copy="${safeId}" title="Copy metrics JSON">⧉</button>
+			<button class="btn btn--ghost btn--xs" data-chunk-copy="${safeId}" title="Copy chunk JSON">⧉</button>
 			</div>
 			`;
 		}).join("")
@@ -574,70 +1161,62 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		`;
 	}
 
+	// ------------------------------------------------------------
+	// Render / sync steps
+	// ------------------------------------------------------------
+
 	function clear3D() {
 		threeA.clearTrack?.();
 		threeA.clearAuxTracks?.();
 		threeA.clearMarker?.();
 		threeA.clearSectionLine?.();
 	}
-	
-	// MS15.x: when no active geometry, we still want aux tracks (pins/chunks/preview)
+
 	function clear3DKeepAux() {
 		threeA.clearTrack?.();
 		threeA.clearMarker?.();
 		threeA.clearSectionLine?.();
 	}
-	
-	// ------------------------------------------------------------
-	// Refactor v2: handler steps (UI / overlays / render)
-	// ------------------------------------------------------------
+
 	function syncRouteProjectSelect(state) {
 		const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
 		ui.setRouteProjectOptions?.(ids, state.activeRouteProjectId);
 	}
-	
-	function syncPropsPanel(state) {
-		updateProps(state);
-	}
-	
+
 	function syncCursorInput(state) {
-		// MS13.8: keep cursor input in sync with state (but don't fight while user edits)
 		const cursorEl = ui.elements?.cursorSInput;
 		if (cursorEl && document.activeElement !== cursorEl) {
 			ui.setCursorSInputValue?.(state.cursor?.s ?? 0);
 		}
 	}
-	
+
 	function syncOverlays(state) {
 		ui.setBoardBandsText?.(renderBandsText(state));
 	}
-	
+
 	function syncPinsBadge(state) {
 		const pinsNow = normalizePins(state.view_pins);
 		ui.setPinsInfoText?.(`Pins: ${pinsNow.length}`);
 	}
-	
+
 	function syncSpotPanel(state) {
 		renderSpotPanel(state);
 	}
-	
+
 	function syncAuxTracks(state) {
-		threeA.setAuxTracksFromWorldPolylines?.(buildChunkAuxTracks(state));
+		setAuxTracks(buildChunkAuxTracks(state));
 	}
-	
+
 	function syncGeometryPolicyIfNeeded(state, poly, geomChanged) {
 		if (!geomChanged) return;
-		
-		// reset chainage cache so section sampling reinitializes on new poly ref
+
 		cachedCum = null;
 		lastPolyRef = null;
-		
+
 		applyGeomChangePolicy();
-		
-		// legacy toggle (optional)
+
 		if (autoFitOnGeomChange) {
 			const art = selectors.activeAlignmentArtifact(state);
-			// const bbox = pickBboxFromArtifactOrPolyline(art, poly);
 			const bbox = selectors.pickBbox(art, poly);
 			if (bbox) {
 				threeA.setOriginFromBbox(bbox);
@@ -645,7 +1224,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			}
 		}
 	}
-	
+
 	function syncSectionSamplingAndMarker(state, poly) {
 		const cum = ensureChainageCache(poly);
 		if (!cum) {
@@ -654,10 +1233,10 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			threeA.clearSectionLine?.();
 			return;
 		}
-		
+
 		const cursorS = Number(state.cursor?.s ?? 0);
 		const sectionInfo = samplePointAndTangent(poly, cum, cursorS);
-		
+
 		if (sectionInfo) {
 			threeA.setMarkerFromWorld?.({ x: sectionInfo.x, y: sectionInfo.y, z: 0 });
 			const line = makeSectionLine(sectionInfo, 30);
@@ -666,468 +1245,93 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			threeA.clearMarker?.();
 			threeA.clearSectionLine?.();
 		}
-		
+
 		ui.setBoardSectionText?.(renderSectionText(state, sectionInfo));
 	}
-	
+
 	function syncActiveTrack(poly) {
 		threeA.setTrackFromWorldPolyline?.(poly);
 	}
+	
+	function syncTransitionEditorControls(state) {
+  const w1 = document.getElementById("w1");
+  const w2 = document.getElementById("w2");
+  const famSel = document.getElementById("familySel");
+  const preset = document.getElementById("preset");
+
+  if (famSel && document.activeElement !== famSel) famSel.value = state.te_family ?? "berlinish";
+  if (preset && document.activeElement !== preset) preset.value = state.te_preset ?? "bloss";
+
+  if (w1 && document.activeElement !== w1) w1.value = String(Math.round(clamp01(state.te_w1 ?? 0.25) * 1000));
+  if (w2 && document.activeElement !== w2) w2.value = String(Math.round(clamp01(state.te_w2 ?? 0.75) * 1000));
+}
 
 	// ------------------------------------------------------------
-	// Wiring: Props panel (pins + chunks)
+	// Subscribe
 	// ------------------------------------------------------------
-	function handlePropsPanelClick(ev) {
-		const t = ev?.target;
-		if (!t || typeof t.closest !== "function") return;
-		
-		const st = store.getState?.() ?? {};
-		
-		// chunks (viewer-only)
-		const jumpChunkBtn = t.closest("[data-chunk-jump]");
-		const removeChunkBtn = t.closest("[data-chunk-remove]");
-		const clearChunksBtn = t.closest("[data-chunks-clear]");
-		
-		if (jumpChunkBtn || removeChunkBtn || clearChunksBtn) {
-			ev.preventDefault?.();
-			ev.stopPropagation?.();
-			
-			if (clearChunksBtn) {
-				chunkTracks.length = 0;
-				pendingChunkStartS = null;
-				updateProps(st);
-				redrawAuxFromState(st);
-				return;
-			}
-			
-			if (removeChunkBtn) {
-				const id = removeChunkBtn.getAttribute("data-chunk-remove");
-				if (id) {
-					const idx = chunkTracks.findIndex((c) => c?.id === id);
-					if (idx >= 0) chunkTracks.splice(idx, 1);
-					updateProps(st);
-					redrawAuxFromState(st);
-				}
-				return;
-			}
-			
-			if (jumpChunkBtn) {
-				const mid = Number(jumpChunkBtn.getAttribute("data-chunk-mid"));
-				if (Number.isFinite(mid)) {
-					setCursorS(mid, { fit: true });
-					softFitActiveAnimated({ durationMs: cfg.fitDurationMs });
-				}
-				return;
-			}
-		}
-		
-		// pins (store-backed)
-		const jumpBtn = t.closest("[data-pin-jump]");
-		const unpinBtn = t.closest("[data-pin-unpin]") || t.closest("[data-pin-remove]"); // legacy attr
-		const key =
-		jumpBtn?.getAttribute?.("data-pin-jump") ??
-		unpinBtn?.getAttribute?.("data-pin-unpin") ??
-		unpinBtn?.getAttribute?.("data-pin-remove") ??
-		null;
-		if (!key) return;
-		
-		ev.preventDefault?.();
-		ev.stopPropagation?.();
-		
-		const parsed = parseIdSlotKey(key); // => { id, slot }
-		if (!parsed) return;
-		const rpId = parsed.id;
-		const slot = parsed.slot;
-		
-		if (unpinBtn) {
-			if (store.actions?.unpinRouteProject) {
-				store.actions.unpinRouteProject({ rpId, slot });
-			} else if (store.actions?.setPins) {
-				const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
-				const next = pins.filter((p) => !(p?.rpId === rpId && (p?.slot ?? "right") === slot));
-				store.actions.setPins(next);
-			} else {
-				ui?.logInfo?.("unpin: missing store.actions.unpinRouteProject (MS14.2 expected)");
-			}
-			return;
-		}
-		
-		store.actions?.setActiveRouteProject?.(rpId);
-		store.actions?.setActiveSlot?.(slot);
-		mirrorQuickHooksFromActive(store);
-	}
-	
-	function wirePropsPanelOnce() {
-		if (!propsElement || propsElement.__ufAIM_propsWired) return;
-		propsElement.__ufAIM_propsWired = true;
-		propsElement.addEventListener("click", handlePropsPanelClick);
-	}
-	
-	// MS13.9: collect background alignments
-	function collectAuxAll(state, { activeId }) {
-		const out = [];
-		for (const [id, art] of Object.entries(state.artifacts ?? {})) {
-			if (!art || id === activeId) continue;
-			if (art.domain !== "alignment2d") continue;
-			const pts = art.payload?.polyline2d;
-			if (!Array.isArray(pts) || pts.length < 2) continue;
-			out.push({ id, points: pts });
-		}
-		return out;
-	}
-
-	function collectAuxPinned(state, { activeId }) {
-		const out = [];
-		const pins = normalizePins(state.view_pins);
-
-		const ids = new Set();
-		for (const p of pins) {
-			const rpId = p?.rpId;
-			const slotName = p?.slot;
-			if (!rpId || !slotName) continue;
-			const rp = state.routeProjects?.[rpId];
-			const aId = rp?.slots?.[slotName]?.alignmentArtifactId;
-			if (aId) ids.add(aId);
-		}
-
-		for (const id of ids) {
-			if (!id || id === activeId) continue;
-			const art = state.artifacts?.[id];
-			if (!art || art.domain !== "alignment2d") continue;
-			const pts = art.payload?.polyline2d;
-			if (!Array.isArray(pts) || pts.length < 2) continue;
-			out.push({ id, points: pts });
-		}
-		return out;
-	}
-
-	function collectAuxRouteProject(state, { activeId }) {
-		const out = [];
-		const rpId = state.activeRouteProjectId;
-		const rp = rpId ? state.routeProjects?.[rpId] : null;
-		if (!rp?.slots) return out;
-
-		const ids = new Set();
-		for (const slot of Object.values(rp.slots)) {
-			const aId = slot?.alignmentArtifactId;
-			if (aId) ids.add(aId);
-			const other = slot?.otherArtifactIds;
-			if (Array.isArray(other)) for (const x of other) ids.add(x);
-		}
-
-		for (const id of ids) {
-			if (!id || id === activeId) continue;
-			const art = state.artifacts?.[id];
-			if (!art || art.domain !== "alignment2d") continue;
-			const pts = art.payload?.polyline2d;
-			if (!Array.isArray(pts) || pts.length < 2) continue;
-			out.push({ id, points: pts });
-		}
-		return out;
-	}
-
-	function collectAuxTracks(state) {
-		if (!cfg.showAuxTracks) return [];
-
-		const activeId = state.import_activeArtifacts?.alignmentArtifactId ?? null;
-
-		let out = [];
-		switch (cfg.auxTracksScope) {
-			case "all":
-			out = collectAuxAll(state, { activeId });
-			break;
-			case "pinned":
-			out = collectAuxPinned(state, { activeId });
-			break;
-			case "routeproject":
-			case "route_project":
-			case "route":
-			case "routeprojects":
-			out = collectAuxRouteProject(state, { activeId });
-			break;
-			case "active":
-			// "active" here means: don't show anything besides the active track
-			out = [];
-			break;
-			default:
-			// default remains routeProject to match existing behavior
-			out = collectAuxRouteProject(state, { activeId });
-			break;
-		}
-
-		// optional: cap (keeps perf + prevents UI clutter)
-		const max = cfg.auxTracksMax;
-		if (Number.isFinite(max) && max > 0 && out.length > max) out = out.slice(0, max);
-
-		return out;
-	}
-	
-	function computeFitBboxActiveOnly(state, poly) {
-		const activeArt = selectors.activeAlignmentArtifact(state);
-		return selectors.pickBbox(activeArt, poly);
-	}
-
-	function computeFitBboxIncludingAux(state, poly) {
-		let bbox = computeFitBboxActiveOnly(state, poly);
-		if (!bbox) return null;
-
-		const aux = collectAuxTracks(state);
-		for (const t of aux) {
-			const b = computeBbox(t.points);
-			bbox = unionBbox(bbox, b);
-		}
-		return bbox;
-	}
-
-	// ---- public methods (closures, no globals) ----
-	function recenterToActive() {
-		const st = store.getState();
-		const poly = st.import_polyline2d;
-		if (!Array.isArray(poly) || poly.length < 2) return false;
-
-		// const art = getActiveAlignmentArtifact(st);
-		const art = selectors.activeAlignmentArtifact(st);
-		// const bbox = pickBboxFromArtifactOrPolyline(art, poly);
-		const bbox = selectors.pickBbox(art, poly);
-		if (!bbox) return false;
-
-		threeA.setOriginFromBbox(bbox);
-		return true;
-	}
-
-	function fitActive(opts = {}) {
-		const st = store.getState();
-		const poly = st.import_polyline2d;
-		if (!Array.isArray(poly) || poly.length < 2) return false;
-
-		const bbox = (opts.includePins ?? cfg.fitIncludesPins)
-		? computeFitBboxIncludingAux(st, poly)
-		: computeFitBboxActiveOnly(st, poly);
-		if (!bbox) return false;
-		
-		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
-		
-		threeA.setOriginFromBbox(bbox);
-		// threeA.zoomToFitWorldBboxSoft?.(bbox, { padding });
-		threeA.zoomToFitWorldBbox?.(bbox, { padding });
-		return true;
-	}
-
-	// MS13.2: zoom only (no target jump)
-	function softFitActive(opts = {}) {
-		const st = store.getState();
-		const poly = st.import_polyline2d;
-		if (!Array.isArray(poly) || poly.length < 2) return false;
-
-		const bbox = (opts.includePins ?? cfg.fitIncludesPins)
-		? computeFitBboxIncludingAux(st, poly)
-		: computeFitBboxActiveOnly(st, poly);
-		if (!bbox) return false;
-
-		// const padding = Number.isFinite(opts.padding) ? opts.padding : defaultFitPadding;
-		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
-
-		threeA.setOriginFromBbox(bbox);
-		// threeA.zoomToFitWorldBboxSoft?.(bbox, { padding });
-		threeA.zoomToFitWorldBbox?.(bbox, { padding });
-		return true;
-	}
-
-	// MS13.2b: zoom only, animated
-	function softFitActiveAnimated(opts = {}) {
-		const st = store.getState();
-		const poly = st.import_polyline2d;
-		if (!Array.isArray(poly) || poly.length < 2) return false;
-
-		const bbox = (opts.includePins ?? cfg.fitIncludesPins)
-		? computeFitBboxIncludingAux(st, poly)
-		: computeFitBboxActiveOnly(st, poly);
-		if (!bbox) return false;
-		
-		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
-		const durationMs = Number.isFinite(opts.durationMs) ? opts.durationMs : cfg.fitDurationMs;
-		
-		threeA.setOriginFromBbox(bbox);
-		threeA.zoomToFitWorldBboxSoftAnimated?.(bbox, { padding, durationMs });
-		return true;
-	}
-
-	function setOnGeomChange(mode) {
-		const m = String(mode || "").toLowerCase();
-		if (["off", "recenter", "fit", "softfit", "softfitanimated"].includes(m)) onGeomChange = m;
-	}
-
-	function setAutoFitEnabled(on) {
-		autoFitOnGeomChange = Boolean(on);
-	}
-
-	function applyGeomChangePolicy() {
-		switch (onGeomChange) {
-			case "fit":
-			fitActive();
-			return true;
-			case "softfit":
-			softFitActive();
-			return true;
-			case "softfitanimated":
-			softFitActiveAnimated();
-			return true;
-			case "recenter":
-			recenterToActive();
-			return true;
-			default:
-			return false; // off
-		}
-	}
-	
-	// ------------------------------------------------------------
-	// Wiring: Spot panel (importSession list)
-	// ------------------------------------------------------------
-	function handleSpotPanelClick(ev) {
-		const t = ev?.target;
-		if (!t || typeof t.closest !== "function") return;
-		
-		// Decisions: data-spot-key="spotId::slot"
-		const decisionBtn = t.closest("[data-spot-decision]");
-		if (decisionBtn) {
-			const key = decisionBtn.getAttribute("data-spot-key");
-			const decRaw = decisionBtn.getAttribute("data-spot-decision"); // "accept" | "defer" | "ignore" | ""
-			if (!key) return;
-			
-			ev.preventDefault?.();
-			
-			const parsed = parseIdSlotKey(key); // { id: spotId, slot }
-			if (!parsed) return;
-			
-			const decision = decRaw ? decRaw : null;
-			if (store.actions?.setSpotDecision) {
-				store.actions.setSpotDecision({ spotId: parsed.id, slot: parsed.slot, decision });
-			} else {
-				ui?.logInfo?.("Spot decision: missing store.actions.setSpotDecision");
-			}
-			return;
-		}
-		
-		// Activate/Pin: data-spot-activate="rpId::slot" / data-spot-pin="rpId::slot"
-		const activate = t.closest("[data-spot-activate]");
-		const pin = t.closest("[data-spot-pin]");
-		const key =
-		activate?.getAttribute("data-spot-activate") ??
-		pin?.getAttribute("data-spot-pin") ??
-		null;
-		if (!key) return;
-		
-		ev.preventDefault?.();
-		
-		const parsed = parseIdSlotKey(key); // { id: rpId, slot }
-		if (!parsed) return;
-		
-		if (activate) {
-			store.actions?.setActiveRouteProject?.(parsed.id);
-			store.actions?.setActiveSlot?.(parsed.slot);
-			return;
-		}
-		
-		if (pin) {
-			if (store.actions?.togglePinRouteProject) store.actions.togglePinRouteProject({ rpId: parsed.id, slot: parsed.slot });
-			else if (store.actions?.togglePinFromActive) {
-				store.actions.setActiveRouteProject?.(parsed.id);
-				store.actions.setActiveSlot?.(parsed.slot);
-				store.actions.togglePinFromActive?.();
-			} else {
-				ui.logInfo?.("pin: missing action");
-			}
-		}
-	}
-	
-	function wireSpotPanelOnce() {
-		const el = ui.elements?.importSession;
-		if (!el || el.__spotWired) return;
-		el.__spotWired = true;
-		el.addEventListener("click", handleSpotPanelClick);
-	}
-	
-	function renderSpotPanel(state) {
-		const spotState = ui.getSpotState?.();
-		if (!spotState) {
-			ui.setSpotHtml?.(`<div class="spot"><div class="spot__empty">(drop files to create spots)</div></div>`);
-			return;
-		}
-		
-		const html = ui.renderSpotState?.({ spotState, storeState: state });
-		ui.setSpotHtml?.(html);
-	}
 
 	function subscribe() {
-		// wiring that depends on constructed closures
 		wireTrackClickOnce();
 		wirePropsPanelOnce();
 		wireSpotPanelOnce();
-		
+
 		const handler = (state) => {
+			// console.debug("trying ...");
 			try {
 				// A) UI sync
 				syncRouteProjectSelect(state);
-				syncPropsPanel(state);
+				updateProps(state);
 				syncCursorInput(state);
 				syncOverlays(state);
+				syncTransitionEditorControls(state)
 				syncPinsBadge(state);
 				syncSpotPanel(state);
-				
-				// B) geometry key (active selection)
+
+				// B) geometry key
 				const poly = state.import_polyline2d;
 				const geomKey = makeActiveGeomKey(state);
 				const geomChanged = geomKey !== lastGeomKey;
 				lastGeomKey = geomKey;
-				
-				// C) no active geometry => keep aux, clear main visuals
+
+				// C) no active geometry
 				if (!isPolylineValid(poly)) {
 					cachedCum = null;
 					lastPolyRef = null;
 					ui.setBoardSectionText?.(renderSectionText(state, null));
-					
+
 					syncAuxTracks(state);
 					clear3DKeepAux();
 					return;
 				}
-				
-				// D) apply geom change policy first (may change origin/fit)
+
+				// D) policy first
 				syncGeometryPolicyIfNeeded(state, poly, geomChanged);
-				
-				// E) aux tracks after origin changes (prevents “stuck” transforms)
+
+				// E) aux after origin change
 				syncAuxTracks(state);
-				
-				// F) section sampling + marker/section line + section text
+
+				// F) sampling
 				syncSectionSamplingAndMarker(state, poly);
-				
-				// G) active track render (WORLD -> LOCAL via adapter)
+
+				// G) active track
 				syncActiveTrack(poly);
 			} catch (err) {
 				console.error("[ViewController] handler crashed (isolated):", err);
 				ui?.logInfo?.(`❌ ViewController crashed (isolated): ${String(err?.message ?? err)}`);
 			}
 		};
-		
+
 		const unsub = store.subscribe(handler);
-		
-		// ✅ immediate (Store unterstützt kein {immediate:true})
 		handler(store.getState());
-		
 		return unsub;
 	}
-	
+
 	return {
 		subscribe,
-
-		// MS12.x
 		recenterToActive,
 		fitActive,
-
-		// MS13.2 / MS13.2b
 		softFitActive,
 		softFitActiveAnimated,
-
-		// switches
 		setAutoFitEnabled,
 		setOnGeomChange,
 	};
