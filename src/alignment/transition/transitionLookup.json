@@ -1,0 +1,262 @@
+{
+	"schema": { "name": "ufAIM_transLookup_v3", "version": "3.0.0" },
+
+	"simpleFcn": {
+		"CONST1": { "type": "poly", "coeff": [1] },
+		"IDENT":  { "type": "poly", "coeff": [0, 1] },
+
+		"BIQUAD": { "type": "poly", "coeff": [0, 0, 2] },
+		"BLOSS":  { "type": "poly", "coeff": [0, 0, 3, -2] },
+		"WATOR":  { "type": "poly", "coeff": [0, 0, 0, 10, -15, 6] },
+		"MIEKO":  { "type": "poly", "coeff": [0, 0, 0, 20, -45, 36, -10] },
+		"VIEN2":  { "type": "poly", "coeff": [0, 0, 0, 0, 35, -84, 70, -20] },
+		"VIEN7":  { "type": "poly", "coeff": [0, 0, 0, 0, 0, 126, -420, 540, -315, 70] },
+
+		"PARTV6": { "type": "poly", "coeff": [0, 0, 5, 0, -5, 2] },
+
+		"KLAU_2_1": { "type": "poly", "coeff": [
+				0.0,
+				1.8421052631578947,
+				0.0, 0.0,
+				-29.473684210526315,
+				70.73684210526316,
+				-58.94736842105263,
+				16.842105263157894
+		]},
+		"KLAU_2_5": { "type": "poly", "coeff": [
+				0.0,
+				3.2535211267605635,
+				0.0, 0.0,
+				-520.5633802816901,
+				3748.056338028169,
+				-12701.74647887324,
+				25284.50704225352,
+				-31233.802816901407,
+				23598.87323943662,
+				-9994.81690140845,
+				1817.2394366197184
+		]},
+		"KLAU_2_9": { "type": "poly", "coeff": [
+				0.0,
+				4.612903225806452,
+				0.0, 0.0,
+				-2583.2258064516127,
+				30998.709677419356,
+				-187025.5483870968,
+				721827.0967741936,
+				-1939633.5483870967,
+				3761176.7741935486,
+				-5323511.741935484,
+				5464790.70967742,
+				-3967834.8387096776,
+				1933047.7419354839,
+				-566833.5483870967,
+				75577.80645161291
+		]},
+		
+		"SIN2PI": { "type": "trig", "fn": "sin" },
+		"COS2PI": { "type": "trig", "fn": "cos" }
+	},
+
+	"protoFcn": {
+		"clothoCore": {
+			"tree": { "op": "ref", "id": "IDENT", "crop": [0.0, 1.0] }
+		},
+
+		"PROTO_BIQUAD": {
+			"tree": { "op": "ref", "id": "BIQUAD", "crop": [0.0, 0.5] }
+		},
+
+		"PROTO_BLOSS": {
+			"tree": { "op": "ref", "id": "BLOSS", "crop": [0.0, 0.5] }
+		},
+
+		"PROTO_MIEKO1": {
+			"tree": { "op": "ref", "id": "MIEKO", "crop": [0.0, 0.4] }
+		},
+
+		"PROTO_MIEKO2": {
+			"tree": { "op": "ref", "id": "MIEKO", "crop": [1.0, 0.4] }
+		},
+
+		"PROTO_WATOR": {
+			"tree": { "op": "ref", "id": "WATOR", "crop": [0.0, 0.5] }
+		},
+
+		"PROTO_VIEN2": {
+			"tree": { "op": "ref", "id": "VIEN2", "crop": [0.0, 0.5] }
+		},
+
+		"PROTO_VIEN7": {
+			"tree": { "op": "ref", "id": "VIEN7", "crop": [0.0, 0.5] }
+		},
+
+		"PROTO_SINE": {
+			"tree": {
+				"op": "sub",
+				"a": { "op":"ref", "id":"IDENT", "crop": [0.0, 0.5] },
+				"b": {
+					"op":"mul",
+					"args":[
+						{ "op":"const", "value": 0.15915494309189535 },
+						{ "op":"ref", "id":"SIN2PI", "crop":[0.0, 0.5] }
+					]
+				}
+			}
+		},
+
+		"PROTO_COSE": {
+			"tree": {
+				"op": "mul",
+				"args": [
+					{ "op":"const", "value": 0.5 },
+					{ 
+						"op": "sub",
+						"a": { "op":"ref", "id":"CONST1", "crop":[0.0, 0.25] },
+						"b": { "op":"ref", "id":"COS2PI", "crop":[0.0, 0.25] }
+					}
+				]
+			}
+		},
+
+		"PROTO_VIENNA6": {
+			"tree": {
+				"op": "add",
+				"args": [
+					{
+						"op": "mul",
+						"args": [
+							{ "op": "const", "value": 38.3448524472549 },
+							{
+								"op": "sub",
+								"a": { "op": "ref", "id": "CONST1", "crop": [0.0, 1.0] },
+								"b": { "op": "ref", "id": "COS2PI", "crop": [0.0, 0.5] }
+							}
+						]
+					},
+					{
+						"op": "mul",
+						"args": [
+							{ "op": "const", "value": -189.2242622362745 },
+							{ "op": "ref", "id": "PARTV6", "crop": [0.0, 1.0] }
+						]
+					}
+				]
+			}
+		},
+		
+		"PROTO_KLAU_2_1": { "tree": { "op":"ref", "id":"KLAU_2_1", "crop": [-1.0, 0.0] } },
+		"PROTO_KLAU_2_5": { "tree": { "op":"ref", "id":"KLAU_2_5", "crop": [-0.5, 0.5] } },
+		"PROTO_KLAU_2_9": { "tree": { "op":"ref", "id":"KLAU_2_9", "crop": [0.0, 1.0] } }
+	},
+
+	"halfWave": {
+		"HW_CLOTHO": { "proto": "clothoCore" },
+		"HW_BIQUAD": { "proto": "PROTO_BIQUAD" },
+		"HW_BLOSS":  { "proto": "PROTO_BLOSS" },
+		"HW_MIEKO1": { "proto": "PROTO_MIEKO1" },
+		"HW_MIEKO2": { "proto": "PROTO_MIEKO2" },
+		"HW_WATOR":  { "proto": "PROTO_WATOR" },
+		"HW_VIEN2":  { "proto": "PROTO_VIEN2" },
+		"HW_VIEN7":  { "proto": "PROTO_VIEN7" },
+		"HW_KLAU_2_1": { "proto": "PROTO_KLAU_2_1" },
+		"HW_KLAU_2_5": { "proto": "PROTO_KLAU_2_5" },
+		"HW_KLAU_2_9": { "proto": "PROTO_KLAU_2_9" },
+
+		"HW_SINE":   { "proto": "PROTO_SINE" },
+		"HW_COSE":   { "proto": "PROTO_COSE" }
+	},
+
+	"transition": {
+		"clothoid": {
+			"halfWave1": "HW_CLOTHO",
+			"halfWave2": "HW_CLOTHO",
+			"normLengthPartition": [0.0, 1.0, 0.0]
+		},
+
+		"helmert": {
+			"halfWave1": "HW_BIQUAD",
+			"halfWave2": "HW_BIQUAD",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"ruch_schuhr": {
+			"halfWave1": "HW_BIQUAD",
+			"halfWave2": "HW_BIQUAD",
+			"normLengthPartition": [0.333, 0.333, 0.333]
+		},
+
+		"bloss": {
+			"halfWave1": "HW_BLOSS",
+			"halfWave2": "HW_BLOSS",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"sine": {
+			"halfWave1": "HW_SINE",
+			"halfWave2": "HW_SINE",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"cose": {
+			"halfWave1": "HW_COSE",
+			"halfWave2": "HW_COSE",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"gubar": {
+			"halfWave1": "HW_COSE",
+			"halfWave2": "HW_COSE",
+			"normLengthPartition": [0.25, 0.5, 0.25]
+		},
+
+		"watorek": {
+			"halfWave1": "HW_WATOR",
+			"halfWave2": "HW_WATOR",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"mieloko": {
+			"halfWave1": "HW_MIEKO1",
+			"halfWave2": "HW_MIEKO2",
+			"normLengthPartition": [0.4, 0.0, 0.6]
+		},
+
+		"okoleim": {
+			"halfWave1": "HW_MIEKO2",
+			"halfWave2": "HW_MIEKO1",
+			"normLengthPartition": [0.6, 0.0, 0.4]
+		},
+
+		"vienna2": {
+			"halfWave1": "HW_VIEN2",
+			"halfWave2": "HW_VIEN2",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"vienna7": {
+			"halfWave1": "HW_VIEN7",
+			"halfWave2": "HW_VIEN7",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+		
+		"klauder_pol_2_1": {
+			"halfWave1":"HW_KLAU_2_1", "halfWave2":"HW_KLAU_2_1",
+			"normLengthPartition":[0.5, 0.0, 0.5]
+		},
+		"klauder_pol_2_5": {
+			"halfWave1":"HW_KLAU_2_5", "halfWave2":"HW_KLAU_2_5",
+			"normLengthPartition":[0.5, 0.0, 0.5]
+		},
+		"klauder_pol_2_9": {
+			"halfWave1":"HW_KLAU_2_9", "halfWave2":"HW_KLAU_2_9",
+			"normLengthPartition":[0.5, 0.0, 0.5]
+		},
+
+		"test": {
+			"halfWave1": "HW_BIQUAD",
+			"halfWave2": "HW_BLOSS",
+			"normLengthPartition": [0.25, 0.5, 0.25]
+		}
+	}
+}
