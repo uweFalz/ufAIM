@@ -1,42 +1,56 @@
-// evalAst.js
-const TAU = 2 * Math.PI;
+// ast/evalAst.js (schema_v3)
+// Turn an AST into a JS function f(u).
 
-function evalPoly(coeff, u) {
-	let acc = 0;
-	for (let i = coeff.length - 1; i >= 0; i--) acc = acc * u + coeff[i];
-	return acc;
+function isObj(v) { return v && typeof v==='object' && !Array.isArray(v); } 
+
+export function makeEvalFn(expr) {
+	const e = expr;
+	return function(u) {
+		return evalNode(e, Number(u));
+	};
 }
 
-function applyAffine(u, affine) {
-	return affine.alpha * u + affine.beta;
-}
+function evalNode(node, u) {
+	if (node==null) return NaN;
+	if (typeof node==='number') return node;
+	if (!isObj(node)) return NaN;
 
-export function makeEvalFn(ast) {
-	function ev(node, u) {
-		switch (node.type) {
-			case "const": return node.value;
-			case "var": return u;
-
-			case "add": return ev(node.a, u) + ev(node.b, u);
-			case "mul": return ev(node.a, u) * ev(node.b, u);
-
-			case "poly": return evalPoly(node.coeff, u);
-
-			case "sin0": return Math.sin(TAU * u);
-			case "cos0": return Math.cos(TAU * u);
-
-			case "sin":  return Math.sin(ev(node.arg, u));
-			case "cos":  return Math.cos(ev(node.arg, u));
-
-			case "compose": {
-				const uu = applyAffine(u, node.affine);
-				return ev(node.expr, uu);
-			}
-
-			default:
-			throw new Error(`evalAst: unsupported node "${node.type}"`);
+	switch (node.op) {
+		case 'const': return Number(node.value);
+		case 'pi': return Math.PI;
+		case '2pi': return 2*Math.PI;
+		case 'poly': {
+			const c = node.coeff;
+			let res = 0;
+			// Horner
+			for (let i=c.length-1; i>=0; i--) res = res*u + Number(c[i] || 0);
+			return res;
 		}
+		case 'sin': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+			return Math.sin(m*u + n);
+		}
+		case 'cos': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+			return Math.cos(m*u + n);
+		}
+		case 'neg': return -evalNode(node.arg, u);
+		case 'sc': return Number(node.value) * evalNode(node.arg, u);
+		case 'add': {
+			let s = 0;
+			for (const a of node.args || []) s += evalNode(a, u);
+			return s;
+		}
+		case 'mul': {
+			let p = 1;
+			for (const a of node.args || []) p *= evalNode(a, u);
+			return p;
+		}
+		case 'div': return evalNode(node.dividend, u) / evalNode(node.divisor, u);
+		case 'pow': return Math.pow(evalNode(node.base, u), Number(node.exp));
+		default:
+			throw new Error(`evalAst: unsupported op '${node.op}'`);
 	}
-
-	return (u) => ev(ast, Number(u));
 }

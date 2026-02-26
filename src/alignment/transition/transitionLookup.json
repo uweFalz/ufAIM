@@ -1,170 +1,335 @@
 {
 	"schema": { "name": "ufAIM_transLookup_v3", "version": "3.0.0" },
+	
+	"constant": {
+		"PI":     { "op": "pi" },
+		"_PI":    { "op": "const", "value": 3.141592653589793 },
+		"2PI":    { "op": "const", "value": 6.283185307179586 },
+		"PIHALF": { "op": "const", "value": 1.5707963267949 },
+		"ZHALF":  { "op": "const", "value": 4.49340946 }
+	},
 
 	"simpleFcn": {
-		"CONST1": { "type": "poly", "coeff": [1] },
-		"IDENT":  { "type": "poly", "coeff": [0, 1] },
+		"CONST1": { "op": "poly", "coeff": [1] },
+		"IDENT":  { "op": "poly", "coeff": [0,  1] },
+		"ROOTp1": { "op": "poly", "coeff": [1, -1] },
+		"ROOTm1": { "op": "poly", "coeff": [1,  1] },
+		"DROOT1": { "op": "poly", "coeff": [1, 0, -1] },
 
-		"BIQUAD": { "type": "poly", "coeff": [0, 0, 2] },
-		"BLOSS":  { "type": "poly", "coeff": [0, 0, 3, -2] },
-		"WATOR":  { "type": "poly", "coeff": [0, 0, 0, 10, -15, 6] },
-		"MIEKO":  { "type": "poly", "coeff": [0, 0, 0, 20, -45, 36, -10] },
-		"VIEN2":  { "type": "poly", "coeff": [0, 0, 0, 0, 35, -84, 70, -20] },
-		"VIEN7":  { "type": "poly", "coeff": [0, 0, 0, 0, 0, 126, -420, 540, -315, 70] },
+		"BIQUA":  { "op": "poly", "coeff": [0, 0, 2] },
+		"BLOSS":  { "op": "poly", "coeff": [0, 0, 3, -2] },
+		"WATOR":  { "op": "poly", "coeff": [0, 0, 0, 10, -15, 6] },
+		"MIEKO":  { "op": "poly", "coeff": [0, 0, 0, 20, -45, 36, -10] },
+		"VIEN2":  { "op": "poly", "coeff": [0, 0, 0, 0, 35, -84, 70, -20] },
+		"VIEN7":  { "op": "poly", "coeff": [0, 0, 0, 0, 0, 126, -420, 540, -315, 70] },
 
-		"PARTV6": { "type": "poly", "coeff": [0, 0, 5, 0, -5, 2] },
+		"PARTV6": { "op": "poly", "coeff": [0, 0, 5, 0, -5, 2] },
 
-		"KLAU_2_1": { "type": "poly", "coeff": [
-				0.0,
-				1.8421052631578947,
-				0.0, 0.0,
-				-29.473684210526315,
-				70.73684210526316,
-				-58.94736842105263,
-				16.842105263157894
-		]},
-		"KLAU_2_5": { "type": "poly", "coeff": [
-				0.0,
-				3.2535211267605635,
-				0.0, 0.0,
-				-520.5633802816901,
-				3748.056338028169,
-				-12701.74647887324,
-				25284.50704225352,
-				-31233.802816901407,
-				23598.87323943662,
-				-9994.81690140845,
-				1817.2394366197184
-		]},
-		"KLAU_2_9": { "type": "poly", "coeff": [
-				0.0,
-				4.612903225806452,
-				0.0, 0.0,
-				-2583.2258064516127,
-				30998.709677419356,
-				-187025.5483870968,
-				721827.0967741936,
-				-1939633.5483870967,
-				3761176.7741935486,
-				-5323511.741935484,
-				5464790.70967742,
-				-3967834.8387096776,
-				1933047.7419354839,
-				-566833.5483870967,
-				75577.80645161291
-		]},
-		
-		"SIN2PI": { "type": "trig", "fn": "sin" },
-		"COS2PI": { "type": "trig", "fn": "cos" }
+		"SIN2PI": { "op": "sin", "m": 6.283185307179586, "n": 0 },
+		"COS2PI": { "op": "cos", "m": 6.283185307179586, "n": 0 },
+		"SINPI":  { "op": "sin", "m": 3.141592653589793, "n": 0 },
+		"COSPI":  { "op": "cos", "m": 3.141592653589793, "n": 0 },
+		"SINZ":   { "op": "sin", "m": 8.98681892, "n": 0 },
+		"COSZ":   { "op": "cos", "m": 8.98681892, "n": 0 },
+		"SIN":    { "op": "sin", "m": 1, "n": 0 },
+		"COS":    { "op": "cos", "m": 1, "n": 0 }
 	},
 
 	"protoFcn": {
 		"clothoCore": {
-			"tree": { "op": "ref", "id": "IDENT", "crop": [0.0, 1.0] }
+			"op": "ref", "id": "IDENT", "crop": [0.0, 1.0] 
 		},
 
-		"PROTO_BIQUAD": {
-			"tree": { "op": "ref", "id": "BIQUAD", "crop": [0.0, 0.5] }
+		"PROTO_BIQUA": {
+			"op": "ref", "id": "BIQUA", "crop": [0.0, 0.5]
 		},
-
+		
+		"PROTO_REGULAR1": { 
+			"op": "ref", "id": "DROOT1", "crop": [-1, 0]
+		},
+		
+		"PROTO_REGULAR2": { 
+			"op": "pow", "base": { "op": "ref", "id": "DROOT1", "crop": [-1, 0] }, "exp": 2
+		},
+		
+		"PROTO_REGULAR3": { 
+			"op": "pow", "base": { "op": "ref", "id": "DROOT1", "crop": [-1, 0] }, "exp": 3 
+		},
+		
+		"PROTO_REGULAR4": { 
+			"op": "pow", "base": { "op": "ref", "id": "DROOT1", "crop": [-1, 0] }, "exp": 4
+		},
+		
 		"PROTO_BLOSS": {
-			"tree": { "op": "ref", "id": "BLOSS", "crop": [0.0, 0.5] }
+			"op": "ref", "id": "BLOSS", "crop": [0.0, 0.5] 
 		},
 
 		"PROTO_MIEKO1": {
-			"tree": { "op": "ref", "id": "MIEKO", "crop": [0.0, 0.4] }
+			"op": "ref", "id": "MIEKO", "crop": [0.0, 0.4] 
 		},
 
 		"PROTO_MIEKO2": {
-			"tree": { "op": "ref", "id": "MIEKO", "crop": [1.0, 0.4] }
+			"op": "ref", "id": "MIEKO", "crop": [1.0, 0.4] 
 		},
 
 		"PROTO_WATOR": {
-			"tree": { "op": "ref", "id": "WATOR", "crop": [0.0, 0.5] }
+			"op": "ref", "id": "WATOR", "crop": [0.0, 0.5] 
 		},
 
 		"PROTO_VIEN2": {
-			"tree": { "op": "ref", "id": "VIEN2", "crop": [0.0, 0.5] }
+			"op": "ref", "id": "VIEN2", "crop": [0.0, 0.5] 
+		},
+		
+		"PROTO_VIEN3": {
+			"op": "add",
+			"args": [
+				{ "op": "ref", "id": "BLOSS", "crop": [0.0, 0.5] },
+
+				{
+					"op": "sc",
+					"value": 0.07429152417219509,
+					"arg": {
+						"op": "add",
+						"args": [
+							{ "op": "sc", "value": 2, "arg": { "op": "ref", "id": "IDENT", "crop": [0.0, 0.5] } },
+							{ "op": "const", "value": -1 },
+
+							{ "op": "ref", "id": "COSZ", "crop": [0.0, 0.5] },
+
+							{ "op": "sc", "value": -0.22254815834210667, "arg": { "op": "ref", "id": "SINZ", "crop": [0.0, 0.5] } }
+						]
+					}
+				}
+			]
+		},
+		
+		"PROTO_VIEN4": {
+			"op": "add",
+			"args": [
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": 1.4081891652113918, "symbolic": "12/(4*(12-PI^2))" },
+						{
+							"op": "mul",
+							"args": [
+								{ "op": "const", "value": 0.5 },
+								{
+									"op": "sub",
+									"minuend":    { "op": "ref", "id": "CONST1", "crop": [0.0, 0.5] },
+									"subtrahend": { "op": "ref", "id": "COSPI",  "crop": [0.0, 0.5] }
+								}
+							]
+						}
+					]
+				},
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": -1.1581891652113918, "symbolic": "-PI^2/(4*(12-PI^2))" },
+						{ "op": "ref", "id": "BLOSS", "crop": [0.0, 0.5] }
+					]
+				},
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": 0.75, "symbolic": "3/4" },
+						{
+							"op": "sub",
+							"minuend": { "op": "ref", "id": "IDENT", "crop": [0.0, 0.5] },
+							"subtrahend": {
+								"op": "mul",
+								"args": [
+									{ "op": "const", "value": 0.15915494309189535, "symbolic": "1/(2PI)" },
+									{ "op": "ref", "id": "SIN2PI", "crop": [0.0, 0.5] }
+								]
+							}
+						}
+					]
+				}
+			]
+		},
+		
+		"PROTO_VIEN5": {
+			"op": "add",
+			"args": [
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": 2.9237511437100507, "symbolic": "15/(15-PI^2)" },
+						{
+							"op": "sub",
+							"minuend": { "op": "ref", "id": "IDENT", "crop": [0.0, 0.5] },
+							"subtrahend": {
+								"op": "mul",
+								"args": [
+									{ "op": "const", "value": 0.15915494309189535, "symbolic": "1/(2PI)" },
+									{ "op": "ref", "id": "SIN2PI", "crop": [0.0, 0.5] }
+								]
+							}
+						}
+					]
+				},
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": -1.9237511437100507, "symbolic": "-PI^2/(15-PI^2)" },
+						{ "op": "ref", "id": "WATOR", "crop": [0.0, 0.5] }
+					]
+				}
+			]
 		},
 
+		"PROTO_PART6": {
+			"op": "ref", "id": "PARTV6", "crop": [0, 0.5]
+		},
+		
+		"PROTO_VIEN6": {
+			"op": "add",
+			"args": [
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": 38.3448524472549, "symbolic": "5/(10-PI^2)" },
+						{
+							"op": "sub",
+							"minuend":    { "op": "ref", "id": "CONST1", "crop": [0.0, 0.5] },
+							"subtrahend": { "op": "ref", "id": "COSPI",  "crop": [0.0, 0.5] }
+						}
+					]
+				},
+				{
+					"op": "mul",
+					"args": [
+						{ "op": "const", "value": -37.8448524472549, "symbolic": "-PI^2/(2*(10-PI^2))" },
+						{ "op": "ref", "id": "PARTV6", "crop": [0.0, 0.5] }
+					]
+				}
+			]
+		},
+		
 		"PROTO_VIEN7": {
-			"tree": { "op": "ref", "id": "VIEN7", "crop": [0.0, 0.5] }
+			"op": "ref", "id": "VIEN7", "crop": [0.0, 0.5] 
 		},
 
 		"PROTO_SINE": {
-			"tree": {
-				"op": "sub",
-				"a": { "op":"ref", "id":"IDENT", "crop": [0.0, 0.5] },
-				"b": {
-					"op":"mul",
-					"args":[
-						{ "op":"const", "value": 0.15915494309189535 },
-						{ "op":"ref", "id":"SIN2PI", "crop":[0.0, 0.5] }
-					]
-				}
+			"op": "sub",
+			"minuend": { "op": "ref", "id": "IDENT", "crop": [0.0, 0.5] },
+			"subtrahend": { 
+				"op": "mul", 
+				"args": [
+					{ "op": "const", "value": 0.15915494309189535, "symbolic": "1/2PI" },
+					{ "op": "ref", "id": "SIN2PI", "crop": [0.0, 0.5] }
+				]
 			}
+		},
+
+		"PROTO_SINE_K2": {
+			"op": "mul",
+			"args": [
+				{ "op": "const", "value": 6.283185307179586, "symbolic": "2PI" },
+				{ "op": "ref", "id": "SIN2PI", "crop": [0.0, 0.5] }
+			]
 		},
 
 		"PROTO_COSE": {
-			"tree": {
-				"op": "mul",
-				"args": [
-					{ "op":"const", "value": 0.5 },
-					{ 
-						"op": "sub",
-						"a": { "op":"ref", "id":"CONST1", "crop":[0.0, 0.25] },
-						"b": { "op":"ref", "id":"COS2PI", "crop":[0.0, 0.25] }
-					}
-				]
-			}
+			"op": "mul",
+			"args": [
+				{ "op": "const", "value": 0.5 },
+				{
+					"op": "sub",
+					"minuend":    { "op": "ref", "id": "CONST1", "crop": [0.0, 0.25] },
+					"subtrahend": { "op": "ref", "id": "COS2PI", "crop": [0.0, 0.25] }
+				}
+			]
 		},
 
-		"PROTO_VIENNA6": {
-			"tree": {
-				"op": "add",
-				"args": [
-					{
-						"op": "mul",
-						"args": [
-							{ "op": "const", "value": 38.3448524472549 },
-							{
-								"op": "sub",
-								"a": { "op": "ref", "id": "CONST1", "crop": [0.0, 1.0] },
-								"b": { "op": "ref", "id": "COS2PI", "crop": [0.0, 0.5] }
-							}
-						]
-					},
-					{
-						"op": "mul",
-						"args": [
-							{ "op": "const", "value": -189.2242622362745 },
-							{ "op": "ref", "id": "PARTV6", "crop": [0.0, 1.0] }
-						]
-					}
-				]
-			}
+		"PROTO_COSE_K1": {
+			"op": "mul",
+			"args": [
+				{ "op": "const", "value": 0.7853981633974483, "symbolic": "PI/4" },
+				{ "op": "ref", "id": "SINPI", "crop": [0.0, 0.5] }
+			]
+		},
+
+		"PROTO_KLAU_0_1": {
+			"op": "mul",
+			"args": [
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTp1", "crop": [-1.0, 0.0] }, "exp": 0 },
+				{ "op": "pow", "base": { "op": "ref", "id": "IDENT",  "crop": [-1.0, 0.0] }, "exp": 1 },
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTm1", "crop": [-1.0, 0.0] }, "exp": 0 }
+			]
+		},
+
+		"PROTO_KLAU_1_1": {
+			"op": "mul",
+			"args": [
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTp1", "crop": [-1.0, 0.0] }, "exp": 1 },
+				{ "op": "pow", "base": { "op": "ref", "id": "IDENT",  "crop": [-1.0, 0.0] }, "exp": 1 },
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTm1", "crop": [-1.0, 0.0] }, "exp": 1 }
+			]
 		},
 		
-		"PROTO_KLAU_2_1": { "tree": { "op":"ref", "id":"KLAU_2_1", "crop": [-1.0, 0.0] } },
-		"PROTO_KLAU_2_5": { "tree": { "op":"ref", "id":"KLAU_2_5", "crop": [-0.5, 0.5] } },
-		"PROTO_KLAU_2_9": { "tree": { "op":"ref", "id":"KLAU_2_9", "crop": [0.0, 1.0] } }
+		"PROTO_KLAU_2_1": {
+			"op": "mul",
+			"args": [
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTp1", "crop": [-1.0, 0.0] }, "exp": 2 },
+				{ "op": "pow", "base": { "op": "ref", "id": "IDENT",  "crop": [-1.0, 0.0] }, "exp": 1 },
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTm1", "crop": [-1.0, 0.0] }, "exp": 2 }
+			]
+		},
+		
+		"PROTO_KLAU_2_5": {
+			"op": "mul",
+			"args": [
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTp1", "crop": [-1.0, 0.0] }, "exp": 2 },
+				{ "op": "pow", "base": { "op": "ref", "id": "IDENT",  "crop": [-1.0, 0.0] }, "exp": 5 },
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTm1", "crop": [-1.0, 0.0] }, "exp": 2 }
+			]
+		},
+		
+		"PROTO_KLAU_2_9": {
+			"op": "mul",
+			"args": [
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTp1", "crop": [-1.0, 0.0] }, "exp": 2 },
+				{ "op": "pow", "base": { "op": "ref", "id": "IDENT",  "crop": [-1.0, 0.0] }, "exp": 9 },
+				{ "op": "pow", "base": { "op": "ref", "id": "ROOTm1", "crop": [-1.0, 0.0] }, "exp": 2 }
+			]
+		}
 	},
 
 	"halfWave": {
-		"HW_CLOTHO": { "proto": "clothoCore" },
-		"HW_BIQUAD": { "proto": "PROTO_BIQUAD" },
-		"HW_BLOSS":  { "proto": "PROTO_BLOSS" },
-		"HW_MIEKO1": { "proto": "PROTO_MIEKO1" },
-		"HW_MIEKO2": { "proto": "PROTO_MIEKO2" },
-		"HW_WATOR":  { "proto": "PROTO_WATOR" },
-		"HW_VIEN2":  { "proto": "PROTO_VIEN2" },
-		"HW_VIEN7":  { "proto": "PROTO_VIEN7" },
-		"HW_KLAU_2_1": { "proto": "PROTO_KLAU_2_1" },
-		"HW_KLAU_2_5": { "proto": "PROTO_KLAU_2_5" },
-		"HW_KLAU_2_9": { "proto": "PROTO_KLAU_2_9" },
+		"HW_CLOTHO": { "proto": "clothoCore",   "source": "kappa" },
+		"HW_BIQUAD": { "proto": "PROTO_BIQUA",  "source": "kappa" },
+		"HW_BLOSS":  { "proto": "PROTO_BLOSS",  "source": "kappa" },
+		"HW_WATOR":  { "proto": "PROTO_WATOR",  "source": "kappa" },
+		"HW_VIEN2":  { "proto": "PROTO_VIEN2",  "source": "kappa" },
+		"HW_VIEN7":  { "proto": "PROTO_VIEN7",  "source": "kappa" },
+		
+		"HW_MIEKO1": { "proto": "PROTO_MIEKO1", "source": "kappa" },
+		"HW_MIEKO2": { "proto": "PROTO_MIEKO2", "source": "kappa" },
+		
+		"HW_VIEN3":  { "proto": "PROTO_VIEN3",  "source": "kappa" },
+		"HW_VIEN4":  { "proto": "PROTO_VIEN4",  "source": "kappa" },
+		"HW_VIEN5":  { "proto": "PROTO_VIEN5",  "source": "kappa" },
+		"HW_PART6":  { "proto": "PROTO_PART6",  "source": "kappa" },
+		"HW_VIEN6":  { "proto": "PROTO_VIEN6",  "source": "kappa" },
 
-		"HW_SINE":   { "proto": "PROTO_SINE" },
-		"HW_COSE":   { "proto": "PROTO_COSE" }
+		"HW_REGULAR1": { "proto": "PROTO_REGULAR1", "source": "kappa1" },
+		"HW_REGULAR2": { "proto": "PROTO_REGULAR2", "source": "kappa1" },
+		"HW_REGULAR3": { "proto": "PROTO_REGULAR3", "source": "kappa1" },
+		"HW_REGULAR4": { "proto": "PROTO_REGULAR4", "source": "kappa1" },
+		
+		"HW_KLAU_0_1": { "proto": "PROTO_KLAU_0_1", "source":"kappa2" },
+		"HW_KLAU_1_1": { "proto": "PROTO_KLAU_1_1", "source":"kappa2" },
+		"HW_KLAU_2_1": { "proto": "PROTO_KLAU_2_1", "source":"kappa2" },
+		"HW_KLAU_2_5": { "proto": "PROTO_KLAU_2_5", "source":"kappa2" },
+		"HW_KLAU_2_9": { "proto": "PROTO_KLAU_2_9", "source":"kappa2" },
+
+		"HW_SINE":    { "proto": "PROTO_SINE",    "source": "kappa" },
+		"HW_SINE_K2": { "proto": "PROTO_SINE_K2", "source": "kappa2" },
+		"HW_COSE":    { "proto": "PROTO_COSE",    "source": "kappa" },
+		"HW_COSE_K1": { "proto": "PROTO_COSE_K1", "source": "kappa1" }
 	},
 
 	"transition": {
@@ -192,22 +357,16 @@
 			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
-		"sine": {
-			"halfWave1": "HW_SINE",
-			"halfWave2": "HW_SINE",
+		"bloss_k1": {
+			"halfWave1": "HW_REGULAR1",
+			"halfWave2": "HW_REGULAR1",
 			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
-		"cose": {
-			"halfWave1": "HW_COSE",
-			"halfWave2": "HW_COSE",
+		"bloss_k2": {
+			"halfWave1": "HW_KLAU_0_1",
+			"halfWave2": "HW_KLAU_0_1",
 			"normLengthPartition": [0.5, 0.0, 0.5]
-		},
-
-		"gubar": {
-			"halfWave1": "HW_COSE",
-			"halfWave2": "HW_COSE",
-			"normLengthPartition": [0.25, 0.5, 0.25]
 		},
 
 		"watorek": {
@@ -216,16 +375,16 @@
 			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
-		"mieloko": {
-			"halfWave1": "HW_MIEKO1",
-			"halfWave2": "HW_MIEKO2",
-			"normLengthPartition": [0.4, 0.0, 0.6]
+		"watorek_k1": {
+			"halfWave1": "HW_REGULAR2",
+			"halfWave2": "HW_REGULAR2",
+			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
-		"okoleim": {
-			"halfWave1": "HW_MIEKO2",
-			"halfWave2": "HW_MIEKO1",
-			"normLengthPartition": [0.6, 0.0, 0.4]
+		"watorek_k2": {
+			"halfWave1": "HW_KLAU_1_1",
+			"halfWave2": "HW_KLAU_1_1",
+			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
 		"vienna2": {
@@ -240,17 +399,94 @@
 			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 		
+		"sine": {
+			"halfWave1": "HW_SINE",
+			"halfWave2": "HW_SINE",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"sine_k2": {
+			"halfWave1": "HW_SINE_K2",
+			"halfWave2": "HW_SINE_K2",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"cose": {
+			"halfWave1": "HW_COSE",
+			"halfWave2": "HW_COSE",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"cose_k1": {
+			"halfWave1": "HW_COSE_K1",
+			"halfWave2": "HW_COSE_K1",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"gubar": {
+			"halfWave1": "HW_COSE",
+			"halfWave2": "HW_COSE",
+			"normLengthPartition": [0.25, 0.5, 0.25]
+		},
+
+		"mieloko": {
+			"halfWave1": "HW_MIEKO1",
+			"halfWave2": "HW_MIEKO2",
+			"normLengthPartition": [0.4, 0.0, 0.6]
+		},
+
+		"okoleim": {
+			"halfWave1": "HW_MIEKO2",
+			"halfWave2": "HW_MIEKO1",
+			"normLengthPartition": [0.6, 0.0, 0.4]
+		},
+		
+		"vienna3": {
+			"halfWave1": "HW_VIEN3",
+			"halfWave2": "HW_VIEN3",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+
+		"vienna4": {
+			"halfWave1": "HW_VIEN4",
+			"halfWave2": "HW_VIEN4",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+		
+		"vienna5": {
+			"halfWave1": "HW_VIEN5",
+			"halfWave2": "HW_VIEN5",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+		
+		"part_v6": {
+			"halfWave1": "HW_VIEN6",
+			"halfWave2": "HW_VIEN6",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+		
+		"vienna6": {
+			"halfWave1": "HW_VIEN6",
+			"halfWave2": "HW_VIEN6",
+			"normLengthPartition": [0.5, 0.0, 0.5]
+		},
+		
 		"klauder_pol_2_1": {
-			"halfWave1":"HW_KLAU_2_1", "halfWave2":"HW_KLAU_2_1",
-			"normLengthPartition":[0.5, 0.0, 0.5]
+			"halfWave1":"HW_KLAU_2_1", 
+			"halfWave2":"HW_KLAU_2_1",
+			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
+		
 		"klauder_pol_2_5": {
-			"halfWave1":"HW_KLAU_2_5", "halfWave2":"HW_KLAU_2_5",
-			"normLengthPartition":[0.5, 0.0, 0.5]
+			"halfWave1":"HW_KLAU_2_5", 
+			"halfWave2":"HW_KLAU_2_5",
+			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
+		
 		"klauder_pol_2_9": {
-			"halfWave1":"HW_KLAU_2_9", "halfWave2":"HW_KLAU_2_9",
-			"normLengthPartition":[0.5, 0.0, 0.5]
+			"halfWave1":"HW_KLAU_2_9", 
+			"halfWave2":"HW_KLAU_2_9",
+			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
 		"test": {

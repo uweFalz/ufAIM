@@ -1,115 +1,103 @@
-// symInt.js
-const TAU = 2 * Math.PI;
+// symInt.js (schema_v3)
+// Symbolic *domain* integral: I(u) = \int_0^u f(t) dt
+//
+// This is intentionally NOT a general CAS. It supports the restricted family:
+// - polynomials in implicit u only (poly.arg absent)
+// - trig affine-only: sin(m*u+n), cos(m*u+n) (no explicit arg)
+// - scalar factors via {op:'sc', value, arg}
+// - add/neg/sc wrappers
+//
+// Key detail: we bake the boundary condition I(0)=0 into the AST. For polynomials this is
+// automatic. For trig we return F(u)-F(0) by adding the required constant term.
 
-function c(v) { return { type: "const", value: v }; }
-function add(a,b){ return { type:"add", a, b }; }
-function mul(a,b){ return { type:"mul", a, b }; }
+import { simplify, mkConst, mkPoly, mkAdd, mkNeg, mkSc } from './simplify.js';
 
-function intPoly(poly) {
-	const cc = poly.coeff || [0];
-	const out = [0];
-	for (let i = 0; i < cc.length; i++) out.push(cc[i] / (i + 1));
-	return { type:"poly", coeff: out };
+function isObj(v) { return v && typeof v==='object' && !Array.isArray(v); } 
+
+function polyIntCoeff(c) {
+	const out=[0];
+	for (let i=0, len=c.length; i<len; i++) out[i+1] = Number(c[i])/(i+1);
+	return out;
 }
 
-function scalePoly(poly, s) {
-	return { type:"poly", coeff: (poly.coeff || [0]).map(v => v * s) };
-}
+export function symInt(node) {
+	if (node==null) throw new Error('symInt: node null');
+	if (typeof node==='number') return mkPoly([0, Number(node)]);
+	if (!isObj(node)) throw new Error('symInt: node must be object');
 
-function polyComposeAffine(poly, a, b) {
-	// Returns poly( a*u + b ) expanded as a polynomial in u.
-	// coeff in ascending order.
-	const p = poly.coeff || [0];
-
-	// binomial expansion: (a u + b)^k = sum_{j=0..k} binom(k,j) a^j b^(k-j) u^j
-	const out = [];
-	function addCoeff(j, v) { out[j] = (out[j] ?? 0) + v; }
-	function binom(n,k){
-		if (k<0||k>n) return 0;
-		let r=1;
-		for (let i=1;i<=k;i++) r = r*(n-(k-i))/i;
-		return r;
-	}
-
-	for (let k = 0; k < p.length; k++) {
-		const ck = p[k];
-		if (!ck) continue;
-		for (let j = 0; j <= k; j++) {
-			addCoeff(j, ck * binom(k,j) * (a ** j) * (b ** (k - j)));
+	switch (node.op) {
+		case 'const': {
+			// ∫ c du = c*u  (u is poly [0,1])
+			return simplify(mkPoly([0, Number(node.value)]));
 		}
-	}
 
-	// trim
-	let m = out.length - 1;
-	while (m > 0 && Math.abs(out[m]) < 1e-15) m--;
-	return { type:"poly", coeff: out.slice(0, m + 1) };
-}
+		case 'pi': {
+			return simplify(mkPoly([0, Math.PI]));
+		}
 
-export function intExpr(ast) {
-	switch (ast.type) {
-		case "const":
-		// ∫c du = c*u
-		return mul(c(ast.value), { type:"var", name:"u" });
+		case '2pi': {
+			return simplify(mkPoly([0, 2*Math.PI]));
+		}
 
-		case "var":
-		// ∫u du = u^2/2
-		return { type:"poly", coeff: [0, 0, 0.5] };
+		case 'poly': {
+			if (node.arg) throw new Error('symInt: poly with arg not supported (should be composed earlier)');
+			return simplify(mkPoly(polyIntCoeff(node.coeff || [])));
+		}
 
-		case "add":
-		return add(intExpr(ast.a), intExpr(ast.b));
+		case 'sin': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
 
-		case "mul":
-		// Only support const * expr (enough for our compiler usage)
-		if (ast.a.type === "const") return mul(ast.a, intExpr(ast.b));
-		if (ast.b.type === "const") return mul(ast.b, intExpr(ast.a));
-		throw new Error("symInt: only supports const*expr in mul");
-
-		case "poly":
-		return intPoly(ast);
-
-		case "sin0":
-		// ∫ sin(2πu) du = -cos(2πu)/(2π)
-		return mul(c(-1 / TAU), { type:"cos0" });
-
-		case "cos0":
-		// ∫ cos(2πu) du = sin(2πu)/(2π)
-		return mul(c(1 / TAU), { type:"sin0" });
-
-		case "compose": {
-			// PATCH: poly∘affine integral exactly:
-			// If expr is poly, compose expands -> integrate poly -> done.
-			const a = Number(ast.affine.alpha);
-			const b = Number(ast.affine.beta);
-
-			if (ast.expr.type === "poly") {
-				const p = polyComposeAffine(ast.expr, a, b); // now poly in u
-				return intPoly(p);
+			if (!Number.isFinite(m) || Math.abs(m) < 1e-15) {
+				// sin(n) constant -> sin(n) * u
+				return mkPoly([0, Math.sin(n)]);
 			}
 
-			// For sin0/cos0 under affine, we can also do exact:
-			// ∫ sin(2π(a u+b)) du = -cos(2π(a u+b)) / (2π a)
-			// and similarly for cos.
-			if (ast.expr.type === "sin0") {
-				if (Math.abs(a) < 1e-15) {
-					// sin(2π*b) is constant
-					return mul(c(Math.sin(TAU * b)), { type:"var", name:"u" });
-				}
-				return mul(c(-1 / (TAU * a)), { type:"compose", expr: { type:"cos0" }, affine: ast.affine });
+			// ∫0^u sin(m t + n) dt = (-cos(m u + n) + cos(n)) / m
+			const termU = mkSc(-1 / m, { op: 'cos', m, n });
+			const term0 = mkConst(Math.cos(n) / m);
+			return mkAdd([termU, term0]);
+		}
+
+		case 'cos': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+
+			if (!Number.isFinite(m) || Math.abs(m) < 1e-15) {
+				// cos(n) constant -> cos(n) * u
+				return mkPoly([0, Math.cos(n)]);
 			}
 
-			if (ast.expr.type === "cos0") {
-				if (Math.abs(a) < 1e-15) {
-					return mul(c(Math.cos(TAU * b)), { type:"var", name:"u" });
-				}
-				return mul(c(1 / (TAU * a)), { type:"compose", expr: { type:"sin0" }, affine: ast.affine });
-			}
+			// ∫0^u cos(m t + n) dt = (sin(m u + n) - sin(n)) / m
+			const termU = mkSc(1 / m, { op: 'sin', m, n });
+			const term0 = mkConst(-Math.sin(n) / m);
+			return mkAdd([termU, term0]);
+		}
 
-			// Generic fallback: not allowed in your spec (no numeric) → explicit error
-			throw new Error("symInt: compose only supports poly/sin0/cos0 under affine");
+		case 'neg': {
+			return simplify(mkNeg(symInt(node.arg)));
+		}
+
+		case 'sc': {
+			return simplify(mkSc(Number(node.value), symInt(node.arg)));
+		}
+
+		case 'add': {
+			return simplify(mkAdd((node.args || []).map(symInt)));
+		}
+
+		case 'mul': {
+			// only support constant*expr here; simplify() should have normalized to sc
+			throw new Error("symInt: unsupported op 'mul' (expected sc + poly/trig/add/neg)");
+		}
+
+		case 'pow': {
+			// Only for poly bases which simplify expanded; if it still exists, refuse.
+			throw new Error("symInt: unsupported op 'pow' (expected simplify to expand for poly)");
 		}
 
 		default: {
-			throw new Error(`symInt: unsupported "${ast.type}"`);
+			throw new Error(`symInt: unsupported op '${node.op}'`);
 		}
 	}
 }

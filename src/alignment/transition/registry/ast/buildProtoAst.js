@@ -1,295 +1,169 @@
-// buildProtoAst.js
-// Turns protoFcn.tree (v3 "tree.op" style + legacy v2) into a canonical AST used by eval/diff/int/simplify.
-//
-// Design goals:
-// - Author-friendly proto JSON ("tree.op" style), but compile to a tiny canonical AST.
-// - Canonical AST is intentionally small: const, add, mul, poly, sin0/cos0, sin/cos, compose.
-// - Prefer numeric folding for constants (PI/TAU) and simple constant-only subexpressions.
-//
-// Supported proto tree nodes (input JSON):
-// 1) Reference into simpleFcn (recommended):
-//    { op:"ref", id:"SIMPLE_ID", crop:[a,b] }        // v3 preferred
-//    { type:"ref", ref:"SIMPLE_ID", crop:[a,b] }     // legacy v2
-//    Aliases accepted: id <-> ref
-//
-// 2) "op" nodes (recommended for readability):
-//    { op:"+", args:[tree,...] }  (alias op:"add")
-//    { op:"*", args:[tree,...] }  (alias op:"mul")
-//    { op:"-", args:[tree,...] }  (alias op:"sub")   unary neg if 1 arg; n-ary left fold
-//    { op:"/", args:[a,b] }       (alias op:"div")   ONLY if b is constant-foldable
-//
-//    Consts (as leafs) can be:
-//      - number
-//      - "PI" | "TAU"
-//      - { const:"PI" | "TAU" }
-//      - { op:"const", value:number }   // v3 style
-//      - { type:"const", value:number } // legacy
-//
-// 3) Legacy v2 nodes (still accepted):
-//    {type:"sum", terms:[...] }   (or "add" alias)
-//    {type:"scale", a:number|constExpr, expr:tree}
-//    {type:"call", fn:"SIN"|"COS", arg:tree}
-//    {type:"poly", coeff:[...] }  (direct poly leaf)
-//    {type:"trig", fn:"sin"|"cos", arg:tree} (direct trig call)
-//
-// Notes:
-// - Trig base functions should usually come from simpleFcn as {type:"trig", fn:"sin"|"cos"}
-//   and be referenced via {ref/id + crop}. eval/diff/int treat sin0/cos0 as sin(2πu), cos(2πu).
+// ast/buildProtoAst.js (schema_v3)
+// Build a concrete AST in the *u-domain* (u in [0,1]) from a proto tree.
+// Responsibilities:
+// - Resolve {op:'ref', id, crop:[a,b]} against simpleFcn ONLY (proto-internal refs intentionally not supported yet)
+// - Apply crop as affine reparam: x = a + (b-a)*u  (a>b allowed)
+// - Produce only ops that downstream can handle: const, pi, 2pi, poly, sin, cos, add, sc, neg, pow
 
-function isNum(x) { return typeof x === "number" && Number.isFinite(x); }
+import { simplify, mkConst, mkPoly, mkAdd, mkMul, mkSc, mkNeg } from './simplify.js';
 
-function mkConst(v) { return { type: "const", value: Number(v) }; }
-function mkAdd(a, b) { if (!a) return b; if (!b) return a; return { type: "add", a, b }; }
-function mkMul(a, b) { return { type: "mul", a, b }; }
+function isObj(v) { return v && typeof v==='object' && !Array.isArray(v); } 
 
-function mkCall(fn, arg) {
-	const f = String(fn).toLowerCase();
-	if (f !== "sin" && f !== "cos") throw new Error(`buildProtoAst: unsupported call "${fn}"`);
-	return { type: f, arg };
+function cleanPoly(coeff) {
+	let last = coeff.length-1;
+	while (last>=0 && (!Number.isFinite(coeff[last]) || coeff[last]===0)) last--;
+	return coeff.slice(0,last+1);
 }
 
-function mkPoly(coeff) { return { type: "poly", coeff: (coeff ?? [0]).map(Number) }; }
-
-function mkCompose(expr, affine) {
-	return { type: "compose", expr, affine: { alpha: Number(affine.alpha), beta: Number(affine.beta) } };
+function polyAdd(a,b) {
+	const n = Math.max(a.length,b.length);
+	const out = new Array(n).fill(0);
+	for (let i=0; i<n; i++) out[i] = (a[i] || 0)+(b[i] || 0);
+	return cleanPoly(out);
 }
 
-// ----------------------- constants -----------------------
-
-function parseConstNode(x) {
-	// raw number
-	if (isNum(x)) return mkConst(x);
-
-	// "PI" / "TAU"
-	if (typeof x === "string") {
-		const k = x.trim().toUpperCase();
-		if (k === "PI") return mkConst(Math.PI);
-		if (k === "TAU") return mkConst(2 * Math.PI);
-		return null;
+function polyMul(a,b) {
+	const out = new Array(a.length + b.length - 1).fill(0);
+	for (let i=0; i<a.length; i++){
+		for (let j=0; j<b.length; j++) out[i+j] += (a[i] || 0)*(b[j] || 0);
 	}
-
-	// {const:"PI"|"TAU"}
-	if (x && typeof x === "object" && "const" in x) {
-		const k = String(x.const).trim().toUpperCase();
-		if (k === "PI") return mkConst(Math.PI);
-		if (k === "TAU") return mkConst(2 * Math.PI);
-		throw new Error(`buildProtoAst: unknown const "${x.const}"`);
-	}
-
-	// {op:"const", value:number}  OR  {type:"const", value:number}
-	if (x && typeof x === "object") {
-		const op = String(x.op || "").trim().toLowerCase();
-		const t = String(x.type || "").trim().toLowerCase();
-		if (op === "const" || t === "const") {
-			const v = Number(x.value);
-			if (!Number.isFinite(v)) throw new Error("buildProtoAst: const.value not finite");
-			return mkConst(v);
-		}
-	}
-
-	return null;
+	return cleanPoly(out);
 }
 
-function foldConstNumber(node) {
-	const c = parseConstNode(node);
-	if (c) return c.value;
-	if (!node || typeof node !== "object") return null;
-
-	const op = String(node.op || "").trim();
-	if (op) {
-		const k = op.toLowerCase();
-		const args = node.args ?? node.terms ?? node.items ?? [];
-
-		if (k === "+" || k === "add") {
-			let acc = 0;
-			for (const a of args) {
-				const v = foldConstNumber(a);
-				if (v == null) return null;
-				acc += v;
-			}
-			return acc;
-		}
-		if (k === "*" || k === "mul") {
-			let acc = 1;
-			for (const a of args) {
-				const v = foldConstNumber(a);
-				if (v == null) return null;
-				acc *= v;
-			}
-			return acc;
-		}
-		if (k === "-" || k === "sub") {
-			if (!Array.isArray(args) || args.length === 0) return null;
-			if (args.length === 1) {
-				const v = foldConstNumber(args[0]);
-				return v == null ? null : -v;
-			}
-			let acc = foldConstNumber(args[0]);
-			if (acc == null) return null;
-			for (let i = 1; i < args.length; i++) {
-				const v = foldConstNumber(args[i]);
-				if (v == null) return null;
-				acc -= v;
-			}
-			return acc;
-		}
-		if (k === "/" || k === "div") {
-			if (!Array.isArray(args) || args.length !== 2) return null;
-			const a = foldConstNumber(args[0]);
-			const b = foldConstNumber(args[1]);
-			if (a == null || b == null) return null;
-			if (Math.abs(b) < 1e-15) throw new Error("buildProtoAst: division by ~0 in const fold");
-			return a / b;
-		}
-		return null;
+function polyPow(a, exp) {
+	let e = exp|0;
+	let res=[1];
+	let base=a;
+	while (e>0){
+		if (e&1) res = polyMul(res, base);
+		e >>= 1;
+		if (e) base = polyMul(base, base);
 	}
-
-	const t = String(node.type || "").toLowerCase();
-	if (t === "scale") {
-		const a = foldConstNumber(node.a);
-		if (a == null) return null;
-		const b = foldConstNumber(node.expr);
-		if (b == null) return null;
-		return a * b;
-	}
-
-	return null;
+	return res;
 }
 
-// ----------------------- ref/crop -----------------------
+// Compose polynomial P(x) with affine x = n + m*u
+function polyComposeAffine(coeff, n, m) {
+	// Horner with polynomial arithmetic: P(n+m*u)
+	let out = [0];
+	for (let i=coeff.length-1; i>=0; i--) {
+		// out = out*(n+m*u) + coeff[i]
+		out = polyMul(out, [n, m]);
+		out = polyAdd(out, [Number(coeff[i] || 0)]);
+	}
+	return cleanPoly(out);
+}
 
-function cropToAffine(crop) {
-	if (!crop) return { alpha: 1, beta: 0 };
-	if (!Array.isArray(crop) || crop.length !== 2) throw new Error("buildProtoAst: crop must be [a,b]");
-
+function normCrop(crop){
+	if (!Array.isArray(crop) || crop.length!==2) return null;
 	const a = Number(crop[0]);
 	const b = Number(crop[1]);
-	if (!Number.isFinite(a) || !Number.isFinite(b)) throw new Error("buildProtoAst: crop [a,b] not finite");
-
-	return { alpha: (b - a), beta: a };
+	if (!Number.isFinite(a) || !Number.isFinite(b)) throw new Error('ref.crop entries must be finite');
+	return { a, b };
 }
 
-function getRefId(node) {
-	// accept {ref:"X"} or {id:"X"} (both v2/v3)
-	const id = node?.ref ?? node?.id ?? "";
-	return String(id || "");
+function compileSimpleWithCrop(simpleDef, crop) {
+	// crop: map u in [0,1] to x in [a,b]
+	const { a, b } = crop;
+	const m = (b - a);
+	const n = a;
+
+	// poly
+	if (simpleDef.op==='poly'){
+		const coeff = simpleDef.coeff.map(Number);
+		return mkPoly(polyComposeAffine(coeff, n, m));
+	}
+
+	// trig
+	if (simpleDef.op==='sin' || simpleDef.op==='cos') {
+		// normalize to sin(m*u + n)
+		const sm = ('m' in simpleDef) ? Number(simpleDef.m) : 1;
+		const sn = ('n' in simpleDef) ? Number(simpleDef.n) : 0;
+		if (!Number.isFinite(sm) || !Number.isFinite(sn)) throw new Error('simpleFcn trig m/n must be finite');
+		// f(x)=trig(sm*x+sn), x=a+(b-a)*u => trig((sm*m)*u + (sm*n + sn))
+		const mm = sm*m;
+		const nn = sm*n + sn;
+		return { op: simpleDef.op, m: mm, n: nn };
+	}
+
+	if (simpleDef.op==='const') return mkConst(simpleDef.value, simpleDef.symbolic);
+	if (simpleDef.op==='pi' || simpleDef.op==='2pi') return { op: simpleDef.op };
+
+	throw new Error(`simpleFcn: unsupported op '${simpleDef.op}'`);
 }
 
-// ----------------------- main -----------------------
+function compileNode(node, simpleFcn, path) {
+	if (node==null) throw new Error(`${path}: node is null/undefined`);
+	if (!isObj(node)) throw new Error(`${path}: node must be object`);
+	const op = node.op;
+	if (typeof op!=='string') throw new Error(`${path}: missing op`);
 
-export function buildProtoAst(tree, simpleFcns) {
-	// const leafs (incl. op:"const")
-	const cLeaf = parseConstNode(tree);
-	if (cLeaf) return cLeaf;
-
-	if (!tree || typeof tree !== "object") throw new Error("buildProtoAst: bad tree");
-
-	// v3 op nodes
-	const op = String(tree.op || "").trim();
-	if (op) {
-		const k = op.toLowerCase();
-		const args = tree.args ?? tree.terms ?? tree.items ?? [];
-
-		if (k === "+" || k === "add") {
-			if (!Array.isArray(args) || args.length === 0) throw new Error("buildProtoAst: empty +");
-			let acc = null;
-			for (const it of args) acc = mkAdd(acc, buildProtoAst(it, simpleFcns));
-			return acc;
+	switch(op) {
+		case 'const': return mkConst(node.value, node.symbolic);
+		case 'pi':
+		case '2pi': return {op};
+		case 'poly': {
+			if (!Array.isArray(node.coeff)) throw new Error(`${path}: poly.coeff must be array`);
+			return mkPoly(node.coeff.map(Number));
 		}
-
-		if (k === "*" || k === "mul") {
-			if (!Array.isArray(args) || args.length === 0) throw new Error("buildProtoAst: empty *");
-			let acc = null;
-			for (const it of args) {
-				const term = buildProtoAst(it, simpleFcns);
-				acc = acc ? mkMul(acc, term) : term;
+		case 'sin':
+		case 'cos': {
+			// allow explicit arg, but prefer affine form
+			if (node.arg){
+				const a = simplify(compileNode(node.arg, simpleFcn, `${path}.arg`));
+				// simplify() will fold affine arg into m/n
+				return simplify({ op, arg: a });
 			}
-			return acc;
+			return { op, m: ('m' in node)?Number(node.m): 1, n: ('n' in node) ? Number(node.n): 0 };
+		}
+		case 'ref': {
+			const id = String(node.id || '');
+			if (!id) throw new Error(`${path}: ref.id missing`);
+			const def = simpleFcn[id];
+			if (!def) throw new Error(`${path}: ref '${id}' not found in simpleFcn (protoRef disabled)`);
+			const crop = normCrop(node.crop ?? [0, 1]) ?? { a: 0, b: 1 };
+			return simplify(compileSimpleWithCrop(def, crop));
+		}
+		case 'neg': return mkNeg(compileNode(node.arg, simpleFcn, `${path}.arg`));
+		case 'add': {
+			const args = (Array.isArray(node.args)?node.args:[]).map((a, i)=>compileNode(a, simpleFcn, `${path}.args[${i}]`));
+			return mkAdd(args);
+		}
+		case 'sub': {
+			const a = compileNode(node.minuend ?? node.a, simpleFcn, `${path}.minuend`);
+			const b = compileNode(node.subtrahend ?? node.b, simpleFcn, `${path}.subtrahend`);
+			return mkAdd([a, mkNeg(b)]);
+		}
+		case 'mul': {
+			const args = (Array.isArray(node.args)?node.args:[]).map((a,i)=>compileNode(a, simpleFcn, `${path}.args[${i}]`));
+			return mkMul(args);
+		}
+		case 'div': {
+			// keep div; simplify() will turn div-by-const into sc
+			const a = compileNode(node.dividend ?? node.a, simpleFcn, `${path}.dividend`);
+			const b = compileNode(node.divisor ?? node.b, simpleFcn, `${path}.divisor`);
+			return { op: 'div', dividend: a, divisor: b };
+		}
+		case 'sc': {
+			const v = Number(node.value);
+			if (!Number.isFinite(v)) throw new Error(`${path}: sc.value must be finite`);
+			return mkSc(v, compileNode(node.arg, simpleFcn, `${path}.arg`));
+		}
+		case 'pow': {
+			const base = compileNode(node.base, simpleFcn, `${path}.base`);
+			let e = node.exp;
+			if (isObj(e) && e.op==='const') e = Number(e.value);
+			if (typeof e!=='number' || !Number.isFinite(e) || !Number.isInteger(e)) 
+			throw new Error(`${path}: pow.exp must be integer number or const`);
+			return { op: 'pow', base: simplify(base), exp: e };
 		}
 
-		if (k === "-" || k === "sub") {
-			if (!Array.isArray(args) || args.length === 0) throw new Error("buildProtoAst: empty -");
-			if (args.length === 1) return mkMul(mkConst(-1), buildProtoAst(args[0], simpleFcns));
-			let acc = buildProtoAst(args[0], simpleFcns);
-			for (let i = 1; i < args.length; i++) {
-				acc = mkAdd(acc, mkMul(mkConst(-1), buildProtoAst(args[i], simpleFcns)));
-			}
-			return acc;
-		}
-
-		if (k === "/" || k === "div") {
-			if (!Array.isArray(args) || args.length !== 2) throw new Error("buildProtoAst: / expects 2 args");
-			const denom = foldConstNumber(args[1]);
-			if (denom == null) throw new Error("buildProtoAst: / only supported for constant denominator");
-			if (Math.abs(denom) < 1e-15) throw new Error("buildProtoAst: division by ~0");
-			return mkMul(buildProtoAst(args[0], simpleFcns), mkConst(1 / denom));
-		}
-
-		if (k === "ref") {
-			// ✅ accept both id/ref
-			const id = getRefId(tree);
-			return buildProtoAst({ type: "ref", ref: id, crop: tree.crop }, simpleFcns);
-		}
-
-		throw new Error(`buildProtoAst: unsupported op "${tree.op}"`);
+		default:
+			throw new Error(`${path}: unsupported op '${op}'`);
 	}
+}
 
-	// legacy v2 types
-	const t = String(tree.type || "").toLowerCase();
-
-	if (t === "ref") {
-		// ✅ accept both ref/id
-		const ref = getRefId(tree);
-		const smp = simpleFcns?.[ref];
-		if (!smp) throw new Error(`buildProtoAst: unknown simpleFcn "${ref}"`);
-
-		const affine = cropToAffine(tree.crop ?? null);
-
-		let base;
-		const st = String(smp.type || "").toLowerCase();
-
-		if (st === "poly") base = mkPoly(smp.coeff ?? [0]);
-		else if (st === "sin") base = { type: "sin0" };
-		else if (st === "cos") base = { type: "cos0" };
-		else if (st === "trig") {
-			const fn = String(smp.fn || smp.appear || "").toLowerCase();
-			if (fn === "sin") base = { type: "sin0" };
-			else if (fn === "cos") base = { type: "cos0" };
-			else throw new Error(`buildProtoAst: bad simpleFcn.trig "${smp.fn}"`);
-		} else {
-			throw new Error(`buildProtoAst: bad simpleFcn.type "${smp.type}"`);
-		}
-
-		return mkCompose(base, affine);
-	}
-
-	if (t === "sum" || t === "add") {
-		const terms = tree.terms ?? tree.items ?? [];
-		if (!Array.isArray(terms) || terms.length === 0) throw new Error("buildProtoAst: empty sum");
-		let acc = null;
-		for (const it of terms) acc = mkAdd(acc, buildProtoAst(it, simpleFcns));
-		return acc;
-	}
-
-	if (t === "scale") {
-		const aNum = foldConstNumber(tree.a);
-		if (aNum == null) throw new Error("buildProtoAst: scale.a not const-foldable");
-		const expr = buildProtoAst(tree.expr, simpleFcns);
-		return mkMul(mkConst(aNum), expr);
-	}
-
-	if (t === "call") {
-		return mkCall(tree.fn, buildProtoAst(tree.arg, simpleFcns));
-	}
-
-	if (t === "poly") {
-		return mkPoly(tree.coeff ?? [0]);
-	}
-
-	if (t === "trig") {
-		const fn = String(tree.fn || tree.appear || "").toLowerCase();
-		return mkCall(fn, buildProtoAst(tree.arg, simpleFcns));
-	}
-
-	throw new Error(`buildProtoAst: unsupported node type "${tree.type}"`);
+export function buildProtoAst(tree, simpleFcn/*, protoFcn*/){
+	const expr = compileNode(tree, simpleFcn, 'proto');
+	return simplify(expr);
 }

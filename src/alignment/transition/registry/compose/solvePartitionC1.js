@@ -1,4 +1,4 @@
-// src/alignment/transitionRegistry/compose/solvePartitionC1.js
+// src/alignment/transition/registry/compose/solvePartitionC1.js
 
 const EPS = 1e-9;
 

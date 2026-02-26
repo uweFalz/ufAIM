@@ -3,7 +3,7 @@
 import { makeAlignment2DFromSparse } from "./build/AlignmentFactory.js";  // ggf. Pfad anpassen
 import { RegistryCompiler } from "./transition/registry/RegistryCompiler.js"; // ggf. Pfad anpassen
 
-import transitionLookup from "./transition/transitionLookup.json" with { type: "json" }; // du sagst: liegt „unter transitionLookup.json …“
+import transitionLookup from "./transition/transitionLookup.json" with { type: "json" };
 
 // import { Curve2D } from "../lib/geom/curve/Curve2D.js"
 
@@ -28,6 +28,10 @@ function run() {
 
 	// 1) RegistryCompiler
 	const registry = new RegistryCompiler(transitionLookup);
+	
+	const p = registry.compilePreset("test");
+console.log("has cuts01?", !!p.cuts01, p.cuts01);
+console.log("has kappa?", typeof p.kappa);
 
 	// 2) Minimal sparse alignment: F (line) – T (clothoid) – F (arc)
 	//    (Ka from first fixed, Ke from next fixed)
@@ -119,6 +123,9 @@ function run() {
 	// --- transition preset sanity: test ---
 	{
 		const p = registry.compilePreset("test");
+		
+		console.debug( p );
+		
 		assert(Math.abs(p.cuts01.w1 - 0.25) < 1e-12, "test w1 not 0.25");
 		assert(Math.abs(p.cuts01.w2 - 0.75) < 1e-12, "test w2 not 0.75");
 

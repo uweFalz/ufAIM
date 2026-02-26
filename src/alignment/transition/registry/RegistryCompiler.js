@@ -4,27 +4,52 @@ import lookup from "../transitionLookup.json" with { type: "json" };
 
 import { buildProtoAst } from "./ast/buildProtoAst.js";
 import { makeEvalFn } from "./ast/evalAst.js";
-import { diffExpr } from "./ast/symDiff.js";
-import { intExpr } from "./ast/symInt.js";
+import { symDiff } from "./ast/symDiff.js";
+import { symInt } from "./ast/symInt.js";
 import { simplify } from "./ast/simplify.js";
 
 import { computeAnchorsFromTotal } from "./compose/computeAnchorsFromTotal.js";
 
 function clamp01(u) { return Math.max(0, Math.min(1, u)); }
 
-function normFamilyFromProto({ protoId, protoDef, simpleFcn }) {
-	// Build raw kappa expr over u, respecting proto domain and ref-level crops (via buildProtoAst)
-	const kRawExpr = simplify(buildProtoAst(protoDef.tree, simpleFcn));
+function kappaExprFromSource(expr, source, protoId) {
+	const s = source || "kappa";
+	switch (s) {
+		case "kappa":   return expr;
+		case "kappa1":  return simplify(symInt(expr));
+		case "kappa2":  return simplify(symInt(simplify(symInt(expr))));
+		case "kappaInt":return simplify(symDiff(expr));
+		default:
+		throw new Error(`RegistryCompiler: proto "${protoId}": unknown halfWave.source "${s}"`);
+	}
+}
+
+function normFamilyFromProto({ protoId, protoDef, simpleFcn, source }) {
+	// protoFcn entries may be stored either as AST directly or wrapped as { tree: AST, ...meta }
+	// Also allow disabling placeholders without breaking compilation.
+	if (protoDef?.disabled === true) {
+		throw new Error(`RegistryCompiler: protoFcn "${protoId}" is disabled`);
+	}
+	const tree = protoDef?.tree ?? protoDef;
+
+	// proto -> expr
+	const protoExpr = simplify(buildProtoAst(tree, simpleFcn));
+
+	// APPLY source HERE:
+	const kRawExpr = kappaExprFromSource(protoExpr, source, protoId);
+
+	console.debug( kRawExpr );
+
 	const kRawFn = makeEvalFn(kRawExpr);
 
 	// kappa1/kappa2 exact
-	const k1RawExpr = simplify(diffExpr(kRawExpr));
-	const k2RawExpr = simplify(diffExpr(k1RawExpr));
+	const k1RawExpr = simplify(symDiff(kRawExpr));
+	const k2RawExpr = simplify(symDiff(k1RawExpr));
 	const k1RawFn = makeEvalFn(k1RawExpr);
 	const k2RawFn = makeEvalFn(k2RawExpr);
 
 	// kappaInt exact (poly+trig+affine)
-	const kIntRawExpr = simplify(intExpr(kRawExpr));
+	const kIntRawExpr = simplify(symInt(kRawExpr));
 	const kIntRawFn = makeEvalFn(kIntRawExpr);
 
 	// --- normalizeRangeEndpoint (central!) ---
@@ -58,12 +83,11 @@ function normFamilyFromProto({ protoId, protoDef, simpleFcn }) {
 		throw new Error(`RegistryCompiler: degenerate range for proto "${protoId}"`);
 	}
 
-	const kFn  = (u) => (kRawFn(clamp01(u)) - k0) / denom;
-	const k1Fn = (u) => k1RawFn(clamp01(u)) / denom;
-	const k2Fn = (u) => k2RawFn(clamp01(u)) / denom;
-
+	const kFn  = (u) => (kRawFn(u) - k0) / denom;
+	const k1Fn = (u) => k1RawFn(u) / denom;
+	const k2Fn = (u) => k2RawFn(u) / denom;
 	// integral: ∫((kRaw-k0)/denom) du = (kIntRaw - k0*u)/denom
-	const kIntFn = (u) => ( (kIntRawFn(clamp01(u)) - kIntRawFn(0)) - k0 * clamp01(u) ) / denom;
+	const kIntFn = (u) => ( (kIntRawFn(u) - kIntRawFn(0)) - k0 * u ) / denom;
 
 	return {
 		kappa: kFn,
@@ -112,7 +136,12 @@ export class RegistryCompiler {
 			const protoDef = db.protoFcn?.[protoId];
 			if (!protoDef) throw new Error(`RegistryCompiler: missing protoFcn "${protoId}"`);
 
-			const fam = normFamilyFromProto({ protoId, protoDef, simpleFcn: db.simpleFcn });
+			const fam = normFamilyFromProto({
+				protoId,
+				protoDef,
+				simpleFcn: db.simpleFcn,
+				source: hwDef.source
+			});
 
 			if (!reverseFlag) return fam;
 
@@ -283,13 +312,18 @@ export class RegistryCompiler {
 			kappaPrime,
 			kappa2,
 			kappaInt,
-			cuts01: { w1, w2 }
+			cuts01: { w1, w2 },
+			cutsCrv: { c1: a1, c2: a2 }, // normalized curvature anchors (horizontal cuts)
+			normCrvAnchor: [a0, a1, a2, a3] // keep as array for advanced UI/debug
 		};
 	}
 	
 	// in RegistryCompiler class
 	listPresetIds() {
 		const tr = this.db?.transition ?? {};
+		
+		console.log( Object.keys(tr) );
+		
 		return Object.keys(tr);
 	}
 

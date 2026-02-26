@@ -1,4 +1,4 @@
-// src/alignment/transitionRegistry/compose/composeKappaTotal.js
+// src/alignment/transition/registry/compose/composeTotal.js
 
 const EPS = 1e-12;
 

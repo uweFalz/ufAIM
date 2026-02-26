@@ -18,6 +18,9 @@
 import * as JXG from "jsxgraph";
 import { clampNumber } from "../utils/helpers.js";
 
+const _presetCache = new Map(); // id -> { ok:boolean, value, errMsg, stamp }
+const _logOnce = new Set();
+
 export function makeTransitionEditorView(store, registry) {
 	if (!store?.getState || !store?.subscribe) {
 		throw new Error("TransitionEditorView: missing store (getState/subscribe)");
@@ -50,11 +53,28 @@ export function makeTransitionEditorView(store, registry) {
 	function getPreset(st) {
 		const id = String(st?.te_presetId ?? "");
 		if (!id) return null;
+
+		// optional: invalidate if lookup changed (wenn du sowas hast)
+		// const ver = registry?.db?.schema?.version ?? "x";
+		// const key = `${ver}:${id}`;
+		const key = id;
+
+		const cached = _presetCache.get(key);
+		if (cached) return cached.value; // value may be null
+
 		try {
-			return registry.compilePreset(id);
+			const p = registry.compilePreset(id);
+			_presetCache.set(key, { ok: true, value: p });
+			return p;
 		} catch (e) {
-			// don't kill the editor if a preset is temporarily invalid
-			console.error("[TransitionEditorView] compilePreset failed:", e);
+			const msg = String(e?.message ?? e);
+			_presetCache.set(key, { ok: false, value: null, errMsg: msg });
+
+			const logKey = `${key}:${msg}`;
+			if (!_logOnce.has(logKey)) {
+				_logOnce.add(logKey);
+				console.error("[TransitionEditorView] compilePreset failed:", e);
+			}
 			return null;
 		}
 	}
@@ -304,17 +324,21 @@ export function makeTransitionEditorView(store, registry) {
 		hline0 = board.create("line", [[0, 0], [1, 0]], { straightFirst: false, straightLast: false, dash: 1 });
 		hline1 = board.create("line", [[0, 1], [1, 1]], { straightFirst: false, straightLast: false, dash: 1 });
 
-		// Image split lines (horizontal at w1/w2) — show only for κ mode
+		// normCrv cuts (horizontal at c1/c2) — show only for κ mode
 		hsplit1 = board.create("line", [
 		() => {
 			const st = store.getState();
 			const { w1 } = getSplits(st);
-			return [0, w1];
+			const p = getPreset(st);
+			const c1 = p?.cutsCrv?.c1 ?? w1;
+			return [0, c1];
 		},
 		() => {
 			const st = store.getState();
 			const { w1 } = getSplits(st);
-			return [1, w1];
+			const p = getPreset(st);
+			const c1 = p?.cutsCrv?.c1 ?? w1;
+			return [1, c1];
 		}
 		], { straightFirst: false, straightLast: false, dash: 2 });
 
@@ -322,12 +346,16 @@ export function makeTransitionEditorView(store, registry) {
 		() => {
 			const st = store.getState();
 			const { w2 } = getSplits(st);
-			return [0, w2];
+			const p = getPreset(st);
+			const c2 = p?.cutsCrv?.c2 ?? w2;
+			return [0, c2];
 		},
 		() => {
 			const st = store.getState();
 			const { w2 } = getSplits(st);
-			return [1, w2];
+			const p = getPreset(st);
+			const c2 = p?.cutsCrv?.c2 ?? w2;
+			return [1, c2];
 		}
 		], { straightFirst: false, straightLast: false, dash: 2 });
 

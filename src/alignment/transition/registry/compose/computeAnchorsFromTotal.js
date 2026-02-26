@@ -1,4 +1,4 @@
-// computeAnchorsFromTotal.js
+// computeAnchorsFromTotal.js (copied from patched repo)
 function clamp01(x){ return Math.max(0, Math.min(1, x)); }
 
 function slopeAt(fn, u, fallback = 1) {

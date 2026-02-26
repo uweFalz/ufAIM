@@ -1,41 +1,59 @@
-// symDiff.js
-const TAU = 2 * Math.PI;
+// ast/symDiff.js (schema_v3)
+// Symbolic derivative d/du.
 
-function c(v) { return { type: "const", value: v }; }
-function add(a,b){ return { type:"add", a, b }; }
-function mul(a,b){ return { type:"mul", a, b }; }
+import { simplify, mkConst, mkPoly, mkAdd, mkNeg, mkSc } from './simplify.js';
 
-export function diffExpr(ast) {
-	switch (ast.type) {
-		case "const": return c(0);
-		case "var": return c(1);
+function isObj(v) { return v && typeof v==='object'&&!Array.isArray(v); } 
 
-		case "add": return add(diffExpr(ast.a), diffExpr(ast.b));
-		case "mul":
-		// (ab)' = a'b + ab'
-		return add(mul(diffExpr(ast.a), ast.b), mul(ast.a, diffExpr(ast.b)));
+function cleanPoly(coeff) {
+	let last = coeff.length-1;
+	while (last >= 0 && (!Number.isFinite(coeff[last]) || coeff[last]===0)) last--;
+	return coeff.slice(0, last+1);
+}
 
-		case "poly": {
-			const cc = ast.coeff || [0];
-			if (cc.length <= 1) return c(0);
-			const d = [];
-			for (let i = 1; i < cc.length; i++) d.push(i * cc[i]);
-			return { type: "poly", coeff: d };
+function polyDeriv(coeff) {
+	if (coeff.length<=1) return [];
+	const out = new Array(Math.max(0, coeff.length-1)).fill(0);
+	for (let i=1; i<coeff.length; i++) out[i-1] = Number(coeff[i] || 0)*i;
+	return cleanPoly(out);
+}
+
+export function symDiff(expr){
+	return simplify(diffExpr(expr));
+}
+
+function diffExpr(node){
+	if (node==null) return mkConst(0);
+	if (typeof node==='number') return mkConst(0);
+	if (!isObj(node)) throw new Error('symDiff: node must be object');
+
+	switch(node.op) {
+		case 'const':
+		case 'pi':
+		case '2pi': {
+			return mkConst(0);
+			}
+		case 'poly':
+			return mkPoly(polyDeriv(node.coeff));
+		case 'neg':
+			return mkNeg(diffExpr(node.arg));
+		case 'sc':
+			return mkSc(Number(node.value), diffExpr(node.arg));
+		case 'add':
+			return mkAdd((node.args||[]).map(diffExpr));
+		case 'sin': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+			// d sin(m u + n) = m cos(m u + n)
+			return mkSc(m, { op: 'cos', m, n} );
 		}
-
-		case "sin0": return mul(c(TAU), { type:"cos0" });
-		case "cos0": return mul(c(-TAU), { type:"sin0" });
-
-		case "sin": return mul(diffExpr(ast.arg), { type:"cos", arg: ast.arg });
-		case "cos": return mul(diffExpr(ast.arg), mul(c(-1), { type:"sin", arg: ast.arg }));
-
-		case "compose": {
-			// d/du f(a u + b) = a * f'(a u + b)
-			const a = Number(ast.affine.alpha);
-			return mul(c(a), { type:"compose", expr: diffExpr(ast.expr), affine: ast.affine });
+		case 'cos': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+			// d cos(m u + n) = -m sin(m u + n)
+			return mkSc(-m, {op:'sin', m, n});
 		}
-
 		default:
-		throw new Error(`symDiff: unsupported "${ast.type}"`);
+			throw new Error(`symDiff: unsupported op '${node.op}'`);
 	}
 }
