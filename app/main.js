@@ -1,14 +1,13 @@
 // app/main.js
 
-import { bootApp } from "./core/appCore.js";
-import { makeSystemPrefs } from "./core/systemPrefs.js";
+import { systemPrefs } from "./core/systemPrefs.js";
+import { WindowRuntime } from "@app/core/WindowRuntime.js";
 
 import "./src/alignment/_e2eAlignmentTest.js";
 
-const systemPrefs = makeSystemPrefs();
-
-bootApp({ prefs: systemPrefs }).catch((error) => {
-	console.error(error);
+const runtime = new WindowRuntime({ prefs: systemPrefs });
+runtime.start().catch((err) => {
+	console.error(err);
 	const logElement = document.getElementById("log");
-	if (logElement) logElement.textContent = "boot failed ❌\n" + String(error);
+	if (logElement) logElement.textContent = "runtime boot failed ❌\n" + String(err);
 });

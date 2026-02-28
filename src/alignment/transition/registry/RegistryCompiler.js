@@ -15,10 +15,10 @@ function clamp01(u) { return Math.max(0, Math.min(1, u)); }
 function kappaExprFromSource(expr, source, protoId) {
 	const s = source || "kappa";
 	switch (s) {
-		case "kappa":   return expr;
-		case "kappa1":  return simplify(symInt(expr));
-		case "kappa2":  return simplify(symInt(simplify(symInt(expr))));
-		case "kappaInt":return simplify(symDiff(expr));
+		case "kappa":    return expr;
+		case "kappa1":   return simplify(symInt(expr));
+		case "kappa2":   return simplify(symInt(simplify(symInt(expr))));
+		case "kappaInt": return simplify(symDiff(expr));
 		default:
 		throw new Error(`RegistryCompiler: proto "${protoId}": unknown halfWave.source "${s}"`);
 	}
@@ -38,13 +38,14 @@ function normFamilyFromProto({ protoId, protoDef, simpleFcn, source }) {
 	// APPLY source HERE:
 	const kRawExpr = kappaExprFromSource(protoExpr, source, protoId);
 
-	console.debug( kRawExpr );
+	// console.debug( kRawExpr );
 
 	const kRawFn = makeEvalFn(kRawExpr);
 
 	// kappa1/kappa2 exact
 	const k1RawExpr = simplify(symDiff(kRawExpr));
 	const k2RawExpr = simplify(symDiff(k1RawExpr));
+	
 	const k1RawFn = makeEvalFn(k1RawExpr);
 	const k2RawFn = makeEvalFn(k2RawExpr);
 
@@ -322,7 +323,7 @@ export class RegistryCompiler {
 	listPresetIds() {
 		const tr = this.db?.transition ?? {};
 		
-		console.log( Object.keys(tr) );
+		// console.log( Object.keys(tr) );
 		
 		return Object.keys(tr);
 	}

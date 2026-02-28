@@ -8,7 +8,7 @@ import transitionLookup from "./transition/transitionLookup.json" with { type: "
 // import { Curve2D } from "../lib/geom/curve/Curve2D.js"
 
 function assert(cond, msg) {
-	// if (!cond) throw new Error("E2E FAIL: " + msg);
+	if (!cond) throw new Error("E2E FAIL: " + msg);
 }
 
 function approx(a, b, eps = 1e-6) {
@@ -30,8 +30,8 @@ function run() {
 	const registry = new RegistryCompiler(transitionLookup);
 	
 	const p = registry.compilePreset("test");
-console.log("has cuts01?", !!p.cuts01, p.cuts01);
-console.log("has kappa?", typeof p.kappa);
+	// console.log("has cuts01?", !!p.cuts01, p.cuts01);
+	// console.log("has kappa?", typeof p.kappa);
 
 	// 2) Minimal sparse alignment: F (line) – T (clothoid) – F (arc)
 	//    (Ka from first fixed, Ke from next fixed)
@@ -124,7 +124,7 @@ console.log("has kappa?", typeof p.kappa);
 	{
 		const p = registry.compilePreset("test");
 		
-		console.debug( p );
+		// console.debug( p );
 		
 		assert(Math.abs(p.cuts01.w1 - 0.25) < 1e-12, "test w1 not 0.25");
 		assert(Math.abs(p.cuts01.w2 - 0.75) < 1e-12, "test w2 not 0.75");

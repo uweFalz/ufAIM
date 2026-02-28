@@ -15,7 +15,6 @@ app/.gitignore
 # Scratch / experiments / local helpers
 # ------------------------------------------------------------
 scripts/
-src_prep/
 _legacy/
 **/_legacy/
 var/
@@ -94,19 +93,11 @@ setup_structure.sh
 # big legacy depots / staging parks
 _legacy/
 **/_legacy/
-src_prep/
+**/_dormant/
+**/_graveyard/
 
 # docs archives are not part of the living docs
 docs/archive/
-
-# LaTeX build artefacts
-*.aux
-*.log
-*.out
-*.toc
-*.synctex.gz
-*.pdf
-*.run.xml
 
 # scratch / experiments
 app/empty.js

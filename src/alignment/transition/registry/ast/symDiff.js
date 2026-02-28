@@ -3,7 +3,7 @@
 
 import { simplify, mkConst, mkPoly, mkAdd, mkNeg, mkSc } from './simplify.js';
 
-function isObj(v) { return v && typeof v==='object'&&!Array.isArray(v); } 
+function isObj(v) { return v && typeof v==='object' && !Array.isArray(v); } 
 
 function cleanPoly(coeff) {
 	let last = coeff.length-1;
@@ -14,7 +14,7 @@ function cleanPoly(coeff) {
 function polyDeriv(coeff) {
 	if (coeff.length<=1) return [];
 	const out = new Array(Math.max(0, coeff.length-1)).fill(0);
-	for (let i=1; i<coeff.length; i++) out[i-1] = Number(coeff[i] || 0)*i;
+	for (let i=1, len=coeff.length; i<len; i++) out[i-1] = Number(coeff[i] || 0)*i;
 	return cleanPoly(out);
 }
 
@@ -32,15 +32,19 @@ function diffExpr(node){
 		case 'pi':
 		case '2pi': {
 			return mkConst(0);
-			}
-		case 'poly':
+		}
+		case 'poly': {
 			return mkPoly(polyDeriv(node.coeff));
-		case 'neg':
+		}
+		case 'neg': {
 			return mkNeg(diffExpr(node.arg));
-		case 'sc':
+		}
+		case 'sc': {
 			return mkSc(Number(node.value), diffExpr(node.arg));
-		case 'add':
+		}
+		case 'add': {
 			return mkAdd((node.args||[]).map(diffExpr));
+		}
 		case 'sin': {
 			const m = ('m' in node) ? Number(node.m) : 1;
 			const n = ('n' in node) ? Number(node.n) : 0;
@@ -51,9 +55,9 @@ function diffExpr(node){
 			const m = ('m' in node) ? Number(node.m) : 1;
 			const n = ('n' in node) ? Number(node.n) : 0;
 			// d cos(m u + n) = -m sin(m u + n)
-			return mkSc(-m, {op:'sin', m, n});
+			return mkSc(-m, { op: 'sin', m, n });
 		}
 		default:
-			throw new Error(`symDiff: unsupported op '${node.op}'`);
+		throw new Error(`symDiff: unsupported op '${node.op}'`);
 	}
 }

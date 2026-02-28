@@ -18,7 +18,7 @@
 import * as JXG from "jsxgraph";
 import { clampNumber } from "../utils/helpers.js";
 
-const _presetCache = new Map(); // id -> { ok:boolean, value, errMsg, stamp }
+const _presetCache = new Map(); // id -> { ok: boolean, value, errMsg, stamp }
 const _logOnce = new Set();
 
 export function makeTransitionEditorView(store, registry) {

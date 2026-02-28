@@ -3,7 +3,22 @@
 // Central runtime prefs (DEV vs PROD).
 // Keep it tiny + stable; expand only when needed.
 
-export function makeSystemPrefs() {
+function resolveWorkerUrl() {
+	// Wenn index.html unter /app/ liegt:
+	//   ./core/SharedMessagingWorker.js ist "richtig"
+	// Wenn index.html später im Root liegt:
+	//   ./app/core/SharedMessagingWorker.js ist "richtig"
+
+	// Minimal robust: wenn Pfad mit "/app/" endet, dann kurz.
+	const p = location.pathname || "";
+	const indexInApp = p.includes("/app/");
+
+	return indexInApp
+	? "./core/SharedMessagingWorker.js"
+	: "./app/core/SharedMessagingWorker.js";
+}
+
+function makeSystemPrefs() {
 	const isDev = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
 
 	return {
@@ -25,6 +40,19 @@ export function makeSystemPrefs() {
 			auxTracksScope: "pinned",        // "active" | "all" | "routeProject" | "pinned"
 			auxTracksMax: 12,
 			autoFitOnGeomChange: false,
-		}
+		},
+		
+		messaging: {
+			mode: "local",              // "local" | "sharedWorker"
+			workerUrl: resolveWorkerUrl(),
+			debug: true,
+			workerEcho: true,
+		},
+		
+		runtime: {
+			legacyAppCore: true,
+		},
 	};
 }
+
+export const systemPrefs = makeSystemPrefs();

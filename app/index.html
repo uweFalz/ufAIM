@@ -11,6 +11,20 @@
 		<script type="importmap">
 			{
 				"imports": {
+					"@kernel/": "./src/alignment/",
+					"@kgeom/":  "./src/lib/geom/",
+					"@kmath/":  "./src/lib/math/",
+					"@src/":    "./src/",
+					"@app/":    "../app/",
+					"@ui/":     "../app/view/",
+					"@bridge/": "../app/core/",
+					"@io/":     "../app/io/"
+				}
+			}
+		</script>
+		<script type="importmap">
+			{
+				"imports": {
 					"three":             "https://unpkg.com/three/build/three.module.js",
 					"OrbitControls":     "https://unpkg.com/three/examples/jsm/controls/OrbitControls.js",
 					"TransformControls": "https://unpkg.com/three/examples/jsm/controls/TransformControls.js",
@@ -159,48 +173,48 @@
 							<select id="tePresetSelMain"></select>
 							<!--select id="tePresetSelAlt"></select-->
 							<label><input type="radio" name="tePlot" id="tePlotK"  value="k"> κ</label>
-<label><input type="radio" name="tePlot" id="tePlotK1" value="k1"> κ′</label>
-<label><input type="radio" name="tePlot" id="tePlotK2" value="k2"> κ″</label>
-						</div>
+									<label><input type="radio" name="tePlot" id="tePlotK1" value="k1"> κ′</label>
+											<label><input type="radio" name="tePlot" id="tePlotK2" value="k2"> κ″</label>
+													</div>
 
-						<div class="control">
-							<label for="teW1">w1</label>
-							<input type="range" id="teW1" min="0" max="1000" />
-							<span id="teW1Val">—</span>
-						</div>
+													<div class="control">
+														<label for="teW1">w1</label>
+														<input type="range" id="teW1" min="0" max="1000" />
+														<span id="teW1Val">—</span>
+													</div>
 
-						<div class="control">
-							<label for="teW2">w2</label>
-							<input type="range" id="teW2" min="0" max="1000" />
-							<span id="teW2Val">—</span>
-						</div>
-					</div>
+													<div class="control">
+														<label for="teW2">w2</label>
+														<input type="range" id="teW2" min="0" max="1000" />
+														<span id="teW2Val">—</span>
+													</div>
+													</div>
 
-					<div class="overlay__stage">
-						<div id="transBoard" class="jxgbox"></div>
-					</div>
-				</div>
-			</div>
-		</section>
+													<div class="overlay__stage">
+														<div id="transBoard" class="jxgbox"></div>
+													</div>
+													</div>
+													</div>
+													</section>
 
-		<!-- Docs Overlay (Vision/Roadmap/Freeze) -->
-		<section id="docsOverlay" class="overlay hidden">
-			<div class="overlay__card overlay__card--wide">
-				<header class="overlay__header">
-					<div class="overlay__title">Docs</div>
-					<div class="overlay__headerRight">
-						<select id="docsSelect" class="select">
-							<option value="vision">Vision</option>
-							<option value="roadmap">Roadmap</option>
-							<option value="freeze">Architecture Freeze</option>
-						</select>
-						<button id="btnDocsClose" class="btn">Close</button>
-					</div>
-				</header>
-				<pre id="docsText" class="docsText">Loading…</pre>
-			</div>
-		</section>
+													<!-- Docs Overlay (Vision/Roadmap/Freeze) -->
+													<section id="docsOverlay" class="overlay hidden">
+														<div class="overlay__card overlay__card--wide">
+															<header class="overlay__header">
+																<div class="overlay__title">Docs</div>
+																<div class="overlay__headerRight">
+																	<select id="docsSelect" class="select">
+																		<option value="vision">Vision</option>
+																		<option value="roadmap">Roadmap</option>
+																		<option value="freeze">Architecture Freeze</option>
+																	</select>
+																	<button id="btnDocsClose" class="btn">Close</button>
+																</div>
+															</header>
+															<pre id="docsText" class="docsText">Loading…</pre>
+														</div>
+													</section>
 
-		<script type="module" src="./main.js"></script>
-	</body>
-</html>
+													<script type="module" src="./main.js"></script>
+													</body>
+													</html>
