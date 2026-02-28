@@ -14,8 +14,8 @@ function resolveWorkerUrl() {
 	const indexInApp = p.includes("/app/");
 
 	return indexInApp
-	? "./core/SharedMessagingWorker.js"
-	: "./app/core/SharedMessagingWorker.js";
+	? "../../src/shared/messaging/SharedMessagingWorker.js"
+	: "../src/shared/messaging/SharedMessagingWorker.js";
 }
 
 function makeSystemPrefs() {

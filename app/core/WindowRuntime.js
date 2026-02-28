@@ -3,7 +3,7 @@
 import { createMessagingClient } from "@src/shared/messaging/createMessagingClient.js";
 
 // legacy bootstrap (UI + alignment sandbox)
-import { bootApp } from "./AppCore.js";
+import { bootApp } from "./bootLegacyAppCore.js";
 
 // optional: local runtime-server (nur im local-mode)
 import { AppRuntimeLocal } from "@src/shared/runtime/AppRuntimeLocal.js";

@@ -1,4 +1,5 @@
 // src/shared/messaging/createMessagingClient.js
+// src/shared/messaging/createMessagingTransport.js
 
 import { LocalBus } from "./local/LocalBus.js";
 import { SharedWorkerClient } from "./worker/SharedWorkerClient.js";
