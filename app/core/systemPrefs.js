@@ -4,18 +4,14 @@
 // Keep it tiny + stable; expand only when needed.
 
 function resolveWorkerUrl() {
-	// Wenn index.html unter /app/ liegt:
-	//   ./core/SharedMessagingWorker.js ist "richtig"
-	// Wenn index.html später im Root liegt:
-	//   ./app/core/SharedMessagingWorker.js ist "richtig"
+  // index.html jetzt im Root:
+  const base = "./src/shared/messaging/SharedMessagingWorker.js";
 
-	// Minimal robust: wenn Pfad mit "/app/" endet, dann kurz.
-	const p = location.pathname || "";
-	const indexInApp = p.includes("/app/");
+  // DEV: erzwinge neue Worker-Instanz pro Reload (URL ändert sich)
+  const isDev = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+  if (isDev) return `${base}?v=${Date.now()}`;
 
-	return indexInApp
-	? "../../src/shared/messaging/SharedMessagingWorker.js"
-	: "../src/shared/messaging/SharedMessagingWorker.js";
+  return base;
 }
 
 function makeSystemPrefs() {
@@ -43,7 +39,7 @@ function makeSystemPrefs() {
 		},
 		
 		messaging: {
-			mode: "local",              // "local" | "sharedWorker"
+			mode: "sharedWorker",              // "local" | "sharedWorker"
 			workerUrl: resolveWorkerUrl(),
 			debug: true,
 			workerEcho: true,

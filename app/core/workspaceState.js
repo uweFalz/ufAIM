@@ -274,39 +274,50 @@ export function createWorkspaceState(initial) {
 		// TransitionEditor (te_*)
 		// ------------------------------------------------------------
 		
-		setTeOpen(on) {
-			setState({ te_open: !!on });
-		},
-		
-		setTePresetId(id) {
-			setState({ te_presetId: String(id || "") });
-		},
-		
-		setTeW1(x) {
-			const w1 = clamp01(+x);
-			setState((st) => {
-				const w2 = clamp01(st.te_w2);
-				return { te_w1: w1, te_w2: Math.max(w1, w2) }; // keep invariant w1<=w2
-			});
-		},
-		
-		setTeW2(x) {
-			const w2 = clamp01(+x);
-			setState((st) => {
-				const w1 = clamp01(st.te_w1);
-				return { te_w2: w2, te_w1: Math.min(w1, w2) }; // keep invariant w1<=w2
-			});
-		},
-		
-		setTePlot(v) {
-			const p = String(v || "k");
-			if (!["k", "k1", "k2"].includes(p)) return;
-			setState({ te_plot: p });
+		// ---- TransitionEditor UI state (no notify; use setState) ----
+		setTeOpen(isOpen) {
+			setState({ te_open: Boolean(isOpen) });
 		},
 
-		setTeU(u) {
-			setState({ te_u: clamp01(+u) });
+		setTePresetId(id) {
+			setState({ te_presetId: String(id ?? "") });
 		},
+
+		setTeW1(w1) {
+			const v = Number(w1);
+			setState({ te_w1: Number.isFinite(v) ? v : 0 });
+		},
+
+		setTeW2(w2) {
+			const v = Number(w2);
+			setState({ te_w2: Number.isFinite(v) ? v : 0 });
+		},
+
+		setTePlot(mode) {
+			setState({ te_plot: String(mode ?? "k") });
+		},
+		
+		setTePresetSpec(spec) {
+			setState((s) => {
+				const want = String(s.te_presetId ?? "");
+				const got  = String(spec?.presetId ?? "");
+				return (want && got && want === got)
+				? ({ ...s, te_presetSpec: spec })
+				: s;
+			});
+		},
+		
+		setTeSplitsPresetId(id) {
+			setState({ te_splitsPresetId: String(id ?? "") });
+		},
+		setTeSplitsDirty(flag) {
+			setState({ te_splitsDirty: Boolean(flag) });
+		},
+		/*
+		setTeU(u) {
+		setState({ te_u: clamp01(+u) });
+		},
+		*/
 	};
 
 	return { getState, setState, subscribe, actions };

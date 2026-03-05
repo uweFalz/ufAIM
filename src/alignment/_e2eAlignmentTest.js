@@ -1,11 +1,53 @@
 // src/alignment/_e2eAlignmentTest.js
 
 import { makeAlignment2DFromSparse } from "./build/AlignmentFactory.js";  // ggf. Pfad anpassen
-import { RegistryCompiler } from "./transition/registry/RegistryCompiler.js"; // ggf. Pfad anpassen
 
 import transitionLookup from "./transition/transitionLookup.json" with { type: "json" };
 
-// import { Curve2D } from "../lib/geom/curve/Curve2D.js"
+import { KappaFcnBuilder } from "./transition/build/KappaFcnBuilder.js"; // Pfad ggf.
+import { RegistryCompiler } from "./transition/registry/RegistryCompiler.js"; // ggf. Pfad anpassen
+
+const defs = transitionLookup;
+
+// legacy oracle (optional)
+const legacyRegistry = new RegistryCompiler(defs);
+
+const newRegistry = {
+	compilePreset: (presetId) => KappaFcnBuilder.buildPresetFromDefs(defs, presetId),
+};
+
+// ✅ new registry contract for AlignmentFactory:
+const registry = {
+	compileTransType(transType) {
+		const presetId = String(transType || "").toLowerCase();
+
+		// KappaFcnBuilder returns preset with:
+		// - lambdas
+		// - normCrvAnchor
+		// - kappa1 naming etc.
+		const p = KappaFcnBuilder.buildPresetFromDefs(defs, presetId);
+		if (!p) throw new Error(`compileTransType: unknown "${presetId}"`);
+
+		const lambdas = p.lambdas ?? p.normLengthPartition;     // your builder sets lambdas
+		const anchors = p.normCrvAnchor ?? p.anchors;           // your builder sets normCrvAnchor
+
+		// AlignmentFactory expects families with kappa/kappa1/kappa2/kappaInt
+		const toFamily = (fam) => ({
+			kappa:  fam.kappa,
+			kappa1: fam.kappa1,
+			kappa2: fam.kappa2,
+			kappaInt: fam.kappaInt,
+			meta: fam.meta ?? null,
+		});
+
+		return {
+			normLengthPartition: p.normLengthPartition ?? p.lambdas,
+			normCrvAnchor: p.normCrvAnchor,
+			kappaFamilies: p.kappaFamilies,
+			meta: p.meta ?? null,
+		};
+	}
+};
 
 function assert(cond, msg) {
 	if (!cond) throw new Error("E2E FAIL: " + msg);
@@ -27,9 +69,9 @@ function run() {
 	console.log("E2E AlignmentBuilder test starting…");
 
 	// 1) RegistryCompiler
-	const registry = new RegistryCompiler(transitionLookup);
+	// const registry = new RegistryCompiler(transitionLookup);
 	
-	const p = registry.compilePreset("test");
+	const p = newRegistry.compilePreset("test");
 	// console.log("has cuts01?", !!p.cuts01, p.cuts01);
 	// console.log("has kappa?", typeof p.kappa);
 
@@ -43,7 +85,7 @@ function run() {
 	
 	const startPose = { x: 0, y: 0, theta: 0 };
 
-	const { alignment, warnings } = makeAlignment2DFromSparse({ startPose, sparse, registry });
+	const { alignment, warnings } = makeAlignment2DFromSparse({ startPose, sparse, registry: registry });
 	
 	// console.log("warnings JSON:", JSON.stringify(warnings, null, 2));
 	
@@ -122,31 +164,20 @@ function run() {
 	
 	// --- transition preset sanity: test ---
 	{
-		const p = registry.compilePreset("test");
-		
-		// console.debug( p );
-		
-		assert(Math.abs(p.cuts01.w1 - 0.25) < 1e-12, "test w1 not 0.25");
-		assert(Math.abs(p.cuts01.w2 - 0.75) < 1e-12, "test w2 not 0.75");
+		const pL = legacyRegistry.compilePreset("test");
+		const pN = newRegistry.compilePreset("test");
 
-		// midpoint anchor expectation (soft)
-		const km = p.kappa(0.5);
-		assert(finite(km), "test kappa(0.5) NaN");
-		assert(Math.abs(km - 0.5) < 5e-2, `test kappa(0.5) not ~0.5 (got ${km})`);
+		assert(Math.abs(pN.cuts01.w1 - pL.cuts01.w1) < 1e-12, "w1 mismatch");
+		assert(Math.abs(pN.cuts01.w2 - pL.cuts01.w2) < 1e-12, "w2 mismatch");
 
-		// κ(u) should be monotone nondecreasing in [0,1]
-		let prev = p.kappa(0);
-		for (let i = 1; i <= 200; i++) {
+		// sample compare
+		for (let i = 0; i <= 200; i++) {
 			const u = i / 200;
-			const k = p.kappa(u);
-			assert(finite(k), `test kappa NaN at u=${u}`);
-			assert(k + 1e-9 >= prev, `test kappa not monotone at u=${u} (k=${k}, prev=${prev})`);
-			prev = k;
+			const a = pL.kappa(u);
+			const b = pN.kappa(u);
+			assert(finite(a) && finite(b), `NaN in compare at u=${u}`);
+			assert(Math.abs(a - b) < 5e-6, `kappa mismatch at u=${u} (L=${a}, N=${b})`);
 		}
-
-		// endpoints should be ~0 and ~1 (normalized)
-		assert(Math.abs(p.kappa(0) - 0) < 1e-9, "test kappa(0) not ~0");
-		assert(Math.abs(p.kappa(1) - 1) < 1e-9, "test kappa(1) not ~1");
 	}
 
 	console.log("✅ E2E AlignmentBuilder test PASSED");

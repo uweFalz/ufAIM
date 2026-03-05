@@ -69,6 +69,10 @@ export function makeInitialState() {
 		// Transition Editor (canonical)
 		te_open: false,
 		te_presetId: "",
+		te_presetSpec: null,   // serializable preset spec/cache vom Master
+		// makeInitialState():
+		te_splitsPresetId: "",   // presetId, für die te_w1/te_w2 gelten
+		te_splitsDirty: false,   // true sobald User Slider bewegt
 		te_w1: 0.25,
 		te_w2: 0.75,
 		te_plot: "k",   // "k" | "k1" | "k2"
@@ -78,6 +82,14 @@ export function makeInitialState() {
 
 export function ensureStateShape(state) {
 	const s = state ?? {};
+
+	// --- TE presetSpec: keep if it matches current presetId ---
+	const pid = String(s.te_presetId ?? "");
+	const ps  = (s.te_presetSpec && typeof s.te_presetSpec === "object") ? s.te_presetSpec : null;
+	const safePresetSpec =
+	(ps && String(ps.presetId ?? ps.presetID ?? "") === pid) ? ps : null;
+
+
 	const w1 = Number.isFinite(s.te_w1) ? Math.max(0, Math.min(1, s.te_w1)) : 0.25;
 	const w2 = Number.isFinite(s.te_w2) ? Math.max(0, Math.min(1, s.te_w2)) : 0.75;
 	const plot = (s.te_plot === "k" || s.te_plot === "k1" || s.te_plot === "k2") ? s.te_plot : "k";
@@ -112,6 +124,10 @@ export function ensureStateShape(state) {
 		// Transition Editor (canonical, survives reload)
 		te_open: Boolean(s.te_open),
 		te_presetId: String(s.te_presetId ?? ""),
+		te_presetSpec: safePresetSpec, // keep matching cached spec, else null
+		// ensureStateShape():
+		te_splitsPresetId: String(s.te_splitsPresetId ?? ""),
+		te_splitsDirty: Boolean(s.te_splitsDirty),
 		te_w1: Math.min(w1, w2),
 		te_w2: Math.max(w1, w2),
 		te_plot: plot,

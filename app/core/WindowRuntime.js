@@ -16,7 +16,17 @@ export class WindowRuntime {
 	}
 
 	async start() {
-		this.messaging = await createMessagingClient(this.prefs);
+		this.messaging = await createMessagingClient(this.prefs, {
+			windowId: this.windowId,
+			role: "view",
+		});
+		
+		// smoketest
+		const presets = await this.messaging.sendCmdAwait("Transition.ListPresets", {});
+		console.log("presets", presets?.length, presets?.[0]);
+
+		const cuts = await this.messaging.sendCmdAwait("Transition.GetPresetCuts", { presetId: presets[0].id });
+		console.log("cuts", cuts);
 
 		// Wenn LocalBus: runtime-server im gleichen Fenster einklinken
 		if (this.prefs?.messaging?.mode !== "sharedWorker") {
@@ -25,7 +35,10 @@ export class WindowRuntime {
 		}
 
 		// basic hello
-		this.messaging.send({ type: "win:hello", windowId: this.windowId, ts: Date.now() });
+		this.messaging.emitEvt("Window.Register", {
+			title: document.title || "ufAIM",
+			capabilities: ["alignment.view", "transition.editor"],
+		});
 
 		// Beispiel: Worker hello loggen
 		this.messaging.on("worker:hello", (m) => console.log("[WindowRuntime] worker says hello", m));
@@ -39,8 +52,7 @@ export class WindowRuntime {
 				if (logElement) logElement.textContent = "boot failed ❌\n" + String(error);
 			});
 		}
-
-
+		
 		// TODO: Views init (threeViewer etc) -> nur via this.messaging.send(...)
 	}
 }

@@ -75,8 +75,12 @@ export class LocalBus {
 
 		// 1) deliver to runtime (server-side) if present
 		if (this._runtimeHandler) {
-			const maybe = await this._runtimeHandler(msg);
-			if (maybe) this._deliver(maybe);
+			try {
+				const maybe = await this._runtimeHandler(msg);
+				if (maybe) this._deliver(maybe);
+			} catch (e) {
+				console.error("[LocalBus.runtimeHandler ERROR]", e);
+			}
 		}
 
 		// 2) deliver to local subscribers
@@ -92,8 +96,13 @@ export class LocalBus {
 	}
 
 	_deliver(msg) {
-		const key = routeKeyFromMsg(msg);
-		if (!key) return;
+		if (!msg) return;
+
+		// ✅ ack/err MUST route by type, not by name
+		const key =
+		(msg.type === "ack" || msg.type === "err")
+		? msg.type
+		: (msg.name || msg.type);
 
 		const set = this._handlers.get(key);
 		if (!set) return;

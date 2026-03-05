@@ -1,8 +1,16 @@
 // app/core/transitionEditorBridge.js
 //
 // Bridge: UI <-> store.te_*  (no rendering, no registry creation)
-// - expects registry to be passed from appCore (single instance)
-// - optionally can lazily init a provided view (if you inject it)
+//
+// Responsibilities:
+// - Load preset list (via worker cmd)
+// - On preset change: fetch preset spec, push to store, sync sliders to preset cuts
+// - On slider edit: keep w1/w2 non-crossing, mark splits as "dirty" and owned by current preset
+// - Open/close overlay + lazy-init view
+//
+// Notes:
+// - No registry here, no math here.
+// - Everything goes through store actions + messaging commands.
 
 function clamp01(x) {
 	const v = Number(x);
@@ -27,18 +35,17 @@ function fillSelect(sel, items, activeId) {
 		sel.appendChild(opt);
 	}
 
-	if (activeId && items.some(x => x.id === activeId)) {
+	if (activeId && items.some((x) => x.id === activeId)) {
 		sel.value = activeId;
 	}
 }
 
-export function makeTransitionEditorBridge({ store, ui, registry, view } = {}) {
+export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) {
 	if (!store?.getState) throw new Error("TransitionEditorBridge: missing store");
 	if (!ui?.elements) throw new Error("TransitionEditorBridge: missing ui.elements");
-	if (!registry) throw new Error("TransitionEditorBridge: missing registry");
+	if (!messaging?.sendCmdAwait) throw new Error("TransitionEditorBridge: missing messaging.sendCmdAwait");
 
-	// ---- UI elements (robust lookup; accept your current naming) ----
-	// You said: familySel is now used as preset list.
+	// ---- UI elements ----
 	const elPresetMain = ui.elements.tePresetSelMain ?? null;
 	const elPresetAlt  = ui.elements.tePresetSelAlt ?? null;
 
@@ -52,19 +59,19 @@ export function makeTransitionEditorBridge({ store, ui, registry, view } = {}) {
 	const btnClose = ui.elements.buttonTransitionClose ?? document.getElementById("btnTransClose");
 	const ov       = ui.elements.transitionOverlay ?? document.getElementById("transOverlay");
 
-	let _viewInited = false;
-	function ensureViewInitOnce() {
+	// ---- view init gating ----
+	let _viewInitPromise = null;
+	async function ensureViewInitOnce() {
 		if (!view?.init) return;
-		if (_viewInited) return;
-		_viewInited = true;
-		view.init?.();
+		if (_viewInitPromise) return _viewInitPromise;
+		_viewInitPromise = (async () => { await view.init(); })();
+		return _viewInitPromise;
 	}
 
-	// ---- Store action helpers (support both naming schemes) ----
+	// ---- Store action helpers ----
 	function setPresetId(id) {
 		if (store.actions?.setTePresetId) return store.actions.setTePresetId(id);
 		if (store.actions?.setTransitionPresetId) return store.actions.setTransitionPresetId(id);
-		// fallback (if you store it directly)
 		if (store.actions?.setTePreset) return store.actions.setTePreset(id);
 	}
 
@@ -82,7 +89,23 @@ export function makeTransitionEditorBridge({ store, ui, registry, view } = {}) {
 		if (store.actions?.setTeOpen) return store.actions.setTeOpen(Boolean(isOpen));
 		if (store.actions?.setTransitionOpen) return store.actions.setTransitionOpen(Boolean(isOpen));
 	}
-	
+
+	function setSplitsPresetId(pid) {
+		if (store.actions?.setTeSplitsPresetId) return store.actions.setTeSplitsPresetId(String(pid ?? ""));
+	}
+
+	function setSplitsDirty(flag) {
+		if (store.actions?.setTeSplitsDirty) return store.actions.setTeSplitsDirty(Boolean(flag));
+	}
+
+	function setPresetSpec(spec) {
+		if (store.actions?.setTePresetSpec) return store.actions.setTePresetSpec(spec);
+	}
+
+	function setPlot(mode) {
+		if (store.actions?.setTePlot) return store.actions.setTePlot(String(mode ?? "k"));
+	}
+
 	function openOverlay()  { ui.openTransition?.(); }
 	function closeOverlay() { ui.closeTransition?.(); }
 
@@ -90,93 +113,149 @@ export function makeTransitionEditorBridge({ store, ui, registry, view } = {}) {
 		return st?.te_presetId ?? st?.te_preset ?? st?.transitionPresetId ?? "";
 	}
 
-	// ---- Registry → UI ----
-	function buildPresetItems() {
-		const ids = registry.listPresetIds?.() ?? [];
-		const metas = ids
-		.map(id => registry.getPresetMeta?.(id))
-		.filter(Boolean);
-
-		return metas.map(m => ({
-			id: m.id,
-			label: m.label ?? m.id,
-		}));
+	// ---- slider helpers ----
+	function syncBounds(a, b) {
+		if (!elW1 || !elW2) return;
+		elW1.max = String(b);
+		elW2.min = String(a);
 	}
 
-	function applyPresetCutsToSliders(presetId) {
-		const compiled = registry.compilePreset?.(presetId);
-		const cuts = compiled?.cuts01 ?? compiled?.meta?.cuts01 ?? null;
-		if (!cuts) return;
+	function setSliderUIFromW(w1, w2) {
+		const a = Math.round(clamp01(w1) * 1000);
+		const b = Math.round(clamp01(w2) * 1000);
 
-		const w1 = clamp01(cuts.w1);
-		const w2 = clamp01(cuts.w2);
+		if (elW1) elW1.value = String(a);
+		if (elW2) elW2.value = String(b);
 
-		// sliders are 0..1000
-		if (elW1) elW1.value = String(Math.round(w1 * 1000));
-		if (elW2) elW2.value = String(Math.round(w2 * 1000));
+		setText(elW1Val, `${Math.round((a / 1000) * 100)}%`);
+		setText(elW2Val, `${Math.round((b / 1000) * 100)}%`);
 
-		setText(elW1Val, `${Math.round(w1 * 100)}%`);
-		setText(elW2Val, `${Math.round(w2 * 100)}%`);
+		syncBounds(a, b);
+	}
 
-		// also commit into store (so transEd reads consistent state)
+	function setStoreSplits(w1, w2) {
 		setW1?.(w1);
 		setW2?.(w2);
 	}
 
-	function loadPresetsIntoUI() {
-		const items = buildPresetItems();
-		const st = store.getState?.() ?? {};
-		const current = getPresetIdFromState(st);
+	// ---- commands ----
+	async function fetchPresetSpec(presetId) {
+		// This must return: { presetId, cuts01, defs?, meta?... }
+		return messaging.sendCmdAwait("Transition.GetPresetSpec", { presetId });
+	}
 
-		// pick default if invalid
-		const ids = items.map(x => x.id);
+	// Race-safety: only the latest apply wins
+	let _reqSeq = 0;
+
+	async function applyPresetSpecToUI(presetId) {
+		const wantId = String(presetId ?? "");
+		if (!wantId) return;
+
+		const seq = ++_reqSeq;
+
+		// 0) set preset immediately (so store guard accepts spec)
+		setPresetId?.(wantId);
+
+		// 1) fetch spec
+		const spec = await fetchPresetSpec(wantId);
+
+		// ignore out-of-order responses
+		if (seq !== _reqSeq) return;
+
+		const pid  = String(spec?.presetId ?? wantId);
+		const cuts = spec?.cuts01 ?? null;
+
+		// 2) store: spec (guarded in action)
+		setPresetSpec?.(spec);
+
+		// 3) store: reset ownership + dirty
+		setSplitsPresetId?.(pid);
+		setSplitsDirty?.(false);
+
+		// 4) defaults from cuts
+		const w1 = clamp01(cuts?.w1 ?? 0.25);
+		const w2 = clamp01(cuts?.w2 ?? 0.75);
+
+		// 5) UI + store sync
+		setSliderUIFromW(w1, w2);
+		setStoreSplits(w1, w2);
+	}
+
+	async function loadPresetsIntoUI() {
+		const items = await messaging.sendCmdAwait("Transition.ListPresets", {});
+		const st = store.getState?.() ?? {};
+		const current = String(getPresetIdFromState(st) ?? "");
+
+		const ids = items.map((x) => x.id);
 		const active = (current && ids.includes(current)) ? current : (ids[0] ?? "");
 
 		fillSelect(elPresetMain, items, active);
 		fillSelect(elPresetAlt, items, active);
 
-		// commit active preset into store (single source)
-		if (active) setPresetId?.(active);
-
-		// and sync sliders to preset cuts
-		if (active) applyPresetCutsToSliders(active);
+		if (active) {
+			await applyPresetSpecToUI(active);
+		}
 	}
 
-	// ---- UI → Store wiring ----
+	// ---- UI wiring ----
 	function wirePresetSelect(sel) {
 		if (!sel) return;
-		sel.addEventListener("change", () => {
+		sel.addEventListener("change", async () => {
 			const id = String(sel.value || "");
 			if (!id) return;
-			setPresetId?.(id);
-			applyPresetCutsToSliders(id);
+			await applyPresetSpecToUI(id);
 		});
 	}
 
 	function wireSplitSliders() {
-		const onW = () => {
-			const w1 = clamp01((Number(elW1?.value ?? 0) || 0) / 1000);
-			const w2 = clamp01((Number(elW2?.value ?? 0) || 0) / 1000);
+		if (!elW1 || !elW2) return;
+
+		function onInput() {
+			let a = Number(elW1.value || 0);
+			let b = Number(elW2.value || 1000);
+
+			// never cross
+			if (a > b) {
+				if (document.activeElement === elW1) a = b;
+				else b = a;
+			}
+
+			// write back clamped values
+			elW1.value = String(a);
+			elW2.value = String(b);
+			syncBounds(a, b);
+
+			const w1 = clamp01(a / 1000);
+			const w2 = clamp01(b / 1000);
 
 			setText(elW1Val, `${Math.round(w1 * 100)}%`);
 			setText(elW2Val, `${Math.round(w2 * 100)}%`);
 
-			// overrides live in store
-			setW1?.(w1);
-			setW2?.(w2);
-		};
+			// store: overrides
+			setStoreSplits(w1, w2);
 
-		elW1?.addEventListener("input", onW);
-		elW2?.addEventListener("input", onW);
+			// store: mark user override for current preset
+			const pid = String(store.getState()?.te_presetId ?? "");
+			setSplitsPresetId?.(pid);
+			setSplitsDirty?.(true);
+		}
+
+		elW1.addEventListener("input", onInput);
+		elW2.addEventListener("input", onInput);
+
+		// initial bounds (from current slider values)
+		syncBounds(Number(elW1.value || 0), Number(elW2.value || 1000));
 	}
-	
+
 	function wireOverlayOpenClose() {
-		btnOpen?.addEventListener("click", () => {
+		btnOpen?.addEventListener("click", async () => {
 			openOverlay();
 			setOpen?.(true);
 
-			ensureViewInitOnce(); // lazy init once per session
-			requestAnimationFrame(() => view?.resize?.());
+			await ensureViewInitOnce();
+
+			// let layout settle, then resize board
+			requestAnimationFrame(() => requestAnimationFrame(() => view?.resize?.()));
 		});
 
 		btnClose?.addEventListener("click", () => {
@@ -184,22 +263,19 @@ export function makeTransitionEditorBridge({ store, ui, registry, view } = {}) {
 			setOpen?.(false);
 		});
 
-		// backdrop click closes (and updates store)
 		ov?.addEventListener("click", (event) => {
 			if (event.target !== ov) return;
 			closeOverlay();
 			setOpen?.(false);
 		});
 
-		// ESC closes (and updates store)
 		window.addEventListener("keydown", (event) => {
 			if (event.key !== "Escape") return;
-			// don't fight other overlays; closing transition is always safe
 			closeOverlay();
 			setOpen?.(false);
 		});
 	}
-	
+
 	function wirePlotMode() {
 		const nodes =
 		(ui.elements.tePlotNodes && ui.elements.tePlotNodes.length)
@@ -208,46 +284,45 @@ export function makeTransitionEditorBridge({ store, ui, registry, view } = {}) {
 
 		if (!nodes.length) return;
 
-		// UI -> Store
 		for (const el of nodes) {
 			el.addEventListener("change", () => {
-				// radio: checked only one; checkbox: value still works if user clicks
 				if (el.type === "radio" && !el.checked) return;
 				const v = String(el.value || "").toLowerCase();
-				if (v) store.actions?.setTePlot?.(v);
+				if (v) setPlot?.(v);
 			});
 		}
 
-		// Store -> UI (initial)
+		// initial store -> UI sync
 		const st = store.getState?.() ?? {};
 		const plot = String(st.te_plot ?? "k");
 		for (const el of nodes) el.checked = (String(el.value) === plot);
 	}
 
-	function wire() {
-		// idempotent guard (prevents double wiring)
+	// ---- public API ----
+	async function wire() {
 		if (ui.elements.__teBridgeWired) return;
 		ui.elements.__teBridgeWired = true;
 
-		loadPresetsIntoUI();
-		wirePlotMode();
+		await loadPresetsIntoUI();
 
+		wirePlotMode();
 		wireOverlayOpenClose();
 		wirePresetSelect(elPresetMain);
 		wirePresetSelect(elPresetAlt);
 		wireSplitSliders();
 
-		// initial: if store already has preset, reflect it
+		// Ensure: if presetId is already set (reload), apply spec once.
 		const st = store.getState?.() ?? {};
-		const presetId = getPresetIdFromState(st);
-		if (presetId) applyPresetCutsToSliders(presetId);
+		const pid = String(getPresetIdFromState(st) ?? "");
+		if (pid) {
+			// This will also reset sliders to preset defaults unless you later add "restore dirty owned splits"
+			await applyPresetSpecToUI(pid);
+		}
 	}
 
 	return {
 		wire,
-		// handy for debugging
 		loadPresetsIntoUI,
-		applyPresetCutsToSliders,
-		registry,
+		applyPresetSpecToUI,
 	};
 }

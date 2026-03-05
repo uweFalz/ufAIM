@@ -13,23 +13,114 @@
 //
 // Presets come from registry.compilePreset(store.te_presetId)
 // Registry API expected:
-//   - registry.compilePreset(presetId) -> { kappa(u), kappaPrime(u), kappa2(u), kappaInt(u), cuts01:{w1,w2}, meta:{} }
+//   - registry.compilePreset(presetId) -> { kappa(u), kappa1(u), kappa2(u), kappaInt(u), cuts01:{w1,w2}, meta:{} }
 
 import * as JXG from "jsxgraph";
 import { clampNumber } from "../utils/helpers.js";
 
-const _presetCache = new Map(); // id -> { ok: boolean, value, errMsg, stamp }
 const _logOnce = new Set();
+const _variantCache = new Map();
 
-export function makeTransitionEditorView(store, registry) {
-	if (!store?.getState || !store?.subscribe) {
-		throw new Error("TransitionEditorView: missing store (getState/subscribe)");
-	}
-	if (!registry?.compilePreset) {
-		throw new Error("TransitionEditorView: missing registry.compilePreset");
-	}
+export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}) {
+	if (!store?.getState || !store?.subscribe) throw new Error("TransitionEditorView: missing store");
+	if (!messaging?.sendCmdAwait) throw new Error("TransitionEditorView: missing messaging.sendCmdAwait");
+	if (!kappaBuilder?.buildPresetFromDefs) throw new Error("TransitionEditorView: missing kappaBuilder.buildPresetFromDefs");
 
 	let board = null;
+
+	// inside makeTransitionEditorView()
+
+	const _presetCache = new Map(); // presetId -> { ready, preset, pending, rev }
+	let _rev = 0;                   // increments on presetId change (or defs change)
+
+	function bumpRev() {
+		_rev++;
+		_variantCache.clear(); // variants depend on (presetId,w1,w2) and defs
+	}
+
+	function ensurePresetLoaded(presetId) {
+		const id = String(presetId || "");
+		if (!id) return;
+
+		const entry = _presetCache.get(id);
+
+		// already loaded
+		if (entry?.ready) return;
+
+		// already loading -> do nothing (prevents duplicate loads)
+		if (entry?.pending) return;
+
+		const myRev = _rev;
+
+		const pending = (async () => {
+			const spec = await messaging.sendCmdAwait("Transition.GetPresetSpec", { presetId: id });
+
+			// If while awaiting, user switched preset (or defs changed), ignore this result.
+			if (myRev !== _rev) return;
+
+			const preset = kappaBuilder.buildPresetFromDefs(spec.defs, id);
+
+			_presetCache.set(id, { ready: true, preset, pending: null, rev: myRev });
+
+			if (board) board.fullUpdate();
+		})().catch((e) => {
+			console.error("[TransitionEditorView] preset load failed", e);
+			// still mark as done to avoid infinite retries (optional: keep pending=null and ready=false)
+			_presetCache.set(id, { ready: true, preset: null, pending: null, rev: myRev });
+			if (board) board.fullUpdate();
+		});
+
+		_presetCache.set(id, { ready: false, preset: null, pending, rev: myRev });
+	}
+
+	function getCachedPreset(presetId) {
+		return _presetCache.get(presetId)?.preset ?? null;
+	}
+
+	function getPreset(st) {
+		const id = String(st?.te_presetId ?? "");
+		if (!id) return null;
+
+		const base = getCachedPreset(id);
+		if (!base) {
+			ensurePresetLoaded(id);
+			return null;
+		}
+
+		const { w1, w2 } = getSplits(st);
+
+		const iw1 = Math.round(w1 * 1000);
+		const iw2 = Math.round(w2 * 1000);
+		const key = `${id}|${iw1}|${iw2}`;
+
+		const cached = _variantCache.get(key);
+		if (cached) return cached;
+
+		const spec = st?.te_presetSpec;
+		const defs = spec?.defs;
+
+		if (!defs) {
+			const k = `no_defs:${id}`;
+			if (!_logOnce.has(k)) {
+				_logOnce.add(k);
+				console.warn("[TE] no defs in te_presetSpec yet -> using base preset", { id });
+			}
+			return base;
+		}
+
+		const variant = kappaBuilder.buildPresetFromDefs(defs, id, { w1, w2 });
+
+		function cacheSet(key, val) {
+			_variantCache.set(key, val);
+			if (_variantCache.size > 200) {
+				const firstKey = _variantCache.keys().next().value;
+				_variantCache.delete(firstKey);
+			}
+		}
+		cacheSet(key, variant);
+		
+		return variant;
+	}
 
 	let curveIn = null;
 	let curveMid = null;
@@ -44,68 +135,52 @@ export function makeTransitionEditorView(store, registry) {
 	let hsplit1 = null;
 	let hsplit2 = null;
 
-	let cursor = null;
+	// let cursor = null;
 	let legendEl = null;
 
 	// ------------------------------------------------------------
 	// State helpers (single source: store)
 	// ------------------------------------------------------------
-	function getPreset(st) {
+	function getSpec(st) {
+		const spec = st?.te_presetSpec ?? null;
 		const id = String(st?.te_presetId ?? "");
-		if (!id) return null;
-
-		// optional: invalidate if lookup changed (wenn du sowas hast)
-		// const ver = registry?.db?.schema?.version ?? "x";
-		// const key = `${ver}:${id}`;
-		const key = id;
-
-		const cached = _presetCache.get(key);
-		if (cached) return cached.value; // value may be null
-
-		try {
-			const p = registry.compilePreset(id);
-			_presetCache.set(key, { ok: true, value: p });
-			return p;
-		} catch (e) {
-			const msg = String(e?.message ?? e);
-			_presetCache.set(key, { ok: false, value: null, errMsg: msg });
-
-			const logKey = `${key}:${msg}`;
-			if (!_logOnce.has(logKey)) {
-				_logOnce.add(logKey);
-				console.error("[TransitionEditorView] compilePreset failed:", e);
-			}
-			return null;
-		}
+		if (!spec || !id) return null;
+		if (String(spec.presetId ?? "") !== id) return null; // guard gegen race
+		return spec;
 	}
 
 	function getSplits(st) {
-		// store overrides are authoritative (bridge writes them)
-		let w1 = Number(st?.te_w1);
-		let w2 = Number(st?.te_w2);
+		const presetId = String(st?.te_presetId ?? "");
+		const ownerId  = String(st?.te_splitsPresetId ?? "");
+		const dirty    = Boolean(st?.te_splitsDirty);
 
-		const okW1 = Number.isFinite(w1);
-		const okW2 = Number.isFinite(w2);
+		// 1) Default-cuts ausschließlich aus te_presetSpec (wenn passend)
+		const spec = st?.te_presetSpec;
+		const specOk = spec && String(spec.presetId ?? "") === presetId;
+		const specCuts = specOk ? spec?.cuts01 : null;
 
-		// fallback: preset cuts if store doesn't have valid splits yet
-		if (!okW1 || !okW2) {
-			const p = getPreset(st);
-			const cuts = p?.cuts01 ?? null;
-			if (cuts) {
-				w1 = Number(cuts.w1);
-				w2 = Number(cuts.w2);
-			}
+		// 2) User-cuts nur, wenn sie "owned" sind + dirty
+		const ownedByPreset = presetId && ownerId === presetId;
+
+		let w1, w2;
+
+		if (!dirty || !ownedByPreset) {
+			// default mode: preset-cuts
+			w1 = Number(specCuts?.w1);
+			w2 = Number(specCuts?.w2);
+		} else {
+			// user mode: store overrides
+			w1 = Number(st?.te_w1);
+			w2 = Number(st?.te_w2);
 		}
 
+		// 3) fallback hard (wenn spec noch nicht da ist)
 		if (!Number.isFinite(w1)) w1 = 0.33;
 		if (!Number.isFinite(w2)) w2 = 0.66;
 
 		w1 = clampNumber(w1, 0, 1);
 		w2 = clampNumber(w2, 0, 1);
-		
-		if (w2 < w1) {
-			const t = w1; w1 = w2; w2 = t;
-		}
+		if (w2 < w1) { const t = w1; w1 = w2; w2 = t; }
 
 		return { w1, w2 };
 	}
@@ -125,8 +200,7 @@ export function makeTransitionEditorView(store, registry) {
 	function plotValue(u, st) {
 		const p = getPreset(st);
 		if (!p) return 0;
-
-		if (st?.te_plot === "k1") return p.kappaPrime(u);
+		if (st?.te_plot === "k1") return p.kappa1(u);
 		if (st?.te_plot === "k2") return p.kappa2(u);
 		return p.kappa(u);
 	}
@@ -212,8 +286,13 @@ export function makeTransitionEditorView(store, registry) {
 	}
 
 	function updateSplitVisibility(st) {
-		// Berlinish didactic: show image-splits only for κ plot
-		const show = (st?.te_plot === "k");
+		const p = getPreset(st);
+		const show =
+		(st?.te_plot === "k") &&
+		!!p?.cutsCrv &&
+		Number.isFinite(p.cutsCrv.c1) &&
+		Number.isFinite(p.cutsCrv.c2);
+
 		if (hsplit1) hsplit1.setAttribute({ visible: show });
 		if (hsplit2) hsplit2.setAttribute({ visible: show });
 	}
@@ -328,46 +407,46 @@ export function makeTransitionEditorView(store, registry) {
 		hsplit1 = board.create("line", [
 		() => {
 			const st = store.getState();
-			const { w1 } = getSplits(st);
 			const p = getPreset(st);
-			const c1 = p?.cutsCrv?.c1 ?? w1;
-			return [0, c1];
+			const c1 = p?.cutsCrv?.c1;
+			return [0, Number.isFinite(c1) ? c1 : NaN];
 		},
 		() => {
 			const st = store.getState();
-			const { w1 } = getSplits(st);
 			const p = getPreset(st);
-			const c1 = p?.cutsCrv?.c1 ?? w1;
-			return [1, c1];
+			const c1 = p?.cutsCrv?.c1;
+			return [1, Number.isFinite(c1) ? c1 : 0];
 		}
-		], { straightFirst: false, straightLast: false, dash: 2 });
+		], { straightFirst: false, straightLast: false, dash: 2, visible: false });
 
 		hsplit2 = board.create("line", [
 		() => {
 			const st = store.getState();
 			const { w2 } = getSplits(st);
 			const p = getPreset(st);
-			const c2 = p?.cutsCrv?.c2 ?? w2;
-			return [0, c2];
+			const c2 = p?.cutsCrv?.c2;
+			return [0, Number.isFinite(c2) ? c2 : NaN];
 		},
 		() => {
 			const st = store.getState();
 			const { w2 } = getSplits(st);
 			const p = getPreset(st);
-			const c2 = p?.cutsCrv?.c2 ?? w2;
-			return [1, c2];
+			const c2 = p?.cutsCrv?.c2;
+			return [1, Number.isFinite(c2) ? c2 : 0];
 		}
-		], { straightFirst: false, straightLast: false, dash: 2 });
+		], { straightFirst: false, straightLast: false, dash: 2, visible: false });
 
+		/*
 		// Cursor point at (u, plot(u))
 		cursor = board.create("point", [
 		() => getU(store.getState()),
 		() => {
-			const st = store.getState();
-			const u = getU(st);
-			return yMap(plotValue(u, st), st);
+		const st = store.getState();
+		const u = getU(st);
+		return yMap(plotValue(u, st), st);
 		}
 		], { name: "", size: 4, fixed: true });
+		*/
 
 		// initial paint
 		{
@@ -378,12 +457,59 @@ export function makeTransitionEditorView(store, registry) {
 		}
 
 		// subscribe store updates
+		let _pending = false;
+		let _lastPresetId = "";
+		let _lastPlot = "";
+		let _lastDefsRef = null; // optional
+
 		store.subscribe(() => {
 			const st = store.getState();
-			updateLegend(st);
-			updateSplitVisibility(st);
-			board.fullUpdate();
+			const presetId = String(st?.te_presetId ?? "");
+			const defsRef = st?.te_presetSpec?.defs ?? null; // reference changes only if you replace it
+
+			if (presetId && presetId !== _lastPresetId) {
+				_lastPresetId = presetId;
+				bumpRev();
+				ensurePresetLoaded(presetId);
+			}
+
+			// optional: if defs object reference changes (e.g. halfWave editor later)
+			if (defsRef && defsRef !== _lastDefsRef) {
+				_lastDefsRef = defsRef;
+				bumpRev();
+			}
+
+			requestBoardUpdate();
 		});
+
+		function requestBoardUpdate() {
+			if (!board || _pending) return;
+			_pending = true;
+			requestAnimationFrame(() => {
+				_pending = false;
+				const st = store.getState();
+
+				const pid = String(st?.te_presetId ?? "");
+				const plot = String(st?.te_plot ?? "k");
+
+				// ✅ invalidate variant cache on preset change
+				if (pid && pid !== _lastPresetId) {
+					_variantCache.clear();
+					_lastPresetId = pid;
+				}
+
+				// optional: on plot change, range will update anyway, but safe:
+				if (plot !== _lastPlot) {
+					_lastPlot = plot;
+				}
+
+				updateLegend(st);
+				updateSplitVisibility(st);
+				board.fullUpdate();
+			});
+		}
+		
+		// store.subscribe(() => requestBoardUpdate());
 	}
 
 	return {

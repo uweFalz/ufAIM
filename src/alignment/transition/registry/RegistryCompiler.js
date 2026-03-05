@@ -259,7 +259,7 @@ export class RegistryCompiler {
 			return segK(uu - w2, l2, a2, a3, shapes[2]);
 		};
 
-		const kappaPrime = (u) => {
+		const kappa1 = (u) => {
 			const uu = clamp01(Number(u));
 			if (!Number.isFinite(uu)) return NaN;
 
@@ -310,7 +310,7 @@ export class RegistryCompiler {
 
 		return {
 			kappa,
-			kappaPrime,
+			kappa1,
 			kappa2,
 			kappaInt,
 			cuts01: { w1, w2 },

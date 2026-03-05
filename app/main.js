@@ -1,6 +1,6 @@
 // app/main.js
 
-import { systemPrefs } from "./core/systemPrefs.js";
+import { systemPrefs }   from "@app/core/systemPrefs.js";
 import { WindowRuntime } from "@app/core/WindowRuntime.js";
 
 import "./src/alignment/_e2eAlignmentTest.js";

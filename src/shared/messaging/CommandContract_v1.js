@@ -8,13 +8,19 @@ const ALLOWED_ROLES = new Set(["view", "master", "worker", "sys"]);
 
 const REQUIRED = {
 	"Window.Register": ["title", "capabilities"],
-	"System.Ping": ["nonce"],
 
-	"Alignment.CompilePreset": ["presetId"],
-	"Alignment.SampleKappa": ["presetId", "what", "n"],
+	"System.Ping": ["nonce"],
+	
+	"Transition.ListPresets": [],
+	"Transition.GetPresetSpec": ["presetId"],
+	// "Transition.CompilePreset": ["presetId"],
+	// "Transition.SampleKappa": ["presetId", "what", "n"],
+	// "Transition.GetPresetMeta": ["presetId"],
+	
 	"Alignment.BuildSegment": ["elementId", "presetId", "L", "kappaIn", "kappaOut"],
 
 	"Import.DropFiles": ["files"],
+
 	"Grabbeltisch.SetStructure": ["importSessionId", "mapping"],
 
 	"Project.Open": ["projectId"],
@@ -89,38 +95,4 @@ export function validateMessage(msg) {
 	}
 
 	return true;
-}
-
-// CommandContract_v1.js (minimal helpers)
-let _seq = 0;
-
-export function makeMsg({ type, name, payload, replyTo }){
-	_seq += 1;
-	const id = `m_${Date.now()}_${_seq}`;
-	const msg = { v: 1, type, name, id, ts: Date.now(), payload: payload ?? {} };
-	if (replyTo) msg.replyTo = replyTo;
-	return msg;
-}
-
-export function makeCC({
-	type, name, payload,
-	srcCtx, srcRole = "view",
-	dstCtx = "broadcast",
-	corr
-}) {
-	_seq += 1;
-	const id = `m_${Date.now()}_${_seq}`;
-	const msg = {
-		schema: CC_SCHEMA,
-		v: CC_VERSION,
-		id,
-		ts: Date.now(),
-		type,              // cmd|evt|ack|err
-		name,              // e.g. "Alignment.CompilePreset"
-		src: { ctx: srcCtx, role: srcRole },
-		dst: { ctx: dstCtx },
-		payload: payload ?? {}
-	};
-	if (corr) msg.corr = corr;
-	return msg;
 }
