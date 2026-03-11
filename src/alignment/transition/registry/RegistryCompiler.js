@@ -1,6 +1,6 @@
 // src/alignment/registry/RegistryCompiler.js
 
-import lookup from "../transitionLookup.json" with { type: "json" };
+import transitionLookup from "@src/alignment/transition/transitionLookup.json" with { type:"json" };
 
 import { buildProtoAst } from "./ast/buildProtoAst.js";
 import { makeEvalFn } from "./ast/evalAst.js";

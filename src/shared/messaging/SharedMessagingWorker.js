@@ -1,16 +1,17 @@
 // src/shared/messaging/SharedMessagingWorker.js
 
 import { startWorkerRouter } from "./worker/WorkerRouter.js";
-import transitionLookup from "../../alignment/transition/transitionLookup.json" with { type: "json" };
+import transitionLookup from "../../alignment/transition/transitionLookup.json" with { type:"json" };
 
 const router = startWorkerRouter(self);
 const db = transitionLookup;
 
-function clamp01(x) {
-	const v = Number(x);
-	if (!Number.isFinite(v)) return 0;
-	return Math.max(0, Math.min(1, v));
-}
+// ------------------------------------------------------------
+// canonical master state (M3a: minimal project state)
+// ------------------------------------------------------------
+let projectState = {
+	activeRouteProjectId: null
+};
 
 // ---- helpers (pure data, no functions) ----
 function listPresets(db) {
@@ -43,8 +44,6 @@ function getPresetSpec(db, presetId) {
 
 	return {
 		presetId: id,
-
-		// ✅ konsistent:
 		meta: { label: tr.label ?? id },
 
 		lambdas: [l1, lc, l2],
@@ -54,55 +53,86 @@ function getPresetSpec(db, presetId) {
 		core:      { protoId: "clothoCore", source: "kappa", reverse: false },
 		halfWave2: { halfWaveId: hw2Id, protoId: hw2.proto, source: hw2.source ?? "kappa", reverse: true },
 
-		// v0.1:
 		defs: db
 	};
 }
 
-// ---- Transition.* API (pure data) ----
+// ------------------------------------------------------------
+// Transition.* API
+// ------------------------------------------------------------
+router.onCmd("Transition.ListPresets", async () => listPresets(db));
 
-// 0) ListPresets (Meta)
-router.onCmd("Transition.ListPresets", async () => {
-	return listPresets(db);
+router.onCmd("Transition.GetPresetSpec", async ({ presetId }) => getPresetSpec(db, presetId));
+
+// ------------------------------------------------------------
+// Project.* API  (M3a)
+// ------------------------------------------------------------
+router.onCmd("Project.GetState", async () => {
+	return { ...projectState };
 });
 
-// 1) Spec (v0.1: includes defs)
-router.onCmd("Transition.GetPresetSpec", async ({ presetId }) => {
-	return getPresetSpec(db, presetId);
-});
-
-// 1b) Alignment.CompilePreset (Etappe 2)
-// Pure-data compile payload with optional w1/w2 override.
-router.onCmd("Alignment.CompilePreset", async ({ presetId, w1, w2 } = {}) => {
-	const spec = getPresetSpec(db, presetId);
-
-	const a0 = (w1 == null) ? spec.cuts01.w1 : clamp01(w1);
-	const b0 = (w2 == null) ? spec.cuts01.w2 : clamp01(w2);
-	const a  = Math.min(a0, b0);
-	const b  = Math.max(a0, b0);
-
-	const lambdas = [a, Math.max(0, b - a), Math.max(0, 1 - b)];
-
-	return {
-		presetId: spec.presetId,
-		meta: spec.meta,
-		cuts01: { w1: a, w2: b },
-		lambdas,
-		halfWave1: spec.halfWave1,
-		core: spec.core,
-		halfWave2: spec.halfWave2,
-		// Etappe 2: defs noch ok (Window baut Functions lokal)
-		defs: spec.defs
+router.onCmd("Project.SetActiveRouteProject", async ({ routeProjectId } = {}) => {
+	projectState = {
+		...projectState,
+		activeRouteProjectId: routeProjectId ?? null
 	};
+
+	// falls dein Router anders broadcastet, hier entsprechend anpassen
+	router.broadcastEvt?.("Project.StateChanged", { ...projectState });
+
+	return { ...projectState };
 });
 
-// 2) Cuts (cheap subset; cutsCrv intentionally null in v0.1)
-router.onCmd("Transition.GetPresetCuts", async ({ presetId }) => {
-	const spec = getPresetSpec(db, presetId);
-	return {
-		presetId: spec.presetId,
-		cuts01: spec.cuts01,
-		cutsCrv: null,
-		meta: spec.meta
+// ------------------------------------------------------------
+// Import session state (M3-Importa)
+// ------------------------------------------------------------
+
+let importState = {
+	sessionId: null,
+	phase: "idle",     // idle | collecting | parsing | ready | error
+	items: [],
+	error: null
+};
+
+function cloneImportState() {
+	return JSON.parse(JSON.stringify(importState));
+}
+
+// ------------------------------------------------------------
+// Import.* API
+// ------------------------------------------------------------
+
+router.onCmd("Import.GetState", async () => {
+	return cloneImportState();
+});
+
+router.onCmd("Import.BeginSession", async ({ source } = {}) => {
+
+	importState = {
+		sessionId: `imp_${Date.now()}`,
+		phase: "collecting",
+		items: [],
+		error: null
 	};
+
+	router.broadcastEvt?.("Import.StateChanged", cloneImportState());
+
+	return cloneImportState();
+});
+
+router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
+
+	const normalized = items.map((it, i) => ({
+		id: it.id ?? `item_${Date.now()}_${i}`,
+		name: it.name ?? "unknown",
+		size: it.size ?? 0,
+		kind: it.kind ?? "unknown",
+		status: "dropped"
+	}));
+
+	importState.items.push(...normalized);
+
+	router.broadcastEvt?.("Import.StateChanged", cloneImportState());
+
+	return cloneImportState();
 });

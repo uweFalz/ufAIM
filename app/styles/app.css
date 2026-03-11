@@ -1,164 +1,164 @@
 /* app/styles/app.css */
 
 :root {
-    --bg: #0b0e14;
-    --panel: rgba(10, 12, 16, 0.85);
-    --border: rgba(255, 255, 255, 0.10);
-    --borderSoft: rgba(255, 255, 255, 0.06);
-    --text: rgba(255, 255, 255, 0.92);
-    --muted: rgba(255, 255, 255, 0.70);
+	--bg: #0b0e14;
+	--panel: rgba(10, 12, 16, 0.85);
+	--border: rgba(255, 255, 255, 0.10);
+	--borderSoft: rgba(255, 255, 255, 0.06);
+	--text: rgba(255, 255, 255, 0.92);
+	--muted: rgba(255, 255, 255, 0.70);
 }
 
 html, body {
-    height: 100%;
+	height: 100%;
 }
 
 body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+	margin: 0;
+	height: 100vh;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	background: var(--bg);
+	color: var(--text);
+	font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
 }
 
 /* --- Topbar --- */
 .topbar {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--borderSoft);
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--borderSoft);
 }
 
 .brand__title {
-    font-weight: 700;
-    letter-spacing: 0.2px;
+	font-weight: 700;
+	letter-spacing: 0.2px;
 }
 
 .brand__subtitle {
-    font-size: 12px;
-    color: var(--muted);
-    margin-top: 2px;
+	font-size: 12px;
+	color: var(--muted);
+	margin-top: 2px;
 }
 
 .actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
 }
 
 .divider {
-    width: 1px;
-    height: 18px;
-    background: var(--borderSoft);
-    margin: 0 4px;
+	width: 1px;
+	height: 18px;
+	background: var(--borderSoft);
+	margin: 0 4px;
 }
 
 /* --- Buttons --- */
 .btn {
-    border: 1px solid var(--borderSoft);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--text);
-    border-radius: 10px;
-    padding: 6px 10px;
-    font-size: 13px;
-    cursor: pointer;
+	border: 1px solid var(--borderSoft);
+	background: rgba(255, 255, 255, 0.03);
+	color: var(--text);
+	border-radius: 10px;
+	padding: 6px 10px;
+	font-size: 13px;
+	cursor: pointer;
 }
 
 .btn:hover {
-    border-color: var(--border);
+	border-color: var(--border);
 }
 
 .btn--primary {
-    background: rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.08);
 }
 
 .btn--ghost {
-    background: transparent;
-    border-color: transparent;
-    font-size: 16px;
-    line-height: 1;
-    padding: 4px 8px;
+	background: transparent;
+	border-color: transparent;
+	font-size: 16px;
+	line-height: 1;
+	padding: 4px 8px;
 }
 
 /* MS13.12b: compact button variant (used e.g. in props pin list) */
 .btn--xs {
-    padding: 2px 6px;
-    min-height: 22px;
-    font-size: 12px;
-    line-height: 16px;
+	padding: 2px 6px;
+	min-height: 22px;
+	font-size: 12px;
+	line-height: 16px;
 }
 
 /* --- Shell: Stage + Footer --- */
 .shell {
-    flex: 1 1 auto;
-    min-height: 0;               /* critical */
-    display: flex;
-    flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;               /* critical */
+	display: flex;
+	flex-direction: column;
 }
 
 .stage {
-    flex: 1 1 auto;
-    min-height: 0;               /* critical */
-    position: relative;          /* overlays live here */
-    overflow: hidden;
+	flex: 1 1 auto;
+	min-height: 0;               /* critical */
+	position: relative;          /* overlays live here */
+	overflow: hidden;
 }
 
 .view--full, #view3d {
-    width: 100%;
-    height: 100%;
-    display: block;
+	width: 100%;
+	height: 100%;
+	display: block;
 }
 
 .view.view--3d {
-    position: absolute;
-    inset: 0;
+	position: absolute;
+	inset: 0;
 }
 
 .view__title {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    font-size: 12px;
-    color: var(--muted);
-    background: rgba(0,0,0,0.25);
-    border: 1px solid var(--borderSoft);
-    border-radius: 10px;
-    padding: 4px 8px;
-    pointer-events: none;
-    z-index: 2;
+	position: absolute;
+	top: 10px;
+	left: 10px;
+	font-size: 12px;
+	color: var(--muted);
+	background: rgba(0,0,0,0.25);
+	border: 1px solid var(--borderSoft);
+	border-radius: 10px;
+	padding: 4px 8px;
+	pointer-events: none;
+	z-index: 2;
 }
 
 /* --- Footer (hard separation) --- */
 .footer {
-    flex: 0 0 160px;            /* adjust: 160..260 */
-    min-height: 0;
+	flex: 0 0 160px;            /* adjust: 160..260 */
+	min-height: 0;
 
-    border-top: 1px solid var(--borderSoft);
-    background: rgba(0,0,0,0.18);
+	border-top: 1px solid var(--borderSoft);
+	background: rgba(0,0,0,0.18);
 
-    align-items: stretch;
-    padding: 10px;
+	align-items: stretch;
+	padding: 10px;
 
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr; /* ✅ 3 panes */
-    gap: 10px;
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr; /* ✅ 3 panes */
+	gap: 10px;
 }
 
 /* beide Pane dürfen schrumpfen, sonst drückt <pre> alles weg */
 .footer__pane {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 0;
+	flex: 1 1 0;
+	min-width: 0;
+	min-height: 0;
 
-    display: flex;
-    flex-direction: column;
+	display: flex;
+	flex-direction: column;
 }
 
 /* Log breiter als Props (optional) */
@@ -167,202 +167,202 @@ body {
 
 .log--footer,
 .props--footer {
-    flex: 1 1 auto;
-    min-height: 0;
-    min-width: 0;
+	flex: 1 1 auto;
+	min-height: 0;
+	min-width: 0;
 
-    overflow: auto;
-    margin: 0;
-    padding: 8px;
+	overflow: auto;
+	margin: 0;
+	padding: 8px;
 
-    border-radius: 12px;
-    background: rgba(0,0,0,0.25);
-    border: 1px solid var(--borderSoft);
+	border-radius: 12px;
+	background: rgba(0,0,0,0.25);
+	border: 1px solid var(--borderSoft);
 
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 12px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 12px;
 
-    white-space: pre;          /* wichtig: kein “wrap-breiter-werden” */
+	white-space: pre;          /* wichtig: kein “wrap-breiter-werden” */
 }
 
 /* MS13.12b: Pins in props panel */
 .propsPins {
-    white-space: normal;
-    margin: 0 0 8px 0;
-    padding: 0 0 8px 0;
-    border-bottom: 1px solid var(--borderSoft);
+	white-space: normal;
+	margin: 0 0 8px 0;
+	padding: 0 0 8px 0;
+	border-bottom: 1px solid var(--borderSoft);
 }
 
 .propsPins__title {
-    font-size: 12px;
-    opacity: 0.9;
-    margin-bottom: 6px;
+	font-size: 12px;
+	opacity: 0.9;
+	margin-bottom: 6px;
 }
 
 .pinRow {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 0;
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 0;
 }
 
 .pinRow__text {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .pinRow__slot {
-    opacity: 0.75;
-    margin-left: 6px;
+	opacity: 0.75;
+	margin-left: 6px;
 }
 
 /* --- Floating overlay panes --- */
 .overlayPane {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: min(460px, 48vw);
-    height: min(420px, 55vh);
-    display: flex;
-    flex-direction: column;
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: min(460px, 48vw);
+	height: min(420px, 55vh);
+	display: flex;
+	flex-direction: column;
 
-    border-radius: 14px;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-    backdrop-filter: blur(8px);
-    z-index: 5;
+	border-radius: 14px;
+	background: var(--panel);
+	border: 1px solid var(--border);
+	box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+	backdrop-filter: blur(8px);
+	z-index: 5;
 }
 
 .overlayPane--hidden { display: none; }
 
 .overlayPane__header {
-    flex: 0 0 auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--borderSoft);
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--borderSoft);
 }
 
 .overlayPane__title {
-    font-weight: 600;
+	font-weight: 600;
 }
 
 .overlayPane__body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow: auto;
-    padding: 10px 12px;
-    white-space: pre;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 12px;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: auto;
+	padding: 10px 12px;
+	white-space: pre;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 12px;
 }
 
 /* Second overlay is offset so it doesn't cover the first by default */
 #overlaySection {
-    top: calc(12px + min(420px, 55vh) + 12px);
+	top: calc(12px + min(420px, 55vh) + 12px);
 }
 
 /* Transition overlay (existing) helpers */
 .overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 20;
+	position: fixed;
+	inset: 0;
+	background: rgba(0,0,0,0.55);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 20;
 }
 
 .overlay__card {
-    width: min(720px, 92vw);
-    max-height: 86vh;
-    overflow: auto;
-    border-radius: 16px;
-    background: rgba(10, 12, 16, 0.92);
-    border: 1px solid var(--border);
-    padding: 12px;
+	width: min(720px, 92vw);
+	max-height: 86vh;
+	overflow: auto;
+	border-radius: 16px;
+	background: rgba(10, 12, 16, 0.92);
+	border: 1px solid var(--border);
+	padding: 12px;
 }
 
 .overlay__card--wide {
-    width: min(980px, 94vw);
+	width: min(980px, 94vw);
 }
 
 .docsBody {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 10px;
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
 }
 
 .docsText {
-    white-space: pre-wrap;
-    border: 1px solid var(--borderSoft);
-    border-radius: 12px;
-    padding: 10px;
-    background: rgba(255,255,255,0.02);
-    color: var(--text);
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    font-size: 12px;
-    line-height: 1.35;
+	white-space: pre-wrap;
+	border: 1px solid var(--borderSoft);
+	border-radius: 12px;
+	padding: 10px;
+	background: rgba(255,255,255,0.02);
+	color: var(--text);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+	font-size: 12px;
+	line-height: 1.35;
 }
 
 .overlay__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--borderSoft);
-    padding-bottom: 8px;
-    margin-bottom: 10px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1px solid var(--borderSoft);
+	padding-bottom: 8px;
+	margin-bottom: 10px;
 }
 
 .picker {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 6px;
-    border: 1px solid var(--borderSoft);
-    border-radius: 12px;
-    background: rgba(255,255,255,0.03);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 6px;
+	border: 1px solid var(--borderSoft);
+	border-radius: 12px;
+	background: rgba(255,255,255,0.03);
 }
 
 .picker__label {
-    font-size: 12px;
-    color: var(--muted);
+	font-size: 12px;
+	color: var(--muted);
 }
 
 .picker__select {
-    background: transparent;
-    color: var(--text);
-    border: none;
-    outline: none;
-    font-size: 13px;
-    padding: 4px 6px;
+	background: transparent;
+	color: var(--text);
+	border: none;
+	outline: none;
+	font-size: 13px;
+	padding: 4px 6px;
 }
 .picker__select option {
-    background: #0b0e14;
-    color: var(--text);
+	background: #0b0e14;
+	color: var(--text);
 }
 
 .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 8px;
-    border: 1px solid var(--borderSoft);
-    border-radius: 12px;
-    background: rgba(255,255,255,0.03);
-    font-size: 12px;
-    color: var(--muted);
-    user-select: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 8px;
+	border: 1px solid var(--borderSoft);
+	border-radius: 12px;
+	background: rgba(255,255,255,0.03);
+	font-size: 12px;
+	color: var(--muted);
+	user-select: none;
 }
 
 .toggle input {
-    transform: translateY(0.5px);
+	transform: translateY(0.5px);
 }
 
 /* hard override: hidden must always win */
@@ -380,11 +380,12 @@ body {
 .spot__empty { opacity:0.7; padding:6px 0; }
 .spot__row.is-active { background: rgba(255,255,255,0.05); }
 
-.spotHost{
-    white-space: normal;
+.spotHost {
+	white-space: normal;
 }
-.spotHost .spot{
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+.spotHost .spot {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 .propsChunks { margin-top: 10px; }
@@ -397,46 +398,82 @@ body {
 
 /* Reuse Docs look, add a simple 2-col layout for transEd */
 .overlay__body--grid {
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 16px;
-    padding: 16px;
+	display: grid;
+	grid-template-columns: 320px 1fr;
+	gap: 16px;
+	padding: 16px;
 }
 
 .overlay__controls .control {
-    margin-bottom: 12px;
+	margin-bottom: 12px;
 }
 
 .overlay__stage {
-    min-height: 420px;
+	min-height: 420px;
 }
 
 /* --- Transition Overlay: stabilize layout --- */
 #transOverlay .overlay__card {
-    overflow: hidden;              /* ❗ no outer scrolling */
-    display: flex;
-    flex-direction: column;
+	overflow: hidden;              /* ❗ no outer scrolling */
+	display: flex;
+	flex-direction: column;
 }
 
 /* body must be able to shrink inside card */
 #transOverlay .overlay__body--grid {
-    flex: 1 1 auto;
-    min-height: 0;
+	flex: 1 1 auto;
+	min-height: 0;
 }
 
 /* right side (board host) must be shrinkable too */
 #transOverlay .overlay__stage {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
 }
 
 /* keep exactly ONE #transBoard rule */
 #transBoard {
-    width: 100%;
-    height: 520px;                 /* stable baseline */
-    max-height: 60vh;              /* responsive cap */
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgba(0,0,0,0.18);  /* optional: avoid "transparent weirdness" */
+	width: 100%;
+	height: 520px;                 /* stable baseline */
+	max-height: 60vh;              /* responsive cap */
+	border-radius: 12px;
+	overflow: hidden;
+	background: rgba(0,0,0,0.18);  /* optional: avoid "transparent weirdness" */
+}
+
+.spot__group {
+	border-top: 1px solid rgba(255,255,255,0.12);
+	padding-top: 6px;
+	margin-top: 6px;
+}
+
+.spot__groupHead {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
+	opacity: 0.85;
+	margin-bottom: 4px;
+}
+
+.spot__groupCount {
+	font-size: 11px;
+	opacity: 0.6;
+}
+
+.spot__source {
+	margin-top: 3px;
+	font-size: 12px;
+	opacity: 0.72;
+	font-style: italic;
+}
+
+.spot__badge--warn {
+	border-color: rgba(255,140,0,0.7);
+	color: rgba(255,170,60,0.95);
+}
+
+.spot__row.has-conflict {
+	background: rgba(255,140,0,0.08);
 }

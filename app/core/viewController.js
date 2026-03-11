@@ -977,79 +977,6 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		propsElement.addEventListener("click", handlePropsPanelClick);
 	}
 
-	function handleSpotPanelClick(ev) {
-		const t = ev?.target;
-		if (!t || typeof t.closest !== "function") return;
-
-		const decisionBtn = t.closest("[data-spot-decision]");
-		if (decisionBtn) {
-			const key = decisionBtn.getAttribute("data-spot-key");
-			const decRaw = decisionBtn.getAttribute("data-spot-decision");
-			if (!key) return;
-
-			ev.preventDefault?.();
-
-			const parsed = parseIdSlotKey(key);
-			if (!parsed) return;
-
-			const decision = decRaw ? decRaw : null;
-			if (store.actions?.setSpotDecision) {
-				store.actions.setSpotDecision({ spotId: parsed.id, slot: parsed.slot, decision });
-			} else {
-				ui?.logInfo?.("Spot decision: missing store.actions.setSpotDecision");
-			}
-			return;
-		}
-
-		const activate = t.closest("[data-spot-activate]");
-		const pin = t.closest("[data-spot-pin]");
-		const key =
-		activate?.getAttribute("data-spot-activate") ??
-		pin?.getAttribute("data-spot-pin") ??
-		null;
-		if (!key) return;
-
-		ev.preventDefault?.();
-
-		const parsed = parseIdSlotKey(key);
-		if (!parsed) return;
-
-		if (activate) {
-			store.actions?.setActiveRouteProject?.(parsed.id);
-			store.actions?.setActiveSlot?.(parsed.slot);
-			return;
-		}
-
-		if (pin) {
-			if (store.actions?.togglePinRouteProject) store.actions.togglePinRouteProject({ rpId: parsed.id, slot: parsed.slot });
-			else if (store.actions?.togglePinFromActive) {
-				store.actions.setActiveRouteProject?.(parsed.id);
-				store.actions.setActiveSlot?.(parsed.slot);
-				store.actions.togglePinFromActive?.();
-			} else {
-				ui.logInfo?.("pin: missing action");
-			}
-		}
-	}
-
-	function wireSpotPanelOnce() {
-		const el = ui.elements?.importSession;
-		if (!el || el.__spotWired) return;
-		el.__spotWired = true;
-		el.addEventListener("click", handleSpotPanelClick);
-	}
-
-	function renderSpotPanel(state) {
-		const spotState = ui.getSpotState?.();
-		if (!spotState) {
-			ui.setSpotHtml?.(`<div class="spot"><div class="spot__empty">(drop files to create spots)</div></div>`);
-			return;
-		}
-
-		const html = ui.renderSpotState?.({ spotState, storeState: state });
-		ui.setSpotHtml?.(html);
-	}
-
 	// ------------------------------------------------------------
 	// Props rendering (FIXED: no misplaced blocks / no inner defs)
 	// ------------------------------------------------------------
@@ -1182,6 +1109,23 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
 		ui.setRouteProjectOptions?.(ids, state.activeRouteProjectId);
 	}
+	
+	function syncSpotBaseIdDatalist(state) {
+
+	const el = document.getElementById("spot-baseIds");
+	if (!el) return;
+
+	const ids = Object.keys(state.routeProjects ?? {})
+		.sort((a, b) => a.localeCompare(b));
+
+	const html = ids
+		.map(id => `<option value="${escapeHtml(id)}">`)
+		.join("");
+
+	if (el.innerHTML !== html) {
+		el.innerHTML = html;
+	}
+}
 
 	function syncCursorInput(state) {
 		const cursorEl = ui.elements?.cursorSInput;
@@ -1200,7 +1144,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	}
 
 	function syncSpotPanel(state) {
-		renderSpotPanel(state);
+		ui.refreshSpot?.(state);
 	}
 
 	function syncAuxTracks(state) {
@@ -1254,17 +1198,17 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	}
 	
 	function syncTransitionEditorControls(state) {
-  const w1 = document.getElementById("w1");
-  const w2 = document.getElementById("w2");
-  const famSel = document.getElementById("familySel");
-  const preset = document.getElementById("preset");
+		const w1 = document.getElementById("w1");
+		const w2 = document.getElementById("w2");
+		const famSel = document.getElementById("familySel");
+		const preset = document.getElementById("preset");
 
-  if (famSel && document.activeElement !== famSel) famSel.value = state.te_family ?? "berlinish";
-  if (preset && document.activeElement !== preset) preset.value = state.te_preset ?? "bloss";
+		if (famSel && document.activeElement !== famSel) famSel.value = state.te_family ?? "berlinish";
+		if (preset && document.activeElement !== preset) preset.value = state.te_preset ?? "bloss";
 
-  if (w1 && document.activeElement !== w1) w1.value = String(Math.round(clamp01(state.te_w1 ?? 0.25) * 1000));
-  if (w2 && document.activeElement !== w2) w2.value = String(Math.round(clamp01(state.te_w2 ?? 0.75) * 1000));
-}
+		if (w1 && document.activeElement !== w1) w1.value = String(Math.round(clamp01(state.te_w1 ?? 0.25) * 1000));
+		if (w2 && document.activeElement !== w2) w2.value = String(Math.round(clamp01(state.te_w2 ?? 0.75) * 1000));
+	}
 
 	// ------------------------------------------------------------
 	// Subscribe
@@ -1273,27 +1217,23 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	function subscribe() {
 		wireTrackClickOnce();
 		wirePropsPanelOnce();
-		wireSpotPanelOnce();
 
 		const handler = (state) => {
-			// console.debug("trying ...");
 			try {
-				// A) UI sync
 				syncRouteProjectSelect(state);
+				syncSpotBaseIdDatalist(state);
 				updateProps(state);
 				syncCursorInput(state);
 				syncOverlays(state);
-				syncTransitionEditorControls(state)
+				syncTransitionEditorControls(state);
 				syncPinsBadge(state);
 				syncSpotPanel(state);
 
-				// B) geometry key
 				const poly = state.import_polyline2d;
 				const geomKey = makeActiveGeomKey(state);
 				const geomChanged = geomKey !== lastGeomKey;
 				lastGeomKey = geomKey;
 
-				// C) no active geometry
 				if (!isPolylineValid(poly)) {
 					cachedCum = null;
 					lastPolyRef = null;
@@ -1304,16 +1244,9 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 					return;
 				}
 
-				// D) policy first
 				syncGeometryPolicyIfNeeded(state, poly, geomChanged);
-
-				// E) aux after origin change
 				syncAuxTracks(state);
-
-				// F) sampling
 				syncSectionSamplingAndMarker(state, poly);
-
-				// G) active track
 				syncActiveTrack(poly);
 			} catch (err) {
 				console.error("[ViewController] handler crashed (isolated):", err);

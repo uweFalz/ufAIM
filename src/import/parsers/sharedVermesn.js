@@ -1,4 +1,4 @@
-// app/io/sharedVermesn.js
+// src/import/parsers/sharedVermesn.js
 //
 // Gemeinsame Utilities für Verm.ESN-Formate (TRA/GRA)
 // - Robuster Binärdecoder (little-endian, fixes Cycle-Size)

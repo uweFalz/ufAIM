@@ -9,6 +9,7 @@
 
 import { clamp01, escapeHtml } from "../utils/helpers.js";
 import { t } from "../i18n/strings.js";
+import { makeSpotView } from "../view/spotView.js";
 
 // ------------------------------------------------------------
 // helpers ...
@@ -36,109 +37,22 @@ function setPrimary(button, isOn) {
 }
 
 // ------------------------------------------------------------
-// SPOT (Grabbeltisch) HTML renderer (top-level helper)
-// ------------------------------------------------------------
-
-function formatPct01(x) {
-	const v = Number(x);
-	if (!Number.isFinite(v)) return "—";
-	return `${Math.round(v * 100)}%`;
-}
-
-function pinKey(rpId, slot) {
-	return `${rpId}::${slot ?? "right"}`;
-}
-
-function decisionKey(spotId, slot) {
-	return `${spotId}::${slot ?? "right"}`;
-}
-
-function isPinned(state, rpId, slot) {
-	const pins = Array.isArray(state?.view_pins) ? state.view_pins : [];
-	const key = pinKey(rpId, slot);
-	return pins.some(p => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
-}
-
-export function renderSpotHtml({ spotState, storeState }) {
-	const rows = Array.isArray(spotState?.rows) ? spotState.rows : [];
-
-	const header = [
-	`SPOT (Grabbeltisch)`,
-	`groups=${spotState?.stats?.groupsTotal ?? rows.length} files=${spotState?.stats?.filesSeen ?? "—"}`,
-	].join(" · ");
-
-	if (!rows.length) {
-		return `<div class="spot">
-		<div class="spot__head">${escapeHtml(header)}</div>
-		<div class="spot__empty">(drop files to create spots)</div>
-		</div>`;
-	}
-
-	const activeRp = storeState?.activeRouteProjectId ?? null;
-	const activeSlot = storeState?.activeSlot ?? "right";
-
-	const decisions = storeState?.spot_decisions ?? {};
-
-	const body = rows.map((r) => {
-		const rpId = r.groupKey;
-		const slot = r.suggestedSlot ?? r.slotHint ?? "right";
-		const spotId = r.spotId ?? rpId;
-
-		// const key = pinKey(rpId, slot);
-
-		const active = (rpId === activeRp) && (slot === activeSlot);
-		const pinned = isPinned(storeState, rpId, slot);
-
-		const keyPin = pinKey(rpId, slot);          // rpId::slot  (Activate/Pin)
-		const keyDec = decisionKey(spotId, slot);   // spotId::slot (Decisions)
-
-		// ✅ fallback so old decisions (rpId::slot) still show up:
-		const decision = decisions[keyDec] ?? decisions[keyPin] ?? null;
-
-		const missing = Array.isArray(r.missing) && r.missing.length ? r.missing.join(", ") : "";
-		const notes = Array.isArray(r.notes) && r.notes.length ? r.notes.slice(0, 2).join(" · ") : "";
-
-		const decisionBadge = decision
-		? `<span class="spot__badge spot__badge--${escapeHtml(decision)}">${escapeHtml(decision)}</span>`
-		: ``;
-
-		return `
-		<div class="spot__row ${active ? "is-active" : ""}">
-		<div class="spot__btns">
-		<button class="btn btn--ghost btn--xs" data-spot-activate="${escapeHtml(keyPin)}">Activate</button>
-		<button class="btn btn--ghost btn--xs" data-spot-pin="${escapeHtml(keyPin)}">${pinned ? "Unpin" : "Pin"}</button>
-
-		<!-- ✅ decision uses spotId-key -->
-		<button class="btn btn--ghost btn--xs" data-spot-decision="accept" data-spot-key="${escapeHtml(keyDec)}">Accept</button>
-		<button class="btn btn--ghost btn--xs" data-spot-decision="defer"  data-spot-key="${escapeHtml(keyDec)}">Defer</button>
-		<button class="btn btn--ghost btn--xs" data-spot-decision="ignore" data-spot-key="${escapeHtml(keyDec)}">Ignore</button>
-		<button class="btn btn--ghost btn--xs" data-spot-decision="" data-spot-key="${escapeHtml(keyDec)}" title="Clear decision">×</button>
-		</div>
-		...
-		</div>`;
-	}).join("");
-
-	return `<div class="spot">
-	<div class="spot__head">${escapeHtml(header)}</div>
-	<div class="spot__list">${body}</div>
-	</div>`;
-}
-
-// ------------------------------------------------------------
 // ...
 // ------------------------------------------------------------
 export function wireUI({ logElement, statusElement, prefs } = {}) {
-	// prefs optional – später für UI-Debug-Features nützlich
-
-	// ------------------------------------------------------------
-	// Element lookup / cacheElements()
-	// ------------------------------------------------------------
 	const elements = {
 		log: resolveElement(logElement, "log"),
 		status: resolveElement(statusElement, "status"),
 		props: document.getElementById("props"),
-		// ✅ NEW
+
+		// SPOT host
 		importSession: document.getElementById("importSession"),
+		
+		// SPOT overlay
+		buttonSpot: document.getElementById("btnSpot"),
+		overlaySpot: document.getElementById("spotOverlay"),
+		spotOverlayBody: document.getElementById("spotOverlayBody"),
+		buttonSpotClose: document.getElementById("btnSpotClose"),
 
 		// boards
 		boardBands: document.getElementById("board2d"),
@@ -153,7 +67,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		closeBands: document.getElementById("btnCloseBands"),
 		closeSection: document.getElementById("btnCloseSection"),
-		
+
 		// import picker
 		buttonImport: document.getElementById("btnImport"),
 		fileImport: document.getElementById("fileImport"),
@@ -171,10 +85,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		// RP select
 		routeProjectSelect: document.getElementById("routeProjectSelect"),
 		slotSelect: document.getElementById("slotSelect"),
-		
-		// ...
+
 		chkAutoFit: document.getElementById("chkAutoFit"),
-		// ...
 		buttonFit: document.getElementById("btnFit"),
 		buttonPinToggle: document.getElementById("btnPinToggle"),
 		buttonPinsClear: document.getElementById("btnPinsClear"),
@@ -186,26 +98,33 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		docsSelect: document.getElementById("docsSelect"),
 		docsText: document.getElementById("docsText"),
 		buttonDocsClose: document.getElementById("btnDocsClose"),
-		
+
 		// transition overlay controls (transEd legacy)
 		tePresetSelMain: document.getElementById("tePresetSelMain"),
-		tePresetSelAlt:  document.getElementById("tePresetSelAlt"),
+		tePresetSelAlt: document.getElementById("tePresetSelAlt"),
 		teW1: document.getElementById("teW1"),
 		teW2: document.getElementById("teW2"),
 		teW1Val: document.getElementById("teW1Val"),
 		teW2Val: document.getElementById("teW2Val"),
-		
+
 		// transition plot controls
-		tePlotK:  document.getElementById("tePlotK"),
+		tePlotK: document.getElementById("tePlotK"),
 		tePlotK1: document.getElementById("tePlotK1"),
 		tePlotK2: document.getElementById("tePlotK2"),
-		
-		// optional robust fallback (wenn du keine IDs willst):
+
+		// optional robust fallback
 		tePlotNodes: document.querySelectorAll('input[name="tePlot"]'),
 	};
-	
+
 	// ------------------------------------------------------------
-	// log ringbuffer (prevents DOM from growing forever)
+	// spot view
+	// ------------------------------------------------------------
+	const spotView = makeSpotView({
+		rootEl: elements.spotOverlayBody ?? elements.importSession,
+	});
+
+	// ------------------------------------------------------------
+	// log ringbuffer
 	// ------------------------------------------------------------
 	const MAX_LOG_LINES = 400;
 	const logBuf = [];
@@ -249,49 +168,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setStatusError() {
 		setText(elements.status, t("status_error"));
 	}
-	
-	// ------------------------------------------------------------
-	// SPOT (Grabbeltisch) state (store-free)
-	// ------------------------------------------------------------
-	let _spotState = null;
 
-	function setSpotState(spotState) {
-		const s = spotState ?? null;
-		if (!s) { _spotState = null; return; }
-
-		const rows0 = Array.isArray(s.rows) ? s.rows : [];
-		const rows = rows0.map((r) => {
-			if (!r) return r;
-			const groupKey = r.groupKey ?? r.rpId ?? r.baseId ?? "";
-			const spotId = String(r.spotId ?? groupKey);      // ✅ MS14.3.4b
-			return { ...r, spotId };
-		});
-
-		_spotState = { ...s, rows };
-		// DEV: quick sanity check
-		// console.debug("spot rows", _spotState.rows?.slice(0, 3));
-	}
-
-	function getSpotState() {
-		return _spotState;
-	}
-
-	let _lastSpotHtml = null;
-	
-	function setSpotHtml(html) {
-		if (!elements.importSession) return;
-		const safe = (html == null || html === "") ? `<div class="spot"><div class="spot__empty">(drop files to create spots)</div></div>` : String(html);
-		if (safe === _lastSpotHtml) return;   // ✅ prevents x80 spam
-		_lastSpotHtml = safe;
-		elements.importSession.innerHTML = safe;
-	}
-
-	// Optional DEV fallback (wenn du wirklich willst)
-	function setSpotText(text) {
-		if (!elements.importSession) return;
-		elements.importSession.textContent = String(text ?? "");
-	}
-	
 	// ------------------------------------------------------------
 	// boards (text-only)
 	// ------------------------------------------------------------
@@ -304,10 +181,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		if (!elements.boardSection) return;
 		elements.boardSection.textContent = String(text ?? "");
 	}
-	
-	//
-	// ...
-	//
+
 	function setSelectOptions(selectEl, items, activeValue = "") {
 		if (!selectEl) return;
 		selectEl.innerHTML = "";
@@ -334,7 +208,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	// ------------------------------------------------------------
-	// props (debug helper)
+	// props
 	// ------------------------------------------------------------
 	function showProps(object) {
 		if (!elements.props) return;
@@ -346,18 +220,14 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	// ------------------------------------------------------------
-	// cursor input helper
+	// cursor / RP helpers
 	// ------------------------------------------------------------
 	function setCursorSInputValue(value) {
 		if (!elements.cursorSInput) return;
-		// don't fight the user while typing
 		if (document.activeElement === elements.cursorSInput) return;
 		elements.cursorSInput.value = String(value ?? "");
 	}
 
-	// ------------------------------------------------------------
-	// RP select helper
-	// ------------------------------------------------------------
 	function setRouteProjectOptions(ids, activeId) {
 		const sel = elements.routeProjectSelect;
 		if (!sel) return;
@@ -381,24 +251,88 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		sel.value = wanted;
 	}
-	
+
 	function setSlotSelectValue(value) {
 		if (!elements.slotSelect) return;
 		elements.slotSelect.value = String(value ?? "right");
 	}
-	
+
 	// ------------------------------------------------------------
-	// ...
+	// import picker
 	// ------------------------------------------------------------
-	function setAutoFitToggleVisible(isVisible) {
-		if (!elements.chkAutoFit) return;
-		const host = elements.chkAutoFit.closest(".toggle");
-		if (host) host.style.display = isVisible ? "" : "none";
+	function wireImportPicker({ onFiles } = {}) {
+		if (!elements.buttonImport || !elements.fileImport) return;
+
+		elements.buttonImport.addEventListener("click", () => {
+			elements.fileImport.click();
+		});
+
+		elements.fileImport.addEventListener("change", () => {
+			const files = Array.from(elements.fileImport.files ?? []);
+			if (files.length && typeof onFiles === "function") onFiles(files);
+			elements.fileImport.value = "";
+		});
 	}
 
-	function setAutoFitToggleValue(isOn) {
+	// ------------------------------------------------------------
+	// wiring helpers
+	// ------------------------------------------------------------
+	function wireCursorControls({ onSetCursorS, onNudgeMinus, onNudgePlus } = {}) {
+		const input = elements.cursorSInput;
+
+		if (input && typeof onSetCursorS === "function") {
+			input.addEventListener("change", () => onSetCursorS(input.value));
+			input.addEventListener("keydown", (ev) => {
+				if (ev.key === "Enter") onSetCursorS(input.value);
+			});
+		}
+
+		if (elements.cursorMinus && typeof onNudgeMinus === "function") {
+			elements.cursorMinus.addEventListener("click", () => onNudgeMinus());
+		}
+
+		if (elements.cursorPlus && typeof onNudgePlus === "function") {
+			elements.cursorPlus.addEventListener("click", () => onNudgePlus());
+		}
+	}
+
+	function wireRouteProjectSelect({ onChange } = {}) {
+		const sel = elements.routeProjectSelect;
+		if (!sel || typeof onChange !== "function") return;
+
+		sel.addEventListener("change", () => {
+			onChange(sel.value || "");
+		});
+	}
+
+	function wireSlotSelect({ onChange } = {}) {
+		const sel = elements.slotSelect;
+		if (!sel || typeof onChange !== "function") return;
+
+		sel.addEventListener("change", () => {
+			onChange(sel.value || "right");
+		});
+	}
+
+	function emitProps(obj) {
+		const pre = document.getElementById("props");
+		if (!pre) return;
+		pre.textContent = JSON.stringify(obj ?? null, null, 2);
+	}
+
+	// ------------------------------------------------------------
+	// fit/pin helpers
+	// ------------------------------------------------------------
+	function setAutoFitToggleVisible(visible) {
 		if (!elements.chkAutoFit) return;
-		elements.chkAutoFit.checked = Boolean(isOn);
+		const label = elements.chkAutoFit.closest(".toggle");
+		if (!label) return;
+		label.style.display = visible ? "" : "none";
+	}
+
+	function setAutoFitToggleValue(value) {
+		if (!elements.chkAutoFit) return;
+		elements.chkAutoFit.checked = Boolean(value);
 	}
 
 	function wireAutoFitToggle({ onChange } = {}) {
@@ -421,20 +355,16 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		};
 	}
 
-	// ------------------------------------------------------------
-	// MS13.12: pinned controls (small helpers)
-	// ------------------------------------------------------------
 	function setPinsInfoText(text) {
-		const t = String(text ?? '');
-		// be robust against accidental duplicate ids while developing
-		const nodes = document.querySelectorAll('#pinsInfo');
+		const t0 = String(text ?? "");
+		const nodes = document.querySelectorAll("#pinsInfo");
 		if (nodes?.length) {
-			nodes.forEach(n => { if (n) n.textContent = t; });
+			nodes.forEach((n) => { if (n) n.textContent = t0; });
 			return;
 		}
-		if (elements.pinsInfo) elements.pinsInfo.textContent = t;
+		if (elements.pinsInfo) elements.pinsInfo.textContent = t0;
 	}
-	
+
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
 		elements.buttonPinToggle?.addEventListener("click", () => {
 			if (typeof onTogglePin === "function") onTogglePin();
@@ -496,183 +426,72 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		elements.transitionOverlay.classList.add("hidden");
 	}
 
-	//
-	// ...
-	//
 	function show(el) {
-		// console.debug("show", el);
 		if (!el) return;
 		el.classList.remove("hidden");
 		el.classList.remove("overlayPane--hidden");
 	}
+
 	function hide(el) {
-		// console.debug("hide", el);
 		if (!el) return;
 		el.classList.add("hidden");
 		el.classList.add("overlayPane--hidden");
 	}
-
+	
 	// ------------------------------------------------------------
-	// docs overlay (Vision/Roadmap/Freeze)
+	// SPOT overlay
 	// ------------------------------------------------------------
-	const docsMap = {
-		vision: new URL("../../docs/vision/VISION.md", import.meta.url),
-		roadmap: new URL("../../docs/roadmap/ROADMAP.md", import.meta.url),
-		freeze: new URL("../../docs/architecture/ARCHITEKTUR_FREEZE.md", import.meta.url),
-	};
-
-	async function loadDocs(kind) {
-		const k = String(kind || "").toLowerCase();
-		const url = docsMap[k] ?? docsMap.roadmap;
-		if (!elements.docsText) return;
-
-		try {
-			elements.docsText.textContent = "Loading…";
-			const res = await fetch(url);
-			if (!res.ok) throw new Error(`HTTP ${res.status}`);
-			const text = await res.text();
-			elements.docsText.textContent = text;
-		} catch (err) {
-			elements.docsText.textContent = `Failed to load docs: ${err?.message ?? err}`;
-		}
+	function openSpot() {
+		show(elements.overlaySpot);
+		setPrimary(elements.buttonSpot, true);
 	}
 
-	function openDocs()  { show(elements.overlayDocs); }
+	function closeSpot() {
+		hide(elements.overlaySpot);
+		setPrimary(elements.buttonSpot, false);
+	}
+
+	function toggleSpot() {
+		if (!elements.overlaySpot) return;
+
+		const isHidden =
+			elements.overlaySpot.classList.contains("hidden") ||
+			elements.overlaySpot.classList.contains("overlayPane--hidden");
+
+		if (isHidden) openSpot();
+		else closeSpot();
+	}
+
+	function wireSpotOverlay() {
+		elements.buttonSpot?.addEventListener("click", () => toggleSpot());
+		elements.buttonSpotClose?.addEventListener("click", () => closeSpot());
+	}
+
+	// ------------------------------------------------------------
+	// docs overlay
+	// ------------------------------------------------------------
+	function openDocs() { show(elements.overlayDocs); }
 	function closeDocs() { hide(elements.overlayDocs); }
 	function toggleDocs() {
 		if (!elements.overlayDocs) return;
-		if (elements.overlayDocs.classList.contains("hidden")) openDocs();
+		const isHidden = elements.overlayDocs.classList.contains("hidden") || elements.overlayDocs.classList.contains("overlayPane--hidden");
+		if (isHidden) openDocs();
 		else closeDocs();
 	}
 
 	function wireDocs({ defaultDoc } = {}) {
-		// ✅ guard: prevent double (or x14) wiring
-		if (elements.__docsWired) return;
-		elements.__docsWired = true;
+		elements.buttonDocs?.addEventListener("click", () => toggleDocs());
+		elements.buttonDocsClose?.addEventListener("click", () => closeDocs());
 
-		elements.buttonDocs?.addEventListener("click", (e) => {
-			e?.preventDefault?.();
-			toggleDocs();
-		});
-
-		elements.buttonDocsClose?.addEventListener("click", (e) => {
-			e?.preventDefault?.();
-			closeDocs();
-		});
-
-		elements.overlayDocs?.addEventListener("click", (event) => {
-			if (event.target === elements.overlayDocs) closeDocs();
-		});
-
-		elements.docsSelect?.addEventListener("change", () => {
-			loadDocs(elements.docsSelect.value);
-		});
-
-		// optional: default doc
-		if (elements.docsSelect && defaultDoc) {
+		if (elements.docsSelect && defaultDoc != null) {
 			elements.docsSelect.value = String(defaultDoc);
-			loadDocs(elements.docsSelect.value);
 		}
-	}
-
-	// initial UI state
-	closeBands();
-	closeSection();
-	closeTransition();
-	closeDocs();
-
-	// wire overlay buttons
-	elements.buttonBands?.addEventListener("click", toggleBands);
-	elements.buttonSection?.addEventListener("click", toggleSection);
-	elements.closeBands?.addEventListener("click", closeBands);
-	elements.closeSection?.addEventListener("click", closeSection);
-	
-	// ✅ Transition overlay wiring (was removed during refactor)
-	//elements.buttonTransition?.addEventListener("click", openTransition);
-	//elements.buttonTransitionClose?.addEventListener("click", closeTransition);
-	//elements.transitionOverlay?.addEventListener("click", (event) => {
-	//	if (event.target === elements.transitionOverlay) closeTransition();
-	//});
-
-	// ------------------------------------------------------------
-	// import picker (button opens hidden <input type=file>)
-	// ------------------------------------------------------------
-	function wireImportPicker({ onFiles } = {}) {
-		const btn = elements.buttonImport;
-		const input = elements.fileImport;
-
-		if (!btn || !input || typeof onFiles !== "function") return;
-
-		// click button -> open file dialog
-		btn.addEventListener("click", () => {
-			// ensure re-selecting same file triggers change
-			input.value = "";
-			input.click();
-		});
-
-		// file dialog selected -> feed files to caller
-		input.addEventListener("change", () => {
-			const files = Array.from(input.files ?? []);
-			if (files.length) onFiles(files);
-		});
-	}
-
-	// ESC closes overlays
-	window.addEventListener("keydown", (event) => {
-		if (event.key === "Escape") {
-			closeDocs();
-		}
-	});
-
-	// ------------------------------------------------------------
-	// wiring helpers (so appCore doesn't touch addEventListener)
-	// ------------------------------------------------------------
-	function wireCursorControls({ onSetCursorS, onNudgeMinus, onNudgePlus } = {}) {
-		const input = elements.cursorSInput;
-
-		if (input && typeof onSetCursorS === "function") {
-			input.addEventListener("change", () => onSetCursorS(input.value));
-			input.addEventListener("keydown", (ev) => {
-				if (ev.key === "Enter") onSetCursorS(input.value);
-			});
-		}
-
-		if (elements.cursorMinus && typeof onNudgeMinus === "function") {
-			elements.cursorMinus.addEventListener("click", () => onNudgeMinus());
-		}
-
-		if (elements.cursorPlus && typeof onNudgePlus === "function") {
-			elements.cursorPlus.addEventListener("click", () => onNudgePlus());
-		}
-	}
-
-	function wireRouteProjectSelect({ onChange } = {}) {
-		const sel = elements.routeProjectSelect;
-		if (!sel || typeof onChange !== "function") return;
-
-		sel.addEventListener("change", () => {
-			onChange(sel.value || "");
-		});
-	}
-	
-	function wireSlotSelect({ onChange } = {}) {
-		const sel = elements.slotSelect;
-		if (!sel || typeof onChange !== "function") return;
-
-		sel.addEventListener("change", () => {
-			onChange(sel.value || "right");
-		});
-	}
-	
-	function emitProps(obj) {
-		const pre = document.getElementById("props");
-		if (!pre) return;
-		pre.textContent = JSON.stringify(obj ?? null, null, 2);
 	}
 
 	// small boot feedback
 	logLine(t("boot_ui"));
 	setStatus(t("boot_ui_ok"));
+	wireSpotOverlay();
 
 	return {
 		elements,
@@ -688,18 +507,22 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		// props
 		showProps,
+
+		// SPOT / Grabbeltisch (delegated to spotView)
+		setSpotState: spotView.setSpotState,
+		getSpotState: spotView.getSpotState,
+		setSpotHtml: spotView.setSpotHtml,
+		setSpotText: spotView.setSpotText,
+		renderSpotHtml: spotView.renderSpotHtml,
+		renderSpotState: spotView.renderSpotState,
+		refreshSpot: spotView.refresh,
 		
-		// ...
-		setSpotState,
-		getSpotState,
-		setSpotHtml,
-		renderSpotHtml,  // ja: exportieren, damit ViewController ihn nutzen kann
-		renderSpotState: renderSpotHtml,
+		wireSpotActions: spotView.wireActions,
 
 		// boards
 		setBoardBandsText,
 		setBoardSectionText,
-		
+
 		wireImportPicker,
 
 		// cursor helpers
@@ -709,6 +532,11 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		setRouteProjectOptions,
 		setSlotSelectValue,
 		wireSlotSelect,
+		
+		// SPOT
+				openSpot,
+		closeSpot,
+		toggleSpot,
 
 		// overlays
 		openBands,
@@ -719,27 +547,25 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		toggleSection,
 		openTransition,
 		closeTransition,
-		
+
 		// docs overlay
 		openDocs,
 		closeDocs,
 		toggleDocs,
 		wireDocs,
-		
+
 		// wiring helpers
 		wireCursorControls,
 		wireRouteProjectSelect,
-		
-		// ...
+
+		// fit / pin
 		setAutoFitToggleVisible,
 		setAutoFitToggleValue,
 		wireAutoFitToggle,
-		// ...
 		wireFitButton,
 		wirePinControls,
 		setPinsInfoText,
-		
-		// ...
+
 		emitProps,
 	};
 }

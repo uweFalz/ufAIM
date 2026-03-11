@@ -1,11 +1,7 @@
-// app/core/WindowRuntime.js (former AppCore.js)
+// app/core/WindowRuntime.js
 
 import { createMessagingClient } from "@src/shared/messaging/createMessagingClient.js";
-
-// legacy bootstrap (UI + alignment sandbox)
 import { bootApp } from "./bootLegacyAppCore.js";
-
-// optional: local runtime-server (nur im local-mode)
 import { AppRuntimeLocal } from "@src/shared/runtime/AppRuntimeLocal.js";
 
 export class WindowRuntime {
@@ -20,39 +16,38 @@ export class WindowRuntime {
 			windowId: this.windowId,
 			role: "view",
 		});
-		
-		// smoketest
-		const presets = await this.messaging.sendCmdAwait("Transition.ListPresets", {});
-		console.log("presets", presets?.length, presets?.[0]);
 
-		const cuts = await this.messaging.sendCmdAwait("Transition.GetPresetCuts", { presetId: presets[0].id });
-		console.log("cuts", cuts);
-
-		// Wenn LocalBus: runtime-server im gleichen Fenster einklinken
 		if (this.prefs?.messaging?.mode !== "sharedWorker") {
-			const runtime = new AppRuntimeLocal({ windowId: this.windowId, debug: !!this.prefs?.messaging?.debug });
+			const runtime = new AppRuntimeLocal({
+				windowId: this.windowId,
+				debug: !!this.prefs?.messaging?.debug,
+				messaging: this.messaging
+			});
 			this.messaging.attachRuntime((msg) => runtime.handle(msg));
 		}
 
-		// basic hello
+		const presets = await this.messaging.sendCmdAwait("Transition.ListPresets", {});
+		console.log("presets", presets?.length, presets?.[0]);
+
+		const spec = await this.messaging.sendCmdAwait("Transition.GetPresetSpec", { presetId: presets[0].id });
+		console.log("spec", { presetId: spec?.presetId, cuts01: spec?.cuts01, hasDefs: !!spec?.defs });
+
+		const projectState = await this.messaging.sendCmdAwait("Project.GetState", {});
+		console.log("projectState", projectState);
+
 		this.messaging.emitEvt("Window.Register", {
 			title: document.title || "ufAIM",
 			capabilities: ["alignment.view", "transition.editor"],
 		});
 
-		// Beispiel: Worker hello loggen
 		this.messaging.on("worker:hello", (m) => console.log("[WindowRuntime] worker says hello", m));
 
-		const legacyOn = (this.prefs?.runtime?.legacyAppCore ?? true);
-		
-		if (legacyOn) {
+		if (this.prefs?.runtime?.legacyAppCore ?? true) {
 			bootApp({ prefs: this.prefs, messaging: this.messaging }).catch((error) => {
 				console.error(error);
 				const logElement = document.getElementById("log");
 				if (logElement) logElement.textContent = "boot failed ❌\n" + String(error);
 			});
 		}
-		
-		// TODO: Views init (threeViewer etc) -> nur via this.messaging.send(...)
 	}
 }

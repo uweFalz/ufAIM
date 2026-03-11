@@ -2,7 +2,7 @@
 
 import { makeAlignment2DFromSparse } from "./build/AlignmentFactory.js";  // ggf. Pfad anpassen
 
-import transitionLookup from "./transition/transitionLookup.json" with { type: "json" };
+import transitionLookup from "@src/alignment/transition/transitionLookup.json" with { type:"json" };
 
 import { KappaFcnBuilder } from "./transition/build/KappaFcnBuilder.js"; // Pfad ggf.
 import { RegistryCompiler } from "./transition/registry/RegistryCompiler.js"; // ggf. Pfad anpassen

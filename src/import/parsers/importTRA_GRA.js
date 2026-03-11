@@ -1,4 +1,4 @@
-// app/io/importTRA_GRA.js
+// src/import/parsers/importTRA_GRA.js
 //
 // Verm.ESN TRA/GRA Import (binary)
 // - uses sharedVermesn.decodeBinary() which returns { meta, rowsRaw }
@@ -12,6 +12,7 @@
 
 import { decodeBinary, baseMetaFromFile } from "./sharedVermesn.js";
 
+// ...
 function baseName(filename = "") {
 	return String(filename).replace(/\.[^/.]+$/, "");
 }

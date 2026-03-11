@@ -4,7 +4,17 @@
 // Input: { baseId, slot, source, artifacts[] }
 // Output: store.patch + effects (log/props)
 //
-// NOTE: QuickHooks sind nur View-Cache (für 3D/Overlays), NICHT die eigentliche Datenhaltung.
+// NOTE:
+// - Registry / slot apply lives here.
+// - Preview quickhooks live in importPreviewApply.js
+// - No format-specific parsing logic here.
+
+import {
+	applyImportPreview,
+	getActiveArtifactIds,
+	mirrorImportPreview,
+} from "./importPreviewApply.js";
+import { applyImportRegistry } from "./importRegistryApply.js";
 
 function nowIso() {
 	return new Date().toISOString();
@@ -33,16 +43,17 @@ function ensureStoreShape(state) {
 		import_profile1d: s.import_profile1d ?? null,
 		import_cant1d: s.import_cant1d ?? null,
 		import_meta: s.import_meta ?? null,
-
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
 
-		// ✅ MS14.1 pins survive patching too
 		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
 	};
 }
 
 function computeBbox2d(polyline2d) {
-	let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
 
 	for (const p of (polyline2d ?? [])) {
 		const x = Number(p?.x);
@@ -61,28 +72,32 @@ function computeBbox2d(polyline2d) {
 
 function bboxCenter2d(bbox) {
 	if (!bbox) return null;
+
 	const cx = (Number(bbox.minX) + Number(bbox.maxX)) * 0.5;
 	const cy = (Number(bbox.minY) + Number(bbox.maxY)) * 0.5;
+
 	if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
 	return { x: cx, y: cy };
 }
 
+function pickMarkerFromPolyline(polyline2d) {
+	if (!Array.isArray(polyline2d) || polyline2d.length < 1) return null;
+	return polyline2d[0];
+}
+
 /**
-* Normalize + enrich artifact payloads so View hooks are stable.
+* Normalize + enrich artifact payloads so downstream preview hooks are stable.
 * - alignment2d: ensures payload.polyline2d, payload.bbox, payload.bboxCenter
-* - profile1d: (optional later) ranges, etc.
-* - cant1d:    (optional later) ranges, etc.
+* - profile1d / cant1d: kept as-is for now
 */
 function normalizeArtifactPayload({ domain, payload }) {
 	const p = ensureObject(payload);
 
-	// ---- alignment2d ----
 	if (domain === "alignment2d") {
-		// accept a couple of legacy aliases (future-proof)
 		const polyline2d =
 		p.polyline2d ??
-		p.pts ??                 // optional alias if later used
-		p.geometry?.pts ??        // optional alias
+		p.pts ??
+		p.geometry?.pts ??
 		null;
 
 		const bbox = p.bbox ?? computeBbox2d(polyline2d);
@@ -96,17 +111,8 @@ function normalizeArtifactPayload({ domain, payload }) {
 		};
 	}
 
-	// ---- profile1d ----
-	if (domain === "profile1d") {
-		// keep as-is; (optional later: add range)
-		return p;
-	}
-
-	// ---- cant1d ----
-	if (domain === "cant1d") {
-		// keep as-is; (optional later: add range)
-		return p;
-	}
+	if (domain === "profile1d") return p;
+	if (domain === "cant1d") return p;
 
 	return p;
 }
@@ -120,7 +126,7 @@ function upsertRouteProject(routeProjects, baseId) {
 		createdAt: nowIso(),
 		updatedAt: nowIso(),
 
-		// Slots nach 7-Linien-Modell (minimal start)
+		// minimal 7-line-ready slot scaffold
 		slots: {
 			right: {},
 			left: {},
@@ -136,11 +142,18 @@ function upsertRouteProject(routeProjects, baseId) {
 
 function attachArtifactToSlot({ rp, slot, artifact }) {
 	rp.updatedAt = nowIso();
+
 	const s = rp.slots?.[slot] ?? (rp.slots[slot] = {});
 
-	if (artifact.domain === "alignment2d") s.alignmentArtifactId = artifact.id;
-	else if (artifact.domain === "profile1d") s.profileArtifactId = artifact.id;
-	else if (artifact.domain === "cant1d") s.cantArtifactId = artifact.id;
+	if (artifact.domain === "alignment2d") {
+		s.alignmentArtifactId = artifact.id;
+	}
+	else if (artifact.domain === "profile1d") {
+		s.profileArtifactId = artifact.id;
+	}
+	else if (artifact.domain === "cant1d") {
+		s.cantArtifactId = artifact.id;
+	}
 	else {
 		if (!Array.isArray(s.otherArtifactIds)) s.otherArtifactIds = [];
 		s.otherArtifactIds.push(artifact.id);
@@ -150,87 +163,9 @@ function attachArtifactToSlot({ rp, slot, artifact }) {
 	rp.meta.lastKind = artifact.kind;
 }
 
-function pickMarkerFromPolyline(polyline2d) {
-	if (!Array.isArray(polyline2d) || polyline2d.length < 1) return null;
-	return polyline2d[0];
-}
+// Re-export for convenience / compatibility.
+export { getActiveArtifactIds };
 
-// MS8: public helper (optional use)
-export function getActiveArtifactIds(state) {
-	const s = ensureStoreShape(state);
-
-	const baseId = s.activeRouteProjectId;
-	if (!baseId) return null;
-
-	const rp = s.routeProjects?.[baseId];
-	if (!rp) return null;
-
-	const slot = s.activeSlot ?? "right";
-	const slotObj = rp.slots?.[slot] ?? null;
-	if (!slotObj) {
-		return { baseId, slot, alignmentArtifactId: null, profileArtifactId: null, cantArtifactId: null };
-	}
-
-	return {
-		baseId,
-		slot,
-		alignmentArtifactId: slotObj.alignmentArtifactId ?? null,
-		profileArtifactId: slotObj.profileArtifactId ?? null,
-		cantArtifactId: slotObj.cantArtifactId ?? null,
-	};
-}
-
-// ...
-export function applyQuickHooksFromActive(state) {
-	const s = ensureStoreShape(state);
-
-	const active = getActiveArtifactIds(s);
-	if (!active) {
-		return {
-			...s,
-			import_polyline2d: null,
-			import_marker2d: null,
-			import_profile1d: null,
-			import_cant1d: null,
-			import_activeArtifacts: null,
-		};
-	}
-
-	const { alignmentArtifactId, profileArtifactId, cantArtifactId } = active;
-
-	const patch = { ...s };
-
-	// MS8: always set deterministic ids (even if payload missing)
-	patch.import_activeArtifacts = active;
-
-	// alignment quickhook
-	const a = alignmentArtifactId ? s.artifacts?.[alignmentArtifactId] : null;
-
-	const poly =
-	a?.payload?.polyline2d ??
-	a?.payload?.pts ??
-	null;
-
-	if (poly) {
-		patch.import_polyline2d = poly;
-		patch.import_marker2d = a.payload?.bboxCenter ?? pickMarkerFromPolyline(poly);
-	} else {
-		patch.import_polyline2d = null;
-		patch.import_marker2d = null;
-	}
-
-	// profile quickhook
-	const p = profileArtifactId ? s.artifacts?.[profileArtifactId] : null;
-	patch.import_profile1d = p?.payload?.profile1d ?? null;
-
-	// cant quickhook
-	const c = cantArtifactId ? s.artifacts?.[cantArtifactId] : null;
-	patch.import_cant1d = c?.payload?.cant1d ?? null;
-
-	return patch;
-}
-
-// ...
 export function applyImportToProject({
 	store,
 	baseId,
@@ -238,7 +173,7 @@ export function applyImportToProject({
 	source = null,
 	artifacts = [],
 	ui,
-	emitProps = false,     // ✅ MS10.3: default AUS
+	emitProps = false,
 } = {}) {
 	if (!store?.getState || !store?.setState) {
 		return [{ type: "log", level: "error", message: "importApply: missing store" }];
@@ -248,67 +183,48 @@ export function applyImportToProject({
 	}
 
 	const prev = ensureStoreShape(store.getState());
-
-	const nextArtifacts = { ...prev.artifacts };
-	const nextRouteProjects = { ...prev.routeProjects };
-	const rp = upsertRouteProject(nextRouteProjects, baseId);
-
 	const effects = [];
 
-	for (const inArt of artifacts) {
-		if (!inArt) continue;
+	const { patch, effects: registryEffects } =
+	applyImportRegistry({
+		state: prev,
+		baseId,
+		slot,
+		source,
+		artifacts,
+		normalizePayload: normalizeArtifactPayload,
+	});
 
-		const domain = inArt.domain ?? "unknown";
-		const kind = inArt.kind ?? "unknown";
-		const id = inArt.id ?? makeArtifactId({ baseId, slot, domain, kind });
+	store.setState(patch);
+	/*
+	const afterRegistry = ensureStoreShape(store.getState());
 
-		const artifact = {
-			id,
-			baseId,
-			slot,
-			domain,
-			kind,
-			createdAt: nowIso(),
-			source: inArt.source ?? source ?? null,
-			meta: inArt.meta ?? null,
-			payload: normalizeArtifactPayload({ domain, payload: inArt.payload ?? null }),
-		};
-
-		nextArtifacts[id] = artifact;
-		attachArtifactToSlot({ rp, slot, artifact });
-
-		effects.push({ type: "log", level: "info", message: `artifact: + ${id}` });
+	// local preview fallback:
+	// if nothing is active yet, activate the just imported route project locally
+	if (!afterRegistry.activeRouteProjectId && baseId) {
+	store.setState({
+	activeRouteProjectId: baseId,
+	activeSlot: slot ?? afterRegistry.activeSlot ?? "right",
+	});
 	}
+	*/
+	const previewPatch = applyImportPreview(ensureStoreShape(store.getState()));
+	store.setState(previewPatch);
 
-	const nextActive = baseId; // statt prev.activeRouteProjectId ?? baseId
+	effects.push(...registryEffects);
 
-	const patchBase = {
-		activeRouteProjectId: nextActive,
-		routeProjects: nextRouteProjects,
-		artifacts: nextArtifacts,
-		import_meta: {
-			base: baseId,
-			slot,
-			at: nowIso(),
-			source,
-			artifacts: artifacts.map(a => ({ domain: a?.domain, kind: a?.kind })),
-		},
-	};
-
-	const patchFinal = applyQuickHooksFromActive({ ...prev, ...patchBase });
-	store.setState(patchFinal);
-
-	// props effect (optional / DEV)
 	if (emitProps) {
+		const finalState = ensureStoreShape(store.getState());
+
 		effects.push({
 			type: "props",
 			object: {
-				active: patchFinal.activeRouteProjectId,
+				active: finalState.activeRouteProjectId,
 				base: baseId,
 				slot,
-				activeArtifacts: patchFinal.import_activeArtifacts ?? null,
-				artifactCount: Object.keys(patchFinal.artifacts ?? {}).length,
-				rpCount: Object.keys(patchFinal.routeProjects ?? {}).length,
+				activeArtifacts: finalState.import_activeArtifacts ?? null,
+				artifactCount: Object.keys(finalState.artifacts ?? {}).length,
+				rpCount: Object.keys(finalState.routeProjects ?? {}).length,
 			},
 		});
 	}
@@ -316,25 +232,16 @@ export function applyImportToProject({
 	return effects;
 }
 
-export function mirrorQuickHooksFromActive(store) {
-	if (!store?.getState || !store?.setState) return;
-	const prev = store.getState();
-	const next = applyQuickHooksFromActive(prev);
-	store.setState(next);
+export function mirrorQuickHooksFromActive({ getState, setState } = {}) {
+	mirrorImportPreview({ getState, setState });
 }
 
-// app/io/importApply.js
-
-// New: tiny "single entry" wrapper for controllers.
-// Keeps ImportController minimal and future-proof.
+// single entry wrapper for controllers
 export function applyIngestResult({ store, ui, ingest, emitProps } = {}) {
 	if (!store?.getState || !store?.setState || !ingest) {
 		return [{ type: "log", level: "error", message: "applyIngestResult: missing store/ingest" }];
 	}
 
-	if (!store) return [{ type: "log", message: "applyIngestResult: missing store" }];
-
-	// ✅ accept envelope or single ingest
 	const ingests = Array.isArray(ingest?.ingests) ? ingest.ingests : [ingest].filter(Boolean);
 
 	const effects = [];
@@ -351,5 +258,6 @@ export function applyIngestResult({ store, ui, ingest, emitProps } = {}) {
 		})
 		);
 	}
+
 	return effects;
 }

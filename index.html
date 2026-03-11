@@ -66,10 +66,10 @@
 				accept=".json,.ufaim.json,.tra,.gra,application/json,text/plain"
 				style="display:none"
 				/>
-
-				<button id="btnTrans" class="btn">Transition</button>
-
+				
 				<div class="divider"></div>
+
+				<button id="btnSpot" class="btn">Grabbeltisch</button>
 
 				<div class="cursor">
 					<button id="btnCursorMinus" class="btn btn--ghost" title="s minus">−</button>
@@ -97,17 +97,23 @@
 				<label class="toggle" title="Auto-Fit bei RP/Slot/Geom-Wechsel (DEV)">
 					<input id="chkAutoFit" type="checkbox" />
 					<span>AutoFit</span>
-				</label>		
-				<button id="btnFit" class="btn btn--ghost" title="Zoom to active alignment">Fit</button>
+				</label>
+				
+				<button id="btnFit" class="btn" title="Zoom to active alignment">Fit</button>
 				<button id="btnPinToggle" class="btn" title="Pin/unpin current (RP+Slot)">Pin</button>
-				<button id="btnPinsClear" class="btn btn--ghost" title="Clear all pinned">Unpin all</button>
+				<button id="btnPinsClear" class="btn" title="Clear all pinned">Unpin all</button>
 				<span id="pinsInfo" class="hint" style="margin-left:6px">Pins: 0</span>
-				<button id="btnDocs" class="btn btn--ghost" title="Show project docs (Vision/Roadmap/Freeze)">Docs</button>
 
 				<div class="divider"></div>
 
 				<button id="btnToggleBands" class="btn">Bänder</button>
 				<button id="btnToggleSection" class="btn">Schnitt</button>
+
+				<div class="divider"></div>
+
+				<button id="btnTrans" class="btn">Transition</button>
+
+				<button id="btnDocs" class="btn" title="Show project docs (Vision/Roadmap/Freeze)">Docs</button>
 			</div>
 		</header>
 
@@ -154,8 +160,24 @@
 				</div>
 			</footer>
 		</main>
+		
+		<!-- SPOT Overlay / Grabbeltisch -->
+		<section id="spotOverlay" class="overlay hidden">
+			<div class="overlay__card overlay__card--wide">
+				<header class="overlay__header">
+					<div class="overlay__title">Grabbeltisch</div>
+					<div class="overlay__headerRight">
+						<button id="btnSpotClose" class="btn">Close</button>
+					</div>
+				</header>
 
-		<!-- Transition Overlay (optional / legacy) -->
+				<div class="overlayPane__body">
+					<div id="spotOverlayBody"></div>
+				</div>
+			</div>
+		</section>
+
+		<!-- Transition Overlay / transEdView -->
 		<section id="transOverlay" class="overlay hidden">
 			<div class="overlay__card overlay__card--wide">
 				<header class="overlay__header">
