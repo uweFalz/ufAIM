@@ -281,3 +281,34 @@ Nicht enthalten:
   - transition: Immediate (Factory normalisiert)
 - Factory darf fehlende curvatureHolder vor/nach Transition ergänzen (L=0)
 - Richtung in Radiant wird NICHT gespeichert; dir-Vektor ist primär
+
+
+                   ┌──────────────────────────┐
+                   │      SparseAlignment     │
+                   │--------------------------│
+                   │ elements[]               │
+                   │ startPose                │
+                   │ meta                     │
+                   └──────────────┬───────────┘
+                                  │
+                                  ▼
+
+        ┌──────────────────────────────────────────────┐
+        │               AlignmentElement               │
+        │----------------------------------------------│
+        │ arcLength                                    │
+        │ startPose                                    │
+        │ endPose                                      │
+        └───────────────┬──────────────────────────────┘
+                        │
+            ┌───────────┴───────────┐
+            ▼                       ▼
+
+   ┌──────────────────┐    ┌─────────────────────────┐
+   │    FixElement    │    │    TransitionElement    │
+   │------------------│    │-------------------------│
+   │ curvature        │    │ transitionCurve         │
+   │                  │    │ lookup / parametric     │
+   │                  │    │ curvature evolution     │
+   └──────────────────┘    └─────────────────────────┘
+   

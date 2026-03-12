@@ -1,7 +1,11 @@
 # ufAIM — Alignment Engineering for Infrastructure & BIM
 
-ufAIM is an engineering-focused framework and reference application
-for alignment-based infrastructure planning.
+ufAIM is an alignment-centric engineering system for railway infrastructure.
+
+Instead of treating alignments as secondary objects inside GIS, CAD or BIM
+containers, ufAIM places the alignment at the center of the model.
+
+See VISION.md for details.
 
 Unlike conventional BIM tools, ufAIM treats alignments
 (track geometry, transitions, gradients, cant)

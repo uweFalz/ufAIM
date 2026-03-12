@@ -132,3 +132,66 @@ The architecture of ufAIM is intentionally conservative.
 Rather than optimizing for short-term feature completeness,
 it prioritizes clarity, robustness, and extensibility
 as prerequisites for long-term infrastructure use cases.
+
+
+                    ┌─────────────────────────────┐
+                    │        External Data        │
+                    │ TRA / GRA / LandXML / IFC  │
+                    │ terrain / geo / BIM etc.   │
+                    └──────────────┬─────────────┘
+                                   │
+                                   ▼
+                        ┌──────────────────┐
+                        │  Import Pipeline │
+                        │ runImportPipeline│
+                        └─────────┬────────┘
+                                  │
+                                  ▼
+                        ┌──────────────────┐
+                        │     landFAT      │
+                        │ rich alignment   │
+                        │ import model     │
+                        └─────────┬────────┘
+                                  │
+                                  ▼
+                        ┌──────────────────┐
+                        │  Sparse Alignment│
+                        │ mathematical core│
+                        └─────────┬────────┘
+                                  │
+              ┌───────────────────┼───────────────────┐
+              │                   │                   │
+              ▼                   ▼                   ▼
+
+       ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+       │  Preview     │   │   Solver     │   │  Validators  │
+       │ polyline2D   │   │ AXTRAN-like  │   │ geometry     │
+       │ fast render  │   │ optimisation │   │ checks       │
+       └──────┬───────┘   └──────┬───────┘   └──────┬───────┘
+              │                  │                  │
+              └──────────────┬───┴───────────────┬──┘
+                             │                   │
+                             ▼                   ▼
+                      ┌────────────────────────────┐
+                      │        Project Model       │
+                      │ alignment-based domain    │
+                      └─────────────┬─────────────┘
+                                    │
+                                    ▼
+                          ┌──────────────────┐
+                          │ Engineering CRS  │
+                          │ workspace system │
+                          └─────────┬────────┘
+                                    │
+                                    ▼
+                          ┌──────────────────┐
+                          │   GeoRender      │
+                          │ mapLibre + three │
+                          └─────────┬────────┘
+                                    │
+                                    ▼
+                          ┌──────────────────┐
+                          │  MultiWindow UI  │
+                          │ Master + Windows │
+                          └──────────────────┘
+                          

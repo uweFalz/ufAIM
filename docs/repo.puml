@@ -1,0 +1,36 @@
+@startuml
+
+rectangle "Rail Network (Topology)" {
+  [Nodes]
+  [Edges (Alignments)]
+}
+
+rectangle "Sparse Alignment Kernel" {
+  [Curvature κ(s)]
+}
+
+[transEd]
+[Solver]
+[Validation]
+
+[Direction θ(s)]
+[Geometry (x,y)]
+[Sampling]
+
+[GeoRender Engine]
+[MultiWindow UI]
+
+[Edges (Alignments)] --> "Sparse Alignment Kernel"
+
+"Curvature κ(s)" --> transEd
+"Curvature κ(s)" --> Solver
+"Curvature κ(s)" --> Validation
+
+"Curvature κ(s)" --> "Direction θ(s)"
+"Direction θ(s)" --> "Geometry (x,y)"
+"Geometry (x,y)" --> Sampling
+
+Sampling --> "GeoRender Engine"
+"GeoRender Engine" --> "MultiWindow UI"
+
+@enduml

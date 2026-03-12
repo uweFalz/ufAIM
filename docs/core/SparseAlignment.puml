@@ -1,0 +1,27 @@
+@startuml
+
+class SparseAlignment {
+  startPose
+  elements[]
+}
+
+class AlignmentElement {
+  arcLength
+  startPose
+  endPose
+}
+
+class FixElement {
+  curvature
+}
+
+class TransitionElement {
+  transitionCurve
+}
+
+SparseAlignment --> AlignmentElement
+
+AlignmentElement <|-- FixElement
+AlignmentElement <|-- TransitionElement
+
+@enduml

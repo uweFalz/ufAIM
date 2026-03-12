@@ -26,7 +26,7 @@ function direction(a,b) {
 //
 // ...
 //
-export function normalizeAlignmentToSparse(fatAlignment) {
+export function normalizeLandFATToSparse(data) {
 
 	const sparse = {
 		type: "alignment2D",
