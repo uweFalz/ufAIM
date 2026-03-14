@@ -1,6 +1,7 @@
 // app/core/WindowRuntime.js
 
 import { createMessagingClient } from "@src/shared/messaging/createMessagingClient.js";
+import { setMessagingService } from "@src/shared/runtime/runtimeServices.js";
 import { bootApp } from "./bootLegacyAppCore.js";
 import { AppRuntimeLocal } from "@src/shared/runtime/AppRuntimeLocal.js";
 
@@ -16,6 +17,8 @@ export class WindowRuntime {
 			windowId: this.windowId,
 			role: "view",
 		});
+		
+		setMessagingService(this.messaging);
 
 		if (this.prefs?.messaging?.mode !== "sharedWorker") {
 			const runtime = new AppRuntimeLocal({
@@ -34,6 +37,9 @@ export class WindowRuntime {
 
 		const projectState = await this.messaging.sendCmdAwait("Project.GetState", {});
 		console.log("projectState", projectState);
+		
+		const dbg = await this.messaging.sendCmdAwait("Debug.GetWorkerState", {});
+		console.log("workerDebug", dbg);
 
 		this.messaging.emitEvt("Window.Register", {
 			title: document.title || "ufAIM",

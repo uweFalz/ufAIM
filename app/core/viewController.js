@@ -1220,7 +1220,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 		const handler = (state) => {
 			try {
-				syncRouteProjectSelect(state);
+				// syncRouteProjectSelect(state);
 				syncSpotBaseIdDatalist(state);
 				updateProps(state);
 				syncCursorInput(state);

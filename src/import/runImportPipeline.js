@@ -1,7 +1,8 @@
 // src/import/runImportPipeline.js
 
-import { importFileAuto } from "@src/import/parsers/importTRA_GRA.js";
-import { parseLandXML } from "@src/import/parsers/parseLandXML.js";
+import { sniffImportFile } from "./sniffers/sniffImportFile.js";
+import { importFileAuto } from "./parsers/importTRA_GRA.js";
+import { parseLandXML } from "./parsers/parseLandXML.js";
 
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
@@ -9,228 +10,41 @@ export async function runImportPipeline(file, context = {}) {
 	const descriptor = await sniffImportFile(file);
 	log(`import: ${descriptor.format} :: ${descriptor.fileName ?? "(unknown)"}`);
 
-	// ------------------------------------------------------------
-	// A) bewusst ignorierbare Dateien
-	// ------------------------------------------------------------
 	if (descriptor.disposition === "ignore") {
-		log(`skip: ${descriptor.reason ?? "ignored"} :: ${descriptor.fileName ?? "(unknown)"}`);
-		return makeSkipResult(descriptor, "ignored");
+		return makePipelineResult({
+			descriptor,
+			status: "ignored",
+			reason: descriptor.reason ?? "ignored",
+		});
 	}
 
-	// ------------------------------------------------------------
-	// B) bekannte, aber noch nicht unterstützte Formate
-	// ------------------------------------------------------------
 	if (descriptor.disposition === "recognized-unsupported") {
-		log(`recognized but not yet supported: ${descriptor.format} :: ${descriptor.fileName ?? "(unknown)"}`);
-		return makeSkipResult(descriptor, "recognized-unsupported");
+		return makePipelineResult({
+			descriptor,
+			status: "recognized-unsupported",
+			reason: descriptor.reason ?? "recognized-but-not-supported",
+		});
 	}
 
-	// ------------------------------------------------------------
-	// C) unbekanntes Format -> bei Samples/Massendrop tolerant
-	// ------------------------------------------------------------
 	if (descriptor.disposition === "unknown") {
-		log(`skip unknown: ${descriptor.fileName ?? "(unknown)"}`);
-		return makeSkipResult(descriptor, "unknown");
+		return makePipelineResult({
+			descriptor,
+			status: "unknown",
+			reason: "unknown-format",
+		});
 	}
 
-	// ------------------------------------------------------------
-	// D) unterstützte Formate normal verarbeiten
-	// ------------------------------------------------------------
 	const parsed = await parseImportFile(file, descriptor, { log });
-	const artifacts = normalizeParsedToArtifacts(parsed, { log });
+	const normalized = normalizeParsedResult(parsed, { log });
 
-	log(`artifacts: ${artifacts.length} :: ${descriptor.fileName ?? "(unknown)"}`);
-
-	return {
+	return makePipelineResult({
 		descriptor,
-		artifacts,
-		status: artifacts.length ? "imported" : "empty",
-		reason: artifacts.length ? null : "no-artifacts",
-	};
-}
-
-async function sniffImportFile(file) {
-	const fileName = String(file?.name ?? "");
-	const lower = fileName.toLowerCase();
-	const ext = getExtension(lower);
-
-	// ------------------------------------------------------------
-	// A) offensichtlicher Beifang / Neben-Dateien
-	// ------------------------------------------------------------
-	if (isIgnorableFile(lower)) {
-		return {
-			fileName,
-			extension: ext,
-			format: "IGNORED",
-			family: "auxiliary",
-			disposition: "ignore",
-			reason: "auxiliary/thumbnail/system-file",
-		};
-	}
-
-	// ------------------------------------------------------------
-	// B) direkt unterstützte Spezialformate
-	// ------------------------------------------------------------
-	if (lower.endsWith(".tra")) {
-		return {
-			fileName,
-			extension: ".tra",
-			format: "TRA",
-			family: "special",
-			disposition: "supported",
-		};
-	}
-
-	if (lower.endsWith(".gra")) {
-		return {
-			fileName,
-			extension: ".gra",
-			format: "GRA",
-			family: "special",
-			disposition: "supported",
-		};
-	}
-
-	// ------------------------------------------------------------
-	// C) XML-Familie: über Inhalt nachschärfen
-	// ------------------------------------------------------------
-	if (lower.endsWith(".landxml")) {
-		return {
-			fileName,
-			extension: ".landxml",
-			format: "landXML",
-			family: "container",
-			disposition: "supported",
-		};
-	}
-
-	if (lower.endsWith(".xml")) {
-		const text = await safeReadTextPrefix(file, 240000);
-
-		if (looksLikeLandXML(text)) {
-			return {
-				fileName,
-				extension: ".xml",
-				format: "landXML",
-				family: "container",
-				disposition: "supported",
-			};
-		}
-
-		if (looksLikeInfraGML(text)) {
-			return {
-				fileName,
-				extension: ".xml",
-				format: "InfraGML",
-				family: "container",
-				disposition: "recognized-unsupported",
-			};
-		}
-
-		if (looksLikeIFCXML(text)) {
-			return {
-				fileName,
-				extension: ".xml",
-				format: "IFCXML",
-				family: "container",
-				disposition: "recognized-unsupported",
-			};
-		}
-
-		return {
-			fileName,
-			extension: ".xml",
-			format: "XML",
-			family: "container?",
-			disposition: "recognized-unsupported",
-			reason: "xml-but-not-supported-import-format",
-		};
-	}
-
-	// ------------------------------------------------------------
-	// D) bekannte, fachlich relevante Formate aus Alt-Registry
-	//     -> vorerst erkannt, aber nicht aktiv verarbeitet
-	// ------------------------------------------------------------
-	if (lower.endsWith(".ifcxml")) {
-		return {
-			fileName,
-			extension: ".ifcxml",
-			format: "IFCXML",
-			family: "container",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".ifc")) {
-		return {
-			fileName,
-			extension: ".ifc",
-			format: "IFC",
-			family: "container",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".ifczip")) {
-		return {
-			fileName,
-			extension: ".ifczip",
-			format: "IFCZIP",
-			family: "archive",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".ifcjson")) {
-		return {
-			fileName,
-			extension: ".ifcjson",
-			format: "IFCJSON",
-			family: "container",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".mdb")) {
-		return {
-			fileName,
-			extension: ".mdb",
-			format: "MDB",
-			family: "database",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".xlsx")) {
-		return {
-			fileName,
-			extension: ".xlsx",
-			format: "XLSX",
-			family: "spreadsheet",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".zip")) {
-		return {
-			fileName,
-			extension: ".zip",
-			format: "ZIP",
-			family: "archive",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	// ------------------------------------------------------------
-	// E) Rest: unbekannt, aber im Massendrop nicht störend
-	// ------------------------------------------------------------
-	return {
-		fileName,
-		extension: ext,
-		format: "UNKNOWN",
-		family: "unknown",
-		disposition: "unknown",
-	};
+		status: normalized.isEmpty ? "empty" : "imported",
+		reason: normalized.reason ?? null,
+		spotCandidates: normalized.spotCandidates,
+		workingItems: normalized.workingItems,
+		referenceItems: normalized.referenceItems,
+	});
 }
 
 async function parseImportFile(file, descriptor, context = {}) {
@@ -265,188 +79,278 @@ async function parseImportFile(file, descriptor, context = {}) {
 	}
 }
 
-function normalizeParsedToArtifacts(parsed, context = {}) {
+function makePipelineResult({
+	descriptor,
+	status = "unknown",
+	reason = null,
+	spotCandidates = [],
+	workingItems = [],
+	referenceItems = [],
+}) {
+	return {
+		descriptor,
+		status,
+		reason,
+		spotCandidates,
+		workingItems,
+		referenceItems,
+	};
+}
+
+function normalizeParsedResult(parsed, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
 	const imported = parsed?.raw;
 	const descriptor = parsed?.descriptor ?? {};
-	const fileName = descriptor?.fileName ?? null;
-	const sourceFormat = descriptor?.format ?? "unknown";
+	const fileName = descriptor.fileName ?? null;
+	const sourceFormat = descriptor.format ?? "unknown";
 
-	// ------------------------------------------------------------
-	// A) leer/null -> tolerant
-	// ------------------------------------------------------------
+	// leer/null
 	if (imported == null) {
 		log(`parsed result empty: ${fileName ?? "(unknown file)"}`);
-		return [];
+		return {
+			isEmpty: true,
+			reason: "parsed-empty",
+			spotCandidates: [],
+			workingItems: [],
+			referenceItems: [],
+		};
 	}
 
-	// ------------------------------------------------------------
-	// B) legacy single object with .kind
-	// ------------------------------------------------------------
+	// ----------------------------------------
+	// A) Legacy single object (.kind)
+	// ----------------------------------------
 	if (imported && imported.kind) {
 		log(`parsed single object: kind=${imported.kind}`);
 
-		return [
-			makeArtifact({
-				kind: imported.kind,
-				type: imported.type ?? null,
-				name: imported.name ?? fileName ?? "import",
-				payload: imported,
-				meta: {
+		// TODO: hier später echte landFAT->sparse Normalisierung einhängen
+		const sparse = tryBuildSparseCandidateFromLegacy(imported, {
+			fileName,
+			sourceFormat,
+		});
+
+		return {
+			isEmpty: false,
+			reason: null,
+
+			spotCandidates: sparse ? [sparse] : [],
+
+			workingItems: [
+				makeWorkingItem({
+					kind: imported.kind,
+					name: imported.name ?? fileName ?? "import",
 					sourceFormat,
 					sourceFile: fileName,
-				},
-				sourceRef: {
-					name: fileName,
-				},
-			}),
-		];
+					payload: imported,
+				}),
+			],
+
+			referenceItems: [],
+		};
 	}
 
-	// ------------------------------------------------------------
-	// C) landFAT container
-	//     -> 0 alignments ist ausdrücklich erlaubt
-	// ------------------------------------------------------------
+	// ----------------------------------------
+	// B) landFAT container
+	// ----------------------------------------
 	if (imported?.type === "landFAT") {
 		const alignments = Array.isArray(imported.alignments) ? imported.alignments : [];
 		log(`parsed landFAT container: alignments=${alignments.length}`);
 
 		if (!alignments.length) {
-			log(`no alignment artifacts in container: ${fileName ?? "(unknown file)"}`);
-			return [];
+			return {
+				isEmpty: true,
+				reason: "no-alignments-in-container",
+				spotCandidates: [],
+				workingItems: [],
+				referenceItems: [],
+			};
 		}
 
-		return alignments.map((alignment, index) =>
-			makeArtifact({
-				kind: "ALIGNMENT",
-				type: "alignment2D",
+		const workingItems = alignments.map((alignment, index) =>
+			makeWorkingItem({
+				kind: "landFATAlignment",
 				name: alignment?.name ?? `alignment_${index + 1}`,
-				payload: {
-					kind: "ALIGNMENT",
-					type: "alignment2D",
-					name: alignment?.name ?? `alignment_${index + 1}`,
-					landFATAlignment: alignment,
-					meta: {
-						sourceFormat: "landXML",
-						sourceFile: imported?.meta?.sourceFile ?? fileName ?? null,
-						alignmentName: alignment?.name ?? null,
-					},
-				},
+				sourceFormat: "landXML",
+				sourceFile: imported?.meta?.sourceFile ?? fileName ?? null,
+				payload: alignment,
 				meta: {
-					sourceFormat: "landXML",
-					sourceFile: imported?.meta?.sourceFile ?? fileName ?? null,
-					alignmentName: alignment?.name ?? null,
-				},
-				sourceRef: {
-					name: fileName,
 					alignmentName: alignment?.name ?? null,
 				},
 			})
 		);
+
+		const spotCandidates = alignments
+			.map((alignment, index) =>
+				tryBuildSpotCandidateFromLandFATAlignment(alignment, {
+					fileName: imported?.meta?.sourceFile ?? fileName ?? null,
+					sourceFormat: "landXML",
+					fallbackName: `alignment_${index + 1}`,
+				})
+			)
+			.filter(Boolean);
+
+		return {
+			isEmpty: false,
+			reason: null,
+			spotCandidates,
+			workingItems,
+			referenceItems: [],
+		};
 	}
 
-	// ------------------------------------------------------------
-	// D) echte Inkonsistenz
-	// ------------------------------------------------------------
+	// ----------------------------------------
+	// C) später Terrain / IFC / Referenzen
+	// ----------------------------------------
 	throw new Error(`Unsupported parsed result shape: ${fileName ?? "(unknown file)"}`);
 }
 
-function makeArtifact({
+function makeWorkingItem({
 	kind,
-	type = null,
-	name = null,
+	name,
+	sourceFormat,
+	sourceFile,
 	payload,
 	meta = {},
-	sourceRef = {},
 }) {
 	return {
+		id: makeId("wrk"),
 		kind,
-		type,
-		name,
+		name: name ?? "unnamed",
+		source: {
+			format: sourceFormat ?? "unknown",
+			file: sourceFile ?? null,
+		},
 		payload,
+		status: {
+			selected: false,
+			validated: false,
+			assigned: false,
+		},
 		meta,
-		sourceRef,
 	};
 }
 
-function makeSkipResult(descriptor, status) {
+function makeSpotCandidate({
+	id = null,
+	kind,
+	role = "candidate",
+	name,
+	modelType,
+	model,
+	provenance = {},
+	links = {},
+}) {
+	const finalId =
+		id ??
+		makeDeterministicSpotId({
+			kind,
+			name,
+			sourceFormat: provenance?.sourceFormat,
+			sourceFile: provenance?.sourceFile,
+			alignmentName: provenance?.alignmentName,
+		});
+
 	return {
-		descriptor,
-		artifacts: [],
-		status,
-		reason: descriptor?.reason ?? null,
+		id: finalId,
+		kind,
+		role,
+		name: name ?? "unnamed",
+		model: {
+			type: modelType,
+			data: model,
+		},
+		status: {
+			editable: true,
+			valid: true,
+			dirty: false,
+		},
+		provenance,
+		links,
 	};
 }
 
-async function safeReadTextPrefix(file, maxChars = 240000) {
-	try {
-		const txt = await file.text();
-		return typeof txt === "string" ? txt.slice(0, maxChars) : "";
-	} catch {
-		return "";
+function makeDeterministicSpotId({
+	kind,
+	name,
+	sourceFormat,
+	sourceFile,
+	alignmentName,
+}) {
+	const raw = [
+		kind ?? "",
+		name ?? "",
+		sourceFormat ?? "",
+		sourceFile ?? "",
+		alignmentName ?? "",
+	].join("::");
+
+	return "spot_" + simpleHash(raw);
+}
+
+function simpleHash(str) {
+	let h = 2166136261;
+	for (let i = 0; i < str.length; i++) {
+		h ^= str.charCodeAt(i);
+		h = Math.imul(h, 16777619);
 	}
+	return (h >>> 0).toString(16);
 }
 
-function looksLikeLandXML(text) {
-	if (typeof text !== "string") return false;
-	return text.includes("<LandXML") || text.includes(":LandXML");
+function tryBuildSpotCandidateFromLandFATAlignment(alignment, {
+	fileName,
+	sourceFormat,
+	fallbackName,
+}) {
+	// TODO:
+	// hier später normalizeLandFATToSparse(alignment) aufrufen
+
+	const sparse = tryExtractSparsePlaceholder(alignment);
+	if (!sparse) return null;
+
+	return makeSpotCandidate({
+		kind: "alignment",
+		role: "candidate",
+		name: alignment?.name ?? fallbackName ?? "alignment",
+		modelType: "sparseAlignment",
+		model: sparse,
+		provenance: {
+			sourceFormat,
+			sourceFile: fileName ?? null,
+			alignmentName: alignment?.name ?? null,
+		},
+	});
 }
 
-function looksLikeInfraGML(text) {
-	if (typeof text !== "string") return false;
-	return /opengis\.net\/infragml/i.test(text) || /infra[g]?ml/i.test(text);
+function tryBuildSparseCandidateFromLegacy(imported, {
+	fileName,
+	sourceFormat,
+}) {
+	// TODO:
+	// wenn importFileAuto später landFAT liefert, besser darüber gehen
+	// aktuell nur Platzhalter / Hook
+
+	const sparse = imported?.sparseAlignment ?? null;
+	if (!sparse) return null;
+
+	return makeSpotCandidate({
+		kind: "alignment",
+		role: "candidate",
+		name: imported?.name ?? fileName ?? "alignment",
+		modelType: "sparseAlignment",
+		model: sparse,
+		provenance: {
+			sourceFormat,
+			sourceFile: fileName ?? null,
+		},
+	});
 }
 
-function looksLikeIFCXML(text) {
-	if (typeof text !== "string") return false;
-	return /ifcalignment/i.test(text) || /ifc\.org/i.test(text) || /<ifc/i.test(text);
+function tryExtractSparsePlaceholder(alignment) {
+	// Noch KEINE echte Konvertierung.
+	// Nur wenn der Parser bereits etwas Passendes mitgibt.
+	if (alignment?.sparseAlignment) return alignment.sparseAlignment;
+	return null;
 }
 
-function getExtension(lowerFileName) {
-	const idx = lowerFileName.lastIndexOf(".");
-	return idx >= 0 ? lowerFileName.slice(idx) : "";
-}
-
-function isIgnorableFile(lower) {
-	if (!lower) return true;
-
-	const base = lower.split("/").pop();
-
-	if (
-		base === ".ds_store" ||
-		base === "thumbs.db" ||
-		base === "desktop.ini" ||
-		base === "icon\r"
-	) {
-		return true;
-	}
-
-	if (base.startsWith("._")) return true;
-
-	const imageExts = new Set([
-		".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
-		".tif", ".tiff", ".svg", ".ico", ".heic", ".avif",
-	]);
-
-	const ext = getExtension(base);
-	if (imageExts.has(ext)) return true;
-
-	if (
-		base.includes("thumbnail") ||
-		base.includes("thumb") ||
-		base.includes("preview") ||
-		base.includes("vorscha") ||
-		base.includes("cover")
-	) {
-		return true;
-	}
-
-	const auxExts = new Set([
-		".txt", ".md", ".pdf", ".doc", ".docx",
-		".xls", ".csv", ".json", ".log", ".bak", ".tmp",
-	]);
-
-	if (auxExts.has(ext)) return true;
-
-	return false;
+function makeId(prefix) {
+	return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
 }

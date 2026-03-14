@@ -6,6 +6,8 @@ import { t } from "../i18n/strings.js";
 import { createWorkspaceState } from "./workspaceState.js";
 import { makeImportController } from "./importController.js";
 
+import { applyIngestResult } from "../io/importApply.js";
+
 import { makeThreeAdapter } from "../adapters/geo/ThreeAdapter.js";
 import { makeThreeViewer } from "../view/threeViewer.js";
 import { makeViewController } from "./viewController.js";
@@ -15,12 +17,18 @@ import { makeTransitionEditorView } from "../view/transitionEditorView.js";
 
 import { KappaFcnBuilder } from "@src/alignment/transition/build/KappaFcnBuilder.js";
 
-async function setupProjectMirror({ store, messaging } = {}) {
-	const masterProjectState = await messaging?.sendCmdAwait?.("Project.GetState", {});
-	store.actions?.setActiveRouteProject?.(masterProjectState?.activeRouteProjectId ?? null);
+async function setupProjectMirror({ store, ui, messaging } = {}) {
+	await messaging?.sendCmdAwait?.("Project.GetState", {});
 
-	messaging?.on?.("Project.StateChanged", (payload) => {
-		store.actions?.setActiveRouteProject?.(payload?.activeRouteProjectId ?? null);
+	await refreshRouteProjectOptions({ store, ui, messaging });
+
+	messaging?.on?.("Project.StateChanged", async () => {
+		await refreshRouteProjectOptions({ store, ui, messaging });
+	});
+
+	messaging?.on?.("Import.StateChanged", async (msg) => {
+		// console.log("[boot] Import.StateChanged", msg);
+		await refreshRouteProjectOptions({ store, ui, messaging });
 	});
 }
 
@@ -34,10 +42,11 @@ function setupThreeRuntime() {
 	return makeThreeAdapter({ three });
 }
 
-function setupImportUI({ store, ui, logLine, prefs } = {}) {
-	const importer = makeImportController({ store, ui, logLine, prefs });
+function setupImportUI({ store, ui, logLine, prefs, messaging } = {}) {
+	const importer = makeImportController({ store, ui, logLine, prefs, messaging })
 
 	importer.installDrop({ element: document.documentElement });
+
 	ui.wireImportPicker?.({
 		onFiles: (files) => importer.importFiles(files),
 	});
@@ -91,14 +100,74 @@ function setupImportUI({ store, ui, logLine, prefs } = {}) {
 	return importer;
 }
 
+async function refreshRouteProjectOptions({ store, ui, messaging } = {}) {
+	if (!ui?.setRouteProjectOptions) return;
+
+	const importState = await messaging?.sendCmdAwait?.("Import.GetState", {});
+	const items = Array.isArray(importState?.items) ? importState.items : [];
+
+	const ids = items.map((it) => String(it.id ?? "")).filter(Boolean);
+	
+	//console.log("refreshRouteProjectOptions", {
+	//	count: ids.length,
+	//	ids
+	//});
+
+	const activeId =
+	store?.getState?.()?.activeRouteProjectId ??
+	"";
+
+	ui.setRouteProjectOptions(ids, activeId);
+}
+
+async function hydrateActiveImportFromMaster({ store, ui, messaging } = {}) {
+	const rpId = store?.getState?.()?.activeRouteProjectId;
+	if (!rpId) return false;
+
+	const importState = await messaging?.sendCmdAwait?.("Import.GetState", {});
+	const items = Array.isArray(importState?.items) ? importState.items : [];
+
+	const item = items.find((it) => String(it.id) === String(rpId));
+	if (!item?.payload?.kind) return false;
+
+	const slotHint = store?.getState?.()?.activeSlot ?? "right";
+
+	const env = store.importSession?.ingest?.(item.payload, {
+		slotHint,
+		originFile: item?.source?.file ?? item?.name ?? null,
+		sourceRef: {
+			name: item?.source?.file ?? item?.name ?? null,
+		},
+	});
+
+	for (const ingest of (env?.ingests ?? [])) {
+		const effects = applyIngestResult({
+			store,
+			ui,
+			ingest,
+			emitProps: false,
+		});
+
+		for (const e of (effects ?? [])) {
+			if (!e) continue;
+
+			if (e.type === "props") {
+				if (typeof ui?.showProps === "function") ui.showProps(e.object);
+				else if (typeof ui?.emitProps === "function") ui.emitProps(e.object);
+			}
+		}
+	}
+
+	return true;
+}
+
 function setupProjectSelectors({ store, ui, messaging, prefs } = {}) {
 	ui.wireRouteProjectSelect?.({
 		onChange: async (baseId) => {
-			await messaging?.sendCmdAwait?.("Project.SetActiveRouteProject", {
-				routeProjectId: baseId || null,
-			});
-
+			store.actions?.setActiveRouteProject?.(baseId || null);
 			store.actions?.clearImportMeta?.();
+
+			await hydrateActiveImportFromMaster({ store, ui, messaging });
 		},
 	});
 
@@ -214,10 +283,11 @@ export async function bootApp({ prefs, messaging } = {}) {
 	logLine(t("boot_ready"));
 	ui.logInfo?.(`btnTrans=${!!ui.elements.buttonTransition} overlay=${!!ui.elements.transitionOverlay}`);
 	
-	await setupProjectMirror({ store, messaging });
+	await setupProjectMirror({ store, ui, messaging });
 	const threeA = setupThreeRuntime();
-	setupImportUI({ store, ui, logLine, prefs });
+	setupImportUI({ store, ui, logLine, prefs, messaging });
 	setupProjectSelectors({ store, ui, messaging, prefs });
+	await refreshRouteProjectOptions({ store, ui, messaging });
 	setupViewRuntime({ store, ui, threeA, propsElement, prefs });
 	await setupTransitionRuntime({ store, ui, messaging, transV });
 

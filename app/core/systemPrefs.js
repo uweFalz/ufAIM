@@ -1,17 +1,8 @@
 // app/core/systemPrefs.js
-//
-// Central runtime prefs (DEV vs PROD).
-// Keep it tiny + stable; expand only when needed.
 
 function resolveWorkerUrl() {
-  // index.html jetzt im Root:
-  const base = "./src/shared/messaging/SharedMessagingWorker.js";
-
-  // DEV: erzwinge neue Worker-Instanz pro Reload (URL ändert sich)
-  const isDev = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
-  if (isDev) return `${base}?v=${Date.now()}`;
-
-  return base;
+  // SharedWorker muss in allen Fenstern exakt dieselbe URL haben
+  return "/src/shared/messaging/SharedMessagingWorker.js";
 }
 
 function makeSystemPrefs() {
@@ -25,21 +16,18 @@ function makeSystemPrefs() {
 		},
 
 		view: {
-			onGeomChange: "softfit",          // MS13.2 (ohne target-jump)
-			// onGeomChange: "softfitanimated", // MS13.2b (smooth zoom)
+			onGeomChange: "softfit",
 			fitPadding: 1.35,
-			fitDurationMs: 240,              // MS13.2b default anim duration
-			cursorStepS: 10,                 // MS13.8: +/- step (meters)
-
-			// MS13.9: show background tracks (other alignments) alongside the active one
+			fitDurationMs: 240,
+			cursorStepS: 10,
 			showAuxTracks: true,
-			auxTracksScope: "pinned",        // "active" | "all" | "routeProject" | "pinned"
+			auxTracksScope: "pinned",
 			auxTracksMax: 12,
 			autoFitOnGeomChange: false,
 		},
 		
 		messaging: {
-			mode: "sharedWorker",              // "local" | "sharedWorker"
+			mode: "sharedWorker",
 			workerUrl: resolveWorkerUrl(),
 			debug: true,
 			workerEcho: true,

@@ -1,17 +1,18 @@
 // src/shared/messaging/SharedMessagingWorker.js
 
 import { startWorkerRouter } from "./worker/WorkerRouter.js";
+import { createSpotStore } from "../../model/spot/SpotStore.js";
 import transitionLookup from "../../alignment/transition/transitionLookup.json" with { type:"json" };
 
 const router = startWorkerRouter(self);
-const db = transitionLookup;
 
-// ------------------------------------------------------------
-// canonical master state (M3a: minimal project state)
-// ------------------------------------------------------------
 let projectState = {
 	activeRouteProjectId: null
 };
+
+const spotStore = createSpotStore();
+
+const db = transitionLookup;
 
 // ---- helpers (pure data, no functions) ----
 function listPresets(db) {
@@ -125,9 +126,13 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 	const normalized = items.map((it, i) => ({
 		id: it.id ?? `item_${Date.now()}_${i}`,
 		name: it.name ?? "unknown",
-		size: it.size ?? 0,
+		size: Number(it.size ?? 0),
 		kind: it.kind ?? "unknown",
-		status: "dropped"
+		status: it.status ?? "dropped",
+
+		meta: it.meta ?? null,
+		source: it.source ?? null,
+		payload: it.payload ?? null,
 	}));
 
 	importState.items.push(...normalized);
@@ -135,4 +140,35 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 	router.broadcastEvt?.("Import.StateChanged", cloneImportState());
 
 	return cloneImportState();
+});
+
+router.onCmd("Debug.GetWorkerState", async () => {
+	return {
+		clients: router.getClientCount?.() ?? -1,
+		projectState: { ...projectState },
+		importState: cloneImportState(),
+	};
+});
+
+router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
+	const state = spotStore.addSpots(spots);
+	router.broadcastEvt?.("Spot.StateChanged", state);
+	return state;
+});
+
+router.onCmd("Spot.GetState", async () => {
+	return spotStore.getState();
+});
+
+router.onCmd("Spot.SetActive", async ({ spotId } = {}) => {
+
+	if (!spotId) {
+		return spotStore.getMeta();
+	}
+
+	const meta = spotStore.setActiveSpot(spotId);
+
+	router.broadcastEvt?.("Spot.ActiveChanged", meta);
+
+	return meta;
 });

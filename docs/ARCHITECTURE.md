@@ -34,6 +34,51 @@ ufAIM folgt einer bewusst kleinen Anzahl klarer architektonischer Prinzipien:
 - Numerische Robustheit und Auditierbarkeit haben Vorrang vor Visualisierung
 - Abgeleitete Geometrie darf niemals den Entwurfsinhalt ersetzen
 
+## Model-Centric Tool Architecture
+
+ufAIM follows a model-centric architecture in which a canonical
+engineering model is shared between multiple specialized tools.
+
+The core model represents the single source of truth for all
+engineering-relevant data. Tools and views do not replicate this model
+but access it through well-defined commands and events.
+
+Specialized editors and viewers operate as focused tools around the
+shared model rather than as parts of a monolithic application.
+Examples include alignment editors, transition editors, geometry
+visualizers, and working-set managers such as the "Grabbeltisch".
+
+Each tool retrieves only the information it needs and reacts to
+domain-level change events instead of maintaining full mirrored state.
+
+This architecture allows ufAIM to evolve as a modular engineering
+workbench where specialized tools collaborate on the same canonical
+alignment model.
+
+---
+
+ufAIM folgt einer modellzentrierten Architektur, in der ein kanonisches
+Engineering-Modell von mehreren spezialisierten Werkzeugen gemeinsam
+genutzt wird.
+
+Das Kernmodell stellt die einzige maßgebliche Quelle aller
+ingenieurrelevanten Daten dar (Single Source of Truth).
+Werkzeuge und Views replizieren dieses Modell nicht,
+sondern greifen über klar definierte Commands und Events darauf zu.
+
+Editoren und Viewer sind als spezialisierte Werkzeuge um das gemeinsame
+Modell organisiert, nicht als Teil einer monolithischen Anwendung.
+Beispiele sind Alignment-Editoren, Transition-Editoren,
+Geometrie-Viewer oder Working-Set-Manager wie der „Grabbeltisch“.
+
+Jedes Werkzeug bezieht nur die Informationen, die es benötigt,
+und reagiert auf fachliche Änderungsereignisse statt vollständige
+Zustandsspiegel vorzuhalten.
+
+Diese Architektur ermöglicht es ufAIM, sich als modulare
+Engineering-Workbench zu entwickeln, in der mehrere spezialisierte
+Werkzeuge auf demselben kanonischen Alignment-Modell arbeiten.
+
 ## Sparse Alignment Core
 
 At the center of ufAIM lies the sparse alignment representation.
@@ -194,4 +239,3 @@ as prerequisites for long-term infrastructure use cases.
                           │  MultiWindow UI  │
                           │ Master + Windows │
                           └──────────────────┘
-                          

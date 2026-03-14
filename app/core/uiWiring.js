@@ -229,28 +229,40 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function setRouteProjectOptions(ids, activeId) {
-		const sel = elements.routeProjectSelect;
-		if (!sel) return;
+	const sel = elements.routeProjectSelect;
 
-		const safeIds = Array.isArray(ids) ? ids : [];
-		const wanted = activeId && safeIds.includes(activeId) ? activeId : "";
+	console.log("setRouteProjectOptions", {
+		hasSelect: !!sel,
+		count: Array.isArray(ids) ? ids.length : -1,
+		activeId
+	});
 
-		sel.innerHTML = "";
+	if (!sel) return;
 
-		const none = document.createElement("option");
-		none.value = "";
-		none.textContent = "(none)";
-		sel.appendChild(none);
+	const safeIds = Array.isArray(ids) ? ids : [];
+	const wanted = activeId && safeIds.includes(activeId) ? activeId : "";
 
-		for (const id of safeIds) {
-			const opt = document.createElement("option");
-			opt.value = id;
-			opt.textContent = id;
-			sel.appendChild(opt);
-		}
+	sel.innerHTML = "";
 
-		sel.value = wanted;
+	const none = document.createElement("option");
+	none.value = "";
+	none.textContent = "(none)";
+	sel.appendChild(none);
+
+	for (const id of safeIds) {
+		const opt = document.createElement("option");
+		opt.value = id;
+		opt.textContent = id;
+		sel.appendChild(opt);
 	}
+
+	sel.value = wanted;
+
+	console.log("routeProjectSelect after fill", {
+		optionCount: sel.options.length,
+		value: sel.value
+	});
+}
 
 	function setSlotSelectValue(value) {
 		if (!elements.slotSelect) return;
