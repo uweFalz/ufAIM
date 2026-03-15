@@ -1,54 +1,50 @@
 # ufAIM — Alignment Engineering for Infrastructure & BIM
 
-ufAIM is an alignment-centric engineering system for railway infrastructure.
+ufAIM is an alignment-centric engineering framework for railway infrastructure.
 
-Instead of treating alignments as secondary objects inside GIS, CAD or BIM
-containers, ufAIM places the alignment at the center of the model.
+Instead of treating alignments as secondary geometry inside GIS, CAD or BIM
+containers, ufAIM places the **alignment at the center of the engineering model**.
 
-See VISION.md for details.
+The project combines:
 
-Unlike conventional BIM tools, ufAIM treats alignments
-(track geometry, transitions, gradients, cant)
-as first-class, deterministic engineering objects —
-not as derived geometry.
+- a deterministic **sparse alignment kernel**
+- an **engineering-grade import pipeline**
+- a **multi-tool reference application**
 
-ufAIM ist ein ingenieurzentriertes Framework mit Referenzanwendung
-für trassierungsbasierte Infrastrukturplanung.
+The goal is to enable reliable modelling, analysis and optimisation of railway alignments.
 
-Im Gegensatz zu klassischen BIM-Werkzeugen werden Achsen und
-Übergangsbögen nicht als abgeleitete Geometrie,
-sondern als explizite, deterministische Engineering-Objekte behandelt.
+---
 
-## Why Alignments?
+# Documentation
 
-In railway and road infrastructure projects,
-the alignment is the governing design element.
-It defines geometry, kinematics, comfort, and feasibility.
+The main documentation is located in `/docs`.
 
-However, most BIM tools treat alignments as secondary artifacts,
-often losing semantic information such as curvature continuity,
-transition logic, or design intent.
+Start here:
 
-ufAIM addresses this gap by introducing a sparse, parametric
-alignment core designed for engineering-grade analysis and optimization.
+- **VISION.md** — long-term goals of the project
+- **CORE_CONCEPTS.md** — conceptual model
+- **ARCHITECTURE.md** — system architecture
 
-## Tool and Framework
+Core technical documents:
 
-ufAIM serves two roles:
+- **SPOT_MODEL.md** — canonical project data model
+- **SparseAlignment.md** — geometric alignment kernel
+- **LANDFAT_SPEC.md** — import representation
 
-- An **alignment core framework** (sparse alignment, transition families, math & geometry utilities)
-- A **reference application** demonstrating import, visualization, and workflow integration
+---
 
-The application is intentionally kept lightweight.
-Its primary purpose is to validate and expose the underlying alignment core.
+# Project Status
 
-## BIM and IFC
+ufAIM is currently focused on stabilising the **alignment kernel and data model**.
 
-ufAIM currently treats IFC models primarily as contextual geometry
-(e.g. terrain, structures, existing assets).
+Major topics under development:
 
-Support for IFC-based alignment entities is planned,
-but deliberately postponed until the sparse alignment core
-and validation workflows are stable.
+- sparse alignment solver integration
+- robust import normalisation
+- multi-window engineering workspace
 
-This avoids premature coupling between representation and engineering logic.
+# Architecture Decisions
+
+Major architectural decisions are documented in:
+
+docs/adr/

@@ -1,49 +1,118 @@
 // src/import/runImportPipeline.js
 
 import { sniffImportFile } from "./sniffers/sniffImportFile.js";
-import { importFileAuto } from "./parsers/importTRA_GRA.js";
-import { parseLandXML } from "./parsers/parseLandXML.js";
+import { resolveParser } from "./parsers/parserRegistry.js";
+import { normalizeLandFATToSparse } from "./domain/normalizeLandFATToSparse.js";
+import { classifyAlignmentForSpot } from "./domain/classifyImportResult.js";
+import { IMPORT_REASONS } from "./domain/importReasons.js";
+
+//
+// ...
+//
+export async function future_runImportPipeline(file, context = {}) {
+	const log = typeof context.log === "function" ? context.log : () => {};
+
+	const sniff = await sniffImportFile(file);
+	const parser = resolveParser(sniff);
+
+	if (!parser) {
+		return makeUnknownImportResult(file, sniff);
+	}
+
+	log(`import: ${parser.label} :: ${file.name}`);
+
+	const raw = await parser.parseToLandFAT(file, { log, sniff });
+
+	const parsed = {
+		stage: "parsed",
+		descriptor: {
+			fileName: file.name,
+			format:
+			sniff?.format ??
+			(parser.id === "landxml" ? "landXML" : parser.id?.toUpperCase?.() ?? "unknown"),
+			parserKey,
+		},
+		raw,
+	};
+
+	return normalizeParsedResult(parsed, {
+		log,
+		file,
+		sniff: { ...sniff, parserKey },
+		parserId: parser.id,
+	});
+
+	const sparseReady = normalizeLandFATDomain(normalized, {
+		log,
+		file,
+		sniff,
+	});
+
+	return classifyImportResult(sparseReady, {
+		log,
+		file,
+		sniff,
+	});
+}
 
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
 
-	const descriptor = await sniffImportFile(file);
-	log(`import: ${descriptor.format} :: ${descriptor.fileName ?? "(unknown)"}`);
+	const sniff = await sniffImportFile(file);
 
-	if (descriptor.disposition === "ignore") {
-		return makePipelineResult({
-			descriptor,
-			status: "ignored",
-			reason: descriptor.reason ?? "ignored",
-		});
-	}
+	const parserKey =
+	sniff?.parserKey ??
+	(sniff?.format === "landXML" ? "landxml" : null) ??
+	(sniff?.format === "TRA" ? "tra" : null) ??
+	(sniff?.format === "GRA" ? "gra" : null);
 
-	if (descriptor.disposition === "recognized-unsupported") {
-		return makePipelineResult({
-			descriptor,
-			status: "recognized-unsupported",
-			reason: descriptor.reason ?? "recognized-but-not-supported",
-		});
-	}
+	log(`sniff raw: ${JSON.stringify(sniff ?? null)}`);
+	log(`parserKey resolved: ${parserKey ?? "(none)"}`);
 
-	if (descriptor.disposition === "unknown") {
-		return makePipelineResult({
-			descriptor,
+	if (!parserKey) {
+		return {
 			status: "unknown",
-			reason: "unknown-format",
-		});
+			spotCandidates: [],
+			workingItems: [],
+			referenceItems: [],
+		};
 	}
 
-	const parsed = await parseImportFile(file, descriptor, { log });
-	const normalized = normalizeParsedResult(parsed, { log });
+	const parser = resolveParser({ ...sniff, parserKey });
 
-	return makePipelineResult({
-		descriptor,
-		status: normalized.isEmpty ? "empty" : "imported",
-		reason: normalized.reason ?? null,
-		spotCandidates: normalized.spotCandidates,
-		workingItems: normalized.workingItems,
-		referenceItems: normalized.referenceItems,
+	if (!parser) {
+		throw new Error(`No parser registered for ${parserKey}`);
+	}
+
+	log(`import: ${parser.label} :: ${file.name}`);
+
+	const raw = await parser.parseToLandFAT(file, {
+		log,
+		sniff: { ...sniff, parserKey },
+	});
+
+	log(`raw keys: ${Object.keys(raw ?? {}).join(",")}`);
+
+	const parsed = {
+		stage: "parsed",
+		descriptor: {
+			fileName: file.name,
+			format:
+			sniff?.format ??
+			(parser.id === "landxml" ? "landXML" :
+			parser.id === "vermesn" ? file.name.split(".").pop()?.toUpperCase() ?? "unknown" :
+			parser.id ?? "unknown"),
+		},
+		raw,
+	};
+
+	log(`wrapped parsed descriptor: ${JSON.stringify(parsed.descriptor)}`);
+
+	return normalizeParsedResult(parsed, {
+		log,
+		file,
+		sniff: { ...sniff, parserKey },
+		parserId: parser.id,
 	});
 }
 
@@ -74,8 +143,8 @@ async function parseImportFile(file, descriptor, context = {}) {
 		}
 
 		default:
-			log(`no parser wired for supported format? ${descriptor.format} :: ${descriptor.fileName}`);
-			throw new Error(`No parser for format: ${descriptor?.format ?? "unknown"}`);
+		log(`no parser wired for supported format? ${descriptor.format} :: ${descriptor.fileName}`);
+		throw new Error(`No parser for format: ${descriptor?.format ?? "unknown"}`);
 	}
 }
 
@@ -99,6 +168,10 @@ function makePipelineResult({
 
 function normalizeParsedResult(parsed, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
+	
+	log(`normalizeParsedResult descriptor: ${JSON.stringify(parsed?.descriptor ?? null)}`);
+	log(`normalizeParsedResult raw keys: ${Object.keys(parsed?.raw ?? {}).join(",")}`);
+
 	const imported = parsed?.raw;
 	const descriptor = parsed?.descriptor ?? {};
 	const fileName = descriptor.fileName ?? null;
@@ -135,13 +208,13 @@ function normalizeParsedResult(parsed, context = {}) {
 			spotCandidates: sparse ? [sparse] : [],
 
 			workingItems: [
-				makeWorkingItem({
-					kind: imported.kind,
-					name: imported.name ?? fileName ?? "import",
-					sourceFormat,
-					sourceFile: fileName,
-					payload: imported,
-				}),
+			makeWorkingItem({
+				kind: imported.kind,
+				name: imported.name ?? fileName ?? "import",
+				sourceFormat,
+				sourceFile: fileName,
+				payload: imported,
+			}),
 			],
 
 			referenceItems: [],
@@ -165,28 +238,80 @@ function normalizeParsedResult(parsed, context = {}) {
 			};
 		}
 
-		const workingItems = alignments.map((alignment, index) =>
+		const spotCandidates = [];
+		const workingItems = [];
+		const sourceFile = imported?.meta?.sourceFile ?? fileName ?? null;
+
+		for (const [index, alignment] of alignments.entries()) {
+			const name = alignment?.name ?? `alignment_${index + 1}`;
+
+			// 1) sparse erzeugen, falls noch nicht vorhanden
+			if (!alignment?.sparseAlignment) {
+				try {
+					alignment.sparseAlignment = normalizeLandFATToSparse(alignment, {
+						log,
+						sourceFormat: "landXML",
+						sourceFile,
+					});
+				} catch (err) {
+					log(
+					`normalizeLandFATToSparse failed for ${name}: ${String(err?.message ?? err)}`
+					);
+					alignment.sparseAlignment = null;
+				}
+			}
+
+			// 2) Klassifikation
+			const verdict = classifyAlignmentForSpot(alignment, { imported });
+
+			log(
+			`alignment[${index}] name=${name} ` +
+			`sparse=${!!alignment?.sparseAlignment} ` +
+			`crs=${JSON.stringify(verdict?.crs ?? null)} ` +
+			`verdict=${verdict?.code ?? "UNKNOWN"}`
+			);
+
+			// 3) SPOT-ready -> spotCandidate
+			if (verdict?.ok) {
+				try {
+					const candidate = buildAlignmentSpotCandidate({
+						alignment,
+						fileName: sourceFile,
+						sourceFormat: "landXML",
+						fallbackName: name,
+						crs: verdict.crs,
+						classification: {
+							roleCandidate: "unassigned",
+							confidence: null,
+						},
+					});
+
+					if (candidate) {
+						spotCandidates.push(candidate);
+						continue;
+					}
+				} catch (err) {
+					log(`spotCandidate build failed for ${name}: ${String(err?.message ?? err)}`);
+				}
+			}
+
+			// 4) Nicht SPOT-ready -> Working Set / Giftschrank
+			workingItems.push(
 			makeWorkingItem({
 				kind: "landFATAlignment",
-				name: alignment?.name ?? `alignment_${index + 1}`,
+				name,
 				sourceFormat: "landXML",
-				sourceFile: imported?.meta?.sourceFile ?? fileName ?? null,
+				sourceFile,
 				payload: alignment,
 				meta: {
 					alignmentName: alignment?.name ?? null,
+					crs: verdict?.crs ?? { status: "needed" },
+					giftCabinetReason:
+					verdict?.code ?? IMPORT_REASONS.SPARSE_BUILD_FAILED,
 				},
 			})
-		);
-
-		const spotCandidates = alignments
-			.map((alignment, index) =>
-				tryBuildSpotCandidateFromLandFATAlignment(alignment, {
-					fileName: imported?.meta?.sourceFile ?? fileName ?? null,
-					sourceFormat: "landXML",
-					fallbackName: `alignment_${index + 1}`,
-				})
-			)
-			.filter(Boolean);
+			);
+		}
 
 		return {
 			isEmpty: false,
@@ -240,14 +365,14 @@ function makeSpotCandidate({
 	links = {},
 }) {
 	const finalId =
-		id ??
-		makeDeterministicSpotId({
-			kind,
-			name,
-			sourceFormat: provenance?.sourceFormat,
-			sourceFile: provenance?.sourceFile,
-			alignmentName: provenance?.alignmentName,
-		});
+	id ??
+	makeDeterministicSpotId({
+		kind,
+		name,
+		sourceFormat: provenance?.sourceFormat,
+		sourceFile: provenance?.sourceFile,
+		alignmentName: provenance?.alignmentName,
+	});
 
 	return {
 		id: finalId,
@@ -268,6 +393,83 @@ function makeSpotCandidate({
 	};
 }
 
+function buildAlignmentSpotCandidate({
+	alignment,
+	fileName,
+	sourceFormat,
+	fallbackName,
+	crs,
+	classification = {},
+}) {
+	const sparse = alignment?.sparseAlignment ?? null;
+	if (!sparse) return null;
+
+	const effectiveName = alignment?.name ?? fallbackName ?? "alignment";
+
+	if (!crs?.authority || !crs?.code) {
+		throw new Error(
+		`spotCandidate requires CRS: ${effectiveName} :: ${fileName ?? "(unknown file)"}`
+		);
+	}
+
+	return {
+		id: makeDeterministicSpotId({
+			kind: "alignment",
+			name: effectiveName,
+			sourceFormat,
+			sourceFile: fileName ?? null,
+			alignmentName: alignment?.name ?? null,
+		}),
+
+		kind: "alignment",
+		role: "candidate",
+		name: effectiveName,
+
+		crs: {
+			authority: crs.authority,
+			code: crs.code,
+			axisOrder: crs.axisOrder ?? "xy",
+			units: crs.units ?? "m",
+			vertical: crs.vertical ?? null,
+			source: crs.source ?? "parser",
+		},
+
+		model: {
+			type: "sparseAlignment",
+			data: sparse,
+			geometryLevel: "analytic",
+		},
+
+		provenance: {
+			sourceFormat,
+			sourceFile: fileName ?? null,
+			alignmentName: alignment?.name ?? null,
+		},
+
+		classification: {
+			roleCandidate: classification.roleCandidate ?? null,
+			confidence: classification.confidence ?? null,
+		},
+
+		status: {
+			editable: true,
+			valid: true,
+			dirty: false,
+		},
+
+		links: {},
+	};
+}
+
+function resolveEffectiveCRS(container, alignment) {
+	return (
+	alignment?.crs ??
+	container?.meta?.crs ??
+	container?.crs ??
+	null
+	);
+}
+
 function makeDeterministicSpotId({
 	kind,
 	name,
@@ -276,11 +478,11 @@ function makeDeterministicSpotId({
 	alignmentName,
 }) {
 	const raw = [
-		kind ?? "",
-		name ?? "",
-		sourceFormat ?? "",
-		sourceFile ?? "",
-		alignmentName ?? "",
+	kind ?? "",
+	name ?? "",
+	sourceFormat ?? "",
+	sourceFile ?? "",
+	alignmentName ?? "",
 	].join("::");
 
 	return "spot_" + simpleHash(raw);
@@ -293,31 +495,6 @@ function simpleHash(str) {
 		h = Math.imul(h, 16777619);
 	}
 	return (h >>> 0).toString(16);
-}
-
-function tryBuildSpotCandidateFromLandFATAlignment(alignment, {
-	fileName,
-	sourceFormat,
-	fallbackName,
-}) {
-	// TODO:
-	// hier später normalizeLandFATToSparse(alignment) aufrufen
-
-	const sparse = tryExtractSparsePlaceholder(alignment);
-	if (!sparse) return null;
-
-	return makeSpotCandidate({
-		kind: "alignment",
-		role: "candidate",
-		name: alignment?.name ?? fallbackName ?? "alignment",
-		modelType: "sparseAlignment",
-		model: sparse,
-		provenance: {
-			sourceFormat,
-			sourceFile: fileName ?? null,
-			alignmentName: alignment?.name ?? null,
-		},
-	});
 }
 
 function tryBuildSparseCandidateFromLegacy(imported, {
@@ -342,13 +519,6 @@ function tryBuildSparseCandidateFromLegacy(imported, {
 			sourceFile: fileName ?? null,
 		},
 	});
-}
-
-function tryExtractSparsePlaceholder(alignment) {
-	// Noch KEINE echte Konvertierung.
-	// Nur wenn der Parser bereits etwas Passendes mitgibt.
-	if (alignment?.sparseAlignment) return alignment.sparseAlignment;
-	return null;
 }
 
 function makeId(prefix) {

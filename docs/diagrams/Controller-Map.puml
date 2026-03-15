@@ -1,0 +1,47 @@
+@startuml
+title ufAIM – Controller Map
+
+package "Master" {
+  [SharedMessagingWorker]
+  [SpotStore]
+  [ImportState]
+  [ProjectState]
+}
+
+package "Window" {
+  [WindowRuntime]
+  [bootLegacyAppCore]
+  [WindowSessionController]
+  [workspaceState]
+  [spotController]
+  [importController]
+  [transitionEditorBridge]
+}
+
+package "View/UI" {
+  [uiWiring]
+  [ViewController]
+  [GeoView]
+  [GrabbelView]
+  [TransitionEditorView]
+}
+
+WindowRuntime --> WindowSessionController
+bootLegacyAppCore --> WindowRuntime
+WindowSessionController --> workspaceState
+WindowSessionController --> spotController
+WindowSessionController --> importController
+WindowSessionController --> transitionEditorBridge
+uiWiring --> WindowSessionController
+ViewController --> GeoView
+ViewController --> GrabbelView
+ViewController --> TransitionEditorView
+
+spotController --> SharedMessagingWorker
+importController --> SharedMessagingWorker
+transitionEditorBridge --> SharedMessagingWorker
+
+SharedMessagingWorker --> SpotStore
+SharedMessagingWorker --> ImportState
+SharedMessagingWorker --> ProjectState
+@enduml

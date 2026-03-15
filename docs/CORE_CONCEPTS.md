@@ -4,7 +4,8 @@ This document summarises the fundamental ideas behind ufAIM.
 
 The system is designed around a single principle:
 
-> Railway infrastructure should be modelled **from the alignment outward**.
+> Railway infrastructure should be modelled **from the alignment outward**
+using a deterministic engineering core and a shared project state.
 
 
 ---
@@ -36,7 +37,7 @@ Infrastructure
 
 An alignment exists simultaneously in three mathematical spaces.
 
-κ(s)  →  θ(s)  →  (x,y)
+κ(s) → θ(s) → (x,y) → world coordinates
 
 | Space | Meaning |
 |------|---------|
@@ -151,3 +152,4 @@ ufAIM is not primarily a viewer or CAD system.
 
 It is an **alignment-centric engineering platform** where railway infrastructure is modelled starting from the mathematical structure of the alignment.
 
+These concepts are realised in the canonical project model described in SPOT_MODEL.md.

@@ -1,277 +1,321 @@
-Overview
+# SPOT Model
 
-ufAIM organizes its internal data into three distinct classes:
+This document describes the canonical data model of ufAIM.
 
-Spot Data      → canonical project model
-Working Set    → temporary candidate data
+## Overview
+
+ufAIM organises its internal data into three distinct classes:
+
+Spot Data      → canonical project model  
+Working Set    → candidate project data  
 Reference Data → contextual external data
 
-Only Spot Data forms the Single Source of Truth of the system.
+Only **Spot Data** forms the **Single Source of Truth** of the system.
 
-All clients (views, editors, tools) operate on this shared model via the Master Runtime (SharedWorker).
+All clients (views, editors and tools) operate on this shared model via the **Master Runtime (SharedWorker)**.
 
-⸻
+---
 
-1. Spot Data
+# SPOT Data
 
-Spot Data represents the canonical working model of the project.
+Spot Data represents the **canonical working model of the project**.
+
+It contains both:
+
+- **engineering objects**
+- **relations between those objects**
+
+Examples of Spot objects:
+
+- alignments
+- gradients
+- cant profiles
+- route projects
+- CRS definitions
+
+Examples of Spot relations:
+
+- alignment ↔ gradient
+- alignment ↔ cant
+- alignment ↔ route project
+- topology relations between alignments
+
+Spot Data therefore represents the **authoritative engineering state** of the project.
 
 Characteristics:
-	•	single source of truth
-	•	shared across all windows
-	•	editable by clients
-	•	persisted as project state
-	•	used by solvers, editors and visualisation
 
-Example Spot objects:
+- single source of truth
+- shared across all windows
+- editable by clients
+- persisted as project state
+- used by solvers, editors and visualisation
 
-alignment (sparse)
-gradient
-cant
-topology relations
-engineering CRS
+Spot Data is stored in the **Spot Store**.
 
-Spot Data is stored in the Spot Store.
+Spot Data is not only stored, but actively used, inspected and edited through geometric and structural views.
 
-⸻
+---
 
-Spot Store Structure
+# Spot Store Structure
 
-Minimal structure:
+Minimal conceptual structure:
 
+```text
 spotStore
- ├─ meta
- ├─ spots
- ├─ routeProjects
- ├─ topology
- └─ refs
- 
- Example:
- 
- spotStore = {
+├─ meta
+├─ objects
+├─ relations
+├─ topology
+└─ refs
+```
 
-  meta: {
-    activeSpotId: null,
-    activeRouteProjectId: null,
-    engineeringCrsId: null
-  },
-
-  spots: {
-    spot_001: SpotObject,
-    spot_002: SpotObject
-  },
-
-  routeProjects: {},
-
-  topology: {
-    nodes: {},
-    edges: {}
-  },
-
-  refs: {}
-}
-
-
-⸻
-
-Spot Object
-
-Example alignment spot:
-
-spot = {
-  id: "spot_001",
-  kind: "alignment",
-  role: "primary",
-
-  name: "Main Track",
-
-  model: {
-    type: "sparseAlignment",
-    data: {
-      startPose: {
-        pnt: { x: 0, y: 0 },
-        dir: { cos: 1, sin: 0 }
-      },
-
-      elements: [
-        { type: "G", arcLength: 120 },
-        { type: "transition", transitionCurve: "clothoid" },
-        { type: "R", curvature: 0.0012 }
-      ]
-    }
-  },
-
-  status: {
-    editable: true,
-    valid: true,
-    dirty: false
-  },
-
-  provenance: {
-    sourceFormat: "landXML",
-    sourceFile: "example.xml"
-  },
-
-  links: {
-    routeProjectId: null
-  }
-}
-
-
-⸻
-
-2. Working Set
-
-The Working Set contains temporary data that may later become Spot Data.
-
-Typical sources:
-
-imports
-landFAT containers
-unsorted alignments
-candidate geometry
-
-Working Set objects are not part of the canonical model.
-
-Example structure:
-
-workingSet = {
-  sessionId: null,
-  phase: "idle",
-
-  items: {
-    item_001: WorkingItem
-  }
-}
-
-Example WorkingItem:
-
-workingItem = {
-  id: "wrk_001",
-
-  kind: "landFATAlignment",
-
-  name: "Alignment A",
-
-  source: {
-    file: "route.xml",
-    format: "landXML"
-  },
-
-  payload: { ...landFAT... },
-
-  status: {
-    selected: false,
-    validated: false
-  }
-}
-
-The Grabbeltisch acts as manager for the Working Set.
-
-⸻
-
-3. Reference Data
-
-Reference Data represents contextual information that is not part of the canonical project model.
-
-Examples:
-
-IFC models
-terrain / DGM
-GIS layers
-external documentation
-environment data
-
-Reference Data is stored separately:
-
-referenceStore = {
-  items: {
-    ref_001: ReferenceObject
-  }
-}
+refs does not store external models themselves, but only canonical project-side references to them.
 
 Example:
 
-reference = {
-  id: "ref_ifc_001",
-  kind: "ifcModel",
+```js
+spotStore = {
 
-  source: {
-    file: "bridge.ifc",
-    format: "IFC"
-  },
+	meta: {
+		activeSpotId: null,
+		activeRouteProjectId: null,
+		engineeringCrsId: null
+	},
 
-  status: {
-    visible: true
-  }
+	objects: {
+		spot_001: SpotObject,
+		spot_002: SpotObject
+	},
+
+	relations: {
+		rel_001: RelationObject
+	},
+
+	topology: {
+		nodes: {},
+		edges: {}
+	},
+
+	refs: {}
+}
+```
+
+Objects represent engineering entities.  
+Relations describe how these objects interact.
+
+---
+
+# Sparse Alignment Model
+
+The **sparseAlignment** is the canonical geometric representation of railway alignments inside ufAIM.
+
+It represents the alignment as an alternating sequence of:
+
+FixElement → TransitionElement → FixElement
+
+This minimal structure enables deterministic geometry evaluation and robust optimisation.
+
+Structure:
+
+FixElement
+TransitionElement
+FixElement
+TransitionElement
+…
+FixElement
+
+Rules:
+
+1. The sequence begins with a FixElement  
+2. The sequence ends with a FixElement  
+3. Elements strictly alternate  
+4. Every element defines its start pose (`poseA`)
+
+---
+
+## FixElement
+
+Represents a segment with constant curvature.
+
+```js
+FixElement {
+  kind: "fixed",
+  poseA,
+  arcLength,
+  curvature,
+}
+```
+
+Meaning:
+
+- straight line → curvature = 0  
+- circular arc → curvature ≠ 0
+
+---
+
+## TransitionElement
+
+Represents a continuous curvature transition between two curvature states.
+
+```js
+TransitionElement {
+	kind: “transition”,
+
+	poseA,
+	arcLength,
+	transType,
+}
+```
+
+Start and end curvature are implicitly derived from neighbouring FixElements.
+
+---
+
+# Graph Interpretation
+
+Although stored as a linear sequence, sparse alignments can be interpreted as two dual graphs.
+
+### Curvature Graph
+
+FixNode –TransitionEdge– FixNode
+
+Nodes represent curvature states.
+
+---
+
+### Geometry Graph
+
+PoseNode –ElementEdge– PoseNode
+
+Nodes represent geometric poses.
+
+---
+
+# Working Set
+
+The **Working Set** contains candidate data that is not yet part of the canonical project model.
+
+Typical sources:
+
+- imported files
+- landFAT containers
+- unsorted alignments
+- experimental geometry
+
+Example:
+
+workingSet = {
+    sessionId: null,
+    phase: “idle”,
+
+    items: {
+        item_001: WorkingItem
+    }
 }
 
+Working Set data may later be promoted to Spot Data.
 
-⸻
+The **Grabbeltisch** acts as a user-facing manager for Working Set objects and candidate relations.
 
-4. Import Pipeline
+---
 
-Import is not the goal of the system.
+# Reference Data
 
-Its only purpose is to produce usable Spot Data.
+Reference Data provides contextual information that is not part of the canonical project model.
+
+Examples:
+
+- IFC models
+- terrain models
+- GIS layers
+- external documentation
+
+Reference Data provides context but does not modify the Spot model.
+
+---
+
+# Import Pipeline
+
+Import exists solely to produce usable project data.
 
 Typical flow:
 
 External File
-      ↓
+↓
 Parsing
-      ↓
+↓
 landFAT container
-      ↓
+↓
 Normalization
-      ↓
-sparse alignment
-      ↓
+↓
+Working Set
+↓
+User decision
+↓
 Spot Store
 
-landFAT is therefore a conversion interface, not a model format.
+The **Grabbeltisch** allows the user to inspect, organise and relate candidate data before it becomes part of the canonical model.
 
-⸻
+---
 
-5. Master Runtime
+# View Responsibilities
 
-The Master Runtime (SharedWorker) maintains the canonical state.
+Views provide different ways to work with the same Spot model.
 
-Clients (windows)
-       │
-       ▼
-SharedWorker
-       │
-       ▼
-Spot Store
+### Geometric Views
 
-All state-changing operations must go through the Master Runtime.
-
-Principle:
-
-Data entered anywhere must become available everywhere.
-
-
-⸻
-
-6. View Responsibilities
-
-Views do not own the model.
+Use the spatial content of Spot data.
 
 Examples:
 
-GeoView           → visualises Spot Data
-transEd           → edits curvature model
-Grabbeltisch      → manages Working Set
+- GeoView
+- ProfileView
+- SectionView
 
-All views communicate with the Master Runtime via the messaging system.
+---
 
-⸻
+### Structural Views
 
-Core Principle
+Focus on relations and project organisation.
 
-Spot Data = canonical project model
-Working Set = candidate data
+Examples:
+
+- Grabbeltisch
+- property panels
+- relation editors
+
+---
+
+Views do not own the model.
+
+All state-changing operations must go through the **Master Runtime**.
+
+---
+
+# Master Runtime
+
+The Master Runtime (SharedWorker) maintains the canonical project state.
+
+Clients (windows)
+│
+▼
+SharedWorker
+│
+▼
+Spot Store
+
+Principle:
+
+**Data entered anywhere must become available everywhere.**
+
+---
+
+# Core Principle
+
+Spot Data      = canonical project model
+Working Set    = candidate data
 Reference Data = contextual data
 
-Only Spot Data forms the Single Source of Truth.
+Only **Spot Data** forms the **Single Source of Truth**.
+
+The **sparseAlignment model** forms the geometric backbone of ufAIM and is intentionally minimal, deterministic and solver-friendly.

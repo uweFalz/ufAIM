@@ -1,0 +1,66 @@
+@startuml
+
+title ufAIM Window Client Architecture
+
+skinparam packageStyle rectangle
+
+package "Browser Window" {
+
+    [WindowRuntime]
+
+    [ViewController]
+    [UI_Wiring]
+
+    [WorkspaceState]
+
+}
+
+package "Tool Controllers" {
+
+    [ImportController]
+
+    [GrabbeltischController]
+
+    [TransitionEditorBridge]
+
+    [SpotController]
+
+}
+
+package "Views" {
+
+    [GeoView]
+
+    [GrabbeltischView]
+
+    [TransitionEditorView]
+
+}
+
+package "Master Runtime (SharedWorker)" {
+
+    [Messaging]
+
+    [SpotStore]
+
+}
+
+WindowRuntime --> ViewController
+WindowRuntime --> WorkspaceState
+
+ViewController --> GeoView
+ViewController --> GrabbeltischView
+ViewController --> TransitionEditorView
+
+UI_Wiring --> ImportController
+UI_Wiring --> GrabbeltischController
+UI_Wiring --> TransitionEditorBridge
+
+ImportController --> Messaging
+GrabbeltischController --> Messaging
+TransitionEditorBridge --> Messaging
+SpotController --> Messaging
+
+Messaging --> SpotStore
+
+@enduml

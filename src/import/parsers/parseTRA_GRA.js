@@ -1,4 +1,4 @@
-// src/import/parsers/importTRA_GRA.js
+// src/import/parsers/parseTRA_GRA.js
 //
 // Verm.ESN TRA/GRA Import (binary)
 // - uses sharedVermesn.decodeBinary() which returns { meta, rowsRaw }
@@ -143,7 +143,10 @@ function buildGradeFromProfile(profile1d) {
 	return grade.length ? grade : null;
 }
 
-export async function importFileAuto(file) {
+//
+// ...
+//
+export async function parseTraGraAuto(file) {
 	const extension = getExtensionLower(file.name);
 	const name = baseName(file.name);
 	const buffer = await file.arrayBuffer();

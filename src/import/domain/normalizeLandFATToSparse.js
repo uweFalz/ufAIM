@@ -26,10 +26,10 @@ function direction(a,b) {
 //
 // ...
 //
-export function normalizeLandFATToSparse(data) {
+export function normalizeLandFATToSparse(fatAlignment) {
 
 	const sparse = {
-		type: "alignment2D",
+		type: "sparseAlignment",
 		name: fatAlignment.name,
 		elements: []
 	};
@@ -41,11 +41,13 @@ export function normalizeLandFATToSparse(data) {
 		if (seg.type === "Line") {
 
 			const len = dist(seg.start, seg.end);
-
 			const dir = direction(seg.start, seg.end);
 
 			if (!pose) {
-				pose = { x: seg.start.x, y: seg.start.y, dir };
+				pose = {
+					pnt: { x: seg.start.x, y: seg.start.y },
+					dir: { cos: dir.dx, sin: dir.dy }
+				};
 			}
 
 			sparse.elements.push({
@@ -56,23 +58,22 @@ export function normalizeLandFATToSparse(data) {
 			});
 
 			pose = {
-				x: seg.end.x,
-				y: seg.end.y,
-				dir
+				pnt: { x: seg.end.x, y: seg.end.y },
+				dir: { cos: dir.dx, sin: dir.dy }
 			};
-
 		}
 
 		else if (seg.type === "Curve") {
 
-			const len = dist(seg.start, seg.end); // placeholder
-
+			const len = seg.length ?? dist(seg.start, seg.end); // placeholder
 			const dir = direction(seg.start, seg.end);
-
-			const k = 1 / seg.radius;
+			const k = seg.radius ? 1 / seg.radius : 0;
 
 			if (!pose) {
-				pose = { x: seg.start.x, y: seg.start.y, dir };
+				pose = {
+					pnt: { x: seg.start.x, y: seg.start.y },
+					dir: { cos: dir.dx, sin: dir.dy }
+				};
 			}
 
 			sparse.elements.push({
@@ -83,21 +84,21 @@ export function normalizeLandFATToSparse(data) {
 			});
 
 			pose = {
-				x: seg.end.x,
-				y: seg.end.y,
-				dir
+				pnt: { x: seg.end.x, y: seg.end.y },
+				dir: { cos: dir.dx, sin: dir.dy }
 			};
-
 		}
 
 		else if (seg.type === "Spiral") {
 
-			const len = seg.length;
-
+			const len = seg.length ?? 0;
 			const dir = direction(seg.start, seg.end);
 
 			if (!pose) {
-				pose = { x: seg.start.x, y: seg.start.y, dir };
+				pose = {
+					pnt: { x: seg.start.x, y: seg.start.y },
+					dir: { cos: dir.dx, sin: dir.dy }
+				};
 			}
 
 			sparse.elements.push({
@@ -108,13 +109,10 @@ export function normalizeLandFATToSparse(data) {
 			});
 
 			pose = {
-				x: seg.end.x,
-				y: seg.end.y,
-				dir
+				pnt: { x: seg.end.x, y: seg.end.y },
+				dir: { cos: dir.dx, sin: dir.dy }
 			};
-
 		}
-
 	}
 
 	return enforceAlternation(sparse);
@@ -157,8 +155,18 @@ function enforceAlternation(sparse) {
 	}
 
 	sparse.elements = out;
+	
+	if (sparse.elements.length > 0) {
+		const last = sparse.elements[sparse.elements.length - 1];
+		if (last.type !== "fix") {
+			sparse.elements.push({
+				type: "fix",
+				poseA: last.poseA,
+				arcLength: 0,
+				curvature: 0
+			});
+		}
+	}
 
 	return sparse;
-
 }
-
