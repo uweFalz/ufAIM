@@ -7,9 +7,9 @@
 //
 // i18n: all UI strings via t(...)
 
-import { clamp01, escapeHtml } from "../utils/helpers.js";
-import { t } from "../i18n/strings.js";
-import { makeSpotView } from "../view/spotView.js";
+import { clamp01, escapeHtml } from "@app/utils/helpers.js";
+import { t } from "@app/i18n/strings.js";
+import { makeSpotView } from "@app/view/overlays/spotView.js";
 
 // ------------------------------------------------------------
 // helpers ...
@@ -229,40 +229,40 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function setRouteProjectOptions(ids, activeId) {
-	const sel = elements.routeProjectSelect;
+		const sel = elements.routeProjectSelect;
 
-	console.log("setRouteProjectOptions", {
-		hasSelect: !!sel,
-		count: Array.isArray(ids) ? ids.length : -1,
-		activeId
-	});
+		console.log("setRouteProjectOptions", {
+			hasSelect: !!sel,
+			count: Array.isArray(ids) ? ids.length : -1,
+			activeId
+		});
 
-	if (!sel) return;
+		if (!sel) return;
 
-	const safeIds = Array.isArray(ids) ? ids : [];
-	const wanted = activeId && safeIds.includes(activeId) ? activeId : "";
+		const safeIds = Array.isArray(ids) ? ids : [];
+		const wanted = activeId && safeIds.includes(activeId) ? activeId : "";
 
-	sel.innerHTML = "";
+		sel.innerHTML = "";
 
-	const none = document.createElement("option");
-	none.value = "";
-	none.textContent = "(none)";
-	sel.appendChild(none);
+		const none = document.createElement("option");
+		none.value = "";
+		none.textContent = "(none)";
+		sel.appendChild(none);
 
-	for (const id of safeIds) {
-		const opt = document.createElement("option");
-		opt.value = id;
-		opt.textContent = id;
-		sel.appendChild(opt);
+		for (const id of safeIds) {
+			const opt = document.createElement("option");
+			opt.value = id;
+			opt.textContent = id;
+			sel.appendChild(opt);
+		}
+
+		sel.value = wanted;
+
+		console.log("routeProjectSelect after fill", {
+			optionCount: sel.options.length,
+			value: sel.value
+		});
 	}
-
-	sel.value = wanted;
-
-	console.log("routeProjectSelect after fill", {
-		optionCount: sel.options.length,
-		value: sel.value
-	});
-}
 
 	function setSlotSelectValue(value) {
 		if (!elements.slotSelect) return;
@@ -467,8 +467,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		if (!elements.overlaySpot) return;
 
 		const isHidden =
-			elements.overlaySpot.classList.contains("hidden") ||
-			elements.overlaySpot.classList.contains("overlayPane--hidden");
+		elements.overlaySpot.classList.contains("hidden") ||
+		elements.overlaySpot.classList.contains("overlayPane--hidden");
 
 		if (isHidden) openSpot();
 		else closeSpot();
@@ -486,7 +486,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function closeDocs() { hide(elements.overlayDocs); }
 	function toggleDocs() {
 		if (!elements.overlayDocs) return;
-		const isHidden = elements.overlayDocs.classList.contains("hidden") || elements.overlayDocs.classList.contains("overlayPane--hidden");
+		const isHidden = 
+		elements.overlayDocs.classList.contains("hidden") || 
+		elements.overlayDocs.classList.contains("overlayPane--hidden");
 		if (isHidden) openDocs();
 		else closeDocs();
 	}
@@ -546,7 +548,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		wireSlotSelect,
 		
 		// SPOT
-				openSpot,
+		openSpot,
 		closeSpot,
 		toggleSpot,
 

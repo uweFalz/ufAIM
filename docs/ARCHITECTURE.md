@@ -18,7 +18,9 @@ SharedWorker runtime
 +
 Tool-based clients
 
-See also: `diagrams/ufAIM_system_overview.puml`
+See also:
+- diagrams/ufAIM_system_overview.puml
+- diagrams/ufAIM_ultimate_architecture.puml
 
 This document describes the architectural structure of ufAIM.
 

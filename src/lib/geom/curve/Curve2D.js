@@ -7,6 +7,9 @@
 // We keep it intentionally small: arcLength + point/direction/curvature queries.
 // Concrete implementations: AlignmentElement, Alignment2D, etc.
 
+//
+// ...
+//
 export class Curve2D {
 	constructor() {
 		if (new.target === Curve2D) {

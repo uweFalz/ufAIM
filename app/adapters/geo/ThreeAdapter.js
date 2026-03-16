@@ -11,6 +11,9 @@
 
 import { makeGeoTransform } from "./GeoTransform.js";
 
+//
+// ...
+//
 export function makeThreeAdapter({ three, transform } = {}) {
 	if (!three) throw new Error("ThreeAdapter: missing 'three' viewer instance");
 

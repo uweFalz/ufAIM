@@ -1,4 +1,5 @@
 // src/lib/geom/frame/pose2.js
+//
 // Minimal, mathematisch sauber: 2D Pose als Frenet-Frame (p, t) mit unit tangent.
 // Konvention: n = rot90(t) = (-t.y, t.x).  kappa > 0 => Linkskurve (CCW).
 
@@ -33,7 +34,7 @@ export function normalize(v, eps = EPS) {
 }
 
 // ---- Pose ----
-// Kanonisch: { p:{x,y}, t:{x,y} } mit |t|=1
+// Kanonisch: { p: {x,y}, t: {x,y} } mit |t|=1
 export function poseFromTangent(x, y, tx, ty) {
 	const t = normalize({ x: tx, y: ty });
 	return { p: { x, y }, t };
