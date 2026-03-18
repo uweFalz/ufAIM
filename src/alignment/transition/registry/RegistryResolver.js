@@ -2,8 +2,6 @@
 
 import transitionLookup from "../transitionLookup.json" with { type:"json" };
 
-console.debug("[RegistryResolver.js] touched!");
-
 export class RegistryResolver {
 	constructor(db = transitionLookup) {
 		this.db = db;

@@ -185,7 +185,7 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 	async function listPresets() {
 		return messaging.sendCmdAwait("Transition.ListPresets", {});
 	}
-
+	
 	async function getPresetSpec(presetId) {
 		return messaging.sendCmdAwait("Transition.GetPresetSpec", { presetId });
 	}
@@ -335,23 +335,18 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 
 			await ensureViewInitOnce();
 
-			// let layout settle, then resize board
-			requestAnimationFrame(() => requestAnimationFrame(() => view?.resize?.()));
-		});
-		
-		btnOpen?.addEventListener("click", async () => {
 			const st = store.getState?.() ?? {};
-			const pid = String(st.te_presetId ?? "");
+			const presetId = String(st.te_presetId ?? "");
 
-			if (pid) {
-				await applyPresetSpecToStoreAndUI(pid);
+			if (presetId) {
+				await applyPresetSpecToStoreAndUI(presetId);
 			}
 
-			openOverlay();
-			setOpen?.(true);
-
-			await ensureViewInitOnce();
-			requestAnimationFrame(() => requestAnimationFrame(() => view?.resize?.()));
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					view?.resize?.();
+				});
+			});
 		});
 
 		btnClose?.addEventListener("click", () => {

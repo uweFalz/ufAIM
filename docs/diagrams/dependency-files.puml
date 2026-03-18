@@ -129,6 +129,9 @@ package "src" {
           class "solvePartitionC1.js" as N_src_alignment_transition_registry_compose_solvePartitionC1_js
         }
       }
+      package "service" {
+        class "TransitionQueryService.js" as N_src_alignment_transition_service_TransitionQueryService_js
+      }
     }
   }
   package "import" {
@@ -189,8 +192,15 @@ package "src" {
       class "SharedMessagingWorker.js" as N_src_shared_messaging_SharedMessagingWorker_js
       class "ccv1.js" as N_src_shared_messaging_ccv1_js
       class "createMessagingClient.js" as N_src_shared_messaging_createMessagingClient_js
+      class "createWorkerContext.js" as N_src_shared_messaging_createWorkerContext_js
       package "local" {
         class "LocalBus.js" as N_src_shared_messaging_local_LocalBus_js
+      }
+      package "service" {
+        class "DebugService.js" as N_src_shared_messaging_service_DebugService_js
+        class "ImportSessionService.js" as N_src_shared_messaging_service_ImportSessionService_js
+        class "ProjectStateService.js" as N_src_shared_messaging_service_ProjectStateService_js
+        class "SpotService.js" as N_src_shared_messaging_service_SpotService_js
       }
       package "worker" {
         class "SharedWorkerClient.js" as N_src_shared_messaging_worker_SharedWorkerClient_js
@@ -301,13 +311,19 @@ N_src_lib_geom_frame_pose2_js --> N_src_lib_geom_vec2_js
 N_src_lib_geom_frame_poseAdvance2_js --> N_src_lib_geom_vec2_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_ccv1_js
-N_src_shared_messaging_SharedMessagingWorker_js --> N_src_alignment_transition_registry_RegistryResolver_js
-N_src_shared_messaging_SharedMessagingWorker_js --> N_src_model_spot_SpotStore_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_alignment_transition_service_TransitionQueryService_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_createWorkerContext_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_service_DebugService_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_service_ImportSessionService_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_service_ProjectStateService_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_service_SpotService_js
 N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_worker_WorkerRouter_js
 N_src_shared_messaging_ccv1_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_MessagingClient_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_local_LocalBus_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_worker_SharedWorkerClient_js
+N_src_shared_messaging_createWorkerContext_js --> N_src_alignment_transition_registry_RegistryResolver_js
+N_src_shared_messaging_createWorkerContext_js --> N_src_model_spot_SpotStore_js
 N_src_shared_messaging_worker_WorkerRouter_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_worker_WorkerRouter_js --> N_src_shared_messaging_ccv1_js
 N_src_shared_runtime_AppRuntimeLocal_js --> N_src_shared_messaging_ccv1_js

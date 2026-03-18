@@ -35,6 +35,36 @@ export class WindowRuntime {
 			this.messaging.attachRuntime((msg) => runtime.handle(msg));
 		}
 		
+		this.messaging.on("worker:hello", (m) => console.log("[WindowRuntime] worker says hello", m));
+		
+		this.messaging.on("Debug.Log", (msg) => {
+			
+			// console.debug("Debug.Log message arrived ", msg);
+			
+			const p = msg?.payload ?? {};
+			const level = String(p.level ?? "log");
+			const scope = String(p.scope ?? "unknown");
+			const args = Array.isArray(p.args) ? p.args : [];
+
+			const prefix = `[${scope}]`;
+
+			if (level === "warn") console.warn(prefix, ...args);
+			else if (level === "error") console.error(prefix, ...args);
+			else console.log(prefix, ...args);
+
+			const el = document.getElementById("log");
+			if (el) {
+				const line = `${prefix} ${args.map((x) => {
+					if (typeof x === "string") return x;
+					try { return JSON.stringify(x); }
+					catch { return String(x); }
+				}).join(" ")}\n`;
+
+				el.textContent += line;
+			}
+		});
+		
+		/*
 		const presets = await this.messaging.sendCmdAwait("Transition.ListPresets", {});
 		console.log("presets", presets?.length, presets?.[0]);
 
@@ -51,8 +81,7 @@ export class WindowRuntime {
 			title: document.title || "ufAIM",
 			capabilities: ["alignment.view", "transition.editor"],
 		});
-
-		this.messaging.on("worker:hello", (m) => console.log("[WindowRuntime] worker says hello", m));
+		*/
 
 		if (this.prefs?.runtime?.legacyAppCore ?? true) {
 			bootWindowApp({ prefs: this.prefs, messaging: this.messaging }).catch((error) => {

@@ -35,6 +35,7 @@ package "src/alignment/transition/build" as P_src_alignment_transition_build {}
 package "src/alignment/transition/registry" as P_src_alignment_transition_registry {}
 package "src/alignment/transition/registry/ast" as P_src_alignment_transition_registry_ast {}
 package "src/alignment/transition/registry/compose" as P_src_alignment_transition_registry_compose {}
+package "src/alignment/transition/service" as P_src_alignment_transition_service {}
 package "src/import" as P_src_import {}
 package "src/import/domain" as P_src_import_domain {}
 package "src/import/parsers" as P_src_import_parsers {}
@@ -47,6 +48,7 @@ package "src/lib/math/numeric" as P_src_lib_math_numeric {}
 package "src/model/spot" as P_src_model_spot {}
 package "src/shared/messaging" as P_src_shared_messaging {}
 package "src/shared/messaging/local" as P_src_shared_messaging_local {}
+package "src/shared/messaging/service" as P_src_shared_messaging_service {}
 package "src/shared/messaging/worker" as P_src_shared_messaging_worker {}
 package "src/shared/runtime" as P_src_shared_runtime {}
 package "src/utils" as P_src_utils {}
@@ -100,8 +102,10 @@ P_src_import --> P_src_import_sniffers
 P_src_import_parsers --> P_src_import_domain
 P_src_lib_geom_frame --> P_src_lib_geom
 P_src_shared_messaging --> P_src_alignment_transition_registry
+P_src_shared_messaging --> P_src_alignment_transition_service
 P_src_shared_messaging --> P_src_model_spot
 P_src_shared_messaging --> P_src_shared_messaging_local
+P_src_shared_messaging --> P_src_shared_messaging_service
 P_src_shared_messaging --> P_src_shared_messaging_worker
 P_src_shared_messaging_worker --> P_src_shared_messaging
 P_src_shared_runtime --> P_src_shared_messaging

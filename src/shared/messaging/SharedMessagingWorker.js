@@ -1,143 +1,93 @@
 // src/shared/messaging/SharedMessagingWorker.js
 
 import { startWorkerRouter } from "./worker/WorkerRouter.js";
-import { createSpotStore } from "../../model/spot/SpotStore.js";
-import transitionLookup from "../../alignment/transition/transitionLookup.json" with { type:"json" };
-import { RegistryResolver } from "../../alignment/transition/registry/RegistryResolver.js";
+
+import { createWorkerContext } from "./createWorkerContext.js";
+
+import { createTransitionQueryService } from "../../alignment/transition/service/TransitionQueryService.js";
+import { createProjectStateService } from "./service/ProjectStateService.js";
+import { createImportSessionService } from "./service/ImportSessionService.js";
+import { createSpotService } from "./service/SpotService.js";
+import { createDebugService } from "./service/DebugService.js";
+
+console.log("[Worker] booting (1)...");
 
 const router = startWorkerRouter(self);
+const ctx = createWorkerContext({ router });
 
-let projectState = {
-	activeRouteProjectId: null
-};
+console.log("[Worker] booting (2)...");
 
-const spotStore = createSpotStore();
+// ---- services ----
+const transitionService = createTransitionQueryService({
+	db: ctx.db,
+	registryResolver: ctx.registryResolver,
+});
 
-const db = transitionLookup;
-const registryResolver = new RegistryResolver(db);
+const projectStateService = createProjectStateService({
+	getState: () => ctx.projectState,
+	setState: (next) => { ctx.projectState = next; },
+	router: ctx.router,
+});
 
-// ---- helpers (pure data, no functions) ----
-function listPresets(db) {
-	const tr = db?.transition ?? {};
-	
-	return Object.keys(tr).map((id) => {
-		const t = tr[id] ?? {};
-		return { id, label: t.label ?? id };
-	});
-}
+const importSessionService = createImportSessionService({
+	getState: () => ctx.importState,
+	setState: (next) => { ctx.importState = next; },
+	router: ctx.router,
+});
 
-function getPresetSpec(registryResolver, presetId) {
-	const descriptor = registryResolver.resolveTransitionDescriptor(presetId);
-	if (!descriptor) {
-		throw new Error(`Unknown presetId: ${presetId}`);
-	}
+const spotService = createSpotService({
+	spotStore: ctx.spotStore,
+	router: ctx.router,
+});
 
-	const part = Array.isArray(descriptor.normLengthPartition)
-	? descriptor.normLengthPartition
-	: [0, 1, 0];
+const debug = createDebugService({
+	router: ctx.router,
+	scope: "worker",
+	enabled: true,
+});
 
-	const l1 = Number(part[0] ?? 0) || 0;
-	const lc = Number(part[1] ?? 0) || 0;
-
-	const w1 = l1;
-	const w2 = l1 + lc;
-
-	return {
-		presetId: String(descriptor.id ?? presetId ?? "").toLowerCase(),
-		descriptor,
-		cuts01: { w1, w2 },
-		meta: {
-			label: descriptor.label ?? String(descriptor.id ?? presetId ?? ""),
-		},
-	};
-}
+debug.log("worker booted");
 
 // ------------------------------------------------------------
 // Transition.* API
 // ------------------------------------------------------------
 
-router.onCmd("Transition.ListPresets", async () => listPresets(db));
+router.onCmd("Transition.ListPresets", async () => {
+	debug.log("Transition.ListPresets");
+	return transitionService.listPresets();
+});
 
 router.onCmd("Transition.GetPresetSpec", async ({ presetId }) => {
-	return getPresetSpec(registryResolver, presetId); 
+	debug.log("Transition.GetPresetSpec", { presetId });
+	return transitionService.getPresetSpec(presetId);
 });
 
 // ------------------------------------------------------------
-// Project.* API  (M3a)
+// Project.* API
 // ------------------------------------------------------------
 
 router.onCmd("Project.GetState", async () => {
-	return { ...projectState };
+	return projectStateService.getState();
 });
 
 router.onCmd("Project.SetActiveRouteProject", async ({ routeProjectId } = {}) => {
-	projectState = {
-		...projectState,
-		activeRouteProjectId: routeProjectId ?? null
-	};
-
-	// falls dein Router anders broadcastet, hier entsprechend anpassen
-	router.broadcastEvt?.("Project.StateChanged", { ...projectState });
-
-	return { ...projectState };
+	return projectStateService.setActiveRouteProject({ routeProjectId });
 });
-
-// ------------------------------------------------------------
-// Import session state (M3-Importa)
-// ------------------------------------------------------------
-
-let importState = {
-	sessionId: null,
-	phase: "idle",     // idle | collecting | parsing | ready | error
-	items: [],
-	error: null
-};
-
-function cloneImportState() {
-	return JSON.parse(JSON.stringify(importState));
-}
 
 // ------------------------------------------------------------
 // Import.* API
 // ------------------------------------------------------------
 
 router.onCmd("Import.GetState", async () => {
-	return cloneImportState();
+	return importSessionService.getState();
 });
 
 router.onCmd("Import.BeginSession", async ({ source } = {}) => {
-
-	importState = {
-		sessionId: `imp_${Date.now()}`,
-		phase: "collecting",
-		items: [],
-		error: null
-	};
-
-	router.broadcastEvt?.("Import.StateChanged", cloneImportState());
-
-	return cloneImportState();
+	return importSessionService.beginSession({ source });
 });
 
 router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
-
-	const normalized = items.map((it, i) => ({
-		id: it.id ?? `item_${Date.now()}_${i}`,
-		name: it.name ?? "unknown",
-		size: Number(it.size ?? 0),
-		kind: it.kind ?? "unknown",
-		status: it.status ?? "dropped",
-
-		meta: it.meta ?? null,
-		source: it.source ?? null,
-		payload: it.payload ?? null,
-	}));
-
-	importState.items.push(...normalized);
-
-	router.broadcastEvt?.("Import.StateChanged", cloneImportState());
-
-	return cloneImportState();
+	return importSessionService.addItems({ items });
 });
 
 // ------------------------------------------------------------
@@ -145,26 +95,15 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 // ------------------------------------------------------------
 
 router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
-	const state = spotStore.addSpots(spots);
-	router.broadcastEvt?.("Spot.StateChanged", state);
-	return state;
+	return spotService.addCandidates({ spots });
 });
 
 router.onCmd("Spot.GetState", async () => {
-	return spotStore.getState();
+	return spotService.getState();
 });
 
 router.onCmd("Spot.SetActive", async ({ spotId } = {}) => {
-
-	if (!spotId) {
-		return spotStore.getMeta();
-	}
-
-	const meta = spotStore.setActiveSpot(spotId);
-
-	router.broadcastEvt?.("Spot.ActiveChanged", meta);
-
-	return meta;
+	return spotService.setActive({ spotId });
 });
 
 // ------------------------------------------------------------
@@ -174,7 +113,7 @@ router.onCmd("Spot.SetActive", async ({ spotId } = {}) => {
 router.onCmd("Debug.GetWorkerState", async () => {
 	return {
 		clients: router.getClientCount?.() ?? -1,
-		projectState: { ...projectState },
-		importState: cloneImportState(),
+		projectState: projectStateService.getState(),
+		importState: importSessionService.getState(),
 	};
 });
