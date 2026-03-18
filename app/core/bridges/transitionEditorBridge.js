@@ -24,7 +24,7 @@
 //   - This bridge does NOT rename presets to "variant" etc.
 //     That is an editor-level UX decision for later (and requires edit-state modeling).
 
-import { clamp01 } from "@app/utils/helpers.js";
+import { clamp01 } from "@src/utils/helpers.js";
 
 //
 function setText(el, txt) {

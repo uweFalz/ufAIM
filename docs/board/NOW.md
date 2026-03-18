@@ -21,9 +21,23 @@ uiWiring
 
 ### Alignment Engine
 
-SparseAlignment  
-AlignmentFactory  
-Transition functions
+Current work:
+
+- Separate RegistryCompiler and KappaFcnBuilder responsibilities
+- Define transition runtime descriptor for AlignmentEngine
+- Fix geometric foundation (pose2 representation)
+
+Alignment tasks:
+
+1. Correct pose2 representation
+   { {x,y}, {tx,ty} } instead of { {x,y}, theta }
+
+2. Provide minimal linear algebra layer
+   vec2 / frame2 helpers instead of scattered helpers
+
+3. Clean AlignmentElement class hierarchy
+
+4. Prepare TransitionRuntime input for AlignmentEngine
 
 ---
 

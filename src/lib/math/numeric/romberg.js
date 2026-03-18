@@ -4,9 +4,9 @@ export const romberg = {
 	// nmax = number of partitions, n=2^nmax
 	NMAX : 32,
 	// maximum absolute approximate error acceptable (should be >=0)
-	abs : 1e-10,
+	abs : 1e-12,
 	// maximum absolute relative approximate error acceptable (should be >=0)
-	rel : 1e-10,
+	rel : 1e-12,
 
 	integrate : function(func, a, b) {
 		// INPUTS
@@ -98,18 +98,11 @@ export const romberg = {
 				integ_val = { intC: currC[jdx], intS: currS[jdx] };
 				
 				// returning the value if either tolerance is met
-				if (EaC < romberg.abs && EaS < romberg.abs) { 
-					// console.debug("romberg at " + idx); 
-					return integ_val; 
-					}
-				if (ErC < romberg.rel && ErS < romberg.rel) { 
-					// console.debug("romberg at " + idx); 
-					return integ_val; 
-					}
+				if (EaC < romberg.abs && EaS < romberg.abs) { return integ_val; }
+				if (ErC < romberg.rel && ErS < romberg.rel) { return integ_val; }
 			}
 		}
 		// returning the last calculated value of integral whether tolerance is met or not
-		console.debug("romberg at " + idx); 
 		return integ_val;
 	}
 }

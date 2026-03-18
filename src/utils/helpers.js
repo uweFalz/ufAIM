@@ -1,4 +1,4 @@
-// src/utils/helpers.js
+// app/utils/helpers.js
 
 //
 // ...

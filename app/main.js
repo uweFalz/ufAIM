@@ -3,7 +3,7 @@
 import { systemPrefs }   from "@app/core/config/systemPrefs.js";
 import { WindowRuntime } from "@app/core/runtime/WindowRuntime.js";
 
-import "./src/alignment/_e2eAlignmentTest.js";
+import "../src/alignment/_e2eAlignmentTest.js";
 
 const runtime = new WindowRuntime({ prefs: systemPrefs });
 

@@ -8,6 +8,16 @@
 // - Registry / slot apply lives here.
 // - Preview quickhooks live in importPreviewApply.js
 // - No format-specific parsing logic here.
+//
+// Ziel später
+//
+// Wahrscheinlich eine sauberere Aufteilung in:
+// 
+// import/apply = reine State-/Artifact-Übernahme
+// preview/focus sync = controller/runtime responsibility
+//
+// Also weniger „apply macht alles“.
+//
 
 import { applyImportRegistry } from "./importRegistryApply.js";
 import {

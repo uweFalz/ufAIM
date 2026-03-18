@@ -2,6 +2,20 @@
 //
 // currently not yet wired into runtime;
 // kept as target shape for the future session split
+//
+// Ziel später
+//
+// windowSessionState wird die klare Wahrheit für:
+// 	•	Fokus
+// 	•	Slot
+// 	•	Navigation / Cursor
+// 	•	ggf. aktive Panels / Tools
+//
+// und windowStore verliert diese Reste.
+// 
+// Bewertung
+//
+// Das ist der wichtigste mittelfristige Architekturpunkt, aber kein akuter Fehler.
 
 //
 // ...

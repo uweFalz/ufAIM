@@ -29,3 +29,10 @@
 - Grabbeltisch
 - View picking
 - editor tools
+
+## Geometry engine
+
+- transition lookup system
+- solver integration
+- topology support
+- runtime transition descriptor for alignment engine

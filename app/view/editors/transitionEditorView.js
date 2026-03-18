@@ -16,7 +16,7 @@
 //   - registry.compilePreset(presetId) -> { kappa(u), kappa1(u), kappa2(u), kappaInt(u), cuts01:{w1,w2}, meta:{} }
 
 import * as JXG from "jsxgraph";
-import { clampNumber } from "@app/utils/helpers.js";
+import { clampNumber } from "@src/utils/helpers.js";
 
 //
 const _logOnce = new Set();

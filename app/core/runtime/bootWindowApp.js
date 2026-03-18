@@ -1,11 +1,18 @@
 // app/core/runtime/bootWindowApp.js
+//
+// Ziel später:
+//
+// bootWindowApp
+//   -> setupRuntime(ctx)
+//   -> setupControllers(ctx)
+//   -> setupViews(ctx)
 
 import { wireUI } from "../uiWiring.js";
 import { t } from "@app/i18n/strings.js";
 
 import { createRuntimeContext } from "./createRuntimeContext.js";
 
-import { createWorkspaceState } from "../state/workspaceState.js";
+import { createWindowStore } from "../state/windowStore.js";
 import { createWindowSessionState } from "../session/windowSessionState.js";
 import { createWindowSessionController } from "../session/windowSessionController.js";
 import { makeImportController } from "../controllers/importController.js";
@@ -266,7 +273,7 @@ export async function bootWindowApp({ prefs, messaging } = {}) {
 
 	const ctx = createRuntimeContext({ prefs, messaging });
 
-	ctx.store = createWorkspaceState();
+	ctx.store = createWindowStore();
 	if (prefs.isDev) window.__ufAIM_store = ctx.store;
 
 	ctx.windowSessionState = createWindowSessionState();

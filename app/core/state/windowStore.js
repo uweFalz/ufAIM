@@ -1,4 +1,4 @@
-// app/core/state/workspaceState.js
+// app/core/state/windowStore.js
 //
 // workspaceState is currently a temporary combined window-side store.
 //
@@ -38,7 +38,7 @@
 // until the wiring cleanup is complete.
 
 import { makeInitialState, ensureStateShape } from "./storeShape.js";
-import { clamp01range } from "@app/utils/helpers.js";
+import { clamp01range } from "@src/utils/helpers.js";
 
 // ...
 function spotKey(spotId, slot) {
@@ -57,7 +57,7 @@ function normalizeSlot(slot) {
 //
 // ...
 //
-export function createWorkspaceState(initial) {
+export function createWindowStore(initial) {
 	let state = ensureStateShape(initial ?? makeInitialState());
 	const listeners = new Set();
 

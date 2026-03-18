@@ -1,33 +1,72 @@
 // src/alignment/elements/AlignmentElement.js
-//
-// Base contract for all alignment elements (2D plan geometry).
-// No transition-specific concepts here.
-// Station variable is always s ∈ [0, L] in meters.
-//
-// Sparse core idea:
-// - arcLength L
-// - start pose A = { x, y, dx, dy }  (dx,dy normalized)
-// - end pose   E = { x, y, dx, dy }  (may be lazily computed)
-// - type = "fixed" | "transition"
 
-import { Curve2D } from "../../lib/geom/curve/Curve2D.js";
+import { normalize } from "@src/lib/geom/vec2.js";
 
-export class AlignmentElement extends Curve2D {
-	constructor({ id, type, arcLength } = {}) {
-		super();
-		this.id = String(id ?? "");
-		this.type = type; // "fixed" | "transition"
-		this._L = Number(arcLength ?? 0);
-		if (!this.id) throw new Error("AlignmentElement: missing id");
-		if (this.type !== "fixed" && this.type !== "transition") throw new Error("AlignmentElement: invalid type");
-		if (!Number.isFinite(this._L) || this._L < 0) throw new Error("AlignmentElement: invalid arcLength");
+export /* abstract */ class AlignmentElement {
+
+	constructor({ arcLength = 0 } = {}) {
+		this._arcLength = Number(arcLength) || 0;
 	}
 
-	get arcLength() { return this._L; }
+	// --- core ---
 
-	// mandatory:
-	poseEFromPoseA(poseA) { throw new Error("AlignmentElement.poseEFromPoseA not implemented"); }
+	get arcLength() {
+		return this._arcLength;
+	}
 
-	// optional fast path for chaining:
-	localDelta() { return null; }
+	clampS(s) {
+		const x = Number(s);
+		if (!Number.isFinite(x)) return 0;
+		return Math.max(0, Math.min(this._arcLength, x));
+	}
+
+	// --- required overrides ---
+
+	curvatureAt(s) {
+		throw new Error("AlignmentElement.curvatureAt(s) not implemented");
+	}
+
+	poseAt(s, poseA, opts = {}) {
+		throw new Error("AlignmentElement.poseAt(s, poseA) not implemented");
+	}
+
+	reverse() {
+		throw new Error("AlignmentElement.reverse() not implemented");
+	}
+
+	parallel(offset) {
+		throw new Error("AlignmentElement.parallel(offset) not implemented");
+	}
+
+	// --- convenience ---
+
+	poseE(poseA, opts = {}) {
+		return this.poseAt(this._arcLength, poseA, opts);
+	}
+
+	pointAt(s, poseA, opts = {}) {
+		return this.poseAt(s, poseA, opts).p;
+	}
+
+	tangentAt(s, poseA, opts = {}) {
+		return this.poseAt(s, poseA, opts).t;
+	}
+
+	// --- track space ---
+
+	track2World(s, q = 0, poseA, opts = {}) {
+		const pose = this.poseAt(s, poseA, opts);
+
+		const t = normalize(pose.t);
+		const n = { x: -t.y, y: t.x }; // left normal
+
+		return {
+			x: pose.p.x + q * n.x,
+			y: pose.p.y + q * n.y
+		};
+	}
+
+	world2Track(x, y, poseA, opts = {}) {
+		throw new Error("AlignmentElement.world2Track not implemented");
+	}
 }

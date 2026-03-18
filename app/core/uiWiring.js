@@ -7,9 +7,10 @@
 //
 // i18n: all UI strings via t(...)
 
-import { clamp01, escapeHtml } from "@app/utils/helpers.js";
 import { t } from "@app/i18n/strings.js";
 import { makeSpotView } from "@app/view/overlays/spotView.js";
+
+import { clamp01, escapeHtml } from "@src/utils/helpers.js";
 
 // ------------------------------------------------------------
 // helpers ...

@@ -7,25 +7,27 @@
 // We keep it intentionally small: arcLength + point/direction/curvature queries.
 // Concrete implementations: AlignmentElement, Alignment2D, etc.
 
-//
-// ...
-//
-export class Curve2D {
+export /* abstract */ class Curve2D {
+
 	constructor() {
 		if (new.target === Curve2D) {
 			throw new Error("Curve2D is abstract");
 		}
 	}
 
-	// --- required ---
-	get arcLength() { throw new Error("Curve2D.arcLength getter required"); }
+	curvatureAt(s) {
+		throw new Error("curvatureAt(s) required");
+	}
 
-	// poseA is the “external initial value” (start pose for this curve segment/object).
-	// Implementations may accept poseA via ctor (element stands alone) OR via arg (alignment propagates pose).
-	curvatureAt(/* s, poseA? */) { throw new Error("curvatureAt(s) required"); }
-	directionAt(/* s, poseA? */) { throw new Error("directionAt(s) required"); }
-	coordAt(/* s, poseA? */) { throw new Error("coordAt(s) required"); }
+	poseAt(s, poseA, opts = {}) {
+		throw new Error("poseAt(s) required");
+	}
 
-	// --- optional goodies (can stay unimplemented in minimal phase) ---
-	// toLocal / fromLocal, reverse, etc.
+	pointAt(s, poseA = null, opts = {}) {
+		return this.poseAt(s, poseA, opts).p;
+	}
+
+	tangentAt(s, poseA = null, opts = {}) {
+		return this.poseAt(s, poseA, opts).t;
+	}
 }

@@ -1,7 +1,11 @@
 # ufAIM – Session Transfer
 
-Date: YYYY-MM-DD  
+Date: 2026-03-17  
 Session: short description
+
+Wir arbeiten gerade an TransitionRegistry
+pose2 ist falsch
+RegistryCompiler wird aufgespalten
 
 ---
 
@@ -32,17 +36,12 @@ Session: short description
 
 # CURRENT FOCUS
 
-Short term goal:
+Transition registry refactor.
 
-Example:
-Stabilize import pipeline and define WindowSession model.
-
-Modules currently touched:
-
-- runImportPipeline.js
-- normalizeLandFATToSparse.js
-- parserRegistry.js
-- workspaceState.js
+Tasks:
+- separate RegistryCompiler and KappaFcnBuilder
+- define runtime transition descriptor
+- correct pose2 representation in geometry layer
 
 ---
 

@@ -22,7 +22,7 @@ import {
 	radToDeg, 
 	normDeg180, 
 	headingDegFromPoints 
-	} from "@app/utils/helpers.js";
+	} from "@src/utils/helpers.js";
 
 import { mirrorQuickHooksFromActive } from "@app/io/apply/importApply.js";
 

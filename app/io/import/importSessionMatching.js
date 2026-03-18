@@ -12,7 +12,7 @@
 // Geometry/stat helpers are injected from importSession.js for now,
 // so this split stays small and low-risk.
 
-import { clamp01 } from "@app/utils/helpers.js";
+import { clamp01 } from "@src/utils/helpers.js";
 
 //
 function dist2(a, b) {

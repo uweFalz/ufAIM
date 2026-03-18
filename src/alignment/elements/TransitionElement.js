@@ -1,75 +1,115 @@
 // src/alignment/elements/TransitionElement.js
-//
-// TransitionElement: berlinish bundle
-// [Quasi(hw1), ZeroLen(K1), Quasi(core), ZeroLen(K2), Quasi(hw2)]
-// Quasi does the math; TransitionElement forwards.
 
 import { AlignmentElement } from "./AlignmentElement.js";
-import { clampS } from "../../lib/geom/curve/element2.js";
+import { normalize, rot90 } from "@src/lib/geom/vec2.js";
+import { romberg } from "@src/lib/math/numeric/romberg.js";
+
+function clamp01(u) {
+	const x = Number(u);
+	if (!Number.isFinite(x)) return 0;
+	return Math.max(0, Math.min(1, x));
+}
+
+function rot(v, angle) {
+	const c = Math.cos(angle);
+	const s = Math.sin(angle);
+	return {
+		x: v.x * c - v.y * s,
+		y: v.x * s + v.y * c,
+	};
+}
 
 export class TransitionElement extends AlignmentElement {
-	constructor({ id, parts = [] } = {}) {
-		const L = parts.reduce((a, el) => a + (Number(el?.arcLength) || 0), 0);
-		super({ id, type: "transition", arcLength: L });
-		
-		if (!Array.isArray(parts) || parts.length === 0) {
-			throw new Error("TransitionElement: missing parts[]");
+	constructor({
+		arcLength,
+		runtimePreset,
+		kappaA = 0,
+		kappaB = 0,
+	} = {}) {
+		super({ arcLength });
+
+		if (!runtimePreset?.kappa || !runtimePreset?.kappaInt) {
+			throw new Error("TransitionElement: missing runtimePreset.kappa/kappaInt");
 		}
-		this.parts = parts.slice();
-		this._rebuildIndex();
+
+		this.runtime = runtimePreset;
+		this.kappaA = Number(kappaA) || 0;
+		this.kappaB = Number(kappaB) || 0;
 	}
 
-	_rebuildIndex() {
-		this._S = [0];
-		let acc = 0;
-		for (const el of this.parts) {
-			acc += Number(el.arcLength) || 0;
-			this._S.push(acc);
+	curvatureAt(s) {
+		const ss = this.clampS(s);
+		if (this.arcLength <= 1e-12) return this.kappaA;
+
+		const u = clamp01(ss / this.arcLength);
+		return this.kappaA + (this.kappaB - this.kappaA) * this.runtime.kappa(u);
+	}
+
+	poseAt(s, poseA, opts = {}) {
+		const ss = this.clampS(s);
+		if (ss <= 0) return poseA;
+		if (this.arcLength <= 1e-12) return poseA;
+
+		const L = this.arcLength;
+		const t0 = normalize(poseA.t);
+		const n0 = rot90(t0);
+
+		// relative heading change from start tangent
+		const thetaAt = (si) => {
+			const u = clamp01(si / L);
+			return this.kappaA * si + (this.kappaB - this.kappaA) * L * this.runtime.kappaInt(u);
+		};
+
+		const quality = opts.quality ?? "balanced";
+
+		// map quality to romberg tolerances very lightly
+		const oldAbs = romberg.abs;
+		const oldRel = romberg.rel;
+		const oldNmax = romberg.NMAX;
+
+		try {
+			if (quality === "exact") {
+				romberg.abs = 1e-12;
+				romberg.rel = 1e-12;
+				romberg.NMAX = 24;
+			} else if (quality === "rough") {
+				romberg.abs = 1e-6;
+				romberg.rel = 1e-6;
+				romberg.NMAX = 8;
+			} else {
+				romberg.abs = 1e-9;
+				romberg.rel = 1e-9;
+				romberg.NMAX = 16;
+			}
+
+			const delta = romberg.integrateFresnel(thetaAt, 0, ss);
+			const thetaS = thetaAt(ss);
+			const tS = rot(t0, thetaS);
+
+			return {
+				p: {
+					x: poseA.p.x + delta.intC * t0.x + delta.intS * n0.x,
+					y: poseA.p.y + delta.intC * t0.y + delta.intS * n0.y,
+				},
+				t: tS,
+			};
+		} finally {
+			romberg.abs = oldAbs;
+			romberg.rel = oldRel;
+			romberg.NMAX = oldNmax;
 		}
-		this._L = acc;
 	}
 
-	get arcLength() { return this._L; }
-
-	_locate(s) {
-		const ss = clampS(s, this._L);
-		let i = 0;
-		while (i < this.parts.length && ss > this._S[i + 1]) i++;
-		return { i, localS: ss - this._S[i] };
+	reverse() {
+		return new TransitionElement({
+			arcLength: this.arcLength,
+			runtimePreset: this.runtime,
+			kappaA: -this.kappaB,
+			kappaB: -this.kappaA,
+		});
 	}
 
-	_poseAtPartStart(i, poseA) {
-		let pose = poseA;
-		for (let k = 0; k < i; k++) {
-			pose = this.parts[k].poseEFromPoseA(pose);
-		}
-		return pose;
+	parallel(offset) {
+		throw new Error("TransitionElement.parallel(offset) not implemented yet");
 	}
-
-	curvatureAt(s, poseA) {
-		// curvature doesn't truly need poseA; we still accept it.
-		const { i, localS } = this._locate(s);
-		return this.parts[i].curvatureAt(localS, poseA);
-	}
-
-	tangentAt(s, poseA) {
-		const { i, localS } = this._locate(s);
-		const pA = this._poseAtPartStart(i, poseA);
-		return this.parts[i].tangentAt(localS, pA);
-	}
-
-	coordAt(s, poseA) {
-		const { i, localS } = this._locate(s);
-		const pA = this._poseAtPartStart(i, poseA);
-		return this.parts[i].coordAt(localS, pA);
-	}
-
-	poseEFromPoseA(poseA) {
-		let pose = poseA;
-		for (const el of this.parts) pose = el.poseEFromPoseA(pose);
-		return pose;
-	}
-
-	// optional convenience for editor/opter debugging:
-	get internalParts() { return this.parts.slice(); }
 }

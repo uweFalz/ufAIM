@@ -1,102 +1,59 @@
 // src/alignment/elements/FixedElement.js
 
 import { AlignmentElement } from "./AlignmentElement.js";
-import { clampS } from "../../lib/geom/curve/element2.js";
-import { applyLocalDelta } from "../../lib/geom/frame/pose2.js"; // <== neu
+import { advance } from "@src/lib/geom/frame/poseAdvance2.js";
 
-const EPS = 1e-12;
-
-function nearZero(x, eps = 1e-12) { return Math.abs(x) < eps; }
-
-/**
-* FixedElement: constant curvature element
-* - curvature K in 1/m
-* - L in m
-*
-* Analytic:
-*  - dTheta = K*L
-*  - local chord:
-*      if K≈0: dx=L, dy=0
-*      else:  dx = sin(KL)/K, dy = (1-cos(KL))/K
-*/
 export class FixedElement extends AlignmentElement {
-	constructor({ id, arcLength, curvature } = {}) {
-		super({ id, type: "fixed", arcLength });
-		const K = Number(curvature);
-		if (!Number.isFinite(K)) throw new Error("FixedElement: invalid curvature");
-		this._K = K;
+
+	constructor({ arcLength, curvature = 0 } = {}) {
+		super({ arcLength });
+
+		this.curvature = Number(curvature) || 0;
 	}
 
-	get curvature() { return this._K; }
-	set curvature(v) {
-		const K = Number(v);
-		if (!Number.isFinite(K)) return;
-		this._K = K;
+	// --- core ---
+
+	curvatureAt(s) {
+		this.clampS(s);
+		return this.curvature;
 	}
 
-	curvatureAt(s) { void s; return this._K; }
-
-	coordAt(s, poseA) {
-		if (!poseA) throw new Error("FixedElement.coordAt(s, poseA) requires poseA");
-		return this.coordAtFromPoseA(s, poseA);
+	poseAt(s, poseA, opts = {}) {
+		const ss = this.clampS(s);
+		return advance(poseA, ss, this.curvature);
 	}
 
-	tangentAt(s, poseA) {
-		if (!poseA) throw new Error("FixedElement.tangentAt(s, poseA) requires poseA");
-		const theta = this.directionAtFromPoseA(s, poseA);
-		return { tx: Math.cos(theta), ty: Math.sin(theta) };
+	// --- transforms ---
+
+	reverse() {
+		return new FixedElement({
+			arcLength: this.arcLength,
+			curvature: -this.curvature
+		});
 	}
 
-	// Curve2D expects directionAt; we return tangent-vector like Alignment2D expects.
-	directionAt(s, poseA) { return this.tangentAt(s, poseA); }
+	parallel(offset) {
+		const d = Number(offset) || 0;
 
-	directionAtFromPoseA(s, poseA) {
-		const ss = clampS(s, this.arcLength);
-		return poseA.theta + this._K * ss;
-	}
-
-	coordAtFromPoseA(s, poseA) {
-		const ss = clampS(s, this.arcLength);
-		const K = this._K;
-
-		let dx, dy;
-
-		if (nearZero(K)) {
-			dx = ss;
-			dy = 0;
-		} else {
-			const a = K * ss;
-			dx = Math.sin(a) / K;
-			dy = (1 - Math.cos(a)) / K;
+		// Gerade
+		if (Math.abs(this.curvature) < 1e-12) {
+			return new FixedElement({
+				arcLength: this.arcLength,
+				curvature: 0
+			});
 		}
 
-		const c = Math.cos(poseA.theta);
-		const sn = Math.sin(poseA.theta);
-		return {
-			x: poseA.x + c * dx - sn * dy,
-			y: poseA.y + sn * dx + c * dy
-		};
-	}
+		// Kreis
+		const R = 1 / this.curvature;
+		const Rp = R - d;
 
-	localDelta() {
-		const L = this.arcLength;
-		const K = this._K;
-		const dTheta = K * L;
-
-		let dx, dy;
-		if (nearZero(K)) {
-			dx = L;
-			dy = 0;
-		} else {
-			dx = Math.sin(dTheta) / K;
-			dy = (1 - Math.cos(dTheta)) / K;
+		if (Math.abs(Rp) < 1e-12) {
+			throw new Error("FixedElement.parallel: offset hits center");
 		}
-		return { dx, dy, dTheta };
-	}
 
-	poseEFromPoseA(poseA) {
-		return applyLocalDelta(poseA, this.localDelta());
+		return new FixedElement({
+			arcLength: this.arcLength * (Rp / R),
+			curvature: 1 / Rp
+		});
 	}
-
-	toJSON() { return { ...super.toJSON(), curvature: this._K }; }
 }
