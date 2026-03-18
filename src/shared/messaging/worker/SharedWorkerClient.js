@@ -37,6 +37,9 @@ export class SharedWorkerClient {
 	}
 
 	sendCmd(name, payload = {}) {
+		
+		console.log("[SharedWorkerClient.sendCmd]", name);
+		
 		const reqId = `m_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 		return new Promise((resolve, reject) => {
 			this._pending.set(reqId, { resolve, reject });

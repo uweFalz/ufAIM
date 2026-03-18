@@ -1,6 +1,8 @@
-// src/alignment/registry/RegistryResolver.js
+// src/alignment/transition/registry/RegistryResolver.js
 
-import transitionLookup from "@src/alignment/transition/transitionLookup.json" with { type:"json" };
+import transitionLookup from "../transitionLookup.json" with { type:"json" };
+
+console.debug("[RegistryResolver.js] touched!");
 
 export class RegistryResolver {
 	constructor(db = transitionLookup) {

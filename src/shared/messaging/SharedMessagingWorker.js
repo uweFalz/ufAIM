@@ -3,6 +3,7 @@
 import { startWorkerRouter } from "./worker/WorkerRouter.js";
 import { createSpotStore } from "../../model/spot/SpotStore.js";
 import transitionLookup from "../../alignment/transition/transitionLookup.json" with { type:"json" };
+import { RegistryResolver } from "../../alignment/transition/registry/RegistryResolver.js";
 
 const router = startWorkerRouter(self);
 
@@ -13,61 +14,58 @@ let projectState = {
 const spotStore = createSpotStore();
 
 const db = transitionLookup;
+const registryResolver = new RegistryResolver(db);
 
 // ---- helpers (pure data, no functions) ----
 function listPresets(db) {
 	const tr = db?.transition ?? {};
+	
 	return Object.keys(tr).map((id) => {
 		const t = tr[id] ?? {};
 		return { id, label: t.label ?? id };
 	});
 }
 
-function getPresetSpec(db, presetId) {
-	const id = String(presetId || "").toLowerCase();
-	const tr = db?.transition?.[id];
-	if (!tr) throw new Error(`Unknown presetId: ${id}`);
+function getPresetSpec(registryResolver, presetId) {
+	const descriptor = registryResolver.resolveTransitionDescriptor(presetId);
+	if (!descriptor) {
+		throw new Error(`Unknown presetId: ${presetId}`);
+	}
 
-	const hw1Id = tr.halfWave1;
-	const hw2Id = tr.halfWave2;
-	const part  = tr.normLengthPartition ?? [0, 1, 0];
-
-	const hw1 = db?.halfWave?.[hw1Id];
-	const hw2 = db?.halfWave?.[hw2Id];
-	if (!hw1 || !hw2) throw new Error(`Preset ${id}: missing halfWave def`);
+	const part = Array.isArray(descriptor.normLengthPartition)
+	? descriptor.normLengthPartition
+	: [0, 1, 0];
 
 	const l1 = Number(part[0] ?? 0) || 0;
 	const lc = Number(part[1] ?? 0) || 0;
-	const l2 = Number(part[2] ?? 0) || 0;
 
 	const w1 = l1;
 	const w2 = l1 + lc;
 
 	return {
-		presetId: id,
-		meta: { label: tr.label ?? id },
-
-		lambdas: [l1, lc, l2],
+		presetId: String(descriptor.id ?? presetId ?? "").toLowerCase(),
+		descriptor,
 		cuts01: { w1, w2 },
-
-		halfWave1: { halfWaveId: hw1Id, protoId: hw1.proto, source: hw1.source ?? "kappa", reverse: false },
-		core:      { protoId: "clothoCore", source: "kappa", reverse: false },
-		halfWave2: { halfWaveId: hw2Id, protoId: hw2.proto, source: hw2.source ?? "kappa", reverse: true },
-
-		defs: db
+		meta: {
+			label: descriptor.label ?? String(descriptor.id ?? presetId ?? ""),
+		},
 	};
 }
 
 // ------------------------------------------------------------
 // Transition.* API
 // ------------------------------------------------------------
+
 router.onCmd("Transition.ListPresets", async () => listPresets(db));
 
-router.onCmd("Transition.GetPresetSpec", async ({ presetId }) => getPresetSpec(db, presetId));
+router.onCmd("Transition.GetPresetSpec", async ({ presetId }) => {
+	return getPresetSpec(registryResolver, presetId); 
+});
 
 // ------------------------------------------------------------
 // Project.* API  (M3a)
 // ------------------------------------------------------------
+
 router.onCmd("Project.GetState", async () => {
 	return { ...projectState };
 });
@@ -142,13 +140,9 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 	return cloneImportState();
 });
 
-router.onCmd("Debug.GetWorkerState", async () => {
-	return {
-		clients: router.getClientCount?.() ?? -1,
-		projectState: { ...projectState },
-		importState: cloneImportState(),
-	};
-});
+// ------------------------------------------------------------
+// Spot.* API
+// ------------------------------------------------------------
 
 router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
 	const state = spotStore.addSpots(spots);
@@ -171,4 +165,16 @@ router.onCmd("Spot.SetActive", async ({ spotId } = {}) => {
 	router.broadcastEvt?.("Spot.ActiveChanged", meta);
 
 	return meta;
+});
+
+// ------------------------------------------------------------
+// Debug.* API
+// ------------------------------------------------------------
+
+router.onCmd("Debug.GetWorkerState", async () => {
+	return {
+		clients: router.getClientCount?.() ?? -1,
+		projectState: { ...projectState },
+		importState: cloneImportState(),
+	};
 });

@@ -4,21 +4,17 @@
 //
 // Worker API used (ONLY):
 //   - Transition.ListPresets      -> [{id,label}, ...]
-//   - Transition.GetPresetSpec    -> { presetId, cuts01, meta, defs, ... }   (pure data)
+//   - Transition.GetPresetSpec    -> { presetId, descriptor, cuts01?, meta? }  (pure data)
 //
 // Responsibilities:
 //   - Load preset list into <select>(s)
 //   - On preset change:
-//       * store.te_presetId set FIRST (so store guards accept spec)
-//       * fetch spec from worker
+//       * store.te_presetId set FIRST
+//       * fetch descriptor/spec from worker
 //       * store.te_presetSpec = spec
 //       * reset splits ownership to this preset and dirty=false
-//       * set sliders to spec.cuts01 and store.te_w1/te_w2 accordingly
-//   - On slider input:
-//       * keep non-crossing constraints
-//       * update store.te_w1/te_w2
-//       * mark splitsDirty=true and splitsPresetId=current presetId
-//   - Open/close overlay and lazy-init view
+//       * set sliders from spec.cuts01 OR descriptor.normLengthPartition
+//       * store.te_w1/te_w2 accordingly
 //
 // Notes:
 //   - This bridge does NOT rename presets to "variant" etc.
@@ -55,6 +51,29 @@ function toSliderVal01(v01) {
 
 function fromSliderVal01(v1000) {
 	return clamp01(Number(v1000) / 1000);
+}
+
+function cuts01FromSpecOrDescriptor(spec) {
+	const desc = spec?.descriptor ?? spec ?? null;
+
+	if (spec?.cuts01) {
+		return {
+			w1: clamp01(spec.cuts01.w1 ?? 0.25),
+			w2: clamp01(spec.cuts01.w2 ?? 0.75),
+		};
+	}
+
+	const lambdas = Array.isArray(desc?.normLengthPartition)
+	? desc.normLengthPartition.map((x) => Number(x) || 0)
+	: null;
+
+	if (lambdas && lambdas.length === 3) {
+		const w1 = clamp01(lambdas[0]);
+		const w2 = clamp01(lambdas[0] + lambdas[1]);
+		return { w1, w2 };
+	}
+
+	return { w1: 0.25, w2: 0.75 };
 }
 
 //
@@ -182,14 +201,30 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		setPresetId?.(wantId);
 
 		const seq = ++_applySeq;
+		const raw = await getPresetSpec(wantId);
 
-		const spec = await getPresetSpec(wantId);
-
-		// drop stale response (user changed selection while awaiting)
+		// drop stale response
 		if (seq !== _applySeq) return;
 
-		const gotId = String(spec?.presetId ?? wantId ?? "");
-		const cuts = spec?.cuts01 ?? null;
+		// tolerate both:
+		// - { presetId, descriptor, cuts01, ... }
+		// - direct descriptor object
+		const desc = raw?.descriptor ?? raw ?? null;
+		if (!desc) {
+			console.warn("[TE Bridge] missing descriptor/spec for preset", { wantId, raw });
+			return;
+		}
+
+		const gotId = String(raw?.presetId ?? desc?.id ?? wantId ?? "");
+		const cuts = cuts01FromSpecOrDescriptor(raw);
+
+		// normalized store payload
+		const spec = {
+			presetId: gotId,
+			descriptor: desc,
+			cuts01: cuts,
+			meta: raw?.meta ?? desc?.meta ?? null,
+		};
 
 		// store: presetSpec
 		setPresetSpec?.(spec);
@@ -198,26 +233,29 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		setSplitsPresetId?.(gotId);
 		setSplitsDirty?.(false);
 
-		// cuts -> defaults
-		const w1 = clamp01(cuts?.w1 ?? 0.25);
-		const w2 = clamp01(cuts?.w2 ?? 0.75);
+		const w1 = clamp01(cuts.w1);
+		const w2 = clamp01(cuts.w2);
 
 		// UI sliders + labels
 		setSliderPairAndLabels(w1, w2);
 
-		// store w1/w2 (even though dirty=false; they reflect defaults)
+		// store w1/w2 (reflect defaults, even though dirty=false)
 		setW1?.(w1);
 		setW2?.(w2);
 	}
 
 	// ---- load preset list + initial selection ----
 	async function loadPresetsIntoUI() {
-		const items = await listPresets();
+		
+		const res = await listPresets();
+		const items = Array.isArray(res)
+		? res
+		: (Array.isArray(res?.items) ? res.items : []);
 
 		const st = store.getState?.() ?? {};
 		const current = getPresetIdFromState(st);
 
-		const ids = (items || []).map((x) => x?.id).filter(Boolean);
+		const ids = items.map((x) => x?.id).filter(Boolean);
 		const active = (current && ids.includes(current)) ? current : (ids[0] ?? "");
 
 		fillSelect(elPresetMain, items, active);
@@ -275,6 +313,7 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 
 		// mark dirty early (nice UX, and avoids any “first input lost” edge)
 		const markDirty = () => markDirtyOwnedByCurrentPreset();
+		
 		elW1.addEventListener("pointerdown", markDirty);
 		elW2.addEventListener("pointerdown", markDirty);
 		elW1.addEventListener("mousedown", markDirty);
@@ -297,6 +336,21 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			await ensureViewInitOnce();
 
 			// let layout settle, then resize board
+			requestAnimationFrame(() => requestAnimationFrame(() => view?.resize?.()));
+		});
+		
+		btnOpen?.addEventListener("click", async () => {
+			const st = store.getState?.() ?? {};
+			const pid = String(st.te_presetId ?? "");
+
+			if (pid) {
+				await applyPresetSpecToStoreAndUI(pid);
+			}
+
+			openOverlay();
+			setOpen?.(true);
+
+			await ensureViewInitOnce();
 			requestAnimationFrame(() => requestAnimationFrame(() => view?.resize?.()));
 		});
 

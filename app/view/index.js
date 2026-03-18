@@ -1,1 +1,0 @@
-// app/view/index.js

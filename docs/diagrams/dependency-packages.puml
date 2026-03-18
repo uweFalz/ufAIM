@@ -1,0 +1,108 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam package<<legacy>> BackgroundColor #eeeeee
+hide empty members
+
+package "app" as P_app {}
+package "app/adapters/geo" as P_app_adapters_geo {}
+package "app/core" as P_app_core {}
+package "app/core/bridges" as P_app_core_bridges {}
+package "app/core/config" as P_app_core_config {}
+package "app/core/controllers" as P_app_core_controllers {}
+package "app/core/runtime" as P_app_core_runtime {}
+package "app/core/session" as P_app_core_session {}
+package "app/core/state" as P_app_core_state {}
+package "app/i18n" as P_app_i18n {}
+package "app/io/_legacy" as P_app_io__legacy <<legacy>> {}
+package "app/io/apply" as P_app_io_apply {}
+package "app/io/import" as P_app_io_import {}
+package "app/io/input" as P_app_io_input {}
+package "app/utils" as P_app_utils {}
+package "app/view" as P_app_view {}
+package "app/view/editors" as P_app_view_editors {}
+package "app/view/overlays" as P_app_view_overlays {}
+package "app/view/viewers" as P_app_view_viewers {}
+package "src/alignment" as P_src_alignment {}
+package "src/alignment/build" as P_src_alignment_build {}
+package "src/alignment/elements" as P_src_alignment_elements {}
+package "src/alignment/elements/_legacy" as P_src_alignment_elements__legacy <<legacy>> {}
+package "src/alignment/eval" as P_src_alignment_eval {}
+package "src/alignment/transition/build" as P_src_alignment_transition_build {}
+package "src/alignment/transition/registry" as P_src_alignment_transition_registry {}
+package "src/alignment/transition/registry/ast" as P_src_alignment_transition_registry_ast {}
+package "src/alignment/transition/registry/compose" as P_src_alignment_transition_registry_compose {}
+package "src/import" as P_src_import {}
+package "src/import/domain" as P_src_import_domain {}
+package "src/import/parsers" as P_src_import_parsers {}
+package "src/import/sniffers" as P_src_import_sniffers {}
+package "src/lib/geom" as P_src_lib_geom {}
+package "src/lib/geom/curve" as P_src_lib_geom_curve {}
+package "src/lib/geom/frame" as P_src_lib_geom_frame {}
+package "src/lib/math/lina" as P_src_lib_math_lina {}
+package "src/lib/math/numeric" as P_src_lib_math_numeric {}
+package "src/model/spot" as P_src_model_spot {}
+package "src/shared/messaging" as P_src_shared_messaging {}
+package "src/shared/messaging/local" as P_src_shared_messaging_local {}
+package "src/shared/messaging/worker" as P_src_shared_messaging_worker {}
+package "src/shared/runtime" as P_src_shared_runtime {}
+package "src/utils" as P_src_utils {}
+
+P_app --> P_app_core_config
+P_app --> P_app_core_runtime
+P_app_core --> P_app_i18n
+P_app_core --> P_app_view_overlays
+P_app_core --> P_src_utils
+P_app_core_bridges --> P_src_utils
+P_app_core_controllers --> P_app_io_apply
+P_app_core_controllers --> P_app_io_import
+P_app_core_controllers --> P_app_io_input
+P_app_core_controllers --> P_src_import
+P_app_core_controllers --> P_src_utils
+P_app_core_runtime --> P_app_adapters_geo
+P_app_core_runtime --> P_app_core
+P_app_core_runtime --> P_app_core_bridges
+P_app_core_runtime --> P_app_core_controllers
+P_app_core_runtime --> P_app_core_session
+P_app_core_runtime --> P_app_core_state
+P_app_core_runtime --> P_app_i18n
+P_app_core_runtime --> P_app_io_apply
+P_app_core_runtime --> P_app_view_editors
+P_app_core_runtime --> P_app_view_viewers
+P_app_core_runtime --> P_src_alignment_transition_build
+P_app_core_runtime --> P_src_shared_messaging
+P_app_core_runtime --> P_src_shared_runtime
+P_app_core_state --> P_src_utils
+P_app_io_import --> P_src_utils
+P_app_view_editors --> P_src_utils
+P_app_view_overlays --> P_src_utils
+P_app_view_viewers --> P_src_utils
+P_src_alignment --> P_src_alignment_build
+P_src_alignment --> P_src_alignment_elements
+P_src_alignment --> P_src_alignment_transition_build
+P_src_alignment --> P_src_alignment_transition_registry
+P_src_alignment --> P_src_lib_geom
+P_src_alignment_build --> P_src_alignment
+P_src_alignment_build --> P_src_alignment_elements
+P_src_alignment_elements --> P_src_lib_geom
+P_src_alignment_elements --> P_src_lib_geom_frame
+P_src_alignment_elements --> P_src_lib_math_numeric
+P_src_alignment_eval --> P_src_lib_geom_frame
+P_src_alignment_transition_build --> P_src_alignment_transition_registry_ast
+P_src_alignment_transition_build --> P_src_alignment_transition_registry_compose
+P_src_alignment_transition_build --> P_src_utils
+P_src_import --> P_src_import_domain
+P_src_import --> P_src_import_parsers
+P_src_import --> P_src_import_sniffers
+P_src_import_parsers --> P_src_import_domain
+P_src_lib_geom_frame --> P_src_lib_geom
+P_src_shared_messaging --> P_src_alignment_transition_registry
+P_src_shared_messaging --> P_src_model_spot
+P_src_shared_messaging --> P_src_shared_messaging_local
+P_src_shared_messaging --> P_src_shared_messaging_worker
+P_src_shared_messaging_worker --> P_src_shared_messaging
+P_src_shared_runtime --> P_src_shared_messaging
+@enduml

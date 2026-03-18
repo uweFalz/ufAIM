@@ -3,7 +3,7 @@
 import { normalize, rot90, dot } from "../vec2.js";
 
 export function poseFromTangent(x, y, tx, ty) {
-	const dir = normalize({ x: tx, y: ty });
+	const t = normalize({ x: tx, y: ty });
 	return { p: { x, y }, t };
 }
 
@@ -52,14 +52,13 @@ export function worldFromLocal(pose, u, v) {
 }
 
 export function localFromWorld(pose, x, y) {
-	const dx = x - pose.p.x;
-	const dy = y - pose.p.y;
+	const d = { x: x - pose.p.x, y: y - pose.p.y };
 
 	const t = pose.t;
 	const n = rot90(t);
 
 	return {
-		u: dx * t.x + dy * t.y,
-		v: dx * n.x + dy * n.y,
+		u: dot(d, t),
+		v: dot(d, n),
 	};
 }

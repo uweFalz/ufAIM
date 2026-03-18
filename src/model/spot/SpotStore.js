@@ -1,6 +1,10 @@
 // src/model/spot/SpotStore.js
 
+console.debug("[SpotStore.js] touched!");
+
 export function createSpotStore(initialState = {}) {
+	
+	console.log("where this is shown?");
 
 	let state = {
 		meta: {

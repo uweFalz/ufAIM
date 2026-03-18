@@ -21,12 +21,14 @@ function rot(v, angle) {
 
 export class TransitionElement extends AlignmentElement {
 	constructor({
+		id = null,
 		arcLength,
 		runtimePreset,
 		kappaA = 0,
 		kappaB = 0,
+		meta = null,
 	} = {}) {
-		super({ arcLength });
+		super({ id, arcLength, meta });
 
 		if (!runtimePreset?.kappa || !runtimePreset?.kappaInt) {
 			throw new Error("TransitionElement: missing runtimePreset.kappa/kappaInt");
@@ -39,35 +41,51 @@ export class TransitionElement extends AlignmentElement {
 
 	curvatureAt(s) {
 		const ss = this.clampS(s);
-		if (this.arcLength <= 1e-12) return this.kappaA;
+		if (this.arcLength <= 1e-12) return this.kappaB;
 
 		const u = clamp01(ss / this.arcLength);
 		return this.kappaA + (this.kappaB - this.kappaA) * this.runtime.kappa(u);
 	}
 
+	curvature1At(s) {
+		if (!this.runtime?.kappa1 || this.arcLength <= 1e-12) return 0;
+
+		const ss = this.clampS(s);
+		const u = clamp01(ss / this.arcLength);
+
+		return (this.kappaB - this.kappaA) * this.runtime.kappa1(u) / this.arcLength;
+	}
+
+	curvature2At(s) {
+		if (!this.runtime?.kappa2 || this.arcLength <= 1e-12) return 0;
+
+		const ss = this.clampS(s);
+		const u = clamp01(ss / this.arcLength);
+
+		return (this.kappaB - this.kappaA) * this.runtime.kappa2(u) / (this.arcLength * this.arcLength);
+	}
+
 	poseAt(s, poseA, opts = {}) {
 		const ss = this.clampS(s);
-		if (ss <= 0) return poseA;
-		if (this.arcLength <= 1e-12) return poseA;
+		if (ss <= 0 || this.arcLength <= 1e-12) return poseA;
 
 		const L = this.arcLength;
 		const t0 = normalize(poseA.t);
 		const n0 = rot90(t0);
 
-		// relative heading change from start tangent
+		// relative heading increment from start tangent
 		const thetaAt = (si) => {
 			const u = clamp01(si / L);
 			return this.kappaA * si + (this.kappaB - this.kappaA) * L * this.runtime.kappaInt(u);
 		};
 
-		const quality = opts.quality ?? "balanced";
-
-		// map quality to romberg tolerances very lightly
 		const oldAbs = romberg.abs;
 		const oldRel = romberg.rel;
 		const oldNmax = romberg.NMAX;
 
 		try {
+			const quality = opts.quality ?? "balanced";
+
 			if (quality === "exact") {
 				romberg.abs = 1e-12;
 				romberg.rel = 1e-12;
@@ -83,8 +101,7 @@ export class TransitionElement extends AlignmentElement {
 			}
 
 			const delta = romberg.integrateFresnel(thetaAt, 0, ss);
-			const thetaS = thetaAt(ss);
-			const tS = rot(t0, thetaS);
+			const tS = rot(t0, thetaAt(ss));
 
 			return {
 				p: {
@@ -102,10 +119,12 @@ export class TransitionElement extends AlignmentElement {
 
 	reverse() {
 		return new TransitionElement({
+			id: this.id,
 			arcLength: this.arcLength,
 			runtimePreset: this.runtime,
 			kappaA: -this.kappaB,
 			kappaB: -this.kappaA,
+			meta: this.meta ?? null,
 		});
 	}
 

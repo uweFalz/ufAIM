@@ -1,6 +1,6 @@
 // src/lib/geom/frame/poseAdvance2.js
 
-import { rot90, rot, normalize } from "../vec2.js";
+import { rot90 } from "../vec2.js";
 
 export function advance(pose, ds, kappa = 0) {
 	const p0 = pose.p;

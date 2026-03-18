@@ -11,7 +11,8 @@ import { AppRuntimeLocal } from "@src/shared/runtime/AppRuntimeLocal.js";
 // ...
 //
 export class WindowRuntime {
-	constructor({ prefs }) {
+	
+	constructor({ prefs }) {		
 		this.prefs = prefs;
 		this.messaging = null;
 		this.windowId = `w_${Math.random().toString(16).slice(2)}`;
@@ -33,7 +34,7 @@ export class WindowRuntime {
 			});
 			this.messaging.attachRuntime((msg) => runtime.handle(msg));
 		}
-
+		
 		const presets = await this.messaging.sendCmdAwait("Transition.ListPresets", {});
 		console.log("presets", presets?.length, presets?.[0]);
 
@@ -41,10 +42,10 @@ export class WindowRuntime {
 		console.log("spec", { presetId: spec?.presetId, cuts01: spec?.cuts01, hasDefs: !!spec?.defs });
 
 		const projectState = await this.messaging.sendCmdAwait("Project.GetState", {});
-		console.log("projectState", projectState);
+		console.log("projectState", projectState || null);
 		
 		const dbg = await this.messaging.sendCmdAwait("Debug.GetWorkerState", {});
-		console.log("workerDebug", dbg);
+		console.log("workerDebug", dbg || null);
 
 		this.messaging.emitEvt("Window.Register", {
 			title: document.title || "ufAIM",

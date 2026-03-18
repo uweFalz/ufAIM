@@ -1,0 +1,83 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+skinparam package<<legacy>> BackgroundColor #eeeeee
+
+package "app" {
+  package "core" {
+    class "uiWiring.js" as N_app_core_uiWiring_js
+    class "wireUI()" as S_app_core_uiWiring_js__wireUI
+    N_app_core_uiWiring_js .. S_app_core_uiWiring_js__wireUI
+    package "bridges" {
+      class "transitionEditorBridge.js" as N_app_core_bridges_transitionEditorBridge_js
+      class "makeTransitionEditorBridge()" as S_app_core_bridges_transitionEditorBridge_js__makeTransitionEditorBridge
+      N_app_core_bridges_transitionEditorBridge_js .. S_app_core_bridges_transitionEditorBridge_js__makeTransitionEditorBridge
+    }
+    package "config" {
+      class "systemPrefs.js" as N_app_core_config_systemPrefs_js
+      class "systemPrefs()" as S_app_core_config_systemPrefs_js__systemPrefs
+      N_app_core_config_systemPrefs_js .. S_app_core_config_systemPrefs_js__systemPrefs
+    }
+    package "controllers" {
+      class "focusManager.js" as N_app_core_controllers_focusManager_js
+      class "createFocusManager()" as S_app_core_controllers_focusManager_js__createFocusManager
+      N_app_core_controllers_focusManager_js .. S_app_core_controllers_focusManager_js__createFocusManager
+      class "importController.js" as N_app_core_controllers_importController_js
+      class "makeImportController()" as S_app_core_controllers_importController_js__makeImportController
+      N_app_core_controllers_importController_js .. S_app_core_controllers_importController_js__makeImportController
+      class "spotController.js" as N_app_core_controllers_spotController_js
+      class "makeGrabbeltischController()" as S_app_core_controllers_spotController_js__makeGrabbeltischController
+      N_app_core_controllers_spotController_js .. S_app_core_controllers_spotController_js__makeGrabbeltischController
+      class "viewController.js" as N_app_core_controllers_viewController_js
+      class "makeViewController()" as S_app_core_controllers_viewController_js__makeViewController
+      N_app_core_controllers_viewController_js .. S_app_core_controllers_viewController_js__makeViewController
+    }
+    package "runtime" {
+      class "WindowRuntime.js" as N_app_core_runtime_WindowRuntime_js
+      class "WindowRuntime()" as S_app_core_runtime_WindowRuntime_js__WindowRuntime
+      N_app_core_runtime_WindowRuntime_js .. S_app_core_runtime_WindowRuntime_js__WindowRuntime
+      class "bootWindowApp.js" as N_app_core_runtime_bootWindowApp_js
+      class "bootWindowApp()" as S_app_core_runtime_bootWindowApp_js__bootWindowApp
+      N_app_core_runtime_bootWindowApp_js .. S_app_core_runtime_bootWindowApp_js__bootWindowApp
+      class "createRuntimeContext.js" as N_app_core_runtime_createRuntimeContext_js
+      class "createRuntimeContext()" as S_app_core_runtime_createRuntimeContext_js__createRuntimeContext
+      N_app_core_runtime_createRuntimeContext_js .. S_app_core_runtime_createRuntimeContext_js__createRuntimeContext
+    }
+    package "session" {
+      class "windowSessionController.js" as N_app_core_session_windowSessionController_js
+      class "createWindowSessionController()" as S_app_core_session_windowSessionController_js__createWindowSessionController
+      N_app_core_session_windowSessionController_js .. S_app_core_session_windowSessionController_js__createWindowSessionController
+      class "windowSessionState.js" as N_app_core_session_windowSessionState_js
+      class "createWindowSessionState()" as S_app_core_session_windowSessionState_js__createWindowSessionState
+      N_app_core_session_windowSessionState_js .. S_app_core_session_windowSessionState_js__createWindowSessionState
+    }
+    package "state" {
+      class "storeShape.js" as N_app_core_state_storeShape_js
+      class "ensureStateShape()" as S_app_core_state_storeShape_js__ensureStateShape
+      N_app_core_state_storeShape_js .. S_app_core_state_storeShape_js__ensureStateShape
+      class "makeInitialState()" as S_app_core_state_storeShape_js__makeInitialState
+      N_app_core_state_storeShape_js .. S_app_core_state_storeShape_js__makeInitialState
+      class "windowStore.js" as N_app_core_state_windowStore_js
+      class "createWindowStore()" as S_app_core_state_windowStore_js__createWindowStore
+      N_app_core_state_windowStore_js .. S_app_core_state_windowStore_js__createWindowStore
+    }
+  }
+}
+
+N_app_core_runtime_WindowRuntime_js --> S_app_core_runtime_bootWindowApp_js__bootWindowApp
+N_app_core_runtime_bootWindowApp_js --> S_app_core_bridges_transitionEditorBridge_js__makeTransitionEditorBridge
+N_app_core_runtime_bootWindowApp_js --> S_app_core_controllers_focusManager_js__createFocusManager
+N_app_core_runtime_bootWindowApp_js --> S_app_core_controllers_importController_js__makeImportController
+N_app_core_runtime_bootWindowApp_js --> S_app_core_controllers_viewController_js__makeViewController
+N_app_core_runtime_bootWindowApp_js --> S_app_core_runtime_createRuntimeContext_js__createRuntimeContext
+N_app_core_runtime_bootWindowApp_js --> S_app_core_session_windowSessionController_js__createWindowSessionController
+N_app_core_runtime_bootWindowApp_js --> S_app_core_session_windowSessionState_js__createWindowSessionState
+N_app_core_runtime_bootWindowApp_js --> S_app_core_state_windowStore_js__createWindowStore
+N_app_core_runtime_bootWindowApp_js --> S_app_core_uiWiring_js__wireUI
+N_app_core_state_windowStore_js --> S_app_core_state_storeShape_js__ensureStateShape
+N_app_core_state_windowStore_js --> S_app_core_state_storeShape_js__makeInitialState
+@enduml
