@@ -1,4 +1,5 @@
 @startuml
+
 title ufAIM – Ultimate Architecture Map
 
 skinparam packageStyle rectangle
@@ -56,15 +57,35 @@ package "Window Client" {
     [Grabbeltisch]
     [Transition Editor]
   }
+
+  package "Projection / Representation" {
+    [ViewProjectionController]
+    [Derived View Geometry]
+    [AlignmentProjectionService]
+    [TopologyProjectionService]
+    [ObjectProjectionService]
+  }
 }
+
+[SPOT Store] --> [ViewProjectionController] : canonical spot data
+[ViewProjectionController] --> [AlignmentProjectionService]
+[ViewProjectionController] --> [TopologyProjectionService]
+[ViewProjectionController] --> [ObjectProjectionService]
+
+[AlignmentProjectionService] --> [Derived View Geometry] : sampled curves / polylines
+[TopologyProjectionService] --> [Derived View Geometry]
+[ObjectProjectionService] --> [Derived View Geometry]
+
+[Derived View Geometry] --> [GeoView]
+[Derived View Geometry] --> [Profile / Section Views]
+[Derived View Geometry] --> [Transition Editor]
 
 ' -------------------------
 ' Import Flow
 ' -------------------------
 [Import Files\nTRA / GRA / LandXML / IFC] --> [ImportController] : import flow
 [ImportController] --> [Messaging / Commands / Events]
-[Messaging / Commands / Events] --> [Working Set]
-
+[Messaging / Commands / Events] --> [Working Set] : sparse candidates + relations
 ' -------------------------
 ' Working set / structural editing
 ' -------------------------

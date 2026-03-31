@@ -28,8 +28,12 @@
 // No defs-based runtime building in this view anymore.
 
 import * as JXG from "jsxgraph";
+
 import { clampNumber } from "@src/utils/helpers.js";
 
+//
+// ...
+//
 export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}) {
 	if (!store?.getState || !store?.subscribe) {
 		throw new Error("TransitionEditorView: missing store");

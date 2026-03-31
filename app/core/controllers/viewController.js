@@ -15,14 +15,13 @@
 import { 
 	clamp01, 
 	clampNumber, 
-	escapeHtml, 
 	formatNum, 
 	lerp, 
-	nowMs, 
 	radToDeg, 
 	normDeg180, 
 	headingDegFromPoints 
-	} from "@src/utils/helpers.js";
+} from "@src/utils/helpers.js";
+import { escapeHtml, nowMs } from "@app/utils/appHelpers.js";
 
 import { mirrorQuickHooksFromActive } from "@app/io/apply/importApply.js";
 
@@ -554,9 +553,27 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		}
 		return chunks;
 	}
+	
+	function buildImportTracksOverlay(state) {
+		const tracks = Array.isArray(state.import_tracks2d) ? state.import_tracks2d : [];
+		const activeId = state.import_activeArtifacts?.alignmentArtifactId ?? null;
+
+		return tracks
+		.filter((t) => t.id !== activeId)
+		.map((t) => ({
+			id: `import_${t.id}`,
+			points: t.points,
+			style: {
+				alpha: 0.45,
+				width: 1.6,
+				dashed: false,
+			},
+		}));
+	}
 
 	function buildChunkAuxTracks(state) {
 		return [
+		...buildImportTracksOverlay(state),
 		...buildAuxTracksOnly(state),
 		...buildChunkTracksOnly(state),
 		];
@@ -1086,20 +1103,20 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	
 	function syncSpotBaseIdDatalist(state) {
 
-	const el = document.getElementById("spot-baseIds");
-	if (!el) return;
+		const el = document.getElementById("spot-baseIds");
+		if (!el) return;
 
-	const ids = Object.keys(state.routeProjects ?? {})
+		const ids = Object.keys(state.routeProjects ?? {})
 		.sort((a, b) => a.localeCompare(b));
 
-	const html = ids
+		const html = ids
 		.map(id => `<option value="${escapeHtml(id)}">`)
 		.join("");
 
-	if (el.innerHTML !== html) {
-		el.innerHTML = html;
+		if (el.innerHTML !== html) {
+			el.innerHTML = html;
+		}
 	}
-}
 
 	function syncCursorInput(state) {
 		const cursorEl = ui.elements?.cursorSInput;
@@ -1194,7 +1211,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 		const handler = (state) => {
 			try {
-				// syncRouteProjectSelect(state);
+				syncRouteProjectSelect(state);
 				syncSpotBaseIdDatalist(state);
 				updateProps(state);
 				syncCursorInput(state);

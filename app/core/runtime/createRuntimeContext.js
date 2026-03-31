@@ -13,6 +13,7 @@ export function createRuntimeContext(seed = {}) {
 		windowSessionState: seed.windowSessionState ?? null,
 		windowSession: seed.windowSession ?? null,
 		focusManager: seed.focusManager ?? null,
+		cockpit: seed.cockpit ?? null,
 
 		ui: seed.ui ?? null,
 		threeA: seed.threeA ?? null,

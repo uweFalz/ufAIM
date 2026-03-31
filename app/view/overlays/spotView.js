@@ -9,7 +9,8 @@
 // No parser logic here.
 // No importSession logic here.
 
-import { escapeHtml, formatPct01 } from "@src/utils/helpers.js";
+import { formatPct01 } from "@src/utils/helpers.js";
+import { escapeHtml } from "@app/utils/appHelpers.js";
 
 //
 function pinKey(rpId, slot) {

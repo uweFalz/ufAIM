@@ -1,4 +1,4 @@
-// src/import/domain/landXMLNormalizers.js
+// src/import/parsers/landXML/landXMLNormalizers.js
 //
 // Light normalization helpers for landXML -> landFAT
 // - parser-near

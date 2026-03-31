@@ -1,4 +1,5 @@
 @startuml
+
 left to right direction
 skinparam packageStyle rectangle
 skinparam linetype ortho
@@ -10,11 +11,12 @@ skinparam package<<legacy>> BackgroundColor #eeeeee
 package "src" {
   package "import" {
     class "runImportPipeline.js" as N_src_import_runImportPipeline_js
-    class "future_runImportPipeline()" as S_src_import_runImportPipeline_js__future_runImportPipeline
-    N_src_import_runImportPipeline_js .. S_src_import_runImportPipeline_js__future_runImportPipeline
     class "runImportPipeline()" as S_src_import_runImportPipeline_js__runImportPipeline
     N_src_import_runImportPipeline_js .. S_src_import_runImportPipeline_js__runImportPipeline
     package "domain" {
+      class "buildSparseFromLandFAT.js" as N_src_import_domain_buildSparseFromLandFAT_js
+      class "buildSparseFromLandFAT()" as S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
+      N_src_import_domain_buildSparseFromLandFAT_js .. S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
       class "classifyImportResult.js" as N_src_import_domain_classifyImportResult_js
       class "classifyAlignmentForSpot()" as S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
       N_src_import_domain_classifyImportResult_js .. S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
@@ -36,69 +38,129 @@ package "src" {
       N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLSpiralType
       class "normalizeSurveyPoint()" as S_src_import_domain_landXMLNormalizers_js__normalizeSurveyPoint
       N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeSurveyPoint
-      class "normalizeLandFATToSparse.js" as N_src_import_domain_normalizeLandFATToSparse_js
-      class "normalizeLandFATToSparse()" as S_src_import_domain_normalizeLandFATToSparse_js__normalizeLandFATToSparse
-      N_src_import_domain_normalizeLandFATToSparse_js .. S_src_import_domain_normalizeLandFATToSparse_js__normalizeLandFATToSparse
-      class "normalizeLandFATValues.js" as N_src_import_domain_normalizeLandFATValues_js
-      class "normalizeParsedToLandFAT.js" as N_src_import_domain_normalizeParsedToLandFAT_js
+      package "_legacy" <<legacy>> {
+        class "normalizeLandFATValues.js" as N_src_import_domain__legacy_normalizeLandFATValues_js
+        class "normalizeParsedToLandFAT.js" as N_src_import_domain__legacy_normalizeParsedToLandFAT_js
+      }
     }
     package "parsers" {
-      class "_importRegistry.js" as N_src_import_parsers__importRegistry_js
-      class "importFile()" as S_src_import_parsers__importRegistry_js__importFile
-      N_src_import_parsers__importRegistry_js .. S_src_import_parsers__importRegistry_js__importFile
-      class "importRegistry()" as S_src_import_parsers__importRegistry_js__importRegistry
-      N_src_import_parsers__importRegistry_js .. S_src_import_parsers__importRegistry_js__importRegistry
-      class "parseGRA.js" as N_src_import_parsers_parseGRA_js
-      class "parseIFC.js" as N_src_import_parsers_parseIFC_js
-      class "parseLandXML.js" as N_src_import_parsers_parseLandXML_js
-      class "parseLandXML()" as S_src_import_parsers_parseLandXML_js__parseLandXML
-      N_src_import_parsers_parseLandXML_js .. S_src_import_parsers_parseLandXML_js__parseLandXML
-      class "parseTRA.js" as N_src_import_parsers_parseTRA_js
-      class "parseTRA_GRA.js" as N_src_import_parsers_parseTRA_GRA_js
-      class "parseTraGraAuto()" as S_src_import_parsers_parseTRA_GRA_js__parseTraGraAuto
-      N_src_import_parsers_parseTRA_GRA_js .. S_src_import_parsers_parseTRA_GRA_js__parseTraGraAuto
       class "parserRegistry.js" as N_src_import_parsers_parserRegistry_js
-      class "parserRegistry()" as S_src_import_parsers_parserRegistry_js__parserRegistry
-      N_src_import_parsers_parserRegistry_js .. S_src_import_parsers_parserRegistry_js__parserRegistry
-      class "resolveParser()" as S_src_import_parsers_parserRegistry_js__resolveParser
-      N_src_import_parsers_parserRegistry_js .. S_src_import_parsers_parserRegistry_js__resolveParser
-      class "sharedVermesn.js" as N_src_import_parsers_sharedVermesn_js
-      class "BYTE_LAYOUT()" as S_src_import_parsers_sharedVermesn_js__BYTE_LAYOUT
-      N_src_import_parsers_sharedVermesn_js .. S_src_import_parsers_sharedVermesn_js__BYTE_LAYOUT
-      class "baseMetaFromFile()" as S_src_import_parsers_sharedVermesn_js__baseMetaFromFile
-      N_src_import_parsers_sharedVermesn_js .. S_src_import_parsers_sharedVermesn_js__baseMetaFromFile
-      class "decodeBinary()" as S_src_import_parsers_sharedVermesn_js__decodeBinary
-      N_src_import_parsers_sharedVermesn_js .. S_src_import_parsers_sharedVermesn_js__decodeBinary
-      class "traDir_to_eastCCW()" as S_src_import_parsers_sharedVermesn_js__traDir_to_eastCCW
-      N_src_import_parsers_sharedVermesn_js .. S_src_import_parsers_sharedVermesn_js__traDir_to_eastCCW
+      class "getParserBasePath()" as S_src_import_parsers_parserRegistry_js__getParserBasePath
+      N_src_import_parsers_parserRegistry_js .. S_src_import_parsers_parserRegistry_js__getParserBasePath
+      class "getParserIds()" as S_src_import_parsers_parserRegistry_js__getParserIds
+      N_src_import_parsers_parserRegistry_js .. S_src_import_parsers_parserRegistry_js__getParserIds
+      class "loadParserModule()" as S_src_import_parsers_parserRegistry_js__loadParserModule
+      N_src_import_parsers_parserRegistry_js .. S_src_import_parsers_parserRegistry_js__loadParserModule
+      class "validateParserModule.js" as N_src_import_parsers_validateParserModule_js
+      class "validateParserModule()" as S_src_import_parsers_validateParserModule_js__validateParserModule
+      N_src_import_parsers_validateParserModule_js .. S_src_import_parsers_validateParserModule_js__validateParserModule
+      package "IFC" {
+        class "index.js" as N_src_import_parsers_IFC_index_js
+        class "meta()" as S_src_import_parsers_IFC_index_js__meta
+        N_src_import_parsers_IFC_index_js .. S_src_import_parsers_IFC_index_js__meta
+        class "parse()" as S_src_import_parsers_IFC_index_js__parse
+        N_src_import_parsers_IFC_index_js .. S_src_import_parsers_IFC_index_js__parse
+        class "sniff()" as S_src_import_parsers_IFC_index_js__sniff
+        N_src_import_parsers_IFC_index_js .. S_src_import_parsers_IFC_index_js__sniff
+      }
+      package "_legacy" <<legacy>> {
+        class "_importRegistry.js" as N_src_import_parsers__legacy__importRegistry_js
+        class "importFile()" as S_src_import_parsers__legacy__importRegistry_js__importFile
+        N_src_import_parsers__legacy__importRegistry_js .. S_src_import_parsers__legacy__importRegistry_js__importFile
+        class "importRegistry()" as S_src_import_parsers__legacy__importRegistry_js__importRegistry
+        N_src_import_parsers__legacy__importRegistry_js .. S_src_import_parsers__legacy__importRegistry_js__importRegistry
+        class "parseGRA.js" as N_src_import_parsers__legacy_parseGRA_js
+        class "parseTRA.js" as N_src_import_parsers__legacy_parseTRA_js
+        class "parserRegistry.js" as N_src_import_parsers__legacy_parserRegistry_js
+        class "parserRegistry()" as S_src_import_parsers__legacy_parserRegistry_js__parserRegistry
+        N_src_import_parsers__legacy_parserRegistry_js .. S_src_import_parsers__legacy_parserRegistry_js__parserRegistry
+        class "resolveParser()" as S_src_import_parsers__legacy_parserRegistry_js__resolveParser
+        N_src_import_parsers__legacy_parserRegistry_js .. S_src_import_parsers__legacy_parserRegistry_js__resolveParser
+      }
+      package "infraGML" {
+        class "index.js" as N_src_import_parsers_infraGML_index_js
+        class "meta()" as S_src_import_parsers_infraGML_index_js__meta
+        N_src_import_parsers_infraGML_index_js .. S_src_import_parsers_infraGML_index_js__meta
+        class "parse()" as S_src_import_parsers_infraGML_index_js__parse
+        N_src_import_parsers_infraGML_index_js .. S_src_import_parsers_infraGML_index_js__parse
+        class "sniff()" as S_src_import_parsers_infraGML_index_js__sniff
+        N_src_import_parsers_infraGML_index_js .. S_src_import_parsers_infraGML_index_js__sniff
+      }
+      package "landXML" {
+        class "index.js" as N_src_import_parsers_landXML_index_js
+        class "meta()" as S_src_import_parsers_landXML_index_js__meta
+        N_src_import_parsers_landXML_index_js .. S_src_import_parsers_landXML_index_js__meta
+        class "parse()" as S_src_import_parsers_landXML_index_js__parse
+        N_src_import_parsers_landXML_index_js .. S_src_import_parsers_landXML_index_js__parse
+        class "sniff()" as S_src_import_parsers_landXML_index_js__sniff
+        N_src_import_parsers_landXML_index_js .. S_src_import_parsers_landXML_index_js__sniff
+        class "parseLandXML.js" as N_src_import_parsers_landXML_parseLandXML_js
+        class "parseLandXML()" as S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
+        N_src_import_parsers_landXML_parseLandXML_js .. S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
+      }
+      package "technet" {
+        class "sharedTechnet.js" as N_src_import_parsers_technet_sharedTechnet_js
+        package "gndEdit" {
+          class "index.js" as N_src_import_parsers_technet_gndEdit_index_js
+          class "meta()" as S_src_import_parsers_technet_gndEdit_index_js__meta
+          N_src_import_parsers_technet_gndEdit_index_js .. S_src_import_parsers_technet_gndEdit_index_js__meta
+          class "parse()" as S_src_import_parsers_technet_gndEdit_index_js__parse
+          N_src_import_parsers_technet_gndEdit_index_js .. S_src_import_parsers_technet_gndEdit_index_js__parse
+          class "sniff()" as S_src_import_parsers_technet_gndEdit_index_js__sniff
+          N_src_import_parsers_technet_gndEdit_index_js .. S_src_import_parsers_technet_gndEdit_index_js__sniff
+          class "parseGND_XLSX.js" as N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js
+          class "parseGND_XLSX()" as S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
+          N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js .. S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
+        }
+        package "vermEsn" {
+          class "index.js" as N_src_import_parsers_technet_vermEsn_index_js
+          class "meta()" as S_src_import_parsers_technet_vermEsn_index_js__meta
+          N_src_import_parsers_technet_vermEsn_index_js .. S_src_import_parsers_technet_vermEsn_index_js__meta
+          class "parse()" as S_src_import_parsers_technet_vermEsn_index_js__parse
+          N_src_import_parsers_technet_vermEsn_index_js .. S_src_import_parsers_technet_vermEsn_index_js__parse
+          class "sniff()" as S_src_import_parsers_technet_vermEsn_index_js__sniff
+          N_src_import_parsers_technet_vermEsn_index_js .. S_src_import_parsers_technet_vermEsn_index_js__sniff
+          class "parseTRA_GRA.js" as N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js
+          class "liftParsedGraToLandFAT()" as S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__liftParsedGraToLandFAT
+          N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js .. S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__liftParsedGraToLandFAT
+          class "liftParsedTraToLandFAT()" as S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__liftParsedTraToLandFAT
+          N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js .. S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__liftParsedTraToLandFAT
+          class "parseTraGraAuto()" as S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__parseTraGraAuto
+          N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js .. S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__parseTraGraAuto
+          class "sharedVermesn.js" as N_src_import_parsers_technet_vermEsn_sharedVermesn_js
+          class "BYTE_LAYOUT()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__BYTE_LAYOUT
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__BYTE_LAYOUT
+          class "baseMetaFromFile()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__baseMetaFromFile
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__baseMetaFromFile
+          class "decodeBinary()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
+          class "traDir_to_eastCCW()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__traDir_to_eastCCW
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__traDir_to_eastCCW
+        }
+      }
     }
     package "sniffers" {
-      class "detectImportFormat.js" as N_src_import_sniffers_detectImportFormat_js
-      class "detectImportFormat()" as S_src_import_sniffers_detectImportFormat_js__detectImportFormat
-      N_src_import_sniffers_detectImportFormat_js .. S_src_import_sniffers_detectImportFormat_js__detectImportFormat
       class "sniffImportFile.js" as N_src_import_sniffers_sniffImportFile_js
       class "sniffImportFile()" as S_src_import_sniffers_sniffImportFile_js__sniffImportFile
       N_src_import_sniffers_sniffImportFile_js .. S_src_import_sniffers_sniffImportFile_js__sniffImportFile
+      package "_legacy" <<legacy>> {
+        class "detectImportFormat.js" as N_src_import_sniffers__legacy_detectImportFormat_js
+        class "detectImportFormat()" as S_src_import_sniffers__legacy_detectImportFormat_js__detectImportFormat
+        N_src_import_sniffers__legacy_detectImportFormat_js .. S_src_import_sniffers__legacy_detectImportFormat_js__detectImportFormat
+      }
     }
   }
 }
 
-N_src_import_parsers_parserRegistry_js --> N_src_import_parsers_parseIFC_js
+N_src_import_parsers_technet_vermEsn_index_js --> N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js
+N_src_import_runImportPipeline_js --> N_src_import_parsers_parserRegistry_js
 N_src_import_domain_classifyImportResult_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLBool
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLDirection
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLNumber
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLRadius
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLRotation
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLSpiralType
-N_src_import_parsers_parseLandXML_js --> S_src_import_domain_landXMLNormalizers_js__normalizeSurveyPoint
-N_src_import_parsers_parseTRA_GRA_js --> S_src_import_parsers_sharedVermesn_js__baseMetaFromFile
-N_src_import_parsers_parseTRA_GRA_js --> S_src_import_parsers_sharedVermesn_js__decodeBinary
-N_src_import_parsers_parserRegistry_js --> S_src_import_parsers_parseLandXML_js__parseLandXML
-N_src_import_parsers_parserRegistry_js --> S_src_import_parsers_parseTRA_GRA_js__parseTraGraAuto
+N_src_import_parsers_landXML_index_js --> S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
+N_src_import_parsers_technet_gndEdit_index_js --> S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_vermEsn_sharedVermesn_js__baseMetaFromFile
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
+N_src_import_runImportPipeline_js --> S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
 N_src_import_runImportPipeline_js --> S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
 N_src_import_runImportPipeline_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
-N_src_import_runImportPipeline_js --> S_src_import_domain_normalizeLandFATToSparse_js__normalizeLandFATToSparse
-N_src_import_runImportPipeline_js --> S_src_import_parsers_parserRegistry_js__resolveParser
 N_src_import_runImportPipeline_js --> S_src_import_sniffers_sniffImportFile_js__sniffImportFile
 @enduml

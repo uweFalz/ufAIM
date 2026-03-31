@@ -19,6 +19,9 @@
 // Also weniger „apply macht alles“.
 //
 
+import { nowIso, ensureObject } from "@app/utils/appHelpers.js";
+
+import { ensureImportStoreShape } from "./importStoreShape.js";
 import { applyImportRegistry } from "./importRegistryApply.js";
 import {
 	applyImportPreview,
@@ -26,38 +29,9 @@ import {
 	mirrorImportPreview,
 } from "./importPreviewApply.js";
 
-//
-function nowIso() {
-	return new Date().toISOString();
-}
-
+// ...
 function makeArtifactId({ baseId, slot, domain, kind }) {
 	return `${baseId}::${slot}::${domain}::${kind}::${Date.now()}`;
-}
-
-function ensureObject(x) {
-	return (x && typeof x === "object") ? x : {};
-}
-
-function ensureStoreShape(state) {
-	const s = ensureObject(state);
-	return {
-		activeRouteProjectId: s.activeRouteProjectId ?? null,
-		activeSlot: s.activeSlot ?? "right",
-		cursor: ensureObject(s.cursor),
-
-		routeProjects: ensureObject(s.routeProjects),
-		artifacts: ensureObject(s.artifacts),
-
-		import_polyline2d: s.import_polyline2d ?? null,
-		import_marker2d: s.import_marker2d ?? null,
-		import_profile1d: s.import_profile1d ?? null,
-		import_cant1d: s.import_cant1d ?? null,
-		import_meta: s.import_meta ?? null,
-		import_activeArtifacts: s.import_activeArtifacts ?? null,
-
-		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
-	};
 }
 
 function computeBbox2d(polyline2d) {
@@ -103,16 +77,29 @@ function pickMarkerFromPolyline(polyline2d) {
 */
 function normalizeArtifactPayload({ domain, payload }) {
 	const p = ensureObject(payload);
+	
+	// console.debug( "normalizeArtifactPayload: ", domain, payload );
 
 	if (domain === "alignment2d") {
 		const polyline2d =
-		p.polyline2d ??
-		p.pts ??
-		p.geometry?.pts ??
-		null;
+			p.polyline2d ??
+			p.pts ??
+			p.geometry?.pts ??
+			p.landFATAlignment?.extras?.legacy?.geometry?.pts ??
+			p.extras?.legacy?.geometry?.pts ??
+			null;
 
-		const bbox = p.bbox ?? computeBbox2d(polyline2d);
-		const center = p.bboxCenter ?? bboxCenter2d(bbox) ?? pickMarkerFromPolyline(polyline2d);
+		const bbox =
+			p.bbox ??
+			p.landFATAlignment?.bbox ??
+			p.landFATAlignment?.bboxENU ??
+			computeBbox2d(polyline2d);
+
+		const center =
+			p.bboxCenter ??
+			p.landFATAlignment?.bboxCenter ??
+			bboxCenter2d(bbox) ??
+			pickMarkerFromPolyline(polyline2d);
 
 		return {
 			...p,
@@ -196,7 +183,7 @@ export function applyImportToProject({
 		return [{ type: "log", level: "error", message: "importApply: missing baseId" }];
 	}
 
-	const prev = ensureStoreShape(store.getState());
+	const prev = ensureImportStoreShape(store.getState());
 	const effects = [];
 
 	const { patch, effects: registryEffects } =
@@ -209,26 +196,22 @@ export function applyImportToProject({
 		normalizePayload: normalizeArtifactPayload,
 	});
 
-	store.setState(patch);
-	/*
-	const afterRegistry = ensureStoreShape(store.getState());
+	const nextBaseState = ensureImportStoreShape({
+	...store.getState(),
+	...patch,
+});
 
-	// local preview fallback:
-	// if nothing is active yet, activate the just imported route project locally
-	if (!afterRegistry.activeRouteProjectId && baseId) {
-	store.setState({
-	activeRouteProjectId: baseId,
-	activeSlot: slot ?? afterRegistry.activeSlot ?? "right",
-	});
-	}
-	*/
-	const previewPatch = applyImportPreview(ensureStoreShape(store.getState()));
-	store.setState(previewPatch);
+const previewPatch = applyImportPreview(nextBaseState);
+
+store.setState({
+	...patch,
+	...previewPatch,
+});
 
 	effects.push(...registryEffects);
 
 	if (emitProps) {
-		const finalState = ensureStoreShape(store.getState());
+		const finalState = ensureImportStoreShape(store.getState());
 
 		effects.push({
 			type: "props",

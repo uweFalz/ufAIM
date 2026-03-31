@@ -1,49 +1,26 @@
 // src/import/parsers/parserRegistry.js
 
-import { parseLandXML } from "./parseLandXML.js";
-import { parseTraGraAuto } from "./parseTRA_GRA.js";
-// optional später
-// import { parseIFC } from "./parseIFC.js";
+import registry from './registry.json' with { type: 'json' };
 
-export const parserRegistry = [
-{
-	id: "landxml",
-	label: "LandXML",
-	canHandle: ({ parserKey }) => parserKey === "landxml",
-	parseToLandFAT: async (file, ctx = {}) => {
-		const text = await file.text();
-		return parseLandXML(text, file.name);
-	},
-},
+const moduleCache = new Map();
 
-{
-	id: "vermesn",
-	label: "TRA/GRA",
-	canHandle: ({ parserKey }) =>
-	parserKey === "tra" ||
-	parserKey === "gra" ||
-	parserKey === "vermesn",
-	parseToLandFAT: async (file, ctx = {}) => {
-		return await parseTraGraAuto(file, ctx);
-	},
-},
+export function getParserIds() {
+	return Object.keys(registry.imports || {});
+}
 
-// später
-// {
-// 	id: "ifc",
-// 	label: "IFC",
-// 	canHandle: ({ parserKey }) => parserKey === "ifc",
-// 	parseToLandFAT: async (file, ctx = {}) => {
-// 		return await parseIFC(file, ctx);
-// 	},
-// },
-];
+export function getParserBasePath(id) {
+	return registry.imports?.[id] || null;
+}
 
-export function resolveParser(sniffResult) {
+export async function loadParserModule(id) {
+	if (moduleCache.has(id)) return moduleCache.get(id);
 
-	for (const entry of parserRegistry) {
-		if (entry.canHandle?.(sniffResult)) return entry;
+	const basePath = getParserBasePath(id);
+	if (!basePath) {
+		throw new Error(`Unknown parser id: ${id}`);
 	}
 
-	return null;
+	const mod = await import(`${basePath}index.js`);
+	moduleCache.set(id, mod);
+	return mod;
 }

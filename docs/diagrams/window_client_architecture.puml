@@ -2,6 +2,7 @@
 
 title ufAIM Window Client Architecture
 
+skinparam linetype ortho
 skinparam packageStyle rectangle
 
 package "Browser Window" {

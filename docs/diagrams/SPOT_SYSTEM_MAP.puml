@@ -1,0 +1,80 @@
+@startuml
+
+title ufAIM – Master System Map
+
+skinparam linetype ortho
+
+package "External World" {
+  [Import Files]
+  [Public Geo Context\n(mapLibre / GIS)]
+  [Reference Models\n(IFC / Terrain / Docs)]
+}
+
+package "Window Client" {
+  [WindowRuntime]
+  [WindowSessionState]
+  [uiWiring]
+
+  [ImportController]
+  [Grabbeltisch]
+  [GeoView]
+  [Profile/Section Views]
+  [TransitionEditor]
+}
+
+package "Master Runtime\n(SharedWorker)" {
+  [SpotStore]
+  [WorkingSet]
+  [ReferenceStore]
+  [ProjectState]
+}
+
+package "SPOT Model" {
+  [Spot Objects]
+  [Spot Relations]
+  [Topology]
+  [Engineering CRS]
+}
+
+' imports
+[Import Files] --> [ImportController]
+[ImportController] --> [WorkingSet]
+
+' working set to user-facing structural editing
+[WorkingSet] --> [Grabbeltisch]
+[Grabbeltisch] --> [WorkingSet] : rename / group / relate / delete
+[Grabbeltisch] --> [SpotStore] : accept / controlled update
+
+' spot internals
+[SpotStore] --> [Spot Objects]
+[SpotStore] --> [Spot Relations]
+[SpotStore] --> [Topology]
+[SpotStore] --> [Engineering CRS]
+
+' window session / views
+[WindowRuntime] --> [WindowSessionState]
+[uiWiring] --> [WindowSessionState]
+
+[WindowSessionState] --> [GeoView]
+[WindowSessionState] --> [Profile/Section Views]
+[WindowSessionState] --> [Grabbeltisch]
+[WindowSessionState] --> [TransitionEditor]
+
+' views operate on SPOT
+[GeoView] --> [SpotStore]
+[Profile/Section Views] --> [SpotStore]
+[TransitionEditor] --> [SpotStore]
+[Grabbeltisch] --> [SpotStore]
+
+' reference context
+[Public Geo Context\n(mapLibre / GIS)] --> [GeoView]
+[Reference Models\n(IFC / Terrain / Docs)] --> [ReferenceStore]
+[ReferenceStore] --> [GeoView]
+[ReferenceStore] --> [Grabbeltisch]
+
+' project scope
+[ProjectState] --> [SpotStore]
+[ProjectState] --> [WorkingSet]
+[ProjectState] --> [ReferenceStore]
+
+@enduml

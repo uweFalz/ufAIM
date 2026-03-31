@@ -1,0 +1,265 @@
+@startuml
+
+title ufAIM – Ultimate Architecture Map (SPOT / Cockpit / Projection / Transition)
+
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
+
+package "External World" {
+  [Import Files\nTRA / GRA / LandXML / IFC / GND]
+  [Public Geo Context\nmapLibre / GIS]
+  [Reference Models\nIFC / Terrain / Docs]
+  [Standards / Semantics\nlandXML / Technet / IFC]
+}
+
+package "Master Runtime (SharedWorker)" {
+  [ProjectState]
+  [Messaging / Commands / Events]
+
+  package "Canonical Project Model" {
+    [SPOT Store]
+    [Spot Meta]
+    [Spot Objects]
+    [Spot Relations]
+    [Topology]
+    [Engineering CRS]
+    [Canonical Refs]
+  }
+
+  package "Candidate / Context Data" {
+    [Working Set]
+    [Reference Store]
+  }
+}
+
+package "Engineering Core" {
+
+  package "Alignment Domain" {
+    [Sparse Domain]
+    [SparseAlignment]
+    [Validators]
+    [Solver]
+  }
+
+  package "Frame / Geometry Core" {
+    [Frame2 / pose2]
+    [Frame3 / pose3]
+    [Sampling / Evaluation]
+  }
+
+  package "Transition Core" {
+    [Transition Families]
+    [landFAT spiType Space]
+    [spiType Resolution]
+    [RegistryResolver]
+    [KappaFcnBuilder]
+    [transitionLookup]
+  }
+
+  package "Profile / Cant Domain" {
+    [Profile Domain]
+    [Cant Domain]
+    [Vertical / Cant Transitions]
+  }
+}
+
+package "Window Client" {
+  [WindowRuntime]
+  [WorkspaceState / WindowSession]
+  [uiWiring]
+  [ViewController]
+  [CockpitController]
+
+  package "Tool Controllers" {
+    [ImportController]
+    [WorkbenchController]
+    [TransitionEditorBridge]
+    [SpotController]
+    [ViewProjectionController]
+  }
+
+  package "Projection / Representation Layer" {
+    [Representation Cache]
+    [Derived View Geometry]
+    [AlignmentProjectionService]
+    [ProfileProjectionService]
+    [CantProjectionService]
+    [TopologyProjectionService]
+    [ObjectProjectionService]
+  }
+
+  package "Views / Tools" {
+    [GeoView]
+    [Profile / Section Views]
+    [Cockpit / Workbench]
+    [Transition Editor]
+    [Property / Relation Panels]
+  }
+}
+
+' -------------------------
+' Import / candidate flow
+' -------------------------
+[Import Files\nTRA / GRA / LandXML / IFC / GND] --> [ImportController] : import flow
+[ImportController] --> [Messaging / Commands / Events] : parser / normalize / candidate result
+[Messaging / Commands / Events] --> [Working Set] : candidates + relations + refs
+
+' -------------------------
+' Semantics / source mapping
+' -------------------------
+[Standards / Semantics\nlandXML / Technet / IFC] --> [landFAT spiType Space]
+[landFAT spiType Space] --> [spiType Resolution]
+[spiType Resolution] --> [transitionLookup]
+[transitionLookup] --> [RegistryResolver]
+[RegistryResolver] --> [KappaFcnBuilder]
+
+' -------------------------
+' Working set / structural editing
+' -------------------------
+[Working Set] --> [Cockpit / Workbench] : candidate data
+[Working Set] --> [Property / Relation Panels] : candidate structure
+[Cockpit / Workbench] --> [WorkbenchController]
+[WorkbenchController] --> [Messaging / Commands / Events] : accept / defer / ignore / relate
+[Messaging / Commands / Events] --> [SPOT Store] : promote / controlled update
+
+' -------------------------
+' Reference flow
+' -------------------------
+[Reference Models\nIFC / Terrain / Docs] --> [Reference Store]
+[Reference Store] --> [GeoView] : context overlay
+[Reference Store] --> [Cockpit / Workbench]
+[Reference Store] --> [Property / Relation Panels]
+
+' -------------------------
+' SPOT internals
+' -------------------------
+[SPOT Store] --> [Spot Meta]
+[SPOT Store] --> [Spot Objects]
+[SPOT Store] --> [Spot Relations]
+[SPOT Store] --> [Topology]
+[SPOT Store] --> [Engineering CRS]
+[SPOT Store] --> [Canonical Refs]
+
+' -------------------------
+' Canonical engineering core
+' -------------------------
+[Spot Objects] --> [Sparse Domain]
+[Spot Relations] --> [Sparse Domain]
+[Topology] --> [Sparse Domain]
+[Engineering CRS] --> [Sparse Domain]
+
+[Sparse Domain] --> [SparseAlignment]
+[SparseAlignment] --> [Validators]
+[SparseAlignment] --> [Solver]
+[SparseAlignment] --> [Sampling / Evaluation]
+[SparseAlignment] --> [Transition Families]
+
+[Transition Families] --> [RegistryResolver]
+[KappaFcnBuilder] --> [Sampling / Evaluation]
+[KappaFcnBuilder] --> [TransitionEditorBridge] : resolved defs / fns
+
+[SparseAlignment] --> [Frame2 / pose2]
+[Frame2 / pose2] --> [Frame3 / pose3]
+
+[Profile Domain] --> [ProfileProjectionService]
+[Cant Domain] --> [CantProjectionService]
+[Vertical / Cant Transitions] --> [Cant Domain]
+[Vertical / Cant Transitions] --> [Profile Domain]
+
+' -------------------------
+' Solver flow
+' -------------------------
+[Solver] --> [Messaging / Commands / Events] : candidate proposal
+[Messaging / Commands / Events] --> [Working Set] : solver candidates
+
+' -------------------------
+' Window runtime / client coordination
+' -------------------------
+[WindowRuntime] --> [WorkspaceState / WindowSession]
+[uiWiring] --> [WorkspaceState / WindowSession]
+[WindowRuntime] --> [ViewController]
+[WindowRuntime] --> [CockpitController]
+
+[WorkspaceState / WindowSession] --> [CockpitController]
+[WorkspaceState / WindowSession] --> [ViewController]
+[WorkspaceState / WindowSession] --> [ImportController]
+[WorkspaceState / WindowSession] --> [WorkbenchController]
+[WorkspaceState / WindowSession] --> [TransitionEditorBridge]
+[WorkspaceState / WindowSession] --> [SpotController]
+[WorkspaceState / WindowSession] --> [ViewProjectionController]
+
+[CockpitController] --> [ImportController]
+[CockpitController] --> [WorkbenchController]
+[CockpitController] --> [TransitionEditorBridge]
+[CockpitController] --> [SpotController]
+[CockpitController] --> [ViewProjectionController]
+[CockpitController] --> [Messaging / Commands / Events] : user intent orchestration
+
+' -------------------------
+' View orchestration
+' -------------------------
+[ViewController] --> [GeoView]
+[ViewController] --> [Profile / Section Views]
+[ViewController] --> [Cockpit / Workbench]
+[ViewController] --> [Transition Editor]
+[ViewController] --> [Property / Relation Panels]
+
+' -------------------------
+' SPOT / Working Set -> Projection -> View
+' -------------------------
+[SPOT Store] --> [ViewProjectionController] : canonical spot data
+[Working Set] --> [ViewProjectionController] : candidate data for preview / inspection
+[Reference Store] --> [ViewProjectionController] : contextual data
+[WorkspaceState / WindowSession] --> [ViewProjectionController] : focus / LoD / filters / active tool
+
+[ViewProjectionController] --> [AlignmentProjectionService]
+[ViewProjectionController] --> [ProfileProjectionService]
+[ViewProjectionController] --> [CantProjectionService]
+[ViewProjectionController] --> [TopologyProjectionService]
+[ViewProjectionController] --> [ObjectProjectionService]
+
+[AlignmentProjectionService] --> [Sampling / Evaluation]
+[Sampling / Evaluation] --> [Derived View Geometry] : sampled alignment geometry
+[ProfileProjectionService] --> [Derived View Geometry] : profile / section geometry
+[CantProjectionService] --> [Derived View Geometry] : cant / banking geometry
+[TopologyProjectionService] --> [Derived View Geometry] : graph / relation geometry
+[ObjectProjectionService] --> [Derived View Geometry] : generic object geometry
+
+[Derived View Geometry] --> [Representation Cache]
+
+[Representation Cache] --> [GeoView]
+[Representation Cache] --> [Profile / Section Views]
+[Representation Cache] --> [Transition Editor]
+[Representation Cache] --> [Property / Relation Panels]
+
+[Public Geo Context\nmapLibre / GIS] --> [GeoView]
+
+' -------------------------
+' Structural views may inspect canonical non-geometric state directly
+' -------------------------
+[SPOT Store] --> [Cockpit / Workbench] : structural / assignment view flow
+[SPOT Store] --> [Property / Relation Panels] : object / relation inspection
+
+' -------------------------
+' Edit flow
+' -------------------------
+[GeoView] --> [SpotController] : pick / edit request
+[Profile / Section Views] --> [SpotController]
+[Property / Relation Panels] --> [SpotController]
+[Transition Editor] --> [TransitionEditorBridge]
+
+[SpotController] --> [Messaging / Commands / Events] : edit flow
+[TransitionEditorBridge] --> [Messaging / Commands / Events] : transition edit flow
+
+' -------------------------
+' Worker distribution
+' -------------------------
+[Messaging / Commands / Events] --> [ProjectState]
+[ProjectState] --> [SPOT Store]
+[ProjectState] --> [Working Set]
+[ProjectState] --> [Reference Store]
+
+@enduml

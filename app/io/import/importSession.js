@@ -146,6 +146,12 @@ export function makeImportSession(opts = {}) {
 
 			summary: { semanticId: null, center: null, length: null, sRange: null },
 			lastDecision: null,
+
+			latestAlignmentItem: null,
+			latestProfileItem: null,
+			latestCantItem: null,
+
+			emittedArtifactIds: new Set(),
 		};
 
 		// 4) append item
@@ -164,8 +170,38 @@ export function makeImportSession(opts = {}) {
 		g.slot_attachHint = safeSlotHint;
 		g.lastDecision = decision;
 
-		if (kind === "TRA") g.tra = item;
-		if (kind === "GRA") g.gra = item;
+		const upperKind = String(importObject?.kind ?? kind).toUpperCase();
+
+		if (upperKind === "TRA") g.tra = item;
+		if (upperKind === "GRA") g.gra = item;
+
+		if (
+		importObject?.sparseAlignment ||
+		upperKind === "LANDFATALIGNMENT" ||
+		upperKind === "ALIGNMENTSPOTCANDIDATE"
+		) {
+			g.latestAlignmentItem = item;
+		}
+
+		if (
+		upperKind === "LANDFATPROFILE" ||
+		upperKind === "GRA" ||
+		(Array.isArray(importObject?.profile1d) && importObject.profile1d.length >= 2) ||
+		(Array.isArray(importObject?.points) && importObject.points.length >= 2)
+		) {
+			g.latestProfileItem = item;
+		}
+
+		if (
+		upperKind === "LANDFATCANT" ||
+		upperKind === "TRA" ||
+		upperKind === "CANT" ||
+		(Array.isArray(importObject?.cant1d) && importObject.cant1d.length >= 2) ||
+		(Array.isArray(importObject?.cant) && importObject.cant.length >= 2) ||
+		(Array.isArray(importObject?.points) && importObject.points.length >= 2)
+		) {
+			g.latestCantItem = item;
+		}
 
 		// 5) summary
 		updateGroupSummaryFromItem(g, importObject, matchingHelpers);
@@ -173,13 +209,25 @@ export function makeImportSession(opts = {}) {
 		groups.set(groupKey, g);
 
 		// 6) artifacts
-		const artifacts = buildArtifactsFromGroup(g, { slotHint: safeSlotHint });
+		const allArtifacts = buildArtifactsFromGroup(g, { slotHint: safeSlotHint });
+
+		if (!(g.emittedArtifactIds instanceof Set)) {
+			g.emittedArtifactIds = new Set();
+		}
+
+		const artifacts = allArtifacts.filter((a) => {
+			const id = String(a?.id ?? "");
+			if (!id) return false;
+			if (g.emittedArtifactIds.has(id)) return false;
+			g.emittedArtifactIds.add(id);
+			return true;
+		});
 
 		const classification = classifyImportOutcome({
-			hasAlignment: artifacts.some(a => a?.domain === "alignment2d"),
-			hasProfile: artifacts.some(a => a?.domain === "profile1d"),
-			hasCant: artifacts.some(a => a?.domain === "cant1d"),
-			hasUnknown: artifacts.some(a => a?.domain === "unknown"),
+			hasAlignment: allArtifacts.some(a => a?.domain === "alignment2d"),
+			hasProfile: allArtifacts.some(a => a?.domain === "profile1d"),
+			hasCant: allArtifacts.some(a => a?.domain === "cant1d"),
+			hasUnknown: allArtifacts.some(a => a?.domain === "unknown"),
 			sourceKind: importObject?.kind ?? null,
 		});
 
@@ -254,6 +302,15 @@ export function makeImportSession(opts = {}) {
 			filesSeen += items.length;
 			if ((g.tsLast ?? 0) > lastIngestAt) lastIngestAt = (g.tsLast ?? 0);
 
+			const alignmentItem = g.latestAlignmentItem ?? pickLatestAlignmentItem(items);
+			const profileItem = g.latestProfileItem ?? pickLatestProfileItem(items);
+			const cantItem = g.latestCantItem ?? pickLatestCantItem(items);
+
+			const alignmentObj = unwrapImportObject(alignmentItem);
+			const profileObj = unwrapImportObject(profileItem);
+			const cantObj = unwrapImportObject(cantItem);
+
+			// Legacy compatibility views
 			const traObj = unwrapImportObject(g.tra ?? pickLatestByKind(items, "TRA"));
 			const graObj = unwrapImportObject(g.gra ?? pickLatestByKind(items, "GRA"));
 
@@ -263,11 +320,12 @@ export function makeImportSession(opts = {}) {
 
 			// preview flags (no artifact build here)
 			const polyline2d = pickPolyline2dFromTRA(traObj);
-			const profile1d = pickProfile1dFromGRA(graObj);
-			const cant1d = pickCant1dFromTRA(traObj);
+			
+			const profile1d = pickProfile1d(profileObj);
+			const cant1d = pickCant1d(cantObj);
 
 			const preview = {
-				hasAlignment2d: Array.isArray(polyline2d) && polyline2d.length >= 2,
+				hasAlignment2d: hasSparseAlignment(alignmentObj),
 				hasProfile1d: Array.isArray(profile1d) && profile1d.length >= 2,
 				hasCant1d: Array.isArray(cant1d) && cant1d.length >= 2,
 			};
@@ -280,8 +338,8 @@ export function makeImportSession(opts = {}) {
 			});
 
 			const missing = [];
-			if (!preview.hasAlignment2d) missing.push("TRA(alignment)");
-			if (!preview.hasProfile1d) missing.push("GRA(profile)");
+			if (!preview.hasAlignment2d) missing.push("alignment");
+			if (!preview.hasProfile1d) missing.push("profile");
 			// cant intentionally optional for now
 
 			const matchLabel =
@@ -537,6 +595,96 @@ function buildSourceLabel(group) {
 	return details.map(d => d.label).join(" · ");
 }
 
+function pickLatestByPredicate(items, predicate) {
+	const arr = Array.isArray(items) ? items : [];
+	let best = null;
+	let bestTs = -Infinity;
+
+	for (const it of arr) {
+		if (!it) continue;
+		const obj = unwrapImportObject(it);
+		if (!predicate(it, obj)) continue;
+
+		const ts = Number(it?.ts ?? obj?.ts ?? 0);
+		if (!best || ts >= bestTs) {
+			best = it;
+			bestTs = ts;
+		}
+	}
+	return best;
+}
+
+function pickLatestAlignmentItem(items) {
+	return pickLatestByPredicate(items, (_it, obj) => {
+		return !!(
+		obj?.sparseAlignment ||
+		obj?.payload?.sparseAlignment ||
+		String(obj?.kind ?? "").toUpperCase() === "LANDFATALIGNMENT"
+		);
+	});
+}
+
+function pickLatestProfileItem(items) {
+	return pickLatestByPredicate(items, (_it, obj) => {
+		const kind = String(obj?.kind ?? "").toUpperCase();
+		return !!(
+		kind === "LANDFATPROFILE" ||
+		kind === "GRA" ||
+		(Array.isArray(obj?.profile1d) && obj.profile1d.length >= 2) ||
+		(Array.isArray(obj?.points) && obj.points.length >= 2)
+		);
+	});
+}
+
+function pickLatestCantItem(items) {
+	return pickLatestByPredicate(items, (_it, obj) => {
+		const kind = String(obj?.kind ?? "").toUpperCase();
+		return !!(
+		kind === "LANDFATCANT" ||
+		kind === "TRA" ||
+		kind === "CANT" ||
+		(Array.isArray(obj?.cant1d) && obj.cant1d.length >= 2) ||
+		(Array.isArray(obj?.cant) && obj.cant.length >= 2) ||
+		(Array.isArray(obj?.points) && obj.points.length >= 2)
+		);
+	});
+}
+
+function pickProfile1d(obj) {
+	return (
+	obj?.profile1d ??
+	obj?.profile ??
+	(
+	Array.isArray(obj?.points)
+	? obj.points.map((x) => ({
+		s: x?.station ?? null,
+		z: x?.elevation ?? null,
+		R: x?.radius ?? null,
+		T: x?.tangentLength ?? null,
+		pointNumber: x?.pointNumber ?? null,
+		pointKey: x?.pointKey ?? null,
+	}))
+	: null
+	)
+	);
+}
+
+function pickCant1d(obj) {
+	return (
+	obj?.cant1d ??
+	obj?.cant ??
+	obj?.points ??
+	null
+	);
+}
+
+function hasSparseAlignment(obj) {
+	return !!(
+	obj?.sparseAlignment ??
+	obj?.payload?.sparseAlignment
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Generic helpers
 // ---------------------------------------------------------------------------
@@ -695,6 +843,13 @@ function profileStats1d(profile1d) {
 // ---------------------------------------------------------------------------
 // Minimal match heuristic (cheap + useful)
 // ---------------------------------------------------------------------------
+
+/**
+* @baustelle [LEGACY-MATCH]
+* Current heuristic compares classical TRA/GRA pairs only.
+* It does not yet evaluate normalized landFATProfile / landFATCant /
+* embedded profile/cant relations.
+*/
 
 function assessMatchTRA_GRA(traObj, graObj) {
 	const notes = [];

@@ -9,17 +9,10 @@
 //
 // No preview logic, no UI logic.
 
-//
-function nowIso() {
-	return new Date().toISOString();
-}
+import { nowIso, ensureObject } from "@app/utils/appHelpers.js";
 
 function makeArtifactId({ baseId, slot, domain, kind }) {
 	return `${baseId}::${slot}::${domain}::${kind}::${Date.now()}`;
-}
-
-function ensureObject(x) {
-	return (x && typeof x === "object") ? x : {};
 }
 
 //

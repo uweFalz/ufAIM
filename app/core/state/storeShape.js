@@ -63,6 +63,7 @@ export function makeInitialState() {
 		import_profile1d: null,
 		import_cant1d: null,
 		import_meta: null,
+		import_tracks2d: [],   // <<< NEU
 
 		// view state
 		view_pins: [],          // [{rpId, slot, at}]
@@ -86,6 +87,7 @@ export function makeInitialState() {
 // ...
 //
 export function ensureStateShape(state) {
+	
 	const s = state ?? {};
 
 	// --- TE presetSpec: keep if it matches current presetId ---
@@ -124,7 +126,8 @@ export function ensureStateShape(state) {
 		import_profile1d: s.import_profile1d ?? null,
 		import_cant1d: s.import_cant1d ?? null,
 		import_meta: s.import_meta ?? null,
-		import_activeArtifacts: s.import_activeArtifacts ?? null,		
+		import_activeArtifacts: s.import_activeArtifacts ?? null,
+		import_tracks2d: Array.isArray(s.import_tracks2d) ? s.import_tracks2d : [],   // <<< NEU
 
 		// Transition Editor (canonical, survives reload)
 		te_open: Boolean(s.te_open),

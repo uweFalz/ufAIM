@@ -1,25 +1,34 @@
 // app/io/import/buildImportArtifacts.js
-//
-// Build import artifacts from one grouped import bucket.
-//
-// Current goals:
-// - legacy TRA/GRA support
-// - landFAT alignment support
-// - output format-agnostic artifacts for registry/apply/preview
-//
-// Artifact shape:
-// {
-//   id,
-//   domain,          // alignment2d | profile1d | cant1d | unknown
-//   kind,            // TRA | GRA | ALIGNMENT | ...
-//   slot,            // right | left | km
-//   sourceLabel,     // file / internal name for UI
-//   payload,         // domain-specific data
-//   meta             // free meta for UI/debug/future use
-// }
+
+/**
+* @baustelle [PREVIEW-CONTRACT]
+* Alignment preview now uses the unified sparse-based preview path:
+*   sparseAlignment -> poseA-polyline -> alignment2d artifact
+*
+* @baustelle [ARCH]
+* Format-specific extraction should continue to move out of this module.
+* This builder should only assemble artifacts from normalized inputs.
+*
+* @baustelle [GROUP-REBUILD]
+* This builder is currently called on full grouped buckets, not on per-item deltas.
+* Therefore artifacts must be deduplicated per domain/source to avoid repeated
+* emission of already known alignment/profile/cant previews on embedded updates.
+*
+* @baustelle [GROUP-CONTRACT]
+* Aktuell wird pro Gruppe höchstens ein alignment2d-Artifact gebaut
+* ("latest sparse item wins").
+* Falls Gruppen künftig mehrere gleichberechtigte Alignment-Kandidaten tragen,
+* muss diese Datei auf multi-alignment pro Gruppe umgestellt werden.
+*/
+
+import { buildAlignmentPreviewArtifact } from "./preview/buildAlignmentPreviewArtifact.js";
+
+// -----------------------------------------------------------------------------
+// basics
+// -----------------------------------------------------------------------------
 
 function ensureObject(x) {
-	return (x && typeof x === "object") ? x : {};
+	return x && typeof x === "object" ? x : {};
 }
 
 function uniqueStrings(arr) {
@@ -34,8 +43,20 @@ function unwrapImportObject(x) {
 	return x?.importObject ?? x?.data ?? x ?? null;
 }
 
-function pickLatestByKind(items, kind) {
-	const k = String(kind ?? "").toUpperCase();
+// -----------------------------------------------------------------------------
+// normalized access helpers
+// -----------------------------------------------------------------------------
+
+function getSparseAlignmentFromItem(item) {
+	const obj = unwrapImportObject(item);
+	return obj?.sparseAlignment ?? obj?.payload?.sparseAlignment ?? null;
+}
+
+// -----------------------------------------------------------------------------
+// latest pick helpers
+// -----------------------------------------------------------------------------
+
+function pickLatestByPredicate(items, predicate) {
 	const arr = Array.isArray(items) ? items : [];
 
 	let best = null;
@@ -45,8 +66,7 @@ function pickLatestByKind(items, kind) {
 		if (!it) continue;
 
 		const obj = unwrapImportObject(it);
-		const kk = String(obj?.kind ?? it?.kind ?? "").toUpperCase();
-		if (kk !== k) continue;
+		if (!predicate(it, obj)) continue;
 
 		const ts = Number(it?.ts ?? obj?.ts ?? 0);
 		if (!best || ts >= bestTs) {
@@ -58,296 +78,198 @@ function pickLatestByKind(items, kind) {
 	return best;
 }
 
-function pickLatestLandFATAlignmentItem(items) {
-	const arr = Array.isArray(items) ? items : [];
+function pickLatestSparseAlignmentItem(items) {
+	return pickLatestByPredicate(items, (it) => {
+		return !!getSparseAlignmentFromItem(it);
+	});
+}
 
-	let best = null;
-	let bestTs = -Infinity;
+function pickLatestProfileItem(items) {
+	return pickLatestByPredicate(items, (it, obj) => {
+		const kind = String(obj?.kind ?? it?.kind ?? "").toUpperCase();
 
-	for (const it of arr) {
-		if (!it) continue;
+		if (kind === "LANDFATPROFILE") return true;
+		if (kind === "GRA") return true;
+		if (Array.isArray(obj?.profile1d) && obj.profile1d.length >= 2) return true;
+		if (Array.isArray(obj?.points) && obj.points.length >= 2) return true;
 
-		const obj = unwrapImportObject(it);
-		if (!obj?.landFATAlignment) continue;
+		return false;
+	});
+}
 
-		const ts = Number(it?.ts ?? obj?.ts ?? 0);
-		if (!best || ts >= bestTs) {
-			best = it;
-			bestTs = ts;
-		}
+function pickLatestCantItem(items) {
+	return pickLatestByPredicate(items, (it, obj) => {
+		const kind = String(obj?.kind ?? it?.kind ?? "").toUpperCase();
+
+		if (kind === "LANDFATCANT") return true;
+		if (kind === "CANT") return true;
+		if (kind === "TRA") return true;
+		if (Array.isArray(obj?.cant1d) && obj.cant1d.length >= 2) return true;
+		if (Array.isArray(obj?.cant) && obj.cant.length >= 2) return true;
+		if (Array.isArray(obj?.points) && obj.points.length >= 2) return true;
+
+		return false;
+	});
+}
+
+// -----------------------------------------------------------------------------
+// domain readers
+// -----------------------------------------------------------------------------
+
+function pickProfile1dFromObject(obj) {
+	if (Array.isArray(obj?.profile1d)) return obj.profile1d;
+	if (Array.isArray(obj?.profile)) return obj.profile;
+
+	if (Array.isArray(obj?.points)) {
+		return obj.points.map((x) => ({
+			s: x?.station ?? null,
+			z: x?.elevation ?? null,
+			R: x?.radius ?? null,
+			T: x?.tangentLength ?? null,
+			pointNumber: x?.pointNumber ?? null,
+			pointKey: x?.pointKey ?? null,
+		}));
 	}
 
-	return best;
+	return null;
 }
 
-function pickPolyline2dFromTRA(traObj) {
-	return (
-		traObj?.geometry?.pts ??
-		traObj?.geometry ??
-		traObj?.pts ??
-		null
-	);
+function pickCant1dFromObject(obj) {
+	if (Array.isArray(obj?.cant1d)) return obj.cant1d;
+	if (Array.isArray(obj?.cant)) return obj.cant;
+	if (Array.isArray(obj?.points)) return obj.points;
+	return null;
 }
 
-function pickProfile1dFromGRA(graObj) {
-	return (
-		graObj?.profile1d ??
-		graObj?.profile ??
-		null
-	);
-}
-
-function pickCant1dFromTRA(traObj) {
-	return (
-		traObj?.cant ??
-		traObj?.cant1d ??
-		null
-	);
-}
-
-function normalizePoint2d(p) {
-	if (!p) return null;
-
-	const x = Number(p?.x ?? p?.[0]);
-	const y = Number(p?.y ?? p?.[1]);
-
-	if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-	return { x, y };
-}
-
-function computeBbox2d(polyline2d) {
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const p of (polyline2d ?? [])) {
-		const x = Number(p?.x);
-		const y = Number(p?.y);
-		if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-
-		if (x < minX) minX = x;
-		if (y < minY) minY = y;
-		if (x > maxX) maxX = x;
-		if (y > maxY) maxY = y;
-	}
-
-	if (!Number.isFinite(minX)) return null;
-	return { minX, minY, maxX, maxY };
-}
-
-function bboxCenter2d(bbox) {
-	if (!bbox) return null;
-
-	const x = (Number(bbox.minX) + Number(bbox.maxX)) * 0.5;
-	const y = (Number(bbox.minY) + Number(bbox.maxY)) * 0.5;
-
-	if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-	return { x, y };
-}
-
-function normalizePolyline2d(poly) {
-	if (!Array.isArray(poly)) return null;
-
-	const out = poly
-		.map(normalizePoint2d)
-		.filter(Boolean);
-
-	return out.length >= 2 ? out : null;
-}
+// -----------------------------------------------------------------------------
+// labels / kinds
+// -----------------------------------------------------------------------------
 
 function sourceLabelFromItem(item) {
 	const obj = unwrapImportObject(item);
-	const fileName = String(item?.originFileName ?? obj?.meta?.sourceFile ?? obj?.name ?? "").trim() || null;
 
-	const internalName =
-		String(
-			obj?.meta?.alignmentName ??
-			obj?.meta?.axisName ??
-			obj?.meta?.alignmentId ??
-			obj?.meta?.routeName ??
-			obj?.landFATAlignment?.name ??
-			obj?.name ??
-			""
-		).trim() || null;
+	const fileName = String(
+	item?.originFileName ??
+	obj?.meta?.sourceFile ??
+	obj?.source?.file ??
+	obj?.name ??
+	""
+	).trim() || null;
+
+	const internalName = String(
+	obj?.meta?.alignmentName ??
+	obj?.meta?.axisName ??
+	obj?.meta?.alignmentId ??
+	obj?.meta?.routeName ??
+	obj?.name ??
+	""
+	).trim() || null;
 
 	if (fileName && internalName && fileName !== internalName) {
 		return `${fileName} → ${internalName}`;
 	}
+
 	return fileName ?? internalName ?? "—";
 }
 
-// -----------------------------------------------------------------------------
-// landFAT preview extraction
-// -----------------------------------------------------------------------------
-//
-// NOTE:
-// This is intentionally only a V0 preview path.
-// It extracts visible anchor points from landFAT CoordGeom.
-// Later this should be replaced by:
-//   landFAT -> sparse -> sampler -> preview polyline
-//
-
-function pickPointFromNamedPoint(p) {
-	if (!p) return null;
-
-	const x = Number(p?.x);
-	const y = Number(p?.y);
-
-	if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-	return { x, y };
-}
-
-function pushPointIfNew(out, p, eps = 1e-9) {
-	if (!p) return;
-	if (!out.length) {
-		out.push(p);
-		return;
-	}
-
-	const last = out[out.length - 1];
-	if (Math.abs(last.x - p.x) <= eps && Math.abs(last.y - p.y) <= eps) return;
-
-	out.push(p);
-}
-
-function buildPreviewPolylineFromLandFATAlignment(alignment) {
-	const geom = Array.isArray(alignment?.coordGeom) ? alignment.coordGeom : [];
-	const out = [];
-
-	for (const seg of geom) {
-		const type = String(seg?.type ?? "");
-
-		if (type === "Line") {
-			pushPointIfNew(out, pickPointFromNamedPoint(seg.start));
-			pushPointIfNew(out, pickPointFromNamedPoint(seg.end));
-			continue;
-		}
-
-		if (type === "Curve") {
-			// V0: only anchor preview, not sampled arc
-			pushPointIfNew(out, pickPointFromNamedPoint(seg.start));
-			pushPointIfNew(out, pickPointFromNamedPoint(seg.end));
-			continue;
-		}
-
-		if (type === "Spiral") {
-			// V0: only anchor preview, not sampled spiral
-			pushPointIfNew(out, pickPointFromNamedPoint(seg.start));
-			pushPointIfNew(out, pickPointFromNamedPoint(seg.end));
-			continue;
-		}
-	}
-
-	return out.length >= 2 ? out : null;
+function resolveArtifactKind(item, obj, fallback = "UNKNOWN") {
+	return String(
+	item?.source?.format ??
+	obj?.source?.format ??
+	obj?.meta?.sourceFormat ??
+	obj?.meta?.format ??
+	obj?.kind ??
+	fallback
+	).toUpperCase();
 }
 
 // -----------------------------------------------------------------------------
 // artifact builders
 // -----------------------------------------------------------------------------
 
-function buildAlignmentArtifactFromTRA({ baseId, slot, item }) {
+function buildAlignmentArtifact({ baseId, slot, item }) {
+	const sparseAlignment = getSparseAlignmentFromItem(item);
+	if (!sparseAlignment) return null;
+
 	const obj = unwrapImportObject(item);
-	const polyline2d = normalizePolyline2d(pickPolyline2dFromTRA(obj));
-	if (!polyline2d) return null;
+	const kind = resolveArtifactKind(item, obj, "ALIGNMENT");
 
-	const bbox = computeBbox2d(polyline2d);
-
-	return {
-		id: buildArtifactId(baseId, slot, "alignment2d", String(obj?.kind ?? "TRA").toUpperCase(), item?.ts),
-		domain: "alignment2d",
-		kind: String(obj?.kind ?? "TRA").toUpperCase(),
+	return buildAlignmentPreviewArtifact({
+		baseId,
 		slot,
-		sourceLabel: sourceLabelFromItem(item),
-		payload: {
-			polyline2d,
-			bbox,
-			bboxCenter: bboxCenter2d(bbox),
-		},
-		meta: {
-			sourceFormat: obj?.meta?.sourceFormat ?? null,
-			alignmentName: obj?.meta?.alignmentName ?? null,
-			sourceFile: obj?.meta?.sourceFile ?? item?.originFileName ?? null,
-			previewMode: "raw-polyline",
-		},
-	};
+		item,
+		kind,
+	});
 }
 
-function buildProfileArtifactFromGRA({ baseId, slot, item }) {
+function buildProfileArtifact({ baseId, slot, item }) {
 	const obj = unwrapImportObject(item);
-	const profile1d = pickProfile1dFromGRA(obj);
+	const profile1d = pickProfile1dFromObject(obj);
 
 	if (!Array.isArray(profile1d) || profile1d.length < 2) return null;
 
+	const kind = resolveArtifactKind(item, obj, "GRA");
+
 	return {
-		id: buildArtifactId(baseId, slot, "profile1d", String(obj?.kind ?? "GRA").toUpperCase(), item?.ts),
+		id: buildArtifactId(baseId, slot, "profile1d", kind, item?.ts),
 		domain: "profile1d",
-		kind: String(obj?.kind ?? "GRA").toUpperCase(),
+		kind,
 		slot,
 		sourceLabel: sourceLabelFromItem(item),
-		payload: {
-			profile1d,
-		},
+		payload: { profile1d },
 		meta: {
-			sourceFormat: obj?.meta?.sourceFormat ?? null,
+			sourceFormat: kind,
 			sourceFile: obj?.meta?.sourceFile ?? item?.originFileName ?? null,
 		},
 	};
 }
 
-function buildCantArtifactFromTRA({ baseId, slot, item }) {
+function buildCantArtifact({ baseId, slot, item }) {
 	const obj = unwrapImportObject(item);
-	const cant1d = pickCant1dFromTRA(obj);
+	const cant1d = pickCant1dFromObject(obj);
 
 	if (!Array.isArray(cant1d) || cant1d.length < 2) return null;
 
+	const kind = resolveArtifactKind(item, obj, "CANT");
+
 	return {
-		id: buildArtifactId(baseId, slot, "cant1d", String(obj?.kind ?? "TRA").toUpperCase(), item?.ts),
+		id: buildArtifactId(baseId, slot, "cant1d", kind, item?.ts),
 		domain: "cant1d",
-		kind: String(obj?.kind ?? "TRA").toUpperCase(),
+		kind,
 		slot,
 		sourceLabel: sourceLabelFromItem(item),
-		payload: {
-			cant1d,
-		},
+		payload: { cant1d },
 		meta: {
-			sourceFormat: obj?.meta?.sourceFormat ?? null,
+			sourceFormat: kind,
 			sourceFile: obj?.meta?.sourceFile ?? item?.originFileName ?? null,
 		},
 	};
 }
 
-function buildAlignmentArtifactFromLandFAT({ baseId, slot, item }) {
-	const obj = unwrapImportObject(item);
-	const alignment = obj?.landFATAlignment;
-	if (!alignment) return null;
+// -----------------------------------------------------------------------------
+// dedupe
+// -----------------------------------------------------------------------------
 
-	const polyline2d = normalizePolyline2d(buildPreviewPolylineFromLandFATAlignment(alignment));
-	if (!polyline2d) return null;
+function dedupeArtifacts(artifacts) {
+	const out = [];
+	const seen = new Set();
 
-	const bbox = computeBbox2d(polyline2d);
+	for (const art of artifacts ?? []) {
+		if (!art) continue;
 
-	return {
-		id: buildArtifactId(baseId, slot, "alignment2d", "ALIGNMENT", item?.ts),
-		domain: "alignment2d",
-		kind: "ALIGNMENT",
-		slot,
-		sourceLabel: sourceLabelFromItem(item),
-		payload: {
-			polyline2d,
-			bbox,
-			bboxCenter: bboxCenter2d(bbox),
+		const key = [
+		art.domain ?? "unknown",
+		art.kind ?? "UNKNOWN",
+		art.slot ?? "right",
+		art.sourceLabel ?? "—",
+		].join("::");
 
-			// keep the rich source for the later normalizer path
-			landFATAlignment: alignment,
-		},
-		meta: {
-			sourceFormat: obj?.meta?.sourceFormat ?? "landXML",
-			alignmentName: alignment?.name ?? obj?.meta?.alignmentName ?? null,
-			sourceFile: obj?.meta?.sourceFile ?? item?.originFileName ?? null,
-			previewMode: "landfat-anchor-preview",
-		},
-	};
+		if (seen.has(key)) continue;
+		seen.add(key);
+		out.push(art);
+	}
+
+	return out;
 }
 
 // -----------------------------------------------------------------------------
@@ -357,41 +279,67 @@ function buildAlignmentArtifactFromLandFAT({ baseId, slot, item }) {
 export function buildArtifactsFromGroup(group, opts = {}) {
 	const g = ensureObject(group);
 	const baseId = String(g.groupKey ?? "");
-	const slot = (opts?.slotHint === "left" || opts?.slotHint === "km" || opts?.slotHint === "right")
-		? opts.slotHint
-		: (g.slot_user ?? g.slot_attachHint ?? "right");
+
+	const slot =
+	opts?.slotHint === "left" || opts?.slotHint === "km" || opts?.slotHint === "right"
+	? opts.slotHint
+	: (g.slot_user ?? g.slot_attachHint ?? "right");
 
 	const items = Array.isArray(g.items) ? g.items : [];
 	const out = [];
 
-	// legacy TRA/GRA path
-	const traItem = g.tra ?? pickLatestByKind(items, "TRA");
-	const graItem = g.gra ?? pickLatestByKind(items, "GRA");
+	const sparseItem = pickLatestSparseAlignmentItem(items);
+	const profileItem = pickLatestProfileItem(items);
+	const cantItem = pickLatestCantItem(items);
 
-	const aTra = traItem ? buildAlignmentArtifactFromTRA({ baseId, slot, item: traItem }) : null;
-	if (aTra) out.push(aTra);
+	const aPreview = sparseItem
+	? buildAlignmentArtifact({ baseId, slot, item: sparseItem })
+	: null;
 
-	const pGra = graItem ? buildProfileArtifactFromGRA({ baseId, slot, item: graItem }) : null;
-	if (pGra) out.push(pGra);
+	const pPreview = profileItem
+	? buildProfileArtifact({ baseId, slot, item: profileItem })
+	: null;
 
-	const cTra = traItem ? buildCantArtifactFromTRA({ baseId, slot, item: traItem }) : null;
-	if (cTra) out.push(cTra);
+	const cPreview = cantItem
+	? buildCantArtifact({ baseId, slot, item: cantItem })
+	: null;
 
-	// landFAT path
-	const fatItem = pickLatestLandFATAlignmentItem(items);
-	const aFat = fatItem ? buildAlignmentArtifactFromLandFAT({ baseId, slot, item: fatItem }) : null;
+	if (aPreview) out.push(aPreview);
+	if (pPreview) out.push(pPreview);
+	if (cPreview) out.push(cPreview);
 
-	// prefer explicit landFAT alignment artifact only if there is no TRA alignment,
-	// or keep both if you later want comparison/debug. For now: one visible alignment only.
-	if (aFat && !aTra) {
-		out.push(aFat);
+	const deduped = dedupeArtifacts(out);
+
+	if (sparseItem && !aPreview) {
+		console.warn("[buildArtifactsFromGroup] sparse item found but no alignment preview", {
+			baseId,
+			slot,
+			itemCount: items.length,
+			sparseItemName:
+			sparseItem?.name ??
+			unwrapImportObject(sparseItem)?.name ??
+			null,
+			sparseAlignment: getSparseAlignmentFromItem(sparseItem),
+		});
 	}
 
-	// fallback unknown artifact if nothing useful could be built
-	if (!out.length && items.length) {
+	if (!deduped.length && items.length) {
+		console.warn("[buildArtifactsFromGroup] fallback unknown", {
+			baseId,
+			slot,
+			itemCount: items.length,
+			hasSparseItem: !!sparseItem,
+			hasProfileItem: !!profileItem,
+			hasCantItem: !!cantItem,
+			sparseItemName:
+			sparseItem?.name ??
+			unwrapImportObject(sparseItem)?.name ??
+			null,
+		});
+
 		const labels = uniqueStrings(items.map(sourceLabelFromItem));
 
-		out.push({
+		deduped.push({
 			id: buildArtifactId(baseId, slot, "unknown", "UNKNOWN"),
 			domain: "unknown",
 			kind: "UNKNOWN",
@@ -404,5 +352,5 @@ export function buildArtifactsFromGroup(group, opts = {}) {
 		});
 	}
 
-	return out;
+	return deduped;
 }

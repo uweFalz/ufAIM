@@ -13,6 +13,12 @@ with SPOT data model and multi-window workspace.
 
 sniff → parser → landFAT → sparseAlignment → SPOT
 
+	•	GNDedit .MDB/.XLSX Import als nächster Real-World-Use-Case
+	•	Importpfad dafür sauber definieren: sniff → parse → normalize → Spot/RouteProject
+	•	Import-Service-/Worker-Schnitt dabei mit absichern
+	•	kleiner Zielpunkt: erste lauffähige Beispieldatei bis „im Spot sichtbar“
+Das passt gut, weil Import aktuell schon stabil genug ist, um als echter Use Case weitergezogen zu werden.
+
 ### Window Runtime
 
 WindowRuntime  

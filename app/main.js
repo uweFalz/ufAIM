@@ -12,7 +12,7 @@ window.runtime = runtime;
 runtime.start().then(() => {
 	window.messaging = runtime.messaging;
 }).catch((err) => {
-	console.error(err);
+	console.error( err );
 	const logElement = document.getElementById("log");
 	if (logElement) logElement.textContent = "runtime boot failed ❌\n" + String(err);
 });

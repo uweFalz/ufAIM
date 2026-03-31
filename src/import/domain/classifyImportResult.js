@@ -1,23 +1,57 @@
 // src/import/domain/classifyImportResult.js
 
+/**
+ * @baustelle [VALIDATION]
+ * SPOT_READY darf nur nach bestandenem Sparse-Kernvertrag vergeben werden.
+ * Reines Vorhandensein von alignment.sparseAlignment reicht nicht aus.
+ *
+ * @baustelle [CRS]
+ * Fehlendes CRS wird aktuell als "assumed" behandelt.
+ * Später ggf. eigener ImportReason / eigener Workflow.
+ */
+
+import { validateSparse } from "./validateSparse.js";
 import { IMPORT_REASONS } from "./importReasons.js";
 
 export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 	const crs = resolveEffectiveCRS(imported, alignment);
+	const sparse = alignment?.sparseAlignment ?? null;
 
-	if (!alignment?.sparseAlignment) {
+	if (!sparse) {
 		return {
 			ok: false,
 			code: IMPORT_REASONS.SPARSE_BUILD_FAILED,
 			crs: { status: "needed" },
+			validation: {
+				ok: false,
+				errors: [{ code: "missing_sparse", message: "alignment.sparseAlignment missing" }],
+				warnings: [],
+			},
 		};
 	}
 
-	if (!crs?.authority || !crs?.code) {
+	let validation;
+	try {
+		validation = validateSparse(sparse);
+	} catch (err) {
 		return {
 			ok: false,
-			code: IMPORT_REASONS.CRS_NEEDED,
-			crs: { status: "needed" },
+			code: IMPORT_REASONS.SPARSE_BUILD_FAILED,
+			crs: crs ?? { status: "needed" },
+			validation: {
+				ok: false,
+				errors: [{ code: "validator_threw", message: String(err?.message ?? err) }],
+				warnings: [],
+			},
+		};
+	}
+
+	if (!validation?.ok) {
+		return {
+			ok: false,
+			code: IMPORT_REASONS.SPARSE_BUILD_FAILED,
+			crs: crs ?? { status: "needed" },
+			validation,
 		};
 	}
 
@@ -25,7 +59,17 @@ export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 		return {
 			ok: false,
 			code: IMPORT_REASONS.TRANSITION_MAPPING_NEEDED,
-			crs,
+			crs: crs ?? { status: "needed" },
+			validation,
+		};
+	}
+
+	if (!crs?.authority || !crs?.code) {
+		return {
+			ok: true,
+			code: IMPORT_REASONS.SPOT_READY, // @baustelle später evtl. CRS_ASSUMED
+			crs: { status: "assumed" },
+			validation,
 		};
 	}
 
@@ -33,6 +77,7 @@ export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 		ok: true,
 		code: IMPORT_REASONS.SPOT_READY,
 		crs,
+		validation,
 	};
 }
 

@@ -20,6 +20,7 @@ import { createFocusManager } from "../controllers/focusManager.js";
 
 import { applyIngestResult } from "@app/io/apply/importApply.js";
 
+import { CockpitController } from "../controllers/CockpitController.js";
 import { makeViewController } from "../controllers/viewController.js";
 import { makeThreeAdapter } from "@app/adapters/geo/ThreeAdapter.js";
 import { makeThreeViewer } from "@app/view/viewers/threeViewer.js";
@@ -316,6 +317,14 @@ export async function bootWindowApp({ prefs, messaging } = {}) {
 	ctx.ui.setStatus(t("boot_ok"));
 	ctx.logLine(t("boot_ready"));
 	ctx.ui.logInfo?.(`btnTrans=${!!ctx.ui.elements.buttonTransition} overlay=${!!ctx.ui.elements.transitionOverlay}`);
+	
+	ctx.cockpit = new CockpitController({
+	store: ctx.store,
+	messaging: ctx.messaging,
+	logLine: ctx.logLine,
+});
+
+if (prefs.isDev) window.__ufAIM_cockpit = ctx.cockpit;
 
 	await setupProjectMirror(ctx);
 	setupThreeRuntime(ctx);

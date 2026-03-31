@@ -9,7 +9,7 @@
 // No import apply here.
 // Purely edits ImportSession state.
 
-import { escapeHtml } from "@src/utils/helpers.js";
+import { escapeHtml } from "@app/utils/appHelpers.js";
 
 //
 // ...

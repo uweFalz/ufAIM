@@ -2,6 +2,7 @@
 
 title ufAIM System Architecture Overview
 
+skinparam linetype ortho
 skinparam packageStyle rectangle
 
 package "External Data" {

@@ -8,9 +8,11 @@
 // i18n: all UI strings via t(...)
 
 import { t } from "@app/i18n/strings.js";
-import { makeSpotView } from "@app/view/overlays/spotView.js";
 
-import { clamp01, escapeHtml } from "@src/utils/helpers.js";
+import { clamp01 } from "@src/utils/helpers.js";
+import { escapeHtml } from "@app/utils/appHelpers.js";
+
+import { makeSpotView } from "@app/view/overlays/spotView.js";
 
 // ------------------------------------------------------------
 // helpers ...
@@ -232,11 +234,13 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setRouteProjectOptions(ids, activeId) {
 		const sel = elements.routeProjectSelect;
 
+		/*
 		console.log("setRouteProjectOptions", {
 			hasSelect: !!sel,
 			count: Array.isArray(ids) ? ids.length : -1,
 			activeId
 		});
+		*/
 
 		if (!sel) return;
 
@@ -259,10 +263,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		sel.value = wanted;
 
+		/*
 		console.log("routeProjectSelect after fill", {
 			optionCount: sel.options.length,
 			value: sel.value
 		});
+		*/
 	}
 
 	function setSlotSelectValue(value) {

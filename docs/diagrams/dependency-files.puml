@@ -1,4 +1,5 @@
 @startuml
+
 left to right direction
 skinparam packageStyle rectangle
 skinparam linetype ortho
@@ -59,6 +60,7 @@ package "app" {
       class "importApply.js" as N_app_io_apply_importApply_js
       class "importPreviewApply.js" as N_app_io_apply_importPreviewApply_js
       class "importRegistryApply.js" as N_app_io_apply_importRegistryApply_js
+      class "importStoreShape.js" as N_app_io_apply_importStoreShape_js
     }
     package "import" {
       class "buildImportArtifacts.js" as N_app_io_import_buildImportArtifacts_js
@@ -72,7 +74,7 @@ package "app" {
     }
   }
   package "utils" {
-    class "helpers.js" as N_app_utils_helpers_js
+    class "appHelpers.js" as N_app_utils_appHelpers_js
   }
   package "view" {
     class "profileView.js" as N_app_view_profileView_js
@@ -137,29 +139,60 @@ package "src" {
   package "import" {
     class "runImportPipeline.js" as N_src_import_runImportPipeline_js
     package "domain" {
+      class "buildSparseFromLandFAT.js" as N_src_import_domain_buildSparseFromLandFAT_js
       class "classifyImportResult.js" as N_src_import_domain_classifyImportResult_js
       class "importReasons.js" as N_src_import_domain_importReasons_js
       class "landXMLNormalizers.js" as N_src_import_domain_landXMLNormalizers_js
-      class "normalizeLandFATToSparse.js" as N_src_import_domain_normalizeLandFATToSparse_js
-      class "normalizeLandFATValues.js" as N_src_import_domain_normalizeLandFATValues_js
-      class "normalizeParsedToLandFAT.js" as N_src_import_domain_normalizeParsedToLandFAT_js
+      package "_legacy" <<legacy>> {
+        class "normalizeLandFATValues.js" as N_src_import_domain__legacy_normalizeLandFATValues_js
+        class "normalizeParsedToLandFAT.js" as N_src_import_domain__legacy_normalizeParsedToLandFAT_js
+      }
     }
     package "parsers" {
-      class "_importRegistry.js" as N_src_import_parsers__importRegistry_js
-      class "parseGRA.js" as N_src_import_parsers_parseGRA_js
-      class "parseIFC.js" as N_src_import_parsers_parseIFC_js
-      class "parseLandXML.js" as N_src_import_parsers_parseLandXML_js
-      class "parseTRA.js" as N_src_import_parsers_parseTRA_js
-      class "parseTRA_GRA.js" as N_src_import_parsers_parseTRA_GRA_js
       class "parserRegistry.js" as N_src_import_parsers_parserRegistry_js
-      class "sharedVermesn.js" as N_src_import_parsers_sharedVermesn_js
+      class "validateParserModule.js" as N_src_import_parsers_validateParserModule_js
+      package "IFC" {
+        class "index.js" as N_src_import_parsers_IFC_index_js
+      }
+      package "_legacy" <<legacy>> {
+        class "_importRegistry.js" as N_src_import_parsers__legacy__importRegistry_js
+        class "parseGRA.js" as N_src_import_parsers__legacy_parseGRA_js
+        class "parseTRA.js" as N_src_import_parsers__legacy_parseTRA_js
+        class "parserRegistry.js" as N_src_import_parsers__legacy_parserRegistry_js
+      }
+      package "infraGML" {
+        class "index.js" as N_src_import_parsers_infraGML_index_js
+      }
+      package "landXML" {
+        class "index.js" as N_src_import_parsers_landXML_index_js
+        class "parseLandXML.js" as N_src_import_parsers_landXML_parseLandXML_js
+      }
+      package "technet" {
+        class "sharedTechnet.js" as N_src_import_parsers_technet_sharedTechnet_js
+        package "gndEdit" {
+          class "index.js" as N_src_import_parsers_technet_gndEdit_index_js
+          class "parseGND_XLSX.js" as N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js
+        }
+        package "vermEsn" {
+          class "index.js" as N_src_import_parsers_technet_vermEsn_index_js
+          class "parseTRA_GRA.js" as N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js
+          class "sharedVermesn.js" as N_src_import_parsers_technet_vermEsn_sharedVermesn_js
+        }
+      }
     }
     package "sniffers" {
-      class "detectImportFormat.js" as N_src_import_sniffers_detectImportFormat_js
       class "sniffImportFile.js" as N_src_import_sniffers_sniffImportFile_js
+      package "_legacy" <<legacy>> {
+        class "detectImportFormat.js" as N_src_import_sniffers__legacy_detectImportFormat_js
+      }
     }
   }
   package "lib" {
+    package "geo" {
+      class "crsAlias.js" as N_src_lib_geo_crsAlias_js
+      class "crsManager.js" as N_src_lib_geo_crsManager_js
+      class "dbCrsMap.js" as N_src_lib_geo_dbCrsMap_js
+    }
     package "geom" {
       class "vec2.js" as N_src_lib_geom_vec2_js
       package "curve" {
@@ -224,8 +257,9 @@ N_app_core_controllers_importController_js --> N_app_io_apply_importApply_js
 N_app_core_controllers_importController_js --> N_app_io_import_importSession_js
 N_app_core_controllers_importController_js --> N_app_io_input_fileDrop_js
 N_app_core_controllers_importController_js --> N_src_import_runImportPipeline_js
-N_app_core_controllers_spotController_js --> N_src_utils_helpers_js
+N_app_core_controllers_spotController_js --> N_app_utils_appHelpers_js
 N_app_core_controllers_viewController_js --> N_app_io_apply_importApply_js
+N_app_core_controllers_viewController_js --> N_app_utils_appHelpers_js
 N_app_core_controllers_viewController_js --> N_src_utils_helpers_js
 N_app_core_runtime_WindowRuntime_js --> N_app_core_runtime_bootWindowApp_js
 N_app_core_runtime_WindowRuntime_js --> N_src_shared_messaging_createMessagingClient_js
@@ -249,11 +283,17 @@ N_app_core_runtime_bootWindowApp_js --> N_src_alignment_transition_build_KappaFc
 N_app_core_state_windowStore_js --> N_app_core_state_storeShape_js
 N_app_core_state_windowStore_js --> N_src_utils_helpers_js
 N_app_core_uiWiring_js --> N_app_i18n_strings_js
+N_app_core_uiWiring_js --> N_app_utils_appHelpers_js
 N_app_core_uiWiring_js --> N_app_view_overlays_spotView_js
 N_app_core_uiWiring_js --> N_src_utils_helpers_js
 N_app_i18n_strings_js --> N_app_i18n_strings_de_js
 N_app_io_apply_importApply_js --> N_app_io_apply_importPreviewApply_js
 N_app_io_apply_importApply_js --> N_app_io_apply_importRegistryApply_js
+N_app_io_apply_importApply_js --> N_app_io_apply_importStoreShape_js
+N_app_io_apply_importApply_js --> N_app_utils_appHelpers_js
+N_app_io_apply_importPreviewApply_js --> N_app_io_apply_importStoreShape_js
+N_app_io_apply_importRegistryApply_js --> N_app_utils_appHelpers_js
+N_app_io_apply_importStoreShape_js --> N_app_utils_appHelpers_js
 N_app_io_import_classifyImportOutcome_js --> N_src_utils_helpers_js
 N_app_io_import_importSessionMatching_js --> N_src_utils_helpers_js
 N_app_io_import_importSession_js --> N_app_io_import_buildImportArtifacts_js
@@ -262,6 +302,7 @@ N_app_io_import_importSession_js --> N_app_io_import_importSessionMatching_js
 N_app_main_js --> N_app_core_config_systemPrefs_js
 N_app_main_js --> N_app_core_runtime_WindowRuntime_js
 N_app_view_editors_transitionEditorView_js --> N_src_utils_helpers_js
+N_app_view_overlays_spotView_js --> N_app_utils_appHelpers_js
 N_app_view_overlays_spotView_js --> N_src_utils_helpers_js
 N_app_view_viewers_alignmentBandView_js --> N_src_utils_helpers_js
 N_src_alignment_Alignment2D_js --> N_src_lib_geom_vec2_js
@@ -296,17 +337,19 @@ N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_utils_helpers_js
 N_src_alignment_transition_registry_ast_buildProtoAst_js --> N_src_alignment_transition_registry_ast_simplify_js
 N_src_alignment_transition_registry_ast_symDiff_js --> N_src_alignment_transition_registry_ast_simplify_js
 N_src_alignment_transition_registry_ast_symInt_js --> N_src_alignment_transition_registry_ast_simplify_js
+N_src_import_domain_buildSparseFromLandFAT_js --> N_src_lib_geom_frame_pose2_js
 N_src_import_domain_classifyImportResult_js --> N_src_import_domain_importReasons_js
-N_src_import_parsers_parseLandXML_js --> N_src_import_domain_landXMLNormalizers_js
-N_src_import_parsers_parseTRA_GRA_js --> N_src_import_parsers_sharedVermesn_js
-N_src_import_parsers_parserRegistry_js --> N_src_import_parsers_parseIFC_js
-N_src_import_parsers_parserRegistry_js --> N_src_import_parsers_parseLandXML_js
-N_src_import_parsers_parserRegistry_js --> N_src_import_parsers_parseTRA_GRA_js
+N_src_import_parsers_landXML_index_js --> N_src_import_parsers_landXML_parseLandXML_js
+N_src_import_parsers_technet_gndEdit_index_js --> N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_lib_geo_crsManager_js
+N_src_import_parsers_technet_vermEsn_index_js --> N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_parsers_technet_vermEsn_sharedVermesn_js
+N_src_import_runImportPipeline_js --> N_src_import_domain_buildSparseFromLandFAT_js
 N_src_import_runImportPipeline_js --> N_src_import_domain_classifyImportResult_js
 N_src_import_runImportPipeline_js --> N_src_import_domain_importReasons_js
-N_src_import_runImportPipeline_js --> N_src_import_domain_normalizeLandFATToSparse_js
 N_src_import_runImportPipeline_js --> N_src_import_parsers_parserRegistry_js
 N_src_import_runImportPipeline_js --> N_src_import_sniffers_sniffImportFile_js
+N_src_lib_geo_crsManager_js --> N_src_lib_geo_crsAlias_js
 N_src_lib_geom_frame_pose2_js --> N_src_lib_geom_vec2_js
 N_src_lib_geom_frame_poseAdvance2_js --> N_src_lib_geom_vec2_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_CommandContract_v1_js

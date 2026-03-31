@@ -1,5 +1,8 @@
 @startuml
+
 title ufAIM – Controller Map
+
+skinparam linetype ortho
 
 package "Master" {
   [SharedMessagingWorker]
@@ -10,7 +13,7 @@ package "Master" {
 
 package "Window" {
   [WindowRuntime]
-  [bootLegacyAppCore]
+  [bootWindowApp]
   [WindowSessionController]
   [workspaceState]
   [spotController]
@@ -27,7 +30,7 @@ package "View/UI" {
 }
 
 WindowRuntime --> WindowSessionController
-bootLegacyAppCore --> WindowRuntime
+bootWindowApp --> WindowRuntime
 WindowSessionController --> workspaceState
 WindowSessionController --> spotController
 WindowSessionController --> importController

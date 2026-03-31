@@ -37,8 +37,9 @@
 // For now, workspaceState remains a pragmatic combined store
 // until the wiring cleanup is complete.
 
-import { makeInitialState, ensureStateShape } from "./storeShape.js";
 import { clamp01range } from "@src/utils/helpers.js";
+
+import { makeInitialState, ensureStateShape } from "./storeShape.js";
 
 // ...
 function spotKey(spotId, slot) {

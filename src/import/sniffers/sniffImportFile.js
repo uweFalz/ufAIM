@@ -1,258 +1,100 @@
 // src/import/sniffers/sniffImportFile.js
 
-export async function sniffImportFile(file) {
-	const fileName = String(file?.name ?? "");
-	const lower = fileName.toLowerCase();
-	const ext = getExtension(lower);
+import { getParserIds, loadParserModule } from '../parsers/parserRegistry.js';
+import { validateParserModule } from '../parsers/validateParserModule.js';
 
-	// ------------------------------------------------------------
-	// A) offensichtlicher Beifang / Neben-Dateien
-	// ------------------------------------------------------------
-	if (isIgnorableFile(lower)) {
-		return {
-			fileName,
-			extension: ext,
-			format: "IGNORED",
-			family: "auxiliary",
-			disposition: "ignore",
-			reason: "auxiliary/thumbnail/system-file",
-		};
+function getFileExtension(file) {
+	const name = file?.name || '';
+	const idx = name.lastIndexOf('.');
+	if (idx < 0) return '';
+	return name.slice(idx + 1).toLowerCase();
+}
+
+async function readFileTextSafe(file) {
+	try {
+		if (!file || typeof file.text !== 'function') return '';
+		return await file.text();
+	} catch {
+		return '';
 	}
+}
 
-	// ------------------------------------------------------------
-	// B) direkt unterstützte Spezialformate
-	// ------------------------------------------------------------
-	if (lower.endsWith(".tra")) {
-		return {
-			fileName,
-			extension: ".tra",
-			format: "TRA",
-			family: "special",
-			disposition: "supported",
-		};
+async function readFileBytesSafe(file) {
+	try {
+		if (!file || typeof file.arrayBuffer !== 'function') return new Uint8Array();
+		const buffer = await file.arrayBuffer();
+		return new Uint8Array(buffer);
+	} catch {
+		return new Uint8Array();
 	}
+}
 
-	if (lower.endsWith(".gra")) {
-		return {
-			fileName,
-			extension: ".gra",
-			format: "GRA",
-			family: "special",
-			disposition: "supported",
-		};
-	}
+function matchesExtension(ext, extensions = []) {
+	if (!ext || !Array.isArray(extensions)) return false;
+	return extensions.map(e => String(e).toLowerCase()).includes(ext);
+}
 
-	// ------------------------------------------------------------
-	// C) XML-Familie: über Inhalt nachschärfen
-	// ------------------------------------------------------------
-	if (lower.endsWith(".landxml")) {
-		return {
-			fileName,
-			extension: ".landxml",
-			format: "landXML",
-			family: "container",
-			disposition: "supported",
-		};
-	}
+export async function sniffImportFile(file, context = {}) {
+	const extension = getFileExtension(file);
+	const text = await readFileTextSafe(file);
+	const bytes = await readFileBytesSafe(file);
 
-	if (lower.endsWith(".xml")) {
-		const text = await safeReadTextPrefix(file, 240000);
+	const parserIds = getParserIds();
 
-		if (looksLikeLandXML(text)) {
-			return {
-				fileName,
-				extension: ".xml",
-				format: "landXML",
-				family: "container",
-				disposition: "supported",
-			};
+	const extensionCandidates = [];
+	const looksLikeCandidates = [];
+
+	for (const parserId of parserIds) {
+		let mod;
+		try {
+			mod = await loadParserModule(parserId);
+			validateParserModule(parserId, mod);
+		} catch (err) {
+			console.warn(`[sniffImportFile] parser "${parserId}" skipped:`, err);
+			continue;
 		}
 
-		if (looksLikeInfraGML(text)) {
-			return {
-				fileName,
-				extension: ".xml",
-				format: "InfraGML",
-				family: "container",
-				disposition: "recognized-unsupported",
-			};
+		const sniff = mod.sniff || {};
+		const extensions = sniff.extensions || [];
+		const extMatch = matchesExtension(extension, extensions);
+
+		if (extMatch) {
+			extensionCandidates.push({
+				parserId,
+				confidence: 0.7,
+				reason: `extension ".${extension}" matched`
+			});
 		}
 
-		if (looksLikeIFCXML(text)) {
-			return {
-				fileName,
-				extension: ".xml",
-				format: "IFCXML",
-				family: "container",
-				disposition: "recognized-unsupported",
-			};
+		if (typeof sniff.looksLike === 'function') {
+			try {
+				const looksLike = await sniff.looksLike({ file, text, bytes, context });
+				if (looksLike) {
+					looksLikeCandidates.push({
+						parserId,
+						confidence: extMatch ? 1.0 : 0.85,
+						reason: extMatch ? 'extension + looksLike matched' : 'looksLike matched'
+					});
+				}
+			} catch (err) {
+				console.warn(`[sniffImportFile] looksLike failed for "${parserId}":`, err);
+			}
 		}
-
-		return {
-			fileName,
-			extension: ".xml",
-			format: "XML",
-			family: "container?",
-			disposition: "recognized-unsupported",
-			reason: "xml-but-not-supported-import-format",
-		};
 	}
 
-	// ------------------------------------------------------------
-	// D) bekannte, fachlich relevante Formate aus Alt-Registry
-	//     -> vorerst erkannt, aber nicht aktiv verarbeitet
-	// ------------------------------------------------------------
-	if (lower.endsWith(".ifcxml")) {
-		return {
-			fileName,
-			extension: ".ifcxml",
-			format: "IFCXML",
-			family: "container",
-			disposition: "recognized-unsupported",
-		};
-	}
+	const best =
+	looksLikeCandidates.sort((a, b) => b.confidence - a.confidence)[0] ||
+	extensionCandidates.sort((a, b) => b.confidence - a.confidence)[0] ||
+	null;
 
-	if (lower.endsWith(".ifc")) {
-		return {
-			fileName,
-			extension: ".ifc",
-			format: "IFC",
-			family: "container",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".ifczip")) {
-		return {
-			fileName,
-			extension: ".ifczip",
-			format: "IFCZIP",
-			family: "archive",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".ifcjson")) {
-		return {
-			fileName,
-			extension: ".ifcjson",
-			format: "IFCJSON",
-			family: "container",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".mdb")) {
-		return {
-			fileName,
-			extension: ".mdb",
-			format: "MDB",
-			family: "database",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".xlsx")) {
-		return {
-			fileName,
-			extension: ".xlsx",
-			format: "XLSX",
-			family: "spreadsheet",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	if (lower.endsWith(".zip")) {
-		return {
-			fileName,
-			extension: ".zip",
-			format: "ZIP",
-			family: "archive",
-			disposition: "recognized-unsupported",
-		};
-	}
-
-	// ------------------------------------------------------------
-	// E) Rest: unbekannt, aber im Massendrop nicht störend
-	// ------------------------------------------------------------
 	return {
-		fileName,
-		extension: ext,
-		format: "UNKNOWN",
-		family: "unknown",
-		disposition: "unknown",
+		ok: !!best,
+		fileName: file?.name || '',
+		extension,
+		parserId: best?.parserId || null,
+		confidence: best?.confidence || 0,
+		reason: best?.reason || 'no parser matched'
 	};
 }
 
-async function safeReadTextPrefix(file, maxChars = 240000) {
-	try {
-		const txt = await file.text();
-		return typeof txt === "string" ? txt.slice(0, maxChars) : "";
-	} catch {
-		return "";
-	}
-}
-
-function looksLikeLandXML(text) {
-	if (typeof text !== "string") return false;
-	return text.includes("<LandXML") || text.includes(":LandXML");
-}
-
-function looksLikeInfraGML(text) {
-	if (typeof text !== "string") return false;
-	return /opengis\.net\/infragml/i.test(text) || /infra[g]?ml/i.test(text);
-}
-
-function looksLikeIFCXML(text) {
-	if (typeof text !== "string") return false;
-	return /ifcalignment/i.test(text) || /ifc\.org/i.test(text) || /<ifc/i.test(text);
-}
-
-function getExtension(lowerFileName) {
-	const idx = lowerFileName.lastIndexOf(".");
-	return idx >= 0 ? lowerFileName.slice(idx) : "";
-}
-
-function isIgnorableFile(lower) {
-	if (!lower) return true;
-
-	const base = lower.split("/").pop();
-
-	if (
-		base === ".ds_store" ||
-		base === "thumbs.db" ||
-		base === "desktop.ini" ||
-		base === "icon\r"
-	) {
-		return true;
-	}
-
-	if (base.startsWith("._")) return true;
-
-	const imageExts = new Set([
-		".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp",
-		".tif", ".tiff", ".svg", ".ico", ".heic", ".avif",
-	]);
-
-	const ext = getExtension(base);
-	if (imageExts.has(ext)) return true;
-
-	if (
-		base.includes("thumbnail") ||
-		base.includes("thumb") ||
-		base.includes("preview") ||
-		base.includes("vorscha") ||
-		base.includes("cover")
-	) {
-		return true;
-	}
-
-	const auxExts = new Set([
-		".txt", ".md", ".pdf", ".doc", ".docx",
-		".xls", ".csv", ".json", ".log", ".bak", ".tmp",
-	]);
-
-	if (auxExts.has(ext)) return true;
-
-	return false;
-}
+export default sniffImportFile;

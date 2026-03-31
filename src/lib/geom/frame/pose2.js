@@ -22,6 +22,9 @@ export function point(pose) {
 	return pose.p;
 }
 
+export function poseX(pose) { return pose?.p?.x ?? null; }
+export function poseY(pose) { return pose?.p?.y ?? null; }
+
 export function tangent(pose) {
 	return pose.t;
 }
@@ -61,4 +64,25 @@ export function localFromWorld(pose, x, y) {
 		u: dot(d, t),
 		v: dot(d, n),
 	};
+}
+
+export function isPose2(pose) {
+	return !!pose &&
+		typeof pose === "object" &&
+		!!pose.p &&
+		typeof pose.p === "object" &&
+		Number.isFinite(pose.p.x) &&
+		Number.isFinite(pose.p.y) &&
+		!!pose.t &&
+		typeof pose.t === "object" &&
+		Number.isFinite(pose.t.x) &&
+		Number.isFinite(pose.t.y);
+}
+
+export function posePoint(pose) {
+	return pose?.p ?? null;
+}
+
+export function poseTangent(pose) {
+	return pose?.t ?? null;
 }

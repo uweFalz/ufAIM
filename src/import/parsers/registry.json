@@ -1,0 +1,7 @@
+{
+	"imports": {
+		"vermEsn":  "./technet/vermEsn/",
+		"landXML":  "./landXML/",
+		"gndEdit":  "./technet/gndEdit/"
+	}
+}
