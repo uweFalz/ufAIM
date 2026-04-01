@@ -10,7 +10,8 @@
  * Später ggf. eigener ImportReason / eigener Workflow.
  */
 
-import { validateSparse } from "./validateSparse.js";
+import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
+
 import { IMPORT_REASONS } from "./importReasons.js";
 
 export function classifyAlignmentForSpot(alignment, { imported } = {}) {

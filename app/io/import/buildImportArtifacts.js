@@ -1,25 +1,26 @@
 // app/io/import/buildImportArtifacts.js
-
-/**
-* @baustelle [PREVIEW-CONTRACT]
-* Alignment preview now uses the unified sparse-based preview path:
-*   sparseAlignment -> poseA-polyline -> alignment2d artifact
-*
-* @baustelle [ARCH]
-* Format-specific extraction should continue to move out of this module.
-* This builder should only assemble artifacts from normalized inputs.
-*
-* @baustelle [GROUP-REBUILD]
-* This builder is currently called on full grouped buckets, not on per-item deltas.
-* Therefore artifacts must be deduplicated per domain/source to avoid repeated
-* emission of already known alignment/profile/cant previews on embedded updates.
-*
-* @baustelle [GROUP-CONTRACT]
-* Aktuell wird pro Gruppe höchstens ein alignment2d-Artifact gebaut
-* ("latest sparse item wins").
-* Falls Gruppen künftig mehrere gleichberechtigte Alignment-Kandidaten tragen,
-* muss diese Datei auf multi-alignment pro Gruppe umgestellt werden.
-*/
+//
+// Build artifacts from one grouped import bucket.
+//
+// Canonical path:
+//   normalized item
+//   -> domain-specific artifact builder
+//   -> dedupe
+//
+// Current domains:
+// - alignment2d   (via sparseAlignment -> AlignmentProjectionService)
+// - profile1d
+// - cant1d
+// - unknown
+//
+// @baustelle [ARCH]
+// Format-specific extraction must continue to move out of this module.
+// This builder only assembles artifacts from normalized inputs.
+//
+// @baustelle [GROUP-REBUILD]
+// This builder is currently called on full grouped buckets, not on per-item deltas.
+// Therefore artifacts must be deduplicated per domain/source to avoid repeated
+// emission of already known previews on embedded updates.
 
 import { buildAlignmentPreviewArtifact } from "./preview/buildAlignmentPreviewArtifact.js";
 
@@ -85,30 +86,29 @@ function pickLatestSparseAlignmentItem(items) {
 }
 
 function pickLatestProfileItem(items) {
-	return pickLatestByPredicate(items, (it, obj) => {
-		const kind = String(obj?.kind ?? it?.kind ?? "").toUpperCase();
+	return pickLatestByPredicate(items, (_it, obj) => {
+		const kind = String(obj?.kind ?? "").toUpperCase();
 
-		if (kind === "LANDFATPROFILE") return true;
-		if (kind === "GRA") return true;
-		if (Array.isArray(obj?.profile1d) && obj.profile1d.length >= 2) return true;
-		if (Array.isArray(obj?.points) && obj.points.length >= 2) return true;
-
-		return false;
+		return !!(
+			kind === "LANDFATPROFILE" ||
+			Array.isArray(obj?.profile1d) ||
+			Array.isArray(obj?.profile) ||
+			Array.isArray(obj?.points)
+		);
 	});
 }
 
 function pickLatestCantItem(items) {
-	return pickLatestByPredicate(items, (it, obj) => {
-		const kind = String(obj?.kind ?? it?.kind ?? "").toUpperCase();
+	return pickLatestByPredicate(items, (_it, obj) => {
+		const kind = String(obj?.kind ?? "").toUpperCase();
 
-		if (kind === "LANDFATCANT") return true;
-		if (kind === "CANT") return true;
-		if (kind === "TRA") return true;
-		if (Array.isArray(obj?.cant1d) && obj.cant1d.length >= 2) return true;
-		if (Array.isArray(obj?.cant) && obj.cant.length >= 2) return true;
-		if (Array.isArray(obj?.points) && obj.points.length >= 2) return true;
-
-		return false;
+		return !!(
+			kind === "LANDFATCANT" ||
+			kind === "CANT" ||
+			Array.isArray(obj?.cant1d) ||
+			Array.isArray(obj?.cant) ||
+			Array.isArray(obj?.points)
+		);
 	});
 }
 
@@ -149,20 +149,20 @@ function sourceLabelFromItem(item) {
 	const obj = unwrapImportObject(item);
 
 	const fileName = String(
-	item?.originFileName ??
-	obj?.meta?.sourceFile ??
-	obj?.source?.file ??
-	obj?.name ??
-	""
+		item?.originFileName ??
+		obj?.meta?.sourceFile ??
+		obj?.source?.file ??
+		obj?.name ??
+		""
 	).trim() || null;
 
 	const internalName = String(
-	obj?.meta?.alignmentName ??
-	obj?.meta?.axisName ??
-	obj?.meta?.alignmentId ??
-	obj?.meta?.routeName ??
-	obj?.name ??
-	""
+		obj?.meta?.alignmentName ??
+		obj?.meta?.axisName ??
+		obj?.meta?.alignmentId ??
+		obj?.meta?.routeName ??
+		obj?.name ??
+		""
 	).trim() || null;
 
 	if (fileName && internalName && fileName !== internalName) {
@@ -174,12 +174,12 @@ function sourceLabelFromItem(item) {
 
 function resolveArtifactKind(item, obj, fallback = "UNKNOWN") {
 	return String(
-	item?.source?.format ??
-	obj?.source?.format ??
-	obj?.meta?.sourceFormat ??
-	obj?.meta?.format ??
-	obj?.kind ??
-	fallback
+		item?.source?.format ??
+		obj?.source?.format ??
+		obj?.meta?.sourceFormat ??
+		obj?.meta?.format ??
+		obj?.kind ??
+		fallback
 	).toUpperCase();
 }
 
@@ -208,7 +208,7 @@ function buildProfileArtifact({ baseId, slot, item }) {
 
 	if (!Array.isArray(profile1d) || profile1d.length < 2) return null;
 
-	const kind = resolveArtifactKind(item, obj, "GRA");
+	const kind = resolveArtifactKind(item, obj, "PROFILE");
 
 	return {
 		id: buildArtifactId(baseId, slot, "profile1d", kind, item?.ts),
@@ -258,10 +258,10 @@ function dedupeArtifacts(artifacts) {
 		if (!art) continue;
 
 		const key = [
-		art.domain ?? "unknown",
-		art.kind ?? "UNKNOWN",
-		art.slot ?? "right",
-		art.sourceLabel ?? "—",
+			art.domain ?? "unknown",
+			art.kind ?? "UNKNOWN",
+			art.slot ?? "right",
+			art.sourceLabel ?? "—",
 		].join("::");
 
 		if (seen.has(key)) continue;
@@ -281,9 +281,9 @@ export function buildArtifactsFromGroup(group, opts = {}) {
 	const baseId = String(g.groupKey ?? "");
 
 	const slot =
-	opts?.slotHint === "left" || opts?.slotHint === "km" || opts?.slotHint === "right"
-	? opts.slotHint
-	: (g.slot_user ?? g.slot_attachHint ?? "right");
+		opts?.slotHint === "left" || opts?.slotHint === "km" || opts?.slotHint === "right"
+			? opts.slotHint
+			: (g.slot_user ?? g.slot_attachHint ?? "right");
 
 	const items = Array.isArray(g.items) ? g.items : [];
 	const out = [];
@@ -293,16 +293,16 @@ export function buildArtifactsFromGroup(group, opts = {}) {
 	const cantItem = pickLatestCantItem(items);
 
 	const aPreview = sparseItem
-	? buildAlignmentArtifact({ baseId, slot, item: sparseItem })
-	: null;
+		? buildAlignmentArtifact({ baseId, slot, item: sparseItem })
+		: null;
 
 	const pPreview = profileItem
-	? buildProfileArtifact({ baseId, slot, item: profileItem })
-	: null;
+		? buildProfileArtifact({ baseId, slot, item: profileItem })
+		: null;
 
 	const cPreview = cantItem
-	? buildCantArtifact({ baseId, slot, item: cantItem })
-	: null;
+		? buildCantArtifact({ baseId, slot, item: cantItem })
+		: null;
 
 	if (aPreview) out.push(aPreview);
 	if (pPreview) out.push(pPreview);
@@ -310,20 +310,9 @@ export function buildArtifactsFromGroup(group, opts = {}) {
 
 	const deduped = dedupeArtifacts(out);
 
-	if (sparseItem && !aPreview) {
-		console.warn("[buildArtifactsFromGroup] sparse item found but no alignment preview", {
-			baseId,
-			slot,
-			itemCount: items.length,
-			sparseItemName:
-			sparseItem?.name ??
-			unwrapImportObject(sparseItem)?.name ??
-			null,
-			sparseAlignment: getSparseAlignmentFromItem(sparseItem),
-		});
-	}
-
 	if (!deduped.length && items.length) {
+		const labels = uniqueStrings(items.map(sourceLabelFromItem));
+
 		console.warn("[buildArtifactsFromGroup] fallback unknown", {
 			baseId,
 			slot,
@@ -331,13 +320,7 @@ export function buildArtifactsFromGroup(group, opts = {}) {
 			hasSparseItem: !!sparseItem,
 			hasProfileItem: !!profileItem,
 			hasCantItem: !!cantItem,
-			sparseItemName:
-			sparseItem?.name ??
-			unwrapImportObject(sparseItem)?.name ??
-			null,
 		});
-
-		const labels = uniqueStrings(items.map(sourceLabelFromItem));
 
 		deduped.push({
 			id: buildArtifactId(baseId, slot, "unknown", "UNKNOWN"),

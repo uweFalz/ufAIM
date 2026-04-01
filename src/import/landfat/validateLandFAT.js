@@ -23,50 +23,134 @@
 // - Widersprüche zwischen profile/cant/coordGeom werden noch nicht geprüft
 // - 7L-Striktheit kommt erst in buildSparseFromFAT()
 
+const CODES = {
+	root_type: "root_type",
+	root_type_value: "root_type_value",
+
+	meta_required: "meta_required",
+	units_required: "units_required",
+	linear_unit_required: "linear_unit_required",
+	elevation_unit_required: "elevation_unit_required",
+	angular_unit_invalid: "angular_unit_invalid",
+
+	coordinate_system_required: "coordinate_system_required",
+	horizontal_crs_type: "horizontal_crs_type",
+	vertical_crs_type: "vertical_crs_type",
+
+	alignments_required: "alignments_required",
+	extras_type: "extras_type",
+
+	alignment_type: "alignment_type",
+	alignment_type_value: "alignment_type_value",
+	alignment_id_required: "alignment_id_required",
+	alignment_name_type: "alignment_name_type",
+	alignment_extras_type: "alignment_extras_type",
+
+	coord_geom_required: "coord_geom_required",
+	coord_geom_elements_required: "coord_geom_elements_required",
+	coord_geom_element_type: "coord_geom_element_type",
+	coord_geom_element_type_value: "coord_geom_element_type_value",
+
+	line_extras_type: "line_extras_type",
+	curve_rot_invalid: "curve_rot_invalid",
+	curve_crv_type: "curve_crv_type",
+	curve_extras_type: "curve_extras_type",
+	spiral_rot_invalid: "spiral_rot_invalid",
+	spiral_spi_type: "spiral_spi_type",
+	spiral_extras_type: "spiral_extras_type",
+	kink_extras_type: "kink_extras_type",
+
+	sta_equations_type: "sta_equations_type",
+	sta_equation_type: "sta_equation_type",
+	sta_equation_type_value: "sta_equation_type_value",
+	sta_equation_increment_invalid: "sta_equation_increment_invalid",
+
+	profile_type: "profile_type",
+	profile_type_value: "profile_type_value",
+	profile_name_type: "profile_name_type",
+	profile_desc_type: "profile_desc_type",
+	profile_extras_type: "profile_extras_type",
+
+	prof_align_type: "prof_align_type",
+	prof_align_type_value: "prof_align_type_value",
+	prof_align_name_type: "prof_align_name_type",
+	prof_align_desc_type: "prof_align_desc_type",
+	prof_align_pvis_type: "prof_align_pvis_type",
+	prof_align_paracurves_type: "prof_align_paracurves_type",
+
+	pvi_type: "pvi_type",
+	pvi_extras_type: "pvi_extras_type",
+
+	paracurve_type: "paracurve_type",
+	paracurve_extras_type: "paracurve_extras_type",
+
+	cant_type: "cant_type",
+	cant_entry_type: "cant_entry_type",
+	cant_entry_type_value: "cant_entry_type_value",
+	cant_entry_type_unknown: "cant_entry_type_unknown",
+	cant_station_speed_type: "cant_station_speed_type",
+	cant_station_transition_type: "cant_station_transition_type",
+	cant_station_curvature: "cant_station_curvature",
+	cant_station_extras_type: "cant_station_extras_type",
+	speed_station_speed_type: "speed_station_speed_type",
+	speed_station_extras_type: "speed_station_extras_type",
+
+	point2d_type: "point2d_type",
+	point2d_easting: "point2d_easting",
+	point2d_northing: "point2d_northing",
+
+	measure_type: "measure_type",
+	measure_value: "measure_value",
+	measure_unit_type: "measure_unit_type",
+
+	angle_type: "angle_type",
+	angle_value: "angle_value",
+	angle_unit_invalid: "angle_unit_invalid",
+	angle_orientation_invalid: "angle_orientation_invalid",
+	angle_origin_invalid: "angle_origin_invalid",
+
+	radius_inf_value: "radius_inf_value",
+	radius_inf_representation: "radius_inf_representation",
+	radius_value_type: "radius_value_type",
+};
+
 export function validateLandFAT(doc) {
-	const errors = [];
-	const warnings = [];
-
-	validateRoot(doc, "", errors, warnings);
-
-	return {
-		ok: errors.length === 0,
-		errors,
-		warnings,
-	};
+	const res = makeResult();
+	validateRoot(doc, "", res);
+	return res;
 }
 
 // -------------------------------------------------------------------------------------------------
 // root
 // -------------------------------------------------------------------------------------------------
 
-function validateRoot(doc, path, errors, warnings) {
+function validateRoot(doc, path, res) {
 	if (!isObject(doc)) {
-		pushError(errors, path, "root_type", "landFAT root must be an object");
+		pushError(res, CODES.root_type, "landFAT root must be an object", path);
 		return;
 	}
 
 	if (doc.type !== "landFAT") {
-		pushError(errors, joinPath(path, "type"), "root_type_value", 'root.type must be "landFAT"');
+		pushError(res, CODES.root_type_value, 'root.type must be "landFAT"', joinPath(path, "type"));
 	}
 
 	if (!isObject(doc.meta)) {
-		pushError(errors, joinPath(path, "meta"), "meta_required", "root.meta must be an object");
+		pushError(res, CODES.meta_required, "root.meta must be an object", joinPath(path, "meta"));
 	}
 
-	validateUnits(doc.units, joinPath(path, "units"), errors, warnings);
-	validateCoordinateSystem(doc.coordinateSystem, joinPath(path, "coordinateSystem"), errors, warnings);
+	validateUnits(doc.units, joinPath(path, "units"), res);
+	validateCoordinateSystem(doc.coordinateSystem, joinPath(path, "coordinateSystem"), res);
 
 	if (!Array.isArray(doc.alignments)) {
-		pushError(errors, joinPath(path, "alignments"), "alignments_required", "root.alignments must be an array");
+		pushError(res, CODES.alignments_required, "root.alignments must be an array", joinPath(path, "alignments"));
 	} else {
 		doc.alignments.forEach((alignment, i) => {
-			validateAlignment(alignment, `${joinPath(path, "alignments")}[${i}]`, errors, warnings);
+			validateAlignment(alignment, `${joinPath(path, "alignments")}[${i}]`, res);
 		});
 	}
 
 	if (doc.extras != null && !isObject(doc.extras)) {
-		pushError(errors, joinPath(path, "extras"), "extras_type", "root.extras must be an object when present");
+		pushError(res, CODES.extras_type, "root.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
@@ -74,51 +158,51 @@ function validateRoot(doc, path, errors, warnings) {
 // units / coordinateSystem
 // -------------------------------------------------------------------------------------------------
 
-function validateUnits(units, path, errors, warnings) {
+function validateUnits(units, path, res) {
 	if (!isObject(units)) {
-		pushError(errors, path, "units_required", "units must be an object");
+		pushError(res, CODES.units_required, "units must be an object", path);
 		return;
 	}
 
 	if (!isNonEmptyString(units.linearUnit)) {
-		pushError(errors, joinPath(path, "linearUnit"), "linear_unit_required", "units.linearUnit must be a non-empty string");
+		pushError(res, CODES.linear_unit_required, "units.linearUnit must be a non-empty string", joinPath(path, "linearUnit"));
 	}
 
 	if (!isNonEmptyString(units.elevationUnit)) {
-		pushError(errors, joinPath(path, "elevationUnit"), "elevation_unit_required", "units.elevationUnit must be a non-empty string");
+		pushError(res, CODES.elevation_unit_required, "units.elevationUnit must be a non-empty string", joinPath(path, "elevationUnit"));
 	}
 
 	if (units.angularUnit != null && !["radian", "gon", "degree"].includes(units.angularUnit)) {
 		pushError(
-			errors,
-			joinPath(path, "angularUnit"),
-			"angular_unit_invalid",
-			'units.angularUnit must be "radian", "gon", "degree", or null'
+			res,
+			CODES.angular_unit_invalid,
+			'units.angularUnit must be "radian", "gon", "degree", or null',
+			joinPath(path, "angularUnit")
 		);
 	}
 }
 
-function validateCoordinateSystem(cs, path, errors, warnings) {
+function validateCoordinateSystem(cs, path, res) {
 	if (!isObject(cs)) {
-		pushError(errors, path, "coordinate_system_required", "coordinateSystem must be an object");
+		pushError(res, CODES.coordinate_system_required, "coordinateSystem must be an object", path);
 		return;
 	}
 
 	if (cs.horizontalCoordinateSystemName != null && !isString(cs.horizontalCoordinateSystemName)) {
 		pushError(
-			errors,
-			joinPath(path, "horizontalCoordinateSystemName"),
-			"horizontal_crs_type",
-			"horizontalCoordinateSystemName must be string or null"
+			res,
+			CODES.horizontal_crs_type,
+			"horizontalCoordinateSystemName must be string or null",
+			joinPath(path, "horizontalCoordinateSystemName")
 		);
 	}
 
 	if (cs.verticalCoordinateSystemName != null && !isString(cs.verticalCoordinateSystemName)) {
 		pushError(
-			errors,
-			joinPath(path, "verticalCoordinateSystemName"),
-			"vertical_crs_type",
-			"verticalCoordinateSystemName must be string or null"
+			res,
+			CODES.vertical_crs_type,
+			"verticalCoordinateSystemName must be string or null",
+			joinPath(path, "verticalCoordinateSystemName")
 		);
 	}
 }
@@ -127,52 +211,52 @@ function validateCoordinateSystem(cs, path, errors, warnings) {
 // alignment
 // -------------------------------------------------------------------------------------------------
 
-function validateAlignment(alignment, path, errors, warnings) {
+function validateAlignment(alignment, path, res) {
 	if (!isObject(alignment)) {
-		pushError(errors, path, "alignment_type", "alignment must be an object");
+		pushError(res, CODES.alignment_type, "alignment must be an object", path);
 		return;
 	}
 
 	if (alignment.type !== "Alignment") {
-		pushError(errors, joinPath(path, "type"), "alignment_type_value", 'alignment.type must be "Alignment"');
+		pushError(res, CODES.alignment_type_value, 'alignment.type must be "Alignment"', joinPath(path, "type"));
 	}
 
 	if (!isNonEmptyString(alignment.id)) {
-		pushError(errors, joinPath(path, "id"), "alignment_id_required", "alignment.id must be a non-empty string");
+		pushError(res, CODES.alignment_id_required, "alignment.id must be a non-empty string", joinPath(path, "id"));
 	}
 
 	if (alignment.name != null && !isString(alignment.name)) {
-		pushError(errors, joinPath(path, "name"), "alignment_name_type", "alignment.name must be string or null");
+		pushError(res, CODES.alignment_name_type, "alignment.name must be string or null", joinPath(path, "name"));
 	}
 
-	validateCoordGeom(alignment.coordGeom, joinPath(path, "coordGeom"), errors, warnings);
+	validateCoordGeom(alignment.coordGeom, joinPath(path, "coordGeom"), res);
 
 	if (alignment.staEquations != null) {
 		if (!Array.isArray(alignment.staEquations)) {
-			pushError(errors, joinPath(path, "staEquations"), "sta_equations_type", "alignment.staEquations must be an array or null");
+			pushError(res, CODES.sta_equations_type, "alignment.staEquations must be an array or null", joinPath(path, "staEquations"));
 		} else {
 			alignment.staEquations.forEach((eq, i) => {
-				validateStaEquation(eq, `${joinPath(path, "staEquations")}[${i}]`, errors, warnings);
+				validateStaEquation(eq, `${joinPath(path, "staEquations")}[${i}]`, res);
 			});
 		}
 	}
 
 	if (alignment.profile != null) {
-		validateProfile(alignment.profile, joinPath(path, "profile"), errors, warnings);
+		validateProfile(alignment.profile, joinPath(path, "profile"), res);
 	}
 
 	if (alignment.cant != null) {
 		if (!Array.isArray(alignment.cant)) {
-			pushError(errors, joinPath(path, "cant"), "cant_type", "alignment.cant must be an array or null");
+			pushError(res, CODES.cant_type, "alignment.cant must be an array or null", joinPath(path, "cant"));
 		} else {
 			alignment.cant.forEach((entry, i) => {
-				validateCantEntry(entry, `${joinPath(path, "cant")}[${i}]`, errors, warnings);
+				validateCantEntry(entry, `${joinPath(path, "cant")}[${i}]`, res);
 			});
 		}
 	}
 
 	if (alignment.extras != null && !isObject(alignment.extras)) {
-		pushError(errors, joinPath(path, "extras"), "alignment_extras_type", "alignment.extras must be an object when present");
+		pushError(res, CODES.alignment_extras_type, "alignment.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
@@ -180,51 +264,51 @@ function validateAlignment(alignment, path, errors, warnings) {
 // coordGeom
 // -------------------------------------------------------------------------------------------------
 
-function validateCoordGeom(coordGeom, path, errors, warnings) {
+function validateCoordGeom(coordGeom, path, res) {
 	if (!isObject(coordGeom)) {
-		pushError(errors, path, "coord_geom_required", "coordGeom must be an object");
+		pushError(res, CODES.coord_geom_required, "coordGeom must be an object", path);
 		return;
 	}
 
 	if (!Array.isArray(coordGeom.elements)) {
-		pushError(errors, joinPath(path, "elements"), "coord_geom_elements_required", "coordGeom.elements must be an array");
+		pushError(res, CODES.coord_geom_elements_required, "coordGeom.elements must be an array", joinPath(path, "elements"));
 		return;
 	}
 
 	coordGeom.elements.forEach((el, i) => {
-		validateCoordGeomElement(el, `${joinPath(path, "elements")}[${i}]`, errors, warnings);
+		validateCoordGeomElement(el, `${joinPath(path, "elements")}[${i}]`, res);
 	});
 }
 
-function validateCoordGeomElement(el, path, errors, warnings) {
+function validateCoordGeomElement(el, path, res) {
 	if (!isObject(el)) {
-		pushError(errors, path, "coord_geom_element_type", "coordGeom element must be an object");
+		pushError(res, CODES.coord_geom_element_type, "coordGeom element must be an object", path);
 		return;
 	}
 
 	switch (el.type) {
 		case "Line":
-			validateLine(el, path, errors, warnings);
+			validateLine(el, path, res);
 			return;
 
 		case "Curve":
-			validateCurve(el, path, errors, warnings);
+			validateCurve(el, path, res);
 			return;
 
 		case "Spiral":
-			validateSpiral(el, path, errors, warnings);
+			validateSpiral(el, path, res);
 			return;
 
 		case "Kink":
-			validateKink(el, path, errors, warnings);
+			validateKink(el, path, res);
 			return;
 
 		default:
 			pushError(
-				errors,
-				joinPath(path, "type"),
-				"coord_geom_element_type_value",
-				'coordGeom element.type must be "Line", "Curve", "Spiral", or "Kink"'
+				res,
+				CODES.coord_geom_element_type_value,
+				'coordGeom element.type must be "Line", "Curve", "Spiral", or "Kink"',
+				joinPath(path, "type")
 			);
 	}
 }
@@ -233,95 +317,95 @@ function validateCoordGeomElement(el, path, errors, warnings) {
 // line / curve / spiral / kink
 // -------------------------------------------------------------------------------------------------
 
-function validateLine(el, path, errors, warnings) {
-	validatePoint2D(el.start, joinPath(path, "start"), errors);
-	validatePoint2D(el.end, joinPath(path, "end"), errors);
+function validateLine(el, path, res) {
+	validatePoint2D(el.start, joinPath(path, "start"), res);
+	validatePoint2D(el.end, joinPath(path, "end"), res);
 
-	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), errors);
-	if (el.length != null) validateMeasure(el.length, joinPath(path, "length"), errors);
-	if (el.direction != null) validateAngle(el.direction, joinPath(path, "direction"), errors);
+	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), res);
+	if (el.length != null) validateMeasure(el.length, joinPath(path, "length"), res);
+	if (el.direction != null) validateAngle(el.direction, joinPath(path, "direction"), res);
 
 	if (el.extras != null && !isObject(el.extras)) {
-		pushError(errors, joinPath(path, "extras"), "line_extras_type", "Line.extras must be an object when present");
+		pushError(res, CODES.line_extras_type, "Line.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateCurve(el, path, errors, warnings) {
-	validatePoint2D(el.start, joinPath(path, "start"), errors);
-	validatePoint2D(el.end, joinPath(path, "end"), errors);
+function validateCurve(el, path, res) {
+	validatePoint2D(el.start, joinPath(path, "start"), res);
+	validatePoint2D(el.end, joinPath(path, "end"), res);
 
-	if (el.center != null) validatePoint2D(el.center, joinPath(path, "center"), errors);
+	if (el.center != null) validatePoint2D(el.center, joinPath(path, "center"), res);
 
-	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), errors);
-	if (el.length != null) validateMeasure(el.length, joinPath(path, "length"), errors);
-	if (el.radius != null) validateRadiusValue(el.radius, joinPath(path, "radius"), errors);
-	if (el.dirStart != null) validateAngle(el.dirStart, joinPath(path, "dirStart"), errors);
-	if (el.dirEnd != null) validateAngle(el.dirEnd, joinPath(path, "dirEnd"), errors);
+	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), res);
+	if (el.length != null) validateMeasure(el.length, joinPath(path, "length"), res);
+	if (el.radius != null) validateRadiusValue(el.radius, joinPath(path, "radius"), res);
+	if (el.dirStart != null) validateAngle(el.dirStart, joinPath(path, "dirStart"), res);
+	if (el.dirEnd != null) validateAngle(el.dirEnd, joinPath(path, "dirEnd"), res);
 
 	if (el.rot != null && !["cw", "ccw"].includes(el.rot)) {
-		pushError(errors, joinPath(path, "rot"), "curve_rot_invalid", 'Curve.rot must be "cw", "ccw", or null');
+		pushError(res, CODES.curve_rot_invalid, 'Curve.rot must be "cw", "ccw", or null', joinPath(path, "rot"));
 	}
 
 	if (el.crvType != null && !isString(el.crvType)) {
-		pushError(errors, joinPath(path, "crvType"), "curve_crv_type", "Curve.crvType must be string or null");
+		pushError(res, CODES.curve_crv_type, "Curve.crvType must be string or null", joinPath(path, "crvType"));
 	}
 
 	if (el.extras != null && !isObject(el.extras)) {
-		pushError(errors, joinPath(path, "extras"), "curve_extras_type", "Curve.extras must be an object when present");
+		pushError(res, CODES.curve_extras_type, "Curve.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateSpiral(el, path, errors, warnings) {
-	validatePoint2D(el.start, joinPath(path, "start"), errors);
-	validatePoint2D(el.end, joinPath(path, "end"), errors);
+function validateSpiral(el, path, res) {
+	validatePoint2D(el.start, joinPath(path, "start"), res);
+	validatePoint2D(el.end, joinPath(path, "end"), res);
 
-	if (el.pi != null) validatePoint2D(el.pi, joinPath(path, "pi"), errors);
+	if (el.pi != null) validatePoint2D(el.pi, joinPath(path, "pi"), res);
 
-	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), errors);
-	if (el.length != null) validateMeasure(el.length, joinPath(path, "length"), errors);
+	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), res);
+	if (el.length != null) validateMeasure(el.length, joinPath(path, "length"), res);
 
-	if (el.radiusStart != null) validateRadiusValue(el.radiusStart, joinPath(path, "radiusStart"), errors);
-	if (el.radiusEnd != null) validateRadiusValue(el.radiusEnd, joinPath(path, "radiusEnd"), errors);
+	if (el.radiusStart != null) validateRadiusValue(el.radiusStart, joinPath(path, "radiusStart"), res);
+	if (el.radiusEnd != null) validateRadiusValue(el.radiusEnd, joinPath(path, "radiusEnd"), res);
 
-	if (el.dirStart != null) validateAngle(el.dirStart, joinPath(path, "dirStart"), errors);
-	if (el.dirEnd != null) validateAngle(el.dirEnd, joinPath(path, "dirEnd"), errors);
-	if (el.theta != null) validateAngle(el.theta, joinPath(path, "theta"), errors);
+	if (el.dirStart != null) validateAngle(el.dirStart, joinPath(path, "dirStart"), res);
+	if (el.dirEnd != null) validateAngle(el.dirEnd, joinPath(path, "dirEnd"), res);
+	if (el.theta != null) validateAngle(el.theta, joinPath(path, "theta"), res);
 
-	if (el.constant != null) validateMeasure(el.constant, joinPath(path, "constant"), errors);
-	if (el.totalX != null) validateMeasure(el.totalX, joinPath(path, "totalX"), errors);
-	if (el.totalY != null) validateMeasure(el.totalY, joinPath(path, "totalY"), errors);
-	if (el.tanLong != null) validateMeasure(el.tanLong, joinPath(path, "tanLong"), errors);
-	if (el.tanShort != null) validateMeasure(el.tanShort, joinPath(path, "tanShort"), errors);
+	if (el.constant != null) validateMeasure(el.constant, joinPath(path, "constant"), res);
+	if (el.totalX != null) validateMeasure(el.totalX, joinPath(path, "totalX"), res);
+	if (el.totalY != null) validateMeasure(el.totalY, joinPath(path, "totalY"), res);
+	if (el.tanLong != null) validateMeasure(el.tanLong, joinPath(path, "tanLong"), res);
+	if (el.tanShort != null) validateMeasure(el.tanShort, joinPath(path, "tanShort"), res);
 
 	if (el.rot != null && !["cw", "ccw"].includes(el.rot)) {
-		pushError(errors, joinPath(path, "rot"), "spiral_rot_invalid", 'Spiral.rot must be "cw", "ccw", or null');
+		pushError(res, CODES.spiral_rot_invalid, 'Spiral.rot must be "cw", "ccw", or null', joinPath(path, "rot"));
 	}
 
 	if (el.spiType != null && !isString(el.spiType)) {
-		pushError(errors, joinPath(path, "spiType"), "spiral_spi_type", "Spiral.spiType must be string or null");
+		pushError(res, CODES.spiral_spi_type, "Spiral.spiType must be string or null", joinPath(path, "spiType"));
 	}
 
 	if (el.extras != null && !isObject(el.extras)) {
-		pushError(errors, joinPath(path, "extras"), "spiral_extras_type", "Spiral.extras must be an object when present");
+		pushError(res, CODES.spiral_extras_type, "Spiral.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateKink(el, path, errors, warnings) {
-	validatePoint2D(el.start, joinPath(path, "start"), errors);
+function validateKink(el, path, res) {
+	validatePoint2D(el.start, joinPath(path, "start"), res);
 
-	if (el.end != null) validatePoint2D(el.end, joinPath(path, "end"), errors);
+	if (el.end != null) validatePoint2D(el.end, joinPath(path, "end"), res);
 
-	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), errors);
-	if (el.delta != null) validateAngle(el.delta, joinPath(path, "delta"), errors);
-	if (el.dirStart != null) validateAngle(el.dirStart, joinPath(path, "dirStart"), errors);
-	if (el.dirEnd != null) validateAngle(el.dirEnd, joinPath(path, "dirEnd"), errors);
+	if (el.staStart != null) validateMeasure(el.staStart, joinPath(path, "staStart"), res);
+	if (el.delta != null) validateAngle(el.delta, joinPath(path, "delta"), res);
+	if (el.dirStart != null) validateAngle(el.dirStart, joinPath(path, "dirStart"), res);
+	if (el.dirEnd != null) validateAngle(el.dirEnd, joinPath(path, "dirEnd"), res);
 
 	if (el.length != null) {
-		validateMeasure(el.length, joinPath(path, "length"), errors);
+		validateMeasure(el.length, joinPath(path, "length"), res);
 	}
 
 	if (el.extras != null && !isObject(el.extras)) {
-		pushError(errors, joinPath(path, "extras"), "kink_extras_type", "Kink.extras must be an object when present");
+		pushError(res, CODES.kink_extras_type, "Kink.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
@@ -329,191 +413,191 @@ function validateKink(el, path, errors, warnings) {
 // staEquation / profile / cant
 // -------------------------------------------------------------------------------------------------
 
-function validateStaEquation(eq, path, errors, warnings) {
+function validateStaEquation(eq, path, res) {
 	if (!isObject(eq)) {
-		pushError(errors, path, "sta_equation_type", "StaEquation must be an object");
+		pushError(res, CODES.sta_equation_type, "StaEquation must be an object", path);
 		return;
 	}
 
 	if (eq.type != null && eq.type !== "StaEquation") {
-		pushError(errors, joinPath(path, "type"), "sta_equation_type_value", 'StaEquation.type must be "StaEquation" when present');
+		pushError(res, CODES.sta_equation_type_value, 'StaEquation.type must be "StaEquation" when present', joinPath(path, "type"));
 	}
 
-	if (eq.station != null) validateMeasure(eq.station, joinPath(path, "station"), errors);
-	if (eq.delta != null) validateMeasure(eq.delta, joinPath(path, "delta"), errors);
+	if (eq.station != null) validateMeasure(eq.station, joinPath(path, "station"), res);
+	if (eq.delta != null) validateMeasure(eq.delta, joinPath(path, "delta"), res);
 
-	if (eq.staAhead != null) validateMeasure(eq.staAhead, joinPath(path, "staAhead"), errors);
-	if (eq.staBack != null) validateMeasure(eq.staBack, joinPath(path, "staBack"), errors);
-	if (eq.staInternal != null) validateMeasure(eq.staInternal, joinPath(path, "staInternal"), errors);
+	if (eq.staAhead != null) validateMeasure(eq.staAhead, joinPath(path, "staAhead"), res);
+	if (eq.staBack != null) validateMeasure(eq.staBack, joinPath(path, "staBack"), res);
+	if (eq.staInternal != null) validateMeasure(eq.staInternal, joinPath(path, "staInternal"), res);
 
 	if (eq.staIncrement != null && !["increasing", "decreasing"].includes(eq.staIncrement)) {
 		pushError(
-			errors,
-			joinPath(path, "staIncrement"),
-			"sta_equation_increment_invalid",
-			'StaEquation.staIncrement must be "increasing", "decreasing", or null'
+			res,
+			CODES.sta_equation_increment_invalid,
+			'StaEquation.staIncrement must be "increasing", "decreasing", or null',
+			joinPath(path, "staIncrement")
 		);
 	}
 }
 
-function validateProfile(profile, path, errors, warnings) {
+function validateProfile(profile, path, res) {
 	if (!isObject(profile)) {
-		pushError(errors, path, "profile_type", "profile must be an object");
+		pushError(res, CODES.profile_type, "profile must be an object", path);
 		return;
 	}
 
 	if (profile.type != null && profile.type !== "Profile") {
-		pushError(errors, joinPath(path, "type"), "profile_type_value", 'profile.type must be "Profile" when present');
+		pushError(res, CODES.profile_type_value, 'profile.type must be "Profile" when present', joinPath(path, "type"));
 	}
 
 	if (profile.name != null && !isString(profile.name)) {
-		pushError(errors, joinPath(path, "name"), "profile_name_type", "profile.name must be string or null");
+		pushError(res, CODES.profile_name_type, "profile.name must be string or null", joinPath(path, "name"));
 	}
 
 	if (profile.desc != null && !isString(profile.desc)) {
-		pushError(errors, joinPath(path, "desc"), "profile_desc_type", "profile.desc must be string or null");
+		pushError(res, CODES.profile_desc_type, "profile.desc must be string or null", joinPath(path, "desc"));
 	}
 
 	if (profile.profAlign != null) {
-		validateProfAlign(profile.profAlign, joinPath(path, "profAlign"), errors, warnings);
+		validateProfAlign(profile.profAlign, joinPath(path, "profAlign"), res);
 	}
 
 	if (profile.extras != null && !isObject(profile.extras)) {
-		pushError(errors, joinPath(path, "extras"), "profile_extras_type", "profile.extras must be an object when present");
+		pushError(res, CODES.profile_extras_type, "profile.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateProfAlign(profAlign, path, errors, warnings) {
+function validateProfAlign(profAlign, path, res) {
 	if (!isObject(profAlign)) {
-		pushError(errors, path, "prof_align_type", "profAlign must be an object");
+		pushError(res, CODES.prof_align_type, "profAlign must be an object", path);
 		return;
 	}
 
 	if (profAlign.type != null && profAlign.type !== "ProfAlign") {
-		pushError(errors, joinPath(path, "type"), "prof_align_type_value", 'profAlign.type must be "ProfAlign" when present');
+		pushError(res, CODES.prof_align_type_value, 'profAlign.type must be "ProfAlign" when present', joinPath(path, "type"));
 	}
 
 	if (profAlign.name != null && !isString(profAlign.name)) {
-		pushError(errors, joinPath(path, "name"), "prof_align_name_type", "profAlign.name must be string or null");
+		pushError(res, CODES.prof_align_name_type, "profAlign.name must be string or null", joinPath(path, "name"));
 	}
 
 	if (profAlign.desc != null && !isString(profAlign.desc)) {
-		pushError(errors, joinPath(path, "desc"), "prof_align_desc_type", "profAlign.desc must be string or null");
+		pushError(res, CODES.prof_align_desc_type, "profAlign.desc must be string or null", joinPath(path, "desc"));
 	}
 
 	if (profAlign.pvis != null) {
 		if (!Array.isArray(profAlign.pvis)) {
-			pushError(errors, joinPath(path, "pvis"), "prof_align_pvis_type", "profAlign.pvis must be an array when present");
+			pushError(res, CODES.prof_align_pvis_type, "profAlign.pvis must be an array when present", joinPath(path, "pvis"));
 		} else {
 			profAlign.pvis.forEach((pvi, i) => {
-				validatePVI(pvi, `${joinPath(path, "pvis")}[${i}]`, errors, warnings);
+				validatePVI(pvi, `${joinPath(path, "pvis")}[${i}]`, res);
 			});
 		}
 	}
 
 	if (profAlign.paraCurves != null) {
 		if (!Array.isArray(profAlign.paraCurves)) {
-			pushError(errors, joinPath(path, "paraCurves"), "prof_align_paracurves_type", "profAlign.paraCurves must be an array when present");
+			pushError(res, CODES.prof_align_paracurves_type, "profAlign.paraCurves must be an array when present", joinPath(path, "paraCurves"));
 		} else {
 			profAlign.paraCurves.forEach((pc, i) => {
-				validateParaCurve(pc, `${joinPath(path, "paraCurves")}[${i}]`, errors, warnings);
+				validateParaCurve(pc, `${joinPath(path, "paraCurves")}[${i}]`, res);
 			});
 		}
 	}
 }
 
-function validatePVI(pvi, path, errors, warnings) {
+function validatePVI(pvi, path, res) {
 	if (!isObject(pvi)) {
-		pushError(errors, path, "pvi_type", "PVI must be an object");
+		pushError(res, CODES.pvi_type, "PVI must be an object", path);
 		return;
 	}
 
-	if (pvi.station != null) validateMeasure(pvi.station, joinPath(path, "station"), errors);
-	if (pvi.elevation != null) validateMeasure(pvi.elevation, joinPath(path, "elevation"), errors);
+	if (pvi.station != null) validateMeasure(pvi.station, joinPath(path, "station"), res);
+	if (pvi.elevation != null) validateMeasure(pvi.elevation, joinPath(path, "elevation"), res);
 
 	if (pvi.extras != null && !isObject(pvi.extras)) {
-		pushError(errors, joinPath(path, "extras"), "pvi_extras_type", "PVI.extras must be an object when present");
+		pushError(res, CODES.pvi_extras_type, "PVI.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateParaCurve(pc, path, errors, warnings) {
+function validateParaCurve(pc, path, res) {
 	if (!isObject(pc)) {
-		pushError(errors, path, "paracurve_type", "ParaCurve must be an object");
+		pushError(res, CODES.paracurve_type, "ParaCurve must be an object", path);
 		return;
 	}
 
-	if (pc.length != null) validateMeasure(pc.length, joinPath(path, "length"), errors);
-	if (pc.station != null) validateMeasure(pc.station, joinPath(path, "station"), errors);
-	if (pc.elevation != null) validateMeasure(pc.elevation, joinPath(path, "elevation"), errors);
+	if (pc.length != null) validateMeasure(pc.length, joinPath(path, "length"), res);
+	if (pc.station != null) validateMeasure(pc.station, joinPath(path, "station"), res);
+	if (pc.elevation != null) validateMeasure(pc.elevation, joinPath(path, "elevation"), res);
 
 	if (pc.extras != null && !isObject(pc.extras)) {
-		pushError(errors, joinPath(path, "extras"), "paracurve_extras_type", "ParaCurve.extras must be an object when present");
+		pushError(res, CODES.paracurve_extras_type, "ParaCurve.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateCantEntry(entry, path, errors, warnings) {
+function validateCantEntry(entry, path, res) {
 	if (!isObject(entry)) {
-		pushError(errors, path, "cant_entry_type", "cant entry must be an object");
+		pushError(res, CODES.cant_entry_type, "cant entry must be an object", path);
 		return;
 	}
 
 	if (!isNonEmptyString(entry.type)) {
-		pushError(errors, joinPath(path, "type"), "cant_entry_type_value", 'cant entry.type must be a non-empty string');
+		pushError(res, CODES.cant_entry_type_value, "cant entry.type must be a non-empty string", joinPath(path, "type"));
 		return;
 	}
 
 	switch (entry.type) {
 		case "CantStation":
-			validateCantStation(entry, path, errors, warnings);
+			validateCantStation(entry, path, res);
 			return;
 
 		case "SpeedStation":
-			validateSpeedStation(entry, path, errors, warnings);
+			validateSpeedStation(entry, path, res);
 			return;
 
 		default:
-			pushError(errors, joinPath(path, "type"), "cant_entry_type_unknown", 'cant entry.type must be "CantStation" or "SpeedStation"');
+			pushError(res, CODES.cant_entry_type_unknown, 'cant entry.type must be "CantStation" or "SpeedStation"', joinPath(path, "type"));
 	}
 }
 
-function validateCantStation(entry, path, errors, warnings) {
-	if (entry.station != null) validateMeasure(entry.station, joinPath(path, "station"), errors);
-	if (entry.appliedCant != null) validateMeasure(entry.appliedCant, joinPath(path, "appliedCant"), errors);
+function validateCantStation(entry, path, res) {
+	if (entry.station != null) validateMeasure(entry.station, joinPath(path, "station"), res);
+	if (entry.appliedCant != null) validateMeasure(entry.appliedCant, joinPath(path, "appliedCant"), res);
 
 	if (entry.speed != null) {
 		if (!isFiniteNumber(entry.speed) && !isObject(entry.speed)) {
-			pushError(errors, joinPath(path, "speed"), "cant_station_speed_type", "CantStation.speed must be a finite number, measure, or null");
+			pushError(res, CODES.cant_station_speed_type, "CantStation.speed must be a finite number, measure, or null", joinPath(path, "speed"));
 		} else if (isObject(entry.speed)) {
-			validateMeasure(entry.speed, joinPath(path, "speed"), errors);
+			validateMeasure(entry.speed, joinPath(path, "speed"), res);
 		}
 	}
 
 	if (entry.transitionType != null && !isString(entry.transitionType)) {
-		pushError(errors, joinPath(path, "transitionType"), "cant_station_transition_type", "CantStation.transitionType must be string or null");
+		pushError(res, CODES.cant_station_transition_type, "CantStation.transitionType must be string or null", joinPath(path, "transitionType"));
 	}
 
 	if (entry.curvature != null && !["cw", "ccw"].includes(entry.curvature)) {
-		pushError(errors, joinPath(path, "curvature"), "cant_station_curvature", 'CantStation.curvature must be "cw", "ccw", or null');
+		pushError(res, CODES.cant_station_curvature, 'CantStation.curvature must be "cw", "ccw", or null', joinPath(path, "curvature"));
 	}
 
 	if (entry.extras != null && !isObject(entry.extras)) {
-		pushError(errors, joinPath(path, "extras"), "cant_station_extras_type", "CantStation.extras must be an object when present");
+		pushError(res, CODES.cant_station_extras_type, "CantStation.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
-function validateSpeedStation(entry, path, errors, warnings) {
-	if (entry.station != null) validateMeasure(entry.station, joinPath(path, "station"), errors);
+function validateSpeedStation(entry, path, res) {
+	if (entry.station != null) validateMeasure(entry.station, joinPath(path, "station"), res);
 
 	if (entry.speed != null) {
 		if (!isFiniteNumber(entry.speed) && !isObject(entry.speed)) {
-			pushError(errors, joinPath(path, "speed"), "speed_station_speed_type", "SpeedStation.speed must be a finite number, measure, or null");
+			pushError(res, CODES.speed_station_speed_type, "SpeedStation.speed must be a finite number, measure, or null", joinPath(path, "speed"));
 		} else if (isObject(entry.speed)) {
-			validateMeasure(entry.speed, joinPath(path, "speed"), errors);
+			validateMeasure(entry.speed, joinPath(path, "speed"), res);
 		}
 	}
 
 	if (entry.extras != null && !isObject(entry.extras)) {
-		pushError(errors, joinPath(path, "extras"), "speed_station_extras_type", "SpeedStation.extras must be an object when present");
+		pushError(res, CODES.speed_station_extras_type, "SpeedStation.extras must be an object when present", joinPath(path, "extras"));
 	}
 }
 
@@ -521,77 +605,77 @@ function validateSpeedStation(entry, path, errors, warnings) {
 // atoms
 // -------------------------------------------------------------------------------------------------
 
-function validatePoint2D(point, path, errors) {
+function validatePoint2D(point, path, res) {
 	if (!isObject(point)) {
-		pushError(errors, path, "point2d_type", "point must be an object");
+		pushError(res, CODES.point2d_type, "point must be an object", path);
 		return;
 	}
 
 	if (!isFiniteNumber(point.easting)) {
-		pushError(errors, joinPath(path, "easting"), "point2d_easting", "point.easting must be a finite number");
+		pushError(res, CODES.point2d_easting, "point.easting must be a finite number", joinPath(path, "easting"));
 	}
 
 	if (!isFiniteNumber(point.northing)) {
-		pushError(errors, joinPath(path, "northing"), "point2d_northing", "point.northing must be a finite number");
+		pushError(res, CODES.point2d_northing, "point.northing must be a finite number", joinPath(path, "northing"));
 	}
 }
 
-function validateMeasure(m, path, errors) {
+function validateMeasure(m, path, res) {
 	if (!isObject(m)) {
-		pushError(errors, path, "measure_type", "measure must be an object");
+		pushError(res, CODES.measure_type, "measure must be an object", path);
 		return;
 	}
 
 	if (!isFiniteNumber(m.value)) {
-		pushError(errors, joinPath(path, "value"), "measure_value", "measure.value must be a finite number");
+		pushError(res, CODES.measure_value, "measure.value must be a finite number", joinPath(path, "value"));
 	}
 
 	if (m.unit != null && !isString(m.unit)) {
-		pushError(errors, joinPath(path, "unit"), "measure_unit_type", "measure.unit must be string or null");
+		pushError(res, CODES.measure_unit_type, "measure.unit must be string or null", joinPath(path, "unit"));
 	}
 }
 
-function validateAngle(a, path, errors) {
+function validateAngle(a, path, res) {
 	if (!isObject(a)) {
-		pushError(errors, path, "angle_type", "angle must be an object");
+		pushError(res, CODES.angle_type, "angle must be an object", path);
 		return;
 	}
 
 	if (!isFiniteNumber(a.value)) {
-		pushError(errors, joinPath(path, "value"), "angle_value", "angle.value must be a finite number");
+		pushError(res, CODES.angle_value, "angle.value must be a finite number", joinPath(path, "value"));
 	}
 
 	if (!["radian", "gon", "degree"].includes(a.unit)) {
-		pushError(errors, joinPath(path, "unit"), "angle_unit_invalid", 'angle.unit must be "radian", "gon", or "degree"');
+		pushError(res, CODES.angle_unit_invalid, 'angle.unit must be "radian", "gon", or "degree"', joinPath(path, "unit"));
 	}
 
 	if (!["cw", "ccw"].includes(a.orientation)) {
-		pushError(errors, joinPath(path, "orientation"), "angle_orientation_invalid", 'angle.orientation must be "cw" or "ccw"');
+		pushError(res, CODES.angle_orientation_invalid, 'angle.orientation must be "cw" or "ccw"', joinPath(path, "orientation"));
 	}
 
 	if (!["north", "east", "south", "west"].includes(a.origin)) {
-		pushError(errors, joinPath(path, "origin"), "angle_origin_invalid", 'angle.origin must be "north", "east", "south", or "west"');
+		pushError(res, CODES.angle_origin_invalid, 'angle.origin must be "north", "east", "south", or "west"', joinPath(path, "origin"));
 	}
 }
 
-function validateRadiusValue(v, path, errors) {
+function validateRadiusValue(v, path, res) {
 	if (isFiniteNumber(v)) return;
 
 	if (isObject(v)) {
 		if (v.value !== "INF") {
-			pushError(errors, joinPath(path, "value"), "radius_inf_value", 'radius.value must be "INF"');
+			pushError(res, CODES.radius_inf_value, 'radius.value must be "INF"', joinPath(path, "value"));
 		}
 		if (v.representation !== "infinite") {
-			pushError(errors, joinPath(path, "representation"), "radius_inf_representation", 'radius.representation must be "infinite"');
+			pushError(res, CODES.radius_inf_representation, 'radius.representation must be "infinite"', joinPath(path, "representation"));
 		}
 		return;
 	}
 
 	pushError(
-		errors,
-		path,
-		"radius_value_type",
-		'radius must be a finite number or an object like { value: "INF", representation: "infinite" }'
+		res,
+		CODES.radius_value_type,
+		'radius must be a finite number or an object like { value: "INF", representation: "infinite" }',
+		path
 	);
 }
 
@@ -599,8 +683,21 @@ function validateRadiusValue(v, path, errors) {
 // helpers
 // -------------------------------------------------------------------------------------------------
 
-function pushError(errors, path, code, message) {
-	errors.push({ path, code, message });
+function makeResult() {
+	return {
+		ok: true,
+		errors: [],
+		warnings: [],
+	};
+}
+
+function pushError(res, code, message, path = "") {
+	res.ok = false;
+	res.errors.push({ path, code, message });
+}
+
+function pushWarning(res, code, message, path = "") {
+	res.warnings.push({ path, code, message });
 }
 
 function joinPath(base, key) {

@@ -1,20 +1,23 @@
 // app/core/controllers/importController.js
-
-/**
- * @baustelle [PREVIEW-BRIDGE]
- * SpotCandidates are currently bridged into legacy importSession ingest
- * so they participate in artifact/preview generation.
- * SOLL: preview artifacts should be built directly from normalized candidates,
- * without TRA-legacy wrapping.
- *
- * CURRENT STATUS:
- * - intentional temporary bridge
- * - required for sparse-based preview reactivation
- */
+//
+// ImportController
+//
+// Rolle:
+// - ruft die Import-Pipeline auf
+// - schickt geprüfte Ergebnisse an den Master
+// - aktualisiert nur noch lokale UI-Zustände
+//
+// NICHT mehr:
+// - keine Legacy-Preview-Brücke
+// - kein TRA/GRA/CANT-Fake-Ingest
+// - keine lokale Vorschau-Erzeugung
+//
+// Grundidee:
+// Alles, was die importPipeline geprüft verlässt, landet markiert im Store / SPOT.
+// Der Client ist nur noch Intent-/Dispatch-Schicht.
 
 import { installFileDrop } from "@app/io/input/fileDrop.js";
 import { makeImportSession } from "@app/io/import/importSession.js";
-import { applyIngestResult } from "@app/io/apply/importApply.js";
 
 import { runImportPipeline } from "@src/import/runImportPipeline.js";
 
@@ -27,51 +30,10 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 		throw new Error("ImportController: missing store");
 	}
 
+	// @baustelle [IMPORT_SESSION_REDUCE]
+	// importSession bleibt vorerst als temporärer Client-Puffer bestehen.
+	// Sie darf aber keine fachliche Schattenwelt mehr bilden.
 	const importSession = makeImportSession();
-	const emitProps = Boolean(prefs?.debug?.emitImportPropsEffects);
-
-	function handleEffects(effects) {
-		for (const e of (effects ?? [])) {
-			if (!e) continue;
-
-			if (e.type === "log") {
-				safeLog(e.message);
-				continue;
-			}
-
-			if (e.type === "props") {
-				if (typeof ui?.showProps === "function") ui.showProps(e.object);
-				else if (typeof ui?.emitProps === "function") ui.emitProps(e.object);
-			}
-		}
-	}
-
-	// ------------------------------------------------------------
-	// Legacy ingest path
-	// Bleibt vorerst für Working-Set / bisherige ImportSession bestehen
-	// ------------------------------------------------------------
-	function ingestArtifact(artifact, { file, slotHint }) {
-		const importObject = artifact?.payload ?? artifact;
-		if (!importObject?.kind) {
-			throw new Error(`Artifact has no ingestable payload: ${file?.name ?? "(unknown file)"}`);
-		}
-
-		const env = importSession.ingest(importObject, {
-			slotHint,
-			originFile: file?.name ?? null,
-			sourceRef: artifact?.sourceRef ?? { name: file?.name ?? null },
-		});
-
-		for (const ingest of (env.ingests ?? [])) {
-			const effects = applyIngestResult({
-				store,
-				ui,
-				ingest,
-				emitProps,
-			});
-			handleEffects(effects);
-		}
-	}
 
 	async function importOneFile(file) {
 		return await runImportPipeline(file, { log: safeLog });
@@ -119,23 +81,18 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 			case "imported":
 				stats.imported += 1;
 				break;
-
 			case "ignored":
 				stats.ignored += 1;
 				break;
-
 			case "recognized-unsupported":
 				stats.recognizedUnsupported += 1;
 				break;
-
 			case "empty":
 				stats.empty += 1;
 				break;
-
 			case "processed":
 				stats.processed += 1;
 				break;
-
 			case "unknown":
 			default:
 				stats.unknown += 1;
@@ -159,9 +116,6 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 		);
 	}
 
-	// ------------------------------------------------------------
-	// Phase 1: nur Logging + provisorische Weitergabe
-	// ------------------------------------------------------------
 	async function handleSpotCandidates(candidates = [], { file }) {
 		if (!candidates.length) return;
 
@@ -175,27 +129,16 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 		}
 
 		await messaging.sendCmdAwait("Spot.AddCandidates", {
-			spots: candidates
+			spots: candidates,
 		});
-	}
-
-	function handleSpotCandidatesPreview(candidates = [], { file, slotHint }) {
-		for (const spot of candidates) {
-			const payload = makeLegacyIngestPayloadFromSpotCandidate(spot, file);
-			if (!payload?.kind) continue;
-
-			ingestArtifact(
-				{
-					payload,
-					sourceRef: { name: file?.name ?? null },
-				},
-				{ file, slotHint }
-			);
-		}
 	}
 
 	async function handleWorkingItemsMaster(items = [], { file }) {
 		if (!items.length) return;
+
+		for (const item of items) {
+			safeLog(`workingItem: ${item?.kind ?? "unknown"} :: ${item?.name ?? file?.name ?? "unnamed"}`);
+		}
 
 		if (!messaging?.sendCmdAwait) {
 			safeLog("⚠️ no messaging available for Import.AddItems");
@@ -212,243 +155,20 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 				status: item.status ?? null,
 				meta: item.meta ?? null,
 				source: item.source ?? null,
-
-				payload:
-					item.kind === "landFATAlignment"
-						? {
-							kind: "landFATAlignment",
-							name: item.name ?? file?.name ?? "unknown",
-							landFATAlignment: item.payload ?? null,
-							meta: item.meta ?? null,
-						}
-						: item.payload ?? null,
-			}))
+				payload: item.payload ?? null,
+			})),
 		});
 	}
 
-	function previewPolylineFromLandFATAlignment(a) {
-		const coordGeom =
-			Array.isArray(a?.coordGeom)
-				? a.coordGeom
-				: Array.isArray(a?.coordGeom?.elements)
-					? a.coordGeom.elements
-					: [];
+	async function handleReferenceItems(items = [], { file }) {
+		if (!items.length) return;
 
-		const pts = [];
-
-		for (const seg of coordGeom) {
-			const s = seg?.start;
-			if (
-				s &&
-				Number.isFinite(s.easting) &&
-				Number.isFinite(s.northing)
-			) {
-				pts.push({ x: s.easting, y: s.northing });
-			}
-		}
-
-		const last = coordGeom[coordGeom.length - 1];
-		const e = last?.end;
-		if (
-			e &&
-			Number.isFinite(e.easting) &&
-			Number.isFinite(e.northing)
-		) {
-			const prev = pts[pts.length - 1];
-			if (!prev || prev.x !== e.easting || prev.y !== e.northing) {
-				pts.push({ x: e.easting, y: e.northing });
-			}
-		}
-
-		return pts.length >= 2 ? pts : null;
-	}
-
-	/**
-	 * @baustelle [PROFILE-BRIDGE]
-	 * landFAT-Profile bleibt source-nah.
-	 * Für Legacy-Ingest wird nur eine flache profile1d-Sicht gebildet.
-	 *
-	 * Unterstützt:
-	 * - source-near profile.points[]
-	 * - ProfAlign.pvis[] / PVI
-	 * - fallback auf leeres Ergebnis
-	 */
-	function toLegacyProfile1d(profile) {
-		if (!profile) return null;
-
-		if (Array.isArray(profile?.points)) {
-			const mapped = profile.points.map((x) => ({
-				s: x?.station ?? null,
-				z: x?.elevation ?? null,
-				R: x?.radius ?? null,
-				T: x?.tangentLength ?? null,
-				pointNumber: x?.pointNumber ?? null,
-				pointKey: x?.pointKey ?? null,
-			}));
-
-			return mapped.length ? mapped : null;
-		}
-
-		const pvis = Array.isArray(profile?.profAlign?.pvis) ? profile.profAlign.pvis : null;
-		if (pvis?.length) {
-			const mapped = pvis.map((x) => ({
-				s: x?.station ?? null,
-				z: x?.elevation ?? null,
-				R: x?.radius ?? null,
-				T: x?.length ?? null,
-				pointNumber: null,
-				pointKey: null,
-			}));
-
-			return mapped.length ? mapped : null;
-		}
-
-		return null;
-	}
-
-	/**
-	 * @baustelle [CANT-BRIDGE]
-	 * landFAT-Cant kann source-nah als cantStations/speedStations vorliegen.
-	 * Legacy-Ingest erwartet vorerst cant1d-Punkte.
-	 *
-	 * Aktuell:
-	 * - nutzt c.points direkt, falls vorhanden
-	 * - bildet sonst einfache cant1d aus cantStations
-	 * - speedStations bleiben nur in landFATCant erhalten
-	 */
-	function toLegacyCant1d(cant) {
-		if (!cant) return null;
-
-		if (Array.isArray(cant?.points)) {
-			return cant.points.length ? cant.points : null;
-		}
-
-		if (Array.isArray(cant?.cantStations)) {
-			const mapped = cant.cantStations.map((x) => ({
-				s: x?.station?.value ?? x?.station ?? null,
-				u:
-					x?.appliedCant?.value ??
-					x?.appliedCant ??
-					null,
-				speed:
-					x?.speed?.value ??
-					x?.speed ??
-					null,
-				curvature: x?.curvature ?? null,
-				transitionType: x?.transitionType ?? null,
-			}));
-
-			return mapped.length ? mapped : null;
-		}
-
-		return null;
-	}
-
-	function makeLegacyIngestPayloadFromWorkingItem(item, file) {
-		if (!item) return null;
-
-		// already legacy-ingestable
-		if (item?.payload?.kind) return item.payload;
-
-		if (item.kind === "landFATAlignment") {
-			const a = item.payload ?? null;
-			const polyline2d = previewPolylineFromLandFATAlignment(a);
-
-			return {
-				kind: "TRA", // nur Brücke für den Legacy-Ingest
-				name: item.name ?? file?.name ?? "alignment",
-				geometry: polyline2d ? { pts: polyline2d } : null,
-				cant1d: a?.extras?.legacy?.cant1d ?? null,
-				landFATAlignment: a,
-				meta: item.meta ?? null,
-			};
-		}
-
-		if (item.kind === "landFATProfile") {
-			const p = item.payload ?? null;
-			const profile1d = toLegacyProfile1d(p);
-
-			return {
-				kind: "GRA", // nur als Legacy-Brücke
-				name: item.name ?? file?.name ?? "profile",
-				profile1d,
-				landFATProfile: p,
-				meta: item.meta ?? null,
-			};
-		}
-
-		if (item.kind === "landFATCant") {
-			const c = item.payload ?? null;
-			const cant1d = toLegacyCant1d(c);
-
-			return {
-				kind: "CANT",
-				name: item.name ?? file?.name ?? "cant",
-				cant1d,
-				landFATCant: c,
-				meta: item.meta ?? null,
-			};
-		}
-
-		return null;
-	}
-
-	/**
-	 * @baustelle [PREVIEW-BRIDGE]
-	 * SpotCandidates are currently bridged into legacy importSession ingest
-	 * so they participate in artifact/preview generation.
-	 * SOLL: preview artifacts should be built directly from normalized candidates,
-	 * without TRA-legacy wrapping.
-	 */
-	function makeLegacyIngestPayloadFromSpotCandidate(spot, file) {
-		if (!spot) return null;
-
-		if (spot.kind === "alignmentSpotCandidate") {
-			return {
-				kind: "TRA", // nur Brücke für Legacy-Ingest / Artifact-Build
-				name: spot.name ?? file?.name ?? "alignment",
-
-				// neuer sauberer Pfad
-				sparseAlignment: spot.payload ?? null,
-
-				meta: {
-					...(spot.meta ?? {}),
-					alignmentName: spot?.meta?.alignmentName ?? spot?.name ?? null,
-					sourceFile: file?.name ?? null,
-					sourceFormat: spot?.source?.format ?? null,
-				},
-
-				source: spot?.source ?? null,
-			};
-		}
-
-		return null;
-	}
-
-	function handleWorkingItems(items = [], { file, slotHint }) {
-		for (const item of items) {
-			safeLog(`workingItem: ${item?.kind ?? "unknown"} :: ${item?.name ?? file?.name ?? "unnamed"}`);
-
-			const payload = makeLegacyIngestPayloadFromWorkingItem(item, file);
-			if (!payload?.kind) continue;
-
-			ingestArtifact(
-				{
-					payload,
-					sourceRef: { name: file?.name ?? null },
-				},
-				{ file, slotHint }
-			);
-		}
-	}
-
-	function handleReferenceItems(items = [], { file }) {
 		for (const ref of items) {
 			safeLog(`referenceItem: ${ref?.kind ?? "unknown"} :: ${ref?.name ?? file?.name ?? "unnamed"}`);
-
-			// TODO nächster Schritt:
-			// referenceStore / visibility / context-layer
 		}
+
+		// @baustelle [REFERENCE_STORE]
+		// Sobald Reference.Add... o. ä. existiert, hier an den Master schicken.
 	}
 
 	async function importFiles(files) {
@@ -456,15 +176,13 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 
 		messaging?.emitEvt?.("Import.DropObserved", {
 			fileCount: batch.length,
-			window: "local"
+			window: "local",
 		});
 
-		const st = store.getState?.() ?? {};
-		const slotHint = st.activeSlot ?? "right";
 		const stats = makeBatchStats(batch.length);
 
 		await messaging?.sendCmdAwait?.("Import.BeginSession", {
-			source: "drop"
+			source: "drop",
 		});
 
 		for (const file of batch) {
@@ -490,13 +208,28 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 					safeLog(`ℹ️ ${label}: ${file.name}`);
 				}
 
-				await handleSpotCandidates(spotCandidates, { file, slotHint });
-				handleSpotCandidatesPreview(spotCandidates, { file, slotHint });
+				await handleSpotCandidates(spotCandidates, { file });
+				await handleWorkingItemsMaster(workingItems, { file });
+				await handleReferenceItems(referenceItems, { file });
 
-				await handleWorkingItemsMaster(workingItems, { file, slotHint });
-				handleWorkingItems(workingItems, { file, slotHint });
-
-				handleReferenceItems(referenceItems, { file, slotHint });
+				// @baustelle [IMPORT_SESSION_REDUCE]
+				// Temporärer Client-Puffer bleibt vorerst erhalten, aber nur noch roh.
+				importSession.ingest(
+					{
+						kind: "IMPORT_RESULT",
+						name: file.name,
+						meta: {
+							fileName: file.name,
+							spots: spotCandidates.length,
+							working: workingItems.length,
+							refs: referenceItems.length,
+						},
+					},
+					{
+						originFile: file?.name ?? null,
+						slotHint: store?.getState?.()?.activeSlot ?? "right",
+					}
+				);
 
 			} catch (err) {
 				stats.failed += 1;
@@ -508,7 +241,9 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 		}
 
 		if (typeof ui?.setSpotState === "function") {
-			ui.setSpotState(importSession.getUIState({ slotHint }));
+			ui.setSpotState(importSession.getUIState?.({
+				slotHint: store?.getState?.()?.activeSlot ?? "right",
+			}) ?? importSession.getState?.() ?? []);
 		}
 
 		logBatchSummary(stats);

@@ -5,17 +5,20 @@
 // - wire buttons / inputs
 // - write status/log/boards
 //
+// deliberately NO:
+// - app boot logic
+// - routeProject hydration logic
+// - docs overlay orchestration
+//
 // i18n: all UI strings via t(...)
 
 import { t } from "@app/i18n/strings.js";
-
 import { clamp01 } from "@src/utils/helpers.js";
-import { escapeHtml } from "@app/utils/appHelpers.js";
-
 import { makeSpotView } from "@app/view/overlays/spotView.js";
+import { savePanelLayout } from "@app/view/shell/panelLayoutStore.js";
 
 // ------------------------------------------------------------
-// helpers ...
+// helpers
 // ------------------------------------------------------------
 function resolveElement(explicit, fallbackId) {
 	if (explicit) return explicit;
@@ -31,7 +34,7 @@ function setText(target, text) {
 function toggleHiddenByClass(element, hiddenClass) {
 	if (!element) return false;
 	const isHidden = element.classList.toggle(hiddenClass);
-	return !isHidden; // returns "now visible"
+	return !isHidden;
 }
 
 function setPrimary(button, isOn) {
@@ -39,8 +42,23 @@ function setPrimary(button, isOn) {
 	button.classList.toggle("btn--primary", Boolean(isOn));
 }
 
+function show(el) {
+	if (!el) return;
+	el.classList.remove("hidden");
+}
+
+function hide(el) {
+	if (!el) return;
+	el.classList.add("hidden");
+}
+
+function markPanelHidden(panelEl, hidden) {
+	if (!panelEl?.id) return;
+	savePanelLayout(panelEl.id, { hidden: Boolean(hidden) });
+}
+
 // ------------------------------------------------------------
-// ...
+// wireUI
 // ------------------------------------------------------------
 export function wireUI({ logElement, statusElement, prefs } = {}) {
 	const elements = {
@@ -50,7 +68,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		// SPOT host
 		importSession: document.getElementById("importSession"),
-		
+
 		// SPOT overlay
 		buttonSpot: document.getElementById("btnSpot"),
 		overlaySpot: document.getElementById("spotOverlay"),
@@ -64,10 +82,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		// overlay toggles
 		buttonBands: document.getElementById("btnToggleBands"),
 		buttonSection: document.getElementById("btnToggleSection"),
-
 		overlayBands: document.getElementById("overlayBands"),
 		overlaySection: document.getElementById("overlaySection"),
-
 		closeBands: document.getElementById("btnCloseBands"),
 		closeSection: document.getElementById("btnCloseSection"),
 
@@ -85,22 +101,15 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		cursorMinus: document.getElementById("btnCursorMinus"),
 		cursorPlus: document.getElementById("btnCursorPlus"),
 
-		// RP select
-		routeProjectSelect: document.getElementById("routeProjectSelect"),
+		// optional slot select
 		slotSelect: document.getElementById("slotSelect"),
 
+		// fit / pin
 		chkAutoFit: document.getElementById("chkAutoFit"),
 		buttonFit: document.getElementById("btnFit"),
 		buttonPinToggle: document.getElementById("btnPinToggle"),
 		buttonPinsClear: document.getElementById("btnPinsClear"),
 		pinsInfo: document.getElementById("pinsInfo"),
-
-		// docs overlay
-		buttonDocs: document.getElementById("btnDocs"),
-		overlayDocs: document.getElementById("docsOverlay"),
-		docsSelect: document.getElementById("docsSelect"),
-		docsText: document.getElementById("docsText"),
-		buttonDocsClose: document.getElementById("btnDocsClose"),
 
 		// transition overlay controls (transEd legacy)
 		tePresetSelMain: document.getElementById("tePresetSelMain"),
@@ -114,13 +123,11 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		tePlotK: document.getElementById("tePlotK"),
 		tePlotK1: document.getElementById("tePlotK1"),
 		tePlotK2: document.getElementById("tePlotK2"),
-
-		// optional robust fallback
 		tePlotNodes: document.querySelectorAll('input[name="tePlot"]'),
 	};
 
 	// ------------------------------------------------------------
-	// spot view
+	// SPOT view
 	// ------------------------------------------------------------
 	const spotView = makeSpotView({
 		rootEl: elements.spotOverlayBody ?? elements.importSession,
@@ -173,7 +180,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	// ------------------------------------------------------------
-	// boards (text-only)
+	// boards
 	// ------------------------------------------------------------
 	function setBoardBandsText(text) {
 		if (!elements.boardBands) return;
@@ -188,7 +195,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setSelectOptions(selectEl, items, activeValue = "") {
 		if (!selectEl) return;
 		selectEl.innerHTML = "";
-		for (const it of (items ?? [])) {
+		for (const it of items ?? []) {
 			const opt = document.createElement("option");
 			opt.value = String(it.value ?? "");
 			opt.textContent = String(it.label ?? it.value ?? "");
@@ -222,8 +229,13 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		}
 	}
 
+	function emitProps(obj) {
+		if (!elements.props) return;
+		elements.props.textContent = JSON.stringify(obj ?? null, null, 2);
+	}
+
 	// ------------------------------------------------------------
-	// cursor / RP helpers
+	// cursor helpers
 	// ------------------------------------------------------------
 	function setCursorSInputValue(value) {
 		if (!elements.cursorSInput) return;
@@ -231,49 +243,40 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		elements.cursorSInput.value = String(value ?? "");
 	}
 
-	function setRouteProjectOptions(ids, activeId) {
-		const sel = elements.routeProjectSelect;
+	function wireCursorControls({ onSetCursorS, onNudgeMinus, onNudgePlus } = {}) {
+		const input = elements.cursorSInput;
 
-		/*
-		console.log("setRouteProjectOptions", {
-			hasSelect: !!sel,
-			count: Array.isArray(ids) ? ids.length : -1,
-			activeId
-		});
-		*/
-
-		if (!sel) return;
-
-		const safeIds = Array.isArray(ids) ? ids : [];
-		const wanted = activeId && safeIds.includes(activeId) ? activeId : "";
-
-		sel.innerHTML = "";
-
-		const none = document.createElement("option");
-		none.value = "";
-		none.textContent = "(none)";
-		sel.appendChild(none);
-
-		for (const id of safeIds) {
-			const opt = document.createElement("option");
-			opt.value = id;
-			opt.textContent = id;
-			sel.appendChild(opt);
+		if (input && typeof onSetCursorS === "function") {
+			input.addEventListener("change", () => onSetCursorS(input.value));
+			input.addEventListener("keydown", (ev) => {
+				if (ev.key === "Enter") onSetCursorS(input.value);
+			});
 		}
 
-		sel.value = wanted;
+		if (elements.cursorMinus && typeof onNudgeMinus === "function") {
+			elements.cursorMinus.addEventListener("click", () => onNudgeMinus());
+		}
 
-		/*
-		console.log("routeProjectSelect after fill", {
-			optionCount: sel.options.length,
-			value: sel.value
-		});
-		*/
+		if (elements.cursorPlus && typeof onNudgePlus === "function") {
+			elements.cursorPlus.addEventListener("click", () => onNudgePlus());
+		}
 	}
 
+	// ------------------------------------------------------------
+	// optional slot select
+	// ------------------------------------------------------------
 	function setSlotSelectValue(value) {
 		if (!elements.slotSelect) return;
 		elements.slotSelect.value = String(value ?? "right");
+	}
+
+	function wireSlotSelect({ onChange } = {}) {
+		const sel = elements.slotSelect;
+		if (!sel || typeof onChange !== "function") return;
+
+		sel.addEventListener("change", () => {
+			onChange(sel.value || "right");
+		});
 	}
 
 	// ------------------------------------------------------------
@@ -294,59 +297,16 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	// ------------------------------------------------------------
-	// wiring helpers
-	// ------------------------------------------------------------
-	function wireCursorControls({ onSetCursorS, onNudgeMinus, onNudgePlus } = {}) {
-		const input = elements.cursorSInput;
-
-		if (input && typeof onSetCursorS === "function") {
-			input.addEventListener("change", () => onSetCursorS(input.value));
-			input.addEventListener("keydown", (ev) => {
-				if (ev.key === "Enter") onSetCursorS(input.value);
-			});
-		}
-
-		if (elements.cursorMinus && typeof onNudgeMinus === "function") {
-			elements.cursorMinus.addEventListener("click", () => onNudgeMinus());
-		}
-
-		if (elements.cursorPlus && typeof onNudgePlus === "function") {
-			elements.cursorPlus.addEventListener("click", () => onNudgePlus());
-		}
-	}
-
-	function wireRouteProjectSelect({ onChange } = {}) {
-		const sel = elements.routeProjectSelect;
-		if (!sel || typeof onChange !== "function") return;
-
-		sel.addEventListener("change", () => {
-			onChange(sel.value || "");
-		});
-	}
-
-	function wireSlotSelect({ onChange } = {}) {
-		const sel = elements.slotSelect;
-		if (!sel || typeof onChange !== "function") return;
-
-		sel.addEventListener("change", () => {
-			onChange(sel.value || "right");
-		});
-	}
-
-	function emitProps(obj) {
-		const pre = document.getElementById("props");
-		if (!pre) return;
-		pre.textContent = JSON.stringify(obj ?? null, null, 2);
-	}
-
-	// ------------------------------------------------------------
-	// fit/pin helpers
+	// fit / pin
 	// ------------------------------------------------------------
 	function setAutoFitToggleVisible(visible) {
 		if (!elements.chkAutoFit) return;
-		const label = elements.chkAutoFit.closest(".toggle");
-		if (!label) return;
-		label.style.display = visible ? "" : "none";
+		const host =
+			elements.chkAutoFit.closest(".toggle") ||
+			elements.chkAutoFit.closest("label") ||
+			elements.chkAutoFit.parentElement;
+		if (!host) return;
+		host.style.display = visible ? "" : "none";
 	}
 
 	function setAutoFitToggleValue(value) {
@@ -375,13 +335,15 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function setPinsInfoText(text) {
-		const t0 = String(text ?? "");
+		const value = String(text ?? "");
 		const nodes = document.querySelectorAll("#pinsInfo");
 		if (nodes?.length) {
-			nodes.forEach((n) => { if (n) n.textContent = t0; });
+			nodes.forEach((n) => {
+				if (n) n.textContent = value;
+			});
 			return;
 		}
-		if (elements.pinsInfo) elements.pinsInfo.textContent = t0;
+		if (elements.pinsInfo) elements.pinsInfo.textContent = value;
 	}
 
 	function wirePinControls({ onTogglePin, onClearPins } = {}) {
@@ -401,118 +363,114 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ------------------------------------------------------------
 	function openBands() {
 		if (!elements.overlayBands) return;
-		elements.overlayBands.classList.remove("overlayPane--hidden");
+		elements.overlayBands.classList.remove("hidden");
+		markPanelHidden(elements.overlayBands, false);
 		setPrimary(elements.buttonBands, true);
 	}
 
 	function closeBands() {
 		if (!elements.overlayBands) return;
-		elements.overlayBands.classList.add("overlayPane--hidden");
+		elements.overlayBands.classList.add("hidden");
+		markPanelHidden(elements.overlayBands, true);
 		setPrimary(elements.buttonBands, false);
 	}
 
 	function toggleBands() {
 		if (!elements.overlayBands) return;
-		const visible = toggleHiddenByClass(elements.overlayBands, "overlayPane--hidden");
+		const visible = toggleHiddenByClass(elements.overlayBands, "hidden");
+		markPanelHidden(elements.overlayBands, !visible);
 		setPrimary(elements.buttonBands, visible);
 	}
 
 	function openSection() {
 		if (!elements.overlaySection) return;
-		elements.overlaySection.classList.remove("overlayPane--hidden");
+		elements.overlaySection.classList.remove("hidden");
+		markPanelHidden(elements.overlaySection, false);
 		setPrimary(elements.buttonSection, true);
 	}
 
 	function closeSection() {
 		if (!elements.overlaySection) return;
-		elements.overlaySection.classList.add("overlayPane--hidden");
+		elements.overlaySection.classList.add("hidden");
+		markPanelHidden(elements.overlaySection, true);
 		setPrimary(elements.buttonSection, false);
 	}
 
 	function toggleSection() {
 		if (!elements.overlaySection) return;
-		const visible = toggleHiddenByClass(elements.overlaySection, "overlayPane--hidden");
+		const visible = toggleHiddenByClass(elements.overlaySection, "hidden");
+		markPanelHidden(elements.overlaySection, !visible);
 		setPrimary(elements.buttonSection, visible);
 	}
 
 	function openTransition() {
 		if (!elements.transitionOverlay) return;
 		elements.transitionOverlay.classList.remove("hidden");
+		markPanelHidden(elements.transitionOverlay, false);
+		setPrimary(elements.buttonTransition, true);
 	}
 
 	function closeTransition() {
 		if (!elements.transitionOverlay) return;
 		elements.transitionOverlay.classList.add("hidden");
+		markPanelHidden(elements.transitionOverlay, true);
+		setPrimary(elements.buttonTransition, false);
 	}
 
-	function show(el) {
-		if (!el) return;
-		el.classList.remove("hidden");
-		el.classList.remove("overlayPane--hidden");
+	function toggleTransition() {
+		if (!elements.transitionOverlay) return;
+		const visible = toggleHiddenByClass(elements.transitionOverlay, "hidden");
+		markPanelHidden(elements.transitionOverlay, !visible);
+		setPrimary(elements.buttonTransition, visible);
 	}
 
-	function hide(el) {
-		if (!el) return;
-		el.classList.add("hidden");
-		el.classList.add("overlayPane--hidden");
+	function wireOverlayButtons() {
+		elements.buttonBands?.addEventListener("click", toggleBands);
+		elements.buttonSection?.addEventListener("click", toggleSection);
+		elements.closeBands?.addEventListener("click", closeBands);
+		elements.closeSection?.addEventListener("click", closeSection);
+
+		elements.buttonTransition?.addEventListener("click", toggleTransition);
+		elements.buttonTransitionClose?.addEventListener("click", closeTransition);
 	}
-	
+
 	// ------------------------------------------------------------
 	// SPOT overlay
 	// ------------------------------------------------------------
 	function openSpot() {
 		show(elements.overlaySpot);
+		markPanelHidden(elements.overlaySpot, false);
 		setPrimary(elements.buttonSpot, true);
 	}
 
 	function closeSpot() {
 		hide(elements.overlaySpot);
+		markPanelHidden(elements.overlaySpot, true);
 		setPrimary(elements.buttonSpot, false);
 	}
 
 	function toggleSpot() {
 		if (!elements.overlaySpot) return;
 
-		const isHidden =
-		elements.overlaySpot.classList.contains("hidden") ||
-		elements.overlaySpot.classList.contains("overlayPane--hidden");
+		const isHidden = elements.overlaySpot.classList.contains("hidden");
 
 		if (isHidden) openSpot();
 		else closeSpot();
 	}
 
 	function wireSpotOverlay() {
-		elements.buttonSpot?.addEventListener("click", () => toggleSpot());
-		elements.buttonSpotClose?.addEventListener("click", () => closeSpot());
+		elements.buttonSpot?.addEventListener("click", toggleSpot);
+		elements.buttonSpotClose?.addEventListener("click", closeSpot);
 	}
 
 	// ------------------------------------------------------------
-	// docs overlay
+	// boot feedback
 	// ------------------------------------------------------------
-	function openDocs() { show(elements.overlayDocs); }
-	function closeDocs() { hide(elements.overlayDocs); }
-	function toggleDocs() {
-		if (!elements.overlayDocs) return;
-		const isHidden = 
-		elements.overlayDocs.classList.contains("hidden") || 
-		elements.overlayDocs.classList.contains("overlayPane--hidden");
-		if (isHidden) openDocs();
-		else closeDocs();
-	}
-
-	function wireDocs({ defaultDoc } = {}) {
-		elements.buttonDocs?.addEventListener("click", () => toggleDocs());
-		elements.buttonDocsClose?.addEventListener("click", () => closeDocs());
-
-		if (elements.docsSelect && defaultDoc != null) {
-			elements.docsSelect.value = String(defaultDoc);
-		}
-	}
-
-	// small boot feedback
 	logLine(t("boot_ui"));
 	setStatus(t("boot_ui_ok"));
+
 	wireSpotOverlay();
+	wireOverlayButtons();
 
 	return {
 		elements,
@@ -528,8 +486,27 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		// props
 		showProps,
+		emitProps,
 
-		// SPOT / Grabbeltisch (delegated to spotView)
+		// boards
+		setBoardBandsText,
+		setBoardSectionText,
+		setSelectOptions,
+		setSlider01,
+		readSlider01,
+
+		// import
+		wireImportPicker,
+
+		// cursor
+		setCursorSInputValue,
+		wireCursorControls,
+
+		// optional slot
+		setSlotSelectValue,
+		wireSlotSelect,
+
+		// SPOT
 		setSpotState: spotView.setSpotState,
 		getSpotState: spotView.getSpotState,
 		setSpotHtml: spotView.setSpotHtml,
@@ -537,24 +514,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		renderSpotHtml: spotView.renderSpotHtml,
 		renderSpotState: spotView.renderSpotState,
 		refreshSpot: spotView.refresh,
-		
 		wireSpotActions: spotView.wireActions,
-
-		// boards
-		setBoardBandsText,
-		setBoardSectionText,
-
-		wireImportPicker,
-
-		// cursor helpers
-		setCursorSInputValue,
-
-		// RP helpers
-		setRouteProjectOptions,
-		setSlotSelectValue,
-		wireSlotSelect,
-		
-		// SPOT
 		openSpot,
 		closeSpot,
 		toggleSpot,
@@ -568,16 +528,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		toggleSection,
 		openTransition,
 		closeTransition,
-
-		// docs overlay
-		openDocs,
-		closeDocs,
-		toggleDocs,
-		wireDocs,
-
-		// wiring helpers
-		wireCursorControls,
-		wireRouteProjectSelect,
+		toggleTransition,
 
 		// fit / pin
 		setAutoFitToggleVisible,
@@ -586,7 +537,5 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		wireFitButton,
 		wirePinControls,
 		setPinsInfoText,
-
-		emitProps,
 	};
 }

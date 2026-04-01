@@ -2,27 +2,14 @@
 //
 // Build alignment preview artifact from sparseAlignment.
 //
-// Current preview mode:
-//   poseA-polyline
-//
-// Input:
-//   { baseId, slot, item, kind? }
-//
-// Expects:
-//   unwrapImportObject(item) -> object with sparseAlignment
-//
-// Output:
-//   artifact(domain="alignment2d") | null
+// Canonical preview mode:
+//   sparseAlignment -> AlignmentProjectionService -> sampled polyline2d
 //
 // No parser logic here.
 // No format mapping here.
-// No AlignmentFactory here.
-//
-// @baustelle [PREVIEW-CONTRACT]
-// V1 preview is poseA-polyline only.
-// Later versions may use sampled geometry from AlignmentFactory / Projection.
-//
+// No legacy poseA-only preview path here.
 
+import { projectAlignmentPreview } from "@src/projection/AlignmentProjectionService.js";
 import { validateAlignmentPreviewArtifact } from "./validateAlignmentPreviewArtifact.js";
 
 function unwrapImportObject(x) {
@@ -33,63 +20,10 @@ function buildArtifactId(baseId, slot, domain, kind, ts = Date.now()) {
 	return `${baseId}::${slot}::${domain}::${kind}::${ts}`;
 }
 
-function normalizePoint2d(p) {
-	if (!p) return null;
-
-	const x = Number(p?.x ?? p?.[0]);
-	const y = Number(p?.y ?? p?.[1]);
-
-	if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-	return { x, y };
-}
-
-function pushPointIfNew(out, p, eps = 1e-9) {
-	if (!p) return;
-	if (!out.length) {
-		out.push(p);
-		return;
-	}
-
-	const last = out[out.length - 1];
-	if (Math.abs(last.x - p.x) <= eps && Math.abs(last.y - p.y) <= eps) return;
-
-	out.push(p);
-}
-
-function computeBbox2d(polyline2d) {
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const p of polyline2d ?? []) {
-		const x = Number(p?.x);
-		const y = Number(p?.y);
-		if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-
-		if (x < minX) minX = x;
-		if (y < minY) minY = y;
-		if (x > maxX) maxX = x;
-		if (y > maxY) maxY = y;
-	}
-
-	if (!Number.isFinite(minX)) return null;
-	return { minX, minY, maxX, maxY };
-}
-
-function bboxCenter2d(bbox) {
-	if (!bbox) return null;
-
-	const x = (Number(bbox.minX) + Number(bbox.maxX)) * 0.5;
-	const y = (Number(bbox.minY) + Number(bbox.maxY)) * 0.5;
-
-	if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
-	return { x, y };
-}
-
 function sourceLabelFromItem(item) {
 	const obj = unwrapImportObject(item);
-	const fileName = String(item?.originFileName ?? obj?.meta?.sourceFile ?? obj?.name ?? "").trim() || null;
+	const fileName =
+		String(item?.originFileName ?? obj?.meta?.sourceFile ?? obj?.name ?? "").trim() || null;
 
 	const internalName =
 		String(
@@ -118,26 +52,6 @@ function resolveArtifactKind(item, obj, fallback = "ALIGNMENT") {
 	).toUpperCase();
 }
 
-function buildPoseAPolylineFromSparse(sparseAlignment) {
-	const elements = Array.isArray(sparseAlignment?.sparse) ? sparseAlignment.sparse : [];
-	const out = [];
-
-	for (const [i, el] of elements.entries()) {
-		const rawPose = el?.poseA ?? null;
-		const p = normalizePoint2d(rawPose?.p);
-		if (!p) {
-			console.warn("[buildAlignmentPreviewArtifact] bad poseA point", {
-				index: i,
-				poseA: rawPose,
-				elementType: el?.type ?? null,
-			});
-		}
-		pushPointIfNew(out, p);
-	}
-
-	return out.length >= 2 ? out : null;
-}
-
 export function buildAlignmentPreviewArtifact({
 	baseId,
 	slot,
@@ -150,16 +64,16 @@ export function buildAlignmentPreviewArtifact({
 		obj?.payload?.sparseAlignment ??
 		null;
 
-	// @baustelle [DEBUG]
-	// Null-return is currently silent.
-	// Later optional diagnostics/log hook may be useful for preview build failures.
 	if (!sparseAlignment) return null;
 
-	const polyline2d = buildPoseAPolylineFromSparse(sparseAlignment);
-	if (!polyline2d) return null;
+	const projected = projectAlignmentPreview({
+		sparseAlignment,
+		maxStep: 5,
+	});
+
+	if (!projected?.polyline2d?.length) return null;
 
 	const artifactKind = kind ?? resolveArtifactKind(item, obj, "ALIGNMENT");
-	const bbox = computeBbox2d(polyline2d);
 
 	const art = {
 		id: buildArtifactId(baseId, slot, "alignment2d", artifactKind, item?.ts),
@@ -168,15 +82,15 @@ export function buildAlignmentPreviewArtifact({
 		slot,
 		sourceLabel: sourceLabelFromItem(item),
 		payload: {
-			polyline2d,
-			bbox,
-			bboxCenter: bboxCenter2d(bbox),
+			polyline2d: projected.polyline2d,
+			bbox: projected.bbox,
+			bboxCenter: projected.bboxCenter,
 		},
 		meta: {
 			sourceFormat: artifactKind,
 			sourceFile: obj?.meta?.sourceFile ?? item?.originFileName ?? null,
 			alignmentName: obj?.meta?.alignmentName ?? obj?.name ?? null,
-			previewMode: "poseA-polyline",
+			previewMode: "sampled-sparse",
 		},
 	};
 

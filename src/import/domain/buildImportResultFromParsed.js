@@ -1,7 +1,7 @@
 // src/import/domain/buildImportResultFromParsed.js
 
 import { buildSparseFromLandFAT } from "./buildSparseFromLandFAT.js";
-import { validateSparse } from "./validateSparse.js";
+import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
 import { classifyAlignmentForSpot } from "./classifyImportResult.js";
 import { IMPORT_REASONS } from "./importReasons.js";
 
