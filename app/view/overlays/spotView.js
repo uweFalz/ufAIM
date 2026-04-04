@@ -1,234 +1,171 @@
 // app/view/overlays/spotView.js
 //
-// SPOT / Grabbeltisch view
-// - owns local spot UI state
-// - renders SPOT html
-// - writes SPOT html into its root element
+// SPOT View
 //
-// No store ownership here.
-// No parser logic here.
-// No importSession logic here.
+// Rolle:
+// - rendert ausschließlich den aktuellen SPOT-Zustand (SpotUiState)
+// - zeigt alle visualisierbaren Objekte (SPOT-Objects)
+//
+// Grundprinzip:
+// - Wenn ein Objekt im SPOT ist, ist es visualisierbar
+// - Der View erzeugt keine Daten, keine Kandidaten, keine Interpretation
+//
+// Input:
+// - SpotUiState (vom Master / SpotService)
+// - optional UI-Kontext (z. B. focus, pins) – nur für Darstellung
+//
+// Output:
+// - reine DOM-Darstellung
+// - User-Intents (activate, pin, decision)
+//
+// NICHT:
+// - keine Import-Logik
+// - keine Parser-/Alignment-Logik
+// - keine lokale Schattenwelt (keine eigenen Kandidaten, keine Ableitungen)
+//
+// Ziel:
+// Dumb Renderer für SPOT-Objects.
+// Alle fachliche Wahrheit liegt außerhalb.
+//
+// SPOT view
+// - renders a simple alignment-candidate board
+// - no grouping
+// - no slot/base editing
+// - no importSession logic
+//
+// @baustelle [I18N_STRICT]
+// No user-visible text literals should be introduced here.
+// All visible labels / buttons / hints must pass through t(...).
+//
+// Input shape expected from buildSpotUiState():
+// {
+//   rows: [
+//     {
+//       spotId,
+//       label,
+//       kind,
+//       outcome,
+//       outcomeConfidence,
+//       sourceLabel,
+//       files,
+//       missing,
+//       notes
+//     }
+//   ],
+//   stats: {
+//     total,
+//     filesSeen
+//   }
+// }
 
 import { formatPct01 } from "@src/utils/helpers.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
+import { t } from "@app/i18n/strings.js";
 
-//
-function pinKey(rpId, slot) {
-	return `${rpId}::${slot ?? "right"}`;
+function decisionKey(spotId) {
+	return String(spotId ?? "");
 }
 
-function decisionKey(spotId, slot) {
-	return `${spotId}::${slot ?? "right"}`;
-}
-
-function isPinned(storeState, rpId, slot) {
+function isPinned(storeState, spotId) {
 	const pins = Array.isArray(storeState?.view_pins) ? storeState.view_pins : [];
-	const key = pinKey(rpId, slot);
-	return pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
+	return pins.some((p) => String(p?.rpId ?? "") === String(spotId ?? ""));
 }
 
-function renderSpotRow(r, { activeRp, activeSlot, decisions, storeState }) {
+function renderSpotRow(row, { activeObjectId, decisions, storeState }) {
+	const spotId = String(row?.spotId ?? "");
+	const active = activeObjectId === spotId;
+	const pinned = isPinned(storeState, spotId);
 
-	const rpId = r.groupKey;
-	const slot = r.slotEffective ?? r.suggestedSlot ?? r.slotHint ?? "right";
-	const spotId = r.spotId ?? rpId;
+	const decision = decisions[decisionKey(spotId)] ?? null;
 
-	const active = (rpId === activeRp) && (slot === activeSlot);
-	const pinned = isPinned(storeState, rpId, slot);
-
-	const keyPin = pinKey(rpId, slot);
-	const keyDec = decisionKey(spotId, slot);
-
-	const decision = decisions[keyDec] ?? decisions[keyPin] ?? null;
-
-	const missing = Array.isArray(r.missing) && r.missing.length
-	? r.missing.join(", ")
-	: "";
-
-	const notes = Array.isArray(r.notes) && r.notes.length
-	? r.notes.slice(0, 2).join(" · ")
-	: "";
+	const files = Array.isArray(row?.files) ? row.files : [];
+	const missing = Array.isArray(row?.missing) ? row.missing : [];
+	const notes = Array.isArray(row?.notes) ? row.notes : [];
 
 	const decisionBadge = decision
-	? `<span class="spot__badge spot__badge--${escapeHtml(decision)}">${escapeHtml(decision)}</span>`
-	: ``;
-
-	const sourceLabel = r.sourceLabel ?? "";
-	
-	const conflictBadge = r.baseConflict
-	? `<span class="spot__badge spot__badge--warn">conflict</span>`
-	: ``;
+		? `<span class="spot__badge spot__badge--${escapeHtml(decision)}">${escapeHtml(decision)}</span>`
+		: "";
 
 	return `
 	<div class="spot__row ${active ? "is-active" : ""}">
-	
-	<div class="spot__btns">
-	<button class="btn btn--ghost btn--xs" data-spot-activate="${escapeHtml(keyPin)}">Activate</button>
-	<button class="btn btn--ghost btn--xs" data-spot-pin="${escapeHtml(keyPin)}">${pinned ? "Unpin" : "Pin"}</button>
+		<div class="spot__btns">
+			<button class="btn btn--ghost btn--xs" data-spot-activate="${escapeHtml(spotId)}">${escapeHtml(t("spot_activate"))}</button>
+			<button class="btn btn--ghost btn--xs" data-spot-pin="${escapeHtml(spotId)}">${escapeHtml(t(pinned ? "spot_unpin" : "spot_pin"))}</button>
 
-	<button class="btn btn--ghost btn--xs" data-spot-decision="accept" data-spot-key="${escapeHtml(keyDec)}">Accept</button>
-	<button class="btn btn--ghost btn--xs" data-spot-decision="defer"  data-spot-key="${escapeHtml(keyDec)}">Defer</button>
-	<button class="btn btn--ghost btn--xs" data-spot-decision="ignore" data-spot-key="${escapeHtml(keyDec)}">Ignore</button>
-	<button class="btn btn--ghost btn--xs" data-spot-decision="" data-spot-key="${escapeHtml(keyDec)}" title="Clear decision">×</button>
-	</div>
+			<button class="btn btn--ghost btn--xs" data-spot-decision="accept" data-spot-key="${escapeHtml(spotId)}">${escapeHtml(t("spot_decision_accept"))}</button>
+			<button class="btn btn--ghost btn--xs" data-spot-decision="defer" data-spot-key="${escapeHtml(spotId)}">${escapeHtml(t("spot_decision_defer"))}</button>
+			<button class="btn btn--ghost btn--xs" data-spot-decision="ignore" data-spot-key="${escapeHtml(spotId)}">${escapeHtml(t("spot_decision_ignore"))}</button>
+			<button class="btn btn--ghost btn--xs" data-spot-decision="" data-spot-key="${escapeHtml(spotId)}" title="${escapeHtml(t("spot_decision_clear_title"))}">×</button>
+		</div>
 
-	<div class="spot__main">
+		<div class="spot__main">
+			<div class="spot__title">
+				<strong>${escapeHtml(row?.label ?? spotId ?? t("spot_alignment_fallback"))}</strong>
+				${decisionBadge}
+			</div>
 
-	<div class="spot__title">
-	<strong>${escapeHtml(r.groupKey)}</strong>
-	${decisionBadge}
-	${conflictBadge}
-	</div>
+			<div class="spot__meta">
+				<span>${escapeHtml(t("spot_meta_kind"))}=${escapeHtml(row?.kind ?? "alignment")}</span>
+				<span>${escapeHtml(t("spot_meta_outcome"))}=${escapeHtml(row?.outcome ?? "candidate")}</span>
+				<span>${escapeHtml(t("spot_meta_conf"))}=${escapeHtml(formatPct01(row?.outcomeConfidence ?? 0))}</span>
+			</div>
 
-	<div class="spot__meta">
-	<span>match=${escapeHtml(r.matchLabel ?? "unknown")}</span>
-	<span>outcome=${escapeHtml(r.outcome ?? "candidate")}</span>
-	<span>conf=${escapeHtml(formatPct01(r.outcomeConfidence ?? r.confidence ?? 0))}</span>
-	<span>slot=${escapeHtml(slot)}</span>
-	</div>
+			${row?.sourceLabel
+				? `<div class="spot__source">${escapeHtml(t("spot_meta_source"))}: ${escapeHtml(row.sourceLabel)}</div>`
+				: ``}
 
-	<div class="spot__meta">
-	<span>files=${escapeHtml((r.files ?? []).length)}</span>
-	<span>age=${escapeHtml(r.ageLabel ?? "—")}</span>
-	<span>base=${escapeHtml(r.baseIdEffective ?? r.suggestedBaseId ?? r.groupKey ?? "")}</span>
-	</div>
+			${files.length
+				? `<div class="spot__meta">${escapeHtml(t("spot_meta_files"))}=${escapeHtml(files.join(" · "))}</div>`
+				: ``}
 
-	${sourceLabel
-	? `<div class="spot__source">source: ${escapeHtml(sourceLabel)}</div>`
-	: ``}
+			${missing.length
+				? `<div class="spot__warn">${escapeHtml(t("spot_meta_missing"))}: ${escapeHtml(missing.join(", "))}</div>`
+				: ``}
 
-	<div class="spot__edit">
-	<label class="spot__editField">
-	base
-	<input
-	class="spot__baseIdInput"
-	type="text"
-	list="spot-baseIds"
-	value="${escapeHtml(r.baseIdEffective ?? r.suggestedBaseId ?? r.groupKey ?? "")}"
-	data-spot-base-change="${escapeHtml(r.groupKey)}"
-	/>
-	</label>
-
-	<label class="spot__editField">
-	slot
-	<select
-	class="spot__slotSelect"
-	data-spot-slot-change="${escapeHtml(r.groupKey)}"
-	>
-	<option value="right" ${slot === "right" ? "selected" : ""}>right</option>
-	<option value="left"  ${slot === "left"  ? "selected" : ""}>left</option>
-	<option value="km"    ${slot === "km"    ? "selected" : ""}>km</option>
-	</select>
-	</label>
-	</div>
-
-	${missing ? `<div class="spot__warn">missing: ${escapeHtml(missing)}</div>` : ``}
-	${notes ? `<div class="spot__notes">${escapeHtml(notes)}</div>` : ``}
-
-	</div>
+			${notes.length
+				? `<div class="spot__notes">${escapeHtml(notes.slice(0, 3).join(" · "))}</div>`
+				: ``}
+		</div>
 	</div>`;
 }
 
-function groupRowsByBaseId(rows) {
-	const groups = new Map();
-
-	for (const r of rows) {
-		const baseId =
-		r.baseIdEffective ??
-		r.baseIdUser ??
-		r.suggestedBaseId ??
-		r.groupKey ??
-		"";
-
-		if (!groups.has(baseId)) {
-			groups.set(baseId, []);
-		}
-
-		groups.get(baseId).push(r);
-	}
-
-	return groups;
-}
-
-function slotSortRank(slot) {
-	switch (String(slot ?? "")) {
-		case "km": return 0;
-		case "right": return 1;
-		case "left": return 2;
-		default: return 9;
-	}
-}
-
-//
-// ...
-//
 export function renderSpotHtml({ spotState, storeState }) {
 	const rows = Array.isArray(spotState?.rows) ? spotState.rows : [];
+	const total = Number(spotState?.stats?.total ?? rows.length);
+	const filesSeen = Number(spotState?.stats?.filesSeen ?? 0);
 
-	const header = [
-	`SPOT (Grabbeltisch)`,
-	`groups=${spotState?.stats?.groupsTotal ?? rows.length} files=${spotState?.stats?.filesSeen ?? "—"}`,
-	].join(" · ");
+	const header = `${t("panel_spot")} · ${t("spot_header_alignments")}=${total} ${t("spot_header_files")}=${filesSeen}`;
 
 	if (!rows.length) {
 		return `<div class="spot">
-		<div class="spot__head">${escapeHtml(header)}</div>
-		<div class="spot__empty">(drop files to create spots)</div>
+			<div class="spot__head">${escapeHtml(header)}</div>
+			<div class="spot__empty">${escapeHtml(t("spot_empty"))}</div>
 		</div>`;
 	}
 
-	const activeRp = storeState?.activeRouteProjectId ?? null;
-	const activeSlot = storeState?.activeSlot ?? "right";
+	const activeObjectId =
+		storeState?.focus?.objectId ??
+		storeState?.activeRouteProjectId ??
+		null;
+
 	const decisions = storeState?.spot_decisions ?? {};
 
-	const groups = groupRowsByBaseId(rows);
-
-	const body = Array.from(groups.entries())
-	.sort(([a], [b]) => String(a).localeCompare(String(b)))
-	.map(([baseId, gRows]) => {
-
-		const sortedRows = [...gRows].sort((a, b) => {
-			const slotA = a.slotEffective ?? a.suggestedSlot ?? a.slotHint ?? "right";
-			const slotB = b.slotEffective ?? b.suggestedSlot ?? b.slotHint ?? "right";
-
-			const dSlot = slotSortRank(slotA) - slotSortRank(slotB);
-			if (dSlot !== 0) return dSlot;
-
-			const confA = Number(a.outcomeConfidence ?? a.confidence ?? 0);
-			const confB = Number(b.outcomeConfidence ?? b.confidence ?? 0);
-			if (confB !== confA) return confB - confA;
-
-			return String(a.groupKey ?? "").localeCompare(String(b.groupKey ?? ""));
-		});
-
-		const rowsHtml = sortedRows
-		.map((r) => renderSpotRow(r, {
-			activeRp,
-			activeSlot,
-			decisions,
-			storeState,
-		}))
+	const body = rows
+		.map((row) =>
+			renderSpotRow(row, {
+				activeObjectId,
+				decisions,
+				storeState,
+			})
+		)
 		.join("");
 
-		return `
-		<div class="spot__group">
-		<div class="spot__groupHead">
-		<strong>${escapeHtml(baseId)}</strong>
-		<span class="spot__groupCount">${gRows.length}</span>
-		</div>
-		${rowsHtml}
-		</div>`;
-	}).join("");
-
 	return `<div class="spot">
-	<div class="spot__head">${escapeHtml(header)}</div>
-	<div class="spot__list">${body}</div>
+		<div class="spot__head">${escapeHtml(header)}</div>
+		<div class="spot__list">${body}</div>
 	</div>`;
 }
 
-//
-// ...
-//
 export function makeSpotView({ rootEl } = {}) {
 	if (!rootEl) throw new Error("spotView: missing rootEl");
 
@@ -236,21 +173,7 @@ export function makeSpotView({ rootEl } = {}) {
 	let _lastSpotHtml = null;
 
 	function setSpotState(spotState) {
-		const s = spotState ?? null;
-		if (!s) {
-			_spotState = null;
-			return;
-		}
-
-		const rows0 = Array.isArray(s.rows) ? s.rows : [];
-		const rows = rows0.map((r) => {
-			if (!r) return r;
-			const groupKey = r.groupKey ?? r.rpId ?? r.baseId ?? "";
-			const spotId = String(r.spotId ?? groupKey);
-			return { ...r, spotId };
-		});
-
-		_spotState = { ...s, rows };
+		_spotState = spotState ?? null;
 	}
 
 	function getSpotState() {
@@ -258,9 +181,10 @@ export function makeSpotView({ rootEl } = {}) {
 	}
 
 	function setSpotHtml(html) {
-		const safe = (html == null || html === "")
-		? `<div class="spot"><div class="spot__empty">(drop files to create spots)</div></div>`
-		: String(html);
+		const safe =
+			html == null || html === ""
+				? `<div class="spot"><div class="spot__empty">${escapeHtml(t("spot_empty"))}</div></div>`
+				: String(html);
 
 		if (safe === _lastSpotHtml) return;
 		_lastSpotHtml = safe;
@@ -272,40 +196,19 @@ export function makeSpotView({ rootEl } = {}) {
 	}
 
 	function refresh(storeState) {
-		setSpotHtml(renderSpotHtml({
-			spotState: _spotState,
-			storeState,
-		}));
+		setSpotHtml(
+			renderSpotHtml({
+				spotState: _spotState,
+				storeState,
+			})
+		);
 	}
 
 	function wireActions({
 		onActivate,
 		onTogglePin,
 		onDecision,
-		onSlotChange,
-		onBaseIdChange,
 	} = {}) {
-
-		rootEl.addEventListener("change", (ev) => {
-			const baseInput = ev.target.closest("[data-spot-base-change]");
-			if (baseInput) {
-				onBaseIdChange?.({
-					groupKey: String(baseInput.dataset.spotBaseChange ?? ""),
-					baseId: String(baseInput.value ?? "").trim(),
-				});
-				return;
-			}
-
-			const slotSelect = ev.target.closest("[data-spot-slot-change]");
-			if (slotSelect) {
-				onSlotChange?.({
-					groupKey: String(slotSelect.dataset.spotSlotChange ?? ""),
-					slot: String(slotSelect.value ?? "right"),
-				});
-				return;
-			}
-		});
-
 		rootEl.addEventListener("click", (ev) => {
 			const btnActivate = ev.target.closest("[data-spot-activate]");
 			if (btnActivate) {

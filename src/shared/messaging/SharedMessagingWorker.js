@@ -29,7 +29,7 @@ const projectStateService = createProjectStateService({
 	router: ctx.router,
 });
 
-const importSessionService = createImportSessionService({
+const importInboxService = createImportSessionService({
 	getState: () => ctx.importState,
 	setState: (next) => { ctx.importState = next; },
 	router: ctx.router,
@@ -79,15 +79,15 @@ router.onCmd("Project.SetActiveRouteProject", async ({ routeProjectId } = {}) =>
 // ------------------------------------------------------------
 
 router.onCmd("Import.GetState", async () => {
-	return importSessionService.getState();
+	return importInboxService.getState();
 });
 
 router.onCmd("Import.BeginSession", async ({ source } = {}) => {
-	return importSessionService.beginSession({ source });
+	return importInboxService.beginSession({ source });
 });
 
 router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
-	return importSessionService.addItems({ items });
+	return importInboxService.addItems({ items });
 });
 
 // ------------------------------------------------------------
@@ -102,8 +102,8 @@ router.onCmd("Spot.GetState", async () => {
 	return spotService.getState();
 });
 
-router.onCmd("Spot.SetActive", async ({ spotId } = {}) => {
-	return spotService.setActive({ spotId });
+router.onCmd("Spot.GetUiState", async () => {
+	return spotService.getUiState();
 });
 
 // ------------------------------------------------------------
@@ -114,6 +114,6 @@ router.onCmd("Debug.GetWorkerState", async () => {
 	return {
 		clients: router.getClientCount?.() ?? -1,
 		projectState: projectStateService.getState(),
-		importState: importSessionService.getState(),
+		importState: importInboxService.getState(),
 	};
 });

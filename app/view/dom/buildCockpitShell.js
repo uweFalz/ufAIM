@@ -1,5 +1,8 @@
 // app/view/dom/buildCockpitShell.js
 
+//
+// ...
+//
 export function buildCockpitShell(ctx = {}) {
 	const root = document.createElement("div");
 	root.className = "cockpit";

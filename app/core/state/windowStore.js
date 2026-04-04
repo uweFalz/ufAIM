@@ -1,41 +1,76 @@
 // app/core/state/windowStore.js
 //
-// workspaceState is currently a temporary combined window-side store.
+// workspaceState (windowStore)
 //
-// During the current wiring / test phase it contains three kinds of local state:
+// ⚠️ TRANSITIONAL BRIDGE STORE ⚠️
 //
-// 1) window session core
+// This store currently mixes:
+//
+// 1) legacy focus mirror
 //    - activeRouteProjectId
 //    - activeSlot
 //
-// 2) workspace / UI state
+// 2) actual window/view state
 //    - cursor
 //    - view_pins
 //    - view_chunks
 //    - te_*
 //
-// 3) transitional workflow state
-//    - import_meta
+// 3) transitional mirror / cache state (must shrink over time)
 //    - artifacts
+//    - routeProjects
+//    - import_meta
+//    - import_* quick hooks
 //    - spot_decisions
 //
-// Important:
-// - workspaceState does NOT own canonical project data.
-// - canonical project data belongs to the Master Runtime / SPOT store.
-// - this store only holds local window-side state.
+// ------------------------------------------------------------
+// IMPORTANT ARCHITECTURAL RULES
+// ------------------------------------------------------------
 //
-// Architectural status:
-// - focus-related logic is gradually moving to WindowSessionController
-// - workspaceState should become dumber over time
-// - side effects and orchestration should leave the store
+// - This store is NOT the source of truth for project data.
+// - Canonical data belongs to runtime / worker-side services.
+// - routeProjects / artifacts / import_* are mirror fields only.
+// - New logic must NOT be built on transitional mirror fields.
+// - This store must become progressively "dumber".
 //
-// Target direction:
-// - windowSessionState  -> focus / working context
-// - workspaceState      -> workspace / UI state
-// - controller layer    -> orchestration / side effects
+// ------------------------------------------------------------
+// TARGET ARCHITECTURE
+// ------------------------------------------------------------
 //
-// For now, workspaceState remains a pragmatic combined store
-// until the wiring cleanup is complete.
+// windowSessionState:
+//   -> focus (objectId, slot)
+//
+// workspaceState (this store):
+//   -> UI + view-only state
+//
+// controller layer:
+//   -> orchestration / side effects
+//
+// canonical runtime:
+//   -> SPOT / ImportInbox / WorkingSet / project data
+//
+// ------------------------------------------------------------
+// MIGRATION STATUS
+// ------------------------------------------------------------
+//
+// - activeRouteProjectId / activeSlot are legacy names
+//   -> should be replaced by "focus"
+//
+// - routeProjects / artifacts / import_* are transitional mirrors
+//   -> do NOT extend their usage here
+//
+// - spot_decisions are currently local UI/workflow cache
+//   -> decide later whether they remain local or move to runtime
+//
+// - deleteRouteProject() is legacy shadow-project cleanup
+//   -> remove once worker/runtime owns deletion flow
+//
+// ------------------------------------------------------------
+// RULE OF THUMB
+// ------------------------------------------------------------
+//
+// 👉 workspaceState is a bridge, not the truth.
+//
 
 import { clamp01range } from "@src/utils/helpers.js";
 
@@ -71,7 +106,7 @@ export function createWindowStore(initial) {
 			try {
 				fn(state);
 			} catch (err) {
-				// Never let UI/render listeners break core state transitions (import/apply, etc.)
+				// Never let UI/render listeners break core state transitions.
 				console.error("[workspaceState] listener crashed (isolated):", err);
 			}
 		}
@@ -83,16 +118,28 @@ export function createWindowStore(initial) {
 	}
 
 	const actions = {
+		// ------------------------------------------------------------
+		// @transition legacy focus mirror
+		// Canonical focus should be accessed via WindowSession / FocusManager.
+		// ------------------------------------------------------------
 		setActiveRouteProject(id) {
 			setState({ activeRouteProjectId: id ?? null });
 		},
 
+		// ------------------------------------------------------------
+		// @transition legacy focus mirror
+		// Canonical focus should be accessed via WindowSession / FocusManager.
+		// ------------------------------------------------------------
 		setActiveSlot(slot) {
 			const v = String(slot ?? "right");
 			const safe = (v === "left" || v === "km" || v === "right") ? v : "right";
 			setState({ activeSlot: safe });
 		},
-		
+
+		// ------------------------------------------------------------
+		// @transition temporary local decision cache
+		// Do not expand this into canonical SPOT logic here.
+		// ------------------------------------------------------------
 		setSpotDecision({ spotId, slot, decision }) {
 			const key = spotKey(spotId, slot);
 			const d = decision == null ? null : String(decision).toLowerCase();
@@ -107,24 +154,26 @@ export function createWindowStore(initial) {
 			});
 		},
 
+		// ------------------------------------------------------------
+		// @transition temporary local decision cache
+		// ------------------------------------------------------------
 		clearSpotDecisions() {
 			setState((s) => ({ ...s, spot_decisions: {} }));
 		},
 
 		// ------------------------------------------------------------
-		// MS14.2: pins lifecycle helpers
+		// view pins
 		// ------------------------------------------------------------
 		setPins(pins) {
 			const arr = Array.isArray(pins) ? pins : [];
-			// normalize lightly
 			const next = arr
-			.filter(Boolean)
-			.map((p) => ({
-				rpId: String(p.rpId ?? p.baseId ?? ""),
-				slot: (p.slot === "left" || p.slot === "km" || p.slot === "right") ? p.slot : "right",
-				at: Number.isFinite(p.at) ? p.at : Date.now(),
-			}))
-			.filter((p) => p.rpId);
+				.filter(Boolean)
+				.map((p) => ({
+					rpId: String(p.rpId ?? p.baseId ?? ""),
+					slot: (p.slot === "left" || p.slot === "km" || p.slot === "right") ? p.slot : "right",
+					at: Number.isFinite(p.at) ? p.at : Date.now(),
+				}))
+				.filter((p) => p.rpId);
 
 			setState({ view_pins: next });
 		},
@@ -133,15 +182,18 @@ export function createWindowStore(initial) {
 			setState({ view_pins: [] });
 		},
 
-		// MS14.1: view pins live in state
 		pinRouteProject({ rpId, slot = "right" } = {}) {
 			const id = String(rpId ?? "");
 			if (!id) return;
+
 			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
+
 			setState((st) => {
 				const pins = Array.isArray(st.view_pins) ? st.view_pins.slice() : [];
 				const key = `${id}::${s}`;
+
 				if (pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key)) return st;
+
 				pins.push({ rpId: id, slot: s, at: Date.now() });
 				return { ...st, view_pins: pins };
 			});
@@ -150,7 +202,9 @@ export function createWindowStore(initial) {
 		unpinRouteProject({ rpId, slot = "right" } = {}) {
 			const id = String(rpId ?? "");
 			if (!id) return;
+
 			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
+
 			setState((st) => {
 				const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
 				const next = pins.filter((p) => !(p?.rpId === id && (p?.slot ?? "right") === s));
@@ -166,10 +220,14 @@ export function createWindowStore(initial) {
 			actions.togglePinRouteProject({ rpId, slot });
 		},
 
-		// MS14.1: allow simple delete for cleanup during tests
+		// ------------------------------------------------------------
+		// @transition legacy shadow-project cleanup
+		// Remove once runtime/worker owns project deletion flow.
+		// ------------------------------------------------------------
 		deleteRouteProject(rpId) {
 			const id = String(rpId ?? "");
 			if (!id) return;
+
 			setState((st) => {
 				const rps = { ...(st.routeProjects ?? {}) };
 				if (!rps[id]) return st;
@@ -204,19 +262,20 @@ export function createWindowStore(initial) {
 		togglePinRouteProject({ rpId, slot = "right" } = {}) {
 			const id = String(rpId ?? "");
 			if (!id) return;
-			
+
 			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
 			const key = `${id}::${s}`;
 			const st = getState();
 			const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
 			const has = pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
-			
+
 			if (has) actions.unpinRouteProject({ rpId: id, slot: s });
 			else actions.pinRouteProject({ rpId: id, slot: s });
 		},
 
 		// ------------------------------------------------------------
-		// MS14.2: “AppCore darf kein store.setState({import_meta:null})”
+		// @transition temporary import mirror cleanup helper
+		// No new logic should depend on import_meta here.
 		// ------------------------------------------------------------
 		clearImportMeta() {
 			setState({ import_meta: null });
@@ -251,9 +310,9 @@ export function createWindowStore(initial) {
 			const st = getState();
 			setState({ cursor: { ...st.cursor, pick } });
 		},
-		
+
 		// ------------------------------------------------------------
-		// MS15.1: chunks (viewer-defined chainage ranges)
+		// chunks (viewer-defined chainage ranges)
 		// ------------------------------------------------------------
 		addChunk({ alignmentArtifactId, rpId, slot, s0, s1, label } = {}) {
 			const aId = alignmentArtifactId ? String(alignmentArtifactId) : null;
@@ -263,7 +322,6 @@ export function createWindowStore(initial) {
 			const ch = {
 				id: makeChunkId(),
 				alignmentArtifactId: aId,
-				// optional context (helpful for UI, not the “identity”):
 				rpId: rpId != null ? String(rpId) : null,
 				slot: normalizeSlot(slot),
 				s0: range.s0,
@@ -283,6 +341,7 @@ export function createWindowStore(initial) {
 		removeChunk(chunkId) {
 			const id = String(chunkId ?? "");
 			if (!id) return;
+
 			setState((st) => {
 				const arr = Array.isArray(st.view_chunks) ? st.view_chunks : [];
 				return { ...st, view_chunks: arr.filter((c) => c?.id !== id) };
@@ -292,12 +351,10 @@ export function createWindowStore(initial) {
 		clearChunks() {
 			setState({ view_chunks: [] });
 		},
-		
+
 		// ------------------------------------------------------------
 		// TransitionEditor (te_*)
 		// ------------------------------------------------------------
-		
-		// ---- TransitionEditor UI state (no notify; use setState) ----
 		setTeOpen(isOpen) {
 			setState({ te_open: Boolean(isOpen) });
 		},
@@ -319,29 +376,28 @@ export function createWindowStore(initial) {
 		setTePlot(mode) {
 			setState({ te_plot: String(mode ?? "k") });
 		},
-		
+
 		setTePresetSpec(spec) {
 			setState((s) => {
 				const want = String(s.te_presetId ?? "");
-				const got  = String(spec?.presetId ?? "");
+				const got = String(spec?.presetId ?? "");
 				return (want && got && want === got)
-				? ({ ...s, te_presetSpec: spec })
-				: s;
+					? ({ ...s, te_presetSpec: spec })
+					: s;
 			});
 		},
-		
+
 		setTeSplitsPresetId(id) {
 			setState({ te_splitsPresetId: String(id ?? "") });
 		},
-		
+
 		setTeSplitsDirty(flag) {
 			setState({ te_splitsDirty: Boolean(flag) });
 		},
-		
+
 		// ------------------------------------------------------------
-		// Alias-Begriffe
+		// Alias terms
 		// ------------------------------------------------------------
-		
 		setFocusObjectId(id) {
 			actions.setActiveRouteProject(id);
 		},

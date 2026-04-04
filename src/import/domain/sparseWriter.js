@@ -8,7 +8,7 @@
 // Ziel:
 // - zentrale Erstellung von sparseAlignment-Objekten
 // - keine verstreuten Objektliterale mehr im Builder
-// - kompatibel zu validateSparse()
+// - kompatibel zu validateSparseAlignment()
 // - bewusst klein halten (kein Overengineering)
 //
 // @baustelle [7L]

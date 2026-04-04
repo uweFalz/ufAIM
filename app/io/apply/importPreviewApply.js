@@ -1,22 +1,18 @@
 // app/io/apply/importPreviewApply.js
-
-/**
- * @baustelle [PREVIEW-CONTRACT]
- * Mirror assumes the unified alignment preview artifact contract:
- *   domain="alignment2d" + payload.polyline2d
- * If legacy artifacts still exist elsewhere, they must be normalized before apply.
- */
-
-// View-side mirror for import preview.
-// No registry changes here.
-// No format logic here.
-// No ProjectModel here.
 //
-// Input:
-//   state
+// Import preview quickhook mirror.
 //
-// Output:
-//   patched state with import_* preview hooks updated from active RP/slot
+// Reads active RP/slot + artifacts and derives lightweight preview hooks.
+//
+// deliberately NO:
+// - registry mutation
+// - parser logic
+// - format logic
+// - projection generation
+//
+// note:
+// this is a temporary state-mirror helper.
+// later this should move toward controller/view projection sync.
 
 import { ensureImportStoreShape } from "./importStoreShape.js";
 
@@ -58,22 +54,13 @@ export function getActiveArtifactIds(state) {
 
 	const slot = s.activeSlot ?? "right";
 	const slotObj = rp.slots?.[slot] ?? null;
-	if (!slotObj) {
-		return {
-			baseId,
-			slot,
-			alignmentArtifactId: null,
-			profileArtifactId: null,
-			cantArtifactId: null,
-		};
-	}
 
 	return {
 		baseId,
 		slot,
-		alignmentArtifactId: slotObj.alignmentArtifactId ?? null,
-		profileArtifactId: slotObj.profileArtifactId ?? null,
-		cantArtifactId: slotObj.cantArtifactId ?? null,
+		alignmentArtifactId: slotObj?.alignmentArtifactId ?? null,
+		profileArtifactId: slotObj?.profileArtifactId ?? null,
+		cantArtifactId: slotObj?.cantArtifactId ?? null,
 	};
 }
 
@@ -81,47 +68,31 @@ export function applyImportPreview(state) {
 	const s = ensureImportStoreShape(state);
 	const active = getActiveArtifactIds(s);
 
-	if (!active) {
-		return {
-			...s,
-			import_polyline2d: null,
-			import_marker2d: null,
-			import_profile1d: null,
-			import_cant1d: null,
-			import_activeArtifacts: null,
-			import_tracks2d: collectImportTracks2d(s.artifacts, null),
-		};
-	}
+	const alignmentArtifactId = active?.alignmentArtifactId ?? null;
+	const profileArtifactId = active?.profileArtifactId ?? null;
+	const cantArtifactId = active?.cantArtifactId ?? null;
 
-	const { alignmentArtifactId, profileArtifactId, cantArtifactId } = active;
-	const patch = { ...s };
-
-	patch.import_activeArtifacts = active;
-	patch.import_tracks2d = collectImportTracks2d(s.artifacts, alignmentArtifactId);
-
-	// alignment quickhook
 	const a = alignmentArtifactId ? s.artifacts?.[alignmentArtifactId] : null;
-	const poly = a?.payload?.polyline2d ?? null;
-
-	patch.import_polyline2d = Array.isArray(poly) ? poly : null;
-	patch.import_marker2d =
-		a?.payload?.bboxCenter ??
-		(Array.isArray(poly) ? pickMarkerFromPolyline(poly) : null);
-
-	// profile quickhook
 	const p = profileArtifactId ? s.artifacts?.[profileArtifactId] : null;
-	patch.import_profile1d = p?.payload?.profile1d ?? null;
-
-	// cant quickhook
 	const c = cantArtifactId ? s.artifacts?.[cantArtifactId] : null;
-	patch.import_cant1d = c?.payload?.cant1d ?? null;
 
-	return patch;
+	const polyline2d = Array.isArray(a?.payload?.polyline2d)
+		? a.payload.polyline2d
+		: null;
+
+	return {
+		import_polyline2d: polyline2d,
+		import_marker2d:
+			a?.payload?.bboxCenter ??
+			(polyline2d ? pickMarkerFromPolyline(polyline2d) : null),
+		import_profile1d: p?.payload?.profile1d ?? null,
+		import_cant1d: c?.payload?.cant1d ?? null,
+		import_activeArtifacts: active ?? null,
+		import_tracks2d: collectImportTracks2d(s.artifacts, alignmentArtifactId),
+	};
 }
 
 export function mirrorImportPreview({ getState, setState } = {}) {
 	if (!getState || !setState) return;
-	const prev = getState();
-	const next = applyImportPreview(prev);
-	setState(next);
+	setState(applyImportPreview(getState()));
 }

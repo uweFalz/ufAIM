@@ -33,7 +33,7 @@ export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 
 	let validation;
 	try {
-		validation = validateSparse(sparse);
+		validation = validateSparseAlignment(sparse);
 	} catch (err) {
 		return {
 			ok: false,

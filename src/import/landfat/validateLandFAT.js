@@ -64,6 +64,8 @@ const CODES = {
 	sta_equation_type: "sta_equation_type",
 	sta_equation_type_value: "sta_equation_type_value",
 	sta_equation_increment_invalid: "sta_equation_increment_invalid",
+	
+	profiles_type: "profiles_type",
 
 	profile_type: "profile_type",
 	profile_type_value: "profile_type_value",
@@ -83,6 +85,8 @@ const CODES = {
 
 	paracurve_type: "paracurve_type",
 	paracurve_extras_type: "paracurve_extras_type",
+
+	cants_type: "cants_type",
 
 	cant_type: "cant_type",
 	cant_entry_type: "cant_entry_type",
@@ -148,6 +152,26 @@ function validateRoot(doc, path, res) {
 			validateAlignment(alignment, `${joinPath(path, "alignments")}[${i}]`, res);
 		});
 	}
+	
+	if (doc.profiles != null) {
+		if (!Array.isArray(doc.profiles)) {
+			pushError(res, "profiles_type", "root.profiles must be an array when present", joinPath(path, "profiles"));
+		} else {
+			doc.profiles.forEach((profile, i) => {
+				validateProfile(profile, `${joinPath(path, "profiles")}[${i}]`, res);
+			});
+		}
+	}
+
+	if (doc.cants != null) {
+		if (!Array.isArray(doc.cants)) {
+			pushError(res, "cants_type", "root.cants must be an array when present", joinPath(path, "cants"));
+		} else {
+			doc.cants.forEach((cant, i) => {
+				validateCantEntry(cant, `${joinPath(path, "cants")}[${i}]`, res);
+			});
+		}
+	}
 
 	if (doc.extras != null && !isObject(doc.extras)) {
 		pushError(res, CODES.extras_type, "root.extras must be an object when present", joinPath(path, "extras"));
@@ -174,10 +198,10 @@ function validateUnits(units, path, res) {
 
 	if (units.angularUnit != null && !["radian", "gon", "degree"].includes(units.angularUnit)) {
 		pushError(
-			res,
-			CODES.angular_unit_invalid,
-			'units.angularUnit must be "radian", "gon", "degree", or null',
-			joinPath(path, "angularUnit")
+		res,
+		CODES.angular_unit_invalid,
+		'units.angularUnit must be "radian", "gon", "degree", or null',
+		joinPath(path, "angularUnit")
 		);
 	}
 }
@@ -190,19 +214,19 @@ function validateCoordinateSystem(cs, path, res) {
 
 	if (cs.horizontalCoordinateSystemName != null && !isString(cs.horizontalCoordinateSystemName)) {
 		pushError(
-			res,
-			CODES.horizontal_crs_type,
-			"horizontalCoordinateSystemName must be string or null",
-			joinPath(path, "horizontalCoordinateSystemName")
+		res,
+		CODES.horizontal_crs_type,
+		"horizontalCoordinateSystemName must be string or null",
+		joinPath(path, "horizontalCoordinateSystemName")
 		);
 	}
 
 	if (cs.verticalCoordinateSystemName != null && !isString(cs.verticalCoordinateSystemName)) {
 		pushError(
-			res,
-			CODES.vertical_crs_type,
-			"verticalCoordinateSystemName must be string or null",
-			joinPath(path, "verticalCoordinateSystemName")
+		res,
+		CODES.vertical_crs_type,
+		"verticalCoordinateSystemName must be string or null",
+		joinPath(path, "verticalCoordinateSystemName")
 		);
 	}
 }
@@ -288,28 +312,28 @@ function validateCoordGeomElement(el, path, res) {
 
 	switch (el.type) {
 		case "Line":
-			validateLine(el, path, res);
-			return;
+		validateLine(el, path, res);
+		return;
 
 		case "Curve":
-			validateCurve(el, path, res);
-			return;
+		validateCurve(el, path, res);
+		return;
 
 		case "Spiral":
-			validateSpiral(el, path, res);
-			return;
+		validateSpiral(el, path, res);
+		return;
 
 		case "Kink":
-			validateKink(el, path, res);
-			return;
+		validateKink(el, path, res);
+		return;
 
 		default:
-			pushError(
-				res,
-				CODES.coord_geom_element_type_value,
-				'coordGeom element.type must be "Line", "Curve", "Spiral", or "Kink"',
-				joinPath(path, "type")
-			);
+		pushError(
+		res,
+		CODES.coord_geom_element_type_value,
+		'coordGeom element.type must be "Line", "Curve", "Spiral", or "Kink"',
+		joinPath(path, "type")
+		);
 	}
 }
 
@@ -432,10 +456,10 @@ function validateStaEquation(eq, path, res) {
 
 	if (eq.staIncrement != null && !["increasing", "decreasing"].includes(eq.staIncrement)) {
 		pushError(
-			res,
-			CODES.sta_equation_increment_invalid,
-			'StaEquation.staIncrement must be "increasing", "decreasing", or null',
-			joinPath(path, "staIncrement")
+		res,
+		CODES.sta_equation_increment_invalid,
+		'StaEquation.staIncrement must be "increasing", "decreasing", or null',
+		joinPath(path, "staIncrement")
 		);
 	}
 }
@@ -548,15 +572,15 @@ function validateCantEntry(entry, path, res) {
 
 	switch (entry.type) {
 		case "CantStation":
-			validateCantStation(entry, path, res);
-			return;
+		validateCantStation(entry, path, res);
+		return;
 
 		case "SpeedStation":
-			validateSpeedStation(entry, path, res);
-			return;
+		validateSpeedStation(entry, path, res);
+		return;
 
 		default:
-			pushError(res, CODES.cant_entry_type_unknown, 'cant entry.type must be "CantStation" or "SpeedStation"', joinPath(path, "type"));
+		pushError(res, CODES.cant_entry_type_unknown, 'cant entry.type must be "CantStation" or "SpeedStation"', joinPath(path, "type"));
 	}
 }
 
@@ -672,10 +696,10 @@ function validateRadiusValue(v, path, res) {
 	}
 
 	pushError(
-		res,
-		CODES.radius_value_type,
-		'radius must be a finite number or an object like { value: "INF", representation: "infinite" }',
-		path
+	res,
+	CODES.radius_value_type,
+	'radius must be a finite number or an object like { value: "INF", representation: "infinite" }',
+	path
 	);
 }
 

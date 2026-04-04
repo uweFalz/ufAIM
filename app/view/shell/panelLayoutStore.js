@@ -12,9 +12,15 @@ function safeParse(json, fallback = {}) {
 	}
 }
 
+function asPlainObject(value) {
+	return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function loadAll() {
 	try {
-		return safeParse(localStorage.getItem(STORAGE_KEY), {});
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) return {};
+		return asPlainObject(safeParse(raw, {}));
 	} catch {
 		return {};
 	}
@@ -22,7 +28,7 @@ function loadAll() {
 
 function saveAll(map) {
 	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(map ?? {}));
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(asPlainObject(map)));
 	} catch {
 		// ignore quota/private-mode errors
 	}
@@ -30,21 +36,26 @@ function saveAll(map) {
 
 export function loadPanelLayout(panelId) {
 	const all = loadAll();
-	return all?.[panelId] ?? null;
+	return asPlainObject(all[panelId]);
 }
 
 export function savePanelLayout(panelId, layout) {
 	if (!panelId) return;
+
 	const all = loadAll();
+	const prev = asPlainObject(all[panelId]);
+
 	all[panelId] = {
-		...(all[panelId] ?? {}),
-		...(layout ?? {}),
+		...prev,
+		...asPlainObject(layout),
 	};
+
 	saveAll(all);
 }
 
 export function clearPanelLayout(panelId) {
 	if (!panelId) return;
+
 	const all = loadAll();
 	delete all[panelId];
 	saveAll(all);

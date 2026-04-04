@@ -1,16 +1,23 @@
 // app/core/controllers/focusManager.js
-// 
+//
 // FocusManager
 //
-// Centralises focus changes on the window/client side.
+// Window-local focus coordinator.
 //
-// Current responsibilities:
-// - update session focus via WindowSessionController
-// - optionally clear transient import UI state
-// - optionally hydrate the active import item from master state
+// One window = one local focus.
+// Windows do not share focus.
+// Windows share canonical data only.
 //
-// This is intentionally small and focused.
-// More focus-related side effects can move here later.
+// Responsibilities:
+// - set/get this window's focus
+// - bridge legacy focus fields during migration
+// - trigger temporary local sync derived from focus
+//
+// NOT:
+// - no canonical object ownership
+// - no global "active" object
+// - no cross-window selection sync
+//
 
 import { mirrorQuickHooksFromActive } from "@app/io/apply/importApply.js";
 
@@ -24,6 +31,8 @@ export function createFocusManager({
 	}
 
 	function syncDerivedFocusState() {
+		// TEMP bridge:
+		// mirror old preview/import quickhooks from active focus
 		mirrorQuickHooksFromActive({
 			getState: store?.getState,
 			setState: store?.setState,
@@ -55,6 +64,7 @@ export function createFocusManager({
 	async function setFocusObjectId(objectId, opts = {}) {
 		await setFocus({
 			objectId,
+			slot: opts.slot,
 			clearImportMeta: Boolean(opts.clearImportMeta),
 			hydrate: Boolean(opts.hydrate),
 			syncQuickHooks: opts.syncQuickHooks !== false,
@@ -63,6 +73,7 @@ export function createFocusManager({
 
 	async function setFocusSlot(slot, opts = {}) {
 		await setFocus({
+			objectId: opts.objectId,
 			slot,
 			clearImportMeta: Boolean(opts.clearImportMeta),
 			hydrate: Boolean(opts.hydrate),
@@ -70,19 +81,30 @@ export function createFocusManager({
 		});
 	}
 
-	function getFocusSnapshot() {
+	function getFocus() {
 		const session = windowSession?.getSessionState?.();
 		if (session?.focus) {
 			return {
-				activeRouteProjectId: session.focus.objectId ?? null,
-				activeSlot: session.focus.slot ?? "right",
+				objectId: session.focus.objectId ?? null,
+				slot: session.focus.slot ?? "right",
 			};
 		}
 
+		// legacy fallback while windowStore still carries old focus fields
 		const st = store?.getState?.() ?? {};
 		return {
-			activeRouteProjectId: st.activeRouteProjectId ?? null,
-			activeSlot: st.activeSlot ?? "right",
+			objectId: st.activeRouteProjectId ?? null,
+			slot: st.activeSlot ?? "right",
+		};
+	}
+
+	function getFocusSnapshot() {
+		const focus = getFocus();
+
+		// compatibility shape for still-legacy consumers
+		return {
+			activeRouteProjectId: focus.objectId,
+			activeSlot: focus.slot,
 		};
 	}
 
@@ -90,7 +112,13 @@ export function createFocusManager({
 		setFocus,
 		setFocusObjectId,
 		setFocusSlot,
+
+		// new shape
+		getFocus,
+
+		// legacy compatibility shape
 		getFocusSnapshot,
+
 		syncDerivedFocusState,
 	};
 }

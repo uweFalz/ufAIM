@@ -1,10 +1,15 @@
 // app/view/shell/buildWindowShell.js
 //
+// DOM shell only
+//
+// @baustelle [I18N_STRICT]
+// No user-visible text literals should be introduced here.
+// Use data-i18n attributes and let uiWiring/applyI18n fill texts.
+//
 // geo-first window shell
 // - primary geo stage (#view3d)
 // - compact toolbar
-// - floating panels for SPOT / Transition / Bands / Section
-// - debug panes for status / log / props
+// - floating panels for SPOT / Transition / Bands / Section / Status-Debug
 //
 // DOM only. No wiring here.
 
@@ -20,35 +25,64 @@ export function buildWindowShell() {
 			<div class="uf-toolbar">
 				<input id="fileImport" type="file" multiple style="display:none" />
 
-				<button id="btnImport" class="btn">Import</button>
-				<button id="btnSpot" class="btn">SPOT</button>
-				<button id="btnTrans" class="btn">Transition</button>
-				<button id="btnToggleBands" class="btn">Bands</button>
-				<button id="btnToggleSection" class="btn">Section</button>
+				<button id="btnImport" class="btn" data-i18n="btn_import"></button>
+
+				<div class="uf-lang">
+					<button
+						id="btnLang"
+						class="btn"
+						data-i18n-title="lang_button"
+						aria-haspopup="true"
+						aria-expanded="false"
+					>🌐</button>
+					<div id="langMenu" class="uf-langMenu hidden"></div>
+				</div>
+
+				<button id="btnSpot" class="btn" data-i18n="btn_spot"></button>
+				<button id="btnTrans" class="btn" data-i18n="btn_transition"></button>
+				<button id="btnToggleBands" class="btn" data-i18n="btn_bands"></button>
+				<button id="btnToggleSection" class="btn" data-i18n="btn_section"></button>
+				<button id="btnToggleDebug" class="btn" data-i18n="btn_status_debug"></button>
 
 				<div class="uf-toolbar__spacer"></div>
 
 				<div class="cursor">
-					<button id="btnCursorMinus" class="btn btn--ghost" title="s minus">−</button>
-					<input id="inputCursorS" type="number" step="1" value="0" />
-					<button id="btnCursorPlus" class="btn btn--ghost" title="s plus">+</button>
+					<button
+						id="btnCursorMinus"
+						class="btn btn--ghost"
+						data-i18n-title="btn_cursor_minus_title"
+					>−</button>
+
+					<input
+						id="inputCursorS"
+						type="number"
+						step="1"
+						value="0"
+						data-i18n-placeholder="cursor_placeholder"
+					/>
+
+					<button
+						id="btnCursorPlus"
+						class="btn btn--ghost"
+						data-i18n-title="btn_cursor_plus_title"
+					>+</button>
 				</div>
 
-				<select id="slotSelect" class="select" title="active slot">
-					<option value="right">right</option>
-					<option value="km">km</option>
-					<option value="left">left</option>
+				<select id="slotSelect" class="select" data-i18n-title="slot_select_title">
+					<option value="right" data-i18n="slot_right"></option>
+					<option value="km" data-i18n="slot_km"></option>
+					<option value="left" data-i18n="slot_left"></option>
 				</select>
 
 				<label class="hint" style="display:inline-flex; align-items:center; gap:6px;">
 					<input id="chkAutoFit" type="checkbox" />
-					<span>AutoFit</span>
+					<span data-i18n="label_autofit"></span>
 				</label>
 
-				<button id="btnFit" class="btn" title="fit active">Fit</button>
-				<button id="btnPinToggle" class="btn" title="pin/unpin active">Pin</button>
-				<button id="btnPinsClear" class="btn" title="clear all pins">Clear</button>
-				<span id="pinsInfo" class="hint">Pins: 0</span>
+				<button id="btnFit" class="btn" data-i18n="btn_fit" data-i18n-title="btn_fit_title"></button>
+				<button id="btnPinToggle" class="btn" data-i18n="btn_pin_toggle" data-i18n-title="btn_pin_toggle_title"></button>
+				<button id="btnPinsClear" class="btn" data-i18n="btn_pins_clear" data-i18n-title="btn_pins_clear_title"></button>
+				<span id="pinsInfo" class="hint" data-i18n="pins_info_empty"></span>
 			</div>
 
 			<div class="uf-stage">
@@ -61,8 +95,12 @@ export function buildWindowShell() {
 		overlayRoot.innerHTML = `
 			<section id="spotOverlay" class="uf-panel hidden">
 				<header class="uf-panel__header">
-					<span>SPOT</span>
-					<button id="btnSpotClose" class="btn btn--ghost" title="close">×</button>
+					<span data-i18n="panel_spot"></span>
+					<button
+						id="btnSpotClose"
+						class="btn btn--ghost"
+						data-i18n-title="btn_close_title"
+					>×</button>
 				</header>
 				<div class="uf-panel__body spotHost">
 					<div id="spotOverlayBody"></div>
@@ -71,13 +109,17 @@ export function buildWindowShell() {
 
 			<section id="transOverlay" class="uf-panel hidden">
 				<header class="uf-panel__header">
-					<span>Transition Editor</span>
-					<button id="btnTransClose" class="btn btn--ghost" title="close">×</button>
+					<span data-i18n="panel_transition"></span>
+					<button
+						id="btnTransClose"
+						class="btn btn--ghost"
+						data-i18n-title="btn_close_title"
+					>×</button>
 				</header>
 				<div class="uf-panel__body">
 					<div class="uf-trans-controls">
 						<div>
-							<label class="hint" for="tePresetSelMain">Preset</label>
+							<label class="hint" for="tePresetSelMain" data-i18n="label_preset"></label>
 							<select id="tePresetSelMain" class="select"></select>
 						</div>
 
@@ -110,36 +152,53 @@ export function buildWindowShell() {
 
 			<section id="overlayBands" class="uf-panel hidden">
 				<header class="uf-panel__header">
-					<span>Bands</span>
-					<button id="btnCloseBands" class="btn btn--ghost" title="close">×</button>
+					<span data-i18n="panel_bands"></span>
+					<button
+						id="btnCloseBands"
+						class="btn btn--ghost"
+						data-i18n-title="btn_close_title"
+					>×</button>
 				</header>
 				<div id="board2d" class="uf-panel__body"></div>
 			</section>
 
 			<section id="overlaySection" class="uf-panel hidden">
 				<header class="uf-panel__header">
-					<span>Section</span>
-					<button id="btnCloseSection" class="btn btn--ghost" title="close">×</button>
+					<span data-i18n="panel_section"></span>
+					<button
+						id="btnCloseSection"
+						class="btn btn--ghost"
+						data-i18n-title="btn_close_title"
+					>×</button>
 				</header>
 				<div id="boardSection" class="uf-panel__body"></div>
 			</section>
 
-			<div id="importSession" class="hidden"></div>
+			<section id="debugOverlay" class="uf-panel hidden">
+				<header class="uf-panel__header">
+					<span data-i18n="panel_status_debug"></span>
+					<button
+						id="btnCloseDebug"
+						class="btn btn--ghost"
+						data-i18n-title="btn_close_title"
+					>×</button>
+				</header>
+				<div class="uf-panel__body" style="display:flex; flex-direction:column; gap:10px;">
+					<div class="hint">
+						<span data-i18n="label_status"></span>
+						<span id="status">…</span>
+					</div>
+					<pre id="log"></pre>
+					<pre id="props"></pre>
+				</div>
+			</section>
 		`;
 	}
 
 	if (debugRoot) {
-		debugRoot.innerHTML = `
-			<div class="uf-debug">
-				<section class="uf-debug__pane">
-					<div class="hint">Status: <span id="status">…</span></div>
-					<pre id="log"></pre>
-				</section>
-
-				<section class="uf-debug__pane">
-					<pre id="props"></pre>
-				</section>
-			</div>
-		`;
+		debugRoot.innerHTML = "";
 	}
+	
+	// console.log("[buildWindowShell] btnImport", document.getElementById("btnImport"));
+	// console.log("[buildWindowShell] i18n count", document.querySelectorAll("[data-i18n]").length);
 }

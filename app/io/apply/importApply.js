@@ -1,25 +1,22 @@
 // app/io/apply/importApply.js
-// Registry Apply (format-agnostisch)
 //
-// Input: { baseId, slot, source, artifacts[] }
-// Output: store.patch + effects (log/props)
+// Import apply orchestration.
 //
-// NOTE:
-// - Registry / slot apply lives here.
-// - Preview quickhooks live in importPreviewApply.js
-// - No format-specific parsing logic here.
+// Responsible ONLY for:
+// - registry apply orchestration
+// - optional preview quickhook mirror
+// - optional props effect emission
+// - batch wrapper for ingest results
 //
-// Ziel später
+// deliberately NO:
+// - parser logic
+// - format-specific logic
+// - preview artifact construction
+// - routeProject mutation details
 //
-// Wahrscheinlich eine sauberere Aufteilung in:
-// 
-// import/apply = reine State-/Artifact-Übernahme
-// preview/focus sync = controller/runtime responsibility
-//
-// Also weniger „apply macht alles“.
-//
-
-import { nowIso, ensureObject } from "@app/utils/appHelpers.js";
+// note:
+// preview quickhook mirroring still lives here temporarily.
+// later this should move into controller/runtime focus-sync.
 
 import { ensureImportStoreShape } from "./importStoreShape.js";
 import { applyImportRegistry } from "./importRegistryApply.js";
@@ -29,144 +26,9 @@ import {
 	mirrorImportPreview,
 } from "./importPreviewApply.js";
 
-// ...
-function makeArtifactId({ baseId, slot, domain, kind }) {
-	return `${baseId}::${slot}::${domain}::${kind}::${Date.now()}`;
-}
-
-function computeBbox2d(polyline2d) {
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const p of (polyline2d ?? [])) {
-		const x = Number(p?.x);
-		const y = Number(p?.y);
-		if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-
-		if (x < minX) minX = x;
-		if (y < minY) minY = y;
-		if (x > maxX) maxX = x;
-		if (y > maxY) maxY = y;
-	}
-
-	if (!Number.isFinite(minX)) return null;
-	return { minX, minY, maxX, maxY };
-}
-
-function bboxCenter2d(bbox) {
-	if (!bbox) return null;
-
-	const cx = (Number(bbox.minX) + Number(bbox.maxX)) * 0.5;
-	const cy = (Number(bbox.minY) + Number(bbox.maxY)) * 0.5;
-
-	if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
-	return { x: cx, y: cy };
-}
-
-function pickMarkerFromPolyline(polyline2d) {
-	if (!Array.isArray(polyline2d) || polyline2d.length < 1) return null;
-	return polyline2d[0];
-}
-
-/**
-* Normalize + enrich artifact payloads so downstream preview hooks are stable.
-* - alignment2d: ensures payload.polyline2d, payload.bbox, payload.bboxCenter
-* - profile1d / cant1d: kept as-is for now
-*/
-function normalizeArtifactPayload({ domain, payload }) {
-	const p = ensureObject(payload);
-	
-	// console.debug( "normalizeArtifactPayload: ", domain, payload );
-
-	if (domain === "alignment2d") {
-		const polyline2d =
-			p.polyline2d ??
-			p.pts ??
-			p.geometry?.pts ??
-			p.landFATAlignment?.extras?.legacy?.geometry?.pts ??
-			p.extras?.legacy?.geometry?.pts ??
-			null;
-
-		const bbox =
-			p.bbox ??
-			p.landFATAlignment?.bbox ??
-			p.landFATAlignment?.bboxENU ??
-			computeBbox2d(polyline2d);
-
-		const center =
-			p.bboxCenter ??
-			p.landFATAlignment?.bboxCenter ??
-			bboxCenter2d(bbox) ??
-			pickMarkerFromPolyline(polyline2d);
-
-		return {
-			...p,
-			polyline2d,
-			bbox,
-			bboxCenter: center,
-		};
-	}
-
-	if (domain === "profile1d") return p;
-	if (domain === "cant1d") return p;
-
-	return p;
-}
-
-function upsertRouteProject(routeProjects, baseId) {
-	const existing = routeProjects[baseId];
-	if (existing) return existing;
-
-	const created = {
-		id: baseId,
-		createdAt: nowIso(),
-		updatedAt: nowIso(),
-
-		// minimal 7-line-ready slot scaffold
-		slots: {
-			right: {},
-			left: {},
-			km: {},
-		},
-
-		meta: {},
-	};
-
-	routeProjects[baseId] = created;
-	return created;
-}
-
-function attachArtifactToSlot({ rp, slot, artifact }) {
-	rp.updatedAt = nowIso();
-
-	const s = rp.slots?.[slot] ?? (rp.slots[slot] = {});
-
-	if (artifact.domain === "alignment2d") {
-		s.alignmentArtifactId = artifact.id;
-	}
-	else if (artifact.domain === "profile1d") {
-		s.profileArtifactId = artifact.id;
-	}
-	else if (artifact.domain === "cant1d") {
-		s.cantArtifactId = artifact.id;
-	}
-	else {
-		if (!Array.isArray(s.otherArtifactIds)) s.otherArtifactIds = [];
-		s.otherArtifactIds.push(artifact.id);
-	}
-
-	rp.meta.lastDomain = artifact.domain;
-	rp.meta.lastKind = artifact.kind;
-}
-
 // Re-export for convenience / compatibility.
 export { getActiveArtifactIds };
 
-//
-// ...
-//
 export function applyImportToProject({
 	store,
 	baseId,
@@ -179,36 +41,36 @@ export function applyImportToProject({
 	if (!store?.getState || !store?.setState) {
 		return [{ type: "log", level: "error", message: "importApply: missing store" }];
 	}
+
 	if (!baseId) {
 		return [{ type: "log", level: "error", message: "importApply: missing baseId" }];
 	}
 
 	const prev = ensureImportStoreShape(store.getState());
-	const effects = [];
 
-	const { patch, effects: registryEffects } =
-	applyImportRegistry({
+	const { patch, effects: registryEffects } = applyImportRegistry({
 		state: prev,
 		baseId,
 		slot,
 		source,
 		artifacts,
-		normalizePayload: normalizeArtifactPayload,
 	});
 
 	const nextBaseState = ensureImportStoreShape({
-	...store.getState(),
-	...patch,
-});
+		...store.getState(),
+		...patch,
+	});
 
-const previewPatch = applyImportPreview(nextBaseState);
+	// TEMP:
+	// quick preview hooks still mirrored into state here
+	const previewPatch = applyImportPreview(nextBaseState);
 
-store.setState({
-	...patch,
-	...previewPatch,
-});
+	store.setState({
+		...patch,
+		...previewPatch,
+	});
 
-	effects.push(...registryEffects);
+	const effects = [...registryEffects];
 
 	if (emitProps) {
 		const finalState = ensureImportStoreShape(store.getState());
@@ -229,9 +91,6 @@ store.setState({
 	return effects;
 }
 
-//
-// ...
-//
 export function mirrorQuickHooksFromActive({ getState, setState } = {}) {
 	mirrorImportPreview({ getState, setState });
 }
@@ -242,20 +101,23 @@ export function applyIngestResult({ store, ui, ingest, emitProps } = {}) {
 		return [{ type: "log", level: "error", message: "applyIngestResult: missing store/ingest" }];
 	}
 
-	const ingests = Array.isArray(ingest?.ingests) ? ingest.ingests : [ingest].filter(Boolean);
+	const ingests = Array.isArray(ingest?.ingests)
+		? ingest.ingests
+		: [ingest].filter(Boolean);
 
 	const effects = [];
+
 	for (const one of ingests) {
 		effects.push(
-		...applyImportToProject({
-			store,
-			baseId: one.baseId,
-			slot: one.slot,
-			source: one.source,
-			artifacts: one.artifacts,
-			ui,
-			emitProps: Boolean(emitProps),
-		})
+			...applyImportToProject({
+				store,
+				baseId: one.baseId,
+				slot: one.slot,
+				source: one.source,
+				artifacts: one.artifacts,
+				ui,
+				emitProps: Boolean(emitProps),
+			})
 		);
 	}
 

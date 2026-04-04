@@ -1,0 +1,304 @@
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+		<link rel="icon" type="image/svg+xml" href="/favicon/favicon.png" />
+		<link rel="shortcut icon" href="/favicon/favicon.ico" />
+		<link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+		<meta name="apple-mobile-web-app-title" content="RamGPT" />
+		<link rel="manifest" href="/favicon/site.webmanifest" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+		/>
+		<meta name="theme-color" content="#171717" />
+		<meta name="robots" content="noindex,nofollow" />
+		<meta name="description" content="RamGPT" />
+		<link
+			rel="search"
+			type="application/opensearchdescription+xml"
+			title="RamGPT"
+			href="/opensearch.xml"
+		/>
+		<script src="/static/loader.js" defer></script>
+
+		<script>
+			function resizeIframe(obj) {
+				obj.style.height = obj.contentWindow.document.documentElement.scrollHeight + 'px';
+			}
+		</script>
+
+		<script>
+			// On page load or when changing themes, best to add inline in `head` to avoid FOUC
+			(() => {
+				const metaThemeColorTag = document.querySelector('meta[name="theme-color"]');
+				const prefersDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+				if (!localStorage?.theme) {
+					localStorage.theme = 'system';
+				}
+
+				if (localStorage.theme === 'system') {
+					document.documentElement.classList.add(prefersDarkTheme ? 'dark' : 'light');
+					metaThemeColorTag.setAttribute('content', prefersDarkTheme ? '#171717' : '#ffffff');
+				} else if (localStorage.theme === 'oled-dark') {
+					document.documentElement.style.setProperty('--color-gray-800', '#101010');
+					document.documentElement.style.setProperty('--color-gray-850', '#050505');
+					document.documentElement.style.setProperty('--color-gray-900', '#000000');
+					document.documentElement.style.setProperty('--color-gray-950', '#000000');
+					document.documentElement.classList.add('dark');
+					metaThemeColorTag.setAttribute('content', '#000000');
+				} else if (localStorage.theme === 'light') {
+					document.documentElement.classList.add('light');
+					metaThemeColorTag.setAttribute('content', '#ffffff');
+				} else if (localStorage.theme === 'her') {
+					document.documentElement.classList.add('dark');
+					document.documentElement.classList.add('her');
+					metaThemeColorTag.setAttribute('content', '#983724');
+				} else {
+					document.documentElement.classList.add('dark');
+					metaThemeColorTag.setAttribute('content', '#171717');
+				}
+
+				window.matchMedia('(prefers-color-scheme: dark)').addListener((e) => {
+					if (localStorage.theme === 'system') {
+						if (e.matches) {
+							document.documentElement.classList.add('dark');
+							document.documentElement.classList.remove('light');
+							metaThemeColorTag.setAttribute('content', '#171717');
+						} else {
+							document.documentElement.classList.add('light');
+							document.documentElement.classList.remove('dark');
+							metaThemeColorTag.setAttribute('content', '#ffffff');
+						}
+					}
+				});
+			})();
+		</script>
+
+		<title>RamGPT</title>
+
+		
+		<link rel="modulepreload" href="/_app/immutable/entry/start.u943l9ec.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/entry.BHWoYSXq.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/scheduler.CLnmnrop.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/index.DIcDXs1H.js">
+		<link rel="modulepreload" href="/_app/immutable/entry/app.BW3aMrPE.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/preload-helper.C1FmrZbK.js">
+		<link rel="modulepreload" href="/_app/immutable/chunks/index.jC8s_wP8.js">
+	</head>
+
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">
+			<script>
+				{
+					__sveltekit_274iil = {
+						base: ""
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("/_app/immutable/entry/start.u943l9ec.js"),
+						import("/_app/immutable/entry/app.BW3aMrPE.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+
+		<div
+			id="splash-screen"
+			style="position: fixed; z-index: 100; top: 0; left: 0; width: 100%; height: 100%"
+		>
+			<style type="text/css" nonce="">
+				html {
+					overflow-y: scroll !important;
+				}
+			</style>
+			
+			<svg
+				id="logo"
+				style="
+					position: absolute;
+					width: auto;
+					height: 3rem;
+					top: 44%;
+					left: 50%;
+					transform: translateX(-50%);
+				" 
+				xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 2268 500">
+					<defs>
+						<style>
+							.logo-icon {
+							fill: #019def;
+							}
+					
+							.logo-text {
+							fill: #06336e;
+							}
+						</style>
+					</defs>
+					<path class="logo-icon" d="M269,0l29.86,5.14.23,1.36-26.24,113.37c-32.09-2.91-64.18,1.16-92.53,16.97-81.95,45.69-91.01,163.45-16.24,220.58,70.6,53.95,183.49,27.28,214.93-57.9,13.41-36.32,10.44-73.43-5.02-108.52l-48.52,37.02c1.11,10.55,3.28,20.41,2.51,31.47-5.78,83.13-117.95,100.6-148.84,25.88-24.05-58.18,17.59-121.77,81.86-113.35l-22.03,97.43c2.96,1.4,6.74,4.6,10,3.09l170.61-204.59c2.5-.39,12.6,10.55,14.93,13.06,127.21,137.21,59.61,363.83-120.3,410.73-14.91,3.89-30.06,5.73-45.21,8.29h-39c-14.78-2.73-29.63-4.48-44.21-8.29C91.72,467.19,19.15,387.13,3.29,291.21c-1.22-7.35-1.26-15.01-3.29-22.21.7-12.72-.95-26.41,0-39C9.08,109.75,110.76,8.59,231,0h38Z"/>
+					<g class="logo-text">
+						<path d="M1330.02,212.99c1.58.42,1.61-.32,2.42-1.06,14.67-13.31,19.18-23.1,40.57-29.43,49.77-14.74,90.35,12.35,93.98,64.01,2.62,37.28-1.96,77.43.05,115.02-2.65,29.23-43.51,30.93-46.07-3.99-2.19-29.88,6.71-97.32-6.79-120.21-13.88-23.52-51.88-22.09-66.6-.27-16.88,25.01-4.92,94.2-8.57,126.43-3,26.45-42.12,25.78-45,1-3.88-33.36,8.35-100.9-8.2-127.8-13.74-22.34-49.38-21.23-64.63-1.03-18.7,24.76-7.02,95.18-10.13,127.87-2.48,26.05-42.57,26.39-45.08,0-4.88-51.21,3.77-110.07,0-162.08,2.3-24.17,35.3-27.97,43.52-6.44,2.22,5.81,1.06,11,2.01,16.98,9.29-11.3,19.32-22.08,33.15-27.85,30.49-12.74,70.96-2.28,85.38,28.85Z"/>
+						<path d="M1717,275h-55.5c-.42,0-7.02-2.65-7.85-3.15-16.33-9.73-9.99-35.12,8.81-36.89,25.31-2.39,54.33,1.87,80.04.04,9.03,1.03,17.47,9.45,18.5,18.5-1.83,25.71,2.44,54.74.04,80.04-2.68,28.24-57.01,46.13-80.84,50.16-95.79,16.2-171.05-48.34-164.19-146.19,7.34-104.72,129.14-156.67,215.29-103.32,14.45,8.95,28.24,25.21,12.68,41.3-17.09,17.68-34.05-2.54-49.32-9.66-72.91-33.95-140.17,24.06-129.54,100.54,10.56,76.01,93.7,98.93,151.87,57.13v-48.5Z"/>
+						<path d="M726,365.5c-3.89,23.45-42.7,24.17-45.89-2.11l-.15-222.92c1.36-15.05,11.28-21.43,25.5-22.5,26.64-2.01,65.05-1.25,92.08,0,61.93,2.87,107.73,35.65,95.14,103.22-6,32.22-26.84,47.29-55.27,58.72-1,.4-1.75-.55-1.44,1.61l54.2,69.81c11.5,25.96-19.28,42.29-38.66,24.66l-67.02-85.98h-58.5v75.5ZM726,249h74.5c50.42,0,66.35-67.6,19.48-84.48-1.93-.69-12.15-3.52-13.48-3.52h-80.5v88Z"/>
+						<path d="M1066.99,358c-24.31,26.56-63.51,35.05-96.97,21.48-19.52-7.92-35.05-25.48-37-47-6.99-77.34,80.71-81.78,134.97-64.48-.18-15.33-3.08-29.91-16.08-39.41-15.2-11.11-42.33-9.78-59.94-6.12-12.08,2.5-23.49,10.92-35.31,3.37-11.11-7.1-10.95-23.63-.59-31.27,15.82-11.67,64.06-15.61,83.42-13.55,50.52,5.37,70.22,35.01,72.55,83.45,1.33,27.65,1.98,66.76,0,94.08-.8,11.09-5.25,22.58-17.64,24.36-17.08,2.47-29.14-7.29-27.42-24.91ZM1067.89,296.1c-24.41-9.48-87.13-15.68-90.88,21.41-4.21,41.68,56.09,42.57,78.99,20.99,12.75-12,12.89-25.89,11.88-42.4Z"/>
+						<path d="M2268,135v10c-1.23,4.9-10.57,16-15.5,16h-69.5v203.5c0,4.09-7.06,13.05-10.66,15.34-13.78,8.77-36.34-.93-36.34-17.34v-201.5h-68.5c-3.06,0-9.97-5.42-11.91-8.09-10.76-14.8-.52-33.59,17.04-34.79,59.32,0,109.29-.11,172.85-.11,12.02,0,18.18,5.84,22.52,16.98Z"/>
+						<path d="M1868,297v65.5c0,22.2-37.58,29.96-45.49,5.49-2.52-77.56-2.52-156.41,0-233.97,4.27-10.98,12.62-15.19,23.95-16.05,29.99-2.27,94.4-2.4,121.8,7.28,76.84,27.13,75.46,135.62-.73,163.78-32.17,11.89-65.92,7.03-99.53,7.97ZM1868,255h63.5c8.14,0,24.71-7.58,31.02-12.98,31.21-26.69,11.68-81.02-29.02-81.02h-65.5v94Z"/>
+					</g>
+			  </svg>
+
+			<div
+				style="
+					position: absolute;
+					top: 33%;
+					left: 50%;
+
+					width: 24rem;
+					transform: translateX(-50%);
+
+					display: flex;
+					flex-direction: column;
+					align-items: center;
+				"
+			>
+				<img
+					id="logo-her"
+					style="width: auto; height: 13rem"
+					src="/static/splash.svg"
+					class="animate-pulse-fast"
+				/>
+
+				<div style="position: relative; width: 24rem; margin-top: 0.5rem">
+					<div
+						id="progress-background"
+						style="
+							position: absolute;
+							width: 100%;
+							height: 0.75rem;
+
+							border-radius: 9999px;
+							background-color: #fafafa9a;
+						"
+					></div>
+
+					<div
+						id="progress-bar"
+						style="
+							position: absolute;
+							width: 0%;
+							height: 0.75rem;
+							border-radius: 9999px;
+							background-color: #fff;
+						"
+						class="bg-white"
+					></div>
+				</div>
+			</div>
+
+			<!-- <span style="position: absolute; bottom: 32px; left: 50%; margin: -36px 0 0 -36px">
+				Footer content
+			</span> -->
+		</div>
+	</body>
+</html>
+
+<style type="text/css" nonce="">
+	html {
+		overflow-y: hidden !important;
+	}
+
+	#splash-screen {
+		background: #fff;
+	}
+	
+	html.dark #splash-screen {
+		background: #000;
+	}
+	
+	#logo {
+		opacity: 0;
+		animation: splash 3s ease-out 1;
+	}
+	
+	@keyframes splash {
+		0% {
+			opacity: 0;
+		}
+		30% {
+			opacity: 1;
+		}
+		60% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
+	}
+
+	#splash-screen #logo .logo-text {
+		fill:#06336e;
+	}
+	
+	html.dark #splash-screen #logo .logo-text {
+		fill:white;
+	}
+
+	html.her #splash-screen {
+		background: #983724;
+	}
+
+	#logo-her {
+		display: none;
+	}
+
+	#progress-background {
+		display: none;
+	}
+
+	#progress-bar {
+		display: none;
+	}
+
+	html.her #logo {
+		display: none;
+	}
+
+	html.her #logo-her {
+		display: block;
+		filter: invert(1);
+	}
+
+	html.her #progress-background {
+		display: block;
+	}
+
+	html.her #progress-bar {
+		display: block;
+	}
+
+	@media (max-width: 24rem) {
+		html.her #progress-background {
+			display: none;
+		}
+
+		html.her #progress-bar {
+			display: none;
+		}
+	}
+
+	@keyframes pulse {
+		50% {
+			opacity: 0.65;
+		}
+	}
+
+	.animate-pulse-fast {
+		animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	}
+</style>

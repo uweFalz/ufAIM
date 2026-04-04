@@ -1,0 +1,30 @@
+// Placeholder dictionary for Kiswahili (sw)
+// Direction: ltr
+// Status: skeleton / English fallback values
+export const sw = {
+	booting: "Starting …",
+	boot_start: "bootApp(): start",
+	boot_ready: "App ready.",
+	boot_ok: "OK",
+	boot_failed: "Boot failed",
+	boot_ui: "UI wiring …",
+	boot_ui_ok: "UI OK",
+	status_ready: "Ready",
+	status_busy: "Importing …",
+	status_error: "Error",
+	import_detected_vermesn: "VermEsn detected",
+	import_detected_landxml: "LandXML detected",
+	import_detected_gnd: "GND Edit detected",
+	import_detected_unknown: "Format not recognized",
+	import_result_alignment_ready: "{fileName}: 1 alignment ready",
+	import_result_alignments_ready: "{fileName}: {count} alignments ready",
+	import_result_no_usable_alignment: "{fileName}: no usable plan geometry",
+	import_result_only_aux_data: "{fileName}: auxiliary data only",
+	import_result_partially_supported: "{fileName}: source recognized, content only partially supported",
+	import_result_failed: "{fileName}: import failed",
+	import_note_aux_data_present: "Auxiliary data present",
+	import_note_crs_missing: "CRS missing",
+	import_note_review_needed: "Review needed",
+	lang_button: "Language",
+	lang_menu_label: "Language",
+};

@@ -1,85 +1,98 @@
 // app/core/state/storeShape.js
 //
-// WorkspaceState "contract" (single source of truth for app-wide state keys)
+// WorkspaceState contract (window-side transitional state)
+//
+// Current role:
+// - local window/session compatibility
+// - UI/view state
+// - temporary mirrors of canonical runtime state
+//
+// IMPORTANT:
+// - canonical SPOT / ImportInbox / WorkingSet data do NOT belong here
+// - routeProjects / artifacts / import_* are transitional mirror fields only
+// - new logic must NOT be built on those fields
 //
 // Categories:
-// - SPOT (Single Point of Truth):
-//     routeProjects, artifacts, view_pins, activeRouteProjectId, activeSlot
-// - UI caches / quick hooks (derived, can be regenerated from SPOT):
-//     import_* (polyline/profile/cant/meta/activeArtifacts), cursor
+// - legacy focus mirror:
+//     activeRouteProjectId, activeSlot
 //
-// Notes:
-// - cursor is a small UI control state (currently: { s } in meters).
-// - view_pins are user intent and must survive ensureStateShape().
+// - transitional mirrors / caches:
+//     routeProjects, artifacts, spot_decisions, import_*
+//
+// - actual window/view state:
+//     cursor, view_pins, view_chunks, te_*
 //
 // If you add state keys: update BOTH makeInitialState() + ensureStateShape().
 
 function normalizePins(pins) {
 	if (!Array.isArray(pins)) return [];
-	// Keep it tolerant; UI/VC can accept legacy shapes.
-	// Expected: [{ rpId, slot, at? }, ...]
+
 	return pins
-	.filter(Boolean)
-	.map((p) => {
-		if (typeof p === "string") {
-			const [rpId, slot] = p.split("::");
-			return { rpId, slot: slot || "right" };
-		}
-		if (typeof p === "object") {
-			return {
-				rpId: String(p.rpId ?? p.baseId ?? ""),
-				slot: String(p.slot ?? "right"),
-				at: p.at ?? undefined,
-			};
-		}
-		return null;
-	})
-	.filter(p => p?.rpId);
+		.filter(Boolean)
+		.map((p) => {
+			if (typeof p === "string") {
+				const [rpId, slot] = p.split("::");
+				return { rpId, slot: slot || "right" };
+			}
+			if (typeof p === "object") {
+				return {
+					rpId: String(p.rpId ?? p.baseId ?? ""),
+					slot: String(p.slot ?? "right"),
+					at: p.at ?? undefined,
+				};
+			}
+			return null;
+		})
+		.filter(p => p?.rpId);
 }
 
-// 
+//
 // ...
 //
 export function makeInitialState() {
 	return {
-		// selection
+		// --------------------------------------------------------
+		// legacy focus mirror
+		// @transition replace by windowSession.focus
+		// --------------------------------------------------------
 		activeRouteProjectId: null,
 		activeSlot: "right",
 
-		// cursor
+		// --------------------------------------------------------
+		// actual window/view state
+		// --------------------------------------------------------
 		cursor: { s: 0 },
+		view_pins: [],      // [{rpId, slot, at}]
+		view_chunks: [],
 
-		// registry
-		routeProjects: {},      // rpId -> {id, slots, meta, ...}
-		artifacts: {},          // artifactId -> artifact
-		
-		// state
+		// --------------------------------------------------------
+		// transitional mirrors / caches
+		// @transition do not extend usage
+		// --------------------------------------------------------
+		routeProjects: {},  // rpId -> {id, slots, meta, ...}
+		artifacts: {},      // artifactId -> artifact
 		spot_decisions: {}, // key -> "accept" | "defer" | "ignore"
 
-		// view cache (quick hooks)
 		import_activeArtifacts: null,
 		import_polyline2d: null,
 		import_marker2d: null,
 		import_profile1d: null,
 		import_cant1d: null,
 		import_meta: null,
-		import_tracks2d: [],   // <<< NEU
+		import_tracks2d: [],
 
-		// view state
-		view_pins: [],          // [{rpId, slot, at}]
-		view_chunks: [],   // ✅ neu
-		
-		// Transition Editor (canonical)
+		// --------------------------------------------------------
+		// Transition Editor (window/view state)
+		// --------------------------------------------------------
 		te_open: false,
 		te_presetId: "",
-		te_presetSpec: null,   // serializable preset spec/cache vom Master
-		// makeInitialState():
-		te_splitsPresetId: "",   // presetId, für die te_w1/te_w2 gelten
-		te_splitsDirty: false,   // true sobald User Slider bewegt
+		te_presetSpec: null,
+		te_splitsPresetId: "",
+		te_splitsDirty: false,
 		te_w1: 0.25,
 		te_w2: 0.75,
-		te_plot: "k",   // "k" | "k1" | "k2"
-		te_u: 0.0,      // 0..1
+		te_plot: "k",
+		te_u: 0.0,
 	};
 }
 
@@ -87,15 +100,13 @@ export function makeInitialState() {
 // ...
 //
 export function ensureStateShape(state) {
-	
 	const s = state ?? {};
 
 	// --- TE presetSpec: keep if it matches current presetId ---
 	const pid = String(s.te_presetId ?? "");
-	const ps  = (s.te_presetSpec && typeof s.te_presetSpec === "object") ? s.te_presetSpec : null;
+	const ps = (s.te_presetSpec && typeof s.te_presetSpec === "object") ? s.te_presetSpec : null;
 	const safePresetSpec =
-	(ps && String(ps.presetId ?? ps.presetID ?? "") === pid) ? ps : null;
-
+		(ps && String(ps.presetId ?? ps.presetID ?? "") === pid) ? ps : null;
 
 	const w1 = Number.isFinite(s.te_w1) ? Math.max(0, Math.min(1, s.te_w1)) : 0.25;
 	const w2 = Number.isFinite(s.te_w2) ? Math.max(0, Math.min(1, s.te_w2)) : 0.75;
@@ -103,37 +114,42 @@ export function ensureStateShape(state) {
 	const u = Number.isFinite(s.te_u) ? Math.max(0, Math.min(1, s.te_u)) : 0.0;
 
 	return {
-		// SPOT
+		// --------------------------------------------------------
+		// legacy focus mirror
+		// @transition replace by windowSession.focus
+		// --------------------------------------------------------
 		activeRouteProjectId: s.activeRouteProjectId ?? null,
 		activeSlot: s.activeSlot ?? "right",
 
+		// --------------------------------------------------------
+		// transitional mirrors / caches
+		// @transition do not extend usage
+		// --------------------------------------------------------
 		routeProjects: s.routeProjects ?? {},
 		artifacts: s.artifacts ?? {},
-		
-		// state
-		spot_decisions: s.spot_decisions ?? {}, // key -> "accept" | "defer" | "ignore"
+		spot_decisions: s.spot_decisions ?? {},
 
-		// pins must survive
-		view_pins: normalizePins(s.view_pins),
-		view_chunks : s.view_chunks ?? [],
-
-		// cursor
-		cursor: { ...(s.cursor ?? {}), s: Number.isFinite(s.cursor?.s) ? s.cursor.s : 0 },
-
-		// quick hooks
 		import_polyline2d: s.import_polyline2d ?? null,
 		import_marker2d: s.import_marker2d ?? null,
 		import_profile1d: s.import_profile1d ?? null,
 		import_cant1d: s.import_cant1d ?? null,
 		import_meta: s.import_meta ?? null,
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
-		import_tracks2d: Array.isArray(s.import_tracks2d) ? s.import_tracks2d : [],   // <<< NEU
+		import_tracks2d: Array.isArray(s.import_tracks2d) ? s.import_tracks2d : [],
 
-		// Transition Editor (canonical, survives reload)
+		// --------------------------------------------------------
+		// actual window/view state
+		// --------------------------------------------------------
+		view_pins: normalizePins(s.view_pins),
+		view_chunks: s.view_chunks ?? [],
+		cursor: { ...(s.cursor ?? {}), s: Number.isFinite(s.cursor?.s) ? s.cursor.s : 0 },
+
+		// --------------------------------------------------------
+		// Transition Editor (window/view state)
+		// --------------------------------------------------------
 		te_open: Boolean(s.te_open),
 		te_presetId: String(s.te_presetId ?? ""),
-		te_presetSpec: safePresetSpec, // keep matching cached spec, else null
-		// ensureStateShape():
+		te_presetSpec: safePresetSpec,
 		te_splitsPresetId: String(s.te_splitsPresetId ?? ""),
 		te_splitsDirty: Boolean(s.te_splitsDirty),
 		te_w1: Math.min(w1, w2),

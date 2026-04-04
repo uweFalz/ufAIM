@@ -6,11 +6,145 @@ export const de = {
 	boot_ready: "App bereit.",
 	boot_ok: "OK",
 	boot_failed: "Boot fehlgeschlagen",
-	
 	boot_ui: "UI wiring …",
 	boot_ui_ok: "UI OK",
-	
-	status_ready: "status_ready",
+
+	status_ready: "Bereit",
 	status_busy: "Import …",
 	status_error: "Fehler",
+
+	import_detected_vermesn: "VermEsn erkannt",
+	import_detected_landxml: "LandXML erkannt",
+	import_detected_gnd: "GND Edit erkannt",
+	import_detected_unknown: "Format nicht erkannt",
+
+	import_result_alignment_ready: "{fileName}: 1 Alignment bereit",
+	import_result_alignments_ready: "{fileName}: {count} Alignments bereit",
+	import_result_no_usable_alignment: "{fileName}: keine nutzbare Lagegeometrie",
+	import_result_only_aux_data: "{fileName}: nur Zusatzdaten erkannt",
+	import_result_partially_supported: "{fileName}: Quelle erkannt, Inhalt nur teilweise auswertbar",
+	import_result_failed: "{fileName}: Import fehlgeschlagen",
+
+	import_note_aux_data_present: "Zusatzdaten vorhanden",
+	import_note_crs_missing: "CRS fehlt",
+	import_note_review_needed: "Prüfung nötig",
+
+	lang_button: "Sprache",
+	lang_menu_label: "Sprache",
+
+	// ------------------------------------------------------------
+	// SHELL / TOOLBAR
+	// ------------------------------------------------------------
+
+	btn_import: "Import",
+	btn_spot: "SPOT",
+	btn_transition: "Transition",
+	btn_bands: "Bänder",
+	btn_section: "Schnitt",
+	btn_status_debug: "Status / Debug",
+
+	btn_cursor_minus_title: "s verringern",
+	btn_cursor_plus_title: "s erhöhen",
+	cursor_placeholder: "Station",
+
+	slot_select_title: "Aktiver Slot",
+	slot_right: "rechts",
+	slot_km: "km",
+	slot_left: "links",
+
+	label_autofit: "AutoFit",
+
+	btn_fit: "Fit",
+	btn_fit_title: "Aktives Objekt einpassen",
+
+	btn_pin_toggle: "Pin",
+	btn_pin_toggle_title: "Aktives Objekt anpinnen / lösen",
+
+	btn_pins_clear: "Clear",
+	btn_pins_clear_title: "Alle Pins entfernen",
+
+	pins_info_empty: "Pins: 0",
+
+	// ------------------------------------------------------------
+	// PANELS
+	// ------------------------------------------------------------
+
+	panel_spot: "SPOT",
+	panel_transition: "Transition Editor",
+	panel_bands: "Bänder",
+	panel_section: "Schnitt",
+	panel_status_debug: "Status / Debug",
+
+	btn_close_title: "Schließen",
+
+	label_preset: "Preset",
+	label_status: "Status:",
+	
+	spot_activate: "Aktivieren",
+	spot_pin: "Pin",
+	spot_unpin: "Unpin",
+	spot_decision_accept: "Annehmen",
+	spot_decision_defer: "Zurückstellen",
+	spot_decision_ignore: "Ignorieren",
+	spot_decision_clear_title: "Entscheidung löschen",
+	spot_alignment_fallback: "Alignment",
+	spot_meta_kind: "Typ",
+	spot_meta_outcome: "Status",
+	spot_meta_conf: "Konf",
+	spot_meta_source: "Quelle",
+	spot_meta_files: "Dateien",
+	spot_meta_missing: "Fehlt",
+	spot_header_alignments: "Alignments",
+	spot_header_files: "Dateien",
+	spot_empty: "(Dateien droppen, um SPOT-Kandidaten zu erzeugen)",
+
+	bands_header_cursor_s: "(Bänder) cursor.s",
+	bands_profile_title: "z(s) (Profil)",
+	bands_profile_empty: "z(s): (noch kein Profil / GRA)",
+	bands_cant_title: "u(s) (Cant/Überhöhung)",
+	bands_cant_empty: "u(s): (noch keine Überhöhung / Cant)",
+
+	section_header_cursor_s: "(Schnitt) bei cursor.s",
+	section_no_sampling: "Noch kein Alignment-Sampling vorhanden.",
+	section_sample: "Sample",
+	section_tangent: "Tangente",
+	section_chainage: "Stationierung",
+	section_total: "gesamt",
+	section_placeholder: "Querprofil: später (Terrain/Objekte/Lichtraum etc.).",
+
+	chunk_no_active_polyline: "Chunk: keine aktive Polyline vorhanden.",
+	chunk_start_set: "Chunk-Start gesetzt bei s={s} (Shift+Klick auf Ende)",
+	chunk_invalid_range: "Chunk: ungültiger Bereich.",
+	chunk_created: "Chunk erzeugt: s={s0}..{s1}",
+	chunk_copied_json: "Chunk kopiert (JSON).",
+	chunk_copy_failed: "Kopieren fehlgeschlagen (Clipboard blockiert).",
+	clipboard_api_unavailable: "Clipboard-API nicht verfügbar.",
+	pin_unpin_missing_action: "Unpin: store.actions.unpinRouteProject fehlt.",
+	viewcontroller_crashed: "❌ ViewController abgestürzt (isoliert): {message}",
+
+	pins_info: "Pins: {count}",
+	
+	props_active: "aktiv",
+	props_jump: "Springen",
+	props_pin_jump_title: "Zu diesem gepinnten Alignment springen",
+	props_unpin_title: "Pin lösen",
+	props_no_pins: "(noch keine Pins)",
+
+	props_chunk_pending: "Shift-Chunk-Start: s={s} (Ende anklicken)",
+	props_chunk_frozen: "fixiert",
+	props_chunk_hidden: "versteckt",
+
+	props_chunk_freeze_title: "Fixieren (vor Auto-Entfernung schützen)",
+	props_chunk_hide_title: "Ein-/Ausblenden",
+	props_chunk_remove_title: "Entfernen",
+	props_chunk_copy_metrics_title: "Metrik-JSON kopieren",
+	props_chunk_copy_json_title: "Chunk-JSON kopieren",
+
+	props_no_chunks: "(noch keine Chunks) — Shift+Klick Start/Ende",
+	props_pinned: "Pins",
+	props_chunks: "Chunks",
+	props_clear: "Leeren",
+	
+	props_pins_title: "Pins",
+props_chunks_title: "Chunks",
 };

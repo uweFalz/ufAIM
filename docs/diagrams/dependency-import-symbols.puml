@@ -1,5 +1,4 @@
 @startuml
-
 left to right direction
 skinparam packageStyle rectangle
 skinparam linetype ortho
@@ -14,34 +13,91 @@ package "src" {
     class "runImportPipeline()" as S_src_import_runImportPipeline_js__runImportPipeline
     N_src_import_runImportPipeline_js .. S_src_import_runImportPipeline_js__runImportPipeline
     package "domain" {
+      class "buildAlignmentImportOutcome.js" as N_src_import_domain_buildAlignmentImportOutcome_js
+      class "buildAlignmentImportOutcome()" as S_src_import_domain_buildAlignmentImportOutcome_js__buildAlignmentImportOutcome
+      N_src_import_domain_buildAlignmentImportOutcome_js .. S_src_import_domain_buildAlignmentImportOutcome_js__buildAlignmentImportOutcome
+      class "buildImportResultFromParsed.js" as N_src_import_domain_buildImportResultFromParsed_js
+      class "buildImportResultFromParsed()" as S_src_import_domain_buildImportResultFromParsed_js__buildImportResultFromParsed
+      N_src_import_domain_buildImportResultFromParsed_js .. S_src_import_domain_buildImportResultFromParsed_js__buildImportResultFromParsed
       class "buildSparseFromLandFAT.js" as N_src_import_domain_buildSparseFromLandFAT_js
       class "buildSparseFromLandFAT()" as S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
       N_src_import_domain_buildSparseFromLandFAT_js .. S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
       class "classifyImportResult.js" as N_src_import_domain_classifyImportResult_js
       class "classifyAlignmentForSpot()" as S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
       N_src_import_domain_classifyImportResult_js .. S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
+      class "collectLandFatProfilesAndCants.js" as N_src_import_domain_collectLandFatProfilesAndCants_js
+      class "collectLandFatProfilesAndCants()" as S_src_import_domain_collectLandFatProfilesAndCants_js__collectLandFatProfilesAndCants
+      N_src_import_domain_collectLandFatProfilesAndCants_js .. S_src_import_domain_collectLandFatProfilesAndCants_js__collectLandFatProfilesAndCants
+      class "importItemFactories.js" as N_src_import_domain_importItemFactories_js
+      class "buildAlignmentSpotCandidate()" as S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
+      class "makeWorkingItem()" as S_src_import_domain_importItemFactories_js__makeWorkingItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeWorkingItem
       class "importReasons.js" as N_src_import_domain_importReasons_js
       class "IMPORT_REASONS()" as S_src_import_domain_importReasons_js__IMPORT_REASONS
       N_src_import_domain_importReasons_js .. S_src_import_domain_importReasons_js__IMPORT_REASONS
-      class "landXMLNormalizers.js" as N_src_import_domain_landXMLNormalizers_js
-      class "normalizeLandXMLBool()" as S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLBool
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLBool
-      class "normalizeLandXMLDirection()" as S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLDirection
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLDirection
-      class "normalizeLandXMLNumber()" as S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLNumber
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLNumber
-      class "normalizeLandXMLRadius()" as S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLRadius
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLRadius
-      class "normalizeLandXMLRotation()" as S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLRotation
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLRotation
-      class "normalizeLandXMLSpiralType()" as S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLSpiralType
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeLandXMLSpiralType
-      class "normalizeSurveyPoint()" as S_src_import_domain_landXMLNormalizers_js__normalizeSurveyPoint
-      N_src_import_domain_landXMLNormalizers_js .. S_src_import_domain_landXMLNormalizers_js__normalizeSurveyPoint
+      class "sparseWriter.js" as N_src_import_domain_sparseWriter_js
+      class "createSparseAlignment()" as S_src_import_domain_sparseWriter_js__createSparseAlignment
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__createSparseAlignment
+      class "enforceAlternation()" as S_src_import_domain_sparseWriter_js__enforceAlternation
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__enforceAlternation
+      class "fixed()" as S_src_import_domain_sparseWriter_js__fixed
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__fixed
+      class "immediate()" as S_src_import_domain_sparseWriter_js__immediate
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__immediate
+      class "kink()" as S_src_import_domain_sparseWriter_js__kink
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__kink
+      class "transition()" as S_src_import_domain_sparseWriter_js__transition
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__transition
+      class "zeroFixed()" as S_src_import_domain_sparseWriter_js__zeroFixed
+      N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__zeroFixed
       package "_legacy" <<legacy>> {
-        class "normalizeLandFATValues.js" as N_src_import_domain__legacy_normalizeLandFATValues_js
-        class "normalizeParsedToLandFAT.js" as N_src_import_domain__legacy_normalizeParsedToLandFAT_js
+        class "template.js" as N_src_import_domain__legacy_template_js
       }
+    }
+    package "landfat" {
+      class "landFatWriter.js" as N_src_import_landfat_landFatWriter_js
+      class "angle()" as S_src_import_landfat_landFatWriter_js__angle
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__angle
+      class "cantStation()" as S_src_import_landfat_landFatWriter_js__cantStation
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__cantStation
+      class "createAlignment()" as S_src_import_landfat_landFatWriter_js__createAlignment
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__createAlignment
+      class "createCoordGeom()" as S_src_import_landfat_landFatWriter_js__createCoordGeom
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__createCoordGeom
+      class "createDocument()" as S_src_import_landfat_landFatWriter_js__createDocument
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__createDocument
+      class "curve()" as S_src_import_landfat_landFatWriter_js__curve
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__curve
+      class "kink()" as S_src_import_landfat_landFatWriter_js__kink
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__kink
+      class "line()" as S_src_import_landfat_landFatWriter_js__line
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__line
+      class "measure()" as S_src_import_landfat_landFatWriter_js__measure
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__measure
+      class "paraCurve()" as S_src_import_landfat_landFatWriter_js__paraCurve
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__paraCurve
+      class "point2D()" as S_src_import_landfat_landFatWriter_js__point2D
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__point2D
+      class "profAlign()" as S_src_import_landfat_landFatWriter_js__profAlign
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__profAlign
+      class "profile()" as S_src_import_landfat_landFatWriter_js__profile
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__profile
+      class "pushAlignment()" as S_src_import_landfat_landFatWriter_js__pushAlignment
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__pushAlignment
+      class "pvi()" as S_src_import_landfat_landFatWriter_js__pvi
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__pvi
+      class "radiusValue()" as S_src_import_landfat_landFatWriter_js__radiusValue
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__radiusValue
+      class "speedStation()" as S_src_import_landfat_landFatWriter_js__speedStation
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__speedStation
+      class "spiral()" as S_src_import_landfat_landFatWriter_js__spiral
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__spiral
+      class "staEquation()" as S_src_import_landfat_landFatWriter_js__staEquation
+      N_src_import_landfat_landFatWriter_js .. S_src_import_landfat_landFatWriter_js__staEquation
+      class "validateLandFAT.js" as N_src_import_landfat_validateLandFAT_js
+      class "validateLandFAT()" as S_src_import_landfat_validateLandFAT_js__validateLandFAT
+      N_src_import_landfat_validateLandFAT_js .. S_src_import_landfat_validateLandFAT_js__validateLandFAT
     }
     package "parsers" {
       class "parserRegistry.js" as N_src_import_parsers_parserRegistry_js
@@ -94,12 +150,38 @@ package "src" {
         N_src_import_parsers_landXML_index_js .. S_src_import_parsers_landXML_index_js__parse
         class "sniff()" as S_src_import_parsers_landXML_index_js__sniff
         N_src_import_parsers_landXML_index_js .. S_src_import_parsers_landXML_index_js__sniff
+        class "landXMLNormalizers.js" as N_src_import_parsers_landXML_landXMLNormalizers_js
+        class "normalizeLandXMLBool()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLBool
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLBool
+        class "normalizeLandXMLDirection()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLDirection
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLDirection
+        class "normalizeLandXMLNumber()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLNumber
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLNumber
+        class "normalizeLandXMLRadius()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLRadius
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLRadius
+        class "normalizeLandXMLRotation()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLRotation
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLRotation
+        class "normalizeLandXMLSpiralType()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLSpiralType
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeLandXMLSpiralType
+        class "normalizeSurveyPoint()" as S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeSurveyPoint
+        N_src_import_parsers_landXML_landXMLNormalizers_js .. S_src_import_parsers_landXML_landXMLNormalizers_js__normalizeSurveyPoint
         class "parseLandXML.js" as N_src_import_parsers_landXML_parseLandXML_js
         class "parseLandXML()" as S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
         N_src_import_parsers_landXML_parseLandXML_js .. S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
+        class "semanticMap.landXML.js" as N_src_import_parsers_landXML_semanticMap_landXML_js
+        class "LANDXML_SEMANTIC_MAP()" as S_src_import_parsers_landXML_semanticMap_landXML_js__LANDXML_SEMANTIC_MAP
+        N_src_import_parsers_landXML_semanticMap_landXML_js .. S_src_import_parsers_landXML_semanticMap_landXML_js__LANDXML_SEMANTIC_MAP
       }
       package "technet" {
         class "sharedTechnet.js" as N_src_import_parsers_technet_sharedTechnet_js
+        class "TECHNET_DB()" as S_src_import_parsers_technet_sharedTechnet_js__TECHNET_DB
+        N_src_import_parsers_technet_sharedTechnet_js .. S_src_import_parsers_technet_sharedTechnet_js__TECHNET_DB
+        class "TECHNET_EDGE_FAMILIES()" as S_src_import_parsers_technet_sharedTechnet_js__TECHNET_EDGE_FAMILIES
+        N_src_import_parsers_technet_sharedTechnet_js .. S_src_import_parsers_technet_sharedTechnet_js__TECHNET_EDGE_FAMILIES
+        class "TECHNET_SHEET_NAMES()" as S_src_import_parsers_technet_sharedTechnet_js__TECHNET_SHEET_NAMES
+        N_src_import_parsers_technet_sharedTechnet_js .. S_src_import_parsers_technet_sharedTechnet_js__TECHNET_SHEET_NAMES
+        class "TECHNET_TYPES()" as S_src_import_parsers_technet_sharedTechnet_js__TECHNET_TYPES
+        N_src_import_parsers_technet_sharedTechnet_js .. S_src_import_parsers_technet_sharedTechnet_js__TECHNET_TYPES
         package "gndEdit" {
           class "index.js" as N_src_import_parsers_technet_gndEdit_index_js
           class "meta()" as S_src_import_parsers_technet_gndEdit_index_js__meta
@@ -111,6 +193,26 @@ package "src" {
           class "parseGND_XLSX.js" as N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js
           class "parseGND_XLSX()" as S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
           N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js .. S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
+          class "semanticMap.GND.js" as N_src_import_parsers_technet_gndEdit_semanticMap_GND_js
+          package "_legacy" <<legacy>> {
+            class "parseGND_XLSX.js" as N_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js
+            class "parseGND_XLSX()" as S_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js__parseGND_XLSX
+            N_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js .. S_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js__parseGND_XLSX
+          }
+        }
+        package "shared" {
+          class "traLikeCoordGeom.js" as N_src_import_parsers_technet_shared_traLikeCoordGeom_js
+          class "buildCoordGeomFromTraLikeRecords()" as S_src_import_parsers_technet_shared_traLikeCoordGeom_js__buildCoordGeomFromTraLikeRecords
+          N_src_import_parsers_technet_shared_traLikeCoordGeom_js .. S_src_import_parsers_technet_shared_traLikeCoordGeom_js__buildCoordGeomFromTraLikeRecords
+          class "extractStaEquationsFromTraLikeRecords()" as S_src_import_parsers_technet_shared_traLikeCoordGeom_js__extractStaEquationsFromTraLikeRecords
+          N_src_import_parsers_technet_shared_traLikeCoordGeom_js .. S_src_import_parsers_technet_shared_traLikeCoordGeom_js__extractStaEquationsFromTraLikeRecords
+          class "mapTraLikeRecordToElements()" as S_src_import_parsers_technet_shared_traLikeCoordGeom_js__mapTraLikeRecordToElements
+          N_src_import_parsers_technet_shared_traLikeCoordGeom_js .. S_src_import_parsers_technet_shared_traLikeCoordGeom_js__mapTraLikeRecordToElements
+          class "traLikeSemanticMaps.js" as N_src_import_parsers_technet_shared_traLikeSemanticMaps_js
+          class "getTraLikeSemanticMapForGND()" as S_src_import_parsers_technet_shared_traLikeSemanticMaps_js__getTraLikeSemanticMapForGND
+          N_src_import_parsers_technet_shared_traLikeSemanticMaps_js .. S_src_import_parsers_technet_shared_traLikeSemanticMaps_js__getTraLikeSemanticMapForGND
+          class "getTraLikeSemanticMapForTRA()" as S_src_import_parsers_technet_shared_traLikeSemanticMaps_js__getTraLikeSemanticMapForTRA
+          N_src_import_parsers_technet_shared_traLikeSemanticMaps_js .. S_src_import_parsers_technet_shared_traLikeSemanticMaps_js__getTraLikeSemanticMapForTRA
         }
         package "vermEsn" {
           class "index.js" as N_src_import_parsers_technet_vermEsn_index_js
@@ -127,20 +229,39 @@ package "src" {
           N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js .. S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__liftParsedTraToLandFAT
           class "parseTraGraAuto()" as S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__parseTraGraAuto
           N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js .. S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__parseTraGraAuto
+          class "semanticMap.GRA.js" as N_src_import_parsers_technet_vermEsn_semanticMap_GRA_js
+          class "VERMESN_GRA_SEMANTIC_MAP()" as S_src_import_parsers_technet_vermEsn_semanticMap_GRA_js__VERMESN_GRA_SEMANTIC_MAP
+          N_src_import_parsers_technet_vermEsn_semanticMap_GRA_js .. S_src_import_parsers_technet_vermEsn_semanticMap_GRA_js__VERMESN_GRA_SEMANTIC_MAP
+          class "semanticMap.TRA.js" as N_src_import_parsers_technet_vermEsn_semanticMap_TRA_js
+          class "VERMESN_TRA_SEMANTIC_MAP()" as S_src_import_parsers_technet_vermEsn_semanticMap_TRA_js__VERMESN_TRA_SEMANTIC_MAP
+          N_src_import_parsers_technet_vermEsn_semanticMap_TRA_js .. S_src_import_parsers_technet_vermEsn_semanticMap_TRA_js__VERMESN_TRA_SEMANTIC_MAP
           class "sharedVermesn.js" as N_src_import_parsers_technet_vermEsn_sharedVermesn_js
-          class "BYTE_LAYOUT()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__BYTE_LAYOUT
-          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__BYTE_LAYOUT
+          class "VERMESN_KIND_CODES()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_KIND_CODES
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_KIND_CODES
+          class "VERMESN_LAYOUT_PATCH_NOTES()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_LAYOUT_PATCH_NOTES
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_LAYOUT_PATCH_NOTES
+          class "VERMESN_LAYOUT_SOURCE()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_LAYOUT_SOURCE
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_LAYOUT_SOURCE
+          class "VERMESN_SOURCE_META()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_SOURCE_META
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__VERMESN_SOURCE_META
           class "baseMetaFromFile()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__baseMetaFromFile
           N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__baseMetaFromFile
           class "decodeBinary()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
           N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
-          class "traDir_to_eastCCW()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__traDir_to_eastCCW
-          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__traDir_to_eastCCW
+          class "getVermEsnLayout()" as S_src_import_parsers_technet_vermEsn_sharedVermesn_js__getVermEsnLayout
+          N_src_import_parsers_technet_vermEsn_sharedVermesn_js .. S_src_import_parsers_technet_vermEsn_sharedVermesn_js__getVermEsnLayout
         }
       }
     }
+    package "semantic" {
+      class "landXmlSemanticDictionary.js" as N_src_import_semantic_landXmlSemanticDictionary_js
+      class "LANDXML_SEMANTIC_DICTIONARY()" as S_src_import_semantic_landXmlSemanticDictionary_js__LANDXML_SEMANTIC_DICTIONARY
+      N_src_import_semantic_landXmlSemanticDictionary_js .. S_src_import_semantic_landXmlSemanticDictionary_js__LANDXML_SEMANTIC_DICTIONARY
+    }
     package "sniffers" {
       class "sniffImportFile.js" as N_src_import_sniffers_sniffImportFile_js
+      class "default()" as S_src_import_sniffers_sniffImportFile_js__default
+      N_src_import_sniffers_sniffImportFile_js .. S_src_import_sniffers_sniffImportFile_js__default
       class "sniffImportFile()" as S_src_import_sniffers_sniffImportFile_js__sniffImportFile
       N_src_import_sniffers_sniffImportFile_js .. S_src_import_sniffers_sniffImportFile_js__sniffImportFile
       package "_legacy" <<legacy>> {
@@ -152,15 +273,35 @@ package "src" {
   }
 }
 
-N_src_import_parsers_technet_vermEsn_index_js --> N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js
-N_src_import_runImportPipeline_js --> N_src_import_parsers_parserRegistry_js
+N_src_import_domain_buildSparseFromLandFAT_js --> N_src_import_domain_sparseWriter_js
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__makeWorkingItem
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_buildAlignmentImportOutcome_js__buildAlignmentImportOutcome
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_collectLandFatProfilesAndCants_js__collectLandFatProfilesAndCants
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeWorkingItem
 N_src_import_domain_classifyImportResult_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
+N_src_import_domain_collectLandFatProfilesAndCants_js --> S_src_import_domain_importItemFactories_js__makeWorkingItem
 N_src_import_parsers_landXML_index_js --> S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
 N_src_import_parsers_technet_gndEdit_index_js --> S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> S_src_import_parsers_technet_sharedTechnet_js__TECHNET_EDGE_FAMILIES
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> S_src_import_parsers_technet_sharedTechnet_js__TECHNET_SHEET_NAMES
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> S_src_import_parsers_technet_shared_traLikeCoordGeom_js__buildCoordGeomFromTraLikeRecords
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> S_src_import_parsers_technet_shared_traLikeSemanticMaps_js__getTraLikeSemanticMapForGND
+N_src_import_parsers_technet_vermEsn_index_js --> S_src_import_parsers_technet_vermEsn_parseTRA_GRA_js__parseTraGraAuto
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_shared_traLikeCoordGeom_js__buildCoordGeomFromTraLikeRecords
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_shared_traLikeCoordGeom_js__extractStaEquationsFromTraLikeRecords
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_shared_traLikeSemanticMaps_js__getTraLikeSemanticMapForTRA
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_vermEsn_sharedVermesn_js__baseMetaFromFile
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
-N_src_import_runImportPipeline_js --> S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
-N_src_import_runImportPipeline_js --> S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
-N_src_import_runImportPipeline_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
+N_src_import_parsers_technet_vermEsn_sharedVermesn_js --> S_src_import_parsers_technet_sharedTechnet_js__TECHNET_TYPES
+N_src_import_runImportPipeline_js --> S_src_import_domain_buildImportResultFromParsed_js__buildImportResultFromParsed
+N_src_import_runImportPipeline_js --> S_src_import_parsers_parserRegistry_js__loadParserModule
+N_src_import_runImportPipeline_js --> S_src_import_parsers_validateParserModule_js__validateParserModule
 N_src_import_runImportPipeline_js --> S_src_import_sniffers_sniffImportFile_js__sniffImportFile
+N_src_import_sniffers_sniffImportFile_js --> S_src_import_parsers_parserRegistry_js__getParserIds
+N_src_import_sniffers_sniffImportFile_js --> S_src_import_parsers_parserRegistry_js__loadParserModule
+N_src_import_sniffers_sniffImportFile_js --> S_src_import_parsers_validateParserModule_js__validateParserModule
 @enduml

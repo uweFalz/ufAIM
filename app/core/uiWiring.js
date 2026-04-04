@@ -1,6 +1,12 @@
 // app/core/uiWiring.js
 //
-// UI only:
+// UI wiring only
+//
+// @baustelle [I18N_GATE]
+// All user-visible strings must pass through t(...).
+// uiWiring is the translation gate for status/help/button text.
+// Do not introduce raw UI text literals here.
+//
 // - find elements
 // - wire buttons / inputs
 // - write status/log/boards
@@ -12,7 +18,7 @@
 //
 // i18n: all UI strings via t(...)
 
-import { t } from "@app/i18n/strings.js";
+import { t, getLanguages, getLanguage, setLanguage } from "@app/i18n/strings.js";
 import { clamp01 } from "@src/utils/helpers.js";
 import { makeSpotView } from "@app/view/overlays/spotView.js";
 import { savePanelLayout } from "@app/view/shell/panelLayoutStore.js";
@@ -57,17 +63,35 @@ function markPanelHidden(panelEl, hidden) {
 	savePanelLayout(panelEl.id, { hidden: Boolean(hidden) });
 }
 
+function escapeHtmlText(s) {
+	return String(s ?? "")
+	.replaceAll("&", "&amp;")
+	.replaceAll("<", "&lt;")
+	.replaceAll(">", "&gt;")
+	.replaceAll('"', "&quot;")
+	.replaceAll("'", "&#39;");
+}
+
 // ------------------------------------------------------------
 // wireUI
 // ------------------------------------------------------------
 export function wireUI({ logElement, statusElement, prefs } = {}) {
+	
+	// console.log("[wireUI] btnImport", document.getElementById("btnImport"));
+	// console.log("[wireUI] i18n count", document.querySelectorAll("[data-i18n]").length);
+	
 	const elements = {
+		buttonLang: document.getElementById("btnLang"),
+		langMenu: document.getElementById("langMenu"),
+		
 		log: resolveElement(logElement, "log"),
 		status: resolveElement(statusElement, "status"),
 		props: document.getElementById("props"),
-
-		// SPOT host
-		importSession: document.getElementById("importSession"),
+		
+		// Debug
+		buttonDebug: document.getElementById("btnToggleDebug"),
+		overlayDebug: document.getElementById("debugOverlay"),
+		buttonDebugClose: document.getElementById("btnCloseDebug"),
 
 		// SPOT overlay
 		buttonSpot: document.getElementById("btnSpot"),
@@ -125,26 +149,156 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		tePlotK2: document.getElementById("tePlotK2"),
 		tePlotNodes: document.querySelectorAll('input[name="tePlot"]'),
 	};
+	
+	function renderLanguageMenu() {
+		if (!elements.langMenu) return;
+
+		const currentLang = getLanguage();
+		const items = getLanguages()
+		.filter((lang) => !lang.disabled)
+		.map((lang) => {
+			const active = lang.code === currentLang;
+			return `
+			<button
+			class="uf-langMenu__item ${active ? "is-active" : ""}"
+			data-lang-code="${escapeHtmlText(lang.code)}"
+			type="button"
+			>
+			${escapeHtmlText(lang.label)}
+			</button>
+			`;
+		})
+		.join("");
+
+		elements.langMenu.innerHTML = items || "";
+	}
+
+	// ------------------------------------------------------------
+	// i18n
+	// ------------------------------------------------------------
+	function applyI18n(root = document) {
+		if (!root) return;
+
+		const textNodes = root.querySelectorAll("[data-i18n]");
+		const titleNodes = root.querySelectorAll("[data-i18n-title]");
+		const placeholderNodes = root.querySelectorAll("[data-i18n-placeholder]");
+
+		/*
+		console.log("[applyI18n] counts", {
+			text: textNodes.length,
+			title: titleNodes.length,
+			placeholder: placeholderNodes.length,
+		});
+		*/
+
+		textNodes.forEach((el) => {
+			const key = el.getAttribute("data-i18n");
+			if (!key) return;
+			el.textContent = t(key);
+		});
+
+		titleNodes.forEach((el) => {
+			const key = el.getAttribute("data-i18n-title");
+			if (!key) return;
+			el.setAttribute("title", t(key));
+		});
+
+		placeholderNodes.forEach((el) => {
+			const key = el.getAttribute("data-i18n-placeholder");
+			if (!key) return;
+			el.setAttribute("placeholder", t(key));
+		});
+	}
+	
+	function openLanguageMenu() {
+		if (!elements.langMenu) return;
+		renderLanguageMenu();
+		elements.langMenu.classList.remove("hidden");
+		elements.buttonLang?.setAttribute("aria-expanded", "true");
+	}
+
+	function closeLanguageMenu() {
+		if (!elements.langMenu) return;
+		elements.langMenu.classList.add("hidden");
+		elements.buttonLang?.setAttribute("aria-expanded", "false");
+	}
+
+	function toggleLanguageMenu() {
+		if (!elements.langMenu) return;
+		const hidden = elements.langMenu.classList.contains("hidden");
+		if (hidden) openLanguageMenu();
+		else closeLanguageMenu();
+	}
+
+	function wireLanguageMenu() {
+		elements.buttonLang?.addEventListener("click", (ev) => {
+			ev.preventDefault();
+			ev.stopPropagation();
+			toggleLanguageMenu();
+		});
+
+		elements.langMenu?.addEventListener("click", (ev) => {
+			const btn = ev.target.closest("[data-lang-code]");
+			if (!btn) return;
+
+			const lang = String(btn.dataset.langCode ?? "");
+			if (!lang) return;
+
+			const changed = setLanguage(lang);
+			if (!changed) return;
+
+			closeLanguageMenu();
+			applyI18n(document);
+			setStatus(t("status_ready"));
+			renderLanguageMenu();
+		});
+
+		document.addEventListener("click", (ev) => {
+			if (!elements.langMenu || !elements.buttonLang) return;
+			const insideMenu = elements.langMenu.contains(ev.target);
+			const insideButton = elements.buttonLang.contains(ev.target);
+			if (!insideMenu && !insideButton) {
+				closeLanguageMenu();
+			}
+		});
+	}
 
 	// ------------------------------------------------------------
 	// SPOT view
 	// ------------------------------------------------------------
 	const spotView = makeSpotView({
-		rootEl: elements.spotOverlayBody ?? elements.importSession,
+		rootEl: elements.spotOverlayBody,
 	});
 
 	// ------------------------------------------------------------
 	// log ringbuffer
 	// ------------------------------------------------------------
 	const MAX_LOG_LINES = 400;
+	const MAX_LOG_LINE_LENGTH = 220;
 	const logBuf = [];
 
+	function shortenLogLine(line, maxLen = MAX_LOG_LINE_LENGTH) {
+		const s = String(line ?? "");
+		return s.length > maxLen ? `${s.slice(0, maxLen - 1)}…` : s;
+	}
+
 	function pushLog(line) {
-		logBuf.push(String(line ?? ""));
+		logBuf.push(shortenLogLine(line));
+
 		if (logBuf.length > MAX_LOG_LINES) {
 			logBuf.splice(0, logBuf.length - MAX_LOG_LINES);
 		}
-		if (elements.log) elements.log.textContent = logBuf.join("\n") + "\n";
+
+		if (elements.log) {
+			const isNearBottom =
+			elements.log.scrollTop + elements.log.clientHeight >= elements.log.scrollHeight - 20;
+
+			elements.log.textContent = logBuf.join("\n") + "\n";
+
+			if (isNearBottom) {
+				elements.log.scrollTop = elements.log.scrollHeight;
+			}
+		}
 	}
 
 	// ------------------------------------------------------------
@@ -280,6 +434,42 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	// ------------------------------------------------------------
+	// import
+	// ------------------------------------------------------------
+	function setImportSummary({
+		fileName,
+		spot = 0,
+		working = 0,
+		error = false,
+	} = {}) {
+
+		// --- Fehlerfall
+		if (error) {
+			setStatus(t("import_result_failed", { fileName }));
+			return;
+		}
+
+		// --- Hauptaussage
+		if (spot === 1) {
+			setStatus(t("import_result_alignment_ready", { fileName }));
+		} else if (spot > 1) {
+			setStatus(t("import_result_alignments_ready", {
+				fileName,
+				count: spot,
+			}));
+		} else if (working > 0) {
+			setStatus(t("import_result_only_aux_data", { fileName }));
+		} else {
+			setStatus(t("import_result_no_usable_alignment", { fileName }));
+		}
+
+		// --- optionaler Zusatzhinweis (nicht in Status, sondern Log)
+		if (working > 0 && spot > 0) {
+			logInfo(t("import_note_aux_data_present"));
+		}
+	}
+
+	// ------------------------------------------------------------
 	// import picker
 	// ------------------------------------------------------------
 	function wireImportPicker({ onFiles } = {}) {
@@ -302,9 +492,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setAutoFitToggleVisible(visible) {
 		if (!elements.chkAutoFit) return;
 		const host =
-			elements.chkAutoFit.closest(".toggle") ||
-			elements.chkAutoFit.closest("label") ||
-			elements.chkAutoFit.parentElement;
+		elements.chkAutoFit.closest(".toggle") ||
+		elements.chkAutoFit.closest("label") ||
+		elements.chkAutoFit.parentElement;
 		if (!host) return;
 		host.style.display = visible ? "" : "none";
 	}
@@ -361,6 +551,27 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ------------------------------------------------------------
 	// overlays
 	// ------------------------------------------------------------
+	function openDebug() {
+		if (!elements.overlayDebug) return;
+		elements.overlayDebug.classList.remove("hidden");
+		markPanelHidden(elements.overlayDebug, false);
+		setPrimary(elements.buttonDebug, true);
+	}
+
+	function closeDebug() {
+		if (!elements.overlayDebug) return;
+		elements.overlayDebug.classList.add("hidden");
+		markPanelHidden(elements.overlayDebug, true);
+		setPrimary(elements.buttonDebug, false);
+	}
+
+	function toggleDebug() {
+		if (!elements.overlayDebug) return;
+		const visible = toggleHiddenByClass(elements.overlayDebug, "hidden");
+		markPanelHidden(elements.overlayDebug, !visible);
+		setPrimary(elements.buttonDebug, visible);
+	}
+
 	function openBands() {
 		if (!elements.overlayBands) return;
 		elements.overlayBands.classList.remove("hidden");
@@ -425,6 +636,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function wireOverlayButtons() {
+		elements.buttonDebug?.addEventListener("click", toggleDebug);
+		elements.buttonDebugClose?.addEventListener("click", closeDebug);
+
 		elements.buttonBands?.addEventListener("click", toggleBands);
 		elements.buttonSection?.addEventListener("click", toggleSection);
 		elements.closeBands?.addEventListener("click", closeBands);
@@ -466,6 +680,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ------------------------------------------------------------
 	// boot feedback
 	// ------------------------------------------------------------
+	wireLanguageMenu();
+	applyI18n(document);
+
 	logLine(t("boot_ui"));
 	setStatus(t("boot_ui_ok"));
 
@@ -474,6 +691,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 	return {
 		elements,
+		
+		applyI18n,
+		
+		openDebug,
+		closeDebug,
+		toggleDebug,
 
 		// logging + status
 		logLine,
@@ -496,6 +719,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		readSlider01,
 
 		// import
+		setImportSummary,
 		wireImportPicker,
 
 		// cursor

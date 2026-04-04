@@ -1,63 +1,28 @@
-# ufAIM – Current Focus
+# NOW.md
 
-## Goal
+## Current Focus (ROCK MODE)
 
-Railway alignment engineering framework  
-with SPOT data model and multi-window workspace.
+Focus strictly on core data flow:
 
----
+parse → landFAT → validateLandFAT → sparse → validateSparse → SPOT → Projection → View
 
-# ACTIVE AREAS
+## Rules
+- No UI / Window architecture work unless blocking
+- No parallel paths
+- No preview-specific geometry logic
+- One truth per step
 
-### Import
+Windows share truth, not focus.
+Canonical change -> per-window reprojection -> per-window rerender.
 
-sniff → parser → landFAT → sparseAlignment → SPOT
+## Active Tasks
+1. Normalize runImportPipeline to single path
+2. Clean buildImportResultFromParsed (no magic)
+3. Reduce importPreviewApply to thin adapter or remove
+4. Ensure sparse is always produced before SPOT
+5. Prepare Projection as single rendering entry
 
-	•	GNDedit .MDB/.XLSX Import als nächster Real-World-Use-Case
-	•	Importpfad dafür sauber definieren: sniff → parse → normalize → Spot/RouteProject
-	•	Import-Service-/Worker-Schnitt dabei mit absichern
-	•	kleiner Zielpunkt: erste lauffähige Beispieldatei bis „im Spot sichtbar“
-Das passt gut, weil Import aktuell schon stabil genug ist, um als echter Use Case weitergezogen zu werden.
-
-### Window Runtime
-
-WindowRuntime  
-workspaceState  
-uiWiring
-
-### Alignment Engine
-
-Current work:
-
-- Separate RegistryCompiler and KappaFcnBuilder responsibilities
-- Define transition runtime descriptor for AlignmentEngine
-- Fix geometric foundation (pose2 representation)
-
-Alignment tasks:
-
-1. Correct pose2 representation
-   { {x,y}, {tx,ty} } instead of { {x,y}, theta }
-
-2. Provide minimal linear algebra layer
-   vec2 / frame2 helpers instead of scattered helpers
-
-3. Clean AlignmentElement class hierarchy
-
-4. Prepare TransitionRuntime input for AlignmentEngine
-
----
-
-# CURRENT QUESTIONS
-
-- WindowSession vs SpotStore responsibilities
-- Who owns working set (Grabbel?)
-- Window focus management
-- CRS detection for imports
-
----
-
-# NEXT MILESTONE
-
-Minimal workflow:
-
-Import alignment → Working Set → SPOT → View render
+## Definition of Done
+- Deterministic pipeline
+- Debuggable at each step
+- No hidden side-effects

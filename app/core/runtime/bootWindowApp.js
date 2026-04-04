@@ -57,6 +57,7 @@ function setupImportUI(ctx) {
 		logLine: ctx.logLine,
 		prefs: ctx.prefs,
 		messaging: ctx.messaging,
+		focusManager: ctx.focusManager,
 	});
 
 	importer.installDrop({ element: document.documentElement });
@@ -65,51 +66,36 @@ function setupImportUI(ctx) {
 		onFiles: (files) => importer.importFiles(files),
 	});
 
-	ctx.store.importSession = importer.session;
-
 	ctx.ui.wireSpotActions?.({
-		onActivate: async (key) => {
-			const parts = String(key ?? "").split("::");
-			const slot = parts.pop() || "right";
-			const objectId = parts.join("::") || null;
+		onActivate: async (spotId) => {
+			const objectId = String(spotId ?? "").trim();
 			if (!objectId) return;
 
 			await ctx.focusManager?.setFocus?.({
 				objectId,
-				slot,
+				slot: "right",
 			});
 		},
 
-		onTogglePin: (key) => {
-			const parts = String(key ?? "").split("::");
-			const slot = parts.pop() || "right";
-			const objectId = parts.join("::") || null;
+		onTogglePin: (spotId) => {
+			const objectId = String(spotId ?? "").trim();
 			if (!objectId) return;
 
-			ctx.store.actions?.togglePinRouteProject?.({ rpId: objectId, slot });
+			ctx.store.actions?.togglePinRouteProject?.({
+				rpId: objectId,
+				slot: "right",
+			});
 		},
 
 		onDecision: ({ decision, key }) => {
-			const parts = String(key ?? "").split("::");
-			const slot = parts.pop() || "right";
-			const spotId = parts.join("::") || null;
+			const spotId = String(key ?? "").trim();
 			if (!spotId) return;
 
 			ctx.store.actions?.setSpotDecision?.({
 				spotId,
-				slot,
+				slot: "right",
 				decision: decision || null,
 			});
-		},
-
-		onSlotChange: ({ groupKey, slot }) => {
-			ctx.store.importSession?.setGroupSlot?.(groupKey, slot);
-			ctx.ui.refreshSpot?.(ctx.store.getState());
-		},
-
-		onBaseIdChange: ({ groupKey, baseId }) => {
-			ctx.store.importSession?.setGroupBaseId?.(groupKey, baseId);
-			ctx.ui.refreshSpot?.(ctx.store.getState());
 		},
 	});
 
@@ -124,6 +110,7 @@ function setupCockpitSelectors(ctx) {
 	});
 
 	const cursorStepS = Math.max(1, Number(ctx.prefs?.view?.cursorStepS ?? 10));
+
 	const parseCursorS = (value) => {
 		const v = Number(value);
 		if (!Number.isFinite(v)) return 0;
@@ -188,17 +175,6 @@ async function setupTransitionRuntime(ctx) {
 	return teBridge;
 }
 
-function ensureSpotBaseIdDatalist() {
-	let el = document.getElementById("spot-baseIds");
-	if (el) return el;
-
-	el = document.createElement("datalist");
-	el.id = "spot-baseIds";
-
-	document.body.appendChild(el);
-	return el;
-}
-
 // -----------------------------------------------------------------------------
 
 export async function bootWindowApp({ prefs, messaging } = {}) {
@@ -227,12 +203,13 @@ export async function bootWindowApp({ prefs, messaging } = {}) {
 	});
 
 	buildWindowShell();
-	
+
 	restorePanelVisibility([
 	"spotOverlay",
 	"transOverlay",
 	"overlayBands",
 	"overlaySection",
+	"debugOverlay",
 	]);
 
 	ctx.logElement = document.getElementById("log");
@@ -244,13 +221,8 @@ export async function bootWindowApp({ prefs, messaging } = {}) {
 		statusElement: ctx.statusElement,
 		prefs: ctx.prefs,
 	});
-	/*
-	ctx.logLine = (line) => {
-		if (ctx.logElement) ctx.logElement.textContent += String(line) + "\n";
-	};
-	*/
+
 	ctx.logLine = ctx.ui.logLine;
-	
 	ctx.destroyPanelDragging = makePanelsDraggable();
 
 	ctx.focusManager = createFocusManager({
@@ -259,9 +231,8 @@ export async function bootWindowApp({ prefs, messaging } = {}) {
 	});
 
 	if (prefs.isDev) window.__ufAIM_focusManager = ctx.focusManager;
-	if (prefs.isDev) window.__ufAIM_getFocus = () => ctx.focusManager?.getFocusSnapshot?.();
-
-	ensureSpotBaseIdDatalist();
+	if (prefs.isDev) window.__ufAIM_getFocus = () => ctx.focusManager?.getFocus?.();
+	if (prefs.isDev) window.__ufAIM_getFocusLegacy = () => ctx.focusManager?.getFocusSnapshot?.();
 
 	ctx.ui.setStatus?.(t("boot_ok"));
 	ctx.logLine?.(t("boot_ready"));

@@ -1,7 +1,22 @@
 // app/core/session/windowSessionController.js
 //
+// WindowSessionController
+//
 // Orchestrates window-level session behaviour.
-// The current store still combines session, workspace and some workflow state.
+//
+// Important:
+// - focus is the new internal language
+// - legacy store fields are still updated for compatibility
+// - sessionState is the preferred source for current focus context
+//
+// Current status:
+// - store is still a transitional combined store
+// - this controller acts as the bridge toward session-first focus handling
+
+function normalizeSlot(slot) {
+	const v = String(slot ?? "right");
+	return v === "left" || v === "km" || v === "right" ? v : "right";
+}
 
 export function createWindowSessionController({ store, sessionState } = {}) {
 	if (!store?.actions || !store?.getState || !store?.setState) {
@@ -10,21 +25,56 @@ export function createWindowSessionController({ store, sessionState } = {}) {
 
 	const session = sessionState ?? null;
 
-	function setFocus({ objectId, slot } = {}) {
-		if (objectId !== undefined) {
-			store.actions.setFocusObjectId?.(objectId ?? null);
+	function ensureSessionFocus() {
+		if (!session) return null;
+		if (!session.focus || typeof session.focus !== "object") {
+			session.focus = {
+				objectId: null,
+				slot: "right",
+			};
+		}
+		return session.focus;
+	}
 
-			if (session?.focus) {
-				session.focus.objectId = objectId ?? null;
+	function getFocus() {
+		const focus = ensureSessionFocus();
+		if (focus) {
+			return {
+				objectId: focus.objectId ?? null,
+				slot: normalizeSlot(focus.slot),
+			};
+		}
+
+		// legacy fallback while store still carries old focus fields
+		const st = store.getState?.() ?? {};
+		return {
+			objectId: st.activeRouteProjectId ?? null,
+			slot: normalizeSlot(st.activeSlot),
+		};
+	}
+
+	function setFocus({ objectId, slot } = {}) {
+		const focus = ensureSessionFocus();
+
+		if (objectId !== undefined) {
+			const safeObjectId = objectId ?? null;
+
+			// legacy compatibility path into transitional store
+			store.actions.setFocusObjectId?.(safeObjectId);
+
+			if (focus) {
+				focus.objectId = safeObjectId;
 			}
 		}
 
 		if (slot !== undefined) {
-			const safeSlot = slot ?? "right";
+			const safeSlot = normalizeSlot(slot);
+
+			// legacy compatibility path into transitional store
 			store.actions.setFocusSlot?.(safeSlot);
 
-			if (session?.focus) {
-				session.focus.slot = safeSlot;
+			if (focus) {
+				focus.slot = safeSlot;
 			}
 		}
 	}
@@ -50,11 +100,26 @@ export function createWindowSessionController({ store, sessionState } = {}) {
 		return session;
 	}
 
+	function getFocusSnapshot() {
+		const focus = getFocus();
+		return {
+			activeRouteProjectId: focus.objectId,
+			activeSlot: focus.slot,
+		};
+	}
+
 	return {
 		setFocus,
 		setFocusObjectId,
 		setFocusSlot,
 		setCursorS,
+
+		// new preferred api
+		getFocus,
+
+		// legacy compatibility api
+		getFocusSnapshot,
+
 		getSessionState,
 	};
 }

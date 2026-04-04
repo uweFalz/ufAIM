@@ -11,29 +11,30 @@
 // - keine Legacy-Preview-Brücke
 // - kein TRA/GRA/CANT-Fake-Ingest
 // - keine lokale Vorschau-Erzeugung
+// - keine lokale SPOT-Schattenwelt
 //
 // Grundidee:
-// Alles, was die importPipeline geprüft verlässt, landet markiert im Store / SPOT.
+// Alles, was die importPipeline geprüft verlässt, landet markiert im Master / SPOT.
 // Der Client ist nur noch Intent-/Dispatch-Schicht.
 
 import { installFileDrop } from "@app/io/input/fileDrop.js";
-import { makeImportSession } from "@app/io/import/importSession.js";
-
 import { runImportPipeline } from "@src/import/runImportPipeline.js";
 
-export function makeImportController({ store, ui, logLine, prefs, messaging } = {}) {
+export function makeImportController({
+	store,
+	ui,
+	logLine,
+	prefs,
+	messaging,
+	focusManager,
+} = {}) {
 	const safeLog = typeof logLine === "function"
-		? logLine
-		: (msg) => ui?.logLine?.(msg);
+	? logLine
+	: (msg) => ui?.logLine?.(msg);
 
 	if (!store?.getState || !store?.setState) {
 		throw new Error("ImportController: missing store");
 	}
-
-	// @baustelle [IMPORT_SESSION_REDUCE]
-	// importSession bleibt vorerst als temporärer Client-Puffer bestehen.
-	// Sie darf aber keine fachliche Schattenwelt mehr bilden.
-	const importSession = makeImportSession();
 
 	async function importOneFile(file) {
 		return await runImportPipeline(file, { log: safeLog });
@@ -42,7 +43,6 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 	function makeBatchStats(totalFiles) {
 		return {
 			totalFiles,
-			imported: 0,
 			ignored: 0,
 			recognizedUnsupported: 0,
 			empty: 0,
@@ -78,53 +78,45 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 		}
 
 		switch (status) {
-			case "imported":
-				stats.imported += 1;
-				break;
 			case "ignored":
-				stats.ignored += 1;
-				break;
+			stats.ignored += 1;
+			break;
 			case "recognized-unsupported":
-				stats.recognizedUnsupported += 1;
-				break;
+			stats.recognizedUnsupported += 1;
+			break;
 			case "empty":
-				stats.empty += 1;
-				break;
+			stats.empty += 1;
+			break;
 			case "processed":
-				stats.processed += 1;
-				break;
+			stats.processed += 1;
+			break;
 			case "unknown":
 			default:
-				stats.unknown += 1;
-				break;
+			stats.unknown += 1;
+			break;
 		}
 	}
 
 	function logBatchSummary(stats) {
 		safeLog(
-			`import batch: ${stats.totalFiles} files / ` +
-			`${stats.imported} imported / ` +
-			`${stats.ignored} ignored / ` +
-			`${stats.recognizedUnsupported} recognized-unsupported / ` +
-			`${stats.empty} empty / ` +
-			`${stats.processed} processed / ` +
-			`${stats.unknown} unknown / ` +
-			`${stats.failed} failed / ` +
-			`${stats.spotCandidateCount} spotCandidates / ` +
-			`${stats.workingItemCount} workingItems / ` +
-			`${stats.referenceItemCount} referenceItems`
+		`import batch: ${stats.totalFiles} files / ` +
+		`${stats.ignored} ignored / ` +
+		`${stats.recognizedUnsupported} recognized-unsupported / ` +
+		`${stats.empty} empty / ` +
+		`${stats.processed} processed / ` +
+		`${stats.unknown} unknown / ` +
+		`${stats.failed} failed / ` +
+		`${stats.spotCandidateCount} spotCandidates / ` +
+		`${stats.workingItemCount} workingItems / ` +
+		`${stats.referenceItemCount} referenceItems`
 		);
 	}
 
-	async function handleSpotCandidates(candidates = [], { file }) {
+	async function handleSpotCandidates(candidates = []) {
 		if (!candidates.length) return;
 
-		for (const spot of candidates) {
-			safeLog(`spotCandidate: ${spot?.kind ?? "unknown"} :: ${spot?.name ?? file?.name ?? "unnamed"}`);
-		}
-
 		if (!messaging?.sendCmdAwait) {
-			safeLog("⚠️ no messaging available for Spot.AddCandidates");
+			console.warn("no messaging available for Spot.AddCandidates");
 			return;
 		}
 
@@ -136,12 +128,8 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 	async function handleWorkingItemsMaster(items = [], { file }) {
 		if (!items.length) return;
 
-		for (const item of items) {
-			safeLog(`workingItem: ${item?.kind ?? "unknown"} :: ${item?.name ?? file?.name ?? "unnamed"}`);
-		}
-
 		if (!messaging?.sendCmdAwait) {
-			safeLog("⚠️ no messaging available for Import.AddItems");
+			console.warn("no messaging available for Import.AddItems");
 			return;
 		}
 
@@ -151,7 +139,6 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 				name: item.name ?? file?.name ?? "unknown",
 				size: Number(file?.size ?? 0),
 				kind: item.kind ?? "unknown",
-
 				status: item.status ?? null,
 				meta: item.meta ?? null,
 				source: item.source ?? null,
@@ -163,12 +150,31 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 	async function handleReferenceItems(items = [], { file }) {
 		if (!items.length) return;
 
-		for (const ref of items) {
-			safeLog(`referenceItem: ${ref?.kind ?? "unknown"} :: ${ref?.name ?? file?.name ?? "unnamed"}`);
-		}
+		console.debug(
+		"reference items ignored for now:",
+		items.map((ref) => ({
+			kind: ref?.kind ?? "unknown",
+			name: ref?.name ?? file?.name ?? "unnamed",
+		}))
+		);
 
 		// @baustelle [REFERENCE_STORE]
 		// Sobald Reference.Add... o. ä. existiert, hier an den Master schicken.
+	}
+
+	async function refreshSpotUiFromMaster() {
+		if (!messaging?.sendCmdAwait) return;
+
+		const spotUiState = await messaging.sendCmdAwait("Spot.GetUiState", {});
+		if (spotUiState && typeof ui?.setSpotState === "function") {
+			ui.setSpotState(spotUiState);
+		}
+
+		/*
+		if (typeof ui?.refreshSpot === "function") {
+		ui.refreshSpot(store?.getState?.());
+		}
+		*/
 	}
 
 	async function importFiles(files) {
@@ -186,64 +192,70 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 		});
 
 		for (const file of batch) {
-			safeLog(`drop: ${file.name}`);
+			safeLog(`import: ${file.name}`);
 
 			try {
 				const result = await importOneFile(file);
-
-				safeLog(
-					`import result: spots=${result?.spotCandidates?.length ?? 0} ` +
-					`working=${result?.workingItems?.length ?? 0} ` +
-					`refs=${result?.referenceItems?.length ?? 0}`
-				);
 
 				const spotCandidates = Array.isArray(result?.spotCandidates) ? result.spotCandidates : [];
 				const workingItems = Array.isArray(result?.workingItems) ? result.workingItems : [];
 				const referenceItems = Array.isArray(result?.referenceItems) ? result.referenceItems : [];
 
 				accountResult(stats, result);
+				
+				safeLog(
+				`import status: ${file.name} :: ` +
+				`${result?.status ?? (result?.isEmpty ? "empty" : "processed")}`
+				);
 
-				if (!spotCandidates.length && !workingItems.length && !referenceItems.length) {
-					const label = result?.status ?? "no-items";
-					safeLog(`ℹ️ ${label}: ${file.name}`);
-				}
-
-				await handleSpotCandidates(spotCandidates, { file });
+				await handleSpotCandidates(spotCandidates);
 				await handleWorkingItemsMaster(workingItems, { file });
 				await handleReferenceItems(referenceItems, { file });
 
-				// @baustelle [IMPORT_SESSION_REDUCE]
-				// Temporärer Client-Puffer bleibt vorerst erhalten, aber nur noch roh.
-				importSession.ingest(
-					{
-						kind: "IMPORT_RESULT",
-						name: file.name,
-						meta: {
-							fileName: file.name,
-							spots: spotCandidates.length,
-							working: workingItems.length,
-							refs: referenceItems.length,
-						},
-					},
-					{
-						originFile: file?.name ?? null,
-						slotHint: store?.getState?.()?.activeSlot ?? "right",
+				ui?.setImportSummary?.({
+					fileName: file.name,
+					spot: spotCandidates.length,
+					working: workingItems.length,
+					error: false,
+				});
+
+				await refreshSpotUiFromMaster();
+
+				if (spotCandidates.length > 0) {
+					ui?.openSpot?.();
+
+					const first = spotCandidates[0];
+					const objectId =
+					first?.meta?.objectId ??
+					first?.meta?.alignmentName ??
+					first?.name ??
+					null;
+
+					if (objectId) {
+						await focusManager?.setFocus?.({
+							objectId,
+							slot: "right",
+						});
 					}
-				);
+				}
+
+				if (!spotCandidates.length && !workingItems.length && !referenceItems.length) {
+					console.debug("import produced no items:", {
+						file: file.name,
+						status: result?.status ?? "no-items",
+						result,
+					});
+				}
 
 			} catch (err) {
 				stats.failed += 1;
 				console.error("import failed detail:", err);
-				safeLog(`❌ import failed: ${file.name}`);
-				safeLog(String(err?.stack || err));
+				ui?.setImportSummary?.({
+					fileName: file.name,
+					error: true,
+				});
 				ui?.setStatusError?.();
 			}
-		}
-
-		if (typeof ui?.setSpotState === "function") {
-			ui.setSpotState(importSession.getUIState?.({
-				slotHint: store?.getState?.()?.activeSlot ?? "right",
-			}) ?? importSession.getState?.() ?? []);
 		}
 
 		logBatchSummary(stats);
@@ -259,7 +271,5 @@ export function makeImportController({ store, ui, logLine, prefs, messaging } = 
 	return {
 		importFiles,
 		installDrop,
-		getSessionState: () => importSession.getState(),
-		session: importSession,
 	};
 }

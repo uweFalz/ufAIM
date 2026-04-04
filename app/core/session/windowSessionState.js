@@ -1,5 +1,23 @@
 // app/core/session/windowSessionState.js
 //
+//
+// windowSessionState
+//
+// Window-local session/view context.
+//
+// Responsibilities:
+// - local focus (objectId, optional slot)
+// - local viewport / selection context
+// - window-specific UI state
+//
+// NOT:
+// - not canonical project truth
+// - not shared across windows
+//
+// Rule:
+// Each window has its own focus,
+// even when all windows look at the same canonical objects.
+//
 // currently not yet wired into runtime;
 // kept as target shape for the future session split
 //

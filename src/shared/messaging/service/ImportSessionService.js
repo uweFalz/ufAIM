@@ -1,5 +1,27 @@
 // src/shared/messaging/service/ImportSessionService.js
 
+//
+// ImportSessionService
+//
+// @transition
+// This service is no longer understood as a local/session-style shadow world.
+// Current functional role is closer to an import inbox:
+//
+//   ImportInbox
+//     = imported non-SPOT items
+//     = profile / cant / staEq / incomplete findings
+//     = temporary holding area before promotion / relation / later structuring
+//
+// SPOT:
+//   = alignment candidates
+//
+// WorkingSet:
+//   = accepted working objects
+//
+// @rename-candidate
+// ImportSessionService -> ImportInboxService
+//
+
 export function createImportSessionService({ getState, setState, router } = {}) {
 	if (typeof getState !== "function") {
 		throw new Error("ImportSessionService: missing getState");
@@ -16,6 +38,7 @@ export function createImportSessionService({ getState, setState, router } = {}) 
 		router?.broadcastEvt?.("Import.StateChanged", cloneState());
 	}
 
+	// rename!!!
 	function beginSession({ source } = {}) {
 		setState({
 			sessionId: `imp_${Date.now()}`,
@@ -55,12 +78,12 @@ export function createImportSessionService({ getState, setState, router } = {}) 
 		return cloneState();
 	}
 
-	function getSessionState() {
+	function getImportState() {
 		return cloneState();
 	}
 
 	return {
-		getState: getSessionState,
+		getState: getImportState,
 		beginSession,
 		addItems,
 	};
