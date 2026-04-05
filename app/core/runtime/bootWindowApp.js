@@ -137,9 +137,10 @@ function setupViewRuntime(ctx) {
 		threeA: ctx.threeA,
 		propsElement: ctx.propsElement,
 		prefs: ctx.prefs,
+		messaging: ctx.messaging,
 	});
 
-	viewC.subscribe();
+	void viewC.subscribe();
 
 	ctx.ui.setAutoFitToggleVisible?.(Boolean(ctx.prefs?.isDev));
 	ctx.ui.setAutoFitToggleValue?.(Boolean(ctx.prefs?.view?.autoFitOnGeomChange));
@@ -152,7 +153,7 @@ function setupViewRuntime(ctx) {
 	});
 
 	ctx.ui.wireFitButton?.({
-		onClick: () => viewC.fitActive?.(),
+		onClick: () => { void viewC.fitActive?.(); },
 	});
 
 	ctx.ui.wirePinControls?.({

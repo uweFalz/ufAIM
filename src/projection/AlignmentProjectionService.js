@@ -1,14 +1,14 @@
 // src/projection/AlignmentProjectionService.js
-//
-// Canonical alignment preview projection service
-//
-// Rolle:
-// - sparseAlignment -> sampled polyline2d
-// - bbox / center für Views
-// - keine View-spezifische Logik
-// - keine Import-Logik
 
-import { sampleAlignment } from "./sampleAlignment.js";
+import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
+import { makeAlignment2DFromSparse } from "@kernel/build/AlignmentFactory.js";
+import { RegistryResolver } from "@kernel/transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "@kernel/transition/build/KappaFcnBuilder.js";
+
+const registryResolver = new RegistryResolver();
+const kappaBuilder = KappaFcnBuilder;
+
+const DEBUG_PROJECTION = true;
 
 export function projectAlignmentPreview({
 	sparseAlignment,
@@ -16,10 +16,48 @@ export function projectAlignmentPreview({
 } = {}) {
 	if (!sparseAlignment) return null;
 
-	const polyline2d = sampleAlignment(sparseAlignment, { maxStep });
+	const validation = validateSparseAlignment(sparseAlignment);
+	if (!validation?.ok) {
+		if (DEBUG_PROJECTION) {
+			console.log("[Projection] sparse invalid", validation);
+		}
+		return null;
+	}
+
+	const { alignment } = makeAlignment2DFromSparse({
+		startPose: sparseAlignment.startPose,
+		sparse: sparseAlignment.sparse,
+		descriptorResolver: registryResolver,
+		kappaBuilder,
+	});
+
+	if (DEBUG_PROJECTION) {
+		console.log("[Projection] alignment built:", {
+			arcLength: alignment?.arcLength,
+			hasPointAt: typeof alignment?.pointAt === "function",
+		});
+	}
+
+	if (!alignment || !Number.isFinite(alignment.arcLength)) return null;
+
+	const polyline2d = sampleAlignment2D(alignment, maxStep);
+
+	if (DEBUG_PROJECTION) {
+		console.log("[Projection] sampled:", {
+			points: polyline2d?.length ?? 0,
+			first: polyline2d?.[0] ?? null,
+			mid: polyline2d?.length ? polyline2d[Math.floor(polyline2d.length / 2)] : null,
+			last: polyline2d?.length ? polyline2d[polyline2d.length - 1] : null,
+		});
+	}
+
 	if (!Array.isArray(polyline2d) || polyline2d.length < 2) return null;
 
 	const bbox = computeBbox2d(polyline2d);
+
+	if (DEBUG_PROJECTION) {
+		console.log("[Projection] bbox:", bbox);
+	}
 
 	return {
 		polyline2d,
@@ -28,9 +66,30 @@ export function projectAlignmentPreview({
 	};
 }
 
-// -----------------------------------------------------------------------------
-// bbox
-// -----------------------------------------------------------------------------
+function sampleAlignment2D(alignment, maxStep) {
+	const ds = Number.isFinite(maxStep) && maxStep > 0 ? maxStep : 5;
+	const L = Math.max(0, Number(alignment.arcLength) || 0);
+	if (!(L > 0)) return null;
+
+	const out = [];
+	let s = 0;
+
+	while (s <= L) {
+		const p = alignment.pointAt(s);
+		if (p) out.push({ x: p.x, y: p.y });
+		s += ds;
+	}
+
+	const pEnd = alignment.pointAt(L);
+	if (pEnd) {
+		const last = out[out.length - 1];
+		if (!last || last.x !== pEnd.x || last.y !== pEnd.y) {
+			out.push({ x: pEnd.x, y: pEnd.y });
+		}
+	}
+
+	return out.length >= 2 ? out : null;
+}
 
 function computeBbox2d(polyline2d) {
 	let minX = Infinity;

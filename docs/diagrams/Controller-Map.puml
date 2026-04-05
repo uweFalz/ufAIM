@@ -1,50 +1,130 @@
 @startuml
 
-title ufAIM – Controller Map
+title ufAIM – Controller Map (clean)
 
 skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+hide empty members
 
-package "Master" {
-  [SharedMessagingWorker]
-  [SpotStore]
-  [ImportState]
-  [ProjectState]
+' ------------------------------------------------------------
+' WINDOW LAYER
+' ------------------------------------------------------------
+package "Window (Client)" {
+
+  package "Core Controllers" {
+    [ImportController]
+    [ViewController]
+    [FocusManager]
+    [CockpitController]
+  }
+
+  package "Session / State" {
+    [WindowSessionController]
+    [WindowSessionState]
+    [windowStore]
+  }
+
+  package "UI / Wiring" {
+    [uiWiring]
+  }
+
+  package "Views" {
+    [SPOT View]
+    [GeoView]
+    [TransitionEditorView]
+  }
 }
 
-package "Window" {
-  [WindowRuntime]
-  [bootWindowApp]
-  [WindowSessionController]
-  [workspaceState]
-  [spotController]
-  [importController]
-  [transitionEditorBridge]
+' ------------------------------------------------------------
+' SHARED / MASTER (via messaging)
+' ------------------------------------------------------------
+package "Shared Runtime (Worker)" {
+
+  [SpotService]
+  [ImportSessionService]
+  [ProjectStateService]
+
+  package "Stores" {
+    [SpotStore]
+    [WorkingSet]
+  }
 }
 
-package "View/UI" {
-  [uiWiring]
-  [ViewController]
-  [GeoView]
-  [GrabbelView]
-  [TransitionEditorView]
+' ------------------------------------------------------------
+' KERNEL
+' ------------------------------------------------------------
+package "@kernel" {
+  [Alignment Calculation]
 }
 
-WindowRuntime --> WindowSessionController
-bootWindowApp --> WindowRuntime
-WindowSessionController --> workspaceState
-WindowSessionController --> spotController
-WindowSessionController --> importController
-WindowSessionController --> transitionEditorBridge
-uiWiring --> WindowSessionController
-ViewController --> GeoView
-ViewController --> GrabbelView
-ViewController --> TransitionEditorView
+' ------------------------------------------------------------
+' FLOW: IMPORT
+' ------------------------------------------------------------
+[ImportController] --> [ImportSessionService]
+[ImportController] --> [SpotService]
 
-spotController --> SharedMessagingWorker
-importController --> SharedMessagingWorker
-transitionEditorBridge --> SharedMessagingWorker
+note right of [ImportController]
+Runs importPipeline (local),
+then sends results to canonical services.
+No preview / no geometry.
+end note
 
-SharedMessagingWorker --> SpotStore
-SharedMessagingWorker --> ImportState
-SharedMessagingWorker --> ProjectState
+' ------------------------------------------------------------
+' FLOW: SPOT
+' ------------------------------------------------------------
+[SpotService] --> [SpotStore]
+[SpotService] --> [SPOT View]
+
+note right of [SpotService]
+Canonical object registry.
+No focus.
+No geometry.
+end note
+
+' ------------------------------------------------------------
+' FLOW: VIEW
+' ------------------------------------------------------------
+[ViewController] --> [windowStore]
+[ViewController] --> [WindowSessionState]
+[ViewController] --> [SpotStore]
+[ViewController] --> [Alignment Calculation]
+[ViewController] --> [GeoView]
+
+note right of [ViewController]
+Focus → SPOT → kernel → render
+
+No geometry stored.
+No shadow model.
+end note
+
+' ------------------------------------------------------------
+' FLOW: FOCUS
+' ------------------------------------------------------------
+[FocusManager] --> [WindowSessionController]
+[FocusManager] --> [windowStore]
+
+note right of [FocusManager]
+Focus is window-local.
+Never sent to SPOT.
+end note
+
+' ------------------------------------------------------------
+' UI
+' ------------------------------------------------------------
+[uiWiring] --> [ImportController]
+[uiWiring] --> [FocusManager]
+[uiWiring] --> [ViewController]
+
+' ------------------------------------------------------------
+' TRANSITION EDITOR
+' ------------------------------------------------------------
+[TransitionEditorView] --> [Alignment Calculation]
+
+note right of [TransitionEditorView]
+Uses @kernel directly.
+No dependency on SPOT geometry.
+end note
+
 @enduml

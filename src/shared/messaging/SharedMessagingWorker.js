@@ -1,7 +1,6 @@
 // src/shared/messaging/SharedMessagingWorker.js
 
 import { startWorkerRouter } from "./worker/WorkerRouter.js";
-
 import { createWorkerContext } from "./createWorkerContext.js";
 
 import { createTransitionQueryService } from "../../alignment/transition/service/TransitionQueryService.js";

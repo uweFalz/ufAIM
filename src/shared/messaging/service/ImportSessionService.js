@@ -1,7 +1,30 @@
 // src/shared/messaging/service/ImportSessionService.js
-
 //
 // ImportSessionService
+//
+// Canonical import inbox (session-based).
+//
+// Responsibilities:
+// - collects imported items (workingItems, etc.)
+// - tracks import session lifecycle (begin/add)
+// - exposes canonical import state
+//
+// NOT:
+// - no parsing (handled by importPipeline)
+// - no SPOT logic
+// - no geometry generation
+// - no view/preview logic
+//
+// Important:
+// ImportSessionService is a transient canonical buffer.
+//
+// It stores raw imported items before they are:
+// → accepted into SPOT
+// → ignored
+// → further processed
+//
+// No derived geometry is stored here.
+// Consumers must use @kernel if needed.
 //
 // @transition
 // This service is no longer understood as a local/session-style shadow world.

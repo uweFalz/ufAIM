@@ -10,11 +10,15 @@ export class SharedWorkerClient {
 	}
 
 	async connect() {
-		// SharedWorker muss als Modul laufen
-		const worker = new SharedWorker(this.url, { type: "module", name: "ufAIM-shared-messaging" });
+		const worker = new SharedWorker(this.url, {
+			type: "module",
+			name: "ufAIM-shared-messaging",
+		});
+
 		this._port = worker.port;
 		this._port.onmessage = (ev) => this._deliver(ev.data);
 		this._port.start();
+
 		if (this.debug) console.log("[SharedWorkerClient] connected", this.url);
 	}
 
@@ -25,10 +29,7 @@ export class SharedWorkerClient {
 		return () => this._handlers.get(key)?.delete(fn);
 	}
 
-
 	onCmd(name, handler) {
-		// In worker-mode: command handlers live in the master/runtime, not in the view.
-		// Keep API symmetric, but don't execute locally.
 		throw new Error("SharedWorkerClient.onCmd: not supported in view-client");
 	}
 
@@ -36,10 +37,8 @@ export class SharedWorkerClient {
 		return this.send({ type: "evt", name: String(name), payload });
 	}
 
+	// legacy helper; MessagingClient.sendCmdAwait is the preferred path
 	sendCmd(name, payload = {}) {
-		
-		console.log("[SharedWorkerClient.sendCmd]", name);
-		
 		const reqId = `m_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 		return new Promise((resolve, reject) => {
 			this._pending.set(reqId, { resolve, reject });
@@ -60,7 +59,7 @@ export class SharedWorkerClient {
 	_deliver(msg) {
 		if (this.debug) console.log("[SharedWorkerClient.recv]", msg);
 
-		// 1) resolve pending cmd promises (optional legacy path; can stay)
+		// 1) resolve pending legacy promises
 		if (msg?.type === "ack" || msg?.type === "err") {
 			const reqId = msg?.corr?.reqId || msg?.replyTo || msg?.reply_to;
 			const p = reqId ? this._pending.get(reqId) : null;
@@ -68,26 +67,28 @@ export class SharedWorkerClient {
 				this._pending.delete(reqId);
 				if (msg.type === "err") p.reject(msg);
 				else p.resolve(msg.payload);
-				// NOTE: do NOT return here; we still want to notify listeners ("ack"/"err")
-				// return;
 			}
 		}
 
-		// 2) dispatch by TYPE first (this is what MessagingClient.sendCmdAwait expects)
+		// 2) dispatch by TYPE
 		const typeKey = (msg && typeof msg === "object") ? msg.type : null;
 		if (typeKey) {
 			const setT = this._handlers.get(String(typeKey));
-			if (setT) for (const fn of setT) {
-				try { fn(msg); } catch (e) { console.error(e); }
+			if (setT) {
+				for (const fn of setT) {
+					try { fn(msg); } catch (e) { console.error(e); }
+				}
 			}
 		}
 
-		// 3) additionally dispatch by NAME (useful for evt/cmd subscriptions, etc.)
+		// 3) dispatch by NAME
 		const nameKey = (msg && typeof msg === "object") ? msg.name : null;
 		if (nameKey) {
 			const setN = this._handlers.get(String(nameKey));
-			if (setN) for (const fn of setN) {
-				try { fn(msg); } catch (e) { console.error(e); }
+			if (setN) {
+				for (const fn of setN) {
+					try { fn(msg); } catch (e) { console.error(e); }
+				}
 			}
 		}
 	}

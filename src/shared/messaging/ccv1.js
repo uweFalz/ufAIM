@@ -7,8 +7,11 @@ let _seq = 0;
 function newId() { _seq += 1; return `m_${Date.now()}_${_seq}`; }
 function now() { return Date.now(); }
 
-export function mkCtx({ windowId, role = "view" } = {}) {
-	return { ctx: windowId ? `win:${windowId}` : "broadcast", role };
+export function mkCtx({ ctx, windowId, role = "view" } = {}) {
+	return {
+		ctx: ctx ?? (windowId ? `win:${windowId}` : "broadcast"),
+		role,
+	};
 }
 
 export function mkMsg({ type, name, payload = {}, src, dst, corr, debug }) {

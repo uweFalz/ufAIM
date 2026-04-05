@@ -3,45 +3,28 @@
 /**
  * @baustelle [VALIDATION]
  * SPOT_READY darf nur nach bestandenem Sparse-Kernvertrag vergeben werden.
- * Reines Vorhandensein von alignment.sparseAlignment reicht nicht aus.
+ * Die Sparse-Validierung wird upstream erzeugt und hier nur noch ausgewertet.
  *
  * @baustelle [CRS]
  * Fehlendes CRS wird aktuell als "assumed" behandelt.
  * Später ggf. eigener ImportReason / eigener Workflow.
  */
 
-import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
-
 import { IMPORT_REASONS } from "./importReasons.js";
 
 export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 	const crs = resolveEffectiveCRS(imported, alignment);
 	const sparse = alignment?.sparseAlignment ?? null;
+	const validation = alignment?.sparseValidation ?? null;
 
 	if (!sparse) {
 		return {
 			ok: false,
 			code: IMPORT_REASONS.SPARSE_BUILD_FAILED,
 			crs: { status: "needed" },
-			validation: {
+			validation: validation ?? {
 				ok: false,
 				errors: [{ code: "missing_sparse", message: "alignment.sparseAlignment missing" }],
-				warnings: [],
-			},
-		};
-	}
-
-	let validation;
-	try {
-		validation = validateSparseAlignment(sparse);
-	} catch (err) {
-		return {
-			ok: false,
-			code: IMPORT_REASONS.SPARSE_BUILD_FAILED,
-			crs: crs ?? { status: "needed" },
-			validation: {
-				ok: false,
-				errors: [{ code: "validator_threw", message: String(err?.message ?? err) }],
 				warnings: [],
 			},
 		};
@@ -52,7 +35,11 @@ export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 			ok: false,
 			code: IMPORT_REASONS.SPARSE_BUILD_FAILED,
 			crs: crs ?? { status: "needed" },
-			validation,
+			validation: validation ?? {
+				ok: false,
+				errors: [{ code: "missing_validation", message: "alignment.sparseValidation missing" }],
+				warnings: [],
+			},
 		};
 	}
 
@@ -68,7 +55,7 @@ export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 	if (!crs?.authority || !crs?.code) {
 		return {
 			ok: true,
-			code: IMPORT_REASONS.SPOT_READY, // @baustelle später evtl. CRS_ASSUMED
+			code: IMPORT_REASONS.SPOT_READY,
 			crs: { status: "assumed" },
 			validation,
 		};

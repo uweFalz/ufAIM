@@ -116,6 +116,9 @@ package "src" {
   package "alignment" {
     class "Alignment2D.js" as N_src_alignment_Alignment2D_js
     class "_e2eAlignmentTest.js" as N_src_alignment__e2eAlignmentTest_js
+    package "_legacy" <<legacy>> {
+      class "alignment2dEval.js" as N_src_alignment__legacy_alignment2dEval_js
+    }
     package "build" {
       class "AlignmentFactory.js" as N_src_alignment_build_AlignmentFactory_js
     }
@@ -130,8 +133,8 @@ package "src" {
         class "QuasiElement.js" as N_src_alignment_elements__legacy_QuasiElement_js
       }
     }
-    package "eval" {
-      class "alignment2dEval.js" as N_src_alignment_eval_alignment2dEval_js
+    package "service" {
+      class "sampleSparseAlignmentForView.js" as N_src_alignment_service_sampleSparseAlignmentForView_js
     }
     package "transition" {
       package "build" {
@@ -277,7 +280,10 @@ package "src" {
   package "projection" {
     class "AlignmentProjectionService.js" as N_src_projection_AlignmentProjectionService_js
     class "ViewProjectionController.js" as N_src_projection_ViewProjectionController_js
-    class "sampleAlignment.js" as N_src_projection_sampleAlignment_js
+    class "getSpotObjectById.js" as N_src_projection_getSpotObjectById_js
+    package "_legacy" <<legacy>> {
+      class "sampleAlignment.js" as N_src_projection__legacy_sampleAlignment_js
+    }
   }
   package "shared" {
     package "messaging" {
@@ -323,6 +329,8 @@ N_app_core_controllers_viewController_js --> N_app_core_controllers_viewGeometry
 N_app_core_controllers_viewController_js --> N_app_core_controllers_viewPropsPanel_js
 N_app_core_controllers_viewController_js --> N_app_core_controllers_viewUiSync_js
 N_app_core_controllers_viewController_js --> N_app_i18n_strings_js
+N_app_core_controllers_viewController_js --> N_src_projection_ViewProjectionController_js
+N_app_core_controllers_viewController_js --> N_src_projection_getSpotObjectById_js
 N_app_core_controllers_viewController_js --> N_src_utils_helpers_js
 N_app_core_controllers_viewGeometry_js --> N_src_utils_helpers_js
 N_app_core_controllers_viewPropsPanel_js --> N_app_core_controllers_viewGeometry_js
@@ -407,6 +415,7 @@ N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_build_AlignmentFactory_
 N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_elements_FixedElement_js
 N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_transition_build_KappaFcnBuilder_js
 N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_transition_registry_RegistryResolver_js
+N_src_alignment__legacy_alignment2dEval_js --> N_src_lib_geom_frame_pose2_js
 N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_Alignment2D_js
 N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_FixedElement_js
 N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_ImmediateElement_js
@@ -422,7 +431,8 @@ N_src_alignment_elements_TransitionElement_js --> N_src_alignment_elements_Align
 N_src_alignment_elements_TransitionElement_js --> N_src_lib_geom_vec2_js
 N_src_alignment_elements_TransitionElement_js --> N_src_lib_math_numeric_romberg_js
 N_src_alignment_elements_ZeroLengthFixed_js --> N_src_alignment_elements_FixedElement_js
-N_src_alignment_eval_alignment2dEval_js --> N_src_lib_geom_frame_pose2_js
+N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_alignment_build_AlignmentFactory_js
+N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_alignment_validation_validateSparseAlignment_js
 N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_buildProtoAst_js
 N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_evalAst_js
 N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_simplify_js
@@ -465,7 +475,6 @@ N_src_import_sniffers_sniffImportFile_js --> N_src_import_parsers_validateParser
 N_src_lib_geo_crsManager_js --> N_src_lib_geo_crsAlias_js
 N_src_lib_geom_frame_pose2_js --> N_src_lib_geom_vec2_js
 N_src_lib_geom_frame_poseAdvance2_js --> N_src_lib_geom_vec2_js
-N_src_projection_AlignmentProjectionService_js --> N_src_projection_sampleAlignment_js
 N_src_projection_ViewProjectionController_js --> N_src_projection_AlignmentProjectionService_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_ccv1_js

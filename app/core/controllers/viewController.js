@@ -5,61 +5,24 @@
 // Window-local projection/render orchestration.
 //
 // Responsibilities:
-// - reads canonical objects
 // - reads window-local focus/context
-// - projects current view slice
+// - resolves canonical SPOT objects
+// - requests viewable geometry via projection layer
 // - renders this window
+//
+// NOT:
+// - no import logic
+// - no canonical object ownership
+// - no geometry truth in the view
+//
+// Important:
+// - focus is window-local
+// - canonical objects come from SPOT
+// - viewable geometry is derived on demand
+// - SPOT panel UI is event-driven via Spot.UiStateChanged
 //
 // Rule:
 // canonical change -> local reprojection -> local rerender
-//
-// Important:
-// Windows do not sync each other directly.
-// They sync against the same canonical truth.
-//
-// ViewController
-//
-// Rolle:
-// - verbindet Auswahl (SPOT) mit Visualisierung
-// - orchestriert: Auswahl → Projektion → Rendering
-//
-// Grundprinzip:
-// - Nur SPOT-Objects werden visualisiert
-// - Auswahl (focus) bestimmt, was dargestellt wird
-//
-// Pipeline:
-// SPOT selection → Projection → Render (2D/3D)
-//
-// Aufgaben:
-// - reagiert auf State-Änderungen (store / messaging)
-// - wählt aktives Objekt (focus)
-// - stößt Projektion (AlignmentProjectionService) an
-// - übergibt Ergebnis an Renderer (ThreeAdapter / View)
-//
-// NICHT:
-// - keine Import-Logik
-// - keine SPOT-Erzeugung
-// - keine Parser-/Formatlogik
-// - keine dauerhafte Datenhaltung
-//
-// Wichtig:
-// - kein direkter Zugriff auf Rohdaten außerhalb von SPOT
-// - keine Schattenmodelle oder parallele Datenpfade
-//
-// Ziel:
-// Dünne Orchestrierungsschicht zwischen SPOT und View.
-//
-// ViewController (UI/Render glue):
-// - owns store.subscribe for "store -> UI + 3D"
-// - computes sectionInfo from import_polyline2d + cursor.s
-// - updates overlays (bands/section text)
-// - updates three viewer via ThreeAdapter (floating origin)
-// - detects "active geometry changed" and applies policy:
-//    off | recenter | fit | softfit | softfitanimated
-//
-// MS15.x:
-// - viewer-only "chunks" (ephemeral), rendered as aux tracks
-// - two-click range via Shift+click (start/end)
 
 import { t } from "@app/i18n/strings.js";
 import { formatNum } from "@src/utils/helpers.js";
@@ -72,31 +35,38 @@ import {
 	unionBbox,
 	pickBboxFromArtifactOrPolyline,
 	buildChunkMetrics,
-	makeActiveGeomKey,
 } from "@app/core/controllers/viewGeometry.js";
 
 import { createViewAuxTracks } from "@app/core/controllers/viewAuxTracks.js";
 import { createViewPropsPanel } from "@app/core/controllers/viewPropsPanel.js";
 
 import {
-	syncRouteProjectSelect,
-	syncSpotBaseIdDatalist,
 	syncCursorInput,
 	syncOverlays,
 	syncSectionBoard,
 	syncPinsBadge,
-	syncSpotPanel,
 	syncTransitionEditorControls,
 } from "@app/core/controllers/viewUiSync.js";
+
+import { getSpotObjectById } from "@src/projection/getSpotObjectById.js";
+import { projectFocusedSpotObject } from "@src/projection/ViewProjectionController.js";
 
 // ------------------------------------------------------------
 // ViewController
 // ------------------------------------------------------------
 
-export function makeViewController({ store, ui, threeA, propsElement, prefs } = {}) {
+export function makeViewController({
+	store,
+	ui,
+	threeA,
+	propsElement,
+	prefs,
+	messaging,
+} = {}) {
 	if (!store?.getState || !store?.subscribe) throw new Error("ViewController: missing store");
 	if (!ui) throw new Error("ViewController: missing ui");
 	if (!threeA) throw new Error("ViewController: missing three adapter");
+	if (!messaging?.sendCmdAwait) throw new Error("ViewController: missing messaging.sendCmdAwait");
 
 	const cfg = {
 		fitPadding: Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35,
@@ -116,6 +86,8 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		auxFadeSec: Number.isFinite(prefs?.view?.auxFadeSec) ? prefs.view.auxFadeSec : 45,
 		auxWidth: Number.isFinite(prefs?.view?.auxWidth) ? prefs.view.auxWidth : 2.0,
 		auxWidthOld: Number.isFinite(prefs?.view?.auxWidthOld) ? prefs.view.auxWidthOld : 1.0,
+
+		sampleStep: Number.isFinite(prefs?.view?.sampleStep) ? prefs.view.sampleStep : 5,
 	};
 
 	// policy: off | recenter | fit | softfit | softfitanimated
@@ -130,16 +102,47 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	let lastGeomKey = null;
 	let lastPolyRef = null;
 
-	const selectors = {
-		activeAlignmentArtifact(state) {
-			const aa = state.import_activeArtifacts;
-			if (!aa?.alignmentArtifactId) return null;
-			return state.artifacts?.[aa.alignmentArtifactId] ?? null;
-		},
-		pickBbox(art, poly) {
-			return pickBboxFromArtifactOrPolyline(art, poly);
-		},
-	};
+	function getFocusObjectId(state) {
+		return state?.focus?.objectId ?? null;
+	}
+
+	function wireSpotUiUpdatesOnce() {
+		if (wireSpotUiUpdatesOnce._done) return;
+		wireSpotUiUpdatesOnce._done = true;
+
+		messaging.onEvt?.("Spot.UiStateChanged", (spotUiState) => {
+			if (!spotUiState) return;
+			ui?.setSpotState?.(spotUiState);
+			ui?.refreshSpot?.(store.getState());
+		});
+	}
+
+	async function getActiveGeometry(state) {
+		const focusObjectId = getFocusObjectId(state);
+		if (!focusObjectId) return null;
+
+		const spotState = await messaging.sendCmdAwait("Spot.GetState", {});
+		const spotObject = getSpotObjectById(spotState, focusObjectId);
+		if (!spotObject) return null;
+
+		const geom = projectFocusedSpotObject(spotObject, {
+			maxStep: cfg.sampleStep,
+		});
+		if (!geom?.polyline2d || geom.polyline2d.length < 2) return null;
+
+		return {
+			objectId: String(focusObjectId),
+			spotObject,
+			polyline2d: geom.polyline2d,
+			bbox: geom.bbox ?? null,
+			bboxCenter: geom.bboxCenter ?? null,
+		};
+	}
+
+	function makeGeomKey(activeGeometry) {
+		if (!activeGeometry) return "(none)";
+		return String(activeGeometry.objectId ?? "(none)");
+	}
 
 	function ensureChainageCache(poly) {
 		if (!poly) return null;
@@ -182,14 +185,13 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		return aux.computeChunkBboxUnion(state);
 	}
 
-	function computeFitBboxFromState(state, poly, opts = {}) {
+	function computeFitBboxFromState(state, activeGeometry, opts = {}) {
 		const includePins =
 			(opts.includePins !== undefined) ? Boolean(opts.includePins) : cfg.fitIncludesPins;
 		const includeChunks =
 			(opts.includeChunks !== undefined) ? Boolean(opts.includeChunks) : true;
 
-		const activeArt = selectors.activeAlignmentArtifact(state);
-		let bbox = selectors.pickBbox(activeArt, poly);
+		let bbox = activeGeometry?.bbox ?? null;
 
 		if (includePins) bbox = unionBbox(bbox, computeAuxBboxUnion(state));
 		if (includeChunks) bbox = unionBbox(bbox, computeChunkBboxUnion(state));
@@ -197,25 +199,28 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		return bbox;
 	}
 
-	function recenterToActive() {
+	async function recenterToActive() {
 		const st = store.getState();
-		const poly = st.import_polyline2d;
+		const activeGeometry = await getActiveGeometry(st);
+		const poly = activeGeometry?.polyline2d;
+
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const art = selectors.activeAlignmentArtifact(st);
-		const bbox = selectors.pickBbox(art, poly);
+		const bbox = activeGeometry?.bbox ?? pickBboxFromArtifactOrPolyline(null, poly);
 		if (!bbox) return false;
 
 		threeA.setOriginFromBbox(bbox);
 		return true;
 	}
 
-	function fitActive(opts = {}) {
+	async function fitActive(opts = {}) {
 		const st = store.getState();
-		const poly = st.import_polyline2d;
+		const activeGeometry = await getActiveGeometry(st);
+		const poly = activeGeometry?.polyline2d;
+
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const bbox = computeFitBboxFromState(st, poly, opts);
+		const bbox = computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
@@ -225,12 +230,14 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		return true;
 	}
 
-	function softFitActive(opts = {}) {
+	async function softFitActive(opts = {}) {
 		const st = store.getState();
-		const poly = st.import_polyline2d;
+		const activeGeometry = await getActiveGeometry(st);
+		const poly = activeGeometry?.polyline2d;
+
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const bbox = computeFitBboxFromState(st, poly, opts);
+		const bbox = computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
@@ -241,12 +248,14 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		return true;
 	}
 
-	function softFitActiveAnimated(opts = {}) {
+	async function softFitActiveAnimated(opts = {}) {
 		const st = store.getState();
-		const poly = st.import_polyline2d;
+		const activeGeometry = await getActiveGeometry(st);
+		const poly = activeGeometry?.polyline2d;
+
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const bbox = computeFitBboxFromState(st, poly, opts);
+		const bbox = computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
@@ -268,16 +277,16 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		autoFitOnGeomChange = Boolean(on);
 	}
 
-	function applyGeomChangePolicy() {
+	async function applyGeomChangePolicy() {
 		switch (onGeomChange) {
 			case "fit":
-				return fitActive();
+				return await fitActive();
 			case "softfit":
-				return softFitActive();
+				return await softFitActive();
 			case "softfitanimated":
-				return softFitActiveAnimated();
+				return await softFitActiveAnimated();
 			case "recenter":
-				return recenterToActive();
+				return await recenterToActive();
 			default:
 				return false;
 		}
@@ -292,7 +301,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		else return false;
 
 		if (opts.fit === true) {
-			softFitActive({ includePins: true, includeChunks: true });
+			void softFitActive({ includePins: true, includeChunks: true });
 		}
 		return true;
 	}
@@ -308,7 +317,7 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		})
 		: null;
 
-	function handleTrackClick({ s, event }) {
+	async function handleTrackClick({ s, event }) {
 		const ss = Number(s);
 		if (!Number.isFinite(ss)) return;
 
@@ -316,7 +325,8 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 
 		if (event?.shiftKey) {
 			const st = store.getState?.() ?? {};
-			const poly = st.import_polyline2d;
+			const activeGeometry = await getActiveGeometry(st);
+			const poly = activeGeometry?.polyline2d;
 			const cum = ensureChainageCache(poly);
 
 			if (!isPolylineValid(poly) || !cum) {
@@ -354,14 +364,16 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		}
 
 		if (event?.altKey) {
-			softFitActiveAnimated({ durationMs: cfg.fitDurationMs });
+			void softFitActiveAnimated({ durationMs: cfg.fitDurationMs });
 		}
 	}
 
 	function wireTrackClickOnce() {
 		if (threeA.__ufAIM_trackClickWired) return;
 		threeA.__ufAIM_trackClickWired = true;
-		threeA.onTrackClick?.(handleTrackClick);
+		threeA.onTrackClick?.((payload) => {
+			void handleTrackClick(payload);
+		});
 	}
 
 	function clear3DKeepAux() {
@@ -370,17 +382,16 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 		threeA.clearSectionLine?.();
 	}
 
-	function syncGeometryPolicyIfNeeded(state, poly, geomChanged) {
+	async function syncGeometryPolicyIfNeeded(state, activeGeometry, geomChanged) {
 		if (!geomChanged) return;
 
 		cachedCum = null;
 		lastPolyRef = null;
 
-		applyGeomChangePolicy();
+		await applyGeomChangePolicy();
 
 		if (autoFitOnGeomChange) {
-			const art = selectors.activeAlignmentArtifact(state);
-			const bbox = selectors.pickBbox(art, poly);
+			const bbox = activeGeometry?.bbox ?? null;
 			if (bbox) {
 				threeA.setOriginFromBbox(bbox);
 				threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
@@ -419,20 +430,26 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 	function subscribe() {
 		wireTrackClickOnce();
 		propsPanel?.wirePropsPanelOnce();
+		wireSpotUiUpdatesOnce();
 
-		const handler = (state) => {
+		let renderToken = 0;
+
+		const handler = async (state) => {
+			const token = ++renderToken;
+
 			try {
-				syncRouteProjectSelect(ui, state);
-				syncSpotBaseIdDatalist(state);
 				propsPanel?.updateProps(state);
 				syncCursorInput(ui, state);
 				syncOverlays(ui, state);
 				syncTransitionEditorControls(state);
 				syncPinsBadge(ui, state);
-				syncSpotPanel(ui, state);
 
-				const poly = state.import_polyline2d;
-				const geomKey = makeActiveGeomKey(state);
+				const activeGeometry = await getActiveGeometry(state);
+
+				if (token !== renderToken) return;
+
+				const poly = activeGeometry?.polyline2d ?? null;
+				const geomKey = makeGeomKey(activeGeometry);
 				const geomChanged = geomKey !== lastGeomKey;
 				lastGeomKey = geomKey;
 
@@ -446,7 +463,10 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 					return;
 				}
 
-				syncGeometryPolicyIfNeeded(state, poly, geomChanged);
+				await syncGeometryPolicyIfNeeded(state, activeGeometry, geomChanged);
+
+				if (token !== renderToken) return;
+
 				redrawAuxFromState(state);
 				syncSectionSamplingAndMarker(state, poly);
 				syncActiveTrack(poly);
@@ -458,8 +478,11 @@ export function makeViewController({ store, ui, threeA, propsElement, prefs } = 
 			}
 		};
 
-		const unsub = store.subscribe(handler);
-		handler(store.getState());
+		const unsub = store.subscribe((state) => {
+			void handler(state);
+		});
+
+		void handler(store.getState());
 		return unsub;
 	}
 

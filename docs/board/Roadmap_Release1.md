@@ -1,23 +1,25 @@
-# Roadmap_Release1.md
+# Roadmap Release 1
 
-## Phase 1 – Import Solidification
-- Single import pipeline
-- landFAT validation stable
-- sparse generation mandatory
+## Phase 1 – Import
+- Single pipeline
+- landFAT validated
+- sparse mandatory
 
-## Phase 2 – SPOT Stability
+## Phase 2 – SPOT
 - Clean candidate handling
-- User decisions flow into working set
 - No implicit promotion
 
-## Phase 3 – Projection Layer
-- Central projection service
-- All rendering via projection
-- CRS handling integrated
+## Phase 3 – Projection
+- Kernel-backed projection
+- No geometry in SPOT
+- Event-driven UI
 
-## Phase 4 – Visualization
-- Hook projection into views
-- Remove direct geometry dependencies
+## Phase 4 – View
+- Views consume projection only
 
-## Phase 5 – Optimization (later)
-- Solver / AXTRAN integration
+## Phase 5 – Optimization
+- Solver integration (AXTRAN)
+
+## Kernel Rule
+SPOT stores parameters only.
+Geometry is computed on demand.

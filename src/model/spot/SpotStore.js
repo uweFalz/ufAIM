@@ -1,4 +1,27 @@
 // src/model/spot/SpotStore.js
+//
+// SpotStore
+//
+// Canonical in-memory store for SPOT objects.
+//
+// Responsibilities:
+// - holds SPOT objects (alignments, candidates, metadata)
+// - provides immutable-style state updates
+// - manages identifiers and basic indexing
+//
+// NOT:
+// - no UI state
+// - no window-specific state (focus, selection, etc.)
+// - no calculations
+// - no geometry derivation
+//
+// Important:
+// SpotStore is part of the canonical data layer.
+//
+// It stores parameters and metadata only.
+// Any derived data (geometry, projections, solver input)
+// must be computed via @kernel by consumers.
+//
 
 //
 // ...

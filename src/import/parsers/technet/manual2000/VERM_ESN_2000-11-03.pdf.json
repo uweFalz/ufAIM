@@ -1,0 +1,520 @@
+Speicherformat der Trassen (Endung .TRA)
+
+Datensatz RANDOM-Format
+
+TYPE TrassenTyp
+R1 AS DOUBLE '64 Bit IEEE-Format Radius am Elementanfang
+R2 AS DOUBLE '64 Bit IEEE-Format Radius am Elementende
+Y AS DOUBLE '64 Bit IEEE-Format Rechtswert am Elementanfang
+X AS DOUBLE '64 Bit IEEE-Format Hochwert am Elementanfang
+T AS DOUBLE '64 Bit IEEE-Format Richtung am Elementanfang
+S AS DOUBLE '64 Bit IEEE-Format Station am Elementanfang
+Kz AS INTEGER '16 Bit Kennzeichen des Elementes
+L AS DOUBLE '64 Bit IEEE-Format Länge des Elementes
+U1 AS DOUBLE '64 Bit IEEE-Format Überhöhung am Elementanfang
+U2 AS DOUBLE '64 Bit IEEE-Format Überhöhung am Elementanfang
+C AS SINGLE '32 Bit IEEE-Format Abstand zur Trasse,i.d.R. 0
+nur für Parallelübergangsbögen
+END TYPE
+
+Trassenkennzeichen
+Kz 0 = Gerade R1=0 R2=0
+Kz 1 = Kreis R2=R1
+Kz 2 = Klotoide
+Kz 3 = ÜB S-Form
+Kz 4 = Bloss
+Kz 5 = Gerade/Knick Kz 6 = KSprung Kz 7 = S-Form (1f geschw.)
+Kz 8 = Bloss (1f geschw.)
+R1=Knickwinkel am Ende der Gerade (199.937-200.063Gon)
+L=Überlänge bzw. Fehllänge
+
+Trasse einlesen
+Fvon = 1
+GET FFileNum, 1, Tr(0)
+FBis = Tr(0).Kz
+FOR N = Fvon TO FBis + 1
+GET FFileNum, N - Fvon + 2, Tr(N)
+NEXT
+
+Datensatz 0 Datensatz 1 :In Kz steht die Anzahl der Elemente
+:1 Trassenelement mit Ausgangskoordinaten und Richtung
+. . . . .
+. . . . .
+. . . . .
+Datensatz Ende Datensatz Ende+1 :letztes Trassenelement mit Anfangskoordinaten
+:Endkoordinaten des letzten Trassenelements
+
+
+
+Speicherformat der Gradienten (Endung .GRA)
+
+Datensatz RANDOM-Format
+
+TYPE GradientenTyp
+S AS DOUBLE '64 Bit IEEE-Format Station NW oder Station RE1
+H AS DOUBLE '64 Bit IEEE-Format Höhe NW oder Station RA
+R AS DOUBLE '64 Bit IEEE-Format Ausrundungsradius oder Station RE2
+T AS DOUBLE '64 Bit IEEE-Format Tangentenlänge oder Überhöhung1+Kz
+Pkt AS LONG '32 Bit Long Integer Punktnummer *10000 oder Überhöhung2
+END TYPE
+
+Gleisscheren
+Inhalt von Gra(N).S: Station RE1
+Inhalt von Gra(N).H: Station RA
+Inhalt von Gra(N).R: Station RE2
+Inhalt von Gra(N).T: Überhöhung 1+ Kennzeichen Rampe * 1000
+Inhalt von Gra(N).Pkt Überhöhung 2 * 10
+
+SELECT CASE Gra(N).T
+CASE 3000 TO 3999, 7000 TO 7999: A$ = "geschw. Rampe"
+CASE 4000 TO 4999, 8000 TO 8999: A$ = "BLOSS Rampe"
+CASE ELSE : A$ = "Gerade Rampe"
+END SELECT
+
+Gradiente einlesen
+
+GET FFileNum, 1, Gra(0)
+AnzNw = Gra(0).S
+AnzScheren = Gra(0).Pkt
+FOR N = 1 TO AnzNW + AnzScheren
+GET FFileNum, N + 1, Gra(N)
+NEXT
+
+Datensatz 0 Datensatz 1 :In S steht die Anzahl der Neigungswechsel
+In Pkt steht die Anzahl der Gleisscheren
+:1. NW mit Station, Höhe und Punktnummer
+. . . . .
+. . . . .
+. . . . .
+Datensatz AnzNW :letzter Neigungswechsel
+Datensatz AnzNW+1 :1. Gleisschere
+. . . . .
+. . . . .
+. . . . .
+Datensatz AnzNW+AnzScheren :letzte Gleisschere
+
+
+
+
+
+
+
+
+
+
+
+DATENBANK/3LINIEN
+
+Formate der benutzten RANDOM-Dateien
+
+TYPE ProjTyp
+Bem1 AS STRING * 66: Bem2 AS STRING * 66 Erläuterungstext 1 (66 Zeichen)
+Erläuterungstext 2 (66 Zeichen)
+DB AS STRING * 1
+Rest AS STRING * 3 Frei
+Str AS STRING * 4 Strecken/Gleisnu,mmer
+TSVSt AS DOUBLE Von Station
+TSBSt AS DOUBLE Bis Station
+TSAnz AS INTEGER Anzahl Elemente Kilometerlinie
+TSFehl AS INTEGER Anzahl Fehlstationen
+Scheren AS INTEGER Anzahl Gleisscheren
+TDif AS DOUBLE Größte minus kleinste Tangentenrichtung
+TRAnz AS INTEGER Anzahl Elemente rechte Trasse
+TLAnz AS INTEGER Anzahl Elemente linke Trasse
+RRAnz AS INTEGER Anzahl Elemente Überhöhung rechts
+RLAnz AS INTEGER Anzahl Elemente Überhöhung links
+GRAnz AS INTEGER Anzahl Elemente rechte Gradiente
+GLAnz AS INTEGER Anzahl Elemente linke Gradiente
+MaxY AS DOUBLE Größte Knickabweichung in Y
+MaxX AS DOUBLE Größte Knickabweichung in X
+MaxT AS DOUBLE Größte Knickabweichung der Tangentenrichtung
+Datei2 AS STRING * 8 Name der Koordinatendatei
+FDate AS STRING * 8 Datum der Projekteröffnung
+Datum AS STRING * 8 Datum der letzten Änderung
+Prg AS INTEGER Programmnummer der letzten Änderung
+QR AS INTEGER Anzahl Querfelder rechts
+QL AS INTEGER Anzahl Querfelder links
+Art AS INTEGER Bahnhofsgleis=1 Strecke=2
+END TYPE
+
+TYPE Gleis
+R1 AS DOUBLE Radius am Anfang
+R2 AS DOUBLE Radius am Ende
+Ya AS DOUBLE Y Anfang
+Xa AS DOUBLE X Anfang
+Ta AS DOUBLE Startrichtung
+S AS DOUBLE Station
+Kz AS INTEGER Kennzeichen Krümmung
+L AS DOUBLE Länge des Elementes
+T AS DOUBLE Verbesserte Startrichtung
+Fakt AS DOUBLE Längenfaktor
+P AS SINGLE Angfangspunktnummer
+END TYPE
+
+TYPE Gradiente
+S AS DOUBLE Station
+H AS DOUBLE Höhe
+R AS DOUBLE Ausrundungsradius
+T AS DOUBLE Tangentenlänge Ausrundung
+Pkt AS LONG Punktnummer Neigungswechsel * 10000
+PktAA AS LONG Punktnummer Ausrundunganfang * 10000
+PktAE AS LONG Punktnummer Ausrundunganfang * 10000
+END TYPE
+
+TYPE Rampe
+S AS DOUBLE Station
+U AS DOUBLE Überhöhung in mm
+P AS DOUBLE Punktnummer
+Kz AS INTEGER Rampenkennzeichen
+END TYPE
+
+TYPE Bereich
+P AS DOUBLE Punktnummer
+Y AS DOUBLE Abstand für AXTRAN
+X AS DOUBLE Genauigkeitsschranke für AXTRAN
+END TYPE
+
+TYPE Querfeld
+R AS DOUBLE Punktnummer rechts
+L AS DOUBLE Punktnummer links
+St AS DOUBLE Station
+END TYPE
+
+
+
+
+DATENBANK/3LINIEN
+Satzart 11 Punkt allgemein
+Feld von bis Format
+SATZTYP 1 2 I2 PAD 3 13 A11 PART 14 17 A4 VERMART 18 20 I3 STABIL 21 21 I1 STATION 22 34 F13.3 PDATUM 35 42 A8 PBEARB 43 50 A8 PAUFTR 51 58 A8 PPROG 59 66 A8 PTEXT 67 86 A20 PSTRECKE 87 90 A4 PSTRRIKZ 91 91 I1 VERMART:(Vorschlag)
+0 unbekannt, unvermarkt
+1 Mastbolzen 2 Stehbolzen 3 Tiefpunkt 4 Tunnelvermarkung 5 Pfahl mit Nagel
+6 Stein,Bolzen,Kreuz
+7 Platte,Rohr(unterirdisch)
+8 Meßmarke
+bisher für Gleisvermarkung
+bisher für Gleisvermarkung
+bisher für Gleisvermarkung
+bisher für Gleisvermarkung
+9 Schienenstück
+STABIL:
+0 unbekannt
+1 gut
+2 mittel
+3 gering (Senkungsgebiet)
+rechtsbündig
+11
+Punktadresse
+Punktart (Featurenummer)
+Vermarkungsart
+Stabilitätskennzeichen
+Station bzw. km-Wert
+Datum der letzten Änderung
+Bearbeiter der letzten Änderung
+Auftrag
+erzeugendes Programm
+Kommentar
+Streckennummer bzw. Gleisnummer
+Richtungskennzeichen
+PUNKTART: (Vorschlag)
+TPA Trigonometrischer Punkt
+PPB Polygonpunkt
+GPSC GPS-Punkt
+SICH Sicherungspkt TP,PP,GPS
+BHPG Bogenhauptpunkt
+HBH Höhenbolzen
+KATK Katasterpunkt
+GRAP Gradientenpunkt
+HEKS Hektometerpunkt
+GVPV Gleisvermarkungspunkt
+WEIW Weichenpunkt
+BLEZ Blattecken
+PSTRECKE PSTRRIKZ STATION
+0000 0 0 nicht zugeordneter Punkt
+0001-9999 0 Km eingleisige Strecke
+0001-9999 1 Km Richtungsgleis
+0001-9999 2 Km Gegenrichtung
+0001-9999 3 Km Kilometrierungslinie
+A-Z, 0-9 4 Station Bahnhofsgleis (Gleisnummer in PSTRECKE)
+DATENBANK/3LINIEN
+Satzart 12 Punkt Lage
+Feld von bis Format
+SATZTYP 1 2 I2 12
+PAD 3 13 A11 Punktadresse
+LSTAT 14 14 A1 Lagestatus
+LSYST 15 17 A3 Koordinatensystem
+LFREMD 18 31 A14 Fremdpunktbezeichnung
+Y 32 45 F14.5 Rechtswert in m
+X 46 59 F14.5 Hochwert in m
+MP 60 62 I3 mittlerer Punktfehler in m
+MPEXP 63 64 I2 Zehnerpotenz des mittleren Punktfehlers
+LDATUM 65 72 A8 Datum der letzten Änderung
+LBEARB 73 80 A8 Bearbeiter der letzten Änderung
+LAUFTR 81 88 A8 Auftrag
+LPROG 89 96 A8 erzeugendes Programm
+LTEXT 97 116 A20 Kommentar
+1-13=Erläuterungstext aus VERM.ESN
+14-20=OSKA-Nummer (rechtsbündig)
+LSYST(Lagesystem)
+Spalte 1(15) Spalte 2+3 (16+17)
+nur Ziffern 0-9 und Großbuchstaben
+Erläuterung
+C 00-ZZ Gauß-Krüger spannungsfrei
+D 00-ZZ Gauß-Krüger spannungsfrei
+E 00-ZZ Soldner spannungsfrei
+Gauß-Krüger (9 und 15 Grad)
+Gauß-Krüger (6 und 12 Grad)
+H 00-ZZ Soldner
+L 00-ZZ örtliche Koordinaten
+M 00-ZZ örtliche Koordinaten
+W GS WGS-Koordinaten
+Lagefehler
+MH MHEXP Fehler in Meter
+300 -5 0.003
+3 -3 0.003
+1 0 1.000
+235 -3 0.235
+Satzart 13 Punkt Höhe
+Feld von bis Format
+SATZTYP 1 2 I2 13
+PAD 3 13 A11 Punktadresse
+HSTAT 14 14 A1 Höhenstatus
+HSYST 15 17 A3 Höhensystem
+HFREMD 18 31 A14 Fremdpunktbezeichnung
+H 32 45 F14.5 Höhe in m
+MH 46 48 I3 mittlerer Höhenfehler in m
+MHEXP 49 50 I2 Höhenfehlers
+Zehnerpotenz des mittleren
+HDATUM 51 58 A8 Datum der letzten Änderung
+HBEARB 59 66 A8 Bearbeiter der letzten Änderung
+HAUFTR 67 74 A8 Auftrag
+HPROG 75 82 A8 erzeugendes Programm
+Belegung von VERM.ESN:
+75-77=Lagesystem
+78-82=V5.85
+HTEXT 83 102 A20 Kommentar
+HSYST(Höhensystem)
+Spalte 1(15) nur Ziffern 0-9 und Spalte 2+3 (16+17)
+Erläuterung
+Großbuchstaben
+V 00-ZZ Höhen (neues System)
+W 00-ZZ Höhen (altes System)
+X 00-ZZ Höhen (vorläufig)
+W GS WGS-Koordinaten
+Höhenfehler
+MH MHEXP Fehler in Meter
+300 -5 0.003
+3 -3 0.003
+1 0 1.000
+235 -3 0.235
+
+
+
+
+
+Feld Satzart 21 Elemente Lage
+von bis Format
+SATZTYP 1 2 I2
+PAD1 3 13 A11 Punktadresse Anfangspunkt
+PAD2 14 24 A11 Punktadresse Endpunkt
+ELSYS 25 27 A3 Koordinatensystem des Richtungswinkels
+ELTYP 28 29 I2 Elemententyp
+ELPAR1 30 41 F12.5 Parameter 1 (Länge)
+ELPAR2 42 53 F12.5 Parameter 2 (Anfangsradius)
+ELPAR3 54 65 F12.5 Parameter 3 (Endradius)
+ELPAR4 66 77 F12.5 Parameter 4 (Reserve)
+ELARIWI 78 86 F9.5 Richtungswinkel am Anfang
+ELDATUM 87 94 A8 Datum der letzten Änderung
+ELBEARB 95 102 A8 Bearbeiter der letzten Änderung
+ELAUFTR 103 110 A8 Auftrag
+ELPROG 111 118 A8 erzeugendes Programm
+ELTEXT 119 138 A20 Kommentar
+
+ELTYP:
+0 Gerade
+1 Kreis
+2 Klotoide
+3 Übergangsbogen S-Form
+4 Blosskurve
+5 Richtgerade / Knick am Ende
+7 S-Form (einfach geschwungen)
+8 Bloss (einfach geschwungen)
+
+Satzart 24 Elemente Kilometrierungslinie
+Feld von bis Format
+SATZTYP 1 2 I2 24
+PAD1 3 13 A11 Punktadresse Anfangspunkt
+PAD2 14 24 A11 Punktadresse Endpunkt
+EKSYS 25 27 A3 Koordinatensystem des Richtungswinkels
+EKTYP 28 29 I2 Elemententyp
+EKPAR1 30 41 F12.5 Parameter 1 (Länge)
+EKPAR2 42 53 F12.5 Parameter 2 (Anfangsradius bzw. bei Richtgeraden
+Knickwinkel + 200gon)
+EKPAR3 54 65 F12.5 Parameter 3 (Endradius)
+EKPAR4 66 77 F12.5 Parameter 4 (Reserve)
+EKARIWI 78 86 F9.5 Richtungswinkel am Anfang
+EKAKM 87 99 F13.3 Kilometer am Anfang
+EKEKM 100 112 F13.3 Kilometer am Ende
+EKDATUM 113 120 A8 Datum der letzten Änderung
+EKBEARB 121 128 A8 Bearbeiter der letzten Änderung
+EKAUFTR 129 136 A8 Auftrag
+EKPROG 137 144 A8 erzeugendes Programm
+EKTEXT 145 164 A20 Kommentar
+
+ELTYP:
+0 Gerade
+1 Kreis
+2 Klotoide
+3 Übergangsbogen S-Form
+4 Blosskurve
+5 Richtgerade / Knick am Ende
+6 Kilometersprung
+7 S-Form (einfach geschwungen)
+8 Bloss (einfach geschwungen)
+
+Satzart 23 Elemente Überhöhung
+Feld von bis Format
+SATZTYP 1 2 I2 23
+PAD1 3 13 A11 Punktadresse Anfangspunkt
+PAD2 14 24 A11 Punktadresse Endpunkt
+EUTYP 25 26 I2 Elemententyp
+EUPAR1 27 38 F12.5 Parameter 1 (Länge)
+EUPAR2 39 45 F7.4 Parameter 2 (Überhöhung am Anfang) in m
+EUPAR3 46 52 F7.4 Parameter 3 (Überhöhung am Ende) in m
+EUPAR4 53 64 F12.5 Parameter 4 (Reserve)
+EUDATUM 65 72 A8 Datum der letzten Änderung
+EUBEARB 73 80 A8 Bearbeiter der letzten Änderung
+EUAUFTR 81 88 A8 Auftrag
+EUPROG 89 96 A8 erzeugendes Programm
+Belegung von VERM.ESN:
+89-91=Lagesystem
+92-96=V5.85
+EUTEXT 97 116 A20 Kommentar
+
+EUTYP:
+0 gleichbleibende Überhöhung
+2 Klotoide
+3 S-Förmige Rampe
+4 Bloss-Rampe
+7 Gleisschere S-Form
+8 Gleisschere Bloss
+
+Satzart 22 Elemente Höhe
+Feld von bis Format
+SATZTYP 1 2 I2
+PAD1 3 13 A11 Punktadresse Anfangspunkt
+PAD2 14 24 A11 Punktadresse Endpunkt
+EHSYS 25 27 A3 Höhensystem
+EHTYP 28 29 I2 Elemententyp
+EHPAR1 30 41 F12.5 Parameter 1 (Länge)
+EHPAR2 42 53 F12.5 Parameter 2 (Steigung am Anfang) in ‰
+EHPAR3 54 65 F12.5 Parameter 3 (Steigung am Ende) in ‰
+EHPAR4 66 77 F12.5 Parameter 4 (Reserve)
+EHDATUM 78 85 A8 Datum der letzten Änderung
+EHBEARB 86 93 A8 Bearbeiter der letzten Änderung
+EHAUFTR 94 101 A8 Auftrag
+EHPROG 102 109 A8 erzeugendes Programm
+EHTEXT 110 129 A20 Kommentar
+EHTYP:
+0 Gerade
+1 quadratische Parabel
+2 überhöhter Weichenabzweig
+
+
+Reihenfolge der Satzarten (von der Datenbank)
+Elemente der SA 21,22,23,24 in geometrischer Reihenfolge
+Lfd.Nr. Satzart Beschreibung
+1 11-13 alle Hauptpunkte der Elemente SA 21,22,23,24
+2 24 alle Lageelemente der Kilometerlinie
+3 21 alle Lageelemente des rechtes Gleises
+4 23 alle Überhöhungselemente des rechtes Gleises
+5 22 alle Höhenelemente des rechtes Gleises
+6 21 alle Lageelemente des linken Gleises
+7 23 alle Überhöhungselemente des linken Gleises
+8 22 alle Höhenelemente des linken Gleises
+9 31 Knoten
+10 32 Kanten Kilometerlinie
+11 32 Kanten rechtes Gleis
+12 32 Kanten linkes Gleis
+13 41 Streckenbeschreibung rechtes Gleis
+14 41 Streckenbeschreibung linkes Gleis
+
+
+
+Satzart 31 Knoten
+Feld von bis Format
+SATZTYP 1 2 I2
+KNOTEN 3 17 A15 Name des Knotens
+KNTYP 18 19 I2 Knotentyp
+PAD 20 30 A11 Punktadresse des geometrisch repräsentativen
+Punktes
+z.B. Weichenanfang
+KN0 31 45 A15 Anschlußknoten des ankommenden
+Gleisabschnittes
+KN1 46 60 A15 Anschlußknoten des 1. abgehenden
+Gleisabschnittes
+KN2 61 75 A15 Anschlußknoten des 2. abgehenden
+Gleisabschnittes
+KNBE 76 115 A40 Knotenbeschreibung z.B.:
+tlw ABW zTiU 60-1200-1:19,xyz (B) fb
+KDATUM 116 123 A8 Datum der letzten Änderung
+KBEARB 124 131 A8 Bearbeiter der letzten Änderung
+KAUFTR 132 139 A8 Auftrag
+KPROG 140 147 A8 erzeugendes Programm
+KTEXT 148 167 A20 Kommentar
+KNTYP (Vorschlag):
+1 Weiche
+2 Gleisende
+3 Streckenwechsel
+(c) H.Adelt 1986-2000 Version 6.7 Seite - b/80 -
+
+
+
+Satzart 32 Gleisabschnitte
+Feld von bis Format
+SATZTYP 1 2 I2
+AKNOTEN 3 17 A15 Anfangsknoten
+EKNOTEN 18 32 A15 Endknoten
+GLEIS 33 36 A4 Gleisnummer
+NL 37 39 I3 Anzahl der Lagepunkte
+NH 40 42 I3 Anzahl der Höhenpunkte
+NU 43 45 I3 Anzahl der Überhöhungspunkte
+NK 46 48 I3 Anzahl der Kilometrierungspunkte
+GDATUM 49 56 A8 Datum der letzten Änderung
+GBEARB 57 64 A8 Bearbeiter der letzten Änderung
+GAUFTR 65 72 A8 Auftrag
+GPROG 73 80 A8 erzeugendes Programm
+GTEXT 81 100 A20 Kommentar
+NL * L(i) 101 NL*A11 Punktadressen der Lagepunkte 1...nl
+NH * H(i) NH*A11 Punktadressen der Höhenpunkte 1...nh
+NU * U(i) NU*A11 Punktadressen der Überhöhungspunkte
+1...nu
+NK * K(i) NK*A11 Punktadressen der Kilometrierungspunkte
+1...nk
+(c) H.Adelt 1986-2000 Version 6.7 Seite - b/83 -
+DATENBANK/3LINIEN
+RICHTUNG:
+0 eingleisige Strecke
+1 Richtungsgleis
+2 Gegenrichtungsgleis
+
+
+
+
+
+
+Satzart 41 Strecken
+2 Gegenrichtungsgleis
+Feld von bis Format
+SATZTYP 1 2 I2
+STRECKE 3 6 A4 Streckenbezeichnung
+RICHTUNG 7 7 I1 Richtungskennzeichen
+NKN 8 12 I5 Anzahl Knoten innerhalb der Strecke
+SDATUM 13 20 A8 Datum der letzten Änderung
+SBEARB 21 28 A8 Bearbeiter der letzten Änderung
+SAUFTR 29 36 A8 Auftrag
+SPROG 37 44 A8 erzeugendes Programm
+STEXT 45 64 A20
+NKN * KN(i) 65 NKN*A15 Knotennamen 1...nkn
+NKN * KM(i) NKN*F13.3 Jedem Knoten ist ein Kilometrierungswert
+zugeordnet.

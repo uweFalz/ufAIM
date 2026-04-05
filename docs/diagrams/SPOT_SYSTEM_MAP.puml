@@ -1,25 +1,15 @@
 @startuml
 
-title ufAIM – Master System Map
+title ufAIM – SPOT / Window / Kernel System Map
 
 skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam shadowing false
 
 package "External World" {
   [Import Files]
   [Public Geo Context\n(mapLibre / GIS)]
   [Reference Models\n(IFC / Terrain / Docs)]
-}
-
-package "Window Client" {
-  [WindowRuntime]
-  [WindowSessionState]
-  [uiWiring]
-
-  [ImportController]
-  [Grabbeltisch]
-  [GeoView]
-  [Profile/Section Views]
-  [TransitionEditor]
 }
 
 package "Master Runtime\n(SharedWorker)" {
@@ -29,52 +19,83 @@ package "Master Runtime\n(SharedWorker)" {
   [ProjectState]
 }
 
-package "SPOT Model" {
+package "Canonical SPOT Model" {
   [Spot Objects]
   [Spot Relations]
   [Topology]
   [Engineering CRS]
 }
 
-' imports
-[Import Files] --> [ImportController]
-[ImportController] --> [WorkingSet]
+package "@kernel\n(calculation module)" {
+  [Alignment Calculation]
+  [Sampling / Projection Prep]
+  [Solver Prep]
+}
 
-' working set to user-facing structural editing
-[WorkingSet] --> [Grabbeltisch]
-[Grabbeltisch] --> [WorkingSet] : rename / group / relate / delete
-[Grabbeltisch] --> [SpotStore] : accept / controlled update
+package "Window Client A" {
+  [WindowRuntime A]
+  [WindowSessionState A]
+  [Focus A]
+  [ImportController A]
+  [ViewController A]
+  [GeoView A]
+}
 
-' spot internals
+package "Window Client B" {
+  [WindowRuntime B]
+  [WindowSessionState B]
+  [Focus B]
+  [ViewController B]
+  [GeoView B]
+}
+
+[Import Files] --> [ImportController A]
+[ImportController A] --> [WorkingSet]
+[ImportController A] --> [SpotStore]
+
 [SpotStore] --> [Spot Objects]
 [SpotStore] --> [Spot Relations]
 [SpotStore] --> [Topology]
 [SpotStore] --> [Engineering CRS]
 
-' window session / views
-[WindowRuntime] --> [WindowSessionState]
-[uiWiring] --> [WindowSessionState]
+[ViewController A] --> [SpotStore]
+[ViewController B] --> [SpotStore]
 
-[WindowSessionState] --> [GeoView]
-[WindowSessionState] --> [Profile/Section Views]
-[WindowSessionState] --> [Grabbeltisch]
-[WindowSessionState] --> [TransitionEditor]
+[ViewController A] --> [Focus A]
+[ViewController B] --> [Focus B]
 
-' views operate on SPOT
-[GeoView] --> [SpotStore]
-[Profile/Section Views] --> [SpotStore]
-[TransitionEditor] --> [SpotStore]
-[Grabbeltisch] --> [SpotStore]
+[ViewController A] --> [Alignment Calculation]
+[ViewController B] --> [Alignment Calculation]
 
-' reference context
-[Public Geo Context\n(mapLibre / GIS)] --> [GeoView]
-[Reference Models\n(IFC / Terrain / Docs)] --> [ReferenceStore]
-[ReferenceStore] --> [GeoView]
-[ReferenceStore] --> [Grabbeltisch]
+[Alignment Calculation] --> [Sampling / Projection Prep]
+[Alignment Calculation] --> [Solver Prep]
 
-' project scope
-[ProjectState] --> [SpotStore]
-[ProjectState] --> [WorkingSet]
-[ProjectState] --> [ReferenceStore]
+[Sampling / Projection Prep] --> [GeoView A]
+[Sampling / Projection Prep] --> [GeoView B]
+
+[Public Geo Context\n(mapLibre / GIS)] --> [GeoView A]
+[Public Geo Context\n(mapLibre / GIS)] --> [GeoView B]
+
+note right of [SpotStore]
+Stores canonical object parameters / metadata only.
+No view geometry.
+No solver geometry.
+end note
+
+note bottom of [Focus A]
+Window-local only.
+Not shared with other windows.
+end note
+
+note bottom of [Focus B]
+Window-local only.
+Not shared with other windows.
+end note
+
+note bottom of [Alignment Calculation]
+@kernel is a module boundary.
+Runtime execution model
+(in-window vs worker) is open.
+end note
 
 @enduml

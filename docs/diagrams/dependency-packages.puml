@@ -29,10 +29,11 @@ package "app/view/overlays" as P_app_view_overlays {}
 package "app/view/shell" as P_app_view_shell {}
 package "app/view/viewers" as P_app_view_viewers {}
 package "src/alignment" as P_src_alignment {}
+package "src/alignment/_legacy" as P_src_alignment__legacy <<legacy>> {}
 package "src/alignment/build" as P_src_alignment_build {}
 package "src/alignment/elements" as P_src_alignment_elements {}
 package "src/alignment/elements/_legacy" as P_src_alignment_elements__legacy <<legacy>> {}
-package "src/alignment/eval" as P_src_alignment_eval {}
+package "src/alignment/service" as P_src_alignment_service {}
 package "src/alignment/transition/build" as P_src_alignment_transition_build {}
 package "src/alignment/transition/registry" as P_src_alignment_transition_registry {}
 package "src/alignment/transition/registry/ast" as P_src_alignment_transition_registry_ast {}
@@ -66,6 +67,7 @@ package "src/lib/math/lina" as P_src_lib_math_lina {}
 package "src/lib/math/numeric" as P_src_lib_math_numeric {}
 package "src/model/spot" as P_src_model_spot {}
 package "src/projection" as P_src_projection {}
+package "src/projection/_legacy" as P_src_projection__legacy <<legacy>> {}
 package "src/shared/messaging" as P_src_shared_messaging {}
 package "src/shared/messaging/local" as P_src_shared_messaging_local {}
 package "src/shared/messaging/service" as P_src_shared_messaging_service {}
@@ -86,6 +88,7 @@ P_app_core_controllers --> P_app_io_apply
 P_app_core_controllers --> P_app_io_input
 P_app_core_controllers --> P_app_utils
 P_app_core_controllers --> P_src_import
+P_app_core_controllers --> P_src_projection
 P_app_core_controllers --> P_src_utils
 P_app_core_import --> P_app_i18n
 P_app_core_runtime --> P_app_adapters_geo
@@ -114,12 +117,14 @@ P_src_alignment --> P_src_alignment_elements
 P_src_alignment --> P_src_alignment_transition_build
 P_src_alignment --> P_src_alignment_transition_registry
 P_src_alignment --> P_src_lib_geom
+P_src_alignment__legacy --> P_src_lib_geom_frame
 P_src_alignment_build --> P_src_alignment
 P_src_alignment_build --> P_src_alignment_elements
 P_src_alignment_elements --> P_src_lib_geom
 P_src_alignment_elements --> P_src_lib_geom_frame
 P_src_alignment_elements --> P_src_lib_math_numeric
-P_src_alignment_eval --> P_src_lib_geom_frame
+P_src_alignment_service --> P_src_alignment_build
+P_src_alignment_service --> P_src_alignment_validation
 P_src_alignment_transition_build --> P_src_alignment_transition_registry_ast
 P_src_alignment_transition_build --> P_src_alignment_transition_registry_compose
 P_src_alignment_transition_build --> P_src_utils

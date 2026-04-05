@@ -2,21 +2,19 @@
 //
 // FocusManager
 //
-// Window-local focus coordinator.
-//
-// One window = one local focus.
-// Windows do not share focus.
-// Windows share canonical data only.
+// Window-local selection state.
 //
 // Responsibilities:
-// - set/get this window's focus
-// - bridge legacy focus fields during migration
-// - trigger temporary local sync derived from focus
+// - manages this window's focus (objectId, slot)
+// - triggers local sync based on focus changes
 //
 // NOT:
-// - no canonical object ownership
-// - no global "active" object
-// - no cross-window selection sync
+// - no global state
+// - no SPOT mutation
+//
+// Rule:
+// Each window has its own focus.
+// Focus is never shared across windows.
 //
 
 import { mirrorQuickHooksFromActive } from "@app/io/apply/importApply.js";

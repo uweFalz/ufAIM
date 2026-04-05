@@ -1,11 +1,38 @@
 // src/import/runImportPipeline.js
+//
+// runImportPipeline
+//
+// Pure import pipeline (format → landFAT → importResult).
+//
+// Responsibilities:
+// - sniff file format
+// - load and validate parser
+// - parse into landFAT
+// - validate landFAT structure
+// - transform into importResult (spotCandidates, workingItems, referenceItems)
+//
+// NOT:
+// - no UI
+// - no SPOT interaction
+// - no rendering / preview
+// - no global state mutation
+//
+// Output contract:
+// {
+//   spotCandidates: [],
+//   workingItems: [],
+//   referenceItems: []
+// }
+//
+// Rule:
+// This is a pure function boundary.
+// Side effects start only after this step.
+//
 
 import { sniffImportFile } from "./sniffers/sniffImportFile.js";
 import { loadParserModule } from "./parsers/parserRegistry.js";
 import { validateParserModule } from "./parsers/validateParserModule.js";
 import { validateLandFAT } from "@kimport/landfat/validateLandFAT.js";
-import { buildSparseFromLandFAT } from "./domain/buildSparseFromLandFAT.js";
-import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
 import { buildImportResultFromParsed } from "./domain/buildImportResultFromParsed.js";
 
 const DEBUG_IMPORT_FLOW = false;

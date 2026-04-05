@@ -1,3 +1,5 @@
+// ...
+
 export const CC_SCHEMA = "ufCCv1";
 export const CC_VERSION = 1;
 
@@ -47,6 +49,10 @@ const REQUIRED = {
 	// spot
 	// canonical object world only
 	// no window-local focus commands here
+	//
+	// evt examples:
+	// - Spot.StateChanged
+	// - Spot.UiStateChanged
 	// ---------------------------------------------------------
 	"Spot.AddCandidates": ["spots"],
 	"Spot.GetState": [],
@@ -91,10 +97,10 @@ function isStr(x) { return typeof x === "string" && x.length > 0; }
 function isValidCtx(ctx) {
 	if (!isStr(ctx)) return false;
 	return (
-	ctx === "broadcast" ||
-	ctx === "worker:router" ||
-	ctx === "role:master" ||
-	ctx.startsWith("win:")
+		ctx === "broadcast" ||
+		ctx === "worker:router" ||
+		ctx === "role:master" ||
+		ctx.startsWith("win:")
 	);
 }
 

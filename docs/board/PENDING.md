@@ -1,18 +1,17 @@
 # PENDING.md
 
-## Import / Pipeline
-- Remove fallback branches in runImportPipeline
-- Enforce landFAT → sparse conversion
-- Validate sparse strictly
+## Import
+- Remove fallback branches
+- Enforce landFAT → sparse strictly
 
-## SPOT / WorkingSet
-- Separate candidate vs accepted data
-- Remove mixed states
+## SPOT
+- Clean candidate vs accepted separation
+- No mixed states
 
 ## Projection
-- Introduce single projection entry point
-- Remove geometry generation in view layer
+- Introduce caching layer
+- Kernel-based sampling only
 
-## Cleanup
-- Identify and remove leftover 'artifact-style' logic
-- Eliminate duplicate transformation paths
+## Messaging
+- CCv1 cleanup done
+- Spot.UiStateChanged active

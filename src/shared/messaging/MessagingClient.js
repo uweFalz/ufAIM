@@ -1,10 +1,9 @@
 // src/shared/messaging/MessagingClient.js
 
-import { CC_SCHEMA, CC_VERSION, validateMessage } from "./CommandContract_v1.js";
+import { CC_SCHEMA, CC_VERSION } from "./CommandContract_v1.js";
 import { mkCtx, mkCmd, mkEvt, mkAck, mkErr } from "./ccv1.js";
 
 function uid() {
-	// minimal; replace with nanoid if you like
 	return "msg_" + Math.random().toString(16).slice(2) + "_" + Date.now();
 }
 
@@ -22,16 +21,13 @@ export function emitMessage(messaging, partial) {
 	return msg.id;
 }
 
-//
-// ...
-//
 export class MessagingClient {
 	constructor({ transport, windowId, role = "view" }) {
 		this.transport = transport; // LocalBus oder SharedWorkerClient
 		this.windowId = windowId;
 		this.role = role;
 	}
-	
+
 	attachRuntime(fn) {
 		return this.transport.attachRuntime?.(fn);
 	}
@@ -40,22 +36,36 @@ export class MessagingClient {
 		return this.transport.on(name, fn);
 	}
 
+	// ---------------------------------------------------------
+	// NEW: event-only subscription by evt name
+	// fn(payload, msg)
+	// ---------------------------------------------------------
+	onEvt(name, fn) {
+		if (!name || typeof fn !== "function") return () => {};
+
+		return this.transport.on(String(name), (msg) => {
+			if (!msg || msg.type !== "evt") return;
+			fn(msg.payload ?? null, msg);
+		});
+	}
+
 	sendRaw(msg) {
 		return this.transport.send(msg);
 	}
-	
-	// legacy shim: allow old code to call messaging.send(...)
+
+	// legacy shim
 	send(msg) {
 		return this.sendRaw(msg);
 	}
-	
-	// --- NEW: handle incoming cmd and answer with ack/err
+
+	// ---------------------------------------------------------
+	// incoming cmd handler
+	// ---------------------------------------------------------
 	onCmd(name, handlerFn) {
 		return this.on(name, async (msg) => {
 			if (!msg || msg.type !== "cmd") return;
 			try {
 				const result = await handlerFn(msg.payload ?? {}, msg);
-				// IMPORTANT: ack must be serializable!
 				this.replyAck(msg, result ?? {});
 			} catch (e) {
 				this.replyErr(msg, e);
@@ -63,9 +73,9 @@ export class MessagingClient {
 		});
 	}
 
-	// --- NEW: await ack/err correlated to reqId
-	// in class MessagingClient
-
+	// ---------------------------------------------------------
+	// await ack/err correlated to reqId
+	// ---------------------------------------------------------
 	sendCmdAwait(name, payload, { dstCtx = "broadcast", debug, timeoutMs = 4000 } = {}) {
 		const src = mkCtx({ windowId: this.windowId, role: this.role });
 		const dst = { ctx: dstCtx };

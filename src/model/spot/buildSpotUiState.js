@@ -1,5 +1,23 @@
 // src/model/spot/buildSpotUiState.js
 //
+// buildSpotUiState
+//
+// Transforms canonical SPOT state into a window-consumable UI shape.
+//
+// Responsibilities:
+// - flattens SPOT objects into simple rows
+// - extracts display-friendly metadata
+// - prepares lightweight UI state (no grouping, no slots)
+//
+// NOT:
+// - no calculations
+// - no geometry generation
+// - no solver/view derivations
+//
+// Important:
+// This is a pure projection layer (SPOT → UI).
+// All derived geometry must be computed via @kernel by the consumer (e.g. ViewController).
+//
 // Builds a simple UI state for SPOT
 // → alignment-candidate board (no grouping, no slots)
 //

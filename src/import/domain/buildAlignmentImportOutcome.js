@@ -1,13 +1,14 @@
 // src/import/domain/buildAlignmentImportOutcome.js
 
 import { buildSparseFromLandFAT } from "./buildSparseFromLandFAT.js";
-import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
 import { classifyAlignmentForSpot } from "./classifyImportResult.js";
 import { IMPORT_REASONS } from "./importReasons.js";
 import {
 	makeWorkingItem,
 	buildAlignmentSpotCandidate,
 } from "./importItemFactories.js";
+
+import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
 
 const DEBUG_IMPORT_DETAILS = false;
 const DEBUG_IMPORT_FLOW = false;
@@ -30,6 +31,7 @@ export function buildAlignmentImportOutcome({
 
 	if (alignment?.sparseAlignment) {
 		sparseValidation = validateSparseAlignment(alignment.sparseAlignment);
+		alignment.sparseValidation = sparseValidation;
 
 		if (!sparseValidation?.ok) {
 			log(`sparse invalid: ${name}`);
@@ -46,6 +48,7 @@ export function buildAlignmentImportOutcome({
 
 			if (alignment?.sparseAlignment) {
 				sparseValidation = validateSparseAlignment(alignment.sparseAlignment);
+				alignment.sparseValidation = sparseValidation;
 
 				if (!sparseValidation?.ok) {
 					log(`sparse invalid after build: ${name}`);

@@ -1,21 +1,67 @@
 // src/projection/ViewProjectionController.js
+//
+// ViewProjectionController
+//
+// Rolle:
+// - übersetzt ein fokussiertes SPOT-Objekt in viewbare Geometrie
+// - KEINE View-Logik
+// - KEINE Import-Logik
+// - KEINE Store-Logik
+//
+// Input:
+// - spotObject (canonical aus SPOT)
+// Output:
+// - viewGeometry (polyline2d + bbox)
+//
+// Wichtig:
+// - nur Projection-Schicht
+// - deterministic, stateless
+//
 
-import { projectAlignmentToPolyline } from "./AlignmentProjectionService.js";
+import { projectAlignmentPreview } from "./AlignmentProjectionService.js";
 
-export function _buildViewGeometry(spotSlice, opts = {}) {
-	const alignments = spotSlice.alignments || [];
+// -----------------------------------------------------------------------------
 
-	return alignments.map(a => ({
-		id: a.id,
-		geometry: projectAlignmentToPolyline(a, opts)
-	}));
+export function projectFocusedSpotObject(spotObject, opts = {}) {
+	if (!spotObject) return null;
+
+	console.log("[ViewProjectionController] spotObject =", spotObject);
+
+	const sparseAlignment =
+		spotObject?.payload?.sparseAlignment ??
+		spotObject?.payload ??
+		null;
+
+	console.log("[ViewProjectionController] sparseAlignment =", sparseAlignment);
+
+	if (!sparseAlignment) return null;
+
+	const geom = projectAlignmentPreview({
+		sparseAlignment,
+		maxStep: opts.maxStep ?? 5,
+	});
+
+	console.log("[ViewProjectionController] geom =", geom);
+
+	if (!geom) return null;
+
+	return {
+		objectId: spotObject.id ?? null,
+		...geom,
+	};
 }
 
-export function buildViewGeometry(spotSlice) {
-	const alignments = spotSlice.alignments || [];
+// -----------------------------------------------------------------------------
 
-	return alignments.map(a => ({
-		id: a.id,
-		...projectAlignmentToPolyline(a, { step: 5 })
-	}));
+export function projectSpotObjects(spotObjects = [], opts = {}) {
+	if (!Array.isArray(spotObjects)) return [];
+
+	const out = [];
+
+	for (const obj of spotObjects) {
+		const geom = projectFocusedSpotObject(obj, opts);
+		if (geom) out.push(geom);
+	}
+
+	return out;
 }

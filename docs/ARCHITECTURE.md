@@ -146,3 +146,14 @@ the framework and is intentionally not designed as a full CAD system.
 The architecture of ufAIM prioritizes clarity, robustness and
 extensibility in order to support long-term infrastructure engineering
 workflows.
+
+### Geometry Rule
+
+No geometry is stored in SPOT or View state.
+
+All geometry is derived on demand via @kernel.
+
+This ensures:
+- determinism
+- consistency across windows
+- no stale or duplicated geometry

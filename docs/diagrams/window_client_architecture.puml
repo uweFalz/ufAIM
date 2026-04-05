@@ -4,64 +4,68 @@ title ufAIM Window Client Architecture
 
 skinparam linetype ortho
 skinparam packageStyle rectangle
+skinparam shadowing false
 
 package "Browser Window" {
-
-    [WindowRuntime]
-
-    [ViewController]
-    [UI_Wiring]
-
-    [WorkspaceState]
-
+  [WindowRuntime]
+  [WindowSessionState]
+  [FocusManager]
+  [uiWiring]
+  [ViewController]
 }
 
 package "Tool Controllers" {
-
-    [ImportController]
-
-    [GrabbeltischController]
-
-    [TransitionEditorBridge]
-
-    [SpotController]
-
+  [ImportController]
+  [TransitionEditorBridge]
 }
 
 package "Views" {
-
-    [GeoView]
-
-    [GrabbeltischView]
-
-    [TransitionEditorView]
-
+  [GeoView]
+  [SPOT View]
+  [TransitionEditorView]
 }
 
-package "Master Runtime (SharedWorker)" {
-
-    [Messaging]
-
-    [SpotStore]
-
+package "Shared Canonical World" {
+  [SpotStore]
+  [WorkingSet]
 }
 
-WindowRuntime --> ViewController
-WindowRuntime --> WorkspaceState
+package "@kernel" {
+  [Alignment Calculation]
+}
 
-ViewController --> GeoView
-ViewController --> GrabbeltischView
-ViewController --> TransitionEditorView
+[WindowRuntime] --> [WindowSessionState]
+[FocusManager] --> [WindowSessionState]
 
-UI_Wiring --> ImportController
-UI_Wiring --> GrabbeltischController
-UI_Wiring --> TransitionEditorBridge
+[uiWiring] --> [FocusManager]
+[uiWiring] --> [SPOT View]
 
-ImportController --> Messaging
-GrabbeltischController --> Messaging
-TransitionEditorBridge --> Messaging
-SpotController --> Messaging
+[ImportController] --> [WorkingSet]
+[ImportController] --> [SpotStore]
 
-Messaging --> SpotStore
+[ViewController] --> [WindowSessionState]
+[ViewController] --> [SpotStore]
+[ViewController] --> [Alignment Calculation]
+[ViewController] --> [GeoView]
+
+[SPOT View] --> [SpotStore]
+
+[TransitionEditorBridge] --> [Alignment Calculation]
+[TransitionEditorBridge] --> [TransitionEditorView]
+
+note right of [ViewController]
+Reads:
+- canonical objects
+- window-local focus
+
+Then requests derived geometry
+from @kernel and renders this window.
+end note
+
+note bottom of [SPOT View]
+Renders SPOT objects only.
+No geometry generation.
+No local shadow model.
+end note
 
 @enduml

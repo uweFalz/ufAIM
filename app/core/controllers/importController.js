@@ -2,6 +2,28 @@
 //
 // ImportController
 //
+// Window-local import entry point.
+//
+// Flow:
+//   FileDrop → importPipeline → SPOT → local focus → view
+//
+// Responsibilities:
+// - runs importPipeline for dropped files
+// - sends validated results to master (SPOT / Import services)
+// - updates local UI state (summary, status)
+// - sets local focus on newly created SPOT objects
+//
+// NOT:
+// - no preview/shadow data
+// - no direct visualization artifacts
+// - no local SPOT duplication
+//
+// Rule:
+// Imported data becomes visible only after it exists in SPOT.
+// This window may then focus and display it locally.
+//
+// ImportController
+//
 // Rolle:
 // - ruft die Import-Pipeline auf
 // - schickt geprüfte Ergebnisse an den Master

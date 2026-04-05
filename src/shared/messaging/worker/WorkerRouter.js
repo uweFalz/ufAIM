@@ -1,7 +1,7 @@
 // src/shared/messaging/worker/WorkerRouter.js
 
 import { validateMessage } from "../CommandContract_v1.js";
-import { mkCtx, mkAck, mkErr } from "../ccv1.js";
+import { mkCtx, mkAck, mkErr, mkEvt } from "../ccv1.js";
 
 export function startWorkerRouter(self) {
 	const ports = new Set();
@@ -31,17 +31,17 @@ export function startWorkerRouter(self) {
 		const fn = cmdHandlers.get(msg.name);
 		if (!fn) {
 			const err = new Error(`WorkerRouter: no handler for cmd ${msg.name}`);
-			const reply = mkErr(msg, err, { src: mkCtx({ role: "worker" }) });
+			const reply = mkErr(msg, err, { src: mkCtx({ ctx: "worker:router", role: "worker" }) });
 			port.postMessage(reply);
 			return;
 		}
 
 		try {
 			const result = await fn(msg.payload ?? {}, msg);
-			const reply = mkAck(msg, result ?? {}, { src: mkCtx({ role: "worker" }) });
+			const reply = mkAck(msg, result ?? {}, { src: mkCtx({ ctx: "worker:router", role: "worker" }) });
 			port.postMessage(reply);
 		} catch (e) {
-			const reply = mkErr(msg, e, { src: mkCtx({ role: "worker" }) });
+			const reply = mkErr(msg, e, { src: mkCtx({ ctx: "worker:router", role: "worker" }) });
 			port.postMessage(reply);
 		}
 	}
@@ -87,13 +87,14 @@ export function startWorkerRouter(self) {
 	return {
 		onCmd,
 		getClientCount,
-		broadcastEvt(type, payload) {
-			broadcast({
-				type,
-				payload,
-				ts: Date.now(),
-				src: mkCtx({ role: "worker" }),
+
+		broadcastEvt(name, payload, { debug } = {}) {
+			const msg = mkEvt(name, payload ?? {}, {
+				src: mkCtx({ ctx: "worker:router", role: "worker" }),
+				dst: { ctx: "broadcast" },
+				debug,
 			});
+			broadcast(msg, null);
 		},
 	};
 }
