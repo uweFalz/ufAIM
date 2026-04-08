@@ -1,5 +1,26 @@
 // src/import/domain/buildImportResultFromParsed.js
-// PATCHED: permissive fallback (no more empty import)
+//
+// Build canonical import result from one parsed payload.
+//
+// Purpose:
+// - accept parser output
+// - normalize to canonical ImportSessionItem list
+// - derive sparseAlignment for alignment payloads when possible
+// - keep parser/container role strictly separated from internal import session model
+//
+// NOT:
+// - no UI text generation
+// - no store mutation
+// - no SPOT mutation
+// - no vague candidate/workItem abstractions
+//
+// Rule:
+// parser output -> canonical ImportSessionItems
+//
+// Notes:
+// - landFAT is import interface only
+// - sparse / Spot-compatibility decides promotability
+// - rejected payloads may be reported, but are not promoted
 
 import { buildAlignmentImportOutcome } from "./buildAlignmentImportOutcome.js";
 import {
@@ -29,10 +50,16 @@ export function buildImportResultFromParsed({
 		});
 	}
 
+	// -------------------------------------------------------------------------
+	// case 1: canonical landFAT container
+	// -------------------------------------------------------------------------
 	if (parsed.type === "landFAT") {
 		return buildResultFromLandFAT({ doc: parsed, source, meta });
 	}
 
+	// -------------------------------------------------------------------------
+	// case 2: legacy single alignment-like object
+	// -------------------------------------------------------------------------
 	if (looksLikeSingleAlignmentPayload(parsed)) {
 		const outcome = buildAlignmentImportOutcome({
 			alignment: parsed,
@@ -48,16 +75,13 @@ export function buildImportResultFromParsed({
 		});
 	}
 
-	// 🔥 fallback instead of empty
-	return finalizeResult({
+	// -------------------------------------------------------------------------
+	// case 3: unknown / unsupported parser output
+	// -------------------------------------------------------------------------
+	return makeEmptyResult({
 		meta,
-		items: [{
-			kind: "raw",
-			source: makeObjectSource(source),
-			payload: parsed,
-			status: { valid: true, promotable: false, stage: "raw" }
-		}],
-		rejected: [],
+		status: "unknown",
+		reason: IMPORT_REASONS.UNKNOWN_PARSED_RESULT,
 	});
 }
 
@@ -92,52 +116,144 @@ function buildResultFromLandFAT({ doc, source, meta }) {
 
 	for (let i = 0; i < profiles.length; i++) {
 		const profile = profiles[i];
-		if (!isObject(profile)) continue;
+		if (!isObject(profile)) {
+			outcomes.push(
+				makeRejectedImportItem({
+					kind: "profile",
+					source: makeObjectSource(source, {
+						containerId: doc?.meta?.id ?? null,
+						objectName: `profile_${i + 1}`,
+						index: i,
+					}),
+					payload: {},
+					reason: IMPORT_REASONS.INVALID_PROFILE_INPUT,
+				})
+			);
+			continue;
+		}
 
 		outcomes.push(
 			makeProfileImportItem({
-				source: makeObjectSource(source),
+				source: makeObjectSource(source, {
+					containerId: doc?.meta?.id ?? null,
+					objectName: profile.name ?? profile.id ?? `profile_${i + 1}`,
+					index: i,
+				}),
 				payload: normalizeProfilePayload(profile),
-				status: { valid: true, promotable: false, stage: "validated" },
+				status: {
+					valid: true,
+					promotable: false,
+					stage: "validated",
+					reason: null,
+				},
 			})
 		);
 	}
 
 	for (let i = 0; i < cants.length; i++) {
 		const cant = cants[i];
-		if (!isObject(cant)) continue;
+		if (!isObject(cant)) {
+			outcomes.push(
+				makeRejectedImportItem({
+					kind: "cant",
+					source: makeObjectSource(source, {
+						containerId: doc?.meta?.id ?? null,
+						objectName: `cant_${i + 1}`,
+						index: i,
+					}),
+					payload: {},
+					reason: IMPORT_REASONS.INVALID_CANT_INPUT,
+				})
+			);
+			continue;
+		}
 
 		outcomes.push(
 			makeCantImportItem({
-				source: makeObjectSource(source),
+				source: makeObjectSource(source, {
+					containerId: doc?.meta?.id ?? null,
+					objectName: cant.name ?? cant.id ?? `cant_${i + 1}`,
+					index: i,
+				}),
 				payload: normalizeCantPayload(cant),
-				status: { valid: true, promotable: false, stage: "validated" },
+				status: {
+					valid: true,
+					promotable: false,
+					stage: "validated",
+					reason: null,
+				},
 			})
 		);
 	}
 
 	for (let i = 0; i < staEqs.length; i++) {
 		const staEq = staEqs[i];
-		if (!isObject(staEq)) continue;
+		if (!isObject(staEq)) {
+			outcomes.push(
+				makeRejectedImportItem({
+					kind: "staEq",
+					source: makeObjectSource(source, {
+						containerId: doc?.meta?.id ?? null,
+						objectName: `staEq_${i + 1}`,
+						index: i,
+					}),
+					payload: {},
+					reason: IMPORT_REASONS.INVALID_STAEQ_INPUT,
+				})
+			);
+			continue;
+		}
 
 		outcomes.push(
 			makeStaEqImportItem({
-				source: makeObjectSource(source),
+				source: makeObjectSource(source, {
+					containerId: doc?.meta?.id ?? null,
+					objectName: staEq.name ?? staEq.id ?? `staEq_${i + 1}`,
+					index: i,
+				}),
 				payload: normalizeStaEqPayload(staEq),
-				status: { valid: true, promotable: false, stage: "validated" },
+				status: {
+					valid: true,
+					promotable: false,
+					stage: "validated",
+					reason: null,
+				},
 			})
 		);
 	}
 
 	for (let i = 0; i < relations.length; i++) {
 		const relation = relations[i];
-		if (!isObject(relation)) continue;
+		if (!isObject(relation)) {
+			outcomes.push(
+				makeRejectedImportItem({
+					kind: "relation",
+					source: makeObjectSource(source, {
+						containerId: doc?.meta?.id ?? null,
+						objectName: `relation_${i + 1}`,
+						index: i,
+					}),
+					payload: {},
+					reason: IMPORT_REASONS.INVALID_RELATION_INPUT,
+				})
+			);
+			continue;
+		}
 
 		outcomes.push(
 			makeRelationImportItem({
-				source: makeObjectSource(source),
+				source: makeObjectSource(source, {
+					containerId: doc?.meta?.id ?? null,
+					objectName: relation.name ?? relation.id ?? `relation_${i + 1}`,
+					index: i,
+				}),
 				payload: normalizeRelationPayload(relation),
-				status: { valid: true, promotable: false, stage: "validated" },
+				status: {
+					valid: true,
+					promotable: false,
+					stage: "validated",
+					reason: null,
+				},
 			})
 		);
 	}
@@ -150,7 +266,7 @@ function buildResultFromLandFAT({ doc, source, meta }) {
 }
 
 // -----------------------------------------------------------------------------
-// normalize payloads (unchanged)
+// normalize payloads
 // -----------------------------------------------------------------------------
 
 function normalizeProfilePayload(profile) {
@@ -159,6 +275,9 @@ function normalizeProfilePayload(profile) {
 		id: profile.id ?? null,
 		name: profile.name ?? profile.id ?? null,
 		points: asArray(profile.points ?? profile.pvi ?? profile.profile ?? []),
+		stationReference: profile.stationReference ?? profile.ref ?? null,
+		meta: isObject(profile.meta) ? profile.meta : {},
+		extended: isObject(profile.extended) ? profile.extended : {},
 	};
 }
 
@@ -168,6 +287,9 @@ function normalizeCantPayload(cant) {
 		id: cant.id ?? null,
 		name: cant.name ?? cant.id ?? null,
 		points: asArray(cant.points ?? cant.cant ?? []),
+		stationReference: cant.stationReference ?? cant.ref ?? null,
+		meta: isObject(cant.meta) ? cant.meta : {},
+		extended: isObject(cant.extended) ? cant.extended : {},
 	};
 }
 
@@ -176,7 +298,9 @@ function normalizeStaEqPayload(staEq) {
 		kind: "staEq",
 		id: staEq.id ?? null,
 		name: staEq.name ?? staEq.id ?? null,
-		equations: asArray(staEq.equations ?? staEq.items ?? []),
+		equations: asArray(staEq.equations ?? staEq.items ?? staEq.values ?? []),
+		meta: isObject(staEq.meta) ? staEq.meta : {},
+		extended: isObject(staEq.extended) ? staEq.extended : {},
 	};
 }
 
@@ -185,24 +309,62 @@ function normalizeRelationPayload(relation) {
 		kind: "relation",
 		id: relation.id ?? null,
 		name: relation.name ?? relation.id ?? null,
+		relationType: relation.relationType ?? relation.type ?? null,
+		fromRef: relation.fromRef ?? relation.from ?? null,
+		toRef: relation.toRef ?? relation.to ?? null,
+		meta: isObject(relation.meta) ? relation.meta : {},
+		extended: isObject(relation.extended) ? relation.extended : {},
 	};
 }
 
 // -----------------------------------------------------------------------------
-// result assembly (patched filter)
+// result assembly
 // -----------------------------------------------------------------------------
 
 function finalizeResult({ meta, items, rejected }) {
 	const validItems = asArray(items);
 	const rejectedItems = asArray(rejected);
 
+	if (validItems.length === 0 && rejectedItems.length === 0) {
+		return makeEmptyResult({
+			meta,
+			status: "no-items",
+			reason: IMPORT_REASONS.NO_IMPORT_ITEMS,
+		});
+	}
+
 	return {
 		ok: validItems.length > 0,
-		status: validItems.length > 0 ? "ok" : "no-items",
-		reason: validItems.length > 0 ? null : IMPORT_REASONS.NO_IMPORT_ITEMS,
-		meta,
+		status: validItems.length > 0 ? "ok" : "rejected",
+		reason: validItems.length > 0 ? null : IMPORT_REASONS.NO_PROMOTABLE_ITEMS,
+
+		meta: {
+			...meta,
+			count: {
+				items: validItems.length,
+				rejected: rejectedItems.length,
+			},
+		},
+
 		items: validItems,
 		rejected: rejectedItems,
+	};
+}
+
+function makeEmptyResult({ meta, status, reason }) {
+	return {
+		ok: false,
+		status: status ?? "no-items",
+		reason: reason ?? IMPORT_REASONS.NO_IMPORT_ITEMS,
+		meta: {
+			...meta,
+			count: {
+				items: 0,
+				rejected: 0,
+			},
+		},
+		items: [],
+		rejected: [],
 	};
 }
 
@@ -213,7 +375,7 @@ function collectAcceptedItems(outcomes) {
 		const item = unwrapItem(result);
 		if (!item) continue;
 
-		// 🔥 only hard reject filtered
+		if (item.status?.valid === false) continue;
 		if (item.status?.reason === IMPORT_REASONS.REJECTED) continue;
 
 		out.push(item);
@@ -229,7 +391,7 @@ function collectRejectedItems(outcomes) {
 		const item = unwrapItem(result);
 		if (!item) continue;
 
-		if (item.status?.reason === IMPORT_REASONS.REJECTED) {
+		if (item.status?.valid === false || item.status?.reason === IMPORT_REASONS.REJECTED) {
 			out.push(item);
 		}
 	}
@@ -243,26 +405,17 @@ function unwrapItem(result) {
 	return null;
 }
 
-function makeEmptyResult({ meta, status, reason }) {
-	return {
-		ok: false,
-		status,
-		reason,
-		meta,
-		items: [],
-		rejected: [],
-	};
-}
-
 // -----------------------------------------------------------------------------
-// helpers
+// source / shape helpers
 // -----------------------------------------------------------------------------
 
 function makeObjectSource(source = {}, extra = {}) {
 	return {
 		fileName: source.fileName ?? source.file ?? null,
 		parserId: source.parserId ?? source.format ?? null,
-		...extra,
+		containerId: extra.containerId ?? null,
+		objectName: extra.objectName ?? null,
+		index: Number.isInteger(extra.index) ? extra.index : null,
 	};
 }
 

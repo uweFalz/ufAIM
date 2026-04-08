@@ -202,14 +202,9 @@ export function makeViewController({
 			return null;
 		}
 
-		console.log("SPOT OBJECT:", spotObject);
-		console.log("PROJECTION INPUT:", spotObject.payload ?? null);
-
 		const geom = projectFocusedSpotObject(spotObject, {
 			maxStep: cfg.sampleStep,
 		});
-
-		console.log("PROJECTION OUTPUT:", geom ?? null);
 
 		if (!geom?.polyline2d || geom.polyline2d.length < 2) {
 			invalidateGeometryCache();

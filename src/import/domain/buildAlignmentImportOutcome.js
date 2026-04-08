@@ -61,17 +61,21 @@ export function buildAlignmentImportOutcome({
 		sparseAlignment = alignment.sparseAlignment;
 		sparseValidation = validateSparseAlignment(sparseAlignment);
 
-		if (sparseValidation.ok) {
+		if (sparseValidation?.ok) {
 			promotable = true;
 		} else {
 			reason = IMPORT_REASONS.SPARSE_INVALID;
 			nextAnnotations.push(
 				makeAnnotation("error", "embedded sparseAlignment invalid", {
-					errors: sparseValidation.errors?.length ?? 0,
-					warnings: sparseValidation.warnings?.length ?? 0,
+					errors: countArray(sparseValidation?.errors),
+					warnings: countArray(sparseValidation?.warnings),
 				})
 			);
-			pushValidationAnnotations(nextAnnotations, sparseValidation, "embedded sparseAlignment");
+			pushValidationAnnotations(
+				nextAnnotations,
+				sparseValidation,
+				"embedded sparseAlignment"
+			);
 		}
 	} else {
 		const sparseBuild = tryBuildSparseAlignment(alignment);
@@ -80,7 +84,7 @@ export function buildAlignmentImportOutcome({
 			sparseAlignment = sparseBuild.sparseAlignment;
 			sparseValidation = validateSparseAlignment(sparseAlignment);
 
-			if (sparseValidation.ok) {
+			if (sparseValidation?.ok) {
 				promotable = true;
 				nextAnnotations.push(
 					makeAnnotation("info", "sparseAlignment derived from alignment payload")
@@ -89,11 +93,15 @@ export function buildAlignmentImportOutcome({
 				reason = IMPORT_REASONS.SPARSE_INVALID;
 				nextAnnotations.push(
 					makeAnnotation("error", "derived sparseAlignment invalid", {
-						errors: sparseValidation.errors?.length ?? 0,
-						warnings: sparseValidation.warnings?.length ?? 0,
+						errors: countArray(sparseValidation?.errors),
+						warnings: countArray(sparseValidation?.warnings),
 					})
 				);
-				pushValidationAnnotations(nextAnnotations, sparseValidation, "derived sparseAlignment");
+				pushValidationAnnotations(
+					nextAnnotations,
+					sparseValidation,
+					"derived sparseAlignment"
+				);
 			}
 		} else {
 			reason = sparseBuild.reason ?? IMPORT_REASONS.SPARSE_BUILD_FAILED;
@@ -102,9 +110,13 @@ export function buildAlignmentImportOutcome({
 					reason,
 				})
 			);
+
 			if (sparseBuild.error) {
 				nextAnnotations.push(
-					makeAnnotation("warn", String(sparseBuild.error.message ?? sparseBuild.error))
+					makeAnnotation(
+						"warn",
+						String(sparseBuild.error?.message ?? sparseBuild.error)
+					)
 				);
 			}
 		}
@@ -176,10 +188,10 @@ function normalizeAlignmentPayload(alignment) {
 
 function deriveAlignmentId(payload, source) {
 	const seed =
-		payload?.id ||
-		payload?.name ||
-		source?.objectName ||
-		source?.fileName ||
+		payload?.id ??
+		payload?.name ??
+		source?.objectName ??
+		source?.fileName ??
 		"alignment";
 
 	return `alignment_${slug(seed)}`;
@@ -191,18 +203,18 @@ function pushValidationAnnotations(out, validation, label) {
 
 	for (const err of errors) {
 		out.push(
-			makeAnnotation("error", `${label}: ${err.message}`, {
-				code: err.code ?? null,
-				path: err.path ?? null,
+			makeAnnotation("error", `${label}: ${readValidationMessage(err)}`, {
+				code: readValidationCode(err),
+				path: readValidationPath(err),
 			})
 		);
 	}
 
 	for (const warn of warnings) {
 		out.push(
-			makeAnnotation("warn", `${label}: ${warn.message}`, {
-				code: warn.code ?? null,
-				path: warn.path ?? null,
+			makeAnnotation("warn", `${label}: ${readValidationMessage(warn)}`, {
+				code: readValidationCode(warn),
+				path: readValidationPath(warn),
 			})
 		);
 	}
@@ -220,12 +232,29 @@ function makeAnnotation(level, message, meta = null) {
 	};
 }
 
+function readValidationMessage(entry) {
+	if (typeof entry === "string") return entry;
+	return String(entry?.message ?? "validation issue");
+}
+
+function readValidationCode(entry) {
+	return isObject(entry) ? (entry.code ?? null) : null;
+}
+
+function readValidationPath(entry) {
+	return isObject(entry) ? (entry.path ?? null) : null;
+}
+
+function countArray(value) {
+	return Array.isArray(value) ? value.length : 0;
+}
+
 function slug(value) {
 	return String(value ?? "")
 		.trim()
 		.toLowerCase()
-		replaceAll(/[^a-z0-9_]+/g, "_")
-		replaceAll(/^_+|_+$/g, "") || "unnamed";
+		.replace(/[^a-z0-9_]+/g, "_")
+		.replace(/^_+|_+$/g, "") || "unnamed";
 }
 
 function isObject(x) {

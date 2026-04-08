@@ -28,8 +28,6 @@ import { validateParserModule } from "./parsers/validateParserModule.js";
 import { validateLandFAT } from "@kimport/landfat/validateLandFAT.js";
 import { buildImportResultFromParsed } from "./domain/buildImportResultFromParsed.js";
 
-const DEBUG_IMPORT_FLOW = false;
-
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
 
@@ -59,29 +57,31 @@ export async function runImportPipeline(file, context = {}) {
 			context: { ...context, log, sniff, parserId },
 		});
 
-		if (DEBUG_IMPORT_FLOW) {
-			console.error("PIPE BEFORE VALIDATE:", {
-				file: file?.name ?? null,
-				parserId,
-				sniff,
-				parsedType: parsed?.type ?? null,
-				parsedKeys: parsed && typeof parsed === "object" ? Object.keys(parsed) : null,
-				parsed,
-			});
-		}
-
 		log(`parse ok: ${file?.name ?? "(unknown file)"}`);
 
-		const fatValidation = validateLandFAT(parsed);
+		if (parsed?.type === "landFAT") {
+			const fatValidation = validateLandFAT(parsed);
 
-		if (!fatValidation?.ok) {
-			const err = new Error(`validateLandFAT failed: ${file?.name ?? "(unknown file)"}`);
-			err.code = "LAND_FAT_INVALID";
-			err.validation = fatValidation;
-			throw err;
+			if (!fatValidation?.ok) {
+				log(`import invalid: ${file?.name ?? "(unknown file)"} :: landFAT invalid`);
+				return {
+					ok: false,
+					status: "invalid",
+					reason: "invalid-landfat",
+					meta: {
+						sourceFormat: parserId,
+						fileName: file?.name ?? null,
+						containerType: parsed?.type ?? null,
+					},
+					errors: fatValidation.errors ?? [],
+					warnings: fatValidation.warnings ?? [],
+					items: [],
+					rejected: [],
+				};
+			}
+
+			log(`validateLandFAT ok: ${file?.name ?? "(unknown file)"}`);
 		}
-
-		log(`validateLandFAT ok: ${file?.name ?? "(unknown file)"}`);
 
 		const source = {
 			fileName: file?.name ?? null,
@@ -89,17 +89,6 @@ export async function runImportPipeline(file, context = {}) {
 			parserId,
 			format: parserId,
 		};
-
-		if (DEBUG_IMPORT_FLOW) {
-			console.error("PIPE BEFORE BUILD:", {
-				file: file?.name ?? null,
-				parserId,
-				sniff,
-				source,
-				parsedType: parsed?.type ?? null,
-				parsedKeys: parsed && typeof parsed === "object" ? Object.keys(parsed) : null,
-			});
-		}
 
 		const result = buildImportResultFromParsed({
 			parsed,
@@ -119,18 +108,15 @@ export async function runImportPipeline(file, context = {}) {
 			`${err?.code ?? "ERR"} :: ${err?.message ?? String(err)}`
 		);
 
-		if (err?.validation?.errors?.length) {
-			for (const e of err.validation.errors.slice(0, 10)) {
-				log(`  validation error: ${typeof e === "string" ? e : JSON.stringify(e)}`);
-			}
-		}
-
-		if (err?.validation?.warnings?.length) {
-			for (const w of err.validation.warnings.slice(0, 10)) {
-				log(`  validation warning: ${typeof w === "string" ? w : JSON.stringify(w)}`);
-			}
-		}
-
-		throw err;
+		return {
+			ok: false,
+			status: "invalid",
+			reason: err?.code ?? "import-failed",
+			meta: null,
+			errors: [String(err?.message ?? err)],
+			warnings: [],
+			items: [],
+			rejected: [],
+		};
 	}
 }

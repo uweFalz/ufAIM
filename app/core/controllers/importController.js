@@ -35,8 +35,8 @@ export function makeImportController({
 	focusManager,
 } = {}) {
 	const safeLog = typeof logLine === "function"
-	? logLine
-	: (msg) => ui?.logLine?.(msg);
+		? logLine
+		: (msg) => ui?.logLine?.(msg);
 
 	if (!store?.getState || !store?.setState) {
 		throw new Error("ImportController: missing store");
@@ -76,22 +76,22 @@ export function makeImportController({
 		for (const item of items) {
 			switch (item?.kind) {
 				case "alignment":
-				stats.alignmentCount += 1;
-				break;
+					stats.alignmentCount += 1;
+					break;
 				case "profile":
-				stats.profileCount += 1;
-				break;
+					stats.profileCount += 1;
+					break;
 				case "cant":
-				stats.cantCount += 1;
-				break;
+					stats.cantCount += 1;
+					break;
 				case "staEq":
-				stats.staEqCount += 1;
-				break;
+					stats.staEqCount += 1;
+					break;
 				case "relation":
-				stats.relationCount += 1;
-				break;
+					stats.relationCount += 1;
+					break;
 				default:
-				break;
+					break;
 			}
 
 			if (item?.status?.promotable === true) {
@@ -103,40 +103,41 @@ export function makeImportController({
 
 		switch (status) {
 			case "ignored":
-			stats.ignored += 1;
-			break;
+				stats.ignored += 1;
+				break;
 			case "no-items":
 			case "empty":
 			case "rejected":
-			stats.empty += 1;
-			break;
+			case "invalid":
+				stats.empty += 1;
+				break;
 			case "ok":
 			case "processed":
-			stats.processed += 1;
-			break;
+				stats.processed += 1;
+				break;
 			case "unknown":
 			default:
-			stats.unknown += 1;
-			break;
+				stats.unknown += 1;
+				break;
 		}
 	}
 
 	function logBatchSummary(stats) {
 		safeLog(
-		`import batch: ${stats.totalFiles} files / ` +
-		`${stats.ignored} ignored / ` +
-		`${stats.empty} empty / ` +
-		`${stats.processed} processed / ` +
-		`${stats.unknown} unknown / ` +
-		`${stats.failed} failed / ` +
-		`${stats.itemCount} items / ` +
-		`${stats.rejectedCount} rejected / ` +
-		`${stats.promotableCount} promotable / ` +
-		`${stats.alignmentCount} alignments / ` +
-		`${stats.profileCount} profiles / ` +
-		`${stats.cantCount} cants / ` +
-		`${stats.staEqCount} staEq / ` +
-		`${stats.relationCount} relations`
+			`import batch: ${stats.totalFiles} files / ` +
+			`${stats.ignored} ignored / ` +
+			`${stats.empty} empty / ` +
+			`${stats.processed} processed / ` +
+			`${stats.unknown} unknown / ` +
+			`${stats.failed} failed / ` +
+			`${stats.itemCount} items / ` +
+			`${stats.rejectedCount} rejected / ` +
+			`${stats.promotableCount} promotable / ` +
+			`${stats.alignmentCount} alignments / ` +
+			`${stats.profileCount} profiles / ` +
+			`${stats.cantCount} cants / ` +
+			`${stats.staEqCount} staEq / ` +
+			`${stats.relationCount} relations`
 		);
 	}
 
@@ -150,21 +151,21 @@ export function makeImportController({
 
 	function getPromotableAlignmentItems(items = []) {
 		return items.filter((item) =>
-		item?.kind === "alignment" &&
-		item?.status?.valid === true &&
-		item?.status?.promotable === true &&
-		item?.derived?.sparseAlignment
+			item?.kind === "alignment" &&
+			item?.status?.valid === true &&
+			item?.status?.promotable === true &&
+			item?.derived?.sparseAlignment
 		);
 	}
 
 	function toSpotObject(item) {
 		const sparseAlignment = item?.derived?.sparseAlignment;
 		const objectId =
-		item?.id ??
-		item?.payload?.id ??
-		item?.payload?.name ??
-		item?.source?.objectName ??
-		null;
+			item?.id ??
+			item?.payload?.id ??
+			item?.payload?.name ??
+			item?.source?.objectName ??
+			null;
 
 		return {
 			id: `spot_${objectId ?? Math.random().toString(16).slice(2)}`,
@@ -172,11 +173,11 @@ export function makeImportController({
 			spatialRef: item?.payload?.spatialRef ?? null,
 			payload: {
 				name:
-				item?.payload?.name ??
-				item?.payload?.id ??
-				item?.source?.objectName ??
-				item?.id ??
-				"alignment",
+					item?.payload?.name ??
+					item?.payload?.id ??
+					item?.source?.objectName ??
+					item?.id ??
+					"alignment",
 				sparseAlignment,
 				importItemId: item?.id ?? null,
 				meta: item?.payload?.meta ?? null,
@@ -190,10 +191,10 @@ export function makeImportController({
 				objectId,
 				importItemId: item?.id ?? null,
 				alignmentName:
-				item?.payload?.name ??
-				item?.payload?.id ??
-				item?.source?.objectName ??
-				null,
+					item?.payload?.name ??
+					item?.payload?.id ??
+					item?.source?.objectName ??
+					null,
 			},
 		};
 	}
@@ -257,7 +258,7 @@ export function makeImportController({
 				accountResult(stats, result);
 
 				safeLog(
-				`import status: ${file.name} :: ${result?.status ?? "unknown"}`
+					`import status: ${file.name} :: ${result?.status ?? "unknown"}`
 				);
 
 				await handleImportItemsMaster([...items, ...rejected]);
@@ -277,7 +278,7 @@ export function makeImportController({
 					ui?.openSpot?.();
 
 					const first = objects[0];
-					const objectId = first?.id ?? null;   // 🔥 WICHTIG!
+					const objectId = first?.id ?? null;
 
 					if (objectId) {
 						await focusManager?.setFocus?.({
@@ -286,18 +287,6 @@ export function makeImportController({
 						});
 					}
 				}
-
-				if (!items.length && !rejected.length) {
-	console.error("IMPORT EMPTY:", {
-		file: file.name,
-		status: result?.status ?? "no-items",
-		reason: result?.reason ?? null,
-		meta: result?.meta ?? null,
-		errors: result?.errors ?? null,
-		warnings: result?.warnings ?? null,
-	});
-}
-
 			} catch (err) {
 				stats.failed += 1;
 				console.error("import failed detail:", err);
