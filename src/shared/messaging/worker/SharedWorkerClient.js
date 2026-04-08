@@ -3,7 +3,7 @@
 export class SharedWorkerClient {
 	constructor({ url, debug = false } = {}) {
 		this.url = url;
-		this.debug = debug;
+		this.debug = !!debug;
 		this._handlers = new Map();
 		this._pending = new Map(); // reqId -> {resolve,reject}
 		this._port = null;

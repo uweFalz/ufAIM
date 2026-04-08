@@ -29,25 +29,21 @@ package "app/view/overlays" as P_app_view_overlays {}
 package "app/view/shell" as P_app_view_shell {}
 package "app/view/viewers" as P_app_view_viewers {}
 package "src/alignment" as P_src_alignment {}
-package "src/alignment/_legacy" as P_src_alignment__legacy <<legacy>> {}
 package "src/alignment/build" as P_src_alignment_build {}
 package "src/alignment/elements" as P_src_alignment_elements {}
-package "src/alignment/elements/_legacy" as P_src_alignment_elements__legacy <<legacy>> {}
 package "src/alignment/service" as P_src_alignment_service {}
 package "src/alignment/transition/build" as P_src_alignment_transition_build {}
 package "src/alignment/transition/registry" as P_src_alignment_transition_registry {}
 package "src/alignment/transition/registry/ast" as P_src_alignment_transition_registry_ast {}
 package "src/alignment/transition/registry/compose" as P_src_alignment_transition_registry_compose {}
 package "src/alignment/transition/service" as P_src_alignment_transition_service {}
-package "src/alignment/validation" as P_src_alignment_validation {}
-package "src/core/crs" as P_src_core_crs {}
+package "src/crs" as P_src_crs {}
+package "src/crs/unsorted" as P_src_crs_unsorted {}
 package "src/import" as P_src_import {}
 package "src/import/domain" as P_src_import_domain {}
-package "src/import/domain/_legacy" as P_src_import_domain__legacy <<legacy>> {}
 package "src/import/landfat" as P_src_import_landfat {}
 package "src/import/parsers" as P_src_import_parsers {}
 package "src/import/parsers/IFC" as P_src_import_parsers_IFC {}
-package "src/import/parsers/_legacy" as P_src_import_parsers__legacy <<legacy>> {}
 package "src/import/parsers/infraGML" as P_src_import_parsers_infraGML {}
 package "src/import/parsers/landXML" as P_src_import_parsers_landXML {}
 package "src/import/parsers/technet" as P_src_import_parsers_technet {}
@@ -57,22 +53,22 @@ package "src/import/parsers/technet/shared" as P_src_import_parsers_technet_shar
 package "src/import/parsers/technet/vermEsn" as P_src_import_parsers_technet_vermEsn {}
 package "src/import/semantic" as P_src_import_semantic {}
 package "src/import/sniffers" as P_src_import_sniffers {}
-package "src/import/sniffers/_legacy" as P_src_import_sniffers__legacy <<legacy>> {}
-package "src/lib/geo" as P_src_lib_geo {}
 package "src/lib/geom" as P_src_lib_geom {}
 package "src/lib/geom/curve" as P_src_lib_geom_curve {}
-package "src/lib/geom/curve/_legacy" as P_src_lib_geom_curve__legacy <<legacy>> {}
 package "src/lib/geom/frame" as P_src_lib_geom_frame {}
 package "src/lib/math/lina" as P_src_lib_math_lina {}
 package "src/lib/math/numeric" as P_src_lib_math_numeric {}
-package "src/model/spot" as P_src_model_spot {}
 package "src/projection" as P_src_projection {}
-package "src/projection/_legacy" as P_src_projection__legacy <<legacy>> {}
+package "src/projection/queries" as P_src_projection_queries {}
 package "src/shared/messaging" as P_src_shared_messaging {}
 package "src/shared/messaging/local" as P_src_shared_messaging_local {}
 package "src/shared/messaging/service" as P_src_shared_messaging_service {}
 package "src/shared/messaging/worker" as P_src_shared_messaging_worker {}
 package "src/shared/runtime" as P_src_shared_runtime {}
+package "src/spot/contracts" as P_src_spot_contracts {}
+package "src/spot/model" as P_src_spot_model {}
+package "src/spot/ui" as P_src_spot_ui {}
+package "src/spot/validation" as P_src_spot_validation {}
 package "src/utils" as P_src_utils {}
 
 P_app --> P_app_core_config
@@ -89,6 +85,7 @@ P_app_core_controllers --> P_app_io_input
 P_app_core_controllers --> P_app_utils
 P_app_core_controllers --> P_src_import
 P_app_core_controllers --> P_src_projection
+P_app_core_controllers --> P_src_projection_queries
 P_app_core_controllers --> P_src_utils
 P_app_core_import --> P_app_i18n
 P_app_core_runtime --> P_app_adapters_geo
@@ -117,36 +114,42 @@ P_src_alignment --> P_src_alignment_elements
 P_src_alignment --> P_src_alignment_transition_build
 P_src_alignment --> P_src_alignment_transition_registry
 P_src_alignment --> P_src_lib_geom
-P_src_alignment__legacy --> P_src_lib_geom_frame
 P_src_alignment_build --> P_src_alignment
 P_src_alignment_build --> P_src_alignment_elements
 P_src_alignment_elements --> P_src_lib_geom
 P_src_alignment_elements --> P_src_lib_geom_frame
 P_src_alignment_elements --> P_src_lib_math_numeric
 P_src_alignment_service --> P_src_alignment_build
-P_src_alignment_service --> P_src_alignment_validation
+P_src_alignment_service --> P_src_spot_validation
 P_src_alignment_transition_build --> P_src_alignment_transition_registry_ast
 P_src_alignment_transition_build --> P_src_alignment_transition_registry_compose
 P_src_alignment_transition_build --> P_src_utils
-P_src_alignment_validation --> P_src_lib_geom_frame
 P_src_import --> P_src_import_domain
+P_src_import --> P_src_import_landfat
 P_src_import --> P_src_import_parsers
 P_src_import --> P_src_import_sniffers
 P_src_import_domain --> P_src_lib_geom_frame
+P_src_import_domain --> P_src_spot_validation
+P_src_import_parsers_landXML --> P_src_import_landfat
+P_src_import_parsers_technet_gndEdit --> P_src_import_landfat
 P_src_import_parsers_technet_gndEdit --> P_src_import_parsers_technet
 P_src_import_parsers_technet_gndEdit --> P_src_import_parsers_technet_shared
-P_src_import_parsers_technet_gndEdit__legacy --> P_src_lib_geo
+P_src_import_parsers_technet_shared --> P_src_import_landfat
+P_src_import_parsers_technet_vermEsn --> P_src_import_landfat
 P_src_import_parsers_technet_vermEsn --> P_src_import_parsers_technet
 P_src_import_parsers_technet_vermEsn --> P_src_import_parsers_technet_shared
 P_src_import_sniffers --> P_src_import_parsers
 P_src_lib_geom_frame --> P_src_lib_geom
+P_src_projection --> P_src_alignment_build
+P_src_projection --> P_src_alignment_transition_build
+P_src_projection --> P_src_alignment_transition_registry
+P_src_projection --> P_src_spot_validation
 P_src_shared_messaging --> P_src_alignment_transition_registry
 P_src_shared_messaging --> P_src_alignment_transition_service
-P_src_shared_messaging --> P_src_model_spot
 P_src_shared_messaging --> P_src_shared_messaging_local
 P_src_shared_messaging --> P_src_shared_messaging_service
 P_src_shared_messaging --> P_src_shared_messaging_worker
-P_src_shared_messaging_service --> P_src_model_spot
 P_src_shared_messaging_worker --> P_src_shared_messaging
 P_src_shared_runtime --> P_src_shared_messaging
+P_src_spot_validation --> P_src_lib_geom_frame
 @enduml

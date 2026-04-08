@@ -1,6 +1,12 @@
 // src/alignment/transition/service/TransitionQueryService.js
 
-export function createTransitionQueryService({ db, registryResolver }) {
+export function createTransitionQueryService({ db, registryResolver } = {}) {
+	if (!db || typeof db !== "object") {
+		throw new Error("createTransitionQueryService: missing db");
+	}
+	if (!registryResolver || typeof registryResolver.resolveTransitionDescriptor !== "function") {
+		throw new Error("createTransitionQueryService: missing registryResolver");
+	}
 
 	function listPresets() {
 		const tr = db?.transition ?? {};

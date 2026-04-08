@@ -5,39 +5,23 @@
 // Window-local import entry point.
 //
 // Flow:
-//   FileDrop → importPipeline → SPOT → local focus → view
+//   FileDrop -> importPipeline -> ImportSession / SPOT -> local focus -> view
 //
 // Responsibilities:
 // - runs importPipeline for dropped files
-// - sends validated results to master (SPOT / Import services)
-// - updates local UI state (summary, status)
-// - sets local focus on newly created SPOT objects
+// - sends canonical ImportSessionItems to master
+// - promotes promotable alignment items to SPOT
+// - updates local UI state
+// - sets local focus on newly visible SPOT objects
 //
 // NOT:
 // - no preview/shadow data
-// - no direct visualization artifacts
 // - no local SPOT duplication
+// - no parser-specific hacks
 //
 // Rule:
-// Imported data becomes visible only after it exists in SPOT.
-// This window may then focus and display it locally.
-//
-// ImportController
-//
-// Rolle:
-// - ruft die Import-Pipeline auf
-// - schickt geprüfte Ergebnisse an den Master
-// - aktualisiert nur noch lokale UI-Zustände
-//
-// NICHT mehr:
-// - keine Legacy-Preview-Brücke
-// - kein TRA/GRA/CANT-Fake-Ingest
-// - keine lokale Vorschau-Erzeugung
-// - keine lokale SPOT-Schattenwelt
-//
-// Grundidee:
-// Alles, was die importPipeline geprüft verlässt, landet markiert im Master / SPOT.
-// Der Client ist nur noch Intent-/Dispatch-Schicht.
+// Imported data becomes visible only after it exists in master state.
+// This window only dispatches intent and reacts locally.
 
 import { installFileDrop } from "@app/io/input/fileDrop.js";
 import { runImportPipeline } from "@src/import/runImportPipeline.js";
@@ -66,49 +50,67 @@ export function makeImportController({
 		return {
 			totalFiles,
 			ignored: 0,
-			recognizedUnsupported: 0,
 			empty: 0,
 			processed: 0,
 			unknown: 0,
 			failed: 0,
 
-			spotCandidateCount: 0,
-			workingItemCount: 0,
-			referenceItemCount: 0,
+			itemCount: 0,
+			rejectedCount: 0,
+			promotableCount: 0,
+			alignmentCount: 0,
+			profileCount: 0,
+			cantCount: 0,
+			staEqCount: 0,
+			relationCount: 0,
 		};
 	}
 
 	function accountResult(stats, result) {
-		const spotCount = Array.isArray(result?.spotCandidates) ? result.spotCandidates.length : 0;
-		const workingCount = Array.isArray(result?.workingItems) ? result.workingItems.length : 0;
-		const refCount = Array.isArray(result?.referenceItems) ? result.referenceItems.length : 0;
+		const items = Array.isArray(result?.items) ? result.items : [];
+		const rejected = Array.isArray(result?.rejected) ? result.rejected : [];
 
-		stats.spotCandidateCount += spotCount;
-		stats.workingItemCount += workingCount;
-		stats.referenceItemCount += refCount;
+		stats.itemCount += items.length;
+		stats.rejectedCount += rejected.length;
 
-		const explicitStatus = result?.status ?? null;
-		const isEmpty = result?.isEmpty === true;
-		const hasAnyItems = spotCount > 0 || workingCount > 0 || refCount > 0;
+		for (const item of items) {
+			switch (item?.kind) {
+				case "alignment":
+				stats.alignmentCount += 1;
+				break;
+				case "profile":
+				stats.profileCount += 1;
+				break;
+				case "cant":
+				stats.cantCount += 1;
+				break;
+				case "staEq":
+				stats.staEqCount += 1;
+				break;
+				case "relation":
+				stats.relationCount += 1;
+				break;
+				default:
+				break;
+			}
 
-		let status = explicitStatus;
-
-		if (!status) {
-			if (isEmpty) status = "empty";
-			else if (hasAnyItems) status = "processed";
-			else status = "unknown";
+			if (item?.status?.promotable === true) {
+				stats.promotableCount += 1;
+			}
 		}
+
+		const status = result?.status ?? null;
 
 		switch (status) {
 			case "ignored":
 			stats.ignored += 1;
 			break;
-			case "recognized-unsupported":
-			stats.recognizedUnsupported += 1;
-			break;
+			case "no-items":
 			case "empty":
+			case "rejected":
 			stats.empty += 1;
 			break;
+			case "ok":
 			case "processed":
 			stats.processed += 1;
 			break;
@@ -123,65 +125,100 @@ export function makeImportController({
 		safeLog(
 		`import batch: ${stats.totalFiles} files / ` +
 		`${stats.ignored} ignored / ` +
-		`${stats.recognizedUnsupported} recognized-unsupported / ` +
 		`${stats.empty} empty / ` +
 		`${stats.processed} processed / ` +
 		`${stats.unknown} unknown / ` +
 		`${stats.failed} failed / ` +
-		`${stats.spotCandidateCount} spotCandidates / ` +
-		`${stats.workingItemCount} workingItems / ` +
-		`${stats.referenceItemCount} referenceItems`
+		`${stats.itemCount} items / ` +
+		`${stats.rejectedCount} rejected / ` +
+		`${stats.promotableCount} promotable / ` +
+		`${stats.alignmentCount} alignments / ` +
+		`${stats.profileCount} profiles / ` +
+		`${stats.cantCount} cants / ` +
+		`${stats.staEqCount} staEq / ` +
+		`${stats.relationCount} relations`
 		);
 	}
 
-	async function handleSpotCandidates(candidates = []) {
-		if (!candidates.length) return;
-
-		if (!messaging?.sendCmdAwait) {
-			console.warn("no messaging available for Spot.AddCandidates");
-			return;
-		}
-
-		await messaging.sendCmdAwait("Spot.AddCandidates", {
-			spots: candidates,
-		});
+	function getResultItems(result) {
+		return Array.isArray(result?.items) ? result.items : [];
 	}
 
-	async function handleWorkingItemsMaster(items = [], { file }) {
-		if (!items.length) return;
+	function getRejectedItems(result) {
+		return Array.isArray(result?.rejected) ? result.rejected : [];
+	}
 
+	function getPromotableAlignmentItems(items = []) {
+		return items.filter((item) =>
+		item?.kind === "alignment" &&
+		item?.status?.valid === true &&
+		item?.status?.promotable === true &&
+		item?.derived?.sparseAlignment
+		);
+	}
+
+	function toSpotObject(item) {
+		const sparseAlignment = item?.derived?.sparseAlignment;
+		const objectId =
+		item?.id ??
+		item?.payload?.id ??
+		item?.payload?.name ??
+		item?.source?.objectName ??
+		null;
+
+		return {
+			id: `spot_${objectId ?? Math.random().toString(16).slice(2)}`,
+			type: "alignment",
+			spatialRef: item?.payload?.spatialRef ?? null,
+			payload: {
+				name:
+				item?.payload?.name ??
+				item?.payload?.id ??
+				item?.source?.objectName ??
+				item?.id ??
+				"alignment",
+				sparseAlignment,
+				importItemId: item?.id ?? null,
+				meta: item?.payload?.meta ?? null,
+				extended: item?.payload?.extended ?? null,
+				source: {
+					format: item?.source?.parserId ?? null,
+					file: item?.source?.fileName ?? null,
+				},
+			},
+			meta: {
+				objectId,
+				importItemId: item?.id ?? null,
+				alignmentName:
+				item?.payload?.name ??
+				item?.payload?.id ??
+				item?.source?.objectName ??
+				null,
+			},
+		};
+	}
+
+	async function handleImportItemsMaster(items = []) {
+		if (!items.length) return;
 		if (!messaging?.sendCmdAwait) {
 			console.warn("no messaging available for Import.AddItems");
 			return;
 		}
 
-		await messaging.sendCmdAwait("Import.AddItems", {
-			items: items.map((item) => ({
-				id: item.id ?? null,
-				name: item.name ?? file?.name ?? "unknown",
-				size: Number(file?.size ?? 0),
-				kind: item.kind ?? "unknown",
-				status: item.status ?? null,
-				meta: item.meta ?? null,
-				source: item.source ?? null,
-				payload: item.payload ?? null,
-			})),
-		});
+		await messaging.sendCmdAwait("Import.AddItems", { items });
 	}
 
-	async function handleReferenceItems(items = [], { file }) {
+	async function handleSpotPromotion(items = []) {
 		if (!items.length) return;
 
-		console.debug(
-		"reference items ignored for now:",
-		items.map((ref) => ({
-			kind: ref?.kind ?? "unknown",
-			name: ref?.name ?? file?.name ?? "unnamed",
-		}))
-		);
+		if (!messaging?.sendCmdAwait) {
+			console.warn("no messaging available for Spot.AddObjects");
+			return;
+		}
 
-		// @baustelle [REFERENCE_STORE]
-		// Sobald Reference.Add... o. ä. existiert, hier an den Master schicken.
+		const objects = items.map(toSpotObject);
+		await messaging.sendCmdAwait("Spot.AddObjects", { objects });
+		return objects;
 	}
 
 	async function refreshSpotUiFromMaster() {
@@ -191,12 +228,6 @@ export function makeImportController({
 		if (spotUiState && typeof ui?.setSpotState === "function") {
 			ui.setSpotState(spotUiState);
 		}
-
-		/*
-		if (typeof ui?.refreshSpot === "function") {
-		ui.refreshSpot(store?.getState?.());
-		}
-		*/
 	}
 
 	async function importFiles(files) {
@@ -219,39 +250,34 @@ export function makeImportController({
 			try {
 				const result = await importOneFile(file);
 
-				const spotCandidates = Array.isArray(result?.spotCandidates) ? result.spotCandidates : [];
-				const workingItems = Array.isArray(result?.workingItems) ? result.workingItems : [];
-				const referenceItems = Array.isArray(result?.referenceItems) ? result.referenceItems : [];
+				const items = getResultItems(result);
+				const rejected = getRejectedItems(result);
+				const promotableAlignmentItems = getPromotableAlignmentItems(items);
 
 				accountResult(stats, result);
-				
+
 				safeLog(
-				`import status: ${file.name} :: ` +
-				`${result?.status ?? (result?.isEmpty ? "empty" : "processed")}`
+				`import status: ${file.name} :: ${result?.status ?? "unknown"}`
 				);
 
-				await handleSpotCandidates(spotCandidates);
-				await handleWorkingItemsMaster(workingItems, { file });
-				await handleReferenceItems(referenceItems, { file });
+				await handleImportItemsMaster([...items, ...rejected]);
+				const objects = await handleSpotPromotion(promotableAlignmentItems) ?? [];
 
 				ui?.setImportSummary?.({
 					fileName: file.name,
-					spot: spotCandidates.length,
-					working: workingItems.length,
+					items: items.length,
+					rejected: rejected.length,
+					promotable: promotableAlignmentItems.length,
 					error: false,
 				});
 
 				await refreshSpotUiFromMaster();
 
-				if (spotCandidates.length > 0) {
+				if (objects.length > 0) {
 					ui?.openSpot?.();
 
-					const first = spotCandidates[0];
-					const objectId =
-					first?.meta?.objectId ??
-					first?.meta?.alignmentName ??
-					first?.name ??
-					null;
+					const first = objects[0];
+					const objectId = first?.id ?? null;   // 🔥 WICHTIG!
 
 					if (objectId) {
 						await focusManager?.setFocus?.({
@@ -261,13 +287,16 @@ export function makeImportController({
 					}
 				}
 
-				if (!spotCandidates.length && !workingItems.length && !referenceItems.length) {
-					console.debug("import produced no items:", {
-						file: file.name,
-						status: result?.status ?? "no-items",
-						result,
-					});
-				}
+				if (!items.length && !rejected.length) {
+	console.error("IMPORT EMPTY:", {
+		file: file.name,
+		status: result?.status ?? "no-items",
+		reason: result?.reason ?? null,
+		meta: result?.meta ?? null,
+		errors: result?.errors ?? null,
+		warnings: result?.warnings ?? null,
+	});
+}
 
 			} catch (err) {
 				stats.failed += 1;

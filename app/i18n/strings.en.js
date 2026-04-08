@@ -88,7 +88,7 @@ export const en = {
 	spot_decision_ignore: "Ignore",
 	spot_decision_clear_title: "Clear decision",
 	spot_alignment_fallback: "Alignment",
-	spot_meta_kind: "kind",
+	spot_meta_type: "type",
 	spot_meta_outcome: "outcome",
 	spot_meta_conf: "conf",
 	spot_meta_source: "source",

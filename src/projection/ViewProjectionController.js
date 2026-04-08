@@ -25,14 +25,14 @@ import { projectAlignmentPreview } from "./AlignmentProjectionService.js";
 export function projectFocusedSpotObject(spotObject, opts = {}) {
 	if (!spotObject) return null;
 
-	console.log("[ViewProjectionController] spotObject =", spotObject);
+	// console.log("[ViewProjectionController] spotObject =", spotObject);
 
 	const sparseAlignment =
 		spotObject?.payload?.sparseAlignment ??
 		spotObject?.payload ??
 		null;
 
-	console.log("[ViewProjectionController] sparseAlignment =", sparseAlignment);
+	// console.log("[ViewProjectionController] sparseAlignment =", sparseAlignment);
 
 	if (!sparseAlignment) return null;
 
@@ -41,7 +41,7 @@ export function projectFocusedSpotObject(spotObject, opts = {}) {
 		maxStep: opts.maxStep ?? 5,
 	});
 
-	console.log("[ViewProjectionController] geom =", geom);
+	// console.log("[ViewProjectionController] geom =", geom);
 
 	if (!geom) return null;
 

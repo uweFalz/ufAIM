@@ -54,6 +54,10 @@ export function createWindowSessionController({ store, sessionState } = {}) {
 	}
 
 	function setFocus({ objectId, slot } = {}) {
+		
+		// console.log("[WindowSession] setFocus", { objectId, slot });
+		// console.log("[WindowSession] after", sessionState?.focus);
+
 		const focus = ensureSessionFocus();
 
 		if (objectId !== undefined) {

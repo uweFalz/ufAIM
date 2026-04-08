@@ -48,7 +48,7 @@ import {
 	syncTransitionEditorControls,
 } from "@app/core/controllers/viewUiSync.js";
 
-import { getSpotObjectById } from "@src/projection/getSpotObjectById.js";
+import { getSpotObjectById } from "@src/projection/queries/getSpotObjectById.js";
 import { projectFocusedSpotObject } from "@src/projection/ViewProjectionController.js";
 
 // ------------------------------------------------------------
@@ -63,10 +63,18 @@ export function makeViewController({
 	prefs,
 	messaging,
 } = {}) {
-	if (!store?.getState || !store?.subscribe) throw new Error("ViewController: missing store");
-	if (!ui) throw new Error("ViewController: missing ui");
-	if (!threeA) throw new Error("ViewController: missing three adapter");
-	if (!messaging?.sendCmdAwait) throw new Error("ViewController: missing messaging.sendCmdAwait");
+	if (!store?.getState || !store?.subscribe) {
+		throw new Error("ViewController: missing store");
+	}
+	if (!ui) {
+		throw new Error("ViewController: missing ui");
+	}
+	if (!threeA) {
+		throw new Error("ViewController: missing three adapter");
+	}
+	if (!messaging?.sendCmdAwait) {
+		throw new Error("ViewController: missing messaging.sendCmdAwait");
+	}
 
 	const cfg = {
 		fitPadding: Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35,
@@ -88,9 +96,9 @@ export function makeViewController({
 		auxWidthOld: Number.isFinite(prefs?.view?.auxWidthOld) ? prefs.view.auxWidthOld : 1.0,
 
 		sampleStep: Number.isFinite(prefs?.view?.sampleStep) ? prefs.view.sampleStep : 5,
+		spotStateCacheMs: Number.isFinite(prefs?.view?.spotStateCacheMs) ? prefs.view.spotStateCacheMs : 150,
 	};
 
-	// policy: off | recenter | fit | softfit | softfitanimated
 	let onGeomChange = String(prefs?.view?.onGeomChange ?? "recenter").toLowerCase();
 
 	let autoFitOnGeomChange =
@@ -102,8 +110,61 @@ export function makeViewController({
 	let lastGeomKey = null;
 	let lastPolyRef = null;
 
+	let cachedSpotState = null;
+	let cachedSpotStateAt = 0;
+	let pendingSpotStatePromise = null;
+
+	let cachedFocusObjectId = null;
+	let cachedActiveGeometry = null;
+
 	function getFocusObjectId(state) {
-		return state?.focus?.objectId ?? null;
+		return state?.focus?.objectId ?? state?.activeRouteProjectId ?? null;
+	}
+
+	function invalidateSpotCache() {
+		cachedSpotState = null;
+		cachedSpotStateAt = 0;
+		pendingSpotStatePromise = null;
+	}
+
+	function invalidateGeometryCache() {
+		cachedFocusObjectId = null;
+		cachedActiveGeometry = null;
+	}
+
+	function invalidateAllCaches() {
+		cachedCum = null;
+		lastPolyRef = null;
+		invalidateSpotCache();
+		invalidateGeometryCache();
+	}
+
+	async function getSpotStateCached() {
+		const now = Date.now();
+
+		if (cachedSpotState && (now - cachedSpotStateAt) <= cfg.spotStateCacheMs) {
+			return cachedSpotState;
+		}
+
+		if (pendingSpotStatePromise) {
+			return await pendingSpotStatePromise;
+		}
+
+		pendingSpotStatePromise = messaging.sendCmdAwait("Spot.GetState", {})
+			.then((spotState) => {
+				cachedSpotState = spotState ?? null;
+				cachedSpotStateAt = Date.now();
+				return cachedSpotState;
+			})
+			.catch((err) => {
+				invalidateSpotCache();
+				throw err;
+			})
+			.finally(() => {
+				pendingSpotStatePromise = null;
+			});
+
+		return await pendingSpotStatePromise;
 	}
 
 	function wireSpotUiUpdatesOnce() {
@@ -111,6 +172,9 @@ export function makeViewController({
 		wireSpotUiUpdatesOnce._done = true;
 
 		messaging.onEvt?.("Spot.UiStateChanged", (spotUiState) => {
+			invalidateSpotCache();
+			invalidateGeometryCache();
+
 			if (!spotUiState) return;
 			ui?.setSpotState?.(spotUiState);
 			ui?.refreshSpot?.(store.getState());
@@ -119,24 +183,50 @@ export function makeViewController({
 
 	async function getActiveGeometry(state) {
 		const focusObjectId = getFocusObjectId(state);
-		if (!focusObjectId) return null;
 
-		const spotState = await messaging.sendCmdAwait("Spot.GetState", {});
+		if (!focusObjectId) {
+			invalidateGeometryCache();
+			return null;
+		}
+
+		if (cachedFocusObjectId === focusObjectId && cachedActiveGeometry) {
+			return cachedActiveGeometry;
+		}
+
+		const spotState = await getSpotStateCached();
 		const spotObject = getSpotObjectById(spotState, focusObjectId);
-		if (!spotObject) return null;
+
+		if (!spotObject) {
+			invalidateGeometryCache();
+			console.warn("[ViewController] SPOT object not found for focusObjectId:", focusObjectId);
+			return null;
+		}
+
+		console.log("SPOT OBJECT:", spotObject);
+		console.log("PROJECTION INPUT:", spotObject.payload ?? null);
 
 		const geom = projectFocusedSpotObject(spotObject, {
 			maxStep: cfg.sampleStep,
 		});
-		if (!geom?.polyline2d || geom.polyline2d.length < 2) return null;
 
-		return {
+		console.log("PROJECTION OUTPUT:", geom ?? null);
+
+		if (!geom?.polyline2d || geom.polyline2d.length < 2) {
+			invalidateGeometryCache();
+			console.warn("[ViewController] projected geometry invalid for focusObjectId:", focusObjectId);
+			return null;
+		}
+
+		cachedFocusObjectId = focusObjectId;
+		cachedActiveGeometry = {
 			objectId: String(focusObjectId),
 			spotObject,
 			polyline2d: geom.polyline2d,
 			bbox: geom.bbox ?? null,
 			bboxCenter: geom.bboxCenter ?? null,
 		};
+
+		return cachedActiveGeometry;
 	}
 
 	function makeGeomKey(activeGeometry) {
@@ -158,11 +248,12 @@ export function makeViewController({
 	function setAuxTracks(tracks) {
 		if (typeof threeA.setAuxTracksFromWorldPolylinesStyled === "function") {
 			threeA.setAuxTracksFromWorldPolylinesStyled(tracks);
-		} else {
-			threeA.setAuxTracksFromWorldPolylines?.(
-				tracks.map((t) => ({ id: t.id, points: t.points }))
-			);
+			return;
 		}
+
+		threeA.setAuxTracksFromWorldPolylines?.(
+			tracks.map((t) => ({ id: t.id, points: t.points }))
+		);
 	}
 
 	const aux = createViewAuxTracks({
@@ -243,8 +334,13 @@ export function makeViewController({
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
 
 		threeA.setOriginFromBbox(bbox);
-		threeA.zoomToFitWorldBboxSoft?.(bbox, { padding }) ??
+
+		if (typeof threeA.zoomToFitWorldBboxSoft === "function") {
+			threeA.zoomToFitWorldBboxSoft(bbox, { padding });
+		} else {
 			threeA.zoomToFitWorldBbox?.(bbox, { padding });
+		}
+
 		return true;
 	}
 
@@ -296,13 +392,18 @@ export function makeViewController({
 		const ss = Number(s);
 		if (!Number.isFinite(ss)) return false;
 
-		if (store.actions?.setCursorS) store.actions.setCursorS(ss);
-		else if (store.actions?.setCursor) store.actions.setCursor({ s: ss });
-		else return false;
+		if (store.actions?.setCursorS) {
+			store.actions.setCursorS(ss);
+		} else if (store.actions?.setCursor) {
+			store.actions.setCursor({ s: ss });
+		} else {
+			return false;
+		}
 
 		if (opts.fit === true) {
 			void softFitActive({ includePins: true, includeChunks: true });
 		}
+
 		return true;
 	}
 
@@ -371,6 +472,7 @@ export function makeViewController({
 	function wireTrackClickOnce() {
 		if (threeA.__ufAIM_trackClickWired) return;
 		threeA.__ufAIM_trackClickWired = true;
+
 		threeA.onTrackClick?.((payload) => {
 			void handleTrackClick(payload);
 		});
@@ -401,6 +503,7 @@ export function makeViewController({
 
 	function syncSectionSamplingAndMarker(state, poly) {
 		const cum = ensureChainageCache(poly);
+
 		if (!cum) {
 			syncSectionBoard(ui, state, null);
 			threeA.clearMarker?.();
@@ -457,7 +560,6 @@ export function makeViewController({
 					cachedCum = null;
 					lastPolyRef = null;
 					syncSectionBoard(ui, state, null);
-
 					redrawAuxFromState(state);
 					clear3DKeepAux();
 					return;
@@ -494,5 +596,8 @@ export function makeViewController({
 		softFitActiveAnimated,
 		setAutoFitEnabled,
 		setOnGeomChange,
+		invalidateSpotCache,
+		invalidateGeometryCache,
+		invalidateAllCaches,
 	};
 }

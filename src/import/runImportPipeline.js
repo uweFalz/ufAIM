@@ -9,20 +9,13 @@
 // - load and validate parser
 // - parse into landFAT
 // - validate landFAT structure
-// - transform into importResult (spotCandidates, workingItems, referenceItems)
+// - transform into canonical importResult
 //
 // NOT:
 // - no UI
 // - no SPOT interaction
 // - no rendering / preview
 // - no global state mutation
-//
-// Output contract:
-// {
-//   spotCandidates: [],
-//   workingItems: [],
-//   referenceItems: []
-// }
 //
 // Rule:
 // This is a pure function boundary.
@@ -46,11 +39,12 @@ export async function runImportPipeline(file, context = {}) {
 		if (!sniff?.ok || !sniff?.parserId) {
 			log(`import unknown: ${file?.name ?? "(unknown file)"} :: ${sniff?.reason ?? "sniff not ok"}`);
 			return {
+				ok: false,
 				status: "unknown",
-				reason: sniff?.reason ?? "unknown format",
-				spotCandidates: [],
-				workingItems: [],
-				referenceItems: [],
+				reason: sniff?.reason ?? "no parser matched",
+				meta: null,
+				items: [],
+				rejected: [],
 			};
 		}
 
@@ -58,16 +52,27 @@ export async function runImportPipeline(file, context = {}) {
 		const parser = await loadParserModule(parserId);
 		validateParserModule(parserId, parser);
 
-		log(`import: ${parser.meta?.label ?? parserId} :: ${file.name}`);
+		log(`import: ${parser.meta?.label ?? parserId} :: ${file?.name ?? "(unknown file)"}`);
 
-		const fat = await parser.parse({
+		const parsed = await parser.parse({
 			file,
 			context: { ...context, log, sniff, parserId },
 		});
 
-		log(`parse ok: ${file.name}`);
+		if (DEBUG_IMPORT_FLOW) {
+			console.error("PIPE BEFORE VALIDATE:", {
+				file: file?.name ?? null,
+				parserId,
+				sniff,
+				parsedType: parsed?.type ?? null,
+				parsedKeys: parsed && typeof parsed === "object" ? Object.keys(parsed) : null,
+				parsed,
+			});
+		}
 
-		const fatValidation = validateLandFAT(fat);
+		log(`parse ok: ${file?.name ?? "(unknown file)"}`);
+
+		const fatValidation = validateLandFAT(parsed);
 
 		if (!fatValidation?.ok) {
 			const err = new Error(`validateLandFAT failed: ${file?.name ?? "(unknown file)"}`);
@@ -76,21 +81,35 @@ export async function runImportPipeline(file, context = {}) {
 			throw err;
 		}
 
-		log(`validateLandFAT ok: ${file.name}`);
+		log(`validateLandFAT ok: ${file?.name ?? "(unknown file)"}`);
 
-		const result = buildImportResultFromParsed(fat, {
-			log,
-			file,
-			sniff,
+		const source = {
+			fileName: file?.name ?? null,
+			file: file?.name ?? null,
 			parserId,
-			parserMeta: parser.meta ?? null,
+			format: parserId,
+		};
+
+		if (DEBUG_IMPORT_FLOW) {
+			console.error("PIPE BEFORE BUILD:", {
+				file: file?.name ?? null,
+				parserId,
+				sniff,
+				source,
+				parsedType: parsed?.type ?? null,
+				parsedKeys: parsed && typeof parsed === "object" ? Object.keys(parsed) : null,
+			});
+		}
+
+		const result = buildImportResultFromParsed({
+			parsed,
+			source,
 		});
 
 		log(
-			`result ok: ${file.name} :: ` +
-			`spot=${result?.spotCandidates?.length ?? 0} ` +
-			`working=${result?.workingItems?.length ?? 0} ` +
-			`ref=${result?.referenceItems?.length ?? 0}`
+			`result ok: ${file?.name ?? "(unknown file)"} :: ` +
+			`items=${result?.items?.length ?? 0} ` +
+			`rejected=${result?.rejected?.length ?? 0}`
 		);
 
 		return result;
@@ -102,13 +121,13 @@ export async function runImportPipeline(file, context = {}) {
 
 		if (err?.validation?.errors?.length) {
 			for (const e of err.validation.errors.slice(0, 10)) {
-				log(`  validation error: ${e}`);
+				log(`  validation error: ${typeof e === "string" ? e : JSON.stringify(e)}`);
 			}
 		}
 
 		if (err?.validation?.warnings?.length) {
 			for (const w of err.validation.warnings.slice(0, 10)) {
-				log(`  validation warning: ${w}`);
+				log(`  validation warning: ${typeof w === "string" ? w : JSON.stringify(w)}`);
 			}
 		}
 

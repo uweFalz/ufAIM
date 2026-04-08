@@ -19,7 +19,7 @@
 // Future:
 // - can be moved to worker without changing callers
 
-import { validateSparseAlignment } from "../validation/validateSparseAlignment.js";
+import { validateSparseAlignment } from "../../spot/validation/validateSparseAlignment.js";
 import { makeAlignment2DFromSparse } from "../build/AlignmentFactory.js";
 
 // ------------------------------------------------------------

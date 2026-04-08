@@ -31,6 +31,14 @@ export class TransitionElement extends AlignmentElement {
 		super({ id, arcLength, meta });
 
 		if (!runtimePreset?.kappa || !runtimePreset?.kappaInt) {
+			console.log("[TransitionElement] incoming runtimePreset", runtimePreset);
+			console.log("[TransitionElement] incoming typeof", {
+				kappa: typeof runtimePreset?.kappa,
+				kappaInt: typeof runtimePreset?.kappaInt,
+				kappa1: typeof runtimePreset?.kappa1,
+				kappa2: typeof runtimePreset?.kappa2,
+				keys: Object.keys(runtimePreset ?? {}),
+			});
 			throw new Error("TransitionElement: missing runtimePreset.kappa/kappaInt");
 		}
 

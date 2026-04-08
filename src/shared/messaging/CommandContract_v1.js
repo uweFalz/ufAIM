@@ -55,6 +55,7 @@ const REQUIRED = {
 	// - Spot.UiStateChanged
 	// ---------------------------------------------------------
 	"Spot.AddCandidates": ["spots"],
+	"Spot.AddObjects": ["objects"],
 	"Spot.GetState": [],
 	"Spot.GetUiState": [],
 

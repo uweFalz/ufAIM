@@ -44,6 +44,9 @@ export function createFocusManager({
 		hydrate = false,
 		syncQuickHooks = true,
 	} = {}) {
+		
+		// console.log("[FocusManager] setFocus", { objectId, slot });
+		
 		windowSession.setFocus({ objectId, slot });
 
 		if (syncQuickHooks) {
@@ -70,14 +73,16 @@ export function createFocusManager({
 	}
 
 	async function setFocusSlot(slot, opts = {}) {
-		await setFocus({
-			objectId: opts.objectId,
-			slot,
-			clearImportMeta: Boolean(opts.clearImportMeta),
-			hydrate: Boolean(opts.hydrate),
-			syncQuickHooks: opts.syncQuickHooks !== false,
-		});
-	}
+	const current = getFocus();
+
+	await setFocus({
+		objectId: opts.objectId ?? current.objectId ?? null,
+		slot,
+		clearImportMeta: Boolean(opts.clearImportMeta),
+		hydrate: Boolean(opts.hydrate),
+		syncQuickHooks: opts.syncQuickHooks !== false,
+	});
+}
 
 	function getFocus() {
 		const session = windowSession?.getSessionState?.();

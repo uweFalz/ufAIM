@@ -1,4 +1,4 @@
-// src/alignment/validation/validateSparseAlignment.js
+// src/spot/validation/validateSparseAlignment.js
 //
 // Validierung für sparseAlignment (sparse_v1)
 //
@@ -18,7 +18,8 @@
 // Maßgeblich ist ausschließlich src/lib/geom/frame/pose2.js.
 // Damit bleibt später der Umbau pose2 -> pose3 möglichst lokal.
 
-import { isPose2, posePoint } from "@src/lib/geom/frame/pose2.js";
+import { isPose2, posePoint } from "../..//lib/geom/frame/pose2.js";
+// import { isPose2, posePoint } from "@src/lib/geom/frame/pose2.js";
 
 const CODES = {
 	root_type: "root_type",

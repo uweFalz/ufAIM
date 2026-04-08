@@ -1,6 +1,6 @@
 // src/projection/AlignmentProjectionService.js
 
-import { validateSparseAlignment } from "@kernel/validation/validateSparseAlignment.js";
+import { validateSparseAlignment } from "@src/spot/validation/validateSparseAlignment.js";
 import { makeAlignment2DFromSparse } from "@kernel/build/AlignmentFactory.js";
 import { RegistryResolver } from "@kernel/transition/registry/RegistryResolver.js";
 import { KappaFcnBuilder } from "@kernel/transition/build/KappaFcnBuilder.js";
@@ -8,7 +8,7 @@ import { KappaFcnBuilder } from "@kernel/transition/build/KappaFcnBuilder.js";
 const registryResolver = new RegistryResolver();
 const kappaBuilder = KappaFcnBuilder;
 
-const DEBUG_PROJECTION = true;
+const DEBUG_PROJECTION = false;
 
 export function projectAlignmentPreview({
 	sparseAlignment,

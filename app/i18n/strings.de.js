@@ -88,7 +88,7 @@ export const de = {
 	spot_decision_ignore: "Ignorieren",
 	spot_decision_clear_title: "Entscheidung löschen",
 	spot_alignment_fallback: "Alignment",
-	spot_meta_kind: "Typ",
+	spot_meta_type: "Typ",
 	spot_meta_outcome: "Status",
 	spot_meta_conf: "Konf",
 	spot_meta_source: "Quelle",

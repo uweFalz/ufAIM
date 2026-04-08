@@ -1,6 +1,6 @@
 // src/shared/messaging/createWorkerContext.js
 
-import { createSpotStore } from "../../model/spot/SpotStore.js";
+import { createSpotStore } from "../../spot/model/SpotStore.js";
 import transitionLookup from "../../alignment/transition/transitionLookup.json" with { type: "json" };
 import { RegistryResolver } from "../../alignment/transition/registry/RegistryResolver.js";
 

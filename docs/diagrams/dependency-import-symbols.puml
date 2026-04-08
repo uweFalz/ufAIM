@@ -51,9 +51,6 @@ package "src" {
       N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__transition
       class "zeroFixed()" as S_src_import_domain_sparseWriter_js__zeroFixed
       N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__zeroFixed
-      package "_legacy" <<legacy>> {
-        class "template.js" as N_src_import_domain__legacy_template_js
-      }
     }
     package "landfat" {
       class "landFatWriter.js" as N_src_import_landfat_landFatWriter_js
@@ -118,20 +115,6 @@ package "src" {
         N_src_import_parsers_IFC_index_js .. S_src_import_parsers_IFC_index_js__parse
         class "sniff()" as S_src_import_parsers_IFC_index_js__sniff
         N_src_import_parsers_IFC_index_js .. S_src_import_parsers_IFC_index_js__sniff
-      }
-      package "_legacy" <<legacy>> {
-        class "_importRegistry.js" as N_src_import_parsers__legacy__importRegistry_js
-        class "importFile()" as S_src_import_parsers__legacy__importRegistry_js__importFile
-        N_src_import_parsers__legacy__importRegistry_js .. S_src_import_parsers__legacy__importRegistry_js__importFile
-        class "importRegistry()" as S_src_import_parsers__legacy__importRegistry_js__importRegistry
-        N_src_import_parsers__legacy__importRegistry_js .. S_src_import_parsers__legacy__importRegistry_js__importRegistry
-        class "parseGRA.js" as N_src_import_parsers__legacy_parseGRA_js
-        class "parseTRA.js" as N_src_import_parsers__legacy_parseTRA_js
-        class "parserRegistry.js" as N_src_import_parsers__legacy_parserRegistry_js
-        class "parserRegistry()" as S_src_import_parsers__legacy_parserRegistry_js__parserRegistry
-        N_src_import_parsers__legacy_parserRegistry_js .. S_src_import_parsers__legacy_parserRegistry_js__parserRegistry
-        class "resolveParser()" as S_src_import_parsers__legacy_parserRegistry_js__resolveParser
-        N_src_import_parsers__legacy_parserRegistry_js .. S_src_import_parsers__legacy_parserRegistry_js__resolveParser
       }
       package "infraGML" {
         class "index.js" as N_src_import_parsers_infraGML_index_js
@@ -264,16 +247,15 @@ package "src" {
       N_src_import_sniffers_sniffImportFile_js .. S_src_import_sniffers_sniffImportFile_js__default
       class "sniffImportFile()" as S_src_import_sniffers_sniffImportFile_js__sniffImportFile
       N_src_import_sniffers_sniffImportFile_js .. S_src_import_sniffers_sniffImportFile_js__sniffImportFile
-      package "_legacy" <<legacy>> {
-        class "detectImportFormat.js" as N_src_import_sniffers__legacy_detectImportFormat_js
-        class "detectImportFormat()" as S_src_import_sniffers__legacy_detectImportFormat_js__detectImportFormat
-        N_src_import_sniffers__legacy_detectImportFormat_js .. S_src_import_sniffers__legacy_detectImportFormat_js__detectImportFormat
-      }
     }
   }
 }
 
 N_src_import_domain_buildSparseFromLandFAT_js --> N_src_import_domain_sparseWriter_js
+N_src_import_parsers_landXML_parseLandXML_js --> N_src_import_landfat_landFatWriter_js
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_import_landfat_landFatWriter_js
+N_src_import_parsers_technet_shared_traLikeCoordGeom_js --> N_src_import_landfat_landFatWriter_js
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
 N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
 N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
@@ -298,6 +280,7 @@ N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_te
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> S_src_import_parsers_technet_vermEsn_sharedVermesn_js__decodeBinary
 N_src_import_parsers_technet_vermEsn_sharedVermesn_js --> S_src_import_parsers_technet_sharedTechnet_js__TECHNET_TYPES
 N_src_import_runImportPipeline_js --> S_src_import_domain_buildImportResultFromParsed_js__buildImportResultFromParsed
+N_src_import_runImportPipeline_js --> S_src_import_landfat_validateLandFAT_js__validateLandFAT
 N_src_import_runImportPipeline_js --> S_src_import_parsers_parserRegistry_js__loadParserModule
 N_src_import_runImportPipeline_js --> S_src_import_parsers_validateParserModule_js__validateParserModule
 N_src_import_runImportPipeline_js --> S_src_import_sniffers_sniffImportFile_js__default

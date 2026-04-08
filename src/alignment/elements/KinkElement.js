@@ -1,15 +1,14 @@
 // src/alignment/elements/KinkElement.js
 
 import { TransitionElement } from "./TransitionElement.js";
+import { rot } from "@src/lib/geom/vec2.js";
 
-function rot(v, angle) {
-	const c = Math.cos(angle);
-	const s = Math.sin(angle);
-	return {
-		x: v.x * c - v.y * s,
-		y: v.x * s + v.y * c
-	};
-}
+const ZERO_RUNTIME_PRESET = {
+	kappa: () => 0,
+	kappaInt: () => 0,
+	kappa1: () => 0,
+	kappa2: () => 0,
+};
 
 export class KinkElement extends TransitionElement {
 
@@ -23,6 +22,7 @@ export class KinkElement extends TransitionElement {
 		super({
 			id,
 			arcLength: 0,
+			runtimePreset: ZERO_RUNTIME_PRESET,
 			kappaA,
 			kappaB,
 			meta
@@ -32,7 +32,6 @@ export class KinkElement extends TransitionElement {
 	}
 
 	curvatureAt(s) {
-		// praktisch: nach dem Knick gilt neue Krümmung
 		return this.kappaB;
 	}
 

@@ -9,12 +9,35 @@ import { createImportSessionService } from "./service/ImportSessionService.js";
 import { createSpotService } from "./service/SpotService.js";
 import { createDebugService } from "./service/DebugService.js";
 
-console.log("[Worker] booting (1)...");
-
 const router = startWorkerRouter(self);
 const ctx = createWorkerContext({ router });
 
-console.log("[Worker] booting (2)...");
+// ---- emergency debug bridge FIRST ----
+self.addEventListener("error", (e) => {
+	router?.emitEvt?.("Debug.Log", {
+		scope: "worker",
+		level: "error",
+		message: e?.message ?? "worker error",
+		meta: {
+			filename: e?.filename ?? null,
+			lineno: e?.lineno ?? null,
+			colno: e?.colno ?? null,
+		},
+		ts: Date.now(),
+	});
+});
+
+self.addEventListener("unhandledrejection", (e) => {
+	router?.emitEvt?.("Debug.Log", {
+		scope: "worker",
+		level: "error",
+		message: "unhandledrejection",
+		meta: {
+			reason: e?.reason != null ? String(e.reason) : "unknown",
+		},
+		ts: Date.now(),
+	});
+});
 
 // ---- services ----
 const transitionService = createTransitionQueryService({
@@ -94,7 +117,11 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 // ------------------------------------------------------------
 
 router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
-	return spotService.addCandidates({ spots });
+	return spotService.addObjects({ objects: spots });
+});
+
+router.onCmd("Spot.AddObjects", async ({ objects = [] } = {}) => {
+	return spotService.addObjects({ objects });
 });
 
 router.onCmd("Spot.GetState", async () => {
@@ -103,6 +130,10 @@ router.onCmd("Spot.GetState", async () => {
 
 router.onCmd("Spot.GetUiState", async () => {
 	return spotService.getUiState();
+});
+
+router.onCmd("Spot.PromoteImportItems", async ({ items = [] } = {}) => {
+	return spotService.promoteItems({ items });
 });
 
 // ------------------------------------------------------------

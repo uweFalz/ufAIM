@@ -116,9 +116,6 @@ package "src" {
   package "alignment" {
     class "Alignment2D.js" as N_src_alignment_Alignment2D_js
     class "_e2eAlignmentTest.js" as N_src_alignment__e2eAlignmentTest_js
-    package "_legacy" <<legacy>> {
-      class "alignment2dEval.js" as N_src_alignment__legacy_alignment2dEval_js
-    }
     package "build" {
       class "AlignmentFactory.js" as N_src_alignment_build_AlignmentFactory_js
     }
@@ -129,9 +126,6 @@ package "src" {
       class "KinkElement.js" as N_src_alignment_elements_KinkElement_js
       class "TransitionElement.js" as N_src_alignment_elements_TransitionElement_js
       class "ZeroLengthFixed.js" as N_src_alignment_elements_ZeroLengthFixed_js
-      package "_legacy" <<legacy>> {
-        class "QuasiElement.js" as N_src_alignment_elements__legacy_QuasiElement_js
-      }
     }
     package "service" {
       class "sampleSparseAlignmentForView.js" as N_src_alignment_service_sampleSparseAlignmentForView_js
@@ -160,14 +154,14 @@ package "src" {
         class "TransitionQueryService.js" as N_src_alignment_transition_service_TransitionQueryService_js
       }
     }
-    package "validation" {
-      class "validateSparseAlignment.js" as N_src_alignment_validation_validateSparseAlignment_js
-    }
   }
-  package "core" {
-    package "crs" {
-      class "CoordinateAgent.js" as N_src_core_crs_CoordinateAgent_js
-      class "activeCRS.js" as N_src_core_crs_activeCRS_js
+  package "crs" {
+    class "CoordinateAgent.js" as N_src_crs_CoordinateAgent_js
+    class "activeCRS.js" as N_src_crs_activeCRS_js
+    package "unsorted" {
+      class "crsAlias.js" as N_src_crs_unsorted_crsAlias_js
+      class "crsManager.js" as N_src_crs_unsorted_crsManager_js
+      class "dbCrsMap.js" as N_src_crs_unsorted_dbCrsMap_js
     }
   }
   package "import" {
@@ -181,9 +175,6 @@ package "src" {
       class "importItemFactories.js" as N_src_import_domain_importItemFactories_js
       class "importReasons.js" as N_src_import_domain_importReasons_js
       class "sparseWriter.js" as N_src_import_domain_sparseWriter_js
-      package "_legacy" <<legacy>> {
-        class "template.js" as N_src_import_domain__legacy_template_js
-      }
     }
     package "landfat" {
       class "landFatWriter.js" as N_src_import_landfat_landFatWriter_js
@@ -194,12 +185,6 @@ package "src" {
       class "validateParserModule.js" as N_src_import_parsers_validateParserModule_js
       package "IFC" {
         class "index.js" as N_src_import_parsers_IFC_index_js
-      }
-      package "_legacy" <<legacy>> {
-        class "_importRegistry.js" as N_src_import_parsers__legacy__importRegistry_js
-        class "parseGRA.js" as N_src_import_parsers__legacy_parseGRA_js
-        class "parseTRA.js" as N_src_import_parsers__legacy_parseTRA_js
-        class "parserRegistry.js" as N_src_import_parsers__legacy_parserRegistry_js
       }
       package "infraGML" {
         class "index.js" as N_src_import_parsers_infraGML_index_js
@@ -238,24 +223,13 @@ package "src" {
     }
     package "sniffers" {
       class "sniffImportFile.js" as N_src_import_sniffers_sniffImportFile_js
-      package "_legacy" <<legacy>> {
-        class "detectImportFormat.js" as N_src_import_sniffers__legacy_detectImportFormat_js
-      }
     }
   }
   package "lib" {
-    package "geo" {
-      class "crsAlias.js" as N_src_lib_geo_crsAlias_js
-      class "crsManager.js" as N_src_lib_geo_crsManager_js
-      class "dbCrsMap.js" as N_src_lib_geo_dbCrsMap_js
-    }
     package "geom" {
       class "vec2.js" as N_src_lib_geom_vec2_js
       package "curve" {
         class "Curve2D.js" as N_src_lib_geom_curve_Curve2D_js
-        package "_legacy" <<legacy>> {
-          class "transitionRegistry.js" as N_src_lib_geom_curve__legacy_transitionRegistry_js
-        }
       }
       package "frame" {
         class "pose2.js" as N_src_lib_geom_frame_pose2_js
@@ -271,18 +245,11 @@ package "src" {
       }
     }
   }
-  package "model" {
-    package "spot" {
-      class "SpotStore.js" as N_src_model_spot_SpotStore_js
-      class "buildSpotUiState.js" as N_src_model_spot_buildSpotUiState_js
-    }
-  }
   package "projection" {
     class "AlignmentProjectionService.js" as N_src_projection_AlignmentProjectionService_js
     class "ViewProjectionController.js" as N_src_projection_ViewProjectionController_js
-    class "getSpotObjectById.js" as N_src_projection_getSpotObjectById_js
-    package "_legacy" <<legacy>> {
-      class "sampleAlignment.js" as N_src_projection__legacy_sampleAlignment_js
+    package "queries" {
+      class "getSpotObjectById.js" as N_src_projection_queries_getSpotObjectById_js
     }
   }
   package "shared" {
@@ -312,6 +279,30 @@ package "src" {
       class "runtimeServices.js" as N_src_shared_runtime_runtimeServices_js
     }
   }
+  package "spot" {
+    package "contracts" {
+      class "cant.contract.js" as N_src_spot_contracts_cant_contract_js
+      class "profile.contract.js" as N_src_spot_contracts_profile_contract_js
+      class "relation.contract.js" as N_src_spot_contracts_relation_contract_js
+      class "sparseAlignment.contract.js" as N_src_spot_contracts_sparseAlignment_contract_js
+      class "spatialRef.contract.js" as N_src_spot_contracts_spatialRef_contract_js
+      class "staEq.contract.js" as N_src_spot_contracts_staEq_contract_js
+    }
+    package "model" {
+      class "SpotStore.js" as N_src_spot_model_SpotStore_js
+    }
+    package "ui" {
+      class "buildSpotUiState.js" as N_src_spot_ui_buildSpotUiState_js
+    }
+    package "validation" {
+      class "validateCant.js" as N_src_spot_validation_validateCant_js
+      class "validateProfile.js" as N_src_spot_validation_validateProfile_js
+      class "validateSparseAlignment.js" as N_src_spot_validation_validateSparseAlignment_js
+      class "validateSpotObject.js" as N_src_spot_validation_validateSpotObject_js
+      class "validateSpotRelation.js" as N_src_spot_validation_validateSpotRelation_js
+      class "validateStaEq.js" as N_src_spot_validation_validateStaEq_js
+    }
+  }
   package "utils" {
     class "helpers.js" as N_src_utils_helpers_js
   }
@@ -330,7 +321,7 @@ N_app_core_controllers_viewController_js --> N_app_core_controllers_viewPropsPan
 N_app_core_controllers_viewController_js --> N_app_core_controllers_viewUiSync_js
 N_app_core_controllers_viewController_js --> N_app_i18n_strings_js
 N_app_core_controllers_viewController_js --> N_src_projection_ViewProjectionController_js
-N_app_core_controllers_viewController_js --> N_src_projection_getSpotObjectById_js
+N_app_core_controllers_viewController_js --> N_src_projection_queries_getSpotObjectById_js
 N_app_core_controllers_viewController_js --> N_src_utils_helpers_js
 N_app_core_controllers_viewGeometry_js --> N_src_utils_helpers_js
 N_app_core_controllers_viewPropsPanel_js --> N_app_core_controllers_viewGeometry_js
@@ -415,7 +406,6 @@ N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_build_AlignmentFactory_
 N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_elements_FixedElement_js
 N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_transition_build_KappaFcnBuilder_js
 N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_transition_registry_RegistryResolver_js
-N_src_alignment__legacy_alignment2dEval_js --> N_src_lib_geom_frame_pose2_js
 N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_Alignment2D_js
 N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_FixedElement_js
 N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_ImmediateElement_js
@@ -427,12 +417,13 @@ N_src_alignment_elements_FixedElement_js --> N_src_alignment_elements_AlignmentE
 N_src_alignment_elements_FixedElement_js --> N_src_lib_geom_frame_poseAdvance2_js
 N_src_alignment_elements_ImmediateElement_js --> N_src_alignment_elements_TransitionElement_js
 N_src_alignment_elements_KinkElement_js --> N_src_alignment_elements_TransitionElement_js
+N_src_alignment_elements_KinkElement_js --> N_src_lib_geom_vec2_js
 N_src_alignment_elements_TransitionElement_js --> N_src_alignment_elements_AlignmentElement_js
 N_src_alignment_elements_TransitionElement_js --> N_src_lib_geom_vec2_js
 N_src_alignment_elements_TransitionElement_js --> N_src_lib_math_numeric_romberg_js
 N_src_alignment_elements_ZeroLengthFixed_js --> N_src_alignment_elements_FixedElement_js
 N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_alignment_build_AlignmentFactory_js
-N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_alignment_validation_validateSparseAlignment_js
+N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_spot_validation_validateSparseAlignment_js
 N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_buildProtoAst_js
 N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_evalAst_js
 N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_simplify_js
@@ -443,11 +434,12 @@ N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_utils_helpers_js
 N_src_alignment_transition_registry_ast_buildProtoAst_js --> N_src_alignment_transition_registry_ast_simplify_js
 N_src_alignment_transition_registry_ast_symDiff_js --> N_src_alignment_transition_registry_ast_simplify_js
 N_src_alignment_transition_registry_ast_symInt_js --> N_src_alignment_transition_registry_ast_simplify_js
-N_src_alignment_validation_validateSparseAlignment_js --> N_src_lib_geom_frame_pose2_js
+N_src_crs_unsorted_crsManager_js --> N_src_crs_unsorted_crsAlias_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_buildSparseFromLandFAT_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_classifyImportResult_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_importItemFactories_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_importReasons_js
+N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_spot_validation_validateSparseAlignment_js
 N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_buildAlignmentImportOutcome_js
 N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_collectLandFatProfilesAndCants_js
 N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_importItemFactories_js
@@ -456,25 +448,32 @@ N_src_import_domain_buildSparseFromLandFAT_js --> N_src_lib_geom_frame_pose2_js
 N_src_import_domain_classifyImportResult_js --> N_src_import_domain_importReasons_js
 N_src_import_domain_collectLandFatProfilesAndCants_js --> N_src_import_domain_importItemFactories_js
 N_src_import_parsers_landXML_index_js --> N_src_import_parsers_landXML_parseLandXML_js
-N_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js --> N_src_lib_geo_crsManager_js
+N_src_import_parsers_landXML_parseLandXML_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_gndEdit_index_js --> N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js
+N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_import_parsers_technet_sharedTechnet_js
 N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_import_parsers_technet_shared_traLikeCoordGeom_js
 N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_import_parsers_technet_shared_traLikeSemanticMaps_js
+N_src_import_parsers_technet_shared_traLikeCoordGeom_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_vermEsn_index_js --> N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js
+N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_parsers_technet_shared_traLikeCoordGeom_js
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_parsers_technet_shared_traLikeSemanticMaps_js
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_parsers_technet_vermEsn_sharedVermesn_js
 N_src_import_parsers_technet_vermEsn_sharedVermesn_js --> N_src_import_parsers_technet_sharedTechnet_js
 N_src_import_runImportPipeline_js --> N_src_import_domain_buildImportResultFromParsed_js
+N_src_import_runImportPipeline_js --> N_src_import_landfat_validateLandFAT_js
 N_src_import_runImportPipeline_js --> N_src_import_parsers_parserRegistry_js
 N_src_import_runImportPipeline_js --> N_src_import_parsers_validateParserModule_js
 N_src_import_runImportPipeline_js --> N_src_import_sniffers_sniffImportFile_js
 N_src_import_sniffers_sniffImportFile_js --> N_src_import_parsers_parserRegistry_js
 N_src_import_sniffers_sniffImportFile_js --> N_src_import_parsers_validateParserModule_js
-N_src_lib_geo_crsManager_js --> N_src_lib_geo_crsAlias_js
 N_src_lib_geom_frame_pose2_js --> N_src_lib_geom_vec2_js
 N_src_lib_geom_frame_poseAdvance2_js --> N_src_lib_geom_vec2_js
+N_src_projection_AlignmentProjectionService_js --> N_src_alignment_build_AlignmentFactory_js
+N_src_projection_AlignmentProjectionService_js --> N_src_alignment_transition_build_KappaFcnBuilder_js
+N_src_projection_AlignmentProjectionService_js --> N_src_alignment_transition_registry_RegistryResolver_js
+N_src_projection_AlignmentProjectionService_js --> N_src_spot_validation_validateSparseAlignment_js
 N_src_projection_ViewProjectionController_js --> N_src_projection_AlignmentProjectionService_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_ccv1_js
@@ -490,9 +489,8 @@ N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_Messa
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_local_LocalBus_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_worker_SharedWorkerClient_js
 N_src_shared_messaging_createWorkerContext_js --> N_src_alignment_transition_registry_RegistryResolver_js
-N_src_shared_messaging_createWorkerContext_js --> N_src_model_spot_SpotStore_js
-N_src_shared_messaging_service_SpotService_js --> N_src_model_spot_buildSpotUiState_js
 N_src_shared_messaging_worker_WorkerRouter_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_worker_WorkerRouter_js --> N_src_shared_messaging_ccv1_js
 N_src_shared_runtime_AppRuntimeLocal_js --> N_src_shared_messaging_ccv1_js
+N_src_spot_validation_validateSparseAlignment_js --> N_src_lib_geom_frame_pose2_js
 @enduml

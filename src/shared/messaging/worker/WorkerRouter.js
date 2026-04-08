@@ -5,7 +5,7 @@ import { mkCtx, mkAck, mkErr, mkEvt } from "../ccv1.js";
 
 export function startWorkerRouter(self) {
 	const ports = new Set();
-	const cmdHandlers = new Map(); // name -> async(payload, msg) => result
+	const cmdHandlers = new Map();
 
 	function onCmd(name, fn) {
 		cmdHandlers.set(name, fn);
@@ -29,19 +29,26 @@ export function startWorkerRouter(self) {
 
 	async function handleCmd(msg, port) {
 		const fn = cmdHandlers.get(msg.name);
+
 		if (!fn) {
 			const err = new Error(`WorkerRouter: no handler for cmd ${msg.name}`);
-			const reply = mkErr(msg, err, { src: mkCtx({ ctx: "worker:router", role: "worker" }) });
+			const reply = mkErr(msg, err, {
+				src: mkCtx({ ctx: "worker:router", role: "worker" }),
+			});
 			port.postMessage(reply);
 			return;
 		}
 
 		try {
 			const result = await fn(msg.payload ?? {}, msg);
-			const reply = mkAck(msg, result ?? {}, { src: mkCtx({ ctx: "worker:router", role: "worker" }) });
+			const reply = mkAck(msg, result ?? {}, {
+				src: mkCtx({ ctx: "worker:router", role: "worker" }),
+			});
 			port.postMessage(reply);
 		} catch (e) {
-			const reply = mkErr(msg, e, { src: mkCtx({ ctx: "worker:router", role: "worker" }) });
+			const reply = mkErr(msg, e, {
+				src: mkCtx({ ctx: "worker:router", role: "worker" }),
+			});
 			port.postMessage(reply);
 		}
 	}
@@ -49,8 +56,6 @@ export function startWorkerRouter(self) {
 	self.onconnect = (ev) => {
 		const port = ev.ports[0];
 		ports.add(port);
-
-		console.log("[WorkerRouter] connect :: clients =", ports.size);
 
 		port.onmessage = async (e) => {
 			const msg = e.data;
@@ -84,17 +89,19 @@ export function startWorkerRouter(self) {
 		});
 	};
 
+	function broadcastEvt(name, payload, { debug } = {}) {
+		const msg = mkEvt(name, payload ?? {}, {
+			src: mkCtx({ ctx: "worker:router", role: "worker" }),
+			dst: { ctx: "broadcast" },
+			debug,
+		});
+		broadcast(msg, null);
+	}
+
 	return {
 		onCmd,
 		getClientCount,
-
-		broadcastEvt(name, payload, { debug } = {}) {
-			const msg = mkEvt(name, payload ?? {}, {
-				src: mkCtx({ ctx: "worker:router", role: "worker" }),
-				dst: { ctx: "broadcast" },
-				debug,
-			});
-			broadcast(msg, null);
-		},
+		broadcastEvt,
+		emitEvt: broadcastEvt,
 	};
 }

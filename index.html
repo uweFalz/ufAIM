@@ -12,18 +12,19 @@
 		<script type="importmap">
 			{
 				"imports": {
-					"@kernel/":  "./src/alignment/",
-					"@kgeom/":   "./src/lib/geom/",
-					"@kmath/":   "./src/lib/math/",
+					"@kernel/": "./src/alignment/",
+					"@kgeom/": "./src/lib/geom/",
+					"@kmath/": "./src/lib/math/",
 					"@kimport/": "./src/import/",
-					"@src/":     "./src/",
-					"@app/":     "../app/",
-					"@ui/":      "../app/view/",
-					"@bridge/":  "../app/core/",
-					"@io/":      "../app/io/"
+					"@src/": "./src/",
+					"@app/": "./app/",
+					"@ui/": "./app/view/",
+					"@bridge/": "./app/core/",
+					"@io/": "./app/io/"
 				}
 			}
 		</script>
+
 		<script type="importmap">
 			{
 				"imports": {
@@ -38,262 +39,14 @@
 				}
 			}
 		</script>
-
-		<script>
-			if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-				navigator.serviceWorker?.register("./sw-nocache.js")
-				.then(() => console.log("sw-nocache active (DEV) ✅"))
-				.catch(err => console.warn("sw-nocache failed", err));
-			}
-		</script>
 	</head>
 
 	<body>
-
-		<!-- App Root -->
 		<div id="app-root"></div>
-
-		<!-- Overlays -->
 		<div id="overlay-root"></div>
-
-		<!-- Dialogs / Modals -->
 		<div id="dialog-root"></div>
-
-		<!-- Debug / Dev Panels -->
 		<div id="debug-root"></div>
 
 		<script type="module" src="./app/main.js"></script>
-
 	</body>
 </html>
-
-<!--head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ufAIM – Sandbox</title>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
-<link rel="stylesheet" href="./app/styles/app.css" />
-
-<script type="importmap">
-{
-"imports": {
-"@kernel/":  "./src/alignment/",
-"@kgeom/":   "./src/lib/geom/",
-"@kmath/":   "./src/lib/math/",
-"@kimport/": "./src/import/",
-"@src/":     "./src/",
-"@app/":     "../app/",
-"@ui/":      "../app/view/",
-"@bridge/":  "../app/core/",
-"@io/":      "../app/io/"
-}
-}
-</script>
-<script type="importmap">
-{
-"imports": {
-"three":             "https://unpkg.com/three/build/three.module.js",
-"OrbitControls":     "https://unpkg.com/three/examples/jsm/controls/OrbitControls.js",
-"TransformControls": "https://unpkg.com/three/examples/jsm/controls/TransformControls.js",
-"jsxgraph":          "https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.mjs",
-"maplibregl":        "https://unpkg.com/maplibre-gl/dist/maplibre-gl.js",
-"proj4js":           "https://cdn.jsdelivr.net/npm/proj4/dist/proj4.js",
-"fflate":            "https://cdn.jsdelivr.net/npm/fflate/esm/browser.js",
-"sheetjs":           "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs"
-}
-}
-</script>
-
-<script>
-if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-navigator.serviceWorker?.register("./sw-nocache.js")
-.then(() => console.log("sw-nocache active (DEV) ✅"))
-.catch(err => console.warn("sw-nocache failed", err));
-}
-</script>
-</head>
-
-<body>
-<header class="topbar">
-<div class="brand">
-<div class="brand__title">ufAIM</div>
-<div class="brand__subtitle" id="status">…</div>
-</div>
-
-<div class="actions">
-<input
-id="fileImport"
-type="file"
-multiple
-accept=".json,.ufaim.json,.tra,.gra,.xlsx,.xls,.xml,.landxml,application/json,text/plain"
-style="display:none"
-/>
-
-<div class="divider"></div>
-
-<button id="btnSpot" class="btn">Grabbeltisch</button>
-
-<div class="cursor">
-<button id="btnCursorMinus" class="btn btn--ghost" title="s minus">−</button>
-<label class="cursor__label" for="inputCursorS">s</label>
-<input id="inputCursorS" class="cursor__input" type="number" step="1" value="0" />
-<button id="btnCursorPlus" class="btn btn--ghost" title="s plus">+</button>
-</div>
-
-<div class="picker">
-<label class="picker__label" for="routeProjectSelect">RP</label>
-<select id="routeProjectSelect" class="picker__select">
-<option value="">(none)</option>
-</select>
-</div>
-
-<div class="picker">
-<label class="picker__label" for="slotSelect">Slot</label>
-<select id="slotSelect" class="picker__select">
-<option value="right">right</option>
-<option value="km">km</option>
-<option value="left">left</option>
-</select>
-</div>
-
-<label class="toggle" title="Auto-Fit bei RP/Slot/Geom-Wechsel (DEV)">
-<input id="chkAutoFit" type="checkbox" />
-<span>AutoFit</span>
-</label>
-
-<button id="btnFit" class="btn" title="Zoom to active alignment">Fit</button>
-<button id="btnPinToggle" class="btn" title="Pin/unpin current (RP+Slot)">Pin</button>
-<button id="btnPinsClear" class="btn" title="Clear all pinned">Unpin all</button>
-<span id="pinsInfo" class="hint" style="margin-left:6px">Pins: 0</span>
-
-<div class="divider"></div>
-
-<button id="btnToggleBands" class="btn">Bänder</button>
-<button id="btnToggleSection" class="btn">Schnitt</button>
-
-<div class="divider"></div>
-
-<button id="btnTrans" class="btn">Transition</button>
-
-<button id="btnDocs" class="btn" title="Show project docs (Vision/Roadmap/Freeze)">Docs</button>
-</div>
-</header>
-
-<main class="shell">
-<section class="stage">
-<div class="view view--3d view--full">
-<div class="view__title">3D</div>
-<canvas id="view3d"></canvas>
-</div>
-
-<div id="overlayBands" class="overlayPane overlayPane--hidden">
-<header class="overlayPane__header">
-<div class="overlayPane__title">Bänder</div>
-<button id="btnCloseBands" class="btn btn--ghost">×</button>
-</header>
-<div id="board2d" class="overlayPane__body">(Bands)</div>
-</div>
-
-<div id="overlaySection" class="overlayPane overlayPane--hidden">
-<header class="overlayPane__header">
-<div class="overlayPane__title">Schnitt</div>
-<button id="btnCloseSection" class="btn btn--ghost">×</button>
-</header>
-<div id="boardSection" class="overlayPane__body">(Section)</div>
-</div>
-</section>
-
-<footer class="footer">
-<div class="footer__pane">
-<div class="footer__title">Log</div>
-<pre id="log" class="log log--footer"></pre>
-</div>
-
-<div class="footer__pane">
-<div class="footer__title">Props</div>
-<pre id="props" class="props props--footer"></pre>
-</div>
-
-<div class="footer__pane">
-<div class="footer__title">Grabbeltisch</div>
-<div id="importSession" class="spotHost props--footer"></div>
-</div>
-</footer>
-</main>
-
-<section id="spotOverlay" class="overlay hidden">
-<div class="overlay__card overlay__card--wide">
-<header class="overlay__header">
-<div class="overlay__title">Grabbeltisch</div>
-<div class="overlay__headerRight">
-<button id="btnSpotClose" class="btn">Close</button>
-</div>
-</header>
-
-<div class="overlayPane__body">
-<div id="spotOverlayBody"></div>
-</div>
-</div>
-</section>
-
-<section id="transOverlay" class="overlay hidden">
-<div class="overlay__card overlay__card--wide">
-<header class="overlay__header">
-<div class="overlay__title">Transition Editor</div>
-<div class="overlay__headerRight">
-<span id="teLegend" class="hint"></span>
-<button id="btnTransClose" class="btn">Close</button>
-</div>
-</header>
-
-<div class="overlay__body overlay__body--grid">
-<div class="overlay__controls">
-<div class="control">
-<label for="tePresetSelMain">Preset</label>
-<select id="tePresetSelMain"></select>
-<label><input type="radio" name="tePlot" id="tePlotK"  value="k" /> κ</label>
-<label><input type="radio" name="tePlot" id="tePlotK1" value="k1" /> κ′</label>
-<label><input type="radio" name="tePlot" id="tePlotK2" value="k2" /> κ″</label>
-</div>
-
-<div class="control">
-<label for="teW1">w1</label>
-<input type="range" id="teW1" min="0" max="1000" />
-<span id="teW1Val">—</span>
-</div>
-
-<div class="control">
-<label for="teW2">w2</label>
-<input type="range" id="teW2" min="0" max="1000" />
-<span id="teW2Val">—</span>
-</div>
-</div>
-
-<div class="overlay__stage">
-<div id="transBoard" class="jxgbox"></div>
-</div>
-</div>
-</div>
-</section>
-
-<section id="docsOverlay" class="overlay hidden">
-<div class="overlay__card overlay__card--wide">
-<header class="overlay__header">
-<div class="overlay__title">Docs</div>
-<div class="overlay__headerRight">
-<select id="docsSelect" class="select">
-<option value="vision">Vision</option>
-<option value="roadmap">Roadmap</option>
-<option value="freeze">Architecture Freeze</option>
-</select>
-<button id="btnDocsClose" class="btn">Close</button>
-</div>
-</header>
-<pre id="docsText" class="docsText">Loading…</pre>
-</div>
-</section>
-
-<script type="module" src="./app/main.js"></script>
-</body>
-</html-->

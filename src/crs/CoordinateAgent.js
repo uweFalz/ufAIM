@@ -1,4 +1,4 @@
-// src/core/crs/CoordinateAgent.js
+// src/crs/CoordinateAgent.js
 
 export class CoordinateAgent {
 

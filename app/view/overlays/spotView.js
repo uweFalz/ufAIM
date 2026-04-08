@@ -105,7 +105,7 @@ function renderSpotRow(row, { activeObjectId, decisions, storeState }) {
 			</div>
 
 			<div class="spot__meta">
-				<span>${escapeHtml(t("spot_meta_kind"))}=${escapeHtml(row?.kind ?? "alignment")}</span>
+				<span>${escapeHtml(t("spot_meta_type"))}=${escapeHtml(row?.type ?? "alignment")}</span>
 				<span>${escapeHtml(t("spot_meta_outcome"))}=${escapeHtml(row?.outcome ?? "candidate")}</span>
 				<span>${escapeHtml(t("spot_meta_conf"))}=${escapeHtml(formatPct01(row?.outcomeConfidence ?? 0))}</span>
 			</div>
