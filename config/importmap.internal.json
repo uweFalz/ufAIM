@@ -8,6 +8,13 @@
 		"@app/": "./app/",
 		"@ui/": "./app/view/",
 		"@bridge/": "./app/core/",
-		"@io/": "./app/io/"
+		"@io/": "./app/io/",
+
+		"@alignment/": "./src/alignment/",
+		"@import/": "./src/import/",
+		"@shared/": "./src/shared/",
+		"@view/": "./app/view/",
+		"@controllers/": "./app/core/controllers/",
+		"@runtime/": "./app/core/runtime/"
 	}
 }
