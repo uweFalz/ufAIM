@@ -13,8 +13,8 @@
 // Important:
 // SpotService works against the SpotStore API, not against raw mutable state.
 
-import { buildSpotUiState } from "../../../spot/ui/buildSpotUiState.js";
-import { promoteImportItems } from "../../../spot/mutate/promoteImportItems.js";
+import { buildSpotUiState } from "../../../model/spot/ui/buildSpotUiState.js";
+import { promoteImportItems } from "../../../model/spot/mutate/promoteImportItems.js";
 
 export function createSpotService({ spotStore, router } = {}) {
 	if (!spotStore) {

@@ -58,7 +58,7 @@
 //   }
 // }
 
-import { formatPct01 } from "@src/utils/helpers.js";
+import { formatPct01 } from "@utils/helpers.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
 import { t } from "@app/i18n/strings.js";
 

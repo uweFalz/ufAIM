@@ -5,7 +5,7 @@
 // - curvature band k(s) over station s (physical, 1/m)
 // This is NOT the TransitionEditor (which lives in the overlay).
 
-import { clamp01 } from "@src/utils/helpers.js";
+import { clamp01 } from "@utils/helpers.js";
 
 // import { curvature } from "./transitionModel.js";
 

@@ -1,4 +1,4 @@
-// app/src/lib/math/numeric/romberg.js
+// src/lib/math/numeric/romberg.js
 
 export const romberg = {
 	// nmax = number of partitions, n=2^nmax

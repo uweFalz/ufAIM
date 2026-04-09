@@ -12,6 +12,9 @@
 
 import { IMPORT_REASONS } from "./importReasons.js";
 
+//
+// ...
+//
 export function classifyAlignmentForSpot(alignment, { imported } = {}) {
 	const crs = resolveEffectiveCRS(imported, alignment);
 	const sparse = alignment?.sparseAlignment ?? null;

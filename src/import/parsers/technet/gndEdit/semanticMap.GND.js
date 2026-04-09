@@ -1,6 +1,6 @@
-//
+// src/import/parsers/technet/gndEdit/semanticMap.GND.js
 
-const GND_EL_EK_SEMANTIC_MAP = {
+export const GND_EL_EK_SEMANTIC_MAP = {
 	formatId: "gndEdit",
 	fileType: "EL_EK",
 	version: 1,

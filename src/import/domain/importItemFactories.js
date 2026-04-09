@@ -23,6 +23,7 @@ import {
 	createRejectedImportSessionItem,
 } from "../factories/createImportSessionItem.js";
 
+// ...
 function makeSource(source = {}) {
 	return {
 		fileName: source.fileName ?? source.file ?? null,

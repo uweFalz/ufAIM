@@ -29,7 +29,7 @@
 
 import * as JXG from "jsxgraph";
 
-import { clampNumber } from "@src/utils/helpers.js";
+import { clampNumber } from "@utils/helpers.js";
 
 //
 // ...

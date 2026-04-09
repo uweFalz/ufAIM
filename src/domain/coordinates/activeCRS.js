@@ -1,4 +1,4 @@
-// src/crs/activeCRS.js
+// src/domain/coordinates/activeCRS.js
 
 export function createActiveCRS({
 	id = "LOCAL",

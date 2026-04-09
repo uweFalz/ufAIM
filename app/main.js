@@ -1,12 +1,12 @@
 // app/main.js
 
 import { initLanguage } from "@app/i18n/strings.js";
-import { systemPrefs } from "@app/core/config/systemPrefs.js";
+import { systemPrefs } from "@runtime/systemPrefs.js";
 import { WindowRuntime } from "@runtime/WindowRuntime.js";
 import { workerImportMirror } from "@app/examples/workerImportMirror.js";
 import { registerDevNoCacheSW } from "@app/bootstrap/registerDevNoCacheSW.js";
 
-import "../src/alignment/_e2eAlignmentTest.js";
+import "@alignment/_e2eAlignmentTest.js";
 
 await registerDevNoCacheSW({
 	enabled: !systemPrefs?.debug?.disableServiceWorker,

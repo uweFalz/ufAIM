@@ -3,7 +3,7 @@
 import { startWorkerRouter } from "./worker/WorkerRouter.js";
 import { createWorkerContext } from "./createWorkerContext.js";
 
-import { createTransitionQueryService } from "../../alignment/transition/service/TransitionQueryService.js";
+import { createTransitionQueryService } from "../../domain/transition/service/TransitionQueryService.js";
 import { createProjectStateService } from "./service/ProjectStateService.js";
 import { createImportSessionService } from "./service/ImportSessionService.js";
 import { createSpotService } from "./service/SpotService.js";

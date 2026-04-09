@@ -20,13 +20,16 @@
 // output = one canonical alignment ImportSessionItem wrapper
 
 import { buildSparseFromLandFAT } from "./buildSparseFromLandFAT.js";
-import { validateSparseAlignment } from "@src/spot/validation/validateSparseAlignment.js";
+import { validateSparseAlignment } from "@src/model/spot/validation/validateSparseAlignment.js";
 import {
 	makeAlignmentImportItem,
 	makeRejectedImportItem,
 } from "./importItemFactories.js";
 import { IMPORT_REASONS } from "./importReasons.js";
 
+//
+// ...
+//
 export function buildAlignmentImportOutcome({
 	alignment,
 	source = {},

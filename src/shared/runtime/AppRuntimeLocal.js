@@ -1,7 +1,7 @@
 // src/shared/runtime/AppRuntimeLocal.js
 
-import transitionLookup from "@src/alignment/transition/transitionLookup.json" with { type:"json" };
-import { mkAck, mkErr } from "@src/shared/messaging/ccv1.js";
+import transitionLookup from "../../domain/transition/transitionLookup.json" with { type:"json" };
+import { mkAck, mkErr } from "../messaging/ccv1.js";
 
 const db = transitionLookup;
 
