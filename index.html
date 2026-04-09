@@ -9,36 +9,7 @@
 		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
 		<link rel="stylesheet" href="./app/styles/app.css" />
 
-		<script type="importmap">
-			{
-				"imports": {
-					"@kernel/": "./src/alignment/",
-					"@kgeom/": "./src/lib/geom/",
-					"@kmath/": "./src/lib/math/",
-					"@kimport/": "./src/import/",
-					"@src/": "./src/",
-					"@app/": "./app/",
-					"@ui/": "./app/view/",
-					"@bridge/": "./app/core/",
-					"@io/": "./app/io/"
-				}
-			}
-		</script>
-
-		<script type="importmap">
-			{
-				"imports": {
-					"three":             "https://unpkg.com/three/build/three.module.js",
-					"OrbitControls":     "https://unpkg.com/three/examples/jsm/controls/OrbitControls.js",
-					"TransformControls": "https://unpkg.com/three/examples/jsm/controls/TransformControls.js",
-					"jsxgraph":          "https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.mjs",
-					"maplibregl":        "https://unpkg.com/maplibre-gl/dist/maplibre-gl.js",
-					"proj4js":           "https://cdn.jsdelivr.net/npm/proj4/dist/proj4.js",
-					"fflate":            "https://cdn.jsdelivr.net/npm/fflate/esm/browser.js",
-					"sheetjs":           "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs"
-				}
-			}
-		</script>
+		<script src="./app/bootstrap/loadImportMaps.js"></script>
 	</head>
 
 	<body>
@@ -47,6 +18,6 @@
 		<div id="dialog-root"></div>
 		<div id="debug-root"></div>
 
-		<script type="module" src="./app/main.js"></script>
+		<!--script type="module" src="./app/main.js"></script-->
 	</body>
 </html>

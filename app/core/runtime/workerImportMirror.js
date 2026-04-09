@@ -1,10 +1,16 @@
 // app/core/runtime/workerImportMirror.js
 //
+//
 // Visible mirror of SharedWorker boot imports.
+//
 // Purpose:
-// - detect path drift during refactors
-// - document worker boot dependencies centrally
-// - NOT part of production worker logic
+// - detect path drift during refactors in window context
+// - document intended worker boot dependencies centrally
+//
+// Important:
+// - this is NOT a real worker execution test
+// - success here does NOT guarantee worker-side module resolution
+//
 
 import "@src/shared/messaging/SharedMessagingWorker.js";
 import "@src/shared/messaging/createWorkerContext.js";

@@ -1,0 +1,13 @@
+{
+	"imports": {
+		"@kernel/": "./src/alignment/",
+		"@kgeom/": "./src/lib/geom/",
+		"@kmath/": "./src/lib/math/",
+		"@kimport/": "./src/import/",
+		"@src/": "./src/",
+		"@app/": "./app/",
+		"@ui/": "./app/view/",
+		"@bridge/": "./app/core/",
+		"@io/": "./app/io/"
+	}
+}
