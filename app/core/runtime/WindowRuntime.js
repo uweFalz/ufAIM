@@ -1,9 +1,9 @@
 // app/core/runtime/WindowRuntime.js
 
-import { createMessagingClient } from "@src/shared/messaging/createMessagingClient.js";
-import { setMessagingService } from "@src/shared/runtime/runtimeServices.js";
-import { AppRuntimeLocal } from "@src/shared/runtime/AppRuntimeLocal.js";
-import { debugLog, debugError } from "@src/shared/debug/debugLog.js";
+import { createMessagingClient } from "@shared/messaging/createMessagingClient.js";
+import { setMessagingService } from "@shared/runtime/runtimeServices.js";
+import { AppRuntimeLocal } from "@shared/runtime/AppRuntimeLocal.js";
+import { debugLog, debugError } from "@shared/debug/debugLog.js";
 
 import { bootWindowApp } from "./bootWindowApp.js";
 
