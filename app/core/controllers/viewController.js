@@ -25,7 +25,10 @@
 // canonical change -> local reprojection -> local rerender
 
 import { t } from "@app/i18n/strings.js";
-import { formatNum } from "@src/utils/helpers.js";
+import { formatNum } from "@utils/helpers.js";
+
+import { getSpotObjectById } from "@projection/queries/getSpotObjectById.js";
+import { projectFocusedSpotObject } from "@projection/ViewProjectionController.js";
 
 import {
 	samplePointAndTangent,
@@ -47,9 +50,6 @@ import {
 	syncPinsBadge,
 	syncTransitionEditorControls,
 } from "@app/core/controllers/viewUiSync.js";
-
-import { getSpotObjectById } from "@src/projection/queries/getSpotObjectById.js";
-import { projectFocusedSpotObject } from "@src/projection/ViewProjectionController.js";
 
 // ------------------------------------------------------------
 // ViewController
