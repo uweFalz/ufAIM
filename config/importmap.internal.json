@@ -1,24 +1,21 @@
 {
 	"imports": {
-		"@kernel/": "./src/alignment/",
+		"@src/": "./src/",
+		"@shared/": "./src/shared/",
+		"@alignment/": "./src/domain/alignment/",
+		"@transition/": "./src/domain/transition/",
+		"@projection/": "./src/domain/projection/",
 		"@kgeom/": "./src/lib/geom/",
 		"@kmath/": "./src/lib/math/",
+		"@utils/": "./src/lib/utils/",
 		"@kimport/": "./src/import/",
-		"@src/": "./src/",
+		"@spot/": "./src/model/spot/",
+		
 		"@app/": "./app/",
-		"@ui/": "./app/view/",
-		"@bridge/": "./app/core/",
-		"@io/": "./app/io/",
-
-		"@alignment/": "./src/alignment/",
-		"@import/": "./src/import/",
-		"@shared/": "./src/shared/",
+		"@runtime/": "./app/runtime/",
+		"@controllers/": "./app/controllers/",
 		"@view/": "./app/view/",
-		"@controllers/": "./app/core/controllers/",
-		"@runtime/": "./app/core/runtime/",
-		"@projection/": "./src/domain/projection/",
-
-		"@spot/": "./src/spot/",
-		"@utils/": "./src/utils/"
+		"@ui/": "./app/ui/",
+		"@io/": "./app/io/"
 	}
 }
