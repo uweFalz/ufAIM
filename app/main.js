@@ -14,7 +14,7 @@ await registerDevNoCacheSW({
 
 if (systemPrefs?.debug?.importMirror) {
 	await workerImportMirror("SharedMessagingWorker", () =>
-	import("@src/shared/messaging/SharedMessagingWorker.js")
+		import("@shared/messaging/SharedMessagingWorker.js")
 	);
 }
 
@@ -23,13 +23,13 @@ initLanguage();
 const runtime = new WindowRuntime({ prefs: systemPrefs });
 window.runtime = runtime;
 
-runtime.start().then(() => {
+try {
+	await runtime.start();
 	window.messaging = runtime.messaging;
-})
-.catch((err) => {
+} catch (err) {
 	console.error(err);
 	const logElement = document.getElementById("log");
 	if (logElement) {
 		logElement.textContent = "runtime boot failed ❌\n" + String(err);
 	}
-});
+}
