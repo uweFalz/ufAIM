@@ -1,4 +1,4 @@
-// src/projection/AlignmentProjectionService.js
+// src/domain/projection/AlignmentProjectionService.js
 
 import { validateSparseAlignment } from "@spot/validation/validateSparseAlignment.js";
 import { makeAlignment2DFromSparse } from "@kernel/build/AlignmentFactory.js";

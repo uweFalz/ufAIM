@@ -16,7 +16,7 @@
 		"@view/": "./app/view/",
 		"@controllers/": "./app/core/controllers/",
 		"@runtime/": "./app/core/runtime/",
-		"@projection/": "./src/projection/",
+		"@projection/": "./src/domain/projection/",
 
 		"@spot/": "./src/spot/",
 		"@utils/": "./src/utils/"

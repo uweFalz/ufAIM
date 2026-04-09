@@ -19,7 +19,7 @@
 // Damit bleibt später der Umbau pose2 -> pose3 möglichst lokal.
 
 import { isPose2, posePoint } from "../..//lib/geom/frame/pose2.js";
-// import { isPose2, posePoint } from "@src/lib/geom/frame/pose2.js";
+// import { isPose2, posePoint } from "@kgeom/frame/pose2.js";
 
 const CODES = {
 	root_type: "root_type",

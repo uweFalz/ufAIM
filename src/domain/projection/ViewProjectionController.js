@@ -1,4 +1,4 @@
-// src/projection/ViewProjectionController.js
+// src/domain/projection/ViewProjectionController.js
 //
 // ViewProjectionController
 //

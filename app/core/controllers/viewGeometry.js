@@ -9,7 +9,7 @@ import {
 	lerp,
 	normDeg180,
 	headingDegFromPoints,
-} from "@src/utils/helpers.js";
+} from "@utils/helpers.js";
 
 // ------------------------------------------------------------
 // basic polyline helpers

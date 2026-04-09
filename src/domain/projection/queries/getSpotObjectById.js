@@ -1,4 +1,4 @@
-// src/projection/queries/getSpotObjectById.js
+// src/domain/projection/queries/getSpotObjectById.js
 //
 // Resolve a canonical SPOT object by id / alias.
 //
