@@ -17,6 +17,8 @@
 		"@controllers/": "./app/core/controllers/",
 		"@runtime/": "./app/core/runtime/",
 		"@projection/": "./src/projection/",
-"@utils/": "./src/utils/"
+
+		"@spot/": "./src/spot/",
+		"@utils/": "./src/utils/"
 	}
 }

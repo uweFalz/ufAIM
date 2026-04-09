@@ -1,6 +1,6 @@
 // src/projection/AlignmentProjectionService.js
 
-import { validateSparseAlignment } from "@src/spot/validation/validateSparseAlignment.js";
+import { validateSparseAlignment } from "@spot/validation/validateSparseAlignment.js";
 import { makeAlignment2DFromSparse } from "@kernel/build/AlignmentFactory.js";
 import { RegistryResolver } from "@kernel/transition/registry/RegistryResolver.js";
 import { KappaFcnBuilder } from "@kernel/transition/build/KappaFcnBuilder.js";
