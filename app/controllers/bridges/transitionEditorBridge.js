@@ -393,7 +393,7 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 	}
 
 	// ---- public API ----
-	async function wire() {
+		async function wire() {
 		if (ui.elements.__teBridgeWired) return;
 		ui.elements.__teBridgeWired = true;
 
@@ -415,6 +415,29 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			// also sync selects visually
 			if (elPresetMain) elPresetMain.value = pid;
 			if (elPresetAlt)  elPresetAlt.value = pid;
+		}
+
+		const overlayAlreadyOpen =
+			!ov?.classList?.contains("hidden") ||
+			Boolean(store.getState?.()?.te_open);
+
+		if (overlayAlreadyOpen) {
+			await ensureViewInitOnce();
+
+			const st2 = store.getState?.() ?? {};
+			const pid2 = getPresetIdFromState(st2);
+
+			if (pid2) {
+				await applyPresetSpecToStoreAndUI(pid2);
+				if (elPresetMain) elPresetMain.value = pid2;
+				if (elPresetAlt) elPresetAlt.value = pid2;
+			}
+
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					view?.resize?.();
+				});
+			});
 		}
 	}
 
