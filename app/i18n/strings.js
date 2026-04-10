@@ -54,11 +54,20 @@ export const LANGS = [
 ];
 
 const DICTS = { de, en, ar, he, fa, ur, uk, ru, fr, zh, ja, hi, tr, ps, my, sw, ht };
-const DEV =
-	location.hostname === "localhost" ||
-	location.hostname === "127.0.0.1";
 
 let current = "de";
+
+// hard off by default
+// optional enable in dev console:
+// localStorage.setItem("ufAIM.i18n.warnMissing", "1")
+function isMissingWarnEnabled() {
+	try {
+		return localStorage.getItem("ufAIM.i18n.warnMissing") === "1";
+	} catch {
+		return false;
+	}
+}
+
 const missingWarned = new Set();
 
 export function getLanguage() {
@@ -102,10 +111,12 @@ export function initLanguage() {
 }
 
 function warnMissingKey(key) {
-	if (!DEV) return;
+	if (!isMissingWarnEnabled()) return;
+
 	const marker = `${current}:${key}`;
 	if (missingWarned.has(marker)) return;
 	missingWarned.add(marker);
+
 	console.warn(`[i18n] missing key "${key}" for lang "${current}"`);
 }
 
