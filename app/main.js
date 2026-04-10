@@ -14,7 +14,7 @@ await registerDevNoCacheSW({
 
 if (systemPrefs?.debug?.importMirror) {
 	await workerImportMirror("SharedMessagingWorker", () =>
-		import("@shared/messaging/SharedMessagingWorker.js")
+		import("@src/shared/messaging/SharedMessagingWorker.js")
 	);
 }
 

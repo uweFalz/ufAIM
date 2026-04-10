@@ -2,6 +2,7 @@
 	"imports": {
 		"@src/": "./src/",
 		"@shared/": "./src/shared/",
+		"@domain/": "./src/domain/",
 		"@alignment/": "./src/domain/alignment/",
 		"@transition/": "./src/domain/transition/",
 		"@projection/": "./src/domain/projection/",
