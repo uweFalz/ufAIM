@@ -54,7 +54,12 @@ export const LANGS = [
 ];
 
 const DICTS = { de, en, ar, he, fa, ur, uk, ru, fr, zh, ja, hi, tr, ps, my, sw, ht };
+const DEV =
+	location.hostname === "localhost" ||
+	location.hostname === "127.0.0.1";
+
 let current = "de";
+const missingWarned = new Set();
 
 export function getLanguage() {
 	return current;
@@ -96,19 +101,36 @@ export function initLanguage() {
 	return current;
 }
 
-export function t(key, params = {}) {
-	const langDict = DICTS[current] || {};
-	const fallbackDict = DICTS.de || {};
-	
-	// console.log( "[t]", current, key, params );
+function warnMissingKey(key) {
+	if (!DEV) return;
+	const marker = `${current}:${key}`;
+	if (missingWarned.has(marker)) return;
+	missingWarned.add(marker);
+	console.warn(`[i18n] missing key "${key}" for lang "${current}"`);
+}
 
-	const str =
-		langDict[key] ??
-		fallbackDict[key] ??
-		key;
-
-	return str.replace(/\{(\w+)\}/g, (_, k) => {
+function formatString(str, params = {}) {
+	return String(str).replace(/\{(\w+)\}/g, (_, k) => {
 		return params[k] != null ? String(params[k]) : `{${k}}`;
 	});
 }
 
+export function t(key, params = {}) {
+	const langDict = DICTS[current] || {};
+	const fallbackDict = DICTS.de || {};
+
+	const hasLang = Object.prototype.hasOwnProperty.call(langDict, key);
+	const hasFallback = Object.prototype.hasOwnProperty.call(fallbackDict, key);
+
+	if (!hasLang && !hasFallback) {
+		warnMissingKey(key);
+		return formatString(key, params);
+	}
+
+	if (!hasLang && hasFallback) {
+		warnMissingKey(key);
+		return formatString(fallbackDict[key], params);
+	}
+
+	return formatString(langDict[key], params);
+}
