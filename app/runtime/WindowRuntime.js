@@ -1,7 +1,5 @@
 // app/runtime/WindowRuntime.js
 
-import "@shared/messaging/workerImportMirror.js";
-
 import { createMessagingClient } from "@shared/messaging/createMessagingClient.js";
 import { setMessagingService } from "@shared/runtime/runtimeServices.js";
 import { AppRuntimeLocal } from "@shared/runtime/AppRuntimeLocal.js";
@@ -35,10 +33,6 @@ export class WindowRuntime {
 		}
 
 		this.installDebugHooks();
-
-		if (this.prefs?.runtime?.runWorkerSmokeTest) {
-			await this.runWorkerSmokeTest();
-		}
 
 		this.messaging.emitEvt("Window.Register", {
 			title: document.title || "ufAIM",
@@ -89,32 +83,6 @@ export class WindowRuntime {
 
 			logElement.textContent += line;
 		});
-	}
-
-	async runWorkerSmokeTest() {
-		const presets = await this.messaging.sendCmdAwait("Transition.ListPresets", {});
-		debugLog("WindowRuntime", "presets", {
-			count: presets?.length ?? 0,
-			first: presets?.[0] ?? null,
-		});
-
-		if (Array.isArray(presets) && presets.length > 0) {
-			const spec = await this.messaging.sendCmdAwait("Transition.GetPresetSpec", {
-				presetId: presets[0].id,
-			});
-
-			debugLog("WindowRuntime", "spec", {
-				presetId: spec?.presetId ?? null,
-				cuts01: spec?.cuts01 ?? null,
-				hasDefs: !!spec?.defs,
-			});
-		}
-
-		const projectState = await this.messaging.sendCmdAwait("Project.GetState", {});
-		debugLog("WindowRuntime", "projectState", projectState ?? null);
-
-		const workerDebug = await this.messaging.sendCmdAwait("Debug.GetWorkerState", {});
-		debugLog("WindowRuntime", "workerDebug", workerDebug ?? null);
 	}
 }
 
