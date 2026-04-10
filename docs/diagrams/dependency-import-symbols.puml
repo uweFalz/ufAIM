@@ -12,6 +12,17 @@ package "src" {
     class "runImportPipeline.js" as N_src_import_runImportPipeline_js
     class "runImportPipeline()" as S_src_import_runImportPipeline_js__runImportPipeline
     N_src_import_runImportPipeline_js .. S_src_import_runImportPipeline_js__runImportPipeline
+    package "contracts" {
+      class "importSessionItem.contract.js" as N_src_import_contracts_importSessionItem_contract_js
+      class "IMPORT_SESSION_ITEM_KINDS()" as S_src_import_contracts_importSessionItem_contract_js__IMPORT_SESSION_ITEM_KINDS
+      N_src_import_contracts_importSessionItem_contract_js .. S_src_import_contracts_importSessionItem_contract_js__IMPORT_SESSION_ITEM_KINDS
+      class "IMPORT_SESSION_ITEM_STAGES()" as S_src_import_contracts_importSessionItem_contract_js__IMPORT_SESSION_ITEM_STAGES
+      N_src_import_contracts_importSessionItem_contract_js .. S_src_import_contracts_importSessionItem_contract_js__IMPORT_SESSION_ITEM_STAGES
+      class "isImportSessionItemKind()" as S_src_import_contracts_importSessionItem_contract_js__isImportSessionItemKind
+      N_src_import_contracts_importSessionItem_contract_js .. S_src_import_contracts_importSessionItem_contract_js__isImportSessionItemKind
+      class "isImportSessionItemStage()" as S_src_import_contracts_importSessionItem_contract_js__isImportSessionItemStage
+      N_src_import_contracts_importSessionItem_contract_js .. S_src_import_contracts_importSessionItem_contract_js__isImportSessionItemStage
+    }
     package "domain" {
       class "buildAlignmentImportOutcome.js" as N_src_import_domain_buildAlignmentImportOutcome_js
       class "buildAlignmentImportOutcome()" as S_src_import_domain_buildAlignmentImportOutcome_js__buildAlignmentImportOutcome
@@ -29,10 +40,30 @@ package "src" {
       class "collectLandFatProfilesAndCants()" as S_src_import_domain_collectLandFatProfilesAndCants_js__collectLandFatProfilesAndCants
       N_src_import_domain_collectLandFatProfilesAndCants_js .. S_src_import_domain_collectLandFatProfilesAndCants_js__collectLandFatProfilesAndCants
       class "importItemFactories.js" as N_src_import_domain_importItemFactories_js
-      class "buildAlignmentSpotCandidate()" as S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
-      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
-      class "makeWorkingItem()" as S_src_import_domain_importItemFactories_js__makeWorkingItem
-      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeWorkingItem
+      class "createAlignmentImportItem()" as S_src_import_domain_importItemFactories_js__createAlignmentImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__createAlignmentImportItem
+      class "createCantImportItem()" as S_src_import_domain_importItemFactories_js__createCantImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__createCantImportItem
+      class "createProfileImportItem()" as S_src_import_domain_importItemFactories_js__createProfileImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__createProfileImportItem
+      class "createRejectedItem()" as S_src_import_domain_importItemFactories_js__createRejectedItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__createRejectedItem
+      class "createRelationImportItem()" as S_src_import_domain_importItemFactories_js__createRelationImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__createRelationImportItem
+      class "createStaEqImportItem()" as S_src_import_domain_importItemFactories_js__createStaEqImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__createStaEqImportItem
+      class "makeAlignmentImportItem()" as S_src_import_domain_importItemFactories_js__makeAlignmentImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeAlignmentImportItem
+      class "makeCantImportItem()" as S_src_import_domain_importItemFactories_js__makeCantImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeCantImportItem
+      class "makeProfileImportItem()" as S_src_import_domain_importItemFactories_js__makeProfileImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeProfileImportItem
+      class "makeRejectedImportItem()" as S_src_import_domain_importItemFactories_js__makeRejectedImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeRejectedImportItem
+      class "makeRelationImportItem()" as S_src_import_domain_importItemFactories_js__makeRelationImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeRelationImportItem
+      class "makeStaEqImportItem()" as S_src_import_domain_importItemFactories_js__makeStaEqImportItem
+      N_src_import_domain_importItemFactories_js .. S_src_import_domain_importItemFactories_js__makeStaEqImportItem
       class "importReasons.js" as N_src_import_domain_importReasons_js
       class "IMPORT_REASONS()" as S_src_import_domain_importReasons_js__IMPORT_REASONS
       N_src_import_domain_importReasons_js .. S_src_import_domain_importReasons_js__IMPORT_REASONS
@@ -51,6 +82,13 @@ package "src" {
       N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__transition
       class "zeroFixed()" as S_src_import_domain_sparseWriter_js__zeroFixed
       N_src_import_domain_sparseWriter_js .. S_src_import_domain_sparseWriter_js__zeroFixed
+    }
+    package "factories" {
+      class "createImportSessionItem.js" as N_src_import_factories_createImportSessionItem_js
+      class "createImportSessionItem()" as S_src_import_factories_createImportSessionItem_js__createImportSessionItem
+      N_src_import_factories_createImportSessionItem_js .. S_src_import_factories_createImportSessionItem_js__createImportSessionItem
+      class "createRejectedImportSessionItem()" as S_src_import_factories_createImportSessionItem_js__createRejectedImportSessionItem
+      N_src_import_factories_createImportSessionItem_js .. S_src_import_factories_createImportSessionItem_js__createRejectedImportSessionItem
     }
     package "landfat" {
       class "landFatWriter.js" as N_src_import_landfat_landFatWriter_js
@@ -177,6 +215,8 @@ package "src" {
           class "parseGND_XLSX()" as S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
           N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js .. S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
           class "semanticMap.GND.js" as N_src_import_parsers_technet_gndEdit_semanticMap_GND_js
+          class "GND_EL_EK_SEMANTIC_MAP()" as S_src_import_parsers_technet_gndEdit_semanticMap_GND_js__GND_EL_EK_SEMANTIC_MAP
+          N_src_import_parsers_technet_gndEdit_semanticMap_GND_js .. S_src_import_parsers_technet_gndEdit_semanticMap_GND_js__GND_EL_EK_SEMANTIC_MAP
           package "_legacy" <<legacy>> {
             class "parseGND_XLSX.js" as N_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js
             class "parseGND_XLSX()" as S_src_import_parsers_technet_gndEdit__legacy_parseGND_XLSX_js__parseGND_XLSX
@@ -248,24 +288,38 @@ package "src" {
       class "sniffImportFile()" as S_src_import_sniffers_sniffImportFile_js__sniffImportFile
       N_src_import_sniffers_sniffImportFile_js .. S_src_import_sniffers_sniffImportFile_js__sniffImportFile
     }
+    package "validation" {
+      class "validateImportSessionItem.js" as N_src_import_validation_validateImportSessionItem_js
+      class "_validateImportSessionItem()" as S_src_import_validation_validateImportSessionItem_js___validateImportSessionItem
+      N_src_import_validation_validateImportSessionItem_js .. S_src_import_validation_validateImportSessionItem_js___validateImportSessionItem
+      class "validateImportSessionItem()" as S_src_import_validation_validateImportSessionItem_js__validateImportSessionItem
+      N_src_import_validation_validateImportSessionItem_js .. S_src_import_validation_validateImportSessionItem_js__validateImportSessionItem
+    }
   }
 }
 
+N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_buildSparseFromLandFAT_js
+N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_buildAlignmentImportOutcome_js
 N_src_import_domain_buildSparseFromLandFAT_js --> N_src_import_domain_sparseWriter_js
+N_src_import_domain_collectLandFatProfilesAndCants_js --> N_src_import_domain_importItemFactories_js
 N_src_import_parsers_landXML_parseLandXML_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_shared_traLikeCoordGeom_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_vermEsn_parseTRA_GRA_js --> N_src_import_landfat_landFatWriter_js
-N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_buildSparseFromLandFAT_js__buildSparseFromLandFAT
-N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_classifyImportResult_js__classifyAlignmentForSpot
-N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__buildAlignmentSpotCandidate
-N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__makeWorkingItem
+N_src_import_validation_validateImportSessionItem_js --> N_src_import_contracts_importSessionItem_contract_js
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__makeAlignmentImportItem
+N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importItemFactories_js__makeRejectedImportItem
 N_src_import_domain_buildAlignmentImportOutcome_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
-N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_buildAlignmentImportOutcome_js__buildAlignmentImportOutcome
-N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_collectLandFatProfilesAndCants_js__collectLandFatProfilesAndCants
-N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeWorkingItem
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeCantImportItem
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeProfileImportItem
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeRejectedImportItem
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeRelationImportItem
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importItemFactories_js__makeStaEqImportItem
+N_src_import_domain_buildImportResultFromParsed_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
 N_src_import_domain_classifyImportResult_js --> S_src_import_domain_importReasons_js__IMPORT_REASONS
-N_src_import_domain_collectLandFatProfilesAndCants_js --> S_src_import_domain_importItemFactories_js__makeWorkingItem
+N_src_import_domain_importItemFactories_js --> S_src_import_factories_createImportSessionItem_js__createImportSessionItem
+N_src_import_domain_importItemFactories_js --> S_src_import_factories_createImportSessionItem_js__createRejectedImportSessionItem
+N_src_import_factories_createImportSessionItem_js --> S_src_import_validation_validateImportSessionItem_js__validateImportSessionItem
 N_src_import_parsers_landXML_index_js --> S_src_import_parsers_landXML_parseLandXML_js__parseLandXML
 N_src_import_parsers_technet_gndEdit_index_js --> S_src_import_parsers_technet_gndEdit_parseGND_XLSX_js__parseGND_XLSX
 N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js --> S_src_import_parsers_technet_sharedTechnet_js__TECHNET_EDGE_FAMILIES

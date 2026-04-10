@@ -26,7 +26,7 @@ import { sniffImportFile } from "./sniffers/sniffImportFile.js";
 import { loadParserModule } from "./parsers/parserRegistry.js";
 import { validateParserModule } from "./parsers/validateParserModule.js";
 import { validateLandFAT } from "@kimport/landfat/validateLandFAT.js";
-import { buildImportResultFromParsed } from "./domain/buildImportResultFromParsed.js";
+import { buildImportResultFromParsed } from "./build/buildImportResultFromParsed.js";
 
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};

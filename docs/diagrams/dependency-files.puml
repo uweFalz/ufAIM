@@ -9,47 +9,32 @@ skinparam package<<legacy>> BackgroundColor #eeeeee
 
 package "app" {
   class "main.js" as N_app_main_js
-  package "adapters" {
-    package "geo" {
-      class "GeoTransform.js" as N_app_adapters_geo_GeoTransform_js
-      class "ThreeAdapter.js" as N_app_adapters_geo_ThreeAdapter_js
+  package "bootstrap" {
+    class "loadImportMaps.js" as N_app_bootstrap_loadImportMaps_js
+    class "registerDevNoCacheSW.js" as N_app_bootstrap_registerDevNoCacheSW_js
+  }
+  package "controllers" {
+    class "CockpitController.js" as N_app_controllers_CockpitController_js
+    class "focusManager.js" as N_app_controllers_focusManager_js
+    class "importController.js" as N_app_controllers_importController_js
+    class "viewAuxTracks.js" as N_app_controllers_viewAuxTracks_js
+    class "viewController.js" as N_app_controllers_viewController_js
+    class "viewGeometry.js" as N_app_controllers_viewGeometry_js
+    class "viewPropsPanel.js" as N_app_controllers_viewPropsPanel_js
+    class "viewTextRender.js" as N_app_controllers_viewTextRender_js
+    class "viewUiSync.js" as N_app_controllers_viewUiSync_js
+    package "adapters" {
+      package "geo" {
+        class "GeoTransform.js" as N_app_controllers_adapters_geo_GeoTransform_js
+        class "ThreeAdapter.js" as N_app_controllers_adapters_geo_ThreeAdapter_js
+      }
+    }
+    package "bridges" {
+      class "transitionEditorBridge.js" as N_app_controllers_bridges_transitionEditorBridge_js
     }
   }
-  package "core" {
-    class "uiWiring.js" as N_app_core_uiWiring_js
-    package "bridges" {
-      class "transitionEditorBridge.js" as N_app_core_bridges_transitionEditorBridge_js
-    }
-    package "config" {
-      class "systemPrefs.js" as N_app_core_config_systemPrefs_js
-    }
-    package "controllers" {
-      class "CockpitController.js" as N_app_core_controllers_CockpitController_js
-      class "focusManager.js" as N_app_core_controllers_focusManager_js
-      class "importController.js" as N_app_core_controllers_importController_js
-      class "viewAuxTracks.js" as N_app_core_controllers_viewAuxTracks_js
-      class "viewController.js" as N_app_core_controllers_viewController_js
-      class "viewGeometry.js" as N_app_core_controllers_viewGeometry_js
-      class "viewPropsPanel.js" as N_app_core_controllers_viewPropsPanel_js
-      class "viewTextRender.js" as N_app_core_controllers_viewTextRender_js
-      class "viewUiSync.js" as N_app_core_controllers_viewUiSync_js
-    }
-    package "import" {
-      class "summarizeImportForUser.js" as N_app_core_import_summarizeImportForUser_js
-    }
-    package "runtime" {
-      class "WindowRuntime.js" as N_app_core_runtime_WindowRuntime_js
-      class "bootWindowApp.js" as N_app_core_runtime_bootWindowApp_js
-      class "createRuntimeContext.js" as N_app_core_runtime_createRuntimeContext_js
-    }
-    package "session" {
-      class "windowSessionController.js" as N_app_core_session_windowSessionController_js
-      class "windowSessionState.js" as N_app_core_session_windowSessionState_js
-    }
-    package "state" {
-      class "storeShape.js" as N_app_core_state_storeShape_js
-      class "windowStore.js" as N_app_core_state_windowStore_js
-    }
+  package "examples" {
+    class "workerImportMirror.js" as N_app_examples_workerImportMirror_js
   }
   package "i18n" {
     class "strings.ar.js" as N_app_i18n_strings_ar_js
@@ -72,6 +57,7 @@ package "app" {
     class "strings.zh.js" as N_app_i18n_strings_zh_js
   }
   package "io" {
+    class "summarizeImportForUser.js" as N_app_io_summarizeImportForUser_js
     package "apply" {
       class "importApply.js" as N_app_io_apply_importApply_js
       class "importPreviewApply.js" as N_app_io_apply_importPreviewApply_js
@@ -84,6 +70,23 @@ package "app" {
     package "input" {
       class "fileDrop.js" as N_app_io_input_fileDrop_js
     }
+  }
+  package "runtime" {
+    class "WindowRuntime.js" as N_app_runtime_WindowRuntime_js
+    class "bootWindowApp.js" as N_app_runtime_bootWindowApp_js
+    class "createRuntimeContext.js" as N_app_runtime_createRuntimeContext_js
+    class "systemPrefs.js" as N_app_runtime_systemPrefs_js
+    package "session" {
+      class "windowSessionController.js" as N_app_runtime_session_windowSessionController_js
+      class "windowSessionState.js" as N_app_runtime_session_windowSessionState_js
+    }
+    package "state" {
+      class "storeShape.js" as N_app_runtime_state_storeShape_js
+      class "windowStore.js" as N_app_runtime_state_windowStore_js
+    }
+  }
+  package "ui" {
+    class "uiWiring.js" as N_app_ui_uiWiring_js
   }
   package "utils" {
     class "appHelpers.js" as N_app_utils_appHelpers_js
@@ -113,59 +116,70 @@ package "app" {
   }
 }
 package "src" {
-  package "alignment" {
-    class "Alignment2D.js" as N_src_alignment_Alignment2D_js
-    class "_e2eAlignmentTest.js" as N_src_alignment__e2eAlignmentTest_js
-    package "build" {
-      class "AlignmentFactory.js" as N_src_alignment_build_AlignmentFactory_js
+  package "domain" {
+    package "alignment" {
+      class "Alignment2D.js" as N_src_domain_alignment_Alignment2D_js
+      class "_e2eAlignmentTest.js" as N_src_domain_alignment__e2eAlignmentTest_js
+      package "build" {
+        class "AlignmentFactory.js" as N_src_domain_alignment_build_AlignmentFactory_js
+      }
+      package "elements" {
+        class "AlignmentElement.js" as N_src_domain_alignment_elements_AlignmentElement_js
+        class "FixedElement.js" as N_src_domain_alignment_elements_FixedElement_js
+        class "ImmediateElement.js" as N_src_domain_alignment_elements_ImmediateElement_js
+        class "KinkElement.js" as N_src_domain_alignment_elements_KinkElement_js
+        class "TransitionElement.js" as N_src_domain_alignment_elements_TransitionElement_js
+        class "ZeroLengthFixed.js" as N_src_domain_alignment_elements_ZeroLengthFixed_js
+      }
+      package "service" {
+        class "sampleSparseAlignmentForView.js" as N_src_domain_alignment_service_sampleSparseAlignmentForView_js
+        class "sampleSparseAlignmentForView_old.js" as N_src_domain_alignment_service_sampleSparseAlignmentForView_old_js
+      }
     }
-    package "elements" {
-      class "AlignmentElement.js" as N_src_alignment_elements_AlignmentElement_js
-      class "FixedElement.js" as N_src_alignment_elements_FixedElement_js
-      class "ImmediateElement.js" as N_src_alignment_elements_ImmediateElement_js
-      class "KinkElement.js" as N_src_alignment_elements_KinkElement_js
-      class "TransitionElement.js" as N_src_alignment_elements_TransitionElement_js
-      class "ZeroLengthFixed.js" as N_src_alignment_elements_ZeroLengthFixed_js
+    package "coordinates" {
+      class "CoordinateAgent.js" as N_src_domain_coordinates_CoordinateAgent_js
+      class "activeCRS.js" as N_src_domain_coordinates_activeCRS_js
+      class "crsAlias.js" as N_src_domain_coordinates_crsAlias_js
+      class "crsManager.js" as N_src_domain_coordinates_crsManager_js
+      class "dbCrsMap.js" as N_src_domain_coordinates_dbCrsMap_js
     }
-    package "service" {
-      class "sampleSparseAlignmentForView.js" as N_src_alignment_service_sampleSparseAlignmentForView_js
+    package "projection" {
+      class "AlignmentProjectionService.js" as N_src_domain_projection_AlignmentProjectionService_js
+      class "ViewProjectionController.js" as N_src_domain_projection_ViewProjectionController_js
+      package "queries" {
+        class "getSpotObjectById.js" as N_src_domain_projection_queries_getSpotObjectById_js
+      }
     }
     package "transition" {
       package "build" {
-        class "KappaFcnBuilder.js" as N_src_alignment_transition_build_KappaFcnBuilder_js
+        class "KappaFcnBuilder.js" as N_src_domain_transition_build_KappaFcnBuilder_js
       }
       package "registry" {
-        class "RegistryResolver.js" as N_src_alignment_transition_registry_RegistryResolver_js
-        class "validator.js" as N_src_alignment_transition_registry_validator_js
+        class "RegistryResolver.js" as N_src_domain_transition_registry_RegistryResolver_js
+        class "validator.js" as N_src_domain_transition_registry_validator_js
         package "ast" {
-          class "buildProtoAst.js" as N_src_alignment_transition_registry_ast_buildProtoAst_js
-          class "evalAst.js" as N_src_alignment_transition_registry_ast_evalAst_js
-          class "simplify.js" as N_src_alignment_transition_registry_ast_simplify_js
-          class "symDiff.js" as N_src_alignment_transition_registry_ast_symDiff_js
-          class "symInt.js" as N_src_alignment_transition_registry_ast_symInt_js
+          class "buildProtoAst.js" as N_src_domain_transition_registry_ast_buildProtoAst_js
+          class "evalAst.js" as N_src_domain_transition_registry_ast_evalAst_js
+          class "simplify.js" as N_src_domain_transition_registry_ast_simplify_js
+          class "symDiff.js" as N_src_domain_transition_registry_ast_symDiff_js
+          class "symInt.js" as N_src_domain_transition_registry_ast_symInt_js
         }
         package "compose" {
-          class "composeTotal.js" as N_src_alignment_transition_registry_compose_composeTotal_js
-          class "computeAnchorsFromTotal.js" as N_src_alignment_transition_registry_compose_computeAnchorsFromTotal_js
-          class "solvePartitionC1.js" as N_src_alignment_transition_registry_compose_solvePartitionC1_js
+          class "composeTotal.js" as N_src_domain_transition_registry_compose_composeTotal_js
+          class "computeAnchorsFromTotal.js" as N_src_domain_transition_registry_compose_computeAnchorsFromTotal_js
+          class "solvePartitionC1.js" as N_src_domain_transition_registry_compose_solvePartitionC1_js
         }
       }
       package "service" {
-        class "TransitionQueryService.js" as N_src_alignment_transition_service_TransitionQueryService_js
+        class "TransitionQueryService.js" as N_src_domain_transition_service_TransitionQueryService_js
       }
-    }
-  }
-  package "crs" {
-    class "CoordinateAgent.js" as N_src_crs_CoordinateAgent_js
-    class "activeCRS.js" as N_src_crs_activeCRS_js
-    package "unsorted" {
-      class "crsAlias.js" as N_src_crs_unsorted_crsAlias_js
-      class "crsManager.js" as N_src_crs_unsorted_crsManager_js
-      class "dbCrsMap.js" as N_src_crs_unsorted_dbCrsMap_js
     }
   }
   package "import" {
     class "runImportPipeline.js" as N_src_import_runImportPipeline_js
+    package "contracts" {
+      class "importSessionItem.contract.js" as N_src_import_contracts_importSessionItem_contract_js
+    }
     package "domain" {
       class "buildAlignmentImportOutcome.js" as N_src_import_domain_buildAlignmentImportOutcome_js
       class "buildImportResultFromParsed.js" as N_src_import_domain_buildImportResultFromParsed_js
@@ -175,6 +189,9 @@ package "src" {
       class "importItemFactories.js" as N_src_import_domain_importItemFactories_js
       class "importReasons.js" as N_src_import_domain_importReasons_js
       class "sparseWriter.js" as N_src_import_domain_sparseWriter_js
+    }
+    package "factories" {
+      class "createImportSessionItem.js" as N_src_import_factories_createImportSessionItem_js
     }
     package "landfat" {
       class "landFatWriter.js" as N_src_import_landfat_landFatWriter_js
@@ -224,6 +241,9 @@ package "src" {
     package "sniffers" {
       class "sniffImportFile.js" as N_src_import_sniffers_sniffImportFile_js
     }
+    package "validation" {
+      class "validateImportSessionItem.js" as N_src_import_validation_validateImportSessionItem_js
+    }
   }
   package "lib" {
     package "geom" {
@@ -244,15 +264,43 @@ package "src" {
         class "romberg.js" as N_src_lib_math_numeric_romberg_js
       }
     }
+    package "utils" {
+      class "helpers.js" as N_src_lib_utils_helpers_js
+    }
   }
-  package "projection" {
-    class "AlignmentProjectionService.js" as N_src_projection_AlignmentProjectionService_js
-    class "ViewProjectionController.js" as N_src_projection_ViewProjectionController_js
-    package "queries" {
-      class "getSpotObjectById.js" as N_src_projection_queries_getSpotObjectById_js
+  package "model" {
+    package "spot" {
+      package "contracts" {
+        class "cant.contract.js" as N_src_model_spot_contracts_cant_contract_js
+        class "profile.contract.js" as N_src_model_spot_contracts_profile_contract_js
+        class "relation.contract.js" as N_src_model_spot_contracts_relation_contract_js
+        class "sparseAlignment.contract.js" as N_src_model_spot_contracts_sparseAlignment_contract_js
+        class "spatialRef.contract.js" as N_src_model_spot_contracts_spatialRef_contract_js
+        class "staEq.contract.js" as N_src_model_spot_contracts_staEq_contract_js
+      }
+      package "model" {
+        class "SpotStore.js" as N_src_model_spot_model_SpotStore_js
+      }
+      package "mutate" {
+        class "promoteImportItems.js" as N_src_model_spot_mutate_promoteImportItems_js
+      }
+      package "ui" {
+        class "buildSpotUiState.js" as N_src_model_spot_ui_buildSpotUiState_js
+      }
+      package "validation" {
+        class "validateCant.js" as N_src_model_spot_validation_validateCant_js
+        class "validateProfile.js" as N_src_model_spot_validation_validateProfile_js
+        class "validateSparseAlignment.js" as N_src_model_spot_validation_validateSparseAlignment_js
+        class "validateSpotObject.js" as N_src_model_spot_validation_validateSpotObject_js
+        class "validateSpotRelation.js" as N_src_model_spot_validation_validateSpotRelation_js
+        class "validateStaEq.js" as N_src_model_spot_validation_validateStaEq_js
+      }
     }
   }
   package "shared" {
+    package "debug" {
+      class "debugLog.js" as N_src_shared_debug_debugLog_js
+    }
     package "messaging" {
       class "CommandContract_v1.js" as N_src_shared_messaging_CommandContract_v1_js
       class "MessagingClient.js" as N_src_shared_messaging_MessagingClient_js
@@ -260,6 +308,9 @@ package "src" {
       class "ccv1.js" as N_src_shared_messaging_ccv1_js
       class "createMessagingClient.js" as N_src_shared_messaging_createMessagingClient_js
       class "createWorkerContext.js" as N_src_shared_messaging_createWorkerContext_js
+      class "resolveWorkerImport.js" as N_src_shared_messaging_resolveWorkerImport_js
+      class "workerImportMap.js" as N_src_shared_messaging_workerImportMap_js
+      class "workerImportMirror.js" as N_src_shared_messaging_workerImportMirror_js
       package "local" {
         class "LocalBus.js" as N_src_shared_messaging_local_LocalBus_js
       }
@@ -279,92 +330,29 @@ package "src" {
       class "runtimeServices.js" as N_src_shared_runtime_runtimeServices_js
     }
   }
-  package "spot" {
-    package "contracts" {
-      class "cant.contract.js" as N_src_spot_contracts_cant_contract_js
-      class "profile.contract.js" as N_src_spot_contracts_profile_contract_js
-      class "relation.contract.js" as N_src_spot_contracts_relation_contract_js
-      class "sparseAlignment.contract.js" as N_src_spot_contracts_sparseAlignment_contract_js
-      class "spatialRef.contract.js" as N_src_spot_contracts_spatialRef_contract_js
-      class "staEq.contract.js" as N_src_spot_contracts_staEq_contract_js
-    }
-    package "model" {
-      class "SpotStore.js" as N_src_spot_model_SpotStore_js
-    }
-    package "ui" {
-      class "buildSpotUiState.js" as N_src_spot_ui_buildSpotUiState_js
-    }
-    package "validation" {
-      class "validateCant.js" as N_src_spot_validation_validateCant_js
-      class "validateProfile.js" as N_src_spot_validation_validateProfile_js
-      class "validateSparseAlignment.js" as N_src_spot_validation_validateSparseAlignment_js
-      class "validateSpotObject.js" as N_src_spot_validation_validateSpotObject_js
-      class "validateSpotRelation.js" as N_src_spot_validation_validateSpotRelation_js
-      class "validateStaEq.js" as N_src_spot_validation_validateStaEq_js
-    }
-  }
-  package "utils" {
-    class "helpers.js" as N_src_utils_helpers_js
-  }
 }
 
-N_app_adapters_geo_ThreeAdapter_js --> N_app_adapters_geo_GeoTransform_js
-N_app_core_bridges_transitionEditorBridge_js --> N_src_utils_helpers_js
-N_app_core_controllers_focusManager_js --> N_app_io_apply_importApply_js
-N_app_core_controllers_importController_js --> N_app_io_input_fileDrop_js
-N_app_core_controllers_importController_js --> N_src_import_runImportPipeline_js
-N_app_core_controllers_viewAuxTracks_js --> N_app_core_controllers_viewGeometry_js
-N_app_core_controllers_viewAuxTracks_js --> N_app_utils_appHelpers_js
-N_app_core_controllers_viewController_js --> N_app_core_controllers_viewAuxTracks_js
-N_app_core_controllers_viewController_js --> N_app_core_controllers_viewGeometry_js
-N_app_core_controllers_viewController_js --> N_app_core_controllers_viewPropsPanel_js
-N_app_core_controllers_viewController_js --> N_app_core_controllers_viewUiSync_js
-N_app_core_controllers_viewController_js --> N_app_i18n_strings_js
-N_app_core_controllers_viewController_js --> N_src_projection_ViewProjectionController_js
-N_app_core_controllers_viewController_js --> N_src_projection_queries_getSpotObjectById_js
-N_app_core_controllers_viewController_js --> N_src_utils_helpers_js
-N_app_core_controllers_viewGeometry_js --> N_src_utils_helpers_js
-N_app_core_controllers_viewPropsPanel_js --> N_app_core_controllers_viewGeometry_js
-N_app_core_controllers_viewPropsPanel_js --> N_app_i18n_strings_js
-N_app_core_controllers_viewPropsPanel_js --> N_app_io_apply_importApply_js
-N_app_core_controllers_viewPropsPanel_js --> N_app_utils_appHelpers_js
-N_app_core_controllers_viewPropsPanel_js --> N_src_utils_helpers_js
-N_app_core_controllers_viewTextRender_js --> N_app_i18n_strings_js
-N_app_core_controllers_viewTextRender_js --> N_src_utils_helpers_js
-N_app_core_controllers_viewUiSync_js --> N_app_core_controllers_viewGeometry_js
-N_app_core_controllers_viewUiSync_js --> N_app_core_controllers_viewTextRender_js
-N_app_core_controllers_viewUiSync_js --> N_app_i18n_strings_js
-N_app_core_controllers_viewUiSync_js --> N_app_utils_appHelpers_js
-N_app_core_controllers_viewUiSync_js --> N_src_utils_helpers_js
-N_app_core_import_summarizeImportForUser_js --> N_app_i18n_strings_js
-N_app_core_runtime_WindowRuntime_js --> N_app_core_runtime_bootWindowApp_js
-N_app_core_runtime_WindowRuntime_js --> N_src_shared_messaging_createMessagingClient_js
-N_app_core_runtime_WindowRuntime_js --> N_src_shared_runtime_AppRuntimeLocal_js
-N_app_core_runtime_WindowRuntime_js --> N_src_shared_runtime_runtimeServices_js
-N_app_core_runtime_bootWindowApp_js --> N_app_adapters_geo_ThreeAdapter_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_bridges_transitionEditorBridge_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_controllers_CockpitController_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_controllers_focusManager_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_controllers_importController_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_controllers_viewController_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_runtime_createRuntimeContext_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_session_windowSessionController_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_session_windowSessionState_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_state_windowStore_js
-N_app_core_runtime_bootWindowApp_js --> N_app_core_uiWiring_js
-N_app_core_runtime_bootWindowApp_js --> N_app_i18n_strings_js
-N_app_core_runtime_bootWindowApp_js --> N_app_view_editors_transitionEditorView_js
-N_app_core_runtime_bootWindowApp_js --> N_app_view_shell_buildWindowShell_js
-N_app_core_runtime_bootWindowApp_js --> N_app_view_shell_makePanelsDraggable_js
-N_app_core_runtime_bootWindowApp_js --> N_app_view_shell_restorePanelVisibility_js
-N_app_core_runtime_bootWindowApp_js --> N_app_view_viewers_threeViewer_js
-N_app_core_runtime_bootWindowApp_js --> N_src_alignment_transition_build_KappaFcnBuilder_js
-N_app_core_state_windowStore_js --> N_app_core_state_storeShape_js
-N_app_core_state_windowStore_js --> N_src_utils_helpers_js
-N_app_core_uiWiring_js --> N_app_i18n_strings_js
-N_app_core_uiWiring_js --> N_app_view_overlays_spotView_js
-N_app_core_uiWiring_js --> N_app_view_shell_panelLayoutStore_js
-N_app_core_uiWiring_js --> N_src_utils_helpers_js
+N_app_controllers_adapters_geo_ThreeAdapter_js --> N_app_controllers_adapters_geo_GeoTransform_js
+N_app_controllers_focusManager_js --> N_app_io_apply_importApply_js
+N_app_controllers_importController_js --> N_app_io_input_fileDrop_js
+N_app_controllers_importController_js --> N_src_import_runImportPipeline_js
+N_app_controllers_viewAuxTracks_js --> N_app_controllers_viewGeometry_js
+N_app_controllers_viewAuxTracks_js --> N_app_utils_appHelpers_js
+N_app_controllers_viewController_js --> N_app_controllers_viewAuxTracks_js
+N_app_controllers_viewController_js --> N_app_controllers_viewGeometry_js
+N_app_controllers_viewController_js --> N_app_controllers_viewPropsPanel_js
+N_app_controllers_viewController_js --> N_app_controllers_viewUiSync_js
+N_app_controllers_viewController_js --> N_app_i18n_strings_js
+N_app_controllers_viewPropsPanel_js --> N_app_controllers_viewGeometry_js
+N_app_controllers_viewPropsPanel_js --> N_app_i18n_strings_js
+N_app_controllers_viewPropsPanel_js --> N_app_io_apply_importApply_js
+N_app_controllers_viewPropsPanel_js --> N_app_utils_appHelpers_js
+N_app_controllers_viewTextRender_js --> N_app_i18n_strings_js
+N_app_controllers_viewUiSync_js --> N_app_controllers_viewGeometry_js
+N_app_controllers_viewUiSync_js --> N_app_controllers_viewTextRender_js
+N_app_controllers_viewUiSync_js --> N_app_i18n_strings_js
+N_app_controllers_viewUiSync_js --> N_app_utils_appHelpers_js
+N_app_examples_workerImportMirror_js --> N_src_shared_debug_debugLog_js
 N_app_i18n_strings_js --> N_app_i18n_strings_ar_js
 N_app_i18n_strings_js --> N_app_i18n_strings_de_js
 N_app_i18n_strings_js --> N_app_i18n_strings_en_js
@@ -388,65 +376,87 @@ N_app_io_apply_importApply_js --> N_app_io_apply_importStoreShape_js
 N_app_io_apply_importPreviewApply_js --> N_app_io_apply_importStoreShape_js
 N_app_io_apply_importRegistryApply_js --> N_app_utils_appHelpers_js
 N_app_io_apply_importStoreShape_js --> N_app_utils_appHelpers_js
-N_app_io_import_classifyImportOutcome_js --> N_src_utils_helpers_js
-N_app_main_js --> N_app_core_config_systemPrefs_js
-N_app_main_js --> N_app_core_runtime_WindowRuntime_js
+N_app_io_summarizeImportForUser_js --> N_app_i18n_strings_js
+N_app_main_js --> N_app_bootstrap_registerDevNoCacheSW_js
+N_app_main_js --> N_app_examples_workerImportMirror_js
 N_app_main_js --> N_app_i18n_strings_js
-N_app_view_editors_transitionEditorView_js --> N_src_utils_helpers_js
+N_app_main_js --> N_src_shared_messaging_SharedMessagingWorker_js
+N_app_runtime_WindowRuntime_js --> N_app_runtime_bootWindowApp_js
+N_app_runtime_bootWindowApp_js --> N_app_controllers_CockpitController_js
+N_app_runtime_bootWindowApp_js --> N_app_controllers_adapters_geo_ThreeAdapter_js
+N_app_runtime_bootWindowApp_js --> N_app_controllers_bridges_transitionEditorBridge_js
+N_app_runtime_bootWindowApp_js --> N_app_controllers_focusManager_js
+N_app_runtime_bootWindowApp_js --> N_app_controllers_importController_js
+N_app_runtime_bootWindowApp_js --> N_app_controllers_viewController_js
+N_app_runtime_bootWindowApp_js --> N_app_i18n_strings_js
+N_app_runtime_bootWindowApp_js --> N_app_runtime_createRuntimeContext_js
+N_app_runtime_bootWindowApp_js --> N_app_runtime_session_windowSessionController_js
+N_app_runtime_bootWindowApp_js --> N_app_runtime_session_windowSessionState_js
+N_app_runtime_bootWindowApp_js --> N_app_runtime_state_windowStore_js
+N_app_runtime_bootWindowApp_js --> N_app_ui_uiWiring_js
+N_app_runtime_bootWindowApp_js --> N_app_view_editors_transitionEditorView_js
+N_app_runtime_bootWindowApp_js --> N_app_view_shell_buildWindowShell_js
+N_app_runtime_bootWindowApp_js --> N_app_view_shell_makePanelsDraggable_js
+N_app_runtime_bootWindowApp_js --> N_app_view_shell_restorePanelVisibility_js
+N_app_runtime_bootWindowApp_js --> N_app_view_viewers_threeViewer_js
+N_app_runtime_bootWindowApp_js --> N_src_domain_transition_build_KappaFcnBuilder_js
+N_app_runtime_state_windowStore_js --> N_app_runtime_state_storeShape_js
+N_app_ui_uiWiring_js --> N_app_i18n_strings_js
+N_app_ui_uiWiring_js --> N_app_view_overlays_spotView_js
+N_app_ui_uiWiring_js --> N_app_view_shell_panelLayoutStore_js
 N_app_view_overlays_spotView_js --> N_app_i18n_strings_js
 N_app_view_overlays_spotView_js --> N_app_utils_appHelpers_js
-N_app_view_overlays_spotView_js --> N_src_utils_helpers_js
 N_app_view_shell_makePanelDraggable_js --> N_app_view_shell_panelLayoutStore_js
 N_app_view_shell_makePanelsDraggable_js --> N_app_view_shell_makePanelDraggable_js
 N_app_view_shell_restorePanelVisibility_js --> N_app_view_shell_panelLayoutStore_js
-N_app_view_viewers_alignmentBandView_js --> N_src_utils_helpers_js
-N_src_alignment_Alignment2D_js --> N_src_lib_geom_vec2_js
-N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_Alignment2D_js
-N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_build_AlignmentFactory_js
-N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_elements_FixedElement_js
-N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_transition_build_KappaFcnBuilder_js
-N_src_alignment__e2eAlignmentTest_js --> N_src_alignment_transition_registry_RegistryResolver_js
-N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_Alignment2D_js
-N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_FixedElement_js
-N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_ImmediateElement_js
-N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_KinkElement_js
-N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_TransitionElement_js
-N_src_alignment_build_AlignmentFactory_js --> N_src_alignment_elements_ZeroLengthFixed_js
-N_src_alignment_elements_AlignmentElement_js --> N_src_lib_geom_vec2_js
-N_src_alignment_elements_FixedElement_js --> N_src_alignment_elements_AlignmentElement_js
-N_src_alignment_elements_FixedElement_js --> N_src_lib_geom_frame_poseAdvance2_js
-N_src_alignment_elements_ImmediateElement_js --> N_src_alignment_elements_TransitionElement_js
-N_src_alignment_elements_KinkElement_js --> N_src_alignment_elements_TransitionElement_js
-N_src_alignment_elements_KinkElement_js --> N_src_lib_geom_vec2_js
-N_src_alignment_elements_TransitionElement_js --> N_src_alignment_elements_AlignmentElement_js
-N_src_alignment_elements_TransitionElement_js --> N_src_lib_geom_vec2_js
-N_src_alignment_elements_TransitionElement_js --> N_src_lib_math_numeric_romberg_js
-N_src_alignment_elements_ZeroLengthFixed_js --> N_src_alignment_elements_FixedElement_js
-N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_alignment_build_AlignmentFactory_js
-N_src_alignment_service_sampleSparseAlignmentForView_js --> N_src_spot_validation_validateSparseAlignment_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_buildProtoAst_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_evalAst_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_simplify_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_symDiff_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_ast_symInt_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_alignment_transition_registry_compose_computeAnchorsFromTotal_js
-N_src_alignment_transition_build_KappaFcnBuilder_js --> N_src_utils_helpers_js
-N_src_alignment_transition_registry_ast_buildProtoAst_js --> N_src_alignment_transition_registry_ast_simplify_js
-N_src_alignment_transition_registry_ast_symDiff_js --> N_src_alignment_transition_registry_ast_simplify_js
-N_src_alignment_transition_registry_ast_symInt_js --> N_src_alignment_transition_registry_ast_simplify_js
-N_src_crs_unsorted_crsManager_js --> N_src_crs_unsorted_crsAlias_js
+N_src_domain_alignment_Alignment2D_js --> N_src_lib_geom_vec2_js
+N_src_domain_alignment__e2eAlignmentTest_js --> N_src_domain_alignment_Alignment2D_js
+N_src_domain_alignment__e2eAlignmentTest_js --> N_src_domain_alignment_build_AlignmentFactory_js
+N_src_domain_alignment__e2eAlignmentTest_js --> N_src_domain_alignment_elements_FixedElement_js
+N_src_domain_alignment_build_AlignmentFactory_js --> N_src_domain_alignment_Alignment2D_js
+N_src_domain_alignment_build_AlignmentFactory_js --> N_src_domain_alignment_elements_FixedElement_js
+N_src_domain_alignment_build_AlignmentFactory_js --> N_src_domain_alignment_elements_ImmediateElement_js
+N_src_domain_alignment_build_AlignmentFactory_js --> N_src_domain_alignment_elements_KinkElement_js
+N_src_domain_alignment_build_AlignmentFactory_js --> N_src_domain_alignment_elements_TransitionElement_js
+N_src_domain_alignment_build_AlignmentFactory_js --> N_src_domain_alignment_elements_ZeroLengthFixed_js
+N_src_domain_alignment_elements_AlignmentElement_js --> N_src_lib_geom_vec2_js
+N_src_domain_alignment_elements_FixedElement_js --> N_src_domain_alignment_elements_AlignmentElement_js
+N_src_domain_alignment_elements_FixedElement_js --> N_src_lib_geom_frame_poseAdvance2_js
+N_src_domain_alignment_elements_ImmediateElement_js --> N_src_domain_alignment_elements_TransitionElement_js
+N_src_domain_alignment_elements_KinkElement_js --> N_src_domain_alignment_elements_TransitionElement_js
+N_src_domain_alignment_elements_KinkElement_js --> N_src_lib_geom_vec2_js
+N_src_domain_alignment_elements_TransitionElement_js --> N_src_domain_alignment_elements_AlignmentElement_js
+N_src_domain_alignment_elements_TransitionElement_js --> N_src_lib_geom_vec2_js
+N_src_domain_alignment_elements_TransitionElement_js --> N_src_lib_math_numeric_romberg_js
+N_src_domain_alignment_elements_ZeroLengthFixed_js --> N_src_domain_alignment_elements_FixedElement_js
+N_src_domain_alignment_service_sampleSparseAlignmentForView_js --> N_src_domain_alignment_build_AlignmentFactory_js
+N_src_domain_alignment_service_sampleSparseAlignmentForView_js --> N_src_model_spot_validation_validateSparseAlignment_js
+N_src_domain_alignment_service_sampleSparseAlignmentForView_old_js --> N_src_domain_alignment_build_AlignmentFactory_js
+N_src_domain_alignment_service_sampleSparseAlignmentForView_old_js --> N_src_model_spot_validation_validateSparseAlignment_js
+N_src_domain_coordinates_crsManager_js --> N_src_domain_coordinates_crsAlias_js
+N_src_domain_projection_ViewProjectionController_js --> N_src_domain_projection_AlignmentProjectionService_js
+N_src_domain_transition_build_KappaFcnBuilder_js --> N_src_domain_transition_registry_ast_buildProtoAst_js
+N_src_domain_transition_build_KappaFcnBuilder_js --> N_src_domain_transition_registry_ast_evalAst_js
+N_src_domain_transition_build_KappaFcnBuilder_js --> N_src_domain_transition_registry_ast_simplify_js
+N_src_domain_transition_build_KappaFcnBuilder_js --> N_src_domain_transition_registry_ast_symDiff_js
+N_src_domain_transition_build_KappaFcnBuilder_js --> N_src_domain_transition_registry_ast_symInt_js
+N_src_domain_transition_build_KappaFcnBuilder_js --> N_src_domain_transition_registry_compose_computeAnchorsFromTotal_js
+N_src_domain_transition_registry_ast_buildProtoAst_js --> N_src_domain_transition_registry_ast_simplify_js
+N_src_domain_transition_registry_ast_symDiff_js --> N_src_domain_transition_registry_ast_simplify_js
+N_src_domain_transition_registry_ast_symInt_js --> N_src_domain_transition_registry_ast_simplify_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_buildSparseFromLandFAT_js
-N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_classifyImportResult_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_importItemFactories_js
 N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_import_domain_importReasons_js
-N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_spot_validation_validateSparseAlignment_js
+N_src_import_domain_buildAlignmentImportOutcome_js --> N_src_model_spot_validation_validateSparseAlignment_js
 N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_buildAlignmentImportOutcome_js
-N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_collectLandFatProfilesAndCants_js
 N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_importItemFactories_js
+N_src_import_domain_buildImportResultFromParsed_js --> N_src_import_domain_importReasons_js
 N_src_import_domain_buildSparseFromLandFAT_js --> N_src_import_domain_sparseWriter_js
 N_src_import_domain_buildSparseFromLandFAT_js --> N_src_lib_geom_frame_pose2_js
 N_src_import_domain_classifyImportResult_js --> N_src_import_domain_importReasons_js
 N_src_import_domain_collectLandFatProfilesAndCants_js --> N_src_import_domain_importItemFactories_js
+N_src_import_domain_importItemFactories_js --> N_src_import_factories_createImportSessionItem_js
+N_src_import_factories_createImportSessionItem_js --> N_src_import_validation_validateImportSessionItem_js
 N_src_import_parsers_landXML_index_js --> N_src_import_parsers_landXML_parseLandXML_js
 N_src_import_parsers_landXML_parseLandXML_js --> N_src_import_landfat_landFatWriter_js
 N_src_import_parsers_technet_gndEdit_index_js --> N_src_import_parsers_technet_gndEdit_parseGND_XLSX_js
@@ -468,16 +478,14 @@ N_src_import_runImportPipeline_js --> N_src_import_parsers_validateParserModule_
 N_src_import_runImportPipeline_js --> N_src_import_sniffers_sniffImportFile_js
 N_src_import_sniffers_sniffImportFile_js --> N_src_import_parsers_parserRegistry_js
 N_src_import_sniffers_sniffImportFile_js --> N_src_import_parsers_validateParserModule_js
+N_src_import_validation_validateImportSessionItem_js --> N_src_import_contracts_importSessionItem_contract_js
 N_src_lib_geom_frame_pose2_js --> N_src_lib_geom_vec2_js
 N_src_lib_geom_frame_poseAdvance2_js --> N_src_lib_geom_vec2_js
-N_src_projection_AlignmentProjectionService_js --> N_src_alignment_build_AlignmentFactory_js
-N_src_projection_AlignmentProjectionService_js --> N_src_alignment_transition_build_KappaFcnBuilder_js
-N_src_projection_AlignmentProjectionService_js --> N_src_alignment_transition_registry_RegistryResolver_js
-N_src_projection_AlignmentProjectionService_js --> N_src_spot_validation_validateSparseAlignment_js
-N_src_projection_ViewProjectionController_js --> N_src_projection_AlignmentProjectionService_js
+N_src_model_spot_mutate_promoteImportItems_js --> N_src_model_spot_validation_validateSparseAlignment_js
+N_src_model_spot_validation_validateSparseAlignment_js --> N_src_lib_geom_frame_pose2_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_MessagingClient_js --> N_src_shared_messaging_ccv1_js
-N_src_shared_messaging_SharedMessagingWorker_js --> N_src_alignment_transition_service_TransitionQueryService_js
+N_src_shared_messaging_SharedMessagingWorker_js --> N_src_domain_transition_service_TransitionQueryService_js
 N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_createWorkerContext_js
 N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_service_DebugService_js
 N_src_shared_messaging_SharedMessagingWorker_js --> N_src_shared_messaging_service_ImportSessionService_js
@@ -488,9 +496,19 @@ N_src_shared_messaging_ccv1_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_MessagingClient_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_local_LocalBus_js
 N_src_shared_messaging_createMessagingClient_js --> N_src_shared_messaging_worker_SharedWorkerClient_js
-N_src_shared_messaging_createWorkerContext_js --> N_src_alignment_transition_registry_RegistryResolver_js
+N_src_shared_messaging_createWorkerContext_js --> N_src_domain_transition_registry_RegistryResolver_js
+N_src_shared_messaging_createWorkerContext_js --> N_src_model_spot_model_SpotStore_js
+N_src_shared_messaging_resolveWorkerImport_js --> N_src_shared_messaging_workerImportMap_js
+N_src_shared_messaging_service_ImportSessionService_js --> N_src_import_validation_validateImportSessionItem_js
+N_src_shared_messaging_service_SpotService_js --> N_src_model_spot_mutate_promoteImportItems_js
+N_src_shared_messaging_service_SpotService_js --> N_src_model_spot_ui_buildSpotUiState_js
+N_src_shared_messaging_workerImportMirror_js --> N_src_domain_transition_service_TransitionQueryService_js
+N_src_shared_messaging_workerImportMirror_js --> N_src_shared_messaging_createWorkerContext_js
+N_src_shared_messaging_workerImportMirror_js --> N_src_shared_messaging_service_DebugService_js
+N_src_shared_messaging_workerImportMirror_js --> N_src_shared_messaging_service_ImportSessionService_js
+N_src_shared_messaging_workerImportMirror_js --> N_src_shared_messaging_service_ProjectStateService_js
+N_src_shared_messaging_workerImportMirror_js --> N_src_shared_messaging_service_SpotService_js
 N_src_shared_messaging_worker_WorkerRouter_js --> N_src_shared_messaging_CommandContract_v1_js
 N_src_shared_messaging_worker_WorkerRouter_js --> N_src_shared_messaging_ccv1_js
 N_src_shared_runtime_AppRuntimeLocal_js --> N_src_shared_messaging_ccv1_js
-N_src_spot_validation_validateSparseAlignment_js --> N_src_lib_geom_frame_pose2_js
 @enduml
