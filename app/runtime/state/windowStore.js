@@ -118,6 +118,19 @@ export function createWindowStore(initial) {
 	}
 
 	const actions = {
+		setPreviewItem({ item = null, source = null } = {}) {
+			setState({
+				preview_item: item && typeof item === "object" ? item : null,
+				preview_source: source && typeof source === "object" ? source : null,
+			});
+		},
+
+		clearPreviewItem() {
+			setState({
+				preview_item: null,
+				preview_source: null,
+			});
+		},
 		// ------------------------------------------------------------
 		// @transition legacy focus mirror
 		// Canonical focus should be accessed via WindowSession / FocusManager.

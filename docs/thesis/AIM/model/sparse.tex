@@ -1,0 +1,260 @@
+\chapter{Sparse Alignment Model}
+
+\section{Motivation}
+
+\begin{remark}
+A continuous curvature law is mathematically natural, but it is not by
+itself an operational representation for editing, exchange, validation,
+or reconstruction from heterogeneous engineering data.
+For this reason, a sparse model is introduced as a structured,
+piecewise-defined representation of an alignment.
+\end{remark}
+
+\begin{remark}
+The sparse model is not intended as a denial of continuous geometry.
+On the contrary, it serves as an intermediate layer between continuous
+curvature theory and practical modelling tasks such as import,
+computation, optimization, and interoperability.
+\end{remark}
+
+\section{General Idea}
+
+\begin{definition}[Sparse alignment model]
+A sparse alignment model is an ordered finite sequence of alignment
+elements together with sufficient start information and concatenation
+rules to reconstruct the corresponding geometric object.
+\end{definition}
+
+\begin{remark}
+The adjective \emph{sparse} refers here to the fact that the alignment
+is not stored as a dense point cloud, but as a compact sequence of
+semantically meaningful elements.
+\end{remark}
+
+\section{Element Types}
+
+\begin{definition}[Alignment element]
+An alignment element is a segment of an alignment with a prescribed
+local curvature behaviour on a parameter interval.
+\end{definition}
+
+\begin{definition}[Fixed element]
+A fixed element is an alignment element with constant curvature
+\[
+\kappaf(s)=\kappaf_0.
+\]
+Typical special cases are straight segments with $\kappaf_0=0$ and
+circular arcs with $\kappaf_0\neq 0$.
+\end{definition}
+
+\begin{definition}[Transition element]
+A transition element is an alignment element with non-constant
+curvature, i.e.
+\[
+\kappaf(s)=f(s)
+\]
+for a suitable curvature law $f$.
+\end{definition}
+
+\begin{remark}
+At this level of abstraction, no commitment is yet made to a specific
+family of transition laws.
+This includes classical clothoids as well as polynomial, lookup-based,
+or hybrid constructions.
+\end{remark}
+
+\TODO{Formal classification of transition families.}
+
+\section{Minimal Parameterization}
+
+\begin{definition}[Arc length of an element]
+Each element $e_i$ is associated with an arc length
+\[
+L_i > 0.
+\]
+\end{definition}
+
+\begin{definition}[Local curvature law]
+Each element $e_i$ is associated with a curvature law
+\[
+\kappaf_i : [0,L_i] \to \R.
+\]
+\end{definition}
+
+\begin{remark}
+For fixed elements, $\kappaf_i$ is constant.
+For transition elements, $\kappaf_i$ varies along the local parameter.
+\end{remark}
+
+\begin{definition}[Sparse alignment]
+A sparse alignment is an ordered tuple
+\[
+A=(e_1,e_2,\dots,e_n)
+\]
+together with sufficient initial data for geometric reconstruction.
+\end{definition}
+
+\section{Initial Data and Pose}
+
+\begin{definition}[Planar start pose]
+A planar start pose is a tuple
+\[
+P_0=(x_0,y_0,\theta_0)
+\]
+with position $(x_0,y_0)\in\R^2$ and initial direction
+$\theta_0\in\R$.
+\end{definition}
+
+\begin{remark}
+Together with the ordered element sequence and the local curvature laws,
+the start pose determines the alignment geometry by successive
+integration.
+\end{remark}
+
+\begin{definition}[Reconstructable sparse alignment]
+A sparse alignment is called reconstructable if its element sequence and
+its initial data suffice to determine a unique planar alignment up to
+the intended modelling conventions.
+\end{definition}
+
+\TODO{Extend pose definition to pose3 including height, cant, and frame conventions.}
+\OPEN{Clarify the exact status of pose3: geometric state, engineering state, or BIM-related state description.}
+\OPEN{Fix local versus global framing consistently.}
+
+\section{Concatenation}
+
+\begin{definition}[Element concatenation]
+Two consecutive elements are concatenated if the end state of the first
+element provides the start state of the second element.
+\end{definition}
+
+\begin{definition}[Positional continuity]
+A sparse alignment is positionally continuous if consecutive elements
+meet in a common endpoint.
+\end{definition}
+
+\begin{definition}[Directional continuity]
+A sparse alignment is directionally continuous if consecutive elements
+share the same tangent direction at their common boundary.
+\end{definition}
+
+\begin{remark}
+In most engineering contexts, positional and directional continuity are
+minimal requirements. Higher continuity requirements may depend on the
+chosen transition families and on the intended application.
+\end{remark}
+
+\TODO{Formalize continuity classes such as $C^0$, $C^1$, and curvature-related continuity conditions.}
+
+\section{Normal Form and Alternation}
+
+\begin{remark}
+In practical sparse representations, a frequent pattern is the
+alternation between fixed elements and transition elements. This
+corresponds closely to engineering intuition and to many traditional
+alignment descriptions.
+\end{remark}
+
+\OPEN{Should strict alternation between fixed and transition elements be formulated as a mathematical property, as a preferred normal form, or merely as an implementation convention?}
+
+\begin{remark}
+It is plausible to regard alternation as a normal form rather than a
+fundamental axiom. Multiple neighbouring fixed elements may be merged,
+and certain degenerate transition cases may collapse into fixed
+elements.
+\end{remark}
+
+\section{Normalized Representation of Elements}
+
+\begin{definition}[Normalized local parameter]
+A normalized local parameter is a variable
+\[
+u\in[0,1]
+\]
+used to represent an element independently of its physical length.
+\end{definition}
+
+\begin{definition}[Normalized curvature law]
+A normalized curvature law is a law defined on the unit interval,
+typically of the form
+\[
+\widehat{\kappaf} : [0,1]\to\R.
+\]
+\end{definition}
+
+\begin{remark}
+Normalization separates shape from scale.
+It allows the same transition family to be reused for different lengths
+and different curvature magnitudes.
+\end{remark}
+
+\begin{remark}
+This is especially important for transition registries, reusable
+families, and implementation-independent comparison of element types.
+\end{remark}
+
+\section{Structural Role of the Sparse Model}
+
+\begin{remark}
+The sparse model occupies an intermediate conceptual level:
+\begin{itemize}
+  \item below the purely abstract curvature-theoretic foundation,
+  \item but above dense numerical sampling, imported point lists, or
+        format-specific container structures.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This intermediate status makes the sparse model suitable as
+\begin{itemize}
+  \item an internal modelling layer,
+  \item a reconstruction target from imported data,
+  \item a source for numerical evaluation,
+  \item and a bridge toward standards and BIM-related representations.
+\end{itemize}
+\end{remark}
+
+\section{Relation to Imported and Standardized Data}
+
+\begin{remark}
+Existing engineering data rarely arrives directly in sparse form.
+Instead, it is typically given through container formats, survey data,
+legacy descriptions, or derived coordinate sequences.
+\end{remark}
+
+\begin{remark}
+The sparse model therefore should not be identified with any one
+exchange standard. It is more appropriate to view it as a compact,
+internal representation that can be derived from, and mapped back to,
+multiple external formats.
+\end{remark}
+
+\RESEARCH{Dock sparse model to \railML\ alignment structures.}
+\RESEARCH{Dock sparse model to \LandXML\ alignment representations.}
+\OPEN{Define a minimal common abstraction layer for standards mapping.}
+\OPEN{Clarify the relation between topology-oriented standards and purely geometric container models.}
+
+\section{Relation to BIM and BIMalignment}
+
+\begin{remark}
+A sparse alignment model may support BIM-oriented workflows, but it
+should not merely imitate BIM container logic.
+Its primary responsibility is to represent alignment structure in a
+mathematically and operationally coherent way.
+\end{remark}
+
+\RESEARCH{Formulate a BIM-compatible alignment core without losing geometric precision.}
+\OPEN{Position the sparse model between generic BIM, infrastructure BIM, and explicit BIMalignment concepts.}
+\TODO{State explicitly where the manuscript aims to push BIMalignment rather than only satisfy BIM conformity.}
+
+\section{Summary}
+
+\begin{summary}
+The sparse alignment model is a compact, structured representation of an
+alignment by means of an ordered sequence of semantically meaningful
+elements together with reconstruction data and concatenation rules.
+
+It serves as a bridge between continuous curvature theory and practical
+engineering operations such as import, validation, editing, numerical
+evaluation, optimization, and interoperability.
+\end{summary}

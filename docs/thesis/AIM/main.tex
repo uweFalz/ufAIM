@@ -1,0 +1,81 @@
+\documentclass[11pt,a4paper,oneside,openany]{scrbook}
+
+% --- Basics ---
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english,ngerman]{babel}
+
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{csquotes}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Math ---
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+
+% --- Layout ---
+\usepackage[a4paper,margin=30mm]{geometry}
+
+% --- Utils ---
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[nameinlink]{cleveref}
+
+% --- Bibliography ---
+\bibliographystyle{plain}
+
+% --- Index ---
+\usepackage{makeidx}
+\makeindex
+
+% --- Environments ---
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{axiom}[theorem]{Axiom}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{summary}[theorem]{Summary}
+
+% --- Includes ---
+\input{macros}
+\input{markers}
+
+\begin{document}
+
+\frontmatter
+\title{AIM Foundations}
+\author{Uwe Falz}
+\date{\today}
+\maketitle
+\tableofcontents
+
+\mainmatter
+
+\part{Foundations}
+\input{foundations/axioms}
+
+\part{Model}
+\input{model/sparse}
+\input{model/transitions}
+
+\part{Analysis}
+\input{analysis/numerics}
+
+\part{Reality}
+\input{reality/data}
+
+\part{Applications}
+\input{applications/railway}
+
+\backmatter
+\bibliography{references}
+\printindex
+
+\end{document}

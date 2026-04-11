@@ -11,7 +11,9 @@
 // - broadcasts SPOT UI state changes
 //
 // Important:
-// SpotService works against the SpotStore API, not against raw mutable state.
+// - SpotService works against the SpotStore API, not raw mutable state
+// - NO implicit promotion
+// - promotion policy is enforced inside promoteImportItems()
 
 import { buildSpotUiState } from "../../../model/spot/ui/buildSpotUiState.js";
 import { promoteImportItems } from "../../../model/spot/mutate/promoteImportItems.js";
@@ -48,7 +50,9 @@ export function createSpotService({ spotStore, router } = {}) {
 			? objects.filter(isSpotLikeObject)
 			: [];
 
-		spotStore.addObjects(list);
+		if (list.length > 0) {
+			spotStore.addObjects(list);
+		}
 
 		const uiState = emitUiStateChanged();
 
@@ -65,13 +69,9 @@ export function createSpotService({ spotStore, router } = {}) {
 			spotStore,
 		});
 
-		const addedObjects = Array.isArray(result?.addedObjects)
-			? result.addedObjects
-			: [];
-
-		if (addedObjects.length > 0) {
-			spotStore.addObjects(addedObjects);
-		}
+		// IMPORTANT:
+		// promoteImportItems already writes accepted items into SpotStore.
+		// Do NOT add them again here.
 
 		const uiState = emitUiStateChanged();
 

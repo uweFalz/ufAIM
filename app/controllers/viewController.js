@@ -18,8 +18,7 @@
 // Important:
 // - focus is window-local
 // - canonical objects come from SPOT
-// - viewable geometry is derived on demand
-// - SPOT panel UI is event-driven via Spot.UiStateChanged
+// - local preview may be shown if no focused SPOT object exists
 //
 // Rule:
 // canonical change -> local reprojection -> local rerender
@@ -51,9 +50,28 @@ import {
 	syncTransitionEditorControls,
 } from "@app/controllers/viewUiSync.js";
 
-// ------------------------------------------------------------
-// ViewController
-// ------------------------------------------------------------
+function makePreviewSpotLikeObject(previewItem) {
+	if (!previewItem?.sparseAlignment) return null;
+
+	return {
+		id: `preview_${previewItem.id ?? "alignment"}`,
+		type: previewItem.kind ?? "alignment",
+		spatialRef: previewItem?.spatialRef ?? null,
+		payload: {
+			name: previewItem?.name ?? previewItem?.id ?? "preview",
+			sparseAlignment: previewItem.sparseAlignment,
+			source: {
+				file: previewItem?.source?.fileName ?? null,
+				format: previewItem?.source?.parserId ?? null,
+			},
+		},
+		meta: {
+			objectId: previewItem?.id ?? null,
+			importItemId: previewItem?.id ?? null,
+			alignmentName: previewItem?.name ?? previewItem?.id ?? "preview",
+		},
+	};
+}
 
 export function makeViewController({
 	store,
@@ -167,7 +185,7 @@ export function makeViewController({
 		return await pendingSpotStatePromise;
 	}
 
-	function wireSpotUiUpdatesOnce() {
+	function wireSpotUiUpdatesOnce(onExternalStateChanged) {
 		if (wireSpotUiUpdatesOnce._done) return;
 		wireSpotUiUpdatesOnce._done = true;
 
@@ -175,53 +193,80 @@ export function makeViewController({
 			invalidateSpotCache();
 			invalidateGeometryCache();
 
-			if (!spotUiState) return;
-			ui?.setSpotState?.(spotUiState);
-			ui?.refreshSpot?.(store.getState());
+			if (spotUiState) {
+				ui?.setSpotState?.(spotUiState);
+				ui?.refreshSpot?.(store.getState());
+			}
+
+			onExternalStateChanged?.();
 		});
+	}
+
+	function getPreviewGeometryFromState(state) {
+		const previewItem = state?.preview_item ?? null;
+		if (!previewItem?.sparseAlignment) return null;
+
+		const previewObject = makePreviewSpotLikeObject(previewItem);
+		if (!previewObject) return null;
+
+		const geom = projectFocusedSpotObject(previewObject, {
+			maxStep: cfg.sampleStep,
+		});
+
+		if (!geom?.polyline2d || geom.polyline2d.length < 2) {
+			return null;
+		}
+
+		return {
+			objectId: String(previewObject.id ?? "preview"),
+			spotObject: previewObject,
+			polyline2d: geom.polyline2d,
+			bbox: geom.bbox ?? null,
+			bboxCenter: geom.bboxCenter ?? null,
+			isPreview: true,
+		};
 	}
 
 	async function getActiveGeometry(state) {
 		const focusObjectId = getFocusObjectId(state);
 
-		if (!focusObjectId) {
-			invalidateGeometryCache();
-			return null;
-		}
-
-		if (cachedFocusObjectId === focusObjectId && cachedActiveGeometry) {
+		if (focusObjectId && cachedFocusObjectId === focusObjectId && cachedActiveGeometry) {
 			return cachedActiveGeometry;
 		}
 
-		const spotState = await getSpotStateCached();
-		const spotObject = getSpotObjectById(spotState, focusObjectId);
+		if (focusObjectId) {
+			const spotState = await getSpotStateCached();
+			const spotObject = getSpotObjectById(spotState, focusObjectId);
 
-		if (!spotObject) {
-			invalidateGeometryCache();
-			console.warn("[ViewController] SPOT object not found for focusObjectId:", focusObjectId);
-			return null;
+			if (spotObject) {
+				const geom = projectFocusedSpotObject(spotObject, {
+					maxStep: cfg.sampleStep,
+				});
+
+				if (geom?.polyline2d && geom.polyline2d.length >= 2) {
+					cachedFocusObjectId = focusObjectId;
+					cachedActiveGeometry = {
+						objectId: String(focusObjectId),
+						spotObject,
+						polyline2d: geom.polyline2d,
+						bbox: geom.bbox ?? null,
+						bboxCenter: geom.bboxCenter ?? null,
+						isPreview: false,
+					};
+					return cachedActiveGeometry;
+				}
+			}
 		}
 
-		const geom = projectFocusedSpotObject(spotObject, {
-			maxStep: cfg.sampleStep,
-		});
-
-		if (!geom?.polyline2d || geom.polyline2d.length < 2) {
-			invalidateGeometryCache();
-			console.warn("[ViewController] projected geometry invalid for focusObjectId:", focusObjectId);
-			return null;
+		const previewGeometry = getPreviewGeometryFromState(state);
+		if (previewGeometry) {
+			cachedFocusObjectId = null;
+			cachedActiveGeometry = previewGeometry;
+			return cachedActiveGeometry;
 		}
 
-		cachedFocusObjectId = focusObjectId;
-		cachedActiveGeometry = {
-			objectId: String(focusObjectId),
-			spotObject,
-			polyline2d: geom.polyline2d,
-			bbox: geom.bbox ?? null,
-			bboxCenter: geom.bboxCenter ?? null,
-		};
-
-		return cachedActiveGeometry;
+		invalidateGeometryCache();
+		return null;
 	}
 
 	function makeGeomKey(activeGeometry) {
@@ -370,16 +415,11 @@ export function makeViewController({
 
 	async function applyGeomChangePolicy() {
 		switch (onGeomChange) {
-			case "fit":
-				return await fitActive();
-			case "softfit":
-				return await softFitActive();
-			case "softfitanimated":
-				return await softFitActiveAnimated();
-			case "recenter":
-				return await recenterToActive();
-			default:
-				return false;
+			case "fit": return await fitActive();
+			case "softfit": return await softFitActive();
+			case "softfitanimated": return await softFitActiveAnimated();
+			case "recenter": return await recenterToActive();
+			default: return false;
 		}
 	}
 
@@ -480,21 +520,27 @@ export function makeViewController({
 	}
 
 	async function syncGeometryPolicyIfNeeded(state, activeGeometry, geomChanged) {
-		if (!geomChanged) return;
+	if (!geomChanged) return;
 
-		cachedCum = null;
-		lastPolyRef = null;
+	cachedCum = null;
+	lastPolyRef = null;
 
-		await applyGeomChangePolicy();
+	const bbox = activeGeometry?.bbox ?? null;
 
-		if (autoFitOnGeomChange) {
-			const bbox = activeGeometry?.bbox ?? null;
-			if (bbox) {
-				threeA.setOriginFromBbox(bbox);
-				threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
-			}
-		}
+	// local preview must become visible immediately
+	if (activeGeometry?.isPreview && bbox) {
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
+		return;
 	}
+
+	await applyGeomChangePolicy();
+
+	if (autoFitOnGeomChange && bbox) {
+		threeA.setOriginFromBbox(bbox);
+		threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
+	}
+}
 
 	function syncSectionSamplingAndMarker(state, poly) {
 		const cum = ensureChainageCache(poly);
@@ -528,7 +574,6 @@ export function makeViewController({
 	function subscribe() {
 		wireTrackClickOnce();
 		propsPanel?.wirePropsPanelOnce();
-		wireSpotUiUpdatesOnce();
 
 		let renderToken = 0;
 
@@ -574,6 +619,10 @@ export function makeViewController({
 				);
 			}
 		};
+
+		wireSpotUiUpdatesOnce(() => {
+			void handler(store.getState());
+		});
 
 		const unsub = store.subscribe((state) => {
 			void handler(state);

@@ -5,24 +5,9 @@
 // Worker API used (ONLY):
 //   - Transition.ListPresets      -> [{id,label}, ...]
 //   - Transition.GetPresetSpec    -> { presetId, descriptor, cuts01?, meta? }  (pure data)
-//
-// Responsibilities:
-//   - Load preset list into <select>(s)
-//   - On preset change:
-//       * store.te_presetId set FIRST
-//       * fetch descriptor/spec from worker
-//       * store.te_presetSpec = spec
-//       * reset splits ownership to this preset and dirty=false
-//       * set sliders from spec.cuts01 OR descriptor.normLengthPartition
-//       * store.te_w1/te_w2 accordingly
-//
-// Notes:
-//   - This bridge does NOT rename presets to "variant" etc.
-//     That is an editor-level UX decision for later (and requires edit-state modeling).
 
 import { clamp01 } from "@utils/helpers.js";
 
-//
 function setText(el, txt) {
 	if (!el) return;
 	el.textContent = String(txt ?? "");
@@ -45,10 +30,6 @@ function fillSelect(sel, items, activeId) {
 	}
 }
 
-function toSliderVal01(v01) {
-	return String(Math.round(clamp01(v01) * 1000));
-}
-
 function fromSliderVal01(v1000) {
 	return clamp01(Number(v1000) / 1000);
 }
@@ -64,8 +45,8 @@ function cuts01FromSpecOrDescriptor(spec) {
 	}
 
 	const lambdas = Array.isArray(desc?.normLengthPartition)
-	? desc.normLengthPartition.map((x) => Number(x) || 0)
-	: null;
+		? desc.normLengthPartition.map((x) => Number(x) || 0)
+		: null;
 
 	if (lambdas && lambdas.length === 3) {
 		const w1 = clamp01(lambdas[0]);
@@ -76,29 +57,29 @@ function cuts01FromSpecOrDescriptor(spec) {
 	return { w1: 0.25, w2: 0.75 };
 }
 
-//
-// ...
-//
+// -----------------------------------------------------------------------------
+
 export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) {
 	if (!store?.getState) throw new Error("TransitionEditorBridge: missing store");
 	if (!ui?.elements) throw new Error("TransitionEditorBridge: missing ui.elements");
 	if (!messaging?.sendCmdAwait) throw new Error("TransitionEditorBridge: missing messaging.sendCmdAwait");
 
-	// ---- UI elements (robust lookup; accept your current naming) ----
 	const elPresetMain = ui.elements.tePresetSelMain ?? null;
-	const elPresetAlt  = ui.elements.tePresetSelAlt ?? null;
+	const elPresetAlt = ui.elements.tePresetSelAlt ?? null;
 
-	const elW1 = ui.elements.teW1 ?? null;   // expected range 0..1000
-	const elW2 = ui.elements.teW2 ?? null;   // expected range 0..1000
+	const elW1 = ui.elements.teW1 ?? null;
+	const elW2 = ui.elements.teW2 ?? null;
 
 	const elW1Val = ui.elements.teW1Val ?? null;
 	const elW2Val = ui.elements.teW2Val ?? null;
 
-	const btnOpen  = ui.elements.buttonTransition ?? document.getElementById("btnTrans");
+	const btnOpen = ui.elements.buttonTransition ?? document.getElementById("btnTrans");
 	const btnClose = ui.elements.buttonTransitionClose ?? document.getElementById("btnTransClose");
-	const ov       = ui.elements.transitionOverlay ?? document.getElementById("transOverlay");
+	const ov = ui.elements.transitionOverlay ?? document.getElementById("transOverlay");
 
-	// ---- view init gating ----
+	// -----------------------------------------------------------------------------
+	// view init
+
 	let _viewInitPromise = null;
 	async function ensureViewInitOnce() {
 		if (!view?.init) return;
@@ -107,7 +88,9 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		return _viewInitPromise;
 	}
 
-	// ---- Store action helpers (support your current actions) ----
+	// -----------------------------------------------------------------------------
+	// store helpers
+
 	function setPresetId(id) {
 		if (store.actions?.setTePresetId) return store.actions.setTePresetId(String(id ?? ""));
 		if (store.actions?.setTransitionPresetId) return store.actions.setTransitionPresetId(String(id ?? ""));
@@ -133,8 +116,8 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		if (store.actions?.setTePresetSpec) return store.actions.setTePresetSpec(spec);
 	}
 
-	function setSplitsPresetId(presetId) {
-		if (store.actions?.setTeSplitsPresetId) return store.actions.setTeSplitsPresetId(String(presetId ?? ""));
+	function setSplitsPresetId(id) {
+		if (store.actions?.setTeSplitsPresetId) return store.actions.setTeSplitsPresetId(String(id ?? ""));
 	}
 
 	function setSplitsDirty(flag) {
@@ -145,14 +128,13 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		if (store.actions?.setTePlot) return store.actions.setTePlot(String(mode ?? "k"));
 	}
 
-	function openOverlay()  { ui.openTransition?.(); }
-	function closeOverlay() { ui.closeTransition?.(); }
-
 	function getPresetIdFromState(st) {
 		return String(st?.te_presetId ?? st?.te_preset ?? st?.transitionPresetId ?? "");
 	}
 
-	// ---- internal UI helpers ----
+	// -----------------------------------------------------------------------------
+	// UI helpers
+
 	function syncBounds(a1000, b1000) {
 		if (!elW1 || !elW2) return;
 		elW1.max = String(b1000);
@@ -177,48 +159,81 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		const pid = String(st.te_presetId ?? "");
 		if (!pid) return;
 
-		if (String(st.te_splitsPresetId ?? "") !== pid) setSplitsPresetId?.(pid);
-		if (!Boolean(st.te_splitsDirty)) setSplitsDirty?.(true);
+		if (String(st.te_splitsPresetId ?? "") !== pid) setSplitsPresetId(pid);
+		if (!Boolean(st.te_splitsDirty)) setSplitsDirty(true);
 	}
 
-	// ---- Worker calls (only Transition.*) ----
+	// -----------------------------------------------------------------------------
+	// worker
+
 	async function listPresets() {
 		return messaging.sendCmdAwait("Transition.ListPresets", {});
 	}
-	
+
 	async function getPresetSpec(presetId) {
 		return messaging.sendCmdAwait("Transition.GetPresetSpec", { presetId });
 	}
 
-	// ---- race-safe preset applying ----
+	// -----------------------------------------------------------------------------
+	// cache
+
+	const _specCache = new Map();
 	let _applySeq = 0;
 
-	async function applyPresetSpecToStoreAndUI(presetId) {
-		const wantId = String(presetId ?? "");
-		if (!wantId) return;
+	function getCachedOrCurrentSpec(presetId) {
+		const pid = String(presetId ?? "");
+		if (!pid) return null;
 
-		// important: set presetId FIRST (so store can accept presetSpec by guard)
-		setPresetId?.(wantId);
+		const st = store.getState?.() ?? {};
+		const current = st.te_presetSpec ?? null;
+
+		if (current && String(current.presetId ?? "") === pid) {
+			return current;
+		}
+
+		return _specCache.get(pid) ?? null;
+	}
+
+	// -----------------------------------------------------------------------------
+	// main apply
+
+	async function applyPresetSpecToStoreAndUI(presetId, { force = false } = {}) {
+		const wantId = String(presetId ?? "");
+		if (!wantId) return null;
+
+		setPresetId(wantId);
+
+		if (!force) {
+			const cached = getCachedOrCurrentSpec(wantId);
+			if (cached) {
+				const cuts = cuts01FromSpecOrDescriptor(cached);
+				const w1 = clamp01(cuts.w1);
+				const w2 = clamp01(cuts.w2);
+
+				setPresetSpec(cached);
+				setSplitsPresetId(wantId);
+				setSplitsDirty(false);
+				setSliderPairAndLabels(w1, w2);
+				setW1(w1);
+				setW2(w2);
+
+				return cached;
+			}
+		}
 
 		const seq = ++_applySeq;
 		const raw = await getPresetSpec(wantId);
+		if (seq !== _applySeq) return null;
 
-		// drop stale response
-		if (seq !== _applySeq) return;
-
-		// tolerate both:
-		// - { presetId, descriptor, cuts01, ... }
-		// - direct descriptor object
 		const desc = raw?.descriptor ?? raw ?? null;
 		if (!desc) {
 			console.warn("[TE Bridge] missing descriptor/spec for preset", { wantId, raw });
-			return;
+			return null;
 		}
 
 		const gotId = String(raw?.presetId ?? desc?.id ?? wantId ?? "");
 		const cuts = cuts01FromSpecOrDescriptor(raw);
 
-		// normalized store payload
 		const spec = {
 			presetId: gotId,
 			descriptor: desc,
@@ -226,31 +241,30 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			meta: raw?.meta ?? desc?.meta ?? null,
 		};
 
-		// store: presetSpec
-		setPresetSpec?.(spec);
+		_specCache.set(gotId, spec);
 
-		// store: ownership reset + not dirty
-		setSplitsPresetId?.(gotId);
-		setSplitsDirty?.(false);
+		setPresetSpec(spec);
+		setSplitsPresetId(gotId);
+		setSplitsDirty(false);
 
 		const w1 = clamp01(cuts.w1);
 		const w2 = clamp01(cuts.w2);
 
-		// UI sliders + labels
 		setSliderPairAndLabels(w1, w2);
+		setW1(w1);
+		setW2(w2);
 
-		// store w1/w2 (reflect defaults, even though dirty=false)
-		setW1?.(w1);
-		setW2?.(w2);
+		return spec;
 	}
 
-	// ---- load preset list + initial selection ----
+	// -----------------------------------------------------------------------------
+	// init
+
 	async function loadPresetsIntoUI() {
-		
 		const res = await listPresets();
 		const items = Array.isArray(res)
-		? res
-		: (Array.isArray(res?.items) ? res.items : []);
+			? res
+			: (Array.isArray(res?.items) ? res.items : []);
 
 		const st = store.getState?.() ?? {};
 		const current = getPresetIdFromState(st);
@@ -262,18 +276,19 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		fillSelect(elPresetAlt, items, active);
 
 		if (active) {
-			await applyPresetSpecToStoreAndUI(active);
+			setPresetId(active);
 		}
 	}
 
-	// ---- UI wiring ----
+	// -----------------------------------------------------------------------------
+	// wiring
+
 	function wirePresetSelect(sel) {
 		if (!sel) return;
 		sel.addEventListener("change", async () => {
 			const id = String(sel.value || "");
 			if (!id) return;
 
-			// keep both selects in sync visually
 			if (sel === elPresetMain && elPresetAlt) elPresetAlt.value = id;
 			if (sel === elPresetAlt && elPresetMain) elPresetMain.value = id;
 
@@ -288,7 +303,6 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			let a = Number(elW1.value || 0);
 			let b = Number(elW2.value || 1000);
 
-			// never cross: clamp the one being moved
 			if (a > b) {
 				if (document.activeElement === elW1) a = b;
 				else b = a;
@@ -304,16 +318,14 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			setText(elW1Val, `${Math.round(w1 * 100)}%`);
 			setText(elW2Val, `${Math.round(w2 * 100)}%`);
 
-			setW1?.(w1);
-			setW2?.(w2);
+			setW1(w1);
+			setW2(w2);
 
-			// user override
 			markDirtyOwnedByCurrentPreset();
 		}
 
-		// mark dirty early (nice UX, and avoids any “first input lost” edge)
 		const markDirty = () => markDirtyOwnedByCurrentPreset();
-		
+
 		elW1.addEventListener("pointerdown", markDirty);
 		elW2.addEventListener("pointerdown", markDirty);
 		elW1.addEventListener("mousedown", markDirty);
@@ -324,22 +336,23 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		elW1.addEventListener("input", onInput);
 		elW2.addEventListener("input", onInput);
 
-		// init bounds from current slider DOM values
 		syncBounds(Number(elW1.value || 0), Number(elW2.value || 1000));
 	}
 
 	function wireOverlayOpenClose() {
 		btnOpen?.addEventListener("click", async () => {
-			openOverlay();
-			setOpen?.(true);
+			ui.openTransition?.();
+			setOpen(true);
 
 			await ensureViewInitOnce();
 
 			const st = store.getState?.() ?? {};
-			const presetId = String(st.te_presetId ?? "");
+			const presetId = getPresetIdFromState(st);
 
 			if (presetId) {
 				await applyPresetSpecToStoreAndUI(presetId);
+				if (elPresetMain) elPresetMain.value = presetId;
+				if (elPresetAlt) elPresetAlt.value = presetId;
 			}
 
 			requestAnimationFrame(() => {
@@ -350,50 +363,50 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		});
 
 		btnClose?.addEventListener("click", () => {
-			closeOverlay();
-			setOpen?.(false);
+			ui.closeTransition?.();
+			setOpen(false);
 		});
 
-		// backdrop click closes
 		ov?.addEventListener("click", (event) => {
 			if (event.target !== ov) return;
-			closeOverlay();
-			setOpen?.(false);
+			ui.closeTransition?.();
+			setOpen(false);
 		});
 
-		// ESC closes
 		window.addEventListener("keydown", (event) => {
 			if (event.key !== "Escape") return;
-			closeOverlay();
-			setOpen?.(false);
+			ui.closeTransition?.();
+			setOpen(false);
 		});
 	}
 
 	function wirePlotMode() {
 		const nodes =
-		(ui.elements.tePlotNodes && ui.elements.tePlotNodes.length)
-		? Array.from(ui.elements.tePlotNodes)
-		: [ui.elements.tePlotK, ui.elements.tePlotK1, ui.elements.tePlotK2].filter(Boolean);
+			(ui.elements.tePlotNodes && ui.elements.tePlotNodes.length)
+				? Array.from(ui.elements.tePlotNodes)
+				: [ui.elements.tePlotK, ui.elements.tePlotK1, ui.elements.tePlotK2].filter(Boolean);
 
 		if (!nodes.length) return;
 
-		// UI -> store
 		for (const el of nodes) {
 			el.addEventListener("change", () => {
 				if (el.type === "radio" && !el.checked) return;
 				const v = String(el.value || "").toLowerCase();
-				if (v) setPlot?.(v);
+				if (v) setPlot(v);
 			});
 		}
 
-		// store -> UI (initial)
 		const st = store.getState?.() ?? {};
 		const plot = String(st.te_plot ?? "k");
-		for (const el of nodes) el.checked = (String(el.value) === plot);
+		for (const el of nodes) {
+			el.checked = (String(el.value) === plot);
+		}
 	}
 
-	// ---- public API ----
-		async function wire() {
+	// -----------------------------------------------------------------------------
+	// public API
+
+	async function wire() {
 		if (ui.elements.__teBridgeWired) return;
 		ui.elements.__teBridgeWired = true;
 
@@ -405,16 +418,16 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		wirePresetSelect(elPresetAlt);
 		wireSplitSliders();
 
-		// After reload: if a presetId exists but spec missing, re-apply from worker.
-		// This keeps the bridge robust without requiring appCore choreography.
 		const st = store.getState?.() ?? {};
 		const pid = getPresetIdFromState(st);
-		const hasSpec = !!st.te_presetSpec && String(st.te_presetSpec?.presetId ?? "") === String(pid ?? "");
+		const hasSpec =
+			!!st.te_presetSpec &&
+			String(st.te_presetSpec?.presetId ?? "") === String(pid ?? "");
+
 		if (pid && !hasSpec) {
 			await applyPresetSpecToStoreAndUI(pid);
-			// also sync selects visually
 			if (elPresetMain) elPresetMain.value = pid;
-			if (elPresetAlt)  elPresetAlt.value = pid;
+			if (elPresetAlt) elPresetAlt.value = pid;
 		}
 
 		const overlayAlreadyOpen =

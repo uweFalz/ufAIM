@@ -1,0 +1,45 @@
+\chapter{Axiomatic Foundation}
+
+\section{Primitives}
+
+\begin{definition}
+$s \in \R$ is the arc-length parameter.
+\end{definition}
+
+\begin{definition}
+$\gamma : I \to \R^2$ is a curve.
+\end{definition}
+
+\begin{definition}
+$\theta : I \to \R$ is the direction angle.
+\end{definition}
+
+\begin{definition}
+$\kappaf : I \to \R$ is the curvature.
+\end{definition}
+
+\section{Axioms}
+
+\begin{axiom}
+\[
+\norm{\gamma'(s)} = 1
+\]
+\end{axiom}
+
+\begin{axiom}
+\[
+\theta'(s) = \kappaf(s)
+\]
+\end{axiom}
+
+\begin{axiom}
+\[
+\gamma'(s) = (\cos\theta(s), \sin\theta(s))
+\]
+\end{axiom}
+
+\section{Consequence}
+
+\begin{proposition}
+Curvature uniquely defines the curve up to initial conditions.
+\end{proposition}

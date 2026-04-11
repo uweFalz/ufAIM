@@ -5,7 +5,9 @@
 // Promotes canonical ImportSessionItems into canonical SPOT objects.
 //
 // Important:
-// Works against SpotStore API, not raw state.
+// - Works against SpotStore API, not raw state
+// - NO implicit promotion
+// - only explicitly accepted items may enter SPOT
 
 import { validateSparseAlignment } from "../validation/validateSparseAlignment.js";
 
@@ -63,6 +65,14 @@ function promoteSingleItem({ item, now, idFactory }) {
 
 	if (item.status?.promotable !== true) {
 		return fail("item_not_promotable");
+	}
+
+	// ------------------------------------------------------------
+	// Release-1 rule:
+	// no implicit promotion
+	// ------------------------------------------------------------
+	if (item.status?.accepted !== true) {
+		return fail("item_not_explicitly_accepted");
 	}
 
 	const sparseAlignment = item?.derived?.sparseAlignment;

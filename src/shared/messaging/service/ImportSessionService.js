@@ -9,6 +9,7 @@
 // - starts / resets import sessions
 // - accepts canonical ImportSessionItems only
 // - separates accepted vs rejected items
+// - stores explicit acceptance decisions
 // - broadcasts session state changes
 //
 // NOT:
@@ -39,7 +40,7 @@ export function createImportSessionService({
 		return ensureShape(getState());
 	}
 
-		function replaceImportState(next) {
+	function replaceImportState(next) {
 		const safe = ensureShape(next);
 		setState(safe);
 		broadcastStateChanged(safe);
@@ -101,8 +102,10 @@ export function createImportSessionService({
 				continue;
 			}
 
-			if (isRejectedImportItem(result.item)) rejected.push(result.item);
-			else accepted.push(result.item);
+			const normalizedItem = normalizeItemAcceptance(result.item);
+
+			if (isRejectedImportItem(normalizedItem)) rejected.push(normalizedItem);
+			else accepted.push(normalizedItem);
 		}
 
 		const nextItems = dedupeById([...prev.items, ...accepted]);
@@ -181,6 +184,39 @@ export function createImportSessionService({
 		return replaceImportState(next);
 	}
 
+	function setItemAccepted({ itemId, accepted } = {}) {
+		if (!isNonEmptyString(itemId)) return getImportState();
+
+		const prev = getImportState();
+
+		const nextItems = prev.items.map((item) => {
+			if (item?.id !== itemId) return item;
+			return normalizeItemAcceptance({
+				...item,
+				status: {
+					...(isObject(item?.status) ? item.status : {}),
+					accepted: Boolean(accepted),
+				},
+			});
+		});
+
+		const next = ensureShape({
+			...prev,
+			items: nextItems,
+			stats: makeStats(nextItems, prev.rejectedItems),
+		});
+
+		return replaceImportState(next);
+	}
+
+	function acceptItem({ itemId } = {}) {
+		return setItemAccepted({ itemId, accepted: true });
+	}
+
+	function unacceptItem({ itemId } = {}) {
+		return setItemAccepted({ itemId, accepted: false });
+	}
+
 	return {
 		getState: getSessionState,
 		beginSession,
@@ -190,6 +226,9 @@ export function createImportSessionService({
 		setPhase,
 		setError,
 		resetToReady,
+		setItemAccepted,
+		acceptItem,
+		unacceptItem,
 	};
 }
 
@@ -212,8 +251,13 @@ function makeInitialState() {
 function ensureShape(state) {
 	const base = isObject(state) ? state : {};
 
-	const items = Array.isArray(base.items) ? base.items.filter(isObject) : [];
-	const rejectedItems = Array.isArray(base.rejectedItems) ? base.rejectedItems.filter(isObject) : [];
+	const items = Array.isArray(base.items)
+		? base.items.filter(isObject).map(normalizeItemAcceptance)
+		: [];
+
+	const rejectedItems = Array.isArray(base.rejectedItems)
+		? base.rejectedItems.filter(isObject)
+		: [];
 
 	return {
 		sessionId: base.sessionId ?? null,
@@ -249,6 +293,20 @@ function normalizeAndValidateImportItem(raw) {
 	};
 }
 
+function normalizeItemAcceptance(item) {
+	if (!isObject(item)) return item;
+
+	const status = isObject(item.status) ? item.status : {};
+
+	return {
+		...item,
+		status: {
+			...status,
+			accepted: status.accepted === true,
+		},
+	};
+}
+
 function makeRejectedEnvelope(raw, validation) {
 	const base = isObject(raw?.item) ? raw.item : (isObject(raw) ? raw : {});
 
@@ -260,6 +318,7 @@ function makeRejectedEnvelope(raw, validation) {
 		status: {
 			valid: false,
 			promotable: false,
+			accepted: false,
 			stage: "rejected",
 			reason: "invalid-import-session-item",
 		},
@@ -348,6 +407,7 @@ function makeStats(items = [], rejectedItems = []) {
 		byKind: countByKind(accepted),
 		rejectedByKind: countByKind(rejected),
 		promotable: accepted.filter((item) => item?.status?.promotable === true).length,
+		explicitlyAccepted: accepted.filter((item) => item?.status?.accepted === true).length,
 	};
 }
 

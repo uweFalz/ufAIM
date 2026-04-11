@@ -437,37 +437,43 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// import
 	// ------------------------------------------------------------
 	function setImportSummary({
-		fileName,
-		spot = 0,
-		working = 0,
-		error = false,
-	} = {}) {
-
-		// --- Fehlerfall
-		if (error) {
-			setStatus(t("import_result_failed", { fileName }));
-			return;
-		}
-
-		// --- Hauptaussage
-		if (spot === 1) {
-			setStatus(t("import_result_alignment_ready", { fileName }));
-		} else if (spot > 1) {
-			setStatus(t("import_result_alignments_ready", {
-				fileName,
-				count: spot,
-			}));
-		} else if (working > 0) {
-			setStatus(t("import_result_only_aux_data", { fileName }));
-		} else {
-			setStatus(t("import_result_no_usable_alignment", { fileName }));
-		}
-
-		// --- optionaler Zusatzhinweis (nicht in Status, sondern Log)
-		if (working > 0 && spot > 0) {
-			logInfo(t("import_note_aux_data_present"));
-		}
+	fileName,
+	spot = null,
+	working = null,
+	items = 0,
+	rejected = 0,
+	promotable = 0,
+	error = false,
+} = {}) {
+	if (error) {
+		setStatus(t("import_result_failed", { fileName }));
+		return;
 	}
+
+	const usableSpot = Number.isFinite(spot) ? spot : promotable;
+	const usableWorking = Number.isFinite(working) ? working : Math.max(0, items - promotable);
+
+	if (usableSpot === 1) {
+		setStatus(t("import_result_alignment_ready", { fileName }));
+	} else if (usableSpot > 1) {
+		setStatus(t("import_result_alignments_ready", {
+			fileName,
+			count: usableSpot,
+		}));
+	} else if (usableWorking > 0) {
+		setStatus(t("import_result_only_aux_data", { fileName }));
+	} else if (items > 0 && rejected === 0) {
+		// defensive fallback:
+		// imported something valid, but no explicit spot/working split available
+		setStatus(t("import_result_alignment_ready", { fileName }));
+	} else {
+		setStatus(t("import_result_no_usable_alignment", { fileName }));
+	}
+
+	if (usableWorking > 0 && usableSpot > 0) {
+		logInfo(t("import_note_aux_data_present"));
+	}
+}
 
 	// ------------------------------------------------------------
 	// import picker

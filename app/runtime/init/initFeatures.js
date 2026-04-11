@@ -6,7 +6,6 @@ import { makeViewController } from "@app/controllers/viewController.js";
 import { makeThreeAdapter } from "@app/controllers/adapters/geo/ThreeAdapter.js";
 import { makeThreeViewer } from "@app/view/viewers/threeViewer.js";
 import { makeTransitionEditorBridge } from "@app/controllers/bridges/transitionEditorBridge.js";
-import { clamp01 } from "@utils/helpers.js"; // only if needed elsewhere; otherwise omit
 
 function setupGeoRuntime(ctx) {
 	const canvas = document.getElementById("view3d");
@@ -17,6 +16,54 @@ function setupGeoRuntime(ctx) {
 
 	ctx.threeA = makeThreeAdapter({ three });
 	return ctx.threeA;
+}
+
+function buildImportInboxUiState(importState = {}) {
+	const items = Array.isArray(importState?.items) ? importState.items : [];
+
+	const rows = items.map((item) => {
+		const fileName = item?.source?.fileName ?? null;
+		const label =
+			item?.payload?.name ??
+			item?.payload?.id ??
+			item?.source?.objectName ??
+			item?.id ??
+			"item";
+
+		return {
+			spotId: String(item?.id ?? ""),
+			objectId: String(item?.id ?? ""),
+			isActive: false,
+
+			label,
+			type: item?.kind ?? "alignment",
+
+			outcome: item?.status?.promotable ? "promotable" : "imported",
+			outcomeConfidence: item?.status?.promotable ? 1 : 0.5,
+
+			sourceLabel: fileName ? `${fileName} → ${label}` : label,
+			files: fileName ? [fileName] : [],
+
+			missing: [],
+			notes: [
+				item?.status?.promotable ? "promotable" : "not-promotable",
+			],
+
+			hasSparse: Boolean(item?.derived?.sparseAlignment),
+			sparseAlignment: item?.derived?.sparseAlignment ?? null,
+		};
+	});
+
+	return {
+		rows,
+		activeSpotId: null,
+		stats: {
+			total: rows.length,
+			filesSeen: new Set(
+				rows.flatMap((row) => Array.isArray(row.files) ? row.files : [])
+			).size,
+		},
+	};
 }
 
 function setupImportUI(ctx) {
@@ -35,6 +82,14 @@ function setupImportUI(ctx) {
 		onFiles: (files) => importer.importFiles(files),
 	});
 
+	async function refreshImportInboxUiFromMaster() {
+		const importState = await ctx.messaging?.sendCmdAwait?.("Import.GetState", {});
+		const inboxUiState = buildImportInboxUiState(importState);
+		ctx.ui?.setSpotState?.(inboxUiState);
+		ctx.ui?.refreshSpot?.(ctx.store.getState());
+		return inboxUiState;
+	}
+
 	ctx.ui.wireSpotActions?.({
 		onActivate: async (spotId) => {
 			const objectId = String(spotId ?? "").trim();
@@ -45,6 +100,7 @@ function setupImportUI(ctx) {
 				slot: "right",
 			});
 		},
+
 		onTogglePin: (spotId) => {
 			const objectId = String(spotId ?? "").trim();
 			if (!objectId) return;
@@ -54,17 +110,51 @@ function setupImportUI(ctx) {
 				slot: "right",
 			});
 		},
-		onDecision: ({ decision, key }) => {
-			const spotId = String(key ?? "").trim();
-			if (!spotId) return;
+
+		onDecision: async ({ decision, key }) => {
+			const itemId = String(key ?? "").trim();
+			if (!itemId) return;
 
 			ctx.store.actions?.setSpotDecision?.({
-				spotId,
+				spotId: itemId,
 				slot: "right",
 				decision: decision || null,
 			});
+
+			if (decision !== "accept") {
+				ctx.ui?.refreshSpot?.(ctx.store.getState());
+				return;
+			}
+
+			const result = await ctx.messaging?.sendCmdAwait?.(
+				"Spot.PromoteImportItemsById",
+				{ itemIds: [itemId] }
+			);
+
+			await refreshImportInboxUiFromMaster();
+
+			const addedObjectId =
+				Array.isArray(result?.addedObjects) && result.addedObjects[0]?.id
+					? String(result.addedObjects[0].id)
+					: null;
+
+			if (addedObjectId) {
+				ctx.store.actions?.clearPreviewItem?.();
+				await ctx.focusManager?.setFocus?.({
+					objectId: addedObjectId,
+					slot: "right",
+				});
+			}
 		},
 	});
+
+	// keep overlay populated with inbox items after imports
+	const originalImportFiles = importer.importFiles;
+	importer.importFiles = async (files) => {
+		await originalImportFiles(files);
+		await refreshImportInboxUiFromMaster();
+		ctx.ui?.openSpot?.();
+	};
 
 	return importer;
 }

@@ -46,6 +46,10 @@ function normalizePins(pins) {
 		.filter(p => p?.rpId);
 }
 
+function isObject(x) {
+	return !!x && typeof x === "object" && !Array.isArray(x);
+}
+
 //
 // ...
 //
@@ -61,9 +65,12 @@ export function makeInitialState() {
 		// --------------------------------------------------------
 		// actual window/view state
 		// --------------------------------------------------------
-		cursor: { s: 0 },
-		view_pins: [],      // [{rpId, slot, at}]
+				cursor: { s: 0 },
+		view_pins: [],
 		view_chunks: [],
+
+		preview_item: null,
+		preview_source: null,
 
 		// --------------------------------------------------------
 		// transitional mirrors / caches
@@ -140,9 +147,12 @@ export function ensureStateShape(state) {
 		// --------------------------------------------------------
 		// actual window/view state
 		// --------------------------------------------------------
-		view_pins: normalizePins(s.view_pins),
+				view_pins: normalizePins(s.view_pins),
 		view_chunks: s.view_chunks ?? [],
 		cursor: { ...(s.cursor ?? {}), s: Number.isFinite(s.cursor?.s) ? s.cursor.s : 0 },
+
+		preview_item: isObject(s.preview_item) ? s.preview_item : null,
+		preview_source: isObject(s.preview_source) ? s.preview_source : null,
 
 		// --------------------------------------------------------
 		// Transition Editor (window/view state)

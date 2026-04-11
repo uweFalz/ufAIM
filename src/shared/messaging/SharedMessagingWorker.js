@@ -136,6 +136,29 @@ router.onCmd("Spot.PromoteImportItems", async ({ items = [] } = {}) => {
 	return spotService.promoteItems({ items });
 });
 
+router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
+	const ids = Array.isArray(itemIds)
+		? itemIds.map((x) => String(x ?? "").trim()).filter(Boolean)
+		: [];
+
+	if (!ids.length) {
+		return {
+			ok: false,
+			reason: "no_item_ids",
+			addedObjects: [],
+			rejectedItems: [],
+			uiState: spotService.getUiState(),
+		};
+	}
+
+	const importState = importInboxService.getState?.() ?? {};
+	const allItems = Array.isArray(importState.items) ? importState.items : [];
+
+	const wanted = allItems.filter((item) => ids.includes(String(item?.id ?? "")));
+
+	return spotService.promoteItems({ items: wanted });
+});
+
 // ------------------------------------------------------------
 // Debug.* API
 // ------------------------------------------------------------

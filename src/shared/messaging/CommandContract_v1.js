@@ -58,6 +58,8 @@ const REQUIRED = {
 	"Spot.AddObjects": ["objects"],
 	"Spot.GetState": [],
 	"Spot.GetUiState": [],
+	"Spot.PromoteImportItems": [],
+	"Spot.PromoteImportItemsById": [],
 
 	// ---------------------------------------------------------
 	// debug

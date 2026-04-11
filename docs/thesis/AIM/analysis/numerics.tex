@@ -1,0 +1,216 @@
+\chapter{Numerical Reconstruction}
+
+\section{Motivation}
+
+\begin{remark}
+In the curvature-based framework, geometric objects are not given
+explicitly as coordinate sets. Instead, they are reconstructed from
+curvature information by integration.
+\end{remark}
+
+\begin{remark}
+As a consequence, numerical methods are not merely implementation
+details, but an essential part of the modelling process.
+\end{remark}
+
+---
+
+\section{Reconstruction Principle}
+
+\begin{definition}[Reconstruction from curvature]
+Let $\kappaf(s)$ be a curvature function and let
+\[
+(x_0,y_0,\theta_0)
+\]
+be a start pose. The corresponding curve is obtained by solving
+\[
+\theta'(s) = \kappaf(s),
+\qquad
+\gamma'(s) = (\cos\theta(s),\sin\theta(s)).
+\]
+\end{definition}
+
+\begin{remark}
+Even if $\kappaf$ is given analytically, closed-form solutions for
+$\gamma$ are generally not available.
+\end{remark}
+
+---
+
+\section{Discretization}
+
+\begin{definition}[Discretization]
+A discretization of the parameter interval $[0,L]$ is a finite sequence
+\[
+0 = s_0 < s_1 < \dots < s_n = L.
+\]
+\end{definition}
+
+\begin{definition}[Discrete reconstruction]
+A discrete reconstruction computes approximate values
+\[
+\gamma(s_i), \quad \theta(s_i)
+\]
+at the discretization points.
+\end{definition}
+
+\begin{remark}
+The choice of discretization strongly influences both computational cost
+and geometric accuracy.
+\end{remark}
+
+\TODO{Formal criteria for discretization strategies (uniform vs adaptive).}
+
+---
+
+\section{Integration Methods}
+
+\begin{remark}
+The reconstruction problem can be formulated as an initial value problem
+for a system of ordinary differential equations.
+\end{remark}
+
+\subsection{Basic Scheme}
+
+\begin{definition}[Explicit step]
+Given $(\gamma_i,\theta_i)$ at $s_i$, an explicit step computes
+\[
+\theta_{i+1} = \theta_i + \kappaf(s_i)\,\Delta s,
+\]
+\[
+\gamma_{i+1} = \gamma_i + (\cos\theta_i,\sin\theta_i)\,\Delta s.
+\]
+\end{definition}
+
+\begin{remark}
+This corresponds to a first-order method and is generally insufficient
+for high-precision reconstruction.
+\end{remark}
+
+\subsection{Higher-Order Methods}
+
+\TODO{Runge--Kutta methods for coupled systems.}
+
+\TODO{Romberg integration for curvature integration.}
+
+\TODO{Adaptive step size control.}
+
+\OPEN{Separation of curvature integration and geometric integration.}
+
+---
+
+\section{Error Analysis}
+
+\begin{definition}[Local error]
+The local error of a step is the deviation introduced at a single
+integration step.
+\end{definition}
+
+\begin{definition}[Global error]
+The global error is the accumulated deviation over the entire interval.
+\end{definition}
+
+\begin{remark}
+Errors arise from:
+\begin{itemize}
+\item discretization,
+\item numerical integration,
+\item approximation of curvature laws.
+\end{itemize}
+\end{remark}
+
+\RESEARCH{Quantitative bounds for error propagation in curvature-driven reconstruction.}
+
+\section{Sensitivity}
+
+\begin{remark}
+The reconstruction process is sensitive to perturbations in curvature.
+Small deviations in $\kappaf$ may lead to significant geometric drift.
+\end{remark}
+
+\RESEARCH{Sensitivity analysis with respect to curvature perturbations.}
+
+\OPEN{Relation between curvature noise and positional uncertainty.}
+
+---
+
+\section{Sampling and Representation}
+
+\begin{definition}[Sampling]
+Sampling refers to the extraction of a finite set of points from a
+continuous curve representation.
+\end{definition}
+
+\begin{remark}
+Sampling is required for:
+\begin{itemize}
+\item visualization,
+\item collision detection,
+\item export to point-based formats.
+\end{itemize}
+\end{remark}
+
+\TODO{Error-controlled sampling strategies.}
+
+\OPEN{Difference between sampling for visualization and sampling for computation.}
+
+---
+
+\section{Reconstruction in the Sparse Model}
+
+\begin{remark}
+In the sparse alignment model, reconstruction is performed element-wise.
+Each element contributes a local curvature law, which is integrated
+sequentially.
+\end{remark}
+
+\begin{definition}[Sequential reconstruction]
+Let $(e_1,\dots,e_n)$ be a sparse alignment. The reconstruction proceeds
+by integrating each element in sequence, using the end state of the
+previous element as initial state for the next.
+\end{definition}
+
+\OPEN{Handling of numerical drift across element boundaries.}
+
+---
+
+\section{Numerical Stability}
+
+\begin{remark}
+Numerical stability is a central concern, especially for long alignments
+or highly curved geometries.
+\end{remark}
+
+\RESEARCH{Stability criteria for curvature-based integration.}
+
+\TODO{Techniques for drift correction and re-normalization.}
+
+---
+
+\section{Connection to Optimization}
+
+\begin{remark}
+Numerical reconstruction is closely linked to optimization problems.
+In fitting and design tasks, reconstruction is performed repeatedly
+within iterative algorithms.
+\end{remark}
+
+\TODO{SQP formulation for alignment fitting.}
+
+\RESEARCH{Connection to optimal control problems.}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+Numerical reconstruction is the process of deriving geometric
+representations from curvature data by integration.
+
+It introduces discretization, approximation, and error propagation as
+intrinsic components of the modelling framework.
+
+Therefore, numerical methods are not merely technical tools, but an
+essential layer connecting mathematical definitions with practical
+geometry.
+\end{summary}

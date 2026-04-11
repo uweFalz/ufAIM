@@ -5,23 +5,23 @@
 // Window-local import entry point.
 //
 // Flow:
-//   FileDrop -> importPipeline -> ImportSession / SPOT -> local focus -> view
+//   FileDrop -> importPipeline -> ImportSession -> local preview -> local UI refresh
 //
 // Responsibilities:
 // - runs importPipeline for dropped files
 // - sends canonical ImportSessionItems to master
-// - promotes promotable alignment items to SPOT
 // - updates local UI state
-// - sets local focus on newly visible SPOT objects
+// - stores one local preview candidate for rendering
+// - opens SPOT so user can explicitly accept / promote later
 //
 // NOT:
-// - no preview/shadow data
+// - no implicit SPOT promotion
 // - no local SPOT duplication
 // - no parser-specific hacks
 //
 // Rule:
-// Imported data becomes visible only after it exists in master state.
-// This window only dispatches intent and reacts locally.
+// Imported data becomes visible in SPOT only after it exists in master import-session state.
+// Preview is local-only until explicit acceptance/promotion happens later.
 
 import { installFileDrop } from "@io/input/fileDrop.js";
 import { runImportPipeline } from "@src/import/runImportPipeline.js";
@@ -58,6 +58,7 @@ export function makeImportController({
 			itemCount: 0,
 			rejectedCount: 0,
 			promotableCount: 0,
+			acceptedCount: 0,
 			alignmentCount: 0,
 			profileCount: 0,
 			cantCount: 0,
@@ -97,6 +98,9 @@ export function makeImportController({
 			if (item?.status?.promotable === true) {
 				stats.promotableCount += 1;
 			}
+			if (item?.status?.accepted === true) {
+				stats.acceptedCount += 1;
+			}
 		}
 
 		const status = result?.status ?? null;
@@ -133,6 +137,7 @@ export function makeImportController({
 			`${stats.itemCount} items / ` +
 			`${stats.rejectedCount} rejected / ` +
 			`${stats.promotableCount} promotable / ` +
+			`${stats.acceptedCount} accepted / ` +
 			`${stats.alignmentCount} alignments / ` +
 			`${stats.profileCount} profiles / ` +
 			`${stats.cantCount} cants / ` +
@@ -158,43 +163,28 @@ export function makeImportController({
 		);
 	}
 
-	function toSpotObject(item) {
-		const sparseAlignment = item?.derived?.sparseAlignment;
-		const objectId =
-			item?.id ??
-			item?.payload?.id ??
-			item?.payload?.name ??
-			item?.source?.objectName ??
-			null;
+	function makePreviewCandidate(item) {
+		if (!item?.derived?.sparseAlignment) return null;
 
 		return {
-			id: `spot_${objectId ?? Math.random().toString(16).slice(2)}`,
-			type: "alignment",
-			spatialRef: item?.payload?.spatialRef ?? null,
-			payload: {
-				name:
-					item?.payload?.name ??
-					item?.payload?.id ??
-					item?.source?.objectName ??
-					item?.id ??
-					"alignment",
-				sparseAlignment,
-				importItemId: item?.id ?? null,
-				meta: item?.payload?.meta ?? null,
-				extended: item?.payload?.extended ?? null,
-				source: {
-					format: item?.source?.parserId ?? null,
-					file: item?.source?.fileName ?? null,
-				},
-			},
-			meta: {
-				objectId,
-				importItemId: item?.id ?? null,
-				alignmentName:
-					item?.payload?.name ??
-					item?.payload?.id ??
-					item?.source?.objectName ??
-					null,
+			id: item.id ?? item?.payload?.id ?? item?.payload?.name ?? "preview_alignment",
+			kind: item.kind ?? "alignment",
+			name:
+				item?.payload?.name ??
+				item?.payload?.id ??
+				item?.source?.objectName ??
+				item?.id ??
+				"preview",
+			sparseAlignment: item.derived.sparseAlignment,
+			spatialRef:
+				item?.payload?.spatialRef ??
+				item?.payload?.coordinateSystem ??
+				item?.payload?.crs ??
+				null,
+			source: {
+				fileName: item?.source?.fileName ?? null,
+				parserId: item?.source?.parserId ?? null,
+				objectName: item?.source?.objectName ?? null,
 			},
 		};
 	}
@@ -209,26 +199,19 @@ export function makeImportController({
 		await messaging.sendCmdAwait("Import.AddItems", { items });
 	}
 
-	async function handleSpotPromotion(items = []) {
-		if (!items.length) return;
-
-		if (!messaging?.sendCmdAwait) {
-			console.warn("no messaging available for Spot.AddObjects");
-			return;
-		}
-
-		const objects = items.map(toSpotObject);
-		await messaging.sendCmdAwait("Spot.AddObjects", { objects });
-		return objects;
+	async function refreshImportStateFromMaster() {
+		if (!messaging?.sendCmdAwait) return null;
+		return await messaging.sendCmdAwait("Import.GetState", {});
 	}
 
 	async function refreshSpotUiFromMaster() {
-		if (!messaging?.sendCmdAwait) return;
+		if (!messaging?.sendCmdAwait) return null;
 
 		const spotUiState = await messaging.sendCmdAwait("Spot.GetUiState", {});
 		if (spotUiState && typeof ui?.setSpotState === "function") {
 			ui.setSpotState(spotUiState);
 		}
+		return spotUiState;
 	}
 
 	async function importFiles(files) {
@@ -244,6 +227,8 @@ export function makeImportController({
 		await messaging?.sendCmdAwait?.("Import.BeginSession", {
 			source: "drop",
 		});
+
+		let firstPreviewCandidate = null;
 
 		for (const file of batch) {
 			safeLog(`import: ${file.name}`);
@@ -262,7 +247,10 @@ export function makeImportController({
 				);
 
 				await handleImportItemsMaster([...items, ...rejected]);
-				const objects = await handleSpotPromotion(promotableAlignmentItems) ?? [];
+
+				if (!firstPreviewCandidate && promotableAlignmentItems.length > 0) {
+					firstPreviewCandidate = makePreviewCandidate(promotableAlignmentItems[0]);
+				}
 
 				ui?.setImportSummary?.({
 					fileName: file.name,
@@ -272,21 +260,10 @@ export function makeImportController({
 					error: false,
 				});
 
+				await refreshImportStateFromMaster();
 				await refreshSpotUiFromMaster();
 
-				if (objects.length > 0) {
-					ui?.openSpot?.();
-
-					const first = objects[0];
-					const objectId = first?.id ?? null;
-
-					if (objectId) {
-						await focusManager?.setFocus?.({
-							objectId,
-							slot: "right",
-						});
-					}
-				}
+				ui?.openSpot?.();
 			} catch (err) {
 				stats.failed += 1;
 				console.error("import failed detail:", err);
@@ -296,6 +273,17 @@ export function makeImportController({
 				});
 				ui?.setStatusError?.();
 			}
+		}
+
+		if (firstPreviewCandidate) {
+			store.actions?.setPreviewItem?.({
+				item: firstPreviewCandidate,
+				source: { type: "import-preview" },
+			});
+
+			// preview must win until user explicitly activates a SPOT object
+			store.actions?.setActiveRouteProject?.(null);
+			store.actions?.setCursorS?.(0);
 		}
 
 		logBatchSummary(stats);

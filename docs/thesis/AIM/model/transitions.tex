@@ -1,0 +1,200 @@
+\chapter{Transition Functions}
+
+\section{Motivation}
+
+\begin{remark}
+Transitions are the decisive element type for curvature-driven alignment
+modelling. While fixed elements describe geometric states of constant
+curvature, transitions describe the controlled change between such states.
+\end{remark}
+
+\begin{remark}
+Their importance is both mathematical and engineering-related.
+Mathematically, they define how curvature evolves. In engineering
+contexts, they control smoothness, feasibility, comfort, and
+constructability.
+\end{remark}
+
+\section{Definition by Curvature Evolution}
+
+\begin{definition}[Transition]
+A transition is an alignment element whose curvature varies over its
+parameter interval.
+\end{definition}
+
+\begin{definition}[Transition curvature law]
+Let $L>0$. A transition curvature law is a function
+\[
+\kappaf : [0,L] \to \R
+\]
+with prescribed boundary values
+\[
+\kappaf(0)=\kappa_0,
+\qquad
+\kappaf(L)=\kappa_1.
+\]
+\end{definition}
+
+\begin{remark}
+The transition geometry is determined by the curvature law together with
+the reconstruction principles introduced in the axiomatic foundation.
+\end{remark}
+
+\section{Normalized Representation}
+
+\begin{definition}[Normalized parameter]
+A normalized local parameter is a variable
+\[
+u \in [0,1].
+\]
+\end{definition}
+
+\begin{definition}[Normalized transition law]
+A normalized transition law is a function
+\[
+\widehat{\kappaf} : [0,1] \to \R
+\]
+with prescribed boundary conditions, typically
+\[
+\widehat{\kappaf}(0)=0,
+\qquad
+\widehat{\kappaf}(1)=1.
+\]
+\end{definition}
+
+\begin{remark}
+Normalization separates the abstract shape of the transition from its
+physical scale. This makes transition families reusable and comparable.
+\end{remark}
+
+\section{Scaling to Physical Transitions}
+
+\begin{proposition}
+Let $\widehat{\kappaf}$ be a normalized transition law on $[0,1]$.
+For given $L>0$ and curvature values $\kappa_0,\kappa_1 \in \R$, the
+corresponding physical transition law is given by
+\[
+\kappaf(s)
+=
+\kappa_0 + (\kappa_1-\kappa_0)\,
+\widehat{\kappaf}\!\left(\frac{s}{L}\right),
+\qquad s\in[0,L].
+\]
+\end{proposition}
+
+\begin{remark}
+This formula separates:
+\begin{itemize}
+  \item shape, encoded by $\widehat{\kappaf}$,
+  \item length scale, encoded by $L$,
+  \item and curvature scale, encoded by $\kappa_1-\kappa_0$.
+\end{itemize}
+\end{remark}
+
+\section{Regularity and Smoothness}
+
+\begin{definition}[Regularity class]
+A transition law belongs to class $C^k$ if its curvature function is
+$k$-times continuously differentiable.
+\end{definition}
+
+\begin{remark}
+In practice, the relevance of a transition law is not determined only by
+$\kappaf$ itself, but also by the behaviour of its derivatives such as
+$\kappaf'$ and $\kappaf''$.
+\end{remark}
+
+\OPEN{Formal role of $\kappaf'$ and $\kappaf''$ in engineering semantics, comfort rules, and construction logic.}
+
+\section{Transition Families}
+
+\begin{definition}[Transition family]
+A transition family is a class of normalized transition laws sharing a
+common structural principle.
+\end{definition}
+
+\begin{remark}
+Different families differ not only in formulae, but in regularity,
+boundary behaviour, implementation complexity, and engineering
+interpretation.
+\end{remark}
+
+\subsection{Classical Families}
+
+\TODO{Clothoid as the classical case of linear curvature evolution.}
+
+\TODO{Polynomial transition families.}
+
+\TODO{Trigonometric transition families.}
+
+\subsection{Extended and Hybrid Families}
+
+\TODO{Vienna-type transition families.}
+
+\TODO{Lookup-based transition families.}
+
+\TODO{Hybrid or composite transition families.}
+
+\RESEARCH{Classification of admissible transition families under geometric and engineering criteria.}
+
+\section{Decomposition Schemes}
+
+\begin{remark}
+A transition need not always be treated as a single indivisible object.
+It may be useful to represent it as a composition of sub-elements.
+\end{remark}
+
+\TODO{Formalize the halfWave -- clothoid -- halfWave decomposition currently guiding the practical development.}
+
+\OPEN{Clarify whether such decompositions belong to the mathematical model itself or only to a constructive implementation layer.}
+
+\section{Operator View}
+
+\begin{remark}
+From a structural perspective, a transition may be interpreted as an
+operator that transforms one curvature state into another through a
+prescribed evolution law.
+\end{remark}
+
+\RESEARCH{Develop a formal operator view of transition composition.}
+
+\section{Representation in Practical Systems}
+
+\begin{remark}
+In computational settings, transitions may be represented in different
+ways, including:
+\begin{itemize}
+  \item closed analytic laws,
+  \item polynomial approximations,
+  \item lookup tables,
+  \item mixed or compiled representations.
+\end{itemize}
+\end{remark}
+
+\TODO{Formalize the registry-based transition concept.}
+
+\OPEN{Trade-off between analytic precision, numerical robustness, and evaluation speed.}
+
+\section{Relation to the Sparse Alignment Model}
+
+\begin{remark}
+Within the sparse alignment model, transitions are one of the two
+fundamental element classes besides fixed elements.
+\end{remark}
+
+\begin{remark}
+They provide the mechanism for smooth geometric change and therefore
+govern the qualitative behaviour of the alignment as a whole.
+\end{remark}
+
+\section{Summary}
+
+\begin{summary}
+A transition is a curvature-driven alignment element with non-constant
+curvature. Its normalized representation separates shape from scale and
+thereby enables reusable families and implementation-independent
+comparison.
+
+Transitions form the central mechanism by which smoothness and controlled
+change enter the sparse alignment model.
+\end{summary}
