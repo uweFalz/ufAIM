@@ -7,6 +7,10 @@ function uid() {
 	return "msg_" + Math.random().toString(16).slice(2) + "_" + Date.now();
 }
 
+function normalizePayload(payload) {
+	return (payload == null) ? {} : payload;
+}
+
 // legacy helper
 export function emitMessage(messaging, partial) {
 	const msg = {
@@ -79,8 +83,9 @@ export class MessagingClient {
 	sendCmdAwait(name, payload, { dstCtx = "broadcast", debug, timeoutMs = 4000 } = {}) {
 		const src = mkCtx({ windowId: this.windowId, role: this.role });
 		const dst = { ctx: dstCtx };
+		const safePayload = normalizePayload(payload);
 
-		const cmdMsg = mkCmd(name, payload, { src, dst, debug });
+		const cmdMsg = mkCmd(name, safePayload, { src, dst, debug });
 
 		return new Promise((resolve, reject) => {
 			let done = false;
@@ -120,18 +125,22 @@ export class MessagingClient {
 	sendCmd(name, payload, { dstCtx = "broadcast", debug } = {}) {
 		const src = mkCtx({ windowId: this.windowId, role: this.role });
 		const dst = { ctx: dstCtx };
-		return this.sendRaw(mkCmd(name, payload, { src, dst, debug }));
+		const safePayload = normalizePayload(payload);
+
+		return this.sendRaw(mkCmd(name, safePayload, { src, dst, debug }));
 	}
 
 	emitEvt(name, payload, { dstCtx = "broadcast", debug } = {}) {
 		const src = mkCtx({ windowId: this.windowId, role: this.role });
 		const dst = { ctx: dstCtx };
-		return this.sendRaw(mkEvt(name, payload, { src, dst, debug }));
+		const safePayload = normalizePayload(payload);
+
+		return this.sendRaw(mkEvt(name, safePayload, { src, dst, debug }));
 	}
 
 	replyAck(reqMsg, payload) {
 		const src = mkCtx({ windowId: this.windowId, role: this.role });
-		return this.sendRaw(mkAck(reqMsg, payload, { src }));
+		return this.sendRaw(mkAck(reqMsg, normalizePayload(payload), { src }));
 	}
 
 	replyErr(reqMsg, err) {

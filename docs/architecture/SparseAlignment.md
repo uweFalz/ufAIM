@@ -1,4 +1,4 @@
-##Sparse Alignment
+# Sparse Alignment
 
 The sparse alignment model is the core geometric and mathematical
 representation used by ufAIM.
@@ -7,14 +7,14 @@ It defines an alignment as a deterministic, parametrized curve
 with explicit continuity constraints and engineering semantics.
 
 Sparse alignments are designed to be:
-	•	analyzable
-	•	optimizable
-	•	auditable
-	•	independent of visualization concerns
+- analyzable
+- optimizable
+- auditable
+- independent of visualization and storage concerns
 
-⸻
+---
 
-Begriffsklärung (Deutsch)
+## Begriffsklärung (Deutsch)
 
 Das Sparse Alignment ist die zentrale geometrische und mathematische
 Repräsentation in ufAIM.
@@ -23,97 +23,182 @@ Es beschreibt eine Achse als deterministische, parametrisierte Kurve
 mit expliziten Kontinuitätsbedingungen und klarer ingenieurtechnischer Semantik.
 
 Sparse Alignments sind bewusst:
-	•	analysierbar
-	•	optimierbar
-	•	prüfbar
-	•	unabhängig von Darstellungsfragen
+- analysierbar
+- optimierbar
+- prüfbar
+- unabhängig von Darstellungs- und Importfragen
 
-⸻
+---
 
-Mathematical Model
+# Role in System Architecture
+
+Sparse alignments are part of the **geometry layer** of ufAIM.
+
+They are:
+- stored as payload of alignment-related SPOT objects
+- derived from alignment interpretations
+- independent of import formats such as landFAT
+- independent of SPOT relations and topology
+
+Important:
+
+A sparse alignment represents **only horizontal geometry**.
+
+Additional datasets such as:
+- vertical profile (`profile`)
+- cant (`cant`)
+- stationing (`staEq`)
+
+are **not part of the sparse alignment itself**.
+
+They are combined with sparse geometry in higher-level representations.
+
+---
+
+# Mathematical Model
 
 A sparse alignment represents a two-dimensional curve
 
+\[
 \gamma : s \in [0, L] \rightarrow \mathbb{R}^2
+\]
 
-parametrized by arc length s.
+parametrized by arc length \( s \).
 
-The curve is defined indirectly through its curvature function \kappa(s)
-and an initial pose (x_0, y_0, cos \theta_0, sin \theta_0).
+The curve is defined via its curvature function \( \kappa(s) \)
+and an initial pose:
 
-Position and direction are obtained by integration:
+\[
+(x_0, y_0, \cos\theta_0, \sin\theta_0)
+\]
 
+---
+
+## Integration
+
+\[
 \theta(s) = \theta_0 + \int_0^s \kappa(\sigma)\, d\sigma
+\]
 
+\[
 (x(s), y(s)) =
 (x_0, y_0) +
 \int_0^s (\cos\theta(\sigma), \sin\theta(\sigma))\, d\sigma
+\]
 
-⸻
+---
 
-Diskrete Repräsentation
+# Discrete Representation
 
-In der Praxis wird \kappa(s) nicht als geschlossene Funktion gespeichert,
-sondern durch eine endliche Sequenz parametrisierter Elemente beschrieben.
+In practice, the curvature function is not stored analytically,
+but represented by a finite sequence of parametric elements.
 
-Diese diskrete Struktur bildet das Sparse Alignment.
+This sequence defines the sparse alignment.
 
-⸻
+---
 
-Structural Definition
+# Structural Definition
 
 A sparse alignment consists of an alternating sequence of elements:
-	1.	fixed elements (fixElem)
-	2.	transition elements (transElem)
 
-The sequence always:
-	•	starts with a fixed element
-	•	ends with a fixed element
-	•	alternates strictly between fixed and transition elements
+1. fixed elements (`fixElem`)
+2. transition elements (`transElem`)
+
+Rules:
+- sequence starts with a fixed element
+- sequence ends with a fixed element
+- strict alternation is enforced
+
+---
+
+# Elements
+
+## Base Element
+
+```js
+Element {
+  type: "fixed" | "transition",
+  arcLength: number,
+  poseA: Pose2D,
+  meta?: object
+}
+
 
 ⸻
 
-Fix Elements
+Pose2D
 
-A fixed element represents a segment with constant curvature.
+Pose2D = {
+  point: { x, y },
+  dir:   { x, y }   // unit vector (cos, sin)
+}
+
+Notes:
+	•	no angles stored explicitly
+	•	direction is primary representation
+	•	avoids ambiguity (deg / rad / gon)
+
+⸻
+
+Fixed Element
+
+Represents constant curvature.
+
+{
+  type: "fixed",
+  arcLength: number,
+  poseA: Pose2D,
+  curvature: number
+}
 
 Types:
-	•	straight line: K = 0
-	•	circular arc: K = const \neq 0
-
-Parameters:
-	•	arc length L
-	•	curvature K
-
-A fixed element contributes a constant segment to the curvature function.
+	•	straight line → curvature = 0
+	•	circular arc → curvature = const ≠ 0
 
 ⸻
 
-Transition Elements
+Special Case: Zero-Length Fixed
 
-A transition element represents a segment with variable curvature.
+arcLength == 0
 
-Instead of defining curvature analytically,
-transition elements reference a transition type
-that defines how curvature evolves over arc length.
+Used as:
+	•	curvature holder
+	•	boundary condition carrier
+	•	kink (if deltaDir is provided)
 
-Parameters:
-	•	arc length L
-	•	type identifier
-	•	type-specific parameters
+⸻
+
+Transition Element
+
+Represents variable curvature.
+
+{
+  type: "transition",
+  arcLength: number,
+  poseA: Pose2D,
+  transType: string
+}
+
+Important:
+	•	does NOT store curvature explicitly
+	•	curvature is defined via transition family
+	•	curvature boundaries are derived from neighbouring fixed elements
 
 ⸻
 
 Continuity Constraints
 
-At all element boundaries, the following continuity conditions are enforced:
-	•	positional continuity (C⁰)
-	•	directional continuity (C¹)
-	•	curvature continuity (C²)
+At all element boundaries:
+	•	C⁰: positional continuity
+	•	C¹: directional continuity
+	•	C²: curvature continuity
 
-These constraints are mandatory and invariant.
+These constraints are:
+	•	mandatory
+	•	invariant
+	•	not optional
 
-Sparse alignments that violate these constraints are considered invalid.
+Invalid alignments must be rejected or normalized.
 
 ⸻
 
@@ -122,70 +207,76 @@ Transition Families
 Transition families define curvature evolution patterns
 independent of absolute scale.
 
-They are evaluated in normalized space and scaled to element length.
+Evaluation is performed in normalized space and scaled to arc length.
 
-This separation allows:
-	•	reuse of transition logic
-	•	uniform editing
+Benefits:
+	•	reusable transition definitions
+	•	consistent editing
 	•	solver-friendly parametrization
 
 ⸻
 
-Reference Family: Berlin 3pcs Schema
+Reference Family: Berlin 3pcs
 
-The reference transition family used in ufAIM
-is a three-piece Berlin-style schema consisting of:
-	1.	half-wave entry segment
-	2.	clothoid core segment
-	3.	half-wave exit segment
+The reference transition family consists of:
+	1.	half-wave entry
+	2.	clothoid core
+	3.	half-wave exit
 
-The family ensures:
-	•	smooth curvature entry and exit
+Properties:
+	•	smooth curvature entry/exit
 	•	bounded curvature derivatives
-	•	compatibility with real-world railway design practice
+	•	engineering compatibility
 
 ⸻
 
-Sampling and Evaluation
+Evaluation
 
-Sparse alignments are evaluated through sampling.
+Sparse alignments are evaluated via sampling.
 
-Core evaluation functions include:
-	•	pose evaluation (x(s), y(s), \theta(s))
-	•	curvature evaluation \kappa(s)
-	•	derivative evaluation (optional)
+Core evaluations:
+	•	position: ( x(s), y(s) )
+	•	direction: ( \theta(s) )
+	•	curvature: ( \kappa(s) )
 
-Sampling resolution is an evaluation concern,
-not part of the alignment definition.
+Sampling resolution is:
+	•	NOT part of the model
+	•	purely an evaluation concern
 
 ⸻
 
 Relation to Multiband Representations
 
-Sparse alignments form the geometric backbone
-for all multiband representations.
+Sparse alignment is the geometric backbone for all bands:
+	•	curvature ( k(s) )
+	•	gradient ( i(s) )
+	•	cant ( u(s) )
+	•	derived metrics
 
-Derived bands include:
-	•	curvature k(s)
-	•	gradient i(s)
-	•	cant u(s)
-	•	speed and comfort metrics
+All bands share the same parameter:
 
-All derived bands reference the same arc-length parameter s.
+[
+s
+]
 
 ⸻
 
-Extension to 3D and Beyond
+Extension to 3D
 
-By combining sparse alignments with vertical profiles and cant functions,
-the curve naturally extends to:
+Sparse alignment defines only the horizontal geometry.
 
+3D curves are constructed by combining:
+	•	sparse alignment (XY)
+	•	vertical profile (Z)
+	•	cant (rotation / cross section)
+
+Result:
+
+[
 \gamma : s \rightarrow \mathbb{R}^3
+]
 
-Additional parameterizations (e.g. time-based evaluation)
-lead to higher-dimensional representations.
-
-The sparse alignment remains the geometric reference axis.
+This composition occurs outside the sparse model.
 
 ⸻
 
@@ -193,122 +284,42 @@ Solver Compatibility
 
 Sparse alignments are explicitly designed for optimization.
 
-Typical solver variables include:
-	•	element lengths
-	•	curvatures of fixed elements
-	•	parameters of transition families
+Typical variables:
+	•	arc lengths
+	•	curvatures (fixed elements)
+	•	transition parameters
 
-Constraints naturally encode:
-	•	continuity conditions
-	•	minimum radius
-	•	maximum curvature change
-	•	boundary conditions
+Constraints:
+	•	continuity
+	•	curvature limits
+	•	design rules
 
-This structure allows gradient-based and constrained solvers
-to operate directly on engineering-meaningful parameters.
+Supports:
+	•	gradient-based solvers
+	•	constrained optimization
+	•	engineering parameter tuning
 
 ⸻
 
 Non-Goals
 
-Sparse alignment deliberately does not attempt to:
+Sparse alignment deliberately does NOT:
+	•	store raw import data
 	•	encode visualization details
-	•	represent mesh geometry
-	•	store imported raw data
-	•	replace external CAD/BIM authoring tools
-
-Its scope is strictly the deterministic representation
-of alignment geometry and semantics.
+	•	represent meshes
+	•	manage CRS transformations
+	•	define relations between datasets
 
 ⸻
 
 Summary
 
-The sparse alignment model provides a minimal yet complete
-foundation for alignment engineering.
+Sparse alignment is a minimal, deterministic representation
+of horizontal alignment geometry.
 
-By combining explicit parametrization,
-strict continuity constraints,
-and transition families,
-it enables robust analysis, visualization, and optimization
-without sacrificing engineering intent.
+It provides:
+	•	a mathematically rigorous backbone
+	•	a solver-friendly structure
+	•	a stable reference for all derived representations
 
-⸻
-
-# Ergänzung 15.02.2026
-
-# ufAIM sparse (alignment2D) – v0.1
-
-## Ziel
-Kleines, internes Austauschformat für Alignment2D:
-- Elemente sind bogenlängen-parametrisiert (arcLength)
-- Jedes Element ist einzeln nutzbar (hat poseA)
-- Transition-Krümmungsgrenzen werden NICHT im Transition gespeichert, sondern aus Nachbar-Fixed übernommen
-- Alternation: ... fixed – transition – fixed ... (Transition steht nie allein)
-
-## Grundtypen
-
-### Pose2D
-- point: { x:number, y:number }
-- dir:   { x:number, y:number }  // Einheitsvektor (cos, sin), mathematisches Backend (kein Grad/Gon)
-
-### Element (Base)
-Pflicht:
-- type: "fixed" | "transition"
-- arcLength: number  // >= 0
-- poseA: Pose2D
-
-Optional:
-- meta: object
-
-### FixedElement (type="fixed")
-Pflicht:
-- curvature: number  // 1/m, auch bei arcLength==0 (curvatureHolder)
-
-Optional:
-- deltaDir: number   // rad, nur falls "Kink" (arcLength==0) als Element geführt wird
-
-### TransitionElement (type="transition")
-Pflicht:
-- transType: string  // name_of_normalizedChangeFcn (transDB key)
-
-Nicht enthalten:
-- curvatureA/curvatureE  // kommen aus Nachbar-Fixed
-
-## Konventionen / Invarianten
-- arcLength==0 ist zulässig:
-  - fixed: curvatureHolder oder Kink (wenn deltaDir gesetzt)
-  - transition: Immediate (Factory normalisiert)
-- Factory darf fehlende curvatureHolder vor/nach Transition ergänzen (L=0)
-- Richtung in Radiant wird NICHT gespeichert; dir-Vektor ist primär
-
-
-                   ┌──────────────────────────┐
-                   │      SparseAlignment     │
-                   │--------------------------│
-                   │ elements[]               │
-                   │ startPose                │
-                   │ meta                     │
-                   └──────────────┬───────────┘
-                                  │
-                                  ▼
-
-        ┌──────────────────────────────────────────────┐
-        │               AlignmentElement               │
-        │----------------------------------------------│
-        │ arcLength                                    │
-        │ startPose                                    │
-        │ endPose                                      │
-        └───────────────┬──────────────────────────────┘
-                        │
-            ┌───────────┴───────────┐
-            ▼                       ▼
-
-   ┌──────────────────┐    ┌─────────────────────────┐
-   │    FixElement    │    │    TransitionElement    │
-   │------------------│    │-------------------------│
-   │ curvature        │    │ transitionCurve         │
-   │                  │    │ lookup / parametric     │
-   │                  │    │ curvature evolution     │
-   └──────────────────┘    └─────────────────────────┘
-   
+It is not a data container, but a geometric kernel.

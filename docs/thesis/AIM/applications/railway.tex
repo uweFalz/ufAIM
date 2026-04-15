@@ -3,254 +3,301 @@
 \section{Motivation}
 
 \begin{remark}
-Railway alignment represents one of the most demanding application
-domains for curvature-based geometric modelling.
+Railway alignment is one of the most demanding application domains for
+curvature-based geometric modelling.
 \end{remark}
 
 \begin{remark}
-Unlike generic curve design, railway alignments are subject to strict
-constraints involving curvature, transition behaviour, cant,
-longitudinal profile, operational speed, and safety regulations.
+In railway engineering, alignment is not merely a planar curve design
+problem. It is a coupled system involving horizontal geometry, vertical
+profile, cant, operating speed, dynamic vehicle response, safety, and
+maintenance.
 \end{remark}
 
 \begin{remark}
-This makes railway alignment a natural test case for any alignment-based
-modelling framework.
+This makes railway alignment a natural and severe test case for
+alignment-based information modelling.
 \end{remark}
 
----
+\section{Railway Alignment as a Multi-Layer Object}
 
-\section{Core Components of Railway Geometry}
-
-\begin{definition}[Track alignment]
-A track alignment is the spatial path followed by a railway track,
-typically described in terms of horizontal alignment, vertical profile,
-and cant.
+\begin{definition}[Railway alignment]
+A railway alignment is the spatial path associated with a railway track,
+typically represented through coordinated horizontal, vertical, and
+cant-related descriptions.
 \end{definition}
 
-\subsection{Horizontal Alignment}
-
 \begin{remark}
-The horizontal alignment is the planar projection of the track geometry.
-It is primarily governed by curvature.
+In practical standards and data models, railway alignment is usually not
+represented as a single monolithic object, but as an ordered system of
+segments and auxiliary alignment layers.
 \end{remark}
 
-\begin{itemize}
-\item straight segments ($\kappaf = 0$),
-\item circular arcs ($\kappaf = const$),
-\item transition elements (varying $\kappaf$).
-\end{itemize}
-
-\subsection{Vertical Profile}
+\subsection{Horizontal alignment}
 
 \begin{remark}
-The vertical profile describes elevation as a function of station.
-It introduces additional geometric structure, often modelled
-independently from horizontal curvature.
+The horizontal alignment is primarily governed by curvature.
+In its classical engineering decomposition it consists of straight
+segments, circular arcs, and transition curves.
 \end{remark}
 
-\OPEN{Unified treatment of horizontal and vertical geometry.}
+\subsection{Vertical alignment}
 
-\subsection{Cant}
+\begin{remark}
+The vertical alignment describes elevation and gradient behaviour along
+the route. In practical data models it is segmented into line, arc, and
+transition primitives.
+\end{remark}
+
+\OPEN{Unified mathematical treatment of horizontal and vertical alignment.}
+
+\subsection{Cant alignment}
 
 \begin{definition}[Cant]
-Cant is the elevation difference between the rails, used to compensate
-lateral acceleration in curved track segments.
+Cant is the elevation difference between the rails, introduced to
+compensate lateral acceleration in curves.
 \end{definition}
 
 \begin{remark}
-Cant introduces an additional functional layer that interacts with
-curvature and speed.
+Cant is not an accessory parameter. It forms an alignment layer of its
+own, with segment structure, continuity rules, and possible smoothing
+requirements.
 \end{remark}
 
-\OPEN{Integration of cant into a unified geometric or kinematic model.}
+\begin{remark}
+Recent railway conceptual models explicitly represent cant as an ordered
+sequence of segments, including line and transition segments, linked to
+the horizontal alignment by chainage or equivalent position reference.
+\end{remark}
 
----
+\OPEN{Integrate cant into a unified geometric and kinematic state model.}
 
-\section{Coupling of Parameters}
+\section{Parameter Coupling}
 
 \begin{remark}
-Railway alignment is characterized by strong coupling between multiple
-parameters:
+Railway alignment is characterized by strong coupling between geometric
+and operational variables.
 \end{remark}
 
 \begin{itemize}
-\item curvature $\kappaf$,
-\item cant,
-\item speed,
-\item transition length.
+  \item curvature,
+  \item cant,
+  \item speed,
+  \item transition length,
+  \item gradient,
+  \item and boundary conditions imposed by rolling stock and operation
 \end{itemize}
 
 \begin{remark}
-These parameters are not independent. For example:
+These quantities are not independent. Increased speed requires either
+larger radii, larger cant, longer transition lengths, or a different
+trade-off between these variables.
+\end{remark}
+
+\begin{remark}
+Likewise, high cant or severe curvature may improve one operational
+aspect while worsening another, for example when stopped trains or
+restricted sight distances are involved.
+\end{remark}
+
+\section{Why Transition Curves Matter in Railways}
+
+\begin{remark}
+The transition curve is not merely a geometric connector between a
+straight line and a circular arc.
+\end{remark}
+
+\begin{remark}
+Its primary role is to avoid abrupt changes in lateral forces, improve
+ride comfort, reduce dynamic excitation, and limit wear on both vehicle
+and infrastructure.
+\end{remark}
+
+\begin{remark}
+The state-of-the-art review literature explicitly emphasizes that
+transition curves are crucial for safe and comfortable railway travel
+and for reducing maintenance demand.
+\end{remark}
+
+\begin{remark}
+This is also why modern railway research increasingly evaluates
+transition curves not only geometrically, but in terms of lateral
+change of acceleration, force development, wear, and vehicle dynamics.
+\end{remark}
+
+\section{From Classical Geometry to Dynamic Interpretation}
+
+\begin{remark}
+Classical alignment design often idealizes the influence of curvature,
+cant, and transition shape through simplified or quasi-static
+considerations.
+\end{remark}
+
+\begin{remark}
+However, practical evidence and later engineering work show that the
+vehicle--track system exhibits dynamic responses which depend strongly
+on the detailed shape of the transition curve.
+\end{remark}
+
+\begin{remark}
+In particular, non-linear transition curves were introduced to mitigate
+the abrupt onset and disappearance of the variation of unbalanced
+lateral acceleration that arises with linear transitions at higher
+speeds.
+\end{remark}
+
+\begin{remark}
+This gives railway transition design a systems character: the geometric
+curve acts as a control function for dynamic behaviour.
+\end{remark}
+
+\section{Curvature, Cant, and Speed}
+
+\begin{remark}
+Curvature alone does not determine railway behaviour.
+The relevant quantity is the combined system of curvature, cant, speed,
+and their rates of change.
+\end{remark}
+
+\begin{remark}
+Cant and cant variation influence lateral acceleration compensation,
+while transition shape influences how these effects develop along the
+track.
+\end{remark}
+
+\begin{remark}
+Practical railway design manuals also show that excessive
+superelevation, insufficient tangent lengths, or poorly located curves
+can create operational and derailment risks even when the pure geometry
+is formally traversable.
+\end{remark}
+
+\OPEN{Formal coupled model of curvature, cant, speed, and dynamic response.}
+
+\section{Operational and Maintenance Constraints}
+
+\begin{remark}
+Railway alignment is constrained not only by construction feasibility,
+but also by long-term operation and maintenance.
+\end{remark}
+
 \begin{itemize}
-\item higher speed requires lower curvature or higher cant,
-\item cant variation imposes constraints on transition behaviour,
-\item transition length is linked to comfort and safety requirements.
-\end{itemize}
-\end{remark}
-
-\RESEARCH{Formal coupling model between curvature, cant, and speed.}
-
----
-
-\section{Engineering Constraints}
-
-\begin{remark}
-Railway alignments are governed by engineering rules, including:
-\end{remark}
-
-\begin{itemize}
-\item minimum radius,
-\item maximum cant,
-\item maximum cant gradient,
-\item limits on curvature derivatives.
+  \item minimum radii,
+  \item maximum cant,
+  \item limits on cant change,
+  \item curvature and transition limits,
+  \item sight distance restrictions,
+  \item turnout and crossing constraints,
+  \item wear and maintenance considerations
 \end{itemize}
 
 \begin{remark}
-These constraints directly affect admissible transition functions and
-their parametrization.
+Practical design guides repeatedly emphasize that sharper curvature may
+be physically negotiable, yet still be undesirable because of higher
+maintenance cost, lower operating efficiency, or increased derailment
+risk.
 \end{remark}
 
-\OPEN{Formal incorporation of design rules into the modelling framework.}
-
----
-
-\section{Transition Behaviour in Railway Design}
+\section{Freight, Passenger, High-Speed, and Special Systems}
 
 \begin{remark}
-Transitions are particularly critical in railway alignment due to their
-impact on ride comfort and dynamic forces.
+Railway alignment is not uniform across operational domains.
+Freight, passenger, high-speed, light rail, and special systems such as
+maglev may lead to different admissible geometry and different
+transition preferences.
 \end{remark}
 
 \begin{remark}
-In classical design, clothoids are widely used due to their linear
-curvature progression.
+This means that an alignment model must be flexible enough to represent
+domain-specific constraints without losing mathematical coherence.
 \end{remark}
 
-\TODO{Formal role of clothoids in railway standards.}
+\OPEN{Taxonomy of railway application classes and their geometric consequences.}
 
-\TODO{Comparison with alternative transition families.}
+\section{Chainage and Engineering Referencing}
 
-\RESEARCH{Generalization beyond clothoids for modern design approaches.}
-
----
-
-\section{Stationing and Reference Systems}
-
-\begin{definition}[Stationing]
-Stationing is the assignment of a scalar parameter along the track,
-typically representing cumulative length.
+\begin{definition}[Chainage]
+Chainage is the engineering reference system used to identify positions
+along an alignment.
 \end{definition}
 
 \begin{remark}
-Stationing provides a reference for:
-\begin{itemize}
-\item geometric description,
-\item data exchange,
-\item engineering documentation.
-\end{itemize}
-\end{remark}
-
-\OPEN{Relation between stationing and arc-length parameter $s$.}
-
----
-
-\section{Data Representation in Practice}
-
-\begin{remark}
-Railway alignment data is often stored in structured but
-heterogeneous formats.
-\end{remark}
-
-\begin{itemize}
-\item XML-based formats,
-\item spreadsheet-based engineering data,
-\item proprietary formats,
-\item measurement-derived datasets.
-\end{itemize}
-
-\begin{remark}
-These formats may contain:
-\begin{itemize}
-\item explicit element definitions,
-\item implicit geometric relations,
-\item mixed geometric and semantic information.
-\end{itemize}
-\end{remark}
-
-\RESEARCH{Mapping practical railway data to sparse alignment model.}
-
----
-
-\section{From Railway Data to AIM}
-
-\begin{remark}
-The alignment-based information modelling approach interprets railway
-data through the lens of curvature-driven structure.
+In practice, alignment data is often anchored more robustly by chainage
+than by raw Cartesian coordinates alone, especially when the alignment
+is revised or partially reconstructed.
 \end{remark}
 
 \begin{remark}
-The workflow can be described as:
-\begin{itemize}
-\item raw data acquisition,
-\item interpretation and segmentation,
-\item reconstruction into sparse alignment,
-\item numerical evaluation and validation.
-\end{itemize}
+Modern railway information models therefore include dedicated chainage
+mechanisms in order to preserve engineering references despite local
+alignment changes.
 \end{remark}
 
-\TODO{Formal definition of the railway import pipeline.}
+\OPEN{Relation between arc-length parameterization and engineering chainage.}
 
----
-
-\section{Why Railway Alignment is a Key Use Case}
+\section{Railway Alignment in Data Models and BIM}
 
 \begin{remark}
-Railway alignment combines:
+Railway alignment is increasingly represented within interoperable data
+models. These models typically distinguish horizontal alignment,
+vertical alignment, and cant as related but separate geometric layers.
+\end{remark}
+
+\begin{remark}
+Current IFC-related railway modelling efforts explicitly represent
+transition curves, vertical transition segments, and cant segments, and
+already reveal that infrastructure alignment cannot be reduced to a
+single curve primitive.
+\end{remark}
+
+\begin{remark}
+This strongly supports the view adopted in the present manuscript:
+alignment should be understood as a structured object rather than as an
+undifferentiated line.
+\end{remark}
+
+\OPEN{Formal docking of the sparse alignment model to IFC/railway data models.}
+
+\section{Why Railway Alignment is a Privileged Use Case}
+
+\begin{remark}
+Railway alignment combines
 \begin{itemize}
-\item strict geometric constraints,
-\item strong parameter coupling,
-\item real-world data imperfections,
-\item and high safety requirements.
+  \item strict geometric structure,
+  \item strong parameter coupling,
+  \item dynamic sensitivity,
+  \item safety implications,
+  \item heavy maintenance consequences,
+  \item and demanding interoperability requirements.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-This makes it an ideal domain for testing and validating the concepts
-introduced in this manuscript.
+For that reason, railway alignment is not merely one application among
+many, but an especially revealing use case for a general theory of
+curvature-based structured curve modelling.
 \end{remark}
 
----
-
-\section{Generalization Beyond Railways}
+\section{Outlook}
 
 \begin{remark}
-Although motivated by railway applications, the concepts extend to other
-domains such as:
-\end{remark}
-
+A mature railway-alignment framework should therefore support:
 \begin{itemize}
-\item road design,
-\item guided transport systems,
-\item robotic path planning,
-\item general parametric curve modelling.
+  \item structured geometric representation,
+  \item multiple transition families,
+  \item coupled cant and profile modelling,
+  \item numerical reconstruction,
+  \item dynamic and safety-oriented evaluation,
+  \item and interoperability with engineering standards and BIM models.
 \end{itemize}
-
-\RESEARCH{Abstract formulation of alignment modelling independent of domain-specific constraints.}
-
----
-
-\section{Summary}
+\end{remark}
 
 \begin{summary}
-Railway alignment is a highly structured and constraint-driven domain
-for geometric modelling.
+Railway alignment is a multi-layer object rather than a single planar
+curve. It couples geometry, cant, speed, vehicle dynamics, operational
+constraints, maintenance, and engineering referencing.
 
-It highlights the importance of curvature, transitions, and parameter
-coupling, while also exposing the challenges of real-world data and
-engineering constraints.
-
-As such, it serves as a primary application domain for
-alignment-based information modelling.
+This makes railway alignment a privileged and highly demanding domain
+for alignment-based information modelling and provides the main
+application context for the concepts developed in this manuscript.
 \end{summary}

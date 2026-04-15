@@ -1,0 +1,378 @@
+\chapter{Standards and Data Models}
+
+\section{Motivation}
+
+\begin{remark}
+Railway alignment data does not exist in isolation. It is embedded in a
+landscape of established standards and engineering data models.
+\end{remark}
+
+\begin{remark}
+Relevant formats include:
+\begin{itemize}
+\item LandXML,
+\item IFC (Industry Foundation Classes),
+\item railML,
+\item and various proprietary or legacy formats.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The AIM framework does not replace these standards. Instead, it provides
+a consistent internal representation that can interpret and integrate
+them.
+\end{remark}
+
+---
+
+\section{General Perspective}
+
+\begin{remark}
+Most existing standards describe railway geometry in a layered or
+fragmented way.
+\end{remark}
+
+\begin{itemize}
+\item horizontal alignment,
+\item vertical profile,
+\item cant (superelevation),
+\item additional metadata.
+\end{itemize}
+
+\begin{remark}
+In contrast, the AIM framework proposes a unified state-based
+representation:
+\[
+(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+\]
+\end{remark}
+
+\begin{remark}
+This representation serves as a canonical internal model.
+\end{remark}
+
+---
+
+\section{LandXML}
+
+\subsection{Overview}
+
+\begin{remark}
+LandXML is one of the most widely used formats for alignment data
+exchange.
+\end{remark}
+
+\begin{remark}
+It typically represents:
+\begin{itemize}
+\item horizontal geometry (CoordGeom),
+\item vertical profiles,
+\item cant definitions.
+\end{itemize}
+\end{remark}
+
+\subsection{Characteristics}
+
+\begin{itemize}
+\item structured XML format,
+\item hierarchical organization,
+\item multiple alignments per file,
+\item explicit naming of geometric elements.
+\end{itemize}
+
+\subsection{Limitations}
+
+\begin{remark}
+Despite its structure, LandXML exhibits several limitations:
+\begin{itemize}
+\item separation of horizontal and vertical geometry,
+\item lack of a unified dynamic interpretation,
+\item ambiguity in coordinate reference systems,
+\item inconsistent usage across software systems.
+\end{itemize}
+\end{remark}
+
+\subsection{AIM Interpretation}
+
+\begin{remark}
+Within the AIM framework, LandXML is treated as a \emph{fat container}:
+\begin{itemize}
+\item all available data is parsed,
+\item relevant components are extracted,
+\item the result is transformed into a unified state model.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The conversion step
+\[
+\text{LandXML} \rightarrow \text{AIM (sparse)}
+\]
+is essential for further processing.
+\end{remark}
+
+---
+
+\section{IFC}
+
+\subsection{Overview}
+
+\begin{remark}
+IFC is a general BIM standard designed for interdisciplinary data
+exchange.
+\end{remark}
+
+\begin{remark}
+In the context of infrastructure, IFC is extended by infrastructure
+schemas (IFC Rail, IFC Alignment).
+\end{remark}
+
+\subsection{Characteristics}
+
+\begin{itemize}
+\item object-oriented data model,
+\item rich semantic structure,
+\item integration of geometry and metadata,
+\item support for relationships and hierarchies.
+\end{itemize}
+
+\subsection{Challenges}
+
+\begin{remark}
+For alignment modelling, IFC presents several challenges:
+\begin{itemize}
+\item complex schema structure,
+\item multiple representation alternatives,
+\item inconsistent implementation across tools,
+\item limited support for advanced alignment concepts.
+\end{itemize}
+\end{remark}
+
+\subsection{AIM Interpretation}
+
+\begin{remark}
+The AIM framework interprets IFC data by extracting:
+\begin{itemize}
+\item alignment geometry,
+\item reference systems,
+\item semantic relations.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+AIM acts as a normalization layer that reduces IFC complexity to a
+computationally usable form.
+\end{remark}
+
+---
+
+\section{railML}
+
+\subsection{Overview}
+
+\begin{remark}
+railML is a domain-specific XML standard for railway systems.
+\end{remark}
+
+\begin{remark}
+It focuses on:
+\begin{itemize}
+\item infrastructure,
+\item timetable data,
+\item rolling stock.
+\end{itemize}
+\end{remark}
+
+\subsection{Relevance for Alignment}
+
+\begin{remark}
+railML provides a more explicit representation of railway topology than
+most other formats.
+\end{remark}
+
+\begin{remark}
+However, detailed geometric modelling is often secondary to network and
+operational aspects.
+\end{remark}
+
+\subsection{AIM Interpretation}
+
+\begin{remark}
+Within AIM, railML is particularly relevant for:
+\begin{itemize}
+\item network topology,
+\item connections between tracks,
+\item system-level structure.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Legacy and Proprietary Formats}
+
+\begin{remark}
+In practice, a large amount of alignment data exists in proprietary or
+legacy formats.
+\end{remark}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item TRA / GRA (Technet, Vermessung),
+\item spreadsheet-based formats,
+\item CAD exports.
+\end{itemize}
+\end{remark}
+
+\subsection{Characteristics}
+
+\begin{itemize}
+\item incomplete or implicit structure,
+\item missing type information,
+\item reliance on conventions rather than formal schema.
+\end{itemize}
+
+\subsection{AIM Strategy}
+
+\begin{remark}
+These formats are interpreted using:
+\begin{itemize}
+\item sniffing and classification,
+\item format-specific parsers,
+\item reconstruction of implicit structure.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Canonical Internal Model}
+
+\begin{definition}[AIM core model]
+The AIM framework uses a canonical internal representation based on:
+\[
+(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+\]
+\end{definition}
+
+\begin{remark}
+All external formats are mapped to this representation.
+\end{remark}
+
+\subsection{Advantages}
+
+\begin{itemize}
+\item unified handling of geometry and dynamics,
+\item compatibility with numerical optimization,
+\item independence from specific file formats,
+\item extensibility toward new standards.
+\end{itemize}
+
+---
+
+\section{Transformation Pipeline}
+
+\begin{remark}
+The transformation from external data to the AIM model follows a
+pipeline structure.
+\end{remark}
+
+\begin{verbatim}
+external file
+→ parser
+→ fat representation
+→ validation
+→ sparse conversion
+→ AIM state model
+\end{verbatim}
+
+\begin{remark}
+This pipeline ensures robustness and traceability of data processing.
+\end{remark}
+
+---
+
+\section{Relation to BIM}
+
+\subsection{Conceptual Position}
+
+\begin{remark}
+BIM (Building Information Modelling) aims to integrate geometry,
+semantics, and lifecycle information.
+\end{remark}
+
+\begin{remark}
+However, alignment modelling is often underrepresented or treated as a
+secondary aspect.
+\end{remark}
+
+\subsection{AIM Contribution}
+
+\begin{remark}
+The AIM framework contributes to BIM by:
+\begin{itemize}
+\item providing a rigorous alignment model,
+\item enabling dynamic interpretation,
+\item supporting optimization-driven design.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In this sense, AIM can be interpreted as a specialization of BIM for
+alignment-centric infrastructure modelling.
+\end{remark}
+
+---
+
+\section{Interoperability}
+
+\begin{remark}
+A key requirement for practical application is interoperability with
+existing tools and workflows.
+\end{remark}
+
+\begin{remark}
+The AIM framework supports interoperability through:
+\begin{itemize}
+\item import adapters,
+\item export converters,
+\item intermediate canonical representation.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Discussion}
+
+\begin{remark}
+Existing standards focus primarily on data exchange and documentation.
+\end{remark}
+
+\begin{remark}
+The AIM framework complements these standards by introducing:
+\begin{itemize}
+\item a computationally consistent model,
+\item a dynamic interpretation,
+\item integration with optimization methods.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, AIM bridges the gap between static data representation and active
+engineering design.
+\end{remark}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+Railway alignment data is governed by a variety of standards, each with
+its own strengths and limitations.
+
+The AIM framework provides a unified internal representation that allows
+these heterogeneous sources to be interpreted consistently.
+
+By combining standard-based data exchange with a state-based,
+optimization-ready model, AIM enables a transition from static data
+handling to dynamic and computational alignment design.
+\end{summary}

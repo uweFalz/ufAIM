@@ -10,15 +10,21 @@
 // Important:
 // Spot-compatibility is NOT fully validated here.
 // That happens later in dedicated validators / promotion gates.
+//
+// @baustelle [DERIVED_LAYER]
+// This validator accepts machine-readable derived augmentation,
+// but validates only what is structurally relevant here.
+// Currently:
+// - sparseAlignment is validated for alignment items
+// - interpretation is checked only at a shallow structural level
 
-/*
 import {
 	isImportSessionItemKind,
 	isImportSessionItemStage,
 } from "../contracts/importSessionItem.contract.js";
 
-import { validateSparseAlignment } from "../../spot/validation/validateSparseAlignment.js";
-*/
+// import { validateSparseAlignment } from "@src/model/spot/validation/validateSparseAlignment.js";
+import { validateSparseAlignment } from "../../model/spot/validation/validateSparseAlignment.js";
 
 const CODES = {
 	root_type: "root_type",
@@ -29,6 +35,7 @@ const CODES = {
 	missing_payload: "missing_payload",
 	invalid_status: "invalid_status",
 	invalid_annotations: "invalid_annotations",
+	invalid_derived: "invalid_derived",
 
 	source_file_name: "source_file_name",
 	source_parser_id: "source_parser_id",
@@ -38,25 +45,22 @@ const CODES = {
 	status_stage: "status_stage",
 
 	payload_kind_mismatch: "payload_kind_mismatch",
+	payload_coordgeom_shape: "payload_coordgeom_shape",
 
 	derived_sparse_invalid: "derived_sparse_invalid",
 	derived_sparse_kind_mismatch: "derived_sparse_kind_mismatch",
+	derived_interpretation_kind_mismatch: "derived_interpretation_kind_mismatch",
+	derived_interpretation_invalid: "derived_interpretation_invalid",
 };
 
 export function validateImportSessionItem(item) {
-	return {
-		ok: true,
-		errors: [],
-		warnings: [],
-	};
+	const res = makeResult();
+	validateRoot(item, "", res);
+	return res;
 }
 
 export function _validateImportSessionItem(item) {
-	const res = makeResult();
-
-	validateRoot(item, "", res);
-
-	return res;
+	return validateImportSessionItem(item);
 }
 
 function validateRoot(item, path, res) {
@@ -95,7 +99,11 @@ function validateRoot(item, path, res) {
 		pushError(res, CODES.invalid_annotations, "annotations must be array", joinPath(path, "annotations"));
 	}
 
-	validateDerived(item, joinPath(path, "derived"), res);
+	if (item.derived != null && !isObject(item.derived)) {
+		pushError(res, CODES.invalid_derived, "derived must be object", joinPath(path, "derived"));
+	} else {
+		validateDerived(item, joinPath(path, "derived"), res);
+	}
 }
 
 function validateSource(source, path, res) {
@@ -154,8 +162,25 @@ function validateAlignmentPayload(payload, path, res) {
 		pushError(res, CODES.payload_kind_mismatch, 'payload.kind must be "alignment"', joinPath(path, "kind"));
 	}
 
-	if (!Array.isArray(payload.coordGeom) || payload.coordGeom.length === 0) {
-		pushWarning(res, CODES.payload_kind_mismatch, "alignment payload should contain non-empty coordGeom", joinPath(path, "coordGeom"));
+	const coordGeom = payload.coordGeom;
+
+	if (!isObject(coordGeom)) {
+		pushWarning(
+			res,
+			CODES.payload_coordgeom_shape,
+			"alignment payload should contain coordGeom object with elements[]",
+			joinPath(path, "coordGeom")
+		);
+		return;
+	}
+
+	if (!Array.isArray(coordGeom.elements) || coordGeom.elements.length === 0) {
+		pushWarning(
+			res,
+			CODES.payload_coordgeom_shape,
+			"alignment payload should contain non-empty coordGeom.elements",
+			joinPath(path, "coordGeom.elements")
+		);
 	}
 }
 
@@ -214,6 +239,82 @@ function validateDerived(item, path, res) {
 				);
 			}
 		}
+	}
+
+	if (item.derived.interpretation != null) {
+		if (item.kind !== "alignment") {
+			pushError(
+				res,
+				CODES.derived_interpretation_kind_mismatch,
+				"derived.interpretation only allowed for kind=alignment",
+				joinPath(path, "interpretation")
+			);
+			return;
+		}
+
+		validateInterpretation(item.derived.interpretation, joinPath(path, "interpretation"), res);
+	}
+}
+
+function validateInterpretation(interpretation, path, res) {
+	if (!isObject(interpretation)) {
+		pushError(
+			res,
+			CODES.derived_interpretation_invalid,
+			"derived.interpretation must be object",
+			path
+		);
+		return;
+	}
+
+	if (interpretation.type != null && !isNonEmptyString(interpretation.type)) {
+		pushError(
+			res,
+			CODES.derived_interpretation_invalid,
+			"derived.interpretation.type must be non-empty string",
+			joinPath(path, "type")
+		);
+	}
+
+	if (interpretation.intent != null && !isNonEmptyString(interpretation.intent)) {
+		pushError(
+			res,
+			CODES.derived_interpretation_invalid,
+			"derived.interpretation.intent must be non-empty string",
+			joinPath(path, "intent")
+		);
+	}
+
+	if (interpretation.completeness != null && !isNonEmptyString(interpretation.completeness)) {
+		pushError(
+			res,
+			CODES.derived_interpretation_invalid,
+			"derived.interpretation.completeness must be non-empty string",
+			joinPath(path, "completeness")
+		);
+	}
+
+	for (const key of ["hasCoordGeom", "hasStaEq", "hasProfile", "hasCant", "sparseConvertible"]) {
+		if (interpretation[key] != null && typeof interpretation[key] !== "boolean") {
+			pushError(
+				res,
+				CODES.derived_interpretation_invalid,
+				`derived.interpretation.${key} must be boolean`,
+				joinPath(path, key)
+			);
+		}
+	}
+
+	if (
+		interpretation.coordGeomElementCount != null &&
+		!Number.isInteger(interpretation.coordGeomElementCount)
+	) {
+		pushError(
+			res,
+			CODES.derived_interpretation_invalid,
+			"derived.interpretation.coordGeomElementCount must be integer",
+			joinPath(path, "coordGeomElementCount")
+		);
 	}
 }
 

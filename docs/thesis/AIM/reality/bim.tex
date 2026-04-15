@@ -1,0 +1,337 @@
+\chapter{BIM and Alignment Modelling}
+
+\section{Motivation}
+
+\begin{remark}
+Building Information Modelling (BIM) has become a central paradigm in
+modern infrastructure projects.
+\end{remark}
+
+\begin{remark}
+Its goal is the integration of geometry, semantics, and lifecycle
+information into a unified digital representation.
+\end{remark}
+
+\begin{remark}
+However, despite its broad scope, the representation of railway
+alignments within BIM remains conceptually and technically limited.
+\end{remark}
+
+---
+
+\section{BIM as a Data Integration Paradigm}
+
+\begin{remark}
+BIM is fundamentally concerned with:
+\begin{itemize}
+\item object-based modelling,
+\item semantic enrichment of geometry,
+\item interoperability across disciplines,
+\item lifecycle management of infrastructure assets.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In this context, geometry is typically associated with objects such as:
+\begin{itemize}
+\item buildings,
+\item bridges,
+\item track elements,
+\item terrain models.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Alignment geometry is often embedded implicitly within these objects,
+rather than treated as a primary modelling entity.
+\end{remark}
+
+---
+
+\section{Alignment in BIM Standards}
+
+\subsection{IFC Alignment}
+
+\begin{remark}
+Recent extensions of IFC introduce explicit alignment entities.
+\end{remark}
+
+\begin{remark}
+These aim to represent:
+\begin{itemize}
+\item horizontal alignment,
+\item vertical alignment,
+\item cant (superelevation),
+\item stationing.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+While this is a significant step forward, several issues remain:
+\begin{itemize}
+\item separation of components,
+\item lack of unified state representation,
+\item limited support for dynamic interpretation,
+\item complexity of schema usage.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Layered Representation}
+
+\begin{remark}
+In most BIM-related formats, alignment is decomposed into layers:
+\begin{itemize}
+\item horizontal geometry,
+\item vertical profile,
+\item cant definition.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This decomposition is practical for data exchange, but does not directly
+support computation or optimization.
+\end{remark}
+
+---
+
+\section{Limitations of Current BIM Alignment Modelling}
+
+\subsection{Static representation}
+
+\begin{remark}
+BIM primarily represents geometry as static data.
+\end{remark}
+
+\begin{remark}
+Dynamic properties such as acceleration, jerk, or vehicle response are
+not part of the core model.
+\end{remark}
+
+---
+
+\subsection{Fragmentation}
+
+\begin{remark}
+The separation of horizontal, vertical, and cant components leads to a
+fragmented representation.
+\end{remark}
+
+\begin{remark}
+This fragmentation complicates:
+\begin{itemize}
+\item consistency checks,
+\item dynamic evaluation,
+\item optimization-based design.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Lack of computational core}
+
+\begin{remark}
+BIM standards focus on data exchange and documentation.
+\end{remark}
+
+\begin{remark}
+They do not provide a unified computational model for alignment
+analysis and optimization.
+\end{remark}
+
+---
+
+\section{AIM as a Computational Layer for BIM}
+
+\subsection{Conceptual Role}
+
+\begin{remark}
+The AIM framework can be understood as a computational core that
+complements BIM data models.
+\end{remark}
+
+\begin{remark}
+Instead of replacing BIM, AIM operates between:
+\begin{itemize}
+\item external data formats,
+\item and internal engineering reasoning.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Canonical Representation}
+
+\begin{remark}
+AIM introduces a unified representation:
+\[
+(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+\]
+\end{remark}
+
+\begin{remark}
+This representation:
+\begin{itemize}
+\item integrates horizontal geometry,
+\item integrates vertical and cant behaviour,
+\item supports dynamic evaluation,
+\item is directly usable in optimization.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Transformation Pipeline}
+
+\begin{verbatim}
+BIM / IFC / LandXML
+→ parsing
+→ fat representation
+→ normalization
+→ AIM state model
+→ analysis / optimization
+→ export
+\end{verbatim}
+
+\begin{remark}
+This pipeline separates:
+\begin{itemize}
+\item data exchange concerns,
+\item computational modelling,
+\item engineering reasoning.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Alignment-Centred BIM}
+
+\subsection{Shift of perspective}
+
+\begin{remark}
+The AIM framework suggests a shift toward alignment-centred modelling.
+\end{remark}
+
+\begin{remark}
+Instead of treating alignment as one component among many, it becomes a
+primary organizing structure.
+\end{remark}
+
+---
+
+\subsection{Implications}
+
+\begin{itemize}
+\item infrastructure elements are referenced to alignment,
+\item geometry is derived from alignment state,
+\item dynamic behaviour becomes part of the model,
+\item optimization becomes a native operation.
+\end{itemize}
+
+---
+
+\section{Integration with BIM Workflows}
+
+\subsection{Import}
+
+\begin{remark}
+Existing BIM data is imported via:
+\begin{itemize}
+\item IFC parsing,
+\item LandXML parsing,
+\item legacy format interpretation.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Processing}
+
+\begin{remark}
+Within AIM, the imported data is:
+\begin{itemize}
+\item normalized,
+\item reconstructed,
+\item enriched with dynamic interpretation,
+\item potentially optimized.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Export}
+
+\begin{remark}
+Results may be exported back into:
+\begin{itemize}
+\item IFC alignment structures,
+\item LandXML files,
+\item other engineering formats.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This ensures compatibility with existing BIM ecosystems.
+\end{remark}
+
+---
+
+\section{Relation to BIMinfra}
+
+\begin{remark}
+Infrastructure BIM (often referred to as BIMinfra) extends BIM concepts
+to linear infrastructure such as railways and roads.
+\end{remark}
+
+\begin{remark}
+AIM can be interpreted as a specialization within BIMinfra focusing on:
+\begin{itemize}
+\item alignment-centric modelling,
+\item dynamic interpretation,
+\item optimization-driven design.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Discussion}
+
+\begin{remark}
+BIM provides a powerful framework for data integration, but lacks a
+strong computational alignment model.
+\end{remark}
+
+\begin{remark}
+AIM addresses this gap by:
+\begin{itemize}
+\item introducing a unified state representation,
+\item enabling dynamic evaluation,
+\item supporting optimization,
+\item and integrating heterogeneous data sources.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Together, BIM and AIM can be seen as complementary:
+\begin{itemize}
+\item BIM for data integration and lifecycle,
+\item AIM for computation and alignment reasoning.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+Current BIM standards provide important structures for data exchange and
+semantic modelling, but remain limited in their treatment of railway
+alignment.
+
+The AIM framework complements BIM by introducing a unified,
+state-based, and optimization-ready representation of alignment.
+
+This enables a transition from static data handling toward dynamic,
+computational, and alignment-centred infrastructure modelling.
+\end{summary}

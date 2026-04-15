@@ -1,0 +1,381 @@
+\chapter{Constraint Code Architecture}
+
+\section{Motivation}
+
+\begin{remark}
+Railway alignment rules must be represented in a form that is both
+mathematically meaningful and computationally tractable.
+\end{remark}
+
+\begin{remark}
+Within the AIM framework, this is achieved by expressing all rules as
+constraint residuals that can be evaluated uniformly inside an
+optimization loop.
+\end{remark}
+
+\begin{remark}
+The implementation goal is therefore not a collection of isolated rule
+checks, but a modular constraint library.
+\end{remark}
+
+\section{General Principle}
+
+\begin{definition}[Constraint residual]
+A constraint is represented as a function
+\[
+c(\mathbf{x}) \in \R^m
+\]
+whose value vanishes in the ideal case and whose magnitude measures
+violation.
+\end{definition}
+
+\begin{remark}
+This unified representation allows the same mathematical object to be
+used for:
+\begin{itemize}
+\item feasibility checks,
+\item penalty terms,
+\item direct inclusion into SQP solvers.
+\end{itemize}
+\end{remark}
+
+\begin{verbatim}
+function evaluateConstraint(ctx) {
+  return [residual1, residual2, ...]
+}
+\end{verbatim}
+
+\section{Constraint Registry}
+
+\begin{remark}
+A practical implementation should organize constraints in a registry.
+\end{remark}
+
+\begin{verbatim}
+const ConstraintRegistry = {
+  geometric: {},
+  dynamic: {},
+  topologic: {},
+  regulatory: {}
+}
+\end{verbatim}
+
+\begin{remark}
+This keeps domain logic extensible and avoids hard-coded monolithic
+solver structures.
+\end{remark}
+
+\section{Constraint Object Model}
+
+\begin{verbatim}
+const constraint = {
+  id: "min_radius",
+  group: "regulatory",
+  appliesTo: "edge",
+  weight: 1.0,
+  evaluate: (ctx) => []
+}
+\end{verbatim}
+
+\begin{remark}
+The fields have the following meaning:
+\begin{itemize}
+\item \texttt{id}: unique name,
+\item \texttt{group}: semantic class,
+\item \texttt{appliesTo}: edge, node, pair, network,
+\item \texttt{weight}: optional scaling,
+\item \texttt{evaluate}: residual callback.
+\end{itemize}
+\end{remark}
+
+\section{Context Object}
+
+\begin{remark}
+Constraints should not operate directly on raw global arrays.
+Instead, they receive a normalized context object.
+\end{remark}
+
+\begin{verbatim}
+const ctx = {
+  edge,
+  node,
+  pair,
+  i,
+  kappa,
+  phi,
+  geometry,
+  speed,
+  params,
+  metadata
+}
+\end{verbatim}
+
+\begin{remark}
+This provides a stable interface between model, solver, and rule system.
+\end{remark}
+
+\section{Geometric Constraints}
+
+\subsection{Position Continuity}
+
+\begin{verbatim}
+function continuityConstraint(p1, p2) {
+  return [
+    p1.x - p2.x,
+    p1.y - p2.y
+  ]
+}
+\end{verbatim}
+
+\begin{remark}
+This enforces \(C^0\)-continuity between adjacent geometric elements or
+connected alignments.
+\end{remark}
+
+\subsection{Direction Continuity}
+
+\begin{verbatim}
+function directionConstraint(t1, t2) {
+  return [
+    t1.dx - t2.dx,
+    t1.dy - t2.dy
+  ]
+}
+\end{verbatim}
+
+\begin{remark}
+This corresponds to tangent continuity and therefore to \(C^1\)-style
+behaviour in geometric terms.
+\end{remark}
+
+\subsection{Curvature Continuity}
+
+\begin{verbatim}
+function curvatureConstraint(k1, k2) {
+  return [k1 - k2]
+}
+\end{verbatim}
+
+\begin{remark}
+This enforces continuity of curvature across boundaries.
+\end{remark}
+
+\section{Dynamic Constraints}
+
+\subsection{Equilibrium Constraint}
+
+\begin{verbatim}
+function equilibriumConstraint(kappa, phi, v, g) {
+  return [v * v * kappa - g * Math.sin(phi)]
+}
+\end{verbatim}
+
+\begin{remark}
+This residual measures cant deficiency or excess in analytic form.
+\end{remark}
+
+\subsection{Jerk Constraint}
+
+\begin{verbatim}
+function jerkConstraint(kappa0, kappa1, phi0, phi1, ds, v, g) {
+  const dk = (kappa1 - kappa0) / ds
+  const dphi = (phi1 - phi0) / ds
+  const j = v * v * v * dk - g * v * Math.cos(phi0) * dphi
+  return [j]
+}
+\end{verbatim}
+
+\begin{remark}
+This constraint reflects dynamic smoothness and comfort-related limits.
+\end{remark}
+
+\section{Regulatory Constraints}
+
+\subsection{Minimum Radius}
+
+\begin{verbatim}
+function minRadiusConstraint(kappa, Rmin) {
+  return [Math.abs(kappa) - 1 / Rmin]
+}
+\end{verbatim}
+
+\begin{remark}
+A non-positive value indicates compliance with the radius limit.
+\end{remark}
+
+\subsection{Maximum Cant}
+
+\begin{verbatim}
+function maxCantConstraint(phi, phiMax) {
+  return [Math.abs(phi) - phiMax]
+}
+\end{verbatim}
+
+\subsection{Cant Gradient}
+
+\begin{verbatim}
+function cantGradientConstraint(phi0, phi1, ds, limit) {
+  return [Math.abs((phi1 - phi0) / ds) - limit]
+}
+\end{verbatim}
+
+\section{Topological Constraints}
+
+\subsection{Switch Node Constraint}
+
+\begin{verbatim}
+function switchConstraint(main, branch) {
+  return [
+    main.x - branch.x,
+    main.y - branch.y,
+    main.dx - branch.dx,
+    main.dy - branch.dy
+  ]
+}
+\end{verbatim}
+
+\begin{remark}
+This expresses the basic coupling at branching nodes.
+\end{remark}
+
+\subsection{Parallel Track Spacing}
+
+\begin{verbatim}
+function parallelConstraint(p1, p2, d) {
+  const dx = p1.x - p2.x
+  const dy = p1.y - p2.y
+  return [Math.sqrt(dx * dx + dy * dy) - d]
+}
+\end{verbatim}
+
+\section{Constraint Assembly}
+
+\begin{remark}
+The full residual vector is assembled from all active constraints.
+\end{remark}
+
+\begin{verbatim}
+function buildConstraintResiduals(ctx, constraints) {
+  const r = []
+
+  for (const c of constraints) {
+    const ri = c.evaluate(ctx)
+    const w = Math.sqrt(c.weight ?? 1)
+    for (const v of ri) r.push(w * v)
+  }
+
+  return r
+}
+\end{verbatim}
+
+\begin{remark}
+This produces a single solver-compatible vector independent of the
+semantic source of the constraints.
+\end{remark}
+
+\section{Factory Functions}
+
+\begin{remark}
+Constraints should be created through factories rather than by writing
+anonymous closures throughout the code base.
+\end{remark}
+
+\begin{verbatim}
+function makeMinRadiusConstraint(Rmin, weight = 1) {
+  return {
+    id: "min_radius",
+    group: "regulatory",
+    appliesTo: "edge",
+    weight,
+    evaluate: ({ kappa, i }) => [
+      Math.abs(kappa[i]) - 1 / Rmin
+    ]
+  }
+}
+\end{verbatim}
+
+\begin{verbatim}
+function makeJerkConstraint(v, g, ds, weight = 1) {
+  return {
+    id: "jerk",
+    group: "dynamic",
+    appliesTo: "edge",
+    weight,
+    evaluate: ({ kappa, phi, i }) => {
+      const dk = (kappa[i + 1] - kappa[i]) / ds
+      const dphi = (phi[i + 1] - phi[i]) / ds
+      return [v * v * v * dk - g * v * Math.cos(phi[i]) * dphi]
+    }
+  }
+}
+\end{verbatim}
+
+\section{Constraint Presets}
+
+\begin{remark}
+In practical railway design, different projects require different
+constraint configurations.
+\end{remark}
+
+\begin{verbatim}
+const presetHighSpeed = [
+  makeMinRadiusConstraint(4000, 10),
+  makeJerkConstraint(v, g, ds, 8),
+  makeMaxCantConstraint(phiMax, 6)
+]
+\end{verbatim}
+
+\begin{verbatim}
+const presetExistingLine = [
+  makeMinRadiusConstraint(800, 3),
+  makeJerkConstraint(v, g, ds, 2),
+  makeParallelConstraint(trackDistance, 5)
+]
+\end{verbatim}
+
+\section{Integration into the Solver}
+
+\begin{verbatim}
+function buildResidualVector(ctx, constraints, objectives) {
+  return [
+    ...buildConstraintResiduals(ctx, constraints),
+    ...buildObjectiveResiduals(ctx, objectives)
+  ]
+}
+\end{verbatim}
+
+\begin{remark}
+This shows the central design principle of the architecture:
+constraints and objectives share the same residual-based interface.
+\end{remark}
+
+\section{Discussion}
+
+\begin{remark}
+The proposed architecture has several advantages:
+\begin{itemize}
+\item modularity,
+\item extensibility,
+\item compatibility with least-squares solvers,
+\item transparent mapping between engineering rules and code.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Instead of scattering rule checks throughout the application, the
+constraint library concentrates domain logic in a single mathematical
+layer.
+\end{remark}
+
+\section{Summary}
+
+\begin{summary}
+The constraint library translates railway rules, topology, and dynamic
+requirements into a unified residual-based architecture.
+
+This provides the technical bridge between theoretical modelling,
+engineering regulations, and computational optimization.
+
+As a result, the AIM framework becomes not only mathematically coherent,
+but also directly implementable in software.
+\end{summary}

@@ -43,16 +43,29 @@ function normalizePins(pins) {
 			}
 			return null;
 		})
-		.filter(p => p?.rpId);
+		.filter((p) => p?.rpId);
 }
 
 function isObject(x) {
 	return !!x && typeof x === "object" && !Array.isArray(x);
 }
 
-//
-// ...
-//
+function normalizePreviewCollection(items) {
+	if (!Array.isArray(items)) return [];
+
+	return items
+		.filter(isObject)
+		.map((item) => ({
+			id: item.id ?? null,
+			kind: item.kind ?? "alignment",
+			name: item.name ?? item.id ?? "preview",
+			sparseAlignment: isObject(item.sparseAlignment) ? item.sparseAlignment : null,
+			spatialRef: isObject(item.spatialRef) ? item.spatialRef : (item.spatialRef ?? null),
+			source: isObject(item.source) ? item.source : {},
+		}))
+		.filter((item) => item.id && item.sparseAlignment);
+}
+
 export function makeInitialState() {
 	return {
 		// --------------------------------------------------------
@@ -65,12 +78,14 @@ export function makeInitialState() {
 		// --------------------------------------------------------
 		// actual window/view state
 		// --------------------------------------------------------
-				cursor: { s: 0 },
+		cursor: { s: 0 },
 		view_pins: [],
 		view_chunks: [],
 
 		preview_item: null,
 		preview_source: null,
+		import_preview_collection: [],
+		import_preview_source: null,
 
 		// --------------------------------------------------------
 		// transitional mirrors / caches
@@ -103,9 +118,6 @@ export function makeInitialState() {
 	};
 }
 
-//
-// ...
-//
 export function ensureStateShape(state) {
 	const s = state ?? {};
 
@@ -147,12 +159,15 @@ export function ensureStateShape(state) {
 		// --------------------------------------------------------
 		// actual window/view state
 		// --------------------------------------------------------
-				view_pins: normalizePins(s.view_pins),
+		view_pins: normalizePins(s.view_pins),
 		view_chunks: s.view_chunks ?? [],
 		cursor: { ...(s.cursor ?? {}), s: Number.isFinite(s.cursor?.s) ? s.cursor.s : 0 },
 
 		preview_item: isObject(s.preview_item) ? s.preview_item : null,
 		preview_source: isObject(s.preview_source) ? s.preview_source : null,
+
+		import_preview_collection: normalizePreviewCollection(s.import_preview_collection),
+		import_preview_source: isObject(s.import_preview_source) ? s.import_preview_source : null,
 
 		// --------------------------------------------------------
 		// Transition Editor (window/view state)

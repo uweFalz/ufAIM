@@ -9,10 +9,9 @@ curvature, transitions describe the controlled change between such states.
 \end{remark}
 
 \begin{remark}
-Their importance is both mathematical and engineering-related.
-Mathematically, they define how curvature evolves. In engineering
-contexts, they control smoothness, feasibility, comfort, and
-constructability.
+In railway engineering, transitions are essential for ensuring smooth
+vehicle motion, limiting dynamic forces, and satisfying comfort and
+safety requirements \cite{Koc2008TransitionCurves,Review2020TransitionCurves}.
 \end{remark}
 
 \section{Definition by Curvature Evolution}
@@ -25,176 +24,219 @@ parameter interval.
 \begin{definition}[Transition curvature law]
 Let $L>0$. A transition curvature law is a function
 \[
-\kappaf : [0,L] \to \R
+\kappa : [0,L] \to \R
 \]
 with prescribed boundary values
 \[
-\kappaf(0)=\kappa_0,
+\kappa(0)=\kappa_0,
 \qquad
-\kappaf(L)=\kappa_1.
+\kappa(L)=\kappa_1.
 \]
 \end{definition}
 
 \begin{remark}
-The transition geometry is determined by the curvature law together with
-the reconstruction principles introduced in the axiomatic foundation.
+This formulation directly follows the curvature-based description of
+planar curves \cite{DoCarmo1976Curves}.
 \end{remark}
 
 \section{Normalized Representation}
 
-\begin{definition}[Normalized parameter]
-A normalized local parameter is a variable
-\[
-u \in [0,1].
-\]
-\end{definition}
-
 \begin{definition}[Normalized transition law]
-A normalized transition law is a function
+A normalized transition is defined by
 \[
-\widehat{\kappaf} : [0,1] \to \R
+\widehat{\kappa} : [0,1] \to \R
 \]
-with prescribed boundary conditions, typically
+with
 \[
-\widehat{\kappaf}(0)=0,
+\widehat{\kappa}(0)=0,
 \qquad
-\widehat{\kappaf}(1)=1.
+\widehat{\kappa}(1)=1.
 \]
 \end{definition}
 
 \begin{remark}
-Normalization separates the abstract shape of the transition from its
-physical scale. This makes transition families reusable and comparable.
+Normalization separates the geometric shape of a transition from its
+scale and allows systematic comparison of transition families.
 \end{remark}
 
-\section{Scaling to Physical Transitions}
+\section{Scaling}
 
 \begin{proposition}
-Let $\widehat{\kappaf}$ be a normalized transition law on $[0,1]$.
-For given $L>0$ and curvature values $\kappa_0,\kappa_1 \in \R$, the
-corresponding physical transition law is given by
+Let $\widehat{\kappa}$ be a normalized transition law.
+Then a physical transition is given by
 \[
-\kappaf(s)
+\kappa(s)
 =
 \kappa_0 + (\kappa_1-\kappa_0)\,
-\widehat{\kappaf}\!\left(\frac{s}{L}\right),
-\qquad s\in[0,L].
+\widehat{\kappa}\!\left(\frac{s}{L}\right).
 \]
 \end{proposition}
 
 \begin{remark}
-This formula separates:
-\begin{itemize}
-  \item shape, encoded by $\widehat{\kappaf}$,
-  \item length scale, encoded by $L$,
-  \item and curvature scale, encoded by $\kappa_1-\kappa_0$.
-\end{itemize}
+This separates shape from scale and provides the basis for reusable
+transition families and parameterized design.
 \end{remark}
 
 \section{Regularity and Smoothness}
 
 \begin{definition}[Regularity class]
-A transition law belongs to class $C^k$ if its curvature function is
-$k$-times continuously differentiable.
+A transition is of class $C^k$ if its curvature function is $k$-times
+continuously differentiable.
 \end{definition}
 
 \begin{remark}
-In practice, the relevance of a transition law is not determined only by
-$\kappaf$ itself, but also by the behaviour of its derivatives such as
-$\kappaf'$ and $\kappaf''$.
+In engineering practice, higher-order properties such as curvature
+derivatives are directly related to ride comfort and dynamic loading
+\cite{Mieloszyk2012Transition,Koc2017SmoothedEnds}.
 \end{remark}
 
-\OPEN{Formal role of $\kappaf'$ and $\kappaf''$ in engineering semantics, comfort rules, and construction logic.}
+\OPEN{Formal role of $\kappa'$ and $\kappa''$ in engineering rules.}
 
 \section{Transition Families}
 
 \begin{definition}[Transition family]
-A transition family is a class of normalized transition laws sharing a
-common structural principle.
+A transition family is a class of curvature laws sharing a common
+functional structure.
 \end{definition}
-
-\begin{remark}
-Different families differ not only in formulae, but in regularity,
-boundary behaviour, implementation complexity, and engineering
-interpretation.
-\end{remark}
 
 \subsection{Classical Families}
 
-\TODO{Clothoid as the classical case of linear curvature evolution.}
+\begin{remark}
+The classical transition curve in railway engineering is the clothoid,
+characterized by linear curvature evolution
+\[
+\kappa(s) \propto s.
+\]
+\end{remark}
 
-\TODO{Polynomial transition families.}
+\begin{remark}
+Historically, this line of development can be traced through early work
+by Glover, Horsburgh, and Higgins
+\cite{Glover1900TransitionCurves,Horsburgh1913TransitionCurve,Higgins1922TransitionSpiral}.
+\end{remark}
 
-\TODO{Trigonometric transition families.}
+\subsection{Polynomial and Alternative Families}
 
-\subsection{Extended and Hybrid Families}
+\begin{remark}
+Polynomial transition curves provide additional flexibility in shaping
+curvature evolution and its derivatives.
+\end{remark}
 
-\TODO{Vienna-type transition families.}
+\begin{remark}
+Such approaches are associated with both modern polynomial smoothing
+research and with Klauder-type constructions
+\cite{ZboinskiWoznica2017Polynomial,Klauder2001BetterWay,Klauder2009US}.
+\end{remark}
 
-\TODO{Lookup-based transition families.}
+\TODO{Formal definition of polynomial transition families.}
 
-\TODO{Hybrid or composite transition families.}
+\subsection{Geometric Families}
 
-\RESEARCH{Classification of admissible transition families under geometric and engineering criteria.}
+\begin{remark}
+Some transition curves are introduced through geometric or implicit
+relations rather than explicit curvature laws.
+\end{remark}
 
-\section{Decomposition Schemes}
+\begin{example}
+Lemniscate-type or sinusoid-related constructions belong to this class
+after suitable reparameterization into curvature space
+\cite{Pirti2016Transrapid}.
+\end{example}
+
+\begin{remark}
+These curves require transformation into $\kappa(s)$ representation
+before they can be integrated into the present framework.
+\end{remark}
+
+\subsection{Engineering and Practice-Oriented Families}
+
+\begin{remark}
+Engineering practice often introduces transition curves through design
+rules and operational considerations rather than through purely
+theoretical derivation.
+\end{remark}
+
+\begin{remark}
+The Bloss transition is a notable example of a practical engineering
+family motivated by railway behaviour and design usability
+\cite{Bloss1978TrackGeometry,Ciobanu2015Bloss}.
+\end{remark}
+
+\subsection{Modern and Hybrid Families}
+
+\begin{remark}
+Modern engineering practice considers a variety of transition families
+with improved dynamic behaviour, smoother endpoint properties, or
+higher-order control.
+\end{remark}
+
+\begin{remark}
+Examples include smoothed-curvature transitions, Wiener-Bogen-related
+approaches, and operationally adapted curves
+\cite{Koc2017SmoothedEnds,Koc2019SmoothedTransition,Koc2019Operational,Wojtczak2017WienerBogen}.
+\end{remark}
+
+\RESEARCH{Systematic classification of modern transition families.}
+
+\section{Decomposition Approaches}
 
 \begin{remark}
 A transition need not always be treated as a single indivisible object.
 It may be useful to represent it as a composition of sub-elements.
 \end{remark}
 
-\TODO{Formalize the halfWave -- clothoid -- halfWave decomposition currently guiding the practical development.}
+\TODO{Formalize halfWave -- clothoid -- halfWave decomposition.}
 
-\OPEN{Clarify whether such decompositions belong to the mathematical model itself or only to a constructive implementation layer.}
+\OPEN{Is decomposition fundamental or implementation-specific?}
 
 \section{Operator View}
 
 \begin{remark}
-From a structural perspective, a transition may be interpreted as an
-operator that transforms one curvature state into another through a
-prescribed evolution law.
+Transitions can be interpreted as operators transforming curvature
+states along an alignment.
 \end{remark}
 
-\RESEARCH{Develop a formal operator view of transition composition.}
+\RESEARCH{Formal operator algebra of transitions.}
 
-\section{Representation in Practical Systems}
+\section{Implementation Perspective}
 
 \begin{remark}
-In computational settings, transitions may be represented in different
-ways, including:
+In computational systems, transition curves may be represented using:
 \begin{itemize}
-  \item closed analytic laws,
-  \item polynomial approximations,
-  \item lookup tables,
-  \item mixed or compiled representations.
+\item analytic expressions,
+\item polynomial approximations,
+\item lookup tables,
+\item compiled hybrid representations.
 \end{itemize}
 \end{remark}
 
-\TODO{Formalize the registry-based transition concept.}
+\TODO{Registry-based transition system.}
 
-\OPEN{Trade-off between analytic precision, numerical robustness, and evaluation speed.}
+\OPEN{Trade-off between analytic precision and computational efficiency.}
 
-\section{Relation to the Sparse Alignment Model}
+\section{Relation to Railway Engineering}
 
 \begin{remark}
-Within the sparse alignment model, transitions are one of the two
-fundamental element classes besides fixed elements.
+In railway applications, transitions are tightly coupled to operational
+parameters such as speed and cant, and must satisfy strict engineering
+constraints \cite{Kufver2000RailwayAlignment,Klein1998Trassierung}.
 \end{remark}
 
 \begin{remark}
-They provide the mechanism for smooth geometric change and therefore
-govern the qualitative behaviour of the alignment as a whole.
+The review literature confirms that transition curves must be understood
+not only geometrically, but also with respect to comfort, maintenance,
+and dynamic response \cite{Review2020TransitionCurves}.
 \end{remark}
 
 \section{Summary}
 
 \begin{summary}
-A transition is a curvature-driven alignment element with non-constant
-curvature. Its normalized representation separates shape from scale and
-thereby enables reusable families and implementation-independent
-comparison.
+Transitions describe the controlled evolution of curvature between
+geometric states.
 
-Transitions form the central mechanism by which smoothness and controlled
-change enter the sparse alignment model.
+Their normalized representation enables reusable families, while their
+engineering interpretation determines admissibility in practical
+applications.
+
+They form the central modelling mechanism for smooth alignment design.
 \end{summary}

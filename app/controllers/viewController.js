@@ -19,6 +19,7 @@
 // - focus is window-local
 // - canonical objects come from SPOT
 // - local preview may be shown if no focused SPOT object exists
+// - imported preview collection is rendered as aux access layer
 //
 // Rule:
 // canonical change -> local reprojection -> local rerender
@@ -135,6 +136,12 @@ export function makeViewController({
 	let cachedFocusObjectId = null;
 	let cachedActiveGeometry = null;
 
+	// -------------------------------------------------------------------------
+	// split aux track ownership cleanly
+	// -------------------------------------------------------------------------
+	let auxOwnedTracks = [];
+	let importPreviewTracks = [];
+
 	function getFocusObjectId(state) {
 		return state?.focus?.objectId ?? state?.activeRouteProjectId ?? null;
 	}
@@ -227,6 +234,32 @@ export function makeViewController({
 		};
 	}
 
+	function getImportPreviewGeometries(state) {
+		const items = Array.isArray(state?.import_preview_collection)
+			? state.import_preview_collection
+			: [];
+
+		const out = [];
+
+		for (const item of items) {
+			const previewObject = makePreviewSpotLikeObject(item);
+			if (!previewObject) continue;
+
+			const geom = projectFocusedSpotObject(previewObject, {
+				maxStep: cfg.sampleStep,
+			});
+
+			if (!geom?.polyline2d || geom.polyline2d.length < 2) continue;
+
+			out.push({
+				id: String(previewObject.id ?? item?.id ?? "preview"),
+				points: geom.polyline2d,
+			});
+		}
+
+		return out;
+	}
+
 	async function getActiveGeometry(state) {
 		const focusObjectId = getFocusObjectId(state);
 
@@ -285,27 +318,47 @@ export function makeViewController({
 		return cachedCum;
 	}
 
-	function setAuxTracks(tracks) {
+	function flushAuxTracks() {
+		const merged = [
+			...(Array.isArray(auxOwnedTracks) ? auxOwnedTracks : []),
+			...(Array.isArray(importPreviewTracks) ? importPreviewTracks : []),
+		];
+
 		if (typeof threeA.setAuxTracksFromWorldPolylinesStyled === "function") {
-			threeA.setAuxTracksFromWorldPolylinesStyled(tracks);
+			threeA.setAuxTracksFromWorldPolylinesStyled(merged);
 			return;
 		}
 
 		threeA.setAuxTracksFromWorldPolylines?.(
-			tracks.map((t) => ({ id: t.id, points: t.points }))
+			merged.map((t) => ({ id: t.id, points: t.points }))
 		);
+	}
+
+	function setAuxOwnedTracks(tracks) {
+		auxOwnedTracks = Array.isArray(tracks) ? tracks : [];
+		flushAuxTracks();
+	}
+
+	function setImportPreviewTracks(tracks) {
+		importPreviewTracks = Array.isArray(tracks) ? tracks : [];
+		flushAuxTracks();
 	}
 
 	const aux = createViewAuxTracks({
 		store,
 		cfg,
 		ensureChainageCache,
-		setAuxTracks,
+		setAuxTracks: setAuxOwnedTracks,
 		buildChunkMetrics,
 	});
 
 	function redrawAuxFromState(state = store.getState()) {
 		aux.redrawAuxFromState(state);
+	}
+
+	function redrawImportPreviewCollection(state = store.getState()) {
+		const importTracks = getImportPreviewGeometries(state);
+		setImportPreviewTracks(importTracks);
 	}
 
 	function computeAuxBboxUnion(state) {
@@ -316,16 +369,31 @@ export function makeViewController({
 		return aux.computeChunkBboxUnion(state);
 	}
 
+	function computeImportPreviewBboxUnion(state) {
+		const tracks = getImportPreviewGeometries(state);
+		let bbox = null;
+
+		for (const track of tracks) {
+			const trackBbox = pickBboxFromArtifactOrPolyline(null, track?.points ?? null);
+			bbox = unionBbox(bbox, trackBbox);
+		}
+
+		return bbox;
+	}
+
 	function computeFitBboxFromState(state, activeGeometry, opts = {}) {
 		const includePins =
 			(opts.includePins !== undefined) ? Boolean(opts.includePins) : cfg.fitIncludesPins;
 		const includeChunks =
 			(opts.includeChunks !== undefined) ? Boolean(opts.includeChunks) : true;
+		const includeImportPreviews =
+			(opts.includeImportPreviews !== undefined) ? Boolean(opts.includeImportPreviews) : true;
 
 		let bbox = activeGeometry?.bbox ?? null;
 
 		if (includePins) bbox = unionBbox(bbox, computeAuxBboxUnion(state));
 		if (includeChunks) bbox = unionBbox(bbox, computeChunkBboxUnion(state));
+		if (includeImportPreviews) bbox = unionBbox(bbox, computeImportPreviewBboxUnion(state));
 
 		return bbox;
 	}
@@ -413,13 +481,27 @@ export function makeViewController({
 		autoFitOnGeomChange = Boolean(on);
 	}
 
-	async function applyGeomChangePolicy() {
+	async function applyGeomChangePolicy(state, activeGeometry) {
 		switch (onGeomChange) {
-			case "fit": return await fitActive();
-			case "softfit": return await softFitActive();
-			case "softfitanimated": return await softFitActiveAnimated();
-			case "recenter": return await recenterToActive();
-			default: return false;
+			case "fit":
+				return await fitActive({ includeImportPreviews: true });
+			case "softfit":
+				return await softFitActive({ includeImportPreviews: true });
+			case "softfitanimated":
+				return await softFitActiveAnimated({ includeImportPreviews: true });
+			case "recenter":
+				return await recenterToActive();
+			default:
+				// preview-only import collection still deserves a visible camera target
+				if (!activeGeometry) {
+					const bbox = computeImportPreviewBboxUnion(state);
+					if (bbox) {
+						threeA.setOriginFromBbox(bbox);
+						threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
+						return true;
+					}
+				}
+				return false;
 		}
 	}
 
@@ -436,7 +518,7 @@ export function makeViewController({
 		}
 
 		if (opts.fit === true) {
-			void softFitActive({ includePins: true, includeChunks: true });
+			void softFitActive({ includePins: true, includeChunks: true, includeImportPreviews: true });
 		}
 
 		return true;
@@ -500,7 +582,7 @@ export function makeViewController({
 		}
 
 		if (event?.altKey) {
-			void softFitActiveAnimated({ durationMs: cfg.fitDurationMs });
+			void softFitActiveAnimated({ durationMs: cfg.fitDurationMs, includeImportPreviews: true });
 		}
 	}
 
@@ -520,27 +602,26 @@ export function makeViewController({
 	}
 
 	async function syncGeometryPolicyIfNeeded(state, activeGeometry, geomChanged) {
-	if (!geomChanged) return;
+		if (!geomChanged) return;
 
-	cachedCum = null;
-	lastPolyRef = null;
+		cachedCum = null;
+		lastPolyRef = null;
 
-	const bbox = activeGeometry?.bbox ?? null;
+		const bbox = activeGeometry?.bbox ?? null;
 
-	// local preview must become visible immediately
-	if (activeGeometry?.isPreview && bbox) {
-		threeA.setOriginFromBbox(bbox);
-		threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
-		return;
+		if (activeGeometry?.isPreview && bbox) {
+			threeA.setOriginFromBbox(bbox);
+			threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
+			return;
+		}
+
+		await applyGeomChangePolicy(state, activeGeometry);
+
+		if (autoFitOnGeomChange && bbox) {
+			threeA.setOriginFromBbox(bbox);
+			threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
+		}
 	}
-
-	await applyGeomChangePolicy();
-
-	if (autoFitOnGeomChange && bbox) {
-		threeA.setOriginFromBbox(bbox);
-		threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
-	}
-}
 
 	function syncSectionSamplingAndMarker(state, poly) {
 		const cum = ensureChainageCache(poly);
@@ -596,12 +677,18 @@ export function makeViewController({
 				const geomChanged = geomKey !== lastGeomKey;
 				lastGeomKey = geomKey;
 
+				// render preview collection always
+				redrawImportPreviewCollection(state);
+
 				if (!isPolylineValid(poly)) {
 					cachedCum = null;
 					lastPolyRef = null;
 					syncSectionBoard(ui, state, null);
 					redrawAuxFromState(state);
 					clear3DKeepAux();
+
+					// fit preview collection when there is no active geometry
+					await applyGeomChangePolicy(state, null);
 					return;
 				}
 

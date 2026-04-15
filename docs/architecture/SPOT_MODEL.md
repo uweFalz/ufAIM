@@ -2,13 +2,15 @@
 
 This document describes the canonical data model of ufAIM.
 
+---
+
 ## Overview
 
 ufAIM organises its internal data into three distinct classes:
 
 Spot Data      → canonical project model  
 Working Set    → candidate project data  
-Reference Data → contextual external data
+Reference Data → contextual external data  
 
 Only **Spot Data** forms the **Single Source of Truth** of the system.
 
@@ -21,54 +23,58 @@ All clients (views, editors and tools) operate on this shared model via the **Ma
 Spot Data represents the canonical working model of the project.
 
 It contains both:
-	•	engineering objects
-	•	relations between those objects
+- engineering objects
+- relations between those objects
 
-Objects
+---
+
+## Objects
 
 Objects carry geometry and domain content.
 
 Examples:
-	•	alignments
-	•	gradients
-	•	cant profiles
-	•	route projects
-	•	CRS definitions
+- alignments
+- gradients
+- cant profiles
+- route projects
+- CRS definitions
 
-Relations
+---
+
+## Relations
 
 Relations carry semantic dependencies between objects.
 
 Examples:
-	•	alignment ↔ gradient
-	•	alignment ↔ cant
-	•	alignment ↔ route project
-	•	inter-alignment dependencies
-	•	construction / operational dependencies
+- alignment ↔ gradient
+- alignment ↔ cant
+- alignment ↔ route project
+- inter-alignment dependencies
+- construction / operational dependencies
 
-⸻
+---
 
-Core Properties
+## Core Properties
 
 Spot Data is:
-	•	single source of truth
-	•	shared across all windows
-	•	editable only via Master Runtime
-	•	persisted as project state
-	•	used by solvers, editors and visualisation
+- single source of truth
+- shared across all windows
+- editable only via Master Runtime
+- persisted as project state
+- used by solvers, editors and visualisation
 
-⸻
+---
 
-Mutation Rule (critical)
+## Mutation Rule (critical)
 
 Spot Data may only be mutated via controlled operations in the Master Runtime.
 
-Objects are treated as immutable by default.
+Objects are treated as immutable by default.  
 Changes occur via explicit operations (edit, solver, import promotion).
 
-⸻
+---
 
-Spot Store Structure
+## Spot Store Structure
 
 Minimal conceptual structure:
 
@@ -79,13 +85,7 @@ spotStore
 ├─ relations
 ├─ topology
 └─ refs
-```
 
-refs does not store external models themselves, but only canonical project-side references to them.
-
-Example:
-
-```js
 spotStore = {
 
 	meta: {
@@ -110,7 +110,6 @@ spotStore = {
 
 	refs: {}
 }
-```
 
 
 ⸻
@@ -146,68 +145,33 @@ Notes:
 
 ⸻
 
-Sparse Alignment Model
+Geometry Representation
 
-The sparseAlignment is the canonical geometric representation of railway alignments.
+Sparse Alignment
 
-It is the geometry payload of Alignment objects.
+The sparseAlignment is the canonical geometric representation
+used by alignment-related SPOT objects.
 
-⸻
+It represents the deterministic 2D reference curve of an alignment.
 
-Structure
+Key properties:
+	•	minimal
+	•	deterministic
+	•	solver-friendly
+	•	independent of visualisation
 
-Alternating sequence:
+The full mathematical and structural definition is specified in:
 
-FixElement → TransitionElement → FixElement → …
-
-
-⸻
-
-Rules
-	1.	Sequence begins with FixElement
-	2.	Sequence ends with FixElement
-	3.	Strict alternation
-	4.	Each element defines poseA
+→ SparseAlignment.MD
 
 ⸻
 
-FixElement
+Important Separation
 
-{
-  type: "fixed",
-  poseA,
-  arcLength,
-  curvature
-}
-
-
-⸻
-
-TransitionElement
-
-{
-  type: "transition",
-  poseA,
-  arcLength,
-  transType
-}
-
-Curvature continuity is derived implicitly.
-
-⸻
-
-Graph Interpretation
-
-SparseAlignment can be interpreted as:
-
-Curvature Graph
-
-FixNode – TransitionEdge – FixNode
-
-Geometry Graph
-
-PoseNode – ElementEdge – PoseNode
-
+Within SPOT:
+	•	sparseAlignment represents geometry only
+	•	datasets such as profile, cant, and staEq remain separate objects
+	•	relations define how these datasets apply to geometry
 
 ⸻
 
@@ -218,7 +182,7 @@ Topology represents network-level connectivity between objects.
 It is distinct from:
 	•	geometry (inside objects)
 	•	relations (semantic dependencies)
-	
+
 Topology = connectivity layer across objects
 
 Examples:
@@ -236,7 +200,7 @@ Sources:
 	•	imports
 	•	landFAT containers
 	•	experimental geometry
-	
+
 workingSet = {
   sessionId,
   items: {}
@@ -271,7 +235,7 @@ Reference Data is read-only and never promoted to Spot Data.
 
 ⸻
 
-## Import Pipeline (updated)
+Import Pipeline
 
 External File
 ↓
@@ -286,7 +250,6 @@ Working Set
 User decision
 ↓
 Spot Store
-
 
 ⸻
 
@@ -323,9 +286,8 @@ The Master Runtime (SharedWorker):
 	•	validates operations
 	•	applies mutations
 	•	synchronises all clients
-	
-Client → Command → Master Runtime → Spot Store
 
+Client → Command → Master Runtime → Spot Store
 
 ⸻
 
@@ -335,7 +297,6 @@ Spot Data      = canonical model
 Working Set    = candidates
 Reference Data = context
 
-
 ⸻
 
 Final Statement
@@ -344,4 +305,6 @@ SPOT is truth.
 Working Set is possibility.
 Reference Data is context.
 
-The sparseAlignment model forms the geometric backbone of ufAIM and remains minimal, deterministic and solver-friendly.
+The sparse alignment model provides the geometric backbone of ufAIM,
+while SPOT defines the canonical structure in which all engineering data,
+relations and interpretations are organised.

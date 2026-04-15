@@ -18,54 +18,6 @@ function setupGeoRuntime(ctx) {
 	return ctx.threeA;
 }
 
-function buildImportInboxUiState(importState = {}) {
-	const items = Array.isArray(importState?.items) ? importState.items : [];
-
-	const rows = items.map((item) => {
-		const fileName = item?.source?.fileName ?? null;
-		const label =
-			item?.payload?.name ??
-			item?.payload?.id ??
-			item?.source?.objectName ??
-			item?.id ??
-			"item";
-
-		return {
-			spotId: String(item?.id ?? ""),
-			objectId: String(item?.id ?? ""),
-			isActive: false,
-
-			label,
-			type: item?.kind ?? "alignment",
-
-			outcome: item?.status?.promotable ? "promotable" : "imported",
-			outcomeConfidence: item?.status?.promotable ? 1 : 0.5,
-
-			sourceLabel: fileName ? `${fileName} → ${label}` : label,
-			files: fileName ? [fileName] : [],
-
-			missing: [],
-			notes: [
-				item?.status?.promotable ? "promotable" : "not-promotable",
-			],
-
-			hasSparse: Boolean(item?.derived?.sparseAlignment),
-			sparseAlignment: item?.derived?.sparseAlignment ?? null,
-		};
-	});
-
-	return {
-		rows,
-		activeSpotId: null,
-		stats: {
-			total: rows.length,
-			filesSeen: new Set(
-				rows.flatMap((row) => Array.isArray(row.files) ? row.files : [])
-			).size,
-		},
-	};
-}
-
 function setupImportUI(ctx) {
 	const importer = makeImportController({
 		store: ctx.store,
@@ -82,14 +34,8 @@ function setupImportUI(ctx) {
 		onFiles: (files) => importer.importFiles(files),
 	});
 
-	async function refreshImportInboxUiFromMaster() {
-		const importState = await ctx.messaging?.sendCmdAwait?.("Import.GetState", {});
-		const inboxUiState = buildImportInboxUiState(importState);
-		ctx.ui?.setSpotState?.(inboxUiState);
-		ctx.ui?.refreshSpot?.(ctx.store.getState());
-		return inboxUiState;
-	}
-
+	// Old SPOT overlay actions remain available for now.
+	// Cockpit is the new primary sofa, but this keeps existing buttons alive.
 	ctx.ui.wireSpotActions?.({
 		onActivate: async (spotId) => {
 			const objectId = String(spotId ?? "").trim();
@@ -111,50 +57,19 @@ function setupImportUI(ctx) {
 			});
 		},
 
-		onDecision: async ({ decision, key }) => {
-			const itemId = String(key ?? "").trim();
-			if (!itemId) return;
+		onDecision: ({ decision, key }) => {
+			const spotId = String(key ?? "").trim();
+			if (!spotId) return;
 
 			ctx.store.actions?.setSpotDecision?.({
-				spotId: itemId,
+				spotId,
 				slot: "right",
 				decision: decision || null,
 			});
 
-			if (decision !== "accept") {
-				ctx.ui?.refreshSpot?.(ctx.store.getState());
-				return;
-			}
-
-			const result = await ctx.messaging?.sendCmdAwait?.(
-				"Spot.PromoteImportItemsById",
-				{ itemIds: [itemId] }
-			);
-
-			await refreshImportInboxUiFromMaster();
-
-			const addedObjectId =
-				Array.isArray(result?.addedObjects) && result.addedObjects[0]?.id
-					? String(result.addedObjects[0].id)
-					: null;
-
-			if (addedObjectId) {
-				ctx.store.actions?.clearPreviewItem?.();
-				await ctx.focusManager?.setFocus?.({
-					objectId: addedObjectId,
-					slot: "right",
-				});
-			}
+			ctx.ui?.refreshSpot?.(ctx.store.getState());
 		},
 	});
-
-	// keep overlay populated with inbox items after imports
-	const originalImportFiles = importer.importFiles;
-	importer.importFiles = async (files) => {
-		await originalImportFiles(files);
-		await refreshImportInboxUiFromMaster();
-		ctx.ui?.openSpot?.();
-	};
 
 	return importer;
 }
@@ -221,6 +136,17 @@ function setupViewRuntime(ctx) {
 	return viewC;
 }
 
+function setupCockpitRuntime(ctx) {
+	const cockpitRoot = document.getElementById("cockpitPanelBody");
+	if (!cockpitRoot) {
+		ctx.ui?.logInfo?.("Cockpit panel body not found");
+		return null;
+	}
+
+	ctx.cockpit.attach(cockpitRoot);
+	return ctx.cockpit;
+}
+
 async function setupTransitionRuntime(ctx) {
 	const teBridge = makeTransitionEditorBridge({
 		store: ctx.store,
@@ -245,5 +171,6 @@ export async function initFeatures(ctx) {
 	setupImportUI(ctx);
 	setupCockpitSelectors(ctx);
 	setupViewRuntime(ctx);
+	setupCockpitRuntime(ctx);
 	await setupTransitionRuntime(ctx);
 }

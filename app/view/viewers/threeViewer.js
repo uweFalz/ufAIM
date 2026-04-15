@@ -2,13 +2,13 @@
 
 import * as THREE from "three";
 
-//
-// ...
-//
 export function makeThreeViewer({ canvas }) {
+	if (!canvas) {
+		throw new Error("makeThreeViewer: missing canvas");
+	}
+
 	// MS13.13: align viewer coordinates with ENU (Z-up)
 	// Project convention: x=east, y=north, z=up.
-	// three.js defaults to Y-up, which puts GridHelper into XZ and is very confusing here.
 	THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
 
 	const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -32,7 +32,7 @@ export function makeThreeViewer({ canvas }) {
 	const grid = new THREE.GridHelper(600, 30);
 	// GridHelper is created in XZ by default; rotate it into the XY plane (Z-up world).
 	grid.rotation.x = Math.PI / 2;
-	// Subtle look + avoid z-fighting dominating the tracks
+
 	if (Array.isArray(grid.material)) {
 		for (const m of grid.material) {
 			m.transparent = true;
@@ -53,19 +53,16 @@ export function makeThreeViewer({ canvas }) {
 	// Visual language:
 	// - active track: solid + bright
 	// - aux tracks (pinned/background): dashed + muted
-	// NOTE: linewidth is ignored in most WebGL implementations; we rely on color/opacity.
 	const trackMat = new THREE.LineBasicMaterial({
 		color: 0x00d7ff,
 		transparent: true,
 		opacity: 0.98,
-		// keep the active track readable even with the grid below
 		depthTest: false,
 		depthWrite: false,
 	});
 	let trackLine = null;
 
-	// MS13.9+: aux tracks (pinned/background) — keep them visible but subdued.
-	// We also disable depth test/write so dashed tracks don't disappear behind the grid.
+	// Base aux material; styled tracks may clone/override this.
 	const auxMat = new THREE.LineDashedMaterial({
 		color: 0x9ca3af,
 		dashSize: 12,
@@ -87,32 +84,71 @@ export function makeThreeViewer({ canvas }) {
 	let sectionLine = null;
 
 	const marker = new THREE.Mesh(
-	new THREE.SphereGeometry(4, 18, 12),
-	new THREE.MeshStandardMaterial({ color: 0xffc107, depthTest: false, depthWrite: false })
+		new THREE.SphereGeometry(4, 18, 12),
+		new THREE.MeshStandardMaterial({
+			color: 0xffc107,
+			depthTest: false,
+			depthWrite: false,
+		})
 	);
 	marker.renderOrder = 30;
 	scene.add(marker);
 
 	// orbit
-	let isDrag = false, lastX = 0, lastY = 0;
-	let yaw = 0.3, pitch = 0.55, radius = 320;
+	let isDrag = false;
+	let lastX = 0;
+	let lastY = 0;
+	let yaw = 0.3;
+	let pitch = 0.55;
+	let radius = 320;
 	const target = new THREE.Vector3(0, 0, 0);
 
-	// MS13.2b: smooth zoom animation (radius lerp)
+	// smooth zoom animation
 	let zoomAnim = null; // { t0, durationMs, r0, r1 }
 
+	// animation loop control
+	let isStarted = false;
+	let rafId = 0;
+
+	// resize control
+	let lastResizeW = 0;
+	let lastResizeH = 0;
+	let resizeQueued = false;
+	const resizeHost = canvas.parentElement ?? canvas;
+	let resizeObserver = null;
+
+	function scheduleResize() {
+		if (resizeQueued) return;
+		resizeQueued = true;
+
+		requestAnimationFrame(() => {
+			resizeQueued = false;
+			resize();
+		});
+	}
+
 	canvas.addEventListener("mousedown", (e) => {
-		isDrag = true; lastX = e.clientX; lastY = e.clientY;
+		isDrag = true;
+		lastX = e.clientX;
+		lastY = e.clientY;
 	});
 
-	canvas.addEventListener("wheel", (e) => {
-		e.preventDefault();
-		radius = Math.min(1200, Math.max(80, radius + e.deltaY * 0.4));
-	}, { passive: false });
+	canvas.addEventListener(
+		"wheel",
+		(e) => {
+			e.preventDefault();
+			radius = Math.min(1200, Math.max(80, radius + e.deltaY * 0.4));
+		},
+		{ passive: false }
+	);
 
-	window.addEventListener("mouseup", () => { isDrag = false; });
+	window.addEventListener("mouseup", () => {
+		isDrag = false;
+	});
+
 	window.addEventListener("mousemove", (e) => {
 		if (!isDrag) return;
+
 		const dx = e.clientX - lastX;
 		const dy = e.clientY - lastY;
 
@@ -128,6 +164,12 @@ export function makeThreeViewer({ canvas }) {
 		const w = Math.max(1, Math.floor(rect.width));
 		const h = Math.max(1, Math.floor(rect.height));
 
+		if (w === lastResizeW && h === lastResizeH) return;
+
+		lastResizeW = w;
+		lastResizeH = h;
+
+		renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
 		camera.updateProjectionMatrix();
@@ -144,7 +186,7 @@ export function makeThreeViewer({ canvas }) {
 			return;
 		}
 
-		const pts3 = pointsXY.map(p => new THREE.Vector3(p.x, p.y, p.z ?? 0));
+		const pts3 = pointsXY.map((p) => new THREE.Vector3(p.x, p.y, p.z ?? 0));
 		const geo = new THREE.BufferGeometry().setFromPoints(pts3);
 
 		if (trackLine) {
@@ -158,12 +200,75 @@ export function makeThreeViewer({ canvas }) {
 		}
 	}
 
+	function disposeLineMaterial(line) {
+		if (!line?.material) return;
+
+		if (line.material !== auxMat && typeof line.material.dispose === "function") {
+			line.material.dispose();
+		}
+	}
+
 	function clearAuxTracks() {
 		for (const line of auxLines.values()) {
 			scene.remove(line);
 			line.geometry.dispose();
+			disposeLineMaterial(line);
 		}
 		auxLines.clear();
+	}
+
+	function makeAuxMaterialFromStyle(style = {}) {
+		const dashed = style.dashed !== false;
+
+		if (dashed) {
+			return new THREE.LineDashedMaterial({
+				color: Number.isFinite(style.color) ? style.color : 0x9ca3af,
+				dashSize: Number.isFinite(style.dashSize) ? style.dashSize : 12,
+				gapSize: Number.isFinite(style.gapSize) ? style.gapSize : 8,
+				transparent: true,
+				opacity: Number.isFinite(style.opacity) ? style.opacity : 0.78,
+				depthTest: false,
+				depthWrite: false,
+			});
+		}
+
+		return new THREE.LineBasicMaterial({
+			color: Number.isFinite(style.color) ? style.color : 0x9ca3af,
+			transparent: true,
+			opacity: Number.isFinite(style.opacity) ? style.opacity : 0.78,
+			depthTest: false,
+			depthWrite: false,
+		});
+	}
+
+	function applyAuxStyle(line, style = {}) {
+		const wantsStyledMaterial =
+			style &&
+			(
+				Number.isFinite(style.color) ||
+				Number.isFinite(style.opacity) ||
+				style.dashed === false ||
+				Number.isFinite(style.dashSize) ||
+				Number.isFinite(style.gapSize)
+			);
+
+		if (!wantsStyledMaterial) {
+			if (line.material !== auxMat) {
+				disposeLineMaterial(line);
+				line.material = auxMat;
+			}
+		} else {
+			disposeLineMaterial(line);
+			line.material = makeAuxMaterialFromStyle(style);
+		}
+
+		line.position.z = Number.isFinite(style.zOffset) ? style.zOffset : 0.08;
+		line.renderOrder = Number.isFinite(style.renderOrder) ? style.renderOrder : 12;
+		line.frustumCulled = false;
+
+		if (typeof line.computeLineDistances === "function" && line.material?.isLineDashedMaterial) {
+			line.computeLineDistances();
+		}
 	}
 
 	function setAuxTracks(tracks) {
@@ -174,29 +279,28 @@ export function makeThreeViewer({ canvas }) {
 		}
 
 		const keep = new Set();
+
 		for (const t of tracks) {
 			const id = String(t?.id ?? "");
 			const pts = t?.pointsXY;
 			if (!id || !Array.isArray(pts) || pts.length < 2) continue;
+
 			keep.add(id);
 
-			const pts3 = pts.map(p => new THREE.Vector3(p.x, p.y, p.z ?? 0));
+			const pts3 = pts.map((p) => new THREE.Vector3(p.x, p.y, p.z ?? 0));
 			const geo = new THREE.BufferGeometry().setFromPoints(pts3);
 
 			let line = auxLines.get(id);
 			if (!line) {
 				line = new THREE.Line(geo, auxMat);
-				line.renderOrder = 12;
-				line.position.z = 0.08;
-				line.frustumCulled = false;
-				line.computeLineDistances();
 				auxLines.set(id, line);
 				scene.add(line);
 			} else {
 				line.geometry.dispose();
 				line.geometry = geo;
-				line.computeLineDistances();
 			}
+
+			applyAuxStyle(line, t?.style ?? {});
 		}
 
 		// remove stale
@@ -204,6 +308,7 @@ export function makeThreeViewer({ canvas }) {
 			if (keep.has(id)) continue;
 			scene.remove(line);
 			line.geometry.dispose();
+			disposeLineMaterial(line);
 			auxLines.delete(id);
 		}
 	}
@@ -220,8 +325,8 @@ export function makeThreeViewer({ canvas }) {
 		}
 
 		const pts3 = [
-		new THREE.Vector3(p0.x, p0.y, p0.z ?? 0),
-		new THREE.Vector3(p1.x, p1.y, p1.z ?? 0),
+			new THREE.Vector3(p0.x, p0.y, p0.z ?? 0),
+			new THREE.Vector3(p1.x, p1.y, p1.z ?? 0),
 		];
 		const geo = new THREE.BufferGeometry().setFromPoints(pts3);
 
@@ -268,7 +373,7 @@ export function makeThreeViewer({ canvas }) {
 	}
 
 	function render() {
-		// MS13.2b: animate radius (zoom) smoothly
+		// animate radius (zoom) smoothly
 		if (zoomAnim) {
 			const now = performance.now();
 			const dt = now - zoomAnim.t0;
@@ -300,10 +405,44 @@ export function makeThreeViewer({ canvas }) {
 		renderer.render(scene, camera);
 	}
 
+	function loop() {
+		render();
+		rafId = requestAnimationFrame(loop);
+	}
+
 	function start() {
+		if (isStarted) return;
+		isStarted = true;
+
 		resize();
-		function loop() { render(); requestAnimationFrame(loop); }
+		scheduleResize();
+
+		if (typeof ResizeObserver !== "undefined") {
+			resizeObserver = new ResizeObserver(() => {
+				scheduleResize();
+			});
+			resizeObserver.observe(resizeHost);
+			if (resizeHost !== canvas) {
+				resizeObserver.observe(canvas);
+			}
+		}
+
 		loop();
+	}
+
+	function stop() {
+		if (!isStarted) return;
+		isStarted = false;
+
+		if (rafId) {
+			cancelAnimationFrame(rafId);
+			rafId = 0;
+		}
+
+		if (resizeObserver) {
+			resizeObserver.disconnect();
+			resizeObserver = null;
+		}
 	}
 
 	function setTrackPoints(points) {
@@ -312,7 +451,10 @@ export function makeThreeViewer({ canvas }) {
 
 	function computeFitRadiusForBox(bbox, pad = 1.25) {
 		if (!bbox) return null;
-		const minX = bbox.minX, minY = bbox.minY, maxX = bbox.maxX, maxY = bbox.maxY;
+		const minX = bbox.minX;
+		const minY = bbox.minY;
+		const maxX = bbox.maxX;
+		const maxY = bbox.maxY;
 		if (![minX, minY, maxX, maxY].every(Number.isFinite)) return null;
 
 		const dx = Math.max(1e-6, maxX - minX);
@@ -334,7 +476,10 @@ export function makeThreeViewer({ canvas }) {
 		if (!bbox) return;
 		const pad = Number.isFinite(opts.padding) ? opts.padding : 1.25;
 
-		const minX = bbox.minX, minY = bbox.minY, maxX = bbox.maxX, maxY = bbox.maxY;
+		const minX = bbox.minX;
+		const minY = bbox.minY;
+		const maxX = bbox.maxX;
+		const maxY = bbox.maxY;
 		if (![minX, minY, maxX, maxY].every(Number.isFinite)) return;
 
 		target.set((minX + maxX) * 0.5, (minY + maxY) * 0.5, 0);
@@ -368,12 +513,45 @@ export function makeThreeViewer({ canvas }) {
 		};
 	}
 
-	window.addEventListener("resize", resize);
+	function destroy() {
+		stop();
+
+		window.removeEventListener("resize", scheduleResize);
+
+		clearAuxTracks();
+
+		if (trackLine) {
+			scene.remove(trackLine);
+			trackLine.geometry.dispose();
+			trackLine = null;
+		}
+
+		if (sectionLine) {
+			scene.remove(sectionLine);
+			sectionLine.geometry.dispose();
+			sectionLine = null;
+		}
+
+		scene.remove(marker);
+		marker.geometry.dispose();
+		if (marker.material?.dispose) marker.material.dispose();
+
+		trackMat.dispose();
+		auxMat.dispose();
+		sectionMat.dispose();
+
+		renderer.dispose();
+	}
+
+	window.addEventListener("resize", scheduleResize);
 
 	return {
 		THREE,
 		resize,
+		scheduleResize,
 		start,
+		stop,
+		destroy,
 
 		zoomToFitBox,
 		zoomToFitBoxSoft,
@@ -384,13 +562,10 @@ export function makeThreeViewer({ canvas }) {
 		setMarker: setMarkerObj,
 		setSectionLine,
 
-		// MS13.9
 		setAuxTracks,
 		clearAuxTracks,
-		// compat alias (old name used in adapter in some patches)
 		setAuxTracksPoints: setAuxTracks,
 
-		// optional legacy
 		setTrackFromXY,
 		setMarkerXYZ: setMarker,
 

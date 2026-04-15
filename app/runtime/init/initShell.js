@@ -19,6 +19,7 @@ export function initShell(ctx) {
 	ctx.logElement = document.getElementById("log");
 	ctx.statusElement = document.getElementById("status");
 	ctx.propsElement = document.getElementById("props");
+	ctx.cockpitPanelBody = document.getElementById("cockpitPanelBody");
 
 	ctx.ui = wireUI({
 		logElement: ctx.logElement,
@@ -28,6 +29,10 @@ export function initShell(ctx) {
 
 	ctx.logLine = ctx.ui.logLine;
 	ctx.destroyPanelDragging = makePanelsDraggable();
+
+	if (ctx.prefs?.isDev) {
+		window.__ufAIM_cockpitPanelBody = ctx.cockpitPanelBody ?? null;
+	}
 
 	return ctx.ui;
 }

@@ -1,0 +1,58 @@
+\chapter*{Abstract}
+
+\addcontentsline{toc}{chapter}{Abstract}
+
+Railway alignment modelling remains a central task in infrastructure
+engineering, yet existing approaches are often fragmented across
+geometric design, data standards, and dynamic evaluation.
+
+This work introduces the concept of
+\emph{Alignment-Based Information Modelling (AIM)},
+a unified framework in which railway alignment is represented as a
+state-based object combining geometry, curvature, and cant.
+
+Within this framework, alignment is not treated as a static curve, but
+as a dynamic system governed by curvature functions and their
+derivatives.
+Transition curves are reinterpreted as control functions for curvature,
+rather than as predefined geometric templates.
+
+A canonical representation is proposed, integrating horizontal
+geometry, vertical behaviour, and cant into a single model.
+This representation enables direct evaluation of dynamic quantities
+such as effective acceleration and jerk, and provides a natural basis
+for numerical reconstruction and optimization.
+
+The work further establishes a connection between alignment modelling
+and constrained optimization.
+Classical transition curves, such as the clothoid, are derived as
+solutions of variational problems in curvature space.
+More general formulations allow the inclusion of engineering
+constraints and objective functions reflecting comfort, safety, and
+cost considerations.
+
+To bridge the gap between computational modelling and real-world data,
+the concept of a normalization pipeline is introduced.
+Heterogeneous input formats, including LandXML, IFC, and legacy data,
+are transformed into a canonical alignment representation.
+An interactive intermediate layer supports user-guided interpretation
+of imported data.
+
+Building on this foundation, the notion of
+\emph{BIMalignment} is proposed as an extension of BIM principles.
+In this view, alignment becomes the central organizing structure for
+infrastructure models, linking geometry, semantics, and dynamic
+behaviour within a computationally enabled framework.
+
+The presented approach is demonstrated through numerical examples,
+optimization sketches, and application-oriented use cases.
+The results indicate that alignment-centred modelling provides a
+coherent and extensible basis for future railway design systems.
+
+The work concludes by outlining directions for further research,
+including advanced vehicle dynamics, network-level optimization,
+real-time interaction, and integration with AI-assisted design tools.
+
+Overall, the AIM framework establishes a shift from static geometric
+representation toward dynamic, optimization-ready, and
+alignment-centred infrastructure modelling.

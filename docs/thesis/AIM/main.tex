@@ -23,6 +23,10 @@
 \usepackage{hyperref}
 \usepackage[nameinlink]{cleveref}
 
+% --- Algorithms ---
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
 % --- Bibliography ---
 \bibliographystyle{plain}
 
@@ -35,13 +39,17 @@
 \newtheorem{theorem}{Theorem}[chapter]
 \newtheorem{axiom}[theorem]{Axiom}
 \newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
 
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
 
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
 \newtheorem{summary}[theorem]{Summary}
+\newtheorem{constraint}[theorem]{Constraint}
 
 % --- Includes ---
 \input{macros}
@@ -50,31 +58,82 @@
 \begin{document}
 
 \frontmatter
+
 \title{AIM Foundations}
+\subtitle{Curvature-Driven Modelling, Classification, Dynamics, and Optimization of Structured Railway Alignments}
 \author{Uwe Falz}
 \date{\today}
+
 \maketitle
 \tableofcontents
 
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+
+This manuscript is intended as a long-term scientific foundation for
+alignment-based information modelling.
+It is not merely a software documentation, but a structured knowledge base
+covering geometry, transition theory, numerical reconstruction,
+engineering constraints, dynamics, standards, and optimization.
+
 \mainmatter
 
+\input{abstract_short}
+\input{abstract}
+\input{introduction}
+
+% ============================================================
 \part{Foundations}
+% ============================================================
+
 \input{foundations/axioms}
 
+% ============================================================
 \part{Model}
+% ============================================================
+
 \input{model/sparse}
 \input{model/transitions}
+\input{model/transition_classification}
+\input{model/pose3_and_cant}
+\input{model/schwerpunkt_trassierung}
 
+% ============================================================
 \part{Analysis}
+% ============================================================
+
 \input{analysis/numerics}
+\input{analysis/optimization}
+\input{analysis/dynamics}
+\input{analysis/optimizer_architecture}
+\input{analysis/constraint_code}
 
+% ============================================================
 \part{Reality}
-\input{reality/data}
+% ============================================================
 
+\input{reality/data}
+\input{reality/standards}
+\input{reality/bim}
+
+% ============================================================
 \part{Applications}
+% ============================================================
+
 \input{applications/railway}
+\input{applications/examples}
+\input{applications/use_cases}
+\input{applications/bimalignment}
+\input{applications/contribution}
+\input{applications/railway_rules}
+\input{applications/future_work}
+\input{applications/discussion}
 
 \backmatter
+
+% During build-up phase: print everything in references.bib
+\nocite{*}
+
 \bibliography{references}
 \printindex
 

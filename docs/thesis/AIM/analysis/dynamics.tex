@@ -1,0 +1,391 @@
+\chapter{Dynamics and Railway State Interpretation}
+
+\section{Motivation}
+
+\begin{remark}
+Geometric alignment alone is not sufficient to describe railway behaviour.
+The motion of a vehicle depends on both curvature and cant, as well as
+on operational parameters such as speed.
+\end{remark}
+
+\begin{remark}
+This motivates a dynamic interpretation of alignment in which geometric
+quantities are translated into physical effects.
+\end{remark}
+
+\section{Kinematic Basis}
+
+\begin{definition}[Velocity]
+Let $v>0$ denote the velocity of the vehicle along the alignment.
+\end{definition}
+
+\begin{definition}[Curvature-induced acceleration]
+For a planar curve with curvature $\kappa(s)$, the lateral acceleration is
+\[
+a_\kappa(s) = v^2 \kappa(s).
+\]
+\end{definition}
+
+\begin{remark}
+This is the classical centripetal acceleration associated with curved motion.
+\end{remark}
+
+\section{Cant and Effective Acceleration}
+
+\begin{definition}[Cant angle]
+Let $\phi(s)$ denote the local roll angle induced by cant.
+\end{definition}
+
+\begin{definition}[Gravity component]
+The gravitational acceleration projected onto the lateral direction is
+\[
+a_g(s) = g \sin\phi(s),
+\]
+where $g$ denotes gravitational acceleration.
+\end{definition}
+
+\begin{definition}[Effective lateral acceleration]
+The effective lateral acceleration acting on the vehicle is
+\[
+a_{\mathrm{eff}}(s)
+=
+v^2 \kappa(s) - g \sin\phi(s).
+\]
+\end{definition}
+
+\begin{remark}
+This expression captures the fundamental coupling between curvature and
+cant in railway engineering.
+\end{remark}
+
+\section{Equilibrium Condition}
+
+\begin{definition}[Equilibrium cant]
+A state of equilibrium is achieved when
+\[
+v^2 \kappa(s) = g \sin\phi(s).
+\]
+\end{definition}
+
+\begin{remark}
+In this case, the effective lateral acceleration vanishes:
+\[
+a_{\mathrm{eff}}(s) = 0.
+\]
+\end{remark}
+
+\begin{remark}
+This condition corresponds to the classical notion of balanced track,
+where centrifugal and gravitational effects cancel.
+\end{remark}
+
+\section{Cant Deficiency and Excess}
+
+\begin{definition}[Cant deficiency]
+Cant deficiency is defined as
+\[
+\Delta(s)
+=
+v^2 \kappa(s) - g \sin\phi(s).
+\]
+\end{definition}
+
+\begin{remark}
+Positive values correspond to insufficient cant, negative values to
+excess cant.
+\end{remark}
+
+\begin{remark}
+Cant deficiency is a central design parameter in railway engineering,
+as it directly influences passenger comfort and safety.
+\end{remark}
+
+\section{Dynamic Smoothness}
+
+\begin{definition}[Jerk]
+The rate of change of effective acceleration is given by
+\[
+j(s)
+=
+\frac{\dd}{\dd t} a_{\mathrm{eff}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+Using $\dd t = \frac{1}{v} \dd s$, one obtains
+\[
+j(s)
+=
+v \frac{\dd}{\dd s} a_{\mathrm{eff}}(s).
+\]
+\end{remark}
+
+\begin{proposition}
+The jerk is given by
+\[
+j(s)
+=
+v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s).
+\]
+\end{proposition}
+
+\begin{remark}
+This shows that both curvature variation and cant variation contribute
+to dynamic effects.
+\end{remark}
+
+\section{Time Parameterization}
+
+\begin{remark}
+The alignment is parameterized by arc length \(s\), while dynamic
+quantities evolve in time \(t\).
+\end{remark}
+
+\begin{definition}[Arc-length/time relation]
+Assuming constant speed \(v>0\), we have
+\[
+\frac{\dd s}{\dd t} = v.
+\]
+\end{definition}
+
+\begin{proposition}
+For any function \(f(s)\), the time derivative is given by
+\[
+\frac{\dd f}{\dd t}
+=
+v \frac{\dd f}{\dd s}.
+\]
+\end{proposition}
+
+\begin{remark}
+This relation allows all spatial derivatives to be translated into
+temporal dynamics.
+\end{remark}
+
+\section{Dynamic System Formulation}
+
+\begin{definition}[State variables]
+The railway state is described by
+\[
+x(s), y(s), \theta(s), \phi(s).
+\]
+\end{definition}
+
+\begin{proposition}[Kinematic system]
+The system satisfies
+\[
+\frac{\dd x}{\dd s} = \cos\theta(s),
+\qquad
+\frac{\dd y}{\dd s} = \sin\theta(s),
+\]
+\[
+\frac{\dd \theta}{\dd s} = \kappa(s).
+\]
+\end{proposition}
+
+\begin{remark}
+These equations correspond to the geometric reconstruction of the curve.
+\end{remark}
+
+\begin{definition}[Extended dynamic state]
+The extended state includes cant:
+\[
+(\gamma(s), \theta(s), \phi(s)).
+\]
+\end{definition}
+
+\begin{remark}
+The functions \(\kappa(s)\) and \(\phi(s)\) act as control variables.
+\end{remark}
+
+\section{Time-Based Dynamics}
+
+\begin{proposition}
+In time parameterization, the heading angle satisfies
+\[
+\frac{\dd \theta}{\dd t} = v \kappa(s).
+\]
+\end{proposition}
+
+\begin{proposition}
+The lateral acceleration is given by
+\[
+a_\kappa(t) = v^2 \kappa(s).
+\]
+\end{proposition}
+
+\section{Higher-Order Dynamics}
+
+\begin{definition}[Jerk]
+The jerk is defined as
+\[
+j(t) = \frac{\dd}{\dd t} a_{\mathrm{eff}}(t).
+\]
+\end{definition}
+
+\begin{proposition}
+The jerk is given by
+\[
+j(t)
+=
+v^3 \kappa'(s)
+-
+g v \cos\phi(s)\,\phi'(s).
+\]
+\end{proposition}
+
+\begin{proof}
+Using
+\[
+a_{\mathrm{eff}} = v^2 \kappa(s) - g \sin\phi(s),
+\]
+we obtain
+\[
+\frac{\dd}{\dd t} a_{\mathrm{eff}}
+=
+v^2 \frac{\dd \kappa}{\dd t}
+-
+g \cos\phi(s) \frac{\dd \phi}{\dd t}.
+\]
+With
+\[
+\frac{\dd}{\dd t} = v \frac{\dd}{\dd s},
+\]
+this yields
+\[
+j(t)
+=
+v^3 \kappa'(s)
+-
+g v \cos\phi(s)\,\phi'(s).
+\]
+\end{proof}
+
+\section{Control-Theoretic Interpretation}
+
+\begin{definition}[Control system]
+The railway alignment can be interpreted as a control system with
+\[
+\text{state: } (\gamma, \theta, \phi),
+\qquad
+\text{controls: } (\kappa, \phi').
+\]
+\end{definition}
+
+\begin{remark}
+The curvature \(\kappa(s)\) controls the geometric evolution,
+while \(\phi(s)\) controls the dynamic balancing of forces.
+\end{remark}
+
+\begin{remark}
+This formulation establishes a direct connection between alignment
+design and optimal control theory.
+\end{remark}
+
+\section{Coupled Dynamics}
+
+\begin{remark}
+The effective acceleration depends on both curvature and cant:
+\[
+a_{\mathrm{eff}} = v^2 \kappa - g \sin\phi.
+\]
+\end{remark}
+
+\begin{remark}
+Thus, curvature and cant must be treated as a coupled system rather
+than independent design variables.
+\end{remark}
+
+\begin{proposition}
+Perfect equilibrium requires
+\[
+v^2 \kappa(s) = g \sin\phi(s).
+\]
+\end{proposition}
+
+\section{Coupled State Interpretation}
+
+\begin{remark}
+The expressions above show that railway behaviour depends on the coupled
+state variables
+\[
+(\kappa(s), \phi(s)).
+\]
+\end{remark}
+
+\begin{remark}
+A purely geometric interpretation based on $\kappa(s)$ alone is therefore
+insufficient for describing the physical behaviour of the system.
+\end{remark}
+
+\section{Extension to Pose3}
+
+\begin{remark}
+Within the pose3 framework, the railway state is described by
+\[
+(x(s), y(s), z(s), \theta(s), \phi(s)).
+\]
+\end{remark}
+
+\begin{remark}
+This representation naturally integrates:
+\begin{itemize}
+\item geometry (position and direction),
+\item vertical profile,
+\item cant (through $\phi$),
+\item and dynamic interpretation.
+\end{itemize}
+\end{remark}
+
+\section{Relation to Optimization}
+
+\begin{remark}
+The dynamic quantities introduced above provide natural objective terms
+for alignment optimization.
+\end{remark}
+
+\begin{remark}
+Typical optimization criteria include:
+\begin{itemize}
+\item minimizing $\int a_{\mathrm{eff}}(s)^2 \,\dd s$,
+\item minimizing $\int j(s)^2 \,\dd s$,
+\item limiting peak values of cant deficiency.
+\end{itemize}
+\end{remark}
+
+\section{Engineering Interpretation}
+
+\begin{remark}
+In practical railway design, acceptable ranges for cant, cant deficiency,
+and jerk are prescribed by standards and operational guidelines.
+\end{remark}
+
+\begin{remark}
+The mathematical formulation above provides a unified framework for
+expressing these rules in analytic form.
+\end{remark}
+
+\section{Connection to Schwerpunkt-Trassierung}
+
+\begin{remark}
+The combined dependence on curvature and cant supports a
+Schwerpunkt-oriented view of alignment.
+\end{remark}
+
+\begin{remark}
+Rather than describing only a geometric path, alignment is interpreted as
+a controlled dynamic state along the track.
+\end{remark}
+
+\section{Summary}
+
+\begin{summary}
+Railway alignment must be interpreted dynamically rather than purely
+geometrically.
+
+The coupled variables $\kappa(s)$ and $\phi(s)$ determine lateral
+acceleration, comfort, and operational feasibility.
+
+This provides the foundation for extending alignment modelling toward
+state-based and optimization-based frameworks.
+\end{summary}

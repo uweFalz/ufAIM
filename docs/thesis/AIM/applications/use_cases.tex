@@ -1,0 +1,383 @@
+\chapter{Use Cases}
+
+\section{Motivation}
+
+\begin{remark}
+A theoretical modelling framework becomes substantially more convincing
+when it is connected to concrete engineering scenarios.
+\end{remark}
+
+\begin{remark}
+The following use cases illustrate how the proposed AIM framework can be
+applied to realistic railway alignment problems.
+\end{remark}
+
+\begin{remark}
+The examples are not meant as software demonstrations only. They are
+intended to clarify the interaction between:
+\begin{itemize}
+\item data,
+\item structured alignment models,
+\item dynamic interpretation,
+\item and optimization.
+\end{itemize}
+\end{remark}
+
+\section{Use Case 1: Reconstruction of an Existing Alignment}
+
+\subsection{Scenario}
+
+\begin{remark}
+An existing railway alignment is available only through measured points,
+legacy file formats, or partially structured engineering data.
+\end{remark}
+
+\begin{remark}
+Typical input may consist of:
+\begin{itemize}
+\item a measured polyline,
+\item imported TRA/GRA data,
+\item LandXML fragments,
+\item or mixed data of uncertain quality.
+\end{itemize}
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to reconstruct a mathematically coherent alignment model from
+heterogeneous data.
+\end{remark}
+
+\subsection{Pipeline}
+
+\begin{verbatim}
+raw data
+→ parsing
+→ grabbeltisch sorting
+→ sparse / pose3 state reconstruction
+→ initial guess
+→ numerical refinement
+\end{verbatim}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This use case emphasizes that railway geometry is not simply “read from a
+file”. Instead, it is reconstructed as a structured state object.
+\end{remark}
+
+\begin{remark}
+The AIM framework interprets imported data as evidence for an alignment,
+not as unquestionable truth.
+\end{remark}
+
+\section{Use Case 2: Smoothing of an Existing Track}
+
+\subsection{Scenario}
+
+\begin{remark}
+A measured or existing alignment is geometrically feasible, but exhibits
+undesirable local irregularities.
+\end{remark}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item noisy curvature estimates,
+\item abrupt cant changes,
+\item locally degraded transition zones.
+\end{itemize}
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to derive an improved alignment preserving the overall route
+while reducing local dynamic excitation.
+\end{remark}
+
+\subsection{Objective Structure}
+
+\begin{remark}
+Typical objective terms include:
+\begin{itemize}
+\item fitting to the original track,
+\item smoothness of curvature,
+\item smoothness of cant,
+\item reduction of jerk.
+\end{itemize}
+\end{remark}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This is one of the clearest examples showing that alignment should be
+treated as an optimization problem rather than as a purely geometric
+description.
+\end{remark}
+
+\section{Use Case 3: Design of a New Transition Zone}
+
+\subsection{Scenario}
+
+\begin{remark}
+A new transition between straight track and circular arc is required.
+\end{remark}
+
+\begin{remark}
+Classically, one would choose a predefined transition family such as a
+clothoid. In the present framework, the transition may instead be
+derived through optimization.
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to construct a transition satisfying:
+\begin{itemize}
+\item boundary curvature conditions,
+\item cant conditions,
+\item dynamic smoothness criteria.
+\end{itemize}
+\end{remark}
+
+\subsection{AIM Perspective}
+
+\begin{remark}
+In the AIM framework, the transition is not primarily selected as a
+named curve family. Rather, it is derived as a controlled curvature
+evolution.
+\end{remark}
+
+\begin{remark}
+This use case directly illustrates the central thesis that transition
+curves are control functions rather than merely geometric connectors.
+\end{remark}
+
+\section{Use Case 4: Coupled Optimization of Curvature and Cant}
+
+\subsection{Scenario}
+
+\begin{remark}
+A railway section is to be improved with respect to comfort and dynamic
+performance.
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to optimize both:
+\[
+\kappa(s)
+\quad \text{and} \quad
+\phi(s),
+\]
+instead of treating cant as a secondary afterthought.
+\end{remark}
+
+\subsection{Objective Terms}
+
+\begin{remark}
+Relevant objective terms include:
+\begin{itemize}
+\item effective lateral acceleration,
+\item jerk,
+\item curvature smoothness,
+\item cant smoothness.
+\end{itemize}
+\end{remark}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This use case demonstrates the transition from pose2-based geometry to
+pose3-based railway state modelling.
+\end{remark}
+
+\begin{remark}
+It also shows that railway alignment design is inherently a coupled
+problem.
+\end{remark}
+
+\section{Use Case 5: Schwerpunkt-Trassierung}
+
+\subsection{Scenario}
+
+\begin{remark}
+Instead of designing only the track centerline, one seeks to design the
+motion of a representative point of the vehicle system.
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to optimize the trajectory of the center of mass, or of
+another dynamically relevant reference point, by adjusting curvature and
+cant.
+\end{remark}
+
+\subsection{Model}
+
+\begin{remark}
+The design variables are:
+\[
+\kappa(s), \quad \phi(s),
+\]
+while the induced trajectory
+\[
+\gamma_c(s)
+\]
+becomes the primary object of evaluation.
+\end{remark}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This use case represents the conceptual extension from classical
+alignment design toward the new idea of Schwerpunkt-Trassierung.
+\end{remark}
+
+\begin{remark}
+It is one of the clearest expressions of the originality of the present
+framework.
+\end{remark}
+
+\section{Use Case 6: Multi-Track and Network Optimization}
+
+\subsection{Scenario}
+
+\begin{remark}
+A railway system rarely consists of a single isolated alignment.
+Instead, one must often deal with:
+\begin{itemize}
+\item parallel tracks,
+\item switches,
+\item branching structures,
+\item coupled corridor geometries.
+\end{itemize}
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to optimize several alignments simultaneously under
+topological and geometric coupling constraints.
+\end{remark}
+
+\subsection{Typical Constraints}
+
+\begin{itemize}
+\item coincident switch nodes,
+\item tangent continuity,
+\item parallel track spacing,
+\item compatible cant and geometry transitions.
+\end{itemize}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This use case shows that the AIM framework extends naturally from single
+curves to entire railway systems.
+\end{remark}
+
+\section{Use Case 7: Interactive Optimization from the Grabbeltisch}
+
+\subsection{Scenario}
+
+\begin{remark}
+A user imports multiple heterogeneous data sources and arranges them in
+the grabbeltisch interface according to their semantic role.
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The system must transform this user-guided sorting into a mathematically
+meaningful optimization input.
+\end{remark}
+
+\subsection{Pipeline}
+
+\begin{verbatim}
+drop files
+→ detect / parse
+→ sort on grabbeltisch
+→ build alignment input
+→ construct initial guess
+→ optimize
+→ preview
+→ commit to model
+\end{verbatim}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This use case is particularly important because it connects the abstract
+framework to actual engineering workflow.
+\end{remark}
+
+\begin{remark}
+It also demonstrates that user interaction and mathematical modelling
+are not opposites, but complementary parts of the same system.
+\end{remark}
+
+\section{Use Case 8: Standards and BIM Integration}
+
+\subsection{Scenario}
+
+\begin{remark}
+An optimized alignment must be exchanged with other systems through
+standardized or semi-standardized formats.
+\end{remark}
+
+\subsection{Task}
+
+\begin{remark}
+The task is to translate the internal alignment state into layered
+representations suitable for engineering and BIM workflows.
+\end{remark}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This use case highlights the value of a structured internal model.
+Only such a model can be mapped consistently to multi-layer data models
+containing horizontal alignment, profile, and cant.
+\end{remark}
+
+\section{Comparative Summary of Use Cases}
+
+\begin{center}
+\begin{tabular}{p{4cm}p{4cm}p{5cm}}
+\textbf{Use Case} & \textbf{Primary Input} & \textbf{Primary Output} \\
+\hline
+Reconstruction & raw / imported geometry & structured alignment state \\
+Smoothing & measured / degraded track & improved alignment \\
+Transition design & boundary conditions & optimized transition law \\
+Curvature--cant coupling & route + speed + cant & pose3-consistent state \\
+Schwerpunkt & vehicle-based reference & optimized reference trajectory \\
+Network optimization & multi-track graph & globally consistent corridor \\
+Grabbeltisch workflow & user-sorted imports & optimization-ready input \\
+BIM integration & structured state model & exportable layered model \\
+\end{tabular}
+\end{center}
+
+\section{Conclusion}
+
+\begin{summary}
+The presented use cases demonstrate that the AIM framework is not limited
+to theoretical alignment descriptions.
+
+It supports:
+\begin{itemize}
+\item reconstruction,
+\item optimization,
+\item dynamic interpretation,
+\item user-guided engineering workflows,
+\item and system-level railway design.
+\end{itemize}
+
+Together, these use cases show that alignment can be treated as a
+structured, dynamic, and optimization-ready object.
+\end{summary}

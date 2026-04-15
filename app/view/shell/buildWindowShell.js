@@ -9,6 +9,7 @@
 // geo-first window shell
 // - primary geo stage (#view3d)
 // - compact toolbar
+// - right-side cockpit sofa (dockable / collapsible)
 // - floating panels for SPOT / Transition / Bands / Section / Status-Debug
 //
 // DOM only. No wiring here.
@@ -21,7 +22,7 @@ export function buildWindowShell() {
 	if (!appRoot) throw new Error("buildWindowShell: missing #app-root");
 
 	appRoot.innerHTML = `
-		<div class="uf-shell">
+		<div class="uf-shell" id="ufShell">
 			<div class="uf-toolbar">
 				<input id="fileImport" type="file" multiple style="display:none" />
 
@@ -43,6 +44,8 @@ export function buildWindowShell() {
 				<button id="btnToggleBands" class="btn" data-i18n="btn_bands"></button>
 				<button id="btnToggleSection" class="btn" data-i18n="btn_section"></button>
 				<button id="btnToggleDebug" class="btn" data-i18n="btn_status_debug"></button>
+
+				<button id="btnCockpit" class="btn btn--primary" title="Cockpit">Cockpit</button>
 
 				<div class="uf-toolbar__spacer"></div>
 
@@ -85,8 +88,20 @@ export function buildWindowShell() {
 				<span id="pinsInfo" class="hint" data-i18n="pins_info_empty"></span>
 			</div>
 
-			<div class="uf-stage">
-				<canvas id="view3d"></canvas>
+			<div class="uf-workspace">
+				<div class="uf-stageWrap">
+					<div class="uf-stage">
+						<canvas id="view3d"></canvas>
+					</div>
+				</div>
+
+				<aside id="cockpitPanel" class="uf-cockpitPanel">
+					<header class="uf-cockpitPanel__header">
+						<span>Cockpit</span>
+						<button id="btnCockpitClose" class="btn btn--ghost" title="Cockpit schließen">×</button>
+					</header>
+					<div id="cockpitPanelBody" class="uf-cockpitPanel__body"></div>
+				</aside>
 			</div>
 		</div>
 	`;
@@ -198,7 +213,4 @@ export function buildWindowShell() {
 	if (debugRoot) {
 		debugRoot.innerHTML = "";
 	}
-	
-	// console.log("[buildWindowShell] btnImport", document.getElementById("btnImport"));
-	// console.log("[buildWindowShell] i18n count", document.querySelectorAll("[data-i18n]").length);
 }

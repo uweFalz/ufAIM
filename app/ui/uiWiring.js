@@ -87,6 +87,10 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		log: resolveElement(logElement, "log"),
 		status: resolveElement(statusElement, "status"),
 		props: document.getElementById("props"),
+
+		buttonCockpit: document.getElementById("btnCockpit"),
+		buttonCockpitClose: document.getElementById("btnCockpitClose"),
+		shell: document.getElementById("ufShell"),
 		
 		// Debug
 		buttonDebug: document.getElementById("btnToggleDebug"),
@@ -269,6 +273,28 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	const spotView = makeSpotView({
 		rootEl: elements.spotOverlayBody,
 	});
+
+	// ------------------------------------------------------------
+	// cockpit
+	// ------------------------------------------------------------
+
+	function openCockpit() {
+		if (!elements.shell) return;
+		elements.shell.classList.remove("is-cockpit-collapsed");
+		setPrimary(elements.buttonCockpit, true);
+	}
+
+	function closeCockpit() {
+		if (!elements.shell) return;
+		elements.shell.classList.add("is-cockpit-collapsed");
+		setPrimary(elements.buttonCockpit, false);
+	}
+
+	function toggleCockpit() {
+		if (!elements.shell) return;
+		const collapsed = elements.shell.classList.toggle("is-cockpit-collapsed");
+		setPrimary(elements.buttonCockpit, !collapsed);
+	}
 
 	// ------------------------------------------------------------
 	// log ringbuffer
@@ -642,6 +668,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	}
 
 	function wireOverlayButtons() {
+		elements.buttonCockpit?.addEventListener("click", toggleCockpit);
+		elements.buttonCockpitClose?.addEventListener("click", closeCockpit);
+
 		elements.buttonDebug?.addEventListener("click", toggleDebug);
 		elements.buttonDebugClose?.addEventListener("click", closeDebug);
 
@@ -703,6 +732,10 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		openDebug,
 		closeDebug,
 		toggleDebug,
+
+				openCockpit,
+		closeCockpit,
+		toggleCockpit,
 
 		// logging + status
 		logLine,

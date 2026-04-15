@@ -1,0 +1,712 @@
+\chapter{Examples}
+
+\section{Motivation}
+
+\begin{remark}
+Theoretical concepts become meaningful only when illustrated by concrete
+examples.
+\end{remark}
+
+\begin{remark}
+The following examples demonstrate how different transition concepts can
+be interpreted within the curvature-based framework.
+\end{remark}
+
+---
+
+\section{Example 1: Clothoid Transition}
+
+\subsection{Definition}
+
+\begin{definition}
+The clothoid is defined by linear curvature:
+\[
+\kappa(s) = a s.
+\]
+\end{definition}
+
+\subsection{Properties}
+
+\begin{itemize}
+\item $\kappa'(s) = \text{const}$
+\item $\kappa''(s) = 0$
+\end{itemize}
+
+\begin{remark}
+The clothoid introduces curvature at a constant rate.
+\end{remark}
+
+\subsection{Interpretation}
+
+\begin{remark}
+In the curvature-based framework, the clothoid represents a linear
+control function.
+\end{remark}
+
+\begin{remark}
+Its simplicity explains its historical dominance in railway design.
+\end{remark}
+
+---
+
+\section{Example 2: Polynomial Transition}
+
+\subsection{Definition}
+
+\begin{definition}
+A polynomial transition may be defined as
+\[
+\kappa(s) = a_1 s + a_2 s^2 + a_3 s^3.
+\]
+\end{definition}
+
+\subsection{Properties}
+
+\begin{itemize}
+\item $\kappa'(s)$ is variable
+\item $\kappa''(s)$ is controllable
+\end{itemize}
+
+\subsection{Interpretation}
+
+\begin{remark}
+Polynomial transitions allow shaping of higher-order behaviour.
+\end{remark}
+
+\begin{remark}
+They can be used to reduce dynamic excitation by smoothing curvature
+variation.
+\end{remark}
+
+---
+
+\section{Example 3: Comparison of Curvature Profiles}
+
+\begin{remark}
+Consider two transitions:
+\begin{itemize}
+\item a clothoid,
+\item a cubic polynomial.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Both achieve the same boundary conditions:
+\[
+\kappa(0)=0, \quad \kappa(L)=\kappa_0.
+\]
+\end{remark}
+
+\subsection{Observation}
+
+\begin{remark}
+Although geometrically equivalent at the endpoints, the internal
+behaviour differs.
+\end{remark}
+
+\begin{itemize}
+\item clothoid: constant curvature growth,
+\item polynomial: variable curvature growth.
+\end{itemize}
+
+\begin{remark}
+This leads to different dynamic responses.
+\end{remark}
+
+---
+
+\section{Example 4: Influence of Speed}
+
+\begin{remark}
+Lateral acceleration is given by
+\[
+a_\text{lat} = v^2 \kappa(s).
+\]
+\end{remark}
+
+\begin{remark}
+For identical geometry, increasing speed amplifies dynamic effects.
+\end{remark}
+
+\begin{remark}
+This highlights that transition design cannot be separated from
+operational conditions.
+\end{remark}
+
+---
+
+\section{Example 5: Cant Interaction}
+
+\begin{remark}
+Cant modifies the effective lateral acceleration experienced by the
+vehicle.
+\end{remark}
+
+\begin{remark}
+The combination of curvature and cant determines the system behaviour.
+\end{remark}
+
+\begin{remark}
+Transition design must therefore consider both geometric and cant
+evolution.
+\end{remark}
+
+---
+
+\section{Example 6: Interpretation as Control Problem}
+
+\begin{remark}
+Consider $\kappa(s)$ as an input function.
+\end{remark}
+
+\begin{remark}
+The system produces:
+\begin{itemize}
+\item forces,
+\item vehicle response,
+\item wear.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Different transition curves correspond to different control strategies.
+\end{remark}
+
+---
+
+\section{Example 7: Numerical Comparison of Two Transition Laws}
+
+\subsection{Setting}
+
+\begin{remark}
+Consider two transition curves of equal length
+\[
+L = 100\,\mathrm{m}
+\]
+connecting a straight segment to a circular arc with final curvature
+\[
+\kappa_1 = \frac{1}{1000}\,\mathrm{m}^{-1}.
+\]
+\end{remark}
+
+\begin{remark}
+Thus, both transitions satisfy
+\[
+\kappa(0)=0,
+\qquad
+\kappa(L)=0.001.
+\]
+\end{remark}
+
+\subsection{Case A: Clothoid}
+
+\begin{definition}
+The clothoid is given by
+\[
+\kappa_A(s) = \frac{\kappa_1}{L}\,s
+= \frac{0.001}{100}\,s
+= 10^{-5}s.
+\]
+\end{definition}
+
+\begin{remark}
+Its curvature derivative is constant:
+\[
+\kappa_A'(s)=10^{-5}\,\mathrm{m}^{-2}.
+\]
+\end{remark}
+
+\subsection{Case B: Cubic Polynomial Transition}
+
+\begin{definition}
+Consider the normalized cubic law
+\[
+\widehat{\kappa}(u)=3u^2-2u^3,
+\qquad u=\frac{s}{L}.
+\]
+The corresponding physical curvature law is
+\[
+\kappa_B(s)=\kappa_1\left(3\left(\frac{s}{L}\right)^2
+-2\left(\frac{s}{L}\right)^3\right).
+\]
+\end{definition}
+
+\begin{remark}
+This transition satisfies
+\[
+\kappa_B(0)=0,
+\qquad
+\kappa_B(L)=0.001,
+\]
+but its curvature derivative is not constant.
+\end{remark}
+
+\subsection{Comparison of Curvature Growth}
+
+\begin{remark}
+At the midpoint \(s=50\,\mathrm{m}\), the clothoid gives
+\[
+\kappa_A(50)=10^{-5}\cdot 50 = 0.0005.
+\]
+\end{remark}
+
+\begin{remark}
+For the cubic transition, with \(u=0.5\),
+\[
+\kappa_B(50)=0.001\left(3\cdot 0.5^2 - 2\cdot 0.5^3\right)
+=0.001(0.75-0.25)=0.0005.
+\]
+\end{remark}
+
+\begin{remark}
+Hence both transitions have the same midpoint curvature, but they differ
+in the way curvature is introduced.
+\end{remark}
+
+\subsection{Comparison of Curvature Derivatives}
+
+\begin{remark}
+For the clothoid,
+\[
+\kappa_A'(s)=10^{-5}\,\mathrm{m}^{-2}
+\]
+is constant over the whole interval.
+\end{remark}
+
+\begin{remark}
+For the cubic transition,
+\[
+\kappa_B'(s)
+=
+\kappa_1\left(
+\frac{6s}{L^2}-\frac{6s^2}{L^3}
+\right).
+\]
+With \(L=100\) and \(\kappa_1=0.001\), this becomes
+\[
+\kappa_B'(s)
+=
+0.001\left(
+\frac{6s}{10000}-\frac{6s^2}{1000000}
+\right).
+\]
+\end{remark}
+
+\begin{remark}
+At the start and end points:
+\[
+\kappa_B'(0)=0,
+\qquad
+\kappa_B'(100)=0.
+\]
+At the midpoint \(s=50\):
+\[
+\kappa_B'(50)
+=
+0.001\left(
+\frac{300}{10000}-\frac{15000}{1000000}
+\right)
+=
+0.001(0.03-0.015)
+=
+1.5\times 10^{-5}\,\mathrm{m}^{-2}.
+\]
+\end{remark}
+
+\subsection{Interpretation}
+
+\begin{remark}
+The clothoid introduces curvature with constant rate from the very
+beginning.
+The cubic transition starts more gently, reaches a higher curvature
+growth rate in the middle, and then tapers off smoothly toward the end.
+\end{remark}
+
+\begin{remark}
+This shows that identical boundary conditions do not imply identical
+dynamic behaviour.
+Even when two transitions connect the same geometric states, their
+internal curvature evolution may differ substantially.
+\end{remark}
+
+\subsection{Dynamic Implication}
+
+\begin{remark}
+For a vehicle speed \(v\), the lateral acceleration is
+\[
+a_{\mathrm{lat}}(s)=v^2\kappa(s).
+\]
+Hence the rate of change of lateral acceleration is proportional to
+\[
+v^2\kappa'(s).
+\]
+\end{remark}
+
+\begin{remark}
+The numerical example therefore illustrates a central point of this
+manuscript: transition curves should be compared not only by endpoint
+conditions, but by their full curvature evolution and its derivatives.
+\end{remark}
+
+---
+
+\section{Example 8: Speed and Dynamic Effects}
+
+\subsection{Setting}
+
+\begin{remark}
+We consider the same two transition curves as before:
+\begin{itemize}
+\item clothoid (linear curvature),
+\item cubic transition.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Let the vehicle speed be
+\[
+v = 200\,\mathrm{km/h} = 55.56\,\mathrm{m/s}.
+\]
+\end{remark}
+
+---
+
+\subsection{Lateral Acceleration}
+
+\begin{proposition}
+The lateral acceleration is given by
+\[
+a_{\mathrm{lat}}(s) = v^2 \kappa(s).
+\]
+\end{proposition}
+
+\begin{remark}
+With
+\[
+v^2 \approx 3086\,\mathrm{m}^2/\mathrm{s}^2,
+\]
+we obtain for the final curvature
+\[
+a_{\mathrm{lat,max}} = 3086 \cdot 0.001 = 3.086\,\mathrm{m/s}^2.
+\]
+\end{remark}
+
+---
+
+\subsection{Rate of Change of Acceleration}
+
+\begin{definition}
+The rate of change of lateral acceleration is
+\[
+\frac{d a_{\mathrm{lat}}}{ds} = v^2 \kappa'(s).
+\]
+\end{definition}
+
+---
+
+\subsection{Clothoid}
+
+\begin{remark}
+For the clothoid:
+\[
+\kappa'(s) = 10^{-5}.
+\]
+\end{remark}
+
+\begin{remark}
+Thus:
+\[
+\frac{d a_{\mathrm{lat}}}{ds}
+=
+3086 \cdot 10^{-5}
+=
+0.0309\,\mathrm{m/s}^2/\mathrm{m}.
+\]
+\end{remark}
+
+\begin{remark}
+The acceleration increases at a constant rate along the transition.
+\end{remark}
+
+---
+
+\subsection{Cubic Transition}
+
+\begin{remark}
+At the midpoint \(s=50\,\mathrm{m}\):
+\[
+\kappa_B'(50) = 1.5 \times 10^{-5}.
+\]
+\end{remark}
+
+\begin{remark}
+Thus:
+\[
+\frac{d a_{\mathrm{lat}}}{ds}
+=
+3086 \cdot 1.5 \cdot 10^{-5}
+=
+0.0463\,\mathrm{m/s}^2/\mathrm{m}.
+\]
+\end{remark}
+
+\begin{remark}
+At the start and end:
+\[
+\kappa_B'(0)=\kappa_B'(L)=0
+\]
+and therefore
+\[
+\frac{d a_{\mathrm{lat}}}{ds}=0.
+\]
+\end{remark}
+
+---
+
+\subsection{Interpretation}
+
+\begin{remark}
+The clothoid introduces acceleration immediately with a constant rate.
+\end{remark}
+
+\begin{remark}
+The cubic transition starts smoothly (zero rate), increases the rate in
+the middle, and returns smoothly to zero.
+\end{remark}
+
+---
+
+\subsection{Engineering Implication}
+
+\begin{remark}
+From a passenger comfort perspective:
+\begin{itemize}
+\item clothoid: predictable but abrupt start,
+\item cubic: smoother entry and exit, but stronger variation internally.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+From a system perspective:
+\begin{itemize}
+\item clothoid: simple control,
+\item cubic: distributed control with reduced boundary effects.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Key Observation}
+
+\begin{proposition}
+Even for identical geometry and speed, different curvature laws produce
+different acceleration profiles.
+\end{proposition}
+
+---
+
+\begin{summary}
+Dynamic behaviour depends not only on curvature magnitude, but on its
+rate of change.
+
+The numerical example shows that transition curves act as control
+functions shaping the evolution of forces in the system.
+
+This supports the central thesis that alignment design is fundamentally
+a problem of curvature control.
+\end{summary}
+
+---
+
+\section{Example 9: Optimization Sketch}
+
+\subsection{Motivation}
+
+\begin{remark}
+Traditional transition design selects predefined curve families.
+\end{remark}
+
+\begin{remark}
+In contrast, the curvature-based framework allows direct optimization
+of the transition function.
+\end{remark}
+
+---
+
+\subsection{Problem Formulation}
+
+\begin{definition}
+We seek a curvature function
+\[
+\kappa(s), \quad s \in [0,L],
+\]
+such that:
+\[
+\kappa(0)=0, \quad \kappa(L)=\kappa_1.
+\]
+\end{definition}
+
+\begin{remark}
+Additionally, we may impose smoothness conditions such as
+\[
+\kappa'(0)=0, \quad \kappa'(L)=0.
+\]
+\end{remark}
+
+---
+
+\subsection{Objective}
+
+\begin{definition}
+A simple objective is to minimize the maximum rate of curvature change:
+\[
+\min_{\kappa} \; \max_{s \in [0,L]} |\kappa'(s)|.
+\]
+\end{definition}
+
+\begin{remark}
+This corresponds to minimizing peak dynamic excitation.
+\end{remark}
+
+---
+
+\subsection{Candidate Solutions}
+
+\begin{remark}
+Two candidate solutions are:
+\begin{itemize}
+\item clothoid: constant $\kappa'$,
+\item cubic transition: zero boundary derivatives.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Qualitative Comparison}
+
+\begin{remark}
+The clothoid distributes curvature growth evenly over the interval.
+\end{remark}
+
+\begin{remark}
+The cubic transition reduces boundary effects but increases curvature
+variation in the interior.
+\end{remark}
+
+---
+
+\subsection{Optimality Consideration}
+
+\begin{proposition}
+An optimal transition balances boundary smoothness and internal
+variation of curvature.
+\end{proposition}
+
+\begin{remark}
+The optimization problem therefore involves trade-offs between:
+\begin{itemize}
+\item peak curvature derivative,
+\item smoothness at endpoints,
+\item distribution of curvature change.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{General Optimization Framework}
+
+\begin{remark}
+More general formulations may include objectives such as:
+\begin{itemize}
+\item minimizing jerk,
+\item minimizing energy,
+\item minimizing wear-related forces.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These objectives can be expressed as functionals of $\kappa(s)$ and its
+derivatives.
+\end{remark}
+
+---
+
+\subsection{Interpretation}
+
+\begin{remark}
+The optimization problem is defined directly in curvature space.
+\end{remark}
+
+\begin{remark}
+This eliminates the need to select a predefined transition family.
+\end{remark}
+
+\begin{remark}
+Instead, transition curves emerge as solutions of an optimization
+problem.
+\end{remark}
+
+---
+
+\subsection{Connection to AIM}
+
+\begin{remark}
+Within the AIM framework, the curvature function becomes a parameterized
+object subject to constraints and optimization.
+\end{remark}
+
+\begin{remark}
+This enables integration with numerical methods and automated design
+processes.
+\end{remark}
+
+---
+
+\subsection{Key Result}
+
+\begin{theorem}
+Transition curves can be derived as solutions of optimization problems
+in curvature space rather than selected from predefined families.
+\end{theorem}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+    The present example is formalized in the optimization chapter, where
+classical transition families are derived as minimizers of curvature-based
+functionals.
+
+The optimization sketch demonstrates that transition design can be
+formulated as a mathematical optimization problem.
+
+This shifts alignment design from rule-based construction to
+model-based optimization and provides a natural link to numerical
+methods and automated engineering workflows.
+\end{summary}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+The examples demonstrate that:
+
+\begin{itemize}
+\item transition curves can be compared via $\kappa(s)$,
+\item different functional forms lead to different system behaviour,
+\item geometry alone does not determine performance,
+\item transition design is inherently a control problem.
+\end{itemize}
+
+Two transitions may connect the same straight and circular arc and still
+exhibit different internal behaviour.
+
+The clothoid is characterized by constant curvature growth, whereas the
+cubic transition provides a smoother start and end, but stronger
+variation in the interior.
+
+This confirms that transition design is fundamentally a problem of
+curvature control rather than mere endpoint matching.
+\end{summary}

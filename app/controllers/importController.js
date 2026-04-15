@@ -5,22 +5,21 @@
 // Window-local import entry point.
 //
 // Flow:
-//   FileDrop -> importPipeline -> ImportSession -> local preview -> local UI refresh
+//   FileDrop -> importPipeline -> ImportSession -> local preview
 //
 // Responsibilities:
 // - runs importPipeline for dropped files
 // - sends canonical ImportSessionItems to master
-// - updates local UI state
 // - stores one local preview candidate for rendering
-// - opens SPOT so user can explicitly accept / promote later
 //
 // NOT:
 // - no implicit SPOT promotion
 // - no local SPOT duplication
 // - no parser-specific hacks
+// - no SPOT overlay updates here
 //
 // Rule:
-// Imported data becomes visible in SPOT only after it exists in master import-session state.
+// Imported data is stored canonically in master import-session state.
 // Preview is local-only until explicit acceptance/promotion happens later.
 
 import { installFileDrop } from "@io/input/fileDrop.js";
@@ -204,16 +203,6 @@ export function makeImportController({
 		return await messaging.sendCmdAwait("Import.GetState", {});
 	}
 
-	async function refreshSpotUiFromMaster() {
-		if (!messaging?.sendCmdAwait) return null;
-
-		const spotUiState = await messaging.sendCmdAwait("Spot.GetUiState", {});
-		if (spotUiState && typeof ui?.setSpotState === "function") {
-			ui.setSpotState(spotUiState);
-		}
-		return spotUiState;
-	}
-
 	async function importFiles(files) {
 		const batch = Array.from(files ?? []);
 
@@ -261,9 +250,6 @@ export function makeImportController({
 				});
 
 				await refreshImportStateFromMaster();
-				await refreshSpotUiFromMaster();
-
-				ui?.openSpot?.();
 			} catch (err) {
 				stats.failed += 1;
 				console.error("import failed detail:", err);
@@ -281,7 +267,7 @@ export function makeImportController({
 				source: { type: "import-preview" },
 			});
 
-			// preview must win until user explicitly activates a SPOT object
+			// preview must win until user explicitly activates a canonical object
 			store.actions?.setActiveRouteProject?.(null);
 			store.actions?.setCursorS?.(0);
 		}

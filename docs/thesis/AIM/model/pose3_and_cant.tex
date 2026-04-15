@@ -1,0 +1,277 @@
+\chapter{Pose3, Cant, and Spatial Railway State}
+
+\section{Motivation}
+
+\begin{remark}
+Classical railway alignment models are based on planar geometry.
+They describe the track centerline as a curve
+\[
+\gamma : s \mapsto (x(s),y(s)).
+\]
+\end{remark}
+
+\begin{remark}
+However, real railway systems are inherently three-dimensional.
+In particular, the rotation of the track around its longitudinal axis
+(cant) plays a fundamental role for vehicle dynamics.
+\end{remark}
+
+\begin{remark}
+This motivates the introduction of an extended state description,
+referred to as \emph{pose3}, which augments planar geometry by
+rotational information.
+\end{remark}
+
+---
+
+\section{Pose2 Revisited}
+
+\begin{definition}[Pose2]
+The planar pose of a curve is defined as
+\[
+\mathrm{pose2}(s)
+=
+\bigl(
+\gamma(s), \theta(s)
+\bigr),
+\]
+where
+\[
+\gamma(s)\in\R^2, \qquad \theta(s)\in\R.
+\]
+\end{definition}
+
+\begin{remark}
+The evolution of pose2 is governed by
+\[
+\theta'(s)=\kappa(s),
+\qquad
+\gamma'(s)=(\cos\theta(s),\sin\theta(s)).
+\]
+\end{remark}
+
+---
+
+\section{Cant as Rotational State}
+
+\begin{definition}[Cant angle]
+Let
+\[
+\phi : I \to \R
+\]
+denote the cant angle, describing rotation of the track cross-section
+around the tangent direction.
+\end{definition}
+
+\begin{remark}
+The cant angle represents the inclination of the track and directly
+influences lateral acceleration and load distribution.
+\end{remark}
+
+\begin{definition}[Cant rate]
+The derivative
+\[
+\phi'(s)
+\]
+describes the rate of change of cant along the track.
+\end{definition}
+
+---
+
+\section{Pose3 Definition}
+
+\begin{definition}[Pose3]
+The spatial railway state (pose3) is defined as
+\[
+\mathrm{pose3}(s)
+=
+\bigl(
+\gamma(s),
+\theta(s),
+\phi(s)
+\bigr).
+\]
+\end{definition}
+
+\begin{remark}
+Pose3 extends pose2 by adding a rotational degree of freedom.
+It captures both geometric and dynamic-relevant aspects of the track.
+\end{remark}
+
+---
+
+\section{State Evolution}
+
+\begin{proposition}[Pose3 evolution]
+The pose3 state satisfies
+\[
+\begin{aligned}
+\gamma'(s) &= (\cos\theta(s),\sin\theta(s)), \\
+\theta'(s) &= \kappa(s), \\
+\phi'(s)   &= \omega(s),
+\end{aligned}
+\]
+where \(\omega(s)\) denotes the cant-rate control.
+\end{proposition}
+
+\begin{remark}
+Thus, pose3 is governed by two control functions:
+\[
+\kappa(s) \quad \text{and} \quad \omega(s).
+\]
+\end{remark}
+
+---
+
+\section{Reconstruction Principle}
+
+\begin{proposition}
+Given
+\[
+\kappa(s), \quad \omega(s),
+\]
+and initial conditions
+\[
+\gamma(0), \quad \theta(0), \quad \phi(0),
+\]
+the pose3 state is uniquely determined.
+\end{proposition}
+
+\begin{proof}
+The result follows by integration of the differential system.
+\end{proof}
+
+---
+
+\section{Relation to Physical Quantities}
+
+\subsection{Effective Lateral Acceleration}
+
+\begin{definition}
+The effective lateral acceleration is
+\[
+a_{\mathrm{eff}}(s)
+=
+v^2 \kappa(s) - g \sin\phi(s).
+\]
+\end{definition}
+
+\begin{remark}
+This quantity determines passenger comfort and safety.
+\end{remark}
+
+---
+
+\subsection{Jerk}
+
+\begin{definition}
+The jerk is given by
+\[
+j(s)
+=
+v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s).
+\]
+\end{definition}
+
+\begin{remark}
+The jerk measures the rate of change of acceleration and is a key
+criterion for comfort.
+\end{remark}
+
+---
+
+\section{Interpretation as Control System}
+
+\begin{remark}
+The pose3 model can be interpreted as a control system:
+\[
+\begin{aligned}
+\text{state:} &\quad (\gamma,\theta,\phi), \\
+\text{controls:} &\quad \kappa, \ \omega.
+\end{aligned}
+\]
+\end{remark}
+
+\begin{remark}
+This formulation provides a natural bridge to optimal control and
+optimization methods.
+\end{remark}
+
+---
+
+\section{Cant and Curvature Coupling}
+
+\begin{remark}
+Curvature and cant are not independent.
+They jointly determine dynamic behaviour.
+\end{remark}
+
+\begin{definition}[Equilibrium condition]
+A perfectly balanced design satisfies
+\[
+v^2 \kappa(s) = g \sin\phi(s).
+\]
+\end{definition}
+
+\begin{remark}
+In practice, deviations from this condition are allowed but must remain
+within regulatory limits.
+\end{remark}
+
+---
+
+\section{Towards Schwerpunkt-Trassierung}
+
+\begin{remark}
+The pose3 formulation enables a reinterpretation of alignment design.
+Instead of designing geometry alone, one designs a spatial state
+trajectory.
+\end{remark}
+
+\begin{remark}
+In particular, the concept of \emph{Schwerpunkt-Trassierung} can be
+understood as the design of a trajectory that optimally balances
+curvature and cant in a dynamic sense.
+\end{remark}
+
+\RESEARCH{Formal definition of Schwerpunkt-based alignment design.}
+
+\OPEN{Integration of vehicle dynamics into the pose3 framework.}
+
+---
+
+\section{Relation to Existing Standards}
+
+\begin{remark}
+Existing railway design standards typically prescribe:
+\begin{itemize}
+\item limits on curvature,
+\item limits on cant,
+\item limits on cant gradient.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These rules can be interpreted as constraints on the pose3 state and
+its derivatives.
+\end{remark}
+
+---
+
+\section{Connection to the AIM Framework}
+
+\begin{summary}
+The introduction of pose3 extends alignment modelling from planar
+geometry to a spatial state description.
+
+This provides:
+\begin{itemize}
+\item a unified representation of geometry and dynamics,
+\item a natural interface to optimization methods,
+\item a foundation for advanced concepts such as
+Schwerpunkt-Trassierung.
+\end{itemize}
+
+Within the AIM framework, pose3 serves as the central state model for
+railway alignment design.
+\end{summary}

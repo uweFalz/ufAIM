@@ -1,0 +1,344 @@
+\chapter{Future Work}
+
+\section{Purpose of this Chapter}
+
+\begin{remark}
+The AIM framework presented in this manuscript establishes a
+mathematical and conceptual foundation for alignment-centred modelling.
+\end{remark}
+
+\begin{remark}
+However, many aspects remain open and provide opportunities for further
+research, development, and practical implementation.
+\end{remark}
+
+\begin{remark}
+This chapter outlines potential directions for future work, ranging from
+mathematical extensions to software architecture and engineering
+applications.
+\end{remark}
+
+---
+
+\section{Extension of the Dynamic Model}
+
+\subsection{From simplified dynamics to vehicle models}
+
+\begin{remark}
+The current formulation relies on simplified dynamic quantities such as
+effective lateral acceleration and jerk.
+\end{remark}
+
+\begin{remark}
+Future work should extend this toward more realistic vehicle models,
+including:
+\begin{itemize}
+\item multi-body vehicle dynamics,
+\item wheel--rail interaction,
+\item suspension behaviour,
+\item track elasticity.
+\end{itemize}
+\end{remark}
+
+\subsection{Speed-dependent modelling}
+
+\begin{remark}
+The integration of variable speed profiles
+\[
+v(s)
+\]
+opens the possibility for more realistic evaluation and optimization of
+alignments under operational conditions.
+\end{remark}
+
+---
+
+\section{Schwerpunkt-Trassierung}
+
+\subsection{Conceptual development}
+
+\begin{remark}
+The idea of designing the trajectory of a dynamically relevant point,
+such as the center of mass, represents a fundamental extension of
+classical alignment design.
+\end{remark}
+
+\begin{remark}
+Further work is required to:
+\begin{itemize}
+\item formalize the mapping from track geometry to vehicle trajectory,
+\item incorporate full dynamic models,
+\item define appropriate objective functions.
+\end{itemize}
+\end{remark}
+
+\subsection{Integration into optimization}
+
+\begin{remark}
+A key research direction is the coupling of Schwerpunkt-Trassierung with
+optimization methods, enabling:
+\begin{itemize}
+\item comfort-driven design,
+\item dynamic optimization,
+\item direct evaluation of vehicle response.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Advanced Optimization Methods}
+
+\subsection{SQP extensions}
+
+\begin{remark}
+While Sequential Quadratic Programming provides a powerful baseline,
+future work may include:
+\begin{itemize}
+\item tailored SQP formulations for sparse alignment structures,
+\item improved constraint handling,
+\item adaptive weighting strategies.
+\end{itemize}
+\end{remark}
+
+\subsection{Global optimization}
+
+\begin{remark}
+Alignment optimization problems are often non-convex.
+\end{remark}
+
+\begin{remark}
+Future research may explore:
+\begin{itemize}
+\item global optimization techniques,
+\item multi-start strategies,
+\item hybrid deterministic--stochastic methods.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Network-Level Modelling}
+
+\subsection{From single alignment to network}
+
+\begin{remark}
+Real railway systems consist of interconnected alignments forming
+complex networks.
+\end{remark}
+
+\begin{remark}
+Future work should extend the AIM framework to:
+\begin{itemize}
+\item branching structures,
+\item switches and crossings,
+\item corridor-wide optimization.
+\end{itemize}
+\end{remark}
+
+\subsection{Topological constraints}
+
+\begin{remark}
+A systematic treatment of topological constraints remains a major
+challenge.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item node consistency,
+\item multi-track coupling,
+\item network-wide feasibility conditions.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Constraint and Objective Libraries}
+
+\subsection{Constraint formalization}
+
+\begin{remark}
+Although many railway rules can be expressed as constraints, a complete
+formalization of regulatory frameworks remains an open task.
+\end{remark}
+
+\begin{remark}
+Future work should aim at:
+\begin{itemize}
+\item systematic encoding of standards,
+\item validation against real projects,
+\item parameterization for different railway systems.
+\end{itemize}
+\end{remark}
+
+\subsection{Objective design}
+
+\begin{remark}
+The design of objective functions is crucial for optimization-based
+alignment design.
+\end{remark}
+
+\begin{remark}
+Potential extensions include:
+\begin{itemize}
+\item cost models,
+\item maintenance optimization,
+\item energy efficiency,
+\item lifecycle considerations.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Integration with BIM and Data Standards}
+
+\subsection{Deeper BIM integration}
+
+\begin{remark}
+The integration of AIM with BIM workflows can be further developed by:
+\begin{itemize}
+\item tighter coupling with IFC alignment models,
+\item bidirectional synchronization,
+\item embedding AIM states within BIM objects.
+\end{itemize}
+\end{remark}
+
+\subsection{Standard extensions}
+
+\begin{remark}
+The AIM framework may also inspire extensions to existing standards,
+for example:
+\begin{itemize}
+\item inclusion of dynamic properties,
+\item support for optimization metadata,
+\item representation of control-based alignment models.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Interactive and Real-Time Systems}
+
+\subsection{Live optimization}
+
+\begin{remark}
+One of the most promising directions is the development of systems that
+allow real-time feedback during alignment design.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item live preview during optimization,
+\item interactive constraint adjustment,
+\item immediate visualization of dynamic effects.
+\end{itemize}
+\end{remark}
+
+\subsection{User interaction}
+
+\begin{remark}
+The grabbeltisch concept may be extended to:
+\begin{itemize}
+\item interactive constraint definition,
+\item visual debugging of alignment states,
+\item intuitive editing of transition parameters.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{AI and Assisted Design}
+
+\subsection{Data-driven approaches}
+
+\begin{remark}
+Machine learning techniques may complement the AIM framework by:
+\begin{itemize}
+\item learning from existing alignments,
+\item suggesting initial solutions,
+\item identifying patterns in design choices.
+\end{itemize}
+\end{remark}
+
+\subsection{Hybrid systems}
+
+\begin{remark}
+A promising direction is the combination of:
+\begin{itemize}
+\item physics-based modelling (AIM),
+\item data-driven methods (AI),
+\item interactive user control.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{AXTRAN Revival and Beyond}
+
+\begin{remark}
+Classical systems such as AXTRAN demonstrated the feasibility of
+optimization-based alignment design.
+\end{remark}
+
+\begin{remark}
+Future work may aim to:
+\begin{itemize}
+\item reconstruct and generalize such systems,
+\item extend them to network-level problems,
+\item integrate modern numerical and computational techniques.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Software Architecture and Deployment}
+
+\subsection{Scalability}
+
+\begin{remark}
+Practical applications require scalable implementations capable of
+handling large datasets and complex networks.
+\end{remark}
+
+\subsection{Multi-view systems}
+
+\begin{remark}
+Future systems may include:
+\begin{itemize}
+\item synchronized multi-window views,
+\item combined 2D/3D representations,
+\item integration of GIS and CAD functionality.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Long-Term Vision}
+
+\begin{remark}
+In the long term, the AIM framework may contribute to a new paradigm of
+infrastructure modelling in which:
+\begin{itemize}
+\item alignment becomes the central organizing structure,
+\item geometry, dynamics, and optimization are unified,
+\item engineering design becomes an interactive computational process.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+The AIM framework opens a wide range of research and development
+directions.
+
+These include extensions of the dynamic model, integration with BIM,
+network-level optimization, real-time systems, and AI-assisted design.
+
+Together, these directions point toward a future in which railway
+alignment is no longer treated as static geometry, but as a dynamic,
+computational, and optimizable system at the core of infrastructure
+engineering.
+\end{summary}

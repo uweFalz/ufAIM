@@ -1,0 +1,501 @@
+\chapter{Schwerpunkt-Trassierung}
+
+\section{Motivation}
+
+\begin{remark}
+Classical railway alignment design separates:
+\begin{itemize}
+\item geometric design (alignment),
+\item cant design,
+\item dynamic evaluation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This separation leads to suboptimal solutions, as geometry and dynamics
+are intrinsically coupled.
+\end{remark}
+
+\begin{remark}
+The concept of \emph{Schwerpunkt-Trassierung} aims to unify these aspects
+by defining a single design principle based on the motion of a
+representative point.
+\end{remark}
+
+---
+
+\section{Conceptual Idea}
+
+\begin{definition}[Reference trajectory]
+Let
+\[
+\gamma_c : I \to \R^2
+\]
+denote a reference trajectory representing the motion of a
+characteristic point of the vehicle system.
+\end{definition}
+
+\begin{remark}
+This point may be interpreted as:
+\begin{itemize}
+\item the center of mass,
+\item a dynamically relevant reference point,
+\item or an abstract design trajectory.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Relation to Track Geometry}
+
+\begin{remark}
+The physical track centerline \(\gamma(s)\) and cant angle \(\phi(s)\)
+induce a spatial configuration of the vehicle.
+\end{remark}
+
+\begin{definition}[Induced reference trajectory]
+Given a pose3 state
+\[
+(\gamma(s),\theta(s),\phi(s)),
+\]
+the induced reference trajectory is
+\[
+\gamma_c(s)
+=
+\gamma(s)
++
+d\, n(s,\phi(s)),
+\]
+where:
+\begin{itemize}
+\item \(d\) is a characteristic offset,
+\item \(n(s,\phi)\) is a direction depending on orientation and cant.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+The exact form of \(n(s,\phi)\) depends on the chosen mechanical model.
+\end{remark}
+
+\RESEARCH{Precise definition of offset direction based on vehicle model.}
+
+---
+
+\section{Schwerpunkt Principle}
+
+\begin{definition}[Schwerpunkt principle]
+A railway alignment is said to satisfy the Schwerpunkt principle if the
+induced reference trajectory \(\gamma_c(s)\) possesses prescribed
+smoothness and dynamical properties.
+\end{definition}
+
+\begin{remark}
+In this formulation, the primary design object is not the track itself,
+but the induced trajectory of the reference point.
+\end{remark}
+
+---
+
+\section{Variational Formulation}
+
+\begin{definition}[Schwerpunkt functional]
+Let
+\[
+J_c[\gamma_c]
+=
+\int_0^L
+\|\gamma_c''(s)\|^2 \,\dd s.
+\]
+\end{definition}
+
+\begin{remark}
+This functional penalizes curvature of the reference trajectory and
+therefore promotes smooth motion.
+\end{remark}
+
+\begin{definition}[Schwerpunkt optimization problem]
+Find
+\[
+(\kappa,\phi)
+\]
+such that the induced trajectory \(\gamma_c\) minimizes
+\[
+J_c[\gamma_c]
+\]
+subject to the pose3 dynamics.
+\end{definition}
+
+---
+
+\section{Coupling to Pose3}
+
+\begin{remark}
+The trajectory \(\gamma_c\) depends on:
+\[
+\gamma(s), \quad \theta(s), \quad \phi(s).
+\]
+\end{remark}
+
+\begin{remark}
+Thus, the Schwerpunkt problem becomes a constrained optimization problem
+in the variables:
+\[
+\kappa(s), \quad \phi(s).
+\]
+\end{remark}
+
+---
+
+\section{Interpretation}
+
+\begin{remark}
+The Schwerpunkt formulation shifts the perspective:
+\begin{itemize}
+\item from track geometry
+\item to vehicle motion.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This leads to a unified framework in which:
+\begin{itemize}
+\item geometry,
+\item cant,
+\item and dynamics
+\end{itemize}
+are optimized simultaneously.
+\end{remark}
+
+---
+
+\section{Relation to Classical Design}
+
+\begin{proposition}
+Classical transition curves correspond to special cases of the
+Schwerpunkt formulation where the reference trajectory coincides with
+the track centerline.
+\end{proposition}
+
+\begin{remark}
+In this case, the problem reduces to curvature-based optimization in
+the plane.
+\end{remark}
+
+---
+
+\section{Advantages}
+
+\begin{itemize}
+\item unified modelling of geometry and dynamics,
+\item natural integration of cant,
+\item compatibility with optimization frameworks,
+\item extensibility to vehicle-specific models.
+\end{itemize}
+
+---
+
+\section{Open Problems}
+
+\OPEN{Precise mechanical interpretation of the reference trajectory.}
+
+\OPEN{Integration with full vehicle dynamics models.}
+
+\OPEN{Extension to network-level alignment design.}
+
+---
+
+\section{Connection to the AIM Framework}
+
+\begin{summary}
+Schwerpunkt-Trassierung provides a conceptual and mathematical extension
+of classical alignment design.
+
+Instead of prescribing geometric elements, it defines the design
+problem in terms of a reference trajectory derived from the railway
+state.
+
+This aligns with the AIM philosophy of treating alignment as a
+functional object governed by curvature and its derived quantities.
+\end{summary}
+
+\section{Vehicle Model}
+
+\subsection{Rigid Body Approximation}
+
+\begin{remark}
+We model the railway vehicle as a rigid body with a characteristic
+center of mass.
+\end{remark}
+
+\begin{definition}[Center of mass]
+Let
+\[
+C(s) \in \R^3
+\]
+denote the spatial position of the vehicle center of mass.
+\end{definition}
+
+\begin{remark}
+For planar track geometry, we consider the projection
+\[
+\gamma_c(s) \in \R^2
+\]
+of the center of mass trajectory.
+\end{remark}
+
+---
+
+\subsection{Track Coordinate Frame}
+
+\begin{definition}[Frenet frame]
+Let
+\[
+t(s) = (\cos\theta(s),\sin\theta(s))
+\]
+be the tangent direction and
+\[
+n(s) = (-\sin\theta(s),\cos\theta(s))
+\]
+the normal direction.
+\end{definition}
+
+\begin{remark}
+The pair \((t,n)\) defines a local coordinate system attached to the
+track.
+\end{remark}
+
+---
+
+\subsection{Cant Rotation}
+
+\begin{definition}[Rotated normal]
+Let the cant angle \(\phi(s)\) define a rotation of the cross-section.
+\end{definition}
+
+\begin{remark}
+In a simplified model, the lateral offset direction remains aligned
+with \(n(s)\), while vertical effects are captured implicitly.
+\end{remark}
+
+---
+
+\subsection{Center of Mass Offset}
+
+\begin{definition}[Offset model]
+Let \(d>0\) denote a characteristic lateral offset.
+The center of mass trajectory is approximated by
+\[
+\gamma_c(s)
+=
+\gamma(s) + d\,n(s).
+\]
+\end{definition}
+
+\begin{remark}
+More refined models may include dependence on \(\phi(s)\), e.g.
+\[
+\gamma_c(s)
+=
+\gamma(s) + d\,\cos\phi(s)\,n(s).
+\]
+\end{remark}
+
+\RESEARCH{Inclusion of full 3D vehicle geometry.}
+
+---
+
+\section{Dynamics of the Center of Mass}
+
+\subsection{Velocity and Acceleration}
+
+\begin{proposition}
+The velocity of the center of mass is
+\[
+\gamma_c'(s)
+=
+t(s) + d\,n'(s).
+\]
+\end{proposition}
+
+\begin{remark}
+Using
+\[
+n'(s) = -\kappa(s)\,t(s),
+\]
+we obtain
+\[
+\gamma_c'(s)
+=
+(1 - d\kappa(s))\,t(s).
+\]
+\end{remark}
+
+---
+
+\begin{proposition}
+The acceleration of the center of mass is proportional to
+\[
+\gamma_c''(s)
+=
+- d\kappa'(s)\,t(s)
++
+(1 - d\kappa(s))\kappa(s)\,n(s).
+\]
+\end{proposition}
+
+\begin{remark}
+Thus, both curvature and its derivative influence the motion of the
+center of mass.
+\end{remark}
+
+---
+
+\subsection{Effective Forces}
+
+\begin{definition}[Lateral acceleration]
+The lateral acceleration of the center of mass is
+\[
+a_c(s)
+=
+v^2 (1 - d\kappa(s))\kappa(s).
+\]
+\end{definition}
+
+\begin{remark}
+Including cant yields the effective acceleration
+\[
+a_{\mathrm{eff}}(s)
+=
+v^2 \kappa(s) - g\sin\phi(s).
+\]
+\end{remark}
+
+---
+
+\section{Coupled Design Problem}
+
+\begin{definition}[Vehicle-based objective]
+Define
+\[
+J_{\mathrm{veh}}[\kappa,\phi]
+=
+\int_0^L
+\|\gamma_c''(s)\|^2
+\,\dd s.
+\]
+\end{definition}
+
+\begin{remark}
+This functional directly measures the smoothness of the motion of the
+center of mass.
+\end{remark}
+
+---
+
+\begin{definition}[Dynamic objective]
+Define
+\[
+J_{\mathrm{dyn}}[\kappa,\phi]
+=
+\int_0^L
+\Bigl(
+v^2 \kappa(s) - g\sin\phi(s)
+\Bigr)^2
+\,\dd s.
+\]
+\end{definition}
+
+---
+
+\begin{definition}[Combined vehicle functional]
+A combined objective is
+\[
+J[\kappa,\phi]
+=
+\alpha J_{\mathrm{veh}}
++
+\beta J_{\mathrm{dyn}}
++
+\gamma \int_0^L (\kappa'(s))^2 \,\dd s
++
+\delta \int_0^L (\phi'(s))^2 \,\dd s.
+\]
+\end{definition}
+
+---
+
+\section{Schwerpunkt-Trassierung (Formal Definition)}
+
+\begin{definition}[Schwerpunkt alignment]
+A Schwerpunkt alignment is a pair
+\[
+(\kappa,\phi)
+\]
+that minimizes the functional
+\[
+J[\kappa,\phi]
+\]
+subject to:
+\begin{itemize}
+\item pose3 dynamics,
+\item boundary conditions,
+\item engineering constraints.
+\end{itemize}
+\end{definition}
+
+---
+
+\section{Interpretation}
+
+\begin{remark}
+In this formulation:
+\begin{itemize}
+\item the track is no longer the primary design object,
+\item the motion of the vehicle becomes central.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Classical alignment design is recovered as a special case where
+\[
+d=0
+\quad \text{and} \quad
+\phi(s)=0.
+\]
+\end{remark}
+
+---
+
+\section{Discussion}
+
+\begin{remark}
+The presented model is intentionally simplified.
+However, it already captures:
+\begin{itemize}
+\item coupling between curvature and cant,
+\item influence of curvature derivatives,
+\item relation between geometry and dynamics.
+\end{itemize}
+\end{remark}
+
+\RESEARCH{Extension to full multibody vehicle models.}
+
+\RESEARCH{Calibration using measured track data.}
+
+\OPEN{Integration into practical design workflows.}
+
+---
+
+\section{Connection to the AIM Framework}
+
+\begin{summary}
+The combination of pose3 and a vehicle-based model provides a rigorous
+foundation for Schwerpunkt-Trassierung.
+
+It transforms alignment design into a problem of optimizing the motion
+of a representative physical system.
+
+This supports the central AIM idea that alignment is not merely a
+geometric object, but a functional entity governed by curvature and
+its physical implications.
+\end{summary}

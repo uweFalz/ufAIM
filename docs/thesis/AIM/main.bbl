@@ -1,0 +1,190 @@
+\begin{thebibliography}{10}
+
+\bibitem{AREMA2003TrackDesign}
+{AREMA}.
+\newblock Railway track design, chapter 6, 2003.
+\newblock Manual chapter.
+
+\bibitem{Bloss1978TrackGeometry}
+Walter Bloss.
+\newblock {\em Gleis- und Weichengeometrie}.
+\newblock Transpress, 1978.
+
+\bibitem{Review2020TransitionCurves}
+Tanita~Fossli Brustad and Rune Dalmo.
+\newblock Railway transition curves: A review of the state-of-the-art and
+  future research.
+\newblock {\em Infrastructures}, 5(43), 2020.
+
+\bibitem{RWRIFC2019ConceptualModel}
+{buildingSMART Railway Room}.
+\newblock Rwr-ifc rail conceptual model report, 2019.
+\newblock Conceptual model report.
+
+\bibitem{EN13803_2017}
+{CEN}.
+\newblock Bs en 13803:2017 railway applications -- track -- track alignment
+  design parameters, 2017.
+\newblock Standard.
+
+\bibitem{Ciobanu2015Bloss}
+Constantin Ciobanu.
+\newblock Bloss transition: A short design guide.
+\newblock {\em PWI Journal}, 133:14--18, 2015.
+
+\bibitem{IFCRailway2015}
+Author details to~be completed.
+\newblock Ifc railway, 2015.
+\newblock Source PDF on IFC railway transition curve and chainage model.
+
+\bibitem{DoCarmo1976Curves}
+Manfredo~P. do~Carmo.
+\newblock {\em Differential Geometry of Curves and Surfaces}.
+\newblock Prentice-Hall, 1976.
+
+\bibitem{Glover1900TransitionCurves}
+J.~Glover.
+\newblock Transition curves for railways.
+\newblock {\em Proceedings of the Institution of Civil Engineers},
+  140:161--179, 1900.
+
+\bibitem{HabibSakai2004SpiralTransition}
+Zulfiqar Habib and Manabu Sakai.
+\newblock Spiral transition curves and their applications.
+\newblock {\em Scientiae Mathematicae Japonicae}, 2004.
+\newblock Exact volume/pages to be completed from source PDF.
+
+\bibitem{Hairer1993ODE}
+Ernst Hairer, Syvert~P. N{\o}rsett, and Gerhard Wanner.
+\newblock {\em Solving Ordinary Differential Equations I}.
+\newblock Springer, 1993.
+
+\bibitem{Higgins1922TransitionSpiral}
+A.~L. Higgins.
+\newblock {\em The Transition Spiral and Its Introduction to Railway Curves}.
+\newblock Van Nostrand, New York, 1922.
+
+\bibitem{Horsburgh1913TransitionCurve}
+E.~M. Horsburgh.
+\newblock The railway transition curve.
+\newblock {\em Proceedings of the Royal Society of Edinburgh}, 32:333--347,
+  1913.
+
+\bibitem{Klauder2001BetterWay}
+Louis T.~Jr. Klauder.
+\newblock A better way to design railroad transition spirals, 2001.
+\newblock Preprint/manuscript; venue metadata to be completed.
+
+\bibitem{Klauder2001WO}
+Louis T.~Jr. Klauder.
+\newblock Railroad curve transition spiral design method based on control of
+  vehicle banking motion, 2001.
+
+\bibitem{Klauder2007USApp}
+Louis T.~Jr. Klauder.
+\newblock Railroad curve transition spiral design method based on control of
+  vehicle banking motion, 2007.
+\newblock US application publication US20070027661A9.
+
+\bibitem{Klauder2009US}
+Louis T.~Jr. Klauder.
+\newblock Railroad curve transition spiral design method based on control of
+  vehicle banking motion, 2009.
+
+\bibitem{Klauder2012Performance}
+Louis T.~Jr. Klauder.
+\newblock Railroad spiral design and performance, 2012.
+\newblock Conference/publication details to be completed.
+
+\bibitem{Klein1998Trassierung}
+G{\"u}nter Klein.
+\newblock {\em Trassierung von Verkehrswegen}.
+\newblock Springer, 1998.
+
+\bibitem{Koc2008TransitionCurves}
+W.~Koc.
+\newblock Transition curves in railway engineering.
+\newblock {\em Journal of Transportation Engineering}, 2008.
+\newblock Further metadata to be completed.
+
+\bibitem{Koc2017SmoothedEnds}
+W.~Koc.
+\newblock Transition curve with smoothed curvature at its ends for railway
+  roads.
+\newblock {\em Current Journal of Applied Science and Technology}, 22:1--10,
+  2017.
+
+\bibitem{Koc2019Operational}
+W.~Koc.
+\newblock New transition curve adapted to railway operational requirements.
+\newblock {\em Journal of Surveying Engineering}, 145, 2019.
+\newblock Issue/pages to be completed.
+
+\bibitem{Koc2019SmoothedTransition}
+W.~Koc.
+\newblock Smoothed transition curve for railways.
+\newblock {\em Przeglad Komunikacyjny}, pages 19--32, 2019.
+
+\bibitem{Kufver2000RailwayAlignment}
+Bengt Kufver.
+\newblock {\em Optimization of Horizontal Alignment of Railway Tracks}.
+\newblock PhD thesis, Royal Institute of Technology (KTH), 2000.
+
+\bibitem{Kufver1997MathematicalDescription}
+Bj{\"o}rn Kufver.
+\newblock Mathematical description of railway alignments and some preliminary
+  comparative studies.
+\newblock Technical Report 420A, Swedish National Road and Transport Research
+  Institute (VTI), 1997.
+
+\bibitem{Mieloszyk2012Transition}
+E.~Mieloszyk.
+\newblock Modern transition curve design.
+\newblock {\em Transport Problems}, 2012.
+\newblock Further metadata to be completed.
+
+\bibitem{Miller1939TransitionSpiral}
+A.~W. Miller.
+\newblock The transition spiral.
+\newblock {\em Australian Surveyor}, 7:518--526, 1939.
+
+\bibitem{Nocedal2006NumericalOptimization}
+Jorge Nocedal and Stephen~J. Wright.
+\newblock {\em Numerical Optimization}.
+\newblock Springer, 2006.
+
+\bibitem{Pirti2016Transrapid}
+A.~Pirti, M.~Y{\"u}cel, and T.~Ocalan.
+\newblock Transrapid and the transition curve as sinusoid.
+\newblock {\em Tehnicki Vjesnik}, 23:315--320, 2016.
+
+\bibitem{Press2007NumericalRecipes}
+William~H. Press, Saul~A. Teukolsky, William~T. Vetterling, and Brian~P.
+  Flannery.
+\newblock {\em Numerical Recipes}.
+\newblock Cambridge University Press, 2007.
+
+\bibitem{Shebl2016Nonlinear}
+S.~Shebl.
+\newblock Geometrical analysis of non-linear curvature transition curves of
+  high speed railways.
+\newblock {\em Asian Journal of Current Engineering and Maths}, 5:52--58, 2016.
+
+\bibitem{Tari2004NewGeneration}
+E.~Tari.
+\newblock The new generation transition curves.
+\newblock {\em ARI Bulletin, Istanbul Technical University}, 54:35--41, 2004.
+
+\bibitem{Wojtczak2017WienerBogen}
+R.~Wojtczak.
+\newblock {\em Charakterystyka Krzywej Przej{\'s}ciowej Wiener Bogen}.
+\newblock Publishing House of Poznan University of Technology, Poznan, 2017.
+
+\bibitem{ZboinskiWoznica2017Polynomial}
+K.~Zboinski and P.~Woznica.
+\newblock Optimization of polynomial transition curves from the viewpoint of
+  jerk value.
+\newblock {\em Archives of Civil Engineering}, 63, 2017.
+\newblock Issue/pages to be completed.
+
+\end{thebibliography}

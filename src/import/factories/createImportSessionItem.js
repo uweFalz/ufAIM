@@ -20,7 +20,8 @@ export function createImportSessionItem({
 		source: normalizeSource(source),
 		payload: normalizePayload(payload, kind),
 		status: normalizeStatus(status),
-		derived: isObject(derived) ? derived : {},
+		// derived = machine-readable augmentation (e.g. sparseAlignment, interpretation)
+		derived: normalizeDerived(derived),
 		annotations: Array.isArray(annotations) ? annotations : [],
 	};
 
@@ -98,6 +99,23 @@ function normalizeStatus(status) {
 		stage: s.stage ?? "parsed",
 		reason: s.reason ?? null,
 	};
+}
+
+function normalizeDerived(derived) {
+	if (!isObject(derived)) return {};
+
+	// shallow clone to avoid accidental external mutation
+	const out = { ...derived };
+
+	// strip empty nested objects (defensive)
+	for (const key of Object.keys(out)) {
+		const v = out[key];
+		if (isObject(v) && Object.keys(v).length === 0) {
+			delete out[key];
+		}
+	}
+
+	return Object.keys(out).length ? out : {};
 }
 
 function slug(value) {

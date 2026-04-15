@@ -76,7 +76,6 @@ import { clamp01range } from "@utils/helpers.js";
 
 import { makeInitialState, ensureStateShape } from "./storeShape.js";
 
-// ...
 function spotKey(spotId, slot) {
 	return `${spotId}::${slot ?? "right"}`;
 }
@@ -90,18 +89,18 @@ function normalizeSlot(slot) {
 	return (v === "left" || v === "km" || v === "right") ? v : "right";
 }
 
-//
-// ...
-//
 export function createWindowStore(initial) {
 	let state = ensureStateShape(initial ?? makeInitialState());
 	const listeners = new Set();
 
-	function getState() { return state; }
+	function getState() {
+		return state;
+	}
 
 	function setState(patch) {
 		const nextPatch = typeof patch === "function" ? patch(state) : patch;
 		state = ensureStateShape({ ...state, ...(nextPatch ?? {}) });
+
 		for (const fn of listeners) {
 			try {
 				fn(state);
@@ -131,6 +130,21 @@ export function createWindowStore(initial) {
 				preview_source: null,
 			});
 		},
+
+		setImportPreviewCollection({ items = [], source = null } = {}) {
+			setState({
+				import_preview_collection: Array.isArray(items) ? items : [],
+				import_preview_source: source && typeof source === "object" ? source : null,
+			});
+		},
+
+		clearImportPreviewCollection() {
+			setState({
+				import_preview_collection: [],
+				import_preview_source: null,
+			});
+		},
+
 		// ------------------------------------------------------------
 		// @transition legacy focus mirror
 		// Canonical focus should be accessed via WindowSession / FocusManager.

@@ -1,0 +1,51 @@
+This is BibTeX, Version 0.99d (TeX Live 2025)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: plain.bst
+Database file #1: references.bib
+Warning--entry type for "Klauder2001WO" isn't style-file defined
+--line 236 of file references.bib
+Warning--entry type for "Klauder2009US" isn't style-file defined
+--line 250 of file references.bib
+You've used 34 entries,
+            2118 wiz_defined-function locations,
+            705 strings with 8842 characters,
+and the built_in function-call counts, 8262 in all, are:
+= -- 811
+> -- 300
+< -- 2
++ -- 129
+- -- 90
+* -- 401
+:= -- 1447
+add.period$ -- 105
+call.type$ -- 34
+change.case$ -- 138
+chr.to.int$ -- 0
+cite$ -- 34
+duplicate$ -- 343
+empty$ -- 735
+format.name$ -- 90
+if$ -- 1721
+int.to.chr$ -- 0
+int.to.str$ -- 34
+missing$ -- 31
+newline$ -- 176
+num.names$ -- 68
+pop$ -- 193
+preamble$ -- 1
+purify$ -- 113
+quote$ -- 0
+skip$ -- 244
+stack$ -- 0
+substring$ -- 372
+swap$ -- 41
+text.length$ -- 2
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 120
+warning$ -- 0
+while$ -- 87
+width$ -- 36
+write$ -- 364
+(There were 2 warnings)
