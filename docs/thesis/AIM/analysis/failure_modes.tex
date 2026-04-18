@@ -1,0 +1,281 @@
+\section{Failure Modes and Limitations of the AIM Pipeline}
+
+% ============================================================
+\subsection{Motivation}
+% ============================================================
+
+\begin{remark}
+Any modelling and optimization framework must account not only for its
+capabilities, but also for its limitations.
+\end{remark}
+
+\begin{remark}
+Within the AIM pipeline, failure modes arise from the interaction of:
+\begin{itemize}
+\item coordinate systems,
+\item geometric transformations,
+\item physical realization,
+\item numerical optimization.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{CRS-Related Errors}
+% ============================================================
+
+\begin{remark}
+Errors in coordinate reference systems include:
+\begin{itemize}
+\item incorrect CRS identification,
+\item inconsistent transformations,
+\item mixed coordinate systems within datasets.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+CRS inconsistencies lead to systematic spatial distortions that cannot
+be corrected by local alignment optimization.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Projection Errors (World-to-Track)}
+% ============================================================
+
+\begin{remark}
+The world-to-track transformation may fail due to:
+\begin{itemize}
+\item ambiguous nearest points,
+\item high curvature regions,
+\item sparse or noisy alignment representations.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+Projection errors introduce nonlocal distortions in the intrinsic
+coordinate \(s\), affecting all downstream computations.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Model Mis-Specification}
+% ============================================================
+
+\begin{remark}
+The parametric model may fail to represent the true alignment due to:
+\begin{itemize}
+\item insufficient transition families,
+\item incorrect parameterization,
+\item overly restrictive structure.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Hybrid correction terms mitigate but do not eliminate this issue.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Overfitting vs. Underfitting}
+% ============================================================
+
+\begin{remark}
+Hybrid models introduce a trade-off:
+\begin{itemize}
+\item underfitting: parametric model too rigid,
+\item overfitting: correction terms capture noise.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+Regularization is required to balance model fidelity and stability.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Realization Effects}
+% ============================================================
+
+\begin{remark}
+The realization operator introduces:
+\begin{itemize}
+\item smoothing of curvature,
+\item loss of high-frequency information,
+\item dependence on construction processes.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+Certain features of the target alignment are not physically realizable
+and will be systematically suppressed.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Inverse Problem Instability}
+% ============================================================
+
+\begin{remark}
+The inverse realization problem is ill-posed:
+\begin{itemize}
+\item multiple target alignments yield similar realized geometry,
+\item small changes in data may cause large parameter variations.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+Regularization and prior knowledge are essential for stable solutions.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Numerical Optimization Issues}
+% ============================================================
+
+\begin{remark}
+Optimization may fail due to:
+\begin{itemize}
+\item poor initial guesses,
+\item nonconvex objective functions,
+\item ill-conditioned Jacobians.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Despite structured sparsity, convergence is not guaranteed.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Block Structure Degeneracy}
+% ============================================================
+
+\begin{remark}
+The block structure may become degenerate if:
+\begin{itemize}
+\item coupling terms dominate,
+\item insufficient data separates variables,
+\item parameters become redundant.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+Loss of block separability reduces computational efficiency and
+interpretability.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Measurement Noise and Bias}
+% ============================================================
+
+\begin{remark}
+Measurement data may contain:
+\begin{itemize}
+\item random noise,
+\item systematic bias,
+\item missing or inconsistent segments.
+\end{itemize}
+\end{remark}
+
+\begin{proposition}
+Noise propagates through the pipeline and may be amplified by inverse
+operations.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Scale-Dependent Failures}
+% ============================================================
+
+\begin{remark}
+Different failure modes dominate at different scales:
+\begin{itemize}
+\item large scale: CRS and projection errors,
+\item medium scale: model mis-specification,
+\item small scale: realization and measurement noise.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Non-Uniqueness of Solutions}
+% ============================================================
+
+\begin{remark}
+Different alignment models may produce nearly identical realized
+geometry.
+\end{remark}
+
+\begin{proposition}
+The mapping
+\[
+\kappa_{\mathrm{target}}
+\;\mapsto\;
+\gamma_{\mathrm{real}}
+\]
+is not injective.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Practical Engineering Limits}
+% ============================================================
+
+\begin{remark}
+Certain effects are outside the scope of the model:
+\begin{itemize}
+\item material-dependent behaviour,
+\item long-term degradation,
+\item construction variability.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These factors must be treated as external constraints.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Key Insight}
+% ============================================================
+
+\begin{proposition}
+The AIM pipeline is inherently approximate and limited by both physical
+and computational constraints.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Failure modes in the AIM pipeline arise from the interaction of geometry,
+physics, data, and computation.
+
+Understanding these limitations is essential for:
+\begin{itemize}
+\item robust model design,
+\item stable optimization,
+\item reliable engineering application.
+\end{itemize}
+
+Thus, failure analysis is not an auxiliary component, but an integral
+part of the AIM framework.
+\end{summary}

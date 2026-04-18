@@ -1,0 +1,53 @@
+\section{AIM Pipeline Overview}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+node distance=2.8cm,
+box/.style={
+    draw,
+    rectangle,
+    rounded corners,
+    minimum width=3.2cm,
+    minimum height=1.2cm,
+    align=center
+},
+arrow/.style={->, thick}
+]
+
+% Nodes
+\node[box] (crs) {CRS \\ Transformation \\ $\mathcal{C}$};
+
+\node[box, right of=crs] (world) {World \\ Coordinates};
+
+\node[box, right of=world] (w2t) {World $\rightarrow$ Track \\ $\mathcal{W}$};
+
+\node[box, right of=w2t] (model) {Curvature Model \\ $\kappa(s)$ \\ (param + hybrid)};
+
+\node[box, right of=model] (real) {Realization \\ $\mathcal{R}$};
+
+\node[box, right of=real] (t2w) {Track $\rightarrow$ World \\ $\mathcal{W}^{-1}$};
+
+\node[box, right of=t2w] (output) {Realized \\ Geometry};
+
+% Arrows
+\draw[arrow] (crs) -- (world);
+\draw[arrow] (world) -- (w2t);
+\draw[arrow] (w2t) -- (model);
+\draw[arrow] (model) -- (real);
+\draw[arrow] (real) -- (t2w);
+\draw[arrow] (t2w) -- (output);
+
+% Optimization loop (top)
+\draw[arrow, dashed, bend left=35]
+(output.north) to node[above]{Optimization / SQP} (model.north);
+
+% Measurement loop (bottom)
+\draw[arrow, dashed, bend right=35]
+(output.south) to node[below]{Measurement / Data} (w2t.south);
+
+\end{tikzpicture}
+
+\caption{AIM processing pipeline as composition of operators linking
+coordinate systems, alignment modelling, realization, and optimization.}
+\end{figure}

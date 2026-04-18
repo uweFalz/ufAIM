@@ -1,0 +1,689 @@
+\chapter{Construction and Realization}
+
+\section{Motivation}
+
+\begin{remark}
+Theoretical railway alignments are defined as continuous geometric and
+curvature objects.
+\end{remark}
+
+\begin{remark}
+In practice, however, tracks are not constructed as continuous curves,
+but realized through discrete construction and maintenance processes.
+\end{remark}
+
+\begin{remark}
+Thus, the physically realized track is not identical to the analytical
+target curve, but an approximation shaped by:
+\begin{itemize}
+\item measurement data,
+\item machine operations,
+\item local correction limits,
+\item and structural response of the track.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+A realistic modelling framework must therefore include an explicit
+realization layer between analytical design and built geometry.
+\end{remark}
+
+% ============================================================
+\section{Realization of Transition Curves in Discrete Construction}
+% ============================================================
+
+\subsection{Discrete Realization Model}
+
+\begin{definition}[Realized alignment]
+The realized alignment is represented as a continuous curve
+\[
+\gamma_{\mathrm{real}}(s),
+\]
+typically generated from discrete control data by piecewise polynomial
+or spline-based reconstruction.
+\end{definition}
+
+\begin{definition}[Realized curvature]
+The curvature of the realized alignment is
+\[
+\kappa_{\mathrm{real}}(s)
+=
+\frac{\dd \theta_{\mathrm{real}}}{\dd s}.
+\]
+\end{definition}
+
+\subsection{Approximation Problem}
+
+\begin{definition}[Realization problem]
+Given a target curvature law \(\kappa_{\mathrm{target}}(s)\), find a
+realized curve \(\gamma_{\mathrm{real}}\) such that
+\[
+\kappa_{\mathrm{real}}(s)
+\approx
+\kappa_{\mathrm{target}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+The realized track is therefore not judged primarily by positional
+agreement, but by how well its curvature evolution approximates the
+intended target.
+\end{remark}
+
+\subsection{Error Measures}
+
+\begin{definition}[Realization error measures]
+Typical error measures are:
+\[
+\int_0^L
+\bigl(\kappa_{\mathrm{real}} - \kappa_{\mathrm{target}}\bigr)^2
+\,\dd s,
+\]
+\[
+\max_{s\in[0,L]}
+\bigl|\kappa_{\mathrm{real}} - \kappa_{\mathrm{target}}\bigr|,
+\]
+\[
+\int_0^L
+\bigl(\kappa'_{\mathrm{real}} - \kappa'_{\mathrm{target}}\bigr)^2
+\,\dd s.
+\]
+\end{definition}
+
+\begin{remark}
+These measures reflect the fact that different transition families may
+be geometrically very close, while differing significantly in dynamic
+behaviour.
+\end{remark}
+
+\subsection{Sampling Strategy}
+
+\begin{remark}
+The choice of control points \(s_i\) is critical for the quality of the
+realization.
+\end{remark}
+
+\begin{remark}
+Uniform sampling is generally not optimal.
+\end{remark}
+
+\begin{proposition}[Adaptive sampling principle]
+Sampling density should increase in regions of strong curvature
+variation:
+\[
+\rho(s) \sim |\kappa'(s)|.
+\]
+\end{proposition}
+
+\begin{remark}
+Regions of nearly constant curvature require only few control points,
+whereas transition zones require denser control.
+\end{remark}
+
+\subsection{Engineering Implication}
+
+\begin{remark}
+The practical realization of a transition curve depends at least as much
+on the placement of control points as on the analytical form of the
+curve itself.
+\end{remark}
+
+\begin{summary}
+The relevant differences between transition types are often small in
+position space but significant in curvature space.
+
+Therefore, realization should be assessed primarily by preservation of
+curvature evolution rather than by geometric deviation alone.
+\end{summary}
+
+% ============================================================
+\section{Track Adjustment as Iterative Operator}
+% ============================================================
+
+\subsection{Adjustment Operator}
+
+\begin{remark}
+In railway construction and maintenance, track geometry is adjusted
+through a sequence of localized operations, for example by tamping
+machines.
+\end{remark}
+
+\begin{remark}
+Each operation modifies the track only within a limited spatial range
+and on the basis of local measurements.
+\end{remark}
+
+\begin{definition}[Track adjustment operator]
+Let \(\mathcal{A}\) denote the space of admissible alignments.
+For a given target alignment \(\gamma_{\mathrm{target}}\), define a
+track adjustment operator
+\[
+\mathcal{T}_{\gamma_{\mathrm{target}}}
+:
+\mathcal{A}\to\mathcal{A},
+\qquad
+\gamma \mapsto \mathcal{T}_{\gamma_{\mathrm{target}}}(\gamma),
+\]
+representing one localized construction or maintenance step.
+\end{definition}
+
+\begin{remark}
+The operator \(\mathcal{T}_{\gamma_{\mathrm{target}}}\) depends on:
+\begin{itemize}
+\item local measurement data,
+\item machine parameters,
+\item admissible correction limits,
+\item and physical properties of the track.
+\end{itemize}
+\end{remark}
+
+\subsection{Iterative Realization}
+
+\begin{definition}[Iterative realization process]
+Starting from an initial alignment \(\gamma_0\), define
+\[
+\gamma_{k+1}
+=
+\mathcal{T}_{\gamma_{\mathrm{target}}}(\gamma_k),
+\qquad k\ge 0.
+\]
+\end{definition}
+
+\begin{remark}
+If the sequence \((\gamma_k)\) converges in a suitable sense, its limit
+is called the realized alignment.
+\end{remark}
+
+\begin{definition}[Realized alignment as limit]
+If the limit exists, define
+\[
+\gamma_{\mathrm{real}}
+=
+\lim_{k\to\infty}\gamma_k.
+\]
+\end{definition}
+
+\subsection{Fixed Point Interpretation}
+
+\begin{proposition}
+If the iterative realization converges, then
+\[
+\gamma_{\mathrm{real}}
+=
+\mathcal{T}_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}}).
+\]
+\end{proposition}
+
+\begin{remark}
+Thus, the realized alignment is a fixed point of the adjustment process.
+\end{remark}
+
+\begin{remark}
+In practice, convergence cannot be assumed a priori, since it depends on
+measurement feedback, machine limits, and local track conditions.
+\end{remark}
+
+\subsection{Guided Adjustment Form}
+
+\begin{definition}[Guided adjustment]
+The operator may be written as
+\[
+\mathcal{T}_{\gamma_{\mathrm{target}}}(\gamma)
+=
+\gamma + \Delta(\gamma,\gamma_{\mathrm{target}}),
+\]
+where \(\Delta\) is a local correction operator.
+\end{definition}
+
+\begin{remark}
+Typically, corrections are bounded:
+\[
+\|\Delta(\gamma,\gamma_{\mathrm{target}})\|
+\le \Delta_{\max}.
+\]
+\end{remark}
+
+\subsection{Locality and Smoothing}
+
+\begin{proposition}[Locality]
+The operator \(\mathcal{T}_{\gamma_{\mathrm{target}}}\) is local in the
+sense that
+\[
+(\mathcal{T}_{\gamma_{\mathrm{target}}}\gamma)(s)
+\]
+depends only on \(\gamma\) and \(\gamma_{\mathrm{target}}\) in a
+neighbourhood of \(s\).
+\end{proposition}
+
+\begin{remark}
+This reflects the physical constraints of construction equipment.
+\end{remark}
+
+\begin{proposition}[Smoothing effect]
+The operator \(\mathcal{T}_{\gamma_{\mathrm{target}}}\) has a smoothing
+effect on the alignment.
+\end{proposition}
+
+\begin{remark}
+In particular, high-frequency curvature variations tend to be reduced
+during the iterative process.
+\end{remark}
+
+% ============================================================
+\section{Kernel-Based Model of the Adjustment Operator}
+% ============================================================
+
+\subsection{Linearized Kernel Model}
+
+\begin{definition}[Kernel-based adjustment]
+A linearized model of the adjustment operator is given by
+\[
+(\mathcal{T}_{\gamma_{\mathrm{target}}}\gamma)(s)
+=
+\gamma(s)
++
+\int_I
+K(s,\sigma)\,
+\bigl(\gamma_{\mathrm{target}}(\sigma)-\gamma(\sigma)\bigr)
+\,\dd \sigma,
+\]
+where \(K(s,\sigma)\) is a localized kernel.
+\end{definition}
+
+\begin{remark}
+The kernel \(K(s,\sigma)\) represents the spatial influence of a local
+adjustment operation.
+\end{remark}
+
+\begin{proposition}[Localization]
+There exists a characteristic length \(\ell>0\) such that
+\[
+K(s,\sigma)\approx 0
+\qquad
+\text{for } |s-\sigma|>\ell.
+\]
+\end{proposition}
+
+\begin{remark}
+This expresses the finite working range of the machine and the local
+structural coupling of the track.
+\end{remark}
+
+\subsection{Discrete Form}
+
+\begin{definition}[Discrete adjustment model]
+For control points \(s_i\), the kernel model becomes
+\[
+\gamma_i^{(k+1)}
+=
+\gamma_i^{(k)}
++
+\sum_j
+K_{ij}
+\bigl(
+\gamma_j^{\mathrm{target}}-\gamma_j^{(k)}
+\bigr),
+\]
+where \(K_{ij}\) is a sparse influence matrix.
+\end{definition}
+
+\begin{remark}
+This form is directly compatible with numerical implementation and
+sparse optimization methods.
+\end{remark}
+
+\subsection{Clipped and Relaxed Variants}
+
+\begin{definition}[Clipped correction]
+A practically constrained update may be written as
+\[
+\Delta_i^{(k)}
+=
+\mathrm{clip}\!\left(
+\sum_j K_{ij}
+\bigl(\gamma_j^{\mathrm{target}}-\gamma_j^{(k)}\bigr),
+\Delta_{\max}
+\right).
+\]
+\end{definition}
+
+\begin{definition}[Relaxed update]
+A relaxed update takes the form
+\[
+\gamma^{(k+1)}
+=
+\gamma^{(k)}
++
+\alpha\,\mathcal{K}
+\bigl(\gamma_{\mathrm{target}}-\gamma^{(k)}\bigr),
+\qquad
+0<\alpha\le 1,
+\]
+where \(\mathcal{K}\) denotes the kernel operator.
+\end{definition}
+
+\begin{remark}
+These variants model limited machine action and gradual convergence.
+\end{remark}
+
+\subsection{Relation to the Realization Operator}
+
+\begin{definition}[Realization operator]
+If the iterative process converges, define
+\[
+\mathcal{R}(\gamma_{\mathrm{target}})
+=
+\lim_{k\to\infty}
+\mathcal{T}_{\gamma_{\mathrm{target}}}^k(\gamma_0).
+\]
+\end{definition}
+
+\begin{remark}
+Thus, realization is not a single transformation, but the result of an
+iterative physical process.
+\end{remark}
+
+\begin{summary}
+The realization operator can be understood as the limit of an iterative,
+localized adjustment process.
+
+A kernel-based model provides a concrete and computationally tractable
+representation of this process.
+\end{summary}
+
+% ============================================================
+\section{Formal Optimization of Control Point Placement}
+% ============================================================
+
+\subsection{Motivation}
+
+\begin{remark}
+A theoretical transition curve is defined continuously, whereas its
+realization in construction and maintenance is discrete.
+\end{remark}
+
+\begin{remark}
+Thus, the practical problem is not only to choose a target transition,
+but also to determine a set of control points that reproduces its
+essential behaviour as closely as possible.
+\end{remark}
+
+\subsection{Control Points}
+
+\begin{definition}[Control points]
+Let
+\[
+0=s_0 < s_1 < \dots < s_N = L
+\]
+be a strictly increasing sequence of arc-length positions.
+These positions are called control points.
+\end{definition}
+
+\begin{remark}
+The realized alignment is assumed to be generated from data prescribed
+at these points, for example by:
+\begin{itemize}
+\item piecewise linear interpolation,
+\item piecewise polynomial interpolation,
+\item spline-based reconstruction.
+\end{itemize}
+\end{remark}
+
+\subsection{Realization Error Functional}
+
+\begin{definition}[Curvature-based realization error]
+A realization error functional is defined by
+\[
+J_{\mathrm{cp}}(\{s_i\})
+=
+\alpha
+\int_0^L
+\bigl(\kappa_{\mathrm{real}}-\kappa_{\mathrm{target}}\bigr)^2
+\,\dd s
++
+\beta
+\int_0^L
+\bigl(\kappa'_{\mathrm{real}}-\kappa'_{\mathrm{target}}\bigr)^2
+\,\dd s.
+\]
+\end{definition}
+
+\begin{remark}
+The first term measures agreement in curvature, the second term
+agreement in curvature evolution.
+\end{remark}
+
+\subsection{Admissible Sets}
+
+\begin{definition}[Admissible control point sets]
+A control point set is admissible if:
+\begin{itemize}
+\item the ordering \(s_0 < s_1 < \dots < s_N\) is preserved,
+\item minimum spacing constraints are satisfied,
+\item construction and maintenance constraints are respected.
+\end{itemize}
+\end{definition}
+
+\subsection{Optimization Problem}
+
+\begin{definition}[Control point optimization problem]
+Given a target curvature law \(\kappa_{\mathrm{target}}(s)\), find an
+admissible set of control points
+\[
+\{s_i^\ast\}_{i=0}^N
+\]
+such that
+\[
+J_{\mathrm{cp}}(\{s_i^\ast\})
+=
+\min_{\{s_i\}} J_{\mathrm{cp}}(\{s_i\}).
+\]
+\end{definition}
+
+\subsection{Adaptive Placement Principle}
+
+\begin{proposition}[Adaptive density principle]
+Control point density should increase in regions where curvature varies
+rapidly:
+\[
+\rho(s)
+\sim
+f\bigl(|\kappa'(s)|, |\kappa''(s)|\bigr),
+\]
+for a suitable increasing function \(f\).
+\end{proposition}
+
+\begin{remark}
+This expresses that nearly constant-curvature regions require only few
+points, whereas transition zones require denser control.
+\end{remark}
+
+\begin{summary}
+The realization of transition curves can be formulated as an
+optimization problem over control point locations.
+
+This shifts the focus from selecting an analytical transition curve to
+finding a discretization that best preserves its curvature evolution
+under practical constraints.
+\end{summary}
+
+% ============================================================
+\section{Inverse Realization and Design under Realization Constraints}
+% ============================================================
+
+\subsection{Motivation}
+
+\begin{remark}
+The realization operator
+\[
+\mathcal{R} : \kappa_{\mathrm{target}} \mapsto \kappa_{\mathrm{real}}
+\]
+maps a theoretical curvature law to its physically realized counterpart.
+\end{remark}
+
+\begin{remark}
+In practice, the design goal is not the target curvature itself, but the
+realized curvature.
+\end{remark}
+
+\begin{remark}
+Thus, alignment design must be formulated as an inverse problem:
+\[
+\mathcal{R}(\kappa_{\mathrm{target}})
+\approx
+\kappa_{\mathrm{desired}}.
+\]
+\end{remark}
+
+\subsection{Practical Realization in Construction}
+
+\begin{remark}
+In practice, tracks are not realized as continuous curves, but through
+discrete construction steps.
+\end{remark}
+
+\begin{remark}
+Track geometry is adjusted incrementally, for example by tamping
+machines operating on a sequence of discrete control points.
+\end{remark}
+
+\begin{remark}
+At each step, only local corrections are applied, and the resulting
+geometry is influenced by:
+\begin{itemize}
+\item machine constraints,
+\item measurement accuracy,
+\item track stiffness,
+\item accumulated errors.
+\end{itemize}
+\end{remark}
+
+\subsection{Inverse Problem}
+
+\begin{definition}[Inverse realization problem]
+Given a desired realized curvature law
+\[
+\kappa_{\mathrm{desired}}(s),
+\]
+find a target curvature law
+\[
+\kappa_{\mathrm{target}}(s)
+\]
+such that
+\[
+\mathcal{R}(\kappa_{\mathrm{target}})
+=
+\kappa_{\mathrm{desired}}.
+\]
+\end{definition}
+
+\begin{remark}
+In general, the operator \(\mathcal{R}\) is not invertible.
+\end{remark}
+
+\begin{remark}
+This is due to:
+\begin{itemize}
+\item loss of high-frequency information,
+\item discretization effects,
+\item mechanical smoothing.
+\end{itemize}
+\end{remark}
+
+\subsection{Regularized Inverse Problem}
+
+\begin{definition}[Regularized inverse realization]
+A regularized formulation is
+\[
+\min_{\kappa_{\mathrm{target}}}
+\;
+\left\|
+\mathcal{R}(\kappa_{\mathrm{target}})
+-
+\kappa_{\mathrm{desired}}
+\right\|^2
++
+\lambda
+\|\kappa_{\mathrm{target}}\|_{\mathcal{H}}^2,
+\]
+where \(\lambda>0\) is a regularization parameter.
+\end{definition}
+
+\begin{remark}
+The regularization term penalizes unrealistic or non-smooth target
+curvature laws.
+\end{remark}
+
+\subsection{Frequency Interpretation}
+
+\begin{remark}
+The realization operator acts as a low-pass filter on curvature.
+\end{remark}
+
+\begin{remark}
+The inverse problem therefore consists in compensating for the
+high-frequency attenuation introduced by realization, while preserving
+stability and realizability.
+\end{remark}
+
+\subsection{Engineering Interpretation}
+
+\begin{remark}
+The designed transition curve is not simply the curve that is built,
+but a curve that produces the desired behaviour after realization.
+\end{remark}
+
+\begin{remark}
+Thus, the design process implicitly includes knowledge of construction,
+machine behaviour, and structural response.
+\end{remark}
+
+\subsection{Special Case}
+
+\begin{proposition}
+If \(\mathcal{R}=\mathrm{Id}\), then
+\[
+\kappa_{\mathrm{target}} = \kappa_{\mathrm{desired}}.
+\]
+\end{proposition}
+
+\begin{remark}
+This corresponds to the idealized mathematical model without realization
+effects.
+\end{remark}
+
+\subsection{Connection to Optimization}
+
+\begin{remark}
+The inverse realization problem can be integrated into alignment
+optimization:
+\[
+\min_{\kappa_{\mathrm{target}},\phi}
+\;
+J\bigl(\mathcal{R}(\kappa_{\mathrm{target}}), \phi\bigr).
+\]
+\end{remark}
+
+\begin{remark}
+Thus, the objective is evaluated on the realized alignment rather than
+on the analytical target alignment.
+\end{remark}
+
+\subsection{Key Insight}
+
+\begin{proposition}
+The relevant design space for railway alignments is the image of
+\(\mathcal{R}\), not the space of analytical curvature laws.
+\end{proposition}
+
+\begin{summary}
+Inverse realization reformulates alignment design as an inverse problem
+under construction and realization constraints.
+
+Instead of prescribing a target curvature directly, one seeks a
+pre-image under the realization operator that produces the desired
+physical behaviour.
+
+This provides a rigorous framework for integrating construction,
+mechanics, and geometry into a unified design process.
+\end{summary}

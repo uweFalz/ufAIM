@@ -13,7 +13,9 @@ Classical railway alignment design separates:
 
 \begin{remark}
 This separation leads to suboptimal solutions, as geometry and dynamics
-are intrinsically coupled.
+are intrinsically coupled. In railway practice, this coupling appears
+through the interaction of curvature, cant, speed, and vehicle response
+\cite{Klein1998Trassierung,EN13803_2017,BrustadDalmo2020Review}.
 \end{remark}
 
 \begin{remark}
@@ -21,8 +23,6 @@ The concept of \emph{Schwerpunkt-Trassierung} aims to unify these aspects
 by defining a single design principle based on the motion of a
 representative point.
 \end{remark}
-
----
 
 \section{Conceptual Idea}
 
@@ -44,7 +44,10 @@ This point may be interpreted as:
 \end{itemize}
 \end{remark}
 
----
+\begin{remark}
+The conceptual shift consists in evaluating track design through the
+motion of such a reference point rather than through geometry alone.
+\end{remark}
 
 \section{Relation to Track Geometry}
 
@@ -79,7 +82,7 @@ The exact form of \(n(s,\phi)\) depends on the chosen mechanical model.
 
 \RESEARCH{Precise definition of offset direction based on vehicle model.}
 
----
+\OPEN{Consistent integration of local track frames and global CRS transformations in the Schwerpunkt model.}
 
 \section{Schwerpunkt Principle}
 
@@ -94,7 +97,10 @@ In this formulation, the primary design object is not the track itself,
 but the induced trajectory of the reference point.
 \end{remark}
 
----
+\begin{remark}
+This makes the design task closer to vehicle-oriented engineering than
+to purely geometric construction.
+\end{remark}
 
 \section{Variational Formulation}
 
@@ -125,7 +131,10 @@ J_c[\gamma_c]
 subject to the pose3 dynamics.
 \end{definition}
 
----
+\begin{remark}
+This formulation extends the variational interpretation of transition
+design from curvature laws alone to vehicle-relevant derived motion.
+\end{remark}
 
 \section{Coupling to Pose3}
 
@@ -144,7 +153,11 @@ in the variables:
 \]
 \end{remark}
 
----
+\begin{remark}
+This places Schwerpunkt-Trassierung naturally within the pose3-based
+state model introduced earlier and within the broader optimization
+perspective of railway alignment \cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+\end{remark}
 
 \section{Interpretation}
 
@@ -166,7 +179,11 @@ This leads to a unified framework in which:
 are optimized simultaneously.
 \end{remark}
 
----
+\begin{remark}
+Such a viewpoint is consistent with the general observation that railway
+transition and alignment quality cannot be judged from geometry alone
+\cite{BrustadDalmo2020Review,EN13803_2017}.
+\end{remark}
 
 \section{Relation to Classical Design}
 
@@ -181,7 +198,10 @@ In this case, the problem reduces to curvature-based optimization in
 the plane.
 \end{remark}
 
----
+\begin{remark}
+Thus, classical alignment design is not contradicted, but embedded as a
+special case of a more general formulation.
+\end{remark}
 
 \section{Advantages}
 
@@ -192,7 +212,10 @@ the plane.
 \item extensibility to vehicle-specific models.
 \end{itemize}
 
----
+\begin{remark}
+These advantages derive from the fact that the model treats alignment as
+a state-governed physical system rather than as a static geometric line.
+\end{remark}
 
 \section{Open Problems}
 
@@ -202,7 +225,7 @@ the plane.
 
 \OPEN{Extension to network-level alignment design.}
 
----
+\OPEN{Explicit treatment of CRS, local track frames, and coordinate transformations in large-scale alignment systems.}
 
 \section{Connection to the AIM Framework}
 
@@ -243,7 +266,11 @@ For planar track geometry, we consider the projection
 of the center of mass trajectory.
 \end{remark}
 
----
+\begin{remark}
+This is intentionally a simplified model. Its purpose is not to replace
+full multibody simulation, but to introduce a mathematically tractable
+vehicle-related state layer.
+\end{remark}
 
 \subsection{Track Coordinate Frame}
 
@@ -264,7 +291,10 @@ The pair \((t,n)\) defines a local coordinate system attached to the
 track.
 \end{remark}
 
----
+\begin{remark}
+This local frame is sufficient for the present formulation, but future
+extensions should consistently relate it to a global project CRS.
+\end{remark}
 
 \subsection{Cant Rotation}
 
@@ -277,7 +307,11 @@ In a simplified model, the lateral offset direction remains aligned
 with \(n(s)\), while vertical effects are captured implicitly.
 \end{remark}
 
----
+\begin{remark}
+This simplification is acceptable at the present conceptual stage, but a
+full treatment should explicitly include the three-dimensional rotated
+cross-section and its transformation into the global frame.
+\end{remark}
 
 \subsection{Center of Mass Offset}
 
@@ -301,8 +335,6 @@ More refined models may include dependence on \(\phi(s)\), e.g.
 \end{remark}
 
 \RESEARCH{Inclusion of full 3D vehicle geometry.}
-
----
 
 \section{Dynamics of the Center of Mass}
 
@@ -330,8 +362,6 @@ we obtain
 \]
 \end{remark}
 
----
-
 \begin{proposition}
 The acceleration of the center of mass is proportional to
 \[
@@ -348,7 +378,10 @@ Thus, both curvature and its derivative influence the motion of the
 center of mass.
 \end{remark}
 
----
+\begin{remark}
+This is one of the key conceptual benefits of the formulation: it makes
+the dynamic relevance of higher-order geometric quantities explicit.
+\end{remark}
 
 \subsection{Effective Forces}
 
@@ -370,7 +403,11 @@ v^2 \kappa(s) - g\sin\phi(s).
 \]
 \end{remark}
 
----
+\begin{remark}
+The latter term reflects the same curvature--cant coupling that appears
+in railway design standards and in dynamic alignment interpretation
+\cite{Klein1998Trassierung,EN13803_2017}.
+\end{remark}
 
 \section{Coupled Design Problem}
 
@@ -390,8 +427,6 @@ This functional directly measures the smoothness of the motion of the
 center of mass.
 \end{remark}
 
----
-
 \begin{definition}[Dynamic objective]
 Define
 \[
@@ -404,8 +439,6 @@ v^2 \kappa(s) - g\sin\phi(s)
 \,\dd s.
 \]
 \end{definition}
-
----
 
 \begin{definition}[Combined vehicle functional]
 A combined objective is
@@ -422,7 +455,10 @@ J[\kappa,\phi]
 \]
 \end{definition}
 
----
+\begin{remark}
+This combines geometric smoothing, dynamic balancing, and higher-order
+regularization within a single optimization framework.
+\end{remark}
 
 \section{Schwerpunkt-Trassierung (Formal Definition)}
 
@@ -443,7 +479,10 @@ subject to:
 \end{itemize}
 \end{definition}
 
----
+\begin{remark}
+This turns alignment design into the optimization of a vehicle-related
+state trajectory rather than the mere composition of geometric elements.
+\end{remark}
 
 \section{Interpretation}
 
@@ -464,8 +503,6 @@ d=0
 \]
 \end{remark}
 
----
-
 \section{Discussion}
 
 \begin{remark}
@@ -478,13 +515,17 @@ However, it already captures:
 \end{itemize}
 \end{remark}
 
+\begin{remark}
+Its main contribution is therefore conceptual and structural: it defines
+a mathematically coherent bridge between alignment geometry and
+vehicle-oriented design thinking.
+\end{remark}
+
 \RESEARCH{Extension to full multibody vehicle models.}
 
 \RESEARCH{Calibration using measured track data.}
 
 \OPEN{Integration into practical design workflows.}
-
----
 
 \section{Connection to the AIM Framework}
 

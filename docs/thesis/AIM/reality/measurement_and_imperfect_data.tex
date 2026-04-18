@@ -1,0 +1,296 @@
+\chapter{Measurement and Imperfect Data}
+
+\section{Motivation}
+
+\begin{remark}
+Railway alignment modelling is not performed in an ideal mathematical
+environment, but based on measured and legacy data.
+\end{remark}
+
+\begin{remark}
+Such data is inherently imperfect.
+It contains noise, inconsistencies, and incomplete information.
+\end{remark}
+
+\begin{remark}
+A realistic modelling framework must therefore account explicitly for
+data imperfections.
+\end{remark}
+
+\section{Sources of Data}
+
+\begin{remark}
+Typical sources of railway alignment data include:
+\begin{itemize}
+\item geodetic surveys,
+\item track measurement systems,
+\item legacy design files,
+\item and extracted data from infrastructure models.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These sources differ significantly in:
+\begin{itemize}
+\item accuracy,
+\item resolution,
+\item completeness,
+\item and coordinate reference systems.
+\end{itemize}
+\end{remark}
+
+\section{Types of Imperfections}
+
+\subsection{Measurement Noise}
+
+\begin{definition}[Noise]
+Let \(p_i \in \R^2\) denote measured points.
+Noise is the deviation between measured and true positions.
+\end{definition}
+
+\begin{remark}
+Noise arises from:
+\begin{itemize}
+\item instrument precision limits,
+\item environmental effects,
+\item and data processing steps.
+\end{itemize}
+\end{remark}
+
+\subsection{Systematic Errors}
+
+\begin{definition}[Systematic error]
+A systematic error is a consistent deviation affecting a dataset.
+\end{definition}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item incorrect CRS parameters,
+\item transformation offsets,
+\item calibration errors.
+\end{itemize}
+\end{remark}
+
+\subsection{Incompleteness}
+
+\begin{remark}
+Data may be incomplete:
+\begin{itemize}
+\item missing segments,
+\item missing metadata,
+\item or missing structural information.
+\end{itemize}
+\end{remark}
+
+\subsection{Topological Ambiguity}
+
+\begin{remark}
+In complex railway systems, data may not explicitly encode topology.
+\end{remark}
+
+\begin{remark}
+This leads to ambiguities such as:
+\begin{itemize}
+\item unclear connectivity of track segments,
+\item duplicated or overlapping elements,
+\item inconsistent ordering of points.
+\end{itemize}
+\end{remark}
+
+\section{Representation of Measured Geometry}
+
+\begin{definition}[Polyline representation]
+Measured alignments are often given as a sequence of points
+\[
+P = (p_0, p_1, \dots, p_N), \quad p_i \in \R^2.
+\]
+\end{definition}
+
+\begin{remark}
+This representation is:
+\begin{itemize}
+\item simple,
+\item widely used,
+\item but not directly suitable for analysis or optimization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In particular, curvature is not explicitly given, but must be inferred.
+\end{remark}
+
+\section{From Data to Model}
+
+\begin{remark}
+A key task in alignment modelling is the transformation:
+\[
+\text{raw data} \quad \longrightarrow \quad \text{structured model}.
+\]
+\end{remark}
+
+\begin{remark}
+This involves:
+\begin{itemize}
+\item filtering noise,
+\item reconstructing geometry,
+\item identifying structural elements,
+\item and assigning semantic meaning.
+\end{itemize}
+\end{remark}
+
+\section{Curvature Estimation}
+
+\begin{definition}[Discrete curvature]
+Given three consecutive points, curvature may be approximated by
+\[
+\kappa_i
+\approx
+\frac{\theta_{i+1} - \theta_i}{\Delta s_i},
+\]
+where \(\theta_i\) denotes the local direction.
+\end{definition}
+
+\begin{remark}
+This approximation is sensitive to noise and sampling density.
+\end{remark}
+
+\begin{remark}
+Therefore, direct use of raw curvature estimates is often unstable.
+\end{remark}
+
+\section{Smoothing and Filtering}
+
+\begin{remark}
+To obtain usable curvature information, smoothing is required.
+\end{remark}
+
+\begin{definition}[Smoothing operator]
+A smoothing operator transforms noisy data into a more regular form:
+\[
+\kappa_i \mapsto \tilde{\kappa}_i.
+\]
+\end{definition}
+
+\begin{remark}
+Common techniques include:
+\begin{itemize}
+\item moving averages,
+\item Gaussian filtering,
+\item spline fitting,
+\item and regularization methods.
+\end{itemize}
+\end{remark}
+
+\section{Model Reconstruction}
+
+\begin{remark}
+The goal of reconstruction is to obtain a structured alignment model
+from imperfect data.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item determining curvature functions,
+\item identifying transition regions,
+\item and constructing a consistent representation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Reconstruction is not unique and depends on modelling assumptions.
+\end{remark}
+
+\section{Uncertainty}
+
+\begin{definition}[Uncertainty]
+Uncertainty describes the lack of exact knowledge about the true
+alignment.
+\end{definition}
+
+\begin{remark}
+Uncertainty arises from:
+\begin{itemize}
+\item measurement errors,
+\item incomplete data,
+\item and modelling assumptions.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+A robust modelling framework should:
+\begin{itemize}
+\item tolerate uncertainty,
+\item avoid overfitting,
+\item and provide stable results.
+\end{itemize}
+\end{remark}
+
+\section{Impact on Optimization}
+
+\begin{remark}
+Imperfect data directly affects optimization:
+\begin{itemize}
+\item objective functions may reflect noise,
+\item constraints may be violated by measurement errors,
+\item and solutions may become unstable.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Therefore, optimization must account for uncertainty, for example by:
+\begin{itemize}
+\item regularization,
+\item robust objective functions,
+\item or probabilistic models.
+\end{itemize}
+\end{remark}
+
+\section{Engineering Perspective}
+
+\begin{remark}
+In practice, engineers routinely work with imperfect data.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item interpreting measurement results,
+\item reconciling inconsistent datasets,
+\item and making design decisions under uncertainty.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+A modelling framework should support these tasks rather than assume
+ideal data.
+\end{remark}
+
+\section{Towards Data-Aware Modelling}
+
+\begin{remark}
+A modern alignment model must be data-aware.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item explicit handling of noise,
+\item robust reconstruction methods,
+\item integration with coordinate systems,
+\item and compatibility with real-world workflows.
+\end{itemize}
+\end{remark}
+
+\section{Connection to the AIM Framework}
+
+\begin{summary}
+Railway alignment data is inherently imperfect.
+
+A realistic modelling framework must therefore incorporate
+measurement noise, incomplete data, and uncertainty.
+
+Within the AIM framework, data is not assumed to be ideal, but is
+treated as an integral part of the modelling process.
+\end{summary}

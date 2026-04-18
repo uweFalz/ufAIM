@@ -1,0 +1,221 @@
+\section{Hybrid Representation and Block Structure}
+
+% ============================================================
+\subsection{Motivation}
+% ============================================================
+
+\begin{remark}
+Purely parametric models provide a low-dimensional and interpretable
+representation of alignments, but lack flexibility when fitting
+real-world data.
+\end{remark}
+
+\begin{remark}
+Purely sampled models provide maximum flexibility, but lead to
+high-dimensional and often ill-conditioned optimization problems.
+\end{remark}
+
+\begin{remark}
+A hybrid formulation combines both advantages.
+\end{remark}
+
+% ============================================================
+\subsection{Hybrid Representation}
+% ============================================================
+
+\begin{definition}[Hybrid curvature model]
+\[
+\kappa(s)
+=
+\kappa_{\mathrm{param}}(s;\mathbf{T})
++
+\delta\kappa(s),
+\]
+where:
+\begin{itemize}
+\item \(\kappa_{\mathrm{param}}\) is a structured parametric model,
+\item \(\delta\kappa(s)\) is a correction term.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Hybrid cant model]
+\[
+\phi(s)
+=
+\phi_{\mathrm{param}}(s;\mathbf{T}_\phi)
++
+\delta\phi(s).
+\]
+\end{definition}
+
+% ============================================================
+\subsection{Discretization of Corrections}
+% ============================================================
+
+\begin{remark}
+The correction terms are represented discretely:
+\[
+\delta\kappa_i = \delta\kappa(s_i),
+\qquad
+\delta\phi_i = \delta\phi(s_i).
+\]
+\end{remark}
+
+\begin{definition}[Extended parameter vector]
+\[
+\mathbf{x}
+=
+(\mathbf{T}, \mathbf{T}_\phi, \delta\boldsymbol{\kappa}, \delta\boldsymbol{\phi}).
+\]
+\end{definition}
+
+% ============================================================
+\subsection{Regularization}
+% ============================================================
+
+\begin{remark}
+To avoid overfitting, correction terms are regularized:
+\[
+J_{\delta}
+=
+\int_0^L (\delta\kappa'(s))^2 \,\dd s
++
+\int_0^L (\delta\phi'(s))^2 \,\dd s.
+\]
+\end{remark}
+
+\begin{remark}
+Thus, the correction captures only smooth, physically meaningful
+deviations.
+\end{remark}
+
+% ============================================================
+\subsection{Residual Structure}
+% ============================================================
+
+\begin{remark}
+The residual vector consists of:
+\begin{itemize}
+\item parametric contributions,
+\item correction contributions,
+\item physical constraints,
+\item data fitting terms.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\subsection{Block Structure of Variables}
+% ============================================================
+
+\begin{remark}
+The parameter vector decomposes naturally as:
+\[
+(\mathbf{T}, \delta\boldsymbol{\kappa})
+\quad \text{and} \quad
+(\mathbf{T}_\phi, \delta\boldsymbol{\phi}).
+\]
+\end{remark}
+
+\begin{remark}
+This yields a two-level structure:
+\begin{itemize}
+\item coarse scale: parametric variables,
+\item fine scale: correction variables.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\subsection{Jacobian Block Structure}
+% ============================================================
+
+\begin{definition}[Block Jacobian]
+The Jacobian takes the form:
+\[
+J_r =
+\begin{pmatrix}
+J_{\kappa\kappa}^{\mathrm{param}} & J_{\kappa\kappa}^{\mathrm{corr}} & 0 & 0 \\
+0 & 0 & J_{\phi\phi}^{\mathrm{param}} & J_{\phi\phi}^{\mathrm{corr}} \\
+J_{\mathrm{dyn},\kappa} & J_{\mathrm{dyn},\kappa}^{\delta} &
+J_{\mathrm{dyn},\phi} & J_{\mathrm{dyn},\phi}^{\delta}
+\end{pmatrix}.
+\]
+\end{definition}
+
+\begin{remark}
+Key properties:
+\begin{itemize}
+\item parametric and correction terms are weakly coupled,
+\item curvature and cant are largely separable,
+\item coupling occurs mainly through dynamics.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\subsection{Hierarchical Interpretation}
+% ============================================================
+
+\begin{remark}
+The hybrid model introduces a hierarchical structure:
+\begin{itemize}
+\item parametric layer defines global alignment structure,
+\item correction layer refines local deviations.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This reflects engineering practice:
+\begin{itemize}
+\item design defines intent,
+\item construction introduces deviations.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\subsection{Computational Strategy}
+% ============================================================
+
+\begin{itemize}
+\item optimize parametric variables first,
+\item introduce correction terms for refinement,
+\item optionally alternate between both levels.
+\end{itemize}
+
+% ============================================================
+\subsection{Connection to Level-of-Detail}
+% ============================================================
+
+\begin{remark}
+The hybrid representation naturally supports LOD concepts:
+\begin{itemize}
+\item coarse LOD: parametric model only,
+\item fine LOD: parametric + corrections.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\subsection{Key Insight}
+% ============================================================
+
+\begin{proposition}
+The hybrid formulation separates structural modelling from data fitting
+while preserving a sparse and well-conditioned optimization problem.
+\end{proposition}
+
+% ============================================================
+\subsection{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The combination of hybrid modelling and block structure is a central
+feature of the AIM framework.
+
+It enables:
+\begin{itemize}
+\item interpretable parametric modelling,
+\item robust handling of imperfect data,
+\item efficient optimization due to sparsity and locality.
+\end{itemize}
+
+Thus, it bridges the gap between engineering design and data-driven
+reconstruction.
+\end{summary}

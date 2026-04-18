@@ -1,0 +1,221 @@
+\chapter{Topology and Special Elements}
+
+\section{Motivation}
+
+\begin{remark}
+Railway systems are not isolated curves, but interconnected networks.
+\end{remark}
+
+\begin{remark}
+While mathematical models often focus on single alignments,
+real-world railway infrastructure consists of:
+\begin{itemize}
+\item branching tracks,
+\item merging lines,
+\item parallel alignments,
+\item and complex switching structures.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+A complete modelling framework must therefore go beyond single curves
+and incorporate topology.
+\end{remark}
+
+\section{From Curves to Networks}
+
+\begin{definition}[Alignment]
+An alignment is a parametrized curve
+\[
+\gamma : [0,L] \to \R^2.
+\]
+\end{definition}
+
+\begin{definition}[Railway network]
+A railway network is a collection of alignments together with a set of
+connectivity relations.
+\end{definition}
+
+\begin{remark}
+The transition from a single alignment to a network introduces
+topological structure in addition to geometry.
+\end{remark}
+
+\section{Topological Relations}
+
+\begin{remark}
+Alignments in a network may be related by:
+\begin{itemize}
+\item continuation (end-to-start connections),
+\item branching (one alignment splits into several),
+\item merging (multiple alignments join),
+\item parallel relations (tracks running side by side).
+\end{itemize}
+\end{remark}
+
+\begin{definition}[Connection point]
+A connection point is a location where two or more alignments meet.
+\end{definition}
+
+\begin{remark}
+At connection points, geometric and dynamic consistency conditions must
+be satisfied.
+\end{remark}
+
+\section{Switches and Turnouts}
+
+\begin{remark}
+Switches (turnouts) are fundamental elements of railway networks.
+\end{remark}
+
+\begin{definition}[Switch]
+A switch is a structure that allows a vehicle to move from one alignment
+to another.
+\end{definition}
+
+\begin{remark}
+Switches introduce:
+\begin{itemize}
+\item branching geometry,
+\item nontrivial curvature transitions,
+\item and constraints on feasible trajectories.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Unlike simple transitions, switches cannot be described by a single
+curvature function.
+\end{remark}
+
+\section{Geometric Complexity}
+
+\begin{remark}
+Special elements often exhibit geometric properties that differ from
+standard alignment elements:
+\begin{itemize}
+\item discontinuities in curvature,
+\item piecewise-defined geometry,
+\item and locally non-smooth behaviour.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These properties must be handled explicitly in a modelling framework.
+\end{remark}
+
+\section{Topological Ambiguity in Data}
+
+\begin{remark}
+Real-world data often does not explicitly encode topology.
+\end{remark}
+
+\begin{remark}
+Typical issues include:
+\begin{itemize}
+\item missing connectivity information,
+\item duplicated segments,
+\item and inconsistent ordering of elements.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Therefore, topology must often be inferred from geometric and
+contextual information.
+\end{remark}
+
+\section{Representation of Networks}
+
+\begin{definition}[Graph representation]
+A railway network can be represented as a graph:
+\begin{itemize}
+\item nodes represent connection points,
+\item edges represent alignments.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+This abstraction separates:
+\begin{itemize}
+\item topology (graph structure),
+\item and geometry (alignment shape).
+\end{itemize}
+\end{remark}
+
+\section{Coupling of Topology and Geometry}
+
+\begin{remark}
+Although topology and geometry can be separated conceptually,
+they are strongly coupled in practice.
+\end{remark}
+
+\begin{remark}
+For example:
+\begin{itemize}
+\item curvature constraints depend on connectivity,
+\item feasible transitions depend on network structure,
+\item and optimization must consider multiple interacting alignments.
+\end{itemize}
+\end{remark}
+
+\section{Special Engineering Cases}
+
+\begin{remark}
+Railway systems include a variety of special elements, such as:
+\begin{itemize}
+\item switches and crossings,
+\item sidings and yards,
+\item station layouts,
+\item and maintenance tracks.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These elements often violate assumptions of standard alignment models:
+\begin{itemize}
+\item unique parameterization by arc length,
+\item smooth curvature evolution,
+\item and single-track continuity.
+\end{itemize}
+\end{remark}
+
+\section{Implications for Modelling}
+
+\begin{remark}
+The presence of topology and special elements implies that:
+\begin{itemize}
+\item alignment models must support multiple connected curves,
+\item curvature-based descriptions must be extended,
+\item and reconstruction algorithms must handle branching structures.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In particular, optimization problems must be formulated on networks
+rather than individual curves.
+\end{remark}
+
+\section{Towards Topology-Aware Modelling}
+
+\begin{remark}
+A topology-aware modelling framework must include:
+\begin{itemize}
+\item explicit representation of connectivity,
+\item integration of geometry and topology,
+\item support for special elements,
+\item and compatibility with real-world data.
+\end{itemize}
+\end{remark}
+
+\section{Connection to the AIM Framework}
+
+\begin{summary}
+Railway systems are inherently network-based and include complex
+special elements such as switches.
+
+A complete modelling framework must therefore extend beyond single
+alignments and incorporate topology.
+
+Within the AIM framework, topology is treated as an integral component
+of the alignment model, enabling consistent representation and
+optimization of railway networks.
+\end{summary}

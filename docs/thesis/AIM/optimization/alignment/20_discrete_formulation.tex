@@ -1,0 +1,247 @@
+\section{Discrete Formulation of Alignment Optimization}
+
+\subsection{Discretization of the Domain}
+
+\begin{definition}[Discretization]
+Let
+\[
+0 = s_0 < s_1 < \dots < s_N = L
+\]
+be a partition of the interval \([0,L]\).
+\end{definition}
+
+\begin{remark}
+We denote
+\[
+\Delta s_i = s_{i+1} - s_i.
+\]
+\end{remark}
+
+\subsection{Discrete Variables}
+
+\begin{definition}[Discrete curvature]
+Let
+\[
+\kappa_i \approx \kappa(s_i)
+\]
+denote the curvature values at the nodes.
+\end{definition}
+
+\begin{definition}[Discrete cant]
+Let
+\[
+\phi_i \approx \phi(s_i)
+\]
+denote the cant values.
+\end{definition}
+
+\begin{definition}[Parameter vector]
+The optimization variable is
+\[
+\mathbf{x}
+=
+(\kappa_0,\dots,\kappa_N,\phi_0,\dots,\phi_N) \in \R^{2(N+1)}.
+\]
+\end{definition}
+
+\subsection{Discrete Pose Reconstruction}
+
+\begin{remark}
+The pose3 state is reconstructed by numerical integration.
+\end{remark}
+
+\begin{definition}[Discrete integration]
+Given initial conditions
+\[
+\gamma_0,\ \theta_0,\ \phi_0,
+\]
+we compute iteratively:
+\[
+\theta_{i+1} = \theta_i + \kappa_i \Delta s_i,
+\]
+\[
+\gamma_{i+1} = \gamma_i + \Delta s_i
+(\cos\theta_i,\sin\theta_i),
+\]
+\[
+\phi_{i+1} = \phi_i + \omega_i \Delta s_i.
+\]
+\end{definition}
+
+\begin{remark}
+Here, \(\omega_i\) may be expressed via differences of \(\phi_i\).
+This discrete reconstruction corresponds to standard numerical
+integration ideas \cite{Hairer1993ODE,Press2007NumericalRecipes}.
+\end{remark}
+
+\subsection{Finite Differences}
+
+\begin{definition}[First derivative]
+Approximate derivatives by
+\[
+\kappa'(s_i)
+\approx
+\frac{\kappa_{i+1}-\kappa_i}{\Delta s_i},
+\quad
+\phi'(s_i)
+\approx
+\frac{\phi_{i+1}-\phi_i}{\Delta s_i}.
+\]
+\end{definition}
+
+\begin{definition}[Second derivative]
+\[
+\kappa''(s_i)
+\approx
+\frac{\kappa_{i+1}-2\kappa_i+\kappa_{i-1}}{(\Delta s_i)^2}.
+\]
+\end{definition}
+
+\subsection{Discrete Objective Functions}
+
+\subsubsection{Curvature Smoothness}
+
+\[
+J_\kappa(\mathbf{x})
+=
+\sum_{i=0}^{N-1}
+\left(
+\frac{\kappa_{i+1}-\kappa_i}{\Delta s_i}
+\right)^2
+\Delta s_i.
+\]
+
+\subsubsection{Cant Smoothness}
+
+\[
+J_\phi(\mathbf{x})
+=
+\sum_{i=0}^{N-1}
+\left(
+\frac{\phi_{i+1}-\phi_i}{\Delta s_i}
+\right)^2
+\Delta s_i.
+\]
+
+\subsubsection{Dynamic Objective}
+
+\[
+J_{\mathrm{dyn}}(\mathbf{x})
+=
+\sum_{i=0}^{N}
+\bigl(
+v^2 \kappa_i - g \sin\phi_i
+\bigr)^2
+\Delta s_i.
+\]
+
+\subsubsection{Schwerpunkt Objective}
+
+\begin{remark}
+Using finite differences, we approximate
+\[
+\|\gamma_c''(s_i)\|^2
+\]
+by second-order differences of \(\gamma_c\).
+\end{remark}
+
+\[
+J_{\mathrm{veh}}(\mathbf{x})
+=
+\sum_{i=1}^{N-1}
+\|\gamma_{c,i+1} - 2\gamma_{c,i} + \gamma_{c,i-1}\|^2.
+\]
+
+\subsection{Combined Discrete Problem}
+
+\begin{definition}[Discrete objective]
+\[
+J(\mathbf{x})
+=
+\alpha J_{\mathrm{veh}}
++
+\beta J_{\mathrm{dyn}}
++
+\gamma J_\kappa
++
+\delta J_\phi.
+\]
+\end{definition}
+
+\subsection{Constraints}
+
+\begin{definition}[Equality constraints]
+\[
+\kappa_0 = 0,
+\quad
+\kappa_N = \kappa_1.
+\]
+\end{definition}
+
+\begin{definition}[Inequality constraints]
+\[
+|\kappa_i| \le \kappa_{\max},
+\quad
+|\phi_i| \le \phi_{\max}.
+\]
+\end{definition}
+
+\begin{remark}
+Further constraints may include:
+\begin{itemize}
+\item bounds on derivatives,
+\item continuity conditions,
+\item alignment anchoring points.
+\end{itemize}
+\end{remark}
+
+\subsection{Final Optimization Problem}
+
+\begin{definition}[Discrete optimization problem]
+Find
+\[
+\mathbf{x}^\ast \in \R^{2(N+1)}
+\]
+such that
+\[
+J(\mathbf{x}^\ast)
+=
+\min_{\mathbf{x}} J(\mathbf{x})
+\]
+subject to the given constraints.
+\end{definition}
+
+\subsection{Structure of the Problem}
+
+\begin{remark}
+The problem has the structure of a nonlinear least-squares problem.
+\end{remark}
+
+\begin{remark}
+It is therefore well suited for:
+\begin{itemize}
+\item Sequential Quadratic Programming,
+\item Gauss--Newton methods,
+\item sparse optimization techniques.
+\end{itemize}
+\end{remark}
+
+\subsection{Connection to Implementation}
+
+\begin{remark}
+The discrete formulation directly corresponds to a computational model:
+\begin{itemize}
+\item \(\kappa_i\) correspond to element parameters,
+\item \(\phi_i\) correspond to cant samples,
+\item reconstruction matches numerical evaluation in software.
+\end{itemize}
+\end{remark}
+
+\begin{summary}
+The continuous alignment optimization problem can be reduced to a finite
+dimensional nonlinear optimization problem.
+
+This provides the direct link between theoretical modelling and
+practical implementation.
+\end{summary}
+

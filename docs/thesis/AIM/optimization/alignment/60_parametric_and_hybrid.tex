@@ -1,0 +1,413 @@
+\section{Parametric Representation instead of Sampling}
+
+\subsection{Motivation}
+
+\begin{remark}
+Classical discretization represents curvature and cant by samples:
+\[
+\kappa_i \approx \kappa(s_i),
+\qquad
+\phi_i \approx \phi(s_i).
+\]
+\end{remark}
+
+\begin{remark}
+This leads to high-dimensional optimization problems with weak
+structure and limited interpretability.
+\end{remark}
+
+\begin{remark}
+Within the AIM framework, curvature and cant are instead represented
+by parameterized functions.
+\end{remark}
+
+---
+
+\subsection{Parametric Curvature Model}
+
+\begin{definition}[Parametric curvature]
+A transition is described by:
+\[
+\kappa(s)
+=
+\kappa_0 + (\kappa_1 - \kappa_0)
+\widehat{\kappa}\!\left(\frac{s}{L}, \mathbf{T}\right),
+\]
+where:
+\begin{itemize}
+\item \(L\) is the element length,
+\item \(\mathbf{T}\) is a vector of transition parameters,
+\item \(\widehat{\kappa}\) is a normalized prototype function.
+\end{itemize}
+\end{definition}
+
+---
+
+\subsection{Parametric Cant Model}
+
+\begin{definition}[Parametric cant]
+Cant is represented analogously:
+\[
+\phi(s)
+=
+\phi_0 + (\phi_1 - \phi_0)
+\widehat{\phi}\!\left(\frac{s}{L}, \mathbf{T}_\phi\right).
+\]
+\end{definition}
+
+---
+
+\subsection{Parameter Vector}
+
+\begin{definition}[Reduced parameter vector]
+The optimization variable becomes:
+\[
+\mathbf{x}
+=
+(L, \kappa_0, \kappa_1, \mathbf{T},
+ \phi_0, \phi_1, \mathbf{T}_\phi).
+\]
+\end{definition}
+
+\begin{remark}
+The dimension is independent of discretization density.
+\end{remark}
+
+---
+
+\subsection{Dimensional Reduction}
+
+\begin{remark}
+A sampled representation uses \(O(N)\) variables.
+\end{remark}
+
+\begin{remark}
+The parametric representation uses:
+\[
+O(1) \text{ parameters per element}.
+\]
+\end{remark}
+
+\begin{remark}
+This yields a drastic reduction in problem size.
+\end{remark}
+
+---
+
+\subsection{Derivative Structure}
+
+\begin{proposition}
+Derivatives reduce to:
+\[
+\frac{\partial \kappa}{\partial p}
+=
+(\kappa_1 - \kappa_0)
+\frac{\partial \widehat{\kappa}}{\partial p}.
+\]
+\end{proposition}
+
+\begin{remark}
+Thus, all derivatives are computed analytically from prototype
+functions.
+\end{remark}
+
+---
+
+\subsection{Integration into Reconstruction}
+
+\begin{remark}
+The parametric representation is evaluated through:
+\[
+\theta(s) = \int \kappa(s)\,\dd s,
+\qquad
+\gamma(s) = \int (\cos\theta,\sin\theta)\,\dd s.
+\]
+\end{remark}
+
+\begin{remark}
+This yields a smooth and consistent geometry without discretization
+artifacts.
+\end{remark}
+
+---
+
+\subsection{Comparison to Sample-Based Methods}
+
+\begin{center}
+\begin{tabular}{lcc}
+\toprule
+ & Sample-based & Parametric \\
+\midrule
+dimension & high & low \\
+smoothness & enforced numerically & intrinsic \\
+interpretability & low & high \\
+constraints & many local & few global \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+---
+
+\subsection{Interpretation}
+
+\begin{remark}
+The parametric approach shifts the problem from:
+\begin{itemize}
+\item fitting values
+\end{itemize}
+to:
+\begin{itemize}
+\item designing functions.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Connection to Transition Families}
+
+\begin{remark}
+Different transition curves correspond to different prototype functions
+\(\widehat{\kappa}\).
+\end{remark}
+
+\begin{remark}
+Thus, the optimization problem includes selection and tuning of
+transition families.
+\end{remark}
+
+---
+
+\subsection{Computational Implications}
+
+\begin{itemize}
+\item smaller optimization problems,
+\item better conditioning,
+\item faster convergence,
+\item direct integration with analytical Jacobians.
+\end{itemize}
+
+---
+
+\subsection{Connection to Classical Systems}
+
+\begin{remark}
+This formulation is conceptually close to classical systems such as
+AXTRAN, which operate on element parameters rather than sampled data.
+\end{remark}
+
+---
+
+\subsection{Connection to AIM}
+
+\begin{summary}
+The parametric representation replaces discrete sampling by structured
+functions.
+
+It enables a compact, interpretable, and analytically differentiable
+model, which forms the basis for efficient and robust alignment
+optimization.
+
+This approach is central to the AIM philosophy.
+\end{summary}
+
+
+\section{Hybrid Parametric--Discrete Model}
+
+\subsection{Motivation}
+
+\begin{remark}
+Purely parametric models provide low-dimensional structure but may lack
+flexibility for fitting real-world data.
+\end{remark}
+
+\begin{remark}
+Purely sampled models provide flexibility but lead to large and
+ill-conditioned optimization problems.
+\end{remark}
+
+\begin{remark}
+A hybrid approach combines both advantages.
+\end{remark}
+
+---
+
+\subsection{Hybrid Representation}
+
+\begin{definition}[Hybrid curvature model]
+\[
+\kappa(s)
+=
+\kappa_{\mathrm{param}}(s;\mathbf{T})
++
+\delta\kappa(s),
+\]
+where:
+\begin{itemize}
+\item \(\kappa_{\mathrm{param}}\) is a parametric base model,
+\item \(\delta\kappa(s)\) is a correction term.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Hybrid cant model]
+\[
+\phi(s)
+=
+\phi_{\mathrm{param}}(s;\mathbf{T}_\phi)
++
+\delta\phi(s).
+\]
+\end{definition}
+
+---
+
+\subsection{Discretization of Correction}
+
+\begin{remark}
+The correction term is represented discretely:
+\[
+\delta\kappa_i = \delta\kappa(s_i),
+\qquad
+\delta\phi_i = \delta\phi(s_i).
+\]
+\end{remark}
+
+---
+
+\subsection{Extended Parameter Vector}
+
+\begin{definition}
+\[
+\mathbf{x}
+=
+(\mathbf{T}, \mathbf{T}_\phi, \delta\boldsymbol{\kappa}, \delta\boldsymbol{\phi}).
+\]
+\end{definition}
+
+---
+
+\subsection{Regularization of Corrections}
+
+\begin{remark}
+To avoid overfitting, the correction terms are penalized:
+\[
+J_{\delta}
+=
+\int_0^L (\delta\kappa'(s))^2 \,\dd s
++
+\int_0^L (\delta\phi'(s))^2 \,\dd s.
+\]
+\end{remark}
+
+\begin{remark}
+This enforces smooth, small deviations from the parametric model.
+\end{remark}
+
+---
+
+\subsection{Residual Structure}
+
+\begin{remark}
+The residual now consists of:
+\begin{itemize}
+\item parametric contributions,
+\item correction contributions,
+\item data fitting terms.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Block Structure}
+
+\begin{remark}
+The parameter vector decomposes as:
+\[
+(\mathbf{T}, \delta\boldsymbol{\kappa})
+\quad \text{and} \quad
+(\mathbf{T}_\phi, \delta\boldsymbol{\phi}).
+\]
+\end{remark}
+
+\begin{remark}
+This yields a multi-level block structure:
+\begin{itemize}
+\item coarse scale (parameters),
+\item fine scale (corrections).
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Interpretation}
+
+\begin{remark}
+The parametric model captures:
+\begin{itemize}
+\item geometric intent,
+\item transition structure,
+\item engineering semantics.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The correction term captures:
+\begin{itemize}
+\item measurement noise,
+\item local deviations,
+\item modelling imperfections.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Connection to Measurement Data}
+
+\begin{remark}
+Measured polylines can be fitted by minimizing:
+\[
+\sum_i \|\gamma(s_i) - p_i\|^2,
+\]
+with the hybrid representation.
+\end{remark}
+
+\begin{remark}
+The parametric part explains the global structure, while the correction
+absorbs residual errors.
+\end{remark}
+
+---
+
+\subsection{Computational Strategy}
+
+\begin{itemize}
+\item first optimize parametric variables,
+\item then refine using correction terms,
+\item optionally alternate between both levels.
+\end{itemize}
+
+---
+
+\subsection{Relation to LOD}
+
+\begin{remark}
+The hybrid model naturally supports level-of-detail concepts:
+\begin{itemize}
+\item coarse LOD: parametric model only,
+\item fine LOD: parametric + corrections.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Connection to AIM}
+
+\begin{summary}
+The hybrid representation combines structured modelling and local
+flexibility.
+
+It enables robust alignment reconstruction from imperfect data while
+preserving the interpretability of parametric models.
+
+This approach bridges engineering design and data-driven fitting within
+the AIM framework.
+\end{summary}

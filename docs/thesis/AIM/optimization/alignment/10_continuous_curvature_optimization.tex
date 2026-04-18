@@ -1,0 +1,392 @@
+\section{Formal Optimization in Curvature Space}
+
+\subsection{Problem Setting}
+
+\begin{remark}
+Let \(L>0\) be fixed and let
+\[
+\kappa : [0,L] \to \R
+\]
+denote the curvature function of a transition.
+\end{remark}
+
+\begin{remark}
+We assume the boundary conditions
+\[
+\kappa(0)=0,
+\qquad
+\kappa(L)=\kappa_1,
+\]
+and optionally
+\[
+\kappa'(0)=0,
+\qquad
+\kappa'(L)=0.
+\]
+\end{remark}
+
+\subsection{Admissible Set}
+
+\begin{definition}[Admissible transition set]
+\[
+\mathcal{A}
+=
+\left\{
+\kappa \in H^1(0,L)
+\mid
+\kappa(0)=0,\;
+\kappa(L)=\kappa_1
+\right\}.
+\]
+\end{definition}
+
+\subsection{Variational Problem}
+
+\begin{definition}[Quadratic curvature-gradient functional]
+\[
+J[\kappa]
+=
+\int_0^L \bigl(\kappa'(s)\bigr)^2 \, \dd s .
+\]
+\end{definition}
+
+\begin{definition}[Optimization problem]
+Find $\kappa^\ast \in \mathcal{A}$ such that
+\[
+J[\kappa^\ast]
+=
+\min_{\kappa \in \mathcal{A}} J[\kappa].
+\]
+\end{definition}
+
+\subsection{Euler--Lagrange Equation}
+
+\begin{proposition}
+If \(\kappa^\ast\) is a minimizer, then
+\[
+\kappa^{\ast\prime\prime}(s)=0.
+\]
+\end{proposition}
+
+\subsection{Interpretation}
+
+\begin{proposition}
+The minimizer is
+\[
+\kappa^\ast(s)=\frac{\kappa_1}{L}s .
+\]
+\end{proposition}
+
+\begin{remark}
+Thus, the clothoid appears as the solution of a variational problem.
+This connects classical railway transition design with an optimization
+view in curvature space and provides a formal counterpart to the
+historical role of the clothoid in railway engineering
+\cite{Glover1900TransitionCurves,Higgins1922TransitionSpiral}.
+\end{remark}
+
+\subsection{Higher-Order Model}
+
+\begin{definition}
+\[
+J_2[\kappa]
+=
+\int_0^L \bigl(\kappa''(s)\bigr)^2 \,\dd s.
+\]
+\end{definition}
+
+\begin{proposition}
+Minimizers satisfy
+\[
+\kappa^{(4)}(s)=0.
+\]
+\end{proposition}
+
+\begin{remark}
+This explains the occurrence of cubic transition laws and links them to
+modern polynomial transition design
+\cite{ZboinskiWoznica2017Polynomial}.
+\end{remark}
+
+\subsection{Generalized View}
+
+\begin{remark}
+General functionals of the form
+\[
+J[\kappa]
+=
+\int_0^L
+F\bigl(\kappa,\kappa',\kappa'';v,c\bigr)\,\dd s
+\]
+allow incorporation of dynamic and engineering criteria.
+\end{remark}
+
+\subsection{Connection to the Main Thesis}
+
+\begin{summary}
+Transition design can be formulated as an optimization problem in
+curvature space.
+
+Classical transition curves arise as solutions of such problems,
+supporting the interpretation of transitions as curvature control
+functions.
+\end{summary}
+
+\section{Coupled Optimization of Curvature and Cant}
+
+\subsection{Motivation}
+
+\begin{remark}
+In railway applications, curvature and cant cannot be optimized
+independently.
+Both jointly determine the effective lateral acceleration and its rate
+of change.
+\end{remark}
+
+\begin{remark}
+This motivates a coupled optimization problem in which both
+\[
+\kappa(s)
+\quad \text{and} \quad
+\phi(s)
+\]
+are treated as design variables.
+\end{remark}
+
+\begin{remark}
+Such coupling is fully consistent with railway alignment design
+standards, where curvature, speed, and cant are not independent design
+quantities \cite{EN13803_2017,Klein1998Trassierung}.
+\end{remark}
+
+\subsection{Effective Acceleration Functional}
+
+\begin{definition}[Effective lateral acceleration]
+The effective lateral acceleration is
+\[
+a_{\mathrm{eff}}(s)
+=
+v^2 \kappa(s) - g \sin\phi(s).
+\]
+\end{definition}
+
+\begin{remark}
+A natural optimization objective is to reduce the magnitude of
+unbalanced lateral acceleration.
+\end{remark}
+
+\begin{definition}[Acceleration-based functional]
+Define
+\[
+J_a[\kappa,\phi]
+=
+\int_0^L a_{\mathrm{eff}}(s)^2 \,\dd s
+=
+\int_0^L
+\bigl(v^2 \kappa(s) - g \sin\phi(s)\bigr)^2
+\,\dd s.
+\]
+\end{definition}
+
+\subsection{Jerk-Based Functional}
+
+\begin{definition}[Jerk]
+The jerk is given by
+\[
+j(s)
+=
+v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s).
+\]
+\end{definition}
+
+\begin{definition}[Jerk functional]
+Define
+\[
+J_j[\kappa,\phi]
+=
+\int_0^L j(s)^2 \,\dd s.
+\]
+That is,
+\[
+J_j[\kappa,\phi]
+=
+\int_0^L
+\bigl(
+v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s)
+\bigr)^2
+\,\dd s.
+\]
+\end{definition}
+
+\begin{remark}
+This functional penalizes rapid variation of effective acceleration and
+therefore provides a natural dynamic smoothness criterion. Such criteria
+are closely related to engineering concerns about comfort and dynamic
+compatibility \cite{EN13803_2017,BrustadDalmo2020Review}.
+\end{remark}
+
+\subsection{Combined Objective}
+
+\begin{definition}[Coupled objective functional]
+A general coupled objective may be written as
+\[
+J[\kappa,\phi]
+=
+\alpha J_a[\kappa,\phi]
++
+\beta J_j[\kappa,\phi]
++
+\gamma J_\kappa[\kappa]
++
+\delta J_\phi[\phi],
+\]
+where:
+\[
+J_\kappa[\kappa]
+=
+\int_0^L (\kappa'(s))^2 \,\dd s,
+\qquad
+J_\phi[\phi]
+=
+\int_0^L (\phi'(s))^2 \,\dd s.
+\]
+\end{definition}
+
+\begin{remark}
+The weights
+\[
+\alpha,\beta,\gamma,\delta \ge 0
+\]
+determine the relative importance of equilibrium, comfort, curvature
+smoothness, and cant smoothness.
+\end{remark}
+
+\subsection{Admissible Set}
+
+\begin{definition}[Admissible railway state set]
+Let
+\[
+\mathcal{B}
+=
+\left\{
+(\kappa,\phi)
+\;\middle|\;
+\kappa \in H^1(0,L),\;
+\phi \in H^1(0,L),
+\;
+\kappa(0)=0,\;
+\kappa(L)=\kappa_1
+\right\}.
+\]
+\end{definition}
+
+\begin{remark}
+Additional boundary conditions may be imposed, for example:
+\[
+\phi(0)=0,
+\qquad
+\phi(L)=\phi_1,
+\]
+or derivative constraints such as
+\[
+\kappa'(0)=\kappa'(L)=0,
+\qquad
+\phi'(0)=\phi'(L)=0.
+\]
+\end{remark}
+
+\subsection{Coupled Optimization Problem}
+
+\begin{definition}[Coupled railway optimization problem]
+Find
+\[
+(\kappa^\ast,\phi^\ast)\in\mathcal{B}
+\]
+such that
+\[
+J[\kappa^\ast,\phi^\ast]
+=
+\min_{(\kappa,\phi)\in\mathcal{B}} J[\kappa,\phi].
+\]
+\end{definition}
+
+\subsection{Interpretation}
+
+\begin{remark}
+This problem extends classical transition design in two directions:
+\begin{itemize}
+\item from pure geometry to coupled geometry--cant design,
+\item from curve selection to functional optimization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In this framework, the transition curve is no longer chosen from a
+catalogue, but emerges as part of an optimal coupled state.
+\end{remark}
+
+\subsection{Special Cases}
+
+\begin{proposition}
+If \(\phi(s)\equiv 0\), the coupled problem reduces to a pure curvature
+optimization problem.
+\end{proposition}
+
+\begin{proposition}
+If \(a_{\mathrm{eff}}(s)=0\) for all \(s\), then
+\[
+v^2 \kappa(s)=g\sin\phi(s),
+\]
+and the design is perfectly balanced.
+\end{proposition}
+
+\begin{remark}
+These special cases show that classical equilibrium design appears as a
+subcase of the coupled optimization framework.
+\end{remark}
+
+\subsection{Relation to Optimal Control}
+
+\begin{remark}
+The coupled optimization problem may be interpreted as an optimal
+control problem with controls
+\[
+\kappa(s), \quad \phi'(s),
+\]
+state variables
+\[
+x(s),y(s),\theta(s),\phi(s),
+\]
+and cost functional \(J[\kappa,\phi]\).
+\end{remark}
+
+\begin{remark}
+This provides a direct bridge from railway alignment design to modern
+control-theoretic and variational methods.
+\end{remark}
+
+\subsection{Connection to the Main Thesis}
+
+\begin{summary}
+The coupled optimization problem shows that railway alignment design is
+not a purely geometric task.
+
+Instead, it is the optimization of a coupled state system in which
+curvature and cant jointly determine dynamic behaviour.
+
+This supports the central thesis of the manuscript that transition
+curves and cant evolution should be understood as control functions in a
+curvature-based railway state model.
+\end{summary}
+
+\section{Summary}
+
+\begin{summary}
+Alignment optimization treats geometry as a variable rather than a fixed
+input.
+
+It combines parameterization, numerical reconstruction, and constrained
+optimization methods to produce alignments that satisfy both geometric
+and engineering requirements.
+\end{summary}
+

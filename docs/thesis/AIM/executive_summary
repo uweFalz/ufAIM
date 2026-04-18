@@ -1,0 +1,177 @@
+\chapter*{Executive Summary}
+\addcontentsline{toc}{chapter}{Executive Summary}
+
+\section*{Alignment-Based Information Modelling (AIM)}
+
+Railway alignments are traditionally described as geometric curves in
+space. However, this view is insufficient for modern engineering tasks,
+which require the integration of design, measurement, construction,
+and optimization.
+
+This work introduces \emph{Alignment-Based Information Modelling (AIM)}
+as a unified framework that treats alignments not as static curves,
+but as the result of a structured transformation process.
+
+---
+
+\section*{Core Idea}
+
+The central concept of AIM is to represent alignments through curvature
+as a function of arc-length:
+\[
+\kappa(s).
+\]
+
+This intrinsic representation:
+\begin{itemize}
+\item directly connects geometry and dynamics,
+\item provides a low-dimensional and structured model,
+\item enables efficient optimization.
+\end{itemize}
+
+---
+
+\section*{From Geometry to System}
+
+Instead of a single model, AIM defines a pipeline of operators:
+\[
+\mathcal{P}
+=
+\mathcal{W}^{-1}
+\circ
+\mathcal{R}
+\circ
+\mathcal{M}
+\circ
+\mathcal{W}
+\circ
+\mathcal{C}.
+\]
+
+This pipeline links:
+\begin{itemize}
+\item coordinate systems (CRS),
+\item world geometry,
+\item intrinsic alignment coordinates,
+\item parametric and hybrid modelling,
+\item physical realization,
+\item and optimization.
+\end{itemize}
+
+Thus, alignment modelling becomes a \emph{process} rather than a static
+representation.
+
+---
+
+\section*{Hybrid Modelling}
+
+AIM combines parametric structure with local flexibility:
+\[
+\kappa(s)
+=
+\kappa_{\mathrm{param}}(s;\mathbf{T})
++
+\delta\kappa(s).
+\]
+
+This hybrid representation:
+\begin{itemize}
+\item preserves engineering intent,
+\item accommodates imperfect measurement data,
+\item avoids over-parameterization.
+\end{itemize}
+
+---
+
+\section*{Realization Matters}
+
+A key insight is that the designed alignment is not identical to the
+constructed track.
+
+A realization operator
+\[
+\mathcal{R}
+\]
+transforms the theoretical model into physically realizable geometry,
+introducing smoothing and constraints.
+
+\textbf{Therefore, design must be performed in realized space.}
+
+---
+
+\section*{Optimization}
+
+The alignment problem is formulated as a structured nonlinear
+least-squares problem and solved using Sequential Quadratic Programming
+(SQP).
+
+Due to:
+\begin{itemize}
+\item locality in arc-length,
+\item sparse Jacobians,
+\item intrinsic block structure,
+\end{itemize}
+the optimization is computationally efficient and scalable.
+
+---
+
+\section*{World-to-Track Transformation}
+
+A central component of AIM is the transformation between global
+coordinates and intrinsic track coordinates:
+\[
+x \leftrightarrow (s,d).
+\]
+
+This nonlinear mapping:
+\begin{itemize}
+\item connects measurement data to the alignment model,
+\item introduces scale-dependent complexity,
+\item requires hybrid and LOD-based strategies.
+\end{itemize}
+
+---
+
+\section*{Key Principles}
+
+The framework is governed by the following principles:
+
+\begin{itemize}
+\item curvature-centric modelling,
+\item separation of model and realization,
+\item hybrid parametric--discrete representation,
+\item operator-based architecture,
+\item optimization in realized space,
+\item exploitation of sparsity and structure,
+\item integration of measurement via world-to-track mapping,
+\item acceptance of non-uniqueness.
+\end{itemize}
+
+---
+
+\section*{Outcome}
+
+AIM provides a coherent foundation for:
+\begin{itemize}
+\item alignment reconstruction from imperfect data,
+\item physically meaningful optimization,
+\item integration of design, measurement, and construction,
+\item scalable computational implementation.
+\end{itemize}
+
+---
+
+\section*{Conclusion}
+
+Alignment modelling is not merely a geometric task.
+
+It is the integration of:
+\begin{itemize}
+\item geometry,
+\item physics,
+\item data,
+\item and computation.
+\end{itemize}
+
+AIM formalizes this integration as a structured operator pipeline,
+establishing a new perspective on railway alignment engineering.

@@ -17,13 +17,19 @@
 // Currently:
 // - sparseAlignment is validated for alignment items
 // - interpretation is checked only at a shallow structural level
+//
+// @baustelle [META_LAYER]
+// This validator accepts light-weight comparison metadata,
+// but validates only its structure, not its semantics.
+// Currently checked:
+// - label / roleHint / spatialRefHint / sourceGroup / objectSignature
+// - stationRange { sMin, sMax }
 
 import {
 	isImportSessionItemKind,
 	isImportSessionItemStage,
 } from "../contracts/importSessionItem.contract.js";
 
-// import { validateSparseAlignment } from "@src/model/spot/validation/validateSparseAlignment.js";
 import { validateSparseAlignment } from "../../model/spot/validation/validateSparseAlignment.js";
 
 const CODES = {
@@ -35,6 +41,7 @@ const CODES = {
 	missing_payload: "missing_payload",
 	invalid_status: "invalid_status",
 	invalid_annotations: "invalid_annotations",
+	invalid_meta: "invalid_meta",
 	invalid_derived: "invalid_derived",
 
 	source_file_name: "source_file_name",
@@ -46,6 +53,13 @@ const CODES = {
 
 	payload_kind_mismatch: "payload_kind_mismatch",
 	payload_coordgeom_shape: "payload_coordgeom_shape",
+
+	meta_label_invalid: "meta_label_invalid",
+	meta_role_hint_invalid: "meta_role_hint_invalid",
+	meta_station_range_invalid: "meta_station_range_invalid",
+	meta_spatial_ref_hint_invalid: "meta_spatial_ref_hint_invalid",
+	meta_source_group_invalid: "meta_source_group_invalid",
+	meta_object_signature_invalid: "meta_object_signature_invalid",
 
 	derived_sparse_invalid: "derived_sparse_invalid",
 	derived_sparse_kind_mismatch: "derived_sparse_kind_mismatch",
@@ -97,6 +111,12 @@ function validateRoot(item, path, res) {
 
 	if (item.annotations != null && !Array.isArray(item.annotations)) {
 		pushError(res, CODES.invalid_annotations, "annotations must be array", joinPath(path, "annotations"));
+	}
+
+	if (item.meta != null && !isObject(item.meta)) {
+		pushError(res, CODES.invalid_meta, "meta must be object", joinPath(path, "meta"));
+	} else {
+		validateMeta(item.meta, joinPath(path, "meta"), res);
 	}
 
 	if (item.derived != null && !isObject(item.derived)) {
@@ -205,6 +225,115 @@ function validateStaEqPayload(payload, path, res) {
 function validateRelationPayload(payload, path, res) {
 	if (payload.kind != null && payload.kind !== "relation") {
 		pushError(res, CODES.payload_kind_mismatch, 'payload.kind must be "relation"', joinPath(path, "kind"));
+	}
+}
+
+function validateMeta(meta, path, res) {
+	if (!isObject(meta)) return;
+
+	if (meta.label != null && !isNonEmptyString(meta.label)) {
+		pushError(
+			res,
+			CODES.meta_label_invalid,
+			"meta.label must be non-empty string",
+			joinPath(path, "label")
+		);
+	}
+
+	if (meta.roleHint != null && !isNonEmptyString(meta.roleHint)) {
+		pushError(
+			res,
+			CODES.meta_role_hint_invalid,
+			"meta.roleHint must be non-empty string",
+			joinPath(path, "roleHint")
+		);
+	}
+
+	if (meta.spatialRefHint != null && !isNonEmptyString(meta.spatialRefHint)) {
+		pushError(
+			res,
+			CODES.meta_spatial_ref_hint_invalid,
+			"meta.spatialRefHint must be non-empty string",
+			joinPath(path, "spatialRefHint")
+		);
+	}
+
+	if (meta.sourceGroup != null && !isNonEmptyString(meta.sourceGroup)) {
+		pushError(
+			res,
+			CODES.meta_source_group_invalid,
+			"meta.sourceGroup must be non-empty string",
+			joinPath(path, "sourceGroup")
+		);
+	}
+
+	if (meta.objectSignature != null && !isNonEmptyString(meta.objectSignature)) {
+		pushError(
+			res,
+			CODES.meta_object_signature_invalid,
+			"meta.objectSignature must be non-empty string",
+			joinPath(path, "objectSignature")
+		);
+	}
+
+	if (meta.stationRange != null) {
+		validateStationRange(meta.stationRange, joinPath(path, "stationRange"), res);
+	}
+}
+
+function validateStationRange(range, path, res) {
+	if (!isObject(range)) {
+		pushError(
+			res,
+			CODES.meta_station_range_invalid,
+			"meta.stationRange must be object",
+			path
+		);
+		return;
+	}
+
+	const hasSMin = range.sMin != null;
+	const hasSMax = range.sMax != null;
+
+	if (!hasSMin && !hasSMax) {
+		pushError(
+			res,
+			CODES.meta_station_range_invalid,
+			"meta.stationRange must contain at least sMin or sMax",
+			path
+		);
+		return;
+	}
+
+	if (hasSMin && !Number.isFinite(range.sMin)) {
+		pushError(
+			res,
+			CODES.meta_station_range_invalid,
+			"meta.stationRange.sMin must be finite number",
+			joinPath(path, "sMin")
+		);
+	}
+
+	if (hasSMax && !Number.isFinite(range.sMax)) {
+		pushError(
+			res,
+			CODES.meta_station_range_invalid,
+			"meta.stationRange.sMax must be finite number",
+			joinPath(path, "sMax")
+		);
+	}
+
+	if (
+		Number.isFinite(range.sMin) &&
+		Number.isFinite(range.sMax) &&
+		range.sMin > range.sMax
+	) {
+		pushError(
+			res,
+			CODES.meta_station_range_invalid,
+			"meta.stationRange requires sMin <= sMax",
+			path
+		);
 	}
 }
 

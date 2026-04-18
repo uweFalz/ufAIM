@@ -1,0 +1,256 @@
+\section{Design Principles of Alignment-Based Information Modelling}
+
+% ============================================================
+\subsection{Motivation}
+% ============================================================
+
+\begin{remark}
+The AIM framework integrates geometry, coordinate systems, realization,
+and optimization into a unified model.
+\end{remark}
+
+\begin{remark}
+From this integration, a set of fundamental design principles emerges.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 1: Curvature-Centric Modelling}
+% ============================================================
+
+\begin{proposition}
+Railway alignments should be modelled primarily through curvature
+functions \(\kappa(s)\), not through point-based geometry.
+\end{proposition}
+
+\begin{remark}
+Curvature provides:
+\begin{itemize}
+\item intrinsic representation,
+\item direct link to dynamics,
+\item natural integration with optimization.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 2: Separation of Representation and Realization}
+% ============================================================
+
+\begin{proposition}
+The theoretical alignment model must be separated from its physical
+realization.
+\end{proposition}
+
+\begin{remark}
+The realization operator introduces:
+\begin{itemize}
+\item smoothing,
+\item constraints,
+\item deviations from the ideal model.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Ignoring this separation leads to systematic modelling errors.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 3: Hybrid Modelling}
+% ============================================================
+
+\begin{proposition}
+Alignment models should combine parametric structure with local
+correction terms.
+\end{proposition}
+
+\begin{remark}
+This allows:
+\begin{itemize}
+\item interpretable design intent,
+\item robust handling of imperfect data,
+\item flexible refinement.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 4: Operator-Based Architecture}
+% ============================================================
+
+\begin{proposition}
+Alignment modelling should be formulated as a composition of operators:
+\[
+\mathcal{P}
+=
+\mathcal{W}^{-1}
+\circ
+\mathcal{R}
+\circ
+\mathcal{M}
+\circ
+\mathcal{W}
+\circ
+\mathcal{C}.
+\]
+\end{proposition}
+
+\begin{remark}
+Each operator represents a distinct domain:
+\begin{itemize}
+\item coordinate systems,
+\item geometric modelling,
+\item physical processes,
+\item data transformation.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 5: Design in Realized Space}
+% ============================================================
+
+\begin{proposition}
+Optimization objectives must be evaluated on realized geometry, not on
+theoretical models.
+\end{proposition}
+
+\begin{remark}
+The relevant mapping is:
+\[
+\kappa_{\mathrm{target}}
+\;\mapsto\;
+\gamma_{\mathrm{real}}.
+\]
+\end{remark}
+
+\begin{remark}
+Design must account for the transformation induced by realization.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 6: Exploitation of Structure}
+% ============================================================
+
+\begin{proposition}
+The intrinsic block and sparsity structure of the problem must be
+exploited for efficient computation.
+\end{proposition}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item locality in arc-length,
+\item block decomposition (curvature vs. cant),
+\item sparse Jacobians.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 7: Scale Awareness}
+% ============================================================
+
+\begin{proposition}
+Different components of the pipeline must be evaluated at appropriate
+scales.
+\end{proposition}
+
+\begin{remark}
+\begin{itemize}
+\item CRS dominates at large scale,
+\item parametric modelling at medium scale,
+\item corrections and realization at small scale.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 8: Measurement Integration}
+% ============================================================
+
+\begin{proposition}
+Measured data must be integrated through the world-to-track
+transformation, not directly in world space.
+\end{proposition}
+
+\begin{remark}
+This ensures consistency with the intrinsic alignment representation.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 9: Regularization as Necessity}
+% ============================================================
+
+\begin{proposition}
+Regularization is an essential component of alignment modelling and
+optimization.
+\end{proposition}
+
+\begin{remark}
+It stabilizes:
+\begin{itemize}
+\item inverse problems,
+\item hybrid corrections,
+\item numerical optimization.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Principle 10: Acceptance of Non-Uniqueness}
+% ============================================================
+
+\begin{proposition}
+Alignment solutions are not unique and must be evaluated based on
+engineering criteria.
+\end{proposition}
+
+\begin{remark}
+Different models may produce nearly identical realized geometry.
+\end{remark}
+
+\begin{remark}
+Thus, solution quality must be defined through:
+\begin{itemize}
+\item dynamics,
+\item constraints,
+\item robustness.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Summary}
+% ============================================================
+
+\begin{summary}
+The AIM framework is governed by a set of design principles that
+emerge from the interaction of geometry, physics, data, and computation.
+
+These principles define:
+\begin{itemize}
+\item how alignments should be represented,
+\item how they should be transformed,
+\item how they should be optimized,
+\item and how their limitations must be handled.
+\end{itemize}
+
+Together, they provide a coherent foundation for alignment-based
+information modelling as a unified engineering and computational
+discipline.
+\end{summary}

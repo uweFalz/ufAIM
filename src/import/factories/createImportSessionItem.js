@@ -2,15 +2,13 @@
 
 import { validateImportSessionItem } from "../validation/validateImportSessionItem.js";
 
-//
-// ...
-//
 export function createImportSessionItem({
 	id,
 	kind,
 	source,
 	payload,
 	status,
+	meta = {},
 	derived = {},
 	annotations = [],
 } = {}) {
@@ -20,6 +18,7 @@ export function createImportSessionItem({
 		source: normalizeSource(source),
 		payload: normalizePayload(payload, kind),
 		status: normalizeStatus(status),
+		meta: normalizeMeta(meta),
 		// derived = machine-readable augmentation (e.g. sparseAlignment, interpretation)
 		derived: normalizeDerived(derived),
 		annotations: Array.isArray(annotations) ? annotations : [],
@@ -39,6 +38,7 @@ export function createRejectedImportSessionItem({
 	kind,
 	source,
 	payload = {},
+	meta = {},
 	reason = "rejected",
 	annotations = [],
 } = {}) {
@@ -47,6 +47,7 @@ export function createRejectedImportSessionItem({
 		kind,
 		source,
 		payload,
+		meta,
 		status: {
 			valid: false,
 			promotable: false,
@@ -101,6 +102,36 @@ function normalizeStatus(status) {
 	};
 }
 
+function normalizeMeta(meta) {
+	if (!isObject(meta)) return {};
+
+	const stationRange = isObject(meta.stationRange)
+		? {
+			sMin: Number.isFinite(meta.stationRange.sMin) ? Number(meta.stationRange.sMin) : null,
+			sMax: Number.isFinite(meta.stationRange.sMax) ? Number(meta.stationRange.sMax) : null,
+		}
+		: null;
+
+	const out = {
+		label: nonEmptyOrNull(meta.label),
+		roleHint: nonEmptyOrNull(meta.roleHint),
+		stationRange:
+			stationRange &&
+			(stationRange.sMin != null || stationRange.sMax != null)
+				? stationRange
+				: null,
+		spatialRefHint: nonEmptyOrNull(meta.spatialRefHint),
+		sourceGroup: nonEmptyOrNull(meta.sourceGroup),
+		objectSignature: nonEmptyOrNull(meta.objectSignature),
+	};
+
+	for (const key of Object.keys(out)) {
+		if (out[key] == null) delete out[key];
+	}
+
+	return Object.keys(out).length ? out : {};
+}
+
 function normalizeDerived(derived) {
 	if (!isObject(derived)) return {};
 
@@ -116,6 +147,12 @@ function normalizeDerived(derived) {
 	}
 
 	return Object.keys(out).length ? out : {};
+}
+
+function nonEmptyOrNull(value) {
+	return (typeof value === "string" && value.trim())
+		? value.trim()
+		: null;
 }
 
 function slug(value) {

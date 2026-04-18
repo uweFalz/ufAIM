@@ -1,0 +1,205 @@
+\chapter{Vision}
+
+\input{why/why_railway_is_different}
+
+\section{From Problem to Paradigm}
+
+\begin{remark}
+The previous chapters have identified a fundamental limitation of current
+alignment modelling approaches: the fragmentation of geometry, dynamics,
+and data.
+\end{remark}
+
+\begin{remark}
+This motivates not only incremental improvements, but a shift in
+perspective.
+\end{remark}
+
+\section{Core Idea}
+
+\begin{remark}
+The central idea of this work is to treat railway alignment as a
+\emph{state trajectory} governed by curvature and its associated
+quantities.
+\end{remark}
+
+\begin{remark}
+Instead of describing alignment as a sequence of geometric elements,
+we propose to describe it as a function-based object:
+\[
+(\kappa(s), \phi(s)).
+\]
+\end{remark}
+
+\begin{remark}
+In this view:
+\begin{itemize}
+\item curvature defines geometry,
+\item cant defines dynamic balancing,
+\item and their interaction determines physical behaviour.
+\end{itemize}
+\end{remark}
+
+\section{Alignment as a Controlled System}
+
+\begin{remark}
+The alignment is interpreted as a controlled system evolving along
+arc length:
+\[
+\begin{aligned}
+\gamma'(s) &= (\cos\theta(s), \sin\theta(s)), \\
+\theta'(s) &= \kappa(s), \\
+\phi'(s)   &= \omega(s).
+\end{aligned}
+\]
+\end{remark}
+
+\begin{remark}
+Here:
+\begin{itemize}
+\item \(\kappa(s)\) acts as a geometric control,
+\item \(\omega(s)\) governs cant evolution,
+\item and the resulting state determines both geometry and dynamics.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This formulation establishes a direct link between alignment design and
+optimal control theory.
+\end{remark}
+
+\section{Transitions as Primary Objects}
+
+\begin{remark}
+In classical models, transitions are treated as auxiliary elements
+connecting geometric primitives.
+\end{remark}
+
+\begin{remark}
+In the proposed framework, transitions become the primary modelling
+objects, as they define the evolution of curvature.
+\end{remark}
+
+\begin{remark}
+This shifts the focus:
+\begin{itemize}
+\item from static geometry
+\item to controlled change of state.
+\end{itemize}
+\end{remark}
+
+\section{Integration of Reality}
+
+\begin{remark}
+A central requirement of the proposed approach is compatibility with
+real-world data.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item measurement data with uncertainty,
+\item heterogeneous coordinate systems (CRS),
+\item legacy alignment descriptions,
+\item and complex track configurations.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The model must therefore support:
+\begin{itemize}
+\item robust reconstruction from imperfect data,
+\item explicit handling of coordinate transformations,
+\item and consistent representation across scales.
+\end{itemize}
+\end{remark}
+
+\section{Unified Optimization Framework}
+
+\begin{remark}
+Within this paradigm, alignment design is formulated as an optimization
+problem:
+\[
+\min J(\kappa,\phi)
+\]
+subject to:
+\begin{itemize}
+\item state dynamics,
+\item engineering constraints,
+\item and boundary conditions.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This allows:
+\begin{itemize}
+\item direct incorporation of comfort criteria,
+\item integration of dynamic effects,
+\item and systematic exploration of design alternatives.
+\end{itemize}
+\end{remark}
+
+\section{Towards Alignment-Based Information Modelling}
+
+\begin{remark}
+The proposed framework forms the basis of
+\emph{alignment-based information modelling} (AIM).
+\end{remark}
+
+\begin{remark}
+AIM is characterized by:
+\begin{itemize}
+\item curvature-driven representation,
+\item state-based modelling,
+\item integration of geometry and dynamics,
+\item and compatibility with data-driven workflows.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In this sense, alignment is not a static object, but a structured,
+computable entity.
+\end{remark}
+
+\section{Implications}
+
+\begin{remark}
+Adopting this perspective has several implications:
+\begin{itemize}
+\item design becomes a problem of state control,
+\item transitions emerge from functional requirements,
+\item optimization replaces iterative manual adjustment,
+\item and modelling becomes directly compatible with computation.
+\end{itemize}
+\end{remark}
+
+\section{Long-Term Perspective}
+
+\begin{remark}
+The proposed framework is intended as a foundation for future
+developments, including:
+\begin{itemize}
+\item integration with BIM systems,
+\item extension to network-level modelling,
+\item incorporation of vehicle dynamics,
+\item and real-time optimization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+It is not a finished solution, but a structured starting point.
+\end{remark}
+
+\section{Summary}
+
+\begin{summary}
+This work proposes a paradigm shift from element-based alignment
+modelling to a curvature-driven, state-based representation.
+
+By treating alignment as a controlled system and integrating geometry,
+dynamics, and data, it establishes a unified foundation for modelling
+and optimization.
+
+This perspective forms the basis of alignment-based information
+modelling (AIM).
+\end{summary}

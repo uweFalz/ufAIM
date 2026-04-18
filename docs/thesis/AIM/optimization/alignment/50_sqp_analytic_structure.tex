@@ -1,0 +1,129 @@
+\section{Analytical Structure of the Optimization Problem}
+
+% ============================================================
+\subsection{Motivation}
+% ============================================================
+
+\begin{remark}
+In classical numerical optimization, Jacobians are often computed by
+finite differences or automatic differentiation.
+\end{remark}
+
+\begin{remark}
+Within the AIM framework, this is not necessary.
+The alignment model is inherently differentiable.
+\end{remark}
+
+% ============================================================
+\subsection{Fundamental Observation}
+% ============================================================
+
+\begin{proposition}
+All state variables are obtained via arc-length integration:
+\[
+\theta(s) = \theta_0 + \int_0^s \kappa(\sigma)\,\dd\sigma,
+\]
+\[
+\gamma(s) = \gamma_0 + \int_0^s (\cos\theta,\sin\theta)\,\dd\sigma.
+\]
+\end{proposition}
+
+% ============================================================
+\subsection{Parameter Types}
+% ============================================================
+
+\begin{definition}
+Primary parameter classes:
+\begin{itemize}
+\item curvature parameters \(dK\),
+\item length parameters \(dL\),
+\item transition parameters \(dT\).
+\end{itemize}
+\end{definition}
+
+% ============================================================
+\subsection{Analytical Derivatives}
+% ============================================================
+
+\begin{proposition}
+\[
+\frac{\partial \theta(s)}{\partial p}
+=
+\int_0^s
+\frac{\partial \kappa}{\partial p}\,\dd\sigma.
+\]
+\end{proposition}
+
+\begin{proposition}
+\[
+\frac{\partial \gamma(s)}{\partial p}
+=
+\int_0^s
+\begin{pmatrix}
+-\sin\theta \\
+\cos\theta
+\end{pmatrix}
+\frac{\partial \theta}{\partial p}\,\dd\sigma.
+\]
+\end{proposition}
+
+\begin{remark}
+All derivatives reduce to arc-length integrals.
+\end{remark}
+
+% ============================================================
+\subsection{Key Insight}
+% ============================================================
+
+\begin{proposition}
+The optimization problem admits exact Jacobians without numerical approximation.
+\end{proposition}
+
+\begin{remark}
+This eliminates:
+\begin{itemize}
+\item finite differences,
+\item numerical instability,
+\item high computational cost.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\subsection{Block Structure}
+% ============================================================
+
+\begin{remark}
+The parameter vector decomposes as:
+\[
+(\boldsymbol{\kappa}, \boldsymbol{\phi}).
+\]
+\end{remark}
+
+\begin{remark}
+This induces a block structure:
+\[
+H =
+\begin{pmatrix}
+H_{\kappa\kappa} & H_{\kappa\phi} \\
+H_{\phi\kappa} & H_{\phi\phi}
+\end{pmatrix}.
+\]
+\end{remark}
+
+% ============================================================
+\subsection{Interpretation}
+% ============================================================
+
+\begin{summary}
+The structure of the optimization problem is not imposed numerically,
+but follows directly from the curvature-based modelling approach.
+
+This yields:
+\begin{itemize}
+\item exact derivatives,
+\item sparse matrices,
+\item natural block structure.
+\end{itemize}
+
+This is a central advantage of the AIM framework.
+\end{summary}

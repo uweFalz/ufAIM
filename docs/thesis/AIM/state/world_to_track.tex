@@ -1,0 +1,258 @@
+\section{World--Track Coordinate Transformation}
+
+% ============================================================
+\subsection{Motivation}
+% ============================================================
+
+\begin{remark}
+Railway alignments are modeled in a one-dimensional intrinsic coordinate
+system defined by arc-length.
+\end{remark}
+
+\begin{remark}
+Real-world data, however, is given in global coordinate systems such as
+WGS84, UTM, or local engineering reference systems.
+\end{remark}
+
+\begin{remark}
+Thus, a transformation between world coordinates and track coordinates
+is required.
+\end{remark}
+
+% ============================================================
+\subsection{Track Coordinate System}
+% ============================================================
+
+\begin{definition}[Track coordinate system]
+Let \(\gamma(s)\) denote the alignment curve parameterized by arc-length.
+
+The track coordinate system at position \(s\) is defined by:
+\begin{itemize}
+\item longitudinal coordinate: \(s\),
+\item lateral offset: \(d\),
+\item vertical offset: \(h\).
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+In the planar case, only \((s,d)\) is considered.
+\end{remark}
+
+% ============================================================
+\subsection{Forward Transformation (Track to World)}
+% ============================================================
+
+\begin{definition}[Track-to-world mapping]
+Given \((s,d)\), the corresponding world position is:
+\[
+x(s,d)
+=
+\gamma(s)
++
+d \cdot \mathbf{n}(s),
+\]
+where \(\mathbf{n}(s)\) is the normal vector of the alignment.
+\end{definition}
+
+\begin{remark}
+The tangent vector is:
+\[
+\mathbf{t}(s)
+=
+(\cos\theta(s), \sin\theta(s)),
+\]
+and the normal vector:
+\[
+\mathbf{n}(s)
+=
+(-\sin\theta(s), \cos\theta(s)).
+\]
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Inverse Transformation (World to Track)}
+% ============================================================
+
+\begin{definition}[World-to-track mapping]
+Given a world point \(x\), the track coordinates \((s,d)\) are defined by:
+\[
+(s^\ast, d^\ast)
+=
+\arg\min_{s,d}
+\| x - (\gamma(s) + d\,\mathbf{n}(s)) \|.
+\]
+\end{definition}
+
+\begin{remark}
+This is a nonlinear projection problem onto the alignment.
+\end{remark}
+
+\begin{remark}
+In practice, it is solved by:
+\begin{itemize}
+\item nearest point search,
+\item local Newton iteration,
+\item segment-wise projection.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Local Approximation}
+% ============================================================
+
+\begin{remark}
+For small offsets, the projection can be approximated by:
+\[
+d \approx (x - \gamma(s)) \cdot \mathbf{n}(s).
+\]
+\end{remark}
+
+\begin{remark}
+The arc-length coordinate is approximated by projection onto the tangent:
+\[
+s \approx \arg\min_s \| x - \gamma(s) \|.
+\]
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Relation to Curvature}
+% ============================================================
+
+\begin{remark}
+The transformation depends on curvature:
+\begin{itemize}
+\item high curvature increases projection sensitivity,
+\item low curvature yields stable projections.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Errors in \(s\) propagate nonlinearly into world space.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Computational Cost}
+% ============================================================
+
+\begin{remark}
+The inverse mapping \(x \mapsto (s,d)\) is computationally expensive:
+\begin{itemize}
+\item nonlinear,
+\item iterative,
+\item dependent on curve representation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, it must be used selectively in large-scale systems.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Level-of-Detail Strategy}
+% ============================================================
+
+\begin{definition}[LOD-dependent projection]
+The world-to-track transformation is evaluated depending on scale:
+\begin{itemize}
+\item coarse scale: approximate projection,
+\item fine scale: exact projection.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+This reflects the fact that high precision is only required locally.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Hybrid Strategy}
+% ============================================================
+
+\begin{remark}
+A hybrid approach combines:
+\begin{itemize}
+\item precomputed samples for fast lookup,
+\item local parametric refinement for accuracy.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This mirrors the hybrid modelling approach used for curvature.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Connection to CRS}
+% ============================================================
+
+\begin{remark}
+The world coordinates depend on the chosen coordinate reference system
+(CRS).
+\end{remark}
+
+\begin{remark}
+Thus, the full transformation chain is:
+\[
+\text{CRS} \;\rightarrow\; \text{world} \;\rightarrow\; \text{track}.
+\]
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Connection to Realization}
+% ============================================================
+
+\begin{remark}
+The mapping depends on the realized alignment:
+\[
+\gamma_{\mathrm{real}}(s)
+\neq
+\gamma_{\mathrm{target}}(s).
+\]
+\end{remark}
+
+\begin{remark}
+Thus, world-to-track mapping should always refer to the realized
+geometry.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Key Insight}
+% ============================================================
+
+\begin{proposition}
+The world-to-track transformation is the central interface between
+geometric modelling and real-world data.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The world--track transformation links the intrinsic alignment model
+to external coordinate systems and measured data.
+
+Its nonlinear and scale-dependent nature makes it a critical component
+for visualization, optimization, and data integration.
+
+Efficient handling requires hybrid and LOD-based strategies, consistent
+with the overall AIM framework.
+\end{summary}

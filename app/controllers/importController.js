@@ -56,6 +56,8 @@ export function makeImportController({
 
 			itemCount: 0,
 			rejectedCount: 0,
+			relationCandidateCount: 0,
+
 			promotableCount: 0,
 			acceptedCount: 0,
 			alignmentCount: 0,
@@ -69,9 +71,13 @@ export function makeImportController({
 	function accountResult(stats, result) {
 		const items = Array.isArray(result?.items) ? result.items : [];
 		const rejected = Array.isArray(result?.rejected) ? result.rejected : [];
+		const relationCandidates = Array.isArray(result?.relationCandidates)
+			? result.relationCandidates
+			: [];
 
 		stats.itemCount += items.length;
 		stats.rejectedCount += rejected.length;
+		stats.relationCandidateCount += relationCandidates.length;
 
 		for (const item of items) {
 			switch (item?.kind) {
@@ -135,6 +141,7 @@ export function makeImportController({
 			`${stats.failed} failed / ` +
 			`${stats.itemCount} items / ` +
 			`${stats.rejectedCount} rejected / ` +
+			`${stats.relationCandidateCount} relationCandidates / ` +
 			`${stats.promotableCount} promotable / ` +
 			`${stats.acceptedCount} accepted / ` +
 			`${stats.alignmentCount} alignments / ` +
@@ -151,6 +158,10 @@ export function makeImportController({
 
 	function getRejectedItems(result) {
 		return Array.isArray(result?.rejected) ? result.rejected : [];
+	}
+
+	function getRelationCandidates(result) {
+		return Array.isArray(result?.relationCandidates) ? result.relationCandidates : [];
 	}
 
 	function getPromotableAlignmentItems(items = []) {
@@ -195,12 +206,48 @@ export function makeImportController({
 			return;
 		}
 
+		safeLog(`master import add: items=${items.length}`);
+		console.log("[ImportController] Import.AddItems ->", items.map((item) => ({
+			id: item?.id,
+			kind: item?.kind,
+			promotable: item?.status?.promotable,
+			stage: item?.status?.stage,
+			reason: item?.status?.reason ?? null,
+			hasSparse: Boolean(item?.derived?.sparseAlignment),
+			interpretation: item?.derived?.interpretation ?? null,
+			meta: item?.meta ?? null,
+			name: item?.payload?.name ?? item?.payload?.id ?? null,
+		})));
+
 		await messaging.sendCmdAwait("Import.AddItems", { items });
 	}
 
 	async function refreshImportStateFromMaster() {
 		if (!messaging?.sendCmdAwait) return null;
-		return await messaging.sendCmdAwait("Import.GetState", {});
+		const state = await messaging.sendCmdAwait("Import.GetState", {});
+
+		const count = Array.isArray(state?.items) ? state.items.length : 0;
+		safeLog(`master import state: items=${count}`);
+		console.log("[ImportController] Import.GetState <-", state);
+
+		return state;
+	}
+
+	function logRelationCandidates(fileName, relationCandidates) {
+		const list = Array.isArray(relationCandidates) ? relationCandidates : [];
+		safeLog(`relation candidates: ${fileName} :: ${list.length}`);
+
+		console.log("[ImportController] relationCandidates", {
+			fileName,
+			count: list.length,
+			relationCandidates: list.map((rel) => ({
+				type: rel?.type ?? null,
+				from: rel?.from ?? null,
+				to: rel?.to ?? null,
+				confidence: rel?.confidence ?? null,
+				reasons: Array.isArray(rel?.reasons) ? rel.reasons : [],
+			})),
+		});
 	}
 
 	async function importFiles(files) {
@@ -227,6 +274,7 @@ export function makeImportController({
 
 				const items = getResultItems(result);
 				const rejected = getRejectedItems(result);
+				const relationCandidates = getRelationCandidates(result);
 				const promotableAlignmentItems = getPromotableAlignmentItems(items);
 
 				accountResult(stats, result);
@@ -235,10 +283,35 @@ export function makeImportController({
 					`import status: ${file.name} :: ${result?.status ?? "unknown"}`
 				);
 
+				console.log("[ImportController] result", {
+					fileName: file.name,
+					status: result?.status ?? "unknown",
+					items: items.map((item) => ({
+						id: item?.id,
+						kind: item?.kind,
+						name: item?.payload?.name ?? item?.payload?.id ?? null,
+						promotable: item?.status?.promotable,
+						stage: item?.status?.stage,
+						reason: item?.status?.reason ?? null,
+						hasSparse: Boolean(item?.derived?.sparseAlignment),
+						interpretation: item?.derived?.interpretation ?? null,
+						meta: item?.meta ?? null,
+					})),
+					rejected: rejected.map((item) => ({
+						id: item?.id,
+						kind: item?.kind,
+						reason: item?.status?.reason ?? item?.reason ?? null,
+						meta: item?.meta ?? null,
+					})),
+				});
+
+				logRelationCandidates(file.name, relationCandidates);
+
 				await handleImportItemsMaster([...items, ...rejected]);
 
 				if (!firstPreviewCandidate && promotableAlignmentItems.length > 0) {
 					firstPreviewCandidate = makePreviewCandidate(promotableAlignmentItems[0]);
+					console.log("[ImportController] firstPreviewCandidate =", firstPreviewCandidate);
 				}
 
 				ui?.setImportSummary?.({
@@ -267,9 +340,13 @@ export function makeImportController({
 				source: { type: "import-preview" },
 			});
 
+			console.log("[ImportController] preview committed to store =", firstPreviewCandidate);
+
 			// preview must win until user explicitly activates a canonical object
 			store.actions?.setActiveRouteProject?.(null);
 			store.actions?.setCursorS?.(0);
+		} else {
+			console.warn("[ImportController] no preview candidate found in batch");
 		}
 
 		logBatchSummary(stats);

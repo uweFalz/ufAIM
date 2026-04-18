@@ -1,0 +1,174 @@
+\section{Construction of Initial Guesses}
+
+\subsection{Motivation}
+
+\begin{remark}
+The performance of SQP methods strongly depends on the choice of the
+initial parameter vector.
+\end{remark}
+
+\begin{remark}
+In railway applications, initial data is often available in the form of:
+\begin{itemize}
+\item measurement polylines,
+\item existing alignments,
+\item partially structured design data.
+\end{itemize}
+\end{remark}
+
+\subsection{Input Representation}
+
+\begin{definition}[Input polyline]
+Let
+\[
+P = (p_0,\dots,p_M), \quad p_i \in \R^2
+\]
+denote a measured or imported polyline.
+\end{definition}
+
+\subsection{Arc-Length Parameterization}
+
+\begin{definition}
+Define cumulative arc-length
+\[
+s_0 = 0,
+\quad
+s_{i+1} = s_i + \|p_{i+1} - p_i\|.
+\]
+\end{definition}
+
+\begin{remark}
+This defines a parameterization of the input data.
+\end{remark}
+
+\subsection{Initial Curvature Estimation}
+
+\begin{definition}[Discrete curvature]
+For three consecutive points, define:
+\[
+\kappa_i
+\approx
+\frac{\theta_{i+1} - \theta_i}{\Delta s_i},
+\]
+where
+\[
+\theta_i = \arg(p_{i+1} - p_i).
+\]
+\end{definition}
+
+\begin{remark}
+This provides a first estimate of curvature from geometric data.
+\end{remark}
+
+\subsection{Smoothing}
+
+\begin{remark}
+Raw curvature estimates are typically noisy.
+\end{remark}
+
+\begin{definition}[Smoothing operator]
+Apply a smoothing filter:
+\[
+\kappa_i^{(0)}
+=
+\sum_j w_{ij} \kappa_j.
+\]
+\end{definition}
+
+\begin{remark}
+Possible choices:
+\begin{itemize}
+\item moving average,
+\item Gaussian filter,
+\item low-pass filtering.
+\end{itemize}
+\end{remark}
+
+\subsection{Initial Cant Estimation}
+
+\begin{remark}
+Cant may be initialized based on equilibrium:
+\[
+\phi_i^{(0)}
+=
+\arcsin\left(\frac{v^2 \kappa_i^{(0)}}{g}\right).
+\]
+\end{remark}
+
+\begin{remark}
+Alternatively, cant may be:
+\begin{itemize}
+\item set to zero,
+\item taken from input data,
+\item approximated by design rules.
+\end{itemize}
+\end{remark}
+
+\subsection{Projection to Discrete Grid}
+
+\begin{definition}
+Interpolate the values \(\kappa_i^{(0)},\phi_i^{(0)}\)
+onto the optimization grid:
+\[
+s_0,\dots,s_N.
+\]
+\end{definition}
+
+\subsection{Heuristic Segmentation}
+
+\begin{remark}
+The input alignment may be segmented into:
+\begin{itemize}
+\item straight sections,
+\item circular arcs,
+\item transition regions.
+\end{itemize}
+\end{remark}
+
+\begin{definition}[Segment detection]
+A segment is classified based on curvature:
+\[
+\kappa_i \approx 0 \quad \Rightarrow \text{straight},
+\]
+\[
+\kappa_i \approx \text{const} \quad \Rightarrow \text{arc}.
+\]
+\end{definition}
+
+\begin{remark}
+This structure can be used to improve the initial guess and is
+compatible with railway alignment reconstruction approaches such as
+those discussed by Kufver
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+\end{remark}
+
+\subsection{Final Initial Guess}
+
+\begin{definition}[Initial parameter vector]
+The initial guess is
+\[
+\mathbf{x}_0 =
+(\kappa_0^{(0)},\dots,\kappa_N^{(0)},
+\phi_0^{(0)},\dots,\phi_N^{(0)}).
+\]
+\end{definition}
+
+\subsection{Interpretation}
+
+\begin{remark}
+The initial guess combines:
+\begin{itemize}
+\item measured geometry,
+\item smoothing,
+\item physical approximation.
+\end{itemize}
+\end{remark}
+
+\begin{summary}
+A robust initial guess transforms raw geometric input into a structured
+parameter vector suitable for optimization.
+
+This step is essential for bridging real-world data and numerical
+methods.
+\end{summary}
+

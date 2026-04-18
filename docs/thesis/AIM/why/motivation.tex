@@ -1,0 +1,192 @@
+\chapter{Motivation}
+
+\section{The Hidden Complexity of Railway Alignments}
+
+\begin{remark}
+At first glance, a railway alignment appears to be a simple geometric
+object: a curve connecting two points in space.
+\end{remark}
+
+\begin{remark}
+However, this view is misleading.
+An alignment is not merely a curve, but the result of a complex
+interaction between geometry, physics, engineering constraints,
+and operational requirements.
+\end{remark}
+
+\begin{remark}
+Even small changes in curvature or cant can have significant effects on:
+\begin{itemize}
+\item passenger comfort,
+\item vehicle stability,
+\item track wear,
+\item and operational safety.
+\end{itemize}
+\end{remark}
+
+\section{Fragmentation of Current Practice}
+
+\begin{remark}
+In current engineering practice, alignment design is typically divided
+into separate domains:
+\begin{itemize}
+\item geometric design (plan and profile),
+\item cant design,
+\item dynamic evaluation,
+\item and regulatory verification.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These aspects are often treated sequentially rather than jointly.
+As a consequence:
+\begin{itemize}
+\item design iterations are required,
+\item optimal solutions are rarely achieved,
+\item and knowledge remains fragmented across tools and disciplines.
+\end{itemize}
+\end{remark}
+
+\section{Limitations of Existing Models}
+
+\begin{remark}
+Traditional alignment models are primarily geometric.
+They describe the track as a sequence of elements such as:
+\begin{itemize}
+\item straight lines,
+\item circular arcs,
+\item and transition curves.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+While this representation is sufficient for construction,
+it is insufficient for:
+\begin{itemize}
+\item capturing dynamic behaviour,
+\item integrating measurement data,
+\item or supporting automated optimization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In particular, curvature is often treated as a derived quantity,
+although it is the fundamental driver of railway dynamics.
+\end{remark}
+
+\section{Need for a Unified Representation}
+
+\begin{remark}
+A modern alignment model must integrate:
+\begin{itemize}
+\item geometry,
+\item curvature evolution,
+\item cant,
+\item and dynamic effects.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Such a model should not treat these aspects independently,
+but as components of a single coherent system.
+\end{remark}
+
+\begin{remark}
+This requires a shift from element-based descriptions to
+function-based representations.
+\end{remark}
+
+\section{Alignment as a State Trajectory}
+
+\begin{remark}
+Instead of viewing an alignment as a static geometric object,
+it can be interpreted as a trajectory of a system evolving along
+arc length.
+\end{remark}
+
+\begin{remark}
+In this interpretation:
+\begin{itemize}
+\item curvature acts as a control variable,
+\item cant represents an additional state component,
+\item and the resulting motion determines physical behaviour.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This perspective naturally connects alignment design with
+modern concepts from:
+\begin{itemize}
+\item differential geometry,
+\item numerical analysis,
+\item and optimal control theory.
+\end{itemize}
+\end{remark}
+
+\section{Towards Alignment-Based Information Modelling}
+
+\begin{remark}
+The observations above motivate the development of a new modelling
+paradigm: \emph{alignment-based information modelling} (AIM).
+\end{remark}
+
+\begin{remark}
+The central idea of AIM is to treat alignment not as a collection of
+geometric primitives, but as a structured, functional object defined
+by curvature and its derived quantities.
+\end{remark}
+
+\begin{remark}
+Within this framework:
+\begin{itemize}
+\item transitions are primary modelling elements,
+\item dynamics are embedded in the representation,
+\item and optimization becomes a natural design tool.
+\end{itemize}
+\end{remark}
+
+\section{Connection to Practical Engineering}
+
+\begin{remark}
+Despite its mathematical formulation, the AIM approach is not purely
+theoretical.
+\end{remark}
+
+\begin{remark}
+It directly addresses practical challenges such as:
+\begin{itemize}
+\item handling imperfect measurement data,
+\item integrating multiple coordinate systems,
+\item modelling complex track configurations,
+\item and supporting modern BIM workflows.
+\end{itemize}
+\end{remark}
+
+\section{Objective of this Work}
+
+\begin{remark}
+The objective of this manuscript is to provide a coherent foundation
+for alignment-based information modelling.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item a mathematical description of alignment structures,
+\item a unified state-based representation,
+\item methods for numerical reconstruction,
+\item integration of engineering constraints,
+\item and approaches to optimization.
+\end{itemize}
+\end{remark}
+
+\begin{summary}
+Railway alignments are not simple geometric curves, but complex
+systems governed by curvature, cant, and dynamic effects.
+
+A unified, curvature-driven modelling approach is required to
+capture this complexity and to enable modern, optimization-based
+design methods.
+
+This work develops the foundations of such an approach.
+\end{summary}

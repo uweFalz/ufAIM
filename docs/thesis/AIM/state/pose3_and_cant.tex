@@ -13,7 +13,8 @@ They describe the track centerline as a curve
 \begin{remark}
 However, real railway systems are inherently three-dimensional.
 In particular, the rotation of the track around its longitudinal axis
-(cant) plays a fundamental role for vehicle dynamics.
+(cant) plays a fundamental role for vehicle dynamics and operational
+behaviour \cite{Klein1998Trassierung,EN13803_2017}.
 \end{remark}
 
 \begin{remark}
@@ -21,8 +22,6 @@ This motivates the introduction of an extended state description,
 referred to as \emph{pose3}, which augments planar geometry by
 rotational information.
 \end{remark}
-
----
 
 \section{Pose2 Revisited}
 
@@ -50,7 +49,10 @@ The evolution of pose2 is governed by
 \]
 \end{remark}
 
----
+\begin{remark}
+This is the standard planar reconstruction principle underlying
+curvature-based alignment descriptions.
+\end{remark}
 
 \section{Cant as Rotational State}
 
@@ -65,7 +67,8 @@ around the tangent direction.
 
 \begin{remark}
 The cant angle represents the inclination of the track and directly
-influences lateral acceleration and load distribution.
+influences lateral acceleration, cant deficiency, and load distribution
+\cite{Klein1998Trassierung,EN13803_2017}.
 \end{remark}
 
 \begin{definition}[Cant rate]
@@ -76,7 +79,11 @@ The derivative
 describes the rate of change of cant along the track.
 \end{definition}
 
----
+\begin{remark}
+Cant rate is not merely a geometric quantity, but an engineering
+quantity constrained by operational and comfort-related requirements
+\cite{EN13803_2017}.
+\end{remark}
 
 \section{Pose3 Definition}
 
@@ -95,10 +102,16 @@ The spatial railway state (pose3) is defined as
 
 \begin{remark}
 Pose3 extends pose2 by adding a rotational degree of freedom.
-It captures both geometric and dynamic-relevant aspects of the track.
+It captures both geometric and dynamically relevant aspects of the
+track.
 \end{remark}
 
----
+\begin{remark}
+In this sense, pose3 provides a more adequate state description for
+railway alignment than a purely planar model, because curvature and cant
+must be interpreted jointly rather than separately
+\cite{BrustadDalmo2020Review,EN13803_2017}.
+\end{remark}
 
 \section{State Evolution}
 
@@ -121,7 +134,10 @@ Thus, pose3 is governed by two control functions:
 \]
 \end{remark}
 
----
+\begin{remark}
+This already suggests an interpretation of railway alignment as a
+controlled dynamical system rather than a purely geometric object.
+\end{remark}
 
 \section{Reconstruction Principle}
 
@@ -141,7 +157,10 @@ the pose3 state is uniquely determined.
 The result follows by integration of the differential system.
 \end{proof}
 
----
+\begin{remark}
+This extends the classical planar reconstruction principle by including
+cant as an explicit state variable.
+\end{remark}
 
 \section{Relation to Physical Quantities}
 
@@ -157,10 +176,10 @@ v^2 \kappa(s) - g \sin\phi(s).
 \end{definition}
 
 \begin{remark}
-This quantity determines passenger comfort and safety.
+This quantity determines passenger comfort and safety and expresses the
+basic coupling between curvature and cant in operational railway design
+\cite{Klein1998Trassierung,EN13803_2017}.
 \end{remark}
-
----
 
 \subsection{Jerk}
 
@@ -175,10 +194,10 @@ v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s).
 
 \begin{remark}
 The jerk measures the rate of change of acceleration and is a key
-criterion for comfort.
+criterion for comfort. This is one of the main reasons why curvature and
+cant development cannot be specified independently in high-quality
+alignment design \cite{Mieloszyk2012Transition,Koc2017SmoothedEnds,Koc2019Operational}.
 \end{remark}
-
----
 
 \section{Interpretation as Control System}
 
@@ -197,7 +216,11 @@ This formulation provides a natural bridge to optimal control and
 optimization methods.
 \end{remark}
 
----
+\begin{remark}
+It is also consistent with the broader optimization-oriented view of
+alignment modelling proposed in railway alignment research
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+\end{remark}
 
 \section{Cant and Curvature Coupling}
 
@@ -215,10 +238,10 @@ v^2 \kappa(s) = g \sin\phi(s).
 
 \begin{remark}
 In practice, deviations from this condition are allowed but must remain
-within regulatory limits.
+within regulatory limits. This is the mathematical expression of the
+cant-balance logic used in railway design standards
+\cite{EN13803_2017,Klein1998Trassierung}.
 \end{remark}
-
----
 
 \section{Towards Schwerpunkt-Trassierung}
 
@@ -234,11 +257,15 @@ understood as the design of a trajectory that optimally balances
 curvature and cant in a dynamic sense.
 \end{remark}
 
+\begin{remark}
+This shifts the focus from static curve construction toward the motion
+of a dynamically relevant state, which is one of the conceptual
+extensions of the AIM framework beyond classical alignment modelling.
+\end{remark}
+
 \RESEARCH{Formal definition of Schwerpunkt-based alignment design.}
 
 \OPEN{Integration of vehicle dynamics into the pose3 framework.}
-
----
 
 \section{Relation to Existing Standards}
 
@@ -253,10 +280,14 @@ Existing railway design standards typically prescribe:
 
 \begin{remark}
 These rules can be interpreted as constraints on the pose3 state and
-its derivatives.
+its derivatives \cite{EN13803_2017}.
 \end{remark}
 
----
+\begin{remark}
+From this perspective, pose3 does not contradict existing railway
+standards, but provides a mathematical structure in which such rules can
+be represented coherently.
+\end{remark}
 
 \section{Connection to the AIM Framework}
 

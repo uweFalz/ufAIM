@@ -1,0 +1,203 @@
+\section{Pipeline Story: From Measurement to Alignment}
+
+\subsection{A Single Point}
+
+\begin{remark}
+Consider a single measured point \(x\) in the real world.
+\end{remark}
+
+\begin{remark}
+It may originate from:
+\begin{itemize}
+\item a surveying campaign,
+\item a track recording vehicle,
+\item or a design dataset.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+At this stage, the point exists only in a global coordinate system.
+\end{remark}
+
+---
+
+\subsection{Step 1: CRS Transformation}
+
+\begin{remark}
+The point is first interpreted within a coordinate reference system:
+\[
+x_{\mathrm{crs}}
+\;\xrightarrow{\mathcal{C}}\;
+x_{\mathrm{world}}.
+\]
+\end{remark}
+
+\begin{remark}
+This step ensures that all data is expressed in a consistent spatial
+frame.
+\end{remark}
+
+---
+
+\subsection{Step 2: Projection onto the Track}
+
+\begin{remark}
+The point is projected onto the alignment:
+\[
+x_{\mathrm{world}}
+\;\xrightarrow{\mathcal{W}}\;
+(s,d).
+\]
+\end{remark}
+
+\begin{remark}
+This is a nonlinear operation:
+\begin{itemize}
+\item the longitudinal position \(s\) is determined,
+\item the lateral deviation \(d\) is computed.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+At this moment, the point becomes part of the intrinsic alignment
+coordinate system.
+\end{remark}
+
+---
+
+\subsection{Step 3: Interpretation through the Model}
+
+\begin{remark}
+The alignment model provides a curvature description:
+\[
+(s,d)
+\;\xrightarrow{\mathcal{M}}\;
+\kappa(s).
+\]
+\end{remark}
+
+\begin{remark}
+Here, two components interact:
+\begin{itemize}
+\item the parametric structure (design intent),
+\item local corrections (data-driven adjustments).
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The point is no longer treated as isolated data, but as part of a
+structured geometric system.
+\end{remark}
+
+---
+
+\subsection{Step 4: Physical Realization}
+
+\begin{remark}
+The theoretical model is transformed by physical processes:
+\[
+\kappa(s)
+\;\xrightarrow{\mathcal{R}}\;
+\gamma_{\mathrm{real}}(s).
+\]
+\end{remark}
+
+\begin{remark}
+This step reflects:
+\begin{itemize}
+\item construction constraints,
+\item mechanical behaviour,
+\item maintenance operations.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The resulting geometry is not identical to the theoretical model.
+\end{remark}
+
+---
+
+\subsection{Step 5: Back to World Coordinates}
+
+\begin{remark}
+The realized alignment is mapped back into world space:
+\[
+\gamma_{\mathrm{real}}(s)
+\;\xrightarrow{\mathcal{W}^{-1}}\;
+x_{\mathrm{real}}.
+\]
+\end{remark}
+
+\begin{remark}
+This produces the geometry that is visible and measurable in reality.
+\end{remark}
+
+---
+
+\subsection{Step 6: Comparison and Feedback}
+
+\begin{remark}
+The original measurement and the realized position are compared:
+\[
+x_{\mathrm{real}} \approx x_{\mathrm{world}}.
+\]
+\end{remark}
+
+\begin{remark}
+The deviation drives optimization:
+\begin{itemize}
+\item parameters are adjusted,
+\item corrections are updated,
+\item the pipeline is evaluated again.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Interpretation}
+
+\begin{remark}
+The point has passed through multiple representations:
+\begin{itemize}
+\item global coordinates,
+\item intrinsic alignment coordinates,
+\item parametric model,
+\item realized geometry.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Each transformation introduces structure, constraints, and
+interpretation.
+\end{remark}
+
+---
+
+\subsection{Key Insight}
+
+\begin{proposition}
+A measured point is not directly part of the alignment.
+
+It becomes part of the alignment only after passing through the
+world-to-track transformation and the alignment model.
+\end{proposition}
+
+---
+
+\subsection{Connection to AIM}
+
+\begin{summary}
+The AIM framework transforms raw spatial data into structured alignment
+information through a sequence of operators.
+
+This process integrates:
+\begin{itemize}
+\item coordinate systems,
+\item geometric modelling,
+\item physical realization,
+\item optimization.
+\end{itemize}
+
+Thus, alignment modelling is not a static representation, but a dynamic
+process linking measurement, theory, and construction.
+\end{summary}

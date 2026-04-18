@@ -22,10 +22,14 @@
 \usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage[nameinlink]{cleveref}
+\usepackage{booktabs}
 
 % --- Algorithms ---
 \usepackage{algorithm}
 \usepackage{algpseudocode}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning}
 
 % --- Bibliography ---
 \bibliographystyle{plain}
@@ -72,49 +76,86 @@
 
 This manuscript is intended as a long-term scientific foundation for
 alignment-based information modelling.
-It is not merely a software documentation, but a structured knowledge base
+It is not merely software documentation, but a structured knowledge base
 covering geometry, transition theory, numerical reconstruction,
 engineering constraints, dynamics, standards, and optimization.
 
-\mainmatter
+\input{executive_summary}
 
-\input{abstract_short}
+% Use exactly one abstract version.
 \input{abstract}
 \input{introduction}
 
+\mainmatter
+
 % ============================================================
-\part{Foundations}
+\part{Why Alignments Matter}
+% ============================================================
+
+\input{why/motivation}
+\input{why/problem_statement}
+\input{why/vision}
+
+% ============================================================
+\part{Mathematical Foundations}
 % ============================================================
 
 \input{foundations/axioms}
 
 % ============================================================
-\part{Model}
+\part{Railway State Model}
 % ============================================================
 
-\input{model/sparse}
-\input{model/transitions}
-\input{model/transition_classification}
-\input{model/pose3_and_cant}
-\input{model/schwerpunkt_trassierung}
+\input{state/pose2}
+\input{state/pose3_and_cant}
+\input{state/dynamics}
+\input{state/world_to_track}
 
 % ============================================================
-\part{Analysis}
-% ============================================================
-
-\input{analysis/numerics}
-\input{analysis/optimization}
-\input{analysis/dynamics}
-\input{analysis/optimizer_architecture}
-\input{analysis/constraint_code}
-
-% ============================================================
-\part{Reality}
+\part{Reality and Data}
 % ============================================================
 
 \input{reality/data}
-\input{reality/standards}
-\input{reality/bim}
+\input{reality/coordinate_systems}
+\input{reality/measurement_and_imperfect_data}
+\input{reality/topology_and_special_elements}
+\input{reality/construction_and_realization}
+
+% ============================================================
+\part{Alignment Modeling}
+% ============================================================
+
+\input{modeling/sparse}
+\input{modeling/transitions}
+\input{modeling/transition_classification}
+\input{modeling/schwerpunkt_trassierung}
+
+% ============================================================
+\part{System and Pipeline}
+% ============================================================
+
+\input{analysis/pipeline}
+\input{analysis/pipeline_diagram}
+\input{analysis/pipeline_story}
+\input{analysis/failure_modes}
+\input{analysis/design_principles}
+
+% ============================================================
+\part{Optimization}
+% ============================================================
+
+\input{optimization/numerics}
+\input{optimization/alignment_optimization}
+\input{optimization/60_hybrid_block_structure}
+\input{optimization/optimizer_architecture}
+
+% ============================================================
+\part{Engineering and Standards}
+% ============================================================
+
+\input{engineering/standards}
+\input{engineering/constraints_and_rules}
+\input{engineering/railway_rules}
 
 % ============================================================
 \part{Applications}
@@ -125,16 +166,23 @@ engineering constraints, dynamics, standards, and optimization.
 \input{applications/use_cases}
 \input{applications/bimalignment}
 \input{applications/contribution}
-\input{applications/railway_rules}
-\input{applications/future_work}
 \input{applications/discussion}
+
+% ============================================================
+\part{Outlook}
+% ============================================================
+
+\input{outlook/bim}
+\input{outlook/future_work}
 
 \backmatter
 
-% During build-up phase: print everything in references.bib
-\nocite{*}
+% During drafting only:
+% \nocite{*}
 
 \bibliography{references}
+
+% Enable this when you actually run makeindex:
 \printindex
 
 \end{document}

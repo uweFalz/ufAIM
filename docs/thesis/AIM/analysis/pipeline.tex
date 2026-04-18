@@ -1,0 +1,255 @@
+\section{AIM Processing Pipeline}
+
+% ============================================================
+\subsection{Motivation}
+% ============================================================
+
+\begin{remark}
+Railway alignment modelling involves multiple domains:
+\begin{itemize}
+\item global coordinate systems (CRS),
+\item geometric alignment representation,
+\item physical realization,
+\item measurement data,
+\item optimization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These domains are often treated separately, leading to fragmented models
+and inconsistent results.
+\end{remark}
+
+\begin{remark}
+Within the AIM framework, these components are unified into a single
+processing pipeline.
+\end{remark}
+
+% ============================================================
+\subsection{Operator Chain}
+% ============================================================
+
+\begin{definition}[AIM pipeline]
+The complete modelling and optimization process is described as a
+composition of operators:
+\[
+\boxed{
+\mathcal{P}
+=
+\mathcal{W}^{-1}
+\circ
+\mathcal{R}
+\circ
+\mathcal{M}
+\circ
+\mathcal{W}
+\circ
+\mathcal{C}
+}
+\]
+\end{definition}
+
+\begin{remark}
+The operators are:
+\begin{itemize}
+\item \(\mathcal{C}\): CRS transformation,
+\item \(\mathcal{W}\): world-to-track transformation,
+\item \(\mathcal{M}\): alignment model (parametric or hybrid),
+\item \(\mathcal{R}\): realization operator,
+\item \(\mathcal{W}^{-1}\): track-to-world transformation.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Detailed Structure}
+% ============================================================
+
+\begin{remark}
+The pipeline maps raw data to realized geometry:
+\[
+\text{CRS data}
+\;\xrightarrow{\mathcal{C}}\;
+\text{world coordinates}
+\;\xrightarrow{\mathcal{W}}\;
+(s,d)
+\;\xrightarrow{\mathcal{M}}\;
+\kappa(s)
+\;\xrightarrow{\mathcal{R}}\;
+\gamma_{\mathrm{real}}(s)
+\;\xrightarrow{\mathcal{W}^{-1}}\;
+\text{world geometry}.
+\]
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Hybrid Model Integration}
+% ============================================================
+
+\begin{remark}
+The alignment model operator is hybrid:
+\[
+\mathcal{M}
+:
+(\mathbf{T}, \delta\kappa)
+\;\mapsto\;
+\kappa(s).
+\]
+\end{remark}
+
+\begin{remark}
+Thus, the pipeline operates on both:
+\begin{itemize}
+\item structured parameters,
+\item local corrections.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Inverse Problem}
+% ============================================================
+
+\begin{definition}[Pipeline inversion]
+Given observed data \(x_i\), the inverse problem is:
+\[
+\min_{\mathbf{x}}
+\sum_i
+\|
+\mathcal{P}(\mathbf{x})(s_i) - x_i
+\|^2.
+\]
+\end{definition}
+
+\begin{remark}
+This corresponds to fitting a model such that the realized geometry
+matches observations.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Optimization Embedding}
+% ============================================================
+
+\begin{remark}
+The pipeline is embedded into an optimization problem:
+\[
+\min_{\mathbf{x}}
+J\bigl(\mathcal{P}(\mathbf{x})\bigr).
+\]
+\end{remark}
+
+\begin{remark}
+The objective is evaluated on the realized geometry, not on the
+parametric model.
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Jacobian Structure}
+% ============================================================
+
+\begin{remark}
+The derivative of the pipeline follows from the chain rule:
+\[
+\frac{\partial \mathcal{P}}{\partial \mathbf{x}}
+=
+D\mathcal{W}^{-1}
+\cdot
+D\mathcal{R}
+\cdot
+D\mathcal{M}
+\cdot
+D\mathcal{W}.
+\]
+\end{remark}
+
+\begin{remark}
+Each component has specific properties:
+\begin{itemize}
+\item \(D\mathcal{M}\): sparse and structured,
+\item \(D\mathcal{R}\): smoothing operator,
+\item \(D\mathcal{W}\): nonlinear projection,
+\item \(D\mathcal{C}\): linear transformation.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Computational Implications}
+% ============================================================
+
+\begin{remark}
+The pipeline exhibits:
+\begin{itemize}
+\item sparsity (model level),
+\item nonlinearity (projection level),
+\item smoothing (realization level),
+\item scaling effects (CRS level).
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Efficient implementation requires:
+\begin{itemize}
+\item hybrid representations,
+\item block-structured solvers,
+\item LOD-dependent evaluation.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Level-of-Detail Interpretation}
+% ============================================================
+
+\begin{remark}
+Different parts of the pipeline dominate at different scales:
+\begin{itemize}
+\item large scale: CRS and world geometry,
+\item medium scale: parametric alignment,
+\item small scale: corrections and realization.
+\end{itemize}
+\end{remark}
+
+---
+
+% ============================================================
+\subsection{Key Insight}
+% ============================================================
+
+\begin{proposition}
+Alignment modelling is not a single mapping, but a composition of
+geometric, physical, and computational operators.
+\end{proposition}
+
+---
+
+% ============================================================
+\subsection{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The AIM framework is fundamentally defined by its operator pipeline.
+
+It integrates coordinate systems, geometry, physics, and optimization
+into a single coherent model.
+
+This unified perspective enables:
+\begin{itemize}
+\item consistent data integration,
+\item physically meaningful optimization,
+\item scalable computation.
+\end{itemize}
+
+Thus, AIM transforms alignment modelling from a collection of isolated
+methods into a structured computational system.
+\end{summary}

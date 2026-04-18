@@ -1,5 +1,12 @@
 \begin{thebibliography}{10}
 
+\bibitem{AnderssonEtAl1995LateralTrackForces}
+E.~Andersson, N.~G. Nilstam, and L.~Ohlsson.
+\newblock Lateral track forces at high speed curving: Comparison of practical
+  and theoretical results of swedish high speed train x2000.
+\newblock {\em Vehicle System Dynamics}, 25, 1995.
+\newblock Supplement; exact pages to be verified from source.
+
 \bibitem{AREMA2003TrackDesign}
 {AREMA}.
 \newblock Railway track design, chapter 6, 2003.
@@ -10,7 +17,7 @@ Walter Bloss.
 \newblock {\em Gleis- und Weichengeometrie}.
 \newblock Transpress, 1978.
 
-\bibitem{Review2020TransitionCurves}
+\bibitem{BrustadDalmo2020Review}
 Tanita~Fossli Brustad and Rune Dalmo.
 \newblock Railway transition curves: A review of the state-of-the-art and
   future research.
@@ -32,11 +39,6 @@ Constantin Ciobanu.
 \newblock Bloss transition: A short design guide.
 \newblock {\em PWI Journal}, 133:14--18, 2015.
 
-\bibitem{IFCRailway2015}
-Author details to~be completed.
-\newblock Ifc railway, 2015.
-\newblock Source PDF on IFC railway transition curve and chainage model.
-
 \bibitem{DoCarmo1976Curves}
 Manfredo~P. do~Carmo.
 \newblock {\em Differential Geometry of Curves and Surfaces}.
@@ -51,8 +53,7 @@ J.~Glover.
 \bibitem{HabibSakai2004SpiralTransition}
 Zulfiqar Habib and Manabu Sakai.
 \newblock Spiral transition curves and their applications.
-\newblock {\em Scientiae Mathematicae Japonicae}, 2004.
-\newblock Exact volume/pages to be completed from source PDF.
+\newblock {\em Scientiae Mathematicae Japonicae}, 59(2):251--262, 2004.
 
 \bibitem{Hairer1993ODE}
 Ernst Hairer, Syvert~P. N{\o}rsett, and Gerhard Wanner.
@@ -70,10 +71,26 @@ E.~M. Horsburgh.
 \newblock {\em Proceedings of the Royal Society of Edinburgh}, 32:333--347,
   1913.
 
+\bibitem{Iwnicki2006RailVehicleDynamics}
+Simon Iwnicki, editor.
+\newblock {\em Handbook of Railway Vehicle Dynamics}.
+\newblock CRC Press, Boca Raton, 2006.
+
+\bibitem{Kalker1982FastAlgorithm}
+J.~J. Kalker.
+\newblock A fast algorithm for the simplified theory of rolling contact.
+\newblock {\em Vehicle System Dynamics}, 11(1):1--13, 1982.
+
+\bibitem{Kalker1990RollingContact}
+J.~J. Kalker.
+\newblock {\em Three-Dimensional Elastic Bodies in Rolling Contact}.
+\newblock Kluwer Academic Publishers, Dordrecht, 1990.
+
 \bibitem{Klauder2001BetterWay}
 Louis T.~Jr. Klauder.
-\newblock A better way to design railroad transition spirals, 2001.
-\newblock Preprint/manuscript; venue metadata to be completed.
+\newblock A better way to design railroad transition spirals.
+\newblock 2001.
+\newblock Preprint submitted to ASCE Journal of Transportation Engineering.
 
 \bibitem{Klauder2001WO}
 Louis T.~Jr. Klauder.
@@ -100,6 +117,12 @@ Louis T.~Jr. Klauder.
 G{\"u}nter Klein.
 \newblock {\em Trassierung von Verkehrswegen}.
 \newblock Springer, 1998.
+
+\bibitem{KnotheGrassie1993HighFrequencies}
+Klaus Knothe and Stephen~L. Grassie.
+\newblock Modelling of railway track and vehicle/track interaction at high
+  frequencies.
+\newblock {\em Vehicle System Dynamics}, 22(3--4):209--262, 1993.
 
 \bibitem{Koc2008TransitionCurves}
 W.~Koc.
@@ -137,6 +160,19 @@ Bj{\"o}rn Kufver.
 \newblock Technical Report 420A, Swedish National Road and Transport Research
   Institute (VTI), 1997.
 
+\bibitem{MagalhaesAmbrosioPombo2016Compatibility}
+Hugo Magalhães, Jorge Ambrósio, José Pombo, and Marco Pereira.
+\newblock Railway vehicle modelling for the vehicle-track interaction
+  compatibility analysis.
+\newblock {\em Proceedings of the Institution of Mechanical Engineers, Part K:
+  Journal of Multi-body Dynamics}, 230(3):251--267, 2016.
+
+\bibitem{MartinezCasas2014WheelsetTrackCurves}
+José Martínez-Casas, Egidio Di~Gialleonardo, Stefano Bruni, and Luis Baeza.
+\newblock A comprehensive model of the railway wheelset-track interaction in
+  curves.
+\newblock {\em Journal of Sound and Vibration}, 333:4152--4169, 2014.
+
 \bibitem{Mieloszyk2012Transition}
 E.~Mieloszyk.
 \newblock Modern transition curve design.
@@ -158,11 +194,33 @@ A.~Pirti, M.~Y{\"u}cel, and T.~Ocalan.
 \newblock Transrapid and the transition curve as sinusoid.
 \newblock {\em Tehnicki Vjesnik}, 23:315--320, 2016.
 
+\bibitem{Polach1999FastWheelRail}
+Oskar Polach.
+\newblock A fast wheel-rail forces calculation computer code.
+\newblock {\em Vehicle System Dynamics}, 33, 1999.
+\newblock Supplement; exact issue/pages to be verified from source.
+
+\bibitem{PomboAmbrosio2008SmallRadiusCurves}
+José Pombo and Jorge Ambrósio.
+\newblock Application of a wheel--rail contact model to railway dynamics in
+  small radius curved tracks.
+\newblock {\em Multibody System Dynamics}, 19(1--2):91--114, 2008.
+
+\bibitem{PomboAmbrosioSilva2007WheelRailContact}
+José Pombo, Jorge Ambrósio, and Manuel Silva.
+\newblock A new wheel--rail contact model for railway dynamics.
+\newblock {\em Vehicle System Dynamics}, 45(2):165--189, 2007.
+
 \bibitem{Press2007NumericalRecipes}
 William~H. Press, Saul~A. Teukolsky, William~T. Vetterling, and Brian~P.
   Flannery.
 \newblock {\em Numerical Recipes}.
 \newblock Cambridge University Press, 2007.
+
+\bibitem{Shabana2008RailroadVehicleDynamics}
+Ahmed~A. Shabana, Karim~E. Zaazaa, and Hiroyuki Sugiyama.
+\newblock {\em Railroad Vehicle Dynamics: A Computational Approach}.
+\newblock CRC Press, Boca Raton, 2008.
 
 \bibitem{Shebl2016Nonlinear}
 S.~Shebl.
@@ -175,6 +233,22 @@ E.~Tari.
 \newblock The new generation transition curves.
 \newblock {\em ARI Bulletin, Istanbul Technical University}, 54:35--41, 2004.
 
+\bibitem{IFCRailway2015}
+{TODO}.
+\newblock Ifc railway, 2015.
+\newblock Placeholder entry; replace with exact source metadata.
+
+\bibitem{UIC519}
+{UIC}.
+\newblock Uic code 519: Method for determining the running safety of railway
+  vehicles, 2004.
+\newblock International Union of Railways.
+
+\bibitem{Wickens2003Fundamentals}
+A.~H. Wickens.
+\newblock {\em Fundamentals of Rail Vehicle Dynamics}.
+\newblock Swets \& Zeitlinger, Lisse, 2003.
+
 \bibitem{Wojtczak2017WienerBogen}
 R.~Wojtczak.
 \newblock {\em Charakterystyka Krzywej Przej{\'s}ciowej Wiener Bogen}.
@@ -186,5 +260,13 @@ K.~Zboinski and P.~Woznica.
   jerk value.
 \newblock {\em Archives of Civil Engineering}, 63, 2017.
 \newblock Issue/pages to be completed.
+
+\bibitem{ZboinskiGolofit2014TransitionCurvesCriticalVelocity}
+Krzysztof Zboinski and Monika Golofit-Stawinska.
+\newblock Dynamics of 2 and 4-axle railway vehicles in transition curves above
+  critical velocity.
+\newblock In {\em Proceedings of the Second International Conference on Railway
+  Technology: Research, Development and Maintenance}, 2014.
+\newblock Paper 265.
 
 \end{thebibliography}

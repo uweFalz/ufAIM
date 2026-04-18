@@ -1,0 +1,250 @@
+\chapter{Coordinate Systems and Spatial Reference}
+
+\section{Motivation}
+
+\begin{remark}
+Railway alignment data is inherently spatial.
+Its interpretation depends fundamentally on the coordinate system in
+which it is expressed.
+\end{remark}
+
+\begin{remark}
+In practice, railway projects involve multiple coordinate reference
+systems (CRS), often used simultaneously.
+\end{remark}
+
+\begin{remark}
+Failure to handle coordinate systems consistently leads to:
+\begin{itemize}
+\item geometric inconsistencies,
+\item loss of accuracy,
+\item and incorrect integration of data sources.
+\end{itemize}
+\end{remark}
+
+\input{reality/crs_is_not_metadata}
+
+\section{Coordinate Reference Systems}
+
+\begin{definition}[Coordinate reference system]
+A coordinate reference system (CRS) is a mathematical framework that
+defines how spatial coordinates relate to positions in the real world.
+\end{definition}
+
+\begin{remark}
+A CRS typically consists of:
+\begin{itemize}
+\item a reference surface (e.g. ellipsoid),
+\item a coordinate system (e.g. Cartesian or projected),
+\item and a transformation to real-world locations.
+\end{itemize}
+\end{remark}
+
+\section{Global and Local Systems}
+
+\begin{remark}
+Railway data commonly uses both global and local coordinate systems:
+\begin{itemize}
+\item global systems (e.g. WGS84),
+\item projected systems (e.g. UTM, Gauss--Kr\"uger),
+\item engineering systems (e.g. track-based coordinates).
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Each system serves a different purpose:
+\begin{itemize}
+\item global systems enable interoperability,
+\item projected systems provide metric consistency,
+\item local systems support engineering workflows.
+\end{itemize}
+\end{remark}
+
+\section{Engineering Coordinate Systems}
+
+\begin{remark}
+In railway engineering, alignments are often described in
+track-relative coordinate systems.
+\end{remark}
+
+\begin{definition}[Stationing]
+Let \(s\) denote the arc-length parameter along an alignment.
+This parameter is referred to as \emph{stationing}.
+\end{definition}
+
+\begin{remark}
+Stationing defines a one-dimensional coordinate system along the track,
+independent of the global spatial reference.
+\end{remark}
+
+\begin{remark}
+Additional local coordinates may include:
+\begin{itemize}
+\item lateral offsets,
+\item vertical offsets,
+\item and local reference frames attached to the track.
+\end{itemize}
+\end{remark}
+
+\section{Multiple CRS in Practice}
+
+\begin{remark}
+Real-world projects frequently involve multiple CRS simultaneously.
+\end{remark}
+
+\begin{example}
+Typical combinations include:
+\begin{itemize}
+\item survey data in local engineering coordinates,
+\item GIS data in WGS84,
+\item design data in projected systems (UTM or GK).
+\end{itemize}
+\end{example}
+
+\begin{remark}
+These systems are often not perfectly consistent, due to:
+\begin{itemize}
+\item measurement errors,
+\item transformation approximations,
+\item and legacy definitions.
+\end{itemize}
+\end{remark}
+
+\section{Transformations}
+
+\begin{definition}[Coordinate transformation]
+A coordinate transformation is a mapping
+\[
+T : \R^n \to \R^n
+\]
+that converts coordinates from one CRS to another.
+\end{definition}
+
+\begin{remark}
+Transformations may include:
+\begin{itemize}
+\item translations,
+\item rotations,
+\item scaling,
+\item and projection changes.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In practice, transformations are often defined by:
+\begin{itemize}
+\item reference points,
+\item parameter sets,
+\item or standardized transformation models.
+\end{itemize}
+\end{remark}
+
+\section{Accuracy and Consistency}
+
+\begin{remark}
+Coordinate transformations introduce uncertainties.
+\end{remark}
+
+\begin{remark}
+Even small inconsistencies can lead to:
+\begin{itemize}
+\item visible misalignment of datasets,
+\item incorrect curvature estimation,
+\item and unstable numerical reconstruction.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Therefore, a modelling framework must:
+\begin{itemize}
+\item track the CRS of all data,
+\item apply transformations explicitly,
+\item and avoid implicit assumptions.
+\end{itemize}
+\end{remark}
+
+\section{CRS in Alignment Modelling}
+
+\begin{remark}
+In a curvature-based alignment model, geometry is reconstructed from
+functions such as \(\kappa(s)\).
+\end{remark}
+
+\begin{remark}
+This reconstruction requires a consistent spatial reference:
+\begin{itemize}
+\item initial position,
+\item initial orientation,
+\item and coordinate system definition.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, CRS information is not auxiliary, but an essential component of
+the alignment model.
+\end{remark}
+
+\section{Challenges}
+
+\begin{remark}
+The integration of CRS into alignment modelling raises several challenges:
+\begin{itemize}
+\item handling heterogeneous input data,
+\item maintaining numerical stability,
+\item supporting large coordinate values,
+\item and enabling local computations with high precision.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In particular, large global coordinates may lead to numerical issues
+in floating-point computations.
+\end{remark}
+
+\section{Local Coordinate Frames}
+
+\begin{remark}
+To address numerical issues, local coordinate frames are often used.
+\end{remark}
+
+\begin{definition}[Local frame]
+A local frame is a coordinate system defined relative to a reference
+point, typically near the area of interest.
+\end{definition}
+
+\begin{remark}
+Using local frames:
+\begin{itemize}
+\item improves numerical stability,
+\item simplifies geometric computations,
+\item and allows efficient visualization.
+\end{itemize}
+\end{remark}
+
+\section{Towards a Coordinate-Aware Model}
+
+\begin{remark}
+A modern alignment modelling framework must be coordinate-aware.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item explicit CRS representation,
+\item consistent transformation handling,
+\item integration with geometry reconstruction,
+\item and support for local and global coordinates.
+\end{itemize}
+\end{remark}
+
+\section{Connection to the AIM Framework}
+
+\begin{summary}
+Coordinate systems are a fundamental aspect of railway alignment data.
+
+A consistent treatment of CRS is essential for integrating real-world
+data, ensuring numerical stability, and enabling reliable modelling.
+
+Within the AIM framework, CRS is treated as an explicit component of the
+alignment state, rather than as external metadata.
+\end{summary}

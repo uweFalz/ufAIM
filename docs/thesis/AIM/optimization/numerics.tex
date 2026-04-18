@@ -214,3 +214,178 @@ Therefore, numerical methods are not merely technical tools, but an
 essential layer connecting mathematical definitions with practical
 geometry.
 \end{summary}
+
+\section{Numerical Reconstruction from Curvature}
+
+\subsection{Problem Statement}
+
+\begin{remark}
+Given a curvature function
+\[
+\kappa : [0,L] \to \R,
+\]
+and initial conditions
+\[
+\gamma(0), \quad \theta(0),
+\]
+the geometric alignment is obtained by solving:
+\[
+\gamma'(s) = (\cos\theta(s), \sin\theta(s)),
+\qquad
+\theta'(s) = \kappa(s).
+\]
+\end{remark}
+
+\begin{remark}
+This defines a nonlinear initial value problem.
+\end{remark}
+
+---
+
+\subsection{Discrete Approximation}
+
+\begin{definition}[Discretization]
+Let
+\[
+0 = s_0 < s_1 < \dots < s_N = L
+\]
+be a partition with step sizes \(\Delta s_i\).
+\end{definition}
+
+\begin{remark}
+We approximate:
+\[
+\kappa_i \approx \kappa(s_i).
+\]
+\end{remark}
+
+---
+
+\subsection{Forward Integration Scheme}
+
+\begin{definition}[Explicit integration]
+Given \((\gamma_i, \theta_i)\), define:
+\[
+\theta_{i+1} = \theta_i + \kappa_i \Delta s_i,
+\]
+\[
+\gamma_{i+1} = \gamma_i + \Delta s_i
+(\cos\theta_i, \sin\theta_i).
+\]
+\end{definition}
+
+\begin{remark}
+This corresponds to an explicit Euler scheme.
+\end{remark}
+
+---
+
+\subsection{Midpoint Scheme}
+
+\begin{definition}[Midpoint method]
+Define:
+\[
+\theta_{i+\frac{1}{2}} = \theta_i + \frac{1}{2}\kappa_i \Delta s_i,
+\]
+\[
+\gamma_{i+1} = \gamma_i + \Delta s_i
+(\cos\theta_{i+\frac{1}{2}}, \sin\theta_{i+\frac{1}{2}}),
+\]
+\[
+\theta_{i+1} = \theta_i + \kappa_i \Delta s_i.
+\]
+\end{definition}
+
+\begin{remark}
+This improves accuracy and stability compared to the explicit scheme.
+\end{remark}
+
+---
+
+\subsection{Extension to Pose3}
+
+\begin{remark}
+Including cant, we obtain:
+\[
+\phi_{i+1} = \phi_i + \omega_i \Delta s_i.
+\]
+\end{remark}
+
+\begin{remark}
+Thus, the full discrete system is:
+\[
+(\gamma_i, \theta_i, \phi_i)
+\;\longrightarrow\;
+(\gamma_{i+1}, \theta_{i+1}, \phi_{i+1}).
+\]
+\end{remark}
+
+---
+
+\subsection{Numerical Stability}
+
+\begin{remark}
+The reconstruction is sensitive to:
+\begin{itemize}
+\item step size \(\Delta s\),
+\item noise in \(\kappa_i\),
+\item and large coordinate values.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+To ensure stability:
+\begin{itemize}
+\item sufficiently small step sizes must be used,
+\item curvature should be smoothed,
+\item and local coordinate frames are recommended.
+\end{itemize}
+\end{remark}
+
+---
+
+\subsection{Floating Origin Technique}
+
+\begin{remark}
+For large coordinates, numerical precision degrades.
+\end{remark}
+
+\begin{definition}[Floating origin]
+A local coordinate system is introduced such that:
+\[
+\gamma_i^{\text{local}} = \gamma_i - \gamma_{\text{ref}}.
+\]
+\end{definition}
+
+\begin{remark}
+This reduces numerical errors in computation and visualization.
+\end{remark}
+
+---
+
+\subsection{Consistency with CRS}
+
+\begin{remark}
+Reconstruction depends on:
+\begin{itemize}
+\item initial position,
+\item initial orientation,
+\item and coordinate system definition.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, numerical reconstruction must be performed within a consistent CRS.
+\end{remark}
+
+---
+
+\subsection{Interpretation}
+
+\begin{summary}
+Numerical reconstruction provides the link between curvature-based
+models and geometric representation.
+
+It transforms abstract functions into concrete spatial geometry,
+while preserving the structure required for analysis and optimization.
+\end{summary}

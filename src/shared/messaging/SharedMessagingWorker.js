@@ -89,10 +89,15 @@ router.onCmd("Transition.GetPresetSpec", async ({ presetId }) => {
 // ------------------------------------------------------------
 
 router.onCmd("Project.GetState", async () => {
-	return projectStateService.getState();
+	const state = projectStateService.getState();
+	debug.log("Project.GetState", {
+		activeRouteProjectId: state?.activeRouteProjectId ?? null,
+	});
+	return state;
 });
 
 router.onCmd("Project.SetActiveRouteProject", async ({ routeProjectId } = {}) => {
+	debug.log("Project.SetActiveRouteProject", { routeProjectId });
 	return projectStateService.setActiveRouteProject({ routeProjectId });
 });
 
@@ -101,15 +106,42 @@ router.onCmd("Project.SetActiveRouteProject", async ({ routeProjectId } = {}) =>
 // ------------------------------------------------------------
 
 router.onCmd("Import.GetState", async () => {
-	return importInboxService.getState();
+	const state = importInboxService.getState();
+	debug.log("Import.GetState", {
+		itemCount: Array.isArray(state?.items) ? state.items.length : 0,
+	});
+	return state;
 });
 
 router.onCmd("Import.BeginSession", async ({ source } = {}) => {
+	debug.log("Import.BeginSession", { source });
 	return importInboxService.beginSession({ source });
 });
 
 router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
-	return importInboxService.addItems({ items });
+	debug.log("Import.AddItems", {
+		count: Array.isArray(items) ? items.length : 0,
+		items: Array.isArray(items)
+			? items.map((item) => ({
+				id: item?.id,
+				kind: item?.kind,
+				name: item?.payload?.name ?? item?.payload?.id ?? null,
+				promotable: item?.status?.promotable,
+				stage: item?.status?.stage,
+				hasSparse: Boolean(item?.derived?.sparseAlignment),
+				interpretation: item?.derived?.interpretation ?? null,
+			}))
+			: [],
+	});
+
+	const result = await importInboxService.addItems({ items });
+
+	const after = importInboxService.getState?.() ?? {};
+	debug.log("Import.AddItems.done", {
+		itemCount: Array.isArray(after?.items) ? after.items.length : 0,
+	});
+
+	return result;
 });
 
 // ------------------------------------------------------------
@@ -117,23 +149,52 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 // ------------------------------------------------------------
 
 router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
+	debug.log("Spot.AddCandidates", {
+		count: Array.isArray(spots) ? spots.length : 0,
+	});
 	return spotService.addObjects({ objects: spots });
 });
 
 router.onCmd("Spot.AddObjects", async ({ objects = [] } = {}) => {
+	debug.log("Spot.AddObjects", {
+		count: Array.isArray(objects) ? objects.length : 0,
+		ids: Array.isArray(objects) ? objects.map((o) => o?.id ?? null) : [],
+	});
 	return spotService.addObjects({ objects });
 });
 
 router.onCmd("Spot.GetState", async () => {
-	return spotService.getState();
+	const state = spotService.getState();
+	debug.log("Spot.GetState", {
+		objectCount: state?.objects ? Object.keys(state.objects).length : 0,
+	});
+	return state;
 });
 
 router.onCmd("Spot.GetUiState", async () => {
-	return spotService.getUiState();
+	const uiState = spotService.getUiState();
+	debug.log("Spot.GetUiState", {
+		rowCount: Array.isArray(uiState?.rows) ? uiState.rows.length : 0,
+		activeSpotId: uiState?.activeSpotId ?? null,
+	});
+	return uiState;
 });
 
 router.onCmd("Spot.PromoteImportItems", async ({ items = [] } = {}) => {
-	return spotService.promoteItems({ items });
+	debug.log("Spot.PromoteImportItems", {
+		count: Array.isArray(items) ? items.length : 0,
+		ids: Array.isArray(items) ? items.map((item) => item?.id ?? null) : [],
+	});
+
+	const result = await spotService.promoteItems({ items });
+
+	debug.log("Spot.PromoteImportItems.done", {
+		ok: result?.ok ?? null,
+		addedObjects: Array.isArray(result?.addedObjects) ? result.addedObjects.map((o) => o?.id ?? null) : [],
+		rejectedItems: Array.isArray(result?.rejectedItems) ? result.rejectedItems.map((i) => i?.id ?? null) : [],
+	});
+
+	return result;
 });
 
 router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
@@ -141,22 +202,51 @@ router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 		? itemIds.map((x) => String(x ?? "").trim()).filter(Boolean)
 		: [];
 
+	debug.log("Spot.PromoteImportItemsById", { itemIds: ids });
+
 	if (!ids.length) {
-		return {
+		const emptyResult = {
 			ok: false,
 			reason: "no_item_ids",
 			addedObjects: [],
 			rejectedItems: [],
 			uiState: spotService.getUiState(),
 		};
+		debug.log("Spot.PromoteImportItemsById.empty", emptyResult);
+		return emptyResult;
 	}
 
 	const importState = importInboxService.getState?.() ?? {};
 	const allItems = Array.isArray(importState.items) ? importState.items : [];
 
+	debug.log("Spot.PromoteImportItemsById.lookup", {
+		importItemCount: allItems.length,
+		allIds: allItems.map((item) => item?.id ?? null),
+	});
+
 	const wanted = allItems.filter((item) => ids.includes(String(item?.id ?? "")));
 
-	return spotService.promoteItems({ items: wanted });
+	debug.log("Spot.PromoteImportItemsById.resolved", {
+		wantedCount: wanted.length,
+		wanted: wanted.map((item) => ({
+			id: item?.id,
+			kind: item?.kind,
+			name: item?.payload?.name ?? item?.payload?.id ?? null,
+			promotable: item?.status?.promotable,
+			hasSparse: Boolean(item?.derived?.sparseAlignment),
+			interpretation: item?.derived?.interpretation ?? null,
+		})),
+	});
+
+	const result = await spotService.promoteItems({ items: wanted });
+
+	debug.log("Spot.PromoteImportItemsById.done", {
+		ok: result?.ok ?? null,
+		addedObjects: Array.isArray(result?.addedObjects) ? result.addedObjects.map((o) => o?.id ?? null) : [],
+		rejectedItems: Array.isArray(result?.rejectedItems) ? result.rejectedItems.map((i) => i?.id ?? null) : [],
+	});
+
+	return result;
 });
 
 // ------------------------------------------------------------
@@ -164,9 +254,15 @@ router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 // ------------------------------------------------------------
 
 router.onCmd("Debug.GetWorkerState", async () => {
+	const importState = importInboxService.getState();
+	const spotState = spotService.getState();
+
 	return {
 		clients: router.getClientCount?.() ?? -1,
 		projectState: projectStateService.getState(),
-		importState: importInboxService.getState(),
+		importState,
+		spotStateSummary: {
+			objectCount: spotState?.objects ? Object.keys(spotState.objects).length : 0,
+		},
 	};
 });
