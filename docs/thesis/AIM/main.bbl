@@ -1,17 +1,5 @@
 \begin{thebibliography}{10}
 
-\bibitem{AnderssonEtAl1995LateralTrackForces}
-E.~Andersson, N.~G. Nilstam, and L.~Ohlsson.
-\newblock Lateral track forces at high speed curving: Comparison of practical
-  and theoretical results of swedish high speed train x2000.
-\newblock {\em Vehicle System Dynamics}, 25, 1995.
-\newblock Supplement; exact pages to be verified from source.
-
-\bibitem{AREMA2003TrackDesign}
-{AREMA}.
-\newblock Railway track design, chapter 6, 2003.
-\newblock Manual chapter.
-
 \bibitem{Bloss1978TrackGeometry}
 Walter Bloss.
 \newblock {\em Gleis- und Weichengeometrie}.
@@ -22,11 +10,6 @@ Tanita~Fossli Brustad and Rune Dalmo.
 \newblock Railway transition curves: A review of the state-of-the-art and
   future research.
 \newblock {\em Infrastructures}, 5(43), 2020.
-
-\bibitem{RWRIFC2019ConceptualModel}
-{buildingSMART Railway Room}.
-\newblock Rwr-ifc rail conceptual model report, 2019.
-\newblock Conceptual model report.
 
 \bibitem{EN13803_2017}
 {CEN}.
@@ -50,11 +33,6 @@ J.~Glover.
 \newblock {\em Proceedings of the Institution of Civil Engineers},
   140:161--179, 1900.
 
-\bibitem{HabibSakai2004SpiralTransition}
-Zulfiqar Habib and Manabu Sakai.
-\newblock Spiral transition curves and their applications.
-\newblock {\em Scientiae Mathematicae Japonicae}, 59(2):251--262, 2004.
-
 \bibitem{Hairer1993ODE}
 Ernst Hairer, Syvert~P. N{\o}rsett, and Gerhard Wanner.
 \newblock {\em Solving Ordinary Differential Equations I}.
@@ -76,42 +54,16 @@ Simon Iwnicki, editor.
 \newblock {\em Handbook of Railway Vehicle Dynamics}.
 \newblock CRC Press, Boca Raton, 2006.
 
-\bibitem{Kalker1982FastAlgorithm}
-J.~J. Kalker.
-\newblock A fast algorithm for the simplified theory of rolling contact.
-\newblock {\em Vehicle System Dynamics}, 11(1):1--13, 1982.
-
-\bibitem{Kalker1990RollingContact}
-J.~J. Kalker.
-\newblock {\em Three-Dimensional Elastic Bodies in Rolling Contact}.
-\newblock Kluwer Academic Publishers, Dordrecht, 1990.
-
 \bibitem{Klauder2001BetterWay}
 Louis T.~Jr. Klauder.
 \newblock A better way to design railroad transition spirals.
 \newblock 2001.
 \newblock Preprint submitted to ASCE Journal of Transportation Engineering.
 
-\bibitem{Klauder2001WO}
-Louis T.~Jr. Klauder.
-\newblock Railroad curve transition spiral design method based on control of
-  vehicle banking motion, 2001.
-
-\bibitem{Klauder2007USApp}
-Louis T.~Jr. Klauder.
-\newblock Railroad curve transition spiral design method based on control of
-  vehicle banking motion, 2007.
-\newblock US application publication US20070027661A9.
-
 \bibitem{Klauder2009US}
 Louis T.~Jr. Klauder.
 \newblock Railroad curve transition spiral design method based on control of
   vehicle banking motion, 2009.
-
-\bibitem{Klauder2012Performance}
-Louis T.~Jr. Klauder.
-\newblock Railroad spiral design and performance, 2012.
-\newblock Conference/publication details to be completed.
 
 \bibitem{Klein1998Trassierung}
 G{\"u}nter Klein.
@@ -167,22 +119,11 @@ Hugo Magalhães, Jorge Ambrósio, José Pombo, and Marco Pereira.
 \newblock {\em Proceedings of the Institution of Mechanical Engineers, Part K:
   Journal of Multi-body Dynamics}, 230(3):251--267, 2016.
 
-\bibitem{MartinezCasas2014WheelsetTrackCurves}
-José Martínez-Casas, Egidio Di~Gialleonardo, Stefano Bruni, and Luis Baeza.
-\newblock A comprehensive model of the railway wheelset-track interaction in
-  curves.
-\newblock {\em Journal of Sound and Vibration}, 333:4152--4169, 2014.
-
 \bibitem{Mieloszyk2012Transition}
 E.~Mieloszyk.
 \newblock Modern transition curve design.
 \newblock {\em Transport Problems}, 2012.
 \newblock Further metadata to be completed.
-
-\bibitem{Miller1939TransitionSpiral}
-A.~W. Miller.
-\newblock The transition spiral.
-\newblock {\em Australian Surveyor}, 7:518--526, 1939.
 
 \bibitem{Nocedal2006NumericalOptimization}
 Jorge Nocedal and Stephen~J. Wright.
@@ -194,23 +135,6 @@ A.~Pirti, M.~Y{\"u}cel, and T.~Ocalan.
 \newblock Transrapid and the transition curve as sinusoid.
 \newblock {\em Tehnicki Vjesnik}, 23:315--320, 2016.
 
-\bibitem{Polach1999FastWheelRail}
-Oskar Polach.
-\newblock A fast wheel-rail forces calculation computer code.
-\newblock {\em Vehicle System Dynamics}, 33, 1999.
-\newblock Supplement; exact issue/pages to be verified from source.
-
-\bibitem{PomboAmbrosio2008SmallRadiusCurves}
-José Pombo and Jorge Ambrósio.
-\newblock Application of a wheel--rail contact model to railway dynamics in
-  small radius curved tracks.
-\newblock {\em Multibody System Dynamics}, 19(1--2):91--114, 2008.
-
-\bibitem{PomboAmbrosioSilva2007WheelRailContact}
-José Pombo, Jorge Ambrósio, and Manuel Silva.
-\newblock A new wheel--rail contact model for railway dynamics.
-\newblock {\em Vehicle System Dynamics}, 45(2):165--189, 2007.
-
 \bibitem{Press2007NumericalRecipes}
 William~H. Press, Saul~A. Teukolsky, William~T. Vetterling, and Brian~P.
   Flannery.
@@ -221,22 +145,6 @@ William~H. Press, Saul~A. Teukolsky, William~T. Vetterling, and Brian~P.
 Ahmed~A. Shabana, Karim~E. Zaazaa, and Hiroyuki Sugiyama.
 \newblock {\em Railroad Vehicle Dynamics: A Computational Approach}.
 \newblock CRC Press, Boca Raton, 2008.
-
-\bibitem{Shebl2016Nonlinear}
-S.~Shebl.
-\newblock Geometrical analysis of non-linear curvature transition curves of
-  high speed railways.
-\newblock {\em Asian Journal of Current Engineering and Maths}, 5:52--58, 2016.
-
-\bibitem{Tari2004NewGeneration}
-E.~Tari.
-\newblock The new generation transition curves.
-\newblock {\em ARI Bulletin, Istanbul Technical University}, 54:35--41, 2004.
-
-\bibitem{IFCRailway2015}
-{TODO}.
-\newblock Ifc railway, 2015.
-\newblock Placeholder entry; replace with exact source metadata.
 
 \bibitem{UIC519}
 {UIC}.
@@ -260,13 +168,5 @@ K.~Zboinski and P.~Woznica.
   jerk value.
 \newblock {\em Archives of Civil Engineering}, 63, 2017.
 \newblock Issue/pages to be completed.
-
-\bibitem{ZboinskiGolofit2014TransitionCurvesCriticalVelocity}
-Krzysztof Zboinski and Monika Golofit-Stawinska.
-\newblock Dynamics of 2 and 4-axle railway vehicles in transition curves above
-  critical velocity.
-\newblock In {\em Proceedings of the Second International Conference on Railway
-  Technology: Research, Development and Maintenance}, 2014.
-\newblock Paper 265.
 
 \end{thebibliography}

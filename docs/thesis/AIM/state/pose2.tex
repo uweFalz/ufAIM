@@ -1,3 +1,152 @@
 \chapter{Pose2}
 
-\ldots coming soon! \ldots
+\section{Motivation}
+
+\begin{remark}
+In railway alignment modelling, the geometric state of the track at a
+position along its length must be described in a minimal and consistent
+way.
+\end{remark}
+
+\begin{remark}
+While full spatial representation involves three-dimensional geometry
+and cant, many fundamental properties can already be captured in a
+planar setting.
+\end{remark}
+
+\begin{remark}
+The concept of \emph{Pose2} provides such a minimal representation in
+two dimensions.
+\end{remark}
+
+---
+
+\section{Definition of Pose2}
+
+\begin{definition}[Pose2]
+A planar pose at arc-length position $s$ is defined as the tuple
+\[
+\mathrm{Pose2}(s) = \bigl(\gamma(s), \theta(s)\bigr),
+\]
+where:
+\begin{itemize}
+\item $\gamma(s) = (x(s), y(s))$ is the position in the plane,
+\item $\theta(s)$ is the orientation (heading angle).
+\end{itemize}
+\end{definition}
+
+---
+
+\section{Kinematic Relations}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.2]
+
+% Curve
+\draw[thick, domain=0:2.2, samples=50] plot ({\x}, {0.4*sin(1.5*\x)});
+
+% Point s
+\coordinate (P) at (1.4, {0.4*sin(1.5*1.4)});
+\fill (P) circle (1.5pt);
+
+% Tangent approximation
+\draw[->, thick] (P) -- ++(0.8, {0.4*cos(1.5*1.4)*1.5}) node[right] {$\theta(s)$};
+
+% Normal direction (curvature hint)
+\draw[->, dashed] (P) -- ++({-0.4*cos(1.5*1.4)*1.5}, 0.8) node[above] {$\kappa(s)$};
+
+% Labels
+\node[below] at (P) {$\gamma(s)$};
+
+\end{tikzpicture}
+
+\caption{Pose2 representation: geometry is not primary; it emerges from curvature $\kappa(s)$.}
+\end{figure}
+
+\begin{remark}
+The evolution of Pose2 is governed by curvature.
+\end{remark}
+
+\begin{proposition}
+The orientation satisfies:
+\[
+\frac{\dd \theta}{\dd s} = \kappa(s).
+\]
+\end{proposition}
+
+\begin{proposition}
+The position is obtained by integration:
+\[
+\frac{\dd \gamma}{\dd s} =
+\begin{pmatrix}
+\cos\theta(s) \\
+\sin\theta(s)
+\end{pmatrix}.
+\]
+\end{proposition}
+
+\begin{remark}
+Thus, Pose2 is fully determined by the curvature function $\kappa(s)$
+and initial conditions.
+\end{remark}
+
+---
+
+\section{Initial Conditions}
+
+\begin{definition}[Initial pose]
+A Pose2 trajectory is uniquely determined by:
+\[
+\gamma(0), \quad \theta(0), \quad \kappa(s).
+\]
+\end{definition}
+
+---
+
+\section{Interpretation}
+
+\begin{remark}
+Pose2 provides the minimal state description of planar alignment
+geometry.
+\end{remark}
+
+\begin{remark}
+It separates:
+\begin{itemize}
+\item intrinsic behaviour (curvature),
+\item from derived quantities (position and orientation).
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Relation to Pose3}
+
+\begin{remark}
+Pose2 is extended to three dimensions by including cant and vertical
+geometry.
+\end{remark}
+
+\begin{remark}
+The full state representation (Pose3) includes:
+\begin{itemize}
+\item position in 3D,
+\item orientation in space,
+\item curvature,
+\item cant.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Summary}
+
+\begin{summary}
+Pose2 is the fundamental planar state representation of railway
+alignment.
+
+It expresses geometry in terms of curvature-driven evolution and
+provides the basis for higher-dimensional modelling, including cant and
+dynamics.
+\end{summary}

@@ -8,6 +8,13 @@ curvature objects.
 \end{remark}
 
 \begin{remark}
+The realization process fundamentally alters the nature of an alignment.
+The curve that is constructed is not the curve that is designed, but the
+result of a transformation imposed by discrete operations, mechanical
+constraints, and measurement feedback.
+\end{remark}
+
+\begin{remark}
 In practice, however, tracks are not constructed as continuous curves,
 but realized through discrete construction and maintenance processes.
 \end{remark}
@@ -27,6 +34,45 @@ target curve, but an approximation shaped by:
 A realistic modelling framework must therefore include an explicit
 realization layer between analytical design and built geometry.
 \end{remark}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  scale=1.0,
+  axis/.style={->, thin},
+  curve/.style={thick},
+  label/.style={font=\small},
+  box/.style={draw, rectangle, rounded corners, align=center, minimum width=3.2cm, minimum height=0.8cm}
+]
+
+% Target curvature plot
+\begin{scope}[shift={(0,3.0)}]
+  \draw[axis] (0,0) -- (5.4,0) node[right] {$s$};
+  \draw[axis] (0,0) -- (0,1.6) node[above] {$\kappa$};
+  \draw[curve] plot[smooth, domain=0:5, samples=120]
+    (\x,{0.55 + 0.35*sin(180*\x/5) + 0.14*sin(720*\x/5)});
+  \node[label, right] at (5.05,0.95) {$\kappa_{\mathrm{target}}$};
+\end{scope}
+
+% Operator box
+\node[box] (R) at (2.65,1.55) {realization operator \\ $\mathcal{R}$ \\ sampling + machine + structure};
+\draw[->, thick] (2.65,2.55) -- (R.north);
+\draw[->, thick] (R.south) -- (2.65,0.55);
+
+% Realized curvature plot
+\begin{scope}[shift={(0,-1.2)}]
+  \draw[axis] (0,0) -- (5.4,0) node[right] {$s$};
+  \draw[axis] (0,0) -- (0,1.6) node[above] {$\kappa$};
+  \draw[curve] plot[smooth, domain=0:5, samples=120]
+    (\x,{0.55 + 0.27*sin(180*\x/5)});
+  \node[label, right] at (5.05,0.88) {$\kappa_{\mathrm{real}}$};
+  \node[label] at (2.5,-0.55) {high-frequency components are attenuated};
+\end{scope}
+
+\end{tikzpicture}
+
+\caption{Realization acts as a filtering process: the target curvature may contain high-frequency components that are attenuated by sampling, machine action, and structural response of the track.}
+\end{figure}
 
 % ============================================================
 \section{Realization of Transition Curves in Discrete Construction}
@@ -137,7 +183,7 @@ curvature evolution rather than by geometric deviation alone.
 \end{summary}
 
 % ============================================================
-\section{Track Adjustment as Iterative Operator}
+\section{Iterative Construction as Physical Realization Process}
 % ============================================================
 
 \subsection{Adjustment Operator}
@@ -290,10 +336,16 @@ K(s,\sigma)\,
 where \(K(s,\sigma)\) is a localized kernel.
 \end{definition}
 
-\begin{remark}
-The kernel \(K(s,\sigma)\) represents the spatial influence of a local
-adjustment operation.
-\end{remark}
+ \begin{remark}
+ The kernel \(K(s,\sigma)\) represents the spatial influence of a local
+ adjustment operation.
+ \end{remark}
+
+\begin{proposition}[Filter interpretation]
+The kernel-based formulation provides a linearized model of the
+adjustment process and reveals that realization acts as a localized
+filter on the alignment.
+\end{proposition}
 
 \begin{proposition}[Localization]
 There exists a characteristic length \(\ell>0\) such that
@@ -383,13 +435,39 @@ Thus, realization is not a single transformation, but the result of an
 iterative physical process.
 \end{remark}
 
-\begin{summary}
-The realization operator can be understood as the limit of an iterative,
-localized adjustment process.
+ \begin{summary}
+ The realization operator can be understood as the limit of an iterative,
+ localized adjustment process.
 
-A kernel-based model provides a concrete and computationally tractable
-representation of this process.
-\end{summary}
+ A kernel-based model provides a concrete and computationally tractable
+ representation of this process.
+ \end{summary}
+
+% ============================================================
+\section{Filter Interpretation of Realization}
+% ============================================================
+
+\begin{proposition}
+The realization operator acts as a low-pass filter on curvature.
+\end{proposition}
+
+\begin{remark}
+High-frequency components of the curvature are attenuated during
+construction and maintenance, while low-frequency structure is preserved.
+\end{remark}
+
+\begin{remark}
+This explains why different transition curves with similar low-order
+behaviour may become nearly indistinguishable in position space after
+realization, while still differing in curvature evolution and dynamic
+interpretation.
+\end{remark}
+
+\begin{remark}
+Within the AIM framework, realization forms a dedicated operator layer
+between modelling and optimization, and must be explicitly considered in
+all design processes.
+\end{remark}
 
 % ============================================================
 \section{Formal Optimization of Control Point Placement}
@@ -578,16 +656,9 @@ such that
 \end{definition}
 
 \begin{remark}
-In general, the operator \(\mathcal{R}\) is not invertible.
-\end{remark}
-
-\begin{remark}
-This is due to:
-\begin{itemize}
-\item loss of high-frequency information,
-\item discretization effects,
-\item mechanical smoothing.
-\end{itemize}
+In general, the operator \(\mathcal{R}\) is not invertible due to loss of
+high-frequency information, discretization effects, and mechanical
+smoothing.
 \end{remark}
 
 \subsection{Regularized Inverse Problem}

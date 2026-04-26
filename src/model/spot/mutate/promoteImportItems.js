@@ -2,169 +2,273 @@
 //
 // promoteImportItems
 //
-// Promotes canonical ImportSessionItems into canonical SPOT objects.
+// Purpose:
+// - evaluate canonical ImportSessionItems for SPOT admission
+// - promote only safe items into SpotStore
+// - keep review/reject decisions explicit and machine-readable
+//
+// Rule:
+// import items are NOT promoted just because they exist
+// import items must pass assessSpotAdmission()
 //
 // Important:
-// - Works against SpotStore API, not raw state
-// - NO implicit promotion
-// - only explicitly accepted items may enter SPOT
+// - SPOT remains canonical truth
+// - review items stay outside SPOT
+// - reject items stay outside SPOT
+// - no geometry recomputation here except using already-derived sparseAlignment
 
-import { validateSparseAlignment } from "../validation/validateSparseAlignment.js";
+import { assessSpotAdmission } from "../../../import/spot/assessSpotAdmission.js";
+
+console.log("[promoteImportItems] MODULE LOADED v2");
 
 export function promoteImportItems({
 	items = [],
 	spotStore,
-	now = Date.now,
-	idFactory = defaultSpotIdFactory,
 } = {}) {
-	if (!spotStore || typeof spotStore.addObject !== "function") {
-		throw new Error("promoteImportItems: missing or invalid spotStore");
+	if (!spotStore || typeof spotStore.addObjects !== "function") {
+		throw new Error("promoteImportItems: missing spotStore.addObjects");
 	}
 
+	const sourceItems = Array.isArray(items) ? items : [];
+
 	const addedObjects = [];
+	const reviewItems = [];
 	const rejectedItems = [];
 
-	for (const item of items) {
-		const decision = promoteSingleItem({ item, now, idFactory });
-
-		if (!decision.ok) {
+	for (const item of sourceItems) {
+		if (!isObject(item)) {
 			rejectedItems.push({
-				itemId: item?.id ?? null,
-				kind: item?.kind ?? null,
-				reason: decision.reason,
-				errors: decision.errors ?? [],
-				warnings: decision.warnings ?? [],
+				id: null,
+				kind: null,
+				reason: "invalid_item",
 			});
 			continue;
 		}
 
-		const object = decision.object;
-		spotStore.addObject(object);
-		addedObjects.push(object);
-	}
+		const decision = assessSpotAdmission(item);
 
-	return {
-		ok: rejectedItems.length === 0,
-		addedObjects,
-		rejectedItems,
-	};
-}
+console.log("[promoteImportItems] decision", {
+	id: item?.id ?? null,
+	kind: item?.kind ?? null,
+	admission: decision?.admission ?? null,
+	reason: decision?.reason ?? null,
+	sourceTrustClass: item?.derived?.importAssessment?.sourceTrustClass ?? null,
+	spatialRefStatus: item?.derived?.spatialRef?.status ?? null,
+	spatialRef: item?.derived?.spatialRef ?? null,
+	hasSparse: Boolean(item?.derived?.sparseAlignment),
+	hasProfile:
+		Boolean(item?.payload?.profileRef) ||
+		Boolean(item?.derived?.interpretation?.hasProfile),
+	hasCant:
+		Boolean(item?.payload?.cantRef) ||
+		Boolean(item?.derived?.interpretation?.hasCant),
+	hasStaEq:
+		Boolean(item?.payload?.staEqRef) ||
+		Boolean(item?.derived?.interpretation?.hasStaEq),
+	importAssessment: item?.derived?.importAssessment ?? null,
+	interpretation: item?.derived?.interpretation ?? null,
+});
 
-function promoteSingleItem({ item, now, idFactory }) {
-	if (!isObject(item)) {
-		return fail("item_not_object");
-	}
+		if (decision?.admission === "safe") {
+			const promoted = promoteOneItemToSpotObject(item);
 
-	if (item.kind !== "alignment") {
-		return fail("kind_not_supported_yet");
-	}
+			if (!promoted) {
+				reviewItems.push({
+					id: item.id ?? null,
+					kind: item.kind ?? null,
+					reason: "promotion_builder_returned_null",
+				});
+				continue;
+			}
 
-	if (item.status?.valid !== true) {
-		return fail("item_not_valid");
-	}
+			spotStore.addObjects([promoted]);
+			addedObjects.push(promoted);
+			continue;
+		}
 
-	if (item.status?.promotable !== true) {
-		return fail("item_not_promotable");
-	}
+		if (decision?.admission === "review") {
+			reviewItems.push({
+				id: item.id ?? null,
+				kind: item.kind ?? null,
+				reason: decision.reason ?? "review_required",
+			});
+			continue;
+		}
 
-	// ------------------------------------------------------------
-	// Release-1 rule:
-	// no implicit promotion
-	// ------------------------------------------------------------
-	if (item.status?.accepted !== true) {
-		return fail("item_not_explicitly_accepted");
-	}
-
-	const sparseAlignment = item?.derived?.sparseAlignment;
-	if (!sparseAlignment) {
-		return fail("missing_sparse_alignment");
-	}
-
-	const validation = validateSparseAlignment(sparseAlignment);
-	if (!validation.ok) {
-		return fail("sparse_validation_failed", {
-			errors: validation.errors,
-			warnings: validation.warnings,
+		rejectedItems.push({
+			id: item.id ?? null,
+			kind: item.kind ?? null,
+			reason: decision?.reason ?? "rejected",
 		});
 	}
 
-	const objectId = idFactory("alignment", item);
-
 	return {
 		ok: true,
-		object: {
-			id: objectId,
-			type: "alignment",
-			spatialRef: normalizeSpatialRef(item),
-			payload: {
-				sparseAlignment,
-			},
-			meta: {
-				source: normalizeSource(item.source),
-				importItemId: item.id ?? null,
-				importedAt: now(),
-				name:
-					sparseAlignment?.name ??
-					item?.payload?.name ??
-					item?.source?.containerId ??
-					item?.source?.fileName ??
-					objectId,
-			},
+		addedObjects,
+		reviewItems,
+		rejectedItems,
+		count: {
+			addedObjects: addedObjects.length,
+			reviewItems: reviewItems.length,
+			rejectedItems: rejectedItems.length,
 		},
 	};
 }
 
-function normalizeSpatialRef(item) {
-	const spatialRef =
-		item?.payload?.spatialRef ??
-		item?.payload?.coordinateSystem ??
-		item?.payload?.crs ??
-		null;
+// -----------------------------------------------------------------------------
+// item -> SpotObject
+// -----------------------------------------------------------------------------
 
-	if (!isObject(spatialRef)) {
+function promoteOneItemToSpotObject(item) {
+	switch (item?.kind) {
+		case "alignment":
+			return buildSpotAlignmentObject(item);
+
+		case "profile":
+			return buildSpotProfileObject(item);
+
+		case "cant":
+			return buildSpotCantObject(item);
+
+		case "staEq":
+			return buildSpotStaEqObject(item);
+
+		case "relation":
+			return buildSpotRelationObject(item);
+
+		default:
+			return null;
+	}
+}
+
+function buildSpotAlignmentObject(item) {
+	const sparseAlignment = item?.derived?.sparseAlignment ?? null;
+	if (!isObject(sparseAlignment)) return null;
+
+	const payload = item?.payload ?? {};
+	const spatialRef = normalizeSpotSpatialRef(item);
+
+	return {
+		id: String(item.id),
+		type: "alignment",
+		spatialRef,
+		payload: {
+			name: payload.name ?? payload.id ?? item.id ?? null,
+			sparseAlignment,
+			meta: isObject(payload.meta) ? payload.meta : {},
+			extended: isObject(payload.extended) ? payload.extended : {},
+		},
+		meta: buildSpotMeta(item),
+	};
+}
+
+function buildSpotProfileObject(item) {
+	const payload = item?.payload ?? {};
+	const spatialRef = normalizeSpotSpatialRef(item);
+
+	return {
+		id: String(item.id),
+		type: "profile",
+		spatialRef,
+		payload: {
+			name: payload.name ?? payload.id ?? item.id ?? null,
+			points: Array.isArray(payload.points) ? payload.points : [],
+			stationReference: payload.stationReference ?? null,
+			meta: isObject(payload.meta) ? payload.meta : {},
+			extended: isObject(payload.extended) ? payload.extended : {},
+		},
+		meta: buildSpotMeta(item),
+	};
+}
+
+function buildSpotCantObject(item) {
+	const payload = item?.payload ?? {};
+	const spatialRef = normalizeSpotSpatialRef(item);
+
+	return {
+		id: String(item.id),
+		type: "cant",
+		spatialRef,
+		payload: {
+			name: payload.name ?? payload.id ?? item.id ?? null,
+			points: Array.isArray(payload.points) ? payload.points : [],
+			stationReference: payload.stationReference ?? null,
+			meta: isObject(payload.meta) ? payload.meta : {},
+			extended: isObject(payload.extended) ? payload.extended : {},
+		},
+		meta: buildSpotMeta(item),
+	};
+}
+
+function buildSpotStaEqObject(item) {
+	const payload = item?.payload ?? {};
+	const spatialRef = normalizeSpotSpatialRef(item);
+
+	return {
+		id: String(item.id),
+		type: "staEq",
+		spatialRef,
+		payload: {
+			name: payload.name ?? payload.id ?? item.id ?? null,
+			equations: Array.isArray(payload.equations) ? payload.equations : [],
+			meta: isObject(payload.meta) ? payload.meta : {},
+			extended: isObject(payload.extended) ? payload.extended : {},
+		},
+		meta: buildSpotMeta(item),
+	};
+}
+
+function buildSpotRelationObject(item) {
+	const payload = item?.payload ?? {};
+	const spatialRef = normalizeSpotSpatialRef(item);
+
+	return {
+		id: String(item.id),
+		type: "relation",
+		spatialRef,
+		payload: {
+			name: payload.name ?? payload.id ?? item.id ?? null,
+			relationType: payload.relationType ?? null,
+			fromRef: payload.fromRef ?? null,
+			toRef: payload.toRef ?? null,
+			meta: isObject(payload.meta) ? payload.meta : {},
+			extended: isObject(payload.extended) ? payload.extended : {},
+		},
+		meta: buildSpotMeta(item),
+	};
+}
+
+// -----------------------------------------------------------------------------
+// shared helpers
+// -----------------------------------------------------------------------------
+
+function buildSpotMeta(item) {
+	return {
+		importItemId: item?.id ?? null,
+		source: isObject(item?.source) ? { ...item.source } : {},
+		importMeta: isObject(item?.meta) ? { ...item.meta } : {},
+		importAssessment: isObject(item?.derived?.importAssessment)
+			? { ...item.derived.importAssessment }
+			: {},
+		interpretation: isObject(item?.derived?.interpretation)
+			? { ...item.derived.interpretation }
+			: null,
+	};
+}
+
+function normalizeSpotSpatialRef(item) {
+	const sr = item?.derived?.spatialRef;
+
+	if (isObject(sr)) {
 		return {
-			horizontalCrsId: null,
-			verticalCrsId: null,
-			status: "unknown",
+			...sr,
+			status: sr.status ?? "unknown",
 		};
 	}
 
 	return {
-		horizontalCrsId: spatialRef.horizontalCrsId ?? spatialRef.crsId ?? null,
-		verticalCrsId: spatialRef.verticalCrsId ?? null,
-		status: spatialRef.status ?? "declared",
+		status: "unknown",
 	};
-}
-
-function normalizeSource(source) {
-	if (!isObject(source)) return {};
-	return {
-		fileName: source.fileName ?? null,
-		parserId: source.parserId ?? null,
-		containerId: source.containerId ?? null,
-	};
-}
-
-function defaultSpotIdFactory(type, item) {
-	const base =
-		item?.id ??
-		item?.source?.containerId ??
-		item?.source?.fileName ??
-		"item";
-
-	return `spot_${type}_${slug(base)}`;
-}
-
-function slug(value) {
-	return String(value ?? "")
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9_]+/g, "_")
-		.replace(/^_+|_+$/g, "") || "unnamed";
-}
-
-function fail(reason, extra = {}) {
-	return { ok: false, reason, ...extra };
 }
 
 function isObject(x) {

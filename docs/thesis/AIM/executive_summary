@@ -4,36 +4,39 @@
 \section*{Alignment-Based Information Modelling (AIM)}
 
 Railway alignments are traditionally described as geometric curves in
-space. However, this view is insufficient for modern engineering tasks,
-which require the integration of design, measurement, construction,
-and optimization.
+space.  
+This perspective is insufficient for modern engineering tasks, which
+require the integration of design, measurement, construction, and
+optimization.
+
+\textbf{Alignment is not a curve.}  
+It is a curvature-driven system whose geometry emerges from a structured
+process.
 
 This work introduces \emph{Alignment-Based Information Modelling (AIM)}
-as a unified framework that treats alignments not as static curves,
-but as the result of a structured transformation process.
+as a unified framework for this perspective.
 
 ---
 
 \section*{Core Idea}
 
-The central concept of AIM is to represent alignments through curvature
-as a function of arc-length:
+AIM represents alignments intrinsically by curvature:
 \[
 \kappa(s).
 \]
 
-This intrinsic representation:
+This formulation:
 \begin{itemize}
-\item directly connects geometry and dynamics,
-\item provides a low-dimensional and structured model,
-\item enables efficient optimization.
+\item unifies geometry and dynamics,
+\item reduces model complexity,
+\item enables efficient computation and optimization.
 \end{itemize}
 
 ---
 
-\section*{From Geometry to System}
+\section*{From Representation to Process}
 
-Instead of a single model, AIM defines a pipeline of operators:
+AIM replaces static modelling by an operator pipeline:
 \[
 \mathcal{P}
 =
@@ -48,24 +51,23 @@ Instead of a single model, AIM defines a pipeline of operators:
 \mathcal{C}.
 \]
 
-This pipeline links:
+This pipeline connects:
 \begin{itemize}
-\item coordinate systems (CRS),
+\item coordinate systems,
 \item world geometry,
-\item intrinsic alignment coordinates,
-\item parametric and hybrid modelling,
-\item physical realization,
+\item intrinsic track coordinates,
+\item modelling,
+\item realization,
 \item and optimization.
 \end{itemize}
 
-Thus, alignment modelling becomes a \emph{process} rather than a static
-representation.
+\textbf{Alignment modelling becomes a process.}
 
 ---
 
 \section*{Hybrid Modelling}
 
-AIM combines parametric structure with local flexibility:
+AIM combines structure and flexibility:
 \[
 \kappa(s)
 =
@@ -77,33 +79,31 @@ AIM combines parametric structure with local flexibility:
 This hybrid representation:
 \begin{itemize}
 \item preserves engineering intent,
-\item accommodates imperfect measurement data,
-\item avoids over-parameterization.
+\item integrates measurement data,
+\item avoids overfitting.
 \end{itemize}
 
 ---
 
-\section*{Realization Matters}
+\section*{Realization as a First-Class Concept}
 
-A key insight is that the designed alignment is not identical to the
-constructed track.
+The designed alignment is not identical to the constructed track.
 
 A realization operator
 \[
 \mathcal{R}
 \]
-transforms the theoretical model into physically realizable geometry,
-introducing smoothing and constraints.
+maps the theoretical model to physical geometry, introducing smoothing
+and constraints.
 
-\textbf{Therefore, design must be performed in realized space.}
+\textbf{Design must therefore be performed in realized space.}
 
 ---
 
 \section*{Optimization}
 
-The alignment problem is formulated as a structured nonlinear
-least-squares problem and solved using Sequential Quadratic Programming
-(SQP).
+Alignment design is formulated as a structured nonlinear least-squares
+problem.
 
 Due to:
 \begin{itemize}
@@ -111,30 +111,27 @@ Due to:
 \item sparse Jacobians,
 \item intrinsic block structure,
 \end{itemize}
-the optimization is computationally efficient and scalable.
+the problem is efficiently solvable using SQP methods.
 
 ---
 
-\section*{World-to-Track Transformation}
+\section*{World-to-Track Mapping}
 
-A central component of AIM is the transformation between global
-coordinates and intrinsic track coordinates:
+A central component is the transformation:
 \[
 x \leftrightarrow (s,d).
 \]
 
-This nonlinear mapping:
+This mapping:
 \begin{itemize}
-\item connects measurement data to the alignment model,
-\item introduces scale-dependent complexity,
-\item requires hybrid and LOD-based strategies.
+\item links measurement data to the model,
+\item introduces nonlinear complexity,
+\item motivates hybrid and LOD-based strategies.
 \end{itemize}
 
 ---
 
 \section*{Key Principles}
-
-The framework is governed by the following principles:
 
 \begin{itemize}
 \item curvature-centric modelling,
@@ -142,18 +139,16 @@ The framework is governed by the following principles:
 \item hybrid parametric--discrete representation,
 \item operator-based architecture,
 \item optimization in realized space,
-\item exploitation of sparsity and structure,
-\item integration of measurement via world-to-track mapping,
-\item acceptance of non-uniqueness.
+\item exploitation of sparsity and structure.
 \end{itemize}
 
 ---
 
 \section*{Outcome}
 
-AIM provides a coherent foundation for:
+AIM provides a coherent framework for:
 \begin{itemize}
-\item alignment reconstruction from imperfect data,
+\item reconstruction from imperfect data,
 \item physically meaningful optimization,
 \item integration of design, measurement, and construction,
 \item scalable computational implementation.
@@ -163,7 +158,7 @@ AIM provides a coherent foundation for:
 
 \section*{Conclusion}
 
-Alignment modelling is not merely a geometric task.
+Alignment modelling is not a purely geometric task.
 
 It is the integration of:
 \begin{itemize}
@@ -173,5 +168,5 @@ It is the integration of:
 \item and computation.
 \end{itemize}
 
-AIM formalizes this integration as a structured operator pipeline,
-establishing a new perspective on railway alignment engineering.
+AIM formalizes this integration as a structured operator framework,
+establishing a new foundation for railway alignment engineering.

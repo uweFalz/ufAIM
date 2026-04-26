@@ -122,16 +122,16 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 	debug.log("Import.AddItems", {
 		count: Array.isArray(items) ? items.length : 0,
 		items: Array.isArray(items)
-			? items.map((item) => ({
-				id: item?.id,
-				kind: item?.kind,
-				name: item?.payload?.name ?? item?.payload?.id ?? null,
-				promotable: item?.status?.promotable,
-				stage: item?.status?.stage,
-				hasSparse: Boolean(item?.derived?.sparseAlignment),
-				interpretation: item?.derived?.interpretation ?? null,
-			}))
-			: [],
+		? items.map((item) => ({
+			id: item?.id,
+			kind: item?.kind,
+			name: item?.payload?.name ?? item?.payload?.id ?? null,
+			promotable: item?.status?.promotable,
+			stage: item?.status?.stage,
+			hasSparse: Boolean(item?.derived?.sparseAlignment),
+			interpretation: item?.derived?.interpretation ?? null,
+		}))
+		: [],
 	});
 
 	const result = await importInboxService.addItems({ items });
@@ -199,8 +199,8 @@ router.onCmd("Spot.PromoteImportItems", async ({ items = [] } = {}) => {
 
 router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 	const ids = Array.isArray(itemIds)
-		? itemIds.map((x) => String(x ?? "").trim()).filter(Boolean)
-		: [];
+	? itemIds.map((x) => String(x ?? "").trim()).filter(Boolean)
+	: [];
 
 	debug.log("Spot.PromoteImportItemsById", { itemIds: ids });
 
@@ -234,6 +234,12 @@ router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 			name: item?.payload?.name ?? item?.payload?.id ?? null,
 			promotable: item?.status?.promotable,
 			hasSparse: Boolean(item?.derived?.sparseAlignment),
+
+			spatialRef: item?.derived?.spatialRef ?? null,
+			payloadSpatialRef: item?.payload?.spatialRef ?? null,
+			metaSpatialRefHint: item?.meta?.spatialRefHint ?? null,
+			importAssessment: item?.derived?.importAssessment ?? null,
+
 			interpretation: item?.derived?.interpretation ?? null,
 		})),
 	});
@@ -241,9 +247,11 @@ router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 	const result = await spotService.promoteItems({ items: wanted });
 
 	debug.log("Spot.PromoteImportItemsById.done", {
-		ok: result?.ok ?? null,
-		addedObjects: Array.isArray(result?.addedObjects) ? result.addedObjects.map((o) => o?.id ?? null) : [],
-		rejectedItems: Array.isArray(result?.rejectedItems) ? result.rejectedItems.map((i) => i?.id ?? null) : [],
+		ok: result?.ok,
+		addedObjects: result?.addedObjects?.map((x) => x.id) ?? [],
+		reviewItems: result?.reviewItems ?? [],
+		rejectedItems: result?.rejectedItems ?? [],
+		count: result?.count ?? null,
 	});
 
 	return result;

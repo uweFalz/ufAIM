@@ -56,10 +56,87 @@ with
 \]
 \end{definition}
 
+
 \begin{remark}
 Normalization separates the geometric shape of a transition from its
 scale and allows systematic comparison of transition families.
 \end{remark}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  scale=1.0,
+  axis/.style={->, thin},
+  curve/.style={thick},
+  label/.style={font=\small}
+]
+
+% ------------------------------------------------------------
+% Top plot: normalized curvature laws
+% ------------------------------------------------------------
+\begin{scope}[shift={(0,4.0)}]
+  \draw[axis] (0,0) -- (5.3,0) node[right] {$u=s/L$};
+  \draw[axis] (0,0) -- (0,2.0) node[above] {$\widehat{\kappa}(u)$};
+
+  % Clothoid: k = u
+  \draw[curve] plot[smooth, domain=0:5, samples=40]
+    (\x,{0.32*\x});
+
+  % Bloss-like smoothstep: 3u^2 - 2u^3
+  \draw[curve, dashed] plot[smooth, domain=0:5, samples=80]
+    (\x,{1.6*(3*(\x/5)^2 - 2*(\x/5)^3)});
+
+  % Sine/Vienna-like smooth curve
+  \draw[curve, dotted, very thick] plot[smooth, domain=0:5, samples=80]
+    (\x,{1.6*(0.5 - 0.5*cos(180*\x/5))});
+
+  \node[label, right] at (5.05,1.60) {clothoid};
+  \node[label, right] at (5.05,1.45) {Bloss-like};
+  \node[label, right] at (5.05,1.30) {sine-like};
+\end{scope}
+
+% ------------------------------------------------------------
+% Middle plot: curvature derivative
+% ------------------------------------------------------------
+\begin{scope}[shift={(0,1.65)}]
+  \draw[axis] (0,0) -- (5.3,0) node[right] {$u=s/L$};
+  \draw[axis] (0,0) -- (0,2.0) node[above] {$\widehat{\kappa}'(u)$};
+
+  % derivative clothoid: constant
+  \draw[curve] (0,0.9) -- (5,0.9);
+
+  % derivative Bloss-like: 6u - 6u^2
+  \draw[curve, dashed] plot[smooth, domain=0:5, samples=80]
+    (\x,{0.15 + 1.5*(6*(\x/5) - 6*(\x/5)^2)/1.5});
+
+  % derivative sine-like: pi/2 sin(pi u), scaled
+  \draw[curve, dotted, very thick] plot[smooth, domain=0:5, samples=80]
+    (\x,{0.15 + 1.35*sin(180*\x/5)});
+
+  \node[label, right] at (5.05,0.90) {constant slope};
+\end{scope}
+
+% ------------------------------------------------------------
+% Bottom sketch: geometric paths nearly coincide
+% ------------------------------------------------------------
+\begin{scope}[shift={(0,-0.55)}]
+  \draw[axis] (0,0) -- (5.3,0) node[right] {$x$};
+  \draw[axis] (0,0) -- (0,1.55) node[above] {$y$};
+
+  \draw[curve] plot[smooth, domain=0:5, samples=80]
+    (\x,{0.055*\x^2});
+  \draw[curve, dashed] plot[smooth, domain=0:5, samples=80]
+    (\x,{0.052*\x^2 + 0.018*sin(180*\x/5)});
+  \draw[curve, dotted, very thick] plot[smooth, domain=0:5, samples=80]
+    (\x,{0.058*\x^2 - 0.015*sin(180*\x/5)});
+
+  \node[label, right] at (5.05,1.35) {nearly identical geometry};
+\end{scope}
+
+\end{tikzpicture}
+
+\caption{Transition families may produce very similar geometric paths while differing strongly in curvature evolution and curvature derivatives. This is why transition design must be evaluated in curvature and dynamic terms, not only in position space.}
+\end{figure}
 
 \section{Scaling}
 

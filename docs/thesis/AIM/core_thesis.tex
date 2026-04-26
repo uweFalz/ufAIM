@@ -1,0 +1,89 @@
+\chapter*{Core Thesis}
+\addcontentsline{toc}{chapter}{Core Thesis}
+
+\begin{center}
+\large
+\textit{
+Alignment is not a curve.\\
+It is a curvature-driven, realization-aware generative system.
+}
+\end{center}
+
+\vspace{1em}
+
+\begin{remark}
+Classical railway geometry represents track layouts as curves in
+Euclidean space.
+While sufficient for visualization, this perspective is inadequate for
+design, construction, and dynamic analysis.
+\end{remark}
+
+\begin{remark}
+Within the AIM framework, the fundamental object is not the curve
+\(\gamma(s)\), but the curvature law \(\kappa(s)\), complemented by the
+cant function \(\phi(s)\).
+All geometric quantities are derived by integration.
+\end{remark}
+
+\begin{remark}
+This shifts the modelling paradigm from descriptive geometry to
+generative structure:
+alignments are defined by the laws that produce curves, not by the
+curves themselves.
+\end{remark}
+
+---
+
+\section*{Key Principles}
+
+\begin{description}
+
+\item[Curvature as Primary Variable]
+The alignment is defined by curvature \(\kappa(s)\).
+Position \(\gamma(s)\) is a derived quantity.
+This inversion simplifies modelling and exposes the intrinsic structure
+of railway geometry.
+
+\item[Realization as Operator]
+The physically constructed track differs from the theoretical alignment.
+This transformation is captured by a realization operator
+\(\mathcal{R}\), which includes discretization, interpolation, and
+mechanical response.
+Design must therefore be formulated in realized space.
+
+\item[Hybrid Representation]
+Real-world data and engineering design require both structure and
+flexibility.
+A hybrid model combines parametric representations with local
+corrections, enabling robust reconstruction from imperfect data.
+
+\item[Analytical Structure]
+All relevant quantities arise from arc-length based relations.
+As a consequence, derivatives with respect to parameters are available
+in closed form.
+This eliminates the need for numerical differentiation.
+
+\item[Efficient Optimization]
+Alignment optimization reduces to a structured nonlinear least-squares
+problem with sparse and banded Jacobians.
+This enables efficient solution via Gauss--Newton or SQP methods.
+
+\end{description}
+
+---
+
+\section*{Implication}
+
+\begin{remark}
+The AIM framework unifies geometry, dynamics, realization, and data
+processing within a single coherent model.
+
+It replaces curve-based thinking by a system-based perspective in which
+alignment, realization, and optimization are intrinsically linked.
+\end{remark}
+
+\begin{remark}
+This provides a foundation for alignment-based information modelling,
+capable of bridging theoretical design and practical railway
+engineering.
+\end{remark}

@@ -1,0 +1,200 @@
+\chapter*{Glossary}
+\addcontentsline{toc}{chapter}{Glossary}
+
+\section*{Core Concepts}
+
+\begin{description}
+
+\item[Alignment]
+A structured representation of railway track geometry defined primarily
+through curvature \(\kappa(s)\), together with associated state
+variables (position, orientation, cant).
+An alignment is not merely a curve, but a system linking geometry,
+dynamics, and realization.
+
+\item[Curvature \(\kappa(s)\)]
+The fundamental geometric quantity describing the rate of change of
+direction along the track.
+Within the AIM framework, curvature is the primary design variable.
+
+\item[Cant \(\phi(s)\)]
+The cross-level (superelevation) of the track, representing the rotation
+of the track plane around its longitudinal axis.
+Cant is dynamically coupled to curvature via equilibrium conditions.
+
+\item[State]
+The physical description of the track at arc-length position \(s\),
+typically including position \(\gamma(s)\), orientation \(\theta(s)\),
+curvature \(\kappa(s)\), and cant \(\phi(s)\).
+
+\end{description}
+
+---
+
+\section*{Modeling and Representation}
+
+\begin{description}
+
+\item[Parametric Model]
+A low-dimensional representation of curvature or cant defined by a small
+set of parameters \(\mathbf{T}\), e.g. transition types or segment
+lengths.
+
+\item[Sample-Based Model]
+A discrete representation of curvature or geometry defined at a set of
+points \(\{s_i\}\), typically used for measurement data or numerical
+optimization.
+
+\item[Hybrid Model]
+A combination of parametric and sample-based representations:
+\[
+\kappa(s) = \kappa_{\mathrm{param}}(s;\mathbf{T}) + \delta\kappa(s),
+\]
+allowing structured modeling with local corrections.
+
+\item[Sparse Representation]
+A minimal representation of an alignment using essential parameters
+(e.g. curvature segments and transitions), enabling efficient storage
+and computation.
+
+\end{description}
+
+---
+
+\section*{Operators}
+
+\begin{description}
+
+\item[Sampling Operator \(\mathcal{S}\)]
+Maps a continuous function to discrete values:
+\[
+\mathcal{S}(\kappa) = \{\kappa(s_i)\}.
+\]
+
+\item[Interpolation Operator \(\mathcal{I}\)]
+Reconstructs a continuous curve from discrete data.
+
+\item[Mechanical Operator \(\mathcal{M}\)]
+Represents the physical response of the track structure, including
+smoothing and deformation effects.
+
+\item[Realization Operator \(\mathcal{R}\)]
+Maps a theoretical alignment to its physically realized form:
+\[
+\mathcal{R} = \mathcal{M} \circ \mathcal{I} \circ \mathcal{S}.
+\]
+
+\item[Adjustment Operator \(\mathcal{T}\)]
+A local operator representing a single construction or maintenance step
+(e.g. tamping), applied iteratively:
+\[
+\gamma_{k+1} = \mathcal{T}(\gamma_k).
+\]
+
+\end{description}
+
+---
+
+\section*{Spaces and Transformations}
+
+\begin{description}
+
+\item[Track Space]
+A coordinate system aligned with the track, typically parameterized by
+arc-length \(s\), where geometry and dynamics are defined.
+
+\item[World Space]
+A global coordinate system (e.g. CRS-based), used for georeferencing and
+data integration.
+
+\item[World-to-Track Transformation]
+The mapping between world coordinates and track-based representation,
+typically requiring projection onto the alignment and evaluation of
+\(s\), \(\kappa\), and \(\phi\).
+
+\end{description}
+
+---
+
+\section*{Optimization}
+
+\begin{description}
+
+\item[Residual]
+A component of the objective function representing deviation from a
+desired property (e.g. smoothness, dynamic equilibrium).
+
+\item[Jacobian]
+The matrix of derivatives of residuals with respect to parameters.
+Within AIM, Jacobians are derived analytically from arc-length-based
+relations.
+
+\item[Gauss--Newton Method]
+An optimization method using the approximation:
+\[
+H \approx J^T J,
+\]
+for solving nonlinear least-squares problems.
+
+\item[Sequential Quadratic Programming (SQP)]
+An iterative optimization framework solving a sequence of quadratic
+subproblems based on linearized constraints.
+
+\end{description}
+
+---
+
+\section*{Realization and Construction}
+
+\begin{description}
+
+\item[Realized Alignment]
+The physically constructed track geometry, which differs from the
+theoretical alignment due to discretization and mechanical effects.
+
+\item[Control Points]
+Discrete positions \(\{s_i\}\) at which geometry is specified or
+adjusted during construction or maintenance.
+
+\item[Realization Error]
+The deviation between target and realized curvature or geometry.
+
+\item[Inverse Realization Problem]
+The problem of finding a target alignment such that:
+\[
+\mathcal{R}(\kappa_{\mathrm{target}})
+\approx
+\kappa_{\mathrm{desired}}.
+\]
+
+\end{description}
+
+---
+
+\section*{Pipeline}
+
+\begin{description}
+
+\item[Pipeline]
+The sequence of transformations from raw data to optimized alignment:
+\[
+\text{data}
+\rightarrow
+\text{model}
+\rightarrow
+\text{state}
+\rightarrow
+\text{realization}
+\rightarrow
+\text{optimization}.
+\]
+
+\item[Failure Modes]
+Typical breakdown points within the pipeline, such as inconsistent data,
+invalid coordinate systems, or unstable optimization.
+
+\item[Design Principles]
+Guiding principles ensuring robustness, interpretability, and
+consistency across the pipeline.
+
+\end{description}

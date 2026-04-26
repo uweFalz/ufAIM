@@ -16,18 +16,21 @@
 // - typed outputs nur bei eindeutiger Semantik
 // - STATION wird direkt aus PP-Records per gefilterten ppKeys bestimmt
 //
-// Rückgabe an Pipeline aktuell bewusst qualifiziert reduziert:
+// Rückgabe an Pipeline:
 // - gültiges landFAT
-// - nur coordGeom-relevante Sequenzen aus EL und qualifiziertem EK
-// - EH / EU werden vorerst NICHT in sparse-nahe Strukturen gehoben
+// - coordGeom-relevante Sequenzen aus EL und qualifiziertem EK
+// - profile-Sequenzen aus EH als landFAT.profile
+// - cant-Sequenzen aus EU als landFAT.cant
+// - GND-Herkunft / CRS-Hinweise in extras, damit SPOT-Aufnahme entscheiden kann
 //
 // @baustelle [SEQUENCE-BUILDER]
 // Noch keine echte topologische Netzmodellierung.
 // Der Parser arbeitet weiterhin nur mit family-reinen Ketten.
 //
-// @baustelle [COORDGEOM-ONLY]
-// profile / cant / staEquation werden derzeit bewusst NICHT in landFAT-Substrukturen
-// überführt, weil dafür im sparse-Modell noch kein sauberes Pier existiert.
+// @baustelle [GND-COMPLETE-LANDFAT]
+// profile / cant werden jetzt als landFAT-Anhängsel ausgegeben.
+// Sparse/SPOT dürfen sie erst übernehmen, wenn die jeweilige Admission-Regel
+// sie als vollständig / vertrauenswürdig bewertet.
 //
 // @baustelle [EK-QUALIFY]
 // EK ist fachlich gemischt. Aktuell werden nur jene EK-Sequenzen weitergegeben,
@@ -155,7 +158,7 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 		metaExtra: {
 			parserId: "gndEdit",
 			sourceBackend: "xlsx",
-			stage: "coordGeom-only",
+			stage: "landFAT-with-gnd-attachments",
 			sheetNames: workbookInfo.sheetNames,
 			analysis: {
 				padCount: model.stats.padCount,
@@ -169,8 +172,6 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 				elCoordGeomCandidateCount: model.stats.elCoordGeomCandidateCount,
 				elRejectedForCoordGeomCount: model.stats.elRejectedForCoordGeomCount,
 
-				// @baustelle [DIAGNOSTIC-ONLY]
-				// Derzeit nur Analysewerte, keine fachliche Ausgabe in landFAT.
 				profileSequenceCount: model.stats.profileSequenceCount,
 				cantSequenceCount: model.stats.cantSequenceCount,
 				ekCoordGeomCandidateCount: model.stats.ekCoordGeomCandidateCount,
@@ -317,19 +318,17 @@ function buildAnalysisModel({ sheets }) {
 	const ekRejectedForCoordGeom = ekCoordGeomCandidates
 	.filter((seq) => !isLikelyCoordGeomEkSequence(seq) || seq?.quality?.level === "reject");
 
-	// @baustelle [PROFILE-LATER]
-	// EH wird derzeit nur diagnostisch ausgewertet.
+	// EH wird als Höhen-/Profilebene in landFAT.profile ausgegeben.
 	const profileSequences = arr(sequencesByFamily.EH)
-	.filter((seq) => isValidTypedSequence(seq, "profile"))
-	.map((seq) => finalizeTypedSequence(seq, "profile"))
-	.sort(compareTypedSequences);
+		.filter((seq) => isValidTypedSequence(seq, "profile"))
+		.map((seq) => finalizeTypedSequence(seq, "profile"))
+		.sort(compareTypedSequences);
 
-	// @baustelle [CANT-LATER]
-	// EU wird derzeit nur diagnostisch ausgewertet.
+	// EU wird als Querneigungs-/Cant-Ebene in landFAT.cant ausgegeben.
 	const cantSequences = arr(sequencesByFamily.EU)
-	.filter((seq) => isValidTypedSequence(seq, "cant"))
-	.map((seq) => finalizeTypedSequence(seq, "cant"))
-	.sort(compareTypedSequences);
+		.filter((seq) => isValidTypedSequence(seq, "cant"))
+		.map((seq) => finalizeTypedSequence(seq, "cant"))
+		.sort(compareTypedSequences);
 
 	const coordGeomSequences = [
 	...elCoordGeomSequences,
@@ -347,8 +346,6 @@ function buildAnalysisModel({ sheets }) {
 		elRejectedForCoordGeom,
 		ekRejectedForCoordGeom,
 
-		// @baustelle [DIAGNOSTIC-ONLY]
-		// Noch keine fachliche landFAT-Ausgabe.
 		profileSequences,
 		cantSequences,
 
@@ -1074,13 +1071,13 @@ function logAnalysisToConsole(model, { fileName }) {
 	// @baustelle [DIAGNOSTIC-ONLY]
 	// EH / EU aktuell nur zum Überblick.
 	if (model.profileSequences?.length) {
-		console.groupCollapsed("profile sequences (diagnostic only)");
+		console.groupCollapsed("profile sequences");
 		console.table(model.profileSequences);
 		console.groupEnd();
 	}
 
 	if (model.cantSequences?.length) {
-		console.groupCollapsed("cant sequences (diagnostic only)");
+		console.groupCollapsed("cant sequences");
 		console.table(model.cantSequences);
 		console.groupEnd();
 	}
@@ -1177,7 +1174,7 @@ function convertSequenceToTraLikeRecords(seq, padIndex) {
 	return records;
 }
 
-function buildCoordGeomAlignmentFromSequence(seq, index, fileName, padIndex) {
+function buildCoordGeomAlignmentFromSequence({ seq, index, fileName, padIndex, profilesByKey, cantsByKey }) {
 	const family = seq?.family ?? "EL";
 	const strecke = seq?.strecke ?? "unknown";
 	const strRikz = seq?.strRikz ?? "unknown";
@@ -1186,22 +1183,36 @@ function buildCoordGeomAlignmentFromSequence(seq, index, fileName, padIndex) {
 	const stationEnd = seq?.stationEnd ?? null;
 
 	const name = makeSequenceName(seq);
+	const attachmentKey = makeGndAttachmentKey(seq);
 
 	const records = convertSequenceToTraLikeRecords(seq, padIndex);
 	const gndSemanticMap = getTraLikeSemanticMapForGND();
 
-const coordGeom =
-	records.length >= 2
-		? buildCoordGeomFromTraLikeRecords(records, gndSemanticMap)
-		: fat.createCoordGeom({ elements: [] });
+	const coordGeom =
+		records.length >= 2
+			? buildCoordGeomFromTraLikeRecords(records, gndSemanticMap)
+			: fat.createCoordGeom({ elements: [] });
+
+	const profile = profilesByKey?.get?.(attachmentKey) ?? null;
+	const cant = cantsByKey?.get?.(attachmentKey) ?? null;
 
 	return fat.createAlignment({
 		id: `gnd.coordGeom.${index + 1}`,
 		name,
-		coordGeom,
+	spatialRef: lsys
+
+	? {
+		status: "declared",
+		horizontalCrsId: lsys,
+		horizontalCoordinateSystemName: lsys,
+		horizontal: lsys,
+		source: "GND.LSYS",
+	}
+	: null,
+	coordGeom,
 		staEquations: null,
-		profile: null,
-		cant: null,
+		profile,
+		cant: cant ? cant.entries : null,
 		extras: {
 			source: {
 				fileName: fileName ?? "",
@@ -1209,14 +1220,17 @@ const coordGeom =
 				sourceBackend: "xlsx",
 			},
 			sourceSemantics: {
-				stage: "coordGeom-only",
-				note: "Sequence was derived from GND edge families and lifted through TRA-like record synthesis into coordGeom.",
+				stage: "landFAT-with-gnd-attachments",
+				note: "Sequence was derived from GND edge families and lifted through TRA-like record synthesis into coordGeom. Matching EH/EU sequences are attached when unambiguous.",
 			},
-
-			// @baustelle [PROFILE-CANT-STAEQ-LATER]
-			// profile / cant / staEquation werden später separat ergänzt.
-			// Aktuell ist dies bewusst ein coordGeom-only Importabschluss.
-
+			gndTrust: {
+				kind: "authoritative-context",
+				crs: lsys ? "declared-from-LSYS" : "missing",
+				attachments: {
+					profile: profile ? "declared" : "missing",
+					cant: cant ? "declared" : "missing",
+				},
+			},
 			gndSequence: {
 				type: "coordGeom",
 				family,
@@ -1239,9 +1253,172 @@ const coordGeom =
 				recordCount: records.length,
 				edgeChain: arr(seq?.edgeChain),
 				quality: seq?.quality ?? null,
+				attachmentKey,
 			},
 		},
 	});
+}
+
+function buildProfileFromSequence(seq, index, fileName, padIndex) {
+	const name = makeSequenceName(seq);
+	const attachmentKey = makeGndAttachmentKey(seq);
+	const pvis = convertProfileSequenceToPvis(seq, padIndex);
+
+	return {
+		id: `gnd.profile.${index + 1}`,
+		type: "Profile",
+		name: `${name}_PROFILE`,
+		desc: "Profile derived from GND EH sequence",
+		profAlign: {
+			id: `gnd.profAlign.${index + 1}`,
+			type: "ProfAlign",
+			name: `${name}_PROFALIGN`,
+			desc: "Generated from GND EH + PP/PH records",
+			pvis,
+			paraCurves: [],
+		},
+		extras: {
+			source: {
+				fileName: fileName ?? "",
+				format: "gndEdit",
+				sourceBackend: "xlsx",
+			},
+			gndSequence: {
+				type: "profile",
+				family: seq?.family ?? null,
+				lsys: seq?.lsys ?? null,
+				hsys: seq?.hsys ?? null,
+				strecke: seq?.strecke ?? null,
+				strRikz: seq?.strRikz ?? null,
+				stationStart: seq?.stationStart ?? null,
+				stationEnd: seq?.stationEnd ?? null,
+				padStart: seq?.padStart ?? null,
+				padEnd: seq?.padEnd ?? null,
+				seedCount: seq?.seedCount ?? 0,
+				seedIds: arr(seq?.seedIds),
+				edgeChain: arr(seq?.edgeChain),
+				attachmentKey,
+			},
+		},
+	};
+}
+
+function buildCantFromSequence(seq, index, fileName) {
+	const name = makeSequenceName(seq);
+	const attachmentKey = makeGndAttachmentKey(seq);
+	const entries = convertCantSequenceToEntries(seq);
+
+	return {
+		id: `gnd.cant.${index + 1}`,
+		type: "Cant",
+		name: `${name}_CANT`,
+		entries,
+		extras: {
+			source: {
+				fileName: fileName ?? "",
+				format: "gndEdit",
+				sourceBackend: "xlsx",
+			},
+			gndSequence: {
+				type: "cant",
+				family: seq?.family ?? null,
+				lsys: seq?.lsys ?? null,
+				strecke: seq?.strecke ?? null,
+				strRikz: seq?.strRikz ?? null,
+				stationStart: seq?.stationStart ?? null,
+				stationEnd: seq?.stationEnd ?? null,
+				padStart: seq?.padStart ?? null,
+				padEnd: seq?.padEnd ?? null,
+				seedCount: seq?.seedCount ?? 0,
+				seedIds: arr(seq?.seedIds),
+				edgeChain: arr(seq?.edgeChain),
+				attachmentKey,
+			},
+		},
+	};
+}
+
+function convertProfileSequenceToPvis(seq, padIndex) {
+	const phKeys = seq?.phKeys ?? seq?.candidates?.phKeys;
+	const startNode = padIndex?.[seq?.padStart] ?? null;
+	const endNode = padIndex?.[seq?.padEnd] ?? null;
+
+	const startElevation = resolveElevationFromPadNode(startNode, phKeys);
+	const endElevation = resolveElevationFromPadNode(endNode, phKeys);
+
+	return [
+		makePvi(seq?.stationStart, startElevation?.value, startElevation?.ref),
+		makePvi(seq?.stationEnd, endElevation?.value, endElevation?.ref),
+	].filter(Boolean);
+}
+
+function makePvi(station, elevation, ref) {
+	const s = makeMeasure(station, "meter");
+	const h = makeMeasure(elevation, "meter");
+
+	if (!s || !h) return null;
+
+	return {
+		station: s,
+		elevation: h,
+		extras: {
+			rowRef: ref ?? null,
+		},
+	};
+}
+
+function convertCantSequenceToEntries(seq) {
+	return [
+		makeCantStation(seq?.stationStart, seq, "start"),
+		makeCantStation(seq?.stationEnd, seq, "end"),
+	].filter(Boolean);
+}
+
+function makeCantStation(station, seq, position) {
+	const s = makeMeasure(station, "meter");
+	if (!s) return null;
+
+	return {
+		type: "CantStation",
+		station: s,
+		appliedCant: makeMeasure(0, "meter"),
+		transitionType: null,
+		curvature: null,
+		extras: {
+			position,
+			note: "GND EU sequence identified; appliedCant value is currently a neutral placeholder until EU parameter decoding is completed.",
+			family: seq?.family ?? null,
+			edgeChain: arr(seq?.edgeChain),
+		},
+	};
+}
+
+function makeGndAttachmentKey(seq) {
+	return [
+		seq?.strecke ?? "unknown",
+		seq?.strRikz ?? "unknown",
+		seq?.lsys ?? "unknown",
+		stationKey(seq?.stationStart),
+		stationKey(seq?.stationEnd),
+	].join("|");
+}
+
+function makeSequenceMapByAttachmentKey(list) {
+	const map = new Map();
+
+	for (const item of arr(list)) {
+		const key = item?.extras?.gndSequence?.attachmentKey ?? null;
+		if (!key) continue;
+		if (!map.has(key)) map.set(key, item);
+	}
+
+	return map;
+}
+
+function stationKey(value) {
+	const n = toFiniteNumber(value);
+	if (!Number.isFinite(n)) return "na";
+	return String(Number(n.toFixed(3)));
 }
 
 function makeAnalysisLandFAT({
@@ -1250,14 +1427,29 @@ function makeAnalysisLandFAT({
 	model = null,
 	metaExtra = {},
 } = {}) {
-	const alignments = arr(model?.coordGeomSequences).map((seq, index) =>
-	buildCoordGeomAlignmentFromSequence(
-	seq,
-	index,
-	fileName,
-	model?.padIndex ?? null
-	)
+	const profiles = arr(model?.profileSequences).map((seq, index) =>
+		buildProfileFromSequence(seq, index, fileName, model?.padIndex ?? null)
 	);
+
+	const cants = arr(model?.cantSequences).map((seq, index) =>
+		buildCantFromSequence(seq, index, fileName)
+	);
+
+	const profilesByKey = makeSequenceMapByAttachmentKey(profiles);
+	const cantsByKey = makeSequenceMapByAttachmentKey(cants);
+
+	const alignments = arr(model?.coordGeomSequences).map((seq, index) =>
+		buildCoordGeomAlignmentFromSequence({
+			seq,
+			index,
+			fileName,
+			padIndex: model?.padIndex ?? null,
+			profilesByKey,
+			cantsByKey,
+		})
+	);
+
+	const gndCrs = buildGndCoordinateSystem(model);
 
 	return fat.createDocument({
 		meta: {
@@ -1270,7 +1462,7 @@ function makeAnalysisLandFAT({
 			// Fachlich sollte der Parser später auch mit MDB / DBB-backed Satzartdaten
 			// arbeiten können. Der aktuelle Einstiegspunkt bleibt physisch XLSX.
 
-			stage: "coordGeom-only",
+			stage: "landFAT-with-gnd-attachments",
 			sheetNames: workbookInfo?.sheetNames ?? [],
 			...metaExtra,
 		},
@@ -1279,21 +1471,16 @@ function makeAnalysisLandFAT({
 			elevationUnit: "meter",
 			angularUnit: "radian",
 		},
-		coordinateSystem: {
-			horizontalCoordinateSystemName: null,
-			verticalCoordinateSystemName: null,
-		},
+		coordinateSystem: gndCrs.coordinateSystem,
 		alignments,
+		profiles,
+		// cants,
 		extras: {
 			sourceSemantics: {
 				format: "gndEdit",
-				note: "Temporary qualified import: only coordGeom-relevant EL and qualified EK content is lifted to landFAT alignments.",
+				note: "Qualified GND import: coordGeom, profile and cant candidate sequences are lifted to landFAT. CRS is declared from LSYS/HSYS but remains GND-source-trust scoped.",
 			},
-
-			// @baustelle [PROFILE-CANT-PIER]
-			// EH / EU werden bewusst noch NICHT als landFAT.profile / landFAT.cant
-			// weitergegeben. Dafür fehlt aktuell ein sauberer sparse-seitiger Andockpunkt.
-
+			gndCrs: gndCrs.extras,
 			analysisModel: {
 				stats: model?.stats ?? {},
 				missingPlPads: model?.missingPlPads ?? [],
@@ -1303,6 +1490,35 @@ function makeAnalysisLandFAT({
 			},
 		},
 	});
+}
+
+function buildGndCoordinateSystem(model) {
+	const lsysValues = new Set();
+	const hsysValues = new Set();
+
+	for (const seq of [
+		...arr(model?.coordGeomSequences),
+		...arr(model?.profileSequences),
+		...arr(model?.cantSequences),
+	]) {
+		const lsys = asTrimmedString(seq?.lsys);
+		const hsys = asTrimmedString(seq?.hsys);
+		if (lsys) lsysValues.add(lsys);
+		if (hsys) hsysValues.add(hsys);
+	}
+
+	return {
+	horizontalCoordinateSystemName:
+		lsysValues.size === 1 ? Array.from(lsysValues)[0] : null,
+	verticalCoordinateSystemName:
+		hsysValues.size === 1 ? Array.from(hsysValues)[0] : null,
+	extras: {
+		status: lsysValues.size === 1 ? "declared" : "ambiguous_or_missing",
+		horizontalCandidates: Array.from(lsysValues).sort(),
+		verticalCandidates: Array.from(hsysValues).sort(),
+		source: "GND.LSYS/HSYS",
+	},
+};
 }
 
 // -----------------------------------------------------------------------------
@@ -1398,6 +1614,16 @@ function compareStationStrings(a, b) {
 	}
 
 	return String(a).localeCompare(String(b));
+}
+
+function makeMeasure(value, unit = "meter") {
+	const n = toFiniteNumber(value);
+	if (!Number.isFinite(n)) return null;
+
+	return {
+		value: n,
+		unit,
+	};
 }
 
 // -----------------------------------------------------------------------------
@@ -1534,8 +1760,8 @@ function resolveStationFromPadNode(padNode, ppKeys) {
 function resolvePadCoordFromPadNode(padNode, plKeys) {
 	const tuples = normalizeSet(plKeys);
 	const tupleList = Array.from(tuples)
-	.map(parseTupleKey)
-	.filter(Boolean);
+		.map(parseTupleKey)
+		.filter(Boolean);
 
 	for (const rec of arr(padNode?.plRecords)) {
 		const recLsys = asTrimmedString(rec?.lsys);
@@ -1543,13 +1769,38 @@ function resolvePadCoordFromPadNode(padNode, plKeys) {
 		for (const tuple of tupleList) {
 			if (recLsys === asTrimmedString(tuple?.lsys)) {
 				if (
-				Number.isFinite(rec?.easting) &&
-				Number.isFinite(rec?.northing)
+					Number.isFinite(rec?.easting) &&
+					Number.isFinite(rec?.northing)
 				) {
 					return {
 						easting: rec.easting,
 						northing: rec.northing,
 						lsys: recLsys,
+						ref: rec.ref ?? null,
+					};
+				}
+			}
+		}
+	}
+
+	return null;
+}
+
+function resolveElevationFromPadNode(padNode, phKeys) {
+	const tuples = normalizeSet(phKeys);
+	const tupleList = Array.from(tuples)
+		.map(parseTupleKey)
+		.filter(Boolean);
+
+	for (const rec of arr(padNode?.phRecords)) {
+		const recHsys = asTrimmedString(rec?.hsys);
+
+		for (const tuple of tupleList) {
+			if (recHsys === asTrimmedString(tuple?.hsys)) {
+				if (Number.isFinite(rec?.elevation)) {
+					return {
+						value: rec.elevation,
+						hsys: recHsys,
 						ref: rec.ref ?? null,
 					};
 				}

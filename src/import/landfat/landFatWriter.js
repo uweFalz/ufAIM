@@ -85,6 +85,7 @@ export function pushAlignment(doc, alignment) {
 export function createAlignment({
 	id,
 	name = null,
+	spatialRef = null,
 	coordGeom = null,
 	staEquations = null,
 	profile = null,
@@ -99,6 +100,7 @@ export function createAlignment({
 		type: "Alignment",
 		id,
 		name: name ?? null,
+		spatialRef: spatialRef ?? null,
 		coordGeom: coordGeom ?? createCoordGeom(),
 		staEquations: Array.isArray(staEquations) ? staEquations : null,
 		profile: profile ?? null,

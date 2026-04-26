@@ -10,3 +10,24 @@
 }{
 \end{quote}
 }
+
+% --- Glossar / Begriffssystem ----------------------------------
+
+\usepackage{xspace}
+
+% Erstnennung fett + Index
+\newcommand{\defterm}[1]{\textbf{#1}\index{#1}\xspace}
+
+% Normale Verwendung + Index
+\newcommand{\term}[1]{#1\index{#1}\xspace}
+
+\newcommand{\alignment}{\term{alignment}}
+\newcommand{\curvature}{\term{curvature}}
+\newcommand{\cant}{\term{cant}}
+\newcommand{\state}{\term{state}}
+\newcommand{\realization}{\term{realization}}
+\newcommand{\pipeline}{\term{pipeline}}
+
+% --- ...                  ... ----------------------------------
+
+\newcommand{\gref}[1]{\hyperref[#1]{#1}\xspace}

@@ -23,6 +23,36 @@ referred to as \emph{pose3}, which augments planar geometry by
 rotational information.
 \end{remark}
 
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[scale=1.05]
+
+% track centerline
+\draw[thick] (-2.6,0) -- (2.6,0);
+\node[right] at (2.6,0) {centerline $\gamma(s)$};
+
+% tangent arrow
+\draw[->, thick] (-1.8,0) -- (-0.8,0) node[midway, below] {$t(s)$};
+
+% cross section, canted
+\draw[thick, rotate around={12:(0,0)}] (-1.3,0.55) -- (1.3,0.55);
+\fill[rotate around={12:(0,0)}] (-1.3,0.55) circle (1.4pt);
+\fill[rotate around={12:(0,0)}] (1.3,0.55) circle (1.4pt);
+\node[rotate=12] at (0,0.85) {canted rail plane};
+
+% rotation arc
+\draw[->] (0.65,0.05) arc[start angle=0,end angle=12,radius=0.65];
+\node at (0.9,0.2) {$\phi(s)$};
+
+% vertical hint
+\draw[dashed] (0,-0.75) -- (0,1.15);
+\node[below] at (0,-0.75) {local cross-section};
+
+\end{tikzpicture}
+
+\caption{Pose3 extends the planar centerline state by the cant angle $\phi(s)$, interpreted as rotation of the track cross-section around a longitudinal reference axis.}
+\end{figure}
+
 \section{Pose2 Revisited}
 
 \begin{definition}[Pose2]
@@ -71,6 +101,45 @@ influences lateral acceleration, cant deficiency, and load distribution
 \cite{Klein1998Trassierung,EN13803_2017}.
 \end{remark}
 
+\subsection{Cant Reference Axis and Centerline Convention}
+
+\begin{remark}
+In standard railway handling, cant is often specified by rotating the
+track plane around a relevant rail or by defining a height difference
+between rails.
+\end{remark}
+
+\begin{remark}
+The AIM state model, however, uses the centerline point as the primary
+reference point of the alignment.
+Thus, cant must be translated into a centerline-based state
+representation before it is coupled to profile, pose3, and optimization.
+\end{remark}
+
+\begin{definition}[Cant reference convention]
+A cant convention specifies:
+\begin{itemize}
+\item the reference axis of rotation,
+\item the sign convention of cant,
+\item the relation between rail height difference and cant angle,
+\item and the induced vertical offset of the centerline.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+This distinction is relevant in special cases such as track scissors,
+cant ramps, and overlapping transition zones, where the cant definition
+may influence the effective profile or gradient assigned to the
+centerline.
+\end{remark}
+
+\begin{remark}
+For implementation, AIM therefore treats cant not merely as an isolated
+angle, but as a state component whose reference convention must be known
+when transforming between rail-based construction data and
+centerline-based modelling.
+\end{remark}
+
 \begin{definition}[Cant rate]
 The derivative
 \[
@@ -111,6 +180,13 @@ In this sense, pose3 provides a more adequate state description for
 railway alignment than a purely planar model, because curvature and cant
 must be interpreted jointly rather than separately
 \cite{BrustadDalmo2020Review,EN13803_2017}.
+\end{remark}
+
+\begin{remark}
+When a rail-based cant convention is used in source data, pose3 stores
+the resulting centerline-consistent state. Any vertical displacement or
+profile impact induced by the chosen cant axis must therefore be
+resolved during import, normalization, or model construction.
 \end{remark}
 
 \section{State Evolution}
@@ -287,6 +363,13 @@ its derivatives \cite{EN13803_2017}.
 From this perspective, pose3 does not contradict existing railway
 standards, but provides a mathematical structure in which such rules can
 be represented coherently.
+\end{remark}
+
+\begin{remark}
+The purpose of the pose3 formulation is not to replace such standards,
+but to make their geometric consequences explicit. In particular,
+rail-based cant rules must be converted consistently when the internal
+model uses the centerline as its reference geometry.
 \end{remark}
 
 \section{Connection to the AIM Framework}

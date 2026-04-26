@@ -85,6 +85,55 @@ Given a world point \(x\), the track coordinates \((s,d)\) are defined by:
 \]
 \end{definition}
 
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  scale=1.05,
+  curve/.style={thick},
+  proj/.style={->, thick, dashed},
+  label/.style={font=\small}
+]
+
+% Alignment curve
+\draw[curve, domain=0:5.2, samples=80]
+  plot ({\x}, {0.35*sin(55*\x)});
+
+% Projection point on curve
+\coordinate (P) at (2.7,{0.35*sin(55*2.7)});
+\fill (P) circle (1.5pt);
+\node[label, below right] at (P) {$\gamma(s^\ast)$};
+
+% World point
+\coordinate (X) at (3.15,1.35);
+\fill (X) circle (1.7pt);
+\node[label, above right] at (X) {$x$};
+
+% Tangent vector
+\draw[->, thick] (P) -- ++(0.9,{0.35*55/57.2958*cos(55*2.7)})
+  node[right] {$t(s^\ast)$};
+
+% Projection / lateral offset
+\draw[proj] (X) -- (P) node[midway, right] {$d^\ast$};
+
+% Normal direction
+\draw[->, thin] (P) -- ++(-0.35,0.85)
+  node[above] {$n(s^\ast)$};
+
+% s direction
+\node[label] at (1.45,-0.55) {$s$ along alignment};
+\draw[->, thin] (0.6,-0.42) -- (2.25,-0.28);
+
+\node[label, align=center] at (3.35,-0.8)
+  {world-to-track projection\\finds intrinsic coordinates $(s^\ast,d^\ast)$};
+
+\end{tikzpicture}
+
+\caption{World-to-track transformation as projection of a world point
+$x$ onto the alignment. The intrinsic coordinate $s^\ast$ locates the
+closest point on the curve, while $d^\ast$ measures the lateral offset in
+the local normal direction.}
+\end{figure}
+
 \begin{remark}
 This is a nonlinear projection problem onto the alignment.
 \end{remark}

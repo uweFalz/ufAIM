@@ -1,37 +1,45 @@
 \chapter{Introduction}
 
-\section{Background}
+\section{A Shift in Perspective}
 
 \begin{remark}
-Railway alignment design is a fundamental task in infrastructure
-engineering.
+Railway alignment is commonly described as a geometric curve
+\(\gamma(s)\) embedded in space.
 \end{remark}
 
 \begin{remark}
-It defines not only the geometric path of a railway track, but also
-strongly influences construction cost, operational efficiency,
-passenger comfort, and long-term maintenance.
+This view is sufficient for visualization, but it fails to capture the
+quantities that actually govern railway design:
+curvature, cant, dynamics, and realization.
 \end{remark}
 
 \begin{remark}
-Over time, a rich body of methods has evolved, combining geometric
-principles, engineering rules, and practical experience.
+In practice, railway tracks are not designed, constructed, or maintained
+as curves, but through operations acting on curvature and discrete
+control points.
 \end{remark}
+
+\begin{summary}
+Alignment is not a curve.
+It is a curvature-driven system whose geometry emerges from its
+generative structure.
+\end{summary}
 
 ---
 
-\section{Current State of Practice}
+\section{Limitations of Current Practice}
 
 \begin{remark}
-Despite this long tradition, alignment modelling is still largely
-fragmented across several domains:
+Despite a long tradition of railway engineering, alignment modelling
+remains fragmented across several domains:
+\end{remark}
+
 \begin{itemize}
 \item geometric construction of curves,
 \item rule-based engineering design,
-\item data exchange via formats such as LandXML and IFC,
+\item data exchange formats such as LandXML and IFC,
 \item numerical evaluation and simulation.
 \end{itemize}
-\end{remark}
 
 \begin{remark}
 These aspects are typically handled in separate tools and workflows,
@@ -41,11 +49,16 @@ leading to discontinuities between modelling, analysis, and design.
 \begin{remark}
 In particular:
 \begin{itemize}
-\item geometry is often treated independently of dynamics,
+\item geometry is treated independently of dynamics,
 \item transition curves are selected from predefined catalogues,
 \item data formats focus on representation rather than computation,
-\item optimization is rarely integrated as a core modelling principle.
+\item optimization is not part of the core modelling paradigm.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+As a consequence, alignment design lacks a unified internal model that
+connects data, geometry, dynamics, and realization.
 \end{remark}
 
 ---
@@ -53,7 +66,7 @@ In particular:
 \section{Problem Statement}
 
 \begin{remark}
-The lack of a unified modelling framework leads to several fundamental
+The absence of a unified modelling framework leads to fundamental
 limitations:
 \end{remark}
 
@@ -65,75 +78,91 @@ limitations:
 \end{itemize}
 
 \begin{remark}
-These issues become increasingly critical as infrastructure projects
-grow in complexity and demand higher levels of precision and
-automation.
+These issues become increasingly critical as infrastructure systems grow
+in complexity and demand higher levels of automation, precision, and
+traceability.
 \end{remark}
 
 ---
 
-\section{Motivation}
+\section{AIM: A Unified Framework}
 
 \begin{remark}
-The motivation of this work is to develop a framework that unifies
-alignment modelling across geometry, dynamics, and computation.
+This work introduces \defterm{Alignment-Based Information Modelling (AIM)}
+as a framework addressing these limitations.
 \end{remark}
 
 \begin{remark}
-Such a framework should:
-\begin{itemize}
-\item provide a consistent internal representation,
-\item support dynamic interpretation,
-\item enable numerical reconstruction,
-\item integrate optimization as a natural component,
-\item bridge the gap between data standards and engineering reasoning.
-\end{itemize}
-\end{remark}
-
----
-
-\section{AIM: Alignment-Based Information Modelling}
-
-\begin{remark}
-This work introduces Alignment-Based Information Modelling (AIM) as a
-framework addressing the above challenges.
-\end{remark}
-
-\begin{remark}
-The central idea is to represent railway alignment as a structured,
-state-based object defined by:
+The central idea is to represent alignment as a structured, state-based
+object defined by curvature and cant:
 \[
-(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+(\kappa(s), \phi(s)),
 \]
+from which all geometric and dynamic quantities are derived.
 \end{remark}
 
 \begin{remark}
 Within this framework:
 \begin{itemize}
-\item alignment is treated as a dynamic system,
-\item curvature becomes the primary modelling variable,
+\item curvature is the primary modelling variable,
+\item geometry is obtained by integration,
 \item transition curves are interpreted as control functions,
-\item geometry and dynamics are unified.
+\item alignment becomes a generative system rather than a static object.
 \end{itemize}
 \end{remark}
+
+---
+
+\section{Core Claim}
+
+\begin{proposition}
+Railway alignment modelling can be reformulated as a curvature-driven,
+realization-aware, and optimization-ready system.
+\end{proposition}
+
+\begin{remark}
+This reformulation enables a unified treatment of:
+\begin{itemize}
+\item geometry,
+\item dynamics,
+\item construction and realization,
+\item data integration,
+\item and optimization.
+\end{itemize}
+\end{remark}
+
+---
+
+\section{Consequences}
+
+\begin{remark}
+Adopting this perspective leads to several key consequences:
+\end{remark}
+
+\begin{itemize}
+\item alignment design becomes an optimization problem,
+\item realization is treated as an operator acting on the model,
+\item data reconstruction is formulated as an inverse problem,
+\item hybrid models bridge parametric structure and measured data,
+\item analytical derivatives arise naturally from the formulation.
+\end{itemize}
 
 ---
 
 \section{Scope of the Work}
 
 \begin{remark}
-The present manuscript develops the AIM framework across several
+The present manuscript develops the AIM framework across the following
 dimensions:
 \end{remark}
 
 \begin{itemize}
-\item mathematical foundations of alignment modelling,
+\item mathematical foundations of curvature-based modelling,
 \item structured representation of alignment elements,
-\item classification of transition curves,
-\item numerical reconstruction methods,
-\item dynamic interpretation and modelling,
-\item formulation of optimization problems,
-\item integration with real-world data formats,
+\item classification and interpretation of transition curves,
+\item modelling of realization and construction processes,
+\item formulation of optimization problems and solution methods,
+\item integration of real-world data and coordinate systems,
 \item application to railway engineering use cases.
 \end{itemize}
 
@@ -146,16 +175,16 @@ The main contributions of this work are:
 \end{remark}
 
 \begin{itemize}
-\item the introduction of a unified state-based alignment model,
+\item a unified state-based alignment model,
 \item the reinterpretation of transition curves as curvature control functions,
-\item the formulation of alignment design as an optimization problem,
-\item the development of a normalization pipeline for heterogeneous data,
-\item the proposal of BIMalignment as an extension of BIM principles.
+\item the introduction of a realization-aware modelling perspective,
+\item the formulation of alignment design as a structured optimization problem,
+\item the development of a pipeline connecting data, model, and computation.
 \end{itemize}
 
 \begin{remark}
-Together, these contributions establish a coherent framework that
-connects theory, computation, and engineering practice.
+Together, these contributions establish a coherent framework linking
+theoretical modelling and practical engineering.
 \end{remark}
 
 ---
@@ -163,37 +192,34 @@ connects theory, computation, and engineering practice.
 \section{Structure of the Manuscript}
 
 \begin{remark}
-The manuscript is organized into the following parts:
+The manuscript is organized into several parts, progressing from
+conceptual foundations to practical applications:
 \end{remark}
 
 \begin{itemize}
-\item \textbf{Foundations:} mathematical and conceptual basis,
-\item \textbf{Model:} structured representation of alignment,
-\item \textbf{Analysis:} numerical, dynamic, and optimization aspects,
-\item \textbf{Reality:} data formats and standards,
-\item \textbf{Applications:} engineering use cases and perspectives.
+\item motivation and conceptual shift,
+\item mathematical and state-based foundations,
+\item modelling and representation,
+\item realization and system perspective,
+\item optimization methods,
+\item engineering constraints and standards,
+\item applications and outlook.
 \end{itemize}
-
-\begin{remark}
-Each part builds upon the previous ones, forming a progression from
-theoretical concepts to practical implementation.
-\end{remark}
 
 ---
 
 \section{Outlook}
 
 \begin{remark}
-The AIM framework is intended as a foundation rather than a final
-solution.
+The AIM framework is intended as a foundation for future development.
 \end{remark}
 
 \begin{remark}
-It opens the way toward:
+It opens the path toward:
 \begin{itemize}
-\item dynamic and optimization-driven design systems,
+\item optimization-driven design systems,
 \item deeper integration with BIM,
-\item network-level modelling,
+\item network-level alignment modelling,
 \item interactive and real-time engineering tools.
 \end{itemize}
 \end{remark}

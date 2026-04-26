@@ -69,6 +69,14 @@ export function createSpotService({ spotStore, router } = {}) {
 			spotStore,
 		});
 
+		console.log("[SpotService] promoteItems result =", {
+			addedObjects: result?.count?.addedObjects ?? 0,
+			reviewItems: result?.count?.reviewItems ?? 0,
+			rejectedItems: result?.count?.rejectedItems ?? 0,
+			review: result?.reviewItems ?? [],
+			rejected: result?.rejectedItems ?? [],
+		});
+
 		// IMPORTANT:
 		// promoteImportItems already writes accepted items into SpotStore.
 		// Do NOT add them again here.

@@ -3,50 +3,48 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: plain.bst
 Database file #1: references.bib
-Warning--entry type for "Klauder2001WO" isn't style-file defined
---line 239 of file references.bib
 Warning--entry type for "Klauder2009US" isn't style-file defined
 --line 253 of file references.bib
 Warning--empty journal in Klauder2001BetterWay
-You've used 48 entries,
+You've used 30 entries,
             2118 wiz_defined-function locations,
-            796 strings with 11671 characters,
-and the built_in function-call counts, 12390 in all, are:
-= -- 1218
-> -- 482
+            688 strings with 8690 characters,
+and the built_in function-call counts, 7611 in all, are:
+= -- 742
+> -- 300
 < -- 2
-+ -- 205
-- -- 148
-* -- 679
-:= -- 2159
-add.period$ -- 150
-call.type$ -- 48
-change.case$ -- 205
++ -- 125
+- -- 92
+* -- 406
+:= -- 1347
+add.period$ -- 94
+call.type$ -- 30
+change.case$ -- 124
 chr.to.int$ -- 0
-cite$ -- 49
-duplicate$ -- 503
-empty$ -- 1072
-format.name$ -- 148
-if$ -- 2564
+cite$ -- 31
+duplicate$ -- 327
+empty$ -- 650
+format.name$ -- 92
+if$ -- 1573
 int.to.chr$ -- 0
-int.to.str$ -- 48
-missing$ -- 48
-newline$ -- 249
-num.names$ -- 97
-pop$ -- 260
+int.to.str$ -- 30
+missing$ -- 35
+newline$ -- 157
+num.names$ -- 61
+pop$ -- 164
 preamble$ -- 1
-purify$ -- 170
+purify$ -- 106
 quote$ -- 0
-skip$ -- 343
+skip$ -- 212
 stack$ -- 0
-substring$ -- 615
-swap$ -- 55
+substring$ -- 337
+swap$ -- 36
 text.length$ -- 2
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 168
+type$ -- 98
 warning$ -- 1
-while$ -- 129
-width$ -- 50
-write$ -- 522
-(There were 3 warnings)
+while$ -- 77
+width$ -- 32
+write$ -- 327
+(There were 2 warnings)

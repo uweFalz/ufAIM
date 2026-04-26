@@ -43,6 +43,7 @@ export async function runImportPipeline(file, context = {}) {
 				meta: null,
 				items: [],
 				rejected: [],
+				relationCandidates: [],
 			};
 		}
 
@@ -59,11 +60,31 @@ export async function runImportPipeline(file, context = {}) {
 
 		log(`parse ok: ${file?.name ?? "(unknown file)"}`);
 
+		console.log("[runImportPipeline] parsed shape", {
+			fileName: file?.name ?? null,
+			isObject: isObject(parsed),
+			type: parsed?.type ?? null,
+			keys: isObject(parsed) ? Object.keys(parsed) : null,
+			alignments: Array.isArray(parsed?.alignments) ? parsed.alignments.length : null,
+			profiles: Array.isArray(parsed?.profiles) ? parsed.profiles.length : null,
+			cants: Array.isArray(parsed?.cants) ? parsed.cants.length : null,
+		});
+
 		if (parsed?.type === "landFAT") {
 			const fatValidation = validateLandFAT(parsed);
 
+			console.log("[runImportPipeline] fatValidation", fatValidation);
+
 			if (!fatValidation?.ok) {
+				console.warn("[runImportPipeline] validateLandFAT FAILED", {
+					fileName: file?.name ?? null,
+					errors: fatValidation?.errors ?? [],
+					warnings: fatValidation?.warnings ?? [],
+					parsed,
+				});
+
 				log(`import invalid: ${file?.name ?? "(unknown file)"} :: landFAT invalid`);
+
 				return {
 					ok: false,
 					status: "invalid",
@@ -73,10 +94,11 @@ export async function runImportPipeline(file, context = {}) {
 						fileName: file?.name ?? null,
 						containerType: parsed?.type ?? null,
 					},
-					errors: fatValidation.errors ?? [],
-					warnings: fatValidation.warnings ?? [],
+					errors: fatValidation?.errors ?? [],
+					warnings: fatValidation?.warnings ?? [],
 					items: [],
 					rejected: [],
+					relationCandidates: [],
 				};
 			}
 
@@ -95,14 +117,33 @@ export async function runImportPipeline(file, context = {}) {
 			source,
 		});
 
+		console.log("[runImportPipeline] import result", {
+			fileName: file?.name ?? null,
+			status: result?.status ?? null,
+			reason: result?.reason ?? null,
+			meta: result?.meta ?? null,
+			items: Array.isArray(result?.items) ? result.items.length : null,
+			rejected: Array.isArray(result?.rejected) ? result.rejected.length : null,
+			relationCandidates: Array.isArray(result?.relationCandidates)
+				? result.relationCandidates.length
+				: null,
+		});
+
 		log(
-			`result ok: ${file?.name ?? "(unknown file)"} :: ` +
+			`result ${result?.status ?? "unknown"}: ${file?.name ?? "(unknown file)"} :: ` +
 			`items=${result?.items?.length ?? 0} ` +
 			`rejected=${result?.rejected?.length ?? 0}`
 		);
 
 		return result;
 	} catch (err) {
+		console.error("[runImportPipeline] CATCH", {
+			fileName: file?.name ?? null,
+			message: err?.message ?? String(err),
+			stack: err?.stack ?? null,
+			err,
+		});
+
 		log(
 			`import failed: ${file?.name ?? "(unknown file)"} :: ` +
 			`${err?.code ?? "ERR"} :: ${err?.message ?? String(err)}`
@@ -117,6 +158,11 @@ export async function runImportPipeline(file, context = {}) {
 			warnings: [],
 			items: [],
 			rejected: [],
+			relationCandidates: [],
 		};
 	}
+}
+
+function isObject(x) {
+	return !!x && typeof x === "object" && !Array.isArray(x);
 }

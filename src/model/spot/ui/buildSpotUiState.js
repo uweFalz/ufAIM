@@ -6,126 +6,107 @@
 //
 // Rules:
 // - SPOT remains canonical parameter storage
+// - only canonical SpotObjects are rendered
+// - no import candidates / no promotable counting / no file counting
 // - no geometry computation here
-// - UI gets status / labels / notes / lightweight flags only
 //
 // Output:
 // {
 //   rows: [...],
 //   activeSpotId,
-//   stats: { total, filesSeen, activeCount, promotableCount, missingSparseCount, missingCrsCount }
+//   stats: { total, activeCount, missingSparseCount, missingCrsCount }
 // }
 
-function buildSourceLabel(object) {
-	const file =
-		object?.payload?.source?.file ??
-		object?.source?.file ??
-		object?.meta?.source?.fileName ??
-		"";
-
-	const name =
-		object?.payload?.name ??
-		object?.meta?.name ??
-		object?.meta?.alignmentName ??
-		object?.meta?.objectId ??
-		object?.id ??
-		"";
-
-	if (!file) return name;
-	return `${file} → ${name}`;
-}
-
-function buildFiles(object) {
-	const file =
-		object?.payload?.source?.file ??
-		object?.source?.file ??
-		object?.meta?.source?.fileName ??
-		null;
-
-	return file ? [file] : [];
-}
-
-function buildNotes(object) {
-	const notes = [];
-
-	const spatialRef = object?.spatialRef ?? object?.payload?.spatialRef ?? null;
-	if (spatialRef == null) {
-		notes.push("spatialRef=missing");
-	} else if (!spatialRef.horizontalCrsId) {
-		notes.push("horizontalCrsId=missing");
-	}
-
-	if (!object?.payload?.sparseAlignment) {
-		notes.push("sparseAlignment=missing");
-	}
-
-	return notes;
-}
-
-function buildMissing(object) {
-	const missing = [];
-
-	const spatialRef = object?.spatialRef ?? object?.payload?.spatialRef ?? null;
-	if (spatialRef == null) {
-		missing.push("spatialRef");
-	} else if (!spatialRef.horizontalCrsId) {
-		missing.push("horizontalCrsId");
-	}
-
-	if (!object?.payload?.sparseAlignment) {
-		missing.push("sparseAlignment");
-	}
-
-	return missing;
-}
-
-function countFiles(rows) {
-	const set = new Set();
-
-	for (const row of rows) {
-		for (const file of row.files ?? []) {
-			set.add(file);
-		}
-	}
-
-	return set.size;
-}
-
 function getObjects(spotState) {
-	return Object.values(spotState?.objects ?? {});
+	return Object.values(spotState?.objects ?? {}).filter(isObject);
 }
 
 function getObjectType(object) {
-	return object?.type ?? "unknown";
+	return String(object?.type ?? "unknown");
+}
+
+function getObjectId(object) {
+	return object?.id ?? null;
 }
 
 function getObjectLabel(object) {
 	return (
 		object?.payload?.name ??
-		object?.meta?.name ??
-		object?.meta?.alignmentName ??
+		object?.meta?.label ??
 		object?.meta?.objectId ??
 		object?.id ??
 		"object"
 	);
 }
 
-function getObjectId(object) {
-	return (
-		object?.meta?.objectId ??
-		object?.payload?.importItemId ??
-		object?.id ??
-		null
-	);
+function getSpatialRef(object) {
+	return isObject(object?.spatialRef) ? object.spatialRef : null;
+}
+
+function getSparseAlignment(object) {
+	return isObject(object?.payload?.sparseAlignment)
+		? object.payload.sparseAlignment
+		: null;
 }
 
 function hasSparse(object) {
-	return Boolean(object?.payload?.sparseAlignment);
+	return Boolean(getSparseAlignment(object));
 }
 
 function hasHorizontalCrs(object) {
-	const spatialRef = object?.spatialRef ?? object?.payload?.spatialRef ?? null;
-	return Boolean(spatialRef?.horizontalCrsId);
+	const spatialRef = getSpatialRef(object);
+
+	return Boolean(
+		spatialRef?.horizontalCrsId ??
+		spatialRef?.crsId ??
+		spatialRef?.horizontal ??
+		spatialRef?.horizontalCoordinateSystemName
+	);
+}
+
+function buildSourceLabel(object) {
+	const source = object?.meta?.source ?? {};
+	const fileName = source?.fileName ?? null;
+	const objectName = source?.objectName ?? null;
+
+	if (fileName && objectName) return `${fileName} → ${objectName}`;
+	if (fileName) return fileName;
+	if (objectName) return objectName;
+
+	return null;
+}
+
+function buildMissing(object) {
+	const missing = [];
+
+	if (!hasSparse(object)) {
+		missing.push("sparseAlignment");
+	}
+
+	if (!getSpatialRef(object)) {
+		missing.push("spatialRef");
+	} else if (!hasHorizontalCrs(object)) {
+		missing.push("horizontalCrs");
+	}
+
+	return missing;
+}
+
+function buildNotes(object) {
+	const notes = [];
+	const spatialRef = getSpatialRef(object);
+
+	if (!hasSparse(object)) {
+		notes.push("sparseAlignment=missing");
+	}
+
+	if (!spatialRef) {
+		notes.push("spatialRef=missing");
+	} else if (!hasHorizontalCrs(object)) {
+		notes.push("horizontalCrs=missing");
+	}
+
+	return notes;
 }
 
 function getUiStatus(object, activeSpotId) {
@@ -134,27 +115,16 @@ function getUiStatus(object, activeSpotId) {
 	const crs = hasHorizontalCrs(object);
 
 	if (isActive && sparse && crs) return "focused";
-	if (sparse && crs) return "promotable";
+	if (sparse && crs) return "ok";
 	if (sparse && !crs) return "incomplete";
-	if (!sparse) return "parameter-only";
+	if (!sparse) return "incomplete";
 
 	return "unknown";
 }
 
-function getUiReasonCode(object) {
-	if (!hasSparse(object)) return "SPARSE_MISSING";
-	if (!hasHorizontalCrs(object)) return "CRS_MISSING";
-	return "OK";
-}
-
 function buildRow(object, activeSpotId) {
 	const payload = object?.payload ?? {};
-	const type = getObjectType(object);
-	const files = buildFiles(object);
-	const missing = buildMissing(object);
-	const notes = buildNotes(object);
 	const status = getUiStatus(object, activeSpotId);
-	const reasonCode = getUiReasonCode(object);
 
 	return {
 		spotId: object.id,
@@ -162,24 +132,17 @@ function buildRow(object, activeSpotId) {
 		isActive: object.id === activeSpotId,
 
 		label: getObjectLabel(object),
-		type,
-
+		type: getObjectType(object),
 		status,
-		reasonCode,
-
-		outcome: "spot",
-		outcomeConfidence: 1,
 
 		sourceLabel: buildSourceLabel(object),
-		files,
 
-		missing,
-		notes,
+		missing: buildMissing(object),
+		notes: buildNotes(object),
 
 		hasSparse: hasSparse(object),
 		hasHorizontalCrs: hasHorizontalCrs(object),
 
-		// keep lightweight parameter access only
 		sparseAlignment: payload?.sparseAlignment ?? null,
 	};
 }
@@ -187,9 +150,7 @@ function buildRow(object, activeSpotId) {
 function buildStats(rows) {
 	return {
 		total: rows.length,
-		filesSeen: countFiles(rows),
 		activeCount: rows.filter((r) => r.isActive).length,
-		promotableCount: rows.filter((r) => r.status === "promotable" || r.status === "focused").length,
 		missingSparseCount: rows.filter((r) => !r.hasSparse).length,
 		missingCrsCount: rows.filter((r) => !r.hasHorizontalCrs).length,
 	};
@@ -212,4 +173,8 @@ export function buildSpotUiState(spotState = {}) {
 		activeSpotId,
 		stats: buildStats(rows),
 	};
+}
+
+function isObject(x) {
+	return !!x && typeof x === "object" && !Array.isArray(x);
 }

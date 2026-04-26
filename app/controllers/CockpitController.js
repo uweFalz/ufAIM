@@ -137,11 +137,7 @@ export class CockpitController {
 				item?.id ??
 				"preview",
 			sparseAlignment: item.derived.sparseAlignment,
-			spatialRef:
-				item?.payload?.spatialRef ??
-				item?.payload?.coordinateSystem ??
-				item?.payload?.crs ??
-				null,
+			spatialRef: item?.derived?.spatialRef ?? null,
 			source: {
 				fileName: item?.source?.fileName ?? null,
 				parserId: item?.source?.parserId ?? null,
