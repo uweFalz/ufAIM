@@ -166,8 +166,16 @@ router.onCmd("Spot.AddObjects", async ({ objects = [] } = {}) => {
 router.onCmd("Spot.GetState", async () => {
 	const state = spotService.getState();
 	debug.log("Spot.GetState", {
-		objectCount: state?.objects ? Object.keys(state.objects).length : 0,
-	});
+	objectCount: state?.objects ? Object.keys(state.objects).length : 0,
+	activeSpotId: state?.meta?.activeSpotId ?? null,
+	objects: Object.values(state?.objects ?? {}).map((o) => ({
+		id: o?.id ?? null,
+		type: o?.type ?? null,
+		crsId: o?.crsId ?? null,
+		hasKernel: Boolean(o?.data?.kernel),
+		label: o?.data?.name ?? o?.meta?.label ?? o?.id ?? null,
+	})),
+});
 	return state;
 });
 
@@ -247,12 +255,18 @@ router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 	const result = await spotService.promoteItems({ items: wanted });
 
 	debug.log("Spot.PromoteImportItemsById.done", {
-		ok: result?.ok,
-		addedObjects: result?.addedObjects?.map((x) => x.id) ?? [],
-		reviewItems: result?.reviewItems ?? [],
-		rejectedItems: result?.rejectedItems ?? [],
-		count: result?.count ?? null,
-	});
+	ok: result?.ok,
+	addedObjects: result?.addedObjects?.map((x) => ({
+		id: x?.id ?? null,
+		type: x?.type ?? null,
+		crsId: x?.crsId ?? null,
+		hasKernel: Boolean(x?.data?.kernel),
+		label: x?.data?.name ?? x?.meta?.label ?? x?.id ?? null,
+	})) ?? [],
+	reviewItems: result?.reviewItems ?? [],
+	rejectedItems: result?.rejectedItems ?? [],
+	count: result?.count ?? null,
+});
 
 	return result;
 });

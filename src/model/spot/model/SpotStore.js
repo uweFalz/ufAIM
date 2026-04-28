@@ -9,6 +9,17 @@
 // - provides store-style read/write API
 // - manages activeSpotId
 //
+// Canonical SpotObject:
+// {
+//   id,
+//   type,
+//   data: {
+//     kernel
+//   },
+//   crsId,
+//   meta
+// }
+//
 // NOT:
 // - no UI state
 // - no window-local focus/selection
@@ -49,19 +60,17 @@ export function createSpotStore(initialState = {}) {
 	}
 
 	function addObject(object) {
-		if (!object?.id) {
-			throw new Error("SpotStore.addObject: missing object.id");
-		}
+		const normalized = normalizeSpotObject(object);
 
 		state = {
 			...state,
 			objects: {
 				...state.objects,
-				[object.id]: clone(object),
+				[normalized.id]: clone(normalized),
 			},
 			meta: {
 				...state.meta,
-				activeSpotId: state.meta.activeSpotId ?? object.id,
+				activeSpotId: state.meta.activeSpotId ?? normalized.id,
 			},
 		};
 
@@ -76,8 +85,11 @@ export function createSpotStore(initialState = {}) {
 		for (const object of objects) {
 			if (!object?.id) continue;
 
-			if (!firstAddedId) firstAddedId = object.id;
-			nextObjects[object.id] = clone(object);
+			const normalized = normalizeSpotObject(object);
+
+			if (!firstAddedId) firstAddedId = normalized.id;
+
+			nextObjects[normalized.id] = clone(normalized);
 			changed = true;
 		}
 
@@ -104,19 +116,30 @@ export function createSpotStore(initialState = {}) {
 			throw new Error(`SpotStore.updateObject: unknown objectId ${objectId}`);
 		}
 
-		const next = {
+		const next = normalizeSpotObject({
 			...prev,
 			...patch,
-			payload: patch.payload ? { ...prev.payload, ...patch.payload } : prev.payload,
-			meta: patch.meta ? { ...prev.meta, ...patch.meta } : prev.meta,
-			spatialRef: patch.spatialRef ? { ...prev.spatialRef, ...patch.spatialRef } : prev.spatialRef,
-		};
+
+			data: patch.data
+				? {
+					...(prev.data ?? {}),
+					...patch.data,
+				}
+				: prev.data,
+
+			meta: patch.meta
+				? {
+					...(prev.meta ?? {}),
+					...patch.meta,
+				}
+				: prev.meta,
+		});
 
 		state = {
 			...state,
 			objects: {
 				...state.objects,
-				[objectId]: next,
+				[objectId]: clone(next),
 			},
 		};
 
@@ -148,6 +171,33 @@ export function createSpotStore(initialState = {}) {
 		addObjects,
 		updateObject,
 		setActiveSpot,
+	};
+}
+
+// -----------------------------------------------------------------------------
+
+function normalizeSpotObject(object) {
+	if (!object?.id) {
+		throw new Error("SpotStore: missing object.id");
+	}
+
+	return {
+		id: object.id,
+		type: object.type ?? "unknown",
+
+		crsId: object.crsId ?? null,
+
+		data: {
+			...(object.data ?? {}),
+		},
+
+		refs: {
+			...(object.refs ?? {}),
+		},
+
+		meta: {
+			...(object.meta ?? {}),
+		},
 	};
 }
 

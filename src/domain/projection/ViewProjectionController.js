@@ -10,6 +10,18 @@
 //
 // Input:
 // - spotObject (canonical aus SPOT)
+//
+// Expected SpotObject:
+// {
+//   id,
+//   type,
+//   data: {
+//     kernel
+//   },
+//   crsId,
+//   meta
+// }
+//
 // Output:
 // - viewGeometry (polyline2d + bbox)
 //
@@ -23,30 +35,44 @@ import { projectAlignmentPreview } from "./AlignmentProjectionService.js";
 // -----------------------------------------------------------------------------
 
 export function projectFocusedSpotObject(spotObject, opts = {}) {
-	if (!spotObject) return null;
+	if (!spotObject) {
+		console.warn("[ViewProjectionController] no spotObject");
+		return null;
+	}
 
-	// console.log("[ViewProjectionController] spotObject =", spotObject);
+	const kernel = getKernel(spotObject);
 
-	const sparseAlignment =
-		spotObject?.payload?.sparseAlignment ??
-		spotObject?.payload ??
-		null;
+	console.log("[ViewProjectionController] input", {
+		id: spotObject?.id ?? null,
+		type: spotObject?.type ?? null,
+		crsId: spotObject?.crsId ?? null,
+		hasData: Boolean(spotObject?.data),
+		hasKernel: Boolean(kernel),
+		kernelKeys: kernel ? Object.keys(kernel) : [],
+		elements: Array.isArray(kernel?.elements) ? kernel.elements.length : null,
+		sparse: Array.isArray(kernel?.sparse) ? kernel.sparse.length : null,
+		startPose: kernel?.startPose ?? null,
+	});
 
-	// console.log("[ViewProjectionController] sparseAlignment =", sparseAlignment);
-
-	if (!sparseAlignment) return null;
+	if (!kernel) return null;
 
 	const geom = projectAlignmentPreview({
-		sparseAlignment,
+		sparseAlignment: kernel,
 		maxStep: opts.maxStep ?? 5,
 	});
 
-	// console.log("[ViewProjectionController] geom =", geom);
+	console.log("[ViewProjectionController] output", {
+		id: spotObject?.id ?? null,
+		hasGeom: Boolean(geom),
+		polylineCount: Array.isArray(geom?.polyline2d) ? geom.polyline2d.length : null,
+		bbox: geom?.bbox ?? null,
+	});
 
 	if (!geom) return null;
 
 	return {
 		objectId: spotObject.id ?? null,
+		crsId: spotObject.crsId ?? null,
 		...geom,
 	};
 }
@@ -64,4 +90,16 @@ export function projectSpotObjects(spotObjects = [], opts = {}) {
 	}
 
 	return out;
+}
+
+// -----------------------------------------------------------------------------
+
+function getKernel(spotObject) {
+	return isObject(spotObject?.data?.kernel)
+		? spotObject.data.kernel
+		: null;
+}
+
+function isObject(x) {
+	return !!x && typeof x === "object" && !Array.isArray(x);
 }

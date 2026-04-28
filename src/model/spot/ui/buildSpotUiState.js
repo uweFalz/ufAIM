@@ -10,58 +10,67 @@
 // - no import candidates / no promotable counting / no file counting
 // - no geometry computation here
 //
+// Canonical SpotObject shape expected here:
+// {
+//   id,
+//   type,
+//   data: {
+//     kernel
+//   },
+//   crsId,
+//   meta
+// }
+//
 // Output:
 // {
 //   rows: [...],
 //   activeSpotId,
-//   stats: { total, activeCount, missingSparseCount, missingCrsCount }
+//   stats: {
+//     total,
+//     activeCount,
+//     missingKernelCount,
+//     missingCrsCount
+//   }
 // }
 
 function getObjects(spotState) {
 	return Object.values(spotState?.objects ?? {}).filter(isObject);
 }
 
-function getObjectType(object) {
-	return String(object?.type ?? "unknown");
-}
-
 function getObjectId(object) {
 	return object?.id ?? null;
 }
 
+function getObjectType(object) {
+	return String(object?.type ?? "unknown");
+}
+
 function getObjectLabel(object) {
 	return (
-		object?.payload?.name ??
 		object?.meta?.label ??
 		object?.meta?.objectId ??
+		object?.data?.name ??
 		object?.id ??
 		"object"
 	);
 }
 
-function getSpatialRef(object) {
-	return isObject(object?.spatialRef) ? object.spatialRef : null;
-}
-
-function getSparseAlignment(object) {
-	return isObject(object?.payload?.sparseAlignment)
-		? object.payload.sparseAlignment
+function getKernel(object) {
+	return isObject(object?.data?.kernel)
+		? object.data.kernel
 		: null;
 }
 
-function hasSparse(object) {
-	return Boolean(getSparseAlignment(object));
+function hasKernel(object) {
+	return Boolean(getKernel(object));
 }
 
-function hasHorizontalCrs(object) {
-	const spatialRef = getSpatialRef(object);
+function getCrsId(object) {
+	return object?.crsId ?? null;
+}
 
-	return Boolean(
-		spatialRef?.horizontalCrsId ??
-		spatialRef?.crsId ??
-		spatialRef?.horizontal ??
-		spatialRef?.horizontalCoordinateSystemName
-	);
+function hasCrs(object) {
+	return Boolean(getCrsId(object));
 }
 
 function buildSourceLabel(object) {
@@ -79,71 +88,59 @@ function buildSourceLabel(object) {
 function buildMissing(object) {
 	const missing = [];
 
-	if (!hasSparse(object)) {
-		missing.push("sparseAlignment");
+	if (!hasKernel(object)) {
+		missing.push("kernel");
 	}
 
-	if (!getSpatialRef(object)) {
-		missing.push("spatialRef");
-	} else if (!hasHorizontalCrs(object)) {
-		missing.push("horizontalCrs");
+	if (!hasCrs(object)) {
+		missing.push("crsId");
 	}
 
 	return missing;
 }
 
 function buildNotes(object) {
-	const notes = [];
-	const spatialRef = getSpatialRef(object);
-
-	if (!hasSparse(object)) {
-		notes.push("sparseAlignment=missing");
-	}
-
-	if (!spatialRef) {
-		notes.push("spatialRef=missing");
-	} else if (!hasHorizontalCrs(object)) {
-		notes.push("horizontalCrs=missing");
-	}
-
-	return notes;
+	return buildMissing(object).map((key) => `${key}=missing`);
 }
 
 function getUiStatus(object, activeSpotId) {
-	const isActive = object?.id === activeSpotId;
-	const sparse = hasSparse(object);
-	const crs = hasHorizontalCrs(object);
+	const spotId = getObjectId(object);
+	const isActive = spotId === activeSpotId;
 
-	if (isActive && sparse && crs) return "focused";
-	if (sparse && crs) return "ok";
-	if (sparse && !crs) return "incomplete";
-	if (!sparse) return "incomplete";
+	const kernel = hasKernel(object);
+	const crs = hasCrs(object);
+
+	if (isActive && kernel && crs) return "focused";
+	if (kernel && crs) return "ok";
+	if (!kernel || !crs) return "incomplete";
 
 	return "unknown";
 }
 
 function buildRow(object, activeSpotId) {
-	const payload = object?.payload ?? {};
-	const status = getUiStatus(object, activeSpotId);
+	const spotId = getObjectId(object);
+	const kernel = getKernel(object);
+	const crsId = getCrsId(object);
 
 	return {
-		spotId: object.id,
-		objectId: getObjectId(object),
-		isActive: object.id === activeSpotId,
+		spotId,
+		objectId: spotId,
+		isActive: spotId === activeSpotId,
 
 		label: getObjectLabel(object),
 		type: getObjectType(object),
-		status,
+		status: getUiStatus(object, activeSpotId),
 
 		sourceLabel: buildSourceLabel(object),
 
 		missing: buildMissing(object),
 		notes: buildNotes(object),
 
-		hasSparse: hasSparse(object),
-		hasHorizontalCrs: hasHorizontalCrs(object),
+		hasKernel: Boolean(kernel),
+		hasCrs: Boolean(crsId),
 
-		sparseAlignment: payload?.sparseAlignment ?? null,
+		crsId,
+		kernel,
 	};
 }
 
@@ -151,8 +148,8 @@ function buildStats(rows) {
 	return {
 		total: rows.length,
 		activeCount: rows.filter((r) => r.isActive).length,
-		missingSparseCount: rows.filter((r) => !r.hasSparse).length,
-		missingCrsCount: rows.filter((r) => !r.hasHorizontalCrs).length,
+		missingKernelCount: rows.filter((r) => !r.hasKernel).length,
+		missingCrsCount: rows.filter((r) => !r.hasCrs).length,
 	};
 }
 

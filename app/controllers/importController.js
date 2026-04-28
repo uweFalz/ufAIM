@@ -174,26 +174,38 @@ export function makeImportController({
 	}
 
 	function makePreviewCandidate(item) {
-		if (!item?.derived?.sparseAlignment) return null;
+	const kernel = item?.derived?.sparseAlignment ?? null;
+	if (!kernel) return null;
 
-		return {
-			id: item.id ?? item?.payload?.id ?? item?.payload?.name ?? "preview_alignment",
-			kind: item.kind ?? "alignment",
-			name:
-				item?.payload?.name ??
-				item?.payload?.id ??
-				item?.source?.objectName ??
-				item?.id ??
-				"preview",
-			sparseAlignment: item.derived.sparseAlignment,
-			spatialRef: item?.derived?.spatialRef ?? null,
-			source: {
-				fileName: item?.source?.fileName ?? null,
-				parserId: item?.source?.parserId ?? null,
-				objectName: item?.source?.objectName ?? null,
-			},
-		};
-	}
+	const name =
+		item?.payload?.name ??
+		item?.payload?.id ??
+		item?.source?.objectName ??
+		item?.id ??
+		"preview";
+
+	const crsId = derivePreviewCrsId(item);
+
+	return {
+		id: item.id ?? item?.payload?.id ?? item?.payload?.name ?? "preview_alignment",
+		kind: item.kind ?? "alignment",
+		name,
+
+		// local preview compatibility
+		sparseAlignment: kernel,
+		spatialRef: item?.derived?.spatialRef ?? null,
+
+		// new runtime vocabulary
+		kernel,
+		crsId,
+
+		source: {
+			fileName: item?.source?.fileName ?? null,
+			parserId: item?.source?.parserId ?? null,
+			objectName: item?.source?.objectName ?? null,
+		},
+	};
+}
 
 	async function handleImportItemsMaster(items = []) {
 		if (!items.length) return;
@@ -359,4 +371,16 @@ export function makeImportController({
 		importFiles,
 		installDrop,
 	};
+}
+
+function derivePreviewCrsId(item) {
+	const sr = item?.derived?.spatialRef ?? null;
+
+	return (
+		sr?.crsId ??
+		sr?.horizontalCrsId ??
+		sr?.horizontal ??
+		sr?.horizontalCoordinateSystemName ??
+		null
+	);
 }

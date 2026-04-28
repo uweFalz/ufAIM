@@ -6,6 +6,15 @@
 // Preferred lookup key is the canonical SPOT object id.
 // Fallbacks are allowed for meta/object aliases.
 
+function matchesAlias(object, wanted) {
+	return (
+		String(object?.id ?? "") === wanted ||
+		String(object?.meta?.objectId ?? "") === wanted ||
+		String(object?.meta?.alignmentName ?? "") === wanted ||
+		String(object?.data?.name ?? "") === wanted
+	);
+}
+
 export function getSpotObjectById(spotState, focusObjectId) {
 	if (!spotState || !focusObjectId) return null;
 
@@ -20,13 +29,8 @@ export function getSpotObjectById(spotState, focusObjectId) {
 
 	// 2) search by known aliases
 	for (const object of Object.values(objects)) {
-		if (!object) continue;
-
-		if (String(object?.id ?? "") === wanted) return object;
-		if (String(object?.meta?.objectId ?? "") === wanted) return object;
-		if (String(object?.meta?.alignmentName ?? "") === wanted) return object;
-		if (String(object?.payload?.name ?? "") === wanted) return object;
-	}
+	if (matchesAlias(object, wanted)) return object;
+}
 
 	return null;
 }

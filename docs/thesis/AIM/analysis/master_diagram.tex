@@ -1,0 +1,98 @@
+\section{AIM Master Architecture}
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={
+    draw,
+    rectangle,
+    rounded corners,
+    minimum width=5.8cm,
+    minimum height=0.85cm,
+    align=center,
+    font=\small
+  },
+  smallbox/.style={
+    draw,
+    rectangle,
+    rounded corners,
+    minimum width=2.7cm,
+    minimum height=0.75cm,
+    align=center,
+    font=\small
+  },
+  arrow/.style={->, thick},
+  feedback/.style={->, thick, dashed},
+  note/.style={font=\small, align=center}
+]
+
+% Main vertical pipeline
+\node[box] (crs) {CRS / Georeferencing \\ $\mathcal{C}$};
+
+\node[box, below=of crs] (world) {World Space \\ measured / designed coordinates};
+
+\node[box, below=of world] (w2t) {World $\rightarrow$ Track Projection \\ $\mathcal{W}: x \mapsto (s,d)$};
+
+\node[box, below=of w2t] (track) {Intrinsic Track Space \\ arc-length $s$, offset $d$};
+
+% Hybrid model layer
+\node[box, below=of track] (model) {Hybrid Alignment Model \\ $\kappa(s)=\kappa_{\mathrm{param}}(s;\mathbf{T})+\delta\kappa(s)$};
+
+\node[smallbox, below left=0.9cm and 0.15cm of model] (param) {Parametric Layer \\ design intent};
+\node[smallbox, below right=0.9cm and 0.15cm of model] (corr) {Correction Layer \\ measured deviations};
+
+\node[box, below=1.55cm of model] (state) {Railway State \\ pose3: $(\gamma,\theta,\kappa,\phi)$};
+
+\node[box, below=of state] (real) {Realization Operator \\ $\mathcal{R}$};
+
+\node[box, below=of real] (realized) {Realized Geometry \\ built / observable track};
+
+\node[box, below=of realized] (output) {World Output \\ visualization, validation, export};
+
+% Main arrows
+\draw[arrow] (crs) -- (world);
+\draw[arrow] (world) -- (w2t);
+\draw[arrow] (w2t) -- (track);
+\draw[arrow] (track) -- (model);
+\draw[arrow] (model) -- (state);
+\draw[arrow] (state) -- (real);
+\draw[arrow] (real) -- (realized);
+\draw[arrow] (realized) -- (output);
+
+% Hybrid internal arrows
+\draw[arrow] (param.north) -- (model.south west);
+\draw[arrow] (corr.north) -- (model.south east);
+
+% Feedback loops
+\draw[feedback]
+  (realized.east) -- ++(1.6,0) |- node[pos=0.25, right]{Optimization / SQP} (model.east);
+
+\draw[feedback]
+  (output.west) -- ++(-1.6,0) |- node[pos=0.25, left]{Measurement feedback} (w2t.west);
+
+% Notes
+\node[note, right=1.6cm of real] (filternote)
+  {$\mathcal{R}$ acts as\\low-pass filter};
+
+\node[note, right=1.6cm of w2t] (lodnote)
+  {LOD-dependent\\projection};
+
+\node[note, left=1.6cm of model] (blocknote)
+  {block structure:\\$\kappa$ / $\phi$ / corrections};
+
+\draw[feedback] (filternote) -- (real);
+\draw[feedback] (lodnote) -- (w2t);
+\draw[feedback] (blocknote) -- (model);
+
+\end{tikzpicture}
+
+\caption{
+Level-2 AIM master architecture.
+The framework combines CRS handling, nonlinear world-to-track projection,
+hybrid curvature modelling, pose3 state reconstruction, realization, and
+optimization feedback. The central modelling object is not the geometric
+curve itself, but the curvature-driven and realization-aware operator
+system producing it.
+}
+\end{figure}

@@ -1,0 +1,86 @@
+@startuml
+title ufAIM – Ultimate Architecture Map CURRENT
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+hide empty members
+
+package "User Contact" {
+  [Cockpit / iVision]
+  [Feedback Overlay]
+  [User Intent\nDrop / Click / Text / Selection]
+}
+
+package "Master Runtime (SharedWorker)" {
+  [Messaging / Commands / Events]
+  [ProjectState]
+  package "Canonical Object World" {
+    [SPOT Store]
+    [SPOT Objects]
+    [SPOT Relations]
+    [Topology]
+    [Engineering CRS]
+  }
+  package "Candidate / Context Layer" {
+    [Import Session]
+    [Working Set]
+    [Reference Store]
+  }
+  package "Knowledge / Assistant Core" {
+    [Intent Interpreter]
+    [Feasibility Check]
+    [Action Planner]
+    [Feedback Model]
+    [Engineering Knowledge]
+  }
+}
+
+package "Window Client" {
+  [WindowRuntime]
+  [WindowSession / Focus]
+  [ViewController]
+  [GeoView]
+  [Transition Editor]
+}
+
+package "@kernel" {
+  [SparseAlignment]
+  [Transition Families]
+  [Alignment Calculation]
+  [Sampling]
+  [Validators]
+}
+
+[User Intent\nDrop / Click / Text / Selection] --> [Cockpit / iVision]
+[Cockpit / iVision] --> [Intent Interpreter]
+[Intent Interpreter] --> [Feasibility Check]
+[Feasibility Check] --> [Action Planner]
+[Action Planner] --> [Messaging / Commands / Events]
+[Feedback Model] --> [Cockpit / iVision]
+[Feedback Model] --> [Feedback Overlay]
+
+[Messaging / Commands / Events] --> [ProjectState]
+[ProjectState] --> [SPOT Store]
+[SPOT Store] --> [SPOT Objects]
+[SPOT Store] --> [SPOT Relations]
+[SPOT Store] --> [Topology]
+[SPOT Store] --> [Engineering CRS]
+
+[ViewController] --> [SPOT Store]
+[ViewController] --> [Alignment Calculation]
+[Alignment Calculation] --> [Sampling]
+[Sampling] --> [GeoView]
+[Transition Editor] --> [Alignment Calculation]
+
+note right of [Cockpit / iVision]
+Central contact point.
+Scene → Context → Intent → Action → Feedback.
+end note
+
+note right of [SPOT Store]
+Canonical parameters / metadata only.
+No derived geometry.
+No window-local active selection.
+end note
+
+@enduml

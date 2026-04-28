@@ -52,26 +52,45 @@ import {
 } from "@app/controllers/viewUiSync.js";
 
 function makePreviewSpotLikeObject(previewItem) {
-	if (!previewItem?.sparseAlignment) return null;
+	const kernel = previewItem?.kernel ?? previewItem?.sparseAlignment ?? null;
+	if (!kernel) return null;
 
 	return {
 		id: `preview_${previewItem.id ?? "alignment"}`,
 		type: previewItem.kind ?? "alignment",
-		spatialRef: previewItem?.spatialRef ?? null,
-		payload: {
+		crsId: previewItem?.crsId ?? derivePreviewCrsId(previewItem),
+
+		data: {
 			name: previewItem?.name ?? previewItem?.id ?? "preview",
-			sparseAlignment: previewItem.sparseAlignment,
+			kernel,
 			source: {
 				file: previewItem?.source?.fileName ?? null,
 				format: previewItem?.source?.parserId ?? null,
 			},
 		},
+
+		refs: {},
+
 		meta: {
 			objectId: previewItem?.id ?? null,
 			importItemId: previewItem?.id ?? null,
 			alignmentName: previewItem?.name ?? previewItem?.id ?? "preview",
 		},
 	};
+}
+
+function derivePreviewCrsId(previewItem) {
+	if (previewItem?.crsId) return previewItem.crsId;
+
+	const sr = previewItem?.spatialRef ?? null;
+
+	return (
+		sr?.crsId ??
+		sr?.horizontalCrsId ??
+		sr?.horizontal ??
+		sr?.horizontalCoordinateSystemName ??
+		null
+	);
 }
 
 export function makeViewController({
