@@ -1,3 +1,5 @@
+% foundations/glossary.tex
+
 \chapter*{Glossary}
 \addcontentsline{toc}{chapter}{Glossary}
 
@@ -8,7 +10,7 @@
 \item[Alignment]
 A structured representation of railway track geometry defined primarily
 through curvature \(\kappa(s)\), together with associated state
-variables (position, orientation, cant).
+variables such as position, orientation, and cant.
 An alignment is not merely a curve, but a system linking geometry,
 dynamics, and realization.
 
@@ -18,7 +20,7 @@ direction along the track.
 Within the AIM framework, curvature is the primary design variable.
 
 \item[Cant \(\phi(s)\)]
-The cross-level (superelevation) of the track, representing the rotation
+The cross-level or superelevation of the track, represented as rotation
 of the track plane around its longitudinal axis.
 Cant is dynamically coupled to curvature via equilibrium conditions.
 
@@ -29,15 +31,13 @@ curvature \(\kappa(s)\), and cant \(\phi(s)\).
 
 \end{description}
 
----
-
 \section*{Modeling and Representation}
 
 \begin{description}
 
 \item[Parametric Model]
 A low-dimensional representation of curvature or cant defined by a small
-set of parameters \(\mathbf{T}\), e.g. transition types or segment
+set of parameters \(\mathbf{T}\), such as transition types or segment
 lengths.
 
 \item[Sample-Based Model]
@@ -46,20 +46,22 @@ points \(\{s_i\}\), typically used for measurement data or numerical
 optimization.
 
 \item[Hybrid Model]
-A combination of parametric and sample-based representations:
+A combination of parametric structure and discrete corrections:
 \[
-\kappa(s) = \kappa_{\mathrm{param}}(s;\mathbf{T}) + \delta\kappa(s),
+\kappa(s)
+=
+\kappa_{\mathrm{param}}(s;\mathbf{T})
++
+\delta\kappa(s).
 \]
-allowing structured modeling with local corrections.
+It allows structured modelling with local flexibility.
 
 \item[Sparse Representation]
-A minimal representation of an alignment using essential parameters
-(e.g. curvature segments and transitions), enabling efficient storage
+A minimal representation of an alignment using essential parameters,
+such as curvature segments and transitions, enabling efficient storage
 and computation.
 
 \end{description}
-
----
 
 \section*{Operators}
 
@@ -68,11 +70,11 @@ and computation.
 \item[Sampling Operator \(\mathcal{S}\)]
 Maps a continuous function to discrete values:
 \[
-\mathcal{S}(\kappa) = \{\kappa(s_i)\}.
+\mathcal{S}(\kappa)=\{\kappa(s_i)\}.
 \]
 
 \item[Interpolation Operator \(\mathcal{I}\)]
-Reconstructs a continuous curve from discrete data.
+Reconstructs a continuous curve or function from discrete data.
 
 \item[Mechanical Operator \(\mathcal{M}\)]
 Represents the physical response of the track structure, including
@@ -81,19 +83,21 @@ smoothing and deformation effects.
 \item[Realization Operator \(\mathcal{R}\)]
 Maps a theoretical alignment to its physically realized form:
 \[
-\mathcal{R} = \mathcal{M} \circ \mathcal{I} \circ \mathcal{S}.
+\mathcal{R}
+=
+\mathcal{M}\circ\mathcal{I}\circ\mathcal{S}.
 \]
 
 \item[Adjustment Operator \(\mathcal{T}\)]
-A local operator representing a single construction or maintenance step
-(e.g. tamping), applied iteratively:
+A local operator representing one construction or maintenance step,
+for example tamping:
 \[
-\gamma_{k+1} = \mathcal{T}(\gamma_k).
+\gamma_{k+1}
+=
+\mathcal{T}(\gamma_k).
 \]
 
 \end{description}
-
----
 
 \section*{Spaces and Transformations}
 
@@ -104,17 +108,19 @@ A coordinate system aligned with the track, typically parameterized by
 arc-length \(s\), where geometry and dynamics are defined.
 
 \item[World Space]
-A global coordinate system (e.g. CRS-based), used for georeferencing and
+A global coordinate system, often CRS-based, used for georeferencing and
 data integration.
 
 \item[World-to-Track Transformation]
-The mapping between world coordinates and track-based representation,
+The mapping from world coordinates to intrinsic alignment coordinates,
 typically requiring projection onto the alignment and evaluation of
-\(s\), \(\kappa\), and \(\phi\).
+\(s\), \(d\), \(\kappa\), and \(\phi\).
+
+\item[Kilometre Line]
+A longitudinal reference structure used for stationing, independent of
+the physical geometric alignment.
 
 \end{description}
-
----
 
 \section*{Optimization}
 
@@ -122,7 +128,7 @@ typically requiring projection onto the alignment and evaluation of
 
 \item[Residual]
 A component of the objective function representing deviation from a
-desired property (e.g. smoothness, dynamic equilibrium).
+desired property, such as smoothness, dynamic equilibrium, or data fit.
 
 \item[Jacobian]
 The matrix of derivatives of residuals with respect to parameters.
@@ -130,9 +136,9 @@ Within AIM, Jacobians are derived analytically from arc-length-based
 relations.
 
 \item[Gauss--Newton Method]
-An optimization method using the approximation:
+An optimization method using the approximation
 \[
-H \approx J^T J,
+H \approx J^T J
 \]
 for solving nonlinear least-squares problems.
 
@@ -142,15 +148,14 @@ subproblems based on linearized constraints.
 
 \end{description}
 
----
-
 \section*{Realization and Construction}
 
 \begin{description}
 
 \item[Realized Alignment]
 The physically constructed track geometry, which differs from the
-theoretical alignment due to discretization and mechanical effects.
+theoretical alignment due to discretization, construction, and mechanical
+effects.
 
 \item[Control Points]
 Discrete positions \(\{s_i\}\) at which geometry is specified or
@@ -160,7 +165,7 @@ adjusted during construction or maintenance.
 The deviation between target and realized curvature or geometry.
 
 \item[Inverse Realization Problem]
-The problem of finding a target alignment such that:
+The problem of finding a target alignment such that
 \[
 \mathcal{R}(\kappa_{\mathrm{target}})
 \approx
@@ -169,7 +174,43 @@ The problem of finding a target alignment such that:
 
 \end{description}
 
----
+\section*{Advanced Geometry}
+
+\begin{description}
+
+\item[Geodesic Curvature \(\kappa_g\)]
+The intrinsic curvature of a curve on a surface, measuring the change of
+direction within the surface.
+For railway alignment on the Earth, this is the physically relevant
+curvature.
+
+\item[Normal Curvature \(\kappa_n\)]
+The component of curvature induced by the curvature of the underlying
+surface, for example the Earth ellipsoid.
+
+\item[Ellipsoidal Alignment]
+An alignment defined directly on a reference ellipsoid rather than in a
+projected coordinate system.
+
+\item[Surface Frame]
+A local coordinate frame on the ellipsoid consisting of tangent, lateral,
+and surface-normal directions.
+
+\item[Cant Rotation]
+Rotation of the track cross-section around the tangent direction,
+defining superelevation.
+
+\item[Effective Lateral Acceleration]
+The physically relevant lateral acceleration acting on a vehicle:
+\[
+a_{\mathrm{eff}}
+=
+v^2\kappa_g
+-
+\mathbf{g}\cdot\mathbf{b}_{\phi}.
+\]
+
+\end{description}
 
 \section*{Pipeline}
 
@@ -191,10 +232,10 @@ The sequence of transformations from raw data to optimized alignment:
 
 \item[Failure Modes]
 Typical breakdown points within the pipeline, such as inconsistent data,
-invalid coordinate systems, or unstable optimization.
+invalid coordinate systems, unstable projection, or failed optimization.
 
 \item[Design Principles]
-Guiding principles ensuring robustness, interpretability, and
-consistency across the pipeline.
+Guiding principles ensuring robustness, interpretability, and consistency
+across the pipeline.
 
 \end{description}

@@ -36,6 +36,7 @@ const REQUIRED = {
 	"Import.GetState": [],
 	"Import.BeginSession": [],
 	"Import.AddItems": ["items"],
+	"Import.SetItemAccepted": ["itemId", "accepted"],
 
 	// ---------------------------------------------------------
 	// project

@@ -70,6 +70,8 @@ const debug = createDebugService({
 
 debug.log("worker booted");
 
+debug.log("worker booted v Import.SetItemAccepted");
+
 // ------------------------------------------------------------
 // Transition.* API
 // ------------------------------------------------------------
@@ -142,6 +144,11 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 	});
 
 	return result;
+});
+
+router.onCmd("Import.SetItemAccepted", async ({ itemId, accepted } = {}) => {
+	debug.log("Import.SetItemAccepted", { itemId, accepted });
+	return importInboxService.setItemAccepted({ itemId, accepted });
 });
 
 // ------------------------------------------------------------

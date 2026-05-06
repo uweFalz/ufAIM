@@ -1,86 +1,277 @@
 @startuml
-title ufAIM – Ultimate Architecture Map CURRENT
+
+title ufAIM – Ultimate Architecture Map v4\nCockpit / iVision / AI-Assistant Layer
+
 skinparam packageStyle rectangle
+
 skinparam linetype ortho
+
 skinparam shadowing false
+
+skinparam classAttributeIconSize 0
+
 hide empty members
 
-package "User Contact" {
-  [Cockpit / iVision]
-  [Feedback Overlay]
+package "External World" {
+
+  [Import Files\nTRA / GRA / LandXML / IFC / GND]
+
+  [Public Geo Context\nmapLibre / GIS]
+
+  [Reference Models\nIFC / Terrain / Docs]
+
+  [Standards / Semantics\nlandXML / Technet / IFC]
+
   [User Intent\nDrop / Click / Text / Selection]
+
 }
 
 package "Master Runtime (SharedWorker)" {
+
   [Messaging / Commands / Events]
+
   [ProjectState]
+
   package "Canonical Object World" {
+
     [SPOT Store]
+
     [SPOT Objects]
+
     [SPOT Relations]
+
     [Topology]
+
     [Engineering CRS]
+
   }
+
   package "Candidate / Context Layer" {
+
     [Import Session]
+
     [Working Set]
+
     [Reference Store]
+
   }
+
   package "Knowledge / Assistant Core" {
+
     [Intent Interpreter]
+
     [Feasibility Check]
+
     [Action Planner]
+
     [Feedback Model]
+
     [Engineering Knowledge]
+
   }
+
 }
 
-package "Window Client" {
-  [WindowRuntime]
-  [WindowSession / Focus]
-  [ViewController]
-  [GeoView]
-  [Transition Editor]
+package "@kernel\n(calculation module)" {
+
+  package "Alignment Domain" {
+
+    [SparseAlignment]
+
+    [Transition Families]
+
+    [Validators]
+
+    [Alignment Calculation]
+
+    [Sampling]
+
+    [Solver Prep]
+
+  }
+
 }
 
-package "@kernel" {
-  [SparseAlignment]
-  [Transition Families]
-  [Alignment Calculation]
-  [Sampling]
-  [Validators]
+package "Window Clients" {
+
+  package "Window A" {
+
+    [WindowRuntime A]
+
+    [WindowSession A]
+
+    [Focus A]
+
+    [ImportController A]
+
+    [Cockpit / iVision A]
+
+    [ViewController A]
+
+    [GeoView A]
+
+    [Transition Editor A]
+
+    [Feedback Overlay A]
+
+  }
+
+  package "Window B" {
+
+    [WindowRuntime B]
+
+    [WindowSession B]
+
+    [Focus B]
+
+    [Cockpit / iVision B]
+
+    [ViewController B]
+
+    [GeoView B]
+
+    [Feedback Overlay B]
+
+  }
+
 }
 
-[User Intent\nDrop / Click / Text / Selection] --> [Cockpit / iVision]
-[Cockpit / iVision] --> [Intent Interpreter]
+[User Intent\nDrop / Click / Text / Selection] --> [Cockpit / iVision A]
+
+[User Intent\nDrop / Click / Text / Selection] --> [Cockpit / iVision B]
+
+[Cockpit / iVision A] --> [Intent Interpreter]
+
+[Cockpit / iVision B] --> [Intent Interpreter]
+
 [Intent Interpreter] --> [Feasibility Check]
-[Feasibility Check] --> [Action Planner]
-[Action Planner] --> [Messaging / Commands / Events]
-[Feedback Model] --> [Cockpit / iVision]
-[Feedback Model] --> [Feedback Overlay]
 
-[Messaging / Commands / Events] --> [ProjectState]
-[ProjectState] --> [SPOT Store]
+[Feasibility Check] --> [Action Planner]
+
+[Action Planner] --> [Messaging / Commands / Events]
+
+[Feedback Model] --> [Cockpit / iVision A]
+
+[Feedback Model] --> [Cockpit / iVision B]
+
+[Feedback Model] --> [Feedback Overlay A]
+
+[Feedback Model] --> [Feedback Overlay B]
+
+[Import Files\nTRA / GRA / LandXML / IFC / GND] --> [ImportController A]
+
+[ImportController A] --> [Import Session]
+
+[Import Session] --> [Working Set]
+
+[Action Planner] --> [SPOT Store]
+
 [SPOT Store] --> [SPOT Objects]
+
 [SPOT Store] --> [SPOT Relations]
+
 [SPOT Store] --> [Topology]
+
 [SPOT Store] --> [Engineering CRS]
 
-[ViewController] --> [SPOT Store]
-[ViewController] --> [Alignment Calculation]
-[Alignment Calculation] --> [Sampling]
-[Sampling] --> [GeoView]
-[Transition Editor] --> [Alignment Calculation]
+[Cockpit / iVision A] --> [Focus A]
 
-note right of [Cockpit / iVision]
+[Cockpit / iVision B] --> [Focus B]
+
+[ViewController A] --> [Focus A]
+
+[ViewController B] --> [Focus B]
+
+[ViewController A] --> [SPOT Store]
+
+[ViewController B] --> [SPOT Store]
+
+[ViewController A] --> [Alignment Calculation]
+
+[ViewController B] --> [Alignment Calculation]
+
+[Alignment Calculation] --> [SparseAlignment]
+
+[Alignment Calculation] --> [Transition Families]
+
+[Alignment Calculation] --> [Sampling]
+
+[Alignment Calculation] --> [Solver Prep]
+
+[Alignment Calculation] --> [Validators]
+
+[Sampling] --> [GeoView A]
+
+[Sampling] --> [GeoView B]
+
+[Transition Editor A] --> [Alignment Calculation]
+
+[Transition Editor A] --> [Cockpit / iVision A]
+
+[Public Geo Context\nmapLibre / GIS] --> [GeoView A]
+
+[Public Geo Context\nmapLibre / GIS] --> [GeoView B]
+
+[Standards / Semantics\nlandXML / Technet / IFC] --> [Engineering Knowledge]
+
+[Reference Models\nIFC / Terrain / Docs] --> [Reference Store]
+
+[Reference Store] --> [Engineering Knowledge]
+
+note right of [Cockpit / iVision A]
+
 Central contact point.
+
+Not a debug overlay.
+
 Scene → Context → Intent → Action → Feedback.
+
+end note
+
+note right of [Feedback Overlay A]
+
+Replaces debug/status/console as user-visible feedback.
+
+Transparent, contextual, non-blocking.
+
 end note
 
 note right of [SPOT Store]
+
 Canonical parameters / metadata only.
+
 No derived geometry.
+
 No window-local active selection.
+
+end note
+
+note bottom of [Focus A]
+
+Window-local focus only.
+
+Chosen by user intent / cockpit action.
+
+end note
+
+note bottom of [Alignment Calculation]
+
+@kernel defines where calculation belongs.
+
+Execution model is still open
+
+(same thread vs worker).
+
+end note
+
+note bottom of [Engineering Knowledge]
+
+ufAIM is knowledge,
+
+not the representation technology.
+
+Views are projections of know-how.
+
 end note
 
 @enduml

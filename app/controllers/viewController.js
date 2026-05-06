@@ -229,29 +229,30 @@ export function makeViewController({
 	}
 
 	function getPreviewGeometryFromState(state) {
-		const previewItem = state?.preview_item ?? null;
-		if (!previewItem?.sparseAlignment) return null;
+	const previewItem = state?.preview_item ?? null;
+	const previewKernel = previewItem?.kernel ?? previewItem?.sparseAlignment ?? null;
+	if (!previewKernel) return null;
 
-		const previewObject = makePreviewSpotLikeObject(previewItem);
-		if (!previewObject) return null;
+	const previewObject = makePreviewSpotLikeObject(previewItem);
+	if (!previewObject) return null;
 
-		const geom = projectFocusedSpotObject(previewObject, {
-			maxStep: cfg.sampleStep,
-		});
+	const geom = projectFocusedSpotObject(previewObject, {
+		maxStep: cfg.sampleStep,
+	});
 
-		if (!geom?.polyline2d || geom.polyline2d.length < 2) {
-			return null;
-		}
-
-		return {
-			objectId: String(previewObject.id ?? "preview"),
-			spotObject: previewObject,
-			polyline2d: geom.polyline2d,
-			bbox: geom.bbox ?? null,
-			bboxCenter: geom.bboxCenter ?? null,
-			isPreview: true,
-		};
+	if (!geom?.polyline2d || geom.polyline2d.length < 2) {
+		return null;
 	}
+
+	return {
+		objectId: String(previewObject.id ?? "preview"),
+		spotObject: previewObject,
+		polyline2d: geom.polyline2d,
+		bbox: geom.bbox ?? null,
+		bboxCenter: geom.bboxCenter ?? null,
+		isPreview: true,
+	};
+}
 
 	function getImportPreviewGeometries(state) {
 		const items = Array.isArray(state?.import_preview_collection)

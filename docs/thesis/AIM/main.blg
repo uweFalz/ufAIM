@@ -3,48 +3,58 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: plain.bst
 Database file #1: references.bib
+Warning--entry type for "Klauder2001WO" isn't style-file defined
+--line 239 of file references.bib
 Warning--entry type for "Klauder2009US" isn't style-file defined
 --line 253 of file references.bib
+Repeated entry---line 438 of file references.bib
+ : @book{docarmo1976curves
+ :                        ,
+I'm skipping whatever remains of this entry
+Warning--empty publisher in hofmann2001gps
 Warning--empty journal in Klauder2001BetterWay
-You've used 30 entries,
+Warning--empty journal in kufver2000railway
+Warning--empty publisher in pressley2010elementary
+Warning--empty publisher in struik1961lectures
+You've used 52 entries,
             2118 wiz_defined-function locations,
-            688 strings with 8690 characters,
-and the built_in function-call counts, 7611 in all, are:
-= -- 742
-> -- 300
+            809 strings with 11927 characters,
+and the built_in function-call counts, 13241 in all, are:
+= -- 1291
+> -- 510
 < -- 2
-+ -- 125
-- -- 92
-* -- 406
-:= -- 1347
-add.period$ -- 94
-call.type$ -- 30
-change.case$ -- 124
++ -- 217
+- -- 156
+* -- 717
+:= -- 2308
+add.period$ -- 162
+call.type$ -- 52
+change.case$ -- 218
 chr.to.int$ -- 0
-cite$ -- 31
-duplicate$ -- 327
-empty$ -- 650
-format.name$ -- 92
-if$ -- 1573
+cite$ -- 57
+duplicate$ -- 549
+empty$ -- 1155
+format.name$ -- 156
+if$ -- 2739
 int.to.chr$ -- 0
-int.to.str$ -- 30
-missing$ -- 35
-newline$ -- 157
-num.names$ -- 61
-pop$ -- 164
+int.to.str$ -- 52
+missing$ -- 55
+newline$ -- 269
+num.names$ -- 105
+pop$ -- 293
 preamble$ -- 1
-purify$ -- 106
+purify$ -- 182
 quote$ -- 0
-skip$ -- 212
+skip$ -- 368
 stack$ -- 0
-substring$ -- 337
-swap$ -- 36
+substring$ -- 635
+swap$ -- 58
 text.length$ -- 2
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 98
-warning$ -- 1
-while$ -- 77
-width$ -- 32
-write$ -- 327
-(There were 2 warnings)
+type$ -- 178
+warning$ -- 5
+while$ -- 137
+width$ -- 54
+write$ -- 558
+(There was 1 error message)
