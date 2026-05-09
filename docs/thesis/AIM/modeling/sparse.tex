@@ -1,3 +1,5 @@
+% /modeling/sparse.tex
+
 \chapter{Sparse Alignment Model}
 
 \section{Motivation}
@@ -117,9 +119,86 @@ its initial data suffice to determine a unique planar alignment up to
 the intended modelling conventions.
 \end{definition}
 
-\TODO{Extend pose definition to pose3 including height, cant, and frame conventions.}
-\OPEN{Clarify the exact status of pose3: geometric state, engineering state, or BIM-related state description.}
-\OPEN{Fix local versus global framing consistently.}
+\section{Sparse Longitudinal Band Structure}
+
+\begin{remark}
+Within the AIM framework, the persistent alignment model is intentionally
+kept sparse and decomposed into synchronized longitudinal bands.
+\end{remark}
+
+\begin{definition}[Core geometric band]
+The central geometric band is denoted by
+\[
+\mathrm{cGeom}.
+\]
+It represents the curvature-driven planar alignment core and consists of:
+\begin{itemize}
+\item fixed elements,
+\item transition elements,
+\item pose2-based reconstruction anchors.
+\end{itemize}
+\end{definition}
+
+\begin{definition}[Cant band]
+Cant is represented as an independent longitudinal band correlated with
+fixed alignment elements.
+\end{definition}
+
+\begin{remark}
+The cant band:
+\begin{itemize}
+\item does not define an independent stationing system,
+\item stores rail height differences rather than roll angles,
+\item follows the same normalized curvature family as the associated
+cGeom element,
+\item may contain local station offsets at element boundaries.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The corresponding roll angle is derived via:
+\[
+\phi(s)
+=
+\arctan\!\left(
+\frac{u(s)}{g}
+\right),
+\]
+where:
+\begin{itemize}
+\item \(u(s)\): rail height difference,
+\item \(g\): gauge.
+\end{itemize}
+\end{remark}
+
+\begin{definition}[Profile band]
+Vertical geometry is represented independently through a profile band.
+\end{definition}
+
+\begin{remark}
+Thus, cGeom, cant, and profile are treated as synchronized but distinct
+bands sharing a common arc-length domain.
+\end{remark}
+
+\begin{proposition}
+Pose3 is not treated as persistent truth within the sparse model.
+\end{proposition}
+
+\begin{remark}
+Instead, pose3 is derived dynamically from:
+\begin{itemize}
+\item cGeom,
+\item cant,
+\item profile,
+\item and runtime evaluation services.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Consequently, the primary intelligence of the AIM framework resides not
+in the storage format itself, but in the mathematical operators and
+evaluation services acting on the sparse model.
+\end{remark}
 
 \section{Concatenation}
 
@@ -253,6 +332,10 @@ mathematically and operationally coherent way.
 The sparse alignment model is a compact, structured representation of an
 alignment by means of an ordered sequence of semantically meaningful
 elements together with reconstruction data and concatenation rules.
+
+Within AIM, the sparse alignment model is not interpreted as a static
+3D geometry, but as a synchronized system of longitudinal bands from
+which higher-level geometric and dynamic states are derived.
 
 It serves as a bridge between continuous curvature theory and practical
 engineering operations such as import, validation, editing, numerical
