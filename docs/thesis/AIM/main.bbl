@@ -60,6 +60,12 @@ Ernst Hairer, Syvert~P. N{\o}rsett, and Gerhard Wanner.
 \newblock {\em Solving Ordinary Differential Equations I}.
 \newblock Springer, 1993.
 
+\bibitem{Hasslinger2002Schwerpunkt}
+Franz Hasslinger.
+\newblock Verfahren zur trassierung eines fahrwegs unter berücksichtigung der
+  schwerpunktbewegung eines fahrzeugs, 2002.
+\newblock Austrian patent AT412975B on Schwerpunkt-based railway alignment.
+
 \bibitem{Higgins1922TransitionSpiral}
 A.~L. Higgins.
 \newblock {\em The Transition Spiral and Its Introduction to Railway Curves}.
@@ -68,7 +74,7 @@ A.~L. Higgins.
 \bibitem{hofmann2001gps}
 Hofmann-Wellenhof.
 \newblock {\em GPS: Theory and Practice}.
-\newblock 2001.
+\newblock needs to be investigated, 2001.
 
 \bibitem{Horsburgh1913TransitionCurve}
 E.~M. Horsburgh.
@@ -94,13 +100,14 @@ J.~J. Kalker.
 \bibitem{Klauder2001BetterWay}
 Louis T.~Jr. Klauder.
 \newblock A better way to design railroad transition spirals.
-\newblock 2001.
+\newblock {\em ASCE Journal of Transportation Engineering}, 2001.
 \newblock Preprint submitted to ASCE Journal of Transportation Engineering.
 
 \bibitem{Klauder2001WO}
 Louis T.~Jr. Klauder.
 \newblock Railroad curve transition spiral design method based on control of
   vehicle banking motion, 2001.
+\newblock Patent WO2001098938A1.
 
 \bibitem{Klauder2007USApp}
 Louis T.~Jr. Klauder.
@@ -112,6 +119,7 @@ Louis T.~Jr. Klauder.
 Louis T.~Jr. Klauder.
 \newblock Railroad curve transition spiral design method based on control of
   vehicle banking motion, 2009.
+\newblock Patent US7542830.
 
 \bibitem{Klauder2012Performance}
 Louis T.~Jr. Klauder.
@@ -157,11 +165,6 @@ W.~Koc.
 Bengt Kufver.
 \newblock {\em Optimization of Horizontal Alignment of Railway Tracks}.
 \newblock PhD thesis, Royal Institute of Technology (KTH), 2000.
-
-\bibitem{kufver2000railway}
-Bengt Kufver.
-\newblock Railway alignment optimization.
-\newblock 2000.
 
 \bibitem{Kufver1997MathematicalDescription}
 Bj{\"o}rn Kufver.
@@ -230,7 +233,7 @@ William~H. Press, Saul~A. Teukolsky, William~T. Vetterling, and Brian~P.
 \bibitem{pressley2010elementary}
 Andrew Pressley.
 \newblock {\em Elementary Differential Geometry}.
-\newblock 2010.
+\newblock needs to be investigated, 2010.
 
 \bibitem{Shabana2008RailroadVehicleDynamics}
 Ahmed~A. Shabana, Karim~E. Zaazaa, and Hiroyuki Sugiyama.
@@ -246,7 +249,7 @@ S.~Shebl.
 \bibitem{struik1961lectures}
 Dirk~J. Struik.
 \newblock {\em Lectures on Classical Differential Geometry}.
-\newblock 1961.
+\newblock needs to be investigated, 1961.
 
 \bibitem{Tari2004NewGeneration}
 E.~Tari.

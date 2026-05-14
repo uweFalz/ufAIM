@@ -1,3 +1,5 @@
+% macros.tex
+
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
 \newcommand{\kappaf}{\kappa}
@@ -15,11 +17,25 @@
 
 \usepackage{xspace}
 
-% Erstnennung fett + Index
-\newcommand{\defterm}[1]{\textbf{#1}\index{#1}\xspace}
+\newcommand{\term}[2][]{%
+  #2%
+  \if\relax\detokenize{#1}\relax
+    \index{#2}%
+  \else
+    \index{#1}%
+  \fi
+  \xspace
+}
 
-% Normale Verwendung + Index
-\newcommand{\term}[1]{#1\index{#1}\xspace}
+\newcommand{\defterm}[2][]{%
+  \textbf{#2}%
+  \if\relax\detokenize{#1}\relax
+    \index{#2}%
+  \else
+    \index{#1}%
+  \fi
+  \xspace
+}
 
 \newcommand{\alignment}{\term{alignment}}
 \newcommand{\curvature}{\term{curvature}}
@@ -27,6 +43,18 @@
 \newcommand{\state}{\term{state}}
 \newcommand{\realization}{\term{realization}}
 \newcommand{\pipeline}{\term{pipeline}}
+
+\newcommand{\poseTwo}{\term[pose2]{pose2}}
+\newcommand{\poseThree}{\term[pose3]{pose3}}
+\newcommand{\cGeom}{\term[cGeom]{cGeom}}
+\newcommand{\cantBand}{\term[cant band]{cant band}}
+\newcommand{\profileBand}{\term[profile band]{profile band}}
+\newcommand{\worldToTrack}{\term[world-to-track transformation]{world-to-track transformation}}
+\newcommand{\trackSpace}{\term[track space]{track space}}
+\newcommand{\worldSpace}{\term[world space]{world space}}
+\newcommand{\sparseModel}{\term[sparse alignment model]{sparse alignment model}}
+\newcommand{\runtimeEvaluation}{\term[runtime evaluation]{runtime evaluation}}
+\newcommand{\SchwerpunktTrassierung}{\term[Schwerpunkt-Trassierung]{Schwerpunkt-Trassierung}}
 
 % --- ...                  ... ----------------------------------
 

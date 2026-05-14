@@ -71,11 +71,11 @@ export function buildWindowShell() {
 					>+</button>
 				</div>
 
-				<select id="slotSelect" class="select" data-i18n-title="slot_select_title">
+				<!--select id="slotSelect" class="select" data-i18n-title="slot_select_title">
 					<option value="right" data-i18n="slot_right"></option>
 					<option value="km" data-i18n="slot_km"></option>
 					<option value="left" data-i18n="slot_left"></option>
-				</select>
+				</select-->
 
 				<label class="hint" style="display:inline-flex; align-items:center; gap:6px;">
 					<input id="chkAutoFit" type="checkbox" />
@@ -83,9 +83,9 @@ export function buildWindowShell() {
 				</label>
 
 				<button id="btnFit" class="btn" data-i18n="btn_fit" data-i18n-title="btn_fit_title"></button>
-				<button id="btnPinToggle" class="btn" data-i18n="btn_pin_toggle" data-i18n-title="btn_pin_toggle_title"></button>
-				<button id="btnPinsClear" class="btn" data-i18n="btn_pins_clear" data-i18n-title="btn_pins_clear_title"></button>
-				<span id="pinsInfo" class="hint" data-i18n="pins_info_empty"></span>
+				<!--button id="btnPinToggle" class="btn" data-i18n="btn_pin_toggle" data-i18n-title="btn_pin_toggle_title"></button-->
+				<!--button id="btnPinsClear" class="btn" data-i18n="btn_pins_clear" data-i18n-title="btn_pins_clear_title"></button-->
+				<!--span id="pinsInfo" class="hint" data-i18n="pins_info_empty"></span-->
 			</div>
 
 			<div class="uf-workspace">

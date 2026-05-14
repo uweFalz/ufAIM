@@ -1,0 +1,99 @@
+% optimization/realization_aware_optimization.tex
+
+\chapter{Realization-Aware Optimization}
+
+\section{Motivation}
+
+\begin{remark}
+Classical alignment optimization operates directly on target geometry.
+\end{remark}
+
+\begin{remark}
+Real railway tracks, however, differ from their analytical target states.
+\end{remark}
+
+\begin{remark}
+Thus, optimization should minimize:
+\[
+J\bigl(\mathcal R(\kappa,\phi)\bigr),
+\]
+rather than:
+\[
+J(\kappa,\phi).
+\]
+\end{remark}
+
+\section{Realization Operator}
+
+\begin{definition}[Realization operator]
+\[
+\mathcal R :
+\mathrm{pose3}_{\mathrm{target}}
+\mapsto
+\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{definition}
+
+\section{Optimization on Realized States}
+
+\begin{remark}
+Objective functions should be evaluated on realized states.
+\end{remark}
+
+\section{Dynamic Objectives}
+
+\begin{definition}[Effective lateral acceleration]
+\[
+a_{\mathrm{eff}}
+=
+v^2\kappa-g\sin\phi.
+\]
+\end{definition}
+
+\begin{definition}[Jerk]
+\[
+j
+=
+v^3\kappa'
+-
+gv\cos\phi\,\phi'.
+\]
+\end{definition}
+
+\section{Realization Constraints}
+
+\begin{remark}
+Optimization must respect machine limits, tamping limits, ballast behaviour,
+and measurement resolution.
+\end{remark}
+
+\section{Inverse Realization}
+
+\begin{remark}
+The optimization problem may be interpreted as an inverse realization problem.
+\end{remark}
+
+\section{Frequency Interpretation}
+
+\begin{remark}
+The realization operator acts as a low-pass filter on curvature and cant.
+\end{remark}
+
+\section{Sparse and Hybrid Optimization}
+
+\begin{remark}
+Sparse and hybrid models are particularly suitable for realization-aware optimization.
+\end{remark}
+
+\section{Runtime Optimization}
+
+\begin{remark}
+Optimization may operate continuously during construction and maintenance.
+\end{remark}
+
+\section{Connection to AIM}
+
+\begin{summary}
+Realization-aware optimization extends classical alignment optimization
+toward physically realizable railway states.
+\end{summary}

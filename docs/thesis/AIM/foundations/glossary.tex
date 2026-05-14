@@ -1,35 +1,133 @@
 \chapter*{Glossary}
 \addcontentsline{toc}{chapter}{Glossary}
 
+% ============================================================
 \section*{Core Concepts}
+% ============================================================
 
 \begin{description}
 
 \item[Alignment]
 A structured representation of railway track geometry defined primarily
 through curvature \(\kappa(s)\), together with associated state
-variables such as position, orientation, and cant.
+variables such as position, orientation, profile, and cant.
 An alignment is not merely a curve, but a system linking geometry,
-dynamics, and realization.
+dynamics, realization, and operational behaviour.
+
+\item[Arc-Length Domain]
+The intrinsic one-dimensional domain \(s\) shared by all synchronized
+longitudinal alignment bands.
+Within AIM, arc-length acts as the primary reference structure for
+geometry, cant, profile, dynamics, and optimization.
 
 \item[Curvature \(\kappa(s)\)]
 The fundamental geometric quantity describing the rate of change of
 direction along the track.
-Within the AIM framework, curvature is the primary design variable.
+Within AIM, curvature is the primary design variable.
 
-\item[Cant \(\phi(s)\)]
-The cross-level or superelevation of the track, represented as rotation
-of the track plane around its longitudinal axis.
-Cant is dynamically coupled to curvature via equilibrium conditions.
+In planar formulations this coincides with the standard curvature.
+On curved surfaces, the physically relevant quantity becomes geodesic
+curvature.
+
+\item[Cant]
+The rail height difference between both rails, represented as a
+longitudinal band along the alignment.
+
+The corresponding roll angle
+\[
+\phi(s)
+=
+\arctan\!\left(\frac{u(s)}{g}\right)
+\]
+is derived using the applicable gauge \(g\).
+
+\item[Pose2]
+A minimal planar alignment state consisting of:
+\[
+\gamma(s),
+\qquad
+\theta(s).
+\]
+Pose2 forms the reconstruction kernel of planar alignment geometry.
+
+\item[Pose3]
+A runtime-derived spatial railway state combining:
+\begin{itemize}
+\item planar geometry,
+\item profile evaluation,
+\item cant evaluation,
+\item and spatial frame construction.
+\end{itemize}
 
 \item[State]
-The physical description of the track at arc-length position \(s\),
-typically including position \(\gamma(s)\), orientation \(\theta(s)\),
-curvature \(\kappa(s)\), and cant \(\phi(s)\).
+A geometric or physical description of the railway system at a given
+arc-length position \(s\).
 
 \end{description}
 
+% ============================================================
+\section*{Sparse Alignment Structure}
+% ============================================================
+
+\begin{description}
+
+\item[cGeom]
+The central curvature-driven geometric band of the sparse alignment
+model.
+It contains:
+\begin{itemize}
+\item fixed elements,
+\item transition elements,
+\item pose2-based reconstruction anchors.
+\end{itemize}
+
+\item[Cant Band]
+A longitudinal band storing cant information correlated with fixed
+alignment elements.
+
+The cant band:
+\begin{itemize}
+\item has no independent stationing system,
+\item stores rail height differences,
+\item follows the same normalized curvature family as the associated
+cGeom element,
+\item may contain local station offsets.
+\end{itemize}
+
+\item[Profile Band]
+A longitudinal band representing vertical geometry independently from
+planar curvature geometry.
+
+\item[Fixed Element]
+An alignment element with constant curvature.
+
+Typical special cases are:
+\begin{itemize}
+\item straight segments,
+\item circular arcs.
+\end{itemize}
+
+\item[Transition Element]
+An alignment element with non-constant curvature evolution.
+
+Transition elements describe controlled changes between curvature states.
+
+\item[Sparse Representation]
+A compact, reconstruction-oriented representation of an alignment using
+semantically meaningful elements rather than dense sampled geometry.
+
+The sparse representation is reconstruction-oriented rather than
+sample-oriented.
+
+\item[Runtime Pose3]
+A pose3 state evaluated dynamically from cGeom, cant, profile, and
+runtime operators rather than stored explicitly as persistent truth.
+
+\end{description}
+
+% ============================================================
 \section*{Modeling and Representation}
+% ============================================================
 
 \begin{description}
 
@@ -52,16 +150,21 @@ A combination of parametric structure and discrete corrections:
 +
 \delta\kappa(s).
 \]
+
 It allows structured modelling with local flexibility.
 
-\item[Sparse Representation]
-A minimal representation of an alignment using essential parameters,
-such as curvature segments and transitions, enabling efficient storage
-and computation.
+\item[Normalized Curvature Law]
+A curvature law defined on the normalized interval
+\[
+u\in[0,1],
+\]
+separating shape from physical scale.
 
 \end{description}
 
-\section*{Operators}
+% ============================================================
+\section*{Operators and Runtime Evaluation}
+% ============================================================
 
 \begin{description}
 
@@ -95,9 +198,15 @@ for example tamping:
 \mathcal{T}(\gamma_k).
 \]
 
+\item[Runtime Evaluation]
+Dynamic computation of geometric or physical states from sparse bands
+and mathematical operators rather than from explicitly stored geometry.
+
 \end{description}
 
+% ============================================================
 \section*{Spaces and Transformations}
+% ============================================================
 
 \begin{description}
 
@@ -112,7 +221,7 @@ data integration.
 \item[World-to-Track Transformation]
 The mapping from world coordinates to intrinsic alignment coordinates,
 typically requiring projection onto the alignment and evaluation of
-\(s\), \(d\), \(\kappa\), and \(\phi\).
+\(s\), \(d\), \(\kappa\), and cant.
 
 \item[Kilometre Line]
 A longitudinal reference structure used for stationing, independent of
@@ -120,7 +229,9 @@ the physical geometric alignment.
 
 \end{description}
 
+% ============================================================
 \section*{Optimization}
+% ============================================================
 
 \begin{description}
 
@@ -130,8 +241,9 @@ desired property, such as smoothness, dynamic equilibrium, or data fit.
 
 \item[Jacobian]
 The matrix of derivatives of residuals with respect to parameters.
-Within AIM, Jacobians are derived analytically from arc-length-based
-relations.
+
+Within AIM, Jacobians are preferably derived analytically from
+arc-length-based relations.
 
 \item[Gauss--Newton Method]
 An optimization method using the approximation
@@ -146,14 +258,16 @@ subproblems based on linearized constraints.
 
 \end{description}
 
+% ============================================================
 \section*{Realization and Construction}
+% ============================================================
 
 \begin{description}
 
 \item[Realized Alignment]
 The physically constructed track geometry, which differs from the
-theoretical alignment due to discretization, construction, and mechanical
-effects.
+theoretical alignment due to discretization, construction, and
+mechanical effects.
 
 \item[Control Points]
 Discrete positions \(\{s_i\}\) at which geometry is specified or
@@ -172,13 +286,16 @@ The problem of finding a target alignment such that
 
 \end{description}
 
+% ============================================================
 \section*{Advanced Geometry}
+% ============================================================
 
 \begin{description}
 
 \item[Geodesic Curvature \(\kappa_g\)]
 The intrinsic curvature of a curve on a surface, measuring the change of
 direction within the surface.
+
 For railway alignment on the Earth, this is the physically relevant
 curvature.
 
@@ -191,8 +308,8 @@ An alignment defined directly on a reference ellipsoid rather than in a
 projected coordinate system.
 
 \item[Surface Frame]
-A local coordinate frame on the ellipsoid consisting of tangent, lateral,
-and surface-normal directions.
+A local coordinate frame on the ellipsoid consisting of tangent,
+lateral, and surface-normal directions.
 
 \item[Cant Rotation]
 Rotation of the track cross-section around the tangent direction,
@@ -210,7 +327,9 @@ v^2\kappa_g
 
 \end{description}
 
+% ============================================================
 \section*{Pipeline}
+% ============================================================
 
 \begin{description}
 

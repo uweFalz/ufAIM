@@ -55,13 +55,65 @@ function makeStyleForAuxTrack(cfg, previewId) {
 function pushAlignmentTrack(out, state, id, activeId) {
 	if (!id || id === activeId) return;
 
+	const track = findTrackById(state, id);
+	if (!track) return;
+
+	out.push(track);
+}
+
+function findTrackById(state, id) {
+
+	const want = String(id ?? "");
+	if (!want) return null;
+	const fromArtifact = findTrackInArtifacts(state, want);
+	if (fromArtifact) return fromArtifact;
+	const fromImportTracks = findTrackInTrackList(state.import_tracks2d, want);
+	if (fromImportTracks) return fromImportTracks;
+	const fromPreviewCollection = findTrackInTrackList(state.import_preview_collection, want);
+	if (fromPreviewCollection) return fromPreviewCollection;
+	const fromPreviewItem = findTrackInPreviewItem(state.preview_item, want);
+	if (fromPreviewItem) return fromPreviewItem;
+	return null;
+
+}
+
+function findTrackInArtifacts(state, id) {
+
 	const art = state.artifacts?.[id];
-	if (!art || art.domain !== "alignment2d") return;
-
+	if (!art || art.domain !== "alignment2d") return null;
 	const pts = art.payload?.polyline2d;
-	if (!Array.isArray(pts) || pts.length < 2) return;
+	if (!Array.isArray(pts) || pts.length < 2) return null;
+	return { id, points: pts };
 
-	out.push({ id, points: pts });
+}
+
+function findTrackInTrackList(list, id) {
+
+	const arr = Array.isArray(list) ? list : [];
+	for (const t of arr) {
+		const tid = String(t?.id ?? t?.objectId ?? t?.rpId ?? "");
+		if (tid !== id) continue;
+		const pts = t?.points ?? t?.polyline2d ?? t?.payload?.polyline2d;
+		if (!Array.isArray(pts) || pts.length < 2) continue;
+		return { id, points: pts };
+	}
+	return null;
+
+}
+
+function findTrackInPreviewItem(item, id) {
+
+	if (!item) return null;
+	const itemId = String(item?.id ?? item?.objectId ?? "");
+	if (itemId !== id) return null;
+	const pts =
+	item?.polyline2d ??
+	item?.payload?.polyline2d ??
+	item?.derived?.polyline2d ??
+	null;
+	if (!Array.isArray(pts) || pts.length < 2) return null;
+	return { id, points: pts };
+
 }
 
 function collectAuxAll(state, activeId) {
@@ -87,15 +139,18 @@ function collectAuxPinned(state, activeId) {
 
 	for (const p of pins) {
 		const rpId = p?.rpId;
-		const slotName = p?.slot;
-		if (!rpId || !slotName) continue;
+		if (rpId) ids.add(String(rpId));
 
-		const rp = state.routeProjects?.[rpId];
-		const aId = rp?.slots?.[slotName]?.alignmentArtifactId;
-		if (aId) ids.add(aId);
+		const slotName = p?.slot;
+		const rp = rpId ? state.routeProjects?.[rpId] : null;
+		const aId = slotName ? rp?.slots?.[slotName]?.alignmentArtifactId : null;
+		if (aId) ids.add(String(aId));
 	}
 
-	for (const id of ids) pushAlignmentTrack(out, state, id, activeId);
+	for (const id of ids) {
+		pushAlignmentTrack(out, state, id, activeId);
+	}
+
 	return out;
 }
 
@@ -158,18 +213,22 @@ export function createViewAuxTracks({
 	function collectAuxTracks(state) {
 		if (!cfg.showAuxTracks) return [];
 
-		const activeId = state.import_activeArtifacts?.alignmentArtifactId ?? null;
+		const activeId =
+		state.import_activeArtifacts?.alignmentArtifactId ??
+		state.activeRouteProjectId ??
+		state.focus?.objectId ??
+		null;
 
 		switch (String(cfg.auxTracksScope ?? "routeproject").toLowerCase()) {
 			case "all":
-				return collectAuxAll(state, activeId);
+			return collectAuxAll(state, activeId);
 
 			case "pinned":
-				return collectAuxPinned(state, activeId);
+			return collectAuxPinned(state, activeId);
 
 			case "routeproject":
 			default:
-				return collectAuxRouteProject(state, activeId);
+			return collectAuxRouteProject(state, activeId);
 		}
 	}
 
@@ -207,21 +266,21 @@ export function createViewAuxTracks({
 
 	function buildChunkTracksOnly(state) {
 		const chunks = chunkTracks
-			.filter((c) => c && !c.hidden)
-			.map((c) => ({
-				id: c.id,
-				points: c.points,
-				style: styleForAuxTrack(c.id, c),
-			}));
+		.filter((c) => c && !c.hidden)
+		.map((c) => ({
+			id: c.id,
+			points: c.points,
+			style: styleForAuxTrack(c.id, c),
+		}));
 
 		const preview = buildChunkPreviewTrack(state);
 		if (preview) {
 			return [
-				...chunks,
-				{
-					...preview,
-					style: styleForAuxTrack(PREVIEW_ID, { at: nowMs() }),
-				},
+			...chunks,
+			{
+				...preview,
+				style: styleForAuxTrack(PREVIEW_ID, { at: nowMs() }),
+			},
 			];
 		}
 
@@ -229,27 +288,41 @@ export function createViewAuxTracks({
 	}
 
 	function buildImportTracksOverlay(state) {
-		const tracks = Array.isArray(state.import_tracks2d) ? state.import_tracks2d : [];
-		const activeId = state.import_activeArtifacts?.alignmentArtifactId ?? null;
+	const importTracks = Array.isArray(state.import_tracks2d) ? state.import_tracks2d : [];
+	const previewTracks = Array.isArray(state.import_preview_collection)
+		? state.import_preview_collection
+		: [];
 
-		return tracks
-			.filter((t) => t.id !== activeId)
-			.map((t) => ({
-				id: `import_${t.id}`,
-				points: t.points,
-				style: {
-					alpha: 0.45,
-					width: 1.6,
-					dashed: false,
-				},
-			}));
-	}
+	const activeId =
+		state.import_activeArtifacts?.alignmentArtifactId ??
+		state.activeRouteProjectId ??
+		state.focus?.objectId ??
+		null;
+
+	const tracks = [
+		...importTracks.map((t) => ({ ...t, source: t.source ?? "import" })),
+		...previewTracks.map((t) => ({ ...t, source: t.source ?? "spot" })),
+	];
+
+	return tracks
+		.filter((t) => String(t?.id ?? t?.objectId ?? "") !== String(activeId ?? ""))
+		.map((t) => ({
+			id: `${t.source ?? "track"}_${t.id ?? t.objectId}`,
+			points: t.points,
+			style: {
+				alpha: t.source === "spot" ? 0.65 : 0.45,
+				width: t.source === "spot" ? 2.0 : 1.6,
+				dashed: false,
+			},
+		}))
+		.filter((t) => Array.isArray(t.points) && t.points.length >= 2);
+}
 
 	function buildChunkAuxTracks(state) {
 		return [
-			...buildImportTracksOverlay(state),
-			...buildAuxTracksOnly(state),
-			...buildChunkTracksOnly(state),
+		...buildImportTracksOverlay(state),
+		...buildAuxTracksOnly(state),
+		...buildChunkTracksOnly(state),
 		];
 	}
 

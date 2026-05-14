@@ -1,0 +1,370 @@
+% reality/realized_pose3.tex
+
+\chapter{Realized Pose3 and Dynamic Realization}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Classical alignment theory typically assumes that the designed geometry
+is identical to the realized geometry.
+\end{remark}
+
+\begin{remark}
+In reality, however, railway tracks are produced through iterative and
+physically constrained realization processes.
+\end{remark}
+
+\begin{remark}
+As a consequence, not only the geometric position of the track differs
+from the theoretical target alignment, but also its orientation, cant,
+and dynamic behaviour.
+\end{remark}
+
+\begin{remark}
+Thus, realization affects the full spatial railway state rather than
+geometry alone.
+\end{remark}
+
+\begin{remark}
+This motivates the introduction of a realized pose3 state:
+\[
+\mathrm{pose3}_{\mathrm{real}}(s).
+\]
+\end{remark}
+
+% ============================================================
+\section{Target and Realized States}
+% ============================================================
+
+\begin{definition}[Target pose3]
+The target railway state is defined as
+\[
+\mathrm{pose3}_{\mathrm{target}}(s)
+=
+\bigl(
+\gamma_{\mathrm{target}}(s),
+\theta_{\mathrm{target}}(s),
+\phi_{\mathrm{target}}(s)
+\bigr).
+\]
+\end{definition}
+
+\begin{definition}[Realized pose3]
+The realized railway state is defined as
+\[
+\mathrm{pose3}_{\mathrm{real}}(s)
+=
+\bigl(
+\gamma_{\mathrm{real}}(s),
+\theta_{\mathrm{real}}(s),
+\phi_{\mathrm{real}}(s)
+\bigr).
+\]
+\end{definition}
+
+\begin{remark}
+The realized state is the physically constructed and measurable state of
+the railway track.
+\end{remark}
+
+\begin{remark}
+In practice,
+\[
+\mathrm{pose3}_{\mathrm{real}}
+\neq
+\mathrm{pose3}_{\mathrm{target}}.
+\]
+\end{remark}
+
+% ============================================================
+\section{Sources of Realization Deviations}
+% ============================================================
+
+\begin{remark}
+Deviations between target and realized state arise from:
+\begin{itemize}
+\item measurement uncertainty,
+\item machine limitations,
+\item discrete control points,
+\item structural elasticity,
+\item ballast behaviour,
+\item rail bending,
+\item settlement processes,
+\item and operational degradation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, realization is not a purely geometric transformation, but a
+mechanical and operational process.
+\end{remark}
+
+% ============================================================
+\section{Realized Curvature and Cant}
+% ============================================================
+
+\begin{definition}[Realized curvature]
+The realized curvature is
+\[
+\kappa_{\mathrm{real}}(s)
+=
+\frac{\dd \theta_{\mathrm{real}}}{\dd s}.
+\]
+\end{definition}
+
+\begin{definition}[Realized cant]
+The realized cant angle is
+\[
+\phi_{\mathrm{real}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+Both quantities differ from their target values due to realization
+effects.
+\end{remark}
+
+\begin{remark}
+In particular,
+\[
+\kappa_{\mathrm{real}}
+\neq
+\kappa_{\mathrm{target}},
+\qquad
+\phi_{\mathrm{real}}
+\neq
+\phi_{\mathrm{target}}.
+\]
+\end{remark}
+
+% ============================================================
+\section{Cant Realization}
+% ============================================================
+
+\begin{remark}
+Cant realization is particularly sensitive because cant is not only a
+geometric quantity but also a dynamically relevant operational state.
+\end{remark}
+
+\begin{remark}
+Cant realization is affected by:
+\begin{itemize}
+\item tamping accuracy,
+\item rail fastening systems,
+\item ballast stiffness,
+\item torsion limits,
+\item local support conditions,
+\item and measurement procedures.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In practice, cant ramps are realized only approximately and may exhibit
+local irregularities.
+\end{remark}
+
+\begin{remark}
+This is especially relevant in:
+\begin{itemize}
+\item transition zones,
+\item switches and crossings,
+\item station areas,
+\item and overlapping transition regions.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Coupling of Curvature and Cant}
+% ============================================================
+
+\begin{remark}
+Curvature and cant are dynamically coupled quantities.
+\end{remark}
+
+\begin{remark}
+Therefore, realization errors in curvature and cant cannot be treated
+independently.
+\end{remark}
+
+\begin{remark}
+The physically relevant quantity is the realized dynamic state:
+\[
+(\kappa_{\mathrm{real}}, \phi_{\mathrm{real}}).
+\]
+\end{remark}
+
+\begin{definition}[Realized equilibrium condition]
+A realized track is dynamically balanced if
+\[
+v^2\kappa_{\mathrm{real}}(s)
+=
+g\sin\phi_{\mathrm{real}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+In practice, deviations from equilibrium are unavoidable and constrained
+only within admissible limits.
+\end{remark}
+
+% ============================================================
+\section{Dynamic Realization Error}
+% ============================================================
+
+\begin{definition}[Realized effective lateral acceleration]
+The realized effective lateral acceleration is
+\[
+a_{\mathrm{eff,real}}(s)
+=
+v^2\kappa_{\mathrm{real}}(s)
+-
+g\sin\phi_{\mathrm{real}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+This quantity is operationally more relevant than geometric deviation
+alone.
+\end{remark}
+
+\begin{definition}[Realized jerk]
+The realized jerk is
+\[
+j_{\mathrm{real}}(s)
+=
+v^3\kappa'_{\mathrm{real}}(s)
+-
+gv\cos\phi_{\mathrm{real}}(s)\,
+\phi'_{\mathrm{real}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+Passenger comfort depends directly on the realized jerk rather than on
+the analytical target functions.
+\end{remark}
+
+% ============================================================
+\section{Realization as State Transformation}
+% ============================================================
+
+\begin{definition}[Pose3 realization operator]
+The realization process may be written as
+\[
+\mathcal{R}_{\mathrm{pose3}}
+:
+\mathrm{pose3}_{\mathrm{target}}
+\mapsto
+\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{definition}
+
+\begin{remark}
+This operator includes:
+\begin{itemize}
+\item geometric realization,
+\item cant realization,
+\item mechanical filtering,
+\item and operational constraints.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, realization acts on the full railway state rather than only on
+position space.
+\end{remark}
+
+% ============================================================
+\section{Filtering Interpretation}
+% ============================================================
+
+\begin{proposition}
+The realization operator acts as a low-pass filter on:
+\begin{itemize}
+\item curvature,
+\item cant,
+\item and higher-order derivatives.
+\end{itemize}
+\end{proposition}
+
+\begin{remark}
+High-frequency components are attenuated through:
+\begin{itemize}
+\item machine limitations,
+\item structural smoothing,
+\item ballast mechanics,
+\item and measurement discretization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Therefore, highly detailed analytical target states may collapse into
+similar realized states.
+\end{remark}
+
+% ============================================================
+\section{Operational Interpretation}
+% ============================================================
+
+\begin{remark}
+Railway operation interacts with the realized state rather than with the
+theoretical target geometry.
+\end{remark}
+
+\begin{remark}
+Consequently, the relevant engineering question is not:
+\begin{quote}
+``Was the theoretical geometry built exactly?''
+\end{quote}
+but rather:
+\begin{quote}
+``Does the realized state produce the intended dynamic behaviour?''
+\end{quote}
+\end{remark}
+
+% ============================================================
+\section{Connection to Optimization}
+% ============================================================
+
+\begin{remark}
+Optimization should therefore operate on realized states:
+\[
+J
+=
+J\bigl(
+\mathrm{pose3}_{\mathrm{real}}
+\bigr)
+=
+J\bigl(
+\mathcal{R}_{\mathrm{pose3}}
+(
+\mathrm{pose3}_{\mathrm{target}}
+)
+\bigr).
+\]
+\end{remark}
+
+\begin{remark}
+This extends classical alignment optimization toward realization-aware
+optimization.
+\end{remark}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Real railway tracks are not analytical curves but realized physical
+states.
+
+The realization process acts on the complete pose3 state, including
+geometry, curvature, and cant.
+
+Thus, railway alignment design must be understood as the design of a
+realizable dynamic state rather than merely a geometric target curve.
+
+Within the AIM framework, realized pose3 forms the bridge between
+geometry, mechanics, construction, and operation.
+\end{summary}

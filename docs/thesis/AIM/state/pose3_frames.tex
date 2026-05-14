@@ -1,0 +1,95 @@
+% state/pose3_frames.tex
+
+\chapter{Pose3 Frames and Spatial Reference Systems}
+
+\section{Motivation}
+
+\begin{remark}
+The pose3 state describes railway geometry together with orientation and cant.
+\end{remark}
+
+\begin{remark}
+To interpret these quantities consistently, local spatial reference frames are required.
+\end{remark}
+
+\section{Tangent Direction}
+
+\begin{definition}[Tangent vector]
+\[
+\mathbf t(s)=\gamma'(s).
+\]
+\end{definition}
+
+\section{Lateral Direction}
+
+\begin{definition}[Lateral direction]
+\[
+\mathbf n(s)
+\]
+denotes a vector orthogonal to the tangent direction.
+\end{definition}
+
+\section{Vertical and Binormal Directions}
+
+\begin{definition}[Binormal direction]
+\[
+\mathbf b(s)=\mathbf t(s)\times\mathbf n(s).
+\]
+\end{definition}
+
+\section{Pose3 Frame}
+
+\begin{definition}[Pose3 frame]
+\[
+F(s)=
+(\mathbf t(s),\mathbf n(s),\mathbf b(s)).
+\]
+\end{definition}
+
+\section{Cant Rotation}
+
+\begin{definition}[Cant rotation]
+Cant is interpreted as a rotation around the tangent direction:
+\[
+R_\phi(s).
+\]
+\end{definition}
+
+\section{Rail Plane}
+
+\begin{remark}
+Gauge, rail elevation, and cross-level geometry are defined relative to the rotated local frame.
+\end{remark}
+
+\section{Frenet and Railway Frames}
+
+\begin{remark}
+Classical Frenet frames become unstable in regions where
+\[
+\kappa(s)\to 0.
+\]
+\end{remark}
+
+\begin{remark}
+Railway modelling therefore requires more robust frame formulations.
+\end{remark}
+
+\section{Surface and Ellipsoid Frames}
+
+\begin{remark}
+When alignments are defined on the Earth surface, local frames must respect ellipsoid geometry.
+\end{remark}
+
+\section{Runtime Interpretation}
+
+\begin{remark}
+Within AIM, frames act as runtime services supporting projection,
+visualization, BIM placement, and sensor integration.
+\end{remark}
+
+\section{Connection to AIM}
+
+\begin{summary}
+Pose3 frames provide the spatial reference structure underlying railway
+alignment modelling.
+\end{summary}

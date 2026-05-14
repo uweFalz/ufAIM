@@ -1,5 +1,6 @@
 // app/controllers/CockpitController.js
 
+import { projectAlignmentPreview } from "@src/domain/projection/AlignmentProjectionService.js";
 import { inspectCrsContext } from "@src/domain/crs/CrsAgent.js";
 import { exportLandXML } from "@src/export/exportLandXML.js";
 import { downloadTextFile } from "@src/export/downloadFile.js";
@@ -52,8 +53,8 @@ export class CockpitController {
 
 	async refreshAll() {
 		await Promise.all([
-			this.refreshImportState(),
-			this.refreshSpotState(),
+		this.refreshImportState(),
+		this.refreshSpotState(),
 		]);
 
 		this.render();
@@ -66,6 +67,7 @@ export class CockpitController {
 
 	async refreshSpotState() {
 		this._spotState = await this.messaging.sendCmdAwait("Spot.GetState", {});
+		this._syncSpotObjectsToPreviewCollection(this._spotState);
 		return this._spotState;
 	}
 
@@ -121,7 +123,7 @@ export class CockpitController {
 		this.store.actions?.setActiveRouteProject?.(null);
 		this.store.actions?.setCursorS?.(0);
 
-		this.logLine?.(`[Cockpit] preview: ${previewCandidate.name}`);
+		this.logLine?.(`[Cockpit] Vorschau: ${previewCandidate.name}`);
 		this.queueRender();
 
 		return true;
@@ -137,10 +139,11 @@ export class CockpitController {
 			if (show) this._activateObjectId(itemId);
 
 			this.logLine?.(
-				show
-					? `[Cockpit] anzeigen: ${itemId}`
-					: `[Cockpit] bereits übernommen: ${itemId}`
+			show
+			? `[Cockpit] anzeigen: ${itemId}`
+			: `[Cockpit] bereits im Universe: ${itemId}`
 			);
+
 			this.queueRender();
 			return true;
 		}
@@ -149,20 +152,37 @@ export class CockpitController {
 			itemIds: [itemId],
 		});
 
+		const addedObjectId = readFirstAddedObjectId(result);
+
+		if (!addedObjectId) {
+			const reason = readFirstReviewReason(result);
+
+			this.logLine?.(
+			`[Cockpit] nicht ins Universe übernommen: ${itemId}` +
+			(reason ? ` :: ${reason}` : "")
+			);
+
+			await Promise.all([
+			this.refreshImportState(),
+			this.refreshSpotState(),
+			]);
+
+			this.render();
+			return false;
+		}
+
 		await this._markImportItemAccepted(itemId);
 
 		await Promise.all([
-			this.refreshImportState(),
-			this.refreshSpotState(),
+		this.refreshImportState(),
+		this.refreshSpotState(),
 		]);
 
-		const addedObjectId = readFirstAddedObjectId(result);
-
-		if (addedObjectId && show) {
+		if (show) {
 			this._activateObjectId(addedObjectId);
 		}
 
-		this.logLine?.(`[Cockpit] übernommen: ${itemId}${show ? " + anzeigen" : ""}`);
+		this.logLine?.(`[Cockpit] ins Universe übernommen: ${itemId}${show ? " + anzeigen" : ""}`);
 		this.render();
 
 		return true;
@@ -179,16 +199,11 @@ export class CockpitController {
 		return true;
 	}
 
-	async exportActiveLandXML() {
-		const windowState = this.store.getState?.() ?? {};
-		const activeObjectId =
-			windowState?.focus?.objectId ??
-			windowState?.activeRouteProjectId ??
-			null;
+	async exportLandXMLById(objectId) {
+		const id = String(objectId ?? "").trim();
 
-		const id = String(activeObjectId ?? "").trim();
 		if (!id) {
-			this.logLine?.("[Cockpit] kein aktives Objekt für landXML-Export");
+			this.logLine?.("[Cockpit] kein Objekt für landXML-Export");
 			return false;
 		}
 
@@ -269,11 +284,41 @@ export class CockpitController {
 		}
 	}
 
+	_syncSpotObjectsToPreviewCollection(spotState) {
+		const objects = Object.values(spotState?.objects ?? {});
+		const tracks = [];
+
+		for (const obj of objects) {
+			const kernel = obj?.data?.kernel ?? null;
+			if (!kernel) continue;
+
+			const projected = projectAlignmentPreview({
+				sparseAlignment: kernel,
+				maxStep: 5,
+			});
+
+			const points = projected?.polyline2d;
+			if (!Array.isArray(points) || points.length < 2) continue;
+
+			tracks.push({
+				id: String(obj.id),
+				objectId: String(obj.id),
+				points,
+				source: "spot",
+			});
+		}
+
+		this.store.actions?.setImportPreviewCollection?.({
+			items: tracks,
+			source: { type: "spot-sync" },
+		});
+	}
+
 	_buildSceneState(windowState, spotState) {
 		const activeObjectId =
-			windowState?.focus?.objectId ??
-			windowState?.activeRouteProjectId ??
-			null;
+		windowState?.focus?.objectId ??
+		windowState?.activeRouteProjectId ??
+		null;
 
 		const previewItem = windowState?.preview_item ?? null;
 
@@ -327,8 +372,8 @@ export class CockpitController {
 		const spotObjects = Object.values(spotState?.objects ?? {});
 
 		const previewTracks = Array.isArray(windowState.import_preview_collection)
-			? windowState.import_preview_collection.length
-			: 0;
+		? windowState.import_preview_collection.length
+		: 0;
 
 		const crs = inspectCrsContext({
 			sceneCrsId: scene?.crsId ?? null,
@@ -356,41 +401,41 @@ export class CockpitController {
 
 		if (scene.mode === "preview" && scene.objectId) {
 			actions.push(
-				{
-					id: "accept",
-					label: "Übernehmen",
-					kind: "secondary",
-					objectId: scene.objectId,
-				},
-				{
-					id: "acceptAndShow",
-					label: "Übernehmen & anzeigen",
-					kind: "primary",
-					objectId: scene.objectId,
-				},
-				{
-					id: "clearPreview",
-					label: "Vorschau schließen",
-					kind: "ghost",
-					objectId: scene.objectId,
-				}
+			{
+				id: "accept",
+				label: "Übernehmen",
+				kind: "secondary",
+				objectId: scene.objectId,
+			},
+			{
+				id: "acceptAndShow",
+				label: "Übernehmen & anzeigen",
+				kind: "primary",
+				objectId: scene.objectId,
+			},
+			{
+				id: "clearPreview",
+				label: "Vorschau schließen",
+				kind: "ghost",
+				objectId: scene.objectId,
+			}
 			);
 		}
 
 		if (scene.mode === "spot" && scene.objectId) {
 			actions.push(
-				{
-					id: "exportLandXML",
-					label: "landXML exportieren",
-					kind: "primary",
-					objectId: scene.objectId,
-				},
-				{
-					id: "pin",
-					label: scene.pinned ? "Lösen" : "Anheften",
-					kind: "secondary",
-					objectId: scene.objectId,
-				}
+			{
+				id: "exportLandXML",
+				label: "landXML exportieren",
+				kind: "primary",
+				objectId: scene.objectId,
+			},
+			{
+				id: "pin",
+				label: scene.pinned ? "Lösen" : "Anheften",
+				kind: "secondary",
+				objectId: scene.objectId,
+			}
 			);
 		}
 
@@ -468,31 +513,35 @@ export class CockpitController {
 	_dispatchAction(actionId, objectId) {
 		switch (actionId) {
 			case "accept":
-				void this.acceptImportItem(objectId, { show: false });
-				return;
+			void this.acceptImportItem(objectId, { show: false });
+			return;
 
 			case "acceptAndShow":
-				void this.acceptImportItem(objectId, { show: true });
-				return;
+			void this.acceptImportItem(objectId, { show: true });
+			return;
 
 			case "clearPreview":
-				this.clearPreview();
-				return;
+			this.clearPreview();
+			return;
 
 			case "exportLandXML":
-				void this.exportActiveLandXML();
-				return;
+			void this.exportLandXMLById(objectId);
+			return;
 
 			case "pin":
-				this.togglePin(objectId);
-				return;
+			this.togglePin(objectId);
+			return;
 
 			case "inspectCrs":
-				this.logLine?.("[Cockpit] CRS-Kontext ist im Cockpit sichtbar. Nächster Schritt: CRS-Management-Shell.");
-				return;
+			this.logLine?.("[Cockpit] CRS-Kontext ist sichtbar. Nächster Schritt: CRS-Management-Shell.");
+			return;
+
+			case "details":
+			this.logLine?.(`[Cockpit] Details: ${objectId}`);
+			return;
 
 			default:
-				this.logLine?.(`[Cockpit] unbekannte Aktion: ${actionId}`);
+			this.logLine?.(`[Cockpit] unbekannte Aktion: ${actionId}`);
 		}
 	}
 
@@ -507,8 +556,14 @@ export class CockpitController {
 
 function readFirstAddedObjectId(result) {
 	return Array.isArray(result?.addedObjects) && result.addedObjects[0]?.id
-		? String(result.addedObjects[0].id)
-		: null;
+	? String(result.addedObjects[0].id)
+	: null;
+}
+
+function readFirstReviewReason(result) {
+	return Array.isArray(result?.reviewItems) && result.reviewItems[0]?.reason
+	? String(result.reviewItems[0].reason)
+	: null;
 }
 
 function buildContextMessage(scene, crs) {
@@ -529,9 +584,9 @@ function buildContextMessage(scene, crs) {
 
 function safeFileStem(value) {
 	return String(value ?? "ufAIM_alignment")
-		.trim()
-		.replace(/\.[^.]+$/g, "")
-		.replace(/[^a-zA-Z0-9_\-]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		|| "ufAIM_alignment";
+	.trim()
+	.replace(/\.[^.]+$/g, "")
+	.replace(/[^a-zA-Z0-9_\-]+/g, "_")
+	.replace(/^_+|_+$/g, "")
+	|| "ufAIM_alignment";
 }

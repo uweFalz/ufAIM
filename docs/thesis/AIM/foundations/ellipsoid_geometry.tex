@@ -19,12 +19,13 @@ quantities are evaluated in a planar approximation of the Earth.
 
 \begin{remark}
 However, such projections introduce geometric distortions and therefore
-do not represent the physical geometry on which the railway exists.
+do not exactly represent the physical geometry on which the railway
+exists.
 \end{remark}
 
 \begin{remark}
 This motivates a formulation of alignment geometry directly on the
-reference surface of the Earth, typically modeled as an ellipsoid.
+reference surface of the Earth, typically modelled as an ellipsoid.
 \end{remark}
 
 % ============================================================
@@ -59,7 +60,7 @@ so that \(s\) represents physical distance along the curve.
 \begin{definition}[Tangent vector]
 The tangent vector is defined as
 \[
-\mathbf{t}(s) = \gamma'(s).
+\mathbf{t}(s)=\gamma'(s).
 \]
 \end{definition}
 
@@ -87,6 +88,11 @@ The second derivative \(\gamma''(s)\) can be decomposed into:
 \]
 \end{definition}
 
+\begin{remark}
+Here, \(\nabla_s\mathbf{t}\) denotes the covariant derivative of the
+tangent vector along the curve on the surface.
+\end{remark}
+
 % ============================================================
 \section{Geodesic Curvature}
 % ============================================================
@@ -96,7 +102,7 @@ The intrinsic curvature of the alignment on the ellipsoid is defined as
 \[
 \kappa_g(s)
 =
-\bigl\| \nabla_s \mathbf{t}(s) \bigr\|.
+\bigl\|\nabla_s \mathbf{t}(s)\bigr\|.
 \]
 \end{definition}
 
@@ -105,8 +111,9 @@ Geodesic curvature measures the change of direction within the surface.
 \end{remark}
 
 \begin{remark}
-It is independent of the embedding of the surface in \(\mathbb{R}^3\)
-and therefore represents an intrinsic geometric quantity.
+It is the surface-intrinsic counterpart of planar curvature and is the
+relevant curvature notion for alignment geometry constrained to the
+reference surface.
 \end{remark}
 
 % ============================================================
@@ -135,17 +142,17 @@ and does not describe the bending of the alignment within the surface.
 % ============================================================
 
 \begin{proposition}
-The total curvature satisfies:
+The total spatial curvature satisfies:
 \[
 \kappa^2(s)
 =
-\kappa_g^2(s) + \kappa_n^2(s).
+\kappa_g^2(s)+\kappa_n^2(s).
 \]
 \end{proposition}
 
 \begin{remark}
-Thus, the spatial curvature decomposes into an intrinsic (surface) and
-an extrinsic (surface-induced) contribution.
+Thus, the spatial curvature decomposes into an intrinsic surface
+contribution and an extrinsic surface-induced contribution.
 \end{remark}
 
 % ============================================================
@@ -153,10 +160,10 @@ an extrinsic (surface-induced) contribution.
 % ============================================================
 
 \begin{proposition}
-For railway alignment modelling, the physically relevant curvature is
-the geodesic curvature:
+For railway alignment modelling on a reference surface, the
+railway-relevant curvature is the geodesic curvature:
 \[
-\kappa_{\mathrm{rail}}(s) = \kappa_g(s).
+\kappa_{\mathrm{rail}}(s)=\kappa_g(s).
 \]
 \end{proposition}
 
@@ -173,14 +180,17 @@ on the embedding curvature of the Earth.
 \begin{remark}
 In planar geometry, curvature is defined as
 \[
-\kappa(s) = \theta'(s).
+\kappa(s)=\theta'(s).
 \]
 \end{remark}
 
 \begin{remark}
-On a curved surface, this must be replaced by a covariant derivative:
+On a curved surface, the heading-angle derivative is replaced by the
+covariant change of the tangent direction:
 \[
-\nabla_s \theta = \kappa_g(s).
+\kappa_g(s)
+=
+\bigl\|\nabla_s \mathbf{t}(s)\bigr\|.
 \]
 \end{remark}
 
@@ -196,18 +206,24 @@ surface formulation.
 \begin{definition}[Geodesic]
 A curve satisfies
 \[
-\kappa_g(s) = 0
+\kappa_g(s)=0
 \]
 if and only if it is a geodesic on the surface.
 \end{definition}
 
 \begin{remark}
-Geodesics represent the shortest paths on the ellipsoid and correspond
-to ``straight lines'' in intrinsic geometry.
+Geodesics represent straightest paths on the ellipsoid in the intrinsic
+surface sense.
 \end{remark}
 
 \begin{remark}
 They are generally not straight in projected coordinate systems.
+\end{remark}
+
+\begin{remark}
+Railway alignment design is not equivalent to geodesic design.
+A railway alignment must satisfy engineering, dynamic, operational, and
+realization constraints.
 \end{remark}
 
 % ============================================================
@@ -215,20 +231,21 @@ They are generally not straight in projected coordinate systems.
 % ============================================================
 
 \begin{remark}
-In practical computations, geodesic curvature can be evaluated as:
+In practical computations, geodesic curvature can be evaluated by
+projecting the second derivative onto the tangent plane of the surface:
 \[
 \kappa_g
 =
 \left\|
-\gamma'' - (\gamma'' \cdot \mathbf{n}_{\mathcal{E}})\,
+\gamma'' - (\gamma''\cdot \mathbf{n}_{\mathcal{E}})
 \mathbf{n}_{\mathcal{E}}
 \right\|.
 \]
 \end{remark}
 
 \begin{remark}
-This corresponds to projecting the second derivative onto the tangent
-plane of the surface.
+This formulation separates curvature within the surface from curvature
+caused by the embedding of the surface in three-dimensional space.
 \end{remark}
 
 % ============================================================
@@ -244,7 +261,7 @@ intrinsic curvature on the ellipsoid.
 Consequently:
 \begin{itemize}
 \item arc-length is only approximately preserved,
-\item curvature is distorted,
+\item curvature is distorted by projection,
 \item dynamic quantities are evaluated on an approximate geometry.
 \end{itemize}
 \end{remark}
@@ -259,7 +276,7 @@ results.
 % ============================================================
 
 \begin{remark}
-A consistent modelling framework should formulate alignment geometry
+A consistent modelling framework may formulate alignment geometry
 directly on the ellipsoid and use projections only for visualization
 and data exchange.
 \end{remark}
@@ -274,6 +291,11 @@ This enables:
 \end{itemize}
 \end{remark}
 
+\begin{remark}
+This is a long-term research direction rather than a prerequisite for
+practical AIM implementations.
+\end{remark}
+
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
@@ -282,9 +304,10 @@ This enables:
 Curvature on the ellipsoid must be understood as an intrinsic quantity,
 measured within the surface rather than in ambient space.
 
-For railway alignment, the relevant curvature is the geodesic curvature.
+For railway alignment on a reference surface, the relevant curvature is
+the geodesic curvature.
 
 This distinction is essential for physically consistent modelling and
-provides a foundation for extending the AIM framework beyond projection-
-based engineering geometry.
+provides a foundation for extending the AIM framework beyond
+projection-based engineering geometry.
 \end{summary}

@@ -1,133 +1,332 @@
-# ufAIM Vision
+ufAIM — Leitlinie
 
-## Alignment-Based Information Modelling
+# Core Idea
 
-ufAIM is an engineering system for railway infrastructure that places the **alignment** at the center of the model.
+ufAIM is not a classic file editor.
+ufAIM is not a BIM viewer.
+ufAIM is not a GIS with alignment plugins.
 
-In most GIS, CAD or BIM systems the alignment is treated as a secondary object inside larger containers such as maps, models or document structures.  
-ufAIM reverses this perspective.
+ufAIM is an alignment-based engineering universe.
 
-The alignment is the primary object.  
-Everything else is organised around it.
+The system is built around the idea that infrastructure alignment is not merely geometry, but a central engineering knowledge structure.
 
-Terrain, infrastructure assets, BIM objects, coordinate systems and project data are referenced relative to the alignment and its geometry.
+Railway infrastructure in particular is fundamentally alignment-based:
 
+* geometrically
+* topologically
+* operationally
+* semantically
+* mathematically
+* spatially
 
----
+ufAIM therefore treats alignment not as a drawing artifact, but as a first-class engineering object.
 
-## Why ufAIM exists
+⸻
 
-Railway infrastructure design and maintenance fundamentally revolve around the alignment:
+# What ufAIM Is
 
-- geometry
-- curvature
-- transition curves
-- stationing
-- speed constraints
-- cant and gradients
+ufAIM is:
 
-Despite this, most software environments treat alignments as a side element inside CAD drawings, GIS layers or BIM containers.
+* object-based
+* spatial-first
+* alignment-centric
+* knowledge-oriented
+* multi-view
+* sparse-kernel-based
+* runtime/service-oriented
+* open for third-party data
+* capable of combining geometry, semantics and engineering context
 
-ufAIM was created to work **directly on the mathematical structure of alignments**.
+The user does not primarily work on files.
+The user works inside an engineering universe.
 
-Instead of managing files or models first, ufAIM manages **the alignment itself**.
+⸻
 
-Railway infrastructure is inherently a hybrid of geometry and topology.
-ufAIM models the geometric structure of alignments while allowing them to be embedded into a topological network representation.
+# What ufAIM Is NOT
 
+ufAIM is not:
 
----
+* a classic CAD replacement
+* a pure BIM platform
+* a project-file prison
+* an import wizard
+* a spreadsheet-style infrastructure tool
+* a geometry-only viewer
+* a static GIS application
 
-## Mathematical core
+Import is not the final workflow.
+Import is merely object creation.
 
-At its heart, ufAIM treats railway alignments as mathematical objects.
+⸻
 
-The internal alignment kernel is intentionally minimal and strict:
+# The Universe
 
-- straight segments
-- constant curvature arcs
-- transition elements (e.g. clothoids)
-- explicit arc length parametrisation
-- direction and curvature continuity
+The highest-level concept of ufAIM is the Universe.
 
-This **sparse alignment model** provides a stable foundation for:
+The Universe is the complete engineering working world.
 
-- validation
-- editing
-- optimisation
-- simulation
-- geometric analysis
+It contains:
 
+* SPOT objects
+* spatial context
+* technical views
+* engineering relations
+* external context data
+* tools and services
+* runtime-derived representations
 
----
+The Universe is not equivalent to a project file.
 
-## Import philosophy
+A RouteProject is only one possible organizational structure within the Universe.
 
-Real-world data arrives in many formats.
+⸻
 
-ufAIM therefore uses a two-stage representation:
+# SPOT
 
-### landFAT
+SPOT is the canonical engineering object space.
 
-A rich intermediate representation derived primarily from LandXML concepts.
+SPOT stores sparse, structured engineering objects.
 
-landFAT is:
+Examples:
 
-- **LandXML-compatible**
-- **extended for transition curves**
-- **JSON-based for internal processing**
+* alignments
+* profiles
+* cant bands
+* station equations
+* relations
+* object groups
+* route projects
+* imported objects
+* derived objects
+* exported artifacts
 
-All supported input formats are first translated into this common structure.
+SPOT is not view-dependent.
+SPOT is not import-dependent.
+SPOT is not renderer-dependent.
 
+SPOT is the canonical object truth.
 
-### sparse alignment
+⸻
 
-The strict internal alignment kernel used for computation and modelling.
+# Workspace
 
-landFAT data is normalised into sparse alignment objects that can be analysed, visualised and optimised.
+The Workspace is the current active perception and interaction state of the Universe.
 
+It may contain:
 
----
+* current focus object
+* open views
+* pinned objects
+* active tools
+* current map location
+* active CRS context
+* current technical analysis state
+* session state
 
-## Engineering CRS
+The Workspace is resumable.
 
-ufAIM distinguishes between geographic coordinate systems and the **engineering workspace**.
+The user should be able to continue working where they left off.
 
-The engineering CRS defines the coordinate environment in which the alignment is analysed and edited.
+⸻
 
-Multiple coordinate systems can coexist:
+# Spatial-First Principle
 
-- WGS84 / map projections
-- national railway reference systems
-- project-specific engineering coordinates
+Geo and alignment data are inherently spatial.
 
-The system provides mechanisms to translate between them while preserving alignment precision.
+Therefore the primary interaction model of ufAIM is spatial-first.
 
+The system should behave more like:
 
----
+* Apple Maps
+* modern GIS systems
+* Figma
+* Miro
 
-## Beyond viewing: solving
+than like:
 
-ufAIM is not only intended to visualise railway geometry.
+* a property dialog
+* a spreadsheet
+* a file-import wizard
 
-It is designed to **compute, analyse and improve alignments**.
+Objects should primarily be:
 
-Future components include optimisation approaches inspired by classical railway alignment solvers such as AXTRAN, extended with modern numerical and graph-based methods.
+* visible
+* selectable
+* focusable
+* relatable
+* explorable
 
-The goal is a system that can:
+in space.
 
-- analyse existing alignments
-- detect inconsistencies
-- assist with design optimisation
-- support complex rail networks
+Lists and tables are secondary access modes.
 
+⸻
 
----
+# Multiple Access Modes
 
-## Alignment first
+The same engineering object may be accessed through different views.
 
-The guiding principle of ufAIM can be summarised simply:
+Examples:
 
-> Railway infrastructure should be modelled **from the alignment outward**, not the other way around.
+Spatial Access
 
-ufAIM therefore places the alignment at the centre of infrastructure information modelling.
+“Where is it?”
+
+* mapLibre
+* globe
+* 2D/3D geometry
+* spatial overlays
+
+Structural Access
+
+“How is it organized?”
+
+* object explorer
+* route projects
+* collections
+* groups
+* tags
+* sources
+
+Technical Access
+
+“What is it technically?”
+
+* q/s band
+* profile band
+* cant band
+* transition editor
+* inspectors
+* validators
+* solver views
+
+Operational Access
+
+“What can be done with it?”
+
+* export
+* conversion
+* optimization
+* analysis
+* simulation
+* collaboration
+
+These are not separate worlds.
+They are different perceptions of the same engineering objects.
+
+⸻
+
+# Sparse Kernel Principle
+
+Sparse engineering data remains canonical.
+
+Derived representations are runtime/service results.
+
+Examples:
+
+* sampled geometry
+* pose3
+* visualization meshes
+* export geometry
+* solver states
+* analysis buffers
+
+may be cached or derived,
+
+but they are never the canonical truth.
+
+⸻
+
+# pose2 / pose3 Principle
+
+The sparse alignment kernel stores pose2-based geometric information.
+
+pose3 is a runtime/service-level representation.
+
+pose3 is derived from:
+
+* cGeom
+* cant
+* profile
+
+The sparse kernel remains lightweight and stable.
+
+⸻
+
+# Alignment Kernel
+
+The alignment kernel is based on:
+
+* fixed elements
+* transition elements
+* curvature-driven integration
+* sparse representation
+* runtime derivation
+
+The system treats:
+
+* geometry
+* cant
+* profile
+* stationing
+
+as related but distinct engineering layers.
+
+⸻
+
+# User Experience Principle
+
+ufAIM should maximize engineering clarity while minimizing user friction.
+
+The system should:
+
+* help users understand data
+* help users contextualize data
+* help users trust or reject data
+* help users manipulate and transform data
+* help users relate data to reality
+
+The system should not force users through rigid workflows.
+
+The user owns the engineering process.
+
+ufAIM assists.
+
+⸻
+
+# Third-Party Context
+
+Alignment objects become significantly more valuable when combined with external context.
+
+Examples:
+
+* OSM
+* map tiles
+* DEMs
+* IFC
+* point clouds
+* railway assets
+* operational information
+* environmental data
+* future AI services
+
+ufAIM is therefore designed as an extensible engineering universe.
+
+⸻
+
+# Long-Term Direction
+
+The long-term goal is not merely a better alignment editor.
+
+The long-term goal is:
+
+* alignment-centered infrastructure engineering
+* knowledge-based engineering
+* mathematically rigorous but user-friendly tooling
+* spatially understandable infrastructure workflows
+* integration of geometry, topology, operation and semantics
+
+The core principle remains:
+
+Alignment is not a side artifact.
+Alignment is the central organizing structure.

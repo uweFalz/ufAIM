@@ -1,11 +1,16 @@
+% modeling/transitions.tex
+
 \chapter{Transition Functions}
 
+% ============================================================
 \section{Motivation}
+% ============================================================
 
 \begin{remark}
 Transitions are the decisive element type for curvature-driven alignment
 modelling. While fixed elements describe geometric states of constant
-curvature, transitions describe the controlled change between such states.
+curvature, transitions describe the controlled change between such
+states.
 \end{remark}
 
 \begin{remark}
@@ -16,7 +21,19 @@ and review literature
 \cite{Koc2008TransitionCurves,BrustadDalmo2020Review}.
 \end{remark}
 
+\begin{remark}
+Within AIM, transitions are not primarily interpreted through explicit
+geometric shape, but through the evolution of curvature.
+\end{remark}
+
+% ============================================================
 \section{Definition by Curvature Evolution}
+% ============================================================
+
+\begin{principle}[Curvature evolution principle]
+Within AIM, transitions are classified primarily by their curvature
+evolution rather than by explicit geometric shape.
+\end{principle}
 
 \begin{definition}[Transition]
 A transition is an alignment element whose curvature varies over its
@@ -41,7 +58,9 @@ This formulation directly follows the curvature-based description of
 planar curves \cite{DoCarmo1976Curves}.
 \end{remark}
 
+% ============================================================
 \section{Normalized Representation}
+% ============================================================
 
 \begin{definition}[Normalized transition law]
 A normalized transition is defined by
@@ -56,14 +75,24 @@ with
 \]
 \end{definition}
 
-
 \begin{remark}
 Normalization separates the geometric shape of a transition from its
 scale and allows systematic comparison of transition families.
 \end{remark}
 
+\begin{remark}
+Normalization separates intrinsic transition behaviour from physical
+scale and therefore enables reusable transition registries and
+family-based modelling.
+\end{remark}
+
+% ------------------------------------------------------------
+% Comparison graphic
+% ------------------------------------------------------------
+
 \begin{figure}[h]
 \centering
+
 \begin{tikzpicture}[
   scale=1.0,
   axis/.style={->, thin},
@@ -75,70 +104,109 @@ scale and allows systematic comparison of transition families.
 % Top plot: normalized curvature laws
 % ------------------------------------------------------------
 \begin{scope}[shift={(0,4.0)}]
-  \draw[axis] (0,0) -- (5.3,0) node[right] {$u=s/L$};
-  \draw[axis] (0,0) -- (0,2.0) node[above] {$\widehat{\kappa}(u)$};
 
-  % Clothoid: k = u
-  \draw[curve] plot[smooth, domain=0:5, samples=40]
+  \draw[axis] (0,0) -- (5.3,0)
+    node[right] {$u=s/L$};
+
+  \draw[axis] (0,0) -- (0,2.0)
+    node[above] {$\widehat{\kappa}(u)$};
+
+  % Clothoid
+  \draw[curve]
+    plot[smooth, domain=0:5, samples=40]
     (\x,{0.32*\x});
 
-  % Bloss-like smoothstep: 3u^2 - 2u^3
-  \draw[curve, dashed] plot[smooth, domain=0:5, samples=80]
+  % Bloss-like
+  \draw[curve, dashed]
+    plot[smooth, domain=0:5, samples=80]
     (\x,{1.6*(3*(\x/5)^2 - 2*(\x/5)^3)});
 
-  % Sine/Vienna-like smooth curve
-  \draw[curve, dotted, very thick] plot[smooth, domain=0:5, samples=80]
+  % Sine-like
+  \draw[curve, dotted, very thick]
+    plot[smooth, domain=0:5, samples=80]
     (\x,{1.6*(0.5 - 0.5*cos(180*\x/5))});
 
-  \node[label, right] at (5.05,1.60) {clothoid};
-  \node[label, right] at (5.05,1.45) {Bloss-like};
-  \node[label, right] at (5.05,1.30) {sine-like};
+  \node[label,right] at (5.05,1.60) {clothoid};
+  \node[label,right] at (5.05,1.45) {Bloss-like};
+  \node[label,right] at (5.05,1.30) {sine-like};
+
 \end{scope}
 
 % ------------------------------------------------------------
-% Middle plot: curvature derivative
+% Middle plot: derivatives
 % ------------------------------------------------------------
 \begin{scope}[shift={(0,1.65)}]
-  \draw[axis] (0,0) -- (5.3,0) node[right] {$u=s/L$};
-  \draw[axis] (0,0) -- (0,2.0) node[above] {$\widehat{\kappa}'(u)$};
 
-  % derivative clothoid: constant
+  \draw[axis] (0,0) -- (5.3,0)
+    node[right] {$u=s/L$};
+
+  \draw[axis] (0,0) -- (0,2.0)
+    node[above] {$\widehat{\kappa}'(u)$};
+
+  % Clothoid derivative
   \draw[curve] (0,0.9) -- (5,0.9);
 
-  % derivative Bloss-like: 6u - 6u^2
-  \draw[curve, dashed] plot[smooth, domain=0:5, samples=80]
-    (\x,{0.15 + 1.5*(6*(\x/5) - 6*(\x/5)^2)/1.5});
+  % Bloss derivative
+  \draw[curve, dashed]
+    plot[smooth, domain=0:5, samples=80]
+    (\x,{0.15 + 1.5*(6*(\x/5)-6*(\x/5)^2)/1.5});
 
-  % derivative sine-like: pi/2 sin(pi u), scaled
-  \draw[curve, dotted, very thick] plot[smooth, domain=0:5, samples=80]
+  % Sine derivative
+  \draw[curve, dotted, very thick]
+    plot[smooth, domain=0:5, samples=80]
     (\x,{0.15 + 1.35*sin(180*\x/5)});
 
-  \node[label, right] at (5.05,0.90) {constant slope};
+  \node[label,right] at (5.05,0.90) {constant slope};
+
 \end{scope}
 
 % ------------------------------------------------------------
-% Bottom sketch: geometric paths nearly coincide
+% Bottom plot: geometry
 % ------------------------------------------------------------
 \begin{scope}[shift={(0,-0.55)}]
-  \draw[axis] (0,0) -- (5.3,0) node[right] {$x$};
-  \draw[axis] (0,0) -- (0,1.55) node[above] {$y$};
 
-  \draw[curve] plot[smooth, domain=0:5, samples=80]
+  \draw[axis] (0,0) -- (5.3,0)
+    node[right] {$x$};
+
+  \draw[axis] (0,0) -- (0,1.55)
+    node[above] {$y$};
+
+  \draw[curve]
+    plot[smooth, domain=0:5, samples=80]
     (\x,{0.055*\x^2});
-  \draw[curve, dashed] plot[smooth, domain=0:5, samples=80]
+
+  \draw[curve, dashed]
+    plot[smooth, domain=0:5, samples=80]
     (\x,{0.052*\x^2 + 0.018*sin(180*\x/5)});
-  \draw[curve, dotted, very thick] plot[smooth, domain=0:5, samples=80]
+
+  \draw[curve, dotted, very thick]
+    plot[smooth, domain=0:5, samples=80]
     (\x,{0.058*\x^2 - 0.015*sin(180*\x/5)});
 
-  \node[label, right] at (5.05,1.35) {nearly identical geometry};
+  \node[label,right] at (5.05,1.35)
+    {nearly identical geometry};
+
 \end{scope}
 
 \end{tikzpicture}
 
-\caption{Transition families may produce very similar geometric paths while differing strongly in curvature evolution and curvature derivatives. This is why transition design must be evaluated in curvature and dynamic terms, not only in position space.}
+\caption{
+Transition families may produce very similar geometric paths while
+differing strongly in curvature evolution and curvature derivatives.
+This is why transition design must be evaluated in curvature and
+dynamic terms, not only in position space.
+}
 \end{figure}
 
+\begin{remark}
+Transitions that appear nearly identical in position space may differ
+substantially in curvature derivatives and therefore in dynamic
+behaviour.
+\end{remark}
+
+% ============================================================
 \section{Scaling}
+% ============================================================
 
 \begin{proposition}
 Let $\widehat{\kappa}$ be a normalized transition law.
@@ -146,8 +214,14 @@ Then a physical transition is given by
 \[
 \kappa(s)
 =
-\kappa_0 + (\kappa_1-\kappa_0)\,
-\widehat{\kappa}\!\left(\frac{s}{L}\right).
+\kappa_0
++
+(\kappa_1-\kappa_0)
+\,
+\widehat{\kappa}
+\!\left(
+\frac{s}{L}
+\right).
 \]
 \end{proposition}
 
@@ -156,7 +230,9 @@ This separates shape from scale and provides the basis for reusable
 transition families and parameterized design.
 \end{remark}
 
+% ============================================================
 \section{Regularity and Smoothness}
+% ============================================================
 
 \begin{definition}[Regularity class]
 A transition is of class $C^k$ if its curvature function is $k$-times
@@ -172,20 +248,24 @@ as shown in both theoretical and engineering studies
 
 \OPEN{Formal role of $\kappa'$ and $\kappa''$ in engineering rules.}
 
+% ============================================================
 \section{Transition Families}
+% ============================================================
 
 \begin{definition}[Transition family]
 A transition family is a class of curvature laws sharing a common
 functional structure.
 \end{definition}
 
+% ------------------------------------------------------------
 \subsection{Classical Families}
+% ------------------------------------------------------------
 
 \begin{remark}
 The classical transition curve in railway engineering is the clothoid,
-characterized by linear curvature evolution
+characterized by linear curvature evolution:
 \[
-\kappa(s) \propto s.
+\kappa(s)\propto s.
 \]
 \end{remark}
 
@@ -196,7 +276,9 @@ Horsburgh \cite{Horsburgh1913TransitionCurve},
 and Higgins \cite{Higgins1922TransitionSpiral}.
 \end{remark}
 
+% ------------------------------------------------------------
 \subsection{Polynomial and Alternative Families}
+% ------------------------------------------------------------
 
 \begin{remark}
 Polynomial transition curves provide additional flexibility in shaping
@@ -212,7 +294,9 @@ as well as control-oriented constructions proposed by Klauder
 
 \TODO{Formal definition of polynomial transition families.}
 
+% ------------------------------------------------------------
 \subsection{Geometric Families}
+% ------------------------------------------------------------
 
 \begin{remark}
 Some transition curves are introduced through geometric or implicit
@@ -230,7 +314,9 @@ These curves require transformation into $\kappa(s)$ representation
 before they can be integrated into the present framework.
 \end{remark}
 
+% ------------------------------------------------------------
 \subsection{Engineering and Practice-Oriented Families}
+% ------------------------------------------------------------
 
 \begin{remark}
 Engineering practice often introduces transition curves through design
@@ -244,7 +330,9 @@ family, originally described by Bloss \cite{Bloss1978TrackGeometry}
 and further discussed in modern summaries \cite{Ciobanu2015Bloss}.
 \end{remark}
 
+% ------------------------------------------------------------
 \subsection{Modern and Hybrid Families}
+% ------------------------------------------------------------
 
 \begin{remark}
 Modern engineering practice considers a variety of transition families
@@ -255,32 +343,50 @@ higher-order control.
 \begin{remark}
 Examples include smoothed-curvature transitions proposed by Koc
 \cite{Koc2017SmoothedEnds,Koc2019SmoothedTransition,Koc2019Operational}
-and Wiener-Bogen-related approaches \cite{Wojtczak2017WienerBogen}.
+and Wiener-Bogen-related approaches
+\cite{Wojtczak2017WienerBogen}.
 \end{remark}
 
 \RESEARCH{Systematic classification of modern transition families.}
 
+% ============================================================
 \section{Decomposition Approaches}
+% ============================================================
 
 \begin{remark}
 A transition need not always be treated as a single indivisible object.
 It may be useful to represent it as a composition of sub-elements.
 \end{remark}
 
+\begin{remark}
+Within AIM, complex transition behaviour may be constructed from
+composable normalized suboperators such as half-wave and clothoid
+components.
+\end{remark}
+
 \TODO{Formalize halfWave -- clothoid -- halfWave decomposition.}
 
 \OPEN{Is decomposition fundamental or implementation-specific?}
 
+% ============================================================
 \section{Operator View}
+% ============================================================
+
+\begin{principle}[Transition operator principle]
+A transition element acts as a local curvature evolution operator
+transforming one geometric state into another.
+\end{principle}
 
 \begin{remark}
-Transitions can be interpreted as operators transforming curvature
-states along an alignment.
+Transitions can therefore be interpreted as state evolution operators
+rather than merely as predefined geometric curve shapes.
 \end{remark}
 
 \RESEARCH{Formal operator algebra of transitions.}
 
+% ============================================================
 \section{Implementation Perspective}
+% ============================================================
 
 \begin{remark}
 In computational systems, transition curves may be represented using:
@@ -292,33 +398,46 @@ In computational systems, transition curves may be represented using:
 \end{itemize}
 \end{remark}
 
+\begin{remark}
+Transition families may be represented through registries containing
+normalized curvature laws together with derivative and integration
+operators.
+\end{remark}
+
 \TODO{Registry-based transition system.}
 
 \OPEN{Trade-off between analytic precision and computational efficiency.}
 
+% ============================================================
 \section{Relation to Railway Engineering}
+% ============================================================
 
 \begin{remark}
 In railway applications, transitions are tightly coupled to operational
 parameters such as speed and cant, and must satisfy strict engineering
-constraints \cite{Kufver2000RailwayAlignment,Klein1998Trassierung}.
+constraints
+\cite{Kufver2000RailwayAlignment,Klein1998Trassierung}.
 \end{remark}
 
 \begin{remark}
 The review literature confirms that transition curves must be understood
 not only geometrically, but also with respect to comfort, maintenance,
-and dynamic response \cite{BrustadDalmo2020Review}.
+and dynamic response
+\cite{BrustadDalmo2020Review}.
 \end{remark}
 
+% ============================================================
 \section{Summary}
+% ============================================================
 
 \begin{summary}
-Transitions describe the controlled evolution of curvature between
+Transitions define the controlled evolution of curvature between
 geometric states.
 
-Their normalized representation enables reusable families, while their
-engineering interpretation determines admissibility in practical
-applications.
+Within AIM, they are interpreted as normalized curvature evolution
+operators rather than merely as predefined geometric curve types.
 
-They form the central modelling mechanism for smooth alignment design.
+Their normalized representation enables reusable transition families,
+operator-based modelling, and runtime reconstruction of alignment
+geometry and dynamics.
 \end{summary}

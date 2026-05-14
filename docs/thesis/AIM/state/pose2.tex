@@ -1,6 +1,10 @@
+% state/pose2.tex
+
 \chapter{Pose2}
 
+% ============================================================
 \section{Motivation}
+% ============================================================
 
 \begin{remark}
 In railway alignment modelling, the geometric state of the track at a
@@ -9,9 +13,9 @@ way.
 \end{remark}
 
 \begin{remark}
-While full spatial representation involves three-dimensional geometry
-and cant, many fundamental properties can already be captured in a
-planar setting.
+While full spatial representation involves three-dimensional geometry,
+cant, and dynamic interpretation, many fundamental properties can
+already be captured in a planar setting.
 \end{remark}
 
 \begin{remark}
@@ -19,66 +23,108 @@ The concept of \emph{Pose2} provides such a minimal representation in
 two dimensions.
 \end{remark}
 
----
+\begin{remark}
+Within AIM, Pose2 is not merely a geometric helper structure.
+It forms the persistent reconstruction kernel of the alignment model.
+\end{remark}
 
+% ============================================================
 \section{Definition of Pose2}
+% ============================================================
 
 \begin{definition}[Pose2]
 A planar pose at arc-length position $s$ is defined as the tuple
 \[
-\mathrm{Pose2}(s) = \bigl(\gamma(s), \theta(s)\bigr),
+\mathrm{Pose2}(s)
+=
+\bigl(
+\gamma(s),
+\theta(s)
+\bigr),
 \]
 where:
 \begin{itemize}
-\item $\gamma(s) = (x(s), y(s))$ is the position in the plane,
-\item $\theta(s)$ is the orientation (heading angle).
+\item $\gamma(s)=(x(s),y(s))$ is the planar position,
+\item $\theta(s)$ is the tangent direction.
 \end{itemize}
 \end{definition}
 
----
+\begin{remark}
+Pose2 describes the local geometric state of the alignment in the plane.
+\end{remark}
 
-\section{Kinematic Relations}
+% ============================================================
+\section{Curvature-Driven Reconstruction}
+% ============================================================
+
+\begin{principle}[Curvature-driven reconstruction]
+Within AIM, planar geometry is reconstructed from curvature by
+successive integration:
+\[
+\kappa(s)
+\rightarrow
+\theta(s)
+\rightarrow
+\gamma(s).
+\]
+\end{principle}
 
 \begin{figure}[h]
 \centering
+
 \begin{tikzpicture}[scale=1.2]
 
 % Curve
-\draw[thick, domain=0:2.2, samples=50] plot ({\x}, {0.4*sin(1.5*\x)});
+\draw[thick, domain=0:2.2, samples=50]
+plot ({\x}, {0.4*sin(1.5*\x)});
 
-% Point s
-\coordinate (P) at (1.4, {0.4*sin(1.5*1.4)});
+% Point
+\coordinate (P) at (1.4,{0.4*sin(1.5*1.4)});
 \fill (P) circle (1.5pt);
 
-% Tangent approximation
-\draw[->, thick] (P) -- ++(0.8, {0.4*cos(1.5*1.4)*1.5}) node[right] {$\theta(s)$};
+% Tangent
+\draw[->, thick]
+(P) -- ++(0.9,{0.4*cos(1.5*1.4)*1.5})
+node[right] {$\theta(s)$};
 
-% Normal direction (curvature hint)
-\draw[->, dashed] (P) -- ++({-0.4*cos(1.5*1.4)*1.5}, 0.8) node[above] {$\kappa(s)$};
+% Curvature hint
+\draw[->, dashed]
+(P) -- ++({-0.4*cos(1.5*1.4)*1.5},0.8)
+node[above] {$\kappa(s)$};
 
-% Labels
+% Label
 \node[below] at (P) {$\gamma(s)$};
 
 \end{tikzpicture}
 
-\caption{Pose2 representation: geometry is not primary; it emerges from curvature $\kappa(s)$.}
+\caption{
+Planar geometry emerges by successive integration of curvature.
+Within AIM, curvature is treated as the primary geometric quantity.
+}
 \end{figure}
+
+% ============================================================
+\section{Kinematic Relations}
+% ============================================================
 
 \begin{remark}
 The evolution of Pose2 is governed by curvature.
 \end{remark}
 
 \begin{proposition}
-The orientation satisfies:
+The tangent direction satisfies:
 \[
-\frac{\dd \theta}{\dd s} = \kappa(s).
+\frac{\dd\theta}{\dd s}
+=
+\kappa(s).
 \]
 \end{proposition}
 
 \begin{proposition}
-The position is obtained by integration:
+The planar position satisfies:
 \[
-\frac{\dd \gamma}{\dd s} =
+\frac{\dd\gamma}{\dd s}
+=
 \begin{pmatrix}
 \cos\theta(s) \\
 \sin\theta(s)
@@ -87,66 +133,123 @@ The position is obtained by integration:
 \end{proposition}
 
 \begin{remark}
-Thus, Pose2 is fully determined by the curvature function $\kappa(s)$
-and initial conditions.
+Thus, geometry is not treated as primary.
+Instead, it emerges from integration of curvature.
 \end{remark}
 
----
-
+% ============================================================
 \section{Initial Conditions}
+% ============================================================
 
 \begin{definition}[Initial pose]
 A Pose2 trajectory is uniquely determined by:
 \[
-\gamma(0), \quad \theta(0), \quad \kappa(s).
+\gamma(0),
+\qquad
+\theta(0),
+\]
+together with the curvature law
+\[
+\kappa(s).
 \]
 \end{definition}
 
----
+\begin{remark}
+The curvature law acts as the geometric control function of the planar
+state evolution.
+\end{remark}
 
+% ============================================================
+\section{Pose2 as Persistent Kernel}
+% ============================================================
+
+\begin{proposition}
+Within AIM, Pose2 forms the persistent geometric reconstruction kernel
+of the alignment model.
+\end{proposition}
+
+\begin{remark}
+Pose2 is sufficient for persistent planar reconstruction of the
+alignment geometry.
+\end{remark}
+
+\begin{remark}
+Higher-level geometric and dynamic quantities are derived from Pose2
+rather than stored redundantly.
+\end{remark}
+
+% ============================================================
+\section{Connection to Sparse Alignment}
+% ============================================================
+
+\begin{remark}
+Within the sparse alignment model, cGeom elements are interpreted as
+local curvature operators contributing to the reconstruction of the
+global Pose2 trajectory.
+\end{remark}
+
+\begin{remark}
+Fixed and transition elements therefore do not primarily store geometry
+itself, but rules governing geometric evolution.
+\end{remark}
+
+\begin{remark}
+The sparse alignment model can thus be interpreted as a compact
+integration program for reconstructing Pose2 trajectories.
+\end{remark}
+
+% ============================================================
 \section{Interpretation}
+% ============================================================
 
 \begin{remark}
-Pose2 provides the minimal state description of planar alignment
-geometry.
-\end{remark}
-
-\begin{remark}
-It separates:
+Pose2 separates:
 \begin{itemize}
-\item intrinsic behaviour (curvature),
-\item from derived quantities (position and orientation).
+\item intrinsic geometric behaviour (curvature),
+\item from derived geometric quantities (position and direction).
 \end{itemize}
 \end{remark}
 
----
+\begin{remark}
+This separation is one of the central structural ideas of the AIM
+framework.
+\end{remark}
 
+% ============================================================
 \section{Relation to Pose3}
+% ============================================================
 
 \begin{remark}
-Pose2 is extended to three dimensions by including cant and vertical
-geometry.
+Within AIM, Pose3 is not treated as a persistent extension of Pose2,
+but as a runtime-derived spatial evaluation state.
 \end{remark}
 
 \begin{remark}
-The full state representation (Pose3) includes:
+Pose3 is derived dynamically from:
 \begin{itemize}
-\item position in 3D,
-\item orientation in space,
-\item curvature,
-\item cant.
+\item Pose2 reconstruction,
+\item cant evaluation,
+\item profile evaluation,
+\item and runtime coordinate services.
 \end{itemize}
 \end{remark}
 
----
+\begin{remark}
+This avoids redundancy and synchronization instability between planar,
+cant, and profile representations.
+\end{remark}
 
+% ============================================================
 \section{Summary}
+% ============================================================
 
 \begin{summary}
 Pose2 is the fundamental planar state representation of railway
 alignment.
 
-It expresses geometry in terms of curvature-driven evolution and
-provides the basis for higher-dimensional modelling, including cant and
-dynamics.
+Within AIM, Pose2 forms the persistent reconstruction kernel from which
+planar geometry is generated through curvature-driven integration.
+
+Higher-dimensional runtime states such as Pose3 are derived from this
+kernel together with cant and profile information.
 \end{summary}

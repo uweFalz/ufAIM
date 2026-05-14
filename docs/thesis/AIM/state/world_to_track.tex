@@ -1,3 +1,5 @@
+% state/world_to_track.tex
+
 \section{World--Track Coordinate Transformation}
 
 % ============================================================
@@ -5,18 +7,25 @@
 % ============================================================
 
 \begin{remark}
-Railway alignments are modeled in a one-dimensional intrinsic coordinate
-system defined by arc-length.
+Railway alignments are modelled in an intrinsic coordinate system
+defined by arc-length.
 \end{remark}
 
 \begin{remark}
-Real-world data, however, is given in global coordinate systems such as
-WGS84, UTM, or local engineering reference systems.
+Real-world data, however, is given in global or engineering coordinate
+systems such as WGS84, UTM, Gauss--Krüger, or local project reference
+systems.
 \end{remark}
 
 \begin{remark}
 Thus, a transformation between world coordinates and track coordinates
 is required.
+\end{remark}
+
+\begin{remark}
+Within AIM, world-to-track transformation is not merely a geometric
+utility. It is a central runtime service connecting measured data,
+visualization, validation, and alignment modelling.
 \end{remark}
 
 % ============================================================
@@ -36,6 +45,22 @@ The track coordinate system at position \(s\) is defined by:
 
 \begin{remark}
 In the planar case, only \((s,d)\) is considered.
+\end{remark}
+
+\begin{remark}
+Track coordinates are intrinsic to the alignment. They should not be
+confused with projected world coordinates.
+\end{remark}
+
+\begin{remark}
+The track coordinate system is not merely a coordinate convention.
+It is the intrinsic reference structure of the alignment itself.
+\end{remark}
+
+\begin{remark}
+Intrinsic track coordinates are not identical to engineering stationing.
+Station equations, kilometre jumps, and operational reference systems
+may introduce discontinuities unrelated to geometric arc-length.
 \end{remark}
 
 % ============================================================
@@ -69,7 +94,21 @@ and the normal vector:
 \]
 \end{remark}
 
----
+\begin{remark}
+The lateral offset \(d\) depends on the chosen reference convention.
+Possible references include:
+\begin{itemize}
+\item alignment centerline,
+\item track center,
+\item rail axis,
+\item or engineering-specific offset definitions.
+\end{itemize}
+\end{remark}
+
+\OPEN{
+Clarify reference-line conventions for lateral offsets,
+especially in multi-track and cant-dependent situations.
+}
 
 % ============================================================
 \subsection{Inverse Transformation (World to Track)}
@@ -84,6 +123,11 @@ Given a world point \(x\), the track coordinates \((s,d)\) are defined by:
 \| x - (\gamma(s) + d\,\mathbf{n}(s)) \|.
 \]
 \end{definition}
+
+\begin{remark}
+The term projection is used operationally here and does not necessarily
+imply a unique orthogonal projection in the classical geometric sense.
+\end{remark}
 
 \begin{figure}[h]
 \centering
@@ -135,7 +179,7 @@ the local normal direction.}
 \end{figure}
 
 \begin{remark}
-This is a nonlinear projection problem onto the alignment.
+This is a nonlinear inverse problem on the alignment.
 \end{remark}
 
 \begin{remark}
@@ -143,11 +187,48 @@ In practice, it is solved by:
 \begin{itemize}
 \item nearest point search,
 \item local Newton iteration,
-\item segment-wise projection.
+\item segment-wise projection,
+\item or hybrid lookup strategies.
 \end{itemize}
 \end{remark}
 
----
+% ============================================================
+\subsection{Ambiguity and Failure Modes}
+% ============================================================
+
+\begin{remark}
+The world-to-track mapping is generally not globally unique and may be
+ambiguous.
+\end{remark}
+
+\begin{remark}
+A single world position may correspond to multiple valid intrinsic track
+states.
+\end{remark}
+
+\begin{remark}
+Ambiguities may occur in:
+\begin{itemize}
+\item loops,
+\item switches and crossings,
+\item parallel tracks,
+\item closely spaced alignments,
+\item self-near geometries,
+\item or station areas.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Therefore, world-to-track transformation must often be evaluated in a
+context-aware way, using:
+\begin{itemize}
+\item track identity,
+\item expected station range,
+\item topology,
+\item operational context,
+\item or runtime interaction history.
+\end{itemize}
+\end{remark}
 
 % ============================================================
 \subsection{Local Approximation}
@@ -167,8 +248,6 @@ s \approx \arg\min_s \| x - \gamma(s) \|.
 \]
 \end{remark}
 
----
-
 % ============================================================
 \subsection{Relation to Curvature}
 % ============================================================
@@ -185,7 +264,35 @@ The transformation depends on curvature:
 Errors in \(s\) propagate nonlinearly into world space.
 \end{remark}
 
----
+\begin{remark}
+World-to-track transformation therefore depends directly on the quality
+and stability of the underlying alignment representation.
+\end{remark}
+
+% ============================================================
+\subsection{Dependency on Runtime Evaluation}
+% ============================================================
+
+\begin{remark}
+The world-to-track transformation depends on runtime evaluation of the
+underlying sparse alignment model.
+\end{remark}
+
+\begin{remark}
+Within AIM:
+\begin{itemize}
+\item cGeom defines the intrinsic alignment curve,
+\item pose2 provides tangent and local orientation,
+\item pose3 extends the local spatial state,
+\item and sparse runtime operators evaluate the resulting geometry.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, world-to-track transformation is not an isolated geometric
+operation, but part of the runtime evaluation architecture of the AIM
+framework.
+\end{remark}
 
 % ============================================================
 \subsection{Computational Cost}
@@ -196,7 +303,8 @@ The inverse mapping \(x \mapsto (s,d)\) is computationally expensive:
 \begin{itemize}
 \item nonlinear,
 \item iterative,
-\item dependent on curve representation.
+\item dependent on curve representation,
+\item and potentially ambiguous.
 \end{itemize}
 \end{remark}
 
@@ -204,7 +312,10 @@ The inverse mapping \(x \mapsto (s,d)\) is computationally expensive:
 Thus, it must be used selectively in large-scale systems.
 \end{remark}
 
----
+\begin{proposition}[Selective projection principle]
+Exact world-to-track projection should be performed only where its
+precision is required.
+\end{proposition}
 
 % ============================================================
 \subsection{Level-of-Detail Strategy}
@@ -222,7 +333,10 @@ The world-to-track transformation is evaluated depending on scale:
 This reflects the fact that high precision is only required locally.
 \end{remark}
 
----
+\begin{remark}
+LOD-dependent projection is not merely a visualization strategy, but a
+computational necessity for scalable alignment-based systems.
+\end{remark}
 
 % ============================================================
 \subsection{Hybrid Strategy}
@@ -240,7 +354,11 @@ A hybrid approach combines:
 This mirrors the hybrid modelling approach used for curvature.
 \end{remark}
 
----
+\begin{remark}
+In this sense, world-to-track mapping is itself a hybrid runtime service:
+coarse search identifies candidates, while local refinement provides
+precision.
+\end{remark}
 
 % ============================================================
 \subsection{Connection to CRS}
@@ -254,11 +372,19 @@ The world coordinates depend on the chosen coordinate reference system
 \begin{remark}
 Thus, the full transformation chain is:
 \[
-\text{CRS} \;\rightarrow\; \text{world} \;\rightarrow\; \text{track}.
+\text{CRS}
+\;\rightarrow\;
+\text{world}
+\;\rightarrow\;
+\text{track}.
 \]
 \end{remark}
 
----
+\begin{remark}
+For high-precision applications, the alignment curve \(\gamma(s)\) may
+be defined directly on a reference ellipsoid.
+This affects the definition of curvature and projection operators.
+\end{remark}
 
 % ============================================================
 \subsection{Connection to Realization}
@@ -275,10 +401,8 @@ The mapping depends on the realized alignment:
 
 \begin{remark}
 Thus, world-to-track mapping should always refer to the realized
-geometry.
+geometry whenever physical measurement data is involved.
 \end{remark}
-
----
 
 % ============================================================
 \subsection{Key Insight}
@@ -289,7 +413,16 @@ The world-to-track transformation is the central interface between
 geometric modelling and real-world data.
 \end{proposition}
 
----
+\begin{proposition}
+World-to-track transformation is an inverse runtime service, not a
+static coordinate conversion.
+\end{proposition}
+
+\begin{proposition}[Alignment-centric coordinate principle]
+Within AIM, the intrinsic alignment space is primary.
+World coordinates are interpreted as external embeddings of alignment
+states rather than as the fundamental geometric domain.
+\end{proposition}
 
 % ============================================================
 \subsection{Connection to AIM}
@@ -299,16 +432,13 @@ geometric modelling and real-world data.
 The world--track transformation links the intrinsic alignment model
 to external coordinate systems and measured data.
 
-Its nonlinear and scale-dependent nature makes it a critical component
-for visualization, optimization, and data integration.
+Its nonlinear, ambiguous, and scale-dependent nature makes it a critical
+component for visualization, optimization, and data integration.
 
-Efficient handling requires hybrid and LOD-based strategies, consistent
-with the overall AIM framework.
+Within AIM, world-to-track transformation is interpreted as a runtime
+evaluation service operating on sparse alignment structures rather than
+as a purely geometric coordinate utility.
+
+Efficient handling therefore requires hybrid and LOD-based strategies,
+consistent with the overall AIM framework.
 \end{summary}
-
-\begin{remark}
-For high-precision applications, the alignment curve $\gamma(s)$ may be
-defined directly on a reference ellipsoid.
-
-This affects the definition of curvature and projection operators.
-\end{remark}

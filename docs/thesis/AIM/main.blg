@@ -3,58 +3,44 @@ Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: main.aux
 The style file: plain.bst
 Database file #1: references.bib
-Warning--entry type for "Klauder2001WO" isn't style-file defined
---line 239 of file references.bib
-Warning--entry type for "Klauder2009US" isn't style-file defined
---line 253 of file references.bib
-Repeated entry---line 438 of file references.bib
- : @book{docarmo1976curves
- :                        ,
-I'm skipping whatever remains of this entry
-Warning--empty publisher in hofmann2001gps
-Warning--empty journal in Klauder2001BetterWay
-Warning--empty journal in kufver2000railway
-Warning--empty publisher in pressley2010elementary
-Warning--empty publisher in struik1961lectures
 You've used 52 entries,
             2118 wiz_defined-function locations,
-            809 strings with 11927 characters,
-and the built_in function-call counts, 13241 in all, are:
-= -- 1291
+            815 strings with 12199 characters,
+and the built_in function-call counts, 13260 in all, are:
+= -- 1299
 > -- 510
 < -- 2
 + -- 217
 - -- 156
-* -- 717
-:= -- 2308
-add.period$ -- 162
+* -- 709
+:= -- 2312
+add.period$ -- 164
 call.type$ -- 52
 change.case$ -- 218
 chr.to.int$ -- 0
-cite$ -- 57
-duplicate$ -- 549
-empty$ -- 1155
+cite$ -- 52
+duplicate$ -- 546
+empty$ -- 1160
 format.name$ -- 156
-if$ -- 2739
+if$ -- 2752
 int.to.chr$ -- 0
 int.to.str$ -- 52
-missing$ -- 55
-newline$ -- 269
+missing$ -- 54
+newline$ -- 271
 num.names$ -- 105
-pop$ -- 293
+pop$ -- 291
 preamble$ -- 1
 purify$ -- 182
 quote$ -- 0
-skip$ -- 368
+skip$ -- 366
 stack$ -- 0
 substring$ -- 635
-swap$ -- 58
+swap$ -- 60
 text.length$ -- 2
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 178
-warning$ -- 5
+warning$ -- 0
 while$ -- 137
 width$ -- 54
-write$ -- 558
-(There was 1 error message)
+write$ -- 567

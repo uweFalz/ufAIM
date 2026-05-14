@@ -131,9 +131,21 @@ export function createWindowStore(initial) {
 			});
 		},
 
-		setImportPreviewCollection({ items = [], source = null } = {}) {
+		setImportPreviewCollection(input = {}) {
+			const items = Array.isArray(input)
+			? input
+			: Array.isArray(input?.items)
+			? input.items
+			: [];
+			
+			console.log("[windowStore] import_preview_collection =", items.length);
+
+			const source = Array.isArray(input)
+			? { type: "spot-preview-collection" }
+			: input?.source ?? null;
+
 			setState({
-				import_preview_collection: Array.isArray(items) ? items : [],
+				import_preview_collection: items,
 				import_preview_source: source && typeof source === "object" ? source : null,
 			});
 		},
@@ -194,13 +206,13 @@ export function createWindowStore(initial) {
 		setPins(pins) {
 			const arr = Array.isArray(pins) ? pins : [];
 			const next = arr
-				.filter(Boolean)
-				.map((p) => ({
-					rpId: String(p.rpId ?? p.baseId ?? ""),
-					slot: (p.slot === "left" || p.slot === "km" || p.slot === "right") ? p.slot : "right",
-					at: Number.isFinite(p.at) ? p.at : Date.now(),
-				}))
-				.filter((p) => p.rpId);
+			.filter(Boolean)
+			.map((p) => ({
+				rpId: String(p.rpId ?? p.baseId ?? ""),
+				slot: (p.slot === "left" || p.slot === "km" || p.slot === "right") ? p.slot : "right",
+				at: Number.isFinite(p.at) ? p.at : Date.now(),
+			}))
+			.filter((p) => p.rpId);
 
 			setState({ view_pins: next });
 		},
@@ -409,8 +421,8 @@ export function createWindowStore(initial) {
 				const want = String(s.te_presetId ?? "");
 				const got = String(spec?.presetId ?? "");
 				return (want && got && want === got)
-					? ({ ...s, te_presetSpec: spec })
-					: s;
+				? ({ ...s, te_presetSpec: spec })
+				: s;
 			});
 		},
 

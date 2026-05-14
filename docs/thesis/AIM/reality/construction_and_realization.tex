@@ -1,3 +1,5 @@
+% reality/construction_and_realization.tex
+
 \chapter{Construction and Realization}
 
 \section{Motivation}
@@ -8,26 +10,21 @@ curvature objects.
 \end{remark}
 
 \begin{remark}
-The realization process fundamentally alters the nature of an alignment.
-The curve that is constructed is not the curve that is designed, but the
-result of a transformation imposed by discrete operations, mechanical
-constraints, and measurement feedback.
+In practice, tracks are not constructed as continuous mathematical
+curves. They are realized through discrete construction and maintenance
+processes, local measurements, machine operations, correction limits, and
+structural response of the track.
 \end{remark}
 
-\begin{remark}
-In practice, however, tracks are not constructed as continuous curves,
-but realized through discrete construction and maintenance processes.
-\end{remark}
+\begin{proposition}
+The curve that is constructed is not identical to the curve that is
+designed.
+\end{proposition}
 
 \begin{remark}
-Thus, the physically realized track is not identical to the analytical
-target curve, but an approximation shaped by:
-\begin{itemize}
-\item measurement data,
-\item machine operations,
-\item local correction limits,
-\item and structural response of the track.
-\end{itemize}
+The physically realized track is the result of a transformation imposed
+by construction processes, measurement feedback, and mechanical
+constraints.
 \end{remark}
 
 \begin{remark}
@@ -336,10 +333,10 @@ K(s,\sigma)\,
 where \(K(s,\sigma)\) is a localized kernel.
 \end{definition}
 
- \begin{remark}
- The kernel \(K(s,\sigma)\) represents the spatial influence of a local
- adjustment operation.
- \end{remark}
+\begin{remark}
+The kernel \(K(s,\sigma)\) represents the spatial influence of a local
+adjustment operation.
+\end{remark}
 
 \begin{proposition}[Filter interpretation]
 The kernel-based formulation provides a linearized model of the
@@ -435,13 +432,13 @@ Thus, realization is not a single transformation, but the result of an
 iterative physical process.
 \end{remark}
 
- \begin{summary}
- The realization operator can be understood as the limit of an iterative,
- localized adjustment process.
+\begin{summary}
+The realization operator can be understood as the limit of an iterative,
+localized adjustment process.
 
- A kernel-based model provides a concrete and computationally tractable
- representation of this process.
- \end{summary}
+A kernel-based model provides a concrete and computationally tractable
+representation of this process.
+\end{summary}
 
 % ============================================================
 \section{Filter Interpretation of Realization}
@@ -747,6 +744,12 @@ The relevant design space for railway alignments is the image of
 \(\mathcal{R}\), not the space of analytical curvature laws.
 \end{proposition}
 
+\begin{remark}
+The realization process acts on physically embedded geometry.
+In principle, this geometry is defined on the Earth surface rather than
+only in a projected coordinate system.
+\end{remark}
+
 \begin{summary}
 Inverse realization reformulates alignment design as an inverse problem
 under construction and realization constraints.
@@ -758,9 +761,3 @@ physical behaviour.
 This provides a rigorous framework for integrating construction,
 mechanics, and geometry into a unified design process.
 \end{summary}
-
-\begin{remark}
-The realization process acts on the physically embedded geometry,
-which in principle is defined on the Earth surface rather than in a
-projected coordinate system.
-\end{remark}
