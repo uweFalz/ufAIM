@@ -1,0 +1,425 @@
+% foundations/ontology.tex
+
+\chapter{Ontology and Conceptual Structure}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Railway alignment modelling combines concepts originating from:
+\begin{itemize}
+\item geometry,
+\item mechanics,
+\item surveying,
+\item construction,
+\item vehicle dynamics,
+\item and operational railway engineering.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Many inconsistencies in classical systems arise because these concepts
+are mixed implicitly without a rigorous conceptual structure.
+\end{remark}
+
+\begin{remark}
+Within AIM, a distinction is made between:
+\begin{itemize}
+\item mathematical objects,
+\item physical objects,
+\item operational objects,
+\item and runtime representations.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Core Ontological Distinction}
+% ============================================================
+
+\begin{definition}[Ontological layers]
+The AIM ontology distinguishes between:
+\begin{enumerate}
+\item abstract geometry,
+\item realized physical geometry,
+\item operational railway behaviour,
+\item and computational runtime representation.
+\end{enumerate}
+\end{definition}
+
+\begin{remark}
+These layers are related, but not identical.
+\end{remark}
+
+% ============================================================
+\section{Alignment as Abstract Geometry}
+% ============================================================
+
+\subsection{Alignment Concept}
+
+\begin{definition}[Alignment]
+An alignment is an intrinsic geometric object primarily defined through:
+\[
+\kappa(s),
+\qquad
+\phi(s),
+\qquad
+\mathrm{pose}(s).
+\]
+\end{definition}
+
+\begin{remark}
+Within AIM, an alignment is not merely a spatial curve.
+\end{remark}
+
+\begin{remark}
+Instead, it represents a structured operational geometry along
+arc-length.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Intrinsic Nature}
+
+\begin{remark}
+The alignment is:
+\begin{itemize}
+\item intrinsic,
+\item arc-length-based,
+\item and independent of global coordinates.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Target Geometry vs Realized Geometry}
+% ============================================================
+
+\subsection{Target Geometry}
+
+\begin{definition}[Target geometry]
+The target geometry is the intended analytical railway state defined by
+the design process.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Realized Geometry}
+
+\begin{definition}[Realized geometry]
+The realized geometry is the physically existing railway geometry after
+construction and maintenance.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Fundamental Distinction}
+
+\begin{proposition}
+In general:
+\[
+\mathrm{pose3}_{\mathrm{real}}
+\neq
+\mathrm{pose3}_{\mathrm{target}}.
+\]
+\end{proposition}
+
+\begin{remark}
+This distinction is fundamental within AIM.
+\end{remark}
+
+% ============================================================
+\section{Geometry vs Vehicle Space}
+% ============================================================
+
+\subsection{Classical Simplification}
+
+\begin{remark}
+Classical railway alignment systems often reduce the railway problem to
+a centerline geometry problem.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Operational Reality}
+
+\begin{remark}
+The operationally relevant object, however, is the railway vehicle
+moving within space.
+\end{remark}
+
+\begin{remark}
+Important operational quantities include:
+\begin{itemize}
+\item center-of-gravity motion,
+\item vehicle envelope,
+\item bogie rotation,
+\item wheelset orientation,
+\item and platform interaction.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Consequence}
+
+\begin{proposition}
+The railway alignment is operationally meaningful only together with its
+vehicle-space interpretation.
+\end{proposition}
+
+% ============================================================
+\section{Pose, Frame, and State}
+% ============================================================
+
+\subsection{Pose}
+
+\begin{definition}[Pose]
+A pose describes a local geometric state attached to arc-length
+position \(s\).
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Frame}
+
+\begin{definition}[Frame]
+A frame defines a local coordinate interpretation of the pose.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{State}
+
+\begin{definition}[State]
+A state combines:
+\begin{itemize}
+\item geometry,
+\item orientation,
+\item and operational interpretation.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Runtime Nature}
+
+\begin{remark}
+Within AIM, states are runtime-evaluated rather than purely static data
+objects.
+\end{remark}
+
+% ============================================================
+\section{World Space vs Track Space}
+% ============================================================
+
+\subsection{Track Space}
+
+\begin{definition}[Track space]
+Track space is the intrinsic coordinate system attached to the
+alignment.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{World Space}
+
+\begin{definition}[World space]
+World space is a global spatial coordinate system defined through a CRS.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Transformation}
+
+\begin{remark}
+The transformation:
+\[
+\text{world}
+\leftrightarrow
+\text{track}
+\]
+is nonlinear and context-dependent.
+\end{remark}
+
+% ============================================================
+\section{CRS and Earth Geometry}
+% ============================================================
+
+\subsection{Projection Dependence}
+
+\begin{remark}
+Railway geometry depends fundamentally on the underlying coordinate
+reference system.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Non-Invariance}
+
+\begin{proposition}
+Railway alignments are generally not invariant under CRS changes.
+\end{proposition}
+
+% ------------------------------------------------------------
+
+\subsection{Ellipsoid Reality}
+
+\begin{remark}
+The physically realized railway exists on the Earth surface rather than
+within a projected Euclidean plane.
+\end{remark}
+
+% ============================================================
+\section{Runtime Ontology}
+% ============================================================
+
+\subsection{Runtime Services}
+
+\begin{remark}
+Many AIM objects exist operationally as runtime services rather than
+stored static entities.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Examples}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item world--track projection,
+\item frame evaluation,
+\item local coordinate systems,
+\item and vehicle-space interpretation.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Realization Ontology}
+% ============================================================
+
+\subsection{Construction Process}
+
+\begin{remark}
+The physically realized railway emerges from:
+\begin{itemize}
+\item measurement,
+\item machine operation,
+\item maintenance,
+\item and mechanical response.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Iterative Nature}
+
+\begin{remark}
+Realization is therefore not a static mapping, but an iterative physical
+process.
+\end{remark}
+
+% ============================================================
+\section{Optimization Ontology}
+% ============================================================
+
+\subsection{Classical Optimization}
+
+\begin{remark}
+Classical optimization often minimizes purely analytical target states.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{AIM Optimization}
+
+\begin{remark}
+Within AIM, optimization operates on:
+\begin{itemize}
+\item realized states,
+\item operational behaviour,
+\item and runtime-evaluated constraints.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Inverse Nature}
+
+\begin{remark}
+Many railway optimization problems are inverse realization problems.
+\end{remark}
+
+% ============================================================
+\section{Sparse vs Runtime Reality}
+% ============================================================
+
+\subsection{Sparse Representation}
+
+\begin{definition}[Sparse representation]
+A sparse representation stores only the essential alignment-defining
+parameters.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Runtime Expansion}
+
+\begin{remark}
+Operational runtime systems reconstruct:
+\begin{itemize}
+\item geometry,
+\item frames,
+\item vehicle-space behaviour,
+\item and projections
+\end{itemize}
+from sparse intrinsic data.
+\end{remark}
+
+% ============================================================
+\section{Fundamental AIM View}
+% ============================================================
+
+\begin{proposition}
+A railway alignment is not merely a geometric curve.
+\end{proposition}
+
+\begin{remark}
+It is a multi-layer operational system connecting:
+\begin{itemize}
+\item intrinsic geometry,
+\item realization,
+\item Earth geometry,
+\item vehicle-space behaviour,
+\item runtime services,
+\item and optimization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Key Insight}
+% ============================================================
+
+\begin{proposition}
+Many limitations of classical railway systems arise from implicit
+collapsing of fundamentally different ontological layers into a single
+geometric abstraction.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The AIM ontology separates:
+\begin{itemize}
+\item target geometry,
+\item realized geometry,
+\item operational vehicle behaviour,
+\item runtime representations,
+\item and Earth-related coordinate systems.
+\end{itemize}
+
+This separation forms the conceptual foundation for realization-aware,
+vehicle-aware, and Earth-aware railway alignment modelling.
+\end{summary}

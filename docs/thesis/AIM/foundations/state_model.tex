@@ -1,0 +1,446 @@
+% foundations/state_model.tex
+
+\chapter{State Model}
+
+\section{Motivation}
+
+\begin{remark}
+Railway alignment modelling involves multiple interacting descriptions of
+geometry, orientation, dynamics, realization, and runtime context.
+\end{remark}
+
+\begin{remark}
+Classical alignment theory often treats these aspects separately:
+\begin{itemize}
+\item geometry as curves,
+\item cant as annotation,
+\item realization as construction detail,
+\item and optimization as external post-processing.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, these components are interpreted as parts of a unified state
+system.
+\end{remark}
+
+\begin{remark}
+The purpose of the state model is therefore:
+\begin{itemize}
+\item to define the canonical state variables,
+\item to distinguish intrinsic and extrinsic descriptions,
+\item to separate target and realized states,
+\item and to establish a consistent basis for runtime services,
+optimization, and realization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{State Concept}
+% ============================================================
+
+\begin{definition}[State]
+A state is the minimal set of variables required to describe the
+geometric and physical condition of an alignment at a given arc-length
+position \(s\).
+\end{definition}
+
+\begin{remark}
+The state is interpreted intrinsically along the alignment rather than
+globally in world coordinates.
+\end{remark}
+
+\begin{remark}
+Within AIM, the alignment is therefore interpreted as a state trajectory
+parameterized by arc-length.
+\end{remark}
+
+% ============================================================
+\section{Pose2 State}
+% ============================================================
+
+\subsection{Definition}
+
+\begin{definition}[Pose2 state]
+The planar pose state is:
+\[
+\mathrm{pose2}(s)
+=
+(\gamma(s),\theta(s)).
+\]
+\end{definition}
+
+\begin{remark}
+The pose2 state describes:
+\begin{itemize}
+\item position,
+\item and orientation
+\end{itemize}
+within a planar reference system.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Dynamics}
+
+\begin{remark}
+The pose2 evolution is governed by:
+\[
+\theta'(s)=\kappa(s),
+\]
+together with:
+\[
+\gamma'(s)
+=
+(\cos\theta(s),\sin\theta(s)).
+\]
+\end{remark}
+
+\begin{remark}
+Thus, curvature acts as the primary geometric control variable.
+\end{remark}
+
+% ============================================================
+\section{Pose3 State}
+% ============================================================
+
+\subsection{Definition}
+
+\begin{definition}[Pose3 state]
+The extended railway pose state is:
+\[
+\mathrm{pose3}(s)
+=
+(\gamma(s),\theta(s),\phi(s)).
+\]
+\end{definition}
+
+\begin{remark}
+The pose3 state extends the planar state by including cant.
+\end{remark}
+
+\begin{remark}
+Cant is interpreted as a rotation of the railway frame around the local
+tangent direction.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Controls}
+
+\begin{definition}[Pose3 controls]
+The canonical controls are:
+\[
+\kappa(s),
+\qquad
+\omega(s)=\phi'(s).
+\]
+\end{definition}
+
+\begin{remark}
+Curvature controls directional evolution, whereas cant-rate controls
+cross-level evolution.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Canonical Pose3 System}
+
+\begin{remark}
+The canonical pose3 evolution system is:
+\[
+\begin{aligned}
+\gamma'(s)
+&=
+(\cos\theta(s),\sin\theta(s)),
+\\
+\theta'(s)
+&=
+\kappa(s),
+\\
+\phi'(s)
+&=
+\omega(s).
+\end{aligned}
+\]
+\end{remark}
+
+% ============================================================
+\section{Intrinsic and Extrinsic States}
+% ============================================================
+
+\subsection{Intrinsic State}
+
+\begin{definition}[Intrinsic state]
+An intrinsic state is defined relative to the alignment itself and uses
+arc-length \(s\) as primary parameter.
+\end{definition}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item curvature,
+\item cant,
+\item tangent direction,
+\item local railway frames.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Extrinsic State}
+
+\begin{definition}[Extrinsic state]
+An extrinsic state is defined relative to a global coordinate reference
+system.
+\end{definition}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item WGS84 coordinates,
+\item projected CRS coordinates,
+\item BIM placement coordinates,
+\item sensor measurements.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Coupling}
+
+\begin{remark}
+The world--track transformation couples intrinsic and extrinsic states.
+\end{remark}
+
+\begin{remark}
+Thus, world-to-track projection acts as a state conversion process
+between global and alignment-relative representations.
+\end{remark}
+
+% ============================================================
+\section{Target and Realized States}
+% ============================================================
+
+\subsection{Target State}
+
+\begin{definition}[Target state]
+The target state describes the analytically intended alignment:
+\[
+\mathrm{pose3}_{\mathrm{target}}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Realized State}
+
+\begin{definition}[Realized state]
+The realized state describes the physically constructed track:
+\[
+\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Realization Relation}
+
+\begin{remark}
+The realization operator connects both states:
+\[
+\mathcal R
+:
+\mathrm{pose3}_{\mathrm{target}}
+\mapsto
+\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{remark}
+
+\begin{remark}
+The realized state includes:
+\begin{itemize}
+\item construction effects,
+\item mechanical smoothing,
+\item discretization,
+\item maintenance history,
+\item and measurement uncertainty.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Runtime States}
+% ============================================================
+
+\subsection{Runtime Interpretation}
+
+\begin{remark}
+Within AIM, states are not static objects but runtime entities.
+\end{remark}
+
+\begin{remark}
+Runtime systems continuously evaluate:
+\begin{itemize}
+\item world-to-track projections,
+\item local frames,
+\item realized geometry,
+\item dynamic quantities,
+\item and optimization residuals.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Derived Runtime Quantities}
+
+\begin{definition}[Derived runtime state]
+Derived quantities include:
+\[
+a_{\mathrm{eff}},
+\qquad
+j,
+\qquad
+\kappa_g,
+\qquad
+d,
+\qquad
+h.
+\]
+\end{definition}
+
+\begin{remark}
+These are not independent state variables, but functions of the
+underlying pose and frame structure.
+\end{remark}
+
+% ============================================================
+\section{Sparse and Hybrid States}
+% ============================================================
+
+\subsection{Sparse Representation}
+
+\begin{definition}[Sparse state]
+A sparse state is a compact representation using only essential control
+parameters.
+\end{definition}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item fixed curvature segments,
+\item transition segments,
+\item cant transitions,
+\item anchor poses.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Hybrid Representation}
+
+\begin{definition}[Hybrid state]
+A hybrid state combines:
+\begin{itemize}
+\item parametric structure,
+\item and local sampled corrections.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+Hybrid states allow efficient modelling together with local adaptation.
+\end{remark}
+
+% ============================================================
+\section{Optimization States}
+% ============================================================
+
+\subsection{Optimization Variables}
+
+\begin{remark}
+Optimization does not necessarily operate on full geometry.
+\end{remark}
+
+\begin{remark}
+Typical optimization variables are:
+\begin{itemize}
+\item curvature parameters,
+\item transition lengths,
+\item cant parameters,
+\item control point positions,
+\item realization corrections.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Realization-Aware Optimization}
+
+\begin{remark}
+Within AIM, optimization is evaluated on realized states:
+\[
+J(\mathcal R(\mathrm{pose3})).
+\]
+\end{remark}
+
+\begin{remark}
+Thus, optimization operates indirectly through the realization operator.
+\end{remark}
+
+% ============================================================
+\section{State Hierarchy}
+% ============================================================
+
+\begin{remark}
+The AIM framework distinguishes:
+\begin{itemize}
+\item intrinsic states,
+\item extrinsic states,
+\item target states,
+\item realized states,
+\item runtime states,
+\item optimization states.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These are not independent models, but interconnected layers of one
+unified alignment state system.
+\end{remark}
+
+% ============================================================
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, railway alignment is interpreted as a controlled spatial
+state trajectory evolving along arc-length.
+\end{proposition}
+
+\begin{proposition}
+Curvature and cant evolution form the primary control structure of this
+trajectory.
+\end{proposition}
+
+\begin{proposition}
+Realization, projection, and optimization operate on states rather than
+on isolated geometric entities.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The AIM state model provides a unified framework linking:
+\begin{itemize}
+\item geometry,
+\item cant,
+\item realization,
+\item runtime projection,
+\item dynamics,
+\item and optimization.
+\end{itemize}
+
+It establishes railway alignment as a coupled state-based system rather
+than merely a collection of curves and coordinates.
+\end{summary}

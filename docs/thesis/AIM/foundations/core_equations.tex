@@ -2,11 +2,14 @@
 
 \chapter{Core Equations and Canonical Relations}
 
+% ============================================================
 \section{Motivation}
+% ============================================================
 
 \begin{remark}
 The AIM framework is based on a compact set of canonical equations that
-connect geometry, dynamics, realization, and optimization.
+connect geometry, dynamics, realization, runtime interpretation, and
+optimization.
 \end{remark}
 
 \begin{remark}
@@ -16,21 +19,50 @@ description for railway alignment modelling.
 
 \begin{remark}
 The purpose of this chapter is not to derive all relations in detail,
-but to collect the central equations that appear repeatedly throughout
-the framework.
+but to define the canonical equations repeatedly used throughout AIM.
+\end{remark}
+
+\begin{remark}
+The equations collected here serve as:
+\begin{itemize}
+\item canonical reference relations,
+\item shared notation anchors,
+\item and structural building blocks of the AIM framework.
+\end{itemize}
 \end{remark}
 
 % ============================================================
-\section{Planar Geometry}
+\section{Intrinsic Geometry}
 % ============================================================
+
+\subsection{Arc-Length State Evolution}
+
+\begin{definition}[State evolution relation]
+The intrinsic geometric state evolves according to:
+\begin{equation}
+\gamma'(s)
+=
+\mathbf t(s).
+\label{eq:state-evolution}
+\end{equation}
+\end{definition}
+
+\begin{remark}
+This relation defines the arc-length parameterization of the alignment.
+\end{remark}
+
+% ------------------------------------------------------------
 
 \subsection{Curvature Relation}
 
 \begin{definition}[Curvature relation]
-The heading evolution of a planar alignment is given by
-\[
-\theta'(s)=\kappa(s).
-\]
+Directional evolution is governed by:
+\begin{equation}
+\theta'(s)
+=
+\kappa(s).
+\label{eq:curvature-relation}
+\end{equation}
 \end{definition}
 
 \begin{remark}
@@ -40,20 +72,21 @@ change along the alignment.
 
 % ------------------------------------------------------------
 
-\subsection{Pose Reconstruction}
+\subsection{Planar Tangent Representation}
 
-\begin{definition}[Pose reconstruction]
-The planar position evolves according to
-\[
-\gamma'(s)
+\begin{definition}[Planar tangent relation]
+In the planar case:
+\begin{equation}
+\mathbf t(s)
 =
 (\cos\theta(s),\sin\theta(s)).
-\]
+\label{eq:planar-tangent}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-Together with the curvature relation, this defines the classical
-arc-length reconstruction system.
+This is a specialization of the intrinsic state evolution relation
+\cref{eq:state-evolution}.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -61,36 +94,40 @@ arc-length reconstruction system.
 \subsection{Canonical Pose2 System}
 
 \begin{definition}[Pose2 system]
-The planar pose system is:
-\[
+The canonical planar pose2 system is:
+\begin{equation}
 \begin{aligned}
 \gamma'(s)
 &=
-(\cos\theta(s),\sin\theta(s)),
+\mathbf t(s),
 \\
 \theta'(s)
 &=
 \kappa(s).
 \end{aligned}
-\]
+\label{eq:pose2-system}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-This system forms the geometric core of curvature-based alignment
-modelling.
+Together with \cref{eq:planar-tangent}, this defines the classical
+curvature-based planar alignment reconstruction system.
 \end{remark}
 
 % ============================================================
 \section{Cant Evolution}
 % ============================================================
 
-\subsection{Cant State}
+\subsection{Cant State Equation}
 
 \begin{definition}[Cant evolution]
-The cant evolution is described by
-\[
-\phi'(s)=\omega(s),
-\]
+Cant evolution is governed by:
+\begin{equation}
+\phi'(s)
+=
+\omega(s),
+\label{eq:cant-evolution}
+\end{equation}
 where \(\omega(s)\) denotes the cant-rate control.
 \end{definition}
 
@@ -104,12 +141,12 @@ annotation.
 \subsection{Canonical Pose3 System}
 
 \begin{definition}[Pose3 system]
-The extended pose3 system is:
-\[
+The canonical pose3 system is:
+\begin{equation}
 \begin{aligned}
 \gamma'(s)
 &=
-(\cos\theta(s),\sin\theta(s)),
+\mathbf t(s),
 \\
 \theta'(s)
 &=
@@ -119,11 +156,12 @@ The extended pose3 system is:
 &=
 \omega(s).
 \end{aligned}
-\]
+\label{eq:pose3-system}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-The controls of the system are:
+The control variables of the system are:
 \[
 \kappa(s),
 \qquad
@@ -133,7 +171,35 @@ The controls of the system are:
 
 \begin{remark}
 This formulation interprets railway alignment as a controlled dynamical
-system.
+state system.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Generalized State Form}
+
+\begin{definition}[Generalized state equation]
+The pose evolution may be written abstractly as:
+\begin{equation}
+x'(s)
+=
+f(x(s),u(s)),
+\label{eq:general-state-system}
+\end{equation}
+where:
+\begin{itemize}
+\item \(x(s)\) denotes the railway state,
+\item \(u(s)\) denotes the control variables.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+Within AIM, the controls are primarily:
+\[
+u(s)
+=
+(\kappa(s),\omega(s)).
+\]
 \end{remark}
 
 % ============================================================
@@ -143,12 +209,13 @@ system.
 \subsection{Effective Lateral Acceleration}
 
 \begin{definition}[Effective lateral acceleration]
-The effective lateral acceleration is
-\[
+The effective lateral acceleration is:
+\begin{equation}
 a_{\mathrm{eff}}
 =
 v^2\kappa-g\sin\phi.
-\]
+\label{eq:effective-lateral-acceleration}
+\end{equation}
 \end{definition}
 
 \begin{remark}
@@ -160,31 +227,33 @@ This relation expresses the coupling between curvature and cant.
 \subsection{Equilibrium Condition}
 
 \begin{definition}[Equilibrium condition]
-A perfectly balanced alignment satisfies
-\[
+A perfectly balanced alignment satisfies:
+\begin{equation}
 v^2\kappa
 =
 g\sin\phi.
-\]
+\label{eq:cant-equilibrium}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-This relation defines the ideal cant balance.
+This relation defines ideal cant balance.
 \end{remark}
 
 % ------------------------------------------------------------
 
-\subsection{Jerk}
+\subsection{Jerk Relation}
 
-\begin{definition}[Jerk]
-The jerk is given by
-\[
+\begin{definition}[Jerk relation]
+The jerk is:
+\begin{equation}
 j
 =
 v^3\kappa'
 -
 gv\cos\phi\,\phi'.
-\]
+\label{eq:jerk-relation}
+\end{equation}
 \end{definition}
 
 \begin{remark}
@@ -192,24 +261,45 @@ The jerk depends jointly on curvature evolution and cant evolution.
 \end{remark}
 
 % ============================================================
-\section{Realization}
+\section{Realization Relations}
 % ============================================================
 
 \subsection{Realization Operator}
 
-\begin{definition}[Realization relation]
-The realization operator maps target geometry to realized geometry:
-\[
-\mathcal R(\kappa_{\mathrm{target}})
-=
-\kappa_{\mathrm{real}}.
-\]
+\begin{definition}[Realization operator]
+The realization operator maps target states to realized states:
+\begin{equation}
+\mathcal R :
+\mathrm{pose3}_{\mathrm{target}}
+\rightarrow
+\mathrm{pose3}_{\mathrm{real}}.
+\label{eq:realization-operator}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-The realized alignment differs from the analytical target alignment due
-to construction, machine behaviour, and structural response.
+Realization includes:
+\begin{itemize}
+\item construction,
+\item machine behaviour,
+\item discretization,
+\item and structural response.
+\end{itemize}
 \end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Curvature Realization Relation}
+
+\begin{definition}[Curvature realization]
+At curvature level:
+\begin{equation}
+\mathcal R(\kappa_{\mathrm{target}})
+=
+\kappa_{\mathrm{real}}.
+\label{eq:curvature-realization}
+\end{equation}
+\end{definition}
 
 % ------------------------------------------------------------
 
@@ -217,11 +307,12 @@ to construction, machine behaviour, and structural response.
 
 \begin{definition}[Inverse realization]
 The inverse realization problem is:
-\[
+\begin{equation}
 \mathcal R(\kappa_{\mathrm{target}})
 \approx
 \kappa_{\mathrm{desired}}.
-\]
+\label{eq:inverse-realization}
+\end{equation}
 \end{definition}
 
 \begin{remark}
@@ -237,15 +328,16 @@ constraints.
 
 \begin{definition}[Track-to-world mapping]
 The forward transformation is:
-\[
+\begin{equation}
 x(s,d)
 =
 \gamma(s)+d\,\mathbf n(s).
-\]
+\label{eq:track-to-world}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-The vector \(\mathbf n(s)\) denotes the local alignment normal.
+The vector \(\mathbf n(s)\) denotes the local lateral direction.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -254,14 +346,15 @@ The vector \(\mathbf n(s)\) denotes the local alignment normal.
 
 \begin{definition}[World-to-track projection]
 The inverse transformation is:
-\[
+\begin{equation}
 (s^\ast,d^\ast)
 =
 \arg\min_{s,d}
 \|
 x-(\gamma(s)+d\,\mathbf n(s))
 \|.
-\]
+\label{eq:world-to-track}
+\end{equation}
 \end{definition}
 
 \begin{remark}
@@ -276,31 +369,33 @@ This is a nonlinear projection problem onto the alignment.
 
 \begin{definition}[Curvature decomposition]
 The total curvature satisfies:
-\[
+\begin{equation}
 \kappa^2
 =
 \kappa_g^2+\kappa_n^2.
-\]
+\label{eq:curvature-decomposition}
+\end{equation}
 \end{definition}
 
 \begin{remark}
 The geodesic curvature \(\kappa_g\) is the physically relevant
-curvature for railway dynamics.
+curvature for railway dynamics on the Earth surface.
 \end{remark}
 
 % ------------------------------------------------------------
 
-\subsection{Intrinsic Curvature}
+\subsection{Intrinsic Surface Curvature}
 
 \begin{definition}[Geodesic curvature]
 The intrinsic surface curvature is:
-\[
+\begin{equation}
 \kappa_g
 =
 \|
 \nabla_s\mathbf t
 \|.
-\]
+\label{eq:geodesic-curvature}
+\end{equation}
 \end{definition}
 
 \begin{remark}
@@ -309,51 +404,63 @@ reference surfaces.
 \end{remark}
 
 % ============================================================
-\section{Optimization}
+\section{Optimization Relations}
 % ============================================================
 
-\subsection{General Optimization Form}
+\subsection{General Optimization Problem}
 
 \begin{definition}[Optimization problem]
 A general realization-aware optimization problem is:
-\[
-\min
-J(\mathcal R(\mathrm{pose3})).
-\]
+\begin{equation}
+\min_u
+J(\mathcal R(x(u))).
+\label{eq:general-optimization}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-The optimization objective is evaluated on realized geometry rather than
-on purely analytical geometry.
+The objective is evaluated on realized states rather than purely
+analytical states.
 \end{remark}
 
 % ------------------------------------------------------------
 
-\subsection{Least-Squares Form}
+\subsection{Least-Squares Structure}
 
 \begin{definition}[Least-squares structure]
-Many AIM optimization problems take the form
-\[
+Many AIM optimization problems take the form:
+\begin{equation}
 \min_x
 \frac12
 \|
 r(x)
 \|^2.
-\]
+\label{eq:least-squares}
+\end{equation}
 \end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Gauss--Newton Approximation}
 
 \begin{definition}[Gauss--Newton approximation]
 The Gauss--Newton approximation is:
-\[
+\begin{equation}
 H
 \approx
 J^T J.
-\]
+\label{eq:gauss-newton}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-This structure appears naturally in curvature fitting, realization
-matching, and trajectory optimization.
+This structure appears naturally in:
+\begin{itemize}
+\item curvature fitting,
+\item realization matching,
+\item trajectory optimization,
+\item and runtime adjustment problems.
+\end{itemize}
 \end{remark}
 
 % ============================================================
@@ -366,8 +473,8 @@ trajectory governed by curvature and cant evolution.
 \end{proposition}
 
 \begin{proposition}
-Curvature, cant, realization, and optimization must therefore be treated
-as coupled components of one unified system.
+Curvature, cant, realization, runtime interpretation, and optimization
+must therefore be treated as coupled components of one unified system.
 \end{proposition}
 
 % ============================================================
@@ -380,13 +487,15 @@ of AIM.
 
 They define:
 \begin{itemize}
-\item the geometric state evolution,
-\item the cant and dynamic relations,
-\item the realization process,
-\item the world--track transformation,
-\item and the optimization structure.
+\item intrinsic state evolution,
+\item cant and dynamic relations,
+\item realization mappings,
+\item world--track transformations,
+\item ellipsoid-aware geometry,
+\item and optimization structures.
 \end{itemize}
 
-Together, these equations establish a unified framework linking
-geometry, realization, dynamics, and optimization.
+Together, these equations establish a unified mathematical framework
+connecting geometry, realization, runtime interpretation, and
+optimization.
 \end{summary}

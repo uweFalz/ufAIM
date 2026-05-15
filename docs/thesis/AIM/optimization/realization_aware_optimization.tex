@@ -2,14 +2,30 @@
 
 \chapter{Realization-Aware Optimization}
 
+% ============================================================
 \section{Motivation}
+% ============================================================
 
 \begin{remark}
-Classical alignment optimization operates directly on target geometry.
+Classical alignment optimization operates directly on analytical target
+geometry.
 \end{remark}
 
 \begin{remark}
-Real railway tracks, however, differ from their analytical target states.
+Real railway tracks, however, differ from their analytical target
+states.
+\end{remark}
+
+\begin{remark}
+The physically realized alignment is influenced by:
+\begin{itemize}
+\item construction procedures,
+\item machine behaviour,
+\item ballast and track mechanics,
+\item local correction limits,
+\item discretization,
+\item and measurement feedback.
+\end{itemize}
 \end{remark}
 
 \begin{remark}
@@ -23,9 +39,18 @@ J(\kappa,\phi).
 \]
 \end{remark}
 
+\begin{remark}
+Within AIM, optimization is therefore interpreted as optimization of
+expected realized operational behaviour rather than of purely analytical
+geometry.
+\end{remark}
+
+% ============================================================
 \section{Realization Operator}
+% ============================================================
 
 \begin{definition}[Realization operator]
+The realization operator is:
 \[
 \mathcal R :
 \mathrm{pose3}_{\mathrm{target}}
@@ -34,15 +59,76 @@ J(\kappa,\phi).
 \]
 \end{definition}
 
-\section{Optimization on Realized States}
-
 \begin{remark}
-Objective functions should be evaluated on realized states.
+The operator represents the transformation from analytical target state
+to physically realized railway state.
 \end{remark}
 
+\begin{remark}
+The realization operator may include:
+\begin{itemize}
+\item sampling,
+\item machine action,
+\item smoothing,
+\item local correction kernels,
+\item and structural response of the track.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Optimization on Realized States}
+% ============================================================
+
+\begin{remark}
+Objective functions should be evaluated on realized states rather than
+on analytical target states.
+\end{remark}
+
+\begin{definition}[Realization-aware optimization]
+The general optimization problem is:
+\[
+\min_{\kappa,\phi}
+\;
+J\bigl(
+\mathcal R(\kappa,\phi)
+\bigr).
+\]
+\end{definition}
+
+\begin{remark}
+This formulation explicitly integrates realization effects into the
+optimization process.
+\end{remark}
+
+% ============================================================
+\section{Pose3 Optimization}
+% ============================================================
+
+\begin{remark}
+Optimization operates on the coupled pose3 state:
+\[
+(\gamma,\theta,\phi).
+\]
+\end{remark}
+
+\begin{remark}
+Curvature and cant must therefore be optimized jointly rather than
+independently.
+\end{remark}
+
+\begin{remark}
+This reflects the dynamic coupling between geometry and vehicle
+behaviour.
+\end{remark}
+
+% ============================================================
 \section{Dynamic Objectives}
+% ============================================================
+
+\subsection{Effective Lateral Acceleration}
 
 \begin{definition}[Effective lateral acceleration]
+The effective lateral acceleration is:
 \[
 a_{\mathrm{eff}}
 =
@@ -50,7 +136,17 @@ v^2\kappa-g\sin\phi.
 \]
 \end{definition}
 
+\begin{remark}
+This quantity represents the dynamically relevant acceleration acting
+on the vehicle.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Jerk}
+
 \begin{definition}[Jerk]
+The jerk is:
 \[
 j
 =
@@ -60,40 +156,209 @@ gv\cos\phi\,\phi'.
 \]
 \end{definition}
 
+\begin{remark}
+Jerk constraints strongly influence transition design and passenger
+comfort.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Typical Objective Components}
+
+\begin{remark}
+Typical optimization objectives include:
+\begin{itemize}
+\item curvature smoothness,
+\item cant smoothness,
+\item jerk minimization,
+\item cant deficiency control,
+\item vehicle comfort,
+\item energy efficiency,
+\item realization robustness.
+\end{itemize}
+\end{remark}
+
+% ============================================================
 \section{Realization Constraints}
+% ============================================================
 
 \begin{remark}
-Optimization must respect machine limits, tamping limits, ballast behaviour,
-and measurement resolution.
+Optimization must respect realization constraints such as:
+\begin{itemize}
+\item machine limits,
+\item tamping limits,
+\item ballast behaviour,
+\item local correction ranges,
+\item and measurement resolution.
+\end{itemize}
 \end{remark}
 
+\begin{remark}
+Thus, the feasible design space is constrained not only by geometry and
+standards, but also by realizability.
+\end{remark}
+
+% ============================================================
 \section{Inverse Realization}
+% ============================================================
 
 \begin{remark}
-The optimization problem may be interpreted as an inverse realization problem.
+The optimization problem may be interpreted as an inverse realization
+problem.
 \end{remark}
 
+\begin{definition}[Inverse realization formulation]
+The objective is:
+\[
+\mathcal R(\kappa_{\mathrm{target}},\phi_{\mathrm{target}})
+\approx
+(\kappa_{\mathrm{desired}},\phi_{\mathrm{desired}}).
+\]
+\end{definition}
+
+\begin{remark}
+The analytical target state therefore acts as a pre-image under the
+realization operator.
+\end{remark}
+
+% ============================================================
 \section{Frequency Interpretation}
+% ============================================================
 
 \begin{remark}
-The realization operator acts as a low-pass filter on curvature and cant.
+The realization operator acts approximately as a low-pass filter on
+curvature and cant.
 \end{remark}
 
+\begin{remark}
+High-frequency components are attenuated during realization.
+\end{remark}
+
+\begin{remark}
+Optimization must therefore avoid introducing geometrically meaningless
+high-frequency corrections that cannot survive realization.
+\end{remark}
+
+% ============================================================
 \section{Sparse and Hybrid Optimization}
+% ============================================================
 
 \begin{remark}
-Sparse and hybrid models are particularly suitable for realization-aware optimization.
+Sparse and hybrid models are particularly suitable for
+realization-aware optimization.
 \end{remark}
 
+\begin{remark}
+Sparse structures provide:
+\begin{itemize}
+\item numerical stability,
+\item low parameter dimension,
+\item and interpretable geometry.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Hybrid models additionally permit:
+\begin{itemize}
+\item local corrections,
+\item realization compensation,
+\item and adaptive refinement.
+\end{itemize}
+\end{remark}
+
+% ============================================================
 \section{Runtime Optimization}
+% ============================================================
 
 \begin{remark}
-Optimization may operate continuously during construction and maintenance.
+Optimization may operate continuously during:
+\begin{itemize}
+\item construction,
+\item maintenance,
+\item measurement feedback,
+\item and operational monitoring.
+\end{itemize}
 \end{remark}
 
+\begin{remark}
+Thus, optimization becomes a runtime process rather than a purely
+offline planning step.
+\end{remark}
+
+% ============================================================
+\section{Vehicle-Space Interpretation}
+% ============================================================
+
+\begin{remark}
+The physically relevant object is not necessarily the track centerline,
+but the motion of the railway vehicle within space.
+\end{remark}
+
+\begin{remark}
+This includes:
+\begin{itemize}
+\item vehicle center of gravity,
+\item bogie motion,
+\item vehicle envelope,
+\item platform interaction,
+\item and clearance behaviour.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Such interpretations connect realization-aware optimization to
+Schwerpunkt-oriented alignment concepts
+\cite{Hasslinger2002Schwerpunkt}.
+\end{remark}
+
+% ============================================================
+\section{Ellipsoid-Aware Optimization}
+% ============================================================
+
+\begin{remark}
+For large-scale or high-precision systems, optimization may be performed
+directly on the Earth reference surface.
+\end{remark}
+
+\begin{remark}
+In this case:
+\begin{itemize}
+\item curvature becomes geodesic curvature,
+\item frames become surface-attached frames,
+\item and world-to-track projection depends on ellipsoid geometry.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Key Insight}
+% ============================================================
+
+\begin{proposition}
+The relevant optimization target is not the analytical alignment itself,
+but the expected realized operational behaviour.
+\end{proposition}
+
+\begin{remark}
+This fundamentally changes the interpretation of railway alignment
+optimization.
+\end{remark}
+
+% ============================================================
 \section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
 Realization-aware optimization extends classical alignment optimization
 toward physically realizable railway states.
+
+Within AIM, optimization is formulated on:
+\begin{itemize}
+\item pose3 states,
+\item realization operators,
+\item runtime projection structures,
+\item and dynamically relevant vehicle-space behaviour.
+\end{itemize}
+
+This provides a unified framework linking geometry, realization,
+dynamics, optimization, and operational interpretation.
 \end{summary}

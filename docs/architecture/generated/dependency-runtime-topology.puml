@@ -1,0 +1,24 @@
+@startuml
+title ufAIM runtime topology
+skinparam componentStyle rectangle
+
+component "WindowRuntime"
+component "MessagingClient"
+component "SharedMessagingWorker"
+component "WorkerRouter"
+database "SPOT"
+database "ImportInbox"
+component "ViewController"
+component "CockpitController"
+component "Projection"
+
+"WindowRuntime" --> "MessagingClient"
+"MessagingClient" --> "SharedMessagingWorker"
+"SharedMessagingWorker" --> "WorkerRouter"
+"WorkerRouter" --> "SPOT"
+"WorkerRouter" --> "ImportInbox"
+"ViewController" --> "Projection"
+"CockpitController" --> "MessagingClient"
+"ViewController" --> "MessagingClient"
+
+@enduml

@@ -1,0 +1,7 @@
+@startuml
+title ufAIM possible layer violations
+skinparam componentStyle rectangle
+
+note "No violations found by current simple rules" as N1
+
+@enduml

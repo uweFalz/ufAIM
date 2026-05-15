@@ -1,0 +1,419 @@
+% foundations/system_layers.tex
+
+\chapter{System Layers}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Railway alignment modelling combines multiple fundamentally different
+domains.
+\end{remark}
+
+\begin{remark}
+Classical approaches often merge geometry, realization, coordinate
+systems, dynamics, and operational interpretation into a single implicit
+model.
+\end{remark}
+
+\begin{remark}
+Within AIM, these concerns are separated into interacting system layers.
+\end{remark}
+
+\begin{remark}
+This separation improves:
+\begin{itemize}
+\item conceptual clarity,
+\item numerical robustness,
+\item scalability,
+\item interoperability,
+\item and runtime flexibility.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Overview}
+% ============================================================
+
+\begin{definition}[System layer]
+A system layer is a coherent subsystem operating on its own:
+\begin{itemize}
+\item state representation,
+\item operators,
+\item constraints,
+\item and interpretation rules.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+The AIM framework consists primarily of:
+\begin{itemize}
+\item geometry layer,
+\item realization layer,
+\item runtime layer,
+\item vehicle layer,
+\item CRS layer,
+\item and optimization layer.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Geometry Layer}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The geometry layer defines the intrinsic mathematical structure of the
+alignment.
+\end{remark}
+
+\begin{remark}
+Its central quantities are:
+\begin{itemize}
+\item arc-length \(s\),
+\item curvature \(\kappa(s)\),
+\item cant \(\phi(s)\),
+\item and pose states.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Core Equations}
+
+\begin{definition}[Intrinsic geometric relations]
+The geometry layer is governed by:
+\[
+\theta'(s)=\kappa(s),
+\]
+\[
+\gamma'(s)=\mathbf t(s).
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Properties}
+
+\begin{remark}
+The geometry layer is:
+\begin{itemize}
+\item intrinsic,
+\item continuous,
+\item analytical,
+\item and largely independent of realization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+It defines the target alignment rather than the physically realized
+track.
+\end{remark}
+
+% ============================================================
+\section{Realization Layer}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The realization layer models the transformation from analytical target
+geometry to physically realized track geometry.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Core Operator}
+
+\begin{definition}[Realization operator]
+\[
+\mathcal R :
+\mathrm{pose3}_{\mathrm{target}}
+\mapsto
+\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Characteristics}
+
+\begin{remark}
+The realization layer includes:
+\begin{itemize}
+\item construction constraints,
+\item machine behaviour,
+\item discretization,
+\item mechanical smoothing,
+\item and maintenance processes.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Realization acts approximately as a low-pass filter on geometry and
+curvature.
+\end{remark}
+
+% ============================================================
+\section{Runtime Layer}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The runtime layer connects intrinsic railway geometry with operational
+runtime systems.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Typical Services}
+
+\begin{remark}
+Typical runtime services include:
+\begin{itemize}
+\item world--track projection,
+\item visualization,
+\item BIM placement,
+\item spatial queries,
+\item and sensor integration.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Runtime Nature}
+
+\begin{remark}
+The runtime layer is:
+\begin{itemize}
+\item state-dependent,
+\item scale-dependent,
+\item and computationally adaptive.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Many operations are evaluated dynamically rather than stored explicitly.
+\end{remark}
+
+% ============================================================
+\section{Vehicle Layer}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The physically relevant object is not merely the alignment centerline,
+but the railway vehicle moving within space.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Operational Geometry}
+
+\begin{remark}
+The vehicle layer includes:
+\begin{itemize}
+\item vehicle envelopes,
+\item bogie motion,
+\item wheelset orientation,
+\item center-of-gravity motion,
+\item and platform interaction.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Motivation}
+
+\begin{remark}
+Classical railway alignment methods often approximate operational
+geometry through simplified clearance assumptions.
+\end{remark}
+
+\begin{remark}
+Within AIM, operational geometry may instead be modelled explicitly.
+\end{remark}
+
+% ============================================================
+\section{CRS Layer}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The CRS layer defines the relation between railway geometry and the
+Earth.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Coordinate Systems}
+
+\begin{remark}
+Typical coordinate systems include:
+\begin{itemize}
+\item engineering CRS,
+\item projected CRS,
+\item geodetic coordinates,
+\item and ellipsoid-based representations.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Fundamental Observation}
+
+\begin{proposition}
+A railway alignment is generally not invariant under CRS
+transformations.
+\end{proposition}
+
+\begin{remark}
+In particular:
+\begin{itemize}
+\item straight lines,
+\item curvature,
+\item and transition behaviour
+\end{itemize}
+may change under projection.
+\end{remark}
+
+% ============================================================
+\section{Optimization Layer}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The optimization layer searches for railway states satisfying:
+\begin{itemize}
+\item geometric,
+\item dynamic,
+\item operational,
+\item realization,
+\item and regulatory constraints.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Realization-Aware Optimization}
+
+\begin{remark}
+Within AIM, optimization is evaluated on realized states:
+\[
+J(\mathcal R(\mathrm{pose3})).
+\]
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Hybrid Nature}
+
+\begin{remark}
+Optimization combines:
+\begin{itemize}
+\item analytical models,
+\item sparse representations,
+\item discrete constraints,
+\item and runtime evaluation.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Layer Interactions}
+% ============================================================
+
+\begin{remark}
+The system layers interact continuously.
+\end{remark}
+
+\begin{remark}
+For example:
+\begin{itemize}
+\item geometry feeds realization,
+\item realization affects runtime behaviour,
+\item runtime supports optimization,
+\item optimization modifies geometry,
+\item and CRS influences all spatial interpretation.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Canonical Transformation Chain}
+% ============================================================
+
+\begin{definition}[Canonical transformation chain]
+A simplified AIM processing chain is:
+\[
+\text{CRS}
+\rightarrow
+\text{geometry}
+\rightarrow
+\text{realization}
+\rightarrow
+\text{runtime}
+\rightarrow
+\text{vehicle behaviour}
+\rightarrow
+\text{optimization}.
+\]
+\end{definition}
+
+\begin{remark}
+This chain is generally iterative rather than strictly sequential.
+\end{remark}
+
+% ============================================================
+\section{Scale Dependence}
+% ============================================================
+
+\begin{remark}
+Different layers dominate at different spatial and operational scales.
+\end{remark}
+
+\begin{remark}
+For example:
+\begin{itemize}
+\item CRS effects dominate at large scales,
+\item realization effects dominate at construction scales,
+\item vehicle-space effects dominate near platforms and switches.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Key Insight}
+% ============================================================
+
+\begin{proposition}
+Railway alignment modelling is not a single geometric problem, but a
+multi-layer interaction system.
+\end{proposition}
+
+\begin{remark}
+Many inconsistencies in classical railway modelling arise from implicit
+mixing of fundamentally different layers.
+\end{remark}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The AIM framework separates railway alignment modelling into interacting
+system layers.
+
+This separation enables:
+\begin{itemize}
+\item rigorous geometry,
+\item realization-aware modelling,
+\item scalable runtime systems,
+\item operational vehicle interpretation,
+\item CRS consistency,
+\item and realization-aware optimization.
+\end{itemize}
+\end{summary}

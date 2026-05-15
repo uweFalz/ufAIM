@@ -2,51 +2,140 @@
 
 \chapter{Pose3 Frames and Spatial Reference Systems}
 
+% ============================================================
 \section{Motivation}
+% ============================================================
 
 \begin{remark}
-The pose3 state describes railway geometry together with orientation and cant.
+The pose3 state describes railway geometry together with orientation,
+cant, and spatial interpretation.
 \end{remark}
 
 \begin{remark}
-To interpret these quantities consistently, local spatial reference frames are required.
+To interpret these quantities consistently, local spatial reference
+frames are required.
 \end{remark}
 
+\begin{remark}
+Within AIM, frames are not merely mathematical helper objects.
+They form the operational bridge between:
+\begin{itemize}
+\item geometry,
+\item dynamics,
+\item realization,
+\item visualization,
+\item and vehicle-space interpretation.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Pose3 State}
+% ============================================================
+
+\begin{definition}[Pose3 state]
+A pose3 state is defined by:
+\[
+\mathrm{pose3}(s)
+=
+(
+\gamma(s),
+\theta(s),
+\phi(s)
+),
+\]
+where:
+\begin{itemize}
+\item \(\gamma(s)\) is the spatial position,
+\item \(\theta(s)\) is the horizontal orientation,
+\item \(\phi(s)\) is the cant rotation.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+The pose3 state represents the local operational state of the railway
+alignment.
+\end{remark}
+
+% ============================================================
 \section{Tangent Direction}
+% ============================================================
 
 \begin{definition}[Tangent vector]
+The tangent vector is:
 \[
 \mathbf t(s)=\gamma'(s).
 \]
 \end{definition}
 
+\begin{remark}
+For arc-length parameterization:
+\[
+\|\mathbf t(s)\|=1.
+\]
+\end{remark}
+
+\begin{remark}
+The tangent direction defines the local forward direction of motion.
+\end{remark}
+
+% ============================================================
 \section{Lateral Direction}
+% ============================================================
 
 \begin{definition}[Lateral direction]
+The lateral direction is denoted by:
 \[
-\mathbf n(s)
+\mathbf n(s),
 \]
-denotes a vector orthogonal to the tangent direction.
+orthogonal to the tangent direction.
 \end{definition}
 
+\begin{remark}
+The lateral direction defines:
+\begin{itemize}
+\item cant orientation,
+\item track offsets,
+\item vehicle displacement,
+\item and platform interaction.
+\end{itemize}
+\end{remark}
+
+% ============================================================
 \section{Vertical and Binormal Directions}
+% ============================================================
 
 \begin{definition}[Binormal direction]
+The binormal direction is:
 \[
 \mathbf b(s)=\mathbf t(s)\times\mathbf n(s).
 \]
 \end{definition}
 
+\begin{remark}
+The binormal direction defines the local vertical orientation of the
+track frame.
+\end{remark}
+
+% ============================================================
 \section{Pose3 Frame}
+% ============================================================
 
 \begin{definition}[Pose3 frame]
+The local pose3 frame is:
 \[
 F(s)=
 (\mathbf t(s),\mathbf n(s),\mathbf b(s)).
 \]
 \end{definition}
 
+\begin{remark}
+The pose3 frame defines the local operational coordinate system of the
+railway alignment.
+\end{remark}
+
+% ============================================================
 \section{Cant Rotation}
+% ============================================================
 
 \begin{definition}[Cant rotation]
 Cant is interpreted as a rotation around the tangent direction:
@@ -55,16 +144,65 @@ R_\phi(s).
 \]
 \end{definition}
 
-\section{Rail Plane}
-
 \begin{remark}
-Gauge, rail elevation, and cross-level geometry are defined relative to the rotated local frame.
+Cant rotates the local railway cross-section relative to the base frame.
 \end{remark}
 
-\section{Frenet and Railway Frames}
+\begin{remark}
+The rotated frame determines:
+\begin{itemize}
+\item rail elevations,
+\item vehicle orientation,
+\item effective gravity direction,
+\item and platform geometry.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Rail Plane}
+% ============================================================
 
 \begin{remark}
-Classical Frenet frames become unstable in regions where
+Gauge, rail elevation, and cross-level geometry are defined relative to
+the rotated local frame.
+\end{remark}
+
+\begin{remark}
+The rail plane is therefore not globally horizontal, but attached to the
+local pose3 frame.
+\end{remark}
+
+% ============================================================
+\section{Vehicle-Space Interpretation}
+% ============================================================
+
+\begin{remark}
+The physically relevant object is not necessarily the track centerline,
+but the motion of the railway vehicle within space.
+\end{remark}
+
+\begin{remark}
+Important quantities include:
+\begin{itemize}
+\item center-of-gravity motion,
+\item vehicle envelope,
+\item bogie rotation,
+\item wheelset orientation,
+\item and platform clearance behaviour.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, pose3 frames provide the spatial reference basis for
+vehicle-space-aware railway modelling.
+\end{remark}
+
+% ============================================================
+\section{Frenet and Railway Frames}
+% ============================================================
+
+\begin{remark}
+Classical Frenet frames become unstable in regions where:
 \[
 \kappa(s)\to 0.
 \]
@@ -74,22 +212,125 @@ Classical Frenet frames become unstable in regions where
 Railway modelling therefore requires more robust frame formulations.
 \end{remark}
 
+\begin{remark}
+In practice, railway frames are often transported continuously along the
+alignment rather than recomputed purely from differential geometry.
+\end{remark}
+
+% ============================================================
 \section{Surface and Ellipsoid Frames}
+% ============================================================
 
 \begin{remark}
-When alignments are defined on the Earth surface, local frames must respect ellipsoid geometry.
+When alignments are defined on the Earth surface, local frames must
+respect ellipsoid geometry.
 \end{remark}
 
+\begin{definition}[Surface-attached frame]
+A surface-attached frame consists of:
+\[
+(\mathbf t,\mathbf n,\mathbf n_E),
+\]
+where \(\mathbf n_E\) denotes the ellipsoid surface normal.
+\end{definition}
+
+\begin{remark}
+In this setting:
+\begin{itemize}
+\item curvature splits into geodesic and normal curvature,
+\item gravity direction depends on Earth geometry,
+\item and world-to-track projection becomes surface-dependent.
+\end{itemize}
+\end{remark}
+
+% ============================================================
 \section{Runtime Interpretation}
+% ============================================================
 
 \begin{remark}
-Within AIM, frames act as runtime services supporting projection,
-visualization, BIM placement, and sensor integration.
+Within AIM, frames act as runtime services supporting:
+\begin{itemize}
+\item projection,
+\item visualization,
+\item BIM placement,
+\item sensor integration,
+\item and operational interpretation.
+\end{itemize}
 \end{remark}
 
+\begin{remark}
+Frames are therefore evaluated dynamically during runtime rather than
+stored merely as static geometric entities.
+\end{remark}
+
+% ============================================================
+\section{Frame Continuity}
+% ============================================================
+
+\begin{remark}
+Frame continuity is essential for:
+\begin{itemize}
+\item smooth visualization,
+\item stable dynamics,
+\item cant interpretation,
+\item and numerical robustness.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Discontinuous frame flips lead to:
+\begin{itemize}
+\item unstable vehicle interpretation,
+\item incorrect cant orientation,
+\item and invalid projection behaviour.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Connection to World--Track Transformation}
+% ============================================================
+
+\begin{remark}
+World--track projection relies directly on the local pose3 frame.
+\end{remark}
+
+\begin{remark}
+In particular:
+\begin{itemize}
+\item tangent directions define longitudinal coordinates,
+\item lateral directions define offsets,
+\item and cant modifies the operational spatial interpretation.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Key Insight}
+% ============================================================
+
+\begin{proposition}
+Pose3 frames are operational runtime structures rather than purely
+geometric differential objects.
+\end{proposition}
+
+\begin{remark}
+They connect intrinsic railway geometry with realization, dynamics,
+vehicle behaviour, and spatial interpretation.
+\end{remark}
+
+% ============================================================
 \section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
 Pose3 frames provide the spatial reference structure underlying railway
 alignment modelling.
+
+Within AIM, they form the operational bridge between:
+\begin{itemize}
+\item curvature-based geometry,
+\item realization,
+\item world--track projection,
+\item vehicle-space interpretation,
+\item and runtime system behaviour.
+\end{itemize}
 \end{summary}

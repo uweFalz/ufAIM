@@ -1,0 +1,23 @@
+@startuml
+title ufAIM importmap aliases
+skinparam componentStyle rectangle
+
+"@src/" --> "./src/"
+"@shared/" --> "./src/shared/"
+"@domain/" --> "./src/domain/"
+"@alignment/" --> "./src/domain/alignment/"
+"@transition/" --> "./src/domain/transition/"
+"@projection/" --> "./src/domain/projection/"
+"@kgeom/" --> "./src/lib/geom/"
+"@kmath/" --> "./src/lib/math/"
+"@utils/" --> "./src/lib/utils/"
+"@kimport/" --> "./src/import/"
+"@spot/" --> "./src/model/spot/"
+"@app/" --> "./app/"
+"@runtime/" --> "./app/runtime/"
+"@controllers/" --> "./app/controllers/"
+"@view/" --> "./app/view/"
+"@ui/" --> "./app/ui/"
+"@io/" --> "./app/io/"
+
+@enduml

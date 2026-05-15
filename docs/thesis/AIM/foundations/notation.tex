@@ -1,0 +1,459 @@
+% foundations/notation.tex
+
+\chapter{Notation and Terminology}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Railway alignment engineering combines concepts from geometry,
+surveying, dynamics, construction, and operational railway systems.
+\end{remark}
+
+\begin{remark}
+Many inconsistencies in classical systems arise not from incorrect
+mathematics, but from ambiguous terminology and mixed conceptual layers.
+\end{remark}
+
+\begin{remark}
+The AIM framework therefore introduces a canonical notation and
+terminology system.
+\end{remark}
+
+\begin{remark}
+The purpose of this chapter is:
+\begin{itemize}
+\item to define canonical symbols,
+\item to stabilize terminology,
+\item to reduce ambiguity,
+\item and to separate fundamentally different concepts.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{General Principles}
+% ============================================================
+
+\begin{principle}[Intrinsic-first principle]
+Whenever possible, railway geometry is formulated intrinsically using
+arc-length-based quantities.
+\end{principle}
+
+\begin{principle}[Runtime distinction principle]
+A distinction is made between:
+\begin{itemize}
+\item stored representations,
+\item runtime-evaluated states,
+\item and physically realized states.
+\end{itemize}
+\end{principle}
+
+\begin{principle}[Target vs realization principle]
+Target geometry and realized geometry are treated as distinct objects.
+\end{principle}
+
+% ============================================================
+\section{Canonical Coordinates}
+% ============================================================
+
+\subsection{Arc-Length}
+
+\begin{definition}[Arc-length]
+\[
+s
+\]
+denotes intrinsic arc-length along the alignment.
+\end{definition}
+
+\begin{remark}
+Arc-length is the primary intrinsic coordinate within AIM.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Track Coordinates}
+
+\begin{definition}[Track coordinates]
+Track-space coordinates are:
+\[
+(s,d,h),
+\]
+where:
+\begin{itemize}
+\item \(s\): longitudinal coordinate,
+\item \(d\): lateral offset,
+\item \(h\): vertical offset.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{World Coordinates}
+
+\begin{definition}[World coordinates]
+World coordinates are denoted by:
+\[
+x \in \mathbb R^n.
+\]
+\end{definition}
+
+\begin{remark}
+World coordinates are CRS-dependent.
+\end{remark}
+
+% ============================================================
+\section{Geometry Symbols}
+% ============================================================
+
+\subsection{Alignment Curve}
+
+\begin{definition}[Alignment curve]
+\[
+\gamma(s)
+\]
+denotes the intrinsic alignment geometry.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Orientation}
+
+\begin{definition}[Orientation angle]
+\[
+\theta(s)
+\]
+denotes horizontal alignment orientation.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Curvature}
+
+\begin{definition}[Curvature]
+\[
+\kappa(s)
+\]
+denotes curvature as function of arc-length.
+\end{definition}
+
+\begin{remark}
+Curvature is the primary geometric quantity within AIM.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Cant}
+
+\begin{definition}[Cant]
+\[
+\phi(s)
+\]
+denotes cant rotation.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Cant Gradient}
+
+\begin{definition}[Cant evolution]
+\[
+\omega(s)
+=
+\phi'(s).
+\]
+\end{definition}
+
+% ============================================================
+\section{Frame Symbols}
+% ============================================================
+
+\subsection{Tangent Direction}
+
+\begin{definition}[Tangent vector]
+\[
+\mathbf t(s)
+\]
+denotes the local tangent direction.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Lateral Direction}
+
+\begin{definition}[Lateral vector]
+\[
+\mathbf n(s)
+\]
+denotes the local lateral direction.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Binormal Direction}
+
+\begin{definition}[Binormal vector]
+\[
+\mathbf b(s)
+\]
+denotes the local binormal direction.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Frame}
+
+\begin{definition}[Local frame]
+\[
+F(s)
+=
+(\mathbf t,\mathbf n,\mathbf b)
+\]
+denotes the local pose3 frame.
+\end{definition}
+
+% ============================================================
+\section{Pose and State Terminology}
+% ============================================================
+
+\subsection{Pose}
+
+\begin{definition}[Pose]
+A pose denotes a local intrinsic railway state attached to arc-length
+position \(s\).
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{pose2}
+
+\begin{definition}[pose2]
+The pose2 state denotes:
+\[
+(x,y,\theta,\kappa).
+\]
+\end{definition}
+
+\begin{remark}
+pose2 represents intrinsic planar railway geometry.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{pose3}
+
+\begin{definition}[pose3]
+The pose3 state extends pose2 by:
+\begin{itemize}
+\item cant,
+\item local frame interpretation,
+\item and operational spatial orientation.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{State}
+
+\begin{definition}[State]
+A state denotes a runtime-evaluated operational railway condition.
+\end{definition}
+
+\begin{remark}
+Within AIM, states are not merely stored parameter containers.
+\end{remark}
+
+% ============================================================
+\section{Target and Realization Notation}
+% ============================================================
+
+\subsection{Target Quantities}
+
+\begin{definition}[Target notation]
+Target quantities use the index:
+\[
+(\cdot)_{\mathrm{target}}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Realized Quantities}
+
+\begin{definition}[Realized notation]
+Realized quantities use the index:
+\[
+(\cdot)_{\mathrm{real}}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Measured Quantities}
+
+\begin{definition}[Measured notation]
+Measured quantities use the index:
+\[
+(\cdot)_{\mathrm{meas}}.
+\]
+\end{definition}
+
+% ============================================================
+\section{Operator Notation}
+% ============================================================
+
+\subsection{Realization Operator}
+
+\begin{definition}[Realization operator]
+\[
+\mathcal R
+\]
+denotes the realization operator.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Sampling Operator}
+
+\begin{definition}[Sampling operator]
+\[
+\mathcal S
+\]
+denotes sampling from continuous to discrete representation.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Interpolation Operator}
+
+\begin{definition}[Interpolation operator]
+\[
+\mathcal I
+\]
+denotes reconstruction from discrete data.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Adjustment Operator}
+
+\begin{definition}[Adjustment operator]
+\[
+\mathcal T
+\]
+denotes a local construction or maintenance update operator.
+\end{definition}
+
+% ============================================================
+\section{CRS and Earth Geometry}
+% ============================================================
+
+\subsection{Geodesic Curvature}
+
+\begin{definition}[Geodesic curvature]
+\[
+\kappa_g
+\]
+denotes geodesic curvature on the Earth surface.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Normal Curvature}
+
+\begin{definition}[Normal curvature]
+\[
+\kappa_n
+\]
+denotes curvature induced by Earth surface geometry.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Earth Normal}
+
+\begin{definition}[Earth surface normal]
+\[
+\mathbf n_E
+\]
+denotes the ellipsoid surface normal.
+\end{definition}
+
+% ============================================================
+\section{Vehicle-Space Terminology}
+% ============================================================
+
+\subsection{Vehicle Space}
+
+\begin{definition}[Vehicle space]
+Vehicle space denotes the physically occupied operational space of the
+railway vehicle.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Operational Geometry}
+
+\begin{definition}[Operational geometry]
+Operational geometry denotes geometry relevant to:
+\begin{itemize}
+\item passenger comfort,
+\item platform interaction,
+\item clearance,
+\item and vehicle behaviour.
+\end{itemize}
+\end{definition}
+
+% ============================================================
+\section{Canonical Terminology}
+% ============================================================
+
+\begin{definition}[Preferred terminology]
+The following terminology is preferred:
+\begin{center}
+\begin{tabular}{ll}
+alignment & intrinsic railway geometry system \\
+curve & mathematical geometric object \\
+trajectory & motion-related path \\
+pose & local railway state \\
+frame & local spatial interpretation \\
+state & runtime operational condition \\
+realization & physical construction process \\
+runtime & operational computational evaluation \\
+world space & CRS-based spatial coordinates \\
+track space & intrinsic alignment coordinates
+\end{tabular}
+\end{center}
+\end{definition}
+
+% ============================================================
+\section{Avoided Ambiguities}
+% ============================================================
+
+\begin{remark}
+The following ambiguities should be avoided:
+\begin{itemize}
+\item alignment \(\neq\) merely curve,
+\item realization \(\neq\) visualization,
+\item runtime \(\neq\) software process only,
+\item pose \(\neq\) frame,
+\item world coordinates \(\neq\) track coordinates.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+The AIM notation system separates:
+\begin{itemize}
+\item intrinsic geometry,
+\item realized geometry,
+\item runtime states,
+\item operational vehicle-space interpretation,
+\item and CRS-dependent world geometry.
+\end{itemize}
+
+This notation framework forms the canonical language of AIM.
+\end{summary}

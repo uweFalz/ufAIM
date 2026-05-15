@@ -1,0 +1,7 @@
+@startuml
+title ufAIM import overload
+skinparam componentStyle rectangle
+
+"app/controllers/importController.js" -[#orange]-> "src/import/runImportPipeline.js" : Controller imports Import directly
+
+@enduml

@@ -1,0 +1,15 @@
+@startuml
+title ufAIM messaging dependencies
+skinparam componentStyle rectangle
+
+"app/controllers" --> "message:Import.AddItems"
+"app/controllers" --> "message:Import.GetState"
+"app/controllers" --> "message:Import.SetItemAccepted"
+"app/controllers" --> "message:Spot.GetState"
+"app/controllers" --> "message:Spot.PromoteImportItemsById"
+"app/controllers" --> "message:Transition.GetPresetSpec"
+"app/controllers" --> "message:Transition.ListPresets"
+"app/runtime" --> "message:Debug.Log"
+"app/view" --> "message:Transition.GetPresetSpec"
+
+@enduml
