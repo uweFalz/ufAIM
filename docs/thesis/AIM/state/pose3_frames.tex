@@ -12,48 +12,34 @@ cant, and spatial interpretation.
 \end{remark}
 
 \begin{remark}
-To interpret these quantities consistently, local spatial reference
-frames are required.
+The state variables alone do not fully determine how the alignment is
+interpreted in space. For this, local reference frames are required.
 \end{remark}
 
 \begin{remark}
-Within AIM, frames are not merely mathematical helper objects.
-They form the operational bridge between:
+Within AIM, frames form the operational bridge between:
 \begin{itemize}
-\item geometry,
+\item intrinsic geometry,
+\item cant,
 \item dynamics,
 \item realization,
-\item visualization,
+\item world--track projection,
 \item and vehicle-space interpretation.
 \end{itemize}
 \end{remark}
 
 % ============================================================
-\section{Pose3 State}
+\section{Pose3 and Frames}
 % ============================================================
 
-\begin{definition}[Pose3 state]
-A pose3 state is defined by:
-\[
-\mathrm{pose3}(s)
-=
-(
-\gamma(s),
-\theta(s),
-\phi(s)
-),
-\]
-where:
-\begin{itemize}
-\item \(\gamma(s)\) is the spatial position,
-\item \(\theta(s)\) is the horizontal orientation,
-\item \(\phi(s)\) is the cant rotation.
-\end{itemize}
-\end{definition}
+\begin{remark}
+The canonical pose3 state is defined in
+\cref{eq:canonical-state}.
+\end{remark}
 
 \begin{remark}
-The pose3 state represents the local operational state of the railway
-alignment.
+A pose3 frame provides the local spatial interpretation of this state.
+It is derived from the alignment and evaluated along arc-length.
 \end{remark}
 
 % ============================================================
@@ -68,7 +54,7 @@ The tangent vector is:
 \end{definition}
 
 \begin{remark}
-For arc-length parameterization:
+For arc-length parameterization,
 \[
 \|\mathbf t(s)\|=1.
 \]
@@ -79,7 +65,7 @@ The tangent direction defines the local forward direction of motion.
 \end{remark}
 
 % ============================================================
-\section{Lateral Direction}
+\section{Lateral and Binormal Directions}
 % ============================================================
 
 \begin{definition}[Lateral direction]
@@ -87,22 +73,11 @@ The lateral direction is denoted by:
 \[
 \mathbf n(s),
 \]
-orthogonal to the tangent direction.
+with
+\[
+\mathbf n(s)\cdot \mathbf t(s)=0.
+\]
 \end{definition}
-
-\begin{remark}
-The lateral direction defines:
-\begin{itemize}
-\item cant orientation,
-\item track offsets,
-\item vehicle displacement,
-\item and platform interaction.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Vertical and Binormal Directions}
-% ============================================================
 
 \begin{definition}[Binormal direction]
 The binormal direction is:
@@ -112,8 +87,8 @@ The binormal direction is:
 \end{definition}
 
 \begin{remark}
-The binormal direction defines the local vertical orientation of the
-track frame.
+The lateral and binormal directions define the local cross-section
+orientation of the railway frame.
 \end{remark}
 
 % ============================================================
@@ -133,6 +108,11 @@ The pose3 frame defines the local operational coordinate system of the
 railway alignment.
 \end{remark}
 
+\begin{remark}
+It is a runtime-evaluated structure rather than an independently stored
+geometric object.
+\end{remark}
+
 % ============================================================
 \section{Cant Rotation}
 % ============================================================
@@ -144,14 +124,24 @@ R_\phi(s).
 \]
 \end{definition}
 
-\begin{remark}
-Cant rotates the local railway cross-section relative to the base frame.
-\end{remark}
+\begin{definition}[Cant-rotated frame]
+The cant-rotated frame is:
+\[
+F_\phi(s)
+=
+(
+\mathbf t(s),
+\mathbf n_\phi(s),
+\mathbf b_\phi(s)
+).
+\]
+\end{definition}
 
 \begin{remark}
-The rotated frame determines:
+The cant-rotated frame determines:
 \begin{itemize}
 \item rail elevations,
+\item cross-level interpretation,
 \item vehicle orientation,
 \item effective gravity direction,
 \item and platform geometry.
@@ -164,37 +154,12 @@ The rotated frame determines:
 
 \begin{remark}
 Gauge, rail elevation, and cross-level geometry are defined relative to
-the rotated local frame.
+the cant-rotated frame.
 \end{remark}
 
 \begin{remark}
 The rail plane is therefore not globally horizontal, but attached to the
-local pose3 frame.
-\end{remark}
-
-% ============================================================
-\section{Vehicle-Space Interpretation}
-% ============================================================
-
-\begin{remark}
-The physically relevant object is not necessarily the track centerline,
-but the motion of the railway vehicle within space.
-\end{remark}
-
-\begin{remark}
-Important quantities include:
-\begin{itemize}
-\item center-of-gravity motion,
-\item vehicle envelope,
-\item bogie rotation,
-\item wheelset orientation,
-\item and platform clearance behaviour.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, pose3 frames provide the spatial reference basis for
-vehicle-space-aware railway modelling.
+local pose3 frame and its cant rotation.
 \end{remark}
 
 % ============================================================
@@ -202,14 +167,20 @@ vehicle-space-aware railway modelling.
 % ============================================================
 
 \begin{remark}
-Classical Frenet frames become unstable in regions where:
+Classical Frenet frames are not fully adequate for railway alignment
+modelling.
+\end{remark}
+
+\begin{remark}
+In particular, Frenet frames become unstable in regions where
 \[
 \kappa(s)\to 0.
 \]
 \end{remark}
 
 \begin{remark}
-Railway modelling therefore requires more robust frame formulations.
+Railway modelling therefore requires frame formulations that remain
+stable in straight and low-curvature sections.
 \end{remark}
 
 \begin{remark}
@@ -229,9 +200,9 @@ respect ellipsoid geometry.
 \begin{definition}[Surface-attached frame]
 A surface-attached frame consists of:
 \[
-(\mathbf t,\mathbf n,\mathbf n_E),
+(\mathbf t,\mathbf n,\mathbf n_{\mathrm E}),
 \]
-where \(\mathbf n_E\) denotes the ellipsoid surface normal.
+where \(\mathbf n_{\mathrm E}\) denotes the ellipsoid surface normal.
 \end{definition}
 
 \begin{remark}
@@ -244,23 +215,50 @@ In this setting:
 \end{remark}
 
 % ============================================================
-\section{Runtime Interpretation}
+\section{Vehicle-Space Interpretation}
 % ============================================================
 
 \begin{remark}
-Within AIM, frames act as runtime services supporting:
+The physically relevant object is not always the track centerline alone,
+but the motion of the railway vehicle within space.
+\end{remark}
+
+\begin{remark}
+Pose3 frames provide the spatial reference basis for:
 \begin{itemize}
-\item projection,
-\item visualization,
-\item BIM placement,
-\item sensor integration,
-\item and operational interpretation.
+\item center-of-gravity motion,
+\item vehicle envelopes,
+\item bogie rotation,
+\item wheelset orientation,
+\item and platform clearance behaviour.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-Frames are therefore evaluated dynamically during runtime rather than
-stored merely as static geometric entities.
+Thus, vehicle-space interpretation is derived from alignment states and
+their associated frames.
+\end{remark}
+
+% ============================================================
+\section{Connection to World--Track Transformation}
+% ============================================================
+
+\begin{remark}
+World--track projection relies directly on the local frame.
+\end{remark}
+
+\begin{remark}
+In particular:
+\begin{itemize}
+\item tangent directions define longitudinal coordinates,
+\item lateral directions define offsets,
+\item and cant modifies the operational spatial interpretation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This connects pose3 frames to the canonical world--track relation in
+\cref{eq:world-to-track}.
 \end{remark}
 
 % ============================================================
@@ -273,34 +271,14 @@ Frame continuity is essential for:
 \item smooth visualization,
 \item stable dynamics,
 \item cant interpretation,
+\item vehicle-space evaluation,
 \item and numerical robustness.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-Discontinuous frame flips lead to:
-\begin{itemize}
-\item unstable vehicle interpretation,
-\item incorrect cant orientation,
-\item and invalid projection behaviour.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Connection to World--Track Transformation}
-% ============================================================
-
-\begin{remark}
-World--track projection relies directly on the local pose3 frame.
-\end{remark}
-
-\begin{remark}
-In particular:
-\begin{itemize}
-\item tangent directions define longitudinal coordinates,
-\item lateral directions define offsets,
-\item and cant modifies the operational spatial interpretation.
-\end{itemize}
+Discontinuous frame flips may lead to incorrect cant orientation,
+unstable vehicle interpretation, and invalid projection behaviour.
 \end{remark}
 
 % ============================================================
@@ -328,6 +306,7 @@ alignment modelling.
 Within AIM, they form the operational bridge between:
 \begin{itemize}
 \item curvature-based geometry,
+\item cant,
 \item realization,
 \item world--track projection,
 \item vehicle-space interpretation,

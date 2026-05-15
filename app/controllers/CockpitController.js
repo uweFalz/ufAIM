@@ -1,9 +1,6 @@
-// app/controllers/CockpitController.js
+// app/controllers/cockpitController.js
 
-import { projectAlignmentPreview } from "@src/domain/projection/AlignmentProjectionService.js";
 import { inspectCrsContext } from "@src/domain/crs/CrsAgent.js";
-import { exportLandXML } from "@src/export/exportLandXML.js";
-import { downloadTextFile } from "@src/export/downloadFile.js";
 
 import { renderCockpitHtml } from "@app/view/cockpit/renderCockpitHtml.js";
 
@@ -18,6 +15,17 @@ import {
 	deriveImportItemCrsId,
 	isPinned,
 } from "@app/domain/cockpit/cockpitItemAdapters.js";
+
+import {
+	activateObjectId,
+	toggleCockpitPin,
+	clearCockpitPreview,
+	markImportItemAccepted,
+	syncSpotObjectsToPreviewCollection,
+	exportLandXMLById,
+	readFirstAddedObjectId,
+	readFirstReviewReason,
+} from "@app/controllers/cockpit/cockpitActions.js";
 
 export class CockpitController {
 	constructor({ store, messaging, logLine } = {}) {
@@ -53,8 +61,8 @@ export class CockpitController {
 
 	async refreshAll() {
 		await Promise.all([
-		this.refreshImportState(),
-		this.refreshSpotState(),
+			this.refreshImportState(),
+			this.refreshSpotState(),
 		]);
 
 		this.render();
@@ -67,7 +75,14 @@ export class CockpitController {
 
 	async refreshSpotState() {
 		this._spotState = await this.messaging.sendCmdAwait("Spot.GetState", {});
-		this._syncSpotObjectsToPreviewCollection(this._spotState);
+
+		syncSpotObjectsToPreviewCollection({
+			store: this.store,
+			spotState: this._spotState,
+			maxStep: 5,
+			sourceType: "spot-sync",
+		});
+
 		return this._spotState;
 	}
 
@@ -121,6 +136,7 @@ export class CockpitController {
 		});
 
 		this.store.actions?.setActiveRouteProject?.(null);
+		this.store.actions?.clearWorkspacePrimary?.();
 		this.store.actions?.setCursorS?.(0);
 
 		this.logLine?.(`[Cockpit] Vorschau: ${previewCandidate.name}`);
@@ -139,9 +155,9 @@ export class CockpitController {
 			if (show) this._activateObjectId(itemId);
 
 			this.logLine?.(
-			show
-			? `[Cockpit] anzeigen: ${itemId}`
-			: `[Cockpit] bereits im Universe: ${itemId}`
+				show
+					? `[Cockpit] anzeigen: ${itemId}`
+					: `[Cockpit] bereits im Universe: ${itemId}`
 			);
 
 			this.queueRender();
@@ -158,24 +174,27 @@ export class CockpitController {
 			const reason = readFirstReviewReason(result);
 
 			this.logLine?.(
-			`[Cockpit] nicht ins Universe übernommen: ${itemId}` +
-			(reason ? ` :: ${reason}` : "")
+				`[Cockpit] nicht ins Universe übernommen: ${itemId}` +
+				(reason ? ` :: ${reason}` : "")
 			);
 
 			await Promise.all([
-			this.refreshImportState(),
-			this.refreshSpotState(),
+				this.refreshImportState(),
+				this.refreshSpotState(),
 			]);
 
 			this.render();
 			return false;
 		}
 
-		await this._markImportItemAccepted(itemId);
+		await markImportItemAccepted({
+			messaging: this.messaging,
+			itemId,
+		});
 
 		await Promise.all([
-		this.refreshImportState(),
-		this.refreshSpotState(),
+			this.refreshImportState(),
+			this.refreshSpotState(),
 		]);
 
 		if (show) {
@@ -189,136 +208,58 @@ export class CockpitController {
 	}
 
 	async activateSpotObject(objectId) {
-		const id = String(objectId ?? "").trim();
-		if (!id) return false;
+		const ok = this._activateObjectId(objectId);
+		if (!ok) return false;
 
-		this._activateObjectId(id);
-		this.logLine?.(`[Cockpit] anzeigen: ${id}`);
+		this.logLine?.(`[Cockpit] anzeigen: ${objectId}`);
 		this.queueRender();
 
 		return true;
 	}
 
 	async exportLandXMLById(objectId) {
-		const id = String(objectId ?? "").trim();
-
-		if (!id) {
-			this.logLine?.("[Cockpit] kein Objekt für landXML-Export");
-			return false;
-		}
-
-		const spotState = this._spotState ?? await this.refreshSpotState();
-		const obj = findSpotObjectById(spotState, id);
-
-		if (!obj) {
-			this.logLine?.(`[Cockpit] SPOT-Objekt nicht gefunden: ${id}`);
-			return false;
-		}
-
-		const alignment = obj?.data?.kernel ?? null;
-		if (!alignment) {
-			this.logLine?.(`[Cockpit] kein Alignment-Kernel für Export: ${id}`);
-			return false;
-		}
-
-		const label = readSpotLabel(obj) ?? id;
-
-		const xml = exportLandXML({
-			alignment,
-			meta: {
-				name: label,
-				objectId: id,
-				crsId: obj?.crsId ?? null,
-			},
+		return await exportLandXMLById({
+			spotState: this._spotState,
+			refreshSpotState: () => this.refreshSpotState(),
+			objectId,
+			logLine: this.logLine,
 		});
-
-		downloadTextFile({
-			content: xml,
-			fileName: `${safeFileStem(label || id)}.landxml`,
-		});
-
-		this.logLine?.(`[Cockpit] landXML exportiert: ${label}`);
-		return true;
 	}
 
 	togglePin(objectId) {
-		const id = String(objectId ?? "").trim();
-		if (!id) return false;
-
-		this.store.actions?.togglePinRouteProject?.({
-			rpId: id,
+		const ok = toggleCockpitPin({
+			store: this.store,
+			objectId,
 			slot: "right",
 		});
 
-		this.logLine?.(`[Cockpit] pin toggle: ${id}`);
+		if (!ok) return false;
+
+		this.logLine?.(`[Cockpit] pin toggle: ${objectId}`);
 		this.queueRender();
 
 		return true;
 	}
 
 	clearPreview() {
-		this.store.actions?.clearPreviewItem?.();
+		clearCockpitPreview({ store: this.store });
 		this.logLine?.("[Cockpit] Vorschau geleert");
 		this.queueRender();
 	}
 
 	_activateObjectId(objectId) {
-		const id = String(objectId ?? "").trim();
-		if (!id) return false;
-
-		this.store.actions?.clearPreviewItem?.();
-		this.store.actions?.setActiveRouteProject?.(id);
-		this.store.actions?.setCursorS?.(0);
-
-		return true;
-	}
-
-	async _markImportItemAccepted(itemId) {
-		try {
-			await this.messaging.sendCmdAwait("Import.SetItemAccepted", {
-				itemId,
-				accepted: true,
-			});
-		} catch (err) {
-			console.warn("[Cockpit] Import.SetItemAccepted failed", err);
-		}
-	}
-
-	_syncSpotObjectsToPreviewCollection(spotState) {
-		const objects = Object.values(spotState?.objects ?? {});
-		const tracks = [];
-
-		for (const obj of objects) {
-			const kernel = obj?.data?.kernel ?? null;
-			if (!kernel) continue;
-
-			const projected = projectAlignmentPreview({
-				sparseAlignment: kernel,
-				maxStep: 5,
-			});
-
-			const points = projected?.polyline2d;
-			if (!Array.isArray(points) || points.length < 2) continue;
-
-			tracks.push({
-				id: String(obj.id),
-				objectId: String(obj.id),
-				points,
-				source: "spot",
-			});
-		}
-
-		this.store.actions?.setImportPreviewCollection?.({
-			items: tracks,
-			source: { type: "spot-sync" },
+		return activateObjectId({
+			store: this.store,
+			objectId,
 		});
 	}
 
 	_buildSceneState(windowState, spotState) {
 		const activeObjectId =
-		windowState?.focus?.objectId ??
-		windowState?.activeRouteProjectId ??
-		null;
+			windowState?.workspace_selection?.primaryId ??
+			windowState?.focus?.objectId ??
+			windowState?.activeRouteProjectId ??
+			null;
 
 		const previewItem = windowState?.preview_item ?? null;
 
@@ -372,8 +313,8 @@ export class CockpitController {
 		const spotObjects = Object.values(spotState?.objects ?? {});
 
 		const previewTracks = Array.isArray(windowState.import_preview_collection)
-		? windowState.import_preview_collection.length
-		: 0;
+			? windowState.import_preview_collection.length
+			: 0;
 
 		const crs = inspectCrsContext({
 			sceneCrsId: scene?.crsId ?? null,
@@ -401,41 +342,41 @@ export class CockpitController {
 
 		if (scene.mode === "preview" && scene.objectId) {
 			actions.push(
-			{
-				id: "accept",
-				label: "Übernehmen",
-				kind: "secondary",
-				objectId: scene.objectId,
-			},
-			{
-				id: "acceptAndShow",
-				label: "Übernehmen & anzeigen",
-				kind: "primary",
-				objectId: scene.objectId,
-			},
-			{
-				id: "clearPreview",
-				label: "Vorschau schließen",
-				kind: "ghost",
-				objectId: scene.objectId,
-			}
+				{
+					id: "accept",
+					label: "Übernehmen",
+					kind: "secondary",
+					objectId: scene.objectId,
+				},
+				{
+					id: "acceptAndShow",
+					label: "Übernehmen & anzeigen",
+					kind: "primary",
+					objectId: scene.objectId,
+				},
+				{
+					id: "clearPreview",
+					label: "Vorschau schließen",
+					kind: "ghost",
+					objectId: scene.objectId,
+				}
 			);
 		}
 
 		if (scene.mode === "spot" && scene.objectId) {
 			actions.push(
-			{
-				id: "exportLandXML",
-				label: "landXML exportieren",
-				kind: "primary",
-				objectId: scene.objectId,
-			},
-			{
-				id: "pin",
-				label: scene.pinned ? "Lösen" : "Anheften",
-				kind: "secondary",
-				objectId: scene.objectId,
-			}
+				{
+					id: "exportLandXML",
+					label: "landXML exportieren",
+					kind: "primary",
+					objectId: scene.objectId,
+				},
+				{
+					id: "pin",
+					label: scene.pinned ? "Lösen" : "Anheften",
+					kind: "secondary",
+					objectId: scene.objectId,
+				}
 			);
 		}
 
@@ -513,35 +454,35 @@ export class CockpitController {
 	_dispatchAction(actionId, objectId) {
 		switch (actionId) {
 			case "accept":
-			void this.acceptImportItem(objectId, { show: false });
-			return;
+				void this.acceptImportItem(objectId, { show: false });
+				return;
 
 			case "acceptAndShow":
-			void this.acceptImportItem(objectId, { show: true });
-			return;
+				void this.acceptImportItem(objectId, { show: true });
+				return;
 
 			case "clearPreview":
-			this.clearPreview();
-			return;
+				this.clearPreview();
+				return;
 
 			case "exportLandXML":
-			void this.exportLandXMLById(objectId);
-			return;
+				void this.exportLandXMLById(objectId);
+				return;
 
 			case "pin":
-			this.togglePin(objectId);
-			return;
+				this.togglePin(objectId);
+				return;
 
 			case "inspectCrs":
-			this.logLine?.("[Cockpit] CRS-Kontext ist sichtbar. Nächster Schritt: CRS-Management-Shell.");
-			return;
+				this.logLine?.("[Cockpit] CRS-Kontext ist sichtbar. Nächster Schritt: CRS-Management-Shell.");
+				return;
 
 			case "details":
-			this.logLine?.(`[Cockpit] Details: ${objectId}`);
-			return;
+				this.logLine?.(`[Cockpit] Details: ${objectId}`);
+				return;
 
 			default:
-			this.logLine?.(`[Cockpit] unbekannte Aktion: ${actionId}`);
+				this.logLine?.(`[Cockpit] unbekannte Aktion: ${actionId}`);
 		}
 	}
 
@@ -552,18 +493,6 @@ export class CockpitController {
 			this.queueRender();
 		});
 	}
-}
-
-function readFirstAddedObjectId(result) {
-	return Array.isArray(result?.addedObjects) && result.addedObjects[0]?.id
-	? String(result.addedObjects[0].id)
-	: null;
-}
-
-function readFirstReviewReason(result) {
-	return Array.isArray(result?.reviewItems) && result.reviewItems[0]?.reason
-	? String(result.reviewItems[0].reason)
-	: null;
 }
 
 function buildContextMessage(scene, crs) {
@@ -580,13 +509,4 @@ function buildContextMessage(scene, crs) {
 	}
 
 	return "Dieses Objekt ist im Arbeitsbestand und kann weiter untersucht werden.";
-}
-
-function safeFileStem(value) {
-	return String(value ?? "ufAIM_alignment")
-	.trim()
-	.replace(/\.[^.]+$/g, "")
-	.replace(/[^a-zA-Z0-9_\-]+/g, "_")
-	.replace(/^_+|_+$/g, "")
-	|| "ufAIM_alignment";
 }
