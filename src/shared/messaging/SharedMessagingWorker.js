@@ -8,6 +8,7 @@ import { createProjectStateService } from "./service/ProjectStateService.js";
 import { createImportSessionService } from "./service/ImportSessionService.js";
 import { createSpotService } from "./service/SpotService.js";
 import { createDebugService } from "./service/DebugService.js";
+import { createSolverService } from "../../services/optimization/SolverService.js";
 
 const router = startWorkerRouter(self);
 const ctx = createWorkerContext({ router });
@@ -66,6 +67,11 @@ const debug = createDebugService({
 	router: ctx.router,
 	scope: "worker",
 	enabled: true,
+});
+
+const solverService = createSolverService({
+	router: ctx.router,
+	debug,
 });
 
 debug.log("worker booted");
@@ -276,6 +282,20 @@ router.onCmd("Spot.PromoteImportItemsById", async ({ itemIds = [] } = {}) => {
 });
 
 	return result;
+});
+
+// ------------------------------------------------------------
+// Solver.* API
+// ------------------------------------------------------------
+
+router.onCmd("Solver.Ping", async ({ message } = {}) => {
+	debug.log("Solver.Ping", { message });
+	return solverService.ping({ message });
+});
+
+router.onCmd("Solver.RunDummy", async ({ payload } = {}) => {
+	debug.log("Solver.RunDummy", { payload });
+	return solverService.runDummy({ payload });
 });
 
 // ------------------------------------------------------------

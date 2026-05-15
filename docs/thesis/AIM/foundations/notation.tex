@@ -8,12 +8,14 @@
 
 \begin{remark}
 Railway alignment engineering combines concepts from geometry,
-surveying, dynamics, construction, and operational railway systems.
+surveying, dynamics, construction, realization, and operational railway
+systems.
 \end{remark}
 
 \begin{remark}
-Many inconsistencies in classical systems arise not from incorrect
-mathematics, but from ambiguous terminology and mixed conceptual layers.
+Many inconsistencies in classical railway systems arise not from
+incorrect mathematics, but from ambiguous terminology and mixed
+conceptual layers.
 \end{remark}
 
 \begin{remark}
@@ -27,7 +29,7 @@ The purpose of this chapter is:
 \item to define canonical symbols,
 \item to stabilize terminology,
 \item to reduce ambiguity,
-\item and to separate fundamentally different concepts.
+\item and to separate fundamentally different conceptual layers.
 \end{itemize}
 \end{remark}
 
@@ -51,6 +53,18 @@ A distinction is made between:
 
 \begin{principle}[Target vs realization principle]
 Target geometry and realized geometry are treated as distinct objects.
+\end{principle}
+
+\begin{principle}[Canonical layer principle]
+AIM separates:
+\begin{itemize}
+\item intrinsic geometry,
+\item runtime interpretation,
+\item realization,
+\item operational behaviour,
+\item and CRS-dependent embedding
+\end{itemize}
+into distinct conceptual layers.
 \end{principle}
 
 % ============================================================
@@ -115,6 +129,11 @@ World coordinates are CRS-dependent.
 denotes the intrinsic alignment geometry.
 \end{definition}
 
+\begin{remark}
+The alignment curve represents the geometric backbone of the railway
+alignment.
+\end{remark}
+
 % ------------------------------------------------------------
 
 \subsection{Orientation}
@@ -152,16 +171,22 @@ Curvature is the primary geometric quantity within AIM.
 denotes cant rotation.
 \end{definition}
 
+\begin{remark}
+Within AIM, cant is interpreted geometrically as frame rotation,
+independent of its engineering realization as rail height difference.
+\end{remark}
+
 % ------------------------------------------------------------
 
-\subsection{Cant Gradient}
+\subsection{Cant Evolution}
 
 \begin{definition}[Cant evolution]
 \[
 \omega(s)
 =
-\phi'(s).
+\phi'(s)
 \]
+denotes cant-rate evolution.
 \end{definition}
 
 % ============================================================
@@ -201,13 +226,13 @@ denotes the local binormal direction.
 
 % ------------------------------------------------------------
 
-\subsection{Frame}
+\subsection{Local Frame}
 
 \begin{definition}[Local frame]
 \[
 F(s)
 =
-(\mathbf t,\mathbf n,\mathbf b)
+(\mathbf t(s),\mathbf n(s),\mathbf b(s))
 \]
 denotes the local pose3 frame.
 \end{definition}
@@ -228,9 +253,11 @@ position \(s\).
 \subsection{pose2}
 
 \begin{definition}[pose2]
-The pose2 state denotes:
+The pose2 state is:
 \[
-(x,y,\theta,\kappa).
+\mathrm{pose2}(s)
+=
+(\gamma(s),\theta(s)).
 \]
 \end{definition}
 
@@ -243,13 +270,35 @@ pose2 represents intrinsic planar railway geometry.
 \subsection{pose3}
 
 \begin{definition}[pose3]
-The pose3 state extends pose2 by:
-\begin{itemize}
-\item cant,
-\item local frame interpretation,
-\item and operational spatial orientation.
-\end{itemize}
+The pose3 state is:
+\[
+\mathrm{pose3}(s)
+=
+(\gamma(s),\theta(s),\phi(s)).
+\]
 \end{definition}
+
+\begin{remark}
+pose3 extends pose2 by including cant and spatial railway orientation.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Controls}
+
+\begin{definition}[Control quantities]
+The canonical control quantities are:
+\[
+\kappa(s),
+\qquad
+\omega(s).
+\]
+\end{definition}
+
+\begin{remark}
+Curvature controls directional evolution, whereas cant-rate controls
+cant evolution.
+\end{remark}
 
 % ------------------------------------------------------------
 
@@ -261,6 +310,11 @@ A state denotes a runtime-evaluated operational railway condition.
 
 \begin{remark}
 Within AIM, states are not merely stored parameter containers.
+\end{remark}
+
+\begin{remark}
+Runtime refers to operational evaluation of alignment-related quantities,
+independent of implementation details.
 \end{remark}
 
 % ============================================================
@@ -335,6 +389,17 @@ denotes reconstruction from discrete data.
 
 % ------------------------------------------------------------
 
+\subsection{Mechanical Operator}
+
+\begin{definition}[Mechanical operator]
+\[
+\mathcal M
+\]
+denotes mechanical or structural response of the railway system.
+\end{definition}
+
+% ------------------------------------------------------------
+
 \subsection{Adjustment Operator}
 
 \begin{definition}[Adjustment operator]
@@ -370,11 +435,11 @@ denotes curvature induced by Earth surface geometry.
 
 % ------------------------------------------------------------
 
-\subsection{Earth Normal}
+\subsection{Earth Surface Normal}
 
 \begin{definition}[Earth surface normal]
 \[
-\mathbf n_E
+\mathbf n_{\mathrm E}
 \]
 denotes the ellipsoid surface normal.
 \end{definition}
@@ -400,7 +465,8 @@ Operational geometry denotes geometry relevant to:
 \item passenger comfort,
 \item platform interaction,
 \item clearance,
-\item and vehicle behaviour.
+\item vehicle behaviour,
+\item and dynamic vehicle-space interaction.
 \end{itemize}
 \end{definition}
 
@@ -414,6 +480,7 @@ The following terminology is preferred:
 \begin{tabular}{ll}
 alignment & intrinsic railway geometry system \\
 curve & mathematical geometric object \\
+geometry & geometric description \\
 trajectory & motion-related path \\
 pose & local railway state \\
 frame & local spatial interpretation \\
@@ -421,7 +488,8 @@ state & runtime operational condition \\
 realization & physical construction process \\
 runtime & operational computational evaluation \\
 world space & CRS-based spatial coordinates \\
-track space & intrinsic alignment coordinates
+track space & intrinsic alignment coordinates \\
+track & physically realized railway structure
 \end{tabular}
 \end{center}
 \end{definition}
@@ -437,6 +505,7 @@ The following ambiguities should be avoided:
 \item realization \(\neq\) visualization,
 \item runtime \(\neq\) software process only,
 \item pose \(\neq\) frame,
+\item geometry \(\neq\) realization,
 \item world coordinates \(\neq\) track coordinates.
 \end{itemize}
 \end{remark}

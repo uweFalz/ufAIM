@@ -1,9 +1,10 @@
-# macOS
+# --- OS / Editor junk ---
 .DS_Store
 **/.DS_Store
+*.swp
+*.swo
 
 # local tooling / dumps / scratch
-scripts/
 samples/
 sample0/
 var/
@@ -13,7 +14,6 @@ setup_structure.sh
 # big legacy depots / staging parks
 _legacy/
 **/_legacy/
-src_prep/
 
 # docs archives are not part of the living docs
 docs/archive/
@@ -24,23 +24,10 @@ docs/archive/
 *.out
 *.toc
 *.synctex.gz
-*.pdf
 *.run.xml
 
 # scratch / experiments
 app/empty.js
-
-# optional: ignore app/src symlink (recommended)
-app/src
-
-
-
-
-# --- OS / Editor junk ---
-.DS_Store
-**/.DS_Store
-*.swp
-*.swo
 
 # --- local runtime / temp ---
 .metadata/
@@ -51,21 +38,5 @@ dump_*/
 *.tgz
 *.tar.gz
 
-# --- docs / archives ---
-docs/archive/
-
-# --- staging / prep areas (keep out of git) ---
-src_prep/
-scripts/
-
-# --- latex artefacts ---
-*.aux
-*.log
-*.out
-*.toc
-*.synctex.gz
-*.pdf
-*.run.xml
-
 # --- scratch / experiments ---
-app/empty.js
+**/empty.js

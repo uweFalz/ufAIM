@@ -157,6 +157,127 @@ export function createWindowStore(initial) {
 			});
 		},
 
+				// ------------------------------------------------------------
+		// workspace selection
+		// New preferred window-side selection model.
+		// ------------------------------------------------------------
+		setWorkspaceSelection(selection = {}) {
+			const primaryId =
+				selection?.primaryId != null && String(selection.primaryId).trim()
+					? String(selection.primaryId).trim()
+					: null;
+
+			const contextIds = Array.isArray(selection?.contextIds)
+				? [...new Set(
+					selection.contextIds
+						.map((id) => String(id ?? "").trim())
+						.filter(Boolean)
+				)]
+				: [];
+
+			setState({
+				workspace_selection: {
+					primaryId,
+					contextIds,
+					source: selection?.source != null ? String(selection.source) : null,
+					crsId: selection?.crsId != null ? String(selection.crsId) : null,
+				},
+			});
+		},
+
+		setWorkspacePrimary({ objectId, source = "local", crsId = null } = {}) {
+			const id = String(objectId ?? "").trim();
+
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+
+				return {
+					...st,
+					workspace_selection: {
+						primaryId: id || null,
+						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
+						source: source != null ? String(source) : null,
+						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
+					},
+				};
+			});
+		},
+
+		clearWorkspacePrimary() {
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+
+				return {
+					...st,
+					workspace_selection: {
+						primaryId: null,
+						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
+						source: current.source ?? null,
+						crsId: current.crsId ?? null,
+					},
+				};
+			});
+		},
+
+		setWorkspaceContextObjects({ objectIds = [], source = "local", crsId = null } = {}) {
+			const contextIds = Array.isArray(objectIds)
+				? [...new Set(
+					objectIds
+						.map((id) => String(id ?? "").trim())
+						.filter(Boolean)
+				)]
+				: [];
+
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+
+				return {
+					...st,
+					workspace_selection: {
+						primaryId: current.primaryId ?? null,
+						contextIds,
+						source: source != null ? String(source) : null,
+						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
+					},
+				};
+			});
+		},
+
+		toggleWorkspaceContextObject({ objectId, source = "local", crsId = null } = {}) {
+			const id = String(objectId ?? "").trim();
+			if (!id) return;
+
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+				const oldIds = Array.isArray(current.contextIds) ? current.contextIds : [];
+				const has = oldIds.includes(id);
+				const contextIds = has
+					? oldIds.filter((x) => x !== id)
+					: [...oldIds, id];
+
+				return {
+					...st,
+					workspace_selection: {
+						primaryId: current.primaryId ?? null,
+						contextIds,
+						source: source != null ? String(source) : null,
+						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
+					},
+				};
+			});
+		},
+
+		clearWorkspaceSelection() {
+			setState({
+				workspace_selection: {
+					primaryId: null,
+					contextIds: [],
+					source: null,
+					crsId: null,
+				},
+			});
+		},
+
 		// ------------------------------------------------------------
 		// @transition legacy focus mirror
 		// Canonical focus should be accessed via WindowSession / FocusManager.
@@ -438,7 +559,11 @@ export function createWindowStore(initial) {
 		// Alias terms
 		// ------------------------------------------------------------
 		setFocusObjectId(id) {
-			actions.setActiveRouteProject(id);
+			actions.setWorkspacePrimary({
+				objectId: id,
+				source: "focus-alias",
+			});
+			actions.setActiveRouteProject(id); // legacy mirror
 		},
 
 		setFocusSlot(slot) {

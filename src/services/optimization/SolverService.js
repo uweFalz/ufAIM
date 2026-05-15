@@ -1,49 +1,37 @@
 // src/services/optimization/SolverService.js
 
-export class SolverService {
+export function createSolverService({ router, debug } = {}) {
+	return {
+		async ping({ message } = {}) {
+			debug?.log?.("SolverService.ping", { message });
 
-  constructor() {
+			return {
+				ok: true,
+				service: "SolverService",
+				message: message ?? null,
+				ts: Date.now(),
+			};
+		},
 
-    this.worker = new Worker(
+		async runDummy({ payload } = {}) {
+			debug?.log?.("SolverService.runDummy", { payload });
 
-      new URL('./worker/SolverWorker.js', import.meta.url),
+			router?.emitEvt?.("Solver.Progress", {
+				phase: "dummy",
+				progress01: 0.5,
+				message: "dummy solver progress",
+				payload: payload ?? null,
+				ts: Date.now(),
+			});
 
-      { type: 'module' }
-
-    );
-
-  }
-
-  solve(payload) {
-
-    return new Promise((resolve) => {
-
-      const id = crypto.randomUUID();
-
-      const onMessage = (event) => {
-
-        if (event.data?.id !== id) return;
-
-        this.worker.removeEventListener('message', onMessage);
-
-        resolve(event.data.result);
-
-      };
-
-      this.worker.addEventListener('message', onMessage);
-
-      this.worker.postMessage({
-
-        id,
-
-        cmd: 'solve',
-
-        payload,
-
-      });
-
-    });
-
-  }
-
+			return {
+				ok: true,
+				status: "dummy_done",
+				result: {
+					iterations: 0,
+				},
+				ts: Date.now(),
+			};
+		},
+	};
 }

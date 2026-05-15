@@ -32,6 +32,54 @@ The equations collected here serve as:
 \end{remark}
 
 % ============================================================
+\section{Canonical State Representation}
+% ============================================================
+
+\subsection{Intrinsic State}
+
+\begin{definition}[Canonical pose3 state]
+The canonical intrinsic railway state is:
+\begin{equation}
+x(s)
+=
+(\gamma(s),\theta(s),\phi(s)).
+\label{eq:canonical-state}
+\end{equation}
+\end{definition}
+
+\begin{remark}
+The state combines:
+\begin{itemize}
+\item intrinsic geometry,
+\item orientation,
+\item and cant evolution.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Control Variables}
+
+\begin{definition}[Control variables]
+The canonical control variables are:
+\begin{equation}
+u(s)
+=
+(\kappa(s),\omega(s)),
+\label{eq:control-variables}
+\end{equation}
+where:
+\[
+\omega(s)=\phi'(s).
+\]
+\end{definition}
+
+\begin{remark}
+Curvature and cant-rate act as the primary controls of railway state
+evolution.
+\end{remark}
+
+% ============================================================
 \section{Intrinsic Geometry}
 % ============================================================
 
@@ -66,8 +114,8 @@ Directional evolution is governed by:
 \end{definition}
 
 \begin{remark}
-Curvature is therefore the differential quantity governing directional
-change along the alignment.
+Curvature is the differential quantity governing directional evolution
+along the alignment.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -85,7 +133,7 @@ In the planar case:
 \end{definition}
 
 \begin{remark}
-This is a specialization of the intrinsic state evolution relation
+This is the planar specialization of
 \cref{eq:state-evolution}.
 \end{remark}
 
@@ -111,7 +159,7 @@ The canonical planar pose2 system is:
 
 \begin{remark}
 Together with \cref{eq:planar-tangent}, this defines the classical
-curvature-based planar alignment reconstruction system.
+curvature-based planar reconstruction system.
 \end{remark}
 
 % ============================================================
@@ -161,12 +209,8 @@ The canonical pose3 system is:
 \end{definition}
 
 \begin{remark}
-The control variables of the system are:
-\[
-\kappa(s),
-\qquad
-\omega(s).
-\]
+The controls of the system are given by
+\cref{eq:control-variables}.
 \end{remark}
 
 \begin{remark}
@@ -183,18 +227,13 @@ The pose evolution may be written abstractly as:
 \begin{equation}
 x'(s)
 =
-f(x(s),u(s)),
+f(x(s),u(s)).
 \label{eq:general-state-system}
 \end{equation}
-where:
-\begin{itemize}
-\item \(x(s)\) denotes the railway state,
-\item \(u(s)\) denotes the control variables.
-\end{itemize}
 \end{definition}
 
 \begin{remark}
-Within AIM, the controls are primarily:
+Within AIM, the canonical controls are:
 \[
 u(s)
 =
@@ -329,7 +368,7 @@ constraints.
 \begin{definition}[Track-to-world mapping]
 The forward transformation is:
 \begin{equation}
-x(s,d)
+x_w(s,d)
 =
 \gamma(s)+d\,\mathbf n(s).
 \label{eq:track-to-world}
@@ -351,7 +390,7 @@ The inverse transformation is:
 =
 \arg\min_{s,d}
 \|
-x-(\gamma(s)+d\,\mathbf n(s))
+x_w-(\gamma(s)+d\,\mathbf n(s))
 \|.
 \label{eq:world-to-track}
 \end{equation}
