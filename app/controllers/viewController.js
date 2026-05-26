@@ -1,28 +1,4 @@
 // app/controllers/viewController.js
-//
-// ViewController
-//
-// Window-local projection/render orchestration.
-//
-// Responsibilities:
-// - reads window-local focus/context
-// - resolves canonical SPOT objects
-// - requests viewable geometry via projection layer
-// - renders this window
-//
-// NOT:
-// - no import logic
-// - no canonical object ownership
-// - no geometry truth in the view
-//
-// Important:
-// - focus is window-local
-// - canonical objects come from SPOT
-// - local preview may be shown if no focused SPOT object exists
-// - imported preview collection is rendered as aux access layer
-//
-// Rule:
-// canonical change -> local reprojection -> local rerender
 
 import { t } from "@app/i18n/strings.js";
 import { formatNum } from "@utils/helpers.js";
@@ -51,6 +27,7 @@ import {
 	syncTransitionEditorControls,
 } from "@app/controllers/viewUiSync.js";
 
+// ???
 function makePreviewSpotLikeObject(previewItem) {
 	const kernel = previewItem?.kernel ?? previewItem?.sparseAlignment ?? null;
 	if (!kernel) return null;
@@ -85,11 +62,11 @@ function derivePreviewCrsId(previewItem) {
 	const sr = previewItem?.spatialRef ?? null;
 
 	return (
-	sr?.crsId ??
-	sr?.horizontalCrsId ??
-	sr?.horizontal ??
-	sr?.horizontalCoordinateSystemName ??
-	null
+		sr?.crsId ??
+		sr?.horizontalCrsId ??
+		sr?.horizontal ??
+		sr?.horizontalCoordinateSystemName ??
+		null
 	);
 }
 
@@ -118,15 +95,15 @@ export function makeViewController({
 		fitPadding: Number.isFinite(prefs?.view?.fitPadding) ? prefs.view.fitPadding : 1.35,
 		fitDurationMs: Number.isFinite(prefs?.view?.fitDurationMs) ? prefs.view.fitDurationMs : 240,
 		fitIncludesPins:
-		(prefs?.view?.fitIncludesPins !== undefined) ? Boolean(prefs.view.fitIncludesPins) : true,
+			(prefs?.view?.fitIncludesPins !== undefined) ? Boolean(prefs.view.fitIncludesPins) : true,
 
 		showAuxTracks:
-		(prefs?.view?.showAuxTracks !== undefined) ? Boolean(prefs.view.showAuxTracks) : true,
+			(prefs?.view?.showAuxTracks !== undefined) ? Boolean(prefs.view.showAuxTracks) : true,
 		auxTracksScope: String(prefs?.view?.auxTracksScope ?? "routeProject").toLowerCase(),
 		auxTracksMax: Number.isFinite(prefs?.view?.auxTracksMax) ? prefs.view.auxTracksMax : 12,
 
 		auxStyleByAge:
-		(prefs?.view?.auxStyleByAge !== undefined) ? Boolean(prefs.view.auxStyleByAge) : true,
+			(prefs?.view?.auxStyleByAge !== undefined) ? Boolean(prefs.view.auxStyleByAge) : true,
 		auxMaxAlpha: Number.isFinite(prefs?.view?.auxMaxAlpha) ? prefs.view.auxMaxAlpha : 0.85,
 		auxMinAlpha: Number.isFinite(prefs?.view?.auxMinAlpha) ? prefs.view.auxMinAlpha : 0.15,
 		auxFadeSec: Number.isFinite(prefs?.view?.auxFadeSec) ? prefs.view.auxFadeSec : 45,
@@ -140,9 +117,9 @@ export function makeViewController({
 	let onGeomChange = String(prefs?.view?.onGeomChange ?? "recenter").toLowerCase();
 
 	let autoFitOnGeomChange =
-	(prefs?.view?.autoFitOnGeomChange !== undefined)
-	? Boolean(prefs.view.autoFitOnGeomChange)
-	: false;
+		(prefs?.view?.autoFitOnGeomChange !== undefined)
+			? Boolean(prefs.view.autoFitOnGeomChange)
+			: false;
 
 	let cachedCum = null;
 	let lastGeomKey = null;
@@ -155,14 +132,23 @@ export function makeViewController({
 	let cachedFocusObjectId = null;
 	let cachedActiveGeometry = null;
 
-	// -------------------------------------------------------------------------
-	// split aux track ownership cleanly
-	// -------------------------------------------------------------------------
 	let auxOwnedTracks = [];
-	let importPreviewTracks = [];
+	let workspaceContextTracks = [];
 
 	function getFocusObjectId(state) {
-		return state?.focus?.objectId ?? state?.activeRouteProjectId ?? null;
+		return (
+			state?.workspace_selection?.primaryId ??
+			state?.focus?.objectId ??
+			state?.activeRouteProjectId ??
+			null
+		);
+	}
+
+	function getWorkspaceContextIds(state) {
+		const ids = state?.workspace_selection?.contextIds;
+		return Array.isArray(ids)
+			? ids.map((id) => String(id ?? "").trim()).filter(Boolean)
+			: [];
 	}
 
 	function invalidateSpotCache() {
@@ -195,18 +181,18 @@ export function makeViewController({
 		}
 
 		pendingSpotStatePromise = messaging.sendCmdAwait("Spot.GetState", {})
-		.then((spotState) => {
-			cachedSpotState = spotState ?? null;
-			cachedSpotStateAt = Date.now();
-			return cachedSpotState;
-		})
-		.catch((err) => {
-			invalidateSpotCache();
-			throw err;
-		})
-		.finally(() => {
-			pendingSpotStatePromise = null;
-		});
+			.then((spotState) => {
+				cachedSpotState = spotState ?? null;
+				cachedSpotStateAt = Date.now();
+				return cachedSpotState;
+			})
+			.catch((err) => {
+				invalidateSpotCache();
+				throw err;
+			})
+			.finally(() => {
+				pendingSpotStatePromise = null;
+			});
 
 		return await pendingSpotStatePromise;
 	}
@@ -240,9 +226,7 @@ export function makeViewController({
 			maxStep: cfg.sampleStep,
 		});
 
-		if (!geom?.polyline2d || geom.polyline2d.length < 2) {
-			return null;
-		}
+		if (!geom?.polyline2d || geom.polyline2d.length < 2) return null;
 
 		return {
 			objectId: String(previewObject.id ?? "preview"),
@@ -254,38 +238,52 @@ export function makeViewController({
 		};
 	}
 
-	function getImportPreviewGeometries(state) {
-		const items = Array.isArray(state?.import_preview_collection)
-		? state.import_preview_collection
-		: [];
+	async function getWorkspaceContextGeometries(state) {
+		const contextIds = getWorkspaceContextIds(state);
+		if (!contextIds.length) return [];
+
+		const focusObjectId = getFocusObjectId(state);
+		const spotState = await getSpotStateCached();
 
 		const out = [];
 
-		for (const item of items) {
-			// new path: already projected SPOT track
-			const directPoints = item?.points ?? item?.polyline2d ?? null;
+		for (const objectId of contextIds) {
+			if (!objectId || objectId === focusObjectId) continue;
 
-			if (Array.isArray(directPoints) && directPoints.length >= 2) {
-				out.push({
-					id: String(item?.id ?? item?.objectId ?? "preview"),
-					points: directPoints,
-				});
-				continue;
-			}
+			const spotObject = getSpotObjectById(spotState, objectId);
+			if (!spotObject) continue;
 
-			// legacy path: preview item with kernel
-			const previewObject = makePreviewSpotLikeObject(item);
-			if (!previewObject) continue;
+			console.log("[ViewController] context spotObject probe", {
+	objectId,
+	keys: Object.keys(spotObject ?? {}),
+	type: spotObject?.type,
+	crsId: spotObject?.crsId,
+	hasDataKernel: Boolean(spotObject?.data?.kernel),
+	hasDataSparse: Boolean(spotObject?.data?.sparseAlignment),
+	hasPayloadSparse: Boolean(spotObject?.payload?.sparseAlignment),
+	hasRootSparse: Boolean(spotObject?.sparseAlignment),
+	dataKeys: Object.keys(spotObject?.data ?? {}),
+	payloadKeys: Object.keys(spotObject?.payload ?? {}),
+});
 
-			const geom = projectFocusedSpotObject(previewObject, {
+			const geom = projectFocusedSpotObject(spotObject, {
 				maxStep: cfg.sampleStep,
 			});
+
+			console.log("[ViewController] context projection result", {
+	objectId,
+	hasGeom: Boolean(geom),
+	pointCount: geom?.polyline2d?.length ?? 0,
+	hasBbox: Boolean(geom?.bbox),
+});
 
 			if (!geom?.polyline2d || geom.polyline2d.length < 2) continue;
 
 			out.push({
-				id: String(previewObject.id ?? item?.id ?? "preview"),
+				id: String(objectId),
+				objectId: String(objectId),
 				points: geom.polyline2d,
+				source: "workspace-context",
 			});
 		}
 
@@ -304,9 +302,30 @@ export function makeViewController({
 			const spotObject = getSpotObjectById(spotState, focusObjectId);
 
 			if (spotObject) {
+
+				console.log("[ViewController] active spotObject probe", {
+	focusObjectId,
+	keys: Object.keys(spotObject ?? {}),
+	type: spotObject?.type,
+	crsId: spotObject?.crsId,
+	hasDataKernel: Boolean(spotObject?.data?.kernel),
+	hasDataSparse: Boolean(spotObject?.data?.sparseAlignment),
+	hasPayloadSparse: Boolean(spotObject?.payload?.sparseAlignment),
+	hasRootSparse: Boolean(spotObject?.sparseAlignment),
+	dataKeys: Object.keys(spotObject?.data ?? {}),
+	payloadKeys: Object.keys(spotObject?.payload ?? {}),
+});
+
 				const geom = projectFocusedSpotObject(spotObject, {
 					maxStep: cfg.sampleStep,
 				});
+
+				console.log("[ViewController] active projection result", {
+	focusObjectId,
+	hasGeom: Boolean(geom),
+	pointCount: geom?.polyline2d?.length ?? 0,
+	hasBbox: Boolean(geom?.bbox),
+});
 
 				if (geom?.polyline2d && geom.polyline2d.length >= 2) {
 					cachedFocusObjectId = focusObjectId;
@@ -352,8 +371,8 @@ export function makeViewController({
 
 	function flushAuxTracks() {
 		const merged = [
-		...(Array.isArray(auxOwnedTracks) ? auxOwnedTracks : []),
-		...(Array.isArray(importPreviewTracks) ? importPreviewTracks : []),
+			...(Array.isArray(auxOwnedTracks) ? auxOwnedTracks : []),
+			...(Array.isArray(workspaceContextTracks) ? workspaceContextTracks : []),
 		];
 
 		if (typeof threeA.setAuxTracksFromWorldPolylinesStyled === "function") {
@@ -362,7 +381,7 @@ export function makeViewController({
 		}
 
 		threeA.setAuxTracksFromWorldPolylines?.(
-		merged.map((t) => ({ id: t.id, points: t.points }))
+			merged.map((t) => ({ id: t.id, points: t.points }))
 		);
 	}
 
@@ -371,8 +390,8 @@ export function makeViewController({
 		flushAuxTracks();
 	}
 
-	function setImportPreviewTracks(tracks) {
-		importPreviewTracks = Array.isArray(tracks) ? tracks : [];
+	function setWorkspaceContextTracks(tracks) {
+		workspaceContextTracks = Array.isArray(tracks) ? tracks : [];
 		flushAuxTracks();
 	}
 
@@ -388,16 +407,16 @@ export function makeViewController({
 		aux.redrawAuxFromState(state);
 	}
 
-	function redrawImportPreviewCollection(state = store.getState()) {
-		const importTracks = getImportPreviewGeometries(state);
+	async function redrawWorkspaceContext(state = store.getState()) {
+		const tracks = await getWorkspaceContextGeometries(state);
 
-		console.log("[ViewController] import preview geometries", {
-			inStore: state.import_preview_collection?.length ?? 0,
-			renderTracks: importTracks.length,
-			ids: importTracks.map((t) => t.id),
+		console.log("[ViewController] auxiliary context tracks", {
+			contextIds: getWorkspaceContextIds(state),
+			renderTracks: tracks.length,
+			ids: tracks.map((t) => t.id),
 		});
 
-		setImportPreviewTracks(importTracks);
+		setWorkspaceContextTracks(tracks);
 	}
 
 	function computeAuxBboxUnion(state) {
@@ -408,8 +427,8 @@ export function makeViewController({
 		return aux.computeChunkBboxUnion(state);
 	}
 
-	function computeImportPreviewBboxUnion(state) {
-		const tracks = getImportPreviewGeometries(state);
+	async function computeWorkspaceContextBboxUnion(state) {
+		const tracks = await getWorkspaceContextGeometries(state);
 		let bbox = null;
 
 		for (const track of tracks) {
@@ -420,19 +439,19 @@ export function makeViewController({
 		return bbox;
 	}
 
-	function computeFitBboxFromState(state, activeGeometry, opts = {}) {
+	async function computeFitBboxFromState(state, activeGeometry, opts = {}) {
 		const includePins =
-		(opts.includePins !== undefined) ? Boolean(opts.includePins) : cfg.fitIncludesPins;
+			(opts.includePins !== undefined) ? Boolean(opts.includePins) : cfg.fitIncludesPins;
 		const includeChunks =
-		(opts.includeChunks !== undefined) ? Boolean(opts.includeChunks) : true;
-		const includeImportPreviews =
-		(opts.includeImportPreviews !== undefined) ? Boolean(opts.includeImportPreviews) : true;
+			(opts.includeChunks !== undefined) ? Boolean(opts.includeChunks) : true;
+		const includeContext =
+			(opts.includeContext !== undefined) ? Boolean(opts.includeContext) : true;
 
 		let bbox = activeGeometry?.bbox ?? null;
 
 		if (includePins) bbox = unionBbox(bbox, computeAuxBboxUnion(state));
 		if (includeChunks) bbox = unionBbox(bbox, computeChunkBboxUnion(state));
-		if (includeImportPreviews) bbox = unionBbox(bbox, computeImportPreviewBboxUnion(state));
+		if (includeContext) bbox = unionBbox(bbox, await computeWorkspaceContextBboxUnion(state));
 
 		return bbox;
 	}
@@ -458,7 +477,7 @@ export function makeViewController({
 
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const bbox = computeFitBboxFromState(st, activeGeometry, opts);
+		const bbox = await computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
@@ -475,7 +494,7 @@ export function makeViewController({
 
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const bbox = computeFitBboxFromState(st, activeGeometry, opts);
+		const bbox = await computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
@@ -498,7 +517,7 @@ export function makeViewController({
 
 		if (!Array.isArray(poly) || poly.length < 2) return false;
 
-		const bbox = computeFitBboxFromState(st, activeGeometry, opts);
+		const bbox = await computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
 
 		const padding = Number.isFinite(opts.padding) ? opts.padding : cfg.fitPadding;
@@ -523,24 +542,27 @@ export function makeViewController({
 	async function applyGeomChangePolicy(state, activeGeometry) {
 		switch (onGeomChange) {
 			case "fit":
-			return await fitActive({ includeImportPreviews: true });
+				return await fitActive({ includeContext: true });
+
 			case "softfit":
-			return await softFitActive({ includeImportPreviews: true });
+				return await softFitActive({ includeContext: true });
+
 			case "softfitanimated":
-			return await softFitActiveAnimated({ includeImportPreviews: true });
+				return await softFitActiveAnimated({ includeContext: true });
+
 			case "recenter":
-			return await recenterToActive();
+				return await recenterToActive();
+
 			default:
-			// preview-only import collection still deserves a visible camera target
-			if (!activeGeometry) {
-				const bbox = computeImportPreviewBboxUnion(state);
-				if (bbox) {
-					threeA.setOriginFromBbox(bbox);
-					threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
-					return true;
+				if (!activeGeometry) {
+					const bbox = await computeWorkspaceContextBboxUnion(state);
+					if (bbox) {
+						threeA.setOriginFromBbox(bbox);
+						threeA.zoomToFitWorldBbox?.(bbox, { padding: cfg.fitPadding });
+						return true;
+					}
 				}
-			}
-			return false;
+				return false;
 		}
 	}
 
@@ -557,22 +579,22 @@ export function makeViewController({
 		}
 
 		if (opts.fit === true) {
-			void softFitActive({ includePins: true, includeChunks: true, includeImportPreviews: true });
+			void softFitActive({ includePins: true, includeChunks: true, includeContext: true });
 		}
 
 		return true;
 	}
 
 	const propsPanel = propsElement
-	? createViewPropsPanel({
-		store,
-		ui,
-		propsElement,
-		aux,
-		setCursorS,
-		redrawAuxFromState,
-	})
-	: null;
+		? createViewPropsPanel({
+			store,
+			ui,
+			propsElement,
+			aux,
+			setCursorS,
+			redrawAuxFromState,
+		})
+		: null;
 
 	async function handleTrackClick({ s, event }) {
 		const ss = Number(s);
@@ -612,16 +634,16 @@ export function makeViewController({
 			propsPanel?.updateProps(st);
 
 			ui?.logInfo?.(
-			t("chunk_created", {
-				s0: formatNum(chunk.s0, 1),
-				s1: formatNum(chunk.s1, 1),
-			})
+				t("chunk_created", {
+					s0: formatNum(chunk.s0, 1),
+					s1: formatNum(chunk.s1, 1),
+				})
 			);
 			return;
 		}
 
 		if (event?.altKey) {
-			void softFitActiveAnimated({ durationMs: cfg.fitDurationMs, includeImportPreviews: true });
+			void softFitActiveAnimated({ durationMs: cfg.fitDurationMs, includeContext: true });
 		}
 	}
 
@@ -688,8 +710,15 @@ export function makeViewController({
 	}
 
 	function syncActiveTrack(poly) {
-		threeA.setTrackFromWorldPolyline?.(poly);
-	}
+	console.log("[ViewController] render active track -> threeA", {
+		pointCount: Array.isArray(poly) ? poly.length : 0,
+		first: poly?.[0] ?? null,
+		last: poly?.at?.(-1) ?? poly?.[poly.length - 1] ?? null,
+		hasSetter: typeof threeA.setTrackFromWorldPolyline === "function",
+	});
+
+	threeA.setTrackFromWorldPolyline?.(poly);
+}
 
 	function subscribe() {
 		wireTrackClickOnce();
@@ -716,8 +745,7 @@ export function makeViewController({
 				const geomChanged = geomKey !== lastGeomKey;
 				lastGeomKey = geomKey;
 
-				// render preview collection always
-				redrawImportPreviewCollection(state);
+				await redrawWorkspaceContext(state);
 
 				if (!isPolylineValid(poly)) {
 					cachedCum = null;
@@ -726,7 +754,6 @@ export function makeViewController({
 					redrawAuxFromState(state);
 					clear3DKeepAux();
 
-					// fit preview collection when there is no active geometry
 					await applyGeomChangePolicy(state, null);
 					return;
 				}
@@ -741,7 +768,7 @@ export function makeViewController({
 			} catch (err) {
 				console.error("[ViewController] handler crashed (isolated):", err);
 				ui?.logInfo?.(
-				t("viewcontroller_crashed", { message: String(err?.message ?? err) })
+					t("viewcontroller_crashed", { message: String(err?.message ?? err) })
 				);
 			}
 		};

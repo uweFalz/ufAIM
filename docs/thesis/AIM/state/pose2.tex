@@ -8,49 +8,56 @@
 
 \begin{remark}
 In railway alignment modelling, the geometric state of the track at a
-position along its length must be described in a minimal and consistent
-way.
+position along its length must be represented in a minimal, stable, and
+intrinsic form.
 \end{remark}
 
 \begin{remark}
-While full spatial representation involves three-dimensional geometry,
-cant, and dynamic interpretation, many fundamental properties can
-already be captured in a planar setting.
+While full spatial railway modelling involves cant, profile,
+realization, runtime services, and operational interpretation, many
+fundamental geometric properties can already be expressed within a
+planar intrinsic framework.
 \end{remark}
 
 \begin{remark}
-The concept of \emph{Pose2} provides such a minimal representation in
-two dimensions.
+The concept of \emph{pose2} provides this minimal intrinsic
+representation.
 \end{remark}
 
 \begin{remark}
-Within AIM, Pose2 is not merely a geometric helper structure.
-It forms the persistent reconstruction kernel of the alignment model.
+Within AIM, pose2 is not merely a geometric helper structure.
+It forms the persistent intrinsic reconstruction kernel of the alignment
+model.
 \end{remark}
 
 % ============================================================
-\section{Definition of Pose2}
+\section{Definition of pose2}
 % ============================================================
 
-\begin{definition}[Pose2]
-A planar pose at arc-length position $s$ is defined as the tuple
+\begin{definition}[pose2]
+A planar pose state at arc-length position \(s\) is defined as
 \[
-\mathrm{Pose2}(s)
+\mathrm{pose2}(s)
 =
 \bigl(
 \gamma(s),
 \theta(s)
-\bigr),
+\bigr).
 \]
-where:
-\begin{itemize}
-\item $\gamma(s)=(x(s),y(s))$ is the planar position,
-\item $\theta(s)$ is the tangent direction.
-\end{itemize}
+\label{def:pose2}
 \end{definition}
 
 \begin{remark}
-Pose2 describes the local geometric state of the alignment in the plane.
+The pose2 state describes:
+\begin{itemize}
+\item intrinsic planar position,
+\item and intrinsic tangent orientation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The canonical pose2 system is defined in
+\cref{eq:pose2-system}.
 \end{remark}
 
 % ============================================================
@@ -58,16 +65,20 @@ Pose2 describes the local geometric state of the alignment in the plane.
 % ============================================================
 
 \begin{principle}[Curvature-driven reconstruction]
-Within AIM, planar geometry is reconstructed from curvature by
-successive integration:
-\[
-\kappa(s)
-\rightarrow
-\theta(s)
-\rightarrow
-\gamma(s).
-\]
+Within AIM, planar geometry is reconstructed intrinsically from
+curvature evolution.
 \end{principle}
+
+\begin{remark}
+The intrinsic reconstruction chain follows directly from
+\cref{eq:curvature-relation,eq:state-evolution,eq:planar-tangent}.
+\end{remark}
+
+\begin{remark}
+Thus, geometry is not treated as primary.
+Instead, position and orientation emerge through integration of
+curvature.
+\end{remark}
 
 \begin{figure}[h]
 \centering
@@ -98,51 +109,19 @@ node[above] {$\kappa(s)$};
 \end{tikzpicture}
 
 \caption{
-Planar geometry emerges by successive integration of curvature.
+Planar geometry emerges through intrinsic curvature-driven
+reconstruction.
 Within AIM, curvature is treated as the primary geometric quantity.
 }
+\label{fig:pose2-curvature-reconstruction}
 \end{figure}
-
-% ============================================================
-\section{Kinematic Relations}
-% ============================================================
-
-\begin{remark}
-The evolution of Pose2 is governed by curvature.
-\end{remark}
-
-\begin{proposition}
-The tangent direction satisfies:
-\[
-\frac{\dd\theta}{\dd s}
-=
-\kappa(s).
-\]
-\end{proposition}
-
-\begin{proposition}
-The planar position satisfies:
-\[
-\frac{\dd\gamma}{\dd s}
-=
-\begin{pmatrix}
-\cos\theta(s) \\
-\sin\theta(s)
-\end{pmatrix}.
-\]
-\end{proposition}
-
-\begin{remark}
-Thus, geometry is not treated as primary.
-Instead, it emerges from integration of curvature.
-\end{remark}
 
 % ============================================================
 \section{Initial Conditions}
 % ============================================================
 
-\begin{definition}[Initial pose]
-A Pose2 trajectory is uniquely determined by:
+\begin{definition}[Initial pose2 state]
+A pose2 trajectory is uniquely determined by:
 \[
 \gamma(0),
 \qquad
@@ -152,11 +131,12 @@ together with the curvature law
 \[
 \kappa(s).
 \]
+\label{def:initial-pose2}
 \end{definition}
 
 \begin{remark}
-The curvature law acts as the geometric control function of the planar
-state evolution.
+The curvature law acts as the geometric control function of planar state
+evolution.
 \end{remark}
 
 % ============================================================
@@ -164,18 +144,19 @@ state evolution.
 % ============================================================
 
 \begin{proposition}
-Within AIM, Pose2 forms the persistent geometric reconstruction kernel
+Within AIM, pose2 forms the persistent intrinsic reconstruction kernel
 of the alignment model.
+\label{prop:pose2-persistent-kernel}
 \end{proposition}
 
 \begin{remark}
-Pose2 is sufficient for persistent planar reconstruction of the
+Pose2 is sufficient for persistent planar reconstruction of intrinsic
 alignment geometry.
 \end{remark}
 
 \begin{remark}
-Higher-level geometric and dynamic quantities are derived from Pose2
-rather than stored redundantly.
+Higher-level geometric and operational quantities are derived from
+pose2 rather than stored redundantly.
 \end{remark}
 
 % ============================================================
@@ -184,8 +165,8 @@ rather than stored redundantly.
 
 \begin{remark}
 Within the sparse alignment model, cGeom elements are interpreted as
-local curvature operators contributing to the reconstruction of the
-global Pose2 trajectory.
+local curvature operators contributing to reconstruction of the global
+pose2 trajectory.
 \end{remark}
 
 \begin{remark}
@@ -195,61 +176,82 @@ itself, but rules governing geometric evolution.
 
 \begin{remark}
 The sparse alignment model can thus be interpreted as a compact
-integration program for reconstructing Pose2 trajectories.
+integration program for reconstructing pose2 trajectories.
 \end{remark}
 
 % ============================================================
-\section{Interpretation}
+\section{Intrinsic Interpretation}
 % ============================================================
 
 \begin{remark}
-Pose2 separates:
+pose2 separates:
 \begin{itemize}
-\item intrinsic geometric behaviour (curvature),
-\item from derived geometric quantities (position and direction).
+\item intrinsic geometric behaviour,
+\item from derived geometric quantities.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-This separation is one of the central structural ideas of the AIM
-framework.
-\end{remark}
-
-% ============================================================
-\section{Relation to Pose3}
-% ============================================================
-
-\begin{remark}
-Within AIM, Pose3 is not treated as a persistent extension of Pose2,
-but as a runtime-derived spatial evaluation state.
+Curvature acts as intrinsic control quantity, whereas position and
+orientation emerge through reconstruction.
 \end{remark}
 
 \begin{remark}
-Pose3 is derived dynamically from:
+This separation forms one of the central structural principles of the
+AIM framework.
+\end{remark}
+
+% ============================================================
+\section{Relation to pose3}
+% ============================================================
+
+\begin{remark}
+Within AIM, pose2 forms the persistent intrinsic reconstruction kernel,
+whereas pose3 typically represents an extended runtime-evaluated spatial
+state.
+\end{remark}
+
+\begin{remark}
+pose3 is derived dynamically from:
 \begin{itemize}
-\item Pose2 reconstruction,
+\item pose2 reconstruction,
 \item cant evaluation,
 \item profile evaluation,
+\item frame construction,
 \item and runtime coordinate services.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
 This avoids redundancy and synchronization instability between planar,
-cant, and profile representations.
+cant, profile, and runtime representations.
 \end{remark}
 
 % ============================================================
-\section{Summary}
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, intrinsic railway geometry is fundamentally curvature-driven.
+\end{proposition}
+
+\begin{proposition}
+pose2 represents the canonical persistent intrinsic geometry state from
+which higher-level runtime states are derived.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-Pose2 is the fundamental planar state representation of railway
-alignment.
+pose2 is the fundamental intrinsic planar state representation of
+railway alignment.
 
-Within AIM, Pose2 forms the persistent reconstruction kernel from which
+Within AIM, pose2 forms the persistent reconstruction kernel from which
 planar geometry is generated through curvature-driven integration.
 
-Higher-dimensional runtime states such as Pose3 are derived from this
-kernel together with cant and profile information.
+Higher-dimensional runtime states such as pose3 are derived dynamically
+from this kernel together with cant, profile, frame, and runtime
+evaluation services.
 \end{summary}

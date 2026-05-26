@@ -1,30 +1,7 @@
 // app/controllers/importController.js
-//
-// ImportController
-//
-// Window-local import entry point.
-//
-// Flow:
-//   FileDrop -> ImportPipelineClient -> ImportSession -> local preview
-//
-// Responsibilities:
-// - receives dropped files
-// - runs import pipeline through app-side facade
-// - sends canonical ImportSessionItems to master
-// - stores one local preview candidate for rendering
-//
-// NOT:
-// - no direct src/import/runImportPipeline.js import
-// - no implicit SPOT promotion
-// - no local SPOT duplication
-// - no parser-specific hacks
-// - no SPOT overlay updates here
-//
-// Rule:
-// Imported data is stored canonically in master import-session state.
-// Preview is local-only until explicit acceptance/promotion happens later.
 
 import { installFileDrop } from "@io/input/fileDrop.js";
+import { projectAlignmentPreview } from "@src/domain/projection/AlignmentProjectionService.js";
 
 import {
 	importOneFile,
@@ -47,7 +24,6 @@ export function makeImportController({
 	logLine,
 	prefs,
 	messaging,
-	focusManager,
 } = {}) {
 	const safeLog = typeof logLine === "function"
 		? logLine
@@ -56,6 +32,10 @@ export function makeImportController({
 	if (!store?.getState || !store?.setState) {
 		throw new Error("ImportController: missing store");
 	}
+
+	const sampleStep = Number.isFinite(prefs?.view?.sampleStep)
+		? prefs.view.sampleStep
+		: 5;
 
 	async function handleImportItemsMaster(items = []) {
 		if (!items.length) return;
@@ -85,9 +65,67 @@ export function makeImportController({
 
 	function logRelationCandidates(fileName, relationCandidates) {
 		const summary = summarizeRelationCandidatesForLog(fileName, relationCandidates);
-
 		safeLog(`relation candidates: ${fileName} :: ${summary.count}`);
 		console.log("[ImportController] relationCandidates", summary);
+	}
+
+	function makeVisibleTracksFromItems(items = [], fileName = "") {
+		const tracks = [];
+
+		for (const item of items) {
+			if (item?.kind !== "alignment") continue;
+
+			const sparseAlignment = item?.derived?.sparseAlignment ?? null;
+			if (!sparseAlignment) continue;
+
+			const projected = projectAlignmentPreview({
+				sparseAlignment,
+				maxStep: sampleStep,
+			});
+
+			const points = projected?.polyline2d;
+			if (!Array.isArray(points) || points.length < 2) continue;
+
+			tracks.push({
+				id: makeTrackId(fileName, item.id, tracks.length),
+				importItemId: item.id ?? null,
+				objectId: item.id ?? null,
+				label: item?.payload?.name ?? item?.payload?.id ?? item.id ?? "import",
+				points,
+				source: "import-drop",
+				crsId: deriveItemCrsId(item),
+			});
+		}
+
+		return tracks;
+	}
+
+	function commitVisibleTracks(tracks = []) {
+		if (!tracks.length) return false;
+
+		if (store.actions?.setWorkspaceVisibleTracks) {
+			store.actions.setWorkspaceVisibleTracks({
+				items: tracks,
+				source: { type: "import-drop" },
+			});
+			return true;
+		}
+
+		if (store.actions?.setImportPreviewCollection) {
+			store.actions.setImportPreviewCollection({
+				items: tracks,
+				source: { type: "import-drop" },
+			});
+			return true;
+		}
+
+		console.warn("[ImportController] no visible-track store action available");
+		return false;
+	}
+
+	function clearVisibleTracks() {
+		store.actions?.clearWorkspaceVisibleTracks?.();
+		store.actions?.clearImportPreviewCollection?.();
 	}
 
 	function commitPreviewCandidate(firstPreviewCandidate) {
@@ -101,12 +139,11 @@ export function makeImportController({
 			source: { type: "import-preview" },
 		});
 
-		console.log("[ImportController] preview committed to store =", firstPreviewCandidate);
-
-		// Preview must win until user explicitly activates a canonical object.
 		store.actions?.setActiveRouteProject?.(null);
+		store.actions?.clearWorkspacePrimary?.();
 		store.actions?.setCursorS?.(0);
 
+		console.log("[ImportController] preview committed to store =", firstPreviewCandidate);
 		return true;
 	}
 
@@ -119,6 +156,9 @@ export function makeImportController({
 		});
 
 		const stats = makeBatchStats(batch.length);
+		const visibleTracks = [];
+
+		clearVisibleTracks();
 
 		await messaging?.sendCmdAwait?.("Import.BeginSession", {
 			source: "drop",
@@ -148,6 +188,13 @@ export function makeImportController({
 
 				logRelationCandidates(file.name, relationCandidates);
 
+				const newTracks = makeVisibleTracksFromItems(items, file.name);
+				if (newTracks.length) {
+					visibleTracks.push(...newTracks);
+					commitVisibleTracks(visibleTracks);
+					safeLog(`Anzeige: ${file.name} :: ${newTracks.length} Spur(en)`);
+				}
+
 				await handleImportItemsMaster([...items, ...rejected]);
 
 				if (!firstPreviewCandidate && promotableAlignmentItems.length > 0) {
@@ -160,6 +207,7 @@ export function makeImportController({
 					items: items.length,
 					rejected: rejected.length,
 					promotable: promotableAlignmentItems.length,
+					visible: newTracks.length,
 					error: false,
 				});
 
@@ -179,6 +227,8 @@ export function makeImportController({
 		}
 
 		commitPreviewCandidate(firstPreviewCandidate);
+		commitVisibleTracks(visibleTracks);
+
 		safeLog(makeBatchSummaryLine(stats));
 	}
 
@@ -193,4 +243,31 @@ export function makeImportController({
 		importFiles,
 		installDrop,
 	};
+}
+
+function deriveItemCrsId(item) {
+	const sr = item?.derived?.spatialRef ?? null;
+
+	return (
+		sr?.crsId ??
+		sr?.horizontalCrsId ??
+		sr?.horizontal ??
+		sr?.horizontalCoordinateSystemName ??
+		null
+	);
+}
+
+function makeTrackId(fileName, itemId, index) {
+	const f = safeIdStem(fileName || "drop");
+	const i = safeIdStem(itemId || `item_${index}`);
+	return `import_${f}_${i}_${index}`;
+}
+
+function safeIdStem(value) {
+	return String(value ?? "x")
+		.trim()
+		.replace(/\.[^.]+$/g, "")
+		.replace(/[^a-zA-Z0-9_\-]+/g, "_")
+		.replace(/^_+|_+$/g, "")
+		|| "x";
 }

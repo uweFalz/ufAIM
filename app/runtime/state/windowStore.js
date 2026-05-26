@@ -4,73 +4,26 @@
 //
 // ⚠️ TRANSITIONAL BRIDGE STORE ⚠️
 //
-// This store currently mixes:
+// This store is NOT the source of truth for project data.
+// Canonical data belongs to runtime / worker-side services.
 //
-// 1) legacy focus mirror
-//    - activeRouteProjectId
-//    - activeSlot
+// Preferred current direction:
 //
-// 2) actual window/view state
-//    - cursor
-//    - view_pins
-//    - view_chunks
-//    - te_*
+//   SPOT -> workspace_selection -> ViewController -> View
 //
-// 3) transitional mirror / cache state (must shrink over time)
-//    - artifacts
-//    - routeProjects
-//    - import_meta
-//    - import_* quick hooks
-//    - spot_decisions
+// Core terms:
+// - workspace_selection.primaryId  = Fokus
+// - workspace_selection.contextIds = Anzeige / zusätzlich sichtbare Objekte
+// - workspace_visible_tracks       = fertig projizierte Hilfsspuren für Anzeige
 //
-// ------------------------------------------------------------
-// IMPORTANT ARCHITECTURAL RULES
-// ------------------------------------------------------------
+// Deprecated transitional aliases still kept:
+// - activeRouteProjectId / activeSlot
+// - view_pins
+// - import_preview_collection
+// - routeProjects / artifacts / import_*
 //
-// - This store is NOT the source of truth for project data.
-// - Canonical data belongs to runtime / worker-side services.
-// - routeProjects / artifacts / import_* are mirror fields only.
-// - New logic must NOT be built on transitional mirror fields.
-// - This store must become progressively "dumber".
-//
-// ------------------------------------------------------------
-// TARGET ARCHITECTURE
-// ------------------------------------------------------------
-//
-// windowSessionState:
-//   -> focus (objectId, slot)
-//
-// workspaceState (this store):
-//   -> UI + view-only state
-//
-// controller layer:
-//   -> orchestration / side effects
-//
-// canonical runtime:
-//   -> SPOT / ImportInbox / WorkingSet / project data
-//
-// ------------------------------------------------------------
-// MIGRATION STATUS
-// ------------------------------------------------------------
-//
-// - activeRouteProjectId / activeSlot are legacy names
-//   -> should be replaced by "focus"
-//
-// - routeProjects / artifacts / import_* are transitional mirrors
-//   -> do NOT extend their usage here
-//
-// - spot_decisions are currently local UI/workflow cache
-//   -> decide later whether they remain local or move to runtime
-//
-// - deleteRouteProject() is legacy shadow-project cleanup
-//   -> remove once worker/runtime owns deletion flow
-//
-// ------------------------------------------------------------
-// RULE OF THUMB
-// ------------------------------------------------------------
-//
-// 👉 workspaceState is a bridge, not the truth.
-//
+// Rule of thumb:
+// workspaceState is a bridge, not the truth.
 
 import { clamp01range } from "@utils/helpers.js";
 
@@ -89,6 +42,27 @@ function normalizeSlot(slot) {
 	return (v === "left" || v === "km" || v === "right") ? v : "right";
 }
 
+function normalizeId(id) {
+	const v = String(id ?? "").trim();
+	return v || null;
+}
+
+function normalizeIdList(ids) {
+	if (!Array.isArray(ids)) return [];
+
+	return [...new Set(
+		ids
+			.map((id) => String(id ?? "").trim())
+			.filter(Boolean)
+	)];
+}
+
+function normalizeSource(source) {
+	return source && typeof source === "object" && !Array.isArray(source)
+		? source
+		: null;
+}
+
 export function createWindowStore(initial) {
 	let state = ensureStateShape(initial ?? makeInitialState());
 	const listeners = new Set();
@@ -105,7 +79,6 @@ export function createWindowStore(initial) {
 			try {
 				fn(state);
 			} catch (err) {
-				// Never let UI/render listeners break core state transitions.
 				console.error("[workspaceState] listener crashed (isolated):", err);
 			}
 		}
@@ -117,10 +90,14 @@ export function createWindowStore(initial) {
 	}
 
 	const actions = {
+		// ------------------------------------------------------------
+		// preview item
+		// Local one-off preview, usually before SPOT admission.
+		// ------------------------------------------------------------
 		setPreviewItem({ item = null, source = null } = {}) {
 			setState({
 				preview_item: item && typeof item === "object" ? item : null,
-				preview_source: source && typeof source === "object" ? source : null,
+				preview_source: normalizeSource(source),
 			});
 		},
 
@@ -131,49 +108,13 @@ export function createWindowStore(initial) {
 			});
 		},
 
-		setImportPreviewCollection(input = {}) {
-			const items = Array.isArray(input)
-			? input
-			: Array.isArray(input?.items)
-			? input.items
-			: [];
-			
-			console.log("[windowStore] import_preview_collection =", items.length);
-
-			const source = Array.isArray(input)
-			? { type: "spot-preview-collection" }
-			: input?.source ?? null;
-
-			setState({
-				import_preview_collection: items,
-				import_preview_source: source && typeof source === "object" ? source : null,
-			});
-		},
-
-		clearImportPreviewCollection() {
-			setState({
-				import_preview_collection: [],
-				import_preview_source: null,
-			});
-		},
-
-				// ------------------------------------------------------------
+		// ------------------------------------------------------------
 		// workspace selection
-		// New preferred window-side selection model.
+		// Preferred window-side selection model.
 		// ------------------------------------------------------------
 		setWorkspaceSelection(selection = {}) {
-			const primaryId =
-				selection?.primaryId != null && String(selection.primaryId).trim()
-					? String(selection.primaryId).trim()
-					: null;
-
-			const contextIds = Array.isArray(selection?.contextIds)
-				? [...new Set(
-					selection.contextIds
-						.map((id) => String(id ?? "").trim())
-						.filter(Boolean)
-				)]
-				: [];
+			const primaryId = normalizeId(selection?.primaryId);
+			const contextIds = normalizeIdList(selection?.contextIds);
 
 			setState({
 				workspace_selection: {
@@ -182,11 +123,14 @@ export function createWindowStore(initial) {
 					source: selection?.source != null ? String(selection.source) : null,
 					crsId: selection?.crsId != null ? String(selection.crsId) : null,
 				},
+
+				// @deprecated focus mirror
+				activeRouteProjectId: primaryId,
 			});
 		},
 
 		setWorkspacePrimary({ objectId, source = "local", crsId = null } = {}) {
-			const id = String(objectId ?? "").trim();
+			const id = normalizeId(objectId);
 
 			setState((st) => {
 				const current = st.workspace_selection ?? {};
@@ -194,11 +138,14 @@ export function createWindowStore(initial) {
 				return {
 					...st,
 					workspace_selection: {
-						primaryId: id || null,
+						primaryId: id,
 						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
+
+					// @deprecated focus mirror
+					activeRouteProjectId: id,
 				};
 			});
 		},
@@ -215,18 +162,15 @@ export function createWindowStore(initial) {
 						source: current.source ?? null,
 						crsId: current.crsId ?? null,
 					},
+
+					// @deprecated focus mirror
+					activeRouteProjectId: null,
 				};
 			});
 		},
 
 		setWorkspaceContextObjects({ objectIds = [], source = "local", crsId = null } = {}) {
-			const contextIds = Array.isArray(objectIds)
-				? [...new Set(
-					objectIds
-						.map((id) => String(id ?? "").trim())
-						.filter(Boolean)
-				)]
-				: [];
+			const contextIds = normalizeIdList(objectIds);
 
 			setState((st) => {
 				const current = st.workspace_selection ?? {};
@@ -239,12 +183,19 @@ export function createWindowStore(initial) {
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
+
+					// @deprecated pin mirror
+					view_pins: contextIds.map((id) => ({
+						rpId: id,
+						slot: normalizeSlot(st.activeSlot),
+						at: Date.now(),
+					})),
 				};
 			});
 		},
 
 		toggleWorkspaceContextObject({ objectId, source = "local", crsId = null } = {}) {
-			const id = String(objectId ?? "").trim();
+			const id = normalizeId(objectId);
 			if (!id) return;
 
 			setState((st) => {
@@ -263,6 +214,32 @@ export function createWindowStore(initial) {
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
+
+					// @deprecated pin mirror
+					view_pins: contextIds.map((rpId) => ({
+						rpId,
+						slot: normalizeSlot(st.activeSlot),
+						at: Date.now(),
+					})),
+				};
+			});
+		},
+
+		clearWorkspaceContextObjects() {
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+
+				return {
+					...st,
+					workspace_selection: {
+						primaryId: current.primaryId ?? null,
+						contextIds: [],
+						source: current.source ?? null,
+						crsId: current.crsId ?? null,
+					},
+
+					// @deprecated pin mirror
+					view_pins: [],
 				};
 			});
 		},
@@ -275,29 +252,90 @@ export function createWindowStore(initial) {
 					source: null,
 					crsId: null,
 				},
+
+				// @deprecated mirrors
+				activeRouteProjectId: null,
+				view_pins: [],
 			});
 		},
 
 		// ------------------------------------------------------------
-		// @transition legacy focus mirror
-		// Canonical focus should be accessed via WindowSession / FocusManager.
+		// workspace visible tracks
+		// Preferred replacement for import_preview_collection.
 		// ------------------------------------------------------------
-		setActiveRouteProject(id) {
-			setState({ activeRouteProjectId: id ?? null });
+		setWorkspaceVisibleTracks(input = {}) {
+			const items = Array.isArray(input)
+				? input
+				: Array.isArray(input?.items)
+				? input.items
+				: [];
+
+			const source = Array.isArray(input)
+				? { type: "workspace-visible-tracks" }
+				: input?.source ?? null;
+
+			setState({
+				workspace_visible_tracks: items,
+				workspace_visible_tracks_source: normalizeSource(source),
+
+				// @deprecated alias
+				import_preview_collection: items,
+				import_preview_source: normalizeSource(source),
+			});
+		},
+
+		clearWorkspaceVisibleTracks() {
+			setState({
+				workspace_visible_tracks: [],
+				workspace_visible_tracks_source: null,
+
+				// @deprecated alias
+				import_preview_collection: [],
+				import_preview_source: null,
+			});
+		},
+
+		// @deprecated
+		setImportPreviewCollection(input = {}) {
+			return actions.setWorkspaceVisibleTracks(input);
+		},
+
+		// @deprecated
+		clearImportPreviewCollection() {
+			return actions.clearWorkspaceVisibleTracks();
 		},
 
 		// ------------------------------------------------------------
-		// @transition legacy focus mirror
-		// Canonical focus should be accessed via WindowSession / FocusManager.
+		// @deprecated legacy focus mirror
+		// Use setWorkspacePrimary / clearWorkspacePrimary.
 		// ------------------------------------------------------------
+		setActiveRouteProject(id) {
+			const objectId = normalizeId(id);
+
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+
+				return {
+					...st,
+					activeRouteProjectId: objectId,
+					workspace_selection: {
+						primaryId: objectId,
+						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
+						source: current.source ?? "legacy-activeRouteProjectId",
+						crsId: current.crsId ?? null,
+					},
+				};
+			});
+		},
+
+		// @deprecated slot mirror.
 		setActiveSlot(slot) {
-			const v = String(slot ?? "right");
-			const safe = (v === "left" || v === "km" || v === "right") ? v : "right";
+			const safe = normalizeSlot(slot);
 			setState({ activeSlot: safe });
 		},
 
 		// ------------------------------------------------------------
-		// @transition temporary local decision cache
+		// @deprecated temporary local decision cache
 		// Do not expand this into canonical SPOT logic here.
 		// ------------------------------------------------------------
 		setSpotDecision({ spotId, slot, decision }) {
@@ -314,78 +352,139 @@ export function createWindowStore(initial) {
 			});
 		},
 
-		// ------------------------------------------------------------
-		// @transition temporary local decision cache
-		// ------------------------------------------------------------
 		clearSpotDecisions() {
 			setState((s) => ({ ...s, spot_decisions: {} }));
 		},
 
 		// ------------------------------------------------------------
-		// view pins
+		// @deprecated view pins
+		// Use workspace_selection.contextIds.
 		// ------------------------------------------------------------
 		setPins(pins) {
 			const arr = Array.isArray(pins) ? pins : [];
 			const next = arr
-			.filter(Boolean)
-			.map((p) => ({
-				rpId: String(p.rpId ?? p.baseId ?? ""),
-				slot: (p.slot === "left" || p.slot === "km" || p.slot === "right") ? p.slot : "right",
-				at: Number.isFinite(p.at) ? p.at : Date.now(),
-			}))
-			.filter((p) => p.rpId);
+				.filter(Boolean)
+				.map((p) => ({
+					rpId: String(p.rpId ?? p.baseId ?? "").trim(),
+					slot: normalizeSlot(p.slot),
+					at: Number.isFinite(Number(p.at)) ? Number(p.at) : Date.now(),
+				}))
+				.filter((p) => p.rpId);
 
-			setState({ view_pins: next });
+			setState((st) => {
+				const current = st.workspace_selection ?? {};
+				const contextIds = normalizeIdList(next.map((p) => p.rpId));
+
+				return {
+					...st,
+					view_pins: next,
+					workspace_selection: {
+						primaryId: current.primaryId ?? null,
+						contextIds,
+						source: current.source ?? "legacy-pins",
+						crsId: current.crsId ?? null,
+					},
+				};
+			});
 		},
 
 		clearPins() {
-			setState({ view_pins: [] });
+			return actions.clearWorkspaceContextObjects();
 		},
 
 		pinRouteProject({ rpId, slot = "right" } = {}) {
-			const id = String(rpId ?? "");
+			const id = normalizeId(rpId);
 			if (!id) return;
 
-			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
-
 			setState((st) => {
+				const s = normalizeSlot(slot);
 				const pins = Array.isArray(st.view_pins) ? st.view_pins.slice() : [];
 				const key = `${id}::${s}`;
 
-				if (pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key)) return st;
+				if (!pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key)) {
+					pins.push({ rpId: id, slot: s, at: Date.now() });
+				}
 
-				pins.push({ rpId: id, slot: s, at: Date.now() });
-				return { ...st, view_pins: pins };
+				const current = st.workspace_selection ?? {};
+				const contextIds = normalizeIdList([
+					...(Array.isArray(current.contextIds) ? current.contextIds : []),
+					id,
+				]);
+
+				return {
+					...st,
+					view_pins: pins,
+					workspace_selection: {
+						primaryId: current.primaryId ?? null,
+						contextIds,
+						source: current.source ?? "legacy-pin",
+						crsId: current.crsId ?? null,
+					},
+				};
 			});
 		},
 
 		unpinRouteProject({ rpId, slot = "right" } = {}) {
-			const id = String(rpId ?? "");
+			const id = normalizeId(rpId);
 			if (!id) return;
 
-			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
-
 			setState((st) => {
+				const s = normalizeSlot(slot);
 				const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
-				const next = pins.filter((p) => !(p?.rpId === id && (p?.slot ?? "right") === s));
-				return { ...st, view_pins: next };
+				const nextPins = pins.filter((p) => !(p?.rpId === id && normalizeSlot(p?.slot) === s));
+
+				const current = st.workspace_selection ?? {};
+				const contextIds = normalizeIdList(
+					(Array.isArray(current.contextIds) ? current.contextIds : [])
+						.filter((x) => x !== id)
+				);
+
+				return {
+					...st,
+					view_pins: nextPins,
+					workspace_selection: {
+						primaryId: current.primaryId ?? null,
+						contextIds,
+						source: current.source ?? "legacy-unpin",
+						crsId: current.crsId ?? null,
+					},
+				};
 			});
+		},
+
+		togglePinRouteProject({ rpId, slot = "right" } = {}) {
+			const id = normalizeId(rpId);
+			if (!id) return;
+
+			const s = normalizeSlot(slot);
+			const st = getState();
+			const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
+			const key = `${id}::${s}`;
+			const has = pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
+
+			if (has) actions.unpinRouteProject({ rpId: id, slot: s });
+			else actions.pinRouteProject({ rpId: id, slot: s });
 		},
 
 		togglePinFromActive() {
 			const st = getState();
-			const rpId = st.activeRouteProjectId;
+			const rpId =
+				st.workspace_selection?.primaryId ??
+				st.activeRouteProjectId ??
+				null;
+
 			if (!rpId) return;
+
 			const slot = st.activeSlot ?? "right";
 			actions.togglePinRouteProject({ rpId, slot });
 		},
 
 		// ------------------------------------------------------------
-		// @transition legacy shadow-project cleanup
+		// @deprecated legacy shadow-project cleanup
 		// Remove once runtime/worker owns project deletion flow.
 		// ------------------------------------------------------------
 		deleteRouteProject(rpId) {
-			const id = String(rpId ?? "");
+			const id = normalizeId(rpId);
 			if (!id) return;
 
 			setState((st) => {
@@ -395,6 +494,7 @@ export function createWindowStore(initial) {
 
 				const arts0 = st.artifacts ?? {};
 				const arts = {};
+
 				for (const [aid, a] of Object.entries(arts0)) {
 					if (a?.baseId === id) continue;
 					arts[aid] = a;
@@ -403,10 +503,19 @@ export function createWindowStore(initial) {
 				const pins0 = Array.isArray(st.view_pins) ? st.view_pins : [];
 				const pins = pins0.filter((p) => p?.rpId !== id);
 
+				const current = st.workspace_selection ?? {};
+				const contextIds = normalizeIdList(
+					(Array.isArray(current.contextIds) ? current.contextIds : [])
+						.filter((x) => x !== id)
+				);
+
 				let active = st.activeRouteProjectId;
-				if (active === id) {
+				let primaryId = current.primaryId ?? active ?? null;
+
+				if (active === id || primaryId === id) {
 					const ids = Object.keys(rps).sort((a, b) => a.localeCompare(b));
 					active = ids[0] ?? null;
+					primaryId = active;
 				}
 
 				return {
@@ -415,27 +524,18 @@ export function createWindowStore(initial) {
 					artifacts: arts,
 					view_pins: pins,
 					activeRouteProjectId: active,
+					workspace_selection: {
+						primaryId,
+						contextIds,
+						source: current.source ?? "legacy-deleteRouteProject",
+						crsId: current.crsId ?? null,
+					},
 				};
 			});
 		},
 
-		togglePinRouteProject({ rpId, slot = "right" } = {}) {
-			const id = String(rpId ?? "");
-			if (!id) return;
-
-			const s = (slot === "left" || slot === "km" || slot === "right") ? slot : "right";
-			const key = `${id}::${s}`;
-			const st = getState();
-			const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
-			const has = pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
-
-			if (has) actions.unpinRouteProject({ rpId: id, slot: s });
-			else actions.pinRouteProject({ rpId: id, slot: s });
-		},
-
 		// ------------------------------------------------------------
-		// @transition temporary import mirror cleanup helper
-		// No new logic should depend on import_meta here.
+		// @deprecated temporary import mirror cleanup helper
 		// ------------------------------------------------------------
 		clearImportMeta() {
 			setState({ import_meta: null });
@@ -453,6 +553,7 @@ export function createWindowStore(initial) {
 			const st = getState();
 			const n = Number(value);
 			if (!Number.isFinite(n)) return;
+
 			const s = Math.max(0, n);
 			setState({ cursor: { ...st.cursor, s } });
 		},
@@ -461,8 +562,10 @@ export function createWindowStore(initial) {
 			const st = getState();
 			const d = Number(delta);
 			if (!Number.isFinite(d)) return;
+
 			const s0 = Number(st.cursor?.s ?? 0);
 			const s1 = Math.max(0, (Number.isFinite(s0) ? s0 : 0) + d);
+
 			setState({ cursor: { ...st.cursor, s: s1 } });
 		},
 
@@ -542,8 +645,8 @@ export function createWindowStore(initial) {
 				const want = String(s.te_presetId ?? "");
 				const got = String(spec?.presetId ?? "");
 				return (want && got && want === got)
-				? ({ ...s, te_presetSpec: spec })
-				: s;
+					? ({ ...s, te_presetSpec: spec })
+					: s;
 			});
 		},
 
@@ -563,7 +666,6 @@ export function createWindowStore(initial) {
 				objectId: id,
 				source: "focus-alias",
 			});
-			actions.setActiveRouteProject(id); // legacy mirror
 		},
 
 		setFocusSlot(slot) {

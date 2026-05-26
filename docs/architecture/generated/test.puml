@@ -1,0 +1,116 @@
+@startuml
+title ufAIM - Alignment Semantics vs Metric Realization
+
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+
+package "User / UX" {
+  component "Alignment Editor" as AlignmentEditor
+  component "Views / Render" as ViewsRender
+  component "Import UI" as ImportUI
+}
+
+package "Alignment Semantics\nmetric independent" {
+  component "Sparse Alignment" as SparseAlignment
+  component "FixedElement\nkappa const" as FixedElement
+  component "TransitionElement\nkappa(s)" as TransitionElement
+  component "Switch / Turnout Logic" as SwitchLogic
+  component "Stationing" as Stationing
+}
+
+package "Metric Realization Layer\noperator boundary" {
+  interface "MetricSpace" as MetricSpace
+  component "MetricContext" as MetricContext
+}
+
+package "Metric Backends" {
+  component "EuclideanEngineeringMetric\nFAST DEFAULT" as EuclideanMetric
+  component "ProjectionAwareMetric\nlater" as ProjectionAwareMetric
+  component "EllipsoidMetric\nlater / experimental" as EllipsoidMetric
+  component "OperatorBasedDiffGeo\nfuture" as DiffGeoMetric
+}
+
+package "Spatial / CRS / Geo" {
+  component "Engineering CRS" as EngineeringCRS
+  component "Projected CRS\nUTM / GK / DBRef" as ProjectedCRS
+  component "Ellipsoid CRS\nWGS84 / ETRS89" as EllipsoidCRS
+  component "CRS Transform Pipeline" as CRSPipeline
+}
+
+package "Render Space" {
+  component "Floating Origin" as FloatingOrigin
+  component "MapLibre" as MapLibre
+  component "Three.js" as ThreeJS
+}
+
+AlignmentEditor --> SparseAlignment
+ImportUI --> SparseAlignment
+
+SparseAlignment --> FixedElement
+SparseAlignment --> TransitionElement
+SparseAlignment --> SwitchLogic
+SparseAlignment --> Stationing
+
+FixedElement ..> MetricSpace : no direct sqrt / atan2
+TransitionElement ..> MetricSpace : pose integration
+SwitchLogic ..> MetricSpace : shared local metric
+Stationing ..> MetricSpace : length / projection
+
+MetricSpace <|.. EuclideanMetric
+MetricSpace <|.. ProjectionAwareMetric
+MetricSpace <|.. EllipsoidMetric
+MetricSpace <|.. DiffGeoMetric
+
+MetricContext --> MetricSpace
+
+EuclideanMetric --> EngineeringCRS
+ProjectionAwareMetric --> ProjectedCRS
+EllipsoidMetric --> EllipsoidCRS
+DiffGeoMetric --> CRSPipeline
+
+ViewsRender --> FloatingOrigin
+ViewsRender --> MapLibre
+ViewsRender --> ThreeJS
+
+CRSPipeline --> FloatingOrigin
+CRSPipeline --> MapLibre
+
+note right of SparseAlignment
+Alignment principle remains stable:
+
+- straight = kappa 0
+- arc = kappa const
+- transition = kappa(s)
+- switch geometry uses same semantics
+
+But realization depends on MetricSpace.
+end note
+
+note right of EuclideanMetric
+Current dominant mode.
+
+Must remain:
+- fast
+- boring
+- default
+- no performance penalty
+end note
+
+note bottom of MetricSpace
+This is the discipline boundary.
+
+Alignment code asks operators.
+It does not assume the metric directly.
+end note
+
+note bottom of EllipsoidCRS
+A straight line in Engineering CRS
+is generally not an ellipsoid geodesic.
+
+This is not hidden.
+It is declared by metric binding.
+end note
+
+@enduml

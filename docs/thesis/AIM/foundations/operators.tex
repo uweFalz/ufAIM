@@ -2,6 +2,8 @@
 
 \chapter{Operators}
 
+\label{chap:operators}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
@@ -12,24 +14,27 @@ but on transformations acting on states.
 \end{remark}
 
 \begin{remark}
-Within AIM, geometry, realization, projection, optimization, and runtime
-evaluation are formulated operator-theoretically.
+Within AIM, geometry, realization, projection, runtime evaluation,
+metric interpretation, and optimization are formulated
+operator-theoretically.
 \end{remark}
 
 \begin{remark}
 Operators connect:
 \begin{itemize}
 \item intrinsic geometry,
-\item realized geometry,
-\item world-space representations,
+\item metric realization,
+\item world-space embedding,
 \item sampled representations,
+\item runtime evaluation,
+\item physical realization,
 \item and optimization states.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-This chapter introduces the canonical operators of AIM and their
-conceptual roles.
+This chapter introduces the canonical operators and operator spaces of
+the AIM framework.
 \end{remark}
 
 % ============================================================
@@ -37,8 +42,14 @@ conceptual roles.
 % ============================================================
 
 \begin{definition}[Operator]
-An operator is a mapping acting on states, functions, or geometric
-representations.
+\label{def:operator}
+An operator is a mapping acting on:
+\begin{itemize}
+\item states,
+\item functions,
+\item representations,
+\item or geometric structures.
+\end{itemize}
 \end{definition}
 
 \begin{remark}
@@ -47,25 +58,99 @@ Operators may:
 \item transform representations,
 \item evaluate quantities,
 \item modify states,
+\item reconstruct geometry,
 \item or approximate physical processes.
 \end{itemize}
 \end{remark}
 
 \begin{principle}[State-operator principle]
+\label{prop:state-operator-principle}
 Within AIM, operators act on states rather than on isolated geometric
 objects.
+\end{principle}
+
+\begin{proposition}
+\label{prop:geometry-as-operator-system}
+Within AIM, geometry is not interpreted as static stored data, but as
+states transformed and interpreted through coupled operator systems.
+\end{proposition}
+
+% ============================================================
+\section{Operator Spaces}
+% ============================================================
+
+\begin{remark}
+The canonical spaces used by the operator framework are introduced in
+\cref{chap:notation}.
+\end{remark}
+
+\begin{remark}
+The most important spaces are:
+\[
+\mathcal X,
+\qquad
+\mathcal Y,
+\qquad
+\Omega_{\mathrm{track}},
+\qquad
+\Omega_{\mathrm{world}},
+\qquad
+\mathcal K.
+\]
+\end{remark}
+
+\begin{remark}
+Here:
+\begin{itemize}
+\item \(\mathcal X\) denotes railway state space,
+\item \(\mathcal Y\) denotes runtime quantity space,
+\item \(\Omega_{\mathrm{track}}\) denotes intrinsic track space,
+\item \(\Omega_{\mathrm{world}}\) denotes CRS-dependent world space,
+\item and \(\mathcal K\) denotes curvature space.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Operator Categories}
+% ============================================================
+
+\begin{remark}
+The AIM framework distinguishes:
+\begin{itemize}
+\item geometric operators,
+\item representation operators,
+\item metric operators,
+\item runtime operators,
+\item realization operators,
+\item and optimization operators.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These operator families are conceptually distinct, but operationally
+coupled.
+\end{remark}
+
+\begin{principle}[Operator separation principle]
+\label{princ:operator-separation}
+Runtime evaluation, metric realization, coordinate transformation,
+projection, and physical realization should not be collapsed into one
+implicit operation.
 \end{principle}
 
 % ============================================================
 \section{Geometric Operators}
 % ============================================================
 
-\subsection{Differential Curvature Operator}
+\subsection{Curvature Operator}
 
-\begin{definition}[Curvature relation]
-The curvature operator is:
+\begin{definition}[Curvature operator]
+\label{def:curvature-operator}
+The directional evolution relation is:
 \[
-\theta'(s)=\kappa(s).
+\theta'(s)
+=
+\kappa(s).
 \]
 \end{definition}
 
@@ -75,14 +160,15 @@ Curvature acts as the differential generator of directional evolution.
 
 % ------------------------------------------------------------
 
-\subsection{Pose Reconstruction Operator}
+\subsection{Reconstruction Operator}
 
-\begin{definition}[Pose reconstruction]
-The reconstruction operator is:
+\begin{definition}[Reconstruction operator]
+\label{def:reconstruction-operator}
+The intrinsic reconstruction relation is:
 \[
 \gamma'(s)
 =
-(\cos\theta(s),\sin\theta(s)).
+\mathbf t(s).
 \]
 \end{definition}
 
@@ -95,36 +181,45 @@ reconstruction.
 
 \subsection{Cant Evolution Operator}
 
-\begin{definition}[Cant evolution]
+\begin{definition}[Cant evolution operator]
+\label{def:cant-evolution-operator}
 Cant evolution is governed by:
 \[
-\phi'(s)=\omega(s).
+\phi'(s)
+=
+\omega(s).
 \]
 \end{definition}
 
 \begin{remark}
-Cant-rate acts as the control quantity for cross-level evolution.
+Cant-rate acts as the control quantity governing cross-level evolution.
+\end{remark}
+
+\begin{remark}
+The canonical geometric relations are collected in
+\cref{chap:core-equations}.
 \end{remark}
 
 % ============================================================
-\section{Projection Operators}
+\section{Representation Operators}
 % ============================================================
 
-\subsection{Track-to-World Mapping}
+\subsection{Track-to-World Transformation}
 
 \begin{definition}[Track-to-world operator]
-The forward projection operator is:
+\label{def:track-to-world-operator}
 \[
 \mathcal P_{\mathrm{tw}}
 :
-(s,d,h)
-\mapsto
-x.
+\Omega_{\mathrm{track}}
+\rightarrow
+\Omega_{\mathrm{world}}.
 \]
 \end{definition}
 
 \begin{remark}
-This operator maps intrinsic track-space coordinates into world space.
+The operator maps intrinsic railway coordinates into world-space
+coordinates.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -132,37 +227,220 @@ This operator maps intrinsic track-space coordinates into world space.
 \subsection{World-to-Track Projection}
 
 \begin{definition}[World-to-track operator]
-The inverse projection operator is:
+\label{def:world-to-track-operator}
 \[
 \mathcal P_{\mathrm{wt}}
 :
-x
-\mapsto
-(s,d,h).
+\Omega_{\mathrm{world}}
+\rightarrow
+\Omega_{\mathrm{track}}.
 \]
 \end{definition}
 
 \begin{remark}
-The inverse projection is generally nonlinear and potentially ambiguous.
+Inverse projection is generally nonlinear, metric-dependent, and
+potentially ambiguous.
 \end{remark}
 
-% ------------------------------------------------------------
-
-\subsection{Projection Interpretation}
-
 \begin{principle}[Projection principle]
+\label{prop:projection-principle}
 World-to-track transformation is an inverse runtime projection problem,
 not a static coordinate conversion.
 \end{principle}
 
+% ------------------------------------------------------------
+
+\subsection{Coordinate Transformation Operator}
+
+\begin{definition}[Coordinate transformation operator]
+\label{def:coordinate-transform-operator}
+\[
+\mathcal C
+:
+\Omega_{\mathrm{world}}
+\rightarrow
+\Omega_{\mathrm{world}}.
+\]
+\end{definition}
+
+\begin{remark}
+Coordinate transformations map between CRS-dependent spatial
+representations.
+\end{remark}
+
+\begin{remark}
+Coordinate transformation does not alter intrinsic railway semantics.
+\end{remark}
+
+\begin{remark}
+Coordinate transformation must not be confused with intrinsic
+world-to-track projection.
+\end{remark}
+
 % ============================================================
-\section{Sampling and Reconstruction Operators}
+\section{Metric Operators}
+% ============================================================
+
+\begin{remark}
+Within AIM, intrinsic alignment semantics are separated from metric
+realization.
+\end{remark}
+
+\begin{principle}[Metric separation principle]
+\label{prop:metric-separation-principle}
+Alignment semantics should not directly depend on a specific metric
+backend.
+\end{principle}
+
+\begin{definition}[Metric realization operator]
+\label{def:metric-realization-operator}
+The metric realization operator is written as:
+\[
+\mathcal G
+:
+\mathcal X
+\rightarrow
+\mathcal X_{\mathrm{metric}}.
+\]
+\end{definition}
+
+\begin{remark}
+The operator \(\mathcal G\) expresses how intrinsic railway states are
+interpreted within a metric geometry model.
+\end{remark}
+
+\begin{remark}
+Metric interpretation may depend on:
+\begin{itemize}
+\item Euclidean engineering geometry,
+\item projected CRS geometry,
+\item ellipsoid geometry,
+\item or generalized differential-geometric manifolds.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Metric operators affect:
+\begin{itemize}
+\item distance interpretation,
+\item curvature interpretation,
+\item projection behaviour,
+\item frame construction,
+\item and stationing-related computations.
+\end{itemize}
+\end{remark}
+
+\begin{principle}[Metric backend principle]
+\label{princ:metric-backend}
+The alignment principle remains stable while the metric realization may
+change.
+\end{principle}
+
+% ============================================================
+\section{Runtime Operators}
+% ============================================================
+
+\subsection{Evaluation Operator}
+
+\begin{definition}[Evaluation operator]
+\label{def:evaluation-operator}
+\[
+\mathcal E
+:
+\mathcal X
+\times
+\Omega_{\mathrm{track}}
+\rightarrow
+\mathcal Y.
+\]
+\end{definition}
+
+\begin{remark}
+Evaluation operators produce:
+\begin{itemize}
+\item runtime geometry,
+\item frame states,
+\item dynamic quantities,
+\item operational quantities,
+\item and projection results.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Runtime operators interpret states. They do not by themselves physically
+realize or modify the railway infrastructure.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Frame Operator}
+
+\begin{definition}[Frame operator]
+\label{def:frame-operator}
+\[
+\mathcal F
+:
+\mathcal X_{\mathrm{metric}}
+\times
+\Omega_{\mathrm{track}}
+\rightarrow
+\mathrm{Frames}.
+\]
+\end{definition}
+
+\begin{remark}
+The frame operator evaluates:
+\[
+\mathcal F(x,s)
+=
+(\mathbf t(s),\mathbf n(s),\mathbf b(s)).
+\]
+\end{remark}
+
+\begin{remark}
+Frames provide local operational spatial interpretation of alignment
+states.
+\end{remark}
+
+\begin{remark}
+Frame construction may depend on the selected metric realization.
+For example, a projected engineering frame and an ellipsoid-attached
+frame need not coincide.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Runtime Quantities}
+
+\begin{definition}[Runtime quantities]
+\label{def:runtime-quantities}
+Typical runtime-derived quantities include:
+\[
+a_{\mathrm{eff}},
+\qquad
+j,
+\qquad
+\kappa_g,
+\qquad
+\phi,
+\qquad
+F(s).
+\]
+\end{definition}
+
+\begin{remark}
+These quantities are evaluated dynamically from underlying states,
+metric interpretation, and runtime operators.
+\end{remark}
+
+% ============================================================
+\section{Realization Operators}
 % ============================================================
 
 \subsection{Sampling Operator}
 
 \begin{definition}[Sampling operator]
-The sampling operator is:
+\label{def:sampling-operator}
 \[
 \mathcal S
 :
@@ -173,7 +451,8 @@ f(s)
 \end{definition}
 
 \begin{remark}
-Sampling converts continuous geometry into discrete representations.
+Sampling converts continuous representations into discrete
+representations.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -181,7 +460,7 @@ Sampling converts continuous geometry into discrete representations.
 \subsection{Interpolation Operator}
 
 \begin{definition}[Interpolation operator]
-The interpolation operator is:
+\label{def:interpolation-operator}
 \[
 \mathcal I
 :
@@ -197,31 +476,17 @@ Interpolation reconstructs continuous approximations from sampled data.
 
 % ------------------------------------------------------------
 
-\subsection{Hybrid Representation Principle}
-
-\begin{principle}[Hybrid representation principle]
-Efficient railway modelling combines:
-\begin{itemize}
-\item sampled representations for robustness,
-\item and parametric reconstruction for precision.
-\end{itemize}
-\end{principle}
-
-% ============================================================
-\section{Realization Operators}
-% ============================================================
-
 \subsection{Mechanical Operator}
 
 \begin{definition}[Mechanical operator]
-The mechanical operator is:
+\label{def:mechanical-operator}
 \[
 \mathcal M.
 \]
 \end{definition}
 
 \begin{remark}
-The operator \(\mathcal M\) represents:
+The mechanical operator represents:
 \begin{itemize}
 \item structural response,
 \item ballast behaviour,
@@ -232,34 +497,53 @@ The operator \(\mathcal M\) represents:
 
 % ------------------------------------------------------------
 
-\subsection{Realization Operator}
+\subsection{Adjustment Operator}
 
-\begin{definition}[Realization operator]
-The realization operator is:
+\begin{definition}[Adjustment operator]
+\label{def:adjustment-operator}
 \[
-\mathcal R
-:
-\mathrm{pose3}_{\mathrm{target}}
-\mapsto
-\mathrm{pose3}_{\mathrm{real}}.
+\mathcal A.
 \]
 \end{definition}
 
 \begin{remark}
-Realization combines:
-\begin{itemize}
-\item sampling,
-\item interpolation,
-\item mechanical response,
-\item and construction processes.
-\end{itemize}
+The adjustment operator represents localized construction or maintenance
+actions.
 \end{remark}
 
 % ------------------------------------------------------------
 
-\subsection{Operator Composition}
+\subsection{Realization Operator}
 
-\begin{definition}[Realization composition]
+\begin{definition}[Realization operator]
+\label{def:realization-operator}
+\[
+\mathcal R
+:
+\mathcal X_{\mathrm{target}}
+\rightarrow
+\mathcal X_{\mathrm{real}}.
+\]
+\end{definition}
+
+\begin{principle}[Realization principle]
+\label{prop:realization-principle}
+Realization is interpreted as transformation of alignment states rather
+than as direct geometric reconstruction.
+\end{principle}
+
+\begin{remark}
+Realization operators describe physical or construction-related
+transformation. They must be distinguished from runtime operators, which
+evaluate or interpret states.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Realization Decomposition}
+
+\begin{definition}[Realization decomposition]
+\label{eq:realization-decomposition}
 The realization process may be interpreted as:
 \[
 \mathcal R
@@ -273,7 +557,7 @@ The realization process may be interpreted as:
 \end{definition}
 
 \begin{remark}
-This interpretation separates:
+This decomposition separates:
 \begin{itemize}
 \item discretization,
 \item reconstruction,
@@ -283,35 +567,20 @@ This interpretation separates:
 
 % ------------------------------------------------------------
 
-\subsection{Adjustment Operator}
-
-\begin{definition}[Adjustment operator]
-The local adjustment operator is:
-\[
-\mathcal T.
-\]
-\end{definition}
-
-\begin{remark}
-The operator \(\mathcal T\) represents localized construction or
-maintenance actions.
-\end{remark}
-
-% ------------------------------------------------------------
-
 \subsection{Iterative Realization}
 
 \begin{definition}[Iterative realization]
-The realization process may be written as:
+\label{eq:iterative-realization}
 \[
-\gamma_{k+1}
+x_{k+1}
 =
-\mathcal T(\gamma_k).
+\mathcal A(x_k).
 \]
 \end{definition}
 
 \begin{remark}
-Thus, realization is interpreted as an iterative operator process.
+Realization may therefore be interpreted as an iterative operator
+process.
 \end{remark}
 
 % ============================================================
@@ -321,22 +590,23 @@ Thus, realization is interpreted as an iterative operator process.
 \subsection{Residual Operator}
 
 \begin{definition}[Residual operator]
-The residual operator is:
+\label{def:residual-operator}
 \[
 r(x).
 \]
 \end{definition}
 
 \begin{remark}
-Residuals quantify deviations from desired properties.
+Residuals quantify deviations from desired operational, geometric,
+realization, or metric properties.
 \end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Jacobian Operator}
 
-\begin{definition}[Jacobian]
-The Jacobian operator is:
+\begin{definition}[Jacobian operator]
+\label{def:jacobian-operator}
 \[
 J(x)
 =
@@ -346,10 +616,10 @@ J(x)
 
 % ------------------------------------------------------------
 
-\subsection{Gauss--Newton Operator}
+\subsection{Gauss--Newton Approximation}
 
 \begin{definition}[Gauss--Newton approximation]
-The Gauss--Newton approximation is:
+\label{eq:gauss-newton-operator}
 \[
 H
 \approx
@@ -366,10 +636,11 @@ This approximation appears naturally in least-squares optimization.
 \subsection{Realization-Aware Optimization}
 
 \begin{definition}[Realization-aware optimization]
-A realization-aware optimization problem takes the form:
+\label{eq:realization-aware-optimization}
 \[
-\min
-J(\mathcal R(\mathrm{pose3})).
+\min_{u}
+\;
+J(\mathcal R(x(u))).
 \]
 \end{definition}
 
@@ -378,90 +649,100 @@ Optimization therefore acts indirectly through realization.
 \end{remark}
 
 % ============================================================
-\section{Frame Operators}
+\section{Operator Composition}
 % ============================================================
 
-\subsection{Frame Construction}
+\subsection{Runtime Composition}
 
-\begin{definition}[Frame construction operator]
-The frame operator constructs:
+\begin{definition}[Runtime operator composition]
+\label{def:runtime-operator-composition}
+A simplified runtime evaluation chain may be written as:
 \[
-F(s)
+\mathcal E
+\sim
+\mathcal P
+\circ
+\mathcal F
+\circ
+\mathcal G.
+\]
+\end{definition}
+
+\begin{remark}
+This expresses that runtime evaluation may depend on:
+\begin{itemize}
+\item metric realization,
+\item frame evaluation,
+\item and projection services.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Realization Composition}
+
+\begin{definition}[Realization operator composition]
+\label{def:realization-operator-composition}
+The physical realization chain is represented by:
+\[
+\mathcal R
 =
-(\mathbf t(s),\mathbf n(s),\mathbf b(s)).
+\mathcal M
+\circ
+\mathcal I
+\circ
+\mathcal S.
 \]
 \end{definition}
 
 \begin{remark}
-Frames provide local spatial interpretation of the alignment state.
+This separates physical realization from runtime interpretation.
 \end{remark}
 
 % ------------------------------------------------------------
 
-\subsection{Cant Rotation}
+\subsection{Full Operational Composition}
 
-\begin{definition}[Cant rotation operator]
-Cant acts as a rotation:
+\begin{definition}[Full operational operator chain]
+\label{def:full-operational-chain}
+A schematic full AIM evaluation chain may be written as:
 \[
-R_\phi(s)
-\]
-around the tangent direction.
-\end{definition}
-
-% ============================================================
-\section{Runtime Operators}
-% ============================================================
-
-\subsection{Runtime Evaluation}
-
-\begin{remark}
-Many AIM operators are runtime operators:
-\begin{itemize}
-\item world-to-track projection,
-\item frame construction,
-\item realization evaluation,
-\item dynamic evaluation,
-\item and optimization residual computation.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Derived Runtime Quantities}
-
-\begin{definition}[Derived runtime quantities]
-Runtime-evaluated quantities include:
-\[
-a_{\mathrm{eff}},
-\qquad
-j,
-\qquad
-\kappa_g.
+\mathcal E_{\mathrm{full}}
+\sim
+\mathcal P
+\circ
+\mathcal F
+\circ
+\mathcal G
+\circ
+\mathcal R.
 \]
 \end{definition}
 
 \begin{remark}
-These quantities are derived from underlying pose and frame states.
+This expression is not meant as a rigid software pipeline.
+It describes the conceptual dependency between realization, metric
+interpretation, frame evaluation, projection, and runtime quantities.
 \end{remark}
 
 % ============================================================
-\section{Operator Hierarchy}
+\section{Runtime versus Realization}
 % ============================================================
 
+\begin{principle}[Runtime-realization distinction]
+\label{princ:runtime-realization-distinction}
+Runtime operators evaluate states, whereas realization operators
+transform target states into realized states.
+\end{principle}
+
 \begin{remark}
-The AIM framework distinguishes:
-\begin{itemize}
-\item geometric operators,
-\item projection operators,
-\item realization operators,
-\item optimization operators,
-\item and runtime operators.
-\end{itemize}
+Runtime evaluation may operate on target, realized, or measured states.
+Realization describes how target states become realized states.
 \end{remark}
 
 \begin{remark}
-These operators act on different conceptual layers but form one coupled
-operator system.
+Confusing runtime evaluation with physical realization leads to
+ambiguous models and duplicated geometry.
 \end{remark}
 
 % ============================================================
@@ -469,6 +750,7 @@ operator system.
 % ============================================================
 
 \begin{proposition}
+\label{prop:operator-based-interpretation}
 Within AIM, railway alignment modelling is fundamentally operator-based.
 \end{proposition}
 
@@ -476,15 +758,18 @@ Within AIM, railway alignment modelling is fundamentally operator-based.
 Operators transform and evaluate states across:
 \begin{itemize}
 \item intrinsic geometry,
+\item metric realization,
 \item world-space embedding,
-\item realization,
-\item and operational runtime interpretation.
+\item runtime interpretation,
+\item physical realization,
+\item and optimization.
 \end{itemize}
 \end{proposition}
 
 \begin{proposition}
-Realization, projection, and optimization are therefore interpreted as
-operator layers acting on alignment states.
+Realization, metric interpretation, projection, runtime evaluation, and
+optimization are interpreted as coupled operator layers acting on railway
+states.
 \end{proposition}
 
 % ============================================================
@@ -494,13 +779,14 @@ operator layers acting on alignment states.
 \begin{summary}
 The AIM operator framework unifies:
 \begin{itemize}
-\item geometry reconstruction,
+\item intrinsic geometry,
+\item metric interpretation,
 \item world--track projection,
-\item realization,
 \item runtime evaluation,
+\item physical realization,
 \item and optimization.
 \end{itemize}
 
-Operators provide the dynamic transformation layer connecting all parts
-of the AIM framework.
+Operators form the dynamic transformation architecture connecting all
+parts of the AIM framework.
 \end{summary}

@@ -1,22 +1,8 @@
 // src/shared/messaging/service/SpotService.js
-//
-// SpotService
-//
-// Canonical SPOT object registry service.
-//
-// Responsibilities:
-// - serves canonical SPOT state / UI state
-// - accepts canonical SpotObjects
-// - promotes canonical ImportSessionItems into SPOT
-// - broadcasts SPOT UI state changes
-//
-// Important:
-// - SpotService works against the SpotStore API, not raw mutable state
-// - NO implicit promotion
-// - promotion policy is enforced inside promoteImportItems()
 
 import { buildSpotUiState } from "../../../model/spot/ui/buildSpotUiState.js";
 import { promoteImportItems } from "../../../model/spot/mutate/promoteImportItems.js";
+import { inspectCoordContext } from "../../../domain/coord/CoordAgent.js";
 
 export function createSpotService({ spotStore, router } = {}) {
 	if (!spotStore) {
@@ -35,8 +21,21 @@ export function createSpotService({ spotStore, router } = {}) {
 		return spotStore.getState();
 	}
 
+	function getObjectsArray() {
+		return Object.values(getState()?.objects ?? {});
+	}
+
+	function getCoordContext() {
+		return inspectCoordContext(getObjectsArray());
+	}
+
 	function getUiState() {
-		return buildSpotUiState(spotStore.getState());
+		const spotState = getState();
+
+		return {
+			...buildSpotUiState(spotState),
+			coordContext: inspectCoordContext(Object.values(spotState?.objects ?? {})),
+		};
 	}
 
 	function emitUiStateChanged() {
@@ -60,6 +59,7 @@ export function createSpotService({ spotStore, router } = {}) {
 			ok: true,
 			count: list.length,
 			uiState,
+			coordContext: getCoordContext(),
 		};
 	}
 
@@ -77,21 +77,19 @@ export function createSpotService({ spotStore, router } = {}) {
 			rejected: result?.rejectedItems ?? [],
 		});
 
-		// IMPORTANT:
-		// promoteImportItems already writes accepted items into SpotStore.
-		// Do NOT add them again here.
-
 		const uiState = emitUiStateChanged();
 
 		return {
 			...result,
 			uiState,
+			coordContext: getCoordContext(),
 		};
 	}
 
 	return {
 		getState,
 		getUiState,
+		getCoordContext,
 		addObjects,
 		promoteItems,
 	};

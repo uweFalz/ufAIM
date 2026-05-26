@@ -1,6 +1,11 @@
+% main.tex - Main document for AIM Foundations thesis
+
 \documentclass[11pt,a4paper,oneside,openany]{scrbook}
 
-% --- Basics ---
+% ============================================================
+% BASIC SETUP
+% ============================================================
+
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[english,ngerman]{babel}
@@ -11,27 +16,51 @@
 \usepackage{setspace}
 \onehalfspacing
 
-% --- Math ---
+% ============================================================
+% MATHEMATICS
+% ============================================================
+
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 
-% --- Layout ---
+% ============================================================
+% LAYOUT
+% ============================================================
+
 \usepackage[a4paper,margin=30mm]{geometry}
 
-% --- Utils ---
+% ============================================================
+% UTILITIES
+% ============================================================
+
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage[nameinlink]{cleveref}
 \usepackage{booktabs}
 
-% --- Algorithms ---
+% ============================================================
+% ALGORITHMS
+% ============================================================
+
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning}
+% ============================================================
+% TIKZ
+% ============================================================
 
-% --- TOC tuning (KOMA-Script) ---
+\usepackage{tikz}
+\usetikzlibrary{
+  arrows.meta,
+  positioning,
+  calc,
+  decorations.pathreplacing
+}
+
+% ============================================================
+% TOC TUNING (KOMA-SCRIPT)
+% ============================================================
+
 \setcounter{tocdepth}{1}
 
 \RedeclareSectionCommand[
@@ -49,15 +78,25 @@
   tocnumwidth=5.0em
 ]{subsection}
 
-% --- Bibliography ---
+% ============================================================
+% BIBLIOGRAPHY
+% ============================================================
+
 \bibliographystyle{plain}
 
-% --- Index ---
+% ============================================================
+% INDEX
+% ============================================================
+
 \usepackage{makeidx}
 \makeindex
 
-% --- Environments ---
+% ============================================================
+% THEOREM ENVIRONMENTS
+% ============================================================
+
 \theoremstyle{plain}
+
 \newtheorem{theorem}{Theorem}[chapter]
 \newtheorem{axiom}[theorem]{Axiom}
 \newtheorem{proposition}[theorem]{Proposition}
@@ -65,39 +104,73 @@
 \newtheorem{corollary}[theorem]{Corollary}
 
 \theoremstyle{definition}
+
 \newtheorem{definition}[theorem]{Definition}
 \newtheorem{example}[theorem]{Example}
 
 \theoremstyle{remark}
+
 \newtheorem{remark}[theorem]{Remark}
 \newtheorem{summary}[theorem]{Summary}
 \newtheorem{constraint}[theorem]{Constraint}
 \newtheorem{principle}[theorem]{Principle}
 
-% --- Includes ---
+% ============================================================
+% CUSTOM MACROS / MARKERS
+% ============================================================
+
 \input{macros}
 \input{markers}
 
+% ============================================================
+% DOCUMENT
+% ============================================================
+
 \begin{document}
+
+% ============================================================
+% FRONTMATTER
+% ============================================================
 
 \frontmatter
 
 \title{AIM Foundations}
-\subtitle{Curvature-Driven Modelling, Classification, Dynamics, and Optimization of Structured Railway Alignments}
+\subtitle{
+Curvature-Driven Modelling, Classification, Runtime Evaluation,
+Realization, and Optimization of Structured Railway Alignments
+}
+
 \author{Uwe Falz}
 \date{\today}
 
 \maketitle
 \tableofcontents
 
+% ------------------------------------------------------------
+
 \chapter*{Preface}
 \addcontentsline{toc}{chapter}{Preface}
 
 This manuscript is intended as a long-term scientific foundation for
 alignment-based information modelling.
+
 It is not merely software documentation, but a structured knowledge base
-covering geometry, transition theory, numerical reconstruction,
-engineering constraints, dynamics, standards, and optimization.
+covering:
+\begin{itemize}
+\item intrinsic railway geometry,
+\item curvature-driven reconstruction,
+\item runtime evaluation,
+\item realization processes,
+\item vehicle-space interpretation,
+\item optimization,
+\item and Earth-attached railway geometry.
+\end{itemize}
+
+The AIM framework treats railway alignments not merely as static curves,
+but as coupled operator-based state systems connecting geometry,
+construction, runtime interpretation, and operational behaviour.
+
+% ------------------------------------------------------------
 
 \input{executive_summary}
 \input{core_thesis}
@@ -106,6 +179,10 @@ engineering constraints, dynamics, standards, and optimization.
 
 \input{foundations/glossary}
 
+% ============================================================
+% MAINMATTER
+% ============================================================
+
 \mainmatter
 
 % ============================================================
@@ -113,6 +190,7 @@ engineering constraints, dynamics, standards, and optimization.
 % ============================================================
 
 \input{why/part_intro}
+
 \input{why/motivation}
 \input{why/problem_statement}
 \input{why/vision}
@@ -122,37 +200,115 @@ engineering constraints, dynamics, standards, and optimization.
 % ============================================================
 
 \input{foundations/part_intro}
+
+% ------------------------------------------------------------
+% FOUNDATIONAL AXIOMS
+% ------------------------------------------------------------
+
 \input{foundations/axioms}
-\input{foundations/notation.tex}
-\input{foundations/state_model.tex}
+
+% ------------------------------------------------------------
+% CANONICAL LANGUAGE
+% ------------------------------------------------------------
+
+\input{foundations/notation}
+\input{foundations/core_equations}
+
+% ------------------------------------------------------------
+% STATE AND OPERATOR FOUNDATIONS
+% ------------------------------------------------------------
+
+\input{foundations/state_model}
+\input{foundations/operators}
+
+% ------------------------------------------------------------
+% ARCHITECTURAL FOUNDATIONS
+% ------------------------------------------------------------
+
+\input{foundations/system_layers}
+\input{foundations/metric_realization}
+\input{foundations/ontology}
+
+% ------------------------------------------------------------
+% EARTH / ELLIPSOID FOUNDATIONS
+% ------------------------------------------------------------
+
 \input{foundations/ellipsoid_geometry}
-\input{foundations/operators.tex}
-\input{foundations/pose3_on_ellipsoid.tex}
-\input{foundations/core_equations.tex}
-\input{foundations/system_layers.tex}
-\input{foundations/ontology.tex}
+\input{foundations/pose3_on_ellipsoid}
+
+% ============================================================
+\part{Geometry and Curvature}
+% ============================================================
+
+\input{geometry/part_intro}
+
+% ------------------------------------------------------------
+% CURVATURE SPACE
+% ------------------------------------------------------------
+
+\input{geometry/curvature_space}
+\input{geometry/curvature_classes}
+\input{geometry/curvature_transitions}
+\input{geometry/curvature_classification}
 
 % ============================================================
 \part{Railway State Model}
 % ============================================================
 
 \input{state/part_intro}
+
+% ------------------------------------------------------------
+% CORE STATE REPRESENTATIONS
+% ------------------------------------------------------------
+
 \input{state/pose2}
 \input{state/pose3_and_cant}
+
+% ------------------------------------------------------------
+% DERIVED STATE SYSTEMS
+% ------------------------------------------------------------
+
+\input{state/pose3_frames}
 \input{state/dynamics}
 \input{state/world_to_track}
-\input{state/pose3_frames.tex}
+
+% ============================================================
+\part{Runtime and Evaluation}
+% ============================================================
+
+\input{runtime/part_intro}
+
+% ------------------------------------------------------------
+% RUNTIME ARCHITECTURE
+% ------------------------------------------------------------
+
+\input{runtime/runtime_services}
 
 % ============================================================
 \part{Reality and Data}
 % ============================================================
 
 \input{reality/part_intro}
+
+% ------------------------------------------------------------
+% REAL-WORLD DATA
+% ------------------------------------------------------------
+
 \input{reality/data}
 \input{reality/coordinate_systems}
 \input{reality/km_line_and_stationing}
+
+% ------------------------------------------------------------
+% IMPERFECT REALITY
+% ------------------------------------------------------------
+
 \input{reality/measurement_and_imperfect_data}
 \input{reality/topology_and_special_elements}
+
+% ------------------------------------------------------------
+% REALIZATION
+% ------------------------------------------------------------
+
 \input{reality/construction_and_realization}
 \input{reality/realized_pose3}
 
@@ -161,9 +317,19 @@ engineering constraints, dynamics, standards, and optimization.
 % ============================================================
 
 \input{modeling/part_intro}
+
+% ------------------------------------------------------------
+% SPARSE REPRESENTATION
+% ------------------------------------------------------------
+
 \input{modeling/sparse}
 \input{modeling/transitions}
 \input{modeling/transition_classification}
+
+% ------------------------------------------------------------
+% ADVANCED CONCEPTS
+% ------------------------------------------------------------
+
 \input{modeling/schwerpunkt_trassierung}
 
 % ============================================================
@@ -171,9 +337,19 @@ engineering constraints, dynamics, standards, and optimization.
 % ============================================================
 
 \input{analysis/part_intro}
+
+% ------------------------------------------------------------
+% PIPELINES
+% ------------------------------------------------------------
+
 \input{analysis/pipeline}
 \input{analysis/pipeline_diagram}
 \input{analysis/master_diagram}
+
+% ------------------------------------------------------------
+% SYSTEM INTERPRETATION
+% ------------------------------------------------------------
+
 \input{analysis/pipeline_story}
 \input{analysis/failure_modes}
 \input{analysis/design_principles}
@@ -183,17 +359,32 @@ engineering constraints, dynamics, standards, and optimization.
 % ============================================================
 
 \input{optimization/part_intro}
+
+% ------------------------------------------------------------
+% NUMERICS
+% ------------------------------------------------------------
+
 \input{optimization/numerics}
+
+% ------------------------------------------------------------
+% ALIGNMENT OPTIMIZATION
+% ------------------------------------------------------------
+
 \input{optimization/alignment_optimization}
 \input{optimization/60_hybrid_block_structure}
 \input{optimization/optimizer_architecture}
-\input{optimization/realization_aware_optimization.tex}
+\input{optimization/realization_aware_optimization}
 
 % ============================================================
 \part{Engineering and Standards}
 % ============================================================
 
 \input{engineering/part_intro}
+
+% ------------------------------------------------------------
+% RULES AND CONSTRAINTS
+% ------------------------------------------------------------
+
 \input{engineering/standards}
 \input{engineering/constraints_and_rules}
 \input{engineering/railway_rules}
@@ -203,21 +394,38 @@ engineering constraints, dynamics, standards, and optimization.
 % ============================================================
 
 \input{applications/part_intro}
+
+% ------------------------------------------------------------
+% APPLICATION DOMAINS
+% ------------------------------------------------------------
+
 \input{applications/railway}
+\input{applications/vehicle_space_and_platforms}
+\input{applications/railway_vs_aircraft_dynamics}
+
+% ------------------------------------------------------------
+% EXAMPLES AND DISCUSSION
+% ------------------------------------------------------------
+
 \input{applications/examples}
 \input{applications/use_cases}
+
 \input{applications/bimalignment}
 \input{applications/contribution}
 \input{applications/discussion}
-\input{applications/vehicle_space_and_platforms.tex}
 
 % ============================================================
 \part{Outlook}
 % ============================================================
 
 \input{outlook/part_intro}
+
 \input{outlook/bim}
 \input{outlook/future_work}
+
+% ============================================================
+% BACKMATTER
+% ============================================================
 
 \backmatter
 
@@ -226,7 +434,6 @@ engineering constraints, dynamics, standards, and optimization.
 
 \bibliography{references}
 
-% Enable this when you actually run makeindex:
 \printindex
 
 \end{document}

@@ -1,0 +1,636 @@
+% foundations/metric_realization.tex
+
+\chapter{Metric Realization}
+
+\label{chap:metric-realization}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Classical railway alignment systems often assume that geometry,
+distance, curvature, projection, and realization are all defined within
+one implicit Euclidean coordinate model.
+\end{remark}
+
+\begin{remark}
+This assumption is sufficient for many engineering applications, but it
+becomes problematic when:
+\begin{itemize}
+\item large-scale coordinate systems are involved,
+\item Earth curvature becomes relevant,
+\item projection distortions appear,
+\item multiple CRS layers interact,
+\item or alignment semantics must remain independent from metric
+realization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, a strict distinction is therefore introduced between:
+\begin{itemize}
+\item alignment semantics,
+\item CRS embedding,
+\item and metric realization.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This separation enables:
+\begin{itemize}
+\item stable alignment semantics,
+\item interchangeable metric models,
+\item realization-aware geometry,
+\item projection-aware interpretation,
+\item and future differential-geometric extensions.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Core Principle}
+% ============================================================
+
+\begin{principle}[Alignment semantics principle]
+\label{princ:alignment-semantics}
+The semantic structure of an alignment is independent of the metric
+space in which it is realized.
+\end{principle}
+
+\begin{remark}
+For example:
+\begin{itemize}
+\item straight elements,
+\item constant-curvature arcs,
+\item transition elements,
+\item topology,
+\item and switch logic
+\end{itemize}
+remain semantically stable even when the underlying metric model
+changes.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{principle}[Metric realization principle]
+\label{princ:metric-realization}
+Geometric realization depends on the metric model used for evaluation.
+\end{principle}
+
+\begin{remark}
+Thus:
+\begin{itemize}
+\item distances,
+\item curvature,
+\item projection,
+\item interpolation,
+\item frame construction,
+\item and geodesic behaviour
+\end{itemize}
+may differ between metric realizations.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{principle}[Canonical separation principle]
+\label{princ:canonical-metric-separation}
+Alignment semantics and metric realization must remain conceptually
+separable.
+\end{principle}
+
+% ============================================================
+\section{Semantic Alignment Layer}
+% ============================================================
+
+\subsection{Intrinsic Semantics}
+
+\begin{remark}
+The semantic alignment layer describes:
+\begin{itemize}
+\item alignment topology,
+\item curvature laws,
+\item transition structure,
+\item stationing semantics,
+\item continuity conditions,
+\item and sparse alignment structure.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This layer is intentionally metric-independent.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Sparse Representation}
+
+\begin{remark}
+Within AIM, the sparse alignment model stores:
+\begin{itemize}
+\item fixed curvature elements,
+\item transition elements,
+\item lookup-based curvature evolution,
+\item sparse reconstruction parameters,
+\item and associated semantic metadata.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The sparse representation therefore acts as a semantic alignment
+description rather than a finalized geometric embedding.
+\end{remark}
+
+% ============================================================
+\section{CRS Embedding versus Metric Realization}
+% ============================================================
+
+\subsection{Conceptual Distinction}
+
+\begin{remark}
+Within AIM, CRS embedding and metric realization are related but
+distinct concepts.
+\end{remark}
+
+\begin{remark}
+The CRS layer defines:
+\begin{itemize}
+\item coordinate reference systems,
+\item projection rules,
+\item Earth-related embedding,
+\item and coordinate transformations.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The metric realization layer defines:
+\begin{itemize}
+\item distance interpretation,
+\item curvature evaluation,
+\item frame behaviour,
+\item transport rules,
+\item and geometric reconstruction behaviour.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Coordinate Transformation}
+
+\begin{remark}
+Coordinate transformations are represented by:
+\[
+\mathcal C
+:
+\Omega_{\mathrm{world}}
+\rightarrow
+\Omega_{\mathrm{world}}.
+\]
+\end{remark}
+
+\begin{remark}
+Coordinate transformation alone does not define intrinsic railway
+geometry.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Projection Dependence}
+
+\begin{proposition}
+\label{prop:projection-distorts-alignment}
+A straight line in one projected CRS is generally not identical to a
+straight line in another projection space.
+\end{proposition}
+
+\begin{remark}
+Similarly:
+\begin{itemize}
+\item curvature,
+\item transition behaviour,
+\item stationing interpretation,
+\item and lateral offsets
+\end{itemize}
+may become projection-dependent.
+\end{remark}
+
+% ============================================================
+\section{Metric Realization Spaces}
+% ============================================================
+
+\subsection{General Interpretation}
+
+\begin{definition}[Metric realization space]
+\label{def:metric-space}
+
+A metric realization space defines:
+\begin{itemize}
+\item distance interpretation,
+\item directional interpretation,
+\item curvature evaluation,
+\item frame transport,
+\item projection behaviour,
+\item and geometric reconstruction rules.
+\end{itemize}
+
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Metric Realization Operator}
+
+\begin{definition}[Metric realization operator]
+\label{def:metric-realization-operator}
+
+Metric realization is represented abstractly by:
+\[
+\mathcal G
+:
+\mathcal X
+\rightarrow
+\mathcal X_{\mathrm{metric}}.
+\]
+
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+The operator \(\mathcal G\) defines how semantic railway states are
+evaluated geometrically within a selected metric model.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Operator Boundary}
+
+\begin{principle}[Metric operator boundary]
+\label{princ:metric-operator-boundary}
+Alignment logic should not directly assume a specific metric model.
+\end{principle}
+
+\begin{remark}
+Instead, alignment operations interact with geometry through metric
+operators and runtime evaluation services.
+\end{remark}
+
+\begin{remark}
+This creates a strict separation between:
+\begin{itemize}
+\item semantic alignment structure,
+\item and metric realization behaviour.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Engineering Metric}
+% ============================================================
+
+\subsection{Role}
+
+\begin{remark}
+The dominant practical realization mode within AIM is the engineering
+metric.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Characteristics}
+
+\begin{remark}
+The engineering metric assumes:
+\begin{itemize}
+\item locally Euclidean geometry,
+\item Cartesian coordinates,
+\item fast evaluation,
+\item simple frame construction,
+\item and numerically stable reconstruction.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Importance}
+
+\begin{principle}[Engineering priority principle]
+\label{princ:engineering-priority}
+The engineering metric remains the primary operational mode of AIM and
+must not suffer unnecessary computational overhead.
+\end{principle}
+
+\begin{remark}
+Advanced metric concepts must therefore remain compatible with highly
+efficient engineering-scale evaluation.
+\end{remark}
+
+% ============================================================
+\section{Projection-Aware Metric}
+% ============================================================
+
+\subsection{Motivation}
+
+\begin{remark}
+Projected coordinate systems introduce:
+\begin{itemize}
+\item scale distortions,
+\item directional distortions,
+\item projection-dependent curvature effects,
+\item and coordinate-dependent metric behaviour.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Interpretation}
+
+\begin{remark}
+Within AIM, projection-aware realization interprets alignment geometry
+through projection-dependent metric evaluation.
+\end{remark}
+
+\begin{remark}
+Thus, runtime geometry depends not only on intrinsic alignment semantics
+but also on projection context.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Operational Consequences}
+
+\begin{remark}
+Projection-aware realization affects:
+\begin{itemize}
+\item world--track projection,
+\item nearest-point search,
+\item stationing interpretation,
+\item local frame construction,
+\item and geometric reconstruction.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Ellipsoid-Based Metric}
+% ============================================================
+
+\subsection{Motivation}
+
+\begin{remark}
+At sufficiently large spatial scales, Earth curvature becomes relevant
+for railway alignment interpretation.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Geodesic Interpretation}
+
+\begin{remark}
+Within ellipsoid-based geometry:
+\begin{itemize}
+\item Euclidean straightness,
+\item geodesic straightness,
+\item and engineering straightness
+\end{itemize}
+are no longer identical concepts.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Curvature Interpretation}
+
+\begin{remark}
+On curved surfaces, curvature decomposes into:
+\[
+\kappa^2
+=
+\kappa_g^2
++
+\kappa_n^2,
+\]
+where:
+\begin{itemize}
+\item \(\kappa_g\) denotes geodesic curvature,
+\item \(\kappa_n\) denotes surface-normal curvature.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+For railway dynamics, geodesic curvature is generally the physically
+relevant quantity.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Frame Interpretation}
+
+\begin{remark}
+Within ellipsoid-aware geometry, frame construction may require:
+\begin{itemize}
+\item tangent transport,
+\item surface-normal evaluation,
+\item and connection-dependent orientation rules.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Future Differential-Geometric Layer}
+% ============================================================
+
+\subsection{Motivation}
+
+\begin{remark}
+Future railway alignment systems may require:
+\begin{itemize}
+\item intrinsic surface geometry,
+\item Earth-attached frames,
+\item geodesic transition interpretation,
+\item and fully differential-geometric reconstruction methods.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Operator-Based Geometry}
+
+\begin{remark}
+Within such a framework, geometric operations would no longer be based
+primarily on Cartesian coordinate algebra.
+\end{remark}
+
+\begin{remark}
+Instead, geometry would emerge from:
+\begin{itemize}
+\item local operators,
+\item metric tensors,
+\item connection rules,
+\item covariant derivatives,
+\item and differential-geometric transport.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Runtime Dependency}
+% ============================================================
+
+\subsection{Runtime Evaluation}
+
+\begin{remark}
+Metric realization affects runtime services such as:
+\begin{itemize}
+\item projection,
+\item stationing,
+\item frame construction,
+\item nearest-point search,
+\item pose3 evaluation,
+\item and geometric reconstruction.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Metric-Aware Runtime}
+
+\begin{remark}
+Runtime systems should therefore evaluate geometry through metric-aware
+operator services rather than through hardcoded Euclidean assumptions.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{pose3 Dependency}
+
+\begin{remark}
+Runtime pose3 evaluation depends jointly on:
+\begin{itemize}
+\item semantic alignment states,
+\item metric realization,
+\item CRS embedding,
+\item frame operators,
+\item profile interpretation,
+\item and cant interpretation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, pose3 is not a purely intrinsic object, but a runtime-generated
+metric interpretation of semantic alignment structure.
+\end{remark}
+
+% ============================================================
+\section{Conceptual Architecture}
+% ============================================================
+
+\begin{figure}[h]
+\centering
+
+\begin{tikzpicture}[
+node distance=1.5cm and 2.2cm,
+box/.style={
+draw,
+rounded corners,
+align=center,
+minimum width=3.7cm,
+minimum height=1.0cm
+},
+arrow/.style={->, thick}
+]
+
+\node[box] (semantic) {
+Alignment Semantics\\
+Sparse Alignment\\
+Transitions / Stationing
+};
+
+\node[box, below=of semantic] (metric) {
+Metric Realization Layer\\
+Operator Boundary\\
+$\mathcal G$
+};
+
+\node[box, below left=of metric] (euclid) {
+Engineering Metric\\
+Euclidean / Fast
+};
+
+\node[box, below=of metric] (proj) {
+Projection-Aware Metric
+};
+
+\node[box, below right=of metric] (ellipsoid) {
+Ellipsoid Metric
+};
+
+\node[box, below=2.2cm of proj] (runtime) {
+Runtime Evaluation\\
+pose3 / Projection / Frames
+};
+
+\draw[arrow] (semantic) -- (metric);
+
+\draw[arrow] (metric) -- (euclid);
+\draw[arrow] (metric) -- (proj);
+\draw[arrow] (metric) -- (ellipsoid);
+
+\draw[arrow] (euclid) -- (runtime);
+\draw[arrow] (proj) -- (runtime);
+\draw[arrow] (ellipsoid) -- (runtime);
+
+\end{tikzpicture}
+
+\caption{
+AIM separates semantic alignment structure from metric realization.
+Different metric backends may realize the same semantic alignment model,
+while runtime services operate on the resulting metric interpretation.
+}
+\label{fig:metric-realization-architecture}
+
+\end{figure}
+
+% ============================================================
+\section{Key Insight}
+% ============================================================
+
+\begin{proposition}
+Railway alignment semantics and metric realization are fundamentally
+different conceptual layers.
+\end{proposition}
+
+\begin{proposition}
+The same semantic alignment structure may be realized within different
+metric spaces.
+\end{proposition}
+
+\begin{proposition}
+Metric realization therefore acts as an operator layer between semantic
+alignment logic and spatial geometry evaluation.
+\end{proposition}
+
+\begin{proposition}
+Runtime geometry emerges from interaction between:
+\begin{itemize}
+\item semantic alignment structure,
+\item metric realization,
+\item CRS embedding,
+\item and runtime evaluation operators.
+\end{itemize}
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Within AIM, alignment semantics are intentionally separated from metric
+realization.
+
+This enables:
+\begin{itemize}
+\item stable sparse alignment representations,
+\item interchangeable metric models,
+\item realization-aware geometry,
+\item projection-aware evaluation,
+\item runtime-dependent pose3 interpretation,
+\item and future differential-geometric extensions.
+\end{itemize}
+
+The metric realization layer therefore forms the operator boundary
+between semantic alignment logic and operational geometry.
+\end{summary}

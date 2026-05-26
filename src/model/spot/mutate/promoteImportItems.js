@@ -1,63 +1,33 @@
 // src/model/spot/mutate/promoteImportItems.js
-//
-// promoteImportItems
-//
-// Purpose:
-// - evaluate canonical ImportSessionItems for SPOT admission
-// - promote only safe items into SpotStore
-// - keep review/reject decisions explicit and machine-readable
-// - convert import items into canonical SPOT entries
-//
-// Rule:
-// import items are NOT promoted just because they exist.
-// import items must pass assessSpotAdmission().
-//
-// SPOT target shape v0.1:
-// {
-//   id,
-//   type,
-//   crsId,
-//   data,   // type-specific, validated
-//   refs,   // IDs only
-//   meta
-// }
-//
-// Important:
-// - SPOT remains canonical truth
-// - review items stay outside SPOT
-// - reject items stay outside SPOT
-// - no geometry recomputation here except using already-derived sparseAlignment
 
 import { assessSpotAdmission } from "../../../import/spot/assessSpotAdmission.js";
 
-export function promoteImportItems({
-	items = [],
-	spotStore,
-} = {}) {
+export function promoteImportItems({ items = [], spotStore } = {}) {
 	if (!spotStore || typeof spotStore.addObjects !== "function") {
 		throw new Error("promoteImportItems: missing spotStore.addObjects");
 	}
-
-	const sourceItems = Array.isArray(items) ? items : [];
 
 	const addedObjects = [];
 	const reviewItems = [];
 	const rejectedItems = [];
 
-	for (const item of sourceItems) {
+	for (const item of Array.isArray(items) ? items : []) {
 		if (!isObject(item)) {
-			rejectedItems.push({
-				id: null,
-				kind: null,
-				reason: "invalid_item",
-			});
+			rejectedItems.push({ id: null, kind: null, reason: "invalid_item" });
 			continue;
 		}
 
 		const decision = assessSpotAdmission(item);
 
-		if (decision?.admission === "safe") {
-			const promoted = promoteOneItemToSpotEntry(item);
+		const allowSoftReview =
+			decision?.admission === "review" &&
+			decision?.reason === "no_crs_context" &&
+			isDrawableAlignmentItem(item);
+
+		if (decision?.admission === "safe" || allowSoftReview) {
+			const promoted = promoteOneItemToSpotEntry(item, {
+				warnings: allowSoftReview ? ["no_crs_context"] : [],
+			});
 
 			if (!promoted) {
 				reviewItems.push({
@@ -69,7 +39,6 @@ export function promoteImportItems({
 			}
 
 			registerCrsIfPossible(spotStore, promoted.crs, promoted.entry);
-
 			spotStore.addObjects([promoted.entry]);
 			addedObjects.push(promoted.entry);
 			continue;
@@ -104,39 +73,36 @@ export function promoteImportItems({
 	};
 }
 
-// -----------------------------------------------------------------------------
-// item -> SPOT entry
-// -----------------------------------------------------------------------------
+function isDrawableAlignmentItem(item) {
+	return (
+		item?.kind === "alignment" &&
+		isObject(item?.derived?.sparseAlignment)
+	);
+}
 
-function promoteOneItemToSpotEntry(item) {
+function promoteOneItemToSpotEntry(item, opts = {}) {
 	switch (item?.kind) {
 		case "alignment":
-			return buildSpotAlignmentEntry(item);
-
+			return buildSpotAlignmentEntry(item, opts);
 		case "profile":
-			return buildSpotProfileEntry(item);
-
+			return buildSpotProfileEntry(item, opts);
 		case "cant":
-			return buildSpotCantEntry(item);
-
+			return buildSpotCantEntry(item, opts);
 		case "staEq":
-			return buildSpotStaEqEntry(item);
-
+			return buildSpotStaEqEntry(item, opts);
 		case "relation":
-			return buildSpotRelationEntry(item);
-
+			return buildSpotRelationEntry(item, opts);
 		default:
 			return null;
 	}
 }
 
-function buildSpotAlignmentEntry(item) {
+function buildSpotAlignmentEntry(item, opts = {}) {
 	const sparseAlignment = item?.derived?.sparseAlignment ?? null;
 	if (!isObject(sparseAlignment)) return null;
 
 	const payload = item?.payload ?? {};
 	const crs = normalizeSpotCrs(item);
-	if (!crs?.crsId) return null;
 
 	return {
 		crs,
@@ -144,6 +110,7 @@ function buildSpotAlignmentEntry(item) {
 			id: String(item.id),
 			type: "alignment",
 			crsId: crs.crsId,
+			crsStatus: crs.status,
 
 			data: {
 				name: payload.name ?? payload.id ?? item.id ?? null,
@@ -158,15 +125,14 @@ function buildSpotAlignmentEntry(item) {
 				staEquationRelationIds: [],
 			},
 
-			meta: buildSpotMeta(item),
+			meta: buildSpotMeta(item, opts),
 		},
 	};
 }
 
-function buildSpotProfileEntry(item) {
+function buildSpotProfileEntry(item, opts = {}) {
 	const payload = item?.payload ?? {};
 	const crs = normalizeSpotCrs(item);
-	if (!crs?.crsId) return null;
 
 	return {
 		crs,
@@ -174,6 +140,7 @@ function buildSpotProfileEntry(item) {
 			id: String(item.id),
 			type: "profile",
 			crsId: crs.crsId,
+			crsStatus: crs.status,
 
 			data: {
 				name: payload.name ?? payload.id ?? item.id ?? null,
@@ -184,16 +151,14 @@ function buildSpotProfileEntry(item) {
 			},
 
 			refs: {},
-
-			meta: buildSpotMeta(item),
+			meta: buildSpotMeta(item, opts),
 		},
 	};
 }
 
-function buildSpotCantEntry(item) {
+function buildSpotCantEntry(item, opts = {}) {
 	const payload = item?.payload ?? {};
 	const crs = normalizeSpotCrs(item);
-	if (!crs?.crsId) return null;
 
 	return {
 		crs,
@@ -201,6 +166,7 @@ function buildSpotCantEntry(item) {
 			id: String(item.id),
 			type: "cant",
 			crsId: crs.crsId,
+			crsStatus: crs.status,
 
 			data: {
 				name: payload.name ?? payload.id ?? item.id ?? null,
@@ -211,16 +177,14 @@ function buildSpotCantEntry(item) {
 			},
 
 			refs: {},
-
-			meta: buildSpotMeta(item),
+			meta: buildSpotMeta(item, opts),
 		},
 	};
 }
 
-function buildSpotStaEqEntry(item) {
+function buildSpotStaEqEntry(item, opts = {}) {
 	const payload = item?.payload ?? {};
 	const crs = normalizeSpotCrs(item);
-	if (!crs?.crsId) return null;
 
 	return {
 		crs,
@@ -228,6 +192,7 @@ function buildSpotStaEqEntry(item) {
 			id: String(item.id),
 			type: "staEquation",
 			crsId: crs.crsId,
+			crsStatus: crs.status,
 
 			data: {
 				name: payload.name ?? payload.id ?? item.id ?? null,
@@ -237,13 +202,12 @@ function buildSpotStaEqEntry(item) {
 			},
 
 			refs: {},
-
-			meta: buildSpotMeta(item),
+			meta: buildSpotMeta(item, opts),
 		},
 	};
 }
 
-function buildSpotRelationEntry(item) {
+function buildSpotRelationEntry(item, opts = {}) {
 	const payload = item?.payload ?? {};
 	const crs = normalizeSpotCrs(item);
 
@@ -252,7 +216,8 @@ function buildSpotRelationEntry(item) {
 		entry: {
 			id: String(item.id),
 			type: "relation",
-			crsId: crs?.crsId ?? null,
+			crsId: crs.crsId,
+			crsStatus: crs.status,
 
 			data: {
 				name: payload.name ?? payload.id ?? item.id ?? null,
@@ -266,26 +231,12 @@ function buildSpotRelationEntry(item) {
 			},
 
 			refs: {},
-
-			meta: buildSpotMeta(item),
+			meta: buildSpotMeta(item, opts),
 		},
 	};
 }
 
-// -----------------------------------------------------------------------------
-// canonical data normalization
-// -----------------------------------------------------------------------------
-
 function normalizeAlignmentKernel(sparseAlignment) {
-	if (!isObject(sparseAlignment)) {
-		return {
-			startPose: null,
-			elements: [],
-			sparse: [],
-			version: "sparse_v1",
-		};
-	}
-
 	const elements = Array.isArray(sparseAlignment.elements)
 		? sparseAlignment.elements
 		: Array.isArray(sparseAlignment.sparse)
@@ -293,15 +244,331 @@ function normalizeAlignmentKernel(sparseAlignment) {
 			: [];
 
 	return {
-		// 🔥 WICHTIG: nichts verlieren
 		...sparseAlignment,
-
-		// stabile Zugriffspfade für Projection
 		startPose: sparseAlignment.startPose ?? null,
 		elements,
 		sparse: elements,
-
 		version: sparseAlignment.version ?? "sparse_v1",
+	};
+}
+
+function normalizeSpotCrs(item) {
+	const sr = item?.derived?.spatialRef ?? null;
+
+	const horizontal = firstNonEmptyString(
+		sr?.crsId,
+		sr?.horizontalCrsId,
+		sr?.horizontal,
+		sr?.horizontalCoordinateSystemName,
+		item?.payload?.spatialRef?.crsId,
+		item?.payload?.spatialRef?.horizontalCrsId
+	);
+
+	// ------------------------------------------------------------
+	// no explicit CRS
+	// ------------------------------------------------------------
+	if (!horizontal) {
+		const inferred = inferEngineeringCrs(item);
+
+		// inferred CRS
+		if (inferred) {
+			return {
+				id: inferred.crsId,
+				crsId: inferred.crsId,
+
+				status: "inferred",
+
+				horizontalCrsId: inferred.crsId,
+				horizontalCoordinateSystemName:
+					inferred.label ?? inferred.crsId,
+
+				verticalCrsId: null,
+				verticalCoordinateSystemName: null,
+
+				source:
+					item?.source?.parserId ??
+					item?.source?.fileName ??
+					"import",
+
+				family: inferred.family ?? null,
+
+				raw: {
+					inferred: true,
+					heuristic: inferred.heuristic ?? null,
+					baseSpatialRef: isObject(sr)
+						? clonePlainObject(sr)
+						: {},
+				},
+			};
+		}
+
+		// fully unknown local engineering space
+		const crsId = makeUnknownCrsId(item);
+
+		return {
+			id: crsId,
+			crsId,
+
+			status: "unknown",
+
+			horizontalCrsId: crsId,
+			horizontalCoordinateSystemName:
+				"unknown engineering CRS",
+
+			verticalCrsId: null,
+			verticalCoordinateSystemName: null,
+
+			source:
+				item?.source?.parserId ??
+				item?.source?.fileName ??
+				"import",
+
+			family: "local_unknown",
+
+			raw: isObject(sr)
+				? clonePlainObject(sr)
+				: {},
+		};
+	}
+
+	// ------------------------------------------------------------
+	// declared CRS
+	// ------------------------------------------------------------
+	const crsId = normalizeCrsId(horizontal);
+
+	return {
+		id: crsId,
+		crsId,
+
+		status: sr?.status ?? "declared",
+
+		horizontalCrsId: crsId,
+
+		horizontalCoordinateSystemName:
+			sr?.horizontalCoordinateSystemName ??
+			sr?.horizontal ??
+			horizontal,
+
+		verticalCrsId: sr?.verticalCrsId ?? null,
+		verticalCoordinateSystemName:
+			sr?.verticalCoordinateSystemName ?? null,
+
+		source:
+			sr?.source ??
+			item?.source?.parserId ??
+			null,
+
+		family: classifyCrsFamily(crsId),
+
+		raw: isObject(sr)
+			? clonePlainObject(sr)
+			: {},
+	};
+}
+
+function inferEngineeringCrs(item) {
+	const p = readRepresentativePoint(item);
+
+	if (!p) return null;
+
+	const x = Number(p.x);
+	const y = Number(p.y);
+
+	if (!Number.isFinite(x) || !Number.isFinite(y)) {
+		return null;
+	}
+
+	// ------------------------------------------------------------
+	// Gauss-Krüger-artig
+	// ------------------------------------------------------------
+
+	// Rechtswert enthält Streifenkennung
+	// z.B. 3.5 Mio / 4.5 Mio / 5.5 Mio
+	if (
+		x > 2_000_000 &&
+		x < 6_000_000 &&
+		y > 5_000_000 &&
+		y < 7_000_000
+	) {
+		const strip = Math.floor(x / 1_000_000);
+
+		return {
+			crsId: `INFERRED:GK:${strip}`,
+			label: `inferred Gauss-Krüger strip ${strip}`,
+			family: "gauss_krueger",
+
+			heuristic: {
+				type: "gk_strip_from_rechtswert",
+				strip,
+				x,
+				y,
+			},
+		};
+	}
+
+	// ------------------------------------------------------------
+	// DBRef-artig
+	// ------------------------------------------------------------
+
+	if (
+		x > 100_000 &&
+		x < 1_000_000 &&
+		y > 100_000 &&
+		y < 10_000_000
+	) {
+		return {
+			crsId: "INFERRED:DBREF",
+			label: "inferred DB reference system",
+			family: "dbref",
+
+			heuristic: {
+				type: "dbref_like_range",
+				x,
+				y,
+			},
+		};
+	}
+
+	return null;
+}
+
+function classifyCrsFamily(crsId) {
+	const s = String(crsId ?? "").toUpperCase();
+
+	if (
+		s.includes("GK") ||
+		s.includes("GAUSS") ||
+		s.includes("KRUEGER") ||
+		s.includes("KRÜGER")
+	) {
+		return "gauss_krueger";
+	}
+
+	if (
+		s.includes("UTM") ||
+		s.startsWith("EPSG:258") ||
+		s.startsWith("EPSG:32")
+	) {
+		return "utm";
+	}
+
+	if (
+		s.includes("DBREF") ||
+		s.startsWith("DB:DR")
+	) {
+		return "dbref";
+	}
+
+	if (
+		s.startsWith("DB:DA")
+	) {
+		return "db_landessystem";
+	}
+
+	if (
+		s.startsWith("UNKNOWN:")
+	) {
+		return "local_unknown";
+	}
+
+	return "unknown";
+}
+
+function makeUnknownCrsId(item) {
+	const source =
+		item?.source?.fileName ??
+		item?.source?.parserId ??
+		item?.meta?.sourceFile ??
+		item?.payload?.name ??
+		item?.id ??
+		"import";
+
+	const stem = safeIdStem(source);
+
+	return `unknown:engineering:${stem}`;
+}
+
+function readRepresentativePoint(item) {
+	const sparse =
+		item?.derived?.sparseAlignment ??
+		item?.payload?.sparseAlignment ??
+		null;
+
+	const pose =
+		sparse?.startPose ??
+		sparse?.pose ??
+		null;
+
+	const p =
+		pose?.pnt ??
+		pose?.point ??
+		null;
+
+	if (
+		isObject(p) &&
+		Number.isFinite(Number(p.x)) &&
+		Number.isFinite(Number(p.y))
+	) {
+		return {
+			x: Number(p.x),
+			y: Number(p.y),
+		};
+	}
+
+	return null;
+}
+
+function normalizeCrsId(value) {
+	const s = String(value ?? "").trim();
+	if (!s) return null;
+
+	if (/^EPSG:/i.test(s)) return `EPSG:${s.split(":")[1]}`;
+	if (/^DB:/i.test(s)) return `DB:${s.split(":")[1]}`;
+	if (/^[A-Z]{2}\d$/i.test(s)) return `DB:${s.toUpperCase()}`;
+
+	return s;
+}
+
+function registerCrsIfPossible(spotStore, crs, entry) {
+	if (!crs?.crsId) return;
+
+	if (typeof spotStore.addCrs === "function") {
+		spotStore.addCrs(crs);
+		return;
+	}
+
+	if (typeof spotStore.upsertCrs === "function") {
+		spotStore.upsertCrs(crs);
+		return;
+	}
+
+	if (isObject(entry)) {
+		entry.meta = {
+			...(entry.meta ?? {}),
+			crsSnapshot: crs,
+		};
+	}
+}
+
+function buildSpotMeta(item, opts = {}) {
+	const warnings = [
+		...(Array.isArray(opts.warnings) ? opts.warnings : []),
+	];
+
+	const crs = normalizeSpotCrs(item);
+	if (crs.status === "unknown" && !warnings.includes("no_crs_context")) {
+		warnings.push("no_crs_context");
+	}
+
+	return {
+		importItemId: item?.id ?? null,
+		source: clonePlainObject(item?.source),
+		importMeta: clonePlainObject(item?.meta),
+		importAssessment: clonePlainObject(item?.derived?.importAssessment),
+		interpretation: isObject(item?.derived?.interpretation)
+			? { ...item.derived.interpretation }
+			: null,
+		warnings,
 	};
 }
 
@@ -383,113 +650,6 @@ function normalizeRelationScope(scope) {
 	};
 }
 
-// -----------------------------------------------------------------------------
-// CRS
-// -----------------------------------------------------------------------------
-
-function normalizeSpotCrs(item) {
-	const sr = item?.derived?.spatialRef ?? null;
-
-	if (!isObject(sr)) {
-		return {
-			crsId: null,
-			status: "unknown",
-			source: item?.source?.parserId ?? null,
-		};
-	}
-
-	const horizontal =
-		firstNonEmptyString(
-			sr.crsId,
-			sr.horizontalCrsId,
-			sr.horizontal,
-			sr.horizontalCoordinateSystemName,
-			null
-		);
-
-	if (!horizontal) {
-		return {
-			crsId: null,
-			status: sr.status ?? "unknown",
-			source: sr.source ?? item?.source?.parserId ?? null,
-		};
-	}
-
-	const crsId = normalizeCrsId(horizontal);
-
-	return {
-		id: crsId,
-		crsId,
-		status: sr.status ?? "declared",
-
-		horizontalCrsId: crsId,
-		horizontalCoordinateSystemName:
-			sr.horizontalCoordinateSystemName ??
-			sr.horizontal ??
-			horizontal,
-
-		verticalCrsId: sr.verticalCrsId ?? null,
-		verticalCoordinateSystemName: sr.verticalCoordinateSystemName ?? null,
-
-		source: sr.source ?? item?.source?.parserId ?? null,
-		raw: clonePlainObject(sr),
-	};
-}
-
-function normalizeCrsId(value) {
-	const s = String(value ?? "").trim();
-	if (!s) return null;
-
-	if (/^EPSG:/i.test(s)) return `EPSG:${s.split(":")[1]}`;
-	if (/^DB:/i.test(s)) return `DB:${s.split(":")[1]}`;
-
-	// Deutsche-Bahn-/Technet-Kurzcodes wie DR0, DA0 usw.
-	if (/^[A-Z]{2}\d$/i.test(s)) return `DB:${s.toUpperCase()}`;
-
-	return s;
-}
-
-function registerCrsIfPossible(spotStore, crs, entry) {
-	if (!crs?.crsId) return;
-
-	if (typeof spotStore.addCrs === "function") {
-		spotStore.addCrs(crs);
-		return;
-	}
-
-	if (typeof spotStore.upsertCrs === "function") {
-		spotStore.upsertCrs(crs);
-		return;
-	}
-
-	if (isObject(entry)) {
-		entry.meta = {
-			...(entry.meta ?? {}),
-			crsSnapshot: crs,
-		};
-	}
-}
-
-// -----------------------------------------------------------------------------
-// meta
-// -----------------------------------------------------------------------------
-
-function buildSpotMeta(item) {
-	return {
-		importItemId: item?.id ?? null,
-		source: clonePlainObject(item?.source),
-		importMeta: clonePlainObject(item?.meta),
-		importAssessment: clonePlainObject(item?.derived?.importAssessment),
-		interpretation: isObject(item?.derived?.interpretation)
-			? { ...item.derived.interpretation }
-			: null,
-	};
-}
-
-// -----------------------------------------------------------------------------
-// helpers
-// -----------------------------------------------------------------------------
-
 function readMeasureValue(value) {
 	if (isObject(value) && Number.isFinite(Number(value.value))) {
 		return Number(value.value);
@@ -512,6 +672,15 @@ function firstNonEmptyString(...values) {
 		if (typeof value === "string" && value.trim()) return value.trim();
 	}
 	return null;
+}
+
+function safeIdStem(value) {
+	return String(value ?? "import")
+		.trim()
+		.replace(/\.[^.]+$/g, "")
+		.replace(/[^a-zA-Z0-9_\-]+/g, "_")
+		.replace(/^_+|_+$/g, "")
+		|| "import";
 }
 
 function isObject(x) {

@@ -3,7 +3,7 @@
 import { makeImportController } from "@app/controllers/importController.js";
 import { CockpitController } from "@app/controllers/cockpitController.js";
 import { makeViewController } from "@app/controllers/viewController.js";
-import { makeThreeAdapter } from "@app/controllers/adapters/geo/ThreeAdapter.js";
+import { makeThreeAdapter } from "@app/controllers/adapters/geo/ThreeMainViewControllerAdapter.js";
 import { makeThreeViewer } from "@app/view/viewers/threeViewer.js";
 import { makeTransitionEditorBridge } from "@app/controllers/bridges/transitionEditorBridge.js";
 

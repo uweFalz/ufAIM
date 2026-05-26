@@ -1,4 +1,4 @@
-// app/controllers/adapters/geo/ThreeAdapter.js
+// app/controllers/adapters/geo/ThreeMainViewControllerAdapter.js
 //
 // Bridges canonical ENU geometry into threeViewer local coordinates.
 //
@@ -11,16 +11,11 @@
 
 import { makeGeoTransform } from "./GeoTransform.js";
 
-//
-// ...
-//
 export function makeThreeAdapter({ three, transform } = {}) {
-	if (!three) throw new Error("ThreeAdapter: missing 'three' viewer instance");
+	if (!three) throw new Error("ThreeMainViewControllerAdapter: missing 'three' viewer instance");
 
 	const xform = transform ?? makeGeoTransform();
 
-	// AxisMap (canonical ENU -> three local)
-	// Today: identity: X->X, Y->Y, Z->Z.
 	function toThreeLocal(pLocalENU) {
 		if (!pLocalENU) return null;
 		return {
@@ -46,12 +41,7 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setSectionLine?.(null, null);
 	}
 
-	// MS13.9/13.11/13.14: background tracks (multiple alignments / pins)
 	function clearAuxTracks() {
-		// Be robust across viewer iterations:
-		// - older viewers: setAuxTrackPoints([{ key, pts }])
-		// - newer viewers: setAuxTracks([{ id, pointsXY }])
-		// - compat alias: setAuxTracksPoints(...)
 		three.setAuxTracks?.([]);
 		three.setAuxTracksPoints?.([]);
 		three.setAuxTrackPoints?.([]);
@@ -62,6 +52,14 @@ export function makeThreeAdapter({ three, transform } = {}) {
 			clearTrack();
 			return;
 		}
+
+		console.log("[ThreeMainViewControllerAdapter] active track rendered", {
+			pointCount: polylineENU.length,
+			firstENU: polylineENU[0] ?? null,
+			lastENU: polylineENU.at?.(-1) ?? polylineENU[polylineENU.length - 1] ?? null,
+			hasSetTrackPoints: typeof three.setTrackPoints === "function",
+		});
+
 		const local = xform.toLocalPolyline(polylineENU).map(toThreeLocal);
 		three.setTrackPoints?.(local);
 	}
@@ -71,6 +69,7 @@ export function makeThreeAdapter({ three, transform } = {}) {
 			clearMarker();
 			return;
 		}
+
 		const local = toThreeLocal(xform.toLocal(pENU));
 		three.setMarker?.(local);
 	}
@@ -80,100 +79,94 @@ export function makeThreeAdapter({ three, transform } = {}) {
 			clearSectionLine();
 			return;
 		}
+
 		const p0l = toThreeLocal(xform.toLocal(p0ENU));
 		const p1l = toThreeLocal(xform.toLocal(p1ENU));
 		three.setSectionLine?.(p0l, p1l);
 	}
 
 	function setAuxTracksFromWorldPolylines(list) {
-		// Accept multiple shapes (world/canonical ENU):
-		// - older:   [{ key, pts:[{x,y,z?}...] }, ...]
-		// - newer VC [{ id, points:[{x,y,z?}...] }, ...]
-		// - viewer expects local:
-		//     - newer: setAuxTracks([{ id, pointsXY:[{x,y,z?}...] }])
-		//     - older: setAuxTrackPoints([{ key, pts:[...] }])
 		if (!Array.isArray(list) || list.length === 0) {
 			clearAuxTracks();
 			return;
 		}
 
-		const outNew = []; // [{id, pointsXY}]
-		const outOld = []; // [{key, pts}]
+		const outNew = [];
+		const outOld = [];
 
 		for (const item of list) {
 			const id = String(item?.id ?? item?.key ?? "");
 			const ptsWorld = item?.points ?? item?.pointsXY ?? item?.pts;
+
 			if (!id || !Array.isArray(ptsWorld) || ptsWorld.length < 2) continue;
 
 			const local = xform.toLocalPolyline(ptsWorld).map(toThreeLocal);
+
 			outNew.push({ id, pointsXY: local });
 			outOld.push({ key: id, pts: local });
 		}
 
-		// Prefer the newer API when available
 		if (three.setAuxTracks) {
 			three.setAuxTracks(outNew);
 			return;
 		}
+
 		if (three.setAuxTracksPoints) {
 			three.setAuxTracksPoints(outNew);
 			return;
 		}
+
 		three.setAuxTrackPoints?.(outOld);
 	}
 
-	// Optional: keep using your viewer's bbox zoom helper,
-	// but feed it LOCAL bbox to match local coordinates.
-	function zoomToFitWorldBbox(bboxENU, opts) {
-		if (!bboxENU || !three.zoomToFitBox) return;
+	function makeLocalBbox(bboxENU) {
+		if (!bboxENU) return null;
 
 		const o = xform.getOrigin();
-		const bboxLocal = {
+
+		return {
 			minX: (Number(bboxENU.minX) || 0) - o.x,
 			minY: (Number(bboxENU.minY) || 0) - o.y,
 			maxX: (Number(bboxENU.maxX) || 0) - o.x,
 			maxY: (Number(bboxENU.maxY) || 0) - o.y,
 		};
+	}
+
+	function zoomToFitWorldBbox(bboxENU, opts) {
+		const bboxLocal = makeLocalBbox(bboxENU);
+		if (!bboxLocal || !three.zoomToFitBox) return;
 
 		three.zoomToFitBox(bboxLocal, opts);
 	}
-	
-	function zoomToFitWorldBboxSoft(bboxENU, opts) {
-		if (!bboxENU || !three.zoomToFitBoxSoft) return;
 
-		const o = xform.getOrigin();
-		const bboxLocal = {
-			minX: (Number(bboxENU.minX) || 0) - o.x,
-			minY: (Number(bboxENU.minY) || 0) - o.y,
-			maxX: (Number(bboxENU.maxX) || 0) - o.x,
-			maxY: (Number(bboxENU.maxY) || 0) - o.y,
-		};
+	function zoomToFitWorldBboxSoft(bboxENU, opts) {
+		const bboxLocal = makeLocalBbox(bboxENU);
+		if (!bboxLocal || !three.zoomToFitBoxSoft) return;
 
 		three.zoomToFitBoxSoft(bboxLocal, opts);
 	}
-	
-	function zoomToFitWorldBboxSoftAnimated(bboxENU, opts) {
-		if (!bboxENU || !three.zoomToFitBoxSoftAnimated) return;
 
-		const o = xform.getOrigin();
-		const bboxLocal = {
-			minX: (Number(bboxENU.minX) || 0) - o.x,
-			minY: (Number(bboxENU.minY) || 0) - o.y,
-			maxX: (Number(bboxENU.maxX) || 0) - o.x,
-			maxY: (Number(bboxENU.maxY) || 0) - o.y,
-		};
+	function zoomToFitWorldBboxSoftAnimated(bboxENU, opts) {
+		const bboxLocal = makeLocalBbox(bboxENU);
+		if (!bboxLocal || !three.zoomToFitBoxSoftAnimated) return;
 
 		three.zoomToFitBoxSoftAnimated(bboxLocal, opts);
 	}
 
-	// MS13.5: click-to-chainage (track picking)
 	function onTrackClick(handler) {
 		if (!three.onTrackClick) return;
+
 		three.onTrackClick?.((hit) => {
 			const s = Number(hit?.s);
 			const pLocal = hit?.point ?? null;
 			const pWorld = pLocal ? xform.toWorld(pLocal) : null;
-			handler?.({ s, pointLocal: pLocal, pointWorld: pWorld, event: hit?.event ?? null });
+
+			handler?.({
+				s,
+				pointLocal: pLocal,
+				pointWorld: pWorld,
+				event: hit?.event ?? null,
+			});
 		});
 	}
 
@@ -181,18 +174,21 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		transform: xform,
 
 		setOriginFromBbox,
+
 		zoomToFitWorldBbox,
-		zoomToFitWorldBboxSoft, // ✅ MS13.2
-		zoomToFitWorldBboxSoftAnimated, // ✅ MS13.2b
-		onTrackClick, // ✅ MS13.5
+		zoomToFitWorldBboxSoft,
+		zoomToFitWorldBboxSoftAnimated,
+
+		onTrackClick,
 
 		setTrackFromWorldPolyline,
-		setAuxTracksFromWorldPolylines, // ✅ MS13.9/13.11
+		setAuxTracksFromWorldPolylines,
+
 		setMarkerFromWorld,
 		setSectionLineFromWorld,
 
 		clearTrack,
-		clearAuxTracks, // ✅ MS13.9/13.11
+		clearAuxTracks,
 		clearMarker,
 		clearSectionLine,
 	};

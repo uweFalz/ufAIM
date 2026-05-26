@@ -1,0 +1,406 @@
+% geometry/curvature_space.tex
+
+\chapter{Curvature Space}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Classical railway alignment theory is usually formulated in position
+space.
+\end{remark}
+
+\begin{remark}
+Within AIM, the primary geometric object is not the position curve
+itself, but the curvature evolution along arc-length.
+\end{remark}
+
+\begin{remark}
+This shifts the interpretation of railway geometry from coordinate-based
+description toward intrinsic curvature structure.
+\end{remark}
+
+\begin{remark}
+The concept of curvature space provides the mathematical setting for:
+\begin{itemize}
+\item transition curves,
+\item sparse reconstruction,
+\item realization analysis,
+\item runtime evaluation,
+\item and alignment optimization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Curvature as Primary Geometry}
+% ============================================================
+
+\begin{definition}[Curvature law]
+A curvature law is a function
+\[
+\kappa : I \to \mathbb R,
+\]
+defined on an arc-length interval \(I\subset\mathbb R\).
+\end{definition}
+
+\begin{remark}
+Within AIM, curvature is interpreted as the primary intrinsic geometric
+quantity.
+\end{remark}
+
+\begin{remark}
+Geometry is reconstructed from curvature through integration.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{principle}[Curvature-first principle]
+Within AIM, geometry is generated from curvature rather than curvature
+being derived from geometry.
+\end{principle}
+
+% ============================================================
+\section{Curvature Space}
+% ============================================================
+
+\begin{definition}[Curvature space]
+Curvature space denotes the space of admissible curvature laws:
+\[
+\mathcal K
+=
+\{
+\kappa(s)
+\}.
+\]
+\end{definition}
+
+\begin{remark}
+Different subclasses of curvature space correspond to different
+geometric and operational properties.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item constant curvature,
+\item piecewise constant curvature,
+\item continuous curvature,
+\item differentiable curvature,
+\item bounded curvature,
+\item and hybrid curvature laws.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Intrinsic Reconstruction}
+% ============================================================
+
+\begin{definition}[Intrinsic reconstruction]
+Given:
+\[
+\kappa(s),
+\]
+the tangent direction satisfies:
+\[
+\theta'(s)=\kappa(s),
+\]
+and geometry is reconstructed through:
+\[
+\gamma'(s)=\mathbf t(s).
+\]
+\end{definition}
+
+\begin{remark}
+Curvature therefore acts as the differential generator of geometry.
+\end{remark}
+
+% ============================================================
+\section{Constant Curvature}
+% ============================================================
+
+\begin{definition}[Constant curvature]
+A constant curvature law satisfies:
+\[
+\kappa(s)=\kappa_0.
+\]
+\end{definition}
+
+\begin{remark}
+Special cases:
+\begin{itemize}
+\item \(\kappa_0=0\): straight line,
+\item \(\kappa_0\neq 0\): circular arc.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Transition Curvature}
+% ============================================================
+
+\begin{definition}[Transition curvature]
+A transition curvature law connects different curvature states
+continuously or smoothly.
+\end{definition}
+
+\begin{remark}
+Transition curves are therefore interpreted as curvature-transition
+processes rather than merely geometric interpolation curves.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Typical transition quantities include:
+\[
+\kappa'(s),
+\qquad
+\kappa''(s),
+\qquad
+\kappa'''(s).
+\]
+\end{remark}
+
+% ============================================================
+\section{Curvature Continuity}
+% ============================================================
+
+\begin{definition}[Curvature continuity]
+A curvature law is:
+\begin{itemize}
+\item \(C^0\)-continuous if \(\kappa(s)\) is continuous,
+\item \(C^1\)-continuous if \(\kappa'(s)\) is continuous,
+\item \(C^2\)-continuous if \(\kappa''(s)\) is continuous.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Higher continuity improves:
+\begin{itemize}
+\item dynamic smoothness,
+\item realization stability,
+\item numerical robustness,
+\item and passenger comfort.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Sparse Curvature Representation}
+% ============================================================
+
+\begin{definition}[Sparse curvature representation]
+A sparse representation describes curvature using:
+\begin{itemize}
+\item fixed curvature elements,
+\item transition elements,
+\item and compact parameter sets.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Within AIM, sparse alignments are interpreted as compact curvature
+programs.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+The sparse model stores:
+\begin{itemize}
+\item curvature structure,
+\item transition families,
+\item and reconstruction rules,
+\end{itemize}
+rather than dense geometric point clouds.
+\end{remark}
+
+% ============================================================
+\section{Hybrid Curvature Representation}
+% ============================================================
+
+\begin{definition}[Hybrid curvature model]
+A hybrid curvature model combines:
+\begin{itemize}
+\item parametric curvature structure,
+\item sampled correction data,
+\item and local refinement.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Hybrid representations allow:
+\begin{itemize}
+\item compact storage,
+\item efficient reconstruction,
+\item realization-aware correction,
+\item and scalable runtime evaluation.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Normalized Curvature Space}
+% ============================================================
+
+\begin{definition}[Normalized curvature law]
+A normalized curvature law is defined on:
+\[
+w\in[0,1].
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Normalized representations separate:
+\begin{itemize}
+\item geometric shape,
+\item from physical scaling.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+This enables:
+\begin{itemize}
+\item reusable transition families,
+\item lookup-based transitions,
+\item family interpolation,
+\item and normalized optimization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Curvature Derivatives}
+% ============================================================
+
+\begin{definition}[Curvature derivatives]
+Important higher-order quantities include:
+\[
+\kappa'(s),
+\qquad
+\kappa''(s),
+\qquad
+\kappa'''(s).
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+These quantities influence:
+\begin{itemize}
+\item jerk,
+\item realization behaviour,
+\item dynamic smoothness,
+\item and transition quality.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Frequency Interpretation}
+% ============================================================
+
+\begin{remark}
+Curvature laws may also be interpreted spectrally.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Low-frequency curvature components determine global geometric structure,
+whereas high-frequency components influence:
+\begin{itemize}
+\item realization sensitivity,
+\item numerical instability,
+\item and dynamic roughness.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{proposition}[Spectral realization principle]
+Realization acts approximately as a low-pass filter on curvature space.
+\end{proposition}
+
+% ============================================================
+\section{Curvature Space and Runtime}
+% ============================================================
+
+\begin{remark}
+Runtime evaluation operates primarily on curvature structures rather
+than directly on dense geometry.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Projection, reconstruction, frame evaluation, and dynamics are derived
+from runtime evaluation of curvature-based states.
+\end{remark}
+
+% ============================================================
+\section{Curvature Space and Optimization}
+% ============================================================
+
+\begin{remark}
+Optimization within AIM primarily acts in curvature space.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Typical optimization variables include:
+\begin{itemize}
+\item transition parameters,
+\item curvature amplitudes,
+\item transition lengths,
+\item and sparse curvature corrections.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, railway alignment geometry is fundamentally a curvature-space
+problem.
+\end{proposition}
+
+\begin{proposition}
+Position-space geometry is interpreted as reconstructed geometry derived
+from curvature evolution.
+\end{proposition}
+
+\begin{proposition}
+Transition curves are interpreted as controlled transitions within
+curvature space.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Curvature space forms the intrinsic geometric foundation of AIM.
+
+Within this framework:
+\begin{itemize}
+\item curvature acts as primary geometry,
+\item sparse models become curvature programs,
+\item transition curves become curvature transitions,
+\item and runtime systems operate on intrinsic curvature structure.
+\end{itemize}
+
+This interpretation unifies geometry, realization, runtime evaluation,
+and optimization within one intrinsic mathematical framework.
+\end{summary}

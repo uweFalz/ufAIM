@@ -10,7 +10,7 @@
 // IMPORTANT:
 // - canonical SPOT / ImportInbox / WorkingSet data do NOT belong here
 // - routeProjects / artifacts / import_* are transitional mirror fields only
-// - new view logic should use workspace_selection, not import_* / routeProjects
+// - new view logic should use workspace_selection + workspace_visible_tracks
 //
 // Core direction:
 //
@@ -18,10 +18,27 @@
 //
 // Import is only one producer of SPOT objects / selections.
 //
+// Naming:
+// - workspace_selection.primaryId  = focused object
+// - workspace_selection.contextIds = objects additionally shown
+// - workspace_visible_tracks       = already projected helper/context tracks
+//
+// Deprecated aliases kept for transition:
+// - activeRouteProjectId
+// - activeSlot
+// - view_pins
+// - import_preview_collection
+// - import_*
+//
 // If you add state keys: update BOTH makeInitialState() + ensureStateShape().
 
 function isObject(x) {
 	return !!x && typeof x === "object" && !Array.isArray(x);
+}
+
+function normalizeSlot(slot) {
+	const v = String(slot ?? "right");
+	return (v === "left" || v === "km" || v === "right") ? v : "right";
 }
 
 function normalizePins(pins) {
@@ -32,12 +49,15 @@ function normalizePins(pins) {
 		.map((p) => {
 			if (typeof p === "string") {
 				const [rpId, slot] = p.split("::");
-				return { rpId, slot: slot || "right" };
+				return {
+					rpId: String(rpId ?? "").trim(),
+					slot: normalizeSlot(slot),
+				};
 			}
 
 			if (isObject(p)) {
 				return {
-					rpId: String(p.rpId ?? p.baseId ?? ""),
+					rpId: String(p.rpId ?? p.baseId ?? "").trim(),
 					slot: normalizeSlot(p.slot),
 					at: Number.isFinite(Number(p.at)) ? Number(p.at) : undefined,
 				};
@@ -46,11 +66,6 @@ function normalizePins(pins) {
 			return null;
 		})
 		.filter((p) => p?.rpId);
-}
-
-function normalizeSlot(slot) {
-	const v = String(slot ?? "right");
-	return (v === "left" || v === "km" || v === "right") ? v : "right";
 }
 
 function normalizeWorkspaceSelection(sel) {
@@ -77,14 +92,42 @@ function normalizeWorkspaceSelection(sel) {
 	};
 }
 
+function normalizeVisibleTracks(items) {
+	if (!Array.isArray(items)) return [];
+
+	return items
+		.filter(isObject)
+		.map((item) => {
+			const points = Array.isArray(item.points)
+				? item.points
+				: Array.isArray(item.polyline2d)
+				? item.polyline2d
+				: [];
+
+			return {
+				...item,
+				id: String(item.id ?? item.objectId ?? "track").trim(),
+				objectId:
+					item.objectId != null
+						? String(item.objectId).trim()
+						: item.id != null
+						? String(item.id).trim()
+						: null,
+				points,
+				source: item.source ?? "workspace",
+			};
+		})
+		.filter((item) => item.id && Array.isArray(item.points) && item.points.length >= 2);
+}
+
+// @deprecated compatibility for old preview-like entries.
+// Kept only so old callers do not hard-crash during migration.
 function normalizePreviewCollection(items) {
 	if (!Array.isArray(items)) return [];
 
 	return items
 		.filter(isObject)
 		.map((item) => {
-			// New transitional path:
-			// already projected workspace/SPOT track.
 			if (Array.isArray(item.points) && item.points.length >= 2) {
 				return {
 					id: String(item.id ?? item.objectId ?? "track"),
@@ -94,8 +137,6 @@ function normalizePreviewCollection(items) {
 				};
 			}
 
-			// Deprecated legacy path:
-			// preview item with sparse kernel.
 			return {
 				id: item.id ?? null,
 				kind: item.kind ?? "alignment",
@@ -136,6 +177,11 @@ export function makeInitialState() {
 			crsId: null,
 		},
 
+		// Already projected helper/context tracks for this workspace.
+		// Preferred replacement for import_preview_collection.
+		workspace_visible_tracks: [],
+		workspace_visible_tracks_source: null,
+
 		// --------------------------------------------------------
 		// legacy focus mirror
 		// @deprecated replace by workspace_selection.primaryId
@@ -156,8 +202,7 @@ export function makeInitialState() {
 		preview_item: null,
 		preview_source: null,
 
-		// @deprecated transitional rendered-context track cache.
-		// Use workspace_selection + projection service long-term.
+		// @deprecated transitional alias for workspace_visible_tracks.
 		import_preview_collection: [],
 		import_preview_source: null,
 
@@ -200,16 +245,47 @@ export function ensureStateShape(state) {
 	const safePresetSpec =
 		(ps && String(ps.presetId ?? ps.presetID ?? "") === pid) ? ps : null;
 
-	const w1 = Number.isFinite(Number(s.te_w1)) ? Math.max(0, Math.min(1, Number(s.te_w1))) : 0.25;
-	const w2 = Number.isFinite(Number(s.te_w2)) ? Math.max(0, Math.min(1, Number(s.te_w2))) : 0.75;
-	const plot = (s.te_plot === "k" || s.te_plot === "k1" || s.te_plot === "k2") ? s.te_plot : "k";
-	const u = Number.isFinite(Number(s.te_u)) ? Math.max(0, Math.min(1, Number(s.te_u))) : 0.0;
+	const w1 = Number.isFinite(Number(s.te_w1))
+		? Math.max(0, Math.min(1, Number(s.te_w1)))
+		: 0.25;
+
+	const w2 = Number.isFinite(Number(s.te_w2))
+		? Math.max(0, Math.min(1, Number(s.te_w2)))
+		: 0.75;
+
+	const plot =
+		(s.te_plot === "k" || s.te_plot === "k1" || s.te_plot === "k2")
+			? s.te_plot
+			: "k";
+
+	const u = Number.isFinite(Number(s.te_u))
+		? Math.max(0, Math.min(1, Number(s.te_u)))
+		: 0.0;
+
+	const workspaceVisibleTracks = normalizeVisibleTracks(
+		Array.isArray(s.workspace_visible_tracks)
+			? s.workspace_visible_tracks
+			: s.import_preview_collection
+	);
+
+	const importPreviewCollection = normalizePreviewCollection(
+		Array.isArray(s.import_preview_collection)
+			? s.import_preview_collection
+			: workspaceVisibleTracks
+	);
 
 	return {
 		// --------------------------------------------------------
 		// primary window/view selection
 		// --------------------------------------------------------
 		workspace_selection: normalizeWorkspaceSelection(s.workspace_selection),
+
+		workspace_visible_tracks: workspaceVisibleTracks,
+		workspace_visible_tracks_source: isObject(s.workspace_visible_tracks_source)
+			? s.workspace_visible_tracks_source
+			: isObject(s.import_preview_source)
+			? s.import_preview_source
+			: null,
 
 		// --------------------------------------------------------
 		// legacy focus mirror
@@ -239,6 +315,7 @@ export function ensureStateShape(state) {
 		// --------------------------------------------------------
 		view_pins: normalizePins(s.view_pins),
 		view_chunks: Array.isArray(s.view_chunks) ? s.view_chunks : [],
+
 		cursor: {
 			...(isObject(s.cursor) ? s.cursor : {}),
 			s: Number.isFinite(Number(s.cursor?.s)) ? Number(s.cursor.s) : 0,
@@ -247,9 +324,15 @@ export function ensureStateShape(state) {
 		preview_item: isObject(s.preview_item) ? s.preview_item : null,
 		preview_source: isObject(s.preview_source) ? s.preview_source : null,
 
-		// @deprecated transitional rendered-context track cache.
-		import_preview_collection: normalizePreviewCollection(s.import_preview_collection),
-		import_preview_source: isObject(s.import_preview_source) ? s.import_preview_source : null,
+		// --------------------------------------------------------
+		// deprecated alias
+		// --------------------------------------------------------
+		import_preview_collection: importPreviewCollection,
+		import_preview_source: isObject(s.import_preview_source)
+			? s.import_preview_source
+			: isObject(s.workspace_visible_tracks_source)
+			? s.workspace_visible_tracks_source
+			: null,
 
 		// --------------------------------------------------------
 		// Transition Editor (window/view state)

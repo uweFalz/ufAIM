@@ -6,24 +6,15 @@
 //
 // Responsibilities:
 // - holds canonical SPOT objects
+// - holds canonical CoordContexts
 // - provides store-style read/write API
 // - manages activeSpotId
-//
-// Canonical SpotObject:
-// {
-//   id,
-//   type,
-//   data: {
-//     kernel
-//   },
-//   crsId,
-//   meta
-// }
 //
 // NOT:
 // - no UI state
 // - no window-local focus/selection
 // - no geometry derivation
+// - no CRS transformation
 //
 // Important:
 // Consumers should use the store API, not mutate raw state.
@@ -41,6 +32,10 @@ export function createSpotStore(initialState = {}) {
 		objects: {
 			...(initialState.objects ?? initialState.spots ?? {}),
 		},
+
+		coordContexts: {
+			...(initialState.coordContexts ?? initialState.crs ?? {}),
+		},
 	};
 
 	function getState() {
@@ -57,6 +52,36 @@ export function createSpotStore(initialState = {}) {
 
 	function listObjects() {
 		return Object.values(state.objects).map(clone);
+	}
+
+	function getCoordContext(contextId) {
+		return clone(state.coordContexts[contextId] ?? null);
+	}
+
+	function listCoordContexts() {
+		return Object.values(state.coordContexts).map(clone);
+	}
+
+	function addCoordContext(context) {
+		const normalized = normalizeCoordContext(context);
+
+		state = {
+			...state,
+			coordContexts: {
+				...state.coordContexts,
+				[normalized.id]: clone(normalized),
+			},
+		};
+
+		return getState();
+	}
+
+	function upsertCrs(context) {
+		return addCoordContext(context);
+	}
+
+	function addCrs(context) {
+		return addCoordContext(context);
 	}
 
 	function addObject(object) {
@@ -93,9 +118,7 @@ export function createSpotStore(initialState = {}) {
 			changed = true;
 		}
 
-		if (!changed) {
-			return getState();
-		}
+		if (!changed) return getState();
 
 		state = {
 			...state,
@@ -121,17 +144,15 @@ export function createSpotStore(initialState = {}) {
 			...patch,
 
 			data: patch.data
-				? {
-					...(prev.data ?? {}),
-					...patch.data,
-				}
+				? { ...(prev.data ?? {}), ...patch.data }
 				: prev.data,
 
+			refs: patch.refs
+				? { ...(prev.refs ?? {}), ...patch.refs }
+				: prev.refs,
+
 			meta: patch.meta
-				? {
-					...(prev.meta ?? {}),
-					...patch.meta,
-				}
+				? { ...(prev.meta ?? {}), ...patch.meta }
 				: prev.meta,
 		});
 
@@ -165,12 +186,21 @@ export function createSpotStore(initialState = {}) {
 	return {
 		getState,
 		getMeta,
+
 		getObject,
 		listObjects,
 		addObject,
 		addObjects,
 		updateObject,
 		setActiveSpot,
+
+		getCoordContext,
+		listCoordContexts,
+		addCoordContext,
+
+		// compatibility aliases for promoteImportItems()
+		addCrs,
+		upsertCrs,
 	};
 }
 
@@ -182,10 +212,12 @@ function normalizeSpotObject(object) {
 	}
 
 	return {
-		id: object.id,
+		id: String(object.id),
 		type: object.type ?? "unknown",
 
-		crsId: object.crsId ?? null,
+		crsId: object.crsId ?? object.coordContextId ?? null,
+		crsStatus: object.crsStatus ?? null,
+		coordContextId: object.coordContextId ?? object.crsId ?? null,
 
 		data: {
 			...(object.data ?? {}),
@@ -199,6 +231,28 @@ function normalizeSpotObject(object) {
 			...(object.meta ?? {}),
 		},
 	};
+}
+
+function normalizeCoordContext(context) {
+	if (!context?.id && !context?.crsId) {
+		throw new Error("SpotStore: missing coordContext.id/crsId");
+	}
+
+	const id = String(context.id ?? context.crsId);
+
+	return {
+		id,
+		crsId: context.crsId ?? id,
+		status: context.status ?? "unknown",
+		family: context.family ?? "unknown",
+		label: context.label ?? context.crsId ?? id,
+		source: context.source ?? null,
+		raw: isObject(context.raw) ? { ...context.raw } : {},
+	};
+}
+
+function isObject(x) {
+	return !!x && typeof x === "object" && !Array.isArray(x);
 }
 
 function clone(value) {

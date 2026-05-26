@@ -11,6 +11,14 @@
 // - no DOM event wiring
 // - no HTML rendering
 // - no parser/import pipeline logic
+//
+// Current terms:
+// - Fokus   -> workspace_selection.primaryId
+// - Anzeige -> workspace_selection.contextIds
+// - workspace_visible_tracks -> projected helper/cache tracks
+//
+// Deprecated:
+// - syncSpotObjectsToPreviewCollection kept as alias
 
 import { projectAlignmentPreview } from "@src/domain/projection/AlignmentProjectionService.js";
 import { exportLandXML } from "@src/export/exportLandXML.js";
@@ -26,50 +34,76 @@ import {
 // ------------------------------------------------------------
 
 export function activateObjectId({ store, objectId } = {}) {
-	const id = String(objectId ?? "").trim();
+	const id = normalizeId(objectId);
 	if (!id) return false;
 
 	store.actions?.clearPreviewItem?.();
 
-	// Transitional bridge:
-	// activeRouteProjectId is still used by ViewController as focus mirror.
-	store.actions?.setActiveRouteProject?.(id);
-
-	// New direction:
-	// workspace_selection is the canonical window-side selection target.
 	store.actions?.setWorkspacePrimary?.({
 		objectId: id,
 		source: "cockpit",
 	});
 
+	// Wichtig: ViewController rendert offenbar aus contextIds.
+	store.actions?.setWorkspaceContextObjects?.({
+		objectIds: [id],
+		source: "cockpit-primary",
+	});
+
 	store.actions?.setCursorS?.(0);
+
+	console.log("[cockpitActions] primary/context after activate", {
+		id,
+		workspace_selection: store.getState?.().workspace_selection,
+	});
 
 	return true;
 }
 
-export function toggleCockpitPin({ store, objectId, slot = "right" } = {}) {
-	const id = String(objectId ?? "").trim();
+export function toggleCockpitContextObject({ store, objectId } = {}) {
+	const id = normalizeId(objectId);
 	if (!id) return false;
 
-	// Transitional bridge:
-	// view_pins still drives some UI/render paths.
-	store.actions?.togglePinRouteProject?.({
-		rpId: id,
-		slot,
-	});
+	const state = store.getState?.() ?? {};
+	const sel = state.workspace_selection ?? {};
+	const oldIds = Array.isArray(sel.contextIds) ? sel.contextIds : [];
 
-	// New direction:
-	// contextIds are the future multi-object workspace selection.
-	store.actions?.toggleWorkspaceContextObject?.({
-		objectId: id,
-		source: "cockpit",
+	const nextIds = oldIds.includes(id)
+		? oldIds.filter((x) => x !== id)
+		: [...oldIds, id];
+
+	if (store.actions?.setWorkspaceContextIds) {
+		store.actions.setWorkspaceContextIds({
+			objectIds: nextIds,
+			source: "cockpit",
+		});
+	} else if (store.actions?.toggleWorkspaceContextObject) {
+		store.actions.toggleWorkspaceContextObject({
+			objectId: id,
+			source: "cockpit",
+		});
+	} else {
+		console.warn("[cockpitActions] no workspace context action available");
+		return false;
+	}
+
+	console.log("[cockpitActions] context after toggle", {
+		id,
+		nextIds,
+		workspace_selection: store.getState?.().workspace_selection,
 	});
 
 	return true;
+}
+
+// @deprecated
+export function toggleCockpitPin(args = {}) {
+	return toggleCockpitContextObject(args);
 }
 
 export function clearCockpitPreview({ store } = {}) {
 	store.actions?.clearPreviewItem?.();
+	store.actions?.clearWorkspacePrimary?.();
 	return true;
 }
 
@@ -91,10 +125,10 @@ export async function markImportItemAccepted({ messaging, itemId } = {}) {
 }
 
 // ------------------------------------------------------------
-// SPOT -> rendered context tracks
+// SPOT -> projected visible track cache
 // ------------------------------------------------------------
 
-export function syncSpotObjectsToPreviewCollection({
+export function syncSpotObjectsToVisibleTracks({
 	store,
 	spotState,
 	maxStep = 5,
@@ -123,12 +157,17 @@ export function syncSpotObjectsToPreviewCollection({
 		});
 	}
 
-	store.actions?.setImportPreviewCollection?.({
+	store.actions?.setWorkspaceVisibleTracks?.({
 		items: tracks,
 		source: { type: sourceType },
 	});
 
 	return tracks;
+}
+
+// @deprecated
+export function syncSpotObjectsToPreviewCollection(args = {}) {
+	return syncSpotObjectsToVisibleTracks(args);
 }
 
 // ------------------------------------------------------------
@@ -141,16 +180,18 @@ export async function exportLandXMLById({
 	objectId,
 	logLine,
 } = {}) {
-	const id = String(objectId ?? "").trim();
+	const id = normalizeId(objectId);
 
 	if (!id) {
 		logLine?.("[Cockpit] kein Objekt für landXML-Export");
 		return false;
 	}
 
-	const state = spotState ?? (typeof refreshSpotState === "function"
-		? await refreshSpotState()
-		: null);
+	const state = spotState ?? (
+		typeof refreshSpotState === "function"
+			? await refreshSpotState()
+			: null
+	);
 
 	const obj = findSpotObjectById(state, id);
 
@@ -204,6 +245,11 @@ export function readFirstReviewReason(result) {
 // ------------------------------------------------------------
 // misc
 // ------------------------------------------------------------
+
+function normalizeId(value) {
+	const id = String(value ?? "").trim();
+	return id || null;
+}
 
 function safeFileStem(value) {
 	return String(value ?? "ufAIM_alignment")

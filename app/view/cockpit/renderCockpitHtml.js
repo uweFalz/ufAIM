@@ -1,18 +1,13 @@
 // app/view/cockpit/renderCockpitHtml.js
-//
-// HTML renderer for CockpitController.
-//
-// Role:
-// - render user-facing cockpit HTML
-// - Cockpit acts as Universe / Object Navigator
-// - Import is secondary inbox/debug context
-// - no state mutation
-// - no messaging
-// - no store access
-// - no domain scoring except imported row sorting
 
+import { t } from "@app/i18n/strings.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
-import { compareImportRows } from "@app/domain/cockpit/scoreImportRow.js";
+
+import {
+	renderActionButtons,
+	renderSpotRows,
+	renderImportRows,
+} from "./renderCockpitRows.js";
 
 export function renderCockpitHtml(uiState = {}) {
 	const scene = uiState?.scene ?? {};
@@ -27,199 +22,137 @@ export function renderCockpitHtml(uiState = {}) {
 		? uiState.collections.spotRows
 		: [];
 
+	const visibleCount = Number(context.contextCount ?? context.previewTracks ?? 0);
+
 	return `
 		<div class="cockpit-sofa cockpit-ivision cockpit-universe">
-			<section class="cockpit-sofa__section cockpit-ivision__scene">
-				<h3>Aktueller Fokus</h3>
-				<div class="cockpit-sofa__card ${scene.mode === "preview" ? "is-preview" : ""} ${context.hasCrsConflict ? "has-warning" : ""}">
-					<div><strong>${escapeHtml(scene.label ?? "Kein Objekt im Fokus")}</strong></div>
-					<div>
-						${escapeHtml(scene.type ?? "—")}
-						· ${renderModeLabel(scene.mode)}
-						· ${scene.crsId ? escapeHtml(scene.crsId) : "CRS offen"}
-					</div>
-					<div>
-						Slot: ${escapeHtml(scene.slot ?? "right")}
-						${scene.pinned ? " · angeheftet" : ""}
-					</div>
-					${renderSourceLine(scene.source)}
-				</div>
-			</section>
+			${section({
+				className: "cockpit-ivision__scene",
+				title: tx("cockpit.section.workspace", "Arbeitsansicht"),
+				body: renderSceneCard(scene, context, visibleCount),
+			})}
 
-			<section class="cockpit-sofa__section cockpit-ivision__context">
-				<h3>Universe-Kontext</h3>
-				<div class="cockpit-sofa__card ${context.hasCrsConflict ? "has-warning" : ""}">
-					<div>${escapeHtml(context.message ?? "")}</div>
-					<div>
-						Objekte: ${Number(context.spotCount ?? 0)}
-						· Import-Inbox: ${Number(context.importCount ?? 0)}
-						· Vorschau-Layer: ${Number(context.previewTracks ?? 0)}
+			${section({
+				className: "cockpit-ivision__context",
+				title: tx("cockpit.section.context", "Universe-Kontext"),
+				body: renderContextCard(context, visibleCount),
+			})}
+
+			${section({
+				className: "cockpit-ivision__actions",
+				title: tx("cockpit.section.actions", "Aktionen"),
+				body: `
+					<div class="cockpit-sofa__actions cockpit-ivision__actionbar">
+						${renderActionButtons(actions)}
 					</div>
-					<div>
-						CRS: ${context.crsIds?.length ? escapeHtml(context.crsIds.join(", ")) : "noch offen"}
+				`,
+			})}
+
+			${section({
+				className: "cockpit-universe__objects",
+				title: `${tx("cockpit.section.objects", "Universe Objects")} · ${spotRows.length}`,
+				body: `
+					<div class="cockpit-sofa__list">
+						${renderSpotRows(spotRows)}
 					</div>
-				</div>
-			</section>
+				`,
+			})}
 
-			<section class="cockpit-sofa__section cockpit-ivision__actions">
-				<h3>Aktionen zum Fokus</h3>
-				<div class="cockpit-sofa__actions cockpit-ivision__actionbar">
-					${renderActionButtons(actions)}
-				</div>
-			</section>
-
-			<section class="cockpit-sofa__section cockpit-universe__objects">
-				<h3>Universe Objects · ${spotRows.length}</h3>
-				<div class="cockpit-sofa__list">
-					${renderSpotRows(spotRows)}
-				</div>
-			</section>
-
-			<section class="cockpit-sofa__section cockpit-universe__inbox">
-				<h3>Import-Inbox · ${importRows.length}</h3>
-				${renderImportRows(importRows)}
-			</section>
+			${section({
+				className: "cockpit-universe__inbox",
+				title: `${tx("cockpit.section.importInbox", "Import-Inbox")} · ${importRows.length}`,
+				body: renderImportRows(importRows),
+			})}
 		</div>
 	`;
 }
 
-function renderActionButtons(actions = []) {
-	if (!actions.length) {
-		return `<div class="cockpit-sofa__empty">Wähle ein Objekt im Universe oder ziehe Daten hinein.</div>`;
-	}
-
-	return actions.map((action) => `
-		<button
-			class="btn btn--xs ${action.kind === "primary" ? "btn--primary" : "btn--ghost"}"
-			data-cockpit-action="${escapeHtml(action.id)}"
-			data-object-id="${escapeHtml(action.objectId ?? "")}">
-			${escapeHtml(action.label)}
-		</button>
-	`).join("");
+function renderSceneCard(scene, context, visibleCount) {
+	return card({
+		className: [
+			scene.mode === "preview" ? "is-preview" : "",
+			context.hasCrsConflict ? "has-warning" : "",
+		],
+		body: `
+			${lineStrong(scene.label ?? tx("cockpit.noFocus", "Kein Fokus"))}
+			${metaLine([
+				scene.type ?? "—",
+				renderModeLabel(scene.mode),
+				scene.crsId ?? tx("cockpit.crsOpen", "CRS offen"),
+			])}
+			${metaLine([
+				`${tx("cockpit.focus", "Fokus")}: ${scene.objectId ?? "—"}`,
+				`${tx("cockpit.visible", "Anzeige")}: ${visibleCount}`,
+			])}
+			${renderSourceLine(scene.source)}
+		`,
+	});
 }
 
-// -----------------------------------------------------------------------------
-// SPOT / Universe objects
-// -----------------------------------------------------------------------------
-
-function renderSpotRows(rows = []) {
-	if (!rows.length) {
-		return `<div class="cockpit-sofa__empty">Noch keine Objekte im Universe. Ziehe Alignment-Daten hinein.</div>`;
-	}
-
-	return rows.map(renderSpotRow).join("");
+function renderContextCard(context, visibleCount) {
+	return card({
+		className: context.hasCrsConflict ? "has-warning" : "",
+		body: `
+			${line(context.message ?? "")}
+			${metaLine([
+				`${tx("cockpit.universe", "Universe")}: ${Number(context.spotCount ?? 0)}`,
+				`${tx("cockpit.importInbox", "Import-Inbox")}: ${Number(context.importCount ?? 0)}`,
+				`${tx("cockpit.visible", "Anzeige")}: ${visibleCount}`,
+			])}
+			${metaLine([
+				`${tx("cockpit.crs", "CRS")}: ${
+					context.crsIds?.length
+						? context.crsIds.join(", ")
+						: tx("cockpit.crsUnknown", "noch offen")
+				}`,
+			])}
+		`,
+	});
 }
 
-function renderSpotRow(row) {
+function section({ className = "", title = "", body = "" } = {}) {
 	return `
-		<div class="cockpit-sofa__row cockpit-object-card ${row.isActive ? "is-active" : ""} ${row.issues?.length ? "has-warning" : ""}">
-			<div class="cockpit-sofa__main">
-				<div>
-					<strong>${escapeHtml(row.label ?? row.objectId ?? "object")}</strong>
-					${row.pinned ? " · angeheftet" : ""}
-				</div>
-
-				<div>
-					${escapeHtml(row.type ?? "unknown")}
-					· ${row.crsId ? escapeHtml(row.crsId) : "CRS offen"}
-					${row.hasKernel ? " · Kernel" : ""}
-					${row.exportable ? " · exportierbar" : ""}
-				</div>
-
-				<div>
-					${Number.isFinite(Number(row.lengthHint)) ? `Länge≈${Math.round(Number(row.lengthHint))}m` : "Länge offen"}
-					${Number.isFinite(Number(row.elementCount)) ? ` · Elemente:${Number(row.elementCount)}` : ""}
-					${row.bandSummary?.length ? ` · Bänder:${escapeHtml(row.bandSummary.join(", "))}` : " · keine Zusatzbänder"}
-				</div>
-
-				${row.sourceLabel ? `
-					<div>Quelle: ${escapeHtml(row.sourceLabel)}</div>
-				` : ""}
-
-				${row.issues?.length ? `
-					<div>Hinweise: ${escapeHtml(row.issues.join(", "))}</div>
-				` : ""}
-			</div>
-
-			<div class="cockpit-sofa__actions">
-				<button class="btn btn--ghost btn--xs" data-cockpit-activate="${escapeHtml(row.objectId)}">Anzeigen</button>
-				<button class="btn btn--ghost btn--xs" data-cockpit-pin="${escapeHtml(row.objectId)}">${row.pinned ? "Lösen" : "Anheften"}</button>
-				${row.exportable ? `<button class="btn btn--ghost btn--xs" data-cockpit-action="exportLandXML" data-object-id="${escapeHtml(row.objectId)}">Export</button>` : ""}
-				<button class="btn btn--ghost btn--xs" data-cockpit-action="details" data-object-id="${escapeHtml(row.objectId)}">Details</button>
-			</div>
-		</div>
+		<section class="cockpit-sofa__section ${escapeHtml(className)}">
+			<h3>${escapeHtml(title)}</h3>
+			${body}
+		</section>
 	`;
 }
 
-// -----------------------------------------------------------------------------
-// Import inbox: secondary
-// -----------------------------------------------------------------------------
-
-function renderImportRows(rows = []) {
-	if (!rows.length) {
-		return `<div class="cockpit-sofa__empty">(keine Importdaten)</div>`;
-	}
-
-	const sortedRows = [...rows].sort(compareImportRows);
-	const visibleRows = sortedRows.slice(0, 12);
-	const hiddenCount = Math.max(0, sortedRows.length - visibleRows.length);
+function card({ className = "", body = "" } = {}) {
+	const cls = Array.isArray(className)
+		? className.filter(Boolean).join(" ")
+		: String(className ?? "");
 
 	return `
-		<div class="cockpit-sofa__list">
-			${visibleRows.map(renderImportRow).join("")}
-		</div>
-
-		${hiddenCount > 0 ? `
-			<div class="cockpit-sofa__empty">
-				… ${hiddenCount} weitere Importobjekte
-			</div>
-		` : ""}
-	`;
-}
-
-function renderImportRow(row) {
-	return `
-		<div class="cockpit-sofa__row ${row.isPreviewActive ? "is-active" : ""} ${row.accepted ? "is-accepted" : ""}">
-			<div class="cockpit-sofa__main">
-				<div><strong>${escapeHtml(row.label ?? row.itemId ?? "item")}</strong></div>
-				<div>
-					${escapeHtml(row.kind ?? "unknown")}
-					· ${escapeHtml(row.fileName ?? "no-file")}
-					· ${row.crsId ? escapeHtml(row.crsId) : "CRS offen"}
-				</div>
-				<div>
-					${row.promotable ? "verwertbar" : "nicht verwertbar"}
-					${row.hasSparse ? " · Kernel" : ""}
-					${row.accepted ? " · im Universe" : ""}
-					${Number.isFinite(Number(row.lengthHint)) ? ` · Länge≈${Math.round(Number(row.lengthHint))}m` : ""}
-					${row.relationCount ? ` · Relationen:${row.relationCount}` : ""}
-				</div>
-			</div>
-			<div class="cockpit-sofa__actions">
-				<button class="btn btn--ghost btn--xs" data-cockpit-preview="${escapeHtml(row.itemId)}">Vorschau</button>
-				${row.promotable ? `<button class="btn btn--ghost btn--xs" data-cockpit-accept-show="${escapeHtml(row.itemId)}">Ins Universe</button>` : ""}
-			</div>
+		<div class="cockpit-sofa__card ${escapeHtml(cls)}">
+			${body}
 		</div>
 	`;
 }
 
-// -----------------------------------------------------------------------------
-// misc
-// -----------------------------------------------------------------------------
+function line(value) {
+	return `<div>${escapeHtml(value)}</div>`;
+}
+
+function lineStrong(value) {
+	return `<div><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+function metaLine(parts = []) {
+	return `<div>${parts.filter(Boolean).map(escapeHtml).join(" · ")}</div>`;
+}
 
 function renderModeLabel(mode) {
 	switch (mode) {
 		case "preview":
-			return "Vorschau";
-
+			return tx("cockpit.mode.preview", "Vorschau");
 		case "spot":
-			return "Universe-Objekt";
-
+			return tx("cockpit.mode.spot", "Universe-Objekt");
 		case "none":
-			return "leer";
-
+			return tx("cockpit.mode.none", "leer");
 		default:
-			return escapeHtml(mode ?? "unbekannt");
+			return String(mode ?? tx("cockpit.mode.unknown", "unbekannt"));
 	}
 }
 
@@ -234,5 +167,10 @@ function renderSourceLine(source) {
 
 	if (!parts.length) return "";
 
-	return `<div>Quelle: ${escapeHtml(parts.join(" · "))}</div>`;
+	return line(`${tx("cockpit.source", "Quelle")}: ${parts.join(" · ")}`);
+}
+
+function tx(key, fallback) {
+	const value = t?.(key);
+	return value && value !== key ? value : fallback;
 }

@@ -63,6 +63,20 @@ const REQUIRED = {
 	"Spot.PromoteImportItemsById": [],
 
 	// ---------------------------------------------------------
+	// solver
+	// ---------------------------------------------------------
+	"Solver.Ping": [],
+	"Solver.RunDummy": [],
+	"Solver.Job.Cancel": ["jobId"],
+
+	// später
+	// "Solver.Alignment.Couple": ["job"],
+	// "Solver.Alignment.Intersect": ["job"],
+	// "Solver.Alignment.Buffer": ["job"],
+	// "Solver.Alignment.FindTransition": ["job"],
+	// "Solver.Alignment.Optimize": ["job"],
+
+	// ---------------------------------------------------------
 	// debug
 	// ---------------------------------------------------------
 	"Debug.GetWorkerState": [],

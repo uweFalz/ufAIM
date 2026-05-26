@@ -2,386 +2,437 @@
 
 \chapter{Pose3, Cant, and Spatial Railway State}
 
+\label{chap:pose3-and-cant}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
 
 \begin{remark}
-Classical railway alignment models are based on planar geometry.
-They describe the track centerline as a curve
-\[
-\gamma : s \mapsto (x(s),y(s)).
-\]
+Planar railway alignment models describe intrinsic geometry using the
+pose2 state introduced in \cref{def:pose2}.
 \end{remark}
 
 \begin{remark}
-However, real railway systems are inherently three-dimensional.
-In particular, the rotation of the track cross-section, commonly
-described through cant, plays a fundamental role for vehicle dynamics
-and operational behaviour
-\cite{Klein1998Trassierung,EN13803_2017}.
+Operational railway systems are spatial systems involving:
+\begin{itemize}
+\item profile geometry,
+\item cant,
+\item local frame orientation,
+\item vehicle-space interpretation,
+\item and dynamically relevant quantities.
+\end{itemize}
 \end{remark}
 
 \begin{remark}
-The pose3 formulation also opens the possibility of describing the
-motion of physically relevant vehicle reference points, such as the
-vehicle centre of gravity, instead of modelling only the track
-centerline.
-
-Such ideas have occasionally appeared in advanced railway engineering
-concepts and patent literature
-\cite{Hasslinger2002Schwerpunkt}.
+This motivates an extended spatial railway state referred to as
+\emph{pose3}.
 \end{remark}
 
-\begin{remark}
-This motivates the introduction of an extended runtime state description,
-referred to as \emph{pose3}, which augments planar alignment geometry by
-vertical and rotational information.
-\end{remark}
+\begin{principle}[Runtime pose3 principle]
+\label{princ:runtime-pose3}
+Within AIM, pose3 is interpreted primarily as a runtime-evaluated
+spatial railway state rather than as a persistent geometric storage
+object.
+\end{principle}
+
+\begin{principle}[pose3 storage separation]
+\label{princ:pose3-storage-separation}
+pose3 is not persisted as independent geometry.
+
+The persistent model stores only the quantities from which pose3 can be
+reconstructed:
+\begin{itemize}
+\item intrinsic pose2 geometry,
+\item profile information,
+\item cant information,
+\item gauge and convention data,
+\item and metric/runtime context.
+\end{itemize}
+\end{principle}
 
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[scale=1.05]
 
-% track centerline
 \draw[thick] (-2.6,0) -- (2.6,0);
 \node[right] at (2.6,0) {centerline $\gamma(s)$};
 
-% tangent arrow
-\draw[->, thick] (-1.8,0) -- (-0.8,0) node[midway, below] {$t(s)$};
+\draw[->, thick] (-1.8,0) -- (-0.8,0)
+node[midway, below] {$\mathbf t(s)$};
 
-% cross section, canted
-\draw[thick, rotate around={12:(0,0)}] (-1.3,0.55) -- (1.3,0.55);
-\fill[rotate around={12:(0,0)}] (-1.3,0.55) circle (1.4pt);
-\fill[rotate around={12:(0,0)}] (1.3,0.55) circle (1.4pt);
-\node[rotate=12] at (0,0.85) {canted rail plane};
+\draw[thick, rotate around={12:(0,0)}]
+(-1.3,0.55) -- (1.3,0.55);
 
-% rotation arc
-\draw[->] (0.65,0.05) arc[start angle=0,end angle=12,radius=0.65];
+\fill[rotate around={12:(0,0)}]
+(-1.3,0.55) circle (1.4pt);
+
+\fill[rotate around={12:(0,0)}]
+(1.3,0.55) circle (1.4pt);
+
+\node[rotate=12] at (0,0.85)
+{canted rail plane};
+
+\draw[->]
+(0.65,0.05)
+arc[start angle=0,end angle=12,radius=0.65];
+
 \node at (0.9,0.2) {$\phi(s)$};
 
-% vertical hint
 \draw[dashed] (0,-0.75) -- (0,1.15);
-\node[below] at (0,-0.75) {local cross-section};
+
+\node[below] at (0,-0.75)
+{local cross-section};
 
 \end{tikzpicture}
 
-\caption{Pose3 extends the planar centerline state by vertical and
-rotational information. In AIM, the roll angle $\phi(s)$ is derived from
-cant and gauge rather than stored as persistent truth.}
+\caption{
+pose3 extends planar intrinsic geometry by profile and cant-dependent
+spatial interpretation.
+}
+\label{fig:pose3-cant}
 \end{figure}
 
 % ============================================================
-\section{Pose2 Revisited}
+\section{Relation to pose2}
 % ============================================================
 
-\begin{definition}[Pose2]
-The planar pose of a curve is defined as
+\begin{remark}
+The canonical pose2 system is defined in
+\cref{eq:pose2-system}.
+\end{remark}
+
+\begin{remark}
+Within AIM, pose2 forms the persistent intrinsic reconstruction kernel,
+whereas pose3 extends this state by runtime-evaluated spatial and
+operational interpretation.
+\end{remark}
+
+\begin{remark}
+pose3 depends on:
+\begin{itemize}
+\item pose2 reconstruction,
+\item profile evaluation,
+\item cant evaluation,
+\item frame construction,
+\item runtime metric services,
+\item and runtime coordinate services.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Conceptually:
+\begin{itemize}
+\item pose2 answers:
+``where is the intrinsic alignment and how does it turn?''
+\item profile answers:
+``how does the alignment rise?''
+\item cant answers:
+``how is the rail plane rotated?''
+\item pose3 answers:
+``what operational spatial railway state results at runtime?''
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Cant Representation}
+% ============================================================
+
+\subsection{Cant as Persistent Engineering Quantity}
+
+\begin{definition}[Cant height difference]
+\label{def:cant-height-difference}
+Within AIM, persistent cant is represented as rail height difference:
 \[
-\mathrm{pose2}(s)
-=
-\bigl(
-\gamma(s), \theta(s)
-\bigr),
-\]
-where
-\[
-\gamma(s)\in\R^2, \qquad \theta(s)\in\R.
+u(s).
 \]
 \end{definition}
 
 \begin{remark}
-The evolution of pose2 is governed by
-\[
-\theta'(s)=\kappa(s),
-\qquad
-\gamma'(s)=(\cos\theta(s),\sin\theta(s)).
-\]
+This follows standard railway engineering practice, where cant is
+typically specified as cross-level difference between rails.
 \end{remark}
 
-\begin{remark}
-This is the planar reconstruction principle underlying the cGeom band
-of the sparse alignment model.
-\end{remark}
+% ------------------------------------------------------------
 
-% ============================================================
-\section{Cant as Superelevation Band}
-% ============================================================
-
-\begin{definition}[Cant]
-Within AIM, cant is represented as a rail height difference
-\[
-u(s),
-\]
-not as a stored roll angle.
-\end{definition}
-
-\begin{remark}
-This follows railway engineering practice, where cant is commonly given
-as height difference between rails.
-\end{remark}
+\subsection{Derived Roll Angle}
 
 \begin{definition}[Derived roll angle]
-Given a gauge value \(g_{\mathrm{auge}}\), the corresponding roll angle is
-derived by
-\[
+\label{def:derived-roll-angle}
+Given a gauge value \(g_{\mathrm{gauge}}\), the corresponding roll angle
+is:
+\begin{equation}
 \phi(s)
 =
 \arctan\!\left(
-\frac{u(s)}{g_{\mathrm{auge}}}
+\frac{u(s)}{g_{\mathrm{gauge}}}
 \right).
-\]
+\label{eq:derived-roll-angle}
+\end{equation}
 \end{definition}
 
 \begin{remark}
-Thus, the roll angle depends on both cant and gauge. It is therefore a
-derived state quantity rather than persistent cant data.
+The roll angle is a derived runtime quantity rather than a persistent
+primary variable.
 \end{remark}
 
 \begin{remark}
-The cant angle influences lateral acceleration, cant deficiency, and
-load distribution
-\cite{Klein1998Trassierung,EN13803_2017}.
+Within AIM, cant is interpreted geometrically as frame rotation,
+independent of its engineering realization as rail height difference.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Cant Evolution}
+
+\begin{remark}
+Cant evolution is governed by the canonical relation
+\cref{eq:cant-evolution}.
+\end{remark}
+
+\begin{remark}
+Cant-rate influences:
+\begin{itemize}
+\item dynamic comfort,
+\item load transfer,
+\item vehicle response,
+\item and operational smoothness.
+\end{itemize}
 \end{remark}
 
 % ============================================================
-\subsection{Cant Reference Axis and Centerline Convention}
+\section{Cant Reference Conventions}
 % ============================================================
-
-\begin{remark}
-In standard railway handling, cant is often specified by rotating the
-track plane around a relevant rail or by defining a height difference
-between rails.
-\end{remark}
-
-\begin{remark}
-The AIM state model uses the centerline point as the primary reference
-point of the alignment.
-Thus, cant must be translated into a centerline-based representation
-before it is coupled to profile, pose3, and optimization.
-\end{remark}
 
 \begin{definition}[Cant reference convention]
+\label{def:cant-reference-convention}
 A cant convention specifies:
 \begin{itemize}
 \item the reference axis of rotation,
 \item the sign convention of cant,
 \item the relation between rail height difference and roll angle,
-\item and the induced vertical offset of the centerline.
+\item and the induced centerline displacement.
 \end{itemize}
 \end{definition}
 
 \begin{remark}
-This distinction is relevant in special cases such as track scissors,
-cant ramps, and overlapping transition zones, where the cant definition
-may influence the effective profile or gradient assigned to the
-centerline.
+Railway source data may define cant relative to:
+\begin{itemize}
+\item the centerline,
+\item one rail,
+\item a construction axis,
+\item or another engineering reference.
+\end{itemize}
 \end{remark}
 
 \begin{remark}
-For implementation, AIM treats cant not merely as an isolated value, but
-as a band whose reference convention must be known when transforming
-between rail-based construction data and centerline-based modelling.
+Within AIM, the intrinsic alignment centerline acts as canonical
+reference geometry.
 \end{remark}
 
-\begin{definition}[Cant rate]
-The derivative
+\begin{remark}
+Rail-based cant definitions must therefore be transformed consistently
+during import, normalization, or runtime evaluation.
+\end{remark}
+
+% ============================================================
+\section{Pose3 Frames}
+% ============================================================
+
+\begin{definition}[Uncanted geometric frame]
+\label{def:uncanted-frame}
+The uncanted geometric frame is denoted by:
 \[
-\phi'(s)
+F_0(s).
 \]
-describes the rate of change of the derived roll angle along the track.
 \end{definition}
 
 \begin{remark}
-Cant rate is not merely a geometric quantity, but an engineering
-quantity constrained by operational and comfort-related requirements
-\cite{EN13803_2017}.
+\(F_0(s)\) is constructed from the reconstructed spatial alignment
+without cant rotation.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{definition}[Railway frame]
+\label{def:railway-frame}
+The railway frame is denoted by:
+\[
+F_{\mathrm{rail}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+\(F_{\mathrm{rail}}(s)\) is obtained by cant rotation of the geometric
+frame \(F_0(s)\).
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{definition}[Vehicle frame]
+\label{def:vehicle-frame}
+A vehicle-dependent runtime frame may additionally be defined as:
+\[
+F_{\mathrm{veh}}(s).
+\]
+\end{definition}
+
+\begin{remark}
+Vehicle frames may depend on:
+\begin{itemize}
+\item suspension behaviour,
+\item center-of-gravity location,
+\item dynamic response,
+\item and operational conditions.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Runtime pose3 State}
+% ============================================================
+
+\begin{definition}[Runtime pose3]
+\label{def:runtime-pose3}
+The runtime spatial railway state is the station-dependent evaluated
+state:
+\begin{equation}
+\mathrm{pose3}(s)
+=
+(
+\Gamma(s),
+F_{\mathrm{rail}}(s),
+\phi(s)
+).
+\label{eq:runtime-pose3}
+\end{equation}
+\end{definition}
+
+\begin{remark}
+Here:
+\begin{itemize}
+\item \(\Gamma(s)\) denotes the reconstructed spatial reference
+trajectory,
+\item \(F_{\mathrm{rail}}(s)\) denotes the cant-aware railway frame,
+\item \(\phi(s)\) denotes the derived cant rotation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The railway frame is evaluated by the frame operator
+\(\mathcal F\) introduced in \cref{def:frame-operator}.
+\end{remark}
+
+\begin{remark}
+Within projected engineering geometry, the spatial trajectory
+\(\Gamma(s)\) is assembled dynamically from:
+\begin{itemize}
+\item planar pose2 reconstruction,
+\item profile evaluation,
+\item metric interpretation,
+\item and runtime coordinate services.
+\end{itemize}
 \end{remark}
 
 % ============================================================
 \section{Persistent Model versus Runtime State}
 % ============================================================
 
-\begin{principle}[Runtime pose3 principle]
-Pose3 is not persistent truth within AIM.
-It is a runtime-derived spatial state.
-\end{principle}
-
 \begin{remark}
 The persistent sparse model stores:
 \begin{itemize}
-\item cGeom as pose2-driven curvature geometry,
-\item cant as a longitudinal superelevation band,
-\item profile as a separate height band.
+\item intrinsic curvature geometry,
+\item cant bands,
+\item profile bands,
+\item and sparse reconstruction parameters.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-Pose3 is derived dynamically from these bands by runtime evaluation
-services.
+Spatial pose3 states are reconstructed dynamically by runtime services.
 \end{remark}
 
 \begin{remark}
-This avoids redundant storage of three-dimensional points, roll angles,
-and derived spatial frames.
-It also avoids synchronization instability between geometry, cant, and
-profile.
-\end{remark}
-
-\begin{summary}
-The intelligence of the AIM state model does not reside in a stored
-pose3 object, but in the mathematical services that evaluate pose3 from
-sparse longitudinal bands.
-\end{summary}
-
-% ============================================================
-\section{Pose3 Definition}
-% ============================================================
-
-\begin{definition}[Runtime Pose3]
-The spatial railway state is defined as
-\[
-\mathrm{pose3}(s)
-=
-\bigl(
-\Gamma(s),
-\mathbf{t}(s),
-\phi(s)
-\bigr),
-\]
-where:
+This avoids:
 \begin{itemize}
-\item \(\Gamma(s)\) is the reconstructed three-dimensional centerline
-point,
-\item \(\mathbf{t}(s)\) is the spatial tangent direction,
-\item \(\phi(s)\) is the derived roll angle.
+\item redundant spatial storage,
+\item synchronization instability,
+\item and unnecessary duplication of derived geometry.
 \end{itemize}
-\end{definition}
-
-\begin{remark}
-In the projected engineering setting, \(\Gamma(s)\) is obtained from
-planar pose2 and profile evaluation.
 \end{remark}
 
 \begin{remark}
-Pose3 captures both geometric and dynamically relevant aspects of the
-track, but remains a derived runtime state.
-\end{remark}
-
-\begin{remark}
-When a rail-based cant convention is used in source data, the
-centerline-consistent state must be resolved during import,
-normalization, or model construction.
-\end{remark}
-
-% ============================================================
-\section{State Evolution}
-% ============================================================
-
-\begin{proposition}[Projected pose3 evolution]
-In a projected engineering coordinate system, the runtime pose3 state is
-derived from:
-\[
-\begin{aligned}
-\gamma'(s) &= (\cos\theta(s),\sin\theta(s)), \\
-\theta'(s) &= \kappa(s), \\
-z(s)       &= p(s), \\
-\phi(s)    &= \arctan\!\left(\frac{u(s)}{g_{\mathrm{auge}}}\right),
-\end{aligned}
-\]
-where \(p(s)\) denotes profile height and \(u(s)\) denotes cant as rail
-height difference.
-\end{proposition}
-
-\begin{remark}
-Thus, pose3 is not governed by one monolithic state equation.
-It is assembled from synchronized evaluations of cGeom, profile, and
-cant.
+The runtime interpretation may vary depending on:
+\begin{itemize}
+\item metric realization,
+\item CRS interpretation,
+\item level of detail,
+\item vehicle-space interpretation,
+\item and runtime evaluation strategy.
+\end{itemize}
 \end{remark}
 
 % ============================================================
 \section{Reconstruction Principle}
 % ============================================================
 
-\begin{proposition}
+\begin{proposition}[pose3 reconstruction principle]
+\label{prop:pose3-reconstruction}
 Given:
 \[
-\kappa(s), \quad p(s), \quad u(s),
+\kappa(s),
+\qquad
+u(s),
+\qquad
+p(s),
 \]
-together with initial pose2 data and gauge information, the runtime
-pose3 state is determined by evaluation.
+together with initial pose2 data, gauge information, convention data,
+and runtime metric context, the runtime pose3 state is determined
+through evaluation.
 \end{proposition}
 
 \begin{remark}
-This differs from storing pose3 directly.
-The sparse model stores the ingredients; pose3 is reconstructed when
-needed.
+Thus, pose3 is reconstructed from synchronized runtime evaluation of:
+\begin{itemize}
+\item intrinsic geometry,
+\item profile,
+\item cant,
+\item frame services,
+\item metric services,
+\item and coordinate services.
+\end{itemize}
 \end{remark}
 
 % ============================================================
-\section{Relation to Physical Quantities}
+\section{Dynamic Quantities}
 % ============================================================
 
 \subsection{Effective Lateral Acceleration}
 
-\begin{definition}
-In the planar engineering approximation, effective lateral acceleration
-is given by
-\[
-a_{\mathrm{eff}}(s)
-=
-v^2 \kappa(s) - g \sin\phi(s).
-\]
-\end{definition}
+\begin{remark}
+The effective lateral acceleration is defined canonically in
+\cref{eq:effective-lateral-acceleration}.
+\end{remark}
 
 \begin{remark}
-This quantity determines passenger comfort and safety and expresses the
-basic coupling between curvature and cant in operational railway design
-\cite{Klein1998Trassierung,EN13803_2017}.
+This quantity expresses the operational coupling between curvature and
+cant.
 \end{remark}
+
+% ------------------------------------------------------------
 
 \subsection{Jerk}
 
-\begin{definition}
-The jerk is given by
-\[
-j(s)
-=
-v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s).
-\]
-\end{definition}
-
 \begin{remark}
-The jerk measures the rate of change of acceleration and is a key
-criterion for comfort. This is one of the main reasons why curvature and
-cant development cannot be specified independently in high-quality
-alignment design
-\cite{Mieloszyk2012Transition,Koc2017SmoothedEnds,Koc2019Operational}.
-\end{remark}
-
-% ============================================================
-\section{Interpretation as Evaluation System}
-% ============================================================
-
-\begin{remark}
-The pose3 model can be interpreted as an evaluation system:
-\[
-\begin{aligned}
-\text{persistent bands:} &\quad \mathrm{cGeom},\ u,\ p, \\
-\text{runtime state:}   &\quad \mathrm{pose3}.
-\end{aligned}
-\]
+The jerk relation is defined in \cref{eq:jerk-relation}.
 \end{remark}
 
 \begin{remark}
-This formulation provides a natural bridge to simulation, visualization,
-validation, and optimization methods.
+Jerk depends jointly on curvature evolution and cant evolution.
 \end{remark}
 
 \begin{remark}
-It is also consistent with the broader optimization-oriented view of
-alignment modelling proposed in railway alignment research
-\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+This is one of the primary reasons why curvature and cant cannot be
+treated independently in high-quality railway alignment design.
 \end{remark}
 
 % ============================================================
@@ -389,28 +440,42 @@ alignment modelling proposed in railway alignment research
 % ============================================================
 
 \begin{remark}
-Curvature and cant are not independent in engineering interpretation.
-They jointly determine dynamic behaviour.
-\end{remark}
-
-\begin{definition}[Equilibrium condition]
-A perfectly balanced design satisfies
-\[
-v^2 \kappa(s) = g \sin\phi(s).
-\]
-\end{definition}
-
-\begin{remark}
-In practice, deviations from this condition are allowed but must remain
-within regulatory limits. This is the mathematical expression of the
-cant-balance logic used in railway design standards
-\cite{EN13803_2017,Klein1998Trassierung}.
+Curvature and cant are operationally coupled quantities.
 \end{remark}
 
 \begin{remark}
-The persistent model keeps cGeom and cant as separate synchronized
-bands. Their coupling is evaluated dynamically rather than stored
-redundantly.
+The equilibrium relation is defined in \cref{eq:cant-equilibrium}.
+\end{remark}
+
+\begin{remark}
+Within AIM, curvature and cant remain persistently separated as distinct
+bands, whereas their operational interaction is evaluated dynamically.
+\end{remark}
+
+% ============================================================
+\section{Vehicle-Space Interpretation}
+% ============================================================
+
+\begin{remark}
+pose3 enables interpretation of:
+\begin{itemize}
+\item vehicle envelopes,
+\item center-of-gravity motion,
+\item bogie orientation,
+\item wheelset behaviour,
+\item and platform interaction.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The physically relevant object is therefore not merely the track
+centerline, but the operational vehicle-space state generated from the
+alignment.
+\end{remark}
+
+\begin{remark}
+Vehicle-space interpretation may depend on runtime-generated
+vehicle frames \(F_{\mathrm{veh}}(s)\).
 \end{remark}
 
 % ============================================================
@@ -418,74 +483,109 @@ redundantly.
 % ============================================================
 
 \begin{remark}
-The pose3 formulation enables a reinterpretation of alignment design.
-Instead of designing geometry alone, one designs a spatial state
-trajectory.
+The pose3 framework allows reinterpretation of railway alignment as
+design of a spatial operational state trajectory.
 \end{remark}
 
 \begin{remark}
-In particular, the concept of \emph{Schwerpunkt-Trassierung} can be
-understood as the design of a trajectory that optimally balances
-curvature, cant, and dynamic response.
-\end{remark}
+Schwerpunkt-Trassierung does not optimize the rail centerline alone.
 
-\begin{remark}
-In the sparse AIM model, cant may remain coupled to the normalized
-curvature family, while curvature itself may receive additional
-correction terms for advanced modelling concepts.
-\end{remark}
-
-\RESEARCH{Formal definition of Schwerpunkt-based alignment design.}
-
-\OPEN{Integration of vehicle dynamics into the pose3 framework.}
-
-% ============================================================
-\section{Relation to Existing Standards}
-% ============================================================
-
-\begin{remark}
-Existing railway design standards typically prescribe:
+Instead, it optimizes vehicle-relevant operational trajectories induced
+by:
 \begin{itemize}
-\item limits on curvature,
-\item limits on cant,
-\item limits on cant gradient.
+\item curvature evolution,
+\item cant evolution,
+\item profile evolution,
+\item frame interpretation,
+\item and vehicle dynamics.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-These rules can be interpreted as constraints on the runtime pose3 state
-and its derivatives \cite{EN13803_2017}.
+In this interpretation, the railway alignment acts as a generator of
+runtime vehicle-space states.
+\end{remark}
+
+\OPEN{
+Vehicle-specific runtime envelopes based on center-of-gravity-dependent
+cant interpretation.
+}
+
+\RESEARCH{
+Formal definition of Schwerpunkt-based railway alignment optimization.
+}
+
+% ============================================================
+\section{Relation to Standards}
+% ============================================================
+
+\begin{remark}
+Existing railway standards typically prescribe limits on:
+\begin{itemize}
+\item curvature,
+\item cant,
+\item cant-rate,
+\item jerk,
+\item and operational acceleration.
+\end{itemize}
 \end{remark}
 
 \begin{remark}
-From this perspective, pose3 does not contradict existing railway
-standards, but provides a mathematical structure in which such rules can
-be represented coherently.
-\end{remark}
-
-\begin{remark}
-The purpose of the pose3 formulation is not to replace such standards,
-but to make their geometric consequences explicit. In particular,
-rail-based cant rules must be converted consistently when the internal
-model uses the centerline as its reference geometry.
+Within AIM, such rules are interpreted as constraints acting on runtime
+pose3 states and their derivatives.
 \end{remark}
 
 % ============================================================
-\section{Connection to the AIM Framework}
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, pose3 is interpreted as a runtime-evaluated operational
+spatial railway state.
+\end{proposition}
+
+\begin{proposition}
+Persistent alignment storage and runtime spatial interpretation are
+treated as distinct conceptual layers.
+\end{proposition}
+
+\begin{proposition}
+Curvature, profile, cant, frame evaluation, metric interpretation, and
+runtime services jointly generate operational railway geometry.
+\end{proposition}
+
+\begin{proposition}
+The physically relevant railway object is not merely the geometric
+centerline, but the induced runtime vehicle-space state.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-Pose3 extends planar alignment modelling to spatial railway state
-evaluation.
+pose3 extends intrinsic planar geometry into operational spatial railway
+state evaluation.
 
-Within AIM, pose3 is not persistent truth. It is derived at runtime from
-cGeom, cant, profile, and coordinate services.
+Within AIM, pose3 is reconstructed dynamically from:
+\begin{itemize}
+\item pose2 geometry,
+\item cant bands,
+\item profile bands,
+\item frame evaluation,
+\item runtime services,
+\item metric interpretation,
+\item and coordinate context.
+\end{itemize}
 
 This provides:
 \begin{itemize}
-\item a unified runtime interpretation of geometry and dynamics,
-\item a natural interface to validation and optimization methods,
-\item a foundation for advanced concepts such as
-Schwerpunkt-Trassierung.
+\item realization-aware spatial interpretation,
+\item dynamic operational geometry,
+\item runtime vehicle-space evaluation,
+\item and a foundation for advanced alignment optimization concepts.
 \end{itemize}
+
+Within AIM, pose3 is therefore not interpreted as a persistent geometry
+object, but as a dynamically evaluated operational railway state.
 \end{summary}

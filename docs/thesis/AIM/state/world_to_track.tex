@@ -2,6 +2,8 @@
 
 \chapter{World--Track Coordinate Transformation}
 
+\label{chap:world-to-track}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
@@ -12,8 +14,8 @@ coordinates.
 \end{remark}
 
 \begin{remark}
-Real-world data, however, is typically represented in external
-coordinate reference systems such as:
+Real-world data is typically represented in external coordinate
+reference systems such as:
 \begin{itemize}
 \item WGS84,
 \item UTM,
@@ -44,6 +46,7 @@ service connecting:
 % ============================================================
 
 \begin{definition}[Track coordinate system]
+\label{def:track-coordinate-system}
 The intrinsic track coordinate system consists of:
 \[
 (s,d,h),
@@ -55,6 +58,11 @@ where:
 \item \(h\) denotes vertical offset.
 \end{itemize}
 \end{definition}
+
+\begin{remark}
+Track coordinates belong to the intrinsic track-space domain
+\(\Omega_{\mathrm{track}}\), introduced in \cref{def:track-space}.
+\end{remark}
 
 \begin{remark}
 In planar situations, only:
@@ -88,8 +96,8 @@ Operational kilometre systems may contain:
 \end{remark}
 
 \begin{remark}
-Thus, stationing systems are operational reference structures layered on
-top of intrinsic geometry.
+Stationing systems are operational reference structures layered on top
+of intrinsic geometry.
 \end{remark}
 
 % ============================================================
@@ -97,6 +105,7 @@ top of intrinsic geometry.
 % ============================================================
 
 \begin{definition}[Track-to-world mapping]
+\label{def:track-to-world-runtime}
 The forward transformation is:
 \begin{equation}
 x(s,d)
@@ -107,8 +116,9 @@ x(s,d)
 \end{definition}
 
 \begin{remark}
-This corresponds to the canonical relation
-\cref{eq:track-to-world}.
+This relation specializes the canonical track-to-world operator
+\(\mathcal P_{\mathrm{tw}}\) introduced in
+\cref{def:track-to-world-operator}.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -163,6 +173,7 @@ Formalize reference-line conventions for:
 % ============================================================
 
 \begin{definition}[World-to-track projection]
+\label{def:world-to-track-runtime}
 The inverse transformation is:
 \begin{equation}
 (s^\ast,d^\ast)
@@ -176,14 +187,51 @@ x-(\gamma(s)+d\,\mathbf n(s))
 \end{definition}
 
 \begin{remark}
-This corresponds to the canonical relation
-\cref{eq:world-to-track}.
+This relation specializes the canonical world-to-track operator
+\(\mathcal P_{\mathrm{wt}}\) introduced in
+\cref{def:world-to-track-operator}.
 \end{remark}
 
 \begin{remark}
 The term projection is used operationally and does not necessarily imply
 a unique orthogonal projection in the classical geometric sense.
 \end{remark}
+
+% ============================================================
+\section{Coordinate Transformation versus Projection}
+% ============================================================
+
+\begin{remark}
+Coordinate transformation and world-to-track projection are distinct
+operations within AIM.
+\end{remark}
+
+\begin{remark}
+Coordinate transformations map between world-space representations:
+\[
+\mathcal C
+:
+\Omega_{\mathrm{world}}
+\rightarrow
+\Omega_{\mathrm{world}},
+\]
+as introduced in \cref{def:coordinate-transform-operator}.
+\end{remark}
+
+\begin{remark}
+World-to-track projection maps between:
+\[
+\Omega_{\mathrm{world}}
+\quad\text{and}\quad
+\Omega_{\mathrm{track}}.
+\]
+\end{remark}
+
+\begin{principle}[Projection distinction principle]
+\label{princ:projection-distinction}
+Coordinate transformation must not be confused with intrinsic
+world-to-track projection.
+\end{principle}
 
 % ============================================================
 \section{Numerical Evaluation}
@@ -223,8 +271,7 @@ Ambiguities may occur in:
 \end{remark}
 
 \begin{remark}
-Therefore, runtime projection often requires contextual information such
-as:
+Runtime projection often requires contextual information such as:
 \begin{itemize}
 \item track identity,
 \item topology,
@@ -293,6 +340,7 @@ Large-scale systems therefore require:
 \end{remark}
 
 \begin{proposition}[Selective projection principle]
+\label{prop:selective-projection}
 Exact projection should only be evaluated where high precision is
 required.
 \end{proposition}
@@ -310,13 +358,13 @@ A hybrid strategy combines:
 % ============================================================
 
 \begin{remark}
-The complete transformation chain is:
+The complete external transformation chain is:
 \[
 \text{CRS}
 \rightarrow
-\text{world space}
+\Omega_{\mathrm{world}}
 \rightarrow
-\text{track space}.
+\Omega_{\mathrm{track}}.
 \]
 \end{remark}
 
@@ -326,7 +374,7 @@ a reference ellipsoid rather than in a projected plane.
 \end{remark}
 
 \begin{remark}
-Projection also depends on realized geometry:
+Projection may also depend on realized geometry:
 \[
 \gamma_{\mathrm{real}}(s)
 \neq

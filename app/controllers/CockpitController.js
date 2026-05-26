@@ -1,4 +1,19 @@
 // app/controllers/cockpitController.js
+//
+// CockpitController
+//
+// Role:
+// - owns cockpit root rendering/wiring
+// - refreshes Import + SPOT UI state
+// - delegates imperative side effects to cockpitActions
+//
+// NOT:
+// - no import pipeline logic
+// - no HTML generation
+// - no geometry truth
+//
+// Direction:
+//   SPOT / ImportInbox -> Cockpit UI -> workspace_selection -> ViewController
 
 import { inspectCrsContext } from "@src/domain/crs/CrsAgent.js";
 
@@ -18,13 +33,13 @@ import {
 
 import {
 	activateObjectId,
-	toggleCockpitPin,
+	toggleCockpitContextObject,
 	clearCockpitPreview,
 	markImportItemAccepted,
-	syncSpotObjectsToPreviewCollection,
 	exportLandXMLById,
 	readFirstAddedObjectId,
 	readFirstReviewReason,
+	syncSpotObjectsToVisibleTracks,
 } from "@app/controllers/cockpit/cockpitActions.js";
 
 export class CockpitController {
@@ -36,6 +51,7 @@ export class CockpitController {
 		if (!this.store?.getState || !this.store?.subscribe) {
 			throw new Error("CockpitController: missing store");
 		}
+
 		if (!this.messaging?.sendCmdAwait) {
 			throw new Error("CockpitController: missing messaging.sendCmdAwait");
 		}
@@ -61,8 +77,8 @@ export class CockpitController {
 
 	async refreshAll() {
 		await Promise.all([
-			this.refreshImportState(),
-			this.refreshSpotState(),
+		this.refreshImportState(),
+		this.refreshSpotState(),
 		]);
 
 		this.render();
@@ -75,14 +91,6 @@ export class CockpitController {
 
 	async refreshSpotState() {
 		this._spotState = await this.messaging.sendCmdAwait("Spot.GetState", {});
-
-		syncSpotObjectsToPreviewCollection({
-			store: this.store,
-			spotState: this._spotState,
-			maxStep: 5,
-			sourceType: "spot-sync",
-		});
-
 		return this._spotState;
 	}
 
@@ -155,9 +163,9 @@ export class CockpitController {
 			if (show) this._activateObjectId(itemId);
 
 			this.logLine?.(
-				show
-					? `[Cockpit] anzeigen: ${itemId}`
-					: `[Cockpit] bereits im Universe: ${itemId}`
+			show
+			? `[Cockpit] anzeigen: ${itemId}`
+			: `[Cockpit] bereits im Universe: ${itemId}`
 			);
 
 			this.queueRender();
@@ -174,14 +182,20 @@ export class CockpitController {
 			const reason = readFirstReviewReason(result);
 
 			this.logLine?.(
-				`[Cockpit] nicht ins Universe übernommen: ${itemId}` +
-				(reason ? ` :: ${reason}` : "")
+			`[Cockpit] nicht ins Universe übernommen: ${itemId}` +
+			(reason ? ` :: ${reason}` : "")
 			);
 
 			await Promise.all([
-				this.refreshImportState(),
-				this.refreshSpotState(),
+			this.refreshImportState(),
+			this.refreshSpotState(),
 			]);
+			
+			syncSpotObjectsToVisibleTracks({
+				store: this.store,
+				spotState: this._spotState,
+				sourceType: "cockpit-accept",
+			});
 
 			this.render();
 			return false;
@@ -193,17 +207,19 @@ export class CockpitController {
 		});
 
 		await Promise.all([
-			this.refreshImportState(),
-			this.refreshSpotState(),
+		this.refreshImportState(),
+		this.refreshSpotState(),
 		]);
 
 		if (show) {
 			this._activateObjectId(addedObjectId);
 		}
 
-		this.logLine?.(`[Cockpit] ins Universe übernommen: ${itemId}${show ? " + anzeigen" : ""}`);
-		this.render();
+		this.logLine?.(
+		`[Cockpit] ins Universe übernommen: ${itemId}${show ? " + anzeigen" : ""}`
+		);
 
+		this.render();
 		return true;
 	}
 
@@ -227,15 +243,14 @@ export class CockpitController {
 	}
 
 	togglePin(objectId) {
-		const ok = toggleCockpitPin({
+		const ok = toggleCockpitContextObject({
 			store: this.store,
 			objectId,
-			slot: "right",
 		});
 
 		if (!ok) return false;
 
-		this.logLine?.(`[Cockpit] pin toggle: ${objectId}`);
+		this.logLine?.(`[Cockpit] Kontext toggle: ${objectId}`);
 		this.queueRender();
 
 		return true;
@@ -256,10 +271,10 @@ export class CockpitController {
 
 	_buildSceneState(windowState, spotState) {
 		const activeObjectId =
-			windowState?.workspace_selection?.primaryId ??
-			windowState?.focus?.objectId ??
-			windowState?.activeRouteProjectId ??
-			null;
+		windowState?.workspace_selection?.primaryId ??
+		windowState?.focus?.objectId ??
+		windowState?.activeRouteProjectId ??
+		null;
 
 		const previewItem = windowState?.preview_item ?? null;
 
@@ -312,9 +327,10 @@ export class CockpitController {
 		const importItems = Array.isArray(importState?.items) ? importState.items : [];
 		const spotObjects = Object.values(spotState?.objects ?? {});
 
-		const previewTracks = Array.isArray(windowState.import_preview_collection)
-			? windowState.import_preview_collection.length
-			: 0;
+		const workspaceSelection = windowState?.workspace_selection ?? {};
+		const contextCount = Array.isArray(workspaceSelection?.contextIds)
+		? workspaceSelection.contextIds.length
+		: 0;
 
 		const crs = inspectCrsContext({
 			sceneCrsId: scene?.crsId ?? null,
@@ -332,7 +348,11 @@ export class CockpitController {
 			sceneIsSpot: scene?.mode === "spot",
 			importCount: importItems.length,
 			spotCount: spotObjects.length,
-			previewTracks,
+
+			// New wording, but keep old field name for renderer compatibility.
+			previewTracks: contextCount,
+			contextCount,
+
 			message: buildContextMessage(scene, crs),
 		};
 	}
@@ -342,41 +362,41 @@ export class CockpitController {
 
 		if (scene.mode === "preview" && scene.objectId) {
 			actions.push(
-				{
-					id: "accept",
-					label: "Übernehmen",
-					kind: "secondary",
-					objectId: scene.objectId,
-				},
-				{
-					id: "acceptAndShow",
-					label: "Übernehmen & anzeigen",
-					kind: "primary",
-					objectId: scene.objectId,
-				},
-				{
-					id: "clearPreview",
-					label: "Vorschau schließen",
-					kind: "ghost",
-					objectId: scene.objectId,
-				}
+			{
+				id: "accept",
+				label: "Übernehmen",
+				kind: "secondary",
+				objectId: scene.objectId,
+			},
+			{
+				id: "acceptAndShow",
+				label: "Übernehmen & anzeigen",
+				kind: "primary",
+				objectId: scene.objectId,
+			},
+			{
+				id: "clearPreview",
+				label: "Vorschau schließen",
+				kind: "ghost",
+				objectId: scene.objectId,
+			}
 			);
 		}
 
 		if (scene.mode === "spot" && scene.objectId) {
 			actions.push(
-				{
-					id: "exportLandXML",
-					label: "landXML exportieren",
-					kind: "primary",
-					objectId: scene.objectId,
-				},
-				{
-					id: "pin",
-					label: scene.pinned ? "Lösen" : "Anheften",
-					kind: "secondary",
-					objectId: scene.objectId,
-				}
+			{
+				id: "exportLandXML",
+				label: "landXML exportieren",
+				kind: "primary",
+				objectId: scene.objectId,
+			},
+			{
+				id: "pin",
+				label: scene.pinned ? "Aus Kontext lösen" : "Als Kontext anzeigen",
+				kind: "secondary",
+				objectId: scene.objectId,
+			}
 			);
 		}
 
@@ -400,7 +420,10 @@ export class CockpitController {
 		this._rootEl.addEventListener("click", (ev) => {
 			const actionBtn = ev.target.closest("[data-cockpit-action]");
 			if (actionBtn) {
-				this._dispatchAction(actionBtn.dataset.cockpitAction, actionBtn.dataset.objectId);
+				this._dispatchAction(
+				actionBtn.dataset.cockpitAction,
+				actionBtn.dataset.objectId
+				);
 				return;
 			}
 
@@ -418,7 +441,9 @@ export class CockpitController {
 
 			const acceptShowBtn = ev.target.closest("[data-cockpit-accept-show]");
 			if (acceptShowBtn) {
-				void this.acceptImportItem(acceptShowBtn.dataset.cockpitAcceptShow, { show: true });
+				void this.acceptImportItem(acceptShowBtn.dataset.cockpitAcceptShow, {
+					show: true,
+				});
 				return;
 			}
 
@@ -454,35 +479,37 @@ export class CockpitController {
 	_dispatchAction(actionId, objectId) {
 		switch (actionId) {
 			case "accept":
-				void this.acceptImportItem(objectId, { show: false });
-				return;
+			void this.acceptImportItem(objectId, { show: false });
+			return;
 
 			case "acceptAndShow":
-				void this.acceptImportItem(objectId, { show: true });
-				return;
+			void this.acceptImportItem(objectId, { show: true });
+			return;
 
 			case "clearPreview":
-				this.clearPreview();
-				return;
+			this.clearPreview();
+			return;
 
 			case "exportLandXML":
-				void this.exportLandXMLById(objectId);
-				return;
+			void this.exportLandXMLById(objectId);
+			return;
 
 			case "pin":
-				this.togglePin(objectId);
-				return;
+			this.togglePin(objectId);
+			return;
 
 			case "inspectCrs":
-				this.logLine?.("[Cockpit] CRS-Kontext ist sichtbar. Nächster Schritt: CRS-Management-Shell.");
-				return;
+			this.logLine?.(
+			"[Cockpit] CRS-Kontext ist sichtbar. Nächster Schritt: CRS-Management-Shell."
+			);
+			return;
 
 			case "details":
-				this.logLine?.(`[Cockpit] Details: ${objectId}`);
-				return;
+			this.logLine?.(`[Cockpit] Details: ${objectId}`);
+			return;
 
 			default:
-				this.logLine?.(`[Cockpit] unbekannte Aktion: ${actionId}`);
+			this.logLine?.(`[Cockpit] unbekannte Aktion: ${actionId}`);
 		}
 	}
 

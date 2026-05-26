@@ -2,6 +2,8 @@
 
 \chapter{Construction and Realization}
 
+\label{chap:construction-and-realization}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
@@ -64,6 +66,7 @@ realization layer between analytical design and built geometry.
 \caption{Realization acts as a filtering process: target curvature may
 contain high-frequency components that are attenuated by sampling,
 machine action, and structural response.}
+\label{fig:realization-filter}
 \end{figure}
 
 % ============================================================
@@ -71,6 +74,7 @@ machine action, and structural response.}
 % ============================================================
 
 \begin{definition}[Realized alignment]
+\label{def:realized-alignment}
 The realized alignment is the physically constructed railway geometry,
 denoted by
 \[
@@ -84,7 +88,8 @@ discrete construction, measurement, and maintenance data.
 \end{remark}
 
 \begin{definition}[Realized curvature]
-The realized curvature is
+\label{def:realized-curvature}
+The realized curvature is:
 \[
 \kappa_{\mathrm{real}}(s)
 =
@@ -93,8 +98,8 @@ The realized curvature is
 \end{definition}
 
 \begin{remark}
-The realized track should therefore not be judged only by positional
-agreement, but also by preservation of curvature evolution.
+The realized track should not be judged only by positional agreement,
+but also by preservation of curvature evolution.
 \end{remark}
 
 % ============================================================
@@ -102,7 +107,8 @@ agreement, but also by preservation of curvature evolution.
 % ============================================================
 
 \begin{definition}[Curvature realization error]
-A curvature-based realization error may be written as
+\label{def:curvature-realization-error}
+A curvature-based realization error may be written as:
 \[
 \int_0^L
 \bigl(\kappa_{\mathrm{real}}-\kappa_{\mathrm{target}}\bigr)^2
@@ -111,7 +117,8 @@ A curvature-based realization error may be written as
 \end{definition}
 
 \begin{definition}[Curvature derivative error]
-A higher-order realization error may be written as
+\label{def:curvature-derivative-error}
+A higher-order realization error may be written as:
 \[
 \int_0^L
 \bigl(\kappa'_{\mathrm{real}}-\kappa'_{\mathrm{target}}\bigr)^2
@@ -134,6 +141,7 @@ Construction and maintenance operate through discrete control data.
 \end{remark}
 
 \begin{definition}[Control points]
+\label{def:control-points}
 Let
 \[
 0=s_0 < s_1 < \dots < s_N = L
@@ -153,6 +161,7 @@ The realized alignment may be reconstructed from these points using:
 \end{remark}
 
 \begin{proposition}[Adaptive sampling principle]
+\label{prop:adaptive-sampling-principle}
 Sampling density should increase in regions of strong curvature
 variation:
 \[
@@ -178,20 +187,18 @@ through a sequence of localized operations, for example by tamping
 machines.
 \end{remark}
 
-\begin{definition}[Adjustment operator]
-A local construction or maintenance step is represented by an adjustment
-operator
-\[
-\mathcal T.
-\]
-\end{definition}
+\begin{remark}
+The canonical adjustment operator is denoted by \(\mathcal A\), as
+introduced in \cref{def:adjustment-operator}.
+\end{remark}
 
 \begin{definition}[Iterative realization]
-Starting from an initial alignment \(\gamma_0\), the iterative process is
+\label{def:iterative-construction-realization}
+Starting from an initial alignment \(\gamma_0\), the iterative process is:
 \[
 \gamma_{k+1}
 =
-\mathcal T_{\gamma_{\mathrm{target}}}(\gamma_k).
+\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k).
 \]
 \end{definition}
 
@@ -201,7 +208,8 @@ correction limits, and physical properties of the track.
 \end{remark}
 
 \begin{definition}[Realized alignment as limit]
-If the sequence converges, the realized alignment is
+\label{def:realized-alignment-limit}
+If the sequence converges, the realized alignment is:
 \[
 \gamma_{\mathrm{real}}
 =
@@ -210,11 +218,12 @@ If the sequence converges, the realized alignment is
 \end{definition}
 
 \begin{proposition}[Fixed point interpretation]
-If the iterative realization converges, then
+\label{prop:realization-fixed-point}
+If the iterative realization converges, then:
 \[
 \gamma_{\mathrm{real}}
 =
-\mathcal T_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}}).
+\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}}).
 \]
 \end{proposition}
 
@@ -228,9 +237,10 @@ measurement feedback, machine limits, and local track conditions.
 % ============================================================
 
 \begin{definition}[Local correction]
-A guided adjustment may be written as
+\label{def:local-correction}
+A guided adjustment may be written as:
 \[
-\mathcal T_{\gamma_{\mathrm{target}}}(\gamma)
+\mathcal A_{\gamma_{\mathrm{target}}}(\gamma)
 =
 \gamma+\Delta(\gamma,\gamma_{\mathrm{target}}),
 \]
@@ -247,9 +257,10 @@ Typically, corrections are bounded:
 \end{remark}
 
 \begin{proposition}[Locality]
-The adjustment operator is local in the sense that
+\label{prop:adjustment-locality}
+The adjustment operator is local in the sense that:
 \[
-(\mathcal T_{\gamma_{\mathrm{target}}}\gamma)(s)
+(\mathcal A_{\gamma_{\mathrm{target}}}\gamma)(s)
 \]
 depends only on \(\gamma\) and \(\gamma_{\mathrm{target}}\) in a
 neighbourhood of \(s\).
@@ -265,9 +276,10 @@ equipment.
 % ============================================================
 
 \begin{definition}[Kernel-based adjustment]
-A linearized model of the adjustment process is
+\label{def:kernel-based-adjustment}
+A linearized model of the adjustment process is:
 \[
-(\mathcal T_{\gamma_{\mathrm{target}}}\gamma)(s)
+(\mathcal A_{\gamma_{\mathrm{target}}}\gamma)(s)
 =
 \gamma(s)
 +
@@ -287,7 +299,8 @@ maintenance action.
 \end{remark}
 
 \begin{proposition}[Localization]
-There exists a characteristic length \(\ell>0\) such that
+\label{prop:kernel-localization}
+There exists a characteristic length \(\ell>0\) such that:
 \[
 K(s,\sigma)\approx 0
 \qquad
@@ -296,7 +309,8 @@ K(s,\sigma)\approx 0
 \end{proposition}
 
 \begin{definition}[Discrete adjustment model]
-For control points \(s_i\), the kernel model becomes
+\label{def:discrete-adjustment-model}
+For control points \(s_i\), the kernel model becomes:
 \[
 \gamma_i^{(k+1)}
 =
@@ -319,6 +333,7 @@ This form is compatible with sparse numerical implementation.
 % ============================================================
 
 \begin{proposition}
+\label{prop:realization-low-pass}
 The realization process acts approximately as a low-pass filter on
 curvature.
 \end{proposition}
@@ -335,17 +350,18 @@ while still differing in curvature evolution and dynamic interpretation.
 \end{remark}
 
 % ============================================================
-\section{Relation to Realization Operator}
+\section{Relation to the Realization Operator}
 % ============================================================
 
 \begin{remark}
-In the AIM operator framework, realization is represented by
+In the AIM operator framework, realization is represented by:
 \[
 \mathcal R :
-\mathrm{pose3}_{\mathrm{target}}
+\mathcal X_{\mathrm{target}}
 \rightarrow
-\mathrm{pose3}_{\mathrm{real}}.
+\mathcal X_{\mathrm{real}},
 \]
+as introduced in \cref{def:realization-operator}.
 \end{remark}
 
 \begin{remark}
@@ -354,7 +370,7 @@ interpretation of how such an operator may arise physically.
 \end{remark}
 
 \begin{remark}
-The simplified operator composition
+The simplified realization decomposition:
 \[
 \mathcal R
 \approx
@@ -379,6 +395,7 @@ construction, machine behaviour, and structural response.
 \end{remark}
 
 \begin{proposition}
+\label{prop:physical-design-space}
 The relevant physical design space is the image of the realization
 operator, not the full space of analytical curvature laws.
 \end{proposition}

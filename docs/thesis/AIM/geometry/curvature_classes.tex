@@ -1,0 +1,412 @@
+% geometry/curvature_classes.tex
+
+\chapter{Curvature Classes}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Not all curvature laws possess the same geometric, dynamic, or numerical
+properties.
+\end{remark}
+
+\begin{remark}
+Within AIM, curvature laws are therefore classified according to:
+\begin{itemize}
+\item continuity,
+\item differentiability,
+\item boundedness,
+\item realization behaviour,
+\item and operational suitability.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This classification forms the basis for:
+\begin{itemize}
+\item transition evaluation,
+\item runtime robustness,
+\item realization analysis,
+\item and optimization strategies.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Basic Curvature Classes}
+% ============================================================
+
+\subsection{Constant Curvature}
+
+\begin{definition}[Constant curvature]
+A curvature law is constant if:
+\[
+\kappa(s)=\kappa_0.
+\]
+\end{definition}
+
+\begin{remark}
+Special cases:
+\begin{itemize}
+\item \(\kappa_0=0\): straight line,
+\item \(\kappa_0\neq 0\): circular arc.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Piecewise Constant Curvature}
+
+\begin{definition}[Piecewise constant curvature]
+A curvature law is piecewise constant if:
+\[
+\kappa(s)
+=
+\kappa_i
+\]
+on subintervals \(I_i\).
+\end{definition}
+
+\begin{remark}
+This corresponds to classical tangent--arc railway geometry.
+\end{remark}
+
+% ============================================================
+\section{Continuity Classes}
+% ============================================================
+
+\subsection{\texorpdfstring{$C^0$}{C0} Curvature}
+
+\begin{definition}[\(C^0\)-continuous curvature]
+A curvature law belongs to \(C^0\) if:
+\[
+\kappa(s)
+\]
+is continuous.
+\end{definition}
+
+\begin{remark}
+Continuous curvature eliminates curvature jumps.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{\texorpdfstring{$C^1$}{C1} Curvature}
+
+\begin{definition}[\(C^1\)-continuous curvature]
+A curvature law belongs to \(C^1\) if:
+\[
+\kappa'(s)
+\]
+exists and is continuous.
+\end{definition}
+
+\begin{remark}
+This improves dynamic smoothness and realization behaviour.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{\texorpdfstring{$C^2$}{C2} Curvature}
+
+\begin{definition}[\(C^2\)-continuous curvature]
+A curvature law belongs to \(C^2\) if:
+\[
+\kappa''(s)
+\]
+exists and is continuous.
+\end{definition}
+
+\begin{remark}
+Higher continuity reduces excitation effects and numerical instability.
+\end{remark}
+
+% ============================================================
+\section{Boundedness Classes}
+% ============================================================
+
+\subsection{Bounded Curvature}
+
+\begin{definition}[Bounded curvature]
+A curvature law is bounded if:
+\[
+|\kappa(s)|
+\le
+\kappa_{\max}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Bounded Curvature Gradient}
+
+\begin{definition}[Bounded curvature gradient]
+A curvature law has bounded curvature gradient if:
+\[
+|\kappa'(s)|
+\le
+\eta_{\max}.
+\]
+\end{definition}
+
+\begin{remark}
+This is closely related to jerk limitations in railway dynamics.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{Bounded Higher Derivatives}
+
+\begin{definition}[Bounded higher derivatives]
+Higher-order boundedness conditions include:
+\[
+|\kappa''(s)|<\infty,
+\qquad
+|\kappa'''(s)|<\infty.
+\]
+\end{definition}
+
+% ============================================================
+\section{Transition Classes}
+% ============================================================
+
+\subsection{Monotone Transitions}
+
+\begin{definition}[Monotone transition]
+A transition curvature law is monotone if:
+\[
+\kappa'(s)
+\]
+does not change sign.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Symmetric Transitions}
+
+\begin{definition}[Symmetric transition]
+A transition law is symmetric if:
+\[
+\kappa(s)
+=
+\kappa(L-s).
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Asymmetric Transitions}
+
+\begin{definition}[Asymmetric transition]
+A transition law is asymmetric if symmetry is intentionally violated.
+\end{definition}
+
+\begin{remark}
+Asymmetric transitions may appear in:
+\begin{itemize}
+\item constrained engineering situations,
+\item realization-aware optimization,
+\item and vehicle-dynamics optimization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Analytical Classes}
+% ============================================================
+
+\subsection{Polynomial Curvature Laws}
+
+\begin{definition}[Polynomial curvature]
+A polynomial curvature law satisfies:
+\[
+\kappa(s)
+=
+\sum_{i=0}^n a_i s^i.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Trigonometric Curvature Laws}
+
+\begin{definition}[Trigonometric curvature]
+A trigonometric curvature law contains sinusoidal components.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Lookup-Based Curvature Laws}
+
+\begin{definition}[Lookup-based curvature]
+A lookup-based curvature law is defined by sampled or tabulated
+representations together with interpolation rules.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Hybrid Curvature Laws}
+
+\begin{definition}[Hybrid curvature law]
+A hybrid curvature law combines:
+\begin{itemize}
+\item parametric structure,
+\item sampled corrections,
+\item and local refinement.
+\end{itemize}
+\end{definition}
+
+% ============================================================
+\section{Sparse Curvature Classes}
+% ============================================================
+
+\begin{definition}[Sparse curvature representation]
+A sparse curvature model represents geometry through:
+\begin{itemize}
+\item fixed curvature elements,
+\item transition elements,
+\item and compact parameter sets.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Sparse classes emphasize:
+\begin{itemize}
+\item compactness,
+\item runtime efficiency,
+\item and reconstruction stability.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Operational Classes}
+% ============================================================
+
+\subsection{Dynamically Smooth Curvature}
+
+\begin{definition}[Dynamically smooth curvature]
+A curvature law is dynamically smooth if:
+\begin{itemize}
+\item jerk remains bounded,
+\item cant-rate remains admissible,
+\item and high-frequency excitation is limited.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Realization-Stable Curvature}
+
+\begin{definition}[Realization-stable curvature]
+A curvature law is realization-stable if:
+\begin{itemize}
+\item realization preserves its dominant structure,
+\item and construction processes do not introduce instability.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Runtime-Stable Curvature}
+
+\begin{definition}[Runtime-stable curvature]
+A curvature law is runtime-stable if:
+\begin{itemize}
+\item projection remains numerically stable,
+\item frame evaluation remains continuous,
+\item and reconstruction behaves robustly.
+\end{itemize}
+\end{definition}
+
+% ============================================================
+\section{Frequency Classes}
+% ============================================================
+
+\subsection{Low-Frequency Curvature}
+
+\begin{definition}[Low-frequency curvature]
+Low-frequency curvature components determine large-scale geometric
+behaviour.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{High-Frequency Curvature}
+
+\begin{definition}[High-frequency curvature]
+High-frequency curvature components influence:
+\begin{itemize}
+\item realization sensitivity,
+\item dynamic roughness,
+\item and numerical instability.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{proposition}[Spectral realization principle]
+High-frequency curvature components are attenuated by realization.
+\end{proposition}
+
+% ============================================================
+\section{Admissibility}
+% ============================================================
+
+\begin{definition}[Admissible curvature law]
+A curvature law is admissible if it satisfies:
+\begin{itemize}
+\item geometric constraints,
+\item realization constraints,
+\item operational constraints,
+\item and numerical stability conditions.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Admissibility depends on:
+\begin{itemize}
+\item vehicle dynamics,
+\item realization processes,
+\item standards,
+\item and runtime requirements.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Different curvature classes correspond to fundamentally different
+geometric, operational, and realization behaviours.
+\end{proposition}
+
+\begin{proposition}
+Within AIM, railway alignment quality is primarily characterized in
+curvature space rather than position space.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Curvature classes provide the structural classification framework of
+AIM geometry.
+
+They connect:
+\begin{itemize}
+\item continuity,
+\item realization behaviour,
+\item runtime stability,
+\item dynamic smoothness,
+\item and optimization suitability.
+\end{itemize}
+
+Within AIM, transition curves are therefore interpreted not merely as
+geometric entities, but as members of specific curvature classes with
+distinct operational properties.
+\end{summary}
