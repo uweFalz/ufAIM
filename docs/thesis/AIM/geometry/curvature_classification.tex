@@ -2,6 +2,8 @@
 
 \chapter{Curvature Classification}
 
+\label{chap:curvature-classification}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
@@ -20,6 +22,7 @@ intrinsically within curvature space.
 This allows classification based on:
 \begin{itemize}
 \item continuity,
+\item curvature behaviour,
 \item dynamics,
 \item realization behaviour,
 \item spectral structure,
@@ -33,28 +36,36 @@ Curvature classification therefore becomes a structural interpretation
 framework rather than merely a catalogue of curve formulas.
 \end{remark}
 
+\begin{principle}[Classification as interpretation]
+\label{princ:classification-as-interpretation}
+Within AIM, classification is not a naming scheme for curve formulas.
+It is an interpretation layer for curvature behaviour.
+\end{principle}
+
 % ============================================================
 \section{Classification Principle}
 % ============================================================
 
 \begin{principle}[Intrinsic classification principle]
+\label{princ:intrinsic-classification}
 Within AIM, alignments are classified by intrinsic curvature behaviour
 rather than by reconstructed position geometry.
 \end{principle}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Two geometrically similar curves in position space may possess very
 different curvature behaviour.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Conversely, geometrically different realizations may belong to the same
 curvature class if their intrinsic curvature evolution behaves
 equivalently.
+\end{remark}
+
+\begin{remark}
+Classification is therefore performed in curvature space before it is
+interpreted in position space.
 \end{remark}
 
 % ============================================================
@@ -64,6 +75,7 @@ equivalently.
 \subsection{\texorpdfstring{$G^0$}{G0} Geometry}
 
 \begin{definition}[\(G^0\)-continuous geometry]
+\label{def:g0-geometry}
 A geometry is \(G^0\)-continuous if position is continuous.
 \end{definition}
 
@@ -72,6 +84,7 @@ A geometry is \(G^0\)-continuous if position is continuous.
 \subsection{\texorpdfstring{$G^1$}{G1} Geometry}
 
 \begin{definition}[\(G^1\)-continuous geometry]
+\label{def:g1-geometry}
 A geometry is \(G^1\)-continuous if tangent direction is continuous.
 \end{definition}
 
@@ -80,10 +93,9 @@ A geometry is \(G^1\)-continuous if tangent direction is continuous.
 \subsection{\texorpdfstring{$G^2$}{G2} Geometry}
 
 \begin{definition}[\(G^2\)-continuous geometry]
+\label{def:g2-geometry}
 A geometry is \(G^2\)-continuous if curvature is continuous.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Within railway alignment modelling, \(G^2\)-continuity is often the
@@ -95,18 +107,23 @@ minimal requirement for dynamically acceptable transitions.
 \subsection{\texorpdfstring{$G^3$}{G3} Geometry}
 
 \begin{definition}[\(G^3\)-continuous geometry]
+\label{def:g3-geometry}
 A geometry is \(G^3\)-continuous if curvature gradient is continuous.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Higher continuity classes improve:
 \begin{itemize}
 \item jerk behaviour,
 \item realization smoothness,
-\item and runtime stability.
+\item runtime stability,
+\item and vehicle response.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Continuity classification bridges classical geometry notation with
+curvature-space interpretation.
 \end{remark}
 
 % ============================================================
@@ -116,6 +133,7 @@ Higher continuity classes improve:
 \subsection{Constant Curvature Class}
 
 \begin{definition}[Constant curvature class]
+\label{def:constant-curvature-classification}
 A curvature law belongs to the constant class if:
 \[
 \kappa(s)=\kappa_0.
@@ -127,13 +145,12 @@ A curvature law belongs to the constant class if:
 \subsection{Linear Curvature Class}
 
 \begin{definition}[Linear curvature class]
+\label{def:linear-curvature-class}
 A curvature law belongs to the linear class if:
 \[
 \kappa(s)=a s+b.
 \]
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 The classical clothoid belongs to this class.
@@ -144,6 +161,7 @@ The classical clothoid belongs to this class.
 \subsection{Polynomial Curvature Class}
 
 \begin{definition}[Polynomial curvature class]
+\label{def:polynomial-curvature-class}
 A curvature law belongs to the polynomial class if:
 \[
 \kappa(s)
@@ -157,8 +175,20 @@ A curvature law belongs to the polynomial class if:
 \subsection{Trigonometric Curvature Class}
 
 \begin{definition}[Trigonometric curvature class]
+\label{def:trigonometric-curvature-class}
 A curvature law belongs to the trigonometric class if it contains
-sinusoidal components.
+sinusoidal or cosine-based components.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\subsection{Lookup-Based Curvature Class}
+
+\begin{definition}[Lookup-based curvature class]
+\label{def:lookup-curvature-class}
+A curvature law belongs to the lookup-based class if it is defined by
+sampled or tabulated curvature values together with interpolation and
+reconstruction rules.
 \end{definition}
 
 % ------------------------------------------------------------
@@ -166,10 +196,12 @@ sinusoidal components.
 \subsection{Hybrid Curvature Class}
 
 \begin{definition}[Hybrid curvature class]
+\label{def:hybrid-curvature-class}
 A hybrid curvature law combines:
 \begin{itemize}
 \item parametric structure,
 \item lookup structure,
+\item measured data,
 \item and sampled corrections.
 \end{itemize}
 \end{definition}
@@ -181,38 +213,46 @@ A hybrid curvature law combines:
 \subsection{Symmetric Transitions}
 
 \begin{definition}[Symmetric transition]
-A transition is symmetric if:
-\[
-\kappa(s)=\kappa(L-s).
-\]
+\label{def:classification-symmetric-transition}
+A normalized transition is symmetric if its curvature evolution is
+symmetric with respect to the midpoint of the normalized interval.
 \end{definition}
+
+\begin{remark}
+For transition comparison, symmetry should usually be evaluated in
+normalized transition space rather than in raw physical coordinates.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Antisymmetric Structure}
 
 \begin{definition}[Antisymmetric transition]
-A transition is antisymmetric if:
-\[
-\kappa(s)=-\kappa(L-s).
-\]
+\label{def:classification-antisymmetric-transition}
+A transition has antisymmetric structure if its deviation from a
+reference or midpoint value changes sign under midpoint reflection.
 \end{definition}
+
+\begin{remark}
+Antisymmetry is especially useful when analysing centred transition
+shape functions or derivative behaviour.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Asymmetric Transitions}
 
 \begin{definition}[Asymmetric transition]
+\label{def:classification-asymmetric-transition}
 A transition is asymmetric if no symmetry condition is imposed.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Asymmetry may arise intentionally through:
 \begin{itemize}
 \item realization-aware design,
 \item vehicle-dynamics optimization,
+\item topology constraints,
 \item or local engineering constraints.
 \end{itemize}
 \end{remark}
@@ -224,6 +264,7 @@ Asymmetry may arise intentionally through:
 \subsection{Bounded Gradient Class}
 
 \begin{definition}[Bounded gradient class]
+\label{def:bounded-gradient-class}
 A curvature law belongs to the bounded-gradient class if:
 \[
 |\kappa'(s)|
@@ -237,6 +278,7 @@ A curvature law belongs to the bounded-gradient class if:
 \subsection{Bounded Higher-Derivative Class}
 
 \begin{definition}[Bounded higher-derivative class]
+\label{def:bounded-higher-derivative-class}
 A curvature law belongs to this class if:
 \[
 |\kappa''(s)|<\infty,
@@ -245,14 +287,13 @@ A curvature law belongs to this class if:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 These classes influence:
 \begin{itemize}
 \item dynamic smoothness,
 \item numerical stability,
-\item and realization robustness.
+\item realization robustness,
+\item and optimization conditioning.
 \end{itemize}
 \end{remark}
 
@@ -263,35 +304,45 @@ These classes influence:
 \subsection{Low-Frequency Structures}
 
 \begin{definition}[Low-frequency curvature class]
+\label{def:low-frequency-curvature-class}
 Low-frequency curvature structures are dominated by slowly varying
 curvature evolution.
 \end{definition}
+
+\begin{remark}
+Low-frequency structure usually determines the large-scale geometric
+shape of the alignment.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{High-Frequency Structures}
 
 \begin{definition}[High-frequency curvature class]
-High-frequency curvature structures contain rapidly oscillating
-components.
+\label{def:high-frequency-curvature-class}
+High-frequency curvature structures contain rapidly varying or
+oscillating components.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 High-frequency structures tend to:
 \begin{itemize}
 \item amplify realization sensitivity,
 \item increase dynamic roughness,
+\item increase measurement sensitivity,
 \item and reduce numerical stability.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{proposition}[Spectral realization principle]
+\label{prop:classification-spectral-realization}
 Realization suppresses high-frequency curvature components.
 \end{proposition}
+
+\begin{remark}
+Spectral classification therefore links transition theory with physical
+realization behaviour.
+\end{remark}
 
 % ============================================================
 \section{Realization Classification}
@@ -300,9 +351,11 @@ Realization suppresses high-frequency curvature components.
 \subsection{Realization-Stable Class}
 
 \begin{definition}[Realization-stable class]
+\label{def:realization-stable-class}
 A transition belongs to the realization-stable class if:
 \begin{itemize}
 \item dominant curvature structure is preserved under realization,
+\item low-frequency behaviour remains identifiable,
 \item and realization does not introduce instability.
 \end{itemize}
 \end{definition}
@@ -312,11 +365,15 @@ A transition belongs to the realization-stable class if:
 \subsection{Realization-Sensitive Class}
 
 \begin{definition}[Realization-sensitive class]
-A transition belongs to the realization-sensitive class if:
-\begin{itemize}
-\item small realization perturbations strongly alter curvature behaviour.
-\end{itemize}
+\label{def:realization-sensitive-class}
+A transition belongs to the realization-sensitive class if small
+realization perturbations strongly alter curvature behaviour.
 \end{definition}
+
+\begin{remark}
+Realization-sensitive transitions may be mathematically valid but
+operationally undesirable.
+\end{remark}
 
 % ============================================================
 \section{Runtime Classification}
@@ -325,9 +382,11 @@ A transition belongs to the realization-sensitive class if:
 \subsection{Projection-Stable Class}
 
 \begin{definition}[Projection-stable class]
+\label{def:projection-stable-class}
 A curvature structure is projection-stable if:
 \begin{itemize}
 \item world-to-track projection remains numerically robust,
+\item local inverse problems remain well-conditioned,
 \item and ambiguity remains controllable.
 \end{itemize}
 \end{definition}
@@ -337,11 +396,13 @@ A curvature structure is projection-stable if:
 \subsection{Runtime-Smooth Class}
 
 \begin{definition}[Runtime-smooth class]
+\label{def:runtime-smooth-class}
 A curvature structure is runtime-smooth if:
 \begin{itemize}
 \item frame evaluation remains continuous,
+\item pose reconstruction remains robust,
 \item visualization remains stable,
-\item and runtime operators behave robustly.
+\item and runtime operators behave predictably.
 \end{itemize}
 \end{definition}
 
@@ -352,6 +413,7 @@ A curvature structure is runtime-smooth if:
 \subsection{Comfort-Oriented Class}
 
 \begin{definition}[Comfort-oriented class]
+\label{def:comfort-oriented-class}
 A transition belongs to the comfort-oriented class if:
 \begin{itemize}
 \item jerk remains low,
@@ -365,11 +427,13 @@ A transition belongs to the comfort-oriented class if:
 \subsection{Realization-Oriented Class}
 
 \begin{definition}[Realization-oriented class]
+\label{def:realization-oriented-class}
 A transition belongs to the realization-oriented class if:
 \begin{itemize}
 \item construction robustness is prioritized,
 \item machine realization remains stable,
-\item and maintenance sensitivity is reduced.
+\item maintenance sensitivity is reduced,
+\item and physical filtering preserves the intended behaviour.
 \end{itemize}
 \end{definition}
 
@@ -378,10 +442,12 @@ A transition belongs to the realization-oriented class if:
 \subsection{Optimization-Oriented Class}
 
 \begin{definition}[Optimization-oriented class]
+\label{def:optimization-oriented-class}
 A transition belongs to the optimization-oriented class if:
 \begin{itemize}
 \item parameterization is numerically stable,
 \item gradients remain well-conditioned,
+\item constraints are expressible,
 \item and sparse representation is efficient.
 \end{itemize}
 \end{definition}
@@ -391,21 +457,58 @@ A transition belongs to the optimization-oriented class if:
 % ============================================================
 
 \begin{definition}[Transition family classification]
+\label{def:transition-family-classification}
 Transition families may be classified according to:
 \begin{itemize}
+\item analytical form,
 \item continuity order,
+\item derivative behaviour,
 \item spectral behaviour,
 \item realization behaviour,
 \item symmetry,
+\item runtime stability,
 \item and operational suitability.
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Thus, transition classification becomes multidimensional rather than
 formula-based.
+\end{remark}
+
+\begin{remark}
+A single transition family may be favourable in one classification axis
+and unfavourable in another.
+\end{remark}
+
+% ============================================================
+\section{Classification Vectors}
+% ============================================================
+
+\begin{definition}[Classification vector]
+\label{def:classification-vector}
+A transition may be assigned a classification vector:
+\[
+\chi(T)
+=
+(
+\chi_{\mathrm{cont}},
+\chi_{\mathrm{deriv}},
+\chi_{\mathrm{spec}},
+\chi_{\mathrm{real}},
+\chi_{\mathrm{run}},
+\chi_{\mathrm{op}}
+),
+\]
+where the components describe continuity, derivative behaviour,
+spectral structure, realization behaviour, runtime stability, and
+operational suitability.
+\end{definition}
+
+\begin{remark}
+The classification vector is not intended as a rigid taxonomy. It is a
+structured way to compare transition families across multiple relevant
+dimensions.
 \end{remark}
 
 % ============================================================
@@ -423,8 +526,12 @@ geometry alone.
 \end{proposition}
 
 \begin{proposition}
-Realization, runtime stability, dynamics, and optimization therefore
-require classification directly in curvature space.
+Realization, runtime stability, dynamics, and optimization require
+classification directly in curvature space.
+\end{proposition}
+
+\begin{proposition}
+Transition taxonomy in AIM is multidimensional and context-dependent.
 \end{proposition}
 
 % ============================================================
@@ -438,11 +545,14 @@ of AIM geometry.
 Within this framework:
 \begin{itemize}
 \item transitions are classified intrinsically,
+\item formula names are secondary to curvature behaviour,
 \item realization behaviour becomes analyzable,
 \item runtime robustness becomes class-dependent,
+\item operational suitability becomes comparable,
 \item and optimization acts directly on curvature structures.
 \end{itemize}
 
 This establishes curvature space as the primary classification domain of
-railway alignment geometry.
+railway alignment geometry and provides the basis for a taxonomy of
+transition families.
 \end{summary}

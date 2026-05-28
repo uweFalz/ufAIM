@@ -2,13 +2,15 @@
 
 \chapter{Curvature Classes}
 
+\label{chap:curvature-classes}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
 
 \begin{remark}
-Not all curvature laws possess the same geometric, dynamic, or numerical
-properties.
+Not all curvature laws possess the same geometric, dynamic, numerical,
+or physical properties.
 \end{remark}
 
 \begin{remark}
@@ -17,7 +19,9 @@ Within AIM, curvature laws are therefore classified according to:
 \item continuity,
 \item differentiability,
 \item boundedness,
+\item transition behaviour,
 \item realization behaviour,
+\item runtime stability,
 \item and operational suitability.
 \end{itemize}
 \end{remark}
@@ -28,9 +32,16 @@ This classification forms the basis for:
 \item transition evaluation,
 \item runtime robustness,
 \item realization analysis,
+\item admissibility checks,
 \item and optimization strategies.
 \end{itemize}
 \end{remark}
+
+\begin{principle}[Curvature classification principle]
+\label{princ:curvature-classification}
+Within AIM, railway alignment elements are classified primarily by their
+curvature behaviour rather than by their visual position-space shape.
+\end{principle}
 
 % ============================================================
 \section{Basic Curvature Classes}
@@ -39,6 +50,7 @@ This classification forms the basis for:
 \subsection{Constant Curvature}
 
 \begin{definition}[Constant curvature]
+\label{def:constant-curvature-class}
 A curvature law is constant if:
 \[
 \kappa(s)=\kappa_0.
@@ -46,11 +58,16 @@ A curvature law is constant if:
 \end{definition}
 
 \begin{remark}
-Special cases:
+Special cases are:
 \begin{itemize}
 \item \(\kappa_0=0\): straight line,
 \item \(\kappa_0\neq 0\): circular arc.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Constant curvature forms the fixed-element basis of classical railway
+geometry.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -58,6 +75,7 @@ Special cases:
 \subsection{Piecewise Constant Curvature}
 
 \begin{definition}[Piecewise constant curvature]
+\label{def:piecewise-constant-curvature}
 A curvature law is piecewise constant if:
 \[
 \kappa(s)
@@ -71,6 +89,11 @@ on subintervals \(I_i\).
 This corresponds to classical tangent--arc railway geometry.
 \end{remark}
 
+\begin{remark}
+Piecewise constant curvature is geometrically simple, but curvature
+jumps are dynamically and operationally problematic.
+\end{remark}
+
 % ============================================================
 \section{Continuity Classes}
 % ============================================================
@@ -78,6 +101,7 @@ This corresponds to classical tangent--arc railway geometry.
 \subsection{\texorpdfstring{$C^0$}{C0} Curvature}
 
 \begin{definition}[\(C^0\)-continuous curvature]
+\label{def:c0-curvature}
 A curvature law belongs to \(C^0\) if:
 \[
 \kappa(s)
@@ -94,6 +118,7 @@ Continuous curvature eliminates curvature jumps.
 \subsection{\texorpdfstring{$C^1$}{C1} Curvature}
 
 \begin{definition}[\(C^1\)-continuous curvature]
+\label{def:c1-curvature}
 A curvature law belongs to \(C^1\) if:
 \[
 \kappa'(s)
@@ -102,7 +127,8 @@ exists and is continuous.
 \end{definition}
 
 \begin{remark}
-This improves dynamic smoothness and realization behaviour.
+This improves dynamic smoothness, realization behaviour, and numerical
+robustness.
 \end{remark}
 
 % ------------------------------------------------------------
@@ -110,6 +136,7 @@ This improves dynamic smoothness and realization behaviour.
 \subsection{\texorpdfstring{$C^2$}{C2} Curvature}
 
 \begin{definition}[\(C^2\)-continuous curvature]
+\label{def:c2-curvature}
 A curvature law belongs to \(C^2\) if:
 \[
 \kappa''(s)
@@ -118,7 +145,14 @@ exists and is continuous.
 \end{definition}
 
 \begin{remark}
-Higher continuity reduces excitation effects and numerical instability.
+Higher continuity reduces excitation effects, numerical instability, and
+unwanted high-frequency behaviour.
+\end{remark}
+
+\begin{remark}
+In AIM, continuity class is not merely a mathematical property. It is an
+indicator for dynamic quality, runtime stability, and realization
+robustness.
 \end{remark}
 
 % ============================================================
@@ -128,6 +162,7 @@ Higher continuity reduces excitation effects and numerical instability.
 \subsection{Bounded Curvature}
 
 \begin{definition}[Bounded curvature]
+\label{def:bounded-curvature}
 A curvature law is bounded if:
 \[
 |\kappa(s)|
@@ -136,11 +171,16 @@ A curvature law is bounded if:
 \]
 \end{definition}
 
+\begin{remark}
+Bounded curvature corresponds to a minimum admissible radius.
+\end{remark}
+
 % ------------------------------------------------------------
 
 \subsection{Bounded Curvature Gradient}
 
 \begin{definition}[Bounded curvature gradient]
+\label{def:bounded-curvature-gradient}
 A curvature law has bounded curvature gradient if:
 \[
 |\kappa'(s)|
@@ -158,6 +198,7 @@ This is closely related to jerk limitations in railway dynamics.
 \subsection{Bounded Higher Derivatives}
 
 \begin{definition}[Bounded higher derivatives]
+\label{def:bounded-higher-curvature-derivatives}
 Higher-order boundedness conditions include:
 \[
 |\kappa''(s)|<\infty,
@@ -166,6 +207,11 @@ Higher-order boundedness conditions include:
 \]
 \end{definition}
 
+\begin{remark}
+Higher-order boundedness becomes relevant for realization behaviour,
+vehicle response, and transition-family comparison.
+\end{remark}
+
 % ============================================================
 \section{Transition Classes}
 % ============================================================
@@ -173,6 +219,7 @@ Higher-order boundedness conditions include:
 \subsection{Monotone Transitions}
 
 \begin{definition}[Monotone transition]
+\label{def:monotone-transition}
 A transition curvature law is monotone if:
 \[
 \kappa'(s)
@@ -180,24 +227,37 @@ A transition curvature law is monotone if:
 does not change sign.
 \end{definition}
 
+\begin{remark}
+Monotone transitions represent direct curvature change between two
+curvature states.
+\end{remark}
+
 % ------------------------------------------------------------
 
 \subsection{Symmetric Transitions}
 
 \begin{definition}[Symmetric transition]
-A transition law is symmetric if:
-\[
-\kappa(s)
-=
-\kappa(L-s).
-\]
+\label{def:symmetric-transition}
+A normalized transition law is symmetric if its curvature evolution is
+symmetric with respect to the midpoint of the transition interval.
 \end{definition}
+
+\begin{remark}
+For normalized transition coordinates \(w\in[0,1]\), this may be
+expressed by a symmetry relation of the transition shape function.
+\end{remark}
+
+\begin{remark}
+Symmetry is not an absolute requirement, but it provides a useful
+classification property.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Asymmetric Transitions}
 
 \begin{definition}[Asymmetric transition]
+\label{def:asymmetric-transition}
 A transition law is asymmetric if symmetry is intentionally violated.
 \end{definition}
 
@@ -206,7 +266,8 @@ Asymmetric transitions may appear in:
 \begin{itemize}
 \item constrained engineering situations,
 \item realization-aware optimization,
-\item and vehicle-dynamics optimization.
+\item vehicle-dynamics optimization,
+\item and topology-constrained alignments.
 \end{itemize}
 \end{remark}
 
@@ -217,6 +278,7 @@ Asymmetric transitions may appear in:
 \subsection{Polynomial Curvature Laws}
 
 \begin{definition}[Polynomial curvature]
+\label{def:polynomial-curvature}
 A polynomial curvature law satisfies:
 \[
 \kappa(s)
@@ -225,41 +287,68 @@ A polynomial curvature law satisfies:
 \]
 \end{definition}
 
+\begin{remark}
+Polynomial curvature laws are useful because derivatives and integrals
+can often be handled systematically.
+\end{remark}
+
 % ------------------------------------------------------------
 
 \subsection{Trigonometric Curvature Laws}
 
 \begin{definition}[Trigonometric curvature]
-A trigonometric curvature law contains sinusoidal components.
+\label{def:trigonometric-curvature}
+A trigonometric curvature law contains sinusoidal or cosine-based
+components.
 \end{definition}
+
+\begin{remark}
+Trigonometric curvature laws are useful for smooth transition behaviour
+and frequency-oriented interpretation.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Lookup-Based Curvature Laws}
 
 \begin{definition}[Lookup-based curvature]
+\label{def:lookup-based-curvature}
 A lookup-based curvature law is defined by sampled or tabulated
 representations together with interpolation rules.
 \end{definition}
+
+\begin{remark}
+Lookup-based laws allow practical inclusion of transition families or
+realization effects that are not conveniently represented by a simple
+closed formula.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Hybrid Curvature Laws}
 
 \begin{definition}[Hybrid curvature law]
+\label{def:hybrid-curvature-law}
 A hybrid curvature law combines:
 \begin{itemize}
 \item parametric structure,
 \item sampled corrections,
+\item measured data,
 \item and local refinement.
 \end{itemize}
 \end{definition}
+
+\begin{remark}
+Hybrid laws are especially important for measured and realized railway
+states.
+\end{remark}
 
 % ============================================================
 \section{Sparse Curvature Classes}
 % ============================================================
 
 \begin{definition}[Sparse curvature representation]
+\label{def:sparse-curvature-class}
 A sparse curvature model represents geometry through:
 \begin{itemize}
 \item fixed curvature elements,
@@ -268,15 +357,19 @@ A sparse curvature model represents geometry through:
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Sparse classes emphasize:
 \begin{itemize}
 \item compactness,
 \item runtime efficiency,
-\item and reconstruction stability.
+\item reconstruction stability,
+\item and semantic clarity.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, sparse curvature classes are not merely storage formats.
+They define executable curvature programs.
 \end{remark}
 
 % ============================================================
@@ -286,10 +379,12 @@ Sparse classes emphasize:
 \subsection{Dynamically Smooth Curvature}
 
 \begin{definition}[Dynamically smooth curvature]
+\label{def:dynamically-smooth-curvature}
 A curvature law is dynamically smooth if:
 \begin{itemize}
 \item jerk remains bounded,
 \item cant-rate remains admissible,
+\item curvature variation is controlled,
 \item and high-frequency excitation is limited.
 \end{itemize}
 \end{definition}
@@ -299,23 +394,33 @@ A curvature law is dynamically smooth if:
 \subsection{Realization-Stable Curvature}
 
 \begin{definition}[Realization-stable curvature]
+\label{def:realization-stable-curvature}
 A curvature law is realization-stable if:
 \begin{itemize}
 \item realization preserves its dominant structure,
-\item and construction processes do not introduce instability.
+\item construction processes do not introduce instability,
+\item and its low-frequency behaviour remains identifiable after
+physical realization.
 \end{itemize}
 \end{definition}
+
+\begin{remark}
+Realization-stable curvature is a physical property, not merely an
+analytical smoothness property.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{Runtime-Stable Curvature}
 
 \begin{definition}[Runtime-stable curvature]
+\label{def:runtime-stable-curvature}
 A curvature law is runtime-stable if:
 \begin{itemize}
 \item projection remains numerically stable,
 \item frame evaluation remains continuous,
-\item and reconstruction behaves robustly.
+\item pose reconstruction behaves robustly,
+\item and local inverse problems remain well-conditioned.
 \end{itemize}
 \end{definition}
 
@@ -326,44 +431,56 @@ A curvature law is runtime-stable if:
 \subsection{Low-Frequency Curvature}
 
 \begin{definition}[Low-frequency curvature]
+\label{def:low-frequency-curvature}
 Low-frequency curvature components determine large-scale geometric
 behaviour.
 \end{definition}
+
+\begin{remark}
+These components are usually preserved by construction and maintenance
+processes.
+\end{remark}
 
 % ------------------------------------------------------------
 
 \subsection{High-Frequency Curvature}
 
 \begin{definition}[High-frequency curvature]
+\label{def:high-frequency-curvature}
 High-frequency curvature components influence:
 \begin{itemize}
 \item realization sensitivity,
 \item dynamic roughness,
+\item measurement sensitivity,
 \item and numerical instability.
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{proposition}[Spectral realization principle]
+\label{prop:curvature-classes-spectral-realization}
 High-frequency curvature components are attenuated by realization.
 \end{proposition}
+
+\begin{remark}
+This frequency-oriented classification connects curvature classes with
+the realization filter interpretation.
+\end{remark}
 
 % ============================================================
 \section{Admissibility}
 % ============================================================
 
 \begin{definition}[Admissible curvature law]
+\label{def:admissible-curvature-law}
 A curvature law is admissible if it satisfies:
 \begin{itemize}
 \item geometric constraints,
 \item realization constraints,
 \item operational constraints,
+\item dynamic constraints,
 \item and numerical stability conditions.
 \end{itemize}
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Admissibility depends on:
@@ -371,8 +488,40 @@ Admissibility depends on:
 \item vehicle dynamics,
 \item realization processes,
 \item standards,
-\item and runtime requirements.
+\item topology,
+\item runtime requirements,
+\item and intended operational use.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, admissibility is context-dependent.
+A curvature law may be analytically valid but operationally unsuitable
+or physically unstable under realization.
+\end{remark}
+
+% ============================================================
+\section{Classification versus Quality}
+% ============================================================
+
+\begin{remark}
+Classification does not automatically imply quality.
+\end{remark}
+
+\begin{remark}
+A highly smooth curvature law may still be unsuitable if it is:
+\begin{itemize}
+\item difficult to realize,
+\item dynamically unfavourable,
+\item numerically unstable,
+\item incompatible with topology,
+\item or unsuitable for the intended operation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, curvature quality is evaluated by the interaction of class,
+context, realization, and runtime behaviour.
 \end{remark}
 
 % ============================================================
@@ -381,7 +530,7 @@ Admissibility depends on:
 
 \begin{proposition}
 Different curvature classes correspond to fundamentally different
-geometric, operational, and realization behaviours.
+geometric, operational, runtime, and realization behaviours.
 \end{proposition}
 
 \begin{proposition}
@@ -389,17 +538,30 @@ Within AIM, railway alignment quality is primarily characterized in
 curvature space rather than position space.
 \end{proposition}
 
+\begin{proposition}
+Transition families are interpreted as structured subsets of curvature
+classes.
+\end{proposition}
+
+\begin{proposition}
+Admissibility is not a purely geometric property, but a combined
+geometric, dynamic, runtime, and realization property.
+\end{proposition}
+
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-Curvature classes provide the structural classification framework of
-AIM geometry.
+Curvature classes provide the structural classification framework of AIM
+geometry.
 
 They connect:
 \begin{itemize}
 \item continuity,
+\item differentiability,
+\item boundedness,
+\item transition behaviour,
 \item realization behaviour,
 \item runtime stability,
 \item dynamic smoothness,
@@ -409,4 +571,7 @@ They connect:
 Within AIM, transition curves are therefore interpreted not merely as
 geometric entities, but as members of specific curvature classes with
 distinct operational properties.
+
+This creates the bridge from intrinsic geometry to classification,
+realization analysis, runtime evaluation, and optimization.
 \end{summary}

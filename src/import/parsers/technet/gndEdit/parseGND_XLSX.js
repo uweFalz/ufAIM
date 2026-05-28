@@ -64,7 +64,12 @@
 // Nur "good" wird direkt als landFAT.coordGeom-Alignment ausgegeben.
 // "weak" / "reject" bleiben diagnostisch sichtbar.
 
-import * as XLSX from "sheetjs";
+import { readGndXlsxTables } from "./gnd/readGndXlsxTables.js";
+import { createGndDataset } from "./gnd/createGndDataset.js";
+import { createGndPadIndex } from "./gnd/createGndPadIndex.js";
+import { createGndEdgeIndex } from "./gnd/createGndEdgeIndex.js";
+
+// import * as XLSX from "sheetjs";
 import * as fat from "@kimport/landfat/landFatWriter.js";
 
 import {
@@ -111,31 +116,26 @@ const FAMILY_CONFIG = {
 export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 	const fileName = file?.name ?? "unknown.xlsx";
 
-	const arrayBuffer =
-	bytes instanceof Uint8Array
-	? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-	: bytes instanceof ArrayBuffer
-	? bytes
-	: file
-	? await file.arrayBuffer()
-	: null;
-
-	if (!arrayBuffer) {
-		throw new Error("parseGND_XLSX: missing bytes/arrayBuffer");
-	}
-
-	const wb = XLSX.read(arrayBuffer, {
-		type: "array",
-		cellDates: false,
-		raw: false,
+	const { workbookInfo, tables } = await readGndXlsxTables({
+		file,
+		bytes,
+		sheetNames: SHEET_NAMES,
 	});
 
-	const workbookInfo = summarizeWorkbook(wb);
+	const dataset = createGndDataset({
+		source: {
+			parserId: "gndEdit",
+			backend: "xlsx",
+			fileName,
+		},
+		workbookInfo,
+		tables,
+	});
 
 	const debugGndAnalysis =
-	context?.debugGndAnalysis === true ||
-	context?.debugImport === true ||
-	DEBUG_GND_ANALYSIS_DEFAULT;
+		context?.debugGndAnalysis === true ||
+		context?.debugImport === true ||
+		DEBUG_GND_ANALYSIS_DEFAULT;
 
 	if (debugGndAnalysis) {
 		console.groupCollapsed(`[GND/XLSX] workbook :: ${fileName}`);
@@ -144,8 +144,7 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 		console.groupEnd();
 	}
 
-	const sheets = readRelevantSheets(wb);
-	const model = buildAnalysisModel({ sheets });
+	const model = buildAnalysisModel({ sheets: dataset.tables });
 
 	if (debugGndAnalysis) {
 		logAnalysisToConsole(model, { fileName });
@@ -182,67 +181,6 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 }
 
 // -----------------------------------------------------------------------------
-// workbook / sheet loading
-// -----------------------------------------------------------------------------
-
-function summarizeWorkbook(wb) {
-	const sheetNames = Array.isArray(wb?.SheetNames) ? wb.SheetNames.slice() : [];
-	return { sheetNames, sheetCount: sheetNames.length };
-}
-
-function readRelevantSheets(wb) {
-	const out = {};
-	for (const name of Object.values(SHEET_NAMES)) {
-		const ws = wb?.Sheets?.[name] ?? null;
-		out[name] = ws ? sheetToObjects(ws, name) : [];
-	}
-	return out;
-}
-
-function sheetToObjects(ws, sheetName) {
-	const rows = XLSX.utils.sheet_to_json(ws, {
-		defval: null,
-		raw: false,
-		blankrows: false,
-	});
-
-	return rows.map((row, index) =>
-	normalizeRow(row, { sheetName, rowIndex: index + 2 })
-	);
-}
-
-function normalizeRow(row, { sheetName, rowIndex }) {
-	const out = {};
-	for (const [k, v] of Object.entries(row ?? {})) {
-		out[String(k ?? "").trim()] = normalizeCellValue(v);
-	}
-	out.__sheet = sheetName;
-	out.__rowIndex = rowIndex;
-	return out;
-}
-
-function normalizeCellValue(v) {
-	if (v == null) return null;
-
-	if (typeof v === "string") {
-		const s = v.trim();
-		if (!s) return null;
-
-		if (/^[+-]?\d+(?:[.,]\d+)?$/.test(s)) {
-			const n = Number(s.replace(",", "."));
-			if (Number.isFinite(n)) return n;
-		}
-
-		return s;
-	}
-
-	if (typeof v === "number") return Number.isFinite(v) ? v : null;
-	if (typeof v === "boolean") return v;
-
-	return v;
-}
-
-// -----------------------------------------------------------------------------
 // analysis model
 // -----------------------------------------------------------------------------
 
@@ -256,14 +194,14 @@ function buildAnalysisModel({ sheets }) {
 	const euRows = arr(sheets[SHEET_NAMES.EU]);
 	const ekRows = arr(sheets[SHEET_NAMES.EK]);
 
-	const padIndex = buildPadCandidateIndex({ ppRows, plRows, phRows });
+	const padIndex = createGndPadIndex({ ppRows, plRows, phRows });
 
-	const edgesByFamily = {
-		EL: buildEdgesFromSheet(elRows, "EL"),
-		EH: buildEdgesFromSheet(ehRows, "EH"),
-		EU: buildEdgesFromSheet(euRows, "EU"),
-		EK: buildEdgesFromSheet(ekRows, "EK"),
-	};
+	const edgesByFamily = createGndEdgeIndex({
+	elRows,
+	ehRows,
+	euRows,
+	ekRows,
+});
 
 	const sequenceSeedsByFamily = Object.fromEntries(
 	EDGE_FAMILIES.map((family) => [
@@ -380,151 +318,8 @@ function buildAnalysisModel({ sheets }) {
 }
 
 // -----------------------------------------------------------------------------
-// PAD candidate index / mini database
-// -----------------------------------------------------------------------------
-
-function buildPadCandidateIndex({ ppRows, plRows, phRows }) {
-	const index = Object.create(null);
-
-	for (const row of ppRows) {
-		const pad = readPad(row, "PAD");
-		if (!pad) continue;
-
-		const entry = ensurePadEntry(index, pad);
-
-		entry.ppRecords.push({
-			strecke: asTrimmedString(row.STRECKE ?? row.PSTRECKE),
-			strRikz: asTrimmedString(row.STRRIKZ ?? row.PSTRRIKZ),
-			station: asTrimmedString(row.STATION),
-			ref: refOf(row),
-		});
-
-		entry.refs.PP.push(refOf(row));
-	}
-
-	for (const row of plRows) {
-		const pad = readPad(row, "PAD");
-		if (!pad) continue;
-
-		const entry = ensurePadEntry(index, pad);
-
-		entry.plRecords.push({
-			lsys: asTrimmedString(row.LSYS),
-
-			// @baustelle [SURVEY-AXES]
-			// Vermessungswelt / Technet:
-			// Y = Easting / Rechtswert
-			// X = Northing / Hochwert
-			easting: toFiniteNumber(row.Y),
-			northing: toFiniteNumber(row.X),
-
-			ref: refOf(row),
-		});
-
-		entry.refs.PL.push(refOf(row));
-	}
-
-	for (const row of phRows) {
-		const pad = readPad(row, "PAD");
-		if (!pad) continue;
-
-		const entry = ensurePadEntry(index, pad);
-
-		entry.phRecords.push({
-			hsys: asTrimmedString(row.HSYS),
-			elevation: toFiniteNumber(row.H),
-			ref: refOf(row),
-		});
-
-		entry.refs.PH.push(refOf(row));
-	}
-
-	return index;
-}
-
-function ensurePadEntry(index, pad) {
-	if (!index[pad]) {
-		index[pad] = {
-			pad,
-			ppRecords: [],
-			plRecords: [],
-			phRecords: [],
-			refs: { PP: [], PL: [], PH: [] },
-		};
-	}
-	return index[pad];
-}
-
-// -----------------------------------------------------------------------------
 // edges / seeds
 // -----------------------------------------------------------------------------
-
-function buildEdgesFromSheet(rows, family) {
-	return arr(rows)
-	.map((row, i) => buildEdge(row, family, i))
-	.filter(Boolean);
-}
-
-function buildEdge(row, family, rowIndex) {
-	const padA = readPad(row, "PAD1");
-	const padB = readPad(row, "PAD2");
-
-	if (!padA || !padB) return null;
-
-	return {
-		id: `${family}_${rowIndex + 1}`,
-		family,
-		padA,
-		padB,
-		required: {
-			requiredLsys:
-			family === "EL" ? valOrNull(row.ELSYS)
-			: family === "EK" ? valOrNull(row.EKSYS)
-			: null,
-
-			requiredHsys:
-			family === "EH" ? valOrNull(row.EHSYS)
-			: null,
-		},
-
-		// @baustelle [TRA-LIKE-FIELDS]
-		// Diese Felder bilden den verteilten TRA-like-Kern von EL/EK.
-		typeCode:
-		family === "EL" ? toFiniteNumber(row.ELTYP)
-		: family === "EK" ? toFiniteNumber(row.EKTYP)
-		: null,
-
-		arcLength:
-		family === "EL" ? toFiniteNumber(row.ELPAR1)
-		: family === "EK" ? toFiniteNumber(row.EKPAR1)
-		: null,
-
-		radiusA:
-		family === "EL" ? toFiniteNumber(row.ELPAR2)
-		: family === "EK" ? toFiniteNumber(row.EKPAR2)
-		: null,
-
-		radiusE:
-		family === "EL" ? toFiniteNumber(row.ELPAR3)
-		: family === "EK" ? toFiniteNumber(row.EKPAR3)
-		: null,
-
-		direction:
-		family === "EL" ? toFiniteNumber(row.ELARIWI)
-		: family === "EK" ? toFiniteNumber(row.EKARIWI)
-		: null,
-
-		extras: {
-			rowRef: refOf(row),
-
-			// @baustelle [EK-KM-FIELDS]
-			// Für coordGeom aktuell noch nicht genutzt.
-			// Für spätere staEquation-/kmLine-Auswertung aber ausdrücklich mitgeführt.
-			kmStart: family === "EK" ? toFiniteNumber(row.EKAKM) : null,
-			kmEnd: family === "EK" ? toFiniteNumber(row.EKEKM) : null,
-		},
-	};
-}
 
 function buildSequenceSeed(edge, padIndex) {
 	const a = padIndex?.[edge.padA] ?? null;

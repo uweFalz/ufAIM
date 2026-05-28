@@ -2,6 +2,8 @@
 
 \chapter{Curvature Transitions}
 
+\label{chap:curvature-transitions}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
@@ -29,12 +31,19 @@ This shifts the interpretation:
 \end{itemize}
 \end{remark}
 
+\begin{principle}[Curvature-transition principle]
+\label{princ:curvature-transition}
+Within AIM, a transition curve is primarily a law of curvature evolution,
+not a coordinate-space interpolation object.
+\end{principle}
+
 % ============================================================
 \section{Transition Principle}
 % ============================================================
 
 \begin{definition}[Curvature transition]
-A curvature transition is a curvature law
+\label{def:curvature-transition}
+A curvature transition is a curvature law:
 \[
 \kappa(s)
 \]
@@ -46,21 +55,19 @@ connecting two curvature states:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 The transition determines:
 \begin{itemize}
 \item geometric smoothness,
 \item dynamic behaviour,
 \item realization stability,
+\item runtime robustness,
 \item and operational comfort.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{principle}[Transition principle]
+\label{princ:transition-principle}
 Within AIM, transition geometry is governed primarily by curvature
 evolution rather than by coordinate interpolation.
 \end{principle}
@@ -70,22 +77,20 @@ evolution rather than by coordinate interpolation.
 % ============================================================
 
 \begin{definition}[Normalized transition parameter]
+\label{def:normalized-transition-parameter}
 Transitions are commonly normalized to:
 \[
 w\in[0,1].
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{definition}[Normalized curvature law]
+\label{def:normalized-transition-law}
 A normalized transition law satisfies:
 \[
 \hat\kappa(w)\in[0,1].
 \]
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Normalization separates:
@@ -95,16 +100,21 @@ Normalization separates:
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 This enables:
 \begin{itemize}
 \item reusable transition families,
 \item family interpolation,
 \item lookup-based evaluation,
-\item and normalized optimization.
+\item normalized optimization,
+\item and compact sparse representation.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+A physical transition is obtained by scaling normalized curvature and
+normalized length to the actual curvature interval and physical
+arc-length.
 \end{remark}
 
 % ============================================================
@@ -112,11 +122,10 @@ This enables:
 % ============================================================
 
 \begin{definition}[Transition family]
+\label{def:transition-family}
 A transition family is a class of normalized curvature laws sharing
 common structural properties.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Examples include:
@@ -126,8 +135,14 @@ Examples include:
 \item trigonometric transitions,
 \item Bloss transitions,
 \item Vienna transitions,
+\item lookup-based transitions,
 \item and hybrid transition families.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, transition families are interpreted as structured regions or
+parameterized paths within normalized curvature space.
 \end{remark}
 
 % ============================================================
@@ -135,29 +150,39 @@ Examples include:
 % ============================================================
 
 \begin{definition}[Clothoid]
-The clothoid is defined by:
+\label{def:clothoid-transition}
+The clothoid is defined by linear curvature evolution:
 \[
 \kappa(s)
 =
-a s.
+a s + b.
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-The clothoid provides linear curvature evolution.
+In normalized form, the clothoid corresponds to:
+\[
+\hat\kappa(w)=w.
+\]
 \end{remark}
 
-% ------------------------------------------------------------
+\begin{remark}
+The clothoid provides constant curvature gradient.
+\end{remark}
 
 \begin{remark}
 Historically, the clothoid became dominant because:
 \begin{itemize}
 \item it is simple,
 \item analytically tractable,
+\item compatible with classical railway practice,
 \item and dynamically smoother than curvature jumps.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, the clothoid is not treated as the universal transition
+truth, but as one important member of curvature-transition space.
 \end{remark}
 
 % ============================================================
@@ -165,6 +190,7 @@ Historically, the clothoid became dominant because:
 % ============================================================
 
 \begin{definition}[Polynomial transition]
+\label{def:polynomial-transition}
 A polynomial transition satisfies:
 \[
 \kappa(s)
@@ -173,15 +199,19 @@ A polynomial transition satisfies:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Polynomial transitions allow:
 \begin{itemize}
 \item higher continuity,
 \item endpoint constraints,
+\item derivative constraints,
 \item and optimized dynamic behaviour.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Polynomial transitions are especially useful when smoothness conditions
+are imposed directly on curvature derivatives.
 \end{remark}
 
 % ============================================================
@@ -189,14 +219,19 @@ Polynomial transitions allow:
 % ============================================================
 
 \begin{definition}[Trigonometric transition]
-A trigonometric transition contains sinusoidal curvature components.
+\label{def:trigonometric-transition}
+A trigonometric transition contains sinusoidal or cosine-based curvature
+components.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 These transitions often provide smoother higher-order behaviour than
 low-degree polynomial transitions.
+\end{remark}
+
+\begin{remark}
+Trigonometric transitions are naturally connected to spectral
+interpretation of curvature space.
 \end{remark}
 
 % ============================================================
@@ -204,6 +239,7 @@ low-degree polynomial transitions.
 % ============================================================
 
 \begin{definition}[Half-wave transition]
+\label{def:half-wave-transition}
 A half-wave transition is a normalized curvature segment connecting:
 \[
 0 \rightarrow 1
@@ -213,8 +249,6 @@ or
 1 \rightarrow 0.
 \]
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Within AIM, many transition families are interpreted compositionally as:
@@ -227,15 +261,19 @@ Within AIM, many transition families are interpreted compositionally as:
 \]
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 This enables:
 \begin{itemize}
 \item modular transition construction,
 \item asymmetric transitions,
-\item and family interpolation.
+\item family interpolation,
+\item and transition deformation.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+The half-wave interpretation provides a common language for comparing
+classical transition families and newly constructed transition laws.
 \end{remark}
 
 % ============================================================
@@ -243,6 +281,7 @@ This enables:
 % ============================================================
 
 \begin{definition}[Curvature anchors]
+\label{def:curvature-anchors}
 Normalized transition families may define anchor values:
 \[
 0,
@@ -255,15 +294,20 @@ c_2,
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Anchors describe:
 \begin{itemize}
 \item transition partitioning,
 \item continuity conditions,
-\item and normalization structure.
+\item normalization structure,
+\item and family composition.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Curvature anchors make it possible to compare transition families by
+their internal curvature structure rather than by their external
+position-space appearance.
 \end{remark}
 
 % ============================================================
@@ -271,6 +315,7 @@ Anchors describe:
 % ============================================================
 
 \begin{definition}[Transition continuity]
+\label{def:transition-continuity}
 Transition quality depends on continuity of:
 \[
 \kappa(s),
@@ -281,16 +326,20 @@ Transition quality depends on continuity of:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Higher continuity improves:
 \begin{itemize}
 \item jerk behaviour,
 \item realization smoothness,
 \item runtime stability,
+\item vehicle response,
 \item and passenger comfort.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Continuity in position space alone is insufficient for evaluating
+transition quality.
 \end{remark}
 
 % ============================================================
@@ -298,20 +347,25 @@ Higher continuity improves:
 % ============================================================
 
 \begin{definition}[Sparse transition]
+\label{def:sparse-transition}
 A sparse transition representation stores:
 \begin{itemize}
 \item transition family identity,
 \item normalization parameters,
+\item curvature anchors,
 \item scaling parameters,
 \item and reconstruction rules.
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Within AIM, sparse transitions are interpreted as compact curvature
 operators rather than dense geometric curves.
+\end{remark}
+
+\begin{remark}
+A sparse transition therefore stores how curvature shall evolve, not a
+sampled polyline approximation of the resulting geometry.
 \end{remark}
 
 % ============================================================
@@ -319,15 +373,15 @@ operators rather than dense geometric curves.
 % ============================================================
 
 \begin{definition}[Lookup-based transition]
+\label{def:lookup-based-transition}
 A lookup-based transition uses:
 \begin{itemize}
 \item sampled normalized curvature,
 \item interpolation rules,
-\item and runtime reconstruction.
+\item derivative reconstruction,
+\item and runtime evaluation.
 \end{itemize}
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 This enables:
@@ -335,8 +389,15 @@ This enables:
 \item arbitrary transition families,
 \item experimentally designed transitions,
 \item realization-adapted transitions,
+\item vehicle-specific transitions,
 \item and runtime-efficient evaluation.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Lookup-based transitions are not a fallback for missing theory. They are
+a practical representation of transition laws in normalized curvature
+space.
 \end{remark}
 
 % ============================================================
@@ -344,6 +405,7 @@ This enables:
 % ============================================================
 
 \begin{definition}[Transition derivatives]
+\label{def:transition-derivatives}
 Important quantities include:
 \[
 \kappa'(s),
@@ -354,16 +416,20 @@ Important quantities include:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 These derivatives influence:
 \begin{itemize}
 \item jerk,
 \item dynamic smoothness,
 \item realization behaviour,
+\item vehicle response,
 \item and optimization stability.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Derivative behaviour is one of the main differences between transition
+families that may otherwise appear similar in position space.
 \end{remark}
 
 % ============================================================
@@ -371,29 +437,29 @@ These derivatives influence:
 % ============================================================
 
 \begin{definition}[Symmetric transition]
-A transition is symmetric if:
-\[
-\kappa(s)
-=
-\kappa(L-s).
-\]
+\label{def:transition-symmetry}
+A normalized transition is symmetric if its curvature evolution is
+symmetric with respect to the midpoint of the transition interval.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{definition}[Asymmetric transition]
+\label{def:transition-asymmetry}
 A transition is asymmetric if this symmetry is intentionally violated.
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Asymmetric transitions may improve:
 \begin{itemize}
 \item realization quality,
 \item vehicle dynamics,
-\item or geometric fitting.
+\item topology fitting,
+\item or geometric constraint satisfaction.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Symmetry is therefore a classification property, not a universal
+requirement.
 \end{remark}
 
 % ============================================================
@@ -405,23 +471,52 @@ Transitions may be interpreted spectrally through their curvature
 content.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 High-frequency curvature behaviour influences:
 \begin{itemize}
 \item realization sensitivity,
 \item machine smoothing,
+\item measurement sensitivity,
 \item and dynamic roughness.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{proposition}[Spectral transition principle]
+\label{prop:spectral-transition-principle}
 Transition quality depends not only on curvature continuity, but also on
 spectral behaviour within curvature space.
 \end{proposition}
+
+\begin{remark}
+This connects transition theory directly to realization-stable curvature
+and curvature bandwidth.
+\end{remark}
+
+% ============================================================
+\section{Transition Realization}
+% ============================================================
+
+\begin{remark}
+The transition that is designed is not necessarily the transition that
+is physically realized.
+\end{remark}
+
+\begin{remark}
+Realization may modify transition behaviour through:
+\begin{itemize}
+\item sampling,
+\item machine response,
+\item structural filtering,
+\item ballast mechanics,
+\item measurement feedback,
+\item and local correction limits.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, transition quality must be evaluated both in target curvature space
+and in expected realized curvature space.
+\end{remark}
 
 % ============================================================
 \section{Transition Optimization}
@@ -433,15 +528,29 @@ Within AIM, optimization acts primarily on:
 \item transition families,
 \item normalization structure,
 \item transition lengths,
+\item curvature anchors,
+\item derivative behaviour,
 \item and curvature evolution.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Thus, optimization is interpreted primarily as optimization in
 curvature-transition space rather than position space.
+\end{remark}
+
+\begin{remark}
+A realization-aware optimization may optimize not only the target
+transition law \(\kappa_{\mathrm{target}}\), but also the expected
+realized transition law:
+\[
+\kappa_{\mathrm{real}}
+=
+\mathcal R_{\kappa}
+(
+\kappa_{\mathrm{target}}
+).
+\]
 \end{remark}
 
 % ============================================================
@@ -458,8 +567,13 @@ curvature space.
 \end{proposition}
 
 \begin{proposition}
-Sparse transition models therefore represent compact transition
-operators rather than explicit geometric curves.
+Sparse transition models represent compact transition operators rather
+than explicit geometric curves.
+\end{proposition}
+
+\begin{proposition}
+Transition quality depends on curvature evolution, derivative behaviour,
+spectral content, runtime stability, and realization behaviour.
 \end{proposition}
 
 % ============================================================
@@ -474,11 +588,14 @@ Within this framework:
 \item transitions are interpreted as curvature evolution processes,
 \item sparse models become transition operators,
 \item normalized transition space enables reusable families,
+\item half-wave decomposition enables modular transition construction,
+\item lookup-based laws enable experimental and realization-aware
+transition design,
 \item and runtime systems reconstruct geometry dynamically from
 curvature structure.
 \end{itemize}
 
-This interpretation unifies transition theory, realization behaviour,
-runtime evaluation, and optimization within one intrinsic curvature
-framework.
+This interpretation unifies transition theory, curvature classification,
+realization behaviour, runtime evaluation, and optimization within one
+intrinsic curvature framework.
 \end{summary}

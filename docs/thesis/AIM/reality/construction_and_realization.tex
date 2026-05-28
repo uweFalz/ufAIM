@@ -30,6 +30,12 @@ A realistic modelling framework must therefore include an explicit
 realization layer between analytical design and built geometry.
 \end{remark}
 
+\begin{principle}[Realization principle]
+\label{princ:realization-principle}
+Within AIM, realization is treated as an operator layer transforming
+target alignment states into physically achievable railway states.
+\end{principle}
+
 \begin{figure}[h]
 \centering
 \begin{tikzpicture}[
@@ -102,6 +108,16 @@ The realized track should not be judged only by positional agreement,
 but also by preservation of curvature evolution.
 \end{remark}
 
+\begin{remark}
+Within AIM, realized geometry may be interpreted as:
+\[
+x_{\mathrm{real}}
+=
+\mathcal R(x_{\mathrm{target}}),
+\]
+where \(\mathcal R\) denotes the realization operator.
+\end{remark}
+
 % ============================================================
 \section{Realization Error}
 % ============================================================
@@ -110,6 +126,8 @@ but also by preservation of curvature evolution.
 \label{def:curvature-realization-error}
 A curvature-based realization error may be written as:
 \[
+E_{\kappa}
+=
 \int_0^L
 \bigl(\kappa_{\mathrm{real}}-\kappa_{\mathrm{target}}\bigr)^2
 \,\dd s.
@@ -120,6 +138,8 @@ A curvature-based realization error may be written as:
 \label{def:curvature-derivative-error}
 A higher-order realization error may be written as:
 \[
+E_{\kappa'}
+=
 \int_0^L
 \bigl(\kappa'_{\mathrm{real}}-\kappa'_{\mathrm{target}}\bigr)^2
 \,\dd s.
@@ -130,6 +150,17 @@ A higher-order realization error may be written as:
 These measures reflect that different transition families may be close
 in position space while differing significantly in curvature evolution
 and dynamic interpretation.
+\end{remark}
+
+\begin{remark}
+Realization error may therefore be evaluated in:
+\begin{itemize}
+\item position space,
+\item tangent space,
+\item curvature space,
+\item curvature-derivative space,
+\item and runtime pose3 space.
+\end{itemize}
 \end{remark}
 
 % ============================================================
@@ -156,7 +187,8 @@ The realized alignment may be reconstructed from these points using:
 \item piecewise linear interpolation,
 \item piecewise polynomial interpolation,
 \item spline-based reconstruction,
-\item or machine-specific reconstruction rules.
+\item machine-specific reconstruction rules,
+\item or sparse alignment reconstruction.
 \end{itemize}
 \end{remark}
 
@@ -328,6 +360,13 @@ K_{ij}
 This form is compatible with sparse numerical implementation.
 \end{remark}
 
+\begin{remark}
+The matrix \(K_{ij}\) should not be interpreted merely as numerical
+smoothing. It represents physical influence: machine action,
+track-bed response, sleeper spacing, stiffness, local constraints, and
+measurement feedback.
+\end{remark}
+
 % ============================================================
 \section{Filter Interpretation}
 % ============================================================
@@ -348,6 +387,29 @@ This explains why transition curves with similar low-order behaviour may
 become nearly indistinguishable in position space after realization,
 while still differing in curvature evolution and dynamic interpretation.
 \end{remark}
+
+\begin{remark}
+In frequency-oriented notation, realization may be idealized as:
+\[
+\widehat{\kappa}_{\mathrm{real}}(\omega)
+\approx
+H_{\mathcal R}(\omega)
+\widehat{\kappa}_{\mathrm{target}}(\omega),
+\]
+where \(H_{\mathcal R}\) denotes a realization transfer function.
+\end{remark}
+
+\begin{remark}
+For typical physical realization processes, \(H_{\mathcal R}\) attenuates
+high-frequency components.
+\end{remark}
+
+\begin{principle}[Realization filter principle]
+\label{princ:realization-filter}
+Construction and maintenance do not merely approximate target geometry;
+they transform it through a physical filter induced by sampling,
+machinery, structure, and correction limits.
+\end{principle}
 
 % ============================================================
 \section{Relation to the Realization Operator}
@@ -379,6 +441,108 @@ The simplified realization decomposition:
 separates sampling, reconstruction, and mechanical response.
 \end{remark}
 
+\begin{remark}
+Here:
+\begin{itemize}
+\item \(\mathcal S\) denotes sampling or control-point extraction,
+\item \(\mathcal I\) denotes interpolation or reconstruction,
+\item \(\mathcal M\) denotes mechanical and structural response.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+More generally, \(\mathcal R\) may depend on:
+\begin{itemize}
+\item machinery,
+\item measurement process,
+\item construction method,
+\item track structure,
+\item maintenance history,
+\item local constraints,
+\item and environmental conditions.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Sparse Compatibility}
+% ============================================================
+
+\begin{remark}
+The realization layer must remain compatible with sparse alignment
+representation.
+\end{remark}
+
+\begin{remark}
+Within AIM, this means that realization may operate on:
+\begin{itemize}
+\item sparse target parameters,
+\item sampled runtime states,
+\item reconstructed curvature functions,
+\item or realized sparse approximations.
+\end{itemize}
+\end{remark}
+
+\begin{principle}[Sparse realization compatibility]
+\label{princ:sparse-realization-compatibility}
+Realization-aware modelling must not destroy the sparse structure of the
+alignment model.
+
+Instead, realized geometry should be interpretable either as a runtime
+state, a sampled state, or a sparse-compatible approximation.
+\end{principle}
+
+\begin{remark}
+A realized alignment may therefore be represented as:
+\begin{itemize}
+\item measured sample data,
+\item a reconstructed dense curve,
+\item a sparse re-fit,
+\item or a hybrid measured--sparse object.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Realization-Aware Optimization}
+% ============================================================
+
+\begin{remark}
+Classical design optimizes the target curve.
+\end{remark}
+
+\begin{remark}
+Realization-aware design optimizes the target curve with respect to its
+expected realized outcome.
+\end{remark}
+
+\begin{definition}[Realization-aware objective]
+\label{def:realization-aware-objective}
+A realization-aware optimization objective may be written as:
+\[
+\min_{x_{\mathrm{target}}}
+J\bigl(
+\mathcal R(x_{\mathrm{target}})
+\bigr).
+\]
+\end{definition}
+
+\begin{remark}
+Here, the design variable is the analytical target, while the evaluated
+object is the realized railway state.
+\end{remark}
+
+\begin{remark}
+This distinction is essential whenever construction, maintenance,
+machine response, or structural filtering significantly affect the final
+geometry.
+\end{remark}
+
+\begin{proposition}[Realization-aware design principle]
+\label{prop:realization-aware-design}
+The best target alignment is not necessarily the analytically smoothest
+alignment, but the target whose realized state best satisfies the
+operational objective.
+\end{proposition}
+
 % ============================================================
 \section{Design Implication}
 % ============================================================
@@ -405,6 +569,13 @@ This connects construction and realization to realization-aware
 optimization.
 \end{remark}
 
+\begin{remark}
+For AIM, this means that transition classification, sparse alignment
+modelling, runtime pose3 evaluation, and optimization must be interpreted
+not only in analytical target space, but also in realized physical
+state space.
+\end{remark}
+
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
@@ -413,10 +584,25 @@ optimization.
 Construction and realization describe the transformation from analytical
 target alignment to physically realized railway geometry.
 
-Within AIM, this transformation is treated as an explicit operator layer.
+Within AIM, this transformation is treated as an explicit operator layer:
+\[
+x_{\mathrm{real}}
+=
+\mathcal R(x_{\mathrm{target}}).
+\]
 
 The realization layer explains why physical railway geometry must be
-understood through construction processes, measurement feedback,
-local correction limits, and mechanical response rather than through
-analytical geometry alone.
+understood through construction processes, measurement feedback, local
+correction limits, machine behaviour, sparse reconstruction, and
+mechanical response rather than through analytical geometry alone.
+
+Realization is therefore not an implementation detail. It is a central
+mathematical and physical layer connecting:
+\begin{itemize}
+\item target geometry,
+\item sparse alignment representation,
+\item measured reality,
+\item runtime state evaluation,
+\item and realization-aware optimization.
+\end{itemize}
 \end{summary}

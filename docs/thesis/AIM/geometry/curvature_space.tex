@@ -2,6 +2,8 @@
 
 \chapter{Curvature Space}
 
+\label{chap:curvature-space}
+
 % ============================================================
 \section{Motivation}
 % ============================================================
@@ -32,12 +34,19 @@ The concept of curvature space provides the mathematical setting for:
 \end{itemize}
 \end{remark}
 
+\begin{principle}[Curvature-space principle]
+\label{princ:curvature-space}
+Within AIM, railway alignment geometry is interpreted primarily as a
+problem in curvature space.
+\end{principle}
+
 % ============================================================
 \section{Curvature as Primary Geometry}
 % ============================================================
 
 \begin{definition}[Curvature law]
-A curvature law is a function
+\label{def:curvature-law}
+A curvature law is a function:
 \[
 \kappa : I \to \mathbb R,
 \]
@@ -53,9 +62,8 @@ quantity.
 Geometry is reconstructed from curvature through integration.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{principle}[Curvature-first principle]
+\label{princ:curvature-first}
 Within AIM, geometry is generated from curvature rather than curvature
 being derived from geometry.
 \end{principle}
@@ -65,22 +73,27 @@ being derived from geometry.
 % ============================================================
 
 \begin{definition}[Curvature space]
+\label{def:curvature-space}
 Curvature space denotes the space of admissible curvature laws:
 \[
 \mathcal K
 =
 \{
-\kappa(s)
+\kappa : I \to \mathbb R
 \}.
 \]
 \end{definition}
 
 \begin{remark}
+The symbol \(\mathcal K\) does not denote one fixed function class.
+It denotes the conceptual space in which different admissibility,
+smoothness, realization, and optimization requirements may be imposed.
+\end{remark}
+
+\begin{remark}
 Different subclasses of curvature space correspond to different
 geometric and operational properties.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Examples include:
@@ -90,16 +103,25 @@ Examples include:
 \item continuous curvature,
 \item differentiable curvature,
 \item bounded curvature,
+\item transition curvature,
 \item and hybrid curvature laws.
 \end{itemize}
 \end{remark}
+
+\OPEN{
+Later extensions of curvature space include admissible curvature laws,
+curvature spectra, realization-stable curvature, curvature energy,
+curvature bandwidth, transition-family subspaces, Vienna-type
+reinterpretations, and operator deformations.
+}
 
 % ============================================================
 \section{Intrinsic Reconstruction}
 % ============================================================
 
 \begin{definition}[Intrinsic reconstruction]
-Given:
+\label{def:intrinsic-curvature-reconstruction}
+Given a curvature law:
 \[
 \kappa(s),
 \]
@@ -117,11 +139,18 @@ and geometry is reconstructed through:
 Curvature therefore acts as the differential generator of geometry.
 \end{remark}
 
+\begin{remark}
+The position curve \(\gamma\) is not primary. It is the result of
+integrating the intrinsic curvature state together with initial pose
+data.
+\end{remark}
+
 % ============================================================
 \section{Constant Curvature}
 % ============================================================
 
 \begin{definition}[Constant curvature]
+\label{def:constant-curvature}
 A constant curvature law satisfies:
 \[
 \kappa(s)=\kappa_0.
@@ -129,11 +158,16 @@ A constant curvature law satisfies:
 \end{definition}
 
 \begin{remark}
-Special cases:
+Special cases are:
 \begin{itemize}
 \item \(\kappa_0=0\): straight line,
 \item \(\kappa_0\neq 0\): circular arc.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Constant-curvature elements form the fixed parts of the sparse alignment
+model.
 \end{remark}
 
 % ============================================================
@@ -141,6 +175,7 @@ Special cases:
 % ============================================================
 
 \begin{definition}[Transition curvature]
+\label{def:transition-curvature}
 A transition curvature law connects different curvature states
 continuously or smoothly.
 \end{definition}
@@ -149,8 +184,6 @@ continuously or smoothly.
 Transition curves are therefore interpreted as curvature-transition
 processes rather than merely geometric interpolation curves.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Typical transition quantities include:
@@ -163,11 +196,17 @@ Typical transition quantities include:
 \]
 \end{remark}
 
+\begin{remark}
+In AIM, transition families are interpreted as structured subspaces or
+parameterized paths within curvature space.
+\end{remark}
+
 % ============================================================
 \section{Curvature Continuity}
 % ============================================================
 
 \begin{definition}[Curvature continuity]
+\label{def:curvature-continuity}
 A curvature law is:
 \begin{itemize}
 \item \(C^0\)-continuous if \(\kappa(s)\) is continuous,
@@ -175,8 +214,6 @@ A curvature law is:
 \item \(C^2\)-continuous if \(\kappa''(s)\) is continuous.
 \end{itemize}
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Higher continuity improves:
@@ -188,11 +225,18 @@ Higher continuity improves:
 \end{itemize}
 \end{remark}
 
+\begin{remark}
+Continuity of position is not sufficient for high-quality railway
+geometry. The decisive structure lies in the continuity and behaviour of
+curvature and its derivatives.
+\end{remark}
+
 % ============================================================
 \section{Sparse Curvature Representation}
 % ============================================================
 
 \begin{definition}[Sparse curvature representation]
+\label{def:sparse-curvature-representation}
 A sparse representation describes curvature using:
 \begin{itemize}
 \item fixed curvature elements,
@@ -201,14 +245,10 @@ A sparse representation describes curvature using:
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Within AIM, sparse alignments are interpreted as compact curvature
 programs.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 The sparse model stores:
@@ -220,11 +260,23 @@ The sparse model stores:
 rather than dense geometric point clouds.
 \end{remark}
 
+\begin{remark}
+This makes sparse alignment suitable for:
+\begin{itemize}
+\item reconstruction,
+\item import normalization,
+\item runtime evaluation,
+\item realization comparison,
+\item and optimization.
+\end{itemize}
+\end{remark}
+
 % ============================================================
 \section{Hybrid Curvature Representation}
 % ============================================================
 
 \begin{definition}[Hybrid curvature model]
+\label{def:hybrid-curvature-model}
 A hybrid curvature model combines:
 \begin{itemize}
 \item parametric curvature structure,
@@ -233,16 +285,21 @@ A hybrid curvature model combines:
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Hybrid representations allow:
 \begin{itemize}
 \item compact storage,
 \item efficient reconstruction,
 \item realization-aware correction,
+\item measured-state integration,
 \item and scalable runtime evaluation.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Hybrid curvature models are especially relevant when measured or
+realized geometry cannot be represented adequately by a purely analytical
+target model.
 \end{remark}
 
 % ============================================================
@@ -250,13 +307,12 @@ Hybrid representations allow:
 % ============================================================
 
 \begin{definition}[Normalized curvature law]
+\label{def:normalized-curvature-law}
 A normalized curvature law is defined on:
 \[
 w\in[0,1].
 \]
 \end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Normalized representations separate:
@@ -265,8 +321,6 @@ Normalized representations separate:
 \item from physical scaling.
 \end{itemize}
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 This enables:
@@ -278,11 +332,17 @@ This enables:
 \end{itemize}
 \end{remark}
 
+\begin{remark}
+Physical curvature laws are obtained from normalized laws by scaling in
+length and curvature amplitude.
+\end{remark}
+
 % ============================================================
 \section{Curvature Derivatives}
 % ============================================================
 
 \begin{definition}[Curvature derivatives]
+\label{def:curvature-derivatives}
 Important higher-order quantities include:
 \[
 \kappa'(s),
@@ -293,16 +353,20 @@ Important higher-order quantities include:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 These quantities influence:
 \begin{itemize}
 \item jerk,
 \item realization behaviour,
 \item dynamic smoothness,
+\item vehicle response,
 \item and transition quality.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+Curvature derivatives provide the bridge from intrinsic geometry to
+runtime dynamics.
 \end{remark}
 
 % ============================================================
@@ -313,23 +377,26 @@ These quantities influence:
 Curvature laws may also be interpreted spectrally.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Low-frequency curvature components determine global geometric structure,
 whereas high-frequency components influence:
 \begin{itemize}
 \item realization sensitivity,
 \item numerical instability,
+\item measurement sensitivity,
 \item and dynamic roughness.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{proposition}[Spectral realization principle]
+\label{prop:spectral-realization-principle}
 Realization acts approximately as a low-pass filter on curvature space.
 \end{proposition}
+
+\begin{remark}
+This spectral view connects curvature space directly to construction,
+maintenance, and physical realization.
+\end{remark}
 
 % ============================================================
 \section{Curvature Space and Runtime}
@@ -340,11 +407,45 @@ Runtime evaluation operates primarily on curvature structures rather
 than directly on dense geometry.
 \end{remark}
 
-% ------------------------------------------------------------
+\begin{remark}
+Projection, reconstruction, frame evaluation, pose3 evaluation, and
+dynamics are derived from runtime evaluation of curvature-based states.
+\end{remark}
 
 \begin{remark}
-Projection, reconstruction, frame evaluation, and dynamics are derived
-from runtime evaluation of curvature-based states.
+Thus, curvature space is not only a design space. It is also the
+computational state space underlying runtime reconstruction.
+\end{remark}
+
+% ============================================================
+\section{Curvature Space and Realization}
+% ============================================================
+
+\begin{remark}
+Realization transforms target curvature into physically realized
+curvature.
+\end{remark}
+
+\begin{remark}
+This may be written abstractly as:
+\[
+\kappa_{\mathrm{real}}
+=
+\mathcal R_{\kappa}
+(
+\kappa_{\mathrm{target}}
+).
+\]
+\end{remark}
+
+\begin{remark}
+The realization operator may attenuate, deform, or locally modify
+curvature evolution.
+\end{remark}
+
+\begin{remark}
+Consequently, the physically relevant design object is not only the
+target curvature law, but also its expected realized curvature state.
 \end{remark}
 
 % ============================================================
@@ -355,16 +456,21 @@ from runtime evaluation of curvature-based states.
 Optimization within AIM primarily acts in curvature space.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
 Typical optimization variables include:
 \begin{itemize}
 \item transition parameters,
 \item curvature amplitudes,
 \item transition lengths,
+\item curvature anchors,
 \item and sparse curvature corrections.
 \end{itemize}
+\end{remark}
+
+\begin{remark}
+AIM optimization may therefore be interpreted as the search for
+admissible, realizable, and operationally suitable paths in curvature
+space.
 \end{remark}
 
 % ============================================================
@@ -386,6 +492,11 @@ Transition curves are interpreted as controlled transitions within
 curvature space.
 \end{proposition}
 
+\begin{proposition}
+Realization, runtime evaluation, and optimization act on curvature-space
+structures before they act on visualized position geometry.
+\end{proposition}
+
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
@@ -398,9 +509,12 @@ Within this framework:
 \item curvature acts as primary geometry,
 \item sparse models become curvature programs,
 \item transition curves become curvature transitions,
-\item and runtime systems operate on intrinsic curvature structure.
+\item runtime systems operate on intrinsic curvature structure,
+\item realization transforms curvature states,
+\item and optimization searches within curvature-space structures.
 \end{itemize}
 
 This interpretation unifies geometry, realization, runtime evaluation,
-and optimization within one intrinsic mathematical framework.
+measurement interpretation, and optimization within one intrinsic
+mathematical framework.
 \end{summary}

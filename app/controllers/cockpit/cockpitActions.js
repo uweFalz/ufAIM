@@ -44,9 +44,19 @@ export function activateObjectId({ store, objectId } = {}) {
 		source: "cockpit",
 	});
 
-	// Wichtig: ViewController rendert offenbar aus contextIds.
+	// primaryId ist Fokus.
+	// contextIds sind NUR Zusatz-/Anzeigeobjekte.
+	// Der Fokus selbst gehört NICHT in contextIds.
+	const state = store.getState?.() ?? {};
+	const sel = state.workspace_selection ?? {};
+	const oldIds = Array.isArray(sel.contextIds) ? sel.contextIds : [];
+
+	const nextContextIds = oldIds
+	.map(normalizeId)
+	.filter((x) => x && x !== id);
+
 	store.actions?.setWorkspaceContextObjects?.({
-		objectIds: [id],
+		objectIds: nextContextIds,
 		source: "cockpit-primary",
 	});
 
@@ -69,8 +79,8 @@ export function toggleCockpitContextObject({ store, objectId } = {}) {
 	const oldIds = Array.isArray(sel.contextIds) ? sel.contextIds : [];
 
 	const nextIds = oldIds.includes(id)
-		? oldIds.filter((x) => x !== id)
-		: [...oldIds, id];
+	? oldIds.filter((x) => x !== id)
+	: [...oldIds, id];
 
 	if (store.actions?.setWorkspaceContextIds) {
 		store.actions.setWorkspaceContextIds({
@@ -122,6 +132,60 @@ export async function markImportItemAccepted({ messaging, itemId } = {}) {
 		console.warn("[Cockpit] Import.SetItemAccepted failed", err);
 		return false;
 	}
+}
+
+export async function promoteImportItemToSpot({
+	store,
+	messaging,
+	itemId,
+	logLine,
+} = {}) {
+	const id = normalizeId(itemId);
+	if (!id) return null;
+
+	const result = await messaging?.sendCmdAwait?.("Spot.PromoteImportItemsById", {
+		itemIds: [id],
+	});
+
+	const objectId = readFirstAddedObjectId(result);
+
+	if (!result?.ok || !objectId) {
+		const reason = readFirstReviewReason(result) ?? "promotion failed";
+		logLine?.(`[Cockpit] Promote fehlgeschlagen: ${id} (${reason})`);
+		return null;
+	}
+
+	const importAcceptedRequested = await markImportItemAccepted({
+		messaging,
+		itemId: id,
+	});
+
+	store.actions?.clearPreviewItem?.();
+
+	function unwrapState(response) {
+		return response?.state ?? response?.payload ?? response ?? {};
+	}
+
+	const spotResponse = await messaging?.sendCmdAwait?.("Spot.GetState", {});
+	const spotState = unwrapState(spotResponse);
+
+	const windowState = store.getState?.() ?? {};
+
+	console.log("[cockpitActions] post-promote check", {
+		itemId: id,
+		objectId,
+		importAcceptedRequested: true,
+		workerActiveSpotId: spotState?.activeSpotId ?? null,
+		workspacePrimaryId: windowState?.workspace_selection?.primaryId ?? null,
+		previewCleared: !windowState?.preview_item,
+		workspace_selection: windowState?.workspace_selection,
+	});
+
+	return {
+		objectId,
+		spotState,
+		result,
+	};
 }
 
 // ------------------------------------------------------------
@@ -188,9 +252,9 @@ export async function exportLandXMLById({
 	}
 
 	const state = spotState ?? (
-		typeof refreshSpotState === "function"
-			? await refreshSpotState()
-			: null
+	typeof refreshSpotState === "function"
+	? await refreshSpotState()
+	: null
 	);
 
 	const obj = findSpotObjectById(state, id);
@@ -232,14 +296,14 @@ export async function exportLandXMLById({
 
 export function readFirstAddedObjectId(result) {
 	return Array.isArray(result?.addedObjects) && result.addedObjects[0]?.id
-		? String(result.addedObjects[0].id)
-		: null;
+	? String(result.addedObjects[0].id)
+	: null;
 }
 
 export function readFirstReviewReason(result) {
 	return Array.isArray(result?.reviewItems) && result.reviewItems[0]?.reason
-		? String(result.reviewItems[0].reason)
-		: null;
+	? String(result.reviewItems[0].reason)
+	: null;
 }
 
 // ------------------------------------------------------------
@@ -253,9 +317,9 @@ function normalizeId(value) {
 
 function safeFileStem(value) {
 	return String(value ?? "ufAIM_alignment")
-		.trim()
-		.replace(/\.[^.]+$/g, "")
-		.replace(/[^a-zA-Z0-9_\-]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		|| "ufAIM_alignment";
+	.trim()
+	.replace(/\.[^.]+$/g, "")
+	.replace(/[^a-zA-Z0-9_\-]+/g, "_")
+	.replace(/^_+|_+$/g, "")
+	|| "ufAIM_alignment";
 }

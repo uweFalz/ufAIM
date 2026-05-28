@@ -1,0 +1,549 @@
+% dynamics/dynamic_balance.tex
+
+\chapter{Dynamic Balance and Operational Admissibility}
+
+\label{chap:dynamic-balance}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Railway operation involves continuous interaction between:
+\begin{itemize}
+\item curvature,
+\item cant,
+\item vehicle response,
+\item and operational velocity.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Classical railway engineering often expresses this interaction through
+equilibrium relations between curvature and cant.
+\end{remark}
+
+\begin{remark}
+Within AIM, however, such relations are interpreted not as isolated
+engineering formulas, but as runtime-state coupling laws.
+\end{remark}
+
+\begin{principle}[Dynamic-balance principle]
+\label{princ:dynamic-balance}
+Within AIM, operational balance emerges from runtime coupling between:
+\begin{itemize}
+\item curvature evolution,
+\item cant evolution,
+\item vehicle-state response,
+\item realization,
+\item and operational context.
+\end{itemize}
+\end{principle}
+
+% ============================================================
+\section{Equilibrium Relation}
+% ============================================================
+
+\begin{definition}[Equilibrium relation]
+\label{def:equilibrium-relation}
+A dynamically balanced runtime state approximately satisfies:
+\[
+v^2\kappa(s)
+=
+g\sin\phi(s).
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+This relation couples:
+\begin{itemize}
+\item curvature-induced acceleration,
+\item and cant-induced compensation.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Within AIM, the equilibrium relation is interpreted as a runtime-state
+coupling law rather than merely as a static engineering equation.
+\end{remark}
+
+% ============================================================
+\section{Operational Imbalance}
+% ============================================================
+
+\begin{definition}[Operational imbalance]
+\label{def:operational-imbalance}
+Operational imbalance is the deviation between:
+\begin{itemize}
+\item curvature-induced acceleration,
+\item and cant-induced equilibrium compensation.
+\end{itemize}
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+The canonical imbalance quantity is:
+\[
+a_{\mathrm{eff}}(s)
+=
+v^2\kappa(s)
+-
+g\sin\phi(s).
+\]
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Operational imbalance is unavoidable in practical railway operation and
+must therefore be interpreted dynamically rather than eliminated
+completely.
+\end{remark}
+
+% ============================================================
+\section{Cant Deficiency}
+% ============================================================
+
+\begin{definition}[Cant deficiency]
+\label{def:dynamic-cant-deficiency}
+Cant deficiency denotes insufficient cant relative to the operational
+equilibrium state.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Cant deficiency corresponds operationally to:
+\[
+v^2\kappa(s)
+>
+g\sin\phi(s).
+\]
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+In this situation, uncompensated lateral acceleration remains within the
+vehicle state.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Cant deficiency influences:
+\begin{itemize}
+\item passenger comfort,
+\item wheel unloading,
+\item lateral force distribution,
+\item and operational admissibility.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Excess Cant}
+% ============================================================
+
+\begin{definition}[Excess cant]
+\label{def:excess-cant}
+Excess cant denotes cant exceeding the equilibrium requirement for the
+current operational state.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Operationally:
+\[
+v^2\kappa(s)
+<
+g\sin\phi(s).
+\]
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Excess cant may lead to:
+\begin{itemize}
+\item inward acceleration effects,
+\item reduced passenger comfort,
+\item operational limitations at low speed,
+\item and wheel unloading effects.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Equilibrium States}
+% ============================================================
+
+\begin{definition}[Dynamic equilibrium state]
+\label{def:dynamic-equilibrium-state}
+A dynamic equilibrium state is a runtime state satisfying operational
+balance within admissible tolerances.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Within practical railway operation, equilibrium is not exact but exists
+within operational ranges.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Thus, equilibrium should be interpreted as a band of admissible runtime
+states rather than as a single exact condition.
+\end{remark}
+
+% ============================================================
+\section{Equilibrium Bands}
+% ============================================================
+
+\begin{definition}[Equilibrium band]
+\label{def:equilibrium-band}
+An equilibrium band is a range of admissible operational imbalance
+states satisfying:
+\[
+|a_{\mathrm{eff}}(s)|
+\le
+a_{\max}.
+\]
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Equilibrium bands depend on:
+\begin{itemize}
+\item vehicle type,
+\item operational velocity,
+\item standards,
+\item realization quality,
+\item and comfort requirements.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Within AIM, operational equilibrium is therefore interpreted as a
+runtime admissibility region.
+\end{remark}
+
+% ============================================================
+\section{Dynamic Admissibility}
+% ============================================================
+
+\begin{definition}[Dynamic admissibility]
+\label{def:dynamic-admissibility}
+A runtime state is dynamically admissible if operational quantities
+remain within admissible bounds.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Relevant admissibility quantities include:
+\begin{itemize}
+\item effective acceleration,
+\item jerk,
+\item roll evolution,
+\item cant deficiency,
+\item wheel unloading,
+\item and operational smoothness.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Dynamic admissibility therefore depends on coupled runtime-state
+evolution rather than on geometry alone.
+\end{remark}
+
+% ============================================================
+\section{Operational Envelopes}
+% ============================================================
+
+\begin{definition}[Operational envelope]
+\label{def:operational-envelope}
+An operational envelope is the admissible region of runtime operational
+states.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Operational envelopes may constrain:
+\begin{itemize}
+\item acceleration,
+\item jerk,
+\item roll behaviour,
+\item cant deficiency,
+\item speed,
+\item and realization tolerances.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Within AIM, operational envelopes define admissible runtime-state
+regions rather than purely geometric limits.
+\end{remark}
+
+% ============================================================
+\section{Dynamic Coupling}
+% ============================================================
+
+\begin{remark}
+Dynamic balance is fundamentally a coupled runtime phenomenon.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+In particular:
+\begin{itemize}
+\item curvature influences acceleration,
+\item cant influences roll response,
+\item realization influences smoothness,
+\item and operational speed influences admissibility.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Thus:
+\[
+\kappa(s),
+\qquad
+\phi(s),
+\qquad
+v(s)
+\]
+cannot be interpreted independently.
+\end{remark}
+
+% ============================================================
+\section{Balance Trajectories}
+% ============================================================
+
+\begin{definition}[Balance trajectory]
+\label{def:dynamic-balance-trajectory}
+A balance trajectory is the runtime evolution of operational balance
+states along the railway alignment.
+\end{definition}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Balance trajectories are generated jointly by:
+\begin{itemize}
+\item curvature evolution,
+\item cant evolution,
+\item realization,
+\item and vehicle-state response.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Operational smoothness therefore depends on:
+\[
+a_{\mathrm{eff}}(s),
+\qquad
+j(s),
+\qquad
+\phi'(s),
+\]
+rather than solely on geometric continuity.
+\end{remark}
+
+% ============================================================
+\section{Runtime-State Coupling}
+% ============================================================
+
+\begin{remark}
+The equilibrium relation:
+\[
+v^2\kappa
+=
+g\sin\phi
+\]
+is fundamentally a runtime-state coupling law.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+It connects:
+\begin{itemize}
+\item intrinsic geometry,
+\item cant evolution,
+\item runtime vehicle states,
+\item and operational admissibility.
+\end{itemize}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Within AIM, dynamic balance therefore belongs naturally to runtime-state
+evolution rather than to isolated geometric design formulas.
+\end{remark}
+
+% ============================================================
+\section{Dynamic Balance and Realization}
+% ============================================================
+
+\begin{remark}
+Operational balance depends on realized rather than purely analytical
+geometry.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Thus:
+\[
+a_{\mathrm{eff,real}}(s)
+=
+v^2\kappa_{\mathrm{real}}(s)
+-
+g\sin\phi_{\mathrm{real}}(s)
+\]
+is operationally more relevant than its analytical target counterpart.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Realization therefore directly influences:
+\begin{itemize}
+\item comfort,
+\item admissibility,
+\item operational smoothness,
+\item and dynamic balance.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Dynamic Balance and Curvature Space}
+% ============================================================
+
+\begin{remark}
+Operational balance emerges fundamentally from curvature evolution.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Different transition families therefore generate different operational
+balance trajectories even if their position-space geometry appears
+similar.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+Curvature space is therefore simultaneously:
+\begin{itemize}
+\item a geometric domain,
+\item a runtime domain,
+\item and a dynamic balance domain.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Towards Runtime-State Design}
+% ============================================================
+
+\begin{remark}
+The dynamic-balance interpretation transforms railway alignment from:
+\begin{quote}
+curve design
+\end{quote}
+toward:
+\begin{quote}
+design of admissible runtime operational states.
+\end{quote}
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{remark}
+This prepares the transition toward:
+\begin{itemize}
+\item Vienna reinterpretation,
+\item realization-aware dynamics,
+\item Schwerpunkt-Trassierung,
+\item and operational state optimization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, the equilibrium relation is interpreted as a runtime-state
+coupling law.
+\end{proposition}
+
+% ------------------------------------------------------------
+
+\begin{proposition}
+Operational railway balance emerges from coupled runtime interaction
+between:
+\begin{itemize}
+\item curvature,
+\item cant,
+\item realization,
+\item speed,
+\item and vehicle-state response.
+\end{itemize}
+\end{proposition}
+
+% ------------------------------------------------------------
+
+\begin{proposition}
+Dynamic admissibility is fundamentally a runtime-state property rather
+than a purely geometric property.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Dynamic balance extends railway alignment interpretation from geometric
+equilibrium formulas toward runtime-state coupling.
+
+Within AIM:
+\begin{itemize}
+\item equilibrium becomes a runtime-state relation,
+\item cant deficiency becomes an operational imbalance state,
+\item admissibility becomes envelope-based,
+\item operational balance evolves dynamically,
+\item and runtime-state trajectories become primary engineering objects.
+\end{itemize}
+
+This establishes the conceptual bridge between:
+\begin{itemize}
+\item curvature evolution,
+\item runtime dynamics,
+\item operational admissibility,
+\item realization-aware behaviour,
+\item and operational state optimization.
+\end{itemize}
+\end{summary}

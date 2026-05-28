@@ -2,11 +2,14 @@
 
 import { projectAlignmentPreview } from "./AlignmentProjectionService.js";
 
+const DEBUG_PROJECTION = false;
+
 export function projectFocusedSpotObject(spotObject, opts = {}) {
 	if (!spotObject) return null;
 
 	const kernel = getKernel(spotObject);
 
+	if (DEBUG_PROJECTION) {
 	console.log("[ViewProjectionController] kernel probe", {
 		id: spotObject?.id ?? null,
 		type: spotObject?.type ?? null,
@@ -16,6 +19,7 @@ export function projectFocusedSpotObject(spotObject, opts = {}) {
 		elementCount: Array.isArray(kernel?.elements) ? kernel.elements.length : null,
 		hasStartPose: Boolean(kernel?.startPose),
 	});
+}
 
 	if (!kernel) return null;
 
@@ -24,12 +28,14 @@ export function projectFocusedSpotObject(spotObject, opts = {}) {
 		maxStep: opts.maxStep ?? 5,
 	});
 
+	if (DEBUG_PROJECTION) {
 	console.log("[ViewProjectionController] projection probe", {
 		id: spotObject?.id ?? null,
 		hasGeom: Boolean(geom),
 		pointCount: geom?.polyline2d?.length ?? 0,
 		hasBbox: Boolean(geom?.bbox),
 	});
+}
 
 	if (!geom?.polyline2d || geom.polyline2d.length < 2) {
 		return null;

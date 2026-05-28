@@ -20,6 +20,7 @@ reference systems such as:
 \item WGS84,
 \item UTM,
 \item Gauss--Krüger,
+\item DBRef,
 \item or local engineering CRS definitions.
 \end{itemize}
 \end{remark}
@@ -37,9 +38,18 @@ service connecting:
 \item measured data,
 \item visualization,
 \item realization,
+\item topology,
 \item and operational geometry.
 \end{itemize}
 \end{remark}
+
+\begin{principle}[Intrinsic-space primacy]
+\label{princ:intrinsic-space-primacy}
+Within AIM, intrinsic railway geometry is primary.
+
+World-space coordinates are interpreted as external embeddings generated
+through runtime evaluation.
+\end{principle}
 
 % ============================================================
 \section{Track Coordinate System}
@@ -53,7 +63,7 @@ The intrinsic track coordinate system consists of:
 \]
 where:
 \begin{itemize}
-\item \(s\) denotes arc-length,
+\item \(s\) denotes intrinsic arc-length,
 \item \(d\) denotes lateral offset,
 \item \(h\) denotes vertical offset.
 \end{itemize}
@@ -61,7 +71,8 @@ where:
 
 \begin{remark}
 Track coordinates belong to the intrinsic track-space domain
-\(\Omega_{\mathrm{track}}\), introduced in \cref{def:track-space}.
+\(\Omega_{\mathrm{track}}\), introduced in
+\cref{def:track-space}.
 \end{remark}
 
 \begin{remark}
@@ -79,6 +90,30 @@ confused with projected world coordinates.
 
 % ------------------------------------------------------------
 
+\subsection{Intrinsic Geometry versus External Coordinates}
+
+\begin{remark}
+Intrinsic geometry is independent of any external coordinate reference
+system.
+\end{remark}
+
+\begin{remark}
+The same intrinsic alignment may be embedded into:
+\begin{itemize}
+\item projected engineering planes,
+\item ellipsoidal world models,
+\item local realization frames,
+\item or visualization coordinate systems.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, intrinsic alignment geometry and external CRS representation form
+distinct conceptual layers.
+\end{remark}
+
+% ------------------------------------------------------------
+
 \subsection{Arc-Length and Stationing}
 
 \begin{remark}
@@ -91,13 +126,24 @@ Operational kilometre systems may contain:
 \item station equations,
 \item kilometre jumps,
 \item overlapping station ranges,
-\item and topology-dependent references.
+\item topology-dependent references,
+\item and operational branch relations.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
 Stationing systems are operational reference structures layered on top
 of intrinsic geometry.
+\end{remark}
+
+\begin{remark}
+Consequently, the mapping:
+\[
+s
+\leftrightarrow
+\mathrm{km}
+\]
+is generally neither linear nor globally unique.
 \end{remark}
 
 % ============================================================
@@ -142,6 +188,29 @@ and:
 
 % ------------------------------------------------------------
 
+\subsection{Spatial Runtime Evaluation}
+
+\begin{remark}
+In spatial runtime evaluation, the mapping depends additionally on:
+\begin{itemize}
+\item profile,
+\item cant,
+\item frame construction,
+\item metric interpretation,
+\item and runtime realization context.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Consequently, the world embedding:
+\[
+x(s,d,h)
+\]
+is generally generated dynamically from runtime pose3 evaluation.
+\end{remark}
+
+% ------------------------------------------------------------
+
 \subsection{Reference-Line Interpretation}
 
 \begin{remark}
@@ -155,6 +224,7 @@ Possible reference structures include:
 \item alignment centerline,
 \item track center,
 \item rail axis,
+\item gauge reference,
 \item or operational offset definitions.
 \end{itemize}
 \end{remark}
@@ -197,6 +267,11 @@ The term projection is used operationally and does not necessarily imply
 a unique orthogonal projection in the classical geometric sense.
 \end{remark}
 
+\begin{remark}
+Within AIM, world-to-track projection is interpreted as an inverse
+runtime evaluation problem.
+\end{remark}
+
 % ============================================================
 \section{Coordinate Transformation versus Projection}
 % ============================================================
@@ -215,7 +290,8 @@ Coordinate transformations map between world-space representations:
 \rightarrow
 \Omega_{\mathrm{world}},
 \]
-as introduced in \cref{def:coordinate-transform-operator}.
+as introduced in
+\cref{def:coordinate-transform-operator}.
 \end{remark}
 
 \begin{remark}
@@ -233,6 +309,11 @@ Coordinate transformation must not be confused with intrinsic
 world-to-track projection.
 \end{principle}
 
+\begin{remark}
+CRS transformations operate entirely within external coordinate
+representations, whereas projection accesses intrinsic railway geometry.
+\end{remark}
+
 % ============================================================
 \section{Numerical Evaluation}
 % ============================================================
@@ -247,7 +328,19 @@ Typical numerical approaches include:
 \item nearest-point search,
 \item local Newton iteration,
 \item segment-wise projection,
-\item and hybrid lookup strategies.
+\item topology-aware lookup,
+\item and hybrid runtime strategies.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Projection quality depends strongly on:
+\begin{itemize}
+\item curvature behaviour,
+\item topology,
+\item initialization,
+\item runtime context,
+\item and metric interpretation.
 \end{itemize}
 \end{remark}
 
@@ -266,18 +359,76 @@ Ambiguities may occur in:
 \item switches and crossings,
 \item parallel tracks,
 \item closely spaced alignments,
-\item and station areas.
+\item station areas,
+\item and topology-rich railway networks.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-Runtime projection often requires contextual information such as:
+Multiple intrinsic states may correspond to nearly identical world-space
+locations.
+\end{remark}
+
+\begin{remark}
+Consequently, projection is fundamentally context dependent.
+\end{remark}
+
+\begin{remark}
+Runtime projection may require:
 \begin{itemize}
 \item track identity,
-\item topology,
+\item route identity,
+\item topology context,
 \item expected station range,
-\item operational state,
-\item or interaction history.
+\item operational direction,
+\item runtime interaction history,
+\item vehicle context,
+\item or network-state constraints.
+\end{itemize}
+\end{remark}
+
+\begin{principle}[Projection ambiguity principle]
+\label{princ:projection-ambiguity}
+World-to-track projection cannot generally be interpreted as a purely
+local geometric operation.
+\end{principle}
+
+% ============================================================
+\section{Topology and Operational References}
+% ============================================================
+
+\begin{remark}
+Intrinsic geometry alone is insufficient for operational railway
+referencing.
+\end{remark}
+
+\begin{remark}
+Operational interpretation additionally depends on:
+\begin{itemize}
+\item topology,
+\item route membership,
+\item kilometre references,
+\item operational direction,
+\item and network semantics.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus, a complete projection context may require:
+\[
+(
+x,
+\mathcal T,
+\mathcal R,
+\mathcal O
+),
+\]
+where:
+\begin{itemize}
+\item \(x\) denotes world-space input,
+\item \(\mathcal T\) denotes topology context,
+\item \(\mathcal R\) denotes route/reference context,
+\item \(\mathcal O\) denotes operational context.
 \end{itemize}
 \end{remark}
 
@@ -298,6 +449,11 @@ typically yields stable projection behaviour.
 Errors in intrinsic coordinates propagate nonlinearly into world space.
 \end{remark}
 
+\begin{remark}
+Projection behaviour near transition regions may depend strongly on
+higher-order curvature behaviour.
+\end{remark}
+
 % ============================================================
 \section{Runtime Dependency}
 % ============================================================
@@ -310,17 +466,36 @@ the underlying alignment representation.
 \begin{remark}
 In particular:
 \begin{itemize}
-\item cGeom defines the intrinsic geometry,
+\item cGeom defines intrinsic geometry,
 \item pose2 defines tangent evolution,
-\item pose3 extends spatial interpretation,
+\item pose3 defines runtime spatial interpretation,
+\item metric services define realized embedding,
+\item CRS services define external representation,
 \item and runtime operators evaluate resulting states.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-Thus, world--track transformation is part of the runtime evaluation
-architecture rather than an isolated geometric utility.
+Projection therefore depends on the currently active runtime evaluation
+pipeline.
 \end{remark}
+
+\begin{remark}
+Different runtime configurations may yield different projection results,
+for example:
+\begin{itemize}
+\item projected versus ellipsoidal evaluation,
+\item target versus realized geometry,
+\item low-resolution versus high-resolution runtime,
+\item or simplified versus vehicle-aware interpretation.
+\end{itemize}
+\end{remark}
+
+\begin{principle}[Runtime projection principle]
+\label{princ:runtime-projection}
+World--track transformation is a runtime evaluation problem operating on
+alignment states rather than a static coordinate utility.
+\end{principle}
 
 % ============================================================
 \section{LOD and Hybrid Evaluation}
@@ -335,7 +510,8 @@ Large-scale systems therefore require:
 \begin{itemize}
 \item LOD-dependent evaluation,
 \item approximate projection,
-\item and hybrid lookup strategies.
+\item topology-aware filtering,
+\item and hybrid runtime architectures.
 \end{itemize}
 \end{remark}
 
@@ -349,7 +525,19 @@ required.
 A hybrid strategy combines:
 \begin{itemize}
 \item precomputed samples for coarse lookup,
+\item topology-aware candidate filtering,
+\item cached runtime states,
 \item and local parametric refinement for precision.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Hybrid projection architectures are particularly important for:
+\begin{itemize}
+\item large railway networks,
+\item interactive visualization,
+\item realtime vehicle-space evaluation,
+\item and multi-resolution runtime systems.
 \end{itemize}
 \end{remark}
 
@@ -387,6 +575,16 @@ Physical measurements should therefore reference realized rather than
 purely analytical geometry.
 \end{remark}
 
+\begin{remark}
+The distinction between:
+\[
+\text{intrinsic geometry}
+\quad\text{and}\quad
+\text{external embedding}
+\]
+is fundamental within AIM.
+\end{remark}
+
 % ============================================================
 \section{Key Insight}
 % ============================================================
@@ -401,17 +599,39 @@ Within AIM, intrinsic alignment space is primary, whereas world
 coordinates are interpreted as external embeddings of alignment states.
 \end{proposition}
 
+\begin{proposition}
+Projection is generally:
+\begin{itemize}
+\item nonlinear,
+\item ambiguous,
+\item topology-dependent,
+\item runtime-dependent,
+\item and context-sensitive.
+\end{itemize}
+\end{proposition}
+
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
 World--track transformation connects intrinsic railway geometry with
-external coordinate systems and measured reality.
+external coordinate systems, topology, runtime evaluation, and measured
+reality.
 
-Its nonlinear, ambiguous, and scale-dependent nature makes it a central
-runtime component of the AIM framework.
+Its nonlinear, ambiguous, topology-dependent, and scale-dependent nature
+makes it a central runtime component of the AIM framework.
 
-Efficient handling therefore requires hybrid and LOD-dependent runtime
-strategies operating directly on sparse alignment structures.
+Within AIM, projection is therefore interpreted not as static coordinate
+conversion, but as contextual runtime reconstruction of intrinsic
+railway states from external observations.
+
+Efficient handling consequently requires:
+\begin{itemize}
+\item hybrid runtime architectures,
+\item topology-aware projection strategies,
+\item LOD-dependent evaluation,
+\item sparse-state reconstruction,
+\item and metric-aware runtime services.
+\end{itemize}
 \end{summary}

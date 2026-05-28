@@ -1,0 +1,417 @@
+% dynamics/state_taxonomy.tex
+
+\chapter{State Taxonomy}
+
+\label{chap:state-taxonomy}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Within AIM, the term \emph{state} appears in multiple contexts:
+\begin{itemize}
+\item geometric reconstruction,
+\item runtime evaluation,
+\item realization,
+\item operational dynamics,
+\item and vehicle interpretation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Without a consistent taxonomy, different state concepts may become
+ambiguous or unintentionally conflated.
+\end{remark}
+
+\begin{remark}
+This chapter therefore introduces a structural classification of state
+concepts within AIM.
+\end{remark}
+
+% ============================================================
+\section{General State Interpretation}
+% ============================================================
+
+\begin{definition}[State]
+\label{def:taxonomy-general-state}
+A state is a structured description of a system configuration relative
+to a specified interpretation layer.
+\end{definition}
+
+\begin{principle}[State-layer principle]
+\label{princ:state-layer-principle}
+Within AIM, state concepts belong to distinct interpretation layers and
+must not be identified implicitly.
+\end{principle}
+
+% ============================================================
+\section{Intrinsic Geometric States}
+% ============================================================
+
+\subsection{pose2}
+
+\begin{definition}[pose2 state]
+\label{def:taxonomy-pose2}
+The pose2 state is the intrinsic planar reconstruction state generated
+from:
+\[
+\kappa(s).
+\]
+\end{definition}
+
+\begin{remark}
+pose2 represents:
+\begin{itemize}
+\item intrinsic geometry,
+\item planar tangent evolution,
+\item and reconstruction state.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+pose2 is fundamentally an intrinsic geometric state.
+\end{remark}
+
+% ------------------------------------------------------------
+
+\subsection{pose3}
+
+\begin{definition}[pose3 state]
+\label{def:taxonomy-pose3}
+The pose3 state is the runtime-evaluated spatial railway state generated
+from:
+\begin{itemize}
+\item pose2 reconstruction,
+\item profile evaluation,
+\item cant interpretation,
+\item frame evaluation,
+\item and runtime coordinate interpretation.
+\end{itemize}
+\end{definition}
+
+\begin{remark}
+pose3 describes the railway runtime state rather than the vehicle
+itself.
+\end{remark}
+
+\begin{remark}
+pose3 therefore belongs to the runtime railway-state layer.
+\end{remark}
+
+% ============================================================
+\section{Runtime States}
+% ============================================================
+
+\begin{definition}[Runtime state]
+\label{def:taxonomy-runtime-state}
+A runtime state is a dynamically evaluated state generated during
+runtime interpretation.
+\end{definition}
+
+\begin{remark}
+Runtime states depend on:
+\begin{itemize}
+\item runtime operators,
+\item realization,
+\item coordinate interpretation,
+\item and operational context.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item pose3,
+\item runtime frames,
+\item projection states,
+\item and operational interpretation states.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Realized States}
+% ============================================================
+
+\begin{definition}[Realized state]
+\label{def:taxonomy-realized-state}
+A realized state is a runtime state generated from physically realized
+rather than purely analytical geometry.
+\end{definition}
+
+\begin{remark}
+Realized states depend on:
+\begin{itemize}
+\item construction,
+\item measurement,
+\item maintenance,
+\item realization filtering,
+\item and operational degradation.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Typical examples include:
+\[
+\mathrm{pose3}_{\mathrm{real}},
+\qquad
+\kappa_{\mathrm{real}},
+\qquad
+\phi_{\mathrm{real}}.
+\]
+\end{remark}
+
+% ============================================================
+\section{Operational States}
+% ============================================================
+
+\begin{definition}[Operational state]
+\label{def:taxonomy-operational-state}
+An operational state is a runtime state relevant for railway operation,
+comfort, admissibility, or dynamic interpretation.
+\end{definition}
+
+\begin{remark}
+Operational states may include:
+\begin{itemize}
+\item effective acceleration,
+\item jerk,
+\item roll evolution,
+\item cant deficiency,
+\item and balance trajectories.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Operational states are derived from runtime railway states rather than
+stored directly as intrinsic geometry.
+\end{remark}
+
+% ============================================================
+\section{Vehicle States}
+% ============================================================
+
+\begin{definition}[Vehicle state]
+\label{def:taxonomy-vehicle-state}
+A vehicle state is a runtime-relative operational state describing the
+vehicle relative to the railway runtime state.
+\end{definition}
+
+\begin{remark}
+Vehicle states depend on:
+\begin{itemize}
+\item railway runtime state,
+\item operational velocity,
+\item vehicle interpretation,
+\item and dynamic response.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Thus:
+\[
+\mathrm{vehicleState}
+=
+\mathcal V(
+\mathrm{pose3},
+v,
+\dots
+).
+\]
+\end{remark}
+
+\begin{remark}
+Vehicle states are therefore not intrinsic railway states.
+\end{remark}
+
+% ============================================================
+\section{Center-of-Gravity States}
+% ============================================================
+
+\begin{definition}[Center-of-gravity state]
+\label{def:taxonomy-cg-state}
+A center-of-gravity state is an operational abstraction describing the
+runtime trajectory of the vehicle center of gravity relative to the
+railway runtime state.
+\end{definition}
+
+\begin{remark}
+Center-of-gravity states are primarily operational interpretation states
+rather than full mechanical vehicle models.
+\end{remark}
+
+\begin{remark}
+These states are particularly relevant for:
+\begin{itemize}
+\item comfort interpretation,
+\item balance interpretation,
+\item Schwerpunkt-Trassierung,
+\item and runtime operational optimization.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Dynamic States}
+% ============================================================
+
+\begin{definition}[Dynamic state]
+\label{def:taxonomy-dynamic-state}
+A dynamic state is a runtime state participating in operational state
+evolution.
+\end{definition}
+
+\begin{remark}
+Dynamic states evolve according to:
+\[
+x'(s)
+=
+f(x,u).
+\]
+\end{remark}
+
+\begin{remark}
+Dynamic states may include:
+\begin{itemize}
+\item acceleration,
+\item jerk,
+\item roll evolution,
+\item and operational balance quantities.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Relative States}
+% ============================================================
+
+\begin{definition}[Relative state]
+\label{def:taxonomy-relative-state}
+A relative state is a state evaluated relative to another runtime state
+or runtime reference frame.
+\end{definition}
+
+\begin{remark}
+Within AIM, many operational quantities are fundamentally relative
+states.
+\end{remark}
+
+\begin{remark}
+Examples include:
+\begin{itemize}
+\item vehicle states relative to track states,
+\item wheelset states relative to local frames,
+\item and center-of-gravity trajectories relative to realized track
+geometry.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{State Transformations}
+% ============================================================
+
+\begin{remark}
+Different state classes are connected through runtime operators.
+\end{remark}
+
+\begin{remark}
+Examples include:
+\[
+\mathcal R,
+\qquad
+\mathcal D,
+\qquad
+\mathcal V.
+\]
+\end{remark}
+
+\begin{remark}
+Typical transformations include:
+\begin{itemize}
+\item intrinsic reconstruction,
+\item realization filtering,
+\item runtime evaluation,
+\item vehicle interpretation,
+\item and operational state evolution.
+\end{itemize}
+\end{remark}
+
+% ============================================================
+\section{State Hierarchy}
+% ============================================================
+
+\begin{remark}
+The AIM state hierarchy may be interpreted schematically as:
+\[
+\kappa(s)
+\rightarrow
+\mathrm{pose2}
+\rightarrow
+\mathrm{pose3}
+\rightarrow
+x(s)
+\rightarrow
+x_{\mathrm{vehicle}}
+\rightarrow
+x_{\mathrm{CG}}.
+\]
+\end{remark}
+
+\begin{remark}
+Realization operators act throughout this hierarchy:
+\[
+\mathcal R :
+x
+\mapsto
+x_{\mathrm{real}}.
+\]
+\end{remark}
+
+% ============================================================
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, state concepts belong to distinct interpretation layers.
+\end{proposition}
+
+\begin{proposition}
+pose3 describes the railway runtime state rather than the vehicle
+itself.
+\end{proposition}
+
+\begin{proposition}
+Vehicle states are relative runtime interpretation states generated from
+interaction with the railway runtime state.
+\end{proposition}
+
+\begin{proposition}
+Operational and dynamic states are generated through runtime evaluation
+rather than through static geometric storage.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+State taxonomy provides the structural interpretation framework for AIM
+runtime architecture.
+
+Within this framework:
+\begin{itemize}
+\item pose2 represents intrinsic reconstruction state,
+\item pose3 represents railway runtime state,
+\item realized states represent physical railway realization,
+\item operational states describe runtime behaviour,
+\item vehicle states describe relative operational interpretation,
+\item and dynamic states describe runtime state evolution.
+\end{itemize}
+
+This taxonomy prevents conceptual ambiguity between:
+\begin{itemize}
+\item geometry,
+\item runtime,
+\item realization,
+\item dynamics,
+\item and vehicle interpretation.
+\end{itemize}
+\end{summary}
