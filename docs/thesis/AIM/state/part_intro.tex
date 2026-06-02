@@ -1,20 +1,50 @@
-% \chapter{Railway State Model}
+% state/part_intro.tex
+
+% This file is included immediately after:
+%   \part{Railway State Model}
+%
+% It is intentionally unnumbered. The numbered chapters of this part
+% begin with pose2.tex.
+
+\chapter*{Railway State Model}
+\addcontentsline{toc}{chapter}{Railway State Model}
 
 \begin{remark}
 This part introduces the railway state model underlying the AIM
 framework.
-Instead of treating the track merely as a geometric curve, the state
-model captures position, orientation, curvature, and cant in a unified
-representation.
+Instead of treating the track merely as a geometric curve, AIM describes
+railway alignment through states generated from intrinsic geometry,
+profile, cant, frames, and metric interpretation.
 \end{remark}
 
 \begin{remark}
-The purpose of this part is to define the variables and transformations
-required to connect intrinsic alignment modelling with dynamic railway
+The first state layer is \(\mathrm{pose2}\), the intrinsic planar
+reconstruction state generated from curvature.
+It carries the initial-value structure required to reconstruct position
+and direction along the alignment.
+\end{remark}
+
+\begin{remark}
+The second state layer is \(\mathrm{pose3}\), the spatial railway state
+obtained by extending pose2 through profile, cant, and frame
 interpretation.
+This state describes the railway, not the vehicle.
 \end{remark}
 
 \begin{remark}
-This establishes the transition from purely geometric description
-towards a state-based view of railway alignment.
+The purpose of this part is to define the variables, frames, and
+transformations required to connect intrinsic alignment modelling with
+runtime railway interpretation.
+\end{remark}
+
+\begin{principle}[Railway-state principle]
+\label{princ:railway-state}
+Within AIM, railway alignment is interpreted through state evolution
+rather than through coordinate geometry alone.
+\end{principle}
+
+\begin{remark}
+This part prepares the transition from geometric reconstruction toward
+dynamic railway state interpretation, vehicle-relative states, and
+runtime evaluation.
 \end{remark}

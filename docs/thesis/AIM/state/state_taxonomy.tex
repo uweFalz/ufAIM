@@ -15,7 +15,8 @@ Within AIM, the term \emph{state} appears in multiple contexts:
 \item runtime evaluation,
 \item realization,
 \item operational dynamics,
-\item and vehicle interpretation.
+\item vehicle interpretation,
+\item and optimization.
 \end{itemize}
 \end{remark}
 
@@ -29,6 +30,12 @@ This chapter therefore introduces a structural classification of state
 concepts within AIM.
 \end{remark}
 
+\begin{principle}[State-layer principle]
+\label{princ:state-layer-principle}
+Within AIM, state concepts belong to distinct interpretation layers and
+must not be identified implicitly.
+\end{principle}
+
 % ============================================================
 \section{General State Interpretation}
 % ============================================================
@@ -39,11 +46,12 @@ A state is a structured description of a system configuration relative
 to a specified interpretation layer.
 \end{definition}
 
-\begin{principle}[State-layer principle]
-\label{princ:state-layer-principle}
-Within AIM, state concepts belong to distinct interpretation layers and
-must not be identified implicitly.
-\end{principle}
+\begin{remark}
+The same physical railway system may therefore give rise to different
+states depending on whether it is interpreted geometrically,
+operationally, dynamically, through realization, or through vehicle
+interaction.
+\end{remark}
 
 % ============================================================
 \section{Intrinsic Geometric States}
@@ -115,6 +123,7 @@ Runtime states depend on:
 \item runtime operators,
 \item realization,
 \item coordinate interpretation,
+\item frame construction,
 \item and operational context.
 \end{itemize}
 \end{remark}
@@ -178,6 +187,8 @@ Operational states may include:
 \item jerk,
 \item roll evolution,
 \item cant deficiency,
+\item excess cant,
+\item operational balance,
 \item and balance trajectories.
 \end{itemize}
 \end{remark}
@@ -261,7 +272,7 @@ evolution.
 \end{definition}
 
 \begin{remark}
-Dynamic states evolve according to:
+Dynamic states may evolve according to:
 \[
 x'(s)
 =
@@ -277,6 +288,32 @@ Dynamic states may include:
 \item roll evolution,
 \item and operational balance quantities.
 \end{itemize}
+\end{remark}
+
+% ============================================================
+\section{Optimization States}
+% ============================================================
+
+\begin{definition}[Optimization state]
+\label{def:taxonomy-optimization-state}
+An optimization state is the state representation used as the object of
+an optimization problem.
+\end{definition}
+
+\begin{remark}
+Within AIM, optimization states are preferably runtime-state
+trajectories rather than isolated geometric parameters.
+\end{remark}
+
+\begin{remark}
+A typical optimization state may be written as:
+\[
+x_{\mathrm{opt}}(s)
+=
+x_{\mathrm{real}}(s),
+\]
+where \(x_{\mathrm{real}}(s)\) denotes a realized operational runtime
+state trajectory.
 \end{remark}
 
 % ============================================================
@@ -299,8 +336,8 @@ Examples include:
 \begin{itemize}
 \item vehicle states relative to track states,
 \item wheelset states relative to local frames,
-\item and center-of-gravity trajectories relative to realized track
-geometry.
+\item center-of-gravity trajectories relative to realized track geometry,
+\item and operational balance states relative to admissibility envelopes.
 \end{itemize}
 \end{remark}
 
@@ -310,6 +347,8 @@ geometry.
 
 \begin{remark}
 Different state classes are connected through runtime operators.
+The principal operator structure is introduced in
+\cref{chap:runtime-operators}.
 \end{remark}
 
 \begin{remark}
@@ -318,6 +357,8 @@ Examples include:
 \mathcal R,
 \qquad
 \mathcal D,
+\qquad
+\mathcal O,
 \qquad
 \mathcal V.
 \]
@@ -329,8 +370,9 @@ Typical transformations include:
 \item intrinsic reconstruction,
 \item realization filtering,
 \item runtime evaluation,
+\item operational evaluation,
 \item vehicle interpretation,
-\item and operational state evolution.
+\item and optimization-state construction.
 \end{itemize}
 \end{remark}
 
@@ -351,7 +393,9 @@ x(s)
 \rightarrow
 x_{\mathrm{vehicle}}
 \rightarrow
-x_{\mathrm{CG}}.
+x_{\mathrm{CG}}
+\rightarrow
+x_{\mathrm{opt}}.
 \]
 \end{remark}
 
@@ -364,6 +408,13 @@ x
 x_{\mathrm{real}}.
 \]
 \end{remark}
+
+\begin{remark}
+This hierarchy is not a rigid implementation sequence.
+It is a conceptual ordering of interpretation layers.
+\end{remark}
+
+\input{figures/foundations/state_hierarchy}
 
 % ============================================================
 \section{Canonical Interpretation}
@@ -388,6 +439,11 @@ Operational and dynamic states are generated through runtime evaluation
 rather than through static geometric storage.
 \end{proposition}
 
+\begin{proposition}
+Optimization states are preferably realized runtime-state trajectories
+rather than isolated geometric parameters.
+\end{proposition}
+
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
@@ -403,7 +459,10 @@ Within this framework:
 \item realized states represent physical railway realization,
 \item operational states describe runtime behaviour,
 \item vehicle states describe relative operational interpretation,
-\item and dynamic states describe runtime state evolution.
+\item center-of-gravity states describe operational abstractions,
+\item dynamic states describe runtime state evolution,
+\item and optimization states describe the objects of trajectory
+optimization.
 \end{itemize}
 
 This taxonomy prevents conceptual ambiguity between:
@@ -412,6 +471,7 @@ This taxonomy prevents conceptual ambiguity between:
 \item runtime,
 \item realization,
 \item dynamics,
-\item and vehicle interpretation.
+\item vehicle interpretation,
+\item and optimization.
 \end{itemize}
 \end{summary}

@@ -1,0 +1,18 @@
+% figures/overview/state_trajectory_design.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=1.2cm,
+  box/.style={draw, rounded corners, align=center, minimum width=5.0cm, minimum height=0.9cm},
+  arrow/.style={->, thick}
+]
+\node[box] (classical) {Classical\\Curve Design};
+\node[box, below=of classical] (modern) {Modern\\Alignment Design};
+\node[box, below=of modern] (aim) {AIM\\State Trajectory Design};
+\draw[arrow] (classical) -- (modern);
+\draw[arrow] (modern) -- (aim);
+\end{tikzpicture}
+\caption{Evolution of interpretation: AIM shifts alignment design toward runtime-state trajectory design.}
+\label{fig:state-trajectory-design}
+\end{figure}

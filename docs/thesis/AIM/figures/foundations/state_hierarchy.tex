@@ -1,0 +1,34 @@
+% figures/foundations/state_hierarchy.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.85cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.8cm,
+    minimum height=0.7cm
+  },
+  arrow/.style={->, thick}
+]
+\node[box] (kappa) {Curvature Law\\$\kappa(s)$};
+\node[box, below=of kappa] (pose2) {pose2\\intrinsic planar state};
+\node[box, below=of pose2] (pose3) {pose3\\railway runtime state};
+\node[box, below=of pose3] (runtime) {Operational Runtime State\\$x(s)$};
+\node[box, below=of runtime] (vehicle) {Vehicle State\\$x_{\mathrm{vehicle}}$};
+\node[box, below=of vehicle] (cg) {CG State\\$x_{\mathrm{CG}}$};
+\node[box, below=of cg] (opt) {Optimization State\\$x_{\mathrm{opt}}$};
+
+\draw[arrow] (kappa) -- (pose2);
+\draw[arrow] (pose2) -- (pose3);
+\draw[arrow] (pose3) -- (runtime);
+\draw[arrow] (runtime) -- (vehicle);
+\draw[arrow] (vehicle) -- (cg);
+\draw[arrow] (cg) -- (opt);
+\end{tikzpicture}
+
+\caption{AIM state hierarchy from intrinsic curvature to optimization state.}
+\label{fig:state-hierarchy}
+\end{figure}

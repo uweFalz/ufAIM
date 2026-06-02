@@ -1,0 +1,20 @@
+% figures/runtime/vehicle_space.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=1.0cm,
+  box/.style={draw, rounded corners, align=center, minimum width=4.8cm, minimum height=0.75cm},
+  arrow/.style={->, thick}
+]
+\node[box] (track) {Railway Runtime State\\pose3};
+\node[box, below=of track] (vehicle) {Vehicle State\\$x_{\mathrm{vehicle}}$};
+\node[box, below=of vehicle] (cg) {Center-of-Gravity State\\$x_{\mathrm{CG}}$};
+\node[box, right=1.5cm of vehicle] (context) {Operational Context\\$v$, vehicle type, load};
+\draw[arrow] (track) -- (vehicle);
+\draw[arrow] (vehicle) -- (cg);
+\draw[arrow] (context) -- (vehicle);
+\end{tikzpicture}
+\caption{Vehicle space is generated relative to the railway runtime state.}
+\label{fig:vehicle-space}
+\end{figure}

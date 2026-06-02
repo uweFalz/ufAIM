@@ -1,0 +1,426 @@
+% dynamics/runtime_operators.tex
+
+\chapter{Runtime Operators}
+
+\label{chap:runtime-operators}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+The preceding chapters introduced several runtime-dependent concepts:
+\begin{itemize}
+\item railway runtime states,
+\item realized states,
+\item operational states,
+\item vehicle states,
+\item and optimization states.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These state layers are connected by operators rather than by direct
+identity.
+\end{remark}
+
+\begin{remark}
+This chapter introduces the main runtime operators used within AIM.
+\end{remark}
+
+\begin{principle}[Operator-layer principle]
+\label{princ:operator-layer-principle}
+Within AIM, runtime interpretation is organized through explicit
+operators connecting distinct state layers.
+\end{principle}
+
+% ============================================================
+\section{Operator Overview}
+% ============================================================
+
+\begin{remark}
+The central runtime operators are:
+\[
+\mathcal R,
+\qquad
+\mathcal D,
+\qquad
+\mathcal O,
+\qquad
+\mathcal V.
+\]
+\end{remark}
+
+\begin{remark}
+They may be interpreted schematically as:
+\[
+\mathrm{pose3}_{\mathrm{target}}
+\xrightarrow{\mathcal R}
+\mathrm{pose3}_{\mathrm{real}}
+\xrightarrow{\mathcal D}
+x_{\mathrm{op}}
+\xrightarrow{\mathcal V}
+x_{\mathrm{vehicle}}
+\xrightarrow{\mathcal O}
+x_{\mathrm{opt}}.
+\]
+\end{remark}
+
+\begin{remark}
+This diagram is conceptual. Individual implementations may combine,
+approximate, or partially evaluate these operators.
+\end{remark}
+
+% ============================================================
+\section{Realization Operator}
+% ============================================================
+
+\begin{definition}[Realization operator]
+\label{def:runtime-realization-operator}
+The realization operator maps target states to realized states:
+\[
+\mathcal R :
+x_{\mathrm{target}}
+\mapsto
+x_{\mathrm{real}}.
+\]
+\end{definition}
+
+\begin{remark}
+For pose3 states this becomes:
+\[
+\mathcal R_{\mathrm{pose3}}
+:
+\mathrm{pose3}_{\mathrm{target}}
+\mapsto
+\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{remark}
+
+\begin{remark}
+The realization operator includes:
+\begin{itemize}
+\item construction effects,
+\item measurement effects,
+\item maintenance effects,
+\item filtering effects,
+\item and physical realization constraints.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, \(\mathcal R\) is not a correction after design.
+It is a central operator in the runtime interpretation chain.
+\end{remark}
+
+% ============================================================
+\section{Dynamics Operator}
+% ============================================================
+
+\begin{definition}[Dynamics operator]
+\label{def:runtime-dynamics-operator-operator-chapter}
+The dynamics operator maps railway runtime states to operational dynamic
+state trajectories:
+\[
+\mathcal D :
+\mathrm{pose3}
+\mapsto
+x_{\mathrm{op}}.
+\]
+\end{definition}
+
+\begin{remark}
+The generated operational state \(x_{\mathrm{op}}\) may include:
+\begin{itemize}
+\item effective acceleration,
+\item jerk,
+\item roll response,
+\item cant deficiency,
+\item balance trajectories,
+\item and admissibility quantities.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+In realization-aware interpretation:
+\[
+x_{\mathrm{op,real}}
+=
+\mathcal D
+\left(
+\mathcal R_{\mathrm{pose3}}
+\left(
+\mathrm{pose3}_{\mathrm{target}}
+\right)
+\right).
+\]
+\end{remark}
+
+\begin{remark}
+The dynamics operator is an operational interpretation operator.
+It is not necessarily a complete multibody simulation model.
+\end{remark}
+
+% ============================================================
+\section{Operational Operator}
+% ============================================================
+
+\begin{definition}[Operational operator]
+\label{def:runtime-operational-operator}
+The operational operator maps runtime dynamic states to operational
+evaluation states:
+\[
+\mathcal O :
+x_{\mathrm{op}}
+\mapsto
+x_{\mathrm{eval}}.
+\]
+\end{definition}
+
+\begin{remark}
+The operational operator may evaluate:
+\begin{itemize}
+\item admissibility,
+\item standards compliance,
+\item comfort indicators,
+\item operational envelopes,
+\item and optimization objectives.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+For example:
+\[
+x_{\mathrm{eval}}
+=
+\mathcal O
+\left(
+x_{\mathrm{op}},
+\mathcal A_{\mathrm{adm}}
+\right),
+\]
+where \(\mathcal A_{\mathrm{adm}}\) denotes admissibility constraints.
+\end{remark}
+
+\begin{remark}
+The operator \(\mathcal O\) separates generation of operational states
+from evaluation of their quality or admissibility.
+\end{remark}
+
+% ============================================================
+\section{Vehicle Interpretation Operator}
+% ============================================================
+
+\begin{definition}[Vehicle interpretation operator]
+\label{def:runtime-vehicle-operator}
+The vehicle interpretation operator maps railway runtime states and
+operational context to vehicle-relative states:
+\[
+\mathcal V :
+\left(
+\mathrm{pose3},
+v,
+\mathcal C
+\right)
+\mapsto
+x_{\mathrm{vehicle}}.
+\]
+\end{definition}
+
+\begin{remark}
+Here \(\mathcal C\) denotes operational context such as vehicle type,
+load state, abstraction level, or interpretation model.
+\end{remark}
+
+\begin{remark}
+The vehicle operator may generate:
+\begin{itemize}
+\item vehicle-relative states,
+\item wheelset interpretation states,
+\item bogie interpretation states,
+\item center-of-gravity trajectories,
+\item and comfort-relevant abstractions.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Within AIM, \(\mathcal V\) is not automatically a full mechanical
+vehicle model.
+It is an interpretation operator whose detail level may vary.
+\end{remark}
+
+% ============================================================
+\section{Operator Composition}
+% ============================================================
+
+\begin{remark}
+The strength of the operator interpretation lies in composition.
+\end{remark}
+
+\begin{remark}
+A realization-aware operational state may be written as:
+\[
+x_{\mathrm{op,real}}
+=
+\left(
+\mathcal D
+\circ
+\mathcal R_{\mathrm{pose3}}
+\right)
+\left(
+\mathrm{pose3}_{\mathrm{target}}
+\right).
+\]
+\end{remark}
+
+\begin{remark}
+A vehicle-relative operational state may be written as:
+\[
+x_{\mathrm{vehicle}}
+=
+\mathcal V
+\left(
+\mathcal R_{\mathrm{pose3}}
+\left(
+\mathrm{pose3}_{\mathrm{target}}
+\right),
+v,
+\mathcal C
+\right).
+\]
+\end{remark}
+
+\begin{remark}
+A realization-aware optimization state may be written as:
+\[
+x_{\mathrm{opt}}
+=
+\mathcal O
+\left(
+\mathcal D
+\left(
+\mathcal R_{\mathrm{pose3}}
+\left(
+\mathrm{pose3}_{\mathrm{target}}
+\right)
+\right)
+\right).
+\]
+\end{remark}
+
+% ============================================================
+\section{Runtime versus Mechanics}
+% ============================================================
+
+\begin{remark}
+The runtime operators introduced here are not intended to replace
+specialized physical simulation models.
+\end{remark}
+
+\begin{remark}
+In particular, AIM does not require immediate commitment to:
+\begin{itemize}
+\item full vehicle dynamics,
+\item multibody simulation,
+\item wheel--rail contact mechanics,
+\item finite element models,
+\item or Simpack-like simulation environments.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+Such models may later be coupled through appropriate operator
+implementations.
+\end{remark}
+
+\begin{principle}[Runtime abstraction principle]
+\label{princ:runtime-abstraction-principle}
+Runtime operators define interpretation layers first; detailed mechanics
+may be added later as specialized implementations.
+\end{principle}
+
+% ============================================================
+\section{Operator Roles}
+% ============================================================
+
+\begin{definition}[Operator role]
+\label{def:runtime-operator-role}
+An operator role specifies the conceptual transformation performed by an
+operator, independent of a particular numerical implementation.
+\end{definition}
+
+\begin{remark}
+This distinction allows AIM to remain:
+\begin{itemize}
+\item structurally clear,
+\item implementation-flexible,
+\item runtime-oriented,
+\item and extensible toward higher physical fidelity.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+For example, \(\mathcal V\) may initially be a simple operational
+abstraction and later be replaced or refined by a detailed vehicle model
+without changing the conceptual state architecture.
+\end{remark}
+
+% ============================================================
+\section{Canonical Interpretation}
+% ============================================================
+
+\begin{proposition}
+Within AIM, runtime interpretation is operator-based.
+\end{proposition}
+
+\begin{proposition}
+The realization operator \(\mathcal R\) maps target states to realized
+states.
+\end{proposition}
+
+\begin{proposition}
+The dynamics operator \(\mathcal D\) maps railway runtime states to
+operational dynamic state trajectories.
+\end{proposition}
+
+\begin{proposition}
+The vehicle operator \(\mathcal V\) maps railway runtime states to
+vehicle-relative interpretation states.
+\end{proposition}
+
+\begin{proposition}
+The operational operator \(\mathcal O\) maps operational states to
+evaluation, admissibility, or optimization states.
+\end{proposition}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+Runtime operators provide the structural connection between AIM state
+layers.
+
+Within this framework:
+\begin{itemize}
+\item \(\mathcal R\) represents realization,
+\item \(\mathcal D\) represents runtime dynamic state generation,
+\item \(\mathcal V\) represents vehicle-relative interpretation,
+\item and \(\mathcal O\) represents operational evaluation.
+\end{itemize}
+
+Together, these operators connect:
+\begin{itemize}
+\item intrinsic geometry,
+\item pose3 runtime states,
+\item realized railway states,
+\item operational dynamics,
+\item vehicle-space interpretation,
+\item admissibility,
+\item and optimization.
+\end{itemize}
+
+This keeps AIM structurally, intrinsically, runtime-oriented, and
+operator-based without prematurely introducing full mechanical
+simulation models.
+\end{summary}

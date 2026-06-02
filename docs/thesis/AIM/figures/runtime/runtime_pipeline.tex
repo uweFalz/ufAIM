@@ -1,0 +1,19 @@
+% figures/runtime/runtime_pipeline.tex
+
+\begin{tikzpicture}[
+  node distance=0.85cm,
+  box/.style={draw, rounded corners, align=center, minimum width=5.0cm, minimum height=0.7cm},
+  arrow/.style={->, thick}
+]
+\node[box] (sparse) {Sparse Alignment};
+\node[box, below=of sparse] (pose2) {pose2 Reconstruction};
+\node[box, below=of pose2] (pose3) {pose3 Runtime State};
+\node[box, below=of pose3] (dyn) {Runtime Dynamics\\$\mathcal D$};
+\node[box, below=of dyn] (vehicle) {Vehicle Interpretation\\$\mathcal V$};
+\node[box, below=of vehicle] (opt) {Operational Evaluation\\$\mathcal O$};
+\draw[arrow] (sparse) -- (pose2);
+\draw[arrow] (pose2) -- (pose3);
+\draw[arrow] (pose3) -- (dyn);
+\draw[arrow] (dyn) -- (vehicle);
+\draw[arrow] (vehicle) -- (opt);
+\end{tikzpicture}

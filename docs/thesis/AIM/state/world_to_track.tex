@@ -55,6 +55,18 @@ through runtime evaluation.
 \section{Track Coordinate System}
 % ============================================================
 
+\begin{definition}[Track space]
+\label{def:track-space}
+The track space is the intrinsic railway coordinate domain:
+\[
+\Omega_{\mathrm{track}}
+=
+\{(s,d,h)\}.
+\]
+It represents positions relative to an alignment rather than positions
+in an external coordinate reference system.
+\end{definition}
+
 \begin{definition}[Track coordinate system]
 \label{def:track-coordinate-system}
 The intrinsic track coordinate system consists of:
@@ -151,13 +163,13 @@ is generally neither linear nor globally unique.
 % ============================================================
 
 \begin{definition}[Track-to-world mapping]
-\label{def:track-to-world-runtime}
+\label{def:state-track-to-world-runtime}
 The forward transformation is:
 \begin{equation}
 x(s,d)
 =
 \gamma(s)+d\,\mathbf n(s).
-\label{eq:track-to-world-runtime}
+\label{eq:state-track-to-world-runtime}
 \end{equation}
 \end{definition}
 
@@ -243,7 +255,7 @@ Formalize reference-line conventions for:
 % ============================================================
 
 \begin{definition}[World-to-track projection]
-\label{def:world-to-track-runtime}
+\label{def:staete-world-to-track-runtime}
 The inverse transformation is:
 \begin{equation}
 (s^\ast,d^\ast)
@@ -252,7 +264,7 @@ The inverse transformation is:
 \|
 x-(\gamma(s)+d\,\mathbf n(s))
 \|.
-\label{eq:world-to-track-runtime}
+\label{eq:state-world-to-track-runtime}
 \end{equation}
 \end{definition}
 

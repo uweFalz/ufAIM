@@ -1,0 +1,22 @@
+% figures/geometry/pose2_to_pose3.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={draw, rounded corners, align=center, minimum width=4.8cm, minimum height=0.75cm},
+  arrow/.style={->, thick}
+]
+\node[box] (pose2) {pose2\\planar intrinsic state};
+\node[box, below left=of pose2] (profile) {Profile\\$p(s)$};
+\node[box, below=of pose2] (cant) {Cant\\$u(s)$};
+\node[box, below right=of pose2] (frame) {Frame Operator\\$\mathcal F$};
+\node[box, below=1.5cm of cant] (pose3) {pose3\\runtime spatial railway state};
+\draw[arrow] (pose2) -- (pose3);
+\draw[arrow] (profile) -- (pose3);
+\draw[arrow] (cant) -- (pose3);
+\draw[arrow] (frame) -- (pose3);
+\end{tikzpicture}
+\caption{pose3 is generated from pose2, profile, cant, and frame evaluation.}
+\label{fig:pose2-to-pose3}
+\end{figure}

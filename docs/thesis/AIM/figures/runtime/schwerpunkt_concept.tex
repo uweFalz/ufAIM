@@ -1,0 +1,30 @@
+% figures/runtime/schwerpunkt_concept.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=5.4cm,
+    minimum height=0.75cm
+  },
+  arrow/.style={->, thick}
+]
+\node[box] (curv) {Curvature + Cant\\$\kappa(s), u(s)$};
+\node[box, below=of curv] (pose3) {Realized Runtime State\\$\mathrm{pose3}_{\mathrm{real}}$};
+\node[box, below=of pose3] (cg) {CG Trajectory\\$x_{\mathrm{CG}}(s)$};
+\node[box, below=of cg] (balance) {Balance Trajectory\\$a_{\mathrm{eff}}(s)$};
+\node[box, below=of balance] (comfort) {Comfort / Admissibility};
+
+\draw[arrow] (curv) -- (pose3);
+\draw[arrow] (pose3) -- (cg);
+\draw[arrow] (cg) -- (balance);
+\draw[arrow] (balance) -- (comfort);
+\end{tikzpicture}
+
+\caption{Schwerpunkt interpretation: alignment design becomes shaping of operational state trajectories.}
+\label{fig:schwerpunkt-concept}
+\end{figure}

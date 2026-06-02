@@ -9,89 +9,60 @@
 % ============================================================
 
 \begin{remark}
-Railway alignments are not merely geometric structures.
+Railway alignments are not merely geometric objects.
 \end{remark}
 
 \begin{remark}
-During operation, railway geometry generates evolving operational states
-through interaction with moving vehicles.
+During operation, railway geometry generates evolving operational
+states through interaction with runtime evaluation, realization, and
+vehicle interpretation.
 \end{remark}
 
 \begin{remark}
-Within AIM, these operational quantities are interpreted as runtime
-states derived from:
-\begin{itemize}
-\item intrinsic curvature evolution,
-\item cant evolution,
-\item runtime frame evaluation,
-\item realization,
-\item and vehicle-space interpretation.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-This motivates interpretation of railway dynamics as runtime state
-evolution rather than merely as static geometry.
+Within AIM, these operational quantities are not treated as persistent
+model parameters.
+They are interpreted as runtime-derived state trajectories.
 \end{remark}
 
 \begin{principle}[Runtime-dynamics principle]
 \label{princ:runtime-dynamics}
 Within AIM, operational railway dynamics are interpreted as runtime
-evolution of coupled railway and vehicle states.
+state evolution generated from railway runtime states.
 \end{principle}
 
 % ============================================================
-\section{Runtime State Evolution}
+\section{Dynamic Runtime States}
 % ============================================================
 
-\begin{definition}[Runtime state]
-\label{def:runtime-state}
-A runtime state is an operationally evaluated state depending on:
-\begin{itemize}
-\item pose reconstruction,
-\item frame evaluation,
-\item realization,
-\item operational context,
-\item and vehicle interpretation.
-\end{itemize}
+\begin{definition}[Dynamic runtime state]
+\label{def:runtime-dynamic-state}
+A dynamic runtime state is an operational state that evolves during
+runtime interpretation.
 \end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Runtime state evolution]
-\label{def:runtime-state-evolution}
-Runtime evolution may formally be written as:
-\[
-x'(s)
-=
-f(x,u),
-\]
-where:
-\begin{itemize}
-\item \(x(s)\) denotes the runtime state,
-\item \(u(s)\) denotes operational or geometric input,
-\item and \(f\) denotes the runtime evolution operator.
-\end{itemize}
-\end{definition}
-
-% ------------------------------------------------------------
 
 \begin{remark}
-Within AIM, the evolution parameter is typically arc-length rather than
-time.
+Dynamic runtime states are generated from:
+\begin{itemize}
+\item railway runtime states,
+\item operational context,
+\item realization,
+\item and runtime evaluation services.
+\end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
+\begin{remark}
+They do not belong to the intrinsic alignment representation.
+Instead, they arise from interpretation of alignment behaviour.
+\end{remark}
 
 \begin{remark}
-The runtime state may include:
+Examples include:
 \begin{itemize}
-\item curvature,
-\item cant,
-\item roll state,
-\item effective acceleration,
-\item vehicle-relative quantities,
-\item and operational frame states.
+\item acceleration-related states,
+\item comfort-related states,
+\item admissibility-related states,
+\item balance-related states,
+\item and vehicle-relative operational states.
 \end{itemize}
 \end{remark}
 
@@ -107,388 +78,188 @@ The runtime dynamics operator is denoted by:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Operational runtime evolution may therefore be interpreted abstractly
-as:
+The operator
 \[
-\mathcal D(\mathrm{pose3}).
+\mathcal D
 \]
+maps railway runtime states to dynamic operational states.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
-The operator \(\mathcal D\) does not represent a single mechanical
-model.
-Instead, it denotes a runtime interpretation layer generating
-operational state evolution from railway geometry.
-\end{remark}
-
-% ============================================================
-\section{Acceleration Interpretation}
-% ============================================================
-
-\begin{definition}[Runtime acceleration]
-\label{def:runtime-acceleration}
-Runtime acceleration denotes operational acceleration quantities derived
-from runtime state evaluation.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Important quantities include:
-\begin{itemize}
-\item lateral acceleration,
-\item effective lateral acceleration,
-\item roll-induced acceleration,
-\item and vertical acceleration components.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, acceleration is interpreted operationally relative to the
-runtime railway frame rather than as a purely world-space quantity.
-\end{remark}
-
-% ============================================================
-\section{Effective Lateral Acceleration}
-% ============================================================
-
-\begin{definition}[Effective lateral acceleration]
-\label{def:runtime-effective-acceleration}
-The effective lateral acceleration is:
+Conceptually:
 \[
-a_{\mathrm{eff}}(s)
+x(s)
 =
-v^2\kappa(s)
--
-g\sin\phi(s).
+\mathcal D
+\bigl(
+\mathrm{pose3}(s),
+\mathcal C
+\bigr),
 \]
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This quantity describes the operational imbalance between:
+where:
 \begin{itemize}
-\item curvature-induced acceleration,
-\item and cant-induced compensation.
+\item \(\mathrm{pose3}(s)\) denotes the railway runtime state,
+\item \(\mathcal C\) denotes operational context,
+\item and \(x(s)\) denotes a dynamic runtime state.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-The effective acceleration is one of the primary runtime quantities
-governing:
-\begin{itemize}
-\item passenger comfort,
-\item load transfer,
-\item and operational admissibility.
-\end{itemize}
+The operator
+\[
+\mathcal D
+\]
+does not represent a specific physical vehicle model.
+It represents the dynamic interpretation layer of AIM.
 \end{remark}
 
 % ============================================================
-\section{Cant Deficiency}
+\section{Arc-Length State Evolution}
 % ============================================================
 
-\begin{definition}[Cant deficiency]
-\label{def:cant-deficiency}
-Cant deficiency denotes the operational mismatch between:
+\begin{definition}[Runtime state evolution]
+\label{def:runtime-dynamics-state-evolution}
+Runtime state evolution may be represented abstractly by:
+\[
+x'(s)
+=
+f(x(s),u(s)),
+\]
+where:
 \begin{itemize}
-\item required equilibrium cant,
-\item and realized or applied cant.
+\item \(x(s)\) denotes the dynamic state,
+\item \(u(s)\) denotes operational input,
+\item and \(f\) denotes the evolution law.
 \end{itemize}
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Cant deficiency is therefore a runtime operational quantity rather than
-a purely geometric parameter.
+Within AIM, state evolution is naturally formulated over arc-length
+rather than time.
 \end{remark}
 
-% ------------------------------------------------------------
+\begin{remark}
+The intrinsic parameter
+\[
+s
+\]
+is already present in alignment geometry and therefore provides a
+natural evolution coordinate.
+\end{remark}
 
 \begin{remark}
-Within AIM, cant deficiency depends jointly on:
+For known velocity
+\[
+v(s),
+\]
+time-based and arc-length-based derivatives satisfy:
+\[
+\frac{\dd}{\dd t}
+=
+v
+\frac{\dd}{\dd s}.
+\]
+\end{remark}
+
+\begin{remark}
+This relation provides the bridge between geometric description and
+operational interpretation.
+\end{remark}
+
+% ============================================================
+\section{Runtime Dynamics versus Geometry}
+% ============================================================
+
+\begin{remark}
+Runtime dynamics should not be confused with intrinsic geometry.
+\end{remark}
+
+\begin{remark}
+Intrinsic geometry describes:
 \begin{itemize}
 \item curvature,
+\item profile,
 \item cant,
-\item speed,
-\item realization,
-\item and runtime interpretation.
+\item and alignment reconstruction.
 \end{itemize}
 \end{remark}
 
-% ============================================================
-\section{Jerk Interpretation}
-% ============================================================
-
-\begin{definition}[Runtime jerk]
-\label{def:runtime-jerk}
-Runtime jerk describes the evolution of acceleration along the runtime
-trajectory.
-\end{definition}
-
-% ------------------------------------------------------------
-
 \begin{remark}
-For railway operation, jerk depends jointly on:
-\[
-\kappa'(s),
-\qquad
-\phi'(s),
-\qquad
-v.
-\]
+Runtime dynamics describe the operational consequences generated from
+these quantities.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-One canonical relation is:
-\[
-j(s)
-=
-v^3\kappa'(s)
--
-gv\cos\phi(s)\,\phi'(s).
-\]
+Geometry defines structure.
+
+Runtime dynamics describe behaviour.
 \end{remark}
 
-% ------------------------------------------------------------
-
-\begin{remark}
-Jerk is one of the central runtime indicators for:
-\begin{itemize}
-\item comfort,
-\item transition quality,
-\item and dynamic smoothness.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Roll Response}
-% ============================================================
-
-\begin{definition}[Roll response]
-\label{def:roll-response}
-Roll response describes the operational rotational response of the
-vehicle state relative to the track frame.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Roll response depends on:
-\begin{itemize}
-\item cant evolution,
-\item suspension behaviour,
-\item center-of-gravity position,
-\item and operational velocity.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, the roll state is interpreted relative to the runtime track
-frame generated by pose3 evaluation.
-\end{remark}
-
-% ============================================================
-\section{Dynamic Coupling}
-% ============================================================
-
-\begin{remark}
-Operational railway quantities are strongly coupled.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-In particular:
-\begin{itemize}
-\item curvature influences acceleration,
-\item cant influences roll response,
-\item realization influences smoothness,
-\item and runtime interpretation influences operational admissibility.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Thus, railway dynamics cannot be interpreted as isolated scalar
-quantities.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{proposition}[Dynamic coupling principle]
-\label{prop:dynamic-coupling}
-Operational railway behaviour emerges from coupled runtime evolution of:
-\begin{itemize}
-\item geometry,
-\item cant,
-\item realization,
-\item runtime frames,
-\item and vehicle-space interpretation.
-\end{itemize}
+\begin{proposition}
+\label{prop:dynamics-not-geometry}
+Dynamic runtime states are derived from geometry but are not themselves
+geometric quantities.
 \end{proposition}
 
 % ============================================================
-\section{Runtime Frames}
-% ============================================================
-
-\begin{remark}
-Operational quantities depend on the chosen runtime frame.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Different interpretations may use:
-\begin{itemize}
-\item world frames,
-\item track-attached frames,
-\item vehicle frames,
-\item or center-of-gravity frames.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, operational railway dynamics are primarily interpreted in
-track-relative runtime frames.
-\end{remark}
-
-% ============================================================
-\section{Runtime Dynamics versus Full Mechanics}
+\section{Runtime Dynamics versus Mechanics}
 % ============================================================
 
 \begin{remark}
 The AIM runtime-dynamics framework is not intended as a complete
-multibody simulation model.
+multibody simulation framework.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Instead, it provides:
 \begin{itemize}
-\item operational runtime interpretation,
-\item state coupling,
+\item operational interpretation,
+\item state evolution,
 \item admissibility evaluation,
-\item and realization-aware state evolution.
+\item and dynamic state generation.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Detailed vehicle mechanics may later be coupled to this framework
-through specialized dynamic models.
+Detailed vehicle mechanics may be connected to AIM through dedicated
+simulation models.
 \end{remark}
 
-% ============================================================
-\section{Runtime Dynamics and Realization}
-% ============================================================
-
-\begin{remark}
-Operational dynamics depend on realized rather than purely analytical
-geometry.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Thus:
-\[
-\mathcal D(
-\mathrm{pose3}_{\mathrm{real}}
-)
-\]
-is operationally more relevant than:
-\[
-\mathcal D(
-\mathrm{pose3}_{\mathrm{target}}
-).
-\]
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Realization therefore directly affects:
-\begin{itemize}
-\item comfort,
-\item acceleration,
-\item jerk,
-\item and operational smoothness.
-\end{itemize}
-\end{remark}
+\begin{principle}[Mechanics separation principle]
+\label{princ:mechanics-separation}
+Runtime dynamics in AIM form an operational state-evolution layer rather
+than a complete vehicle-dynamics simulation layer.
+\end{principle}
 
 % ============================================================
 \section{Runtime Dynamics and Curvature Space}
 % ============================================================
 
 \begin{remark}
-Runtime dynamics emerge fundamentally from curvature evolution.
+Runtime dynamics originate from curvature evolution.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Within AIM, operational dynamics are therefore interpreted primarily as
-runtime consequences of:
+The quantities
 \[
 \kappa(s),
 \qquad
 \kappa'(s),
 \qquad
-\kappa''(s).
+\kappa''(s)
 \]
+are therefore not only geometric descriptors.
+They are generators of dynamic runtime behaviour.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Curvature space thus acts not only as a geometric domain, but also as a
-dynamic state-generation domain.
+Curvature space may thus be interpreted as a state-generation domain.
 \end{remark}
 
-% ============================================================
-\section{Towards Dynamic State Design}
-% ============================================================
-
 \begin{remark}
-The runtime-dynamics interpretation shifts railway alignment design from:
-\begin{quote}
-curve construction
-\end{quote}
-toward:
-\begin{quote}
-runtime operational state design.
-\end{quote}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This prepares the transition toward:
-\begin{itemize}
-\item Schwerpunkt-Trassierung,
-\item realization-aware dynamics,
-\item and operational state optimization.
-\end{itemize}
+This observation forms one of the central motivations of AIM:
+operational behaviour emerges from intrinsic curvature structure.
 \end{remark}
 
 % ============================================================
@@ -496,28 +267,29 @@ This prepares the transition toward:
 % ============================================================
 
 \begin{proposition}
-Within AIM, railway dynamics are interpreted as runtime state evolution
-rather than as static geometric properties.
+Within AIM, railway dynamics are interpreted as runtime state evolution.
 \end{proposition}
 
-% ------------------------------------------------------------
-
 \begin{proposition}
-Operational quantities emerge from coupled runtime interaction between:
-\begin{itemize}
-\item curvature,
-\item cant,
-\item realization,
-\item runtime frames,
-\item and vehicle interpretation.
-\end{itemize}
+Dynamic runtime states are generated from railway runtime states.
 \end{proposition}
 
-% ------------------------------------------------------------
+\begin{proposition}
+The runtime dynamics operator
+\[
+\mathcal D
+\]
+maps railway runtime states to operational state trajectories.
+\end{proposition}
 
 \begin{proposition}
-Runtime dynamics therefore form a state-evolution layer on top of
-intrinsic geometry.
+Runtime dynamics belong to the operational interpretation layer and not
+to intrinsic geometry itself.
+\end{proposition}
+
+\begin{proposition}
+The AIM runtime-dynamics framework provides operational state evolution
+rather than complete vehicle mechanics.
 \end{proposition}
 
 % ============================================================
@@ -525,24 +297,25 @@ intrinsic geometry.
 % ============================================================
 
 \begin{summary}
-Runtime dynamics extend AIM geometry toward operational railway-state
-evolution.
+Runtime dynamics extend AIM from geometric reconstruction toward
+operational state evolution.
 
 Within this framework:
 \begin{itemize}
-\item runtime states evolve along railway geometry,
-\item acceleration and jerk become runtime quantities,
-\item cant deficiency becomes an operational state mismatch,
-\item realization affects dynamic behaviour directly,
-\item and curvature evolution generates operational dynamics.
+\item pose3 provides railway runtime states,
+\item the operator \(\mathcal D\) generates dynamic runtime states,
+\item state evolution is naturally formulated over arc-length,
+\item curvature evolution acts as a generator of runtime behaviour,
+\item geometry and dynamics remain conceptually separated,
+\item and operational interpretation remains separated from detailed
+vehicle mechanics.
 \end{itemize}
 
-This establishes the bridge between:
+Runtime dynamics therefore establish the bridge between:
 \begin{itemize}
 \item intrinsic geometry,
 \item runtime evaluation,
-\item vehicle-space interpretation,
-\item realization,
-\item and operational state design.
+\item operational interpretation,
+\item and later realization-aware optimization.
 \end{itemize}
 \end{summary}

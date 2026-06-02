@@ -1,0 +1,22 @@
+% figures/optimization/state_space_optimization.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={draw, rounded corners, align=center, minimum width=5.5cm, minimum height=0.75cm},
+  arrow/.style={->, thick}
+]
+\node[box] (params) {Design Variables\\transition families, lengths, curvature};
+\node[box, below=of params] (state) {Runtime State Trajectory\\$x(s)$};
+\node[box, below=of state] (real) {Realized Trajectory\\$x_{\mathrm{real}}(s)$};
+\node[box, below=of real] (func) {Functional\\$J[x_{\mathrm{real}}]$};
+\node[box, below=of func] (opt) {Optimized Runtime-State Design};
+\draw[arrow] (params) -- (state);
+\draw[arrow] (state) -- (real);
+\draw[arrow] (real) -- (func);
+\draw[arrow] (func) -- (opt);
+\end{tikzpicture}
+\caption{Optimization in AIM acts on realized runtime-state trajectories.}
+\label{fig:state-space-optimization}
+\end{figure}

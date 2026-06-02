@@ -1,0 +1,18 @@
+% figures/geometry/curvature_to_pose2.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=1.1cm,
+  box/.style={draw, rounded corners, align=center, minimum width=4.5cm, minimum height=0.8cm},
+  arrow/.style={->, thick}
+]
+\node[box] (kappa) {Curvature Law\\$\kappa(s)$};
+\node[box, below=of kappa] (theta) {Direction Evolution\\$\theta'(s)=\kappa(s)$};
+\node[box, below=of theta] (pose2) {pose2\\$(p(s),\theta(s))$};
+\draw[arrow] (kappa) -- (theta);
+\draw[arrow] (theta) -- (pose2);
+\end{tikzpicture}
+\caption{Curvature generates pose2 through intrinsic direction evolution.}
+\label{fig:curvature-to-pose2}
+\end{figure}

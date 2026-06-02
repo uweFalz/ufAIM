@@ -1,0 +1,18 @@
+% figures/optimization/axtran_to_aim.tex
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=1.0cm,
+  box/.style={draw, rounded corners, align=center, minimum width=5.8cm, minimum height=0.8cm},
+  arrow/.style={->, thick}
+]
+\node[box] (classic) {Classical Optimization\\geometry, radii, tangents};
+\node[box, below=of classic] (axtran) {AXTRAN-Type Optimization\\structured alignment fitting};
+\node[box, below=of axtran] (aim) {AIM Optimization\\runtime-state trajectory shaping};
+\draw[arrow] (classic) -- (axtran);
+\draw[arrow] (axtran) -- (aim);
+\end{tikzpicture}
+\caption{AIM generalizes classical alignment optimization toward runtime-state trajectory optimization.}
+\label{fig:axtran-to-aim}
+\end{figure}

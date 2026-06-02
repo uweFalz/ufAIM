@@ -14,64 +14,13 @@ dynamics arise directly from analytical target geometry.
 \end{remark}
 
 \begin{remark}
-In reality, however, railway operation interacts with:
-\begin{itemize}
-\item realized geometry,
-\item measured states,
-\item runtime reconstruction,
-\item and realization-dependent operational behaviour.
-\end{itemize}
+Within AIM, this assumption is insufficient.
+Operational railway behaviour depends on realized and runtime-evaluated
+railway states.
 \end{remark}
 
 \begin{remark}
-Thus, operational railway dynamics are fundamentally realization-aware.
-\end{remark}
-
-\begin{remark}
-Within AIM, runtime dynamics are therefore interpreted not as direct
-consequences of analytical geometry, but as consequences of realized and
-runtime-evaluated railway states.
-\end{remark}
-
-\begin{principle}[Realization-aware dynamics principle]
-\label{princ:realization-aware-dynamics}
-Within AIM, operational railway dynamics emerge from realized runtime
-states rather than from idealized analytical geometry alone.
-\end{principle}
-
-% ============================================================
-\section{From Target Geometry to Runtime Dynamics}
-% ============================================================
-
-\begin{remark}
-The analytical target alignment:
-\[
-\gamma_{\mathrm{target}}(s)
-\]
-is not the operationally relevant railway state.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Instead, operational behaviour depends on:
-\[
-\mathrm{pose3}_{\mathrm{real}}(s),
-\]
-including:
-\begin{itemize}
-\item realized geometry,
-\item realized cant,
-\item realized curvature,
-\item runtime reconstruction,
-\item and operational interpretation.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Thus, railway dynamics arise through a chain:
+The relevant chain is:
 \[
 \mathrm{target}
 \rightarrow
@@ -83,8 +32,14 @@ Thus, railway dynamics arise through a chain:
 \]
 \end{remark}
 
+\begin{principle}[Realization-aware dynamics principle]
+\label{princ:realization-aware-dynamics}
+Operational railway dynamics emerge from realized runtime states rather
+than from idealized analytical geometry alone.
+\end{principle}
+
 % ============================================================
-\section{Realization-Aware Runtime States}
+\section{Realized Runtime States}
 % ============================================================
 
 \begin{definition}[Realization-aware runtime state]
@@ -93,34 +48,30 @@ A realization-aware runtime state is a runtime railway state evaluated
 from realized rather than purely analytical geometry.
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Such states depend on:
-\begin{itemize}
-\item realization,
-\item measurement,
-\item runtime reconstruction,
-\item and operational context.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, operational dynamics are interpreted primarily through:
+Within AIM, the operationally relevant railway state is:
 \[
 \mathrm{pose3}_{\mathrm{real}}(s).
 \]
 \end{remark}
 
+\begin{remark}
+This state includes realized geometry, realized cant, realized curvature,
+runtime reconstruction, and operational interpretation.
+\end{remark}
+
+\begin{remark}
+The analytical target state remains important, but only through the
+realized runtime state that it generates.
+\end{remark}
+
 % ============================================================
-\section{Realization Operator on Runtime States}
+\section{Realization Operator}
 % ============================================================
 
 \begin{definition}[Pose3 realization operator]
 \label{def:pose3-realization-operator-runtime}
-The realization operator acting on runtime states is:
+The realization operator acting on pose3 states is:
 \[
 \mathcal R_{\mathrm{pose3}}
 :
@@ -130,20 +81,11 @@ The realization operator acting on runtime states is:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-The operator includes:
-\begin{itemize}
-\item construction effects,
-\item measurement effects,
-\item realization filtering,
-\item mechanical response,
-\item and operational reconstruction.
-\end{itemize}
+The operator \(\mathcal R_{\mathrm{pose3}}\) includes construction
+effects, measurement effects, realization filtering, maintenance
+history, mechanical response, and runtime reconstruction.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Operational runtime dynamics therefore depend on:
@@ -158,8 +100,14 @@ Operational runtime dynamics therefore depend on:
 \]
 \end{remark}
 
+\begin{principle}[Realization-operator principle]
+\label{princ:realization-operator-principle}
+Within AIM, realization is a central runtime-state operator, not a
+post-processing correction.
+\end{principle}
+
 % ============================================================
-\section{Measurement and Runtime Reconstruction}
+\section{Measurement and Reconstruction}
 % ============================================================
 
 \begin{remark}
@@ -167,28 +115,14 @@ Operational railway systems do not access exact analytical geometry
 directly.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Instead, runtime systems operate on:
-\begin{itemize}
-\item measurements,
-\item reconstructed states,
-\item sensor data,
-\item estimated geometry,
-\item and realization-aware runtime evaluation.
-\end{itemize}
+Instead, runtime systems operate on measurements, reconstructed states,
+estimated geometry, and realization-aware runtime evaluation.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Thus, runtime dynamics depend fundamentally on:
-\begin{itemize}
-\item measurement interpretation,
-\item reconstruction quality,
-\item and realization-aware state estimation.
-\end{itemize}
+Measured states are evidence for realized runtime states.
+They are not automatically identical to the realized state itself.
 \end{remark}
 
 % ============================================================
@@ -197,34 +131,31 @@ Thus, runtime dynamics depend fundamentally on:
 
 \begin{definition}[Realized dynamic state]
 \label{def:realized-dynamic-state}
-A realized dynamic state is a runtime operational state generated from:
+A realized dynamic state is an operational runtime state generated from:
 \[
 \mathrm{pose3}_{\mathrm{real}}(s).
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Important realized operational quantities include:
+Important realized dynamic quantities include:
 \begin{itemize}
 \item effective acceleration,
 \item jerk,
 \item roll evolution,
 \item cant deficiency,
-\item and operational balance.
+\item balance trajectories,
+\item and center-of-gravity motion.
 \end{itemize}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-These quantities differ from their analytical target counterparts due
-to realization effects.
+These quantities may differ from their analytical target counterparts
+because realization changes the runtime-generating state.
 \end{remark}
 
 % ============================================================
-\section{Realization-Aware Effective Acceleration}
+\section{Realized Effective Acceleration}
 % ============================================================
 
 \begin{definition}[Realized effective acceleration]
@@ -239,20 +170,17 @@ g\sin\phi_{\mathrm{real}}(s).
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-This quantity is operationally more relevant than:
+This quantity is operationally more relevant than the corresponding
+target quantity:
 \[
 a_{\mathrm{eff,target}}(s).
 \]
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Passenger comfort depends on realized rather than idealized runtime
-states.
+Passenger comfort and admissibility depend on realized rather than
+idealized runtime states.
 \end{remark}
 
 % ============================================================
@@ -272,18 +200,10 @@ gv\cos\phi_{\mathrm{real}}(s)\,
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Realized jerk depends jointly on:
-\begin{itemize}
-\item realized curvature evolution,
-\item realized cant evolution,
-\item and runtime operational interpretation.
-\end{itemize}
+Realized jerk depends jointly on realized curvature evolution, realized
+cant evolution, and runtime interpretation.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
 Thus, comfort depends fundamentally on realization-aware runtime
@@ -295,27 +215,14 @@ behaviour.
 % ============================================================
 
 \begin{remark}
-Realization acts approximately as a low-pass filter on:
-\begin{itemize}
-\item curvature,
-\item cant,
-\item and higher-order runtime-state evolution.
-\end{itemize}
+Realization acts approximately as a low-pass filter on curvature, cant,
+and higher-order runtime-state evolution.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{remark}
-High-frequency operational behaviour may therefore disappear during:
-\begin{itemize}
-\item construction,
-\item maintenance,
-\item reconstruction,
-\item and runtime evaluation.
-\end{itemize}
+High-frequency operational behaviour may be attenuated during
+construction, maintenance, reconstruction, and runtime evaluation.
 \end{remark}
-
-% ------------------------------------------------------------
 
 \begin{proposition}[Runtime realization-filter principle]
 \label{prop:runtime-realization-filter}
@@ -323,34 +230,34 @@ Operational runtime behaviour is generated from filtered realized states
 rather than directly from analytical target geometry.
 \end{proposition}
 
+\begin{remark}
+A transition law is operationally meaningful only if its intended
+runtime behaviour survives realization.
+\end{remark}
+
 % ============================================================
-\section{Operational Admissibility}
+\section{Realization-Aware Admissibility}
 % ============================================================
 
 \begin{definition}[Realization-aware admissibility]
 \label{def:realization-aware-admissibility}
-A railway state is realization-aware admissible if:
-\begin{itemize}
-\item realized runtime states remain operationally admissible,
-\item realization does not introduce instability,
-\item and operational envelopes remain satisfied.
-\end{itemize}
+A railway state is realization-aware admissible if its realized runtime
+states remain within the relevant operational envelope.
 \end{definition}
 
-% ------------------------------------------------------------
+\begin{remark}
+Admissibility depends jointly on geometry, realization, runtime
+reconstruction, operational interpretation, and project-specific
+constraints.
+\end{remark}
 
 \begin{remark}
-Admissibility therefore depends jointly on:
-\begin{itemize}
-\item geometry,
-\item realization,
-\item runtime reconstruction,
-\item and operational interpretation.
-\end{itemize}
+Operational admissibility is therefore not merely a design-time check.
+It is a realization-aware runtime-state property.
 \end{remark}
 
 % ============================================================
-\section{Operational Runtime Envelopes}
+\section{Runtime Envelopes}
 % ============================================================
 
 \begin{definition}[Realization-aware runtime envelope]
@@ -359,28 +266,18 @@ A realization-aware runtime envelope is the admissible region of
 realized operational runtime states.
 \end{definition}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Such envelopes constrain:
-\begin{itemize}
-\item realized acceleration,
-\item realized jerk,
-\item roll evolution,
-\item cant deficiency,
-\item and operational smoothness.
-\end{itemize}
+Such envelopes may constrain realized acceleration, realized jerk, roll
+evolution, cant deficiency, dynamic balance, and operational smoothness.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Operational envelopes therefore belong fundamentally to runtime-state
-space rather than purely to geometric design space.
+Runtime envelopes provide the constraint domain for realization-aware
+optimization.
 \end{remark}
 
 % ============================================================
-\section{Dynamic State Design}
+\section{Realization-Aware State Design}
 % ============================================================
 
 \begin{remark}
@@ -394,10 +291,8 @@ design of realized operational runtime states.
 \end{quote}
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Within AIM, the operationally relevant design object is therefore:
+Within AIM, the relevant design object is:
 \[
 \mathcal R_{\mathrm{pose3}}
 (
@@ -410,22 +305,24 @@ rather than merely:
 \]
 \end{remark}
 
+\begin{remark}
+The engineering question therefore becomes:
+\begin{quote}
+Which realized runtime operational state should emerge?
+\end{quote}
+\end{remark}
+
 % ============================================================
 \section{Optimization Interpretation}
 % ============================================================
 
 \begin{remark}
-Optimization should therefore operate on:
-\[
-\mathrm{pose3}_{\mathrm{real}},
-\]
-rather than solely on analytical target geometry.
+Realization-aware optimization acts on realized runtime states rather
+than solely on analytical target geometry.
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Thus, realization-aware optimization becomes:
+A realization-aware objective may be expressed as:
 \[
 J
 =
@@ -442,53 +339,9 @@ J
 \]
 \end{remark}
 
-% ------------------------------------------------------------
-
 \begin{remark}
-Optimization therefore acts simultaneously on:
-\begin{itemize}
-\item geometry,
-\item realization behaviour,
-\item runtime reconstruction,
-\item and operational dynamics.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Realization-Aware State Design}
-% ============================================================
-
-\begin{remark}
-Within AIM, railway alignment design becomes:
-\begin{quote}
-realization-aware runtime-state design.
-\end{quote}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-The relevant engineering question is therefore not:
-\begin{quote}
-``Which analytical curve should be designed?''
-\end{quote}
-but rather:
-\begin{quote}
-``Which realized runtime operational state should emerge?''
-\end{quote}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This interpretation unifies:
-\begin{itemize}
-\item geometry,
-\item realization,
-\item measurement,
-\item runtime dynamics,
-\item and optimization.
-\end{itemize}
+Optimization therefore couples geometry, realization behaviour, runtime
+reconstruction, operational dynamics, and admissibility envelopes.
 \end{remark}
 
 % ============================================================
@@ -500,20 +353,14 @@ Operational railway dynamics emerge from realized runtime states rather
 than directly from analytical geometry.
 \end{proposition}
 
-% ------------------------------------------------------------
-
 \begin{proposition}
 The realization operator acts directly on runtime operational behaviour.
 \end{proposition}
 
-% ------------------------------------------------------------
-
 \begin{proposition}
-Passenger comfort, admissibility, and runtime smoothness are therefore
+Passenger comfort, admissibility, and runtime smoothness are
 realization-aware properties.
 \end{proposition}
-
-% ------------------------------------------------------------
 
 \begin{proposition}
 Within AIM, railway alignment becomes realization-aware operational
@@ -525,32 +372,21 @@ runtime-state design.
 % ============================================================
 
 \begin{summary}
-Realization-aware dynamics unify:
-\begin{itemize}
-\item realization,
-\item measurement,
-\item runtime reconstruction,
-\item operational dynamics,
-\item and optimization.
-\end{itemize}
+Realization-aware dynamics connect realization, measurement, runtime
+reconstruction, operational dynamics, admissibility, and optimization.
 
 Within AIM:
 \begin{itemize}
-\item the realization operator acts on runtime states,
+\item the realization operator acts on runtime-state generation,
 \item operational behaviour emerges from realized geometry,
-\item runtime dynamics become realization-aware,
+\item effective acceleration and jerk become realized quantities,
 \item admissibility becomes state-dependent,
+\item runtime envelopes define constraint regions,
 \item and railway alignment becomes realization-aware runtime-state
 design.
 \end{itemize}
 
-This establishes the conceptual bridge between:
-\begin{itemize}
-\item geometry,
-\item realization,
-\item runtime evaluation,
-\item operational dynamics,
-\item Schwerpunkt-Trassierung,
-\item and realization-aware optimization.
-\end{itemize}
+This establishes the conceptual bridge between geometry, realization,
+runtime dynamics, Schwerpunkt-Trassierung, engineering admissibility, and
+realization-aware optimization.
 \end{summary}

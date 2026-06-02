@@ -1,0 +1,84 @@
+% dynamics/operational_velocity.tex
+
+\chapter{Operational Velocity}
+
+\label{chap:operational-velocity}
+
+\section{Motivation}
+
+\begin{remark}
+Railway alignment geometry is naturally parameterized by arc length,
+whereas operational behaviour is experienced through time.
+\end{remark}
+
+\begin{remark}
+Operational velocity is therefore the bridge between intrinsic geometry
+and runtime dynamics.
+\end{remark}
+
+\begin{principle}[Velocity-runtime principle]
+\label{princ:velocity-runtime}
+Within AIM, velocity is interpreted as a runtime quantity coupling
+arc-length-based railway geometry to time-based operational behaviour.
+\end{principle}
+
+\section{Arc Length and Time}
+
+\begin{definition}[Velocity relation]
+\label{def:velocity-relation}
+For an operational velocity \(v(s)\), arc-length and time derivatives
+are related by:
+\[
+\frac{\dd}{\dd t}
+=
+v
+\frac{\dd}{\dd s}.
+\]
+\end{definition}
+
+\begin{remark}
+This relation is fundamental for translating curvature evolution into
+operational runtime effects.
+\end{remark}
+
+\section{Design Velocity and Operational Velocity}
+
+\begin{definition}[Design velocity]
+\label{def:design-velocity}
+Design velocity denotes the velocity assumption used during alignment
+design.
+\end{definition}
+
+\begin{definition}[Operational velocity]
+\label{def:operational-velocity}
+Operational velocity denotes the realized or intended runtime velocity
+during operation.
+\end{definition}
+
+\begin{remark}
+Design velocity and operational velocity need not be identical.
+\end{remark}
+
+\section{Velocity Envelopes}
+
+\begin{definition}[Velocity envelope]
+\label{def:velocity-envelope}
+A velocity envelope defines admissible velocity ranges along an
+alignment.
+\end{definition}
+
+\begin{remark}
+Velocity envelopes interact with curvature, cant, comfort,
+admissibility, and operational constraints.
+\end{remark}
+
+\section{Connection to AIM}
+
+\begin{summary}
+Operational velocity connects arc-length-based geometry with
+time-dependent runtime behaviour.
+
+Within AIM, velocity is not treated as an external scalar only, but as a
+runtime coupling quantity connecting curvature, cant, dynamics,
+admissibility, and optimization.
+\end{summary}

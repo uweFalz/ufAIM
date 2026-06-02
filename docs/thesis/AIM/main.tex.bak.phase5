@@ -270,7 +270,6 @@ construction, runtime interpretation, and operational behaviour.
 
 \input{state/pose3_frames}
 \input{state/dynamics}
-\input{state/admissibility}
 \input{state/world_to_track}
 
 % ============================================================
@@ -283,8 +282,8 @@ construction, runtime interpretation, and operational behaviour.
 % STATE AND OPERATOR FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{state/state_taxonomy}
-\input{runtime/runtime_operators}
+\input{dynamics/state_taxonomy}
+\input{dynamics/runtime_operators}
 
 % ------------------------------------------------------------
 % VEHICLE-SPACE INTERPRETATION
@@ -296,7 +295,6 @@ construction, runtime interpretation, and operational behaviour.
 % RUNTIME DYNAMICS AND BALANCE
 % ------------------------------------------------------------
 
-\input{dynamics/operational_velocity}
 \input{dynamics/runtime_dynamics}
 \input{dynamics/schwerpunkt_state}
 \input{dynamics/dynamic_balance}
@@ -450,13 +448,6 @@ construction, runtime interpretation, and operational behaviour.
 \input{applications/bimalignment}
 \input{applications/contribution}
 \input{applications/discussion}
-
-% ============================================================
-\part{Discussion}
-% ============================================================
-
-\input{discussion/part_intro}
-\input{discussion/axtran_reinterpretation}
 
 % ============================================================
 \part{Outlook}

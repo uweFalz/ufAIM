@@ -1,7 +1,56 @@
 % dynamics/part_intro.tex
 
-% \chapter{Dynamics}
+% This file is included immediately after:
+%   \part{Dynamic Railway State}
+%
+% It is intentionally unnumbered. The numbered chapters of this part
+% begin with state_taxonomy.tex.
+
+\chapter*{Dynamic Railway State}
+\addcontentsline{toc}{chapter}{Dynamic Railway State}
 
 \begin{remark}
-\ldots
+This part extends the railway state model from geometric reconstruction
+toward operational runtime interpretation.
+\end{remark}
+
+\begin{remark}
+The central distinction is that the railway state and the vehicle state
+are not identical.
+Within AIM, \(\mathrm{pose3}\) describes the railway runtime state,
+whereas vehicle, center-of-gravity, balance, and optimization states are
+generated from it through runtime interpretation.
+\end{remark}
+
+\begin{remark}
+The purpose of this part is to clarify the state layers that arise when
+railway alignment is interpreted operationally:
+\begin{itemize}
+\item railway runtime states,
+\item realized states,
+\item vehicle-relative states,
+\item center-of-gravity states,
+\item dynamic balance states,
+\item and optimization states.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The chapters of this part therefore move deliberately from taxonomy and
+operators toward vehicle space, runtime dynamics, Schwerpunkt
+interpretation, dynamic balance, Vienna reinterpretation,
+realization-aware dynamics, and optimization in runtime state space.
+\end{remark}
+
+\begin{principle}[Dynamic-state interpretation principle]
+\label{princ:dynamic-state-interpretation}
+Within AIM, dynamic railway behaviour is interpreted as operator-based
+runtime state evolution generated from railway alignment states, not as
+a direct property of coordinate geometry alone.
+\end{principle}
+
+\begin{remark}
+This part does not introduce a full multibody vehicle model.
+Instead, it establishes the structural and operational layer into which
+such models may later be coupled.
 \end{remark}

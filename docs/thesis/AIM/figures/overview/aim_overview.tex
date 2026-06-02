@@ -1,0 +1,30 @@
+% figures/overview/aim_overview.tex
+
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.2cm,
+    minimum height=0.75cm
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (alignment) {Alignment};
+\node[box, below=of alignment] (curvature) {Curvature Space\\$\kappa(s)$};
+\node[box, below=of curvature] (state) {State Evolution\\pose2 $\rightarrow$ pose3};
+\node[box, below=of state] (runtime) {Runtime States};
+\node[box, below=of runtime] (vehicle) {Vehicle States};
+\node[box, below=of vehicle] (operation) {Operational Behaviour};
+\node[box, below=of operation] (optimization) {Optimization};
+
+\draw[arrow] (alignment) -- (curvature);
+\draw[arrow] (curvature) -- (state);
+\draw[arrow] (state) -- (runtime);
+\draw[arrow] (runtime) -- (vehicle);
+\draw[arrow] (vehicle) -- (operation);
+\draw[arrow] (operation) -- (optimization);
+
+\end{tikzpicture}
