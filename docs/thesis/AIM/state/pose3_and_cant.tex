@@ -5,8 +5,16 @@
 \label{chap:pose3-and-cant}
 
 % ============================================================
-\section{Motivation}
+\section*{Motivation}
 % ============================================================
+
+% state/pose3_and_cant.tex
+\begin{figure}[htbp]
+\centering
+\input{figures/state/cant_interpretation}
+\caption{Cant interpretation as railway-state roll rather than merely rail-height difference.}
+\label{fig:cant-interpretation}
+\end{figure}
 
 \begin{remark}
 Planar railway alignment models describe intrinsic geometry using the
@@ -300,8 +308,8 @@ state:
 =
 (
 \Gamma(s),
-F_{\mathrm{rail}}(s),
-\phi(s)
+u(s),
+F_{\mathrm{rail}}(s)
 ).
 \label{eq:runtime-pose3}
 \end{equation}
@@ -383,7 +391,7 @@ Given:
 \qquad
 u(s),
 \qquad
-p(s),
+h(s),
 \]
 together with initial pose2 data, gauge information, convention data,
 and runtime metric context, the runtime pose3 state is determined
@@ -589,3 +597,14 @@ This provides:
 Within AIM, pose3 is therefore not interpreted as a persistent geometry
 object, but as a dynamically evaluated operational railway state.
 \end{summary}
+
+---
+
+\begin{proposition}[Track state principle]
+
+pose3 describes the railway state.
+
+Vehicle states are derived through
+vehicle-space operators.
+
+\end{proposition}

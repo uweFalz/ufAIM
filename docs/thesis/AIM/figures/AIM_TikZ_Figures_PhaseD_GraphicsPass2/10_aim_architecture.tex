@@ -1,0 +1,43 @@
+% figures/architecture/aim_architecture.tex
+
+\begin{tikzpicture}[
+  node distance=1.0cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.1cm,
+    minimum height=0.8cm,
+    font=\small
+  },
+  core/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.8cm,
+    minimum height=0.9cm,
+    font=\small\bfseries
+  },
+  arrow/.style={->, thick}
+]
+
+\node[core] (aim) {AIM};
+
+\node[box, above=1.3cm of aim] (state) {State};
+\node[box, left=2.3cm of aim] (geometry) {Geometry};
+\node[box, right=2.3cm of aim] (runtime) {Runtime};
+\node[box, below left=1.3cm and 1.2cm of aim] (reality) {Reality};
+\node[box, below right=1.3cm and 1.2cm of aim] (optimization) {Optimization};
+
+\draw[arrow] (geometry) -- (aim);
+\draw[arrow] (state) -- (aim);
+\draw[arrow] (runtime) -- (aim);
+\draw[arrow] (reality) -- (aim);
+\draw[arrow] (optimization) -- (aim);
+
+\draw[arrow] (geometry) -- (state);
+\draw[arrow] (state) -- (runtime);
+\draw[arrow] (runtime) -- (optimization);
+\draw[arrow] (reality) -- (optimization);
+
+\end{tikzpicture}

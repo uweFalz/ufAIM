@@ -19,7 +19,6 @@ export function createImportSessionItem({
 		payload: normalizePayload(payload, kind),
 		status: normalizeStatus(status),
 		meta: normalizeMeta(meta),
-		// derived = machine-readable augmentation (e.g. sparseAlignment, interpretation)
 		derived: normalizeDerived(derived),
 		annotations: Array.isArray(annotations) ? annotations : [],
 	};
@@ -85,9 +84,7 @@ function normalizeSource(source) {
 
 function normalizePayload(payload, kind) {
 	const out = isObject(payload) ? { ...payload } : {};
-	if (out.kind == null && typeof kind === "string" && kind) {
-		out.kind = kind;
-	}
+	if (out.kind == null && typeof kind === "string" && kind) out.kind = kind;
 	return out;
 }
 
@@ -121,6 +118,7 @@ function normalizeMeta(meta) {
 				? stationRange
 				: null,
 		spatialRefHint: nonEmptyOrNull(meta.spatialRefHint),
+		sourceSpatialRef: isObject(meta.sourceSpatialRef) ? meta.sourceSpatialRef : null,
 		sourceGroup: nonEmptyOrNull(meta.sourceGroup),
 		objectSignature: nonEmptyOrNull(meta.objectSignature),
 	};
@@ -135,24 +133,18 @@ function normalizeMeta(meta) {
 function normalizeDerived(derived) {
 	if (!isObject(derived)) return {};
 
-	// shallow clone to avoid accidental external mutation
 	const out = { ...derived };
 
-	// strip empty nested objects (defensive)
 	for (const key of Object.keys(out)) {
 		const v = out[key];
-		if (isObject(v) && Object.keys(v).length === 0) {
-			delete out[key];
-		}
+		if (isObject(v) && Object.keys(v).length === 0) delete out[key];
 	}
 
 	return Object.keys(out).length ? out : {};
 }
 
 function nonEmptyOrNull(value) {
-	return (typeof value === "string" && value.trim())
-		? value.trim()
-		: null;
+	return (typeof value === "string" && value.trim()) ? value.trim() : null;
 }
 
 function slug(value) {

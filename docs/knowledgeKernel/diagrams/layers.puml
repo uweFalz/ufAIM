@@ -1,0 +1,13 @@
+@startuml
+rectangle "Engineering Object Identity"
+rectangle "Relational / Network Identity"
+rectangle "Constructive Identity"
+rectangle "Metric Realization"
+rectangle Representation
+rectangle "Workflow / Project Context"
+"Engineering Object Identity" --> "Relational / Network Identity"
+"Relational / Network Identity" --> "Constructive Identity"
+"Constructive Identity" --> "Metric Realization"
+"Metric Realization" --> Representation
+Representation --> "Workflow / Project Context"
+@enduml

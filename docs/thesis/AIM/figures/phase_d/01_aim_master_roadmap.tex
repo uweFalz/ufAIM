@@ -1,0 +1,49 @@
+% figures/roadmap/aim_master_roadmap.tex
+%
+% AIM Master Roadmap
+% Usage:
+% \begin{figure}[ht]
+% \centering
+% \input{figures/roadmap/aim_master_roadmap}
+% \caption{AIM master roadmap.}
+% \label{fig:aim-master-roadmap}
+% \end{figure}
+
+\begin{tikzpicture}[
+  node distance=0.78cm,
+  roadmap/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=5.6cm,
+    minimum height=0.72cm,
+    font=\small
+  },
+  arrow/.style={->, thick}
+]
+
+\node[roadmap] (classical) {Classical Alignment Engineering};
+\node[roadmap, below=of classical] (curvature) {Curvature Space};
+\node[roadmap, below=of curvature] (pose2) {\(\mathrm{pose2}\)};
+\node[roadmap, below=of pose2] (pose3) {\(\mathrm{pose3}\)};
+\node[roadmap, below=of pose3] (vehicle) {Vehicle Space};
+\node[roadmap, below=of vehicle] (runtime) {Runtime State};
+\node[roadmap, below=of runtime] (realization) {Realization};
+\node[roadmap, below=of realization] (optimization) {Optimization};
+\node[roadmap, below=of optimization] (aim) {AIM};
+\node[roadmap, below=of aim] (pim) {PIM};
+
+\foreach \a/\b in {
+  classical/curvature,
+  curvature/pose2,
+  pose2/pose3,
+  pose3/vehicle,
+  vehicle/runtime,
+  runtime/realization,
+  realization/optimization,
+  optimization/aim,
+  aim/pim
+}
+\draw[arrow] (\a) -- (\b);
+
+\end{tikzpicture}

@@ -1,19 +1,65 @@
-
 % figures/figures.tex
-
 %
-
-% Central figure loader / registry helper.
-
-% Individual chapters should include figures directly via:
-
+% Central figure registry helper.
 %
-
-% \input{figures/overview/aim_overview}
-
-% \input{figures/foundations/state_hierarchy}
-
+% Rule:
+% - Figures are stored as standalone TikZ fragments without surrounding
+%   figure environments unless explicitly noted otherwise.
+% - Chapters include figures directly via \input{...}.
+% - This file defines shared TikZ styles only.
 %
+% Canonical figure locations:
+%
+%   figures/overview/
+%   figures/foundations/
+%   figures/geometry/
+%   figures/state/
+%   figures/dynamics/
+%   figures/runtime/
+%   figures/reality/
+%   figures/modeling/
+%   figures/analysis/
+%   figures/optimization/
+%   figures/engineering/
+%   figures/applications/
+%   figures/phase_d/
+%   figures/assets/png/phase_d/
+%
+% Phase D archive/import:
+%
+%   figures/phase_d/
+%       TikZ source figures from Phase D graphics pass.
+%
+%   figures/assets/png/phase_d/
+%       PNG exports from Phase D graphics pass.
+%
+% Individual chapters should include figures directly, for example:
+%
+%   \begin{figure}[htbp]
+%   \centering
+%   \input{figures/dynamics/runtime_dynamics}
+%   \caption{Runtime dynamics generate operational state trajectories
+%   from railway runtime states.}
+%   \label{fig:runtime-dynamics}
+%   \end{figure}
 
-% This file may later collect common TikZ styles.
-
+\tikzset{
+  aimbox/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.8cm,
+    minimum height=0.9cm
+  },
+  aimsmallbox/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.2cm,
+    minimum height=0.8cm
+  },
+  aimarrow/.style={
+    ->,
+    thick
+  }
+}

@@ -1,0 +1,157 @@
+% foundations/aim_roadmap.tex
+
+\chapter*{AIM Roadmap}
+\addcontentsline{toc}{chapter}{AIM Roadmap}
+
+\label{chap:aim-roadmap}
+
+\begin{remark}
+The present thesis develops Alignment-based Information Modelling (AIM)
+through a sequence of increasingly richer modelling concepts.
+\end{remark}
+
+\begin{remark}
+The purpose of this roadmap is to provide a global overview before the
+individual concepts are introduced in detail.
+\end{remark}
+
+\begin{figure}[ht]
+\centering
+
+\begin{tikzpicture}[
+    node distance=9mm,
+    every node/.style={
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=45mm,
+        minimum height=8mm
+    },
+    >=Stealth
+]
+
+\node (classic)
+{
+Classical Alignment\\
+Engineering
+};
+
+\node (curvature) [below=of classic]
+{
+Curvature Space
+};
+
+\node (pose2) [below=of curvature]
+{
+pose2
+};
+
+\node (pose3) [below=of pose2]
+{
+pose3
+};
+
+\node (vehicle) [below=of pose3]
+{
+Vehicle Space
+};
+
+\node (runtime) [below=of vehicle]
+{
+Runtime State
+};
+
+\node (realization) [below=of runtime]
+{
+Realization
+};
+
+\node (optimization) [below=of realization]
+{
+Optimization
+};
+
+\node (aim) [below=of optimization]
+{
+Alignment-based\\
+Information Modelling (AIM)
+};
+
+\node (pim) [below=of aim]
+{
+Process Information\\
+Modelling (PIM)
+};
+
+\draw[->] (classic) -- (curvature);
+\draw[->] (curvature) -- (pose2);
+\draw[->] (pose2) -- (pose3);
+\draw[->] (pose3) -- (vehicle);
+\draw[->] (vehicle) -- (runtime);
+\draw[->] (runtime) -- (realization);
+\draw[->] (realization) -- (optimization);
+\draw[->] (optimization) -- (aim);
+\draw[->] (aim) -- (pim);
+
+\end{tikzpicture}
+
+\caption{
+Conceptual roadmap of the AIM framework.
+The thesis proceeds from intrinsic railway geometry toward runtime,
+realization, and optimization concepts, culminating in
+Alignment-based Information Modelling (AIM) as part of a broader
+Process Information Modelling (PIM) perspective.
+}
+\label{fig:aim-roadmap}
+
+\end{figure}
+
+\section*{Reading Guide}
+
+The development of the thesis follows four major stages.
+
+\begin{enumerate}
+
+\item
+\textbf{Geometry.}
+
+Railway alignments are reinterpreted as curvature-driven objects.
+The central geometric state is introduced as \emph{pose2},
+which emerges from curvature integration rather than from
+explicit coordinate construction.
+
+\item
+\textbf{State.}
+
+The geometric description is extended to spatial and operational
+contexts through \emph{pose3}, vehicle-space concepts,
+and runtime state representations.
+
+\item
+\textbf{Reality and Runtime.}
+
+Real railway systems are never ideal.
+Measurement uncertainty, realization effects,
+construction tolerances, and operational influences require
+runtime-aware modelling concepts.
+
+\item
+\textbf{Optimization.}
+
+Once geometry, state, runtime, and realization are unified,
+railway engineering can be reformulated as an optimization problem
+in state space rather than purely as a geometric construction problem.
+
+\end{enumerate}
+
+\begin{summary}
+The thesis begins with railway geometry,
+extends geometry into state,
+extends state into runtime and realization,
+and finally arrives at optimization-oriented
+Alignment-based Information Modelling (AIM).
+
+Within the broader perspective proposed here,
+AIM may be interpreted as one specialization of a more general
+Process Information Modelling (PIM) framework.
+\end{summary}

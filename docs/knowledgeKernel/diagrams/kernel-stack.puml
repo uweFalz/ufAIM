@@ -1,0 +1,9 @@
+@startuml
+rectangle Research
+rectangle "Knowledge Kernel" as KK
+rectangle Thesis
+rectangle "Reference Implementation" as RI
+Research --> KK
+KK --> Thesis
+KK --> RI
+@enduml

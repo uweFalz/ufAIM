@@ -1,0 +1,47 @@
+1. MainChat als “Integration Log” führen
+Nicht jede Nebenentscheidung hier breit diskutieren, aber jede relevante Entscheidung kurz hier landen lassen:
+
+DECISION: SpotObject canonical schema = object.data.kernel
+IMPACT: buildSpotUiState / Projection müssen payload.sparseAlignment nicht mehr primär nutzen
+SOURCE: subchat import/debug
+
+Das verhindert späteres „wo hatten wir das nochmal?“.
+
+2. Eine feste Übergabe-Schablone für SubChats
+Jeder SubChat liefert am Ende nur:
+
+RESULT
+DECISION
+FILES TO CHANGE
+RISKS
+MAINCHAT ACTION
+
+Mehr nicht. Das hält den roten Faden sauber.
+
+3. Hier immer zuerst den aktuellen Engpass benennen
+Für mainChat wäre der Modus:
+
+Current bottleneck:
+SpotObject → Projection → renderTracks
+
+Dann alles daran messen:
+Hilft es dem Engpass? → hier.
+Ist es wichtig, aber seitlich? → SubChat.
+Ist es groß/grundsätzlich? → ThesisChat.
+
+Mein konkreter nächster Vorschlag:
+
+MAINCHAT FOCUS:
+Erstes sichtbares GND-Alignment im Workspace.
+
+SubTask-fähig:
+- projectAlignmentPreview prüfen
+- SpotObject-Schema dokumentieren
+- renderTrack-Debuglogs ergänzen
+
+MainChat bleibt:
+- Schema-Entscheidung
+- Pipeline-Entscheidung
+- Integration
+
+Das wäre für mich aktuell der sauberste Modus.

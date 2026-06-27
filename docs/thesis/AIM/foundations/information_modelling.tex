@@ -1,0 +1,208 @@
+% foundations/information_modelling.tex
+
+\chapter{Information Modelling}
+
+\label{chap:information-modelling}
+
+% ============================================================
+\section{Motivation}
+% ============================================================
+
+\begin{remark}
+Information models describe, organize, exchange, and interpret
+engineering knowledge.
+\end{remark}
+
+\begin{remark}
+Different engineering domains emphasize different aspects of reality.
+Buildings, infrastructure systems, operational systems, and networks do
+not all share the same modelling centre.
+\end{remark}
+
+\begin{remark}
+The present work introduces Alignment-based Information Modelling
+(AIM) as a modelling paradigm centred on railway alignments and their
+associated geometric, spatial, and operational information.
+\end{remark}
+
+% ============================================================
+\section{BIM, AIM, and PIM}
+% ============================================================
+
+\begin{definition}[Process Information Modelling]
+\label{def:process-information-modelling}
+In this thesis, the term Process Information Modelling, abbreviated as
+PIM, is used as an umbrella concept for engineering information
+modelling approaches that organize information not only around physical
+assets, but also around processes, state evolution, lifecycle behaviour,
+and operational context.
+\end{definition}
+
+\begin{remark}
+PIM is not introduced here as an established standard.
+It is used as a conceptual framing device for relating different
+information modelling paradigms.
+\end{remark}
+
+\begin{definition}[Building Information Modelling]
+\label{def:building-information-modelling}
+Building Information Modelling, abbreviated as BIM, denotes an
+asset-oriented information modelling paradigm in which physical objects,
+their properties, relations, and lifecycle information form the primary
+organizing structure.
+\end{definition}
+
+\begin{definition}[Alignment-based Information Modelling]
+\label{def:alignment-based-information-modelling}
+Alignment-based Information Modelling, abbreviated as AIM, denotes an
+alignment-oriented information modelling paradigm in which railway
+alignment, reference systems, admissible states, operational behaviour,
+and realization processes form the primary organizing structure.
+\end{definition}
+
+\begin{remark}
+Within this thesis, BIM and AIM are interpreted as complementary
+specializations within a broader process-oriented modelling perspective.
+\end{remark}
+
+% ============================================================
+\section{Conceptual Position}
+% ============================================================
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=1.6cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.6cm,
+    minimum height=1.0cm
+  },
+  smallbox/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.2cm,
+    minimum height=1.0cm
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (pim) {PIM\\small Process Information Modelling};
+
+\node[smallbox, below left=1.8cm and 1.6cm of pim] (bim)
+{BIM\\small asset-oriented modelling};
+
+\node[smallbox, below right=1.8cm and 1.6cm of pim] (aim)
+{AIM\\small alignment-oriented modelling};
+
+\node[align=center, below=0.8cm of bim] (bimtext)
+{\small objects\\small assets\\small lifecycle};
+
+\node[align=center, below=0.8cm of aim] (aimtext)
+{\small alignments\\small state spaces\\small operations};
+
+\draw[arrow] (pim) -- (bim);
+\draw[arrow] (pim) -- (aim);
+
+\end{tikzpicture}
+\caption{BIM and AIM as complementary specializations within the broader PIM perspective used in this thesis.}
+\label{fig:bim-aim-pim}
+\end{figure}
+
+\begin{remark}
+The distinction is not intended as a replacement of BIM by AIM.
+Rather, AIM complements BIM where infrastructure systems cannot be
+understood sufficiently through asset description alone.
+\end{remark}
+
+\begin{remark}
+Railway infrastructure is not merely a collection of physical objects.
+It is an environment enabling and constraining motion, operation, and
+state evolution.
+\end{remark}
+
+% ============================================================
+\section{Why AIM?}
+% ============================================================
+
+\begin{remark}
+Engineering information models are never neutral.
+
+Every modelling paradigm implicitly chooses a central organizing
+principle around which information is structured.
+\end{remark}
+
+\begin{remark}
+In many traditional information models, physical assets constitute this
+organizing principle.
+
+Objects, components, assemblies, and their associated properties form
+the primary modelling entities.
+\end{remark}
+
+\begin{remark}
+This perspective has proven highly successful for buildings and many
+other engineering disciplines.
+
+However, railway systems exhibit characteristics that cannot be fully
+explained through assets alone.
+\end{remark}
+
+\begin{remark}
+Railway operation is fundamentally governed by geometry.
+
+Vehicle motion, cant, speed, comfort, safety, operational performance,
+and infrastructure utilization all depend on the geometric structure of
+the alignment.
+\end{remark}
+
+\begin{remark}
+The alignment is therefore not merely another infrastructure object.
+
+Instead, it acts as the geometric framework within which railway
+operation becomes possible.
+\end{remark}
+
+\begin{definition}[Primary modelling entity]
+\label{def:primary-modelling-entity}
+Within AIM, the alignment is adopted as the primary modelling entity.
+
+Other engineering information is interpreted relative to the alignment,
+its reference systems, and its induced operational state space.
+\end{definition}
+
+\begin{remark}
+This choice does not imply that assets become unimportant.
+
+Bridges, tunnels, switches, signals, stations, and other infrastructure
+elements remain essential engineering objects.
+
+However, within AIM they are interpreted as entities associated with,
+located along, constrained by, or interacting with an alignment.
+\end{remark}
+
+\begin{remark}
+The resulting viewpoint shifts the modelling focus from static objects
+toward geometry, motion, admissible states, and operational processes.
+\end{remark}
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
+
+\begin{summary}
+BIM primarily organizes information around assets.
+
+AIM primarily organizes information around alignments.
+
+PIM is used in this thesis as a broader conceptual umbrella under which
+asset-oriented, lifecycle-oriented, alignment-oriented, and
+process-oriented modelling perspectives can coexist.
+
+AIM therefore appears not as an isolated alternative to BIM, but as a
+natural member of a larger family of engineering information modelling
+approaches.
+\end{summary}

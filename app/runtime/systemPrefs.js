@@ -21,6 +21,10 @@ function makeSystemPrefs() {
 			emitImportPropsEffects: isDev,
 		},
 
+	intro: {
+		enabled: true,
+	},
+
 		view: {
 			onGeomChange: "softfit",
 			fitPadding: 1.35,
@@ -60,6 +64,10 @@ function normalizePrefs(raw = {}) {
 			importMirror: Boolean(prefs.debug?.importMirror),
 			emitImportPropsEffects: Boolean(prefs.debug?.emitImportPropsEffects),
 		},
+
+		intro: {
+	enabled: Boolean(prefs.intro?.enabled),
+},
 
 		view: {
 			onGeomChange: String(prefs.view?.onGeomChange ?? "softfit"),

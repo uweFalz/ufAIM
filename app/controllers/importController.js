@@ -18,6 +18,10 @@ import {
 	summarizeItemsForMasterLog,
 } from "@app/io/import/importPipelineClient.js";
 
+import { analyzeGndRelationCandidates } from "@src/import/analysis/gnd/GndRelationAnalyzer.js";
+import { analyzeGndCrs } from "@src/import/analysis/gnd/GndCrsAnalyzer.js";
+
+// ...
 export function makeImportController({
 	store,
 	ui,
@@ -67,6 +71,91 @@ export function makeImportController({
 		const summary = summarizeRelationCandidatesForLog(fileName, relationCandidates);
 		safeLog(`relation candidates: ${fileName} :: ${summary.count}`);
 		console.log("[ImportController] relationCandidates", summary);
+	}
+
+	function logGndRelationAnalysis(fileName, items, relationCandidates) {
+		if (!String(fileName ?? "").toLowerCase().includes("gnd")) return;
+		if (!relationCandidates?.length) return;
+
+		try {
+			const analysis = analyzeGndRelationCandidates({
+				importItems: items,
+				relationCandidates,
+			});
+
+			console.groupCollapsed(`[GND] relation analysis :: ${fileName}`);
+
+			console.table([{
+				totalRelations: analysis.totalRelations,
+				uniqueSourceCount: analysis.uniqueSourceCount,
+				uniqueTargetCount: analysis.uniqueTargetCount,
+				duplicateGroupCount: analysis.duplicateGroups.length,
+				ambiguousSourceCount: analysis.ambiguousSources.length,
+				starTargetCount: analysis.starTargets.length,
+			}]);
+
+			console.log("byType", analysis.byType);
+			console.log("byConfidence", analysis.byConfidence);
+			console.log("duplicateGroups", analysis.duplicateGroups);
+			console.log("ambiguousSources", analysis.ambiguousSources);
+			console.log("starTargets", analysis.starTargets);
+
+			if (analysis.duplicateSamples?.length) {
+				console.log("duplicateSamples", analysis.duplicateSamples);
+			}
+
+			console.log("sampleRelations");
+			console.table(analysis.sampleRelations);
+
+			console.groupEnd();
+		} catch (err) {
+			console.warn("[GND] relation analysis failed (ignored)", err);
+		}
+	}
+
+	function logGndCrsAnalysis(fileName, items, relationCandidates) {
+		if (!String(fileName ?? "").toLowerCase().includes("gnd")) return;
+		if (!items?.length) return;
+
+		try {
+			const analysis = analyzeGndCrs({
+				importItems: items,
+				relationCandidates,
+			});
+
+			console.groupCollapsed(`[GND] CRS analysis :: ${fileName}`);
+
+			console.table([{
+				totalItems: analysis.totalItems,
+				totalRelations: analysis.totalRelations,
+				missingCrsCount: analysis.missingCrsCount,
+				relationSameCrs: analysis.relationCrsStats.sameCrs,
+				relationDifferentCrs: analysis.relationCrsStats.differentCrs,
+				relationMissingCrs: analysis.relationCrsStats.missingCrs,
+			}]);
+
+			console.log("byKind", analysis.byKind);
+			console.log("byCrs", analysis.byCrs);
+			console.log("alignmentsByCrs", analysis.alignmentsByCrs);
+			console.log("profilesByCrs", analysis.profilesByCrs);
+			console.log("cantsByCrs", analysis.cantsByCrs);
+			console.log("missingCrsByKind", analysis.missingCrsByKind);
+
+			console.log("crsSamples");
+			console.table(analysis.crsSamples);
+
+			const crsConflicts =
+				analysis?.relationCrsStats?.differentCrsRelations ?? [];
+
+			if (crsConflicts.length) {
+				console.log(`[GND] CRS relation conflicts :: ${fileName}`);
+				console.table(crsConflicts);
+			}
+
+			console.groupEnd();
+		} catch (err) {
+			console.warn("[GND] CRS analysis failed (ignored)", err);
+		}
 	}
 
 	function makeVisibleTracksFromItems(items = [], fileName = "") {
@@ -187,6 +276,8 @@ export function makeImportController({
 				);
 
 				logRelationCandidates(file.name, relationCandidates);
+				logGndRelationAnalysis(file.name, items, relationCandidates);
+				logGndCrsAnalysis(file.name, items, relationCandidates);
 
 				const newTracks = makeVisibleTracksFromItems(items, file.name);
 				if (newTracks.length) {

@@ -1,20 +1,170 @@
-\chapter{System and Pipeline}
+% analysis/part_intro.tex
+
+\chapter*{Analysis}
+\phantomsection
+\addcontentsline{toc}{chapter}{Analysis}
+
+% ============================================================
+\section*{What do we already know?}
+% ============================================================
 
 \begin{remark}
-This part connects the individual components of the AIM framework into a
-single system view.
-It describes alignment modelling as a pipeline of transformations
-linking coordinate systems, intrinsic track coordinates, modelling,
-realization, and optimization.
+The previous parts established the conceptual, geometric, operational,
+realization-aware, and modeling foundations of AIM.
 \end{remark}
 
 \begin{remark}
-The purpose of this part is to show that AIM is not merely a collection
-of methods, but an operator-based framework in which data, geometry,
-construction reality, and computation interact.
+Railway alignments can now be represented through sparse semantic
+models, reconstructed through runtime services, interpreted through
+state operators, and related to physical reality through realization
+concepts.
 \end{remark}
 
 \begin{remark}
-The following chapters introduce the AIM pipeline, its interpretation,
-its failure modes, and the design principles that follow from it.
+The individual building blocks of the framework therefore exist.
 \end{remark}
+
+\begin{remark}
+However, a collection of components does not yet constitute a complete
+system.
+\end{remark}
+
+% ============================================================
+\section*{What is still missing?}
+% ============================================================
+
+\begin{remark}
+Practical railway information modelling requires more than isolated
+models and operators.
+\end{remark}
+
+\begin{remark}
+Data must move through processing chains.
+
+States must be transformed.
+
+Services must interact.
+
+Failures must be detected.
+
+Results must be generated from intermediate representations.
+\end{remark}
+
+\begin{remark}
+The missing element is therefore the processing architecture that
+connects individual concepts into a coherent operational framework.
+\end{remark}
+
+\begin{remark}
+AIM must be understood not only as a collection of models, but as a
+pipeline of interacting transformations.
+\end{remark}
+
+% ============================================================
+\section*{What comes next?}
+% ============================================================
+
+\begin{remark}
+This part introduces the system-level interpretation of AIM.
+\end{remark}
+
+\begin{remark}
+The focus shifts from individual concepts toward the interaction
+between concepts.
+\end{remark}
+
+\begin{remark}
+The chapters that follow investigate:
+\begin{itemize}
+\item transformation pipelines,
+\item runtime services,
+\item operator chains,
+\item system interactions,
+\item failure modes,
+\item and architectural design principles.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The objective is to explain how railway information flows through the
+AIM framework from acquisition to evaluation, realization, and
+optimization.
+\end{remark}
+
+\begin{remark}
+This perspective ultimately reveals AIM as an operator-based railway
+information system rather than a mere collection of geometric methods.
+\end{remark}
+
+% ============================================================
+\section*{Relation to the AIM Roadmap}
+% ============================================================
+
+\begin{remark}
+Within the AIM roadmap, the present part corresponds to the transition
+from alignment models toward processing pipelines and system services.
+\end{remark}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum width=5.0cm,
+    minimum height=0.9cm,
+    align=center
+  }
+]
+
+\node[box] (model)
+{Alignment Model};
+
+\node[box, below=of model] (pipeline)
+{Pipelines and Services};
+
+\node[box, below=of pipeline] (system)
+{System View};
+
+\draw[->, thick] (model) -- (pipeline);
+\draw[->, thick] (pipeline) -- (system);
+
+\end{tikzpicture}
+\end{center}
+
+\begin{remark}
+The progression
+\[
+\text{Alignment Model}
+\rightarrow
+\text{Pipelines and Services}
+\rightarrow
+\text{System View}
+\]
+marks the transition from static railway representations toward
+operational processing architectures.
+\end{remark}
+
+\begin{remark}
+This system perspective prepares the subsequent treatment of
+optimization, engineering workflows, and practical deployment.
+\end{remark}
+
+% ============================================================
+\begin{principle}[Pipeline Principle]
+\label{princ:pipeline-principle}
+Within AIM, railway information is processed through explicit operator
+pipelines in which states, models, realizations, and evaluations are
+connected by well-defined transformations.
+\end{principle}
+
+% ============================================================
+\begin{summary}
+Modeling explains how railway information is represented.
+
+Analysis explains how railway information is processed.
+
+The present part therefore establishes the system architecture that
+connects models, operators, services, and transformations into a
+coherent AIM framework.
+\end{summary}

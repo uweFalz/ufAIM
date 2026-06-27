@@ -6,12 +6,18 @@ import { AppRuntimeLocal } from "@shared/runtime/AppRuntimeLocal.js";
 import { debugLog, debugError } from "@shared/debug/debugLog.js";
 
 import { bootWindowApp } from "./bootWindowApp.js";
+import { IntroDirector, INTRO_SIGNAL } from "./intro/index.js";
 
 export class WindowRuntime {
 	constructor({ prefs } = {}) {
 		this.prefs = prefs ?? {};
 		this.messaging = null;
 		this.windowId = `w_${Math.random().toString(16).slice(2)}`;
+
+		this.introDirector = new IntroDirector({
+			prefs: this.prefs,
+			log: console,
+		});
 	}
 
 	async start() {
@@ -33,6 +39,7 @@ export class WindowRuntime {
 		}
 
 		this.installDebugHooks();
+		this.startIntroDebugLifecycle();
 
 		this.messaging.emitEvt("Window.Register", {
 			title: document.title || "ufAIM",
@@ -55,6 +62,52 @@ export class WindowRuntime {
 				}
 			});
 		}
+	}
+
+	startIntroDebugLifecycle() {
+		if (!this.introDirector) return;
+
+		window.intro = this.introDirector;
+
+		if (this.introDirector.arm()) {
+			this.introDirector.start();
+			this.installIntroInteractionTrigger();
+		}
+	}
+
+	installIntroInteractionTrigger() {
+		if (!this.introDirector?.enabled) return;
+
+		const target =
+			document.querySelector(".maplibregl-canvas") ||
+			document.querySelector("canvas") ||
+			document.body;
+
+		let fired = false;
+
+		const fire = (kind, event) => {
+			if (fired) return;
+			fired = true;
+
+			this.introDirector.signal(INTRO_SIGNAL.USER_INTERACTION, {
+				kind,
+				eventType: event?.type ?? null,
+			});
+
+			target.removeEventListener("wheel", onWheel, true);
+			target.removeEventListener("pointerdown", onPointerDown, true);
+			target.removeEventListener("touchstart", onTouchStart, true);
+		};
+
+		const onWheel = (event) => fire("zoom", event);
+		const onPointerDown = (event) => fire("pan-or-rotate", event);
+		const onTouchStart = (event) => fire("touch-navigation", event);
+
+		target.addEventListener("wheel", onWheel, true);
+		target.addEventListener("pointerdown", onPointerDown, true);
+		target.addEventListener("touchstart", onTouchStart, true);
+
+		console.info("[intro] interaction trigger armed");
 	}
 
 	installDebugHooks() {

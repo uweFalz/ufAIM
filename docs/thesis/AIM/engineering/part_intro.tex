@@ -1,21 +1,161 @@
 % engineering/part_intro.tex
 
-% \chapter{Engineering and Standards}
+\chapter*{Engineering}
+\phantomsection
+\addcontentsline{toc}{chapter}{Engineering}
+
+% ============================================================
+\section*{What do we already know?}
+% ============================================================
 
 \begin{remark}
-This part places the AIM framework into the context of railway
-engineering practice.
-Mathematical models alone are insufficient unless they can be related to
-engineering constraints, standards, and operational rules.
+The previous parts established the mathematical, geometric,
+operational, realization-aware, and optimization foundations of AIM.
 \end{remark}
 
 \begin{remark}
-The purpose of this part is therefore to connect formal modelling with
-practical admissibility conditions arising from railway design and
+Railway alignments can now be represented, evaluated, analyzed, and
+improved through structured operator-based methods.
+\end{remark}
+
+\begin{remark}
+Optimization provides mechanisms for generating improved solutions
+according to specified objectives.
+\end{remark}
+
+\begin{remark}
+However, optimization alone does not determine whether a solution is
+acceptable from an engineering perspective.
+\end{remark}
+
+% ============================================================
+\section*{What is still missing?}
+% ============================================================
+
+\begin{remark}
+Railway engineering operates within a framework of rules,
+recommendations, standards, regulations, and operational constraints.
+\end{remark}
+
+\begin{remark}
+Not every mathematically feasible alignment is an admissible railway
+alignment.
+\end{remark}
+
+\begin{remark}
+Track geometry must satisfy engineering limits.
+
+Operational states must remain safe.
+
+Construction solutions must remain practical.
+
+Design alternatives must comply with applicable standards.
+\end{remark}
+
+\begin{remark}
+The missing element is therefore the engineering constraint layer that
+connects mathematical models with railway practice.
+\end{remark}
+
+% ============================================================
+\section*{What comes next?}
+% ============================================================
+
+\begin{remark}
+This part introduces engineering constraints as explicit components of
+the AIM framework.
+\end{remark}
+
+\begin{remark}
+Rather than treating standards as external documents consulted after
+design, AIM interprets engineering rules as structured constraints that
+can participate directly in analysis and optimization.
+\end{remark}
+
+\begin{remark}
+The chapters that follow investigate:
+\begin{itemize}
+\item standards and regulations,
+\item admissibility constraints,
+\item railway-specific engineering rules,
+\item and formal representations of operational requirements.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+The objective is to transform railway standards from passive reference
+material into active components of railway information modelling.
+\end{remark}
+
+% ============================================================
+\section*{Relation to the AIM Roadmap}
+% ============================================================
+
+\begin{remark}
+Within the AIM roadmap, the present part corresponds to the transition
+from optimization toward engineering admissibility.
+\end{remark}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum width=5.0cm,
+    minimum height=0.9cm,
+    align=center
+  }
+]
+
+\node[box] (optimization)
+{Optimization};
+
+\node[box, below=of optimization] (constraints)
+{Engineering Constraints};
+
+\node[box, below=of constraints] (rules)
+{Railway Rules};
+
+\draw[->, thick] (optimization) -- (constraints);
+\draw[->, thick] (constraints) -- (rules);
+
+\end{tikzpicture}
+\end{center}
+
+\begin{remark}
+The progression
+\[
+\text{Optimization}
+\rightarrow
+\text{Engineering Constraints}
+\rightarrow
+\text{Railway Rules}
+\]
+marks the transition from finding improved solutions toward ensuring
+that those solutions remain admissible within real railway systems.
+\end{remark}
+
+\begin{remark}
+Engineering therefore acts as the bridge between mathematical
+optimization and practical railway implementation.
+\end{remark}
+
+% ============================================================
+\begin{principle}[Engineering Constraint Principle]
+\label{princ:engineering-constraint-principle}
+Within AIM, railway standards, regulations, and operational rules
+should be represented as explicit engineering constraints that can
+participate directly in modelling, analysis, and optimization.
+\end{principle}
+
+% ============================================================
+\begin{summary}
+Optimization explains how railway systems can be improved.
+
+Engineering explains which improvements are admissible.
+
+The present part therefore establishes the constraint layer that
+connects mathematical optimization with practical railway design and
 operation.
-\end{remark}
-
-\begin{remark}
-The following chapters discuss standards, rule systems, and structured
-constraint formulations relevant to alignment engineering.
-\end{remark}
+\end{summary}

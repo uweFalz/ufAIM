@@ -1,0 +1,396 @@
+# AIM THESIS REPORTING CONTRACT v3
+
+## STATUS
+
+One of:
+
+- Research
+- Freeze Candidate
+- Freeze Accepted
+- Integration
+- Editorial Alignment
+- Rewrite
+
+---
+
+## REPORT ID
+
+Unique report identifier.
+
+Example:
+
+```text
+POSE3-2026-06-17-R01
+```
+
+---
+
+## TOPIC
+
+Short topic title.
+
+Examples:
+
+- pose3
+- VehicleState
+- PhysicalRealizationSpace
+- OperationalState
+- world_to_track
+
+---
+
+## RELATED REPORTS
+
+Previous reports directly related to this topic.
+
+Examples:
+
+```text
+POSE3-2026-06-07-R01
+POSE3-2026-06-12-R02
+```
+
+If none:
+
+```text
+none
+```
+
+---
+
+## PURPOSE
+
+Why this cycle was executed.
+
+---
+
+## THESIS STATE
+
+Current state inside the thesis itself.
+
+Estimate:
+
+```text
+0–25%   emerging
+25–50%  developing
+50–75%  mature
+75–90%  nearly frozen
+90–100% frozen/aligned
+```
+
+State explicitly:
+
+- what already exists in the thesis
+- what exists only in external research
+- what is missing completely
+
+---
+
+## RESEARCH FINDINGS
+
+### New Findings
+
+New findings discovered in this cycle.
+
+### Confirmations
+
+Previously known findings that were strengthened.
+
+### Rejected Alternatives
+
+Alternatives considered and rejected.
+
+---
+
+## FREEZE REFERENCES
+
+Related freezes.
+
+Examples:
+
+```text
+AlignmentData
+pose2
+pose3
+MetricSpace
+VehicleState
+```
+
+---
+
+## FREEZE IMPACT
+
+Exactly one of:
+
+- affects existing freeze
+- strengthens existing freeze
+- creates new freeze candidate
+- establishes new freeze
+- no freeze impact
+
+Affected freezes:
+
+- ...
+
+---
+
+## CONTRADICTIONS FOUND
+
+For each contradiction:
+
+### Contradiction
+
+Description.
+
+### Severity
+
+- low
+- medium
+- high
+- critical
+
+### Proposed Resolution
+
+Resolution strategy.
+
+---
+
+## THESIS IMPACT
+
+### Affected Files
+
+For each:
+
+- file
+- section
+- reason
+
+### Required Actions
+
+One of:
+
+- wording only
+- local rewrite
+- chapter alignment
+- conceptual rewrite
+
+Estimated effort:
+
+- small
+- medium
+- large
+
+---
+
+## ARCHITECTURE IMPACT
+
+Impact on:
+
+- AlignmentData
+- pose2
+- pose3
+- SPOT
+- Workspace
+- GeoView
+- AXTRAN2
+- Import
+- Representation
+
+For each:
+
+- none
+- minor
+- moderate
+- major
+
+Architectural consequences:
+
+- ...
+
+---
+
+## INTEGRATION GAP
+
+Concepts that exist externally but are not yet integrated into the thesis.
+
+For each item:
+
+### Concept
+
+Example:
+
+```text
+pose3 freeze
+```
+
+### Status
+
+One of:
+
+```text
+not integrated
+partially integrated
+fully integrated
+```
+
+### Target Files
+
+- ...
+
+### Estimated Effort
+
+- small
+- medium
+- large
+
+Purpose:
+
+Prevent research results from disappearing into chat history.
+
+---
+
+## OPEN QUESTIONS
+
+Remaining unresolved questions.
+
+---
+
+## THESIS PRIORITY
+
+One of:
+
+- low
+- medium
+- high
+- blocking
+
+Purpose:
+
+Not every integration gap requires immediate action.
+
+---
+
+## FREEZE RECOMMENDATION
+
+Exactly one:
+
+- Continue Research
+- Freeze Candidate
+- Freeze Now
+- Integrate Existing Freeze
+- Defer
+
+Justification:
+
+- ...
+
+---
+
+## INTEGRATION TASK
+
+If integration is required:
+
+### Files
+
+- ...
+
+### Sections
+
+- ...
+
+### Required Wording Changes
+
+- ...
+
+### Required Boundary Changes
+
+- ...
+
+### Suggested Integration Order
+
+1.
+2.
+3.
+
+---
+
+## SUPERVISOR DECISION
+
+One of:
+
+- accepted
+- accepted with notes
+- deferred
+- rejected
+
+Supervisor notes:
+
+- ...
+
+---
+
+## NEXT OWNER
+
+Exactly one:
+
+- Research
+- Thesis
+- Architecture
+- Editor
+- AXTRAN2
+- Import
+- GeoView
+- Deferred
+
+Purpose:
+
+Define who owns the next action.
+
+---
+
+## SUPERVISOR SUMMARY
+
+Executive summary for AIM Architecture Supervision.
+
+Maximum:
+
+5–10 bullet points.
+
+---
+
+## DONE CRITERIA
+
+State when this topic may be considered complete.
+
+Examples:
+
+- no conceptual contradictions remain
+- canonical definition exists
+- dependent chapters aligned
+- architecture consequences understood
+- freeze integrated into thesis
+
+---
+
+## MANDATORY FINAL CHECK
+
+### Is the concept frozen?
+
+- yes
+- no
+
+### Is the freeze integrated into the thesis?
+
+- yes
+- partially
+- no
+
+### Can future research proceed without revisiting this topic?
+
+- yes
+- mostly
+- no
+
+### What is the next action?
+
+Exactly one concrete action.

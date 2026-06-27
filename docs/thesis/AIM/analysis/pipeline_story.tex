@@ -1,3 +1,5 @@
+% analysis/pipeline_story.tex
+
 \section{Pipeline Story: From Measurement to Alignment}
 
 \subsection{A Single Point}
@@ -19,8 +21,6 @@ It may originate from:
 At this stage, the point exists only in a global coordinate system.
 \end{remark}
 
----
-
 \subsection{Step 1: CRS Transformation}
 
 \begin{remark}
@@ -36,8 +36,6 @@ x_{\mathrm{world}}.
 This step ensures that all data is expressed in a consistent spatial
 frame.
 \end{remark}
-
----
 
 \subsection{Step 2: Projection onto the Track}
 
@@ -63,8 +61,6 @@ At this moment, the point becomes part of the intrinsic alignment
 coordinate system.
 \end{remark}
 
----
-
 \subsection{Step 3: Interpretation through the Model}
 
 \begin{remark}
@@ -88,8 +84,6 @@ Here, two components interact:
 The point is no longer treated as isolated data, but as part of a
 structured geometric system.
 \end{remark}
-
----
 
 \subsection{Step 4: Physical Realization}
 
@@ -115,8 +109,6 @@ This step reflects:
 The resulting geometry is not identical to the theoretical model.
 \end{remark}
 
----
-
 \subsection{Step 5: Back to World Coordinates}
 
 \begin{remark}
@@ -131,8 +123,6 @@ x_{\mathrm{real}}.
 \begin{remark}
 This produces the geometry that is visible and measurable in reality.
 \end{remark}
-
----
 
 \subsection{Step 6: Comparison and Feedback}
 
@@ -152,8 +142,6 @@ The deviation drives optimization:
 \end{itemize}
 \end{remark}
 
----
-
 \subsection{Interpretation}
 
 \begin{remark}
@@ -171,8 +159,6 @@ Each transformation introduces structure, constraints, and
 interpretation.
 \end{remark}
 
----
-
 \subsection{Key Insight}
 
 \begin{proposition}
@@ -181,8 +167,6 @@ A measured point is not directly part of the alignment.
 It becomes part of the alignment only after passing through the
 world-to-track transformation and the alignment model.
 \end{proposition}
-
----
 
 \subsection{Connection to AIM}
 

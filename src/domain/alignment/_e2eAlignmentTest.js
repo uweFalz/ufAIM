@@ -12,6 +12,8 @@ import { FixedElement } from "./elements/FixedElement.js";
 
 import { buildChangeTransitionTypeProblem } from "../optimization/alignment/buildChangeTransitionTypeProblem.js";
 import { solveEqualityQP } from "../../lib/math/optim/qp/solveEqualityQP.js";
+import { solveOneEqualitySqpStep } from "../../lib/math/optim/sqp/solveOneEqualitySqpStep.js";
+import { solveEqualitySqp } from "../../lib/math/optim/sqp/solveEqualitySqp.js";
 
 const defs = transitionLookup;
 
@@ -76,9 +78,9 @@ function runDescriptorAndPresetChecks() {
 
 function runMainAlignmentChecks() {
 	const sparse = [
-		{ type: "fixed",      id: "F0", arcLength: 80,  curvature: 0.0 },
-		{ type: "transition", id: "T1", arcLength: 60,  transType: "clothoid" },
-		{ type: "fixed",      id: "F2", arcLength: 120, curvature: 1 / 300.0 },
+		{ type: "fixed", id: "F0", arcLength: 80, curvature: 0.0 },
+		{ type: "transition", id: "T1", arcLength: 60, transType: "clothoid" },
+		{ type: "fixed", id: "F2", arcLength: 120, curvature: 1 / 300.0 },
 	];
 
 	const startPose = {
@@ -147,10 +149,10 @@ function runMainAlignmentChecks() {
 	assert(Math.hypot(p2p.x - p2m.x, p2p.y - p2m.y) < 1e-3, "pos discontinuity at S2");
 
 	const kStartTrans = alignment.curvatureAt(S1 + 1e-3);
-	const kEndTrans   = alignment.curvatureAt(S2 - 1e-3);
+	const kEndTrans = alignment.curvatureAt(S2 - 1e-3);
 
-	assert(Math.abs(kStartTrans - 0.0) < 1e-2, "transition kappaA not ~ 0");
-	assert(Math.abs(kEndTrans - (1 / 300.0)) < 1e-2, "transition kappaB not ~ 1/300");
+	assert(Math.abs(kStartTrans - 0.0) < 1e-2, "transition kappaA not 0");
+	assert(Math.abs(kEndTrans - (1 / 300.0)) < 1e-2, "transition kappaB not 1/300");
 
 	const poseEnd = alignment.poseAt(L, { quality: "exact" });
 	assert(!!poseEnd?.p && !!poseEnd?.t, "end pose missing p/t");
@@ -222,23 +224,45 @@ function runChangeTransitionTypeProblemChecks() {
 	};
 
 	const initial = {
-		Lg: 80,
-		Lu: 60,
-		Lb: 120,
+		Lg: 100,
+		Lu: 50,
+		Lb: 100,
 	};
 
-	const kB = 1 / 300;
+	const kB = 1 / 1000;
 
-	const oracle = buildChangeTransitionTypeProblem({
-		poseA,
-		poseE: { p: { x: 0, y: 0 }, theta: 0 },
-		initial,
-		kB,
-		minLengths: { Lg: 0.001, Lu: 0.001, Lb: 0.001 },
+	const clothoidSparse = [
+		{ type: "fixed", id: "G0", arcLength: 100, curvature: 0 },
+		{ type: "transition", id: "U1", arcLength: 50, transType: "clothoid" },
+		{ type: "fixed", id: "B2", arcLength: 100, curvature: kB },
+	];
+
+	const { alignment: clothoidAlignment, warnings: clothoidWarnings } =
+		makeAlignment2DFromSparse({
+			startPose: {
+				p: { x: poseA.p.x, y: poseA.p.y },
+				t: { x: 1, y: 0 },
+			},
+			sparse: clothoidSparse,
+			descriptorResolver,
+			kappaBuilder,
+		});
+
+	assert(clothoidWarnings.length === 0, "clothoid oracle warnings not allowed");
+
+	const clothoidEnd = clothoidAlignment.poseAt(clothoidAlignment.arcLength, {
+		quality: "exact",
 	});
 
-	const ev0 = oracle.evaluate([initial.Lg, initial.Lu, initial.Lb]);
-	const poseE = ev0.endPose;
+	const poseE = {
+		p: {
+			x: clothoidEnd.p.x,
+			y: clothoidEnd.p.y,
+		},
+		theta: Math.atan2(clothoidEnd.t.y, clothoidEnd.t.x),
+	};
+
+	console.log("CLOTHOID ORACLE END POSE", poseE);
 
 	const problem = buildChangeTransitionTypeProblem({
 		poseA,
@@ -279,9 +303,6 @@ function runChangeTransitionTypeProblemChecks() {
 		assert(h <= 0, `changeTransition H violated (${h})`);
 	}
 
-	assert(Math.hypot(snap.G[0], snap.G[1]) < 1e-6, "changeTransition position closure not zero");
-	assert(Math.abs(snap.G[2]) < 1e-6, "changeTransition angle closure not zero");
-
 	assert(Array.isArray(snap.JG) && snap.JG.length === 3, "changeTransition JG row count invalid");
 	assert(Array.isArray(snap.JH) && snap.JH.length === 3, "changeTransition JH row count invalid");
 	assert(Array.isArray(snap.Q) && snap.Q.length === 3, "changeTransition Q row count invalid");
@@ -320,6 +341,57 @@ function runChangeTransitionTypeProblemChecks() {
 
 	for (const x of qp.d) assert(finite(x), "QP d contains NaN");
 	for (const x of qp.lambda) assert(finite(x), "QP lambda contains NaN");
+
+	const sqp = solveOneEqualitySqpStep({
+		problem,
+		v: snap.v,
+	});
+
+	console.log("CHANGE TRANSITION TYPE SQP STEP", sqp);
+
+	assert(sqp.ok, `SQP step failed: ${sqp.reason ?? sqp.status}`);
+	assert(Array.isArray(sqp.vNext) && sqp.vNext.length === 3, "SQP vNext invalid");
+
+	for (const x of sqp.vNext) {
+		assert(finite(x), "SQP vNext contains NaN");
+	}
+
+	const solved = solveEqualitySqp({
+		problem,
+		v0: snap.v,
+		maxIterations: 10,
+		tolerance: 1e-9,
+	});
+
+	console.log("CHANGE TRANSITION TYPE SQP SOLVE", solved);
+
+	console.log("CHANGE TRANSITION TYPE SQP HISTORY", solved.history.map((h) => ({
+		iteration: h.iteration,
+		status: h.status,
+		gNorm: h.gNorm,
+		nextGNorm: h.nextGNorm,
+		merit: h.merit,
+		nextMerit: h.nextMerit,
+		rawStepNorm: h.rawStepNorm,
+		clippedStepNorm: h.clippedStepNorm,
+		stepNorm: h.stepNorm,
+		stepClipped: h.stepClipped,
+		trustRadius: h.trustRadius,
+		radiusAction: h.radiusAction,
+		trustRegionRetries: h.trustRegionRetries,
+		alpha: h.alpha,
+		backtracks: h.backtracks,
+		rankEstimate: h.rankEstimate,
+		reason: h.reason,
+	})));
+
+	assert(Array.isArray(solved.v) && solved.v.length === 3, "SQP solve v invalid");
+	assert(Array.isArray(solved.history) && solved.history.length > 0, "SQP solve history missing");
+	assert(finite(solved.gNorm), "SQP solve gNorm invalid");
+
+	for (const x of solved.v) {
+		assert(finite(x), "SQP solve v contains NaN");
+	}
 }
 
 function run() {

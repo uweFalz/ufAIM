@@ -1,3 +1,5 @@
+% foundations/axioms.tex
+
 \chapter{Axiomatic Foundation}
 
 \section{Primitives}
@@ -43,3 +45,96 @@ $\kappaf : I \to \R$ is the curvature.
 \begin{proposition}
 Curvature uniquely defines the curve up to initial conditions.
 \end{proposition}
+
+\section{Architectural Axioms}
+
+\begin{axiom}[Semantic--Metric Separation]
+\label{ax:semantic-metric-separation}
+
+Constructive alignment semantics and metric realization are distinct
+conceptual layers.
+
+\end{axiom}
+
+\begin{remark}
+
+Alignment semantics describe what has been designed.
+
+Metric realization describes how the design is evaluated
+geometrically.
+
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{axiom}[CRS Independence]
+\label{ax:crs-independence}
+
+AlignmentData is independent of any particular coordinate reference
+system.
+
+\end{axiom}
+
+\begin{remark}
+
+CRS independence does not imply metric independence.
+
+An alignment may be interpreted within different metric realization
+spaces without changing its constructive semantics.
+
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{axiom}[Physical Interpretation Layer]
+\label{ax:physical-interpretation}
+
+Physical railway quantities are not part of constructive alignment
+semantics.
+
+They emerge only after metric realization.
+
+\end{axiom}
+
+\begin{remark}
+
+Examples include:
+
+\begin{itemize}
+\item cant equilibrium,
+\item gravity,
+\item acceleration,
+\item vehicle response,
+\item dynamic balance,
+\item comfort,
+\item and operational admissibility.
+\end{itemize}
+
+\end{remark}
+
+% ------------------------------------------------------------
+
+\begin{axiom}[Representation Independence]
+\label{ax:representation-independence}
+
+Representation is not part of alignment semantics.
+
+Visualization and exchange formats are derived representations of
+realized alignment states.
+
+\end{axiom}
+
+\begin{remark}
+
+Examples include:
+
+\begin{itemize}
+\item CAD geometry,
+\item GIS visualization,
+\item LandXML,
+\item IFC,
+\item railML,
+\item and runtime rendering.
+\end{itemize}
+
+\end{remark}

@@ -1,0 +1,42 @@
+% figures/dynamics/dynamic_balance_relation.tex
+
+\begin{tikzpicture}[
+  node distance=1.6cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum width=3.8cm,
+    minimum height=0.9cm,
+    align=center
+  },
+  smallbox/.style={
+    draw,
+    rounded corners,
+    minimum width=3.4cm,
+    minimum height=0.9cm,
+    align=center
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (curv)
+{Curvature\\$\kappa(s)$};
+
+\node[box, right=of curv] (acc)
+{Lateral acceleration\\$v^2\kappa(s)$};
+
+\node[box, below=of acc] (cant)
+{Cant compensation\\$g\sin\phi(s)$};
+
+\node[box, right=of acc] (balance)
+{Balance relation\\$v^2\kappa(s)=g\sin\phi(s)$};
+
+\node[smallbox, below=of balance] (imbalance)
+{Imbalance\\$a_{\mathrm{eff}}=v^2\kappa-g\sin\phi$};
+
+\draw[arrow] (curv) -- (acc);
+\draw[arrow] (acc) -- (balance);
+\draw[arrow] (cant) -- (balance);
+\draw[arrow] (balance) -- (imbalance);
+
+\end{tikzpicture}

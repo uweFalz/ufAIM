@@ -1,0 +1,25 @@
+% figures/state/curvature_to_pose2.tex
+
+\begin{tikzpicture}[
+  node distance=1.15cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.4cm,
+    minimum height=0.85cm,
+    font=\small
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (kappa) {Curvature law\\\(\kappa(s)\)};
+\node[box, below=of kappa] (ivp) {Initial values\\\(p_0,\, t_0\)};
+\node[box, below=of ivp] (int) {Arc-length integration};
+\node[box, below=of int] (pose2) {\(\mathrm{pose2}(s)\)\\position and direction};
+
+\draw[arrow] (kappa) -- (ivp);
+\draw[arrow] (ivp) -- (int);
+\draw[arrow] (int) -- (pose2);
+
+\end{tikzpicture}

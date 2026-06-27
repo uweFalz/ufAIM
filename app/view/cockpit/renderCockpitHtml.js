@@ -1,4 +1,25 @@
 // app/view/cockpit/renderCockpitHtml.js
+//
+// Cockpit layout renderer.
+//
+// Owns:
+// - Cockpit HTML layout
+// - markup structure
+// - local presentation grouping
+//
+// Does NOT own:
+// - DOM writing
+// - controller orchestration
+// - application state
+// - import/SPOT/projection logic
+//
+// i18n rule:
+// - text resolution should happen here or through an explicit text API,
+//   not randomly inside controllers.
+//
+// Transition note:
+// - This remains a string renderer for now.
+// - innerHTML is only allowed through renderCockpitRoot(...).
 
 import { t } from "@app/i18n/strings.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
@@ -26,6 +47,12 @@ export function renderCockpitHtml(uiState = {}) {
 
 	return `
 		<div class="cockpit-sofa cockpit-ivision cockpit-universe">
+			${section({
+				className: "cockpit-ivision__native",
+				title: tx("cockpit.section.file", "File"),
+				body: renderNativeAuthoringCard(),
+			})}
+
 			${section({
 				className: "cockpit-ivision__scene",
 				title: tx("cockpit.section.workspace", "Arbeitsansicht"),
@@ -65,6 +92,31 @@ export function renderCockpitHtml(uiState = {}) {
 			})}
 		</div>
 	`;
+}
+
+function renderNativeAuthoringCard() {
+	return card({
+		className: "cockpit-ivision__native-card",
+		body: `
+			<div class="cockpit-sofa__actions cockpit-ivision__actionbar">
+				<button
+					type="button"
+					class="cockpit-sofa__button cockpit-sofa__button--primary"
+					data-cockpit-new-alignment
+				>
+					${escapeHtml(tx("cockpit.action.newAlignment", "File → New Alignment"))}
+				</button>
+
+				<button
+					type="button"
+					class="cockpit-sofa__button cockpit-sofa__button--secondary"
+					data-cockpit-add-straight
+				>
+					${escapeHtml(tx("cockpit.action.addStraight", "+ Straight"))}
+				</button>
+			</div>
+		`,
+	});
 }
 
 function renderSceneCard(scene, context, visibleCount) {

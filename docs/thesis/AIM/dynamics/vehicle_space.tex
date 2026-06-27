@@ -1,515 +1,180 @@
 % dynamics/vehicle_space.tex
 
 \chapter{Vehicle Space and Relative Railway States}
-
 \label{chap:vehicle-space}
 
-% ============================================================
-\section{Motivation}
-% ============================================================
+\section{Introduction}
 
-\begin{remark}
-Classical railway alignment theory often treats the railway track itself
-as the primary geometric object.
-\end{remark}
+Motivation:
 
-\begin{remark}
-Within operational railway systems, however, the physically relevant
-object is not merely the track geometry, but the evolving operational
-state of the vehicle relative to the track.
-\end{remark}
-
-\begin{remark}
-This distinction becomes essential for:
 \begin{itemize}
-\item comfort interpretation,
-\item cant interpretation,
-\item dynamic behaviour,
-\item operational admissibility,
-\item and realization-aware optimization.
+\item pose3 describes the railway.
+\item railway operation involves vehicles.
+\item vehicle behaviour cannot be identified with railway state.
+\item a separate vehicle-space interpretation is required.
 \end{itemize}
-\end{remark}
 
-\begin{principle}[Track--vehicle distinction principle]
-\label{princ:track-vehicle-distinction}
-Within AIM, pose3 does not describe the vehicle itself.
-Instead, pose3 describes the railway runtime state relative to which
-vehicle states emerge.
+Principle:
+
+\begin{principle}[Track--Vehicle Distinction]
+Within AIM, railway states and vehicle states are fundamentally distinct.
+Vehicle states are interpreted relative to railway states.
 \end{principle}
 
-\begin{principle}[Dynamic reference principle]
-\label{princ:dynamic-reference-principle}
-The railway runtime state acts as a moving operational reference system
-relative to which vehicle states are interpreted.
-\end{principle}
-
-\begin{remark}
-The railway track therefore acts as a dynamic runtime reference system
-for vehicle-space interpretation.
-\end{remark}
-
-% ============================================================
 \section{Track State versus Vehicle State}
-% ============================================================
 
-\begin{definition}[Track state]
-\label{def:vehicle-space-track-state}
-The track state is the runtime-evaluated railway state generated from:
-\begin{itemize}
-\item intrinsic geometry,
-\item cant,
-\item profile,
-\item frame evaluation,
-\item and runtime reconstruction.
-\end{itemize}
-\end{definition}
+\begin{proposition}[State hierarchy]
+\label{prop:state-hierarchy}
 
-\begin{remark}
-Within AIM, this state is represented primarily through:
-\[
-\mathrm{pose3}(s).
-\]
-\end{remark}
+Railway states exist independently of vehicles.
 
-% ------------------------------------------------------------
+Vehicle states require railway states as reference states.
 
-\begin{definition}[Vehicle state]
-\label{def:vehicle-space-vehicle-state}
-A vehicle state describes the operational and geometric state of a
-vehicle relative to the track state.
-\end{definition}
+Therefore:
 
-\begin{remark}
-Vehicle states depend on:
-\begin{itemize}
-\item the track state,
-\item operational velocity,
-\item vehicle geometry,
-\item suspension behaviour,
-\item local wheel--rail interaction,
-\item and dynamic interpretation.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus:
-\[
-\mathrm{vehicleState}
-\neq
-\mathrm{pose3}.
-\]
-\end{remark}
-
-\begin{remark}
-Instead:
 \[
 \mathrm{vehicleState}
 =
-\mathcal V(
+\mathcal V(\mathrm{pose3},\ldots)
+\]
+
+but not vice versa.
+
+\end{proposition}
+
+\begin{definition}[Track State]
+The track state is the runtime-evaluated railway state represented by
+pose3 and its associated railway reference frame.
+\end{definition}
+
+\begin{definition}[Vehicle State]
+A vehicle state is an operational state interpreted relative to a track
+state.
+\end{definition}
+
+\begin{equation}
+\mathrm{vehicleState}
+=
+\mathcal V
+(
 \mathrm{pose3},
-v,
 \dots
-).
-\]
-\end{remark}
+)
+\end{equation}
 
-\begin{remark}
-Vehicle states are not intrinsic railway states.
-Instead, they are runtime-derived relative interpretation states
-generated from:
-\begin{itemize}
-\item railway runtime state,
-\item operational velocity,
-\item vehicle models,
-\item and dynamic interpretation layers.
-\end{itemize}
-\end{remark}
+OPEN{Discussion.}
 
-% ============================================================
+Insert Figure:
+Track State $\rightarrow$ Vehicle State.
+
 \section{Vehicle Space}
-% ============================================================
 
-\begin{definition}[Vehicle space]
-\label{def:vehicle-space-domain}
-Vehicle space denotes the operational state space of vehicle behaviour
-relative to the railway runtime state.
+\begin{definition}[Vehicle Space]
+Vehicle space denotes the collection of operational states that are
+interpreted relative to a railway state.
 \end{definition}
 
-\begin{remark}
-Vehicle space includes:
-\begin{itemize}
-\item rigid-body interpretation,
-\item wheelset states,
-\item bogie states,
-\item relative suspension behaviour,
-\item center-of-gravity motion,
-\item and operational dynamic quantities.
-\end{itemize}
-\end{remark}
+OPEN{Discussion.}
 
-\begin{remark}
-Vehicle space is not merely a geometric embedding inside world space,
-but a runtime-relative operational interpretation space.
-\end{remark}
+\section{Relative Vehicle States}
 
-\begin{remark}
-Vehicle space is generated dynamically from the interaction between:
-\begin{itemize}
-\item runtime railway state,
-\item realization,
-\item operational velocity,
-\item and vehicle interpretation.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Relative State Interpretation}
-% ============================================================
-
-\begin{definition}[Relative vehicle state]
-\label{def:vehicle-space-relative-vehicle-state}
-A relative vehicle state is a vehicle state evaluated with respect to a
-local railway reference frame.
+\begin{definition}[Relative Vehicle State]
+A relative vehicle state is a vehicle state expressed in a local
+track-attached reference frame.
 \end{definition}
 
-\begin{remark}
-Relative states may include:
+Examples:
+
 \begin{itemize}
-\item lateral displacement,
-\item roll angle,
-\item yaw deviation,
-\item wheel unloading,
-\item and center-of-gravity motion.
+\item lateral displacement
+\item yaw deviation
+\item roll deviation
+\item wheel unloading
 \end{itemize}
-\end{remark}
 
-\begin{remark}
-The physically relevant quantity is often not:
-\[
-x_{\mathrm{vehicle}},
-\]
-but:
-\[
-x_{\mathrm{vehicle}}
--
-x_{\mathrm{track}}.
-\]
-\end{remark}
+OPEN{Discussion.}
 
-\begin{remark}
-This motivates interpretation of railway dynamics as relative runtime
-state evolution inside moving track-attached frames.
-\end{remark}
+\section{Track and Vehicle Frames}
 
-% ============================================================
-\section{Track Frame versus Vehicle Frame}
-% ============================================================
-
-\begin{definition}[Track frame]
-\label{def:vehicle-space-track-frame}
-The track frame is the runtime-evaluated local reference frame attached
-to the railway state.
+\begin{definition}[Track Frame]
+Local railway-attached frame generated from pose3.
 \end{definition}
 
-\begin{remark}
-Within AIM, the track frame is generated from:
-\begin{itemize}
-\item pose2 reconstruction,
-\item pose3 extension,
-\item cant interpretation,
-\item and frame evaluation operators.
-\end{itemize}
-\end{remark}
-
-\begin{definition}[Vehicle frame]
-\label{def:vehicle-space-vehicle-frame}
-The vehicle frame is the local reference frame attached to the vehicle
-body or to a vehicle subsystem.
+\begin{definition}[Vehicle Frame]
+Local frame attached to a vehicle body or subsystem.
 \end{definition}
 
-\begin{remark}
-Vehicle frames may differ from the track frame due to:
-\begin{itemize}
-\item suspension motion,
-\item wheelset steering,
-\item hunting motion,
-\item roll dynamics,
-\item and structural flexibility.
-\end{itemize}
-\end{remark}
+OPEN{Discussion.}
 
-\begin{remark}
-Thus:
-\[
+\begin{equation}
 F_{\mathrm{vehicle}}
 \neq
-F_{\mathrm{track}}.
-\]
-\end{remark}
+F_{\mathrm{track}}
+\end{equation}
 
-% ============================================================
-\section{Wheelset Interpretation}
-% ============================================================
+\section{Operational Abstractions}
 
-\begin{definition}[Wheelset state]
-\label{def:vehicle-space-wheelset-state}
-A wheelset state describes the relative geometric and operational state
-of a wheelset within the local railway frame.
+\subsection{Wheelset State}
+
+\begin{definition}
+Wheelset state.
 \end{definition}
 
-\begin{remark}
-Wheelset interpretation involves:
-\begin{itemize}
-\item yaw behaviour,
-\item relative wheel guidance,
-\item local wheel--rail interaction,
-\item lateral guidance,
-\item and relative rail geometry.
-\end{itemize}
-\end{remark}
+OPEN{Short discussion.}
 
-\begin{remark}
-Wheelset states depend directly on:
-\begin{itemize}
-\item realized curvature,
-\item realized cant,
-\item local gauge geometry,
-\item and operational velocity.
-\end{itemize}
-\end{remark}
+\subsection{Bogie State}
 
-\begin{remark}
-Within AIM, wheelset interpretation is treated primarily as a runtime
-interpretation layer rather than as a full contact-mechanics model.
-\end{remark}
-
-% ============================================================
-\section{Bogie States}
-% ============================================================
-
-\begin{definition}[Bogie state]
-\label{def:vehicle-space-bogie-state}
-A bogie state describes the operational and geometric state of a bogie
-relative to the local railway state.
+\begin{definition}
+Bogie state.
 \end{definition}
 
-\begin{remark}
-Bogie interpretation may include:
-\begin{itemize}
-\item relative yaw,
-\item wheelbase effects,
-\item relative suspension behaviour,
-\item roll behaviour,
-\item and wheelset coupling.
-\end{itemize}
-\end{remark}
+OPEN{Short discussion.}
 
-\begin{remark}
-In transition regions, bogie states are strongly influenced by:
-\begin{itemize}
-\item curvature evolution,
-\item cant evolution,
-\item and higher curvature derivatives.
-\end{itemize}
-\end{remark}
+\subsection{Center-of-Gravity State}
 
-\begin{remark}
-Within AIM, bogie interpretation remains primarily a runtime-relative
-operational abstraction rather than a complete multibody simulation
-framework.
-\end{remark}
-
-% ============================================================
-\section{Center-of-Gravity Interpretation}
-% ============================================================
-
-\begin{definition}[Center-of-gravity state]
-\label{def:vehicle-space-center-of-gravity-state}
-The center-of-gravity state describes the operational motion of the
-vehicle center of gravity relative to the railway runtime state.
+\begin{definition}
+Center-of-gravity state.
 \end{definition}
 
+OPEN{Short discussion.}
+
 \begin{remark}
-This state is particularly relevant for:
-\begin{itemize}
-\item passenger comfort,
-\item load transfer,
-\item overturning stability,
-\item and Schwerpunkt-Trassierung.
-\end{itemize}
+
+The center-of-gravity state is not identical to the vehicle state.
+
+A vehicle may contain multiple relevant operational states,
+whereas the center-of-gravity state describes the motion of a selected
+mass reference point.
+
 \end{remark}
 
 \begin{remark}
-Within AIM, the center-of-gravity state is interpreted primarily as an
-operational abstraction layer rather than as a full mechanical vehicle
-model.
+
+Within AIM, future optimization approaches may operate on
+center-of-gravity trajectories rather than directly on geometric
+centerlines.
+
 \end{remark}
 
-\begin{remark}
-Within AIM, cant interpretation is therefore not restricted to rail
-height difference alone, but extends toward center-of-gravity-dependent
-runtime interpretation.
-\end{remark}
-
-\begin{remark}
-The operationally relevant object is often not the rail geometry itself,
-but the trajectory of the vehicle center of gravity through realized
-runtime space.
-\end{remark}
-
-% ============================================================
-\section{Operational Vehicle Space}
-% ============================================================
-
-\begin{remark}
-Operational railway behaviour emerges from the interaction between:
-\begin{itemize}
-\item runtime railway geometry,
-\item realization,
-\item operational velocity,
-\item and vehicle-space interpretation.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, operational railway states cannot be interpreted purely through:
-\begin{itemize}
-\item geometry,
-\item or purely through mechanics,
-\end{itemize}
-but only through coupled runtime interpretation.
-\end{remark}
-
-% ============================================================
-\section{Vehicle Space and Realization}
-% ============================================================
-
-\begin{remark}
-Vehicle-space interpretation depends on realized rather than purely
-analytical geometry.
-\end{remark}
-
-\begin{remark}
-In particular:
-\[
-\mathrm{vehicleState}_{\mathrm{real}}
-=
-\mathcal V(
-\mathrm{pose3}_{\mathrm{real}}
-).
-\]
-\end{remark}
-
-\begin{remark}
-Thus, realization directly affects:
-\begin{itemize}
-\item comfort,
-\item wheel unloading,
-\item bogie behaviour,
-\item and operational smoothness.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Vehicle Space and Runtime}
-% ============================================================
-
-\begin{remark}
-Vehicle-space evaluation is fundamentally a runtime process.
-\end{remark}
-
-\begin{remark}
-It depends on:
-\begin{itemize}
-\item runtime frame evaluation,
-\item world-to-track transformation,
-\item realized geometry,
-\item dynamic state interpretation,
-\item operational context,
-\item and runtime operators.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Vehicle-space interpretation therefore belongs naturally to the AIM
-runtime architecture.
-\end{remark}
-
-% ============================================================
-\section{Towards Schwerpunkt-Trassierung}
-% ============================================================
-
-\begin{remark}
-The distinction between track state and vehicle state is one of the
-foundations of Schwerpunkt-Trassierung.
-\end{remark}
-
-\begin{remark}
-Within this interpretation, railway alignment design becomes:
-\begin{quote}
-the design of operational vehicle-state trajectories relative to a
-realized railway runtime state.
-\end{quote}
-\end{remark}
-
-\begin{remark}
-Thus, the primary engineering object is no longer merely:
-\[
-\gamma(s),
-\]
-but the dynamically evolving operational state generated from:
-\[
-\mathrm{pose3}_{\mathrm{real}}.
-\]
-\end{remark}
-
-% ============================================================
 \section{Canonical Interpretation}
-% ============================================================
 
 \begin{proposition}
-Within AIM, pose3 describes the railway runtime state rather than the
-vehicle itself.
+pose3 describes the railway rather than the vehicle.
 \end{proposition}
 
 \begin{proposition}
-Vehicle states are interpreted as relative runtime states generated from
-interaction with the railway runtime state.
+Vehicle states are relative interpretation states.
 \end{proposition}
 
 \begin{proposition}
-Operational railway behaviour therefore emerges from coupled
-track--vehicle runtime interaction rather than from geometry alone.
+Vehicle space is generated from railway states.
 \end{proposition}
 
-\begin{proposition}
-The center-of-gravity state is interpreted primarily as an operational
-runtime abstraction rather than as a complete mechanical vehicle model.
-\end{proposition}
+\section{Summary}
 
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+Vehicle space introduces the operational entities that are interpreted
+relative to railway states.
 
-\begin{summary}
-Vehicle space extends railway alignment interpretation from pure
-geometry toward operational runtime-state interaction.
-
-Within AIM:
-\begin{itemize}
-\item pose3 describes the railway runtime state,
-\item vehicle states are interpreted relatively,
-\item runtime frames generate operational interpretation,
-\item realization affects dynamic behaviour directly,
-\item center-of-gravity trajectories become operationally relevant,
-\item and runtime interpretation generates vehicle-space behaviour.
-\end{itemize}
-
-This provides the conceptual bridge toward:
-\begin{itemize}
-\item Schwerpunkt-Trassierung,
-\item realization-aware dynamics,
-\item runtime vehicle interpretation,
-\item and operational state optimization.
-\end{itemize}
-\end{summary}
+It defines the ontology of vehicle-related states but does not yet
+describe runtime evolution, dynamic balance, realization effects, or
+optimization.

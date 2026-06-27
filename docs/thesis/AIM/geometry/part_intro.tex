@@ -1,62 +1,92 @@
 % geometry/part_intro.tex
 
-% \part{Geometry and Curvature}
+\chapter*{Geometry}
+\phantomsection
+\addcontentsline{toc}{chapter}{Geometry}
 
-\chapter*{Introduction}
-\addcontentsline{toc}{chapter}{Introduction}
+\section*{What do we already know?}
 
 \begin{remark}
-Railway alignment geometry is traditionally described through curves,
-radii, transition elements, and engineering rules.
+The previous part established the mathematical foundation of AIM.
+
+In particular, it introduced the distinction between intrinsic and
+derived quantities, the importance of arc-length based descriptions,
+and the operator-based viewpoint adopted throughout this work.
 \end{remark}
 
 \begin{remark}
-Within AIM, geometry is interpreted differently:
-not primarily as collections of geometric primitives, but as controlled
-curvature evolution along arc-length.
+However, a railway alignment has not yet been given a geometric form.
+
+At this stage, the mathematical framework exists, but the geometric
+entity that it is intended to describe remains undefined.
+\end{remark}
+
+\section*{What is still missing?}
+
+\begin{remark}
+Traditional railway engineering typically describes alignments through
+coordinates, radii, tangents, circular arcs, and transition elements.
 \end{remark}
 
 \begin{remark}
-This shifts the focus:
-\begin{itemize}
-\item from coordinates to intrinsic structure,
-\item from stored geometry to reconstruction,
-\item and from isolated curve elements to coupled state evolution.
-\end{itemize}
+While such descriptions are operationally useful, they do not reveal
+the intrinsic geometric structure of the alignment itself.
 \end{remark}
 
 \begin{remark}
-The central geometric quantity is therefore not position itself, but
-curvature:
+AIM therefore seeks a representation that is independent of particular
+coordinate systems, storage formats, and implementation conventions.
+\end{remark}
+
+\begin{remark}
+The missing ingredient is an intrinsic geometric description from which
+all geometric realizations can be reconstructed.
+\end{remark}
+
+\section*{What comes next?}
+
+\begin{remark}
+Within AIM, geometry is interpreted not primarily as a collection of
+geometric primitives, but as controlled curvature evolution along
+arc-length.
+\end{remark}
+
+\begin{remark}
+The central geometric quantity therefore becomes
 \[
-\kappa(s).
+\kappa(s),
 \]
+rather than position itself.
 \end{remark}
 
 \begin{remark}
-Within the AIM framework:
+From this viewpoint:
 \begin{itemize}
-\item geometry emerges from curvature integration,
+\item geometry emerges through curvature integration,
 \item transition curves become curvature-transition laws,
-\item and sparse alignment models become compact curvature programs.
+\item sparse alignment models become compact curvature programs,
+\item and geometric reconstruction becomes a natural consequence of the
+intrinsic description.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-This geometric viewpoint naturally connects:
-\begin{itemize}
-\item reconstruction,
-\item realization,
-\item runtime evaluation,
-\item dynamics,
-\item and optimization.
-\end{itemize}
+This interpretation establishes the foundation for realization,
+runtime evaluation, dynamics, and optimization developed in later
+parts of this thesis.
+\end{remark}
+
+\section*{Relation to the AIM Roadmap}
+
+\begin{remark}
+Within the AIM roadmap, the present part corresponds to the transition
+from mathematical foundations toward curvature space.
 \end{remark}
 
 \begin{remark}
-The chapters of this part introduce the intrinsic geometric structure of
-railway alignments, beginning with curvature space and continuing toward
-transition classification and higher-order geometric interpretation.
+It introduces the intrinsic geometric language from which the later
+state descriptions, runtime models, realization concepts, and
+optimization methods are derived.
 \end{remark}
 
 \begin{proposition}

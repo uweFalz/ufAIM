@@ -1,0 +1,29 @@
+% figures/reality/realization_pipeline.tex
+
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.9cm,
+    minimum height=0.8cm,
+    font=\small
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (design) {Designed alignment};
+\node[box, below=of design] (model) {Model representation};
+\node[box, below=of model] (construction) {Construction process};
+\node[box, below=of construction] (measurement) {Measurement / observation};
+\node[box, below=of measurement] (realized) {Realized alignment};
+\node[box, below=of realized] (feedback) {Feedback to model};
+
+\draw[arrow] (design) -- (model);
+\draw[arrow] (model) -- (construction);
+\draw[arrow] (construction) -- (measurement);
+\draw[arrow] (measurement) -- (realized);
+\draw[arrow] (realized) -- (feedback);
+
+\end{tikzpicture}

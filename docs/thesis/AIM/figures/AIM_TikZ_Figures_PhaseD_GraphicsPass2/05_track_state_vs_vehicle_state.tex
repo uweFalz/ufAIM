@@ -1,0 +1,37 @@
+% figures/dynamics/track_state_vs_vehicle_state.tex
+
+\begin{tikzpicture}[
+  node distance=1.15cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.8cm,
+    minimum height=0.9cm,
+    font=\small
+  },
+  smallbox/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.8cm,
+    minimum height=0.8cm,
+    font=\footnotesize
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (track) {Track state\\\(\mathrm{pose3}(s)\)};
+\node[box, right=3.0cm of track] (vehicle) {Vehicle state\\\(x_v(s,t)\)};
+
+\node[smallbox, below=of track] (railway) {railway frame\\cant, profile, geometry};
+\node[smallbox, below=of vehicle] (motion) {motion response\\speed, balance, comfort};
+
+\draw[arrow] (track) -- node[above, font=\footnotesize] {runtime interpretation} (vehicle);
+\draw[arrow] (track) -- (railway);
+\draw[arrow] (vehicle) -- (motion);
+
+\node[align=center, font=\small, below=2.7cm of $(track)!0.5!(vehicle)$]
+{Track state and vehicle state are coupled,\\but they are not identical.};
+
+\end{tikzpicture}

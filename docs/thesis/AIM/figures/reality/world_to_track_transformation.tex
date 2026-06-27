@@ -1,0 +1,18 @@
+% figures/reality/world_to_track_transformation.tex
+\begin{tikzpicture}[
+  node distance=1.45cm,
+  box/.style={draw, rounded corners, align=center, minimum width=4.4cm, minimum height=0.9cm, fill=blue!8},
+  op/.style={draw, rounded corners, align=center, minimum width=3.7cm, minimum height=0.8cm, fill=orange!12},
+  arrow/.style={->, thick}
+]
+\node[box] (world) {World / CRS\\\small measured coordinates};
+\node[op, below=of world] (proj) {projection / localization};
+\node[box, below=of proj, fill=green!10] (track) {Track coordinate\\\small station, offset, frame};
+\node[op, below=of track] (eval) {runtime interpretation};
+\node[box, below=of eval, fill=purple!10] (state) {AIM state\\\small pose2 / pose3 / vehicle-relative};
+
+\draw[arrow] (world) -- (proj);
+\draw[arrow] (proj) -- (track);
+\draw[arrow] (track) -- (eval);
+\draw[arrow] (eval) -- (state);
+\end{tikzpicture}

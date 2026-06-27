@@ -1,0 +1,35 @@
+% figures/state/pose2_to_pose3.tex
+
+\begin{tikzpicture}[
+  node distance=1.1cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.4cm,
+    minimum height=0.85cm,
+    font=\small
+  },
+  side/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.1cm,
+    minimum height=0.75cm,
+    font=\footnotesize
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (pose2) {\(\mathrm{pose2}\)\\planar railway state};
+\node[side, below left=1.0cm and 1.2cm of pose2] (profile) {profile\\\(z(s)\)};
+\node[side, below=1.0cm of pose2] (cant) {cant\\\(\phi(s)\)};
+\node[side, below right=1.0cm and 1.2cm of pose2] (frame) {frame\\orientation};
+\node[box, below=2.4cm of pose2] (pose3) {\(\mathrm{pose3}\)\\spatial railway state};
+
+\draw[arrow] (pose2) -- (pose3);
+\draw[arrow] (profile) -- (pose3);
+\draw[arrow] (cant) -- (pose3);
+\draw[arrow] (frame) -- (pose3);
+
+\end{tikzpicture}

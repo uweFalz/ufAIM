@@ -1,0 +1,41 @@
+% figures/state/state_taxonomy.tex
+
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=4.6cm,
+    minimum height=0.8cm,
+    font=\small
+  },
+  smallbox/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.4cm,
+    minimum height=0.75cm,
+    font=\footnotesize
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (intrinsic) {Intrinsic state};
+\node[box, below=of intrinsic] (railway) {Railway state};
+\node[box, below=of railway] (runtime) {Runtime state};
+
+\node[smallbox, left=2.4cm of intrinsic] (pose2) {\(\mathrm{pose2}\)};
+\node[smallbox, right=2.4cm of railway] (pose3) {\(\mathrm{pose3}\)};
+\node[smallbox, left=2.4cm of runtime] (vehicle) {vehicle state};
+\node[smallbox, right=2.4cm of runtime] (realized) {realized state};
+
+\draw[arrow] (intrinsic) -- (railway);
+\draw[arrow] (railway) -- (runtime);
+
+\draw[arrow] (pose2) -- (intrinsic);
+\draw[arrow] (pose3) -- (railway);
+\draw[arrow] (vehicle) -- (runtime);
+\draw[arrow] (realized) -- (runtime);
+
+\end{tikzpicture}

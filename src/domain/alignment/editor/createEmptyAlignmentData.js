@@ -1,0 +1,41 @@
+// src/domain/alignment/editor/createEmptyAlignmentData.js
+
+export function createEmptyAlignmentData({
+	id = makeAlignmentId(),
+	name = "New Alignment",
+	now = new Date().toISOString(),
+} = {}) {
+	return {
+		type: "AlignmentData",
+		id,
+		name,
+
+		source: {
+			kind: "editor",
+			native: true,
+		},
+
+		editModel: {
+			startPose: {
+				p: { x: 0, y: 0 },
+				t: { x: 1, y: 0 },
+			},
+			elements: [],
+		},
+
+		sparseAlignment: null,
+
+		meta: {
+			lifecycle: "draft",
+			dirty: true,
+			createdAt: now,
+			modifiedAt: now,
+		},
+	};
+}
+
+function makeAlignmentId() {
+	return `alignment_${Date.now().toString(36)}_${Math.random()
+		.toString(36)
+		.slice(2, 8)}`;
+}

@@ -1,19 +1,78 @@
-% \chapter{Mathematical Foundations}
+% foundations/part_intro.tex
+
+\chapter*{Mathematical Foundations}
+\phantomsection
+\addcontentsline{toc}{chapter}{Mathematical Foundations}
 
 \begin{remark}
-This part establishes the mathematical foundation of the AIM framework.
-Its purpose is not to develop abstract mathematics for its own sake,
-but to identify the intrinsic structures underlying railway alignment
-modelling.
+The preceding chapters introduced the motivation for AIM and argued that
+railway engineering cannot be fully understood through traditional
+object-oriented descriptions alone.
 \end{remark}
 
 \begin{remark}
-In particular, the focus lies on arc-length based descriptions,
-curvature-driven geometry, and the distinction between primary and
-derived quantities.
+However, motivation alone is insufficient.
+
+Before alignments can be represented, analysed, realized, or optimized,
+a rigorous mathematical foundation must be established.
+\end{remark}
+
+\section*{What do we already know?}
+
+\begin{remark}
+Railway systems possess an intrinsic geometric structure.
+
+Vehicle motion, cant, stationing, operational behaviour, and
+engineering constraints all depend on this structure.
 \end{remark}
 
 \begin{remark}
-These foundations provide the conceptual and formal basis for all later
-developments in modelling, realization, and optimization.
+The previous part identified the need for a modelling framework centred
+on railway alignments rather than solely on engineering assets.
+\end{remark}
+
+\section*{What is still missing?}
+
+\begin{remark}
+A modelling framework requires a precise mathematical language.
+
+At this point, concepts such as alignment, geometry, state, and
+reference systems have been discussed only on an intuitive level.
+\end{remark}
+
+\begin{remark}
+AIM therefore requires a formal foundation capable of describing railway
+geometry independently of implementation details, software systems, or
+engineering conventions.
+\end{remark}
+
+\section*{What comes next?}
+
+\begin{remark}
+This part develops the mathematical basis of AIM.
+
+Particular emphasis is placed on curvature-driven geometry,
+arc-length-based descriptions, state representations, and the operators
+that connect geometric, physical, and operational interpretations.
+\end{remark}
+
+\begin{remark}
+These concepts form the foundation upon which all later discussions of
+runtime behaviour, realization, optimization, and information modelling
+are built.
+\end{remark}
+
+\section*{Relation to the AIM Roadmap}
+
+\begin{remark}
+Within the AIM roadmap (see Figure~\ref{fig:aim-roadmap}),
+the present part corresponds primarily to the transition from classical
+alignment engineering toward curvature space, intrinsic geometry, and
+the first state descriptions.
+\end{remark}
+
+\begin{remark}
+The objective is not yet to describe complete railway systems, but to
+establish the mathematical building blocks from which such systems can
+later be constructed.
 \end{remark}

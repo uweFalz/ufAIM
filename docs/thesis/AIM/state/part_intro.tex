@@ -1,50 +1,177 @@
 % state/part_intro.tex
 
-% This file is included immediately after:
-%   \part{Railway State Model}
-%
-% It is intentionally unnumbered. The numbered chapters of this part
-% begin with pose2.tex.
+\chapter*{State}
+\phantomsection
+\addcontentsline{toc}{chapter}{State}
 
-\chapter*{Railway State Model}
-\addcontentsline{toc}{chapter}{Railway State Model}
+% ============================================================
+\section*{What do we already know?}
+% ============================================================
 
 \begin{remark}
-This part introduces the railway state model underlying the AIM
-framework.
-Instead of treating the track merely as a geometric curve, AIM describes
-railway alignment through states generated from intrinsic geometry,
-profile, cant, frames, and metric interpretation.
+The previous part established the intrinsic geometry of railway
+alignments.
 \end{remark}
 
 \begin{remark}
-The first state layer is \(\mathrm{pose2}\), the intrinsic planar
+Within AIM, geometry was shown to emerge from curvature evolution along
+arc-length, rather than from stored coordinates or predefined geometric
+primitives.
+\end{remark}
+
+\begin{remark}
+Curvature space therefore provides a complete intrinsic description of
+railway geometry.
+\end{remark}
+
+\begin{remark}
+However, geometry alone does not yet constitute a railway state.
+\end{remark}
+
+% ============================================================
+\section*{What is still missing?}
+% ============================================================
+
+\begin{remark}
+A geometric description specifies what the alignment is.
+\end{remark}
+
+\begin{remark}
+It does not yet specify how the alignment is represented,
+reconstructed, interpreted, or evaluated during operation.
+\end{remark}
+
+\begin{remark}
+Engineering applications require more than geometry alone.
+\end{remark}
+
+\begin{remark}
+Position, direction, profile, cant, spatial orientation,
+admissible motions, and runtime interpretation all require additional
+state variables.
+\end{remark}
+
+\begin{remark}
+A bridge therefore remains between intrinsic geometry and operational
+railway behaviour.
+\end{remark}
+
+\begin{remark}
+The missing element is a coherent state description.
+\end{remark}
+
+% ============================================================
+\section*{What comes next?}
+% ============================================================
+
+\begin{remark}
+This part introduces the railway state model underlying AIM.
+\end{remark}
+
+\begin{remark}
+The first state layer is \(\mathrm{pose2}\), the intrinsic
 reconstruction state generated from curvature.
-It carries the initial-value structure required to reconstruct position
-and direction along the alignment.
 \end{remark}
 
 \begin{remark}
-The second state layer is \(\mathrm{pose3}\), the spatial railway state
-obtained by extending pose2 through profile, cant, and frame
-interpretation.
-This state describes the railway, not the vehicle.
+It provides the initial-value structure required to reconstruct
+position and direction along the alignment.
 \end{remark}
 
 \begin{remark}
-The purpose of this part is to define the variables, frames, and
-transformations required to connect intrinsic alignment modelling with
-runtime railway interpretation.
+The second state layer is \(\mathrm{pose3}\), the spatial railway
+state obtained through profile, cant, frame interpretation, and metric
+realization.
 \end{remark}
 
-\begin{principle}[Railway-state principle]
+\begin{remark}
+Importantly, \(\mathrm{pose3}\) describes the railway itself.
+\end{remark}
+
+\begin{remark}
+Vehicle states are introduced only later as states evolving relative
+to \(\mathrm{pose3}\).
+\end{remark}
+
+\begin{remark}
+The chapters of this part establish the variables, frames, operators,
+and transformations required to connect intrinsic geometry with
+operational railway interpretation.
+\end{remark}
+
+% ============================================================
+\section*{Relation to the AIM Roadmap}
+% ============================================================
+
+\begin{remark}
+Within the AIM roadmap, the present part corresponds to the transition
+from curvature space toward railway states.
+\end{remark}
+
+\begin{figure}[ht]
+\centering
+
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum width=4.5cm,
+    minimum height=0.9cm,
+    align=center
+  }
+]
+
+\node[box] (curv)
+{Curvature Space};
+
+\node[box, below=of curv] (pose2)
+{\(\mathrm{pose2}\)};
+
+\node[box, below=of pose2] (pose3)
+{\(\mathrm{pose3}\)};
+
+\draw[->, thick] (curv) -- (pose2);
+\draw[->, thick] (pose2) -- (pose3);
+
+\end{tikzpicture}
+
+\caption{State-related section of the AIM roadmap.}
+\label{fig:state-roadmap}
+
+\end{figure}
+
+\begin{remark}
+The progression from curvature space to \(\mathrm{pose2}\) and further
+to \(\mathrm{pose3}\) forms the central bridge between intrinsic
+geometry and all later runtime, realization, and optimization
+concepts.
+\end{remark}
+
+\begin{remark}
+The state model developed here serves as the foundation for vehicle
+space, runtime evaluation, realization-aware modelling, and
+optimization in subsequent parts of this thesis.
+\end{remark}
+
+% ============================================================
+\begin{principle}[Railway-State Principle]
 \label{princ:railway-state}
 Within AIM, railway alignment is interpreted through state evolution
 rather than through coordinate geometry alone.
 \end{principle}
 
-\begin{remark}
-This part prepares the transition from geometric reconstruction toward
-dynamic railway state interpretation, vehicle-relative states, and
-runtime evaluation.
-\end{remark}
+% ============================================================
+\begin{summary}
+Geometry explains the structure of the railway.
+\end{summary}
+
+\begin{summary}
+The state model explains how this structure is represented,
+reconstructed, interpreted, and evaluated.
+\end{summary}
+
+\begin{summary}
+The transition from geometry to state therefore marks the transition
+from intrinsic shape to operational meaning.
+\end{summary}

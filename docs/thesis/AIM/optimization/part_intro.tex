@@ -1,23 +1,179 @@
-% \chapter{Optimization}
+% optimization/part_intro.tex
+
+\chapter*{Optimization}
+\phantomsection
+\addcontentsline{toc}{chapter}{Optimization}
+
+% ============================================================
+\section*{What do we already know?}
+% ============================================================
 
 \begin{remark}
-This part formulates railway alignment design and reconstruction as
-optimization problems.
-Within the AIM framework, optimization is not an external add-on, but a
-natural consequence of curvature-based modelling.
+The previous parts established railway geometry, railway states,
+runtime evaluation, realization-aware modelling, sparse alignment
+representations, and processing pipelines.
 \end{remark}
 
 \begin{remark}
-The main focus lies on:
+Within AIM, railway alignments can be represented, reconstructed,
+evaluated, measured, realized, and analyzed through a coherent
+operator-based framework.
+\end{remark}
+
+\begin{remark}
+The framework is therefore capable of describing railway systems and
+their interaction with reality.
+\end{remark}
+
+\begin{remark}
+However, description alone is not the ultimate objective of railway
+engineering.
+\end{remark}
+
+% ============================================================
+\section*{What is still missing?}
+% ============================================================
+
+\begin{remark}
+Engineering design requires improvement.
+\end{remark}
+
+\begin{remark}
+Railway alignments must be adapted to constraints, operational
+requirements, construction conditions, comfort criteria, realization
+effects, and economic objectives.
+\end{remark}
+
+\begin{remark}
+Measurements must be interpreted.
+
+Designs must be refined.
+
+Conflicting objectives must be balanced.
+
+Alternative solutions must be evaluated.
+\end{remark}
+
+\begin{remark}
+The missing element is therefore optimization.
+\end{remark}
+
+\begin{remark}
+Optimization transforms railway modelling from descriptive analysis
+into active design and decision support.
+\end{remark}
+
+% ============================================================
+\section*{What comes next?}
+% ============================================================
+
+\begin{remark}
+This part formulates railway alignment design, reconstruction, and
+improvement as optimization problems.
+\end{remark}
+
+\begin{remark}
+Within AIM, optimization is not an external component added after
+modelling.
+
+It emerges naturally from the intrinsic state and curvature
+representations developed throughout the previous parts.
+\end{remark}
+
+\begin{remark}
+The chapters that follow investigate:
 \begin{itemize}
-\item continuous and discrete formulations,
-\item structured residual models,
-\item analytical Jacobians,
-\item sparse and block-structured solution methods.
+\item numerical foundations,
+\item alignment optimization,
+\item structured residual formulations,
+\item sparse and block-structured solvers,
+\item optimizer architectures,
+\item and realization-aware optimization.
 \end{itemize}
 \end{remark}
 
 \begin{remark}
-The following chapters show how alignment modelling leads directly to an
-efficient and interpretable optimization framework.
+Special emphasis is placed on exploiting the analytical structure of
+railway alignment models in order to obtain efficient and interpretable
+optimization procedures.
 \end{remark}
+
+% ============================================================
+\section*{Relation to the AIM Roadmap}
+% ============================================================
+
+\begin{remark}
+Within the AIM roadmap, the present part corresponds to the transition
+from runtime evaluation and realization toward systematic improvement
+of railway systems.
+\end{remark}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum width=5.0cm,
+    minimum height=0.9cm,
+    align=center
+  }
+]
+
+\node[box] (runtime)
+{Runtime and Realization};
+
+\node[box, below=of runtime] (optimization)
+{Optimization};
+
+\node[box, below=of optimization] (design)
+{Improved Design};
+
+\draw[->, thick] (runtime) -- (optimization);
+\draw[->, thick] (optimization) -- (design);
+
+\end{tikzpicture}
+\end{center}
+
+\begin{remark}
+The progression
+\[
+\text{Runtime and Realization}
+\rightarrow
+\text{Optimization}
+\rightarrow
+\text{Improved Design}
+\]
+marks the transition from evaluating railway systems toward actively
+improving them.
+\end{remark}
+
+\begin{remark}
+Optimization therefore forms the bridge between railway information
+modelling and railway engineering decision making.
+\end{remark}
+
+% ============================================================
+\begin{principle}[Optimization Principle]
+\label{princ:optimization-principle}
+Within AIM, railway optimization is interpreted as the systematic
+improvement of railway states, realizations, and operational behaviour
+through structured objective functions and operator-based models.
+\end{principle}
+
+% ============================================================
+\begin{summary}
+Geometry explains shape.
+
+States explain configuration.
+
+Runtime explains evaluation.
+
+Reality explains realization.
+
+Optimization explains improvement.
+
+The present part therefore transforms AIM from a descriptive framework
+into a framework capable of supporting railway design, reconstruction,
+and decision making.
+\end{summary}

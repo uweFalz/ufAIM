@@ -34,7 +34,12 @@
 
 \usepackage{enumitem}
 \usepackage{xcolor}
+
 \usepackage{hyperref}
+\hypersetup{
+  hypertexnames=false
+}
+
 \usepackage[nameinlink]{cleveref}
 \usepackage{booktabs}
 
@@ -121,6 +126,7 @@
 
 \input{macros}
 \input{markers}
+\input{figures/figures}
 
 % ============================================================
 % DOCUMENT
@@ -148,7 +154,9 @@ Realization, and Optimization of Structured Railway Alignments
 
 % ------------------------------------------------------------
 
+\cleardoublepage
 \chapter*{Preface}
+\phantomsection
 \addcontentsline{toc}{chapter}{Preface}
 
 This manuscript is intended as a long-term scientific foundation for
@@ -174,6 +182,9 @@ construction, runtime interpretation, and operational behaviour.
 
 \input{executive_summary}
 \input{core_thesis}
+
+\input{foundations/aim_roadmap}
+
 \input{abstract}
 \input{introduction}
 
@@ -205,6 +216,7 @@ construction, runtime interpretation, and operational behaviour.
 % FOUNDATIONAL AXIOMS
 % ------------------------------------------------------------
 
+\input{foundations/information_modelling}
 \input{foundations/axioms}
 
 % ------------------------------------------------------------
@@ -278,6 +290,8 @@ construction, runtime interpretation, and operational behaviour.
 % ============================================================
 
 \input{dynamics/part_intro}
+
+\input{dynamics/concept_boundaries}
 
 % ------------------------------------------------------------
 % STATE AND OPERATOR FOUNDATIONS
@@ -408,7 +422,7 @@ construction, runtime interpretation, and operational behaviour.
 % ------------------------------------------------------------
 
 \input{optimization/alignment_optimization}
-\input{optimization/60_hybrid_block_structure}
+\input{optimization/hybrid_block_structure}
 \input{optimization/optimizer_architecture}
 \input{optimization/realization_aware_optimization}
 

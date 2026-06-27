@@ -17,7 +17,8 @@
 
 import { inspectCrsContext } from "@src/domain/crs/CrsAgent.js";
 
-import { renderCockpitHtml } from "@app/view/cockpit/renderCockpitHtml.js";
+import { renderCockpitRoot } from "@app/view/cockpit/renderCockpitRoot.js";
+import { AlignmentEditorController } from "@app/controllers/alignmentEditorController.js";
 
 import {
 	buildImportRows,
@@ -61,6 +62,12 @@ export class CockpitController {
 
 		this._importState = null;
 		this._spotState = null;
+
+		this._alignmentEditor = new AlignmentEditorController({
+			store: this.store,
+			messaging: this.messaging,
+			logLine: this.logLine,
+		});
 	}
 
 	attach(rootEl) {
@@ -94,7 +101,7 @@ export class CockpitController {
 
 	render() {
 		if (!this._rootEl) return;
-		this._rootEl.innerHTML = renderCockpitHtml(this.buildUiState());
+		renderCockpitRoot(this._rootEl, this.buildUiState());
 	}
 
 	queueRender() {
@@ -127,6 +134,31 @@ export class CockpitController {
 			},
 		};
 	}
+
+	async createNewAlignment() {
+	const result = await this._alignmentEditor.newAlignment({
+		name: "New Alignment",
+	});
+
+	const objectId = result?.spotObject?.id ?? result?.alignmentData?.id ?? null;
+
+	if (objectId) {
+		clearCockpitPreview({ store: this.store });
+		this._activateObjectId(objectId);
+	}
+
+	await this.refreshSpotState();
+
+	const label =
+		result?.spotObject?.meta?.label ??
+		result?.alignmentData?.name ??
+		"New Alignment";
+
+	this.logLine?.(`[Cockpit] New Alignment erstellt: ${label}`);
+	this.render();
+
+	return result;
+}
 
 	async previewImportItem(itemId) {
 		const importState = this._importState ?? await this.refreshImportState();
@@ -414,14 +446,26 @@ export class CockpitController {
 		this._wired = true;
 
 		this._rootEl.addEventListener("click", (ev) => {
-			const actionBtn = ev.target.closest("[data-cockpit-action]");
-			if (actionBtn) {
-				this._dispatchAction(
-					actionBtn.dataset.cockpitAction,
-					actionBtn.dataset.objectId
-				);
-				return;
-			}
+	const newAlignmentBtn = ev.target.closest("[data-cockpit-new-alignment]");
+	if (newAlignmentBtn) {
+		void this.createNewAlignment();
+		return;
+	}
+
+	const addStraightBtn = ev.target.closest("[data-cockpit-add-straight]");
+	if (addStraightBtn) {
+		void this._alignmentEditor.addStraightToActiveAlignment({ length: 100 });
+		return;
+	}
+
+	const actionBtn = ev.target.closest("[data-cockpit-action]");
+	if (actionBtn) {
+		this._dispatchAction(
+			actionBtn.dataset.cockpitAction,
+			actionBtn.dataset.objectId
+		);
+		return;
+	}
 
 			const previewBtn = ev.target.closest("[data-cockpit-preview]");
 			if (previewBtn) {

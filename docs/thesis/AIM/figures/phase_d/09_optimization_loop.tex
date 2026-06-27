@@ -1,0 +1,28 @@
+% figures/optimization/optimization_loop.tex
+
+\begin{tikzpicture}[
+  node distance=1.1cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.9cm,
+    minimum height=0.8cm,
+    font=\small
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (params) {Design parameters};
+\node[box, right=2.0cm of params] (evaluate) {Runtime evaluation};
+\node[box, below=1.3cm of evaluate] (residual) {Residuals};
+\node[box, left=2.0cm of residual] (solver) {Optimizer};
+\node[box, below=1.3cm of $(solver)!0.5!(residual)$] (solution) {Improved alignment};
+
+\draw[arrow] (params) -- (evaluate);
+\draw[arrow] (evaluate) -- (residual);
+\draw[arrow] (residual) -- (solver);
+\draw[arrow] (solver) -- (params);
+\draw[arrow] (solver) -- (solution);
+
+\end{tikzpicture}

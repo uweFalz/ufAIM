@@ -1,144 +1,104 @@
 // app/runtime/intro/IntroDirector.js
 //
-// IntroDirector
-//
-// Role:
-// - owns optional app-start intro flow
-// - coordinates intro state machine
-// - translates runtime signals into intro transitions
-//
-// NOT:
-// - no rendering engine implementation
-// - no direct DOM layout ownership
-// - no project/model mutation
-//
-// Idea:
-// Catch-the-globe / playful engineering entry,
-// but always skippable and never blocking real work.
+// Debug-only intro runtime skeleton.
+// No animation. No GeoEngine ownership. No workspace behavior changes.
 
-import { makeIntroStateMachine } from "./IntroStateMachine.js";
-import { INTRO_STATES } from "./introStates.js";
-import { shouldStartIntro, shouldSkipIntro } from "./introPolicies.js";
-import { INTRO_SIGNALS } from "./introSignals.js";
-import { makeIntroRuntimeBridge } from "./introRuntimeBridge.js";
+export const INTRO_SIGNAL = {
+	USER_INTERACTION: "INTRO_SIGNAL.USER_INTERACTION",
+};
+
+export const INTRO_PHASE = {
+	IDLE: "idle",
+	ARMED: "armed",
+	RUNNING: "running",
+	GLOBE_CHASE: "GLOBE_CHASE",
+	LOCATE_PROJECT_WORLD: "LOCATE_PROJECT_WORLD",
+	DONE: "done",
+	SKIPPED: "skipped",
+};
 
 export class IntroDirector {
-	constructor({
-		store,
-		messaging,
-		geoView,
-		logLine,
-		prefs = {},
-	} = {}) {
-		this.store = store ?? null;
-		this.messaging = messaging ?? null;
-		this.geoView = geoView ?? null;
-		this.logLine = typeof logLine === "function" ? logLine : () => {};
+	constructor({ prefs = {}, log = console } = {}) {
 		this.prefs = prefs;
-
-		this.bridge = makeIntroRuntimeBridge({
-			store: this.store,
-			messaging: this.messaging,
-			geoView: this.geoView,
-			logLine: this.logLine,
-		});
-
-		this.machine = makeIntroStateMachine({
-			initialState: INTRO_STATES.IDLE,
-			onTransition: (ev) => this._onTransition(ev),
-		});
-
-		this._started = false;
-		this._disposed = false;
-		this._abortController = new AbortController();
+		this.log = log;
+		this.state = INTRO_PHASE.IDLE;
+		this._skipRequested = false;
 	}
 
-	start() {
-		if (this._disposed || this._started) return false;
-		this._started = true;
+	get enabled() {
+		return Boolean(this.prefs?.intro?.enabled);
+	}
 
-		if (!shouldStartIntro(this.prefs)) {
-			this.machine.send(INTRO_SIGNALS.SKIP);
+	_setState(next) {
+		this.state = next;
+		this.log.info?.(`[intro] ${next}`);
+	}
+
+	arm() {
+		if (!this.enabled) {
+			this._setState(INTRO_PHASE.IDLE);
 			return false;
 		}
 
-		this._wireUserAbortSignals();
-
-		this.machine.send(INTRO_SIGNALS.START);
+		this._setState(INTRO_PHASE.ARMED);
 		return true;
 	}
 
-	skip(reason = "user") {
-		if (this._disposed) return false;
+	start() {
+		if (!this.enabled) return false;
+		if (this.state !== INTRO_PHASE.ARMED) this.arm();
 
-		this.machine.send(INTRO_SIGNALS.SKIP, { reason });
+		this._setState(INTRO_PHASE.RUNNING);
+		this._setState(INTRO_PHASE.GLOBE_CHASE);
+
 		return true;
 	}
 
-	dispose() {
-		this._disposed = true;
-		this._abortController.abort();
-		this.bridge.dispose?.();
-	}
+	signal(signalType, meta = {}) {
+		if (!this.enabled) return false;
 
-	_wireUserAbortSignals() {
-		const signal = this._abortController.signal;
+		this.log.info?.(`[intro] signal: ${signalType}`, meta);
 
-		window.addEventListener(
-			"pointerdown",
-			() => {
-				if (shouldSkipIntro(this.machine.getState())) {
-					this.skip("pointerdown");
-				}
-			},
-			{ signal }
-		);
-
-		window.addEventListener(
-			"keydown",
-			(ev) => {
-				if (ev.key === "Escape") {
-					this.skip("escape");
-				}
-			},
-			{ signal }
-		);
-	}
-
-	async _onTransition({ from, to, signal, payload }) {
-		this.logLine?.(`[Intro] ${from} -> ${to}`);
-
-		switch (to) {
-			case INTRO_STATES.PREPARE:
-				await this.bridge.prepareIntroScene?.();
-				this.machine.send(INTRO_SIGNALS.READY);
-				return;
-
-			case INTRO_STATES.GLOBE_CHASE:
-				await this.bridge.runGlobeChase?.();
-				this.machine.send(INTRO_SIGNALS.NEXT);
-				return;
-
-			case INTRO_STATES.LOCATE_PROJECT_WORLD:
-				await this.bridge.runLocateWorld?.();
-				this.machine.send(INTRO_SIGNALS.NEXT);
-				return;
-
-			case INTRO_STATES.HANDOVER_TO_WORKSPACE:
-				await this.bridge.handoverToWorkspace?.();
-				this.machine.send(INTRO_SIGNALS.DONE);
-				return;
-
-			case INTRO_STATES.SKIPPED:
-				await this.bridge.abortIntro?.(payload?.reason ?? "skip");
-				return;
-
-			case INTRO_STATES.DONE:
-				await this.bridge.finishIntro?.();
-				return;
-
-			default:
-				return;
+		if (
+			signalType === INTRO_SIGNAL.USER_INTERACTION &&
+			this.state === INTRO_PHASE.GLOBE_CHASE
+		) {
+			this._setState(INTRO_PHASE.LOCATE_PROJECT_WORLD);
+			return true;
 		}
+
+		return false;
+	}
+
+	complete() {
+		if (!this.enabled) return false;
+		if (
+			this.state !== INTRO_PHASE.RUNNING &&
+			this.state !== INTRO_PHASE.GLOBE_CHASE &&
+			this.state !== INTRO_PHASE.LOCATE_PROJECT_WORLD
+		) {
+			return false;
+		}
+
+		this._setState(INTRO_PHASE.DONE);
+		return true;
+	}
+
+	skip(reason = "manual") {
+		if (!this.enabled) return false;
+
+		this._skipRequested = true;
+		this.log.info?.(`[intro] skip requested: ${reason}`);
+
+		if (
+			this.state === INTRO_PHASE.ARMED ||
+			this.state === INTRO_PHASE.RUNNING ||
+			this.state === INTRO_PHASE.GLOBE_CHASE ||
+			this.state === INTRO_PHASE.LOCATE_PROJECT_WORLD
+		) {
+			this._setState(INTRO_PHASE.SKIPPED);
+		}
+
+		return true;
 	}
 }

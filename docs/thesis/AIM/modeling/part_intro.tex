@@ -1,19 +1,173 @@
-% \chapter{Alignment Modeling}
+% modeling/part_intro.tex
+
+\chapter*{Modeling}
+\phantomsection
+\addcontentsline{toc}{chapter}{Modeling}
+
+% ============================================================
+\section*{What do we already know?}
+% ============================================================
 
 \begin{remark}
-This part develops the internal representation of railway alignments
-within the AIM framework.
-The emphasis lies on structured, curvature-based models that are
-compact, interpretable, and suitable for computation.
+The previous parts established the conceptual foundations of AIM.
 \end{remark}
 
 \begin{remark}
-The goal is not merely to store geometry, but to represent alignments in
-a way that supports reconstruction, realization, and optimization.
+Intrinsic geometry, railway states, runtime evaluation, realization,
+and reality-aware interpretation have been developed as coherent
+theoretical constructs.
 \end{remark}
 
 \begin{remark}
-The following chapters therefore introduce sparse representations,
-transition functions, classification principles, and higher-level
-modelling concepts such as Schwerpunkt-Trassierung.
+These concepts define what railway alignments are, how they evolve,
+and how they interact with the physical world.
 \end{remark}
+
+\begin{remark}
+However, concepts alone do not yet define how alignment information is
+represented within an operational information model.
+\end{remark}
+
+% ============================================================
+\section*{What is still missing?}
+% ============================================================
+
+\begin{remark}
+An information model requires explicit internal structures.
+\end{remark}
+
+\begin{remark}
+Geometric concepts must be transformed into representations that can be
+stored, exchanged, reconstructed, analyzed, and optimized.
+\end{remark}
+
+\begin{remark}
+Traditional railway systems frequently rely on coordinate lists,
+geometric primitives, or implementation-specific data structures.
+\end{remark}
+
+\begin{remark}
+While such representations may be sufficient for storage purposes, they
+often obscure the intrinsic structure of the alignment and limit
+subsequent analysis.
+\end{remark}
+
+\begin{remark}
+The missing element is therefore a modeling framework capable of
+capturing railway semantics while remaining compact, interpretable,
+and computationally efficient.
+\end{remark}
+
+% ============================================================
+\section*{What comes next?}
+% ============================================================
+
+\begin{remark}
+This part introduces the modeling layer of AIM.
+\end{remark}
+
+\begin{remark}
+The central objective is the construction of sparse, semantic alignment
+models.
+\end{remark}
+
+\begin{remark}
+Within AIM, an alignment is not primarily represented as sampled
+coordinates.
+
+Instead, it is represented through a compact collection of geometric
+states, transition descriptions, and semantic relationships from which
+geometry can be reconstructed whenever required.
+\end{remark}
+
+\begin{remark}
+The chapters that follow introduce:
+\begin{itemize}
+\item sparse alignment representations,
+\item transition modeling,
+\item transition classification,
+\item higher-level alignment semantics,
+\item and Schwerpunkt-based modeling concepts.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+These structures form the operational core of alignment-based
+information modelling.
+\end{remark}
+
+% ============================================================
+\section*{Relation to the AIM Roadmap}
+% ============================================================
+
+\begin{remark}
+Within the AIM roadmap, the present part corresponds to the transition
+from conceptual railway descriptions toward explicit alignment models.
+\end{remark}
+
+\begin{center}
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  box/.style={
+    draw,
+    rounded corners,
+    minimum width=4.8cm,
+    minimum height=0.9cm,
+    align=center
+  }
+]
+
+\node[box] (concepts)
+{Concepts};
+
+\node[box, below=of concepts] (sparse)
+{Sparse Model};
+
+\node[box, below=of sparse] (alignment)
+{Alignment Model};
+
+\draw[->, thick] (concepts) -- (sparse);
+\draw[->, thick] (sparse) -- (alignment);
+
+\end{tikzpicture}
+\end{center}
+
+\begin{remark}
+The progression
+\[
+\text{Concepts}
+\rightarrow
+\text{Sparse Model}
+\rightarrow
+\text{Alignment Model}
+\]
+marks the transition from theoretical railway descriptions toward
+operational information structures.
+\end{remark}
+
+\begin{remark}
+These models subsequently become the basis for runtime services,
+analysis pipelines, optimization procedures, and engineering
+applications.
+\end{remark}
+
+% ============================================================
+\begin{principle}[Sparse Modeling Principle]
+\label{princ:sparse-modeling}
+Within AIM, railway alignments should be represented through compact
+semantic structures from which geometric, operational, and realization-
+aware information can be reconstructed when required.
+\end{principle}
+
+% ============================================================
+\begin{summary}
+Concepts explain railway structure.
+
+Reality explains interaction with the physical world.
+
+Modeling explains how railway knowledge is represented.
+
+The present part therefore establishes the sparse and semantic
+information structures that form the core of alignment-based
+information modelling.
+\end{summary}

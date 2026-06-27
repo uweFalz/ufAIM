@@ -1,0 +1,28 @@
+% figures/runtime/runtime_loop.tex
+
+\begin{tikzpicture}[
+  node distance=1.0cm,
+  box/.style={
+    draw,
+    rounded corners,
+    align=center,
+    minimum width=3.8cm,
+    minimum height=0.8cm,
+    font=\small
+  },
+  arrow/.style={->, thick}
+]
+
+\node[box] (state) {State request};
+\node[box, right=2.0cm of state] (service) {Runtime service};
+\node[box, below=1.3cm of service] (eval) {Evaluation};
+\node[box, left=2.0cm of eval] (cache) {Cache / refinement};
+\node[box, below=1.3cm of $(cache)!0.5!(eval)$] (output) {Operational quantity};
+
+\draw[arrow] (state) -- (service);
+\draw[arrow] (service) -- (eval);
+\draw[arrow] (eval) -- (cache);
+\draw[arrow] (cache) -- (state);
+\draw[arrow] (eval) -- (output);
+
+\end{tikzpicture}

@@ -1,0 +1,160 @@
+% dynamics/concept_boundaries.tex
+
+\chapter{Conceptual Boundaries in Dynamic State Modelling}
+\label{chap:concept-boundaries}
+
+\section{Purpose}
+
+\begin{remark}
+The dynamic chapters of this thesis are closely related.
+To avoid conceptual overlap, each chapter is assigned a precise
+responsibility.
+\end{remark}
+
+\begin{summary}
+Each chapter defines one conceptual layer, uses previously established
+layers, and must not redefine concepts that belong elsewhere.
+\end{summary}
+
+\section{Vehicle Space}
+
+\begin{definition}[Responsibility of the vehicle-space chapter]
+The chapter on vehicle space defines the vehicle state as a state
+evolving relative to the railway state.
+\end{definition}
+
+\begin{remark}
+This chapter uses:
+\begin{itemize}
+\item \(\mathrm{pose3}\),
+\item railway frames,
+\item cant,
+\item profile,
+\item and the distinction between track state and vehicle state.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This chapter must not redefine:
+\begin{itemize}
+\item \(\mathrm{pose2}\),
+\item \(\mathrm{pose3}\),
+\item curvature space,
+\item runtime state,
+\item realization,
+\item or optimization state.
+\end{itemize}
+\end{remark}
+
+\section{Runtime Dynamics}
+
+\begin{definition}[Responsibility of the runtime-dynamics chapter]
+The chapter on runtime dynamics defines the evolution of operational
+states along or over the railway state.
+\end{definition}
+
+\begin{remark}
+This chapter uses:
+\begin{itemize}
+\item vehicle state,
+\item \(\mathrm{pose3}\),
+\item speed,
+\item curvature,
+\item cant,
+\item and runtime operators.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This chapter must not redefine:
+\begin{itemize}
+\item vehicle space,
+\item \(\mathrm{pose3}\),
+\item realization,
+\item dynamic balance,
+\item or optimization.
+\end{itemize}
+\end{remark}
+
+\section{Dynamic Balance}
+
+\begin{definition}[Responsibility of the dynamic-balance chapter]
+The chapter on dynamic balance defines equilibrium, cant deficiency,
+cant excess, and admissible balance relations between curvature, speed,
+and cant.
+\end{definition}
+
+\begin{remark}
+This chapter uses:
+\begin{itemize}
+\item runtime dynamics,
+\item vehicle-relative quantities,
+\item \(\kappa(s)\),
+\item \(v(s)\),
+\item \(\phi(s)\),
+\item and admissibility concepts.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This chapter must not redefine:
+\begin{itemize}
+\item vehicle state,
+\item runtime state,
+\item \(\mathrm{pose3}\),
+\item realization,
+\item or optimization state.
+\end{itemize}
+\end{remark}
+
+\section{Realization-Aware Dynamics}
+
+\begin{definition}[Responsibility of the realization-aware-dynamics chapter]
+The chapter on realization-aware dynamics defines how realization
+operators affect dynamic interpretation.
+\end{definition}
+
+\begin{remark}
+This chapter uses:
+\begin{itemize}
+\item designed railway states,
+\item realized railway states,
+\item runtime dynamics,
+\item dynamic balance,
+\item measurement and construction effects,
+\item and realization operators.
+\end{itemize}
+\end{remark}
+
+\begin{remark}
+This chapter must not redefine:
+\begin{itemize}
+\item realization itself,
+\item vehicle state,
+\item runtime dynamics,
+\item dynamic balance,
+\item sparse modelling,
+\item or optimization.
+\end{itemize}
+\end{remark}
+
+\section{Boundary Principle}
+
+\begin{principle}[Single-definition principle]
+Each conceptual object should be defined in exactly one chapter and
+used by later chapters through reference.
+\end{principle}
+
+\begin{summary}
+Vehicle space defines the vehicle-relative state.
+
+Runtime dynamics defines state evolution.
+
+Dynamic balance defines equilibrium and admissibility relations.
+
+Realization-aware dynamics defines how realization modifies dynamic
+interpretation.
+
+None of these chapters should redefine \(\mathrm{pose3}\), curvature
+space, sparse modelling, or optimization.
+\end{summary}

@@ -1,0 +1,52 @@
+% figures/dynamics/track_vehicle_relation.tex
+
+\begin{figure}[htbp]
+\centering
+
+\begin{tikzpicture}[
+node distance=1.5cm,
+box/.style={
+draw,
+rounded corners,
+minimum width=4cm,
+minimum height=0.9cm,
+align=center
+}
+]
+
+\node[box] (pose3)
+{Railway State\\$\mathrm{pose3}$};
+
+\node[box, below=of pose3] (track)
+{Track State};
+
+\node[box, below=of track] (vehicle)
+{Vehicle State};
+
+\node[box, below left=1.3cm and 2.2cm of vehicle] (wheel)
+{Wheelset};
+
+\node[box, below=1.3cm of vehicle] (bogie)
+{Bogie};
+
+\node[box, below right=1.3cm and 2.2cm of vehicle] (cg)
+{CG State};
+
+\draw[->, thick] (pose3) -- (track);
+\draw[->, thick] (track) -- (vehicle);
+
+\draw[->, thick] (vehicle) -- (wheel);
+\draw[->, thick] (vehicle) -- (bogie);
+\draw[->, thick] (vehicle) -- (cg);
+
+\end{tikzpicture}
+
+\caption{
+Vehicle-space hierarchy.
+Vehicle states are derived from railway states and form the basis
+for wheelset, bogie, and center-of-gravity interpretation.
+}
+
+\label{fig:track-vehicle-relation}
+
+\end{figure}

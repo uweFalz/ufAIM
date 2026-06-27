@@ -1,80 +1,19 @@
 // src/import/parsers/technet/gndEdit/parseGND_XLSX.js
 //
 // GND Edit XLSX -> landFAT (Analyse-Stufe / SequenceBuilder)
-//
-// PHASE
-// - XLSX via SheetJS lesen
-// - relevante Satzarten-Sheets normalisieren
-// - PAD-Kandidaten aus PP / PL / PH aufbauen
-// - PAD-Index hält echte pp/pl/ph-Records als Mini-Datenbank
-// - EL / EH / EU / EK als gerichtete Kanten lesen
-// - jede Kante zunächst als Mini-Sequenz behandeln
-// - Merge-Analyse nur innerhalb derselben Kantenfamilie
-// - family-spezifische requiredKeys / candidateKeys
-// - ungültige Seeds werden vor dem SequenceBuilder ausgesiebt
-// - Sequenzen schrumpfen Kandidatenmengen nur nach "kleiner/gleich"
-// - typed outputs nur bei eindeutiger Semantik
-// - STATION wird direkt aus PP-Records per gefilterten ppKeys bestimmt
-//
-// Rückgabe an Pipeline:
-// - gültiges landFAT
-// - coordGeom-relevante Sequenzen aus EL und qualifiziertem EK
-// - profile-Sequenzen aus EH als landFAT.profile
-// - cant-Sequenzen aus EU als landFAT.cant
-// - GND-Herkunft / CRS-Hinweise in extras, damit SPOT-Aufnahme entscheiden kann
-//
-// @baustelle [SEQUENCE-BUILDER]
-// Noch keine echte topologische Netzmodellierung.
-// Der Parser arbeitet weiterhin nur mit family-reinen Ketten.
-//
-// @baustelle [GND-COMPLETE-LANDFAT]
-// profile / cant werden jetzt als landFAT-Anhängsel ausgegeben.
-// Sparse/SPOT dürfen sie erst übernehmen, wenn die jeweilige Admission-Regel
-// sie als vollständig / vertrauenswürdig bewertet.
-//
-// @baustelle [EK-QUALIFY]
-// EK ist fachlich gemischt. Aktuell werden nur jene EK-Sequenzen weitergegeben,
-// die dieselbe Mindeststruktur wie coordGeom-Kandidaten tragen UND nicht als
-// Kilometer-Sprung (typeCode 6) erkannt werden.
-//
-// @baustelle [DIRECTED-GRAPH]
-// Kanten werden als gerichtet behandelt. Keine Orientierungsnormalisierung.
-//
-// @baustelle [PL-PFLICHT]
-// LSYS ist dominantes CRS. Fehlender PAD-Eintrag in PL macht eine Kante aktuell
-// fachlich unbrauchbar. Dies wird implizit über leere plKeys => invalid seed erzwungen.
-//
-// @baustelle [SOURCE-BACKEND]
-// Die fachliche Analyse arbeitet möglichst backend-neutral auf normalisierten
-// Satzart-Records. Aktuell ist nur XLSX als physische Quelle angeschlossen.
-// Später sollen dieselben Satzarten auch aus MDB / DBB o. ä. eingespeist werden,
-// ohne die Kernlogik unten grundlegend umzubauen.
-//
-// @baustelle [RELATIONS]
-// RouteProject / 7-Linien / Relations / Topology werden hier NICHT modelliert.
-// Dieser Parser liefert nur importnahe landFAT-Hüllen für coordGeom-relevante Daten.
-//
-// @baustelle [TRA-LIKE-BRIDGE]
-// EL/EK + PL + PP werden als verteilter TRA-like-Datensatz gelesen.
-// Die eigentliche coordGeom-Erzeugung läuft deshalb bewusst über den gemeinsamen
-// Helper buildCoordGeomFromTraLikeRecords().
-//
-// @baustelle [QUALITY-GATE]
-// Formal coordGeom-fähige Sequenzen werden zusätzlich fachlich grob bewertet.
-// Nur "good" wird direkt als landFAT.coordGeom-Alignment ausgegeben.
-// "weak" / "reject" bleiben diagnostisch sichtbar.
+
+import * as fat from "@kimport/landfat/landFatWriter.js";
 
 import { readGndXlsxTables } from "./gnd/readGndXlsxTables.js";
 import { createGndDataset } from "./gnd/createGndDataset.js";
 import { createGndPadIndex } from "./gnd/createGndPadIndex.js";
 import { createGndEdgeIndex } from "./gnd/createGndEdgeIndex.js";
-
-// import * as XLSX from "sheetjs";
-import * as fat from "@kimport/landfat/landFatWriter.js";
+import { buildGndSequences } from "./gnd/buildGndSequences.js";
 
 import {
 	buildCoordGeomFromTraLikeRecords,
 } from "../shared/traLikeCoordGeom.js";
+
 import {
 	getTraLikeSemanticMapForGND,
 } from "../shared/traLikeSemanticMaps.js";
@@ -85,10 +24,6 @@ import {
 } from "../sharedTechnet.js";
 
 const DEBUG_GND_ANALYSIS_DEFAULT = false;
-
-// -----------------------------------------------------------------------------
-// family config
-// -----------------------------------------------------------------------------
 
 const FAMILY_CONFIG = {
 	EL: {
@@ -144,7 +79,7 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 		console.groupEnd();
 	}
 
-	const model = buildAnalysisModel({ sheets: dataset.tables });
+	const model = buildAnalysisModel({ dataset });
 
 	if (debugGndAnalysis) {
 		logAnalysisToConsole(model, { fileName });
@@ -184,7 +119,9 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 // analysis model
 // -----------------------------------------------------------------------------
 
-function buildAnalysisModel({ sheets }) {
+function buildAnalysisModel({ dataset }) {
+	const sheets = dataset?.tables ?? {};
+
 	const ppRows = arr(sheets[SHEET_NAMES.PP]);
 	const plRows = arr(sheets[SHEET_NAMES.PL]);
 	const phRows = arr(sheets[SHEET_NAMES.PH]);
@@ -197,80 +134,72 @@ function buildAnalysisModel({ sheets }) {
 	const padIndex = createGndPadIndex({ ppRows, plRows, phRows });
 
 	const edgesByFamily = createGndEdgeIndex({
-	elRows,
-	ehRows,
-	euRows,
-	ekRows,
-});
+		elRows,
+		ehRows,
+		euRows,
+		ekRows,
+	});
 
-	const sequenceSeedsByFamily = Object.fromEntries(
-	EDGE_FAMILIES.map((family) => [
-	family,
-	arr(edgesByFamily[family]).map((edge) => buildSequenceSeed(edge, padIndex)),
-	])
-	);
-
-	const validSequenceSeedsByFamily = Object.fromEntries(
-	EDGE_FAMILIES.map((family) => [
-	family,
-	arr(sequenceSeedsByFamily[family]).filter(isValidSeedForFamily),
-	])
-	);
-
-	const rejectedSequenceSeedsByFamily = Object.fromEntries(
-	EDGE_FAMILIES.map((family) => [
-	family,
-	arr(sequenceSeedsByFamily[family]).filter((seed) => !isValidSeedForFamily(seed)),
-	])
-	);
+	const {
+		sequenceSeedsByFamily,
+		validSequenceSeedsByFamily,
+		rejectedSequenceSeedsByFamily,
+		sequencesByFamily,
+	} = buildGndSequences({
+		edgesByFamily,
+		padIndex,
+		edgeFamilies: EDGE_FAMILIES,
+		helpers: {
+			buildSequenceSeed,
+			isValidSeedForFamily,
+			finalizeMergedSequence,
+		},
+	});
 
 	const missingPlPads = collectMissingPlPads({ padIndex, edgesByFamily });
-	const sequencesByFamily = buildMergedSequences(validSequenceSeedsByFamily, padIndex);
 
 	const elCoordGeomCandidates = arr(sequencesByFamily.EL)
-	.filter((seq) => isValidTypedSequence(seq, "coordGeom"))
-	.map((seq) => {
-		const typed = finalizeTypedSequence(seq, "coordGeom");
-		const quality = assessCoordGeomSequenceQuality(typed);
-		return { ...typed, quality };
-	});
+		.filter((seq) => isValidTypedSequence(seq, "coordGeom"))
+		.map((seq) => {
+			const typed = finalizeTypedSequence(seq, "coordGeom");
+			const quality = assessCoordGeomSequenceQuality(typed);
+			return { ...typed, quality };
+		});
 
 	const elCoordGeomSequences = elCoordGeomCandidates
-	.filter((seq) => seq?.quality?.level !== "reject");
+		.filter((seq) => seq?.quality?.level !== "reject");
 
 	const elRejectedForCoordGeom = elCoordGeomCandidates
-	.filter((seq) => seq?.quality?.level === "reject");
+		.filter((seq) => seq?.quality?.level === "reject");
 
 	const ekCoordGeomCandidates = arr(sequencesByFamily.EK)
-	.filter((seq) => isValidTypedSequence(seq, "coordGeom"))
-	.map((seq) => {
-		const typed = finalizeTypedSequence(seq, "coordGeom");
-		const quality = assessCoordGeomSequenceQuality(typed);
-		return { ...typed, quality };
-	});
+		.filter((seq) => isValidTypedSequence(seq, "coordGeom"))
+		.map((seq) => {
+			const typed = finalizeTypedSequence(seq, "coordGeom");
+			const quality = assessCoordGeomSequenceQuality(typed);
+			return { ...typed, quality };
+		});
 
 	const ekCoordGeomSequences = ekCoordGeomCandidates
-	.filter(isLikelyCoordGeomEkSequence)
-	.filter((seq) => seq?.quality?.level !== "reject");
+		.filter(isLikelyCoordGeomEkSequence)
+		.filter((seq) => seq?.quality?.level !== "reject");
 
 	const ekRejectedForCoordGeom = ekCoordGeomCandidates
-	.filter((seq) => !isLikelyCoordGeomEkSequence(seq) || seq?.quality?.level === "reject");
+		.filter((seq) => !isLikelyCoordGeomEkSequence(seq) || seq?.quality?.level === "reject");
 
-	// EH wird als Höhen-/Profilebene in landFAT.profile ausgegeben.
 	const profileSequences = arr(sequencesByFamily.EH)
 		.filter((seq) => isValidTypedSequence(seq, "profile"))
 		.map((seq) => finalizeTypedSequence(seq, "profile"))
 		.sort(compareTypedSequences);
 
-	// EU wird als Querneigungs-/Cant-Ebene in landFAT.cant ausgegeben.
 	const cantSequences = arr(sequencesByFamily.EU)
 		.filter((seq) => isValidTypedSequence(seq, "cant"))
 		.map((seq) => finalizeTypedSequence(seq, "cant"))
 		.sort(compareTypedSequences);
 
 	const coordGeomSequences = [
-	...elCoordGeomSequences,
-	...ekCoordGeomSequences,
+		...elCoordGeomSequences,
+		...ekCoordGeomSequences,
 	].sort(compareTypedSequences);
 
 	return {
@@ -318,7 +247,7 @@ function buildAnalysisModel({ sheets }) {
 }
 
 // -----------------------------------------------------------------------------
-// edges / seeds
+// sequence seeds
 // -----------------------------------------------------------------------------
 
 function buildSequenceSeed(edge, padIndex) {
@@ -343,10 +272,6 @@ function buildSequenceSeed(edge, padIndex) {
 			plKeys: intersectPlKeysByRequiredLsys(a, b, requiredLsys),
 			phKeys: intersectPhKeysByRequiredHsys(a, b, requiredHsys),
 		},
-
-		// @baustelle [EDGE-CHAIN]
-		// SequenceBuilder trägt jetzt die fachlich relevanten Edge-Rohdaten mit,
-		// damit später echte TRA-like Records gebaut werden können.
 		edgeChain: [edge],
 	};
 }
@@ -385,13 +310,13 @@ function collectMissingPlPads({ padIndex, edgesByFamily }) {
 	}
 
 	return Array.from(usedPads.values())
-	.filter((x) => !x.hasPL)
-	.map((x) => ({
-		pad: x.pad,
-		families: Array.from(x.families).sort().join("+"),
-		edgeCount: x.edgeIds.size,
-	}))
-	.sort((a, b) => a.pad.localeCompare(b.pad));
+		.filter((x) => !x.hasPL)
+		.map((x) => ({
+			pad: x.pad,
+			families: Array.from(x.families).sort().join("+"),
+			edgeCount: x.edgeIds.size,
+		}))
+		.sort((a, b) => a.pad.localeCompare(b.pad));
 }
 
 // -----------------------------------------------------------------------------
@@ -418,172 +343,6 @@ function hasAllFamilyCandidateKeys(candidates, family) {
 	}
 
 	return true;
-}
-
-// -----------------------------------------------------------------------------
-// merged sequences
-// -----------------------------------------------------------------------------
-
-function buildMergedSequences(validSequenceSeedsByFamily, padIndex) {
-	const out = {};
-
-	for (const family of EDGE_FAMILIES) {
-		out[family] = mergeSeedsWithinFamily(
-		arr(validSequenceSeedsByFamily?.[family]),
-		family,
-		padIndex
-		);
-	}
-
-	return out;
-}
-
-function mergeSeedsWithinFamily(seeds, family, padIndex) {
-	const remaining = seeds.slice();
-	const merged = [];
-
-	while (remaining.length) {
-		const start = remaining.shift();
-		const seq = makeGrowingSequence(start, family);
-
-		let changed = true;
-
-		while (changed) {
-			changed = false;
-
-			for (let i = 0; i < remaining.length; i++) {
-				const cand = remaining[i];
-
-				const appendProbe = canAppendSeedToSequence(seq, cand);
-				if (appendProbe.ok) {
-					applyAppendSeedToSequence(seq, cand, appendProbe);
-					remaining.splice(i, 1);
-					changed = true;
-					break;
-				}
-
-				const prependProbe = canPrependSeedToSequence(seq, cand);
-				if (prependProbe.ok) {
-					applyPrependSeedToSequence(seq, cand, prependProbe);
-					remaining.splice(i, 1);
-					changed = true;
-					break;
-				}
-			}
-		}
-
-		merged.push(finalizeMergedSequence(seq, padIndex));
-	}
-
-	return merged.sort(compareMergedSequences);
-}
-
-function makeGrowingSequence(seed, family) {
-	return {
-		family,
-		seedIds: [seed?.id ?? null],
-		startPad: seed?.startPad ?? null,
-		endPad: seed?.endPad ?? null,
-		required: cloneRequiredMap(seed?.required),
-		candidates: cloneCandidateMap(seed?.candidates, family),
-		edgeChain: arr(seed?.edgeChain),
-	};
-}
-
-function cloneRequiredMap(required) {
-	return {
-		requiredLsys: asTrimmedString(required?.requiredLsys),
-		requiredHsys: asTrimmedString(required?.requiredHsys),
-	};
-}
-
-function cloneCandidateMap(candidates, family) {
-	const out = {};
-	const cfg = getFamilyConfig(family);
-
-	for (const key of cfg.candidateKeys) {
-		out[key] = normalizeSet(candidates?.[key]);
-	}
-
-	return out;
-}
-
-function mergeSequenceCandidates(seqCandidates, seedCandidates, family) {
-	const out = {};
-	const cfg = getFamilyConfig(family);
-
-	for (const key of cfg.candidateKeys) {
-		out[key] = intersectSets(seqCandidates?.[key], seedCandidates?.[key]);
-	}
-
-	return out;
-}
-
-function mergeRequired(seqRequired, seedRequired, family) {
-	const cfg = getFamilyConfig(family);
-	const out = cloneRequiredMap(seqRequired);
-
-	for (const key of cfg.requiredKeys) {
-		const a = asTrimmedString(seqRequired?.[key]);
-		const b = asTrimmedString(seedRequired?.[key]);
-
-		if (a !== b) return null;
-		out[key] = a;
-	}
-
-	return out;
-}
-
-function canAppendSeedToSequence(seq, seed) {
-	if (!seq || !seed) return { ok: false };
-	if (seq.family !== seed.family) return { ok: false };
-	if (seq.endPad !== seed.startPad) return { ok: false };
-
-	const mergedRequired = mergeRequired(seq.required, seed.required, seq.family);
-	if (!mergedRequired) return { ok: false };
-
-	const mergedCandidates = mergeSequenceCandidates(seq.candidates, seed.candidates, seq.family);
-	if (!hasAllFamilyCandidateKeys(mergedCandidates, seq.family)) return { ok: false };
-
-	return {
-		ok: true,
-		required: mergedRequired,
-		candidates: mergedCandidates,
-	};
-}
-
-function canPrependSeedToSequence(seq, seed) {
-	if (!seq || !seed) return { ok: false };
-	if (seq.family !== seed.family) return { ok: false };
-	if (seed.endPad !== seq.startPad) return { ok: false };
-
-	const mergedRequired = mergeRequired(seq.required, seed.required, seq.family);
-	if (!mergedRequired) return { ok: false };
-
-	const mergedCandidates = mergeSequenceCandidates(seq.candidates, seed.candidates, seq.family);
-	if (!hasAllFamilyCandidateKeys(mergedCandidates, seq.family)) return { ok: false };
-
-	return {
-		ok: true,
-		required: mergedRequired,
-		candidates: mergedCandidates,
-	};
-}
-
-function applyAppendSeedToSequence(seq, seed, probe) {
-	seq.seedIds.push(seed?.id ?? null);
-	seq.endPad = seed?.endPad ?? seq.endPad;
-	seq.required = probe.required;
-	seq.candidates = probe.candidates;
-	seq.edgeChain.push(...arr(seed?.edgeChain));
-}
-
-function applyPrependSeedToSequence(seq, seed, probe) {
-	seq.seedIds.unshift(seed?.id ?? null);
-	seq.startPad = seed?.startPad ?? seq.startPad;
-	seq.required = probe.required;
-	seq.candidates = probe.candidates;
-	seq.edgeChain.unshift(...arr(seed?.edgeChain));
 }
 
 function finalizeMergedSequence(seq, padIndex) {
@@ -625,22 +384,22 @@ function finalizeMergedSequence(seq, padIndex) {
 	};
 }
 
-function compareMergedSequences(a, b) {
-	return [
-	String(a?.family ?? ""),
-	String(a?.lsys ?? ""),
-	String(a?.hsys ?? ""),
-	String(a?.strecke ?? ""),
-	String(a?.strRikz ?? ""),
-	String(a?.stationStart ?? ""),
-	].join("|").localeCompare([
-	String(b?.family ?? ""),
-	String(b?.lsys ?? ""),
-	String(b?.hsys ?? ""),
-	String(b?.strecke ?? ""),
-	String(b?.strRikz ?? ""),
-	String(b?.stationStart ?? ""),
-	].join("|"));
+function cloneRequiredMap(required) {
+	return {
+		requiredLsys: asTrimmedString(required?.requiredLsys),
+		requiredHsys: asTrimmedString(required?.requiredHsys),
+	};
+}
+
+function cloneCandidateMap(candidates, family) {
+	const out = {};
+	const cfg = getFamilyConfig(family);
+
+	for (const key of cfg.candidateKeys) {
+		out[key] = normalizeSet(candidates?.[key]);
+	}
+
+	return out;
 }
 
 // -----------------------------------------------------------------------------
@@ -652,29 +411,29 @@ function isValidTypedSequence(seq, type) {
 
 	if (type === "coordGeom") {
 		return (
-		getCandidateCardinality(seq, "ppKeys") === 1 &&
-		getCandidateCardinality(seq, "plKeys") === 1 &&
-		seq.stationStartCount === 1 &&
-		seq.stationEndCount === 1
+			getCandidateCardinality(seq, "ppKeys") === 1 &&
+			getCandidateCardinality(seq, "plKeys") === 1 &&
+			seq.stationStartCount === 1 &&
+			seq.stationEndCount === 1
 		);
 	}
 
 	if (type === "profile") {
 		return (
-		getCandidateCardinality(seq, "ppKeys") === 1 &&
-		getCandidateCardinality(seq, "plKeys") === 1 &&
-		getCandidateCardinality(seq, "phKeys") === 1 &&
-		seq.stationStartCount === 1 &&
-		seq.stationEndCount === 1
+			getCandidateCardinality(seq, "ppKeys") === 1 &&
+			getCandidateCardinality(seq, "plKeys") === 1 &&
+			getCandidateCardinality(seq, "phKeys") === 1 &&
+			seq.stationStartCount === 1 &&
+			seq.stationEndCount === 1
 		);
 	}
 
 	if (type === "cant") {
 		return (
-		getCandidateCardinality(seq, "ppKeys") === 1 &&
-		getCandidateCardinality(seq, "plKeys") === 1 &&
-		seq.stationStartCount === 1 &&
-		seq.stationEndCount === 1
+			getCandidateCardinality(seq, "ppKeys") === 1 &&
+			getCandidateCardinality(seq, "plKeys") === 1 &&
+			seq.stationStartCount === 1 &&
+			seq.stationEndCount === 1
 		);
 	}
 
@@ -708,8 +467,6 @@ function finalizeTypedSequence(seq, type) {
 		seedCount: Number(seq?.seedCount ?? 0),
 		seedIds: arr(seq?.seedIds),
 
-		// @baustelle [EDGE-CHAIN]
-		// Typed sequence bleibt weiterhin diagnosefreundlich.
 		edgeChain: arr(seq?.edgeChain),
 
 		plKeys: Array.from(normalizeSet(seq?.candidates?.plKeys)),
@@ -720,21 +477,21 @@ function finalizeTypedSequence(seq, type) {
 
 function compareTypedSequences(a, b) {
 	return [
-	String(a?.type ?? ""),
-	String(a?.family ?? ""),
-	String(a?.lsys ?? ""),
-	String(a?.hsys ?? ""),
-	String(a?.strecke ?? ""),
-	String(a?.strRikz ?? ""),
-	String(a?.stationStart ?? ""),
+		String(a?.type ?? ""),
+		String(a?.family ?? ""),
+		String(a?.lsys ?? ""),
+		String(a?.hsys ?? ""),
+		String(a?.strecke ?? ""),
+		String(a?.strRikz ?? ""),
+		String(a?.stationStart ?? ""),
 	].join("|").localeCompare([
-	String(b?.type ?? ""),
-	String(b?.family ?? ""),
-	String(b?.lsys ?? ""),
-	String(b?.hsys ?? ""),
-	String(b?.strecke ?? ""),
-	String(b?.strRikz ?? ""),
-	String(b?.stationStart ?? ""),
+		String(b?.type ?? ""),
+		String(b?.family ?? ""),
+		String(b?.lsys ?? ""),
+		String(b?.hsys ?? ""),
+		String(b?.strecke ?? ""),
+		String(b?.strRikz ?? ""),
+		String(b?.stationStart ?? ""),
 	].join("|"));
 }
 
@@ -745,22 +502,15 @@ function compareTypedSequences(a, b) {
 function assessCoordGeomSequenceQuality(seq) {
 	const issues = [];
 
-	if (!seq?.lsys) {
-		issues.push("missing_lsys");
-	}
+	if (!seq?.lsys) issues.push("missing_lsys");
 
-	if (!Number.isFinite(seq?.stationStart)) {
-		issues.push("bad_station_start");
-	}
-
-	if (!Number.isFinite(seq?.stationEnd)) {
-		issues.push("bad_station_end");
-	}
+	if (!Number.isFinite(seq?.stationStart)) issues.push("bad_station_start");
+	if (!Number.isFinite(seq?.stationEnd)) issues.push("bad_station_end");
 
 	if (
-	Number.isFinite(seq?.stationStart) &&
-	Number.isFinite(seq?.stationEnd) &&
-	seq.stationStart === seq.stationEnd
+		Number.isFinite(seq?.stationStart) &&
+		Number.isFinite(seq?.stationEnd) &&
+		seq.stationStart === seq.stationEnd
 	) {
 		issues.push("zero_station_span");
 	}
@@ -771,17 +521,15 @@ function assessCoordGeomSequenceQuality(seq) {
 		issues.push("weak_strecke_zero");
 	}
 
-	if (!seq?.strRikz) {
-		issues.push("missing_strRikz");
-	}
+	if (!seq?.strRikz) issues.push("missing_strRikz");
 
 	let level = "good";
 
 	if (
-	issues.includes("bad_station_start") ||
-	issues.includes("bad_station_end") ||
-	issues.includes("zero_station_span") ||
-	issues.includes("missing_lsys")
+		issues.includes("bad_station_start") ||
+		issues.includes("bad_station_end") ||
+		issues.includes("zero_station_span") ||
+		issues.includes("missing_lsys")
 	) {
 		level = "reject";
 	} else if (issues.length) {
@@ -796,18 +544,12 @@ function assessCoordGeomSequenceQuality(seq) {
 }
 
 function isLikelyCoordGeomEkSequence(seq) {
-	// @baustelle [EK-QUALIFY]
-	// Vorläufig konservativ:
-	// - EK nur weiterreichen, wenn LSYS eindeutig ist
-	// - Start/End-Station jeweils eindeutig
-	// - dieselbe Grundstruktur wie coordGeom-Kandidaten
-	// - keine offensichtliche staEquation-Kette (typeCode 6)
 	return !!seq &&
-	seq.family === "EK" &&
-	!!seq.lsys &&
-	seq.stationStartCount === 1 &&
-	seq.stationEndCount === 1 &&
-	!arr(seq.edgeChain).some((edge) => Number(edge?.typeCode) === 6);
+		seq.family === "EK" &&
+		!!seq.lsys &&
+		seq.stationStartCount === 1 &&
+		seq.stationEndCount === 1 &&
+		!arr(seq.edgeChain).some((edge) => Number(edge?.typeCode) === 6);
 }
 
 // -----------------------------------------------------------------------------
@@ -863,8 +605,6 @@ function logAnalysisToConsole(model, { fileName }) {
 		console.groupEnd();
 	}
 
-	// @baustelle [DIAGNOSTIC-ONLY]
-	// EH / EU aktuell nur zum Überblick.
 	if (model.profileSequences?.length) {
 		console.groupCollapsed("profile sequences");
 		console.table(model.profileSequences);
@@ -886,11 +626,11 @@ function logAnalysisToConsole(model, { fileName }) {
 
 function makeSequenceName(seq) {
 	return [
-	seq?.strecke ?? "unknown",
-	seq?.strRikz ?? "unknown",
-	seq?.family ?? "EL",
-	seq?.stationStart ?? "na",
-	seq?.stationEnd ?? "na",
+		seq?.strecke ?? "unknown",
+		seq?.strRikz ?? "unknown",
+		seq?.family ?? "EL",
+		seq?.stationStart ?? "na",
+		seq?.stationEnd ?? "na",
 	].join("_");
 }
 
@@ -939,7 +679,7 @@ function convertSequenceToTraLikeRecords(seq, padIndex) {
 			direction,
 			arcLength: Number.isFinite(edge?.arcLength)
 				? Number(edge.arcLength)
-				: (s1 - s0),
+				: s1 - s0,
 			kindCode: Number.isFinite(edge?.typeCode) ? Number(edge.typeCode) : null,
 			radiusA: Number.isFinite(edge?.radiusA) ? Number(edge.radiusA) : null,
 			radiusE: Number.isFinite(edge?.radiusE) ? Number(edge.radiusE) : null,
@@ -969,7 +709,14 @@ function convertSequenceToTraLikeRecords(seq, padIndex) {
 	return records;
 }
 
-function buildCoordGeomAlignmentFromSequence({ seq, index, fileName, padIndex, profilesByKey, cantsByKey }) {
+function buildCoordGeomAlignmentFromSequence({
+	seq,
+	index,
+	fileName,
+	padIndex,
+	profilesByKey,
+	cantsByKey,
+}) {
 	const family = seq?.family ?? "EL";
 	const strecke = seq?.strecke ?? "unknown";
 	const strRikz = seq?.strRikz ?? "unknown";
@@ -994,17 +741,16 @@ function buildCoordGeomAlignmentFromSequence({ seq, index, fileName, padIndex, p
 	return fat.createAlignment({
 		id: `gnd.coordGeom.${index + 1}`,
 		name,
-	spatialRef: lsys
-
-	? {
-		status: "declared",
-		horizontalCrsId: lsys,
-		horizontalCoordinateSystemName: lsys,
-		horizontal: lsys,
-		source: "GND.LSYS",
-	}
-	: null,
-	coordGeom,
+		spatialRef: lsys
+			? {
+				status: "declared",
+				horizontalCrsId: lsys,
+				horizontalCoordinateSystemName: lsys,
+				horizontal: lsys,
+				source: "GND.LSYS",
+			}
+			: null,
+		coordGeom,
 		staEquations: null,
 		profile,
 		cant: cant ? cant.entries : null,
@@ -1252,11 +998,6 @@ function makeAnalysisLandFAT({
 			format: "gndEdit",
 			parserId: "gndEdit",
 			sourceBackend: "xlsx",
-
-			// @baustelle [SOURCE-BACKEND]
-			// Fachlich sollte der Parser später auch mit MDB / DBB-backed Satzartdaten
-			// arbeiten können. Der aktuelle Einstiegspunkt bleibt physisch XLSX.
-
 			stage: "landFAT-with-gnd-attachments",
 			sheetNames: workbookInfo?.sheetNames ?? [],
 			...metaExtra,
@@ -1269,7 +1010,6 @@ function makeAnalysisLandFAT({
 		coordinateSystem: gndCrs.coordinateSystem,
 		alignments,
 		profiles,
-		// cants,
 		extras: {
 			sourceSemantics: {
 				format: "gndEdit",
@@ -1303,17 +1043,19 @@ function buildGndCoordinateSystem(model) {
 	}
 
 	return {
-	horizontalCoordinateSystemName:
-		lsysValues.size === 1 ? Array.from(lsysValues)[0] : null,
-	verticalCoordinateSystemName:
-		hsysValues.size === 1 ? Array.from(hsysValues)[0] : null,
-	extras: {
-		status: lsysValues.size === 1 ? "declared" : "ambiguous_or_missing",
-		horizontalCandidates: Array.from(lsysValues).sort(),
-		verticalCandidates: Array.from(hsysValues).sort(),
-		source: "GND.LSYS/HSYS",
-	},
-};
+		coordinateSystem: {
+			horizontalCoordinateSystemName:
+				lsysValues.size === 1 ? Array.from(lsysValues)[0] : null,
+			verticalCoordinateSystemName:
+				hsysValues.size === 1 ? Array.from(hsysValues)[0] : null,
+		},
+		extras: {
+			status: lsysValues.size === 1 ? "declared" : "ambiguous_or_missing",
+			horizontalCandidates: Array.from(lsysValues).sort(),
+			verticalCandidates: Array.from(hsysValues).sort(),
+			source: "GND.LSYS/HSYS",
+		},
+	};
 }
 
 // -----------------------------------------------------------------------------
@@ -1328,22 +1070,10 @@ function arr(x) {
 	return Array.isArray(x) ? x : [];
 }
 
-function valOrNull(v) {
-	return v == null || v === "" ? null : v;
-}
-
 function asTrimmedString(v) {
 	if (v == null) return null;
 	const s = String(v).trim();
 	return s || null;
-}
-
-function readPad(row, key) {
-	return asTrimmedString(row?.[key]);
-}
-
-function refOf(row) {
-	return `${row?.__sheet ?? "?"}:${row?.__rowIndex ?? "?"}`;
 }
 
 function normalizeSet(x) {
@@ -1509,8 +1239,8 @@ function intersectPhKeysByRequiredHsys(a, b, requiredHsys) {
 function resolveStationFromPadNode(padNode, ppKeys) {
 	const tuples = normalizeSet(ppKeys);
 	const tupleList = Array.from(tuples)
-	.map(parseTupleKey)
-	.filter(Boolean);
+		.map(parseTupleKey)
+		.filter(Boolean);
 
 	const stationMap = new Map();
 
@@ -1524,8 +1254,8 @@ function resolveStationFromPadNode(padNode, ppKeys) {
 
 		for (const tuple of tupleList) {
 			if (
-			recStrecke === asTrimmedString(tuple?.strecke) &&
-			recStrRikz === asTrimmedString(tuple?.strRikz)
+				recStrecke === asTrimmedString(tuple?.strecke) &&
+				recStrRikz === asTrimmedString(tuple?.strRikz)
 			) {
 				if (!stationMap.has(recStation)) {
 					stationMap.set(recStation, []);
@@ -1538,10 +1268,10 @@ function resolveStationFromPadNode(padNode, ppKeys) {
 	const orderedStations = Array.from(stationMap.keys()).sort(compareStationStrings);
 
 	const refs = orderedStations.flatMap((station) =>
-	arr(stationMap.get(station)).map((ref) => ({
-		station,
-		ref,
-	}))
+		arr(stationMap.get(station)).map((ref) => ({
+			station,
+			ref,
+		}))
 	);
 
 	return {
@@ -1604,10 +1334,4 @@ function resolveElevationFromPadNode(padNode, phKeys) {
 	}
 
 	return null;
-}
-
-function mapFamilyToKz(family) {
-	if (family === "EL") return 0; // konservativer fallback
-	if (family === "EK") return 0; // EK-geom vorerst ebenfalls Gerade fallback
-	return 0;
 }

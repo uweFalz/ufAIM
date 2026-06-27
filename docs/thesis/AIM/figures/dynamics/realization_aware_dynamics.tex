@@ -1,0 +1,35 @@
+\begin{tikzpicture}[
+node distance=1.8cm,
+box/.style={
+draw,
+rounded corners,
+minimum width=3.8cm,
+minimum height=0.9cm,
+align=center
+}
+]
+
+\node[box] (target)
+{Target State};
+
+\node[box,right=of target] (real)
+{Realized State};
+
+\node[box,right=of real] (runtime)
+{Runtime Dynamics};
+
+\node[box,right=of runtime] (operation)
+{Operation};
+
+\draw[->,thick]
+(target)--node[above]
+{$\mathcal R$}(real);
+
+\draw[->,thick]
+(real)--node[above]
+{$\mathcal D$}(runtime);
+
+\draw[->,thick]
+(runtime)--(operation);
+
+\end{tikzpicture}

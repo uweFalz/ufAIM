@@ -8,7 +8,9 @@ export function deriveImportRelations({ items = [], source = {} } = {}) {
 	relations.push(...deriveParallelRelations(list, source));
 	relations.push(...deriveSamePhysicalRelations(list, source));
 
-	return relations;
+	logDuplicateRelationSignatures(relations);
+
+	return deduplicateRelationsBySignature(relations);
 }
 
 function deriveStationReferenceRelations(items, source) {
@@ -19,18 +21,26 @@ function deriveStationReferenceRelations(items, source) {
 	const cants = items.filter((i) => i?.kind === "cant");
 	const staEqs = items.filter((i) => i?.kind === "staEq");
 
-	const reference = findReferenceAlignmentCandidate(alignments);
+	const isGnd = isGndSource(source, items);
 
-	for (const alignment of alignments) {
-		if (!reference || alignment.id === reference.id) continue;
+	const reference = isGnd
+		? null
+		: findReferenceAlignmentCandidate(alignments);
 
-		out.push(makeRelation({
-			type: "stationReference",
-			fromId: alignment.id,
-			toId: reference.id,
-			reason: "alignment_station_reference_candidate",
-			source,
-		}));
+	if (!isGnd) {
+		for (const alignment of alignments) {
+			if (!reference || alignment.id === reference.id) continue;
+
+			out.push(makeRelation({
+				type: "stationReference",
+				fromId: alignment.id,
+				toId: reference.id,
+				reason: "alignment_station_reference_candidate",
+				source,
+				derivedBy: "deriveStationReferenceRelations",
+				method: "non_gnd_alignment_reference",
+			}));
+		}
 	}
 
 	for (const profile of profiles) {
@@ -43,6 +53,8 @@ function deriveStationReferenceRelations(items, source) {
 			toId: target.id,
 			reason: "profile_station_reference_candidate",
 			source,
+			derivedBy: "deriveStationReferenceRelations",
+			method: "profile_best_alignment_for_series",
 		}));
 	}
 
@@ -56,6 +68,8 @@ function deriveStationReferenceRelations(items, source) {
 			toId: target.id,
 			reason: "cant_station_reference_candidate",
 			source,
+			derivedBy: "deriveStationReferenceRelations",
+			method: "cant_best_alignment_for_series",
 		}));
 	}
 
@@ -68,6 +82,8 @@ function deriveStationReferenceRelations(items, source) {
 			toId: reference.id,
 			reason: "staeq_belongs_to_reference_line",
 			source,
+			derivedBy: "deriveStationReferenceRelations",
+			method: "staeq_reference_line",
 		}));
 	}
 
@@ -91,6 +107,8 @@ function deriveParallelRelations(items, source) {
 				toId: b.id,
 				reason: "name_or_station_parallel_candidate",
 				source,
+				derivedBy: "deriveParallelRelations",
+				method: "looks_like_parallel_pair",
 			}));
 		}
 	}
@@ -119,6 +137,8 @@ function deriveSamePhysicalRelations(items, source) {
 				toId: prev.id,
 				reason: "same_name_different_crs_candidate",
 				source,
+				derivedBy: "deriveSamePhysicalRelations",
+				method: "same_name_different_crs",
 			}));
 		}
 	}
@@ -133,6 +153,8 @@ function makeRelation({
 	reason,
 	source,
 	confidence = 0.5,
+	derivedBy = null,
+	method = null,
 } = {}) {
 	return {
 		id: `rel_${type}_${fromId}_${toId}`,
@@ -150,6 +172,9 @@ function makeRelation({
 			parserId: source?.parserId ?? null,
 			objectName: source?.objectName ?? null,
 		},
+		origin: "deriveImportRelations",
+		derivedBy,
+		method,
 		status: {
 			valid: true,
 			promotable: true,
@@ -180,13 +205,17 @@ function looksLikeParallelPair(a, b) {
 	const la = readLabel(a).toLowerCase();
 	const lb = readLabel(b).toLowerCase();
 
-	if ((la.includes("_l") || la.includes("left") || la.includes("li")) &&
-		(lb.includes("_r") || lb.includes("right") || lb.includes("re"))) {
+	if (
+		(la.includes("_l") || la.includes("left" ) || la.includes("li")) &&
+		(lb.includes("_r") || lb.includes("right") || lb.includes("re"))
+	) {
 		return true;
 	}
 
-	if ((lb.includes("_l") || lb.includes("left") || lb.includes("li")) &&
-		(la.includes("_r") || la.includes("right") || la.includes("re"))) {
+	if (
+		(lb.includes("_l") || lb.includes("left") || lb.includes("li")) &&
+		(la.includes("_r") || la.includes("right") || la.includes("re"))
+	) {
 		return true;
 	}
 
@@ -208,4 +237,107 @@ function normalizeName(value) {
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "_")
 		.replace(/^_+|_+$/g, "");
+}
+
+function isGndSource(source, items = []) {
+	const text = [
+		source?.parserId,
+		source?.format,
+		source?.fileName,
+		source?.file,
+		source?.objectName,
+		...items.map((i) => i?.source?.parserId),
+		...items.map((i) => i?.source?.format),
+		...items.map((i) => i?.source?.fileName),
+		...items.map((i) => i?.source?.file),
+		...items.map((i) => i?.source?.objectName),
+		...items.map((i) => i?.meta?.sourceFormat),
+	].filter(Boolean).join(" ").toLowerCase();
+
+	return text.includes("gnd");
+}
+
+function logDuplicateRelationSignatures(relationCandidates = []) {
+	const relations = Array.isArray(relationCandidates) ? relationCandidates : [];
+	const groups = new Map();
+
+	for (const rel of relations) {
+		const relationType = rel?.relationType ?? rel?.type ?? null;
+		const fromId = rel?.fromId ?? rel?.sourceId ?? rel?.from ?? rel?.source ?? null;
+		const toId = rel?.toId ?? rel?.targetId ?? rel?.to ?? rel?.target ?? null;
+
+		const signature = [relationType, fromId, toId].join("|");
+
+		if (!groups.has(signature)) {
+			groups.set(signature, []);
+		}
+
+		groups.get(signature).push(rel);
+	}
+
+	const duplicates = [];
+
+	for (const [signature, rels] of groups.entries()) {
+		if (rels.length <= 1) continue;
+
+		duplicates.push({
+			signature,
+			count: rels.length,
+			relationIds: rels.map((r) => r?.id ?? null),
+			relationTypes: rels.map((r) => r?.relationType ?? r?.type ?? null),
+			fromIds: rels.map((r) => r?.fromId ?? r?.sourceId ?? r?.from ?? r?.source ?? null),
+			toIds: rels.map((r) => r?.toId ?? r?.targetId ?? r?.to ?? r?.target ?? null),
+			confidences: rels.map((r) => r?.confidence ?? null),
+			reasons: rels.map((r) => r?.reasons ?? null),
+			sourceGroups: rels.map((r) => r?.sourceGroup ?? r?.meta?.sourceGroup ?? null),
+			sources: rels.map((r) => ({
+				source: r?.source ?? null,
+				origin: r?.origin ?? null,
+				derivedBy: r?.derivedBy ?? null,
+				method: r?.method ?? null,
+			})),
+		});
+	}
+
+	if (!duplicates.length) return;
+
+	console.groupCollapsed("[deriveImportRelations] duplicate relation signatures");
+
+	console.table(duplicates.map((d) => ({
+		signature: d.signature,
+		count: d.count,
+		relationIds: d.relationIds.join(", "),
+		relationTypes: d.relationTypes.join(", "),
+		fromIds: d.fromIds.join(", "),
+		toIds: d.toIds.join(", "),
+		confidences: d.confidences.join(", "),
+	})));
+
+	console.log("duplicate relation signature details", duplicates);
+	console.groupEnd();
+}
+
+function deduplicateRelationsBySignature(relationCandidates = []) {
+	const relations = Array.isArray(relationCandidates) ? relationCandidates : [];
+	const seen = new Set();
+	const out = [];
+
+	for (const rel of relations) {
+		const signature = makeRelationSignature(rel);
+		if (!signature || seen.has(signature)) continue;
+
+		seen.add(signature);
+		out.push(rel);
+	}
+
+	return out;
+}
+
+function makeRelationSignature(rel) {
+	const relationType = rel?.relationType ?? rel?.type ?? null;
+	const fromId = rel?.fromId ?? rel?.sourceId ?? rel?.from ?? rel?.source ?? null;
+	const toId = rel?.toId ?? rel?.targetId ?? rel?.to ?? rel?.target ?? null;
+
+	if (!relationType || !fromId || !toId) return null;
+	return `${relationType}|${fromId}|${toId}`;
 }
