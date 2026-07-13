@@ -7,11 +7,11 @@ export class SharedWorkerClient {
 		this._handlers = new Map();
 		this._pending = new Map(); // reqId -> {resolve,reject}
 		this._port = null;
+		this._helloReceived = false;
 	}
 
 	async connect() {
 		const worker = new SharedWorker(this.url, {
-			type: "module",
 			name: "ufAIM-shared-messaging",
 		});
 
@@ -19,7 +19,33 @@ export class SharedWorkerClient {
 		this._port.onmessage = (ev) => this._deliver(ev.data);
 		this._port.start();
 
+		await this.waitForHello({ timeoutMs: 6000 });
+
 		if (this.debug) console.log("[SharedWorkerClient] connected", this.url);
+	}
+
+	waitForHello({ timeoutMs = 6000 } = {}) {
+		if (this._helloReceived) return Promise.resolve();
+
+		return new Promise((resolve, reject) => {
+			const deadline = Date.now() + Math.max(1, Number(timeoutMs) || 6000);
+
+			const poll = () => {
+				if (this._helloReceived) {
+					resolve();
+					return;
+				}
+
+				if (Date.now() >= deadline) {
+					reject(new Error(`SharedWorkerClient: worker hello timeout (${Math.max(1, Number(timeoutMs) || 6000)}ms)`));
+					return;
+				}
+
+				setTimeout(poll, 25);
+			};
+
+			poll();
+		});
 	}
 
 	on(name, fn) {
@@ -58,6 +84,10 @@ export class SharedWorkerClient {
 
 	_deliver(msg) {
 		if (this.debug) console.log("[SharedWorkerClient.recv]", msg);
+
+		if (msg?.type === "worker:hello") {
+			this._helloReceived = true;
+		}
 
 		// 1) resolve pending legacy promises
 		if (msg?.type === "ack" || msg?.type === "err") {

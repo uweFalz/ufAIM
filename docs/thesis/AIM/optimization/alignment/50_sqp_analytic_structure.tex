@@ -6,15 +6,11 @@
 \subsection{Motivation}
 % ============================================================
 
-\begin{remark}
 In classical numerical optimization, Jacobians are often computed by
 finite differences or automatic differentiation.
-\end{remark}
 
-\begin{remark}
 Within the AIM framework, this is not necessary.
 The alignment model is inherently differentiable.
-\end{remark}
 
 % ============================================================
 \subsection{Fundamental Observation}
@@ -69,9 +65,7 @@ Primary parameter classes:
 \]
 \end{proposition}
 
-\begin{remark}
 All derivatives reduce to arc-length integrals.
-\end{remark}
 
 % ============================================================
 \subsection{Key Insight}
@@ -81,27 +75,22 @@ All derivatives reduce to arc-length integrals.
 The optimization problem admits exact Jacobians without numerical approximation.
 \end{proposition}
 
-\begin{remark}
 This eliminates:
 \begin{itemize}
 \item finite differences,
 \item numerical instability,
 \item high computational cost.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \subsection{Block Structure}
 % ============================================================
 
-\begin{remark}
 The parameter vector decomposes as:
 \[
 (\boldsymbol{\kappa}, \boldsymbol{\phi}).
 \]
-\end{remark}
 
-\begin{remark}
 This induces a block structure:
 \[
 H =
@@ -110,7 +99,6 @@ H_{\kappa\kappa} & H_{\kappa\phi} \\
 H_{\phi\kappa} & H_{\phi\phi}
 \end{pmatrix}.
 \]
-\end{remark}
 
 % ============================================================
 \subsection{Interpretation}

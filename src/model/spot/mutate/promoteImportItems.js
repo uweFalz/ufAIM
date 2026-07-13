@@ -1,6 +1,7 @@
 // src/model/spot/mutate/promoteImportItems.js
 
 import { assessSpotAdmission } from "../../../import/spot/assessSpotAdmission.js";
+import { createAlignmentSpotObject } from "../model/createAlignmentSpotObject.js";
 
 export function promoteImportItems({ items = [], spotStore } = {}) {
 	if (!spotStore || typeof spotStore.addObjects !== "function") {
@@ -104,29 +105,29 @@ function buildSpotAlignmentEntry(item, opts = {}) {
 	const payload = item?.payload ?? {};
 	const crs = normalizeSpotCrs(item);
 
+	const entry = createAlignmentSpotObject({
+		id: item.id,
+		crsId: crs.crsId,
+		crsStatus: crs.status,
+		name: payload.name ?? payload.id ?? item.id ?? null,
+		kernel: normalizeAlignmentKernel(sparseAlignment),
+		alignmentData: null,
+		sparseAlignment,
+		extended: clonePlainObject(payload.extended),
+		refs: {
+			profileRelationIds: [],
+			cantRelationIds: [],
+			staEquationRelationIds: [],
+		},
+		meta: buildSpotMeta(item, opts),
+	});
+
+	entry.data.meta = clonePlainObject(payload.meta);
+	entry.data.extended = clonePlainObject(payload.extended);
+
 	return {
 		crs,
-		entry: {
-			id: String(item.id),
-			type: "alignment",
-			crsId: crs.crsId,
-			crsStatus: crs.status,
-
-			data: {
-				name: payload.name ?? payload.id ?? item.id ?? null,
-				kernel: normalizeAlignmentKernel(sparseAlignment),
-				meta: clonePlainObject(payload.meta),
-				extended: clonePlainObject(payload.extended),
-			},
-
-			refs: {
-				profileRelationIds: [],
-				cantRelationIds: [],
-				staEquationRelationIds: [],
-			},
-
-			meta: buildSpotMeta(item, opts),
-		},
+		entry,
 	};
 }
 
@@ -264,13 +265,9 @@ function normalizeSpotCrs(item) {
 		item?.payload?.spatialRef?.horizontalCrsId
 	);
 
-	// ------------------------------------------------------------
-	// no explicit CRS
-	// ------------------------------------------------------------
 	if (!horizontal) {
 		const inferred = inferEngineeringCrs(item);
 
-		// inferred CRS
 		if (inferred) {
 			return {
 				id: inferred.crsId,
@@ -302,7 +299,6 @@ function normalizeSpotCrs(item) {
 			};
 		}
 
-		// fully unknown local engineering space
 		const crsId = makeUnknownCrsId(item);
 
 		return {
@@ -331,9 +327,6 @@ function normalizeSpotCrs(item) {
 		};
 	}
 
-	// ------------------------------------------------------------
-	// declared CRS
-	// ------------------------------------------------------------
 	const crsId = normalizeCrsId(horizontal);
 
 	return {
@@ -378,12 +371,6 @@ function inferEngineeringCrs(item) {
 		return null;
 	}
 
-	// ------------------------------------------------------------
-	// Gauss-Krüger-artig
-	// ------------------------------------------------------------
-
-	// Rechtswert enthält Streifenkennung
-	// z.B. 3.5 Mio / 4.5 Mio / 5.5 Mio
 	if (
 		x > 2_000_000 &&
 		x < 6_000_000 &&
@@ -405,10 +392,6 @@ function inferEngineeringCrs(item) {
 			},
 		};
 	}
-
-	// ------------------------------------------------------------
-	// DBRef-artig
-	// ------------------------------------------------------------
 
 	if (
 		x > 100_000 &&

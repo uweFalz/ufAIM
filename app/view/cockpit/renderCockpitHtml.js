@@ -114,6 +114,14 @@ function renderNativeAuthoringCard() {
 				>
 					${escapeHtml(tx("cockpit.action.addStraight", "+ Straight"))}
 				</button>
+
+				<button
+					type="button"
+					class="cockpit-sofa__button cockpit-sofa__button--secondary"
+					data-cockpit-clear-elements
+				>
+					${escapeHtml(tx("cockpit.action.clearElements", "Clear Elements"))}
+				</button>
 			</div>
 		`,
 	});
@@ -137,8 +145,60 @@ function renderSceneCard(scene, context, visibleCount) {
 				`${tx("cockpit.visible", "Anzeige")}: ${visibleCount}`,
 			])}
 			${renderSourceLine(scene.source)}
+			${renderEditorElements(scene.editor)}
 		`,
 	});
+}
+
+function renderEditorElements(editor) {
+	if (!editor?.isNativeAlignment) return "";
+
+	const elements = Array.isArray(editor.elements) ? editor.elements : [];
+
+	if (!elements.length) {
+		return `
+			<div class="cockpit-sofa__meta">
+				Elements · 0
+			</div>
+		`;
+	}
+
+	return `
+		<div class="cockpit-sofa__meta">
+			Elements · ${elements.length}
+		</div>
+		<ol class="cockpit-sofa__list cockpit-sofa__list--compact">
+			${elements.map((el, index) => `
+				<li>
+					<strong>${index + 1}. ${escapeHtml(readElementLabel(el))}</strong>
+					${renderElementMeta(el)}
+				</li>
+			`).join("")}
+		</ol>
+	`;
+}
+
+function readElementLabel(el) {
+	const type = String(el?.type ?? "element").trim().toLowerCase();
+
+	if (type === "straight") return "Straight";
+
+	return type || "Element";
+}
+
+function renderElementMeta(el) {
+	const type = String(el?.type ?? "").trim().toLowerCase();
+
+	if (type === "straight") {
+		const length =
+			el?.parameters?.length ??
+			el?.length ??
+			null;
+
+		return `<div>${escapeHtml(`length ${length ?? "—"}`)}</div>`;
+	}
+
+	return "";
 }
 
 function renderContextCard(context, visibleCount) {

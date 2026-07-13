@@ -13,6 +13,7 @@
 import { t } from "@app/i18n/strings.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
 import { formatNum } from "@utils/helpers.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 import { parseIdSlotKey, normalizePins } from "@app/controllers/viewGeometry.js";
 import { mirrorQuickHooksFromActive } from "@io/apply/importApply.js";
@@ -49,7 +50,7 @@ export function createViewPropsPanel({
 			const safeKey = escapeHtml(key);
 
 			const isActive =
-				(pin.rpId === state.activeRouteProjectId) &&
+				(pin.rpId === getWorkspacePrimaryId(state)) &&
 				(pin.slot === (state.activeSlot ?? "right"));
 
 			const activeBadge = isActive
@@ -172,7 +173,7 @@ export function createViewPropsPanel({
 	function renderJsonHtml(state) {
 		const json = JSON.stringify(
 			{
-				activeRouteProjectId: state.activeRouteProjectId ?? null,
+				primaryObjectId: getWorkspacePrimaryId(state),
 				activeSlot: state.activeSlot ?? "right",
 				cursor: state.cursor ?? {},
 				import_meta: state.import_meta ?? null,

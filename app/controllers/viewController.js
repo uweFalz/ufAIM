@@ -26,16 +26,19 @@ import {
 	syncPinsBadge,
 	syncTransitionEditorControls,
 } from "@app/controllers/viewUiSync.js";
+import {
+	getWorkspacePrimaryId as readWorkspacePrimaryId,
+	getWorkspaceContextIds as readWorkspaceContextIds,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
-// ???
 function makePreviewSpotLikeObject(previewItem) {
-	const kernel = previewItem?.kernel ?? previewItem?.sparseAlignment ?? null;
+	const kernel = previewItem?.kernel ?? null;
 	if (!kernel) return null;
 
 	return {
 		id: `preview_${previewItem.id ?? "alignment"}`,
 		type: previewItem.kind ?? "alignment",
-		crsId: previewItem?.crsId ?? derivePreviewCrsId(previewItem),
+		crsId: previewItem?.crsId ?? null,
 
 		data: {
 			name: previewItem?.name ?? previewItem?.id ?? "preview",
@@ -54,20 +57,6 @@ function makePreviewSpotLikeObject(previewItem) {
 			alignmentName: previewItem?.name ?? previewItem?.id ?? "preview",
 		},
 	};
-}
-
-function derivePreviewCrsId(previewItem) {
-	if (previewItem?.crsId) return previewItem.crsId;
-
-	const sr = previewItem?.spatialRef ?? null;
-
-	return (
-		sr?.crsId ??
-		sr?.horizontalCrsId ??
-		sr?.horizontal ??
-		sr?.horizontalCoordinateSystemName ??
-		null
-	);
 }
 
 export function makeViewController({
@@ -136,19 +125,11 @@ export function makeViewController({
 	let workspaceContextTracks = [];
 
 	function getFocusObjectId(state) {
-		return (
-			state?.workspace_selection?.primaryId ??
-			state?.focus?.objectId ??
-			state?.activeRouteProjectId ??
-			null
-		);
+		return readWorkspacePrimaryId(state);
 	}
 
 	function getWorkspaceContextIds(state) {
-		const ids = state?.workspace_selection?.contextIds;
-		return Array.isArray(ids)
-			? ids.map((id) => String(id ?? "").trim()).filter(Boolean)
-			: [];
+		return readWorkspaceContextIds(state);
 	}
 
 	function invalidateSpotCache() {
@@ -216,8 +197,7 @@ export function makeViewController({
 
 	function getPreviewGeometryFromState(state) {
 		const previewItem = state?.preview_item ?? null;
-		const previewKernel = previewItem?.kernel ?? previewItem?.sparseAlignment ?? null;
-		if (!previewKernel) return null;
+		if (!previewItem?.kernel) return null;
 
 		const previewObject = makePreviewSpotLikeObject(previewItem);
 		if (!previewObject) return null;
@@ -253,29 +233,9 @@ export function makeViewController({
 			const spotObject = getSpotObjectById(spotState, objectId);
 			if (!spotObject) continue;
 
-			console.log("[ViewController] context spotObject probe", {
-	objectId,
-	keys: Object.keys(spotObject ?? {}),
-	type: spotObject?.type,
-	crsId: spotObject?.crsId,
-	hasDataKernel: Boolean(spotObject?.data?.kernel),
-	hasDataSparse: Boolean(spotObject?.data?.sparseAlignment),
-	hasPayloadSparse: Boolean(spotObject?.payload?.sparseAlignment),
-	hasRootSparse: Boolean(spotObject?.sparseAlignment),
-	dataKeys: Object.keys(spotObject?.data ?? {}),
-	payloadKeys: Object.keys(spotObject?.payload ?? {}),
-});
-
 			const geom = projectFocusedSpotObject(spotObject, {
 				maxStep: cfg.sampleStep,
 			});
-
-			console.log("[ViewController] context projection result", {
-	objectId,
-	hasGeom: Boolean(geom),
-	pointCount: geom?.polyline2d?.length ?? 0,
-	hasBbox: Boolean(geom?.bbox),
-});
 
 			if (!geom?.polyline2d || geom.polyline2d.length < 2) continue;
 
@@ -302,30 +262,9 @@ export function makeViewController({
 			const spotObject = getSpotObjectById(spotState, focusObjectId);
 
 			if (spotObject) {
-
-				console.log("[ViewController] active spotObject probe", {
-	focusObjectId,
-	keys: Object.keys(spotObject ?? {}),
-	type: spotObject?.type,
-	crsId: spotObject?.crsId,
-	hasDataKernel: Boolean(spotObject?.data?.kernel),
-	hasDataSparse: Boolean(spotObject?.data?.sparseAlignment),
-	hasPayloadSparse: Boolean(spotObject?.payload?.sparseAlignment),
-	hasRootSparse: Boolean(spotObject?.sparseAlignment),
-	dataKeys: Object.keys(spotObject?.data ?? {}),
-	payloadKeys: Object.keys(spotObject?.payload ?? {}),
-});
-
 				const geom = projectFocusedSpotObject(spotObject, {
 					maxStep: cfg.sampleStep,
 				});
-
-				console.log("[ViewController] active projection result", {
-	focusObjectId,
-	hasGeom: Boolean(geom),
-	pointCount: geom?.polyline2d?.length ?? 0,
-	hasBbox: Boolean(geom?.bbox),
-});
 
 				if (geom?.polyline2d && geom.polyline2d.length >= 2) {
 					cachedFocusObjectId = focusObjectId;
@@ -409,12 +348,6 @@ export function makeViewController({
 
 	async function redrawWorkspaceContext(state = store.getState()) {
 		const tracks = await getWorkspaceContextGeometries(state);
-
-		console.log("[ViewController] auxiliary context tracks", {
-			contextIds: getWorkspaceContextIds(state),
-			renderTracks: tracks.length,
-			ids: tracks.map((t) => t.id),
-		});
 
 		setWorkspaceContextTracks(tracks);
 	}

@@ -12,6 +12,7 @@
 // Current status:
 // - store is still a transitional combined store
 // - this controller acts as the bridge toward session-first focus handling
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 function normalizeSlot(slot) {
 	const v = String(slot ?? "right");
@@ -45,10 +46,10 @@ export function createWindowSessionController({ store, sessionState } = {}) {
 			};
 		}
 
-		// legacy fallback while store still carries old focus fields
+		// Fallback to canonical workspace selection.
 		const st = store.getState?.() ?? {};
 		return {
-			objectId: st.activeRouteProjectId ?? null,
+			objectId: getWorkspacePrimaryId(st),
 			slot: normalizeSlot(st.activeSlot),
 		};
 	}
@@ -107,7 +108,7 @@ export function createWindowSessionController({ store, sessionState } = {}) {
 	function getFocusSnapshot() {
 		const focus = getFocus();
 		return {
-			activeRouteProjectId: focus.objectId,
+			objectId: focus.objectId,
 			activeSlot: focus.slot,
 		};
 	}

@@ -8,7 +8,6 @@
 // - holds canonical SPOT objects
 // - holds canonical CoordContexts
 // - provides store-style read/write API
-// - manages activeSpotId
 //
 // NOT:
 // - no UI state
@@ -22,12 +21,7 @@
 
 export function createSpotStore(initialState = {}) {
 	let state = {
-		meta: {
-			activeSpotId: null,
-			activeRouteProjectId: null,
-			engineeringCrsId: null,
-			...(initialState.meta ?? {}),
-		},
+		meta: normalizeInitialMeta(initialState.meta),
 
 		objects: {
 			...(initialState.objects ?? initialState.spots ?? {}),
@@ -47,7 +41,10 @@ export function createSpotStore(initialState = {}) {
 	}
 
 	function getObject(objectId) {
-		return clone(state.objects[objectId] ?? null);
+		const id = normalizeId(objectId);
+		if (!id) return null;
+
+		return clone(state.objects[id] ?? null);
 	}
 
 	function listObjects() {
@@ -55,7 +52,10 @@ export function createSpotStore(initialState = {}) {
 	}
 
 	function getCoordContext(contextId) {
-		return clone(state.coordContexts[contextId] ?? null);
+		const id = normalizeId(contextId);
+		if (!id) return null;
+
+		return clone(state.coordContexts[id] ?? null);
 	}
 
 	function listCoordContexts() {
@@ -93,66 +93,70 @@ export function createSpotStore(initialState = {}) {
 				...state.objects,
 				[normalized.id]: clone(normalized),
 			},
-			meta: {
-				...state.meta,
-				activeSpotId: state.meta.activeSpotId ?? normalized.id,
-			},
 		};
 
 		return getState();
 	}
 
 	function addObjects(objects = []) {
-		let nextObjects = { ...state.objects };
-		let firstAddedId = null;
+		const list = Array.isArray(objects) ? objects : [];
+		const nextObjects = { ...state.objects };
+
 		let changed = false;
 
-		for (const object of objects) {
+		for (const object of list) {
 			if (!object?.id) continue;
 
 			const normalized = normalizeSpotObject(object);
-
-			if (!firstAddedId) firstAddedId = normalized.id;
 
 			nextObjects[normalized.id] = clone(normalized);
 			changed = true;
 		}
 
-		if (!changed) return getState();
+		if (!changed) {
+			return getState();
+		}
 
 		state = {
 			...state,
 			objects: nextObjects,
-			meta: {
-				...state.meta,
-				activeSpotId: state.meta.activeSpotId ?? firstAddedId ?? null,
-			},
 		};
 
 		return getState();
 	}
 
 	function updateObject(objectId, patch = {}) {
-		const prev = state.objects[objectId];
+		const id = normalizeId(objectId);
 
-		if (!prev) {
+		if (!id || !state.objects[id]) {
 			throw new Error(`SpotStore.updateObject: unknown objectId ${objectId}`);
 		}
+
+		const prev = state.objects[id];
 
 		const next = normalizeSpotObject({
 			...prev,
 			...patch,
 
 			data: patch.data
-				? { ...(prev.data ?? {}), ...patch.data }
+				? {
+					...(prev.data ?? {}),
+					...patch.data,
+				}
 				: prev.data,
 
 			refs: patch.refs
-				? { ...(prev.refs ?? {}), ...patch.refs }
+				? {
+					...(prev.refs ?? {}),
+					...patch.refs,
+				}
 				: prev.refs,
 
 			meta: patch.meta
-				? { ...(prev.meta ?? {}), ...patch.meta }
+				? {
+					...(prev.meta ?? {}),
+					...patch.meta,
+				}
 				: prev.meta,
 		});
 
@@ -160,23 +164,7 @@ export function createSpotStore(initialState = {}) {
 			...state,
 			objects: {
 				...state.objects,
-				[objectId]: clone(next),
-			},
-		};
-
-		return getState();
-	}
-
-	function setActiveSpot(spotId) {
-		if (spotId != null && !state.objects[spotId]) {
-			throw new Error(`SpotStore.setActiveSpot: unknown spotId ${spotId}`);
-		}
-
-		state = {
-			...state,
-			meta: {
-				...state.meta,
-				activeSpotId: spotId ?? null,
+				[id]: clone(next),
 			},
 		};
 
@@ -192,19 +180,22 @@ export function createSpotStore(initialState = {}) {
 		addObject,
 		addObjects,
 		updateObject,
-		setActiveSpot,
 
 		getCoordContext,
 		listCoordContexts,
 		addCoordContext,
 
-		// compatibility aliases for promoteImportItems()
+		// Compatibility aliases used by promoteImportItems().
 		addCrs,
 		upsertCrs,
 	};
 }
 
 // -----------------------------------------------------------------------------
+
+function normalizeInitialMeta(meta) {
+	return normalizeCanonicalMeta(meta);
+}
 
 function normalizeSpotObject(object) {
 	if (!object?.id) {
@@ -227,10 +218,17 @@ function normalizeSpotObject(object) {
 			...(object.refs ?? {}),
 		},
 
-		meta: {
-			...(object.meta ?? {}),
-		},
+		meta: normalizeCanonicalMeta(object.meta),
 	};
+}
+
+function normalizeCanonicalMeta(meta) {
+	const source = isObject(meta) ? meta : {};
+	const engineeringCrsId = normalizeId(source.engineeringCrsId);
+
+	return engineeringCrsId
+		? { engineeringCrsId }
+		: {};
 }
 
 function normalizeCoordContext(context) {
@@ -251,13 +249,21 @@ function normalizeCoordContext(context) {
 	};
 }
 
+function normalizeId(value) {
+	const id = String(value ?? "").trim();
+	return id || null;
+}
+
 function isObject(x) {
 	return !!x && typeof x === "object" && !Array.isArray(x);
 }
 
 function clone(value) {
+	if (value == null) return value;
+
 	if (typeof structuredClone === "function") {
 		return structuredClone(value);
 	}
+
 	return JSON.parse(JSON.stringify(value));
 }

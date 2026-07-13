@@ -4,21 +4,15 @@
 
 \section*{Motivation}
 
-\begin{remark}
 Railway alignment rules must be represented in a form that is both
 mathematically meaningful and computationally tractable.
-\end{remark}
 
-\begin{remark}
 Within the AIM framework, this is achieved by expressing all rules as
 constraint residuals that can be evaluated uniformly inside an
 optimization loop.
-\end{remark}
 
-\begin{remark}
 The implementation goal is therefore not a collection of isolated rule
 checks, but a modular constraint library.
-\end{remark}
 
 \section{General Principle}
 
@@ -31,7 +25,6 @@ whose value vanishes in the ideal case and whose magnitude measures
 violation.
 \end{definition}
 
-\begin{remark}
 This unified representation allows the same mathematical object to be
 used for:
 \begin{itemize}
@@ -39,7 +32,6 @@ used for:
 \item penalty terms,
 \item direct inclusion into SQP solvers.
 \end{itemize}
-\end{remark}
 
 \begin{verbatim}
 function evaluateConstraint(ctx) {
@@ -49,9 +41,7 @@ function evaluateConstraint(ctx) {
 
 \section{Constraint Registry}
 
-\begin{remark}
 A practical implementation should organize constraints in a registry.
-\end{remark}
 
 \begin{verbatim}
 const ConstraintRegistry = {
@@ -62,10 +52,8 @@ const ConstraintRegistry = {
 }
 \end{verbatim}
 
-\begin{remark}
 This keeps domain logic extensible and avoids hard-coded monolithic
 solver structures.
-\end{remark}
 
 \section{Constraint Object Model}
 
@@ -79,7 +67,6 @@ const constraint = {
 }
 \end{verbatim}
 
-\begin{remark}
 The fields have the following meaning:
 \begin{itemize}
 \item \texttt{id}: unique name,
@@ -88,14 +75,11 @@ The fields have the following meaning:
 \item \texttt{weight}: optional scaling,
 \item \texttt{evaluate}: residual callback.
 \end{itemize}
-\end{remark}
 
 \section{Context Object}
 
-\begin{remark}
 Constraints should not operate directly on raw global arrays.
 Instead, they receive a normalized context object.
-\end{remark}
 
 \begin{verbatim}
 const ctx = {
@@ -112,9 +96,7 @@ const ctx = {
 }
 \end{verbatim}
 
-\begin{remark}
 This provides a stable interface between model, solver, and rule system.
-\end{remark}
 
 \section{Geometric Constraints}
 
@@ -129,10 +111,8 @@ function continuityConstraint(p1, p2) {
 }
 \end{verbatim}
 
-\begin{remark}
 This enforces \(C^0\)-continuity between adjacent geometric elements or
 connected alignments.
-\end{remark}
 
 \subsection{Direction Continuity}
 
@@ -145,10 +125,8 @@ function directionConstraint(t1, t2) {
 }
 \end{verbatim}
 
-\begin{remark}
 This corresponds to tangent continuity and therefore to \(C^1\)-style
 behaviour in geometric terms.
-\end{remark}
 
 \subsection{Curvature Continuity}
 
@@ -158,9 +136,7 @@ function curvatureConstraint(k1, k2) {
 }
 \end{verbatim}
 
-\begin{remark}
 This enforces continuity of curvature across boundaries.
-\end{remark}
 
 \section{Dynamic Constraints}
 
@@ -172,9 +148,7 @@ function equilibriumConstraint(kappa, phi, v, g) {
 }
 \end{verbatim}
 
-\begin{remark}
 This residual measures cant deficiency or excess in analytic form.
-\end{remark}
 
 \subsection{Jerk Constraint}
 
@@ -187,9 +161,7 @@ function jerkConstraint(kappa0, kappa1, phi0, phi1, ds, v, g) {
 }
 \end{verbatim}
 
-\begin{remark}
 This constraint reflects dynamic smoothness and comfort-related limits.
-\end{remark}
 
 \section{Regulatory Constraints}
 
@@ -201,9 +173,7 @@ function minRadiusConstraint(kappa, Rmin) {
 }
 \end{verbatim}
 
-\begin{remark}
 A non-positive value indicates compliance with the radius limit.
-\end{remark}
 
 \subsection{Maximum Cant}
 
@@ -236,9 +206,7 @@ function switchConstraint(main, branch) {
 }
 \end{verbatim}
 
-\begin{remark}
 This expresses the basic coupling at branching nodes.
-\end{remark}
 
 \subsection{Parallel Track Spacing}
 
@@ -252,9 +220,7 @@ function parallelConstraint(p1, p2, d) {
 
 \section{Constraint Assembly}
 
-\begin{remark}
 The full residual vector is assembled from all active constraints.
-\end{remark}
 
 \begin{verbatim}
 function buildConstraintResiduals(ctx, constraints) {
@@ -270,17 +236,13 @@ function buildConstraintResiduals(ctx, constraints) {
 }
 \end{verbatim}
 
-\begin{remark}
 This produces a single solver-compatible vector independent of the
 semantic source of the constraints.
-\end{remark}
 
 \section{Factory Functions}
 
-\begin{remark}
 Constraints should be created through factories rather than by writing
 anonymous closures throughout the code base.
-\end{remark}
 
 \begin{verbatim}
 function makeMinRadiusConstraint(Rmin, weight = 1) {
@@ -314,10 +276,8 @@ function makeJerkConstraint(v, g, ds, weight = 1) {
 
 \section{Constraint Presets}
 
-\begin{remark}
 In practical railway design, different projects require different
 constraint configurations.
-\end{remark}
 
 \begin{verbatim}
 const presetHighSpeed = [
@@ -346,14 +306,11 @@ function buildResidualVector(ctx, constraints, objectives) {
 }
 \end{verbatim}
 
-\begin{remark}
 This shows the central design principle of the architecture:
 constraints and objectives share the same residual-based interface.
-\end{remark}
 
 \section{Discussion}
 
-\begin{remark}
 The proposed architecture has several advantages:
 \begin{itemize}
 \item modularity,
@@ -361,13 +318,10 @@ The proposed architecture has several advantages:
 \item compatibility with least-squares solvers,
 \item transparent mapping between engineering rules and code.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Instead of scattering rule checks throughout the application, the
 constraint library concentrates domain logic in a single mathematical
 layer.
-\end{remark}
 
 \section{Summary}
 

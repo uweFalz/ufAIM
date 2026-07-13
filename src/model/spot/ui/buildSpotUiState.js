@@ -9,6 +9,7 @@
 // - only canonical SpotObjects are rendered
 // - no import candidates / no promotable counting / no file counting
 // - no geometry computation here
+// - no window-local focus or selection semantics
 //
 // Canonical SpotObject shape expected here:
 // {
@@ -24,10 +25,8 @@
 // Output:
 // {
 //   rows: [...],
-//   activeSpotId,
 //   stats: {
 //     total,
-//     activeCount,
 //     missingKernelCount,
 //     missingCrsCount
 //   }
@@ -78,9 +77,21 @@ function buildSourceLabel(object) {
 	const fileName = source?.fileName ?? null;
 	const objectName = source?.objectName ?? null;
 
-	if (fileName && objectName) return `${fileName} → ${objectName}`;
-	if (fileName) return fileName;
-	if (objectName) return objectName;
+	if (fileName && objectName) {
+		return `${fileName} → ${objectName}`;
+	}
+
+	if (fileName) {
+		return fileName;
+	}
+
+	if (objectName) {
+		return objectName;
+	}
+
+	if (typeof source === "string" && source.trim()) {
+		return source.trim();
+	}
 
 	return null;
 }
@@ -103,75 +114,69 @@ function buildNotes(object) {
 	return buildMissing(object).map((key) => `${key}=missing`);
 }
 
-function getUiStatus(object, activeSpotId) {
-	const spotId = getObjectId(object);
-	const isActive = spotId === activeSpotId;
-
+function getUiStatus(object) {
 	const kernel = hasKernel(object);
 	const crs = hasCrs(object);
 
-	if (isActive && kernel && crs) return "focused";
-	if (kernel && crs) return "ok";
-	if (!kernel || !crs) return "incomplete";
+	if (kernel && crs) {
+		return "ok";
+	}
+
+	if (!kernel || !crs) {
+		return "incomplete";
+	}
 
 	return "unknown";
 }
 
-function buildRow(object, activeSpotId) {
+function buildRow(object) {
 	const spotId = getObjectId(object);
-	const kernel = getKernel(object);
 	const crsId = getCrsId(object);
 
 	return {
 		spotId,
 		objectId: spotId,
-		isActive: spotId === activeSpotId,
 
 		label: getObjectLabel(object),
 		type: getObjectType(object),
-		status: getUiStatus(object, activeSpotId),
+		status: getUiStatus(object),
 
 		sourceLabel: buildSourceLabel(object),
 
 		missing: buildMissing(object),
 		notes: buildNotes(object),
 
-		hasKernel: Boolean(kernel),
+		hasKernel: hasKernel(object),
 		hasCrs: Boolean(crsId),
 
 		crsId,
-		kernel,
 	};
 }
 
 function buildStats(rows) {
 	return {
 		total: rows.length,
-		activeCount: rows.filter((r) => r.isActive).length,
-		missingKernelCount: rows.filter((r) => !r.hasKernel).length,
-		missingCrsCount: rows.filter((r) => !r.hasCrs).length,
+		missingKernelCount: rows.filter((row) => !row.hasKernel).length,
+		missingCrsCount: rows.filter((row) => !row.hasCrs).length,
 	};
 }
 
 export function buildSpotUiState(spotState = {}) {
 	const objects = getObjects(spotState);
-	const activeSpotId = spotState?.meta?.activeSpotId ?? null;
-
-	const rows = objects.map((object) => buildRow(object, activeSpotId));
+	const rows = objects.map(buildRow);
 
 	rows.sort((a, b) => {
-		if (a.isActive && !b.isActive) return -1;
-		if (!a.isActive && b.isActive) return 1;
 		return String(a.label).localeCompare(String(b.label));
 	});
 
 	return {
 		rows,
-		activeSpotId,
 		stats: buildStats(rows),
 	};
 }
 
-function isObject(x) {
-	return !!x && typeof x === "object" && !Array.isArray(x);
+function isObject(value) {
+	return !!value &&
+		typeof value === "object" &&
+		!Array.isArray(value);
 }

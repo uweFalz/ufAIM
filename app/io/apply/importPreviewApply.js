@@ -15,6 +15,7 @@
 // later this should move toward controller/view projection sync.
 
 import { ensureImportStoreShape } from "./importStoreShape.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 function pickMarkerFromPolyline(polyline2d) {
 	if (!Array.isArray(polyline2d) || polyline2d.length < 1) return null;
@@ -46,7 +47,7 @@ function collectImportTracks2d(artifacts, activeId = null) {
 export function getActiveArtifactIds(state) {
 	const s = ensureImportStoreShape(state);
 
-	const baseId = s.activeRouteProjectId;
+	const baseId = getWorkspacePrimaryId(s);
 	if (!baseId) return null;
 
 	const rp = s.routeProjects?.[baseId];

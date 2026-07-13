@@ -12,12 +12,10 @@ Let
 be a partition of the interval \([0,L]\).
 \end{definition}
 
-\begin{remark}
 We denote
 \[
 \Delta s_i = s_{i+1} - s_i.
 \]
-\end{remark}
 
 \subsection{Discrete Variables}
 
@@ -48,9 +46,7 @@ The optimization variable is
 
 \subsection{Discrete Pose Reconstruction}
 
-\begin{remark}
 The pose3 state is reconstructed by numerical integration.
-\end{remark}
 
 \begin{definition}[Discrete integration]
 Given initial conditions
@@ -70,11 +66,9 @@ we compute iteratively:
 \]
 \end{definition}
 
-\begin{remark}
 Here, \(\omega_i\) may be expressed via differences of \(\phi_i\).
 This discrete reconstruction corresponds to standard numerical
 integration ideas \cite{Hairer1993ODE,Press2007NumericalRecipes}.
-\end{remark}
 
 \subsection{Finite Differences}
 
@@ -139,13 +133,11 @@ v^2 \kappa_i - g \sin\phi_i
 
 \subsubsection{Schwerpunkt Objective}
 
-\begin{remark}
 Using finite differences, we approximate
 \[
 \|\gamma_c''(s_i)\|^2
 \]
 by second-order differences of \(\gamma_c\).
-\end{remark}
 
 \[
 J_{\mathrm{veh}}(\mathbf{x})
@@ -188,14 +180,12 @@ J(\mathbf{x})
 \]
 \end{definition}
 
-\begin{remark}
 Further constraints may include:
 \begin{itemize}
 \item bounds on derivatives,
 \item continuity conditions,
 \item alignment anchoring points.
 \end{itemize}
-\end{remark}
 
 \subsection{Final Optimization Problem}
 
@@ -215,29 +205,23 @@ subject to the given constraints.
 
 \subsection{Structure of the Problem}
 
-\begin{remark}
 The problem has the structure of a nonlinear least-squares problem.
-\end{remark}
 
-\begin{remark}
 It is therefore well suited for:
 \begin{itemize}
 \item Sequential Quadratic Programming,
 \item Gauss--Newton methods,
 \item sparse optimization techniques.
 \end{itemize}
-\end{remark}
 
 \subsection{Connection to Implementation}
 
-\begin{remark}
 The discrete formulation directly corresponds to a computational model:
 \begin{itemize}
 \item \(\kappa_i\) correspond to element parameters,
 \item \(\phi_i\) correspond to cant samples,
 \item reconstruction matches numerical evaluation in software.
 \end{itemize}
-\end{remark}
 
 \begin{summary}
 The continuous alignment optimization problem can be reduced to a finite

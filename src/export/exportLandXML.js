@@ -1,6 +1,9 @@
 // src/export/exportLandXML.js
 
-import { projectAlignmentPreview } from "@projection/AlignmentProjectionService.js";
+import {
+	makeAlignmentProjectionInput,
+	projectAlignmentPreview,
+} from "@projection/AlignmentProjectionService.js";
 
 export function exportLandXML({ alignment, meta = {}, maxStep = 5 } = {}) {
 	if (!alignment) {
@@ -8,9 +11,15 @@ export function exportLandXML({ alignment, meta = {}, maxStep = 5 } = {}) {
 	}
 
 	const name = meta.name ?? alignment.name ?? "ufAIM_alignment";
+	const input = makeAlignmentProjectionInput({
+		objectId: meta.objectId ?? null,
+		geometry: alignment,
+		source: "export-landxml",
+		crsId: meta.crsId ?? null,
+	});
 
 	const geom = projectAlignmentPreview({
-		sparseAlignment: alignment,
+		input,
 		maxStep,
 	});
 

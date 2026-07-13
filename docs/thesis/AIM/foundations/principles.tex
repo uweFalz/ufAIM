@@ -1,0 +1,156 @@
+% foundations/principles.tex
+
+\chapter{Architectural Principles}
+\label{chap:architectural-principles}
+
+The preceding chapter established the mathematical axioms underlying the
+intrinsic description of railway alignments. Mathematics alone does not,
+however, determine how engineering concepts, realizations, states, and
+representations are organized. The approved Knowledge Kernel therefore
+provides the architectural principles used throughout Alignment
+Information Modelling (AIM).
+
+Unlike mathematical axioms, these principles govern conceptual
+responsibility and separation. They prevent different engineering layers
+from being collapsed into a single geometric or computational model.
+
+% ============================================================
+\section{Intrinsic-first Formulation}
+% ============================================================
+
+\begin{principle}[Intrinsic-first Formulation]
+\label{princ:intrinsic-first}
+Whenever possible, alignment-related engineering knowledge is formulated
+through quantities intrinsic to the alignment and parameterized by
+arc-length.
+\end{principle}
+
+Intrinsic descriptions do not depend on a particular coordinate
+reference system, visualization, file format, or software
+implementation. Metric and spatial meaning may be added subsequently
+without changing the identity of the intrinsic engineering concept.
+
+% ============================================================
+\section{Semantic and Metric Separation}
+% ============================================================
+
+\begin{principle}[Semantic--Metric Separation]
+\label{princ:semantic-metric-separation}
+Constructive engineering semantics and metric realization are distinct
+conceptual layers.
+\end{principle}
+
+Engineering semantics describe what an engineering object is and which
+constructive relations define it. Metric realization determines how that
+engineering description is interpreted within a metric space.
+
+% ============================================================
+\section{Canonical Layer Separation}
+% ============================================================
+
+\begin{principle}[Canonical Layer Separation]
+\label{princ:canonical-layer}
+Intrinsic geometry, metric realization, spatial interpretation,
+engineering realization, operational behaviour, and representation are
+distinct architectural layers.
+\end{principle}
+
+Each layer answers a different engineering question. Their separation
+preserves clear responsibility while allowing explicit operators and
+relations to connect them.
+
+% ============================================================
+\section{CRS Independence}
+% ============================================================
+
+\begin{principle}[CRS Independence]
+\label{princ:crs-independence}
+Intrinsic alignment information is independent of any particular
+coordinate reference system.
+\end{principle}
+
+A coordinate reference system participates in metric realization. A
+change of realization context may change coordinates and metric
+interpretation without redefining the underlying alignment identity or
+constructive semantics.
+
+% ============================================================
+\section{State Distinction}
+% ============================================================
+
+\begin{principle}[State Distinction]
+\label{princ:runtime-distinction}
+Stored engineering information, evaluated engineering states, observed
+states, and physically realized states are distinct.
+\end{principle}
+
+Evaluation may derive a state from engineering knowledge; observation
+may describe a realized condition; and construction or maintenance may
+change physical reality. None of these relations establishes identity
+between the participating concepts.
+
+% ============================================================
+\section{Target and Realized Geometry}
+% ============================================================
+
+\begin{principle}[Target versus Realized Geometry]
+\label{princ:target-vs-realization}
+Target geometry and realized geometry are distinct engineering
+conditions.
+\end{principle}
+
+Construction, maintenance, measurement, and physical response relate the
+intended and realized conditions, but do not eliminate their conceptual
+difference.
+
+% ============================================================
+\section{Representation Independence}
+% ============================================================
+
+\begin{principle}[Representation Independence]
+\label{princ:representation-independence}
+A representation is derived from engineering knowledge and is not the
+engineering object or knowledge that it represents.
+\end{principle}
+
+CAD geometry, GIS layers, exchange formats, sampled polylines, rendered
+views, and software data structures may communicate or process
+engineering information. They do not acquire canonical authority merely
+because they are stored or displayed.
+
+% ============================================================
+\section{Physical Interpretation}
+% ============================================================
+
+\begin{principle}[Physical Interpretation]
+\label{princ:physical-interpretation}
+Physical railway quantities arise through metric realization and spatial
+interpretation rather than from intrinsic alignment semantics alone.
+\end{principle}
+
+Gravity, cant equilibrium, vehicle response, clearance, comfort, and
+operational admissibility require a realized spatial context. They may
+be derived from intrinsic geometry, but they are not contained in its
+mathematical definition.
+
+% ============================================================
+\section{Consequences for Terminology}
+% ============================================================
+
+The preceding principles require several distinctions to remain explicit
+throughout the thesis:
+\[
+\begin{aligned}
+\text{alignment} &\neq \text{representation of an alignment},\\
+\text{intrinsic geometry} &\neq \text{metric realization},\\
+\text{metric realization} &\neq \text{physical realization},\\
+\text{pose} &\neq \text{frame},\\
+\text{coordinate transformation} &\neq \text{world-to-track mapping},\\
+\text{target condition} &\neq \text{realized condition}.
+\end{aligned}
+\]
+
+These principles establish the responsibility boundaries followed by the
+remaining foundation chapters. Notation, state descriptions, operators,
+and realization mechanisms are introduced separately and connected only
+through explicit definitions and mappings.

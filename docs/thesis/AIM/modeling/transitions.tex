@@ -6,25 +6,19 @@
 \section*{Motivation}
 % ============================================================
 
-\begin{remark}
 Transitions are the decisive element type for curvature-driven alignment
 modelling. While fixed elements describe geometric states of constant
 curvature, transitions describe the controlled change between such
 states.
-\end{remark}
 
-\begin{remark}
 In railway engineering, transitions are essential for ensuring smooth
 vehicle motion, limiting dynamic forces, and satisfying comfort and
 safety requirements, as discussed in both engineering-oriented studies
 and review literature
 \cite{Koc2008TransitionCurves,BrustadDalmo2020Review}.
-\end{remark}
 
-\begin{remark}
 Within AIM, transitions are not primarily interpreted through explicit
 geometric shape, but through the evolution of curvature.
-\end{remark}
 
 % ============================================================
 \section{Definition by Curvature Evolution}
@@ -53,10 +47,8 @@ with prescribed boundary values
 \]
 \end{definition}
 
-\begin{remark}
 This formulation directly follows the curvature-based description of
 planar curves \cite{DoCarmo1976Curves}.
-\end{remark}
 
 % ============================================================
 \section{Normalized Representation}
@@ -75,22 +67,18 @@ with
 \]
 \end{definition}
 
-\begin{remark}
 Normalization separates the geometric shape of a transition from its
 scale and allows systematic comparison of transition families.
-\end{remark}
 
-\begin{remark}
 Normalization separates intrinsic transition behaviour from physical
 scale and therefore enables reusable transition registries and
 family-based modelling.
-\end{remark}
 
 % ------------------------------------------------------------
 % Comparison graphic
 % ------------------------------------------------------------
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 
 \begin{tikzpicture}[
@@ -198,11 +186,9 @@ dynamic terms, not only in position space.
 }
 \end{figure}
 
-\begin{remark}
 Transitions that appear nearly identical in position space may differ
 substantially in curvature derivatives and therefore in dynamic
 behaviour.
-\end{remark}
 
 % ============================================================
 \section{Scaling}
@@ -225,10 +211,8 @@ Then a physical transition is given by
 \]
 \end{proposition}
 
-\begin{remark}
 This separates shape from scale and provides the basis for reusable
 transition families and parameterized design.
-\end{remark}
 
 % ============================================================
 \section{Regularity and Smoothness}
@@ -239,12 +223,10 @@ A transition is of class $C^k$ if its curvature function is $k$-times
 continuously differentiable.
 \end{definition}
 
-\begin{remark}
 In engineering practice, higher-order properties such as curvature
 derivatives are directly related to ride comfort and dynamic loading,
 as shown in both theoretical and engineering studies
 \cite{Mieloszyk2012Transition,Koc2017SmoothedEnds}.
-\end{remark}
 
 \OPEN{Formal role of $\kappa'$ and $\kappa''$ in engineering rules.}
 
@@ -261,36 +243,28 @@ functional structure.
 \subsection{Classical Families}
 % ------------------------------------------------------------
 
-\begin{remark}
 The classical transition curve in railway engineering is the clothoid,
 characterized by linear curvature evolution:
 \[
 \kappa(s)\propto s.
 \]
-\end{remark}
 
-\begin{remark}
 Historically, this line of development can be traced through early work
 by Glover \cite{Glover1900TransitionCurves},
 Horsburgh \cite{Horsburgh1913TransitionCurve},
 and Higgins \cite{Higgins1922TransitionSpiral}.
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{Polynomial and Alternative Families}
 % ------------------------------------------------------------
 
-\begin{remark}
 Polynomial transition curves provide additional flexibility in shaping
 curvature evolution and its derivatives.
-\end{remark}
 
-\begin{remark}
 Such approaches are associated with modern polynomial smoothing research
 \cite{ZboinskiWoznica2017Polynomial}
 as well as control-oriented constructions proposed by Klauder
 \cite{Klauder2001BetterWay,Klauder2009US}.
-\end{remark}
 
 \TODO{Formal definition of polynomial transition families.}
 
@@ -298,10 +272,8 @@ as well as control-oriented constructions proposed by Klauder
 \subsection{Geometric Families}
 % ------------------------------------------------------------
 
-\begin{remark}
 Some transition curves are introduced through geometric or implicit
 relations rather than explicit curvature laws.
-\end{remark}
 
 \begin{example}
 Lemniscate-type or sinusoid-related constructions belong to this class
@@ -309,43 +281,33 @@ after suitable reparameterization into curvature space
 \cite{Pirti2016Transrapid}.
 \end{example}
 
-\begin{remark}
 These curves require transformation into $\kappa(s)$ representation
 before they can be integrated into the present framework.
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{Engineering and Practice-Oriented Families}
 % ------------------------------------------------------------
 
-\begin{remark}
 Engineering practice often introduces transition curves through design
 rules and operational considerations rather than through purely
 theoretical derivation.
-\end{remark}
 
-\begin{remark}
 The Bloss transition is a notable example of a practical engineering
 family, originally described by Bloss \cite{Bloss1978TrackGeometry}
 and further discussed in modern summaries \cite{Ciobanu2015Bloss}.
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{Modern and Hybrid Families}
 % ------------------------------------------------------------
 
-\begin{remark}
 Modern engineering practice considers a variety of transition families
 with improved dynamic behaviour, smoother endpoint properties, or
 higher-order control.
-\end{remark}
 
-\begin{remark}
 Examples include smoothed-curvature transitions proposed by Koc
 \cite{Koc2017SmoothedEnds,Koc2019SmoothedTransition,Koc2019Operational}
 and Wiener-Bogen-related approaches
 \cite{Wojtczak2017WienerBogen}.
-\end{remark}
 
 \RESEARCH{Systematic classification of modern transition families.}
 
@@ -353,16 +315,12 @@ and Wiener-Bogen-related approaches
 \section{Decomposition Approaches}
 % ============================================================
 
-\begin{remark}
 A transition need not always be treated as a single indivisible object.
 It may be useful to represent it as a composition of sub-elements.
-\end{remark}
 
-\begin{remark}
 Within AIM, complex transition behaviour may be constructed from
 composable normalized suboperators such as half-wave and clothoid
 components.
-\end{remark}
 
 \TODO{Formalize halfWave -- clothoid -- halfWave decomposition.}
 
@@ -377,10 +335,8 @@ A transition element acts as a local curvature evolution operator
 transforming one geometric state into another.
 \end{principle}
 
-\begin{remark}
 Transitions can therefore be interpreted as state evolution operators
 rather than merely as predefined geometric curve shapes.
-\end{remark}
 
 \RESEARCH{Formal operator algebra of transitions.}
 
@@ -388,7 +344,6 @@ rather than merely as predefined geometric curve shapes.
 \section{Implementation Perspective}
 % ============================================================
 
-\begin{remark}
 In computational systems, transition curves may be represented using:
 \begin{itemize}
 \item analytic expressions,
@@ -396,13 +351,10 @@ In computational systems, transition curves may be represented using:
 \item lookup tables,
 \item compiled hybrid representations.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Transition families may be represented through registries containing
 normalized curvature laws together with derivative and integration
 operators.
-\end{remark}
 
 \TODO{Registry-based transition system.}
 
@@ -412,19 +364,15 @@ operators.
 \section{Relation to Railway Engineering}
 % ============================================================
 
-\begin{remark}
 In railway applications, transitions are tightly coupled to operational
 parameters such as speed and cant, and must satisfy strict engineering
 constraints
 \cite{Kufver2000RailwayAlignment,Klein1998Trassierung}.
-\end{remark}
 
-\begin{remark}
 The review literature confirms that transition curves must be understood
 not only geometrically, but also with respect to comfort, maintenance,
 and dynamic response
 \cite{BrustadDalmo2020Review}.
-\end{remark}
 
 % ============================================================
 \section{Summary}

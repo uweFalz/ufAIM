@@ -1,425 +1,222 @@
 % foundations/ontology.tex
 
-\chapter{Ontology and Conceptual Structure}
+\chapter{Conceptual Structure}
+\label{chap:conceptual-structure}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
+The preceding chapters established the mathematical language, the
+axiomatic foundation, the architectural principles, the state model,
+the operator framework, and the concept of metric realization.
+Together they describe how railway alignments can be modelled
+mathematically while preserving the conceptual boundaries established
+by the Knowledge Kernel.
 
-\begin{remark}
-Railway alignment modelling combines concepts originating from:
+The present chapter introduces the conceptual categories used
+throughout the remainder of the thesis. Its purpose is not to introduce
+new engineering concepts but to distinguish the fundamentally different
+roles played by engineering objects, states, representations,
+realizations, observations, and engineering knowledge.
+
+Maintaining these distinctions is essential because many ambiguities in
+existing railway information systems originate from treating different
+conceptual categories as if they were identical.
+
+\section{Engineering Objects}
+
+Engineering begins with engineering objects.
+
+Engineering objects possess an engineering identity that is independent
+of how they are represented, realized, observed, or processed
+computationally.
+
+An alignment is therefore treated as an engineering object rather than
+as a curve, a CAD model, a numerical model, an exchange file, or a
+visualization.
+
+Multiple descriptions may refer to the same engineering object without
+creating additional engineering objects.
+
+\section{Engineering States}
+
+Engineering objects may exist under different conditions.
+
+These conditions are described by engineering states.
+
+A state therefore describes an engineering object under a specified
+engineering context rather than constituting the engineering object
+itself.
+
+Throughout this thesis railway states are parameterized by intrinsic
+arc-length. A state trajectory therefore describes the evolution of an
+engineering object while preserving its engineering identity.
+
+Different engineering questions may require different state
+descriptions even though they refer to the same underlying engineering
+object.
+
+\section{Representations}
+
+Engineering information must frequently be communicated, exchanged,
+stored, visualized, or processed.
+
+Such descriptions are representations.
+
+Typical representations include:
+
 \begin{itemize}
-\item geometry,
-\item mechanics,
-\item surveying,
-\item construction,
-\item vehicle dynamics,
-\item and operational railway engineering.
+\item CAD geometry,
+\item GIS datasets,
+\item exchange formats,
+\item numerical models,
+\item visualization geometry,
+\item runtime data structures,
+\item software-specific objects.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
-Many inconsistencies in classical systems arise because these concepts
-are mixed implicitly without a rigorous conceptual structure.
-\end{remark}
+Representations derive their meaning from engineering knowledge.
 
-\begin{remark}
-Within AIM, a distinction is made between:
-\begin{itemize}
-\item mathematical objects,
-\item physical objects,
-\item operational objects,
-\item and runtime representations.
-\end{itemize}
-\end{remark}
+They communicate engineering information but do not themselves possess
+engineering authority.
 
-% ============================================================
-\section{Core Ontological Distinction}
-% ============================================================
+Changing a representation therefore does not necessarily change the
+engineering object that it represents.
 
-\begin{definition}[Ontological layers]
-The AIM ontology distinguishes between:
-\begin{enumerate}
-\item abstract geometry,
-\item realized physical geometry,
-\item operational railway behaviour,
-\item and computational runtime representation.
-\end{enumerate}
-\end{definition}
+\section{Realizations}
 
-\begin{remark}
-These layers are related, but not identical.
-\end{remark}
+Engineering descriptions become geometrically meaningful only after
+they are interpreted within an appropriate realization context.
 
-% ============================================================
-\section{Alignment as Abstract Geometry}
-% ============================================================
+Metric realization assigns geometric meaning to intrinsic engineering
+information.
 
-\subsection{Alignment Concept}
+Physical realization describes how engineering intent becomes physical
+infrastructure.
 
-\begin{definition}[Alignment]
-An alignment is an intrinsic geometric object primarily defined through:
+Although both processes are forms of realization, they answer different
+engineering questions.
+
+Metric realization concerns geometric interpretation.
+
+Physical realization concerns construction reality.
+
+Neither process changes the engineering identity of the underlying
+engineering object.
+
+\section{Observations}
+
+Engineering decisions depend upon information obtained from reality.
+
+Observations provide such information.
+
+Measurements, inspections, monitoring systems, surveys, imported data,
+and field records are observations of engineering objects rather than
+the engineering objects themselves.
+
+Observations provide evidence.
+
+Evidence may contribute to engineering knowledge, but observation alone
+does not establish engineering truth.
+
+\section{Engineering Knowledge}
+
+Engineering knowledge provides the accepted interpretation of
+engineering information.
+
+Knowledge may originate from engineering principles, approved
+standards, accepted engineering decisions, validated observations,
+derived engineering results, or established engineering rules.
+
+Representations communicate knowledge.
+
+Observations support knowledge.
+
+States describe engineering objects.
+
+Realizations interpret engineering objects.
+
+Each concept therefore fulfills a distinct responsibility within the
+overall engineering system.
+
+\section{Conceptual Relationships}
+
+The conceptual relationships established throughout the foundational
+chapters may be summarized schematically as
+
 \[
-\kappa(s),
-\qquad
-\phi(s),
-\qquad
-\mathrm{pose}(s).
+\mathrm{Engineering\ Object}
+\longrightarrow
+\mathrm{State}
+\longrightarrow
+\mathrm{Representation}
 \]
-\end{definition}
 
-\begin{remark}
-Within AIM, an alignment is not merely a spatial curve.
-\end{remark}
+while realization and observation provide complementary relationships
 
-\begin{remark}
-Instead, it represents a structured operational geometry along
-arc-length.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Intrinsic Nature}
-
-\begin{remark}
-The alignment is:
-\begin{itemize}
-\item intrinsic,
-\item arc-length-based,
-\item and independent of global coordinates.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Target Geometry vs Realized Geometry}
-% ============================================================
-
-\subsection{Target Geometry}
-
-\begin{definition}[Target geometry]
-The target geometry is the intended analytical railway state defined by
-the design process.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{Realized Geometry}
-
-\begin{definition}[Realized geometry]
-The realized geometry is the physically existing railway geometry after
-construction and maintenance.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{Fundamental Distinction}
-
-\begin{proposition}
-In general:
 \[
-\mathrm{pose3}_{\mathrm{real}}
-\neq
-\mathrm{pose3}_{\mathrm{target}}.
+\mathrm{Engineering\ Object}
+\longrightarrow
+\mathrm{Realization}
 \]
-\end{proposition}
 
-\begin{remark}
-This distinction is fundamental within AIM.
-\end{remark}
+and
 
-% ============================================================
-\section{Geometry vs Vehicle Space}
-% ============================================================
-
-\subsection{Classical Simplification}
-
-\begin{remark}
-Classical railway alignment systems often reduce the railway problem to
-a centerline geometry problem.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Operational Reality}
-
-\begin{remark}
-The operationally relevant object, however, is the railway vehicle
-moving within space.
-\end{remark}
-
-\begin{remark}
-Important operational quantities include:
-\begin{itemize}
-\item center-of-gravity motion,
-\item vehicle envelope,
-\item bogie rotation,
-\item wheelset orientation,
-\item and platform interaction.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Consequence}
-
-\begin{proposition}
-The railway alignment is operationally meaningful only together with its
-vehicle-space interpretation.
-\end{proposition}
-
-% ============================================================
-\section{Pose, Frame, and State}
-% ============================================================
-
-\subsection{Pose}
-
-\begin{definition}[Pose]
-A pose describes a local geometric state attached to arc-length
-position \(s\).
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{Frame}
-
-\begin{definition}[Frame]
-A frame defines a local coordinate interpretation of the pose.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{State}
-
-\begin{definition}[State]
-A state combines:
-\begin{itemize}
-\item geometry,
-\item orientation,
-\item and operational interpretation.
-\end{itemize}
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{Runtime Nature}
-
-\begin{remark}
-Within AIM, states are runtime-evaluated rather than purely static data
-objects.
-\end{remark}
-
-% ============================================================
-\section{World Space vs Track Space}
-% ============================================================
-
-\subsection{Track Space}
-
-\begin{definition}[Track space]
-Track space is the intrinsic coordinate system attached to the
-alignment.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{World Space}
-
-\begin{definition}[World space]
-World space is a global spatial coordinate system defined through a CRS.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{Transformation}
-
-\begin{remark}
-The transformation:
 \[
-\text{world}
-\leftrightarrow
-\text{track}
+\mathrm{Engineering\ Object}
+\longrightarrow
+\mathrm{Observation}.
 \]
-is nonlinear and context-dependent.
-\end{remark}
 
-% ============================================================
-\section{CRS and Earth Geometry}
-% ============================================================
+Engineering knowledge integrates these different forms of information
+into coherent engineering interpretation.
 
-\subsection{Projection Dependence}
+No single category replaces another.
 
-\begin{remark}
-Railway geometry depends fundamentally on the underlying coordinate
-reference system.
-\end{remark}
+Instead, each answers a different engineering question.
 
-% ------------------------------------------------------------
+\section{Relationship to the Knowledge Kernel}
 
-\subsection{Non-Invariance}
+The conceptual structure presented here mirrors the organization of the
+Knowledge Kernel.
 
-\begin{proposition}
-Railway alignments are generally not invariant under CRS changes.
-\end{proposition}
+The Knowledge Kernel distinguishes engineering objects, states,
+representations, realizations, observations, engineering knowledge,
+constraints, and engineering decisions because each possesses a unique
+architectural responsibility.
 
-% ------------------------------------------------------------
+The thesis adopts the same conceptual organization in order to explain
+engineering concepts without introducing ambiguity between categories
+that serve fundamentally different purposes.
 
-\subsection{Ellipsoid Reality}
-
-\begin{remark}
-The physically realized railway exists on the Earth surface rather than
-within a projected Euclidean plane.
-\end{remark}
-
-% ============================================================
-\section{Runtime Ontology}
-% ============================================================
-
-\subsection{Runtime Services}
-
-\begin{remark}
-Many AIM objects exist operationally as runtime services rather than
-stored static entities.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Examples}
-
-\begin{remark}
-Examples include:
-\begin{itemize}
-\item world--track projection,
-\item frame evaluation,
-\item local coordinate systems,
-\item and vehicle-space interpretation.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Realization Ontology}
-% ============================================================
-
-\subsection{Construction Process}
-
-\begin{remark}
-The physically realized railway emerges from:
-\begin{itemize}
-\item measurement,
-\item machine operation,
-\item maintenance,
-\item and mechanical response.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Iterative Nature}
-
-\begin{remark}
-Realization is therefore not a static mapping, but an iterative physical
-process.
-\end{remark}
-
-% ============================================================
-\section{Optimization Ontology}
-% ============================================================
-
-\subsection{Classical Optimization}
-
-\begin{remark}
-Classical optimization often minimizes purely analytical target states.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{AIM Optimization}
-
-\begin{remark}
-Within AIM, optimization operates on:
-\begin{itemize}
-\item realized states,
-\item operational behaviour,
-\item and runtime-evaluated constraints.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Inverse Nature}
-
-\begin{remark}
-Many railway optimization problems are inverse realization problems.
-\end{remark}
-
-% ============================================================
-\section{Sparse vs Runtime Reality}
-% ============================================================
-
-\subsection{Sparse Representation}
-
-\begin{definition}[Sparse representation]
-A sparse representation stores only the essential alignment-defining
-parameters.
-\end{definition}
-
-% ------------------------------------------------------------
-
-\subsection{Runtime Expansion}
-
-\begin{remark}
-Operational runtime systems reconstruct:
-\begin{itemize}
-\item geometry,
-\item frames,
-\item vehicle-space behaviour,
-\item and projections
-\end{itemize}
-from sparse intrinsic data.
-\end{remark}
-
-% ============================================================
-\section{Fundamental AIM View}
-% ============================================================
+\section{Canonical Interpretation}
 
 \begin{proposition}
-A railway alignment is not merely a geometric curve.
+Engineering objects, states, representations, realizations,
+observations, and engineering knowledge are distinct conceptual
+categories.
 \end{proposition}
-
-\begin{remark}
-It is a multi-layer operational system connecting:
-\begin{itemize}
-\item intrinsic geometry,
-\item realization,
-\item Earth geometry,
-\item vehicle-space behaviour,
-\item runtime services,
-\item and optimization.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Key Insight}
-% ============================================================
 
 \begin{proposition}
-Many limitations of classical railway systems arise from implicit
-collapsing of fundamentally different ontological layers into a single
-geometric abstraction.
+The same engineering object may possess multiple states, multiple
+representations, multiple observations, and multiple realizations while
+retaining one engineering identity.
 \end{proposition}
 
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+\begin{proposition}
+Representations communicate engineering information but do not define
+engineering identity.
+\end{proposition}
 
-\begin{summary}
-The AIM ontology separates:
-\begin{itemize}
-\item target geometry,
-\item realized geometry,
-\item operational vehicle behaviour,
-\item runtime representations,
-\item and Earth-related coordinate systems.
-\end{itemize}
+\begin{proposition}
+Observations provide evidence but do not automatically establish
+engineering knowledge.
+\end{proposition}
 
-This separation forms the conceptual foundation for realization-aware,
-vehicle-aware, and Earth-aware railway alignment modelling.
-\end{summary}
+\begin{proposition}
+Maintaining these conceptual distinctions preserves the architectural
+responsibility boundaries established by the Knowledge Kernel.
+\end{proposition}
+
+The conceptual structure established in this chapter forms the
+terminological bridge between the mathematical foundations developed in
+this part of the thesis and the subsequent parts on geometry, railway
+state, runtime evaluation, realization, optimization, and engineering
+applications.

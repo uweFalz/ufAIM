@@ -1,296 +1,81 @@
+% reality/km_line_and_stationing.tex
+
 \chapter{Kilometre Line and Stationing}
 
-\section*{Motivation}
+\label{chap:km-line-and-stationing}
 
-\begin{remark}
-Railway infrastructure is not only described geometrically, but also by
-stationing.
-\end{remark}
+Stationing is the operational addressing layer of railway systems. It is
+not identical to constructive alignment identity, metric embedding, or
+realized geometry.
 
-\begin{remark}
-The kilometre line defines the longitudinal reference used for
-addressing positions along a railway route.
-\end{remark}
-
-\begin{remark}
-It must not be confused with the physical track centerline.
-\end{remark}
-
-\section{Definition}
+% ============================================================
+\section{Stationing Role}
+% ============================================================
 
 \begin{definition}[Kilometre line]
-A kilometre line is a longitudinal reference alignment that assigns a
-station value to positions along a railway route.
-\end{definition}
-
-\begin{remark}
-The kilometre line may coincide with a track centerline, but this is not
-required.
-\end{remark}
-
-\section{Relation to Track Alignments}
-
-\begin{remark}
-Several track alignments may refer to the same kilometre line.
-\end{remark}
-
-\begin{remark}
-This is common in double-track lines, junctions, station areas, and
-switching zones.
-\end{remark}
-
-\begin{remark}
-In single-track cases, the kilometre line and the track centerline may
-be identical.
-\end{remark}
-
-\section{Outer Stationing}
-
-\begin{remark}
-When the physical track alignment differs from the kilometre line,
-positions along the track must be related back to the kilometre
-reference.
-\end{remark}
-
-\begin{definition}[Outer stationing]
-Outer stationing describes the mapping between a track alignment and an
-external kilometre reference.
-\end{definition}
-
-\section{Topological Role}
-
-\begin{remark}
-The kilometre line acts as a topological and administrative reference
-rather than merely a geometric object.
-\end{remark}
-
-\begin{remark}
-It provides continuity across track changes, parallel tracks, and
-operationally relevant segments.
-\end{remark}
-
-\section{Implication for AIM}
-
-\begin{summary}
-Within AIM, the kilometre line is treated as a reference structure
-separate from physical track alignments.
-
-This distinction is essential for modelling multi-track situations,
-switches, stationing jumps, and real-world railway project data.
-\end{summary}
-
-\chapter{Kilometre Line, Stationing, and Spatial Reference}
-
-\section*{Motivation}
-
-\begin{remark}
-Railway infrastructure is not only described by geometry, but also by
-stationing.
-\end{remark}
-
-\begin{remark}
-A point on a railway route is usually not addressed by global
-coordinates, but by a kilometre value along a reference line.
-\end{remark}
-
-\begin{remark}
-Thus, railway modelling must distinguish between:
-\begin{itemize}
-\item geometric location,
-\item spatial reference system,
-\item and operational addressing.
-\end{itemize}
-\end{remark}
-
-\section{Three Reference Layers}
-
-\begin{definition}[Spatial reference layer]
-The spatial reference layer defines where geometry lives.
-It may be based on:
-\begin{itemize}
-\item a planar projection,
-\item a local engineering coordinate system,
-\item or, in a long-term view, a reference ellipsoid.
-\end{itemize}
-\end{definition}
-
-\begin{definition}[Geometric alignment layer]
-The geometric alignment layer describes the physical or designed track
-geometry, typically through curvature, pose, profile, and cant.
+A kilometre line is a longitudinal reference structure that assigns
+station values within a route context.
 \end{definition}
 
 \begin{definition}[Stationing layer]
-The stationing layer assigns address values to positions along a railway
-route.
+The stationing layer maps railway positions to operational address
+values.
 \end{definition}
 
-\begin{summary}
-Spatial reference answers: where is it?  
-Geometry answers: what shape is it?  
-Stationing answers: how is it addressed?
-\end{summary}
+Stationing answers how an infrastructure position is addressed;
+geometry answers what shape is realized; CRS answers where embedding is
+expressed.
 
-\section{Kilometre Line}
+% ============================================================
+\section{Relation to Geometry}
+% ============================================================
 
-\begin{definition}[Kilometre line]
-A kilometre line is a longitudinal reference structure used to assign
-station values to positions within a railway route or project.
-\end{definition}
-
-\begin{remark}
-The kilometre line may coincide with a physical track centerline, but
-this is not required.
-\end{remark}
-
-\begin{remark}
-It is therefore incorrect to treat the kilometre line simply as another
-track alignment.
-\end{remark}
-
-\section{Relation to Track Geometry}
-
-\begin{remark}
-Several physical track alignments may refer to the same kilometre line.
-\end{remark}
-
-\begin{remark}
-This occurs in:
-\begin{itemize}
-\item double-track lines,
-\item station areas,
-\item junctions,
-\item switches and crossings,
-\item temporary or construction-stage alignments.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Conversely, in simple single-track situations, the kilometre line and
-track centerline may be identical.
-\end{remark}
-
-\section{Outer Stationing}
+A kilometre line may coincide with a physical track centerline, but this
+is not required. In multi-track and junction contexts, several physical
+alignments can reference one stationing structure.
 
 \begin{definition}[Outer stationing]
-Outer stationing describes the mapping between a physical track
-alignment and an external kilometre reference.
+Outer stationing describes mapping between a physical track alignment
+coordinate and an external kilometre reference.
 \end{definition}
 
-\begin{remark}
-Outer stationing is required whenever the track geometry and the
-kilometre reference do not coincide.
-\end{remark}
+Outer stationing is required when station reference and physical track
+reference do not coincide.
 
-\begin{remark}
-In such cases, a point on the track has at least two relevant
-longitudinal coordinates:
-\begin{itemize}
-\item its intrinsic track coordinate \(s_{\mathrm{track}}\),
-\item its assigned kilometre value \(s_{\mathrm{km}}\).
-\end{itemize}
-\end{remark}
-
-\section{Relation to Ellipsoid and CRS}
-
-\begin{remark}
-The kilometre line is independent of the coordinate reference system in
-which the geometry is represented.
-\end{remark}
-
-\begin{remark}
-A kilometre value is not a projected coordinate.
-It is an addressing value along a railway-specific reference structure.
-\end{remark}
-
-\begin{remark}
-Thus, even if geometry is formulated on a reference ellipsoid, in a
-Gauss--Krüger projection, or in a local engineering CRS, the kilometre
-line remains a separate semantic layer.
-\end{remark}
-
-\section{Reference Separation Principle}
+% ============================================================
+\section{Layer Separation}
+% ============================================================
 
 \begin{proposition}
-A railway project requires separation of at least three reference
-concepts:
+Railway modelling requires separation of
 \[
-\text{spatial reference}
-\quad\neq\quad
+\text{spatial embedding}
+\neq
 \text{geometric alignment}
-\quad\neq\quad
+\neq
 \text{stationing reference}.
 \]
 \end{proposition}
 
-\begin{remark}
-Confusing these layers leads to systematic modelling errors, especially
-in multi-track and junction situations.
-\end{remark}
+Confusing these layers yields systematic errors in interpretation,
+network addressing, and target--realized comparison.
 
-\section{Implication for AIM}
+% ============================================================
+\section{Topology and Operational Continuity}
+% ============================================================
 
-\begin{remark}
-Within AIM, the kilometre line is treated as a reference object, not as
-the primary physical track geometry.
-\end{remark}
+Kilometre references provide operational continuity across track changes,
+branches, station areas, and route transitions, even where geometric
+continuity is represented by multiple physical alignments.
 
-\begin{remark}
-Track alignments may be assigned to kilometre lines by explicit
-stationing relations.
-\end{remark}
-
-\begin{remark}
-This allows AIM to model cases where:
-\begin{itemize}
-\item one kilometre line serves multiple tracks,
-\item a track has no independent kilometre line,
-\item stationing jumps occur,
-\item geometric and operational continuity differ.
-\end{itemize}
-\end{remark}
-
-\section{Relation to the Seven-Line Model}
-
-\begin{remark}
-The kilometre line plays a central role in the seven-line import and
-sorting model.
-\end{remark}
-
-\begin{remark}
-A simplified structure is:
-\[
-\text{km-line}
-\rightarrow
-\begin{cases}
-\text{right track} \rightarrow (\text{profile}, \text{cant}),\\
-\text{left track}  \rightarrow (\text{profile}, \text{cant}),\\
-\text{outer stationing}.
-\end{cases}
-\]
-\end{remark}
-
-\begin{remark}
-This expresses that the kilometre line provides the addressing context,
-while the tracks provide the physical geometry and engineering state.
-\end{remark}
-
-\section{Key Insight}
-
-\begin{proposition}
-The kilometre line is not primarily a geometric curve, but an addressing
-structure for railway infrastructure.
-\end{proposition}
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
-The km-line, the geometric alignment, and the spatial reference system
-serve different roles.
+In AIM, stationing is an explicit reference layer used for operational
+addressing and comparison workflows.
 
-The km-line addresses railway infrastructure.
-
-The alignment describes physical geometry.
-
-The CRS or ellipsoid defines the spatial embedding.
-
-Keeping these layers separate is essential for robust railway modelling,
-especially in multi-track, station, and junction contexts.
+It remains distinct from constructive identity, CRS embedding, and
+realized track geometry.
 \end{summary}

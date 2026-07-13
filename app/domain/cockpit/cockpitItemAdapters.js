@@ -11,6 +11,7 @@
 // - no store mutation
 
 import { normalizeCrsId } from "@src/domain/crs/CrsAgent.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // -----------------------------------------------------------------------------
 // import rows: secondary / inbox-like
@@ -47,10 +48,7 @@ export function buildImportRows(windowState = {}, importState = {}) {
 
 export function buildSpotRows(windowState = {}, spotState = {}) {
 	const objects = Object.values(spotState?.objects ?? {});
-	const activeObjectId =
-		windowState?.focus?.objectId ??
-		windowState?.activeRouteProjectId ??
-		null;
+	const activeObjectId = getWorkspacePrimaryId(windowState);
 
 	return objects.map((obj) => {
 		const objectId = String(obj?.id ?? "");
@@ -101,12 +99,6 @@ export function makePreviewCandidate(item) {
 		id: item.id ?? item?.payload?.id ?? item?.payload?.name ?? "preview_alignment",
 		kind: item.kind ?? "alignment",
 		name,
-
-		// compatibility for current ViewController
-		sparseAlignment: kernel,
-		spatialRef: item?.derived?.spatialRef ?? null,
-
-		// newer vocabulary
 		kernel,
 		crsId,
 
@@ -151,11 +143,8 @@ export function readImportLabel(item) {
 export function readSpotLabel(obj) {
 	return (
 		obj?.data?.name ??
-		obj?.payload?.name ??
 		obj?.meta?.label ??
-		obj?.meta?.name ??
 		obj?.meta?.objectId ??
-		obj?.meta?.alignmentName ??
 		obj?.id ??
 		"object"
 	);
@@ -178,30 +167,18 @@ export function deriveImportItemCrsId(item) {
 }
 
 export function derivePreviewCrsId(previewItem) {
-	const sr = previewItem?.spatialRef ?? null;
-
-	return normalizeCrsId(
-		previewItem?.crsId ??
-		sr?.crsId ??
-		sr?.horizontalCrsId ??
-		sr?.horizontal ??
-		sr?.horizontalCoordinateSystemName ??
-		null
-	);
+	return normalizeCrsId(previewItem?.crsId ?? null);
 }
 
 export function deriveSpotObjectCrsId(obj) {
 	const sr =
-		obj?.spatialRef ??
 		obj?.data?.spatialRef ??
-		obj?.payload?.spatialRef ??
 		obj?.meta?.spatialRef ??
 		null;
 
 	return normalizeCrsId(
 		obj?.crsId ??
 		obj?.data?.crsId ??
-		obj?.payload?.crsId ??
 		sr?.crsId ??
 		sr?.horizontalCrsId ??
 		sr?.horizontal ??
@@ -253,13 +230,7 @@ export function deriveImportQualityFlags(item) {
 // -----------------------------------------------------------------------------
 
 export function readSpotKernel(obj) {
-	return (
-		obj?.data?.kernel ??
-		obj?.payload?.sparseAlignment ??
-		obj?.payload?.kernel ??
-		obj?.sparseAlignment ??
-		null
-	);
+	return obj?.data?.kernel ?? null;
 }
 
 export function readSpotBands(obj) {
@@ -267,30 +238,28 @@ export function readSpotBands(obj) {
 
 	return (
 		obj?.data?.bands ??
-		obj?.payload?.bands ??
 		kernel?.bands ??
 		{}
 	);
 }
 
 export function readSpotSource(obj) {
+	const source =
+		obj?.meta?.source ??
+		obj?.data?.source ??
+		{};
+
 	return {
 		fileName:
-			obj?.meta?.source?.fileName ??
-			obj?.source?.fileName ??
-			obj?.data?.source?.fileName ??
+			source?.fileName ??
 			null,
 
 		parserId:
-			obj?.meta?.source?.parserId ??
-			obj?.source?.parserId ??
-			obj?.data?.source?.parserId ??
+			source?.parserId ??
 			null,
 
 		objectName:
-			obj?.meta?.source?.objectName ??
-			obj?.source?.objectName ??
-			obj?.data?.source?.objectName ??
+			source?.objectName ??
 			null,
 	};
 }

@@ -17,7 +17,7 @@
 // - workspace_visible_tracks       = fertig projizierte Hilfsspuren für Anzeige
 //
 // Deprecated transitional aliases still kept:
-// - activeRouteProjectId / activeSlot
+// - activeSlot
 // - view_pins
 // - import_preview_collection
 // - routeProjects / artifacts / import_*
@@ -26,6 +26,10 @@
 // workspaceState is a bridge, not the truth.
 
 import { clamp01range } from "@utils/helpers.js";
+import {
+	getWorkspacePrimaryId,
+	getWorkspaceSelection,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 import { makeInitialState, ensureStateShape } from "./storeShape.js";
 
@@ -123,9 +127,6 @@ export function createWindowStore(initial) {
 					source: selection?.source != null ? String(selection.source) : null,
 					crsId: selection?.crsId != null ? String(selection.crsId) : null,
 				},
-
-				// @deprecated focus mirror
-				activeRouteProjectId: primaryId,
 			});
 		},
 
@@ -143,9 +144,6 @@ export function createWindowStore(initial) {
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
-
-					// @deprecated focus mirror
-					activeRouteProjectId: id,
 				};
 			});
 		},
@@ -162,9 +160,6 @@ export function createWindowStore(initial) {
 						source: current.source ?? null,
 						crsId: current.crsId ?? null,
 					},
-
-					// @deprecated focus mirror
-					activeRouteProjectId: null,
 				};
 			});
 		},
@@ -254,7 +249,6 @@ export function createWindowStore(initial) {
 				},
 
 				// @deprecated mirrors
-				activeRouteProjectId: null,
 				view_pins: [],
 			});
 		},
@@ -303,29 +297,6 @@ export function createWindowStore(initial) {
 		// @deprecated
 		clearImportPreviewCollection() {
 			return actions.clearWorkspaceVisibleTracks();
-		},
-
-		// ------------------------------------------------------------
-		// @deprecated legacy focus mirror
-		// Use setWorkspacePrimary / clearWorkspacePrimary.
-		// ------------------------------------------------------------
-		setActiveRouteProject(id) {
-			const objectId = normalizeId(id);
-
-			setState((st) => {
-				const current = st.workspace_selection ?? {};
-
-				return {
-					...st,
-					activeRouteProjectId: objectId,
-					workspace_selection: {
-						primaryId: objectId,
-						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
-						source: current.source ?? "legacy-activeRouteProjectId",
-						crsId: current.crsId ?? null,
-					},
-				};
-			});
 		},
 
 		// @deprecated slot mirror.
@@ -468,10 +439,7 @@ export function createWindowStore(initial) {
 
 		togglePinFromActive() {
 			const st = getState();
-			const rpId =
-				st.workspace_selection?.primaryId ??
-				st.activeRouteProjectId ??
-				null;
+			const rpId = getWorkspacePrimaryId(st);
 
 			if (!rpId) return;
 
@@ -503,19 +471,17 @@ export function createWindowStore(initial) {
 				const pins0 = Array.isArray(st.view_pins) ? st.view_pins : [];
 				const pins = pins0.filter((p) => p?.rpId !== id);
 
-				const current = st.workspace_selection ?? {};
+				const current = getWorkspaceSelection(st);
 				const contextIds = normalizeIdList(
-					(Array.isArray(current.contextIds) ? current.contextIds : [])
+					current.contextIds
 						.filter((x) => x !== id)
 				);
 
-				let active = st.activeRouteProjectId;
-				let primaryId = current.primaryId ?? active ?? null;
+				let primaryId = current.primaryId;
 
-				if (active === id || primaryId === id) {
+				if (primaryId === id) {
 					const ids = Object.keys(rps).sort((a, b) => a.localeCompare(b));
-					active = ids[0] ?? null;
-					primaryId = active;
+					primaryId = ids[0] ?? null;
 				}
 
 				return {
@@ -523,7 +489,6 @@ export function createWindowStore(initial) {
 					routeProjects: rps,
 					artifacts: arts,
 					view_pins: pins,
-					activeRouteProjectId: active,
 					workspace_selection: {
 						primaryId,
 						contextIds,

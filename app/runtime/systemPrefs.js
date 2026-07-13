@@ -2,7 +2,7 @@
 
 function resolveWorkerUrl() {
 	// SharedWorker must use exactly the same URL in every window
-	return "/src/shared/messaging/SharedMessagingWorker.js";
+	return "/src/shared/messaging/SharedMessagingWorker.bootstrap.js?v=20260714";
 }
 
 function makeSystemPrefs() {
@@ -47,6 +47,8 @@ function makeSystemPrefs() {
 		runtime: {
 			legacyAppCore: true,
 			runWorkerSmokeTest: true,
+			workerSmokeTimeoutMs: 5000,
+			allowLocalFallback: false,
 		},
 	};
 }
@@ -91,6 +93,8 @@ function normalizePrefs(raw = {}) {
 		runtime: {
 			legacyAppCore: Boolean(prefs.runtime?.legacyAppCore ?? true),
 			runWorkerSmokeTest: Boolean(prefs.runtime?.runWorkerSmokeTest ?? true),
+			workerSmokeTimeoutMs: Number(prefs.runtime?.workerSmokeTimeoutMs ?? 5000),
+			allowLocalFallback: Boolean(prefs.runtime?.allowLocalFallback ?? false),
 		},
 	};
 }

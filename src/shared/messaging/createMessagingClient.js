@@ -7,6 +7,7 @@ import { MessagingClient } from "./MessagingClient.js";
 export async function createMessagingClient(prefs, { windowId, role = "view" } = {}) {
 	const cfg = prefs?.messaging ?? {};
 	const mode = String(cfg.mode ?? "sharedWorker");
+	let resolvedMode = mode;
 
 	let transport;
 
@@ -17,6 +18,7 @@ export async function createMessagingClient(prefs, { windowId, role = "view" } =
 		await transport.connect();
 	}
 	else if (mode === "local") {
+		resolvedMode = "local";
 		transport = new LocalBus({ debug: !!cfg.debug, echo: !!cfg.workerEcho }); // <== ???
 		await transport.connect(); // no-op
 	}
@@ -24,5 +26,7 @@ export async function createMessagingClient(prefs, { windowId, role = "view" } =
 		throw new Error(`createMessagingClient: unknown messaging mode '${mode}'`);
 	}
 
-	return new MessagingClient({ transport, windowId, role });
+	const client = new MessagingClient({ transport, windowId, role });
+	client.resolvedMode = resolvedMode;
+	return client;
 }

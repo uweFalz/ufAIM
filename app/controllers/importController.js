@@ -1,7 +1,10 @@
 // app/controllers/importController.js
 
 import { installFileDrop } from "@io/input/fileDrop.js";
-import { projectAlignmentPreview } from "@src/domain/projection/AlignmentProjectionService.js";
+import {
+	makeAlignmentProjectionInput,
+	projectAlignmentPreview,
+} from "@src/domain/projection/AlignmentProjectionService.js";
 
 import {
 	importOneFile,
@@ -164,11 +167,16 @@ export function makeImportController({
 		for (const item of items) {
 			if (item?.kind !== "alignment") continue;
 
-			const sparseAlignment = item?.derived?.sparseAlignment ?? null;
-			if (!sparseAlignment) continue;
+			const input = makeAlignmentProjectionInput({
+				objectId: item?.id ?? null,
+				geometry: item?.derived?.sparseAlignment ?? null,
+				source: "import-item",
+				crsId: deriveItemCrsId(item),
+			});
+			if (!input) continue;
 
 			const projected = projectAlignmentPreview({
-				sparseAlignment,
+				input,
 				maxStep: sampleStep,
 			});
 

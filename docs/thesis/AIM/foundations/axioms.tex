@@ -1,140 +1,86 @@
 % foundations/axioms.tex
 
 \chapter{Axiomatic Foundation}
+\label{chap:axiomatic-foundation}
 
-\section{Primitives}
-
-\begin{definition}
-$s \in \R$ is the arc-length parameter.
-\end{definition}
-
-\begin{definition}
-$\gamma : I \to \R^2$ is a curve.
-\end{definition}
-
-\begin{definition}
-$\theta : I \to \R$ is the direction angle.
-\end{definition}
-
-\begin{definition}
-$\kappaf : I \to \R$ is the curvature.
-\end{definition}
-
-\section{Axioms}
-
-\begin{axiom}
+The mathematical development of this thesis begins with the intrinsic
+planar geometry of an alignment. Let \(I\subseteq\mathbb{R}\) be an
+interval parameterized by arc-length \(s\). The alignment curve,
+heading, and curvature are denoted by
 \[
-\norm{\gamma'(s)} = 1
+\gamma:I\rightarrow\mathbb{R}^{2},
+\qquad
+\theta:I\rightarrow\mathbb{R},
+\qquad
+\kappa:I\rightarrow\mathbb{R}.
+\]
+
+% ============================================================
+\section{Intrinsic Planar Geometry}
+% ============================================================
+
+\begin{axiom}[Arc-length Parameterization]
+\label{ax:arc-length-parameterization}
+The alignment curve is parameterized by arc-length:
+\[
+\lVert\gamma'(s)\rVert=1
+\qquad\text{for all }s\in I.
 \]
 \end{axiom}
 
-\begin{axiom}
+\begin{axiom}[Heading Evolution]
+\label{ax:heading-evolution}
+Curvature is the derivative of heading with respect to arc-length:
 \[
-\theta'(s) = \kappaf(s)
+\theta'(s)=\kappa(s).
 \]
 \end{axiom}
 
-\begin{axiom}
+\begin{axiom}[Tangent Reconstruction]
+\label{ax:tangent-reconstruction}
+The unit tangent of the planar alignment is determined by the heading:
 \[
-\gamma'(s) = (\cos\theta(s), \sin\theta(s))
+\gamma'(s)=
+\begin{pmatrix}
+\cos\theta(s)\\
+\sin\theta(s)
+\end{pmatrix}.
 \]
 \end{axiom}
 
-\section{Consequence}
+% ============================================================
+\section{Reconstruction Consequence}
+% ============================================================
 
-\begin{proposition}
-Curvature uniquely defines the curve up to initial conditions.
+\begin{proposition}[Curvature-driven reconstruction]
+\label{prop:curvature-driven-reconstruction}
+Given an initial position \(\gamma(s_0)\), an initial heading
+\(\theta(s_0)\), and a sufficiently regular curvature function
+\(\kappa\), the planar alignment is uniquely determined on \(I\).
 \end{proposition}
 
-\section{Architectural Axioms}
+\begin{proof}
+Integration of \cref{ax:heading-evolution} determines
+\[
+\theta(s)=\theta(s_0)+\int_{s_0}^{s}\kappa(\sigma)\,\dd\sigma.
+\]
+Substitution into \cref{ax:tangent-reconstruction} and subsequent
+integration determine
+\[
+\gamma(s)=\gamma(s_0)
++
+\int_{s_0}^{s}
+\begin{pmatrix}
+\cos\theta(\sigma)\\
+\sin\theta(\sigma)
+\end{pmatrix}
+\dd\sigma.
+\]
+The prescribed initial conditions therefore fix the remaining
+integration constants.
+\end{proof}
 
-\begin{axiom}[Semantic--Metric Separation]
-\label{ax:semantic-metric-separation}
-
-Constructive alignment semantics and metric realization are distinct
-conceptual layers.
-
-\end{axiom}
-
-\begin{remark}
-
-Alignment semantics describe what has been designed.
-
-Metric realization describes how the design is evaluated
-geometrically.
-
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{axiom}[CRS Independence]
-\label{ax:crs-independence}
-
-AlignmentData is independent of any particular coordinate reference
-system.
-
-\end{axiom}
-
-\begin{remark}
-
-CRS independence does not imply metric independence.
-
-An alignment may be interpreted within different metric realization
-spaces without changing its constructive semantics.
-
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{axiom}[Physical Interpretation Layer]
-\label{ax:physical-interpretation}
-
-Physical railway quantities are not part of constructive alignment
-semantics.
-
-They emerge only after metric realization.
-
-\end{axiom}
-
-\begin{remark}
-
-Examples include:
-
-\begin{itemize}
-\item cant equilibrium,
-\item gravity,
-\item acceleration,
-\item vehicle response,
-\item dynamic balance,
-\item comfort,
-\item and operational admissibility.
-\end{itemize}
-
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{axiom}[Representation Independence]
-\label{ax:representation-independence}
-
-Representation is not part of alignment semantics.
-
-Visualization and exchange formats are derived representations of
-realized alignment states.
-
-\end{axiom}
-
-\begin{remark}
-
-Examples include:
-
-\begin{itemize}
-\item CAD geometry,
-\item GIS visualization,
-\item LandXML,
-\item IFC,
-\item railML,
-\item and runtime rendering.
-\end{itemize}
-
-\end{remark}
+These axioms establish the intrinsic planar reconstruction kernel used
+throughout the subsequent development. Architectural separation,
+realization, and representation are governed by the principles of the
+following chapter rather than by additional mathematical axioms.

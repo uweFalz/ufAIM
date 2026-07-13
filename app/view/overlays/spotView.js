@@ -16,6 +16,7 @@
 import { formatPct01 } from "@utils/helpers.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
 import { t } from "@app/i18n/strings.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // ------------------------------------------------------------
 // helpers
@@ -138,10 +139,7 @@ export function renderSpotHtml({ spotState, storeState }) {
 		</div>`;
 	}
 
-	const activeObjectId =
-		storeState?.focus?.objectId ??
-		storeState?.activeRouteProjectId ??
-		null;
+	const activeObjectId = getWorkspacePrimaryId(storeState);
 
 	const decisions = storeState?.spot_decisions ?? {};
 

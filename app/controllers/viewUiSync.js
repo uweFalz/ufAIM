@@ -6,13 +6,14 @@
 import { t } from "@app/i18n/strings.js";
 import { clamp01 } from "@utils/helpers.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 import { normalizePins } from "@app/controllers/viewGeometry.js";
 import { renderBandsText, renderSectionText } from "@app/controllers/viewTextRender.js";
 
 export function syncRouteProjectSelect(ui, state) {
 	const ids = Object.keys(state.routeProjects ?? {}).sort((a, b) => a.localeCompare(b));
-	ui.setRouteProjectOptions?.(ids, state.activeRouteProjectId);
+	ui.setRouteProjectOptions?.(ids, getWorkspacePrimaryId(state));
 }
 
 export function syncSpotBaseIdDatalist(state) {

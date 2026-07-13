@@ -2,201 +2,48 @@
 
 \chapter{Contribution}
 
-\section*{Motivation}
+\label{chap:applications-contribution}
 
-\begin{remark}
-Railway alignment has traditionally been approached as a geometric
-design problem, supplemented by engineering rules and dynamic
-considerations.
-\end{remark}
+This chapter summarizes contribution consequences of the thesis from the
+application perspective.
 
-\begin{remark}
-However, these aspects are often treated separately, leading to
-fragmented models and limited theoretical coherence.
-\end{remark}
+% ============================================================
+\section{Contribution Scope}
+% ============================================================
 
----
+The central contribution is not a new isolated application method, but a
+coherent alignment-centred engineering framework that supports
+application-level decision support through canonical concepts.
 
-\section{Central Hypothesis}
+% ============================================================
+\section{Application-Level Contributions}
+% ============================================================
 
-\begin{theorem}[Curvature as System Variable]
-A railway alignment can be represented as a curvature-driven system in
-which
-\[
-\kappa(s)
-\]
-acts as the primary state variable.
-\end{theorem}
-
-\begin{remark}
-All geometric, kinematic, and dynamic properties of the alignment follow
-from $\kappa(s)$ and its derivatives.
-\end{remark}
-
----
-
-\section{System Interpretation of Alignment}
-
-\begin{proposition}
-The behaviour of a railway alignment can be described by the mapping
-\[
-\kappa(s) \;\longrightarrow\; \text{forces} \;\longrightarrow\;
-\text{system response} \;\longrightarrow\; \text{performance}.
-\]
-\end{proposition}
-
-\begin{remark}
-This establishes alignment as a system rather than a static geometric
-object.
-\end{remark}
-
----
-
-\section{Unification of Transition Curves}
-
-\begin{theorem}[Unified Transition Representation]
-All transition curves can be expressed as curvature functions
-\[
-\kappa(s)
-\]
-within a normalized domain.
-\end{theorem}
-
-\begin{remark}
-This allows comparison of historically distinct transition concepts
-within a single mathematical framework.
-\end{remark}
-
----
-
-\section{Transition Curves as Control Functions}
-
-\begin{theorem}[Control Interpretation]
-Transition curves act as control functions governing the evolution of
-curvature and thus the dynamic behaviour of the system.
-\end{theorem}
-
-\begin{remark}
-This interpretation replaces the traditional view of transition curves
-as purely geometric connectors.
-\end{remark}
-
----
-
-\section{Structured Alignment Model}
-
-\begin{proposition}
-An alignment can be represented as a structured sequence of elements:
+From the application perspective, the work contributes:
 \begin{itemize}
-\item fixed curvature elements,
-\item transition elements,
-\item auxiliary alignment layers such as cant.
+\item a consistent concept-to-application progression,
+\item operator-based runtime and realization-aware evaluation support,
+\item explicit separation between engineering objects and
+representation/exchange forms,
+\item and practical interoperability pathways for BIM/GIS-oriented
+workflows.
 \end{itemize}
-\end{proposition}
 
-\begin{remark}
-This structure separates representation, geometry, and system behaviour.
-\end{remark}
+% ============================================================
+\section{Consequence for Engineering Practice}
+% ============================================================
 
----
+Applications become reproducible and comparable because they are derived
+from a stable conceptual core rather than project-specific ad-hoc
+semantics.
 
-\section{Coupling with Engineering Variables}
-
-\begin{remark}
-Alignment design is governed by coupled variables including:
-\begin{itemize}
-\item curvature,
-\item cant,
-\item speed,
-\item and their rates of change.
-\end{itemize}
-\end{remark}
-
-\begin{proposition}
-Dynamic constraints can be expressed as conditions on
-\[
-\kappa(s), \quad \kappa'(s), \quad \kappa''(s).
-\]
-\end{proposition}
-
----
-
-\section{Numerical and Optimization Perspective}
-
-\begin{remark}
-The curvature-based representation allows direct application of
-numerical integration and optimization methods.
-\end{remark}
-
-\begin{proposition}
-Alignment design can be formulated as a parameterized optimization
-problem in curvature space.
-\end{proposition}
-
----
-
-\section{Integration with Data Models}
-
-\begin{remark}
-Modern railway data models represent alignment as a multi-layer
-structure consisting of horizontal, vertical, and cant components.
-\end{remark}
-
-\begin{proposition}
-The structured alignment model proposed here is compatible with such
-multi-layer representations.
-\end{proposition}
-
----
-
-\section{Main Contributions}
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
-The contributions of this work can be summarized as follows:
-
-\begin{itemize}
-\item A curvature-based system interpretation of alignment.
-\item A unified representation of transition curves.
-\item The interpretation of transition curves as control functions.
-\item A structured alignment model separating geometry and behaviour.
-\item Integration of geometry, dynamics, and engineering constraints.
-\item A foundation for alignment-based information modelling (AIM).
-\end{itemize}
-
-The numerical comparison of transition laws shows that identical
-boundary conditions may still lead to substantially different internal
-curvature evolution and therefore different dynamic behaviour.
+The contribution of the Applications part is to show how approved AIM
+concepts translate into concrete engineering consequences, including
+runtime-supported evaluation, realization-aware comparison, and
+interoperable representation for decision support.
 \end{summary}
-
----
-
-\section{Scientific Positioning}
-
-\begin{remark}
-The presented approach does not introduce a new transition curve, but a
-new conceptual framework for understanding alignment.
-\end{remark}
-
-\begin{remark}
-It connects previously separated domains:
-\begin{itemize}
-\item geometry,
-\item dynamics,
-\item engineering design,
-\item and data modelling.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Outlook}
-
-\begin{remark}
-The framework provides a basis for future work in:
-\begin{itemize}
-\item dynamic simulation,
-\item alignment optimization,
-\item network-level modelling,
-\item and BIM integration.
-\end{itemize}
-\end{remark}

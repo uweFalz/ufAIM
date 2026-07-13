@@ -1,5 +1,7 @@
 // src/shared/messaging/service/ProjectStateService.js
 
+import { getWorkspaceSelection } from "../../runtime/workspaceSelectionAccess.js";
+
 export function createProjectStateService({ getState, setState, router } = {}) {
 	if (typeof getState !== "function") {
 		throw new Error("ProjectStateService: missing getState");
@@ -21,9 +23,18 @@ export function createProjectStateService({ getState, setState, router } = {}) {
 	}
 
 	function setActiveRouteProject({ routeProjectId } = {}) {
+		const current = getState() ?? {};
+		const workspaceSelection =
+			getWorkspaceSelection(current);
+
 		const next = {
-			...getState(),
-			activeRouteProjectId: routeProjectId ?? null,
+			...current,
+			workspace_selection: {
+				primaryId: routeProjectId ?? null,
+				contextIds: workspaceSelection.contextIds,
+				source: workspaceSelection.source ?? null,
+				crsId: workspaceSelection.crsId ?? null,
+			},
 		};
 
 		setState(next);

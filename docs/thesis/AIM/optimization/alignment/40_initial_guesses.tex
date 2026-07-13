@@ -4,19 +4,15 @@
 
 \subsection{Motivation}
 
-\begin{remark}
 The performance of SQP methods strongly depends on the choice of the
 initial parameter vector.
-\end{remark}
 
-\begin{remark}
 In railway applications, initial data is often available in the form of:
 \begin{itemize}
 \item measurement polylines,
 \item existing alignments,
 \item partially structured design data.
 \end{itemize}
-\end{remark}
 
 \subsection{Input Representation}
 
@@ -39,9 +35,7 @@ s_{i+1} = s_i + \|p_{i+1} - p_i\|.
 \]
 \end{definition}
 
-\begin{remark}
 This defines a parameterization of the input data.
-\end{remark}
 
 \subsection{Initial Curvature Estimation}
 
@@ -58,15 +52,11 @@ where
 \]
 \end{definition}
 
-\begin{remark}
 This provides a first estimate of curvature from geometric data.
-\end{remark}
 
 \subsection{Smoothing}
 
-\begin{remark}
 Raw curvature estimates are typically noisy.
-\end{remark}
 
 \begin{definition}[Smoothing operator]
 Apply a smoothing filter:
@@ -77,34 +67,28 @@ Apply a smoothing filter:
 \]
 \end{definition}
 
-\begin{remark}
 Possible choices:
 \begin{itemize}
 \item moving average,
 \item Gaussian filter,
 \item low-pass filtering.
 \end{itemize}
-\end{remark}
 
 \subsection{Initial Cant Estimation}
 
-\begin{remark}
 Cant may be initialized based on equilibrium:
 \[
 \phi_i^{(0)}
 =
 \arcsin\left(\frac{v^2 \kappa_i^{(0)}}{g}\right).
 \]
-\end{remark}
 
-\begin{remark}
 Alternatively, cant may be:
 \begin{itemize}
 \item set to zero,
 \item taken from input data,
 \item approximated by design rules.
 \end{itemize}
-\end{remark}
 
 \subsection{Projection to Discrete Grid}
 
@@ -118,14 +102,12 @@ s_0,\dots,s_N.
 
 \subsection{Heuristic Segmentation}
 
-\begin{remark}
 The input alignment may be segmented into:
 \begin{itemize}
 \item straight sections,
 \item circular arcs,
 \item transition regions.
 \end{itemize}
-\end{remark}
 
 \begin{definition}[Segment detection]
 A segment is classified based on curvature:
@@ -137,12 +119,10 @@ A segment is classified based on curvature:
 \]
 \end{definition}
 
-\begin{remark}
 This structure can be used to improve the initial guess and is
 compatible with railway alignment reconstruction approaches such as
 those discussed by Kufver
 \cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
-\end{remark}
 
 \subsection{Final Initial Guess}
 
@@ -157,14 +137,12 @@ The initial guess is
 
 \subsection{Interpretation}
 
-\begin{remark}
 The initial guess combines:
 \begin{itemize}
 \item measured geometry,
 \item smoothing,
 \item physical approximation.
 \end{itemize}
-\end{remark}
 
 \begin{summary}
 A robust initial guess transforms raw geometric input into a structured

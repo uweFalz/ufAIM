@@ -77,12 +77,6 @@ export function makePreviewCandidate(item) {
 		id: item.id ?? item?.payload?.id ?? item?.payload?.name ?? "preview_alignment",
 		kind: item.kind ?? "alignment",
 		name,
-
-		// legacy/local preview compatibility
-		sparseAlignment: kernel,
-		spatialRef: item?.derived?.spatialRef ?? null,
-
-		// newer runtime vocabulary
 		kernel,
 		crsId,
 

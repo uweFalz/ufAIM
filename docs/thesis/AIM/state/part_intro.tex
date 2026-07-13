@@ -4,109 +4,37 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{State}
 
-% ============================================================
-\section*{What do we already know?}
-% ============================================================
+The preceding part established the intrinsic geometry of railway
+alignments. It showed that curvature evolution along arc length provides
+the canonical constructive description of geometry, while metric
+realization and physical interpretation remain separate concerns. The
+present part bridges that intrinsic description to an evaluable railway
+state.
 
-\begin{remark}
-The previous part established the intrinsic geometry of railway
-alignments.
-\end{remark}
+The state part therefore follows a dependency-driven progression.
+Constructive alignment semantics yield the intrinsic planar
+reconstruction state \(\mathrm{pose2}\). Metric realization and
+engineering context then supply the additional information required to
+evaluate profile and cant. The resulting spatial interpretation is the
+runtime railway state \(\mathrm{pose3}\). From this state, world-to-track
+interpretation, derived runtime quantities, and operational behaviour
+are evaluated downstream.
 
-\begin{remark}
-Within AIM, geometry was shown to emerge from curvature evolution along
-arc-length, rather than from stored coordinates or predefined geometric
-primitives.
-\end{remark}
-
-\begin{remark}
-Curvature space therefore provides a complete intrinsic description of
-railway geometry.
-\end{remark}
-
-\begin{remark}
-However, geometry alone does not yet constitute a railway state.
-\end{remark}
-
-% ============================================================
-\section*{What is still missing?}
-% ============================================================
-
-\begin{remark}
-A geometric description specifies what the alignment is.
-\end{remark}
-
-\begin{remark}
-It does not yet specify how the alignment is represented,
-reconstructed, interpreted, or evaluated during operation.
-\end{remark}
-
-\begin{remark}
-Engineering applications require more than geometry alone.
-\end{remark}
-
-\begin{remark}
-Position, direction, profile, cant, spatial orientation,
-admissible motions, and runtime interpretation all require additional
-state variables.
-\end{remark}
-
-\begin{remark}
-A bridge therefore remains between intrinsic geometry and operational
-railway behaviour.
-\end{remark}
-
-\begin{remark}
-The missing element is a coherent state description.
-\end{remark}
-
-% ============================================================
-\section*{What comes next?}
-% ============================================================
-
-\begin{remark}
-This part introduces the railway state model underlying AIM.
-\end{remark}
-
-\begin{remark}
-The first state layer is \(\mathrm{pose2}\), the intrinsic
-reconstruction state generated from curvature.
-\end{remark}
-
-\begin{remark}
-It provides the initial-value structure required to reconstruct
-position and direction along the alignment.
-\end{remark}
-
-\begin{remark}
-The second state layer is \(\mathrm{pose3}\), the spatial railway
-state obtained through profile, cant, frame interpretation, and metric
-realization.
-\end{remark}
-
-\begin{remark}
-Importantly, \(\mathrm{pose3}\) describes the railway itself.
-\end{remark}
-
-\begin{remark}
-Vehicle states are introduced only later as states evolving relative
-to \(\mathrm{pose3}\).
-\end{remark}
-
-\begin{remark}
-The chapters of this part establish the variables, frames, operators,
-and transformations required to connect intrinsic geometry with
-operational railway interpretation.
-\end{remark}
+The chapters in this part therefore separate persistent engineering
+information from the runtime interpretation of that information. They do
+not merge geometry, realization, physical interpretation, and
+operational state into a single object. Instead, they make the
+underlying dependency structure explicit.
 
 % ============================================================
 \section*{Relation to the AIM Roadmap}
 % ============================================================
 
-\begin{remark}
 Within the AIM roadmap, the present part corresponds to the transition
-from curvature space toward railway states.
-\end{remark}
+from curvature space toward railway states. The progression from
+curvature space to \(\mathrm{pose2}\) and further to \(\mathrm{pose3}\)
+forms the central bridge between intrinsic geometry and all later
+runtime, realization, and optimization concepts.
 
 \begin{figure}[ht]
 \centering
@@ -141,18 +69,9 @@ from curvature space toward railway states.
 
 \end{figure}
 
-\begin{remark}
-The progression from curvature space to \(\mathrm{pose2}\) and further
-to \(\mathrm{pose3}\) forms the central bridge between intrinsic
-geometry and all later runtime, realization, and optimization
-concepts.
-\end{remark}
-
-\begin{remark}
 The state model developed here serves as the foundation for vehicle
-space, runtime evaluation, realization-aware modelling, and
-optimization in subsequent parts of this thesis.
-\end{remark}
+space, runtime evaluation, realization-aware modelling, and optimization
+in subsequent parts of this thesis.
 
 % ============================================================
 \begin{principle}[Railway-State Principle]

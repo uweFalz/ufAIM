@@ -8,12 +8,9 @@
 \section*{Motivation}
 % ============================================================
 
-\begin{remark}
 Classical railway alignment optimization is usually formulated as a
 geometric optimization problem.
-\end{remark}
 
-\begin{remark}
 Typical optimization variables include:
 \begin{itemize}
 \item points,
@@ -21,20 +18,15 @@ Typical optimization variables include:
 \item tangent lengths,
 \item and geometric transition parameters.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Within AIM, however, operational railway behaviour emerges from runtime
 state evolution rather than from geometry alone.
-\end{remark}
 
-\begin{remark}
 Consequently, the relevant optimization object is not merely geometric
 shape, but:
 \begin{quote}
 runtime operational state trajectories.
 \end{quote}
-\end{remark}
 
 \begin{principle}[State-space optimization principle]
 \label{princ:state-space-optimization}
@@ -51,7 +43,6 @@ Railway optimization in AIM is trajectory shaping in runtime state space.
 \section{From Geometry to Runtime States}
 % ============================================================
 
-\begin{remark}
 Geometric railway alignments generate:
 \[
 \mathrm{pose3}(s),
@@ -64,9 +55,7 @@ which in turn generates:
 \item roll evolution,
 \item and vehicle-state trajectories.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Thus, geometry acts indirectly through:
 \[
 \kappa(s),
@@ -76,20 +65,15 @@ u(s),
 \phi(s),
 \]
 to generate operational runtime states.
-\end{remark}
 
-\begin{remark}
 Optimization therefore acts fundamentally on:
 \[
 x(s),
 \]
 where \(x(s)\) denotes the evolving operational runtime state.
-\end{remark}
 
-\begin{remark}
 The geometry remains important, but it is interpreted as a generator of
 runtime-state trajectories rather than as the final optimization object.
-\end{remark}
 
 % ============================================================
 \section{Runtime State Trajectories}
@@ -104,7 +88,6 @@ x(s)
 generated along the railway alignment.
 \end{definition}
 
-\begin{remark}
 The runtime state may include:
 \begin{itemize}
 \item effective acceleration,
@@ -114,9 +97,7 @@ The runtime state may include:
 \item operational balance,
 \item and center-of-gravity behaviour.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 The operationally relevant optimization object is therefore:
 \[
 x(s),
@@ -125,7 +106,6 @@ rather than merely:
 \[
 \gamma(s).
 \]
-\end{remark}
 
 % ============================================================
 \section{State Evolution}
@@ -146,7 +126,6 @@ where:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 Typical control variables include:
 \begin{itemize}
 \item curvature evolution,
@@ -155,20 +134,16 @@ Typical control variables include:
 \item operational velocity,
 \item and sparse correction parameters.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Within AIM, geometry therefore acts as:
 \begin{quote}
 a runtime-state generator.
 \end{quote}
-\end{remark}
 
 % ============================================================
 \section{Operational State Variables}
 % ============================================================
 
-\begin{remark}
 Operational state variables may include:
 \[
 x(s)
@@ -183,9 +158,7 @@ x_{\mathrm{CG}},
 \ldots
 ).
 \]
-\end{remark}
 
-\begin{remark}
 The exact state structure depends on:
 \begin{itemize}
 \item operational interpretation,
@@ -193,21 +166,17 @@ The exact state structure depends on:
 \item vehicle-space abstraction,
 \item and optimization objectives.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Realized Runtime States}
 % ============================================================
 
-\begin{remark}
 Operational railway systems interact with:
 \[
 \mathrm{pose3}_{\mathrm{real}},
 \]
 rather than purely analytical target geometry.
-\end{remark}
 
-\begin{remark}
 Thus, optimization should operate fundamentally on:
 \[
 x_{\mathrm{real}}(s),
@@ -216,9 +185,7 @@ generated through:
 \[
 \mathcal R_{\mathrm{pose3}}.
 \]
-\end{remark}
 
-\begin{remark}
 This transforms optimization into:
 \[
 J
@@ -228,12 +195,9 @@ J
 x_{\mathrm{real}}(s)
 \bigr).
 \]
-\end{remark}
 
-\begin{remark}
 The central optimization object is therefore a realized operational
 runtime-state trajectory.
-\end{remark}
 
 % ============================================================
 \section{Optimization Functionals}
@@ -251,12 +215,9 @@ F(x(s),x'(s),u(s))
 \]
 \end{definition}
 
-\begin{remark}
 The functional \(J[x]\) evaluates the quality of an operational
 runtime-state trajectory.
-\end{remark}
 
-\begin{remark}
 Typical optimization targets include:
 \begin{itemize}
 \item minimizing jerk,
@@ -266,13 +227,10 @@ Typical optimization targets include:
 \item satisfying operational envelopes,
 \item and maximizing operational smoothness.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This shifts optimization away from isolated geometric residuals such as
 radius errors, tangent errors, or point-list errors toward functional
 evaluation of runtime-state trajectories.
-\end{remark}
 
 % ============================================================
 \section{Trajectory Shaping}
@@ -284,7 +242,6 @@ Operational trajectory shaping denotes optimization of runtime-state
 evolution through curvature and cant control.
 \end{definition}
 
-\begin{remark}
 Within AIM, optimization therefore acts primarily on:
 \begin{itemize}
 \item acceleration trajectories,
@@ -293,38 +250,28 @@ Within AIM, optimization therefore acts primarily on:
 \item admissibility trajectories,
 \item and center-of-gravity trajectories.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This interpretation extends classical railway optimization toward:
 \begin{quote}
 runtime-state trajectory optimization.
 \end{quote}
-\end{remark}
 
-\begin{remark}
 Trajectory shaping is therefore not an auxiliary concept, but one of the
 central optimization interpretations of AIM.
-\end{remark}
 
 % ============================================================
 \section{Curvature Space Optimization}
 % ============================================================
 
-\begin{remark}
 Runtime-state trajectories are generated fundamentally from curvature
 evolution.
-\end{remark}
 
-\begin{remark}
 Thus, optimization acts intrinsically within:
 \[
 \mathcal K,
 \]
 the curvature-space domain.
-\end{remark}
 
-\begin{remark}
 Typical optimization variables include:
 \begin{itemize}
 \item transition families,
@@ -333,12 +280,9 @@ Typical optimization variables include:
 \item normalization structure,
 \item and sparse curvature corrections.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Curvature-space optimization is therefore the upstream design mechanism
 for downstream runtime-state trajectory shaping.
-\end{remark}
 
 % ============================================================
 \section{Sparse Runtime Optimization}
@@ -350,14 +294,11 @@ Sparse runtime optimization uses compact curvature representations to
 optimize runtime-state trajectories efficiently.
 \end{definition}
 
-\begin{remark}
 Within AIM, sparse models act as:
 \begin{quote}
 compact runtime-state generators.
 \end{quote}
-\end{remark}
 
-\begin{remark}
 This enables:
 \begin{itemize}
 \item scalable optimization,
@@ -365,7 +306,6 @@ This enables:
 \item realization-aware optimization,
 \item and robust parameter control.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Operational Admissibility}
@@ -383,28 +323,21 @@ A runtime-state trajectory is operationally admissible if:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 Admissibility therefore acts directly within runtime-state space.
-\end{remark}
 
-\begin{remark}
 Operational admissibility provides the constraint structure for
 runtime-state trajectory optimization.
-\end{remark}
 
 % ============================================================
 \section{Realization-Aware Optimization}
 % ============================================================
 
-\begin{remark}
 Optimization should operate on:
 \[
 x_{\mathrm{real}}(s),
 \]
 rather than on purely analytical target states.
-\end{remark}
 
-\begin{remark}
 Thus:
 \[
 J
@@ -420,9 +353,7 @@ J
 )
 \Bigr).
 \]
-\end{remark}
 
-\begin{remark}
 Optimization therefore couples:
 \begin{itemize}
 \item geometry,
@@ -431,22 +362,18 @@ Optimization therefore couples:
 \item operational dynamics,
 \item and admissibility envelopes.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Center-of-Gravity Optimization}
 % ============================================================
 
-\begin{remark}
 Within advanced runtime-state interpretation, optimization may act
 directly on:
 \[
 x_{\mathrm{CG}}(s),
 \]
 the center-of-gravity trajectory.
-\end{remark}
 
-\begin{remark}
 Thus, optimization becomes:
 \begin{itemize}
 \item balance shaping,
@@ -454,29 +381,23 @@ Thus, optimization becomes:
 \item roll shaping,
 \item and operational trajectory shaping.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This interpretation connects directly to:
 \begin{itemize}
 \item Schwerpunkt-Trassierung,
 \item Vienna reinterpretation,
 \item and realization-aware runtime dynamics.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Optimization as Runtime-State Design}
 % ============================================================
 
-\begin{remark}
 Within AIM, railway optimization is interpreted fundamentally as:
 \begin{quote}
 design of admissible realized runtime-state trajectories.
 \end{quote}
-\end{remark}
 
-\begin{remark}
 The central engineering question therefore becomes:
 \begin{quote}
 Which operational state trajectory should emerge?
@@ -485,32 +406,23 @@ rather than:
 \begin{quote}
 Which geometric curve should be constructed?
 \end{quote}
-\end{remark}
 
-\begin{remark}
 Geometry, realization, and runtime dynamics therefore become coupled
 components of one operational design framework.
-\end{remark}
 
 % ============================================================
 \section{AXTRAN Reinterpretation}
 % ============================================================
 
-\begin{remark}
 Classical optimization systems such as AXTRAN already moved partially
 toward operational optimization beyond purely geometric fitting.
-\end{remark}
 
-\begin{remark}
 AIM generalizes classical alignment optimization toward runtime-state
 trajectory optimization.
-\end{remark}
 
-\begin{remark}
 This reinterpretation should not be read as a rejection of classical
 optimization systems, but as an extension of their geometric core toward
 realization-aware operational state design.
-\end{remark}
 
 % ============================================================
 \section{Canonical Interpretation}

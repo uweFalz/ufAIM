@@ -188,7 +188,6 @@ construction, runtime interpretation, and operational behaviour.
 \input{abstract}
 \input{introduction}
 
-\input{foundations/glossary}
 
 % ============================================================
 % MAINMATTER
@@ -213,11 +212,19 @@ construction, runtime interpretation, and operational behaviour.
 \input{foundations/part_intro}
 
 % ------------------------------------------------------------
-% FOUNDATIONAL AXIOMS
+% CONCEPTUAL FOUNDATIONS
 % ------------------------------------------------------------
 
 \input{foundations/information_modelling}
+\input{foundations/ontology}
+\input{foundations/kernel_glossary}
+
+% ------------------------------------------------------------
+% FOUNDATIONAL AXIOMS
+% ------------------------------------------------------------
+
 \input{foundations/axioms}
+\input{foundations/principles}
 
 % ------------------------------------------------------------
 % CANONICAL LANGUAGE
@@ -237,9 +244,8 @@ construction, runtime interpretation, and operational behaviour.
 % ARCHITECTURAL FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{foundations/system_layers}
 \input{foundations/metric_realization}
-\input{foundations/ontology}
+\input{foundations/system_layers}
 
 % ------------------------------------------------------------
 % EARTH / ELLIPSOID FOUNDATIONS
@@ -247,6 +253,34 @@ construction, runtime interpretation, and operational behaviour.
 
 \input{foundations/ellipsoid_geometry}
 \input{foundations/pose3_on_ellipsoid}
+
+% ============================================================
+\part{Engineering Concepts}
+% ============================================================
+
+\input{kernel/part_intro}
+
+% ------------------------------------------------------------
+% ENGINEERING OBJECTS AND IDENTITY
+% ------------------------------------------------------------
+
+\input{kernel/engineering_objects}
+\input{kernel/engineering_identity}
+\input{kernel/engineering_context}
+
+% ------------------------------------------------------------
+% REPRESENTATION, OBSERVATION, AND KNOWLEDGE
+% ------------------------------------------------------------
+
+\input{kernel/representations}
+\input{kernel/observations}
+\input{kernel/engineering_knowledge}
+
+% ------------------------------------------------------------
+% ENGINEERING DECISIONS
+% ------------------------------------------------------------
+
+\input{kernel/engineering_decisions}
 
 % ============================================================
 \part{Geometry and Curvature}

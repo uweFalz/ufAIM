@@ -4,40 +4,30 @@
 
 \section*{Motivation}
 
-\begin{remark}
 Classical railway alignment design separates:
 \begin{itemize}
 \item geometric design (alignment),
 \item cant design,
 \item dynamic evaluation.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This separation leads to suboptimal solutions, as geometry and dynamics
 are intrinsically coupled. In railway practice, this coupling appears
 through the interaction of curvature, cant, speed, and vehicle response
 \cite{Klein1998Trassierung,EN13803_2017,BrustadDalmo2020Review}.
-\end{remark}
 
-\begin{remark}
 The concept of \emph{Schwerpunkt-Trassierung} aims to unify these aspects
 by defining a single design principle based on the motion of a
 representative point.
-\end{remark}
 
-\begin{remark}
 The idea that railway alignment should be related to the motion of the
 vehicle centre of gravity rather than merely to the track centerline has
 also appeared in engineering practice and patent literature
 \cite{Hasslinger2002Schwerpunkt}.
-\end{remark}
 
-\begin{remark}
 This supports the broader AIM interpretation that alignment should be
 understood as a dynamically relevant spatial state trajectory rather
 than as a purely geometric curve.
-\end{remark}
 
 \section{Conceptual Idea}
 
@@ -50,26 +40,20 @@ denote a reference trajectory representing the motion of a
 characteristic point of the vehicle system.
 \end{definition}
 
-\begin{remark}
 This point may be interpreted as:
 \begin{itemize}
 \item the center of mass,
 \item a dynamically relevant reference point,
 \item or an abstract design trajectory.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 The conceptual shift consists in evaluating track design through the
 motion of such a reference point rather than through geometry alone.
-\end{remark}
 
 \section{Relation to Track Geometry}
 
-\begin{remark}
 The physical track centerline \(\gamma(s)\) and cant angle \(\phi(s)\)
 induce a spatial configuration of the vehicle.
-\end{remark}
 
 \begin{definition}[Induced reference trajectory]
 Given a pose3 state
@@ -91,9 +75,7 @@ where:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 The exact form of \(n(s,\phi)\) depends on the chosen mechanical model.
-\end{remark}
 
 \RESEARCH{Precise definition of offset direction based on vehicle model.}
 
@@ -107,15 +89,11 @@ induced reference trajectory \(\gamma_c(s)\) possesses prescribed
 smoothness and dynamical properties.
 \end{definition}
 
-\begin{remark}
 In this formulation, the primary design object is not the track itself,
 but the induced trajectory of the reference point.
-\end{remark}
 
-\begin{remark}
 This makes the design task closer to vehicle-oriented engineering than
 to purely geometric construction.
-\end{remark}
 
 \section{Variational Formulation}
 
@@ -129,10 +107,8 @@ J_c[\gamma_c]
 \]
 \end{definition}
 
-\begin{remark}
 This functional penalizes curvature of the reference trajectory and
 therefore promotes smooth motion.
-\end{remark}
 
 \begin{definition}[Schwerpunkt optimization problem]
 Find
@@ -146,45 +122,34 @@ J_c[\gamma_c]
 subject to the pose3 dynamics.
 \end{definition}
 
-\begin{remark}
 This formulation extends the variational interpretation of transition
 design from curvature laws alone to vehicle-relevant derived motion.
-\end{remark}
 
 \section{Coupling to Pose3}
 
-\begin{remark}
 The trajectory \(\gamma_c\) depends on:
 \[
 \gamma(s), \quad \theta(s), \quad \phi(s).
 \]
-\end{remark}
 
-\begin{remark}
 Thus, the Schwerpunkt problem becomes a constrained optimization problem
 in the variables:
 \[
 \kappa(s), \quad \phi(s).
 \]
-\end{remark}
 
-\begin{remark}
 This places Schwerpunkt-Trassierung naturally within the pose3-based
 state model introduced earlier and within the broader optimization
 perspective of railway alignment \cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
-\end{remark}
 
 \section{Interpretation}
 
-\begin{remark}
 The Schwerpunkt formulation shifts the perspective:
 \begin{itemize}
 \item from track geometry
 \item to vehicle motion.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This leads to a unified framework in which:
 \begin{itemize}
 \item geometry,
@@ -192,13 +157,10 @@ This leads to a unified framework in which:
 \item and dynamics
 \end{itemize}
 are optimized simultaneously.
-\end{remark}
 
-\begin{remark}
 Such a viewpoint is consistent with the general observation that railway
 transition and alignment quality cannot be judged from geometry alone
 \cite{BrustadDalmo2020Review,EN13803_2017}.
-\end{remark}
 
 \section{Relation to Classical Design}
 
@@ -208,15 +170,11 @@ Schwerpunkt formulation where the reference trajectory coincides with
 the track centerline.
 \end{proposition}
 
-\begin{remark}
 In this case, the problem reduces to curvature-based optimization in
 the plane.
-\end{remark}
 
-\begin{remark}
 Thus, classical alignment design is not contradicted, but embedded as a
 special case of a more general formulation.
-\end{remark}
 
 \section{Advantages}
 
@@ -227,10 +185,8 @@ special case of a more general formulation.
 \item extensibility to vehicle-specific models.
 \end{itemize}
 
-\begin{remark}
 These advantages derive from the fact that the model treats alignment as
 a state-governed physical system rather than as a static geometric line.
-\end{remark}
 
 \section{Open Problems}
 
@@ -260,10 +216,8 @@ functional object governed by curvature and its derived quantities.
 
 \subsection{Rigid Body Approximation}
 
-\begin{remark}
 We model the railway vehicle as a rigid body with a characteristic
 center of mass.
-\end{remark}
 
 \begin{definition}[Center of mass]
 Let
@@ -273,19 +227,15 @@ C(s) \in \R^3
 denote the spatial position of the vehicle center of mass.
 \end{definition}
 
-\begin{remark}
 For planar track geometry, we consider the projection
 \[
 \gamma_c(s) \in \R^2
 \]
 of the center of mass trajectory.
-\end{remark}
 
-\begin{remark}
 This is intentionally a simplified model. Its purpose is not to replace
 full multibody simulation, but to introduce a mathematically tractable
 vehicle-related state layer.
-\end{remark}
 
 \subsection{Track Coordinate Frame}
 
@@ -301,15 +251,11 @@ n(s) = (-\sin\theta(s),\cos\theta(s))
 the normal direction.
 \end{definition}
 
-\begin{remark}
 The pair \((t,n)\) defines a local coordinate system attached to the
 track.
-\end{remark}
 
-\begin{remark}
 This local frame is sufficient for the present formulation, but future
 extensions should consistently relate it to a global project CRS.
-\end{remark}
 
 \subsection{Cant Rotation}
 
@@ -317,16 +263,12 @@ extensions should consistently relate it to a global project CRS.
 Let the cant angle \(\phi(s)\) define a rotation of the cross-section.
 \end{definition}
 
-\begin{remark}
 In a simplified model, the lateral offset direction remains aligned
 with \(n(s)\), while vertical effects are captured implicitly.
-\end{remark}
 
-\begin{remark}
 This simplification is acceptable at the present conceptual stage, but a
 full treatment should explicitly include the three-dimensional rotated
 cross-section and its transformation into the global frame.
-\end{remark}
 
 \subsection{Center of Mass Offset}
 
@@ -340,14 +282,12 @@ The center of mass trajectory is approximated by
 \]
 \end{definition}
 
-\begin{remark}
 More refined models may include dependence on \(\phi(s)\), e.g.
 \[
 \gamma_c(s)
 =
 \gamma(s) + d\,\cos\phi(s)\,n(s).
 \]
-\end{remark}
 
 \RESEARCH{Inclusion of full 3D vehicle geometry.}
 
@@ -364,7 +304,6 @@ t(s) + d\,n'(s).
 \]
 \end{proposition}
 
-\begin{remark}
 Using
 \[
 n'(s) = -\kappa(s)\,t(s),
@@ -375,7 +314,6 @@ we obtain
 =
 (1 - d\kappa(s))\,t(s).
 \]
-\end{remark}
 
 \begin{proposition}
 The acceleration of the center of mass is proportional to
@@ -388,15 +326,11 @@ The acceleration of the center of mass is proportional to
 \]
 \end{proposition}
 
-\begin{remark}
 Thus, both curvature and its derivative influence the motion of the
 center of mass.
-\end{remark}
 
-\begin{remark}
 This is one of the key conceptual benefits of the formulation: it makes
 the dynamic relevance of higher-order geometric quantities explicit.
-\end{remark}
 
 \subsection{Effective Forces}
 
@@ -409,20 +343,16 @@ v^2 (1 - d\kappa(s))\kappa(s).
 \]
 \end{definition}
 
-\begin{remark}
 Including cant yields the effective acceleration
 \[
 a_{\mathrm{eff}}(s)
 =
 v^2 \kappa(s) - g\sin\phi(s).
 \]
-\end{remark}
 
-\begin{remark}
 The latter term reflects the same curvature--cant coupling that appears
 in railway design standards and in dynamic alignment interpretation
 \cite{Klein1998Trassierung,EN13803_2017}.
-\end{remark}
 
 \section{Coupled Design Problem}
 
@@ -437,10 +367,8 @@ J_{\mathrm{veh}}[\kappa,\phi]
 \]
 \end{definition}
 
-\begin{remark}
 This functional directly measures the smoothness of the motion of the
 center of mass.
-\end{remark}
 
 \begin{definition}[Dynamic objective]
 Define
@@ -470,10 +398,8 @@ J[\kappa,\phi]
 \]
 \end{definition}
 
-\begin{remark}
 This combines geometric smoothing, dynamic balancing, and higher-order
 regularization within a single optimization framework.
-\end{remark}
 
 \section{Schwerpunkt-Trassierung (Formal Definition)}
 
@@ -494,33 +420,26 @@ subject to:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 This turns alignment design into the optimization of a vehicle-related
 state trajectory rather than the mere composition of geometric elements.
-\end{remark}
 
 \section{Interpretation}
 
-\begin{remark}
 In this formulation:
 \begin{itemize}
 \item the track is no longer the primary design object,
 \item the motion of the vehicle becomes central.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Classical alignment design is recovered as a special case where
 \[
 d=0
 \quad \text{and} \quad
 \phi(s)=0.
 \]
-\end{remark}
 
 \section{Discussion}
 
-\begin{remark}
 The presented model is intentionally simplified.
 However, it already captures:
 \begin{itemize}
@@ -528,13 +447,10 @@ However, it already captures:
 \item influence of curvature derivatives,
 \item relation between geometry and dynamics.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Its main contribution is therefore conceptual and structural: it defines
 a mathematically coherent bridge between alignment geometry and
 vehicle-oriented design thinking.
-\end{remark}
 
 \RESEARCH{Extension to full multibody vehicle models.}
 

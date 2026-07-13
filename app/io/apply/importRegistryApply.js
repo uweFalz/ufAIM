@@ -10,6 +10,7 @@
 // No preview logic, no UI logic.
 
 import { nowIso, ensureObject } from "@app/utils/appHelpers.js";
+import { getWorkspaceSelection } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 function makeArtifactId({ baseId, slot, domain, kind }) {
 	return `${baseId}::${slot}::${domain}::${kind}::${Date.now()}`;
@@ -26,7 +27,6 @@ export function applyImportRegistry({
 	artifacts,
 	normalizePayload,
 }) {
-
 	const prevArtifacts = ensureObject(state.artifacts);
 	const prevRouteProjects = ensureObject(state.routeProjects);
 
@@ -60,7 +60,6 @@ export function applyImportRegistry({
 	// ---- register artifacts
 
 	for (const inArt of artifacts ?? []) {
-
 		if (!inArt) continue;
 
 		const domain = inArt.domain ?? "unknown";
@@ -90,11 +89,9 @@ export function applyImportRegistry({
 
 		if (domain === "alignment2d") {
 			s.alignmentArtifactId = id;
-		}
-		else if (domain === "profile1d") {
+		} else if (domain === "profile1d") {
 			s.profileArtifactId = id;
-		}
-		else if (domain === "cant1d") {
+		} else if (domain === "cant1d") {
 			s.cantArtifactId = id;
 		}
 
@@ -107,8 +104,15 @@ export function applyImportRegistry({
 		});
 	}
 
+	const selection = getWorkspaceSelection(state);
+
 	const patch = {
-		activeRouteProjectId: baseId,
+		workspace_selection: {
+			primaryId: baseId,
+			contextIds: selection.contextIds,
+			source: "import-registry",
+			crsId: selection.crsId,
+		},
 		routeProjects: nextRouteProjects,
 		artifacts: nextArtifacts,
 		import_meta: {

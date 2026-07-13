@@ -1,50 +1,14 @@
-\section*{CRS is not Metadata}
+\section*{CRS Is Not Metadata}
 
-\begin{insight}
-In many software systems, the coordinate reference system (CRS) is
-treated as metadata.
+In railway alignment modelling, CRS cannot be treated as auxiliary
+metadata. CRS assumptions affect metric interpretation, coordinate
+transformations, projection behaviour, and comparison of target and
+observed states.
 
-It is stored, displayed, and occasionally converted — but rarely
-considered part of the model itself.
+\begin{principle}[CRS structural principle]
+CRS is a structural component of realization and embedding context.
+Ignoring it breaks consistency of engineering interpretation.
+\end{principle}
 
-\medskip
-
-In railway alignment modelling, this view is fundamentally wrong.
-
-\medskip
-
-The CRS determines:
-\begin{itemize}
-\item how distances are measured,
-\item how curvature is interpreted,
-\item and how different datasets relate to each other.
-\end{itemize}
-
-\medskip
-
-A shift of a few centimeters in coordinates may appear negligible.
-
-A change in curvature is not.
-
-\medskip
-
-If coordinate systems are inconsistent:
-\begin{itemize}
-\item alignments no longer match,
-\item curvature estimates become unstable,
-\item and optimization results lose physical meaning.
-\end{itemize}
-
-\medskip
-
-The problem is not numerical.
-
-It is structural.
-
-\medskip
-
-A railway alignment does not exist independently of its spatial
-reference.
-
-The coordinate system is part of the model.
-\end{insight}
+Consequently, CRS handling must be explicit in import, runtime
+projection, reconstruction, and realization-aware comparison workflows.

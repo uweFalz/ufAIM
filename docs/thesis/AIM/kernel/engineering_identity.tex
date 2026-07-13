@@ -1,0 +1,82 @@
+% kernel/engineering_identity.tex
+
+\chapter{Engineering Identity}
+\label{chap:engineering-identity}
+
+Engineering identity determines when information refers to the same
+engineering object and when it refers to another object. It must remain
+stable across representation changes, metric realizations, imports,
+observations, and project-specific views.
+
+\section{Identity}
+
+\begin{definition}[Engineering object identity]
+\label{def:engineering-object-identity}
+Engineering object identity is the basis by which an engineering object
+remains distinguishable throughout its engineering lifecycle.
+\end{definition}
+
+Identity is not equivalent to a file name, database key, coordinate
+value, label, or geometric approximation. Such values may support
+identification, but they remain attributes or references whose validity
+depends on context.
+
+\section{Identity Composition}
+
+Engineering identity may be supported by several stable aspects,
+including conceptual role, constructive continuity, contextual
+placement, provenance, and relations to other engineering objects.
+
+\begin{definition}[Identity composition]
+\label{def:identity-composition}
+Identity composition is the coherent combination of identity aspects
+required to distinguish an engineering object without reducing identity
+to any single representation-dependent attribute.
+\end{definition}
+
+The applicable composition depends on the object type. The identity of
+an alignment, for example, is not exhausted by a sampled curve or a
+coordinate reference system. It includes the continuity of the
+alignment as an engineering object and its role within the railway
+system.
+
+\section{Identity and Change}
+
+An engineering object may change while retaining identity. Conversely,
+two objects may possess similar geometry or attributes without sharing
+identity.
+
+The distinction between modification and replacement is therefore an
+engineering decision rather than a consequence of numerical equality.
+Identity must be governed explicitly whenever revisions, imports,
+duplicate detection, or lifecycle transitions are evaluated.
+
+\section{Identity and Representation}
+
+Representations carry references to engineering identity but do not own
+it. A representation may be regenerated, exchanged, simplified, or
+removed without destroying the represented object.
+
+Likewise, multiple representations may refer to the same object. Their
+agreement or disagreement is a question of representation quality and
+knowledge consistency, not object multiplicity.
+
+\section{Canonical Interpretation}
+
+\begin{proposition}
+Engineering identity is independent of representation identity.
+\end{proposition}
+
+\begin{proposition}
+Numerical or geometric equality is neither necessary nor sufficient for
+engineering identity.
+\end{proposition}
+
+\begin{proposition}
+The distinction between modification of an object and creation of a new
+object requires explicit engineering authority.
+\end{proposition}
+
+Engineering identity provides the continuity required for durable
+engineering knowledge and for consistent relations between states,
+observations, representations, realizations, and decisions.

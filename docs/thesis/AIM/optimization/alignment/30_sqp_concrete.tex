@@ -4,7 +4,6 @@
 
 \subsection{Problem Structure}
 
-\begin{remark}
 We consider the discrete optimization problem
 \[
 \min_{\mathbf{x}} J(\mathbf{x})
@@ -12,7 +11,6 @@ We consider the discrete optimization problem
 g(\mathbf{x}) = 0,\;
 h(\mathbf{x}) \le 0.
 \]
-\end{remark}
 
 \begin{definition}[Parameter vector]
 \[
@@ -31,7 +29,6 @@ J(\mathbf{x}) = \frac{1}{2} \| \mathbf{r}(\mathbf{x}) \|^2.
 \]
 \end{definition}
 
-\begin{remark}
 Typical residual components:
 \[
 r_i^{(\kappa)} = \sqrt{\gamma}
@@ -46,7 +43,6 @@ r_i^{(\mathrm{dyn})}
 \sqrt{\beta}
 (v^2 \kappa_i - g \sin\phi_i).
 \]
-\end{remark}
 
 % ============================================================
 \subsection{Gauss--Newton Step}
@@ -59,37 +55,31 @@ At iteration \(k\), compute \(\mathbf{p}_k\) from:
 \]
 \end{definition}
 
-\begin{remark}
 The Hessian is approximated by:
 \[
 H \approx J_r^T J_r.
 \]
-\end{remark}
 
 % ============================================================
 \subsection{Sparse Structure}
 % ============================================================
 
-\begin{remark}
 The system matrix has band structure:
 \begin{itemize}
 \item tridiagonal coupling for smoothness terms,
 \item diagonal contributions from dynamic terms.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \subsection{Constraints Handling}
 % ============================================================
 
-\begin{remark}
 Constraints are handled via:
 \begin{itemize}
 \item projection,
 \item penalty terms,
 \item Lagrange multipliers.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \subsection{Iteration Scheme}

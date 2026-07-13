@@ -4,15 +4,12 @@
 
 \subsection{Problem Setting}
 
-\begin{remark}
 Let \(L>0\) be fixed and let
 \[
 \kappa : [0,L] \to \R
 \]
 denote the curvature function of a transition.
-\end{remark}
 
-\begin{remark}
 We assume the boundary conditions
 \[
 \kappa(0)=0,
@@ -25,7 +22,6 @@ and optionally
 \qquad
 \kappa'(L)=0.
 \]
-\end{remark}
 
 \subsection{Admissible Set}
 
@@ -79,13 +75,11 @@ The minimizer is
 \]
 \end{proposition}
 
-\begin{remark}
 Thus, the clothoid appears as the solution of a variational problem.
 This connects classical railway transition design with an optimization
 view in curvature space and provides a formal counterpart to the
 historical role of the clothoid in railway engineering
 \cite{Glover1900TransitionCurves,Higgins1922TransitionSpiral}.
-\end{remark}
 
 \subsection{Higher-Order Model}
 
@@ -104,15 +98,12 @@ Minimizers satisfy
 \]
 \end{proposition}
 
-\begin{remark}
 This explains the occurrence of cubic transition laws and links them to
 modern polynomial transition design
 \cite{ZboinskiWoznica2017Polynomial}.
-\end{remark}
 
 \subsection{Generalized View}
 
-\begin{remark}
 General functionals of the form
 \[
 J[\kappa]
@@ -121,7 +112,6 @@ J[\kappa]
 F\bigl(\kappa,\kappa',\kappa'';v,c\bigr)\,\dd s
 \]
 allow incorporation of dynamic and engineering criteria.
-\end{remark}
 
 \subsection{Connection to the Main Thesis}
 
@@ -138,14 +128,11 @@ functions.
 
 \subsection{Motivation}
 
-\begin{remark}
 In railway applications, curvature and cant cannot be optimized
 independently.
 Both jointly determine the effective lateral acceleration and its rate
 of change.
-\end{remark}
 
-\begin{remark}
 This motivates a coupled optimization problem in which both
 \[
 \kappa(s)
@@ -153,13 +140,10 @@ This motivates a coupled optimization problem in which both
 \phi(s)
 \]
 are treated as design variables.
-\end{remark}
 
-\begin{remark}
 Such coupling is fully consistent with railway alignment design
 standards, where curvature, speed, and cant are not independent design
 quantities \cite{EN13803_2017,Klein1998Trassierung}.
-\end{remark}
 
 \subsection{Effective Acceleration Functional}
 
@@ -172,10 +156,8 @@ v^2 \kappa(s) - g \sin\phi(s).
 \]
 \end{definition}
 
-\begin{remark}
 A natural optimization objective is to reduce the magnitude of
 unbalanced lateral acceleration.
-\end{remark}
 
 \begin{definition}[Acceleration-based functional]
 Define
@@ -220,12 +202,10 @@ v^3 \kappa'(s) - g v \cos\phi(s)\,\phi'(s)
 \]
 \end{definition}
 
-\begin{remark}
 This functional penalizes rapid variation of effective acceleration and
 therefore provides a natural dynamic smoothness criterion. Such criteria
 are closely related to engineering concerns about comfort and dynamic
 compatibility \cite{EN13803_2017,BrustadDalmo2020Review}.
-\end{remark}
 
 \subsection{Combined Objective}
 
@@ -254,14 +234,12 @@ J_\phi[\phi]
 \]
 \end{definition}
 
-\begin{remark}
 The weights
 \[
 \alpha,\beta,\gamma,\delta \ge 0
 \]
 determine the relative importance of equilibrium, comfort, curvature
 smoothness, and cant smoothness.
-\end{remark}
 
 \subsection{Admissible Set}
 
@@ -282,7 +260,6 @@ Let
 \]
 \end{definition}
 
-\begin{remark}
 Additional boundary conditions may be imposed, for example:
 \[
 \phi(0)=0,
@@ -295,7 +272,6 @@ or derivative constraints such as
 \qquad
 \phi'(0)=\phi'(L)=0.
 \]
-\end{remark}
 
 \subsection{Coupled Optimization Problem}
 
@@ -314,18 +290,14 @@ J[\kappa^\ast,\phi^\ast]
 
 \subsection{Interpretation}
 
-\begin{remark}
 This problem extends classical transition design in two directions:
 \begin{itemize}
 \item from pure geometry to coupled geometry--cant design,
 \item from curve selection to functional optimization.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 In this framework, the transition curve is no longer chosen from a
 catalogue, but emerges as part of an optimal coupled state.
-\end{remark}
 
 \subsection{Special Cases}
 
@@ -342,14 +314,11 @@ v^2 \kappa(s)=g\sin\phi(s),
 and the design is perfectly balanced.
 \end{proposition}
 
-\begin{remark}
 These special cases show that classical equilibrium design appears as a
 subcase of the coupled optimization framework.
-\end{remark}
 
 \subsection{Relation to Optimal Control}
 
-\begin{remark}
 The coupled optimization problem may be interpreted as an optimal
 control problem with controls
 \[
@@ -360,12 +329,9 @@ state variables
 x(s),y(s),\theta(s),\phi(s),
 \]
 and cost functional \(J[\kappa,\phi]\).
-\end{remark}
 
-\begin{remark}
 This provides a direct bridge from railway alignment design to modern
 control-theoretic and variational methods.
-\end{remark}
 
 \subsection{Connection to the Main Thesis}
 

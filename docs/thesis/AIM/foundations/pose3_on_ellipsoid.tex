@@ -1,16 +1,10 @@
 \chapter{Pose3 on the Ellipsoid}
 
-\section*{Motivation}
-
-\begin{remark}
-The planar pose3 model describes railway state by position, direction,
-curvature, and cant in a projected engineering coordinate system.
-\end{remark}
-
-\begin{remark}
-For physically consistent modelling on the Earth, this state must be
-defined on the reference ellipsoid rather than in a planar projection.
-\end{remark}
+The planar state description is adequate for projected engineering models,
+but a surface-based formulation is required for physically consistent
+modelling on the Earth. The following development replaces the planar
+heading-based description by a moving frame defined on the reference
+ellipsoid.
 
 \section{Surface-Based Pose}
 
@@ -50,11 +44,9 @@ The local railway frame is defined by
 \]
 \end{definition}
 
-\begin{remark}
-Here, \(\mathbf{t}\) is the longitudinal direction,
-\(\mathbf{b}\) is the lateral direction within the surface, and
-\(\mathbf{n}_{\mathcal{E}}\) is the local surface normal.
-\end{remark}
+Here, \(\mathbf{t}\) is the longitudinal direction, \(\mathbf{b}\) is the
+lateral direction within the surface, and \(\mathbf{n}_{\mathcal{E}}\) is
+the local surface normal.
 
 \section{Cant as Rotation of the Cross-Section}
 
@@ -66,12 +58,14 @@ R_{\mathbf{t}}(\phi(s)).
 \]
 \end{definition}
 
-\begin{remark}
 This rotation acts on the lateral--normal plane spanned by
+\(\mathbf{b}(s)\) and \(\mathbf{n}_{\mathcal{E}}(s)\). The resulting
+canted directions are
 \[
-\mathbf{b}(s), \quad \mathbf{n}_{\mathcal{E}}(s).
+\mathbf{b}_{\phi}(s)=R_{\mathbf{t}}(\phi(s))\,\mathbf{b}(s),
+\qquad
+\mathbf{n}_{\phi}(s)=R_{\mathbf{t}}(\phi(s))\,\mathbf{n}_{\mathcal{E}}(s).
 \]
-\end{remark}
 
 \begin{definition}[Canted lateral direction]
 The canted lateral direction is
@@ -93,30 +87,15 @@ R_{\mathbf{t}}(\phi(s))\,\mathbf{n}_{\mathcal{E}}(s).
 
 \section{Gravity Direction}
 
-\begin{remark}
-On the ellipsoid, gravity is not identical to the ellipsoid normal in
-full physical precision.
-\end{remark}
-
-\begin{definition}[Gravity vector]
-Let
+On the ellipsoid, gravity is not identical to the ellipsoid normal in full
+physical precision. Let
 \[
 \mathbf{g}(s)
 \]
-denote the local gravity vector at \(\gamma(s)\).
-\end{definition}
-
-\begin{remark}
-In a simplified model, one may approximate
-\[
-\mathbf{g}(s) \parallel -\mathbf{n}_{\mathcal{E}}(s).
-\]
-\end{remark}
-
-\begin{remark}
-A refined model distinguishes between ellipsoid normal, geoid normal,
-and local gravity direction.
-\end{remark}
+denote the local gravity vector at \(\gamma(s)\). In a simplified model one
+may approximate \(\mathbf{g}(s) \parallel -\mathbf{n}_{\mathcal{E}}(s)\),
+whereas a refined model distinguishes between ellipsoid normal, geoid
+normal, and local gravity direction.
 
 \section{Curvature and Lateral Acceleration}
 
@@ -129,51 +108,25 @@ The railway-relevant curvature is the geodesic curvature
 \]
 \end{definition}
 
-\begin{remark}
-This curvature measures direction change within the reference surface
-and replaces the planar relation \(\kappa=\theta'\).
-\end{remark}
-
-\begin{definition}[Surface lateral acceleration]
-For speed \(v\), the curvature-induced lateral acceleration is
+This curvature measures direction change within the reference surface and
+replaces the planar relation \(\kappa=\theta'\). For speed \(v\), the
+curvature-induced lateral acceleration is
 \[
-a_{\kappa}(s)
-=
-v^2 \kappa_g(s).
+a_{\kappa}(s)=v^2\kappa_g(s).
 \]
-\end{definition}
 
 \section{Effective Acceleration with Cant}
 
-\begin{remark}
 The effective lateral acceleration is obtained by projecting both
 curvature-induced acceleration and gravity into the canted lateral
-direction.
-\end{remark}
-
-\begin{definition}[Effective lateral acceleration]
-A geometrically consistent formulation is
+direction. A geometrically consistent formulation is
 \[
-a_{\mathrm{eff}}(s)
-=
-v^2 \kappa_g(s)
--
-\mathbf{g}(s)\cdot \mathbf{b}_{\phi}(s).
+a_{\mathrm{eff}}(s)=v^2\kappa_g(s)-\mathbf{g}(s)\cdot\mathbf{b}_{\phi}(s).
 \]
-\end{definition}
-
-\begin{remark}
-In the planar approximation with
+In the planar approximation with \(\mathbf{g}\parallel-\mathbf{n}_{\mathcal{E}}\), this reduces to the familiar expression
 \[
-\mathbf{g}\parallel -\mathbf{n}_{\mathcal{E}},
+a_{\mathrm{eff}}(s)=v^2\kappa(s)-g\sin\phi(s).
 \]
-this reduces to the familiar expression
-\[
-a_{\mathrm{eff}}(s)
-=
-v^2\kappa(s)-g\sin\phi(s).
-\]
-\end{remark}
 
 \section{Pose3 State on the Ellipsoid}
 
@@ -192,21 +145,14 @@ The pose3 state on the ellipsoid is
 \]
 \end{definition}
 
-\begin{remark}
-Compared to planar pose3, the heading angle \(\theta(s)\) is replaced
-by a tangent vector field on the surface.
-\end{remark}
+Compared with planar pose3, the heading angle \(\theta(s)\) is replaced by
+a tangent vector field on the surface.
 
 \section{Implication for AIM}
 
-\begin{summary}
 Pose3 on the ellipsoid replaces planar heading-based geometry by a
-surface-based moving frame.
-
-Cant becomes a rotation of the track cross-section around the tangent
-vector, while curvature is represented by geodesic curvature.
-
-This provides a physically more consistent foundation for evaluating
-railway dynamics, especially where projection distortions become
-relevant.
-\end{summary}
+surface-based moving frame. Cant becomes a rotation of the track
+cross-section around the tangent vector, while curvature is represented by
+geodesic curvature. This provides a physically more consistent foundation
+for evaluating railway dynamics, especially where projection distortions
+become relevant.

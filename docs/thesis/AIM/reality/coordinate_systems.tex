@@ -1,650 +1,96 @@
-\chapter{Coordinate Systems and Spatial Reference}
+% reality/coordinate_systems.tex
 
-\section*{Motivation}
+\chapter{Coordinate Systems and World Embedding}
 
-\begin{remark}
-Railway alignment data is inherently spatial.
-Its interpretation depends fundamentally on the coordinate system in
-which it is expressed.
-\end{remark}
+\label{chap:coordinate-systems}
 
-\begin{remark}
-In practice, railway projects involve multiple coordinate reference
-systems (CRS), often used simultaneously.
-\end{remark}
-
-\begin{remark}
-Failure to handle coordinate systems consistently leads to:
-\begin{itemize}
-\item geometric inconsistencies,
-\item loss of accuracy,
-\item and incorrect integration of data sources.
-\end{itemize}
-\end{remark}
+This chapter owns the coordinate and CRS explanation of the Reality
+part. In AIM, CRS and coordinate systems define embedding and
+transformation context; they do not define constructive alignment
+identity.
 
 \input{reality/crs_is_not_metadata}
 
+% ============================================================
 \section{Coordinate Reference Systems}
+% ============================================================
 
 \begin{definition}[Coordinate reference system]
 A coordinate reference system (CRS) is a mathematical framework that
-defines how spatial coordinates relate to positions in the real world.
+maps spatial coordinates to positions in a defined world embedding.
 \end{definition}
 
-\begin{remark}
-A CRS typically consists of:
-\begin{itemize}
-\item a reference surface (e.g. ellipsoid),
-\item a coordinate system (e.g. Cartesian or projected),
-\item and a transformation to real-world locations.
-\end{itemize}
-\end{remark}
+A CRS combines reference surface assumptions, coordinate definitions,
+and transformation conventions.
 
-\section{Global and Local Systems}
+% ============================================================
+\section{Embedding Context}
+% ============================================================
 
-\begin{remark}
-Railway data commonly uses both global and local coordinate systems:
-\begin{itemize}
-\item global systems (e.g. WGS84),
-\item projected systems (e.g. UTM, Gauss--Kr\"uger),
-\item engineering systems (e.g. track-based coordinates).
-\end{itemize}
-\end{remark}
+Railway projects commonly use multiple systems simultaneously, including
+ellipsoid-referenced systems, projected systems, and local engineering
+frames. These systems provide embedding context for geometry and
+measurements.
 
-\begin{remark}
-Each system serves a different purpose:
-\begin{itemize}
-\item global systems enable interoperability,
-\item projected systems provide metric consistency,
-\item local systems support engineering workflows.
-\end{itemize}
-\end{remark}
+\begin{principle}[CRS context principle]
+CRS belongs to realization and embedding context, not to constructive
+identity.
+\end{principle}
 
-\section{Engineering Coordinate Systems}
-
-\begin{remark}
-In railway engineering, alignments are often described in
-track-relative coordinate systems.
-\end{remark}
-
-\begin{definition}[Stationing]
-Let \(s\) denote the arc-length parameter along an alignment.
-This parameter is referred to as \emph{stationing}.
-\end{definition}
-
-\begin{remark}
-Stationing defines a one-dimensional coordinate system along the track,
-independent of the global spatial reference.
-\end{remark}
-
-\begin{remark}
-Additional local coordinates may include:
-\begin{itemize}
-\item lateral offsets,
-\item vertical offsets,
-\item and local reference frames attached to the track.
-\end{itemize}
-\end{remark}
-
-\section{Multiple CRS in Practice}
-
-\begin{remark}
-Real-world projects frequently involve multiple CRS simultaneously.
-\end{remark}
-
-\begin{example}
-Typical combinations include:
-\begin{itemize}
-\item survey data in local engineering coordinates,
-\item GIS data in WGS84,
-\item design data in projected systems (UTM or GK).
-\end{itemize}
-\end{example}
-
-\begin{remark}
-These systems are often not perfectly consistent, due to:
-\begin{itemize}
-\item measurement errors,
-\item transformation approximations,
-\item and legacy definitions.
-\end{itemize}
-\end{remark}
-
-\section{Transformations}
+% ============================================================
+\section{Transformations and Consistency}
+% ============================================================
 
 \begin{definition}[Coordinate transformation]
 A coordinate transformation is a mapping
 \[
-T : \R^n \to \R^n
+T:\R^n\rightarrow\R^n
 \]
-that converts coordinates from one CRS to another.
+between coordinate systems.
 \end{definition}
 
-\begin{remark}
-Transformations may include:
-\begin{itemize}
-\item translations,
-\item rotations,
-\item scaling,
-\item and projection changes.
-\end{itemize}
-\end{remark}
+Transformation handling must be explicit and auditable, since small
+transformation inconsistencies can create large interpretation errors in
+curvature-related or projection-related quantities.
 
-\begin{remark}
-In practice, transformations are often defined by:
-\begin{itemize}
-\item reference points,
-\item parameter sets,
-\item or standardized transformation models.
-\end{itemize}
-\end{remark}
-
-\section{Accuracy and Consistency}
-
-\begin{remark}
-Coordinate transformations introduce uncertainties.
-\end{remark}
-
-\begin{remark}
-Even small inconsistencies can lead to:
-\begin{itemize}
-\item visible misalignment of datasets,
-\item incorrect curvature estimation,
-\item and unstable numerical reconstruction.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Therefore, a modelling framework must:
-\begin{itemize}
-\item track the CRS of all data,
-\item apply transformations explicitly,
-\item and avoid implicit assumptions.
-\end{itemize}
-\end{remark}
-
-\section{CRS in Alignment Modelling}
-
-\begin{remark}
-In a curvature-based alignment model, geometry is reconstructed from
-functions such as \(\kappa(s)\).
-\end{remark}
-
-\begin{remark}
-This reconstruction requires a consistent spatial reference:
-\begin{itemize}
-\item initial position,
-\item initial orientation,
-\item and coordinate system definition.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, CRS information is not auxiliary, but an essential component of
-the alignment model.
-\end{remark}
-
-\section{Challenges}
-
-\begin{remark}
-The integration of CRS into alignment modelling raises several challenges:
-\begin{itemize}
-\item handling heterogeneous input data,
-\item maintaining numerical stability,
-\item supporting large coordinate values,
-\item and enabling local computations with high precision.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-In particular, large global coordinates may lead to numerical issues
-in floating-point computations.
-\end{remark}
-
-\section{Local Coordinate Frames}
-
-\begin{remark}
-To address numerical issues, local coordinate frames are often used.
-\end{remark}
+% ============================================================
+\section{Local Frames and Numerical Stability}
+% ============================================================
 
 \begin{definition}[Local frame]
-A local frame is a coordinate system defined relative to a reference
-point, typically near the area of interest.
+A local frame is a coordinate system anchored near an engineering region
+of interest.
 \end{definition}
 
-\begin{remark}
-Using local frames:
-\begin{itemize}
-\item improves numerical stability,
-\item simplifies geometric computations,
-\item and allows efficient visualization.
-\end{itemize}
-\end{remark}
+Local frames improve numerical stability for runtime evaluation,
+projection, and reconstruction, while preserving linkage to global
+reference context.
 
-\section{Towards a Coordinate-Aware Model}
+% ============================================================
+\section{Stationing versus CRS Coordinates}
+% ============================================================
 
-\begin{remark}
-A modern alignment modelling framework must be coordinate-aware.
-\end{remark}
+CRS coordinates express embedded position. Stationing expresses route
+address along railway reference structures. These are distinct layers
+and must not be conflated.
 
-\begin{remark}
-This includes:
-\begin{itemize}
-\item explicit CRS representation,
-\item consistent transformation handling,
-\item integration with geometry reconstruction,
-\item and support for local and global coordinates.
-\end{itemize}
-\end{remark}
+% ============================================================
+\section{Relation to Metric Realization}
+% ============================================================
 
-\section{Connection to the AIM Framework}
+Coordinate handling consumes metric realization
+(\cref{chap:metric-realization}) and realization operators; it does not
+replace them. World embedding and world--track relations remain
+realization-dependent services.
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
-Coordinate systems are a fundamental aspect of railway alignment data.
+Within AIM, coordinate systems and CRS are explicit embedding context
+for realized and observed railway states.
 
-A consistent treatment of CRS is essential for integrating real-world
-data, ensuring numerical stability, and enabling reliable modelling.
-
-Within the AIM framework, CRS is treated as an explicit component of the
-alignment state, rather than as external metadata.
+They are essential for consistency and interoperability, but they are
+not alignment identity.
 \end{summary}
-
-% ============================================================
-\section{Alignment Modelling Beyond Map Projections}
-% ============================================================
-
-\subsection{Motivation}
-
-\begin{remark}
-Conventional railway alignment design is typically performed in planar
-coordinate systems derived from map projections, such as Gauss--Krüger,
-UTM, or Mercator.
-\end{remark}
-
-\begin{remark}
-These projections introduce distortions in length, angle, and area,
-which are controlled but fundamentally unavoidable.
-\end{remark}
-
-\begin{remark}
-For large-scale infrastructure or high-precision applications, these
-distortions become conceptually and computationally relevant.
-\end{remark}
-
-\subsection{Intrinsic Surface Formulation}
-
-\begin{remark}
-An alternative perspective is to formulate alignment geometry directly
-on the Earth's reference surface, typically modeled as an ellipsoid.
-\end{remark}
-
-\begin{definition}[Surface-based alignment]
-An alignment is defined as a curve
-\[
-\gamma : s \mapsto \mathcal{E},
-\]
-where \(\mathcal{E}\) denotes the reference ellipsoid.
-\end{definition}
-
-\begin{remark}
-In this formulation, arc-length is measured intrinsically on the surface,
-and curvature is defined with respect to the surface geometry.
-\end{remark}
-
-\subsection{Geometric Consequences}
-
-\begin{remark}
-Curves on the ellipsoid are no longer planar:
-\begin{itemize}
-\item geodesics replace straight lines,
-\item curvature must be interpreted in a surface-intrinsic sense,
-\item normal vectors depend on the local surface geometry.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, the classical decomposition into planar geometry and vertical
-profile becomes insufficient.
-\end{remark}
-
-\subsection{Relation to AIM}
-
-\begin{remark}
-The AIM framework is inherently curvature-based and therefore not tied
-to a specific embedding space.
-\end{remark}
-
-\begin{remark}
-In particular, the representation
-\[
-\kappa(s)
-\]
-remains valid on curved surfaces, provided curvature is defined with
-respect to the surface metric.
-\end{remark}
-
-\subsection{Practical Considerations}
-
-\begin{remark}
-Despite its conceptual appeal, a full ellipsoidal formulation introduces
-significant complexity:
-\begin{itemize}
-\item nonlinear surface geometry,
-\item increased computational cost,
-\item limited compatibility with existing engineering workflows.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-For this reason, planar projections remain the dominant approach in
-practice.
-\end{remark}
-
-\subsection{Alignment as Curve on a Surface}
-
-\begin{remark}
-The Earth is modeled as a reference surface \(\mathcal{E}\), typically
-an ellipsoid.
-\end{remark}
-
-\begin{definition}[Surface alignment]
-An alignment can be interpreted as a curve
-\[
-\gamma : s \mapsto \mathcal{E},
-\]
-embedded in the surface.
-\end{definition}
-
-\begin{remark}
-In this setting, curvature decomposes into:
-\begin{itemize}
-\item intrinsic curvature (within the surface),
-\item normal curvature (with respect to embedding).
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Straight lines in planar projections correspond to geodesics on the
-surface, which are not necessarily suitable as railway alignments.
-\end{remark}
-
-\begin{remark}
-Thus, alignment design is not equivalent to geodesic design.
-\end{remark}
-
-\subsection{Vision}
-
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-  scale=1.0,
-  every node/.style={font=\small},
-  arrow/.style={->, thick},
-  dashedarrow/.style={->, thick, dashed}
-]
-
-% ============================================================
-% Ellipsoid
-% ============================================================
-
-\draw[thick] (0,0) ellipse (2 and 1);
-\node at (0,-1.4) {Reference Surface $\mathcal{E}$};
-
-% alignment curve
-\draw[thick] (-1.5,-0.2)
-  .. controls (-0.5,0.7) and (0.9,0.5) ..
-  (1.4,0.2);
-
-\node at (0,0.9) {$\gamma(s)$};
-
-% geodesic
-\draw[dashed] (-1.6,0) -- (1.6,0);
-\node at (0,-0.2) {\scriptsize geodesic};
-
-% ============================================================
-% Projection
-% ============================================================
-
-\draw[arrow] (2.3,0) -- (4.3,0)
-node[midway, above] {projection};
-
-\draw[thick] (4.5,-1) rectangle (8.5,1);
-\node at (6.5,-1.4) {Planar Projection};
-
-\draw[thick] (5,-0.3)
-  .. controls (6,0.6) and (7.2,0.3) ..
-  (8,-0.1);
-
-% ============================================================
-% Track space
-% ============================================================
-
-\draw[arrow] (8.8,0) -- (10.8,0)
-node[midway, above] {$\mathcal{W}$};
-
-\draw[thick] (11,-1) rectangle (14,1);
-\node at (12.5,-1.4) {Track Space};
-
-\draw[->] (11.3,-0.5) -- (13.7,-0.5);
-\node at (13.8,-0.5) {$s$};
-
-\draw[->] (11.3,-0.5) -- (11.3,0.7);
-\node at (11.3,0.9) {$d$};
-
-% ============================================================
-% DIRECT mapping
-% ============================================================
-
-\draw[dashedarrow, bend left=20]
-(1.5,0.6)
-to node[above]
-{\textbf{intrinsic mapping}}
-(11,0.8);
-
-% ============================================================
-% annotations
-% ============================================================
-
-\node[align=center] at (6.5,1.6)
-{\small projection introduces distortion};
-
-\node[align=center] at (6.5,-2.2)
-{\small classical workflow};
-
-\node[align=center] at (10.5,2.0)
-{\small AIM: curvature-driven intrinsic model};
-
-\node[align=center] at (-0.2,1.6)
-{\small alignment $\neq$ geodesic};
-
-\end{tikzpicture}
-
-\caption{
-Alignment modelling across geometric representations.
-On the reference surface, alignments are curves that generally differ
-from geodesics.
-Classical workflows project geometry to a plane before further
-processing, introducing distortions.
-The AIM perspective enables direct intrinsic modelling and mapping to
-track coordinates, independent of projection.
-}
-\end{figure}
-
-\begin{summary}
-AIM opens the possibility of alignment modelling directly on the Earth's
-reference surface.
-
-While current engineering practice relies on planar projections, future
-systems may operate intrinsically on the ellipsoid, avoiding projection
-distortions and enabling globally consistent modelling.
-
-This perspective represents a long-term research direction rather than
-an immediate engineering requirement.
-\end{summary}
-
-\begin{remark}
-In this sense, map projections can be understood as implementation
-choices rather than fundamental modelling constraints.
-\end{remark}
-
-\section{Physical Validity and Coordinate Systems}
-
-\subsection{Current Practice}
-
-\begin{remark}
-In current engineering workflows, railway alignment design and
-validation are typically performed in projected coordinate systems
-(e.g.\ Gauss--Krüger, UTM).
-\end{remark}
-
-\begin{remark}
-All geometric quantities, including curvature, distances, and derived
-dynamic measures, are evaluated within these planar representations.
-\end{remark}
-
-\begin{remark}
-However, such coordinate systems are approximations of the Earth’s
-geometry and introduce distortions:
-\begin{itemize}
-\item metric distortion (scale),
-\item angular distortion,
-\item non-uniform curvature representation.
-\end{itemize}
-\end{remark}
-
-\subsection{Fundamental Limitation}
-
-\begin{proposition}
-Physical quantities derived in a projected coordinate system are not
-strictly consistent with the underlying geometry of the Earth.
-\end{proposition}
-
-\begin{remark}
-In particular:
-\begin{itemize}
-\item arc-length is only approximately preserved,
-\item curvature is distorted by projection,
-\item dynamic quantities (e.g.\ acceleration, jerk) are evaluated on an
-approximate geometry.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, current alignment validation is performed in an
-\emph{engineering approximation space}, not in the physical space in
-which the railway actually exists.
-\end{remark}
-
-\subsection{Ellipsoid-Based Perspective}
-
-\begin{remark}
-A more physically consistent approach is to formulate alignment geometry
-directly on a reference ellipsoid.
-\end{remark}
-
-\begin{remark}
-In this setting:
-\begin{itemize}
-\item arc-length is defined intrinsically,
-\item curvature is defined with respect to the surface geometry,
-\item transformations to world coordinates are exact (up to numerical precision).
-\end{itemize}
-\end{remark}
-
-\subsection{Differential-Geometric Formulation}
-
-\begin{definition}[Intrinsic alignment on a surface]
-Let \(\mathcal{E}\) denote a reference ellipsoid.
-An alignment is defined as a curve
-\[
-\gamma : s \mapsto \mathcal{E},
-\]
-with curvature defined intrinsically via differential geometry.
-\end{definition}
-
-\begin{remark}
-In this formulation:
-\begin{itemize}
-\item curvature is a geometric invariant,
-\item arc-length is physically meaningful,
-\item projection artifacts are eliminated.
-\end{itemize}
-\end{remark}
-
-\subsection{Implication for Dynamics}
-
-\begin{remark}
-Dynamic quantities such as lateral acceleration and jerk depend on
-curvature and arc-length derivatives.
-\end{remark}
-
-\begin{remark}
-If these are evaluated in a distorted coordinate system, the resulting
-values are only approximate.
-\end{remark}
-
-\begin{proposition}
-Evaluating dynamics on an intrinsic (ellipsoid-based) geometry yields
-more physically accurate and reliable results.
-\end{proposition}
-
-\subsection{Safety Perspective}
-
-\begin{remark}
-Railway alignment design directly affects safety-critical quantities:
-\begin{itemize}
-\item lateral acceleration,
-\item cant deficiency,
-\item jerk.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Errors introduced by coordinate distortions may be small individually,
-but can accumulate over long distances or in high-speed scenarios.
-\end{remark}
-
-\begin{proposition}
-A geometrically consistent modelling framework improves the robustness
-and safety of alignment design.
-\end{proposition}
-
-\subsection{Vision}
-
-\begin{remark}
-The long-term vision is to move from projection-based engineering
-geometry to intrinsic, surface-based modelling.
-\end{remark}
-
-\begin{remark}
-This implies:
-\begin{itemize}
-\item alignment design on the ellipsoid,
-\item differential-geometric formulation of curvature and dynamics,
-\item projection used only for visualization and data exchange.
-\end{itemize}
-\end{remark}
-
-\begin{summary}
-Current railway alignment validation is performed in projected
-coordinate systems and is therefore only approximately physical.
-
-A shift toward ellipsoid-based or differential-geometric modelling
-enables:
-\begin{itemize}
-\item physically consistent curvature,
-\item accurate dynamic evaluation,
-\item increased robustness,
-\item and ultimately safer alignment design.
-\end{itemize}
-
-This represents a fundamental extension of current engineering practice
-within the AIM framework.
-\end{summary}
-
-\begin{remark}
-Curvature evaluated in projected coordinate systems differs from
-intrinsic curvature on the ellipsoid.
-
-See \cref{chapter:ellipsoid_curvature}.
-\end{remark}

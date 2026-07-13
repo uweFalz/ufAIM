@@ -182,8 +182,6 @@ spotStore
 spotStore = {
 	meta: {
 		version: "spot.v0.1",
-		activeSpotId: null,
-		activeRouteProjectId: null,
 		engineeringCrsId: null,
 		updatedAt: null,
 	},

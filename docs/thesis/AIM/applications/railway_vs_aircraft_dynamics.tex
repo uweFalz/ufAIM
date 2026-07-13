@@ -4,418 +4,51 @@
 
 \label{chap:railway-vs-aircraft}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-\begin{remark}
-Aircraft dynamics and railway dynamics are often treated as fundamentally
-different engineering domains.
-\end{remark}
-
-\begin{remark}
-However, both systems are governed by related physical principles:
-\begin{itemize}
-\item inertia,
-\item curvature-driven motion,
-\item center-of-gravity behaviour,
-\item rotational response,
-\item and passenger comfort constraints.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-The essential difference is not dynamics itself, but the degree of
-kinematic freedom.
-\end{remark}
+This chapter provides a comparative application perspective that
+clarifies railway-specific consequences of constrained motion.
 
 % ============================================================
-\section{Aircraft Dynamics}
+\section{Comparative Context}
 % ============================================================
 
-\subsection{Free Spatial Motion}
-
-\begin{remark}
-Aircraft move within largely unconstrained three-dimensional space.
-\end{remark}
-
-\begin{remark}
-The aircraft continuously adapts:
-\begin{itemize}
-\item roll,
-\item yaw,
-\item pitch,
-\item and trajectory
-\end{itemize}
-to dynamic requirements.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Center-of-Gravity Interpretation}
-
-\begin{remark}
-Aircraft dynamics are strongly centered around:
-\begin{itemize}
-\item center-of-gravity motion,
-\item stability,
-\item inertia tensors,
-\item and aerodynamic force balance.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Dynamic Freedom}
-
-\begin{remark}
-The aircraft may continuously adapt:
-\begin{itemize}
-\item orientation,
-\item banking angle,
-\item and trajectory curvature
-\end{itemize}
-during operation.
-\end{remark}
+Aircraft and railway domains share dynamic principles such as inertial
+response and comfort relevance. The key difference for applications is
+kinematic freedom: aircraft trajectories are actively steered in free
+space, whereas railway vehicles are constrained by infrastructure
+geometry.
 
 % ============================================================
-\section{Railway Dynamics}
+\section{Railway Consequence}
 % ============================================================
 
-\subsection{Track-Constrained Motion}
+Because railway motion is infrastructure-constrained, alignment,
+cant, and runtime interpretation become primary control levers for
+operational behaviour.
 
-\begin{remark}
-Railway vehicles are fundamentally different because their motion is
-strongly constrained by track geometry.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-The railway vehicle cannot freely select:
-\begin{itemize}
-\item curvature,
-\item roll angle,
-\item or spatial trajectory.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Instead, these quantities are largely prescribed by:
-\begin{itemize}
-\item alignment geometry,
-\item cant,
-\item vehicle suspension,
-\item and operational velocity.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{The Hidden Similarity}
-% ============================================================
-
-\begin{remark}
-Despite these differences, both aircraft and railway systems ultimately
-attempt to manage:
-\[
-\text{inertial forces}
-\]
-relative to:
-\[
-\text{vehicle orientation and passenger comfort}.
-\]
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-In aircraft:
-\begin{itemize}
-\item trajectory adapts to dynamics.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-In railways:
-\begin{itemize}
-\item geometry and cant must be designed in advance to support future
-dynamic behaviour.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Cant as Railway Banking}
-% ============================================================
-
-\begin{remark}
-Cant may be interpreted as the railway equivalent of aircraft banking.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-However, unlike aircraft banking:
-\begin{itemize}
-\item railway cant is infrastructure-bound,
-\item spatially fixed,
-\item and shared by all vehicles using the track.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This creates a fundamental compromise:
-\begin{itemize}
-\item freight trains,
-\item passenger trains,
-\item high-speed vehicles,
-\item and maintenance vehicles
-\end{itemize}
-must all operate on the same geometric infrastructure.
-\end{remark}
-
-% ============================================================
-\section{Classical Railway Limitation}
-% ============================================================
-
-\begin{remark}
-Classical railway engineering therefore evolved toward strongly coupled
-design rules:
-\[
-\kappa(s)
-\leftrightarrow
-\phi(s).
-\]
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-In many traditional approaches, curvature and cant evolution are treated
-almost as inseparable quantities.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This coupling simplifies:
-\begin{itemize}
-\item construction,
-\item maintenance,
-\item and standards.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-However, it also limits:
-\begin{itemize}
-\item operational flexibility,
-\item vehicle-specific optimization,
-\item and adaptive reinterpretation of existing infrastructure.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{The AIM Perspective}
-% ============================================================
-
-\subsection{Pose3 Interpretation}
-
-\begin{remark}
-Within AIM, cant is not interpreted merely as static geometric
-annotation.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Instead, cant contributes to a runtime-derived operational state:
-\[
-\mathrm{pose3}.
-\]
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This enables explicit interpretation of:
-\begin{itemize}
-\item vehicle-space behaviour,
-\item center-of-gravity motion,
-\item dynamic comfort,
-\item and operational envelopes.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{From Fixed Geometry to Operational Envelopes}
-% ============================================================
-
-\begin{remark}
-Classical railway optimization often attempts to derive:
-\[
-\kappa(s)
-\]
-from:
-\[
-\phi(s).
-\]
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, the inverse interpretation becomes possible:
-\begin{itemize}
-\item existing curvature geometry remains largely fixed,
-\item cant becomes partially adjustable,
-\item and admissible velocity envelopes are evaluated dynamically.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Thus, the operational question changes from:
-\[
-\textit{``Which geometry should be built?''}
-\]
-to:
-\[
-\textit{``Which operational behaviour can be supported by existing
-geometry?''}
-\]
-\end{remark}
-
-% ============================================================
-\section{Center-of-Gravity Interpretation}
-% ============================================================
-
-\begin{remark}
-Different railway vehicles possess different:
-\begin{itemize}
-\item center-of-gravity heights,
-\item suspension systems,
-\item roll behaviour,
-\item and passenger comfort limits.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Thus:
-\begin{itemize}
-\item freight trains,
-\item passenger trains,
-\item tilting trains,
-\item and metro systems
-\end{itemize}
-may require different operational interpretations of the same physical
-track geometry.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This naturally motivates:
-\begin{itemize}
-\item vehicle-specific runtime evaluation,
-\item operational velocity envelopes,
-\item and realization-aware cant interpretation.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Operational Consequence}
-% ============================================================
-
-\begin{remark}
-The operational opportunity is not necessarily:
-\[
-\textit{``new geometry''}
-\]
-but often:
-\[
-\textit{``better interpretation of existing geometry.''}
-\]
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Small cant adjustments,
-sometimes only within millimeter or centimeter ranges,
-may significantly affect:
-\begin{itemize}
-\item admissible speed,
-\item passenger comfort,
-\item and operational stability.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-This creates the possibility of:
-\begin{itemize}
-\item operational upgrades,
-\item speed improvements,
-\item and realization-aware optimization
-\end{itemize}
-without requiring major reconstruction of alignment geometry.
-\end{remark}
+In application terms, the engineering question is often how existing
+geometry can support admissible operational envelopes through runtime
+and realization-aware interpretation.
 
 % ============================================================
 \section{AIM Interpretation}
 % ============================================================
 
-\begin{proposition}
-Within AIM, railway alignment is not merely static infrastructure
-geometry.
-\end{proposition}
+Within AIM, this comparison motivates use of canonical pose3,
+vehicle-space interpretation, and operational runtime evaluation for
+railway decision support.
 
-% ------------------------------------------------------------
-
-\begin{proposition}
-Railway alignment forms an operationally evaluated dynamic guidance
-system for constrained vehicle motion.
-\end{proposition}
-
-% ------------------------------------------------------------
-
-\begin{proposition}
-Cant, curvature, vehicle-space behaviour, and runtime evaluation must
-therefore be interpreted jointly.
-\end{proposition}
+The comparison is explanatory only; it does not introduce a parallel
+architectural model.
 
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-Aircraft and railway systems share common dynamic principles related to:
-\begin{itemize}
-\item inertia,
-\item curvature,
-\item center-of-gravity behaviour,
-\item and passenger comfort.
-\end{itemize}
+The railway-versus-aircraft comparison clarifies why railway
+applications require strong coupling between infrastructure semantics,
+runtime services, and operational interpretation.
 
-The essential difference lies in the degree of spatial freedom.
-
-Within AIM, this insight motivates:
-\begin{itemize}
-\item runtime-based vehicle-space interpretation,
-\item realization-aware dynamics,
-\item and operational evaluation of existing infrastructure.
-\end{itemize}
-
-Thus, railway alignment becomes interpretable as a dynamically evaluated
-guidance system rather than merely static track geometry.
+It reinforces application consequences of canonical AIM concepts without
+redefining them.
 \end{summary}

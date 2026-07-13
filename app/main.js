@@ -7,6 +7,9 @@ import { workerImportMirror } from "@app/examples/workerImportMirror.js";
 import { registerDevNoCacheSW } from "@app/bootstrap/registerDevNoCacheSW.js";
 
 import "@alignment/_e2eAlignmentTest.js";
+import "@src/shared/runtime/_e2eWorkspaceSelectionAccessTest.js";
+import "@src/import/parsers/_e2eParserValidationTest.js";
+import "@src/services/alignment/_e2eAlignmentEditModelBoundaryTest.js";
 
 await registerDevNoCacheSW({
 	enabled: !systemPrefs?.debug?.disableServiceWorker,

@@ -2,18 +2,13 @@
 
 \section{Overview}
 
-\begin{remark}
 The previous chapters introduced the mathematical and physical
 foundations of alignment modelling and optimization.
-\end{remark}
 
-\begin{remark}
 In this chapter, these concepts are combined into a concrete system
 architecture that enables the implementation of a full alignment
 optimization engine.
-\end{remark}
 
-\begin{remark}
 The architecture consists of the following main components:
 \begin{itemize}
 \item data ingestion (import and preprocessing),
@@ -23,13 +18,10 @@ The architecture consists of the following main components:
 \item numerical solver,
 \item live visualization.
 \end{itemize}
-\end{remark}
 
----
 
 \section{Data Flow}
 
-\begin{remark}
 The overall data flow can be summarized as:
 \[
 \text{Input Data}
@@ -40,18 +32,14 @@ The overall data flow can be summarized as:
 \rightarrow
 \text{Result}
 \]
-\end{remark}
 
-\begin{remark}
 In the implemented system, this flow is realized through a sequence of
 well-defined transformations.
-\end{remark}
 
 \begin{verbatim}
 Drop → Parser → Grabbeltisch → Initial Guess → SQP → Model → View
 \end{verbatim}
 
----
 
 \section{Optimization Session}
 
@@ -76,23 +64,18 @@ class OptimizationSession {
 }
 \end{verbatim}
 
-\begin{remark}
 This abstraction separates:
 \begin{itemize}
 \item data preparation,
 \item numerical optimization,
 \item integration into the system model.
 \end{itemize}
-\end{remark}
 
----
 
 \section{Initial Guess Construction}
 
-\begin{remark}
 The initial guess transforms raw geometric data into optimization
 variables.
-\end{remark}
 
 \begin{verbatim}
 function buildInitialGuess(polyline) {
@@ -111,12 +94,9 @@ function buildInitialGuess(polyline) {
 }
 \end{verbatim}
 
-\begin{remark}
 This step is essential for robust convergence of the optimization
 algorithm.
-\end{remark}
 
----
 
 \section{Constraint Library}
 
@@ -138,12 +118,9 @@ function parallelConstraint(p1, p2, d) {
 }
 \end{verbatim}
 
-\begin{remark}
 All constraints are expressed uniformly as residuals and integrated into
 the optimization problem.
-\end{remark}
 
----
 
 \section{Objective Engine}
 
@@ -179,18 +156,13 @@ function buildObjectiveResiduals(ctx, objectives) {
 }
 \end{verbatim}
 
-\begin{remark}
 This formulation enables flexible adaptation to different design
 criteria.
-\end{remark}
 
----
 
 \section{Residual Assembly}
 
-\begin{remark}
 The optimization problem is expressed entirely in terms of residuals.
-\end{remark}
 
 \begin{verbatim}
 function buildResidualVector(ctx, constraints, objectives) {
@@ -201,7 +173,6 @@ function buildResidualVector(ctx, constraints, objectives) {
 }
 \end{verbatim}
 
----
 
 \section{Numerical Solver}
 
@@ -229,18 +200,13 @@ async function runSQPInteractive(x0, onStep) {
 }
 \end{verbatim}
 
-\begin{remark}
 The solver operates on the residual formulation and exploits sparsity.
-\end{remark}
 
----
 
 \section{Live Visualization}
 
-\begin{remark}
 A key feature of the system is the live visualization of the optimization
 process.
-\end{remark}
 
 \begin{verbatim}
 optSession.runOptimization({
@@ -254,17 +220,12 @@ optSession.runOptimization({
 })
 \end{verbatim}
 
-\begin{remark}
 This enables interactive exploration and debugging of the optimization.
-\end{remark}
 
----
 
 \section{Network Extension}
 
-\begin{remark}
 The architecture extends naturally to networks of alignments.
-\end{remark}
 
 \begin{verbatim}
 function residuals(network) {
@@ -283,18 +244,13 @@ function residuals(network) {
 }
 \end{verbatim}
 
-\begin{remark}
 This allows simultaneous optimization of multiple connected tracks.
-\end{remark}
 
----
 
 \section{System Integration}
 
-\begin{remark}
 The optimization engine is integrated into the user workflow through the
 interactive selection interface.
-\end{remark}
 
 \begin{verbatim}
 onUserFinalizeSelection(selection) {
@@ -311,7 +267,6 @@ onUserFinalizeSelection(selection) {
 }
 \end{verbatim}
 
----
 
 \section{Summary}
 

@@ -8,17 +8,12 @@
 \section*{Motivation}
 % ============================================================
 
-\begin{remark}
 Classical railway alignment theory typically classifies transitions by
 their analytical formulas or historical engineering usage.
-\end{remark}
 
-\begin{remark}
 Within AIM, transition and alignment structures are classified
 intrinsically within curvature space.
-\end{remark}
 
-\begin{remark}
 This allows classification based on:
 \begin{itemize}
 \item continuity,
@@ -29,12 +24,9 @@ This allows classification based on:
 \item runtime robustness,
 \item and operational suitability.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Curvature classification therefore becomes a structural interpretation
 framework rather than merely a catalogue of curve formulas.
-\end{remark}
 
 \begin{principle}[Classification as interpretation]
 \label{princ:classification-as-interpretation}
@@ -52,21 +44,15 @@ Within AIM, alignments are classified by intrinsic curvature behaviour
 rather than by reconstructed position geometry.
 \end{principle}
 
-\begin{remark}
 Two geometrically similar curves in position space may possess very
 different curvature behaviour.
-\end{remark}
 
-\begin{remark}
 Conversely, geometrically different realizations may belong to the same
 curvature class if their intrinsic curvature evolution behaves
 equivalently.
-\end{remark}
 
-\begin{remark}
 Classification is therefore performed in curvature space before it is
 interpreted in position space.
-\end{remark}
 
 % ============================================================
 \section{Continuity Classification}
@@ -97,10 +83,8 @@ A geometry is \(G^1\)-continuous if tangent direction is continuous.
 A geometry is \(G^2\)-continuous if curvature is continuous.
 \end{definition}
 
-\begin{remark}
 Within railway alignment modelling, \(G^2\)-continuity is often the
 minimal requirement for dynamically acceptable transitions.
-\end{remark}
 
 % ------------------------------------------------------------
 
@@ -111,7 +95,6 @@ minimal requirement for dynamically acceptable transitions.
 A geometry is \(G^3\)-continuous if curvature gradient is continuous.
 \end{definition}
 
-\begin{remark}
 Higher continuity classes improve:
 \begin{itemize}
 \item jerk behaviour,
@@ -119,12 +102,9 @@ Higher continuity classes improve:
 \item runtime stability,
 \item and vehicle response.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Continuity classification bridges classical geometry notation with
 curvature-space interpretation.
-\end{remark}
 
 % ============================================================
 \section{Curvature Behaviour Classification}
@@ -152,9 +132,7 @@ A curvature law belongs to the linear class if:
 \]
 \end{definition}
 
-\begin{remark}
 The classical clothoid belongs to this class.
-\end{remark}
 
 % ------------------------------------------------------------
 
@@ -218,10 +196,8 @@ A normalized transition is symmetric if its curvature evolution is
 symmetric with respect to the midpoint of the normalized interval.
 \end{definition}
 
-\begin{remark}
 For transition comparison, symmetry should usually be evaluated in
 normalized transition space rather than in raw physical coordinates.
-\end{remark}
 
 % ------------------------------------------------------------
 
@@ -233,10 +209,8 @@ A transition has antisymmetric structure if its deviation from a
 reference or midpoint value changes sign under midpoint reflection.
 \end{definition}
 
-\begin{remark}
 Antisymmetry is especially useful when analysing centred transition
 shape functions or derivative behaviour.
-\end{remark}
 
 % ------------------------------------------------------------
 
@@ -247,7 +221,6 @@ shape functions or derivative behaviour.
 A transition is asymmetric if no symmetry condition is imposed.
 \end{definition}
 
-\begin{remark}
 Asymmetry may arise intentionally through:
 \begin{itemize}
 \item realization-aware design,
@@ -255,7 +228,6 @@ Asymmetry may arise intentionally through:
 \item topology constraints,
 \item or local engineering constraints.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Derivative Classification}
@@ -287,7 +259,6 @@ A curvature law belongs to this class if:
 \]
 \end{definition}
 
-\begin{remark}
 These classes influence:
 \begin{itemize}
 \item dynamic smoothness,
@@ -295,7 +266,6 @@ These classes influence:
 \item realization robustness,
 \item and optimization conditioning.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Spectral Classification}
@@ -309,10 +279,8 @@ Low-frequency curvature structures are dominated by slowly varying
 curvature evolution.
 \end{definition}
 
-\begin{remark}
 Low-frequency structure usually determines the large-scale geometric
 shape of the alignment.
-\end{remark}
 
 % ------------------------------------------------------------
 
@@ -324,7 +292,6 @@ High-frequency curvature structures contain rapidly varying or
 oscillating components.
 \end{definition}
 
-\begin{remark}
 High-frequency structures tend to:
 \begin{itemize}
 \item amplify realization sensitivity,
@@ -332,17 +299,14 @@ High-frequency structures tend to:
 \item increase measurement sensitivity,
 \item and reduce numerical stability.
 \end{itemize}
-\end{remark}
 
 \begin{proposition}[Spectral realization principle]
 \label{prop:classification-spectral-realization}
 Realization suppresses high-frequency curvature components.
 \end{proposition}
 
-\begin{remark}
 Spectral classification therefore links transition theory with physical
 realization behaviour.
-\end{remark}
 
 % ============================================================
 \section{Realization Classification}
@@ -370,10 +334,8 @@ A transition belongs to the realization-sensitive class if small
 realization perturbations strongly alter curvature behaviour.
 \end{definition}
 
-\begin{remark}
 Realization-sensitive transitions may be mathematically valid but
 operationally undesirable.
-\end{remark}
 
 % ============================================================
 \section{Runtime Classification}
@@ -471,15 +433,11 @@ Transition families may be classified according to:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 Thus, transition classification becomes multidimensional rather than
 formula-based.
-\end{remark}
 
-\begin{remark}
 A single transition family may be favourable in one classification axis
 and unfavourable in another.
-\end{remark}
 
 % ============================================================
 \section{Classification Vectors}
@@ -505,11 +463,9 @@ spectral structure, realization behaviour, runtime stability, and
 operational suitability.
 \end{definition}
 
-\begin{remark}
 The classification vector is not intended as a rigid taxonomy. It is a
 structured way to compare transition families across multiple relevant
 dimensions.
-\end{remark}
 
 % ============================================================
 \section{Canonical Interpretation}

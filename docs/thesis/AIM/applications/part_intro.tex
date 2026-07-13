@@ -4,98 +4,36 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Applications}
 
-% ============================================================
-\section*{What do we already know?}
-% ============================================================
+The preceding parts established approved engineering concepts for
+alignment semantics, state, runtime evaluation, and reality coupling.
+The Applications part demonstrates what this architecture enables in
+concrete engineering contexts.
 
-\begin{remark}
-The previous parts established the theoretical foundations of AIM.
-\end{remark}
+Applications therefore follow the progression
+\[
+\text{approved engineering concepts}
+\rightarrow
+\text{application context}
+\rightarrow
+\text{engineering use case}
+\rightarrow
+\text{required runtime/realization services}
+\rightarrow
+\text{derived representation or decision support}
+\rightarrow
+\text{engineering consequence}.
+\]
 
-\begin{remark}
-Geometry, states, runtime evaluation, realization, modelling,
-optimization, and engineering constraints have been developed as
-components of a coherent alignment-based information framework.
-\end{remark}
-
-\begin{remark}
-The resulting system provides a rigorous mathematical and engineering
-basis for railway alignment modelling.
-\end{remark}
-
-\begin{remark}
-However, a framework ultimately derives its value from practical use.
-\end{remark}
-
-% ============================================================
-\section*{What is still missing?}
-% ============================================================
-
-\begin{remark}
-Theoretical concepts alone do not demonstrate practical relevance.
-\end{remark}
-
-\begin{remark}
-A railway information framework must be capable of addressing concrete
-engineering problems, supporting operational workflows, and providing
-insight into real applications.
-\end{remark}
-
-\begin{remark}
-The missing element is therefore the application perspective.
-\end{remark}
-
-\begin{remark}
-The question is no longer whether the framework is mathematically
-consistent, but how it can be employed in practical railway and
-infrastructure contexts.
-\end{remark}
-
-% ============================================================
-\section*{What comes next?}
-% ============================================================
-
-\begin{remark}
-This part illustrates how the AIM framework can be applied to concrete
-problems.
-\end{remark}
-
-\begin{remark}
-The focus shifts from framework construction toward framework usage.
-\end{remark}
-
-\begin{remark}
-The chapters that follow investigate:
-\begin{itemize}
-\item railway alignment applications,
-\item vehicle-space interpretation,
-\item dynamic engineering scenarios,
-\item practical examples,
-\item use-case driven modelling,
-\item and BIMalignment concepts.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-These applications are not intended merely as demonstrations.
-
-They illustrate how the concepts developed throughout AIM become
-operational engineering tools.
-\end{remark}
-
-\begin{remark}
-The purpose is therefore to connect theory with practical railway
-engineering practice.
-\end{remark}
+Application chapters consume canonical concepts and do not become new
+conceptual homes for alignment identity, pose2/pose3, realization, or
+representation layers.
 
 % ============================================================
 \section*{Relation to the AIM Roadmap}
 % ============================================================
 
-\begin{remark}
-Within the AIM roadmap, the present part corresponds to the transition
-from engineering theory toward practical deployment.
-\end{remark}
+Within the roadmap, this part corresponds to deployment of the
+established architecture in practical engineering workflows.
 
 \begin{center}
 \begin{tikzpicture}[
@@ -103,62 +41,39 @@ from engineering theory toward practical deployment.
   box/.style={
     draw,
     rounded corners,
-    minimum width=5.0cm,
+    minimum width=5.3cm,
     minimum height=0.9cm,
     align=center
   }
 ]
 
-\node[box] (theory)
-{Theory};
+\node[box] (concepts)
+{Approved AIM Concepts};
 
-\node[box, below=of theory] (applications)
-{Applications};
+\node[box, below=of concepts] (applications)
+{Application and Workflow Context};
 
-\node[box, below=of applications] (practice)
-{Engineering Practice};
+\node[box, below=of applications] (consequence)
+{Engineering Consequence};
 
-\draw[->, thick] (theory) -- (applications);
-\draw[->, thick] (applications) -- (practice);
+\draw[->, thick] (concepts) -- (applications);
+\draw[->, thick] (applications) -- (consequence);
 
 \end{tikzpicture}
 \end{center}
 
-\begin{remark}
-The progression
-\[
-\text{Theory}
-\rightarrow
-\text{Applications}
-\rightarrow
-\text{Engineering Practice}
-\]
-marks the transition from conceptual understanding toward practical
-engineering value.
-\end{remark}
-
-\begin{remark}
-Applications therefore serve as the validation layer of AIM, showing
-how abstract concepts become useful engineering instruments.
-\end{remark}
-
-% ============================================================
 \begin{principle}[Application Principle]
 \label{princ:application-principle}
-Within AIM, theoretical concepts achieve their full significance only
-when they can be transformed into practical workflows, engineering
-tools, and operational railway applications.
+Within AIM, applications demonstrate architectural enablement and
+engineering consequence while preserving conceptual ownership in
+Foundations, State, Runtime, and Reality.
 \end{principle}
 
-% ============================================================
 \begin{summary}
-Theory explains what is possible.
+Applications in AIM are consequence-oriented demonstrations of established
+engineering semantics.
 
-Engineering explains what is admissible.
-
-Applications explain what is useful.
-
-The present part therefore demonstrates how alignment-based
-information modelling can be employed to address practical railway and
-infrastructure problems.
+They show how canonical concepts support decision support,
+interoperability, and operational engineering outcomes without
+redefining the conceptual kernel.
 \end{summary}

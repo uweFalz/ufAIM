@@ -24,7 +24,6 @@
 // - workspace_visible_tracks       = already projected helper/context tracks
 //
 // Deprecated aliases kept for transition:
-// - activeRouteProjectId
 // - activeSlot
 // - view_pins
 // - import_preview_collection
@@ -120,6 +119,55 @@ function normalizeVisibleTracks(items) {
 		.filter((item) => item.id && Array.isArray(item.points) && item.points.length >= 2);
 }
 
+function derivePreviewCrsId(item) {
+	const sr = isObject(item?.spatialRef) ? item.spatialRef : null;
+
+	const crsId =
+		item?.crsId ??
+		sr?.crsId ??
+		sr?.horizontalCrsId ??
+		sr?.horizontal ??
+		sr?.horizontalCoordinateSystemName ??
+		null;
+
+	if (crsId == null) return null;
+
+	const normalized = String(crsId).trim();
+	return normalized || null;
+}
+
+function normalizePreviewItem(item) {
+	if (!isObject(item)) return null;
+
+	const kernel = isObject(item.kernel)
+		? item.kernel
+		: isObject(item.sparseAlignment)
+		? item.sparseAlignment
+		: null;
+
+	if (!kernel) return null;
+
+	const id = String(
+		item.id ??
+		item.payload?.id ??
+		item.payload?.name ??
+		"preview_alignment"
+	).trim();
+
+	if (!id) return null;
+
+	const name = String(item.name ?? item.payload?.name ?? id).trim() || id;
+
+	return {
+		id,
+		kind: String(item.kind ?? "alignment"),
+		name,
+		kernel,
+		crsId: derivePreviewCrsId(item),
+		source: isObject(item.source) ? item.source : null,
+	};
+}
+
 // @deprecated compatibility for old preview-like entries.
 // Kept only so old callers do not hard-crash during migration.
 function normalizePreviewCollection(items) {
@@ -137,18 +185,11 @@ function normalizePreviewCollection(items) {
 				};
 			}
 
-			return {
-				id: item.id ?? null,
-				kind: item.kind ?? "alignment",
-				name: item.name ?? item.id ?? "preview",
-				sparseAlignment: isObject(item.sparseAlignment) ? item.sparseAlignment : null,
-				spatialRef: isObject(item.spatialRef) ? item.spatialRef : (item.spatialRef ?? null),
-				source: isObject(item.source) ? item.source : {},
-			};
+			return normalizePreviewItem(item);
 		})
 		.filter((item) => {
 			if (Array.isArray(item.points) && item.points.length >= 2) return true;
-			return item.id && item.sparseAlignment;
+				return item?.id && isObject(item?.kernel);
 		});
 }
 
@@ -183,10 +224,8 @@ export function makeInitialState() {
 		workspace_visible_tracks_source: null,
 
 		// --------------------------------------------------------
-		// legacy focus mirror
-		// @deprecated replace by workspace_selection.primaryId
+		// legacy slot mirror
 		// --------------------------------------------------------
-		activeRouteProjectId: null,
 		activeSlot: "right",
 
 		// --------------------------------------------------------
@@ -288,10 +327,8 @@ export function ensureStateShape(state) {
 			: null,
 
 		// --------------------------------------------------------
-		// legacy focus mirror
-		// @deprecated replace by workspace_selection.primaryId
+		// legacy slot mirror
 		// --------------------------------------------------------
-		activeRouteProjectId: s.activeRouteProjectId ?? null,
 		activeSlot: normalizeSlot(s.activeSlot),
 
 		// --------------------------------------------------------
@@ -321,7 +358,7 @@ export function ensureStateShape(state) {
 			s: Number.isFinite(Number(s.cursor?.s)) ? Number(s.cursor.s) : 0,
 		},
 
-		preview_item: isObject(s.preview_item) ? s.preview_item : null,
+		preview_item: normalizePreviewItem(s.preview_item),
 		preview_source: isObject(s.preview_source) ? s.preview_source : null,
 
 		// --------------------------------------------------------

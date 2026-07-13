@@ -19,6 +19,10 @@ import { inspectCrsContext } from "@src/domain/crs/CrsAgent.js";
 
 import { renderCockpitRoot } from "@app/view/cockpit/renderCockpitRoot.js";
 import { AlignmentEditorController } from "@app/controllers/alignmentEditorController.js";
+import {
+	getWorkspacePrimaryId,
+	getWorkspaceContextIds,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 import {
 	buildImportRows,
@@ -28,8 +32,6 @@ import {
 	makePreviewCandidate,
 	readSpotLabel,
 	derivePreviewCrsId,
-	deriveImportItemCrsId,
-	isPinned,
 } from "@app/domain/cockpit/cockpitItemAdapters.js";
 
 import {
@@ -119,9 +121,17 @@ export class CockpitController {
 		const windowState = this.store.getState?.() ?? {};
 		const importState = this._importState ?? {};
 		const spotState = this._spotState ?? {};
+		const importRows = buildImportRows(windowState, importState);
+		const spotRows = buildSpotRows(windowState, spotState);
 
-		const scene = this._buildSceneState(windowState, spotState);
-		const context = this._buildContextState(windowState, importState, spotState, scene);
+		const scene = this._buildSceneState(windowState, spotState, {
+			importRows,
+			spotRows,
+		});
+		const context = this._buildContextState(windowState, spotState, scene, {
+			importRows,
+			spotRows,
+		});
 		const actions = this._buildActionState(scene, context);
 
 		return {
@@ -129,44 +139,50 @@ export class CockpitController {
 			context,
 			actions,
 			collections: {
-				importRows: buildImportRows(windowState, importState),
-				spotRows: buildSpotRows(windowState, spotState),
+				importRows,
+				spotRows,
 			},
 		};
 	}
 
 	async createNewAlignment() {
-	const result = await this._alignmentEditor.newAlignment({
-		name: "New Alignment",
-	});
+		const result = await this._alignmentEditor.newAlignment({
+			name: "New Alignment",
+		});
 
-	const objectId = result?.spotObject?.id ?? result?.alignmentData?.id ?? null;
+		const objectId = result?.spotObject?.id ?? result?.alignmentData?.id ?? null;
 
-	if (objectId) {
-		clearCockpitPreview({ store: this.store });
-		this._activateObjectId(objectId);
+		if (objectId) {
+			clearCockpitPreview({ store: this.store });
+			this._activateObjectId(objectId);
+		}
+
+		await this.refreshSpotState();
+
+		const label =
+			result?.spotObject?.meta?.label ??
+			result?.alignmentData?.name ??
+			"New Alignment";
+
+		this.logLine?.(`[Cockpit] New Alignment erstellt: ${label}`);
+		this.render();
+
+		return result;
 	}
-
-	await this.refreshSpotState();
-
-	const label =
-		result?.spotObject?.meta?.label ??
-		result?.alignmentData?.name ??
-		"New Alignment";
-
-	this.logLine?.(`[Cockpit] New Alignment erstellt: ${label}`);
-	this.render();
-
-	return result;
-}
 
 	async previewImportItem(itemId) {
 		const importState = this._importState ?? await this.refreshImportState();
-		const item = findImportItemById(importState, itemId);
+		const windowState = this.store.getState?.() ?? {};
+		const row = buildImportRows(windowState, importState)
+			.find((entry) => String(entry?.itemId ?? "") === String(itemId ?? ""));
 
-		if (!item?.derived?.sparseAlignment) return false;
+		if (!row?.hasSparse) return false;
+
+		const item = findImportItemById(importState, itemId);
+		if (!item) return false;
 
 		const previewCandidate = makePreviewCandidate(item);
+		if (!previewCandidate?.kernel) return false;
 
 		this.store.actions?.setPreviewItem?.({
 			item: previewCandidate,
@@ -185,11 +201,17 @@ export class CockpitController {
 
 	async acceptImportItem(itemId, { show = false } = {}) {
 		const importState = this._importState ?? await this.refreshImportState();
+		const windowState = this.store.getState?.() ?? {};
+		const row = buildImportRows(windowState, importState)
+			.find((entry) => String(entry?.itemId ?? "") === String(itemId ?? ""));
+
+		if (!row) return false;
+
 		const item = findImportItemById(importState, itemId);
 
 		if (!item) return false;
 
-		if (item?.status?.accepted === true) {
+		if (row.accepted === true) {
 			if (show) this._activateObjectId(itemId);
 
 			this.logLine?.(
@@ -291,6 +313,20 @@ export class CockpitController {
 		this.queueRender();
 	}
 
+	async clearActiveAlignmentElements() {
+		const result = await this._alignmentEditor.clearActiveAlignmentElements();
+
+		if (!result) {
+			this.logLine?.("[Cockpit] Elemente konnten nicht gelöscht werden");
+			return null;
+		}
+
+		await this.refreshSpotState();
+		this.render();
+
+		return result;
+	}
+
 	_activateObjectId(objectId) {
 		return activateObjectId({
 			store: this.store,
@@ -298,44 +334,61 @@ export class CockpitController {
 		});
 	}
 
-	_buildSceneState(windowState, spotState) {
+	_buildSceneState(windowState, spotState, { importRows = [], spotRows = [] } = {}) {
 		const activeObjectId =
-			windowState?.workspace_selection?.primaryId ??
-			windowState?.focus?.objectId ??
-			windowState?.activeRouteProjectId ??
-			null;
+			getWorkspacePrimaryId(windowState);
 
 		const previewItem = windowState?.preview_item ?? null;
 
 		if (activeObjectId) {
+			const spotRow = spotRows.find((row) => String(row?.objectId ?? "") === String(activeObjectId));
 			const obj = findSpotObjectById(spotState, activeObjectId);
 
-			if (obj) {
+			if (obj && spotRow) {
+				const alignmentData = obj?.data?.alignmentData ?? null;
+
+				const elements = Array.isArray(alignmentData?.editModel?.elements)
+					? alignmentData.editModel.elements
+					: [];
+
 				return {
 					mode: "spot",
-					objectId: String(obj.id ?? activeObjectId),
-					label: readSpotLabel(obj),
-					type: obj.type ?? "unknown",
-					crsId: obj.crsId ?? null,
+					objectId: String(spotRow.objectId ?? activeObjectId),
+					label: spotRow.label ?? readSpotLabel(obj),
+					type: spotRow.type ?? "unknown",
+					crsId: spotRow.crsId ?? null,
 					status: "in_workspace",
 					slot: windowState?.activeSlot ?? "right",
-					pinned: isPinned(windowState, obj.id ?? activeObjectId),
-					source: obj?.meta?.source ?? null,
+					pinned: Boolean(spotRow.pinned),
+					source: spotRow.source ?? null,
+					editor: alignmentData
+						? {
+							isNativeAlignment: true,
+							alignmentDataId: alignmentData.id ?? null,
+							elementCount: elements.length,
+							elements,
+						}
+						: null,
 				};
 			}
 		}
 
-		if (previewItem?.id || previewItem?.name) {
+		if (previewItem?.id && previewItem?.kernel) {
+			const previewRow = importRows.find(
+				(row) => String(row?.itemId ?? "") === String(previewItem.id ?? "")
+			);
+
 			return {
 				mode: "preview",
 				objectId: previewItem.id ?? null,
-				label: previewItem.name ?? previewItem.id ?? "preview",
-				type: previewItem.kind ?? "alignment",
+				label: previewItem.name ?? previewRow?.label ?? previewItem.id ?? "preview",
+				type: previewItem.kind ?? previewRow?.kind ?? "alignment",
 				crsId: derivePreviewCrsId(previewItem),
 				status: "preview_only",
 				slot: windowState?.activeSlot ?? "right",
 				pinned: false,
 				source: previewItem.source ?? null,
+				editor: null,
 			};
 		}
 
@@ -349,23 +402,19 @@ export class CockpitController {
 			slot: windowState?.activeSlot ?? "right",
 			pinned: false,
 			source: null,
+			editor: null,
 		};
 	}
 
-	_buildContextState(windowState, importState, spotState, scene) {
-		const importItems = Array.isArray(importState?.items) ? importState.items : [];
-		const spotObjects = Object.values(spotState?.objects ?? {});
+	_buildContextState(windowState, spotState, scene, { importRows = [], spotRows = [] } = {}) {
 
-		const workspaceSelection = windowState?.workspace_selection ?? {};
-		const contextCount = Array.isArray(workspaceSelection?.contextIds)
-			? workspaceSelection.contextIds.length
-			: 0;
+		const contextCount = getWorkspaceContextIds(windowState).length;
 
 		const crs = inspectCrsContext({
 			sceneCrsId: scene?.crsId ?? null,
 			projectCrsId: spotState?.meta?.engineeringCrsId ?? null,
-			importCrsIds: importItems.map(deriveImportItemCrsId),
-			spotCrsIds: spotObjects.map((o) => o?.crsId ?? null),
+			importCrsIds: importRows.map((row) => row?.crsId ?? null),
+			spotCrsIds: spotRows.map((row) => row?.crsId ?? null),
 		});
 
 		return {
@@ -375,8 +424,8 @@ export class CockpitController {
 			sceneHasCrs: crs.hasSceneCrs,
 			sceneIsPreview: scene?.mode === "preview",
 			sceneIsSpot: scene?.mode === "spot",
-			importCount: importItems.length,
-			spotCount: spotObjects.length,
+			importCount: importRows.length,
+			spotCount: spotRows.length,
 
 			previewTracks: contextCount,
 			contextCount,
@@ -446,26 +495,32 @@ export class CockpitController {
 		this._wired = true;
 
 		this._rootEl.addEventListener("click", (ev) => {
-	const newAlignmentBtn = ev.target.closest("[data-cockpit-new-alignment]");
-	if (newAlignmentBtn) {
-		void this.createNewAlignment();
-		return;
-	}
+			const newAlignmentBtn = ev.target.closest("[data-cockpit-new-alignment]");
+			if (newAlignmentBtn) {
+				void this.createNewAlignment();
+				return;
+			}
 
-	const addStraightBtn = ev.target.closest("[data-cockpit-add-straight]");
-	if (addStraightBtn) {
-		void this._alignmentEditor.addStraightToActiveAlignment({ length: 100 });
-		return;
-	}
+			const addStraightBtn = ev.target.closest("[data-cockpit-add-straight]");
+			if (addStraightBtn) {
+				void this._alignmentEditor.addStraightToActiveAlignment({ length: 100 });
+				return;
+			}
 
-	const actionBtn = ev.target.closest("[data-cockpit-action]");
-	if (actionBtn) {
-		this._dispatchAction(
-			actionBtn.dataset.cockpitAction,
-			actionBtn.dataset.objectId
-		);
-		return;
-	}
+			const clearElementsBtn = ev.target.closest("[data-cockpit-clear-elements]");
+			if (clearElementsBtn) {
+				void this.clearActiveAlignmentElements();
+				return;
+			}
+
+			const actionBtn = ev.target.closest("[data-cockpit-action]");
+			if (actionBtn) {
+				this._dispatchAction(
+					actionBtn.dataset.cockpitAction,
+					actionBtn.dataset.objectId
+				);
+				return;
+			}
 
 			const previewBtn = ev.target.closest("[data-cockpit-preview]");
 			if (previewBtn) {

@@ -2,11 +2,15 @@
 
 import transitionLookup from "../../domain/transition/transitionLookup.json" with { type:"json" };
 import { mkAck, mkErr } from "../messaging/ccv1.js";
+import { getWorkspaceSelection } from "./workspaceSelectionAccess.js";
 
 const db = transitionLookup;
 
 let projectState = {
-	activeRouteProjectId: null
+	workspace_selection: {
+		primaryId: null,
+		contextIds: []
+	}
 };
 
 let importState = {
@@ -16,8 +20,17 @@ let importState = {
 	error: null
 };
 
+let spotState = {
+	objects: {},
+	order: [],
+};
+
 function cloneImportState() {
 	return JSON.parse(JSON.stringify(importState));
+}
+
+function cloneSpotState() {
+	return JSON.parse(JSON.stringify(spotState));
 }
 
 function listPresets(db) {
@@ -90,9 +103,16 @@ export class AppRuntimeLocal {
 
 			if (msg.name === "Project.SetActiveRouteProject") {
 				const { routeProjectId } = msg.payload ?? {};
+				const currentSelection =
+					getWorkspaceSelection(projectState);
 				projectState = {
 					...projectState,
-					activeRouteProjectId: routeProjectId ?? null
+					workspace_selection: {
+						primaryId: routeProjectId ?? null,
+						contextIds: currentSelection.contextIds,
+						source: currentSelection.source ?? null,
+						crsId: currentSelection.crsId ?? null,
+					}
 				};
 
 				// optional local event echo, if your client supports emitEvt back into same bus
@@ -103,6 +123,10 @@ export class AppRuntimeLocal {
 			
 			if (msg.name === "Import.GetState") {
 				return mkAck(msg, cloneImportState());
+			}
+
+			if (msg.name === "Spot.GetState") {
+				return mkAck(msg, cloneSpotState(), { src: { ctx:"local:runtime", role:"master" } });
 			}
 
 			if (msg.name === "Import.BeginSession") {

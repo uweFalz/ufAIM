@@ -1,106 +1,42 @@
 % reality/realized_pose3.tex
 
-\chapter{Realized Pose3 and Dynamic Realization}
+\chapter{Realized pose3 and Target--Realized Comparison}
 
 \label{chap:realized-pose3}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-\begin{remark}
-Classical alignment theory typically assumes that the designed geometry
-is identical to the realized geometry.
-\end{remark}
-
-\begin{remark}
-In reality, railway tracks are produced through iterative and physically
-constrained realization processes.
-\end{remark}
-
-\begin{remark}
-As a consequence, not only the geometric position of the track differs
-from the theoretical target alignment, but also its orientation,
-curvature, cant, and dynamic behaviour.
-\end{remark}
-
-\begin{remark}
-Thus, realization affects the full spatial railway state rather than
-geometry alone.
-\end{remark}
-
-\begin{remark}
-This motivates the introduction of a realized pose3 state:
-\[
-\mathrm{pose3}_{\mathrm{real}}(s).
-\]
-\end{remark}
+This chapter consumes the canonical pose3 definitions from Foundations
+and State (\cref{def:pose3,def:runtime-pose3}) and defines the realized
+and measured counterparts used in Reality workflows.
 
 \begin{principle}[Realized-state principle]
 \label{princ:realized-state-principle}
-Within AIM, the physically relevant railway state is the realized runtime
-state, not merely the analytical target state.
+Within AIM, operational engineering interpretation depends on realized
+runtime state rather than on target state alone.
 \end{principle}
 
 % ============================================================
-\section{Target and Realized States}
+\section{Target, Realized, and Measured pose3}
 % ============================================================
 
 \begin{definition}[Target pose3]
 \label{def:target-pose3}
-The target railway state is defined as
+The target railway state is denoted by
 \[
-\mathrm{pose3}_{\mathrm{target}}(s)
-=
-\bigl(
-\Gamma_{\mathrm{target}}(s),
-F_{\mathrm{rail,target}}(s),
-\phi_{\mathrm{target}}(s)
-\bigr).
+\mathrm{pose3}_{\mathrm{target}}(s).
 \]
 \end{definition}
 
 \begin{definition}[Realized pose3]
 \label{def:realized-pose3}
-The realized railway state is defined as
+The realized railway state is denoted by
 \[
-\mathrm{pose3}_{\mathrm{real}}(s)
-=
-\bigl(
-\Gamma_{\mathrm{real}}(s),
-F_{\mathrm{rail,real}}(s),
-\phi_{\mathrm{real}}(s)
-\bigr).
+\mathrm{pose3}_{\mathrm{real}}(s).
 \]
 \end{definition}
 
-\begin{remark}
-The realized state is the physically constructed, measurable, and
-operationally effective state of the railway track.
-\end{remark}
-
-\begin{remark}
-In practice,
-\[
-\mathrm{pose3}_{\mathrm{real}}
-\neq
-\mathrm{pose3}_{\mathrm{target}}.
-\]
-\end{remark}
-
-\begin{remark}
-The difference is not limited to position. It affects tangent direction,
-curvature, cant, frame orientation, and derived dynamic quantities.
-\end{remark}
-
-% ============================================================
-\section{Measured States}
-% ============================================================
-
 \begin{definition}[Measured pose3 state]
 \label{def:measured-pose3}
-A measured pose3 state is an observation-derived approximation of the
-realized railway state:
+A measured pose3 state is an observation-derived approximation
 \[
 \mathrm{pose3}_{\mathrm{meas}}(s_i)
 \approx
@@ -108,550 +44,147 @@ realized railway state:
 \]
 \end{definition}
 
-\begin{remark}
-Measured pose3 states are usually available only at discrete stations,
-timestamps, or sensor positions.
-\end{remark}
-
-\begin{remark}
-Measurement may provide direct or indirect information about:
-\begin{itemize}
-\item position,
-\item tangent direction,
-\item curvature,
-\item cant,
-\item gauge,
-\item vertical profile,
-\item acceleration,
-\item and local frame orientation.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Measured states are not identical to realized states. They include sensor
-noise, sampling effects, calibration errors, filtering effects, and
-interpretation assumptions.
-\end{remark}
-
 \begin{principle}[Measurement separation principle]
 \label{princ:measurement-separation}
-AIM distinguishes target state, realized state, and measured state as
-separate conceptual layers.
+Target state, realized state, and measured state are distinct layers.
 \end{principle}
 
 % ============================================================
-\section{Sources of Realization Deviations}
-% ============================================================
-
-\begin{remark}
-Deviations between target and realized state arise from:
-\begin{itemize}
-\item measurement uncertainty,
-\item machine limitations,
-\item discrete control points,
-\item structural elasticity,
-\item ballast behaviour,
-\item rail bending,
-\item settlement processes,
-\item maintenance history,
-\item and operational degradation.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, realization is not a purely geometric transformation, but a
-mechanical and operational process.
-\end{remark}
-
-% ============================================================
-\section{Realized Geometry}
+\section{Realized State Components}
 % ============================================================
 
 \begin{definition}[Realized spatial trajectory]
 \label{def:realized-spatial-trajectory}
-The realized spatial trajectory is denoted by:
+The realized spatial trajectory is denoted by
 \[
 \Gamma_{\mathrm{real}}(s).
 \]
 \end{definition}
 
-\begin{remark}
-\(\Gamma_{\mathrm{real}}(s)\) represents the physically realized railway
-reference trajectory after construction, maintenance, settlement, and
-operational loading.
-\end{remark}
-
-\begin{remark}
-It may be represented as:
-\begin{itemize}
-\item discrete measured samples,
-\item a reconstructed dense curve,
-\item a sparse re-fit,
-\item or a hybrid measured--analytical object.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Within AIM, realized geometry remains compatible with sparse modelling
-by being interpreted either as reconstructed runtime state or as a
-sparse-compatible approximation.
-\end{remark}
-
-% ============================================================
-\section{Runtime Reconstruction}
-% ============================================================
-
-\begin{remark}
-Realized pose3 is generally not stored directly as a complete continuous
-object.
-\end{remark}
-
-\begin{remark}
-Instead, it is reconstructed at runtime from:
-\begin{itemize}
-\item measured samples,
-\item sparse target geometry,
-\item realization models,
-\item frame operators,
-\item cant reconstruction,
-\item profile reconstruction,
-\item and metric context.
-\end{itemize}
-\end{remark}
-
-\begin{definition}[Runtime realization reconstruction]
-\label{def:runtime-realization-reconstruction}
-Runtime reconstruction of realized pose3 may be written abstractly as:
-\[
-\mathrm{pose3}_{\mathrm{real}}(s)
-=
-\mathcal E_{\mathrm{real}}
-\bigl(
-s,
-x_{\mathrm{target}},
-m,
-\mathcal R,
-\mathcal C
-\bigr),
-\]
-where \(m\) denotes measured data, \(\mathcal R\) denotes realization
-model information, and \(\mathcal C\) denotes coordinate and metric
-context.
-\end{definition}
-
-\begin{remark}
-The operator \(\mathcal E_{\mathrm{real}}\) is a runtime evaluation
-operator rather than a persistent storage object.
-\end{remark}
-
-% ============================================================
-\section{Realized Curvature and Cant}
-% ============================================================
-
 \begin{definition}[Realized curvature]
 \label{def:realized-pose3-curvature}
-The realized curvature is:
 \[
-\kappa_{\mathrm{real}}(s)
-=
-\frac{\dd \theta_{\mathrm{real}}}{\dd s}.
+\kappa_{\mathrm{real}}(s)=\frac{\dd\theta_{\mathrm{real}}}{\dd s}.
 \]
 \end{definition}
 
 \begin{definition}[Realized cant]
 \label{def:realized-cant}
-The realized cant angle is:
 \[
 \phi_{\mathrm{real}}(s).
 \]
 \end{definition}
 
-\begin{remark}
-Both quantities differ from their target values due to realization
-effects.
-\end{remark}
-
-\begin{remark}
-In particular,
+In general,
 \[
-\kappa_{\mathrm{real}}
+\mathrm{pose3}_{\mathrm{real}}
 \neq
-\kappa_{\mathrm{target}},
-\qquad
-\phi_{\mathrm{real}}
-\neq
-\phi_{\mathrm{target}}.
+\mathrm{pose3}_{\mathrm{target}}.
 \]
-\end{remark}
 
-\begin{remark}
-Measured curvature and measured cant are further approximations:
+% ============================================================
+\section{Runtime Reconstruction of Realized pose3}
+% ============================================================
+
+Realized pose3 is typically reconstructed at runtime from observed data,
+realization models, and embedding context.
+
+\begin{definition}[Runtime realization reconstruction]
+\label{def:runtime-realization-reconstruction}
+A schematic form is
 \[
-\kappa_{\mathrm{meas}}
-\approx
-\kappa_{\mathrm{real}},
-\qquad
-\phi_{\mathrm{meas}}
-\approx
-\phi_{\mathrm{real}}.
+\mathrm{pose3}_{\mathrm{real}}(s)
+=
+\mathcal E_{\mathrm{real}}(s,x_{\mathrm{target}},m,\mathcal R,\mathcal C),
 \]
-\end{remark}
-
-% ============================================================
-\section{Cant Realization}
-% ============================================================
-
-\begin{remark}
-Cant realization is particularly sensitive because cant is not only a
-geometric quantity but also a dynamically relevant operational state.
-\end{remark}
-
-\begin{remark}
-Cant realization is affected by:
-\begin{itemize}
-\item tamping accuracy,
-\item rail fastening systems,
-\item ballast stiffness,
-\item torsion limits,
-\item local support conditions,
-\item measurement procedures,
-\item and sensor interpretation.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-In practice, cant ramps are realized only approximately and may exhibit
-local irregularities.
-\end{remark}
-
-\begin{remark}
-This is especially relevant in:
-\begin{itemize}
-\item transition zones,
-\item switches and crossings,
-\item station areas,
-\item overlapping transition regions,
-\item and locally constrained construction zones.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Measurement Ambiguity}
-% ============================================================
-
-\begin{remark}
-Measured railway data does not automatically define a unique realized
-pose3 state.
-\end{remark}
-
-\begin{remark}
-Ambiguities may arise from:
-\begin{itemize}
-\item uncertain station assignment,
-\item CRS uncertainty,
-\item projection ambiguity,
-\item sensor offset from the reference line,
-\item vehicle motion,
-\item filtering by onboard systems,
-\item incomplete cant or profile information,
-\item and topology ambiguity in multi-track environments.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Therefore, measurement interpretation is itself a runtime reconstruction
-problem.
-\end{remark}
+where \(m\) is observation data, \(\mathcal R\) realization-model
+information, and \(\mathcal C\) metric/coordinate context.
+\end{definition}
 
 \begin{principle}[Measured-state ambiguity]
 \label{princ:measured-state-ambiguity}
-Measured data must be interpreted as evidence for realized pose3, not as
-realized pose3 itself.
+Measured data is evidence for realized pose3, not realized pose3 itself.
 \end{principle}
 
 % ============================================================
-\section{Sensor Integration}
+\section{Observation Operators and Sensor Integration}
 % ============================================================
-
-\begin{remark}
-Different sensors observe different projections of the realized railway
-state.
-\end{remark}
-
-\begin{remark}
-Examples include:
-\begin{itemize}
-\item surveying points,
-\item track geometry cars,
-\item inertial measurement units,
-\item GNSS receivers,
-\item laser scanning,
-\item photogrammetry,
-\item gauge and cant measurement systems,
-\item and vehicle-mounted acceleration sensors.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Sensor integration requires mapping heterogeneous observations into a
-common runtime state interpretation.
-\end{remark}
 
 \begin{definition}[Sensor observation model]
 \label{def:sensor-observation-model}
-A sensor observation may be written as:
 \[
 y_i
 =
-\mathcal H_i
-\bigl(
-\mathrm{pose3}_{\mathrm{real}}(s_i)
-\bigr)
+\mathcal H_i\bigl(\mathrm{pose3}_{\mathrm{real}}(s_i)\bigr)
 +
 \varepsilon_i,
 \]
-where \(\mathcal H_i\) denotes the sensor observation operator and
-\(\varepsilon_i\) denotes measurement error.
+where \(\mathcal H_i\) is a sensor observation operator and
+\(\varepsilon_i\) observation error.
 \end{definition}
 
-\begin{remark}
-The reconstruction task is therefore an inverse problem: estimate the
-realized pose3 state from heterogeneous noisy observations.
-\end{remark}
+Realized-state inference is therefore an inverse reconstruction problem
+from heterogeneous observations.
 
 % ============================================================
-\section{Coupling of Curvature and Cant}
+\section{Dynamic Comparison Quantities}
 % ============================================================
-
-\begin{remark}
-Curvature and cant are dynamically coupled quantities.
-\end{remark}
-
-\begin{remark}
-Therefore, realization errors in curvature and cant cannot be treated
-independently.
-\end{remark}
-
-\begin{remark}
-The physically relevant quantity is the realized dynamic state:
-\[
-(\kappa_{\mathrm{real}}, \phi_{\mathrm{real}}).
-\]
-\end{remark}
 
 \begin{definition}[Realized equilibrium condition]
 \label{def:realized-equilibrium-condition}
-A realized track is dynamically balanced if:
+A realized track is dynamically balanced if
 \[
-v^2\kappa_{\mathrm{real}}(s)
-=
-g\sin\phi_{\mathrm{real}}(s).
+v^2\kappa_{\mathrm{real}}(s)=g\sin\phi_{\mathrm{real}}(s).
 \]
 \end{definition}
-
-\begin{remark}
-In practice, deviations from equilibrium are unavoidable and constrained
-only within admissible limits.
-\end{remark}
-
-% ============================================================
-\section{Dynamic Realization Error}
-% ============================================================
 
 \begin{definition}[Realized effective lateral acceleration]
 \label{def:realized-effective-lateral-acceleration}
-The realized effective lateral acceleration is:
 \[
 a_{\mathrm{eff,real}}(s)
 =
-v^2\kappa_{\mathrm{real}}(s)
--
-g\sin\phi_{\mathrm{real}}(s).
+v^2\kappa_{\mathrm{real}}(s)-g\sin\phi_{\mathrm{real}}(s).
 \]
 \end{definition}
-
-\begin{remark}
-This quantity is operationally more relevant than geometric deviation
-alone.
-\end{remark}
 
 \begin{definition}[Realized jerk]
 \label{def:realized-jerk}
-The realized jerk is:
 \[
 j_{\mathrm{real}}(s)
 =
-v^3\kappa'_{\mathrm{real}}(s)
--
-gv\cos\phi_{\mathrm{real}}(s)\,
-\phi'_{\mathrm{real}}(s).
+v^3\kappa'_{\mathrm{real}}(s)-gv\cos\phi_{\mathrm{real}}(s)\,\phi'_{\mathrm{real}}(s).
 \]
 \end{definition}
 
-\begin{remark}
-Passenger comfort depends directly on the realized jerk rather than on
-the analytical target functions.
-\end{remark}
+These quantities support target--realized engineering comparison beyond
+position-only deviation.
 
 % ============================================================
-\section{Realization as State Transformation}
+\section{Realization Operator on pose3}
 % ============================================================
 
 \begin{definition}[Pose3 realization operator]
 \label{def:pose3-realization-operator}
-The realization process may be written as:
 \[
-\mathcal{R}_{\mathrm{pose3}}
-:
+\mathcal R_{\mathrm{pose3}}:
 \mathrm{pose3}_{\mathrm{target}}
 \mapsto
 \mathrm{pose3}_{\mathrm{real}}.
 \]
 \end{definition}
 
-\begin{remark}
-This operator includes:
-\begin{itemize}
-\item geometric realization,
-\item cant realization,
-\item profile realization,
-\item mechanical filtering,
-\item measurement feedback,
-\item and operational constraints.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Thus, realization acts on the full railway state rather than only on
-position space.
-\end{remark}
-
-\begin{remark}
-In practice, \(\mathcal{R}_{\mathrm{pose3}}\) is not directly known. It is
-approximated through construction knowledge, measurement data, machine
-models, and runtime reconstruction.
-\end{remark}
-
-% ============================================================
-\section{Filtering Interpretation}
-% ============================================================
-
-\begin{proposition}
-The realization operator acts as a low-pass filter on:
-\begin{itemize}
-\item curvature,
-\item cant,
-\item profile irregularities,
-\item and higher-order derivatives.
-\end{itemize}
-\end{proposition}
-
-\begin{remark}
-High-frequency components are attenuated through:
-\begin{itemize}
-\item machine limitations,
-\item structural smoothing,
-\item ballast mechanics,
-\item vehicle-track interaction,
-\item and measurement discretization.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Therefore, highly detailed analytical target states may collapse into
-similar realized states.
-\end{remark}
-
-% ============================================================
-\section{Operational Interpretation}
-% ============================================================
-
-\begin{remark}
-Railway operation interacts with the realized state rather than with the
-theoretical target geometry.
-\end{remark}
-
-\begin{remark}
-Consequently, the relevant engineering question is not:
-\begin{quote}
-``Was the theoretical geometry built exactly?''
-\end{quote}
-but rather:
-\begin{quote}
-``Does the realized state produce the intended dynamic behaviour?''
-\end{quote}
-\end{remark}
-
-\begin{remark}
-This makes realized pose3 the natural bridge between construction,
-measurement, runtime evaluation, and operation.
-\end{remark}
-
-% ============================================================
-\section{Connection to Optimization}
-% ============================================================
-
-\begin{remark}
-Optimization should therefore operate on realized states:
-\[
-J
-=
-J\bigl(
-\mathrm{pose3}_{\mathrm{real}}
-\bigr)
-=
-J\bigl(
-\mathcal{R}_{\mathrm{pose3}}
-(
-\mathrm{pose3}_{\mathrm{target}}
-)
-\bigr).
-\]
-\end{remark}
-
-\begin{remark}
-This extends classical alignment optimization toward realization-aware
-optimization.
-\end{remark}
-
-\begin{remark}
-When measured states are available, optimization may additionally use:
-\[
-J
-=
-J\bigl(
-\mathrm{pose3}_{\mathrm{real}},
-\mathrm{pose3}_{\mathrm{meas}}
-\bigr),
-\]
-to calibrate realization models or identify maintenance needs.
-\end{remark}
+This operator acts on full railway state interpretation (geometry,
+frame, cant, and derived dynamic behaviour), not on coordinates alone.
 
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-Real railway tracks are not analytical curves but realized physical
-states.
+Realized pose3 is the central comparison layer between target
+engineering state and observed railway reality.
 
-The realization process acts on the complete pose3 state, including
-geometry, curvature, profile, frame orientation, and cant.
-
-Measured railway data provides evidence for this realized state, but it
-does not define it uniquely. Therefore, AIM distinguishes target pose3,
-realized pose3, and measured pose3 as separate layers.
-
-Within the AIM framework, realized pose3 forms the bridge between:
-\begin{itemize}
-\item analytical geometry,
-\item runtime reconstruction,
-\item sensor integration,
-\item construction and maintenance,
-\item physical realization,
-\item and operational dynamics.
-\end{itemize}
-
-Thus, railway alignment design must be understood as the design of a
-realizable dynamic state rather than merely a geometric target curve.
+Within AIM, the chapter preserves separation between target, realized,
+and measured state while consuming canonical pose3 and realization
+operators from prior parts.
 \end{summary}

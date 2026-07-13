@@ -8,97 +8,71 @@
 \section*{What do we already know?}
 % ============================================================
 
-\begin{remark}
 The previous part introduced the railway state model underlying AIM.
-\end{remark}
 
-\begin{remark}
 In particular, the states \(\mathrm{pose2}\) and
 \(\mathrm{pose3}\) were established as intrinsic descriptions of
 railway geometry and spatial railway configuration.
-\end{remark}
 
-\begin{remark}
 These states provide a description of the railway itself.
 
 However, they do not yet describe how railway systems evolve during
 operation.
-\end{remark}
 
 % ============================================================
 \section*{What is still missing?}
 % ============================================================
 
-\begin{remark}
 A state description specifies what exists at a given location along an
 alignment.
 
 It does not yet explain how operational quantities emerge from that
 state.
-\end{remark}
 
-\begin{remark}
 Railway engineering ultimately concerns moving systems.
 
 Vehicles travel through space, passengers experience acceleration,
 cant influences dynamic balance, and operational constraints evolve
 along trajectories.
-\end{remark}
 
-\begin{remark}
 The missing element is therefore not another geometric description,
 but a framework for state evolution and operational interpretation.
-\end{remark}
 
-\begin{remark}
 A distinction must consequently be made between railway states and the
 states generated from them during operation.
-\end{remark}
 
 % ============================================================
 \section*{What comes next?}
 % ============================================================
 
-\begin{remark}
 This part extends the railway state model toward operational runtime
 interpretation.
-\end{remark}
 
-\begin{remark}
 The central observation is that railway states and vehicle states are
 not identical.
-\end{remark}
 
-\begin{remark}
 Within AIM, \(\mathrm{pose3}\) describes the railway itself.
 
 Vehicle states, center-of-gravity states, balance states, comfort
 states, and optimization states are generated from railway states
 through runtime interpretation.
-\end{remark}
 
-\begin{remark}
 The chapters of this part move from state taxonomy and runtime
 operators toward vehicle space, runtime dynamics, Schwerpunkt
 interpretation, dynamic balance, Vienna reinterpretation,
 realization-aware dynamics, and optimization in state space.
-\end{remark}
 
-\begin{remark}
 This part does not introduce a full multibody vehicle model.
 
 Instead, it establishes the structural framework into which such
 models may later be coupled.
-\end{remark}
 
 % ============================================================
 \section*{Relation to the AIM Roadmap}
 % ============================================================
 
-\begin{remark}
 Within the AIM roadmap, the present part corresponds to the transition
 from railway states toward operational state evolution.
-\end{remark}
 
 \begin{center}
 \begin{tikzpicture}[
@@ -127,7 +101,6 @@ from railway states toward operational state evolution.
 \end{tikzpicture}
 \end{center}
 
-\begin{remark}
 The progression
 \[
 \mathrm{pose3}
@@ -138,13 +111,10 @@ The progression
 \]
 marks the transition from describing the railway itself toward
 describing processes evolving relative to the railway.
-\end{remark}
 
-\begin{remark}
 This transition prepares the introduction of realization,
 optimization, and process-oriented information modelling developed in
 later parts of this thesis.
-\end{remark}
 
 % ============================================================
 \begin{principle}[Dynamic-State Interpretation Principle]

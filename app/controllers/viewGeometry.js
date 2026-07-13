@@ -10,6 +10,7 @@ import {
 	normDeg180,
 	headingDegFromPoints,
 } from "@utils/helpers.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // ------------------------------------------------------------
 // basic polyline helpers
@@ -253,7 +254,9 @@ export function makeActiveGeomKey(state) {
 		return `${aa.baseId ?? ""}::${aa.slot ?? ""}::${aa.alignmentArtifactId ?? ""}`;
 	}
 
-	const rpId = state.activeRouteProjectId ?? "";
+	const rpId =
+		getWorkspacePrimaryId(state) ??
+		"";
 	const slot = state.activeSlot ?? "right";
 	return `${rpId}::${slot}::(no-activeArtifacts)`;
 }

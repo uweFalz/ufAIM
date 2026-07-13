@@ -16,6 +16,7 @@ import {
 	normalizePins,
 	computeAuxAlphaByAge,
 } from "@app/controllers/viewGeometry.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // ------------------------------------------------------------
 // local pure helpers
@@ -48,7 +49,11 @@ function makeStyleForAuxTrack(cfg, previewId) {
 			width = Math.max(width, 2.0);
 		}
 
-		return { alpha, width, dashed };
+		return {
+			alpha,
+			width,
+			dashed,
+		};
 	};
 }
 
@@ -108,9 +113,7 @@ function findTrackInPreviewItem(item, id) {
 	if (itemId !== id) return null;
 	const pts =
 	item?.polyline2d ??
-	item?.payload?.polyline2d ??
-	item?.derived?.polyline2d ??
-	null;
+	item?.payload?.polyline2d;
 	if (!Array.isArray(pts) || pts.length < 2) return null;
 	return { id, points: pts };
 
@@ -156,7 +159,7 @@ function collectAuxPinned(state, activeId) {
 
 function collectAuxRouteProject(state, activeId) {
 	const out = [];
-	const rpId = state.activeRouteProjectId;
+	const rpId = getWorkspacePrimaryId(state);
 	const rp = rpId ? state.routeProjects?.[rpId] : null;
 	if (!rp?.slots) return out;
 
@@ -215,8 +218,7 @@ export function createViewAuxTracks({
 
 		const activeId =
 		state.import_activeArtifacts?.alignmentArtifactId ??
-		state.activeRouteProjectId ??
-		state.focus?.objectId ??
+		getWorkspacePrimaryId(state) ??
 		null;
 
 		switch (String(cfg.auxTracksScope ?? "routeproject").toLowerCase()) {
@@ -295,8 +297,7 @@ export function createViewAuxTracks({
 
 	const activeId =
 		state.import_activeArtifacts?.alignmentArtifactId ??
-		state.activeRouteProjectId ??
-		state.focus?.objectId ??
+		getWorkspacePrimaryId(state) ??
 		null;
 
 	const tracks = [

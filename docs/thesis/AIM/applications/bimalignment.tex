@@ -2,289 +2,70 @@
 
 \chapter{BIM Alignment Modelling}
 
-\section*{Motivation}
+\label{chap:applications-bimalignment}
 
-\begin{remark}
-While BIM provides a powerful framework for infrastructure data
-integration, the modelling of railway alignment within BIM remains
-structurally fragmented and computationally limited.
-\end{remark}
+This chapter positions BIMalignment as an interoperability and workflow
+application of AIM, not as a competing canonical architecture.
 
-\begin{remark}
-The AIM framework suggests that alignment should not be treated as a
-secondary geometric component, but as a primary organizing structure.
-\end{remark}
+% ============================================================
+\section{Application Context}
+% ============================================================
 
-\begin{remark}
-This chapter introduces the concept of BIMalignment as a synthesis of
-BIM data modelling and alignment-centred computational representation.
-\end{remark}
+BIM and exchange standards (for example IFC, LandXML, GIS-linked
+containers) are essential project interoperability mechanisms. In AIM,
+they are treated as representation and exchange layers downstream of
+canonical engineering semantics.
 
----
+% ============================================================
+\section{AIM-to-BIM Integration Role}
+% ============================================================
 
-\section{Concept of BIMalignment}
+BIMalignment in this thesis denotes alignment-centred integration where
+AIM provides canonical semantics and runtime/realization evaluation,
+while BIM-oriented structures provide object-oriented representation,
+workflow integration, and lifecycle exchange.
 
-\begin{definition}[BIMalignment]
-BIMalignment is an alignment-centred modelling approach in which
-infrastructure geometry, semantics, and dynamics are organized around a
-canonical alignment state representation.
-\end{definition}
+\begin{principle}[BIM integration principle]
+BIM integration consumes canonical AIM concepts and preserves their
+ownership outside application chapters.
+\end{principle}
 
-\begin{remark}
-It combines:
-\begin{itemize}
-\item BIM data structures (IFC, LandXML, etc.),
-\item AIM state representation,
-\item computational and optimization capabilities.
-\end{itemize}
-\end{remark}
+% ============================================================
+\section{Pipeline Interpretation}
+% ============================================================
 
----
-
-\section{Core Representation}
-
-\begin{remark}
-The central object in BIMalignment is the alignment state:
+A typical interpretation pipeline is
 \[
-(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+\text{exchange/import}
+\rightarrow
+\text{AIM normalization and evaluation}
+\rightarrow
+\text{application consequence}
+\rightarrow
+\text{representation/export}.
 \]
-\end{remark}
 
-\begin{remark}
-This representation:
-\begin{itemize}
-\item unifies horizontal and vertical geometry,
-\item integrates cant,
-\item enables dynamic interpretation,
-\item supports optimization.
-\end{itemize}
-\end{remark}
+This keeps engineering objects and representations conceptually
+separate.
 
----
+% ============================================================
+\section{Boundary Clarification}
+% ============================================================
 
-\section{Alignment as Reference Structure}
+BIMalignment is not presented as a parallel state model. It is an
+application-oriented integration strategy that depends on canonical
+alignment semantics, pose2/pose3 interpretation, metric realization,
+physical realization, and runtime services.
 
-\begin{remark}
-In BIMalignment, infrastructure elements are defined relative to the
-alignment.
-\end{remark}
-
-\begin{itemize}
-\item track geometry follows alignment,
-\item platforms reference stationing,
-\item signals are positioned along chainage,
-\item structures are aligned to geometry.
-\end{itemize}
-
-\begin{remark}
-This establishes alignment as the primary coordinate and reference
-system.
-\end{remark}
-
----
-
-\section{Transformation Pipeline}
-
-\begin{verbatim}
-IFC / LandXML / legacy formats
-→ parsing
-→ normalization
-→ AIM state model
-→ BIMalignment model
-→ analysis / optimization
-→ export to BIM
-\end{verbatim}
-
-\begin{remark}
-This pipeline separates:
-\begin{itemize}
-\item data exchange (BIM),
-\item computation (AIM),
-\item application (BIMalignment).
-\end{itemize}
-\end{remark}
-
----
-
-\section{Bidirectional Integration}
-
-\subsection{Import}
-
-\begin{remark}
-BIM data is interpreted and transformed into the AIM state model.
-\end{remark}
-
-\begin{remark}
-This includes:
-\begin{itemize}
-\item reconstruction of alignment geometry,
-\item interpretation of stationing,
-\item extraction of cant and profile information.
-\end{itemize}
-\end{remark}
-
----
-
-\subsection{Export}
-
-\begin{remark}
-Optimized or modified alignments are exported back into BIM formats.
-\end{remark}
-
-\begin{remark}
-This ensures compatibility with:
-\begin{itemize}
-\item existing design tools,
-\item project workflows,
-\item lifecycle data systems.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Advantages of BIMalignment}
-
-\subsection{Unified model}
-
-\begin{remark}
-BIMalignment replaces fragmented representations with a unified
-alignment-centred model.
-\end{remark}
-
----
-
-\subsection{Computational capability}
-
-\begin{remark}
-Unlike traditional BIM, the model is directly usable for:
-\begin{itemize}
-\item dynamic evaluation,
-\item constraint checking,
-\item optimization.
-\end{itemize}
-\end{remark}
-
----
-
-\subsection{Consistency}
-
-\begin{remark}
-A single state representation ensures consistency between:
-\begin{itemize}
-\item geometry,
-\item dynamics,
-\item constraints,
-\item and derived quantities.
-\end{itemize}
-\end{remark}
-
----
-
-\subsection{Extensibility}
-
-\begin{remark}
-The framework allows integration of:
-\begin{itemize}
-\item new transition models,
-\item advanced vehicle dynamics,
-\item additional constraint libraries,
-\item network-level interactions.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Relation to Existing BIM Workflows}
-
-\begin{remark}
-BIMalignment does not replace existing BIM processes, but augments them.
-\end{remark}
-
-\begin{remark}
-It introduces a computational layer that enables:
-\begin{itemize}
-\item deeper analysis,
-\item design optimization,
-\item improved data interpretation.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Role of the Grabbeltisch}
-
-\begin{remark}
-The interpretation of BIM data often requires human input.
-\end{remark}
-
-\begin{remark}
-The grabbeltisch serves as an intermediate layer where:
-\begin{itemize}
-\item imported data is classified,
-\item semantic roles are assigned,
-\item alignment components are structured.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-This enables robust handling of heterogeneous and imperfect data.
-\end{remark}
-
----
-
-\section{Challenges}
-
-\subsection{Standard complexity}
-
-\begin{remark}
-BIM standards such as IFC are complex and require careful mapping to
-alignment-centred models.
-\end{remark}
-
----
-
-\subsection{Data quality}
-
-\begin{remark}
-Real-world data is often incomplete, inconsistent, or noisy.
-\end{remark}
-
----
-
-\subsection{Adoption}
-
-\begin{remark}
-Integration into existing workflows requires:
-\begin{itemize}
-\item tool support,
-\item user acceptance,
-\item compatibility with established practices.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Outlook}
-
-\begin{remark}
-BIMalignment provides a foundation for future systems in which:
-\begin{itemize}
-\item alignment is the central modelling object,
-\item geometry and dynamics are unified,
-\item optimization becomes an integral part of design,
-\item BIM evolves from static representation to computational modelling.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Summary}
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
-BIMalignment extends BIM by introducing an alignment-centred,
-computationally enabled modelling approach.
+BIMalignment in this thesis is a downstream interoperability application
+of AIM.
 
-It bridges the gap between data representation and engineering
-computation, enabling consistent, dynamic, and optimization-ready
-handling of railway alignment within BIM environments.
+It demonstrates how canonical alignment-centred engineering semantics
+can be connected to BIM/GIS exchange ecosystems without transferring
+conceptual ownership away from the approved kernel architecture.
 \end{summary}

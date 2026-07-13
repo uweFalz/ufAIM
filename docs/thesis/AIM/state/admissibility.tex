@@ -4,17 +4,9 @@
 
 \label{chap:admissibility-states}
 
-\section*{Motivation}
-
-\begin{remark}
-Operational railway design is not governed by exact equality conditions
-alone, but by admissible ranges of runtime states.
-\end{remark}
-
-\begin{remark}
-Admissibility therefore belongs to state interpretation rather than only
-to engineering rule checking.
-\end{remark}
+Admissibility is not an additional geometric state layer. It is a
+downstream interpretation layer that evaluates whether derived runtime
+quantities remain inside permitted operational envelopes.
 
 \section{Admissibility State}
 
@@ -24,10 +16,11 @@ An admissibility state is a runtime evaluation state describing whether
 operational quantities remain within allowed envelopes.
 \end{definition}
 
-\begin{remark}
 Admissibility states may include bounds on effective acceleration, jerk,
 cant deficiency, roll evolution, velocity, and realization quality.
-\end{remark}
+
+These quantities are derived from runtime railway state and dynamic
+evaluation; they are not persisted as alignment identity.
 
 \section{Operational Envelopes}
 
@@ -37,9 +30,27 @@ An operational envelope state describes admissible regions in runtime
 state space.
 \end{definition}
 
+Operational envelopes are typically defined by standards,
+infrastructure constraints, and operational policy. In AIM they act as
+constraints on derived runtime quantities rather than as replacements
+for intrinsic geometry or railway state.
+
+% ============================================================
+\section{Layer Position}
+% ============================================================
+
+Admissibility is evaluated after pose2/pose3 reconstruction, metric
+realization, and dynamic quantity derivation. It therefore remains
+downstream of railway state and does not redefine it.
+
+Vehicle-level admissibility is evaluated relative to railway state and
+must not be conflated with the railway-state layer itself.
+
 \section{Connection to AIM}
 
 \begin{summary}
 Admissibility states connect runtime dynamics, engineering rules,
-realization-aware behaviour, and optimization constraints.
+realization-aware behaviour, and optimization constraints while
+preserving the separation between persistent alignment information and
+derived operational interpretation.
 \end{summary}

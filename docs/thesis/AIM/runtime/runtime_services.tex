@@ -4,34 +4,11 @@
 
 \label{chap:runtime-services}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-\begin{remark}
-Railway alignment systems are not static collections of stored geometry.
-\end{remark}
-
-\begin{remark}
-Within AIM, geometry, frames, projections, realization effects, dynamic
-quantities, and vehicle-space behaviour are evaluated during runtime.
-\end{remark}
-
-\begin{remark}
-The runtime layer forms the operational bridge between:
-\begin{itemize}
-\item stored alignment semantics,
-\item metric-aware geometric evaluation,
-\item visualization,
-\item optimization,
-\item and interaction with real-world data.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Runtime therefore acts as the operational execution layer of the AIM
-framework.
-\end{remark}
+Runtime services are the execution layer that evaluates approved
+engineering knowledge in operational contexts. They consume established
+objects from Foundations and State and generate derived runtime
+quantities. They are not engineering objects themselves and do not
+redefine upstream semantics.
 
 % ============================================================
 \section{Runtime Interpretation}
@@ -43,44 +20,26 @@ A runtime service is an operator-based evaluation process acting on
 alignment states during operational use.
 \end{definition}
 
-\begin{remark}
-Runtime services evaluate:
-\begin{itemize}
-\item geometry,
-\item projections,
-\item frames,
-\item realization-dependent states,
-\item dynamic quantities,
-\item and operational vehicle-space behaviour.
-\end{itemize}
-\end{remark}
-
 \begin{principle}[Runtime evaluation principle]
 \label{princ:runtime-evaluation}
 Operational quantities should be evaluated from underlying state
 descriptions rather than stored redundantly.
 \end{principle}
 
-\begin{remark}
-Within AIM, runtime does not merely denote software execution.
-It denotes dynamic operational evaluation of geometric, physical, and
-spatial railway quantities.
-\end{remark}
+Runtime services evaluate geometry, projections, frames,
+realization-dependent states, dynamic quantities, and vehicle-space
+interpretation through explicit operator composition.
 
 % ============================================================
 \section{Runtime State Evaluation}
 % ============================================================
 
-\subsection{Evaluation Operator}
-
-\begin{remark}
-Runtime evaluation is governed by the evaluation operator introduced in
+Runtime evaluation is governed by the canonical evaluation operator in
 \cref{def:evaluation-operator}.
-\end{remark}
 
 \begin{definition}[Runtime evaluation]
 \label{def:runtime-evaluation}
-Runtime evaluation is represented by:
+Runtime evaluation is represented by
 \[
 \mathcal E
 :
@@ -92,52 +51,21 @@ Runtime evaluation is represented by:
 \]
 \end{definition}
 
-\begin{remark}
-Here, \(\mathcal X\) denotes railway state space,
-\(\Omega_{\mathrm{track}}\) denotes intrinsic track space, and
-\(\mathcal Y\) denotes runtime-evaluated quantities.
-\end{remark}
+Here \(\mathcal X\) denotes railway state space,
+\(\Omega_{\mathrm{track}}\) intrinsic track space, and
+\(\mathcal Y\) runtime-evaluated quantities.
 
-\begin{remark}
-Runtime evaluation may operate on:
-\begin{itemize}
-\item target states,
-\item realized states,
-\item measured states,
-\item or temporary interaction states.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Typical Runtime Quantities}
-
-\begin{remark}
-Typical runtime quantities include:
-\begin{itemize}
-\item world coordinates,
-\item tangent directions,
-\item local frames,
-\item curvature,
-\item cant,
-\item geodesic curvature,
-\item dynamic quantities,
-\item and vehicle-space geometry.
-\end{itemize}
-\end{remark}
+Typical runtime outputs include world coordinates, tangent and frame
+quantities, curvature/cant-derived quantities, projection states, and
+vehicle-space-derived quantities.
 
 % ============================================================
-\section{Persistent State versus Runtime State}
+\section{Persistent Information versus Derived Runtime State}
 % ============================================================
 
-\begin{remark}
-Within AIM, the persistent model intentionally stores sparse and
-semantically stable alignment information.
-\end{remark}
-
-\begin{remark}
-Operational geometry is reconstructed dynamically during runtime.
-\end{remark}
+Within AIM, persistent data stores sparse, semantically stable
+engineering information. Runtime services reconstruct derived quantities
+from that information.
 
 \begin{principle}[Runtime reconstruction principle]
 \label{princ:runtime-reconstruction}
@@ -145,39 +73,20 @@ Runtime geometry should be reconstructed from sparse alignment semantics
 rather than stored redundantly.
 \end{principle}
 
-\begin{remark}
-This avoids:
-\begin{itemize}
-\item synchronization instability,
-\item redundant geometry storage,
-\item and unnecessary realization inconsistencies.
-\end{itemize}
-\end{remark}
+This separation avoids synchronization instability, redundant storage,
+and realization inconsistencies.
 
 % ============================================================
-\section{pose3 as Runtime State}
+\section{Runtime pose3 Evaluation}
 % ============================================================
 
-\begin{remark}
-The minimal intrinsic pose3 notation is introduced in
-\cref{def:pose3}.
-\end{remark}
-
-\begin{remark}
-Within runtime evaluation, pose3 is interpreted as a spatial operational
-state generated from:
-\begin{itemize}
-\item intrinsic pose2 reconstruction,
-\item profile evaluation,
-\item cant evaluation,
-\item metric realization,
-\item and frame construction.
-\end{itemize}
-\end{remark}
+The foundational pose3 definition is established in
+\cref{def:pose3,def:runtime-pose3}. Runtime services consume these
+concepts and evaluate them operationally.
 
 \begin{definition}[Runtime pose3 evaluation]
 \label{def:runtime-pose3-evaluation}
-Runtime pose3 evaluation may be represented schematically as:
+Runtime pose3 evaluation may be represented schematically as
 \[
 \mathrm{pose3}_{\mathrm{run}}(s)
 =
@@ -185,60 +94,19 @@ Runtime pose3 evaluation may be represented schematically as:
 \]
 \end{definition}
 
-\begin{remark}
-The runtime pose3 state is therefore not persistent truth.
-It is an evaluated operational state.
-\end{remark}
-
-% ============================================================
-\section{Lazy Evaluation}
-% ============================================================
-
-\begin{definition}[Lazy evaluation]
-\label{def:lazy-evaluation}
-Lazy evaluation computes quantities only when explicitly required.
-\end{definition}
-
-\begin{remark}
-This avoids unnecessary evaluation of expensive geometric operations.
-\end{remark}
-
-\begin{proposition}[Selective evaluation principle]
-\label{prop:selective-evaluation}
-Exact evaluation should be performed only where precision is required.
-\end{proposition}
-
-\begin{remark}
-This principle becomes essential for:
-\begin{itemize}
-\item world-to-track projection,
-\item large-scale visualization,
-\item optimization,
-\item interactive runtime systems,
-\item and vehicle-space evaluation.
-\end{itemize}
-\end{remark}
+The runtime pose3 state is therefore a derived evaluation state, not a
+persistent engineering identity.
 
 % ============================================================
 \section{Projection Services}
 % ============================================================
 
-\begin{remark}
-Runtime projection services are governed by the projection operators
-introduced in:
-\begin{itemize}
-\item \cref{def:track-to-world-operator},
-\item and \cref{def:world-to-track-operator}.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Track-to-World Evaluation}
+Runtime projection services consume the canonical operators in
+\cref{def:track-to-world-operator,def:world-to-track-operator}.
 
 \begin{definition}[Track-to-world runtime service]
 \label{def:track-to-world-runtime}
-The track-to-world runtime service evaluates:
+The track-to-world runtime service evaluates
 \[
 \mathcal P_{\mathrm{tw}}
 :
@@ -248,13 +116,9 @@ The track-to-world runtime service evaluates:
 \]
 \end{definition}
 
-% ------------------------------------------------------------
-
-\subsection{World-to-Track Evaluation}
-
 \begin{definition}[World-to-track runtime service]
 \label{def:world-to-track-runtime}
-The inverse runtime projection service evaluates:
+The inverse runtime projection service evaluates
 \[
 \mathcal P_{\mathrm{wt}}
 :
@@ -264,34 +128,21 @@ The inverse runtime projection service evaluates:
 \]
 \end{definition}
 
-\begin{remark}
-The inverse projection is:
-\begin{itemize}
-\item nonlinear,
-\item potentially ambiguous,
-\item metric-dependent,
-\item context-dependent,
-\item and computationally expensive.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Projection must not be confused with CRS coordinate transformation.
-The distinction is established in \cref{def:coordinate-transform-operator}.
-\end{remark}
+The inverse service is nonlinear, potentially ambiguous,
+metric-dependent, and context-dependent. Projection remains distinct
+from CRS transformation, as established in
+\cref{def:coordinate-transform-operator}.
 
 % ============================================================
 \section{Frame Services}
 % ============================================================
 
-\begin{remark}
-Runtime frame construction is governed by the frame operator introduced
-in \cref{def:frame-operator}.
-\end{remark}
+Runtime frame construction consumes the canonical frame operator in
+\cref{def:frame-operator}.
 
 \begin{definition}[Frame service]
 \label{def:frame-service}
-The frame service evaluates:
+The frame service evaluates
 \[
 \mathcal F(x_{\mathrm{metric}},s)
 =
@@ -299,38 +150,16 @@ The frame service evaluates:
 \]
 \end{definition}
 
-\begin{remark}
-Frame services support:
-\begin{itemize}
-\item cant interpretation,
-\item pose3 evaluation,
-\item operational geometry,
-\item vehicle-space interpretation,
-\item visualization,
-\item and runtime dynamics.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Frame evaluation may depend on metric realization.
-For example, projected engineering frames and ellipsoid-attached frames
-need not coincide.
-\end{remark}
+Frame services support cant interpretation, pose3 evaluation,
+vehicle-space interpretation, projection interpretation, and runtime
+dynamics. Their evaluation may depend on metric realization.
 
 % ============================================================
-\section{Dynamic Runtime Quantities}
+\section{Derived Dynamic Runtime Quantities}
 % ============================================================
 
-\subsection{Operational Dynamics}
-
-\begin{remark}
-Many operational railway quantities are runtime-derived rather than
-persistent alignment quantities.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Effective Lateral Acceleration}
+Many operational quantities are derived at runtime and are not
+persistent alignment knowledge.
 
 \begin{definition}[Effective lateral acceleration]
 \label{eq:runtime-effective-acceleration}
@@ -341,14 +170,8 @@ v^2\kappa-g\sin\phi.
 \]
 \end{definition}
 
-\begin{remark}
-This is the simplified engineering relation introduced canonically in
+This is the runtime form of the canonical relation in
 \cref{eq:effective-lateral-acceleration}.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Jerk}
 
 \begin{definition}[Runtime jerk]
 \label{eq:runtime-jerk}
@@ -361,86 +184,30 @@ gv\cos\phi\,\phi'.
 \]
 \end{definition}
 
-\begin{remark}
 This is the runtime form of the canonical jerk relation in
 \cref{eq:jerk-relation}.
-\end{remark}
-
-\begin{remark}
-These quantities emerge from:
-\begin{itemize}
-\item curvature evolution,
-\item cant evolution,
-\item runtime frame evaluation,
-\item metric realization,
-\item and vehicle-state interpretation.
-\end{itemize}
-\end{remark}
 
 % ============================================================
-\section{Hybrid Runtime Evaluation}
+\section{Hybrid and LOD-Dependent Evaluation}
 % ============================================================
 
 \begin{principle}[Hybrid runtime principle]
 \label{princ:hybrid-runtime}
-Efficient runtime systems combine:
-\begin{itemize}
-\item approximate coarse evaluation,
-\item cached representations,
-\item and exact local refinement.
-\end{itemize}
+Efficient runtime systems combine approximate coarse evaluation, cached
+representations, and exact local refinement.
 \end{principle}
-
-\begin{remark}
-Typical hybrid strategies combine:
-\begin{itemize}
-\item sampled lookup structures,
-\item sparse parametric models,
-\item local numerical refinement,
-\item and context-dependent precision selection.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Hybrid runtime evaluation is especially important for world-to-track
-projection, frame construction, and large-scale visualization.
-\end{remark}
-
-% ============================================================
-\section{Level-of-Detail Runtime}
-% ============================================================
 
 \begin{definition}[LOD-dependent evaluation]
 \label{def:lod-evaluation}
-Runtime evaluation depends on:
-\begin{itemize}
-\item scale,
-\item precision requirements,
-\item visibility,
-\item operational context,
-\item interaction state,
-\item and runtime cost.
-\end{itemize}
+Runtime evaluation depends on scale, precision requirements, visibility,
+operational context, interaction state, and runtime cost.
 \end{definition}
 
-\begin{remark}
-Examples include:
-\begin{itemize}
-\item coarse map rendering,
-\item exact local projection,
-\item simplified distant geometry,
-\item high-precision construction-scale evaluation,
-\item and precise nearby vehicle interaction.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-LOD-dependent runtime evaluation is one of the central scalability
-mechanisms of AIM.
-\end{remark}
+This combination is central for scalable projection, frame evaluation,
+visualization, and vehicle-space interpretation.
 
 % ============================================================
-\section{Caching}
+\section{Caching and Consistency}
 % ============================================================
 
 \begin{definition}[Runtime cache]
@@ -449,49 +216,17 @@ A runtime cache stores previously evaluated quantities to avoid repeated
 computation.
 \end{definition}
 
-\begin{remark}
-Caching may be applied to:
-\begin{itemize}
-\item projection results,
-\item local frames,
-\item sampled geometry,
-\item dynamic quantities,
-\item nearest-point queries,
-\item and metric-aware reconstruction results.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Caching introduces a trade-off between:
-\begin{itemize}
-\item computational cost,
-\item memory usage,
-\item consistency,
-\item invalidation complexity,
-\item and numerical freshness.
-\end{itemize}
-\end{remark}
+Caching can accelerate projection, frame, sampled geometry, and dynamic
+queries, while introducing consistency and invalidation requirements.
 
 % ============================================================
 \section{Metric-Aware Runtime}
 % ============================================================
 
-\begin{remark}
-Runtime evaluation depends on the metric realization layer introduced in
-\cref{chap:metric-realization}.
-\end{remark}
-
-\begin{remark}
-Different metric realizations may affect:
-\begin{itemize}
-\item distance interpretation,
-\item curvature evaluation,
-\item projection behaviour,
-\item frame construction,
-\item stationing,
-\item and pose3 evaluation.
-\end{itemize}
-\end{remark}
+Runtime evaluation depends on metric realization
+(\cref{chap:metric-realization}). Different realizations affect distance
+interpretation, curvature-related quantities, frame construction,
+projection behaviour, and stationing interpretation.
 
 \begin{principle}[Metric-aware runtime principle]
 \label{princ:metric-aware-runtime}
@@ -499,21 +234,13 @@ Runtime systems should evaluate geometry through metric-aware operator
 services rather than through hardcoded Euclidean assumptions.
 \end{principle}
 
-\begin{remark}
-Metric-aware runtime preserves fast Euclidean engineering evaluation as
-the default case while allowing projection-aware and ellipsoid-aware
-extensions.
-\end{remark}
-
 % ============================================================
-\section{Runtime Pipelines}
+\section{Runtime Pipelines and Service Interaction}
 % ============================================================
-
-\subsection{Conceptual Composition}
 
 \begin{definition}[Runtime operator pipeline]
 \label{def:runtime-pipeline}
-A runtime pipeline is a composed operator chain such as:
+A runtime pipeline is a composed operator chain such as
 \[
 \mathcal E_{\mathrm{run}}
 \sim
@@ -525,31 +252,17 @@ A runtime pipeline is a composed operator chain such as:
 \]
 \end{definition}
 
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 \input{figures/runtime/runtime_pipeline}
 \caption{Conceptual runtime evaluation pipeline.}
 \label{fig:runtime-pipeline}
 \end{figure}
 
-\begin{remark}
-This pipeline expresses that runtime evaluation may depend on:
-\begin{itemize}
-\item metric realization,
-\item frame evaluation,
-\item and projection services.
-\end{itemize}
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Realized Runtime Evaluation}
-
 \begin{definition}[Realized runtime pipeline]
 \label{def:realized-runtime-pipeline}
 When realized geometry is required, runtime evaluation may conceptually
-depend on:
+depend on
 \[
 \mathcal E_{\mathrm{real}}
 \sim
@@ -563,94 +276,34 @@ depend on:
 \]
 \end{definition}
 
-
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 \input{figures/runtime/realization_pipeline}
 \caption{Realization-aware runtime evaluation pipeline.}
 \label{fig:realization-pipeline}
 \end{figure}
 
-\begin{remark}
-This expresses the dependency on physical realization, but it should not
-be read as a rigid software pipeline.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\subsection{Runtime Pipeline Variants}
-
-\begin{remark}
-Different runtime services may activate different operator chains.
-For example:
-\begin{itemize}
-\item visualization may use coarse metric evaluation,
-\item projection may require local refinement,
-\item optimization may require realized-state evaluation,
-\item and vehicle-space analysis may require frame and cant evaluation.
-\end{itemize}
-\end{remark}
+Different runtime services activate different operator chains, depending
+on precision, context, and purpose.
 
 % ============================================================
-\section{Runtime and Realization}
+\section{Runtime, Realization, and Representation Boundaries}
 % ============================================================
 
-\begin{remark}
-Runtime systems should distinguish:
-\begin{itemize}
-\item target geometry,
-\item realized geometry,
-\item measured geometry,
-\item and temporary interaction geometry.
-\end{itemize}
-\end{remark}
+Runtime must distinguish target, realized, measured, and temporary
+interaction states. Runtime evaluation and physical realization are
+coupled but conceptually distinct: realization transforms target states,
+while runtime evaluates states.
 
-\begin{remark}
-Operational services often operate on realized states:
-\[
-\mathcal X_{\mathrm{real}}.
-\]
-\end{remark}
-
-\begin{remark}
-Runtime evaluation and physical realization are coupled, but they are
-not identical.
-Runtime evaluates states; realization transforms target states into
-realized states.
-\end{remark}
-
-% ============================================================
-\section{Runtime and Vehicle Space}
-% ============================================================
-
-\begin{remark}
-Vehicle-space interpretation requires runtime evaluation of:
-\begin{itemize}
-\item cant,
-\item local frames,
-\item vehicle envelopes,
-\item platform interaction,
-\item bogie motion,
-\item center-of-gravity motion,
-\item and operational clearances.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-These quantities cannot be represented sufficiently by static centerline
-geometry alone.
-\end{remark}
-
-\begin{remark}
-Vehicle-space interpretation therefore depends on runtime pose3
-evaluation rather than on stored centerline geometry alone.
-\end{remark}
+Representation remains downstream. Runtime services provide derived
+state and quantities; representation services display, encode, or
+exchange those results for specific applications.
 
 % ============================================================
 \section{Conceptual Runtime Architecture}
 % ============================================================
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 
 \begin{tikzpicture}[
@@ -695,8 +348,8 @@ Dynamic Evaluation
 };
 
 \node[box, below=2.2cm of eval] (vehicle) {
-Operational Geometry\\
-Vehicle Space
+Derived Runtime State\\
+Application Interpretation
 };
 
 \draw[arrow] (sparse) -- (metric);
@@ -713,9 +366,9 @@ Vehicle Space
 \end{tikzpicture}
 
 \caption{
-Runtime services transform sparse alignment semantics through metric
-realization into operationally interpretable geometry and vehicle-space
-behaviour.
+Runtime services transform persistent engineering information through
+metric-aware evaluation into derived runtime state for downstream
+interpretation.
 }
 \label{fig:runtime-architecture}
 
@@ -727,17 +380,21 @@ behaviour.
 
 \begin{proposition}
 Within AIM, runtime services are operator-based evaluation systems
-acting on alignment states.
+acting on established engineering and state concepts.
 \end{proposition}
 
 \begin{proposition}
-Runtime geometry is interpreted as dynamically evaluated operational
-geometry rather than static stored geometry.
+Derived runtime quantities are evaluation results and are not persistent
+engineering identity.
 \end{proposition}
 
 \begin{proposition}
-Projection, metric realization, frame interpretation, dynamics, and
-realization-aware evaluation form one coupled runtime architecture.
+Projection, frame construction, metric realization, and runtime dynamics
+form a coupled service architecture.
+\end{proposition}
+
+\begin{proposition}
+Representation remains downstream of runtime evaluation.
 \end{proposition}
 
 % ============================================================
@@ -745,23 +402,12 @@ realization-aware evaluation form one coupled runtime architecture.
 % ============================================================
 
 \begin{summary}
-The AIM runtime architecture transforms sparse alignment semantics into
-operationally interpretable geometry.
+AIM runtime services consume persistent engineering information and
+state-layer concepts and generate derived runtime engineering state
+through operator-based evaluation.
 
-Runtime services provide:
-\begin{itemize}
-\item projection,
-\item frame evaluation,
-\item pose3 evaluation,
-\item dynamic evaluation,
-\item realization-aware geometry,
-\item metric-aware evaluation,
-\item and vehicle-space interpretation.
-\end{itemize}
-
-Thus, runtime evaluation forms the operational execution layer of the
-AIM framework.
-
-AIM is therefore not merely a stored alignment model, but an operational
-evaluation system.
+This architecture keeps semantics stable, keeps evaluation explicit,
+maintains representation boundaries, and enables
+application-specific interpretation without redefining upstream
+knowledge.
 \end{summary}

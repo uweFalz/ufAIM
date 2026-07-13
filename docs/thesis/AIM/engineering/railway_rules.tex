@@ -2,13 +2,10 @@
 
 \section*{Motivation}
 
-\begin{remark}
 Railway alignment design is not solely a geometric or mathematical task.
 It is governed by engineering rules, safety requirements, and operational
 constraints.
-\end{remark}
 
-\begin{remark}
 These rules originate from:
 \begin{itemize}
 \item national regulations,
@@ -16,15 +13,11 @@ These rules originate from:
 \item operator-specific guidelines (e.g.\ Deutsche Bahn),
 \item empirical engineering practice.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Within the AIM framework, such rules are not treated as external
 constraints only, but are integrated into the modelling and optimization
 process.
-\end{remark}
 
----
 
 \section{Categories of Rules}
 
@@ -63,7 +56,6 @@ process.
 \item network connectivity conditions.
 \end{itemize}
 
----
 
 \section{Geometric Constraints}
 
@@ -78,33 +70,25 @@ The curvature must satisfy
 \]
 \end{definition}
 
-\begin{remark}
 The value of \(R_{\min}\) depends on:
 \begin{itemize}
 \item design speed,
 \item vehicle characteristics,
 \item regulatory standards.
 \end{itemize}
-\end{remark}
 
----
 
 \subsection{Continuity Conditions}
 
-\begin{remark}
 Railway alignments must satisfy at least:
 \begin{itemize}
 \item $C^0$ continuity (position),
 \item $C^1$ continuity (direction),
 \item typically $C^2$ continuity (curvature).
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Higher-order smoothness may be required for high-speed lines.
-\end{remark}
 
----
 
 \subsection{Transition Length}
 
@@ -115,15 +99,12 @@ L \geq L_{\min}(v,\kappa_1,\kappa_2).
 \]
 \end{definition}
 
-\begin{remark}
 Typical formulations relate transition length to:
 \begin{itemize}
 \item allowable rate of change of lateral acceleration,
 \item cant development limits.
 \end{itemize}
-\end{remark}
 
----
 
 \section{Dynamic Constraints}
 
@@ -142,7 +123,6 @@ a_y(s) = v^2 \kappa(s).
 \]
 \end{constraint}
 
----
 
 \subsection{Cant and Cant Deficiency}
 
@@ -163,7 +143,6 @@ a_{\text{eff}}(s) = v^2 \kappa(s) - g \tan(\phi(s)).
 \]
 \end{constraint}
 
----
 
 \subsection{Jerk}
 
@@ -174,12 +153,10 @@ j(s) = \frac{\dd}{\dd t} a_y(s).
 \]
 \end{definition}
 
-\begin{remark}
 Using $s$ as parameter, one obtains
 \[
 j(s) = v^3 \kappa'(s).
 \]
-\end{remark}
 
 \begin{constraint}
 \[
@@ -187,13 +164,10 @@ j(s) = v^3 \kappa'(s).
 \]
 \end{constraint}
 
----
 
 \section{Coupling of Curvature and Cant}
 
-\begin{remark}
 Curvature and cant must not be treated independently.
-\end{remark}
 
 \begin{constraint}
 \[
@@ -203,21 +177,16 @@ Curvature and cant must not be treated independently.
 \]
 \end{constraint}
 
-\begin{remark}
 These relations express that:
 \begin{itemize}
 \item curvature changes require corresponding cant development,
 \item cant changes must respect dynamic limits.
 \end{itemize}
-\end{remark}
 
----
 
 \section{Speed-Dependent Constraints}
 
-\begin{remark}
 All relevant constraints depend on speed.
-\end{remark}
 
 \begin{definition}[Speed profile]
 A speed profile is a function
@@ -226,11 +195,8 @@ v : [0,L] \to \R_+.
 \]
 \end{definition}
 
-\begin{remark}
 Constraints must be evaluated pointwise with respect to $v(s)$.
-\end{remark}
 
----
 
 \section{Constraint Representation in AIM}
 
@@ -243,25 +209,20 @@ C_i[\kappa,\phi,v] \leq 0.
 \]
 \end{definition}
 
-\begin{remark}
 This allows constraints to be:
 \begin{itemize}
 \item evaluated continuously,
 \item discretized for numerical optimization,
 \item combined into a unified constraint system.
 \end{itemize}
-\end{remark}
 
----
 
 \subsection{Discrete Representation}
 
-\begin{remark}
 In numerical implementation, constraints are evaluated on a grid
 \[
 s_0, \dots, s_N.
 \]
-\end{remark}
 
 \begin{definition}[Discrete constraint]
 \[
@@ -269,67 +230,49 @@ C_i(\mathbf{x}) = \max_k C_i(s_k).
 \]
 \end{definition}
 
----
 
 \section{Integration into Optimization}
 
-\begin{remark}
 Constraints enter the optimization problem as:
 \[
 g_i(\mathbf{x}) \leq 0.
 \]
-\end{remark}
 
-\begin{remark}
 They may be handled via:
 \begin{itemize}
 \item hard constraints (feasibility),
 \item penalty terms,
 \item barrier methods.
 \end{itemize}
-\end{remark}
 
----
 
 \section{Relation to Standards}
 
-\begin{remark}
 The presented constraints correspond to rules found in:
 \begin{itemize}
 \item UIC codes,
 \item national railway regulations,
 \item operator guidelines.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 The AIM framework provides a mathematical representation that allows
 these rules to be applied consistently across different data sources.
-\end{remark}
 
----
 
 \section{Discussion}
 
-\begin{remark}
 Traditional workflows treat rules as external checks applied after
 design.
-\end{remark}
 
-\begin{remark}
 In contrast, AIM integrates rules directly into:
 \begin{itemize}
 \item modelling,
 \item reconstruction,
 \item optimization.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This leads to a shift from validation to constraint-driven design.
-\end{remark}
 
----
 
 \section{Summary}
 

@@ -28,12 +28,13 @@ var/
 dump_repo_full.sh
 setup_structure.sh
 **/empty.js
+AGENTS.md
+**/AGENTS.md
 
 # ------------------------------------------------------------
 # Docs
 # ------------------------------------------------------------
 docs/archive/
-docs/.DS_Store
 
 # ------------------------------------------------------------
 # LaTeX build artefacts (historic but still useful)
@@ -81,28 +82,16 @@ _legacy/
 **/_dormant/
 **/_graveyard/
 
-# docs archives are not part of the living docs
-docs/archive/
-
 # --- Local scratch / outputs ---
 var/
 .metadata/
 # (samples/ NICHT ignorieren, weil du ggf. echte Samples willst)
 
 # --- Archives / big legacy dumps ---
-docs/archive/
 **/legacy/
 _legacy/   # wenn du das dauerhaft als "externes Altarchiv" halten willst
 # Falls _legacy im Repo bleiben soll, aber nicht versioniert:
 # -> dann so lassen. Wenn _legacy versioniert werden soll: diese Zeile entfernen.
-
-# --- Build artefacts / LaTeX ---
-*.aux
-*.log
-*.out
-*.toc
-*.synctex.gz
-*.run.xml
 
 # --- Node-ish (falls später) ---
 node_modules/

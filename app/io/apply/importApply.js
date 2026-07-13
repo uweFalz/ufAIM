@@ -20,6 +20,7 @@
 
 import { ensureImportStoreShape } from "./importStoreShape.js";
 import { applyImportRegistry } from "./importRegistryApply.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 import {
 	applyImportPreview,
 	getActiveArtifactIds,
@@ -78,7 +79,7 @@ export function applyImportToProject({
 		effects.push({
 			type: "props",
 			object: {
-				active: finalState.activeRouteProjectId,
+				active: getWorkspacePrimaryId(finalState),
 				base: baseId,
 				slot,
 				activeArtifacts: finalState.import_activeArtifacts ?? null,

@@ -10,13 +10,30 @@ const kappaBuilder = KappaFcnBuilder;
 
 const DEBUG_PROJECTION = false;
 
+export function makeAlignmentProjectionInput({
+	objectId = null,
+	geometry = null,
+	source = null,
+	crsId = null,
+} = {}) {
+	if (!geometry || typeof geometry !== "object") return null;
+
+	return {
+		objectId: objectId != null ? String(objectId) : null,
+		geometry,
+		source: source != null ? source : null,
+		crsId: crsId != null ? String(crsId) : null,
+	};
+}
+
 export function projectAlignmentPreview({
-	sparseAlignment,
+	input,
 	maxStep = 5,
 } = {}) {
-	if (!sparseAlignment) return null;
+	const geometry = input?.geometry ?? null;
+	if (!geometry) return null;
 
-	const validation = validateSparseAlignment(sparseAlignment);
+	const validation = validateSparseAlignment(geometry);
 	if (!validation?.ok) {
 		if (DEBUG_PROJECTION) {
 			console.log("[Projection] sparse invalid", validation);
@@ -25,8 +42,8 @@ export function projectAlignmentPreview({
 	}
 
 	const { alignment } = makeAlignment2DFromSparse({
-		startPose: sparseAlignment.startPose,
-		sparse: sparseAlignment.sparse,
+		startPose: geometry.startPose,
+		sparse: geometry.sparse,
 		descriptorResolver: registryResolver,
 		kappaBuilder,
 	});

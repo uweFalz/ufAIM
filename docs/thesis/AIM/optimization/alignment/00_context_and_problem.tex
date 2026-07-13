@@ -2,17 +2,13 @@
 
 \section*{Motivation}
 
-\begin{remark}
 In practical applications, alignments are not only reconstructed from
 data, but also designed, modified, and improved.
-\end{remark}
 
-\begin{remark}
 This leads naturally to optimization problems in which alignment
 parameters are adjusted to satisfy geometric, physical, and regulatory
 constraints, as already emphasized in railway alignment literature
 \cite{Kufver2000RailwayAlignment,Klein1998Trassierung}.
-\end{remark}
 
 \section{General Optimization Problem}
 
@@ -33,7 +29,6 @@ J : \mathcal{A} \to \R
 that assigns a cost or quality measure to an alignment $\mathcal{A}$.
 \end{definition}
 
-\begin{remark}
 Typical objectives include:
 \begin{itemize}
 \item minimizing curvature variation,
@@ -45,14 +40,11 @@ Such objective classes are consistent with both general numerical
 optimization literature \cite{Nocedal2006NumericalOptimization}
 and railway-specific optimization approaches
 \cite{Kufver2000RailwayAlignment}.
-\end{remark}
 
 \section{Parameterization}
 
-\begin{remark}
 The choice of parameters is central to the formulation of the
 optimization problem.
-\end{remark}
 
 \begin{definition}[Parameter vector]
 An alignment is described by a parameter vector
@@ -68,10 +60,8 @@ encoding quantities such as:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 The sparse alignment model provides a natural parameterization by
 element-wise variables.
-\end{remark}
 
 \TODO{Explicit parameter sets for fixed and transition elements.}
 
@@ -86,7 +76,6 @@ h_j(\mathbf{x}) = 0.
 \]
 \end{definition}
 
-\begin{remark}
 Constraints arise from:
 \begin{itemize}
 \item geometric continuity,
@@ -94,7 +83,6 @@ Constraints arise from:
 \item physical limitations,
 \item regulatory requirements.
 \end{itemize}
-\end{remark}
 
 \subsection{Geometric Constraints}
 
@@ -111,46 +99,36 @@ Constraints arise from:
 \item limits on curvature derivatives.
 \end{itemize}
 
-\begin{remark}
 Such conditions reflect standard railway design practice and are closely
 related to design rules discussed in engineering literature and
 standards \cite{Klein1998Trassierung,EN13803_2017}.
-\end{remark}
 
 \OPEN{Formal representation of engineering rules in constraint form.}
 
 \section{Relation to Numerical Reconstruction}
 
-\begin{remark}
 Evaluation of the objective function requires reconstruction of the
 alignment geometry from the parameter vector.
-\end{remark}
 
-\begin{remark}
 Thus, optimization is intrinsically linked to numerical reconstruction,
 as discussed in the previous chapter. From a numerical perspective, this
 places alignment optimization within the broader context of differential
 equations and numerical approximation
 \cite{Hairer1993ODE,Press2007NumericalRecipes}.
-\end{remark}
 
 \section{Sequential Quadratic Programming}
 
-\begin{remark}
 Sequential Quadratic Programming (SQP) is a powerful method for solving
 nonlinear constrained optimization problems
 \cite{Nocedal2006NumericalOptimization}.
-\end{remark}
 
 \begin{definition}[SQP iteration]
 An SQP method approximates the original problem by a sequence of
 quadratic subproblems.
 \end{definition}
 
-\begin{remark}
 Each iteration solves a quadratic approximation of the objective
 function subject to linearized constraints.
-\end{remark}
 
 \TODO{Explicit formulation of SQP for alignment parameters.}
 
@@ -158,30 +136,24 @@ function subject to linearized constraints.
 
 \section{Alignment Optimization as Control Problem}
 
-\begin{remark}
 The curvature function $\kappaf(s)$ may be interpreted as a control
 variable in a continuous system.
-\end{remark}
 
 \begin{definition}[Control formulation]
 The alignment problem can be formulated as an optimal control problem
 with state variables $(\gamma,\theta)$ and control $\kappaf$.
 \end{definition}
 
-\begin{remark}
 This viewpoint is compatible with the curvature-centred perspective on
 railway alignment advocated by Kufver
 \cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
-\end{remark}
 
 \RESEARCH{Connection between alignment optimization and optimal control theory.}
 
 \section{Network-Level Optimization}
 
-\begin{remark}
 Real-world railway systems involve not only single alignments, but
 networks with branching and merging structures.
-\end{remark}
 
 \RESEARCH{Extension of optimization from single alignments to networks.}
 
@@ -189,9 +161,7 @@ networks with branching and merging structures.
 
 \section{Robustness and Uncertainty}
 
-\begin{remark}
 Optimization must account for uncertainty in input data.
-\end{remark}
 
 \RESEARCH{Robust optimization under uncertain geometry.}
 
@@ -199,37 +169,29 @@ Optimization must account for uncertainty in input data.
 
 \section{Implementation Perspective}
 
-\begin{remark}
 Practical optimization systems must balance:
 \begin{itemize}
 \item numerical stability,
 \item computational efficiency,
 \item model expressiveness.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This balance is central both in generic numerical optimization
 \cite{Nocedal2006NumericalOptimization}
 and in railway-specific optimization settings
 \cite{Kufver2000RailwayAlignment}.
-\end{remark}
 
 \TODO{Integration of optimization into the modelling workflow.}
 
 \section{Historical Context}
 
-\begin{remark}
 Classical systems such as AXTRAN have demonstrated the feasibility of
 optimization-based alignment design.
-\end{remark}
 
-\begin{remark}
 Modern approaches aim to extend these ideas using more flexible models
 and improved numerical methods, in line with the development from
 classical railway design methods toward explicit optimization
 formulations \cite{Kufver2000RailwayAlignment}.
-\end{remark}
 
 \TODO{Reconstruction and generalization of AXTRAN-like methods.}
 

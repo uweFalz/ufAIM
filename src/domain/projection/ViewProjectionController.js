@@ -1,30 +1,39 @@
 // src/domain/projection/ViewProjectionController.js
 
-import { projectAlignmentPreview } from "./AlignmentProjectionService.js";
+import {
+	makeAlignmentProjectionInput,
+	projectAlignmentPreview,
+} from "./AlignmentProjectionService.js";
 
 const DEBUG_PROJECTION = false;
 
 export function projectFocusedSpotObject(spotObject, opts = {}) {
 	if (!spotObject) return null;
 
-	const kernel = getKernel(spotObject);
+	const geometry = getProjectableGeometry(spotObject);
+	const input = makeAlignmentProjectionInput({
+		objectId: spotObject?.id ?? null,
+		geometry,
+		source: "spot-object",
+		crsId: spotObject?.crsId ?? null,
+	});
 
 	if (DEBUG_PROJECTION) {
 	console.log("[ViewProjectionController] kernel probe", {
 		id: spotObject?.id ?? null,
 		type: spotObject?.type ?? null,
 		crsId: spotObject?.crsId ?? null,
-		hasKernel: Boolean(kernel),
-		kernelKeys: Object.keys(kernel ?? {}),
-		elementCount: Array.isArray(kernel?.elements) ? kernel.elements.length : null,
-		hasStartPose: Boolean(kernel?.startPose),
+		hasKernel: Boolean(geometry),
+		kernelKeys: Object.keys(geometry ?? {}),
+		elementCount: Array.isArray(geometry?.elements) ? geometry.elements.length : null,
+		hasStartPose: Boolean(geometry?.startPose),
 	});
 }
 
-	if (!kernel) return null;
+	if (!input) return null;
 
 	const geom = projectAlignmentPreview({
-		sparseAlignment: kernel,
+		input,
 		maxStep: opts.maxStep ?? 5,
 	});
 
@@ -61,7 +70,7 @@ export function projectSpotObjects(spotObjects = [], opts = {}) {
 	return out;
 }
 
-function getKernel(spotObject) {
+function getProjectableGeometry(spotObject) {
 	return isObject(spotObject?.data?.kernel)
 		? spotObject.data.kernel
 		: null;

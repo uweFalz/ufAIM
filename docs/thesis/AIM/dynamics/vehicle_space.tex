@@ -5,16 +5,11 @@
 
 \section{Introduction}
 
-Motivation:
-
-\begin{itemize}
-\item pose3 describes the railway.
-\item railway operation involves vehicles.
-\item vehicle behaviour cannot be identified with railway state.
-\item a separate vehicle-space interpretation is required.
-\end{itemize}
-
-Principle:
+This chapter establishes how vehicle-related operational quantities are
+interpreted relative to the railway runtime state. Within AIM, the
+canonical railway state remains \(\mathrm{pose3}\), while vehicle-space
+quantities are derived interpretation states used for operation,
+assessment, and control support.
 
 \begin{principle}[Track--Vehicle Distinction]
 Within AIM, railway states and vehicle states are fundamentally distinct.
@@ -62,11 +57,6 @@ state.
 )
 \end{equation}
 
-OPEN{Discussion.}
-
-Insert Figure:
-Track State $\rightarrow$ Vehicle State.
-
 \section{Vehicle Space}
 
 \begin{definition}[Vehicle Space]
@@ -74,7 +64,9 @@ Vehicle space denotes the collection of operational states that are
 interpreted relative to a railway state.
 \end{definition}
 
-OPEN{Discussion.}
+Vehicle space therefore provides a structured application layer for
+clearance, comfort, and dynamic interpretation without redefining
+canonical railway identity.
 
 \section{Relative Vehicle States}
 
@@ -83,7 +75,7 @@ A relative vehicle state is a vehicle state expressed in a local
 track-attached reference frame.
 \end{definition}
 
-Examples:
+Representative relative states include:
 
 \begin{itemize}
 \item lateral displacement
@@ -92,19 +84,17 @@ Examples:
 \item wheel unloading
 \end{itemize}
 
-OPEN{Discussion.}
-
 \section{Track and Vehicle Frames}
 
 \begin{definition}[Track Frame]
-Local railway-attached frame generated from pose3.
+The track frame is a local railway-attached frame generated from
+\(\mathrm{pose3}\).
 \end{definition}
 
 \begin{definition}[Vehicle Frame]
-Local frame attached to a vehicle body or subsystem.
+The vehicle frame is a local frame attached to a vehicle body or
+subsystem.
 \end{definition}
-
-OPEN{Discussion.}
 
 \begin{equation}
 F_{\mathrm{vehicle}}
@@ -112,33 +102,32 @@ F_{\mathrm{vehicle}}
 F_{\mathrm{track}}
 \end{equation}
 
+This frame distinction is the basis for expressing relative motion and
+evaluating operational criteria in track-attached coordinates.
+
 \section{Operational Abstractions}
 
 \subsection{Wheelset State}
 
 \begin{definition}
-Wheelset state.
+The wheelset state denotes operational quantities associated with a
+wheelset relative to the local track frame.
 \end{definition}
-
-OPEN{Short discussion.}
 
 \subsection{Bogie State}
 
 \begin{definition}
-Bogie state.
+The bogie state denotes operational quantities associated with a bogie
+assembly relative to the local track frame.
 \end{definition}
-
-OPEN{Short discussion.}
 
 \subsection{Center-of-Gravity State}
 
 \begin{definition}
-Center-of-gravity state.
+The center-of-gravity state denotes the motion state of a selected
+vehicle mass reference point relative to the local track frame.
 \end{definition}
 
-OPEN{Short discussion.}
-
-\begin{remark}
 
 The center-of-gravity state is not identical to the vehicle state.
 
@@ -146,15 +135,12 @@ A vehicle may contain multiple relevant operational states,
 whereas the center-of-gravity state describes the motion of a selected
 mass reference point.
 
-\end{remark}
 
-\begin{remark}
 
 Within AIM, future optimization approaches may operate on
 center-of-gravity trajectories rather than directly on geometric
 centerlines.
 
-\end{remark}
 
 \section{Canonical Interpretation}
 

@@ -21,14 +21,11 @@ export class WindowRuntime {
 	}
 
 	async start() {
-		this.messaging = await createMessagingClient(this.prefs, {
-			windowId: this.windowId,
-			role: "view",
-		});
+		this.messaging = await this.createMessagingWithFallback();
 
 		setMessagingService(this.messaging);
 
-		if (this.prefs?.messaging?.mode !== "sharedWorker") {
+		if (this.resolveMessagingMode() !== "sharedWorker") {
 			const runtime = new AppRuntimeLocal({
 				windowId: this.windowId,
 				debug: !!this.prefs?.messaging?.debug,
@@ -60,6 +57,92 @@ export class WindowRuntime {
 				if (logElement) {
 					logElement.textContent = "boot failed ❌\n" + String(error);
 				}
+			});
+		}
+	}
+
+	resolveMessagingMode() {
+		return String(
+			this.messaging?.resolvedMode ??
+			this.prefs?.messaging?.mode ??
+			"sharedWorker"
+		);
+	}
+
+	async createMessagingWithFallback() {
+		const preferredMode = String(this.prefs?.messaging?.mode ?? "sharedWorker");
+		const allowLocalFallback = Boolean(this.prefs?.runtime?.allowLocalFallback);
+		const smokeTimeoutMs = Math.max(1000, Number(this.prefs?.runtime?.workerSmokeTimeoutMs ?? 5000));
+		let messaging = null;
+
+		try {
+			messaging = await createMessagingClient(this.prefs, {
+				windowId: this.windowId,
+				role: "view",
+			});
+		} catch (error) {
+			if (preferredMode !== "sharedWorker" || !allowLocalFallback) {
+				throw error;
+			}
+
+			debugError("WindowRuntime", "sharedWorker connect failed, falling back to local runtime", {
+				message: error?.message ?? String(error),
+			});
+
+			const localPrefs = {
+				...this.prefs,
+				messaging: {
+					...(this.prefs?.messaging ?? {}),
+					mode: "local",
+				},
+			};
+
+			return createMessagingClient(localPrefs, {
+				windowId: this.windowId,
+				role: "view",
+			});
+		}
+
+		if (preferredMode !== "sharedWorker") {
+			return messaging;
+		}
+
+		if (!(this.prefs?.runtime?.runWorkerSmokeTest ?? true)) {
+			return messaging;
+		}
+
+		try {
+			await messaging.sendCmdAwait(
+				"Transition.ListPresets",
+				{},
+				{ timeoutMs: smokeTimeoutMs }
+			);
+
+			return messaging;
+		} catch (error) {
+			if (!allowLocalFallback) {
+				debugError("WindowRuntime", "sharedWorker smoke test failed; continuing in strict sharedWorker mode", {
+					message: error?.message ?? String(error),
+					timeoutMs: smokeTimeoutMs,
+				});
+				return messaging;
+			}
+
+			debugError("WindowRuntime", "sharedWorker unavailable, falling back to local runtime", {
+				message: error?.message ?? String(error),
+			});
+
+			const localPrefs = {
+				...this.prefs,
+				messaging: {
+					...(this.prefs?.messaging ?? {}),
+					mode: "local",
+				},
+			};
+
+			return createMessagingClient(localPrefs, {
+				windowId: this.windowId,
+				role: "view",
 			});
 		}
 	}

@@ -1,6 +1,7 @@
 // app/io/apply/importStoreShape.js
 
 import { ensureObject } from "@app/utils/appHelpers.js";
+import { getWorkspaceSelection } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 //
 // ...
@@ -10,8 +11,15 @@ export function ensureImportStoreShape(state) {
 	
 	// console.log("import_tracks2d: ", Array.isArray(s.import_tracks2d) ? s.import_tracks2d : [] );
 
+	const workspaceSelection = getWorkspaceSelection(s);
+
 	return {
-		activeRouteProjectId: s.activeRouteProjectId ?? null,
+		workspace_selection: {
+			primaryId: workspaceSelection.primaryId,
+			contextIds: workspaceSelection.contextIds,
+			source: workspaceSelection.source ?? null,
+			crsId: workspaceSelection.crsId ?? null,
+		},
 		activeSlot: s.activeSlot ?? "right",
 		cursor: ensureObject(s.cursor),
 

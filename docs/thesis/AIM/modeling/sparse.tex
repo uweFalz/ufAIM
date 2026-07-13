@@ -12,26 +12,20 @@
 \label{fig:sparse-model-structure}
 \end{figure}
 
-\begin{remark}
 A continuous curvature law is mathematically natural, but it is not by
 itself an operational representation for editing, exchange, validation,
 or reconstruction from heterogeneous engineering data.
 For this reason, a sparse model is introduced as a structured,
 piecewise-defined representation of an alignment.
-\end{remark}
 
-\begin{remark}
 The sparse model is not intended as a denial of continuous geometry.
 On the contrary, it serves as an intermediate layer between continuous
 curvature theory and practical modelling tasks such as import,
 computation, optimization, and interoperability.
-\end{remark}
 
-\begin{remark}
 Dense geometric representations such as point clouds or sampled
 polylines preserve positional information, but largely destroy the
 structural semantics of the alignment itself.
-\end{remark}
 
 % ============================================================
 \section{General Idea}
@@ -43,17 +37,13 @@ consisting of synchronized alignment bands together with sufficient
 reconstruction information.
 \end{definition}
 
-\begin{remark}
 The adjective \emph{sparse} refers here to the fact that the alignment
 is not stored as a dense point cloud, but as a compact sequence of
 semantically meaningful elements.
-\end{remark}
 
-\begin{remark}
 Within AIM, the sparse model is not interpreted as a static 3D geometry,
 but as a persistent structural kernel from which geometry and dynamics
 are derived.
-\end{remark}
 
 % ============================================================
 \section{Element Types}
@@ -82,17 +72,13 @@ curvature, i.e.
 for a suitable curvature law $f$.
 \end{definition}
 
-\begin{remark}
 Within AIM, transition elements are primarily interpreted through their
 curvature evolution rather than through explicit geometric shape.
-\end{remark}
 
-\begin{remark}
 At this level of abstraction, no commitment is yet made to a specific
 family of transition laws.
 This includes classical clothoids as well as polynomial, lookup-based,
 or hybrid constructions.
-\end{remark}
 
 \TODO{Formal classification of transition families.}
 
@@ -114,10 +100,8 @@ Each element $e_i$ is associated with a curvature law
 \]
 \end{definition}
 
-\begin{remark}
 For fixed elements, $\kappaf_i$ is constant.
 For transition elements, $\kappaf_i$ varies along the local parameter.
-\end{remark}
 
 \begin{definition}[Sparse alignment]
 A sparse alignment is an ordered tuple
@@ -152,11 +136,9 @@ curvature law:
 \]
 \end{proposition}
 
-\begin{remark}
 Together with the ordered element sequence and the local curvature laws,
 the start pose determines the alignment geometry by successive
 integration.
-\end{remark}
 
 \begin{definition}[Reconstructable sparse alignment]
 A sparse alignment is called reconstructable if its element sequence and
@@ -173,10 +155,8 @@ Railway alignments are represented as synchronized longitudinal bands
 rather than as monolithic geometric objects.
 \end{principle}
 
-\begin{remark}
 Within the AIM framework, the persistent alignment model is intentionally
 kept sparse and decomposed into synchronized longitudinal bands.
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{cGeom}
@@ -195,9 +175,7 @@ It represents the curvature-driven planar alignment core and consists of:
 \end{itemize}
 \end{definition}
 
-\begin{remark}
 The cGeom band forms the primary integration core of the alignment.
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{Cant Band}
@@ -208,7 +186,6 @@ Cant is represented as an independent longitudinal band correlated with
 fixed alignment elements.
 \end{definition}
 
-\begin{remark}
 The cant band:
 \begin{itemize}
 \item does not define an independent stationing system,
@@ -217,15 +194,11 @@ The cant band:
 cGeom element,
 \item may contain local station offsets at element boundaries.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Since cant evolution follows the same normalized curvature family as
 the associated cGeom element, no independent geometric evolution model
 is required for the cant band itself.
-\end{remark}
 
-\begin{remark}
 The corresponding roll angle is derived via:
 \[
 \phi(s)
@@ -239,7 +212,6 @@ where:
 \item \(u(s)\): rail height difference,
 \item \(g\): gauge.
 \end{itemize}
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{Profile Band}
@@ -249,10 +221,8 @@ where:
 Vertical geometry is represented independently through a profile band.
 \end{definition}
 
-\begin{remark}
 Thus, cGeom, cant, and profile are treated as synchronized but distinct
 bands sharing a common arc-length domain.
-\end{remark}
 
 % ------------------------------------------------------------
 \subsection{Runtime State}
@@ -262,12 +232,9 @@ bands sharing a common arc-length domain.
 Pose3 is not treated as persistent truth within the sparse model.
 \end{proposition}
 
-\begin{remark}
 Persisting pose3 directly would introduce redundancy and synchronization
 instabilities between geometry, cant, and profile representations.
-\end{remark}
 
-\begin{remark}
 Instead, pose3 is derived dynamically from:
 \begin{itemize}
 \item cGeom,
@@ -275,13 +242,10 @@ Instead, pose3 is derived dynamically from:
 \item profile,
 \item and runtime evaluation services.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Consequently, the primary intelligence of the AIM framework resides not
 in the storage format itself, but in the mathematical operators and
 evaluation services acting on the sparse model.
-\end{remark}
 
 % ============================================================
 \section{Concatenation}
@@ -302,11 +266,9 @@ A sparse alignment is directionally continuous if consecutive elements
 share the same tangent direction at their common boundary.
 \end{definition}
 
-\begin{remark}
 In most engineering contexts, positional and directional continuity are
 minimal requirements. Higher continuity requirements may depend on the
 chosen transition families and on the intended application.
-\end{remark}
 
 \TODO{Formalize continuity classes such as $C^0$, $C^1$, and curvature-related continuity conditions.}
 
@@ -314,21 +276,17 @@ chosen transition families and on the intended application.
 \section{Normal Form and Alternation}
 % ============================================================
 
-\begin{remark}
 In practical sparse representations, a frequent pattern is the
 alternation between fixed elements and transition elements. This
 corresponds closely to engineering intuition and to many traditional
 alignment descriptions.
-\end{remark}
 
 \OPEN{Should strict alternation between fixed and transition elements be formulated as a mathematical property, as a preferred normal form, or merely as an implementation convention?}
 
-\begin{remark}
 It is plausible to regard alternation as a normal form rather than a
 fundamental axiom. Multiple neighbouring fixed elements may be merged,
 and certain degenerate transition cases may collapse into fixed
 elements.
-\end{remark}
 
 % ============================================================
 \section{Normalized Representation of Elements}
@@ -350,37 +308,28 @@ typically of the form
 \]
 \end{definition}
 
-\begin{remark}
 Normalization separates shape from scale.
 It allows the same transition family to be reused for different lengths
 and different curvature magnitudes.
-\end{remark}
 
-\begin{remark}
 Normalized representations form the basis for reusable transition
 registries, family classification, and implementation-independent
 comparison of alignment elements.
-\end{remark}
 
 % ============================================================
 \section{Structural Role of the Sparse Model}
 % ============================================================
 
-\begin{remark}
 The sparse model occupies an intermediate conceptual level:
 \begin{itemize}
   \item below the purely abstract curvature-theoretic foundation,
   \item but above dense numerical sampling, imported point lists, or
         format-specific container structures.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 The sparse model is intentionally not a dense geometric storage format,
 nor a direct copy of external exchange containers.
-\end{remark}
 
-\begin{remark}
 This intermediate status makes the sparse model suitable as
 \begin{itemize}
   \item an internal modelling layer,
@@ -388,19 +337,15 @@ This intermediate status makes the sparse model suitable as
   \item a source for numerical evaluation,
   \item and a bridge toward standards and BIM-related representations.
 \end{itemize}
-\end{remark}
 
 % ============================================================
 \section{Relation to Imported and Standardized Data}
 % ============================================================
 
-\begin{remark}
 Existing engineering data rarely arrives directly in sparse form.
 Instead, it is typically given through container formats, survey data,
 legacy descriptions, or derived coordinate sequences.
-\end{remark}
 
-\begin{remark}
 Such data may contain:
 \begin{itemize}
 \item inconsistent stationing,
@@ -410,14 +355,11 @@ Such data may contain:
 \item partial geometry fragments,
 \item or non-synchronized alignment components.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 The sparse model therefore should not be identified with any one
 exchange standard. It is more appropriate to view it as a compact,
 internal representation that can be derived from, and mapped back to,
 multiple external formats.
-\end{remark}
 
 \RESEARCH{Dock sparse model to \railML\ alignment structures.}
 \RESEARCH{Dock sparse model to \LandXML\ alignment representations.}
@@ -428,12 +370,10 @@ multiple external formats.
 \section{Relation to BIM and BIMalignment}
 % ============================================================
 
-\begin{remark}
 A sparse alignment model may support BIM-oriented workflows, but it
 should not merely imitate BIM container logic.
 Its primary responsibility is to represent alignment structure in a
 mathematically and operationally coherent way.
-\end{remark}
 
 \RESEARCH{Formulate a BIM-compatible alignment core without losing geometric precision.}
 \OPEN{Position the sparse model between generic BIM, infrastructure BIM, and explicit BIMalignment concepts.}

@@ -4,28 +4,21 @@
 
 \section{From Motivation to Formalization}
 
-\begin{remark}
 The previous chapter has argued that railway alignment design is
 intrinsically a coupled problem involving geometry, dynamics,
 and engineering constraints.
-\end{remark}
 
-\begin{remark}
 We now formulate this insight as a precise problem statement.
-\end{remark}
 
 \section{Core Deficiency of Existing Approaches}
 
-\begin{remark}
 Current alignment models are predominantly:
 \begin{itemize}
 \item element-based,
 \item geometry-centered,
 \item and weakly connected to dynamic behaviour.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 As a consequence, they exhibit the following structural deficiencies:
 \begin{itemize}
 \item curvature is not treated as a primary design variable,
@@ -33,127 +26,97 @@ As a consequence, they exhibit the following structural deficiencies:
 \item dynamic quantities are evaluated only after geometric design,
 \item optimization is indirect and iterative rather than intrinsic.
 \end{itemize}
-\end{remark}
 
 \section{Formal Gap}
 
-\begin{remark}
 Let
 \[
 \gamma : [0,L] \to \R^2
 \]
 denote a planar alignment.
-\end{remark}
 
-\begin{remark}
 In classical formulations, the curve \(\gamma\) is the primary object,
 while curvature is derived as
 \[
 \kappa(s) = \theta'(s).
 \]
-\end{remark}
 
-\begin{remark}
 However, from a dynamic perspective, the situation is reversed:
 \begin{itemize}
 \item curvature determines acceleration,
 \item curvature variation determines jerk,
 \item and therefore curvature governs physical behaviour.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This reveals a fundamental mismatch between:
 \begin{itemize}
 \item geometric modelling (curve-first),
 \item and physical interpretation (curvature-first).
 \end{itemize}
-\end{remark}
 
 \section{Missing Coupling of State Variables}
 
-\begin{remark}
 Let
 \[
 \kappa(s), \quad \phi(s)
 \]
 denote curvature and cant.
-\end{remark}
 
-\begin{remark}
 In practice, these variables are strongly coupled through
 \[
 a_{\mathrm{eff}}(s) = v^2 \kappa(s) - g \sin\phi(s).
 \]
-\end{remark}
 
-\begin{remark}
 Despite this coupling:
 \begin{itemize}
 \item \(\kappa\) is typically designed geometrically,
 \item \(\phi\) is designed in a separate process,
 \item and their interaction is only checked afterwards.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This separation prevents a unified optimization of the system.
-\end{remark}
 
 \section{Data and Reality Gap}
 
-\begin{remark}
 Modern railway projects rely heavily on real-world data, including:
 \begin{itemize}
 \item measurement polylines,
 \item legacy alignment descriptions,
 \item and heterogeneous coordinate systems.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Existing models struggle to:
 \begin{itemize}
 \item integrate noisy and incomplete data,
 \item reconcile different coordinate reference systems,
 \item and maintain a consistent representation across scales.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This leads to a disconnect between:
 \begin{itemize}
 \item theoretical alignment models,
 \item and real-world engineering data.
 \end{itemize}
-\end{remark}
 
 \section{Lack of a Unified Optimization Framework}
 
-\begin{remark}
 Alignment design problems naturally take the form:
 \[
 \min J(\kappa,\phi)
 \]
 subject to geometric and engineering constraints.
-\end{remark}
 
-\begin{remark}
 However, in current practice:
 \begin{itemize}
 \item the objective function is implicit or fragmented,
 \item constraints are applied in separate stages,
 \item and optimization is not formulated as a single problem.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This prevents the use of systematic numerical optimization methods.
-\end{remark}
 
 \section{Target Formulation}
 
-\begin{remark}
 We aim to formulate alignment design as a unified problem:
 \[
 \text{find } (\kappa,\phi)
@@ -164,20 +127,16 @@ such that:
 \item engineering constraints are fulfilled,
 \item and a global objective functional is minimized.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This requires:
 \begin{itemize}
 \item a curvature-based representation,
 \item a coupled state model,
 \item and a consistent treatment of data and constraints.
 \end{itemize}
-\end{remark}
 
 \section{Scope of the Problem}
 
-\begin{remark}
 The problem addressed in this work includes:
 \begin{itemize}
 \item modelling of alignments via curvature functions,
@@ -186,20 +145,16 @@ The problem addressed in this work includes:
 \item incorporation of engineering rules as constraints,
 \item and formulation of optimization problems.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 The problem explicitly excludes:
 \begin{itemize}
 \item detailed multibody vehicle dynamics,
 \item full infrastructure modelling,
 \item and construction-specific considerations.
 \end{itemize}
-\end{remark}
 
 \section{Research Questions}
 
-\begin{remark}
 The following central questions arise:
 \begin{itemize}
 \item How can alignment be represented in a curvature-driven manner?
@@ -208,27 +163,22 @@ The following central questions arise:
 \item How can engineering rules be expressed as mathematical constraints?
 \item How can alignment design be formulated as an optimization problem?
 \end{itemize}
-\end{remark}
 
 \section{Working Hypothesis}
 
-\begin{remark}
 We hypothesize that:
 \begin{itemize}
 \item a curvature-based state representation,
 \item combined with a unified optimization framework,
 \end{itemize}
 provides a more consistent and powerful foundation for railway alignment design.
-\end{remark}
 
-\begin{remark}
 In particular, we assume that:
 \begin{itemize}
 \item transition curves emerge naturally from optimization,
 \item geometry and dynamics can be unified,
 \item and real-world data can be systematically integrated.
 \end{itemize}
-\end{remark}
 
 \input{why/sections/alignment_is_not_a_curve}
 

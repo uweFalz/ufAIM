@@ -1,0 +1,185 @@
+% foundations/kernel_glossary.tex
+
+\chapter*{Knowledge Kernel Vocabulary}
+\phantomsection
+\addcontentsline{toc}{chapter}{Knowledge Kernel Vocabulary}
+\label{chap:kernel-vocabulary}
+
+\newcommand{\kernelterm}[2]{%
+\paragraph{#1}
+#2\par\vspace{0.7em}
+}
+
+The following vocabulary mirrors the canonical terminology of the
+approved Knowledge Kernel as used throughout this thesis. It introduces
+no additional theory and serves only as a concise terminological
+reference.
+
+% ============================================================
+\section*{Engineering Concepts}
+% ============================================================
+
+\kernelterm{Engineering Concept}
+{An enduring concept used to describe the engineering domain
+independently of a particular representation or software
+implementation.}
+
+\kernelterm{Engineering Object}
+{A durable engineering entity whose identity is independent of its
+representations, realizations, observations, and computational models.}
+
+\kernelterm{State}
+{A structured description of an engineering object under a specified
+condition and within a specified context.}
+
+\kernelterm{Representation}
+{A derived description used to visualize, communicate, exchange, or
+compute engineering information. A representation is not the
+engineering object that it represents.}
+
+% ============================================================
+\section*{Identity}
+% ============================================================
+
+\kernelterm{Engineering Object Identity}
+{The identity by which an engineering object remains distinguishable
+through changes of representation, realization, observation, and
+project context.}
+
+\kernelterm{Identity Composition}
+{The formation of engineering identity from stable constituent identity
+aspects and their canonical relations.}
+
+\kernelterm{Constructive Identity}
+{The identity aspect determined by the constructive definition and
+composition of an engineering object.}
+
+\kernelterm{Alignment Identity}
+{The engineering identity of an alignment independently of its sampled,
+visual, exchange, or metric representations.}
+
+% ============================================================
+\section*{Engineering Knowledge}
+% ============================================================
+
+\kernelterm{Engineering Observation}
+{Source-grounded information concerning an engineering object, state, or
+context that may support engineering knowledge.}
+
+\kernelterm{Engineering Knowledge}
+{Engineering information admitted for use in interpretation, evaluation,
+constraint, comparison, or decision-making.}
+
+\kernelterm{Knowledge Ownership}
+{The responsibility boundary assigning engineering knowledge to the
+canonical concept that owns its meaning.}
+
+\kernelterm{Truth Mode}
+{The epistemic status under which information is treated, such as
+observed, derived, assumed, proposed, or decided.}
+
+\kernelterm{Proposal}
+{A candidate engineering change or alternative submitted for evaluation
+without yet possessing decision authority.}
+
+\kernelterm{Engineering Decision}
+{An accepted engineering choice that resolves an evaluated proposal or
+engineering alternative.}
+
+% ============================================================
+\section*{Evaluation}
+% ============================================================
+
+\kernelterm{Residual}
+{A quantified deviation used to assess an observation, state, candidate
+solution, or engineering alternative.}
+
+\kernelterm{Engineering Constraint}
+{A mandatory condition restricting admissible engineering states,
+alternatives, or solutions.}
+
+\kernelterm{Preference}
+{A non-mandatory engineering criterion used to compare admissible
+alternatives.}
+
+\kernelterm{Candidate Solution}
+{An engineering state or configuration proposed for evaluation but not
+yet accepted as an engineering decision.}
+
+\kernelterm{Delta Operation}
+{An operation expressing an intended change between an existing
+engineering condition and a proposed condition.}
+
+\kernelterm{Solver Independence}
+{The principle that engineering knowledge, residuals, constraints,
+preferences, and decisions are not owned by a particular numerical
+solver.}
+
+% ============================================================
+\section*{Geometry and State}
+% ============================================================
+
+\kernelterm{Alignment}
+{A durable engineering object whose defining structure is organized
+along an intrinsic longitudinal domain.}
+
+\kernelterm{Intrinsic Geometry}
+{Geometry described through relations internal to the engineering object
+and independently of a particular metric realization.}
+
+\kernelterm{pose2}
+{The planar alignment state comprising planar position and heading along
+arc-length.}
+
+\kernelterm{pose3}
+{The spatial railway-state concept obtained by extending planar
+alignment state with the quantities and context required for spatial
+interpretation.}
+
+% ============================================================
+\section*{Metric and Spatial Realization}
+% ============================================================
+
+\kernelterm{Metric Space}
+{A space in which distance and related geometric quantities possess
+specified metric meaning.}
+
+\kernelterm{Metric Realization}
+{The interpretation of intrinsic engineering information within a
+specified metric space.}
+
+\kernelterm{Realization Context}
+{The contextual information required to perform and interpret a metric
+realization.}
+
+\kernelterm{Spatial Operator}
+{An operator relating intrinsic, metric, or spatial descriptions of
+engineering information.}
+
+\kernelterm{Physical Realization Space}
+{The physical space in which an engineering object is materially or
+geometrically realized.}
+
+\kernelterm{Engineering Realization}
+{The relation between an intended engineering description and its
+physically produced or maintained engineering condition.}
+
+\kernelterm{World-to-Track Mapping}
+{A spatial operation relating a world-space position to an intrinsic
+track-related interpretation.}
+
+\kernelterm{Track-to-World Mapping}
+{A spatial operation realizing intrinsic track-related information in
+world space.}
+
+% ============================================================
+\section*{Persistent Engineering Objects}
+% ============================================================
+
+\kernelterm{SpotObject}
+{A durable engineering object admitted into SPOT and available for
+persistent engineering relations and project-independent use.}
+
+\kernelterm{SpotObject Identity}
+{The stable identity by which a SpotObject remains distinguishable
+across representations, imports, projects, and realizations.}

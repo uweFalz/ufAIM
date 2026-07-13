@@ -3,30 +3,13 @@
 \chapter{Curvature on the Ellipsoid}
 \label{chapter:ellipsoid_curvature}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-\begin{remark}
-Railway alignment modelling is traditionally performed in projected
-coordinate systems such as Gauss--Krüger or UTM.
-\end{remark}
-
-\begin{remark}
-Within these systems, curvature, arc-length, and derived dynamic
-quantities are evaluated in a planar approximation of the Earth.
-\end{remark}
-
-\begin{remark}
-However, such projections introduce geometric distortions and therefore
-do not exactly represent the physical geometry on which the railway
-exists.
-\end{remark}
-
-\begin{remark}
-This motivates a formulation of alignment geometry directly on the
-reference surface of the Earth, typically modelled as an ellipsoid.
-\end{remark}
+Railway alignment modelling is often carried out in projected coordinate
+systems such as Gauss--Krüger or UTM. These projections are convenient for
+engineering computation and data exchange, but they introduce geometric
+distortions and therefore do not represent the physical geometry of the
+railway on the Earth exactly. A more intrinsic formulation describes the
+alignment directly on the reference surface, typically modelled as an
+ellipsoid.
 
 % ============================================================
 \section{Curve on a Surface}
@@ -45,13 +28,11 @@ An alignment is defined as a curve
 parameterized by arc-length \(s\).
 \end{definition}
 
-\begin{remark}
 The parameterization satisfies
 \[
 \|\gamma'(s)\| = 1,
 \]
 so that \(s\) represents physical distance along the curve.
-\end{remark}
 
 % ============================================================
 \section{Tangent and Normal Decomposition}
@@ -69,13 +50,8 @@ Let \(\mathbf{n}_{\mathcal{E}}(s)\) denote the unit normal vector of the
 ellipsoid at \(\gamma(s)\).
 \end{definition}
 
-\begin{remark}
-The second derivative \(\gamma''(s)\) can be decomposed into:
-\begin{itemize}
-\item a component tangent to the surface,
-\item a component normal to the surface.
-\end{itemize}
-\end{remark}
+The second derivative \(\gamma''(s)\) can be decomposed into a component
+tangent to the surface and a component normal to the surface. This gives
 
 \begin{definition}[Decomposition]
 \[
@@ -88,10 +64,8 @@ The second derivative \(\gamma''(s)\) can be decomposed into:
 \]
 \end{definition}
 
-\begin{remark}
 Here, \(\nabla_s\mathbf{t}\) denotes the covariant derivative of the
 tangent vector along the curve on the surface.
-\end{remark}
 
 % ============================================================
 \section{Geodesic Curvature}
@@ -106,15 +80,10 @@ The intrinsic curvature of the alignment on the ellipsoid is defined as
 \]
 \end{definition}
 
-\begin{remark}
 Geodesic curvature measures the change of direction within the surface.
-\end{remark}
-
-\begin{remark}
 It is the surface-intrinsic counterpart of planar curvature and is the
 relevant curvature notion for alignment geometry constrained to the
 reference surface.
-\end{remark}
 
 % ============================================================
 \section{Normal Curvature}
@@ -132,10 +101,8 @@ derivative:
 \]
 \end{definition}
 
-\begin{remark}
-Normal curvature is induced by the curvature of the ellipsoid itself
-and does not describe the bending of the alignment within the surface.
-\end{remark}
+Normal curvature is induced by the curvature of the ellipsoid itself and
+does not describe the bending of the alignment within the surface.
 
 % ============================================================
 \section{Total Curvature}
@@ -150,10 +117,8 @@ The total spatial curvature satisfies:
 \]
 \end{proposition}
 
-\begin{remark}
 Thus, the spatial curvature decomposes into an intrinsic surface
 contribution and an extrinsic surface-induced contribution.
-\end{remark}
 
 % ============================================================
 \section{Railway-Relevant Curvature}
@@ -167,24 +132,18 @@ railway-relevant curvature is the geodesic curvature:
 \]
 \end{proposition}
 
-\begin{remark}
 Railway vehicles move along the surface, and dynamic quantities such as
 lateral acceleration depend on curvature within the surface rather than
 on the embedding curvature of the Earth.
-\end{remark}
 
 % ============================================================
 \section{Relation to Planar Models}
 % ============================================================
 
-\begin{remark}
 In planar geometry, curvature is defined as
 \[
 \kappa(s)=\theta'(s).
 \]
-\end{remark}
-
-\begin{remark}
 On a curved surface, the heading-angle derivative is replaced by the
 covariant change of the tangent direction:
 \[
@@ -192,12 +151,8 @@ covariant change of the tangent direction:
 =
 \bigl\|\nabla_s \mathbf{t}(s)\bigr\|.
 \]
-\end{remark}
-
-\begin{remark}
-Thus, classical planar formulations are a special case of the intrinsic
+Classical planar formulations are therefore a special case of the intrinsic
 surface formulation.
-\end{remark}
 
 % ============================================================
 \section{Special Case: Geodesics}
@@ -211,42 +166,26 @@ A curve satisfies
 if and only if it is a geodesic on the surface.
 \end{definition}
 
-\begin{remark}
 Geodesics represent straightest paths on the ellipsoid in the intrinsic
-surface sense.
-\end{remark}
-
-\begin{remark}
-They are generally not straight in projected coordinate systems.
-\end{remark}
-
-\begin{remark}
-Railway alignment design is not equivalent to geodesic design.
-A railway alignment must satisfy engineering, dynamic, operational, and
+surface sense. They are generally not straight in projected coordinate
+systems. Railway alignment design is therefore not equivalent to geodesic
+design; it must also satisfy engineering, dynamic, operational, and
 realization constraints.
-\end{remark}
 
 % ============================================================
 \section{Computational Formulation}
 % ============================================================
 
-\begin{remark}
 In practical computations, geodesic curvature can be evaluated by
 projecting the second derivative onto the tangent plane of the surface:
 \[
 \kappa_g
 =
-\left\|
-\gamma'' - (\gamma''\cdot \mathbf{n}_{\mathcal{E}})
-\mathbf{n}_{\mathcal{E}}
-\right\|.
+\left\|\gamma'' - (\gamma''\cdot \mathbf{n}_{\mathcal{E}})
+\mathbf{n}_{\mathcal{E}}\right\|.
 \]
-\end{remark}
-
-\begin{remark}
 This formulation separates curvature within the surface from curvature
 caused by the embedding of the surface in three-dimensional space.
-\end{remark}
 
 % ============================================================
 \section{Implications for Engineering}
@@ -257,14 +196,9 @@ Curvature evaluated in projected coordinate systems differs from
 intrinsic curvature on the ellipsoid.
 \end{proposition}
 
-\begin{remark}
-Consequently:
-\begin{itemize}
-\item arc-length is only approximately preserved,
-\item curvature is distorted by projection,
-\item dynamic quantities are evaluated on an approximate geometry.
-\end{itemize}
-\end{remark}
+Consequently, arc-length is only approximately preserved, curvature is
+distorted by projection, and dynamic quantities are evaluated on an
+approximate geometry.
 
 \begin{proposition}
 Evaluating curvature intrinsically yields more physically consistent
@@ -275,13 +209,10 @@ results.
 \section{Vision}
 % ============================================================
 
-\begin{remark}
 A consistent modelling framework may formulate alignment geometry
 directly on the ellipsoid and use projections only for visualization
 and data exchange.
-\end{remark}
 
-\begin{remark}
 This enables:
 \begin{itemize}
 \item physically meaningful curvature,
@@ -289,12 +220,9 @@ This enables:
 \item improved robustness in optimization,
 \item and increased safety in alignment design.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 This is a long-term research direction rather than a prerequisite for
 practical AIM implementations.
-\end{remark}
 
 % ============================================================
 \section{Connection to AIM}

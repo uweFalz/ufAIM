@@ -1,61 +1,52 @@
 % macros.tex
+%
+% Technical LaTeX macros used throughout the thesis.
+%
+% This file intentionally contains only reusable formatting and
+% mathematical helper macros.
+%
+% Canonical terminology is defined by the Knowledge Kernel Vocabulary.
+% It does not belong into this file.
+
+% ============================================================
+% MATHEMATICAL SHORTCUTS
+% ============================================================
 
 \newcommand{\R}{\mathbb{R}}
-\newcommand{\norm}[1]{\left\lVert #1 \right\rVert}
+
+\newcommand{\norm}[1]{%
+  \left\lVert #1 \right\rVert%
+}
+
 \newcommand{\kappaf}{\kappa}
+
 \newcommand{\dd}{\mathrm{d}}
+
+% ============================================================
+% EXTERNAL FORMATS
+% ============================================================
+
 \newcommand{\railML}{\texttt{railML}}
 \newcommand{\LandXML}{\texttt{LandXML}}
 
-\newenvironment{insight}{
+% ============================================================
+% EDITORIAL ENVIRONMENTS
+% ============================================================
+
+\newenvironment{insight}
+{
 \begin{quote}\itshape
-}{
+}
+{
 \end{quote}
 }
 
-% --- Glossar / Begriffssystem ----------------------------------
+% ============================================================
+% REFERENCES
+% ============================================================
 
 \usepackage{xspace}
 
-\newcommand{\term}[2][]{%
-  #2%
-  \if\relax\detokenize{#1}\relax
-    \index{#2}%
-  \else
-    \index{#1}%
-  \fi
-  \xspace
+\newcommand{\gref}[1]{%
+  \hyperref[#1]{#1}\xspace
 }
-
-\newcommand{\defterm}[2][]{%
-  \textbf{#2}%
-  \if\relax\detokenize{#1}\relax
-    \index{#2}%
-  \else
-    \index{#1}%
-  \fi
-  \xspace
-}
-
-\newcommand{\alignment}{\term{alignment}}
-\newcommand{\curvature}{\term{curvature}}
-\newcommand{\cant}{\term{cant}}
-\newcommand{\state}{\term{state}}
-\newcommand{\realization}{\term{realization}}
-\newcommand{\pipeline}{\term{pipeline}}
-
-\newcommand{\poseTwo}{\term[pose2]{pose2}}
-\newcommand{\poseThree}{\term[pose3]{pose3}}
-\newcommand{\cGeom}{\term[cGeom]{cGeom}}
-\newcommand{\cantBand}{\term[cant band]{cant band}}
-\newcommand{\profileBand}{\term[profile band]{profile band}}
-\newcommand{\worldToTrack}{\term[world-to-track transformation]{world-to-track transformation}}
-\newcommand{\trackSpace}{\term[track space]{track space}}
-\newcommand{\worldSpace}{\term[world space]{world space}}
-\newcommand{\sparseModel}{\term[sparse alignment model]{sparse alignment model}}
-\newcommand{\runtimeEvaluation}{\term[runtime evaluation]{runtime evaluation}}
-\newcommand{\SchwerpunktTrassierung}{\term[Schwerpunkt-Trassierung]{Schwerpunkt-Trassierung}}
-
-% --- ...                  ... ----------------------------------
-
-\newcommand{\gref}[1]{\hyperref[#1]{#1}\xspace}

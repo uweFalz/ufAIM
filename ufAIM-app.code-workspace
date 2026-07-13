@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "knowledgeKernel",
+			"path": "docs/knowledgeKernel"
+		},
+		{
+			"name": "app",
+			"path": "app"
+		},
+		{
+			"name": "src",
+			"path": "src"
+		}
+	]
+}

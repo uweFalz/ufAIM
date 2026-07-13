@@ -1,879 +1,197 @@
 % foundations/notation.tex
 
-\chapter{Notation and Terminology}
-
+\chapter{Notation}
 \label{chap:notation}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-\begin{remark}
-Railway alignment engineering combines concepts from geometry,
-surveying, dynamics, construction, realization, runtime evaluation, and
-operational railway systems.
-\end{remark}
-
-\begin{remark}
-Many inconsistencies in classical railway systems arise not from
-incorrect mathematics, but from ambiguous terminology and mixed
-conceptual layers.
-\end{remark}
-
-\begin{remark}
-The AIM framework therefore introduces a canonical notation and
-terminology system.
-\end{remark}
-
-\begin{remark}
-The purpose of this chapter is:
-\begin{itemize}
-\item to define canonical symbols,
-\item to stabilize terminology,
-\item to reduce ambiguity,
-\item and to separate fundamentally different conceptual layers.
-\end{itemize}
-\end{remark}
+This chapter collects the notation used repeatedly throughout the
+thesis. It introduces symbols and writing conventions only; the
+engineering concepts represented by these symbols are developed in their
+respective chapters.
 
 % ============================================================
-\section{General Principles}
+\section{Typographic Conventions}
 % ============================================================
 
-\begin{principle}[Intrinsic-first principle]
-\label{princ:intrinsic-first}
+Scalar quantities are written in italic type, for example \(s\),
+\(\theta\), and \(\kappa\). Vectors are written in bold type, for
+example \(\mathbf t\), \(\mathbf n\), and \(\mathbf b\). Sets and
+spaces are denoted by capital or calligraphic letters, while operators
+are denoted by calligraphic letters whenever this improves the
+conceptual distinction between an object and an operation.
 
-Whenever possible, railway geometry is formulated intrinsically using
-arc-length-based quantities.
-
-\end{principle}
-
-% ------------------------------------------------------------
-
-\begin{principle}[Runtime distinction principle]
-\label{princ:runtime-distinction}
-
-A distinction is made between:
-\begin{itemize}
-\item stored representations,
-\item runtime-evaluated states,
-\item and physically realized states.
-\end{itemize}
-
-\end{principle}
-
-% ------------------------------------------------------------
-
-\begin{principle}[Target vs realization principle]
-\label{princ:target-vs-realization}
-
-Target geometry and realized geometry are treated as distinct objects.
-
-\end{principle}
-
-% ------------------------------------------------------------
-
-\begin{principle}[Canonical layer principle]
-\label{princ:canonical-layer}
-
-AIM separates:
-\begin{itemize}
-\item intrinsic geometry,
-\item metric realization,
-\item runtime interpretation,
-\item physical realization,
-\item operational behaviour,
-\item and CRS-dependent embedding
-\end{itemize}
-into distinct conceptual layers.
-
-\end{principle}
+A prime denotes differentiation with respect to arc-length unless
+another independent variable is stated explicitly:
+\[
+f'(s)=\frac{\dd f}{\dd s}(s).
+\]
 
 % ============================================================
-\section{Canonical Spaces}
+\section{Domains and Spaces}
 % ============================================================
 
-\begin{definition}[State space notation]
-\label{def:notation-state-space}
-
+The arc-length domain of an alignment is an interval
+\[
+I\subseteq\mathbb{R}.
+\]
+The symbol
 \[
 \mathcal X
 \]
-
-denotes the canonical railway state space.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Runtime quantity space notation]
-\label{def:notation-runtime-space}
-
+denotes a state space appropriate to the context, while
 \[
 \mathcal Y
 \]
-
-denotes the space of runtime-evaluated quantities.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Track-space domain notation]
-\label{def:notation-track-space}
-
+denotes a space of evaluated or derived quantities. The space of
+admissible curvature functions is denoted by
 \[
-\Omega_{\mathrm{track}}
+\mathcal K.
 \]
 
-denotes the intrinsic railway coordinate domain.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[World-space domain notation]
-\label{def:notation-world-space}
-
+The intrinsic track-related coordinate domain is written as
 \[
-\Omega_{\mathrm{world}}
+\Omega_{\mathrm{track}},
 \]
-
-denotes the CRS-dependent spatial world domain.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Curvature space notation]
-\label{def:notation-curvature-space}
-
+and a realized world-space domain as
 \[
-\mathcal K
+\Omega_{\mathrm{world}}.
 \]
-
-denotes the space of admissible curvature evolutions and curvature laws.
-
-\end{definition}
+The precise metric structure of these domains is introduced when metric
+realization is developed.
 
 % ============================================================
-\section{Canonical Coordinates}
+\section{Coordinates}
 % ============================================================
 
-\subsection{Arc-Length}
-
-\begin{definition}[Arc-length]
-\label{def:arc-length}
-
+The symbol
 \[
 s
 \]
-
-denotes intrinsic arc-length along the alignment.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Arc-length is the primary intrinsic coordinate within AIM.
-\end{remark}
-
-% ============================================================
-
-\subsection{Track Coordinates}
-
-\begin{definition}[Track coordinates]
-\label{def:track-coordinates}
-
-Track-space coordinates are:
+denotes intrinsic arc-length along the alignment. Track-related
+coordinates are written as
 \[
 (s,d,h),
 \]
-where:
-\begin{itemize}
-\item \(s\): longitudinal coordinate,
-\item \(d\): lateral offset,
-\item \(h\): vertical offset.
-\end{itemize}
+where \(d\) is a lateral offset and \(h\) a vertical offset relative to
+the applicable local track frame.
 
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Track coordinates belong to \(\Omega_{\mathrm{track}}\).
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Additional operational coordinates may be introduced by runtime systems.
-\end{remark}
-
-% ============================================================
-
-\subsection{World Coordinates}
-
-\begin{definition}[World coordinates]
-\label{def:world-coordinates}
-
-World coordinates are denoted by:
+A point in world space is denoted by
 \[
-x \in \Omega_{\mathrm{world}}.
+x\in\Omega_{\mathrm{world}},
 \]
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-World coordinates are CRS-dependent.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-When required, world-space quantities may explicitly use the notation:
-\[
-x_{\mathrm w}.
-\]
-\end{remark}
+or by \(x_{\mathrm w}\) where an explicit distinction from intrinsic or
+track-related coordinates is required.
 
 % ============================================================
 \section{Geometry Symbols}
 % ============================================================
 
-\subsection{Alignment Curve}
-
-\begin{definition}[Alignment curve]
-\label{def:alignment-curve}
-
+The planar alignment curve, heading, curvature, and cant rotation are
+denoted by
 \[
-\gamma(s)
-\]
-
-denotes the intrinsic alignment geometry.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-The alignment curve represents the geometric backbone of the railway
-alignment.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Depending on context, \(\gamma(s)\) may denote planar geometry, spatial
-embedding, target geometry, or realized geometry. Such distinctions
-should be marked explicitly when relevant.
-\end{remark}
-
-% ============================================================
-
-\subsection{Orientation}
-
-\begin{definition}[Orientation angle]
-\label{def:orientation-angle}
-
-\[
-\theta(s)
-\]
-
-denotes horizontal alignment orientation.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Curvature}
-
-\begin{definition}[Curvature]
-\label{def:curvature}
-
-\[
-\kappa(s)
-\]
-
-denotes curvature as function of arc-length.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Curvature is the primary intrinsic geometric quantity within AIM.
-\end{remark}
-
-% ============================================================
-
-\subsection{Cant}
-
-\begin{definition}[Cant angle]
-\label{def:cant-angle}
-
-\[
-\phi(s)
-\]
-
-denotes cant rotation.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, \(\phi(s)\) is interpreted geometrically as frame rotation.
-Engineering source data may instead describe cant as rail height
-difference; the conversion is a convention-dependent runtime or import
-operation.
-\end{remark}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Depending on context, \(\phi(s)\) may also be interpreted as roll angle
-of the local railway frame.
-\end{remark}
-
-% ============================================================
-
-\subsection{Cant Evolution}
-
-\begin{definition}[Cant-rate]
-\label{def:cant-rate}
-
-\[
-\omega(s)
-=
-\phi'(s)
-\]
-
-denotes cant-rate evolution.
-
-\end{definition}
-
-% ============================================================
-\section{Frame Symbols}
-% ============================================================
-
-\subsection{Tangent Direction}
-
-\begin{definition}[Tangent vector]
-\label{def:tangent-vector}
-
-\[
-\mathbf t(s)
-\]
-
-denotes the local tangent direction.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Lateral Direction}
-
-\begin{definition}[Lateral vector]
-\label{def:lateral-vector}
-
-\[
-\mathbf n(s)
-\]
-
-denotes the local lateral direction.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Binormal Direction}
-
-\begin{definition}[Binormal vector]
-\label{def:binormal-vector}
-
-\[
-\mathbf b(s)
-\]
-
-denotes the local binormal direction.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Local Frame}
-
-\begin{definition}[Local frame]
-\label{def:local-frame}
-
-\[
-F(s)
-=
-(\mathbf t(s),\mathbf n(s),\mathbf b(s))
-\]
-
-denotes the local pose3 frame.
-
-\end{definition}
-
-% ============================================================
-\section{Pose and State Terminology}
-% ============================================================
-
-\subsection{Pose}
-
-\begin{definition}[Pose]
-\label{def:pose}
-
-A pose denotes a local intrinsic railway state attached to arc-length
-position \(s\).
-
-\end{definition}
-
-% ============================================================
-
-\subsection{pose2}
-
-\begin{definition}[pose2]
-\label{def:notation-pose2}
-
-The pose2 state is:
-\[
-\mathrm{pose2}(s)
-=
-(\gamma(s),\theta(s)).
-\]
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-pose2 represents intrinsic planar railway geometry.
-\end{remark}
-
-% ============================================================
-
-\subsection{pose3}
-
-\begin{definition}[pose3]
-\label{def:pose3}
-
-The pose3 state extends pose2 by including spatial orientation and
-cant.
-
-A minimal intrinsic representation is:
-\[
-\mathrm{pose3}(s)
-=
-(\gamma(s),\theta(s),\phi(s)).
-\]
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-More elaborate runtime pose3 interpretations may additionally include:
-\begin{itemize}
-\item local frames,
-\item profile evaluation,
-\item metric realization,
-\item or operational vehicle-space interpretation.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-
-\subsection{Controls}
-
-\begin{definition}[Control quantities]
-\label{def:control-quantities}
-
-The canonical control quantities are:
-\[
+\gamma(s),
+\qquad
+\theta(s),
+\qquad
 \kappa(s),
 \qquad
-\omega(s).
+\phi(s).
+\]
+Cant-rate is written as
+\[
+\omega(s)=\phi'(s).
 \]
 
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Curvature controls directional evolution, whereas cant-rate controls
-cant evolution.
-\end{remark}
-
-% ============================================================
-
-\subsection{State}
-
-\begin{definition}[State]
-\label{def:state}
-
-A state denotes a structured railway condition together with its
-geometric, operational, or physical interpretation.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Within AIM, states are not merely stored parameter containers.
-\end{remark}
-
-% ============================================================
-
-\subsection{Runtime State}
-
-\begin{definition}[Runtime state]
-\label{def:runtime-state}
-
-A runtime state is a dynamically evaluated operational state generated
-through runtime operator evaluation.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{remark}
-Runtime refers to operational evaluation of alignment-related quantities,
-independent of implementation details.
-\end{remark}
-
-% ============================================================
-\section{Target, Realized, and Measured Notation}
-% ============================================================
-
-\subsection{Target Quantities}
-
-\begin{definition}[Target notation]
-\label{def:target-notation}
-
-Target quantities use the index:
+The local tangent, lateral, and binormal directions are denoted by
 \[
-(\cdot)_{\mathrm{target}}.
+\mathbf t(s),
+\qquad
+\mathbf n(s),
+\qquad
+\mathbf b(s),
+\]
+and the corresponding local frame by
+\[
+F(s)=\bigl(\mathbf t(s),\mathbf n(s),\mathbf b(s)\bigr).
 \]
 
-\end{definition}
+A generic state is written as \(x(s)\), while a control is written as
+\(u(s)\). The symbols \(\mathrm{pose2}(s)\) and
+\(\mathrm{pose3}(s)\) refer to the planar and spatial railway-state
+concepts defined in \cref{chap:state-model} and developed further in the
+state part of the thesis.
 
 % ============================================================
-
-\subsection{Realized Quantities}
-
-\begin{definition}[Realized notation]
-\label{def:realized-notation}
-
-Realized quantities use the index:
-\[
-(\cdot)_{\mathrm{real}}.
-\]
-
-\end{definition}
-
+\section{Qualified Quantities}
 % ============================================================
 
-\subsection{Measured Quantities}
-
-\begin{definition}[Measured notation]
-\label{def:measured-notation}
-
-Measured quantities use the index:
+Subscripts qualify the engineering status or origin of a quantity. The
+principal conventions are
 \[
+(\cdot)_{\mathrm{target}},
+\qquad
+(\cdot)_{\mathrm{real}},
+\qquad
 (\cdot)_{\mathrm{meas}}.
 \]
-
-\end{definition}
+Additional subscripts may identify a coordinate domain, frame, source,
+or realization context. Such subscripts qualify a quantity; they do not
+by themselves establish identity between different engineering
+concepts.
 
 % ============================================================
 \section{Operator Notation}
 % ============================================================
 
-\subsection{Projection and Transformation Operators}
-
-\begin{definition}[Track-to-world operator notation]
-\label{def:notation-track-to-world-operator}
-
+Track-to-world and world-to-track mappings are denoted by
 \[
 \mathcal P_{\mathrm{tw}}
+\qquad\text{and}\qquad
+\mathcal P_{\mathrm{wt}},
 \]
-
-denotes the track-to-world operator.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[World-to-track operator notation]
-\label{def:notation-world-to-track-operator}
-
+respectively. Coordinate transformations between world-space
+representations are denoted by
 \[
-\mathcal P_{\mathrm{wt}}
+\mathcal C.
 \]
 
-denotes the world-to-track projection operator.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Coordinate transformation operator notation]
-\label{def:notation-coordinate-transform-operator}
-
-\[
-\mathcal C
-\]
-
-denotes coordinate transformation between world-space representations.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Runtime Operators}
-
-\begin{definition}[Evaluation operator notation]
-\label{def:notation-evaluation-operator}
-
+The symbols
 \[
 \mathcal E
-\]
-
-denotes runtime operator evaluation.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Frame operator notation]
-\label{def:notation-frame-operator}
-
-\[
+\qquad\text{and}\qquad
 \mathcal F
 \]
+denote evaluation and frame operators where no more specific operator
+name is required.
 
-denotes frame evaluation.
-
-\end{definition}
+Sampling, interpolation, mechanical response, local adjustment, and
+realization are denoted by
+\[
+\mathcal S,
+\qquad
+\mathcal I,
+\qquad
+\mathcal M,
+\qquad
+\mathcal A,
+\qquad
+\mathcal R.
+\]
+Their domains, codomains, and engineering meaning are defined in the
+chapters in which the corresponding operations are introduced.
 
 % ============================================================
-
-\subsection{Realization Operators}
-
-\begin{definition}[Sampling operator notation]
-\label{def:notation-sampling-operator}
-
-\[
-\mathcal S
-\]
-
-denotes sampling from continuous to discrete representation.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Interpolation operator notation]
-\label{def:notation-interpolation-operator}
-
-\[
-\mathcal I
-\]
-
-denotes reconstruction from discrete data.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Mechanical operator notation]
-\label{def:notation-mechanical-operator}
-
-\[
-\mathcal M
-\]
-
-denotes mechanical or structural response of the railway system.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Adjustment operator notation]
-\label{def:notation-adjustment-operator}
-
-\[
-\mathcal A
-\]
-
-denotes a local construction or maintenance adjustment operator.
-
-\end{definition}
-
-% ------------------------------------------------------------
-
-\begin{definition}[Realization operator notation]
-\label{def:notation-realization-operator}
-
-\[
-\mathcal R
-\]
-
-denotes the realization operator.
-
-\end{definition}
-
-% ============================================================
-\section{CRS and Earth Geometry}
+\section{Earth-related Symbols}
 % ============================================================
 
-\subsection{Geodesic Curvature}
-
-\begin{definition}[Geodesic curvature]
-\label{def:notation-geodesic-curvature}
-
+Geodesic curvature and normal curvature are denoted by
 \[
 \kappa_g
+\qquad\text{and}\qquad
+\kappa_n.
 \]
-
-denotes geodesic curvature on the Earth surface.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Normal Curvature}
-
-\begin{definition}[Normal curvature]
-\label{def:normal-curvature}
-
+The ellipsoid surface normal is denoted by
 \[
-\kappa_n
+\mathbf n_{\mathrm E}.
 \]
-
-denotes curvature induced by Earth surface geometry.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Earth Surface Normal}
-
-\begin{definition}[Earth surface normal]
-\label{def:earth-surface-normal}
-
-\[
-\mathbf n_{\mathrm E}
-\]
-
-denotes the ellipsoid surface normal.
-
-\end{definition}
-
-% ============================================================
-\section{Vehicle-Space Terminology}
-% ============================================================
-
-\subsection{Vehicle Space}
-
-\begin{definition}[Vehicle space]
-\label{def:vehicle-space}
-
-Vehicle space denotes the physically occupied operational space of the
-railway vehicle.
-
-\end{definition}
-
-% ============================================================
-
-\subsection{Operational Geometry}
-
-\begin{definition}[Operational geometry]
-\label{def:operational-geometry}
-
-Operational geometry denotes geometry relevant to:
-\begin{itemize}
-\item passenger comfort,
-\item platform interaction,
-\item clearance,
-\item vehicle behaviour,
-\item and dynamic vehicle-space interaction.
-\end{itemize}
-
-\end{definition}
-
-% ============================================================
-\section{Canonical Terminology}
-% ============================================================
-
-\begin{definition}[Preferred terminology]
-\label{def:preferred-terminology}
-
-The following terminology is preferred:
-
-\begin{center}
-\begin{tabular}{ll}
-alignment & intrinsic railway geometry system \\
-curve & mathematical geometric object \\
-geometry & geometric description \\
-trajectory & motion-related path \\
-pose & local railway state \\
-frame & local spatial interpretation \\
-state & structured railway condition \\
-runtime state & dynamically evaluated operational state \\
-runtime service & operator-based evaluation process \\
-realization & physical construction or maintenance process \\
-realization operator & mapping from target state to realized state \\
-metric realization & metric-dependent spatial interpretation \\
-world space & CRS-based spatial coordinates \\
-track space & intrinsic alignment coordinates \\
-track & physically realized railway structure
-\end{tabular}
-\end{center}
-
-\end{definition}
-
-% ============================================================
-\section{Avoided Ambiguities}
-% ============================================================
-
-\begin{remark}
-The following ambiguities should be avoided:
-\begin{itemize}
-\item alignment \(\neq\) merely curve,
-\item realization \(\neq\) visualization,
-\item runtime \(\neq\) software process only,
-\item pose \(\neq\) frame,
-\item geometry \(\neq\) realization,
-\item target geometry \(\neq\) realized geometry,
-\item metric realization \(\neq\) physical realization,
-\item coordinate transformation \(\neq\) world-to-track projection,
-\item projection \(\neq\) CRS transformation,
-\item world coordinates \(\neq\) track coordinates.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
-
-\begin{summary}
-
-The AIM notation system separates:
-\begin{itemize}
-\item intrinsic geometry,
-\item metric realization,
-\item realized geometry,
-\item runtime states,
-\item operational vehicle-space interpretation,
-\item and CRS-dependent world geometry.
-\end{itemize}
-
-This notation framework forms the canonical language of AIM.
-
-\end{summary}
+These symbols are used only after the applicable surface and realization
+context have been established.

@@ -2,347 +2,57 @@
 
 \chapter{Discussion}
 
-\section{Purpose of the Discussion}
-
-\begin{remark}
-The previous chapters introduced the mathematical foundations, the
-state-based model, the optimization framework, the software-oriented
-architecture, and the intended engineering use cases of the AIM
-approach.
-\end{remark}
-
-\begin{remark}
-The present chapter discusses the significance, scope, and limitations
-of this framework.
-\end{remark}
-
-\begin{remark}
-Its purpose is not only to summarize previous results, but to position
-the AIM approach with respect to classical railway alignment design,
-modern computational methods, and infrastructure data modelling.
-\end{remark}
-
-\section{From Geometry to System Modelling}
-
-\begin{remark}
-A central shift introduced by the AIM framework is the transition from
-pure geometry to system modelling.
-\end{remark}
-
-\begin{remark}
-Classical alignment theory typically treats the railway path as a curve
-to be constructed, checked, and documented.
-\end{remark}
-
-\begin{remark}
-In contrast, the AIM framework interprets alignment as a structured
-state object whose behaviour is governed by curvature, cant, and their
-derivatives.
-\end{remark}
-
-\begin{remark}
-This leads to a more general view:
-alignment is not merely a shape, but a functional object with geometric,
-dynamic, and operational meaning.
-\end{remark}
-
-\section{Transition Curves Reinterpreted}
-
-\begin{remark}
-One of the most important conceptual consequences of the AIM framework
-is the reinterpretation of transition curves.
-\end{remark}
-
-\begin{remark}
-In many traditional presentations, transition curves appear mainly as
-named geometric objects, such as clothoids or engineering variants.
-\end{remark}
-
-\begin{remark}
-Within AIM, transition curves are instead understood as control
-functions for the evolution of curvature and therefore for the dynamic
-behaviour of the railway system.
-\end{remark}
-
-\begin{remark}
-This reinterpretation is significant because it unifies geometric,
-dynamic, and optimization-based viewpoints.
-\end{remark}
-
-\section{Advantages of the AIM Perspective}
-
-\subsection{Unified internal representation}
-
-\begin{remark}
-A major strength of AIM lies in the use of a canonical internal model.
-External data sources may differ substantially in structure and
-semantics, but can still be mapped into a common state-based
-representation.
-\end{remark}
-
-\begin{remark}
-This reduces dependence on file formats and enables consistent
-processing across heterogeneous sources.
-\end{remark}
-
-\subsection{Optimization readiness}
-
-\begin{remark}
-The AIM representation is designed not only for description, but also
-for computation.
-\end{remark}
-
-\begin{remark}
-Since curvature, cant, and derived quantities are represented
-explicitly, the model is naturally suited for least-squares methods,
-SQP, and related optimization approaches.
-\end{remark}
-
-\subsection{Dynamic interpretation}
-
-\begin{remark}
-The framework incorporates dynamics directly through effective lateral
-acceleration, jerk, cant deficiency, and related quantities.
-\end{remark}
-
-\begin{remark}
-This strengthens the engineering relevance of the model, especially for
-high-speed and comfort-sensitive applications.
-\end{remark}
-
-\subsection{Extensibility}
-
-\begin{remark}
-The architecture is modular:
-\begin{itemize}
-\item new transition families may be added,
-\item new constraints may be introduced,
-\item objective functionals may be reweighted,
-\item network-level coupling may be extended.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-This makes AIM suitable not only for one fixed tool, but as a long-term
-framework.
-\end{remark}
-
-\section{Comparison with Classical Approaches}
-
-\begin{remark}
-Classical railway alignment design often follows a decomposition into:
-\begin{itemize}
-\item horizontal alignment,
-\item vertical profile,
-\item cant,
-\item subsequent rule checking.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-This decomposition is practical and historically well established.
-However, it tends to separate modelling from evaluation and often
-treats dynamics only in a downstream manner.
-\end{remark}
-
-\begin{remark}
-The AIM approach differs by integrating:
-\begin{itemize}
-\item state representation,
-\item dynamic evaluation,
-\item and optimization
-\end{itemize}
-into a single conceptual structure.
-\end{remark}
-
-\begin{remark}
-This is not intended to invalidate classical methods, but to provide a
-more general framework into which they can be embedded as special cases.
-\end{remark}
-
-\section{Relation to BIM and Data Standards}
-
-\begin{remark}
-AIM is not designed as a competitor to standards such as LandXML, IFC,
-or railML.
-\end{remark}
-
-\begin{remark}
-Instead, it serves as a normalization and computational layer between
-heterogeneous data models and actual engineering reasoning.
-\end{remark}
-
-\begin{remark}
-This is especially important because most standards are primarily
-designed for exchange and documentation, whereas AIM is designed for
-interpretation, analysis, and optimization.
-\end{remark}
-
-\begin{remark}
-In that sense, AIM may be viewed as a computational core that complements
-BIM-style information structures.
-\end{remark}
-
-\section{Role of the Grabbeltisch}
-
-\begin{remark}
-An important practical insight of the present work is that fully
-automatic interpretation of imported data is neither realistic nor
-always desirable.
-\end{remark}
-
-\begin{remark}
-The grabbeltisch concept acknowledges that engineering understanding is
-often needed to assign semantic roles to imported objects.
-\end{remark}
-
-\begin{remark}
-This user-guided intermediate layer is not a weakness of the framework,
-but a deliberate design choice.
-\end{remark}
-
-\begin{remark}
-It allows the system to combine:
-\begin{itemize}
-\item machine-based parsing,
-\item human interpretation,
-\item mathematical reconstruction.
-\end{itemize}
-\end{remark}
-
-\section{Limits of the Present Formulation}
-
-\subsection{Physical simplifications}
-
-\begin{remark}
-The dynamic model introduced in the present manuscript is intentionally
-simplified.
-\end{remark}
-
-\begin{remark}
-Although effective acceleration and jerk provide meaningful engineering
-proxies, they do not yet replace full multibody simulation, detailed
-wheel--rail contact models, or full vehicle-specific dynamics.
-\end{remark}
-
-\subsection{Standards formalization}
-
-\begin{remark}
-While many railway rules can be written as constraint residuals, the
-full formalization of national and operator-specific regulations remains
-an open and demanding task.
-\end{remark}
-
-\subsection{Topological complexity}
-
-\begin{remark}
-The extension from single alignments to complete railway networks is one
-of the strongest features of the framework, but also one of its most
-challenging aspects.
-\end{remark}
-
-\begin{remark}
-Switches, crossings, branching structures, and corridor-wide coupling
-introduce substantial mathematical and computational complexity.
-\end{remark}
-
-\subsection{Industrial robustness}
-
-\begin{remark}
-The framework is conceptually strong, but practical deployment requires
-robust implementations, extensive validation, and careful interface
-design.
-\end{remark}
-
-\begin{remark}
-In particular, optimization quality depends strongly on:
-\begin{itemize}
-\item good initial guesses,
-\item stable numerical methods,
-\item suitable weighting of objectives and constraints.
-\end{itemize}
-\end{remark}
-
-\section{Scientific Positioning}
-
-\begin{remark}
-The contribution of the AIM framework is not the invention of yet
-another transition curve.
-\end{remark}
-
-\begin{remark}
-Its real contribution lies in the proposal of a broader conceptual
-framework in which:
-\begin{itemize}
-\item alignment is a state-based object,
-\item transition curves are control functions,
-\item geometry and dynamics are treated jointly,
-\item imported data is interpreted rather than merely accepted,
-\item and optimization becomes a natural component of design.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-This positioning places AIM between several established fields:
-\begin{itemize}
-\item railway engineering,
-\item differential geometry,
-\item optimization,
-\item BIM and infrastructure data modelling,
-\item and interactive engineering software.
-\end{itemize}
-\end{remark}
-
-\section{Philosophical Perspective}
-
-\begin{remark}
-At a deeper level, AIM reflects a shift in engineering modelling:
-from static representation toward functional interpretation.
-\end{remark}
-
-\begin{remark}
-In this sense, the track is not only a line in space, but a rule-bound,
-state-dependent object whose meaning arises from its behaviour.
-\end{remark}
-
-\begin{remark}
-This is particularly visible in the move from pose2 to pose3 and from
-simple curve design to Schwerpunkt-Trassierung.
-\end{remark}
-
-\section{Outlook of the Discussion}
-
-\begin{remark}
-The present discussion suggests that AIM should be understood not as a
-finished final system, but as a foundational framework.
-\end{remark}
-
-\begin{remark}
-Its long-term value lies in its ability to host:
-\begin{itemize}
-\item richer vehicle models,
-\item deeper optimization strategies,
-\item stronger network formulations,
-\item tighter BIM integration,
-\item and increasingly automated engineering workflows.
-\end{itemize}
-\end{remark}
-
-\section{Summary}
+\label{chap:applications-discussion}
+
+This discussion evaluates scope, strengths, and limits of the
+Applications part as a consequence layer of approved AIM concepts.
+
+% ============================================================
+\section{Positioning}
+% ============================================================
+
+Applications are not conceptual replacements for Foundations, State,
+Runtime, or Reality. They are validation-by-use layers that demonstrate
+engineering consequence in concrete contexts.
+
+% ============================================================
+\section{Strengths Observed in Applications}
+% ============================================================
+
+The chapter set shows consistent applicability across reconstruction,
+evaluation, realization-aware interpretation, vehicle-space use,
+and interoperability scenarios while preserving conceptual boundaries.
+
+% ============================================================
+\section{Limits and Practical Conditions}
+% ============================================================
+
+Application quality depends on data quality, context availability,
+operator configuration, and workflow discipline. These are deployment
+conditions, not contradictions of the conceptual architecture.
+
+Unresolved process-centric modelling questions (including PIM-related
+questions) remain external research matters and are not elevated to
+canonical architecture in this migration.
+
+% ============================================================
+\section{Interoperability Consequence}
+% ============================================================
+
+BIM/GIS/exchange ecosystems are best treated as downstream
+representation and interoperability layers. This preserves canonical
+ownership of engineering semantics while enabling integration with
+project workflows.
+
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
-The AIM framework reinterprets railway alignment as a structured,
-dynamic, and optimization-ready object.
+The Applications part confirms that alignment-centred AIM concepts are
+practically usable across diverse engineering contexts without requiring
+new competing conceptual homes.
 
-Its main strengths are the unification of geometry and dynamics, the
-reinterpretation of transition curves as control functions, and the
-ability to connect data interpretation, engineering constraints, and
-numerical optimization.
-
-Its current limitations lie mainly in the simplifications of the
-dynamic model, the partial formalization of standards, and the remaining
-challenge of full industrial robustness.
-
-Nevertheless, the framework provides a strong foundation for a new
-alignment-centred perspective on railway infrastructure modelling.
+Its discussion therefore emphasizes consequence and boundary discipline
+rather than reopening foundational research.
 \end{summary}

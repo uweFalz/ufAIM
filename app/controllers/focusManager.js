@@ -18,6 +18,7 @@
 //
 
 import { mirrorQuickHooksFromActive } from "@io/apply/importApply.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 export function createFocusManager({
 	windowSession,
@@ -93,10 +94,10 @@ export function createFocusManager({
 			};
 		}
 
-		// legacy fallback while windowStore still carries old focus fields
+		// Fallback to canonical workspace selection in transitional states.
 		const st = store?.getState?.() ?? {};
 		return {
-			objectId: st.activeRouteProjectId ?? null,
+			objectId: getWorkspacePrimaryId(st),
 			slot: st.activeSlot ?? "right",
 		};
 	}
@@ -104,9 +105,9 @@ export function createFocusManager({
 	function getFocusSnapshot() {
 		const focus = getFocus();
 
-		// compatibility shape for still-legacy consumers
+		// Canonical snapshot shape.
 		return {
-			activeRouteProjectId: focus.objectId,
+			objectId: focus.objectId,
 			activeSlot: focus.slot,
 		};
 	}

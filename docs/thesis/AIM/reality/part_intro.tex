@@ -4,94 +4,39 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Reality}
 
-% ============================================================
-\section*{What do we already know?}
-% ============================================================
+The preceding parts established constructive alignment semantics,
+metric realization, railway state, and runtime evaluation. The present
+part explains how these approved concepts are embedded, observed,
+realized, and compared in engineering practice.
 
-\begin{remark}
-The previous parts established a complete mathematical description of
-railway alignment geometry, railway states, runtime interpretation, and
-operational evaluation.
-\end{remark}
+Reality does not redefine upstream concepts. It consumes them and
+establishes the progression
+\[
+\text{constructive alignment semantics}
+\rightarrow
+\text{metric realization}
+\rightarrow
+\text{world embedding}
+\rightarrow
+\text{physical realization}
+\rightarrow
+\text{measurement and observation}
+\rightarrow
+\text{target--realized comparison}
+\rightarrow
+\text{engineering interpretation}.
+\]
 
-\begin{remark}
-Within AIM, geometry emerges from intrinsic curvature evolution,
-railway states describe spatial configuration, and runtime services
-generate operational quantities through evaluation operators.
-\end{remark}
-
-\begin{remark}
-These constructions provide a coherent idealized railway model.
-\end{remark}
-
-% ============================================================
-\section*{What is still missing?}
-% ============================================================
-
-\begin{remark}
-Real railway systems do not exist purely within mathematical models.
-\end{remark}
-
-\begin{remark}
-Railway alignments are embedded in coordinate systems, measurement
-processes, construction workflows, maintenance histories, and
-operational environments.
-\end{remark}
-
-\begin{remark}
-Measurements are imperfect.
-
-Coordinate systems may be ambiguous.
-
-Constructed infrastructure deviates from design intent.
-
-Observed geometry may differ from modeled geometry.
-\end{remark}
-
-\begin{remark}
-The missing element is therefore the interaction between the ideal
-alignment model and physical reality.
-\end{remark}
-
-% ============================================================
-\section*{What comes next?}
-% ============================================================
-
-\begin{remark}
-This part introduces the reality layer of AIM.
-\end{remark}
-
-\begin{remark}
-The chapters that follow investigate:
-\begin{itemize}
-\item coordinate reference systems,
-\item measurement and uncertainty,
-\item stationing systems,
-\item topology and special railway elements,
-\item construction processes,
-\item and realized railway geometry.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Particular emphasis is placed on the distinction between
-\emph{designed} and \emph{realized} railway states.
-\end{remark}
-
-\begin{remark}
-This distinction ultimately leads to the concept of realization-aware
-alignment modelling, one of the central ideas underlying AIM.
-\end{remark}
+This progression preserves the distinction between constructive identity,
+metric realization, CRS context, physical realization, realized railway
+state, measurement, representation, and operational interpretation.
 
 % ============================================================
 \section*{Relation to the AIM Roadmap}
 % ============================================================
 
-\begin{remark}
-Within the AIM roadmap, the present part corresponds to the transition
-from ideal runtime evaluation toward interaction with the physical
-world.
-\end{remark}
+Within the AIM roadmap, Reality is the layer where runtime-evaluated
+state meets measured and constructed infrastructure.
 
 \begin{center}
 \begin{tikzpicture}[
@@ -99,59 +44,36 @@ world.
   box/.style={
     draw,
     rounded corners,
-    minimum width=4.8cm,
+    minimum width=5.3cm,
     minimum height=0.9cm,
     align=center
   }
 ]
 
 \node[box] (runtime)
-{Runtime Services};
+{Runtime Evaluation};
 
-\node[box, below=of runtime] (reality)
-{Reality Layer};
+\node[box, below=of runtime] (embedding)
+{Embedding, Observation, and Realization};
 
-\node[box, below=of reality] (realization)
-{Realization};
+\node[box, below=of embedding] (interpretation)
+{Engineering Interpretation};
 
-\draw[->, thick] (runtime) -- (reality);
-\draw[->, thick] (reality) -- (realization);
+\draw[->, thick] (runtime) -- (embedding);
+\draw[->, thick] (embedding) -- (interpretation);
 
 \end{tikzpicture}
 \end{center}
 
-\begin{remark}
-The progression
-\[
-\text{Runtime Services}
-\rightarrow
-\text{Reality Layer}
-\rightarrow
-\text{Realization}
-\]
-marks the transition from ideal state evaluation toward interaction
-with measured and constructed railway systems.
-\end{remark}
-
-% ============================================================
 \begin{principle}[Reality Principle]
 \label{princ:reality-principle}
-Within AIM, railway models and physical railway systems must be treated
-as related but distinct entities connected through measurement,
-construction, realization, and interpretation processes.
+Within AIM, model state and physical railway state are related but
+conceptually distinct; they are connected through realization,
+measurement, and interpretation operators.
 \end{principle}
 
-% ============================================================
 \begin{summary}
-Geometry explains shape.
-
-States explain configuration.
-
-Runtime explains evaluation.
-
-Reality explains how mathematical railway models interact with the
-physical world.
-
-The present part therefore establishes the bridge between ideal railway
-states and realized railway infrastructure.
+Reality establishes how approved alignment semantics and runtime state
+are embedded in the engineering world, observed through data, and
+interpreted through target--realized comparison.
 \end{summary}

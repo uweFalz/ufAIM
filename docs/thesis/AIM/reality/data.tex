@@ -1,265 +1,109 @@
-\chapter{Measurement Data and Reality}
+% reality/data.tex
 
-\section*{Motivation}
+\chapter{Measurement Data and Observation Context}
 
-\begin{remark}
-In practical applications, alignment geometry is rarely available in a
-clean, analytic form. Instead, it is derived from heterogeneous data
-sources with varying levels of precision, structure, and semantic
-completeness.
-\end{remark}
+\label{chap:reality-data}
 
-\begin{remark}
-Therefore, the modelling process must explicitly distinguish between
-\begin{itemize}
-\item observed data,
-\item interpreted structure,
-\item and reconstructed geometry.
-\end{itemize}
-\end{remark}
+Measurement data is the observation layer of AIM. It provides evidence
+about physical infrastructure and runtime state but does not define
+engineering identity by itself.
 
----
-
-\section{Sources of Data}
+% ============================================================
+\section{Role of Data}
+% ============================================================
 
 \begin{definition}[Data source]
-A data source is any origin of geometric or alignment-related
-information.
+A data source is any origin of geometry-related or state-related
+observation used in railway modelling.
 \end{definition}
 
-\begin{remark}
-Typical sources include:
-\begin{itemize}
-\item survey measurements,
-\item legacy engineering data,
-\item container formats such as \LandXML,
-\item railway-specific formats,
-\item point clouds and derived datasets.
-\end{itemize}
-\end{remark}
+Typical sources include geodetic surveys, track geometry measurements,
+legacy engineering datasets, structured exchange formats, and point
+cloud-derived products.
 
----
+\begin{principle}[Observation principle]
+Measurement data is engineering observation evidence and must be
+interpreted through explicit model and context assumptions.
+\end{principle}
 
-\section{Nature of Real-World Data}
+% ============================================================
+\section{Data Characteristics}
+% ============================================================
 
-\begin{remark}
-Real-world data exhibits several characteristic properties:
-\end{remark}
-
-\begin{itemize}
-\item \textbf{Incompleteness:} Not all required information is present.
-\item \textbf{Noise:} Measurements are subject to error.
-\item \textbf{Ambiguity:} Multiple interpretations may be possible.
-\item \textbf{Inconsistency:} Different parts of the data may contradict each other.
-\end{itemize}
-
-\begin{remark}
-As a consequence, data cannot be directly equated with geometry.
-\end{remark}
-
----
-
-\section{Coordinate Systems}
-
-\begin{remark}
-Geometric data is always embedded in a coordinate reference system (CRS).
-\end{remark}
-
-\begin{definition}[Coordinate reference system]
-A coordinate reference system defines how numerical coordinates relate
-to positions in physical space.
-\end{definition}
-
-\begin{remark}
-In infrastructure applications, multiple systems may coexist, including:
-\begin{itemize}
-\item global systems (e.g. WGS84),
-\item projected systems (e.g. UTM, Gauss--Krüger),
-\item domain-specific systems (e.g. railway reference systems).
-\end{itemize}
-\end{remark}
-
-\OPEN{Formal integration of CRS handling into the alignment model.}
-
-\RESEARCH{Transformation consistency across heterogeneous data sources.}
-
----
-
-\section{Interpretation Layer}
-
-\begin{definition}[Interpretation]
-Interpretation is the process of assigning structure and meaning to raw data.
-\end{definition}
-
-\begin{remark}
-Typical interpretation tasks include:
-\begin{itemize}
-\item identifying alignment segments,
-\item reconstructing curvature behaviour,
-\item associating auxiliary data such as profile or cant,
-\item resolving ambiguities in topology.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Interpretation is inherently non-unique and often requires domain
-knowledge.
-\end{remark}
-
-\OPEN{Formal separation between data and interpretation.}
-
----
-
-\section{From Data to Sparse Model}
-
-\begin{remark}
-The sparse alignment model provides a target structure for data
-interpretation.
-\end{remark}
-
-\begin{definition}[Reconstruction from data]
-Reconstruction is the process of deriving a sparse alignment model from
-a given data source.
-\end{definition}
-
-\begin{remark}
-This process typically involves:
-\begin{itemize}
-\item segmentation of data,
-\item classification of element types,
-\item estimation of curvature laws,
-\item assignment of initial conditions.
-\end{itemize}
-\end{remark}
-
-\TODO{Formal pipeline from raw data to sparse alignment.}
-
-\OPEN{Handling of incomplete or conflicting input data.}
-
----
-
-\section{Container Formats}
-
-\begin{remark}
-Many real-world datasets are provided in structured container formats.
-\end{remark}
-
-\begin{remark}
-Examples include:
-\begin{itemize}
-\item \LandXML,
-\item railway-specific XML formats,
-\item spreadsheet-based engineering datasets.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-Such formats often mix geometric, semantic, and metadata in ways that
-are not directly aligned with the sparse model.
-\end{remark}
-
-\RESEARCH{Mapping of container formats to sparse representation.}
-
-\TODO{Definition of intermediate formats (e.g. landFAT).}
-
----
-
-\section{Uncertainty and Error}
-
-\begin{remark}
-All real-world data is subject to uncertainty.
-\end{remark}
+Real-world railway data is heterogeneous and typically exhibits
+incompleteness, noise, ambiguity, and cross-source inconsistency. As a
+result, data cannot be equated directly with constructive identity,
+metric realization, or realized state.
 
 \begin{definition}[Measurement uncertainty]
-Measurement uncertainty describes the deviation between observed data
-and the true physical quantity.
+Measurement uncertainty describes deviation between observed quantities
+and the corresponding physical quantities.
 \end{definition}
 
-\begin{remark}
-Uncertainty propagates through:
-\begin{itemize}
-\item interpretation,
-\item reconstruction,
-\item numerical integration.
-\end{itemize}
-\end{remark}
+Uncertainty propagates through interpretation, reconstruction, and
+runtime evaluation.
 
-\RESEARCH{Propagation of uncertainty through the reconstruction pipeline.}
+% ============================================================
+\section{Interpretation Layer}
+% ============================================================
 
-\OPEN{Integration of uncertainty into the sparse model.}
-
----
-
-\section{Topological vs Geometric Information}
-
-\begin{remark}
-Data may contain both geometric and topological information.
-\end{remark}
-
-\begin{definition}[Geometric information]
-Geometric information describes positions, directions, and curvature.
+\begin{definition}[Interpretation]
+Interpretation is the process of assigning geometric and semantic
+meaning to observed data in a specified context.
 \end{definition}
 
-\begin{definition}[Topological information]
-Topological information describes connectivity and relationships between elements.
+Interpretation includes segmentation, topology assignment, station
+context assignment, and association with profile/cant/runtime
+quantities. The process is context-dependent and generally non-unique.
+
+% ============================================================
+\section{From Data to Structured Model Input}
+% ============================================================
+
+Data processing in AIM maps
+\[
+\text{observation data}
+\rightarrow
+\text{interpreted model input}
+\rightarrow
+\text{runtime evaluation context}.
+\]
+
+\begin{definition}[Reconstruction from observation data]
+Reconstruction is the process of deriving structured model input from
+observed data while preserving provenance and uncertainty context.
 \end{definition}
 
-\begin{remark}
-In many datasets, these two aspects are interwoven and not cleanly separated.
-\end{remark}
+This reconstruction may involve filtering, segmentation,
+station/topology alignment, and sparse-compatible approximation.
 
-\OPEN{Separation and integration of topology and geometry in the model.}
+% ============================================================
+\section{Geometric and Topological Evidence}
+% ============================================================
 
----
+Observation datasets may contain geometric evidence (positions,
+directions, curvature-related samples) and topological evidence
+(connectivity, branch context, route context). These layers must be
+kept conceptually distinct while interpreted jointly.
 
-\section{Engineering Reality}
+% ============================================================
+\section{Container and Exchange Context}
+% ============================================================
 
-\begin{remark}
-Engineering data is often shaped by practical constraints rather than
-mathematical clarity.
-\end{remark}
+Container formats can carry mixed geometry, metadata, and semantic
+content. AIM therefore treats container content as import evidence that
+must be normalized into explicit model-layer structures before runtime
+or realization comparison.
 
-\begin{remark}
-Typical phenomena include:
-\begin{itemize}
-\item piecewise definitions without explicit continuity guarantees,
-\item implicit assumptions,
-\item domain-specific conventions,
-\item historical artefacts in legacy data.
-\end{itemize}
-\end{remark}
-
-\RESEARCH{Systematic classification of real-world alignment data quality.}
-
----
-
-\section{Role within the Overall Framework}
-
-\begin{remark}
-The data layer connects the abstract modelling framework to real-world
-applications.
-\end{remark}
-
-\begin{remark}
-It forms the entry point for:
-\begin{itemize}
-\item import pipelines,
-\item validation procedures,
-\item reconstruction workflows.
-\end{itemize}
-\end{remark}
-
----
-
-\section{Summary}
+% ============================================================
+\section{Connection to AIM}
+% ============================================================
 
 \begin{summary}
-Real-world alignment data is heterogeneous, noisy, and often ambiguous.
+In the Reality part, data is treated as observation context for
+realization-aware and runtime-aware interpretation.
 
-A clear separation between raw data, interpretation, and reconstructed
-geometry is essential.
-
-The sparse alignment model provides a structured target for
-reconstruction, while numerical methods and domain knowledge are
-required to bridge the gap between data and geometry.
+It is neither constructive identity nor final engineering truth.
+Engineering interpretation arises only after explicit reconstruction,
+context assignment, and target--realized comparison.
 \end{summary}

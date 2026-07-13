@@ -2,18 +2,13 @@
 
 \section*{Motivation}
 
-\begin{remark}
 In the curvature-based framework, geometric objects are not given
 explicitly as coordinate sets. Instead, they are reconstructed from
 curvature information by integration.
-\end{remark}
 
-\begin{remark}
 As a consequence, numerical methods are not merely implementation
 details, but an essential part of the modelling process.
-\end{remark}
 
----
 
 \section{Reconstruction Principle}
 
@@ -30,12 +25,9 @@ be a start pose. The corresponding curve is obtained by solving
 \]
 \end{definition}
 
-\begin{remark}
 Even if $\kappaf$ is given analytically, closed-form solutions for
 $\gamma$ are generally not available.
-\end{remark}
 
----
 
 \section{Discretization}
 
@@ -54,21 +46,16 @@ A discrete reconstruction computes approximate values
 at the discretization points.
 \end{definition}
 
-\begin{remark}
 The choice of discretization strongly influences both computational cost
 and geometric accuracy.
-\end{remark}
 
 \TODO{Formal criteria for discretization strategies (uniform vs adaptive).}
 
----
 
 \section{Integration Methods}
 
-\begin{remark}
 The reconstruction problem can be formulated as an initial value problem
 for a system of ordinary differential equations.
-\end{remark}
 
 \subsection{Basic Scheme}
 
@@ -82,10 +69,8 @@ Given $(\gamma_i,\theta_i)$ at $s_i$, an explicit step computes
 \]
 \end{definition}
 
-\begin{remark}
 This corresponds to a first-order method and is generally insufficient
 for high-precision reconstruction.
-\end{remark}
 
 \subsection{Higher-Order Methods}
 
@@ -97,7 +82,6 @@ for high-precision reconstruction.
 
 \OPEN{Separation of curvature integration and geometric integration.}
 
----
 
 \section{Error Analysis}
 
@@ -110,29 +94,24 @@ integration step.
 The global error is the accumulated deviation over the entire interval.
 \end{definition}
 
-\begin{remark}
 Errors arise from:
 \begin{itemize}
 \item discretization,
 \item numerical integration,
 \item approximation of curvature laws.
 \end{itemize}
-\end{remark}
 
 \RESEARCH{Quantitative bounds for error propagation in curvature-driven reconstruction.}
 
 \section{Sensitivity}
 
-\begin{remark}
 The reconstruction process is sensitive to perturbations in curvature.
 Small deviations in $\kappaf$ may lead to significant geometric drift.
-\end{remark}
 
 \RESEARCH{Sensitivity analysis with respect to curvature perturbations.}
 
 \OPEN{Relation between curvature noise and positional uncertainty.}
 
----
 
 \section{Sampling and Representation}
 
@@ -141,28 +120,23 @@ Sampling refers to the extraction of a finite set of points from a
 continuous curve representation.
 \end{definition}
 
-\begin{remark}
 Sampling is required for:
 \begin{itemize}
 \item visualization,
 \item collision detection,
 \item export to point-based formats.
 \end{itemize}
-\end{remark}
 
 \TODO{Error-controlled sampling strategies.}
 
 \OPEN{Difference between sampling for visualization and sampling for computation.}
 
----
 
 \section{Reconstruction in the Sparse Model}
 
-\begin{remark}
 In the sparse alignment model, reconstruction is performed element-wise.
 Each element contributes a local curvature law, which is integrated
 sequentially.
-\end{remark}
 
 \begin{definition}[Sequential reconstruction]
 Let $(e_1,\dots,e_n)$ be a sparse alignment. The reconstruction proceeds
@@ -172,34 +146,27 @@ previous element as initial state for the next.
 
 \OPEN{Handling of numerical drift across element boundaries.}
 
----
 
 \section{Numerical Stability}
 
-\begin{remark}
 Numerical stability is a central concern, especially for long alignments
 or highly curved geometries.
-\end{remark}
 
 \RESEARCH{Stability criteria for curvature-based integration.}
 
 \TODO{Techniques for drift correction and re-normalization.}
 
----
 
 \section{Connection to Optimization}
 
-\begin{remark}
 Numerical reconstruction is closely linked to optimization problems.
 In fitting and design tasks, reconstruction is performed repeatedly
 within iterative algorithms.
-\end{remark}
 
 \TODO{SQP formulation for alignment fitting.}
 
 \RESEARCH{Connection to optimal control problems.}
 
----
 
 \section{Summary}
 
@@ -219,7 +186,6 @@ geometry.
 
 \subsection{Problem Statement}
 
-\begin{remark}
 Given a curvature function
 \[
 \kappa : [0,L] \to \R,
@@ -234,13 +200,9 @@ the geometric alignment is obtained by solving:
 \qquad
 \theta'(s) = \kappa(s).
 \]
-\end{remark}
 
-\begin{remark}
 This defines a nonlinear initial value problem.
-\end{remark}
 
----
 
 \subsection{Discrete Approximation}
 
@@ -252,14 +214,11 @@ Let
 be a partition with step sizes \(\Delta s_i\).
 \end{definition}
 
-\begin{remark}
 We approximate:
 \[
 \kappa_i \approx \kappa(s_i).
 \]
-\end{remark}
 
----
 
 \subsection{Forward Integration Scheme}
 
@@ -274,11 +233,8 @@ Given \((\gamma_i, \theta_i)\), define:
 \]
 \end{definition}
 
-\begin{remark}
 This corresponds to an explicit Euler scheme.
-\end{remark}
 
----
 
 \subsection{Midpoint Scheme}
 
@@ -296,59 +252,44 @@ Define:
 \]
 \end{definition}
 
-\begin{remark}
 This improves accuracy and stability compared to the explicit scheme.
-\end{remark}
 
----
 
 \subsection{Extension to Pose3}
 
-\begin{remark}
 Including cant, we obtain:
 \[
 \phi_{i+1} = \phi_i + \omega_i \Delta s_i.
 \]
-\end{remark}
 
-\begin{remark}
 Thus, the full discrete system is:
 \[
 (\gamma_i, \theta_i, \phi_i)
 \;\longrightarrow\;
 (\gamma_{i+1}, \theta_{i+1}, \phi_{i+1}).
 \]
-\end{remark}
 
----
 
 \subsection{Numerical Stability}
 
-\begin{remark}
 The reconstruction is sensitive to:
 \begin{itemize}
 \item step size \(\Delta s\),
 \item noise in \(\kappa_i\),
 \item and large coordinate values.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 To ensure stability:
 \begin{itemize}
 \item sufficiently small step sizes must be used,
 \item curvature should be smoothed,
 \item and local coordinate frames are recommended.
 \end{itemize}
-\end{remark}
 
----
 
 \subsection{Floating Origin Technique}
 
-\begin{remark}
 For large coordinates, numerical precision degrades.
-\end{remark}
 
 \begin{definition}[Floating origin]
 A local coordinate system is introduced such that:
@@ -357,28 +298,20 @@ A local coordinate system is introduced such that:
 \]
 \end{definition}
 
-\begin{remark}
 This reduces numerical errors in computation and visualization.
-\end{remark}
 
----
 
 \subsection{Consistency with CRS}
 
-\begin{remark}
 Reconstruction depends on:
 \begin{itemize}
 \item initial position,
 \item initial orientation,
 \item and coordinate system definition.
 \end{itemize}
-\end{remark}
 
-\begin{remark}
 Thus, numerical reconstruction must be performed within a consistent CRS.
-\end{remark}
 
----
 
 \subsection{Interpretation}
 

@@ -4,26 +4,20 @@
 
 \subsection{Motivation}
 
-\begin{remark}
 In classical geometry, a railway track is often represented as a curve
 \(\gamma(s)\) in space.
-\end{remark}
 
-\begin{remark}
 This representation is insufficient for engineering purposes, as it
 does not capture the intrinsic quantities governing construction,
 dynamics, and realization.
-\end{remark}
 
-\begin{remark}
 In particular, curvature and cant are not derived properties, but
 primary design variables.
-\end{remark}
 
 \subsection{Definition}
 
 \begin{definition}[Alignment]
-An \defterm{alignment} is a structured object defined over arc-length
+An \textbf{alignment} is a structured object defined over arc-length
 \(s \in [0,L]\), consisting of the following components:
 
 \begin{itemize}
@@ -54,33 +48,25 @@ together with the induced state variables
 
 \subsection{Interpretation}
 
-\begin{remark}
 An alignment is not defined by its position \(\gamma(s)\), but by its
 curvature \(\kappa(s)\).
-\end{remark}
 
-\begin{remark}
 The curve \(\gamma(s)\) is a derived quantity obtained by integration.
-\end{remark}
 
-\begin{remark}
 Thus, curvature is the primary design variable, while position is a
 consequence.
-\end{remark}
 
 \subsection{State Structure}
 
 \begin{definition}[Alignment state]
-The \defterm{state} of an alignment at position \(s\) is given by
+The \textbf{state} of an alignment at position \(s\) is given by
 \[
 (\gamma(s), \theta(s), \kappa(s), \phi(s)).
 \]
 \end{definition}
 
-\begin{remark}
 This state couples geometry, orientation, and dynamics in a unified
 representation.
-\end{remark}
 
 \subsection{Structural Nature}
 
@@ -89,43 +75,31 @@ An alignment is a low-dimensional structured object, even though its
 realization may involve high-dimensional data.
 \end{proposition}
 
-\begin{remark}
 This structure enables:
 \begin{itemize}
 \item efficient storage,
 \item robust optimization,
 \item meaningful interpretation.
 \end{itemize}
-\end{remark}
 
 \subsection{Relation to Realization}
 
-\begin{remark}
 The alignment represents the intended geometry.
-\end{remark}
 
-\begin{remark}
 The physically constructed track is given by the realization operator:
 \[
 \gamma_{\mathrm{real}} = \mathcal{R}(\kappa, \phi).
 \]
-\end{remark}
 
-\begin{remark}
 Thus, the alignment exists in design space, while the track exists in
 physical space.
-\end{remark}
 
 \subsection{Relation to Data}
 
-\begin{remark}
 Measured data typically provide sampled positions or polylines.
-\end{remark}
 
-\begin{remark}
 An alignment must be reconstructed from such data via inverse
 problems.
-\end{remark}
 
 \subsection{Key Insight}
 

@@ -20,9 +20,17 @@
 // Deprecated:
 // - syncSpotObjectsToPreviewCollection kept as alias
 
-import { projectAlignmentPreview } from "@src/domain/projection/AlignmentProjectionService.js";
+import {
+	makeAlignmentProjectionInput,
+	projectAlignmentPreview,
+} from "@src/domain/projection/AlignmentProjectionService.js";
 import { exportLandXML } from "@src/export/exportLandXML.js";
 import { downloadTextFile } from "@src/export/downloadFile.js";
+import {
+	getWorkspaceSelection,
+	getWorkspacePrimaryId,
+	getWorkspaceContextIds,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 import {
 	findSpotObjectById,
@@ -45,26 +53,32 @@ export function activateObjectId({ store, objectId } = {}) {
 	});
 
 	// primaryId ist Fokus.
-	// contextIds sind NUR Zusatz-/Anzeigeobjekte.
-	// Der Fokus selbst gehört NICHT in contextIds.
+	// contextIds sind nur zusätzliche Anzeigeobjekte.
+	// Der Fokus selbst gehört nicht zusätzlich in contextIds.
 	const state = store.getState?.() ?? {};
-	const sel = state.workspace_selection ?? {};
-	const oldIds = Array.isArray(sel.contextIds) ? sel.contextIds : [];
+	const oldIds = getWorkspaceContextIds(state);
 
 	const nextContextIds = oldIds
-	.map(normalizeId)
-	.filter((x) => x && x !== id);
+		.map(normalizeId)
+		.filter((contextId) => contextId && contextId !== id);
 
-	store.actions?.setWorkspaceContextObjects?.({
-		objectIds: nextContextIds,
-		source: "cockpit-primary",
-	});
+	if (store.actions?.setWorkspaceContextObjects) {
+		store.actions.setWorkspaceContextObjects({
+			objectIds: nextContextIds,
+			source: "cockpit-primary",
+		});
+	} else if (store.actions?.setWorkspaceContextIds) {
+		store.actions.setWorkspaceContextIds({
+			objectIds: nextContextIds,
+			source: "cockpit-primary",
+		});
+	}
 
 	store.actions?.setCursorS?.(0);
 
 	console.log("[cockpitActions] primary/context after activate", {
 		id,
-		workspace_selection: store.getState?.().workspace_selection,
+		workspace_selection: getWorkspaceSelection(store.getState?.()),
 	});
 
 	return true;
@@ -75,14 +89,33 @@ export function toggleCockpitContextObject({ store, objectId } = {}) {
 	if (!id) return false;
 
 	const state = store.getState?.() ?? {};
-	const sel = state.workspace_selection ?? {};
-	const oldIds = Array.isArray(sel.contextIds) ? sel.contextIds : [];
+	const primaryId = getWorkspacePrimaryId(state);
 
-	const nextIds = oldIds.includes(id)
-	? oldIds.filter((x) => x !== id)
-	: [...oldIds, id];
+	// Der Fokus darf nicht gleichzeitig als zusätzlicher Kontext geführt werden.
+	if (id === primaryId) {
+		console.warn(
+			"[cockpitActions] focused object cannot be added to context",
+			{ id }
+		);
+		return false;
+	}
 
-	if (store.actions?.setWorkspaceContextIds) {
+	const oldIds = getWorkspaceContextIds(state);
+
+	const normalizedOldIds = oldIds
+		.map(normalizeId)
+		.filter(Boolean);
+
+	const nextIds = normalizedOldIds.includes(id)
+		? normalizedOldIds.filter((contextId) => contextId !== id)
+		: [...normalizedOldIds, id];
+
+	if (store.actions?.setWorkspaceContextObjects) {
+		store.actions.setWorkspaceContextObjects({
+			objectIds: nextIds,
+			source: "cockpit",
+		});
+	} else if (store.actions?.setWorkspaceContextIds) {
 		store.actions.setWorkspaceContextIds({
 			objectIds: nextIds,
 			source: "cockpit",
@@ -100,7 +133,7 @@ export function toggleCockpitContextObject({ store, objectId } = {}) {
 	console.log("[cockpitActions] context after toggle", {
 		id,
 		nextIds,
-		workspace_selection: store.getState?.().workspace_selection,
+		workspace_selection: getWorkspaceSelection(store.getState?.()),
 	});
 
 	return true;
@@ -114,19 +147,117 @@ export function toggleCockpitPin(args = {}) {
 export function clearCockpitPreview({ store } = {}) {
 	store.actions?.clearPreviewItem?.();
 	store.actions?.clearWorkspacePrimary?.();
+	store.actions?.setCursorS?.(0);
+
 	return true;
+}
+
+// ------------------------------------------------------------
+// editor actions
+// ------------------------------------------------------------
+
+export async function addStraightToActiveAlignment({
+	alignmentEditor,
+	length = 100,
+	logLine,
+} = {}) {
+	if (!alignmentEditor?.addStraightToActiveAlignment) {
+		logLine?.("[Cockpit] AlignmentEditor fehlt: addStraight");
+		return null;
+	}
+
+	try {
+		return await alignmentEditor.addStraightToActiveAlignment({
+			length,
+		});
+	} catch (err) {
+		console.error("[Cockpit] addStraight failed", err);
+
+		logLine?.(
+			`[Cockpit] Gerade konnte nicht hinzugefügt werden: ${
+				err?.message ?? err
+			}`
+		);
+
+		return null;
+	}
+}
+
+export async function removeElementFromActiveAlignment({
+	alignmentEditor,
+	elementId,
+	logLine,
+} = {}) {
+	if (!alignmentEditor?.removeElementFromActiveAlignment) {
+		logLine?.("[Cockpit] AlignmentEditor fehlt: removeElement");
+		return null;
+	}
+
+	const id = normalizeId(elementId);
+
+	if (!id) {
+		logLine?.("[Cockpit] Kein Element zum Entfernen ausgewählt");
+		return null;
+	}
+
+	try {
+		return await alignmentEditor.removeElementFromActiveAlignment({
+			elementId: id,
+		});
+	} catch (err) {
+		console.error("[Cockpit] removeElement failed", err);
+
+		logLine?.(
+			`[Cockpit] Element konnte nicht entfernt werden: ${
+				err?.message ?? err
+			}`
+		);
+
+		return null;
+	}
+}
+
+export async function clearActiveAlignmentElements({
+	alignmentEditor,
+	logLine,
+} = {}) {
+	if (!alignmentEditor?.clearActiveAlignmentElements) {
+		logLine?.("[Cockpit] AlignmentEditor fehlt: clearElements");
+		return null;
+	}
+
+	try {
+		return await alignmentEditor.clearActiveAlignmentElements();
+	} catch (err) {
+		console.error("[Cockpit] clearElements failed", err);
+
+		logLine?.(
+			`[Cockpit] Elemente konnten nicht gelöscht werden: ${
+				err?.message ?? err
+			}`
+		);
+
+		return null;
+	}
 }
 
 // ------------------------------------------------------------
 // import admission
 // ------------------------------------------------------------
 
-export async function markImportItemAccepted({ messaging, itemId } = {}) {
+export async function markImportItemAccepted({
+	messaging,
+	itemId,
+} = {}) {
+	const id = normalizeId(itemId);
+	if (!id) return false;
+
 	try {
 		await messaging?.sendCmdAwait?.("Import.SetItemAccepted", {
-			itemId,
+			itemId: id,
 			accepted: true,
 		});
+
 		return true;
 	} catch (err) {
 		console.warn("[Cockpit] Import.SetItemAccepted failed", err);
@@ -143,15 +274,25 @@ export async function promoteImportItemToSpot({
 	const id = normalizeId(itemId);
 	if (!id) return null;
 
-	const result = await messaging?.sendCmdAwait?.("Spot.PromoteImportItemsById", {
-		itemIds: [id],
-	});
+	const result = await messaging?.sendCmdAwait?.(
+		"Spot.PromoteImportItemsById",
+		{
+			itemIds: [id],
+		}
+	);
 
 	const objectId = readFirstAddedObjectId(result);
 
 	if (!result?.ok || !objectId) {
-		const reason = readFirstReviewReason(result) ?? "promotion failed";
-		logLine?.(`[Cockpit] Promote fehlgeschlagen: ${id} (${reason})`);
+		const reason =
+			readFirstReviewReason(result) ??
+			readFirstRejectedReason(result) ??
+			"promotion failed";
+
+		logLine?.(
+			`[Cockpit] Promote fehlgeschlagen: ${id} (${reason})`
+		);
+
 		return null;
 	}
 
@@ -162,29 +303,31 @@ export async function promoteImportItemToSpot({
 
 	store.actions?.clearPreviewItem?.();
 
-	function unwrapState(response) {
-		return response?.state ?? response?.payload ?? response ?? {};
-	}
+	const spotResponse = await messaging?.sendCmdAwait?.(
+		"Spot.GetState",
+		{}
+	);
 
-	const spotResponse = await messaging?.sendCmdAwait?.("Spot.GetState", {});
 	const spotState = unwrapState(spotResponse);
-
 	const windowState = store.getState?.() ?? {};
 
 	console.log("[cockpitActions] post-promote check", {
 		itemId: id,
 		objectId,
-		importAcceptedRequested: true,
-		workerActiveSpotId: spotState?.activeSpotId ?? null,
-		workspacePrimaryId: windowState?.workspace_selection?.primaryId ?? null,
+		importAcceptedRequested,
+		workspacePrimaryId: getWorkspacePrimaryId(windowState),
 		previewCleared: !windowState?.preview_item,
-		workspace_selection: windowState?.workspace_selection,
+		workspace_selection: getWorkspaceSelection(windowState),
+		spotObjectPresent: Boolean(
+			findSpotObjectById(spotState, objectId)
+		),
 	});
 
 	return {
 		objectId,
 		spotState,
 		result,
+		importAcceptedRequested,
 	};
 }
 
@@ -201,21 +344,29 @@ export function syncSpotObjectsToVisibleTracks({
 	const objects = Object.values(spotState?.objects ?? {});
 	const tracks = [];
 
-	for (const obj of objects) {
-		const kernel = obj?.data?.kernel ?? null;
-		if (!kernel) continue;
+	for (const object of objects) {
+		const input = makeAlignmentProjectionInput({
+			objectId: object?.id ?? null,
+			geometry: object?.data?.kernel ?? null,
+			source: "spot",
+			crsId: object?.crsId ?? null,
+		});
+		if (!input) continue;
 
 		const projected = projectAlignmentPreview({
-			sparseAlignment: kernel,
+			input,
 			maxStep,
 		});
 
 		const points = projected?.polyline2d;
-		if (!Array.isArray(points) || points.length < 2) continue;
+
+		if (!Array.isArray(points) || points.length < 2) {
+			continue;
+		}
 
 		tracks.push({
-			id: String(obj.id),
-			objectId: String(obj.id),
+			id: String(object.id),
+			objectId: String(object.id),
 			points,
 			source: "spot",
 		});
@@ -223,7 +374,9 @@ export function syncSpotObjectsToVisibleTracks({
 
 	store.actions?.setWorkspaceVisibleTracks?.({
 		items: tracks,
-		source: { type: sourceType },
+		source: {
+			type: sourceType,
+		},
 	});
 
 	return tracks;
@@ -251,33 +404,38 @@ export async function exportLandXMLById({
 		return false;
 	}
 
-	const state = spotState ?? (
-	typeof refreshSpotState === "function"
-	? await refreshSpotState()
-	: null
-	);
+	const state =
+		spotState ??
+		(
+			typeof refreshSpotState === "function"
+				? await refreshSpotState()
+				: null
+		);
 
-	const obj = findSpotObjectById(state, id);
+	const object = findSpotObjectById(state, id);
 
-	if (!obj) {
+	if (!object) {
 		logLine?.(`[Cockpit] SPOT-Objekt nicht gefunden: ${id}`);
 		return false;
 	}
 
-	const alignment = obj?.data?.kernel ?? null;
+	const alignment = object?.data?.kernel ?? null;
+
 	if (!alignment) {
-		logLine?.(`[Cockpit] kein Alignment-Kernel für Export: ${id}`);
+		logLine?.(
+			`[Cockpit] kein Alignment-Kernel für Export: ${id}`
+		);
 		return false;
 	}
 
-	const label = readSpotLabel(obj) ?? id;
+	const label = readSpotLabel(object) ?? id;
 
 	const xml = exportLandXML({
 		alignment,
 		meta: {
 			name: label,
 			objectId: id,
-			crsId: obj?.crsId ?? null,
+			crsId: object?.crsId ?? null,
 		},
 	});
 
@@ -295,20 +453,36 @@ export async function exportLandXMLById({
 // ------------------------------------------------------------
 
 export function readFirstAddedObjectId(result) {
-	return Array.isArray(result?.addedObjects) && result.addedObjects[0]?.id
-	? String(result.addedObjects[0].id)
-	: null;
+	return Array.isArray(result?.addedObjects) &&
+		result.addedObjects[0]?.id
+		? String(result.addedObjects[0].id)
+		: null;
 }
 
 export function readFirstReviewReason(result) {
-	return Array.isArray(result?.reviewItems) && result.reviewItems[0]?.reason
-	? String(result.reviewItems[0].reason)
-	: null;
+	return Array.isArray(result?.reviewItems) &&
+		result.reviewItems[0]?.reason
+		? String(result.reviewItems[0].reason)
+		: null;
+}
+
+export function readFirstRejectedReason(result) {
+	return Array.isArray(result?.rejectedItems) &&
+		result.rejectedItems[0]?.reason
+		? String(result.rejectedItems[0].reason)
+		: null;
 }
 
 // ------------------------------------------------------------
 // misc
 // ------------------------------------------------------------
+
+function unwrapState(response) {
+	return response?.state ??
+		response?.payload ??
+		response ??
+		{};
+}
 
 function normalizeId(value) {
 	const id = String(value ?? "").trim();
@@ -317,9 +491,9 @@ function normalizeId(value) {
 
 function safeFileStem(value) {
 	return String(value ?? "ufAIM_alignment")
-	.trim()
-	.replace(/\.[^.]+$/g, "")
-	.replace(/[^a-zA-Z0-9_\-]+/g, "_")
-	.replace(/^_+|_+$/g, "")
-	|| "ufAIM_alignment";
+		.trim()
+		.replace(/\.[^.]+$/g, "")
+		.replace(/[^a-zA-Z0-9_\-]+/g, "_")
+		.replace(/^_+|_+$/g, "")
+		|| "ufAIM_alignment";
 }

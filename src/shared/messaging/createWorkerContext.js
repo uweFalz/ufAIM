@@ -16,7 +16,10 @@ export function createWorkerContext({ router } = {}) {
 
 		// state hosts
 		projectState: {
-			activeRouteProjectId: null,
+			workspace_selection: {
+				primaryId: null,
+				contextIds: [],
+			},
 		},
 
 		importState: {

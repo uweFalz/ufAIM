@@ -1,14 +1,9 @@
 % reality/construction_and_realization.tex
 
-\chapter{Construction and Realization}
+\chapter{Construction and Physical Realization}
 
 \label{chap:construction-and-realization}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-% reality/construction_and_realization.tex
 \begin{figure}[htbp]
 \centering
 \input{figures/reality/target_vs_realized_geometry}
@@ -16,76 +11,24 @@
 \label{fig:target-vs-realized-geometry}
 \end{figure}
 
-\begin{remark}
-Theoretical railway alignments are defined as continuous geometric and
-curvature objects.
-\end{remark}
-
-\begin{remark}
-In practice, tracks are not constructed as continuous mathematical
-curves. They are realized through discrete construction and maintenance
-processes, local measurements, machine operations, correction limits, and
-structural response of the track.
-\end{remark}
-
-\begin{proposition}
-The curve that is constructed is not identical to the curve that is
-designed.
-\end{proposition}
-
-\begin{remark}
-A realistic modelling framework must therefore include an explicit
-realization layer between analytical design and built geometry.
-\end{remark}
+This chapter owns physical realization in the Reality part. Physical
+realization transforms target engineering state into physically built
+state under construction, maintenance, and structural constraints.
 
 \begin{principle}[Realization principle]
 \label{princ:realization-principle}
-Within AIM, realization is treated as an operator layer transforming
-target alignment states into physically achievable railway states.
+Within AIM, physical realization is an operator layer that transforms
+target states into physically realized states.
 \end{principle}
 
-\begin{figure}[h]
-\centering
-\begin{tikzpicture}[
-  scale=1.0,
-  axis/.style={->, thin},
-  curve/.style={thick},
-  label/.style={font=\small},
-  box/.style={draw, rectangle, rounded corners, align=center, minimum width=3.2cm, minimum height=0.8cm}
-]
-
-\begin{scope}[shift={(0,3.0)}]
-  \draw[axis] (0,0) -- (5.4,0) node[right] {$s$};
-  \draw[axis] (0,0) -- (0,1.6) node[above] {$\kappa$};
-  \draw[curve] plot[smooth, domain=0:5, samples=120]
-    (\x,{0.55 + 0.35*sin(180*\x/5) + 0.14*sin(720*\x/5)});
-  \node[label, right] at (5.05,0.95) {$\kappa_{\mathrm{target}}$};
-\end{scope}
-
-\node[box] (R) at (2.65,1.55) {realization operator \\ $\mathcal{R}$ \\ sampling + machine + structure};
-\draw[->, thick] (2.65,2.55) -- (R.north);
-\draw[->, thick] (R.south) -- (2.65,0.55);
-
-\begin{scope}[shift={(0,-1.2)}]
-  \draw[axis] (0,0) -- (5.4,0) node[right] {$s$};
-  \draw[axis] (0,0) -- (0,1.6) node[above] {$\kappa$};
-  \draw[curve] plot[smooth, domain=0:5, samples=120]
-    (\x,{0.55 + 0.27*sin(180*\x/5)});
-  \node[label, right] at (5.05,0.88) {$\kappa_{\mathrm{real}}$};
-  \node[label] at (2.5,-0.55) {high-frequency components are attenuated};
-\end{scope}
-
-\end{tikzpicture}
-
-\caption{Realization acts as a filtering process: target curvature may
-contain high-frequency components that are attenuated by sampling,
-machine action, and structural response.}
-\label{fig:realization-filter}
-\end{figure}
-
 % ============================================================
-\section{Realized Alignment}
+\section{Physical Realization versus Metric Realization}
 % ============================================================
+
+Metric realization (\cref{chap:metric-realization}) defines measurable
+embedding context. Physical realization describes construction and
+maintenance effects on built infrastructure. The two layers are coupled
+but distinct.
 
 \begin{definition}[Realized alignment]
 \label{def:realized-alignment}
@@ -96,527 +39,184 @@ denoted by
 \]
 \end{definition}
 
-\begin{remark}
-It may be represented continuously, but it is usually generated from
-discrete construction, measurement, and maintenance data.
-\end{remark}
-
 \begin{definition}[Realized curvature]
 \label{def:realized-curvature}
-The realized curvature is:
+The realized curvature is
 \[
-\kappa_{\mathrm{real}}(s)
-=
-\frac{\dd \theta_{\mathrm{real}}}{\dd s}.
+\kappa_{\mathrm{real}}(s)=\frac{\dd\theta_{\mathrm{real}}}{\dd s}.
 \]
 \end{definition}
 
-\begin{remark}
-The realized track should not be judged only by positional agreement,
-but also by preservation of curvature evolution.
-\end{remark}
+% ============================================================
+\section{Realization Operator View}
+% ============================================================
 
-\begin{remark}
-Within AIM, realized geometry may be interpreted as:
 \[
-x_{\mathrm{real}}
-=
-\mathcal R(x_{\mathrm{target}}),
+x_{\mathrm{real}}=\mathcal R(x_{\mathrm{target}}),
 \]
-where \(\mathcal R\) denotes the realization operator.
-\end{remark}
+where \(\mathcal R\) is the canonical realization operator
+(\cref{def:realization-operator}).
 
-% ============================================================
-\section{Realization Error}
-% ============================================================
-
-\begin{definition}[Curvature realization error]
-\label{def:curvature-realization-error}
-A curvature-based realization error may be written as:
+Realization error can be assessed in state-dependent spaces. A
+curvature-based measure is
 \[
 E_{\kappa}
 =
-\int_0^L
-\bigl(\kappa_{\mathrm{real}}-\kappa_{\mathrm{target}}\bigr)^2
-\,\dd s.
+\int_0^L\left(\kappa_{\mathrm{real}}-\kappa_{\mathrm{target}}\right)^2\,\dd s.
 \]
+
+% ============================================================
+\section{Construction and Adjustment Process}
+% ============================================================
+
+Construction and maintenance are iterative local processes.
+
+\begin{definition}[Adjustment operator]
+\label{def:adjustment-operator}
+The adjustment operator \(\mathcal A\) denotes a localized
+construction/maintenance update applied to an existing alignment state.
 \end{definition}
-
-\begin{definition}[Curvature derivative error]
-\label{def:curvature-derivative-error}
-A higher-order realization error may be written as:
-\[
-E_{\kappa'}
-=
-\int_0^L
-\bigl(\kappa'_{\mathrm{real}}-\kappa'_{\mathrm{target}}\bigr)^2
-\,\dd s.
-\]
-\end{definition}
-
-\begin{remark}
-These measures reflect that different transition families may be close
-in position space while differing significantly in curvature evolution
-and dynamic interpretation.
-\end{remark}
-
-\begin{remark}
-Realization error may therefore be evaluated in:
-\begin{itemize}
-\item position space,
-\item tangent space,
-\item curvature space,
-\item curvature-derivative space,
-\item and runtime pose3 space.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Sampling and Control Points}
-% ============================================================
-
-\begin{remark}
-Construction and maintenance operate through discrete control data.
-\end{remark}
-
-\begin{definition}[Control points]
-\label{def:control-points}
-Let
-\[
-0=s_0 < s_1 < \dots < s_N = L
-\]
-be a strictly increasing sequence of arc-length positions.
-These positions are called control points.
-\end{definition}
-
-\begin{remark}
-The realized alignment may be reconstructed from these points using:
-\begin{itemize}
-\item piecewise linear interpolation,
-\item piecewise polynomial interpolation,
-\item spline-based reconstruction,
-\item machine-specific reconstruction rules,
-\item or sparse alignment reconstruction.
-\end{itemize}
-\end{remark}
-
-\begin{proposition}[Adaptive sampling principle]
-\label{prop:adaptive-sampling-principle}
-Sampling density should increase in regions of strong curvature
-variation:
-\[
-\rho(s)
-\sim
-f\bigl(|\kappa'(s)|,|\kappa''(s)|\bigr),
-\]
-for a suitable increasing function \(f\).
-\end{proposition}
-
-\begin{remark}
-Nearly constant-curvature regions require fewer control points, whereas
-transition zones require denser control.
-\end{remark}
-
-% ============================================================
-\section{Adjustment as Iterative Process}
-% ============================================================
-
-\begin{remark}
-In railway construction and maintenance, track geometry is adjusted
-through a sequence of localized operations, for example by tamping
-machines.
-\end{remark}
-
-\begin{remark}
-The canonical adjustment operator is denoted by \(\mathcal A\), as
-introduced in \cref{def:adjustment-operator}.
-\end{remark}
 
 \begin{definition}[Iterative realization]
 \label{def:iterative-construction-realization}
-Starting from an initial alignment \(\gamma_0\), the iterative process is:
+Starting from \(\gamma_0\), an iterative realization process can be
+represented by
 \[
-\gamma_{k+1}
-=
-\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k).
+\gamma_{k+1}=\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k).
 \]
 \end{definition}
 
-\begin{remark}
-The operator depends on local measurement data, machine parameters,
-correction limits, and physical properties of the track.
-\end{remark}
-
 \begin{definition}[Realized alignment as limit]
 \label{def:realized-alignment-limit}
-If the sequence converges, the realized alignment is:
+If this process converges,
 \[
-\gamma_{\mathrm{real}}
-=
-\lim_{k\to\infty}\gamma_k.
+\gamma_{\mathrm{real}}=\lim_{k\to\infty}\gamma_k.
 \]
 \end{definition}
 
 \begin{proposition}[Fixed point interpretation]
 \label{prop:realization-fixed-point}
-If the iterative realization converges, then:
+If iterative realization converges,
 \[
-\gamma_{\mathrm{real}}
-=
+\gamma_{\mathrm{real}}=
 \mathcal A_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}}).
 \]
 \end{proposition}
 
-\begin{remark}
-In practice, convergence cannot be assumed a priori, since it depends on
-measurement feedback, machine limits, and local track conditions.
-\end{remark}
+% ============================================================
+\section{Sampling, Locality, and Filtering}
+% ============================================================
 
-% ============================================================
-\section{Locality and Correction Limits}
-% ============================================================
+\begin{definition}[Control points]
+\label{def:control-points}
+Let
+\[
+0=s_0<s_1<\dots<s_N=L
+\]
+be control-point stations used in realization and maintenance workflows.
+\end{definition}
+
+\begin{proposition}[Adaptive sampling principle]
+\label{prop:adaptive-sampling-principle}
+Sampling density should increase in regions with strong curvature
+variation.
+\end{proposition}
 
 \begin{definition}[Local correction]
 \label{def:local-correction}
-A guided adjustment may be written as:
+A local correction form is
 \[
 \mathcal A_{\gamma_{\mathrm{target}}}(\gamma)
 =
-\gamma+\Delta(\gamma,\gamma_{\mathrm{target}}),
+\gamma+\Delta(\gamma,\gamma_{\mathrm{target}}).
 \]
-where \(\Delta\) is a local correction operator.
 \end{definition}
-
-\begin{remark}
-Typically, corrections are bounded:
-\[
-\|\Delta(\gamma,\gamma_{\mathrm{target}})\|
-\le
-\Delta_{\max}.
-\]
-\end{remark}
 
 \begin{proposition}[Locality]
 \label{prop:adjustment-locality}
-The adjustment operator is local in the sense that:
-\[
-(\mathcal A_{\gamma_{\mathrm{target}}}\gamma)(s)
-\]
-depends only on \(\gamma\) and \(\gamma_{\mathrm{target}}\) in a
-neighbourhood of \(s\).
+Adjustment depends on local neighbourhood context rather than global
+alignment state.
 \end{proposition}
-
-\begin{remark}
-This reflects the finite working range of construction and maintenance
-equipment.
-\end{remark}
-
-% ============================================================
-\section{Kernel-Based Realization Model}
-% ============================================================
 
 \begin{definition}[Kernel-based adjustment]
 \label{def:kernel-based-adjustment}
-A linearized model of the adjustment process is:
+A linearized local model is
 \[
 (\mathcal A_{\gamma_{\mathrm{target}}}\gamma)(s)
 =
-\gamma(s)
-+
-\int_I
-K(s,\sigma)
-\bigl(
-\gamma_{\mathrm{target}}(\sigma)-\gamma(\sigma)
-\bigr)
-\,\dd\sigma,
+\gamma(s)+
+\int_I K(s,\sigma)
+\bigl(\gamma_{\mathrm{target}}(\sigma)-\gamma(\sigma)\bigr)
+\,\dd\sigma.
 \]
-where \(K(s,\sigma)\) is a localized influence kernel.
 \end{definition}
-
-\begin{remark}
-The kernel represents the spatial influence of local construction or
-maintenance action.
-\end{remark}
-
-\begin{proposition}[Localization]
-\label{prop:kernel-localization}
-There exists a characteristic length \(\ell>0\) such that:
-\[
-K(s,\sigma)\approx 0
-\qquad
-\text{for } |s-\sigma|>\ell.
-\]
-\end{proposition}
 
 \begin{definition}[Discrete adjustment model]
 \label{def:discrete-adjustment-model}
-For control points \(s_i\), the kernel model becomes:
+For control points,
 \[
 \gamma_i^{(k+1)}
 =
-\gamma_i^{(k)}
-+
-\sum_j
-K_{ij}
-\bigl(
-\gamma_j^{\mathrm{target}}-\gamma_j^{(k)}
-\bigr).
+\gamma_i^{(k)}+
+\sum_j K_{ij}\left(\gamma_j^{\mathrm{target}}-\gamma_j^{(k)}\right).
 \]
 \end{definition}
-
-\begin{remark}
-This form is compatible with sparse numerical implementation.
-\end{remark}
-
-\begin{remark}
-The matrix \(K_{ij}\) should not be interpreted merely as numerical
-smoothing. It represents physical influence: machine action,
-track-bed response, sleeper spacing, stiffness, local constraints, and
-measurement feedback.
-\end{remark}
-
-% ============================================================
-\section{Filter Interpretation}
-% ============================================================
 
 \begin{proposition}
 \label{prop:realization-low-pass}
-The realization process acts approximately as a low-pass filter on
-curvature.
+Physical realization acts approximately as a low-pass filter on
+curvature and related high-frequency components.
 \end{proposition}
-
-\begin{remark}
-High-frequency curvature components are attenuated during construction
-and maintenance, while low-frequency structure is preserved.
-\end{remark}
-
-\begin{remark}
-This explains why transition curves with similar low-order behaviour may
-become nearly indistinguishable in position space after realization,
-while still differing in curvature evolution and dynamic interpretation.
-\end{remark}
-
-\begin{remark}
-In frequency-oriented notation, realization may be idealized as:
-\[
-\widehat{\kappa}_{\mathrm{real}}(\omega)
-\approx
-H_{\mathcal R}(\omega)
-\widehat{\kappa}_{\mathrm{target}}(\omega),
-\]
-where \(H_{\mathcal R}\) denotes a realization transfer function.
-\end{remark}
-
-\begin{remark}
-For typical physical realization processes, \(H_{\mathcal R}\) attenuates
-high-frequency components.
-\end{remark}
 
 \begin{principle}[Realization filter principle]
 \label{princ:realization-filter}
-Construction and maintenance do not merely approximate target geometry;
-they transform it through a physical filter induced by sampling,
-machinery, structure, and correction limits.
+Construction and maintenance transform target state through physical
+sampling, machine response, and structural filtering.
 \end{principle}
 
 % ============================================================
-\section{Relation to the Realization Operator}
+\section{Runtime and Optimization Implications}
 % ============================================================
 
-\begin{remark}
-In the AIM operator framework, realization is represented by:
-\[
-\mathcal R :
-\mathcal X_{\mathrm{target}}
-\rightarrow
-\mathcal X_{\mathrm{real}},
-\]
-as introduced in \cref{def:realization-operator}.
-\end{remark}
-
-\begin{remark}
-The construction process described in this chapter provides one
-interpretation of how such an operator may arise physically.
-\end{remark}
-
-\begin{remark}
-The simplified realization decomposition:
-\[
-\mathcal R
-\approx
-\mathcal M \circ \mathcal I \circ \mathcal S
-\]
-separates sampling, reconstruction, and mechanical response.
-\end{remark}
-
-\begin{remark}
-Here:
-\begin{itemize}
-\item \(\mathcal S\) denotes sampling or control-point extraction,
-\item \(\mathcal I\) denotes interpolation or reconstruction,
-\item \(\mathcal M\) denotes mechanical and structural response.
-\end{itemize}
-\end{remark}
-
-\begin{remark}
-More generally, \(\mathcal R\) may depend on:
-\begin{itemize}
-\item machinery,
-\item measurement process,
-\item construction method,
-\item track structure,
-\item maintenance history,
-\item local constraints,
-\item and environmental conditions.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-
-\begin{remark}
-The realization workflow is summarized in
-\cref{fig:realization-pipeline}.
-\end{remark}
-
-\section{Sparse Compatibility}
-% ============================================================
-
-\begin{remark}
-The realization layer must remain compatible with sparse alignment
-representation.
-\end{remark}
-
-\begin{remark}
-Within AIM, this means that realization may operate on:
-\begin{itemize}
-\item sparse target parameters,
-\item sampled runtime states,
-\item reconstructed curvature functions,
-\item or realized sparse approximations.
-\end{itemize}
-\end{remark}
+The realization layer is compatible with sparse and runtime evaluation:
+realized geometry can be interpreted as measured samples, reconstructed
+runtime state, or sparse-compatible approximation.
 
 \begin{principle}[Sparse realization compatibility]
 \label{princ:sparse-realization-compatibility}
-Realization-aware modelling must not destroy the sparse structure of the
-alignment model.
-
-Instead, realized geometry should be interpretable either as a runtime
-state, a sampled state, or a sparse-compatible approximation.
+Realization-aware workflows must preserve compatibility with sparse and
+runtime state architectures.
 \end{principle}
-
-\begin{remark}
-A realized alignment may therefore be represented as:
-\begin{itemize}
-\item measured sample data,
-\item a reconstructed dense curve,
-\item a sparse re-fit,
-\item or a hybrid measured--sparse object.
-\end{itemize}
-\end{remark}
-
-% ============================================================
-\section{Realization-Aware Optimization}
-% ============================================================
-
-\begin{remark}
-Classical design optimizes the target curve.
-\end{remark}
-
-\begin{remark}
-Realization-aware design optimizes the target curve with respect to its
-expected realized outcome.
-\end{remark}
 
 \begin{definition}[Realization-aware objective]
 \label{def:realization-aware-objective}
-A realization-aware optimization objective may be written as:
+A realization-aware design objective can be written as
 \[
-\min_{x_{\mathrm{target}}}
-J\bigl(
-\mathcal R(x_{\mathrm{target}})
-\bigr).
+\min_{x_{\mathrm{target}}}J\bigl(\mathcal R(x_{\mathrm{target}})\bigr).
 \]
 \end{definition}
 
-\begin{remark}
-Here, the design variable is the analytical target, while the evaluated
-object is the realized railway state.
-\end{remark}
-
-\begin{remark}
-This distinction is essential whenever construction, maintenance,
-machine response, or structural filtering significantly affect the final
-geometry.
-\end{remark}
-
 \begin{proposition}[Realization-aware design principle]
 \label{prop:realization-aware-design}
-The best target alignment is not necessarily the analytically smoothest
-alignment, but the target whose realized state best satisfies the
-operational objective.
+The relevant design criterion is performance of realized state, not only
+analytic smoothness of target state.
 \end{proposition}
-
-% ============================================================
-\section{Design Implication}
-% ============================================================
-
-\begin{remark}
-The designed transition curve is not simply the curve that is built.
-It is a target that produces a realized behaviour after construction and
-maintenance.
-\end{remark}
-
-\begin{remark}
-Thus, alignment design implicitly includes assumptions about
-construction, machine behaviour, and structural response.
-\end{remark}
 
 \begin{proposition}
 \label{prop:physical-design-space}
-The relevant physical design space is the image of the realization
-operator, not the full space of analytical curvature laws.
+The physical design space is the image of the realization operator.
 \end{proposition}
-
-\begin{remark}
-This connects construction and realization to realization-aware
-optimization.
-\end{remark}
-
-\begin{remark}
-For AIM, this means that transition classification, sparse alignment
-modelling, runtime pose3 evaluation, and optimization must be interpreted
-not only in analytical target space, but also in realized physical
-state space.
-\end{remark}
 
 % ============================================================
 \section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-Construction and realization describe the transformation from analytical
-target alignment to physically realized railway geometry.
+Construction and physical realization connect target engineering state
+with built infrastructure state.
 
-Within AIM, this transformation is treated as an explicit operator layer:
-\[
-x_{\mathrm{real}}
-=
-\mathcal R(x_{\mathrm{target}}).
-\]
-
-The realization layer explains why physical railway geometry must be
-understood through construction processes, measurement feedback, local
-correction limits, machine behaviour, sparse reconstruction, and
-mechanical response rather than through analytical geometry alone.
-
-Realization is therefore not an implementation detail. It is a central
-mathematical and physical layer connecting:
-\begin{itemize}
-\item target geometry,
-\item sparse alignment representation,
-\item measured reality,
-\item runtime state evaluation,
-\item and realization-aware optimization.
-\end{itemize}
+Within AIM, physical realization is an explicit downstream layer that
+consumes constructive semantics and metric realization context and
+produces realized state for measurement, runtime reconstruction, and
+engineering interpretation.
 \end{summary}
