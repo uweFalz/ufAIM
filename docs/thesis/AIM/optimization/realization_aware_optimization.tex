@@ -2,6 +2,8 @@
 
 \chapter{Realization-Aware Optimization}
 
+\index{Optimization!realization-aware}
+
 % ============================================================
 \section*{Motivation}
 % ============================================================
@@ -39,6 +41,8 @@ geometry.
 \section{Realization Operator}
 % ============================================================
 
+\index{Realization!operator!in optimization}
+
 \begin{definition}[Realization operator]
 The realization operator is:
 \[
@@ -69,6 +73,7 @@ Objective functions should be evaluated on realized states rather than
 on analytical target states.
 
 \begin{definition}[Realization-aware optimization]
+\index{Optimization!on realized states}
 The general optimization problem is:
 \[
 \min_{\kappa,\phi}
@@ -85,6 +90,8 @@ optimization process.
 % ============================================================
 \section{Pose3 Optimization}
 % ============================================================
+
+\index{State!pose3!optimization}
 
 Optimization operates on the coupled pose3 state:
 \[
@@ -104,6 +111,7 @@ behaviour.
 \subsection{Effective Lateral Acceleration}
 
 \begin{definition}[Effective lateral acceleration]
+\index{Acceleration!effective lateral!optimization objective}
 The effective lateral acceleration is:
 \[
 a_{\mathrm{eff}}
@@ -120,6 +128,7 @@ on the vehicle.
 \subsection{Jerk}
 
 \begin{definition}[Jerk]
+\index{Jerk!optimization objective}
 The jerk is:
 \[
 j
@@ -152,6 +161,8 @@ Typical optimization objectives include:
 \section{Realization Constraints}
 % ============================================================
 
+\index{Constraint!realization}
+
 Optimization must respect realization constraints such as:
 \begin{itemize}
 \item machine limits,
@@ -172,6 +183,7 @@ The optimization problem may be interpreted as an inverse realization
 problem.
 
 \begin{definition}[Inverse realization formulation]
+\index{Realization!inverse formulation}
 The objective is:
 \[
 \mathcal R(\kappa_{\mathrm{target}},\phi_{\mathrm{target}})
@@ -187,6 +199,8 @@ realization operator.
 \section{Frequency Interpretation}
 % ============================================================
 
+\index{Frequency interpretation!realization operator as low-pass filter}
+
 The realization operator acts approximately as a low-pass filter on
 curvature and cant.
 
@@ -198,6 +212,9 @@ high-frequency corrections that cannot survive realization.
 % ============================================================
 \section{Sparse and Hybrid Optimization}
 % ============================================================
+
+\index{Optimization!sparse}
+\index{Optimization!hybrid}
 
 Sparse and hybrid models are particularly suitable for
 realization-aware optimization.
@@ -220,6 +237,8 @@ Hybrid models additionally permit:
 \section{Runtime Optimization}
 % ============================================================
 
+\index{Optimization!runtime}
+
 Optimization may operate continuously during:
 \begin{itemize}
 \item construction,
@@ -234,6 +253,8 @@ offline planning step.
 % ============================================================
 \section{Vehicle-Space Interpretation}
 % ============================================================
+
+\index{Vehicle space!optimization interpretation}
 
 The physically relevant object is not necessarily the track centerline,
 but the motion of the railway vehicle within space.
@@ -254,6 +275,8 @@ Schwerpunkt-oriented alignment concepts
 % ============================================================
 \section{Ellipsoid-Aware Optimization}
 % ============================================================
+
+\index{Reference system!ellipsoid-aware optimization}
 
 For large-scale or high-precision systems, optimization may be performed
 directly on the Earth reference surface.

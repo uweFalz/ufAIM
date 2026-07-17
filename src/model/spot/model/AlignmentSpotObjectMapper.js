@@ -91,9 +91,6 @@ export function createAlignmentSpotObjectFromData(
 		// AlignmentData remains the native editable engineering state.
 		alignmentData,
 
-		// Compatibility field used by existing Alignment paths.
-		sparseAlignment,
-
 		extended: isObject(extended) ? extended : {},
 		refs: isObject(refs) ? refs : {},
 
@@ -187,7 +184,6 @@ export function updateAlignmentSpotObjectFromData(
 
 		kernel: sparseAlignment,
 		alignmentData,
-		sparseAlignment,
 
 		extended: isObject(previousData.extended)
 			? previousData.extended

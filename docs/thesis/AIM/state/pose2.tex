@@ -45,6 +45,10 @@ Position and orientation therefore do not appear as independently stored
 geometric primitives. They emerge through integration of curvature along
 arc length.
 
+The figure below answers the local engineering question for this
+section: which quantities are primary in reconstruction, and which are
+derived runtime consequences of that primary law?
+
 \begin{figure}[ht]
 \centering
 
@@ -80,6 +84,12 @@ Within AIM, curvature is treated as the primary geometric quantity.
 }
 \label{fig:pose2-curvature-reconstruction}
 \end{figure}
+
+The interpretation is direct: \(\kappa(s)\) drives tangent evolution,
+and tangent evolution drives positional reconstruction. The engineering
+consequence is that persistent storage should prioritize intrinsic
+curvature semantics, while pose coordinates remain reconstructable
+derived state.
 
 % ============================================================
 \section{Initial Conditions}
@@ -143,7 +153,7 @@ is one of the central structural principles of the AIM framework.
 
 Within AIM, pose2 forms the persistent intrinsic reconstruction kernel,
 whereas pose3 represents an extended runtime-evaluated spatial state.
-pos3 is derived dynamically from pose2 reconstruction together with
+pose3 is derived dynamically from pose2 reconstruction together with
 profile evaluation, cant evaluation, frame construction, and runtime
 coordinate services. This separation avoids redundancy and
 synchronization instability between planar, cant, profile, and runtime

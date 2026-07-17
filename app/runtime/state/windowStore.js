@@ -18,8 +18,6 @@
 //
 // Deprecated transitional aliases still kept:
 // - activeSlot
-// - view_pins
-// - import_preview_collection
 // - routeProjects / artifacts / import_*
 //
 // Rule of thumb:
@@ -178,13 +176,6 @@ export function createWindowStore(initial) {
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
-
-					// @deprecated pin mirror
-					view_pins: contextIds.map((id) => ({
-						rpId: id,
-						slot: normalizeSlot(st.activeSlot),
-						at: Date.now(),
-					})),
 				};
 			});
 		},
@@ -209,13 +200,6 @@ export function createWindowStore(initial) {
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
-
-					// @deprecated pin mirror
-					view_pins: contextIds.map((rpId) => ({
-						rpId,
-						slot: normalizeSlot(st.activeSlot),
-						at: Date.now(),
-					})),
 				};
 			});
 		},
@@ -232,9 +216,6 @@ export function createWindowStore(initial) {
 						source: current.source ?? null,
 						crsId: current.crsId ?? null,
 					},
-
-					// @deprecated pin mirror
-					view_pins: [],
 				};
 			});
 		},
@@ -247,15 +228,12 @@ export function createWindowStore(initial) {
 					source: null,
 					crsId: null,
 				},
-
-				// @deprecated mirrors
-				view_pins: [],
 			});
 		},
 
 		// ------------------------------------------------------------
 		// workspace visible tracks
-		// Preferred replacement for import_preview_collection.
+		// Canonical projected helper/context track cache.
 		// ------------------------------------------------------------
 		setWorkspaceVisibleTracks(input = {}) {
 			const items = Array.isArray(input)
@@ -271,10 +249,6 @@ export function createWindowStore(initial) {
 			setState({
 				workspace_visible_tracks: items,
 				workspace_visible_tracks_source: normalizeSource(source),
-
-				// @deprecated alias
-				import_preview_collection: items,
-				import_preview_source: normalizeSource(source),
 			});
 		},
 
@@ -282,21 +256,7 @@ export function createWindowStore(initial) {
 			setState({
 				workspace_visible_tracks: [],
 				workspace_visible_tracks_source: null,
-
-				// @deprecated alias
-				import_preview_collection: [],
-				import_preview_source: null,
 			});
-		},
-
-		// @deprecated
-		setImportPreviewCollection(input = {}) {
-			return actions.setWorkspaceVisibleTracks(input);
-		},
-
-		// @deprecated
-		clearImportPreviewCollection() {
-			return actions.clearWorkspaceVisibleTracks();
 		},
 
 		// @deprecated slot mirror.
@@ -328,34 +288,19 @@ export function createWindowStore(initial) {
 		},
 
 		// ------------------------------------------------------------
-		// @deprecated view pins
-		// Use workspace_selection.contextIds.
+		// Compatibility adapters for legacy pin-oriented callers.
+		// Canonical state remains workspace_selection.contextIds.
 		// ------------------------------------------------------------
 		setPins(pins) {
 			const arr = Array.isArray(pins) ? pins : [];
-			const next = arr
+			const contextIds = arr
 				.filter(Boolean)
-				.map((p) => ({
-					rpId: String(p.rpId ?? p.baseId ?? "").trim(),
-					slot: normalizeSlot(p.slot),
-					at: Number.isFinite(Number(p.at)) ? Number(p.at) : Date.now(),
-				}))
-				.filter((p) => p.rpId);
+				.map((p) => String(p.rpId ?? p.baseId ?? p.objectId ?? "").trim())
+				.filter(Boolean);
 
-			setState((st) => {
-				const current = st.workspace_selection ?? {};
-				const contextIds = normalizeIdList(next.map((p) => p.rpId));
-
-				return {
-					...st,
-					view_pins: next,
-					workspace_selection: {
-						primaryId: current.primaryId ?? null,
-						contextIds,
-						source: current.source ?? "legacy-pins",
-						crsId: current.crsId ?? null,
-					},
-				};
+			actions.setWorkspaceContextObjects({
+				objectIds: contextIds,
+				source: "legacy-pins-adapter",
 			});
 		},
 
@@ -367,31 +312,12 @@ export function createWindowStore(initial) {
 			const id = normalizeId(rpId);
 			if (!id) return;
 
-			setState((st) => {
-				const s = normalizeSlot(slot);
-				const pins = Array.isArray(st.view_pins) ? st.view_pins.slice() : [];
-				const key = `${id}::${s}`;
-
-				if (!pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key)) {
-					pins.push({ rpId: id, slot: s, at: Date.now() });
-				}
-
-				const current = st.workspace_selection ?? {};
-				const contextIds = normalizeIdList([
-					...(Array.isArray(current.contextIds) ? current.contextIds : []),
+			actions.setWorkspaceContextObjects({
+				objectIds: normalizeIdList([
+					...(getWorkspaceSelection(getState()).contextIds ?? []),
 					id,
-				]);
-
-				return {
-					...st,
-					view_pins: pins,
-					workspace_selection: {
-						primaryId: current.primaryId ?? null,
-						contextIds,
-						source: current.source ?? "legacy-pin",
-						crsId: current.crsId ?? null,
-					},
-				};
+				]),
+				source: `legacy-pin:${normalizeSlot(slot)}`,
 			});
 		},
 
@@ -399,27 +325,10 @@ export function createWindowStore(initial) {
 			const id = normalizeId(rpId);
 			if (!id) return;
 
-			setState((st) => {
-				const s = normalizeSlot(slot);
-				const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
-				const nextPins = pins.filter((p) => !(p?.rpId === id && normalizeSlot(p?.slot) === s));
-
-				const current = st.workspace_selection ?? {};
-				const contextIds = normalizeIdList(
-					(Array.isArray(current.contextIds) ? current.contextIds : [])
-						.filter((x) => x !== id)
-				);
-
-				return {
-					...st,
-					view_pins: nextPins,
-					workspace_selection: {
-						primaryId: current.primaryId ?? null,
-						contextIds,
-						source: current.source ?? "legacy-unpin",
-						crsId: current.crsId ?? null,
-					},
-				};
+			const current = getWorkspaceSelection(getState());
+			actions.setWorkspaceContextObjects({
+				objectIds: normalizeIdList(current.contextIds.filter((x) => x !== id)),
+				source: `legacy-unpin:${normalizeSlot(slot)}`,
 			});
 		},
 
@@ -428,10 +337,7 @@ export function createWindowStore(initial) {
 			if (!id) return;
 
 			const s = normalizeSlot(slot);
-			const st = getState();
-			const pins = Array.isArray(st.view_pins) ? st.view_pins : [];
-			const key = `${id}::${s}`;
-			const has = pins.some((p) => `${p?.rpId ?? ""}::${p?.slot ?? ""}` === key);
+			const has = getWorkspaceSelection(getState()).contextIds.includes(id);
 
 			if (has) actions.unpinRouteProject({ rpId: id, slot: s });
 			else actions.pinRouteProject({ rpId: id, slot: s });
@@ -468,9 +374,6 @@ export function createWindowStore(initial) {
 					arts[aid] = a;
 				}
 
-				const pins0 = Array.isArray(st.view_pins) ? st.view_pins : [];
-				const pins = pins0.filter((p) => p?.rpId !== id);
-
 				const current = getWorkspaceSelection(st);
 				const contextIds = normalizeIdList(
 					current.contextIds
@@ -488,7 +391,6 @@ export function createWindowStore(initial) {
 					...st,
 					routeProjects: rps,
 					artifacts: arts,
-					view_pins: pins,
 					workspace_selection: {
 						primaryId,
 						contextIds,

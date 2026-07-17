@@ -4,12 +4,23 @@
 
 \label{chap:construction-and-realization}
 
+This chapter answers how target engineering state becomes physically
+built railway state under construction and maintenance constraints. It
+establishes the realization operator view used in Reality and clarifies
+the consequence for runtime reconstruction and realization-aware design.
+
+The opening question is therefore comparative: what changes when
+analytic target state is transformed into realized state?
+
 \begin{figure}[htbp]
 \centering
 \input{figures/reality/target_vs_realized_geometry}
 \caption{Target geometry and realized geometry connected by the realization operator.}
 \label{fig:target-vs-realized-geometry}
 \end{figure}
+
+The figure provides this comparison at a glance and motivates the
+operator formulation used in the formal sections below.
 
 This chapter owns physical realization in the Reality part. Physical
 realization transforms target engineering state into physically built
@@ -70,6 +81,10 @@ E_{\kappa}
 % ============================================================
 
 Construction and maintenance are iterative local processes.
+
+The following definitions and propositions formalize this practical
+workflow as an iterative realization process whose fixed-point view
+connects engineering practice to operator semantics.
 
 \begin{definition}[Adjustment operator]
 \label{def:adjustment-operator}
@@ -182,6 +197,10 @@ The realization layer is compatible with sparse and runtime evaluation:
 realized geometry can be interpreted as measured samples, reconstructed
 runtime state, or sparse-compatible approximation.
 
+This section therefore transitions from construction mechanics to
+engineering consequence: realized-state performance becomes the relevant
+design criterion for downstream optimization.
+
 \begin{principle}[Sparse realization compatibility]
 \label{princ:sparse-realization-compatibility}
 Realization-aware workflows must preserve compatibility with sparse and
@@ -219,4 +238,8 @@ Within AIM, physical realization is an explicit downstream layer that
 consumes constructive semantics and metric realization context and
 produces realized state for measurement, runtime reconstruction, and
 engineering interpretation.
+
+Accordingly, the next Reality chapter can treat target--realized
+comparison as an evidence-based assessment layer built on this
+realization operator foundation.
 \end{summary}

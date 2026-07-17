@@ -1,0 +1,12 @@
+% figures/overview/support_knowledge_decision_transformation.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=4.9cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (k) {Knowledge};
+  \node[box, below=of k] (d) {Decision};
+  \node[box, below=of d] (t) {Transformation};
+  \draw[arrow] (k) -- (d);
+  \draw[arrow] (d) -- (t);
+\end{tikzpicture}

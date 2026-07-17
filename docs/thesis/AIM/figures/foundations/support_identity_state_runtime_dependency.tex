@@ -1,0 +1,12 @@
+% figures/foundations/support_identity_state_runtime_dependency.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=4.0cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (id) {Identity};
+  \node[box, below=of id] (st) {State};
+  \node[box, below=of st] (rt) {Runtime};
+  \draw[arrow] (id) -- (st);
+  \draw[arrow] (st) -- (rt);
+\end{tikzpicture}

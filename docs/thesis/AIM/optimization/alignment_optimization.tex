@@ -1,5 +1,15 @@
 \chapter{Optimization of Alignments}
 
+This chapter bundle answers how alignment design and reconstruction are
+formulated as optimization problems within AIM. It establishes a
+continuous-to-discrete progression from problem context, to curvature-
+space functionals, to discrete formulations, to SQP-oriented solution
+architecture.
+
+The sequence is intentionally cumulative: each included section reuses
+the previous result and adds one layer of formal and engineering
+specificity.
+
 \input{optimization/alignment/00_context_and_problem}
 \input{optimization/alignment/10_continuous_curvature_optimization}
 \input{optimization/alignment/20_discrete_formulation}
@@ -7,3 +17,7 @@
 \input{optimization/alignment/40_initial_guesses}
 \input{optimization/alignment/50_sqp_analytic_structure}
 \input{optimization/alignment/60_parametric_and_hybrid}
+
+Together, these sections establish the optimization backbone used by
+the subsequent optimizer-architecture and realization-aware
+optimization chapters.

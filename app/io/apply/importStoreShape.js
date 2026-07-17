@@ -33,7 +33,5 @@ export function ensureImportStoreShape(state) {
 		import_meta: s.import_meta ?? null,
 		import_activeArtifacts: s.import_activeArtifacts ?? null,
 		import_tracks2d: Array.isArray(s.import_tracks2d) ? s.import_tracks2d : [],
-
-		view_pins: Array.isArray(s.view_pins) ? s.view_pins : [],
 	};
 }

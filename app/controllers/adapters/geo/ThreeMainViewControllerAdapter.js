@@ -96,7 +96,7 @@ export function makeThreeAdapter({ three, transform } = {}) {
 
 		for (const item of list) {
 			const id = String(item?.id ?? item?.key ?? "");
-			const ptsWorld = item?.points ?? item?.pointsXY ?? item?.pts;
+			const ptsWorld = item?.polyline2d;
 
 			if (!id || !Array.isArray(ptsWorld) || ptsWorld.length < 2) continue;
 

@@ -26,6 +26,9 @@ not merge geometry, realization, physical interpretation, and
 operational state into a single object. Instead, they make the
 underlying dependency structure explicit.
 
+This part establishes the state bridge from intrinsic geometry to
+runtime-evaluable railway interpretation.
+
 % ============================================================
 \section*{Relation to the AIM Roadmap}
 % ============================================================
@@ -36,38 +39,29 @@ curvature space to \(\mathrm{pose2}\) and further to \(\mathrm{pose3}\)
 forms the central bridge between intrinsic geometry and all later
 runtime, realization, and optimization concepts.
 
+The first figure addresses the orienting question: how does pose3 extend
+pose2 without replacing the intrinsic state anchor?
+
 \begin{figure}[ht]
 \centering
+\input{figures/state/icon_state_pose2_pose3}
 
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=4.5cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
-
-\node[box] (curv)
-{Curvature Space};
-
-\node[box, below=of curv] (pose2)
-{\(\mathrm{pose2}\)};
-
-\node[box, below=of pose2] (pose3)
-{\(\mathrm{pose3}\)};
-
-\draw[->, thick] (curv) -- (pose2);
-\draw[->, thick] (pose2) -- (pose3);
-
-\end{tikzpicture}
-
-\caption{State-related section of the AIM roadmap.}
-\label{fig:state-roadmap}
+\caption{State icon: pose2 as intrinsic anchor and pose3 as downstream state extension.}
+\label{fig:icon-state-pose2-pose3}
 
 \end{figure}
+
+\begin{figure}[ht]
+\centering
+\input{figures/state/support_pose2_vs_pose3}
+\caption{Supporting comparison: pose2 versus pose3 clarifies extension without replacement.}
+\label{fig:support-pose2-vs-pose3}
+
+\end{figure}
+
+The second figure reinforces the same question at comparison level so
+that the extension relation remains explicit before formal definitions
+are applied in later chapters.
 
 The state model developed here serves as the foundation for vehicle
 space, runtime evaluation, realization-aware modelling, and optimization
@@ -94,3 +88,7 @@ reconstructed, interpreted, and evaluated.
 The transition from geometry to state therefore marks the transition
 from intrinsic shape to operational meaning.
 \end{summary}
+
+With this state layer established, the next part can treat operational
+evolution as a downstream runtime interpretation rather than as a new
+geometric foundation.

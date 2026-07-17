@@ -1,0 +1,17 @@
+% figures/foundations/icon_foundations_dependency.tex
+\begin{tikzpicture}[
+  node distance=1.3cm,
+  box/.style={draw, rounded corners, minimum width=4.2cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+
+\node[box] (identity) {Identity};
+\node[box, below=of identity] (state) {State};
+\node[box, below=of state] (realization) {Realization};
+\node[box, below=of realization] (representation) {Representation};
+
+\draw[arrow] (identity) -- (state);
+\draw[arrow] (state) -- (realization);
+\draw[arrow] (realization) -- (representation);
+
+\end{tikzpicture}

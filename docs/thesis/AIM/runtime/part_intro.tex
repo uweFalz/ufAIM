@@ -4,6 +4,9 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Runtime}
 
+This part establishes how approved engineering semantics are evaluated
+operationally without transferring conceptual ownership.
+
 Foundations and State established the persistent engineering information
 and the canonical state layers. Runtime consumes these stabilized
 concepts and evaluates them in operational contexts. It does not
@@ -12,17 +15,23 @@ realization, or representation.
 
 The runtime part therefore follows the canonical progression
 \[
-\text{persistent engineering information}
+\begin{aligned}
+&\text{persistent engineering information}
 \rightarrow
 \text{runtime evaluation}
-\rightarrow
+\\
+&\rightarrow
 \text{runtime services}
-\rightarrow
+\\
+&\rightarrow
 \text{derived engineering state}
-\rightarrow
+\\
+&\rightarrow
 \text{representation}
-\rightarrow
-\text{application-specific interpretation}.
+\\
+&\rightarrow
+\substack{\text{application-specific}\\\text{interpretation}}.
+\end{aligned}
 \]
 
 In this progression, runtime services are operator-based evaluation
@@ -37,32 +46,20 @@ objects.
 Within the AIM roadmap, the present part corresponds to the transition
 from state-space models to operational evaluation and interpretation.
 
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=5.2cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/icon_runtime_operator_chain}
+\caption{Runtime icon: operator-mediated derivation from engineering information to runtime state.}
+\label{fig:icon-runtime-operator-chain}
+\end{figure}
 
-\node[box] (persistent)
-{Persistent Engineering Information};
+\noindent
+The runtime chapters now specialize this operator chain for concrete
+services and projections.
 
-\node[box, below=of persistent] (evaluation)
-{Runtime Evaluation and Services};
-
-\node[box, below=of evaluation] (derived)
-{Derived Runtime Engineering State};
-
-\draw[->, thick] (persistent) -- (evaluation);
-\draw[->, thick] (evaluation) -- (derived);
-
-\end{tikzpicture}
-\end{center}
+The guiding question for this figure is: which operator chain must be
+kept explicit so runtime remains reproducible, interpretable, and
+architecturally consistent?
 
 % ============================================================
 \begin{principle}[Runtime Layer Principle]
@@ -81,3 +78,6 @@ state, and enables downstream representation and
 application-specific interpretation without redefining upstream
 semantics.
 \end{summary}
+
+This runtime architecture prepares the Reality part, where evaluated
+state is related to physical realization, measurement, and comparison.

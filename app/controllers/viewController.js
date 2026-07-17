@@ -4,7 +4,10 @@ import { t } from "@app/i18n/strings.js";
 import { formatNum } from "@utils/helpers.js";
 
 import { getSpotObjectById } from "@projection/queries/getSpotObjectById.js";
-import { projectFocusedSpotObject } from "@projection/ViewProjectionController.js";
+import {
+	projectAlignmentGeometry,
+	projectFocusedSpotObject,
+} from "@projection/ViewProjectionController.js";
 
 import {
 	samplePointAndTangent,
@@ -30,34 +33,6 @@ import {
 	getWorkspacePrimaryId as readWorkspacePrimaryId,
 	getWorkspaceContextIds as readWorkspaceContextIds,
 } from "@src/shared/runtime/workspaceSelectionAccess.js";
-
-function makePreviewSpotLikeObject(previewItem) {
-	const kernel = previewItem?.kernel ?? null;
-	if (!kernel) return null;
-
-	return {
-		id: `preview_${previewItem.id ?? "alignment"}`,
-		type: previewItem.kind ?? "alignment",
-		crsId: previewItem?.crsId ?? null,
-
-		data: {
-			name: previewItem?.name ?? previewItem?.id ?? "preview",
-			kernel,
-			source: {
-				file: previewItem?.source?.fileName ?? null,
-				format: previewItem?.source?.parserId ?? null,
-			},
-		},
-
-		refs: {},
-
-		meta: {
-			objectId: previewItem?.id ?? null,
-			importItemId: previewItem?.id ?? null,
-			alignmentName: previewItem?.name ?? previewItem?.id ?? "preview",
-		},
-	};
-}
 
 export function makeViewController({
 	store,
@@ -197,20 +172,19 @@ export function makeViewController({
 
 	function getPreviewGeometryFromState(state) {
 		const previewItem = state?.preview_item ?? null;
-		if (!previewItem?.kernel) return null;
-
-		const previewObject = makePreviewSpotLikeObject(previewItem);
-		if (!previewObject) return null;
-
-		const geom = projectFocusedSpotObject(previewObject, {
+		const geom = projectAlignmentGeometry({
+			objectId: previewItem?.id ?? null,
+			geometry: previewItem?.kernel ?? null,
+			source: "preview-item",
+			crsId: previewItem?.crsId ?? null,
 			maxStep: cfg.sampleStep,
 		});
 
 		if (!geom?.polyline2d || geom.polyline2d.length < 2) return null;
 
 		return {
-			objectId: String(previewObject.id ?? "preview"),
-			spotObject: previewObject,
+			objectId: String(previewItem?.id ?? "preview"),
+			spotObject: null,
 			polyline2d: geom.polyline2d,
 			bbox: geom.bbox ?? null,
 			bboxCenter: geom.bboxCenter ?? null,
@@ -242,7 +216,9 @@ export function makeViewController({
 			out.push({
 				id: String(objectId),
 				objectId: String(objectId),
-				points: geom.polyline2d,
+				polyline2d: geom.polyline2d,
+				bbox: geom.bbox ?? null,
+				crsId: spotObject?.crsId ?? null,
 				source: "workspace-context",
 			});
 		}
@@ -320,7 +296,7 @@ export function makeViewController({
 		}
 
 		threeA.setAuxTracksFromWorldPolylines?.(
-			merged.map((t) => ({ id: t.id, points: t.points }))
+			merged.map((t) => ({ id: t.id, polyline2d: t.polyline2d }))
 		);
 	}
 
@@ -339,6 +315,7 @@ export function makeViewController({
 		cfg,
 		ensureChainageCache,
 		setAuxTracks: setAuxOwnedTracks,
+		getActivePolyline: () => cachedActiveGeometry?.polyline2d ?? null,
 		buildChunkMetrics,
 	});
 
@@ -365,7 +342,7 @@ export function makeViewController({
 		let bbox = null;
 
 		for (const track of tracks) {
-			const trackBbox = pickBboxFromArtifactOrPolyline(null, track?.points ?? null);
+			const trackBbox = pickBboxFromArtifactOrPolyline(null, track?.polyline2d ?? null);
 			bbox = unionBbox(bbox, trackBbox);
 		}
 

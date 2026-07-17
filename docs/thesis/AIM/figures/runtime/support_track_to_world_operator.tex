@@ -1,0 +1,13 @@
+% figures/runtime/support_track_to_world_operator.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=3.4cm, minimum height=0.8cm, align=center},
+  op/.style={draw, rounded corners, minimum width=3.9cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (track) {track};
+  \node[op, below=of track] (opt) {track-to-world operator};
+  \node[box, below=of opt] (world) {world};
+  \draw[arrow] (track) -- (opt);
+  \draw[arrow] (opt) -- (world);
+\end{tikzpicture}

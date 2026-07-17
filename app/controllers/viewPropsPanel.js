@@ -13,10 +13,12 @@
 import { t } from "@app/i18n/strings.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
 import { formatNum } from "@utils/helpers.js";
-import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import {
+	getWorkspaceContextIds,
+	getWorkspacePrimaryId,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
-import { parseIdSlotKey, normalizePins } from "@app/controllers/viewGeometry.js";
-import { mirrorQuickHooksFromActive } from "@io/apply/importApply.js";
+import { parseIdSlotKey } from "@app/controllers/viewGeometry.js";
 
 // console.log("[viewPropsPanel] loaded");
 
@@ -37,21 +39,18 @@ export function createViewPropsPanel({
 	}
 
 	function renderPinsHtml(state) {
-		const pins = normalizePins(state.view_pins);
+		const pins = getWorkspaceContextIds(state);
 
 		if (!pins.length) {
 			return `<div class="propsPins__empty">${escapeHtml(t("props_no_pins"))}</div>`;
 		}
 
-		return pins.map((pin) => {
-			const key = `${pin.rpId}::${pin.slot}`;
-			const safeRp = escapeHtml(pin.rpId ?? "");
-			const safeSlot = escapeHtml(pin.slot ?? "right");
+		return pins.map((objectId) => {
+			const key = `${objectId}::right`;
+			const safeRp = escapeHtml(objectId ?? "");
 			const safeKey = escapeHtml(key);
 
-			const isActive =
-				(pin.rpId === getWorkspacePrimaryId(state)) &&
-				(pin.slot === (state.activeSlot ?? "right"));
+			const isActive = objectId === getWorkspacePrimaryId(state);
 
 			const activeBadge = isActive
 				? `<span class="propsPins__badge">${escapeHtml(t("props_active"))}</span>`
@@ -67,7 +66,6 @@ export function createViewPropsPanel({
 
 	<div class="propsPins__label">
 		<span class="propsPins__rp">${safeRp}</span>
-		<span class="propsPins__slot">${safeSlot}</span>
 		${activeBadge}
 	</div>
 
@@ -350,21 +348,24 @@ ${renderJsonHtml(state)}
 		const slot = parsed.slot;
 
 		if (unpinBtn) {
-			if (store.actions?.unpinRouteProject) {
+			if (store.actions?.toggleWorkspaceContextObject) {
+				store.actions.toggleWorkspaceContextObject({
+					objectId: rpId,
+					source: `props-unpin:${slot}`,
+				});
+			} else if (store.actions?.unpinRouteProject) {
 				store.actions.unpinRouteProject({ rpId, slot });
-			} else if (store.actions?.setPins) {
-				const pins = Array.isArray(state.view_pins) ? state.view_pins : [];
-				const next = pins.filter((p) => !(p?.rpId === rpId && (p?.slot ?? "right") === slot));
-				store.actions.setPins(next);
 			} else {
 				ui?.logInfo?.(t("pin_unpin_missing_action"));
 			}
 			return true;
 		}
 
-		store.actions?.setActiveRouteProject?.(rpId);
-		store.actions?.setActiveSlot?.(slot);
-		mirrorQuickHooksFromActive(store);
+		store.actions?.setWorkspacePrimary?.({
+			objectId: rpId,
+			source: `props-jump:${slot}`,
+		});
+		store.actions?.setCursorS?.(0);
 		return true;
 	}
 

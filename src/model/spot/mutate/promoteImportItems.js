@@ -112,7 +112,6 @@ function buildSpotAlignmentEntry(item, opts = {}) {
 		name: payload.name ?? payload.id ?? item.id ?? null,
 		kernel: normalizeAlignmentKernel(sparseAlignment),
 		alignmentData: null,
-		sparseAlignment,
 		extended: clonePlainObject(payload.extended),
 		refs: {
 			profileRelationIds: [],

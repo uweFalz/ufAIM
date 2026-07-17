@@ -4,6 +4,9 @@
 
 \label{chap:runtime-operators}
 
+\index{Runtime operators}
+\index{Operator!runtime}
+
 Runtime operators define how established engineering objects are
 interpreted during execution. They consume upstream concepts from
 Foundations and State and map between interpretation layers. They do not
@@ -53,6 +56,7 @@ approximate, or partially evaluate operators.
 
 \begin{definition}[Realization operator]
 \label{def:runtime-realization-operator}
+\index{Realization!operator}
 The realization operator maps target states to realized states:
 \[
 \mathcal R :
@@ -80,6 +84,7 @@ not a post-hoc correction step.
 
 \begin{definition}[Dynamics operator]
 \label{def:runtime-dynamics-operator-operator-chapter}
+\index{Dynamics operator}
 The dynamics operator maps railway runtime states to operational dynamic
 state trajectories:
 \[
@@ -110,6 +115,7 @@ x_{\mathrm{op,real}}
 
 \begin{definition}[Vehicle interpretation operator]
 \label{def:runtime-vehicle-operator}
+\index{Vehicle state!interpretation operator}
 The vehicle interpretation operator maps railway runtime states and
 operational context to vehicle-relative states:
 \[
@@ -136,6 +142,7 @@ range from lightweight abstraction to high-fidelity vehicle modelling.
 
 \begin{definition}[Operational operator]
 \label{def:runtime-operational-operator}
+\index{Operational state!evaluation operator}
 The operational operator maps runtime dynamic states to operational
 evaluation states:
 \[
@@ -152,6 +159,8 @@ state objects it consumes.
 
 % ============================================================
 \section{Operator Composition}
+
+\index{Operator composition}
 % ============================================================
 
 The operator view is compositional. For example,

@@ -5,7 +5,7 @@
 \addcontentsline{toc}{chapter}{Mathematical Foundations}
 
 The preceding parts established the engineering motivation for
-Alignment Information Modelling (AIM), formulated the underlying
+Alignment-Based Information Modelling (AIM), formulated the underlying
 engineering problem, introduced the alignment-centred modelling
 paradigm, and clarified the conceptual structure of the theory.
 
@@ -14,6 +14,9 @@ have therefore been established.
 
 The purpose of the present part is to develop the mathematical language
 through which these concepts can be described rigorously.
+
+This part establishes the formal reference system used by all subsequent
+engineering chapters.
 
 Mathematics does not define the engineering concepts themselves.
 Instead, it provides the formal structures required to describe,
@@ -32,3 +35,22 @@ engineering applications, and the reference implementation.
 Within the AIM roadmap (Figure~\ref{fig:aim-roadmap}), this part marks
 the transition from conceptual engineering knowledge to its mathematical
 formalization.
+
+The orienting question for the icon below is: which dependency spine
+keeps the formal development coherent from identity to runtime-ready
+state interpretation?
+
+\begin{figure}[ht]
+\centering
+\input{figures/foundations/icon_foundations_dependency}
+\caption{Foundations icon: dependency from identity to state, realization, and representation.}
+\label{fig:icon-foundations-dependency}
+\end{figure}
+
+\noindent
+This icon provides the dependency spine used by the following
+foundations chapters.
+
+The resulting formal language prepares the next part, where these
+mathematical structures are interpreted as canonical engineering
+concepts.

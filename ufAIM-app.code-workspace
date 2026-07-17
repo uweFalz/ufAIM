@@ -1,16 +1,19 @@
 {
 	"folders": [
 		{
-			"name": "knowledgeKernel",
-			"path": "docs/knowledgeKernel"
-		},
-		{
 			"name": "app",
 			"path": "app"
 		},
 		{
 			"name": "src",
 			"path": "src"
+		},
+		{
+			"name": "knowledgeKernel",
+			"path": "docs/knowledgeKernel"
+		},
+		{
+			"path": "_legacy"
 		}
 	]
 }

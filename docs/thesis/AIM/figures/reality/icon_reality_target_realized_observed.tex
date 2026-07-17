@@ -1,0 +1,18 @@
+% figures/reality/icon_reality_target_realized_observed.tex
+\begin{tikzpicture}[
+  node distance=1.3cm,
+  box/.style={draw, rounded corners, minimum width=3.9cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+
+\node[box] (target) {Target};
+\node[box, below=of target] (realized) {Realized};
+\node[box, below=of realized] (observed) {Observed};
+
+\draw[arrow] (target) -- (realized);
+\draw[arrow] (realized) -- (observed);
+
+\draw[thin] ($(realized.center)+(0,0)$) ellipse (2.3cm and 0.62cm);
+\draw[dashed, thin] ($(observed.center)+(0,0)$) ellipse (2.6cm and 0.72cm);
+
+\end{tikzpicture}

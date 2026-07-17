@@ -27,6 +27,7 @@ import {
 import {
 	buildImportRows,
 	buildSpotRows,
+	deriveSpotEditorSnapshot,
 	findImportItemById,
 	findSpotObjectById,
 	makePreviewCandidate,
@@ -345,11 +346,7 @@ export class CockpitController {
 			const obj = findSpotObjectById(spotState, activeObjectId);
 
 			if (obj && spotRow) {
-				const alignmentData = obj?.data?.alignmentData ?? null;
-
-				const elements = Array.isArray(alignmentData?.editModel?.elements)
-					? alignmentData.editModel.elements
-					: [];
+				const editor = deriveSpotEditorSnapshot(obj);
 
 				return {
 					mode: "spot",
@@ -361,14 +358,7 @@ export class CockpitController {
 					slot: windowState?.activeSlot ?? "right",
 					pinned: Boolean(spotRow.pinned),
 					source: spotRow.source ?? null,
-					editor: alignmentData
-						? {
-							isNativeAlignment: true,
-							alignmentDataId: alignmentData.id ?? null,
-							elementCount: elements.length,
-							elements,
-						}
-						: null,
+					editor,
 				};
 			}
 		}

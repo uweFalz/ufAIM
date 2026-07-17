@@ -4,6 +4,9 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Optimization}
 
+This part establishes how AIM turns railway evaluation into structured
+engineering improvement.
+
 % ============================================================
 \section*{What do we already know?}
 % ============================================================
@@ -80,32 +83,15 @@ Within the AIM roadmap, the present part corresponds to the transition
 from runtime evaluation and realization toward systematic improvement
 of railway systems.
 
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=5.0cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
+The figure below answers the orienting question for this part: which
+evaluation loop makes improvement reproducible instead of ad hoc?
 
-\node[box] (runtime)
-{Runtime and Realization};
-
-\node[box, below=of runtime] (optimization)
-{Optimization};
-
-\node[box, below=of optimization] (design)
-{Improved Design};
-
-\draw[->, thick] (runtime) -- (optimization);
-\draw[->, thick] (optimization) -- (design);
-
-\end{tikzpicture}
-\end{center}
+\begin{figure}[ht]
+\centering
+\input{figures/optimization/icon_optimization_evaluation_loop}
+\caption{Optimization icon: iterative evaluation loop from parameters to updated parameters.}
+\label{fig:icon-optimization-evaluation-loop}
+\end{figure}
 
 The progression
 \[
@@ -145,3 +131,7 @@ The present part therefore transforms AIM from a descriptive framework
 into a framework capable of supporting railway design, reconstruction,
 and decision making.
 \end{summary}
+
+This optimization perspective prepares the Engineering part, where
+improvement is filtered through admissibility, standards, and practical
+railway rules.

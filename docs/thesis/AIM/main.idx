@@ -1,0 +1,131 @@
+\indexentry{Conceptual structure|hyperpage}{23}
+\indexentry{Engineering object|hyperpage}{23}
+\indexentry{Identity!engineering object|hyperpage}{23}
+\indexentry{State!engineering concept|hyperpage}{23}
+\indexentry{Representation|hyperpage}{24}
+\indexentry{Authority!engineering|hyperpage}{24}
+\indexentry{Realization|hyperpage}{24}
+\indexentry{Realization|hyperxindexformat{\seealso{Transformation}}}{24}
+\indexentry{Realization!metric|hyperpage}{24}
+\indexentry{Realization!physical|hyperpage}{24}
+\indexentry{Observation|hyperpage}{24}
+\indexentry{Engineering knowledge|hyperpage}{25}
+\indexentry{Knowledge Kernel|hyperpage}{25}
+\indexentry{Canonical interpretation|hyperpage}{26}
+\indexentry{Axiom|hyperpage}{31}
+\indexentry{Geometry!intrinsic planar|hyperpage}{31}
+\indexentry{Arc-length parameterization|hyperpage}{31}
+\indexentry{Heading evolution|hyperpage}{31}
+\indexentry{Curvature!as derivative of heading|hyperpage}{31}
+\indexentry{Tangent reconstruction|hyperpage}{31}
+\indexentry{Reconstruction!tangent|hyperpage}{31}
+\indexentry{Reconstruction!curvature-driven|hyperpage}{31}
+\indexentry{Kernel!intrinsic planar reconstruction|hyperpage}{32}
+\indexentry{State!model|hyperpage}{44}
+\indexentry{Engineering state|hyperpage}{44}
+\indexentry{State!engineering|hyperpage}{44}
+\indexentry{State!pose2|hyperpage}{44}
+\indexentry{State!pose3|hyperpage}{45}
+\indexentry{Control quantities!foundational|hyperpage}{45}
+\indexentry{Curvature!as control quantity|hyperpage}{45}
+\indexentry{State!intrinsic description|hyperpage}{45}
+\indexentry{State!realized description|hyperpage}{46}
+\indexentry{Observation!state observation|hyperpage}{46}
+\indexentry{Representation!state representation|hyperpage}{46}
+\indexentry{State trajectory|hyperpage}{46}
+\indexentry{Projection!world-track coordinate transformation|hyperpage}{139}
+\indexentry{Reference system!track space|hyperpage}{139}
+\indexentry{Intrinsic-space primacy principle|hyperpage}{139}
+\indexentry{Track space|hyperpage}{140}
+\indexentry{Coordinate system!track|hyperpage}{140}
+\indexentry{Arc-length!vs stationing|hyperpage}{140}
+\indexentry{Projection!track-to-world|hyperpage}{140}
+\indexentry{Projection!world-to-track|hyperpage}{142}
+\indexentry{Projection!distinction from coordinate transformation|hyperpage}{142}
+\indexentry{Projection distinction principle|hyperpage}{142}
+\indexentry{Projection!ambiguity|hyperpage}{142}
+\indexentry{Projection ambiguity principle|hyperpage}{142}
+\indexentry{State!taxonomy|hyperpage}{153}
+\indexentry{State!general definition|hyperpage}{153}
+\indexentry{State!pose2|hyperpage}{153}
+\indexentry{State!pose3|hyperpage}{153}
+\indexentry{State!runtime|hyperpage}{154}
+\indexentry{State!realized|hyperpage}{154}
+\indexentry{State!operational|hyperpage}{154}
+\indexentry{State!vehicle|hyperpage}{154}
+\indexentry{State!center-of-gravity|hyperpage}{154}
+\indexentry{State!dynamic|hyperpage}{154}
+\indexentry{State!optimization|hyperpage}{155}
+\indexentry{State!relative|hyperpage}{155}
+\indexentry{State!hierarchy|hyperpage}{155}
+\indexentry{Runtime operators|hyperpage}{157}
+\indexentry{Operator!runtime|hyperpage}{157}
+\indexentry{Realization!operator|hyperpage}{157}
+\indexentry{Dynamics operator|hyperpage}{158}
+\indexentry{Vehicle state!interpretation operator|hyperpage}{158}
+\indexentry{Operational state!evaluation operator|hyperpage}{158}
+\indexentry{Operator composition|hyperpage}{158}
+\indexentry{Runtime services|hyperpage}{202}
+\indexentry{Architecture!runtime|hyperpage}{202}
+\indexentry{Runtime service!definition|hyperpage}{202}
+\indexentry{Runtime evaluation|hyperpage}{202}
+\indexentry{Runtime reconstruction principle|hyperpage}{203}
+\indexentry{State!pose3!runtime evaluation|hyperpage}{203}
+\indexentry{Projection!track-to-world runtime service|hyperpage}{204}
+\indexentry{Projection!world-to-track runtime service|hyperpage}{204}
+\indexentry{Reference frame!runtime service|hyperpage}{205}
+\indexentry{Acceleration!effective lateral|hyperpage}{205}
+\indexentry{Jerk!runtime|hyperpage}{205}
+\indexentry{Level of detail (LOD)!runtime evaluation|hyperpage}{205}
+\indexentry{Runtime cache|hyperpage}{205}
+\indexentry{Pipeline!runtime operator|hyperpage}{206}
+\indexentry{Pipeline!realization-aware runtime|hyperpage}{206}
+\indexentry{Figures!runtime architecture|hyperpage}{208}
+\indexentry{Observation!data source context|hyperpage}{213}
+\indexentry{Data source|hyperpage}{213}
+\indexentry{Data source!definition|hyperpage}{213}
+\indexentry{Observation principle|hyperpage}{213}
+\indexentry{Uncertainty!measurement|hyperpage}{213}
+\indexentry{Interpretation!observation data|hyperpage}{213}
+\indexentry{Reconstruction!from observation data|hyperpage}{214}
+\indexentry{Provenance!observation reconstruction|hyperpage}{214}
+\indexentry{Coordinate system|hyperpage}{215}
+\indexentry{Reference system!world embedding|hyperpage}{215}
+\indexentry{Coordinate reference system (CRS)|hyperpage}{215}
+\indexentry{CRS context principle|hyperpage}{215}
+\indexentry{Transformation!coordinate|hyperpage}{216}
+\indexentry{Reference frame!local|hyperpage}{216}
+\indexentry{Stationing|hyperxindexformat{\see{Reference system, stationing}}}{216}
+\indexentry{Realization!metric!coordinate handling|hyperpage}{216}
+\indexentry{Reference system!stationing|hyperpage}{217}
+\indexentry{Reference system!kilometre line|hyperpage}{217}
+\indexentry{Reference system!stationing layer|hyperpage}{217}
+\indexentry{Reference system!outer stationing|hyperpage}{217}
+\indexentry{Topology!operational continuity|hyperpage}{218}
+\indexentry{Observation!measurement data|hyperpage}{219}
+\indexentry{Data quality!imperfect data|hyperpage}{219}
+\indexentry{Observed data|hyperpage}{219}
+\indexentry{Observation context principle|hyperpage}{219}
+\indexentry{Error!systematic|hyperpage}{219}
+\indexentry{Uncertainty!measurement|hyperpage}{219}
+\indexentry{Curvature!discrete estimate|hyperpage}{219}
+\indexentry{Provenance!tracking|hyperpage}{220}
+\indexentry{Topology|hyperpage}{221}
+\indexentry{Special elements!railway network|hyperpage}{221}
+\indexentry{Topology!railway network context|hyperpage}{221}
+\indexentry{Topology!connection point|hyperpage}{221}
+\indexentry{Topology!graph representation|hyperpage}{221}
+\indexentry{Optimization!realization-aware|hyperpage}{316}
+\indexentry{Realization!operator!in optimization|hyperpage}{316}
+\indexentry{Optimization!on realized states|hyperpage}{317}
+\indexentry{State!pose3!optimization|hyperpage}{317}
+\indexentry{Acceleration!effective lateral!optimization objective|hyperpage}{317}
+\indexentry{Jerk!optimization objective|hyperpage}{317}
+\indexentry{Constraint!realization|hyperpage}{318}
+\indexentry{Realization!inverse formulation|hyperpage}{318}
+\indexentry{Frequency interpretation!realization operator as low-pass filter|hyperpage}{318}
+\indexentry{Optimization!sparse|hyperpage}{319}
+\indexentry{Optimization!hybrid|hyperpage}{319}
+\indexentry{Optimization!runtime|hyperpage}{319}
+\indexentry{Vehicle space!optimization interpretation|hyperpage}{319}
+\indexentry{Reference system!ellipsoid-aware optimization|hyperpage}{320}

@@ -1,10 +1,7 @@
 // app/controllers/importController.js
 
 import { installFileDrop } from "@io/input/fileDrop.js";
-import {
-	makeAlignmentProjectionInput,
-	projectAlignmentPreview,
-} from "@src/domain/projection/AlignmentProjectionService.js";
+import { buildVisibleTracksFromImportItems } from "@app/io/import/importVisibleTracksAdapter.js";
 
 import {
 	importOneFile,
@@ -161,55 +158,11 @@ export function makeImportController({
 		}
 	}
 
-	function makeVisibleTracksFromItems(items = [], fileName = "") {
-		const tracks = [];
-
-		for (const item of items) {
-			if (item?.kind !== "alignment") continue;
-
-			const input = makeAlignmentProjectionInput({
-				objectId: item?.id ?? null,
-				geometry: item?.derived?.sparseAlignment ?? null,
-				source: "import-item",
-				crsId: deriveItemCrsId(item),
-			});
-			if (!input) continue;
-
-			const projected = projectAlignmentPreview({
-				input,
-				maxStep: sampleStep,
-			});
-
-			const points = projected?.polyline2d;
-			if (!Array.isArray(points) || points.length < 2) continue;
-
-			tracks.push({
-				id: makeTrackId(fileName, item.id, tracks.length),
-				importItemId: item.id ?? null,
-				objectId: item.id ?? null,
-				label: item?.payload?.name ?? item?.payload?.id ?? item.id ?? "import",
-				points,
-				source: "import-drop",
-				crsId: deriveItemCrsId(item),
-			});
-		}
-
-		return tracks;
-	}
-
 	function commitVisibleTracks(tracks = []) {
 		if (!tracks.length) return false;
 
 		if (store.actions?.setWorkspaceVisibleTracks) {
 			store.actions.setWorkspaceVisibleTracks({
-				items: tracks,
-				source: { type: "import-drop" },
-			});
-			return true;
-		}
-
-		if (store.actions?.setImportPreviewCollection) {
-			store.actions.setImportPreviewCollection({
 				items: tracks,
 				source: { type: "import-drop" },
 			});
@@ -222,7 +175,6 @@ export function makeImportController({
 
 	function clearVisibleTracks() {
 		store.actions?.clearWorkspaceVisibleTracks?.();
-		store.actions?.clearImportPreviewCollection?.();
 	}
 
 	function commitPreviewCandidate(firstPreviewCandidate) {
@@ -287,7 +239,11 @@ export function makeImportController({
 				logGndRelationAnalysis(file.name, items, relationCandidates);
 				logGndCrsAnalysis(file.name, items, relationCandidates);
 
-				const newTracks = makeVisibleTracksFromItems(items, file.name);
+				const newTracks = buildVisibleTracksFromImportItems({
+					items,
+					fileName: file.name,
+					sampleStep,
+				});
 				if (newTracks.length) {
 					visibleTracks.push(...newTracks);
 					commitVisibleTracks(visibleTracks);
@@ -342,31 +298,4 @@ export function makeImportController({
 		importFiles,
 		installDrop,
 	};
-}
-
-function deriveItemCrsId(item) {
-	const sr = item?.derived?.spatialRef ?? null;
-
-	return (
-		sr?.crsId ??
-		sr?.horizontalCrsId ??
-		sr?.horizontal ??
-		sr?.horizontalCoordinateSystemName ??
-		null
-	);
-}
-
-function makeTrackId(fileName, itemId, index) {
-	const f = safeIdStem(fileName || "drop");
-	const i = safeIdStem(itemId || `item_${index}`);
-	return `import_${f}_${i}_${index}`;
-}
-
-function safeIdStem(value) {
-	return String(value ?? "x")
-		.trim()
-		.replace(/\.[^.]+$/g, "")
-		.replace(/[^a-zA-Z0-9_\-]+/g, "_")
-		.replace(/^_+|_+$/g, "")
-		|| "x";
 }

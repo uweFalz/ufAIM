@@ -11,7 +11,10 @@
 // - no store mutation
 
 import { normalizeCrsId } from "@src/domain/crs/CrsAgent.js";
-import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import {
+	getWorkspaceContextIds,
+	getWorkspacePrimaryId,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // -----------------------------------------------------------------------------
 // import rows: secondary / inbox-like
@@ -331,10 +334,26 @@ export function deriveSpotQualityFlags(obj) {
 // -----------------------------------------------------------------------------
 
 export function isPinned(windowState, objectId) {
-	const pins = Array.isArray(windowState?.view_pins) ? windowState.view_pins : [];
+	const pins = getWorkspaceContextIds(windowState);
 	const want = String(objectId ?? "");
 
-	return pins.some((p) => String(p?.rpId ?? "") === want);
+	return pins.includes(want);
+}
+
+export function deriveSpotEditorSnapshot(obj) {
+	const alignmentData = obj?.data?.alignmentData ?? null;
+	const elements = Array.isArray(alignmentData?.editModel?.elements)
+		? alignmentData.editModel.elements
+		: [];
+
+	if (!alignmentData) return null;
+
+	return {
+		isNativeAlignment: true,
+		alignmentDataId: alignmentData.id ?? null,
+		elementCount: elements.length,
+		elements,
+	};
 }
 
 // -----------------------------------------------------------------------------

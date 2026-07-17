@@ -13,10 +13,12 @@ import {
 	isPolylineValid,
 	clipPolylineByChainage,
 	computeBboxUnionFromTracks,
-	normalizePins,
 	computeAuxAlphaByAge,
 } from "@app/controllers/viewGeometry.js";
-import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import {
+	getWorkspaceContextIds,
+	getWorkspacePrimaryId,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // ------------------------------------------------------------
 // local pure helpers
@@ -70,12 +72,10 @@ function findTrackById(state, id) {
 
 	const want = String(id ?? "");
 	if (!want) return null;
+	const fromVisibleTracks = findTrackInTrackList(state.workspace_visible_tracks, want);
+	if (fromVisibleTracks) return fromVisibleTracks;
 	const fromArtifact = findTrackInArtifacts(state, want);
 	if (fromArtifact) return fromArtifact;
-	const fromImportTracks = findTrackInTrackList(state.import_tracks2d, want);
-	if (fromImportTracks) return fromImportTracks;
-	const fromPreviewCollection = findTrackInTrackList(state.import_preview_collection, want);
-	if (fromPreviewCollection) return fromPreviewCollection;
 	const fromPreviewItem = findTrackInPreviewItem(state.preview_item, want);
 	if (fromPreviewItem) return fromPreviewItem;
 	return null;
@@ -86,9 +86,16 @@ function findTrackInArtifacts(state, id) {
 
 	const art = state.artifacts?.[id];
 	if (!art || art.domain !== "alignment2d") return null;
-	const pts = art.payload?.polyline2d;
-	if (!Array.isArray(pts) || pts.length < 2) return null;
-	return { id, points: pts };
+	const polyline2d = art.payload?.polyline2d;
+	if (!Array.isArray(polyline2d) || polyline2d.length < 2) return null;
+	return {
+		id,
+		objectId: id,
+		polyline2d,
+		bbox: art?.payload?.bbox ?? null,
+		source: "artifact",
+		crsId: art?.payload?.crsId ?? null,
+	};
 
 }
 
@@ -98,9 +105,16 @@ function findTrackInTrackList(list, id) {
 	for (const t of arr) {
 		const tid = String(t?.id ?? t?.objectId ?? t?.rpId ?? "");
 		if (tid !== id) continue;
-		const pts = t?.points ?? t?.polyline2d ?? t?.payload?.polyline2d;
-		if (!Array.isArray(pts) || pts.length < 2) continue;
-		return { id, points: pts };
+		const polyline2d = t?.polyline2d;
+		if (!Array.isArray(polyline2d) || polyline2d.length < 2) continue;
+		return {
+			id,
+			objectId: t?.objectId ?? id,
+			polyline2d,
+			bbox: t?.bbox ?? null,
+			source: t?.source ?? "track",
+			crsId: t?.crsId ?? null,
+		};
 	}
 	return null;
 
@@ -111,16 +125,33 @@ function findTrackInPreviewItem(item, id) {
 	if (!item) return null;
 	const itemId = String(item?.id ?? item?.objectId ?? "");
 	if (itemId !== id) return null;
-	const pts =
-	item?.polyline2d ??
-	item?.payload?.polyline2d;
-	if (!Array.isArray(pts) || pts.length < 2) return null;
-	return { id, points: pts };
+	const polyline2d = item?.polyline2d;
+	if (!Array.isArray(polyline2d) || polyline2d.length < 2) return null;
+	return {
+		id,
+		objectId: item?.objectId ?? id,
+		polyline2d,
+		bbox: item?.bbox ?? null,
+		source: item?.source ?? "preview",
+		crsId: item?.crsId ?? null,
+	};
 
 }
 
 function collectAuxAll(state, activeId) {
-	const out = [];
+	const out = Array.isArray(state.workspace_visible_tracks)
+		? state.workspace_visible_tracks
+			.filter((t) => String(t?.id ?? t?.objectId ?? "") !== String(activeId ?? ""))
+			.filter((t) => Array.isArray(t?.polyline2d) && t.polyline2d.length >= 2)
+			.map((t) => ({
+				id: String(t?.id ?? t?.objectId ?? ""),
+				objectId: t?.objectId != null ? String(t.objectId) : String(t?.id ?? ""),
+				polyline2d: t.polyline2d,
+				bbox: t?.bbox ?? null,
+				source: t?.source ?? "workspace",
+				crsId: t?.crsId ?? null,
+			}))
+		: [];
 
 	for (const [id, art] of Object.entries(state.artifacts ?? {})) {
 		if (!art || id === activeId) continue;
@@ -129,7 +160,14 @@ function collectAuxAll(state, activeId) {
 		const pts = art.payload?.polyline2d;
 		if (!Array.isArray(pts) || pts.length < 2) continue;
 
-		out.push({ id, points: pts });
+		out.push({
+			id,
+			objectId: id,
+			polyline2d: pts,
+			bbox: art?.payload?.bbox ?? null,
+			source: "artifact",
+			crsId: art?.payload?.crsId ?? null,
+		});
 	}
 
 	return out;
@@ -137,18 +175,7 @@ function collectAuxAll(state, activeId) {
 
 function collectAuxPinned(state, activeId) {
 	const out = [];
-	const pins = normalizePins(state.view_pins);
-	const ids = new Set();
-
-	for (const p of pins) {
-		const rpId = p?.rpId;
-		if (rpId) ids.add(String(rpId));
-
-		const slotName = p?.slot;
-		const rp = rpId ? state.routeProjects?.[rpId] : null;
-		const aId = slotName ? rp?.slots?.[slotName]?.alignmentArtifactId : null;
-		if (aId) ids.add(String(aId));
-	}
+	const ids = new Set(getWorkspaceContextIds(state));
 
 	for (const id of ids) {
 		pushAlignmentTrack(out, state, id, activeId);
@@ -188,6 +215,7 @@ export function createViewAuxTracks({
 	cfg,
 	ensureChainageCache,
 	setAuxTracks,
+	getActivePolyline,
 	buildChunkMetrics,
 } = {}) {
 	if (!store?.getState) throw new Error("createViewAuxTracks: missing store");
@@ -196,6 +224,9 @@ export function createViewAuxTracks({
 	}
 	if (typeof setAuxTracks !== "function") {
 		throw new Error("createViewAuxTracks: missing setAuxTracks");
+	}
+	if (getActivePolyline != null && typeof getActivePolyline !== "function") {
+		throw new Error("createViewAuxTracks: invalid getActivePolyline");
 	}
 	if (typeof buildChunkMetrics !== "function") {
 		throw new Error("createViewAuxTracks: missing buildChunkMetrics");
@@ -216,10 +247,7 @@ export function createViewAuxTracks({
 	function collectAuxTracks(state) {
 		if (!cfg.showAuxTracks) return [];
 
-		const activeId =
-		state.import_activeArtifacts?.alignmentArtifactId ??
-		getWorkspacePrimaryId(state) ??
-		null;
+		const activeId = getWorkspacePrimaryId(state) ?? null;
 
 		switch (String(cfg.auxTracksScope ?? "routeproject").toLowerCase()) {
 			case "all":
@@ -241,7 +269,7 @@ export function createViewAuxTracks({
 	function buildChunkPreviewTrack(state) {
 		if (pendingChunkStartS == null) return null;
 
-		const poly = state.import_polyline2d;
+		const poly = getActivePolyline?.(state) ?? state.import_polyline2d;
 		if (!isPolylineValid(poly)) return null;
 
 		const cum = ensureChainageCache(poly);
@@ -253,7 +281,7 @@ export function createViewAuxTracks({
 		const pts = clipPolylineByChainage(poly, cum, s0, s1);
 		if (!pts || pts.length < 2) return null;
 
-		return { id: PREVIEW_ID, points: pts };
+		return { id: PREVIEW_ID, objectId: PREVIEW_ID, polyline2d: pts, source: "chunk-preview" };
 	}
 
 	function buildAuxTracksOnly(state) {
@@ -271,7 +299,10 @@ export function createViewAuxTracks({
 		.filter((c) => c && !c.hidden)
 		.map((c) => ({
 			id: c.id,
-			points: c.points,
+			objectId: c.objectId ?? c.id,
+			polyline2d: c.polyline2d,
+			bbox: c.bbox ?? null,
+			source: c.source ?? "chunk",
 			style: styleForAuxTrack(c.id, c),
 		}));
 
@@ -290,33 +321,28 @@ export function createViewAuxTracks({
 	}
 
 	function buildImportTracksOverlay(state) {
-	const importTracks = Array.isArray(state.import_tracks2d) ? state.import_tracks2d : [];
-	const previewTracks = Array.isArray(state.import_preview_collection)
-		? state.import_preview_collection
+	const visibleTracks = Array.isArray(state.workspace_visible_tracks)
+		? state.workspace_visible_tracks
 		: [];
 
-	const activeId =
-		state.import_activeArtifacts?.alignmentArtifactId ??
-		getWorkspacePrimaryId(state) ??
-		null;
+	const activeId = getWorkspacePrimaryId(state) ?? null;
 
-	const tracks = [
-		...importTracks.map((t) => ({ ...t, source: t.source ?? "import" })),
-		...previewTracks.map((t) => ({ ...t, source: t.source ?? "spot" })),
-	];
-
-	return tracks
+	return visibleTracks
 		.filter((t) => String(t?.id ?? t?.objectId ?? "") !== String(activeId ?? ""))
 		.map((t) => ({
 			id: `${t.source ?? "track"}_${t.id ?? t.objectId}`,
-			points: t.points,
+			objectId: t?.objectId ?? t?.id ?? null,
+			polyline2d: t.polyline2d,
+			bbox: t?.bbox ?? null,
+			crsId: t?.crsId ?? null,
+			source: t?.source ?? "track",
 			style: {
 				alpha: t.source === "spot" ? 0.65 : 0.45,
 				width: t.source === "spot" ? 2.0 : 1.6,
 				dashed: false,
 			},
 		}))
-		.filter((t) => Array.isArray(t.points) && t.points.length >= 2);
+		.filter((t) => Array.isArray(t.polyline2d) && t.polyline2d.length >= 2);
 }
 
 	function buildChunkAuxTracks(state) {
@@ -389,27 +415,30 @@ export function createViewAuxTracks({
 	}
 
 	function createChunkFromRange(s0, s1, state = store.getState()) {
-		const poly = state.import_polyline2d;
+		const poly = getActivePolyline?.(state) ?? state.import_polyline2d;
 		const cum = ensureChainageCache(poly);
 
 		if (!isPolylineValid(poly) || !cum) return null;
 
-		const points = clipPolylineByChainage(poly, cum, s0, s1);
-		if (!points || points.length < 2) return null;
+		const polyline2d = clipPolylineByChainage(poly, cum, s0, s1);
+		if (!polyline2d || polyline2d.length < 2) return null;
 
 		const sMin = Math.min(s0, s1);
 		const sMax = Math.max(s0, s1);
-		const metrics = buildChunkMetrics(points, sMin, sMax);
+		const metrics = buildChunkMetrics(polyline2d, sMin, sMax);
 
 		const chunk = {
 			id: makeChunkId(),
-			points,
+			objectId: null,
+			polyline2d,
+			bbox: null,
 			s0: sMin,
 			s1: sMax,
 			at: Date.now(),
 			frozen: false,
 			hidden: false,
 			metrics,
+			source: "chunk",
 			label: "",
 		};
 

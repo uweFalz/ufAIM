@@ -1,0 +1,17 @@
+% figures/geometry/icon_geometry_curvature_pose2.tex
+\begin{tikzpicture}[
+  node distance=1.35cm,
+  box/.style={draw, rounded corners, minimum width=3.8cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+
+\node[box] (curv) {Curvature};
+\node[box, below=of curv] (curve) {Intrinsic Curve};
+\node[box, below=of curve] (pose2) {pose2};
+
+\draw[arrow] (curv) -- (curve);
+\draw[arrow] (curve) -- (pose2);
+
+\draw[thick] (-3.0,-1.35) .. controls (-2.2,-0.8) and (-1.2,-1.9) .. (-0.2,-1.25);
+
+\end{tikzpicture}

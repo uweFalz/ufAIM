@@ -4,6 +4,8 @@
 
 \label{chap:state-taxonomy}
 
+\index{State!taxonomy}
+
 Within AIM, the term \emph{state} is used at several interpretation
 layers. Without an explicit taxonomy, geometric reconstruction,
 realization, runtime evaluation, vehicle interpretation, and
@@ -22,6 +24,7 @@ must not be identified implicitly.
 
 \begin{definition}[State]
 \label{def:taxonomy-general-state}
+\index{State!general definition}
 A state is a structured description of a system configuration relative
 to a specified interpretation layer.
 \end{definition}
@@ -38,6 +41,7 @@ vehicle-relative, or optimization states.
 
 \begin{definition}[pose2 state]
 \label{def:taxonomy-pose2}
+\index{State!pose2}
 The pose2 state is the intrinsic planar reconstruction state generated
 from:
 \[
@@ -55,6 +59,7 @@ reconstruction kernel.
 
 \begin{definition}[pose3 state]
 \label{def:taxonomy-pose3}
+\index{State!pose3}
 The pose3 state is the runtime-evaluated spatial railway state generated
 from:
 \begin{itemize}
@@ -75,6 +80,7 @@ itself.
 
 \begin{definition}[Runtime state]
 \label{def:taxonomy-runtime-state}
+\index{State!runtime}
 A runtime state is a dynamically evaluated state generated during
 runtime interpretation.
 \end{definition}
@@ -84,6 +90,7 @@ interpretation, frame construction, and operational context.
 
 \begin{definition}[Realized state]
 \label{def:taxonomy-realized-state}
+\index{State!realized}
 A realized state is a runtime state generated from physically realized
 rather than purely analytical geometry.
 \end{definition}
@@ -103,6 +110,7 @@ Typical realized quantities include
 
 \begin{definition}[Operational state]
 \label{def:taxonomy-operational-state}
+\index{State!operational}
 An operational state is a runtime state relevant for railway operation,
 comfort, admissibility, or dynamic interpretation.
 \end{definition}
@@ -113,6 +121,7 @@ deficiency, and balance quantities.
 
 \begin{definition}[Vehicle state]
 \label{def:taxonomy-vehicle-state}
+\index{State!vehicle}
 A vehicle state is a runtime-relative operational state describing the
 vehicle relative to the railway runtime state.
 \end{definition}
@@ -130,6 +139,7 @@ v,
 
 \begin{definition}[Center-of-gravity state]
 \label{def:taxonomy-cg-state}
+\index{State!center-of-gravity}
 A center-of-gravity state is an operational abstraction describing the
 runtime trajectory of the vehicle center of gravity relative to the
 railway runtime state.
@@ -137,6 +147,7 @@ railway runtime state.
 
 \begin{definition}[Dynamic state]
 \label{def:taxonomy-dynamic-state}
+\index{State!dynamic}
 A dynamic state is a runtime state participating in operational state
 evolution.
 \end{definition}
@@ -152,6 +163,7 @@ x'(s) = f(x,u).
 
 \begin{definition}[Optimization state]
 \label{def:taxonomy-optimization-state}
+\index{State!optimization}
 An optimization state is the state representation used as the object of
 an optimization problem.
 \end{definition}
@@ -164,6 +176,7 @@ x_{\mathrm{opt}}(s) = x_{\mathrm{real}}(s).
 
 \begin{definition}[Relative state]
 \label{def:taxonomy-relative-state}
+\index{State!relative}
 A relative state is a state evaluated relative to another runtime state
 or runtime reference frame.
 \end{definition}
@@ -174,6 +187,8 @@ admissibility envelopes.
 
 % ============================================================
 \section{State Transformations and Hierarchy}
+
+\index{State!hierarchy}
 % ============================================================
 
 Different state classes are connected through runtime operators. The

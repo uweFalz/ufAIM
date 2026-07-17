@@ -49,7 +49,7 @@ export function createAlignmentSpotObject(input = {}) {
 			name: resolvedName,
 			kernel,
 			alignmentData,
-			sparseAlignment,
+			...(sparseAlignment != null ? { sparseAlignment } : {}),
 			meta: isObject(meta) ? { ...meta } : {},
 			extended: isObject(extended) ? { ...extended } : {},
 		},

@@ -21,9 +21,8 @@
 // - syncSpotObjectsToPreviewCollection kept as alias
 
 import {
-	makeAlignmentProjectionInput,
-	projectAlignmentPreview,
-} from "@src/domain/projection/AlignmentProjectionService.js";
+	projectAlignmentGeometry,
+} from "@src/domain/projection/ViewProjectionController.js";
 import { exportLandXML } from "@src/export/exportLandXML.js";
 import { downloadTextFile } from "@src/export/downloadFile.js";
 import {
@@ -345,16 +344,11 @@ export function syncSpotObjectsToVisibleTracks({
 	const tracks = [];
 
 	for (const object of objects) {
-		const input = makeAlignmentProjectionInput({
+		const projected = projectAlignmentGeometry({
 			objectId: object?.id ?? null,
 			geometry: object?.data?.kernel ?? null,
 			source: "spot",
 			crsId: object?.crsId ?? null,
-		});
-		if (!input) continue;
-
-		const projected = projectAlignmentPreview({
-			input,
 			maxStep,
 		});
 
@@ -367,8 +361,10 @@ export function syncSpotObjectsToVisibleTracks({
 		tracks.push({
 			id: String(object.id),
 			objectId: String(object.id),
-			points,
+			polyline2d: points,
+			bbox: projected?.bbox ?? null,
 			source: "spot",
+			crsId: object?.crsId ?? null,
 		});
 	}
 

@@ -23,11 +23,13 @@
 // - workspace_selection.contextIds = objects additionally shown
 // - workspace_visible_tracks       = already projected helper/context tracks
 //
-// Deprecated aliases kept for transition:
+// Deprecated mirrors kept for transition:
 // - activeSlot
-// - view_pins
-// - import_preview_collection
 // - import_*
+//
+// Migration note:
+// - legacy import_preview_collection is accepted only as input fallback and
+//   normalized into workspace_visible_tracks.
 //
 // If you add state keys: update BOTH makeInitialState() + ensureStateShape().
 
@@ -38,33 +40,6 @@ function isObject(x) {
 function normalizeSlot(slot) {
 	const v = String(slot ?? "right");
 	return (v === "left" || v === "km" || v === "right") ? v : "right";
-}
-
-function normalizePins(pins) {
-	if (!Array.isArray(pins)) return [];
-
-	return pins
-		.filter(Boolean)
-		.map((p) => {
-			if (typeof p === "string") {
-				const [rpId, slot] = p.split("::");
-				return {
-					rpId: String(rpId ?? "").trim(),
-					slot: normalizeSlot(slot),
-				};
-			}
-
-			if (isObject(p)) {
-				return {
-					rpId: String(p.rpId ?? p.baseId ?? "").trim(),
-					slot: normalizeSlot(p.slot),
-					at: Number.isFinite(Number(p.at)) ? Number(p.at) : undefined,
-				};
-			}
-
-			return null;
-		})
-		.filter((p) => p?.rpId);
 }
 
 function normalizeWorkspaceSelection(sel) {
@@ -97,10 +72,12 @@ function normalizeVisibleTracks(items) {
 	return items
 		.filter(isObject)
 		.map((item) => {
-			const points = Array.isArray(item.points)
-				? item.points
-				: Array.isArray(item.polyline2d)
+			const polyline2d = Array.isArray(item.polyline2d)
 				? item.polyline2d
+				: Array.isArray(item.points)
+				? item.points
+				: Array.isArray(item.payload?.polyline2d)
+				? item.payload.polyline2d
 				: [];
 
 			return {
@@ -112,11 +89,11 @@ function normalizeVisibleTracks(items) {
 						: item.id != null
 						? String(item.id).trim()
 						: null,
-				points,
+				polyline2d,
 				source: item.source ?? "workspace",
 			};
 		})
-		.filter((item) => item.id && Array.isArray(item.points) && item.points.length >= 2);
+		.filter((item) => item.id && Array.isArray(item.polyline2d) && item.polyline2d.length >= 2);
 }
 
 function derivePreviewCrsId(item) {
@@ -168,42 +145,33 @@ function normalizePreviewItem(item) {
 	};
 }
 
-// @deprecated compatibility for old preview-like entries.
-// Kept only so old callers do not hard-crash during migration.
-function normalizePreviewCollection(items) {
-	if (!Array.isArray(items)) return [];
-
-	return items
-		.filter(isObject)
-		.map((item) => {
-			if (Array.isArray(item.points) && item.points.length >= 2) {
-				return {
-					id: String(item.id ?? item.objectId ?? "track"),
-					objectId: item.objectId != null ? String(item.objectId) : String(item.id ?? ""),
-					points: item.points,
-					source: item.source ?? "spot",
-				};
-			}
-
-			return normalizePreviewItem(item);
-		})
-		.filter((item) => {
-			if (Array.isArray(item.points) && item.points.length >= 2) return true;
-				return item?.id && isObject(item?.kernel);
-		});
-}
-
 function normalizeTrackList(items) {
 	if (!Array.isArray(items)) return [];
 
 	return items
 		.filter(isObject)
-		.map((item) => ({
-			...item,
-			id: item.id != null ? String(item.id) : null,
-			points: Array.isArray(item.points) ? item.points : [],
-		}))
-		.filter((item) => item.id && item.points.length >= 2);
+		.map((item) => {
+			const polyline2d = Array.isArray(item.polyline2d)
+				? item.polyline2d
+				: Array.isArray(item.points)
+				? item.points
+				: Array.isArray(item.payload?.polyline2d)
+				? item.payload.polyline2d
+				: [];
+
+			return {
+				...item,
+				id: item.id != null ? String(item.id) : null,
+				objectId:
+					item.objectId != null
+						? String(item.objectId)
+						: item.id != null
+						? String(item.id)
+						: null,
+				polyline2d,
+			};
+		})
+		.filter((item) => item.id && item.polyline2d.length >= 2);
 }
 
 export function makeInitialState() {
@@ -219,7 +187,6 @@ export function makeInitialState() {
 		},
 
 		// Already projected helper/context tracks for this workspace.
-		// Preferred replacement for import_preview_collection.
 		workspace_visible_tracks: [],
 		workspace_visible_tracks_source: null,
 
@@ -234,16 +201,9 @@ export function makeInitialState() {
 		cursor: { s: 0 },
 		view_chunks: [],
 
-		// @deprecated replace by workspace_selection.contextIds
-		view_pins: [],
-
 		// Single local preview, mostly useful before SPOT admission.
 		preview_item: null,
 		preview_source: null,
-
-		// @deprecated transitional alias for workspace_visible_tracks.
-		import_preview_collection: [],
-		import_preview_source: null,
 
 		// --------------------------------------------------------
 		// transitional mirrors / caches
@@ -307,12 +267,6 @@ export function ensureStateShape(state) {
 			: s.import_preview_collection
 	);
 
-	const importPreviewCollection = normalizePreviewCollection(
-		Array.isArray(s.import_preview_collection)
-			? s.import_preview_collection
-			: workspaceVisibleTracks
-	);
-
 	return {
 		// --------------------------------------------------------
 		// primary window/view selection
@@ -350,7 +304,6 @@ export function ensureStateShape(state) {
 		// --------------------------------------------------------
 		// actual window/view state
 		// --------------------------------------------------------
-		view_pins: normalizePins(s.view_pins),
 		view_chunks: Array.isArray(s.view_chunks) ? s.view_chunks : [],
 
 		cursor: {
@@ -360,16 +313,6 @@ export function ensureStateShape(state) {
 
 		preview_item: normalizePreviewItem(s.preview_item),
 		preview_source: isObject(s.preview_source) ? s.preview_source : null,
-
-		// --------------------------------------------------------
-		// deprecated alias
-		// --------------------------------------------------------
-		import_preview_collection: importPreviewCollection,
-		import_preview_source: isObject(s.import_preview_source)
-			? s.import_preview_source
-			: isObject(s.workspace_visible_tracks_source)
-			? s.workspace_visible_tracks_source
-			: null,
 
 		// --------------------------------------------------------
 		// Transition Editor (window/view state)

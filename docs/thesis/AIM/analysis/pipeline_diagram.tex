@@ -2,6 +2,12 @@
 
 \section{AIM Pipeline Overview}
 
+This section answers a system-level question: which operator sequence
+connects CRS context, intrinsic modelling, realization, and feedback
+without breaking conceptual ownership across layers?
+
+The figure is introduced as this operator-sequencing answer.
+
 \begin{figure}[ht]
 \centering
 \begin{tikzpicture}[
@@ -53,3 +59,13 @@
 \caption{AIM processing pipeline as composition of operators linking
 coordinate systems, alignment modelling, realization, and optimization.}
 \end{figure}
+
+Interpreted in chapter context, the diagram establishes a forward
+processing spine with two explicit feedback channels: measurement data
+stabilizes projection interpretation, and optimization feedback updates
+the curvature model.
+
+The engineering consequence is that pipeline correctness depends on
+operator composition discipline, not on isolated local computations.
+This prepares the following sections, where pipeline behaviour is
+discussed through interaction patterns and failure modes.

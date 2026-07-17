@@ -33,6 +33,7 @@ export function buildWindowShell() {
 						id="btnLang"
 						class="btn"
 						data-i18n-title="lang_button"
+						data-i18n-aria-label="lang_button"
 						aria-haspopup="true"
 						aria-expanded="false"
 					>🌐</button>
@@ -45,7 +46,13 @@ export function buildWindowShell() {
 				<button id="btnToggleSection" class="btn" data-i18n="btn_section"></button>
 				<button id="btnToggleDebug" class="btn" data-i18n="btn_status_debug"></button>
 
-				<button id="btnCockpit" class="btn btn--primary" title="Cockpit">Cockpit</button>
+				<button
+					id="btnCockpit"
+					class="btn btn--primary"
+					data-i18n="panel_cockpit"
+					data-i18n-title="panel_cockpit"
+					data-i18n-aria-label="panel_cockpit"
+				></button>
 
 				<div class="uf-toolbar__spacer"></div>
 
@@ -54,6 +61,7 @@ export function buildWindowShell() {
 						id="btnCursorMinus"
 						class="btn btn--ghost"
 						data-i18n-title="btn_cursor_minus_title"
+						data-i18n-aria-label="btn_cursor_minus_title"
 					>−</button>
 
 					<input
@@ -68,6 +76,7 @@ export function buildWindowShell() {
 						id="btnCursorPlus"
 						class="btn btn--ghost"
 						data-i18n-title="btn_cursor_plus_title"
+						data-i18n-aria-label="btn_cursor_plus_title"
 					>+</button>
 				</div>
 
@@ -97,8 +106,13 @@ export function buildWindowShell() {
 
 				<aside id="cockpitPanel" class="uf-cockpitPanel">
 					<header class="uf-cockpitPanel__header">
-						<span>Cockpit</span>
-						<button id="btnCockpitClose" class="btn btn--ghost" title="Cockpit schließen">×</button>
+						<span data-i18n="panel_cockpit"></span>
+						<button
+							id="btnCockpitClose"
+							class="btn btn--ghost"
+							data-i18n-title="btn_close_title"
+							data-i18n-aria-label="btn_close_title"
+						>×</button>
 					</header>
 					<div id="cockpitPanelBody" class="uf-cockpitPanel__body"></div>
 				</aside>
@@ -115,6 +129,7 @@ export function buildWindowShell() {
 						id="btnSpotClose"
 						class="btn btn--ghost"
 						data-i18n-title="btn_close_title"
+						data-i18n-aria-label="btn_close_title"
 					>×</button>
 				</header>
 				<div class="uf-panel__body spotHost">
@@ -129,6 +144,7 @@ export function buildWindowShell() {
 						id="btnTransClose"
 						class="btn btn--ghost"
 						data-i18n-title="btn_close_title"
+						data-i18n-aria-label="btn_close_title"
 					>×</button>
 				</header>
 				<div class="uf-panel__body">
@@ -145,13 +161,13 @@ export function buildWindowShell() {
 						</div>
 
 						<div style="display:flex; flex-direction:column; gap:6px;">
-							<label class="hint" for="teW1">w1</label>
+							<label class="hint" for="teW1" data-i18n="label_te_w1"></label>
 							<input type="range" id="teW1" min="0" max="1000" />
 							<span id="teW1Val" class="hint">—</span>
 						</div>
 
 						<div style="display:flex; flex-direction:column; gap:6px;">
-							<label class="hint" for="teW2">w2</label>
+							<label class="hint" for="teW2" data-i18n="label_te_w2"></label>
 							<input type="range" id="teW2" min="0" max="1000" />
 							<span id="teW2Val" class="hint">—</span>
 						</div>
@@ -172,6 +188,7 @@ export function buildWindowShell() {
 						id="btnCloseBands"
 						class="btn btn--ghost"
 						data-i18n-title="btn_close_title"
+						data-i18n-aria-label="btn_close_title"
 					>×</button>
 				</header>
 				<div id="board2d" class="uf-panel__body"></div>
@@ -184,6 +201,7 @@ export function buildWindowShell() {
 						id="btnCloseSection"
 						class="btn btn--ghost"
 						data-i18n-title="btn_close_title"
+						data-i18n-aria-label="btn_close_title"
 					>×</button>
 				</header>
 				<div id="boardSection" class="uf-panel__body"></div>
@@ -196,6 +214,7 @@ export function buildWindowShell() {
 						id="btnCloseDebug"
 						class="btn btn--ghost"
 						data-i18n-title="btn_close_title"
+						data-i18n-aria-label="btn_close_title"
 					>×</button>
 				</header>
 				<div class="uf-panel__body" style="display:flex; flex-direction:column; gap:10px;">

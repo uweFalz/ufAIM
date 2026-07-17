@@ -4,6 +4,9 @@
 
 \label{chap:reality-data}
 
+\index{Observation!data source context}
+\index{Data source}
+
 Measurement data is the observation layer of AIM. It provides evidence
 about physical infrastructure and runtime state but does not define
 engineering identity by itself.
@@ -13,6 +16,7 @@ engineering identity by itself.
 % ============================================================
 
 \begin{definition}[Data source]
+\index{Data source!definition}
 A data source is any origin of geometry-related or state-related
 observation used in railway modelling.
 \end{definition}
@@ -22,6 +26,7 @@ legacy engineering datasets, structured exchange formats, and point
 cloud-derived products.
 
 \begin{principle}[Observation principle]
+\index{Observation principle}
 Measurement data is engineering observation evidence and must be
 interpreted through explicit model and context assumptions.
 \end{principle}
@@ -36,6 +41,7 @@ result, data cannot be equated directly with constructive identity,
 metric realization, or realized state.
 
 \begin{definition}[Measurement uncertainty]
+\index{Uncertainty!measurement}
 Measurement uncertainty describes deviation between observed quantities
 and the corresponding physical quantities.
 \end{definition}
@@ -48,6 +54,7 @@ runtime evaluation.
 % ============================================================
 
 \begin{definition}[Interpretation]
+\index{Interpretation!observation data}
 Interpretation is the process of assigning geometric and semantic
 meaning to observed data in a specified context.
 \end{definition}
@@ -70,9 +77,11 @@ Data processing in AIM maps
 \]
 
 \begin{definition}[Reconstruction from observation data]
+\index{Reconstruction!from observation data}
 Reconstruction is the process of deriving structured model input from
 observed data while preserving provenance and uncertainty context.
 \end{definition}
+\index{Provenance!observation reconstruction}
 
 This reconstruction may involve filtering, segmentation,
 station/topology alignment, and sparse-compatible approximation.

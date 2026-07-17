@@ -16,6 +16,20 @@ containers) are essential project interoperability mechanisms. In AIM,
 they are treated as representation and exchange layers downstream of
 canonical engineering semantics.
 
+The first figure answers the boundary question for this chapter: which
+semantic layer owns engineering meaning, and which layer only represents
+that meaning for exchange?
+
+\begin{figure}[ht]
+\centering
+\input{figures/applications/support_canonical_vs_representation}
+\caption{Supporting comparison: canonical engineering meaning and representation are distinct layers.}
+\label{fig:support-canonical-vs-representation}
+\end{figure}
+
+The engineering consequence is that BIM workflows must consume canonical
+AIM state and operators instead of redefining them in exchange schemas.
+
 % ============================================================
 \section{AIM-to-BIM Integration Role}
 % ============================================================
@@ -38,7 +52,7 @@ A typical interpretation pipeline is
 \[
 \text{exchange/import}
 \rightarrow
-\text{AIM normalization and evaluation}
+\substack{\text{AIM normalization}\\\text{and evaluation}}
 \rightarrow
 \text{application consequence}
 \rightarrow
@@ -47,6 +61,20 @@ A typical interpretation pipeline is
 
 This keeps engineering objects and representations conceptually
 separate.
+
+The next figure addresses the interoperability question: how can native
+and imported alignments be interpreted consistently under one canonical
+state semantics?
+
+\begin{figure}[ht]
+\centering
+\input{figures/applications/support_native_vs_imported}
+\caption{Supporting comparison: native and imported alignments require shared canonical interpretation.}
+\label{fig:support-native-vs-imported}
+\end{figure}
+
+Its consequence is operational: import quality is assessed by canonical
+semantic compatibility, not by format-level similarity alone.
 
 % ============================================================
 \section{Boundary Clarification}

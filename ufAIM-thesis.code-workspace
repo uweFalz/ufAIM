@@ -1,10 +1,10 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": "docs/thesis"
 		},
 		{
-			"path": "../thesis/AIM"
+			"path": "docs/knowledgeKernel"
 		}
 	]
 }

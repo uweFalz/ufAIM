@@ -70,6 +70,7 @@ export const en = {
 	// ------------------------------------------------------------
 
 	panel_spot: "SPOT",
+	panel_cockpit: "Cockpit",
 	panel_transition: "Transition Editor",
 	panel_bands: "Bands",
 	panel_section: "Section",
@@ -78,6 +79,8 @@ export const en = {
 	btn_close_title: "Close",
 
 	label_preset: "Preset",
+	label_te_w1: "w1",
+	label_te_w2: "w2",
 	label_status: "Status:",
 	
 	spot_activate: "Activate",

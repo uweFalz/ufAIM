@@ -4,6 +4,9 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Applications}
 
+This part establishes how the approved AIM architecture delivers
+engineering consequence in real workflows.
+
 The preceding parts established approved engineering concepts for
 alignment semantics, state, runtime evaluation, and reality coupling.
 The Applications part demonstrates what this architecture enables in
@@ -11,17 +14,21 @@ concrete engineering contexts.
 
 Applications therefore follow the progression
 \[
-\text{approved engineering concepts}
+\begin{aligned}
+&\text{approved engineering concepts}
 \rightarrow
 \text{application context}
-\rightarrow
+\\
+&\rightarrow
 \text{engineering use case}
+\\
+&\rightarrow
+\substack{\text{required runtime/}\\\text{realization services}}
 \rightarrow
-\text{required runtime/realization services}
-\rightarrow
-\text{derived representation or decision support}
+\substack{\text{derived representation}\\\text{or decision support}}
 \rightarrow
 \text{engineering consequence}.
+\end{aligned}
 \]
 
 Application chapters consume canonical concepts and do not become new
@@ -35,32 +42,16 @@ representation layers.
 Within the roadmap, this part corresponds to deployment of the
 established architecture in practical engineering workflows.
 
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=5.3cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
+The icon addresses the guiding application question: how can downstream
+systems consume canonical semantics without relocating conceptual
+ownership?
 
-\node[box] (concepts)
-{Approved AIM Concepts};
-
-\node[box, below=of concepts] (applications)
-{Application and Workflow Context};
-
-\node[box, below=of applications] (consequence)
-{Engineering Consequence};
-
-\draw[->, thick] (concepts) -- (applications);
-\draw[->, thick] (applications) -- (consequence);
-
-\end{tikzpicture}
-\end{center}
+\begin{figure}[ht]
+\centering
+\input{figures/applications/icon_applications_downstream}
+\caption{Applications icon: canonical meaning remains upstream of representation and external systems.}
+\label{fig:icon-applications-downstream}
+\end{figure}
 
 \begin{principle}[Application Principle]
 \label{princ:application-principle}
@@ -77,3 +68,6 @@ They show how canonical concepts support decision support,
 interoperability, and operational engineering outcomes without
 redefining the conceptual kernel.
 \end{summary}
+
+With these applications established, the Discussion part can interpret
+their implications relative to historical and methodological context.

@@ -15,7 +15,7 @@ function matchesAlias(object, wanted) {
 	);
 }
 
-export function getSpotObjectById(spotState, focusObjectId) {
+export function getSpotObjectById(spotState, focusObjectId, { allowAliases = false } = {}) {
 	if (!spotState || !focusObjectId) return null;
 
 	const wanted = String(focusObjectId).trim();
@@ -26,6 +26,8 @@ export function getSpotObjectById(spotState, focusObjectId) {
 
 	// 1) direct canonical store-key hit
 	if (objects[wanted]) return objects[wanted];
+
+	if (!allowAliases) return null;
 
 	// 2) search by known aliases
 	for (const object of Object.values(objects)) {

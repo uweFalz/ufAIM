@@ -185,6 +185,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		const textNodes = root.querySelectorAll("[data-i18n]");
 		const titleNodes = root.querySelectorAll("[data-i18n-title]");
+		const ariaLabelNodes = root.querySelectorAll("[data-i18n-aria-label]");
 		const placeholderNodes = root.querySelectorAll("[data-i18n-placeholder]");
 
 		/*
@@ -205,6 +206,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 			const key = el.getAttribute("data-i18n-title");
 			if (!key) return;
 			el.setAttribute("title", t(key));
+		});
+
+		ariaLabelNodes.forEach((el) => {
+			const key = el.getAttribute("data-i18n-aria-label");
+			if (!key) return;
+			el.setAttribute("aria-label", t(key));
 		});
 
 		placeholderNodes.forEach((el) => {

@@ -195,7 +195,7 @@ export function computeBboxUnionFromTracks(tracks) {
 	let bbox = null;
 
 	for (const t of (tracks ?? [])) {
-		const pts = t?.points;
+		const pts = t?.polyline2d;
 		if (!Array.isArray(pts) || pts.length < 2) continue;
 
 		const b = computeBbox(pts);

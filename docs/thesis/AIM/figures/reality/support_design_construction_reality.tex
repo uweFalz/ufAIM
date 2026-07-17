@@ -1,0 +1,13 @@
+% figures/reality/support_design_construction_reality.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=4.4cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (d) {Design};
+  \node[box, below=of d] (c) {Construction};
+  \node[box, below=of c] (r) {Reality};
+  \draw[arrow] (d) -- (c);
+  \draw[arrow] (c) -- (r);
+  \draw[thin] ($(r.center)+(0,0)$) ellipse (2.4cm and 0.58cm);
+\end{tikzpicture}

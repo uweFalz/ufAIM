@@ -8,6 +8,10 @@
 \section*{Motivation}
 % ============================================================
 
+The local chapter question is operational: which trajectory should be
+optimized when the objective is runtime vehicle behaviour rather than
+centerline geometry alone?
+
 % dynamics/schwerpunkt_state.tex
 \begin{figure}[htbp]
 \centering
@@ -15,6 +19,11 @@
 \caption{Schwerpunkt trajectory as vehicle-state path relative to the railway state.}
 \label{fig:schwerpunkt-trajectory}
 \end{figure}
+
+The figure provides the guiding interpretation: the relevant design
+object is the vehicle-state trajectory generated from railway state.
+The engineering consequence is that operational trajectory shaping must
+be evaluated in runtime state space, not only in geometric curve space.
 
 Classical railway alignment theory primarily interprets transition design
 through geometric smoothness.

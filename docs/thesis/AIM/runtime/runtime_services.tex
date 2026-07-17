@@ -4,11 +4,20 @@
 
 \label{chap:runtime-services}
 
+\index{Runtime services}
+\index{Architecture!runtime}
+
 Runtime services are the execution layer that evaluates approved
 engineering knowledge in operational contexts. They consume established
 objects from Foundations and State and generate derived runtime
 quantities. They are not engineering objects themselves and do not
 redefine upstream semantics.
+
+This chapter answers how runtime evaluation is organized so that
+projection, frame construction, dynamic quantities, and representation
+boundaries remain consistent with canonical AIM semantics. It
+establishes the runtime service architecture and its engineering
+consequences for downstream interpretation.
 
 % ============================================================
 \section{Runtime Interpretation}
@@ -16,6 +25,7 @@ redefine upstream semantics.
 
 \begin{definition}[Runtime service]
 \label{def:runtime-service}
+\index{Runtime service!definition}
 A runtime service is an operator-based evaluation process acting on
 alignment states during operational use.
 \end{definition}
@@ -30,6 +40,10 @@ Runtime services evaluate geometry, projections, frames,
 realization-dependent states, dynamic quantities, and vehicle-space
 interpretation through explicit operator composition.
 
+The remaining sections now follow the same reader path: from runtime
+state evaluation, to concrete services, to pipeline composition, and
+finally to representation boundaries and architectural consequence.
+
 % ============================================================
 \section{Runtime State Evaluation}
 % ============================================================
@@ -39,6 +53,7 @@ Runtime evaluation is governed by the canonical evaluation operator in
 
 \begin{definition}[Runtime evaluation]
 \label{def:runtime-evaluation}
+\index{Runtime evaluation}
 Runtime evaluation is represented by
 \[
 \mathcal E
@@ -69,12 +84,26 @@ from that information.
 
 \begin{principle}[Runtime reconstruction principle]
 \label{princ:runtime-reconstruction}
+\index{Runtime reconstruction principle}
 Runtime geometry should be reconstructed from sparse alignment semantics
 rather than stored redundantly.
 \end{principle}
 
 This separation avoids synchronization instability, redundant storage,
 and realization inconsistencies.
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/support_runtime_to_representation_boundary}
+\caption{Supporting boundary: runtime evaluation remains upstream of representation.}
+\label{fig:support-runtime-representation-boundary}
+\end{figure}
+
+The figure makes the ownership boundary explicit: runtime produces
+derived engineering state, while representation consumes that state for
+encoding or visualization. The engineering consequence is that runtime
+services must be validated against evaluation correctness, not against
+format-specific rendering choices.
 
 % ============================================================
 \section{Runtime pose3 Evaluation}
@@ -86,6 +115,7 @@ concepts and evaluate them operationally.
 
 \begin{definition}[Runtime pose3 evaluation]
 \label{def:runtime-pose3-evaluation}
+\index{State!pose3!runtime evaluation}
 Runtime pose3 evaluation may be represented schematically as
 \[
 \mathrm{pose3}_{\mathrm{run}}(s)
@@ -104,8 +134,33 @@ persistent engineering identity.
 Runtime projection services consume the canonical operators in
 \cref{def:track-to-world-operator,def:world-to-track-operator}.
 
+The next two figures answer a directional question before the service
+definitions are stated: which operator maps from world to track, and
+which provides the complementary mapping from track to world?
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/support_world_to_track_operator}
+\caption{Supporting operator view: world-to-track mapping as a directed runtime operator.}
+\label{fig:support-world-to-track-operator}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/support_track_to_world_operator}
+\caption{Supporting operator view: track-to-world mapping as the complementary directed runtime operator.}
+\label{fig:support-track-to-world-operator}
+\end{figure}
+
+Read together, the pair establishes a directional runtime contract
+before formal service definitions: inverse projection and forward
+projection are related but non-identical operators. The engineering
+consequence is explicit separation of numerical strategy, ambiguity
+handling, and quality criteria for each mapping direction.
+
 \begin{definition}[Track-to-world runtime service]
 \label{def:track-to-world-runtime}
+\index{Projection!track-to-world runtime service}
 The track-to-world runtime service evaluates
 \[
 \mathcal P_{\mathrm{tw}}
@@ -118,6 +173,7 @@ The track-to-world runtime service evaluates
 
 \begin{definition}[World-to-track runtime service]
 \label{def:world-to-track-runtime}
+\index{Projection!world-to-track runtime service}
 The inverse runtime projection service evaluates
 \[
 \mathcal P_{\mathrm{wt}}
@@ -133,6 +189,10 @@ metric-dependent, and context-dependent. Projection remains distinct
 from CRS transformation, as established in
 \cref{def:coordinate-transform-operator}.
 
+This distinction is the practical boundary condition for all later
+runtime services: projection interprets intrinsic geometry, while CRS
+transformation only changes world-space representation.
+
 % ============================================================
 \section{Frame Services}
 % ============================================================
@@ -142,6 +202,7 @@ Runtime frame construction consumes the canonical frame operator in
 
 \begin{definition}[Frame service]
 \label{def:frame-service}
+\index{Reference frame!runtime service}
 The frame service evaluates
 \[
 \mathcal F(x_{\mathrm{metric}},s)
@@ -163,6 +224,7 @@ persistent alignment knowledge.
 
 \begin{definition}[Effective lateral acceleration]
 \label{eq:runtime-effective-acceleration}
+\index{Acceleration!effective lateral}
 \[
 a_{\mathrm{eff}}
 =
@@ -175,6 +237,7 @@ This is the runtime form of the canonical relation in
 
 \begin{definition}[Runtime jerk]
 \label{eq:runtime-jerk}
+\index{Jerk!runtime}
 \[
 j
 =
@@ -199,6 +262,7 @@ representations, and exact local refinement.
 
 \begin{definition}[LOD-dependent evaluation]
 \label{def:lod-evaluation}
+\index{Level of detail (LOD)!runtime evaluation}
 Runtime evaluation depends on scale, precision requirements, visibility,
 operational context, interaction state, and runtime cost.
 \end{definition}
@@ -212,6 +276,7 @@ visualization, and vehicle-space interpretation.
 
 \begin{definition}[Runtime cache]
 \label{def:runtime-cache}
+\index{Runtime cache}
 A runtime cache stores previously evaluated quantities to avoid repeated
 computation.
 \end{definition}
@@ -240,6 +305,7 @@ services rather than through hardcoded Euclidean assumptions.
 
 \begin{definition}[Runtime operator pipeline]
 \label{def:runtime-pipeline}
+\index{Pipeline!runtime operator}
 A runtime pipeline is a composed operator chain such as
 \[
 \mathcal E_{\mathrm{run}}
@@ -252,6 +318,10 @@ A runtime pipeline is a composed operator chain such as
 \]
 \end{definition}
 
+The following figures are read as progressively richer answers to the
+same question: how does the operator chain change when realized geometry
+must be included explicitly?
+
 \begin{figure}[ht]
 \centering
 \input{figures/runtime/runtime_pipeline}
@@ -259,8 +329,12 @@ A runtime pipeline is a composed operator chain such as
 \label{fig:runtime-pipeline}
 \end{figure}
 
+This figure is interpreted as the baseline operator composition used for
+target-state runtime evaluation.
+
 \begin{definition}[Realized runtime pipeline]
 \label{def:realized-runtime-pipeline}
+\index{Pipeline!realization-aware runtime}
 When realized geometry is required, runtime evaluation may conceptually
 depend on
 \[
@@ -283,8 +357,17 @@ depend on
 \label{fig:realization-pipeline}
 \end{figure}
 
+In contrast, the realization-aware figure adds \(\mathcal R\) explicitly
+to represent realized-state dependence. The engineering consequence is
+that service selection must declare whether target or realized state is
+required, because this choice changes the active operator chain.
+
 Different runtime services activate different operator chains, depending
 on precision, context, and purpose.
+
+This provides the transition to the final boundary statement: runtime
+evaluation may vary operationally, but it must not alter conceptual
+ownership of engineering meaning.
 
 % ============================================================
 \section{Runtime, Realization, and Representation Boundaries}
@@ -371,8 +454,15 @@ metric-aware evaluation into derived runtime state for downstream
 interpretation.
 }
 \label{fig:runtime-architecture}
+\index{Figures!runtime architecture}
 
 \end{figure}
+
+This architecture figure summarizes the chapter argument in executable
+form: persistent semantics feed metric-aware evaluation, and evaluation
+fans out into service families that converge into derived runtime state.
+The engineering consequence is a stable integration contract for
+downstream Reality, Modelling, and Optimization chapters.
 
 % ============================================================
 \section{Canonical Interpretation}
@@ -410,4 +500,9 @@ This architecture keeps semantics stable, keeps evaluation explicit,
 maintains representation boundaries, and enables
 application-specific interpretation without redefining upstream
 knowledge.
+
+Therefore, the runtime part closes with a precise consequence for the
+next parts: downstream reality, modelling, optimization, and
+applications may specialize runtime services, but they do so by
+consuming this architecture rather than redefining it.
 \end{summary}

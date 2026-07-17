@@ -6,9 +6,11 @@
 import { t } from "@app/i18n/strings.js";
 import { clamp01 } from "@utils/helpers.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
-import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import {
+	getWorkspaceContextIds,
+	getWorkspacePrimaryId,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
-import { normalizePins } from "@app/controllers/viewGeometry.js";
 import { renderBandsText, renderSectionText } from "@app/controllers/viewTextRender.js";
 
 export function syncRouteProjectSelect(ui, state) {
@@ -44,8 +46,8 @@ export function syncSectionBoard(ui, state, sectionInfo) {
 }
 
 export function syncPinsBadge(ui, state) {
-	const pinsNow = normalizePins(state.view_pins);
-	ui.setPinsInfoText?.(t("pins_info", { count: pinsNow.length }));
+	const contextIds = getWorkspaceContextIds(state);
+	ui.setPinsInfoText?.(t("pins_info", { count: contextIds.length }));
 }
 
 export function syncSpotPanel(ui, state) {

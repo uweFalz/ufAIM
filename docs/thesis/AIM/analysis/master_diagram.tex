@@ -2,6 +2,12 @@
 
 \section{AIM Master Architecture}
 
+This section addresses the architectural integration question of the
+Analysis part: how are modelling, runtime evaluation, realization, and
+feedback mechanisms composed into one coherent operator system?
+
+The figure below is read as the consolidated architecture answer.
+
 \begin{figure}[ht]
 \centering
 \begin{tikzpicture}[
@@ -98,3 +104,11 @@ curve itself, but the curvature-driven and realization-aware operator
 system producing it.
 }
 \end{figure}
+
+The interpretation is structural: each layer preserves a distinct
+responsibility, while feedback loops connect evidence and improvement
+without relocating conceptual ownership.
+
+The engineering consequence is that AIM behaves as a governed
+transformation architecture whose stability depends on maintaining these
+layer and feedback contracts in implementation and workflow design.

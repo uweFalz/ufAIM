@@ -3,6 +3,9 @@
 \chapter{State Model}
 \label{chap:state-model}
 
+\index{State!model}
+\index{Engineering state}
+
 An alignment is not described by geometry alone. At each arc-length
 position, the theory requires a local description from which geometric
 orientation and subsequent spatial interpretation can be developed. The
@@ -16,6 +19,7 @@ concept itself.
 
 \begin{definition}[Engineering state]
 \label{def:state}
+\index{State!engineering}
 An engineering state is a structured description of an engineering
 object under a specified condition and within a specified context.
 \end{definition}
@@ -41,6 +45,7 @@ engineering question under consideration.
 
 \begin{definition}[pose2]
 \label{def:notation-pose2}
+\index{State!pose2}
 The planar alignment state is
 \begin{equation}
 \mathrm{pose2}(s)
@@ -85,6 +90,7 @@ the planar state.
 
 \begin{definition}[Foundational pose3 state]
 \label{def:pose3}
+\index{State!pose3}
 The foundational spatial railway state is
 \begin{equation}
 \mathrm{pose3}(s)
@@ -106,6 +112,8 @@ when profile and realization context are applied.
 
 \begin{definition}[Foundational controls]
 \label{def:control-quantities}
+\index{Control quantities!foundational}
+\index{Curvature!as control quantity}
 The foundational control pair is
 \begin{equation}
 u(s)=\bigl(\kappa(s),\omega(s)\bigr),
@@ -140,6 +148,7 @@ spatial quantity belongs to the intrinsic state.
 % ============================================================
 
 \begin{definition}[Intrinsic state description]
+\index{State!intrinsic description}
 An intrinsic state description uses quantities defined relative to the
 alignment and does not require a particular world-space realization.
 \end{definition}
@@ -150,6 +159,7 @@ established before a coordinate reference system or physical embedding
 is selected.
 
 \begin{definition}[Realized state description]
+\index{State!realized description}
 A realized state description expresses an engineering state within a
 specified metric realization context.
 \end{definition}
@@ -169,6 +179,8 @@ descriptions while retaining one intrinsic engineering identity.
 
 A state may be evaluated, observed, or represented. These operations
 must remain conceptually distinct.
+\index{Observation!state observation}
+\index{Representation!state representation}
 
 An evaluated state is derived from engineering knowledge and applicable
 operators. An observed state records information obtained from a source
@@ -189,6 +201,7 @@ foundational state concept established here.
 A planar railway alignment can be interpreted as an intrinsic state
 trajectory parameterized by arc-length and controlled by curvature.
 \end{proposition}
+\index{State trajectory}
 
 \begin{proposition}
 Cant evolution extends the foundational state without by itself

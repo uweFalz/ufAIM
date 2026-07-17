@@ -1,8 +1,11 @@
 % modeling/part_intro.tex
 
-\chapter*{Modeling}
+\chapter*{Modelling}
 \phantomsection
-\addcontentsline{toc}{chapter}{Modeling}
+\addcontentsline{toc}{chapter}{Modelling}
+
+This part establishes how canonical railway semantics are encoded as
+compact, reconstructable, and operational information structures.
 
 % ============================================================
 \section*{What do we already know?}
@@ -36,7 +39,7 @@ While such representations may be sufficient for storage purposes, they
 often obscure the intrinsic structure of the alignment and limit
 subsequent analysis.
 
-The missing element is therefore a modeling framework capable of
+The missing element is therefore a modelling framework capable of
 capturing railway semantics while remaining compact, interpretable,
 and computationally efficient.
 
@@ -44,7 +47,7 @@ and computationally efficient.
 \section*{What comes next?}
 % ============================================================
 
-This part introduces the modeling layer of AIM.
+This part introduces the modelling layer of AIM.
 
 The central objective is the construction of sparse, semantic alignment
 models.
@@ -59,10 +62,10 @@ geometry can be reconstructed whenever required.
 The chapters that follow introduce:
 \begin{itemize}
 \item sparse alignment representations,
-\item transition modeling,
+\item transition modelling,
 \item transition classification,
 \item higher-level alignment semantics,
-\item and Schwerpunkt-based modeling concepts.
+\item and Schwerpunkt-based modelling concepts.
 \end{itemize}
 
 These structures form the operational core of alignment-based
@@ -75,32 +78,12 @@ information modelling.
 Within the AIM roadmap, the present part corresponds to the transition
 from conceptual railway descriptions toward explicit alignment models.
 
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=4.8cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
-
-\node[box] (concepts)
-{Concepts};
-
-\node[box, below=of concepts] (sparse)
-{Sparse Model};
-
-\node[box, below=of sparse] (alignment)
-{Alignment Model};
-
-\draw[->, thick] (concepts) -- (sparse);
-\draw[->, thick] (sparse) -- (alignment);
-
-\end{tikzpicture}
-\end{center}
+\begin{figure}[ht]
+\centering
+\input{figures/modeling/icon_modeling_constructive_sparse}
+\caption{Modelling icon: constructive elements form sparse alignment and engineering model semantics.}
+\label{fig:icon-modeling-constructive-sparse}
+\end{figure}
 
 The progression
 \[
@@ -113,12 +96,16 @@ The progression
 marks the transition from theoretical railway descriptions toward
 operational information structures.
 
+The figure above answers the orienting question for this transition:
+which constructive elements must remain explicit so sparse models stay
+both compact and semantically faithful?
+
 These models subsequently become the basis for runtime services,
 analysis pipelines, optimization procedures, and engineering
 applications.
 
 % ============================================================
-\begin{principle}[Sparse Modeling Principle]
+\begin{principle}[Sparse Modelling Principle]
 \label{princ:sparse-modeling}
 Within AIM, railway alignments should be represented through compact
 semantic structures from which geometric, operational, and realization-
@@ -131,9 +118,13 @@ Concepts explain railway structure.
 
 Reality explains interaction with the physical world.
 
-Modeling explains how railway knowledge is represented.
+Modelling explains how railway knowledge is represented.
 
 The present part therefore establishes the sparse and semantic
 information structures that form the core of alignment-based
-information modelling.
+Alignment-Based Information Modelling.
 \end{summary}
+
+With this modelling layer established, the Analysis part can examine how
+these structures are transformed through pipelines, services, and system
+interactions.

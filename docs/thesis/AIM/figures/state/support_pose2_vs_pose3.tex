@@ -1,0 +1,14 @@
+% figures/state/support_pose2_vs_pose3.tex
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=3.3cm, minimum height=0.85cm, align=center}
+]
+  \node[box] (p2) at (-2.2,0) {pose2};
+  \node[box] (p3) at (2.2,0) {pose3};
+  \draw[thick] (-3.5,-1.0) -- (3.5,-1.0);
+  \draw[thick] (-2.9,-1.0) .. controls (-2.2,-0.6) and (-1.6,-1.4) .. (-0.9,-1.0);
+  \draw[thick] (1.0,-1.0) .. controls (1.8,-0.4) and (2.6,-1.5) .. (3.3,-1.0);
+  \filldraw (-2.2,-1.0) circle (1.1pt);
+  \filldraw (2.2,-1.0) circle (1.1pt);
+  \draw[thin] (2.2,-1.0) -- (2.55,-0.8);
+  \draw[thin] (2.2,-1.0) -- (2.05,-0.62);
+\end{tikzpicture}

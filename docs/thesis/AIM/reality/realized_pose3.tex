@@ -49,6 +49,21 @@ A measured pose3 state is an observation-derived approximation
 Target state, realized state, and measured state are distinct layers.
 \end{principle}
 
+The first figure addresses the layer question directly: how should
+target and realized state be compared without erasing their conceptual
+separation?
+
+\begin{figure}[ht]
+\centering
+\input{figures/reality/support_target_vs_realized}
+\caption{Supporting comparison: target and realized states are related but non-identical layers.}
+\label{fig:support-target-vs-realized}
+\end{figure}
+
+The engineering consequence is that all downstream assessment must be
+formulated as explicit target--realized comparison, not as implicit
+assumption of geometric identity.
+
 % ============================================================
 \section{Realized State Components}
 % ============================================================
@@ -125,6 +140,20 @@ where \(\mathcal H_i\) is a sensor observation operator and
 
 Realized-state inference is therefore an inverse reconstruction problem
 from heterogeneous observations.
+
+The second figure then answers the evidence question: how does observed
+data mediate assessment rather than replacing canonical target meaning?
+
+\begin{figure}[ht]
+\centering
+\input{figures/reality/support_target_observed_assessment}
+\caption{Supporting realization view: assessment depends on observed evidence relative to target semantics.}
+\label{fig:support-target-observed-assessment}
+\end{figure}
+
+Its consequence is methodological: observation enters as evidence in an
+assessment chain, so model validation must preserve separation between
+target semantics, realized state, and measured approximation.
 
 % ============================================================
 \section{Dynamic Comparison Quantities}

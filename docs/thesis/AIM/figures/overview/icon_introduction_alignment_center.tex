@@ -1,0 +1,22 @@
+% figures/overview/icon_introduction_alignment_center.tex
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners, minimum width=2.9cm, minimum height=0.75cm, align=center},
+  link/.style={thick}
+]
+
+\draw[thick] (-2.7,0.0) .. controls (-1.7,0.55) and (-0.7,-0.55) .. (0.3,0.0)
+             .. controls (1.1,0.45) and (2.0,-0.4) .. (2.7,0.1);
+
+\filldraw (-1.8,0.28) circle (1.0pt);
+\filldraw (-0.45,-0.18) circle (1.0pt);
+\filldraw (0.95,0.2) circle (1.0pt);
+
+\node[box] (m1) at (-2.0,1.6) {Meaning A};
+\node[box] (m2) at (0.0,1.75) {Meaning B};
+\node[box] (m3) at (2.05,1.45) {Meaning C};
+
+\draw[link] (m1.south) -- (-1.8,0.28);
+\draw[link] (m2.south) -- (-0.45,-0.18);
+\draw[link] (m3.south) -- (0.95,0.2);
+
+\end{tikzpicture}

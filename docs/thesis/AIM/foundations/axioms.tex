@@ -3,6 +3,9 @@
 \chapter{Axiomatic Foundation}
 \label{chap:axiomatic-foundation}
 
+\index{Axiom}
+\index{Geometry!intrinsic planar}
+
 The mathematical development of this thesis begins with the intrinsic
 planar geometry of an alignment. Let \(I\subseteq\mathbb{R}\) be an
 interval parameterized by arc-length \(s\). The alignment curve,
@@ -21,6 +24,7 @@ heading, and curvature are denoted by
 
 \begin{axiom}[Arc-length Parameterization]
 \label{ax:arc-length-parameterization}
+\index{Arc-length parameterization}
 The alignment curve is parameterized by arc-length:
 \[
 \lVert\gamma'(s)\rVert=1
@@ -30,6 +34,8 @@ The alignment curve is parameterized by arc-length:
 
 \begin{axiom}[Heading Evolution]
 \label{ax:heading-evolution}
+\index{Heading evolution}
+\index{Curvature!as derivative of heading}
 Curvature is the derivative of heading with respect to arc-length:
 \[
 \theta'(s)=\kappa(s).
@@ -38,6 +44,8 @@ Curvature is the derivative of heading with respect to arc-length:
 
 \begin{axiom}[Tangent Reconstruction]
 \label{ax:tangent-reconstruction}
+\index{Tangent reconstruction}
+\index{Reconstruction!tangent}
 The unit tangent of the planar alignment is determined by the heading:
 \[
 \gamma'(s)=
@@ -54,6 +62,7 @@ The unit tangent of the planar alignment is determined by the heading:
 
 \begin{proposition}[Curvature-driven reconstruction]
 \label{prop:curvature-driven-reconstruction}
+\index{Reconstruction!curvature-driven}
 Given an initial position \(\gamma(s_0)\), an initial heading
 \(\theta(s_0)\), and a sufficiently regular curvature function
 \(\kappa\), the planar alignment is uniquely determined on \(I\).
@@ -84,3 +93,4 @@ These axioms establish the intrinsic planar reconstruction kernel used
 throughout the subsequent development. Architectural separation,
 realization, and representation are governed by the principles of the
 following chapter rather than by additional mathematical axioms.
+\index{Kernel!intrinsic planar reconstruction}

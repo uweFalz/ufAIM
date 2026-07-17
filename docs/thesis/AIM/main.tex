@@ -70,17 +70,17 @@
 
 \RedeclareSectionCommand[
   tocindent=0em,
-  tocnumwidth=3.8em
+  tocnumwidth=5.0em
 ]{chapter}
 
 \RedeclareSectionCommand[
   tocindent=3.8em,
-  tocnumwidth=4.0em
+  tocnumwidth=4.8em
 ]{section}
 
 \RedeclareSectionCommand[
   tocindent=7.8em,
-  tocnumwidth=5.0em
+  tocnumwidth=5.8em
 ]{subsection}
 
 % ============================================================
@@ -150,6 +150,16 @@ Realization, and Optimization of Structured Railway Alignments
 \date{\today}
 
 \maketitle
+
+\cleardoublepage
+\thispagestyle{empty}
+\begin{center}
+\vspace*{0.10\textheight}
+\scalebox{2.30}{\input{figures/overview/icon_cover_aim_emblem}}
+\vspace*{0.08\textheight}
+\end{center}
+\cleardoublepage
+
 \tableofcontents
 
 % ------------------------------------------------------------
@@ -160,7 +170,7 @@ Realization, and Optimization of Structured Railway Alignments
 \addcontentsline{toc}{chapter}{Preface}
 
 This manuscript is intended as a long-term scientific foundation for
-alignment-based information modelling.
+Alignment-Based Information Modelling.
 
 It is not merely software documentation, but a structured knowledge base
 covering:
@@ -398,7 +408,7 @@ construction, runtime interpretation, and operational behaviour.
 \input{reality/realized_pose3}
 
 % ============================================================
-\part{Alignment Modeling}
+\part{Alignment Modelling}
 % ============================================================
 
 \input{modeling/part_intro}

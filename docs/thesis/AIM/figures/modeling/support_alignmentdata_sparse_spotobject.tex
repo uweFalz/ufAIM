@@ -1,0 +1,13 @@
+% figures/modeling/support_alignmentdata_sparse_spotobject.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=4.2cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (d) {AlignmentData};
+  \node[box, below=of d] (s) {SparseAlignment};
+  \node[box, below=of s] (o) {SpotObject};
+  \draw[arrow] (d) -- (s);
+  \draw[arrow] (s) -- (o);
+  \draw[thin] ($(d.center)+(-2.35,0.6)$) rectangle ($(o.center)+(2.35,-0.6)$);
+\end{tikzpicture}

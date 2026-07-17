@@ -4,6 +4,9 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Reality}
 
+This part establishes how canonical and runtime state are connected to
+constructed and observed railway reality.
+
 The preceding parts established constructive alignment semantics,
 metric realization, railway state, and runtime evaluation. The present
 part explains how these approved concepts are embedded, observed,
@@ -12,19 +15,24 @@ realized, and compared in engineering practice.
 Reality does not redefine upstream concepts. It consumes them and
 establishes the progression
 \[
-\text{constructive alignment semantics}
+\begin{aligned}
+&\text{constructive alignment semantics}
 \rightarrow
 \text{metric realization}
-\rightarrow
+\\
+&\rightarrow
 \text{world embedding}
-\rightarrow
+\\
+&\rightarrow
 \text{physical realization}
-\rightarrow
+\\
+&\rightarrow
 \text{measurement and observation}
 \rightarrow
-\text{target--realized comparison}
+\substack{\text{target--realized}\\\text{comparison}}
 \rightarrow
 \text{engineering interpretation}.
+\end{aligned}
 \]
 
 This progression preserves the distinction between constructive identity,
@@ -38,32 +46,19 @@ state, measurement, representation, and operational interpretation.
 Within the AIM roadmap, Reality is the layer where runtime-evaluated
 state meets measured and constructed infrastructure.
 
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=5.3cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
+The orienting question for the icon below is: which layer order prevents
+target, realized, and observed states from collapsing into one another?
 
-\node[box] (runtime)
-{Runtime Evaluation};
+\begin{figure}[ht]
+\centering
+\input{figures/reality/icon_reality_target_realized_observed}
+\caption{Reality icon: target, realized, and observed railway state as dependent layers.}
+\label{fig:icon-reality-target-realized-observed}
+\end{figure}
 
-\node[box, below=of runtime] (embedding)
-{Embedding, Observation, and Realization};
-
-\node[box, below=of embedding] (interpretation)
-{Engineering Interpretation};
-
-\draw[->, thick] (runtime) -- (embedding);
-\draw[->, thick] (embedding) -- (interpretation);
-
-\end{tikzpicture}
-\end{center}
+\noindent
+The following chapters use this separation to structure embedding,
+measurement, and comparison.
 
 \begin{principle}[Reality Principle]
 \label{princ:reality-principle}
@@ -77,3 +72,7 @@ Reality establishes how approved alignment semantics and runtime state
 are embedded in the engineering world, observed through data, and
 interpreted through target--realized comparison.
 \end{summary}
+
+This separation prepares the Modelling part, where persistent structures
+are designed to preserve exactly these distinctions in operational
+information systems.

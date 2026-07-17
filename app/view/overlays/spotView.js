@@ -16,7 +16,10 @@
 import { formatPct01 } from "@utils/helpers.js";
 import { escapeHtml } from "@app/utils/appHelpers.js";
 import { t } from "@app/i18n/strings.js";
-import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import {
+	getWorkspaceContextIds,
+	getWorkspacePrimaryId,
+} from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 // ------------------------------------------------------------
 // helpers
@@ -27,8 +30,8 @@ function decisionKey(spotId) {
 }
 
 function isPinned(storeState, spotId) {
-	const pins = Array.isArray(storeState?.view_pins) ? storeState.view_pins : [];
-	return pins.some((p) => String(p?.rpId ?? "") === String(spotId ?? ""));
+	const contextIds = getWorkspaceContextIds(storeState);
+	return contextIds.includes(String(spotId ?? ""));
 }
 
 function statusClass(status) {

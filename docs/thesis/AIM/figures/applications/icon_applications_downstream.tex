@@ -1,0 +1,18 @@
+% figures/applications/icon_applications_downstream.tex
+\begin{tikzpicture}[
+  node distance=1.3cm,
+  box/.style={draw, rounded corners, minimum width=5.0cm, minimum height=0.9cm, align=center},
+  secondary/.style={draw, rounded corners, dashed, minimum width=5.0cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+
+\node[box] (canon) {Canonical Engineering Meaning};
+\node[secondary, below=of canon] (repr) {Representations};
+\node[secondary, below=of repr] (external) {External Systems};
+
+\draw[arrow] (canon) -- (repr);
+\draw[arrow] (repr) -- (external);
+
+\draw[thin] ($(canon.center)+(-3.0,-1.95)$) -- ($(canon.center)+(3.0,-1.95)$);
+
+\end{tikzpicture}

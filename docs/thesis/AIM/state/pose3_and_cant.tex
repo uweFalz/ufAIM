@@ -11,12 +11,20 @@ is evaluated in engineering and operation. The present chapter therefore
 extends the intrinsic state by introducing the additional quantities
 required to obtain a spatially interpretable railway state.
 
+The first question is interpretive: how should cant be read so that it
+contributes to operational state meaning rather than remaining a purely
+geometric annotation?
+
 \begin{figure}[htbp]
 \centering
 \input{figures/state/cant_interpretation}
 \caption{Cant interpretation as railway-state roll rather than merely rail-height difference.}
 \label{fig:cant-interpretation}
 \end{figure}
+
+The figure fixes this interpretation at chapter entry: cant is treated
+as frame-relevant state information with direct operational consequence,
+not as an isolated scalar record.
 
 \begin{principle}[Runtime pose3 principle]
 \label{princ:runtime-pose3}
@@ -39,6 +47,10 @@ reconstructed:
 \item and metric/runtime context.
 \end{itemize}
 \end{principle}
+
+The next question is structural: what does the state extension from
+pose2 to pose3 add, and why does this extension remain runtime-derived
+rather than persistently duplicated?
 
 \begin{figure}[ht]
 \centering
@@ -81,6 +93,12 @@ spatial interpretation.
 }
 \label{fig:pose3-cant}
 \end{figure}
+
+The figure answers this extension question by making the additional
+cant-dependent spatial interpretation explicit. The engineering
+consequence is a strict separation of roles: persistent intrinsic state
+remains minimal, while spatial railway interpretation is evaluated
+through runtime frame construction.
 
 % ============================================================
 \section{Relation to pose2}

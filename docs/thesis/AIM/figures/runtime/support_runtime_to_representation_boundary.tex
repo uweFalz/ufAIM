@@ -1,0 +1,12 @@
+% figures/runtime/support_runtime_to_representation_boundary.tex
+\begin{tikzpicture}[
+  node distance=1.4cm,
+  box/.style={draw, rounded corners, minimum width=4.7cm, minimum height=0.85cm, align=center},
+  sec/.style={draw, rounded corners, dashed, minimum width=4.7cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (rt) {Runtime};
+  \node[sec, below=of rt] (rep) {Representation};
+  \draw[arrow] (rt) -- (rep);
+  \draw[thin] ($(rt.center)+(-3.0,-0.95)$) -- ($(rt.center)+(3.0,-0.95)$);
+\end{tikzpicture}

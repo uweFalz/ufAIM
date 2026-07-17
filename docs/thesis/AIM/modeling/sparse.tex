@@ -4,6 +4,15 @@
 
 \section*{Motivation}
 
+This chapter answers how continuous curvature theory is converted into a
+compact engineering representation that remains reconstructable,
+interpretable, and operationally useful. It establishes the sparse
+alignment model, clarifies ownership between adjacent modelling layers,
+and prepares the subsequent transition and classification chapters.
+
+The guiding question is therefore: which information must be persisted,
+and which information should be reconstructed at runtime?
+
 % modeling/sparse.tex
 \begin{figure}[htbp]
 \centering
@@ -11,6 +20,9 @@
 \caption{Sparse alignment as an alternating sequence of fixed and transition elements.}
 \label{fig:sparse-model-structure}
 \end{figure}
+
+This first figure provides the structural answer: sparse alignment is an
+ordered semantic sequence, not a dense geometric snapshot.
 
 A continuous curvature law is mathematically natural, but it is not by
 itself an operational representation for editing, exchange, validation,
@@ -26,6 +38,20 @@ computation, optimization, and interoperability.
 Dense geometric representations such as point clouds or sampled
 polylines preserve positional information, but largely destroy the
 structural semantics of the alignment itself.
+
+The second question is responsibility: how are persistent data,
+structural alignment semantics, and downstream engineering objects kept
+distinct?
+
+\begin{figure}[htbp]
+\centering
+\input{figures/modeling/support_alignmentdata_sparse_spotobject}
+\caption{Supporting responsibility view: AlignmentData, SparseAlignment, and SpotObject form distinct ownership layers.}
+\label{fig:support-alignmentdata-sparse-spotobject}
+\end{figure}
+
+This distinction prevents semantic drift between storage, canonical
+alignment semantics, and application-specific runtime products.
 
 % ============================================================
 \section{General Idea}

@@ -1,0 +1,18 @@
+% figures/optimization/icon_optimization_evaluation_loop.tex
+\begin{tikzpicture}[
+  node distance=1.9cm,
+  box/.style={draw, rounded corners, minimum width=3.8cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+
+\node[box] (params) {Parameters};
+\node[box, right=of params] (eval) {Evaluation};
+\node[box, below=of eval] (residual) {Residual};
+\node[box, left=of residual] (updated) {Updated Parameters};
+
+\draw[arrow] (params) -- (eval);
+\draw[arrow] (eval) -- (residual);
+\draw[arrow] (residual) -- (updated);
+\draw[arrow] (updated) -- (params);
+
+\end{tikzpicture}

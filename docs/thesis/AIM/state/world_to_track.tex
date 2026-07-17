@@ -4,17 +4,34 @@
 
 \label{chap:world-to-track}
 
+\index{Projection!world-track coordinate transformation}
+\index{Reference system!track space}
+
 % ============================================================
 \section*{Motivation}
 % ============================================================
 
+This chapter answers how intrinsic railway coordinates and external
+world coordinates are related in AIM without collapsing geometry,
+runtime evaluation, and coordinate representation into one operation.
+It establishes why world--track transformation is treated as an
+operator-level runtime service and what this implies for projection,
+ambiguity, and engineering interpretation.
+
+The first question is directional: what exactly is mapped from world to
+track, and what is mapped from track to world?
+
 % state/world_to_track.tex
 \begin{figure}[htbp]
 \centering
-\input{figures/reality/world_to_track_transformation}
-\caption{World-to-track transformation as runtime interpretation from measured coordinates toward AIM states.}
+\input{figures/runtime/support_world_to_track_operator}
+\caption{Supporting operator view: world-to-track transformation as directed runtime mapping.}
 \label{fig:world-to-track-transformation}
 \end{figure}
+
+The figure fixes this directionality before formal definitions are
+introduced and prevents confusion between projection and generic
+coordinate conversion.
 
 Railway alignments are formulated intrinsically using arc-length-based
 coordinates. Real-world data, by contrast, is typically represented in
@@ -28,6 +45,7 @@ and operational geometry.
 
 \begin{principle}[Intrinsic-space primacy]
 \label{princ:intrinsic-space-primacy}
+\index{Intrinsic-space primacy principle}
 Within AIM, intrinsic railway geometry is primary.
 
 World-space coordinates are interpreted as external embeddings generated
@@ -40,6 +58,7 @@ through runtime evaluation.
 
 \begin{definition}[Track space]
 \label{def:track-space}
+\index{Track space}
 The track space is the intrinsic railway coordinate domain:
 \[
 \Omega_{\mathrm{track}}
@@ -52,6 +71,7 @@ in an external coordinate reference system.
 
 \begin{definition}[Track coordinate system]
 \label{def:track-coordinate-system}
+\index{Coordinate system!track}
 The intrinsic track coordinate system consists of:
 \[
 (s,d,h),
@@ -84,6 +104,8 @@ and external CRS representation form distinct conceptual layers.
 
 \subsection{Arc-Length and Stationing}
 
+\index{Arc-length!vs stationing}
+
 Intrinsic arc-length is not identical to engineering stationing.
 Operational kilometre systems may contain station equations, kilometre
 jumps, overlapping station ranges, topology-dependent references, and
@@ -98,6 +120,7 @@ nor globally unique.
 
 \begin{definition}[Track-to-world mapping]
 \label{def:state-track-to-world-runtime}
+\index{Projection!track-to-world}
 The forward transformation is:
 \begin{equation}
 x(s,d)
@@ -110,6 +133,22 @@ x(s,d)
 This relation specializes the canonical track-to-world operator
 \(\mathcal P_{\mathrm{tw}}\) introduced in
 \cref{def:track-to-world-operator}.
+
+The complementary question is then geometric-operational: how is the
+intrinsic state emitted into world space once directionality is fixed?
+
+\begin{figure}[htbp]
+\centering
+\input{figures/runtime/support_track_to_world_operator}
+\caption{Supporting operator view: track-to-world transformation as the complementary directed mapping.}
+\label{fig:track-to-world-transformation-support}
+\end{figure}
+
+This figure provides that forward-emission interpretation and closes the
+operator pair with \cref{fig:world-to-track-transformation}. The
+engineering consequence is that both mappings must be treated as coupled
+runtime services with distinct numerical behaviour, not as a single
+coordinate utility.
 
 % ------------------------------------------------------------
 
@@ -155,6 +194,7 @@ interpretation remains open.
 
 \begin{definition}[World-to-track projection]
 \label{def:state-world-to-track-runtime}
+\index{Projection!world-to-track}
 The inverse transformation is:
 \begin{equation}
 (s^\ast,d^\ast)
@@ -179,6 +219,8 @@ runtime evaluation problem.
 
 % ============================================================
 \section{Coordinate Transformation versus Projection}
+
+\index{Projection!distinction from coordinate transformation}
 % ============================================================
 
 Coordinate transformation and world-to-track projection are distinct
@@ -190,6 +232,7 @@ projection maps between \(\Omega_{\mathrm{world}}\) and
 
 \begin{principle}[Projection distinction principle]
 \label{princ:projection-distinction}
+\index{Projection distinction principle}
 Coordinate transformation must not be confused with intrinsic
 world-to-track projection.
 \end{principle}
@@ -209,6 +252,8 @@ topology, initialization, runtime context, and metric interpretation.
 
 % ============================================================
 \section{Ambiguity and Context Dependence}
+
+\index{Projection!ambiguity}
 % ============================================================
 
 World-to-track mapping is generally not globally unique. Ambiguities may
@@ -222,6 +267,7 @@ interaction history, vehicle context, or network-state constraints.
 
 \begin{principle}[Projection ambiguity principle]
 \label{princ:projection-ambiguity}
+\index{Projection ambiguity principle}
 World-to-track projection cannot generally be interpreted as a purely
 local geometric operation.
 \end{principle}

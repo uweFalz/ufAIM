@@ -7,15 +7,48 @@ import {
 
 const DEBUG_PROJECTION = false;
 
+export function projectAlignmentGeometry({
+	objectId = null,
+	geometry = null,
+	crsId = null,
+	source = "spot-object",
+	maxStep = 5,
+} = {}) {
+	const input = makeAlignmentProjectionInput({
+		objectId,
+		geometry,
+		source,
+		crsId,
+	});
+
+	if (!input) return null;
+
+	const geom = projectAlignmentPreview({
+		input,
+		maxStep,
+	});
+
+	if (!geom?.polyline2d || geom.polyline2d.length < 2) {
+		return null;
+	}
+
+	return {
+		objectId: objectId != null ? String(objectId) : null,
+		crsId: crsId != null ? String(crsId) : null,
+		...geom,
+	};
+}
+
 export function projectFocusedSpotObject(spotObject, opts = {}) {
 	if (!spotObject) return null;
 
 	const geometry = getProjectableGeometry(spotObject);
-	const input = makeAlignmentProjectionInput({
+	const projected = projectAlignmentGeometry({
 		objectId: spotObject?.id ?? null,
 		geometry,
 		source: "spot-object",
 		crsId: spotObject?.crsId ?? null,
+		maxStep: opts.maxStep ?? 5,
 	});
 
 	if (DEBUG_PROJECTION) {
@@ -30,31 +63,16 @@ export function projectFocusedSpotObject(spotObject, opts = {}) {
 	});
 }
 
-	if (!input) return null;
-
-	const geom = projectAlignmentPreview({
-		input,
-		maxStep: opts.maxStep ?? 5,
-	});
-
 	if (DEBUG_PROJECTION) {
 	console.log("[ViewProjectionController] projection probe", {
 		id: spotObject?.id ?? null,
-		hasGeom: Boolean(geom),
-		pointCount: geom?.polyline2d?.length ?? 0,
-		hasBbox: Boolean(geom?.bbox),
+		hasGeom: Boolean(projected),
+		pointCount: projected?.polyline2d?.length ?? 0,
+		hasBbox: Boolean(projected?.bbox),
 	});
 }
 
-	if (!geom?.polyline2d || geom.polyline2d.length < 2) {
-		return null;
-	}
-
-	return {
-		objectId: spotObject.id ?? null,
-		crsId: spotObject.crsId ?? null,
-		...geom,
-	};
+	return projected;
 }
 
 export function projectSpotObjects(spotObjects = [], opts = {}) {

@@ -105,7 +105,7 @@ function guessFromCoordinates(object) {
 }
 
 function readFirstPoint(object) {
-	const kernel = object?.data?.kernel ?? object?.kernel ?? null;
+	const kernel = object?.data?.kernel ?? null;
 	const pose = kernel?.startPose ?? null;
 
 	if (pose?.pnt) return pose.pnt;

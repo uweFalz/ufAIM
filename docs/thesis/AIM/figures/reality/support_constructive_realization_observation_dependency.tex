@@ -1,0 +1,12 @@
+% figures/reality/support_constructive_realization_observation_dependency.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=5.1cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (c) {Constructive Geometry};
+  \node[box, below=of c] (r) {Realization};
+  \node[box, below=of r] (o) {Observation};
+  \draw[arrow] (c) -- (r);
+  \draw[arrow] (r) -- (o);
+\end{tikzpicture}
