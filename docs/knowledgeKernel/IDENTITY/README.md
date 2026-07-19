@@ -11,7 +11,7 @@ Identity defines how durable engineering objects remain distinguishable independ
 | [`KC-ID-001`](KC-ID-001_Engineering_Object_Identity.md) | Durable distinguishability of an engineering object | `candidate` | `KC-FOUND-001`: direct |
 | [`KC-ID-002`](KC-ID-002_Identity_Composition.md) | Composition from stable identity aspects and relations | `candidate` | `KC-FOUND-002`: direct |
 | [`KC-ID-003`](KC-ID-003_Constructive_Identity.md) | Intrinsic constructive identity aspect | `candidate` | `KC-FOUND-003`: direct |
-| [`KC-ID-004`](KC-ID-004_Alignment_Identity.md) | Alignment-specific constructive identity | `candidate` | `KC-FOUND-004`: partial; “stationing” is ambiguous |
+| [`KC-ID-004`](KC-ID-004_Alignment_Identity.md) | Alignment-specific constructive identity | `candidate` | `KC-FOUND-004`: partial; “stationing” means intrinsic longitudinal parameterization under [`KD-2026-006`](../GOVERNANCE/DECISION_LOG.md#kd-2026-006) |
 
 The `KC-FOUND-*` files remain Research provenance records. The active canonical-home candidates use `KC-ID-*`; K1 renames neither identifier family and does not inherit Research approval claims.
 
@@ -26,6 +26,6 @@ The `KC-FOUND-*` files remain Research provenance records. The active canonical-
 
 - The [Constitution](../KERNEL_CONSTITUTION.md), [`GOVERNANCE-001`](../GOVERNANCE/GOVERNANCE-001_Kernel_Domain_Ownership.md), and [`GOVERNANCE-002`](../GOVERNANCE/GOVERNANCE-002_Kernel_Approval_Process.md) remain `candidate`.
 - The K1 mission authorizes candidate preparation and validation but grants no approval or revocation authority to Codex.
-- Approval/revocation authority, Freeze legitimacy, and Decision Log storage remain open in the [`Governance inventory`](../GOVERNANCE/INVENTORY_2026-07-18.md).
-- FC-001 and FC-002 are consistent boundary evidence but remain unresolved because no legitimate decision record has been found.
-- `K1-ID-001` must resolve whether Research “stationing” means intrinsic longitudinal parameterization before KC-ID-004 can become `review-ready`.
+- Approval and revocation authority is established by [`KD-2026-002`](../GOVERNANCE/DECISION_LOG.md#kd-2026-002), and the canonical Decision Log convention is established by [`KD-2026-005`](../GOVERNANCE/DECISION_LOG.md#kd-2026-005).
+- Approved [`FC-001`](../FREEZES/FC-001.md) and [`FC-002`](../FREEZES/FC-002.md) provide binding Identity boundaries through [`KD-2026-003`](../GOVERNANCE/DECISION_LOG.md#kd-2026-003) and [`KD-2026-004`](../GOVERNANCE/DECISION_LOG.md#kd-2026-004); their historical draft records remain provenance only.
+- [`KD-2026-006`](../GOVERNANCE/DECISION_LOG.md#kd-2026-006) resolves Research “stationing” as intrinsic longitudinal parameterization for KC-ID-004 and excludes operational station or kilometre addressing from intrinsic Alignment Identity. KC-ID-004 remains `candidate`.

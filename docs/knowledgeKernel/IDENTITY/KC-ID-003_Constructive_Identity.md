@@ -48,7 +48,7 @@ Constructive Identity is the identity aspect determined by an engineering object
 - Direct Research provenance: [`KC-FOUND-003 Constructive Identity`](../research/FOUNDATIONS/KC-FOUND-003_Constructive_Identity.md).
 - Supporting Research boundaries: [`KC-FOUND-007 Metric Realization`](../research/FOUNDATIONS/KC-FOUND-007_Metric_Realization.md), [`KC-FOUND-008 Representation`](../research/FOUNDATIONS/KC-FOUND-008_Representation.md), and [`KC-FOUND-009 Workflow / Project Context`](../research/FOUNDATIONS/KC-FOUND-009_Workflow_Project_Context.md).
 - Draft correspondence: [`PR-002 Metric Realization is not Identity`](../_draft/00-principles/PR-002-realization.md) and [`MetricRealizationService.md`](../_draft/20-services/MetricRealizationService.md); these are evidence, not active authority.
-- Unresolved freeze evidence: [`FC-002`](../_draft/40-freezes/FC-002.md), consistent with the boundary but not treated as demonstrated approval.
+- Approved Identity boundary: [`FC-002`](../FREEZES/FC-002.md), approved through [`KD-2026-004`](../GOVERNANCE/DECISION_LOG.md#kd-2026-004). The Freeze approval constrains this candidate but does not approve KC-ID-003.
 - RefImpl correspondence: [`buildSparseAlignment.js`](../../../src/domain/alignment/editor/buildSparseAlignment.js) distinguishes editable source data from a derived sparse alignment.
 - Thesis explanation: [`foundations/kernel_glossary.tex`](../../thesis/AIM/foundations/kernel_glossary.tex), [`kernel/engineering_objects.tex`](../../thesis/AIM/kernel/engineering_objects.tex), and [`reality/data.tex`](../../thesis/AIM/reality/data.tex).
 

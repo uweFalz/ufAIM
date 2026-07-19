@@ -47,7 +47,7 @@ Engineering Object Identity is the stable basis by which an engineering object r
 
 - Direct Research provenance: [`KC-FOUND-001 Engineering Object Identity`](../research/FOUNDATIONS/KC-FOUND-001_Engineering_Object_Identity.md).
 - Supporting Research boundaries: [`KC-FOUND-007 Metric Realization`](../research/FOUNDATIONS/KC-FOUND-007_Metric_Realization.md), [`KC-FOUND-008 Representation`](../research/FOUNDATIONS/KC-FOUND-008_Representation.md), and [`KC-FOUND-009 Workflow / Project Context`](../research/FOUNDATIONS/KC-FOUND-009_Workflow_Project_Context.md).
-- Unresolved freeze evidence: [`FC-001`](../_draft/40-freezes/FC-001.md) and [`FC-002`](../_draft/40-freezes/FC-002.md); their statements are consistent with these boundaries but are not treated as demonstrated approvals.
+- Approved Identity boundaries: [`FC-001`](../FREEZES/FC-001.md), approved through [`KD-2026-003`](../GOVERNANCE/DECISION_LOG.md#kd-2026-003), and [`FC-002`](../FREEZES/FC-002.md), approved through [`KD-2026-004`](../GOVERNANCE/DECISION_LOG.md#kd-2026-004). The Freeze approvals constrain this candidate but do not approve KC-ID-001.
 - RefImpl correspondence: [`createEmptyAlignmentData.js`](../../../src/domain/alignment/editor/createEmptyAlignmentData.js), [`buildSparseAlignment.js`](../../../src/domain/alignment/editor/buildSparseAlignment.js), and [`AlignmentSpotObjectMapper.js`](../../../src/model/spot/model/AlignmentSpotObjectMapper.js).
 - Thesis explanation: [`kernel/engineering_identity.tex`](../../thesis/AIM/kernel/engineering_identity.tex) and [`kernel/engineering_objects.tex`](../../thesis/AIM/kernel/engineering_objects.tex).
 
