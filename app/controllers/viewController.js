@@ -2,6 +2,8 @@
 
 import { t } from "@app/i18n/strings.js";
 import { formatNum } from "@utils/helpers.js";
+import * as proj4Module from "proj4js";
+import { makeDbRefToEtrs89Transform, projectGeographicGeometry } from "@projection/GeographicProjection.js";
 
 import { getSpotObjectById } from "@projection/queries/getSpotObjectById.js";
 import {
@@ -32,12 +34,14 @@ import {
 import {
 	getWorkspacePrimaryId as readWorkspacePrimaryId,
 	getWorkspaceContextIds as readWorkspaceContextIds,
+	getWorkspaceSelectedElementId as readWorkspaceSelectedElementId,
 } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
 export function makeViewController({
 	store,
 	ui,
 	threeA,
+	mapA = null,
 	propsElement,
 	prefs,
 	messaging,
@@ -95,6 +99,19 @@ export function makeViewController({
 
 	let cachedFocusObjectId = null;
 	let cachedActiveGeometry = null;
+	let cachedSelectionElementId = null;
+	let lastRenderSnapshot = {
+		objectId: null,
+		selectedElementId: null,
+		segmentCount: 0,
+		boundaryCount: 0,
+		segmentKinds: [],
+		projectionSignature: null,
+		crsId: null,
+		mode: "empty",
+		placement: "local",
+		message: null,
+	};
 
 	let auxOwnedTracks = [];
 	let workspaceContextTracks = [];
@@ -116,6 +133,7 @@ export function makeViewController({
 	function invalidateGeometryCache() {
 		cachedFocusObjectId = null;
 		cachedActiveGeometry = null;
+		cachedSelectionElementId = null;
 	}
 
 	function invalidateAllCaches() {
@@ -188,6 +206,7 @@ export function makeViewController({
 			polyline2d: geom.polyline2d,
 			bbox: geom.bbox ?? null,
 			bboxCenter: geom.bboxCenter ?? null,
+			projection: geom,
 			isPreview: true,
 		};
 	}
@@ -244,12 +263,14 @@ export function makeViewController({
 
 				if (geom?.polyline2d && geom.polyline2d.length >= 2) {
 					cachedFocusObjectId = focusObjectId;
+					cachedSelectionElementId = null;
 					cachedActiveGeometry = {
 						objectId: String(focusObjectId),
 						spotObject,
 						polyline2d: geom.polyline2d,
 						bbox: geom.bbox ?? null,
 						bboxCenter: geom.bboxCenter ?? null,
+						projection: geom,
 						isPreview: false,
 					};
 					return cachedActiveGeometry;
@@ -260,6 +281,7 @@ export function makeViewController({
 		const previewGeometry = getPreviewGeometryFromState(state);
 		if (previewGeometry) {
 			cachedFocusObjectId = null;
+			cachedSelectionElementId = null;
 			cachedActiveGeometry = previewGeometry;
 			return cachedActiveGeometry;
 		}
@@ -568,8 +590,147 @@ export function makeViewController({
 
 	function clear3DKeepAux() {
 		threeA.clearTrack?.();
+		threeA.clearAlignmentProjection?.();
+		threeA.setAlignmentSelection?.(null);
 		threeA.clearMarker?.();
 		threeA.clearSectionLine?.();
+	}
+
+	function syncSelectionState(state, activeGeometry) {
+		const selectedElementId = readWorkspaceSelectedElementId(state);
+		const projection = activeGeometry?.projection ?? null;
+		const segmentIds = new Set(
+			Array.isArray(projection?.segments)
+				? projection.segments.map((segment) => String(segment?.elementId ?? segment?.id ?? "")).filter(Boolean)
+				: []
+		);
+
+		if (selectedElementId && !segmentIds.has(selectedElementId)) {
+			const primaryId = getFocusObjectId(state);
+			const contextIds = getWorkspaceContextIds(state);
+			if (primaryId) {
+				store.actions?.setWorkspaceSelection?.({
+					primaryId,
+					contextIds,
+					elementId: null,
+					source: "viewer-stale-selection",
+					crsId: state?.workspace_selection?.crsId ?? null,
+				});
+			}
+			cachedSelectionElementId = null;
+			threeA.setAlignmentSelection?.(null);
+			return null;
+		}
+
+		cachedSelectionElementId = selectedElementId;
+		threeA.setAlignmentSelection?.({
+			objectId: activeGeometry?.objectId ?? null,
+			selectedElementId,
+		});
+		return selectedElementId;
+	}
+
+	function syncAlignmentProjection(activeGeometry, state, opts = {}) {
+		const projection = activeGeometry?.projection ?? null;
+		const selectedElementId = opts.selectedElementId ?? null;
+		const projectionSignature = makeProjectionSignature(projection);
+
+		if (!projection?.polyline2d || projection.polyline2d.length < 2) {
+			threeA.clearAlignmentProjection?.();
+			lastRenderSnapshot = {
+				objectId: activeGeometry?.objectId ?? null,
+				selectedElementId,
+				segmentCount: 0,
+				boundaryCount: 0,
+				segmentKinds: [],
+				projectionSignature: null,
+				crsId: activeGeometry?.spotObject?.crsId ?? null,
+				mode: activeGeometry?.isPreview ? "preview" : "empty",
+				placement: "local",
+				message: "no-projection",
+			};
+			return;
+		}
+
+		const crsId = activeGeometry?.spotObject?.crsId ?? null;
+		const hasProjectedCrs = typeof crsId === "string" && /^EPSG:/i.test(crsId);
+		const placement = hasProjectedCrs ? "projected" : (crsId ? "engineering" : "local");
+		const renderMode = activeGeometry?.isPreview ? "preview" : "active";
+
+		threeA.setAlignmentProjection?.({
+			objectId: activeGeometry?.objectId ?? null,
+			crsId,
+			projection,
+			selectedElementId,
+			isPreview: Boolean(activeGeometry?.isPreview),
+			isActive: !activeGeometry?.isPreview,
+			placement,
+			stateMessage: state?.workspace_selection?.source ?? null,
+		});
+
+		lastRenderSnapshot = {
+			objectId: activeGeometry?.objectId ?? null,
+			selectedElementId,
+			segmentCount: Array.isArray(projection?.segments) ? projection.segments.length : 0,
+			boundaryCount: Array.isArray(projection?.boundaries) ? projection.boundaries.length : 0,
+			segmentKinds: Array.isArray(projection?.segments)
+				? [...new Set(projection.segments.map((segment) => String(segment?.kind ?? "unknown")))]
+				: [],
+			projectionSignature,
+			crsId,
+			mode: renderMode,
+			placement,
+			message: state?.workspace_selection?.source ?? null,
+		};
+	}
+
+	function makeProjectionSignature(projection) {
+		if (!projection?.polyline2d || !Array.isArray(projection.polyline2d)) return null;
+
+		const head = projection.polyline2d[0] ?? null;
+		const tail = projection.polyline2d[projection.polyline2d.length - 1] ?? null;
+		const segments = Array.isArray(projection.segments) ? projection.segments : [];
+
+		return JSON.stringify({
+			points: projection.polyline2d.length,
+			head: head ? [round3(head.x), round3(head.y)] : null,
+			tail: tail ? [round3(tail.x), round3(tail.y)] : null,
+			segments: segments.map((segment) => ({
+				id: String(segment?.id ?? segment?.elementId ?? ""),
+				kind: String(segment?.kind ?? ""),
+				length: round3(segment?.length ?? 0),
+				points: Array.isArray(segment?.points2d) ? segment.points2d.length : 0,
+			})),
+		});
+	}
+
+	function round3(value) {
+		const number = Number(value);
+		if (!Number.isFinite(number)) return null;
+		return Math.round(number * 1000) / 1000;
+	}
+
+	function selectAlignmentElementFromViewer(payload, state) {
+		const elementId = String(payload?.elementId ?? "").trim();
+		if (!elementId) return false;
+
+		const objectId = String(payload?.objectId ?? getFocusObjectId(state) ?? "").trim();
+		if (!objectId) return false;
+
+		const contextIds = getWorkspaceContextIds(state);
+		store.actions?.setWorkspaceSelection?.({
+			primaryId: objectId,
+			contextIds,
+			elementId,
+			source: "viewer",
+			crsId: state?.workspace_selection?.crsId ?? null,
+		});
+
+		window.dispatchEvent(new CustomEvent("ufaim:alignment-editor-focus-element", {
+			detail: { elementId, objectId, source: "viewer" },
+		}));
+
+		return true;
 	}
 
 	async function syncGeometryPolicyIfNeeded(state, activeGeometry, geomChanged) {
@@ -620,18 +781,58 @@ export function makeViewController({
 	}
 
 	function syncActiveTrack(poly) {
-	console.log("[ViewController] render active track -> threeA", {
-		pointCount: Array.isArray(poly) ? poly.length : 0,
-		first: poly?.[0] ?? null,
-		last: poly?.at?.(-1) ?? poly?.[poly.length - 1] ?? null,
-		hasSetter: typeof threeA.setTrackFromWorldPolyline === "function",
-	});
+		threeA.setTrackFromWorldPolyline?.(poly);
+	}
 
-	threeA.setTrackFromWorldPolyline?.(poly);
-}
+	async function syncOperatingMode(activeGeometry) {
+		const proj4 = proj4Module.default ?? globalThis.proj4 ?? null;
+		const sourceContract = activeGeometry?.projection?.georeference ?? null;
+		const resolution = sourceContract?.horizontal?.status ? sourceContract.horizontal : sourceContract?.resolution ?? null;
+		const transform = makeDbRefToEtrs89Transform(proj4, resolution);
+		const geographic = projectGeographicGeometry({ projection: activeGeometry?.projection, resolution, transform });
+		const stage = document.getElementById("geoStage");
+		const badge = document.getElementById("geoModeBadge");
+		const enabled = Boolean(geographic.ok && mapA);
+		if (enabled && !mapA.map) {
+			const container = document.getElementById("viewMap");
+			if (!container) return;
+			try { await mapA.mount(container); }
+			catch (error) {
+				geographic.ok = false;
+				geographic.georeference.validationStatus = "transformation-failed";
+				geographic.georeference.fallbackReason = "maplibre-activation-failed";
+				geographic.georeference.warnings.push(String(error?.message ?? error));
+			}
+		}
+		const mapEnabled = Boolean(geographic.ok && mapA?.map);
+		if (!mapEnabled && mapA?.map) mapA.destroy();
+		stage?.classList.toggle("is-geographic", mapEnabled);
+		if (badge) {
+			badge.textContent = mapEnabled ? "GEO" : "LOCAL";
+			badge.title = mapEnabled ? `${resolution.resolvedEpsg}; vertical reference unresolved` : String(geographic.georeference?.fallbackReason ?? "local-cartesian");
+		}
+		if (mapEnabled) {
+			mapA.setRenderPrimitives(geographic.geometry);
+			mapA.fitToContent();
+			lastRenderSnapshot.placement = "geographic";
+			lastRenderSnapshot.georeference = geographic.georeference;
+		} else {
+			lastRenderSnapshot.georeference = geographic.georeference;
+		}
+	}
+
+	function wireAlignmentSelectionOnce() {
+		if (threeA.__ufAIM_alignmentSelectionWired) return;
+		threeA.__ufAIM_alignmentSelectionWired = true;
+
+		threeA.onAlignmentElementClick?.((payload) => {
+			void selectAlignmentElementFromViewer(payload, store.getState());
+		});
+	}
 
 	function subscribe() {
 		wireTrackClickOnce();
+		wireAlignmentSelectionOnce();
 		propsPanel?.wirePropsPanelOnce();
 
 		let renderToken = 0;
@@ -654,6 +855,7 @@ export function makeViewController({
 				const geomKey = makeGeomKey(activeGeometry);
 				const geomChanged = geomKey !== lastGeomKey;
 				lastGeomKey = geomKey;
+				const selectedElementId = readWorkspaceSelectedElementId(state);
 
 				await redrawWorkspaceContext(state);
 
@@ -665,6 +867,16 @@ export function makeViewController({
 					clear3DKeepAux();
 
 					await applyGeomChangePolicy(state, null);
+					lastRenderSnapshot = {
+						objectId: activeGeometry?.objectId ?? null,
+						selectedElementId,
+						segmentCount: 0,
+						boundaryCount: 0,
+						crsId: activeGeometry?.spotObject?.crsId ?? null,
+						mode: activeGeometry?.isPreview ? "preview" : "empty",
+						placement: "local",
+						message: "no-track",
+					};
 					return;
 				}
 
@@ -673,8 +885,11 @@ export function makeViewController({
 				if (token !== renderToken) return;
 
 				redrawAuxFromState(state);
+				const currentSelectedElementId = syncSelectionState(state, activeGeometry);
+				syncAlignmentProjection(activeGeometry, state, { selectedElementId: currentSelectedElementId });
 				syncSectionSamplingAndMarker(state, poly);
 				syncActiveTrack(poly);
+				await syncOperatingMode(activeGeometry);
 			} catch (err) {
 				console.error("[ViewController] handler crashed (isolated):", err);
 				ui?.logInfo?.(
@@ -706,5 +921,11 @@ export function makeViewController({
 		invalidateSpotCache,
 		invalidateGeometryCache,
 		invalidateAllCaches,
+		getDebugState: () => ({ ...lastRenderSnapshot }),
+		debugSelectAlignmentElement: (elementId) =>
+			selectAlignmentElementFromViewer({
+				objectId: getFocusObjectId(store.getState()),
+				elementId,
+			}, store.getState()),
 	};
 }

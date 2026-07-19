@@ -6,14 +6,11 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 	async mount(container) {
 		this.container = container;
 
-		const [{ default: maplibregl }, proj4Module] = await Promise.all([
-			import("maplibre-gl"),
-			import("proj4"),
-		]);
+		const mapLibreModule = await import("maplibregl");
+		const maplibregl = mapLibreModule.default ?? mapLibreModule.maplibregl ?? globalThis.maplibregl;
+		if (!maplibregl?.Map) throw new Error("MapLibre module did not expose a Map constructor.");
 
 		this.maplibregl = maplibregl;
-		this.proj4 = proj4Module.default ?? proj4Module;
-
 		this.map = new maplibregl.Map({
 			container,
 			style: this.options.style ?? "https://demotiles.maplibre.org/style.json",
@@ -24,7 +21,17 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 
 	setRenderPrimitives(primitives) {
 		this.primitives = primitives;
-		// später: polyline/mesh/marker/labels rendern
+		if (!this.map) return;
+		const coordinates = (primitives?.polyline ?? []).map((p) => [p.longitude, p.latitude]);
+		const geojson = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } };
+		const apply = () => {
+			if (this.map.getSource("ufaim-alignment")) this.map.getSource("ufaim-alignment").setData(geojson);
+			else {
+				this.map.addSource("ufaim-alignment", { type: "geojson", data: geojson });
+				this.map.addLayer({ id: "ufaim-alignment", type: "line", source: "ufaim-alignment", paint: { "line-color": "#00d7ff", "line-width": 5 } });
+			}
+		};
+		if (this.map.loaded()) apply(); else this.map.once("load", apply);
 	}
 
 	setCursor(cursor) {
@@ -33,7 +40,9 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 	}
 
 	fitToContent(options = {}) {
-		// später: bbox aus primitives
+		const b = this.primitives?.bbox;
+		if (!b || !this.map) return;
+		this.map.fitBounds([[b.west, b.south], [b.east, b.north]], { padding: options.padding ?? 48, maxZoom: options.maxZoom ?? 17 });
 	}
 
 	resize() {

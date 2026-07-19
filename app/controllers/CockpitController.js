@@ -338,6 +338,7 @@ export class CockpitController {
 	_buildSceneState(windowState, spotState, { importRows = [], spotRows = [] } = {}) {
 		const activeObjectId =
 			getWorkspacePrimaryId(windowState);
+		const selectedElementId = String(windowState?.workspace_selection?.elementId ?? "").trim() || null;
 
 		const previewItem = windowState?.preview_item ?? null;
 
@@ -346,7 +347,10 @@ export class CockpitController {
 			const obj = findSpotObjectById(spotState, activeObjectId);
 
 			if (obj && spotRow) {
-				const editor = deriveSpotEditorSnapshot(obj);
+				const editor = {
+					...deriveSpotEditorSnapshot(obj),
+					selectedElementId,
+				};
 
 				return {
 					mode: "spot",
@@ -358,6 +362,7 @@ export class CockpitController {
 					slot: windowState?.activeSlot ?? "right",
 					pinned: Boolean(spotRow.pinned),
 					source: spotRow.source ?? null,
+					selectedElementId,
 					editor,
 				};
 			}
@@ -378,6 +383,7 @@ export class CockpitController {
 				slot: windowState?.activeSlot ?? "right",
 				pinned: false,
 				source: previewItem.source ?? null,
+				selectedElementId,
 				editor: null,
 			};
 		}
@@ -392,6 +398,7 @@ export class CockpitController {
 			slot: windowState?.activeSlot ?? "right",
 			pinned: false,
 			source: null,
+			selectedElementId,
 			editor: null,
 		};
 	}
@@ -485,6 +492,21 @@ export class CockpitController {
 		this._wired = true;
 
 		this._rootEl.addEventListener("click", (ev) => {
+			const focusEditorBtn = ev.target.closest("[data-cockpit-focus-editor-element]");
+			if (focusEditorBtn) {
+				const elementId = String(focusEditorBtn.dataset.cockpitElementId ?? "").trim();
+				const objectId = String(focusEditorBtn.dataset.cockpitObjectId ?? "").trim();
+
+				if (objectId) {
+					this._activateObjectId(objectId);
+				}
+
+				window.dispatchEvent(new CustomEvent("ufaim:alignment-editor-focus-element", {
+					detail: { elementId, objectId, source: "cockpit" },
+				}));
+				return;
+			}
+
 			const newAlignmentBtn = ev.target.closest("[data-cockpit-new-alignment]");
 			if (newAlignmentBtn) {
 				void this.createNewAlignment();

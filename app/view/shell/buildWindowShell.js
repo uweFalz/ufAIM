@@ -92,13 +92,16 @@ export function buildWindowShell() {
 				</label>
 
 				<button id="btnFit" class="btn" data-i18n="btn_fit" data-i18n-title="btn_fit_title"></button>
+
+				<div id="geoModeBadge" class="uf-geoModeBadge" aria-live="polite">LOCAL</div>
 				<!--button id="btnPinToggle" class="btn" data-i18n="btn_pin_toggle" data-i18n-title="btn_pin_toggle_title"></button-->
 				<!--button id="btnPinsClear" class="btn" data-i18n="btn_pins_clear" data-i18n-title="btn_pins_clear_title"></button-->
 				<!--span id="pinsInfo" class="hint" data-i18n="pins_info_empty"></span-->
 			</div>
 
 			<div class="uf-workspace">
-				<div class="uf-stageWrap">
+				<div class="uf-stageWrap" id="geoStage">
+					<div id="viewMap" class="uf-geoMap"></div>
 					<div class="uf-stage">
 						<canvas id="view3d"></canvas>
 					</div>

@@ -117,11 +117,13 @@ export function createWindowStore(initial) {
 		setWorkspaceSelection(selection = {}) {
 			const primaryId = normalizeId(selection?.primaryId);
 			const contextIds = normalizeIdList(selection?.contextIds);
+			const elementId = normalizeId(selection?.elementId);
 
 			setState({
 				workspace_selection: {
 					primaryId,
 					contextIds,
+					elementId,
 					source: selection?.source != null ? String(selection.source) : null,
 					crsId: selection?.crsId != null ? String(selection.crsId) : null,
 				},
@@ -133,12 +135,14 @@ export function createWindowStore(initial) {
 
 			setState((st) => {
 				const current = st.workspace_selection ?? {};
+				const preserveElementId = id && String(current.primaryId ?? "") === id;
 
 				return {
 					...st,
 					workspace_selection: {
 						primaryId: id,
 						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
+						elementId: preserveElementId ? (current.elementId ?? null) : null,
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
@@ -155,6 +159,7 @@ export function createWindowStore(initial) {
 					workspace_selection: {
 						primaryId: null,
 						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
+						elementId: null,
 						source: current.source ?? null,
 						crsId: current.crsId ?? null,
 					},
@@ -173,6 +178,7 @@ export function createWindowStore(initial) {
 					workspace_selection: {
 						primaryId: current.primaryId ?? null,
 						contextIds,
+						elementId: current.elementId ?? null,
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
@@ -225,6 +231,7 @@ export function createWindowStore(initial) {
 				workspace_selection: {
 					primaryId: null,
 					contextIds: [],
+					elementId: null,
 					source: null,
 					crsId: null,
 				},

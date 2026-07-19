@@ -33,6 +33,7 @@ export function getWorkspaceSelection(state) {
 	return {
 		primaryId: normalizeId(selection.primaryId),
 		contextIds: normalizeIdList(selection.contextIds),
+		elementId: normalizeId(selection.elementId),
 		source: selection.source != null ? String(selection.source) : null,
 		crsId: normalizeId(selection.crsId),
 	};
@@ -44,6 +45,10 @@ export function getWorkspacePrimaryId(state) {
 
 export function getWorkspaceContextIds(state) {
 	return getWorkspaceSelection(state).contextIds;
+}
+
+export function getWorkspaceSelectedElementId(state) {
+	return getWorkspaceSelection(state).elementId;
 }
 
 export function getWorkspacePrimaryObject(state, objects) {

@@ -33,6 +33,10 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setTrackPoints?.(null);
 	}
 
+	function clearAlignmentProjection() {
+		three.clearAlignmentProjection?.();
+	}
+
 	function clearMarker() {
 		three.setMarker?.(null);
 	}
@@ -119,6 +123,14 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setAuxTrackPoints?.(outOld);
 	}
 
+	function setAlignmentProjection(payload) {
+		three.setAlignmentProjection?.(payload);
+	}
+
+	function setAlignmentSelection(payload) {
+		three.setAlignmentSelection?.(payload);
+	}
+
 	function makeLocalBbox(bboxENU) {
 		if (!bboxENU) return null;
 
@@ -183,13 +195,24 @@ export function makeThreeAdapter({ three, transform } = {}) {
 
 		setTrackFromWorldPolyline,
 		setAuxTracksFromWorldPolylines,
+		setAlignmentProjection,
+		setAlignmentSelection,
 
 		setMarkerFromWorld,
 		setSectionLineFromWorld,
 
 		clearTrack,
+		clearAlignmentProjection,
 		clearAuxTracks,
 		clearMarker,
 		clearSectionLine,
+
+		onAlignmentElementClick(handler) {
+			three.onAlignmentElementClick?.(handler);
+		},
+
+		getDebugState() {
+			return three.getDebugState?.() ?? null;
+		},
 	};
 }

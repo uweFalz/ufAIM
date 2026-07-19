@@ -142,18 +142,20 @@ function renderSceneCard(scene, context, visibleCount) {
 			])}
 			${metaLine([
 				`${tx("cockpit.focus", "Fokus")}: ${scene.objectId ?? "—"}`,
+				`${tx("cockpit.selectedElement", "Element")}: ${scene.selectedElementId ?? "—"}`,
 				`${tx("cockpit.visible", "Anzeige")}: ${visibleCount}`,
 			])}
 			${renderSourceLine(scene.source)}
-			${renderEditorElements(scene.editor)}
+			${renderEditorElements(scene.editor, scene.objectId)}
 		`,
 	});
 }
 
-function renderEditorElements(editor) {
+function renderEditorElements(editor, objectId) {
 	if (!editor?.isNativeAlignment) return "";
 
 	const elements = Array.isArray(editor.elements) ? editor.elements : [];
+	const selectedElementId = String(editor?.selectedElementId ?? "").trim();
 
 	if (!elements.length) {
 		return `
@@ -165,25 +167,48 @@ function renderEditorElements(editor) {
 
 	return `
 		<div class="cockpit-sofa__meta">
-			Elements · ${elements.length}
+			${escapeHtml(tx("cockpit.editor.elements", "Elements"))} · ${elements.length}
 		</div>
 		<ol class="cockpit-sofa__list cockpit-sofa__list--compact">
 			${elements.map((el, index) => `
-				<li>
+				<li class="${String(el?.id ?? "") === selectedElementId ? "is-selected" : ""}">
 					<strong>${index + 1}. ${escapeHtml(readElementLabel(el))}</strong>
 					${renderElementMeta(el)}
+					${renderFocusEditorAction({ objectId, elementId: el?.id })}
 				</li>
 			`).join("")}
 		</ol>
 	`;
 }
 
+function renderFocusEditorAction({ objectId, elementId } = {}) {
+	const oid = String(objectId ?? "").trim();
+	const eid = String(elementId ?? "").trim();
+	if (!oid || !eid) return "";
+
+	return `
+		<div class="cockpit-editor-focus-row">
+			<button
+				type="button"
+				class="cockpit-sofa__button cockpit-sofa__button--secondary cockpit-editor-focus"
+				data-cockpit-focus-editor-element
+				data-cockpit-object-id="${escapeHtml(oid)}"
+				data-cockpit-element-id="${escapeHtml(eid)}"
+			>
+				${escapeHtml(tx("cockpit.editor.focusInEditor", "Edit in Transition Editor"))}
+			</button>
+		</div>
+	`;
+}
+
 function readElementLabel(el) {
 	const type = String(el?.type ?? "element").trim().toLowerCase();
 
-	if (type === "straight") return "Straight";
+	if (type === "straight") return tx("alignment_editor.element_type.straight", "Straight");
+	if (type === "arc") return tx("alignment_editor.element_type.arc", "Arc");
+	if (type === "transition") return tx("alignment_editor.element_type.transition", "Transition");
 
-	return type || "Element";
+	return type || tx("alignment_editor.element_type.unknown", "Element");
 }
 
 function renderElementMeta(el) {
@@ -195,7 +220,23 @@ function renderElementMeta(el) {
 			el?.length ??
 			null;
 
-		return `<div>${escapeHtml(`length ${length ?? "—"}`)}</div>`;
+		return `<div>${escapeHtml(`${tx("cockpit.editor.length", "length")} ${length ?? "—"}`)}</div>`;
+	}
+
+	if (type === "arc") {
+		const length = el?.parameters?.length ?? el?.length ?? null;
+		const curvature = el?.parameters?.curvature ?? el?.curvature ?? null;
+		return `<div>${escapeHtml(`${tx("cockpit.editor.length", "length")} ${length ?? "—"} · ${tx("cockpit.editor.k", "k")} ${curvature ?? "—"}`)}</div>`;
+	}
+
+	if (type === "transition") {
+		const length = el?.parameters?.length ?? el?.length ?? null;
+		const transitionType =
+			el?.parameters?.transitionType ??
+			el?.transitionType ??
+			el?.transType ??
+			null;
+		return `<div>${escapeHtml(`${tx("cockpit.editor.length", "length")} ${length ?? "—"} · ${transitionType ?? tx("cockpit.editor.typeMissing", "type —")}`)}</div>`;
 	}
 
 	return "";

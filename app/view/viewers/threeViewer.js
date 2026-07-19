@@ -74,6 +74,18 @@ export function makeThreeViewer({ canvas }) {
 	});
 	const auxLines = new Map(); // id -> THREE.Line
 
+	const alignmentSegmentLines = new Map(); // elementId -> THREE.Line
+	const alignmentBoundaryNodes = new Map(); // boundaryId -> THREE.Mesh
+	const alignmentSelection = {
+		objectId: null,
+		selectedElementId: null,
+	};
+	let alignmentProjection = null;
+	let currentTrackPoints = [];
+	let trackClickHandler = null;
+	let alignmentElementClickHandler = null;
+	let markerClickHandler = null;
+
 	// section line
 	const sectionMat = new THREE.LineBasicMaterial({
 		transparent: true,
@@ -178,6 +190,7 @@ export function makeThreeViewer({ canvas }) {
 	function setTrackFromXY(pointsXY) {
 		// pointsXY: [{x,y,z}, ...] OR null => clear
 		if (!Array.isArray(pointsXY) || pointsXY.length < 2) {
+			currentTrackPoints = [];
 			if (trackLine) {
 				scene.remove(trackLine);
 				trackLine.geometry.dispose();
@@ -186,6 +199,7 @@ export function makeThreeViewer({ canvas }) {
 			return;
 		}
 
+		currentTrackPoints = pointsXY.map((p) => ({ x: Number(p.x) || 0, y: Number(p.y) || 0, z: Number(p.z) || 0 }));
 		const pts3 = pointsXY.map((p) => new THREE.Vector3(p.x, p.y, p.z ?? 0));
 		const geo = new THREE.BufferGeometry().setFromPoints(pts3);
 
@@ -215,6 +229,291 @@ export function makeThreeViewer({ canvas }) {
 			disposeLineMaterial(line);
 		}
 		auxLines.clear();
+	}
+
+	function clearAlignmentProjection() {
+		for (const line of alignmentSegmentLines.values()) {
+			scene.remove(line);
+			line.geometry.dispose();
+			disposeLineMaterial(line);
+		}
+		alignmentSegmentLines.clear();
+
+		for (const node of alignmentBoundaryNodes.values()) {
+			scene.remove(node);
+			node.geometry.dispose();
+			if (node.material?.dispose) node.material.dispose();
+		}
+		alignmentBoundaryNodes.clear();
+
+		alignmentProjection = null;
+		alignmentSelection.objectId = null;
+		alignmentSelection.selectedElementId = null;
+	}
+
+	function getAlignmentPalette(kind = "unknown") {
+		switch (String(kind ?? "").toLowerCase()) {
+			case "straight":
+				return { color: 0x25d9d0, opacity: 0.94 };
+			case "arc":
+				return { color: 0xffa331, opacity: 0.96 };
+			case "transition":
+				return { color: 0xca8cff, opacity: 0.95, dashed: true };
+			default:
+				return { color: 0x7dd3fc, opacity: 0.9 };
+		}
+	}
+
+	function makeAlignmentLineMaterial(segment, isSelected) {
+		const palette = getAlignmentPalette(segment?.kind);
+		const opacity = isSelected ? 1 : palette.opacity;
+
+		if (palette.dashed) {
+			return new THREE.LineDashedMaterial({
+				color: isSelected ? 0xffffff : palette.color,
+				dashSize: 10,
+				gapSize: 6,
+				transparent: true,
+				opacity,
+				depthTest: false,
+				depthWrite: false,
+			});
+		}
+
+		return new THREE.LineBasicMaterial({
+			color: isSelected ? 0xffffff : palette.color,
+			transparent: true,
+			opacity,
+			depthTest: false,
+			depthWrite: false,
+		});
+	}
+
+	function makeBoundaryMaterial(boundary, isSelected) {
+		const isStart = String(boundary?.position ?? "").toLowerCase() === "start";
+		const isEnd = String(boundary?.position ?? "").toLowerCase() === "end";
+		const color = isSelected
+			? 0xffffff
+			: isStart
+				? 0x7CFF6B
+				: isEnd
+					? 0xff6b6b
+					: 0xe5e7eb;
+
+		return new THREE.MeshBasicMaterial({
+			color,
+			transparent: true,
+			opacity: isSelected ? 1 : 0.92,
+			depthTest: false,
+			depthWrite: false,
+		});
+	}
+
+	function makeBoundaryGeometry(isSelected) {
+		return new THREE.SphereGeometry(isSelected ? 2.7 : 2.1, 12, 10);
+	}
+
+	function updateAlignmentProjection(input) {
+		alignmentProjection = input ?? null;
+
+		if (!alignmentProjection?.projection?.polyline2d || alignmentProjection.projection.polyline2d.length < 2) {
+			clearAlignmentProjection();
+			return;
+		}
+
+		setTrackFromXY(alignmentProjection.projection.polyline2d);
+
+		const selectedElementId = String(alignmentProjection.selectedElementId ?? "").trim();
+		const keepSegments = new Set();
+
+		for (const segment of Array.isArray(alignmentProjection.projection.segments) ? alignmentProjection.projection.segments : []) {
+			const elementId = String(segment?.elementId ?? segment?.id ?? "").trim();
+			if (!elementId) continue;
+
+			keepSegments.add(elementId);
+
+			const pts = Array.isArray(segment.points2d) ? segment.points2d : [];
+			if (pts.length < 2) continue;
+
+			const isSelected = Boolean(selectedElementId && selectedElementId === elementId);
+			const existing = alignmentSegmentLines.get(elementId);
+			const geo = new THREE.BufferGeometry().setFromPoints(pts.map((p) => new THREE.Vector3(p.x, p.y, p.z ?? 0.2)));
+
+			let line = existing ?? null;
+			if (!line) {
+				line = new THREE.Line(geo, makeAlignmentLineMaterial(segment, isSelected));
+				line.renderOrder = isSelected ? 24 : 22;
+				line.frustumCulled = false;
+				line.userData = {
+					objectId: alignmentProjection.objectId ?? null,
+					elementId,
+					kind: segment.kind ?? null,
+					segment,
+				};
+				scene.add(line);
+				alignmentSegmentLines.set(elementId, line);
+			} else {
+				line.geometry.dispose();
+				line.geometry = geo;
+				if (line.material?.dispose) line.material.dispose();
+				line.material = makeAlignmentLineMaterial(segment, isSelected);
+				line.renderOrder = isSelected ? 24 : 22;
+				line.userData = {
+					objectId: alignmentProjection.objectId ?? null,
+					elementId,
+					kind: segment.kind ?? null,
+					segment,
+				};
+			}
+		}
+
+		for (const [elementId, line] of alignmentSegmentLines.entries()) {
+			if (keepSegments.has(elementId)) continue;
+			scene.remove(line);
+			line.geometry.dispose();
+			disposeLineMaterial(line);
+			alignmentSegmentLines.delete(elementId);
+		}
+
+		const keepBoundaries = new Set();
+		for (const boundary of Array.isArray(alignmentProjection.projection.boundaries) ? alignmentProjection.projection.boundaries : []) {
+			const boundaryId = String(boundary?.id ?? "").trim();
+			const point = boundary?.point2d ?? null;
+			if (!boundaryId || !point) continue;
+
+			keepBoundaries.add(boundaryId);
+
+			const isSelected = Boolean(selectedElementId && selectedElementId === String(boundary?.elementId ?? "").trim());
+			const geo = makeBoundaryGeometry(isSelected);
+			const mat = makeBoundaryMaterial(boundary, isSelected);
+			const pos = new THREE.Vector3(point.x, point.y, point.z ?? 0.24);
+			let node = alignmentBoundaryNodes.get(boundaryId);
+
+			if (!node) {
+				node = new THREE.Mesh(geo, mat);
+				node.position.copy(pos);
+				node.renderOrder = isSelected ? 28 : 26;
+				node.frustumCulled = false;
+				node.userData = {
+					objectId: alignmentProjection.objectId ?? null,
+					elementId: String(boundary?.elementId ?? "").trim() || null,
+					kind: boundary?.kind ?? null,
+					boundary,
+				};
+				scene.add(node);
+				alignmentBoundaryNodes.set(boundaryId, node);
+			} else {
+				node.geometry.dispose();
+				node.geometry = geo;
+				if (node.material?.dispose) node.material.dispose();
+				node.material = mat;
+				node.position.copy(pos);
+				node.renderOrder = isSelected ? 28 : 26;
+				node.userData = {
+					objectId: alignmentProjection.objectId ?? null,
+					elementId: String(boundary?.elementId ?? "").trim() || null,
+					kind: boundary?.kind ?? null,
+					boundary,
+				};
+			}
+		}
+
+		for (const [boundaryId, node] of alignmentBoundaryNodes.entries()) {
+			if (keepBoundaries.has(boundaryId)) continue;
+			scene.remove(node);
+			node.geometry.dispose();
+			if (node.material?.dispose) node.material.dispose();
+			alignmentBoundaryNodes.delete(boundaryId);
+		}
+
+		alignmentSelection.objectId = alignmentProjection.objectId ?? null;
+		alignmentSelection.selectedElementId = selectedElementId || null;
+	}
+
+	function setAlignmentSelection(sel) {
+		alignmentSelection.objectId = String(sel?.objectId ?? alignmentSelection.objectId ?? "").trim() || null;
+		alignmentSelection.selectedElementId = String(sel?.selectedElementId ?? "").trim() || null;
+		if (alignmentProjection) {
+			updateAlignmentProjection(alignmentProjection);
+		}
+	}
+
+	function onAlignmentElementClick(handler) {
+		alignmentElementClickHandler = typeof handler === "function" ? handler : null;
+	}
+
+	function handleCanvasClick(e) {
+		const rect = canvas.getBoundingClientRect();
+
+		mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+		mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+		raycaster.params.Line = raycaster.params.Line ?? {};
+		raycaster.params.Line.threshold = 7;
+		raycaster.setFromCamera(mouse, camera);
+
+		const segmentHits = raycaster.intersectObjects([...alignmentSegmentLines.values()], false);
+		if (segmentHits.length) {
+			const hit = segmentHits[0];
+			const payload = hit?.object?.userData ?? {};
+			alignmentElementClickHandler?.({
+				objectId: payload.objectId ?? alignmentProjection?.objectId ?? null,
+				elementId: payload.elementId ?? null,
+				kind: payload.kind ?? null,
+				pointLocal: hit?.point ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null,
+				event: e,
+			});
+			return;
+		}
+
+		if (trackClickHandler && trackLine) {
+			const hits = raycaster.intersectObject(trackLine);
+			if (hits.length) {
+				const hit = hits[0];
+				const s = projectPointToTrackS(hit?.point ?? null);
+				trackClickHandler?.({
+					s,
+					point: hit?.point ? { x: hit.point.x, y: hit.point.y, z: hit.point.z } : null,
+					event: e,
+				});
+				return;
+			}
+		}
+
+		if (markerClickHandler) {
+			const hits = raycaster.intersectObject(marker);
+			if (hits.length) {
+				markerClickHandler?.();
+			}
+		}
+	}
+
+	function projectPointToTrackS(point) {
+		if (!point || !Array.isArray(currentTrackPoints) || currentTrackPoints.length < 2) return 0;
+
+		let bestDistance = Infinity;
+		let bestS = 0;
+		let chainage = 0;
+
+		for (let index = 1; index < currentTrackPoints.length; index++) {
+			const a = currentTrackPoints[index - 1];
+			const b = currentTrackPoints[index];
+			const segmentLength = Math.hypot((b.x - a.x), (b.y - a.y));
+			const dx = b.x - a.x;
+			const dy = b.y - a.y;
+			const denom = segmentLength > 0 ? segmentLength * segmentLength : 1;
+			const t = Math.min(1, Math.max(0, (((point.x - a.x) * dx) + ((point.y - a.y) * dy)) / denom));
+			const px = a.x + dx * t;
+			const py = a.y + dy * t;
+			const distance = Math.hypot(point.x - px, point.y - py);
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				bestS = chainage + segmentLength * t;
+			}
+			chainage += segmentLength;
+		}
+
+		return Number.isFinite(bestS) ? bestS : 0;
 	}
 
 	function makeAuxMaterialFromStyle(style = {}) {
@@ -358,19 +657,15 @@ export function makeThreeViewer({ canvas }) {
 	const raycaster = new THREE.Raycaster();
 	const mouse = new THREE.Vector2();
 
-	function onMarkerClick(handler) {
-		canvas.addEventListener("click", (e) => {
-			const rect = canvas.getBoundingClientRect();
-
-			mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-			mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
-			raycaster.setFromCamera(mouse, camera);
-			const hits = raycaster.intersectObject(marker);
-			if (!hits.length) return;
-			handler?.();
-		});
+	function onTrackClick(handler) {
+		trackClickHandler = typeof handler === "function" ? handler : null;
 	}
+
+	function onMarkerClick(handler) {
+		markerClickHandler = typeof handler === "function" ? handler : null;
+	}
+
+	canvas.addEventListener("click", handleCanvasClick);
 
 	function render() {
 		// animate radius (zoom) smoothly
@@ -517,8 +812,10 @@ export function makeThreeViewer({ canvas }) {
 		stop();
 
 		window.removeEventListener("resize", scheduleResize);
+		canvas.removeEventListener("click", handleCanvasClick);
 
 		clearAuxTracks();
+		clearAlignmentProjection();
 
 		if (trackLine) {
 			scene.remove(trackLine);
@@ -568,6 +865,19 @@ export function makeThreeViewer({ canvas }) {
 
 		setTrackFromXY,
 		setMarkerXYZ: setMarker,
+		setAlignmentProjection: updateAlignmentProjection,
+		setAlignmentSelection,
+		clearAlignmentProjection,
+		onAlignmentElementClick,
+		onTrackClick,
+		getDebugState: () => ({
+			selectedElementId: alignmentSelection.selectedElementId,
+			objectId: alignmentSelection.objectId,
+			segmentCount: alignmentSegmentLines.size,
+			boundaryCount: alignmentBoundaryNodes.size,
+			trackPointCount: Array.isArray(currentTrackPoints) ? currentTrackPoints.length : 0,
+			segmentKinds: [...new Set(Array.from(alignmentSegmentLines.values()).map((line) => String(line?.userData?.kind ?? "unknown")))],
+		}),
 
 		getMarkerXY: () => ({ x: marker.position.x, y: marker.position.y }),
 		onMarkerClick,

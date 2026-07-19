@@ -7,6 +7,9 @@
 //   - Transition.GetPresetSpec    -> { presetId, descriptor, cuts01?, meta? }  (pure data)
 
 import { clamp01 } from "@utils/helpers.js";
+import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import { AlignmentEditorController } from "@app/controllers/alignmentEditorController.js";
+import { t } from "@app/i18n/strings.js";
 
 function setText(el, txt) {
 	if (!el) return;
@@ -77,6 +80,12 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 	const btnClose = ui.elements.buttonTransitionClose ?? document.getElementById("btnTransClose");
 	const ov = ui.elements.transitionOverlay ?? document.getElementById("transOverlay");
 
+	const alignmentEditor = new AlignmentEditorController({
+		store,
+		messaging,
+		mapper: null,
+	});
+
 	// -----------------------------------------------------------------------------
 	// view init
 
@@ -122,6 +131,20 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 
 	function setSplitsDirty(flag) {
 		if (store.actions?.setTeSplitsDirty) return store.actions.setTeSplitsDirty(Boolean(flag));
+	}
+
+	function syncSelectedElementToWorkspace(elementId, source = "editor") {
+		const id = String(elementId ?? "").trim();
+		const state = store.getState?.() ?? {};
+		const selection = state.workspace_selection ?? {};
+
+		store.actions?.setWorkspaceSelection?.({
+			primaryId: selection.primaryId ?? getWorkspacePrimaryId(state) ?? null,
+			contextIds: Array.isArray(selection.contextIds) ? selection.contextIds : [],
+			elementId: id || null,
+			source,
+			crsId: selection.crsId ?? null,
+		});
 	}
 
 	function setPlot(mode) {
@@ -179,6 +202,494 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 
 	const _specCache = new Map();
 	let _applySeq = 0;
+
+	// -----------------------------------------------------------------------------
+	// native alignment element edit UI state
+
+	let _editUi = null;
+	let _activeAlignmentSnapshot = null;
+	let _focusElementId = "";
+
+	function tx(key, params = {}) {
+		return t(key, params);
+	}
+
+	function readLocalizedElementType(type) {
+		switch (String(type ?? "").toLowerCase()) {
+			case "straight":
+				return tx("alignment_editor.element_type.straight");
+			case "arc":
+				return tx("alignment_editor.element_type.arc");
+			case "transition":
+				return tx("alignment_editor.element_type.transition");
+			default:
+				return tx("alignment_editor.element_type.unknown");
+		}
+	}
+
+	function setEditMessage(text, kind = "info") {
+		if (!_editUi?.status) return;
+		_editUi.status.textContent = String(text ?? "");
+		_editUi.status.dataset.kind = String(kind ?? "info");
+	}
+
+	function getOverlayBody() {
+		if (!ov) return null;
+		return ov.querySelector(".uf-panel__body") ?? null;
+	}
+
+	function ensureEditUi() {
+		if (_editUi) return _editUi;
+
+		const body = getOverlayBody();
+		if (!body) return null;
+
+		const root = document.createElement("section");
+		root.className = "uf-align-edit";
+		root.innerHTML = `
+			<div id="aeTitle" class="uf-align-edit__head"></div>
+			<div class="uf-align-edit__grid">
+				<label id="aeElementSelLabel" for="aeElementSel"></label>
+				<select id="aeElementSel" class="select"></select>
+
+				<label id="aeElementTypeLabel" for="aeElementType"></label>
+				<input id="aeElementType" class="input" type="text" readonly />
+
+				<label id="aeLengthLabel" for="aeLength"></label>
+				<input id="aeLength" class="input" type="number" step="0.001" />
+
+				<label id="aeCurvatureLabel" for="aeCurvature"></label>
+				<input id="aeCurvature" class="input" type="number" step="0.000001" />
+
+				<label id="aeRadiusLabel" for="aeRadius"></label>
+				<input id="aeRadius" class="input" type="number" step="0.001" />
+
+				<label id="aeTransitionTypeLabel" for="aeTransitionType"></label>
+				<select id="aeTransitionType" class="select"></select>
+
+				<label id="aeW1Label" for="aeW1"></label>
+				<input id="aeW1" class="input" type="number" min="0" max="1" step="0.001" />
+
+				<label id="aeW2Label" for="aeW2"></label>
+				<input id="aeW2" class="input" type="number" min="0" max="1" step="0.001" />
+			</div>
+			<div id="aeSignedContext" class="uf-align-edit__hint"></div>
+			<div class="uf-align-edit__actions">
+				<button id="aeApply" type="button" class="btn"></button>
+				<button id="aeReset" type="button" class="btn btn--ghost"></button>
+			</div>
+			<div id="aeStatus" class="uf-align-edit__status" data-kind="info"></div>
+		`;
+
+		body.appendChild(root);
+
+		_editUi = {
+			root,
+			title: root.querySelector("#aeTitle"),
+			elementSelLabel: root.querySelector("#aeElementSelLabel"),
+			typeLabel: root.querySelector("#aeElementTypeLabel"),
+			lengthLabel: root.querySelector("#aeLengthLabel"),
+			curvatureLabel: root.querySelector("#aeCurvatureLabel"),
+			radiusLabel: root.querySelector("#aeRadiusLabel"),
+			transitionTypeLabel: root.querySelector("#aeTransitionTypeLabel"),
+			w1Label: root.querySelector("#aeW1Label"),
+			w2Label: root.querySelector("#aeW2Label"),
+			elementSel: root.querySelector("#aeElementSel"),
+			type: root.querySelector("#aeElementType"),
+			length: root.querySelector("#aeLength"),
+			curvature: root.querySelector("#aeCurvature"),
+			radius: root.querySelector("#aeRadius"),
+			transitionType: root.querySelector("#aeTransitionType"),
+			w1: root.querySelector("#aeW1"),
+			w2: root.querySelector("#aeW2"),
+			signedContext: root.querySelector("#aeSignedContext"),
+			apply: root.querySelector("#aeApply"),
+			reset: root.querySelector("#aeReset"),
+			status: root.querySelector("#aeStatus"),
+		};
+
+		localizeEditUiText();
+
+		_editUi.elementSel?.addEventListener("change", () => {
+			renderSelectedElementForm();
+			syncSelectedElementToWorkspace(selectedElementId(), "editor");
+			setEditMessage(tx("alignment_editor.status.element_selected"), "info");
+		});
+
+		_editUi.apply?.addEventListener("click", () => {
+			void applyCurrentElementEdit();
+		});
+
+		_editUi.reset?.addEventListener("click", () => {
+			renderSelectedElementForm();
+			setEditMessage(tx("alignment_editor.status.inputs_reset"), "info");
+		});
+
+		return _editUi;
+	}
+
+	function localizeEditUiText() {
+		if (!_editUi) return;
+		_editUi.title.textContent = tx("alignment_editor.title");
+		_editUi.elementSelLabel.textContent = tx("alignment_editor.label.element");
+		_editUi.typeLabel.textContent = tx("alignment_editor.label.type");
+		_editUi.lengthLabel.textContent = tx("alignment_editor.label.length_m");
+		_editUi.curvatureLabel.textContent = tx("alignment_editor.label.curvature_inv_m");
+		_editUi.radiusLabel.textContent = tx("alignment_editor.label.radius_m");
+		_editUi.transitionTypeLabel.textContent = tx("alignment_editor.label.transition_family");
+		_editUi.w1Label.textContent = tx("alignment_editor.label.w1");
+		_editUi.w2Label.textContent = tx("alignment_editor.label.w2");
+		_editUi.apply.textContent = tx("alignment_editor.action.apply");
+		_editUi.reset.textContent = tx("alignment_editor.action.reset");
+	}
+
+	function unwrapSpotState(raw) {
+		if (!raw) return null;
+		if (raw.state && typeof raw.state === "object") return raw.state;
+		if (raw.ok && raw.payload && typeof raw.payload === "object") return raw.payload;
+		if (typeof raw === "object") return raw;
+		return null;
+	}
+
+	function getActiveAlignmentFromSpotState(spotState) {
+		const primaryId = getWorkspacePrimaryId(store.getState?.() ?? {});
+		if (!primaryId) return null;
+
+		const objects = Array.isArray(spotState?.objects)
+			? spotState.objects
+			: (
+				spotState?.objects && typeof spotState.objects === "object"
+					? Object.values(spotState.objects)
+					: (Array.isArray(spotState?.items) ? spotState.items : [])
+			);
+
+		const active = objects.find((o) => String(o?.id ?? "") === String(primaryId));
+		if (!active) return null;
+
+		const alignmentData = active?.data?.alignmentData ?? null;
+		if (!alignmentData?.editModel?.elements) return null;
+
+		return {
+			objectId: String(active.id),
+			alignmentData,
+		};
+	}
+
+	function formatElementOptionLabel(el) {
+		const type = String(el?.type ?? "element").toLowerCase();
+		const id = String(el?.id ?? "-");
+		const length = Number(el?.parameters?.length ?? el?.length ?? el?.arcLength);
+		const lenLabel = Number.isFinite(length)
+			? tx("alignment_editor.option.length_m", { value: length.toFixed(3) })
+			: tx("alignment_editor.value.missing");
+		return `${id} · ${readLocalizedElementType(type)} · ${lenLabel}`;
+	}
+
+	function setFieldDisabled(el, disabled) {
+		if (!el) return;
+		el.disabled = Boolean(disabled);
+	}
+
+	function selectedElementId() {
+		return String(_editUi?.elementSel?.value ?? "").trim();
+	}
+
+	function findSelectedElement() {
+		const id = selectedElementId();
+		if (!id) return null;
+		const elements = _activeAlignmentSnapshot?.alignmentData?.editModel?.elements;
+		if (!Array.isArray(elements)) return null;
+		return elements.find((el) => String(el?.id ?? "") === id) ?? null;
+	}
+
+	function updateSignedContext(el) {
+		if (!_editUi?.signedContext) return;
+
+		if (!el) {
+			_editUi.signedContext.textContent = "";
+			return;
+		}
+
+		const list = _activeAlignmentSnapshot?.alignmentData?.editModel?.elements ?? [];
+		const idx = list.findIndex((x) => String(x?.id ?? "") === String(el?.id ?? ""));
+		if (idx < 0) {
+			_editUi.signedContext.textContent = "";
+			return;
+		}
+
+		let prevCurv = null;
+		let nextCurv = null;
+		for (let i = idx - 1; i >= 0; i--) {
+			const k = Number(list[i]?.parameters?.curvature ?? list[i]?.curvature);
+			if (Number.isFinite(k)) { prevCurv = k; break; }
+		}
+		for (let i = idx + 1; i < list.length; i++) {
+			const k = Number(list[i]?.parameters?.curvature ?? list[i]?.curvature);
+			if (Number.isFinite(k)) { nextCurv = k; break; }
+		}
+
+		const prevLabel = Number.isFinite(prevCurv) ? prevCurv.toFixed(6) : "—";
+		const nextLabel = Number.isFinite(nextCurv) ? nextCurv.toFixed(6) : "—";
+		_editUi.signedContext.textContent = tx("alignment_editor.hint.signed_context", {
+			prev: prevLabel,
+			next: nextLabel,
+		});
+	}
+
+	function renderSelectedElementForm() {
+		if (!_editUi) return;
+		const el = findSelectedElement();
+
+		if (!el) {
+			_editUi.type.value = "";
+			_editUi.length.value = "";
+			_editUi.curvature.value = "";
+			_editUi.radius.value = "";
+			_editUi.transitionType.value = "";
+			_editUi.w1.value = "";
+			_editUi.w2.value = "";
+			updateSignedContext(null);
+			setFieldDisabled(_editUi.apply, true);
+			return;
+		}
+
+		const type = String(el.type ?? "").toLowerCase();
+		const length = Number(el?.parameters?.length ?? el?.length ?? el?.arcLength);
+		const curvature = Number(el?.parameters?.curvature ?? el?.curvature);
+		const radius = Number(el?.parameters?.radius ?? el?.radius);
+		const transType = String(el?.parameters?.transitionType ?? el?.transitionType ?? el?.transType ?? "");
+
+		_editUi.type.value = readLocalizedElementType(type);
+		_editUi.length.value = Number.isFinite(length) ? String(length) : "";
+		_editUi.curvature.value = Number.isFinite(curvature) ? String(curvature) : "";
+		_editUi.radius.value = Number.isFinite(radius) ? String(radius) : "";
+		_editUi.transitionType.value = transType;
+		_editUi.w1.value = Number.isFinite(Number(el?.parameters?.w1 ?? el?.opts?.w1)) ? String(el?.parameters?.w1 ?? el?.opts?.w1) : "";
+		_editUi.w2.value = Number.isFinite(Number(el?.parameters?.w2 ?? el?.opts?.w2)) ? String(el?.parameters?.w2 ?? el?.opts?.w2) : "";
+
+		const isStraight = type === "straight";
+		const isArc = type === "arc";
+		const isTransition = type === "transition";
+
+		setFieldDisabled(_editUi.length, false);
+		setFieldDisabled(_editUi.curvature, !isArc);
+		setFieldDisabled(_editUi.radius, !isArc);
+		setFieldDisabled(_editUi.transitionType, !isTransition);
+		setFieldDisabled(_editUi.w1, !isTransition);
+		setFieldDisabled(_editUi.w2, !isTransition);
+		setFieldDisabled(_editUi.apply, false);
+
+		if (isStraight) {
+			_editUi.curvature.value = "";
+			_editUi.radius.value = "";
+			_editUi.transitionType.value = "";
+			_editUi.w1.value = "";
+			_editUi.w2.value = "";
+		}
+
+		updateSignedContext(el);
+	}
+
+	async function loadTransitionFamiliesForEditorUi() {
+		if (!_editUi?.transitionType) return;
+
+		const res = await listPresets();
+		const items = Array.isArray(res) ? res : (Array.isArray(res?.items) ? res.items : []);
+
+		_editUi.transitionType.innerHTML = "";
+		for (const item of items) {
+			if (!item?.id) continue;
+			const opt = document.createElement("option");
+			opt.value = String(item.id);
+			opt.textContent = String(item.label ?? item.id);
+			_editUi.transitionType.appendChild(opt);
+		}
+	}
+
+	async function refreshActiveAlignmentEditorUi({ preserveSelection = true } = {}) {
+		const editUi = ensureEditUi();
+		if (!editUi?.elementSel) return;
+		localizeEditUiText();
+
+		const spotRaw = await messaging.sendCmdAwait("Spot.GetState", {});
+		const spotState = unwrapSpotState(spotRaw);
+		const active = getActiveAlignmentFromSpotState(spotState);
+		_activeAlignmentSnapshot = active;
+
+		await loadTransitionFamiliesForEditorUi();
+
+		const requested = String(_focusElementId ?? "").trim();
+		const prevSel = preserveSelection ? selectedElementId() : "";
+		editUi.elementSel.innerHTML = "";
+
+		const elements = active?.alignmentData?.editModel?.elements;
+		if (!Array.isArray(elements) || elements.length === 0) {
+			if (requested) {
+				setEditMessage(tx("alignment_editor.status.focus_target_missing"), "warn");
+			} else {
+				setEditMessage(tx("alignment_editor.status.no_editable_elements"), "warn");
+			}
+			_focusElementId = "";
+			renderSelectedElementForm();
+			return;
+		}
+
+		for (const el of elements) {
+			const opt = document.createElement("option");
+			opt.value = String(el?.id ?? "");
+			opt.textContent = formatElementOptionLabel(el);
+			editUi.elementSel.appendChild(opt);
+		}
+
+		let wanted = String(elements[0]?.id ?? "");
+		if (requested && elements.some((el) => String(el?.id ?? "") === requested)) {
+			wanted = requested;
+		} else if (prevSel && elements.some((el) => String(el?.id ?? "") === prevSel)) {
+			wanted = prevSel;
+		}
+
+		editUi.elementSel.value = wanted;
+		renderSelectedElementForm();
+		if (requested && wanted !== requested) {
+			setEditMessage(tx("alignment_editor.status.focus_target_missing"), "warn");
+		} else if (requested && wanted === requested) {
+			setEditMessage(tx("alignment_editor.status.focus_applied"), "ok");
+		} else {
+			setEditMessage(tx("alignment_editor.status.state_loaded"), "ok");
+		}
+			syncSelectedElementToWorkspace(wanted, "editor");
+		_focusElementId = "";
+	}
+
+	async function applyCurrentElementEdit() {
+		try {
+			if (!_editUi) return;
+			const el = findSelectedElement();
+			if (!el) {
+				setEditMessage(tx("alignment_editor.status.no_element_selected"), "warn");
+				return;
+			}
+
+			const type = String(el?.type ?? "").toLowerCase();
+			const id = String(el?.id ?? "");
+			const lengthRaw = _editUi.length?.value;
+			const curvatureRaw = _editUi.curvature?.value;
+			const radiusRaw = _editUi.radius?.value;
+			const transitionTypeRaw = _editUi.transitionType?.value;
+			const w1Raw = _editUi.w1?.value;
+			const w2Raw = _editUi.w2?.value;
+
+			const maybeNum = (v) => {
+				if (v == null || String(v).trim() === "") return undefined;
+				const n = Number(v);
+				return Number.isFinite(n) ? n : Number.NaN;
+			};
+
+			let result = null;
+			if (type === "straight") {
+				result = await alignmentEditor.updateStraightLengthOnActiveAlignment({
+					elementId: id,
+					length: maybeNum(lengthRaw),
+				});
+			} else if (type === "arc") {
+				result = await applyArcEditToActiveAlignment({
+					alignmentEditor,
+					elementId: id,
+					length: maybeNum(lengthRaw),
+					curvature: maybeNum(curvatureRaw),
+					radius: maybeNum(radiusRaw),
+				});
+			} else if (type === "transition") {
+				const w1 = maybeNum(w1Raw);
+				const w2 = maybeNum(w2Raw);
+				result = await applyTransitionEditToActiveAlignment({
+					alignmentEditor,
+					elementId: id,
+					length: maybeNum(lengthRaw),
+					transitionType: String(transitionTypeRaw ?? "").trim() || undefined,
+					w1,
+					w2,
+					useCurrentSplits: false,
+				});
+			} else {
+				setEditMessage(tx("alignment_editor.status.unsupported_operation"), "warn");
+				return;
+			}
+
+			if (!result) {
+				setEditMessage(tx("alignment_editor.status.no_edit_result"), "warn");
+				return;
+			}
+
+			if (result?.ok === false || result?.changed === false && result?.status === "rejected") {
+				setEditMessage(tx("alignment_editor.status.validation_failed"), "error");
+				return;
+			}
+
+			if (result?.changed === false) {
+				setEditMessage(tx("alignment_editor.status.no_changes_applied"), "info");
+				return;
+			}
+
+			await refreshActiveAlignmentEditorUi({ preserveSelection: true });
+			setEditMessage(tx("alignment_editor.status.recalculated"), "ok");
+		} catch {
+			setEditMessage(tx("alignment_editor.status.calculation_failed"), "error");
+		}
+	}
+
+	async function openOverlayAndSync({ preserveSelection = true } = {}) {
+		ui.openTransition?.();
+		setOpen(true);
+
+		await ensureViewInitOnce();
+
+		const st = store.getState?.() ?? {};
+		const presetId = getPresetIdFromState(st);
+
+		if (presetId) {
+			await applyPresetSpecToStoreAndUI(presetId);
+			if (elPresetMain) elPresetMain.value = presetId;
+			if (elPresetAlt) elPresetAlt.value = presetId;
+		}
+
+		await refreshActiveAlignmentEditorUi({ preserveSelection });
+
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				view?.resize?.();
+			});
+		});
+	}
+
+	async function focusElementInEditor({ elementId } = {}) {
+		const id = String(elementId ?? "").trim();
+		if (!id) {
+			setEditMessage(tx("alignment_editor.status.focus_target_invalid"), "warn");
+			return false;
+		}
+
+		_focusElementId = id;
+		await openOverlayAndSync({ preserveSelection: false });
+
+		if (selectedElementId() === id) {
+			return true;
+		}
+
+		for (let attempt = 0; attempt < 3; attempt++) {
+			_focusElementId = id;
+			await new Promise((resolve) => setTimeout(resolve, 30));
+			await refreshActiveAlignmentEditorUi({ preserveSelection: false });
+			if (selectedElementId() === id) {
+				syncSelectedElementToWorkspace(id, "editor");
+				return true;
+			}
+		}
+
+		setEditMessage(tx("alignment_editor.status.focus_target_missing"), "warn");
+		syncSelectedElementToWorkspace(null, "editor");
+		return false;
+	}
 
 	function getCachedOrCurrentSpec(presetId) {
 		const pid = String(presetId ?? "");
@@ -341,25 +852,7 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 
 	function wireOverlayOpenClose() {
 		btnOpen?.addEventListener("click", async () => {
-			ui.openTransition?.();
-			setOpen(true);
-
-			await ensureViewInitOnce();
-
-			const st = store.getState?.() ?? {};
-			const presetId = getPresetIdFromState(st);
-
-			if (presetId) {
-				await applyPresetSpecToStoreAndUI(presetId);
-				if (elPresetMain) elPresetMain.value = presetId;
-				if (elPresetAlt) elPresetAlt.value = presetId;
-			}
-
-			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					view?.resize?.();
-				});
-			});
+			await openOverlayAndSync({ preserveSelection: true });
 		});
 
 		btnClose?.addEventListener("click", () => {
@@ -377,6 +870,17 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			if (event.key !== "Escape") return;
 			ui.closeTransition?.();
 			setOpen(false);
+		});
+	}
+
+	function isOverlayOpen() {
+		return !!ov && !ov.classList.contains("hidden");
+	}
+
+	function wireExternalFocusRequests() {
+		window.addEventListener("ufaim:alignment-editor-focus-element", (event) => {
+			const elementId = String(event?.detail?.elementId ?? "").trim();
+			void focusElementInEditor({ elementId });
 		});
 	}
 
@@ -417,6 +921,7 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 		wirePresetSelect(elPresetMain);
 		wirePresetSelect(elPresetAlt);
 		wireSplitSliders();
+		wireExternalFocusRequests();
 
 		const st = store.getState?.() ?? {};
 		const pid = getPresetIdFromState(st);
@@ -435,28 +940,111 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) 
 			Boolean(store.getState?.()?.te_open);
 
 		if (overlayAlreadyOpen) {
-			await ensureViewInitOnce();
-
-			const st2 = store.getState?.() ?? {};
-			const pid2 = getPresetIdFromState(st2);
-
-			if (pid2) {
-				await applyPresetSpecToStoreAndUI(pid2);
-				if (elPresetMain) elPresetMain.value = pid2;
-				if (elPresetAlt) elPresetAlt.value = pid2;
-			}
-
-			requestAnimationFrame(() => {
-				requestAnimationFrame(() => {
-					view?.resize?.();
-				});
-			});
+			await openOverlayAndSync({ preserveSelection: true });
 		}
+
+		messaging.onEvt?.("Spot.UiStateChanged", async () => {
+			if (!isOverlayOpen()) return;
+			await refreshActiveAlignmentEditorUi({ preserveSelection: true });
+		});
+
+		let lastPrimaryId = getWorkspacePrimaryId(store.getState?.() ?? {});
+		store.subscribe?.(() => {
+			const nextPrimaryId = getWorkspacePrimaryId(store.getState?.() ?? {});
+			if (String(nextPrimaryId ?? "") === String(lastPrimaryId ?? "")) return;
+			lastPrimaryId = nextPrimaryId;
+			if (!isOverlayOpen()) return;
+			void refreshActiveAlignmentEditorUi({ preserveSelection: true });
+		});
+	}
+
+	async function applyTransitionEditToActiveAlignment({
+		alignmentEditor,
+		elementId,
+		length,
+		transitionType,
+		w1,
+		w2,
+		useCurrentSplits = true,
+	} = {}) {
+		if (!alignmentEditor?.updateTransitionOnActiveAlignment) {
+			return {
+				changed: false,
+				ok: false,
+				status: "rejected",
+				code: "ALIGNMENT_EDIT_TRANSITION_REJECTED",
+				reason: "alignment editor updateTransition is unavailable",
+			};
+		}
+
+		const id = String(elementId ?? "").trim();
+		if (!id) {
+			return {
+				changed: false,
+				ok: false,
+				status: "rejected",
+				code: "ALIGNMENT_EDIT_TRANSITION_REJECTED",
+				reason: "elementId is required",
+			};
+		}
+
+		const st = store.getState?.() ?? {};
+		const presetId = String(transitionType ?? st.te_presetId ?? st.te_preset ?? "").trim();
+		const splitW1 = useCurrentSplits ? Number(st.te_w1) : w1;
+		const splitW2 = useCurrentSplits ? Number(st.te_w2) : w2;
+
+		return alignmentEditor.updateTransitionOnActiveAlignment({
+			elementId: id,
+			length,
+			transitionType: presetId,
+			w1: Number.isFinite(splitW1) ? splitW1 : undefined,
+			w2: Number.isFinite(splitW2) ? splitW2 : undefined,
+		});
+	}
+
+	async function applyArcEditToActiveAlignment({
+		alignmentEditor,
+		elementId,
+		length,
+		curvature,
+		radius,
+	} = {}) {
+		if (!alignmentEditor?.updateArcOnActiveAlignment) {
+			return {
+				changed: false,
+				ok: false,
+				status: "rejected",
+				code: "ALIGNMENT_EDIT_ARC_REJECTED",
+				reason: "alignment editor updateArc is unavailable",
+			};
+		}
+
+		const id = String(elementId ?? "").trim();
+		if (!id) {
+			return {
+				changed: false,
+				ok: false,
+				status: "rejected",
+				code: "ALIGNMENT_EDIT_ARC_REJECTED",
+				reason: "elementId is required",
+			};
+		}
+
+		return alignmentEditor.updateArcOnActiveAlignment({
+			elementId: id,
+			length,
+			curvature,
+			radius,
+		});
 	}
 
 	return {
 		wire,
 		loadPresetsIntoUI,
 		applyPresetSpecToStoreAndUI,
+		applyTransitionEditToActiveAlignment,
+		applyArcEditToActiveAlignment,
+		focusElementInEditor,
+		refreshActiveAlignmentEditorUi,
 	};
 }

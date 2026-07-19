@@ -1,11 +1,12 @@
 // app/runtime/init/initFeatures.js
 
 import { makeImportController } from "@app/controllers/importController.js";
-import { CockpitController } from "@app/controllers/cockpitController.js";
+import { CockpitController } from "@app/controllers/CockpitController.js";
 import { makeViewController } from "@app/controllers/viewController.js";
 import { makeThreeAdapter } from "@app/controllers/adapters/geo/ThreeMainViewControllerAdapter.js";
 import { makeThreeViewer } from "@app/view/viewers/threeViewer.js";
 import { makeTransitionEditorBridge } from "@app/controllers/bridges/transitionEditorBridge.js";
+import { MapLibreThreeAdapter } from "@app/controllers/adapters/geo/MapLibreThreeAdapter.js";
 
 function setupGeoRuntime(ctx) {
 	const canvas = document.getElementById("view3d");
@@ -15,6 +16,7 @@ function setupGeoRuntime(ctx) {
 	three.start?.();
 
 	ctx.threeA = makeThreeAdapter({ three });
+	ctx.mapA = new MapLibreThreeAdapter();
 	return ctx.threeA;
 }
 
@@ -107,10 +109,14 @@ function setupViewRuntime(ctx) {
 		store: ctx.store,
 		ui: ctx.ui,
 		threeA: ctx.threeA,
+		mapA: ctx.mapA,
 		propsElement: ctx.propsElement,
 		prefs: ctx.prefs,
 		messaging: ctx.messaging,
 	});
+
+	window.__ufAIM_viewController = viewC;
+	window.__ufAIM_geoView = ctx.threeA;
 
 	void viewC.subscribe();
 
@@ -156,6 +162,7 @@ async function setupTransitionRuntime(ctx) {
 	});
 
 	await teBridge.wire?.();
+	if (ctx.prefs.isDev) window.__ufAIM_teBridge = teBridge;
 	return teBridge;
 }
 

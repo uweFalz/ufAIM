@@ -61,6 +61,9 @@ function normalizeWorkspaceSelection(sel) {
 	return {
 		primaryId,
 		contextIds,
+		elementId: x.elementId != null && String(x.elementId).trim()
+			? String(x.elementId).trim()
+			: null,
 		source: x.source != null ? String(x.source) : null,
 		crsId: x.crsId != null ? String(x.crsId) : null,
 	};
@@ -182,6 +185,7 @@ export function makeInitialState() {
 		workspace_selection: {
 			primaryId: null,
 			contextIds: [],
+			elementId: null,
 			source: null,
 			crsId: null,
 		},
