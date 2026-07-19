@@ -23,6 +23,7 @@ export function createAlignmentSpotObject(input = {}) {
 		kernel = null,
 		alignmentData = null,
 		sparseAlignment = null,
+		georeference = null,
 
 		meta = {},
 		extended = {},
@@ -50,6 +51,7 @@ export function createAlignmentSpotObject(input = {}) {
 			kernel,
 			alignmentData,
 			...(sparseAlignment != null ? { sparseAlignment } : {}),
+			...(georeference != null ? { georeference } : {}),
 			meta: isObject(meta) ? { ...meta } : {},
 			extended: isObject(extended) ? { ...extended } : {},
 		},

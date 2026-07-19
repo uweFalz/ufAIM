@@ -22,6 +22,7 @@ import {
 	TECHNET_SHEET_NAMES as SHEET_NAMES,
 	TECHNET_EDGE_FAMILIES as EDGE_FAMILIES,
 } from "../sharedTechnet.js";
+import { resolveGndCrsIdentifier } from "@src/domain/crs/GndCrsResolver.js";
 
 const DEBUG_GND_ANALYSIS_DEFAULT = false;
 
@@ -721,6 +722,7 @@ function buildCoordGeomAlignmentFromSequence({
 	const strecke = seq?.strecke ?? "unknown";
 	const strRikz = seq?.strRikz ?? "unknown";
 	const lsys = seq?.lsys ?? null;
+	const horizontalResolution = resolveGndCrsIdentifier(lsys);
 	const stationStart = seq?.stationStart ?? null;
 	const stationEnd = seq?.stationEnd ?? null;
 
@@ -741,15 +743,17 @@ function buildCoordGeomAlignmentFromSequence({
 	return fat.createAlignment({
 		id: `gnd.coordGeom.${index + 1}`,
 		name,
-		spatialRef: lsys
-			? {
-				status: "declared",
-				horizontalCrsId: lsys,
+		spatialRef: {
+				status: horizontalResolution.status,
+				crsId: horizontalResolution.resolvedEpsg ?? lsys ?? null,
+				horizontalCrsId: horizontalResolution.resolvedEpsg ?? lsys ?? null,
 				horizontalCoordinateSystemName: lsys,
 				horizontal: lsys,
 				source: "GND.LSYS",
-			}
-			: null,
+				resolution: horizontalResolution,
+				coordinateProvenance: "GND.PL:Y(easting),X(northing)",
+				coordinatesAreAbsolute: true,
+			},
 		coordGeom,
 		staEquations: null,
 		profile,

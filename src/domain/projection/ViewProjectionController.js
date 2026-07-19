@@ -11,6 +11,7 @@ export function projectAlignmentGeometry({
 	objectId = null,
 	geometry = null,
 	crsId = null,
+	georeference = null,
 	source = "spot-object",
 	maxStep = 5,
 } = {}) {
@@ -19,6 +20,7 @@ export function projectAlignmentGeometry({
 		geometry,
 		source,
 		crsId,
+		georeference,
 	});
 
 	if (!input) return null;
@@ -48,6 +50,7 @@ export function projectFocusedSpotObject(spotObject, opts = {}) {
 		geometry,
 		source: "spot-object",
 		crsId: spotObject?.crsId ?? null,
+		georeference: spotObject?.data?.georeference ?? null,
 		maxStep: opts.maxStep ?? 5,
 	});
 

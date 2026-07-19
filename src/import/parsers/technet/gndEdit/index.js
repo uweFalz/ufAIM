@@ -13,6 +13,10 @@ export const sniff = {
 	extensions: ['xlsx', 'xlsm', 'xls'],
 	looksLike: async ({ file }) => {
 		const name = file?.name?.toLowerCase() || '';
+		const ext = name.includes('.') ? name.split('.').pop() : '';
+		if (!['xlsx', 'xlsm', 'xls'].includes(ext)) {
+			return false;
+		}
 		return name.includes('gnd');
 	}
 };

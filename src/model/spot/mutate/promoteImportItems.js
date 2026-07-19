@@ -22,12 +22,15 @@ export function promoteImportItems({ items = [], spotStore } = {}) {
 
 		const allowSoftReview =
 			decision?.admission === "review" &&
-			decision?.reason === "no_crs_context" &&
+			(
+				decision?.reason === "no_crs_context" ||
+				decision?.reason === "missing_crs_for_gnd"
+			) &&
 			isDrawableAlignmentItem(item);
 
 		if (decision?.admission === "safe" || allowSoftReview) {
 			const promoted = promoteOneItemToSpotEntry(item, {
-				warnings: allowSoftReview ? ["no_crs_context"] : [],
+				warnings: allowSoftReview ? [decision.reason] : [],
 			});
 
 			if (!promoted) {
@@ -123,6 +126,7 @@ function buildSpotAlignmentEntry(item, opts = {}) {
 
 	entry.data.meta = clonePlainObject(payload.meta);
 	entry.data.extended = clonePlainObject(payload.extended);
+	entry.data.georeference = clonePlainObject(item?.derived?.spatialRef ?? payload?.spatialRef);
 
 	return {
 		crs,
