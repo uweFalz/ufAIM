@@ -9,14 +9,20 @@
  *
  * Scope, first transfer slice:
  * - supports startPose
- * - supports straight elements
- * - does not support arcs
- * - does not support transitions
+ * - supports straight, circular arc and transition elements
  * - does not support profile or cant
  * - does not perform CRS / metric realization
  *
  * This file does not know SPOT, View, Projection, Cockpit or Import.
  */
+
+import transitionLookup from "@transition/transitionLookup.json" with { type: "json" };
+import { RegistryResolver } from "@transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "@transition/build/KappaFcnBuilder.js";
+import { makeAlignment2DFromSparse } from "../build/AlignmentFactory.js";
+
+const descriptorResolver = new RegistryResolver(transitionLookup);
+
 export function buildSparseAlignment(alignmentData) {
 	if (!isAlignmentData(alignmentData)) {
 		throw new Error("buildSparseAlignment: missing AlignmentData");
@@ -29,40 +35,43 @@ export function buildSparseAlignment(alignmentData) {
 		throw new Error("buildSparseAlignment: missing valid editModel.startPose");
 	}
 
-	const sparse = [];
-	const elements = [];
-
-	let cursor = {
-		s: 0,
-		p: { ...startPose.p },
-		t: { ...startPose.t },
-		theta: vectorToTheta(startPose.t),
-	};
-
-	for (const element of asArray(editModel.elements)) {
-		const kind = normalizeElementKind(element);
-
-		if (kind === "straight") {
-			const built = buildStraightSparseElement(element, cursor, sparse.length);
-
-			sparse.push(built.sparseElement);
-			elements.push(built.sparseElement);
-
-			cursor = built.nextCursor;
-			continue;
-		}
-
-		sparse.push({
-			id: element?.id ?? makeDerivedElementId("unsupported", sparse.length),
-			type: "unsupported",
-			sourceType: element?.type ?? element?.kind ?? null,
-			sStart: cursor.s,
-			sEnd: cursor.s,
-			meta: {
-				warning: "unsupported_editor_element",
-			},
-		});
+	const editElements = asArray(editModel.elements);
+	if (!editElements.length) {
+		throw new Error("buildSparseAlignment: editModel.elements must be non-empty");
 	}
+
+	const sparse = editElements.map((element, index) =>
+		buildSparseElementFromEditor(element, index)
+	);
+
+	assertSparseSequence(sparse);
+
+	for (const el of sparse) {
+		if (el.type !== "transition") continue;
+		descriptorResolver.resolveTransitionDescriptor(el.transType);
+	}
+
+	const built = makeAlignment2DFromSparse({
+		startPose,
+		sparse,
+		descriptorResolver,
+		kappaBuilder: KappaFcnBuilder,
+	});
+
+	if (!Array.isArray(built?.warnings)) {
+		throw new Error("buildSparseAlignment: AXTRAN build warnings contract missing");
+	}
+
+	if (built.warnings.length > 0) {
+		throw new Error(`buildSparseAlignment: AXTRAN build warnings ${JSON.stringify(built.warnings)}`);
+	}
+
+	const alignedSparse = annotateSparseWithPoseAndStation({
+		alignment: built.alignment,
+		sparse,
+	});
+
+	const totalLength = alignedSparse.reduce((acc, el) => acc + (Number(el.arcLength) || 0), 0);
 
 	return {
 		type: "sparseAlignment",
@@ -82,16 +91,16 @@ export function buildSparseAlignment(alignmentData) {
 			t: { ...startPose.t },
 		},
 
-		length: cursor.s,
+		length: totalLength,
 
-		sparse,
-		elements,
+		sparse: alignedSparse,
+		elements: alignedSparse,
 
 		meta: {
 			derivedFrom: alignmentData.id ?? null,
 			elementCount: sparse.length,
-			supportedElementTypes: ["straight"],
-			hasUnsupportedElements: sparse.some((el) => el.type === "unsupported"),
+			supportedElementTypes: ["straight", "arc", "transition"],
+			hasUnsupportedElements: false,
 			createdAt: new Date().toISOString(),
 		},
 	};
@@ -101,59 +110,129 @@ export function buildSparseFromEditModel(alignmentData) {
 	return buildSparseAlignment(alignmentData);
 }
 
-function buildStraightSparseElement(element, cursor, index) {
-	const length = readPositiveNumber(
-		element?.parameters?.length ??
-		element?.length ??
-		element?.arcLength ??
-		element?.L
-	);
+function buildSparseElementFromEditor(element, index) {
+	const kind = normalizeElementKind(element);
 
-	if (!Number.isFinite(length) || length <= 0) {
-		throw new Error("buildSparseAlignment: straight length must be positive");
+	if (kind === "straight") {
+		const length = readPositiveLength(
+			element?.parameters?.length ?? element?.length ?? element?.arcLength ?? element?.L,
+			"buildSparseAlignment: straight length"
+		);
+
+		return {
+			id: element?.id ?? makeDerivedElementId("straight", index),
+			type: "fixed",
+			kind: "straight",
+			arcLength: length,
+			curvature: 0,
+			meta: {
+				...(isObject(element?.meta) ? element.meta : {}),
+				sourceElementType: "straight",
+				derivedBy: "buildSparseAlignment",
+			},
+		};
 	}
 
-	const poseA = {
-		p: { ...cursor.p },
-		t: { ...cursor.t },
-	};
+	if (kind === "arc") {
+		const length = readPositiveLength(
+			element?.parameters?.length ?? element?.length ?? element?.arcLength,
+			"buildSparseAlignment: arc length"
+		);
 
-	const nextP = {
-		x: cursor.p.x + cursor.t.x * length,
-		y: cursor.p.y + cursor.t.y * length,
-	};
+		const curvature = resolveArcCurvature(element, "buildSparseAlignment: arc curvature");
 
-	const nextCursor = {
-		s: cursor.s + length,
-		p: nextP,
-		t: { ...cursor.t },
-		theta: cursor.theta,
-	};
+		return {
+			id: element?.id ?? makeDerivedElementId("arc", index),
+			type: "fixed",
+			kind: "arc",
+			arcLength: length,
+			curvature,
+			meta: {
+				...(isObject(element?.meta) ? element.meta : {}),
+				sourceElementType: "arc",
+				derivedBy: "buildSparseAlignment",
+			},
+		};
+	}
 
-	const sparseElement = {
-		id: element?.id ?? makeDerivedElementId("straight", index),
+	if (kind === "transition") {
+		const length = readPositiveLength(
+			element?.parameters?.length ?? element?.length ?? element?.arcLength,
+			"buildSparseAlignment: transition length"
+		);
 
-		type: "fixed",
-		kind: "straight",
+		const transType = String(
+			element?.parameters?.transitionType ?? element?.transitionType ?? element?.transType ?? ""
+		).trim().toLowerCase();
 
-		poseA,
-		arcLength: length,
-		curvature: 0,
+		if (!transType) {
+			throw new Error("buildSparseAlignment: transition type is required");
+		}
 
-		sStart: cursor.s,
-		sEnd: nextCursor.s,
+		const opts = readTransitionOpts(element);
 
-		meta: {
-			...(isObject(element?.meta) ? element.meta : {}),
-			sourceElementType: "straight",
-			derivedBy: "buildSparseAlignment",
-		},
-	};
+		return {
+			id: element?.id ?? makeDerivedElementId("transition", index),
+			type: "transition",
+			kind: "transition",
+			arcLength: length,
+			transType,
+			opts,
+			meta: {
+				...(isObject(element?.meta) ? element.meta : {}),
+				sourceElementType: "transition",
+				derivedBy: "buildSparseAlignment",
+			},
+		};
+	}
 
-	return {
-		sparseElement,
-		nextCursor,
-	};
+	throw new Error(`buildSparseAlignment: unsupported editor element type \"${kind}\"`);
+}
+
+function annotateSparseWithPoseAndStation({ alignment, sparse }) {
+	const out = [];
+	let s = 0;
+
+	for (const el of sparse) {
+		const poseA = alignment.poseAt(s, { quality: "exact" });
+		const L = Number(el.arcLength) || 0;
+
+		out.push({
+			...el,
+			poseA: {
+				p: { x: poseA.p.x, y: poseA.p.y },
+				t: { x: poseA.t.x, y: poseA.t.y },
+			},
+			sStart: s,
+			sEnd: s + L,
+		});
+
+		s += L;
+	}
+
+	return out;
+}
+
+function assertSparseSequence(sparse) {
+	if (!Array.isArray(sparse) || sparse.length === 0) {
+		throw new Error("buildSparseAlignment: sparse sequence must be non-empty");
+	}
+
+	if (sparse[0].type !== "fixed") {
+		throw new Error("buildSparseAlignment: sequence must start with fixed element");
+	}
+
+	if (sparse[sparse.length - 1].type !== "fixed") {
+		throw new Error("buildSparseAlignment: sequence must end with fixed element");
+	}
+
+	let expect = "fixed";
+	for (const el of sparse) {
+		if (el.type !== expect) {
+			throw new Error(`buildSparseAlignment: elements must alternate fixed/transition, expected ${expect}`);
+		}
+		expect = expect === "fixed" ? "transition" : "fixed";
+	}
 }
 
 function normalizePose2(value) {
@@ -195,10 +274,6 @@ function normalizeVector(value) {
 	};
 }
 
-function vectorToTheta(t) {
-	return Math.atan2(t.y, t.x);
-}
-
 function normalizeElementKind(element) {
 	const raw =
 		element?.kind ??
@@ -218,16 +293,76 @@ function normalizeElementKind(element) {
 		return "straight";
 	}
 
+	if (
+		s === "arc" ||
+		s === "curve" ||
+		s === "circular_arc" ||
+		s === "circulararc"
+	) {
+		return "arc";
+	}
+
+	if (
+		s === "transition" ||
+		s === "spiral"
+	) {
+		return "transition";
+	}
+
 	return s || "unknown";
 }
 
-function readPositiveNumber(value) {
+function readPositiveLength(value, caller) {
 	if (isObject(value) && Number.isFinite(Number(value.value))) {
 		return Number(value.value);
 	}
 
 	const n = Number(value);
-	return Number.isFinite(n) ? n : null;
+	if (!Number.isFinite(n) || n <= 0) {
+		throw new Error(`${caller}: must be a positive number`);
+	}
+
+	return n;
+}
+
+function resolveArcCurvature(element, caller) {
+	const curvatureRaw = element?.parameters?.curvature ?? element?.curvature ?? null;
+	const radiusRaw = element?.parameters?.radius ?? element?.radius ?? null;
+
+	if (radiusRaw != null) {
+		const radius = Number(radiusRaw);
+		if (!Number.isFinite(radius) || radius === 0) {
+			throw new Error(`${caller}: radius must be finite and non-zero`);
+		}
+		return 1 / radius;
+	}
+
+	const curvature = Number(curvatureRaw);
+	if (!Number.isFinite(curvature) || curvature === 0) {
+		throw new Error(`${caller}: curvature must be finite and non-zero`);
+	}
+
+	return curvature;
+}
+
+function readTransitionOpts(element) {
+	const rawW1 = element?.parameters?.w1 ?? element?.opts?.w1 ?? null;
+	const rawW2 = element?.parameters?.w2 ?? element?.opts?.w2 ?? null;
+
+	if (rawW1 == null || rawW2 == null) return undefined;
+
+	const w1 = clamp01(Number(rawW1));
+	const w2 = clamp01(Number(rawW2));
+
+	if (!Number.isFinite(w1) || !Number.isFinite(w2)) {
+		throw new Error("buildSparseAlignment: transition w1/w2 must be finite");
+	}
+
+	if (w2 < w1) {
+		throw new Error("buildSparseAlignment: transition w2 must be >= w1");
+	}
+
+	return { w1, w2 };
 }
 
 function makeDerivedElementId(prefix, index) {
@@ -244,6 +379,13 @@ function isAlignmentData(value) {
 
 function isObject(x) {
 	return !!x && typeof x === "object" && !Array.isArray(x);
+}
+
+function clamp01(n) {
+	if (!Number.isFinite(n)) return 0;
+	if (n < 0) return 0;
+	if (n > 1) return 1;
+	return n;
 }
 
 export default buildSparseAlignment;

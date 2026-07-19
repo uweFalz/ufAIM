@@ -22,11 +22,60 @@ export class AlignmentEditorController {
 		return this.service.addStraight(args);
 	}
 
+	async addArcToActiveAlignment(args = {}) {
+		if (!isObject(args)) {
+			return reject("ALIGNMENT_EDIT_ARC_REJECTED", "invalid request: args must be object");
+		}
+		return this.service.addArc(args);
+	}
+
+	async addTransitionToActiveAlignment(args = {}) {
+		if (!isObject(args)) {
+			return reject("ALIGNMENT_EDIT_TRANSITION_REJECTED", "invalid request: args must be object");
+		}
+		return this.service.addTransition(args);
+	}
+
 	async removeElementFromActiveAlignment(args = {}) {
 		return this.service.removeElement(args);
+	}
+
+	async updateStraightLengthOnActiveAlignment(args = {}) {
+		if (!isObject(args) || !String(args.elementId ?? "").trim()) {
+			return reject("ALIGNMENT_EDIT_STRAIGHT_REJECTED", "invalid request: elementId is required");
+		}
+		return this.service.updateStraightLength(args);
+	}
+
+	async updateArcOnActiveAlignment(args = {}) {
+		if (!isObject(args) || !String(args.elementId ?? "").trim()) {
+			return reject("ALIGNMENT_EDIT_ARC_REJECTED", "invalid request: elementId is required");
+		}
+		return this.service.updateArc(args);
+	}
+
+	async updateTransitionOnActiveAlignment(args = {}) {
+		if (!isObject(args) || !String(args.elementId ?? "").trim()) {
+			return reject("ALIGNMENT_EDIT_TRANSITION_REJECTED", "invalid request: elementId is required");
+		}
+		return this.service.updateTransition(args);
 	}
 
 	async clearActiveAlignmentElements() {
 		return this.service.clearElements();
 	}
+}
+
+function isObject(value) {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function reject(code, reason) {
+	return {
+		changed: false,
+		ok: false,
+		status: "rejected",
+		code,
+		reason,
+	};
 }

@@ -25,15 +25,24 @@ import { createEmptyAlignmentData } from "@src/domain/alignment/editor/createEmp
 
 import {
 	addStraightElement,
+	addArcElement,
+	addTransitionElement,
+	updateStraightLengthById,
+	updateArcById,
+	updateTransitionById,
 	removeElementById,
 	clearElements,
 } from "@src/domain/alignment/editor/alignmentEditOps.js";
 
 import { buildSparseFromEditModel } from "@src/domain/alignment/editor/buildSparseAlignment.js";
+import { RegistryResolver } from "@src/domain/transition/registry/RegistryResolver.js";
+import transitionLookup from "@src/domain/transition/transitionLookup.json" with { type: "json" };
 
 import { AlignmentMapper } from "@src/model/spot/model/AlignmentSpotObjectMapper.js";
 
 import { SpotGateway } from "./SpotGateway.js";
+
+const transitionDescriptorResolver = new RegistryResolver(transitionLookup);
 
 export class AlignmentApplicationService {
 	constructor({
@@ -111,6 +120,44 @@ export class AlignmentApplicationService {
 		});
 	}
 
+	async addArc({
+		length = 100,
+		curvature,
+		radius,
+	} = {}) {
+		return this._editActiveAlignmentSafe({
+			source: "alignment-editor-add-arc",
+			code: "ALIGNMENT_EDIT_ARC_REJECTED",
+			edit: (alignmentData) =>
+				addArcElement(alignmentData, {
+					length,
+					curvature,
+					radius,
+				}),
+		});
+	}
+
+	async addTransition({
+		length = 60,
+		transitionType = "clothoid",
+		w1,
+		w2,
+	} = {}) {
+		return this._editActiveAlignmentSafe({
+			source: "alignment-editor-add-transition",
+			code: "ALIGNMENT_EDIT_TRANSITION_REJECTED",
+			edit: (alignmentData) => {
+				this._assertTransitionTypeSupported(transitionType);
+				return addTransitionElement(alignmentData, {
+					length,
+					transitionType,
+					w1,
+					w2,
+				});
+			},
+		});
+	}
+
 	async removeElement({
 		elementId,
 	} = {}) {
@@ -125,6 +172,70 @@ export class AlignmentApplicationService {
 						elementId,
 					}
 				),
+		});
+	}
+
+	async updateStraightLength({
+		elementId,
+		length,
+	} = {}) {
+		return this._editActiveAlignment({
+			source:
+				"alignment-editor-update-straight-length",
+
+			edit: (alignmentData) =>
+				updateStraightLengthById(
+					alignmentData,
+					{
+						elementId,
+						length,
+					}
+				),
+		});
+	}
+
+	async updateArc({
+		elementId,
+		length,
+		curvature,
+		radius,
+	} = {}) {
+		return this._editActiveAlignmentSafe({
+			source: "alignment-editor-update-arc",
+			code: "ALIGNMENT_EDIT_ARC_REJECTED",
+			edit: (alignmentData) =>
+				updateArcById(alignmentData, {
+					elementId,
+					length,
+					curvature,
+					radius,
+				}),
+		});
+	}
+
+	async updateTransition({
+		elementId,
+		length,
+		transitionType,
+		w1,
+		w2,
+	} = {}) {
+		return this._editActiveAlignmentSafe({
+			source: "alignment-editor-update-transition",
+			code: "ALIGNMENT_EDIT_TRANSITION_REJECTED",
+			edit: (alignmentData) => {
+				if (transitionType != null) {
+					this._assertTransitionTypeSupported(transitionType);
+				}
+
+				return updateTransitionById(alignmentData, {
+					elementId,
+					length,
+					transitionType,
+					w1,
+					w2,
+				});
+			},
 		});
 	}
 
@@ -231,6 +342,33 @@ export class AlignmentApplicationService {
 			spotObject:
 				nextSpotObject,
 		};
+	}
+
+	async _editActiveAlignmentSafe({
+		source,
+		code,
+		edit,
+	} = {}) {
+		try {
+			return await this._editActiveAlignment({ source, edit });
+		} catch (err) {
+			return {
+				changed: false,
+				ok: false,
+				status: "rejected",
+				code: code ?? "ALIGNMENT_EDIT_REJECTED",
+				reason: String(err?.message ?? err),
+			};
+		}
+	}
+
+	_assertTransitionTypeSupported(transitionType) {
+		const t = String(transitionType ?? "").trim().toLowerCase();
+		if (!t) {
+			throw new Error("transition type is required");
+		}
+
+		transitionDescriptorResolver.resolveTransitionDescriptor(t);
 	}
 
 	deriveSparseAlignmentFromEditModel(alignmentData) {
