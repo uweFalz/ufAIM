@@ -14,7 +14,20 @@
 // SQP snapshot:
 //   F, gradF, G, H, JG, JH, Q
 
+import transitionLookup from "../../transition/transitionLookup.json" with { type: "json" };
+import { RegistryResolver } from "../../transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "../../transition/build/KappaFcnBuilder.js";
+
 const EPS_Q = 1e-9;
+
+const DEFAULT_TRANSITION_TYPE = "bloss";
+const defaultDescriptorResolver = new RegistryResolver(transitionLookup);
+
+function clamp01(u) {
+	const x = Number(u);
+	if (!Number.isFinite(x)) return 0;
+	return Math.max(0, Math.min(1, x));
+}
 
 function angleWrap(a) {
 	while (a > Math.PI) a -= 2 * Math.PI;
@@ -71,11 +84,55 @@ function advanceTransition(pose, L, kappaAt01, steps = 32) {
 	return poseFromAngle({ x, y }, theta);
 }
 
-// Bloss normalized curvature shape 0 -> 1.
-// Common quintic smoothstep: 10u^3 - 15u^4 + 6u^5.
-// If your Bloss definition differs, replace only this function.
-function bloss01(u) {
-	return 10 * u ** 3 - 15 * u ** 4 + 6 * u ** 5;
+function integrate01(fn, steps = 256) {
+	const n = Math.max(16, Number(steps) || 256);
+	let sum = 0;
+
+	for (let i = 0; i < n; i++) {
+		const u = (i + 0.5) / n;
+		const value = Number(fn(u));
+		if (!Number.isFinite(value)) {
+			throw new Error("buildChangeTransitionTypeProblem: transition shape returned non-finite value");
+		}
+		sum += value;
+	}
+
+	return sum / n;
+}
+
+function resolveTransitionKappa01({
+	transitionType = DEFAULT_TRANSITION_TYPE,
+	transitionKappa01,
+	transitionPreset,
+	descriptorResolver = defaultDescriptorResolver,
+	kappaBuilder = KappaFcnBuilder,
+} = {}) {
+	if (typeof transitionKappa01 === "function") {
+		return {
+			transitionType: "custom",
+			kappa01: (u) => Number(transitionKappa01(clamp01(u))),
+		};
+	}
+
+	if (transitionPreset?.kappa) {
+		return {
+			transitionType: String(transitionType ?? DEFAULT_TRANSITION_TYPE).toLowerCase(),
+			kappa01: (u) => Number(transitionPreset.kappa(clamp01(u))),
+		};
+	}
+
+	const resolvedType = String(transitionType ?? DEFAULT_TRANSITION_TYPE).toLowerCase();
+	const descriptor = descriptorResolver.resolveTransitionDescriptor(resolvedType);
+	const runtimePreset = kappaBuilder.buildPresetFromDescriptor(descriptor);
+
+	if (!runtimePreset?.kappa) {
+		throw new Error(`buildChangeTransitionTypeProblem: transition \"${resolvedType}\" has no runtime kappa`);
+	}
+
+	return {
+		transitionType: resolvedType,
+		kappa01: (u) => Number(runtimePreset.kappa(clamp01(u))),
+	};
 }
 
 export function evaluateLineBlossArc({
@@ -84,8 +141,21 @@ export function evaluateLineBlossArc({
 	Lu,
 	Lb,
 	kB,
+	transitionType = DEFAULT_TRANSITION_TYPE,
+	transitionKappa01,
+	transitionPreset,
+	descriptorResolver = defaultDescriptorResolver,
+	kappaBuilder = KappaFcnBuilder,
 	transitionSteps = 32,
 }) {
+	const transition = resolveTransitionKappa01({
+		transitionType,
+		transitionKappa01,
+		transitionPreset,
+		descriptorResolver,
+		kappaBuilder,
+	});
+
 	const p0 = typeof poseA.theta === "number"
 		? poseA
 		: poseFromAngle(poseA.p, poseA.dirAngle ?? 0);
@@ -95,7 +165,7 @@ export function evaluateLineBlossArc({
 	const afterU = advanceTransition(
 		afterG,
 		Lu,
-		(u) => kB * bloss01(u),
+		(u) => kB * transition.kappa01(u),
 		transitionSteps
 	);
 
@@ -106,6 +176,7 @@ export function evaluateLineBlossArc({
 		afterG,
 		afterU,
 		endPose: end,
+		transitionType: transition.transitionType,
 	};
 }
 
@@ -114,10 +185,32 @@ export function buildChangeTransitionTypeProblem({
 	poseE,
 	initial,
 	kB,
+	transitionType = DEFAULT_TRANSITION_TYPE,
+	transitionKappa01,
+	transitionPreset,
+	descriptorResolver = defaultDescriptorResolver,
+	kappaBuilder = KappaFcnBuilder,
 	minLengths = {},
 	transitionSteps = 32,
 	regularization = 1e-9,
 } = {}) {
+	const transition = resolveTransitionKappa01({
+		transitionType,
+		transitionKappa01,
+		transitionPreset,
+		descriptorResolver,
+		kappaBuilder,
+	});
+
+	const thetaIntegral = integrate01(
+		transition.kappa01,
+		Math.max(128, transitionSteps * 8)
+	);
+
+	const thetaPerLu = Number.isFinite(thetaIntegral)
+		? kB * thetaIntegral
+		: kB;
+
 	const names = ["Lg", "Lu", "Lb"];
 
 	const x0 = [
@@ -145,6 +238,8 @@ export function buildChangeTransitionTypeProblem({
 			Lu,
 			Lb,
 			kB,
+			transitionType: transition.transitionType,
+			transitionKappa01: transition.kappa01,
 			transitionSteps,
 		});
 	}
@@ -177,20 +272,31 @@ export function buildChangeTransitionTypeProblem({
 	}
 
 	// Analytic first-order Jacobian:
-	// δL_g -> tangent at end of line, no direct rotation
-	// δL_u -> tangent at end of transition, rotation kB
-	// δL_b -> tangent at end of arc, rotation kB
+	// Use central finite differences for x/y residual rows to stay consistent
+	// with transition families and numerical transition integration. Keep the
+	// theta row explicit from curvature accumulation.
 	function JG(v) {
-		const ev = evaluate(v);
+		const h = 1e-5;
+		const base = [...v];
+		const cols = [0, 1, 2].map((j) => {
+			const vp = [...base];
+			const vm = [...base];
+			vp[j] += h;
+			vm[j] -= h;
 
-		const tg = ev.afterG.t;
-		const tu = ev.afterU.t;
-		const tb = ev.endPose.t;
+			const gp = G(vp);
+			const gm = G(vm);
+
+			return [
+				(gp[0] - gm[0]) / (2 * h),
+				(gp[1] - gm[1]) / (2 * h),
+			];
+		});
 
 		return [
-			[tg.x, tu.x, tb.x],
-			[tg.y, tu.y, tb.y],
-			[0,    kB,   kB],
+			[cols[0][0], cols[1][0], cols[2][0]],
+			[cols[0][1], cols[1][1], cols[2][1]],
+			[0,    thetaPerLu,   kB],
 		];
 	}
 
@@ -243,6 +349,7 @@ export function buildChangeTransitionTypeProblem({
 
 	return {
 		type: "alignment.changeTransitionType.lineBlossArc",
+		transitionType: transition.transitionType,
 		names,
 		x0,
 		F,
