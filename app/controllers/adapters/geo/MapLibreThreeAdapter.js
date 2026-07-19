@@ -5,9 +5,11 @@ import { GeoMainViewAdapter } from "./GeoMainViewAdapter.js";
 export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 	async mount(container) {
 		this.container = container;
+		globalThis.__ufAIM_geoMapAdapter = this;
 
-		const mapLibreModule = await import("maplibregl");
-		const maplibregl = mapLibreModule.default ?? mapLibreModule.maplibregl ?? globalThis.maplibregl;
+		const injected = globalThis.__ufAIM_geoE2EMapLibre ?? null;
+		const mapLibreModule = injected ? null : await import("maplibregl");
+		const maplibregl = injected ?? mapLibreModule?.default ?? mapLibreModule?.maplibregl ?? globalThis.maplibregl;
 		if (!maplibregl?.Map) throw new Error("MapLibre module did not expose a Map constructor.");
 
 		this.maplibregl = maplibregl;
@@ -17,6 +19,7 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 			center: this.options.center ?? [13.405, 52.52],
 			zoom: this.options.zoom ?? 10,
 		});
+		this.debug = { mounted: true, removed: false, geojson: null, fitBounds: null };
 	}
 
 	setRenderPrimitives(primitives) {
@@ -24,6 +27,8 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 		if (!this.map) return;
 		const coordinates = (primitives?.polyline ?? []).map((p) => [p.longitude, p.latitude]);
 		const geojson = { type: "Feature", properties: {}, geometry: { type: "LineString", coordinates } };
+		this.debug ??= {};
+		this.debug.geojson = geojson;
 		const apply = () => {
 			if (this.map.getSource("ufaim-alignment")) this.map.getSource("ufaim-alignment").setData(geojson);
 			else {
@@ -43,6 +48,8 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 		const b = this.primitives?.bbox;
 		if (!b || !this.map) return;
 		this.map.fitBounds([[b.west, b.south], [b.east, b.north]], { padding: options.padding ?? 48, maxZoom: options.maxZoom ?? 17 });
+		this.debug ??= {};
+		this.debug.fitBounds = [[b.west, b.south], [b.east, b.north]];
 	}
 
 	resize() {
@@ -51,7 +58,13 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 
 	destroy() {
 		this.map?.remove?.();
+		this.debug ??= {};
+		this.debug.removed = true;
 		this.map = null;
 		this.container = null;
+	}
+
+	getDebugState() {
+		return { ...(this.debug ?? {}), active: Boolean(this.map), primitives: this.primitives ?? null };
 	}
 }

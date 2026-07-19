@@ -65,7 +65,24 @@ function readViewerDebugState() {
 	return window.__ufAIM_viewController?.getDebugState?.() ?? null;
 }
 
-(async function runAlignmentNativeUiE2E() {
+const nativeResult = {
+	passed: false,
+	phase: "runtime-readiness",
+	failures: [],
+	fixtureId: null,
+	activeObjectId: null,
+	completedAt: null,
+	updatedAt: new Date().toISOString(),
+};
+window.__alignmentNativeEditorUiE2E = nativeResult;
+
+function setPhase(phase, details = {}) {
+	nativeResult.phase = phase;
+	nativeResult.updatedAt = new Date().toISOString();
+	Object.assign(nativeResult, details);
+}
+
+window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeUiE2E() {
 	try {
 		await waitFor(
 			() => typeof window !== "undefined" && window.__ufAIM_store && window.messaging,
@@ -73,14 +90,15 @@ function readViewerDebugState() {
 		);
 
 		await waitFor(
-			() => !!window.__ufAIM_viewController?.getDebugState,
-			{ label: "viewer debug hook" }
+			() => !!window.__ufAIM_viewController?.getDebugState && typeof window.__ufAIM_teBridge?.focusElementInEditor === "function",
+			{ label: "viewer and editor-focus bridge readiness" }
 		);
 
 		const store = window.__ufAIM_store;
 		const messaging = window.messaging;
 
 		const id = `alignment_native_ui_${Math.random().toString(36).slice(2, 10)}`;
+		setPhase("fixture-created", { fixtureId: id });
 		const alignmentData = {
 			type: "AlignmentData",
 			id,
@@ -117,17 +135,29 @@ function readViewerDebugState() {
 
 		const addRes = await messaging.sendCmdAwait("Spot.AddObjects", { objects: [spotObject] });
 		assert(addRes != null, "Spot.AddObjects should return a result");
+		setPhase("spot-object-acknowledged");
+		await waitFor(async () => {
+			const spotState = unwrapSpotState(await messaging.sendCmdAwait("Spot.GetState", {}));
+			const objects = Array.isArray(spotState?.objects) ? spotState.objects : Object.values(spotState?.objects ?? {});
+			return objects.some((object) => String(object?.id ?? "") === id);
+		}, { label: "owned SPOT object acknowledgement" });
 
 		store.actions?.setWorkspacePrimary?.({
 			objectId: id,
 			source: "alignment-native-ui-e2e",
 		});
 		store.actions?.setActiveRouteProject?.(null);
+		setPhase("activation-requested");
+		await waitFor(() => getWorkspacePrimaryId(store.getState?.() ?? {}) === id, {
+			label: "workspace primary acknowledgement",
+		});
+		setPhase("active-object-acknowledged", { activeObjectId: id });
 
 		await waitFor(async () => {
 			const active = await readActiveAlignmentData(store, messaging);
 			return Array.isArray(active?.editModel?.elements) && active.editModel.elements.length >= 5;
 		}, { label: "active composed native alignment" });
+		setPhase("viewer-readiness");
 
 		await waitFor(() => {
 			const viewerState = readViewerDebugState();
@@ -147,14 +177,28 @@ function readViewerDebugState() {
 		const projectionSignatureBeforeEdits = readViewerDebugState()?.projectionSignature ?? null;
 		assert(!!projectionSignatureBeforeEdits, "viewer projection signature should exist after initial render");
 
-		window.__ufAIM_viewController.debugSelectAlignmentElement("A2");
-		await waitFor(() => String(document.getElementById("aeElementSel")?.value ?? "") === "A2", {
-			label: "viewer-to-editor focus on arc element",
+		setPhase("viewer-selection-dispatch");
+		const viewerSelectionAccepted = window.__ufAIM_viewController.debugSelectAlignmentElement("A2");
+		assert(viewerSelectionAccepted === true, "viewer should accept arc element selection");
+		await waitFor(() => String(store.getState?.()?.workspace_selection?.elementId ?? "") === "A2", {
+			label: "viewer arc ID in workspace selection",
+		});
+		setPhase("workspace-selection-acknowledged");
+		await waitFor(() => String(readViewerDebugState()?.selectedElementId ?? "") === "A2", {
+			label: "viewer arc selection synchronization",
 		});
 		assert(
 			String(readViewerDebugState()?.selectedElementId ?? "") === "A2",
 			"viewer selection should highlight the arc element after viewer-driven focus"
 		);
+		setPhase("editor-focus-event-acknowledged");
+		await waitFor(() => !document.getElementById("transOverlay")?.classList.contains("hidden"), {
+			label: "viewer-opened Alignment Element Editor",
+		});
+		await waitFor(() => String(document.getElementById("aeElementSel")?.value ?? "") === "A2", {
+			label: "viewer arc ID rendered in element selector",
+		});
+		setPhase("selection-and-cockpit");
 		assert(
 			document.querySelector('.cockpit-sofa__list--compact li.is-selected'),
 			"cockpit should reflect the viewer-driven selected element"
@@ -180,20 +224,20 @@ function readViewerDebugState() {
 			label: "native element editor injected",
 		});
 
-		const elementSel = document.getElementById("aeElementSel");
-		const lengthInput = document.getElementById("aeLength");
-		const curvatureInput = document.getElementById("aeCurvature");
-		const radiusInput = document.getElementById("aeRadius");
-		const transitionTypeSelect = document.getElementById("aeTransitionType");
-		const w1Input = document.getElementById("aeW1");
-		const w2Input = document.getElementById("aeW2");
-		const applyBtn = document.getElementById("aeApply");
-		const resetBtn = document.getElementById("aeReset");
-		const statusEl = document.getElementById("aeStatus");
-		const titleEl = document.getElementById("aeTitle");
-		const elementLabelEl = document.getElementById("aeElementSelLabel");
-		const lengthLabelEl = document.getElementById("aeLengthLabel");
-		const transitionFamilyLabelEl = document.getElementById("aeTransitionTypeLabel");
+		let elementSel = document.getElementById("aeElementSel");
+		let lengthInput = document.getElementById("aeLength");
+		let curvatureInput = document.getElementById("aeCurvature");
+		let radiusInput = document.getElementById("aeRadius");
+		let transitionTypeSelect = document.getElementById("aeTransitionType");
+		let w1Input = document.getElementById("aeW1");
+		let w2Input = document.getElementById("aeW2");
+		let applyBtn = document.getElementById("aeApply");
+		let resetBtn = document.getElementById("aeReset");
+		let statusEl = document.getElementById("aeStatus");
+		let titleEl = document.getElementById("aeTitle");
+		let elementLabelEl = document.getElementById("aeElementSelLabel");
+		let lengthLabelEl = document.getElementById("aeLengthLabel");
+		let transitionFamilyLabelEl = document.getElementById("aeTransitionTypeLabel");
 
 		assert(!!elementSel && !!lengthInput && !!curvatureInput && !!radiusInput, "arc editor inputs missing");
 		assert(!!transitionTypeSelect && !!w1Input && !!w2Input && !!applyBtn && !!statusEl && !!resetBtn, "transition editor inputs missing");
@@ -218,6 +262,31 @@ function readViewerDebugState() {
 				label: "transition overlay visible for en refresh",
 			});
 		}
+		setPhase("language-refresh-selection-verification");
+		elementSel = document.getElementById("aeElementSel");
+		lengthInput = document.getElementById("aeLength");
+		curvatureInput = document.getElementById("aeCurvature");
+		radiusInput = document.getElementById("aeRadius");
+		transitionTypeSelect = document.getElementById("aeTransitionType");
+		w1Input = document.getElementById("aeW1");
+		w2Input = document.getElementById("aeW2");
+		applyBtn = document.getElementById("aeApply");
+		resetBtn = document.getElementById("aeReset");
+		statusEl = document.getElementById("aeStatus");
+		titleEl = document.getElementById("aeTitle");
+		elementLabelEl = document.getElementById("aeElementSelLabel");
+		lengthLabelEl = document.getElementById("aeLengthLabel");
+		transitionFamilyLabelEl = document.getElementById("aeTransitionTypeLabel");
+		assert(elementSel?.isConnected && lengthInput?.isConnected && applyBtn?.isConnected, "language refresh must expose live Editor controls");
+		assert(String(elementSel.value ?? "") === "A2", "language refresh should preserve A2 in the Editor selector");
+		assert(String(store.getState?.()?.workspace_selection?.elementId ?? "") === "A2", "language refresh should preserve A2 in workspace selection");
+		await waitFor(() => String(readViewerDebugState()?.selectedElementId ?? "") === "A2", {
+			label: "Viewer selection preserved after language refresh",
+		});
+		assert(
+			document.querySelector('.cockpit-sofa__list--compact li.is-selected [data-cockpit-element-id="A2"]'),
+			"language refresh should preserve A2 as the Cockpit-selected element"
+		);
 		assert(titleEl?.textContent === t("alignment_editor.title"), "en panel title should resolve via i18n");
 		assert(applyBtn?.textContent === t("alignment_editor.action.apply"), "en apply label should resolve via i18n");
 		assert(resetBtn?.textContent === t("alignment_editor.action.reset"), "en reset label should resolve via i18n");
@@ -225,11 +294,7 @@ function readViewerDebugState() {
 		const beforeArcData = await readActiveAlignmentData(store, messaging);
 		const beforeArcEl = beforeArcData?.editModel?.elements?.find((el) => String(el?.type ?? "") === "arc");
 		assert(beforeArcEl?.id, "active alignment should contain arc element");
-
-		chooseSelectValue(elementSel, beforeArcEl.id);
-		await waitFor(() => String(readViewerDebugState()?.selectedElementId ?? "") === String(beforeArcEl.id), {
-			label: "viewer selection returns to arc before arc edit",
-		});
+		assert(String(elementSel.value ?? "") === String(beforeArcEl.id), "preserved Editor selection should remain on the active arc before editing");
 
 		setInputValue(lengthInput, 110);
 		setInputValue(curvatureInput, 1 / 220);
@@ -243,7 +308,12 @@ function readViewerDebugState() {
 		setInputValue(radiusInput, "");
 		applyBtn.click();
 
-		await waitFor(() => statusEl.dataset.kind === "ok", { label: "arc apply success message" });
+		setPhase("arc-edit-persisting");
+		await waitFor(async () => {
+			const current = await readActiveAlignmentData(store, messaging);
+			const arc = current?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeArcEl.id));
+			return Math.abs(Number(arc?.parameters?.length) - 110) < 1e-9 && Math.abs(Number(arc?.parameters?.curvature) - (1 / 220)) < 1e-12;
+		}, { label: "persisted arc model state" });
 
 		const afterArcData = await readActiveAlignmentData(store, messaging);
 		const afterArcEl = afterArcData?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeArcEl.id));
@@ -273,7 +343,12 @@ function readViewerDebugState() {
 		setInputValue(w2Input, 0.7);
 		applyBtn.click();
 
-		await waitFor(() => statusEl.dataset.kind === "ok", { label: "transition apply success message" });
+		setPhase("transition-edit-persisting");
+		await waitFor(async () => {
+			const current = await readActiveAlignmentData(store, messaging);
+			const transition = current?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeTransitionEl.id));
+			return Math.abs(Number(transition?.parameters?.length) - 60) < 1e-9 && String(transition?.parameters?.transitionType ?? "") === String(targetFamily);
+		}, { label: "persisted transition model state" });
 
 		const afterTransitionData = await readActiveAlignmentData(store, messaging);
 		const afterTransitionEl = afterTransitionData?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeTransitionEl.id));
@@ -288,13 +363,32 @@ function readViewerDebugState() {
 		const projectionSignatureAfterTransition = readViewerDebugState()?.projectionSignature ?? null;
 		assert(projectionSignatureAfterTransition !== projectionSignatureAfterArc, "viewer projection should refresh after transition edit");
 
-		const snapshotBeforeInvalid = JSON.stringify(afterTransitionData?.editModel?.elements ?? []);
+		const beforeStraightData = afterTransitionData;
+		const beforeStraightEl = beforeStraightData?.editModel?.elements?.find((el) => String(el?.type ?? "") === "straight");
+		assert(beforeStraightEl?.id, "active alignment should contain straight element");
+		chooseSelectValue(elementSel, beforeStraightEl.id);
+		setInputValue(lengthInput, 95);
+		setPhase("straight-edit-persisting");
+		applyBtn.click();
+		await waitFor(async () => {
+			const current = await readActiveAlignmentData(store, messaging);
+			const straight = current?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeStraightEl.id));
+			return Math.abs(Number(straight?.parameters?.length) - 95) < 1e-9;
+		}, { label: "persisted straight model state" });
+		await waitFor(() => {
+			const signature = readViewerDebugState()?.projectionSignature;
+			return signature && signature !== projectionSignatureAfterTransition;
+		}, { label: "viewer refresh after straight edit" });
+		const afterStraightData = await readActiveAlignmentData(store, messaging);
+
+		const snapshotBeforeInvalid = JSON.stringify(afterStraightData?.editModel?.elements ?? []);
 		const projectionBeforeInvalid = readViewerDebugState()?.projectionSignature ?? null;
 		window.__ufAIM_viewController.debugSelectAlignmentElement(beforeArcEl.id);
 		await waitFor(() => String(elementSel.value ?? "") === String(beforeArcEl.id), {
 			label: "viewer selection returns to arc before invalid edit",
 		});
 		setInputValue(radiusInput, 0);
+		setPhase("invalid-arc-rejection");
 		applyBtn.click();
 
 		await waitFor(() => statusEl.dataset.kind === "error", { label: "invalid apply rejection message" });
@@ -313,17 +407,20 @@ function readViewerDebugState() {
 			"missing element focus should use structured warning message"
 		);
 
-		window.__alignmentNativeEditorUiE2E = {
-			passed: true,
-			ts: Date.now(),
-		};
+		setPhase("complete");
+		nativeResult.passed = true;
+		nativeResult.completedAt = new Date().toISOString();
+		nativeResult.ts = Date.now();
+		console.log(`AlignmentNativeUi E2E RESULT ${JSON.stringify(nativeResult)}`);
 		console.log("AlignmentNativeUi E2E PASSED");
 	} catch (error) {
-		window.__alignmentNativeEditorUiE2E = {
-			passed: false,
-			ts: Date.now(),
-			error: String(error?.message ?? error),
-		};
-		console.error(error);
+		const message = String(error?.message ?? error);
+		nativeResult.passed = false;
+		nativeResult.failures.push({ phase: nativeResult.phase, message });
+		nativeResult.error = message;
+		nativeResult.completedAt = new Date().toISOString();
+		nativeResult.ts = Date.now();
+		console.log(`AlignmentNativeUi E2E RESULT ${JSON.stringify(nativeResult)}`);
+		console.error("AlignmentNativeUi E2E FAILED");
 	}
 })();

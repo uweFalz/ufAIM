@@ -10,7 +10,6 @@ import "@alignment/_e2eAlignmentTest.js";
 import "@src/shared/runtime/_e2eWorkspaceSelectionAccessTest.js";
 import "@src/import/parsers/_e2eParserValidationTest.js";
 import "@src/services/alignment/_e2eAlignmentEditModelBoundaryTest.js";
-import "@app/_e2eAlignmentNativeUiTest.js";
 
 await registerDevNoCacheSW({
 	enabled: !systemPrefs?.debug?.disableServiceWorker,
@@ -30,6 +29,9 @@ window.runtime = runtime;
 try {
 	await runtime.start();
 	window.messaging = runtime.messaging;
+	await import("@app/_e2eAlignmentNativeUiTest.js");
+	await window.__alignmentNativeEditorUiE2EPromise;
+	await import("@app/_e2eGeoRuntimeAcceptanceTest.js");
 } catch (err) {
 	console.error(err);
 	const logElement = document.getElementById("log");
