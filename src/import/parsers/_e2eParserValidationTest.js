@@ -255,12 +255,14 @@ async function runGndSyntheticRegressionChecks() {
 			{ PAD: "P2", HSYS: "H1", H: "11" },
 		],
 		X_ASC21_EL: [
-			{ PAD1: "P1", PAD2: "P2", ELSYS: "L1", ELTYP: "0", ELPAR1: "100", ELPAR2: "0", ELPAR3: "0", ELARIWI: "0" },
+			{ PAD1: "P1", PAD2: "P2", ELSYS: "L1", ELTYP: "0", ELPAR2: "0", ELPAR3: "0", ELPAR4: "5" },
 		],
 		X_ASC22_EH: [
 			{ PAD1: "P1", PAD2: "P2", EHSYS: "H1", EHTYP: "0", EHPAR1: "100", EHPAR2: "0", EHPAR3: "0" },
 		],
-		X_ASC23_EU: [],
+		X_ASC23_EU: [
+			{ PAD1: "P1", PAD2: "P2", EUTYP: "0", EUPAR1: "100", EUPAR2: "0", EUPAR3: "0.12", EUPAR4: "3" },
+		],
 		X_ASC24_EK: [],
 	};
 
@@ -275,7 +277,120 @@ async function runGndSyntheticRegressionChecks() {
 
 	const parsedFull = await parseGND_XLSX({ file: fullFlowFile, context: {} });
 	assert(parsedFull?.meta?.analysis?.coordGeomSequenceCount === 1, "full flow should build one coordGeom sequence");
-	assert(parsedFull?.meta?.analysis?.cantSequenceCount === 0, "full flow should keep cant sequence count at zero");
+	assert(parsedFull?.meta?.analysis?.cantSequenceCount === 1, "full flow should retain one supplied cant evidence sequence");
+	assert(parsedFull?.meta?.analysis?.uniquelyAttachableCantSequenceCount === 0, "ambiguous EU must not be classified as uniquely attachable");
+	assert(parsedFull?.meta?.analysis?.ambiguousCantSequenceCount === 1, "ambiguous EU must be counted as unattached evidence");
+	assert((parsedFull?.profiles?.length ?? 0) === 0, "incomplete EH must not become a constructed profile");
+	assert(parsedFull?.alignments?.[0]?.profile == null, "safe horizontal alignment must not attach an incomplete profile");
+	assert(parsedFull?.alignments?.[0]?.cant == null, "unresolved cant must not become a constructed zero cant");
+	const unresolvedCant = parsedFull?.extras?.unresolvedAttachments?.find((x) => x?.kind === "cant");
+	const ambiguousProfile = parsedFull?.extras?.unresolvedAttachments?.find((x) => x?.kind === "profile");
+	assert(ambiguousProfile?.evidenceClass === "ambiguous-unattached-source-evidence", "multi-LSYS EH must remain ambiguous unattached evidence");
+	assert(JSON.stringify(ambiguousProfile?.candidateHorizontalReferenceSystems) === JSON.stringify(["L1", "L2"]), "ambiguous EH must preserve all horizontal candidates");
+	assert(JSON.stringify(ambiguousProfile?.candidateVerticalReferenceSystems) === JSON.stringify(["H1"]), "ambiguous EH must preserve vertical candidates");
+	assert(ambiguousProfile?.sourceElements?.[0]?.padStart === "P1" && ambiguousProfile?.sourceElements?.[0]?.padEnd === "P2", "EH source element must preserve PAD endpoints");
+	assert(parsedFull?.meta?.diagnostics?.some((d) => d?.code === "eh-evidence-ambiguous"), "ambiguous EH must emit a structured diagnostic");
+	assert(unresolvedCant?.status === "ambiguous", "multi-LSYS EU evidence must be explicitly ambiguous");
+	assert(unresolvedCant?.evidenceClass === "ambiguous-unattached-source-evidence", "ambiguous EU must be distinguishable from uniquely attachable evidence");
+	assert(unresolvedCant?.interpretationStatus === "not-interpreted", "ambiguous EU must not be presented as interpreted");
+	assert(unresolvedCant?.attachmentStatus === "ambiguous-unattached", "ambiguous EU must remain unattached");
+	assert(unresolvedCant?.attachmentKey == null, "ambiguous EU must not receive an arbitrary attachment key");
+	assert(unresolvedCant?.ambiguityReason === "multiple-coordinate-reference-candidates", "ambiguous EU must identify the ambiguity reason");
+	assert(JSON.stringify(unresolvedCant?.candidateReferenceSystems) === JSON.stringify(["L1", "L2"]), "ambiguous EU must preserve all candidate LSYS values");
+	assert(unresolvedCant?.padStart === "P1" && unresolvedCant?.padEnd === "P2", "ambiguous EU must preserve PAD endpoints");
+	assert(unresolvedCant?.sourceElements?.[0]?.typeCode === 0, "ambiguous EU must preserve its source type code");
+	assert(unresolvedCant?.sourceElements?.[0]?.valueOrigins?.type?.origin === "source", "explicit EUTYP zero must retain source origin");
+	assert(unresolvedCant?.sourceElements?.[0]?.valueOrigins?.type?.sourceField === "EUTYP", "EU type identity must retain EUTYP provenance");
+	assert(unresolvedCant?.sourceElements?.[0]?.rowRef === "X_ASC23_EU:2", "EU type identity must retain row provenance");
+	assert(JSON.stringify(Object.keys(unresolvedCant?.sourceElements?.[0]?.parameters ?? {})) === JSON.stringify(["EUPAR1", "EUPAR2", "EUPAR3", "EUPAR4"]), "EU parameters must remain separate from the single typeCode identity");
+	assert(unresolvedCant?.sourceElements?.[0]?.parameters?.EUPAR2 === 0, "explicit source zero must remain source evidence");
+	assert(unresolvedCant?.sourceElements?.[0]?.valueOrigins?.par2?.origin === "source", "explicit source zero must retain source origin");
+	assert(unresolvedCant?.sourceElements?.[0]?.parameters?.EUPAR3 === 0.12, "nonzero unresolved cant must remain evidence");
+	const firstElement = parsedFull?.alignments?.[0]?.coordGeom?.elements?.[0];
+	assert(Math.abs((firstElement?.direction?.value ?? NaN) - 100) < 1e-9, "derived atan2 direction must be converted to gon");
+	assert(firstElement?.extras?.valueOrigins?.direction?.origin === "derived", "derived direction must carry origin");
+	assert(firstElement?.extras?.valueOrigins?.length?.origin === "derived", "station-derived length must carry origin");
+	assert(parsedFull?.meta?.diagnostics?.some((d) => d?.field === "EUPAR3" && d?.geometryUsable === true), "ignored nonzero EU evidence must produce a structured diagnostic");
+	assert(parsedFull?.meta?.diagnostics?.some((d) => d?.code === "cant-context-ambiguous-unattached" && d?.geometryUsable === true), "ambiguous EU retention must produce a structured diagnostic");
+	assert(parsedFull?.meta?.diagnostics?.some((d) => d?.field === "EHPAR1"), "incomplete EH evidence must produce a structured diagnostic");
+
+	const uniqueCantRows = {
+		...fullFlowRows,
+		X_ASC12_PL: fullFlowRows.X_ASC12_PL.filter((row) => row.LSYS === "L1"),
+	};
+	const parsedUniqueCant = await parseGND_XLSX({ file: makeGndFile("synthetic_GND_unique_cant_context.xlsx", uniqueCantRows), context: {} });
+	const uniqueCant = parsedUniqueCant?.extras?.unresolvedAttachments?.find((x) => x?.kind === "cant");
+	assert(uniqueCant?.evidenceClass === "unresolved-uniquely-attachable-evidence", "unique EU context must remain distinguishable from ambiguous evidence");
+	assert(uniqueCant?.attachmentStatus === "uniquely-attachable" && uniqueCant?.attachmentKey, "unique unresolved EU may carry an attachment key");
+	assert(parsedUniqueCant?.alignments?.[0]?.cant == null, "unique unresolved EU still must not construct cant");
+	const uniqueProfile = parsedUniqueCant?.extras?.unresolvedAttachments?.find((x) => x?.kind === "profile");
+	assert(uniqueProfile?.evidenceClass === "unresolved-uniquely-attachable-evidence", "unique EH must remain unresolved but uniquely attachable");
+	assert(parsedUniqueCant?.alignments?.[0]?.profile == null, "unique incomplete EH still must not construct profile");
+
+	const rejectedAttachmentRows = {
+		X_ASC11_PP: [
+			{ PAD: "A1", STRECKE: "R1", STRRIKZ: "1", STATION: "0" },
+			{ PAD: "A2", STRECKE: "R1", STRRIKZ: "1", STATION: "100" },
+			{ PAD: "R1", STRECKE: "R2", STRRIKZ: "1", STATION: "0" },
+			{ PAD: "R2", STRECKE: "R2", STRRIKZ: "1", STATION: "100" },
+		],
+		X_ASC12_PL: [
+			{ PAD: "A1", LSYS: "L1", Y: "0", X: "0" },
+			{ PAD: "A2", LSYS: "L1", Y: "100", X: "0" },
+		],
+		X_ASC13_PH: [
+			{ PAD: "R1", HSYS: "H1", H: "10" },
+			{ PAD: "R2", HSYS: "H1", H: "11" },
+			{ PAD: "R1", HSYS: "H2", H: "20" },
+			{ PAD: "R2", HSYS: "H2", H: "21" },
+		],
+		X_ASC21_EL: [
+			{ PAD1: "A1", PAD2: "A2", ELSYS: "L1", ELTYP: "0", ELPAR1: "100", ELARIWI: "100" },
+		],
+		X_ASC22_EH: [
+			{ PAD1: "R1", PAD2: "R2", EHTYP: "0", EHPAR1: "100", EHPAR2: "0", EHPAR3: "0", EHPAR4: "0" },
+		],
+		X_ASC23_EU: [
+			{ PAD1: "R1", PAD2: "R2", EUTYP: "0", EUPAR1: "100", EUPAR2: "0", EUPAR3: "0", EUPAR4: "0" },
+		],
+		X_ASC24_EK: [],
+	};
+	const parsedRejectedAttachments = await parseGND_XLSX({ file: makeGndFile("synthetic_GND_rejected_attachments.xlsx", rejectedAttachmentRows), context: {} });
+	const rejectedProfile = parsedRejectedAttachments?.extras?.unresolvedAttachments?.find((x) => x?.kind === "profile");
+	const rejectedCant = parsedRejectedAttachments?.extras?.unresolvedAttachments?.find((x) => x?.kind === "cant");
+	assert(rejectedProfile?.evidenceClass === "rejected-unattached-source-evidence", "rejected EH seed must remain inspectable");
+	assert(rejectedProfile?.rejectionReason === "missing-required-vertical-system-identifier", "rejected EH must retain the actual seed-validation reason");
+	assert(JSON.stringify(rejectedProfile?.candidateVerticalReferenceSystems) === JSON.stringify(["H1", "H2"]), "rejected EH must preserve multiple PH candidates");
+	assert(rejectedCant?.evidenceClass === "rejected-unattached-source-evidence", "rejected EU seed must remain inspectable");
+	assert(rejectedCant?.sourceElements?.[0]?.typeCode === 0 && rejectedCant?.sourceElements?.[0]?.parameters?.EUPAR2 === 0, "rejected EU must preserve explicit zero source values");
+	assert(rejectedProfile?.attachmentKey == null && rejectedCant?.attachmentKey == null, "rejected attachments must not acquire attachment keys");
+	assert(parsedRejectedAttachments?.alignments?.length === 1, "safe horizontal geometry must survive rejected EH/EU evidence");
+	assert(parsedRejectedAttachments?.alignments?.[0]?.profile == null && parsedRejectedAttachments?.alignments?.[0]?.cant == null, "rejected attachment evidence must not construct profile or cant");
+	assert(parsedRejectedAttachments?.meta?.diagnostics?.some((d) => d?.code === "eh-evidence-rejected"), "rejected EH must emit a diagnostic");
+	assert(parsedRejectedAttachments?.meta?.diagnostics?.some((d) => d?.code === "eu-evidence-rejected"), "rejected EU must emit a diagnostic");
+
+	const permutedAttachmentRows = Object.fromEntries(Object.entries(rejectedAttachmentRows).map(([sheet, rows]) => [sheet, [...rows].reverse()]));
+	const parsedPermutedAttachments = await parseGND_XLSX({ file: makeGndFile("synthetic_GND_rejected_attachments_permuted.xlsx", permutedAttachmentRows), context: {} });
+	const attachmentDigest = (doc) => JSON.stringify((doc?.extras?.unresolvedAttachments ?? []).map((evidence) => ({ kind: evidence.kind, evidenceClass: evidence.evidenceClass, padStart: evidence.padStart, padEnd: evidence.padEnd, horizontal: evidence.candidateHorizontalReferenceSystems, vertical: evidence.candidateVerticalReferenceSystems, station: evidence.candidateStationContexts, reason: evidence.ambiguityReason ?? evidence.rejectionReason, elements: evidence.sourceElements.map((element) => ({ family: element.family, padStart: element.padStart, padEnd: element.padEnd, typeCode: element.typeCode, parameters: element.parameters })) })));
+	assert(attachmentDigest(parsedRejectedAttachments) === attachmentDigest(parsedPermutedAttachments), "EH/EU evidence must be deterministic under source-row permutation");
+
+	const unknownTypeRows = {
+		...fullFlowRows,
+		X_ASC21_EL: [{ PAD1: "P1", PAD2: "P2", ELSYS: "L1", ELTYP: "99", ELPAR1: "100", ELPAR2: "0", ELPAR3: "0" }],
+		X_ASC22_EH: [],
+		X_ASC23_EU: [],
+	};
+	const parsedUnknown = await parseGND_XLSX({ file: makeGndFile("synthetic_GND_unknown_type.xlsx", unknownTypeRows), context: {} });
+	assert(parsedUnknown?.alignments?.length === 0, "unknown constructive type must not enter geometry");
+	assert(parsedUnknown?.extras?.unresolvedSourceElements?.[0]?.typeCode === 99, "unknown source type must remain unresolved evidence");
+
+	const equalRadiusRows = {
+		...unknownTypeRows,
+		X_ASC21_EL: [{ PAD1: "P1", PAD2: "P2", ELSYS: "L1", ELTYP: "2", ELPAR1: "100", ELPAR2: "500", ELPAR3: "500" }],
+	};
+	const parsedEqualRadius = await parseGND_XLSX({ file: makeGndFile("synthetic_GND_equal_radius.xlsx", equalRadiusRows), context: {} });
+	assert(parsedEqualRadius?.alignments?.length === 0, "equal-radius transition must not be coerced to Curve");
+	assert(parsedEqualRadius?.meta?.diagnostics?.some((d) => d?.code === "equal-radius-transition-unresolved"), "equal-radius rejection must be diagnosed");
 
 	const partialEhRows = {
 		X_ASC11_PP: [

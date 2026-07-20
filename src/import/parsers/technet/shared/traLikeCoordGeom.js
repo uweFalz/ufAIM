@@ -200,6 +200,7 @@ function makeElementExtras(rec, kind, semanticMap = null, extra = {}) {
 				kinkDelta: getKinkDeltaSemantic(semanticMap),
 			},
 		},
+		...(isObject(rec?.valueOrigins) ? { valueOrigins: rec.valueOrigins } : {}),
 		...extra,
 	};
 }

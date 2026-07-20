@@ -108,7 +108,13 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 				elRejectedForCoordGeomCount: model.stats.elRejectedForCoordGeomCount,
 
 				profileSequenceCount: model.stats.profileSequenceCount,
+				uniquelyAttachableProfileSequenceCount: model.stats.uniquelyAttachableProfileSequenceCount,
+				ambiguousProfileSequenceCount: model.stats.ambiguousProfileSequenceCount,
+				rejectedProfileSeedCount: model.stats.rejectedProfileSeedCount,
 				cantSequenceCount: model.stats.cantSequenceCount,
+				uniquelyAttachableCantSequenceCount: model.stats.uniquelyAttachableCantSequenceCount,
+				ambiguousCantSequenceCount: model.stats.ambiguousCantSequenceCount,
+				rejectedCantSeedCount: model.stats.rejectedCantSeedCount,
 				ekCoordGeomCandidateCount: model.stats.ekCoordGeomCandidateCount,
 				ekRejectedForCoordGeomCount: model.stats.ekRejectedForCoordGeomCount,
 			},
@@ -188,15 +194,20 @@ function buildAnalysisModel({ dataset }) {
 	const ekRejectedForCoordGeom = ekCoordGeomCandidates
 		.filter((seq) => !isLikelyCoordGeomEkSequence(seq) || seq?.quality?.level === "reject");
 
-	const profileSequences = arr(sequencesByFamily.EH)
-		.filter((seq) => isValidTypedSequence(seq, "profile"))
-		.map((seq) => finalizeTypedSequence(seq, "profile"))
-		.sort(compareTypedSequences);
-
-	const cantSequences = arr(sequencesByFamily.EU)
-		.filter((seq) => isValidTypedSequence(seq, "cant"))
-		.map((seq) => finalizeTypedSequence(seq, "cant"))
-		.sort(compareTypedSequences);
+	const profileEvidenceGroups = classifyAttachmentEvidence({
+		sequences: sequencesByFamily.EH,
+		rejectedSeeds: rejectedSequenceSeedsByFamily.EH,
+		type: "profile",
+		family: "EH",
+	});
+	const cantEvidenceGroups = classifyAttachmentEvidence({
+		sequences: sequencesByFamily.EU,
+		rejectedSeeds: rejectedSequenceSeedsByFamily.EU,
+		type: "cant",
+		family: "EU",
+	});
+	const profileSequences = profileEvidenceGroups.unique;
+	const cantSequences = cantEvidenceGroups.unique;
 
 	const coordGeomSequences = [
 		...elCoordGeomSequences,
@@ -216,6 +227,10 @@ function buildAnalysisModel({ dataset }) {
 
 		profileSequences,
 		cantSequences,
+		ambiguousProfileSequences: profileEvidenceGroups.ambiguous,
+		rejectedProfileSeeds: profileEvidenceGroups.rejected,
+		ambiguousCantSequences: cantEvidenceGroups.ambiguous,
+		rejectedCantSeeds: cantEvidenceGroups.rejected,
 
 		stats: {
 			padCount: Object.keys(padIndex).length,
@@ -235,8 +250,14 @@ function buildAnalysisModel({ dataset }) {
 			missingPlPadCount: missingPlPads.length,
 
 			coordGeomSequenceCount: coordGeomSequences.length,
-			profileSequenceCount: profileSequences.length,
-			cantSequenceCount: cantSequences.length,
+			profileSequenceCount: profileEvidenceGroups.total,
+			uniquelyAttachableProfileSequenceCount: profileSequences.length,
+			ambiguousProfileSequenceCount: profileEvidenceGroups.ambiguous.length,
+			rejectedProfileSeedCount: profileEvidenceGroups.rejected.length,
+			cantSequenceCount: cantEvidenceGroups.total,
+			uniquelyAttachableCantSequenceCount: cantSequences.length,
+			ambiguousCantSequenceCount: cantEvidenceGroups.ambiguous.length,
+			rejectedCantSeedCount: cantEvidenceGroups.rejected.length,
 
 			elCoordGeomCandidateCount: elCoordGeomCandidates.length,
 			elRejectedForCoordGeomCount: elRejectedForCoordGeom.length,
@@ -245,6 +266,66 @@ function buildAnalysisModel({ dataset }) {
 			ekRejectedForCoordGeomCount: ekRejectedForCoordGeom.length,
 		},
 	};
+}
+
+function classifyAttachmentEvidence({ sequences, rejectedSeeds, type, family }) {
+	const unique = arr(sequences)
+		.filter((seq) => isValidTypedSequence(seq, type))
+		.map((seq) => finalizeTypedSequence(seq, type))
+		.sort(compareTypedSequences);
+	const ambiguous = arr(sequences)
+		.filter((seq) => !isValidTypedSequence(seq, type))
+		.map((seq) => finalizeTypedSequence(seq, type))
+		.sort(compareTypedSequences);
+	const rejected = arr(rejectedSeeds)
+		.map((seed) => finalizeRejectedAttachmentSeed(seed, type, family))
+		.sort(compareTypedSequences);
+	return { unique, ambiguous, rejected, total: unique.length + ambiguous.length + rejected.length };
+}
+
+function finalizeRejectedAttachmentSeed(seed, type, family) {
+	return {
+		type,
+		family,
+		lsys: null,
+		hsys: null,
+		strecke: null,
+		strRikz: null,
+		stationStart: null,
+		stationEnd: null,
+		padStart: seed?.startPad ?? null,
+		padEnd: seed?.endPad ?? null,
+		seedCount: 1,
+		seedIds: [seed?.id ?? null],
+		edgeChain: arr(seed?.edgeChain),
+		required: cloneRequiredMap(seed?.required),
+		plKeys: Array.from(normalizeSet(seed?.candidates?.plKeys)).sort(),
+		ppKeys: Array.from(normalizeSet(seed?.candidates?.ppKeys)).sort(),
+		phKeys: Array.from(normalizeSet(seed?.candidates?.phKeys)).sort(),
+		rejectionReason: getRejectedAttachmentReason(seed, family),
+	};
+}
+
+function getRejectedAttachmentReason(seed, family) {
+	if (family === "EH" && !asTrimmedString(seed?.required?.requiredHsys)) {
+		return "missing-required-vertical-system-identifier";
+	}
+	return getAttachmentContextReason(seed?.candidates, family);
+}
+
+function getAttachmentContextReason(candidates, family) {
+	const plCount = normalizeSet(candidates?.plKeys).size;
+	const ppCount = normalizeSet(candidates?.ppKeys).size;
+	if (plCount > 1) return "multiple-coordinate-reference-candidates";
+	if (plCount === 0) return "no-coordinate-reference-candidate";
+	if (ppCount > 1) return "multiple-station-reference-candidates";
+	if (ppCount === 0) return "no-station-reference-candidate";
+	if (family === "EH") {
+		const phCount = normalizeSet(candidates?.phKeys).size;
+		if (phCount > 1) return "multiple-vertical-reference-candidates";
+		if (phCount === 0) return "no-vertical-reference-candidate";
+	}
+	return "no-unique-attachment-context";
 }
 
 // -----------------------------------------------------------------------------
@@ -449,6 +530,7 @@ function finalizeTypedSequence(seq, type) {
 	return {
 		type,
 		family: seq?.family ?? null,
+		required: cloneRequiredMap(seq?.required),
 		lsys: seq?.lsys ?? null,
 		hsys: seq?.hsys ?? null,
 		strecke: seq?.strecke ?? null,
@@ -470,30 +552,26 @@ function finalizeTypedSequence(seq, type) {
 
 		edgeChain: arr(seq?.edgeChain),
 
-		plKeys: Array.from(normalizeSet(seq?.candidates?.plKeys)),
-		ppKeys: Array.from(normalizeSet(seq?.candidates?.ppKeys)),
-		phKeys: Array.from(normalizeSet(seq?.candidates?.phKeys)),
+		plKeys: Array.from(normalizeSet(seq?.candidates?.plKeys)).sort(),
+		ppKeys: Array.from(normalizeSet(seq?.candidates?.ppKeys)).sort(),
+		phKeys: Array.from(normalizeSet(seq?.candidates?.phKeys)).sort(),
 	};
 }
 
 function compareTypedSequences(a, b) {
-	return [
-		String(a?.type ?? ""),
-		String(a?.family ?? ""),
-		String(a?.lsys ?? ""),
-		String(a?.hsys ?? ""),
-		String(a?.strecke ?? ""),
-		String(a?.strRikz ?? ""),
-		String(a?.stationStart ?? ""),
-	].join("|").localeCompare([
-		String(b?.type ?? ""),
-		String(b?.family ?? ""),
-		String(b?.lsys ?? ""),
-		String(b?.hsys ?? ""),
-		String(b?.strecke ?? ""),
-		String(b?.strRikz ?? ""),
-		String(b?.stationStart ?? ""),
-	].join("|"));
+	const sequenceKey = (seq) => [
+		String(seq?.type ?? ""),
+		String(seq?.family ?? ""),
+		String(seq?.lsys ?? ""),
+		String(seq?.hsys ?? ""),
+		String(seq?.strecke ?? ""),
+		String(seq?.strRikz ?? ""),
+		String(seq?.stationStart ?? ""),
+		String(seq?.padStart ?? ""),
+		String(seq?.padEnd ?? ""),
+		arr(seq?.edgeChain).map((edge) => edge?.extras?.rowRef ?? edge?.id ?? "").sort().join(","),
+	].join("|");
+	return sequenceKey(a).localeCompare(sequenceKey(b));
 }
 
 // -----------------------------------------------------------------------------
@@ -635,7 +713,41 @@ function makeSequenceName(seq) {
 	].join("_");
 }
 
-function convertSequenceToTraLikeRecords(seq, padIndex) {
+const SUPPORTED_CONSTRUCTIVE_TYPES = new Set([0, 1, 2, 3, 4, 5, 7, 8]);
+const TRANSITION_TYPES = new Set([2, 3, 4, 7, 8]);
+
+function makeValueOrigin(origin, sourceField, extra = {}) {
+	return { origin, sourceField, ...extra };
+}
+
+function makeDiagnostic({ severity = "warning", family, rowRef = null, field, value, decision, geometryUsable, code }) {
+	return {
+		code,
+		severity,
+		family,
+		sheet: family ? `X_ASC${family === "EL" ? "21_EL" : family === "EH" ? "22_EH" : family === "EU" ? "23_EU" : "24_EK"}` : null,
+		rowRef,
+		field,
+		value,
+		decision,
+		geometryUsable: geometryUsable === true,
+	};
+}
+
+function assessConstructiveEdge(edge) {
+	const family = edge?.family ?? "EL";
+	const rowRef = edge?.extras?.rowRef ?? null;
+	const typeCode = Number.isFinite(edge?.typeCode) ? Number(edge.typeCode) : null;
+	if (!SUPPORTED_CONSTRUCTIVE_TYPES.has(typeCode)) {
+		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}TYP`, value: typeCode, code: "unsupported-constructive-type", decision: "retain-unresolved-source-element", geometryUsable: false });
+	}
+	if (TRANSITION_TYPES.has(typeCode) && Number.isFinite(edge?.radiusA) && Number.isFinite(edge?.radiusE) && Number(edge.radiusA) === Number(edge.radiusE)) {
+		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}PAR2/${family}PAR3`, value: [Number(edge.radiusA), Number(edge.radiusE)], code: "equal-radius-transition-unresolved", decision: "retain-unresolved-source-element; do-not-coerce-to-curve", geometryUsable: false });
+	}
+	return null;
+}
+
+export function convertSequenceToTraLikeRecords(seq, padIndex) {
 	const edges = arr(seq?.edgeChain);
 	if (!edges.length) return [];
 
@@ -665,25 +777,40 @@ function convertSequenceToTraLikeRecords(seq, padIndex) {
 			throw new Error(`edge ${edge?.id ?? "?"}: missing PP station`);
 		}
 
+		const hasSourceDirection = Number.isFinite(edge?.direction);
+		const deltaEasting = endCoord.easting - startCoord.easting;
+		const deltaNorthing = endCoord.northing - startCoord.northing;
+		if (!hasSourceDirection && deltaEasting === 0 && deltaNorthing === 0) {
+			throw new Error(`edge ${edge?.id ?? "?"}: direction cannot be derived from coincident endpoints`);
+		}
 		const direction =
-			Number.isFinite(edge?.direction)
+			hasSourceDirection
 				? Number(edge.direction)
-				: Math.atan2(
-					endCoord.easting - startCoord.easting,
-					endCoord.northing - startCoord.northing
-				);
+				: (Math.atan2(deltaEasting, deltaNorthing) * 200 / Math.PI + 400) % 400;
+		const hasSourceLength = Number.isFinite(edge?.arcLength);
 
 		records.push({
 			station: s0,
 			easting: startCoord.easting,
 			northing: startCoord.northing,
 			direction,
-			arcLength: Number.isFinite(edge?.arcLength)
+			arcLength: hasSourceLength
 				? Number(edge.arcLength)
 				: s1 - s0,
 			kindCode: Number.isFinite(edge?.typeCode) ? Number(edge.typeCode) : null,
 			radiusA: Number.isFinite(edge?.radiusA) ? Number(edge.radiusA) : null,
 			radiusE: Number.isFinite(edge?.radiusE) ? Number(edge.radiusE) : null,
+			valueOrigins: {
+				direction: hasSourceDirection
+					? makeValueOrigin("source", `${edge.family}ARIWI`, { unit: "gon" })
+					: makeValueOrigin("derived", "PL.Y/PL.X", { unit: "gon", rule: "normalize(atan2(deltaEasting, deltaNorthing) * 200 / PI, 0..400)" }),
+				length: hasSourceLength
+					? makeValueOrigin("source", `${edge.family}PAR1`, { unit: "meter" })
+					: makeValueOrigin("derived", "PP.STATION", { unit: "meter", rule: "endStation - startStation" }),
+				type: makeValueOrigin("source", `${edge.family}TYP`),
+				radiusStart: makeValueOrigin(Number.isFinite(edge?.radiusA) ? "source" : "unresolved", `${edge.family}PAR2`, { unit: "meter" }),
+				radiusEnd: makeValueOrigin(Number.isFinite(edge?.radiusE) ? "source" : "unresolved", `${edge.family}PAR3`, { unit: "meter" }),
+			},
 		});
 	}
 
@@ -715,8 +842,7 @@ function buildCoordGeomAlignmentFromSequence({
 	index,
 	fileName,
 	padIndex,
-	profilesByKey,
-	cantsByKey,
+	attachmentsByKey,
 }) {
 	const family = seq?.family ?? "EL";
 	const strecke = seq?.strecke ?? "unknown";
@@ -737,8 +863,7 @@ function buildCoordGeomAlignmentFromSequence({
 			? buildCoordGeomFromTraLikeRecords(records, gndSemanticMap)
 			: fat.createCoordGeom({ elements: [] });
 
-	const profile = profilesByKey?.get?.(attachmentKey) ?? null;
-	const cant = cantsByKey?.get?.(attachmentKey) ?? null;
+	const attachments = attachmentsByKey?.get?.(attachmentKey) ?? null;
 
 	return fat.createAlignment({
 		id: `gnd.coordGeom.${index + 1}`,
@@ -756,8 +881,8 @@ function buildCoordGeomAlignmentFromSequence({
 			},
 		coordGeom,
 		staEquations: null,
-		profile,
-		cant: cant ? cant.entries : null,
+		profile: null,
+		cant: null,
 		extras: {
 			source: {
 				fileName: fileName ?? "",
@@ -766,16 +891,17 @@ function buildCoordGeomAlignmentFromSequence({
 			},
 			sourceSemantics: {
 				stage: "landFAT-with-gnd-attachments",
-				note: "Sequence was derived from GND edge families and lifted through TRA-like record synthesis into coordGeom. Matching EH/EU sequences are attached when unambiguous.",
+				note: "Safe horizontal GND sequence lifted into coordGeom. EH/EU source evidence remains non-constructive until completely decoded.",
 			},
 			gndTrust: {
 				kind: "authoritative-context",
 				crs: lsys ? "declared-from-LSYS" : "missing",
 				attachments: {
-					profile: profile ? "declared" : "missing",
-					cant: cant ? "declared" : "missing",
+					profile: attachments?.profile ? "unresolved" : "missing",
+					cant: attachments?.cant ? "unresolved" : "missing",
 				},
 			},
+			unresolvedAttachments: attachments,
 			gndSequence: {
 				type: "coordGeom",
 				family,
@@ -804,138 +930,100 @@ function buildCoordGeomAlignmentFromSequence({
 	});
 }
 
-function buildProfileFromSequence(seq, index, fileName, padIndex) {
-	const name = makeSequenceName(seq);
-	const attachmentKey = makeGndAttachmentKey(seq);
-	const pvis = convertProfileSequenceToPvis(seq, padIndex);
-
+function buildUnresolvedAttachmentEvidence(seq, kind, fileName, { evidenceState = "unique", reason = null } = {}) {
+	const family = kind === "profile" ? "EH" : "EU";
+	const prefix = kind === "profile" ? "EHPAR" : "EUPAR";
+	const candidateHorizontalReferenceSystems = arr(seq?.plKeys)
+		.map(parseTupleKey)
+		.map((tuple) => asTrimmedString(tuple?.lsys))
+		.filter(Boolean)
+		.sort();
+	const candidateVerticalReferenceSystems = arr(seq?.phKeys)
+		.map(parseTupleKey)
+		.map((tuple) => asTrimmedString(tuple?.hsys))
+		.filter(Boolean)
+		.sort();
+	const candidateStationContexts = arr(seq?.ppKeys)
+		.map(parseTupleKey)
+		.filter(Boolean)
+		.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+	const isAmbiguous = evidenceState === "ambiguous";
+	const isRejected = evidenceState === "rejected";
+	const attachmentStatus = evidenceState === "unique" ? "uniquely-attachable" : `${evidenceState}-unattached`;
+	const evidenceClass = evidenceState === "unique"
+		? "unresolved-uniquely-attachable-evidence"
+		: evidenceState === "ambiguous"
+			? "ambiguous-unattached-source-evidence"
+			: "rejected-unattached-source-evidence";
 	return {
-		id: `gnd.profile.${index + 1}`,
-		type: "Profile",
-		name: `${name}_PROFILE`,
-		desc: "Profile derived from GND EH sequence",
-		profAlign: {
-			id: `gnd.profAlign.${index + 1}`,
-			type: "ProfAlign",
-			name: `${name}_PROFALIGN`,
-			desc: "Generated from GND EH + PP/PH records",
-			pvis,
-			paraCurves: [],
+		kind,
+		status: isRejected ? "rejected" : isAmbiguous ? "ambiguous" : "unresolved",
+		evidenceClass,
+		attachmentStatus,
+		interpretationStatus: "not-interpreted",
+		complete: false,
+		constructive: false,
+		message: isRejected
+			? `${family} evidence was supplied but lacks the required reference candidates. It was preserved, not interpreted, and not attached.`
+			: isAmbiguous
+			? `${family} evidence was supplied. Its context is ambiguous. It was preserved, not interpreted, not attached, and not discarded.`
+			: kind === "cant"
+			? "Cant information is present but not decoded."
+			: "Profile information is present but not completely decoded.",
+		source: { fileName: fileName ?? "", family, format: "gndEdit" },
+		sourceReferenceRequirements: cloneRequiredMap(seq?.required),
+		padStart: seq?.padStart ?? null,
+		padEnd: seq?.padEnd ?? null,
+		candidateHorizontalReferenceSystems,
+		candidateReferenceSystems: candidateHorizontalReferenceSystems,
+		candidateVerticalReferenceSystems,
+		candidateStationContexts,
+		candidateReferenceKeys: {
+			horizontal: arr(seq?.plKeys),
+			vertical: arr(seq?.phKeys),
+			station: arr(seq?.ppKeys),
 		},
-		extras: {
-			source: {
-				fileName: fileName ?? "",
-				format: "gndEdit",
-				sourceBackend: "xlsx",
+		ambiguityReason: isAmbiguous ? (reason ?? getAttachmentContextReason({ plKeys: seq?.plKeys, ppKeys: seq?.ppKeys, phKeys: seq?.phKeys }, family)) : null,
+		rejectionReason: isRejected ? (reason ?? "missing-required-reference-candidates") : null,
+		attachmentKey: evidenceState === "unique" ? makeGndAttachmentKey(seq) : null,
+		sourceElements: arr(seq?.edgeChain).map((edge) => ({
+			family,
+			rowRef: edge?.extras?.rowRef ?? null,
+			padStart: edge?.padA ?? null,
+			padEnd: edge?.padB ?? null,
+			typeCode: edge?.typeCode ?? null,
+			parameters: {
+				[`${prefix}1`]: edge?.parameters?.par1 ?? null,
+				[`${prefix}2`]: edge?.parameters?.par2 ?? null,
+				[`${prefix}3`]: edge?.parameters?.par3 ?? null,
+				[`${prefix}4`]: edge?.parameters?.par4 ?? null,
 			},
-			gndSequence: {
-				type: "profile",
-				family: seq?.family ?? null,
-				lsys: seq?.lsys ?? null,
-				hsys: seq?.hsys ?? null,
-				strecke: seq?.strecke ?? null,
-				strRikz: seq?.strRikz ?? null,
-				stationStart: seq?.stationStart ?? null,
-				stationEnd: seq?.stationEnd ?? null,
-				padStart: seq?.padStart ?? null,
-				padEnd: seq?.padEnd ?? null,
-				seedCount: seq?.seedCount ?? 0,
-				seedIds: arr(seq?.seedIds),
-				edgeChain: arr(seq?.edgeChain),
-				attachmentKey,
+			valueOrigins: {
+				type: makeValueOrigin(edge?.typeCode == null ? "unresolved" : "source", `${family}TYP`),
+				par1: makeValueOrigin(edge?.parameters?.par1 == null ? "unresolved" : "source", `${prefix}1`),
+				par2: makeValueOrigin(edge?.parameters?.par2 == null ? "unresolved" : "source", `${prefix}2`),
+				par3: makeValueOrigin(edge?.parameters?.par3 == null ? "unresolved" : "source", `${prefix}3`),
+				par4: makeValueOrigin(edge?.parameters?.par4 == null ? "unresolved" : "source", `${prefix}4`),
 			},
-		},
+		})),
 	};
 }
 
-function buildCantFromSequence(seq, index, fileName) {
-	const name = makeSequenceName(seq);
-	const attachmentKey = makeGndAttachmentKey(seq);
-	const entries = convertCantSequenceToEntries(seq);
-
-	return {
-		id: `gnd.cant.${index + 1}`,
-		type: "Cant",
-		name: `${name}_CANT`,
-		entries,
-		extras: {
-			source: {
-				fileName: fileName ?? "",
-				format: "gndEdit",
-				sourceBackend: "xlsx",
-			},
-			gndSequence: {
-				type: "cant",
-				family: seq?.family ?? null,
-				lsys: seq?.lsys ?? null,
-				strecke: seq?.strecke ?? null,
-				strRikz: seq?.strRikz ?? null,
-				stationStart: seq?.stationStart ?? null,
-				stationEnd: seq?.stationEnd ?? null,
-				padStart: seq?.padStart ?? null,
-				padEnd: seq?.padEnd ?? null,
-				seedCount: seq?.seedCount ?? 0,
-				seedIds: arr(seq?.seedIds),
-				edgeChain: arr(seq?.edgeChain),
-				attachmentKey,
-			},
-		},
-	};
-}
-
-function convertProfileSequenceToPvis(seq, padIndex) {
-	const phKeys = seq?.phKeys ?? seq?.candidates?.phKeys;
-	const startNode = padIndex?.[seq?.padStart] ?? null;
-	const endNode = padIndex?.[seq?.padEnd] ?? null;
-
-	const startElevation = resolveElevationFromPadNode(startNode, phKeys);
-	const endElevation = resolveElevationFromPadNode(endNode, phKeys);
-
-	return [
-		makePvi(seq?.stationStart, startElevation?.value, startElevation?.ref),
-		makePvi(seq?.stationEnd, endElevation?.value, endElevation?.ref),
-	].filter(Boolean);
-}
-
-function makePvi(station, elevation, ref) {
-	const s = makeMeasure(station, "meter");
-	const h = makeMeasure(elevation, "meter");
-
-	if (!s || !h) return null;
-
-	return {
-		station: s,
-		elevation: h,
-		extras: {
-			rowRef: ref ?? null,
-		},
-	};
-}
-
-function convertCantSequenceToEntries(seq) {
-	return [
-		makeCantStation(seq?.stationStart, seq, "start"),
-		makeCantStation(seq?.stationEnd, seq, "end"),
-	].filter(Boolean);
-}
-
-function makeCantStation(station, seq, position) {
-	const s = makeMeasure(station, "meter");
-	if (!s) return null;
-
-	return {
-		type: "CantStation",
-		station: s,
-		appliedCant: makeMeasure(0, "meter"),
-		transitionType: null,
-		curvature: null,
-		extras: {
-			position,
-			note: "GND EU sequence identified; appliedCant value is currently a neutral placeholder until EU parameter decoding is completed.",
-			family: seq?.family ?? null,
-			edgeChain: arr(seq?.edgeChain),
-		},
-	};
+function diagnosticsForAttachment(evidence) {
+	const diagnostics = [];
+	for (const element of arr(evidence?.sourceElements)) {
+		for (const [field, value] of Object.entries(element?.parameters ?? {})) {
+			if (!Number.isFinite(value) || value === 0) continue;
+			diagnostics.push(makeDiagnostic({ severity: "warning", family: element.family, rowRef: element.rowRef, field, value, code: "nonzero-source-field-not-decoded", decision: "retain-as-unresolved-evidence; do-not-construct", geometryUsable: true }));
+		}
+	}
+	const state = evidence?.status ?? "unresolved";
+	const family = evidence?.source?.family ?? "attachment";
+	const diagnosticCode = family === "EU" && state === "ambiguous"
+		? "cant-context-ambiguous-unattached"
+		: `${String(family).toLowerCase()}-evidence-${state}`;
+	diagnostics.push(makeDiagnostic({ severity: "warning", family, rowRef: evidence?.sourceElements?.[0]?.rowRef ?? null, field: evidence?.kind, value: { horizontal: evidence?.candidateHorizontalReferenceSystems ?? [], vertical: evidence?.candidateVerticalReferenceSystems ?? [], station: evidence?.candidateStationContexts ?? [] }, code: diagnosticCode, decision: evidence?.message, geometryUsable: true }));
+	return diagnostics;
 }
 
 function makeGndAttachmentKey(seq) {
@@ -946,18 +1034,6 @@ function makeGndAttachmentKey(seq) {
 		stationKey(seq?.stationStart),
 		stationKey(seq?.stationEnd),
 	].join("|");
-}
-
-function makeSequenceMapByAttachmentKey(list) {
-	const map = new Map();
-
-	for (const item of arr(list)) {
-		const key = item?.extras?.gndSequence?.attachmentKey ?? null;
-		if (!key) continue;
-		if (!map.has(key)) map.set(key, item);
-	}
-
-	return map;
 }
 
 function stationKey(value) {
@@ -972,27 +1048,57 @@ function makeAnalysisLandFAT({
 	model = null,
 	metaExtra = {},
 } = {}) {
-	const profiles = arr(model?.profileSequences).map((seq, index) =>
-		buildProfileFromSequence(seq, index, fileName, model?.padIndex ?? null)
-	);
+	const diagnostics = [];
+	const unresolvedAttachments = [
+		...arr(model?.profileSequences).map((seq) => buildUnresolvedAttachmentEvidence(seq, "profile", fileName)),
+		...arr(model?.cantSequences).map((seq) => buildUnresolvedAttachmentEvidence(seq, "cant", fileName)),
+		...arr(model?.ambiguousProfileSequences).map((seq) => buildUnresolvedAttachmentEvidence(seq, "profile", fileName, {
+			evidenceState: "ambiguous",
+			reason: getAttachmentContextReason({ plKeys: seq?.plKeys, ppKeys: seq?.ppKeys, phKeys: seq?.phKeys }, "EH"),
+		})),
+		...arr(model?.rejectedProfileSeeds).map((seq) => buildUnresolvedAttachmentEvidence(seq, "profile", fileName, {
+			evidenceState: "rejected",
+			reason: seq?.rejectionReason ?? "missing-required-reference-candidates",
+		})),
+		...arr(model?.ambiguousCantSequences).map((seq) => buildUnresolvedAttachmentEvidence(seq, "cant", fileName, {
+			evidenceState: "ambiguous",
+			reason: getAttachmentContextReason({ plKeys: seq?.plKeys, ppKeys: seq?.ppKeys }, "EU"),
+		})),
+		...arr(model?.rejectedCantSeeds).map((seq) => buildUnresolvedAttachmentEvidence(seq, "cant", fileName, {
+			evidenceState: "rejected",
+			reason: seq?.rejectionReason ?? "missing-required-reference-candidates",
+		})),
+	];
+	for (const evidence of unresolvedAttachments) diagnostics.push(...diagnosticsForAttachment(evidence));
 
-	const cants = arr(model?.cantSequences).map((seq, index) =>
-		buildCantFromSequence(seq, index, fileName)
-	);
+	const attachmentsByKey = new Map();
+	for (const evidence of unresolvedAttachments) {
+		if (evidence?.attachmentStatus !== "uniquely-attachable" || !evidence?.attachmentKey) continue;
+		const current = attachmentsByKey.get(evidence.attachmentKey) ?? {};
+		current[evidence.kind] = evidence;
+		attachmentsByKey.set(evidence.attachmentKey, current);
+	}
 
-	const profilesByKey = makeSequenceMapByAttachmentKey(profiles);
-	const cantsByKey = makeSequenceMapByAttachmentKey(cants);
-
-	const alignments = arr(model?.coordGeomSequences).map((seq, index) =>
-		buildCoordGeomAlignmentFromSequence({
-			seq,
-			index,
-			fileName,
-			padIndex: model?.padIndex ?? null,
-			profilesByKey,
-			cantsByKey,
-		})
-	);
+	const unresolvedSourceElements = [];
+	const alignments = [];
+	for (const [index, seq] of arr(model?.coordGeomSequences).entries()) {
+		const edgeDiagnostics = arr(seq?.edgeChain).map(assessConstructiveEdge).filter(Boolean);
+		for (const edge of arr(seq?.edgeChain)) {
+			const par4 = edge?.parameters?.par4;
+			if (Number.isFinite(par4) && par4 !== 0) diagnostics.push(makeDiagnostic({ severity: "warning", family: edge.family, rowRef: edge?.extras?.rowRef ?? null, field: `${edge.family}PAR4`, value: par4, code: "nonzero-source-field-not-decoded", decision: "retain-as-source-evidence", geometryUsable: edgeDiagnostics.length === 0 }));
+		}
+		if (edgeDiagnostics.length) {
+			diagnostics.push(...edgeDiagnostics);
+			unresolvedSourceElements.push(...arr(seq?.edgeChain).map((edge) => ({ family: edge.family, rowRef: edge?.extras?.rowRef ?? null, typeCode: edge.typeCode, parameters: edge.parameters, decision: "not-constructed" })));
+			continue;
+		}
+		try {
+			alignments.push(buildCoordGeomAlignmentFromSequence({ seq, index, fileName, padIndex: model?.padIndex ?? null, attachmentsByKey }));
+		} catch (error) {
+			diagnostics.push(makeDiagnostic({ severity: "error", family: seq?.family ?? null, field: "coordGeom", value: String(error?.message ?? error), code: "constructive-interpretation-rejected", decision: "retain-source-sequence; do-not-construct", geometryUsable: false }));
+			unresolvedSourceElements.push(...arr(seq?.edgeChain).map((edge) => ({ family: edge.family, rowRef: edge?.extras?.rowRef ?? null, typeCode: edge.typeCode, parameters: edge.parameters, decision: "not-constructed" })));
+		}
+	}
 
 	const gndCrs = buildGndCoordinateSystem(model);
 
@@ -1002,23 +1108,27 @@ function makeAnalysisLandFAT({
 			format: "gndEdit",
 			parserId: "gndEdit",
 			sourceBackend: "xlsx",
-			stage: "landFAT-with-gnd-attachments",
+			stage: "landFAT-with-truthfulness-gate",
 			sheetNames: workbookInfo?.sheetNames ?? [],
+			diagnostics,
 			...metaExtra,
 		},
 		units: {
 			linearUnit: "meter",
 			elevationUnit: "meter",
-			angularUnit: "radian",
+			angularUnit: "gon",
 		},
 		coordinateSystem: gndCrs.coordinateSystem,
 		alignments,
-		profiles,
+		profiles: [],
 		extras: {
 			sourceSemantics: {
 				format: "gndEdit",
-				note: "Qualified GND import: coordGeom, profile and cant candidate sequences are lifted to landFAT. CRS is declared from LSYS/HSYS but remains GND-source-trust scoped.",
+				note: "Only safely interpreted horizontal GND sequences enter constructive geometry. Incomplete EH/EU and ambiguous horizontal elements remain unresolved source evidence.",
 			},
+			diagnostics,
+			unresolvedAttachments,
+			unresolvedSourceElements,
 			gndCrs: gndCrs.extras,
 			analysisModel: {
 				stats: model?.stats ?? {},
@@ -1143,16 +1253,6 @@ function compareStationStrings(a, b) {
 	}
 
 	return String(a).localeCompare(String(b));
-}
-
-function makeMeasure(value, unit = "meter") {
-	const n = toFiniteNumber(value);
-	if (!Number.isFinite(n)) return null;
-
-	return {
-		value: n,
-		unit,
-	};
 }
 
 // -----------------------------------------------------------------------------
@@ -1305,31 +1405,6 @@ function resolvePadCoordFromPadNode(padNode, plKeys) {
 						easting: rec.easting,
 						northing: rec.northing,
 						lsys: recLsys,
-						ref: rec.ref ?? null,
-					};
-				}
-			}
-		}
-	}
-
-	return null;
-}
-
-function resolveElevationFromPadNode(padNode, phKeys) {
-	const tuples = normalizeSet(phKeys);
-	const tupleList = Array.from(tuples)
-		.map(parseTupleKey)
-		.filter(Boolean);
-
-	for (const rec of arr(padNode?.phRecords)) {
-		const recHsys = asTrimmedString(rec?.hsys);
-
-		for (const tuple of tupleList) {
-			if (recHsys === asTrimmedString(tuple?.hsys)) {
-				if (Number.isFinite(rec?.elevation)) {
-					return {
-						value: rec.elevation,
-						hsys: recHsys,
 						ref: rec.ref ?? null,
 					};
 				}

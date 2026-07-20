@@ -23,6 +23,7 @@ function buildEdgesFromSheet(rows, family) {
 function buildEdge(row, family, rowIndex) {
 	const padA = readPad(row, "PAD1");
 	const padB = readPad(row, "PAD2");
+	const typeCode = readFamilyTypeCode(row, family);
 
 	if (!padA || !padB) return null;
 
@@ -45,10 +46,7 @@ function buildEdge(row, family, rowIndex) {
 				: null,
 		},
 
-		typeCode:
-			family === "EL" ? toFiniteNumber(row.ELTYP)
-			: family === "EK" ? toFiniteNumber(row.EKTYP)
-			: null,
+		typeCode,
 
 		arcLength:
 			family === "EL" ? toFiniteNumber(row.ELPAR1)
@@ -70,6 +68,8 @@ function buildEdge(row, family, rowIndex) {
 			: family === "EK" ? toFiniteNumber(row.EKARIWI)
 			: null,
 
+		parameters: readFamilyParameters(row, family),
+
 		extras: {
 			rowRef: refOf(row),
 
@@ -84,6 +84,22 @@ function buildEdge(row, family, rowIndex) {
 					: null,
 		},
 	};
+}
+
+function readFamilyParameters(row, family) {
+	const prefix = family === "EL" ? "ELPAR" : family === "EK" ? "EKPAR" : family === "EH" ? "EHPAR" : family === "EU" ? "EUPAR" : null;
+	if (!prefix) return {};
+	return {
+		par1: toFiniteNumber(row?.[`${prefix}1`]),
+		par2: toFiniteNumber(row?.[`${prefix}2`]),
+		par3: toFiniteNumber(row?.[`${prefix}3`]),
+		par4: toFiniteNumber(row?.[`${prefix}4`]),
+	};
+}
+
+function readFamilyTypeCode(row, family) {
+	const field = family === "EL" ? "ELTYP" : family === "EK" ? "EKTYP" : family === "EH" ? "EHTYP" : family === "EU" ? "EUTYP" : null;
+	return field ? toFiniteNumber(row?.[field]) : null;
 }
 
 function arr(x) {

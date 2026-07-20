@@ -116,6 +116,20 @@ export async function runImportPipeline(file, context = {}) {
 			parsed,
 			source,
 		});
+		result.meta = {
+			...(result?.meta ?? {}),
+			diagnostics: Array.isArray(parsed?.meta?.diagnostics)
+				? parsed.meta.diagnostics
+				: Array.isArray(parsed?.extras?.diagnostics) ? parsed.extras.diagnostics : [],
+		};
+
+		for (const diagnostic of result?.meta?.diagnostics ?? []) {
+			log(
+				`GND ${diagnostic.severity ?? "warning"} ${diagnostic.code ?? "diagnostic"}: ` +
+				`${diagnostic.family ?? "?"} ${diagnostic.rowRef ?? ""} ${diagnostic.field ?? ""} ` +
+				`→ ${diagnostic.decision ?? "retained"}`
+			);
+		}
 
 		console.log("[runImportPipeline] import result", {
 			fileName: file?.name ?? null,
