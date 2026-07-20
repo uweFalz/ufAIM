@@ -105,6 +105,10 @@ export function buildWindowShell() {
 					<div class="uf-stage">
 						<canvas id="view3d"></canvas>
 					</div>
+					<section id="curvatureBand" class="uf-curvatureBand" aria-label="Curvature band">
+						<header><span>κ(s)</span><output id="curvatureBandValue"></output></header>
+						<svg id="curvatureBandSvg" role="application" aria-label="Editable signed curvature by station"></svg>
+					</section>
 				</div>
 
 				<aside id="cockpitPanel" class="uf-cockpitPanel">

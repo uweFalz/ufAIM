@@ -7,6 +7,7 @@ import { makeThreeAdapter } from "@app/controllers/adapters/geo/ThreeMainViewCon
 import { makeThreeViewer } from "@app/view/viewers/threeViewer.js";
 import { makeTransitionEditorBridge } from "@app/controllers/bridges/transitionEditorBridge.js";
 import { MapLibreThreeAdapter } from "@app/controllers/adapters/geo/MapLibreThreeAdapter.js";
+import { makeCurvatureBandController } from "@app/controllers/curvatureBandController.js";
 
 function setupGeoRuntime(ctx) {
 	const canvas = document.getElementById("view3d");
@@ -178,6 +179,9 @@ export async function initFeatures(ctx) {
 	setupImportUI(ctx);
 	setupCockpitSelectors(ctx);
 	setupViewRuntime(ctx);
+	ctx.curvatureBand = makeCurvatureBandController({ store: ctx.store, messaging: ctx.messaging });
+	ctx.curvatureBand.start();
+	if (ctx.prefs.isDev) window.__ufAIM_curvatureBand = ctx.curvatureBand;
 	setupCockpitRuntime(ctx);
 	await setupTransitionRuntime(ctx);
 }

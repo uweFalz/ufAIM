@@ -276,6 +276,47 @@ html[dir="rtl"] #props {
 	z-index: 2;
 }
 
+.uf-curvatureBand {
+	position: absolute;
+	left: 18px;
+	right: 18px;
+	bottom: 18px;
+	height: 176px;
+	z-index: 6;
+	display: grid;
+	grid-template-rows: 26px 1fr;
+	background: rgba(10, 14, 20, 0.92);
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34);
+	backdrop-filter: blur(12px);
+	user-select: none;
+}
+
+.uf-curvatureBand header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 10px;
+	font: 600 11px/1 system-ui, sans-serif;
+	letter-spacing: .08em;
+	color: rgba(255, 255, 255, .72);
+}
+
+.uf-curvatureBand output { font: 600 13px/1.1 system-ui, sans-serif; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.uf-curvatureBand svg { width: 100%; height: 100%; overflow: visible; touch-action: none; }
+.uf-curvatureBand .band-zero { stroke: rgba(255,255,255,.34); stroke-width: 1; }
+.uf-curvatureBand .band-boundary { stroke: rgba(255,255,255,.18); stroke-width: 1; stroke-dasharray: 2 4; }
+.uf-curvatureBand .band-hit { fill: none; stroke: transparent; stroke-width: 18; vector-effect: non-scaling-stroke; pointer-events: stroke; cursor: pointer; }
+.uf-curvatureBand .band-hit.is-arc { cursor: ns-resize; }
+.uf-curvatureBand .band-segment { fill: none; stroke: #91a0b5; stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.uf-curvatureBand .band-hit:hover + .band-segment { stroke: #d9e1ec; stroke-width: 3; }
+.uf-curvatureBand .band-segment.is-selected { stroke: #20d5cc; stroke-width: 3; }
+.uf-curvatureBand .band-segment.is-dragging { stroke: #fff; stroke-width: 4; stroke-dasharray: 8 4; }
+.uf-curvatureBand .band-segment.is-rejected { stroke: #ffb454; stroke-dasharray: 3 3; }
+.uf-curvatureBand .band-axis-label { fill: rgba(255,255,255,.54); font: 10px system-ui, sans-serif; }
+.uf-curvatureBand .band-empty { fill: rgba(255,255,255,.5); font: 12px system-ui, sans-serif; }
+.uf-curvatureBand[data-state="committed"] { border-color: rgba(32,213,204,.58); }
+
 .uf-stageWrap.is-geographic > .uf-stage { pointer-events: none; opacity: 0; }
 .uf-stageWrap.is-geographic > .uf-geoMap { z-index: 3; }
 .uf-stageWrap.is-geographic + * { --uf-geographic-active: 1; }

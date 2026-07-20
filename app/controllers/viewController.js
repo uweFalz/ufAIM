@@ -195,6 +195,7 @@ export function makeViewController({
 			geometry: previewItem?.kernel ?? null,
 			source: "preview-item",
 			crsId: previewItem?.crsId ?? null,
+			georeference: previewItem?.georeference ?? null,
 			maxStep: cfg.sampleStep,
 		});
 
@@ -247,6 +248,11 @@ export function makeViewController({
 
 	async function getActiveGeometry(state) {
 		const focusObjectId = getFocusObjectId(state);
+		const previewSourceType = String(state?.preview_source?.type ?? state?.preview_source?.kind ?? "");
+		if (previewSourceType === "curvature-band" && String(state?.preview_item?.id ?? "") === String(focusObjectId ?? "")) {
+			const previewGeometry = getPreviewGeometryFromState(state);
+			if (previewGeometry) return previewGeometry;
+		}
 
 		if (focusObjectId && cachedFocusObjectId === focusObjectId && cachedActiveGeometry) {
 			return cachedActiveGeometry;
@@ -292,7 +298,7 @@ export function makeViewController({
 
 	function makeGeomKey(activeGeometry) {
 		if (!activeGeometry) return "(none)";
-		return String(activeGeometry.objectId ?? "(none)");
+		return `${String(activeGeometry.objectId ?? "(none)")}:${activeGeometry.isPreview ? "preview" : "committed"}`;
 	}
 
 	function ensureChainageCache(poly) {

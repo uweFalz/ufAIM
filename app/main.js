@@ -32,6 +32,7 @@ try {
 	await import("@app/_e2eAlignmentNativeUiTest.js");
 	await window.__alignmentNativeEditorUiE2EPromise;
 	await import("@app/_e2eGeoRuntimeAcceptanceTest.js");
+	await import("@app/_e2eCurvatureBandTest.js");
 } catch (err) {
 	console.error(err);
 	const logElement = document.getElementById("log");
