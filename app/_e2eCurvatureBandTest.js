@@ -1,6 +1,7 @@
 import { createAlignmentSpotObject } from "@src/model/spot/model/createAlignmentSpotObject.js";
 import { buildSparseFromEditModel } from "@src/domain/alignment/editor/buildSparseAlignment.js";
 import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import { registerE2EFixture } from "@app/_e2eLifecycle.js";
 
 const result = { passed: false, phase: "waiting", failures: [], fixtureId: null, completedAt: null };
 window.__curvatureBandE2E = result;
@@ -22,12 +23,13 @@ function unwrap(raw) { return raw?.state ?? raw?.payload ?? raw ?? null; }
 async function readObject(messaging, id) { const state = unwrap(await messaging.sendCmdAwait("Spot.GetState", {})); const objects = Array.isArray(state?.objects) ? state.objects : Object.values(state?.objects ?? {}); return objects.find((o) => String(o?.id) === String(id)) ?? null; }
 function pointer(type, y, pointerId = 71) { return new PointerEvent(type, { bubbles: true, clientX: 400, clientY: y, pointerId, pointerType: "mouse", buttons: type === "pointerup" ? 0 : 1 }); }
 
-(async function runCurvatureBandE2E() {
+window.__curvatureBandE2EPromise = (async function runCurvatureBandE2E() {
 	try {
 		await waitFor(() => window.__geoRuntimeAcceptanceE2E?.completedAt, "prior Geo acceptance completion", 30000);
 		await waitFor(() => window.__ufAIM_curvatureBand && window.__ufAIM_store && window.messaging, "curvature-band runtime");
 		result.phase = "fixture";
 		const id = `curvature_band_${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
+		registerE2EFixture("curvatureBand", id);
 		result.fixtureId = id;
 		const alignmentData = { type: "AlignmentData", id, name: "Curvature band E2E", source: { kind: "import-compatible-synthetic" }, editModel: { startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } }, elements: [
 			{ id: "S0", type: "straight", parameters: { length: 80 }, length: 80 },
@@ -99,14 +101,19 @@ function pointer(type, y, pointerId = 71) { return new PointerEvent(type, { bubb
 		window.dispatchEvent(pointer("pointermove", 260, 72));
 		await waitFor(() => window.__ufAIM_curvatureBand.getDebugState().curvature < 0, "signed negative preview");
 		window.dispatchEvent(pointer("pointerup", 260, 72));
+		const signedCommit = await window.__ufAIM_curvatureBand.whenCommitSettled();
+		assert(signedCommit?.changed === true && signedCommit?.curvature < 0, `signed commit rejected: ${signedCommit?.error ?? "unknown reason"}`);
 		await waitFor(async () => (await readObject(window.messaging, id))?.data?.alignmentData?.editModel?.elements?.find((e) => e.id === "A2")?.parameters?.curvature < 0, "signed curvature commit");
 		persisted = await readObject(window.messaging, id);
 		assert(persisted.data.alignmentData.editModel.elements.find((e) => e.id === "A2").id === "A2", "element identity remains stable");
 		assert(window.__ufAIM_store.getState().workspace_selection.elementId === "A2", "selection remains stable after commit");
+		await waitFor(() => window.__ufAIM_viewController.getDebugState()?.selectedElementId === "A2", "Viewer selection after signed commit");
+		await waitFor(() => document.querySelector('.cockpit-sofa__list--compact li.is-selected [data-cockpit-element-id="A2"]'), "Cockpit selection after signed commit");
 		assert(runtimeErrors.length === 0, `no uncaught curvature-band runtime errors: ${runtimeErrors.join(" | ")}`);
 
 		result.phase = "import-equivalence";
 		const importedId = `${id}_imported`;
+		registerE2EFixture("curvatureBand", importedId);
 		const imported = createAlignmentSpotObject({ id: importedId, name: "Imported curvature band E2E", kernel: sparse, sparseAlignment: sparse, alignmentData: null, meta: { source: { kind: "import", format: "synthetic" } } });
 		await window.messaging.sendCmdAwait("Spot.AddObjects", { objects: [imported] });
 		window.__ufAIM_store.actions.setWorkspacePrimary({ objectId: importedId, source: "curvature-band-e2e-import" });

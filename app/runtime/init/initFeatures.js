@@ -8,6 +8,7 @@ import { makeThreeViewer } from "@app/view/viewers/threeViewer.js";
 import { makeTransitionEditorBridge } from "@app/controllers/bridges/transitionEditorBridge.js";
 import { MapLibreThreeAdapter } from "@app/controllers/adapters/geo/MapLibreThreeAdapter.js";
 import { makeCurvatureBandController } from "@app/controllers/curvatureBandController.js";
+import { makeAlignmentEditorBridge } from "@app/controllers/bridges/alignmentEditorBridge.js";
 
 function setupGeoRuntime(ctx) {
 	const canvas = document.getElementById("view3d");
@@ -50,6 +51,13 @@ function setupImportUI(ctx) {
 			});
 		},
 
+		onEdit: async (spotId) => {
+			const objectId = String(spotId ?? "").trim();
+			if (!objectId) return;
+			await ctx.focusManager?.setFocus?.({ objectId, slot: "right" });
+			window.dispatchEvent(new CustomEvent("ufaim:alignment-editor-focus-element", { detail: { objectId, source: "objects-context" } }));
+		},
+
 		onTogglePin: (spotId) => {
 			const objectId = String(spotId ?? "").trim();
 			if (!objectId) return;
@@ -72,6 +80,38 @@ function setupImportUI(ctx) {
 
 			ctx.ui?.refreshSpot?.(ctx.store.getState());
 		},
+
+		onRename: async ({ objectId, name }) => {
+			return await ctx.messaging.sendCmdAwait("Spot.RenameObject", {
+				objectId,
+				name,
+			});
+		},
+
+		onRemove: async (spotId) => {
+			const objectId = String(spotId ?? "").trim();
+			if (!objectId) return null;
+			const wasActive = String(ctx.focusManager?.getFocus?.()?.objectId ?? "") === objectId;
+			const result = await ctx.messaging.sendCmdAwait("Spot.RemoveObject", { objectId });
+			if (wasActive) {
+				const fallbackId = result?.uiState?.rows?.map((row) => String(row?.spotId ?? "")).filter(Boolean).sort()[0] ?? null;
+				await ctx.focusManager?.setFocus?.({ objectId: fallbackId, slot: "right" });
+			}
+			return { ...result, restoreSelection: wasActive };
+		},
+
+		onUndo: async (removal) => {
+			const removedObject = removal?.removedObject ?? null;
+			if (!removedObject) return null;
+			const result = await ctx.messaging.sendCmdAwait("Spot.AddObjects", { objects: [removedObject] });
+			if (removal?.restoreSelection) {
+				await ctx.focusManager?.setFocus?.({ objectId: removedObject.id, slot: "right" });
+			}
+			return result;
+		},
+
+		onCreate: async () => await ctx.cockpit?.createNewAlignment?.(),
+		onImport: () => document.getElementById("btnImport")?.click(),
 	});
 
 	return importer;
@@ -167,6 +207,13 @@ async function setupTransitionRuntime(ctx) {
 	return teBridge;
 }
 
+function setupAlignmentEditorRuntime(ctx) {
+	const bridge = makeAlignmentEditorBridge({ store: ctx.store, ui: ctx.ui, messaging: ctx.messaging });
+	bridge.wire();
+	if (ctx.prefs.isDev) window.__ufAIM_aeBridge = bridge;
+	return bridge;
+}
+
 export async function initFeatures(ctx) {
 	ctx.cockpit = new CockpitController({
 		store: ctx.store,
@@ -183,5 +230,6 @@ export async function initFeatures(ctx) {
 	ctx.curvatureBand.start();
 	if (ctx.prefs.isDev) window.__ufAIM_curvatureBand = ctx.curvatureBand;
 	setupCockpitRuntime(ctx);
+	ctx.alignmentEditorBridge = setupAlignmentEditorRuntime(ctx);
 	await setupTransitionRuntime(ctx);
 }

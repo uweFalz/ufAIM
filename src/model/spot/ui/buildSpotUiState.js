@@ -114,6 +114,46 @@ function buildNotes(object) {
 	return buildMissing(object).map((key) => `${key}=missing`);
 }
 
+function readGeoreference(object) {
+	return object?.data?.georeference ?? object?.data?.extended?.spatialRef ?? null;
+}
+
+function buildSpatialSummary(object) {
+	const geo = readGeoreference(object);
+	const mode = String(geo?.mode ?? geo?.resolutionState ?? object?.crsStatus ?? "").toLowerCase();
+	if (mode.includes("geographic") || mode.includes("supported") || geo?.resolvedEpsg) {
+		return { mode: "geographic", label: "Geographic reference resolved" };
+	}
+	return { mode: "local", label: "Local Cartesian" };
+}
+
+function collectEvidence(object) {
+	const candidates = [
+		object?.data?.extended?.unresolvedAttachments,
+		object?.data?.extended?.extras?.unresolvedAttachments,
+		object?.data?.meta?.unresolvedAttachments,
+		object?.meta?.unresolvedAttachments,
+	];
+	return candidates.find(Array.isArray) ?? [];
+}
+
+function collectWarnings(object, evidence) {
+	const warnings = [
+		...(Array.isArray(object?.meta?.warnings) ? object.meta.warnings : []),
+		...(Array.isArray(object?.data?.meta?.diagnostics) ? object.data.meta.diagnostics : []),
+	];
+	for (const item of evidence) {
+		warnings.push(item?.message ?? `${item?.kind ?? "Attachment"} evidence ${item?.status ?? "unresolved"}`);
+	}
+	return warnings.map((value) => typeof value === "string" ? value : value?.decision ?? value?.message ?? value?.code).filter(Boolean);
+}
+
+function buildSourceKind(object) {
+	const source = object?.meta?.source;
+	if (source === "editor" || source?.kind === "editor") return "created";
+	return source ? "imported" : "created";
+}
+
 function getUiStatus(object) {
 	const kernel = hasKernel(object);
 	const crs = hasCrs(object);
@@ -132,6 +172,9 @@ function getUiStatus(object) {
 function buildRow(object) {
 	const spotId = getObjectId(object);
 	const crsId = getCrsId(object);
+	const evidence = collectEvidence(object);
+	const warnings = collectWarnings(object, evidence);
+	const spatial = buildSpatialSummary(object);
 
 	return {
 		spotId,
@@ -142,6 +185,18 @@ function buildRow(object) {
 		status: getUiStatus(object),
 
 		sourceLabel: buildSourceLabel(object),
+		sourceKind: buildSourceKind(object),
+		spatialMode: spatial.mode,
+		spatialLabel: spatial.label,
+		lastChange: object?.meta?.modifiedAt ?? object?.meta?.createdAt ?? null,
+		warnings,
+		unresolvedEvidence: evidence.map((item) => ({
+			kind: item?.kind ?? "attachment",
+			status: item?.status ?? "unresolved",
+			evidenceClass: item?.evidenceClass ?? null,
+			message: item?.message ?? null,
+			ambiguityReason: item?.ambiguityReason ?? item?.rejectionReason ?? null,
+		})),
 
 		missing: buildMissing(object),
 		notes: buildNotes(object),
@@ -150,6 +205,13 @@ function buildRow(object) {
 		hasCrs: Boolean(crsId),
 
 		crsId,
+		details: {
+			id: spotId,
+			crsId,
+			crsStatus: object?.crsStatus ?? null,
+			source: object?.meta?.source ?? null,
+			lifecycle: object?.meta?.lifecycle ?? null,
+		},
 	};
 }
 

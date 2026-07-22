@@ -262,6 +262,14 @@ router.onCmd("Spot.GetUiState", async () => {
 	return uiState;
 });
 
+router.onCmd("Spot.RenameObject", async ({ objectId, name } = {}) => {
+	return spotService.renameObject({ objectId, name });
+});
+
+router.onCmd("Spot.RemoveObject", async ({ objectId } = {}) => {
+	return spotService.removeObject({ objectId });
+});
+
 router.onCmd(
 	"Spot.PromoteImportItems",
 	async ({ items = [] } = {}) => {

@@ -11,6 +11,7 @@ export function initShell(ctx) {
 	restorePanelVisibility([
 		"spotOverlay",
 		"transOverlay",
+		"alignmentEditorOverlay",
 		"overlayBands",
 		"overlaySection",
 		"debugOverlay",

@@ -496,6 +496,10 @@ export function createWindowStore(initial) {
 			setState({ te_open: Boolean(isOpen) });
 		},
 
+		setAeOpen(isOpen) {
+			setState({ ae_open: Boolean(isOpen) });
+		},
+
 		setTePresetId(id) {
 			setState({ te_presetId: String(id ?? "") });
 		},

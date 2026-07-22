@@ -374,6 +374,13 @@ html[dir="rtl"] #props {
 	height: min(720px, 78vh);
 }
 
+#alignmentEditorOverlay {
+	top: 96px;
+	right: 32px;
+	width: min(620px, 52vw);
+	height: min(680px, 76vh);
+}
+
 #overlayBands {
 	right: 12px;
 	bottom: 176px;
@@ -764,6 +771,13 @@ html[dir="rtl"] #props {
 		right: 12px;
 		width: auto;
 		height: min(76vh, 760px);
+	}
+
+	#alignmentEditorOverlay {
+		left: 12px;
+		right: 12px;
+		width: auto;
+		height: min(76vh, 720px);
 	}
 
 	#transOverlay .uf-panel__body {

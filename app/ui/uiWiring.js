@@ -123,6 +123,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		transitionOverlay: document.getElementById("transOverlay"),
 		buttonTransition: document.getElementById("btnTrans"),
 		buttonTransitionClose: document.getElementById("btnTransClose"),
+		alignmentEditorOverlay: document.getElementById("alignmentEditorOverlay"),
+		buttonAlignmentEditor: document.getElementById("btnAlignmentEditor"),
+		buttonAlignmentEditorClose: document.getElementById("btnAlignmentEditorClose"),
 
 		// cursor controls
 		cursorSInput: document.getElementById("inputCursorS"),
@@ -260,6 +263,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 			closeLanguageMenu();
 			applyI18n(document);
+			spotView.refresh();
 			setStatus(t("status_ready"));
 			renderLanguageMenu();
 		});
@@ -287,6 +291,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 	function openCockpit() {
 		if (!elements.shell) return;
+		closeSpot();
 		elements.shell.classList.remove("is-cockpit-collapsed");
 		setPrimary(elements.buttonCockpit, true);
 	}
@@ -299,8 +304,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 	function toggleCockpit() {
 		if (!elements.shell) return;
-		const collapsed = elements.shell.classList.toggle("is-cockpit-collapsed");
-		setPrimary(elements.buttonCockpit, !collapsed);
+		if (elements.shell.classList.contains("is-cockpit-collapsed")) openCockpit();
+		else closeCockpit();
 	}
 
 	// ------------------------------------------------------------
@@ -674,6 +679,23 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		setPrimary(elements.buttonTransition, visible);
 	}
 
+	function openAlignmentEditor() {
+		show(elements.alignmentEditorOverlay);
+		markPanelHidden(elements.alignmentEditorOverlay, false);
+		setPrimary(elements.buttonAlignmentEditor, true);
+	}
+
+	function closeAlignmentEditor() {
+		hide(elements.alignmentEditorOverlay);
+		markPanelHidden(elements.alignmentEditorOverlay, true);
+		setPrimary(elements.buttonAlignmentEditor, false);
+	}
+
+	function toggleAlignmentEditor() {
+		if (elements.alignmentEditorOverlay?.classList.contains("hidden")) openAlignmentEditor();
+		else closeAlignmentEditor();
+	}
+
 	function wireOverlayButtons() {
 		elements.buttonCockpit?.addEventListener("click", toggleCockpit);
 		elements.buttonCockpitClose?.addEventListener("click", closeCockpit);
@@ -694,6 +716,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// SPOT overlay
 	// ------------------------------------------------------------
 	function openSpot() {
+		closeCockpit();
 		show(elements.overlaySpot);
 		markPanelHidden(elements.overlaySpot, false);
 		setPrimary(elements.buttonSpot, true);
@@ -730,6 +753,10 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 	wireSpotOverlay();
 	wireOverlayButtons();
+	if (elements.overlaySpot && !elements.overlaySpot.classList.contains("hidden")) {
+		closeCockpit();
+		setPrimary(elements.buttonSpot, true);
+	}
 
 	return {
 		elements,
@@ -785,6 +812,8 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		renderSpotState: spotView.renderSpotState,
 		refreshSpot: spotView.refresh,
 		wireSpotActions: spotView.wireActions,
+		getSpotQuery: spotView.getQuery,
+		setSpotQuery: spotView.setQuery,
 		openSpot,
 		closeSpot,
 		toggleSpot,
@@ -799,6 +828,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		openTransition,
 		closeTransition,
 		toggleTransition,
+		openAlignmentEditor,
+		closeAlignmentEditor,
+		toggleAlignmentEditor,
 
 		// fit / pin
 		setAutoFitToggleVisible,

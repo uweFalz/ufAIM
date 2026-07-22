@@ -4,6 +4,7 @@ import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAcc
 import { createAlignmentSpotObject } from "@src/model/spot/model/createAlignmentSpotObject.js";
 import { buildSparseFromEditModel } from "@src/domain/alignment/editor/buildSparseAlignment.js";
 import { setLanguage, t } from "@app/i18n/strings.js";
+import { registerE2EFixture } from "@app/_e2eLifecycle.js";
 
 function assert(condition, message) {
 	if (!condition) {
@@ -90,14 +91,17 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 		);
 
 		await waitFor(
-			() => !!window.__ufAIM_viewController?.getDebugState && typeof window.__ufAIM_teBridge?.focusElementInEditor === "function",
+			() => !!window.__ufAIM_viewController?.getDebugState && typeof window.__ufAIM_aeBridge?.focusElementInEditor === "function",
 			{ label: "viewer and editor-focus bridge readiness" }
 		);
 
 		const store = window.__ufAIM_store;
 		const messaging = window.messaging;
+		assert(!document.querySelector("#transOverlay .uf-align-edit"), "TransEd must not contain Alignment Element Editor UI");
+		assert(document.getElementById("tePresetSelMain")?.options?.length > 0, "TransEd transition presets should remain available");
 
 		const id = `alignment_native_ui_${Math.random().toString(36).slice(2, 10)}`;
+		registerE2EFixture("alignmentNativeUi", id);
 		setPhase("fixture-created", { fixtureId: id });
 		const alignmentData = {
 			type: "AlignmentData",
@@ -192,9 +196,11 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 			"viewer selection should highlight the arc element after viewer-driven focus"
 		);
 		setPhase("editor-focus-event-acknowledged");
-		await waitFor(() => !document.getElementById("transOverlay")?.classList.contains("hidden"), {
+		await waitFor(() => !document.getElementById("alignmentEditorOverlay")?.classList.contains("hidden"), {
 			label: "viewer-opened Alignment Element Editor",
 		});
+		assert(document.getElementById("transOverlay")?.classList.contains("hidden"), "viewer focus must not open TransEd");
+		assert(store.getState()?.ae_open === true && store.getState()?.te_open === false, "Alignment Editor and TransEd open states must be independent");
 		await waitFor(() => String(document.getElementById("aeElementSel")?.value ?? "") === "A2", {
 			label: "viewer arc ID rendered in element selector",
 		});
@@ -204,8 +210,8 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 			"cockpit should reflect the viewer-driven selected element"
 		);
 
-		const transBtn = document.getElementById("btnTrans");
-		assert(!!transBtn, "transition overlay open button should exist");
+		const alignmentEditorButton = document.getElementById("btnAlignmentEditor");
+		assert(!!alignmentEditorButton, "alignment editor open button should exist");
 
 		setLanguage("de");
 		await waitFor(
@@ -216,7 +222,7 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 		assert(!!cockpitFocusBtn, "cockpit editor-focus action should exist for arc element A2");
 		cockpitFocusBtn.click();
 
-		await waitFor(() => !document.getElementById("transOverlay")?.classList.contains("hidden"), {
+		await waitFor(() => !document.getElementById("alignmentEditorOverlay")?.classList.contains("hidden"), {
 			label: "transition overlay visible",
 		});
 
@@ -254,11 +260,11 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 		assert(applyBtn?.textContent !== "Apply", "de apply label must not use hard-coded fallback text");
 
 		setLanguage("en");
-		if (window.__ufAIM_teBridge?.refreshActiveAlignmentEditorUi) {
-			await window.__ufAIM_teBridge.refreshActiveAlignmentEditorUi({ preserveSelection: true });
+		if (window.__ufAIM_aeBridge?.refresh) {
+			await window.__ufAIM_aeBridge.refresh({ preserveSelection: true });
 		} else {
 			transBtn.click();
-			await waitFor(() => !document.getElementById("transOverlay")?.classList.contains("hidden"), {
+			await waitFor(() => !document.getElementById("alignmentEditorOverlay")?.classList.contains("hidden"), {
 				label: "transition overlay visible for en refresh",
 			});
 		}

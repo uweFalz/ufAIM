@@ -195,7 +195,7 @@ function renderFocusEditorAction({ objectId, elementId } = {}) {
 				data-cockpit-object-id="${escapeHtml(oid)}"
 				data-cockpit-element-id="${escapeHtml(eid)}"
 			>
-				${escapeHtml(tx("cockpit.editor.focusInEditor", "Edit in Transition Editor"))}
+				${escapeHtml(tx("cockpit.editor.focusInEditor", "Edit alignment element"))}
 			</button>
 		</div>
 	`;

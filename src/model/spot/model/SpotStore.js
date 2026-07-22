@@ -171,6 +171,16 @@ export function createSpotStore(initialState = {}) {
 		return getState();
 	}
 
+	function removeObject(objectId) {
+		const id = normalizeId(objectId);
+		if (!id || !state.objects[id]) return null;
+		const removed = clone(state.objects[id]);
+		const nextObjects = { ...state.objects };
+		delete nextObjects[id];
+		state = { ...state, objects: nextObjects };
+		return removed;
+	}
+
 	return {
 		getState,
 		getMeta,
@@ -180,6 +190,7 @@ export function createSpotStore(initialState = {}) {
 		addObject,
 		addObjects,
 		updateObject,
+		removeObject,
 
 		getCoordContext,
 		listCoordContexts,
@@ -226,9 +237,10 @@ function normalizeCanonicalMeta(meta) {
 	const source = isObject(meta) ? meta : {};
 	const engineeringCrsId = normalizeId(source.engineeringCrsId);
 
-	return engineeringCrsId
-		? { engineeringCrsId }
-		: {};
+	return {
+		...source,
+		...(engineeringCrsId ? { engineeringCrsId } : {}),
+	};
 }
 
 function normalizeCoordContext(context) {

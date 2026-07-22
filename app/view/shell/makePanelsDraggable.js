@@ -6,6 +6,7 @@ export function makePanelsDraggable() {
 	const panelIds = [
 		"spotOverlay",
 		"transOverlay",
+		"alignmentEditorOverlay",
 		"overlayBands",
 		"overlaySection",
 	];

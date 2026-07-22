@@ -131,7 +131,7 @@ function assertWorld2TrackRoundtrip(alignment, stations, offsets) {
 	}
 }
 
-(async function runAlignmentEditModelBoundaryE2E() {
+const alignmentEditModelBoundaryPromise = (async function runAlignmentEditModelBoundaryE2E() {
 	console.log("AlignmentEditModelBoundary E2E starting...");
 
 	const mapper = new AlignmentMapper();
@@ -232,12 +232,19 @@ function assertWorld2TrackRoundtrip(alignment, stations, offsets) {
 	const importedProjected = projectFocusedSpotObject(importedSpot, { maxStep: 2 });
 	assert(Array.isArray(importedProjected?.polyline2d) && importedProjected.polyline2d.length >= 2, "imported alignment should project");
 
-	const denied = await service.addStraight({ length: 25 });
-	assert(denied?.changed === false, "imported alignment must not edit");
-	assert(denied?.editable === false, "imported alignment must be marked non-editable");
-	assert(denied?.code === "NATIVE_EDIT_MODEL_REQUIRED", "imported edit denial code missing");
-	assert(denied?.provenance?.kind === "import", "imported provenance kind missing");
-	assert(denied?.provenance?.native === false, "imported provenance native flag missing");
+	const importedElementId = service.materializeAlignmentDataFromSparse(importedSpot)?.editModel?.elements?.[0]?.id;
+	const editedImport = await service.updateStraightLength({ elementId: importedElementId, length: 20 });
+	assert(editedImport?.changed === true, "imported sparse alignment should support a derived edit representation");
+	assert(editedImport?.alignmentData?.source?.kind === "derived-edit-representation", "derived import edit provenance kind missing");
+	assert(editedImport?.alignmentData?.source?.native === false, "derived import edit representation must not claim native origin");
+	assert(editedImport?.alignmentData?.source?.originalImportEvidence?.kind === "import", "original import evidence must remain attached");
+	assert(editedImport?.spotObject?.meta?.source?.kind === "import", "SPOT import evidence must remain unchanged");
+	expectValidSparse(editedImport.sparseAlignment, "edited imported alignment sparse valid");
+
+	const adjacentFixed = await service.addStraight({ length: 25 });
+	assert(adjacentFixed?.changed === false && adjacentFixed?.ok === false, "adjacent fixed elements must be rejected structurally");
+	assert(adjacentFixed?.status === "rejected", "adjacent fixed rejection status missing");
+	assert(adjacentFixed?.code === "ALIGNMENT_EDIT_STRAIGHT_REJECTED", "adjacent fixed rejection code missing");
 
 	const composedAlignmentData = makeComposedNativeAlignmentData();
 	const composedSpot = createAlignmentSpotObject({
@@ -358,8 +365,16 @@ function assertWorld2TrackRoundtrip(alignment, stations, offsets) {
 		window.__alignmentEditModelBoundaryE2E = {
 			passed: true,
 			ts: Date.now(),
+			completedAt: new Date().toISOString(),
 		};
 	}
 
 	console.log("AlignmentEditModelBoundary E2E PASSED");
 })();
+
+if (typeof window !== "undefined") window.__alignmentEditModelBoundaryE2EPromise = alignmentEditModelBoundaryPromise;
+alignmentEditModelBoundaryPromise.catch((error) => {
+	const message = String(error?.message ?? error);
+	if (typeof window !== "undefined") window.__alignmentEditModelBoundaryE2E = { passed: false, error: message, ts: Date.now(), completedAt: new Date().toISOString() };
+	console.error(`AlignmentEditModelBoundary E2E FAILED: ${message}`);
+});

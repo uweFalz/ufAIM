@@ -19,6 +19,8 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 	let drag = null;
 	let loadToken = 0;
 	let unsubscribe = null;
+	let commitPromise = Promise.resolve({ changed: false, state: "idle" });
+	let lastCommit = { changed: false, state: "idle", elementId: null, curvature: null, error: null };
 
 	function start() {
 		if (!root || !svg) return;
@@ -85,9 +87,7 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 	function select(elementId) {
 		const state = store.getState?.() ?? {};
 		store.actions?.setWorkspaceSelection?.({ primaryId: snapshot?.id, contextIds: state.workspace_selection?.contextIds ?? [], elementId, source: "curvature-band", crsId: state.workspace_selection?.crsId ?? null });
-		if (!document.getElementById("transOverlay")?.classList.contains("hidden")) {
-			window.dispatchEvent(new CustomEvent("ufaim:alignment-editor-focus-element", { detail: { elementId, objectId: snapshot?.id, source: "curvature-band" } }));
-		}
+		window.dispatchEvent(new CustomEvent("ufaim:alignment-editor-focus-element", { detail: { elementId, objectId: snapshot?.id, source: "curvature-band" } }));
 	}
 
 	function onPointerDown(event) {
@@ -138,17 +138,32 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		} catch (error) { root.dataset.state = "rejected"; output.textContent = String(error?.message ?? error); }
 	}
 
-	async function onPointerUp(event) {
+	function onPointerUp(event) {
 		if (!drag || event.pointerId !== drag.pointerId) return;
 		const session = drag; drag = null;
 		releaseCapture(session);
 		store.actions?.clearPreviewItem?.();
-		if (session.preview && session.proposedCurvature !== session.originalCurvature) {
-			const result = await editor.updateArcOnActiveAlignment({ elementId: session.elementId, curvature: session.proposedCurvature });
-			root.dataset.state = result?.changed ? "committed" : "rejected";
-			output.textContent = result?.changed ? formatValue(session.proposedCurvature) : String(result?.reason ?? "Edit rejected");
-		} else root.dataset.state = "selected";
-		await loadAndRender();
+		commitPromise = commitSession(session);
+	}
+
+	async function commitSession(session) {
+		try {
+			let result = { changed: false };
+			if (session.preview && session.proposedCurvature !== session.originalCurvature) {
+				result = await editor.updateArcOnActiveAlignment({ elementId: session.elementId, curvature: session.proposedCurvature });
+				root.dataset.state = result?.changed ? "committed" : "rejected";
+				output.textContent = result?.changed ? formatValue(session.proposedCurvature) : String(result?.reason ?? "Edit rejected");
+			} else root.dataset.state = "selected";
+			lastCommit = { changed: Boolean(result?.changed), state: root.dataset.state, elementId: session.elementId, curvature: session.proposedCurvature, error: result?.changed ? null : (result?.reason ?? null) };
+			await loadAndRender();
+			return lastCommit;
+		} catch (error) {
+			root.dataset.state = "rejected";
+			output.textContent = String(error?.message ?? error);
+			lastCommit = { changed: false, state: "rejected", elementId: session.elementId, curvature: session.proposedCurvature, error: String(error?.message ?? error) };
+			await loadAndRender();
+			return lastCommit;
+		}
 	}
 
 	function onKeyDown(event) {
@@ -201,7 +216,7 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		root.dataset.state = "neutral";
 	}
 
-	return { start, render, cancel: () => onKeyDown({ key: "Escape" }), getDebugState: () => ({ activeObjectId: snapshot?.id ?? null, dragging: Boolean(drag), pointerId: drag?.pointerId ?? null, captured: Boolean(drag?.captured), elementId: drag?.elementId ?? getWorkspaceSelectedElementId(store.getState?.() ?? {}), curvature: drag?.proposedCurvature ?? null, state: root?.dataset?.state ?? "neutral" }), destroy: () => unsubscribe?.() };
+	return { start, refresh: loadAndRender, render, cancel: () => onKeyDown({ key: "Escape" }), whenCommitSettled: () => commitPromise, getDebugState: () => ({ activeObjectId: snapshot?.id ?? null, dragging: Boolean(drag), pointerId: drag?.pointerId ?? null, captured: Boolean(drag?.captured), elementId: drag?.elementId ?? getWorkspaceSelectedElementId(store.getState?.() ?? {}), curvature: drag?.proposedCurvature ?? null, state: root?.dataset?.state ?? "neutral", lastCommit }), destroy: () => unsubscribe?.() };
 }
 
 function unwrap(raw) { return raw?.state ?? raw?.payload ?? raw ?? null; }

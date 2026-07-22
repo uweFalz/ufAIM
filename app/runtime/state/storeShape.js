@@ -229,6 +229,8 @@ export function makeInitialState() {
 		// Transition Editor (window/view state)
 		// --------------------------------------------------------
 		te_open: false,
+		// Alignment Element Editor has an independent lifecycle.
+		ae_open: false,
 		te_presetId: "",
 		te_presetSpec: null,
 		te_splitsPresetId: "",
@@ -322,6 +324,7 @@ export function ensureStateShape(state) {
 		// Transition Editor (window/view state)
 		// --------------------------------------------------------
 		te_open: Boolean(s.te_open),
+		ae_open: Boolean(s.ae_open),
 		te_presetId: String(s.te_presetId ?? ""),
 		te_presetSpec: safePresetSpec,
 		te_splitsPresetId: String(s.te_splitsPresetId ?? ""),

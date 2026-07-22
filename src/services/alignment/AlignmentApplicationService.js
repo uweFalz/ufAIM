@@ -2,10 +2,10 @@
 //
 // AlignmentApplicationService
 //
-// Application use cases for native Alignment authoring.
+// Application use cases for SPOT Alignment authoring.
 //
 // Responsibilities:
-// - create native AlignmentData
+// - create native AlignmentData or derive an editable representation from SparseAlignment
 // - load the active Alignment SpotObject
 // - execute immutable Alignment edits
 // - rebuild derived SparseAlignment
@@ -17,7 +17,7 @@
 // - rendering
 // - projection
 // - cockpit HTML
-// - import parsing
+// - import parsing or alteration of original import evidence
 // - SPOT storage implementation
 // - direct messaging orchestration
 
@@ -106,9 +106,10 @@ export class AlignmentApplicationService {
 	async addStraight({
 		length = 100,
 	} = {}) {
-		return this._editActiveAlignment({
+		return this._editActiveAlignmentSafe({
 			source:
 				"alignment-editor-add-straight",
+			code: "ALIGNMENT_EDIT_STRAIGHT_REJECTED",
 
 			edit: (alignmentData) =>
 				addStraightElement(
@@ -161,9 +162,10 @@ export class AlignmentApplicationService {
 	async removeElement({
 		elementId,
 	} = {}) {
-		return this._editActiveAlignment({
+		return this._editActiveAlignmentSafe({
 			source:
 				"alignment-editor-remove-element",
+			code: "ALIGNMENT_EDIT_REMOVE_REJECTED",
 
 			edit: (alignmentData) =>
 				removeElementById(
@@ -179,9 +181,10 @@ export class AlignmentApplicationService {
 		elementId,
 		length,
 	} = {}) {
-		return this._editActiveAlignment({
+		return this._editActiveAlignmentSafe({
 			source:
 				"alignment-editor-update-straight-length",
+			code: "ALIGNMENT_EDIT_STRAIGHT_REJECTED",
 
 			edit: (alignmentData) =>
 				updateStraightLengthById(
@@ -240,9 +243,10 @@ export class AlignmentApplicationService {
 	}
 
 	async clearElements() {
-		return this._editActiveAlignment({
+		return this._editActiveAlignmentSafe({
 			source:
 				"alignment-editor-clear-elements",
+			code: "ALIGNMENT_EDIT_CLEAR_REJECTED",
 
 			edit: (alignmentData) =>
 				clearElements(
@@ -314,6 +318,8 @@ export class AlignmentApplicationService {
 			};
 		}
 
+		this.assertStructurallyEditableSequence(nextAlignmentData);
+
 		const sparseAlignment =
 			this.deriveSparseAlignmentFromEditModel(
 				nextAlignmentData
@@ -346,6 +352,16 @@ export class AlignmentApplicationService {
 			spotObject:
 				nextSpotObject,
 		};
+	}
+
+	assertStructurallyEditableSequence(alignmentData) {
+		const elements = Array.isArray(alignmentData?.editModel?.elements) ? alignmentData.editModel.elements : [];
+		const fixed = (element) => ["straight", "arc"].includes(String(element?.type ?? "").toLowerCase());
+		for (let index = 1; index < elements.length; index += 1) {
+			if (fixed(elements[index - 1]) && fixed(elements[index])) {
+				throw new Error(`adjacent fixed alignment elements require an explicit transition: ${String(elements[index - 1]?.id ?? index - 1)} -> ${String(elements[index]?.id ?? index)}`);
+			}
+		}
 	}
 
 	async _editActiveAlignmentSafe({
@@ -421,7 +437,12 @@ export class AlignmentApplicationService {
 			type: "AlignmentData",
 			id: String(spotObject?.id ?? kernel?.id ?? "alignment"),
 			name: spotObject?.data?.name ?? kernel?.name ?? spotObject?.id ?? "Alignment",
-			source: { kind: "materialized-import", original: spotObject?.meta?.source ?? spotObject?.data?.meta?.source ?? null },
+			source: {
+				kind: "derived-edit-representation",
+				native: false,
+				derivedFrom: "sparseAlignment",
+				originalImportEvidence: structuredClone(spotObject?.meta?.source ?? spotObject?.data?.meta?.source ?? null),
+			},
 			editModel: { startPose: { p: { ...startPose.p }, t: { ...startPose.t } }, elements },
 			sparseAlignment: kernel,
 		};

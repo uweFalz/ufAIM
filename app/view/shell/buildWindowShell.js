@@ -42,6 +42,7 @@ export function buildWindowShell() {
 
 				<button id="btnSpot" class="btn" data-i18n="btn_spot"></button>
 				<button id="btnTrans" class="btn" data-i18n="btn_transition"></button>
+				<button id="btnAlignmentEditor" class="btn" data-i18n="btn_alignment_editor"></button>
 				<button id="btnToggleBands" class="btn" data-i18n="btn_bands"></button>
 				<button id="btnToggleSection" class="btn" data-i18n="btn_section"></button>
 				<button id="btnToggleDebug" class="btn" data-i18n="btn_status_debug"></button>
@@ -185,6 +186,31 @@ export function buildWindowShell() {
 					<div>
 						<div id="transBoard" class="jxgbox"></div>
 					</div>
+				</div>
+			</section>
+
+			<section id="alignmentEditorOverlay" class="uf-panel hidden">
+				<header class="uf-panel__header">
+					<span data-i18n="alignment_editor.title"></span>
+					<button id="btnAlignmentEditorClose" class="btn btn--ghost" data-i18n-title="btn_close_title" data-i18n-aria-label="btn_close_title">×</button>
+				</header>
+				<div class="uf-panel__body">
+					<section class="uf-align-edit">
+						<div id="aeTitle" class="uf-align-edit__head" data-i18n="alignment_editor.title"></div>
+						<div class="uf-align-edit__grid">
+							<label id="aeElementSelLabel" for="aeElementSel" data-i18n="alignment_editor.label.element"></label><select id="aeElementSel" class="select"></select>
+							<label id="aeElementTypeLabel" for="aeElementType" data-i18n="alignment_editor.label.type"></label><input id="aeElementType" class="input" type="text" readonly />
+							<label id="aeLengthLabel" for="aeLength" data-i18n="alignment_editor.label.length_m"></label><input id="aeLength" class="input" type="number" step="0.001" />
+							<label id="aeCurvatureLabel" for="aeCurvature" data-i18n="alignment_editor.label.curvature_inv_m"></label><input id="aeCurvature" class="input" type="number" step="0.000001" />
+							<label id="aeRadiusLabel" for="aeRadius" data-i18n="alignment_editor.label.radius_m"></label><input id="aeRadius" class="input" type="number" step="0.001" />
+							<label id="aeTransitionTypeLabel" for="aeTransitionType" data-i18n="alignment_editor.label.transition_family"></label><select id="aeTransitionType" class="select"></select>
+							<label id="aeW1Label" for="aeW1" data-i18n="alignment_editor.label.w1"></label><input id="aeW1" class="input" type="number" min="0" max="1" step="0.001" />
+							<label id="aeW2Label" for="aeW2" data-i18n="alignment_editor.label.w2"></label><input id="aeW2" class="input" type="number" min="0" max="1" step="0.001" />
+						</div>
+						<div id="aeSignedContext" class="uf-align-edit__hint"></div>
+						<div class="uf-align-edit__actions"><button id="aeApply" type="button" class="btn" data-i18n="alignment_editor.action.apply"></button><button id="aeReset" type="button" class="btn btn--ghost" data-i18n="alignment_editor.action.reset"></button></div>
+						<div id="aeStatus" class="uf-align-edit__status" data-kind="info"></div>
+					</section>
 				</div>
 			</section>
 

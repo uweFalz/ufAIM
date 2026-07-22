@@ -488,7 +488,7 @@ async function runGndSyntheticRegressionChecks() {
 	);
 }
 
-async function runOptionalLegacyCorpusProbe({ candidatesOverride = null } = {}) {
+async function runOptionalLegacyCorpusProbe({ candidatesOverride = null, fetchFile = null } = {}) {
 	const probe = {
 		run: false,
 		skipped: false,
@@ -505,6 +505,7 @@ async function runOptionalLegacyCorpusProbe({ candidatesOverride = null } = {}) 
 	];
 
 	async function fetchAsFile(relPath) {
+		if (typeof fetchFile === "function") return fetchFile(relPath);
 		const response = await fetch(`/${relPath}`, { cache: "no-store" });
 		if (!response.ok) return null;
 		const bytes = await response.arrayBuffer();
@@ -546,7 +547,7 @@ async function runOptionalLegacyCorpusProbe({ candidatesOverride = null } = {}) 
 	return probe;
 }
 
-(async function runParserValidationE2E() {
+await (async function runParserValidationE2E() {
 	console.log("ParserValidation E2E starting...");
 
 	runContractUnitChecks();
@@ -555,7 +556,8 @@ async function runOptionalLegacyCorpusProbe({ candidatesOverride = null } = {}) 
 	await runOptionalLegacyCorpusProbe();
 
 	const skipProbe = await runOptionalLegacyCorpusProbe({
-		candidatesOverride: ["_legacy/__missing__/gnd_corpus_placeholder.xlsx"],
+		candidatesOverride: ["synthetic-unavailable-gnd-corpus.xlsx"],
+		fetchFile: async () => null,
 	});
 	assert(skipProbe?.skipped === true, "legacy probe should skip cleanly when local corpus is unavailable");
 

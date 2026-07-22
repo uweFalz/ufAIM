@@ -59,6 +59,8 @@ const REQUIRED = {
 	"Spot.AddObjects": ["objects"],
 	"Spot.GetState": [],
 	"Spot.GetUiState": [],
+	"Spot.RenameObject": ["objectId", "name"],
+	"Spot.RemoveObject": ["objectId"],
 	"Spot.PromoteImportItems": [],
 	"Spot.PromoteImportItemsById": [],
 

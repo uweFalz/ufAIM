@@ -86,12 +86,39 @@ export function createSpotService({ spotStore, router } = {}) {
 		};
 	}
 
+	function renameObject({ objectId, name } = {}) {
+		const id = String(objectId ?? "").trim();
+		const nextName = String(name ?? "").trim();
+		if (!id || !nextName) throw new Error("SpotService.renameObject: objectId and name are required");
+		const current = spotStore.getObject?.(id);
+		if (!current) throw new Error(`SpotService.renameObject: unknown object ${id}`);
+		const alignmentData = current?.data?.alignmentData && typeof current.data.alignmentData === "object"
+			? { ...current.data.alignmentData, name: nextName }
+			: current?.data?.alignmentData;
+		spotStore.updateObject(id, {
+			data: { name: nextName, ...(alignmentData ? { alignmentData } : {}) },
+			meta: { label: nextName, modifiedAt: new Date().toISOString() },
+		});
+		const uiState = emitUiStateChanged();
+		return { ok: true, objectId: id, name: nextName, uiState };
+	}
+
+	function removeObject({ objectId } = {}) {
+		const id = String(objectId ?? "").trim();
+		if (!id) throw new Error("SpotService.removeObject: objectId is required");
+		const removedObject = spotStore.removeObject?.(id) ?? null;
+		const uiState = emitUiStateChanged();
+		return { ok: Boolean(removedObject), objectId: id, removedObject, uiState };
+	}
+
 	return {
 		getState,
 		getUiState,
 		getCoordContext,
 		addObjects,
 		promoteItems,
+		renameObject,
+		removeObject,
 	};
 }
 

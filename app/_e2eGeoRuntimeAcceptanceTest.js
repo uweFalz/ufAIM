@@ -2,6 +2,7 @@ import { resolveGndCrsIdentifier, resolveGndCrsIdentifiers } from "@src/domain/c
 import { makeDbRefToEtrs89Transform, projectGeographicGeometry } from "@projection/GeographicProjection.js";
 import { buildSparseFromEditModel } from "@src/domain/alignment/editor/buildSparseAlignment.js";
 import { createAlignmentSpotObject } from "@src/model/spot/model/createAlignmentSpotObject.js";
+import { getHarnessEvidence, registerE2EFixture } from "@app/_e2eLifecycle.js";
 
 class ObservableMap {
 	constructor(options) {
@@ -78,6 +79,7 @@ function fixture(lsys, index = 0) {
 	return { id, lsys, editModel, kernel, resolution, first: { ...editModel.startPose.p }, object: createAlignmentSpotObject({ id, name: alignmentData.name, kernel, sparseAlignment: kernel, alignmentData, georeference, crsId: resolution.resolvedEpsg ?? lsys ?? null, crsStatus: resolution.status }) };
 }
 async function activate(fx) {
+	registerE2EFixture("geoRuntimeAcceptance", fx.id);
 	await window.messaging.sendCmdAwait("Spot.AddObjects", { objects: [fx.object] });
 	window.__ufAIM_store.actions?.setWorkspacePrimary?.({ objectId: fx.id, source: "geo-runtime-acceptance-e2e" });
 	await waitFor(() => {
@@ -90,7 +92,7 @@ function readProj4() {
 	return globalThis.proj4;
 }
 
-(async function runGeoRuntimeAcceptanceE2E() {
+window.__geoRuntimeAcceptanceE2EPromise = (async function runGeoRuntimeAcceptanceE2E() {
 	try {
 		await waitFor(() => window.__ufAIM_store && window.messaging && window.__ufAIM_viewController, "runtime globals");
 		const originalById = new Map();
@@ -196,7 +198,7 @@ function readProj4() {
 			try {
 				await waitFor(() => window.__alignmentNativeEditorUiE2E != null, "Native Editor UI result", 12000);
 			} catch { /* An unavailable dependency is recorded below without affecting prior Geo cases. */ }
-			const editorResult = window.__alignmentNativeEditorUiE2E ?? null;
+			const editorResult = getHarnessEvidence("alignmentNativeUi");
 			const axtranResult = window.__axtranAlignmentE2E ?? null;
 			result.interactionContinuity = {
 				alignmentSelection: true,
