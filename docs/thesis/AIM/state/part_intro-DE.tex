@@ -1,0 +1,98 @@
+% Deutsche Parallelfassung zu state/part_intro.tex
+
+\chapter*{Zustand}
+\phantomsection
+\addcontentsline{toc}{chapter}{Zustand}
+
+Das Gerade--Übergangsbogen--Kreisbogen-Alignment aus dem vorangehenden Teil
+bleibt der behandelte Engineering Object. Seine Identität, geordnete
+Konstruktion, der intrinsische Parameter \(s\), das Krümmungsgesetz
+\(\kappa(s)\), die Berlinish-Übergangsbogenpartition, Provenienz und
+Anwendbarkeit sind bereits geklärt. Zustand beginnt deshalb nicht mit einem
+anonymen Koordinatentupel, sondern mit einer Frage zu diesem identifizierten
+Objekt:
+
+\begin{quote}
+Welcher Eisenbahnzustand folgt an einem gewählten \(s\) aus dem Alignment, und
+welche zusätzlichen Gesetze und Realisierungsdaten werden dafür benötigt?
+\end{quote}
+
+Die Krümmung bestimmt zunächst die Richtungsänderung und mit einer Anfangspose
+eine ebene Trajektorie. Höhengeometrie und Überhöhung ergänzen eigenständige
+Längsgesetze. Eine angegebene Frame-Konvention verbindet diese Eingaben zu
+einer räumlichen Eisenbahninterpretation. Erst mit Geschwindigkeit und, falls
+erforderlich, einem Fahrzeugmodell folgen Beschleunigung und weitere
+betriebliche Größen. Die zweckbezogene Bewertung liegt nochmals dahinter: Eine
+berechnete Folge ist keine Engineering Decision.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/state/railway_state_dependency-DE}
+\caption{Abhängigkeit vom identifizierten Alignment bis zu einer qualifizierten Engineering-Folge.}
+\label{fig:railway-state-dependency}
+\end{figure}
+
+Die Pfeile in \cref{fig:railway-state-dependency} bezeichnen Abhängigkeit,
+nicht Identität oder Autorität. Insbesondere wird eine realisierte Pose nicht
+zur Alignment-Identität, eine Beobachtung nicht zur physischen Realität und
+ein Bewertungsergebnis nicht zur Entscheidung über die Annahme eines
+Vorschlags.
+
+\section*{Ein enger Erklärungsvertrag}
+
+Für diesen Teil kann ein \emph{Eisenbahnzustandsdatensatz} als folgende
+erklärende Struktur der Thesis gelesen werden:
+\[
+\mathcal S_{\mathrm{rail}}(s)=
+\bigl(
+\mathrm{AlignmentRef},s,\mathrm{pose},F,\kappa,
+\mathrm{vertical},\mathrm{cant},\mathrm{realization},
+\mathrm{provenance},t_{\mathrm{valid}},\mathrm{derived}
+\bigr).
+\]
+Geschwindigkeit gehört nur bei einer geschwindigkeitsqualifizierten Verwendung
+dazu. Beobachtungsprovenienz gehört nur zu einer Schätzung des beobachteten
+Zustands. Dieses Tupel ist weder ein neuer kanonischer Kernel-Begriff noch ein
+universelles Speicherschema; es hält lediglich Abhängigkeiten und
+Qualifikationen für den folgenden Argumentgang sichtbar.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.18\textwidth}p{0.28\textwidth}p{0.43\textwidth}}
+\toprule
+\textbf{Art} & \textbf{Laufendes Beispiel} & \textbf{Was dadurch nicht feststeht}\\
+\midrule
+Intrinsisch & \(s\), Elementfolge, \(\kappa(s)\) & Koordinaten, Überhöhung, physischer Zustand, Annahme\\
+Realisiert & lokale Pose, Höhe, Frame, dargestellte Koordinaten & Alignment-Identität oder tatsächlicher Zustand der gebauten Anlage\\
+Beobachtet & zeitgestempelte gemessene Schienenlagen mit Methode und Unsicherheit & definierende Geometrie oder unqualifizierte Wahrheit\\
+Abgeleitet & \(v^2\kappa\), effektive Querwirkung, Vergleichsresiduum & Autorität, Zulässigkeit oder Entscheidung\\
+\bottomrule
+\end{tabular}
+\caption{Intrinsische, realisierte, beobachtete und abgeleitete Größen bleiben getrennt.}
+\label{tab:railway-state-kinds}
+\end{table}
+
+Die Kapitel folgen nun einer einzigen Abhängigkeitskette:
+\begin{align*}
+\text{Alignment-Identität}&\rightarrow s\rightarrow\kappa(s)
+\rightarrow\mathrm{pose2}\rightarrow\text{bewegtes Frame}\\
+&\rightarrow\text{Höhe und Überhöhung}
+\rightarrow\mathrm{pose3}\\
+&\rightarrow\text{geschwindigkeitsabhängige Größen}
+\rightarrow\text{zweckqualifizierte Bewertung}.
+\end{align*}
+
+\begin{principle}[Eisenbahnzustandsprinzip]
+\label{princ:railway-state}
+Eisenbahnzustand wird aus einem identifizierten Alignment unter angegebenen
+zusätzlichen Gesetzen, Realisierungsdaten, Konventionen und
+Verwendungsqualifikationen abgeleitet. Keine resultierende Pose,
+Koordinatendarstellung, Beobachtung oder Bewertung besitzt die Identität oder
+Autorität des Alignments.
+\end{principle}
+
+\begin{summary}
+Teil V ist die physische Entfaltung des bereits identifizierten Alignments.
+Jede Zustandsgröße tritt erst ein, wenn eine Engineering-Folge sie benötigt.
+\end{summary}

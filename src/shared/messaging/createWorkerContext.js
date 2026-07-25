@@ -26,6 +26,7 @@ export function createWorkerContext({ router } = {}) {
 			sessionId: null,
 			phase: "idle",     // idle | collecting | parsing | ready | error
 			items: [],
+			resultEvidence: [],
 			error: null,
 		},
 

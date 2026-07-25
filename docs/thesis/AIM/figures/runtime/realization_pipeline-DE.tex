@@ -1,0 +1,16 @@
+% figures/runtime/realization_pipeline-DE.tex
+\begin{tikzpicture}[
+  node distance=0.9cm,
+  box/.style={draw, rounded corners, align=center, minimum width=5.0cm, minimum height=0.75cm},
+  arrow/.style={->, thick}
+]
+\node[box] (target) {Zielzustand\\$\mathrm{pose3}_{\mathrm{target}}$};
+\node[box, below=of target] (realization) {Realisierungsoperator\\$\mathcal R_{\mathrm{pose3}}$};
+\node[box, below=of realization] (real) {Realisierter Zustand\\$\mathrm{pose3}_{\mathrm{real}}$};
+\node[box, below=of real] (measured) {Gemessener / rekonstruierter Zustand};
+\node[box, below=of measured] (runtime) {Laufzeitbetrieb};
+\draw[arrow] (target) -- (realization);
+\draw[arrow] (realization) -- (real);
+\draw[arrow] (real) -- (measured);
+\draw[arrow] (measured) -- (runtime);
+\end{tikzpicture}

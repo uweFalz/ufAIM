@@ -1,197 +1,91 @@
 % foundations/notation.tex
 
-\chapter{Notation}
+\chapter{Notation as a Dependency Language}
 \label{chap:notation}
 
-This chapter collects the notation used repeatedly throughout the
-thesis. It introduces symbols and writing conventions only; the
-engineering concepts represented by these symbols are developed in their
-respective chapters.
+Notation is introduced here in the order in which the CAD-curve and
+survey-polyline problem requires it. A symbol earns a place by naming an
+input, an output, a context, or an operation. It does not assign
+engineering identity or authority.
 
-% ============================================================
-\section{Typographic Conventions}
-% ============================================================
+\section{Where does the construction apply?}
 
-Scalar quantities are written in italic type, for example \(s\),
-\(\theta\), and \(\kappa\). Vectors are written in bold type, for
-example \(\mathbf t\), \(\mathbf n\), and \(\mathbf b\). Sets and
-spaces are denoted by capital or calligraphic letters, while operators
-are denoted by calligraphic letters whenever this improves the
-conceptual distinction between an object and an operation.
-
-A prime denotes differentiation with respect to arc-length unless
-another independent variable is stated explicitly:
+The interval \(I\subseteq\mathbb{R}\) is the intrinsic longitudinal
+domain, and \(s\in I\) is arc-length. A prime denotes differentiation
+with respect to \(s\), unless another independent variable is stated:
 \[
 f'(s)=\frac{\dd f}{\dd s}(s).
 \]
+The symbol \(\mathcal K\) denotes the admissible space of curvature
+functions. Writing \(\kappa\in\mathcal K\) therefore states both the
+constructive input and the regularity conditions required by the
+applicable model.
 
-% ============================================================
-\section{Domains and Spaces}
-% ============================================================
+\section{What is given, and what is reconstructed?}
 
-The arc-length domain of an alignment is an interval
-\[
-I\subseteq\mathbb{R}.
-\]
-The symbol
-\[
-\mathcal X
-\]
-denotes a state space appropriate to the context, while
-\[
-\mathcal Y
-\]
-denotes a space of evaluated or derived quantities. The space of
-admissible curvature functions is denoted by
-\[
-\mathcal K.
-\]
-
-The intrinsic track-related coordinate domain is written as
-\[
-\Omega_{\mathrm{track}},
-\]
-and a realized world-space domain as
-\[
-\Omega_{\mathrm{world}}.
-\]
-The precise metric structure of these domains is introduced when metric
-realization is developed.
-
-% ============================================================
-\section{Coordinates}
-% ============================================================
-
-The symbol
-\[
-s
-\]
-denotes intrinsic arc-length along the alignment. Track-related
-coordinates are written as
-\[
-(s,d,h),
-\]
-where \(d\) is a lateral offset and \(h\) a vertical offset relative to
-the applicable local track frame.
-
-A point in world space is denoted by
-\[
-x\in\Omega_{\mathrm{world}},
-\]
-or by \(x_{\mathrm w}\) where an explicit distinction from intrinsic or
-track-related coordinates is required.
-
-% ============================================================
-\section{Geometry Symbols}
-% ============================================================
-
-The planar alignment curve, heading, curvature, and cant rotation are
-denoted by
-\[
-\gamma(s),
-\qquad
-\theta(s),
-\qquad
-\kappa(s),
-\qquad
-\phi(s).
-\]
-Cant-rate is written as
-\[
-\omega(s)=\phi'(s).
-\]
-
-The local tangent, lateral, and binormal directions are denoted by
-\[
-\mathbf t(s),
-\qquad
-\mathbf n(s),
-\qquad
-\mathbf b(s),
-\]
-and the corresponding local frame by
+The intrinsic input is curvature \(\kappa(s)\). Cant rotation
+\(\phi(s)\) and its rate \(\omega(s)=\phi'(s)\) are added when the
+spatial railway state requires them. Heading \(\theta(s)\), planar
+position \(\gamma(s)\), and local directions
+\(\mathbf t(s),\mathbf n(s),\mathbf b(s)\) are derived through the
+stated evolution and realization relations. The local frame is
 \[
 F(s)=\bigl(\mathbf t(s),\mathbf n(s),\mathbf b(s)\bigr).
 \]
 
-A generic state is written as \(x(s)\), while a control is written as
-\(u(s)\). The symbols \(\mathrm{pose2}(s)\) and
-\(\mathrm{pose3}(s)\) refer to the planar and spatial railway-state
-concepts defined in \cref{chap:state-model} and developed further in the
-state part of the thesis.
+A generic state is \(x(s)\in\mathcal X\), a control is \(u(s)\), and
+an evaluated or derived quantity lies in \(\mathcal Y\). The names
+\(\mathrm{pose2}(s)\) and \(\mathrm{pose3}(s)\) refer to the state
+concepts defined in \cref{chap:state-model}; they are not synonyms for a
+stored curve or polyline.
 
-% ============================================================
-\section{Qualified Quantities}
-% ============================================================
+\section{Which condition and source does a quantity describe?}
 
-Subscripts qualify the engineering status or origin of a quantity. The
-principal conventions are
+Subscripts preserve the role of a quantity:
 \[
-(\cdot)_{\mathrm{target}},
-\qquad
-(\cdot)_{\mathrm{real}},
-\qquad
+(\cdot)_{\mathrm{target}},\qquad
+(\cdot)_{\mathrm{real}},\qquad
 (\cdot)_{\mathrm{meas}}.
 \]
-Additional subscripts may identify a coordinate domain, frame, source,
-or realization context. Such subscripts qualify a quantity; they do not
-by themselves establish identity between different engineering
-concepts.
+They distinguish an intended condition, a physically realized
+condition, and a measured description used as observation. Further
+subscripts may name a source, frame, coordinate domain, or realization
+context. Qualification prevents accidental substitution; it does not
+prove that two qualified quantities concern the same engineering object.
 
-% ============================================================
-\section{Operator Notation}
-% ============================================================
+\section{In which space is a comparison computed?}
 
-Track-to-world and world-to-track mappings are denoted by
+Track-related coordinates \((s,d,h)\) belong to
+\(\Omega_{\mathrm{track}}\), while a realized point
+\(x_{\mathrm w}\) belongs to \(\Omega_{\mathrm{world}}\). The
+track-to-world and world-to-track operations are
 \[
-\mathcal P_{\mathrm{tw}}
-\qquad\text{and}\qquad
-\mathcal P_{\mathrm{wt}},
-\]
-respectively. Coordinate transformations between world-space
-representations are denoted by
-\[
-\mathcal C.
-\]
-
-The symbols
-\[
-\mathcal E
-\qquad\text{and}\qquad
-\mathcal F
-\]
-denote evaluation and frame operators where no more specific operator
-name is required.
-
-Sampling, interpolation, mechanical response, local adjustment, and
-realization are denoted by
-\[
-\mathcal S,
+\mathcal P_{\mathrm{tw}}:
+\Omega_{\mathrm{track}}\rightarrow\Omega_{\mathrm{world}},
 \qquad
-\mathcal I,
-\qquad
-\mathcal M,
-\qquad
-\mathcal A,
-\qquad
-\mathcal R.
+\mathcal P_{\mathrm{wt}}:
+\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{track}}.
 \]
-Their domains, codomains, and engineering meaning are defined in the
-chapters in which the corresponding operations are introduced.
+A coordinate transformation \(\mathcal C\) changes one world-space
+description into another. It is not a world-to-track interpretation and
+does not establish object identity.
 
-% ============================================================
-\section{Earth-related Symbols}
-% ============================================================
+\section{Which operation produces the next artifact?}
 
-Geodesic curvature and normal curvature are denoted by
-\[
-\kappa_g
-\qquad\text{and}\qquad
-\kappa_n.
-\]
-The ellipsoid surface normal is denoted by
-\[
-\mathbf n_{\mathrm E}.
-\]
-These symbols are used only after the applicable surface and realization
-context have been established.
+The recurring operators are sampling \(\mathcal S\), interpolation
+\(\mathcal I\), evaluation \(\mathcal E\), frame construction
+\(\mathcal F\), physical response \(\mathcal M\), local adjustment
+\(\mathcal A\), and realization \(\mathcal R\). Each later use must
+state a domain, codomain, and applicable assumptions. In particular,
+\(\mathcal E\) produces an evaluation result, never a decision.
+
+Symbols needed only under an Earth-surface realization are deferred
+until that context is established: \(\kappa_g\) and \(\kappa_n\) denote
+geodesic and normal curvature, and \(\mathbf n_{\mathrm E}\) the
+ellipsoid surface normal. Their meaning depends on the applicable
+surface and metric connection.
+
+Scalars are italic, vectors bold, sets and spaces capital or
+calligraphic, and operators calligraphic where this makes their role
+visible. These typographic conventions support the dependency language;
+they do not replace explicit typing.

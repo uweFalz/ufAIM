@@ -1,0 +1,229 @@
+\chapter{Codearchitektur für Bedingungen}
+\section*{Motivation}
+Alignment-Regeln müssen mathematisch bedeutsam und rechnerisch handhabbar
+dargestellt werden. AIM drückt alle Regeln als Bedingungsresiduen aus, die in
+einer Optimierungsschleife einheitlich bewertet werden. Ziel ist keine Sammlung
+isolierter Prüfungen, sondern eine modulare Bedingungsbibliothek.
+
+\section{Allgemeines Prinzip}
+\begin{definition}[Bedingungsresiduum]
+Eine Bedingung wird als Funktion
+\[
+c(\mathbf x)\in\R^m
+\]
+dargestellt, deren Wert im Idealfall verschwindet und deren Betrag die
+Verletzung misst.
+\end{definition}
+Dasselbe mathematische Objekt dient Machbarkeitsprüfungen, Strafgliedern und
+der unmittelbaren Aufnahme in SQP-Löser.
+\begin{verbatim}
+function evaluateConstraint(ctx) {
+  return [residual1, residual2, ...]
+}
+\end{verbatim}
+
+\section{Bedingungsregister}
+Eine praktische Implementierung organisiert Bedingungen in einem Register.
+\begin{verbatim}
+const ConstraintRegistry = {
+  geometric: {}, dynamic: {}, topologic: {}, regulatory: {}
+}
+\end{verbatim}
+Dies hält die Domänenlogik erweiterbar und vermeidet fest kodierte
+monolithische Löserstrukturen.
+
+\section{Objektmodell der Bedingung}
+\begin{verbatim}
+const constraint = {
+  id: "min_radius",
+  group: "regulatory",
+  appliesTo: "edge",
+  weight: 1.0,
+  evaluate: (ctx) => []
+}
+\end{verbatim}
+\texttt{id} ist der eindeutige Name, \texttt{group} die semantische Klasse,
+\texttt{appliesTo} bezeichnet Kante, Knoten, Paar oder Netz,
+\texttt{weight} die optionale Skalierung und \texttt{evaluate} den
+Residuen-Callback.
+
+\section{Kontextobjekt}
+Bedingungen sollen nicht auf globalen Roharrays arbeiten, sondern ein
+normalisiertes Kontextobjekt erhalten.
+\begin{verbatim}
+const ctx = {
+  edge, node, pair, i, kappa, phi,
+  geometry, speed, params, metadata
+}
+\end{verbatim}
+Dies stellt eine stabile Schnittstelle zwischen Modell, Löser und Regelsystem
+bereit.
+
+\section{Geometrische Bedingungen}
+\subsection{Positionsstetigkeit}
+\begin{verbatim}
+function continuityConstraint(p1, p2) {
+  return [p1.x - p2.x, p1.y - p2.y]
+}
+\end{verbatim}
+Dies erzwingt \(C^0\)-Stetigkeit zwischen benachbarten Elementen oder
+verbundenen Alignments.
+
+\subsection{Richtungsstetigkeit}
+\begin{verbatim}
+function directionConstraint(t1, t2) {
+  return [t1.dx - t2.dx, t1.dy - t2.dy]
+}
+\end{verbatim}
+Dies entspricht Tangentenstetigkeit und geometrischem \(C^1\)-Verhalten.
+
+\subsection{Krümmungsstetigkeit}
+\begin{verbatim}
+function curvatureConstraint(k1, k2) {
+  return [k1 - k2]
+}
+\end{verbatim}
+Dies erzwingt stetige Krümmung über Grenzen hinweg.
+
+\section{Dynamische Bedingungen}
+\subsection{Gleichgewichtsbedingung}
+\begin{verbatim}
+function equilibriumConstraint(kappa, phi, v, g) {
+  return [v * v * kappa - g * Math.sin(phi)]
+}
+\end{verbatim}
+Das Residuum misst Überhöhungsfehlbetrag oder -überschuss analytisch.
+
+\subsection{Ruckbedingung}
+\begin{verbatim}
+function jerkConstraint(kappa0, kappa1, phi0, phi1, ds, v, g) {
+  const dk = (kappa1 - kappa0) / ds
+  const dphi = (phi1 - phi0) / ds
+  const j = v * v * v * dk - g * v * Math.cos(phi0) * dphi
+  return [j]
+}
+\end{verbatim}
+Sie bildet dynamische Glattheit und komfortbezogene Grenzen ab.
+
+\section{Regulatorische Bedingungen}
+\subsection{Mindestradius}
+\begin{verbatim}
+function minRadiusConstraint(kappa, Rmin) {
+  return [Math.abs(kappa) - 1 / Rmin]
+}
+\end{verbatim}
+Ein nichtpositiver Wert zeigt die Einhaltung der Radiusgrenze.
+
+\subsection{Maximale Überhöhung}
+\begin{verbatim}
+function maxCantConstraint(phi, phiMax) {
+  return [Math.abs(phi) - phiMax]
+}
+\end{verbatim}
+
+\subsection{Überhöhungsgradient}
+\begin{verbatim}
+function cantGradientConstraint(phi0, phi1, ds, limit) {
+  return [Math.abs((phi1 - phi0) / ds) - limit]
+}
+\end{verbatim}
+
+\section{Topologische Bedingungen}
+\subsection{Weichenknotenbedingung}
+\begin{verbatim}
+function switchConstraint(main, branch) {
+  return [main.x - branch.x, main.y - branch.y,
+          main.dx - branch.dx, main.dy - branch.dy]
+}
+\end{verbatim}
+Dies drückt die grundlegende Kopplung an Verzweigungsknoten aus.
+
+\subsection{Parallelgleisabstand}
+\begin{verbatim}
+function parallelConstraint(p1, p2, d) {
+  const dx = p1.x - p2.x
+  const dy = p1.y - p2.y
+  return [Math.sqrt(dx * dx + dy * dy) - d]
+}
+\end{verbatim}
+
+\section{Zusammenstellung der Bedingungen}
+Der vollständige Residuenvektor wird aus allen aktiven Bedingungen gebildet.
+\begin{verbatim}
+function buildConstraintResiduals(ctx, constraints) {
+  const r = []
+  for (const c of constraints) {
+    const ri = c.evaluate(ctx)
+    const w = Math.sqrt(c.weight ?? 1)
+    for (const v of ri) r.push(w * v)
+  }
+  return r
+}
+\end{verbatim}
+So entsteht unabhängig von der semantischen Quelle ein löserkompatibler Vektor.
+
+\section{Factory-Funktionen}
+Bedingungen sollen durch Factories statt durch verteilte anonyme Closures
+erzeugt werden.
+\begin{verbatim}
+function makeMinRadiusConstraint(Rmin, weight = 1) {
+  return {
+    id: "min_radius", group: "regulatory", appliesTo: "edge", weight,
+    evaluate: ({ kappa, i }) => [Math.abs(kappa[i]) - 1 / Rmin]
+  }
+}
+\end{verbatim}
+\begin{verbatim}
+function makeJerkConstraint(v, g, ds, weight = 1) {
+  return {
+    id: "jerk", group: "dynamic", appliesTo: "edge", weight,
+    evaluate: ({ kappa, phi, i }) => {
+      const dk = (kappa[i + 1] - kappa[i]) / ds
+      const dphi = (phi[i + 1] - phi[i]) / ds
+      return [v*v*v*dk - g*v*Math.cos(phi[i])*dphi]
+    }
+  }
+}
+\end{verbatim}
+
+\section{Bedingungsvoreinstellungen}
+Verschiedene Projekte benötigen verschiedene Konfigurationen.
+\begin{verbatim}
+const presetHighSpeed = [
+  makeMinRadiusConstraint(4000, 10),
+  makeJerkConstraint(v, g, ds, 8),
+  makeMaxCantConstraint(phiMax, 6)
+]
+\end{verbatim}
+\begin{verbatim}
+const presetExistingLine = [
+  makeMinRadiusConstraint(800, 3),
+  makeJerkConstraint(v, g, ds, 2),
+  makeParallelConstraint(trackDistance, 5)
+]
+\end{verbatim}
+
+\section{Integration in den Löser}
+\begin{verbatim}
+function buildResidualVector(ctx, constraints, objectives) {
+  return [
+    ...buildConstraintResiduals(ctx, constraints),
+    ...buildObjectiveResiduals(ctx, objectives)
+  ]
+}
+\end{verbatim}
+Bedingungen und Ziele teilen dieselbe residuenbasierte Schnittstelle.
+
+\section{Diskussion}
+Die Architektur bietet Modularität, Erweiterbarkeit, Kompatibilität mit
+Kleinste-Quadrate-Lösern und eine transparente Abbildung von Engineering-Regeln
+auf Code. Statt Prüfungen zu verteilen, konzentriert die Bibliothek die
+Domänenlogik in einer mathematischen Ebene.
+
+\section{Zusammenfassung}
+\begin{summary}
+Die Bedingungsbibliothek überführt Eisenbahnregeln, Topologie und dynamische
+Anforderungen in eine einheitliche residuenbasierte Architektur. Sie verbindet
+theoretische Modellierung, Engineering-Vorschriften und rechnerische
+Optimierung und macht AIM unmittelbar in Software implementierbar.
+\end{summary}

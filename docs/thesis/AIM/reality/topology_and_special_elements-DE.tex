@@ -1,0 +1,53 @@
+% reality/topology_and_special_elements-DE.tex
+\chapter{Topologie und besondere Elemente}
+\label{chap:topology-and-special-elements}
+\index{Topologie}
+\index{Besondere Elemente!Eisenbahnnetz}
+
+Eisenbahninfrastruktur ist vernetzt. Die Interpretation der Realität erfordert
+daher neben dem geometrischen Zustand einen ausdrücklichen Topologiekontext.
+
+\section{Topologiekontext}
+\begin{definition}[Eisenbahnnetzkontext]
+\index{Topologie!Eisenbahnnetzkontext}
+Der Eisenbahnnetzkontext ist die Menge der Konnektivitätsbeziehungen zwischen
+ausgerichteten Gleissegmenten, Verzweigungen, Zusammenführungen und
+Routenfortsetzungen.
+\end{definition}
+Der Topologiekontext bestimmt Routenkontinuität und die Interpretation von
+Stationierungs-, Projektions- und Beobachtungsdaten in mehrgleisigen Systemen.
+
+\section{Besondere Elemente}
+Weichen, Kreuzungen, Bahnhofsköpfe und Rangierstrukturen sind besondere
+Elemente, an denen geometrische und operative Verzweigung ausdrücklich wird.
+\begin{definition}[Verbindungspunkt]
+\index{Topologie!Verbindungspunkt}
+Ein Verbindungspunkt ist ein Ort, an dem zwei oder mehr Alignment-Segmente
+topologisch verknüpft sind.
+\end{definition}
+Diese Elemente definieren konstruktive Alignment-Identität nicht neu; sie
+stellen den Netzkontext bereit, in dem Identitäten interpretiert werden.
+
+\section{Trennung von Geometrie und Topologie}
+Eine nützliche Abstraktion trennt Geometrie von Konnektivität und ermöglicht
+zugleich deren ausdrückliche Kopplung während der Interpretation.
+\begin{definition}[Graphdarstellung]
+\index{Topologie!Graphdarstellung}
+Ein Eisenbahnnetz kann als Graph dargestellt werden, dessen Knoten
+Verbindungspunkte und dessen Kanten Alignment-Segmente bezeichnen.
+\end{definition}
+Diese Darstellung verdeutlicht, dass Topologiekontext und geometrischer
+Zustand verschieden, in Realitätsabläufen aber gemeinsam erforderlich sind.
+
+\section{Datenmehrdeutigkeit und Inferenz}
+Beobachtungsdatensätze spezifizieren die Topologie häufig unzureichend. Die
+Inferenz von Routenkontinuität und Verzweigungszuordnung ist deshalb Teil der
+Realitätsinterpretation und muss ausdrücklich behandelt werden.
+
+\section{Verbindung zu AIM}
+\begin{summary}
+Topologie und besondere Elemente stellen den Netzkontext bereit, der für die
+reale Interpretation gemessener und realisierter Eisenbahnzustände
+erforderlich ist. In AIM wird Topologie als Kontextstruktur verwendet und
+ersetzt nicht die konstruktive Alignment-Semantik.
+\end{summary}

@@ -4,53 +4,32 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Mathematical Foundations}
 
-The preceding parts established the engineering motivation for
-Alignment-Based Information Modelling (AIM), formulated the underlying
-engineering problem, introduced the alignment-centred modelling
-paradigm, and clarified the conceptual structure of the theory.
+The curvature edit has carried the argument to a precise threshold. The thesis
+must now describe what remains the same, what changes, which quantities follow,
+and under which context an evaluation is valid. Natural-language distinctions
+are necessary, but they are not sufficient for derivation, comparison, or
+implementation.
 
-The engineering concepts required throughout the remainder of the thesis
-have therefore been established.
+This part therefore gives selected engineering dependencies a mathematical
+form. It begins with information modelling and conceptual structure because a
+formula is only useful when the roles of its inputs and outputs are clear. It
+then states the governing axioms and notation, develops state and operator
+relations, and explains how intrinsic construction acquires measurable spatial
+meaning through metric realization.
 
-The purpose of the present part is to develop the mathematical language
-through which these concepts can be described rigorously.
+Mathematics does not decide the identity of an engineering object, admit
+knowledge, or exercise engineering authority. It can make dependencies explicit,
+derive states, propagate a curvature change, compare an observation with a
+target, and evaluate a constraint. The distinctions established in Part I must
+survive every such operation.
 
-This part establishes the formal reference system used by all subsequent
-engineering chapters.
+The orienting question is:
 
-Mathematics does not define the engineering concepts themselves.
-Instead, it provides the formal structures required to describe,
-analyse, transform, and relate them independently of software systems,
-implementation choices, and engineering workflows.
+\begin{quote}
+Which formal dependencies make consequences computable without confusing the
+alignment, its states, its representations, the evidence about it, and the
+decision that may follow?
+\end{quote}
 
-The development begins with intrinsic geometric concepts before
-progressively introducing state descriptions, mathematical operators,
-metric realization, and the structures required for spatial
-interpretation.
-
-These mathematical foundations support all subsequent engineering
-developments presented in this thesis, including railway realization,
-engineering applications, and the reference implementation.
-
-Within the AIM roadmap (Figure~\ref{fig:aim-roadmap}), this part marks
-the transition from conceptual engineering knowledge to its mathematical
-formalization.
-
-The orienting question for the icon below is: which dependency spine
-keeps the formal development coherent from identity to runtime-ready
-state interpretation?
-
-\begin{figure}[ht]
-\centering
-\input{figures/foundations/icon_foundations_dependency}
-\caption{Foundations icon: dependency from identity to state, realization, and representation.}
-\label{fig:icon-foundations-dependency}
-\end{figure}
-
-\noindent
-This icon provides the dependency spine used by the following
-foundations chapters.
-
-The resulting formal language prepares the next part, where these
-mathematical structures are interpreted as canonical engineering
-concepts.
+The first chapter crosses this threshold through the representations already
+encountered in practice.

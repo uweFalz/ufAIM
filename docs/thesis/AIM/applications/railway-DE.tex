@@ -1,0 +1,61 @@
+% applications/railway-DE.tex
+
+\chapter{Anwendungen für Eisenbahn-Alignments}
+\label{chap:applications-railway}
+
+Das Eisenbahnwesen ist die primäre Anwendungsdomäne, anhand derer diese
+Arbeit die Fähigkeiten von AIM zeigt. Das Kapitel wendet die etablierte
+Alignment-Semantik sowie die Zustands- und Laufzeitbegriffe auf praktische
+Fragen des Eisenbahnwesens an.
+
+\section{Anwendungskontext}
+
+Die Verwendung von Eisenbahn-Alignments umfasst gekoppelte
+Horizontalgeometrie, Höhenprofil, Überhöhung, Geschwindigkeit,
+Zulässigkeitsbedingungen und Instandhaltungskontext. In AIM werden diese
+als koordinierte Ebenen behandelt, die aus den vorangehenden Teilen
+übernommen werden.
+
+\section{Verwendung kanonischer Zustands- und Laufzeitbegriffe}
+
+Eisenbahnanwendungen verwenden kanonische pose2/pose3- und Laufzeitdienste,
+anstatt sie neu zu definieren. Betriebliche Größen werden mit den
+etablierten Operatoren als abgeleitete Laufzeitgrößen ausgewertet.
+
+Dies unterstützt Ingenieuraufgaben wie den Vergleich von Alignments, die
+Bewertung der Übergangsqualität und eine realisierungsbewusste Auswertung
+in bestehender Infrastruktur.
+
+\section{Übergänge und gekoppeltes Verhalten in der Praxis}
+
+Übergangsverhalten wird aus der Krümmungsentwicklung zusammen mit dem
+Kontext von Überhöhung und Betriebsgeschwindigkeit interpretiert. Auf
+Anwendungsebene gilt das Interesse nicht nur der geometrischen
+Randwertübereinstimmung, sondern den Konsequenzen für Komfort,
+Zulässigkeit und Lebenszyklusverhalten.
+
+\section{Betriebliche und instandhalterische Konsequenzen}
+
+In Anwendungsabläufen wirken Alignment-Entscheidungen mit Bedingungen an
+Überhöhung, Übergangsqualität und Instandhaltbarkeit zusammen. AIM
+unterstützt dies, indem es persistente Semantik von abgeleiteten
+betrieblichen Größen trennt und eine laufzeit- und realisierungsbewusste
+Auswertung ermöglicht.
+
+\section{Interoperabilitätskontext}
+
+Eisenbahnanwendungen erfordern häufig den Austausch mit BIM/GIS- und
+Formatabläufen. In diesem Teil werden solche Standards als
+Interoperabilitätsmechanismen behandelt, die der kanonischen
+Ingenieursemantik nachgelagert sind.
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Eisenbahnanwendungen in AIM zeigen, wie Alignment-Semantik, Zustand,
+Laufzeitauswertung und realisierungsbewusste Interpretation gemeinsam
+praktische Ingenieurentscheidungen unterstützen.
+
+Das Kapitel bleibt anwendungsbezogen und definiert keine kanonischen
+Begriffe neu, deren Zuständigkeit bei vorgelagerten Teilen liegt.
+\end{summary}

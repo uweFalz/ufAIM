@@ -1,0 +1,146 @@
+\chapter{Realisierungsbewusste Optimierung}
+\index{Optimierung!realisierungsbewusst}
+
+\section*{Motivation}
+Klassische Alignment-Optimierung wirkt unmittelbar auf analytische
+Zielgeometrie. Reale Gleise unterscheiden sich jedoch von ihren analytischen
+Zielzuständen. Das physisch realisierte Alignment wird durch Bauverfahren,
+Maschinenverhalten, Schotter- und Gleismechanik, lokale Korrekturgrenzen,
+Diskretisierung und Messrückkopplung beeinflusst.
+
+Optimierung soll deshalb
+\[
+J\bigl(\mathcal R(\kappa,\phi)\bigr)
+\]
+statt \(J(\kappa,\phi)\) minimieren. In AIM optimiert sie das erwartete
+realisierte operative Verhalten und nicht rein analytische Geometrie.
+
+\section{Realisierungsoperator}
+\index{Realisierung!Operator!in Optimierung}
+\begin{definition}[Realisierungsoperator]
+\[
+\mathcal R:\mathrm{pose3}_{\mathrm{target}}
+\mapsto\mathrm{pose3}_{\mathrm{real}}.
+\]
+\end{definition}
+Der Operator stellt die Transformation vom analytischen Zielzustand zum
+physisch realisierten Eisenbahnzustand dar. Er kann Abtastung,
+Maschinenwirkung, Glättung, lokale Korrekturkerne und strukturelle
+Gleisreaktion umfassen.
+
+\section{Optimierung auf realisierten Zuständen}
+Zielfunktionen sollen auf realisierten statt analytischen Zielzuständen
+bewertet werden.
+\begin{definition}[Realisierungsbewusste Optimierung]
+\index{Optimierung!auf realisierten Zuständen}
+\[
+\min_{\kappa,\phi}\;J\bigl(\mathcal R(\kappa,\phi)\bigr).
+\]
+\end{definition}
+Diese Formulierung integriert Realisierungseffekte ausdrücklich.
+
+\section{pose3-Optimierung}
+\index{Zustand!pose3!Optimierung}
+Optimierung wirkt auf den gekoppelten pose3-Zustand
+\[
+(\gamma,\theta,\phi).
+\]
+Krümmung und Überhöhung müssen deshalb gemeinsam optimiert werden. Dies
+spiegelt die dynamische Kopplung von Geometrie und Fahrzeugverhalten.
+
+\section{Dynamische Ziele}
+\subsection{Effektive Querbeschleunigung}
+\begin{definition}[Effektive Querbeschleunigung]
+\index{Beschleunigung!effektive Querbeschleunigung!Optimierungsziel}
+\[
+a_{\mathrm{eff}}=v^2\kappa-g\sin\phi.
+\]
+\end{definition}
+Diese Größe ist die dynamisch maßgebliche Beschleunigung am Fahrzeug.
+
+\subsection{Ruck}
+\begin{definition}[Ruck]
+\index{Ruck!Optimierungsziel}
+\[
+j=v^3\kappa'-gv\cos\phi\,\phi'.
+\]
+\end{definition}
+Ruckbedingungen beeinflussen Übergangsentwurf und Fahrgastkomfort stark.
+
+\subsection{Typische Zielfunktionskomponenten}
+Typische Ziele sind Krümmungs- und Überhöhungsglattheit, Ruckminimierung,
+Regelung des Überhöhungsfehlbetrags, Fahrzeugkomfort, Energieeffizienz und
+Realisierungsrobustheit.
+
+\section{Realisierungsbedingungen}
+\index{Bedingung!Realisierung}
+Optimierung muss Maschinen- und Stopfgrenzen, Schotterverhalten, lokale
+Korrekturbereiche und Messauflösung einhalten. Der zulässige Entwurfsraum wird
+nicht nur von Geometrie und Normen, sondern auch von Realisierbarkeit begrenzt.
+
+\section{Inverse Realisierung}
+Das Problem kann als inverses Realisierungsproblem verstanden werden.
+\begin{definition}[Formulierung inverser Realisierung]
+\index{Realisierung!inverse Formulierung}
+\[
+\mathcal R(\kappa_{\mathrm{target}},\phi_{\mathrm{target}})
+\approx(\kappa_{\mathrm{desired}},\phi_{\mathrm{desired}}).
+\]
+\end{definition}
+Der analytische Zielzustand ist damit ein Urbild unter dem
+Realisierungsoperator.
+
+\section{Frequenzinterpretation}
+\index{Frequenzinterpretation!Realisierungsoperator als Tiefpassfilter}
+Der Realisierungsoperator wirkt näherungsweise als Tiefpass auf Krümmung und
+Überhöhung. Hochfrequente Komponenten werden gedämpft. Optimierung muss daher
+geometrisch bedeutungslose hochfrequente Korrekturen vermeiden, die die
+Realisierung nicht überstehen.
+
+\section{Dünn besetzte und hybride Optimierung}
+\index{Optimierung!dünn besetzt}
+\index{Optimierung!hybrid}
+Dünn besetzte und hybride Modelle eignen sich besonders für
+realisierungsbewusste Optimierung. Dünn besetzte Strukturen bieten numerische
+Stabilität, geringe Parameterdimension und interpretierbare Geometrie.
+Hybride Modelle erlauben zusätzlich lokale Korrekturen,
+Realisierungskompensation und adaptive Verfeinerung.
+
+\section{Laufzeitoptimierung}
+\index{Optimierung!Laufzeit}
+Optimierung kann während Bau, Instandhaltung, Messrückkopplung und operativer
+Überwachung kontinuierlich wirken. Sie wird damit zum Laufzeitprozess statt zu
+einem rein offline ausgeführten Planungsschritt.
+
+\section{Fahrzeugbezogene Interpretation}
+\index{Fahrzeugraum!Optimierungsinterpretation}
+Der physisch maßgebliche Gegenstand ist nicht zwingend die Gleismittellinie,
+sondern die Bewegung des Fahrzeugs im Raum. Dazu gehören Fahrzeugschwerpunkt,
+Drehgestellbewegung, Fahrzeughüllraum, Bahnsteiginteraktion und
+Lichtraumverhalten. Diese Sicht verbindet realisierungsbewusste Optimierung mit
+schwerpunktorientierten Alignment-Konzepten \cite{Hasslinger2002Schwerpunkt}.
+
+\section{Ellipsoidbewusste Optimierung}
+\index{Bezugssystem!ellipsoidbewusste Optimierung}
+Für großräumige oder hochgenaue Systeme kann unmittelbar auf der
+Erdreferenzfläche optimiert werden. Dann wird Krümmung zur geodätischen
+Krümmung, Rahmen werden oberflächengebunden und World--Track-Projektion hängt
+von Ellipsoidgeometrie ab.
+
+\section{Zentrale Erkenntnis}
+\begin{proposition}
+Das maßgebliche Optimierungsziel ist nicht das analytische Alignment selbst,
+sondern das erwartete realisierte operative Verhalten.
+\end{proposition}
+Dies verändert die Interpretation von Alignment-Optimierung grundlegend.
+
+\section{Verbindung zu AIM}
+\begin{summary}
+Realisierungsbewusste Optimierung erweitert klassische Alignment-Optimierung
+zu physisch realisierbaren Eisenbahnzuständen. In AIM wird sie auf
+pose3-Zuständen, Realisierungsoperatoren, Projektionsstrukturen zur Laufzeit und
+dynamisch relevantem fahrzeugbezogenem Verhalten formuliert.
+
+Damit entsteht ein einheitlicher Rahmen für Geometrie, Realisierung, Dynamik,
+Optimierung und operative Interpretation.
+\end{summary}

@@ -1,221 +1,149 @@
 % foundations/state_model.tex
 
-\chapter{State Model}
+\chapter{State Transition}
 \label{chap:state-model}
 
-\index{State!model}
-\index{Engineering state}
+Suppose an engineer edits curvature on an interval
+\(J\subseteq I\), replacing \(\kappa(s)\) by
+\(\widetilde\kappa(s)=\kappa(s)+\Delta\kappa(s)\). Curvature changes
+directly. Downstream heading and position change through integration;
+cant changes only if its own control is edited or a coupling constraint
+requires it. The alignment identity, the initial condition chosen for
+reconstruction, and the applicable realization context remain fixed
+unless the engineering task explicitly changes them.
 
-An alignment is not described by geometry alone. At each arc-length
-position, the theory requires a local description from which geometric
-orientation and subsequent spatial interpretation can be developed. The
-state model provides this description without incorporating realization,
-representation, runtime architecture, or optimization into the state
-concept itself.
+This single edit establishes the purpose of a state model: to answer
+which condition follows from declared inputs under a stated context. It
+does not describe a storage snapshot and is not a generic container for
+every property associated with the alignment.
 
-% ============================================================
-\section{Engineering State}
-% ============================================================
+\section{The state that answers the question}
 
 \begin{definition}[Engineering state]
 \label{def:state}
-\index{State!engineering}
 An engineering state is a structured description of an engineering
 object under a specified condition and within a specified context.
 \end{definition}
 
-A state is neither the engineering object itself nor a representation of
-that object. It selects the quantities required to describe a particular
-condition. Different questions may therefore require different state
-spaces while referring to the same engineering object.
-
-For alignment geometry, the independent variable is intrinsic
-arc-length. A state trajectory is consequently a mapping
+For the present question, a state trajectory is
 \[
 x:I\rightarrow\mathcal X,
-\qquad
-s\longmapsto x(s),
+\qquad s\longmapsto x(s).
 \]
-where \(\mathcal X\) is the state space appropriate to the geometric or
-engineering question under consideration.
+The mapping records the quantities needed to propagate the edit. A file
+record, cached polyline, or database row may represent values of this
+trajectory, but storage does not determine which condition or context
+those values describe.
 
-% ============================================================
-\section{Planar Alignment State}
-% ============================================================
+\section{Planar transition driven by curvature}
 
 \begin{definition}[pose2]
 \label{def:notation-pose2}
-\index{State!pose2}
 The planar alignment state is
 \begin{equation}
-\mathrm{pose2}(s)
-=
-\bigl(\gamma(s),\theta(s)\bigr),
+\mathrm{pose2}(s)=\bigl(\gamma(s),\theta(s)\bigr),
 \label{eq:pose2-definition}
 \end{equation}
-where \(\gamma(s)\in\mathbb{R}^{2}\) is the planar position and
-\(\theta(s)\) the heading.
+where \(\gamma(s)\) is planar position and \(\theta(s)\) heading.
 \end{definition}
 
-The evolution of \(\mathrm{pose2}\) follows directly from the axiomatic
-foundation:
+Its evolution is
 \begin{equation}
 \begin{aligned}
-\gamma'(s)
-&=
-\begin{pmatrix}
-\cos\theta(s)\\
-\sin\theta(s)
-\end{pmatrix},\\
-\theta'(s)
-&=\kappa(s).
+\gamma'(s)&=
+\begin{pmatrix}\cos\theta(s)\\\sin\theta(s)\end{pmatrix},\\
+\theta'(s)&=\kappa(s).
 \end{aligned}
 \label{eq:pose2-evolution}
 \end{equation}
 
-Curvature is therefore the control quantity governing the directional
-evolution of the planar alignment state. Given an initial pose and a
-curvature function, the complete planar state trajectory is determined.
+With \(\gamma(s_0)\) and \(\theta(s_0)\) fixed, applying
+\(\widetilde\kappa\) produces a new state trajectory
+\(\widetilde{\mathrm{pose2}}\). Inside and downstream of the edited
+interval, heading must be reintegrated and position reconstructed. An
+existing CAD curve or sampled polyline derived from the former trajectory
+is consequently stale until its representation is regenerated.
 
-% ============================================================
-\section{Spatial Railway State}
-% ============================================================
+\paragraph{Execution contract.}
+The transition receives the curvature edit, reconstruction interval, and
+initial pose; it produces a planar state trajectory. It assumes
+arc-length parameterization and the stated boundary conditions. It
+preserves alignment identity. Its result inherits the provenance of the
+edit and boundary conditions. It cannot infer whether the edit is
+permitted, whether a survey concerns the same condition, or whether the
+result should be accepted.
 
-A spatial railway state requires more than planar position and heading.
-Profile, cant, and the applicable realization context contribute to the
-construction of a spatial position and local frame. These dependencies
-are developed in detail in the dedicated state chapters. At foundation
-level, the spatial extension is expressed by adding the cant rotation to
-the planar state.
+\section{Spatial transition and controls}
 
 \begin{definition}[Foundational pose3 state]
 \label{def:pose3}
-\index{State!pose3}
 The foundational spatial railway state is
 \begin{equation}
-\mathrm{pose3}(s)
-=
-\bigl(\gamma(s),\theta(s),\phi(s)\bigr),
+\mathrm{pose3}(s)=\bigl(\gamma(s),\theta(s),\phi(s)\bigr),
 \label{eq:pose3-definition}
 \end{equation}
-where \(\phi(s)\) denotes cant rotation about the local tangent.
+where \(\phi(s)\) is cant rotation about the local tangent.
 \end{definition}
 
-This tuple records the intrinsic quantities required for the subsequent
-spatial construction. It is not yet a complete world-space pose. The
-spatial position, local frame, and physical interpretation arise only
-when profile and realization context are applied.
-
-% ============================================================
-\section{State Controls}
-% ============================================================
+This is the intrinsic input to a later spatial construction, not a
+world-space pose. Profile, metric context, and frame construction are
+still required before it becomes spatially measurable.
 
 \begin{definition}[Foundational controls]
 \label{def:control-quantities}
-\index{Control quantities!foundational}
-\index{Curvature!as control quantity}
 The foundational control pair is
 \begin{equation}
 u(s)=\bigl(\kappa(s),\omega(s)\bigr),
-\qquad
-\omega(s)=\phi'(s).
+\qquad \omega(s)=\phi'(s).
 \label{eq:pose3-controls}
 \end{equation}
 \end{definition}
 
-Curvature controls heading evolution, while cant-rate controls the
-evolution of cant rotation. The corresponding foundational system is
+The controls propagate the state through
 \begin{equation}
 \begin{aligned}
-\gamma'(s)
-&=
-\begin{pmatrix}
-\cos\theta(s)\\
-\sin\theta(s)
-\end{pmatrix},\\
+\gamma'(s)&=
+\begin{pmatrix}\cos\theta(s)\\\sin\theta(s)\end{pmatrix},\\
 \theta'(s)&=\kappa(s),\\
 \phi'(s)&=\omega(s).
 \end{aligned}
 \label{eq:pose3-evolution}
 \end{equation}
 
-This formulation establishes an arc-length-driven state system. It does
-not imply that every engineering quantity is a control or that every
-spatial quantity belongs to the intrinsic state.
+\section{Degrees of freedom during the edit}
 
-% ============================================================
-\section{Intrinsic and Realized Descriptions}
-% ============================================================
+The edit is interpretable only when the status of each quantity is
+explicit.
 
-\begin{definition}[Intrinsic state description]
-\index{State!intrinsic description}
-An intrinsic state description uses quantities defined relative to the
-alignment and does not require a particular world-space realization.
-\end{definition}
+\begin{description}
+\item[Fixed:] alignment identity, applicable context, reconstruction
+  origin, and any boundary values declared invariant by the task.
+\item[Edited:] \(\kappa\) on \(J\), with source, author, and scope as
+  provenance.
+\item[Derived:] heading, tangent, planar position, and every
+  representation sampled from the changed trajectory.
+\item[Coupled:] cant, profile, or adjoining transition quantities when an
+  applicable engineering relation links them to the curvature edit.
+\item[Constrained:] continuity, regularity, boundary, admissibility, and
+  project-specific requirements supplied by the applicable knowledge.
+\item[Free:] quantities not fixed, derived, coupled, or constrained by
+  the declared problem. They remain candidate degrees of freedom; a
+  solver may explore them but cannot assign them engineering authority.
+\end{description}
 
-Curvature, heading evolution, cant evolution, and the ordered relation of
-states along arc-length are intrinsic. Their mathematical meaning can be
-established before a coordinate reference system or physical embedding
-is selected.
+This classification is the bridge from formal state propagation to
+alignment-transition design: it identifies the variables available to a
+later construction or optimization method without prescribing software
+or a particular solver.
 
-\begin{definition}[Realized state description]
-\index{State!realized description}
-A realized state description expresses an engineering state within a
-specified metric realization context.
-\end{definition}
+\section{What may be compared}
 
-A realized state may contain world-space position, a spatial frame, or
-other metric quantities. Such quantities are related to the intrinsic
-state through realization operators; they do not become intrinsic merely
-because they are evaluated from it.
+Metric realization can make the revised state spatially measurable. A
+survey polyline may then provide observational evidence in a compatible
+context, and an evaluation operator may compute residuals. The
+comparison relates qualified states and sources; it does not turn the
+polyline into physical reality, replace the alignment's constructive
+definition, or convert an evaluation into a decision.
 
-The distinction is deliberately one of description rather than of two
-unrelated state theories. The same alignment may admit multiple realized
-descriptions while retaining one intrinsic engineering identity.
-
-% ============================================================
-\section{State, Observation, and Representation}
-% ============================================================
-
-A state may be evaluated, observed, or represented. These operations
-must remain conceptually distinct.
-\index{Observation!state observation}
-\index{Representation!state representation}
-
-An evaluated state is derived from engineering knowledge and applicable
-operators. An observed state records information obtained from a source
-such as measurement or inspection. A representation communicates or
-processes state information in a particular form. None of these forms is
-identical merely because they share numerical values at a given instant.
-
-This separation is essential for later treatment of measured reality,
-physical realization, runtime evaluation, and optimization. Those
-chapters may operate on or compare states, but they do not redefine the
-foundational state concept established here.
-
-% ============================================================
-\section{Canonical Interpretation}
-% ============================================================
-
-\begin{proposition}
-A planar railway alignment can be interpreted as an intrinsic state
-trajectory parameterized by arc-length and controlled by curvature.
-\end{proposition}
-\index{State trajectory}
-
-\begin{proposition}
-Cant evolution extends the foundational state without by itself
-establishing a complete metric or physical spatial realization.
-\end{proposition}
-
-\begin{proposition}
-Realization, observation, representation, and optimization relate to
-engineering states through explicit operators and relations; they are
-not constituent parts of the foundational state definition.
-\end{proposition}
-
-The state model therefore provides a common mathematical interface
-between intrinsic geometry and the later chapters on spatial
-interpretation, realization, runtime evaluation, and engineering
-assessment while preserving the responsibility boundaries established
-by the Knowledge Kernel.
+The next chapter makes the actions in this chain explicit as typed
+operators.

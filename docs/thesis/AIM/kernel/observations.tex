@@ -1,69 +1,34 @@
 % kernel/observations.tex
 
-\chapter{Engineering Observations}
+\chapter{Evidence About the Transition}
 \label{chap:engineering-observations}
 
-Engineering work depends on information obtained from measurements,
-inspections, source systems, and other encounters with reality. The
-Knowledge Kernel treats such information as engineering observations.
-
-\section{Observation}
+A survey polyline crosses the same transition interval. Its coordinates look
+like the calculated curve, but they answer a different question. The solver
+derived what follows from stated inputs; the survey records evidence obtained
+from a physical condition.
 
 \begin{definition}[Engineering observation]
 \label{def:engineering-observation}
-An engineering observation is recorded information about an engineering
-object, state, or context together with the conditions under which that
+An Engineering Observation is recorded information about an Engineering
+Object, state, or qualification together with the conditions under which that
 information was obtained.
 \end{definition}
 
-An observation may contain measured coordinates, inspected conditions,
-source-system records, detected relationships, or operational values.
-Its meaning depends on provenance, method, time, context, and
-uncertainty.
+For the survey, provenance includes the observed subject, acquisition method
+and time, coordinate and realization dependencies, processing history,
+uncertainty, and source responsibility. For the imported historical record,
+provenance identifies its source system and exchange history. For the
+axtranNew result, operation provenance identifies inputs, algorithm, version,
+and derivation. These are different evidence paths and must not be collapsed
+into a generic ``geometry source.''
 
-\section{Observation and Object}
+Several observations may disagree while still concerning one alignment. A
+survey does not become physical reality, and its coordinates do not overwrite
+the intended state. Comparison requires compatible realizations and temporal
+qualification. The resulting residual is derived evidence about the stated
+comparison, not a new observation and not an identity decision.
 
-An observation is not the observed engineering object. Several
-observations may refer to the same object, and they may disagree without
-creating several objects.
-
-The distinction allows engineering systems to preserve conflicting,
-historical, or uncertain evidence without prematurely replacing it by a
-single asserted truth.
-
-\section{Provenance}
-
-Provenance records where an observation originated and how it was
-produced. It may include source identity, acquisition method, timestamp,
-coordinate context, processing history, and responsible authority.
-
-Without provenance, the applicability and reliability of an observation
-cannot be assessed consistently.
-
-\section{Observation and Knowledge}
-
-Observations provide evidence for engineering knowledge. They do not
-become accepted knowledge automatically.
-
-Interpretation, validation, comparison, and admission are required
-before observed information may support an engineering conclusion or
-decision.
-
-\section{Canonical Interpretation}
-
-\begin{proposition}
-Engineering observations preserve evidence without asserting that the
-evidence is already canonical engineering knowledge.
-\end{proposition}
-
-\begin{proposition}
-Observation provenance is part of the meaning of an observation.
-\end{proposition}
-
-\begin{proposition}
-Conflicting observations may refer to one engineering object without
-compromising its identity.
-\end{proposition}
-
-Engineering observations provide the epistemic connection between
-engineering objects and the evidence from which knowledge is developed.
+Observation preserves what was encountered; provenance makes its later use
+assessable. The next question is which rules, accepted derivations, and prior
+decisions may legitimately be relied upon when evaluating the candidate.

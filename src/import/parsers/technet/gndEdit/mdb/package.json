@@ -1,0 +1,19 @@
+{
+  "name": "ufaim-gnd-mdb-worker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "bundle": "esbuild worker-entry.js --bundle --format=esm --platform=browser --target=es2022 --alias:buffer=buffer --alias:stream=stream-browserify --alias:events=events --inject:process-shim.js --inject:buffer-shim.js --outfile=../gnd/vendor/mdb-reader-worker-3.2.0.js --legal-comments=eof"
+  },
+  "dependencies": {
+    "buffer": "6.0.3",
+    "events": "3.3.0",
+		"mdb-reader": "3.2.0",
+		"process": "0.11.10",
+		"stream-browserify": "3.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.6"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "generator": {
+    "source": "generator/GenerateGndMdbFixtures.java",
+    "jackcess": "io.github.spannm:jackcess:5.1.4",
+    "license": "Apache-2.0",
+    "format": "Jet 4 / Access 2000"
+  },
+  "byteDeterminismClaimed": false,
+  "fixtures": [
+    {
+      "file": "valid-minimal-jet4.mdb",
+      "sha256": "46b70faa1b220d6765a541ec458c396bf4897fcde72bf5f4aaf72d7c444e2d7a",
+      "expectedCoreTables": 7,
+      "purpose": "valid source with typed state and binary64 evidence"
+    },
+    {
+      "file": "missing-core-jet4.mdb",
+      "sha256": "ae249889debda71b1790194b451d9451a565fbd7dc8b1c6f3db8fdcedd360cf8",
+      "expectedCoreTables": 6,
+      "omittedTable": "X_ASC13_PH",
+      "purpose": "structured incomplete-source rejection"
+    },
+    {
+      "file": "conflicting-evidence-jet4.mdb",
+      "sha256": "518f8be8291972adbab96a203c2d3bd3a0ccdd12cd9033618da67800b20cac77",
+      "expectedCoreTables": 7,
+      "purpose": "ambiguous LSYS evidence without arbitrary selection"
+    }
+  ],
+  "protectedFixture": {
+    "status": "not-generated",
+    "reason": "No verified clean generator for a genuinely password-protected Jet MDB is available in the documented toolchain."
+  }
+}

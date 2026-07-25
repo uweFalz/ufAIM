@@ -1,0 +1,159 @@
+% Deutsche Parallelfassung zu why/motivation.tex
+
+\chapter{Motivation}
+
+\section{Warum ein Eisenbahnübergang kein Detail des Straßenkorridors ist}
+
+Ein Straßenkorridor beeinflusst den verfügbaren Fahrweg, ein
+Eisenbahnfahrzeug ist jedoch kinematisch durch sein Schienenpaar geführt. Das
+Gleis schreibt daher den Krümmungsverlauf vor, den das Fahrzeug erfährt. Eine
+Änderung von \(\kappa(s)\), seinen Ableitungen, der Überhöhung \(u(s)\) oder
+der Geschwindigkeit überträgt sich auf Rad--Schiene-Interaktion,
+Fahrzeugantwort, Fahrgastkomfort, Gleisbelastung, Verschleiß und
+sicherheitsbezogene Bewertung. Übergangsentwurf ist folglich ein zentrales
+Eisenbahnproblem und nicht bloß eine zweckmäßige Interpolation zwischen
+Kartenelementen.
+
+Man betrachte zwei Gesetze mit derselben Länge und denselben Randkrümmungen.
+Eine Klothoide besitzt eine konstante Krümmungsableitung. Eine polynomiale oder
+trigonometrische Halbwelle kann stattdessen ausgewählte Endbedingungen an
+\(\kappa'(s)\) und \(\kappa''(s)\) erfüllen. Ähnlich erscheinende
+Mittellinien können daher unterschiedliche dynamische Folgen tragen.
+Umgekehrt kann ein glatteres Endverhalten mehr Länge oder eine andere
+Verteilung der Freiheitsgrade verlangen. Die Klothoide ist wichtig, einfach
+und häufig kompakt; diese Vorteile machen sie nicht zum universellen
+physikalischen Optimum
+\cite{BrustadDalmo2020Review,Koc2017SmoothedEnds}.
+
+Dieser Vergleich begründete die ursprüngliche Forschungsrichtung der Arbeit.
+Berlinish suchte eine gemeinsame funktionale Grammatik für solche
+Alternativen, während axtranNew ihre zulässigen Kompositionen berechnen sollte.
+AIM erweiterte die Frage später von \emph{Welcher Übergang lässt sich
+berechnen?} zu \emph{Wie kann das resultierende Ingenieurwissen seine
+Bedeutung bewahren und nutzbar werden?}
+
+\section{Die Krümmungsänderung}
+
+Die zu Beginn eingeführte Krümmungsänderung verschiebt die nachfolgenden
+Positionen und ändert die Tangentenrichtung. Bleiben Überhöhung und
+Geschwindigkeit unverändert, ändern sich auch fahrzeugbezogene Größen.
+Nebenbedingungen, die vor der Änderung erfüllt waren, können danach verletzt
+sein; der übliche Eisenbahnentwurf koppelt Krümmung, Überhöhung,
+Geschwindigkeit und deren Änderungsraten
+\cite{EN13803_2017,Klein1998Trassierung}.
+
+Die sichtbare Kurve ist daher der Anfang der Folge, nicht ihr Ende. Die
+Änderung muss gegenüber Gelände und benachbarten Objekten interpretiert, mit
+dem bestehenden oder vermessenen Gleis verglichen, anhand anwendbarer Regeln
+geprüft und als Alternative zur Begutachtung vorgelegt werden. Bei jedem
+Schritt kann eine andere Repräsentation zweckmäßig sein. Nicht verloren gehen
+darf die Beziehung zwischen Alignment, Änderung, resultierenden Zuständen,
+Evidenz und Entscheidungsautorität.
+
+\section{Drei leistungsfähige Sichten, drei notwendige Grenzen}
+
+GIS, CAD und BIM nähern sich dieser Situation aus unterschiedlichen Stärken.
+GIS ordnet das Alignment in einen umfassenden räumlichen Zusammenhang ein und
+unterstützt interoperablen Zugriff, Verarbeitung, Visualisierung und
+Erschließung raumbezogener Informationen \cite{OGCStandardsProgram2025}. Diese
+Breite ist für Grundstücke, Umwelt, Netze und räumliche Analyse unverzichtbar;
+der Ingenieur muss jedoch weiterhin bestimmen, welcher verfügbare Kontext für
+die Alignment-Änderung anwendbar ist.
+
+CAD konzentriert geometrische Konstruktion, Kommunikation und direkte
+Bearbeitung \cite{KimKumarSnider2015Geometry}. Es macht die
+Krümmungsänderung anschaulich und erzeugt die für Entwurf und Lieferung
+benötigte Geometrie. Sein Geometriemodell begründet für sich genommen jedoch
+weder die Provenienz einer Beobachtung noch die Autorität hinter einer Regel
+oder die dauerhafte Identität, die mit einer anderen Repräsentation geteilt
+wird.
+
+BIM organisiert Informationen über gebaute Anlagen für den Austausch zwischen
+Softwareanwendungen und Projektbeteiligten. IFC macht diese Rolle durch
+Schemata und arbeitsablaufspezifische Modellsichten ausdrücklich
+\cite{BuildingSMARTIFC4x3Scope}. Diese Strukturen können
+Alignment-Informationen tragen, ohne dadurch dessen intrinsische Konstruktion
+oder das gesamte zur Bewertung einer Änderung benötigte Wissen zu besitzen.
+
+Es geht nicht darum, unter den drei Ansätzen einen Sieger zu bestimmen. Das
+Alignment muss vielmehr zwischen ihren Sichten wechseln können, ohne lediglich
+zu einem GIS-Feature, einer CAD-Kurve oder einem BIM-Container zu werden. Eine
+Repräsentation ist gerade deshalb nützlich, weil sie für einen Zweck etwas
+auswählt und ausdrückt. Diese Auswahl bedeutet zugleich, dass keine einzelne
+Repräsentation stillschweigend zum gesamten Engineering Object werden darf.
+
+\section{Fragmentiertes Wissen im Handlungsmoment}
+
+Ein Teil des relevanten Wissens ist in Software kodiert. Anderes befindet sich
+in Normen, Projektanforderungen, Messberichten, Berechnungsverfahren und
+Entwurfsentscheidungen. Wieder anderes verbleibt bei Ingenieuren, die wissen,
+welche Regel anwendbar und welche scheinbare Abweichung folgenreich ist.
+Fragmentierung wird kostspielig, wenn eine Handlung diese Teile gemeinsam
+benötigt. Die Forschung zur Bauinformatik führt diese beständige
+Fragmentierung auf Spezialisierung, heterogene Werkzeuge und nur teilweise
+interoperable Zusammenarbeit zurück \cite{Turk2020Interoperability}.
+
+Für die Krümmungsänderung benötigt der Ingenieur mehr als Datenzugriff. Die
+Software muss wissen, welches Objekt geändert wird, welcher Zustand
+beabsichtigt ist, welche Beobachtungen einen anderen Zustand beschreiben,
+welche Qualifikation die Regeln auswählt und welche Größen von der Änderung
+abhängen. Zugleich muss sie die Grenze zwischen Berechnung und Autorisierung
+bewahren.
+
+Dies ist die praktische Motivation dafür, Ingenieurwissen anwendbar zu machen.
+Anwendbares Wissen ist nicht einfach Text, der neben Geometrie gespeichert
+wird. Es besitzt Geltungsbereich, Provenienz, Bedingungen und eine
+verantwortete Bedeutung; es muss mit dem Zustand und der Operation verbunden
+sein, für die es maßgeblich ist.
+
+\section{Warum Krümmung das Problem sichtbar macht}
+
+Ein Eisenbahn-Alignment wird häufig als Folge von Geraden, Kreisbögen und
+Übergangsbögen eingeführt. Diese Beschreibung ist nützlich, doch Krümmung legt
+die darunterliegende generative Beziehung offen. Entlang der intrinsischen
+Bogenlänge \(s\) bestimmt die Krümmung die Änderung des Richtungswinkels,
+\[
+  \theta'(s)=\kappa(s),
+\]
+und durch Integration entstehen ebene Pose und Position. Änderungen von
+Krümmung und Überhöhung gehen außerdem in ingenieurtechnische Bewertungen von
+Fahrzeugreaktion und Komfort ein
+\cite{Kufver2000RailwayAlignment,BrustadDalmo2020Review}.
+
+Krümmung verbindet damit konstruktive Absicht mit geometrischer und dynamischer
+Folge. Die resultierenden Koordinaten besitzen dennoch nicht die Identität des
+Alignments, und eine gemessene Kurve offenbart nicht automatisch das
+beabsichtigte Krümmungsgesetz. Die Unterscheidung zwischen intrinsischer
+Konstruktion, metrischer Realisierung, physischer Realisierung und Beobachtung
+ist keine philosophische Verzierung. Sie bestimmt, was nach der Änderung
+sicher abgeleitet werden kann.
+
+\section{Die Anforderung an AIM}
+
+Eine brauchbare Antwort muss vier Anforderungen zugleich erfüllen:
+
+\begin{itemize}
+\item die Alignment-Identität über zweckgebundene Repräsentationen hinweg
+  bewahren;
+\item die konstruktiven und zustandsbezogenen Abhängigkeiten offenlegen, durch
+  die Änderungen Folgen erhalten;
+\item beabsichtigte, realisierte und beobachtete Informationen getrennt und
+  nachvollziehbar halten;
+\item Ingenieurwissen anwenden, ohne einem Dateiformat, einer
+  Softwarekomponente oder einem numerischen Solver Entscheidungsautorität
+  zuzuweisen.
+\end{itemize}
+
+Alignment-Based Information Modelling wird entwickelt, um diese Anforderungen
+zu erfüllen. Sein Ausgangspunkt ist kein größeres Dateiformat, sondern eine
+Alignment-spezifische Darstellung dessen, was das Engineering Object ist, wie
+es messbaren und betrieblichen Zustand erhält, wie Evidenz sich darauf bezieht
+und wie Wissen an der Bewertung mitwirkt.
+
+\begin{summary}
+Die durch eine Krümmungsänderung offengelegte Schwierigkeit besteht nicht
+darin, dass Software die neue Kurve nicht zeichnen könnte. Sie besteht darin,
+dass die ingenieurtechnische Bedeutung der Änderung Werkzeuge, Zustände,
+Evidenz, Regeln und Autorität überquert. AIM setzt an, indem es diese
+Unterscheidungen bewahrt und ihre Abhängigkeiten ausdrücklich macht.
+\end{summary}

@@ -1,0 +1,217 @@
+% Deutsche Parallelfassung zu foundations/operators.tex
+
+\chapter{Typisierte Operatoren}
+\label{chap:operators}
+
+Die überarbeitete Krümmung hat einen überarbeiteten intrinsischen Zustand
+erzeugt. Die nächste Frage lautet nicht, welche Begriffe existieren, sondern
+welche Handlung jede folgende Konsequenz erzeugt. AIM repräsentiert solche
+Handlungen als typisierte Operatoren.
+
+\begin{definition}[Operator]
+\label{def:operator}
+Ein Operator ist eine Abbildung
+\[
+\mathcal O_c:\mathcal A\rightarrow\mathcal B,
+\]
+deren Eingabetyp, Ausgabetyp, anwendbare Qualifikation \(c\), Annahmen und
+Ergebnisprovenienz deklariert sind.
+\end{definition}
+
+Der Index wird gezeigt, wenn die Qualifikation sonst mehrdeutig wäre. Ein
+Algorithmus kann einen Operator implementieren; der ingenieurtechnische
+Vertrag wird aber nicht allein durch die Implementierung definiert.
+
+\begin{principle}[Zustands--Operator-Beziehung]
+\label{princ:state-operator-relation}
+Operatoren bewerten, transformieren oder verknüpfen Engineering States, ohne
+selbst Bestandteile des Engineering Objects zu werden.
+\end{principle}
+
+\begin{proposition}
+\label{prop:operator-explicit-dependencies}
+Ingenieurtechnische Abhängigkeiten, welche die Bedeutung, Domäne oder den
+Status eines Zustands ändern, müssen ausdrücklich durch Operatoren oder
+Beziehungen repräsentiert werden, statt in einer undifferenzierten
+Zustandsbeschreibung verborgen zu sein.
+\end{proposition}
+
+\section{Den bearbeiteten Zustand rekonstruieren}
+
+Der geometrische Rekonstruktionsoperator kann schematisch geschrieben werden
+als
+\[
+\mathcal D_{I,s_0}:
+(\mathrm{pose2}(s_0),\kappa)
+\longrightarrow \mathrm{pose2}|_I.
+\]
+
+\paragraph{Ausführungsvertrag.}
+Eingabe: eine Anfangspose, eine Krümmungsfunktion und ein Intervall. Ausgabe:
+die abgeleitete Zustandstrajektorie. Erforderliche Qualifikationen:
+longitudinale Domäne und Randbedingungen. Anwendbarkeit: Die
+Rekonstruktionsaxiome und Regularitätsannahmen müssen gelten. Bewahrte
+Identität: das Alignment, dem der bearbeitete Zustand zugeordnet ist.
+Provenienz: Änderung, Anfangszustand und Rekonstruktionsverfahren. Der
+Operator kann weder die Zulässigkeit bestimmen noch entscheiden, ob der
+bearbeitete Zustand einen freigegebenen Zustand ersetzen soll.
+
+\section{Den Zustand metrisch realisieren}
+
+\begin{definition}[Operator der metrischen Realisierung]
+\label{def:metric-realization-operator}
+\[
+\mathcal G_c:\mathcal X\rightarrow\mathcal X_{\mathrm{metric}}.
+\]
+\end{definition}
+
+\paragraph{Ausführungsvertrag.}
+Eingabe: der intrinsische Zustand. Ausgabe: seine metrische Interpretation.
+Erforderliche Qualifikationen: metrisches Modell, Einbettungsdaten und
+anwendbare Konventionen. Anwendbarkeit: Der Kontext muss die Zustandsdomäne
+und die angeforderten Größen abdecken. Bewahrte Identität: Engineering Object
+und Zustandsrolle. Provenienz: intrinsische Quelle plus Realization Context.
+Der Operator kann weder physisch bauen, eine Beobachtung erzeugen noch eine
+Entscheidung auswählen.
+
+\begin{definition}[Frame-Operator]
+\label{def:frame-operator}
+Der Frame-Operator konstruiert das von der anwendbaren Realisierung benötigte
+lokale Frame:
+\[
+\mathcal F_c:\mathcal X_{\mathrm{metric}}\rightarrow\mathcal F.
+\]
+\end{definition}
+
+Seine Ausgabe sind abgeleitete Orientierungsdaten. Er bewahrt die Identität
+und erbt Zustands- und Realisierungsprovenienz; er kann nicht bestimmen,
+welche Frame-Konvention ein Projekt verwenden soll.
+
+\section{Gleis- und World-Beschreibungen verknüpfen}
+
+\begin{definition}[Track-to-World-Operator]
+\label{def:track-to-world-operator}
+\[
+\mathcal P_{\mathrm{tw},c}:
+\Omega_{\mathrm{track}}\rightarrow\Omega_{\mathrm{world}}.
+\]
+\end{definition}
+
+Er empfängt Gleiskoordinaten und ein realisiertes Alignment-Frame und erzeugt
+einen World-Space-Punkt. Seine Anwendbarkeit erfordert ein gültiges lokales
+Frame über der angeforderten Domäne. Das Ergebnis bewahrt das referenzierte
+Objekt und trägt die Realisierungsprovenienz; es kann keinen physischen oder
+beobachteten Zustand begründen.
+
+\begin{definition}[World-to-Track-Operator]
+\label{def:world-to-track-operator}
+\[
+\mathcal P_{\mathrm{wt},c}:
+\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{track}}.
+\]
+\end{definition}
+
+Er empfängt einen World-Space-Punkt und ein anwendbares realisiertes Alignment
+und erzeugt eine mögliche gleisbezogene Interpretation. Existenz und
+Eindeutigkeit hängen von Suchdomäne und Geometrie ab. Seine Provenienz muss
+World-Quelle, Realisierung und Auswahlregel bewahren. Er kann weder beweisen,
+dass ein Vermessungspunkt das Alignment beobachtet, noch ohne anwendbare Regel
+zwischen mehrdeutigen Projektionen wählen.
+
+\begin{definition}[Koordinatentransformationsoperator]
+\label{def:coordinate-transform-operator}
+\[
+\mathcal C_c:
+\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{world}}.
+\]
+\end{definition}
+
+Er ändert die Koordinatenrepräsentation unter einer deklarierten
+Transformationsqualifikation. Er bewahrt die Identität des repräsentierten
+Objekts und die Provenienz von Quell- und Ziel-CRS. Er kann weder die
+World-to-Track-Interpretation noch die metrische Realisierung ersetzen.
+
+\section{Repräsentationen und Beobachtungen erzeugen}
+
+Die Abtastung der überarbeiteten metrischen Trajektorie erzeugt eine
+CAD-Kurven- oder Polylinienrepräsentation. Der Repräsentationsoperator
+empfängt qualifiziertes Zustandswissen und Repräsentationsparameter; er
+erzeugt ein abgeleitetes Artefakt, bewahrt die Objektidentität und hält
+Provenienz von Quellzustand und Verfahren fest. Er kann nicht allein dadurch
+zur konstruktiven Definition werden, dass er gespeichert, ausgetauscht oder
+gerendert wird.
+
+Eine Beobachtungsoperation empfängt dagegen einen physischen Zustand über
+einen Messprozess und erzeugt quellengebundene Evidenz mit Zeit, Methode,
+Bedingungen und Unsicherheit. Eine Vermessungspolyline ist für den Vergleich
+nur durch diese Provenienz nutzbar. Beobachtung kann ihre Ausgabe für sich
+genommen weder zur physischen Realität noch zu angenommenem Ingenieurwissen
+machen.
+
+\section{Ziel und physischen Zustand verknüpfen}
+
+\begin{definition}[Realisierungsoperator]
+\label{def:realization-operator}
+\[
+\mathcal R:
+\mathcal X_{\mathrm{target}}\rightarrow\mathcal X_{\mathrm{real}}.
+\]
+\end{definition}
+
+Der Operator empfängt einen Zielzustand sowie ein anwendbares Bau-,
+Instandhaltungs- oder physisches Antwortmodell und erzeugt die Beschreibung
+eines realisierten Zustands. Er bewahrt die Identität des Engineering Objects,
+während sich der beschriebene Zustand ändert. Seine Provenienz umfasst Ziel,
+Prozessmodell und relevante physische Eingaben. Er kann weder eine Beobachtung
+des Ergebnisses erzeugen noch entscheiden, dass der realisierte Zustand
+akzeptabel ist.
+
+\section{Die qualifizierte Folge bewerten}
+
+\begin{definition}[Bewertungsoperator]
+\label{def:evaluation-operator}
+\[
+\mathcal E_c:
+\mathcal X\times\Omega_{\mathrm{track}}\rightarrow\mathcal Y.
+\]
+\end{definition}
+
+Für die wiederkehrende Abweichung empfängt die Bewertung den metrisch
+realisierten Zielzustand, kompatible Vermessungsevidenz, Vergleichsorte,
+Unsicherheit und anwendbare Regeln. Sie erzeugt Residuen oder andere
+qualifizierte Folgen. Sie bewahrt Identität und Rollen ihrer Eingaben; ihre
+Provenienz hält diese Eingaben, Qualifikationen, Operatorversion und Annahmen
+fest. Sie kann weder Evidenz als Wissen annehmen, noch einen Vorschlag
+akzeptieren oder eine Ingenieurentscheidung erlassen.
+
+\begin{principle}[Solver-Unabhängigkeit]
+\label{princ:operators-solver-independence}
+Ingenieurbeobachtungen, Nebenbedingungen, Residuen, Lösungskandidaten und
+Entscheidungen sind unabhängig vom numerischen Solver, mit dem sie bewertet
+werden.
+\end{principle}
+
+\section{Komposition ohne Verantwortungsübertragung}
+
+Für kompatible Typen gilt
+\[
+\mathcal O_1:\mathcal A\rightarrow\mathcal B,
+\qquad
+\mathcal O_2:\mathcal B\rightarrow\mathcal C,
+\qquad
+\mathcal O_2\circ\mathcal O_1:
+\mathcal A\rightarrow\mathcal C.
+\]
+
+\begin{principle}[Operatortrennung]
+\label{princ:operator-separation}
+Operatoren mit unterschiedlichen ingenieurtechnischen Verantwortlichkeiten
+müssen begrifflich unterscheidbar bleiben, auch wenn sie am selben
+Arbeitsablauf beteiligt sind.
+\end{principle}
+
+Die Kette der Krümmungsänderung kann somit als Rekonstruktion, metrische
+Realisierung, Interpretation einer Repräsentation oder Beobachtung und
+Bewertung gelesen werden. Komposition überträgt Werte und Provenienz. Sie
+überträgt weder Identität, noch ändert sie stillschweigend den Wahrheitsmodus
+oder verleiht der abschließenden Zahl Entscheidungsautorität.

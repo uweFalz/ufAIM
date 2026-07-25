@@ -9,7 +9,19 @@ const SURFACES = [
 	["section", "overlaySection", "btnToggleSection"],
 	["debug", "debugOverlay", "btnToggleDebug"],
 ];
-const REQUIRED = ["parserValidation", "alignmentNativeUi", "geoRuntimeAcceptance", "curvatureBand", "spotWorkspace"];
+const REQUIRED = [
+	"parserValidation",
+	"alignmentNativeUi",
+	"geoRuntimeAcceptance",
+	"curvatureBand",
+	"spotWorkspace",
+	"alignmentCreation",
+	"transEdDepth",
+	"gndMdbDrop",
+	"gndImportWorkbench",
+	"uiRecovery",
+	"importLoadStability",
+];
 const result = { passed: false, results: {}, deterministicPassed: false, restorationPassed: false, remainingFixtureIds: [], failures: [], restorationDiagnostics: [], completedAt: null };
 const evidence = new Map();
 const completionPromises = new Map();

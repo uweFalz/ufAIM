@@ -1,0 +1,95 @@
+% Deutsche Parallelfassung zu foundations/notation.tex
+
+\chapter{Notation als Abhängigkeitssprache}
+\label{chap:notation}
+
+Die Notation wird in der Reihenfolge eingeführt, in der das Problem von
+CAD-Kurve und Vermessungspolyline sie benötigt. Ein Symbol verdient seinen
+Platz, indem es eine Eingabe, eine Ausgabe, eine Qualifikation oder eine
+Operation bezeichnet. Es weist weder ingenieurtechnische Identität noch
+Autorität zu.
+
+\section{Wo gilt die Konstruktion?}
+
+Das Intervall \(I\subseteq\mathbb{R}\) ist die intrinsische longitudinale
+Domäne, und \(s\in I\) ist die Bogenlänge. Ein Strich bezeichnet die
+Differentiation nach \(s\), sofern keine andere unabhängige Variable angegeben
+ist:
+\[
+f'(s)=\frac{\dd f}{\dd s}(s).
+\]
+Das Symbol \(\mathcal K\) bezeichnet den zulässigen Raum der
+Krümmungsfunktionen. Die Schreibweise \(\kappa\in\mathcal K\) benennt damit
+sowohl die konstruktive Eingabe als auch die Regularitätsbedingungen, die das
+anwendbare Modell verlangt.
+
+\section{Was ist gegeben und was wird rekonstruiert?}
+
+Die intrinsische Eingabe ist die Krümmung \(\kappa(s)\). Überhöhungsdrehung
+\(\phi(s)\) und ihre Rate \(\omega(s)=\phi'(s)\) werden hinzugefügt, wenn der
+räumliche Eisenbahnzustand sie erfordert. Richtungswinkel \(\theta(s)\),
+ebene Position \(\gamma(s)\) und lokale Richtungen
+\(\mathbf t(s),\mathbf n(s),\mathbf b(s)\) werden durch die benannten
+Entwicklungs- und Realisierungsbeziehungen abgeleitet. Das lokale Frame ist
+\[
+F(s)=\bigl(\mathbf t(s),\mathbf n(s),\mathbf b(s)\bigr).
+\]
+
+Ein allgemeiner Zustand ist \(x(s)\in\mathcal X\), eine Steuerung ist
+\(u(s)\), und eine bewertete oder abgeleitete Größe liegt in \(\mathcal Y\).
+Die Namen \(\mathrm{pose2}(s)\) und \(\mathrm{pose3}(s)\) bezeichnen die in
+\cref{chap:state-model} definierten Zustandsbegriffe; sie sind keine Synonyme
+für eine gespeicherte Kurve oder Polyline.
+
+\section{Welchen Zustand und welche Quelle beschreibt eine Größe?}
+
+Indizes bewahren die Rolle einer Größe:
+\[
+(\cdot)_{\mathrm{target}},\qquad
+(\cdot)_{\mathrm{real}},\qquad
+(\cdot)_{\mathrm{meas}}.
+\]
+Sie unterscheiden einen beabsichtigten Zustand, einen physisch realisierten
+Zustand und eine gemessene Beschreibung, die als Beobachtung verwendet wird.
+Weitere Indizes können eine Quelle, ein Frame, eine Koordinatendomäne oder
+einen Realization Context benennen. Qualifikation verhindert versehentliche
+Substitution; sie beweist nicht, dass zwei qualifizierte Größen dasselbe
+Engineering Object betreffen.
+
+\section{In welchem Raum wird ein Vergleich berechnet?}
+
+Gleisbezogene Koordinaten \((s,d,h)\) gehören zu
+\(\Omega_{\mathrm{track}}\), während ein realisierter Punkt
+\(x_{\mathrm w}\) zu \(\Omega_{\mathrm{world}}\) gehört. Die
+Track-to-World- und World-to-Track-Operationen lauten
+\[
+\mathcal P_{\mathrm{tw}}:
+\Omega_{\mathrm{track}}\rightarrow\Omega_{\mathrm{world}},
+\qquad
+\mathcal P_{\mathrm{wt}}:
+\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{track}}.
+\]
+Eine Koordinatentransformation \(\mathcal C\) überführt eine
+World-Space-Beschreibung in eine andere. Sie ist keine
+World-to-Track-Interpretation und begründet keine Objektidentität.
+
+\section{Welche Operation erzeugt das nächste Artefakt?}
+
+Die wiederkehrenden Operatoren sind Abtastung \(\mathcal S\), Interpolation
+\(\mathcal I\), Bewertung \(\mathcal E\), Frame-Konstruktion \(\mathcal F\),
+physische Antwort \(\mathcal M\), lokale Anpassung \(\mathcal A\) und
+Realisierung \(\mathcal R\). Jede spätere Verwendung muss Domäne, Kodomäne
+und anwendbare Annahmen benennen. Insbesondere erzeugt \(\mathcal E\) ein
+Bewertungsergebnis, niemals eine Entscheidung.
+
+Symbole, die nur unter einer Erdoberflächenrealisierung benötigt werden,
+werden zurückgestellt, bis diese Qualifikation hergestellt ist:
+\(\kappa_g\) und \(\kappa_n\) bezeichnen geodätische Krümmung und
+Normalkrümmung, \(\mathbf n_{\mathrm E}\) die Oberflächennormale des
+Ellipsoids. Ihre Bedeutung hängt von der anwendbaren Fläche und metrischen
+Verbindung ab.
+
+Skalare werden kursiv, Vektoren fett, Mengen und Räume groß oder
+kalligrafisch und Operatoren dort kalligrafisch gesetzt, wo dies ihre Rolle
+sichtbar macht. Diese typografischen Konventionen unterstützen die
+Abhängigkeitssprache; sie ersetzen keine ausdrückliche Typisierung.

@@ -1,6 +1,7 @@
 // src/import/parsers/technet/gndEdit/index.js
 
 import { parseGND_XLSX } from './parseGND_XLSX.js';
+import { parseGND_MDB } from './parseGND_MDB.js';
 
 //
 export const meta = {
@@ -10,10 +11,13 @@ export const meta = {
 
 //
 export const sniff = {
-	extensions: ['xlsx', 'xlsm', 'xls'],
-	looksLike: async ({ file }) => {
+	extensions: ['xlsx', 'xlsm', 'xls', 'mdb'],
+	looksLike: async ({ file, bytes }) => {
 		const name = file?.name?.toLowerCase() || '';
 		const ext = name.includes('.') ? name.split('.').pop() : '';
+		if (ext === 'mdb') {
+			return bytes?.length >= 19 && new TextDecoder('latin1').decode(bytes.slice(4, 19)) === 'Standard Jet DB';
+		}
 		if (!['xlsx', 'xlsm', 'xls'].includes(ext)) {
 			return false;
 		}
@@ -23,5 +27,8 @@ export const sniff = {
 
 //
 export async function parse({ file, text, bytes, context = {} }) {
-	return await parseGND_XLSX({ file, text, bytes, context });
+	const ext = file?.name?.toLowerCase().split('.').pop();
+	return ext === 'mdb'
+		? await parseGND_MDB({ file, bytes, context })
+		: await parseGND_XLSX({ file, text, bytes, context });
 }

@@ -1,0 +1,120 @@
+\chapter{Durchfahrtsgesetz und operative Geschwindigkeit}
+\label{chap:operational-velocity}
+
+Der Zwei-Geschwindigkeiten-Vergleich in Teil V verwendete konstante
+Testgeschwindigkeiten, um die \(v^2\)-Abhängigkeit zu isolieren. Betrieb ist
+allgemeiner. Eine Durchfahrt durch das laufende Alignment ist eine monotone
+Funktion \(s=s(t)\) in dem Intervall, in dem gewählte Orientierung und
+Anwendbarkeitsbedingungen gelten.
+
+\begin{principle}[Geschwindigkeits-Laufzeit-Prinzip]
+\label{princ:velocity-runtime}
+Geschwindigkeit ist eine qualifizierte Ableitung eines Durchfahrtsgesetzes und
+keine intrinsische Alignment-Eigenschaft.
+\end{principle}
+
+\section{Raum wird zu Zeit}
+
+\begin{definition}[Geschwindigkeitsbeziehung]
+\label{def:velocity-relation}
+Für eine differenzierbare Durchfahrt gilt
+\[
+v(t)=\dot s(t)=\frac{\dd s}{\dd t},
+\qquad
+a_s(t)=\dot v(t)=\frac{\dd^2s}{\dd t^2}.
+\]
+Für eine differenzierbare räumliche Größe \(f(s)\) gilt
+\[
+\frac{\dd}{\dd t}f(s(t))=v(t)f'(s(t)).
+\]
+\end{definition}
+
+Auf die getrennten Krümmungs- und Überhöhungsgesetze angewendet ergibt sich
+\[
+\frac{\dd\kappa}{\dd t}=v\kappa'(s),
+\qquad
+\frac{\dd u}{\dd t}=v u'(s).
+\]
+Ihre unterschiedlichen Partitionen und Provenienzen bleiben erhalten. Eine
+gemeinsame Durchfahrt macht sie weder zu einem Gesetz noch autorisiert sie eine
+Kopplungsregel.
+
+Für die zweite Zeitableitung der Krümmung liefert die vollständige Kettenregel
+\begin{equation}
+\frac{\dd^2\kappa}{\dd t^2}
+=v^2\kappa''(s)+\dot v\,\kappa'(s).
+\label{eq:curvature-second-time-derivative}
+\end{equation}
+Der zweite Term entfällt nur unter einer angegebenen
+Konstantgeschwindigkeitsannahme. Räumliche Glätte gehört zu \(\kappa(s)\);
+zeitliche Anregung hängt zusätzlich von \(s(t)\) ab.
+
+\section{Welche Geschwindigkeit ist gemeint?}
+
+\begin{definition}[Entwurfsgeschwindigkeit]
+\label{def:design-velocity}
+Eine Entwurfsgeschwindigkeit ist eine Annahme für einen angegebenen
+Entwurfszweck mit Quelle, Route oder Elementbereich und Gültigkeit.
+\end{definition}
+
+\begin{definition}[Operative Geschwindigkeit]
+\label{def:operational-velocity}
+Eine operative Geschwindigkeit ist eine geplante, zulässige oder tatsächliche
+Durchfahrtseingabe, deren Rolle und Qualifikationen für die Berechnung
+angegeben sind.
+\end{definition}
+
+Folgende Rollen dürfen nicht zusammenfallen:
+\begin{description}
+\item[Entwurfsgeschwindigkeit] Annahme zur Entwicklung oder Prüfung eines
+Entwurfs.
+\item[Zulässige Geschwindigkeit] regel- oder autoritätsgestützte Obergrenze
+unter ihrer Anwendbarkeit und Gültigkeit.
+\item[Geplante Betriebsgeschwindigkeit] Eingabe aus Fahrplan oder
+Betriebsplanung.
+\item[Tatsächlich gemessene Geschwindigkeit] zeitindizierte Beobachtung mit
+Erfassungsprovenienz und Unsicherheit.
+\item[Optimierungsvariable] deklarierter Freiheitsgrad eines Experiments,
+kein autorisierter Betriebswert.
+\item[Konstante Testgeschwindigkeit] explizite Vereinfachung zur Isolation
+einer Abhängigkeit.
+\end{description}
+
+\begin{definition}[Geschwindigkeitsumgrenzung]
+\label{def:velocity-envelope}
+Eine Geschwindigkeitsumgrenzung ist eine qualifizierte Menge zulässiger oder
+untersuchter Durchfahrtswerte entlang einer identifizierten Route oder eines
+Alignments. Quelle, Bereich, Gültigkeit und Rolle bestimmen ihre Verwendung.
+\end{definition}
+
+\section{Kompaktes Beispiel mit veränderlicher Geschwindigkeit}
+
+An derselben Übergangsbogenposition sei
+\[
+\kappa'=2.0\times10^{-5}\,\mathrm{m^{-2}},
+\qquad
+\kappa''=-1.0\times10^{-7}\,\mathrm{m^{-3}}.
+\]
+Bei \(v=20\,\mathrm{m/s}\) gilt
+\[
+\dot\kappa=4.0\times10^{-4}\,\mathrm{m^{-1}s^{-1}}.
+\]
+Bei konstanter Geschwindigkeit ist
+\(\ddot\kappa=v^2\kappa''=-4.0\times10^{-5}\,
+\mathrm{m^{-1}s^{-2}}\). Gilt stattdessen
+\(\dot v=0.5\,\mathrm{m/s^2}\), folgt aus
+\cref{eq:curvature-second-time-derivative}
+\[
+\ddot\kappa
+=-4.0\times10^{-5}+1.0\times10^{-5}
+=-3.0\times10^{-5}\,\mathrm{m^{-1}s^{-2}}.
+\]
+Das Alignment-Gesetz ist in beiden Fällen identisch. Die Beschleunigung ändert
+die zeitliche Exposition durch einen Term, den die
+Konstantgeschwindigkeitsvereinfachung auslässt.
+
+\begin{summary}
+Jede Verwendung von Geschwindigkeit muss Quelle, Anwendbarkeit, Gültigkeit
+und Berechnungsrolle offenlegen. Das Symbol \(v\) allein ist keine
+ausreichende Qualifikation.
+\end{summary}

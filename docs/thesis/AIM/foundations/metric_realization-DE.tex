@@ -1,0 +1,97 @@
+% Deutsche Parallelfassung zu foundations/metric_realization.tex
+
+\chapter{Metrische Realisierung}
+\label{chap:metric-realization}
+
+Nachdem die Krümmungsänderung einen überarbeiteten intrinsischen Zustand
+erzeugt hat, ist die Trajektorie mathematisch bestimmt, aber noch nicht
+räumlich messbar. Abstände zu Vermessungspunkten, World-Positionen und
+Frame-Orientierungen erfordern einen metrischen Kontext. Metrische
+Realisierung ist die Handlung, die diesen Kontext bereitstellt, ohne
+Alignment-Identität oder konstruktive Geschichte zu verändern.
+
+\section{Von intrinsischer Ordnung zu messbarer Geometrie}
+
+Die intrinsische Konstruktion liefert die longitudinale Domäne, den
+Krümmungsverlauf, geordnete Zustände und anwendbare Randbedingungen. Ein
+metrischer Realization Context liefert den metrischen Raum, gegebenenfalls die
+Referenzfläche, Einbettungskonventionen und weitere Informationen, die zur
+Interpretation von Länge, Richtung, Krümmung und Position erforderlich sind.
+
+\begin{definition}[Metrische Realisierung]
+Metrische Realisierung ist die Interpretation einer intrinsischen
+ingenieurtechnischen Beschreibung innerhalb eines bestimmten metrischen
+Raums.
+\end{definition}
+
+Die Handlung wird geschrieben als
+\[
+\mathcal G_c:\mathcal X\rightarrow\mathcal X_{\mathrm{metric}},
+\]
+wobei der Index \(c\) den Realization Context ausdrücklich macht. Zwei
+Kontexte können aus demselben intrinsischen Zustand verschiedene Koordinaten
+oder metrische Folgen erzeugen und dabei dasselbe Engineering Object bewahren.
+
+\paragraph{Ausführungsvertrag.}
+Der Operator empfängt einen intrinsischen Zustand und einen Realization
+Context; er erzeugt einen metrischen Zustand, in dem räumliche Größen bewertet
+werden können. Er erfordert ein anwendbares metrisches Modell und hinreichende
+Einbettungsdaten. Er bewahrt die Engineering Identity und trägt die Provenienz
+sowohl des intrinsischen Zustands als auch des Kontexts. Er kann weder eine
+physische Eisenbahn erzeugen, ihren Zustand beobachten, eine autoritative
+Koordinatenquelle auswählen noch entscheiden, ob eine Abweichung akzeptabel
+ist.
+
+\section{Die fünf Rollen getrennt halten}
+
+Im Beispiel der Krümmungsänderung sind die Rollen nun operativ getrennt:
+
+\begin{description}
+\item[Intrinsische Konstruktion] bestimmt, wie sich die bearbeitete Krümmung
+  in Richtungswinkel und Trajektorie fortpflanzt.
+\item[Metrischer Kontext] bestimmt, wie die Trajektorie messbare Distanz,
+  Richtung, Krümmung und räumliche Position erhält.
+\item[Koordinatenrepräsentation] hält das realisierte Ergebnis in einer
+  gewählten Koordinatenbeschreibung fest; \(\mathcal C\) kann diese
+  Beschreibung ändern, ohne die intrinsische Konstruktion zu wiederholen.
+\item[Physische Realisierung] betrifft die gebaute oder instand gehaltene
+  Eisenbahn und wird durch \(\mathcal R\), nicht durch \(\mathcal G_c\), zum
+  Zielzustand in Beziehung gesetzt.
+\item[Beobachtung] liefert quellengebundene Evidenz über einen Zustand,
+  beispielsweise Vermessungsstichproben mit Provenienz und Unsicherheit.
+\end{description}
+
+Nach der Verarbeitung können diese Rollen dieselben numerischen Koordinaten
+teilen. Numerische Übereinstimmung macht sie nicht austauschbar.
+
+\section{Die Abweichung berechenbar machen}
+
+Es sei \(x_{\mathrm{target}}\) der überarbeitete intrinsische Zielzustand. Der
+metrische Zustand
+\[
+x_{\mathrm{target}}^{c}=\mathcal G_c(x_{\mathrm{target}})
+\]
+kann als CAD-Kurve oder abgetastete Polyline repräsentiert werden.
+Vermessungsevidenz muss vor dem Vergleich in einem kompatiblen Kontext
+interpretiert werden. Eine Koordinatentransformation kann zwei
+World-Space-Beschreibungen zusammenführen; eine World-to-Track-Abbildung kann
+eine gleisbezogene Interpretation bereitstellen. Keine der beiden Operationen
+beweist gemeinsame Identität, gemeinsamen Zustand oder Quellenautorität.
+
+Nachdem Kompatibilität und Anwendbarkeit begründet wurden, kann eine Bewertung
+ein qualifiziertes Residuum erzeugen. Ein Wechsel von \(c\) kann dieses
+Residuum verändern, weil sich Projektion, Flächenmodell oder metrische
+Interpretation geändert hat. Diese Empfindlichkeit ist eine Eigenschaft der
+Bewertungsqualifikation, kein Beleg dafür, dass das intrinsische Alignment
+eine neue Identität erhalten hat.
+
+\section{Warum das Ellipsoid folgt}
+
+Eine lokal euklidische Realisierung kann für eine räumlich begrenzte
+Ingenieuraufgabe ausreichen. Wo Projektionsverzerrung oder
+Erdoberflächengeometrie wesentlich ist, muss der Realization Context
+stattdessen die Referenzfläche und ihre metrische Struktur offenlegen. Die
+Ellipsoidkapitel beginnen daher keine neue Geometriegeschichte. Sie
+instanziieren den Vertrag der metrischen Realisierung für eine Fläche, auf der
+Geradheit, Krümmung, Normalenrichtung und Frame-Transport
+flächenbewusste Definitionen erfordern.

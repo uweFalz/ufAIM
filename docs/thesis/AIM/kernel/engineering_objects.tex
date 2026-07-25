@@ -1,83 +1,72 @@
 % kernel/engineering_objects.tex
 
-\chapter{Engineering Objects}
+\chapter{From Calculated Transition to Engineering Object}
 \label{chap:engineering-objects}
 
-Engineering activity concerns entities that possess enduring meaning
-within the engineering domain. The Knowledge Kernel calls these
-entities engineering objects.
+The calculation returns a parameterized Berlinish composition
+$H_{\mathrm{in}}+C+H_{\mathrm{out}}$. At this point it is a proposal in a
+space of expressible transition functions. To say that it modifies the
+transition between two identified neighbouring elements is a different kind
+of statement: the proposal is now about a particular alignment.
 
-\section{Engineering Object}
+\section{What is the proposal about?}
 
 \begin{definition}[Engineering object]
 \label{def:engineering-object}
-An engineering object is a durable engineering entity whose identity is
+An Engineering Object is a durable engineering entity whose identity is
 independent of its representations, observations, realizations, and
 computational models.
 \end{definition}
 
-Durability does not imply immutability. An engineering object may be
-created, modified, related to other objects, observed under changing
-conditions, and represented in many forms while retaining one
-engineering identity.
+The alignment is the durable subject. The proposed transition is an element
+within its ordered construction and contributes to a candidate state of that
+alignment. A SPOT-capable engineering object model may carry the subject,
+state, and their relations, but a software record does not create their
+engineering identity. The solver output, a CAD curve generated from it, and a
+row in an exchange file are accounts of the proposal, not three new
+alignments.
 
-An engineering object is therefore not defined by a particular file,
-coordinate system, database record, visual geometry, or software class.
-Those may carry information about the object, but none of them alone is
-the object.
+The proposal must therefore name the alignment it concerns, the predecessor
+state from which it was derived, and the interval and neighbouring elements
+whose construction it would change. Without those references, the numerical
+result remains a reusable transition description rather than an instantiated
+Alignment element.
 
-\section{Object and Description}
+\section{What kind of account is present?}
 
-The distinction between an engineering object and its descriptions is
-fundamental. A state describes the object under a specified condition. A
-representation communicates information about it. An observation
-records evidence concerning it. A realization interprets or embodies it
-within a metric or physical context.
+Table~\ref{tab:meaning-roles} keeps together distinctions that will be used
+throughout this part. They are relations to one engineering subject, not
+competing names for the same thing.
 
-These descriptions may change independently. A new representation does
-not create a new engineering object. A revised observation does not by
-itself change the object. A different metric realization does not alter
-its identity.
+\begin{table}[htbp]
+\centering
+\small
+\caption{Roles in the running transition example}
+\label{tab:meaning-roles}
+\begin{tabular}{@{}p{0.15\textwidth}p{0.31\textwidth}p{0.44\textwidth}@{}}
+\toprule
+Role & In the running example & What the role does not establish \\
+\midrule
+Object & the enduring alignment & no particular geometry, file, or approval \\
+Representation & CAD curve, sampled polyline, or exchange record & neither object identity nor physical truth \\
+State & intended state or curvature-edited candidate state & no authority merely because it is computable \\
+Evidence & import history, calculation record, or survey observation & no automatic acceptance or applicability \\
+Evaluation & test against speed, cant, realization, and applicable rules & no engineering decision \\
+Authority & accountable acceptance, rejection, or selection & no transfer of ownership to the tool \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\section{Persistence}
+This makes a derived editable representation of an imported transition
+possible without destroying the import. The imported record remains
+source-grounded evidence; reconstruction creates a traceable derived state;
+editing creates a proposal. Each account retains its own provenance and truth
+mode while referring, if the identity claim is justified, to the same
+alignment.
 
-Engineering objects persist across workflows, projects, tools, and
-representations. Persistence requires an identity that can be referred
-to independently of transient processing states.
+\section{Why identity is required next}
 
-This distinction supports exchange, comparison, revision, provenance,
-and long-term engineering responsibility. It also prevents temporary
-preview geometry, visualization primitives, or runtime selections from
-being mistaken for durable engineering objects.
-
-\section{Relations}
-
-Engineering objects may participate in explicit relations. Relations
-express engineering meaning between objects without collapsing their
-identities.
-
-An alignment may use a profile, intersect a platform edge, participate
-in a project, or be observed by a measurement campaign. These relations
-connect engineering objects while preserving the responsibility and
-identity of each participant.
-
-\section{Canonical Interpretation}
-
-\begin{proposition}
-An engineering object remains distinguishable from every state,
-representation, observation, realization, and computational model that
-refers to it.
-\end{proposition}
-
-\begin{proposition}
-Changes of representation or realization do not by themselves create a
-new engineering object.
-\end{proposition}
-
-\begin{proposition}
-Engineering relations connect objects without merging their identities.
-\end{proposition}
-
-The general engineering-object concept provides the basis for the later
-identification of alignments and other railway entities as durable
-objects within the engineering domain.
+The object distinction prevents a file, curve, or solver result from becoming
+the alignment. It does not yet tell us whether replacing the clothoid core,
+changing only a half-wave parameter, or rebuilding an imported curve preserves
+the same object. That question requires identity through change.

@@ -1,0 +1,299 @@
+% Deutsche Parallelfassung zu geometry/curvature_space.tex
+
+\chapter{Krümmungsraum}
+\label{chap:curvature-space}
+
+\section*{Dasselbe Alignment, intrinsisch gelesen}
+
+Betrachtet wird der identifizierte Gerade--Übergang--Bogen-Zustand aus
+Abbildung~\ref{fig:alignment-object-stationing-curvature}. Seine geordneten
+Stationsbereiche seien
+\[
+I_G=[s_0,s_1],\qquad I_U=[s_1,s_2],\qquad I_B=[s_2,s_3].
+\]
+Dabei ist $s$ die intrinsische Längsposition, weder eine $x$-Koordinate
+noch eine dargestellte Kilometerangabe. Die Orientierung legt die
+Durchlaufrichtung fest. Ordnung und $s$ bestimmen gemeinsam, welches
+Element auf welches folgt, bevor eine geografische Platzierung gewählt wird.
+
+\begin{principle}[Krümmungsraumprinzip]
+\label{princ:curvature-space}
+Innerhalb von AIM wird die Plangeometrie eines identifizierten
+Alignment-Zustands primär durch sein Krümmungsgesetz über der intrinsischen
+Längsposition gelesen.
+\end{principle}
+
+\section{Krümmung macht die Elementfolge sichtbar}
+
+\begin{definition}[Krümmungsgesetz]
+\label{def:curvature-law}
+Ein Krümmungsgesetz ist eine Funktion
+\[
+\kappa:I\to\mathbb R,
+\]
+die auf einem intrinsischen Bogenlängenintervall
+$I\subset\mathbb R$ definiert ist.
+\end{definition}
+
+Für das laufende Beispiel gilt
+\[
+\kappa(s)=
+\begin{cases}
+0, & s\in I_G,\\
+\kappa_U(s), & s\in I_U,\\
+\kappa_B, & s\in I_B.
+\end{cases}
+\label{eq:straight-transition-arc-curvature}
+\]
+Das Krümmungsband liest die Konstruktion unmittelbar: Null bedeutet Gerade,
+konstante von null verschiedene Krümmung bedeutet Kreisbogen, veränderliche
+Krümmung bedeutet Übergang. Elementgrenzen erscheinen bei $s_1$ und $s_2$,
+wo sich Werte und Ableitungen vergleichen lassen. In der Plandarstellung
+können zwei Familien nahezu gleich aussehen und dennoch verschiedene
+Endableitungen verbergen.
+
+Das CurvatureBand der App ist eine Implementierungsrealisierung dieser Lesart.
+Das mathematische Argument hängt nicht von dieser Oberfläche ab: Jede
+Auswertung, die $s$, Elementbereiche, $\kappa$ und die relevanten
+Ableitungen erhält, kann dieselbe Struktur offenlegen.
+
+\begin{principle}[Curvature-first-Prinzip]
+\label{princ:curvature-first}
+Krümmung ist gegenüber rekonstruierten Plankoordinaten primär, bleibt aber ein
+Zustand eines identifizierten Alignments statt einer frei schwebenden Kurve.
+\end{principle}
+
+\section{Rekonstruktion vor geografischer Platzierung}
+
+\begin{definition}[Intrinsische Rekonstruktion]
+\label{def:intrinsic-curvature-reconstruction}
+Für $\kappa(s)$ und eine lokale Anfangspose
+$(\gamma(s_0),\theta(s_0))$ erfüllen Tangentenrichtung und Plankurve
+\[
+\theta'(s)=\kappa(s),\qquad
+\gamma'(s)=\mathbf t(s)=
+\begin{bmatrix}\cos\theta(s)\\\sin\theta(s)\end{bmatrix}.
+\]
+\end{definition}
+
+Die Integration rekonstruiert eine lokale kartesische Kurve. Eine Änderung
+des Ursprungs oder Drehung dieses lokalen Koordinatenrahmens verändert die
+Koordinatenrepräsentation, nicht intrinsische Folge oder Krümmungsgesetz. Ein
+späterer Realization Context kann denselben Zustand in einem projizierten CRS
+oder auf einer Erdreferenzfläche platzieren. Eine physische Realisierung kann
+ihn anschließend unvollkommen instanziieren. Diese Abhängigkeiten fügen
+metrische, geografische und physische Bedeutung hinzu, ohne die intrinsische
+Geometrie des Alignments rückwirkend zu erzeugen.
+
+\section{Krümmungsraum und die erforderlichen Unterscheidungen}
+
+\begin{definition}[Krümmungsraum]
+\label{def:curvature-space}
+Der Krümmungsraum bezeichnet den Raum der Krümmungsgesetze
+\[
+\mathcal K=\{\kappa:I\to\mathbb R\},
+\]
+in dem angegebene Anforderungen an Zulässigkeit, Glattheit, Realisierung und
+Betrieb anwendbare Teilmengen auswählen.
+\end{definition}
+
+Das Symbol (mathcal K) macht nicht jedes mathematisch ausdrückbare Gesetz
+zulässig, anwendbar oder autoritativ. Es stellt den Vergleichsraum bereit, in
+dem konstante, veränderliche, beschränkte, differenzierbare und hybride Gesetze
+für den identifizierten Ingenieurzustand unterschieden werden.
+
+\begin{definition}[Konstante Krümmung]
+\label{def:constant-curvature}
+Ein konstantes Krümmungsgesetz erfüllt $\kappa(s)=\kappa_0$. Der Fall
+$\kappa_0=0$ ist eine Gerade; $\kappa_0\neq0$ rekonstruiert einen
+Kreisbogen.
+\end{definition}
+
+\begin{definition}[Übergangskrümmung]
+\label{def:transition-curvature}
+Ein Übergangskrümmungsgesetz verbindet verschiedene Krümmungszustände über
+einen ausdrücklich angegebenen Längsbereich.
+\end{definition}
+
+Seine Ableitungen machen Eigenschaften an den Anschlüssen prüfbar.
+Tabelle~\ref{tab:curvature-continuity-reading} nennt nur die geometrische
+Lesart; konkrete betriebliche Grenzen benötigen weiterhin anwendbares
+Eisenbahnwissen, Geschwindigkeit, Überhöhung, Fahrzeugannahmen und Zweck.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Stetigkeitslesarten an einer Elementgrenze $s_b$}
+\label{tab:curvature-continuity-reading}
+\begin{tabular}{@{}p{0.16\textwidth}p{0.25\textwidth}p{0.49\textwidth}@{}}
+\toprule
+Größe & Frage an der Grenze & Was die Antwort offenlegt \\
+\midrule
+$\kappa$ & Stimmen linker und rechter Wert überein? & Ob Krümmung stetig ist; ein Sprung führt zu einer unmittelbaren Änderung der seitlichen geometrischen Anforderung. \\
+$\kappa'$ & Stimmen die Krümmungsraten überein? & Ob die Krümmungsentwicklung ohne Ratensprung ein- und ausläuft; bei Geschwindigkeit beeinflusst dies den zeitlichen Verlauf der Querreaktion. \\
+$\kappa''$ & Stimmen die Ableitungen der Rate überein? & Ob die Übergangsentwicklung höherer Ordnung glatt ist; ihre Bedeutung für Fahrzeugreaktion oder Komfort bleibt von Geschwindigkeit, Überhöhung und Modell abhängig. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{definition}[Krümmungsstetigkeit]
+\label{def:curvature-continuity}
+Ein Krümmungsgesetz ist $C^0$, wenn $\kappa$ stetig ist, $C^1$, wenn
+$\kappa'$ existiert und stetig ist, und $C^2$, wenn $\kappa''$ auf dem
+angegebenen Bereich existiert und stetig ist.
+\end{definition}
+
+Positionsstetigkeit allein beantwortet diese Fragen nicht. Das nächste Kapitel
+klassifiziert die Gesetze nach genau diesen sichtbaren Eigenschaften, bevor
+das Berlinish-Kapitel sie auf den Übergangsbereich anwendet.
+
+\section{Dünn besetzte Krümmungsrepräsentation}
+
+\begin{definition}[Dünn besetzte Krümmungsrepräsentation]
+\label{def:sparse-curvature-representation}
+Eine dünn besetzte Repräsentation beschreibt Krümmung durch:
+\begin{itemize}
+\item feste Krümmungselemente,
+\item Übergangselemente,
+\item und kompakte Parametersätze.
+\end{itemize}
+\end{definition}
+
+Innerhalb von AIM werden dünn besetzte Alignments als kompakte
+Krümmungsprogramme interpretiert. Das dünn besetzte Modell speichert
+Krümmungsstruktur, Übergangsfamilien und Rekonstruktionsregeln anstelle dichter
+geometrischer Punktwolken.
+
+Dadurch eignen sich dünn besetzte Alignments für Rekonstruktion,
+Importnormalisierung, Laufzeitbewertung, Realisierungsvergleich und
+Optimierung.
+
+\section{Hybride Krümmungsrepräsentation}
+
+\begin{definition}[Hybrides Krümmungsmodell]
+\label{def:hybrid-curvature-model}
+Ein hybrides Krümmungsmodell kombiniert:
+\begin{itemize}
+\item parametrische Krümmungsstruktur,
+\item abgetastete Korrekturdaten,
+\item und lokale Verfeinerung.
+\end{itemize}
+\end{definition}
+
+Hybride Repräsentationen ermöglichen kompakte Speicherung, effiziente
+Rekonstruktion, realisierungsbewusste Korrektur, Integration gemessener
+Zustände und skalierbare Laufzeitbewertung.
+
+Sie sind besonders relevant, wenn gemessene oder realisierte Geometrie durch
+ein rein analytisches Zielmodell nicht angemessen repräsentiert werden kann.
+
+\section{Normierter Krümmungsraum}
+
+\begin{definition}[Normiertes Krümmungsgesetz]
+\label{def:normalized-curvature-law}
+Ein normiertes Krümmungsgesetz ist definiert auf
+\[
+w\in[0,1].
+\]
+\end{definition}
+
+Normierte Repräsentationen trennen geometrische Form von physischer
+Skalierung. Dies ermöglicht wiederverwendbare Übergangsfamilien,
+Lookup-basierte Übergänge, Familieninterpolation und normierte Optimierung.
+Physische Krümmungsgesetze entstehen aus normierten Gesetzen durch Skalierung
+von Länge und Krümmungsamplitude.
+
+\section{Krümmungsableitungen}
+
+\begin{definition}[Krümmungsableitungen]
+\label{def:curvature-derivatives}
+Wichtige Größen höherer Ordnung sind:
+\[
+\kappa'(s),\qquad \kappa''(s),\qquad \kappa'''(s).
+\]
+\end{definition}
+
+Diese Größen beeinflussen Ruck, Realisierungsverhalten, dynamische Glätte,
+Fahrzeugreaktion und Übergangsqualität. Krümmungsableitungen bilden die
+Brücke von intrinsischer Geometrie zur Laufzeitdynamik.
+
+\section{Frequenzinterpretation}
+
+Krümmungsgesetze können auch spektral interpretiert werden. Niederfrequente
+Krümmungsanteile bestimmen die globale geometrische Struktur, während
+hochfrequente Anteile Realisierungsempfindlichkeit, numerische Instabilität,
+Messempfindlichkeit und dynamische Rauheit beeinflussen.
+
+\begin{proposition}[Spektrales Realisierungsprinzip]
+\label{prop:spectral-realization-principle}
+Realisierung wirkt im Krümmungsraum näherungsweise als Tiefpassfilter.
+\end{proposition}
+
+Diese spektrale Sicht verbindet den Krümmungsraum unmittelbar mit Bau,
+Instandhaltung und physischer Realisierung.
+
+\section{Krümmungsraum und Laufzeit}
+
+Die Laufzeitbewertung arbeitet primär auf Krümmungsstrukturen und nicht
+unmittelbar auf dichter Geometrie. Projektion, Rekonstruktion,
+Frame-Bewertung, pose3-Bewertung und Dynamik werden aus der Laufzeitbewertung
+krümmungsbasierter Zustände abgeleitet. Der Krümmungsraum ist somit nicht nur
+ein Entwurfsraum, sondern auch der rechnerische Zustandsraum der
+Laufzeitrekonstruktion.
+
+\section{Krümmungsraum und Realisierung}
+
+Realisierung transformiert Zielkrümmung in physisch realisierte Krümmung:
+\[
+\kappa_{\mathrm{real}}
+=
+\mathcal R_{\kappa}(\kappa_{\mathrm{target}}).
+\]
+Der Realisierungsoperator kann den Krümmungsverlauf abschwächen, deformieren
+oder lokal verändern. Der physisch relevante Entwurfsgegenstand ist folglich
+nicht nur das Zielkrümmungsgesetz, sondern auch sein erwarteter realisierter
+Krümmungszustand.
+
+\section{Krümmungsraum und Optimierung}
+
+Optimierung innerhalb von AIM wirkt primär im Krümmungsraum. Typische
+Optimierungsvariablen sind Übergangsparameter, Krümmungsamplituden,
+Übergangslängen, Krümmungsanker und dünn besetzte Krümmungskorrekturen.
+
+AIM-Optimierung kann daher als Suche nach zulässigen, realisierbaren und
+betrieblich geeigneten Pfaden im Krümmungsraum interpretiert werden.
+
+\section{Kanonische Interpretation}
+
+\begin{proposition}
+Innerhalb von AIM ist Eisenbahn-Alignment-Geometrie grundlegend ein Problem
+des Krümmungsraums.
+\end{proposition}
+\begin{proposition}
+Geometrie im Positionsraum wird als rekonstruierte, aus dem
+Krümmungsverlauf abgeleitete Geometrie interpretiert.
+\end{proposition}
+\begin{proposition}
+Übergangsbögen werden als gesteuerte Übergänge im Krümmungsraum
+interpretiert.
+\end{proposition}
+\begin{proposition}
+Realisierung, Laufzeitbewertung und Optimierung wirken auf Strukturen des
+Krümmungsraums, bevor sie auf visualisierte Positionsgeometrie wirken.
+\end{proposition}
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Der Krümmungsraum bildet die intrinsische geometrische Grundlage von AIM.
+
+In diesem Framework wirkt Krümmung als primäre Geometrie, werden dünn
+besetzte Modelle zu Krümmungsprogrammen und Übergangsbögen zu
+Krümmungsübergängen. Laufzeitsysteme arbeiten auf intrinsischer
+Krümmungsstruktur, Realisierung transformiert Krümmungszustände und
+Optimierung sucht innerhalb von Krümmungsraumstrukturen.
+
+Diese Interpretation vereinigt Geometrie, Realisierung, Laufzeitbewertung,
+Messinterpretation und Optimierung in einem intrinsischen mathematischen
+Framework.
+\end{summary}

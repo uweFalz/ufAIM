@@ -4,6 +4,8 @@ import { getParserIds, loadParserModule } from "./parserRegistry.js";
 import { validateParserModule } from "./validateParserModule.js";
 import { runImportPipeline } from "@src/import/runImportPipeline.js";
 import { parseGND_XLSX } from "./technet/gndEdit/parseGND_XLSX.js";
+import { digestGndEnvelope } from "./technet/gndEdit/gnd/gndSourceEnvelope.js";
+import { assessSpotAdmission } from "@src/import/spot/assessSpotAdmission.js";
 import * as XLSX from "sheetjs";
 
 function assert(condition, message) {
@@ -443,14 +445,20 @@ async function runGndSyntheticRegressionChecks() {
 		X_ASC24_EK: [],
 	};
 
-	const conflictingCrsFile = makeGndFile("synthetic_GND_conflicting_crs.xlsx", conflictingCrsRows);
-	const conflicting = await runImportPipeline(conflictingCrsFile, { log: () => {} });
+	const independentMultiCrsFile = makeGndFile("synthetic_GND_independent_multi_crs.xlsx", conflictingCrsRows);
+	const independentMultiCrs = await runImportPipeline(independentMultiCrsFile, { log: () => {} });
 	const crsSet = new Set(
-		(conflicting?.items ?? [])
+		(independentMultiCrs?.items ?? [])
 			.map((it) => it?.derived?.spatialRef?.horizontalCrsId ?? it?.payload?.spatialRef?.horizontalCrsId ?? null)
 			.filter(Boolean)
 	);
-	assert(crsSet.size === 2, `conflicting CRS should preserve two LSYS values, got ${crsSet.size}`);
+	assert(crsSet.size === 2, `independent multi-CRS source should preserve two LSYS values, got ${crsSet.size}`);
+	assert(
+		(independentMultiCrs?.items ?? []).every((item) =>
+			item?.kind !== "alignment" || item?.status?.promotable === true
+		),
+		"independent candidates were globally disabled merely because their CRS differ"
+	);
 
 	const missingPadRows = {
 		X_ASC11_PP: [
@@ -478,7 +486,7 @@ async function runGndSyntheticRegressionChecks() {
 		type: "application/octet-stream",
 	});
 	const mdbResult = await runImportPipeline(fakeMdb, { log: () => {} });
-	assert(mdbResult?.status === "unknown", `GND MDB should be unsupported/unknown, got ${String(mdbResult?.status)}`);
+	assert(mdbResult?.status === "invalid", `truncated GND MDB should be visibly invalid, got ${String(mdbResult?.status)}`);
 
 	const fakeTxt = new File(["PAD;STRECKE"], "X_ASC11_PP.txt", { type: "text/plain" });
 	const txtResult = await runImportPipeline(fakeTxt, { log: () => {} });
@@ -486,6 +494,52 @@ async function runGndSyntheticRegressionChecks() {
 		txtResult?.status === "invalid" || txtResult?.status === "unknown",
 		`ASCII standalone import should classify as invalid/unknown, got ${String(txtResult?.status)}`
 	);
+}
+
+async function runGndMdbBrowserAcceptance() {
+	const fixtureRoot = "/test/fixtures/gnd-mdb/";
+	const responses = await Promise.all([
+		fetch(`${fixtureRoot}valid-minimal-jet4.mdb`, { cache: "no-store" }),
+		fetch(`${fixtureRoot}missing-core-jet4.mdb`, { cache: "no-store" }),
+		fetch(`${fixtureRoot}conflicting-evidence-jet4.mdb`, { cache: "no-store" }),
+	]);
+	assert(responses.every((response) => response.ok), "committed physical MDB fixtures must be available");
+	const [mdbBytes, missingBytes, conflictingBytes] = await Promise.all(responses.map((response) => response.arrayBuffer()));
+	const phases = [];
+	const mdbFile = new File([mdbBytes], "valid-minimal-jet4.mdb");
+	const first = await runImportPipeline(mdbFile, { log: () => {}, onImportPhase: (phase) => phases.push(phase.code) });
+	if (typeof window !== "undefined" && first.status !== "ok") window.__mdbAcceptanceFailure = { status: first.status, reason: first.reason, errors: first.errors, phases };
+	const second = await runImportPipeline(new File([mdbBytes], "valid-minimal-jet4.mdb"), { log: () => {} });
+	assert(first.status === "ok", `direct MDB should reach normal GND result, got ${first.status}/${first.reason}: ${(first.errors ?? []).join(" | ")}`);
+	assert(first.sourceEnvelope?.extractor?.version === "3.2.0", "production MDB extractor version mismatch");
+	assert(await digestGndEnvelope(first.sourceEnvelope) === await digestGndEnvelope(second.sourceEnvelope), "MDB envelope digest is not deterministic");
+	for (const phase of ["file-recognized", "fingerprinted", "access-format-checked", "tables-extracted", "gnd-evidence-interpreted", "truthfulness-gate"]) assert(phases.includes(phase), `missing MDB phase ${phase}`);
+	const states = first.sourceEnvelope.tables.flatMap((table) => table.rows.flatMap((row) => row.cells.map((cell) => cell.state)));
+	for (const state of ["null", "empty", "zero", "false"]) assert(states.includes(state), `physical fixture missing ${state} state`);
+	const missing = await runImportPipeline(new File([missingBytes], "missing-core-jet4.mdb"), { log: () => {} });
+	assert(missing.status === "invalid" && missing.reason === "GND_SOURCE_INCOMPLETE", "missing core fixture must reject structurally");
+	assert(missing.items.length === 0 && missing.sourceEnvelope?.inventory?.length === 6, "missing core rejection must preserve inventory without geometry");
+	const conflict = await runImportPipeline(new File([conflictingBytes], "conflicting-evidence-jet4.mdb"), { log: () => {} });
+	assert(conflict.status === "ok", `conflicting evidence should retain safe geometry, got ${conflict.status}/${conflict.reason}`);
+	assert(conflict.meta?.diagnostics?.some((entry) => /ambiguous/.test(entry.code ?? "")), "LSYS conflict must remain explicit");
+	const affectedConflictItems = conflict.items.filter((item) => conflict.meta?.referenceEvidence?.affectedItemIds?.includes(item.id));
+	assert(affectedConflictItems.length > 0, "physical LSYS conflict did not identify an affected Alignment item");
+	assert(affectedConflictItems.every((item) => item.status?.promotable === false), "ambiguous LSYS evidence must not become promotable");
+	assert(affectedConflictItems.every((item) => item.status?.eligibility?.reason === "conflicting-reference-evidence"), "physical conflict eligibility reason mismatch");
+	assert(affectedConflictItems.every((item) => item.derived?.spatialRef?.crsId == null && item.derived?.spatialRef?.horizontalCrsId == null), "physical conflict selected a unique LSYS");
+	assert(conflict.sourceEnvelope?.tables?.length > 0, "physical conflict source envelope was not retained");
+	assert(affectedConflictItems.every((item) => assessSpotAdmission(item)?.admission === "reject"), "physical conflict crossed SPOT admission");
+	const truncated = await runImportPipeline(new File([mdbBytes.slice(0, 24)], "truncated.mdb"), { log: () => {} });
+	assert(truncated.status === "invalid" && truncated.items.length === 0, "truncated physical derivative must reject without geometry");
+	const corruptBytes = mdbBytes.slice(0);
+	new Uint8Array(corruptBytes).fill(0xff, 6144, 10240);
+	const corrupt = await runImportPipeline(new File([corruptBytes], "corrupt-page.mdb"), { log: () => {} });
+	assert(corrupt.status === "invalid" && corrupt.items.length === 0, "corrupt-page physical derivative must reject without geometry");
+	const overLimit = await runImportPipeline(new File([mdbBytes], "over-limit.mdb"), { log: () => {}, mdbLimits: { maxFileBytes: 32 } });
+	assert(overLimit.reason === "MDB_LIMIT_FILE_SIZE" && overLimit.items.length === 0, "file limit must reject physical input");
+	const timeout = await runImportPipeline(new File([mdbBytes], "timeout.mdb"), { log: () => {}, mdbLimits: { maxExecutionMs: -1 } });
+	assert(timeout.reason === "MDB_LIMIT_TIME" && timeout.items.length === 0, "timeout must reject physical input");
+	return { passed: true, fixtures: 3, phases, worker: "responsive-and-terminated", protectedFixture: "blocked-not-generated" };
 }
 
 async function runOptionalLegacyCorpusProbe({ candidatesOverride = null, fetchFile = null } = {}) {
@@ -553,6 +607,7 @@ await (async function runParserValidationE2E() {
 	runContractUnitChecks();
 	await runRegistryChecks();
 	await runGndSyntheticRegressionChecks();
+	const mdbAcceptance = await runGndMdbBrowserAcceptance();
 	await runOptionalLegacyCorpusProbe();
 
 	const skipProbe = await runOptionalLegacyCorpusProbe({
@@ -564,6 +619,7 @@ await (async function runParserValidationE2E() {
 	if (typeof window !== "undefined") {
 		window.__parserValidationE2E = {
 			passed: true,
+			mdbAcceptance,
 			ts: Date.now(),
 		};
 	}

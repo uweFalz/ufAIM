@@ -1,218 +1,164 @@
 \begin{theindex}
 
   \item Acceleration
-    \subitem effective lateral, \hyperpage{205}
-      \subsubitem optimization objective, \hyperpage{317}
+    \subitem effective lateral, \hyperpage{160}
+      \subsubitem optimization objective, \hyperpage{271}
   \item Arc-length
-    \subitem vs stationing, \hyperpage{140}
-  \item Arc-length parameterization, \hyperpage{31}
+    \subitem vs stationing, \hyperpage{119}
   \item Architecture
-    \subitem runtime, \hyperpage{202}
-  \item Authority
-    \subitem engineering, \hyperpage{24}
-  \item Axiom, \hyperpage{31}
+    \subitem runtime, \hyperpage{157}
 
   \indexspace
 
-  \item Canonical interpretation, \hyperpage{26}
-  \item Conceptual structure, \hyperpage{23}
+  \item Conceptual structure, \hyperpage{22}
   \item Constraint
-    \subitem realization, \hyperpage{318}
-  \item Control quantities
-    \subitem foundational, \hyperpage{45}
-  \item Coordinate reference system (CRS), \hyperpage{215}
-  \item Coordinate system, \hyperpage{215}
-    \subitem track, \hyperpage{140}
-  \item CRS context principle, \hyperpage{215}
+    \subitem realization, \hyperpage{272}
+  \item Coordinate reference system (CRS), \hyperpage{169}
+  \item Coordinate system, \hyperpage{169}
+    \subitem track, \hyperpage{119}
+  \item CRS context principle, \hyperpage{169}
   \item Curvature
-    \subitem as control quantity, \hyperpage{45}
-    \subitem as derivative of heading, \hyperpage{31}
-    \subitem discrete estimate, \hyperpage{219}
+    \subitem discrete estimate, \hyperpage{173}
 
   \indexspace
 
   \item Data quality
-    \subitem imperfect data, \hyperpage{219}
-  \item Data source, \hyperpage{213}
-    \subitem definition, \hyperpage{213}
-  \item Dynamics operator, \hyperpage{158}
+    \subitem imperfect data, \hyperpage{173}
+  \item Data source, \hyperpage{167}
+    \subitem definition, \hyperpage{167}
+  \item Dynamics operator, \hyperpage{132}
 
   \indexspace
 
-  \item Engineering knowledge, \hyperpage{25}
-  \item Engineering object, \hyperpage{23}
-  \item Engineering state, \hyperpage{44}
   \item Error
-    \subitem systematic, \hyperpage{219}
+    \subitem systematic, \hyperpage{173}
 
   \indexspace
 
   \item Figures
-    \subitem runtime architecture, \hyperpage{208}
+    \subitem runtime architecture, \hyperpage{163}
   \item Frequency interpretation
-    \subitem realization operator as low-pass filter, \hyperpage{318}
+    \subitem realization operator as low-pass filter, \hyperpage{272}
 
   \indexspace
 
-  \item Geometry
-    \subitem intrinsic planar, \hyperpage{31}
-
-  \indexspace
-
-  \item Heading evolution, \hyperpage{31}
-
-  \indexspace
-
-  \item Identity
-    \subitem engineering object, \hyperpage{23}
   \item Interpretation
-    \subitem observation data, \hyperpage{213}
-  \item Intrinsic-space primacy principle, \hyperpage{139}
+    \subitem observation data, \hyperpage{167}
+  \item Intrinsic-space primacy principle, \hyperpage{118}
 
   \indexspace
 
   \item Jerk
-    \subitem optimization objective, \hyperpage{317}
-    \subitem runtime, \hyperpage{205}
-
-  \indexspace
-
-  \item Kernel
-    \subitem intrinsic planar reconstruction, \hyperpage{32}
-  \item Knowledge Kernel, \hyperpage{25}
+    \subitem optimization objective, \hyperpage{271}
+    \subitem runtime, \hyperpage{160}
 
   \indexspace
 
   \item Level of detail (LOD)
-    \subitem runtime evaluation, \hyperpage{205}
+    \subitem runtime evaluation, \hyperpage{160}
 
   \indexspace
 
-  \item Observation, \hyperpage{24}
-    \subitem data source context, \hyperpage{213}
-    \subitem measurement data, \hyperpage{219}
-    \subitem state observation, \hyperpage{46}
-  \item Observation context principle, \hyperpage{219}
-  \item Observation principle, \hyperpage{213}
-  \item Observed data, \hyperpage{219}
+  \item Observation
+    \subitem data source context, \hyperpage{167}
+    \subitem measurement data, \hyperpage{173}
+  \item Observation context principle, \hyperpage{173}
+  \item Observation principle, \hyperpage{167}
+  \item Observed data, \hyperpage{173}
   \item Operational state
-    \subitem evaluation operator, \hyperpage{158}
+    \subitem evaluation operator, \hyperpage{133}
   \item Operator
-    \subitem runtime, \hyperpage{157}
-  \item Operator composition, \hyperpage{158}
+    \subitem runtime, \hyperpage{132}
+  \item Operator composition, \hyperpage{133}
   \item Optimization
-    \subitem hybrid, \hyperpage{319}
-    \subitem on realized states, \hyperpage{317}
-    \subitem realization-aware, \hyperpage{316}
-    \subitem runtime, \hyperpage{319}
-    \subitem sparse, \hyperpage{319}
+    \subitem hybrid, \hyperpage{273}
+    \subitem on realized states, \hyperpage{271}
+    \subitem realization-aware, \hyperpage{270}
+    \subitem runtime, \hyperpage{273}
+    \subitem sparse, \hyperpage{273}
 
   \indexspace
 
   \item Pipeline
-    \subitem realization-aware runtime, \hyperpage{206}
-    \subitem runtime operator, \hyperpage{206}
+    \subitem realization-aware runtime, \hyperpage{161}
+    \subitem runtime operator, \hyperpage{161}
   \item Projection
-    \subitem ambiguity, \hyperpage{142}
+    \subitem ambiguity, \hyperpage{121}
     \subitem distinction from coordinate transformation, 
-		\hyperpage{142}
-    \subitem track-to-world, \hyperpage{140}
-    \subitem track-to-world runtime service, \hyperpage{204}
-    \subitem world-to-track, \hyperpage{142}
-    \subitem world-to-track runtime service, \hyperpage{204}
-    \subitem world-track coordinate transformation, \hyperpage{139}
-  \item Projection ambiguity principle, \hyperpage{142}
-  \item Projection distinction principle, \hyperpage{142}
+		\hyperpage{121}
+    \subitem track-to-world, \hyperpage{119}
+    \subitem track-to-world runtime service, \hyperpage{159}
+    \subitem world-to-track, \hyperpage{121}
+    \subitem world-to-track runtime service, \hyperpage{159}
+    \subitem world-track coordinate transformation, \hyperpage{118}
+  \item Projection ambiguity principle, \hyperpage{121}
+  \item Projection distinction principle, \hyperpage{121}
   \item Provenance
-    \subitem observation reconstruction, \hyperpage{214}
-    \subitem tracking, \hyperpage{220}
+    \subitem observation reconstruction, \hyperpage{168}
+    \subitem tracking, \hyperpage{174}
 
   \indexspace
 
-  \item Realization, \hyperpage{24}, 
-		\hyperxindexformat{\seealso{Transformation}}{24}
-    \subitem inverse formulation, \hyperpage{318}
-    \subitem metric, \hyperpage{24}
-      \subsubitem coordinate handling, \hyperpage{216}
-    \subitem operator, \hyperpage{157}
-      \subsubitem in optimization, \hyperpage{316}
-    \subitem physical, \hyperpage{24}
+  \item Realization
+    \subitem inverse formulation, \hyperpage{272}
+    \subitem metric
+      \subsubitem coordinate handling, \hyperpage{170}
+    \subitem operator, \hyperpage{132}
+      \subsubitem in optimization, \hyperpage{270}
   \item Reconstruction
-    \subitem curvature-driven, \hyperpage{31}
-    \subitem from observation data, \hyperpage{214}
-    \subitem tangent, \hyperpage{31}
+    \subitem from observation data, \hyperpage{168}
   \item Reference frame
-    \subitem local, \hyperpage{216}
-    \subitem runtime service, \hyperpage{205}
+    \subitem local, \hyperpage{170}
+    \subitem runtime service, \hyperpage{160}
   \item Reference system
-    \subitem ellipsoid-aware optimization, \hyperpage{320}
-    \subitem kilometre line, \hyperpage{217}
-    \subitem outer stationing, \hyperpage{217}
-    \subitem stationing, \hyperpage{217}
-    \subitem stationing layer, \hyperpage{217}
-    \subitem track space, \hyperpage{139}
-    \subitem world embedding, \hyperpage{215}
-  \item Representation, \hyperpage{24}
-    \subitem state representation, \hyperpage{46}
-  \item Runtime cache, \hyperpage{205}
-  \item Runtime evaluation, \hyperpage{202}
-  \item Runtime operators, \hyperpage{157}
-  \item Runtime reconstruction principle, \hyperpage{203}
+    \subitem ellipsoid-aware optimization, \hyperpage{274}
+    \subitem kilometre line, \hyperpage{171}
+    \subitem outer stationing, \hyperpage{171}
+    \subitem stationing, \hyperpage{171}
+    \subitem stationing layer, \hyperpage{171}
+    \subitem track space, \hyperpage{118}
+    \subitem world embedding, \hyperpage{169}
+  \item Runtime cache, \hyperpage{160}
+  \item Runtime evaluation, \hyperpage{157}
+  \item Runtime operators, \hyperpage{132}
+  \item Runtime reconstruction principle, \hyperpage{158}
   \item Runtime service
-    \subitem definition, \hyperpage{202}
-  \item Runtime services, \hyperpage{202}
+    \subitem definition, \hyperpage{157}
+  \item Runtime services, \hyperpage{157}
 
   \indexspace
 
   \item Special elements
-    \subitem railway network, \hyperpage{221}
+    \subitem railway network, \hyperpage{175}
   \item State
-    \subitem center-of-gravity, \hyperpage{154}
-    \subitem dynamic, \hyperpage{154}
-    \subitem engineering, \hyperpage{44}
-    \subitem engineering concept, \hyperpage{23}
-    \subitem general definition, \hyperpage{153}
-    \subitem hierarchy, \hyperpage{155}
-    \subitem intrinsic description, \hyperpage{45}
-    \subitem model, \hyperpage{44}
-    \subitem operational, \hyperpage{154}
-    \subitem optimization, \hyperpage{155}
-    \subitem pose2, \hyperpage{44}, \hyperpage{153}
-    \subitem pose3, \hyperpage{45}, \hyperpage{153}
-      \subsubitem optimization, \hyperpage{317}
-      \subsubitem runtime evaluation, \hyperpage{203}
-    \subitem realized, \hyperpage{154}
-    \subitem realized description, \hyperpage{46}
-    \subitem relative, \hyperpage{155}
-    \subitem runtime, \hyperpage{154}
-    \subitem taxonomy, \hyperpage{153}
-    \subitem vehicle, \hyperpage{154}
-  \item State trajectory, \hyperpage{46}
+    \subitem pose3
+      \subsubitem optimization, \hyperpage{271}
+      \subsubitem runtime evaluation, \hyperpage{158}
+    \subitem qualified use, \hyperpage{130}
   \item Stationing, 
-		\hyperxindexformat{\see{Reference system, stationing}}{216}
+		\hyperxindexformat{\see{Reference system, stationing}}{170}
 
   \indexspace
 
-  \item Tangent reconstruction, \hyperpage{31}
-  \item Topology, \hyperpage{221}
-    \subitem connection point, \hyperpage{221}
-    \subitem graph representation, \hyperpage{221}
-    \subitem operational continuity, \hyperpage{218}
-    \subitem railway network context, \hyperpage{221}
-  \item Track space, \hyperpage{140}
+  \item Topology, \hyperpage{175}
+    \subitem connection point, \hyperpage{175}
+    \subitem graph representation, \hyperpage{175}
+    \subitem operational continuity, \hyperpage{172}
+    \subitem railway network context, \hyperpage{175}
+  \item Track space, \hyperpage{119}
   \item Transformation
-    \subitem coordinate, \hyperpage{216}
+    \subitem coordinate, \hyperpage{170}
 
   \indexspace
 
   \item Uncertainty
-    \subitem measurement, \hyperpage{213}, \hyperpage{219}
+    \subitem measurement, \hyperpage{167}, \hyperpage{173}
 
   \indexspace
 
   \item Vehicle space
-    \subitem optimization interpretation, \hyperpage{319}
+    \subitem optimization interpretation, \hyperpage{273}
   \item Vehicle state
-    \subitem interpretation operator, \hyperpage{158}
+    \subitem interpretation operator, \hyperpage{133}
 
 \end{theindex}

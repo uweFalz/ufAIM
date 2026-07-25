@@ -1,0 +1,57 @@
+% Deutsche Parallelfassung zu state/admissibility.tex
+
+\chapter{Zulässigkeitszustände}
+\label{chap:admissibility-states}
+
+Zulässigkeit ist keine zusätzliche geometrische Zustandsschicht. Sie ist die
+zweckqualifizierte Bewertung am Ende der in den vorangehenden Kapiteln
+entwickelten Abhängigkeitskette. Sie fragt, ob abgeleitete Größen innerhalb
+einer anwendbaren betrieblichen Umgrenzung bleiben; sie ändert weder das
+laufende Alignment noch macht sie aus einem Rechenergebnis eine Entscheidung.
+
+\section{Zulässigkeitszustand}
+
+\begin{definition}[Zulässigkeitszustand]
+\label{def:admissibility-state}
+Ein Zulässigkeitszustand ist ein Laufzeitbewertungszustand, der beschreibt, ob
+betriebliche Größen innerhalb erlaubter Umgrenzungen bleiben.
+\end{definition}
+
+Zulässigkeitszustände können Grenzen für effektive Beschleunigung, Ruck,
+Überhöhungsfehlbetrag, Rollentwicklung, Geschwindigkeit und
+Realisierungsqualität umfassen. Diese Größen werden aus
+Laufzeit-Eisenbahnzustand und dynamischer Bewertung abgeleitet; sie werden
+nicht als Alignment-Identität dauerhaft gespeichert.
+
+\section{Betriebliche Umgrenzungen}
+
+\begin{definition}[Zustand der betrieblichen Umgrenzung]
+\label{def:operational-envelope-state}
+Ein Zustand der betrieblichen Umgrenzung beschreibt zulässige Gebiete im
+Laufzeitzustandsraum.
+\end{definition}
+
+Betriebliche Umgrenzungen werden üblicherweise durch Normen,
+Infrastrukturbeschränkungen und Betriebspolitik definiert. In AIM wirken sie
+als Nebenbedingungen auf abgeleitete Laufzeitgrößen und nicht als Ersatz für
+intrinsische Geometrie oder Eisenbahnzustand.
+
+\section{Schichtposition}
+
+Zulässigkeit wird nach pose2-/pose3-Rekonstruktion, metrischer Realisierung,
+Frame-Konstruktion und Ableitung geschwindigkeitsqualifizierter Größen
+bewertet. Regel, Version, Zweck, anwendbares Objekt und anwendbarer Zustand,
+Gültigkeitszeit und Autorität müssen angegeben sein. Die Bewertung bleibt dem
+Eisenbahnzustand nachgelagert und definiert ihn nicht neu.
+
+Zulässigkeit auf Fahrzeugebene wird relativ zum Eisenbahnzustand bewertet und
+darf nicht mit der Eisenbahnzustandsschicht selbst verwechselt werden.
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Zulässigkeitszustände verbinden Laufzeitdynamik, Ingenieurregeln,
+realisierungsbewusstes Verhalten und Optimierungsnebenbedingungen und
+bewahren dabei die Trennung zwischen dauerhaften Alignment-Informationen und
+abgeleiteter betrieblicher Interpretation.
+\end{summary}

@@ -1,0 +1,324 @@
+% Deutsche Parallelfassung zu state/world_to_track.tex
+
+\chapter{World--Track-Koordinatentransformation}
+\label{chap:world-to-track}
+\index{Projektion!World--Track-Koordinatentransformation}
+\index{Bezugssystem!Track Space}
+
+\section*{Motivation}
+
+Dieses Kapitel beantwortet, wie intrinsische Eisenbahnkoordinaten und externe
+World-Koordinaten in AIM aufeinander bezogen werden, ohne Geometrie,
+Laufzeitbewertung und Koordinatenrepräsentation in einer Operation
+zusammenfallen zu lassen. Es begründet, warum die World--Track-Transformation
+als Laufzeitdienst auf Operatorebene behandelt wird und was daraus für
+Projektion, Mehrdeutigkeit und ingenieurtechnische Interpretation folgt.
+
+Die erste Frage betrifft die Richtung: Was genau wird von World nach Track und
+was von Track nach World abgebildet?
+
+\begin{figure}[htbp]
+\centering
+\input{figures/runtime/support_world_to_track_operator-DE}
+\caption{Unterstützende Operatorsicht: World-to-Track-Transformation als
+gerichtete Laufzeitabbildung.}
+\label{fig:world-to-track-transformation}
+\end{figure}
+
+Die Abbildung legt diese Richtung vor den formalen Definitionen fest und
+verhindert die Verwechslung von Projektion mit allgemeiner
+Koordinatenkonvertierung.
+
+Eisenbahn-Alignments werden intrinsisch mit bogenlängenbezogenen Koordinaten
+formuliert. Reale Daten liegen dagegen üblicherweise in externen
+Koordinatenreferenzsystemen wie WGS84, UTM, Gauß--Krüger, DBRef oder lokalen
+Ingenieur-CRS vor. Daher ist eine Transformation zwischen intrinsischen
+Alignment-Koordinaten und externen World-Koordinaten erforderlich. In AIM
+wird sie als Laufzeitbewertungsdienst interpretiert, der intrinsische
+Alignment-Zustände, Messdaten, Visualisierung, Realisierung, Topologie und
+betriebliche Geometrie verbindet.
+
+\begin{principle}[Primat des intrinsischen Raums]
+\label{princ:intrinsic-space-primacy}
+\index{Prinzip des intrinsischen Raumprimats}
+Innerhalb von AIM ist intrinsische Eisenbahngeometrie primär.
+World-Space-Koordinaten werden als externe, durch Laufzeitbewertung erzeugte
+Einbettungen interpretiert.
+\end{principle}
+
+\section{Gleiskoordinatensystem}
+
+\begin{definition}[Track Space]
+\label{def:track-space}
+\index{Track Space}
+Der Track Space ist die intrinsische Eisenbahnkoordinatendomäne
+\[
+\Omega_{\mathrm{track}}=\{(s,d,h)\}.
+\]
+Er repräsentiert Positionen relativ zu einem Alignment statt in einem
+externen Koordinatenreferenzsystem.
+\end{definition}
+
+\begin{definition}[Gleiskoordinatensystem]
+\label{def:track-coordinate-system}
+\index{Koordinatensystem!Gleis}
+Das intrinsische Gleiskoordinatensystem besteht aus \((s,d,h)\), wobei
+\(s\) die intrinsische Bogenlänge, \(d\) den seitlichen und \(h\) den
+vertikalen Versatz bezeichnet.
+\end{definition}
+
+Gleiskoordinaten gehören zur in \cref{def:track-space} eingeführten
+intrinsischen Domäne \(\Omega_{\mathrm{track}}\). In ebenen Situationen
+genügt \((s,d)\). Sie dürfen nicht mit projizierten World-Koordinaten
+verwechselt werden.
+
+\subsection{Intrinsische Geometrie und externe Koordinaten}
+
+Intrinsische Geometrie ist von jedem externen CRS unabhängig. Dasselbe
+intrinsische Alignment kann in projizierte Ingenieurebenen, ellipsoidische
+World-Modelle, lokale Realisierungs-Frames oder Visualisierungssysteme
+eingebettet werden. Intrinsische Alignment-Geometrie und externe
+CRS-Repräsentation bilden damit getrennte Begriffsschichten.
+
+\subsection{Bogenlänge und Stationierung}
+
+\index{Bogenlänge!und Stationierung}
+Intrinsische Bogenlänge ist nicht mit ingenieurtechnischer Stationierung
+identisch. Betriebliche Kilometersysteme können Kilometersprünge,
+Stationsgleichungen, überlappende Bereiche, topologieabhängige Bezüge und
+betriebliche Zweigbeziehungen enthalten. Stationierung ist eine betriebliche
+Referenzstruktur über der intrinsischen Geometrie; die Abbildung
+\(s\leftrightarrow\mathrm{km}\) ist im Allgemeinen weder linear noch global
+eindeutig.
+
+\section{Track-to-World-Transformation}
+
+\begin{definition}[Track-to-World-Abbildung]
+\label{def:state-track-to-world-runtime}
+\index{Projektion!Track-to-World}
+Die Vorwärtstransformation lautet
+\begin{equation}
+x(s,d)=\gamma(s)+d\,\mathbf n(s).
+\label{eq:state-track-to-world-runtime}
+\end{equation}
+\end{definition}
+
+Diese Beziehung spezialisiert den in
+\cref{def:track-to-world-operator} eingeführten kanonischen Operator
+\(\mathcal P_{\mathrm{tw}}\).
+
+Die ergänzende Frage lautet: Wie wird der intrinsische Zustand in den World
+Space ausgegeben, nachdem die Richtung feststeht?
+
+\begin{figure}[htbp]
+\centering
+\input{figures/runtime/support_track_to_world_operator-DE}
+\caption{Unterstützende Operatorsicht: Track-to-World-Transformation als
+ergänzende gerichtete Abbildung.}
+\label{fig:track-to-world-transformation-support}
+\end{figure}
+
+Diese Abbildung schließt zusammen mit
+\cref{fig:world-to-track-transformation} das Operatorpaar. Beide Abbildungen
+müssen als gekoppelte Laufzeitdienste mit unterschiedlichem numerischem
+Verhalten behandelt werden, nicht als ein Koordinatenwerkzeug.
+
+\subsection{Ebene Tangenten- und Normalenrichtungen}
+
+Im ebenen Fall gilt
+\[
+\mathbf t(s)=(\cos\theta(s),\sin\theta(s)),
+\qquad
+\mathbf n(s)=(-\sin\theta(s),\cos\theta(s)).
+\]
+
+\subsection{Räumliche Laufzeitbewertung}
+
+Bei räumlicher Laufzeitbewertung hängt die Abbildung zusätzlich von Profil,
+Überhöhung, Frame-Konstruktion, metrischer Interpretation und
+Laufzeit-Realisierungskontext ab. Die World-Einbettung \(x(s,d,h)\) wird daher
+im Allgemeinen dynamisch aus der Laufzeit-pose3-Bewertung erzeugt.
+
+\subsection{Interpretation der Referenzlinie}
+
+Die Seitenkoordinate \(d\) hängt vom gewählten Bezug ab. Mögliche Strukturen
+sind Alignment-Mittellinie, Gleismitte, Schienenachse, Spurweitenreferenz oder
+betriebliche Versatzdefinition. Eine formalere Behandlung für Mehrgleissysteme,
+überhöhungsabhängige Versätze und Vehicle Space bleibt offen.
+
+\section{World-to-Track-Transformation}
+
+\begin{definition}[World-to-Track-Projektion]
+\label{def:state-world-to-track-runtime}
+\index{Projektion!World-to-Track}
+Die inverse Transformation lautet
+\begin{equation}
+(s^\ast,d^\ast)
+=
+\arg\min_{s,d}
+\|x-(\gamma(s)+d\,\mathbf n(s))\|.
+\label{eq:state-world-to-track-runtime}
+\end{equation}
+\end{definition}
+
+Diese Beziehung spezialisiert den in
+\cref{def:world-to-track-operator} eingeführten Operator
+\(\mathcal P_{\mathrm{wt}}\). Der Begriff Projektion wird betrieblich
+verwendet und impliziert nicht notwendig eine eindeutige orthogonale Projektion
+im klassischen geometrischen Sinn. In AIM ist sie ein inverses
+Laufzeitbewertungsproblem.
+
+\section{Koordinatentransformation und Projektion}
+
+\index{Projektion!Unterschied zur Koordinatentransformation}
+Koordinatentransformation und World-to-Track-Projektion sind verschiedene
+Operationen. Koordinatentransformationen bilden zwischen
+World-Space-Repräsentationen ab,
+\(\mathcal C:\Omega_{\mathrm{world}}\to\Omega_{\mathrm{world}}\), wie in
+\cref{def:coordinate-transform-operator} eingeführt.
+World-to-Track projiziert zwischen \(\Omega_{\mathrm{world}}\) und
+\(\Omega_{\mathrm{track}}\).
+
+\begin{principle}[Projektionsunterscheidungsprinzip]
+\label{princ:projection-distinction}
+\index{Projektionsunterscheidungsprinzip}
+Koordinatentransformation darf nicht mit intrinsischer
+World-to-Track-Projektion verwechselt werden.
+\end{principle}
+
+CRS-Transformationen wirken vollständig innerhalb externer
+Koordinatenrepräsentationen; Projektion greift auf intrinsische
+Eisenbahngeometrie zu.
+
+\section{Numerische Bewertung}
+
+Die inverse Transformation ist im Allgemeinen nichtlinear. Typische Verfahren
+sind Nächster-Punkt-Suche, lokale Newton-Iteration, abschnittsweise Projektion,
+topologiebewusster Lookup und hybride Laufzeitstrategien. Die Qualität hängt
+stark von Krümmungsverhalten, Topologie, Initialisierung,
+Laufzeitqualifikationen und metrischer Interpretation ab.
+
+\section{Mehrdeutigkeit und Kontextabhängigkeit}
+
+\index{Projektion!Mehrdeutigkeit}
+Die World-to-Track-Abbildung ist im Allgemeinen nicht global eindeutig.
+Mehrdeutigkeiten können in Schleifen, Weichen und Kreuzungen, parallelen
+Gleisen, eng benachbarten Alignments, Bahnhofsbereichen und topologiereichen
+Netzen auftreten. Mehrere intrinsische Zustände können nahezu derselben
+World-Position entsprechen.
+
+Projektion ist daher grundlegend kontextabhängig. Sie kann Track- und
+Route-Identity, Topologie, erwarteten Stationsbereich, Betriebsrichtung,
+Interaktionsgeschichte, Fahrzeugkontext oder Netzzustandsbedingungen
+benötigen.
+
+\begin{principle}[Projektionsmehrdeutigkeitsprinzip]
+\label{princ:projection-ambiguity}
+\index{Projektionsmehrdeutigkeitsprinzip}
+World-to-Track-Projektion kann im Allgemeinen nicht als rein lokale
+geometrische Operation interpretiert werden.
+\end{principle}
+
+\section{Topologie und betriebliche Referenzen}
+
+Intrinsische Geometrie allein reicht für betriebliche Eisenbahnreferenzierung
+nicht aus. Die Interpretation hängt zusätzlich von Topologie,
+Routenzugehörigkeit, Kilometerbezügen, Betriebsrichtung und Netzsemantik ab.
+Ein vollständiger Projektionskontext kann daher
+\[
+(x,\mathcal T,\mathcal R,\mathcal O)
+\]
+erfordern, wobei \(x\) die World-Eingabe, \(\mathcal T\) die Topologie,
+\(\mathcal R\) Route/Referenz und \(\mathcal O\) den Betriebskontext
+bezeichnet.
+
+\section{Beziehung zur Krümmung}
+
+Projektionsstabilität hängt unmittelbar vom Krümmungsverhalten ab. Hohe
+Krümmung erhöht die Empfindlichkeit, niedrige Krümmung ergibt üblicherweise
+stabiles Verhalten. Fehler in intrinsischen Koordinaten pflanzen sich
+nichtlinear in den World Space fort; das Verhalten nahe Übergängen kann stark
+von Krümmung höherer Ordnung abhängen.
+
+\section{Laufzeitabhängigkeit}
+
+In AIM hängt die World--Track-Transformation von der Laufzeitbewertung der
+zugrunde liegenden Alignment-Repräsentation ab: cGeom definiert intrinsische
+Geometrie, pose2 Tangentenentwicklung, pose3 räumliche Interpretation,
+metrische Dienste die realisierte Einbettung, CRS-Dienste die externe
+Repräsentation und Laufzeitoperatoren die resultierenden Zustände.
+
+Unterschiedliche Konfigurationen können verschiedene Ergebnisse liefern, etwa
+projizierte oder ellipsoidische Bewertung, Ziel- oder realisierte Geometrie,
+niedrige oder hohe Auflösung sowie vereinfachte oder fahrzeugbewusste
+Interpretation.
+
+\begin{principle}[Laufzeitprojektionsprinzip]
+\label{princ:runtime-projection}
+World--Track-Transformation ist ein auf Alignment-Zuständen arbeitendes
+Laufzeitbewertungsproblem und kein statisches Koordinatenwerkzeug.
+\end{principle}
+
+\section{LOD und hybride Bewertung}
+
+Exakte World-to-Track-Projektion ist rechenintensiv. Große Systeme benötigen
+daher LOD-abhängige und näherungsweise Bewertung, topologiebewusste Filterung
+und hybride Laufzeitarchitekturen.
+
+\begin{proposition}[Selektives Projektionsprinzip]
+\label{prop:selective-projection}
+Exakte Projektion soll nur dort bewertet werden, wo hohe Genauigkeit
+erforderlich ist.
+\end{proposition}
+
+Eine hybride Strategie verbindet vorberechnete Stichproben für groben Lookup,
+topologiebewusste Kandidatenfilterung, zwischengespeicherte Laufzeitzustände
+und lokale parametrische Verfeinerung. Dies ist besonders für große Netze,
+interaktive Visualisierung, Echtzeit-Vehicle-Space-Bewertung und
+mehrskalige Laufzeitsysteme wichtig.
+
+\section{Verbindung zu CRS und Realisierung}
+
+Die vollständige externe Transformationskette lautet
+\[
+\text{CRS}\rightarrow\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{track}}.
+\]
+Für hochgenaue Anwendungen kann das Alignment auf einem Referenzellipsoid
+statt in einer projizierten Ebene definiert sein. Projektion kann auch von
+realisierter Geometrie abhängen:
+\[
+\gamma_{\mathrm{real}}(s)\neq\gamma_{\mathrm{target}}(s).
+\]
+Physische Messungen sollen daher auf realisierte statt rein analytische
+Geometrie bezogen werden. Die Trennung zwischen intrinsischer Geometrie und
+externer Einbettung ist grundlegend.
+
+\section{Zentrale Erkenntnis}
+
+\begin{proposition}
+World--Track-Transformation ist ein inverser Laufzeitdienst und keine
+statische Koordinatenkonvertierung.
+\end{proposition}
+\begin{proposition}
+In AIM ist der intrinsische Alignment-Raum primär; World-Koordinaten sind
+externe Einbettungen von Alignment-Zuständen.
+\end{proposition}
+\begin{proposition}
+Projektion ist im Allgemeinen nichtlinear, mehrdeutig, topologie-,
+laufzeit- und kontextabhängig.
+\end{proposition}
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+World--Track-Transformation verbindet intrinsische Eisenbahngeometrie mit
+externen Koordinatensystemen, Topologie, Laufzeitbewertung und gemessener
+Realität. Ihre nichtlineare, mehrdeutige, topologie- und skalenabhängige Natur
+macht sie zu einer zentralen Laufzeitkomponente von AIM.
+
+Projektion ist keine statische Koordinatenkonvertierung, sondern kontextuelle
+Laufzeitrekonstruktion intrinsischer Eisenbahnzustände aus externen
+Beobachtungen. Effiziente Behandlung verlangt hybride Laufzeitarchitekturen,
+topologiebewusste Strategien, LOD-abhängige Bewertung, dünn besetzte
+Zustandsrekonstruktion und metrikbewusste Laufzeitdienste.
+\end{summary}

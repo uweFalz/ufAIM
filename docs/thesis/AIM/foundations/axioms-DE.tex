@@ -1,0 +1,136 @@
+% Deutsche Parallelfassung zu foundations/axioms.tex
+
+\chapter{Axiome als Versagensgrenzen}
+\label{chap:axiomatic-foundation}
+
+Die begriffliche Struktur hat begründet, warum AIM ein Engineering Object von
+seinen Zuständen, Beobachtungen, Bewertungen und Repräsentationen unterscheiden
+muss. Die formale Aufgabe besteht nun darin, diese Unterscheidungen nutzbar zu
+machen. Betrachten wir erneut ein Entwurfs-Alignment, das als CAD-Kurve
+vorliegt, und einen vermessenen Zustand, der als abgetastete Polyline vorliegt.
+Die beiden Geometrien können rechnerisch verglichen werden; Bedeutung erhält
+dieser Vergleich jedoch erst, nachdem fünf häufige Versagensarten
+ausgeschlossen wurden.
+
+\section{Was das formale Modell nicht zusammenfallen lassen darf}
+
+\begin{axiom}[Objektkontinuität]
+\label{ax:object-continuity}
+Die Identität eines Engineering Objects wird nicht durch einen Wechsel von
+Zustand, Beobachtung, Bewertung oder Repräsentation ersetzt.
+\end{axiom}
+
+CAD-Kurve und Vermessungspolyline können ein Alignment, verschiedene Zustände
+davon oder sogar verschiedene Objekte betreffen. Geometrische Ähnlichkeit kann
+diese Identitätsfrage nicht entscheiden; die Identität muss bereits durch die
+ingenieurtechnischen Qualifikationen begründet sein, unter denen der Vergleich
+erfolgt.
+
+\begin{axiom}[Trennung von Konstruktion und Repräsentation]
+\label{ax:construction-representation-separation}
+Konstruktives Ingenieurwissen und eine daraus abgeleitete Repräsentation
+nehmen verschiedene formale Rollen ein.
+\end{axiom}
+
+Eine abgetastete Polyline kann Darstellung, Austausch oder Berechnung
+unterstützen. Ihre Stützpunkte werden dadurch weder zur konstruktiven Definition
+des Alignments, noch erzeugt eine erneute Abtastung ein neues autoritatives
+Objekt.
+
+\begin{axiom}[Trennung von Realität und Beobachtung]
+\label{ax:reality-observation-separation}
+Ein physischer Zustand und eine Beobachtung dieses Zustands sind verschiedene
+Eingaben des ingenieurtechnischen Schließens.
+\end{axiom}
+
+Vermessungspunkte sind quellengebundene Evidenz. Sie bilden nicht selbst die
+physische Eisenbahn, und Unsicherheit oder Unvollständigkeit der Beobachtung
+darf nicht stillschweigend auf die physische Realität übertragen werden.
+
+\begin{axiom}[Trennung von Bewertung und Entscheidung]
+\label{ax:evaluation-decision-separation}
+Eine Bewertung erzeugt ein qualifiziertes Ergebnis; sie stellt keine
+Ingenieurentscheidung dar.
+\end{axiom}
+
+Eine berechnete Abweichung kann Annahme, Instandhaltungsplanung oder
+Neuplanung unterstützen. Kein Grenzwert, Residuum oder Solver-Ergebnis erhält
+Entscheidungsautorität allein dadurch, dass es berechnet wurde.
+
+\begin{axiom}[Trennung von intrinsisch und abgeleitet]
+\label{ax:intrinsic-derived-separation}
+Abgeleitete Geometrie ersetzt nicht die intrinsische Konstruktion, aus der sie
+gewonnen wurde.
+\end{axiom}
+
+Koordinaten, Tangenten, Versätze und abgetastete Stützpunkte sind nützliche
+Folgen. Die formale Konstruktion muss deshalb die Abhängigkeiten offenlegen,
+die sie erzeugen.
+
+\section{Die konstruktive Abhängigkeit}
+
+Es sei \(I\subseteq\mathbb{R}\) ein durch die Bogenlänge \(s\)
+parametrisiertes Intervall. Ferner sei
+\(\kappa:I\rightarrow\mathbb{R}\) die Krümmung; Richtungswinkel und ebene
+Position werden mit \(\theta:I\rightarrow\mathbb{R}\) beziehungsweise
+\(\gamma:I\rightarrow\mathbb{R}^{2}\) bezeichnet. Die folgenden
+mathematischen Axiome formulieren die Abhängigkeit, durch die intrinsische
+Konstruktion zu abgeleiteter Geometrie wird.
+
+\begin{axiom}[Bogenlängenparametrisierung]
+\label{ax:arc-length-parameterization}
+\[
+\lVert\gamma'(s)\rVert=1
+\qquad\text{für alle }s\in I.
+\]
+\end{axiom}
+
+\begin{axiom}[Entwicklung des Richtungswinkels]
+\label{ax:heading-evolution}
+\[
+\theta'(s)=\kappa(s).
+\]
+\end{axiom}
+
+\begin{axiom}[Tangentenrekonstruktion]
+\label{ax:tangent-reconstruction}
+\[
+\gamma'(s)=
+\begin{pmatrix}
+\cos\theta(s)\\
+\sin\theta(s)
+\end{pmatrix}.
+\]
+\end{axiom}
+
+\begin{proposition}[Krümmungsgetriebene Rekonstruktion]
+\label{prop:curvature-driven-reconstruction}
+Bei gegebener Anfangsposition \(\gamma(s_0)\), gegebenem Anfangswinkel
+\(\theta(s_0)\) und einer hinreichend regulären Krümmungsfunktion \(\kappa\)
+ist die ebene Trajektorie auf \(I\) eindeutig bestimmt.
+\end{proposition}
+
+\begin{proof}
+Die Integration von \cref{ax:heading-evolution} ergibt
+\[
+\theta(s)=\theta(s_0)+\int_{s_0}^{s}\kappa(\sigma)\,\dd\sigma.
+\]
+Einsetzen in \cref{ax:tangent-reconstruction} und eine zweite Integration
+ergeben
+\[
+\gamma(s)=\gamma(s_0)+
+\int_{s_0}^{s}
+\begin{pmatrix}
+\cos\theta(\sigma)\\
+\sin\theta(\sigma)
+\end{pmatrix}
+\dd\sigma.
+\]
+Die Anfangsbedingungen bestimmen die verbleibenden Integrationskonstanten.
+\end{proof}
+
+Dieses Ergebnis ist bewusst begrenzt. Es rekonstruiert eine ebene Trajektorie
+aus benannten Eingaben und Annahmen. Es begründet keine Objektidentität,
+beweist nicht, dass eine Vermessung denselben Zustand beobachtet, überträgt
+keine Autorität auf eine Repräsentation und entscheidet nicht, ob eine
+Abweichung akzeptabel ist.

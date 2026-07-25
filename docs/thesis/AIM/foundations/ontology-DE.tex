@@ -1,0 +1,151 @@
+% Deutsche Parallelfassung zu foundations/ontology.tex
+
+\chapter{Begriffliche Struktur}
+\label{chap:conceptual-structure}
+\index{Begriffliche Struktur}
+
+\section{Die Mehrdeutigkeit, die ein Datenmodell nicht stillschweigend lösen kann}
+
+Nehmen wir an, die bearbeitete CAD-Kurve und eine Vermessungspolyline weichen
+um mehrere Zentimeter voneinander ab. Ein Datenmodell kann beide
+Koordinatensätze speichern, Identifier zuordnen und ein Residuum berechnen.
+Aus diesen Operationen allein kann es nicht ableiten, was die Differenz
+bedeutet. Die Vermessung kann das physische Gleis beobachten; die CAD-Kurve
+kann einen beabsichtigten Zustand ausdrücken; beide können dasselbe Alignment
+repräsentieren; und das Residuum kann nach dem anwendbaren Ingenieurwissen
+akzeptabel sein oder nicht.
+
+Jede Aufzeichnung als weitere Version „des Alignments“ zu behandeln, verbirgt
+genau die Unterscheidungen, die zum Nachdenken über die Abweichung erforderlich
+sind. Jede unterschiedliche Geometrie als anderes Objekt zu behandeln,
+verliert Kontinuität. Die Messaufzeichnung als Realität zu behandeln,
+verwechselt Evidenz mit ihrem Gegenstand. Ein berechnetes Bestehen oder
+Durchfallen als Entscheidung zu behandeln, überträgt Autorität auf eine
+Operation, die sie nicht besitzt.
+
+Die minimale Abhilfe besteht darin, Objekt, Zustand, Realisierung,
+Repräsentation, Beobachtung, Wissen, Bewertung und Entscheidung verschiedene
+formale Rollen zuzuweisen. Nach ihrer Trennung können sie ausdrücklich
+aufeinander bezogen werden: Eine Beobachtung kann einen physischen Zustand
+betreffen; eine Repräsentation kann einen beabsichtigten Zustand offenlegen;
+eine Bewertung kann beide unter anwendbarem Wissen vergleichen; eine
+Entscheidung kann die resultierende Evidenz verwenden, ohne mit ihr identisch
+zu werden.
+
+\section{Das Engineering Object und seine Zustände}
+
+Ein Engineering Object ermöglicht dauerhafte Unterscheidbarkeit über Wechsel
+von Repräsentation, Realisierung, Arbeitsablauf und Projektbezug hinweg. Ein
+Alignment ist daher nicht mit einer CAD-Kurve, einem GIS-Feature, einer
+Austauschentität, einer Datenbankzeile oder einer gerenderten Linie identisch.
+Mehrere Beschreibungen können dasselbe Alignment betreffen, und eine geänderte
+Beschreibung entscheidet für sich genommen nicht, ob das Engineering Object
+verändert oder ersetzt wurde.
+
+Ein Zustand beschreibt dieses Objekt unter benannten ingenieurtechnischen
+Qualifikationen. Beabsichtigte, metrische, physische, betriebliche und
+bewertete Zustände beantworten unterschiedliche Fragen über ein Objekt.
+Zustandsänderung kann daher erörtert werden, ohne Objektidentität zu einer
+Nebenwirkung von Koordinatengleichheit zu machen.
+
+Beim Alignment bilden intrinsische longitudinale Ordnung und
+Krümmungsverlauf die konstruktive Grundlage, aus der ausgewählte geometrische
+Zustände abgeleitet werden. Spätere Kapitel formalisieren diese Ableitungen;
+die begriffliche Anforderung hier lautet, dass der abgeleitete Zustand nicht
+zum Owner der Identität wird.
+
+\section{Realisierung und Repräsentation}
+
+Realisierung und Repräsentation beantworten unterschiedliche Fragen.
+
+Metrische Realisierung fragt, wie eine intrinsische Konstruktion unter einem
+ausdrücklichen metrischen Raum, einem Realization Context und anwendbaren
+Regeln messbare räumliche Bedeutung erhält. Physische Realisierung fragt, wie
+Ingenieurabsicht zu physischer Infrastruktur wird. Keine von beiden ist
+lediglich ein Wechsel des Dateiformats.
+
+Eine Repräsentation wählt Informationen aus, damit diese kommuniziert,
+gespeichert, ausgetauscht, visualisiert oder verarbeitet werden können.
+CAD-Geometrie, GIS-Datensätze, IFC-Entitäten, abgetastete Polylinien,
+Diagramme und Laufzeitstrukturen sind Repräsentationen. Eine Repräsentation
+kann einen realisierten Zustand offenlegen, aber keine fehlende
+Realisierungssemantik erzeugen oder für sich allein Identität begründen.
+
+Diese Trennung ermöglicht eine nützliche Frage: Entsteht eine Differenz aus
+der beabsichtigten Konstruktion des Objekts, dem gewählten metrischen Kontext,
+der physischen Realisierung, der Beobachtung oder lediglich aus der
+Repräsentation?
+
+\section{Beobachtung und Wissen}
+
+Eine Beobachtung ist quellengebundene Information über ein Objekt, einen
+Zustand oder Qualifikationen einschließlich der Provenienz, Methode, Zeit,
+Bedingungen und Unsicherheit, die zu ihrer Interpretation als Evidenz
+erforderlich sind. Eine Vermessungspolyline ist daher nicht einfach „das reale
+Alignment“. Sie ist eine Beobachtung, deren Beziehung zu einem physischen
+Zustand begründet werden muss.
+
+Engineering Knowledge ist Information, die innerhalb eines ausdrücklichen
+Geltungsbereichs und mit benannter Provenienz, Anwendbarkeit und Autorität zur
+ingenieurtechnischen Nutzung angenommen wurde. Beobachtungen können Wissen
+stützen; Speicherung oder Wiederholung nimmt sie nicht automatisch an. Normen,
+Ingenieurprinzipien, abgeleitete Ergebnisse und verantwortete Entscheidungen
+können Wissen ebenfalls stützen, ohne austauschbare Quellen zu werden.
+
+Die Unterscheidung erlaubt, widersprüchliche Beobachtungen weiterhin
+festzuhalten, während ein Ingenieur bestimmt, worauf für die gegenwärtige
+Aufgabe vertraut werden darf.
+
+\section{Bewertung und Entscheidung}
+
+Bewertung wendet Wissen, Nebenbedingungen, Präferenzen und
+Vergleichsverfahren auf Zustände oder Alternativen an. Sie kann ein Residuum
+ableiten, eine Verletzung bestimmen, Kandidaten ordnen oder zeigen, wie sich
+die Krümmungsänderung fortpflanzt. Diese Ergebnisse sind Evidenz innerhalb
+eines Ingenieurprozesses.
+
+Entscheidung ist die verantwortete Handlung, die innerhalb einer bestimmten
+Autorität und unter benannten Qualifikationen annimmt, ablehnt oder auswählt.
+Ein Solver, Viewer oder eine Rule Engine kann diese Handlung unterstützen,
+übt sie aber nicht allein dadurch aus, dass er eine Ausgabe erzeugt. Diese
+Grenze erlaubt leistungsfähigere Berechnung, ohne Verantwortung unklarer zu
+machen.
+
+\section{Verfügbare Beziehungen}
+
+Nach der Trennung der Rollen kann die Thesis Abhängigkeiten ohne
+Kategorienfehler formulieren:
+
+\begin{itemize}
+\item Ein Engineering Object kann mehrere Zustände und Repräsentationen
+  besitzen;
+\item intrinsische Konstruktion kann metrisch realisiert werden, ohne Identität
+  auf Koordinaten zu übertragen;
+\item ein physischer Zustand kann beobachtet werden, ohne dass die Beobachtung
+  zu diesem Zustand wird;
+\item eine Beobachtung kann durch ausdrückliche Interpretation und Annahme
+  Wissen stützen;
+\item eine Bewertung kann anwendbares Wissen verwenden und Evidenz für eine
+  Entscheidung erzeugen, ohne zur Entscheidung zu werden.
+\end{itemize}
+
+Diese Beziehungen machen aus der früheren Abweichung eine behandelbare
+Ingenieurfrage. Die beabsichtigten und beobachteten Aufzeichnungen können auf
+ein Alignment bezogen, ihre Zustände und Provenienz bestimmt und ein Vergleich
+unter benanntem Wissen und benannten Qualifikationen durchgeführt werden.
+
+\section{Kanonische Interpretation}
+
+\begin{proposition}
+Engineering Objects, Zustände, Realisierungen, Repräsentationen,
+Beobachtungen, Engineering Knowledge, Bewertungen und Entscheidungen besitzen
+verschiedene Rollen. Ihre ausdrücklichen Beziehungen bewahren Kontinuität und
+machen zugleich ausgewählte Folgen berechenbar.
+\end{proposition}
+
+Diese begriffliche Struktur erlaubt nun die formale Entwicklung. Die folgenden
+Kapitel formulieren die Axiome, die Notation, die Zustandsmodelle und die
+Operatoren, die erforderlich sind, um diese Beziehungen genau auszudrücken.
+Sie dürfen eine Abhängigkeit formalisieren; sie dürfen die
+Verantwortungsgrenze, die der Abhängigkeit Bedeutung gegeben hat, nicht
+aufheben.

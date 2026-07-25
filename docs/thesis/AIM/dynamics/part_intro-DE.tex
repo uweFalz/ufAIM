@@ -1,0 +1,74 @@
+% Deutsche Parallelfassung zu dynamics/part_intro.tex
+
+\chapter*{Dynamik}
+\phantomsection
+\addcontentsline{toc}{chapter}{Dynamik}
+
+Das identifizierte Gerade--Übergangsbogen--Kreisbogen-Alignment endet nicht an
+der Grenze von Teil V. An jeder intrinsischen Position \(s\) bestimmen sein
+Krümmungsgesetz, die realisierte Pose, das Profil, das Überhöhungsgesetz und
+das qualifizierte bewegte Frame bereits den hier benötigten Eisenbahnzustand.
+Teil VI führt deshalb kein zweites Zustandsmodell ein. Er stellt eine neue
+Frage:
+
+\begin{quote}
+Wie erzeugt die Durchfahrt durch diesen räumlichen Zustand zeitabhängige
+Größen, und welche zusätzlichen Modelle werden benötigt, bevor eine
+Engineering-Folge bewertet werden kann?
+\end{quote}
+
+Die neue Eingabe ist ein Durchfahrtsgesetz
+\[
+s=s(t),\qquad v(t)=\frac{\dd s}{\dd t}.
+\]
+Komposition macht aus räumlichen Gesetzen zeitliche Exposition:
+\(\kappa(s)\mapsto\kappa(s(t))\) und \(u(s)\mapsto u(s(t))\).
+Keines der Gesetze ändert seine Identität. Es ändert sich die Rate, mit der ein
+Fahrzeug oder anderes bewegtes System sie durchfährt.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/dynamics/space_to_time_dependency-DE}
+\caption{Vom qualifizierten Eisenbahnzustand über zeitliche Exposition und Antwortmodell zur Bewertung und möglichen Entscheidung.}
+\label{fig:space-to-time-dependency}
+\end{figure}
+
+Jeder Pfeil in \cref{fig:space-to-time-dependency} ergänzt Information:
+Das Durchfahrtsgesetz ergänzt Zeit, seine Ableitungen Geschwindigkeit und
+Beschleunigung, eine reduzierte Beziehung angegebene kinematische Annahmen,
+ein Antwortmodell Fahrzeug- und Gleisphysik und die Bewertung Zweck und
+anwendbare Regeln. Erst eine Engineering Decision ergänzt eine autorisierte
+Festlegung.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.19\textwidth}p{0.33\textwidth}p{0.37\textwidth}}
+\toprule
+\textbf{Ebene} & \textbf{Erforderliche Eingabe} & \textbf{Ergebnis und Grenze}\\
+\midrule
+Räumliches Gesetz & identifiziertes Alignment, \(s,\kappa(s),u(s)\) & intrinsische Geometrie und getrenntes Überhöhungsgesetz; keine Zeit\\
+Durchfahrtsgesetz & \(s(t)\), Quelle, Anwendbarkeit, Gültigkeit & \(v(t)\), \(\dot v(t)\), zeitliche Exposition; keine Fahrzeugantwort\\
+Reduzierte Kinematik & Frame, Vorzeichen, Überhöhungs- und Geschwindigkeitsannahmen & Indikatoren wie \(v^2\kappa\); nicht Komfort oder Sicherheit\\
+Antwortmodell & Fahrzeug-, Kontakt-, Gleis- und Lastdaten & modellabhängige Antwort; weder Beobachtung noch Entscheidung\\
+Bewertung & Zweck, Regel, Geltungsbereich, Evidenz & qualifizierte Beurteilung; ohne eigene Autorität\\
+Entscheidung & zuständige Autorität und zugelassene Evidenz & angenommener oder abgelehnter Handlungsweg\\
+\bottomrule
+\end{tabular}
+\caption{Der Dynamikargumentgang ergänzt jeweils genau eine Verantwortung.}
+\label{tab:dynamics-responsibility-layers}
+\end{table}
+
+\begin{principle}[Prinzip der dynamischen Zustandsinterpretation]
+\label{princ:dynamic-state-interpretation}
+Zeitabhängige Größen werden durch Komposition des qualifizierten
+Eisenbahnzustands mit einem qualifizierten Durchfahrtsgesetz und, soweit
+erforderlich, expliziten Antwortmodellen abgeleitet. Reduzierte Kinematik,
+Antwort, Bewertung und Entscheidung bleiben getrennt.
+\end{principle}
+
+\begin{summary}
+Geometrie liefert das räumliche Gesetz. Durchfahrt ergänzt Zeit. Modelle
+liefern Antwort. Zweck und Regeln liefern Bewertung. Autorität liefert
+Entscheidung.
+\end{summary}

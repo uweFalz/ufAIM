@@ -1,0 +1,92 @@
+% reality/coordinate_systems-DE.tex
+
+\chapter{Koordinatensysteme und World-Einbettung}
+\label{chap:coordinate-systems}
+
+\index{Koordinatensystem}
+\index{Bezugssystem!World-Einbettung}
+
+Dieses Kapitel ist der kanonische Ort der Koordinaten- und CRS-Erklärung des
+Teils Realität. In AIM definieren CRS und Koordinatensysteme den Einbettungs-
+und Transformationskontext; sie definieren nicht die konstruktive
+Alignment-Identität.
+
+\input{reality/crs_is_not_metadata-DE}
+
+\section{Koordinatenreferenzsysteme}
+
+\begin{definition}[Koordinatenreferenzsystem]
+\index{Koordinatenreferenzsystem (CRS)}
+Ein Koordinatenreferenzsystem (CRS) ist ein mathematischer Rahmen, der
+räumliche Koordinaten auf Positionen in einer definierten World-Einbettung
+abbildet.
+\end{definition}
+
+Ein CRS verbindet Annahmen zur Referenzfläche, Koordinatendefinitionen und
+Transformationskonventionen.
+
+\section{Einbettungskontext}
+
+Eisenbahnprojekte verwenden häufig zugleich mehrere Systeme, darunter
+ellipsoidbezogene Systeme, projizierte Systeme und lokale Ingenieurrahmen.
+Diese Systeme stellen den Einbettungskontext für Geometrie und Messungen bereit.
+
+\begin{principle}[Prinzip des CRS-Kontexts]
+\index{Prinzip des CRS-Kontexts}
+CRS gehören zum Realisierungs- und Einbettungskontext, nicht zur
+konstruktiven Identität.
+\end{principle}
+
+\section{Transformationen und Konsistenz}
+
+\begin{definition}[Koordinatentransformation]
+\index{Transformation!Koordinaten}
+Eine Koordinatentransformation ist eine Abbildung
+\[
+T:\R^n\rightarrow\R^n
+\]
+zwischen Koordinatensystemen.
+\end{definition}
+
+Die Behandlung von Transformationen muss ausdrücklich und prüfbar sein, da
+kleine Transformationsinkonsistenzen große Interpretationsfehler in
+krümmungs- oder projektionsbezogenen Größen hervorrufen können.
+
+\section{Lokale Rahmen und numerische Stabilität}
+
+\begin{definition}[Lokaler Rahmen]
+\index{Bezugsrahmen!lokal}
+Ein lokaler Rahmen ist ein Koordinatensystem, das nahe einem interessierenden
+ingenieurtechnischen Gebiet verankert ist.
+\end{definition}
+
+Lokale Rahmen verbessern die numerische Stabilität von Laufzeitbewertung,
+Projektion und Rekonstruktion und bewahren zugleich die Verbindung zum globalen
+Referenzkontext.
+
+\section{Stationierung gegenüber CRS-Koordinaten}
+
+\index{Stationierung|see{Bezugssystem, Stationierung}}
+
+CRS-Koordinaten drücken eine eingebettete Position aus. Stationierung drückt
+eine Routenadresse entlang von Eisenbahnreferenzstrukturen aus. Dies sind
+verschiedene Ebenen, die nicht vermengt werden dürfen.
+
+\section{Bezug zur metrischen Realisierung}
+
+\index{Realisierung!metrisch!Koordinatenbehandlung}
+
+Koordinatenbehandlung verwendet metrische Realisierung
+(\cref{chap:metric-realization}) und Realisierungsoperatoren; sie ersetzt sie
+nicht. World-Einbettung und World--Track-Beziehungen bleiben
+realisierungsabhängige Dienste.
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+In AIM sind Koordinatensysteme und CRS ausdrücklicher Einbettungskontext für
+realisierte und beobachtete Eisenbahnzustände.
+
+Sie sind für Konsistenz und Interoperabilität wesentlich, bilden aber nicht
+die Alignment-Identität.
+\end{summary}

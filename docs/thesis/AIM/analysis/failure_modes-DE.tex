@@ -1,0 +1,116 @@
+% analysis/failure_modes-DE.tex
+\section{Fehlermodi und Grenzen der AIM-Pipeline}
+\subsection*{Motivation}
+Jeder Modellierungs- und Optimierungsrahmen muss neben seinen Fähigkeiten auch
+seine Grenzen berücksichtigen. Fehlermodi der AIM-Pipeline entstehen aus dem
+Zusammenwirken von Koordinatensystemen, geometrischen Transformationen,
+physischer Realisierung und numerischer Optimierung.
+
+\subsection{CRS-bezogene Fehler}
+Fehler in Koordinatenreferenzsystemen umfassen falsche CRS-Identifikation,
+inkonsistente Transformationen und gemischte Koordinatensysteme in Datensätzen.
+\begin{proposition}
+CRS-Inkonsistenzen führen zu systematischen räumlichen Verzerrungen, die durch
+lokale Alignment-Optimierung nicht korrigiert werden können.
+\end{proposition}
+
+\subsection{Projektionsfehler (World--Track)}
+Die World--Track-Transformation kann durch mehrdeutige nächste Punkte, Bereiche
+hoher Krümmung sowie dünn besetzte oder verrauschte Alignment-Darstellungen
+fehlschlagen.
+\begin{proposition}
+Projektionsfehler führen nichtlokale Verzerrungen der intrinsischen Koordinate
+\(s\) ein und beeinflussen alle nachgelagerten Berechnungen.
+\end{proposition}
+
+\subsection{Fehlspezifikation des Modells}
+Das parametrische Modell kann das tatsächliche Alignment wegen unzureichender
+Übergangsfamilien, falscher Parametrisierung oder zu restriktiver Struktur
+nicht darstellen. Hybride Korrekturterme mindern, beseitigen dieses Problem
+aber nicht.
+
+\subsection{Überanpassung gegenüber Unteranpassung}
+Hybride Modelle führen eine Abwägung ein: Bei Unteranpassung ist das
+parametrische Modell zu starr; bei Überanpassung erfassen Korrekturterme das
+Rauschen.
+\begin{proposition}
+Regularisierung ist erforderlich, um Modelltreue und Stabilität auszugleichen.
+\end{proposition}
+
+\subsection{Realisierungseffekte}
+Der Realisierungsoperator führt Krümmungsglättung, Verlust hochfrequenter
+Information und Abhängigkeit von Bauprozessen ein.
+\begin{proposition}
+Bestimmte Merkmale des Ziel-Alignments sind physisch nicht realisierbar und
+werden systematisch unterdrückt.
+\end{proposition}
+
+\subsection{Instabilität des inversen Problems}
+Das inverse Realisierungsproblem ist schlecht gestellt: Mehrere Ziel-Alignments
+erzeugen ähnliche realisierte Geometrie, und kleine Datenänderungen können
+große Parameteränderungen bewirken.
+\begin{proposition}
+Regularisierung und Vorwissen sind für stabile Lösungen wesentlich.
+\end{proposition}
+
+\subsection{Probleme numerischer Optimierung}
+Optimierung kann an schlechten Anfangsschätzungen, nichtkonvexen Zielfunktionen
+oder schlecht konditionierten Jacobi-Matrizen scheitern. Trotz strukturierter
+dünner Besetzung ist Konvergenz nicht garantiert.
+
+\subsection{Degeneration der Blockstruktur}
+Die Blockstruktur kann degenerieren, wenn Kopplungsterme dominieren, Daten die
+Variablen unzureichend trennen oder Parameter redundant werden.
+\begin{proposition}
+Der Verlust der Blockseparierbarkeit verringert Recheneffizienz und
+Interpretierbarkeit.
+\end{proposition}
+
+\subsection{Messrauschen und Verzerrung}
+Messdaten können zufälliges Rauschen, systematische Verzerrung und fehlende
+oder inkonsistente Segmente enthalten.
+\begin{proposition}
+Rauschen pflanzt sich durch die Pipeline fort und kann durch inverse
+Operationen verstärkt werden.
+\end{proposition}
+
+\subsection{Maßstabsabhängige Fehler}
+Auf verschiedenen Maßstäben dominieren unterschiedliche Fehlermodi:
+\begin{itemize}
+\item großer Maßstab: CRS- und Projektionsfehler,
+\item mittlerer Maßstab: Fehlspezifikation des Modells,
+\item kleiner Maßstab: Realisierung und Messrauschen.
+\end{itemize}
+
+\subsection{Nicht-Eindeutigkeit von Lösungen}
+Verschiedene Alignment-Modelle können nahezu identische realisierte Geometrie
+erzeugen.
+\begin{proposition}
+Die Abbildung
+\[
+\kappa_{\mathrm{target}}\mapsto\gamma_{\mathrm{real}}
+\]
+ist nicht injektiv.
+\end{proposition}
+
+\subsection{Praktische Engineering-Grenzen}
+Materialabhängiges Verhalten, langfristige Degradation und Bauvariabilität
+liegen außerhalb des Modellumfangs und müssen als externe Bedingungen
+behandelt werden.
+
+\subsection{Zentrale Erkenntnis}
+\begin{proposition}
+Die AIM-Pipeline ist ihrem Wesen nach approximativ und wird sowohl durch
+physische als auch durch rechnerische Bedingungen begrenzt.
+\end{proposition}
+
+\subsection{Verbindung zu AIM}
+\begin{summary}
+Fehlermodi der AIM-Pipeline entstehen aus dem Zusammenwirken von Geometrie,
+Physik, Daten und Berechnung. Das Verständnis dieser Grenzen ist für robusten
+Modellentwurf, stabile Optimierung und zuverlässige Engineering-Anwendung
+wesentlich.
+
+Fehleranalyse ist daher kein Hilfsbestandteil, sondern integraler Teil des
+AIM-Rahmens.
+\end{summary}

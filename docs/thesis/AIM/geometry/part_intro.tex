@@ -4,88 +4,67 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Geometry}
 
-This part establishes curvature-driven intrinsic geometry as the
-constructive bridge from canonical concepts to evaluable railway state.
+The transition arriving from Engineering Concepts is no longer an anonymous
+curve. It is a proposed state of an identified alignment. Its Berlinish
+composition is inspectable, its derivation has provenance, and the realization
+under which it was evaluated is explicit. Calculation, applicability, and
+authority remain distinct. Geometry must now answer a narrower question:
 
-\section*{What do we already know?}
+\begin{quote}
+What structure belongs intrinsically to this alignment, and what acquires
+meaning only through representation, placement, realization, observation, or
+operational purpose?
+\end{quote}
 
-The previous part established the mathematical foundation of AIM.
+\section*{The structure that remains with the alignment}
 
-In particular, it introduced the distinction between intrinsic and
-derived quantities, the importance of arc-length based descriptions,
-and the operator-based viewpoint adopted throughout this work.
+The element order, orientation, intrinsic longitudinal parameterization, and
+curvature law belong to the constructive account of the alignment state. In
+this part, \emph{stationing} means that intrinsic parameterization by $s$,
+normally chosen as arc length. Operational chainage and displayed station
+labels may address $s$; they do not replace it or become Alignment Identity.
 
-However, a railway alignment has not yet been given a geometric form.
-
-At this stage, the mathematical framework exists, but the geometric
-entity that it is intended to describe remains undefined.
-
-\section*{What is still missing?}
-
-Traditional railway engineering typically describes alignments through
-coordinates, radii, tangents, circular arcs, and transition elements.
-
-While such descriptions are operationally useful, they do not reveal
-the intrinsic geometric structure of the alignment itself.
-
-AIM therefore seeks a representation that is independent of particular
-coordinate systems, storage formats, and implementation conventions.
-
-The missing ingredient is an intrinsic geometric description from which
-all geometric realizations can be reconstructed.
-
-\section*{What comes next?}
-
-Within AIM, geometry is interpreted not primarily as a collection of
-geometric primitives, but as controlled curvature evolution along
-arc-length.
-
-The central geometric quantity therefore becomes
+A starting pose and the intrinsic law reconstruct a local Cartesian plan
+curve. That curve is already meaningful engineering geometry. A coordinate
+representation can express it, and a later geographic placement can relate it
+to a projected or Earth-referenced setting, without making the earlier local
+alignment inferior or fictitious. The required boundary is
 \[
-\kappa(s),
+\begin{aligned}
+\text{intrinsic geometry}&\neq\text{coordinate representation},\\
+\text{geographic placement}&\neq\text{physical realization}.
+\end{aligned}
 \]
-rather than position itself.
 
-From this viewpoint:
-\begin{itemize}
-\item geometry emerges through curvature integration,
-\item transition curves become curvature-transition laws,
-\item sparse alignment models become compact curvature programs,
-\item and geometric reconstruction becomes a natural consequence of the
-intrinsic description.
-\end{itemize}
+Figure~\ref{fig:alignment-object-stationing-curvature} follows the same
+straight--transition--arc state through these readings. The object reference
+and ordered station domains remain stable; plan position and curvature expose
+different consequences of the same construction.
 
-This interpretation establishes the foundation for realization,
-runtime evaluation, dynamics, and optimization developed in later
-parts of this thesis.
-
-\section*{Relation to the AIM Roadmap}
-
-Within the AIM roadmap, the present part corresponds to the transition
-from mathematical foundations toward curvature space.
-
-It introduces the intrinsic geometric language from which the later
-state descriptions, runtime models, realization concepts, and
-optimization methods are derived.
-
-The guiding roadmap question is: which minimal geometric dependency
-connects curvature law to reconstructable alignment state?
-
-\begin{figure}[ht]
-\centering
-\input{figures/geometry/icon_geometry_curvature_pose2}
-\caption{Geometry icon: curvature-driven construction of intrinsic curve and pose2.}
-\label{fig:icon-geometry-curvature-pose2}
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/geometry/alignment_object_stationing_curvature}}
+  \caption{One identified alignment state read as ordered station domains,
+  reconstructed local plan geometry, and a curvature band. Representation,
+  geographic placement, and physical realization remain attached
+  qualifications rather than intrinsic identity.}
+  \label{fig:alignment-object-stationing-curvature}
 \end{figure}
 
-\noindent
-The chapters that follow formalize this transformation in detail.
+\section*{Why curvature matters specifically for railway}
 
-\begin{proposition}
-Within AIM, railway geometry is fundamentally interpreted as curvature
-evolution along intrinsic arc-length.
-\end{proposition}
+A railway vehicle is constrained by the rail pair. Unlike a road vehicle, it
+cannot normally choose another lateral path within a corridor to avoid the
+alignment's curvature; this contrast does not imply that road-corridor design
+is geometrically or dynamically simple. For rail, speed converts spatial
+variation into time-dependent vehicle excitation. Cant can compensate part of
+the lateral effect, but it does not erase curvature. Curvature, cant, and their
+longitudinal rates influence vehicle response, comfort, wheel--rail forces,
+track demand, and wear.
 
-This geometric commitment is the direct input to the next part, where
-curvature-driven geometry is expressed as railway state and runtime
-interpretable pose descriptions.
+This is why the curvature band becomes the primary reading in the next
+chapter. The plan curve shows where the alignment goes. The band shows
+immediately where it is straight, where curvature is constant, where it
+changes, and whether element joins preserve the required continuity. The
+mathematics is therefore not restarting with generic curves; it is exposing
+the intrinsic consequences of the already identified transition state.

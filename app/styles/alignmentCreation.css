@@ -1,0 +1,26 @@
+.uf-curvatureBand:has(.alignmentCreation) { height: 216px; grid-template-rows: 26px 40px 1fr; }
+.uf-curvatureBand[data-presentation="working"]:has(.alignmentCreation) { height: var(--curvature-band-height, 216px); }
+.uf-curvatureBand[data-presentation="compact"]:has(.alignmentCreation) { height: 104px; grid-template-rows: 26px 1fr; }
+.uf-curvatureBand[data-presentation="collapsed"]:has(.alignmentCreation) { height: 34px; grid-template-rows: 34px; }
+.alignmentCreation { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 5px 9px; border-top: 1px solid rgba(255,255,255,.07); border-bottom: 1px solid rgba(255,255,255,.07); }
+.alignmentCreation button { border: 1px solid rgba(255,255,255,.15); border-radius: 7px; padding: 5px 9px; background: rgba(255,255,255,.04); color: rgba(255,255,255,.9); font: 600 11px/1 system-ui,sans-serif; white-space: nowrap; cursor: pointer; }
+.alignmentCreation button:hover:not(:disabled) { border-color: rgba(32,213,204,.65); background: rgba(32,213,204,.1); }
+.alignmentCreation button:disabled { opacity: .35; cursor: default; }
+.alignmentCreation__new { border-color: rgba(32,213,204,.7) !important; background: rgba(32,213,204,.14) !important; }
+.alignmentCreation__construct { display: none; align-items: center; gap: 6px; min-width: 0; }
+.alignmentCreation.has-alignment .alignmentCreation__new { display: none; }
+.alignmentCreation.has-alignment .alignmentCreation__construct { display: flex; }
+.alignmentCreation__divider { width: 1px; height: 20px; background: rgba(255,255,255,.14); margin: 0 2px; }
+.alignmentCreation output { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,.65); font: 11px/1.2 system-ui,sans-serif; }
+.alignmentCreation output[data-kind="error"] { color: #ffb454; }
+.alignmentCreation output[data-kind="ok"] { color: #77ddd7; }
+.alignmentCreation.is-busy { pointer-events: none; opacity: .72; }
+.uf-curvatureBand .band-segment.is-straight { stroke: #aab4c2; }
+.uf-curvatureBand .band-segment.is-arc { stroke: #20d5cc; }
+.uf-curvatureBand .band-segment.is-transition { stroke: #ffb454; stroke-dasharray: 5 3; }
+.uf-curvatureBand .band-segment.is-selected { stroke: #fff; stroke-width: 3.5; }
+@media (max-width: 760px) {
+	.uf-curvatureBand:has(.alignmentCreation) { height: 224px; grid-template-rows: 26px 48px 1fr; }
+	.alignmentCreation { overflow-x: auto; }
+	.alignmentCreation output { display: none; }
+}

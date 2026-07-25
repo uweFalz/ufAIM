@@ -1,281 +1,100 @@
 % state/state_taxonomy.tex
 
-\chapter{State Taxonomy}
-
+\chapter{State Terms as Qualified Uses}
 \label{chap:state-taxonomy}
+\index{State!qualified use}
 
-\index{State!taxonomy}
-
-Within AIM, the term \emph{state} is used at several interpretation
-layers. Without an explicit taxonomy, geometric reconstruction,
-realization, runtime evaluation, vehicle interpretation, and
-optimization can be conflated. This chapter defines a canonical
-classification that keeps these layers distinct.
+The Thesis uses the word \emph{state} for several outputs and viewpoints. This
+chapter is not a second ontology or canonical hierarchy. It is a reader map:
+each term below inherits the object, time, realization, provenance,
+applicability, and purpose qualifications established in Parts III--V.
 
 \begin{principle}[State-layer principle]
 \label{princ:state-layer-principle}
-Within AIM, state concepts belong to distinct interpretation layers and
-must not be identified implicitly.
+A state term is meaningful only with the engineering question, subject,
+context, and validity it answers. Shared use of the word ``state'' does not
+make different outputs interchangeable.
 \end{principle}
 
-% ============================================================
-\section{General State Interpretation}
-% ============================================================
+\section{Terms Already Established}
 
-\begin{definition}[State]
+\paragraph{State.}
 \label{def:taxonomy-general-state}
-\index{State!general definition}
-A state is a structured description of a system configuration relative
-to a specified interpretation layer.
-\end{definition}
+No new general definition is introduced here. In this part, state means a
+qualified answer about an identified subject under stated conditions.
 
-The same physical railway system can therefore induce different states,
-for example geometric, realized, runtime, operational, dynamic,
-vehicle-relative, or optimization states.
-
-% ============================================================
-\section{Intrinsic Geometric States}
-% ============================================================
-
-\subsection{pose2}
-
-\begin{definition}[pose2 state]
+\paragraph{pose2.}
 \label{def:taxonomy-pose2}
-\index{State!pose2}
-The pose2 state is the intrinsic planar reconstruction state generated
-from:
-\[
-\kappa(s).
-\]
-\end{definition}
+Use the planar state from Definition~\ref{def:pose2}: it is reconstructed from the
+Alignment's ordered curvature law and a starting pose under a realization
+convention. It is neither Alignment identity nor a persistent canonical
+Kernel.
 
-pose2 belongs to the intrinsic geometric layer. It represents planar
-geometry and tangent evolution, and it serves as the persistent
-reconstruction kernel.
-
-% ------------------------------------------------------------
-
-\subsection{pose3}
-
-\begin{definition}[pose3 state]
+\paragraph{pose3.}
 \label{def:taxonomy-pose3}
-\index{State!pose3}
-The pose3 state is the runtime-evaluated spatial railway state generated
-from:
-\begin{itemize}
-\item pose2 reconstruction,
-\item profile evaluation,
-\item cant interpretation,
-\item frame evaluation,
-\item and runtime coordinate interpretation.
-\end{itemize}
-\end{definition}
+Use the qualified spatial railway pose from
+Definition~\ref{def:runtime-pose3}. It adds
+profile, cant, metric realization and frame interpretation without becoming
+the complete physical asset.
 
-pose3 describes the railway runtime state rather than the vehicle
-itself.
-
-% ============================================================
-\section{Runtime and Realized States}
-% ============================================================
-
-\begin{definition}[Runtime state]
+\paragraph{Runtime state.}
 \label{def:taxonomy-runtime-state}
-\index{State!runtime}
-A runtime state is a dynamically evaluated state generated during
-runtime interpretation.
-\end{definition}
+This phrase indicates that an applicable result is evaluated when needed. It
+does not identify one universal state type or erase the result-producing
+operator.
 
-Runtime states depend on runtime operators, realization, coordinate
-interpretation, frame construction, and operational context.
-
-\begin{definition}[Realized state]
+\paragraph{Realized state.}
 \label{def:taxonomy-realized-state}
-\index{State!realized}
-A realized state is a runtime state generated from physically realized
-rather than purely analytical geometry.
-\end{definition}
+Use only for a state qualified by a stated realization. A design realization,
+constructed physical state, and observed-state estimate remain distinct.
 
-Typical realized quantities include
-\[
-\mathrm{pose3}_{\mathrm{real}},
-\qquad
-\kappa_{\mathrm{real}},
-\qquad
-\phi_{\mathrm{real}}.
-\]
+\section{Terms Introduced by a Use or Model}
 
-% ============================================================
-\section{Operational, Vehicle, and Dynamic States}
-% ============================================================
-
-\begin{definition}[Operational state]
+\paragraph{Operational state.}
 \label{def:taxonomy-operational-state}
-\index{State!operational}
-An operational state is a runtime state relevant for railway operation,
-comfort, admissibility, or dynamic interpretation.
-\end{definition}
+An output used for an operational question; the name does not itself establish
+comfort, safety, admissibility, or authority.
 
-Operational states are derived from runtime railway states and include,
-for example, effective acceleration, jerk, roll evolution, cant
-deficiency, and balance quantities.
-
-\begin{definition}[Vehicle state]
+\paragraph{Vehicle state.}
 \label{def:taxonomy-vehicle-state}
-\index{State!vehicle}
-A vehicle state is a runtime-relative operational state describing the
-vehicle relative to the railway runtime state.
-\end{definition}
+An output of an identified vehicle model relative to the qualified railway
+state and traversal, as explained in Chapter~\ref{chap:vehicle-space}.
 
-Thus,
-\[
-\mathrm{vehicleState}
-=
-\mathcal V(
-\mathrm{pose3},
-v,
-\dots
-).
-\]
-
-\begin{definition}[Center-of-gravity state]
+\paragraph{Centre-of-gravity state.}
 \label{def:taxonomy-cg-state}
-\index{State!center-of-gravity}
-A center-of-gravity state is an operational abstraction describing the
-runtime trajectory of the vehicle center of gravity relative to the
-railway runtime state.
-\end{definition}
+A model output for a selected mass reference point. It is not the complete
+vehicle state and requires the relevant mass and vehicle model.
 
-\begin{definition}[Dynamic state]
+\paragraph{Dynamic state.}
 \label{def:taxonomy-dynamic-state}
-\index{State!dynamic}
-A dynamic state is a runtime state participating in operational state
-evolution.
-\end{definition}
+The model-specific result trajectory \(x_M\) introduced in
+Definition~\ref{def:runtime-dynamic-state}; it is not a synonym for pose3 or physical
+state.
 
-Dynamic states may evolve according to
-\[
-x'(s) = f(x,u).
-\]
-
-% ============================================================
-\section{Optimization and Relative States}
-% ============================================================
-
-\begin{definition}[Optimization state]
+\paragraph{Optimization state.}
 \label{def:taxonomy-optimization-state}
-\index{State!optimization}
-An optimization state is the state representation used as the object of
-an optimization problem.
-\end{definition}
+A variable or output deliberately selected for an optimization formulation.
+Its selection is an explicit engineering choice, and an optimum is not a
+decision.
 
-Within AIM, optimization states are preferably realized runtime-state
-trajectories rather than isolated geometric parameters, for example
-\[
-x_{\mathrm{opt}}(s) = x_{\mathrm{real}}(s).
-\]
-
-\begin{definition}[Relative state]
+\paragraph{Relative state.}
 \label{def:taxonomy-relative-state}
-\index{State!relative}
-A relative state is a state evaluated relative to another runtime state
-or runtime reference frame.
-\end{definition}
+A result expressed relative to a stated reference state or frame. Both
+reference and convention remain part of its meaning.
 
-Many operational quantities are relative states, including vehicle
-states relative to track states and balance states relative to
-admissibility envelopes.
+\section{Dependency Instead of Hierarchy}
 
-% ============================================================
-\section{State Transformations and Hierarchy}
-
-\index{State!hierarchy}
-% ============================================================
-
-Different state classes are connected through runtime operators. The
-principal operator structure is introduced in
-\cref{chap:runtime-operators}. Examples include
-\[
-\mathcal R,
-\qquad
-\mathcal D,
-\qquad
-\mathcal O,
-\qquad
-\mathcal V.
-\]
-
-A canonical hierarchy can be read as
-\[
-\kappa(s)
-\rightarrow
-\mathrm{pose2}
-\rightarrow
-\mathrm{pose3}
-\rightarrow
-x(s)
-\rightarrow
-x_{\mathrm{vehicle}}
-\rightarrow
-x_{\mathrm{CG}}
-\rightarrow
-x_{\mathrm{opt}}.
-\]
-
-Realization operators act throughout this hierarchy:
-\[
-\mathcal R :
-x
-\mapsto
-x_{\mathrm{real}}.
-\]
-
-This hierarchy is a conceptual ordering of interpretation layers, not a
-rigid implementation sequence.
-
-\input{figures/foundations/state_hierarchy}
-
-% ============================================================
-\section{Canonical Interpretation}
-% ============================================================
-
-\begin{proposition}
-Within AIM, state concepts belong to distinct interpretation layers.
-\end{proposition}
-
-\begin{proposition}
-pose3 describes the railway runtime state rather than the vehicle
-itself.
-\end{proposition}
-
-\begin{proposition}
-Vehicle states are relative runtime interpretation states generated from
-interaction with the railway runtime state.
-\end{proposition}
-
-\begin{proposition}
-Operational and dynamic states are generated through runtime evaluation
-rather than through static geometric storage.
-\end{proposition}
-
-\begin{proposition}
-Optimization states are preferably realized runtime-state trajectories
-rather than isolated geometric parameters.
-\end{proposition}
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+There is no universal chain
+\(\kappa\rightarrow\mathrm{pose2}\rightarrow\mathrm{pose3}\rightarrow
+x_{\mathrm{vehicle}}\rightarrow x_{\mathrm{opt}}\).
+Pose2 and pose3 follow the spatial dependencies of Part V. Traversal adds time.
+A selected response model may add vehicle outputs. An optimization formulation
+may then select some qualified quantity as a variable, objective, or
+constraint. Other uses stop earlier. Dependency is use-specific, not a
+canonical state ladder.
 
 \begin{summary}
-State taxonomy provides the structural interpretation framework for AIM
-runtime architecture.
-
-Within this framework, pose2 represents intrinsic reconstruction state,
-pose3 represents railway runtime state, realized states represent
-physical railway realization, operational states describe runtime
-behaviour, vehicle states describe relative operational interpretation,
-and optimization states describe the objects of trajectory optimization.
-
-This taxonomy prevents conceptual ambiguity between geometry, runtime,
-realization, dynamics, vehicle interpretation, and optimization.
+This map prevents homonyms from becoming identity claims. It introduces no
+new state model: every downstream term names a qualified use or model output
+derived from the one railway-state account already established.
 \end{summary}

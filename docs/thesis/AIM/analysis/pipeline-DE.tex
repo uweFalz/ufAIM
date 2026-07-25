@@ -1,0 +1,111 @@
+% analysis/pipeline-DE.tex
+\section{AIM-Verarbeitungspipeline}
+\subsection*{Motivation}
+Alignment-Modellierung umfasst mehrere Gebiete:
+\begin{itemize}
+\item globale Koordinatensysteme (CRS),
+\item geometrische Alignment-Darstellung,
+\item physische Realisierung,
+\item Messdaten und
+\item Optimierung.
+\end{itemize}
+Ihre getrennte Behandlung führt häufig zu fragmentierten Modellen und
+inkonsistenten Ergebnissen. Im AIM-Rahmen werden sie in einer einzigen
+Verarbeitungspipeline vereinigt.
+
+\subsection{Operatorkette}
+\begin{definition}[AIM-Pipeline]
+Der vollständige Modellierungs- und Optimierungsprozess wird als
+Operatorkomposition beschrieben:
+\[
+\boxed{\mathcal P=\mathcal W^{-1}\circ\mathcal R\circ\mathcal M\circ\mathcal W\circ\mathcal C}
+\]
+\end{definition}
+Die Operatoren sind:
+\begin{itemize}
+\item \(\mathcal C\): CRS-Transformation,
+\item \(\mathcal W\): World--Track-Transformation,
+\item \(\mathcal M\): Alignment-Modell (parametrisch oder hybrid),
+\item \(\mathcal R\): Realisierungsoperator,
+\item \(\mathcal W^{-1}\): Track--World-Transformation.
+\end{itemize}
+
+\subsection{Detaillierte Struktur}
+Die Pipeline bildet Rohdaten auf realisierte Geometrie ab:
+\[
+\text{CRS-Daten}\xrightarrow{\mathcal C}\text{World-Koordinaten}
+\xrightarrow{\mathcal W}(s,d)\xrightarrow{\mathcal M}\kappa(s)
+\xrightarrow{\mathcal R}\gamma_{\mathrm{real}}(s)
+\xrightarrow{\mathcal W^{-1}}\text{World-Geometrie}.
+\]
+
+\subsection{Integration des hybriden Modells}
+Der Alignment-Modelloperator ist hybrid:
+\[
+\mathcal M:(\mathbf T,\delta\kappa)\mapsto\kappa(s).
+\]
+Die Pipeline arbeitet somit zugleich mit strukturierten Parametern und lokalen
+Korrekturen.
+
+\subsection{Inverses Problem}
+\begin{definition}[Pipeline-Inversion]
+Für beobachtete Daten \(x_i\) lautet das inverse Problem:
+\[
+\min_{\mathbf x}\sum_i\|\mathcal P(\mathbf x)(s_i)-x_i\|^2.
+\]
+\end{definition}
+Dies entspricht der Anpassung eines Modells, sodass die realisierte Geometrie
+mit Beobachtungen übereinstimmt.
+
+\subsection{Einbettung der Optimierung}
+Die Pipeline ist in ein Optimierungsproblem eingebettet:
+\[
+\min_{\mathbf x}J\bigl(\mathcal P(\mathbf x)\bigr).
+\]
+Die Zielfunktion wird an der realisierten Geometrie und nicht am parametrischen
+Modell bewertet.
+
+\subsection{Jacobi-Struktur}
+Die Ableitung der Pipeline folgt aus der Kettenregel:
+\[
+\frac{\partial\mathcal P}{\partial\mathbf x}
+=D\mathcal W^{-1}\cdot D\mathcal R\cdot D\mathcal M\cdot D\mathcal W.
+\]
+Die Komponenten besitzen spezifische Eigenschaften:
+\begin{itemize}
+\item \(D\mathcal M\): dünn besetzt und strukturiert,
+\item \(D\mathcal R\): Glättungsoperator,
+\item \(D\mathcal W\): nichtlineare Projektion,
+\item \(D\mathcal C\): lineare Transformation.
+\end{itemize}
+
+\subsection{Rechnerische Folgen}
+Die Pipeline weist dünne Besetzung auf Modellebene, Nichtlinearität auf
+Projektionsebene, Glättung auf Realisierungsebene und Skalierungseffekte auf
+CRS-Ebene auf. Effiziente Implementierung erfordert hybride Darstellungen,
+blockstrukturierte Löser und LOD-abhängige Bewertung.
+
+\subsection{Interpretation nach Detaillierungsgrad}
+Auf verschiedenen Maßstäben dominieren verschiedene Pipeline-Anteile:
+\begin{itemize}
+\item großer Maßstab: CRS und World-Geometrie,
+\item mittlerer Maßstab: parametrisches Alignment,
+\item kleiner Maßstab: Korrekturen und Realisierung.
+\end{itemize}
+
+\subsection{Zentrale Erkenntnis}
+\begin{proposition}
+Alignment-Modellierung ist keine einzelne Abbildung, sondern eine Komposition
+geometrischer, physischer und rechnerischer Operatoren.
+\end{proposition}
+
+\subsection{Verbindung zu AIM}
+\begin{summary}
+Der AIM-Rahmen wird grundlegend durch seine Operatorpipeline bestimmt. Sie
+integriert Koordinatensysteme, Geometrie, Physik und Optimierung in ein
+kohärentes Modell und ermöglicht konsistente Datenintegration, physisch
+bedeutsame Optimierung und skalierbare Berechnung.
+
+AIM überführt Alignment-Modellierung damit von einer Sammlung isolierter
+Verfahren in ein strukturiertes rechnerisches System.
+\end{summary}

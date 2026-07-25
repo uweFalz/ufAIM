@@ -1,0 +1,180 @@
+\chapter{Optimiererarchitektur}
+\section{Überblick}
+Die vorangehenden Kapitel haben die mathematischen und physischen Grundlagen
+von Alignment-Modellierung und -Optimierung eingeführt. Hier werden sie zu
+einer konkreten Systemarchitektur für eine vollständige Optimierungsengine
+verbunden.
+
+Hauptkomponenten sind Datenaufnahme und Vorverarbeitung, Konstruktion der
+Anfangsschätzung, Bedingungsbibliothek, Zielfunktionsengine, numerischer Löser
+und Live-Visualisierung.
+
+\section{Datenfluss}
+\[
+\text{Eingabedaten}\rightarrow\text{Anfangsschätzung}
+\rightarrow\text{Optimierung}\rightarrow\text{Ergebnis}
+\]
+Im implementierten System lautet die Folge:
+\begin{verbatim}
+Drop → Parser → Grabbeltisch → Initial Guess → SQP → Model → View
+\end{verbatim}
+
+\section{Optimierungssitzung}
+\begin{definition}[Optimierungssitzung]
+Eine Optimierungssitzung kapselt alle Daten und Operationen eines einzelnen
+Optimierungslaufs.
+\end{definition}
+\begin{verbatim}
+class OptimizationSession {
+  constructor({ input, constraints, objectives }) {
+    this.input = input
+    this.constraints = constraints
+    this.objectives = objectives
+    this.initialGuess = null
+    this.result = null
+  }
+  buildInitialGuess() {}
+  runOptimization() {}
+  commitToModel(projectModel) {}
+}
+\end{verbatim}
+Diese Abstraktion trennt Datenvorbereitung, numerische Optimierung und
+Integration in das Systemmodell.
+
+\section{Konstruktion der Anfangsschätzung}
+Die Anfangsschätzung überführt geometrische Rohdaten in Optimierungsvariablen.
+\begin{verbatim}
+function buildInitialGuess(polyline) {
+  const s = computeArcLength(polyline)
+  const theta = computeDirections(polyline)
+  const kappa = diff(theta) / ds
+  const kappaSmooth = smooth(kappa)
+  const phi = kappaSmooth.map(k =>
+    Math.asin(clamp(v*v*k/g, -1, 1))
+  )
+  return { kappa: kappaSmooth, phi }
+}
+\end{verbatim}
+Dieser Schritt ist für robuste Konvergenz wesentlich.
+
+\section{Bedingungsbibliothek}
+\begin{definition}[Bedingung]
+Eine Bedingung ist eine Funktion, die den aktuellen Zustand auf ein Residuum
+abbildet.
+\end{definition}
+\begin{verbatim}
+function minRadius(kappa, Rmin) {
+  return Math.abs(kappa) - 1/Rmin
+}
+\end{verbatim}
+\begin{verbatim}
+function parallelConstraint(p1, p2, d) {
+  const dx = p1.x - p2.x
+  const dy = p1.y - p2.y
+  return Math.sqrt(dx*dx + dy*dy) - d
+}
+\end{verbatim}
+Alle Bedingungen werden einheitlich als Residuen ausgedrückt.
+
+\section{Zielfunktionsengine}
+\begin{definition}[Zielfunktion]
+Die Zielfunktion wird als gewichtete Summe von Residuentermen konstruiert.
+\end{definition}
+\begin{verbatim}
+function objectiveJerk(kappa, phi, ds, v, g) {
+  const r = []
+  for (let i = 0; i < kappa.length - 1; i++) {
+    const dk = (kappa[i + 1] - kappa[i]) / ds
+    const dphi = (phi[i + 1] - phi[i]) / ds
+    const j = v*v*v*dk - g*v*Math.cos(phi[i]) * dphi
+    r.push(j)
+  }
+  return r
+}
+\end{verbatim}
+\begin{verbatim}
+function buildObjectiveResiduals(ctx, objectives) {
+  const r = []
+  for (const obj of objectives) {
+    const ri = obj.evaluate(ctx)
+    const w = Math.sqrt(obj.weight ?? 1)
+    for (const v of ri) r.push(w * v)
+  }
+  return r
+}
+\end{verbatim}
+Dies ermöglicht flexible Anpassung an verschiedene Entwurfskriterien.
+
+\section{Zusammenstellung der Residuen}
+Das gesamte Problem wird in Residuen ausgedrückt.
+\begin{verbatim}
+function buildResidualVector(ctx, constraints, objectives) {
+  return [
+    ...buildConstraintResiduals(ctx, constraints),
+    ...buildObjectiveResiduals(ctx, objectives)
+  ]
+}
+\end{verbatim}
+
+\section{Numerischer Löser}
+\subsection{Gauss--Newton-/SQP-Kern}
+\begin{verbatim}
+async function runSQPInteractive(x0, onStep) {
+  let x = x0
+  for (let k = 0; k < maxIter; k++) {
+    const r = residuals(x)
+    const J = jacobian(x)
+    const p = solve(J, r)
+    x = add(x, scale(p, alpha))
+    onStep({ x, k, r })
+    await nextFrame()
+  }
+  return x
+}
+\end{verbatim}
+Der Löser arbeitet auf der Residuenformulierung und nutzt dünne Besetzung.
+
+\section{Live-Visualisierung}
+\begin{verbatim}
+optSession.runOptimization({
+  onStep: ({ x, k }) => {
+    const geom = reconstruct(x)
+    geoRender.updateAlignment(geom)
+    plotKappa(x.kappa)
+    plotPhi(x.phi)
+  }
+})
+\end{verbatim}
+Dies ermöglicht interaktive Untersuchung und Fehlersuche.
+
+\section{Netzerweiterung}
+\begin{verbatim}
+function residuals(network) {
+  const r = []
+  for (edge of network.edges) r.push(...smoothness(edge))
+  for (node of network.nodes) r.push(...nodeConstraints(node))
+  return r
+}
+\end{verbatim}
+Damit können mehrere verbundene Gleise gleichzeitig optimiert werden.
+
+\section{Systemintegration}
+Die Engine wird über die interaktive Auswahloberfläche in den Nutzerablauf
+eingebunden.
+\begin{verbatim}
+onUserFinalizeSelection(selection) {
+  const alignmentData = buildAlignmentFromSelection(selection)
+  const optSession = new OptimizationSession({ alignmentData })
+  optSession.buildInitialGuess()
+  optSession.runOptimization()
+}
+\end{verbatim}
+
+\section{Zusammenfassung}
+\begin{summary}
+Die Architektur verbindet mathematische Modellierung, numerische Optimierung
+und interaktive Visualisierung. Durch einheitliche Residuen für Bedingungen
+und Ziele erreicht sie hohe Modularität und Erweiterbarkeit und ermöglicht den
+Übergang von statischer Alignment-Modellierung zu dynamischem,
+optimierungsgetriebenem Eisenbahninfrastrukturentwurf.
+\end{summary}

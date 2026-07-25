@@ -23,7 +23,8 @@ operators connecting distinct state layers.
 \section{Operator Overview}
 % ============================================================
 
-The central runtime operators are
+The following symbols denote families of qualified operations in later
+chapters:
 \[
 \mathcal R,
 \qquad
@@ -34,21 +35,11 @@ The central runtime operators are
 \mathcal V.
 \]
 
-Conceptually,
-\[
-\mathrm{pose3}_{\mathrm{target}}
-\xrightarrow{\mathcal R}
-\mathrm{pose3}_{\mathrm{real}}
-\xrightarrow{\mathcal D}
-x_{\mathrm{op}}
-\xrightarrow{\mathcal V}
-x_{\mathrm{vehicle}}
-\xrightarrow{\mathcal O}
-x_{\mathrm{eval}}.
-\]
-
-This chain is conceptual; concrete implementations may compose,
-approximate, or partially evaluate operators.
+They do not form one mandatory state ladder. A use may compare a target with a
+qualified realization, compose the railway state with \(s(t)\), evaluate a
+selected model, express a vehicle-relative result, or apply a purpose-specific
+evaluation. Each operation identifies its own inputs, applicability and
+provenance.
 
 % ============================================================
 \section{Realization Operator}
@@ -74,9 +65,10 @@ For pose3 states,
 \mathrm{pose3}_{\mathrm{real}}.
 \]
 
-\(\mathcal R\) captures construction, measurement, maintenance, and
-realization effects. It is part of the runtime interpretation chain,
-not a post-hoc correction step.
+\(\mathcal R\) is explanatory shorthand for a stated realization relation; it
+does not make construction, physical state, maintenance history and
+observation one process. A measured state remains an observation with its own
+provenance and uncertainty.
 
 % ============================================================
 \section{Dynamics Operator}
@@ -85,29 +77,22 @@ not a post-hoc correction step.
 \begin{definition}[Dynamics operator]
 \label{def:runtime-dynamics-operator-operator-chapter}
 \index{Dynamics operator}
-The dynamics operator maps railway runtime states to operational dynamic
-state trajectories:
+For an identified response model \(M\), the dynamics operator maps a qualified
+railway state, traversal law and model inputs to a model-specific result:
 \[
-\mathcal D :
-\mathrm{pose3}
+\mathcal D_M :
+(\mathcal S_{\mathrm{rail}}(s(t)),s(t),Q_M)
 \mapsto
-x_{\mathrm{op}}.
+x_M(t).
 \]
 \end{definition}
 
-Typical outputs include effective acceleration, jerk, cant deficiency,
-roll response, and admissibility-relevant quantities.
+Possible outputs include reduced indicators or modelled responses. Their names
+do not establish comfort, safety or admissibility.
 
-In realization-aware interpretation,
-\[
-x_{\mathrm{op,real}}
-=
-\mathcal D\left(
-\mathcal R_{\mathrm{pose3}}\left(
-\mathrm{pose3}_{\mathrm{target}}
-\right)
-\right).
-\]
+A realization-aware use supplies the selected qualified realization as one
+input to \(\mathcal D_M\); it does not change the operator's model and
+traversal requirements.
 
 % ============================================================
 \section{Vehicle Interpretation Operator}
@@ -116,25 +101,20 @@ x_{\mathrm{op,real}}
 \begin{definition}[Vehicle interpretation operator]
 \label{def:runtime-vehicle-operator}
 \index{Vehicle state!interpretation operator}
-The vehicle interpretation operator maps railway runtime states and
-operational context to vehicle-relative states:
+For an identified vehicle model \(M\), the vehicle interpretation operator
+maps the qualified railway state, traversal and vehicle inputs to
+vehicle-relative results:
 \[
-\mathcal V :
-\left(
-\mathrm{pose3},
-v,
-\mathcal C
-\right)
+\mathcal V_M :
+\left(\mathcal S_{\mathrm{rail}}(s(t)),s(t),Q_M\right)
 \mapsto
-x_{\mathrm{vehicle}}.
+x_{\mathrm{vehicle},M}(t).
 \]
 \end{definition}
 
-Here \(\mathcal C\) denotes operational context such as vehicle type,
-load state, abstraction level, or interpretation model.
-
-\(\mathcal V\) defines an interpretation role. Its implementation may
-range from lightweight abstraction to high-fidelity vehicle modelling.
+The qualified input set keeps vehicle type, loading, model fidelity,
+provenance and applicability distinct rather than hiding them in one generic
+context.
 
 % ============================================================
 \section{Operational Evaluation Operator}
@@ -163,41 +143,10 @@ state objects it consumes.
 \index{Operator composition}
 % ============================================================
 
-The operator view is compositional. For example,
-\[
-x_{\mathrm{op,real}}
-=
-\left(
-\mathcal D
-\circ
-\mathcal R_{\mathrm{pose3}}
-\right)
-\left(
-\mathrm{pose3}_{\mathrm{target}}
-\right),
-\]
-\[
-x_{\mathrm{vehicle}}
-=
-\mathcal V\left(
-\mathcal R_{\mathrm{pose3}}\left(
-\mathrm{pose3}_{\mathrm{target}}
-\right),
-v,
-\mathcal C
-\right),
-\]
-\[
-x_{\mathrm{eval}}
-=
-\mathcal O\left(
-\mathcal D\left(
-\mathcal R_{\mathrm{pose3}}\left(
-\mathrm{pose3}_{\mathrm{target}}
-\right)
-\right)
-\right).
-\]
+Operators may be composed only when output and input types match and
+realization, traversal, model, purpose, provenance and applicability remain
+attached. There is no universal composition that produces vehicle response,
+evaluation or decision from pose3 alone.
 
 % ============================================================
 \section{Runtime Abstraction and Implementation}

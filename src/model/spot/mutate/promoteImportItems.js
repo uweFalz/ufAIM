@@ -548,6 +548,8 @@ function buildSpotMeta(item, opts = {}) {
 
 	return {
 		importItemId: item?.id ?? null,
+		evidenceId: item?.evidenceId ?? null,
+		sourceEvidence: item?.derived?.sourceEvidenceSnapshot ?? null,
 		source: clonePlainObject(item?.source),
 		importMeta: clonePlainObject(item?.meta),
 		importAssessment: clonePlainObject(item?.derived?.importAssessment),

@@ -4,135 +4,67 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Dynamics}
 
-% ============================================================
-\section*{What do we already know?}
-% ============================================================
+The identified straight--transition--arc Alignment does not stop at the Part V
+boundary. At each intrinsic position \(s\), its curvature law, realized pose,
+profile, cant law, and qualified moving frame already determine the railway
+state needed here. Part VI therefore introduces no second state model. It asks
+one new question:
 
-The previous part introduced the railway state model underlying AIM.
+\begin{quote}
+How does traversal through this spatial state generate time-dependent
+quantities, and which additional models are required before an engineering
+consequence can be evaluated?
+\end{quote}
 
-In particular, the states \(\mathrm{pose2}\) and
-\(\mathrm{pose3}\) were established as intrinsic descriptions of
-railway geometry and spatial railway configuration.
-
-These states provide a description of the railway itself.
-
-However, they do not yet describe how railway systems evolve during
-operation.
-
-% ============================================================
-\section*{What is still missing?}
-% ============================================================
-
-A state description specifies what exists at a given location along an
-alignment.
-
-It does not yet explain how operational quantities emerge from that
-state.
-
-Railway engineering ultimately concerns moving systems.
-
-Vehicles travel through space, passengers experience acceleration,
-cant influences dynamic balance, and operational constraints evolve
-along trajectories.
-
-The missing element is therefore not another geometric description,
-but a framework for state evolution and operational interpretation.
-
-A distinction must consequently be made between railway states and the
-states generated from them during operation.
-
-% ============================================================
-\section*{What comes next?}
-% ============================================================
-
-This part extends the railway state model toward operational runtime
-interpretation.
-
-The central observation is that railway states and vehicle states are
-not identical.
-
-Within AIM, \(\mathrm{pose3}\) describes the railway itself.
-
-Vehicle states, center-of-gravity states, balance states, comfort
-states, and optimization states are generated from railway states
-through runtime interpretation.
-
-The chapters of this part move from state taxonomy and runtime
-operators toward vehicle space, runtime dynamics, Schwerpunkt
-interpretation, dynamic balance, Vienna reinterpretation,
-realization-aware dynamics, and optimization in state space.
-
-This part does not introduce a full multibody vehicle model.
-
-Instead, it establishes the structural framework into which such
-models may later be coupled.
-
-% ============================================================
-\section*{Relation to the AIM Roadmap}
-% ============================================================
-
-Within the AIM roadmap, the present part corresponds to the transition
-from railway states toward operational state evolution.
-
-\begin{center}
-\begin{tikzpicture}[
-  node distance=1.4cm,
-  box/.style={
-    draw,
-    rounded corners,
-    minimum width=4.5cm,
-    minimum height=0.9cm,
-    align=center
-  }
-]
-
-\node[box] (pose3)
-{\(\mathrm{pose3}\)};
-
-\node[box, below=of pose3] (vehicle)
-{Vehicle Space};
-
-\node[box, below=of vehicle] (runtime)
-{Runtime Dynamics};
-
-\draw[->, thick] (pose3) -- (vehicle);
-\draw[->, thick] (vehicle) -- (runtime);
-
-\end{tikzpicture}
-\end{center}
-
-The progression
+The new input is a traversal law
 \[
-\mathrm{pose3}
-\rightarrow
-\text{Vehicle Space}
-\rightarrow
-\text{Runtime Dynamics}
+s=s(t),\qquad v(t)=\frac{\dd s}{\dd t}.
 \]
-marks the transition from describing the railway itself toward
-describing processes evolving relative to the railway.
+Composition turns spatial laws into temporal exposure:
+\(\kappa(s)\mapsto\kappa(s(t))\) and \(u(s)\mapsto u(s(t))\).
+Neither law changes identity. What changes is the rate at which a vehicle or
+other moving system encounters them.
 
-This transition prepares the introduction of realization,
-optimization, and process-oriented information modelling developed in
-later parts of this thesis.
+\begin{figure}[htbp]
+\centering
+\input{figures/dynamics/space_to_time_dependency}
+\caption{From qualified railway state to temporal exposure, response modelling, evaluation, and possible decision.}
+\label{fig:space-to-time-dependency}
+\end{figure}
 
-% ============================================================
+Every arrow in \cref{fig:space-to-time-dependency} adds information:
+the traversal law adds time; its derivatives add velocity and acceleration;
+a reduced relation adds stated kinematic assumptions; a response model adds
+vehicle and track physics; evaluation adds purpose and applicable rules; only
+an Engineering Decision adds authorized commitment.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{p{0.19\textwidth}p{0.33\textwidth}p{0.37\textwidth}}
+\toprule
+\textbf{Layer} & \textbf{Required input} & \textbf{Result and boundary}\\
+\midrule
+Spatial law & identified Alignment, \(s,\kappa(s),u(s)\) & intrinsic geometry and separate cant law; no time\\
+Traversal law & \(s(t)\), source, applicability, validity & \(v(t)\), \(\dot v(t)\), temporal exposure; no vehicle response\\
+Reduced kinematics & frame, signs, cant and speed assumptions & indicators such as \(v^2\kappa\); not comfort or safety\\
+Response model & vehicle, contact, track and loading data & model-dependent response; not observation or decision\\
+Evaluation & purpose, rule, scope, evidence & qualified assessment; no authority by itself\\
+Decision & responsible authority and admitted evidence & accepted or rejected course of action\\
+\bottomrule
+\end{tabular}
+\caption{The dynamic argument adds one responsibility at a time.}
+\label{tab:dynamics-responsibility-layers}
+\end{table}
+
 \begin{principle}[Dynamic-State Interpretation Principle]
 \label{princ:dynamic-state-interpretation}
-Within AIM, dynamic railway behaviour is interpreted as operator-based
-runtime state evolution generated from railway states rather than as a
-direct property of coordinate geometry alone.
+Time-dependent quantities are derived by composing the qualified railway state
+with a qualified traversal law and, where required, explicit response models.
+Reduced kinematics, response, evaluation, and decision remain distinct.
 \end{principle}
 
-% ============================================================
 \begin{summary}
-Geometry explains shape.
-
-States explain configuration.
-
-Dynamics explain evolution.
-
-The present part establishes the operational layer that connects
-railway states with vehicle behaviour, runtime interpretation, and
-future optimization concepts.
+Geometry supplies the spatial law. Traversal supplies time. Models supply
+response. Purpose and rules supply evaluation. Authority supplies decision.
 \end{summary}

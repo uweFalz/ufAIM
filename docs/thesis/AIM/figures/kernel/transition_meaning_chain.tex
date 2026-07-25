@@ -1,0 +1,29 @@
+% figures/kernel/transition_meaning_chain.tex
+\begin{tikzpicture}[
+  >=Stealth,
+  node distance=0.38cm,
+  stage/.style={draw=black!55, rounded corners=2pt, fill=black!2,
+    minimum width=2.15cm, minimum height=1.35cm, align=center,
+    font=\scriptsize, inner sep=4pt},
+  flow/.style={->, semithick, draw=black!65},
+  status/.style={font=\scriptsize\itshape, text=black!72, align=center}
+]
+  \node[stage] (grammar) {Berlinish\\composition\\$H_{in}+C+H_{out}$};
+  \node[stage, right=of grammar] (calc) {parameterized\\calculation\\proposal};
+  \node[stage, right=of calc] (object) {Alignment\\object, state,\\construction};
+  \node[stage, right=of object] (real) {metric\\realization and\\coordinates};
+  \node[stage, right=of real] (evidence) {representation,\\observation,\\provenance};
+  \node[stage, right=of evidence] (eval) {purpose-relative\\evaluation and\\applicability};
+  \node[stage, right=of eval] (decision) {authorized\\engineering\\decision};
+
+  \draw[flow] (grammar) -- (calc);
+  \draw[flow] (calc) -- (object);
+  \draw[flow] (object) -- (real);
+  \draw[flow] (real) -- (evidence);
+  \draw[flow] (evidence) -- (eval);
+  \draw[flow] (eval) -- (decision);
+
+  \node[status, below=0.18cm of calc] {calculated};
+  \node[status, below=0.18cm of eval] {applicable for\\a stated purpose};
+  \node[status, below=0.18cm of decision] {accepted within\\stated authority};
+\end{tikzpicture}

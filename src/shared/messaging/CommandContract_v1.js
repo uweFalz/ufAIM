@@ -23,6 +23,9 @@ const REQUIRED = {
 	// ---------------------------------------------------------
 	"Transition.ListPresets": [],
 	"Transition.GetPresetSpec": ["presetId"],
+	"Transition.GetCatalogue": [],
+	"Transition.UpdateWorkingCopy": ["presetId", "normLengthPartition"],
+	"Transition.ResetWorkingCopy": ["presetId"],
 
 	// ---------------------------------------------------------
 	// alignment
@@ -36,6 +39,8 @@ const REQUIRED = {
 	"Import.GetState": [],
 	"Import.BeginSession": [],
 	"Import.AddItems": ["items"],
+	"Import.PublishResultEvidence": ["evidence", "items"],
+	"Import.GetResultEvidence": [],
 	"Import.SetItemAccepted": ["itemId", "accepted"],
 
 	// ---------------------------------------------------------

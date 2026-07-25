@@ -15,7 +15,9 @@ function makeSystemPrefs() {
 
 		debug: {
 			enabled: true,
-			disableServiceWorker: false,
+			// Development has no offline contract. Keep registration disabled
+			// unless a real no-cache worker is deliberately supplied.
+			disableServiceWorker: true,
 			workerEcho: true,
 			importMirror: true,
 			emitImportPropsEffects: isDev,

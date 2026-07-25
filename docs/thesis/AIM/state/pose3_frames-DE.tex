@@ -1,0 +1,76 @@
+\chapter{Bewegte Frames und ihre Grenzen}
+
+Das vorangehende Kapitel hat ein lokales Eisenbahn-Frame konstruiert, weil das
+laufende Alignment eine Querschnittsorientierung erforderte. Dieses Kapitel
+benennt die Abhängigkeiten jeder Richtung und die Grenze der
+Erklärungskonvention.
+
+\section{Longitudinalrichtung}
+
+Für die realisierte räumliche Trajektorie \(\Gamma(s)\) lautet die
+Einheitstangente
+\[
+\mathbf t(s)=\frac{\Gamma'(s)}{\|\Gamma'(s)\|}.
+\]
+Sie folgt aus horizontaler Pose, vertikalem Profil, metrischer Interpretation
+und der Orientierung wachsenden \(s\). Horizontale Krümmung allein bestimmt
+ihre dreidimensionale Richtung nicht.
+
+\section{Nicht überhöhter Querschnitt}
+
+Die Realisierung liefert einen verwendbaren Vertikalbezug
+\(\mathbf z_{\mathrm{ref}}(s)\): Lokal kann dies die Vertikale einer ebenen
+Engineering-Realisierung sein; bei einer Erdrealisierung können
+Oberflächennormale und Gravitationskonvention beteiligt sein. Orthogonale
+Projektion dieses Bezugs auf \(\mathbf t\), Normierung und rechtshändige
+Vervollständigung ergeben eine mögliche Konstruktion von
+\(F_0=(\mathbf t,\mathbf l_0,\mathbf z_0)\). Wo die Projektion schlecht
+konditioniert ist, wird eine stetige Transportregel benötigt.
+
+Diese Konstruktion bleibt bewusst qualifiziert. Die Thesis wählt kein
+universelles Eisenbahn-Frame für jede Realisierung. Explizit bleiben müssen:
+\begin{itemize}
+\item Die Longitudinalrichtung folgt der realisierten Trajektorie und der
+  Parameterorientierung.
+\item Das nicht überhöhte Quer--Vertikal-Paar folgt einer angegebenen
+  Vertikal- und Transportkonvention.
+\item \(u(s)\) oder \(\phi(s)\) dreht dieses Paar um \(\mathbf t\).
+\item Koordinatenkomponenten folgen der gewählten Darstellung.
+\end{itemize}
+
+\section{Warum ein reines Frenet-Frame nicht genügt}
+
+Eine nur aus der Krümmung abgeleitete Frenet-Normale ist für
+\(\kappa\rightarrow0\) nicht definiert oder numerisch instabil. Das laufende
+Alignment enthält eine anfängliche Gerade; ein Eisenbahn-Frame muss seine
+Orientierung daher stetig durch diesen Abschnitt tragen. Dies ist kein neues
+architektonisches Objekt, sondern eine Anwendbarkeitsbedingung der
+Frame-Auswertung.
+
+\section{Bestimmtheitsgrade}
+
+An einem festen \(s\) bleiben Alignment-Identität und geordnetes Gesetz
+erhalten. Anfangspose und metrische Realisierung legen die ebene Platzierung
+fest. Das Profil legt Höhe und Neigung fest, soweit definiert. Das
+Überhöhungsgesetz legt den Roll nur unter einer Spurweiten- und
+Vorzeichenkonvention fest. Eine verbleibende Gier- oder
+Querschnittskonvention kann frei bleiben, bis die gewählte Frame-Regel sie
+auflöst. Die Orientierung des Fahrzeugkastens bleibt frei, bis ein
+Fahrzeugmodell und Betriebszustand bereitstehen.
+
+\section{World--Track- und Vehicle-Space-Verwendung}
+
+Die World--Track-Projektion konsumiert das qualifizierte Frame:
+\(\mathbf t\) definiert die Longitudinalrichtung, \(\mathbf l_\phi\) den
+Querabstand und \(\mathbf z_\phi\) die Querschnittshöhe. Eine
+Vehicle-Space-Interpretation kann anschließend dieses Gleis-Frame konsumieren,
+benötigt aber zusätzlich fahrzeugspezifische Daten. Das Frame bewahrt den
+Alignment-Bezug und die Provenienz seiner Realisierung; es kann weder
+entscheiden, ob ein Messpunkt zum beabsichtigten Objekt gehört, noch ob ein
+Lichtraumergebnis akzeptabel ist.
+
+\begin{summary}
+Ein bewegtes Eisenbahn-Frame ist eine ausgewertete Beziehung zwischen
+intrinsischer Geometrie, vertikaler Realisierung, Überhöhung und Konvention.
+Seine Komponenten sind nur zusammen mit diesen Abhängigkeiten aussagekräftig.
+\end{summary}

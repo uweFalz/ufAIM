@@ -1,0 +1,76 @@
+% reality/part_intro-DE.tex
+
+\chapter*{Realität}
+\phantomsection
+\addcontentsline{toc}{chapter}{Realität}
+
+Dieser Teil legt dar, wie kanonischer Zustand und Laufzeitzustand mit der
+gebauten und beobachteten Eisenbahnrealität verbunden werden.
+
+Die vorangehenden Teile haben konstruktive Alignment-Semantik, metrische
+Realisierung, Eisenbahnzustand und Laufzeitbewertung begründet. Der vorliegende
+Teil erklärt, wie diese genehmigten Begriffe in der Ingenieurpraxis
+eingebettet, beobachtet, realisiert und verglichen werden.
+
+Realität definiert vorgelagerte Begriffe nicht neu. Sie verwendet sie und
+begründet die Abfolge
+\[
+\begin{aligned}
+&\text{konstruktive Alignment-Semantik}
+\rightarrow
+\text{metrische Realisierung}
+\\
+&\rightarrow
+\text{World-Einbettung}
+\\
+&\rightarrow
+\text{physische Realisierung}
+\\
+&\rightarrow
+\text{Messung und Beobachtung}
+\rightarrow
+\substack{\text{Ziel--Realisiert-}\\\text{Vergleich}}
+\rightarrow
+\text{ingenieurtechnische Interpretation}.
+\end{aligned}
+\]
+
+Diese Abfolge wahrt die Unterscheidung zwischen konstruktiver Identität,
+metrischer Realisierung, CRS-Kontext, physischer Realisierung, realisiertem
+Eisenbahnzustand, Messung, Darstellung und operativer Interpretation.
+
+\section*{Bezug zur AIM-Roadmap}
+
+In der AIM-Roadmap ist Realität die Ebene, auf der zur Laufzeit bewerteter
+Zustand auf gemessene und gebaute Infrastruktur trifft.
+
+Die Orientierungsfrage der folgenden Abbildung lautet: Welche Ebenenfolge
+verhindert, dass Ziel-, realisierte und beobachtete Zustände ineinanderfallen?
+
+\begin{figure}[ht]
+\centering
+\input{figures/reality/icon_reality_target_realized_observed-DE}
+\caption{Realitätssymbol: Ziel-, realisierter und beobachteter Eisenbahnzustand als abhängige Ebenen.}
+\label{fig:icon-reality-target-realized-observed}
+\end{figure}
+
+\noindent
+Die folgenden Kapitel verwenden diese Trennung, um Einbettung, Messung und
+Vergleich zu strukturieren.
+
+\begin{principle}[Realitätsprinzip]
+\label{princ:reality-principle}
+In AIM sind Modellzustand und physischer Eisenbahnzustand miteinander
+verbunden, aber begrifflich verschieden; sie werden durch Realisierungs-,
+Mess- und Interpretationsoperatoren verknüpft.
+\end{principle}
+
+\begin{summary}
+Realität legt dar, wie genehmigte Alignment-Semantik und Laufzeitzustand in
+die ingenieurtechnische Welt eingebettet, durch Daten beobachtet und durch den
+Vergleich von Ziel und Realisiert interpretiert werden.
+\end{summary}
+
+Diese Trennung bereitet den Teil Modellierung vor, in dem persistente
+Strukturen so entworfen werden, dass sie genau diese Unterscheidungen in
+operativen Informationssystemen bewahren.

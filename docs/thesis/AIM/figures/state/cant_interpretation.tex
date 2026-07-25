@@ -17,9 +17,14 @@
 \draw[->, thick, red!70!black] (0,0.28) arc[start angle=8,end angle=23,radius=1.5];
 \node[red!70!black] at (0.9,0.95) {$\phi$};
 
-\coordinate (CG) at (0,1.55);
-\fill[purple!80] (CG) circle (2.2pt);
-\node[above] at (CG) {CG};
-
-\node[box, fill=green!10] at (0,-1.05) {cant as railway-state roll\\not merely rail-height difference};
+\coordinate (O) at (0,0.28);
+\draw[->,very thick,blue!70!black] (O) -- ++(0,1.25)
+  node[above] {$\mathbf z_0$};
+\draw[->,very thick,green!50!black] (O) -- ++(-1.25,0)
+  node[left] {$\mathbf l_0$};
+\draw[->,very thick,orange!80!black] (O) -- ++(-1.18,-0.16)
+  node[below left] {$\mathbf l_\phi$};
+\draw[->,very thick,purple!80] (O) -- ++(-0.17,1.18)
+  node[above left] {$\mathbf z_\phi$};
+\node[box, fill=green!10] at (0,-1.05) {rotation about tangent $\mathbf t$\\under a stated cant convention};
 \end{tikzpicture}

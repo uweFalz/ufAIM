@@ -1,0 +1,334 @@
+% Deutsche Parallelfassung zu geometry/curvature_classification.tex
+
+\chapter{Krümmungsklassifikation}
+\label{chap:curvature-classification}
+
+\section*{Motivation}
+
+Die klassische Theorie des Eisenbahn-Alignments klassifiziert Übergänge
+üblicherweise nach ihren analytischen Formeln oder ihrer historischen
+Ingenieurverwendung. Innerhalb von AIM werden Übergangs- und
+Alignment-Strukturen intrinsisch im Krümmungsraum klassifiziert.
+
+Dies ermöglicht eine Klassifikation nach Stetigkeit, Krümmungsverhalten,
+Dynamik, Realisierungsverhalten, spektraler Struktur, Laufzeitrobustheit und
+betrieblicher Eignung. Krümmungsklassifikation wird damit zu einem
+strukturellen Interpretations-Framework statt nur zu einem Katalog von
+Kurvenformeln.
+
+\begin{principle}[Klassifikation als Interpretation]
+\label{princ:classification-as-interpretation}
+Innerhalb von AIM ist Klassifikation kein Benennungsschema für Kurvenformeln,
+sondern eine Interpretationsschicht für Krümmungsverhalten.
+\end{principle}
+
+\section{Klassifikationsprinzip}
+
+\begin{principle}[Intrinsisches Klassifikationsprinzip]
+\label{princ:intrinsic-classification}
+Innerhalb von AIM werden Alignments nach ihrem intrinsischen
+Krümmungsverhalten und nicht nach rekonstruierter Positionsgeometrie
+klassifiziert.
+\end{principle}
+
+Zwei geometrisch ähnliche Kurven im Positionsraum können sehr verschiedenes
+Krümmungsverhalten besitzen. Umgekehrt können geometrisch unterschiedliche
+Realisierungen derselben Krümmungsklasse angehören, wenn sich ihre
+intrinsischen Krümmungsverläufe gleichwertig verhalten. Die Klassifikation
+erfolgt daher im Krümmungsraum, bevor sie im Positionsraum interpretiert wird.
+
+\section{Stetigkeitsklassifikation}
+
+\subsection{\texorpdfstring{$G^0$}{G0}-Geometrie}
+\begin{definition}[\(G^0\)-stetige Geometrie]
+\label{def:g0-geometry}
+Eine Geometrie ist \(G^0\)-stetig, wenn ihre Position stetig ist.
+\end{definition}
+
+\subsection{\texorpdfstring{$G^1$}{G1}-Geometrie}
+\begin{definition}[\(G^1\)-stetige Geometrie]
+\label{def:g1-geometry}
+Eine Geometrie ist \(G^1\)-stetig, wenn ihre Tangentenrichtung stetig ist.
+\end{definition}
+
+\subsection{\texorpdfstring{$G^2$}{G2}-Geometrie}
+\begin{definition}[\(G^2\)-stetige Geometrie]
+\label{def:g2-geometry}
+Eine Geometrie ist \(G^2\)-stetig, wenn ihre Krümmung stetig ist.
+\end{definition}
+Bei der Modellierung von Eisenbahn-Alignments ist \(G^2\)-Stetigkeit häufig
+die Mindestanforderung für dynamisch akzeptable Übergänge.
+
+\subsection{\texorpdfstring{$G^3$}{G3}-Geometrie}
+\begin{definition}[\(G^3\)-stetige Geometrie]
+\label{def:g3-geometry}
+Eine Geometrie ist \(G^3\)-stetig, wenn ihr Krümmungsgradient stetig ist.
+\end{definition}
+
+Höhere Stetigkeitsklassen verbessern Ruckverhalten, Realisierungsglätte,
+Laufzeitstabilität und Fahrzeugreaktion. Die Stetigkeitsklassifikation
+verbindet klassische Geometrienotation mit der Krümmungsrauminterpretation.
+
+\section{Klassifikation des Krümmungsverhaltens}
+
+\subsection{Klasse konstanter Krümmung}
+\begin{definition}[Klasse konstanter Krümmung]
+\label{def:constant-curvature-classification}
+Ein Krümmungsgesetz gehört zur konstanten Klasse, wenn
+\[
+\kappa(s)=\kappa_0.
+\]
+\end{definition}
+
+\subsection{Lineare Krümmungsklasse}
+\begin{definition}[Lineare Krümmungsklasse]
+\label{def:linear-curvature-class}
+Ein Krümmungsgesetz gehört zur linearen Klasse, wenn
+\[
+\kappa(s)=a s+b.
+\]
+\end{definition}
+Die klassische Klothoide gehört zu dieser Klasse.
+
+\subsection{Polynomiale Krümmungsklasse}
+\begin{definition}[Polynomiale Krümmungsklasse]
+\label{def:polynomial-curvature-class}
+Ein Krümmungsgesetz gehört zur polynomialen Klasse, wenn
+\[
+\kappa(s)=\sum_i a_i s^i.
+\]
+\end{definition}
+
+\subsection{Trigonometrische Krümmungsklasse}
+\begin{definition}[Trigonometrische Krümmungsklasse]
+\label{def:trigonometric-curvature-class}
+Ein Krümmungsgesetz gehört zur trigonometrischen Klasse, wenn es sinus- oder
+kosinusbasierte Anteile enthält.
+\end{definition}
+
+\subsection{Lookup-basierte Krümmungsklasse}
+\begin{definition}[Lookup-basierte Krümmungsklasse]
+\label{def:lookup-curvature-class}
+Ein Krümmungsgesetz gehört zur Lookup-basierten Klasse, wenn es durch
+abgetastete oder tabellierte Krümmungswerte sowie Interpolations- und
+Rekonstruktionsregeln definiert ist.
+\end{definition}
+
+\subsection{Hybride Krümmungsklasse}
+\begin{definition}[Hybride Krümmungsklasse]
+\label{def:hybrid-curvature-class}
+Ein hybrides Krümmungsgesetz verbindet parametrische und Lookup-Struktur,
+Messdaten und abgetastete Korrekturen.
+\end{definition}
+
+\section{Symmetrieklassifikation}
+
+\subsection{Symmetrische Übergänge}
+\begin{definition}[Symmetrischer Übergang]
+\label{def:classification-symmetric-transition}
+Ein normierter Übergang ist symmetrisch, wenn sein Krümmungsverlauf bezüglich
+der Mitte des normierten Intervalls symmetrisch ist.
+\end{definition}
+Für den Übergangsvergleich sollte Symmetrie üblicherweise im normierten
+Übergangsraum statt in unverarbeiteten physischen Koordinaten bewertet werden.
+
+\subsection{Antisymmetrische Struktur}
+\begin{definition}[Antisymmetrischer Übergang]
+\label{def:classification-antisymmetric-transition}
+Ein Übergang besitzt antisymmetrische Struktur, wenn seine Abweichung von
+einem Referenz- oder Mittelwert bei Spiegelung an der Mitte ihr Vorzeichen
+wechselt.
+\end{definition}
+Antisymmetrie ist besonders für die Analyse zentrierter
+Übergangsformfunktionen oder des Ableitungsverhaltens nützlich.
+
+\subsection{Asymmetrische Übergänge}
+\begin{definition}[Asymmetrischer Übergang]
+\label{def:classification-asymmetric-transition}
+Ein Übergang ist asymmetrisch, wenn keine Symmetriebedingung auferlegt ist.
+\end{definition}
+Asymmetrie kann bewusst durch realisierungsbewussten Entwurf,
+fahrzeugdynamische Optimierung, Topologie- oder lokale
+Ingenieurnebenbedingungen entstehen.
+
+\section{Ableitungsklassifikation}
+
+\subsection{Klasse beschränkter Gradienten}
+\begin{definition}[Klasse beschränkter Gradienten]
+\label{def:bounded-gradient-class}
+Ein Krümmungsgesetz gehört zur Klasse beschränkter Gradienten, wenn
+\[
+|\kappa'(s)|\le\eta_{\max}.
+\]
+\end{definition}
+
+\subsection{Klasse beschränkter höherer Ableitungen}
+\begin{definition}[Klasse beschränkter höherer Ableitungen]
+\label{def:bounded-higher-derivative-class}
+Ein Krümmungsgesetz gehört zu dieser Klasse, wenn
+\[
+|\kappa''(s)|<\infty,\qquad |\kappa'''(s)|<\infty.
+\]
+\end{definition}
+Diese Klassen beeinflussen dynamische Glätte, numerische Stabilität,
+Realisierungsrobustheit und Konditionierung der Optimierung.
+
+\section{Spektrale Klassifikation}
+
+\subsection{Niederfrequente Strukturen}
+\begin{definition}[Niederfrequente Krümmungsklasse]
+\label{def:low-frequency-curvature-class}
+Niederfrequente Krümmungsstrukturen werden von langsam veränderlichem
+Krümmungsverlauf bestimmt.
+\end{definition}
+Sie bestimmen üblicherweise die großräumige geometrische Form des Alignments.
+
+\subsection{Hochfrequente Strukturen}
+\begin{definition}[Hochfrequente Krümmungsklasse]
+\label{def:high-frequency-curvature-class}
+Hochfrequente Krümmungsstrukturen enthalten schnell veränderliche oder
+oszillierende Anteile.
+\end{definition}
+Sie verstärken tendenziell Realisierungsempfindlichkeit, dynamische Rauheit
+und Messempfindlichkeit und reduzieren die numerische Stabilität.
+
+\begin{proposition}[Spektrales Realisierungsprinzip]
+\label{prop:classification-spectral-realization}
+Realisierung unterdrückt hochfrequente Krümmungsanteile.
+\end{proposition}
+Die spektrale Klassifikation verbindet damit Übergangstheorie und physisches
+Realisierungsverhalten.
+
+\section{Realisierungsklassifikation}
+
+\subsection{Realisierungsstabile Klasse}
+\begin{definition}[Realisierungsstabile Klasse]
+\label{def:realization-stable-class}
+Ein Übergang gehört zur realisierungsstabilen Klasse, wenn die dominante
+Krümmungsstruktur unter Realisierung bewahrt und niederfrequentes Verhalten
+identifizierbar bleibt und die Realisierung keine Instabilität einführt.
+\end{definition}
+
+\subsection{Realisierungsempfindliche Klasse}
+\begin{definition}[Realisierungsempfindliche Klasse]
+\label{def:realization-sensitive-class}
+Ein Übergang gehört zur realisierungsempfindlichen Klasse, wenn kleine
+Realisierungsstörungen sein Krümmungsverhalten stark verändern.
+\end{definition}
+Solche Übergänge können mathematisch gültig, aber betrieblich unerwünscht
+sein.
+
+\section{Laufzeitklassifikation}
+
+\subsection{Projektionsstabile Klasse}
+\begin{definition}[Projektionsstabile Klasse]
+\label{def:projection-stable-class}
+Eine Krümmungsstruktur ist projektionsstabil, wenn die
+World-to-Track-Projektion numerisch robust, lokale inverse Probleme gut
+konditioniert und Mehrdeutigkeiten beherrschbar bleiben.
+\end{definition}
+
+\subsection{Laufzeitglatte Klasse}
+\begin{definition}[Laufzeitglatte Klasse]
+\label{def:runtime-smooth-class}
+Eine Krümmungsstruktur ist laufzeitglatt, wenn Frame-Bewertung stetig,
+Pose-Rekonstruktion robust, Visualisierung stabil und Laufzeitoperatoren
+vorhersehbar bleiben.
+\end{definition}
+
+\section{Betriebliche Klassifikation}
+
+\subsection{Komfortorientierte Klasse}
+\begin{definition}[Komfortorientierte Klasse]
+\label{def:comfort-oriented-class}
+Ein Übergang gehört zur komfortorientierten Klasse, wenn der Ruck klein
+bleibt, sich die Querbeschleunigung glatt entwickelt und dynamische Anregung
+minimiert wird.
+\end{definition}
+
+\subsection{Realisierungsorientierte Klasse}
+\begin{definition}[Realisierungsorientierte Klasse]
+\label{def:realization-oriented-class}
+Ein Übergang gehört zur realisierungsorientierten Klasse, wenn
+Baurobustheit priorisiert, Maschinenrealisierung stabil,
+Instandhaltungsempfindlichkeit reduziert und das beabsichtigte Verhalten durch
+physische Filterung bewahrt wird.
+\end{definition}
+
+\subsection{Optimierungsorientierte Klasse}
+\begin{definition}[Optimierungsorientierte Klasse]
+\label{def:optimization-oriented-class}
+Ein Übergang gehört zur optimierungsorientierten Klasse, wenn die
+Parametrisierung numerisch stabil, Gradienten gut konditioniert,
+Nebenbedingungen ausdrückbar und die dünn besetzte Repräsentation effizient
+ist.
+\end{definition}
+
+\section{Familienklassifikation}
+
+\begin{definition}[Klassifikation von Übergangsfamilien]
+\label{def:transition-family-classification}
+Übergangsfamilien können nach analytischer Form, Stetigkeitsordnung,
+Ableitungs- und Spektralverhalten, Realisierungsverhalten, Symmetrie,
+Laufzeitstabilität und betrieblicher Eignung klassifiziert werden.
+\end{definition}
+
+Die Übergangsklassifikation ist damit mehrdimensional statt formelbasiert. Eine
+Familie kann auf einer Klassifikationsachse günstig und auf einer anderen
+ungünstig sein.
+
+\section{Klassifikationsvektoren}
+
+\begin{definition}[Klassifikationsvektor]
+\label{def:classification-vector}
+Einem Übergang kann ein Klassifikationsvektor zugewiesen werden:
+\[
+\chi(T)=(
+\chi_{\mathrm{cont}},
+\chi_{\mathrm{deriv}},
+\chi_{\mathrm{spec}},
+\chi_{\mathrm{real}},
+\chi_{\mathrm{run}},
+\chi_{\mathrm{op}}
+),
+\]
+dessen Komponenten Stetigkeit, Ableitungsverhalten, Spektralstruktur,
+Realisierungsverhalten, Laufzeitstabilität und betriebliche Eignung
+beschreiben.
+\end{definition}
+
+Der Vektor ist keine starre Taxonomie, sondern eine strukturierte Möglichkeit,
+Übergangsfamilien über mehrere relevante Dimensionen zu vergleichen.
+
+\section{Kanonische Interpretation}
+
+\begin{proposition}
+Innerhalb von AIM ist Krümmungsklassifikation grundlegend intrinsisch und
+nicht koordinatenbasiert.
+\end{proposition}
+\begin{proposition}
+Übergangsqualität kann durch Positionsgeometrie allein nicht hinreichend
+charakterisiert werden.
+\end{proposition}
+\begin{proposition}
+Realisierung, Laufzeitstabilität, Dynamik und Optimierung erfordern eine
+Klassifikation unmittelbar im Krümmungsraum.
+\end{proposition}
+\begin{proposition}
+Die Übergangstaxonomie in AIM ist mehrdimensional und kontextabhängig.
+\end{proposition}
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Die Krümmungsklassifikation stellt das strukturelle Interpretations-Framework
+der AIM-Geometrie bereit. Übergänge werden intrinsisch klassifiziert;
+Formelnamen sind gegenüber dem Krümmungsverhalten nachrangig;
+Realisierungsverhalten wird analysierbar, Laufzeitrobustheit klassenabhängig,
+betriebliche Eignung vergleichbar, und Optimierung wirkt unmittelbar auf
+Krümmungsstrukturen.
+
+Damit wird der Krümmungsraum zur primären Klassifikationsdomäne der
+Eisenbahn-Alignment-Geometrie und zur Grundlage einer Taxonomie von
+Übergangsfamilien.
+\end{summary}

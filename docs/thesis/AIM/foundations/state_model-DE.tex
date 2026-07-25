@@ -1,0 +1,156 @@
+% Deutsche Parallelfassung zu foundations/state_model.tex
+
+\chapter{Zustandsübergang}
+\label{chap:state-model}
+
+Ein Ingenieur bearbeite die Krümmung auf einem Intervall
+\(J\subseteq I\), indem er \(\kappa(s)\) durch
+\(\widetilde\kappa(s)=\kappa(s)+\Delta\kappa(s)\) ersetzt. Die Krümmung
+ändert sich unmittelbar. Nachfolgender Richtungswinkel und Position ändern
+sich durch Integration; die Überhöhung ändert sich nur, wenn ihre eigene
+Steuerung bearbeitet wird oder eine Kopplungsbedingung dies erfordert. Die
+Alignment-Identität, die für die Rekonstruktion gewählte Anfangsbedingung und
+der anwendbare Realization Context bleiben fest, sofern die Ingenieuraufgabe
+sie nicht ausdrücklich ändert.
+
+Diese einzelne Bearbeitung begründet den Zweck eines Zustandsmodells: Es
+beantwortet, welcher Zustand aus deklarierten Eingaben unter benannten
+Qualifikationen folgt. Es beschreibt keinen Speicherschnappschuss und ist kein
+allgemeiner Container für jede dem Alignment zugeordnete Eigenschaft.
+
+\section{Der Zustand, der die Frage beantwortet}
+
+\begin{definition}[Engineering State]
+\label{def:state}
+Ein Engineering State ist eine strukturierte Beschreibung eines Engineering
+Objects unter einem bestimmten Zustand und innerhalb benannter
+Qualifikationen.
+\end{definition}
+
+Für die vorliegende Frage lautet eine Zustandstrajektorie
+\[
+x:I\rightarrow\mathcal X,
+\qquad s\longmapsto x(s).
+\]
+Die Abbildung hält die Größen fest, die zur Fortpflanzung der Änderung
+benötigt werden. Eine Datei, eine zwischengespeicherte Polyline oder eine
+Datenbankzeile kann Werte dieser Trajektorie repräsentieren; die Speicherung
+bestimmt aber nicht, welchen Zustand oder welche Qualifikationen diese Werte
+beschreiben.
+
+\section{Durch Krümmung getriebener ebener Übergang}
+
+\begin{definition}[pose2]
+\label{def:notation-pose2}
+Der ebene Alignment-Zustand ist
+\begin{equation}
+\mathrm{pose2}(s)=\bigl(\gamma(s),\theta(s)\bigr),
+\label{eq:pose2-definition}
+\end{equation}
+wobei \(\gamma(s)\) die ebene Position und \(\theta(s)\) den
+Richtungswinkel bezeichnet.
+\end{definition}
+
+Seine Entwicklung lautet
+\begin{equation}
+\begin{aligned}
+\gamma'(s)&=
+\begin{pmatrix}\cos\theta(s)\\\sin\theta(s)\end{pmatrix},\\
+\theta'(s)&=\kappa(s).
+\end{aligned}
+\label{eq:pose2-evolution}
+\end{equation}
+
+Bei festen \(\gamma(s_0)\) und \(\theta(s_0)\) erzeugt die Anwendung von
+\(\widetilde\kappa\) eine neue Zustandstrajektorie
+\(\widetilde{\mathrm{pose2}}\). Innerhalb und nach dem bearbeiteten Intervall
+müssen der Richtungswinkel erneut integriert und die Position rekonstruiert
+werden. Eine aus der früheren Trajektorie abgeleitete bestehende CAD-Kurve
+oder abgetastete Polyline ist folglich veraltet, bis ihre Repräsentation neu
+erzeugt wird.
+
+\paragraph{Ausführungsvertrag.}
+Der Übergang empfängt die Krümmungsänderung, das Rekonstruktionsintervall und
+die Anfangspose; er erzeugt eine ebene Zustandstrajektorie. Er setzt
+Bogenlängenparametrisierung und die benannten Randbedingungen voraus. Er
+bewahrt die Alignment-Identität. Sein Ergebnis erbt die Provenienz der
+Änderung und der Randbedingungen. Er kann weder ableiten, ob die Änderung
+zulässig ist, noch ob eine Vermessung denselben Zustand betrifft oder das
+Ergebnis angenommen werden soll.
+
+\section{Räumlicher Übergang und Steuerungen}
+
+\begin{definition}[Grundlegender pose3-Zustand]
+\label{def:pose3}
+Der grundlegende räumliche Eisenbahnzustand ist
+\begin{equation}
+\mathrm{pose3}(s)=\bigl(\gamma(s),\theta(s),\phi(s)\bigr),
+\label{eq:pose3-definition}
+\end{equation}
+wobei \(\phi(s)\) die Überhöhungsdrehung um die lokale Tangente ist.
+\end{definition}
+
+Dies ist die intrinsische Eingabe einer späteren räumlichen Konstruktion,
+keine World-Space-Pose. Profil, metrischer Kontext und Frame-Konstruktion sind
+weiterhin erforderlich, bevor sie räumlich messbar wird.
+
+\begin{definition}[Grundlegende Steuerungen]
+\label{def:control-quantities}
+Das grundlegende Steuerungspaar lautet
+\begin{equation}
+u(s)=\bigl(\kappa(s),\omega(s)\bigr),
+\qquad \omega(s)=\phi'(s).
+\label{eq:pose3-controls}
+\end{equation}
+\end{definition}
+
+Die Steuerungen pflanzen den Zustand fort durch
+\begin{equation}
+\begin{aligned}
+\gamma'(s)&=
+\begin{pmatrix}\cos\theta(s)\\\sin\theta(s)\end{pmatrix},\\
+\theta'(s)&=\kappa(s),\\
+\phi'(s)&=\omega(s).
+\end{aligned}
+\label{eq:pose3-evolution}
+\end{equation}
+
+\section{Freiheitsgrade während der Änderung}
+
+Die Änderung ist nur interpretierbar, wenn der Status jeder Größe
+ausdrücklich ist.
+
+\begin{description}
+\item[Fest:] Alignment-Identität, anwendbare Qualifikationen,
+  Rekonstruktionsursprung und alle Randwerte, die die Aufgabe als invariant
+  deklariert.
+\item[Bearbeitet:] \(\kappa\) auf \(J\), mit Quelle, Urheber und Umfang als
+  Provenienz.
+\item[Abgeleitet:] Richtungswinkel, Tangente, ebene Position und jede aus der
+  geänderten Trajektorie abgetastete Repräsentation.
+\item[Gekoppelt:] Überhöhung, Profil oder Größen angrenzender Übergänge, wenn
+  eine anwendbare Ingenieurbeziehung sie mit der Krümmungsänderung verbindet.
+\item[Beschränkt:] Stetigkeit, Regularität, Randbedingungen, Zulässigkeit und
+  projektspezifische Anforderungen aus dem anwendbaren Wissen.
+\item[Frei:] Größen, die durch das deklarierte Problem weder festgelegt noch
+  abgeleitet, gekoppelt oder beschränkt sind. Sie bleiben mögliche
+  Freiheitsgrade; ein Solver darf sie untersuchen, kann ihnen aber keine
+  Ingenieurautorität zuweisen.
+\end{description}
+
+Diese Klassifikation bildet die Brücke von der formalen Zustandsfortpflanzung
+zum Entwurf von Alignment-Übergängen: Sie bestimmt die Variablen, die einem
+späteren Konstruktions- oder Optimierungsverfahren zur Verfügung stehen, ohne
+Software oder einen bestimmten Solver vorzuschreiben.
+
+\section{Was verglichen werden darf}
+
+Metrische Realisierung kann den überarbeiteten Zustand räumlich messbar machen.
+Eine Vermessungspolyline kann dann Beobachtungsevidenz unter kompatiblen
+Qualifikationen liefern, und ein Bewertungsoperator kann Residuen berechnen.
+Der Vergleich setzt qualifizierte Zustände und Quellen in Beziehung; er macht
+weder die Polyline zur physischen Realität, noch ersetzt er die konstruktive
+Definition des Alignments oder verwandelt eine Bewertung in eine Entscheidung.
+
+Das nächste Kapitel macht die Handlungen dieser Kette als typisierte
+Operatoren ausdrücklich.

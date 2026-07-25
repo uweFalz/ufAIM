@@ -1,0 +1,47 @@
+% applications/vehicle_space_and_platforms-DE.tex
+
+\chapter{Fahrzeugraum und Bahnsteiginteraktion}
+\label{chap:applications-vehicle-space-platform}
+
+Dieses Kapitel wendet die kanonische pose3- und Laufzeitinterpretation auf
+Anwendungsfälle des Fahrzeugraums und der Bahnsteigkante an.
+
+\section{Anwendungskontext}
+
+Bahnsteiginteraktion und Lichtraumbewertung hängen vom Verhalten des
+Fahrzeugraums relativ zum Laufzeitzustand der Eisenbahn ab. Das relevante
+Ingenieurobjekt ist daher nicht allein die Mittelliniengeometrie, sondern
+der aus kanonischen Laufzeitdiensten ausgewertete, abgeleitete
+fahrzeugrelative Zustand.
+
+\section{Abgeleitete Fahrzeugrauminterpretation}
+
+Das Fahrzeugraumverhalten wird der kanonischen Auswertung von pose3,
+Frame und Überhöhung nachgelagert interpretiert. Es ist eine
+Anwendungsinterpretation und keine neue Ebene des Zustandsmodells.
+
+Dies ermöglicht die kontextspezifische Bewertung von Bahnsteigspalten,
+Lichtraum und Hüllkurvenverhalten unter Betriebsbedingungen.
+
+\section{Ingenieurwissenschaftliche Anwendungsfälle}
+
+Typische Anwendungsfälle sind die Prüfung von Bahnsteigkanten,
+Hüllkurvenprüfungen in Bögen und szenarienbasierte Bewertungen für
+unterschiedliche Fahrzeugklassen. Sie verwenden die kanonischen Laufzeit-
+und Realisierungsebenen.
+
+\section{Repräsentationsgrenze}
+
+Gerenderte oder exportierte Geometrie gilt als nachgelagerte
+Repräsentation eines zur Laufzeit ausgewerteten Zustands und nicht für
+sich allein als ingenieurwissenschaftliche Wahrheit.
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Fahrzeugraum- und Bahnsteiganwendungen in AIM sind nachgelagerte
+Interpretationen, die auf kanonischen pose3- und Laufzeitdiensten beruhen.
+
+Sie zeigen praktische Entscheidungsunterstützung und wahren zugleich die
+Trennung zwischen Ingenieurobjekten und Repräsentationen.
+\end{summary}

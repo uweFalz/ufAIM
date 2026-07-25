@@ -1,0 +1,15 @@
+\section*{CRS sind keine Metadaten}
+
+In der Alignment-Modellierung können CRS nicht als Hilfsmetadaten behandelt
+werden. CRS-Annahmen beeinflussen metrische Interpretation,
+Koordinatentransformationen, Projektionsverhalten und den Vergleich von Ziel-
+und beobachteten Zuständen.
+
+\begin{principle}[Strukturprinzip der CRS]
+CRS sind ein struktureller Bestandteil des Realisierungs- und
+Einbettungskontexts. Ihre Missachtung zerstört die Konsistenz der
+ingenieurtechnischen Interpretation.
+\end{principle}
+
+Die CRS-Behandlung muss daher in Import, Laufzeitprojektion, Rekonstruktion
+und realisierungsbewussten Vergleichsabläufen ausdrücklich erfolgen.

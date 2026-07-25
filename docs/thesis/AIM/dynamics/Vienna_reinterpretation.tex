@@ -1,413 +1,100 @@
 % dynamics/Vienna_reinterpretation.tex
-
-\chapter{Vienna Reinterpretation and Dynamic State Shaping}
-
+\chapter{Vienna Functions as a Bounded Example}
 \label{chap:vienna-reinterpretation}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
+\section*{Evidence before interpretation}
 
-Classical transition theory usually interprets transition curves as
-special geometric constructions.
-
-Within AIM, however, transition structures are interpreted primarily
-through their generated runtime behaviour.
-
-This changes the interpretation of Vienna-style transition concepts
-fundamentally.
-
-Within this framework, Vienna is not interpreted as:
-\begin{itemize}
-\item a specific curve formula,
-\item a historical construction rule,
-\item or a particular interpolation method,
-\end{itemize}
-but rather as:
-\begin{quote}
-a strategy for shaping operational runtime states.
-\end{quote}
+The name \emph{Vienna} occurs in historical project material and in
+transition-function implementations. That evidence supports examining
+particular normalized function forms. It does not establish one authoritative
+curvature--cant coupling, exhaustive transition-family coverage, validated
+modern vehicle response or general joint optimization.
 
 \begin{principle}[Vienna reinterpretation principle]
 \label{princ:vienna-reinterpretation}
-Within AIM, Vienna-type transitions are interpreted as dynamic
-state-shaping strategies operating in curvature-runtime space.
+In this Thesis, a Vienna-related function is an identified historical or
+implemented example whose inputs, output law and limits must be stated.
 \end{principle}
 
 \begin{principle}[No special-curve principle]
 \label{princ:vienna-no-special-curve}
-Vienna reinterpretation does not elevate one special curve formula.
-It interprets transition structure by its generated operational runtime
-behaviour.
+No Vienna-related function is elevated here to a canonical AIM construction.
 \end{principle}
 
-% ============================================================
-\section{From Curves to Runtime States}
-% ============================================================
+\section{Separate laws}
 
-Classical railway alignment theory focuses primarily on:
+Let \(w=s/L\in[0,1]\), and let \(f_\kappa(w)\) and \(f_u(w)\) be two declared
+normalized functions. An illustrative specialization is
 \[
-\gamma(s).
+\kappa(s)=\kappa_0+\Delta\kappa\,f_\kappa(s/L),
+\qquad
+u(s)=u_0+\Delta u\,f_u(s/L).
 \]
-
-Within AIM, however, the operationally relevant quantity is:
-\[
-\mathrm{pose3}_{\mathrm{real}}(s),
-\]
-together with the generated vehicle-space trajectory.
-
-Thus, transition interpretation shifts:
-\begin{itemize}
-\item from coordinate geometry,
-\item toward runtime operational state evolution.
-\end{itemize}
-
-The central engineering question therefore becomes:
-\begin{quote}
-Which operational runtime trajectory is generated?
-\end{quote}
-rather than:
-\begin{quote}
-Which geometric curve formula is used?
-\end{quote}
-
-% ============================================================
-\section{Vienna as Runtime-State Strategy}
-% ============================================================
+This form is mathematically established once the two functions and domains
+are supplied. It does not say that \(f_\kappa=f_u\), that their parameters
+are coupled, or that either function is optimal.
 
 \begin{definition}[Vienna-type state shaping]
 \label{def:vienna-state-shaping}
-A Vienna-type transition strategy is a curvature-evolution strategy
-designed to shape operational runtime-state trajectories.
+``Vienna-type state shaping'' is retained only as historical project intent:
+using an identified transition function to investigate a downstream
+model output. It is not a Kernel definition.
 \end{definition}
-
-Relevant runtime quantities include:
-\begin{itemize}
-\item effective acceleration,
-\item jerk,
-\item roll evolution,
-\item operational balance,
-\item and center-of-gravity motion.
-\end{itemize}
-
-Thus, Vienna interpretation operates fundamentally in:
-\begin{itemize}
-\item curvature space,
-\item runtime space,
-\item and operational state space.
-\end{itemize}
-
-The term \emph{Vienna} is therefore used here as an interpretive
-strategy, not as a commitment to one fixed analytical transition law.
-
-% ============================================================
-\section{Half-Wave Interpretation}
-% ============================================================
 
 \begin{definition}[Half-wave interpretation]
 \label{def:half-wave-interpretation}
-Half-wave interpretation denotes a modular description of transition
-evolution through normalized curvature segments.
+A half-wave is a compositional implementation or modelling form when the
+identified function actually uses it. It is not asserted as the grammar of
+all transition families.
 \end{definition}
-
-Within AIM, many transition structures may be interpreted
-compositionally as:
-\[
-\text{halfWave}_1
-\rightarrow
-\text{core}
-\rightarrow
-\text{halfWave}_2.
-\]
-
-This decomposition is a modelling aid.
-It should not be interpreted as a new special-curve dogma.
-
-The half-wave interpretation allows:
-\begin{itemize}
-\item modular runtime shaping,
-\item asymmetric runtime behaviour,
-\item spectral interpretation,
-\item and realization-aware transition design.
-\end{itemize}
-
-The half-wave structure is relevant only insofar as it affects generated
-runtime behaviour.
-
-% ============================================================
-\section{Dynamic State Shaping}
-% ============================================================
 
 \begin{definition}[Dynamic state shaping]
 \label{def:dynamic-state-shaping}
-Dynamic state shaping denotes controlled generation of operational
-runtime trajectories through curvature evolution.
+For an identified model \(M\), changing a declared law and comparing the
+resulting \(x_M^{\mathrm{pred}}\) is an illustrative sensitivity study.
+Calling it shaping does not supply an objective or validation.
 \end{definition}
 
-Within AIM, transition geometry is interpreted fundamentally as:
-\begin{quote}
-runtime-state shaping through curvature control.
-\end{quote}
+\section{Compact alternative-objective example}
 
-Relevant shaped quantities include:
-\begin{itemize}
-\item effective acceleration,
-\item jerk,
-\item cant deficiency,
-\item roll evolution,
-\item and center-of-gravity trajectories.
-\end{itemize}
-
-% ============================================================
-\section{Center-of-Gravity Interpretation}
-% ============================================================
-
-Within Vienna reinterpretation, the operationally relevant object is
-not merely the rail geometry itself.
-
-Instead, emphasis shifts toward:
+For the same boundary values and length \(L\), consider two feasible pairs
+\((f_\kappa,f_u)\). Candidate \(A\) minimizes
 \[
-x_{\mathrm{CG}}(s),
+J_\kappa=\int_0^L \bigl(\kappa'(s)\bigr)^2\,ds,
 \]
-the runtime trajectory of the vehicle center of gravity.
+whereas candidate \(B\) minimizes
+\[
+J_r=\int_0^{L/v} r_{\mathrm{bal}}(t)^2\,dt
+\]
+for the explicitly assumed constant test speed \(v\) and
+\(M_{\mathrm{red}}\). The objectives have different units and meanings.
+Neither candidate dominates without a supplied purpose, scaling or explicit
+aggregation. Neither objective is a comfort, wear, cost or energy objective.
 
-Different transition families may produce:
-\begin{itemize}
-\item similar geometric centerlines,
-\item but fundamentally different center-of-gravity trajectories.
-\end{itemize}
+\section{Claim-status audit}
 
-Thus, Vienna reinterpretation naturally connects transition theory with:
-\begin{itemize}
-\item Schwerpunkt-Trassierung,
-\item operational balance,
-\item and runtime comfort interpretation.
-\end{itemize}
+\begin{center}
+\small
+\begin{tabular}{p{0.29\linewidth}p{0.23\linewidth}p{0.38\linewidth}}
+\toprule
+Claim & Status & Disposition\\
+\midrule
+implemented function form & implementation-backed & cite exact implementation when used\\
+historical dynamic intent & historical project intent & retain as provenance, not validation\\
+separate curvature/cant laws & illustrative & state functions and coupling assumption\\
+universal Vienna coupling & unsupported & removed\\
+validated vehicle response & unsupported & requires identified model and evidence\\
+general joint optimization & unsupported & open work, not present capability\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-% ============================================================
-\section{Spectral Interpretation}
-% ============================================================
+The same restraint applies to realization. A smooth target function may be
+compared with qualified realization or observation evidence, but a coordinate
+transformation is not construction and a measured deviation is not a dynamic
+cause. The next chapter makes that comparison contract explicit.
 
-Transition laws may be interpreted spectrally through their curvature
-content.
-
-Low-frequency curvature behaviour primarily influences:
-\begin{itemize}
-\item global operational balance,
-\item smooth acceleration evolution,
-\item and large-scale runtime behaviour.
-\end{itemize}
-
-High-frequency curvature behaviour tends to influence:
-\begin{itemize}
-\item realization sensitivity,
-\item machine smoothing,
-\item dynamic roughness,
-\item measurement sensitivity,
-\item and operational excitation.
-\end{itemize}
-
-\begin{proposition}[Spectral smoothing principle]
+% Retained anchors for downstream references to the former longer discussion.
 \label{prop:spectral-smoothing}
-Operationally smooth runtime trajectories correspond to spectrally
-controlled curvature evolution.
-\end{proposition}
-
-This interpretation shifts transition evaluation away from geometric
-appearance and toward spectral runtime behaviour.
-
-% ============================================================
-\section{Realization Filtering}
-% ============================================================
-
-Realization acts approximately as a low-pass filter on curvature space.
-
-Thus, highly oscillatory transition structures may collapse into similar
-realized operational states after construction and maintenance.
-
-Within AIM, Vienna reinterpretation therefore includes:
-\begin{itemize}
-\item realization filtering,
-\item machine smoothing,
-\item measurement reconstruction,
-\item and runtime operational robustness.
-\end{itemize}
-
-A transition law is operationally meaningful only if its intended
-runtime behaviour survives realization.
-
-\begin{principle}[Realization-survival principle]
 \label{princ:realization-survival}
-A transition strategy is operationally relevant only to the extent that
-its intended runtime behaviour survives realization filtering.
-\end{principle}
-
-A possible Vienna-type hypothesis is therefore that certain transition
-strategies may preserve their intended operational behaviour more robustly
-under realization filtering than others.
-
-% ============================================================
-\section{Runtime Smoothness}
-% ============================================================
-
-\begin{definition}[Runtime smoothness]
 \label{def:runtime-smoothness}
-Runtime smoothness denotes smooth operational evolution of runtime
-states generated through curvature and cant evolution.
-\end{definition}
-
-Runtime smoothness includes:
-\begin{itemize}
-\item smooth acceleration evolution,
-\item smooth roll evolution,
-\item smooth operational balance,
-\item and smooth center-of-gravity trajectories.
-\end{itemize}
-
-Within AIM, runtime smoothness is operationally more relevant than
-purely geometric smoothness.
-
-Spectral smoothing provides one possible interpretation of runtime
-smoothness in curvature space.
-
-% ============================================================
-\section{Vienna and Curvature Space}
-% ============================================================
-
-Vienna reinterpretation operates fundamentally within curvature space.
-
-Different curvature structures generate:
-\begin{itemize}
-\item different operational balance trajectories,
-\item different roll behaviour,
-\item different jerk evolution,
-\item different spectral content,
-\item and different realization behaviour.
-\end{itemize}
-
-Thus, transition quality cannot be characterized sufficiently through
-position geometry alone.
-
-% ============================================================
-\section{Vienna and Runtime Dynamics}
-% ============================================================
-
-Vienna reinterpretation is fundamentally a runtime-dynamics concept.
-
-It couples:
-\begin{itemize}
-\item curvature evolution,
-\item runtime-state evolution,
-\item operational balance,
-\item spectral smoothing,
-\item realization filtering,
-\item and vehicle-space interpretation.
-\end{itemize}
-
-The transition curve therefore acts as:
-\begin{quote}
-a runtime-state generator.
-\end{quote}
-
-% ============================================================
-\section{Operational Interpretation}
-% ============================================================
-
-Within AIM, the operational railway problem is interpreted as:
-\begin{quote}
-generation of admissible runtime operational trajectories.
-\end{quote}
-
-This transforms railway alignment theory from:
-\begin{itemize}
-\item geometric interpolation,
-\item toward operational runtime-state design.
-\end{itemize}
-
-Vienna reinterpretation therefore acts as a bridge between:
-\begin{itemize}
-\item transition theory,
-\item runtime dynamics,
-\item realization,
-\item and operational optimization.
-\end{itemize}
-
-% ============================================================
-\section{Towards Runtime-State Optimization}
-% ============================================================
-
-The reinterpretation developed here prepares the transition toward:
-\begin{itemize}
-\item realization-aware optimization,
-\item operational admissibility optimization,
-\item runtime-state shaping,
-\item and Schwerpunkt-based alignment design.
-\end{itemize}
-
-Optimization therefore acts not merely on:
-\[
-\gamma(s),
-\]
-but on:
-\[
-\mathrm{pose3}_{\mathrm{real}}(s),
-\]
-and the generated operational vehicle-state trajectories.
-
-% ============================================================
-\section{Canonical Interpretation}
-% ============================================================
-
-\begin{proposition}
-Within AIM, Vienna-type transitions are interpreted as runtime-state
-shaping strategies rather than as isolated geometric curve formulas.
-\end{proposition}
-
-\begin{proposition}
-Operational transition quality depends fundamentally on generated
-runtime-state trajectories.
-\end{proposition}
-
-\begin{proposition}
-Realization filtering and spectral behaviour are central components of
-transition interpretation.
-\end{proposition}
-
-\begin{proposition}
-The operationally relevant object is the realized runtime trajectory of
-vehicle states rather than the abstract geometric curve alone.
-\end{proposition}
-
-\begin{proposition}
-The half-wave interpretation is a modular modelling aid, not a
-special-curve doctrine.
-\end{proposition}
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
-
-\begin{summary}
-Vienna reinterpretation transforms transition theory into a theory of
-runtime-state shaping.
-
-Within AIM:
-\begin{itemize}
-\item transitions generate operational runtime trajectories,
-\item half-wave structures provide modular interpretation rather than
-special-curve dogma,
-\item realization filtering determines operational robustness,
-\item spectral smoothing influences comfort and admissibility,
-\item and center-of-gravity trajectories become primary operational
-objects.
-\end{itemize}
-
-This establishes the conceptual bridge between:
-\begin{itemize}
-\item curvature space,
-\item runtime dynamics,
-\item realization-aware interpretation,
-\item Schwerpunkt-Trassierung,
-\item and operational state optimization.
-\end{itemize}
-\end{summary}

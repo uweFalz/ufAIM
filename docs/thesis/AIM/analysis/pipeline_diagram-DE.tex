@@ -1,0 +1,36 @@
+% analysis/pipeline_diagram-DE.tex
+\section{Überblick über die AIM-Pipeline}
+
+Dieser Abschnitt beantwortet eine Systemfrage: Welche Operatorfolge verbindet
+CRS-Kontext, intrinsische Modellierung, Realisierung und Rückkopplung, ohne die
+begriffliche Verantwortung zwischen den Ebenen zu verletzen?
+
+Die Abbildung wird als Antwort durch Operatorreihenfolge eingeführt.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=1.45cm,box/.style={draw,rectangle,rounded corners,minimum width=6.2cm,minimum height=0.95cm,align=center},arrow/.style={->,thick},feedback/.style={->,thick,dashed}]
+\node[box] (crs) {CRS-Transformation \\ $\mathcal C$};
+\node[box,below=of crs] (world) {World-Koordinaten};
+\node[box,below=of world] (w2t) {World $\rightarrow$ Track \\ $\mathcal W$};
+\node[box,below=of w2t] (model) {Krümmungsmodell \\ $\kappa(s)$ \\ (parametrisch + hybrid)};
+\node[box,below=of model] (real) {Realisierung \\ $\mathcal R$};
+\node[box,below=of real] (t2w) {Track $\rightarrow$ World \\ $\mathcal W^{-1}$};
+\node[box,below=of t2w] (output) {Realisierte Geometrie};
+\draw[arrow] (crs)--(world); \draw[arrow] (world)--(w2t);
+\draw[arrow] (w2t)--(model); \draw[arrow] (model)--(real);
+\draw[arrow] (real)--(t2w); \draw[arrow] (t2w)--(output);
+\draw[feedback] (output.east)--++(1.2,0)|-node[pos=0.25,right]{Optimierung / SQP}(model.east);
+\draw[feedback] (output.west)--++(-1.2,0)|-node[pos=0.25,left]{Messung / Daten}(w2t.west);
+\end{tikzpicture}
+\caption{AIM-Verarbeitungspipeline als Komposition von Operatoren, die Koordinatensysteme, Alignment-Modellierung, Realisierung und Optimierung verbinden.}
+\end{figure}
+
+Im Kapitelkontext begründet das Diagramm einen vorwärts gerichteten
+Verarbeitungsstrang mit zwei ausdrücklichen Rückkopplungskanälen: Messdaten
+stabilisieren die Projektionsinterpretation; Optimierungsrückkopplung
+aktualisiert das Krümmungsmodell.
+
+Daraus folgt, dass Pipeline-Korrektheit von der disziplinierten
+Operatorkomposition und nicht von isolierten lokalen Berechnungen abhängt. Dies
+bereitet die folgenden Abschnitte zu Interaktionsmustern und Fehlermodi vor.

@@ -1,0 +1,108 @@
+% reality/data-DE.tex
+
+\chapter{Messdaten und Beobachtungskontext}
+\label{chap:reality-data}
+
+\index{Beobachtung!Datenquellenkontext}
+\index{Datenquelle}
+
+Messdaten bilden die Beobachtungsebene von AIM. Sie liefern Evidenz über
+physische Infrastruktur und Laufzeitzustand, definieren aber für sich allein
+keine Engineering Identity.
+
+\section{Rolle der Daten}
+
+\begin{definition}[Datenquelle]
+\index{Datenquelle!Definition}
+Eine Datenquelle ist jeder Ursprung geometrie- oder zustandsbezogener
+Beobachtungen, die in der Eisenbahnmodellierung verwendet werden.
+\end{definition}
+
+Typische Quellen sind geodätische Vermessungen, Gleisgeometriemessungen,
+historische ingenieurtechnische Datensätze, strukturierte Austauschformate und
+aus Punktwolken abgeleitete Produkte.
+
+\begin{principle}[Beobachtungsprinzip]
+\index{Beobachtungsprinzip}
+Messdaten sind ingenieurtechnische Beobachtungsevidenz und müssen anhand
+ausdrücklicher Modell- und Kontextannahmen interpretiert werden.
+\end{principle}
+
+\section{Dateneigenschaften}
+
+Reale Eisenbahndaten sind heterogen und weisen typischerweise
+Unvollständigkeit, Rauschen, Mehrdeutigkeit und quellübergreifende
+Inkonsistenz auf. Daten können deshalb nicht unmittelbar mit konstruktiver
+Identität, metrischer Realisierung oder realisiertem Zustand gleichgesetzt
+werden.
+
+\begin{definition}[Messunsicherheit]
+\index{Unsicherheit!Messung}
+Messunsicherheit beschreibt die Abweichung zwischen beobachteten Größen und
+den entsprechenden physischen Größen.
+\end{definition}
+
+Unsicherheit pflanzt sich durch Interpretation, Rekonstruktion und
+Laufzeitbewertung fort.
+
+\section{Interpretationsebene}
+
+\begin{definition}[Interpretation]
+\index{Interpretation!Beobachtungsdaten}
+Interpretation ist der Prozess, beobachteten Daten in einem bestimmten Kontext
+geometrische und semantische Bedeutung zuzuweisen.
+\end{definition}
+
+Interpretation umfasst Segmentierung, Topologiezuordnung,
+Stationierungskontext und die Verknüpfung mit Längsprofil-, Überhöhungs- und
+Laufzeitgrößen. Der Prozess ist kontextabhängig und im Allgemeinen nicht
+eindeutig.
+
+\section{Von Daten zu strukturierten Modelleingaben}
+
+Die Datenverarbeitung in AIM bildet ab:
+\[
+\text{Beobachtungsdaten}
+\rightarrow
+\text{interpretierte Modelleingabe}
+\rightarrow
+\text{Kontext der Laufzeitbewertung}.
+\]
+
+\begin{definition}[Rekonstruktion aus Beobachtungsdaten]
+\index{Rekonstruktion!aus Beobachtungsdaten}
+Rekonstruktion ist der Prozess, aus beobachteten Daten strukturierte
+Modelleingaben abzuleiten und dabei Provenienz und Unsicherheitskontext zu
+bewahren.
+\end{definition}
+\index{Provenienz!Beobachtungsrekonstruktion}
+
+Diese Rekonstruktion kann Filterung, Segmentierung, Ausrichtung an
+Stationierung und Topologie sowie eine mit dünn besetzten Modellen kompatible
+Approximation umfassen.
+
+\section{Geometrische und topologische Evidenz}
+
+Beobachtungsdatensätze können geometrische Evidenz -- Positionen, Richtungen
+und krümmungsbezogene Stichproben -- sowie topologische Evidenz --
+Konnektivität, Verzweigungs- und Routenkontext -- enthalten. Diese Ebenen sind
+begrifflich getrennt zu halten und zugleich gemeinsam zu interpretieren.
+
+\section{Container- und Austauschkontext}
+
+Containerformate können gemischte Geometrie, Metadaten und semantische Inhalte
+tragen. AIM behandelt Containerinhalte daher als Import-Evidenz, die vor
+Laufzeitbewertung oder Realisierungsvergleich in ausdrückliche Strukturen der
+Modellebenen normalisiert werden muss.
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Im Teil Realität werden Daten als Beobachtungskontext für
+realisierungsbewusste und laufzeitbewusste Interpretation behandelt.
+
+Sie sind weder konstruktive Identität noch abschließende ingenieurtechnische
+Wahrheit. Ingenieurtechnische Interpretation entsteht erst nach
+ausdrücklicher Rekonstruktion, Kontextzuordnung und dem Vergleich von Ziel und
+Realisiert.
+\end{summary}

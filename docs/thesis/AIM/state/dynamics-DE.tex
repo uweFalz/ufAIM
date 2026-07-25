@@ -1,0 +1,91 @@
+\chapter{Geschwindigkeitsqualifizierte Folgen}
+
+Das laufende Alignment und sein pose3-Zustand beschreiben nun, wo das
+Gleis-Frame liegt und wie es orientiert ist. Eine physische Antwort bestimmen
+sie noch nicht. Geschwindigkeit tritt als getrennte Betriebseingabe hinzu;
+Fahrzeugmodell und Bewertungsregel nochmals getrennt.
+
+\section{Von der Bogenlänge zur Zeit}
+
+Für konstantes \(v>0\) gilt
+\[
+\frac{\dd s}{\dd t}=v,
+\qquad
+\frac{\dd f}{\dd t}=v\frac{\dd f}{\dd s}.
+\]
+Damit erhält die räumliche Krümmungsrate \(\kappa'(s)\) erst nach Angabe der
+Geschwindigkeit eine Zeitrate. Dasselbe gilt für Überhöhungsrate und höhere
+Ableitungen.
+
+\section{Eine reduzierte illustrative Beziehung}
+
+Für die ebene Bewegung eines Punkts entlang der Referenztrajektorie gilt
+\[
+a_\kappa(s)=v^2\kappa(s).
+\]
+Unter dem lokalen rechtshändigen Frame, eng begrenzten
+Starrkörperannahmen, der Überhöhungskonvention aus
+\cref{eq:derived-roll-angle} und unter Vernachlässigung von Federung,
+Rad--Schiene-Kontakt, Wind und weiteren Effekten lautet eine reduzierte
+effektive Querkomponente
+\[
+a_{\mathrm{eff}}(s)=v^2\kappa(s)-g\sin\phi(s).
+\]
+Dies ist eine illustrative abgeleitete Größe, weder ein validiertes
+vollständiges Fahrzeugdynamikmodell noch eine autoritative
+Überhöhungsentwurfsregel.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Fall am selben \(s\) & \(v^2\kappa\) & \(a_{\mathrm{eff}}\) für \(\phi=4^\circ\)\\
+\midrule
+\(v=20\,\mathrm{m/s}\), \(\kappa=0.001\,\mathrm{m^{-1}}\) & \(0.40\,\mathrm{m/s^2}\) & \(-0.28\,\mathrm{m/s^2}\)\\
+\(v=40\,\mathrm{m/s}\), \(\kappa=0.001\,\mathrm{m^{-1}}\) & \(1.60\,\mathrm{m/s^2}\) & \(0.92\,\mathrm{m/s^2}\)\\
+\bottomrule
+\end{tabular}
+\caption{Illustrative Geschwindigkeitsabhängigkeit bei gleicher Krümmung und Überhöhung (\(g=9.81\,\mathrm{m/s^2}\), gerundet).}
+\label{tab:same-curvature-two-speeds}
+\end{table}
+
+\Cref{tab:same-curvature-two-speeds} isoliert die Abhängigkeit: Weder Alignment
+noch \(\kappa(s)\) ändern sich, doch eine Verdopplung der Geschwindigkeit
+vervierfacht den krümmungsinduzierten Anteil. Eine Änderung der Überhöhung
+würde effektive Komponente und Frame ändern, nicht das horizontale
+Krümmungsgesetz.
+
+\section{Änderung und betriebliche Bedeutung}
+
+Unter denselben Annahmen und bei konstanter Geschwindigkeit gilt
+\[
+j(s)=v^3\kappa'(s)-gv\cos\phi(s)\,\phi'(s).
+\]
+Diese Beziehung erklärt, warum Übergangsbogenform und Überhöhungsrampe
+betrieblich gemeinsam relevant sind und dennoch getrennte Gesetze bleiben.
+Bei veränderlicher Geschwindigkeit treten zusätzliche Zeitableitungsterme auf.
+Die Fahrzeugantwort hängt weiter von Masse, Federung, Rad--Schiene-Kontakt und
+anderen Modellentscheidungen ab. Keine dieser Größen wird stillschweigend in
+die Alignment-Geometrie aufgenommen.
+
+\section{Bewertung ist eine spätere Operation}
+
+Die Abhängigkeitsreihenfolge lautet
+\begin{align*}
+\text{Geometrie}&\rightarrow\text{realisiertes Frame}
+\rightarrow\text{Geschwindigkeitsprofil}\rightarrow\text{Fahrzeugmodell}\\
+&\rightarrow\text{abgeleitete Dynamik}
+\rightarrow\text{Zweck und Regel}\rightarrow\text{Bewertung}.
+\end{align*}
+Ein Grenzwert aus einer Norm ist nur unter deren Anwendungsbereich und Version
+anwendbar. Eine berechnete Überschreitung ist ein Bewertungsergebnis; Annahme,
+Ablehnung oder Autorisierung benötigen eine Engineering Decision mit der
+zuständigen Autorität.
+
+\begin{summary}
+Geschwindigkeit ändert die Folge des laufenden Alignments, nicht seine
+intrinsische Geometrie. Überhöhung ändert Gleis-Frame und reduzierte effektive
+Wirkung, während Geometrie, Betriebseingabe, Fahrzeugmodell, Ableitung,
+Bewertung und Entscheidung getrennt bleiben.
+\end{summary}

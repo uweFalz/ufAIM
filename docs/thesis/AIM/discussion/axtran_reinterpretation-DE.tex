@@ -1,0 +1,110 @@
+% discussion/axtran_reinterpretation-DE.tex
+\chapter{axtranNew: Von der Übergangsgrammatik zur Alignment-Berechnung}
+\label{chap:axtran-reinterpretation}
+
+\section*{Motivation}
+
+Berlinish wird erst dann zur Ingenieurmaschinerie, wenn Funktionsidentitäten,
+Komponentenlängen, Randbedingungen und Freiheitsgrade gemeinsam gelöst werden
+können. axtranNew entstand als diese Berechnungsantwort. Es ist mehr als ein
+bequemer Optimierer: Seine vorgesehene Rolle ist der
+Alignment-Berechnungskern, der eine Übergangsgrammatik in verbundene,
+editierbare Alignment-Struktur überführt.
+
+Die Bezeichnung gehört zur Implementierungslinie von ufAIM. Sie bezeichnet
+keinen genehmigten Begriff des Knowledge Kernel, und ihre ursprüngliche Absicht
+darf nicht mit dem gegenwärtigen Implementierungsstand verwechselt werden.
+
+\section{Ursprüngliche Absicht}
+
+Der vorgesehene Umfang von axtranNew umfasst:
+\begin{itemize}
+\item das Erfüllen von Anschluss-, Pose-, Krümmungs- und Randbedingungen;
+\item die ausdrückliche Behandlung fester, abgeleiteter, beschränkter,
+gekoppelter und freier Größen;
+\item die Komposition von Halbwellen-, Klothoiden- und
+Null-Längen-Komponenten;
+\item die Bestimmung zulässiger Parameterkombinationen;
+\item die Kopplung oder Trennung von Krümmungs- und Überhöhungsfunktionen;
+\item den Vergleich von Alternativen und die Optimierung anhand von
+Ingenieurzielen;
+\item elementare Bearbeitungen wie das Koppeln von Alignment-Elementen;
+\item die Realisierung berechneter Kandidaten als editierbare
+Alignment-Strukturen.
+\end{itemize}
+
+Diese Liste beschreibt die Ingenieurabsicht. Sie behauptet nicht, dass jeder
+Punkt produktionsreif ist.
+
+\section{Mathematische Fähigkeit}
+
+Mathematisch erhält ein axtranNew-Problem Funktionsidentitäten,
+Parametrisierungen, Randbedingungen, Ingenieurbedingungen und ausgewiesene
+Freiheitsgrade. Es erzeugt einen Kandidatenparametersatz und den daraus
+abgeleiteten Alignment-Zustand. Die Berlinish-Komposition ist ein zulässiges
+Strukturmodell; andere dünn besetzte Übergangsfamilien können dieselben
+Berechnungsprinzipien verwenden.
+
+Die Berechnung kann numerische Konsistenz, Residuen, Anwendbarkeit unter
+angegebenen Bedingungen und Zielwerte ermitteln. Sie kann weder entscheiden,
+dass der Kandidat angenommen ist, noch Engineering Object Identity übertragen
+oder ihr eigenes Ergebnis autoritativ machen.
+
+\section{Beobachtete aktuelle Implementierung}
+
+Die aktuelle Referenzimplementierung belegt einen begrenzten, aber
+substanziellen Berechnungspfad:
+\begin{itemize}
+\item Eine validierte Registry löst benannte Übergangsfamilien, normierte
+Prototypfunktionen, Halbwellen und dreiteilige Längenteilungen auf.
+\item Dünn besetzte feste und Übergangselemente werden mit fortlaufender
+Pose-Übertragung und Krümmungsintegration zusammengesetzt.
+\item Krümmungsträger der Länge null und ausgewählte Übergangsfälle der Länge
+null werden repräsentiert.
+\item Position, Tangente, Pose, Krümmung und World--Track-Operationen werden
+ausgewertet.
+\item Native Bearbeitungen von Geraden, Bögen und Übergängen lösen eine
+deterministische dünn besetzte Neuberechnung aus und erhalten die Identität
+unveränderter Elemente.
+\item Ausgewählte Probleme zum Wechsel des Übergangstyps verwenden
+Equality-QP- und experimentelle SQP-Maschinerie.
+\end{itemize}
+
+Diese beobachtete Implementierung unterstützt Übergangsvergleich,
+Rekonstruktion und ausgewählte Bearbeitungen. Sie belegt noch keinen
+allgemeinen, zuverlässigen und produktionsreifen Optimierer für jeden
+Anschluss, jede Überhöhungskopplung, jedes Netz oder jedes Ingenieurziel.
+
+\section{Gegenwärtige Grenze und künftige Entwicklung}
+
+Der weiter reichende SQP-Dienst bleibt experimentell, nicht autoritativ und
+auf Vorschläge beschränkt. Zuverlässige Konvergenz, Globalisierung,
+vollständige Bedingungs- und Zielbibliotheken, validierte gemeinsame
+Krümmungs--Überhöhungs-Optimierung und Berechnung auf Netzebene bleiben
+Entwicklungs- oder Forschungsarbeit. Ergebnisse müssen als prüfbare
+Kandidaten, Diagnosen oder Deltas zurückgegeben und vom verantwortlichen
+externen Arbeitsablauf angewendet werden.
+
+\section{Von der Geometrieoptimierung zur Laufzeitzustandsoptimierung}
+
+AIM verallgemeinert die ursprüngliche Alignment-Berechnung zum
+realisierungsbewussten Entwurf von Laufzeitzustandstrajektorien.
+
+Dies ist keine Zurückweisung von axtranNew oder klassischer Systeme. Es erklärt,
+welche zusätzlichen Unterscheidungen erforderlich sind, wenn ein berechneter
+Übergang Identität, Provenienz, Realization Context, Beobachtungsbezüge,
+anwendbares Wissen und verantwortlichen Entscheidungsstatus bewahren muss.
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Berlinish stellt die verallgemeinerte funktionale Grammatik der
+Eisenbahnübergänge bereit. axtranNew macht diese Grammatik rechnerisch
+anwendbar. Die weitere ufAIM-Umgebung entstand, um das resultierende Wissen zu
+bewahren, anzuwenden, zu untersuchen, zu erklären und zu erweitern.
+
+Die aktuelle Implementierung realisiert wichtige Teile dieser Linie, während
+ein allgemeiner produktionsreifer Optimierer und validierte gemeinsame
+Krümmungs--Überhöhungs-Optimierung künftige Arbeit bleiben. Berechnung erzeugt
+Kandidaten; sie schafft keine Autorität und bildet keine Ingenieurentscheidung.
+\end{summary}

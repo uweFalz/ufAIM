@@ -1,246 +1,127 @@
 % foundations/system_layers.tex
 
-\chapter{System Layers}
-
+\chapter{Execution Order and Responsibility}
 \label{chap:system-layers}
 
-This chapter defines the canonical layer structure of AIM. Its purpose is not to
-enumerate every downstream application of the alignment model, but to separate
-the semantic, spatial, metric, physical, and operational interpretations that
-must remain distinguishable in a coherent engineering formulation.
+The preceding chapters already supply the concepts, state, operators,
+and realization contract. The purpose of this chapter is only to show
+their execution order and to identify where responsibility changes. It
+does not introduce another architecture catalogue.
 
-% ============================================================
-\section{Overview}
-% ============================================================
+\section{The curvature-edit chain}
 
-The AIM framework separates railway alignment modelling into a sequence of
-interacting layers: a geometric layer for intrinsic semantics, a CRS layer
-for external embedding, a metric realization layer for geometric
-interpretation, a physical realization layer for construction-aware
-transformation, and a runtime layer for operational evaluation. These layers
-are conceptually distinct, yet they are not independent. They exchange state,
-constraints, and operator results in a disciplined manner so that the overall
-system remains interpretable as one engineering architecture rather than as a
-collection of loosely related models.
-
-% ============================================================
-\section{Geometry Layer}
-% ============================================================
-
-\subsection{Role}
-
-The geometry layer defines the intrinsic semantic structure of the alignment.
-Its central quantities are the arc-length parameter \(s\), curvature
-\(\kappa(s)\), cant evolution, transition structure, and the pose evolution
-laws that govern the alignment state. These objects are not tied to a
-particular realization backend; they define the canonical alignment semantics
-that other layers may interpret, transform, or evaluate.
-
-\subsection{Core Relations}
-
-The geometry layer is governed by the canonical intrinsic relations introduced
-in \cref{chap:core-equations}. In particular, it relies on the curvature
-relation \cref{eq:curvature-relation}, the reconstruction relation
-\cref{eq:state-evolution}, and the cant evolution relation
-\cref{eq:cant-evolution}. Their role is not merely descriptive: they
-establish the structural coherence of the alignment before any metric,
-construction, or runtime interpretation is applied.
-
-% ============================================================
-\section{CRS Layer}
-% ============================================================
-
-\subsection{Role}
-
-The CRS layer provides the external coordinate reference systems in which the
-alignment is embedded and related to the Earth. It includes engineering CRS,
-projected CRS, geodetic coordinates, local construction coordinate systems,
-and ellipsoid-based representations. Its purpose is to make the spatial
-context of the alignment explicit, not to replace the intrinsic geometry that
-defines the alignment itself.
-
-\subsection{Coordinate Transformation}
-
-CRS transformations are represented by the coordinate transformation operator
-\(\mathcal C\), introduced in \cref{def:coordinate-transform-operator}. The
-CRS layer therefore operates in world space through
+Starting from an identified alignment and an authorized curvature edit,
+the formal machinery proceeds as follows:
 \[
-\mathcal C : \Omega_{\mathrm{world}} \rightarrow \Omega_{\mathrm{world}}.
+\begin{aligned}
+(\mathrm{pose2}(s_0),\widetilde\kappa)
+&\xrightarrow{\ \mathcal D\ }
+\widetilde x_{\mathrm{intrinsic}}
+\xrightarrow{\ \mathcal G_c\ }
+\widetilde x_{\mathrm{metric}}\\
+&\xrightarrow{\ \mathcal P,\,\mathcal C\ }
+\widetilde x_{\mathrm{comparable}}
+\xrightarrow{\ \mathcal E_c\ }
+y_{\mathrm{qualified}}.
+\end{aligned}
 \]
-This operator changes the embedding of the alignment but does not define its
-intrinsic semantics.
 
-\begin{proposition}
-\label{prop:alignment-not-crs-invariant}
-A railway alignment is generally not invariant under CRS transformations.
-\end{proposition}
+Reconstruction propagates the curvature edit. Metric realization makes
+the state measurable. Spatial mappings and coordinate transformations
+place qualified sources in a compatible comparison domain. Evaluation
+produces the consequence. Each arrow has its own applicability and
+provenance; no arrow changes alignment identity.
 
-Straight lines, curvature, transition behaviour, stationing-related length
-interpretation, and cant-related spatial interpretation may all change under
-projection or CRS-dependent embedding. The CRS layer therefore affects the
-spatial interpretation of the alignment, but it is not identical to the
-intrinsic railway projection that the geometry layer carries.
+The chain uses the curvature relation
+\cref{eq:curvature-relation}, reconstruction relation
+\cref{eq:state-evolution}, and cant evolution relation
+\cref{eq:cant-evolution}. Their execution precedes metric comparison;
+they do not wait for a CAD representation to define the alignment.
 
-% ============================================================
-\section{Metric Realization Layer}
-% ============================================================
+\section{Where physical realization and observation enter}
 
-\subsection{Role}
+Physical realization is not another step between intrinsic and metric
+description. It relates conditions:
+\[
+x_{\mathrm{target}}
+\xrightarrow{\ \mathcal R\ }
+x_{\mathrm{real}}.
+\]
+Observation supplies evidence about a condition through a measurement
+process. Thus a survey polyline does not enter the main chain as
+``reality.'' It enters as qualified evidence that may be mapped into a
+compatible metric domain and compared with a qualified target or
+realized state.
 
-The metric realization layer defines how the semantic alignment structure is
-interpreted geometrically within a selected metric model. It is governed by
-the metric realization operator \(\mathcal G\), introduced in
-\cref{def:metric-realization-operator}, and it serves as the interface between
-semantic alignment logic and metric-dependent geometric evaluation.
+\section{Responsibility at each boundary}
+
+The useful layer distinctions are consequences of the operator chain:
+
+\begin{description}
+\item[Intrinsic responsibility] owns the constructive controls,
+  boundary conditions, and state propagation.
+\item[Metric responsibility] owns the metric space, reference surface,
+  embedding, and validity of measurable spatial consequences.
+\item[Representation responsibility] owns sampling, coordinate form,
+  precision, and exchange provenance.
+\item[Physical responsibility] owns the relation between target and
+  realized conditions.
+\item[Observation responsibility] owns source, method, time,
+  uncertainty, and evidential limitations.
+\item[Evaluation responsibility] owns the comparison method,
+  applicability, assumptions, and qualified result---not the decision.
+\end{description}
 
 \begin{principle}[Metric realization principle]
 \label{princ:metric-realization-layer}
 Semantic alignment logic is separated from metric realization behaviour.
 \end{principle}
 
-This separation ensures that semantic curvature laws, transition structure,
-sparse alignment logic, and stationing semantics remain conceptually stable
-even when the underlying metric realization changes. Typical realization modes
-include engineering-Euclidean, projection-aware, ellipsoid-aware, and future
-differential-geometric variants. The layer is developed formally in
-\cref{chap:metric-realization}.
+\begin{principle}[Canonical separation principle]
+\label{princ:canonical-layer-separation}
+Intrinsic geometry, coordinate embedding, metric realization, physical
+realization, observation, and evaluation shall not be merged into one
+implicit operation.
+\end{principle}
 
-% ============================================================
-\section{Physical Realization Layer}
-% ============================================================
-
-\subsection{Role}
-
-The physical realization layer models the transformation from analytical target
-geometry to physically realized railway geometry. It is governed by the
-realization operator
-\[
-\mathcal R : \mathcal X_{\mathrm{target}} \rightarrow \mathcal X_{\mathrm{real}},
-\]
-introduced in \cref{def:realization-operator}. Through this operator, the
-idealized alignment is connected to construction constraints, machine
-behaviour, discretization, interpolation, structural response, maintenance
-processes, and measurement feedback.
-
-In this sense, physical realization is not a secondary detail attached to the
-geometry; it is an explicit engineering layer that translates abstract target
-laws into a form that can actually be built and observed. It acts
-approximately as a low-pass filter on geometry and curvature, preserving the
-essential structure while attenuating incompatible high-frequency content.
-The layer is developed in \cref{chap:construction-and-realization}.
-
-% ============================================================
-\section{Runtime Layer}
-% ============================================================
-
-\subsection{Role}
-
-The runtime layer transforms stored railway representations into
-operationally evaluable geometry. It is governed by the evaluation operator
-\[
-\mathcal E : \mathcal X \times \Omega_{\mathrm{track}} \rightarrow \mathcal Y,
-\]
-introduced in \cref{def:evaluation-operator}. This operator assembles the
-information produced by the earlier layers into quantities that can be used
-for world--track projection, frame evaluation, metric-aware geometry
-assessment, visualization, BIM placement, spatial queries, sensor
-integration, and dynamic quantity evaluation.
-
-The runtime layer is therefore the point at which the conceptual architecture
-becomes operationally active. It is state-dependent, scale-dependent,
-metric-aware, operator-based, and computationally adaptive, and many of its
-quantities are evaluated dynamically rather than stored explicitly. In this
-way, the layers do not merely coexist; they interact as one coherent
-engineering system from semantic specification through realization to
-runtime execution. The runtime architecture is developed further in
-\cref{chap:runtime-services}.
-
-% ============================================================
-\section{Layer Interactions}
-% ============================================================
-
-The system layers interact continuously. Intrinsic geometry feeds metric
-realization, CRS influences metric interpretation and world embedding, metric
-realization affects runtime geometry, and physical realization modifies target
-states into realized states. Runtime services then make the resulting
-representation available for projection, visualization, measurement, and
-further optimization.
+\section{Dependencies, not an implementation stack}
 
 \begin{definition}[Canonical transformation structure]
 \label{def:canonical-transformation-structure}
-A simplified conceptual AIM structure is:
-\[
-\text{intrinsic geometry}
-\rightarrow
-\text{metric realization}
-\rightarrow
-\text{runtime evaluation}
-\rightarrow
-\text{vehicle-space interpretation}.
-\]
+The formal transformation structure is an ordered composition of typed
+operators whose intermediate results preserve identity, context, and
+provenance.
 \end{definition}
 
-Physical realization is a separate transformation:
-\[
-\text{target state}
-\rightarrow
-\text{realized state}.
-\]
+The ordering constrains meaning, not software deployment. Operations may
+be cached, recomputed, or implemented by different tools provided their
+contracts remain intact.
 
-CRS embedding influences metric realization and world-space representation, but
-it is not identical to intrinsic world--track projection.
-
-% ============================================================
-\section{Canonical Layer Separation}
-% ============================================================
-
-\begin{principle}[Canonical separation principle]
-\label{princ:canonical-layer-separation}
-Intrinsic geometry, CRS embedding, metric realization, physical
-realization, and runtime interpretation should not be merged into a single
-implicit model.
-\end{principle}
+\begin{proposition}
+\label{prop:alignment-not-crs-invariant}
+A coordinate transformation may change metric properties of a
+representation under projection; it does not change intrinsic alignment
+identity.
+\end{proposition}
 
 \begin{proposition}
 \label{prop:alignment-multi-layer-system}
-Railway alignment modelling is not a single geometric problem, but a
-multi-layer interaction system.
+An alignment consequence is trustworthy only when the constructive,
+metric, representational, physical, observational, and evaluative
+responsibilities on which it depends remain explicit.
 \end{proposition}
 
 \begin{proposition}
 \label{prop:operational-behaviour-emerges}
-The operational behaviour of railway systems emerges from interactions
-between:
-\begin{itemize}
-\item intrinsic geometry,
-\item CRS embedding,
-\item metric realization,
-\item physical realization,
-\item runtime evaluation,
-\item vehicle-space interpretation,
-\item and optimization.
-\end{itemize}
+Operational consequences arise from declared compositions of state,
+context, operators, and applicable engineering knowledge.
 \end{proposition}
 
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+The result of the chain is therefore modest but useful: the theory can
+say exactly what changed, which state followed, which action produced
+each artifact, where it is measurable, which freedoms remain, and what
+evidence may be compared. It still cannot turn a computed result into an
+engineering decision.
 
-\begin{summary}
-The AIM framework separates railway alignment modelling into interacting
-system layers.
-
-This separation enables:
-\begin{itemize}
-\item rigorous intrinsic geometry,
-\item CRS-aware embedding,
-\item metric-aware realization,
-\item physical realization-aware modelling,
-\item scalable runtime systems,
-\item explicit vehicle-space interpretation,
-\item and realization-aware optimization.
-\end{itemize}
-
-Together, these layers form the conceptual architecture underlying the
-AIM framework.
-\end{summary}
+The ellipsoid chapters now specialize this chain by supplying an
+Earth-surface metric context.

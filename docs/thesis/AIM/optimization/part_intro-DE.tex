@@ -1,0 +1,90 @@
+% optimization/part_intro-DE.tex
+\chapter*{Optimierung}
+\phantomsection
+\addcontentsline{toc}{chapter}{Optimierung}
+
+Dieser Teil legt dar, wie AIM Eisenbahnbewertung in strukturierte
+ingenieurtechnische Verbesserung überführt.
+
+\section*{Was wissen wir bereits?}
+Die vorangehenden Teile haben Eisenbahngeometrie, Eisenbahnzustände,
+Laufzeitbewertung, realisierungsbewusste Modellierung, dünn besetzte
+Alignment-Darstellungen und Verarbeitungspipelines begründet.
+
+In AIM können Eisenbahn-Alignments durch einen kohärenten operatorbasierten
+Rahmen dargestellt, rekonstruiert, bewertet, gemessen, realisiert und
+analysiert werden. Der Rahmen kann Eisenbahnsysteme und ihr Zusammenwirken mit
+der Realität beschreiben. Beschreibung allein ist jedoch nicht das
+abschließende Ziel des Eisenbahningenieurwesens.
+
+\section*{Was fehlt noch?}
+Engineering-Entwurf erfordert Verbesserung. Alignments müssen an Bedingungen,
+operative Anforderungen, Baubedingungen, Komfortkriterien,
+Realisierungswirkungen und wirtschaftliche Ziele angepasst werden. Messungen
+müssen interpretiert, Entwürfe verfeinert, widersprüchliche Ziele ausgeglichen
+und Alternativen bewertet werden.
+
+Das fehlende Element ist daher Optimierung. Sie überführt
+Eisenbahnmodellierung von beschreibender Analyse in aktiven Entwurf und
+Entscheidungsunterstützung.
+
+\section*{Was folgt?}
+Dieser Teil formuliert Alignment-Entwurf, Rekonstruktion und Verbesserung als
+Optimierungsprobleme. Optimierung wird in AIM nicht nachträglich von außen
+ergänzt; sie geht natürlich aus den intrinsischen Zustands- und
+Krümmungsdarstellungen der vorangehenden Teile hervor.
+
+Die folgenden Kapitel untersuchen:
+\begin{itemize}
+\item numerische Grundlagen,
+\item Alignment-Optimierung,
+\item strukturierte Residuenformulierungen,
+\item dünn besetzte und blockstrukturierte Löser,
+\item Optimiererarchitekturen und
+\item realisierungsbewusste Optimierung.
+\end{itemize}
+
+Besonderes Gewicht liegt auf der analytischen Struktur von
+Alignment-Modellen, um effiziente und interpretierbare Optimierungsverfahren
+zu gewinnen.
+
+\section*{Bezug zur AIM-Roadmap}
+In der AIM-Roadmap entspricht dieser Teil dem Übergang von Laufzeitbewertung
+und Realisierung zur systematischen Verbesserung von Eisenbahnsystemen.
+
+Die folgende Abbildung beantwortet die Orientierungsfrage: Welche
+Bewertungsschleife macht Verbesserung reproduzierbar statt ad hoc?
+
+\begin{figure}[ht]
+\centering
+\input{figures/optimization/icon_optimization_evaluation_loop-DE}
+\caption{Optimierungssymbol: iterative Bewertungsschleife von Parametern zu aktualisierten Parametern.}
+\label{fig:icon-optimization-evaluation-loop}
+\end{figure}
+
+Die Abfolge
+\[
+\text{Laufzeit und Realisierung}\rightarrow\text{Optimierung}
+\rightarrow\text{verbesserter Entwurf}
+\]
+markiert den Übergang von der Bewertung zur aktiven Verbesserung.
+Optimierung verbindet damit Eisenbahninformationsmodellierung und
+ingenieurtechnische Entscheidungsfindung.
+
+\begin{principle}[Optimierungsprinzip]
+\label{princ:optimization-principle}
+In AIM wird Eisenbahnoptimierung als systematische Verbesserung von
+Eisenbahnzuständen, Realisierungen und operativem Verhalten durch
+strukturierte Zielfunktionen und operatorbasierte Modelle interpretiert.
+\end{principle}
+
+\begin{summary}
+Geometrie erklärt Form. Zustände erklären Konfiguration. Laufzeit erklärt
+Bewertung. Realität erklärt Realisierung. Optimierung erklärt Verbesserung.
+
+Dieser Teil überführt AIM damit von einem beschreibenden Rahmen in einen
+Rahmen für Eisenbahnentwurf, Rekonstruktion und Entscheidungsunterstützung.
+\end{summary}
+
+Diese Optimierungssicht bereitet den Teil Engineering vor, in dem Verbesserung
+durch Zulässigkeit, Normen und praktische Eisenbahnregeln gefiltert wird.

@@ -1,0 +1,364 @@
+% Deutsche Parallelfassung zu foundations/core_equations.tex
+
+\chapter{Kerngleichungen}
+\label{chap:core-equations}
+
+Die folgenden Gleichungen sind ausführbares Wissen: Jede Beziehung benennt die
+Eingaben, die sie empfängt, die Ausgabe, die sie erzeugt, die Annahmen, unter
+denen diese Ausgabe Bedeutung besitzt, und die Fragen, die sie nicht
+entscheiden kann. Die Folge begleitet den wiederkehrenden Fall von CAD-Kurve
+und Vermessungspolyline von der Konstruktion über Realisierung und
+Repräsentation bis zum Vergleich.
+
+\section{Intrinsischer Zustand und Steuerungen}
+
+Der grundlegende räumliche Eisenbahnzustand wird geschrieben als
+\begin{equation}
+x(s)
+=
+\bigl(\gamma(s),\theta(s),\phi(s)\bigr),
+\label{eq:canonical-state}
+\end{equation}
+wobei \(\gamma(s)\) die ebene Position, \(\theta(s)\) den Richtungswinkel und
+\(\phi(s)\) die Überhöhungsdrehung bezeichnet.
+
+Das zugehörige Steuerungspaar lautet
+\begin{equation}
+u(s)
+=
+\bigl(\kappa(s),\omega(s)\bigr),
+\qquad
+\omega(s)=\phi'(s).
+\label{eq:control-variables}
+\end{equation}
+
+Die Unterscheidung von Zustand und Steuerung folgt dem Zustandsmodell aus
+\cref{chap:state-model}: Der Zustand hält den Zustand des Alignments fest,
+während die Steuerungen seine Entwicklung entlang der Bogenlänge bestimmen.
+
+\paragraph{Ausführungsvertrag.}
+Die Gleichungen empfangen eine longitudinale Domäne, einen Anfangszustand und
+zulässige Steuerungen. Sie erzeugen eine Zustandstrajektorie. Sie setzen
+voraus, dass das gewählte Zustandsmodell und die Regularitätsbedingungen
+gelten. Sie identifizieren weder das Engineering Object noch bestimmen sie die
+Autorität einer Datenquelle.
+
+\section{Ebene intrinsische Geometrie}
+
+Die Bogenlängenparametrisierung ergibt
+\begin{equation}
+\gamma'(s)=\mathbf t(s),
+\label{eq:state-evolution}
+\end{equation}
+und die Richtungsentwicklung wird bestimmt durch
+\begin{equation}
+\theta'(s)=\kappa(s).
+\label{eq:curvature-relation}
+\end{equation}
+
+Im ebenen Fall ist der Einheitstangentenvektor
+\begin{equation}
+\mathbf t(s)
+=
+\begin{pmatrix}
+\cos\theta(s)\\
+\sin\theta(s)
+\end{pmatrix}.
+\label{eq:planar-tangent}
+\end{equation}
+
+Das kanonische ebene Rekonstruktionssystem lautet somit
+\begin{equation}
+\begin{aligned}
+\gamma'(s)
+&=
+\begin{pmatrix}
+\cos\theta(s)\\
+\sin\theta(s)
+\end{pmatrix},\\
+\theta'(s)&=\kappa(s).
+\end{aligned}
+\label{eq:pose2-system}
+\end{equation}
+
+Bei gegebener Anfangsposition und gegebenem Anfangswinkel bestimmt die
+Krümmungsfunktion die ebene Alignment-Trajektorie.
+
+\paragraph{Ausführungsvertrag.}
+Die Rekonstruktion empfängt \(\kappa(s)\), \(\gamma(s_0)\) und
+\(\theta(s_0)\); sie erzeugt \(\theta(s)\), \(\mathbf t(s)\) und
+\(\gamma(s)\). Sie setzt Bogenlängenparametrisierung und hinreichende
+Regularität voraus. Eine aus \(\gamma\) abgetastete CAD-Kurve ist daher eine
+abgeleitete Repräsentation. Die Rekonstruktion kann weder entscheiden, ob eine
+Vermessungspolyline dasselbe Alignment beobachtet, noch ob eine Abweichung
+akzeptabel ist.
+
+\section{Überhöhungsentwicklung und grundlegendes pose3-System}
+
+Die Überhöhungsdrehung entwickelt sich gemäß
+\begin{equation}
+\phi'(s)=\omega(s).
+\label{eq:cant-evolution}
+\end{equation}
+
+Zusammen mit den ebenen Rekonstruktionsgleichungen ergibt sich das
+grundlegende pose3-System
+\begin{equation}
+\begin{aligned}
+\gamma'(s)
+&=
+\begin{pmatrix}
+\cos\theta(s)\\
+\sin\theta(s)
+\end{pmatrix},\\
+\theta'(s)&=\kappa(s),\\
+\phi'(s)&=\omega(s).
+\end{aligned}
+\label{eq:pose3-system}
+\end{equation}
+
+Abstrakt kann die Zustandsentwicklung geschrieben werden als
+\begin{equation}
+x'(s)=f\bigl(x(s),u(s)\bigr).
+\label{eq:general-state-system}
+\end{equation}
+
+Diese Gleichung drückt ausschließlich die Zustands-System-Form aus. Profil,
+metrische Realisierung, räumliche Frame-Konstruktion und physikalische
+Interpretation werden getrennt eingeführt.
+
+\paragraph{Ausführungsvertrag.}
+Das System empfängt Krümmungs- und Überhöhungsratensteuerungen sowie einen
+Anfangszustand; es erzeugt eine Pose-Trajektorie. Es setzt voraus, dass das
+gewählte Pose-Modell anwendbar ist. Es erzeugt weder eine physische
+Realisierung noch deren Beobachtung.
+
+\section{Dynamische Eisenbahnbeziehungen}
+
+Für die klassische lokale Ingenieurnäherung lautet die effektive
+Querbeschleunigung
+\begin{equation}
+a_{\mathrm{eff}}
+=
+v^2\kappa-g\sin\phi.
+\label{eq:effective-lateral-acceleration}
+\end{equation}
+
+Idealer Überhöhungsausgleich erfüllt
+\begin{equation}
+v^2\kappa=g\sin\phi.
+\label{eq:cant-equilibrium}
+\end{equation}
+
+Bei konstanter Geschwindigkeit ergibt die Differentiation nach der Zeit die
+zugehörige Ruckbeziehung
+\begin{equation}
+j
+=
+v^3\kappa'
+-gv\cos\phi\,\phi'.
+\label{eq:jerk-relation}
+\end{equation}
+
+Diese Gleichungen liefern die grundlegende Kopplung zwischen Krümmung,
+Überhöhung und betrieblicher Geschwindigkeit. Ihre eisenbahntechnische
+Interpretation und ihre Grenzen werden in den Zustands- und Dynamikkapiteln
+entwickelt.
+
+\paragraph{Ausführungsvertrag.}
+Diese Beziehungen empfangen realisierte metrische Größen und eine anwendbare
+lokale Ingenieurnäherung; sie erzeugen Beschleunigungs-, Gleichgewichts- oder
+Ruckgrößen. Sie setzen die angegebenen Geschwindigkeits- und
+Differentiationsbedingungen voraus. Sie bewerten physikalische Folgen, können
+jedoch weder betriebliche Zulässigkeit bestimmen noch eine Entscheidung
+autorisieren.
+
+\section{Track--World-Beziehungen}
+
+In einer lokalen ebenen Realisierung wird ein gleisbezogener Punkt mit der
+longitudinalen Koordinate \(s\) und dem seitlichen Versatz \(d\) durch
+\begin{equation}
+x_{\mathrm w}(s,d)
+=
+\gamma(s)+d\,\mathbf n(s)
+\label{eq:track-to-world}
+\end{equation}
+in den World Space abgebildet.
+
+\begin{definition}[Track-to-World-Abbildung]
+\label{def:track-to-world}
+Die durch \cref{eq:track-to-world} definierte Abbildung setzt gleisbezogene
+Koordinaten zu einer World-Space-Realisierung in Beziehung.
+\end{definition}
+
+Das zugehörige inverse Problem wird ausgedrückt als
+\begin{equation}
+(s^\ast,d^\ast)
+=
+\operatorname*{arg\,min}_{s,d}
+\left\|
+x_{\mathrm w}-\bigl(\gamma(s)+d\,\mathbf n(s)\bigr)
+\right\|.
+\label{eq:world-to-track}
+\end{equation}
+
+\begin{definition}[World-to-Track-Abbildung]
+\label{def:world-to-track}
+Die World-to-Track-Abbildung bestimmt innerhalb eines anwendbaren Realization
+Context eine intrinsische gleisbezogene Interpretation eines
+World-Space-Punkts.
+\end{definition}
+
+Eine Transformation zwischen zwei World-Space-Koordinatenbeschreibungen wird
+abstrakt geschrieben als
+\begin{equation}
+x_2=\mathcal C(x_1).
+\label{eq:coordinate-transformation}
+\end{equation}
+
+Koordinatentransformation und World-to-Track-Abbildung sind verschiedene
+Operationen: Erstere ändert die World-Space-Repräsentation, Letztere setzt den
+World Space zu einer intrinsischen gleisbezogenen Domäne in Beziehung.
+
+\paragraph{Ausführungsvertrag.}
+Track-to-World empfängt ein realisiertes Alignment-Frame und gleisbezogene
+Koordinaten; es erzeugt World-Koordinaten. World-to-Track empfängt einen
+World-Punkt und dieselbe anwendbare Realisierung; es erzeugt eine mögliche
+intrinsische Interpretation. Eindeutigkeit erfordert eine geeignete lokale
+Domäne. Keine der beiden Operationen begründet, dass zwei Quellen dasselbe
+Objekt betreffen.
+
+\section{Repräsentation und ingenieurtechnische Realisierung}
+
+Das Abtasten einer stetigen Funktion an den Positionen \(s_i\) wird
+geschrieben als
+\begin{equation}
+\mathcal S(f)=\{f(s_i)\},
+\label{eq:sampling}
+\end{equation}
+die Rekonstruktion aus abgetasteten Werten als
+\begin{equation}
+\mathcal I\bigl(\{f(s_i)\}\bigr)=\widetilde f(s).
+\label{eq:interpolation}
+\end{equation}
+
+Ein ingenieurtechnischer Realisierungsoperator setzt einen beabsichtigten
+Zustand zu einem physisch realisierten Zustand in Beziehung:
+\begin{equation}
+\mathcal R:
+\mathrm{pose3}_{\mathrm{target}}
+\longrightarrow
+\mathrm{pose3}_{\mathrm{real}}.
+\label{eq:realization-operator}
+\end{equation}
+
+Eine in späteren Realisierungskapiteln verwendete schematische Zerlegung lautet
+\begin{equation}
+\mathcal R
+=
+\mathcal M\circ\mathcal I\circ\mathcal S,
+\label{eq:core-realization-decomposition}
+\end{equation}
+wobei Abtastung, Rekonstruktion und physische Antwort getrennte
+Operatorverantwortungen bleiben.
+
+Auf Krümmungsebene lautet die entsprechende Beziehung
+\begin{equation}
+\mathcal R\bigl(\kappa_{\mathrm{target}}\bigr)
+=
+\kappa_{\mathrm{real}}.
+\label{eq:curvature-realization}
+\end{equation}
+
+\begin{definition}[Krümmungsrealisierung]
+\label{def:curvature-realization}
+Krümmungsrealisierung bezeichnet die Beziehung zwischen beabsichtigter und
+physisch realisierter Krümmung unter einem anwendbaren ingenieurtechnischen
+Realisierungsprozess.
+\end{definition}
+
+Das zugehörige inverse Problem sucht eine beabsichtigte Krümmung, die
+\begin{equation}
+\mathcal R\bigl(\kappa_{\mathrm{target}}\bigr)
+\approx
+\kappa_{\mathrm{desired}}
+\label{eq:inverse-realization}
+\end{equation}
+erfüllt.
+
+\paragraph{Ausführungsvertrag.}
+Abtastung empfängt eine stetige Beschreibung und Abtastpositionen;
+Interpolation empfängt abgetastete Werte und eine Interpolationsregel;
+Realisierung empfängt einen Zielzustand und ein physisches Antwortmodell. Ihre
+Ausgaben bewahren diese Abhängigkeiten. Im Testfall kann eine
+Vermessungspolyline eine beobachtete Beschreibung realisierter Geometrie
+stützen; weder Abtastung noch Interpolation macht die Beobachtung zur
+physischen Realität oder verleiht ihr konstruktive Autorität.
+
+\section{Flächenkrümmung}
+
+Für eine an eine Fläche gebundene Kurve zerfällt die Gesamtkrümmung in einen
+geodätischen und einen normalen Anteil:
+\begin{equation}
+\kappa^2=\kappa_g^2+\kappa_n^2.
+\label{eq:curvature-decomposition}
+\end{equation}
+
+Die geodätische Krümmung wird intrinsisch ausgedrückt durch
+\begin{equation}
+\kappa_g
+=
+\left\|\nabla_s\mathbf t\right\|.
+\label{eq:geodesic-curvature}
+\end{equation}
+
+Die anwendbare Fläche, Metrik, Verbindung und ingenieurtechnische
+Interpretation werden in den Kapiteln über Ellipsoid und räumliche
+Realisierung festgelegt.
+
+\paragraph{Ausführungsvertrag.}
+Diese Gleichungen empfangen eine Kurve, eine Fläche, eine Metrik und eine
+Verbindung; sie erzeugen Krümmungsanteile in dieser Realisierung. Ohne diese
+Eingaben sind die Symbole nicht ausführbar. Die Anteile können nicht
+entscheiden, welches Flächenmodell für ein Projekt autoritativ ist.
+
+\section{Optimierungsbeziehungen}
+
+Ein schematisches realisierungsbewusstes Optimierungsproblem lautet
+\begin{equation}
+\min_u\;J\bigl(\mathcal R(x(u))\bigr).
+\label{eq:general-optimization}
+\end{equation}
+
+Für nichtlineare Probleme der kleinsten Quadrate besitzt die Zielfunktion die
+Form
+\begin{equation}
+\min_x\frac12\|r(x)\|^2,
+\label{eq:least-squares}
+\end{equation}
+mit der Gauß--Newton-Näherung
+\begin{equation}
+H\approx J^T J.
+\label{eq:gauss-newton}
+\end{equation}
+
+Diese Gleichungen spezifizieren lediglich verbreitete numerische Strukturen.
+Ingenieurbeobachtungen, Residuen, Nebenbedingungen, Zulässigkeit und
+Entscheidungen bewahren ihre vom Solver unabhängige Bedeutung.
+
+\paragraph{Ausführungsvertrag.}
+Optimierung empfängt eine deklarierte Zielfunktion, Variablen, Residuen,
+Nebenbedingungen und jeden in das Modell aufgenommenen Realisierungsoperator;
+sie erzeugt einen numerischen Kandidaten. Ihre Gültigkeit hängt von diesen
+Entscheidungen und von Solver-Annahmen ab. Ein Minimum ist ein
+Bewertungsergebnis, keine Ingenieurentscheidung.
+
+\section{Kanonische Rolle}
+
+Die Gleichungen bilden nun eine Abhängigkeitskette statt eines Formelkatalogs.
+Sie können eine Entwurfstrajektorie rekonstruieren, sie unter metrischen
+Qualifikationen realisieren, Beobachtungen interpretieren und qualifizierte
+Differenzen berechnen. Die nächsten Kapitel stellen die Zustands- und
+Operatormaschinerie bereit, die zur konsistenten Ausführung dieser Kette
+erforderlich ist. Die Ingenieurbegriffe benennen anschließend die
+Verantwortlichkeiten, die die Berechnung bewahren muss.

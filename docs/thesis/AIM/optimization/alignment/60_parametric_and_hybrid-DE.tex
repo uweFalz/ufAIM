@@ -1,0 +1,178 @@
+\section{Parametrische Darstellung statt Abtastung}
+\subsection{Motivation}
+Klassische Diskretisierung stellt Krümmung und Überhöhung durch Stichproben
+\(\kappa_i\approx\kappa(s_i)\), \(\phi_i\approx\phi(s_i)\) dar. Daraus entstehen
+hochdimensionale Probleme mit schwacher Struktur und geringer
+Interpretierbarkeit. AIM verwendet stattdessen parametrisierte Funktionen.
+
+\subsection{Parametrisches Krümmungsmodell}
+\begin{definition}[Parametrische Krümmung]
+Ein Übergang wird beschrieben durch
+\[
+\kappa(s)=\kappa_0+(\kappa_1-\kappa_0)
+\widehat\kappa\!\left(\frac{s}{L},\mathbf T\right),
+\]
+wobei \(L\) die Elementlänge, \(\mathbf T\) Übergangsparameter und
+\(\widehat\kappa\) eine normierte Prototypfunktion bezeichnet.
+\end{definition}
+
+\subsection{Parametrisches Überhöhungsmodell}
+\begin{definition}[Parametrische Überhöhung]
+\[
+\phi(s)=\phi_0+(\phi_1-\phi_0)
+\widehat\phi\!\left(\frac{s}{L},\mathbf T_\phi\right).
+\]
+\end{definition}
+
+\subsection{Parametervektor}
+\begin{definition}[Reduzierter Parametervektor]
+\[
+\mathbf x=(L,\kappa_0,\kappa_1,\mathbf T,\phi_0,\phi_1,\mathbf T_\phi).
+\]
+\end{definition}
+Die Dimension ist von der Diskretisierungsdichte unabhängig.
+
+\subsection{Dimensionsreduktion}
+Eine abgetastete Darstellung verwendet \(O(N)\) Variablen, die parametrische
+Darstellung \(O(1)\) Parameter je Element. Dies reduziert die Problemgröße
+drastisch.
+
+\subsection{Ableitungsstruktur}
+\begin{proposition}
+\[
+\frac{\partial\kappa}{\partial p}
+=(\kappa_1-\kappa_0)\frac{\partial\widehat\kappa}{\partial p}.
+\]
+\end{proposition}
+Alle Ableitungen werden analytisch aus Prototypfunktionen berechnet.
+
+\subsection{Integration in die Rekonstruktion}
+Die parametrische Darstellung wird bewertet durch
+\[
+\theta(s)=\int\kappa(s)\,\dd s,
+\qquad\gamma(s)=\int(\cos\theta,\sin\theta)\,\dd s.
+\]
+So entsteht glatte, konsistente Geometrie ohne Diskretisierungsartefakte.
+
+\subsection{Vergleich mit stichprobenbasierten Verfahren}
+\begin{center}
+\begin{tabular}{lcc}\toprule
+& Stichprobenbasiert & Parametrisch\\\midrule
+Dimension & hoch & niedrig\\
+Glattheit & numerisch erzwungen & intrinsisch\\
+Interpretierbarkeit & niedrig & hoch\\
+Bedingungen & viele lokale & wenige globale\\\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Interpretation}
+Der parametrische Ansatz verschiebt das Problem von der Anpassung von Werten
+zum Entwurf von Funktionen.
+
+\subsection{Verbindung zu Übergangsfamilien}
+Verschiedene Übergangsbögen entsprechen verschiedenen Prototypfunktionen
+\(\widehat\kappa\). Das Optimierungsproblem umfasst damit Auswahl und
+Abstimmung von Übergangsfamilien.
+
+\subsection{Rechnerische Folgen}
+Es entstehen kleinere Probleme, bessere Konditionierung, schnellere Konvergenz
+und unmittelbare Integration analytischer Jacobi-Matrizen.
+
+\subsection{Verbindung zu klassischen Systemen}
+Die Formulierung steht klassischen Systemen wie AXTRAN nahe, die auf
+Elementparametern statt Stichprobendaten arbeiten.
+
+\subsection{Verbindung zu AIM}
+\begin{summary}
+Die parametrische Darstellung ersetzt diskrete Abtastung durch strukturierte
+Funktionen. Sie ermöglicht ein kompaktes, interpretierbares und analytisch
+differenzierbares Modell als Grundlage effizienter, robuster
+Alignment-Optimierung und ist zentral für AIM.
+\end{summary}
+
+\section{Hybrides parametrisch-diskretes Modell}
+\subsection{Motivation}
+Rein parametrische Modelle bieten niedrigdimensionale Struktur, können aber
+für reale Daten zu unflexibel sein. Rein abgetastete Modelle sind flexibel,
+führen jedoch zu großen, schlecht konditionierten Problemen. Ein hybrider
+Ansatz verbindet beide Vorteile.
+
+\subsection{Hybride Darstellung}
+\begin{definition}[Hybrides Krümmungsmodell]
+\[
+\kappa(s)=\kappa_{\mathrm{param}}(s;\mathbf T)+\delta\kappa(s),
+\]
+wobei \(\kappa_{\mathrm{param}}\) das parametrische Basismodell und
+\(\delta\kappa(s)\) einen Korrekturterm bezeichnet.
+\end{definition}
+\begin{definition}[Hybrides Überhöhungsmodell]
+\[
+\phi(s)=\phi_{\mathrm{param}}(s;\mathbf T_\phi)+\delta\phi(s).
+\]
+\end{definition}
+
+\subsection{Diskretisierung der Korrektur}
+\[
+\delta\kappa_i=\delta\kappa(s_i),\qquad
+\delta\phi_i=\delta\phi(s_i).
+\]
+
+\subsection{Erweiterter Parametervektor}
+\begin{definition}
+\[
+\mathbf x=(\mathbf T,\mathbf T_\phi,
+\delta\boldsymbol\kappa,\delta\boldsymbol\phi).
+\]
+\end{definition}
+
+\subsection{Regularisierung der Korrekturen}
+Zur Vermeidung von Überanpassung werden die Korrekturen bestraft:
+\[
+J_\delta=\int_0^L(\delta\kappa'(s))^2\,\dd s
++\int_0^L(\delta\phi'(s))^2\,\dd s.
+\]
+Dies erzwingt glatte, kleine Abweichungen vom parametrischen Modell.
+
+\subsection{Residuenstruktur}
+Das Residuum besteht aus parametrischen Beiträgen, Korrekturbeiträgen und
+Datenanpassungstermen.
+
+\subsection{Blockstruktur}
+Der Parametervektor zerfällt in
+\[
+(\mathbf T,\delta\boldsymbol\kappa)
+\quad\text{und}\quad
+(\mathbf T_\phi,\delta\boldsymbol\phi),
+\]
+mit einer mehrstufigen Blockstruktur aus grobem Maßstab der Parameter und
+feinem Maßstab der Korrekturen.
+
+\subsection{Interpretation}
+Das parametrische Modell erfasst geometrische Absicht, Übergangsstruktur und
+Engineering-Semantik. Der Korrekturterm erfasst Messrauschen, lokale
+Abweichungen und Modellierungsunvollkommenheiten.
+
+\subsection{Verbindung zu Messdaten}
+Messpolylinien können durch Minimierung von
+\[
+\sum_i\|\gamma(s_i)-p_i\|^2
+\]
+mit der hybriden Darstellung angepasst werden. Der parametrische Teil erklärt
+die globale Struktur; die Korrektur nimmt Restfehler auf.
+
+\subsection{Rechenstrategie}
+Zunächst werden parametrische Variablen optimiert, danach Korrekturterme
+verfeinert; optional können beide Ebenen abwechseln.
+
+\subsection{Bezug zu LOD}
+Das hybride Modell unterstützt natürlich Detaillierungsgrade: grober LOD nur
+mit parametrischem Modell, feiner LOD mit Parametrik und Korrekturen.
+
+\subsection{Verbindung zu AIM}
+\begin{summary}
+Die hybride Darstellung verbindet strukturierte Modellierung mit lokaler
+Flexibilität. Sie ermöglicht robuste Alignment-Rekonstruktion aus
+unvollkommenen Daten und bewahrt die Interpretierbarkeit parametrischer
+Modelle. Damit verbindet sie Engineering-Entwurf und datengetriebene Anpassung
+im AIM-Rahmen.
+\end{summary}

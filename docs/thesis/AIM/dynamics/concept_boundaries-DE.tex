@@ -1,0 +1,60 @@
+\chapter{Wo das Zustandsmodell endet und die Dynamik beginnt}
+\label{chap:concept-boundaries}
+
+Teil V hat pose2, pose3, bewegte Frames, Überhöhung, Metric Realization, Soll-
+und physischen Zustand sowie Beobachtung bereits eingeführt. Dieses Kapitel
+definiert sie nicht erneut. Es grenzt die engeren Verantwortungen von Teil VI
+ab, damit die folgenden Kapitel ein einziges Eisenbahnzustandsmodell
+konsumieren.
+
+\section{Übernommener Eisenbahnzustand}
+
+Eingabe ist der qualifizierte Zustand aus Teil V an \(s\), einschließlich
+Alignment-Bezug, Realisierung, Frame-Konvention, Provenienz, Anwendbarkeit und
+Gültigkeit. ``Track State'' ist in den folgenden Kapiteln eine kurze
+leserbezogene Bezeichnung für den jeweils anwendbaren Ausschnitt dieser
+Struktur, kein konkurrierender Zustandstyp. Ebenso ersetzt ein dargestelltes
+Koordinatentupel pose3 nicht, und eine beobachtete Pose ist kein physischer
+Zustand.
+
+\section{Neue Verantwortungen}
+
+\begin{description}
+\item[Operative Geschwindigkeit] qualifiziert das Durchfahrtsgesetz \(s(t)\)
+und seine Ableitungen.
+\item[Zeitliche Exposition] komponiert räumliche Krümmungs-, Überhöhungs-,
+Profil- und Frame-Größen mit dieser Durchfahrt.
+\item[Reduzierte Kinematik] wertet annahmengebundene Indikatoren aus, ohne eine
+vollständige Antwort zu behaupten.
+\item[Vehicle Space] drückt fahrzeugbezogene Größen relativ zum qualifizierten
+Gleis-Frame und einem angegebenen Fahrzeugmodell aus.
+\item[Antwortmodellierung] ergänzt die für eine vorhergesagte
+Fahrzeug--Gleis-Antwort benötigten physikalischen Parameter.
+\item[Dynamisches Gleichgewicht] verwendet eine deklarierte reduzierte
+Beziehung unter angegebenen Frame-, Vorzeichen-, Geschwindigkeits- und
+Überhöhungskonventionen.
+\item[Realisierungsbewusste Dynamik] vergleicht qualifizierte Soll-, realisierte
+oder beobachtete Eingaben, ohne sie zusammenzuführen.
+\item[Optimierung] variiert deklarierte Freiheitsgrade gegen explizite Ziele
+und Nebenbedingungen; sie liefert weder Ziele noch Entscheidungen.
+\end{description}
+
+\section{Ein Zustand, mehrere Verwendungen}
+
+Derselbe qualifizierte Eisenbahnzustand kann eine Lichtraumberechnung, einen
+reduzierten Querindikator, ein Mehrkörpermodell oder ein
+Optimierungsexperiment speisen. Diese Verwendungen erzeugen unterschiedliche
+Ausgaben, weil sie unterschiedliche Modelle und Zwecke ergänzen. Sie erzeugen
+keine alternativen Definitionen des Alignments oder Eisenbahnzustands.
+
+\begin{principle}[Prinzip der einmaligen Definition]
+pose2, pose3, bewegtes Frame, Überhöhung, Realisierung, physischer Zustand und
+Beobachtung behalten ihre eingeführten Bedeutungen. Teil VI ergänzt
+Durchfahrt, Antwortmodelle und zweckqualifizierte Verwendungen durch Verweis.
+\end{principle}
+
+\begin{summary}
+Teil VI beginnt bei \(s(t)\). Alles Räumliche wird übernommen; jede zeitliche
+oder antwortbezogene Größe muss die zusätzliche Eingabe benennen, die sie
+erzeugt.
+\end{summary}

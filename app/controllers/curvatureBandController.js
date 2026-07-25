@@ -14,6 +14,11 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 	const root = document.getElementById("curvatureBand");
 	const svg = document.getElementById("curvatureBandSvg");
 	const output = document.getElementById("curvatureBandValue");
+	const context = document.getElementById("curvatureBandContext");
+	const collapseButton = document.getElementById("btnCurvatureBandCollapse");
+	const compactButton = document.getElementById("btnCurvatureBandCompact");
+	const dockButton = document.getElementById("btnCurvatureBandDock");
+	const resizeHandle = document.getElementById("curvatureBandResize");
 	const editor = new AlignmentEditorController({ store, messaging });
 	let snapshot = null;
 	let drag = null;
@@ -21,9 +26,12 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 	let unsubscribe = null;
 	let commitPromise = Promise.resolve({ changed: false, state: "idle" });
 	let lastCommit = { changed: false, state: "idle", elementId: null, curvature: null, error: null };
+	let presentation = readPresentation();
+	let resizeSession = null;
 
 	function start() {
 		if (!root || !svg) return;
+		applyPresentation();
 		svg.addEventListener("pointerdown", onPointerDown);
 		svg.addEventListener("pointerover", onPointerOver);
 		svg.addEventListener("pointerout", onPointerOut);
@@ -32,8 +40,77 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		window.addEventListener("pointerup", onPointerUp);
 		window.addEventListener("pointercancel", onPointerCancel);
 		window.addEventListener("keydown", onKeyDown);
+		collapseButton?.addEventListener("click", () => setPresentation(presentation.mode === "collapsed" ? "working" : "collapsed"));
+		compactButton?.addEventListener("click", () => setPresentation(presentation.mode === "compact" ? "working" : "compact"));
+		dockButton?.addEventListener("click", () => setDock(presentation.dock === "top" ? "bottom" : "top"));
+		resizeHandle?.addEventListener("pointerdown", beginResize);
+		window.addEventListener("pointermove", resize);
+		window.addEventListener("pointerup", finishResize);
 		unsubscribe = store.subscribe(() => void loadAndRender());
 		void loadAndRender();
+	}
+
+	function readPresentation() {
+		try {
+			const saved = JSON.parse(sessionStorage.getItem("ufaim.curvatureBand.presentation") ?? "null");
+			return {
+				mode: ["collapsed", "compact", "working"].includes(saved?.mode) ? saved.mode : "working",
+				dock: saved?.dock === "top" ? "top" : "bottom",
+				height: Math.max(140, Math.min(360, Number(saved?.height) || 216)),
+			};
+		} catch {
+			return { mode: "working", dock: "bottom", height: 216 };
+		}
+	}
+
+	function savePresentation() {
+		try { sessionStorage.setItem("ufaim.curvatureBand.presentation", JSON.stringify(presentation)); } catch {}
+	}
+
+	function applyPresentation() {
+		if (!root) return;
+		root.dataset.presentation = presentation.mode;
+		root.dataset.dock = presentation.dock;
+		root.style.setProperty("--curvature-band-height", `${presentation.height}px`);
+		collapseButton?.setAttribute("aria-expanded", String(presentation.mode !== "collapsed"));
+		compactButton?.classList.toggle("is-active", presentation.mode === "compact");
+		dockButton?.classList.toggle("is-active", presentation.dock === "top");
+		requestAnimationFrame(() => render());
+	}
+
+	function setPresentation(mode) {
+		if (!["collapsed", "compact", "working"].includes(mode)) return false;
+		presentation = { ...presentation, mode };
+		savePresentation();
+		applyPresentation();
+		return true;
+	}
+
+	function setDock(dock) {
+		presentation = { ...presentation, dock: dock === "top" ? "top" : "bottom" };
+		savePresentation();
+		applyPresentation();
+		return true;
+	}
+
+	function beginResize(event) {
+		if (presentation.mode === "collapsed") return;
+		resizeSession = { pointerId: event.pointerId, startY: event.clientY, startHeight: presentation.height };
+		event.preventDefault();
+	}
+
+	function resize(event) {
+		if (!resizeSession || event.pointerId !== resizeSession.pointerId) return;
+		const direction = presentation.dock === "top" ? 1 : -1;
+		const height = Math.max(140, Math.min(360, resizeSession.startHeight + (event.clientY - resizeSession.startY) * direction));
+		presentation = { ...presentation, height };
+		applyPresentation();
+	}
+
+	function finishResize(event) {
+		if (!resizeSession || event.pointerId !== resizeSession.pointerId) return;
+		resizeSession = null;
+		savePresentation();
 	}
 
 	async function loadAndRender() {
@@ -57,6 +134,9 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 
 	function render(preview = null) {
 		svg.replaceChildren();
+		if (context) context.textContent = snapshot
+			? `${snapshot.object?.name ?? snapshot.object?.data?.name ?? snapshot.id} · ${snapshot.alignmentData?.editModel?.elements?.length ?? 0}`
+			: "";
 		if (!snapshot) { text(svg, 16, 62, "Select an editable alignment", "band-empty"); return; }
 		const active = preview ?? snapshot;
 		const elements = active.sparse?.elements ?? active.sparse?.sparse ?? [];
@@ -216,7 +296,27 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		root.dataset.state = "neutral";
 	}
 
-	return { start, refresh: loadAndRender, render, cancel: () => onKeyDown({ key: "Escape" }), whenCommitSettled: () => commitPromise, getDebugState: () => ({ activeObjectId: snapshot?.id ?? null, dragging: Boolean(drag), pointerId: drag?.pointerId ?? null, captured: Boolean(drag?.captured), elementId: drag?.elementId ?? getWorkspaceSelectedElementId(store.getState?.() ?? {}), curvature: drag?.proposedCurvature ?? null, state: root?.dataset?.state ?? "neutral", lastCommit }), destroy: () => unsubscribe?.() };
+	return {
+		start,
+		refresh: loadAndRender,
+		render,
+		setPresentation,
+		setDock,
+		cancel: () => onKeyDown({ key: "Escape" }),
+		whenCommitSettled: () => commitPromise,
+		getDebugState: () => ({
+			activeObjectId: snapshot?.id ?? null,
+			dragging: Boolean(drag),
+			pointerId: drag?.pointerId ?? null,
+			captured: Boolean(drag?.captured),
+			elementId: drag?.elementId ?? getWorkspaceSelectedElementId(store.getState?.() ?? {}),
+			curvature: drag?.proposedCurvature ?? null,
+			state: root?.dataset?.state ?? "neutral",
+			presentation: { ...presentation },
+			lastCommit,
+		}),
+		destroy: () => unsubscribe?.(),
+	};
 }
 
 function unwrap(raw) { return raw?.state ?? raw?.payload ?? raw ?? null; }

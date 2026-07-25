@@ -36,6 +36,11 @@ export class AlignmentEditorController {
 		return this.service.addTransition(args);
 	}
 
+	async addTransitionArcToActiveAlignment(args = {}) {
+		if (!isObject(args)) return reject("ALIGNMENT_EDIT_TRANSITION_ARC_REJECTED", "invalid request: args must be object");
+		return this.service.addTransitionArc(args);
+	}
+
 	async removeElementFromActiveAlignment(args = {}) {
 		return this.service.removeElement(args);
 	}
@@ -63,6 +68,10 @@ export class AlignmentEditorController {
 
 	async clearActiveAlignmentElements() {
 		return this.service.clearElements();
+	}
+
+	async undoLastAlignmentChange() {
+		return this.service.undo();
 	}
 }
 

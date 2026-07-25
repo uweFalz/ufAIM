@@ -1,28 +1,106 @@
 % discussion/axtran_reinterpretation.tex
 
-\chapter{AXTRAN Reinterpretation}
+\chapter{axtranNew: From Transition Grammar to Alignment Calculation}
 
 \label{chap:axtran-reinterpretation}
 
 \section*{Motivation}
 
-Classical alignment optimization systems already moved beyond purely
-manual curve construction.
+Berlinish becomes engineering machinery only when its function identities,
+component lengths, boundary conditions, and degrees of freedom can be solved
+together. axtranNew originated as that calculation response. It is more than a
+convenient optimizer: its intended role is the alignment calculation core that
+turns a transition grammar into connected, editable alignment structure.
 
-Within AIM, this tradition is reinterpreted through runtime-state
-trajectory optimization.
+The name belongs to the implementation lineage of ufAIM. It does not denote an
+approved Knowledge Kernel concept, and its original intent must not be confused
+with the current implementation state.
+
+\section{Original Intent}
+
+The intended axtranNew scope comprises:
+\begin{itemize}
+\item satisfying connection, pose, curvature, and boundary conditions;
+\item keeping fixed, derived, constrained, coupled, and free quantities
+explicit;
+\item composing half-wave, clothoid, and zero-length transition components;
+\item determining admissible parameter combinations;
+\item coupling or separating curvature and cant functions;
+\item comparing alternatives and optimizing against engineering objectives;
+\item supporting elementary edits such as coupling alignment elements;
+\item realizing calculated candidates as editable alignment structures.
+\end{itemize}
+
+This list states engineering intent. It is not a claim that each item is
+production-ready.
+
+\section{Mathematical Capability}
+
+Mathematically, an axtranNew problem receives function identities,
+parameterizations, boundary conditions, engineering constraints, and declared
+degrees of freedom. It produces a candidate parameter set and the alignment
+state derived from it. The Berlinish composition is one admissible structural
+model; other sparse transition families can use the same calculation
+principles.
+
+The calculation can establish numerical consistency, residuals,
+applicability under stated constraints, and objective values. It cannot decide
+that the candidate is accepted, transfer Engineering Object Identity, or make
+its own result authoritative.
+
+\section{Observed Current Implementation}
+
+The current reference implementation provides evidence for a bounded but
+substantial calculation path:
+\begin{itemize}
+\item a validated registry resolves named transition families, normalized
+prototype functions, half-waves, and three-part length partitions;
+\item sparse fixed and transition elements are composed with sequential pose
+propagation and curvature integration;
+\item zero-length curvature holders and selected zero-length transition cases
+are represented;
+\item position, tangent, pose, curvature, and World--Track operations are
+evaluated;
+\item native straight, arc, and transition edits trigger deterministic sparse
+recalculation and preserve unaffected element identity;
+\item selected change-of-transition problems use equality-QP and experimental
+SQP machinery.
+\end{itemize}
+
+This observed implementation supports transition comparison, reconstruction,
+and selected edits. It does not yet demonstrate a general, reliable,
+production-ready optimizer for every connection, cant coupling, network, or
+engineering objective.
+
+\section{Current Boundary and Future Development}
+
+The broader SQP service remains experimental, non-authoritative, and
+proposal-only. Reliable convergence, globalization, full constraint and
+objective libraries, validated curvature--cant co-optimization, and
+network-level calculation remain development or research work. Results must be
+returned as reviewable candidates, diagnostics, or deltas and applied by the
+responsible external workflow.
 
 \section{From Geometry Optimization to Runtime-State Optimization}
 
-AIM generalizes classical alignment optimization toward realization-aware
-runtime-state trajectory design.
+AIM generalizes the originating alignment calculation toward
+realization-aware runtime-state trajectory design.
 
-This is not a rejection of classical systems, but an extension of their
-geometric core toward operational state-space optimization.
+This is not a rejection of axtranNew or classical systems. It explains which
+additional distinctions are needed when a calculated transition must retain
+identity, provenance, realization context, observation links, applicable
+knowledge, and accountable decision status.
 
 \section{Connection to AIM}
 
 \begin{summary}
-AXTRAN-like optimization can be interpreted as an important predecessor
-of AIM-style trajectory shaping in curvature and runtime-state space.
+Berlinish supplies the generalized functional grammar of railway transitions.
+axtranNew makes that grammar computationally applicable. The broader ufAIM
+environment emerged to preserve, operate, examine, explain, and extend the
+resulting knowledge.
+
+The current implementation realizes important parts of this lineage, while a
+general production-ready optimizer and validated curvature--cant
+co-optimization remain future work. Computation produces candidates; it does
+not create authority or constitute an engineering decision.
 \end{summary}

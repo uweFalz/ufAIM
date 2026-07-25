@@ -1,0 +1,81 @@
+% kernel/engineering_decisions-DE.tex
+
+\chapter{Vom bewerteten Vorschlag zum autorisierten Zustand}
+\label{chap:engineering-decisions}
+
+Die Berlinish-Komposition hat die erforderlichen Prüfungen von Geometrie,
+Realisierung, Geschwindigkeit, Überhöhung und Evidenz bestanden. Sie ist nun
+ein für den angegebenen Zweck anwendbarer Kandidat. Sie ist noch immer nicht
+der angenommene Zustand des Alignments.
+
+\section{Vorschlag, Kandidat und Bewertung}
+
+\begin{definition}[Vorschlag]
+\label{def:proposal}
+Ein Vorschlag ist eine mögliche Ingenieuränderung, die vor Annahme oder
+Ablehnung zur Bewertung eingereicht wird.
+\end{definition}
+
+\begin{definition}[Lösungskandidat]
+\label{def:candidate-solution}
+Ein Lösungskandidat ist ein vorgeschlagener Engineering State oder eine
+vorgeschlagene Konfiguration, die anhand anwendbaren Wissens,
+Nebenbedingungen und Präferenzen bewertet werden kann.
+\end{definition}
+
+axtranNew sucht oder löst im Raum ausdrückbarer Übergänge. Das
+Engineering-Object-Modell trägt den entstandenen Vorschlag und seine Beziehung
+zum Alignment. Bewertung bestimmt zweckrelative Eignung. Dies sind getrennte
+Verantwortungen: Erfolgreiche Erzeugung bedeutet nicht Zulässigkeit, und
+Zulässigkeit wählt nicht unter allen zulässigen Alternativen aus.
+
+\section{Autorität verändert den Ingenieurstatus}
+
+Der aktive Kernel fixiert die Grenze, dass Bewertung keine
+Entscheidungsautorität ausübt; er etabliert noch keine vollständige kanonische
+Identität jeder Engineering Decision. Für diese Erklärungsfolge genügt die
+folgende enge operationale Formulierung:
+
+\begin{definition}[Engineering Decision]
+\label{def:engineering-decision}
+Eine Engineering Decision ist eine autorisierte Annahme, Ablehnung oder
+Auswahl, die einen Ingenieurvorschlag oder eine Alternative innerhalb
+ausdrücklich angegebener Qualifikationen entscheidet.
+\end{definition}
+
+Die befugte Autorität kann den Kandidaten als Nachfolgezustand annehmen,
+ablehnen, weitere Evidenz verlangen oder einen anderen Kandidaten auswählen.
+Die Entscheidung benennt Geltungsbereich, Gegenstand, Evidenz, anwendbares
+Wissen, verantwortliche Autorität und Wirkung. Sie löscht weder Vorgänger noch
+verworfene Kandidaten, Vermessung oder Berechnungsprotokoll.
+
+Bei Annahme bleibt der neue Zustand mit demselben Alignment verbunden, wenn das
+autorisierte Identitätsurteil Objektkontinuität wahrt. Wird die Änderung als
+Ersatzobjekt geführt, muss stattdessen diese Beziehung angegeben werden. Der
+Kernel liefert keinen allgemeinen geometrischen Schwellenwert zwischen diesen
+Ergebnissen; der Solver kann daher keinen erzeugen.
+
+\section{Rückkehr zum Übergang}
+
+Das laufende Beispiel hat die vollständige Bedeutungskette durchlaufen:
+
+\begin{enumerate}
+\item Berlinish drückte eine geordnete Übergangskonstruktion aus.
+\item axtranNew oder ein gleichwertiger Dienst berechnete einen
+  parametrisierten Vorschlag.
+\item Der Vorschlag wurde auf ein identifizierbares Alignment und einen
+  möglichen Zustand bezogen, während seine konstruktive Zusammensetzung
+  erhalten blieb.
+\item Metric Realization und Realization Context machten ihn räumlich messbar.
+\item Repräsentationen kommunizierten ihn, und Provenienz trennte Berechnung,
+  Import, Ableitung und Beobachtung.
+\item Anwendbares Wissen und zweckrelative Bewertung prüften seine Eignung.
+\item Eine befugte Autorität nahm, sofern sie sich dafür entschied, den
+  Nachfolgezustand an.
+\end{enumerate}
+
+Zu keinem Zeitpunkt erzeugte Berechnung Autorität, erwarb Repräsentation
+Identität, wurde Beobachtung zur physischen Realität oder bildete Bewertung
+eine Entscheidung. Diese Ingenieurbedeutung wird nun in Geometrie und
+Krümmung weitergetragen: Die Mathematik arbeitet dort mit identifizierbaren,
+qualifizierten Zuständen statt mit anonymen Kurven.

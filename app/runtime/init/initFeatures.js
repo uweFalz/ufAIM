@@ -9,6 +9,8 @@ import { makeTransitionEditorBridge } from "@app/controllers/bridges/transitionE
 import { MapLibreThreeAdapter } from "@app/controllers/adapters/geo/MapLibreThreeAdapter.js";
 import { makeCurvatureBandController } from "@app/controllers/curvatureBandController.js";
 import { makeAlignmentEditorBridge } from "@app/controllers/bridges/alignmentEditorBridge.js";
+import { makeAlignmentCreationController } from "@app/controllers/alignmentCreationController.js";
+import { makeGndImportWorkbenchController } from "@app/gndImportWorkbench/gndImportWorkbenchController.js";
 
 function setupGeoRuntime(ctx) {
 	const canvas = document.getElementById("view3d");
@@ -31,6 +33,8 @@ function setupImportUI(ctx) {
 		messaging: ctx.messaging,
 		focusManager: ctx.focusManager,
 	});
+	ctx.importController = importer;
+	window.__ufAIM_importController = importer;
 
 	importer.installDrop({ element: document.documentElement });
 
@@ -225,11 +229,21 @@ export async function initFeatures(ctx) {
 	setupGeoRuntime(ctx);
 	setupImportUI(ctx);
 	setupCockpitSelectors(ctx);
-	setupViewRuntime(ctx);
+	ctx.viewController = setupViewRuntime(ctx);
 	ctx.curvatureBand = makeCurvatureBandController({ store: ctx.store, messaging: ctx.messaging });
 	ctx.curvatureBand.start();
 	if (ctx.prefs.isDev) window.__ufAIM_curvatureBand = ctx.curvatureBand;
 	setupCockpitRuntime(ctx);
 	ctx.alignmentEditorBridge = setupAlignmentEditorRuntime(ctx);
+	ctx.alignmentCreation = makeAlignmentCreationController({ store: ctx.store, messaging: ctx.messaging, curvatureBand: ctx.curvatureBand, cockpit: ctx.cockpit, viewController: ctx.viewController });
+	ctx.alignmentCreation.start();
+	window.__ufAIM_alignmentCreation = ctx.alignmentCreation;
+	ctx.gndImportWorkbench = makeGndImportWorkbenchController({
+		store: ctx.store,
+		messaging: ctx.messaging,
+		cockpit: ctx.cockpit,
+	});
+	ctx.gndImportWorkbench.start();
+	window.__ufAIM_gndImportWorkbench = ctx.gndImportWorkbench;
 	await setupTransitionRuntime(ctx);
 }

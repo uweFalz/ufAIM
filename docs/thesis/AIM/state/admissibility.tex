@@ -4,9 +4,11 @@
 
 \label{chap:admissibility-states}
 
-Admissibility is not an additional geometric state layer. It is a
-downstream interpretation layer that evaluates whether derived runtime
-quantities remain inside permitted operational envelopes.
+Admissibility is not an additional geometric state layer. It is the
+purpose-qualified evaluation that follows the dependency chain developed in
+the preceding chapters. It asks whether derived quantities remain inside an
+applicable operational envelope; it neither changes the running Alignment nor
+turns a computed result into a decision.
 
 \section{Admissibility State}
 
@@ -40,8 +42,10 @@ for intrinsic geometry or railway state.
 % ============================================================
 
 Admissibility is evaluated after pose2/pose3 reconstruction, metric
-realization, and dynamic quantity derivation. It therefore remains
-downstream of railway state and does not redefine it.
+realization, frame construction, and speed-qualified quantity derivation.
+Rule, version, purpose, applicable object and state, validity time, and
+authority must be stated. The assessment remains downstream of railway state
+and does not redefine it.
 
 Vehicle-level admissibility is evaluated relative to railway state and
 must not be conflated with the railway-state layer itself.

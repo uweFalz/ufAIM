@@ -1,158 +1,121 @@
-\chapter{Pose3 on the Ellipsoid}
+% foundations/pose3_on_ellipsoid.tex
 
-The planar state description is adequate for projected engineering models,
-but a surface-based formulation is required for physically consistent
-modelling on the Earth. The following development replaces the planar
-heading-based description by a moving frame defined on the reference
-ellipsoid.
+\chapter{Spatial Pose in the Earth Realization}
 
-\section{Surface-Based Pose}
+The preceding chapter produced the realized surface trajectory,
+\(\mathbf t\), \(\mathbf n_{\mathcal E}\), \(\mathbf b\), and
+\(\kappa_g\). These are not a second alignment definition. They are the
+metric outputs required to ask a spatial engineering question: how do
+cant, gravity, and speed act at each position of the same alignment?
 
-\begin{definition}[Surface pose]
-Let \(\mathcal{E}\) be a reference ellipsoid and let
+\section{From surface trajectory to pose3}
+
+Applying the frame operator gives the uncanted surface frame
 \[
-\gamma : [0,L] \to \mathcal{E}
+F_{\mathcal E}(s)=
+\bigl(\mathbf t(s),\mathbf b(s),\mathbf n_{\mathcal E}(s)\bigr).
 \]
-be an arc-length parameterized alignment.
-
-A surface pose is given by
+The surface-based pose is consequently
 \[
-\mathrm{pose}_{\mathcal{E}}(s)
-=
+\mathrm{pose3}_{\mathcal E}(s)=
 \bigl(
-\gamma(s),
-\mathbf{t}(s),
-\mathbf{n}_{\mathcal{E}}(s)
-\bigr),
-\]
-where \(\mathbf{t}(s)=\gamma'(s)\) is the tangent vector and
-\(\mathbf{n}_{\mathcal{E}}(s)\) is the ellipsoid normal.
-\end{definition}
-
-\section{Railway Surface Frame}
-
-\begin{definition}[Surface railway frame]
-The local railway frame is defined by
-\[
-\mathbf{t}(s),
-\qquad
-\mathbf{b}(s)
-=
-\mathbf{n}_{\mathcal{E}}(s) \times \mathbf{t}(s),
-\qquad
-\mathbf{n}_{\mathcal{E}}(s).
-\]
-\end{definition}
-
-Here, \(\mathbf{t}\) is the longitudinal direction, \(\mathbf{b}\) is the
-lateral direction within the surface, and \(\mathbf{n}_{\mathcal{E}}\) is
-the local surface normal.
-
-\section{Cant as Rotation of the Cross-Section}
-
-\begin{definition}[Cant on the ellipsoid]
-Cant is represented by a rotation of the cross-section around the
-tangent vector \(\mathbf{t}(s)\):
-\[
-R_{\mathbf{t}}(\phi(s)).
-\]
-\end{definition}
-
-This rotation acts on the lateral--normal plane spanned by
-\(\mathbf{b}(s)\) and \(\mathbf{n}_{\mathcal{E}}(s)\). The resulting
-canted directions are
-\[
-\mathbf{b}_{\phi}(s)=R_{\mathbf{t}}(\phi(s))\,\mathbf{b}(s),
-\qquad
-\mathbf{n}_{\phi}(s)=R_{\mathbf{t}}(\phi(s))\,\mathbf{n}_{\mathcal{E}}(s).
-\]
-
-\begin{definition}[Canted lateral direction]
-The canted lateral direction is
-\[
-\mathbf{b}_{\phi}(s)
-=
-R_{\mathbf{t}}(\phi(s))\,\mathbf{b}(s).
-\]
-\end{definition}
-
-\begin{definition}[Canted normal direction]
-The canted normal direction is
-\[
-\mathbf{n}_{\phi}(s)
-=
-R_{\mathbf{t}}(\phi(s))\,\mathbf{n}_{\mathcal{E}}(s).
-\]
-\end{definition}
-
-\section{Gravity Direction}
-
-On the ellipsoid, gravity is not identical to the ellipsoid normal in full
-physical precision. Let
-\[
-\mathbf{g}(s)
-\]
-denote the local gravity vector at \(\gamma(s)\). In a simplified model one
-may approximate \(\mathbf{g}(s) \parallel -\mathbf{n}_{\mathcal{E}}(s)\),
-whereas a refined model distinguishes between ellipsoid normal, geoid
-normal, and local gravity direction.
-
-\section{Curvature and Lateral Acceleration}
-
-\begin{definition}[Railway curvature on the ellipsoid]
-The railway-relevant curvature is the geodesic curvature
-\[
-\kappa_{\mathrm{rail}}(s)
-=
-\kappa_g(s).
-\]
-\end{definition}
-
-This curvature measures direction change within the reference surface and
-replaces the planar relation \(\kappa=\theta'\). For speed \(v\), the
-curvature-induced lateral acceleration is
-\[
-a_{\kappa}(s)=v^2\kappa_g(s).
-\]
-
-\section{Effective Acceleration with Cant}
-
-The effective lateral acceleration is obtained by projecting both
-curvature-induced acceleration and gravity into the canted lateral
-direction. A geometrically consistent formulation is
-\[
-a_{\mathrm{eff}}(s)=v^2\kappa_g(s)-\mathbf{g}(s)\cdot\mathbf{b}_{\phi}(s).
-\]
-In the planar approximation with \(\mathbf{g}\parallel-\mathbf{n}_{\mathcal{E}}\), this reduces to the familiar expression
-\[
-a_{\mathrm{eff}}(s)=v^2\kappa(s)-g\sin\phi(s).
-\]
-
-\section{Pose3 State on the Ellipsoid}
-
-\begin{definition}[Ellipsoidal pose3]
-The pose3 state on the ellipsoid is
-\[
-\mathrm{pose3}_{\mathcal{E}}(s)
-=
-\bigl(
-\gamma(s),
-\mathbf{t}(s),
-\mathbf{n}_{\mathcal{E}}(s),
+\gamma_{\mathcal E}(s),
+\mathbf t(s),
+\mathbf n_{\mathcal E}(s),
 \kappa_g(s),
 \phi(s)
 \bigr).
 \]
-\end{definition}
+Planar heading \(\theta\) has not been discarded arbitrarily: its role
+is now carried by a tangent vector field whose comparison from point to
+point depends on the surface connection.
 
-Compared with planar pose3, the heading angle \(\theta(s)\) is replaced by
-a tangent vector field on the surface.
+The curvature edit changes \(\kappa_g\) directly in this realization and
+therefore changes the propagated tangent, surface trajectory, and local
+frame. The reference ellipsoid and gravity model remain fixed context;
+cant remains fixed unless edited or coupled by an applicable constraint.
 
-\section{Implication for AIM}
+\section{Cant rotates the realized cross-section}
 
-Pose3 on the ellipsoid replaces planar heading-based geometry by a
-surface-based moving frame. Cant becomes a rotation of the track
-cross-section around the tangent vector, while curvature is represented by
-geodesic curvature. This provides a physically more consistent foundation
-for evaluating railway dynamics, especially where projection distortions
-become relevant.
+Cant rotation \(\phi(s)\) acts about the tangent:
+\[
+\mathbf b_{\phi}(s)
+=R_{\mathbf t}(\phi(s))\,\mathbf b(s),
+\qquad
+\mathbf n_{\phi}(s)
+=R_{\mathbf t}(\phi(s))\,\mathbf n_{\mathcal E}(s).
+\]
+This operation receives the realized surface frame and cant state and
+produces the canted cross-section. It preserves alignment identity and
+retains both state and realization provenance. It does not infer cant
+from a rendered rail model or decide that the resulting balance is
+acceptable.
+
+\section{Gravity makes the pose physically interpretable}
+
+Let \(\mathbf g(s)\) be the applicable local gravity vector at
+\(\gamma_{\mathcal E}(s)\). A simplified realization may take
+\(\mathbf g\parallel-\mathbf n_{\mathcal E}\); a higher-fidelity
+realization may distinguish ellipsoid normal, geoid normal, and local
+gravity. The choice belongs to the metric and physical evaluation
+context, not to alignment identity.
+
+Gravity is introduced here because cant has an engineering consequence
+only relative to a force direction. The surface normal constructs the
+frame; the gravity vector supplies the physical direction used by the
+evaluation.
+
+\section{Curvature, speed, cant, and effective acceleration}
+
+For speed \(v\), the curvature-induced lateral term is
+\[
+a_{\kappa}(s)=v^2\kappa_g(s).
+\]
+Projecting the curvature and gravity contributions into the canted
+lateral direction gives, under the adopted sign convention,
+\[
+a_{\mathrm{eff}}(s)
+=v^2\kappa_g(s)
+-\mathbf g(s)\cdot\mathbf b_{\phi}(s).
+\]
+Under the local planar approximation this reduces to
+\[
+a_{\mathrm{eff}}(s)
+=v^2\kappa(s)-g\sin\phi(s).
+\]
+
+The dependency is now explicit: the curvature edit changes
+\(\kappa_g\) and the realized frame; speed supplies the operational
+condition; cant rotates the cross-section; gravity supplies the physical
+direction; evaluation produces effective acceleration. The result
+depends on all five inputs. It cannot decide an admissible speed, approve
+the edit, or replace the engineering rule under which it is assessed.
+
+\section{What this specialization establishes}
+
+\begin{description}
+\item[Usable now:] AIM can preserve identity and provenance while
+  reconstructing an intrinsic state, applying an explicit metric
+  context, producing planar representations, and evaluating qualified
+  consequences. A local planar realization remains sufficient whenever
+  its declared accuracy is sufficient for the task.
+\item[Formal specialization:] These chapters state how the same operator
+  contracts specialize to a reference ellipsoid, including the
+  geodesic/normal decomposition, surface pose, canted frame, and
+  gravity-aware dependency. This is a mathematical specialization, not
+  a claim of completed production software.
+\item[Research:] Validated applicability criteria, error bounds
+  between planar/projected and ellipsoidal realizations, robust numerical
+  realization over project-scale data, and the required fidelity of
+  gravity models remain research and validation work.
+\item[Practical scope:] AIM does not require every edit to
+  run on an ellipsoid, replace established project CRS workflows, or use
+  a geodesic solver when a qualified planar realization answers the
+  engineering question.
+\end{description}
+
+Earth curvature has therefore earned a limited and exact place in the
+formal machinery. It becomes necessary when the realization context
+makes surface effects material; otherwise it remains an available
+specialization. In both cases the alignment identity, constructive
+curvature history, and responsibility boundaries remain intact.

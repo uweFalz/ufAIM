@@ -1,0 +1,34 @@
+\begin{tikzpicture}[
+node distance=1.8cm,
+box/.style={
+draw,
+rounded corners,
+minimum width=3.8cm,
+minimum height=0.9cm,
+align=center
+}
+]
+
+\node[box] (curv)
+{Krümmungszustand};
+
+\node[box,right=of curv] (pose)
+{$\mathrm{pose3}$};
+
+\node[box,right=of pose] (dyn)
+{Laufzeitdynamik};
+
+\node[box,right=of dyn] (state)
+{Operative Zustände};
+
+\draw[->,thick]
+(curv)--(pose);
+
+\draw[->,thick]
+(pose)--node[above]
+{$\mathcal D$}(dyn);
+
+\draw[->,thick]
+(dyn)--(state);
+
+\end{tikzpicture}

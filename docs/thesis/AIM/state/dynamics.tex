@@ -1,190 +1,84 @@
-% state/dynamics.tex
+\chapter{Speed-Qualified Consequences}
 
-\chapter{Dynamics and Railway State Interpretation}
+The running Alignment and its pose3 state now describe where the track frame
+is and how it is oriented. They still do not determine a physical response.
+Speed enters as a separate operating input; a vehicle model and evaluation
+rule enter separately again.
 
-Geometric alignment alone is not sufficient to describe railway
-behaviour. Operational behaviour depends on coupled evolution of
-curvature, cant, and speed. This chapter gives the canonical dynamic
-interpretation of railway state quantities that are derived from the
-state layers established in this part.
+\section{From Arc Length to Time}
 
-% ============================================================
-\section{Kinematic Basis}
-% ============================================================
-
-\begin{definition}[Velocity]
-Let \(v>0\) denote the vehicle velocity along the alignment.
-\end{definition}
-
-\begin{definition}[Curvature-induced acceleration]
-For curvature \(\kappa(s)\), the lateral acceleration induced by planar
-motion is
+For constant \(v>0\),
 \[
-a_\kappa(s) = v^2 \kappa(s).
+\frac{\dd s}{\dd t}=v,
+\qquad
+\frac{\dd f}{\dd t}=v\frac{\dd f}{\dd s}.
 \]
-\end{definition}
+Thus the spatial curvature rate \(\kappa'(s)\) acquires a time rate only after
+speed is supplied. The same holds for cant rate and higher derivatives.
 
-This is the classical centripetal contribution and forms the basic link
-between intrinsic geometry and dynamics.
+\section{A Reduced Illustrative Relation}
 
-% ============================================================
-\section{Cant and Effective Lateral Acceleration}
-% ============================================================
-
-\begin{definition}[Cant angle]
-Let \(\phi(s)\) denote the local roll angle induced by cant.
-\end{definition}
-
-\begin{definition}[Gravity component]
-The gravitational acceleration projected onto the lateral direction is
+For planar motion of a point following the reference trajectory,
 \[
-a_g(s) = g\sin\phi(s),
+a_\kappa(s)=v^2\kappa(s).
 \]
-where \(g\) denotes gravitational acceleration.
-\end{definition}
-
-\begin{definition}[Effective lateral acceleration]
-The effective lateral acceleration acting on the vehicle is
+Under the local right-handed frame, small-scope rigid-body assumptions, the
+cant convention of \cref{eq:derived-roll-angle}, and neglect of suspension,
+wheel--rail, wind, and other effects, a reduced effective lateral component is
 \[
-a_{\mathrm{eff}}(s)
-=
-v^2\kappa(s) - g\sin\phi(s).
+a_{\mathrm{eff}}(s)=v^2\kappa(s)-g\sin\phi(s).
 \]
-\end{definition}
+This is an illustrative derived quantity, not a validated complete vehicle
+dynamics model and not an authoritative cant-design rule.
 
-This expression captures the canonical coupling between curvature and
-cant in railway engineering and vehicle dynamics
-\cite{Klein1998Trassierung,EN13803_2017,BrustadDalmo2020Review,Iwnicki2006RailVehicleDynamics,Wickens2003Fundamentals}.
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Case at the same \(s\) & \(v^2\kappa\) & \(a_{\mathrm{eff}}\) for \(\phi=4^\circ\)\\
+\midrule
+\(v=20\,\mathrm{m/s}\), \(\kappa=0.001\,\mathrm{m^{-1}}\) & \(0.40\,\mathrm{m/s^2}\) & \(-0.28\,\mathrm{m/s^2}\)\\
+\(v=40\,\mathrm{m/s}\), \(\kappa=0.001\,\mathrm{m^{-1}}\) & \(1.60\,\mathrm{m/s^2}\) & \(0.92\,\mathrm{m/s^2}\)\\
+\bottomrule
+\end{tabular}
+\caption{Illustrative speed dependence for the same curvature and cant state (\(g=9.81\,\mathrm{m/s^2}\), rounded).}
+\label{tab:same-curvature-two-speeds}
+\end{table}
 
-% ============================================================
-\section{Equilibrium and Cant Deficiency}
-% ============================================================
+\Cref{tab:same-curvature-two-speeds} isolates the dependency: neither the
+Alignment nor \(\kappa(s)\) changes, yet doubling speed multiplies the
+curvature-induced term by four. Changing cant would change the effective
+component and frame, not the horizontal curvature law.
 
-\begin{definition}[Equilibrium cant]
-A balanced state satisfies
-\[
-v^2\kappa(s) = g\sin\phi(s).
-\]
-\end{definition}
+\section{Variation and Operational Meaning}
 
-Under this condition,
-\[
-a_{\mathrm{eff}}(s)=0.
-\]
-
-\begin{definition}[Cant deficiency]
-Cant deficiency is defined as
-\[
-\Delta(s)
-=
-v^2\kappa(s) - g\sin\phi(s).
-\]
-\end{definition}
-
-Positive values indicate insufficient cant, negative values indicate
-excess cant. Cant deficiency is a central operational quantity for
-comfort and safety interpretation
-\cite{EN13803_2017,BrustadDalmo2020Review,MagalhaesAmbrosioPombo2016Compatibility}.
-
-% ============================================================
-\section{Dynamic Smoothness and Jerk}
-% ============================================================
-
-\begin{definition}[Jerk]
-Jerk is the time derivative of effective lateral acceleration:
-\[
-j(s)=\frac{\dd}{\dd t}a_{\mathrm{eff}}(s).
-\]
-\end{definition}
-
-Using \(\dd t = \frac{1}{v}\,\dd s\), one obtains
-\[
-j(s)=v\frac{\dd}{\dd s}a_{\mathrm{eff}}(s).
-\]
-
-\begin{proposition}
-The jerk relation is
+With the same assumptions and constant speed,
 \[
 j(s)=v^3\kappa'(s)-gv\cos\phi(s)\,\phi'(s).
 \]
-\end{proposition}
+This relation explains why transition shape and cant transition both matter
+operationally while remaining distinct laws. If speed varies, additional
+time-derivative terms appear. Vehicle response further depends on mass,
+suspension, wheel--rail contact, and other model choices. None of those
+quantities is silently folded into Alignment geometry.
 
-This relation shows that both curvature variation and cant variation
-contribute to runtime smoothness and comfort behaviour
-\cite{Mieloszyk2012Transition,Koc2017SmoothedEnds,Koc2019Operational,KnotheGrassie1993HighFrequencies}.
+\section{Evaluation Is a Later Operation}
 
-% ============================================================
-\section{Arc-Length and Time}
-% ============================================================
-
-The alignment is parameterized by arc length \(s\), whereas physical
-response is observed in time \(t\).
-
-\begin{definition}[Arc-length/time relation]
-Assuming constant speed \(v>0\),
-\[
-\frac{\dd s}{\dd t}=v.
-\]
-\end{definition}
-
-\begin{proposition}
-For any quantity \(f(s)\),
-\[
-\frac{\dd f}{\dd t}=v\frac{\dd f}{\dd s}.
-\]
-\end{proposition}
-
-This relation provides the bridge between arc-length state evolution and
-time-based operational interpretation.
-
-% ============================================================
-\section{State-Space Interpretation}
-% ============================================================
-
-A minimal geometric state formulation is
-\[
-(x(s),y(s),\theta(s),\phi(s)),
-\]
-with intrinsic evolution
-\[
-\frac{\dd x}{\dd s}=\cos\theta(s),
-\qquad
-\frac{\dd y}{\dd s}=\sin\theta(s),
-\qquad
-\frac{\dd\theta}{\dd s}=\kappa(s).
-\]
-
-Within this chapter, \(\kappa(s)\) and \(\phi(s)\) act as primary
-inputs to derived dynamic quantities. This is consistent with reduced
-vehicle-track interpretations where track state provides structured
-runtime input to dynamics models
-\cite{Iwnicki2006RailVehicleDynamics,Shabana2008RailroadVehicleDynamics}.
-
-% ============================================================
-\section{Coupled Interpretation and Optimization Relevance}
-% ============================================================
-
-Railway behaviour depends on the coupled variables
-\[
-(\kappa(s),\phi(s)).
-\]
-A purely geometric interpretation based on \(\kappa(s)\) alone is
-insufficient for physical behaviour. The derived quantities in this
-chapter therefore provide canonical objective and constraint terms for
-alignment optimization, for example integrals of
-\(a_{\mathrm{eff}}^2\), \(j^2\), and cant-deficiency bounds
-\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment,UIC519}.
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+The dependency order is
+\begin{align*}
+\text{geometry}&\rightarrow\text{realized frame}
+\rightarrow\text{speed profile}\rightarrow\text{vehicle model}\\
+&\rightarrow\text{derived dynamics}
+\rightarrow\text{purpose and rule}\rightarrow\text{evaluation}.
+\end{align*}
+A limit from a standard is applicable only under its scope and version. A
+computed exceedance is an evaluation result; acceptance, rejection, or
+authorization requires an Engineering Decision with the relevant authority.
 
 \begin{summary}
-Dynamics in AIM is downstream of railway state evaluation. Curvature and
-cant are persistently represented, while effective acceleration,
-deficiency, and jerk are derived runtime quantities.
-
-This preserves the layer separation between intrinsic geometry,
-realization, railway runtime state, and operational interpretation while
-providing the dynamic basis for admissibility and optimization.
+Speed changes the consequence of the running Alignment without changing its
+intrinsic geometry. Cant changes the track frame and the reduced effective
+action, while geometry, operating input, vehicle model, derivation, evaluation,
+and decision remain separate.
 \end{summary}

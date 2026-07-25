@@ -1,0 +1,82 @@
+% analysis/pipeline_story-DE.tex
+\section{Pipeline-Erzählung: Von der Messung zum Alignment}
+
+\subsection{Ein einzelner Punkt}
+Betrachten wir einen einzelnen gemessenen Punkt \(x\) in der realen Welt. Er
+kann aus einer Vermessungskampagne, einem Gleismessfahrzeug oder einem
+Entwurfsdatensatz stammen. Auf dieser Stufe existiert der Punkt nur in einem
+globalen Koordinatensystem.
+
+\subsection{Schritt 1: CRS-Transformation}
+Der Punkt wird zunächst in einem Koordinatenreferenzsystem interpretiert:
+\[
+x_{\mathrm{crs}}\xrightarrow{\mathcal C}x_{\mathrm{world}}.
+\]
+Dieser Schritt stellt sicher, dass alle Daten in einem konsistenten räumlichen
+Rahmen ausgedrückt sind.
+
+\subsection{Schritt 2: Projektion auf das Gleis}
+Der Punkt wird auf das Alignment projiziert:
+\[
+x_{\mathrm{world}}\xrightarrow{\mathcal W}(s,d).
+\]
+Dies ist eine nichtlineare Operation: Die longitudinale Position \(s\) wird
+bestimmt und die laterale Abweichung \(d\) berechnet. In diesem Augenblick wird
+der Punkt Teil des intrinsischen Alignment-Koordinatensystems.
+
+\subsection{Schritt 3: Interpretation durch das Modell}
+Das Alignment-Modell stellt eine Krümmungsbeschreibung bereit:
+\[
+(s,d)\xrightarrow{\mathcal M}\kappa(s).
+\]
+Dabei wirken parametrische Struktur als Entwurfsabsicht und lokale Korrekturen
+als datengetriebene Anpassungen zusammen. Der Punkt wird nicht länger als
+isoliertes Datum, sondern als Bestandteil eines strukturierten geometrischen
+Systems behandelt.
+
+\subsection{Schritt 4: Physische Realisierung}
+Das theoretische Modell wird durch physische Prozesse transformiert:
+\[
+\kappa(s)\xrightarrow{\mathcal R}\gamma_{\mathrm{real}}(s).
+\]
+Dieser Schritt berücksichtigt Baubedingungen, mechanisches Verhalten und
+Instandhaltungsoperationen. Die entstehende Geometrie ist mit dem theoretischen
+Modell nicht identisch.
+
+\subsection{Schritt 5: Zurück zu World-Koordinaten}
+Das realisierte Alignment wird in den World-Raum zurückabgebildet:
+\[
+\gamma_{\mathrm{real}}(s)\xrightarrow{\mathcal W^{-1}}x_{\mathrm{real}}.
+\]
+Damit entsteht die in der Realität sicht- und messbare Geometrie.
+
+\subsection{Schritt 6: Vergleich und Rückkopplung}
+Ursprüngliche Messung und realisierte Position werden verglichen:
+\[
+x_{\mathrm{real}}\approx x_{\mathrm{world}}.
+\]
+Die Abweichung treibt die Optimierung: Parameter werden angepasst,
+Korrekturen aktualisiert und die Pipeline erneut bewertet.
+
+\subsection{Interpretation}
+Der Punkt hat mehrere Darstellungen durchlaufen: globale Koordinaten,
+intrinsische Alignment-Koordinaten, parametrisches Modell und realisierte
+Geometrie. Jede Transformation führt Struktur, Bedingungen und Interpretation
+ein.
+
+\subsection{Zentrale Erkenntnis}
+\begin{proposition}
+Ein gemessener Punkt ist nicht unmittelbar Teil des Alignments. Er wird erst
+durch World--Track-Transformation und Alignment-Modell Teil des Alignments.
+\end{proposition}
+
+\subsection{Verbindung zu AIM}
+\begin{summary}
+Der AIM-Rahmen transformiert räumliche Rohdaten durch eine Operatorfolge in
+strukturierte Alignment-Information. Dieser Prozess integriert
+Koordinatensysteme, geometrische Modellierung, physische Realisierung und
+Optimierung.
+
+Alignment-Modellierung ist damit keine statische Darstellung, sondern ein
+dynamischer Prozess, der Messung, Theorie und Bau verbindet.
+\end{summary}

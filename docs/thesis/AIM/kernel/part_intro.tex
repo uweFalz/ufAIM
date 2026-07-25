@@ -4,26 +4,46 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Engineering Concepts}
 
-This part establishes the canonical engineering vocabulary that keeps
-mathematical structures and engineering meaning aligned throughout the
-thesis.
+The Berlinish grammar has made a family of transition constructions
+expressible. Suppose that axtranNew, or another calculation service, now
+selects an entry half-wave, a clothoid core, and an exit half-wave and returns
+parameters that satisfy the stated geometric boundary conditions. The result
+is mathematically valid within that calculation. It is not yet the accepted
+transition of a railway alignment.
 
-The preceding part established the mathematical and conceptual
-foundations required by Alignment-Based Information Modelling. It introduced
-the axioms, principles, notation, state model, operators, metric
-realization, and conceptual categories used throughout the thesis.
+To become usable engineering information, the result must acquire meaning
+that the formula and solver cannot supply. It must refer to an identifiable
+alignment and a particular state of it. Its ordered construction must remain
+inspectable. Its metric realization, coordinate reference system, stationing
+interpretation, source, derivation, and temporal qualification must be known.
+It must then be evaluated for a stated purpose, such as operation at a given
+speed under applicable cant constraints. Finally, an entitled authority---not
+the calculation---must decide whether it may govern engineering work.
 
-The present part develops the canonical engineering concepts of the
-Knowledge Kernel. It explains what constitutes an engineering object,
-how engineering identity remains stable, how context participates in
-interpretation, and how representations, observations, knowledge, and
-decisions relate without becoming interchangeable.
+Figure~\ref{fig:transition-meaning-chain} is the route through this part. The
+chapters do not introduce a row of independent containers. They follow one
+proposed transition as its mathematical possibility becomes an assertion
+about an Engineering Object, then evidence for an applicable and potentially
+accepted state.
 
-These concepts are introduced before the domain-specific development of
-alignment geometry. They provide the engineering vocabulary required to
-explain why an alignment is more than a curve and how its geometric,
-physical, operational, and computational descriptions remain connected
-to one enduring engineering object.
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\textwidth}{!}{\input{figures/kernel/transition_meaning_chain}}
+  \caption{One transition proposal acquires engineering meaning through
+  explicit identity, construction, realization, provenance, evaluation, and
+  authority. No arrow silently grants the status of the next stage.}
+  \label{fig:transition-meaning-chain}
+\end{figure}
 
-With this vocabulary fixed, the next part can develop curvature-based
-geometry without ambiguity about conceptual ownership.
+The governing distinction is therefore
+\begin{equation}
+\text{calculated}\neq\text{accepted}\neq\text{applicable}
+\neq\text{authoritative}.
+\label{eq:calculation-status-chain}
+\end{equation}
+A calculated proposal can fail the intended-speed or cant conditions, depend
+on an unsuitable realization, rest on incomplete evidence, or remain merely
+one alternative. Conversely, a historically accepted transition can be
+authoritative evidence for an existing asset without being the mathematical
+optimum. Engineering Concepts are needed to preserve these differences while
+keeping the underlying alignment recognizable through change.

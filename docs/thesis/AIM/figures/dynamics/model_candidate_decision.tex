@@ -1,0 +1,17 @@
+\begin{tikzpicture}[
+  node distance=5mm and 6mm,
+  box/.style={draw,rounded corners,align=center,minimum height=9mm,text width=27mm,font=\scriptsize},
+  arrow/.style={->,thick}
+]
+\node[box] (problem) {problem identity\\purpose and freedoms};
+\node[box,right=of problem] (model) {identified model \(M\)\\fixed inputs};
+\node[box,right=of model] (objective) {declared \(J,\mathcal F\)\\units and source};
+\node[box,below=of objective] (candidate) {calculation candidate\\values and residuals};
+\node[box,left=of candidate] (evaluation) {qualified evaluation\\evidence and rules};
+\node[box,left=of evaluation] (decision) {Engineering Decision\\authority and record};
+\draw[arrow] (problem)--(model);
+\draw[arrow] (model)--(objective);
+\draw[arrow] (objective)--(candidate);
+\draw[arrow] (candidate)--(evaluation);
+\draw[arrow] (evaluation)--(decision);
+\end{tikzpicture}

@@ -1,0 +1,140 @@
+% Deutsche Parallelfassung zu foundations/ellipsoid_geometry.tex
+
+\chapter{Auf der Erde realisierte Krümmung}
+\label{chapter:ellipsoid_curvature}
+
+Eine ebene Ingenieurrealisierung behandelt das anwendbare Gebiet als
+euklidische Ebene. Für viele Entwurfs-, Bau- und Instandhaltungsaufgaben ist
+dies nützlich und hinreichend genau. Ihre Grenze wird sichtbar, wenn die
+Ingenieurfolge wesentlich von Projektionsverzerrung oder der Erdkrümmung selbst
+abhängt. Eine projizierte CAD-Kurve bleibt dann eine wertvolle
+Koordinatenrepräsentation, kann aber weder die intrinsische Konstruktion
+besitzen noch die Flächenmetrik bestimmen, aus der ihre Koordinaten abgeleitet
+wurden.
+
+Die Frage dieses Kapitels ist daher genau: Was ändert sich, wenn dasselbe
+identifizierte Alignment einschließlich der in \cref{chap:state-model}
+eingeführten Krümmungsänderung auf der Erde statt in einem ebenen
+Ingenieurraum realisiert wird?
+
+\section{Was bleibt und was sich ändert}
+
+Alignment-Identität, intrinsische longitudinale Ordnung, Provenienz der
+Änderung und ingenieurtechnische Rolle der Krümmung bleiben invariant. Der
+Realization Context ändert sich. Statt von \(\mathcal G_c\) eine ebene
+metrische Trajektorie zu verlangen, lassen wir \(\mathcal G_{\mathcal E}\)
+den Zustand auf einer Referenzfläche
+\[
+\mathcal E\subset\mathbb R^3
+\]
+interpretieren. Das Ergebnis ist eine Flächenkurve
+\[
+\gamma_{\mathcal E}:[0,L]\rightarrow\mathcal E,
+\qquad \lVert\gamma_{\mathcal E}'(s)\rVert=1.
+\]
+Damit behält \(s\) seine longitudinale Bedeutung, während Position, Richtung
+und Krümmung eine Erdoberflächeninterpretation erhalten.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/foundations/earth_realization_decomposition-DE}
+\caption{Die Erdrealisierung bewahrt das intrinsische Alignment und trennt
+seine Krümmung innerhalb der Fläche von der durch die Referenzfläche
+erzwungenen Krümmung. Die Projektion erzeugt eine weitere Repräsentation der
+realisierten Kurve, keine neue konstruktive Definition.}
+\label{fig:earth-realization-decomposition}
+\end{figure}
+
+\section{Warum eine Tangente nicht mehr genügt}
+
+Die realisierte Tangente
+\[
+\mathbf t(s)=\gamma_{\mathcal E}'(s)
+\]
+gibt die Fahrtrichtung an. Auf einer Ebene bleibt eine feste Normale dieser
+Ebene üblicherweise implizit. Auf dem Ellipsoid ändert sich die
+Flächennormale \(\mathbf n_{\mathcal E}(s)\) mit der Position und muss daher
+ausdrücklich in die Realisierung eingehen. Die orientierte Seitenrichtung in
+der Tangentialebene ist
+\[
+\mathbf b(s)=\mathbf n_{\mathcal E}(s)\times\mathbf t(s).
+\]
+Diese Richtungen werden eingeführt, weil der Krümmungsvektor nun zwei
+unterscheidbare Ursachen besitzt.
+
+\section{Die Krümmungszerlegung}
+
+Die Änderung der Tangente im umgebenden Raum zerfällt als
+\[
+\gamma_{\mathcal E}''(s)
+=
+\underbrace{\kappa_g(s)\,\mathbf b(s)}_{
+\text{Drehung innerhalb der Fläche}}
++
+\underbrace{\kappa_n(s)\,\mathbf n_{\mathcal E}(s)}_{
+\text{durch die Fläche erzwungene Krümmung}},
+\]
+wobei für die gewählte Orientierung
+\[
+\kappa_g(s)=
+\left\langle\nabla_s\mathbf t(s),\mathbf b(s)\right\rangle,
+\qquad
+\kappa_n(s)=
+\left\langle\gamma_{\mathcal E}''(s),
+\mathbf n_{\mathcal E}(s)\right\rangle.
+\]
+Folglich gilt
+\[
+\lVert\gamma_{\mathcal E}''(s)\rVert^2
+=\kappa_g^2(s)+\kappa_n^2(s).
+\]
+
+Die geodätische Krümmung \(\kappa_g\) wird benötigt, weil sie die
+vorzeichenbehaftete Richtungsänderung innerhalb der Referenzfläche misst. Die
+Normalkrümmung \(\kappa_n\) wird benötigt, weil selbst ein innerhalb der
+Fläche gerader Pfad sich im dreidimensionalen Raum krümmt, während sich die
+Erde darunter krümmt. Die gesamte räumliche Krümmung allein würde diese beiden
+ingenieurtechnischen Bedeutungen vermischen.
+
+\section{Welche Krümmung trägt die Alignment-Änderung?}
+
+Für die Flächenrealisierung ist die eisenbahnrelevante horizontale
+Drehkrümmung
+\[
+\kappa_{\mathrm{rail}}(s)=\kappa_g(s).
+\]
+Das bearbeitete intrinsische Krümmungsgesetz wird somit vorbehaltlich des
+gewählten Flächenkontexts und der Randdaten als erforderlicher Verlauf der
+geodätischen Krümmung realisiert. Normalkrümmung ist eine Folge dieses
+Kontexts; sie ist keine zusätzliche horizontale Alignment-Änderung.
+
+In der ebenen Realisierung ist die Flächennormale konstant und
+\(\kappa_n=0\). Die Beziehung reduziert sich lokal auf
+\[
+\kappa_g(s)=\kappa(s)=\theta'(s).
+\]
+Die ebene Ingenieurrechnung wird daher nicht ungültig. Sie ist die anwendbare
+lokale Realisierung, wenn Flächen- und Projektionseffekte unter der von der
+Aufgabe geforderten Genauigkeit liegen. Ellipsoidische Realisierung wird
+wichtig, wenn Ausdehnung, geforderte Genauigkeit, Projektionsverzerrung oder
+erdbezogene räumliche Folgen diese Effekte wesentlich machen.
+
+\section{Projektion ist eine Darstellung des Ergebnisses}
+
+Eine projizierte Kurve \(C(\gamma_{\mathcal E})\) unterstützt CAD, GIS,
+Austausch und Berechnung. Direkt aus dieser Repräsentation berechnete
+Krümmung kann von \(\kappa_g\) abweichen, weil die Projektion metrische
+Eigenschaften verändert. Das macht projizierte Arbeit nicht unbrauchbar; es
+macht ihre Anwendbarkeit und Genauigkeit zu Bestandteilen des
+Ausführungsvertrags.
+
+Die Erdrealisierung empfängt den intrinsischen Zustand, die Referenzfläche,
+Metrik, Orientierung und Randdaten. Sie erzeugt eine Flächentrajektorie und
+deren geodätische/normale Zerlegung. Sie bewahrt Alignment-Identität und
+Änderungsprovenienz. Sie kann weder ein Projekt-CRS auswählen, noch beweisen,
+dass jede Aufgabe eine ellipsoidische Behandlung erfordert, oder entscheiden,
+ob das Ergebnis akzeptabel ist.
+
+Das nächste Kapitel verwendet genau diese Ausgaben, um die räumliche Pose zu
+konstruieren und Krümmung, Überhöhung, Gravitation und Geschwindigkeit zu
+verbinden.

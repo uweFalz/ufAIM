@@ -1,52 +1,95 @@
 % foundations/axioms.tex
 
-\chapter{Axiomatic Foundation}
+\chapter{Axioms as Failure Boundaries}
 \label{chap:axiomatic-foundation}
 
-\index{Axiom}
-\index{Geometry!intrinsic planar}
+Conceptual Structure established why AIM must distinguish an engineering
+object from its states, observations, evaluations, and representations.
+The formal task is now to make those distinctions usable. Consider the
+recurring case of a design alignment available as a CAD curve and a
+surveyed condition available as a sampled polyline. The two geometries
+can be compared computationally, but that comparison becomes meaningful
+only after five common failure modes have been excluded.
 
-The mathematical development of this thesis begins with the intrinsic
-planar geometry of an alignment. Let \(I\subseteq\mathbb{R}\) be an
-interval parameterized by arc-length \(s\). The alignment curve,
-heading, and curvature are denoted by
-\[
-\gamma:I\rightarrow\mathbb{R}^{2},
-\qquad
-\theta:I\rightarrow\mathbb{R},
-\qquad
-\kappa:I\rightarrow\mathbb{R}.
-\]
+\section{What the formal model must not collapse}
 
-% ============================================================
-\section{Intrinsic Planar Geometry}
-% ============================================================
+\begin{axiom}[Object continuity]
+\label{ax:object-continuity}
+An engineering object's identity is not replaced by a change of state,
+observation, evaluation, or representation.
+\end{axiom}
 
-\begin{axiom}[Arc-length Parameterization]
+The CAD curve and survey polyline may concern one alignment, different
+states of it, or even different objects. Geometric similarity cannot
+settle that identity question; identity must already be established by
+the engineering context in which the comparison is made.
+
+\begin{axiom}[Construction--representation separation]
+\label{ax:construction-representation-separation}
+Constructive engineering knowledge and a representation derived from it
+occupy different formal roles.
+\end{axiom}
+
+A sampled polyline can support rendering, exchange, or computation. Its
+vertices do not thereby become the constructive definition of the
+alignment, and resampling does not create a new authoritative object.
+
+\begin{axiom}[Reality--observation separation]
+\label{ax:reality-observation-separation}
+A physical state and an observation of that state are distinct inputs to
+engineering reasoning.
+\end{axiom}
+
+Survey points are source-grounded evidence. They do not constitute the
+physical railway itself, and uncertainty or incompleteness in the
+observation must not be transferred silently to physical reality.
+
+\begin{axiom}[Evaluation--decision separation]
+\label{ax:evaluation-decision-separation}
+An evaluation produces a qualified result; it does not constitute an
+engineering decision.
+\end{axiom}
+
+A computed deviation may support acceptance, maintenance planning, or
+redesign. No threshold, residual, or solver output acquires decision
+authority merely by being computed.
+
+\begin{axiom}[Intrinsic--derived separation]
+\label{ax:intrinsic-derived-separation}
+Derived geometry does not replace the intrinsic construction from which
+it is obtained.
+\end{axiom}
+
+Coordinates, tangents, offsets, and sampled vertices are useful
+consequences. The formal construction must therefore expose the
+dependencies that produce them.
+
+\section{The constructive dependency}
+
+Let \(I\subseteq\mathbb{R}\) be an interval parameterized by arc-length
+\(s\). Let \(\kappa:I\rightarrow\mathbb{R}\) be curvature, and let
+\(\theta:I\rightarrow\mathbb{R}\) and
+\(\gamma:I\rightarrow\mathbb{R}^{2}\) denote heading and planar
+position. The mathematical axioms below state the dependency that turns
+intrinsic construction into derived geometry.
+
+\begin{axiom}[Arc-length parameterization]
 \label{ax:arc-length-parameterization}
-\index{Arc-length parameterization}
-The alignment curve is parameterized by arc-length:
 \[
 \lVert\gamma'(s)\rVert=1
 \qquad\text{for all }s\in I.
 \]
 \end{axiom}
 
-\begin{axiom}[Heading Evolution]
+\begin{axiom}[Heading evolution]
 \label{ax:heading-evolution}
-\index{Heading evolution}
-\index{Curvature!as derivative of heading}
-Curvature is the derivative of heading with respect to arc-length:
 \[
 \theta'(s)=\kappa(s).
 \]
 \end{axiom}
 
-\begin{axiom}[Tangent Reconstruction]
+\begin{axiom}[Tangent reconstruction]
 \label{ax:tangent-reconstruction}
-\index{Tangent reconstruction}
-\index{Reconstruction!tangent}
-The unit tangent of the planar alignment is determined by the heading:
 \[
 \gamma'(s)=
 \begin{pmatrix}
@@ -56,28 +99,22 @@ The unit tangent of the planar alignment is determined by the heading:
 \]
 \end{axiom}
 
-% ============================================================
-\section{Reconstruction Consequence}
-% ============================================================
-
 \begin{proposition}[Curvature-driven reconstruction]
 \label{prop:curvature-driven-reconstruction}
-\index{Reconstruction!curvature-driven}
 Given an initial position \(\gamma(s_0)\), an initial heading
 \(\theta(s_0)\), and a sufficiently regular curvature function
-\(\kappa\), the planar alignment is uniquely determined on \(I\).
+\(\kappa\), the planar trajectory is uniquely determined on \(I\).
 \end{proposition}
 
 \begin{proof}
-Integration of \cref{ax:heading-evolution} determines
+Integration of \cref{ax:heading-evolution} gives
 \[
 \theta(s)=\theta(s_0)+\int_{s_0}^{s}\kappa(\sigma)\,\dd\sigma.
 \]
-Substitution into \cref{ax:tangent-reconstruction} and subsequent
-integration determine
+Substitution into \cref{ax:tangent-reconstruction} and a second
+integration give
 \[
-\gamma(s)=\gamma(s_0)
-+
+\gamma(s)=\gamma(s_0)+
 \int_{s_0}^{s}
 \begin{pmatrix}
 \cos\theta(\sigma)\\
@@ -85,12 +122,10 @@ integration determine
 \end{pmatrix}
 \dd\sigma.
 \]
-The prescribed initial conditions therefore fix the remaining
-integration constants.
+The initial conditions fix the remaining integration constants.
 \end{proof}
 
-These axioms establish the intrinsic planar reconstruction kernel used
-throughout the subsequent development. Architectural separation,
-realization, and representation are governed by the principles of the
-following chapter rather than by additional mathematical axioms.
-\index{Kernel!intrinsic planar reconstruction}
+This result is deliberately limited. It reconstructs a planar trajectory
+from stated inputs and assumptions. It does not establish object
+identity, prove that a survey observes the same state, confer authority
+on a representation, or decide whether a discrepancy is acceptable.

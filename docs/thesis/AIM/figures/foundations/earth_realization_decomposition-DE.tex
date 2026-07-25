@@ -1,0 +1,47 @@
+% Deutsche Parallelfassung zu earth_realization_decomposition.tex
+\begin{tikzpicture}[
+  x=1cm,y=1cm,>=Stealth,
+  flow/.style={->,semithick,draw=black!65},
+  note/.style={font=\scriptsize,align=center,text=black!75},
+  label/.style={font=\scriptsize\bfseries,align=center}
+]
+  \fill[black!3]
+    (-5.2,-0.35) .. controls (-2.6,1.45) and (2.7,-1.25) .. (5.2,0.45)
+    -- (5.2,-1.05) .. controls (2.7,-2.05) and (-2.7,0.55) .. (-5.2,-1.15) -- cycle;
+  \draw[black!35]
+    (-5.2,-0.35) .. controls (-2.6,1.45) and (2.7,-1.25) .. (5.2,0.45);
+  \node[note,anchor=north west] at (-5.05,-1.13)
+    {Referenzfläche $\mathcal E$};
+
+  \draw[very thick,black!80]
+    (-4.45,-0.08) .. controls (-2.65,0.98) and (-0.65,-0.20) .. (1.05,-0.05)
+    .. controls (2.45,0.08) and (3.55,0.67) .. (4.45,0.48);
+  \node[label,anchor=south] at (-2.65,0.55)
+    {realisiertes Alignment $\gamma_{\mathcal E}(s)$};
+
+  \coordinate (p) at (1.05,-0.05);
+  \fill[black!75] (p) circle (1.7pt);
+  \draw[flow] (p) -- ++(1.55,0.25) node[above,note] {$\mathbf t$};
+  \draw[flow] (p) -- ++(-0.20,1.55) node[left,note] {$\mathbf n_{\mathcal E}$};
+  \draw[flow,very thick] (p) -- ++(0.90,1.12)
+    node[right,note] {$\gamma''$};
+  \draw[flow,dashed] (p) -- ++(1.04,0.45)
+    node[below right,note] {$\kappa_g\mathbf b$};
+  \draw[flow,dashed] (p) -- ++(-0.14,0.68)
+    node[left,note] {$\kappa_n\mathbf n_{\mathcal E}$};
+
+  \node[draw=black!50,rounded corners=2pt,fill=white,
+    minimum width=2.6cm,minimum height=.75cm,label] (intrinsic) at (-4.05,2.05)
+    {intrinsische Eingabe\\$\kappa(s)$, Identität};
+  \draw[flow] (intrinsic.south) -- (-4.38,0.02)
+    node[midway,right,note] {$\mathcal G_{\mathcal E}$};
+
+  \node[draw=black!35,rounded corners=2pt,fill=white,
+    minimum width=3.0cm,minimum height=.9cm,label] (projection) at (3.55,-2.05)
+    {projizierte Repräsentation\\$C(\gamma_{\mathcal E})$};
+  \draw[flow] (3.75,0.34) -- (projection.north)
+    node[midway,right,note] {Projektion};
+
+  \node[note,anchor=north] at (0,-2.75)
+    {Projektion ändert die Koordinatendarstellung; die Flächenzerlegung liefert die metrische Folge.};
+\end{tikzpicture}

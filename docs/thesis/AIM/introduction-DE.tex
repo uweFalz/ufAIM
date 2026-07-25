@@ -1,0 +1,272 @@
+% Deutsche Parallelfassung zu introduction.tex
+
+\chapter{Einleitung}
+
+\section{Das Eisenbahnproblem vor dem Informationsproblem}
+
+Ein Eisenbahnfahrzeug kann keinen benachbarten Weg wählen, wenn die Geometrie
+ungünstig wird. Seine Radsätze sind gezwungen, dem Schienenpaar zu folgen. Ein
+Übergang zwischen Gerade und Kreisbogen verändert daher mehr als einen
+gezeichneten Verlauf: Krümmungsgesetz und Überhöhungsentwicklung bestimmen
+zusammen mit der Geschwindigkeit, wie sich Querbeschleunigung, Rollbewegung,
+Kraftentwicklung, Komfort, Verschleiß und Zulässigkeit entlang der
+Fahrzeugtrajektorie entwickeln.
+
+Man vergleiche eine Klothoide mit einem Übergang, bei dem auch die
+Krümmungsableitung an den Enden glatt ausläuft. Beide können dieselben
+Randkrümmungen verbinden. Die Klothoide liefert ein konstantes
+\(\kappa'(s)\), während ein geglättetes Gesetz die Endwertsprünge von
+\(\kappa'(s)\) unterdrücken und \(\kappa''(s)\) regeln kann. Letzteres kann
+günstigeres physikalisches Verhalten bieten, verwendet dafür aber gewöhnlich
+Länge. Im ursprünglichen Ingenieurvergleich wurde der entscheidende Vorteil
+der Klothoide deshalb nicht in einer universellen dynamischen Überlegenheit
+gesehen, sondern häufig in ihrer kompakten, transparenten Konstruktion. Diese
+Beobachtung eröffnete die Frage, die AIM vorausgeht: Wie lassen sich
+unterschiedliche bekannte Übergangsformen in einer gemeinsamen funktionalen
+Sprache ausdrücken, berechnen und vergleichen?
+
+Die ursprüngliche Antwort war \emph{Berlinish}, eine verallgemeinerte
+Übergangsgrammatik, und \emph{axtranNew}, der vorgesehene Berechnungskern, der
+diese Grammatik anwendbar macht. Die weitere ufAIM-Umgebung entwickelte sich,
+weil Formeln und Solver-Ergebnisse allein das entstehende Wissen nicht
+dauerhaft, untersuchbar, editierbar, zurechenbar und über
+Ingenieurarbeitsabläufe hinweg nutzbar halten konnten. Diese Geschichte ist
+eine Interpretation der Entwicklungslinie durch die Thesis, keine Behauptung,
+Berlinish oder axtranNew sei ein genehmigter Kernel-Begriff.
+
+\section{Eine Änderung, die nicht in einem Modell verbleibt}
+
+Betrachten wir ein Alignment, das in lokalen Ingenieurkoordinaten übernommen
+wurde. Ein Ingenieur ändert die Krümmung eines Übergangs. Die geometrische
+Wirkung tritt unmittelbar ein: Der nachfolgende Verlauf verschiebt sich,
+abgeleitete Positionen ändern sich und auf dem Bildschirm erscheint eine neue
+Kurve. Doch diese scheinbar lokale Bearbeitung wirft umfassendere Fragen auf.
+Beschreibt das bearbeitete Modell noch dasselbe Alignment? Welche
+Beobachtungen beziehen sich auf das bestehende Gleis und welche Werte drücken
+den vorgeschlagenen Entwurf aus? Welche Regeln gelten in diesem
+Projektzusammenhang? Wer ist berechtigt, die Folge anzunehmen?
+
+Keine einzelne Sicht beantwortet all diese Fragen. GIS kann das Alignment
+zwischen Gelände, Flurstücken, Netzen und Umweltdaten verorten, doch aus der
+Fülle des verfügbaren Kontexts muss das Relevante ausgewählt werden. CAD gibt
+dem Ingenieur genaue Konstruktions- und Bearbeitungsmöglichkeiten, zeigt
+üblicherweise aber nur den für die unmittelbare Aufgabe erforderlichen
+Ausschnitt. BIM- und Austauschmodelle können Objekte und Attribute
+fachübergreifend verbinden, doch Lieferanforderungen bestimmen häufig, was in
+welcher Tiefe repräsentiert wird. Messungen, Berechnungsblätter, Normen,
+Vorgangsakten und erfahrene Ingenieure tragen weitere Teile der Bedeutung.
+
+Diese Fragmentierung ist kein Beleg für ein Versagen der Werkzeuge. Jedes ist
+innerhalb seines Zwecks nützlich. Die Schwierigkeit entsteht zwischen ihren
+Zwecken: Ingenieurwissen ist über Repräsentationen, Dokumente, Abläufe und
+Menschen verteilt, während die Folge einer Alignment-Änderung in einem
+bestimmten Handlungsmoment verstanden werden muss.
+
+\begin{quote}
+Ingenieursoftware kann nahezu jede sichtbare Folge einer Alignment-Änderung
+beschreiben; häufig kann sie jedoch nicht angeben, was gleich bleiben muss,
+während sich diese Beschreibungen ändern.
+\end{quote}
+
+Diese Spannung motiviert die vorliegende Thesis.
+
+\section{Das Problem ist nicht allein der Geometrieaustausch}
+
+Geometrische Interoperabilität ist wichtig. Die erfolgreiche Übertragung von
+Koordinaten oder Kurvenelementen löst das Ingenieurproblem jedoch nicht. Sechs
+Unterscheidungen müssen die Übertragung überstehen.
+
+\begin{description}[style=nextline]
+\item[Identität]
+Das Engineering Object muss über Dateien, Sichten, Koordinatenrealisierungen
+und Änderungen im Arbeitsablauf hinweg unterscheidbar bleiben. Numerische
+Gleichheit allein belegt nicht, dass zwei Beschreibungen dasselbe Objekt
+betreffen; ebenso entscheidet eine geometrische Änderung allein nicht, dass
+aus einem Objekt ein anderes geworden ist.
+
+\item[Konstruktive Absicht]
+Die geordnete longitudinale Konstruktion und ihr Krümmungsverlauf erklären,
+wie das Alignment definiert ist. Abgetastete Punkte oder gerenderte Kurven
+können diese Konstruktion sichtbar machen, besitzen sie aber nicht.
+
+\item[Realität und Beobachtung]
+Das beabsichtigte Alignment, das physisch realisierte Gleis und eine
+Beobachtung dieses Gleises sind miteinander verbunden, aber verschieden. Eine
+Messung ist Evidenz, die unter bestimmten Bedingungen gewonnen wurde; sie ist
+nicht automatisch der physische Zustand oder angenommenes Ingenieurwissen.
+
+\item[Änderung und Folge]
+Eine Krümmungsänderung wirkt sich auf Position, Orientierung,
+Überhöhungszusammenhang, Fahrzeugreaktion, Lichträume, Bauausführung und
+Regelkonformität aus. Die Abhängigkeiten, die diese Folgen übertragen, müssen
+hinreichend ausdrücklich sein, um eine Bewertung zu ermöglichen.
+
+\item[Knowledge Ownership]
+Ein Format, Viewer, Solver oder eine Datenbank kann Ingenieurwissen tragen und
+verwenden, ohne Autorität über dessen Bedeutung zu erwerben. Geltungsbereich,
+Provenienz, Anwendbarkeit und verantwortliches Ownership müssen sichtbar
+bleiben.
+
+\item[Entscheidung]
+Berechnung und Optimierung können Evidenz und Alternativen erzeugen. Sie nehmen
+für sich genommen keine Ingenieuränderung an. Bewertung und
+Entscheidungsautorität müssen getrennt bleiben.
+\end{description}
+
+Das ungelöste Problem lässt sich daher knapp formulieren: Wie kann ein
+Alignment über Repräsentationen und Änderungen hinweg eine kohärente
+ingenieurtechnische Bedeutung bewahren und zugleich das richtige Wissen
+anwendbar machen, wenn ein Ingenieur handelt?
+
+\section{Forschungsfrage und zentrale These}
+
+Die leitende Forschungsfrage lautet:
+
+\begin{quote}
+Wie lassen sich Alignment-spezifische ingenieurtechnische Identität,
+Konstruktion, Zustand, Realität, Beobachtung, Wissen und Bewertung so ordnen,
+dass Änderungen nachvollziehbar bleiben und ihre Folgen über Repräsentationen
+hinweg berechenbar werden?
+\end{quote}
+
+Diese Frage verallgemeinert das ursprüngliche Übergangsproblem. Die erste
+technische Frage lautete, wie Krümmungsfunktionen, Randbedingungen,
+Komponentenlängen und Freiheitsgrade Eisenbahnübergänge beschreiben und lösen
+können, ohne eine Kurvenfamilie für allgemein überlegen zu erklären. Sobald
+diese berechneten Übergänge Bearbeitung, Austausch, Beobachtung, Vergleich und
+verantwortliche Verwendung überstehen mussten, wurde die
+Informationsmodellierungsfrage unvermeidlich.
+
+Die Thesis antwortet mit Alignment-Based Information Modelling (AIM). AIM ist
+wissensbasiert: Die ingenieurtechnische Nutzung hängt von anerkannter Bedeutung
+und Anwendbarkeit ab. AIM ist Alignment-spezifisch: Longitudinale Konstruktion
+und Krümmungsverlauf strukturieren das Objekt. AIM ist
+repräsentationsbewusst: Keine Datei, Sicht oder Koordinatenrealisierung wird
+mit dem Objekt selbst verwechselt. AIM ist implementierungsfähig: Die
+Beziehungen werden zu Zuständen, Operatoren, Nebenbedingungen, Pipelines und
+numerischen Verfahren entwickelt.
+
+\begin{proposition}[Zentrale These]
+Ein Alignment kann über Entwurf, Realisierung, Beobachtung, Bewertung und
+Änderung hinweg kohärent behandelt werden, wenn seine intrinsische konstruktive
+Identität von seinen Repräsentationen getrennt bleibt und durch ausdrückliche
+Zustands- und Operatorbeziehungen mit anwendbarem Ingenieurwissen verbunden
+wird.
+\end{proposition}
+
+Krümmung besitzt in dieser Argumentation eine besondere Rolle. Bei einem
+Alignment gehört der geordnete Krümmungsverlauf zur intrinsischen
+konstruktiven Struktur, während Position und Pose durch metrische
+Interpretation und Integration entstehen. Deshalb führt die Thesis von der
+vertrauten Kurve zu einem krümmungsgetriebenen generativen Modell. Sie
+verneint Geometrie nicht; sie erklärt, woher Geometrie stammt und was
+Geometrie allein nicht besitzen kann.
+
+\section{Beiträge}
+
+Die Arbeit leistet fünf Arten von Beiträgen.
+
+\begin{description}[style=nextline]
+\item[Begrifflicher Beitrag]
+Sie entwickelt eine kohärente, am Alignment ausgerichtete Darstellung von
+Engineering Object Identity, konstruktiver Identität, Repräsentation,
+metrischer und physischer Realisierung, Beobachtung, Ingenieurwissen, Bewertung
+und Entscheidung.
+
+\item[Formaler und methodischer Beitrag]
+Sie entwickelt krümmungsgetriebene Pose- und Zustandsformulierungen,
+ausdrückliche räumliche und Laufzeitoperatoren,
+realisierungsbewusste Abhängigkeiten, die Bewertung von Nebenbedingungen und
+strukturierte Optimierungsformulierungen.
+
+Sie macht außerdem die ursprüngliche Berlinish-Komposition als mathematisches
+Framework ausdrücklich, das Halbwellen-, Klothoiden-, asymmetrische und
+zusammengesetzte Übergangsformen zueinander in Beziehung setzt, ohne diesen
+Forschungsbeitrag zur Kernel-Autorität zu erheben.
+
+\item[Ingenieurtechnischer Beitrag]
+Sie verbindet Alignment-Übergänge, Überhöhung, fahrzeugbezogene Größen,
+Stationierung, Koordinatenbezug, Beobachtungen, Bauauswirkungen und
+Eisenbahnregeln, ohne ihre unterschiedlichen Bedeutungen in einem einzigen
+Geometriemodell zusammenfallen zu lassen.
+
+\item[Implementierungs- und Referenzbeitrag]
+Sie spezifiziert Berechnungspipelines und dünn besetzte oder hybride
+Repräsentationen, die Rekonstruktion, Bewertung und Optimierung unterstützen
+und zugleich die Grenze zwischen kanonischer ingenieurtechnischer Bedeutung
+und abgeleiteten Produkten bewahren.
+
+Innerhalb dieses Beitrags bezeichnet axtranNew die Berechnungslinie vom Lösen
+von Anschluss- und Randbedingungen bis zu editierbaren Alignment-Strukturen.
+Die aktuelle Referenzimplementierung unterstützt registry-basierte
+Übergangsauswertung, dünn besetzte Rekonstruktion, ausgewählte native
+Bearbeitungen, Vergleiche und begrenzte Optimierungsprobleme; ein allgemeiner
+produktionsreifer Optimierer bleibt künftige Arbeit.
+
+\item[Erklärungsbeitrag]
+Sie bietet eine nach Abhängigkeiten geordnete Darstellung, über die ein
+technisch qualifizierter Leser von einer gewöhnlichen Alignment-Änderung zu
+der begrifflichen und rechnerischen Maschinerie gelangt, die zur Bewertung
+ihrer Folgen erforderlich ist.
+\end{description}
+
+Dies sind Grundlagenbeiträge. Die Thesis demonstriert Formulierungen,
+Beziehungen und Implementierungswege; sie beansprucht weder, jedes
+Fachwerkzeug zu ersetzen, noch ein vollständiges
+Mehrkörper-Eisenbahnmodell bereitzustellen oder ingenieurtechnische
+Entscheidungsautorität an Berechnung zu übertragen.
+
+\section{Methodische Ausrichtung}
+
+Die Untersuchung wechselt zwischen begrifflicher Trennung und konstruktiver
+Demonstration. Zunächst fragt sie, um welche Art von Gegenstand es sich jeweils
+handelt---Objekt, Repräsentation, Zustand, Beobachtung, Wissen oder
+Entscheidung---und welche Abhängigkeiten zulässig sind. Anschließend entwickelt
+sie mathematische Modelle und Operatoren, die ausgewählte Abhängigkeiten
+berechenbar machen. Eisenbahnbeispiele, normbezogene Nebenbedingungen,
+Datenrekonstruktion und Optimierung prüfen, ob die Unterscheidungen unter
+ingenieurtechnischem Druck nützlich bleiben.
+
+Die Argumentation schreitet von Beispielen zur Formalisierung fort.
+Gleichungen werden eingeführt, wenn sie eine Abhängigkeit offenlegen oder eine
+Bewertung ermöglichen, nicht als Ersatz für die Ingenieurfrage. Numerische
+Lösungen werden als Kandidaten oder Evidenz innerhalb eines verantworteten
+Prozesses behandelt, nicht als Antworten, die sich selbst autorisieren.
+
+\section{Leseweg durch die Thesis}
+
+Die Teile sind nach Fragen geordnet, die der Leser weitertragen kann.
+
+\begin{enumerate}[leftmargin=*]
+\item \emph{Warum erfordert ein Alignment mehr als eine Kurve?} Der erste Teil
+  schärft das praktische Problem und die AIM-These.
+\item \emph{Was muss getrennt bleiben, bevor Mathematik helfen kann?}
+  Mathematische Grundlagen und Ingenieurbegriffe bestimmen die Grenzen
+  zwischen Identität, Wissen, Repräsentation, Realisierung, Beobachtung und
+  Entscheidung.
+\item \emph{Wie erhält die intrinsische Konstruktion geometrische und
+  betriebliche Bedeutung?} Geometrie, Eisenbahnzustand und dynamischer
+  Eisenbahnzustand leiten Pose, Überhöhung, fahrzeugbezogene Größen und
+  Zulässigkeit aus dem longitudinalen Zustand ab.
+\item \emph{Wie werden Folgen während der Nutzung eines Systems bewertet?}
+  Laufzeit und Bewertung machen die Anwendung von Operatoren und Wissen
+  ausdrücklich.
+\item \emph{Wie bleiben Entwurf, physisches Gleis und Evidenz darüber
+  miteinander verbunden, ohne identisch zu werden?} Realität und Daten
+  behandeln Koordinaten, Messung, Bauausführung und realisierten Zustand.
+\item \emph{Wie lässt sich die Darstellung implementieren und gezielt
+  verändern?} Alignment-Modellierung, System und Pipeline sowie Optimierung
+  entwickeln dünn besetzte Modelle, rechnerische Abhängigkeiten und
+  Lösungsverfahren. Sie zeigen außerdem, wie Berlinish, axtranNew,
+  transitionDB, TransEd, SPOT und alignmentOS unterschiedliche Rollen in der
+  Entwicklungsantwort einnehmen.
+\item \emph{Was besteht die Begegnung mit Regeln, Austauschsystemen und
+  ingenieurtechnischer Nutzung?} Ingenieurwesen und Normen, Anwendungen,
+  Diskussion und Ausblick prüfen die Reichweite des Frameworks und benennen
+  seine Grenzen.
+\end{enumerate}
+
+Die zu Beginn eingeführte Krümmungsänderung wird als Test wiederkehren: Was
+bleibt gleich, was ändert sich, was wird beobachtet, was wird abgeleitet und
+wer darf entscheiden? Der nächste Teil kehrt zunächst zu dieser Änderung
+zurück, bevor eine formale Ontologie erforderlich ist.

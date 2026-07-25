@@ -263,6 +263,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 			closeLanguageMenu();
 			applyI18n(document);
+			window.dispatchEvent(new CustomEvent("ufaim:language-changed", { detail: { language: lang } }));
 			spotView.refresh();
 			setStatus(t("status_ready"));
 			renderLanguageMenu();

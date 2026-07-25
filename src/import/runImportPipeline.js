@@ -27,9 +27,12 @@ import { loadParserModule } from "./parsers/parserRegistry.js";
 import { validateParserModule } from "./parsers/validateParserModule.js";
 import { validateLandFAT } from "@kimport/landfat/validateLandFAT.js";
 import { buildImportResultFromParsed } from "./build/buildImportResultFromParsed.js";
+import { applyImportTruthfulnessEligibility } from "./evidence/applyImportTruthfulnessEligibility.js";
+import { assessGndReferenceEvidence } from "./evidence/assessGndReferenceEvidence.js";
 
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
+	const trace = context.trace === true || globalThis.__ufAIM_importTrace === true;
 
 	try {
 		const sniff = await sniffImportFile(file, { log, ...context });
@@ -60,7 +63,7 @@ export async function runImportPipeline(file, context = {}) {
 
 		log(`parse ok: ${file?.name ?? "(unknown file)"}`);
 
-		console.log("[runImportPipeline] parsed shape", {
+		if (trace) console.debug("[runImportPipeline] parsed shape", {
 			fileName: file?.name ?? null,
 			isObject: isObject(parsed),
 			type: parsed?.type ?? null,
@@ -73,7 +76,7 @@ export async function runImportPipeline(file, context = {}) {
 		if (parsed?.type === "landFAT") {
 			const fatValidation = validateLandFAT(parsed);
 
-			console.log("[runImportPipeline] fatValidation", fatValidation);
+			if (trace) console.debug("[runImportPipeline] fatValidation", fatValidation);
 
 			if (!fatValidation?.ok) {
 				console.warn("[runImportPipeline] validateLandFAT FAILED", {
@@ -122,6 +125,14 @@ export async function runImportPipeline(file, context = {}) {
 				? parsed.meta.diagnostics
 				: Array.isArray(parsed?.extras?.diagnostics) ? parsed.extras.diagnostics : [],
 		};
+		const sourceEnvelope = parsed?.meta?.sourceEnvelope ?? null;
+		if (sourceEnvelope) {
+			result.sourceEnvelope = sourceEnvelope;
+		}
+		const referenceEvidence = assessGndReferenceEvidence({ result, parsed, sourceEnvelope });
+		result.meta.referenceEvidence = referenceEvidence;
+		applyImportTruthfulnessEligibility(result, referenceEvidence);
+		if (sourceEnvelope) result.meta.gndSource = summarizeGndSource(sourceEnvelope, result);
 
 		for (const diagnostic of result?.meta?.diagnostics ?? []) {
 			log(
@@ -131,7 +142,7 @@ export async function runImportPipeline(file, context = {}) {
 			);
 		}
 
-		console.log("[runImportPipeline] import result", {
+		if (trace) console.debug("[runImportPipeline] import result", {
 			fileName: file?.name ?? null,
 			status: result?.status ?? null,
 			reason: result?.reason ?? null,
@@ -151,11 +162,11 @@ export async function runImportPipeline(file, context = {}) {
 
 		return result;
 	} catch (err) {
-		console.error("[runImportPipeline] CATCH", {
+		const sourceEnvelope = err?.sourceEnvelope ?? null;
+		console.warn("[runImportPipeline] rejected", {
 			fileName: file?.name ?? null,
+			code: err?.code ?? "import-failed",
 			message: err?.message ?? String(err),
-			stack: err?.stack ?? null,
-			err,
 		});
 
 		log(
@@ -167,7 +178,11 @@ export async function runImportPipeline(file, context = {}) {
 			ok: false,
 			status: "invalid",
 			reason: err?.code ?? "import-failed",
-			meta: null,
+			meta: sourceEnvelope ? {
+				gndSource: summarizeGndSource(sourceEnvelope, { ok: false, items: [] }),
+				diagnostics: err?.diagnostics ?? sourceEnvelope.diagnostics ?? [],
+			} : null,
+			sourceEnvelope,
 			errors: [String(err?.message ?? err)],
 			warnings: [],
 			items: [],
@@ -175,6 +190,23 @@ export async function runImportPipeline(file, context = {}) {
 			relationCandidates: [],
 		};
 	}
+}
+
+function summarizeGndSource(envelope, result) {
+	const core = (envelope.inventory ?? []).filter((table) => table.interpreted).map((table) => table.name);
+	const additional = (envelope.inventory ?? []).filter((table) => !table.interpreted).map((table) => table.name);
+	return {
+		originalFile: envelope.source.fileName,
+		sha256: envelope.source.sha256,
+		container: envelope.source.container,
+		format: envelope.source.format,
+		extractor: envelope.extractor,
+		coreTables: core,
+		additionalTables: additional,
+		warnings: (envelope.diagnostics ?? []).map(({ code, table, field, rowOrdinal }) => ({ code, table, field, rowOrdinal })),
+		retainedEvidenceCount: (envelope.tables ?? []).reduce((sum, table) => sum + table.rows.length, 0),
+		status: result?.items?.some((item) => item?.status?.promotable) ? "constructive" : result?.ok === false ? "rejected" : "unresolved",
+	};
 }
 
 function isObject(x) {

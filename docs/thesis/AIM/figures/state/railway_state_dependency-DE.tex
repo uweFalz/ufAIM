@@ -1,0 +1,20 @@
+\begin{tikzpicture}[
+  node distance=5mm and 5mm,
+  box/.style={draw,rounded corners,align=center,minimum height=8mm,text width=25mm,font=\small},
+  arrow/.style={->,thick}
+]
+\node[box] (id) {identifiziertes\\Alignment};
+\node[box,right=of id] (law) {\(s,\ \kappa(s)\)\\intrinsisches Gesetz};
+\node[box,right=of law] (p2) {Anfangspose\\+\ pose2};
+\node[box,below=of p2] (frame) {bewegtes Frame\\+ Höhe + Überhöhung};
+\node[box,left=of frame] (p3) {qualifizierter\\pose3-Zustand};
+\node[box,left=of p3] (dyn) {Tempo + Modell\\abgeleitete Antwort};
+\node[box,below=of dyn] (eval) {Zweck + Regel\\Bewertung};
+\draw[arrow] (id)--(law);
+\draw[arrow] (law)--(p2);
+\draw[arrow] (p2)--(frame);
+\draw[arrow] (frame)--(p3);
+\draw[arrow] (p3)--(dyn);
+\draw[arrow] (dyn)--(eval);
+\node[align=center,font=\scriptsize,below=2mm of frame] {Realisierung, Konvention, Provenienz, Gültigkeit};
+\end{tikzpicture}

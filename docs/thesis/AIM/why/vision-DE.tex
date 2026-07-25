@@ -1,0 +1,164 @@
+% Deutsche Parallelfassung zu why/vision.tex
+
+\chapter{Die AIM-These}
+
+\section{Von der Folge zur Ingenieurumgebung}
+
+Die vorangegangenen Kapitel haben keinen Mangel an Repräsentationen
+offengelegt. Sie haben einen Mangel an Kontinuität zwischen ihnen sichtbar
+gemacht. Die Krümmungsänderung kann gezeichnet, verortet, ausgetauscht,
+gemessen, geprüft und erörtert werden; jede Operation sieht jedoch einen
+anderen Teil ihrer Bedeutung. AIM antwortet, indem es eine Ingenieurumgebung
+um das Alignment und die Abhängigkeiten organisiert, durch die eine Handlung
+Folgen erhält.
+
+In dieser Umgebung kann der Ingenieur eine zusammenhängende Folge von Fragen
+stellen: Welches Alignment wird geändert? Welches konstruktive Gesetz ändert
+sich? Welche Zustände folgen daraus? Welche Qualifikatoren und Beobachtungen
+sind relevant? Welches Wissen und welche Nebenbedingungen sind anwendbar?
+Welche Evidenz stützt Annahme oder Ablehnung? Das System beantwortet nicht alle
+diese Fragen auf dieselbe Weise. Es bewahrt ihre Beziehungen, damit jedes
+verantwortliche Werkzeug oder jede verantwortliche Person die jeweils
+angemessene Frage beantworten kann.
+
+\begin{proposition}[AIM-These]
+Alignment-Based Information Modelling ist eine Alignment-spezifische
+Ingenieurumgebung, in der dauerhafte Objektidentität, konstruktive Definition,
+Realisierung, Repräsentation, Beobachtung, anwendbares Wissen, Bewertung und
+Entscheidung im Handlungsmoment getrennt, aber ausdrücklich aufeinander bezogen
+bleiben.
+\end{proposition}
+
+\section{Von der Krümmung zur Folge}
+
+Die fortlaufende Änderung veranschaulicht die erforderliche Kette. Der
+geordnete Krümmungsverlauf gehört zur intrinsischen Konstruktion des Alignments.
+Unter einer metrischen Interpretation erzeugt er die Lagegeometrie; mit
+weiterem Zustand und weiteren Qualifikatoren unterstützt er räumliche,
+dynamische und regelbasierte Bewertung. Unterschiedliche Repräsentationen
+legen unterschiedliche Teile dieser Kette offen. Keine besitzt die gesamte
+Kette.
+
+\begin{figure}[H]
+\centering
+\input{figures/overview/curvature_consequence_chain-DE}
+\caption{Eine Krümmungsänderung, mehrere notwendige Interpretationen. Das
+Krümmungsband erzeugt Lagegeometrie; getrennte Anwendbarkeitsqualifikatoren
+beziehen diese Geometrie auf Realität und Regeln; zweckgebundene
+Repräsentationen legen ausgewählte Informationen offen; Bewertungen zeigen
+Folgen. Die Pfeile drücken Abhängigkeit aus, nicht Ownership oder automatische
+Entscheidungsautorität.}
+\label{fig:curvature-consequence-chain}
+\end{figure}
+
+Abbildung~\ref{fig:curvature-consequence-chain} ist bewusst keine
+Softwarepipeline, sondern eine Argumentationsabbildung. Von links nach rechts
+gelesen verfolgt sie die Folge einer Änderung; von rechts nach links gelesen
+fragt sie, welche Provenienz und Konstruktion zur Begründung eines angezeigten
+Ergebnisses erforderlich sind. Eine GIS-Sicht kann räumliche Qualifikationen
+liefern, eine CAD-Sicht genaue Geometrie offenlegen, eine BIM-Sicht
+Austauschobjekte tragen und eine Beobachtung über das Gleis berichten.
+Vergleichbar werden ihre Aussagen erst, wenn ihre Beziehung zu demselben
+Engineering Object und zum maßgeblichen Zustand bekannt ist.
+
+Für den ebenen Bogenlängenparameter \(s\) ist die erste konstruktive
+Abhängigkeit kompakt:
+\[
+  \theta'(s)=\kappa(s),
+  \qquad
+  \gamma'(s)=\bigl(\cos\theta(s),\sin\theta(s)\bigr).
+\]
+Das Krümmungsgesetz bestimmt die Entwicklung des Richtungswinkels, und der
+Richtungswinkel bestimmt den ebenen Pfad. Literatur zu
+Eisenbahn-Übergangsbögen und Entwurfsnormen verbinden denselben
+Krümmungsverlauf zusammen mit Überhöhung und Geschwindigkeit mit
+Beschleunigung, Komfort und Zulässigkeit, nicht allein mit sichtbarer Form
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment,EN13803_2017,BrustadDalmo2020Review}.
+
+\section{Wissen im Handlungsmoment}
+
+Wissen anwendbar zu machen bedeutet nicht, jede Regel in jedes Modell zu
+kopieren. Es bedeutet, dass eine Änderung auf Wissen bezogen werden kann,
+dessen Geltungsbereich, Provenienz, Anwendbarkeit und Autorität ausdrücklich
+sind. Wenn sich das Krümmungsband ändert, kann die Umgebung betroffene Zustände
+bestimmen und die relevanten Bewertungen aufrufen. Sie kann zeigen, welche
+Beobachtung einen Vergleich stützt und welche Nebenbedingung verletzt ist. Sie
+kann bewahren, warum das Ergebnis hier anwendbar ist.
+
+Dies verlangt mehr, als Attribute an eine Kurve anzuhängen. Attribute können
+Werte speichern; Anwendbarkeit erfordert Beziehungen zwischen Objekt, Zustand,
+Qualifikatoren, Wissen und Operation. Wegen dieser Beziehungen sind formale
+Grundlagen erforderlich.
+
+\section{Verantwortlichkeiten, die nicht zusammenfallen}
+
+AIM macht weder ein Modell noch ein Programm zu einer universellen Autorität.
+
+\begin{description}[style=nextline]
+\item[Repräsentationen]
+GIS, CAD, BIM, Tabellen, Diagramme und Austauschdateien wählen Informationen
+für einen Zweck aus. Sie kommunizieren und unterstützen Handlungen, erzeugen
+aber nicht allein dadurch ingenieurtechnische Identität oder Autorität, dass
+sie einen Wert speichern.
+
+\item[Modelle und Operatoren]
+Konstruktive und Zustandsmodelle machen Abhängigkeiten ausdrücklich.
+Operatoren leiten Zustände unter benannten Annahmen ab, transformieren,
+vergleichen und bewerten sie.
+
+\item[Berechnung]
+Numerische Verfahren können Zustände rekonstruieren, Folgen fortpflanzen,
+Nebenbedingungen prüfen und Lösungskandidaten erzeugen. Das Ergebnis eines
+Solvers ist Evidenz, nicht Annahme.
+
+\item[Ingenieure und verantwortliche Autoritäten]
+Menschen bestimmen Anwendbarkeit, interpretieren Evidenz, verantworten
+Ingenieurwissen und entscheiden innerhalb ihrer Autorität, ob eine
+vorgeschlagene Änderung angenommen wird.
+\end{description}
+
+Die Referenzanwendung ist ein Realisierungshorizont für diese Trennung. Sie
+kann ein Krümmungsband bearbeitbar machen, eine geometrische Sicht ableiten,
+Qualifikationen zuordnen und Bewertungsergebnisse in einer Interaktion
+sichtbar machen. Ihr Wert für die Thesis liegt nicht in einer
+Produktdemonstration, sondern in einem Test: Können die Begriffe getrennt
+bleiben, wenn ein Ingenieur tatsächlich etwas ändert?
+
+\section{Warum Alignment-spezifisch?}
+
+Allgemeinheit ist erst nützlich, wenn die bestimmende Abhängigkeit sichtbar
+ist. Eisenbahnlage, Richtung, Überhöhung, fahrzeugbezogene Größen,
+Stationierung, benachbarte Objekte und viele Ingenieurregeln werden entlang
+oder relativ zu einem Alignment interpretiert. Krümmungsverlauf und geordnete
+longitudinale Konstruktion bilden daher ein domänenspezifisches Rückgrat, das
+ein allgemeiner Asset-Container oder ein raumbezogenes Feature allein nicht
+bereitstellt.
+
+Alignment-spezifisch bedeutet nicht Alignment-exklusiv. Ingenieurbauwerke,
+Signale, Gelände, Flurstücke, Fahrzeuge und Projektorganisationen bleiben
+Engineering Objects mit eigener Identität und eigenem Wissen. AIM beschreibt,
+wie sie auf ein Alignment bezogen werden können, ohne in ihm aufzugehen.
+
+\section{Die Schwelle zu den Grundlagen}
+
+Die These erzeugt nun eine formale Verpflichtung. Wenn Identität einen Wechsel
+der Repräsentation überstehen muss, benötigen Identität und Repräsentation
+unterschiedliche formale Rollen. Wenn eine Beobachtung Evidenz statt Realität
+ist, benötigen Beobachtung und physischer Zustand unterschiedliche
+Beziehungen. Wenn Krümmung Geometrie erzeugt, benötigen das konstruktive Gesetz
+und seine metrische Realisierung einen ausdrücklichen Operator. Wenn Bewertung
+informiert, aber nicht entscheidet, dürfen Kandidat, Ergebnis und Entscheidung
+nicht dasselbe undifferenzierte Statusfeld teilen.
+
+Der nächste Teil entwickelt die minimale begriffliche und mathematische
+Sprache, die erforderlich ist, um diese Unterscheidungen zu bewahren und
+ausgewählte Abhängigkeiten berechenbar zu machen. Er beginnt die Argumentation
+nicht neu. Er gibt ihr eine Form, die geprüft werden kann.
+
+\begin{summary}
+AIM verbindet eine Alignment-Änderung mit ihren Folgen, indem es ausdrückliche
+Beziehungen zwischen Konstruktion, Zustand, Qualifikatoren, Evidenz, Wissen,
+Bewertung und Autorität bewahrt. Die folgende formale Arbeit ist notwendig,
+weil diese Beziehungen nicht zuverlässig allein aus Geometrie oder
+Datencontainern zurückgewonnen werden können.
+\end{summary}

@@ -1,0 +1,109 @@
+% analysis/part_intro-DE.tex
+\chapter*{Analyse}
+\phantomsection
+\addcontentsline{toc}{chapter}{Analyse}
+
+Dieser Teil legt dar, wie AIM als kohärentes Verarbeitungssystem und nicht als
+unverbundene Sammlung von Modellen arbeitet.
+
+\section*{Was wissen wir bereits?}
+Die vorangehenden Teile haben die begrifflichen, geometrischen, operativen,
+realisierungsbewussten und modellierungstechnischen Grundlagen von AIM
+geschaffen.
+
+Eisenbahn-Alignments können nun durch dünn besetzte semantische Modelle
+dargestellt, durch Laufzeitdienste rekonstruiert, durch Zustandsoperatoren
+interpretiert und durch Realisierungsbegriffe mit der physischen Realität in
+Beziehung gesetzt werden.
+
+Die einzelnen Bausteine des Rahmens sind damit vorhanden. Eine Sammlung von
+Komponenten bildet jedoch noch kein vollständiges System.
+
+Das System besitzt außerdem eine Entwicklungslinie, die erklärt, weshalb diese
+Komponenten existieren. Berlinish begann als ursprüngliche Forschungsgrammatik
+für Übergangsfunktionen. axtranNew sollte diese Grammatik in lösbare
+Alignment-Berechnungen überführen. transitionDB und TransEd behandeln die
+Bewahrung und Untersuchung des wiederverwendbaren Funktionswissens. SPOT und
+alignmentOS behandeln konkrete Objektidentität, Zustand, Bearbeitung und
+operative Nutzung. Der Knowledge Kernel stellt die stabile Terminologie und
+die Verantwortungsgrenzen bereit, welche die ursprüngliche Berechnungsarbeit
+allein nicht liefern konnte. Research stellt Aussagen infrage und erweitert
+sie; die Thesis erklärt, verbindet und überträgt sie.
+
+Diese Verantwortungen bilden eine Ausführungs- und Wissenskette. Sie dürfen
+nicht als Behauptung gelesen werden, jede benannte Komponente sei ein
+kanonischer Kernel-Begriff oder eine vollständige Implementierung.
+
+\section*{Was fehlt noch?}
+Praktische Eisenbahninformationsmodellierung erfordert mehr als isolierte
+Modelle und Operatoren. Daten müssen Verarbeitungsketten durchlaufen, Zustände
+transformiert werden, Dienste zusammenwirken, Fehler erkannt und Ergebnisse
+aus Zwischendarstellungen erzeugt werden.
+
+Es fehlt daher die Verarbeitungsarchitektur, die einzelne Begriffe zu einem
+kohärenten operativen Rahmen verbindet. AIM ist nicht nur als Sammlung von
+Modellen, sondern als Pipeline zusammenwirkender Transformationen zu verstehen.
+
+\section*{Was folgt?}
+Dieser Teil führt die Systemsicht von AIM ein. Der Schwerpunkt verschiebt sich
+von einzelnen Begriffen zu ihrem Zusammenwirken.
+
+Die folgenden Kapitel untersuchen:
+\begin{itemize}
+\item Transformationspipelines,
+\item Laufzeitdienste,
+\item Operatorketten,
+\item Systeminteraktionen,
+\item Fehlermodi und
+\item architektonische Entwurfsprinzipien.
+\end{itemize}
+
+Ziel ist zu erklären, wie Eisenbahninformation in AIM von Erfassung über
+Bewertung und Realisierung bis zur Optimierung fließt. Diese Sicht zeigt AIM
+als operatorbasiertes Eisenbahninformationssystem und nicht als bloße Sammlung
+geometrischer Verfahren.
+
+\section*{Bezug zur AIM-Roadmap}
+In der AIM-Roadmap entspricht dieser Teil dem Übergang von Alignment-Modellen
+zu Verarbeitungspipelines und Systemdiensten.
+
+Die folgende Skizze beantwortet die Leitfrage: Wie schreitet das Argument von
+der Modellstruktur zum operativen Systemverhalten fort?
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.4cm,box/.style={draw,rounded corners,minimum width=5.0cm,minimum height=0.9cm,align=center}]
+\node[box] (model) {Alignment-Modell};
+\node[box, below=of model] (pipeline) {Pipelines und Dienste};
+\node[box, below=of pipeline] (system) {Systemsicht};
+\draw[->,thick] (model)--(pipeline); \draw[->,thick] (pipeline)--(system);
+\end{tikzpicture}
+\end{center}
+
+Die Abfolge
+\[
+\text{Alignment-Modell}\rightarrow\text{Pipelines und Dienste}
+\rightarrow\text{Systemsicht}
+\]
+markiert den Übergang von statischen Eisenbahndarstellungen zu operativen
+Verarbeitungsarchitekturen. Diese Systemsicht bereitet Optimierung,
+Engineering-Abläufe und praktische Bereitstellung vor.
+
+\begin{principle}[Pipeline-Prinzip]
+\label{princ:pipeline-principle}
+In AIM wird Eisenbahninformation durch ausdrückliche Operatorpipelines
+verarbeitet, in denen Zustände, Modelle, Realisierungen und Bewertungen durch
+wohldefinierte Transformationen verbunden sind.
+\end{principle}
+
+\begin{summary}
+Modellierung erklärt, wie Eisenbahninformation dargestellt wird.
+
+Analyse erklärt, wie Eisenbahninformation verarbeitet wird.
+
+Dieser Teil begründet damit die Systemarchitektur, die Modelle, Operatoren,
+Dienste und Transformationen zu einem kohärenten AIM-Rahmen verbindet.
+\end{summary}
+
+Diese Systemsicht bereitet den Teil Optimierung vor, in dem
+Pipeline-Ergebnisse für strukturierte Verbesserung und
+Entscheidungsunterstützung verwendet werden.

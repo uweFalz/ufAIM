@@ -11,8 +11,14 @@ export function createEmptyAlignmentData({
 		name,
 
 		source: {
-			kind: "editor",
+			kind: "native",
 			native: true,
+		},
+
+		placement: {
+			mode: "local-cartesian",
+			engineeringCrsId: "engineering-nullCRS",
+			geographicOrigin: null,
 		},
 
 		editModel: {

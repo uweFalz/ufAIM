@@ -1,160 +1,128 @@
 % foundations/information_modelling.tex
 
 \chapter{Information Modelling}
-
 \label{chap:information-modelling}
 
-% ============================================================
-\section{Information Modelling}
-% ============================================================
+\section{One Alignment, Several Accounts}
 
-Engineering projects rely on information models to describe, organize,
-exchange, and interpret engineering knowledge.
+The edited alignment now appears in several places. A GIS view locates it among
+terrain and networks. A CAD model exposes exact construction geometry. A BIM or
+exchange model connects it with project objects and delivery workflows. A
+survey records observations of the physical track. A calculation evaluates a
+consequence, and a decision record states what an accountable engineer accepts.
 
-An information model is therefore not merely a data structure. It
-establishes the conceptual framework within which engineering knowledge
-is represented, related, and interpreted.
+Simply combining these records does not produce a coherent information model.
+The same coordinate may express a design target, a physically realized state,
+or a measured estimate. The same identifier may be copied between files without
+proving that the records refer to the same engineering object. A rule may be
+stored beside a model without being applicable in the current context.
 
-Different engineering disciplines organize information around different
-primary concepts. Buildings, manufacturing systems, transportation
-networks, and operational systems each possess characteristic structures
-that naturally determine how engineering information is organized.
+Information modelling begins here: not with a larger container, but with an
+account of what the information is about, what role each record plays, and which
+relations justify its use. Interoperability research similarly distinguishes
+the exchange of data from the semantic, organizational, and human conditions
+needed for collaboration \cite{Turk2020Interoperability}.
 
-Alignment-Based Information Modelling (AIM) follows this principle. Rather
-than adopting physical assets as its primary organizing concept, AIM
-places the railway alignment at the centre of the engineering model.
+\section{What Representations Contribute}
 
-This perspective reflects the observation that railway systems are
-fundamentally governed by their intrinsic geometry. Assets, operational
-states, engineering observations, and realization processes are
-understood relative to the alignment rather than independently of it.
+Representations are indispensable because engineering work requires selection.
+Geospatial standards organize access, processing, visualization, and discovery
+of spatial information \cite{OGCStandardsProgram2025}. CAD geometry supports
+precise construction and technical communication
+\cite{KimKumarSnider2015Geometry}. IFC provides standardized descriptions for
+exchanging built-asset information among applications and participants, with
+model views tailored to recognized workflows
+\cite{BuildingSMARTIFC4x3Scope}.
 
-% ============================================================
-\section{Information Modelling Paradigms}
-% ============================================================
+Each representation answers a purpose. That strength also marks its boundary.
+No encoding, model view, drawing, or database row establishes by itself:
 
-\begin{definition}[Process Information Modelling]
-\label{def:process-information-modelling}
+\begin{itemize}
+\item whether two records concern the same durable engineering object;
+\item whether a value is intended, realized, or observed;
+\item which constructive law produced a displayed curve;
+\item which knowledge is applicable and who owns its meaning;
+\item whether an evaluation result has been accepted as a decision.
+\end{itemize}
 
-Process Information Modelling (PIM) denotes the general class of
-engineering information modelling approaches that organize engineering
-knowledge around engineering processes, state evolution, operational
-behaviour, and lifecycle relationships rather than exclusively around
-physical assets.
+These are not missing attributes with universally obvious values. They are
+engineering distinctions and relations that an information model must preserve.
 
-Within this thesis, PIM is used as a conceptual umbrella rather than as
-an external standard.
+\section{Why the Alignment Organizes the Relations}
 
-\end{definition}
+Every information model chooses an organizing reference, explicitly or
+implicitly. In railway engineering, many questions are posed along or relative
+to the alignment: location, direction, curvature, cant, speed, vehicle-related
+quantities, stationing, clearances, and the placement of adjacent objects. The
+alignment supplies an intrinsic longitudinal order and a constructive curvature
+evolution from which selected states can be derived
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
 
-\begin{definition}[Building Information Modelling]
-\label{def:building-information-modelling}
-
-Building Information Modelling (BIM) denotes an asset-oriented
-information modelling paradigm in which physical objects, their
-properties, relationships, and lifecycle information form the primary
-organizing structure.
-
-\end{definition}
+AIM therefore places the alignment at the centre of these relations. This does
+not reduce a railway to one object. Bridges, tunnels, switches, signals,
+stations, terrain, vehicles, observations, and decisions retain their own roles.
+Alignment-centred means that information whose engineering meaning depends on
+longitudinal construction or track-relative state has an explicit reference
+through which that dependence can be interpreted.
 
 \begin{definition}[Alignment-Based Information Modelling]
-\label{def:alignment-based-information-modelling}
-
-Alignment-Based Information Modelling (AIM) denotes an alignment-oriented
-information modelling paradigm in which the railway alignment provides
-the primary engineering reference for organizing geometric, spatial,
-operational, and engineering information.
-
+Alignment-Based Information Modelling (AIM) is an alignment-oriented
+information-modelling approach in which alignment identity and intrinsic
+construction provide the reference for relating geometric, spatial,
+operational, observational, and evaluative information without identifying the
+engineering object with any one representation.
 \end{definition}
 
-PIM, BIM, and AIM are therefore not competing concepts. They represent
-different modelling paradigms emphasizing different organizing
-principles appropriate for different engineering domains.
+\section{Neighbouring Modelling Paradigms}
 
-% ============================================================
-\section{Why Alignment-Based Information Modelling?}
-% ============================================================
+BIM and AIM need not compete. BIM standards provide object-oriented structures
+and exchange mechanisms for the built environment. AIM supplies the
+alignment-specific constructive and state dependencies needed to interpret
+alignment information. A BIM workflow may carry an AIM-derived representation;
+it does not thereby become the owner of alignment identity or engineering
+knowledge.
 
-Every information model implicitly answers a fundamental engineering
-question:
+This thesis also uses \emph{Process Information Modelling} (PIM) as a proposed
+umbrella for approaches organized around engineering processes, state evolution,
+operational behaviour, and lifecycle relations rather than exclusively around
+physical assets. PIM is a thesis-level framing, not an asserted external
+standard and not a prerequisite for the AIM argument.
 
-\begin{quote}
-What is the primary concept around which engineering knowledge is
-organized?
-\end{quote}
+\section{The Distinctions the Model Must Preserve}
 
-For buildings, the natural answer is the physical asset. Consequently,
-BIM organizes engineering knowledge around objects, assemblies,
-components, and their relationships.
+The running example now requires seven answers:
 
-Railway systems exhibit a fundamentally different dependency structure.
-Vehicle motion, operational behaviour, cant, speed, visibility,
-admissible states, and many engineering constraints are determined
-primarily by the geometry of the alignment rather than by individual
-assets.
+\begin{description}[style=nextline]
+\item[Object identity]
+What makes the edited and represented records concern one alignment?
+\item[Constructive definition]
+Which ordered curvature law defines the alignment independently of sampled
+coordinates?
+\item[Realization]
+How does that intrinsic definition acquire metric meaning, and how does intended
+construction relate to physical infrastructure?
+\item[Representation]
+Which information has been selected for this GIS, CAD, BIM, numerical, or visual
+purpose?
+\item[Observation]
+Which source-grounded evidence reports something about the alignment or its
+state, under which conditions and uncertainty?
+\item[Knowledge]
+Which information may be relied upon within an explicit scope, provenance,
+applicability, and authority?
+\item[Evaluation and decision]
+What consequence was computed, and what accountable act accepts, rejects, or
+selects an alternative?
+\end{description}
 
-The alignment therefore represents more than another engineering object.
-It establishes the geometric framework within which railway engineering
-takes place.
-
-For this reason, AIM adopts the alignment as the primary organizing
-concept of the engineering information model.
-
-\begin{definition}[Primary modelling entity]
-\label{def:primary-modelling-entity}
-
-Within Alignment-Based Information Modelling, the railway alignment is the
-primary modelling entity.
-
-Engineering information is interpreted relative to the alignment, its
-intrinsic geometry, its reference systems, and the engineering states
-derived from them.
-
-\end{definition}
-
-This decision does not diminish the importance of engineering assets.
-Bridges, tunnels, switches, signals, stations, and other infrastructure
-objects remain essential engineering objects.
-
-Their interpretation, however, is no longer independent of the
-alignment. They are understood through their relationship to the
-alignment and the engineering context established by it.
-
-% ============================================================
-\section{Role within this Thesis}
-% ============================================================
-
-The preceding chapters established the engineering motivation and
-introduced the conceptual vocabulary provided by the Knowledge Kernel.
-
-The purpose of the present chapter is to position Alignment-Based Information
-Modelling as the engineering framework within which these concepts are
-applied.
-
-The mathematical foundations developed in the following chapters do not
-replace these engineering concepts. They provide the formal language
-required to describe them rigorously.
-
-Subsequent parts of the thesis progressively develop intrinsic geometry,
-metric realization, spatial interpretation, and engineering realization
-upon this conceptual foundation.
-
-% ============================================================
-\section{Summary}
-% ============================================================
+The list is not introduced as an ontology to memorize. Each distinction repairs
+a failure already visible in the curvature edit. The next chapter makes their
+roles explicit before later chapters formalize the relations that can safely be
+computed.
 
 \begin{summary}
-
-Engineering information models differ primarily in the concepts around
-which engineering knowledge is organized.
-
-BIM adopts physical assets as its primary organizing principle.
-
-AIM adopts the railway alignment as the primary organizing principle.
-
-This alignment-centred perspective provides the conceptual foundation
-for the mathematical development that follows and, ultimately, for the
-engineering realization of railway systems presented throughout the
-remainder of the thesis.
-
+Representations make engineering information usable for particular purposes,
+but exchange alone does not establish identity, state, applicability, or
+authority. AIM organizes the missing relations around the alignment so that one
+engineering action can be traced across its different accounts.
 \end{summary}

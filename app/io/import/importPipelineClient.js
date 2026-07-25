@@ -22,13 +22,18 @@
 // ImportPipelineClient runs/classifies/summarizes import results.
 
 import { runImportPipeline } from "@src/import/runImportPipeline.js";
+import { createImportResultEvidencePublication } from "@src/import/evidence/importResultEvidence.js";
 
 // ------------------------------------------------------------
 // pipeline
 // ------------------------------------------------------------
 
-export async function importOneFile(file, { log } = {}) {
-	return await runImportPipeline(file, { log });
+export async function importOneFile(file, { log, onImportPhase } = {}) {
+	return await runImportPipeline(file, { log, onImportPhase });
+}
+
+export function makeImportResultEvidencePublication(result, { fileName, parserId, completedAt } = {}) {
+	return createImportResultEvidencePublication({ result, fileName, parserId, completedAt });
 }
 
 // ------------------------------------------------------------
@@ -60,7 +65,7 @@ export function getPromotableAlignmentItems(items = []) {
 // preview
 // ------------------------------------------------------------
 
-export function makePreviewCandidate(item) {
+export function makePreviewCandidate(item, { source = null } = {}) {
 	const kernel = item?.derived?.sparseAlignment ?? null;
 	if (!kernel) return null;
 
@@ -75,14 +80,15 @@ export function makePreviewCandidate(item) {
 
 	return {
 		id: item.id ?? item?.payload?.id ?? item?.payload?.name ?? "preview_alignment",
+		evidenceId: item.evidenceId ?? null,
 		kind: item.kind ?? "alignment",
 		name,
 		kernel,
 		crsId,
 
 		source: {
-			fileName: item?.source?.fileName ?? null,
-			parserId: item?.source?.parserId ?? null,
+			fileName: source?.fileName ?? item?.source?.fileName ?? null,
+			parserId: source?.parserId ?? item?.source?.parserId ?? null,
 			objectName: item?.source?.objectName ?? null,
 		},
 	};

@@ -1,0 +1,138 @@
+\chapter{Von zeitlicher Exposition zur modellierten Antwort}
+\label{chap:runtime-dynamics}
+
+Das Durchfahrtsgesetz exponiert das bewegte System nun gegenüber
+\(\kappa(s(t))\), \(u(s(t))\), dem Profil und dem qualifizierten Gleis-Frame.
+Dieses Kapitel markiert die Grenze zwischen Größen, die aus dieser Kinematik
+folgen, und Größen, die ein Fahrzeug--Gleis-Antwortmodell benötigen.
+
+\begin{principle}[Laufzeitdynamikprinzip]
+\label{princ:runtime-dynamics}
+Laufzeitdynamik konsumiert einen qualifizierten Eisenbahnzustand und ein
+Durchfahrtsgesetz. Jede behauptete Antwort muss zusätzlich das erzeugende
+Modell identifizieren.
+\end{principle}
+
+\section{Ein Ergebnis, keine zweite Zustandsdefinition}
+
+\begin{definition}[Dynamischer Laufzeitzustand]
+\label{def:runtime-dynamic-state}
+Für den engen Zweck dieses Teils ist ein dynamischer Laufzeitzustand die
+Ausgabe eines deklarierten Antwortmodells, ausgewertet für qualifizierten
+Eisenbahnzustand, Durchfahrt und Modelleingaben.
+\end{definition}
+
+Diese Definition klassifiziert eine Ausgabe; sie definiert weder pose3,
+physischen Zustand noch Beobachtung neu. Eine vorhergesagte
+Wagenkastenbeschleunigung, eine beobachtete Radlast und ein reduzierter
+kinematischer Indikator sind verschiedene Ergebnisarten, auch wenn sie sich
+auf dasselbe \(s(t)\) beziehen.
+
+\begin{definition}[Laufzeitdynamikoperator]
+\label{def:runtime-dynamics-operator}
+\[
+\mathcal D_M:
+\bigl(\mathcal S_{\mathrm{rail}}(s(t)),s(t),Q_M\bigr)
+\longmapsto x_M(t)
+\]
+bezeichne die Auswertung durch ein explizit identifiziertes Antwortmodell
+\(M\) mit qualifizierten Modelleingaben \(Q_M\).
+\end{definition}
+
+Der Modellindex ist wesentlich. Es gibt kein universelles \(\mathcal D\), das
+pose3 stillschweigend in validiertes Fahrzeugverhalten umwandelt.
+
+\begin{definition}[Laufzeitzustandsentwicklung]
+\label{def:runtime-dynamics-state-evolution}
+Laufzeitzustandsentwicklung ist die zeit- oder raumindizierte
+Ausgabetrajektorie \(x_M\), die das gewählte Modell über dem anwendbaren
+Durchfahrtsintervall erzeugt.
+\end{definition}
+
+\section{Reduzierte Kinematik}
+
+Unter dem rechtshändigen Gleis-Frame aus Teil V, seinem angegebenen
+Überhöhungsvorzeichen, starrer punktförmiger Folgebewegung und unter
+Vernachlässigung von Federung, Kontakt, Gleisnachgiebigkeit, Unregelmäßigkeiten,
+Wind und weiteren Effekten ist
+\[
+a_\kappa(t)=v(t)^2\kappa(s(t))
+\]
+eine kinematische Querkomponente. Unter der angegebenen
+Überhöhungswinkelkonvention ist
+\[
+a_{\mathrm{eff}}(t)
+=v(t)^2\kappa(s(t))-g\sin\phi(s(t))
+\]
+ein reduzierter erklärender Indikator. Bei veränderlicher Geschwindigkeit gilt
+\begin{align}
+\dot a_{\mathrm{eff}}
+={}&2v\dot v\,\kappa
+  +v^3\kappa'
+  -gv\cos\phi\,\phi',
+\label{eq:variable-speed-effective-rate}
+\end{align}
+wobei alle räumlichen Größen an \(s(t)\) ausgewertet werden. Der Term
+\(2v\dot v\kappa\) fehlt in der Konstantgeschwindigkeitsbeziehung aus Teil V.
+Dieser Indikator ist für sich weder Komfort, Sicherheit, Verschleiß,
+Radentlastung noch Fahrzeugantwort.
+
+\section{Die explizite Modellgrenze}
+
+\begin{center}
+\fbox{\begin{minipage}{0.88\textwidth}
+\textbf{Hier endet die Kinematik.} Eisenbahnzustand und Durchfahrt können
+Trajektorie, Frame, Krümmungs- und Überhöhungsexposition sowie reduzierte
+Beschleunigungs- oder Ratenindikatoren unter angegebenen Annahmen liefern.
+
+\medskip
+\textbf{Vorhergesagte Antwort beginnt erst, wenn ein Modell ergänzt:}
+Fahrzeugmasse und Trägheit, Federung, Rad--Schiene-Kontakt, Gleissteifigkeit
+und -dämpfung, Unregelmäßigkeiten, Betriebslast, Umweltzustand und relevante
+Instandhaltungsbedingung. Modellanwendbarkeit, Kalibrierung und Unsicherheit
+bleiben an jeder Ausgabe erhalten.
+\end{minipage}}
+\end{center}
+
+Nicht jede Verwendung benötigt jede aufgezählte Eingabe. Eine Auslassung muss
+jedoch aus dem angegebenen Geltungsbereich des Modells folgen und darf nicht
+stillschweigend verschwinden. Eine gemessene Antwort bleibt Beobachtung und
+wird nicht durch Benennung zur Modellausgabe oder zum physischen Zustand.
+
+\begin{principle}[Mechaniktrennungsprinzip]
+\label{princ:mechanics-separation}
+Reduzierte Eisenbahnkinematik und eine vollständige
+Fahrzeug--Gleis-Mechaniksimulation sind verschiedene Operationen mit
+unterschiedlichen Eingaben, Anwendbarkeiten und Evidenzen.
+\end{principle}
+
+\section{Der laufende Vergleich}
+
+Die beiden Fälle aus Teil V verwenden identische \(\kappa\) und Überhöhung,
+aber unterschiedliche konstante Testgeschwindigkeiten; daher unterscheiden
+sich ihre reduzierten \(v^2\kappa\)-Terme. Das Beispiel mit veränderlicher
+Geschwindigkeit ergänzt eine von \(\dot v\) abhängige Exposition. Ein anderes
+\(u(s)\) würde Gleis-Frame und reduzierte effektive Komponente ändern, nicht
+die Identität von \(\kappa(s)\). Selbst identische reduzierte Indikatoren
+garantieren dennoch keine identische Antwort: Fahrzeuge, Gleiszustand, Last und
+Umwelt können verschieden sein.
+
+\section{AXTRAN und deklarierte Ziele}
+
+Der mit axtranNew/AXTRAN verbundene Alignment-Rechenkern kann Geometrie oder
+freie Parameter vorschlagen. Eine deklarierte reduzierte Größe kann später als
+Ziel oder Nebenbedingung verwendet werden, wenn Annahmen, Zweck und
+Anwendbarkeit explizit sind. Das Ziel ist eine der Berechnung zugeführte
+Engineering-Wahl und wird vom Solver nicht als Autorität entdeckt. Ein
+berechnetes Optimum ist weder automatisch anwendbar noch angenommen.
+
+Die gegenwärtige Implementierung begründet keine allgemeine gemeinsame
+Optimierung von Geometrie, Überhöhung, Durchfahrt und Fahrzeugantwort. Der neue
+Kontinuitätssolver wird daher nicht als Dynamikoptimierer beschrieben.
+
+\begin{summary}
+Zeitliche Exposition folgt aus \(s(t)\). Reduzierte Kinematik folgt aus
+angegebenen Frame- und Bewegungsannahmen. Fahrzeug--Gleis-Antwort beginnt erst
+mit einem identifizierten Modell. Bewertung und Entscheidung bleiben
+nachgelagert.
+\end{summary}

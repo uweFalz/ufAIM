@@ -1,0 +1,16 @@
+% figures/modeling/sparse_model_structure-DE.tex
+\begin{tikzpicture}[
+  node distance=0.65cm,
+  elem/.style={draw, rounded corners, align=center, minimum width=2.25cm, minimum height=0.9cm},
+  arrow/.style={->, thick}
+]
+\node[elem, fill=blue!8] (f1) {Fest\\\small $G/R$};
+\node[elem, fill=orange!12, right=of f1] (t1) {Übergang\\\small $\kappa(s)$};
+\node[elem, fill=blue!8, right=of t1] (f2) {Fest\\\small $G/R$};
+\node[elem, fill=orange!12, right=of f2] (t2) {Übergang\\\small $\kappa(s)$};
+\node[elem, fill=blue!8, right=of t2] (f3) {Fest\\\small $G/R$};
+\draw[arrow] (f1) -- (t1); \draw[arrow] (t1) -- (f2);
+\draw[arrow] (f2) -- (t2); \draw[arrow] (t2) -- (f3);
+\node[draw, rounded corners, fill=green!10, align=center, below=1.2cm of f2, minimum width=6.2cm]
+{dünn besetztes Alignment = kompaktes Krümmungsprogramm};
+\end{tikzpicture}

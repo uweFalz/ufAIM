@@ -1,0 +1,58 @@
+% Deutsche Parallelfassung zu foundations/principles.tex
+
+\chapter{Prinzipien für den Einsatz der formalen Maschinerie}
+\label{chap:architectural-principles}
+
+Die Axiome haben die Grenzen und die erste konstruktive Abhängigkeit
+festgelegt. Die folgenden Prinzipien führen die Unterscheidungen nicht erneut
+ein. Sie formulieren, wie die nachfolgende Mathematik sie bewahren muss, wenn
+Zustände abgeleitet, realisiert, verglichen oder repräsentiert werden.
+
+\section{Rollen durch jede Operation bewahren}
+
+\begin{principle}[Typisierte Abhängigkeit]
+\label{princ:typed-dependency}
+Jede Operation muss angeben, was sie empfängt, was sie erzeugt und unter
+welchen Qualifikationen das Ergebnis Bedeutung besitzt.
+\end{principle}
+
+Diese Regel verhindert, dass aus einem Wechsel der mathematischen Form ein
+unangekündigter Wechsel der ingenieurtechnischen Rolle wird. Das Abtasten
+einer CAD-Kurve erzeugt eine Repräsentation; die Interpretation von
+Vermessungspunkten erzeugt eine Beobachtung; eine Bewertung verwendet
+qualifizierte Eingaben und erzeugt ein Bewertungsergebnis. Keine dieser
+Operationen überträgt Identität oder Autorität auf ihre Ausgabe.
+
+\section{Qualifikationen sichtbar halten}
+
+\begin{principle}[Ausdrückliche Anwendbarkeit]
+\label{princ:explicit-applicability}
+Eine Metrik, Abbildung, ein Residuum oder eine Nebenbedingung ist nur dann
+bedeutungsvoll, wenn der anwendbare Zustand, der Realization Context und die
+Annahmen ausdrücklich benannt sind.
+\end{principle}
+
+Bevor eine CAD-Kurve und eine Vermessungspolyline verglichen werden können,
+müssen sie in eine kompatible metrische Realisierung gebracht und auf den
+anwendbaren Alignment-Zustand bezogen werden. Eine
+Koordinatentransformation kann Koordinaten kompatibel machen; sie kann nicht
+begründen, dass die Quellen dasselbe Objekt oder denselben Zustand betreffen.
+
+\section{Jede berechnete Folge begrenzen}
+
+\begin{principle}[Disziplin für abgeleitete Ergebnisse]
+\label{princ:derived-result-discipline}
+Ein berechnetes Ergebnis muss die Provenienz und die Beschränkungen der
+Eingaben und der Operation bewahren, aus denen es abgeleitet wurde.
+\end{principle}
+
+Ein Abweichungsfeld kann somit eine Distanz unter einer benannten Abbildung
+und einem benannten Unsicherheitsmodell angeben. Es kann nicht entscheiden, ob
+der beobachtete Zustand akzeptabel ist, welche Quelle autoritativ ist oder
+welche Handlung folgen soll. Diese Fragen erfordern Ingenieurbegriffe, deren
+Rollen die Mathematik verwenden, aber nicht erzeugen kann.
+
+Zusammen begründen diese Prinzipien einen praktischen Test für jedes folgende
+Symbol und jede folgende Gleichung: Die Abhängigkeiten müssen sichtbar sein,
+die Ausgabe muss genau eine deklarierte Rolle besitzen und die Nicht-Folgen
+müssen ausdrücklich bleiben.

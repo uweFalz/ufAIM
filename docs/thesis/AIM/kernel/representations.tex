@@ -1,12 +1,12 @@
 % kernel/representations.tex
 
-\chapter{Representations}
+\chapter{Representing the Candidate Without Replacing It}
 \label{chap:representations}
 
-Engineering objects and knowledge must be communicated, exchanged,
-visualized, and processed. These purposes require representations.
-
-\section{Representation}
+The proposed transition is now generated as a continuous curve for
+calculation, a sampled polyline for CAD review, and an exchange record for
+coordination. These forms make the candidate usable; none becomes the
+alignment or owns its identity.
 
 \begin{definition}[Representation]
 \label{def:representation}
@@ -15,57 +15,23 @@ intended for communication, visualization, exchange, computation, or
 interaction.
 \end{definition}
 
-A representation may take the form of geometry, text, an exchange file,
-a numerical model, a rendering primitive, or a software data structure.
-Its form depends on purpose and implementation.
+Each representation must identify what state it expresses, its purpose, the
+derivation that produced it, and any approximation. The CAD polyline may be
+adequate for visual coordination yet omit the function-family identity and
+derivatives required to reconstruct the Berlinish composition. The continuous
+calculation model may support curvature evaluation while being unsuitable as
+an exchange contract. Fitness is purpose-relative.
 
-\section{Derived Status}
+Transformation, resampling, or regeneration can therefore produce another
+representation of the same candidate state. Conversely, two geometrically
+equal files need not refer to the same object. Representation equality is
+neither object identity nor engineering acceptance.
 
-Representations derive their meaning from engineering objects and
-engineering knowledge. They do not become canonical engineering truth
-merely because they are persistent, detailed, or widely exchanged.
+An imported historical transition illustrates the other direction. Its file
+can remain authoritative source evidence within its scope even when its
+sampled geometry is not mathematically optimal. Deriving an editable
+continuous model preserves the import and records a new derivation; it does
+not retroactively turn the derived model into the original observation.
 
-A polyline may represent an alignment. A map layer may visualize it. An
-exchange record may communicate it. None of these replaces the
-alignment as an engineering object.
-
-\section{Representation Purpose}
-
-Different purposes require different representations. A representation
-optimized for visualization need not be suitable for numerical
-reconstruction. A representation intended for exchange may omit
-information required for authoring. A sampled representation may
-approximate a continuous description without becoming identical to it.
-
-Representation quality must therefore be evaluated against the purpose
-for which the representation was produced.
-
-\section{Representation Independence}
-
-Engineering identity and knowledge remain independent of any particular
-representation. Representations may be regenerated or transformed while
-the represented engineering object remains unchanged.
-
-This principle separates durable engineering information from temporary
-previews, rendering geometry, user-interface state, and
-software-specific storage structures.
-
-\section{Canonical Interpretation}
-
-\begin{proposition}
-A representation is not the engineering object that it represents.
-\end{proposition}
-
-\begin{proposition}
-Different representations may communicate the same engineering object
-for different purposes.
-\end{proposition}
-
-\begin{proposition}
-Representation transformation does not by itself change canonical
-engineering knowledge.
-\end{proposition}
-
-The representation concept establishes the boundary between enduring
-engineering meaning and the forms through which that meaning is made
-accessible.
+The candidate is now communicable. To compare it with the railway as found,
+the account must next distinguish generated geometry from observed evidence.

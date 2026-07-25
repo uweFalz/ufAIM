@@ -1,0 +1,129 @@
+% Deutsche Parallelfassung zu foundations/system_layers.tex
+
+\chapter{Ausführungsreihenfolge und Verantwortung}
+\label{chap:system-layers}
+
+Die vorangegangenen Kapitel stellen bereits Begriffe, Zustand, Operatoren und
+Realisierungsvertrag bereit. Dieses Kapitel zeigt ausschließlich ihre
+Ausführungsreihenfolge und bestimmt, wo Verantwortung wechselt. Es führt
+keinen weiteren Architekturkatalog ein.
+
+\section{Die Kette der Krümmungsänderung}
+
+Ausgehend von einem identifizierten Alignment und einer autorisierten
+Krümmungsänderung arbeitet die formale Maschinerie wie folgt:
+\[
+\begin{aligned}
+(\mathrm{pose2}(s_0),\widetilde\kappa)
+&\xrightarrow{\ \mathcal D\ }
+\widetilde x_{\mathrm{intrinsic}}
+\xrightarrow{\ \mathcal G_c\ }
+\widetilde x_{\mathrm{metric}}\\
+&\xrightarrow{\ \mathcal P,\,\mathcal C\ }
+\widetilde x_{\mathrm{comparable}}
+\xrightarrow{\ \mathcal E_c\ }
+y_{\mathrm{qualified}}.
+\end{aligned}
+\]
+
+Die Rekonstruktion pflanzt die Krümmungsänderung fort. Metrische Realisierung
+macht den Zustand messbar. Räumliche Abbildungen und
+Koordinatentransformationen bringen qualifizierte Quellen in eine kompatible
+Vergleichsdomäne. Die Bewertung erzeugt die Folge. Jeder Pfeil besitzt eigene
+Anwendbarkeit und Provenienz; kein Pfeil ändert die Alignment-Identität.
+
+Die Kette verwendet die Krümmungsbeziehung
+\cref{eq:curvature-relation}, die Rekonstruktionsbeziehung
+\cref{eq:state-evolution} und die Überhöhungsentwicklungsbeziehung
+\cref{eq:cant-evolution}. Ihre Ausführung geht dem metrischen Vergleich
+voraus; sie warten nicht darauf, dass eine CAD-Repräsentation das Alignment
+definiert.
+
+\section{Wo physische Realisierung und Beobachtung eintreten}
+
+Physische Realisierung ist kein weiterer Schritt zwischen intrinsischer und
+metrischer Beschreibung. Sie setzt Zustände in Beziehung:
+\[
+x_{\mathrm{target}}
+\xrightarrow{\ \mathcal R\ }
+x_{\mathrm{real}}.
+\]
+Beobachtung liefert über einen Messprozess Evidenz über einen Zustand. Eine
+Vermessungspolyline tritt daher nicht als „Realität“ in die Hauptkette ein.
+Sie tritt als qualifizierte Evidenz ein, die in eine kompatible metrische
+Domäne abgebildet und mit einem qualifizierten Ziel- oder realisierten Zustand
+verglichen werden kann.
+
+\section{Verantwortung an jeder Grenze}
+
+Die nützlichen Schichtunterscheidungen folgen aus der Operatorkette:
+
+\begin{description}
+\item[Intrinsische Verantwortung] besitzt konstruktive Steuerungen,
+  Randbedingungen und Zustandsfortpflanzung.
+\item[Metrische Verantwortung] besitzt metrischen Raum, Referenzfläche,
+  Einbettung und Gültigkeit messbarer räumlicher Folgen.
+\item[Repräsentationsverantwortung] besitzt Abtastung, Koordinatenform,
+  Genauigkeit und Austauschprovenienz.
+\item[Physische Verantwortung] besitzt die Beziehung zwischen Ziel- und
+  realisiertem Zustand.
+\item[Beobachtungsverantwortung] besitzt Quelle, Methode, Zeit, Unsicherheit
+  und Evidenzgrenzen.
+\item[Bewertungsverantwortung] besitzt Vergleichsverfahren, Anwendbarkeit,
+  Annahmen und qualifiziertes Ergebnis---nicht die Entscheidung.
+\end{description}
+
+\begin{principle}[Prinzip der metrischen Realisierung]
+\label{princ:metric-realization-layer}
+Semantische Alignment-Logik wird von metrischem Realisierungsverhalten
+getrennt.
+\end{principle}
+
+\begin{principle}[Prinzip der kanonischen Trennung]
+\label{princ:canonical-layer-separation}
+Intrinsische Geometrie, Koordinateneinbettung, metrische Realisierung,
+physische Realisierung, Beobachtung und Bewertung dürfen nicht zu einer
+impliziten Operation verschmolzen werden.
+\end{principle}
+
+\section{Abhängigkeiten, kein Implementierungsstack}
+
+\begin{definition}[Kanonische Transformationsstruktur]
+\label{def:canonical-transformation-structure}
+Die formale Transformationsstruktur ist eine geordnete Komposition typisierter
+Operatoren, deren Zwischenergebnisse Identität, Qualifikationen und Provenienz
+bewahren.
+\end{definition}
+
+Die Reihenfolge beschränkt die Bedeutung, nicht das Software-Deployment.
+Operationen dürfen zwischengespeichert, neu berechnet oder durch verschiedene
+Werkzeuge implementiert werden, sofern ihre Verträge erhalten bleiben.
+
+\begin{proposition}
+\label{prop:alignment-not-crs-invariant}
+Eine Koordinatentransformation kann unter Projektion metrische Eigenschaften
+einer Repräsentation ändern; sie ändert nicht die intrinsische
+Alignment-Identität.
+\end{proposition}
+
+\begin{proposition}
+\label{prop:alignment-multi-layer-system}
+Eine Alignment-Folge ist nur dann vertrauenswürdig, wenn die konstruktiven,
+metrischen, repräsentationalen, physischen, beobachtenden und bewertenden
+Verantwortlichkeiten, von denen sie abhängt, ausdrücklich bleiben.
+\end{proposition}
+
+\begin{proposition}
+\label{prop:operational-behaviour-emerges}
+Betriebliche Folgen entstehen aus deklarierten Kompositionen von Zustand,
+Qualifikationen, Operatoren und anwendbarem Ingenieurwissen.
+\end{proposition}
+
+Das Ergebnis der Kette ist daher bescheiden, aber nützlich: Die Theorie kann
+genau angeben, was sich geändert hat, welcher Zustand folgte, welche Handlung
+jedes Artefakt erzeugte, wo es messbar ist, welche Freiheiten verbleiben und
+welche Evidenz verglichen werden darf. Sie kann weiterhin kein berechnetes
+Ergebnis in eine Ingenieurentscheidung verwandeln.
+
+Die Ellipsoidkapitel spezialisieren diese Kette nun, indem sie einen
+Erdoberflächen-Metric-Context bereitstellen.

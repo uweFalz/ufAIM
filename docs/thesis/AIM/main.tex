@@ -2,6 +2,13 @@
 
 \documentclass[11pt,a4paper,oneside,openany]{scrbook}
 
+\newif\ifaimGerman
+\ifdefined\AIMGermanEdition
+  \aimGermantrue
+\else
+  \aimGermanfalse
+\fi
+
 % ============================================================
 % BASIC SETUP
 % ============================================================
@@ -102,23 +109,49 @@
 
 \theoremstyle{plain}
 
-\newtheorem{theorem}{Theorem}[chapter]
-\newtheorem{axiom}[theorem]{Axiom}
-\newtheorem{proposition}[theorem]{Proposition}
-\newtheorem{lemma}[theorem]{Lemma}
-\newtheorem{corollary}[theorem]{Corollary}
+\ifaimGerman
+  \newtheorem{theorem}{Satz}[chapter]
+  \newtheorem{axiom}[theorem]{Axiom}
+  \newtheorem{proposition}[theorem]{Proposition}
+  \newtheorem{lemma}[theorem]{Lemma}
+  \newtheorem{corollary}[theorem]{Korollar}
+\else
+  \newtheorem{theorem}{Theorem}[chapter]
+  \newtheorem{axiom}[theorem]{Axiom}
+  \newtheorem{proposition}[theorem]{Proposition}
+  \newtheorem{lemma}[theorem]{Lemma}
+  \newtheorem{corollary}[theorem]{Corollary}
+\fi
 
 \theoremstyle{definition}
 
 \newtheorem{definition}[theorem]{Definition}
-\newtheorem{example}[theorem]{Example}
+\ifaimGerman
+  \newtheorem{example}[theorem]{Beispiel}
+\else
+  \newtheorem{example}[theorem]{Example}
+\fi
 
 \theoremstyle{remark}
 
-\newtheorem{remark}[theorem]{Remark}
-\newtheorem{summary}[theorem]{Summary}
-\newtheorem{constraint}[theorem]{Constraint}
-\newtheorem{principle}[theorem]{Principle}
+\ifaimGerman
+  \newtheorem{remark}[theorem]{Bemerkung}
+  \newtheorem{summary}[theorem]{Zusammenfassung}
+  \newtheorem{constraint}[theorem]{Bedingung}
+  \newtheorem{principle}[theorem]{Prinzip}
+\else
+  \newtheorem{remark}[theorem]{Remark}
+  \newtheorem{summary}[theorem]{Summary}
+  \newtheorem{constraint}[theorem]{Constraint}
+  \newtheorem{principle}[theorem]{Principle}
+\fi
+
+% Environments sharing the theorem counter are reported by cleveref as
+% theorem references.  Localize that visible structural text explicitly.
+\ifaimGerman
+  \crefname{theorem}{Satz}{Sätze}
+  \Crefname{theorem}{Satz}{Sätze}
+\fi
 
 % ============================================================
 % CUSTOM MACROS / MARKERS
@@ -133,6 +166,11 @@
 % ============================================================
 
 \begin{document}
+\ifaimGerman
+  \selectlanguage{ngerman}
+\else
+  \selectlanguage{english}
+\fi
 
 % ============================================================
 % FRONTMATTER
@@ -140,11 +178,16 @@
 
 \frontmatter
 
-\title{AIM Foundations}
-\subtitle{
-Curvature-Driven Modelling, Classification, Runtime Evaluation,
-Realization, and Optimization of Structured Railway Alignments
-}
+\ifaimGerman
+  \title{AIM Grundlagen}
+  \subtitle{Krümmungsgetriebene Modellierung, Klassifikation,
+  Laufzeitbewertung, Realisierung und Optimierung strukturierter
+  Eisenbahn-Alignments}
+\else
+  \title{AIM Foundations}
+  \subtitle{Curvature-Driven Modelling, Classification, Runtime Evaluation,
+  Realization, and Optimization of Structured Railway Alignments}
+\fi
 
 \author{Uwe Falz}
 \date{\today}
@@ -165,38 +208,47 @@ Realization, and Optimization of Structured Railway Alignments
 % ------------------------------------------------------------
 
 \cleardoublepage
+\ifaimGerman
+\chapter*{Vorwort}
+\phantomsection
+\addcontentsline{toc}{chapter}{Vorwort}
+
+Diese Thesis entstand aus einer wiederkehrenden Ingenieurerfahrung: Ein
+Alignment kann geometrisch präzise und dennoch über Entwurfssysteme,
+Messungen, Bauunterlagen und Entscheidungen hinweg nur schwer als
+dasselbe Engineering Object erkennbar sein. Alignment-Based Information
+Modelling (AIM) macht diese Kontinuität ausdrücklich und berechenbar.
+
+Die Argumentation beginnt in der Ingenieurpraxis, entwickelt die dafür
+erforderlichen begrifflichen und mathematischen Grundlagen und kehrt zu
+Implementierung, Bewertung und Anwendung zurück. Vorkenntnisse der
+AIM-Terminologie werden nicht vorausgesetzt.
+\else
 \chapter*{Preface}
 \phantomsection
 \addcontentsline{toc}{chapter}{Preface}
 
-This manuscript is intended as a long-term scientific foundation for
-Alignment-Based Information Modelling.
+This thesis grew from a recurring engineering experience: an alignment
+may be geometrically precise and still be difficult to understand as the
+same engineering object across design systems, measurements, construction
+records, and decisions. Alignment-Based Information Modelling (AIM) is an
+attempt to make that continuity explicit and computable.
 
-It is not merely software documentation, but a structured knowledge base
-covering:
-\begin{itemize}
-\item intrinsic railway geometry,
-\item curvature-driven reconstruction,
-\item runtime evaluation,
-\item realization processes,
-\item vehicle-space interpretation,
-\item optimization,
-\item and Earth-attached railway geometry.
-\end{itemize}
-
-The AIM framework treats railway alignments not merely as static curves,
-but as coupled operator-based state systems connecting geometry,
-construction, runtime interpretation, and operational behaviour.
+The argument begins with engineering practice, develops the conceptual and
+mathematical foundations that the problem requires, and returns to
+implementation, evaluation, and application. The reader is not expected to
+know the AIM terminology in advance.
+\fi
 
 % ------------------------------------------------------------
 
-\input{executive_summary}
-\input{core_thesis}
-
-\input{foundations/aim_roadmap}
-
-\input{abstract}
-\input{introduction}
+\ifaimGerman
+  \input{abstract-DE}
+  \input{introduction-DE}
+\else
+  \input{abstract}
+  \input{introduction}
+\fi
 
 
 % ============================================================
@@ -206,324 +258,676 @@ construction, runtime interpretation, and operational behaviour.
 \mainmatter
 
 % ============================================================
-\part{Why Alignments Matter}
+\ifaimGerman
+  \part{Warum Alignments wesentlich sind}
+\else
+  \part{Why Alignments Matter}
+\fi
 % ============================================================
 
-\input{why/part_intro}
-
-\input{why/motivation}
-\input{why/problem_statement}
-\input{why/vision}
+\ifaimGerman
+  \input{why/part_intro-DE}
+  \input{why/motivation-DE}
+  \input{why/problem_statement-DE}
+  \input{why/vision-DE}
+\else
+  \input{why/part_intro}
+  \input{why/motivation}
+  \input{why/problem_statement}
+  \input{why/vision}
+\fi
 
 % ============================================================
-\part{Mathematical Foundations}
+\ifaimGerman
+  \part{Mathematische Grundlagen}
+\else
+  \part{Mathematical Foundations}
+\fi
 % ============================================================
 
-\input{foundations/part_intro}
+\ifaimGerman
+  \input{foundations/part_intro-DE}
+\else
+  \input{foundations/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % CONCEPTUAL FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{foundations/information_modelling}
-\input{foundations/ontology}
-\input{foundations/kernel_glossary}
+\ifaimGerman
+  \input{foundations/information_modelling-DE}
+  \input{foundations/ontology-DE}
+\else
+  \input{foundations/information_modelling}
+  \input{foundations/ontology}
+\fi
 
 % ------------------------------------------------------------
 % FOUNDATIONAL AXIOMS
 % ------------------------------------------------------------
 
-\input{foundations/axioms}
-\input{foundations/principles}
+\ifaimGerman
+  \input{foundations/axioms-DE}
+  \input{foundations/principles-DE}
+\else
+  \input{foundations/axioms}
+  \input{foundations/principles}
+\fi
 
 % ------------------------------------------------------------
 % CANONICAL LANGUAGE
 % ------------------------------------------------------------
 
-\input{foundations/notation}
-\input{foundations/core_equations}
+\ifaimGerman
+  \input{foundations/notation-DE}
+\else
+  \input{foundations/notation}
+\fi
+\ifaimGerman
+  \input{foundations/core_equations-DE}
+\else
+  \input{foundations/core_equations}
+\fi
 
 % ------------------------------------------------------------
 % STATE AND OPERATOR FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{foundations/state_model}
-\input{foundations/operators}
+\ifaimGerman
+  \input{foundations/state_model-DE}
+  \input{foundations/operators-DE}
+\else
+  \input{foundations/state_model}
+  \input{foundations/operators}
+\fi
 
 % ------------------------------------------------------------
 % ARCHITECTURAL FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{foundations/metric_realization}
-\input{foundations/system_layers}
+\ifaimGerman
+  \input{foundations/metric_realization-DE}
+  \input{foundations/system_layers-DE}
+\else
+  \input{foundations/metric_realization}
+  \input{foundations/system_layers}
+\fi
 
 % ------------------------------------------------------------
 % EARTH / ELLIPSOID FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{foundations/ellipsoid_geometry}
-\input{foundations/pose3_on_ellipsoid}
+\ifaimGerman
+  \input{foundations/ellipsoid_geometry-DE}
+  \input{foundations/pose3_on_ellipsoid-DE}
+\else
+  \input{foundations/ellipsoid_geometry}
+  \input{foundations/pose3_on_ellipsoid}
+\fi
 
 % ============================================================
+\ifaimGerman
+\part{Ingenieurbegriffe}
+\else
 \part{Engineering Concepts}
+\fi
 % ============================================================
 
-\input{kernel/part_intro}
+\ifaimGerman
+  \input{kernel/part_intro-DE}
+\else
+  \input{kernel/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % ENGINEERING OBJECTS AND IDENTITY
 % ------------------------------------------------------------
 
-\input{kernel/engineering_objects}
-\input{kernel/engineering_identity}
-\input{kernel/engineering_context}
+\ifaimGerman
+  \input{kernel/engineering_objects-DE}
+  \input{kernel/engineering_identity-DE}
+  \input{kernel/engineering_context-DE}
+\else
+  \input{kernel/engineering_objects}
+  \input{kernel/engineering_identity}
+  \input{kernel/engineering_context}
+\fi
 
 % ------------------------------------------------------------
 % REPRESENTATION, OBSERVATION, AND KNOWLEDGE
 % ------------------------------------------------------------
 
-\input{kernel/representations}
-\input{kernel/observations}
-\input{kernel/engineering_knowledge}
+\ifaimGerman
+  \input{kernel/representations-DE}
+  \input{kernel/observations-DE}
+  \input{kernel/engineering_knowledge-DE}
+\else
+  \input{kernel/representations}
+  \input{kernel/observations}
+  \input{kernel/engineering_knowledge}
+\fi
 
 % ------------------------------------------------------------
 % ENGINEERING DECISIONS
 % ------------------------------------------------------------
 
-\input{kernel/engineering_decisions}
+\ifaimGerman
+  \input{kernel/engineering_decisions-DE}
+\else
+  \input{kernel/engineering_decisions}
+\fi
 
 % ============================================================
-\part{Geometry and Curvature}
+\ifaimGerman
+  \part{Geometrie und Krümmung}
+\else
+  \part{Geometry and Curvature}
+\fi
 % ============================================================
 
-\input{geometry/part_intro}
+\ifaimGerman
+  \input{geometry/part_intro-DE}
+\else
+  \input{geometry/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % CURVATURE SPACE
 % ------------------------------------------------------------
 
-\input{geometry/curvature_space}
-\input{geometry/curvature_classes}
-\input{geometry/curvature_transitions}
-\input{geometry/curvature_classification}
+\ifaimGerman
+  \input{geometry/curvature_space-DE}
+\else
+  \input{geometry/curvature_space}
+\fi
+\ifaimGerman
+  \input{geometry/curvature_classes-DE}
+\else
+  \input{geometry/curvature_classes}
+\fi
+\ifaimGerman
+  \input{geometry/curvature_transitions-DE}
+\else
+  \input{geometry/curvature_transitions}
+\fi
+\ifaimGerman
+  \input{geometry/curvature_classification-DE}
+\else
+  \input{geometry/curvature_classification}
+\fi
 
 % ============================================================
-\part{Railway State Model}
+\ifaimGerman
+  \part{Eisenbahn-Zustandsmodell}
+\else
+  \part{Railway State Model}
+\fi
 % ============================================================
 
-\input{state/part_intro}
+\ifaimGerman
+  \input{state/part_intro-DE}
+\else
+  \input{state/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % CORE STATE REPRESENTATIONS
 % ------------------------------------------------------------
 
-\input{state/pose2}
-\input{state/pose3_and_cant}
+\ifaimGerman
+  \input{state/pose2-DE}
+\else
+  \input{state/pose2}
+\fi
+\ifaimGerman
+  \input{state/pose3_and_cant-DE}
+\else
+  \input{state/pose3_and_cant}
+\fi
 
 % ------------------------------------------------------------
 % DERIVED STATE SYSTEMS
 % ------------------------------------------------------------
 
-\input{state/pose3_frames}
-\input{state/dynamics}
-\input{state/admissibility}
-\input{state/world_to_track}
+\ifaimGerman
+  \input{state/pose3_frames-DE}
+  \input{state/dynamics-DE}
+  \input{state/admissibility-DE}
+\else
+  \input{state/pose3_frames}
+  \input{state/dynamics}
+  \input{state/admissibility}
+\fi
+\ifaimGerman
+  \input{state/world_to_track-DE}
+\else
+  \input{state/world_to_track}
+\fi
 
 % ============================================================
-\part{Dynamic Railway State}
+\ifaimGerman
+  \part{Dynamischer Eisenbahnzustand}
+\else
+  \part{Dynamic Railway State}
+\fi
 % ============================================================
 
-\input{dynamics/part_intro}
+\ifaimGerman
+  \input{dynamics/part_intro-DE}
+\else
+  \input{dynamics/part_intro}
+\fi
 
-\input{dynamics/concept_boundaries}
+\ifaimGerman
+  \input{dynamics/concept_boundaries-DE}
+\else
+  \input{dynamics/concept_boundaries}
+\fi
 
 % ------------------------------------------------------------
 % STATE AND OPERATOR FOUNDATIONS
 % ------------------------------------------------------------
 
-\input{state/state_taxonomy}
-\input{runtime/runtime_operators}
+\ifaimGerman
+  \input{state/state_taxonomy-DE}
+  \input{runtime/runtime_operators-DE}
+\else
+  \input{state/state_taxonomy}
+  \input{runtime/runtime_operators}
+\fi
 
 % ------------------------------------------------------------
 % VEHICLE-SPACE INTERPRETATION
 % ------------------------------------------------------------
 
-\input{dynamics/vehicle_space}
+\ifaimGerman
+  \input{dynamics/vehicle_space-DE}
+\else
+  \input{dynamics/vehicle_space}
+\fi
 
 % ------------------------------------------------------------
 % RUNTIME DYNAMICS AND BALANCE
 % ------------------------------------------------------------
 
-\input{dynamics/operational_velocity}
-\input{dynamics/runtime_dynamics}
-\input{dynamics/schwerpunkt_state}
-\input{dynamics/dynamic_balance}
+\ifaimGerman
+  \input{dynamics/operational_velocity-DE}
+\else
+  \input{dynamics/operational_velocity}
+\fi
+\ifaimGerman
+  \input{dynamics/runtime_dynamics-DE}
+\else
+  \input{dynamics/runtime_dynamics}
+\fi
+\ifaimGerman
+  \input{dynamics/schwerpunkt_state-DE}
+\else
+  \input{dynamics/schwerpunkt_state}
+\fi
+\ifaimGerman
+  \input{dynamics/dynamic_balance-DE}
+\else
+  \input{dynamics/dynamic_balance}
+\fi
 
 % ------------------------------------------------------------
 % ADVANCED DYNAMIC INTERPRETATION
 % ------------------------------------------------------------
 
-\input{dynamics/Vienna_reinterpretation}
-\input{dynamics/realization_aware_dynamics}
-\input{dynamics/optimization_in_state_space}
+\ifaimGerman
+  \input{dynamics/Vienna_reinterpretation-DE}
+\else
+  \input{dynamics/Vienna_reinterpretation}
+\fi
+\ifaimGerman
+  \input{dynamics/realization_aware_dynamics-DE}
+\else
+  \input{dynamics/realization_aware_dynamics}
+\fi
+\ifaimGerman
+  \input{dynamics/optimization_in_state_space-DE}
+\else
+  \input{dynamics/optimization_in_state_space}
+\fi
 
 % ============================================================
-\part{Runtime and Evaluation}
+\ifaimGerman
+  \part{Laufzeit und Auswertung}
+\else
+  \part{Runtime and Evaluation}
+\fi
 % ============================================================
 
-\input{runtime/part_intro}
+\ifaimGerman
+  \input{runtime/part_intro-DE}
+\else
+  \input{runtime/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % RUNTIME ARCHITECTURE
 % ------------------------------------------------------------
 
-\input{runtime/runtime_services}
+\ifaimGerman
+  \input{runtime/runtime_services-DE}
+\else
+  \input{runtime/runtime_services}
+\fi
 
 % ============================================================
-\part{Reality and Data}
+\ifaimGerman
+  \part{Realität und Daten}
+\else
+  \part{Reality and Data}
+\fi
 % ============================================================
 
-\input{reality/part_intro}
+\ifaimGerman
+  \input{reality/part_intro-DE}
+\else
+  \input{reality/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % REAL-WORLD DATA
 % ------------------------------------------------------------
 
-\input{reality/data}
-\input{reality/coordinate_systems}
-\input{reality/km_line_and_stationing}
+\ifaimGerman
+  \input{reality/data-DE}
+  \input{reality/coordinate_systems-DE}
+\else
+  \input{reality/data}
+  \input{reality/coordinate_systems}
+\fi
+\ifaimGerman
+  \input{reality/km_line_and_stationing-DE}
+\else
+  \input{reality/km_line_and_stationing}
+\fi
 
 % ------------------------------------------------------------
 % IMPERFECT REALITY
 % ------------------------------------------------------------
 
-\input{reality/measurement_and_imperfect_data}
-\input{reality/topology_and_special_elements}
+\ifaimGerman
+  \input{reality/measurement_and_imperfect_data-DE}
+\else
+  \input{reality/measurement_and_imperfect_data}
+\fi
+\ifaimGerman
+  \input{reality/topology_and_special_elements-DE}
+\else
+  \input{reality/topology_and_special_elements}
+\fi
 
 % ------------------------------------------------------------
 % REALIZATION
 % ------------------------------------------------------------
 
-\input{reality/construction_and_realization}
-\input{reality/realized_pose3}
+\ifaimGerman
+  \input{reality/construction_and_realization-DE}
+\else
+  \input{reality/construction_and_realization}
+\fi
+\ifaimGerman
+  \input{reality/realized_pose3-DE}
+\else
+  \input{reality/realized_pose3}
+\fi
 
 % ============================================================
-\part{Alignment Modelling}
+\ifaimGerman
+  \part{Alignment-Modellierung}
+\else
+  \part{Alignment Modelling}
+\fi
 % ============================================================
 
-\input{modeling/part_intro}
+\ifaimGerman
+  \input{modeling/part_intro-DE}
+\else
+  \input{modeling/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % SPARSE REPRESENTATION
 % ------------------------------------------------------------
 
-\input{modeling/sparse}
-\input{modeling/transitions}
-\input{modeling/transition_classification}
+\ifaimGerman
+  \input{modeling/sparse-DE}
+\else
+  \input{modeling/sparse}
+\fi
+\ifaimGerman
+  \input{modeling/transitions-DE}
+\else
+  \input{modeling/transitions}
+\fi
+\ifaimGerman
+  \input{modeling/transition_classification-DE}
+\else
+  \input{modeling/transition_classification}
+\fi
 
 % ------------------------------------------------------------
 % ADVANCED CONCEPTS
 % ------------------------------------------------------------
 
-\input{modeling/schwerpunkt_trassierung}
+\ifaimGerman
+  \input{modeling/schwerpunkt_trassierung-DE}
+\else
+  \input{modeling/schwerpunkt_trassierung}
+\fi
 
 % ============================================================
-\part{System and Pipeline}
+\ifaimGerman
+  \part{System und Verarbeitungskette}
+\else
+  \part{System and Pipeline}
+\fi
 % ============================================================
 
-\input{analysis/part_intro}
+\ifaimGerman
+  \input{analysis/part_intro-DE}
+\else
+  \input{analysis/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % PIPELINES
 % ------------------------------------------------------------
 
-\input{analysis/pipeline}
-\input{analysis/pipeline_diagram}
-\input{analysis/master_diagram}
+\ifaimGerman
+  \input{analysis/pipeline-DE}
+\else
+  \input{analysis/pipeline}
+\fi
+\ifaimGerman
+  \input{analysis/pipeline_diagram-DE}
+  \input{analysis/master_diagram-DE}
+\else
+  \input{analysis/pipeline_diagram}
+  \input{analysis/master_diagram}
+\fi
 
 % ------------------------------------------------------------
 % SYSTEM INTERPRETATION
 % ------------------------------------------------------------
 
-\input{analysis/pipeline_story}
-\input{analysis/failure_modes}
-\input{analysis/design_principles}
+\ifaimGerman
+  \input{analysis/pipeline_story-DE}
+  \input{analysis/failure_modes-DE}
+  \input{analysis/design_principles-DE}
+\else
+  \input{analysis/pipeline_story}
+  \input{analysis/failure_modes}
+  \input{analysis/design_principles}
+\fi
 
 % ============================================================
-\part{Optimization}
+\ifaimGerman
+  \part{Optimierung}
+\else
+  \part{Optimization}
+\fi
 % ============================================================
 
-\input{optimization/part_intro}
+\ifaimGerman
+  \input{optimization/part_intro-DE}
+\else
+  \input{optimization/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % NUMERICS
 % ------------------------------------------------------------
 
-\input{optimization/numerics}
+\ifaimGerman
+  \input{optimization/numerics-DE}
+\else
+  \input{optimization/numerics}
+\fi
 
 % ------------------------------------------------------------
 % ALIGNMENT OPTIMIZATION
 % ------------------------------------------------------------
 
-\input{optimization/alignment_optimization}
-\input{optimization/hybrid_block_structure}
-\input{optimization/optimizer_architecture}
-\input{optimization/realization_aware_optimization}
+\ifaimGerman
+  \input{optimization/alignment_optimization-DE}
+\else
+  \input{optimization/alignment_optimization}
+\fi
+\ifaimGerman
+  \input{optimization/hybrid_block_structure-DE}
+  \input{optimization/optimizer_architecture-DE}
+\else
+  \input{optimization/hybrid_block_structure}
+  \input{optimization/optimizer_architecture}
+\fi
+\ifaimGerman
+  \input{optimization/realization_aware_optimization-DE}
+\else
+  \input{optimization/realization_aware_optimization}
+\fi
 
 % ============================================================
-\part{Engineering and Standards}
+\ifaimGerman
+  \part{Ingenieurwesen und Standards}
+\else
+  \part{Engineering and Standards}
+\fi
 % ============================================================
 
-\input{engineering/part_intro}
+\ifaimGerman
+  \input{engineering/part_intro-DE}
+\else
+  \input{engineering/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % RULES AND CONSTRAINTS
 % ------------------------------------------------------------
 
-\input{engineering/standards}
-\input{engineering/constraints_and_rules}
-\input{engineering/railway_rules}
+\ifaimGerman
+  \input{engineering/standards-DE}
+\else
+  \input{engineering/standards}
+\fi
+\ifaimGerman
+  \input{engineering/constraints_and_rules-DE}
+\else
+  \input{engineering/constraints_and_rules}
+\fi
+\ifaimGerman
+  \input{engineering/railway_rules-DE}
+\else
+  \input{engineering/railway_rules}
+\fi
 
 % ============================================================
-\part{Applications}
+\ifaimGerman
+  \part{Anwendungen}
+\else
+  \part{Applications}
+\fi
 % ============================================================
 
-\input{applications/part_intro}
+\ifaimGerman
+  \input{applications/part_intro-DE}
+\else
+  \input{applications/part_intro}
+\fi
 
 % ------------------------------------------------------------
 % APPLICATION DOMAINS
 % ------------------------------------------------------------
 
-\input{applications/railway}
-\input{applications/vehicle_space_and_platforms}
-\input{applications/railway_vs_aircraft_dynamics}
+\ifaimGerman
+  \input{applications/railway-DE}
+  \input{applications/vehicle_space_and_platforms-DE}
+  \input{applications/railway_vs_aircraft_dynamics-DE}
+\else
+  \input{applications/railway}
+  \input{applications/vehicle_space_and_platforms}
+  \input{applications/railway_vs_aircraft_dynamics}
+\fi
 
 % ------------------------------------------------------------
 % EXAMPLES AND DISCUSSION
 % ------------------------------------------------------------
 
-\input{applications/examples}
-\input{applications/use_cases}
-
-\input{applications/bimalignment}
-\input{applications/contribution}
-\input{applications/discussion}
+\ifaimGerman
+  \input{applications/examples-DE}
+  \input{applications/use_cases-DE}
+  \input{applications/bimalignment-DE}
+  \input{applications/contribution-DE}
+  \input{applications/discussion-DE}
+\else
+  \input{applications/examples}
+  \input{applications/use_cases}
+  \input{applications/bimalignment}
+  \input{applications/contribution}
+  \input{applications/discussion}
+\fi
 
 % ============================================================
-\part{Discussion}
+\ifaimGerman
+  \part{Diskussion}
+\else
+  \part{Discussion}
+\fi
 % ============================================================
 
-\input{discussion/part_intro}
-\input{discussion/axtran_reinterpretation}
+\ifaimGerman
+  \input{discussion/part_intro-DE}
+  \input{discussion/axtran_reinterpretation-DE}
+\else
+  \input{discussion/part_intro}
+  \input{discussion/axtran_reinterpretation}
+\fi
 
 % ============================================================
-\part{Outlook}
+\ifaimGerman
+  \part{Ausblick}
+\else
+  \part{Outlook}
+\fi
 % ============================================================
 
-\input{outlook/part_intro}
-
-\input{outlook/bim}
-\input{outlook/future_work}
+\ifaimGerman
+  \input{outlook/part_intro-DE}
+  \input{outlook/bim-DE}
+\else
+  \input{outlook/part_intro}
+  \input{outlook/bim}
+\fi
+\ifaimGerman
+  \input{outlook/future_work-DE}
+\else
+  \input{outlook/future_work}
+\fi
 
 % ============================================================
 % BACKMATTER

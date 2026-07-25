@@ -36,7 +36,7 @@ function matchesExtension(ext, extensions = []) {
 
 export async function sniffImportFile(file, context = {}) {
 	const extension = getFileExtension(file);
-	const text = await readFileTextSafe(file);
+	const text = extension === 'mdb' ? '' : await readFileTextSafe(file);
 	const bytes = await readFileBytesSafe(file);
 
 	const parserIds = getParserIds();

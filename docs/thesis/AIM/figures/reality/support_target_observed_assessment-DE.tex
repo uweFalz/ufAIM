@@ -1,0 +1,13 @@
+% figures/reality/support_target_observed_assessment-DE.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=4.5cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (t) {Ziel};
+  \node[box, below=of t] (o) {Beobachtet};
+  \node[box, below=of o] (a) {Bewertung};
+  \draw[arrow] (t) -- (o);
+  \draw[arrow] (o) -- (a);
+  \draw[dashed, thin] ($(o.center)+(0,0)$) ellipse (2.45cm and 0.62cm);
+\end{tikzpicture}

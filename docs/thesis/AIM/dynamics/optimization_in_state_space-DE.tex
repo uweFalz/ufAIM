@@ -1,0 +1,162 @@
+% dynamics/optimization_in_state_space-DE.tex
+\chapter{Optimierung erzeugt Kandidaten}
+\label{chap:optimization-in-state-space}
+
+\section*{Ein Ziel benötigt einen Verantwortlichen}
+
+Die vorhergehenden Kapitel können qualifizierte Modellausgaben und Vergleiche
+erzeugen. Sie machen keine Größe von selbst erstrebenswert. Kurze
+Übergangslänge, reduziertes Gleichgewichtsresiduum, Komfort, Verschleiß,
+Kosten und Energie sind verschiedene Ziele, solange eine verantwortliche
+Quelle sie nicht ausdrücklich aggregiert.
+
+\begin{principle}[Prinzip qualifizierter Optimierung]
+\label{princ:state-space-optimization}
+Optimierung beginnt erst, wenn Problemidentität, Zweck,
+Entscheidungsvariablen, feste Eingaben, zulässige Menge, Modell und Ziel
+erklärt sind.
+\end{principle}
+
+\begin{principle}[Kandidatenprinzip]
+\label{princ:trajectory-shaping}
+Ein Solver liefert einen Berechnungskandidaten unter dieser Erklärung, keine
+Engineering Decision.
+\end{principle}
+
+\begin{figure}[htbp]
+\centering
+\input{figures/dynamics/model_candidate_decision-DE}
+\caption{Abhängigkeit vom identifizierten Problem und Modell über einen nichtautoritativen Kandidaten und seine Bewertung zu einer möglichen Engineering Decision.}
+\label{fig:model-candidate-decision}
+\end{figure}
+
+\section{Problemvertrag}
+
+\begin{definition}[Laufzeitzustandstrajektorie]
+\label{def:runtime-state-trajectory}
+Eine Laufzeitzustandstrajektorie ist eine identifizierte Modellausgabe
+\(x_M(t)\), die ein erklärtes Optimierungsproblem verwendet. Sie ist kein
+universeller AIM-Zustand.
+\end{definition}
+
+\begin{definition}[Laufzeitzustandsentwicklung]
+\label{def:optimization-runtime-state-evolution}
+Ihre Entwicklung wird durch \(\mathcal D_M\) aus festen und variablen Eingaben
+unter angegebenen Anfangsbedingungen und Anwendbarkeit erzeugt.
+\end{definition}
+
+Erst dann ist die bekannte Form sinnvoll:
+\[
+\min_{x\in\mathcal F}J(x).
+\]
+Dabei bezeichnet \(x\) den erklärten Entscheidungsvektor, keinen
+unspezifizierten Zustand. Der Problemnachweis enthält
+\[
+\begin{aligned}
+\mathcal P=(\, &id,\ purpose,\ x,\ b,\ f,\ d,\ M,\ \mathcal F,\ J,\\
+              &units,\ scaling,\ source,\ applicability,\ provenance\,),
+\end{aligned}
+\]
+wobei \(b\) Grenzen, \(f\) feste Eingaben und \(d\) abgeleitete Größen sind.
+Offene Freiheiten bleiben sichtbar, statt stillschweigend belegt zu werden.
+
+\section{Freiheitsgrade}
+
+Für eine beschränkte Kontinuitätsänderung lautet ein vertretbares Beispiel
+\[
+x=(L,\alpha),\qquad
+\mathcal F=\{x\mid c_{\mathrm{continuity}}(x)=0,
+L_{\min}\le L\le L_{\max},
+\alpha_{\min}\le\alpha\le\alpha_{\max}\}.
+\]
+Bekannte Endzustände und gewählte Übergangsfamilie sind fest; \(L,\alpha\)
+sind innerhalb ihrer Grenzen frei; Koeffizienten und End-Pose werden
+abgeleitet; Kontinuitätsresiduen sind beschränkt. Überhöhung,
+Fahrzeugparameter und operatives Geschwindigkeitsprofil bleiben offen, sofern
+sie nicht bewusst ergänzt werden.
+
+Der aktuelle ufAIM/AXTRAN-Kontinuitätssolver ist Implementierungsevidenz für
+eine solche beschränkte Kontinuitätslösung. Er belegt keine allgemeine
+Fahrzeug-, Überhöhungs-, Komfort- oder Netzoptimierung und keine automatische
+ingenieurtechnische Auswahl.
+
+\section{Ziel und Skalierung}
+
+\begin{definition}[Laufzeitzustandsfunktional]
+\label{def:runtime-state-functional}
+Ein Laufzeitzustandsfunktional ist ein erklärtes Ziel aus einer
+identifizierten Modellausgabe, dessen Einheiten, Skalierung, Quelle und Zweck
+dokumentiert sind.
+\end{definition}
+
+\begin{definition}[Operative Trajektorienformung]
+\label{def:optimization-trajectory-shaping}
+Operative Trajektorienformung ist eine mögliche Optimierungsformulierung,
+keine kanonische AIM-Interpretation.
+\end{definition}
+
+Die beiden Ziele \(J_\kappa\) und \(J_r\) in
+\cref{chap:vienna-reinterpretation} zeigen, warum Skalarwerte nicht
+zweckübergreifend vergleichbar sind. Eine gewichtete Aggregation
+\[
+J=w_\kappa J_\kappa/J_{\kappa,0}+w_rJ_r/J_{r,0}
+\]
+ist nur sinnvoll, wenn Referenzskalen, Gewichte und ihre verantwortliche
+Quelle dokumentiert sind. Der Solver besitzt sie nicht.
+
+\section{Kandidatenvertrag}
+
+Ein Berechnungskandidat enthält
+\[
+\begin{aligned}
+C=(\, &\mathcal P.id,\ M.id,\ x,\ b,\ \mathcal F,\ J,\ x^\star,\\
+      &residuals,\ convergence,\ provenance,\ applicabilityStatus\,).
+\end{aligned}
+\]
+Bei Rückgabe des Solvers ist die Anwendbarkeit noch unbewertet und der
+Kandidat ausdrücklich nichtautoritativ.
+
+\[
+\boxed{\text{berechnet}
+\neq\text{anwendbar}
+\neq\text{angenommen}
+\neq\text{autoritativ}}
+\]
+
+Mehrere Kandidaten können mathematisch zulässig, unter verschiedenen Zielen
+optimal, ohne Zweck unvergleichbar, durch spätere Evidenz ungültig oder nach
+einer Alignment- oder Realisierungsänderung veraltet sein. Eine skalare
+Kennzahl liefert keine universelle ingenieurtechnische Ordnung.
+
+\begin{definition}[Dünn besetzte Laufzeitoptimierung]
+\label{def:sparse-runtime-optimization}
+Dünn besetzte Laufzeitoptimierung ist lediglich eine mögliche
+Berechnungstechnik, die eine erklärte dünn besetzte Abhängigkeitsstruktur
+nutzt; eine allgemeine Leistungs- oder Fähigkeitsaussage wird nicht erhoben.
+\end{definition}
+
+\begin{definition}[Operativ zulässige Trajektorie]
+\label{def:operationally-admissible-trajectory}
+Eine operativ zulässige Trajektorie ist ein Bewertungsergebnis unter
+identifizierten Regeln, Zweck, Evidenz und Anwendbarkeit. Zulässigkeit in
+\(\mathcal F\) allein begründet sie nicht.
+\end{definition}
+
+\section{Bewertung und Engineering Decision}
+
+Die Bewertung fragt, ob Kandidat und Evidenz für einen Zweck unter
+identifizierten Regeln, Lifecycle und Gültigkeit anwendbar sind. Eine
+Engineering Decision kann danach Auswahl oder Ablehnung mit Autorität
+dokumentieren. Solver, AXTRAN-Implementierung, App und Thesis besitzen diese
+Autorität nicht.
+
+Damit lautet die vollständige Folge
+\[
+\begin{aligned}
+S_{\mathrm{rail}}\to s(t)\to M\to x_M^{\mathrm{pred}}
+&\to\text{Vergleich}\to J,\mathcal F\to C\\
+&\to\text{Bewertung}\to\text{Engineering Decision}.
+\end{aligned}
+\]
+Geometrie, Modell, Ziel, Kandidat und Entscheidung bleiben getrennt
+verantwortet.

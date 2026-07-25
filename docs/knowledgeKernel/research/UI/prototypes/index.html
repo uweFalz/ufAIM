@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>alignmentOS UI interaction wireframes</title>
+<style>
+:root{font:14px/1.35 system-ui,sans-serif;color:#172126;background:#e9edef}
+*{box-sizing:border-box} body{margin:0;padding:24px} h1{margin:0 0 8px}
+.note{max-width:80ch;color:#53636b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px;margin-top:22px}
+.frame{background:#fff;border:1px solid #aab6bb;border-radius:10px;overflow:hidden;box-shadow:0 3px 12px #0001}
+.title{padding:9px 12px;background:#26343a;color:white;font-weight:650}.shell{height:330px;display:grid;grid-template-columns:1fr 150px;grid-template-rows:38px 1fr 88px}
+.bar{grid-column:1/3;padding:8px;background:#f2f4f5;border-bottom:1px solid #ccd4d7}.view{position:relative;padding:12px;background:linear-gradient(90deg,#f8faf9 49%,#e5ebea 50%,#f8faf9 51%);overflow:hidden}
+.view:before{content:"";position:absolute;left:10%;right:8%;top:50%;height:8px;border:2px solid #1b6775;border-radius:50%;transform:rotate(-7deg)}
+.select{position:absolute;left:42%;top:43%;width:28%;height:26px;border:3px solid #f18b35;border-radius:50%;transform:rotate(-7deg)}
+.ghost{position:absolute;left:35%;right:9%;top:58%;border-top:8px dashed #7c55a5;transform:rotate(-5deg)}
+.cockpit{padding:10px;border-left:1px solid #ccd4d7;background:#fafbfb}.cockpit b,.cockpit small{display:block}.state{display:inline-block;margin:8px 0;padding:3px 6px;border:1px solid #687b83;border-radius:10px}.warn{color:#8b4b0a}.band{grid-column:1/3;padding:8px;border-top:1px solid #ccd4d7;background:#f7f3ec;position:relative}.band svg{width:100%;height:48px}
+button{font:inherit;padding:4px 7px;margin:4px 2px 0 0}.empty .view:before,.empty .select{display:none}.empty .view{display:grid;place-items:center;text-align:center}
+.editor{position:absolute;inset:12px;background:#fff;border:1px solid #88979d;padding:10px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:8px}.box{border:1px solid #b8c3c7;padding:8px;min-height:54px}
+.narrow{max-width:270px;margin:auto}.narrow .shell{grid-template-columns:1fr;grid-template-rows:48px 1fr 60px;height:430px}.narrow .bar{grid-column:1}.narrow .cockpit{grid-row:3;border:0;border-top:1px solid #ccd4d7;display:flex;justify-content:space-between}.narrow .band{display:none}
+.annotation{padding:8px 12px;color:#53636b;border-top:1px solid #e0e5e7}
+</style>
+</head>
+<body>
+<h1>alignmentOS interaction wireframes</h1>
+<p class="note">Nine medium-fidelity hierarchy tests. Orange is the one workspace selection; purple dashed geometry is an unapplied preview. These compositions test responsibility and state, not final brand.</p>
+<main class="grid">
+
+<section class="frame empty"><div class="title">1 · Empty Home</div><div class="shell"><div class="bar">Home · Local engineering plane</div><div class="view"><div><b>No engineering objects</b><p>Work locally now; geographic context can be attached later.</p><button>New Alignment</button><button>Import</button><button>Objects</button></div></div><aside class="cockpit"><b>Home</b><small>No selection</small></aside><div class="band">Analytic bands stay hidden until useful.</div></div><div class="annotation">Home is orientation and recovery, not a dashboard.</div></section>
+
+<section class="frame"><div class="title">2 · Alignment selected</div><div class="shell"><div class="bar">Local engineering plane · A-17 · Fit</div><div class="view"><i class="select"></i></div><aside class="cockpit"><b>Alignment A-17</b><small>0–2,430 m intrinsic</small><span class="state">Placed locally</span><button>Focus</button><button>Edit</button><button>Derive</button><small>2 dependent objects</small></aside><div class="band"><svg><path d="M0 36 L90 36 Q130 36 170 10 L250 10 Q290 10 330 36 L500 36" fill="none" stroke="#1b6775" stroke-width="3"/></svg></div></div><div class="annotation">Plan and curvature share selection and intrinsic cursor.</div></section>
+
+<section class="frame"><div class="title">3 · Element editing through CurvatureBand</div><div class="shell"><div class="bar">A-17 › Transition T4 · Editing working copy</div><div class="view"><i class="select"></i></div><aside class="cockpit"><b>Transition T4</b><span class="state">Working copy</span><small>κ end is dependent 🔒</small><button>Apply</button><button>Undo</button><button>Details</button></aside><div class="band"><svg><path d="M0 38 L120 38 Q180 38 230 8 L500 8" fill="none" stroke="#1b6775" stroke-width="3"/><circle cx="170" cy="27" r="6" fill="#f18b35"/><rect x="226" y="4" width="9" height="9" fill="#687b83"/></svg></div></div><div class="annotation">Only real freedoms get handles; pointer release proposes one command.</div></section>
+
+<section class="frame"><div class="title">4 · Simplified Alignment Editor</div><div class="shell"><div class="bar">A-17 › Alignment Editor <button>Close</button></div><div class="view"><div class="editor"><b>Constructive sequence</b><div class="cols"><div class="box">S1 · Straight<br>0–620 m</div><div class="box">Exact parameters<br>Length 620.000 m</div><div class="box" style="border:3px solid #f18b35">T4 · Transition</div><div class="box">Freedom: length<br>Dependent: κ end</div></div><button>Apply command</button> <button>Cancel</button></div></div><aside class="cockpit"><b>T4</b><small>Alignment context retained</small></aside><div class="band">Shared station cursor</div></div><div class="annotation">Exact editing is a focused working copy, not a second selection system.</div></section>
+
+<section class="frame"><div class="title">5 · Live TransEd</div><div class="shell"><div class="bar">Transition catalogue › Bloss v2 · local tool selection</div><div class="view"><div class="editor"><div class="cols"><div class="box">Catalogue<br>Clothoid<br><b>Bloss v2</b><br>Sine</div><div class="box">κ ━<br>κ′ ┄<br>κ″ ···<br><svg width="170" height="70"><path d="M0 60 Q70 60 150 8" fill="none" stroke="#1b6775" stroke-width="3"/></svg></div></div><button>Compare</button><button>Use in T4 working copy</button></div></div><aside class="cockpit"><b>Workspace</b><small>A-17 · T4 remains selected</small></aside><div class="band">w1 ◇────────◇ w2 · bounded partition controls</div></div><div class="annotation">Catalogue browsing does not hijack SPOT/workspace selection.</div></section>
+
+<section class="frame"><div class="title">6 · GND import evidence and transfer</div><div class="shell"><div class="bar">Import › GND source 2026-07-21</div><div class="view"><div class="editor cols"><div class="box"><b>Evidence</b><br>✓ 214 interpreted<br>△ 7 unresolved<br>⊘ 3 rejected, retained</div><div class="box"><b>Preview candidate</b><br>CRS unresolved<br>Local geometry available<br><button>Reveal raw rows</button></div><button>Transfer to SPOT…</button></div></div><aside class="cockpit"><b>Candidate G-4</b><span class="state">Not admitted</span><small class="warn">CRS needs attention</small></aside><div class="band">Source → interpretation → preview → explicit transfer</div></div><div class="annotation">Exact and rejected evidence remains reachable after transfer.</div></section>
+
+<section class="frame"><div class="title">7 · AXTRAN candidate review</div><div class="shell"><div class="bar">A-17 › Join J6 › 4 calculated candidates</div><div class="view"><i class="ghost"></i><div class="editor cols" style="inset:auto 12px 12px"><div class="box"><b>A</b> applicable<br>max residual 0.8 mm</div><div class="box" style="border:3px solid #f18b35"><b>B</b> applicable<br>max residual 0.4 mm</div><button>Preview B</button><button>Compare A/B</button></div></div><aside class="cockpit"><b>Candidate B</b><span class="state">Not applied</span><small>Solver result ≠ decision</small><button>Apply…</button><button>Reject</button></aside><div class="band">κ / residuals · same intrinsic cursor</div></div><div class="annotation">Calculate, applicable, previewed, applied, and authoritative stay distinct.</div></section>
+
+<section class="frame"><div class="title">8 · Derived platform placement</div><div class="shell"><div class="bar">Derive › Exterior platform · Category IV · 200 m</div><div class="view"><i class="ghost"></i><i class="select"></i></div><aside class="cockpit"><b>Platform candidate</b><span class="state">Depends on A-17</span><small>Side: left · 200 m</small><small>Equipment: rule-derived 🔒</small><button>Create</button><button>Cancel</button></aside><div class="band">Start ◇════════ 200 m ════════◇ · offset constraint</div></div><div class="annotation">Placement manipulates intent; governing dependency remains explicit.</div></section>
+
+<section class="frame narrow"><div class="title">9 · Narrow width</div><div class="shell"><div class="bar">‹ Home · T4 <span class="state">Working</span></div><div class="view"><i class="select"></i></div><aside class="cockpit"><b>Transition T4</b><span><button>Edit</button><button>More</button></span></aside></div><div class="annotation">One primary surface; selection brief and actions remain reachable.</div></section>
+
+</main>
+</body>
+</html>

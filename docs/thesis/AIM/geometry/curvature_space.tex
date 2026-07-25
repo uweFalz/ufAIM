@@ -4,196 +4,143 @@
 
 \label{chap:curvature-space}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
+\section*{The same alignment, read intrinsically}
 
-Classical railway alignment theory is usually formulated in position
-space.
-
-Within AIM, the primary geometric object is not the position curve
-itself, but the curvature evolution along arc-length.
-
-This shifts the interpretation of railway geometry from coordinate-based
-description toward intrinsic curvature structure.
-
-The concept of curvature space provides the mathematical setting for:
-\begin{itemize}
-\item transition curves,
-\item sparse reconstruction,
-\item realization analysis,
-\item runtime evaluation,
-\item and alignment optimization.
-\end{itemize}
+Consider the identified straight--transition--arc state from
+Figure~\ref{fig:alignment-object-stationing-curvature}. Let its ordered
+station domains be
+\[
+I_S=[s_0,s_1],\qquad I_T=[s_1,s_2],\qquad I_A=[s_2,s_3].
+\]
+Here $s$ is intrinsic longitudinal position, not an $x$-coordinate and
+not a displayed kilometre label. Orientation fixes the direction in which the
+sequence is traversed. Together, order and $s$ tell us which element follows
+which before any geographic placement is chosen.
 
 \begin{principle}[Curvature-space principle]
 \label{princ:curvature-space}
-Within AIM, railway alignment geometry is interpreted primarily as a
-problem in curvature space.
+Within AIM, the plan geometry of an identified alignment state is read
+primarily through its curvature law over intrinsic longitudinal position.
 \end{principle}
 
-% ============================================================
-\section{Curvature as Primary Geometry}
-% ============================================================
+\section{Curvature makes the element sequence visible}
 
 \begin{definition}[Curvature law]
 \label{def:curvature-law}
-A curvature law is a function:
+A curvature law is a function
 \[
-\kappa : I \to \mathbb R,
+\kappa:I\to\mathbb R
 \]
-defined on an arc-length interval \(I\subset\mathbb R\).
+defined on an intrinsic arc-length interval $I\subset\mathbb R$.
 \end{definition}
 
-Within AIM, curvature is interpreted as the primary intrinsic geometric
-quantity.
+For the running example,
+\[
+\kappa(s)=
+\begin{cases}
+0, & s\in I_S,\\
+\kappa_T(s), & s\in I_T,\\
+\kappa_A, & s\in I_A.
+\end{cases}
+\label{eq:straight-transition-arc-curvature}
+\]
+The curvature band therefore reads the construction directly: zero means
+straight, constant nonzero curvature means circular arc, and changing
+curvature means transition. Element boundaries appear at $s_1$ and $s_2$,
+where value and derivative matching can be inspected. A plan view can make two
+families look almost identical while hiding different endpoint derivatives.
 
-Geometry is reconstructed from curvature through integration.
+The App's CurvatureBand is one implementation of this reading. The argument
+does not depend on that interface: any evaluation that retains $s$, element
+domains, $\kappa$, and its relevant derivatives can expose the same structure.
 
 \begin{principle}[Curvature-first principle]
 \label{princ:curvature-first}
-Within AIM, geometry is generated from curvature rather than curvature
-being derived from geometry.
+Curvature is primary with respect to reconstructed plan coordinates, but it
+remains a state of an identified alignment rather than a free-floating curve.
 \end{principle}
 
-% ============================================================
-\section{Curvature Space}
-% ============================================================
-
-\begin{definition}[Curvature space]
-\label{def:curvature-space}
-Curvature space denotes the space of admissible curvature laws:
-\[
-\mathcal K
-=
-\{
-\kappa : I \to \mathbb R
-\}.
-\]
-\end{definition}
-
-The symbol \(\mathcal K\) does not denote one fixed function class.
-It denotes the conceptual space in which different admissibility,
-smoothness, realization, and optimization requirements may be imposed.
-
-Different subclasses of curvature space correspond to different
-geometric and operational properties.
-
-Examples include:
-\begin{itemize}
-\item constant curvature,
-\item piecewise constant curvature,
-\item continuous curvature,
-\item differentiable curvature,
-\item bounded curvature,
-\item transition curvature,
-\item and hybrid curvature laws.
-\end{itemize}
-
-\OPEN{
-Later extensions of curvature space include admissible curvature laws,
-curvature spectra, realization-stable curvature, curvature energy,
-curvature bandwidth, transition-family subspaces, Vienna-type
-reinterpretations, and operator deformations.
-}
-
-% ============================================================
-\section{Intrinsic Reconstruction}
-% ============================================================
+\section{Reconstruction before geographic placement}
 
 \begin{definition}[Intrinsic reconstruction]
 \label{def:intrinsic-curvature-reconstruction}
-Given a curvature law:
+Given $\kappa(s)$ and an initial local pose
+$(\gamma(s_0),\theta(s_0))$, the tangent direction and plan curve satisfy
 \[
-\kappa(s),
-\]
-the tangent direction satisfies:
-\[
-\theta'(s)=\kappa(s),
-\]
-and geometry is reconstructed through:
-\[
-\gamma'(s)=\mathbf t(s).
+\theta'(s)=\kappa(s),\qquad
+\gamma'(s)=\mathbf t(s)=
+\begin{bmatrix}\cos\theta(s)\\\sin\theta(s)\end{bmatrix}.
 \]
 \end{definition}
 
-Curvature therefore acts as the differential generator of geometry.
+Integration reconstructs a local Cartesian curve. Changing the origin or
+rotating that local coordinate frame changes the coordinate representation,
+not the intrinsic sequence or curvature law. A later Realization Context may
+place the same state in a projected CRS or on an Earth reference surface. A
+physical realization may then instantiate it imperfectly. These dependencies
+add metric, geographic, and physical meaning without retrospectively creating
+the alignment's intrinsic geometry.
 
-The position curve \(\gamma\) is not primary. It is the result of
-integrating the intrinsic curvature state together with initial pose
-data.
+\section{Curvature space and the necessary distinctions}
 
-% ============================================================
-\section{Constant Curvature}
-% ============================================================
+\begin{definition}[Curvature space]
+\label{def:curvature-space}
+Curvature space denotes the space of curvature laws
+\[
+\mathcal K=\{\kappa:I\to\mathbb R\}
+\]
+within which stated admissibility, smoothness, realization, and operational
+requirements select applicable subsets.
+\end{definition}
+
+The symbol (mathcal K) does not make every mathematically expressible law
+admissible, applicable, or authoritative. It provides the comparison space in
+which constant, transition, bounded, differentiable, and hybrid laws can be
+distinguished for the identified engineering state.
 
 \begin{definition}[Constant curvature]
 \label{def:constant-curvature}
-A constant curvature law satisfies:
-\[
-\kappa(s)=\kappa_0.
-\]
+A constant curvature law satisfies $\kappa(s)=\kappa_0$. The case
+$\kappa_0=0$ is straight; $\kappa_0\neq0$ reconstructs a circular arc.
 \end{definition}
-
-Special cases are:
-\begin{itemize}
-\item \(\kappa_0=0\): straight line,
-\item \(\kappa_0\neq 0\): circular arc.
-\end{itemize}
-
-Constant-curvature elements form the fixed parts of the sparse alignment
-model.
-
-% ============================================================
-\section{Transition Curvature}
-% ============================================================
 
 \begin{definition}[Transition curvature]
 \label{def:transition-curvature}
-A transition curvature law connects different curvature states
-continuously or smoothly.
+A transition curvature law connects different curvature states over an
+explicit longitudinal domain.
 \end{definition}
 
-Transition curves are therefore interpreted as curvature-transition
-processes rather than merely geometric interpolation curves.
+Its derivatives make qualities at the joins inspectable. Table
+\ref{tab:curvature-continuity-reading} states only the geometric reading;
+specific operational limits still require applicable railway knowledge,
+speed, cant, vehicle assumptions, and purpose.
 
-Typical transition quantities include:
-\[
-\kappa'(s),
-\qquad
-\kappa''(s),
-\qquad
-\kappa'''(s).
-\]
-
-In AIM, transition families are interpreted as structured subspaces or
-parameterized paths within curvature space.
-
-% ============================================================
-\section{Curvature Continuity}
-% ============================================================
+\begin{table}[htbp]
+\centering
+\small
+\caption{Continuity readings at an element boundary $s_b$}
+\label{tab:curvature-continuity-reading}
+\begin{tabular}{@{}p{0.16\textwidth}p{0.25\textwidth}p{0.49\textwidth}@{}}
+\toprule
+Quantity & Boundary question & What the answer reveals \\
+\midrule
+$\kappa$ & Do left and right values agree? & Whether curvature is continuous; a jump introduces an immediate change of lateral geometric demand. \\
+$\kappa'$ & Do curvature rates agree? & Whether curvature development enters and leaves without a rate jump; at speed this affects the time development of lateral response. \\
+$\kappa''$ & Do rate derivatives agree? & Whether higher-order transition development is smooth; relevance to vehicle response or comfort remains speed-, cant-, and model-dependent. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{definition}[Curvature continuity]
 \label{def:curvature-continuity}
-A curvature law is:
-\begin{itemize}
-\item \(C^0\)-continuous if \(\kappa(s)\) is continuous,
-\item \(C^1\)-continuous if \(\kappa'(s)\) is continuous,
-\item \(C^2\)-continuous if \(\kappa''(s)\) is continuous.
-\end{itemize}
+A curvature law is $C^0$ when $\kappa$ is continuous, $C^1$ when
+$\kappa'$ exists and is continuous, and $C^2$ when $\kappa''$ exists and
+is continuous on the stated domain.
 \end{definition}
 
-Higher continuity improves:
-\begin{itemize}
-\item dynamic smoothness,
-\item realization stability,
-\item numerical robustness,
-\item and passenger comfort.
-\end{itemize}
-
-Continuity of position is not sufficient for high-quality railway
-geometry. The decisive structure lies in the continuity and behaviour of
-curvature and its derivatives.
+Position continuity alone cannot answer these questions. The next chapter
+classifies the laws by precisely these visible properties before the
+Berlinish chapter applies them to the transition domain.
 
 % ============================================================
 \section{Sparse Curvature Representation}

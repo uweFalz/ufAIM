@@ -1,0 +1,17 @@
+% figures/dynamics/dynamic_balance_relation-DE.tex
+\begin{tikzpicture}[
+  node distance=1.6cm,
+  box/.style={draw, rounded corners, minimum width=3.8cm, minimum height=0.9cm, align=center},
+  smallbox/.style={draw, rounded corners, minimum width=3.4cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+\node[box] (curv) {Krümmung\\$\kappa(s)$};
+\node[box, right=of curv] (acc) {Querbeschleunigung\\$v^2\kappa(s)$};
+\node[box, below=of acc] (cant) {Überhöhungskompensation\\$g\sin\phi(s)$};
+\node[box, right=of acc] (balance) {Gleichgewichtsbeziehung\\$v^2\kappa(s)=g\sin\phi(s)$};
+\node[smallbox, below=of balance] (imbalance) {Ungleichgewicht\\$a_{\mathrm{eff}}=v^2\kappa-g\sin\phi$};
+\draw[arrow] (curv) -- (acc);
+\draw[arrow] (acc) -- (balance);
+\draw[arrow] (cant) -- (balance);
+\draw[arrow] (balance) -- (imbalance);
+\end{tikzpicture}

@@ -1,0 +1,67 @@
+\section{Sequentielle quadratische Programmierung (SQP)}
+\subsection{Problemstruktur}
+Wir betrachten
+\[
+\min_{\mathbf x}J(\mathbf x)
+\quad\text{unter}\quad g(\mathbf x)=0,\;h(\mathbf x)\leq0.
+\]
+\begin{definition}[Parametervektor]
+\[
+\mathbf x=(\kappa_0,\dots,\kappa_N,\phi_0,\dots,\phi_N).
+\]
+\end{definition}
+
+\subsection{Residuenformulierung}
+\begin{definition}[Residuenvektor]
+\[
+J(\mathbf x)=\frac12\|\mathbf r(\mathbf x)\|^2.
+\]
+\end{definition}
+Typische Residuenkomponenten sind
+\[
+r_i^{(\kappa)}=\sqrt\gamma\frac{\kappa_{i+1}-\kappa_i}{\Delta s},
+\quad
+r_i^{(\phi)}=\sqrt\delta\frac{\phi_{i+1}-\phi_i}{\Delta s},
+\]
+\[
+r_i^{(\mathrm{dyn})}=\sqrt\beta(v^2\kappa_i-g\sin\phi_i).
+\]
+
+\subsection{Gauss--Newton-Schritt}
+\begin{definition}[SQP-Schritt]
+In Iteration \(k\) wird \(\mathbf p_k\) berechnet aus
+\[
+(J_r^T J_r)\mathbf p_k=-J_r^T\mathbf r.
+\]
+\end{definition}
+Die Hesse-Matrix wird approximiert durch \(H\approx J_r^T J_r\).
+
+\subsection{Dünn besetzte Struktur}
+Die Systemmatrix besitzt Bandstruktur: tridiagonale Kopplung für
+Glattheitsterme und diagonale Beiträge dynamischer Terme.
+
+\subsection{Behandlung der Bedingungen}
+Bedingungen werden durch Projektion, Strafglieder oder Lagrange-Multiplikatoren
+behandelt.
+
+\subsection{Iterationsschema}
+\begin{algorithm}
+\caption{SQP-Iteration}
+\begin{algorithmic}
+\State initialisiere $\mathbf{x}_0$
+\For{$k=0,1,\dots$}
+  \State berechne $\mathbf r(\mathbf x_k)$
+  \State berechne $J_r(\mathbf x_k)$
+  \State löse $(J_r^T J_r)\mathbf p_k=-J_r^T\mathbf r$
+  \State wähle Schrittweite $\alpha_k$
+  \State aktualisiere $\mathbf x_{k+1}=\mathbf x_k+\alpha_k\mathbf p_k$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Interpretation}
+\begin{summary}
+SQP bietet ein praktisches und effizientes Verfahren zur Lösung des diskreten
+Alignment-Optimierungsproblems. Seine Effizienz folgt aus der dünn besetzten
+und lokalen Struktur des zugrunde liegenden Modells.
+\end{summary}

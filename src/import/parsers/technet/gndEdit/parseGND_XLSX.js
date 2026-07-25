@@ -5,6 +5,8 @@
 import * as fat from "@kimport/landfat/landFatWriter.js";
 
 import { readGndXlsxTables } from "./gnd/readGndXlsxTables.js";
+import { envelopeToGndTables } from "./gnd/gndSourceEnvelope.js";
+import { normalizeGndRow } from "./gnd/normalizeGndRows.js";
 import { createGndDataset } from "./gnd/createGndDataset.js";
 import { createGndPadIndex } from "./gnd/createGndPadIndex.js";
 import { createGndEdgeIndex } from "./gnd/createGndEdgeIndex.js";
@@ -52,16 +54,27 @@ const FAMILY_CONFIG = {
 export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 	const fileName = file?.name ?? "unknown.xlsx";
 
-	const { workbookInfo, tables } = await readGndXlsxTables({
+	const { envelope } = await readGndXlsxTables({
 		file,
 		bytes,
 		sheetNames: SHEET_NAMES,
 	});
 
+	return parseGNDSourceEnvelope({ envelope, context });
+}
+
+export function parseGNDSourceEnvelope({ envelope, context = {} } = {}) {
+	const fileName = envelope?.source?.fileName ?? "unknown";
+	const workbookInfo = {
+		sheetNames: (envelope?.inventory ?? []).map((table) => table.name),
+		sheetCount: envelope?.inventory?.length ?? 0,
+	};
+	const rawTables = envelopeToGndTables(envelope);
+	const tables = Object.fromEntries(Object.entries(rawTables).map(([name, rows]) => [name, rows.map((row) => normalizeGndRow(row, { sheetName: name, rowIndex: row.__rowIndex }))]));
 	const dataset = createGndDataset({
 		source: {
 			parserId: "gndEdit",
-			backend: "xlsx",
+			backend: envelope?.source?.format?.includes("Jet") ? "mdb" : "xlsx",
 			fileName,
 		},
 		workbookInfo,
@@ -74,7 +87,7 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 		DEBUG_GND_ANALYSIS_DEFAULT;
 
 	if (debugGndAnalysis) {
-		console.groupCollapsed(`[GND/XLSX] workbook :: ${fileName}`);
+		console.groupCollapsed(`[GND] source :: ${fileName}`);
 		console.log("sheetNames:", workbookInfo.sheetNames);
 		console.log("sheetCount:", workbookInfo.sheetCount);
 		console.groupEnd();
@@ -92,8 +105,9 @@ export async function parseGND_XLSX({ file, bytes, context = {} } = {}) {
 		model,
 		metaExtra: {
 			parserId: "gndEdit",
-			sourceBackend: "xlsx",
+			sourceBackend: dataset.source.backend,
 			stage: "landFAT-with-gnd-attachments",
+			sourceEnvelope: envelope,
 			sheetNames: workbookInfo.sheetNames,
 			analysis: {
 				padCount: model.stats.padCount,

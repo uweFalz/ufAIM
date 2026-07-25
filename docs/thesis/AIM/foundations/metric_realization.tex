@@ -3,152 +3,91 @@
 \chapter{Metric Realization}
 \label{chap:metric-realization}
 
-An intrinsic engineering description does not by itself determine how
-distances, directions, or positions are evaluated. Before an alignment
-can be interpreted geometrically, it must be realized within a metric
-space. This chapter introduces that conceptual step while keeping it
-strictly separate from engineering semantics, coordinate reference
-systems, and physical realization.
+After the curvature edit has produced a revised intrinsic state, the
+trajectory is mathematically determined but not yet spatially
+measurable. Distances to survey points, world positions, and frame
+orientations require a metric context. Metric realization is the action
+that supplies that context without changing the alignment's identity or
+constructive history.
 
-% ============================================================
-\section{Intrinsic Description and Metric Interpretation}
-% ============================================================
+\section{From intrinsic order to measurable geometry}
 
-The intrinsic description of an alignment specifies engineering
-structure independently of any particular metric model. It defines the
-objects and relations that constitute the engineering concept but does
-not prescribe how these objects are embedded into a measurable space.
-Metric realization provides the missing interpretation. It assigns
-metric meaning to intrinsic quantities so that distances, orientations,
-curvature, and spatial relations become well-defined.
+Intrinsic construction supplies the longitudinal domain, curvature
+evolution, ordered states, and applicable boundary conditions. A metric
+realization context supplies the metric space, reference surface where
+applicable, embedding conventions, and other information required to
+interpret length, direction, curvature, and position.
 
 \begin{definition}[Metric realization]
 Metric realization is the interpretation of an intrinsic engineering
 description within a specified metric space.
 \end{definition}
 
-Metric realization therefore does not change the engineering object.
-Instead, it determines how that object is evaluated geometrically.
-
-% ============================================================
-\section{Metric Space}
-% ============================================================
-
-\begin{definition}[Metric space]
-A metric space provides the geometric structure required to interpret
-distance, direction, position, curvature, and related spatial
-quantities.
-\end{definition}
-
-Different metric spaces may support different notions of straightness,
-distance, curvature, or frame transport. These differences influence the
-evaluation of geometry without altering the underlying engineering
-description. Consequently, metric properties belong to the realization of
-an alignment rather than to its intrinsic semantics.
-
-% ============================================================
-\section{Realization Context}
-% ============================================================
-
-Metric realization requires more than the selection of a metric space.
-Additional contextual information may be needed before intrinsic
-quantities can be interpreted geometrically.
-
-\begin{definition}[Realization context]
-A realization context comprises the information required to interpret an
-intrinsic engineering description within a particular metric space.
-\end{definition}
-
-Depending on the engineering problem, this context may include a
-coordinate reference system, reference surfaces, realization
-conventions, local frames, or other information influencing metric
-evaluation. The realization context therefore belongs to the
-interpretation of an engineering object rather than to its intrinsic
-identity.
-
-% ============================================================
-\section{Metric Realization Operator}
-% ============================================================
-
-The transition from intrinsic engineering description to metric
-interpretation is represented abstractly by a realization operator.
-
-\begin{definition}[Metric realization operator]
-The abstract realization operator is written as
+The action is written
 \[
-\mathcal G:\mathcal X\rightarrow\mathcal X_{\mathrm{metric}},
+\mathcal G_c:\mathcal X\rightarrow\mathcal X_{\mathrm{metric}},
 \]
-where $\mathcal X$ denotes the intrinsic state space and
-$\mathcal X_{\mathrm{metric}}$ its metric interpretation.
-\end{definition}
+where the subscript \(c\) makes the realization context explicit. Two
+contexts may produce different coordinates or metric consequences from
+the same intrinsic state while preserving the same engineering object.
 
-The operator expresses a conceptual dependency rather than a particular
-algorithm. Different implementations may realize the same engineering
-description while remaining consistent with the same realization
-context.
+\paragraph{Execution contract.}
+The operator receives an intrinsic state and realization context; it
+produces a metric state in which spatial quantities can be evaluated. It
+requires an applicable metric model and sufficient embedding data. It
+preserves engineering identity and carries the provenance of both the
+intrinsic state and context. It cannot create a physical railway,
+observe its condition, select an authoritative coordinate source, or
+decide whether a discrepancy is acceptable.
 
-% ============================================================
-\section{Relation to Coordinate Reference Systems}
-% ============================================================
+\section{Keep the five roles separate}
 
-Coordinate reference systems and metric realization are closely related
-but conceptually distinct. A coordinate reference system specifies how
-positions are expressed within a global reference frame, whereas metric
-realization specifies how engineering quantities obtain geometric meaning.
-A coordinate transformation changes the representation of positions
-between coordinate systems, but it does not by itself establish the
-metric interpretation of an engineering description. Likewise, changing
-the coordinate reference system does not change the engineering identity
-of an alignment.
+In the curvature-edit example, the roles are now operationally distinct:
 
-% ============================================================
-\section{Multiple Metric Realizations}
-% ============================================================
+\begin{description}
+\item[Intrinsic construction] determines how the edited curvature
+  propagates into heading and trajectory.
+\item[Metric context] determines how the trajectory obtains measurable
+  distance, direction, curvature, and spatial position.
+\item[Coordinate representation] records the realized result in a
+  selected coordinate description; \(\mathcal C\) may change that
+  description without repeating the intrinsic construction.
+\item[Physical realization] concerns the constructed or maintained
+  railway and is related to the target state by \(\mathcal R\), not by
+  \(\mathcal G_c\).
+\item[Observation] provides source-grounded evidence about a condition,
+  for example survey samples with provenance and uncertainty.
+\end{description}
 
-The same intrinsic engineering description may admit multiple valid
-metric realizations. An alignment may be interpreted within a locally
-Euclidean engineering model, within a projection-aware realization, or
-directly on a reference surface. These realizations may differ in their
-geometric evaluation while describing the same engineering object. The
-engineering description therefore remains stable even when the metric
-realization changes.
+These roles may share numerical coordinates after processing. Numerical
+agreement does not make them interchangeable.
 
-% ============================================================
-\section{Relationship to Subsequent Chapters}
-% ============================================================
+\section{Making the discrepancy computable}
 
-Metric realization establishes the conceptual bridge between intrinsic
-engineering information and spatial geometry. The following chapters build
-upon this foundation by introducing coordinate reference systems,
-world-space embedding, spatial frames, Earth-related geometry, and
-runtime evaluation. Those developments assume the distinction established
-here between engineering semantics and metric interpretation.
+Let \(x_{\mathrm{target}}\) be the revised intrinsic target state. The
+metric state
+\[
+x_{\mathrm{target}}^{c}=\mathcal G_c(x_{\mathrm{target}})
+\]
+can be represented as a CAD curve or sampled polyline. Survey evidence
+must be interpreted in a compatible context before comparison. A
+coordinate transformation can reconcile two world-space descriptions;
+a world-to-track mapping can supply a track-related interpretation.
+Neither operation proves common identity, common condition, or source
+authority.
 
-% ============================================================
-\section{Canonical Interpretation}
-% ============================================================
+Once compatibility and applicability have been established, evaluation
+may produce a qualified residual. Changing \(c\) may change that
+residual because projection, surface model, or metric interpretation has
+changed. That sensitivity is a property of the evaluation context, not
+evidence that the intrinsic alignment acquired a new identity.
 
-\begin{proposition}
-Intrinsic engineering descriptions do not depend on a particular metric
-space.
-\end{proposition}
+\section{Why the ellipsoid follows}
 
-\begin{proposition}
-Metric realization assigns geometric meaning to intrinsic engineering
-information without changing its engineering identity.
-\end{proposition}
-
-\begin{proposition}
-Different metric realizations may describe the same engineering object
-while producing different geometric evaluations.
-\end{proposition}
-
-\begin{proposition}
-Coordinate reference systems participate in metric realization but do
-not define engineering semantics.
-\end{proposition}
-
-The distinction between engineering description and metric realization
-forms one of the central architectural boundaries of the Knowledge
-Kernel and provides the foundation for the subsequent treatment of
-Earth-related geometry, spatial interpretation, and runtime evaluation.
+A locally Euclidean realization may be sufficient for a bounded
+engineering task. Where projection distortion or Earth-surface geometry
+matters, the realization context must instead expose the reference
+surface and its metric structure. The ellipsoid chapters therefore do
+not begin a new geometry story. They instantiate the metric-realization
+contract for a surface on which straightness, curvature, normal
+direction, and frame transport require surface-aware definitions.

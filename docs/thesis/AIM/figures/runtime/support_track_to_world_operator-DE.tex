@@ -1,0 +1,12 @@
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=3.4cm, minimum height=0.8cm, align=center},
+  op/.style={draw, rounded corners, minimum width=3.9cm, minimum height=0.85cm, align=center},
+  arrow/.style={->, thick}
+]
+  \node[box] (track) {Track Space};
+  \node[op, below=of track] (opt) {Track-to-World-Operator};
+  \node[box, below=of opt] (world) {World Space};
+  \draw[arrow] (track) -- (opt);
+  \draw[arrow] (opt) -- (world);
+\end{tikzpicture}

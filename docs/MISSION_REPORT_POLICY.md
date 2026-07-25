@@ -41,6 +41,35 @@ Use exactly these top-level headings, in this order:
 ## 9. Handover
 ```
 
+## Copyability Contract
+
+The complete mission report must be transferable from one task to another with
+one copy operation. Deliver it as one contiguous, self-contained Markdown
+artifact beginning with `# MISSION REPORT` and ending with the final content of
+`## 9. Handover`.
+
+The report must:
+
+- contain no conversational preface, acknowledgement, explanation, or follow-up
+  text before or after the report;
+- contain all mission identity, baseline, scope, evidence, decisions, and
+  handover information needed by the receiving task;
+- use repository-relative paths as the durable file reference; a clickable
+  absolute local link may be added, but must not replace the repository-relative
+  path;
+- keep commands, identifiers, hashes, status values, and result-contract field
+  names as selectable text rather than screenshots or UI-only widgets;
+- include essential findings directly instead of requiring access to collapsed
+  commentary, prior chat messages, editor cards, or tool output;
+- identify attachments or external evidence explicitly when they are necessary,
+  including enough provenance for the receiving task to locate them;
+- remain understandable when pasted as plain Markdown into a fresh Codex task.
+
+Do not wrap the entire report in a Markdown code fence. Fences may be used only
+for commands, schemas, equations, or other content that semantically requires
+them. Application-provided copy controls or writing containers are permitted,
+but their markers are not part of the report content.
+
 ### 1. Mission
 
 State:
@@ -206,8 +235,15 @@ Do not include:
 - unsupported claims of approval,
 - hidden follow-up work behind a `complete` status.
 
+Also do not append editor-generated change cards, preview controls, clickable
+action labels, token or elapsed-time notices, or any other text that would be
+copied as meaningless residue into the receiving task.
+
 ## Acceptance Rule
 
 A mission without a conforming report is not accepted as handed over, even when
 its file changes appear useful. Rock may return the mission for report repair
 without rejecting the underlying work.
+
+A report that cannot be copied as one clean, self-contained Markdown artifact is
+non-conforming and may be returned for report-only repair.

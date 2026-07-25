@@ -1,0 +1,65 @@
+\section{Analytische Struktur des Optimierungsproblems}
+\subsection{Motivation}
+In klassischer numerischer Optimierung werden Jacobi-Matrizen häufig durch
+finite Differenzen oder automatische Differentiation berechnet. Im AIM-Rahmen
+ist dies nicht erforderlich: Das Alignment-Modell ist intrinsisch
+differenzierbar.
+
+\subsection{Grundlegende Beobachtung}
+\begin{proposition}
+Alle Zustandsvariablen entstehen durch Bogenlängenintegration:
+\[
+\theta(s)=\theta_0+\int_0^s\kappa(\sigma)\,\dd\sigma,
+\]
+\[
+\gamma(s)=\gamma_0+\int_0^s(\cos\theta,\sin\theta)\,\dd\sigma.
+\]
+\end{proposition}
+
+\subsection{Parametertypen}
+\begin{definition}
+Primäre Parameterklassen sind Krümmungsparameter \(dK\), Längenparameter
+\(dL\) und Übergangsparameter \(dT\).
+\end{definition}
+
+\subsection{Analytische Ableitungen}
+\begin{proposition}
+\[
+\frac{\partial\theta(s)}{\partial p}
+=\int_0^s\frac{\partial\kappa}{\partial p}\,\dd\sigma.
+\]
+\end{proposition}
+\begin{proposition}
+\[
+\frac{\partial\gamma(s)}{\partial p}
+=\int_0^s
+\begin{pmatrix}-\sin\theta\\\cos\theta\end{pmatrix}
+\frac{\partial\theta}{\partial p}\,\dd\sigma.
+\]
+\end{proposition}
+Alle Ableitungen reduzieren sich auf Bogenlängenintegrale.
+
+\subsection{Zentrale Erkenntnis}
+\begin{proposition}
+Das Optimierungsproblem besitzt exakte Jacobi-Matrizen ohne numerische
+Approximation.
+\end{proposition}
+Dies beseitigt finite Differenzen, numerische Instabilität und hohen
+Rechenaufwand.
+
+\subsection{Blockstruktur}
+Der Parametervektor zerfällt in \((\boldsymbol\kappa,\boldsymbol\phi)\) und
+induziert
+\[
+H=\begin{pmatrix}
+H_{\kappa\kappa}&H_{\kappa\phi}\\
+H_{\phi\kappa}&H_{\phi\phi}
+\end{pmatrix}.
+\]
+
+\subsection{Interpretation}
+\begin{summary}
+Die Struktur wird nicht numerisch aufgeprägt, sondern folgt unmittelbar aus
+der krümmungsbasierten Modellierung. Daraus entstehen exakte Ableitungen, dünn
+besetzte Matrizen und natürliche Blockstruktur -- ein zentraler Vorteil von AIM.
+\end{summary}

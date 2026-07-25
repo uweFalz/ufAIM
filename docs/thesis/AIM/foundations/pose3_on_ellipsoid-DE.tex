@@ -1,0 +1,125 @@
+% Deutsche Parallelfassung zu foundations/pose3_on_ellipsoid.tex
+
+\chapter{Räumliche Pose in der Erdrealisierung}
+
+Das vorherige Kapitel erzeugte die realisierte Flächentrajektorie,
+\(\mathbf t\), \(\mathbf n_{\mathcal E}\), \(\mathbf b\) und
+\(\kappa_g\). Dies ist keine zweite Alignment-Definition. Es sind die
+metrischen Ausgaben, die zur Formulierung einer räumlichen Ingenieurfrage
+benötigt werden: Wie wirken Überhöhung, Gravitation und Geschwindigkeit an
+jeder Position desselben Alignments?
+
+\section{Von der Flächentrajektorie zu pose3}
+
+Die Anwendung des Frame-Operators ergibt das unüberhöhte Flächen-Frame
+\[
+F_{\mathcal E}(s)=
+\bigl(\mathbf t(s),\mathbf b(s),\mathbf n_{\mathcal E}(s)\bigr).
+\]
+Die flächenbezogene Pose ist folglich
+\[
+\mathrm{pose3}_{\mathcal E}(s)=
+\bigl(
+\gamma_{\mathcal E}(s),
+\mathbf t(s),
+\mathbf n_{\mathcal E}(s),
+\kappa_g(s),
+\phi(s)
+\bigr).
+\]
+Der ebene Richtungswinkel \(\theta\) wurde nicht willkürlich verworfen: Seine
+Rolle wird nun von einem Tangentenvektorfeld übernommen, dessen Vergleich von
+Punkt zu Punkt von der Flächenverbindung abhängt.
+
+Die Krümmungsänderung ändert \(\kappa_g\) in dieser Realisierung unmittelbar
+und damit die fortgepflanzte Tangente, die Flächentrajektorie und das lokale
+Frame. Referenzellipsoid und Gravitationsmodell bleiben feste
+Qualifikationen; die Überhöhung bleibt fest, sofern sie nicht bearbeitet oder
+durch eine anwendbare Nebenbedingung gekoppelt wird.
+
+\section{Überhöhung dreht den realisierten Querschnitt}
+
+Die Überhöhungsdrehung \(\phi(s)\) wirkt um die Tangente:
+\[
+\mathbf b_{\phi}(s)
+=R_{\mathbf t}(\phi(s))\,\mathbf b(s),
+\qquad
+\mathbf n_{\phi}(s)
+=R_{\mathbf t}(\phi(s))\,\mathbf n_{\mathcal E}(s).
+\]
+Diese Operation empfängt das realisierte Flächen-Frame und den
+Überhöhungszustand und erzeugt den überhöhten Querschnitt. Sie bewahrt die
+Alignment-Identität und hält sowohl Zustands- als auch
+Realisierungsprovenienz fest. Sie leitet weder Überhöhung aus einem gerenderten
+Schienenmodell ab, noch entscheidet sie, dass das resultierende Gleichgewicht
+akzeptabel ist.
+
+\section{Gravitation macht die Pose physikalisch interpretierbar}
+
+Es sei \(\mathbf g(s)\) der anwendbare lokale Gravitationsvektor an
+\(\gamma_{\mathcal E}(s)\). Eine vereinfachte Realisierung kann
+\(\mathbf g\parallel-\mathbf n_{\mathcal E}\) setzen; eine Realisierung
+höherer Genauigkeit kann Ellipsoidnormale, Geoidnormale und lokale Gravitation
+unterscheiden. Die Wahl gehört zum metrischen und physikalischen
+Bewertungskontext, nicht zur Alignment-Identität.
+
+Gravitation wird hier eingeführt, weil Überhöhung nur relativ zu einer
+Kraftrichtung eine ingenieurtechnische Folge besitzt. Die Flächennormale
+konstruiert das Frame; der Gravitationsvektor liefert die in der Bewertung
+verwendete physikalische Richtung.
+
+\section{Krümmung, Geschwindigkeit, Überhöhung und effektive Beschleunigung}
+
+Für die Geschwindigkeit \(v\) lautet der krümmungsinduzierte Queranteil
+\[
+a_{\kappa}(s)=v^2\kappa_g(s).
+\]
+Die Projektion der Krümmungs- und Gravitationsanteile in die überhöhte
+Seitenrichtung ergibt unter der verwendeten Vorzeichenkonvention
+\[
+a_{\mathrm{eff}}(s)
+=v^2\kappa_g(s)
+-\mathbf g(s)\cdot\mathbf b_{\phi}(s).
+\]
+Unter der lokalen ebenen Näherung reduziert sich dies auf
+\[
+a_{\mathrm{eff}}(s)
+=v^2\kappa(s)-g\sin\phi(s).
+\]
+
+Die Abhängigkeit ist nun ausdrücklich: Die Krümmungsänderung ändert
+\(\kappa_g\) und das realisierte Frame; die Geschwindigkeit liefert den
+betrieblichen Zustand; die Überhöhung dreht den Querschnitt; die Gravitation
+liefert die physikalische Richtung; die Bewertung erzeugt die effektive
+Beschleunigung. Das Ergebnis hängt von allen fünf Eingaben ab. Es kann weder
+eine zulässige Geschwindigkeit bestimmen, die Änderung freigeben noch die
+Ingenieurregel ersetzen, unter der es beurteilt wird.
+
+\section{Was diese Spezialisierung festlegt}
+
+\begin{description}
+\item[Heute nutzbar:] AIM kann Identität und Provenienz bewahren, während es
+  einen intrinsischen Zustand rekonstruiert, einen ausdrücklichen metrischen
+  Kontext anwendet, ebene Repräsentationen erzeugt und qualifizierte Folgen
+  bewertet. Eine lokale ebene Realisierung bleibt ausreichend, wann immer
+  ihre deklarierte Genauigkeit für die Aufgabe genügt.
+\item[Formale Spezialisierung:] Diese Kapitel formulieren, wie sich dieselben
+  Operatorverträge auf ein Referenzellipsoid spezialisieren, einschließlich
+  geodätischer/normaler Zerlegung, Flächenpose, überhöhtem Frame und
+  gravitationsbewusster Abhängigkeit. Dies ist eine mathematische
+  Spezialisierung, keine Behauptung fertiggestellter Produktionssoftware.
+\item[Forschung:] Validierte Anwendbarkeitskriterien, Fehlergrenzen zwischen
+  ebenen/projizierten und ellipsoidischen Realisierungen, robuste numerische
+  Realisierung über Daten im Projektmaßstab und die erforderliche Genauigkeit
+  von Gravitationsmodellen bleiben Forschungs- und Validierungsarbeit.
+\item[Praktischer Umfang:] AIM verlangt weder, jede Änderung auf einem
+  Ellipsoid zu berechnen, noch etablierte Projekt-CRS-Arbeitsabläufe zu
+  ersetzen oder einen geodätischen Solver einzusetzen, wenn eine qualifizierte
+  ebene Realisierung die Ingenieurfrage beantwortet.
+\end{description}
+
+Erdkrümmung hat damit einen begrenzten und genauen Platz in der formalen
+Maschinerie erhalten. Sie wird notwendig, wenn der Realization Context
+Flächeneffekte wesentlich macht; andernfalls bleibt sie eine verfügbare
+Spezialisierung. In beiden Fällen bleiben Alignment-Identität, konstruktive
+Krümmungsgeschichte und Verantwortungsgrenzen erhalten.

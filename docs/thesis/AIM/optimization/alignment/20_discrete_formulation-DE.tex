@@ -1,0 +1,126 @@
+\section{Diskrete Formulierung der Alignment-Optimierung}
+\subsection{Diskretisierung des Gebiets}
+\begin{definition}[Diskretisierung]
+Es sei
+\[
+0=s_0<s_1<\dots<s_N=L
+\]
+eine Zerlegung von \([0,L]\).
+\end{definition}
+Wir bezeichnen \(\Delta s_i=s_{i+1}-s_i\).
+
+\subsection{Diskrete Variablen}
+\begin{definition}[Diskrete Krümmung]
+\[\kappa_i\approx\kappa(s_i)\]
+bezeichnet die Krümmungswerte an den Knoten.
+\end{definition}
+\begin{definition}[Diskrete Überhöhung]
+\[\phi_i\approx\phi(s_i)\]
+bezeichnet die Überhöhungswerte.
+\end{definition}
+\begin{definition}[Parametervektor]
+Die Optimierungsvariable ist
+\[
+\mathbf x=(\kappa_0,\dots,\kappa_N,\phi_0,\dots,\phi_N)\in\R^{2(N+1)}.
+\]
+\end{definition}
+
+\subsection{Diskrete Pose-Rekonstruktion}
+Der pose3-Zustand wird numerisch integriert.
+\begin{definition}[Diskrete Integration]
+Aus den Anfangsbedingungen \(\gamma_0,\theta_0,\phi_0\) berechnen wir iterativ
+\[
+\theta_{i+1}=\theta_i+\kappa_i\Delta s_i,
+\]
+\[
+\gamma_{i+1}=\gamma_i+\Delta s_i(\cos\theta_i,\sin\theta_i),
+\]
+\[
+\phi_{i+1}=\phi_i+\omega_i\Delta s_i.
+\]
+\end{definition}
+Dabei kann \(\omega_i\) durch Differenzen von \(\phi_i\) ausgedrückt werden.
+Diese Rekonstruktion entspricht üblichen numerischen Integrationsideen
+\cite{Hairer1993ODE,Press2007NumericalRecipes}.
+
+\subsection{Finite Differenzen}
+\begin{definition}[Erste Ableitung]
+\[
+\kappa'(s_i)\approx\frac{\kappa_{i+1}-\kappa_i}{\Delta s_i},
+\quad
+\phi'(s_i)\approx\frac{\phi_{i+1}-\phi_i}{\Delta s_i}.
+\]
+\end{definition}
+\begin{definition}[Zweite Ableitung]
+\[
+\kappa''(s_i)\approx
+\frac{\kappa_{i+1}-2\kappa_i+\kappa_{i-1}}{(\Delta s_i)^2}.
+\]
+\end{definition}
+
+\subsection{Diskrete Zielfunktionen}
+\subsubsection{Krümmungsglattheit}
+\[
+J_\kappa(\mathbf x)=\sum_{i=0}^{N-1}
+\left(\frac{\kappa_{i+1}-\kappa_i}{\Delta s_i}\right)^2\Delta s_i.
+\]
+\subsubsection{Überhöhungsglattheit}
+\[
+J_\phi(\mathbf x)=\sum_{i=0}^{N-1}
+\left(\frac{\phi_{i+1}-\phi_i}{\Delta s_i}\right)^2\Delta s_i.
+\]
+\subsubsection{Dynamische Zielfunktion}
+\[
+J_{\mathrm{dyn}}(\mathbf x)=\sum_{i=0}^{N}
+\bigl(v^2\kappa_i-g\sin\phi_i\bigr)^2\Delta s_i.
+\]
+\subsubsection{Schwerpunkt-Zielfunktion}
+Mit finiten Differenzen approximieren wir \(\|\gamma_c''(s_i)\|^2\) durch
+Differenzen zweiter Ordnung:
+\[
+J_{\mathrm{veh}}(\mathbf x)=\sum_{i=1}^{N-1}
+\|\gamma_{c,i+1}-2\gamma_{c,i}+\gamma_{c,i-1}\|^2.
+\]
+
+\subsection{Kombiniertes diskretes Problem}
+\begin{definition}[Diskrete Zielfunktion]
+\[
+J(\mathbf x)=\alpha J_{\mathrm{veh}}+\beta J_{\mathrm{dyn}}
++\gamma J_\kappa+\delta J_\phi.
+\]
+\end{definition}
+
+\subsection{Bedingungen}
+\begin{definition}[Gleichheitsbedingungen]
+\[\kappa_0=0,\quad\kappa_N=\kappa_1.\]
+\end{definition}
+\begin{definition}[Ungleichheitsbedingungen]
+\[|\kappa_i|\leq\kappa_{\max},\quad|\phi_i|\leq\phi_{\max}.\]
+\end{definition}
+Weitere Bedingungen können Ableitungsgrenzen, Stetigkeitsbedingungen und
+Alignment-Ankerpunkte umfassen.
+
+\subsection{Abschließendes Optimierungsproblem}
+\begin{definition}[Diskretes Optimierungsproblem]
+Gesucht ist \(\mathbf x^\ast\in\R^{2(N+1)}\) mit
+\[
+J(\mathbf x^\ast)=\min_{\mathbf x}J(\mathbf x)
+\]
+unter den gegebenen Bedingungen.
+\end{definition}
+
+\subsection{Struktur des Problems}
+Das Problem besitzt die Struktur eines nichtlinearen
+Kleinste-Quadrate-Problems und eignet sich für SQP, Gauss--Newton-Verfahren und
+dünn besetzte Optimierungstechniken.
+
+\subsection{Verbindung zur Implementierung}
+Die diskrete Formulierung entspricht unmittelbar einem Rechenmodell:
+\(\kappa_i\) entsprechen Elementparametern, \(\phi_i\) Überhöhungsstichproben,
+und die Rekonstruktion entspricht der numerischen Softwarebewertung.
+
+\begin{summary}
+Das kontinuierliche Alignment-Optimierungsproblem lässt sich auf ein
+endlichdimensionales nichtlineares Optimierungsproblem reduzieren. Dies
+verbindet theoretische Modellierung unmittelbar mit praktischer Implementierung.
+\end{summary}

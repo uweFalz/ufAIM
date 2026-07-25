@@ -1,142 +1,56 @@
-% dynamics/concept_boundaries.tex
-
-\chapter{Conceptual Boundaries in Dynamic State Modelling}
+\chapter{Where the State Model Ends and Dynamics Begins}
 \label{chap:concept-boundaries}
 
-\section{Purpose}
+Part V already established pose2, pose3, moving frames, cant, Metric
+Realization, target and physical state, and observation. This chapter does not
+define them again. It fixes the narrower responsibilities of Part VI so that
+later chapters consume one railway-state model.
 
-The dynamic chapters of this thesis are closely related.
-To avoid conceptual overlap, each chapter is assigned a precise
-responsibility.
+\section{Inherited Railway State}
 
-\begin{summary}
-Each chapter defines one conceptual layer, uses previously established
-layers, and must not redefine concepts that belong elsewhere.
-\end{summary}
+The input is the qualified Part V state at \(s\), including its Alignment
+reference, realization, frame convention, provenance, applicability, and
+validity. ``Track state'' in the following chapters is a short reader-facing
+name for the applicable subset of that structure, not a competing state type.
+Likewise, a represented coordinate tuple is not a replacement for pose3 and an
+observed pose is not a physical state.
 
-\section{Vehicle Space}
+\section{New Responsibilities}
 
-\begin{definition}[Responsibility of the vehicle-space chapter]
-The chapter on vehicle space defines the vehicle state as a state
-evolving relative to the railway state.
-\end{definition}
+\begin{description}
+\item[Operational velocity] qualifies the traversal law \(s(t)\) and its
+derivatives.
+\item[Temporal exposure] composes spatial curvature, cant, profile, and frame
+quantities with that traversal.
+\item[Reduced kinematics] evaluates assumption-bound indicators without
+claiming complete response.
+\item[Vehicle space] expresses vehicle-related quantities relative to the
+qualified track frame and a stated vehicle model.
+\item[Response modelling] adds the physical parameters needed for a predicted
+vehicle--track response.
+\item[Dynamic balance] applies a declared reduced relation under its stated
+frame, sign, speed, and cant conventions.
+\item[Realization-aware dynamics] compares qualified target, realized, or
+observed inputs without merging them.
+\item[Optimization] varies declared degrees of freedom against explicit
+objectives and constraints; it neither supplies objectives nor decides.
+\end{description}
 
-This chapter uses:
-\begin{itemize}
-\item \(\mathrm{pose3}\),
-\item railway frames,
-\item cant,
-\item profile,
-\item and the distinction between track state and vehicle state.
-\end{itemize}
+\section{One State, Several Uses}
 
-This chapter must not redefine:
-\begin{itemize}
-\item \(\mathrm{pose2}\),
-\item \(\mathrm{pose3}\),
-\item curvature space,
-\item runtime state,
-\item realization,
-\item or optimization state.
-\end{itemize}
-
-\section{Runtime Dynamics}
-
-\begin{definition}[Responsibility of the runtime-dynamics chapter]
-The chapter on runtime dynamics defines the evolution of operational
-states along or over the railway state.
-\end{definition}
-
-This chapter uses:
-\begin{itemize}
-\item vehicle state,
-\item \(\mathrm{pose3}\),
-\item speed,
-\item curvature,
-\item cant,
-\item and runtime operators.
-\end{itemize}
-
-This chapter must not redefine:
-\begin{itemize}
-\item vehicle space,
-\item \(\mathrm{pose3}\),
-\item realization,
-\item dynamic balance,
-\item or optimization.
-\end{itemize}
-
-\section{Dynamic Balance}
-
-\begin{definition}[Responsibility of the dynamic-balance chapter]
-The chapter on dynamic balance defines equilibrium, cant deficiency,
-cant excess, and admissible balance relations between curvature, speed,
-and cant.
-\end{definition}
-
-This chapter uses:
-\begin{itemize}
-\item runtime dynamics,
-\item vehicle-relative quantities,
-\item \(\kappa(s)\),
-\item \(v(s)\),
-\item \(\phi(s)\),
-\item and admissibility concepts.
-\end{itemize}
-
-This chapter must not redefine:
-\begin{itemize}
-\item vehicle state,
-\item runtime state,
-\item \(\mathrm{pose3}\),
-\item realization,
-\item or optimization state.
-\end{itemize}
-
-\section{Realization-Aware Dynamics}
-
-\begin{definition}[Responsibility of the realization-aware-dynamics chapter]
-The chapter on realization-aware dynamics defines how realization
-operators affect dynamic interpretation.
-\end{definition}
-
-This chapter uses:
-\begin{itemize}
-\item designed railway states,
-\item realized railway states,
-\item runtime dynamics,
-\item dynamic balance,
-\item measurement and construction effects,
-\item and realization operators.
-\end{itemize}
-
-This chapter must not redefine:
-\begin{itemize}
-\item realization itself,
-\item vehicle state,
-\item runtime dynamics,
-\item dynamic balance,
-\item sparse modelling,
-\item or optimization.
-\end{itemize}
-
-\section{Boundary Principle}
+The same qualified railway state may feed a clearance calculation, a reduced
+lateral indicator, a multibody model, or an optimization experiment. These
+uses produce different outputs because they add different models and purposes.
+They do not create alternative definitions of the Alignment or railway state.
 
 \begin{principle}[Single-definition principle]
-Each conceptual object should be defined in exactly one chapter and
-used by later chapters through reference.
+Pose2, pose3, the moving frame, cant, realization, physical state, and
+observation retain their established meanings. Part VI adds traversal,
+response models, and purpose-qualified uses by reference.
 \end{principle}
 
 \begin{summary}
-Vehicle space defines the vehicle-relative state.
-
-Runtime dynamics defines state evolution.
-
-Dynamic balance defines equilibrium and admissibility relations.
-
-Realization-aware dynamics defines how realization modifies dynamic
-interpretation.
-
-None of these chapters should redefine \(\mathrm{pose3}\), curvature
-space, sparse modelling, or optimization.
+Part VI begins at \(s(t)\). Everything spatial is inherited; everything
+temporal or response-related must identify the additional input that creates
+it.
 \end{summary}

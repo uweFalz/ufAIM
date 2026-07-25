@@ -44,7 +44,7 @@ export function createImportSessionService({
 		const safe = ensureShape(next);
 		setState(safe);
 		broadcastStateChanged(safe);
-		return safe;
+		return publicState(safe);
 	}
 
 	function patchImportState(patch) {
@@ -59,7 +59,7 @@ export function createImportSessionService({
 	}
 
 	function broadcastStateChanged(state) {
-		router?.broadcastEvt?.("Import.StateChanged", state);
+		router?.broadcastEvt?.("Import.StateChanged", publicState(state));
 	}
 
 	function beginSession({ source = null } = {}) {
@@ -81,7 +81,43 @@ export function createImportSessionService({
 	}
 
 	function getSessionState() {
-		return getImportState();
+		return publicState(getImportState());
+	}
+
+	function getResultEvidence({ evidenceId = null } = {}) {
+		const records = getImportState().resultEvidence;
+		if (isNonEmptyString(evidenceId)) {
+			const record = records.find((entry) => entry.evidenceId === evidenceId) ?? null;
+			return clone({ schema: "ufAIM.import-result-evidence", version: 1, found: Boolean(record), evidenceId, record });
+		}
+		return clone({ schema: "ufAIM.import-result-evidence", version: 1, found: true, records });
+	}
+
+	function publishResultEvidence({ evidence, items = [] } = {}) {
+		if (!isObject(evidence) || !isNonEmptyString(evidence.evidenceId)) throw new Error("Import result evidence requires evidenceId");
+		if (evidence.schema !== "ufAIM.import-result-evidence" || evidence.version !== 1) throw new Error("Unsupported import result evidence schema");
+		const prev = getImportState();
+		if (prev.resultEvidence.some((entry) => entry.evidenceId === evidence.evidenceId)) throw new Error(`Import result evidence already published: ${evidence.evidenceId}`);
+		const accepted = [];
+		const rejected = [];
+		for (const raw of Array.isArray(items) ? items : []) {
+			const linked = isObject(raw) ? { ...raw, evidenceId: evidence.evidenceId } : raw;
+			const validation = normalizeAndValidateImportItem(linked);
+			if (!validation.ok) rejected.push({ ...makeRejectedEnvelope(linked, validation.validation), evidenceId: evidence.evidenceId });
+			else {
+				const normalized = normalizeItemAcceptance(validation.item);
+				if (isRejectedImportItem(normalized)) rejected.push(normalized); else accepted.push(normalized);
+			}
+		}
+		const record = deepFreeze(clone({ ...evidence, acceptedItemIds: accepted.map((item) => item.id), rejectedItemIds: rejected.map((item) => item.id) }));
+		return replaceImportState({
+			...prev,
+			phase: derivePhase({ items: [...prev.items, ...accepted], rejectedItems: [...prev.rejectedItems, ...rejected] }),
+			items: dedupeById([...prev.items, ...accepted]),
+			rejectedItems: dedupeById([...prev.rejectedItems, ...rejected]),
+			resultEvidence: [...prev.resultEvidence, record],
+			error: null,
+		});
 	}
 
 	function addItems({ items = [] } = {}) {
@@ -219,6 +255,8 @@ export function createImportSessionService({
 
 	return {
 		getState: getSessionState,
+		getResultEvidence,
+		publishResultEvidence,
 		beginSession,
 		clearSession,
 		addItems,
@@ -243,6 +281,7 @@ function makeInitialState() {
 		source: null,
 		items: [],
 		rejectedItems: [],
+		resultEvidence: [],
 		error: null,
 		stats: makeStats(),
 	};
@@ -258,6 +297,9 @@ function ensureShape(state) {
 	const rejectedItems = Array.isArray(base.rejectedItems)
 		? base.rejectedItems.filter(isObject)
 		: [];
+	const resultEvidence = Array.isArray(base.resultEvidence)
+		? base.resultEvidence.filter(isObject).map((record) => deepFreeze(clone(record)))
+		: [];
 
 	return {
 		sessionId: base.sessionId ?? null,
@@ -265,9 +307,15 @@ function ensureShape(state) {
 		source: base.source ? normalizeSource(base.source) : null,
 		items,
 		rejectedItems,
+		resultEvidence,
 		error: base.error ? normalizeError(base.error) : null,
 		stats: makeStats(items, rejectedItems),
 	};
+}
+
+function publicState(state) {
+	const { resultEvidence: _privateEvidence, ...rest } = ensureShape(state);
+	return clone(rest);
 }
 
 function normalizeAndValidateImportItem(raw) {
@@ -437,3 +485,6 @@ function isObject(x) {
 function isNonEmptyString(x) {
 	return typeof x === "string" && x.trim().length > 0;
 }
+
+function clone(value) { return value == null ? value : structuredClone(value); }
+function deepFreeze(value) { if (!value || typeof value !== "object" || Object.isFrozen(value)) return value; Object.freeze(value); for (const entry of Object.values(value)) deepFreeze(entry); return value; }

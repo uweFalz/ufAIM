@@ -1,0 +1,120 @@
+% modeling/part_intro-DE.tex
+\chapter*{Modellierung}
+\phantomsection
+\addcontentsline{toc}{chapter}{Modellierung}
+
+Dieser Teil legt dar, wie kanonische Eisenbahnsemantik als kompakte,
+rekonstruierbare und operativ nutzbare Informationsstrukturen kodiert wird.
+
+\section*{Was wissen wir bereits?}
+
+Die vorangehenden Teile haben die begrifflichen Grundlagen von AIM geschaffen.
+Intrinsische Geometrie, Eisenbahnzustände, Laufzeitbewertung, Realisierung und
+realitätsbewusste Interpretation wurden als zusammenhängende theoretische
+Konstrukte entwickelt.
+
+Diese Begriffe definieren, was Eisenbahn-Alignments sind, wie sie sich
+entwickeln und wie sie mit der physischen Welt zusammenwirken. Begriffe allein
+definieren jedoch noch nicht, wie Alignment-Information in einem operativen
+Informationsmodell dargestellt wird.
+
+\section*{Was fehlt noch?}
+
+Ein Informationsmodell erfordert ausdrückliche interne Strukturen.
+Geometrische Begriffe müssen in Darstellungen überführt werden, die gespeichert,
+ausgetauscht, rekonstruiert, analysiert und optimiert werden können.
+
+Traditionelle Eisenbahnsysteme verwenden häufig Koordinatenlisten,
+geometrische Primitive oder implementierungsspezifische Datenstrukturen. Für
+Speicherzwecke mögen solche Darstellungen genügen; häufig verdecken sie jedoch
+die intrinsische Struktur des Alignments und begrenzen die nachfolgende
+Analyse.
+
+Es fehlt daher ein Modellierungsrahmen, der Eisenbahnsemantik erfasst und
+zugleich kompakt, interpretierbar und rechnerisch effizient bleibt.
+
+\section*{Was folgt?}
+
+Dieser Teil führt die Modellierungsebene von AIM ein. Zentrales Ziel ist die
+Konstruktion dünn besetzter, semantischer Alignment-Modelle.
+
+In AIM wird ein Alignment nicht primär durch abgetastete Koordinaten
+dargestellt. Es wird vielmehr durch eine kompakte Sammlung geometrischer
+Zustände, Übergangsbeschreibungen und semantischer Beziehungen dargestellt,
+aus denen die Geometrie bei Bedarf rekonstruiert werden kann.
+
+Die folgenden Kapitel führen ein:
+\begin{itemize}
+\item dünn besetzte Alignment-Darstellungen,
+\item Übergangsmodellierung,
+\item Übergangsklassifikation,
+\item Alignment-Semantik höherer Ebene und
+\item schwerpunktbasierte Modellierungsbegriffe.
+\end{itemize}
+
+Diese Strukturen bilden den operativen Kern des Alignment-Based Information
+Modelling.
+
+Sie zeigen zugleich, weshalb das System über die ursprüngliche Mathematik
+hinauswuchs. Berlinish stellt eine verallgemeinerte Übergangsgrammatik bereit.
+axtranNew verwendet Funktionen, Randbedingungen und Freiheitsgrade, um
+konkrete Alignment-Strukturen zu berechnen. transitionDB bewahrt
+wiederverwendbares Übergangswissen, und TransEd macht dieses Wissen
+untersuchbar. SPOT wird anschließend benötigt, um Identität und Zustand
+konkreter Ingenieurobjekte zu tragen, während alignmentOS die operative
+Umgebung bereitstellt, in der die berechnete Struktur bearbeitet, bewertet und
+mit anderer Arbeit verbunden werden kann. Dies sind voneinander abhängige
+Antworten auf ein Ingenieurproblem und kein flacher Produktkatalog.
+
+\section*{Bezug zur AIM-Roadmap}
+
+In der AIM-Roadmap entspricht dieser Teil dem Übergang von begrifflichen
+Eisenbahnbeschreibungen zu ausdrücklichen Alignment-Modellen.
+
+\begin{figure}[ht]
+\centering
+\input{figures/modeling/icon_modeling_constructive_sparse-DE}
+\caption{Modellierungssymbol: Konstruktive Elemente bilden dünn besetzte Alignment- und Engineering-Modellsemantik.}
+\label{fig:icon-modeling-constructive-sparse}
+\end{figure}
+
+Die Abfolge
+\[
+\text{Begriffe}
+\rightarrow
+\text{dünn besetztes Modell}
+\rightarrow
+\text{Alignment-Modell}
+\]
+markiert den Übergang von theoretischen Eisenbahnbeschreibungen zu operativen
+Informationsstrukturen.
+
+Die Abbildung beantwortet die Orientierungsfrage dieses Übergangs: Welche
+konstruktiven Elemente müssen ausdrücklich erhalten bleiben, damit dünn
+besetzte Modelle zugleich kompakt und semantisch treu bleiben?
+
+Diese Modelle bilden anschließend die Grundlage für Laufzeitdienste,
+Analysepipelines, Optimierungsverfahren und Engineering-Anwendungen.
+
+\begin{principle}[Prinzip dünn besetzter Modellierung]
+\label{princ:sparse-modeling}
+In AIM sollen Eisenbahn-Alignments durch kompakte semantische Strukturen
+dargestellt werden, aus denen geometrische, operative und
+realisierungsbewusste Information bei Bedarf rekonstruiert werden kann.
+\end{principle}
+
+\begin{summary}
+Begriffe erklären die Eisenbahnstruktur.
+
+Realität erklärt das Zusammenwirken mit der physischen Welt.
+
+Modellierung erklärt, wie Eisenbahnwissen dargestellt wird.
+
+Dieser Teil begründet damit die dünn besetzten und semantischen
+Informationsstrukturen, welche den Kern des Alignment-Based Information
+Modelling bilden.
+\end{summary}
+
+Mit dieser Modellierungsebene kann der Teil Analyse untersuchen, wie diese
+Strukturen durch Pipelines, Dienste und Systeminteraktionen transformiert
+werden.

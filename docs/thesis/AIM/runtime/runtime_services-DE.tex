@@ -1,0 +1,433 @@
+% runtime/runtime_services-DE.tex
+
+\chapter{Laufzeitdienste}
+\label{chap:runtime-services}
+
+\index{Laufzeitdienste}
+\index{Architektur!Laufzeit}
+
+Laufzeitdienste sind die Ausführungsebene, welche genehmigtes
+ingenieurtechnisches Wissen in operativen Kontexten bewertet. Sie verwenden
+bestehende Objekte aus Grundlagen und Zustand und erzeugen abgeleitete
+Laufzeitgrößen. Sie sind selbst keine Engineering Objects und definieren die
+vorgelagerte Semantik nicht neu.
+
+Dieses Kapitel beantwortet, wie Laufzeitbewertung organisiert wird, sodass
+Projektion, Rahmenkonstruktion, dynamische Größen und Darstellungsgrenzen mit
+der kanonischen AIM-Semantik konsistent bleiben. Es begründet die Architektur
+der Laufzeitdienste und deren ingenieurtechnische Folgen für die nachgelagerte
+Interpretation.
+
+\section{Laufzeitinterpretation}
+
+\begin{definition}[Laufzeitdienst]
+\label{def:runtime-service}
+\index{Laufzeitdienst!Definition}
+Ein Laufzeitdienst ist ein operatorbasierter Bewertungsprozess, der während
+der operativen Nutzung auf Alignment-Zuständen wirkt.
+\end{definition}
+
+\begin{principle}[Prinzip der Laufzeitbewertung]
+\label{princ:runtime-evaluation}
+Operative Größen sollen aus den zugrunde liegenden Zustandsbeschreibungen
+bewertet und nicht redundant gespeichert werden.
+\end{principle}
+
+Laufzeitdienste bewerten Geometrie, Projektionen, Rahmen,
+realisierungsabhängige Zustände, dynamische Größen und fahrzeugbezogene
+Interpretation durch ausdrückliche Operatorkomposition.
+
+Die folgenden Abschnitte folgen demselben Leserweg: von der Bewertung des
+Laufzeitzustands über konkrete Dienste und die Komposition von Pipelines bis
+zu Darstellungsgrenzen und architektonischen Folgen.
+
+\section{Bewertung des Laufzeitzustands}
+
+Die Laufzeitbewertung wird vom kanonischen Bewertungsoperator aus
+\cref{def:evaluation-operator} bestimmt.
+
+\begin{definition}[Laufzeitbewertung]
+\label{def:runtime-evaluation}
+\index{Laufzeitbewertung}
+Die Laufzeitbewertung wird dargestellt durch
+\[
+\mathcal E
+:
+\mathcal X
+\times
+\Omega_{\mathrm{track}}
+\rightarrow
+\mathcal Y.
+\]
+\end{definition}
+
+Dabei bezeichnet \(\mathcal X\) den Eisenbahnzustandsraum,
+\(\Omega_{\mathrm{track}}\) den intrinsischen Gleisraum und \(\mathcal Y\)
+die zur Laufzeit bewerteten Größen.
+
+Typische Laufzeitausgaben umfassen World-Koordinaten, Tangenten- und
+Rahmengrößen, aus Krümmung und Überhöhung abgeleitete Größen,
+Projektionszustände und fahrzeugbezogen abgeleitete Größen.
+
+\section{Persistente Information gegenüber abgeleitetem Laufzeitzustand}
+
+In AIM speichern persistente Daten dünn besetzte, semantisch stabile
+ingenieurtechnische Information. Laufzeitdienste rekonstruieren daraus
+abgeleitete Größen.
+
+\begin{principle}[Prinzip der Laufzeitrekonstruktion]
+\label{princ:runtime-reconstruction}
+\index{Prinzip der Laufzeitrekonstruktion}
+Laufzeitgeometrie soll aus dünn besetzter Alignment-Semantik rekonstruiert und
+nicht redundant gespeichert werden.
+\end{principle}
+
+Diese Trennung vermeidet Synchronisationsinstabilität, redundante Speicherung
+und Inkonsistenzen der Realisierung.
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/support_runtime_to_representation_boundary-DE}
+\caption{Unterstützende Grenze: Die Laufzeitbewertung bleibt der Darstellung vorgelagert.}
+\label{fig:support-runtime-representation-boundary}
+\end{figure}
+
+Die Abbildung macht die Verantwortungsgrenze ausdrücklich: Die Laufzeit
+erzeugt abgeleiteten ingenieurtechnischen Zustand; die Darstellung verwendet
+diesen Zustand zur Kodierung oder Visualisierung. Daraus folgt, dass
+Laufzeitdienste anhand der Korrektheit ihrer Bewertung und nicht anhand
+formatspezifischer Darstellungsentscheidungen validiert werden müssen.
+
+\section{Laufzeitbewertung von pose3}
+
+Die grundlegende pose3-Definition wird durch \cref{def:pose3} und
+\cref{def:runtime-pose3} festgelegt. Laufzeitdienste verwenden diese
+Begriffe und bewerten sie operativ.
+
+\begin{definition}[Laufzeitbewertung von pose3]
+\label{def:runtime-pose3-evaluation}
+\index{Zustand!pose3!Laufzeitbewertung}
+Die Laufzeitbewertung von pose3 kann schematisch dargestellt werden als
+\[
+\mathrm{pose3}_{\mathrm{run}}(s)
+=
+\mathcal E_{\mathrm{pose3}}(x,s).
+\]
+\end{definition}
+
+Der pose3-Laufzeitzustand ist damit ein abgeleiteter Bewertungszustand und
+keine persistente Engineering Identity.
+
+\section{Projektionsdienste}
+
+Projektionsdienste zur Laufzeit verwenden die kanonischen Operatoren gemäß
+\cref{def:track-to-world-operator} und \cref{def:world-to-track-operator}.
+
+Die folgenden beiden Abbildungen beantworten vor den Dienstdefinitionen eine
+Richtungsfrage: Welcher Operator bildet von World nach Track ab, und welcher
+liefert die komplementäre Abbildung von Track nach World?
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/support_world_to_track_operator-DE}
+\caption{Unterstützende Operatorsicht: World--Track-Abbildung als gerichteter Laufzeitoperator.}
+\label{fig:support-world-to-track-operator}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/support_track_to_world_operator-DE}
+\caption{Unterstützende Operatorsicht: Track--World-Abbildung als komplementärer gerichteter Laufzeitoperator.}
+\label{fig:support-track-to-world-operator}
+\end{figure}
+
+Gemeinsam begründet das Abbildungspaar vor den formalen Dienstdefinitionen
+einen gerichteten Laufzeitvertrag: inverse und Vorwärtsprojektion sind
+verwandte, aber nicht identische Operatoren. Daraus folgt die ausdrückliche
+Trennung von numerischer Strategie, Mehrdeutigkeitsbehandlung und
+Qualitätskriterien für jede Abbildungsrichtung.
+
+\begin{definition}[Track--World-Laufzeitdienst]
+\label{def:track-to-world-runtime}
+\index{Projektion!Track--World-Laufzeitdienst}
+Der Track--World-Laufzeitdienst bewertet
+\[
+\mathcal P_{\mathrm{tw}}
+:
+\Omega_{\mathrm{track}}
+\rightarrow
+\Omega_{\mathrm{world}}.
+\]
+\end{definition}
+
+\begin{definition}[World--Track-Laufzeitdienst]
+\label{def:world-to-track-runtime}
+\index{Projektion!World--Track-Laufzeitdienst}
+Der inverse Projektionsdienst zur Laufzeit bewertet
+\[
+\mathcal P_{\mathrm{wt}}
+:
+\Omega_{\mathrm{world}}
+\rightarrow
+\Omega_{\mathrm{track}}.
+\]
+\end{definition}
+
+Der inverse Dienst ist nichtlinear, potenziell mehrdeutig, metrikabhängig und
+kontextabhängig. Projektion bleibt von CRS-Transformation verschieden, wie in
+\cref{def:coordinate-transform-operator} begründet.
+
+Diese Unterscheidung ist die praktische Randbedingung für alle folgenden
+Laufzeitdienste: Projektion interpretiert intrinsische Geometrie, während eine
+CRS-Transformation nur die Darstellung im World-Raum ändert.
+
+\section{Rahmendienste}
+
+Die Rahmenkonstruktion zur Laufzeit verwendet den kanonischen Rahmenoperator
+aus \cref{def:frame-operator}.
+
+\begin{definition}[Rahmendienst]
+\label{def:frame-service}
+\index{Bezugsrahmen!Laufzeitdienst}
+Der Rahmendienst bewertet
+\[
+\mathcal F(x_{\mathrm{metric}},s)
+=
+(\mathbf t(s),\mathbf n(s),\mathbf b(s)).
+\]
+\end{definition}
+
+Rahmendienste unterstützen Überhöhungsinterpretation, pose3-Bewertung,
+fahrzeugbezogene Interpretation, Projektionsinterpretation und
+Laufzeitdynamik. Ihre Bewertung kann von der metrischen Realisierung abhängen.
+
+\section{Abgeleitete dynamische Laufzeitgrößen}
+
+Viele operative Größen werden zur Laufzeit abgeleitet und sind kein
+persistentes Alignment-Wissen.
+
+\begin{definition}[Effektive Querbeschleunigung]
+\label{eq:runtime-effective-acceleration}
+\index{Beschleunigung!effektive Querbeschleunigung}
+\[
+a_{\mathrm{eff}}
+=
+v^2\kappa-g\sin\phi.
+\]
+\end{definition}
+
+Dies ist die Laufzeitform der kanonischen Beziehung aus
+\cref{eq:effective-lateral-acceleration}.
+
+\begin{definition}[Ruck zur Laufzeit]
+\label{eq:runtime-jerk}
+\index{Ruck!Laufzeit}
+\[
+j
+=
+v^3\kappa'
+-
+gv\cos\phi\,\phi'.
+\]
+\end{definition}
+
+Dies ist die Laufzeitform der kanonischen Ruckbeziehung aus
+\cref{eq:jerk-relation}.
+
+\section{Hybride und LOD-abhängige Bewertung}
+
+\begin{principle}[Prinzip hybrider Laufzeit]
+\label{princ:hybrid-runtime}
+Effiziente Laufzeitsysteme verbinden näherungsweise Grobbewertung,
+zwischengespeicherte Darstellungen und exakte lokale Verfeinerung.
+\end{principle}
+
+\begin{definition}[LOD-abhängige Bewertung]
+\label{def:lod-evaluation}
+\index{Detaillierungsgrad (LOD)!Laufzeitbewertung}
+Die Laufzeitbewertung hängt von Maßstab, Genauigkeitsanforderungen,
+Sichtbarkeit, operativem Kontext, Interaktionszustand und Laufzeitkosten ab.
+\end{definition}
+
+Diese Verbindung ist zentral für skalierbare Projektion, Rahmenbewertung,
+Visualisierung und fahrzeugbezogene Interpretation.
+
+\section{Zwischenspeicherung und Konsistenz}
+
+\begin{definition}[Laufzeitcache]
+\label{def:runtime-cache}
+\index{Laufzeitcache}
+Ein Laufzeitcache speichert bereits bewertete Größen, um wiederholte
+Berechnung zu vermeiden.
+\end{definition}
+
+Zwischenspeicherung kann Projektions-, Rahmen-, abgetastete Geometrie- und
+dynamische Abfragen beschleunigen, führt aber Anforderungen an Konsistenz und
+Invalidierung ein.
+
+\section{Metrikbewusste Laufzeit}
+
+Die Laufzeitbewertung hängt von der metrischen Realisierung ab
+(\cref{chap:metric-realization}). Verschiedene Realisierungen beeinflussen die
+Interpretation von Abständen, krümmungsbezogene Größen, Rahmenkonstruktion,
+Projektionsverhalten und Stationierungsinterpretation.
+
+\begin{principle}[Prinzip metrikbewusster Laufzeit]
+\label{princ:metric-aware-runtime}
+Laufzeitsysteme sollen Geometrie durch metrikbewusste Operatordienste und
+nicht durch fest kodierte euklidische Annahmen bewerten.
+\end{principle}
+
+\section{Laufzeitpipelines und Zusammenwirken der Dienste}
+
+\begin{definition}[Pipeline von Laufzeitoperatoren]
+\label{def:runtime-pipeline}
+\index{Pipeline!Laufzeitoperator}
+Eine Laufzeitpipeline ist eine zusammengesetzte Operatorkette wie
+\[
+\mathcal E_{\mathrm{run}}
+\sim
+\mathcal P
+\circ
+\mathcal F
+\circ
+\mathcal G.
+\]
+\end{definition}
+
+Die folgenden Abbildungen sind als zunehmend reichhaltige Antworten auf
+dieselbe Frage zu lesen: Wie ändert sich die Operatorkette, wenn realisierte
+Geometrie ausdrücklich einbezogen werden muss?
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/runtime_pipeline-DE}
+\caption{Begriffliche Pipeline der Laufzeitbewertung.}
+\label{fig:runtime-pipeline}
+\end{figure}
+
+Diese Abbildung wird als grundlegende Operatorkomposition für die
+Laufzeitbewertung von Zielzuständen interpretiert.
+
+\begin{definition}[Realisierte Laufzeitpipeline]
+\label{def:realized-runtime-pipeline}
+\index{Pipeline!realisierungsbewusste Laufzeit}
+Wenn realisierte Geometrie erforderlich ist, kann die Laufzeitbewertung
+begrifflich abhängen von
+\[
+\mathcal E_{\mathrm{real}}
+\sim
+\mathcal P
+\circ
+\mathcal F
+\circ
+\mathcal G
+\circ
+\mathcal R.
+\]
+\end{definition}
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/realization_pipeline-DE}
+\caption{Realisierungsbewusste Pipeline der Laufzeitbewertung.}
+\label{fig:realization-pipeline}
+\end{figure}
+
+Die realisierungsbewusste Abbildung ergänzt demgegenüber ausdrücklich
+\(\mathcal R\), um die Abhängigkeit vom realisierten Zustand darzustellen.
+Daraus folgt, dass die Dienstwahl angeben muss, ob Ziel- oder realisierter
+Zustand benötigt wird, weil diese Wahl die aktive Operatorkette ändert.
+
+Verschiedene Laufzeitdienste aktivieren abhängig von Genauigkeit, Kontext und
+Zweck unterschiedliche Operatorketten.
+
+Dies führt zur abschließenden Grenzaussage: Laufzeitbewertung darf operativ
+variieren, aber die begriffliche Verantwortung für ingenieurtechnische
+Bedeutung nicht verändern.
+
+\section{Grenzen zwischen Laufzeit, Realisierung und Darstellung}
+
+Die Laufzeit muss Ziel-, realisierte, gemessene und temporäre
+Interaktionszustände unterscheiden. Laufzeitbewertung und physische
+Realisierung sind gekoppelt, aber begrifflich verschieden: Realisierung
+transformiert Zielzustände; Laufzeit bewertet Zustände.
+
+Die Darstellung bleibt nachgelagert. Laufzeitdienste stellen abgeleitete
+Zustände und Größen bereit; Darstellungsdienste zeigen, kodieren oder tauschen
+diese Ergebnisse für bestimmte Anwendungen aus.
+
+\section{Begriffliche Laufzeitarchitektur}
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+node distance=1.5cm and 2cm,
+box/.style={draw,rounded corners,align=center,minimum width=3.6cm,minimum height=1.0cm},
+arrow/.style={->, thick}
+]
+\node[box] (sparse) {Dünn besetztes Alignment\\Semantische Darstellung};
+\node[box, below=of sparse] (metric) {Metrische Realisierung\\\(\mathcal G\)};
+\node[box, below=of metric] (eval) {Laufzeitbewertung\\\(\mathcal E\)};
+\node[box, below left=of eval] (proj) {Projektionsdienste\\\(\mathcal P\)};
+\node[box, below=of eval] (frame) {Rahmendienste\\\(\mathcal F\)};
+\node[box, below right=of eval] (dyn) {Dynamische Bewertung};
+\node[box, below=2.2cm of eval] (vehicle) {Abgeleiteter Laufzeitzustand\\Anwendungsinterpretation};
+\draw[arrow] (sparse) -- (metric);
+\draw[arrow] (metric) -- (eval);
+\draw[arrow] (eval) -- (proj);
+\draw[arrow] (eval) -- (frame);
+\draw[arrow] (eval) -- (dyn);
+\draw[arrow] (proj) -- (vehicle);
+\draw[arrow] (frame) -- (vehicle);
+\draw[arrow] (dyn) -- (vehicle);
+\end{tikzpicture}
+
+\caption{Laufzeitdienste transformieren persistente ingenieurtechnische Information durch metrikbewusste Bewertung in abgeleiteten Laufzeitzustand für die nachgelagerte Interpretation.}
+\label{fig:runtime-architecture}
+\index{Abbildungen!Laufzeitarchitektur}
+\end{figure}
+
+Die Architekturabbildung fasst das Kapitelargument in ausführbarer Form
+zusammen: Persistente Semantik speist metrikbewusste Bewertung; die Bewertung
+verzweigt sich in Dienstfamilien, die im abgeleiteten Laufzeitzustand
+zusammenlaufen. Daraus folgt ein stabiler Integrationsvertrag für die
+nachgelagerten Kapitel zu Realität, Modellierung und Optimierung.
+
+\section{Kanonische Interpretation}
+
+\begin{proposition}
+In AIM sind Laufzeitdienste operatorbasierte Bewertungssysteme, die auf
+bestehenden Engineering- und Zustandsbegriffen wirken.
+\end{proposition}
+
+\begin{proposition}
+Abgeleitete Laufzeitgrößen sind Bewertungsergebnisse und keine persistente
+Engineering Identity.
+\end{proposition}
+
+\begin{proposition}
+Projektion, Rahmenkonstruktion, metrische Realisierung und Laufzeitdynamik
+bilden eine gekoppelte Dienstarchitektur.
+\end{proposition}
+
+\begin{proposition}
+Die Darstellung bleibt der Laufzeitbewertung nachgelagert.
+\end{proposition}
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+AIM-Laufzeitdienste verwenden persistente ingenieurtechnische Information und
+Begriffe der Zustandsebene und erzeugen durch operatorbasierte Bewertung
+abgeleiteten ingenieurtechnischen Laufzeitzustand.
+
+Diese Architektur hält die Semantik stabil, macht die Bewertung ausdrücklich,
+wahrt Darstellungsgrenzen und ermöglicht anwendungsspezifische Interpretation,
+ohne vorgelagertes Wissen neu zu definieren.
+
+Der Laufzeitteil schließt daher mit einer präzisen Folge für die nächsten
+Teile: Nachgelagerte Realität, Modellierung, Optimierung und Anwendungen dürfen
+Laufzeitdienste spezialisieren, verwenden dafür aber diese Architektur, statt
+sie neu zu definieren.
+\end{summary}

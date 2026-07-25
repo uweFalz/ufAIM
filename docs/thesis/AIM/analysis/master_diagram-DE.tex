@@ -1,0 +1,44 @@
+% analysis/master_diagram-DE.tex
+\section{AIM-Gesamtarchitektur}
+
+Dieser Abschnitt behandelt die architektonische Integrationsfrage des Teils
+Analyse: Wie werden Modellierung, Laufzeitbewertung, Realisierung und
+Rückkopplungsmechanismen zu einem kohärenten Operatorsystem komponiert?
+
+Die folgende Abbildung ist als zusammengeführte Architekturantwort zu lesen.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[node distance=1.25cm,box/.style={draw,rectangle,rounded corners,minimum width=5.8cm,minimum height=0.85cm,align=center,font=\small},smallbox/.style={draw,rectangle,rounded corners,minimum width=2.7cm,minimum height=0.75cm,align=center,font=\small},arrow/.style={->,thick},feedback/.style={->,thick,dashed},note/.style={font=\small,align=center}]
+\node[box] (crs) {CRS / Georeferenzierung \\ $\mathcal C$};
+\node[box,below=of crs] (world) {World-Raum \\ gemessene / entworfene Koordinaten};
+\node[box,below=of world] (w2t) {World--Track-Projektion \\ $\mathcal W:x\mapsto(s,d)$};
+\node[box,below=of w2t] (track) {Intrinsischer Gleisraum \\ Bogenlänge $s$, Versatz $d$};
+\node[box,below=of track] (model) {Hybrides Alignment-Modell \\ $\kappa(s)=\kappa_{\mathrm{param}}(s;\mathbf T)+\delta\kappa(s)$};
+\node[smallbox,below left=0.9cm and 0.15cm of model] (param) {Parametrische Ebene \\ Entwurfsabsicht};
+\node[smallbox,below right=0.9cm and 0.15cm of model] (corr) {Korrekturebene \\ gemessene Abweichungen};
+\node[box,below=1.55cm of model] (state) {Eisenbahnzustand \\ pose3: $(\gamma,\theta,\kappa,\phi)$};
+\node[box,below=of state] (real) {Realisierungsoperator \\ $\mathcal R$};
+\node[box,below=of real] (realized) {Realisierte Geometrie \\ gebautes / beobachtbares Gleis};
+\node[box,below=of realized] (output) {World-Ausgabe \\ Visualisierung, Validierung, Export};
+\draw[arrow] (crs)--(world); \draw[arrow] (world)--(w2t); \draw[arrow] (w2t)--(track);
+\draw[arrow] (track)--(model); \draw[arrow] (model)--(state); \draw[arrow] (state)--(real);
+\draw[arrow] (real)--(realized); \draw[arrow] (realized)--(output);
+\draw[arrow] (param.north)--(model.south west); \draw[arrow] (corr.north)--(model.south east);
+\draw[feedback] (realized.east)--++(1.6,0)|-node[pos=0.25,right]{Optimierung / SQP}(model.east);
+\draw[feedback] (output.west)--++(-1.6,0)|-node[pos=0.25,left]{Messrückkopplung}(w2t.west);
+\node[note,right=1.6cm of real] (filternote) {$\mathcal R$ wirkt als\\Tiefpassfilter};
+\node[note,right=1.6cm of w2t] (lodnote) {LOD-abhängige\\Projektion};
+\node[note,left=1.6cm of model] (blocknote) {Blockstruktur:\\$\kappa$ / $\phi$ / Korrekturen};
+\draw[feedback] (filternote)--(real); \draw[feedback] (lodnote)--(w2t); \draw[feedback] (blocknote)--(model);
+\end{tikzpicture}
+\caption{AIM-Gesamtarchitektur der Ebene 2. Der Rahmen verbindet CRS-Behandlung, nichtlineare World--Track-Projektion, hybride Krümmungsmodellierung, pose3-Zustandsrekonstruktion, Realisierung und Optimierungsrückkopplung. Zentraler Modellierungsgegenstand ist nicht die geometrische Kurve selbst, sondern das sie erzeugende krümmungsgetriebene und realisierungsbewusste Operatorsystem.}
+\end{figure}
+
+Die Interpretation ist strukturell: Jede Ebene wahrt eine eigene
+Verantwortung; Rückkopplungen verbinden Evidenz und Verbesserung, ohne
+begriffliche Verantwortung zu verlagern.
+
+AIM verhält sich damit als geregelte Transformationsarchitektur, deren
+Stabilität von der Wahrung dieser Ebenen- und Rückkopplungsverträge in
+Implementierung und Arbeitsabläufen abhängt.

@@ -8,7 +8,7 @@
 // - make it easy to disable during debugging
 
 export async function registerDevNoCacheSW({
-	enabled = true,
+	enabled = false,
 	swUrl = "./sw-nocache.js",
 } = {}) {
 	const isDev =
@@ -20,8 +20,26 @@ export async function registerDevNoCacheSW({
 	}
 
 	if (!enabled) {
-		console.log("[registerDevNoCacheSW] skipped by config");
-		return { ok: true, skipped: "disabled" };
+		if (!("serviceWorker" in navigator)) {
+			return { ok: true, skipped: "disabled-unsupported" };
+		}
+		try {
+			const registrations = await navigator.serviceWorker.getRegistrations();
+			const stale = registrations.filter((registration) => {
+				const scriptURL = registration.active?.scriptURL
+					?? registration.waiting?.scriptURL
+					?? registration.installing?.scriptURL
+					?? "";
+				return new URL(scriptURL || swUrl, location.href).pathname.endsWith("/sw-nocache.js");
+			});
+			const removed = (await Promise.all(stale.map((registration) => registration.unregister())))
+				.filter(Boolean).length;
+			console.log(`[registerDevNoCacheSW] disabled; stale registrations removed: ${removed}`);
+			return { ok: true, skipped: "disabled", removed };
+		} catch (err) {
+			console.warn("[registerDevNoCacheSW] stale-registration cleanup failed", err);
+			return { ok: false, skipped: "disabled", error: err };
+		}
 	}
 
 	if (!("serviceWorker" in navigator)) {

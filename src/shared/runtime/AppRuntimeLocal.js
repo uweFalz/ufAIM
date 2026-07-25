@@ -3,8 +3,12 @@
 import transitionLookup from "../../domain/transition/transitionLookup.json" with { type:"json" };
 import { mkAck, mkErr } from "../messaging/ccv1.js";
 import { getWorkspaceSelection } from "./workspaceSelectionAccess.js";
+import { RegistryResolver } from "../../domain/transition/registry/RegistryResolver.js";
+import { createTransitionQueryService } from "../../domain/transition/service/TransitionQueryService.js";
+import { createImportSessionService } from "../messaging/service/ImportSessionService.js";
 
 const db = transitionLookup;
+const transitionService = createTransitionQueryService({ db, registryResolver: new RegistryResolver(db) });
 
 let projectState = {
 	workspace_selection: {
@@ -17,6 +21,8 @@ let importState = {
 	sessionId: null,
 	phase: "idle",
 	items: [],
+	rejectedItems: [],
+	resultEvidence: [],
 	error: null
 };
 
@@ -31,6 +37,16 @@ function cloneImportState() {
 
 function cloneSpotState() {
 	return JSON.parse(JSON.stringify(spotState));
+}
+
+function summarizeCommandPayload(name, payload) {
+	if (name === "Import.PublishResultEvidence") {
+		return {
+			evidenceId: payload?.evidence?.evidenceId ?? null,
+			itemCount: Array.isArray(payload?.items) ? payload.items.length : 0,
+		};
+	}
+	return payload;
 }
 
 function listPresets(db) {
@@ -81,21 +97,32 @@ export class AppRuntimeLocal {
 		this.windowId = windowId;
 		this.debug = debug;
 		this.messaging = messaging; // optional: for evt echo in local mode
+		this.importService = createImportSessionService({
+			getState: () => importState,
+			setState: (next) => { importState = next; },
+			router: { broadcastEvt: (name, payload) => this.messaging?.emitEvt?.(name, payload) },
+		});
 	}
 
 	async handle(msg) {
-		if (this.debug) console.log("[AppRuntimeLocal] cmd", msg.name, msg.payload);
+		if (this.debug) {
+			console.log("[AppRuntimeLocal] cmd", msg.name, summarizeCommandPayload(msg.name, msg.payload));
+		}
 		if (msg?.type !== "cmd") return;
 
 		try {
 			if (msg.name === "Transition.ListPresets") {
-				return mkAck(msg, listPresets(db), { src: { ctx:"local:runtime", role:"master" } });
+				return mkAck(msg, transitionService.listPresets(), { src: { ctx:"local:runtime", role:"master" } });
 			}
 
 			if (msg.name === "Transition.GetPresetSpec") {
 				const { presetId } = msg.payload ?? {};
-				return mkAck(msg, getPresetSpec(db, presetId), { src: { ctx:"local:runtime", role:"master" } });
+				return mkAck(msg, transitionService.getPresetSpec(presetId), { src: { ctx:"local:runtime", role:"master" } });
 			}
+
+			if (msg.name === "Transition.GetCatalogue") return mkAck(msg, transitionService.getCatalogue(), { src: { ctx:"local:runtime", role:"master" } });
+			if (msg.name === "Transition.UpdateWorkingCopy") return mkAck(msg, transitionService.updateWorkingCopy(msg.payload), { src: { ctx:"local:runtime", role:"master" } });
+			if (msg.name === "Transition.ResetWorkingCopy") return mkAck(msg, transitionService.resetWorkingCopy(msg.payload), { src: { ctx:"local:runtime", role:"master" } });
 
 			if (msg.name === "Project.GetState") {
 				return mkAck(msg, { ...projectState }, { src: { ctx:"local:runtime", role:"master" } });
@@ -122,7 +149,11 @@ export class AppRuntimeLocal {
 			}
 			
 			if (msg.name === "Import.GetState") {
-				return mkAck(msg, cloneImportState());
+				return mkAck(msg, this.importService.getState());
+			}
+
+			if (msg.name === "Import.GetResultEvidence") {
+				return mkAck(msg, this.importService.getResultEvidence(msg.payload ?? {}));
 			}
 
 			if (msg.name === "Spot.GetState") {
@@ -131,35 +162,20 @@ export class AppRuntimeLocal {
 
 			if (msg.name === "Import.BeginSession") {
 
-				importState = {
-					sessionId: `imp_${Date.now()}`,
-					phase: "collecting",
-					items: [],
-					error: null
-				};
-
-				this.messaging?.emitEvt?.("Import.StateChanged", cloneImportState());
-
-				return mkAck(msg, cloneImportState());
+				return mkAck(msg, this.importService.beginSession(msg.payload ?? {}));
 			}
 
 			if (msg.name === "Import.AddItems") {
 
-				const { items = [] } = msg.payload ?? {};
+				return mkAck(msg, this.importService.addItems(msg.payload ?? {}));
+			}
 
-				const normalized = items.map((it, i) => ({
-					id: it.id ?? `item_${Date.now()}_${i}`,
-					name: it.name ?? "unknown",
-					size: it.size ?? 0,
-					kind: it.kind ?? "unknown",
-					status: "dropped"
-				}));
+			if (msg.name === "Import.PublishResultEvidence") {
+				return mkAck(msg, this.importService.publishResultEvidence(msg.payload ?? {}));
+			}
 
-				importState.items.push(...normalized);
-
-				this.messaging?.emitEvt?.("Import.StateChanged", cloneImportState());
-
-				return mkAck(msg, cloneImportState());
+			if (msg.name === "Import.SetItemAccepted") {
+				return mkAck(msg, this.importService.setItemAccepted(msg.payload ?? {}));
 			}
 
 			return mkErr(msg, new Error(`Unknown cmd: ${msg.name}`), { src: { ctx:"local:runtime", role:"master" } });

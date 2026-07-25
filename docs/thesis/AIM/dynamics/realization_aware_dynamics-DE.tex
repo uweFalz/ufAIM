@@ -1,0 +1,91 @@
+% dynamics/realization_aware_dynamics-DE.tex
+\chapter{Realisierungsbewusste Vorhersage und Vergleich}
+\label{chap:realization-aware-dynamics}
+
+\section*{Welche Geometrie geht in das Modell ein?}
+
+Beabsichtigte Alignment-Geometrie, ihre Metric Realization, gebautes Asset,
+physischer Zustand und beobachtete Zustandsschätzung sind verbunden, aber
+nicht austauschbar. Eine Koordinatentransformation ändert eine
+Repräsentation; sie baut kein Asset. Eine Vermessungspolylinie ist eine
+beobachtungstragende Repräsentation und keine physische Wahrheit.
+
+\begin{principle}[Prinzip realisierungsbewusster Dynamik]
+\label{princ:realization-aware-dynamics}
+Eine Vorhersage benennt, welche qualifizierte Realisierung oder beobachtete
+Zustandsschätzung in das Antwortmodell \(M\) eingeht. Das Ergebnis bleibt
+eine Vorhersage von \(M\), keine Beobachtung.
+\end{principle}
+
+\section{Typisierte Vergleichskette}
+
+\begin{definition}[Realisierter Laufzeitzustand]
+\label{def:realized-runtime-state}
+Ein realisierter Laufzeitzustand ist hier eine Eingabe des Antwortmodells, die
+aus einer ausdrücklich identifizierten Realisierung oder beobachteten
+Zustandsschätzung abgeleitet und durch Objektidentität, Zeit, Frame, Methode,
+Provenienz, Anwendbarkeit und Unsicherheit qualifiziert ist. Er ist keine
+neue kanonische Zustandsklasse.
+\end{definition}
+
+Für die Quelle \(q\in\{\mathrm{Absicht},\mathrm{Realisierung},
+\mathrm{Beobachtung}\}\) gilt
+\[
+\widehat S_q
+\xrightarrow[\;Q_M,I_M\;]{\mathcal D_M}
+x_{M,q}^{\mathrm{pred}}(t).
+\]
+Nur gleichartige Ausgaben dürfen verglichen werden. Eine gemessene Antwort
+\(x^{\mathrm{obs}}(t)\) bleibt getrennt qualifiziert:
+\[
+\Delta_M(t)=
+\mathcal C\!\left(x_{M,q}^{\mathrm{pred}}(t),
+x^{\mathrm{obs}}(t)\mid
+\text{gleiches Subjekt, gleiche Zeit, gleicher Frame und Größe}\right).
+\]
+\(\Delta_M\) ist ein Vergleichsergebnis, keine Ursache oder Entscheidung.
+
+\section{Realisierungsfilterung}
+
+\begin{proposition}[Prinzip des Realisierungsfilters]
+\label{prop:realization-filter-principle}
+Eine Änderung der qualifizierten Modelleingabe kann die Vorhersage ändern und
+zugleich die Alignment Identity bewahren. Die Änderung darf erst dann
+Konstruktion, Degradation oder Messung zugeschrieben werden, wenn Evidenz
+diese Erklärungen unterscheidet.
+\end{proposition}
+
+Bei der Abweichung von CAD-Kurve und Vermessungspolylinie dürfen
+CAD-Realisierung und polylinienabgeleitete Schätzung jeweils dasselbe \(M\)
+speisen. Die Differenz der Ausgaben ist ein Sensitivitätsergebnis. Eine
+kausale Zuordnung benötigt weitere Evidenz.
+
+\section{Kalibrierungs- und Unsicherheitsgrenze}
+
+Ein Modellparameter gehört zu \(Q_M\). Kalibrierungsevidenz stützt Auswahl
+oder Schätzung eines Parameters für einen angegebenen Bereich.
+Beobachtungsunsicherheit qualifiziert Messevidenz; Konstruktionsvariabilität
+betrifft das Asset; operative Variabilität die Nutzung; ein numerisches
+Residuum eine Rechnung; Modellformunsicherheit die Angemessenheit von \(M\).
+Diese Quellen dürfen nicht allein deshalb zu einem Fehlerterm verschmolzen
+werden, weil sie alle einen Vergleich beeinflussen.
+
+Die Übereinstimmung mit einer Beobachtung kann eine lokale
+Kalibrierungsaussage stützen. Sie begründet keine universelle Modellgültigkeit.
+
+\begin{definition}[Realisierungsbewusste Zulässigkeit]
+\label{def:realization-aware-admissibility}
+Realisierungsbewusste Zulässigkeit ist ein Bewertungsergebnis aus einer
+identifizierten Regel und einem Zweck auf qualifizierter Vergleichsevidenz.
+Sie ist keine intrinsische Eigenschaft, die \(\mathcal D_M\) erzeugt.
+\end{definition}
+
+\begin{definition}[Laufzeithülle]
+\label{def:runtime-envelope}
+Eine Laufzeithülle ist eine erklärte Grenzwertmenge aus einer identifizierten
+Quelle, mit Einheiten, Anwendbarkeit und Gültigkeit. Das Zustandsmodell selbst
+liefert sie nicht.
+\end{definition}
+
+Damit entstehen Eingaben für eine Optimierung, aber noch kein Ziel. Die
+Verantwortung dafür wird nun ausdrücklich gemacht.

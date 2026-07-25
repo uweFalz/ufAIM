@@ -135,9 +135,15 @@ const alignmentEditModelBoundaryPromise = (async function runAlignmentEditModelB
 	console.log("AlignmentEditModelBoundary E2E starting...");
 
 	const mapper = new AlignmentMapper();
+	let windowState = {};
 	const store = {
 		getState() {
-			return {};
+			return windowState;
+		},
+		actions: {
+			setWorkspaceSelection(selection) {
+				windowState = { ...windowState, workspace_selection: { ...selection } };
+			},
 		},
 	};
 	const gateway = makeGateway();
@@ -181,12 +187,21 @@ const alignmentEditModelBoundaryPromise = (async function runAlignmentEditModelB
 	assert(Array.isArray(projectedAfterUpdate?.polyline2d) && projectedAfterUpdate.polyline2d.length >= 2, "updated alignment should project");
 
 	const elementId = updatedLength.alignmentData.editModel.elements[0].id;
+	store.actions.setWorkspaceSelection({
+		primaryId: updatedLength.spotObject.id,
+		contextIds: [],
+		elementId,
+		source: "alignment-edit-boundary-e2e",
+		crsId: null,
+	});
 	const removed = await service.removeElement({ elementId });
 	assert(removed?.changed === true, "removeElement should change alignment");
 	assert(removed.alignmentData.editModel.elements.length === 0, "removeElement should clear elements");
 	assert(removed.sparseAlignment == null, "removeElement on last element should clear sparseAlignment");
 	assert(removed.spotObject?.data?.kernel == null, "removed alignment should not keep kernel");
 	assert(gateway.getSaveCalls().at(-1)?.opts?.focus === true, "remove should request focus");
+	assert(store.getState().workspace_selection.primaryId === removed.spotObject.id, "last-element removal should retain parent alignment selection");
+	assert(store.getState().workspace_selection.elementId == null, "last-element removal should clear element selection");
 
 	const rebuilt = await service.addStraight({ length: 25 });
 	assert(rebuilt?.sparseAlignment?.type === "sparseAlignment", "rebuilt sparseAlignment missing");

@@ -1,0 +1,236 @@
+% Deutsche Parallelfassung zu why/problem_statement.tex
+
+\chapter{Problemformulierung}
+
+\section{Von der Motivation zur Formalisierung}
+
+Das vorherige Kapitel verfolgte eine Krümmungsänderung durch Geometrie,
+Qualifikationen, Evidenz, Regeln und Autorität. Nun bestimmen wir die formalen
+Lücken, die eine kohärente Behandlung dieser Beziehungen verhindern.
+
+\section{Zentraler Mangel bestehender Ansätze}
+
+Bestehende Ansätze bieten leistungsfähige geometrische, räumliche,
+objektorientierte und numerische Möglichkeiten. Der zentrale Mangel ist nicht
+das Fehlen dieser Möglichkeiten, sondern das Fehlen einer
+Alignment-spezifischen Darstellung ihrer Beziehungen. Eine übertragene Kurve
+begründet keine dauerhafte Objektidentität. Eine gemessene Position gibt nicht
+an, ob sie beabsichtigt, physisch realisiert oder beobachtet ist. Eine
+erfolgreiche Prüfung von Nebenbedingungen identifiziert weder den Owner der
+Regel noch autorisiert sie eine Änderung.
+
+Im geometrischen und numerischen Bereich bleibt eine verwandte Lücke:
+Krümmung, Überhöhung, dynamische Größen, Realisierungseffekte und Optimierung
+werden häufig als aufeinanderfolgende Aufgaben statt als ausdrücklich
+gekoppelte Abhängigkeiten behandelt. Die Thesis behandelt daher sowohl
+semantische Kontinuität als auch rechnerische Kopplung. Nur eines der beiden
+Probleme zu lösen, ließe die Krümmungsänderung unvollständig verstanden.
+
+Der ursprüngliche Mangel war bereits innerhalb der Übergangstheorie sichtbar.
+Benannte Kurven wurden häufig als getrennte Konstruktionen behandelt, obwohl
+sich ihre Krümmungsfunktionen anhand gemeinsamer Randwerte und ihres
+Ableitungsverhaltens vergleichen ließen. Dadurch waren vier verschiedene
+Dinge schwer zu trennen: die Identität einer Funktionsfamilie, ihre
+Parametrisierung, die Randbedingungen einer konkreten Aufgabe und die nach
+deren Lösung instanziierte Übergangsgeometrie.
+
+\section{Formale Lücke}
+
+Es bezeichne
+\[
+\gamma : [0,L] \to \R^2
+\]
+ein ebenes Alignment.
+
+In klassischen Formulierungen ist die Kurve \(\gamma\) das primäre Objekt,
+während die Krümmung als
+\[
+\kappa(s) = \theta'(s)
+\]
+abgeleitet wird.
+
+Aus dynamischer Sicht kehrt sich die Situation jedoch um:
+\begin{itemize}
+\item Krümmung bestimmt die Beschleunigung,
+\item Krümmungsänderung bestimmt den Ruck,
+\item und folglich bestimmt Krümmung das physikalische Verhalten.
+\end{itemize}
+
+Dies legt eine grundlegende Diskrepanz offen zwischen:
+\begin{itemize}
+\item geometrischer Modellierung (Kurve zuerst),
+\item und physikalischer Interpretation (Krümmung zuerst).
+\end{itemize}
+
+\section{Fehlende Kopplung der Zustandsvariablen}
+
+Es bezeichnen
+\[
+\kappa(s), \quad \phi(s)
+\]
+Krümmung und Überhöhung.
+
+In der Praxis sind diese Variablen durch
+\[
+a_{\mathrm{eff}}(s) = v^2 \kappa(s) - g \sin\phi(s)
+\]
+stark gekoppelt.
+
+Trotz dieser Kopplung gilt üblicherweise:
+\begin{itemize}
+\item \(\kappa\) wird geometrisch entworfen,
+\item \(\phi\) wird in einem getrennten Prozess entworfen,
+\item und ihre Wechselwirkung wird erst anschließend geprüft.
+\end{itemize}
+
+Diese Trennung verhindert eine einheitliche Optimierung des Systems.
+
+Betriebliche Kopplung verlangt keine identische funktionale Identität.
+Krümmung und Überhöhung können durch getrennte Gesetze
+\[
+\kappa(s) \quad\text{und}\quad u(s)
+\]
+mit eigenen Parametern und Randbedingungen beschrieben werden. Die Wahl eines
+gemeinsamen Gesetzes, gekoppelter Parameter oder bewusst getrennter Verläufe
+ist eine Modellierungs- und Optimierungsentscheidung. ViennaCurve-Beispiele
+begründen diesen Freiheitsgrad, indem sie zeigen, wie Krümmungs- und
+Überhöhungsentwicklung getrennt geformt werden können, während ihre gemeinsame
+betriebliche Folge weiterhin bewertet wird. Diese Darstellung ist eine
+ursprüngliche Forschungsinterpretation der Thesis; sie behauptet keinen neuen
+einheitlichen Kernel-Begriff.
+
+\section{Lücke zwischen Daten und Realität}
+
+Moderne Eisenbahnprojekte stützen sich stark auf reale Daten, darunter:
+\begin{itemize}
+\item Messpolylinien,
+\item übernommene Alignment-Beschreibungen,
+\item und heterogene Koordinatensysteme.
+\end{itemize}
+
+Bestehende Modelle haben Schwierigkeiten:
+\begin{itemize}
+\item verrauschte und unvollständige Daten zu integrieren,
+\item unterschiedliche Koordinatenreferenzsysteme in Beziehung zu setzen,
+\item und über Maßstäbe hinweg eine konsistente Repräsentation zu erhalten.
+\end{itemize}
+
+Dies führt zu einer Trennung zwischen:
+\begin{itemize}
+\item theoretischen Alignment-Modellen,
+\item und realen Ingenieurdaten.
+\end{itemize}
+
+\section{Fehlen eines einheitlichen Optimierungs-Frameworks}
+
+Probleme des Alignment-Entwurfs besitzen natürlicherweise die Form
+\[
+\min J(\kappa,\phi)
+\]
+unter geometrischen und ingenieurtechnischen Nebenbedingungen.
+
+In der gegenwärtigen Praxis gilt jedoch:
+\begin{itemize}
+\item Die Zielfunktion ist implizit oder fragmentiert,
+\item Nebenbedingungen werden in getrennten Stufen angewendet,
+\item und die Optimierung wird nicht als ein einziges Problem formuliert.
+\end{itemize}
+
+Dies verhindert den Einsatz systematischer numerischer
+Optimierungsverfahren.
+
+\section{Zielformulierung}
+
+Wir wollen den Alignment-Entwurf als einheitliches Problem formulieren:
+\[
+\text{Finde } (\kappa,\phi)
+\]
+so, dass:
+\begin{itemize}
+\item geometrische Konsistenz erfüllt ist,
+\item ingenieurtechnische Nebenbedingungen eingehalten sind,
+\item und ein globales Zielfunktional minimiert wird.
+\end{itemize}
+
+Dies erfordert:
+\begin{itemize}
+\item eine krümmungsbasierte Repräsentation,
+\item ein gekoppeltes Zustandsmodell,
+\item und eine konsistente Behandlung von Daten und Nebenbedingungen.
+\end{itemize}
+
+Für Übergänge umfasst das Ziel die Kompositionsform
+\[
+T(s)=H_{\mathrm{in}}(s)+C(s)+H_{\mathrm{out}}(s),
+\]
+in der eine einlaufende Halbwelle, ein optionaler Klothoidenabschnitt und eine
+auslaufende Halbwelle aufeinanderfolgende Teilbereiche belegen und jede
+Komponente die Länge null besitzen darf. Dies ist das später in
+\cref{sec:berlinish-composition} entwickelte mathematische
+Berlinish-Framework; es wird als ursprünglicher Forschungsbeitrag und nicht
+als Kernel-Autorität dargestellt.
+
+\section{Problemumfang}
+
+Das in dieser Arbeit behandelte Problem umfasst:
+\begin{itemize}
+\item die Modellierung von Alignments durch Krümmungsfunktionen,
+\item die Einbindung der Überhöhung als Zustandsvariable,
+\item die Rekonstruktion der Geometrie aus der Krümmung,
+\item die Einbindung von Ingenieurregeln als Nebenbedingungen,
+\item und die Formulierung von Optimierungsproblemen.
+\end{itemize}
+
+Ausdrücklich ausgeschlossen sind:
+\begin{itemize}
+\item detaillierte Mehrkörper-Fahrzeugdynamik,
+\item die vollständige Modellierung jedes Infrastrukturobjekts,
+\item und projektspezifische Bauablaufplanung.
+\end{itemize}
+
+\section{Forschungsfragen}
+
+Die in der Einleitung formulierte zentrale Frage wird durch fünf operative
+Fragen entfaltet:
+\begin{itemize}
+\item Welche intrinsische Konstruktion unterscheidet ein Alignment unabhängig
+  von seinen Koordinaten und Repräsentationen?
+\item Wie kann diese Konstruktion durch ausdrückliche Operatoren als
+  geometrischer, dynamischer und betrieblicher Zustand realisiert werden?
+\item Wie können beabsichtigter Zustand, physische Realisierung,
+  Beobachtungen und angenommenes Ingenieurwissen miteinander verbunden
+  bleiben, ohne identisch zu werden?
+\item Wie lassen sich anwendbare Regeln und ingenieurtechnische Folgen für die
+  Berechnung ausdrücken, während Ownership und Entscheidungsautorität
+  ausdrücklich bleiben?
+\item Welche Repräsentationen und numerischen Verfahren unterstützen
+  Rekonstruktion, Bewertung und Optimierung, ohne das Engineering Object neu
+  zu definieren?
+\end{itemize}
+
+\section{Arbeitshypothese}
+
+Die Arbeitshypothese lautet, dass eine krümmungsgetriebene konstruktive
+Darstellung zusammen mit ausdrücklichen Beziehungen für Zustand,
+Realisierung, Beobachtung, Wissen und Bewertung eine kohärente Grundlage für
+das Alignment-Ingenieurwesen über Repräsentationen hinweg bietet. Innerhalb
+dieser Grundlage können gekoppelte Krümmungs- und Überhöhungsmodelle, hybride
+Rekonstruktion, ingenieurtechnische Nebenbedingungen und strukturierte
+Optimierung ausgewählte Folgen berechenbar machen, ohne ein numerisches
+Ergebnis als Ingenieurentscheidung zu behandeln.
+
+\input{why/sections/alignment_is_not_a_curve-DE}
+
+\section{Zusammenfassung}
+
+\begin{summary}
+Gegenwärtige Verfahren des Alignment-Entwurfs leiden unter der Fragmentierung
+zwischen Geometrie, Dynamik und Daten.
+
+Diese Arbeit behandelt die Entwicklung eines einheitlichen,
+krümmungsgetriebenen Frameworks, das diese Aspekte in einem einzigen
+kohärenten Modell integriert.
+
+Ziel ist die konsistente Modellierung, Analyse und Optimierung von
+Eisenbahn-Alignments.
+\end{summary}

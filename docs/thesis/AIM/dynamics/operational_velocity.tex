@@ -1,74 +1,113 @@
-% dynamics/operational_velocity.tex
-
-\chapter{Operational Velocity}
-
+\chapter{Traversal Law and Operational Velocity}
 \label{chap:operational-velocity}
 
-\section*{Motivation}
-
-Railway alignment geometry is naturally parameterized by arc length,
-whereas operational behaviour is experienced through time.
-
-Operational velocity is therefore the bridge between intrinsic geometry
-and runtime dynamics.
+The two-speed comparison in Part V assumed constant test speeds to isolate the
+\(v^2\) dependency. Operation is more general. A traversal of the running
+Alignment is a monotone function \(s=s(t)\) over the interval where the chosen
+orientation and applicability conditions hold.
 
 \begin{principle}[Velocity-runtime principle]
 \label{princ:velocity-runtime}
-Within AIM, velocity is interpreted as a runtime quantity coupling
-arc-length-based railway geometry to time-based operational behaviour.
+Velocity is a qualified derivative of a traversal law, not an intrinsic
+Alignment property.
 \end{principle}
 
-\section{Arc Length and Time}
+\section{Space Becomes Time}
 
 \begin{definition}[Velocity relation]
 \label{def:velocity-relation}
-For an operational velocity \(v(s)\), arc-length and time derivatives
-are related by:
+For a differentiable traversal,
 \[
-\frac{\dd}{\dd t}
-=
-v
-\frac{\dd}{\dd s}.
+v(t)=\dot s(t)=\frac{\dd s}{\dd t},
+\qquad
+a_s(t)=\dot v(t)=\frac{\dd^2s}{\dd t^2}.
+\]
+For a differentiable spatial quantity \(f(s)\),
+\[
+\frac{\dd}{\dd t}f(s(t))=v(t)f'(s(t)).
 \]
 \end{definition}
 
-This relation is fundamental for translating curvature evolution into
-operational runtime effects.
+Applied to the separate curvature and cant laws,
+\[
+\frac{\dd\kappa}{\dd t}=v\kappa'(s),
+\qquad
+\frac{\dd u}{\dd t}=v u'(s).
+\]
+Their different partitions and provenance remain attached. Common traversal
+does not turn them into one law or authorize a coupling rule.
 
-\section{Design Velocity and Operational Velocity}
+For curvature acceleration, the full chain rule is
+\begin{equation}
+\frac{\dd^2\kappa}{\dd t^2}
+=v^2\kappa''(s)+\dot v\,\kappa'(s).
+\label{eq:curvature-second-time-derivative}
+\end{equation}
+The second term vanishes only under a stated constant-speed assumption.
+Spatial smoothness belongs to \(\kappa(s)\); temporal excitation also depends
+on \(s(t)\).
+
+\section{Which Velocity Is Meant?}
 
 \begin{definition}[Design velocity]
 \label{def:design-velocity}
-Design velocity denotes the velocity assumption used during alignment
-design.
+A design velocity is an assumption selected for a stated design purpose,
+source, route or element scope, and validity.
 \end{definition}
 
 \begin{definition}[Operational velocity]
 \label{def:operational-velocity}
-Operational velocity denotes the realized or intended runtime velocity
-during operation.
+An operational velocity is a planned, permitted, or actual traversal input
+whose role and qualifications are stated for the calculation.
 \end{definition}
 
-Design velocity and operational velocity need not be identical.
-
-\section{Velocity Envelopes}
+The following roles must not be collapsed:
+\begin{description}
+\item[Design speed] an assumption used to develop or check a design.
+\item[Permitted speed] a rule- or authority-backed upper bound under its
+applicability and validity.
+\item[Planned operating speed] a timetable or operating-plan input.
+\item[Actual measured speed] a time-indexed observation with acquisition
+provenance and uncertainty.
+\item[Optimization variable] a declared degree of freedom within an
+experiment, not an authorized operating value.
+\item[Constant test speed] an explicit simplification used to isolate a
+dependency.
+\end{description}
 
 \begin{definition}[Velocity envelope]
 \label{def:velocity-envelope}
-A velocity envelope defines admissible velocity ranges along an
-alignment.
+A velocity envelope is a qualified set of permitted or investigated traversal
+values along an identified route or Alignment. Its source, scope, validity,
+and role determine how it may be used.
 \end{definition}
 
-Velocity envelopes interact with curvature, cant, comfort,
-admissibility, and operational constraints.
+\section{Compact Variable-Speed Example}
 
-\section{Connection to AIM}
+At the same transition position, suppose
+\[
+\kappa'=2.0\times10^{-5}\,\mathrm{m^{-2}},
+\qquad
+\kappa''=-1.0\times10^{-7}\,\mathrm{m^{-3}}.
+\]
+At \(v=20\,\mathrm{m/s}\),
+\[
+\dot\kappa=4.0\times10^{-4}\,\mathrm{m^{-1}s^{-1}}.
+\]
+If speed is constant, then
+\(\ddot\kappa=v^2\kappa''=-4.0\times10^{-5}\,
+\mathrm{m^{-1}s^{-2}}\). If instead
+\(\dot v=0.5\,\mathrm{m/s^2}\), \cref{eq:curvature-second-time-derivative}
+gives
+\[
+\ddot\kappa
+=-4.0\times10^{-5}+1.0\times10^{-5}
+=-3.0\times10^{-5}\,\mathrm{m^{-1}s^{-2}}.
+\]
+The Alignment law is identical in both cases. Acceleration changes temporal
+exposure by adding a term that a constant-speed simplification omits.
 
 \begin{summary}
-Operational velocity connects arc-length-based geometry with
-time-dependent runtime behaviour.
-
-Within AIM, velocity is not treated as an external scalar only, but as a
-runtime coupling quantity connecting curvature, cant, dynamics,
-admissibility, and optimization.
+Every use of velocity must disclose source, applicability, validity, and
+calculation role. The symbol \(v\) is not sufficient qualification by itself.
 \end{summary}

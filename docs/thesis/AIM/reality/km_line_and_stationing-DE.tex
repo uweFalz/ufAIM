@@ -1,0 +1,62 @@
+% reality/km_line_and_stationing-DE.tex
+\chapter{Kilometrierungslinie und Stationierung}
+\label{chap:km-line-and-stationing}
+\index{Bezugssystem!Stationierung}
+
+Stationierung ist die operative Adressierungsebene von Eisenbahnsystemen. Sie
+ist weder mit konstruktiver Alignment-Identität noch mit metrischer Einbettung
+oder realisierter Geometrie identisch.
+
+\section{Rolle der Stationierung}
+\begin{definition}[Kilometrierungslinie]
+\index{Bezugssystem!Kilometrierungslinie}
+Eine Kilometrierungslinie ist eine longitudinale Referenzstruktur, die in
+einem Routenkontext Stationierungswerte zuordnet.
+\end{definition}
+\begin{definition}[Stationierungsebene]
+\index{Bezugssystem!Stationierungsebene}
+Die Stationierungsebene bildet Eisenbahnpositionen auf operative Adresswerte
+ab.
+\end{definition}
+
+Stationierung beantwortet, wie eine Infrastrukturposition adressiert wird;
+Geometrie beantwortet, welche Form realisiert ist; CRS beantworten, wo die
+Einbettung ausgedrückt wird.
+
+\section{Bezug zur Geometrie}
+Eine Kilometrierungslinie kann mit einer physischen Gleismittellinie
+zusammenfallen, muss es aber nicht. In mehrgleisigen und
+Verzweigungskontexten können mehrere physische Alignments auf dieselbe
+Stationierungsstruktur Bezug nehmen.
+
+\begin{definition}[Äußere Stationierung]
+\index{Bezugssystem!äußere Stationierung}
+Äußere Stationierung beschreibt die Abbildung zwischen einer physischen
+Gleis-Alignment-Koordinate und einer externen Kilometrierungsreferenz.
+\end{definition}
+Sie ist erforderlich, wenn Stationierungsreferenz und physische Gleisreferenz
+nicht zusammenfallen.
+
+\section{Trennung der Ebenen}
+\begin{proposition}
+Eisenbahnmodellierung erfordert die Trennung
+\[
+\text{räumliche Einbettung}\neq\text{geometrisches Alignment}
+\neq\text{Stationierungsreferenz}.
+\]
+\end{proposition}
+Die Vermengung dieser Ebenen erzeugt systematische Fehler in Interpretation,
+Netzadressierung und Ziel--Realisiert-Vergleich.
+
+\section{Topologie und operative Kontinuität}
+\index{Topologie!operative Kontinuität}
+Kilometrierungsreferenzen stellen operative Kontinuität über Gleiswechsel,
+Verzweigungen, Bahnhofsbereiche und Routenübergänge hinweg bereit, selbst wenn
+geometrische Kontinuität durch mehrere physische Alignments dargestellt wird.
+
+\section{Verbindung zu AIM}
+\begin{summary}
+In AIM ist Stationierung eine ausdrückliche Referenzebene für operative
+Adressierung und Vergleichsabläufe. Sie bleibt von konstruktiver Identität,
+CRS-Einbettung und realisierter Gleisgeometrie verschieden.
+\end{summary}

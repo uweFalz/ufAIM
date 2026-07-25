@@ -1,197 +1,70 @@
-% state/pose3_frames.tex
+\chapter{Moving Frames and Their Limits}
 
-\chapter{Pose3 Frames and Spatial Reference Systems}
+The preceding chapter constructed one local railway frame because the running
+Alignment required a cross-section orientation. This chapter states what each
+direction depends on and where the explanatory convention ends.
 
-Pose3 frames provide the local spatial interpretation of the railway
-state. They are required because the state variables alone do not tell us
-how the alignment is embedded in space or how local coordinates are to
-be interpreted during evaluation. Frames therefore form the operational
-bridge between intrinsic geometry, cant, realization, world--track
-projection, and vehicle-space interpretation.
+\section{Longitudinal Direction}
 
-% ============================================================
-\section{Pose3 and Frames}
-% ============================================================
-
-The canonical pose3 state is defined in \cref{eq:canonical-state}. A pose3
-frame provides the local spatial interpretation of this state and is
-evaluated along arc length. In AIM, these frames are runtime structures
-rather than independently stored geometric objects.
-
-% ============================================================
-\section{Tangent Direction}
-% ============================================================
-
-\begin{definition}[Tangent vector]
-The tangent vector is:
+For the realized spatial trajectory \(\Gamma(s)\), the unit tangent is
 \[
-\mathbf t(s)=\gamma'(s).
+\mathbf t(s)=\frac{\Gamma'(s)}{\|\Gamma'(s)\|}.
 \]
-\end{definition}
+It follows from horizontal pose, vertical profile, metric interpretation, and
+the orientation of increasing \(s\). Horizontal curvature alone does not
+determine its three-dimensional direction.
 
-For an arc-length parameterization,
-\[
-\|\mathbf t(s)\|=1.
-\]
-The tangent direction defines the local forward direction of motion.
+\section{Uncanted Cross-Section}
 
-% ============================================================
-\section{Lateral and Binormal Directions}
-% ============================================================
+The realization supplies a usable vertical reference
+\(\mathbf z_{\mathrm{ref}}(s)\): locally this may be the vertical of a planar
+engineering realization; in an Earth realization it may involve surface
+normal and gravity conventions. Projecting that reference orthogonally to
+\(\mathbf t\), normalizing it, and completing a right-handed triad gives one
+possible \(F_0=(\mathbf t,\mathbf l_0,\mathbf z_0)\). A continuous-transport
+rule is required where the projection becomes ill-conditioned.
 
-\begin{definition}[Lateral direction]
-The lateral direction is denoted by:
-\[
-\mathbf n(s),
-\]
-with
-\[
-\mathbf n(s)\cdot \mathbf t(s)=0.
-\]
-\end{definition}
+This construction is deliberately qualified. The Thesis does not choose one
+universal railway frame for every realization. What must remain explicit is:
+\begin{itemize}
+\item the longitudinal direction follows the realized trajectory and
+  parameter orientation;
+\item the uncanted lateral--vertical pair follows a stated vertical and
+  transport convention;
+\item \(u(s)\) or \(\phi(s)\) rotates that pair about \(\mathbf t\);
+\item coordinate components follow the selected representation.
+\end{itemize}
 
-\begin{definition}[Binormal direction]
-The binormal direction is:
-\[
-\mathbf b(s)=\mathbf t(s)\times\mathbf n(s).
-\]
-\end{definition}
+\section{Why a Pure Frenet Frame Is Insufficient}
 
-The lateral and binormal directions define the local cross-section
-orientation of the railway frame.
+A Frenet normal derived only from curvature is undefined or numerically
+unstable as \(\kappa\rightarrow0\). The running Alignment contains an initial
+straight, so a railway frame must carry orientation continuously across that
+segment. This is not a new architectural object: it is an applicability
+condition of the frame-evaluation operation.
 
-% ============================================================
-\section{Pose3 Frame}
-% ============================================================
+\section{Degrees of Determination}
 
-\begin{definition}[Pose3 frame]
-The local pose3 frame is:
-\[
-F(s)=
-(\mathbf t(s),\mathbf n(s),\mathbf b(s)).
-\]
-\end{definition}
+At a fixed \(s\), Alignment identity and the ordered law are preserved.
+The starting pose and metric realization fix the planar placement. The
+profile fixes elevation and slope where defined. The cant law fixes roll only
+under a gauge and sign convention. A residual yaw or cross-section convention
+may remain free until the selected frame rule resolves it. Vehicle body
+orientation remains free until a vehicle model and operating state are
+provided.
 
-The pose3 frame defines the local operational coordinate system of the
-railway alignment. It is a runtime-evaluated structure rather than an
-independently stored geometric object.
+\section{World--Track and Vehicle-Space Use}
 
-% ============================================================
-\section{Cant Rotation}
-% ============================================================
-
-\begin{definition}[Cant rotation]
-Cant is interpreted as a rotation around the tangent direction:
-\[
-R_\phi(s).
-\]
-\end{definition}
-
-\begin{definition}[Cant-rotated frame]
-The cant-rotated frame is:
-\[
-F_\phi(s)
-=
-(
-\mathbf t(s),
-\mathbf n_\phi(s),
-\mathbf b_\phi(s)
-).
-\]
-\end{definition}
-
-The cant-rotated frame determines rail elevations, cross-level
-interpretation, vehicle orientation, effective gravity direction, and
-platform geometry.
-
-% ============================================================
-\section{Rail Plane}
-% ============================================================
-
-Gauge, rail elevation, and cross-level geometry are defined relative to
-the cant-rotated frame. The rail plane is therefore not globally
-horizontal, but attached to the local pose3 frame and its cant
-rotation.
-
-% ============================================================
-\section{Frenet and Railway Frames}
-% ============================================================
-
-Classical Frenet frames are not fully adequate for railway alignment
-modelling. In particular, Frenet frames become unstable in regions where
-\[
-\kappa(s)\to 0.
-\]
-Railway modelling therefore requires frame formulations that remain
-stable in straight and low-curvature sections. In practice, railway
-frames are transported continuously along the alignment rather than
-recomputed purely from differential geometry.
-
-% ============================================================
-\section{Surface and Ellipsoid Frames}
-% ============================================================
-
-When alignments are defined on the Earth surface, local frames must
-respect ellipsoid geometry. A surface-attached frame consists of:
-\[
-(\mathbf t,\mathbf n,\mathbf n_{\mathrm E}),
-\]
-where \(\mathbf n_{\mathrm E}\) denotes the ellipsoid surface normal.
-In this setting, curvature splits into geodesic and normal curvature,
-gravity direction depends on Earth geometry, and world-to-track
-projection becomes surface-dependent.
-
-% ============================================================
-\section{Vehicle-Space Interpretation}
-% ============================================================
-
-The physically relevant object is not always the track centerline alone,
-but the motion of the railway vehicle within space. Pose3 frames provide
-the spatial reference basis for center-of-gravity motion, vehicle
-envelopes, bogie rotation, wheelset orientation, and platform clearance
-behaviour. Vehicle-space interpretation is therefore derived from
-alignment states and their associated frames.
-
-% ============================================================
-\section{Connection to World--Track Transformation}
-% ============================================================
-
-World--track projection relies directly on the local frame. Tangent
-directions define longitudinal coordinates, lateral directions define
-offsets, and cant modifies the operational spatial interpretation. This
-connects pose3 frames to the canonical world--track relation in
-\cref{eq:world-to-track}.
-
-% ============================================================
-\section{Frame Continuity}
-% ============================================================
-
-Frame continuity is essential for smooth visualization, stable dynamics,
-cant interpretation, vehicle-space evaluation, and numerical robustness.
-Discontinuous frame flips may lead to incorrect cant orientation,
-unstable vehicle interpretation, and invalid projection behaviour.
-
-% ============================================================
-\section{Key Insight}
-% ============================================================
-
-\begin{proposition}
-Pose3 frames are operational runtime structures rather than purely
-geometric differential objects.
-\end{proposition}
-
-They connect intrinsic railway geometry with realization, dynamics,
-vehicle behaviour, and spatial interpretation.
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+World--track projection consumes the qualified frame: \(\mathbf t\) defines
+longitudinal direction, \(\mathbf l_\phi\) lateral offset, and
+\(\mathbf z_\phi\) cross-section height. A vehicle-space interpretation may
+then consume this track frame, but it also requires vehicle-specific data. The
+frame preserves the Alignment reference and provenance of its realization; it
+cannot decide whether a measured point belongs to the intended object or
+whether a clearance result is acceptable.
 
 \begin{summary}
-Pose3 frames provide the spatial reference structure underlying railway
-alignment modelling.
-
-Within AIM, they form the operational bridge between curvature-based
-geometry, cant, realization, world--track projection, vehicle-space
-interpretation, and runtime system behaviour.
+A moving railway frame is an evaluated relation between intrinsic geometry,
+vertical realization, cant, and convention. Its components are useful only
+with those dependencies attached.
 \end{summary}

@@ -1,0 +1,103 @@
+% analysis/design_principles-DE.tex
+\section{Entwurfsprinzipien des Alignment-Based Information Modelling}
+\subsection*{Motivation}
+Der AIM-Rahmen integriert Geometrie, Koordinatensysteme, Realisierung und
+Optimierung in ein einheitliches Modell. Aus dieser Integration folgen
+grundlegende Entwurfsprinzipien.
+
+\subsection{Prinzip 1: Krümmungszentrierte Modellierung}
+\begin{proposition}
+Eisenbahn-Alignments sollen primär durch Krümmungsfunktionen \(\kappa(s)\) und
+nicht durch punktbasierte Geometrie modelliert werden.
+\end{proposition}
+Krümmung bietet intrinsische Darstellung, unmittelbare Verbindung zur Dynamik
+und natürliche Integration mit Optimierung.
+
+\subsection{Prinzip 2: Trennung von Darstellung und Realisierung}
+\begin{proposition}
+Das theoretische \textbf{Alignment}-Modell muss von seiner physischen
+Realisierung getrennt werden.
+\end{proposition}
+Der Realisierungsoperator führt Glättung, Bedingungen und Abweichungen vom
+idealen Modell ein. Die Missachtung dieser Trennung erzeugt systematische
+Modellierungsfehler.
+
+\subsection{Prinzip 3: Hybride Modellierung}
+\begin{proposition}
+Alignment-Modelle sollen parametrische Struktur mit lokalen Korrekturtermen
+verbinden.
+\end{proposition}
+Dies ermöglicht interpretierbare Entwurfsabsicht, robuste Behandlung
+unvollkommener Daten und flexible Verfeinerung.
+
+\subsection{Prinzip 4: Operatorbasierte Architektur}
+\begin{proposition}
+Alignment-Modellierung soll als Operatorkomposition formuliert werden:
+\[
+\mathcal P=\mathcal W^{-1}\circ\mathcal R\circ\mathcal M\circ\mathcal W\circ\mathcal C.
+\]
+\end{proposition}
+Jeder Operator vertritt ein eigenes Gebiet: Koordinatensysteme, geometrische
+Modellierung, physische Prozesse oder Datentransformation.
+
+\subsection{Prinzip 5: Entwurf im realisierten Raum}
+\begin{proposition}
+Optimierungsziele müssen an realisierter Geometrie und nicht an theoretischen
+Modellen bewertet werden.
+\end{proposition}
+Die maßgebliche Abbildung lautet
+\[
+\kappa_{\mathrm{target}}\mapsto\gamma_{\mathrm{real}}.
+\]
+Der Entwurf muss die durch Realisierung verursachte Transformation einbeziehen.
+
+\subsection{Prinzip 6: Nutzung der Struktur}
+\begin{proposition}
+Die intrinsische Block- und Dünnbesetzungsstruktur des Problems muss für
+effiziente Berechnung genutzt werden.
+\end{proposition}
+Dies umfasst Lokalität in der Bogenlänge, Blockzerlegung von Krümmung und
+Überhöhung sowie dünn besetzte Jacobi-Matrizen.
+
+\subsection{Prinzip 7: Maßstabsbewusstsein}
+\begin{proposition}
+Verschiedene Pipeline-Komponenten müssen auf geeigneten Maßstäben bewertet
+werden.
+\end{proposition}
+CRS dominieren im großen, parametrische Modellierung im mittleren und
+Korrekturen sowie Realisierung im kleinen Maßstab.
+
+\subsection{Prinzip 8: Integration von Messungen}
+\begin{proposition}
+Messdaten müssen durch die World--Track-Transformation und nicht unmittelbar
+im World-Raum integriert werden.
+\end{proposition}
+Dies gewährleistet Konsistenz mit der intrinsischen Alignment-Darstellung.
+
+\subsection{Prinzip 9: Regularisierung als Notwendigkeit}
+\begin{proposition}
+Regularisierung ist ein wesentlicher Bestandteil von Alignment-Modellierung
+und -Optimierung.
+\end{proposition}
+Sie stabilisiert inverse Probleme, hybride Korrekturen und numerische
+Optimierung.
+
+\subsection{Prinzip 10: Akzeptanz der Nicht-Eindeutigkeit}
+\begin{proposition}
+Alignment-Lösungen sind nicht eindeutig und müssen nach Engineering-Kriterien
+bewertet werden.
+\end{proposition}
+Verschiedene Modelle können nahezu identische realisierte Geometrie erzeugen.
+Lösungsqualität muss deshalb durch Dynamik, Bedingungen und Robustheit
+bestimmt werden.
+
+\subsection{Zusammenfassung}
+\begin{summary}
+Der AIM-Rahmen wird von Entwurfsprinzipien bestimmt, die aus dem
+Zusammenwirken von Geometrie, Physik, Daten und Berechnung hervorgehen.
+
+Sie definieren, wie Alignments dargestellt, transformiert und optimiert und
+wie ihre Grenzen behandelt werden sollen. Gemeinsam bilden sie eine kohärente
+Grundlage für Alignment-Based Information Modelling als einheitliche
+Engineering- und rechnerische Disziplin.
+\end{summary}

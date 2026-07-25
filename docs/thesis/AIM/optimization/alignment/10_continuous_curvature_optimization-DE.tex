@@ -1,0 +1,256 @@
+% optimization/alignment/10_continuous_curvature_optimization-DE.tex
+\section{Formale Optimierung im Krümmungsraum}
+
+\subsection{Problemstellung}
+Es sei \(L>0\) fest und
+\[
+\kappa:[0,L]\to\R
+\]
+die Krümmungsfunktion eines Übergangs. Wir nehmen die Randbedingungen
+\[
+\kappa(0)=0,\qquad\kappa(L)=\kappa_1
+\]
+und optional
+\[
+\kappa'(0)=0,\qquad\kappa'(L)=0
+\]
+an.
+
+\subsection{Zulässige Menge}
+\begin{definition}[Zulässige Übergangsmenge]
+\[
+\mathcal A=
+\left\{\kappa\in H^1(0,L)\mid
+\kappa(0)=0,\;\kappa(L)=\kappa_1\right\}.
+\]
+\end{definition}
+
+\subsection{Variationsproblem}
+\begin{definition}[Quadratisches Funktional des Krümmungsgradienten]
+\[
+J[\kappa]=\int_0^L\bigl(\kappa'(s)\bigr)^2\,\dd s.
+\]
+\end{definition}
+\begin{definition}[Optimierungsproblem]
+Gesucht ist \(\kappa^\ast\in\mathcal A\) mit
+\[
+J[\kappa^\ast]=\min_{\kappa\in\mathcal A}J[\kappa].
+\]
+\end{definition}
+
+\subsection{Euler--Lagrange-Gleichung}
+\begin{proposition}
+Ist \(\kappa^\ast\) ein Minimierer, dann gilt
+\[
+\kappa^{\ast\prime\prime}(s)=0.
+\]
+\end{proposition}
+
+\subsection{Interpretation}
+\begin{proposition}
+Der Minimierer lautet
+\[
+\kappa^\ast(s)=\frac{\kappa_1}{L}s.
+\]
+\end{proposition}
+
+Die Klothoide erscheint somit als Lösung eines Variationsproblems. Dies
+verbindet klassischen Eisenbahnübergangsentwurf mit Optimierung im
+Krümmungsraum und liefert ein formales Gegenstück zur historischen Rolle der
+Klothoide \cite{Glover1900TransitionCurves,Higgins1922TransitionSpiral}.
+
+\subsection{Modell höherer Ordnung}
+\begin{definition}
+\[
+J_2[\kappa]=\int_0^L\bigl(\kappa''(s)\bigr)^2\,\dd s.
+\]
+\end{definition}
+\begin{proposition}
+Minimierer erfüllen
+\[
+\kappa^{(4)}(s)=0.
+\]
+\end{proposition}
+Dies erklärt das Auftreten kubischer Übergangsgesetze und verbindet sie mit
+modernem polynomialem Übergangsentwurf
+\cite{ZboinskiWoznica2017Polynomial}.
+
+\subsection{Verallgemeinerte Sicht}
+Allgemeine Funktionale der Form
+\[
+J[\kappa]=\int_0^L
+F\bigl(\kappa,\kappa',\kappa'';v,c\bigr)\,\dd s
+\]
+ermöglichen die Einbeziehung dynamischer und ingenieurtechnischer Kriterien.
+
+\subsection{Verbindung zur Hauptthese}
+\begin{summary}
+Übergangsentwurf kann als Optimierungsproblem im Krümmungsraum formuliert
+werden. Klassische Übergangsbögen entstehen als Lösungen solcher Probleme und
+stützen die Interpretation von Übergängen als Krümmungssteuerungsfunktionen.
+\end{summary}
+
+\section{Gekoppelte Optimierung von Krümmung und Überhöhung}
+
+\subsection{Motivation}
+In Eisenbahnanwendungen können Krümmung und Überhöhung nicht unabhängig
+optimiert werden. Beide bestimmen gemeinsam die effektive Querbeschleunigung
+und deren Änderungsrate.
+
+Dies motiviert ein gekoppeltes Optimierungsproblem mit
+\[
+\kappa(s)\quad\text{und}\quad\phi(s)
+\]
+als Entwurfsvariablen. Die Kopplung entspricht Eisenbahnentwurfsnormen, in
+denen Krümmung, Geschwindigkeit und Überhöhung keine unabhängigen
+Entwurfsgrößen sind \cite{EN13803_2017,Klein1998Trassierung}.
+
+\subsection{Funktional der effektiven Beschleunigung}
+\begin{definition}[Effektive Querbeschleunigung]
+\[
+a_{\mathrm{eff}}(s)=v^2\kappa(s)-g\sin\phi(s).
+\]
+\end{definition}
+Ein natürliches Optimierungsziel ist die Verringerung unausgeglichener
+Querbeschleunigung.
+\begin{definition}[Beschleunigungsbasiertes Funktional]
+Definiere
+\[
+J_a[\kappa,\phi]
+=\int_0^L a_{\mathrm{eff}}(s)^2\,\dd s
+=\int_0^L\bigl(v^2\kappa(s)-g\sin\phi(s)\bigr)^2\,\dd s.
+\]
+\end{definition}
+
+\subsection{Ruckbasiertes Funktional}
+\begin{definition}[Ruck]
+Der Ruck ist
+\[
+j(s)=v^3\kappa'(s)-gv\cos\phi(s)\,\phi'(s).
+\]
+\end{definition}
+\begin{definition}[Ruckfunktional]
+Definiere
+\[
+J_j[\kappa,\phi]=\int_0^L j(s)^2\,\dd s,
+\]
+also
+\[
+J_j[\kappa,\phi]=\int_0^L
+\bigl(v^3\kappa'(s)-gv\cos\phi(s)\,\phi'(s)\bigr)^2\,\dd s.
+\]
+\end{definition}
+
+Dieses Funktional bestraft schnelle Änderungen der effektiven Beschleunigung
+und liefert ein natürliches dynamisches Glattheitskriterium. Solche Kriterien
+stehen eng mit Komfort und dynamischer Verträglichkeit in Beziehung
+\cite{EN13803_2017,BrustadDalmo2020Review}.
+
+\subsection{Kombinierte Zielfunktion}
+\begin{definition}[Gekoppeltes Zielfunktional]
+Eine allgemeine gekoppelte Zielfunktion lautet
+\[
+J[\kappa,\phi]
+=\alpha J_a[\kappa,\phi]+\beta J_j[\kappa,\phi]
++\gamma J_\kappa[\kappa]+\delta J_\phi[\phi],
+\]
+wobei
+\[
+J_\kappa[\kappa]=\int_0^L(\kappa'(s))^2\,\dd s,
+\qquad
+J_\phi[\phi]=\int_0^L(\phi'(s))^2\,\dd s.
+\]
+\end{definition}
+
+Die Gewichte
+\[
+\alpha,\beta,\gamma,\delta\geq0
+\]
+bestimmen die relative Bedeutung von Gleichgewicht, Komfort,
+Krümmungsglattheit und Überhöhungsglattheit.
+
+\subsection{Zulässige Menge}
+\begin{definition}[Zulässige Eisenbahnzustandsmenge]
+Es sei
+\[
+\mathcal B=
+\left\{(\kappa,\phi)\;\middle|\;
+\kappa\in H^1(0,L),\;\phi\in H^1(0,L),\;
+\kappa(0)=0,\;\kappa(L)=\kappa_1\right\}.
+\]
+\end{definition}
+
+Zusätzliche Randbedingungen können lauten
+\[
+\phi(0)=0,\qquad\phi(L)=\phi_1,
+\]
+oder
+\[
+\kappa'(0)=\kappa'(L)=0,
+\qquad\phi'(0)=\phi'(L)=0.
+\]
+
+\subsection{Gekoppeltes Optimierungsproblem}
+\begin{definition}[Gekoppeltes Eisenbahnoptimierungsproblem]
+Gesucht ist
+\[
+(\kappa^\ast,\phi^\ast)\in\mathcal B
+\]
+mit
+\[
+J[\kappa^\ast,\phi^\ast]
+=\min_{(\kappa,\phi)\in\mathcal B}J[\kappa,\phi].
+\]
+\end{definition}
+
+\subsection{Interpretation}
+Das Problem erweitert den klassischen Übergangsentwurf von reiner Geometrie
+zum gekoppelten Geometrie--Überhöhungs-Entwurf und von Kurvenauswahl zur
+funktionalen Optimierung. Der Übergangsbogen wird nicht mehr aus einem Katalog
+gewählt, sondern entsteht als Teil eines optimalen gekoppelten Zustands.
+
+\subsection{Sonderfälle}
+\begin{proposition}
+Für \(\phi(s)\equiv0\) reduziert sich das gekoppelte Problem auf reine
+Krümmungsoptimierung.
+\end{proposition}
+\begin{proposition}
+Gilt \(a_{\mathrm{eff}}(s)=0\) für alle \(s\), dann ist
+\[
+v^2\kappa(s)=g\sin\phi(s),
+\]
+und der Entwurf ist vollkommen ausgeglichen.
+\end{proposition}
+Der klassische Gleichgewichtsentwurf erscheint somit als Sonderfall.
+
+\subsection{Bezug zur Optimalsteuerung}
+Das gekoppelte Problem kann als Optimalsteuerungsproblem mit den Steuerungen
+\[
+\kappa(s),\quad\phi'(s),
+\]
+den Zustandsvariablen
+\[
+x(s),y(s),\theta(s),\phi(s)
+\]
+und dem Kostenfunktional \(J[\kappa,\phi]\) interpretiert werden. Damit entsteht
+eine unmittelbare Verbindung zu modernen regelungstheoretischen und
+variationsbasierten Verfahren.
+
+\subsection{Verbindung zur Hauptthese}
+\begin{summary}
+Das gekoppelte Optimierungsproblem zeigt, dass Trassierungsentwurf keine rein
+geometrische Aufgabe ist. Er optimiert ein gekoppeltes Zustandssystem, in dem
+Krümmung und Überhöhung gemeinsam das dynamische Verhalten bestimmen.
+
+Dies stützt die zentrale These, Übergangsbögen und Überhöhungsentwicklung als
+Steuerungsfunktionen eines krümmungsbasierten Eisenbahnzustandsmodells zu
+verstehen.
+\end{summary}
+
+\section{Zusammenfassung}
+\begin{summary}
+Alignment-Optimierung behandelt Geometrie als Variable statt als feste
+Eingabe. Sie verbindet Parametrisierung, numerische Rekonstruktion und
+beschränkte Optimierung, um geometrische und ingenieurtechnische Anforderungen
+zu erfüllen.
+\end{summary}

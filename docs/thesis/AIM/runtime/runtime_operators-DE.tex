@@ -1,0 +1,159 @@
+% Deutsche Parallelfassung zu runtime/runtime_operators.tex
+
+\chapter{Laufzeitoperatoren}
+\label{chap:runtime-operators}
+\index{Laufzeitoperatoren}
+\index{Operator!Laufzeit}
+
+Laufzeitoperatoren definieren, wie etablierte Engineering Objects bei der
+Ausführung interpretiert werden. Sie verwenden vorgelagerte Begriffe aus
+Grundlagen und Zustand und bilden zwischen Interpretationsebenen ab. Sie
+definieren Alignment-Identität, pose2/pose3, metrische oder physische
+Realisierung und Repräsentation nicht neu.
+
+\begin{principle}[Operator-Schichtprinzip]
+\label{princ:operator-layer-principle}
+Innerhalb von AIM wird Laufzeitinterpretation durch ausdrückliche Operatoren
+organisiert, die verschiedene Zustandsschichten verbinden.
+\end{principle}
+
+\section{Operatorübersicht}
+
+Die folgenden Symbole bezeichnen Familien qualifizierter Operationen in
+späteren Kapiteln:
+\[
+\mathcal R,\qquad\mathcal D,\qquad\mathcal O,\qquad\mathcal V.
+\]
+Sie bilden keine verpflichtende Zustandsleiter. Eine Verwendung kann Soll mit
+einer qualifizierten Realisierung vergleichen, Eisenbahnzustand mit \(s(t)\)
+komponieren, ein gewähltes Modell auswerten, ein fahrzeugrelatives Ergebnis
+ausdrücken oder eine zweckspezifische Bewertung anwenden. Jede Operation nennt
+eigene Eingaben, Anwendbarkeit und Provenienz.
+
+\section{Realisierungsoperator}
+
+\begin{definition}[Realisierungsoperator]
+\label{def:runtime-realization-operator}
+\index{Realisierung!Operator}
+Der Realisierungsoperator bildet Zielzustände auf realisierte Zustände ab:
+\[
+\mathcal R:x_{\mathrm{target}}\mapsto x_{\mathrm{real}}.
+\]
+\end{definition}
+Für pose3 gilt
+\[
+\mathcal R_{\mathrm{pose3}}:
+\mathrm{pose3}_{\mathrm{target}}\mapsto\mathrm{pose3}_{\mathrm{real}}.
+\]
+\(\mathcal R\) ist eine erklärende Kurzform für eine angegebene
+Realisierungsbeziehung; der Operator macht Ausführung, physischen Zustand,
+Instandhaltungsgeschichte und Beobachtung nicht zu einem Vorgang. Ein
+gemessener Zustand bleibt Beobachtung mit eigener Provenienz und Unsicherheit.
+
+\section{Dynamikoperator}
+
+\begin{definition}[Dynamikoperator]
+\label{def:runtime-dynamics-operator-operator-chapter}
+\index{Dynamikoperator}
+Für ein identifiziertes Antwortmodell \(M\) bildet der Dynamikoperator
+qualifizierten Eisenbahnzustand, Durchfahrtsgesetz und Modelleingaben auf ein
+modellspezifisches Ergebnis ab:
+\[
+\mathcal D_M:
+(\mathcal S_{\mathrm{rail}}(s(t)),s(t),Q_M)\mapsto x_M(t).
+\]
+\end{definition}
+Mögliche Ausgaben sind reduzierte Indikatoren oder modellierte Antworten.
+Ihre Bezeichnungen begründen weder Komfort, Sicherheit noch Zulässigkeit. Eine
+realisierungsbewusste Verwendung führt die gewählte qualifizierte Realisierung
+als Eingabe von \(\mathcal D_M\) zu; Modell- und Durchfahrtsanforderungen
+bleiben erhalten.
+
+\section{Fahrzeuginterpretationsoperator}
+
+\begin{definition}[Fahrzeuginterpretationsoperator]
+\label{def:runtime-vehicle-operator}
+\index{Fahrzeugzustand!Interpretationsoperator}
+Für ein identifiziertes Fahrzeugmodell \(M\) bildet der Operator
+qualifizierten Eisenbahnzustand, Durchfahrt und Fahrzeugeingaben auf
+fahrzeugrelative Ergebnisse ab:
+\[
+\mathcal V_M:
+(\mathcal S_{\mathrm{rail}}(s(t)),s(t),Q_M)
+\mapsto x_{\mathrm{vehicle},M}(t).
+\]
+\end{definition}
+Die qualifizierte Eingabemenge hält Fahrzeugtyp, Beladung, Modelltreue,
+Provenienz und Anwendbarkeit getrennt, statt sie in einem einheitlichen
+Kontext zu verbergen.
+
+\section{Betrieblicher Bewertungsoperator}
+
+\begin{definition}[Betriebsoperator]
+\label{def:runtime-operational-operator}
+\index{Betriebszustand!Bewertungsoperator}
+Der Betriebsoperator bildet dynamische Laufzeitzustände auf betriebliche
+Bewertungszustände ab:
+\[
+\mathcal O:x_{\mathrm{op}}\mapsto x_{\mathrm{eval}}.
+\]
+\end{definition}
+\(\mathcal O\) bewertet Zulässigkeit, Normenkonformität, Komfortindikatoren
+und Optimierungsziele, ohne die verwendeten vorgelagerten Zustandsobjekte neu
+zu definieren.
+
+\section{Operatorkomposition}
+\index{Operatorkomposition}
+
+Operatoren dürfen nur komponiert werden, wenn Ausgabe und Eingabe typmäßig
+passen und Realisierung, Durchfahrt, Modell, Zweck, Provenienz und
+Anwendbarkeit erhalten bleiben. Es gibt keine universelle Komposition, die
+aus pose3 allein Fahrzeugantwort, Bewertung oder Entscheidung erzeugt.
+
+\section{Laufzeitabstraktion und Implementierung}
+
+\begin{principle}[Laufzeitabstraktionsprinzip]
+\label{princ:runtime-abstraction-principle}
+Laufzeitoperatoren definieren zunächst Interpretationsrollen; detaillierte
+Mechanik kann später durch spezialisierte Implementierungen ergänzt werden.
+\end{principle}
+
+\begin{definition}[Operatorrolle]
+\label{def:runtime-operator-role}
+Eine Operatorrolle spezifiziert die begriffliche Transformation unabhängig von
+einer bestimmten numerischen Implementierung.
+\end{definition}
+
+Diese Trennung hält AIM strukturell klar und implementierungsflexibel und
+bewahrt zugleich die Kompatibilität mit Modellen höherer Genauigkeit.
+
+\section{Kanonische Interpretation}
+
+\begin{proposition}
+Innerhalb von AIM ist Laufzeitinterpretation operatorbasiert.
+\end{proposition}
+\begin{proposition}
+\(\mathcal R\) bildet Zielzustände auf realisierte Zustände ab.
+\end{proposition}
+\begin{proposition}
+\(\mathcal D\) bildet Eisenbahn-Laufzeitzustände auf betriebliche dynamische
+Zustandstrajektorien ab.
+\end{proposition}
+\begin{proposition}
+\(\mathcal V\) bildet Eisenbahn-Laufzeitzustände auf fahrzeugrelative
+Interpretationszustände ab.
+\end{proposition}
+\begin{proposition}
+\(\mathcal O\) bildet Betriebszustände auf Bewertungs- und
+Zulässigkeitszustände ab.
+\end{proposition}
+
+\section{Verbindung zu AIM}
+\begin{summary}
+Laufzeitoperatoren verbinden etabliertes Ingenieurwissen strukturell mit der
+Laufzeitinterpretation. \(\mathcal R\) repräsentiert Realisierung,
+\(\mathcal D\) dynamische Laufzeitzustandserzeugung, \(\mathcal V\)
+fahrzeugrelative Interpretation und \(\mathcal O\) betriebliche Bewertung.
+Ihre Komposition erzeugt abgeleitete Laufzeit-Ingenieurzustände, ohne
+vorgelagerte Begriffe neu zu definieren.
+\end{summary}

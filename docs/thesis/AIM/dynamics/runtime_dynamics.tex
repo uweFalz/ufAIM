@@ -1,258 +1,132 @@
-% dynamics/runtime_dynamics.tex
-
-\chapter{Runtime Dynamics}
-
+\chapter{From Temporal Exposure to Modelled Response}
 \label{chap:runtime-dynamics}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
-
-Railway alignments are not merely stored geometric objects.
-Within AIM, they are interpreted as state-generating structures.
-
-The preceding chapters introduced railway states and vehicle-relative
-interpretation.  This chapter now introduces the operational layer that
-describes how runtime states evolve.
-
-Geometry defines what the railway is.
-
-Runtime dynamics define which operational states emerge from it.
+The traversal law now exposes the moving system to
+\(\kappa(s(t))\), \(u(s(t))\), the profile, and the qualified track frame.
+This chapter marks the boundary between quantities that follow from that
+kinematics and quantities that require a vehicle--track response model.
 
 \begin{principle}[Runtime-dynamics principle]
 \label{princ:runtime-dynamics}
-Within AIM, operational railway dynamics are interpreted as runtime
-state evolution generated from railway runtime states.
+Runtime dynamics consume a qualified railway state and traversal law. Any
+claimed response must additionally identify the model that produces it.
 \end{principle}
 
-% ============================================================
-\section{Dynamic Runtime States}
-% ============================================================
+\section{A Result, Not a Second State Definition}
 
 \begin{definition}[Dynamic runtime state]
 \label{def:runtime-dynamic-state}
-A dynamic runtime state is an operational state generated from railway
-runtime states during runtime interpretation.
+For the narrow purpose of this part, a dynamic runtime state is the output of a
+declared response model evaluated for a qualified railway state, traversal,
+and model input set.
 \end{definition}
 
-Dynamic runtime states do not belong to the intrinsic alignment model.
-They are derived states.
-
-They are generated from railway state, operational context, and runtime
-interpretation.
-
-Conceptually, a dynamic runtime state may be written as
-
-\[
-x(s)
-=
-\mathcal D
-\bigl(
-\mathrm{pose3}(s),
-\mathcal C
-\bigr),
-\]
-
-where \(\mathrm{pose3}(s)\) denotes the railway runtime state,
-\(\mathcal C\) denotes operational context, and \(x(s)\) denotes the
-resulting operational state.
-
-% ============================================================
-\section{Runtime Dynamics Operator}
-% ============================================================
+This definition classifies an output; it does not redefine pose3, physical
+state, or observation. A predicted body acceleration, an observed wheel load,
+and a reduced kinematic indicator belong to different result kinds even when
+they refer to the same \(s(t)\).
 
 \begin{definition}[Runtime dynamics operator]
 \label{def:runtime-dynamics-operator}
-The runtime dynamics operator is the operator
-
+Let
 \[
-\mathcal D
+\mathcal D_M:
+\bigl(\mathcal S_{\mathrm{rail}}(s(t)),s(t),Q_M\bigr)
+\longmapsto x_M(t)
 \]
-
-that maps railway runtime states and operational context to dynamic
-runtime states.
+denote evaluation by an explicitly identified response model \(M\), with
+qualified model inputs \(Q_M\).
 \end{definition}
 
-The operator \(\mathcal D\) represents the dynamic interpretation layer
-of AIM.
-
-It does not prescribe a particular vehicle model.
-Instead, it describes where such models, simplified operational
-relations, admissibility checks, and runtime evaluations are coupled to
-the railway state.
-
-Thus,
-
-\[
-\mathcal D
-:
-(\mathrm{pose3}, \mathcal C)
-\mapsto
-x
-\]
-
-expresses the transition from railway state to operational state.
-
-% ============================================================
-\section{Arc-Length State Evolution}
-% ============================================================
+The model index matters. There is no universal \(\mathcal D\) that silently
+turns pose3 into validated vehicle behaviour.
 
 \begin{definition}[Runtime state evolution]
 \label{def:runtime-dynamics-state-evolution}
-Runtime state evolution describes the change of a dynamic runtime state
-along the alignment parameter.
+Runtime state evolution is the time- or space-indexed output trajectory
+\(x_M\) produced by the selected model over the applicable traversal interval.
 \end{definition}
 
-Within AIM, the natural evolution parameter is arc-length.
+\section{Reduced Kinematics}
 
-An abstract runtime evolution law may be written as
-
+Under the Part V right-handed track frame, its stated cant sign, rigid
+point-following motion, and neglect of suspension, contact, track flexibility,
+irregularities, wind, and other effects,
 \[
-x'(s)
-=
-f(x(s),u(s)),
+a_\kappa(t)=v(t)^2\kappa(s(t))
 \]
-
-where \(x(s)\) denotes the dynamic runtime state, \(u(s)\) denotes
-operational input, and \(f\) denotes the evolution law.
-
-If a velocity function \(v(s)\) is known, time-based and
-arc-length-based derivatives are connected by
-
+is a lateral kinematic component. With the stated cant-angle convention, the
+reduced effective component
 \[
-\frac{\dd}{\dd t}
-=
-v(s)
-\frac{\dd}{\dd s}.
+a_{\mathrm{eff}}(t)
+=v(t)^2\kappa(s(t))-g\sin\phi(s(t))
 \]
+is an explanatory indicator. If speed varies, its time derivative is
+\begin{align}
+\dot a_{\mathrm{eff}}
+={}&2v\dot v\,\kappa
+  +v^3\kappa'
+  -gv\cos\phi\,\phi',
+\label{eq:variable-speed-effective-rate}
+\end{align}
+with all spatial quantities evaluated at \(s(t)\). The term
+\(2v\dot v\kappa\) is absent from the constant-speed relation used in Part V.
+This indicator is not by itself comfort, safety, wear, wheel unloading, or
+vehicle response.
 
-This relation links intrinsic railway geometry to operational runtime
-interpretation.
+\section{The Explicit Model Boundary}
 
-% ============================================================
-\section{Geometry and Runtime Behaviour}
-% ============================================================
+\begin{center}
+\fbox{\begin{minipage}{0.88\textwidth}
+\textbf{Kinematics end here.} The railway state and traversal can supply
+trajectory, frame, curvature and cant exposure, and reduced acceleration or
+rate indicators under stated assumptions.
 
-Intrinsic geometry describes the structure of the railway.
+\medskip
+\textbf{Predicted response begins only after a model adds} vehicle mass and
+inertia, suspension, wheel--rail contact, track stiffness and damping,
+irregularities, operational loading, environmental state, and relevant
+maintenance condition. Model applicability, calibration, and uncertainty
+remain attached to every output.
+\end{minipage}}
+\end{center}
 
-Runtime dynamics describe the operational behaviour generated from that
-structure.
-
-The distinction is essential.
-
-Curvature, profile, cant, and frame reconstruction define railway state.
-Dynamic runtime states are derived from this state through operational
-interpretation.
-
-\begin{proposition}
-\label{prop:dynamics-not-geometry}
-Dynamic runtime states are derived from railway geometry, but they are
-not themselves intrinsic geometric quantities.
-\end{proposition}
-
-% ============================================================
-\section{Curvature as Runtime Generator}
-% ============================================================
-
-Runtime dynamics originate from intrinsic railway structure.
-
-In particular, curvature evolution acts as one of the primary generators
-of operational behaviour:
-
-\[
-\kappa(s)
-\quad
-\longrightarrow
-\quad
-\mathcal D
-\quad
-\longrightarrow
-\quad
-x(s).
-\]
-
-The quantities
-
-\[
-\kappa(s),
-\qquad
-\kappa'(s),
-\qquad
-\kappa''(s)
-\]
-
-are therefore not only geometric descriptors.
-They influence the dynamic runtime states generated from the railway.
-
-This observation is one of the central motivations of AIM:
-operational behaviour is rooted in intrinsic curvature structure.
-
-% ============================================================
-\section{Runtime Dynamics and Vehicle Models}
-% ============================================================
-
-Runtime dynamics in AIM are not identical to full vehicle mechanics.
-
-A complete vehicle-dynamics simulation may be attached to the AIM
-runtime layer, but it is not required for defining the layer itself.
-
-The role of runtime dynamics is to provide the operational
-state-evolution interface between railway state and dynamic
-interpretation.
+Not every use requires every listed input, but omission must follow the stated
+scope of the selected model rather than disappear silently. A measured
+response remains an observation and does not become the model output or
+physical state by naming alone.
 
 \begin{principle}[Mechanics separation principle]
 \label{princ:mechanics-separation}
-Runtime dynamics in AIM form an operational state-evolution layer rather
-than a complete vehicle-dynamics simulation layer.
+Reduced railway kinematics and a complete vehicle--track mechanics simulation
+are different operations with different inputs, applicability, and evidence.
 \end{principle}
 
-% ============================================================
-\section{Canonical Interpretation}
-% ============================================================
+\section{The Running Comparison}
 
-\begin{proposition}
-Within AIM, railway dynamics are interpreted as runtime state evolution.
-\end{proposition}
+The two Part V cases use identical \(\kappa\) and cant but different constant
+test speeds, so their reduced \(v^2\kappa\) terms differ. The variable-speed
+example adds \(\dot v\)-dependent exposure. A different \(u(s)\) would rotate
+the track frame and change the reduced effective component without changing
+the identity of \(\kappa(s)\). Yet identical reduced indicators would still
+not guarantee identical response: vehicles, track condition, loading, and
+environment may differ.
 
-\begin{proposition}
-Dynamic runtime states are generated from railway runtime states.
-\end{proposition}
+\section{AXTRAN and Declared Objectives}
 
-\begin{proposition}
-The runtime dynamics operator \(\mathcal D\) maps railway runtime states
-to operational state trajectories.
-\end{proposition}
+The Alignment calculation core associated with axtranNew/AXTRAN may propose
+geometry or free parameters. A declared reduced quantity may later be used as
+an objective or constraint, provided its assumptions, purpose, and
+applicability are explicit. The objective is an engineering choice supplied
+to the calculation, not discovered as authority by the solver. A calculated
+optimum is neither automatically applicable nor accepted.
 
-\begin{proposition}
-Runtime dynamics belong to the operational interpretation layer and not
-to intrinsic geometry itself.
-\end{proposition}
-
-\begin{proposition}
-The AIM runtime-dynamics framework provides operational state evolution
-rather than complete vehicle mechanics.
-\end{proposition}
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
+The present implementation does not establish general joint optimization of
+geometry, cant, traversal, and vehicle response. The new continuity solver is
+therefore not described as a dynamics optimizer.
 
 \begin{summary}
-Runtime dynamics extend AIM from railway-state reconstruction toward
-operational state evolution.
-
-Within this framework:
-\begin{itemize}
-\item \(\mathrm{pose3}\) provides railway runtime states,
-\item \(\mathcal D\) generates dynamic runtime states,
-\item state evolution is naturally formulated over arc-length,
-\item curvature evolution acts as a generator of runtime behaviour,
-\item geometry and dynamics remain conceptually separated,
-\item and detailed vehicle mechanics may be coupled through dedicated
-runtime models.
-\end{itemize}
-
-Runtime dynamics therefore establish the bridge between intrinsic
-geometry, railway state, vehicle-space interpretation, realization-aware
-dynamics, and optimization.
+Temporal exposure follows from \(s(t)\). Reduced kinematics follow from stated
+frame and motion assumptions. Vehicle--track response begins only with an
+identified model. Evaluation and decision remain downstream.
 \end{summary}

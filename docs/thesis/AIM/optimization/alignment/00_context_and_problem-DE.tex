@@ -1,0 +1,124 @@
+% optimization/alignment/00_context_and_problem-DE.tex
+\section*{Motivation}
+In praktischen Anwendungen werden Alignments nicht nur aus Daten rekonstruiert,
+sondern auch entworfen, verändert und verbessert. Daraus entstehen
+Optimierungsprobleme, in denen Alignment-Parameter an geometrische, physische
+und regulatorische Bedingungen angepasst werden
+\cite{Kufver2000RailwayAlignment,Klein1998Trassierung}.
+
+\section{Allgemeines Optimierungsproblem}
+\begin{definition}[Alignment-Optimierungsproblem]
+Ein Alignment-Optimierungsproblem besteht aus einem parametrisierten
+Alignment-Modell, einer Zielfunktion und einer Menge von Bedingungen.
+\end{definition}
+\begin{definition}[Zielfunktion]
+Eine Zielfunktion ist eine Abbildung
+\[
+J:\mathcal A\to\R,
+\]
+die einem Alignment \(\mathcal A\) ein Kosten- oder Qualitätsmaß zuordnet.
+\end{definition}
+Typische Ziele sind die Minimierung von Krümmungsänderung, Abweichung von
+Messdaten und Baukosten sowie die Maximierung des Komforts. Diese Zielklassen
+entsprechen allgemeiner numerischer Optimierung
+\cite{Nocedal2006NumericalOptimization} und eisenbahnspezifischen Ansätzen
+\cite{Kufver2000RailwayAlignment}.
+
+\section{Parametrisierung}
+Die Parameterwahl ist für die Formulierung zentral.
+\begin{definition}[Parametervektor]
+Ein Alignment wird durch einen Parametervektor
+\[
+\mathbf x\in\R^n
+\]
+beschrieben, der Größen wie Elementlängen, Krümmungswerte,
+Übergangsparameter und geometrische Bedingungen kodiert.
+\end{definition}
+Das dünn besetzte Alignment-Modell bietet eine natürliche elementweise
+Parametrisierung.
+\TODO{Ausdrückliche Parametersätze für feste und Übergangselemente.}
+
+\section{Bedingungen}
+\begin{definition}[Bedingung]
+Eine Bedingung hat die Form
+\[
+g_i(\mathbf x)\leq0,\qquad h_j(\mathbf x)=0.
+\]
+\end{definition}
+Bedingungen entstehen aus geometrischer Stetigkeit,
+Engineering-Entwurfsregeln, physischen Grenzen und regulatorischen
+Anforderungen.
+
+\subsection{Geometrische Bedingungen}
+\begin{itemize}
+\item Stetigkeit von Position und Richtung,
+\item Stetigkeit der Krümmung.
+\end{itemize}
+
+\subsection{Engineering-Bedingungen}
+\begin{itemize}
+\item Mindestradius,
+\item maximale Überhöhung,
+\item Grenzen der Krümmungsableitungen.
+\end{itemize}
+Diese Bedingungen spiegeln übliche Eisenbahnentwurfspraxis und Regeln aus
+Literatur und Normen wider \cite{Klein1998Trassierung,EN13803_2017}.
+\OPEN{Formale Darstellung von Engineering-Regeln als Bedingungen.}
+
+\section{Bezug zur numerischen Rekonstruktion}
+Die Bewertung der Zielfunktion erfordert die Rekonstruktion der
+Alignment-Geometrie aus dem Parametervektor. Optimierung ist daher intrinsisch
+mit numerischer Rekonstruktion verbunden und gehört numerisch in den weiteren
+Kontext von Differentialgleichungen und Approximation
+\cite{Hairer1993ODE,Press2007NumericalRecipes}.
+
+\section{Sequentielle quadratische Programmierung}
+Sequentielle quadratische Programmierung (SQP) ist ein leistungsfähiges
+Verfahren für nichtlineare beschränkte Optimierungsprobleme
+\cite{Nocedal2006NumericalOptimization}.
+\begin{definition}[SQP-Iteration]
+Ein SQP-Verfahren approximiert das ursprüngliche Problem durch eine Folge
+quadratischer Teilprobleme.
+\end{definition}
+Jede Iteration löst eine quadratische Approximation der Zielfunktion unter
+linearisierten Bedingungen.
+\TODO{Ausdrückliche SQP-Formulierung für Alignment-Parameter.}
+\RESEARCH{Anpassung von SQP an dünn besetzte Alignment-Strukturen.}
+
+\section{Alignment-Optimierung als Steuerungsproblem}
+Die Krümmungsfunktion \(\kappaf(s)\) kann als Steuerungsvariable eines
+kontinuierlichen Systems interpretiert werden.
+\begin{definition}[Steuerungsformulierung]
+Das Alignment-Problem kann als Optimalsteuerungsproblem mit den
+Zustandsvariablen \((\gamma,\theta)\) und der Steuerung \(\kappaf\) formuliert
+werden.
+\end{definition}
+Diese Sicht ist mit Kufvers krümmungszentrierter Perspektive vereinbar
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+\RESEARCH{Verbindung zwischen Alignment-Optimierung und Optimalsteuerungstheorie.}
+
+\section{Optimierung auf Netzebene}
+Reale Eisenbahnsysteme umfassen nicht nur einzelne Alignments, sondern Netze
+mit Verzweigungs- und Zusammenführungsstrukturen.
+\RESEARCH{Erweiterung der Optimierung von einzelnen Alignments auf Netze.}
+\OPEN{Behandlung von Weichen, Kreuzungen und parallelen Gleisen.}
+
+\section{Robustheit und Unsicherheit}
+Optimierung muss Unsicherheit der Eingabedaten berücksichtigen.
+\RESEARCH{Robuste Optimierung unter unsicherer Geometrie.}
+\OPEN{Abwägung zwischen Optimalität und Robustheit.}
+
+\section{Implementierungssicht}
+Praktische Optimierungssysteme müssen numerische Stabilität, Recheneffizienz
+und Ausdrucksfähigkeit des Modells ausgleichen. Diese Abwägung ist in
+allgemeiner numerischer \cite{Nocedal2006NumericalOptimization} und
+eisenbahnspezifischer Optimierung \cite{Kufver2000RailwayAlignment} zentral.
+\TODO{Integration der Optimierung in den Modellierungsablauf.}
+
+\section{Historischer Kontext}
+Klassische Systeme wie AXTRAN haben die Machbarkeit optimierungsbasierten
+Alignment-Entwurfs gezeigt. Moderne Ansätze erweitern diese Ideen mit
+flexibleren Modellen und verbesserten numerischen Verfahren im Übergang von
+klassischem Eisenbahnentwurf zu ausdrücklicher Optimierungsformulierung
+\cite{Kufver2000RailwayAlignment}.
+\TODO{Rekonstruktion und Verallgemeinerung AXTRAN-artiger Verfahren.}

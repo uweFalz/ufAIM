@@ -1,0 +1,72 @@
+% kernel/engineering_objects-DE.tex
+
+\chapter{Vom berechneten Übergang zum Engineering Object}
+\label{chap:engineering-objects}
+
+Die Berechnung liefert eine parametrisierte Berlinish-Komposition
+$H_{\mathrm{in}}+C+H_{\mathrm{out}}$. Zu diesem Zeitpunkt ist sie ein Vorschlag
+im Raum ausdrückbarer Übergangsfunktionen. Die Aussage, dass sie den Übergang
+zwischen zwei identifizierten Nachbarelementen verändert, ist von anderer Art:
+Der Vorschlag betrifft nun ein bestimmtes Alignment.
+
+\section{Worüber macht der Vorschlag eine Aussage?}
+
+\begin{definition}[Engineering Object]
+\label{def:engineering-object}
+Ein Engineering Object ist eine dauerhafte ingenieurtechnische Entität, deren
+Identität unabhängig von ihren Repräsentationen, Beobachtungen, Realisierungen
+und Berechnungsmodellen ist.
+\end{definition}
+
+Das Alignment ist der dauerhafte Gegenstand. Der vorgeschlagene Übergang ist
+ein Element seiner geordneten Konstruktion und trägt zu einem möglichen Zustand
+dieses Alignments bei. Ein SPOT-fähiges Engineering-Object-Modell kann
+Gegenstand, Zustand und ihre Beziehungen tragen; ein Softwaredatensatz erzeugt
+jedoch nicht ihre Ingenieuridentität. Solver-Ausgabe, daraus erzeugte CAD-Kurve
+und Zeile in einer Austauschdatei sind Beschreibungen des Vorschlags, nicht drei
+neue Alignments.
+
+Der Vorschlag muss deshalb das betroffene Alignment, den Vorgängerzustand, aus
+dem er abgeleitet wurde, sowie Intervall und Nachbarelemente benennen, deren
+Konstruktion er ändern würde. Ohne diese Bezüge bleibt das numerische Ergebnis
+eine wiederverwendbare Übergangsbeschreibung statt eines instanziierten
+Alignment-Elements.
+
+\section{Welche Art von Beschreibung liegt vor?}
+
+Tabelle~\ref{tab:meaning-roles} hält die Unterscheidungen zusammen, die dieser
+Teil fortlaufend verwendet. Es sind Beziehungen zu einem gemeinsamen
+Ingenieurgegenstand, nicht konkurrierende Namen für dasselbe.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Rollen im laufenden Übergangsbeispiel}
+\label{tab:meaning-roles}
+\begin{tabular}{@{}p{0.15\textwidth}p{0.31\textwidth}p{0.44\textwidth}@{}}
+\toprule
+Rolle & Im laufenden Beispiel & Was die Rolle nicht begründet \\
+\midrule
+Objekt & das fortbestehende Alignment & keine bestimmte Geometrie, Datei oder Annahme \\
+Repräsentation & CAD-Kurve, abgetastete Polylinie oder Austauschdatensatz & weder Objektidentität noch physische Wahrheit \\
+Zustand & beabsichtigter oder durch Krümmungsänderung vorgeschlagener Zustand & keine Autorität allein aufgrund seiner Berechenbarkeit \\
+Evidenz & Importgeschichte, Berechnungsprotokoll oder Vermessungsbeobachtung & keine automatische Annahme oder Anwendbarkeit \\
+Bewertung & Prüfung gegen Geschwindigkeit, Überhöhung, Realisierung und Regeln & keine Ingenieurentscheidung \\
+Autorität & verantwortliche Annahme, Ablehnung oder Auswahl & keine Übertragung der Verantwortung an das Werkzeug \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Damit kann aus einem importierten Übergang eine abgeleitete editierbare
+Repräsentation entstehen, ohne den Import zu zerstören. Der importierte
+Datensatz bleibt quellengebundene Evidenz; Rekonstruktion erzeugt einen
+nachvollziehbar abgeleiteten Zustand; Bearbeitung erzeugt einen Vorschlag. Jede
+Beschreibung behält ihre Provenienz und ihren Wahrheitsmodus und bezieht sich,
+wenn die Identitätsaussage begründet ist, auf dasselbe Alignment.
+
+\section{Warum als Nächstes Identität erforderlich ist}
+
+Die Objektunterscheidung verhindert, dass Datei, Kurve oder Solver-Ergebnis zum
+Alignment werden. Sie sagt noch nicht, ob der Austausch des Klothoidenkerns,
+die Änderung eines Halbwellparameters oder der Neuaufbau einer importierten
+Kurve dasselbe Objekt bewahrt. Diese Frage verlangt Identität durch Änderung.

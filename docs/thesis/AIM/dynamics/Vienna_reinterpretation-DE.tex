@@ -1,0 +1,106 @@
+% dynamics/Vienna_reinterpretation-DE.tex
+\chapter{Vienna-Funktionen als begrenztes Beispiel}
+\label{chap:vienna-reinterpretation}
+
+\section*{Evidenz vor Interpretation}
+
+Der Name \emph{Vienna} kommt in historischem Projektmaterial und in
+Implementierungen von Übergangsfunktionen vor. Diese Evidenz trägt die
+Untersuchung bestimmter normierter Funktionsformen. Sie begründet weder eine
+autoritative Krümmungs--Überhöhungs-Kopplung noch vollständige
+Übergangsfamilien, validierte moderne Fahrzeugantwort oder allgemeine
+gemeinsame Optimierung.
+
+\begin{principle}[Prinzip der Vienna-Reinterpretation]
+\label{princ:vienna-reinterpretation}
+Eine Vienna-bezogene Funktion ist in dieser Thesis ein identifiziertes
+historisches oder implementiertes Beispiel, dessen Eingaben, Ausgabegesetz
+und Grenzen angegeben werden müssen.
+\end{principle}
+
+\begin{principle}[Kein-Spezialkurven-Prinzip]
+\label{princ:vienna-no-special-curve}
+Keine Vienna-bezogene Funktion wird hier zu einer kanonischen
+AIM-Konstruktion erhoben.
+\end{principle}
+
+\section{Getrennte Gesetze}
+
+Seien \(w=s/L\in[0,1]\) sowie \(f_\kappa(w)\) und \(f_u(w)\) zwei erklärte
+normierte Funktionen. Eine illustrative Spezialisierung ist
+\[
+\kappa(s)=\kappa_0+\Delta\kappa\,f_\kappa(s/L),
+\qquad
+u(s)=u_0+\Delta u\,f_u(s/L).
+\]
+Diese Form ist mathematisch bestimmt, sobald beide Funktionen und Bereiche
+vorgegeben sind. Sie sagt weder \(f_\kappa=f_u\) noch eine Kopplung ihrer
+Parameter oder Optimalität aus.
+
+\begin{definition}[Vienna-artige Zustandsformung]
+\label{def:vienna-state-shaping}
+„Vienna-artige Zustandsformung“ bleibt nur als historische Projektabsicht
+erhalten: Eine identifizierte Übergangsfunktion dient zur Untersuchung einer
+nachgelagerten Modellausgabe. Dies ist keine Kernel-Definition.
+\end{definition}
+
+\begin{definition}[Halbwelleninterpretation]
+\label{def:half-wave-interpretation}
+Eine Halbwelle ist eine kompositionale Implementierungs- oder Modellform,
+wenn die identifizierte Funktion sie tatsächlich verwendet. Sie wird nicht
+als Grammatik aller Übergangsfamilien behauptet.
+\end{definition}
+
+\begin{definition}[Dynamische Zustandsformung]
+\label{def:dynamic-state-shaping}
+Für ein identifiziertes Modell \(M\) ist die Änderung eines erklärten Gesetzes
+mit Vergleich des resultierenden \(x_M^{\mathrm{pred}}\) eine illustrative
+Sensitivitätsstudie. Die Bezeichnung „Formung“ liefert weder Ziel noch
+Validierung.
+\end{definition}
+
+\section{Kompaktes Beispiel alternativer Ziele}
+
+Für dieselben Randwerte und dieselbe Länge \(L\) werden zwei zulässige Paare
+\((f_\kappa,f_u)\) betrachtet. Kandidat \(A\) minimiert
+\[
+J_\kappa=\int_0^L \bigl(\kappa'(s)\bigr)^2\,ds,
+\]
+Kandidat \(B\) dagegen
+\[
+J_r=\int_0^{L/v} r_{\mathrm{bal}}(t)^2\,dt
+\]
+für die ausdrücklich angenommene konstante Testgeschwindigkeit \(v\) und
+\(M_{\mathrm{red}}\). Zieleinheiten und Bedeutungen sind verschieden. Ohne
+vorgegebenen Zweck, Skalierung oder ausdrückliche Aggregation dominiert kein
+Kandidat. Keines der Ziele ist ein Komfort-, Verschleiß-, Kosten- oder
+Energieziel.
+
+\section{Audit des Aussagestatus}
+
+\begin{center}
+\small
+\begin{tabular}{p{0.29\linewidth}p{0.23\linewidth}p{0.38\linewidth}}
+\toprule
+Aussage & Status & Behandlung\\
+\midrule
+implementierte Funktionsform & implementationsbelegt & bei Nutzung exakte Implementierung nennen\\
+historische dynamische Absicht & historische Projektabsicht & als Provenienz, nicht Validierung\\
+getrennte Krümmungs-/Überhöhungsgesetze & illustrativ & Funktionen und Kopplungsannahme angeben\\
+universelle Vienna-Kopplung & unbelegt & entfernt\\
+validierte Fahrzeugantwort & unbelegt & benötigt Modell und Evidenz\\
+allgemeine gemeinsame Optimierung & unbelegt & offene Arbeit, keine aktuelle Fähigkeit\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Dieselbe Zurückhaltung gilt für die Realisierung. Eine glatte Sollfunktion
+kann mit qualifizierter Realisierungs- oder Beobachtungsevidenz verglichen
+werden; eine Koordinatentransformation ist jedoch keine Konstruktion und eine
+gemessene Abweichung keine dynamische Ursache. Das nächste Kapitel macht
+diesen Vergleichsvertrag ausdrücklich.
+
+% Beibehaltene Anker für Verweise auf die frühere längere Diskussion.
+\label{prop:spectral-smoothing}
+\label{princ:realization-survival}
+\label{def:runtime-smoothness}

@@ -2,151 +2,139 @@
 
 \chapter{Motivation}
 
-\section{The Hidden Complexity of Railway Alignments}
+\section{Why a Railway Transition Is Not a Road-Corridor Detail}
 
-At first glance, a railway alignment appears to be a simple geometric
-object: a curve connecting two points in space.
+A road corridor influences a driver's available path, but a railway vehicle is
+kinematically constrained by its rail pair. The track therefore prescribes the
+curvature history experienced by the vehicle. A change in
+\(\kappa(s)\), its derivatives, cant \(u(s)\), or speed is transmitted into
+wheel--rail interaction, vehicle response, passenger comfort, track loading,
+wear, and safety-related assessment. Transition design is consequently a
+central railway problem, not merely a convenient interpolation between map
+elements.
 
-However, this view is misleading.
-An alignment is not merely a curve, but the result of a complex
-interaction between geometry, physics, engineering constraints,
-and operational requirements.
+Consider two laws with the same length and boundary curvatures. A clothoid has
+constant curvature derivative. A polynomial or trigonometric half-wave can
+instead arrange selected endpoint conditions on
+\(\kappa'(s)\) and \(\kappa''(s)\). Similar-looking centerlines can therefore
+carry different dynamic implications. Conversely, demanding smoother endpoint
+behaviour may require more length or a different allocation of degrees of
+freedom. The clothoid is important, simple, and frequently compact; these
+advantages do not make it the universal physical optimum
+\cite{BrustadDalmo2020Review,Koc2017SmoothedEnds}.
 
-Even small changes in curvature or cant can have significant effects on:
+This comparison produced the originating research direction of the work.
+Berlinish sought a shared functional grammar for such alternatives, while
+axtranNew sought to calculate their admissible compositions. AIM later widened
+the question from \emph{which transition can be calculated?} to \emph{how can
+the resulting engineering knowledge retain meaning and become usable?}
+
+\section{The Curvature Edit}
+
+The curvature edit introduced in the opening moves the downstream positions and
+changes the tangent direction. If cant and speed remain fixed, vehicle-related
+quantities change as well. Constraints satisfied before the edit may no longer
+be satisfied afterwards; standard railway design couples curvature, cant,
+speed, and their rates of change \cite{EN13803_2017,Klein1998Trassierung}.
+
+The visible curve is therefore the beginning of the consequence, not its end.
+The edit must be interpreted against terrain and adjacent assets, compared with
+the existing or measured track, checked against applicable rules, and presented
+as an alternative for review. At every step, a different representation may be
+appropriate. What must not disappear is the relation among the alignment, the
+edit, the resulting states, the evidence, and the authority to decide.
+
+\section{Three Powerful Views, Three Necessary Limits}
+
+GIS, CAD, and BIM approach this situation from different strengths. GIS places
+the alignment in extensive spatial context and supports interoperable access,
+processing, visualization, and discovery of geospatial information
+\cite{OGCStandardsProgram2025}. This breadth is indispensable for land,
+environment, networks, and spatial analysis, but the engineer must still
+determine which available context is applicable to the alignment change.
+
+CAD concentrates geometric construction, communication, and direct
+manipulation \cite{KimKumarSnider2015Geometry}. It makes the curvature edit
+tangible and produces geometry needed for design and delivery. Its geometric
+model, however, does not by itself establish the provenance of an observation,
+the authority behind a rule, or the durable identity shared by another
+representation.
+
+BIM organizes built-asset information for exchange among software applications
+and project participants. IFC makes this role explicit through schemas and
+workflow-specific model views \cite{BuildingSMARTIFC4x3Scope}. These structures
+can carry alignment information without thereby owning its intrinsic
+construction or all knowledge required to evaluate a change.
+
+The issue is not to choose a winner among the three. The issue is that the
+alignment must pass between their views without becoming merely a GIS feature,
+a CAD curve, or a BIM container. A representation is useful precisely because
+it selects and expresses something for a purpose. That selection also means no
+single representation should silently become the whole engineering object.
+
+\section{Fragmented Knowledge at the Moment of Action}
+
+Some relevant knowledge is encoded in software. Some resides in standards,
+project requirements, measurement reports, calculation procedures, and design
+decisions. Some remains with engineers who know which rule is applicable and
+which apparent discrepancy is consequential. Fragmentation becomes costly when
+an action demands these pieces together. Construction-informatics research
+relates this persistent fragmentation to specialization, heterogeneous tools,
+and only partially interoperable collaboration \cite{Turk2020Interoperability}.
+
+For the curvature edit, the engineer needs more than data access. The software
+must know which object is being changed, which state is intended, which
+observations describe another state, which context selects the rules, and which
+quantities depend on the edit. It must also preserve the boundary between
+calculation and authorization.
+
+This is the practical motivation for making engineering knowledge applicable.
+Applicable knowledge is not simply text stored beside geometry. It has scope,
+provenance, conditions, and an accountable meaning; it must be connected to the
+state and operation for which it matters.
+
+\section{Why Curvature Exposes the Problem}
+
+A railway alignment is often introduced as a sequence of straights, circular
+arcs, and transition curves. That description is useful, but curvature reveals
+the generative relation beneath it. Along intrinsic arc length (s), curvature
+governs the change of heading,
+\[
+  \theta'(s)=\kappa(s),
+\]
+and integration produces planar pose and position. Changes in curvature and
+cant also enter engineering assessments of vehicle response and comfort
+\cite{Kufver2000RailwayAlignment,BrustadDalmo2020Review}.
+
+Curvature thus connects constructive intent with geometric and dynamic
+consequence. Yet the resulting coordinates still do not own the alignment's
+identity, and a measured curve still does not automatically reveal the intended
+curvature law. The distinction between intrinsic construction, metric
+realization, physical realization, and observation is not philosophical
+decoration. It determines what can safely be inferred after the edit.
+
+\section{The Requirement for AIM}
+
+A useful response must satisfy four demands at once:
+
 \begin{itemize}
-\item passenger comfort,
-\item vehicle stability,
-\item track wear,
-\item and operational safety.
+\item preserve alignment identity across purposeful representations;
+\item expose the constructive and state dependencies through which changes
+  acquire consequences;
+\item keep intended, realized, and observed information distinct and traceable;
+\item apply engineering knowledge without assigning decision authority to a
+  file format, software component, or numerical solver.
 \end{itemize}
 
-\section{Fragmentation of Current Practice}
-
-In current engineering practice, alignment design is typically divided
-into separate domains:
-\begin{itemize}
-\item geometric design (plan and profile),
-\item cant design,
-\item dynamic evaluation,
-\item and regulatory verification.
-\end{itemize}
-
-These aspects are often treated sequentially rather than jointly.
-As a consequence:
-\begin{itemize}
-\item design iterations are required,
-\item optimal solutions are rarely achieved,
-\item and knowledge remains fragmented across tools and disciplines.
-\end{itemize}
-
-\section{Limitations of Existing Models}
-
-Traditional alignment models are primarily geometric.
-They describe the track as a sequence of elements such as:
-\begin{itemize}
-\item straight lines,
-\item circular arcs,
-\item and transition curves.
-\end{itemize}
-
-While this representation is sufficient for construction,
-it is insufficient for:
-\begin{itemize}
-\item capturing dynamic behaviour,
-\item integrating measurement data,
-\item or supporting automated optimization.
-\end{itemize}
-
-In particular, curvature is often treated as a derived quantity,
-although it is the fundamental driver of railway dynamics.
-
-\section{Need for a Unified Representation}
-
-A modern alignment model must integrate:
-\begin{itemize}
-\item geometry,
-\item curvature evolution,
-\item cant,
-\item and dynamic effects.
-\end{itemize}
-
-Such a model should not treat these aspects independently,
-but as components of a single coherent system.
-
-This requires a shift from element-based descriptions to
-function-based representations.
-
-\section{Alignment as a State Trajectory}
-
-Instead of viewing an alignment as a static geometric object,
-it can be interpreted as a trajectory of a system evolving along
-arc length.
-
-In this interpretation:
-\begin{itemize}
-\item curvature acts as a control variable,
-\item cant represents an additional state component,
-\item and the resulting motion determines physical behaviour.
-\end{itemize}
-
-This perspective naturally connects alignment design with
-modern concepts from:
-\begin{itemize}
-\item differential geometry,
-\item numerical analysis,
-\item and optimal control theory.
-\end{itemize}
-
-\section{Towards Alignment-Based Information Modelling}
-
-The observations above motivate the development of a new modelling
-paradigm: \emph{Alignment-Based Information Modelling} (AIM).
-
-The central idea of AIM is to treat alignment not as a collection of
-geometric primitives, but as a structured, functional object defined
-by curvature and its derived quantities.
-
-Within this framework:
-\begin{itemize}
-\item transitions are primary modelling elements,
-\item dynamics are embedded in the representation,
-\item and optimization becomes a natural design tool.
-\end{itemize}
-
-\section{Connection to Practical Engineering}
-
-Despite its mathematical formulation, the AIM approach is not purely
-theoretical.
-
-It directly addresses practical challenges such as:
-\begin{itemize}
-\item handling imperfect measurement data,
-\item integrating multiple coordinate systems,
-\item modelling complex track configurations,
-\item and supporting modern BIM workflows.
-\end{itemize}
-
-\section{Objective of this Work}
-
-The objective of this manuscript is to provide a coherent foundation
-for Alignment-Based Information Modelling.
-
-This includes:
-\begin{itemize}
-\item a mathematical description of alignment structures,
-\item a unified state-based representation,
-\item methods for numerical reconstruction,
-\item integration of engineering constraints,
-\item and approaches to optimization.
-\end{itemize}
+Alignment-Based Information Modelling is developed to meet these demands. Its
+starting point is not a larger file format. It is an alignment-specific account
+of what the engineering object is, how it acquires measurable and operational
+state, how evidence relates to it, and how knowledge participates in
+evaluation.
 
 \begin{summary}
-Railway alignments are not simple geometric curves, but complex
-systems governed by curvature, cant, and dynamic effects.
-
-A unified, curvature-driven modelling approach is required to
-capture this complexity and to enable modern, optimization-based
-design methods.
-
-This work develops the foundations of such an approach.
+The difficulty exposed by a curvature edit is not that software cannot draw the
+new curve. It is that the engineering meaning of the change crosses tools,
+states, evidence, rules, and authority. AIM begins by preserving those
+distinctions and making their dependencies explicit.
 \end{summary}

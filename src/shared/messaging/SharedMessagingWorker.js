@@ -10,6 +10,7 @@ import { createSpotService } from "./service/SpotService.js";
 import { createDebugService } from "./service/DebugService.js";
 import { createSolverService } from "../../services/optimization/SolverService.js";
 import { getWorkspacePrimaryId } from "../runtime/workspaceSelectionAccess.js";
+import { withSpotEvidenceSnapshot } from "../../import/evidence/importResultEvidence.js";
 
 const router = startWorkerRouter(self);
 const ctx = createWorkerContext({ router });
@@ -99,6 +100,10 @@ router.onCmd("Transition.GetPresetSpec", async ({ presetId } = {}) => {
 	return transitionService.getPresetSpec(presetId);
 });
 
+router.onCmd("Transition.GetCatalogue", async () => transitionService.getCatalogue());
+router.onCmd("Transition.UpdateWorkingCopy", async (payload = {}) => transitionService.updateWorkingCopy(payload));
+router.onCmd("Transition.ResetWorkingCopy", async (payload = {}) => transitionService.resetWorkingCopy(payload));
+
 // ------------------------------------------------------------
 // Project.* API
 // ------------------------------------------------------------
@@ -141,6 +146,12 @@ router.onCmd("Import.GetState", async () => {
 	return state;
 });
 
+router.onCmd("Import.GetResultEvidence", async ({ evidenceId = null } = {}) => {
+	const response = importInboxService.getResultEvidence({ evidenceId });
+	debug.log("Import.GetResultEvidence", { evidenceId, found: response.found, recordCount: response.records?.length ?? (response.record ? 1 : 0) });
+	return response;
+});
+
 router.onCmd("Import.BeginSession", async ({ source } = {}) => {
 	debug.log("Import.BeginSession", { source });
 
@@ -181,6 +192,19 @@ router.onCmd("Import.AddItems", async ({ items = [] } = {}) => {
 	});
 
 	return result;
+});
+
+router.onCmd("Import.PublishResultEvidence", async ({ evidence, items = [] } = {}) => {
+	debug.log("Import.PublishResultEvidence", {
+		evidenceId: evidence?.evidenceId ?? null,
+		fileName: evidence?.source?.fileName ?? null,
+		format: evidence?.source?.format ?? null,
+		sha256: evidence?.source?.sha256 ?? null,
+		itemCount: Array.isArray(items) ? items.length : 0,
+		inventoryCount: Array.isArray(evidence?.inventory) ? evidence.inventory.length : 0,
+		diagnosticCount: Array.isArray(evidence?.diagnostics) ? evidence.diagnostics.length : 0,
+	});
+	return importInboxService.publishResultEvidence({ evidence, items });
 });
 
 router.onCmd(
@@ -273,7 +297,7 @@ router.onCmd("Spot.RemoveObject", async ({ objectId } = {}) => {
 router.onCmd(
 	"Spot.PromoteImportItems",
 	async ({ items = [] } = {}) => {
-		const list = Array.isArray(items) ? items : [];
+		const list = enrichItemsWithEvidence(Array.isArray(items) ? items : []);
 
 		debug.log("Spot.PromoteImportItems", {
 			count: list.length,
@@ -342,10 +366,10 @@ router.onCmd(
 			allIds: allItems.map((item) => item?.id ?? null),
 		});
 
-		const wanted = allItems.filter((item) => {
+		const wanted = enrichItemsWithEvidence(allItems.filter((item) => {
 			const id = String(item?.id ?? "");
 			return ids.includes(id);
-		});
+		}));
 
 		debug.log("Spot.PromoteImportItemsById.resolved", {
 			wantedCount: wanted.length,
@@ -403,6 +427,14 @@ router.onCmd(
 		return result;
 	}
 );
+
+function enrichItemsWithEvidence(items) {
+	return items.map((item) => {
+		if (!item?.evidenceId) return item;
+		const response = importInboxService.getResultEvidence({ evidenceId: item.evidenceId });
+		return response.found ? withSpotEvidenceSnapshot(item, response.record) : item;
+	});
+}
 
 // ------------------------------------------------------------
 // Solver.* API

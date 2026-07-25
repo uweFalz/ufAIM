@@ -1,0 +1,12 @@
+% figures/overview/icon_outlook_established_frontier-DE.tex
+\begin{tikzpicture}[
+  node distance=1.3cm,
+  box/.style={draw, rounded corners, minimum width=5.0cm, minimum height=0.9cm, align=center},
+  secondary/.style={draw, rounded corners, dashed, minimum width=5.0cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+\node[box] (established) {Etabliertes Wissen};
+\node[secondary, below=of established] (frontier) {Forschungsfront};
+\draw[arrow] (established) -- (frontier);
+\draw[thin] ($(established.center)+(-3.0,-1.3)$) -- ($(established.center)+(3.0,-1.3)$);
+\end{tikzpicture}

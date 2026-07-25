@@ -65,6 +65,10 @@ export class CockpitController {
 
 		this._importState = null;
 		this._spotState = null;
+		this._importRefreshPromise = null;
+		this._importRefreshQueued = false;
+		this._importRefreshError = null;
+		this._importRefreshCount = 0;
 
 		this._alignmentEditor = new AlignmentEditorController({
 			store: this.store,
@@ -84,7 +88,7 @@ export class CockpitController {
 	}
 
 	async refreshAll() {
-		await Promise.all([
+		await Promise.allSettled([
 			this.refreshImportState(),
 			this.refreshSpotState(),
 		]);
@@ -93,8 +97,34 @@ export class CockpitController {
 	}
 
 	async refreshImportState() {
-		this._importState = await this.messaging.sendCmdAwait("Import.GetState", {});
-		return this._importState;
+		if (this._importRefreshPromise) {
+			this._importRefreshQueued = true;
+			return this._importRefreshPromise;
+		}
+		this._importRefreshPromise = this.messaging
+			.sendCmdAwait("Import.GetState", {}, { timeoutMs: 12000 })
+			.then((state) => {
+				this._importState = state;
+				this._importRefreshError = null;
+				this._importRefreshCount += 1;
+				return state;
+			})
+			.catch((error) => {
+				this._importRefreshError = {
+					command: "Import.GetState",
+					message: error?.message ?? String(error),
+					at: new Date().toISOString(),
+				};
+				return this._importState;
+			})
+			.finally(() => {
+				this._importRefreshPromise = null;
+				if (this._importRefreshQueued) {
+					this._importRefreshQueued = false;
+					queueMicrotask(() => void this.refreshImportState().then(() => this.render()));
+				}
+			});
+		return this._importRefreshPromise;
 	}
 
 	async refreshSpotState() {
@@ -579,9 +609,8 @@ export class CockpitController {
 			this.render();
 		});
 
-		this.messaging.onEvt?.("Import.StateChanged", async () => {
-			await this.refreshImportState();
-			this.render();
+		this.messaging.onEvt?.("Import.StateChanged", () => {
+			void this.refreshImportState().then(() => this.render());
 		});
 	}
 

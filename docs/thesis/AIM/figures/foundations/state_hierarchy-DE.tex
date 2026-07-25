@@ -1,0 +1,26 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.85cm,
+  box/.style={draw,rounded corners,align=center,minimum width=4.8cm,
+    minimum height=0.7cm},
+  arrow/.style={->, thick}
+]
+\node[box] (kappa) {Krümmungsgesetz\\$\kappa(s)$};
+\node[box, below=of kappa] (pose2) {pose2\\intrinsischer ebener Zustand};
+\node[box, below=of pose2] (pose3) {pose3\\Eisenbahn-Laufzeitzustand};
+\node[box, below=of pose3] (runtime) {Betrieblicher Laufzeitzustand\\$x(s)$};
+\node[box, below=of runtime] (vehicle) {Fahrzeugzustand\\$x_{\mathrm{vehicle}}$};
+\node[box, below=of vehicle] (cg) {Schwerpunktzustand\\$x_{\mathrm{CG}}$};
+\node[box, below=of cg] (opt) {Optimierungszustand\\$x_{\mathrm{opt}}$};
+\draw[arrow] (kappa) -- (pose2);
+\draw[arrow] (pose2) -- (pose3);
+\draw[arrow] (pose3) -- (runtime);
+\draw[arrow] (runtime) -- (vehicle);
+\draw[arrow] (vehicle) -- (cg);
+\draw[arrow] (cg) -- (opt);
+\end{tikzpicture}
+\caption{AIM-Zustandshierarchie von intrinsischer Krümmung zum
+Optimierungszustand.}
+\label{fig:state-hierarchy}
+\end{figure}

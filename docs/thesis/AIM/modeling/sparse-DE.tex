@@ -1,0 +1,376 @@
+% modeling/sparse-DE.tex
+\chapter{Dünn besetztes Alignment-Modell}
+
+\section*{Motivation}
+
+Dieses Kapitel beantwortet, wie kontinuierliche Krümmungstheorie in eine
+kompakte Engineering-Darstellung überführt wird, die rekonstruierbar,
+interpretierbar und operativ nutzbar bleibt. Es begründet das dünn besetzte
+Alignment-Modell, klärt die Verantwortung benachbarter Modellierungsebenen und
+bereitet die folgenden Kapitel zu Übergängen und Klassifikation vor.
+
+Die Leitfrage lautet: Welche Information muss persistent sein, und welche
+sollte zur Laufzeit rekonstruiert werden?
+
+\begin{figure}[htbp]
+\centering
+\input{figures/modeling/sparse_model_structure-DE}
+\caption{Dünn besetztes Alignment als wechselnde Folge fester und Übergangselemente.}
+\label{fig:sparse-model-structure}
+\end{figure}
+
+Die erste Abbildung liefert die strukturelle Antwort: Ein dünn besetztes
+Alignment ist eine geordnete semantische Folge und kein dichter geometrischer
+Schnappschuss.
+
+Ein kontinuierliches Krümmungsgesetz ist mathematisch natürlich, aber für sich
+allein keine operative Darstellung für Bearbeitung, Austausch, Validierung
+oder Rekonstruktion aus heterogenen Engineering-Daten. Deshalb wird ein dünn
+besetztes Modell als strukturierte, stückweise definierte Darstellung eines
+Alignments eingeführt.
+
+Das dünn besetzte Modell verneint kontinuierliche Geometrie nicht. Es dient
+vielmehr als Zwischenschicht zwischen kontinuierlicher Krümmungstheorie und
+praktischen Aufgaben wie Import, Berechnung, Optimierung und
+Interoperabilität.
+
+Dichte geometrische Darstellungen wie Punktwolken oder abgetastete Polylinien
+bewahren Positionsinformation, zerstören aber weitgehend die strukturelle
+Semantik des Alignments selbst.
+
+Die zweite Frage betrifft die Verantwortung: Wie bleiben persistente Daten,
+strukturelle Alignment-Semantik und nachgelagerte Engineering Objects getrennt?
+
+\begin{figure}[htbp]
+\centering
+\input{figures/modeling/support_alignmentdata_sparse_spotobject-DE}
+\caption{Unterstützende Verantwortungssicht: AlignmentData, SparseAlignment und SpotObject bilden verschiedene Verantwortungsebenen.}
+\label{fig:support-alignmentdata-sparse-spotobject}
+\end{figure}
+
+Diese Unterscheidung verhindert semantische Drift zwischen Speicherung,
+kanonischer Alignment-Semantik und anwendungsspezifischen Laufzeitprodukten.
+
+\section{Grundidee}
+
+\begin{definition}[Dünn besetztes Alignment-Modell]
+Ein dünn besetztes Alignment-Modell ist eine strukturierte longitudinale
+Darstellung aus synchronisierten Alignment-Bändern mit hinreichender
+Rekonstruktionsinformation.
+\end{definition}
+
+Das Adjektiv \emph{dünn besetzt} bedeutet hier, dass das Alignment nicht als
+dichte Punktwolke, sondern als kompakte Folge semantisch bedeutsamer Elemente
+gespeichert wird.
+
+In AIM wird das dünn besetzte Modell nicht als statische 3D-Geometrie, sondern
+als persistenter struktureller Kern interpretiert, aus dem Geometrie und
+Dynamik abgeleitet werden.
+
+\section{Elementtypen}
+
+\begin{definition}[Alignment-Element]
+Ein Alignment-Element ist ein Segment eines Alignments mit vorgegebenem
+lokalem Krümmungsverhalten auf einem Parameterintervall.
+\end{definition}
+
+\begin{definition}[Festes Element]
+Ein festes Element ist ein Alignment-Element mit konstanter Krümmung
+\[
+\kappaf(s)=\kappaf_0.
+\]
+Typische Sonderfälle sind Geraden mit \(\kappaf_0=0\) und Kreisbögen mit
+\(\kappaf_0\neq 0\).
+\end{definition}
+
+\begin{definition}[Übergangselement]
+Ein Übergangselement ist ein Alignment-Element mit nicht konstanter Krümmung,
+also
+\[
+\kappaf(s)=f(s)
+\]
+für ein geeignetes Krümmungsgesetz \(f\).
+\end{definition}
+
+In AIM werden Übergangselemente primär durch ihre Krümmungsentwicklung und
+nicht durch ihre ausdrückliche geometrische Form interpretiert.
+
+Auf dieser Abstraktionsebene erfolgt noch keine Festlegung auf eine bestimmte
+Familie von Übergangsgesetzen. Dies schließt klassische Klothoiden ebenso ein
+wie polynomiale, tabellenbasierte oder hybride Konstruktionen.
+
+\TODO{Formale Klassifikation der Übergangsfamilien.}
+
+\section{Minimale Parametrisierung}
+
+\begin{definition}[Bogenlänge eines Elements]
+Jedem Element \(e_i\) ist eine Bogenlänge
+\[
+L_i > 0
+\]
+zugeordnet.
+\end{definition}
+
+\begin{definition}[Lokales Krümmungsgesetz]
+Jedem Element \(e_i\) ist ein Krümmungsgesetz
+\[
+\kappaf_i : [0,L_i] \to \R
+\]
+zugeordnet.
+\end{definition}
+
+Bei festen Elementen ist \(\kappaf_i\) konstant; bei Übergangselementen
+verändert es sich entlang des lokalen Parameters.
+
+\begin{definition}[Dünn besetztes Alignment]
+Ein dünn besetztes Alignment ist ein geordnetes Tupel
+\[
+A=(e_1,e_2,\dots,e_n)
+\]
+mit hinreichenden Anfangsdaten für die geometrische Rekonstruktion.
+\end{definition}
+
+\section{Anfangsdaten und Pose}
+
+\begin{definition}[Ebene Anfangspose]
+Eine ebene Anfangspose ist ein Tupel
+\[
+P_0=(x_0,y_0,\theta_0)
+\]
+mit der Position \((x_0,y_0)\in\R^2\) und der Anfangsrichtung
+\(\theta_0\in\R\).
+\end{definition}
+
+\begin{proposition}
+Das ebene Alignment wird durch sukzessive Integration des Krümmungsgesetzes
+rekonstruiert:
+\[
+\kappa(s)\rightarrow\theta(s)\rightarrow\gamma(s).
+\]
+\end{proposition}
+
+Gemeinsam mit der geordneten Elementfolge und den lokalen Krümmungsgesetzen
+bestimmt die Anfangspose die Alignment-Geometrie durch sukzessive Integration.
+
+\begin{definition}[Rekonstruierbares dünn besetztes Alignment]
+Ein dünn besetztes Alignment heißt rekonstruierbar, wenn seine Elementfolge
+und Anfangsdaten genügen, um im Rahmen der vorgesehenen
+Modellierungskonventionen ein eindeutiges ebenes Alignment zu bestimmen.
+\end{definition}
+
+\section{Dünn besetzte longitudinale Bandstruktur}
+
+\begin{principle}[Prinzip dünn besetzter longitudinaler Bänder]
+Eisenbahn-Alignments werden als synchronisierte longitudinale Bänder und nicht
+als monolithische geometrische Objekte dargestellt.
+\end{principle}
+
+Im AIM-Rahmen wird das persistente Alignment-Modell bewusst dünn besetzt und
+in synchronisierte longitudinale Bänder zerlegt.
+
+\subsection{cGeom}
+
+\begin{definition}[Geometrisches Kernband]
+Das zentrale geometrische Band wird bezeichnet durch
+\[
+\mathrm{cGeom}.
+\]
+Es stellt den krümmungsgetriebenen ebenen Alignment-Kern dar und besteht aus:
+\begin{itemize}
+\item festen Elementen,
+\item Übergangselementen und
+\item pose2-basierten Rekonstruktionsankern.
+\end{itemize}
+\end{definition}
+
+Das cGeom-Band bildet den primären Integrationskern des Alignments.
+
+\subsection{Überhöhungsband}
+
+\begin{definition}[Überhöhungsband]
+Überhöhung wird als unabhängiges longitudinales Band dargestellt, das mit
+festen Alignment-Elementen korreliert ist.
+\end{definition}
+
+Das Überhöhungsband
+\begin{itemize}
+\item definiert kein unabhängiges Stationierungssystem,
+\item speichert Schienenhöhenunterschiede statt Rollwinkel,
+\item folgt derselben normierten Krümmungsfamilie wie das zugehörige
+cGeom-Element und
+\item kann lokale Stationsversätze an Elementgrenzen enthalten.
+\end{itemize}
+
+Da die Überhöhungsentwicklung derselben normierten Krümmungsfamilie wie das
+zugehörige cGeom-Element folgt, benötigt das Überhöhungsband kein eigenes
+geometrisches Entwicklungsmodell.
+
+Der zugehörige Rollwinkel wird abgeleitet durch
+\[
+\phi(s)=\arctan\!\left(\frac{u(s)}{g}\right),
+\]
+wobei \(u(s)\) den Schienenhöhenunterschied und \(g\) die Spurweite bezeichnet.
+
+\subsection{Längsprofilband}
+
+\begin{definition}[Längsprofilband]
+Die vertikale Geometrie wird unabhängig durch ein Längsprofilband dargestellt.
+\end{definition}
+
+cGeom, Überhöhung und Längsprofil werden somit als synchronisierte, aber
+verschiedene Bänder mit gemeinsamem Bogenlängengebiet behandelt.
+
+\subsection{Laufzeitzustand}
+
+\begin{proposition}
+pose3 wird im dünn besetzten Modell nicht als persistente Wahrheit behandelt.
+\end{proposition}
+
+Die direkte Persistierung von pose3 würde Redundanz und
+Synchronisationsinstabilitäten zwischen Geometrie-, Überhöhungs- und
+Längsprofildarstellung einführen.
+
+Stattdessen wird pose3 dynamisch abgeleitet aus:
+\begin{itemize}
+\item cGeom,
+\item Überhöhung,
+\item Längsprofil und
+\item Laufzeitbewertungsdiensten.
+\end{itemize}
+
+Die primäre Intelligenz des AIM-Rahmens liegt folglich nicht im Speicherformat
+selbst, sondern in den mathematischen Operatoren und Bewertungsdiensten, die
+auf dem dünn besetzten Modell wirken.
+
+\section{Verkettung}
+
+\begin{definition}[Elementverkettung]
+Zwei aufeinanderfolgende Elemente sind verkettet, wenn der Endzustand des
+ersten den Anfangszustand des zweiten Elements bereitstellt.
+\end{definition}
+
+\begin{definition}[Positionsstetigkeit]
+Ein dünn besetztes Alignment ist positionsstetig, wenn aufeinanderfolgende
+Elemente in einem gemeinsamen Endpunkt zusammentreffen.
+\end{definition}
+
+\begin{definition}[Richtungsstetigkeit]
+Ein dünn besetztes Alignment ist richtungsstetig, wenn aufeinanderfolgende
+Elemente an ihrer gemeinsamen Grenze dieselbe Tangentenrichtung besitzen.
+\end{definition}
+
+In den meisten Engineering-Kontexten sind Positions- und Richtungsstetigkeit
+Mindestanforderungen. Höhere Stetigkeitsanforderungen können von den gewählten
+Übergangsfamilien und der vorgesehenen Anwendung abhängen.
+
+\TODO{Stetigkeitsklassen wie $C^0$, $C^1$ und krümmungsbezogene Stetigkeitsbedingungen formalisieren.}
+
+\section{Normalform und Wechsel}
+
+In praktischen dünn besetzten Darstellungen ist der Wechsel zwischen festen
+und Übergangselementen ein häufiges Muster. Er entspricht weitgehend der
+Engineering-Intuition und vielen traditionellen Alignment-Beschreibungen.
+
+\OPEN{Soll der strikte Wechsel zwischen festen und Übergangselementen als mathematische Eigenschaft, bevorzugte Normalform oder lediglich als Implementierungskonvention formuliert werden?}
+
+Es ist plausibel, den Wechsel als Normalform statt als fundamentales Axiom zu
+betrachten. Mehrere benachbarte feste Elemente können zusammengeführt werden,
+und bestimmte degenerierte Übergangsfälle können in feste Elemente übergehen.
+
+\section{Normierte Darstellung von Elementen}
+
+\begin{definition}[Normierter lokaler Parameter]
+Ein normierter lokaler Parameter ist eine Variable
+\[
+u\in[0,1],
+\]
+mit der ein Element unabhängig von seiner physischen Länge dargestellt wird.
+\end{definition}
+
+\begin{definition}[Normiertes Krümmungsgesetz]
+Ein normiertes Krümmungsgesetz ist ein auf dem Einheitsintervall definiertes
+Gesetz, typischerweise der Form
+\[
+\widehat{\kappaf} : [0,1]\to\R.
+\]
+\end{definition}
+
+Normierung trennt Form von Maßstab. Dieselbe Übergangsfamilie kann dadurch für
+verschiedene Längen und Krümmungsbeträge wiederverwendet werden.
+
+Normierte Darstellungen bilden die Grundlage für wiederverwendbare
+Übergangsregister, Familienklassifikation und implementierungsunabhängigen
+Vergleich von Alignment-Elementen.
+
+\section{Strukturelle Rolle des dünn besetzten Modells}
+
+Das dünn besetzte Modell liegt auf einer begrifflichen Zwischenebene:
+\begin{itemize}
+\item unterhalb der rein abstrakten krümmungstheoretischen Grundlage,
+\item aber oberhalb dichter numerischer Abtastung, importierter Punktlisten
+oder formatspezifischer Containerstrukturen.
+\end{itemize}
+
+Es ist bewusst weder ein dichtes geometrisches Speicherformat noch eine
+direkte Kopie externer Austauschcontainer.
+
+Diese Zwischenstellung macht das dünn besetzte Modell geeignet als
+\begin{itemize}
+\item interne Modellierungsebene,
+\item Rekonstruktionsziel für importierte Daten,
+\item Quelle numerischer Bewertung und
+\item Verbindung zu Normen und BIM-bezogenen Darstellungen.
+\end{itemize}
+
+\section{Bezug zu importierten und standardisierten Daten}
+
+Bestehende Engineering-Daten liegen selten unmittelbar in dünn besetzter Form
+vor. Sie werden gewöhnlich durch Containerformate, Vermessungsdaten,
+historische Beschreibungen oder abgeleitete Koordinatenfolgen bereitgestellt.
+
+Solche Daten können enthalten:
+\begin{itemize}
+\item inkonsistente Stationierung,
+\item unvollständige Überhöhungsinformation,
+\item beschädigte Koordinatenreferenzsysteme,
+\item Unstetigkeiten,
+\item partielle Geometriefragmente oder
+\item nicht synchronisierte Alignment-Komponenten.
+\end{itemize}
+
+Das dünn besetzte Modell darf daher nicht mit einem einzelnen Austauschstandard
+gleichgesetzt werden. Es ist vielmehr eine kompakte interne Darstellung, die
+aus mehreren externen Formaten abgeleitet und in diese zurückabgebildet werden
+kann.
+
+\RESEARCH{Dünn besetztes Modell an Alignment-Strukturen von \railML\ anbinden.}
+\RESEARCH{Dünn besetztes Modell an Alignment-Darstellungen von \LandXML\ anbinden.}
+\OPEN{Eine minimale gemeinsame Abstraktionsebene für Normenabbildungen definieren.}
+\OPEN{Den Bezug zwischen topologieorientierten Normen und rein geometrischen Containermodellen klären.}
+
+\section{Bezug zu BIM und BIMalignment}
+
+Ein dünn besetztes Alignment-Modell kann BIM-orientierte Abläufe unterstützen,
+sollte aber nicht bloß die Logik von BIM-Containern nachahmen. Seine primäre
+Verantwortung ist die mathematisch und operativ kohärente Darstellung der
+Alignment-Struktur.
+
+\RESEARCH{Einen BIM-kompatiblen Alignment-Kern formulieren, ohne geometrische Genauigkeit zu verlieren.}
+\OPEN{Das dünn besetzte Modell zwischen generischem BIM, Infrastruktur-BIM und ausdrücklichen BIMalignment-Konzepten einordnen.}
+\TODO{Ausdrücklich angeben, wo das Manuskript BIMalignment weiterentwickeln und nicht nur BIM-Konformität erfüllen will.}
+
+\section{Zusammenfassung}
+
+\begin{summary}
+Das dünn besetzte Alignment-Modell ist eine kompakte, strukturierte Darstellung
+eines Alignments durch synchronisierte longitudinale Bänder mit
+Rekonstruktionsdaten und Verkettungsregeln.
+
+In AIM wird es nicht als statische 3D-Geometrie, sondern als persistenter
+struktureller Kern interpretiert, aus dem Geometrie, Laufzeitzustand und
+dynamische Interpretation abgeleitet werden.
+
+Es verbindet kontinuierliche Krümmungstheorie mit praktischen
+Engineering-Operationen wie Import, Validierung, Bearbeitung, numerischer
+Bewertung, Optimierung und Interoperabilität.
+\end{summary}

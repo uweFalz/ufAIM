@@ -1,0 +1,57 @@
+\chapter{Vehicle Space relativ zum Eisenbahnzustand}
+\label{chap:vehicle-space}
+
+Vehicle Space führt keinen weiteren Eisenbahnzustand ein. Er fragt, wie
+fahrzeugbezogene Größen relativ zum aus Teil V übernommenen qualifizierten
+pose3-Frame und zur hier eingeführten Durchfahrt \(s(t)\) ausgedrückt werden.
+
+\begin{principle}[Track--Vehicle-Unterscheidung]
+Der qualifizierte Eisenbahnzustand kann ohne Fahrzeugmodell bestehen. Ein
+Fahrzeugzustand benötigt diesen Bezug sowie ein identifiziertes Fahrzeugmodell
+und Betriebseingaben.
+\end{principle}
+
+\begin{proposition}[Zustandshierarchie]
+\label{prop:state-hierarchy}
+\[
+\mathrm{vehicleState}_M(t)
+=
+\mathcal V_M\bigl(
+\mathcal S_{\mathrm{rail}}(s(t)),Q_M
+\bigr),
+\]
+aber der Eisenbahnzustand wird nicht aus
+\(\mathrm{vehicleState}_M\) abgeleitet. Modellindex und Eingaben bleiben Teil
+der Ergebnisbedeutung.
+\end{proposition}
+
+\section{Relative Größen}
+
+Das bewegte Gleis-Frame liefert longitudinale, laterale und vertikale
+Bezugsrichtungen. Ein Fahrzeugmodell kann anschließend Verschiebung, Gier,
+Roll, Beschleunigung, Radlast oder Umgrenzungslage eines Wagenkastens oder
+Teilsystems relativ zu diesem Frame ausdrücken. Dies sind Beispiele möglicher
+Modellausgaben, keine universell vorhandenen Felder; ihre Darstellung in
+Vehicle Space validiert sie nicht.
+
+\[
+F_{\mathrm{vehicle}}(t)\neq
+F_{\mathrm{rail}}(s(t)).
+\]
+Ihre relative Orientierung ist erst aussagekräftig, wenn beide Frames,
+Vorzeichenkonventionen, Zeitbezug und relevante Fahrzeugfreiheitsgrade
+angegeben sind.
+
+\section{Teilsystem- und Bezugspunktverwendungen}
+
+Radsatz, Drehgestell, Wagenkasten oder ein gewählter Schwerpunktbezugspunkt
+können jeweils andere Zustandsvektoren und Modelle benötigen. Insbesondere ist
+eine Schwerpunkttrajektorie nicht der gesamte Fahrzeugzustand. Sie kann nur
+dann zur expliziten Optimierungsausgabe werden, wenn Fahrzeugmodell, Ziel,
+Nebenbedingungen und Anwendbarkeit deklariert sind.
+
+\begin{summary}
+Vehicle Space ist eine relative Interpretationsdomäne nach qualifiziertem
+Eisenbahnzustand und Durchfahrt. Er definiert weder pose3 noch Gleis-Frame oder
+Alignment-Identität neu.
+\end{summary}

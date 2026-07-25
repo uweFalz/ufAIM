@@ -43,6 +43,8 @@ import { AlignmentMapper } from "@src/model/spot/model/AlignmentSpotObjectMapper
 import { SpotGateway } from "./SpotGateway.js";
 
 const transitionDescriptorResolver = new RegistryResolver(transitionLookup);
+const histories = new WeakMap();
+const HISTORY_LIMIT = 32;
 
 export class AlignmentApplicationService {
 	constructor({
@@ -82,8 +84,19 @@ export class AlignmentApplicationService {
 
 		const spotObject =
 			this.mapper.createAlignmentSpotObjectFromData(
-				alignmentData
+				alignmentData,
+				{
+					crsId: null,
+					crsStatus: "local-cartesian",
+					meta: {
+						source: { kind: "native", native: true },
+						engineeringCrsId: "engineering-nullCRS",
+						placementMode: "local-cartesian",
+					},
+				}
 			);
+
+		const previousSelection = structuredClone(this.store.getState()?.workspace_selection ?? null);
 
 		await this.spotGateway.saveObject(
 			spotObject,
@@ -92,6 +105,7 @@ export class AlignmentApplicationService {
 				focus: true,
 			}
 		);
+		this._pushHistory({ kind: "create", objectId: spotObject.id, previousSelection });
 
 		return {
 			changed: true,
@@ -159,6 +173,25 @@ export class AlignmentApplicationService {
 		});
 	}
 
+	async addTransitionArc({
+		transitionLength = 60,
+		arcLength = 100,
+		curvature = 0.002,
+		transitionType = "clothoid",
+		w1,
+		w2,
+	} = {}) {
+		return this._editActiveAlignmentSafe({
+			source: "alignment-editor-add-transition-arc",
+			code: "ALIGNMENT_EDIT_TRANSITION_ARC_REJECTED",
+			edit: (alignmentData) => {
+				this._assertTransitionTypeSupported(transitionType);
+				const withTransition = addTransitionElement(alignmentData, { length: transitionLength, transitionType, w1, w2 });
+				return addArcElement(withTransition, { length: arcLength, curvature });
+			},
+		});
+	}
+
 	async removeElement({
 		elementId,
 	} = {}) {
@@ -174,6 +207,22 @@ export class AlignmentApplicationService {
 						elementId,
 					}
 				),
+			selectAfterEdit: ({ previousSelection, previousAlignmentData, nextAlignmentData, spotObject }) => {
+				const previousElements = previousAlignmentData?.editModel?.elements ?? [];
+				const nextElements = nextAlignmentData?.editModel?.elements ?? [];
+				const removedIndex = previousElements.findIndex(
+					(element) => String(element?.id ?? "") === String(elementId ?? "")
+				);
+				if (removedIndex < 0) return previousSelection;
+				return {
+					...(previousSelection ?? {}),
+					primaryId: spotObject?.id ?? previousSelection?.primaryId ?? null,
+					elementId: nextElements[removedIndex]?.id
+						?? nextElements[removedIndex - 1]?.id
+						?? null,
+					source: "alignment-editor-remove-element",
+				};
+			},
 		});
 	}
 
@@ -255,9 +304,58 @@ export class AlignmentApplicationService {
 		});
 	}
 
+	async undo() {
+		const history = this._history();
+		const entry = history.pop();
+		if (!entry) return { changed: false, ok: false, status: "rejected", code: "ALIGNMENT_UNDO_EMPTY", reason: "no alignment edit to undo" };
+		try {
+			if (entry.kind === "create") {
+				await this.messaging.sendCmdAwait("Spot.RemoveObject", { objectId: entry.objectId, source: "alignment-creation-undo" });
+			} else if (entry.kind === "edit" && entry.previousObject) {
+				await this.spotGateway.saveObject(entry.previousObject, { source: "alignment-edit-undo", focus: true });
+			} else {
+				throw new Error("unsupported alignment undo record");
+			}
+			if (entry.previousSelection && this.store.actions?.setWorkspaceSelection) this.store.actions.setWorkspaceSelection(entry.previousSelection);
+			else if (entry.kind === "create") this.store.actions?.clearWorkspaceSelection?.();
+			return { changed: true, ok: true, status: "undone", kind: entry.kind, objectId: entry.objectId ?? entry.previousObject?.id ?? null };
+		} catch (error) {
+			history.push(entry);
+			return { changed: false, ok: false, status: "rejected", code: "ALIGNMENT_UNDO_REJECTED", reason: String(error?.message ?? error) };
+		}
+	}
+
+	canUndo() {
+		return this._history().length > 0;
+	}
+
+	getUndoDepth() {
+		return this._history().length;
+	}
+
+	restoreUndoDepth(depth) {
+		const history = this._history();
+		const target = Math.max(0, Math.min(history.length, Math.trunc(Number(depth) || 0)));
+		history.splice(target);
+		return history.length;
+	}
+
+	_history() {
+		let history = histories.get(this.store);
+		if (!history) { history = []; histories.set(this.store, history); }
+		return history;
+	}
+
+	_pushHistory(entry) {
+		const history = this._history();
+		history.push(structuredClone(entry));
+		if (history.length > HISTORY_LIMIT) history.splice(0, history.length - HISTORY_LIMIT);
+	}
+
 	async _editActiveAlignment({
 		source,
 		edit,
+		selectAfterEdit,
 	} = {}) {
 		if (typeof edit !== "function") {
 			throw new Error(
@@ -335,6 +433,7 @@ export class AlignmentApplicationService {
 				spotObject,
 				committedAlignmentData
 			);
+		const previousSelection = structuredClone(this.store.getState()?.workspace_selection ?? null);
 
 		await this.spotGateway.saveObject(
 			nextSpotObject,
@@ -343,6 +442,27 @@ export class AlignmentApplicationService {
 				focus: true,
 			}
 		);
+		// Saving with focus keeps the edited object active, but object focus is
+		// intentionally narrower than the full workspace selection and may clear
+		// the selected alignment element. An edit must retain that element focus;
+		// dependent views decide later whether it became stale (for example after
+		// removing the selected element).
+		if (previousSelection && this.store.actions?.setWorkspaceSelection) {
+			const nextSelection = typeof selectAfterEdit === "function"
+				? selectAfterEdit({
+					previousSelection,
+					previousAlignmentData: alignmentData,
+					nextAlignmentData: committedAlignmentData,
+					spotObject: nextSpotObject,
+				})
+				: previousSelection;
+			this.store.actions.setWorkspaceSelection(nextSelection ?? previousSelection);
+		}
+		this._pushHistory({
+			kind: "edit",
+			previousObject: spotObject,
+			previousSelection,
+		});
 
 		return {
 			changed: true,
@@ -368,9 +488,10 @@ export class AlignmentApplicationService {
 		source,
 		code,
 		edit,
+		selectAfterEdit,
 	} = {}) {
 		try {
-			return await this._editActiveAlignment({ source, edit });
+			return await this._editActiveAlignment({ source, edit, selectAfterEdit });
 		} catch (err) {
 			return {
 				changed: false,

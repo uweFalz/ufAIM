@@ -326,13 +326,19 @@ and Wiener-Bogen-related approaches
 A transition need not always be treated as a single indivisible object.
 It may be useful to represent it as a composition of sub-elements.
 
-Within AIM, complex transition behaviour may be constructed from
-composable normalized suboperators such as half-wave and clothoid
-components.
-
-\TODO{Formalize halfWave -- clothoid -- halfWave decomposition.}
-
-\OPEN{Is decomposition fundamental or implementation-specific?}
+The Berlinish framework introduced in
+\cref{sec:berlinish-composition} provides the concrete decomposition
+\[
+T=H_{\mathrm{in}}+C+H_{\mathrm{out}},
+\qquad
+L_{H_{\mathrm{in}}},L_C,L_{H_{\mathrm{out}}}\geq 0.
+\]
+It is a mathematical composition grammar: zero component lengths and the
+choice of half-wave functions determine pure, one-sided, asymmetric, and
+compound cases. A sparse implementation may encode the same grammar through a
+family identifier, normalized partitions, function references, and parameters.
+The mathematical interpretation and its particular data encoding are related,
+but not identical.
 
 % ============================================================
 \section{Operator View}
@@ -364,9 +370,21 @@ Transition families may be represented through registries containing
 normalized curvature laws together with derivative and integration
 operators.
 
-\TODO{Registry-based transition system.}
+In the originating system line, \emph{transitionDB} denotes the structured
+knowledge base of function identities, half-wave families, parameters, and
+known transition forms. The current reference implementation realizes a
+substantial part of that role through a validated transition registry: it
+contains normalized prototype functions, half-wave descriptors, family
+partitions, and named transition entries. This is implementation evidence for
+the composition mechanism, not proof that every historical or proprietary
+form has been captured.
 
-\OPEN{Trade-off between analytic precision and computational efficiency.}
+\emph{TransEd} is the corresponding examination and editing workspace. Its
+purpose is to inspect normalized curvature and derivative behaviour and to
+work with reusable transition definitions; it does not own Alignment identity
+and does not replace alignment-level editing. Analytic expressions and lookup
+representations remain alternative realizations of a function law, with the
+usual trade-off between traceable exact structure and runtime efficiency.
 
 % ============================================================
 \section{Relation to Railway Engineering}

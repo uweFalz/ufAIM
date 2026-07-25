@@ -4,6 +4,12 @@ export function assessSpotAdmission(item) {
 	if (!item || item.status?.valid !== true) {
 		return reject("invalid_item");
 	}
+	if (item.status?.eligibility?.eligible === false) {
+		return reject(item.status.eligibility.reason ?? "not_promotable");
+	}
+	if (item.kind === "alignment" && item.status?.promotable !== true) {
+		return reject(item.status?.reason ?? "not_promotable");
+	}
 
 	const kind = item.kind ?? null;
 	const spatialRef = item.derived?.spatialRef ?? null;

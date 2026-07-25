@@ -1,418 +1,132 @@
 % dynamics/schwerpunkt_state.tex
-
-\chapter{Schwerpunkt States and Operational Balance}
-
+\chapter{What \emph{Schwerpunkt} Can Mean}
 \label{chap:schwerpunkt-state}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
+\section*{A model reference, not a new canonical state}
 
-The local chapter question is operational: which trajectory should be
-optimized when the objective is runtime vehicle behaviour rather than
-centerline geometry alone?
+The railway state and traversal \(s(t)\) expose a moving vehicle to geometry.
+They do not select a vehicle model or a point whose motion represents that
+vehicle. The German word \emph{Schwerpunkt} is therefore retained only where
+its mathematical role is stated.
 
-% dynamics/schwerpunkt_state.tex
 \begin{figure}[htbp]
 \centering
 \input{figures/dynamics/schwerpunkt_trajectory}
-\caption{Schwerpunkt trajectory as vehicle-state path relative to the railway state.}
+\caption{A model-selected reference-point trajectory relative to the railway state; it is not Alignment geometry.}
 \label{fig:schwerpunkt-trajectory}
 \end{figure}
 
-The figure provides the guiding interpretation: the relevant design
-object is the vehicle-state trajectory generated from railway state.
-The engineering consequence is that operational trajectory shaping must
-be evaluated in runtime state space, not only in geometric curve space.
-
-Classical railway alignment theory primarily interprets transition design
-through geometric smoothness.
-
-Within AIM, however, the operationally relevant object is not merely the
-track geometry itself, but the dynamically evolving vehicle state
-generated relative to the railway state.
-
-This distinction builds on the state taxonomy introduced in
-\cref{chap:state-taxonomy}.
-
-This shifts the interpretation of railway alignment from:
-\begin{quote}
-curve construction
-\end{quote}
-toward:
-\begin{quote}
-trajectory shaping of operational vehicle states.
-\end{quote}
-
-The center-of-gravity interpretation plays a particularly important role
-within this framework.
-
-\begin{principle}[Schwerpunkt principle]
+\begin{principle}[Qualified Schwerpunkt use]
 \label{princ:schwerpunkt-principle}
-Within AIM, Schwerpunkt-Trassierung is interpreted as operational
-trajectory shaping of realized runtime vehicle states.
+An occurrence of \emph{Schwerpunkt} shall identify its owning subject, model,
+reference frame and evidential status. It is not a canonical Kernel state.
 \end{principle}
 
 \begin{principle}[Schwerpunkt is not geometry]
 \label{princ:schwerpunkt-not-geometry}
-Schwerpunkt-Trassierung optimizes operational runtime trajectories, not
-geometric curves.
+Changing or evaluating a model reference-point trajectory does not change
+Alignment identity or replace its intrinsic construction.
 \end{principle}
 
-% ============================================================
-\section{Center-of-Gravity State}
-% ============================================================
+\section{Center of mass and reduced reference point}
 
-\begin{definition}[Center-of-gravity state]
+The physical centre of mass is a property of a particular loaded vehicle.
+A reduced vehicle model \(M\), however, may use a reference point \(P_M\)
+that coincides with an assumed centre of mass only under stated loading and
+rigid-body assumptions. A representative trajectory point, an optimization
+aggregate and a conceptual ``focus'' are different objects and shall not be
+denoted silently by the same symbol.
+
+\begin{definition}[Model-qualified reference-point state]
 \label{def:cg-state}
-The center-of-gravity state describes the operational runtime state of
-the vehicle center of gravity relative to the railway state.
-\end{definition}
-
-The center-of-gravity state depends on:
-\begin{itemize}
-\item realized railway geometry,
-\item cant evolution,
-\item operational speed,
-\item vehicle configuration,
-\item suspension behaviour,
-\item and runtime frame interpretation.
-\end{itemize}
-
-Within AIM, the center-of-gravity state is interpreted as a runtime
-state generated from
+For vehicle subject \(V\), response model \(M\), frame \(F\), qualified
+railway state \(S_{\mathrm{rail}}\), traversal \(s(t)\), parameters \(Q_M\)
+and initial conditions \(I_M\), the predicted reference-point state is
 \[
-\mathrm{pose3}_{\mathrm{real}}.
+x_{P_M}^{\mathrm{pred}}(t)
+=
+\mathcal D_M(S_{\mathrm{rail}}(s(t)),Q_M,I_M)_{{P_M},F}.
 \]
-
-The center-of-gravity state is an operational abstraction. It is not a
-complete mechanical vehicle model.
-
-% ============================================================
-\section{Center-of-Gravity Trajectory}
-% ============================================================
+It is a model output with the provenance and validity of those inputs. It is
+neither an observation nor proof of the physical centre-of-mass motion.
+\end{definition}
 
 \begin{definition}[Center-of-gravity trajectory]
 \label{def:cg-trajectory}
-The center-of-gravity trajectory is the operational trajectory
-\[
-x_{\mathrm{CG}}(s)
-\]
-traced by the vehicle center of gravity within runtime space.
+The notation \(x_{\mathrm{CG}}(t)\) may be used only when \(P_M\) has explicitly
+been identified with the modelled centre of mass. Otherwise
+\(x_{P_M}(t)\) is used.
 \end{definition}
 
-This trajectory is generally not identical to
-\[
-\gamma(s).
-\]
-
-Instead, it emerges from:
-\begin{itemize}
-\item curvature evolution,
-\item cant evolution,
-\item roll response,
-\item vehicle geometry,
-\item operational velocity,
-\item and runtime dynamics.
-\end{itemize}
-
-The operational trajectory may therefore differ substantially from the
-pure geometric centerline.
-
-Within Schwerpunkt interpretation,
-\(x_{\mathrm{CG}}(s)\)
-is one of the central operational state trajectories generated by
-railway geometry.
-
-% ============================================================
-\section{Operational Balance}
-% ============================================================
+\section{What may be derived}
 
 \begin{definition}[Operational balance]
 \label{def:operational-balance}
-Operational balance denotes the dynamic relationship between:
-\begin{itemize}
-\item curvature-induced acceleration,
-\item cant-induced compensation,
-\item and vehicle response.
-\end{itemize}
+Operational balance in this chapter means a declared model relation evaluated
+in a declared frame. It is not a generic vehicle condition.
 \end{definition}
-
-A dynamically balanced state approximately satisfies
-\[
-v^2\kappa(s)
-\approx
-g\sin\phi(s).
-\]
-
-In practice, operational balance is not exact but evolves continuously
-within admissible runtime ranges.
-
-Operational balance is therefore interpreted as a runtime state relation,
-not as a purely static equilibrium formula.
-
-% ============================================================
-\section{Balance Trajectories}
-% ============================================================
 
 \begin{definition}[Balance trajectory]
 \label{def:balance-trajectory}
-A balance trajectory is the runtime evolution of operational equilibrium
-or imbalance states along the railway alignment.
+A balance trajectory is the time- or station-dependent result of that
+relation, with its model, frame, signs, velocity and cant assumptions attached.
 \end{definition}
-
-Balance trajectories may be interpreted through:
-\begin{itemize}
-\item effective acceleration,
-\item roll evolution,
-\item cant deficiency,
-\item and center-of-gravity response.
-\end{itemize}
-
-Thus, operational balance is interpreted dynamically rather than as a
-single static equilibrium condition.
-
-Within AIM, balance trajectories may become a central class of
-operational runtime trajectories.
-
-% ============================================================
-\section{Effective Acceleration Interpretation}
-% ============================================================
 
 \begin{definition}[Effective operational acceleration]
 \label{def:effective-operational-acceleration}
-The effective operational acceleration is
-\[
-a_{\mathrm{eff}}(s)
-=
-v^2\kappa(s)
--
-g\sin\phi(s).
-\]
+In the reduced track-frame test used in \cref{chap:dynamic-balance},
+\(a_{\mathrm{eff}}=v^2\kappa-g\sin\phi\) is a residual indicator. It is not
+the acceleration of \(P_M\) unless a response model establishes that mapping.
 \end{definition}
-
-This quantity measures the operational imbalance experienced within the
-vehicle state.
-
-Within Schwerpunkt interpretation, effective acceleration is more
-relevant than curvature alone.
-
-Operational smoothness therefore depends on the trajectory of
-\[
-a_{\mathrm{eff}}(s),
-\]
-rather than merely on geometric continuity.
-
-% ============================================================
-\section{Roll Evolution}
-% ============================================================
 
 \begin{definition}[Roll evolution]
 \label{def:roll-evolution}
-Roll evolution denotes the runtime evolution of vehicle roll state
-relative to the railway frame.
+Roll evolution is a response-model output requiring inertia, suspension,
+loading, initial conditions and a frame convention; cant alone does not
+determine it.
 \end{definition}
-
-Roll evolution depends jointly on:
-\begin{itemize}
-\item cant evolution,
-\item suspension response,
-\item center-of-gravity height,
-\item and operational velocity.
-\end{itemize}
-
-Within operational railway dynamics, abrupt roll evolution may generate:
-\begin{itemize}
-\item discomfort,
-\item load transfer,
-\item wheel unloading,
-\item and dynamic instability.
-\end{itemize}
-
-% ============================================================
-\section{Comfort Interpretation}
-% ============================================================
 
 \begin{definition}[Operational comfort]
 \label{def:operational-comfort}
-Operational comfort denotes the dynamic smoothness experienced by the
-vehicle state during runtime evolution.
+Comfort is a purpose- and rule-qualified evaluation of applicable evidence.
+Neither a reference-point trajectory nor a reduced balance residual is by
+itself a comfort statement.
 \end{definition}
-
-Comfort depends on:
-\begin{itemize}
-\item effective acceleration,
-\item jerk,
-\item roll evolution,
-\item vibration behaviour,
-\item center-of-gravity trajectory,
-\item and realization smoothness.
-\end{itemize}
-
-Comfort is therefore not purely geometric.
-It emerges from runtime dynamic state evolution.
-
-% ============================================================
-\section{Trajectory Shaping}
-% ============================================================
 
 \begin{definition}[Operational trajectory shaping]
 \label{def:trajectory-shaping}
-Operational trajectory shaping denotes the design of runtime vehicle
-state evolution through curvature and cant control.
+Trajectory shaping is an optimization description only after variables,
+constraints, response model and objective have been declared. Its result is a
+candidate.
 \end{definition}
 
-Within this interpretation, railway alignment design becomes:
-\begin{itemize}
-\item shaping of effective acceleration trajectories,
-\item shaping of roll evolution,
-\item shaping of operational balance,
-\item and shaping of center-of-gravity motion.
-\end{itemize}
+\section{Schwerpunkt interpretation and realization}
 
-Thus, railway alignment design is elevated from:
-\begin{quote}
-curve construction
-\end{quote}
-to:
-\begin{quote}
-operational state design.
-\end{quote}
+A target Alignment, its Metric Realization, a constructed asset, an
+observed-state estimate and a predicted reference-point response remain
+separate. A model may consume a qualified realization or an observed-state
+estimate, but the output inherits its uncertainty and applicability. The
+phrase \emph{Schwerpunkt-Trassierung} is consequently historical or
+illustrative shorthand for model-qualified reference-point trajectory
+investigation; it names neither a Kernel concept nor a current AXTRAN
+capability.
 
-\input{figures/runtime/schwerpunkt_concept}
+\section{Claim status}
 
-% ============================================================
-\section{Schwerpunkt Interpretation}
-% ============================================================
+\begin{center}
+\small
+\begin{tabular}{p{0.28\linewidth}p{0.25\linewidth}p{0.38\linewidth}}
+\toprule
+Expression & Status & Defensible use\\
+\midrule
+physical centre of mass & physical/model parameter & particular vehicle and loading\\
+\(P_M\) trajectory & model prediction & identified \(M,F,Q_M,I_M\)\\
+Schwerpunkt State & non-canonical shorthand & only with the preceding qualification\\
+Schwerpunkt optimization & candidate & declared optimization problem only\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-Within AIM, Schwerpunkt-Trassierung is not interpreted as a particular
-curve formula or historical transition family.
-
-Instead, it denotes:
-\begin{quote}
-runtime-oriented shaping of operational vehicle-state trajectories.
-\end{quote}
-
-The central engineering question therefore becomes:
-\begin{quote}
-Which operational state trajectory is generated?
-\end{quote}
-rather than:
-\begin{quote}
-Which curve formula is used?
-\end{quote}
-
-The decisive object is not the visual curve, but the operational runtime
-trajectory generated from realized geometry.
-
-% ============================================================
-\section{Schwerpunkt and Realization}
-% ============================================================
-
-Operational trajectory shaping depends fundamentally on realized rather
-than purely analytical geometry.
-
-Thus,
-\[
-x_{\mathrm{CG,real}}(s)
-\]
-is operationally more relevant than
-\[
-x_{\mathrm{CG,target}}(s).
-\]
-
-Realization therefore directly influences:
-\begin{itemize}
-\item comfort,
-\item roll smoothness,
-\item operational balance,
-\item center-of-gravity motion,
-\item and dynamic admissibility.
-\end{itemize}
-
-% ============================================================
-\section{Schwerpunkt and Curvature Space}
-% ============================================================
-
-Operational state trajectories are generated fundamentally through
-curvature evolution.
-
-Thus, curvature space acts simultaneously as:
-\begin{itemize}
-\item geometric space,
-\item runtime space,
-\item and operational state-generation space.
-\end{itemize}
-
-Different transition families may therefore generate fundamentally
-different operational state trajectories even when their position-space
-geometry appears similar.
-
-% ============================================================
-\section{Towards Dynamic State Design}
-% ============================================================
-
-The Schwerpunkt interpretation transforms railway alignment theory into
-a theory of operational runtime-state evolution.
-
-This prepares the conceptual transition toward:
-\begin{itemize}
-\item realization-aware dynamics,
-\item Vienna reinterpretation,
-\item operational admissibility,
-\item and runtime-state optimization.
-\end{itemize}
-
-The relevant runtime operators are introduced in
-\cref{chap:runtime-operators}.
-
-% ============================================================
-\section{Canonical Interpretation}
-% ============================================================
-
-\begin{proposition}
-Within AIM, Schwerpunkt-Trassierung is interpreted as shaping of
-operational runtime vehicle states.
-\end{proposition}
-
-\begin{proposition}
-Schwerpunkt-Trassierung optimizes operational runtime trajectories, not
-geometric curves.
-\end{proposition}
-
-\begin{proposition}
-The operationally relevant object is not merely the railway curve, but
-the realized trajectory of vehicle states relative to the railway frame.
-\end{proposition}
-
-\begin{proposition}
-Operational smoothness depends primarily on runtime state evolution
-rather than on coordinate geometry alone.
-\end{proposition}
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
-
-\begin{summary}
-Schwerpunkt states extend railway alignment interpretation from geometry
-toward operational runtime-state design.
-
-Within AIM:
-\begin{itemize}
-\item center-of-gravity trajectories become operationally relevant,
-\item \(x_{\mathrm{CG}}(s)\) becomes an operational state trajectory,
-\item balance trajectories replace purely geometric interpretation,
-\item comfort emerges from runtime evolution,
-\item effective acceleration becomes a state variable,
-\item and railway alignment becomes operational trajectory shaping.
-\end{itemize}
-
-This provides the conceptual bridge toward:
-\begin{itemize}
-\item Vienna reinterpretation,
-\item realization-aware dynamics,
-\item operational admissibility,
-\item and runtime-state optimization.
-\end{itemize}
-\end{summary}
+The next chapter uses the simplest residual relation deliberately. Its
+limitations show why a model output cannot become an evaluation or decision
+merely by receiving a state-like name.

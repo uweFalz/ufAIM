@@ -1,0 +1,10 @@
+% figures/applications/icon_applications_downstream-DE.tex
+\begin{tikzpicture}[font=\small, node distance=9mm and 10mm]
+  \node[draw, rounded corners, fill=blue!8, minimum width=31mm, minimum height=10mm] (canonical) {kanonische Bedeutung};
+  \node[draw, rounded corners, fill=green!8, right=of canonical, minimum width=29mm, minimum height=10mm] (services) {Laufzeitdienste};
+  \node[draw, rounded corners, fill=orange!10, right=of services, minimum width=31mm, minimum height=10mm] (downstream) {nachgelagerte Systeme};
+  \draw[-{Stealth[length=2.4mm]}, thick] (canonical) -- (services);
+  \draw[-{Stealth[length=2.4mm]}, thick] (services) -- (downstream);
+  \node[below=5mm of services, text width=67mm, align=center, text=gray!70!black]
+    {Repräsentationen verwenden Bedeutung; sie übernehmen nicht deren Zuständigkeit.};
+\end{tikzpicture}

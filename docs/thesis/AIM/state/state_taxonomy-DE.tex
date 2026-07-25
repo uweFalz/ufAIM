@@ -1,0 +1,105 @@
+% Deutsche Parallelfassung zu state/state_taxonomy.tex
+
+\chapter{Zustandsbegriffe als qualifizierte Verwendungen}
+\label{chap:state-taxonomy}
+\index{Zustand!qualifizierte Verwendung}
+
+Die Thesis verwendet das Wort \emph{Zustand} für mehrere Ausgaben und
+Sichtweisen. Dieses Kapitel ist weder eine zweite Ontologie noch eine
+kanonische Hierarchie. Es ist eine Leselandkarte: Jeder folgende Begriff
+übernimmt die in den Teilen III--V eingeführten Qualifikationen zu Objekt,
+Zeit, Realisierung, Provenienz, Anwendbarkeit und Zweck.
+
+\begin{principle}[Zustandsschichtprinzip]
+\label{princ:state-layer-principle}
+Ein Zustandsbegriff ist nur zusammen mit Engineering-Frage, Gegenstand,
+Bedingungen und Gültigkeit aussagekräftig. Die gemeinsame Verwendung des
+Wortes ``Zustand'' macht verschiedene Ausgaben nicht austauschbar.
+\end{principle}
+
+\section{Bereits eingeführte Begriffe}
+
+\paragraph{Zustand.}
+\label{def:taxonomy-general-state}
+Hier wird keine neue allgemeine Definition eingeführt. In diesem Teil
+bezeichnet Zustand eine qualifizierte Antwort zu einem identifizierten
+Gegenstand unter angegebenen Bedingungen.
+
+\paragraph{pose2.}
+\label{def:taxonomy-pose2}
+Es gilt der ebene Zustand aus Definition~\ref{def:pose2}: Er wird aus dem geordneten
+Krümmungsgesetz des Alignments und einer Anfangspose unter einer
+Realisierungskonvention rekonstruiert. Er ist weder Alignment-Identität noch
+ein dauerhafter kanonischer Kernel.
+
+\paragraph{pose3.}
+\label{def:taxonomy-pose3}
+Es gilt die qualifizierte räumliche Eisenbahnpose aus
+Definition~\ref{def:runtime-pose3}. Sie ergänzt Profil, Überhöhung, metrische
+Realisierung und Frame-Interpretation, ohne zur vollständigen physischen
+Anlage zu werden.
+
+\paragraph{Laufzeitzustand.}
+\label{def:taxonomy-runtime-state}
+Diese Formulierung bezeichnet ein bei Bedarf ausgewertetes anwendbares
+Ergebnis. Sie identifiziert keinen universellen Zustandstyp und verbirgt den
+erzeugenden Operator nicht.
+
+\paragraph{Realisierter Zustand.}
+\label{def:taxonomy-realized-state}
+Der Begriff wird nur für einen durch eine angegebene Realisierung
+qualifizierten Zustand verwendet. Entwurfsrealisierung, gebauter physischer
+Zustand und Schätzung des beobachteten Zustands bleiben getrennt.
+
+\section{Durch Verwendung oder Modell eingeführte Begriffe}
+
+\paragraph{Betriebszustand.}
+\label{def:taxonomy-operational-state}
+Eine für eine betriebliche Frage verwendete Ausgabe; die Bezeichnung begründet
+für sich weder Komfort, Sicherheit, Zulässigkeit noch Autorität.
+
+\paragraph{Fahrzeugzustand.}
+\label{def:taxonomy-vehicle-state}
+Ausgabe eines identifizierten Fahrzeugmodells relativ zum qualifizierten
+Eisenbahnzustand und zur Durchfahrt, wie in Kapitel~\ref{chap:vehicle-space}
+erläutert.
+
+\paragraph{Schwerpunktzustand.}
+\label{def:taxonomy-cg-state}
+Modellausgabe für einen gewählten Massenbezugspunkt. Sie ist nicht der
+vollständige Fahrzeugzustand und benötigt das relevante Massen- und
+Fahrzeugmodell.
+
+\paragraph{Dynamischer Zustand.}
+\label{def:taxonomy-dynamic-state}
+Die in Definition~\ref{def:runtime-dynamic-state} eingeführte modellspezifische
+Ergebnisbahn \(x_M\); sie ist kein Synonym für pose3 oder physischen Zustand.
+
+\paragraph{Optimierungszustand.}
+\label{def:taxonomy-optimization-state}
+Eine bewusst für eine Optimierungsformulierung gewählte Variable oder Ausgabe.
+Ihre Auswahl ist eine explizite Engineering-Wahl, und ein Optimum ist keine
+Entscheidung.
+
+\paragraph{Relativer Zustand.}
+\label{def:taxonomy-relative-state}
+Ein relativ zu einem angegebenen Referenzzustand oder Frame ausgedrücktes
+Ergebnis. Referenz und Konvention bleiben Teil seiner Bedeutung.
+
+\section{Abhängigkeit statt Hierarchie}
+
+Es gibt keine universelle Kette
+\(\kappa\rightarrow\mathrm{pose2}\rightarrow\mathrm{pose3}\rightarrow
+x_{\mathrm{vehicle}}\rightarrow x_{\mathrm{opt}}\).
+pose2 und pose3 folgen den räumlichen Abhängigkeiten aus Teil V. Durchfahrt
+ergänzt Zeit. Ein gewähltes Antwortmodell kann Fahrzeugausgaben ergänzen. Eine
+Optimierungsformulierung kann danach eine qualifizierte Größe als Variable,
+Ziel oder Nebenbedingung wählen. Andere Verwendungen enden früher.
+Abhängigkeit ist verwendungsspezifisch und keine kanonische Zustandsleiter.
+
+\begin{summary}
+Diese Landkarte verhindert, dass gleichlautende Begriffe zu
+Identitätsbehauptungen werden. Sie führt kein neues Zustandsmodell ein: Jeder
+nachgelagerte Begriff bezeichnet eine qualifizierte Verwendung oder
+Modellausgabe aus der bereits eingeführten Eisenbahnzustandsdarstellung.
+\end{summary}

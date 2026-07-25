@@ -1,0 +1,76 @@
+\chapter*{Engineering}
+\phantomsection
+\addcontentsline{toc}{chapter}{Engineering}
+
+Dieser Teil legt dar, wie Optimierungsergebnisse unter ausdrücklichen
+Engineering-Regeln zu zulässigen Eisenbahnlösungen werden.
+
+\section*{Was wissen wir bereits?}
+Die vorangehenden Teile haben die mathematischen, geometrischen, operativen,
+realisierungsbewussten und optimierungsbezogenen Grundlagen von AIM geschaffen.
+Alignments können durch strukturierte operatorbasierte Verfahren dargestellt,
+bewertet, analysiert und verbessert werden. Optimierung erzeugt nach
+festgelegten Zielen verbesserte Lösungen. Sie allein bestimmt jedoch nicht, ob
+eine Lösung ingenieurtechnisch akzeptabel ist.
+
+\section*{Was fehlt noch?}
+Eisenbahningenieurwesen arbeitet in einem Rahmen aus Regeln, Empfehlungen,
+Normen, Vorschriften und operativen Bedingungen. Nicht jedes mathematisch
+machbare Alignment ist zulässig. Gleisgeometrie muss Engineering-Grenzen
+einhalten, operative Zustände sicher, Baulösungen praktisch und Alternativen
+mit anwendbaren Normen vereinbar bleiben.
+
+Es fehlt daher die Engineering-Bedingungsebene, die mathematische Modelle mit
+der Eisenbahnpraxis verbindet.
+
+\section*{Was folgt?}
+Dieser Teil führt Engineering-Bedingungen als ausdrückliche AIM-Bestandteile
+ein. Normen werden nicht erst nach dem Entwurf konsultiert, sondern als
+strukturierte Bedingungen interpretiert, die unmittelbar an Analyse und
+Optimierung teilnehmen können.
+
+Die Kapitel untersuchen Normen und Vorschriften, Zulässigkeitsbedingungen,
+eisenbahnspezifische Engineering-Regeln und formale Darstellungen operativer
+Anforderungen. Ziel ist, Eisenbahnnormen von passivem Referenzmaterial in
+aktive Bestandteile der Informationsmodellierung zu überführen.
+
+\section*{Bezug zur AIM-Roadmap}
+In der AIM-Roadmap entspricht dieser Teil dem Übergang von Optimierung zu
+ingenieurtechnischer Zulässigkeit. Die Skizze beantwortet: Welche
+Bedingungsebenen überführen mathematisch verbesserte in ingenieurtechnisch
+gültige Zustände?
+
+\begin{center}
+\begin{tikzpicture}[node distance=1.4cm,box/.style={draw,rounded corners,minimum width=5cm,minimum height=.9cm,align=center}]
+\node[box] (optimization) {Optimierung};
+\node[box,below=of optimization] (constraints) {Engineering-Bedingungen};
+\node[box,below=of constraints] (rules) {Eisenbahnregeln};
+\draw[->,thick] (optimization)--(constraints); \draw[->,thick] (constraints)--(rules);
+\end{tikzpicture}
+\end{center}
+
+Die Abfolge
+\[
+\text{Optimierung}\rightarrow\text{Engineering-Bedingungen}
+\rightarrow\text{Eisenbahnregeln}
+\]
+markiert den Übergang von verbesserten Lösungen zur Sicherung ihrer
+Zulässigkeit in realen Eisenbahnsystemen. Engineering verbindet mathematische
+Optimierung mit praktischer Umsetzung.
+
+\begin{principle}[Prinzip der Engineering-Bedingungen]
+\label{princ:engineering-constraint-principle}
+In AIM sollen Eisenbahnnormen, Vorschriften und operative Regeln als
+ausdrückliche Engineering-Bedingungen dargestellt werden, die unmittelbar an
+Modellierung, Analyse und Optimierung teilnehmen können.
+\end{principle}
+
+\begin{summary}
+Optimierung erklärt, wie Eisenbahnsysteme verbessert werden können.
+Engineering erklärt, welche Verbesserungen zulässig sind. Dieser Teil
+begründet die Bedingungsebene zwischen mathematischer Optimierung und
+praktischem Eisenbahnentwurf und -betrieb.
+\end{summary}
+
+Diese Ebene bereitet den Teil Anwendungen vor, in dem zulässige Begriffe in
+Interoperabilitäts- und Arbeitsablaufkontexten erprobt werden.

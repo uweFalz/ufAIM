@@ -1,166 +1,56 @@
-% dynamics/vehicle_space.tex
-
-\chapter{Vehicle Space and Relative Railway States}
+\chapter{Vehicle Space Relative to the Railway State}
 \label{chap:vehicle-space}
 
-\section{Introduction}
-
-This chapter establishes how vehicle-related operational quantities are
-interpreted relative to the railway runtime state. Within AIM, the
-canonical railway state remains \(\mathrm{pose3}\), while vehicle-space
-quantities are derived interpretation states used for operation,
-assessment, and control support.
+Vehicle Space does not introduce another railway state. It asks how
+vehicle-related quantities are expressed relative to the qualified pose3
+frame inherited from Part V and the traversal \(s(t)\) introduced here.
 
 \begin{principle}[Track--Vehicle Distinction]
-Within AIM, railway states and vehicle states are fundamentally distinct.
-Vehicle states are interpreted relative to railway states.
+The qualified railway state may exist without a vehicle model. A vehicle
+state requires that reference plus an identified vehicle model and operating
+inputs.
 \end{principle}
-
-\section{Track State versus Vehicle State}
 
 \begin{proposition}[State hierarchy]
 \label{prop:state-hierarchy}
+\[
+\mathrm{vehicleState}_M(t)
+=
+\mathcal V_M\bigl(
+\mathcal S_{\mathrm{rail}}(s(t)),Q_M
+\bigr),
+\]
+but the railway state is not derived from
+\(\mathrm{vehicleState}_M\). The model index and inputs remain part of the
+result's meaning.
+\end{proposition}
 
-Railway states exist independently of vehicles.
+\section{Relative Quantities}
 
-Vehicle states require railway states as reference states.
-
-Therefore:
+The moving track frame supplies longitudinal, lateral, and vertical reference
+directions. A vehicle model may then express body or subsystem displacement,
+yaw, roll, acceleration, wheel load, or envelope position relative to that
+frame. These are examples of possible model outputs, not universally present
+fields and not validated merely because they are expressed in Vehicle Space.
 
 \[
-\mathrm{vehicleState}
-=
-\mathcal V(\mathrm{pose3},\ldots)
+F_{\mathrm{vehicle}}(t)\neq
+F_{\mathrm{rail}}(s(t)).
 \]
+Their relative orientation is meaningful only after both frames, sign
+conventions, time relation, and relevant vehicle degrees of freedom are
+specified.
 
-but not vice versa.
+\section{Subsystem and Reference-Point Uses}
 
-\end{proposition}
+A wheelset, bogie, vehicle body, or selected centre-of-gravity point may
+require a different state vector and model. In particular, a
+centre-of-gravity trajectory is not the whole vehicle state. It may become an
+explicit optimization output only if the vehicle model, objective, constraints
+and applicability are declared.
 
-\begin{definition}[Track State]
-The track state is the runtime-evaluated railway state represented by
-pose3 and its associated railway reference frame.
-\end{definition}
-
-\begin{definition}[Vehicle State]
-A vehicle state is an operational state interpreted relative to a track
-state.
-\end{definition}
-
-\begin{equation}
-\mathrm{vehicleState}
-=
-\mathcal V
-(
-\mathrm{pose3},
-\dots
-)
-\end{equation}
-
-\section{Vehicle Space}
-
-\begin{definition}[Vehicle Space]
-Vehicle space denotes the collection of operational states that are
-interpreted relative to a railway state.
-\end{definition}
-
-Vehicle space therefore provides a structured application layer for
-clearance, comfort, and dynamic interpretation without redefining
-canonical railway identity.
-
-\section{Relative Vehicle States}
-
-\begin{definition}[Relative Vehicle State]
-A relative vehicle state is a vehicle state expressed in a local
-track-attached reference frame.
-\end{definition}
-
-Representative relative states include:
-
-\begin{itemize}
-\item lateral displacement
-\item yaw deviation
-\item roll deviation
-\item wheel unloading
-\end{itemize}
-
-\section{Track and Vehicle Frames}
-
-\begin{definition}[Track Frame]
-The track frame is a local railway-attached frame generated from
-\(\mathrm{pose3}\).
-\end{definition}
-
-\begin{definition}[Vehicle Frame]
-The vehicle frame is a local frame attached to a vehicle body or
-subsystem.
-\end{definition}
-
-\begin{equation}
-F_{\mathrm{vehicle}}
-\neq
-F_{\mathrm{track}}
-\end{equation}
-
-This frame distinction is the basis for expressing relative motion and
-evaluating operational criteria in track-attached coordinates.
-
-\section{Operational Abstractions}
-
-\subsection{Wheelset State}
-
-\begin{definition}
-The wheelset state denotes operational quantities associated with a
-wheelset relative to the local track frame.
-\end{definition}
-
-\subsection{Bogie State}
-
-\begin{definition}
-The bogie state denotes operational quantities associated with a bogie
-assembly relative to the local track frame.
-\end{definition}
-
-\subsection{Center-of-Gravity State}
-
-\begin{definition}
-The center-of-gravity state denotes the motion state of a selected
-vehicle mass reference point relative to the local track frame.
-\end{definition}
-
-
-The center-of-gravity state is not identical to the vehicle state.
-
-A vehicle may contain multiple relevant operational states,
-whereas the center-of-gravity state describes the motion of a selected
-mass reference point.
-
-
-
-Within AIM, future optimization approaches may operate on
-center-of-gravity trajectories rather than directly on geometric
-centerlines.
-
-
-\section{Canonical Interpretation}
-
-\begin{proposition}
-pose3 describes the railway rather than the vehicle.
-\end{proposition}
-
-\begin{proposition}
-Vehicle states are relative interpretation states.
-\end{proposition}
-
-\begin{proposition}
-Vehicle space is generated from railway states.
-\end{proposition}
-
-\section{Summary}
-
-Vehicle space introduces the operational entities that are interpreted
-relative to railway states.
-
-It defines the ontology of vehicle-related states but does not yet
-describe runtime evolution, dynamic balance, realization effects, or
-optimization.
+\begin{summary}
+Vehicle Space is a relative interpretation domain downstream of the qualified
+railway state and traversal. It does not redefine pose3, the track frame, or
+Alignment identity.
+\end{summary}

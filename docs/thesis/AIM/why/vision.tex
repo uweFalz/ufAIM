@@ -1,163 +1,148 @@
 % why/vision.tex
 
-\chapter{Vision}
+\chapter{The AIM Proposition}
 
-\input{why/sections/why_railway_is_different}
+\section{From Consequence to Engineering Environment}
 
-\section{From Problem to Paradigm}
+The preceding chapters did not reveal a shortage of representations. They
+revealed a shortage of continuity between them. The curvature edit can be drawn,
+located, exchanged, measured, checked, and discussed, yet each operation sees a
+different part of its meaning. AIM responds by organizing an engineering
+environment around the alignment and the dependencies through which an action
+acquires consequences.
 
-The previous chapters have identified a fundamental limitation of current
-alignment modelling approaches: the fragmentation of geometry, dynamics,
-and data.
+In that environment, the engineer can ask one connected sequence of questions:
+Which alignment is being changed? Which constructive law changes? Which states
+follow from it? Which context and observations are relevant? Which knowledge and
+constraints apply? What evidence supports acceptance or rejection? The system
+does not answer all of these questions in the same way. It preserves their
+relations so that each responsible tool or person can answer the appropriate
+one.
 
-This motivates not only incremental improvements, but a shift in
-perspective.
+\begin{proposition}[AIM proposition]
+Alignment-Based Information Modelling is an alignment-specific engineering
+environment in which durable object identity, constructive definition,
+realization, representation, observation, applicable knowledge, evaluation, and
+decision remain distinct but explicitly related at the moment of action.
+\end{proposition}
 
-\section{Core Idea}
+\section{From Curvature to Consequence}
 
-The central idea of this work is to treat railway alignment as a
-\emph{state trajectory} governed by curvature and its associated
-quantities.
+The running edit illustrates the required chain. Ordered curvature evolution
+belongs to the alignment's intrinsic construction. Under a metric
+interpretation it generates plan geometry; with further state and context it
+supports spatial, dynamic, and rule-based evaluation. Different
+representations expose different parts of that chain. None owns the entire
+chain.
 
-Instead of describing alignment as a sequence of geometric elements,
-we propose to describe it as a function-based object:
+\begin{figure}[H]
+\centering
+\input{figures/overview/curvature_consequence_chain}
+\caption{One curvature edit, several necessary interpretations. The curvature
+band generates plan geometry; engineering context relates that geometry to
+reality; purpose-specific representations expose selected information; and
+evaluations reveal consequences. The arrows express dependency, not ownership
+or automatic decision authority.}
+\label{fig:curvature-consequence-chain}
+\end{figure}
+
+Figure~\ref{fig:curvature-consequence-chain} is deliberately not a software
+pipeline. It is a reasoning figure. Reading from left to right follows the
+consequence of an edit; reading from right to left asks what provenance and
+construction are needed to justify a displayed result. A GIS view may supply
+context, a CAD view may expose exact geometry, a BIM view may carry exchange
+objects, and an observation may report the track. Their claims become
+comparable only when their relation to the same engineering object and to the
+relevant state is known.
+
+For planar arc-length parameter (s), the first constructive dependency is
+compact:
 \[
-(\kappa(s), \phi(s)).
+  \theta'(s)=\kappa(s),
+  \qquad
+  \gamma'(s)=\bigl(\cos\theta(s),\sin\theta(s)\bigr).
 \]
+The curvature law determines heading evolution, and heading determines the
+planar path. Railway transition-curve literature and design standards connect
+the same curvature evolution, together with cant and speed, to acceleration,
+comfort, and admissibility rather than to visible shape alone
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment,EN13803_2017,BrustadDalmo2020Review}.
 
-In this view:
-\begin{itemize}
-\item curvature defines geometry,
-\item cant defines dynamic balancing,
-\item and their interaction determines physical behaviour.
-\end{itemize}
+\section{Knowledge at the Moment of Action}
 
-\section{Alignment as a Controlled System}
+Making knowledge applicable does not mean copying every rule into every model.
+It means that a change can be related to knowledge whose scope, provenance,
+applicability, and authority are explicit. When the curvature band changes, the
+environment can identify affected states and invoke the relevant evaluations.
+It can show which observation supports a comparison and which constraint is
+violated. It can preserve why the result is applicable here.
 
-The alignment is interpreted as a controlled system evolving along
-arc length:
-\[
-\begin{aligned}
-\gamma'(s) &= (\cos\theta(s), \sin\theta(s)), \\
-\theta'(s) &= \kappa(s), \\
-\phi'(s)   &= \omega(s).
-\end{aligned}
-\]
+This is more demanding than attaching attributes to a curve. Attributes can
+store values; applicability requires relations among object, state, context,
+knowledge, and operation. Those relations are the reason formal foundations are
+needed.
 
-Here:
-\begin{itemize}
-\item \(\kappa(s)\) acts as a geometric control,
-\item \(\omega(s)\) governs cant evolution,
-\item and the resulting state determines both geometry and dynamics.
-\end{itemize}
+\section{Responsibilities That Do Not Collapse}
 
-This formulation establishes a direct link between alignment design and
-optimal control theory.
+AIM does not turn one model or program into a universal authority.
 
-\section{Transitions as Primary Objects}
+\begin{description}[style=nextline]
+\item[Representations]
+GIS, CAD, BIM, tables, plots, and exchange files select information for a
+purpose. They communicate and support action but do not create engineering
+identity or authority merely by storing a value.
 
-In classical models, transitions are treated as auxiliary elements
-connecting geometric primitives.
+\item[Models and operators]
+Constructive and state models make dependencies explicit. Operators derive,
+transform, compare, and evaluate states under stated assumptions.
 
-In the proposed framework, transitions become the primary modelling
-objects, as they define the evolution of curvature.
+\item[Computation]
+Numerical methods can reconstruct states, propagate consequences, test
+constraints, and produce candidate solutions. A solver result is evidence, not
+acceptance.
 
-This shifts the focus:
-\begin{itemize}
-\item from static geometry
-\item to controlled change of state.
-\end{itemize}
+\item[Engineers and accountable authorities]
+People establish applicability, interpret evidence, own engineering knowledge,
+and decide whether a proposed change is accepted within their authority.
+\end{description}
 
-\section{Integration of Reality}
+The reference application is a realization horizon for this separation. It can
+make a curvature band editable, derive a geometric view, attach context, and
+surface evaluation results in one interaction. Its value to the thesis is not
+as a product demonstration but as a test: can the concepts remain distinct when
+an engineer actually changes something?
 
-A central requirement of the proposed approach is compatibility with
-real-world data.
+\section{Why Alignment-Specific?}
 
-This includes:
-\begin{itemize}
-\item measurement data with uncertainty,
-\item heterogeneous coordinate systems (CRS),
-\item legacy alignment descriptions,
-\item and complex track configurations.
-\end{itemize}
+Generality is useful only after the governing dependency is visible. Railway
+location, direction, cant, vehicle-related quantities, stationing, adjacent
+objects, and many engineering rules are interpreted along or relative to an
+alignment. Curvature evolution and ordered longitudinal construction therefore
+provide a domain-specific organizing spine that a generic asset container or
+geospatial feature does not supply on its own.
 
-The model must therefore support:
-\begin{itemize}
-\item robust reconstruction from imperfect data,
-\item explicit handling of coordinate transformations,
-\item and consistent representation across scales.
-\end{itemize}
+Alignment-specific does not mean alignment-exclusive. Structures, signals,
+terrain, parcels, vehicles, and project organizations remain engineering
+objects with their own identities and knowledge. AIM states how they can be
+related to an alignment without absorbing them into it.
 
-\section{Unified Optimization Framework}
+\section{The Threshold to Foundations}
 
-Within this paradigm, alignment design is formulated as an optimization
-problem:
-\[
-\min J(\kappa,\phi)
-\]
-subject to:
-\begin{itemize}
-\item state dynamics,
-\item engineering constraints,
-\item and boundary conditions.
-\end{itemize}
+The proposition now creates a formal obligation. If identity must survive a
+change of representation, identity and representation require different
+formal roles. If an observation is evidence rather than reality, observation
+and physical state require different relations. If curvature generates
+geometry, the constructive law and its metric realization require an explicit
+operator. If evaluation informs but does not decide, candidate, result, and
+decision cannot share one undifferentiated status field.
 
-This allows:
-\begin{itemize}
-\item direct incorporation of comfort criteria,
-\item integration of dynamic effects,
-\item and systematic exploration of design alternatives.
-\end{itemize}
-
-\section{Towards Alignment-Based Information Modelling}
-
-The proposed framework forms the basis of
-\emph{Alignment-Based Information Modelling} (AIM).
-
-AIM is characterized by:
-\begin{itemize}
-\item curvature-driven representation,
-\item state-based modelling,
-\item integration of geometry and dynamics,
-\item and compatibility with data-driven workflows.
-\end{itemize}
-
-In this sense, alignment is not a static object, but a structured,
-computable entity.
-
-\section{Implications}
-
-Adopting this perspective has several implications:
-\begin{itemize}
-\item design becomes a problem of state control,
-\item transitions emerge from functional requirements,
-\item optimization replaces iterative manual adjustment,
-\item and modelling becomes directly compatible with computation.
-\end{itemize}
-
-\section{Long-Term Perspective}
-
-The proposed framework is intended as a foundation for future
-developments, including:
-\begin{itemize}
-\item integration with BIM systems,
-\item extension to network-level modelling,
-\item incorporation of vehicle dynamics,
-\item and real-time optimization.
-\end{itemize}
-
-It is not a finished solution, but a structured starting point.
-
-\section{Summary}
+The next part develops the minimum conceptual and mathematical language needed
+to preserve these distinctions and make selected dependencies computable. It
+does not restart the argument. It gives the argument a form that can be tested.
 
 \begin{summary}
-This work proposes a paradigm shift from element-based alignment
-modelling to a curvature-driven, state-based representation.
-
-By treating alignment as a controlled system and integrating geometry,
-dynamics, and data, it establishes a unified foundation for modelling
-and optimization.
-
-This perspective forms the basis of alignment-based information
-modelling (AIM).
+AIM connects an alignment edit to its consequences by preserving explicit
+relations among construction, state, context, evidence, knowledge, evaluation,
+and authority. The formal work that follows is necessary because these
+relations cannot be recovered reliably from geometry or data containers alone.
 \end{summary}

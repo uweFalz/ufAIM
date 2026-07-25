@@ -1,0 +1,14 @@
+% figures/runtime/icon_runtime_operator_chain-DE.tex
+\begin{tikzpicture}[
+  node distance=1.25cm,
+  box/.style={draw, rounded corners, minimum width=4.6cm, minimum height=0.9cm, align=center},
+  op/.style={draw, rounded corners, minimum width=4.6cm, minimum height=0.9cm, align=center},
+  derived/.style={draw, rounded corners, dashed, minimum width=4.6cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+\node[box] (info) {Ingenieurtechnische Information};
+\node[op, below=of info] (ops) {Operatoren};
+\node[derived, below=of ops] (runtime) {Abgeleiteter Laufzeitzustand};
+\draw[arrow] (info) -- (ops);
+\draw[arrow] (ops) -- (runtime);
+\end{tikzpicture}

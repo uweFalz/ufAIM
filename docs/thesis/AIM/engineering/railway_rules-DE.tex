@@ -1,0 +1,137 @@
+\chapter{Eisenbahnentwurfsregeln}
+\section*{Motivation}
+Trassierungsentwurf ist keine rein geometrische oder mathematische Aufgabe. Er
+wird von Engineering-Regeln, Sicherheitsanforderungen und operativen
+Bedingungen bestimmt, die aus nationalen Vorschriften, internationalen Normen
+wie UIC, betreiberspezifischen Richtlinien wie denen der Deutschen Bahn und
+empirischer Engineering-Praxis stammen. AIM integriert sie in Modellierung und
+Optimierung, statt sie nur als externe Prüfungen zu behandeln.
+
+\section{Regelkategorien}
+\subsection{Geometrische Regeln}
+Mindestradius, Alignment-Stetigkeit, Anforderungen an Übergangslängen und
+Krümmungsmonotonie in Übergängen.
+
+\subsection{Kinematische und dynamische Regeln}
+Grenzen von Querbeschleunigung und Ruck, Verträglichkeit von Krümmung und
+Überhöhung sowie geschwindigkeitsabhängige Anforderungen.
+
+\subsection{Operative Regeln}
+Zulässige Geschwindigkeiten, Sicherheitsreserven, Instandhaltungsaspekte und
+Interoperabilitätsbedingungen.
+
+\subsection{Topologische Regeln}
+Bedingungen an Weichen und Kreuzungen, Parallelgleisabstand und
+Netzkonnektivität.
+
+\section{Geometrische Bedingungen}
+\subsection{Mindestradius}
+\begin{definition}[Mindestradiusbedingung]
+\[
+|\kappa(s)|\leq\kappa_{\max},\qquad\kappa_{\max}=\frac1{R_{\min}}.
+\]
+\end{definition}
+\(R_{\min}\) hängt von Entwurfsgeschwindigkeit, Fahrzeugeigenschaften und
+regulatorischen Normen ab.
+
+\subsection{Stetigkeitsbedingungen}
+Alignments müssen mindestens \(C^0\)-Stetigkeit der Position,
+\(C^1\)-Stetigkeit der Richtung und typischerweise \(C^2\)-Stetigkeit der
+Krümmung erfüllen. Für Hochgeschwindigkeitsstrecken kann höhere Glattheit
+erforderlich sein.
+
+\subsection{Übergangslänge}
+\begin{definition}[Minimale Übergangslänge]
+\[
+L\geq L_{\min}(v,\kappa_1,\kappa_2).
+\]
+\end{definition}
+Typische Formulierungen beziehen die zulässige Änderungsrate der
+Querbeschleunigung und Grenzen der Überhöhungsentwicklung ein.
+
+\section{Dynamische Bedingungen}
+\subsection{Querbeschleunigung}
+\begin{definition}[Querbeschleunigung]
+\[a_y(s)=v^2\kappa(s).\]
+\end{definition}
+\begin{constraint}\[|a_y(s)|\leq a_{\max}.\]\end{constraint}
+
+\subsection{Überhöhung und Überhöhungsfehlbetrag}
+\begin{definition}[Überhöhungswinkel]
+\(\phi(s)\) bezeichnet den Überhöhungswinkel.
+\end{definition}
+\begin{definition}[Effektive Beschleunigung]
+\[
+a_{\text{eff}}(s)=v^2\kappa(s)-g\tan(\phi(s)).
+\]
+\end{definition}
+\begin{constraint}\[|a_{\text{eff}}(s)|\leq a_{\text{eff,max}}.\]\end{constraint}
+
+\subsection{Ruck}
+\begin{definition}[Ruck]
+\[j(s)=\frac{\dd}{\dd t}a_y(s).\]
+\end{definition}
+Mit \(s\) als Parameter gilt \(j(s)=v^3\kappa'(s)\).
+\begin{constraint}\[|j(s)|\leq j_{\max}.\]\end{constraint}
+
+\section{Kopplung von Krümmung und Überhöhung}
+\begin{constraint}
+\[
+|\kappa'(s)|\leq f_1(v,\phi),\qquad
+|\phi'(s)|\leq f_2(v,\kappa).
+\]
+\end{constraint}
+Krümmungsänderungen erfordern entsprechende Überhöhungsentwicklung;
+Überhöhungsänderungen müssen dynamische Grenzen einhalten.
+
+\section{Geschwindigkeitsabhängige Bedingungen}
+\begin{definition}[Geschwindigkeitsprofil]
+Ein Geschwindigkeitsprofil ist eine Funktion
+\[
+v:[0,L]\to\R_+.
+\]
+\end{definition}
+Alle maßgeblichen Bedingungen müssen punktweise bezüglich \(v(s)\) bewertet
+werden.
+
+\section{Darstellung von Bedingungen in AIM}
+\subsection{Abstrakte Form}
+\begin{definition}[Bedingungsfunktional]
+Eine Bedingung wird dargestellt als
+\[
+C_i[\kappa,\phi,v]\leq0.
+\]
+\end{definition}
+Damit kann sie kontinuierlich bewertet, numerisch diskretisiert und in ein
+einheitliches Bedingungssystem aufgenommen werden.
+
+\subsection{Diskrete Darstellung}
+Numerisch werden Bedingungen auf \(s_0,\dots,s_N\) bewertet.
+\begin{definition}[Diskrete Bedingung]
+\[
+C_i(\mathbf x)=\max_k C_i(s_k).
+\]
+\end{definition}
+
+\section{Integration in die Optimierung}
+Bedingungen gehen als \(g_i(\mathbf x)\leq0\) ein und können als harte
+Machbarkeitsbedingungen, Strafglieder oder Barrieremethoden behandelt werden.
+
+\section{Bezug zu Normen}
+Die dargestellten Bedingungen entsprechen Regeln aus UIC-Codes, nationalen
+Eisenbahnvorschriften und Betreiberrichtlinien. AIM stellt eine mathematische
+Darstellung bereit, die sie über verschiedene Datenquellen konsistent anwendet.
+
+\section{Diskussion}
+Traditionelle Abläufe wenden Regeln nach dem Entwurf als externe Prüfungen an.
+AIM integriert sie unmittelbar in Modellierung, Rekonstruktion und Optimierung
+und verschiebt damit Validierung zu bedingungsgetriebenem Entwurf.
+
+\section{Zusammenfassung}
+\begin{summary}
+Eisenbahnentwurfsregeln definieren die zulässige Menge von
+Alignment-Lösungen. AIM formalisiert sie als mathematische Bedingungen und
+integriert sie in die Optimierung. Alignment-Entwurf wird damit zum
+beschränkten Optimierungsproblem unter geometrischen und dynamischen
+Anforderungen.
+\end{summary}

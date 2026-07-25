@@ -293,6 +293,28 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		return variant;
 	}
 
+	async function samplePreset(presetId, { w1, w2, count = 81 } = {}) {
+		const entry = await ensurePresetLoaded(String(presetId ?? ""));
+		if (!entry?.desc) return null;
+		let preset = entry.base;
+		if (Number.isFinite(w1) && Number.isFinite(w2)) {
+			preset = kappaBuilder.buildPresetFromDescriptor(entry.desc, {
+				w1: clampNumber(w1, 0, 1),
+				w2: clampNumber(w2, 0, 1),
+			});
+		}
+		const n = Math.max(3, Math.min(401, Math.trunc(Number(count) || 81)));
+		return {
+			presetId: entry.id,
+			domain: { normalized: [0, 1], physical: null },
+			cutsCrv: preset?.cutsCrv ?? null,
+			samples: Array.from({ length: n }, (_, index) => {
+				const u = index / (n - 1);
+				return { u, k: preset.kappa(u), k1: preset.kappa1(u), k2: preset.kappa2(u) };
+			}),
+		};
+	}
+
 	function modeLabel(st) {
 		if (st?.te_plot === "k1") return "κ′";
 		if (st?.te_plot === "k2") return "κ″";
@@ -306,6 +328,29 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		if (st?.te_plot === "k1") return p.kappa1(u);
 		if (st?.te_plot === "k2") return p.kappa2(u);
 		return p.kappa(u);
+	}
+
+	function plotValueForMode(u, st, mode) {
+		const p = getPreset(st);
+		if (!p) return 0;
+		if (mode === "k1") return p.kappa1(u);
+		if (mode === "k2") return p.kappa2(u);
+		return p.kappa(u);
+	}
+
+	function normalizedReferenceValue(u, st, mode) {
+		if (mode === "k") return clampNumber(plotValueForMode(u, st, mode), 0, 1);
+		let lo = Infinity;
+		let hi = -Infinity;
+		for (let index = 0; index <= 120; index += 1) {
+			const value = plotValueForMode(index / 120, st, mode);
+			if (!Number.isFinite(value)) continue;
+			lo = Math.min(lo, value);
+			hi = Math.max(hi, value);
+		}
+		if (!Number.isFinite(lo) || !Number.isFinite(hi)) return 0.5;
+		if (Math.abs(hi - lo) < 1e-12) return 0.5;
+		return clampNumber((plotValueForMode(u, st, mode) - lo) / (hi - lo), 0, 1);
 	}
 
 	// ------------------------------------------------------------
@@ -381,13 +426,13 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		if (!legendEl) return;
 
 		if (st?.te_plot === "k") {
-			legendEl.textContent = `${modeLabel(st)}  |  y∈[0..1]`;
+			legendEl.textContent = `κ · κ′ · κ″  |  active: ${modeLabel(st)}  |  normalized comparison`;
 			return;
 		}
 
 		ensureRange(st);
 		legendEl.textContent =
-			`${modeLabel(st)}  |  auto-range: y∈[${autoRange.ymin.toFixed(3)} .. ${autoRange.ymax.toFixed(3)}] → [0..1]`;
+			`κ · κ′ · κ″  |  active: ${modeLabel(st)}  |  auto-range y∈[${autoRange.ymin.toFixed(3)} .. ${autoRange.ymax.toFixed(3)}] → [0..1]`;
 	}
 
 	// ------------------------------------------------------------
@@ -406,6 +451,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 
 	let hsplit1 = null;
 	let hsplit2 = null;
+	let referenceCurves = [];
 
 	function updateSplitVisibility(st) {
 		const p = getPreset(st);
@@ -482,6 +528,24 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			},
 			0, 1
 		], { strokeWidth: 2, dash: 2 });
+
+		referenceCurves = [
+			["k", "#20d5cc", 0],
+			["k1", "#ffb454", 2],
+			["k2", "#a99cff", 3],
+		].map(([mode, color, dash]) => board.create("curve", [
+			(u) => u,
+			(u) => normalizedReferenceValue(u, store.getState(), mode),
+			0,
+			1,
+		], {
+			strokeColor: color,
+			strokeWidth: () => (store.getState()?.te_plot ?? "k") === mode ? 3 : 1.35,
+			strokeOpacity: () => (store.getState()?.te_plot ?? "k") === mode ? 0.95 : 0.55,
+			dash,
+			highlight: false,
+			fixed: true,
+		}));
 
 		vline1 = board.create("line", [
 			() => {
@@ -616,6 +680,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 
 	return {
 		init,
+		samplePreset,
 
 		resize() {
 			if (!board) return;

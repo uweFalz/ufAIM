@@ -1,0 +1,79 @@
+% runtime/part_intro-DE.tex
+
+\chapter*{Laufzeit}
+\phantomsection
+\addcontentsline{toc}{chapter}{Laufzeit}
+
+Dieser Teil legt dar, wie genehmigte ingenieurtechnische Semantik operativ
+bewertet wird, ohne die begriffliche Verantwortung zu übertragen.
+
+Grundlagen und Zustand haben die persistente ingenieurtechnische Information
+und die kanonischen Zustandsebenen begründet. Die Laufzeit verwendet diese
+stabilisierten Begriffe und bewertet sie in operativen Kontexten. Sie
+definiert weder Alignment-Semantik, pose2/pose3, metrische Realisierung,
+physische Realisierung noch Darstellung neu.
+
+Der Laufzeitteil folgt daher der kanonischen Abfolge
+\[
+\begin{aligned}
+&\text{persistente ingenieurtechnische Information}
+\rightarrow
+\text{Laufzeitbewertung}
+\\
+&\rightarrow
+\text{Laufzeitdienste}
+\\
+&\rightarrow
+\text{abgeleiteter ingenieurtechnischer Zustand}
+\\
+&\rightarrow
+\text{Darstellung}
+\\
+&\rightarrow
+\substack{\text{anwendungsspezifische}\\\text{Interpretation}}.
+\end{aligned}
+\]
+
+In dieser Abfolge sind Laufzeitdienste operatorbasierte Bewertungssysteme.
+Sie rekonstruieren und interpretieren Größen aus bestehenden Zustands- und
+Realisierungsebenen, statt neue Engineering Objects einzuführen.
+
+\section*{Bezug zur AIM-Roadmap}
+
+In der AIM-Roadmap entspricht dieser Teil dem Übergang von
+Zustandsraummodellen zu operativer Bewertung und Interpretation.
+
+\begin{figure}[ht]
+\centering
+\input{figures/runtime/icon_runtime_operator_chain-DE}
+\caption{Laufzeitsymbol: operatorvermittelte Ableitung von ingenieurtechnischer Information zu Laufzeitzustand.}
+\label{fig:icon-runtime-operator-chain}
+\end{figure}
+
+\noindent
+Die Laufzeitkapitel spezialisieren diese Operatorkette nun für konkrete
+Dienste und Projektionen.
+
+Die Leitfrage der Abbildung lautet: Welche Operatorkette muss ausdrücklich
+erhalten bleiben, damit die Laufzeit reproduzierbar, interpretierbar und
+architektonisch konsistent bleibt?
+
+\begin{principle}[Prinzip der Laufzeitebene]
+\label{princ:runtime-layer}
+In AIM werden operative Größen durch Laufzeitoperatoren erzeugt, die auf
+bestehenden Zustands- und Realisierungsebenen wirken, und nicht redundant als
+unabhängige Wahrheit gespeichert.
+\end{principle}
+
+\begin{summary}
+Die Laufzeitebene ist die operatorbasierte Bewertungsebene von AIM.
+
+Sie verwendet persistente ingenieurtechnische Information, erzeugt
+abgeleiteten Laufzeitzustand und ermöglicht nachgelagerte Darstellung und
+anwendungsspezifische Interpretation, ohne vorgelagerte Semantik neu zu
+definieren.
+\end{summary}
+
+Diese Laufzeitarchitektur bereitet den Teil Realität vor, in dem der bewertete
+Zustand mit physischer Realisierung, Messung und Vergleich in Beziehung gesetzt
+wird.

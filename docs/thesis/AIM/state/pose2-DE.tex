@@ -1,0 +1,100 @@
+\chapter{Von der Krümmung zur ebenen Pose}
+
+Wir wählen eine Position \(s\) im Übergangsbogen des laufenden
+Gerade--Übergangsbogen--Kreisbogen-Alignments. Das intrinsische Gesetz
+beantwortet bereits, wie stark sich das Alignment dort dreht. Es beantwortet
+noch nicht, wo eine Zeichnung, ein lokales Modell oder ein Vermessungsvergleich
+diesen Punkt anordnet. Dazu benötigt dasselbe konstruktive Gesetz eine
+Anfangspose in einem gewählten ebenen Realisierungsframe.
+
+\section{Der Beitrag der Anfangspose}
+
+\((x_0,y_0,\theta_0)\) seien Position und Orientierung, die \(s=0\) in diesem
+Frame zugewiesen werden. Das Krümmungsgesetz bestimmt dann
+\begin{equation}
+\theta(s)=\theta_0+\int_0^s\kappa(\sigma)\,\dd\sigma,
+\label{eq:pose2-heading-integral}
+\end{equation}
+und die Tangente bestimmt die Position:
+\begin{align}
+x(s)&=x_0+\int_0^s\cos\theta(\sigma)\,\dd\sigma,
+\label{eq:pose2-x-integral}\\
+y(s)&=y_0+\int_0^s\sin\theta(\sigma)\,\dd\sigma.
+\label{eq:pose2-y-integral}
+\end{align}
+Diese Integralgleichungen sind die ausführbare Lesart des Differentialsystems
+in \cref{eq:pose2-system}. Sie empfangen das geordnete intrinsische Gesetz und
+eine Anfangsbedingung und erzeugen eine realisierte ebene Trajektorie. Sie
+setzen kohärente Orientierungs-, Vorzeichen-, Parameterrichtungs- und
+Metrikkonventionen voraus. Sie können weder ein autoritatives CRS noch den
+physischen Zustand oder eine Annahmeentscheidung bestimmen.
+
+\begin{definition}[pose2]
+\label{def:pose2}
+Die durch diese Rekonstruktion erzeugte ebene Pose an der intrinsischen
+Position \(s\) lautet
+\[
+\mathrm{pose2}(s)=\bigl(\gamma(s),\theta(s)\bigr),
+\qquad
+\gamma(s)=(x(s),y(s)).
+\]
+\end{definition}
+
+\(\kappa(s)\), seine konstruktive Reihenfolge und die intrinsische Richtung
+gehören zur Alignment-Geometrie. Die Zahlenwerte \(x(s)\), \(y(s)\) und
+\(\theta(s)\) gehören zur gewählten Realisierungs- und
+Darstellungskonvention. Ein starrer Wechsel des lokalen Frames ändert diese
+Werte, lässt aber das geordnete Krümmungsgesetz unverändert. Ob ein bestimmter
+Edit die dauerhafte Objektidentität verändert, bleibt eine Frage der
+Engineering Identity und folgt nicht aus Pose-Koordinaten.
+
+\begin{definition}[Anfänglicher pose2-Zustand]
+\label{def:initial-pose2}
+Ein anfänglicher pose2-Zustand ist das Realisierungsdatum
+\(\bigl(\gamma(0),\theta(0)\bigr)\), das zusammen mit dem intrinsischen
+Krümmungsgesetz und seiner Orientierungskonvention bereitgestellt wird.
+\end{definition}
+
+\section{Der laufende Übergangsbogen}
+
+Auf der anfänglichen Geraden gilt \(\kappa=0\), daher bleibt die Richtung
+konstant. Im Berlinish-Übergangsbogen liefert die bereits eingeführte
+Partition die abschnittsweise Krümmungsentwicklung; ihre Integration summiert
+die Richtungsänderung, ohne die konstruktive Reihenfolge zu verlieren. Im
+Kreisbogen erzeugt konstantes \(\kappa\) lineares Richtungswachstum. Keine
+abgetastete Polylinie ist zur Definition dieser Logik erforderlich. Eine
+CAD-Kurve oder Vermessungspolylinie kann die entstehende Trajektorie annähern
+oder beobachten, wird aber nicht zum erzeugenden Gesetz.
+
+\section{Dauerhafte Information und abgeleiteter Zustand}
+
+\begin{proposition}
+\label{prop:pose2-persistent-kernel}
+Die intrinsische Krümmungskonstruktion des Alignments ist dauerhafte
+Engineering-Information; pose2 ist ihr ebener Zustand unter angegebenen
+Anfangs- und Realisierungsbedingungen.
+\end{proposition}
+
+Damit entfällt die irreführende Vorstellung, pose2 selbst sei ein dauerhafter
+``Kernel'' oder besitze Alignment-Identität. Sparse
+\(\mathrm{cGeom}\)-Elemente lassen sich als kompaktes Rekonstruktionsprogramm
+lesen: Sie bewahren die geordneten Gesetze, aus denen pose2 ausgewertet werden
+kann. Eine abgetastete Trajektorie als Darstellung zu speichern kann nützlich
+sein; Redundanz überträgt jedoch keine konstruktive Autorität auf die
+Stützpunkte.
+
+\section{Warum pose2 noch kein Eisenbahnzustand ist}
+
+Am gewählten \(s\) beantwortet pose2 die ebene Lage und Vorwärtsorientierung
+in einer Realisierung. Höhe, Neigung, vertikale Krümmung, Überhöhung und die
+Orientierung der Schienenebene fehlen noch. Sie benötigen zusätzliche
+Längsgesetze und eine Konvention für das bewegte Frame. Das nächste Kapitel
+ergänzt genau diese Abhängigkeiten; es ersetzt weder das Alignment noch erhebt
+es pose2-Koordinaten zur Identität.
+
+\begin{summary}
+Dasselbe \(\kappa(s)\) ergibt mit unterschiedlichen Anfangsposen
+unterschiedliche Koordinatenrealisierungen derselben intrinsischen
+Konstruktion. pose2 ist daher ein notwendiger abgeleiteter Zustand, aber weder
+vollständige Anlage noch physische Wahrheit, Beobachtung oder Entscheidung.
+\end{summary}

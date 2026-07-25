@@ -1,0 +1,317 @@
+% Deutsche Parallelfassung zu geometry/curvature_classes.tex
+
+\chapter{Krümmungsklassen}
+\label{chap:curvature-classes}
+
+\section*{Motivation}
+
+Nicht alle Krümmungsgesetze besitzen dieselben geometrischen, dynamischen,
+numerischen oder physikalischen Eigenschaften. Innerhalb von AIM werden sie
+daher nach Stetigkeit, Differenzierbarkeit, Beschränktheit,
+Übergangsverhalten, Realisierungsverhalten, Laufzeitstabilität und
+betrieblicher Eignung klassifiziert.
+
+Diese Klassifikation bildet die Grundlage für Übergangsbewertung,
+Laufzeitrobustheit, Realisierungsanalyse, Zulässigkeitsprüfung und
+Optimierungsstrategien.
+
+\begin{principle}[Krümmungsklassifikationsprinzip]
+\label{princ:curvature-classification}
+Innerhalb von AIM werden Eisenbahn-Alignment-Elemente primär nach ihrem
+Krümmungsverhalten und nicht nach ihrer sichtbaren Form im Positionsraum
+klassifiziert.
+\end{principle}
+
+\section{Grundlegende Krümmungsklassen}
+
+\subsection{Konstante Krümmung}
+
+\begin{definition}[Konstante Krümmung]
+\label{def:constant-curvature-class}
+Ein Krümmungsgesetz ist konstant, wenn
+\[
+\kappa(s)=\kappa_0.
+\]
+\end{definition}
+
+Sonderfälle sind \(\kappa_0=0\) für eine Gerade und \(\kappa_0\neq 0\) für
+einen Kreisbogen. Konstante Krümmung bildet die Grundlage fester Elemente der
+klassischen Eisenbahngeometrie.
+
+\subsection{Stückweise konstante Krümmung}
+
+\begin{definition}[Stückweise konstante Krümmung]
+\label{def:piecewise-constant-curvature}
+Ein Krümmungsgesetz ist stückweise konstant, wenn auf Teilintervallen \(I_i\)
+\[
+\kappa(s)=\kappa_i
+\]
+gilt.
+\end{definition}
+
+Dies entspricht der klassischen Tangenten--Bogen-Geometrie der Eisenbahn.
+Stückweise konstante Krümmung ist geometrisch einfach, Krümmungssprünge sind
+jedoch dynamisch und betrieblich problematisch.
+
+\section{Stetigkeitsklassen}
+
+\subsection{\texorpdfstring{$C^0$}{C0}-Krümmung}
+\begin{definition}[\(C^0\)-stetige Krümmung]
+\label{def:c0-curvature}
+Ein Krümmungsgesetz gehört zu \(C^0\), wenn \(\kappa(s)\) stetig ist.
+\end{definition}
+Stetige Krümmung beseitigt Krümmungssprünge.
+
+\subsection{\texorpdfstring{$C^1$}{C1}-Krümmung}
+\begin{definition}[\(C^1\)-stetige Krümmung]
+\label{def:c1-curvature}
+Ein Krümmungsgesetz gehört zu \(C^1\), wenn \(\kappa'(s)\) existiert und
+stetig ist.
+\end{definition}
+Dies verbessert dynamische Glätte, Realisierungsverhalten und numerische
+Robustheit.
+
+\subsection{\texorpdfstring{$C^2$}{C2}-Krümmung}
+\begin{definition}[\(C^2\)-stetige Krümmung]
+\label{def:c2-curvature}
+Ein Krümmungsgesetz gehört zu \(C^2\), wenn \(\kappa''(s)\) existiert und
+stetig ist.
+\end{definition}
+
+Höhere Stetigkeit reduziert Anregungseffekte, numerische Instabilität und
+unerwünschtes hochfrequentes Verhalten. In AIM ist die Stetigkeitsklasse nicht
+nur eine mathematische Eigenschaft, sondern ein Indikator für dynamische
+Qualität, Laufzeitstabilität und Realisierungsrobustheit.
+
+\section{Beschränktheitsklassen}
+
+\subsection{Beschränkte Krümmung}
+\begin{definition}[Beschränkte Krümmung]
+\label{def:bounded-curvature}
+Ein Krümmungsgesetz ist beschränkt, wenn
+\[
+|\kappa(s)|\le\kappa_{\max}.
+\]
+\end{definition}
+Beschränkte Krümmung entspricht einem minimal zulässigen Radius.
+
+\subsection{Beschränkter Krümmungsgradient}
+\begin{definition}[Beschränkter Krümmungsgradient]
+\label{def:bounded-curvature-gradient}
+Ein Krümmungsgesetz besitzt einen beschränkten Krümmungsgradienten, wenn
+\[
+|\kappa'(s)|\le\eta_{\max}.
+\]
+\end{definition}
+Dies steht in engem Zusammenhang mit Ruckbegrenzungen in der
+Eisenbahndynamik.
+
+\subsection{Beschränkte höhere Ableitungen}
+\begin{definition}[Beschränkte höhere Ableitungen]
+\label{def:bounded-higher-curvature-derivatives}
+Beschränktheitsbedingungen höherer Ordnung umfassen
+\[
+|\kappa''(s)|<\infty,\qquad |\kappa'''(s)|<\infty.
+\]
+\end{definition}
+Sie werden für Realisierungsverhalten, Fahrzeugreaktion und den Vergleich von
+Übergangsfamilien relevant.
+
+\section{Übergangsklassen}
+
+\subsection{Monotone Übergänge}
+\begin{definition}[Monotoner Übergang]
+\label{def:monotone-transition}
+Ein Übergangskrümmungsgesetz ist monoton, wenn \(\kappa'(s)\) sein Vorzeichen
+nicht wechselt.
+\end{definition}
+Monotone Übergänge repräsentieren eine direkte Krümmungsänderung zwischen zwei
+Krümmungszuständen.
+
+\subsection{Symmetrische Übergänge}
+\begin{definition}[Symmetrischer Übergang]
+\label{def:symmetric-transition}
+Ein normiertes Übergangsgesetz ist symmetrisch, wenn sein Krümmungsverlauf
+bezüglich der Mitte des Übergangsintervalls symmetrisch ist.
+\end{definition}
+Für normierte Übergangskoordinaten \(w\in[0,1]\) lässt sich dies durch eine
+Symmetriebeziehung der Übergangsformfunktion ausdrücken. Symmetrie ist keine
+absolute Anforderung, aber eine nützliche Klassifikationseigenschaft.
+
+\subsection{Asymmetrische Übergänge}
+\begin{definition}[Asymmetrischer Übergang]
+\label{def:asymmetric-transition}
+Ein Übergangsgesetz ist asymmetrisch, wenn die Symmetrie bewusst verletzt
+wird.
+\end{definition}
+Asymmetrische Übergänge können in beschränkten Ingenieursituationen, bei
+realisierungsbewusster oder fahrzeugdynamischer Optimierung und in
+topologisch beschränkten Alignments auftreten.
+
+\section{Analytische Klassen}
+
+\subsection{Polynomiale Krümmungsgesetze}
+\begin{definition}[Polynomiale Krümmung]
+\label{def:polynomial-curvature}
+Ein polynomiales Krümmungsgesetz erfüllt
+\[
+\kappa(s)=\sum_{i=0}^n a_i s^i.
+\]
+\end{definition}
+Polynomiale Gesetze sind nützlich, weil Ableitungen und Integrale häufig
+systematisch behandelt werden können.
+
+\subsection{Trigonometrische Krümmungsgesetze}
+\begin{definition}[Trigonometrische Krümmung]
+\label{def:trigonometric-curvature}
+Ein trigonometrisches Krümmungsgesetz enthält sinus- oder kosinusbasierte
+Anteile.
+\end{definition}
+Solche Gesetze sind für glattes Übergangsverhalten und frequenzorientierte
+Interpretation nützlich.
+
+\subsection{Lookup-basierte Krümmungsgesetze}
+\begin{definition}[Lookup-basierte Krümmung]
+\label{def:lookup-based-curvature}
+Ein Lookup-basiertes Krümmungsgesetz wird durch abgetastete oder tabellierte
+Repräsentationen zusammen mit Interpolationsregeln definiert.
+\end{definition}
+So lassen sich Übergangsfamilien oder Realisierungseffekte praktisch
+einbinden, die nicht bequem durch eine einfache geschlossene Formel
+darstellbar sind.
+
+\subsection{Hybride Krümmungsgesetze}
+\begin{definition}[Hybrides Krümmungsgesetz]
+\label{def:hybrid-curvature-law}
+Ein hybrides Krümmungsgesetz kombiniert parametrische Struktur, abgetastete
+Korrekturen, Messdaten und lokale Verfeinerung.
+\end{definition}
+Hybride Gesetze sind besonders für gemessene und realisierte
+Eisenbahnzustände wichtig.
+
+\section{Dünn besetzte Krümmungsklassen}
+
+\begin{definition}[Dünn besetzte Krümmungsrepräsentation]
+\label{def:sparse-curvature-class}
+Ein dünn besetztes Krümmungsmodell repräsentiert Geometrie durch feste
+Krümmungselemente, Übergangselemente und kompakte Parametersätze.
+\end{definition}
+
+Dünn besetzte Klassen betonen Kompaktheit, Laufzeiteffizienz,
+Rekonstruktionsstabilität und semantische Klarheit. Innerhalb von AIM sind sie
+nicht bloß Speicherformate, sondern definieren ausführbare
+Krümmungsprogramme.
+
+\section{Betriebliche Klassen}
+
+\subsection{Dynamisch glatte Krümmung}
+\begin{definition}[Dynamisch glatte Krümmung]
+\label{def:dynamically-smooth-curvature}
+Ein Krümmungsgesetz ist dynamisch glatt, wenn der Ruck beschränkt bleibt, die
+Überhöhungsrate zulässig ist, die Krümmungsänderung kontrolliert wird und
+hochfrequente Anregung begrenzt ist.
+\end{definition}
+
+\subsection{Realisierungsstabile Krümmung}
+\begin{definition}[Realisierungsstabile Krümmung]
+\label{def:realization-stable-curvature}
+Ein Krümmungsgesetz ist realisierungsstabil, wenn die Realisierung seine
+dominante Struktur bewahrt, Bauprozesse keine Instabilität einführen und sein
+niederfrequentes Verhalten nach der physischen Realisierung identifizierbar
+bleibt.
+\end{definition}
+Realisierungsstabilität ist eine physikalische, nicht bloß eine analytische
+Glattheitseigenschaft.
+
+\subsection{Laufzeitstabile Krümmung}
+\begin{definition}[Laufzeitstabile Krümmung]
+\label{def:runtime-stable-curvature}
+Ein Krümmungsgesetz ist laufzeitstabil, wenn Projektion numerisch stabil,
+Frame-Bewertung stetig und Pose-Rekonstruktion robust bleibt und lokale
+inverse Probleme gut konditioniert bleiben.
+\end{definition}
+
+\section{Frequenzklassen}
+
+\subsection{Niederfrequente Krümmung}
+\begin{definition}[Niederfrequente Krümmung]
+\label{def:low-frequency-curvature}
+Niederfrequente Krümmungsanteile bestimmen das großräumige geometrische
+Verhalten.
+\end{definition}
+Diese Anteile werden üblicherweise durch Bau- und Instandhaltungsprozesse
+bewahrt.
+
+\subsection{Hochfrequente Krümmung}
+\begin{definition}[Hochfrequente Krümmung]
+\label{def:high-frequency-curvature}
+Hochfrequente Krümmungsanteile beeinflussen
+Realisierungsempfindlichkeit, dynamische Rauheit, Messempfindlichkeit und
+numerische Instabilität.
+\end{definition}
+
+\begin{proposition}[Spektrales Realisierungsprinzip]
+\label{prop:curvature-classes-spectral-realization}
+Hochfrequente Krümmungsanteile werden durch Realisierung abgeschwächt.
+\end{proposition}
+Diese frequenzorientierte Klassifikation verbindet Krümmungsklassen mit der
+Interpretation der Realisierung als Filter.
+
+\section{Zulässigkeit}
+
+\begin{definition}[Zulässiges Krümmungsgesetz]
+\label{def:admissible-curvature-law}
+Ein Krümmungsgesetz ist zulässig, wenn es geometrische,
+realisierungsbezogene, betriebliche und dynamische Nebenbedingungen sowie
+Bedingungen der numerischen Stabilität erfüllt.
+\end{definition}
+
+Zulässigkeit hängt von Fahrzeugdynamik, Realisierungsprozessen, Normen,
+Topologie, Laufzeitanforderungen und beabsichtigter betrieblicher Nutzung ab.
+Sie ist damit kontextabhängig. Ein Krümmungsgesetz kann analytisch gültig,
+aber betrieblich ungeeignet oder unter Realisierung physikalisch instabil sein.
+
+\section{Klassifikation und Qualität}
+
+Klassifikation impliziert nicht automatisch Qualität. Ein sehr glattes
+Krümmungsgesetz kann ungeeignet sein, wenn es schwer realisierbar, dynamisch
+ungünstig, numerisch instabil, mit der Topologie unvereinbar oder für den
+beabsichtigten Betrieb ungeeignet ist.
+
+Innerhalb von AIM wird Krümmungsqualität durch das Zusammenwirken von Klasse,
+Kontext, Realisierung und Laufzeitverhalten bewertet.
+
+\section{Kanonische Interpretation}
+
+\begin{proposition}
+Verschiedene Krümmungsklassen entsprechen grundlegend verschiedenen
+geometrischen, betrieblichen, laufzeitbezogenen und
+Realisierungsverhaltensweisen.
+\end{proposition}
+\begin{proposition}
+Innerhalb von AIM wird die Qualität eines Eisenbahn-Alignments primär im
+Krümmungsraum und nicht im Positionsraum charakterisiert.
+\end{proposition}
+\begin{proposition}
+Übergangsfamilien werden als strukturierte Teilmengen von Krümmungsklassen
+interpretiert.
+\end{proposition}
+\begin{proposition}
+Zulässigkeit ist keine rein geometrische Eigenschaft, sondern eine kombinierte
+geometrische, dynamische, laufzeitbezogene und Realisierungseigenschaft.
+\end{proposition}
+
+\section{Verbindung zu AIM}
+
+\begin{summary}
+Krümmungsklassen bilden das strukturelle Klassifikations-Framework der
+AIM-Geometrie. Sie verbinden Stetigkeit, Differenzierbarkeit, Beschränktheit,
+Übergangs- und Realisierungsverhalten, Laufzeitstabilität, dynamische Glätte
+und Optimierungseignung.
+
+Innerhalb von AIM werden Übergangsbögen daher nicht nur als geometrische
+Entitäten, sondern als Mitglieder bestimmter Krümmungsklassen mit
+unterschiedlichen betrieblichen Eigenschaften interpretiert. Dies schafft die
+Brücke von intrinsischer Geometrie zu Klassifikation, Realisierungsanalyse,
+Laufzeitbewertung und Optimierung.
+\end{summary}

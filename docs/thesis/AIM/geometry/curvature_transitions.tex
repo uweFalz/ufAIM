@@ -8,20 +8,12 @@
 \section*{Motivation}
 % ============================================================
 
-Railway alignments rarely consist of isolated constant-curvature
-segments.
-
-Instead, operational geometry requires smooth transitions between
-different curvature states.
-
-Within AIM, transition curves are interpreted fundamentally as
-curvature-transition processes.
-
-This shifts the interpretation:
-\begin{itemize}
-\item from position interpolation,
-\item to controlled curvature evolution.
-\end{itemize}
+The running alignment has reached the boundary $s_1$ between its straight
+and transition domains. Its curvature must leave zero and reach the constant
+arc curvature at $s_2$. A coordinate interpolant could connect the same end
+positions while concealing how curvature and its derivatives behave at those
+boundaries. The required object is therefore a controlled curvature-transition
+process belonging to this identified alignment state.
 
 \begin{principle}[Curvature-transition principle]
 \label{princ:curvature-transition}
@@ -233,6 +225,122 @@ This enables:
 
 The half-wave interpretation provides a common language for comparing
 classical transition families and newly constructed transition laws.
+
+% ============================================================
+\section{Berlinish Composition}
+\label{sec:berlinish-composition}
+% ============================================================
+
+\emph{Berlinish} is the name used in the originating research for the
+generalized transition composition
+\[
+T(s)
+=
+H_{\mathrm{in}}(s)
++
+C(s)
++
+H_{\mathrm{out}}(s).
+\]
+Here \(H_{\mathrm{in}}\) is an entering half-wave, \(C\) is an optional
+clothoid section, and \(H_{\mathrm{out}}\) is an exiting half-wave. The plus
+sign denotes ordered piecewise composition on consecutive subdomains, not
+addition of three overlapping curvature values. Each component may have zero
+length.
+
+For a normalized transition coordinate $w\in[0,1]$, let the evidenced
+partition be
+\[
+\lambda=(\lambda_1,\lambda_c,\lambda_2),\qquad
+\lambda_i\geq0,\qquad \lambda_1+\lambda_c+\lambda_2=1.
+\]
+The current executable interpretation places the components on
+\[
+H_{\mathrm{in}}:[0,w_1],\qquad
+C:[w_1,w_2],\qquad
+H_{\mathrm{out}}:[w_2,1],
+\]
+with
+\begin{equation}
+w_1=\lambda_1,qquad
+w_2=\lambda_1+\lambda_c,qquad
+\lambda=(w_1,w_2-w_1,1-w_2).
+\label{eq:berlinish-partition-cuts}
+\end{equation}
+Thus $w_1,w_2$ are cumulative normalized component-length fractions and
+domain cuts in the present implementation. For a physical transition length
+$L>0$, the corresponding component lengths are $L\lambda_i$. Research
+evidence supports this current meaning, but only moderately supports the
+claim that the historical Berlinish source used the same symbols. They are
+editable partition variables today; the current bounded AXTRAN optimization
+does not establish a general solve for them.
+
+This single grammar includes important limiting cases:
+\begin{itemize}
+\item \(L_{H_{\mathrm{in}}}=L_{H_{\mathrm{out}}}=0\) gives a pure clothoid;
+\item \(L_C=0\) gives a purely curved or smoothed half-wave composition;
+\item one zero-length half-wave gives a one-sided composition;
+\item unequal component lengths or different half-wave functions give
+asymmetric transitions;
+\item nonzero lengths for all three components give compound transitions.
+\end{itemize}
+
+Zero normalized component length removes a component from this composition.
+It is not the same case as a physical transition element with total length
+(L=0), for which no longitudinal domain remains. Keeping these degeneracies
+separate prevents a valid pure-clothoid partition from being confused with a
+zero-length physical element.
+
+Polynomial, trigonometric, and mixed function families can supply the
+half-waves. Their behaviour is compared not only through \(\kappa(s)\), but
+also through
+\[
+\kappa'(s),\qquad \kappa''(s),
+\]
+because endpoint conditions and higher-order behaviour distinguish forms that
+may generate visually similar centerlines. In this way, established national,
+historical, or proprietary transition forms can be interpreted within one
+comparison framework without losing their names or provenance.
+
+Four levels must remain distinct. \emph{Function identity} states which
+polynomial, trigonometric, or mixed law is used. \emph{Parameterization}
+states how that law is scaled and partitioned. \emph{Boundary conditions}
+state the curvatures, derivatives, pose conditions, and available lengths a
+particular connection must satisfy. The \emph{instantiated transition
+geometry} is the calculated result after those choices have been solved and
+integrated. A family is therefore not an alignment element, and a plotted
+curve is not the family definition.
+
+\begin{figure}[ht]
+\centering
+\resizebox{\textwidth}{!}{\input{figures/geometry/berlinish_composition}}
+\caption{Berlinish comparison: pure clothoid, half-wave--clothoid--half-wave composition, zero-length component cases, and optional separation of curvature and cant development.}
+\label{fig:berlinish-composition}
+\end{figure}
+
+The lower comparison in \cref{fig:berlinish-composition} makes a further
+freedom explicit. Curvature \(\kappa(s)\) describes plan-direction change per
+unit intrinsic length; cant \(u(s)\) describes the transverse rail-level or
+roll state under its stated convention. Speed makes their combined development
+operationally consequential, but they are not the same engineering quantity.
+They may use distinct function instances, domains, physical scaling,
+partitions, boundary conditions, units, and provenance. Optional coupling is a
+constraint between the laws, not identity of them.
+
+The current transition registry and evaluator implement curvature only; they
+do not establish a cant-law record or a validated joint curvature--cant
+optimizer. Heritage Vienna examples show why cant derivatives may enter a
+coupled dynamic relation, but surviving evidence does not select one
+authoritative modern coupling equation or objective. Joint optimization and a
+single canonical coupling therefore remain Research, not established AIM
+capability.
+
+\begin{remark}[Authority of the Berlinish term]
+Berlinish is used in this thesis for an originating research contribution and
+mathematical framework. Its component interpretation is implemented in the
+current transition registry, but the name itself is not asserted to be an
+approved Knowledge Kernel concept.
+\end{remark}
 
 % ============================================================
 \section{Curvature Anchors}

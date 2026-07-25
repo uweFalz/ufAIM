@@ -27,11 +27,67 @@ initLanguage();
 const runtime = new WindowRuntime({ prefs: systemPrefs });
 window.runtime = runtime;
 
+export const APP_E2E_DAG = Object.freeze({
+	parserValidation: [],
+	alignmentEditBoundary: [],
+	alignmentNativeUi: ["runtime"],
+	geoRuntimeAcceptance: ["alignmentNativeUi"],
+	curvatureBand: ["geoRuntimeAcceptance"],
+	spotWorkspace: ["curvatureBand"],
+	alignmentCreation: ["spotWorkspace"],
+	transEdDepth: ["alignmentCreation"],
+	gndMdbDrop: ["transEdDepth"],
+	gndImportWorkbench: ["gndMdbDrop"],
+	uiRecovery: ["gndImportWorkbench"],
+	importLoadStability: ["uiRecovery"],
+	appLifecycle: [
+		"parserValidation",
+		"alignmentNativeUi",
+		"geoRuntimeAcceptance",
+		"curvatureBand",
+		"spotWorkspace",
+		"alignmentCreation",
+		"transEdDepth",
+		"gndMdbDrop",
+		"gndImportWorkbench",
+		"uiRecovery",
+		"importLoadStability",
+	],
+});
+window.__appE2EDag = APP_E2E_DAG;
+
 async function runRuntimeHarness(owner, load, promiseName) {
-	const resultNames = { alignmentNativeUi: "__alignmentNativeEditorUiE2E", geoRuntimeAcceptance: "__geoRuntimeAcceptanceE2E", curvatureBand: "__curvatureBandE2E", spotWorkspace: "__spotWorkspaceE2E" };
+	const resultNames = {
+		alignmentNativeUi: "__alignmentNativeEditorUiE2E",
+		geoRuntimeAcceptance: "__geoRuntimeAcceptanceE2E",
+		curvatureBand: "__curvatureBandE2E",
+		spotWorkspace: "__spotWorkspaceE2E",
+		alignmentCreation: "__alignmentCreationE2E",
+		transEdDepth: "__transEdDepthE2E",
+		gndMdbDrop: "__gndMdbDropE2E",
+		gndImportWorkbench: "__gndImportWorkbenchE2E",
+		uiRecovery: "__uiRecoveryE2E",
+		importLoadStability: "__importLoadStabilityE2E",
+	};
+	const readinessName = `__${owner}E2EReadyPromise`;
+	window[readinessName] = Promise.resolve(Object.freeze({
+		ready: true,
+		owner,
+		dependencies: APP_E2E_DAG[owner] ?? [],
+		runtimeSurfaces: {
+			messaging: Boolean(window.messaging),
+			store: Boolean(window.__ufAIM_store),
+			viewer: Boolean(window.__ufAIM_viewController),
+		},
+		readyAt: new Date().toISOString(),
+	}));
 	try {
 		await load();
-		const completed = await completeHarness(owner, window[promiseName], window[resultNames[owner]]);
+		const executionPromise = window[promiseName];
+		if (!executionPromise || typeof executionPromise.then !== "function") {
+			throw new Error(`${owner} execution promise missing after module load: ${promiseName}`);
+		}
+		const completed = await completeHarness(owner, executionPromise, window[resultNames[owner]]);
 		window[resultNames[owner]] = completed;
 	} catch (error) {
 		console.error(`${owner} harness failed`, error);
@@ -46,6 +102,12 @@ try {
 	await runRuntimeHarness("geoRuntimeAcceptance", () => import("@app/_e2eGeoRuntimeAcceptanceTest.js"), "__geoRuntimeAcceptanceE2EPromise");
 	await runRuntimeHarness("curvatureBand", () => import("@app/_e2eCurvatureBandTest.js"), "__curvatureBandE2EPromise");
 	await runRuntimeHarness("spotWorkspace", () => import("@app/_e2eSpotWorkspaceTest.js"), "__spotWorkspaceE2EPromise");
+	await runRuntimeHarness("alignmentCreation", () => import("@app/_e2eAlignmentCreationTest.js"), "__alignmentCreationE2EPromise");
+	await runRuntimeHarness("transEdDepth", () => import("@app/_e2eTransEdDepthTest.js"), "__transEdDepthE2EPromise");
+	await runRuntimeHarness("gndMdbDrop", () => import("@app/_e2eGndMdbDropTest.js"), "__gndMdbDropE2EPromise");
+	await runRuntimeHarness("gndImportWorkbench", () => import("@app/_e2eGndImportWorkbenchTest.js"), "__gndImportWorkbenchE2EPromise");
+	await runRuntimeHarness("uiRecovery", () => import("@app/_e2eUiRecoveryTest.js"), "__uiRecoveryE2EPromise");
+	await runRuntimeHarness("importLoadStability", () => import("@app/_e2eImportLoadStabilityTest.js"), "__importLoadStabilityE2EPromise");
 } catch (err) {
 	console.error(err);
 	const logElement = document.getElementById("log");

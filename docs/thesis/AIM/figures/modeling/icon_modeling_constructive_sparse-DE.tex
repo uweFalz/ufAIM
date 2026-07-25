@@ -1,0 +1,13 @@
+% figures/modeling/icon_modeling_constructive_sparse-DE.tex
+\begin{tikzpicture}[
+  node distance=1.3cm,
+  box/.style={draw, rounded corners, minimum width=4.3cm, minimum height=0.9cm, align=center},
+  arrow/.style={->, thick}
+]
+\node[box] (elements) {Konstruktive Elemente};
+\node[box, below=of elements] (sparse) {Dünn besetztes Alignment};
+\node[box, below=of sparse] (model) {Engineering-Modell};
+\draw[arrow] (elements) -- (sparse);
+\draw[arrow] (sparse) -- (model);
+\draw[thin] ($(sparse.center)+(-2.55,0.0)$) rectangle ($(sparse.center)+(2.55,2.6)$);
+\end{tikzpicture}

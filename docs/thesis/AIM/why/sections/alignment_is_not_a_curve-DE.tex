@@ -1,0 +1,124 @@
+% Deutsche Parallelfassung zu alignment_is_not_a_curve.tex
+
+\section{Alignment}
+
+\subsection{Motivation}
+
+In der klassischen Geometrie wird ein Eisenbahngleis häufig als Kurve
+\(\gamma(s)\) im Raum repräsentiert.
+
+Diese Repräsentation reicht für Ingenieurzwecke nicht aus, weil sie die
+intrinsischen Größen nicht erfasst, die Konstruktion, Dynamik und Realisierung
+bestimmen.
+
+Insbesondere sind Krümmung und Überhöhung keine abgeleiteten Eigenschaften,
+sondern primäre Entwurfsvariablen.
+
+\subsection{Definition}
+
+\begin{definition}[Alignment]
+Ein \textbf{Alignment} ist ein über der Bogenlänge
+\(s \in [0,L]\) definiertes strukturiertes Objekt mit folgenden Komponenten:
+
+\begin{itemize}
+\item einer Krümmungsfunktion
+\[
+\kappa : [0,L] \rightarrow \mathbb{R},
+\]
+
+\item einer Überhöhungsfunktion
+\[
+\phi : [0,L] \rightarrow \mathbb{R},
+\]
+
+\item einer Anfangspose
+\[
+(\gamma_0, \theta_0),
+\]
+\end{itemize}
+
+zusammen mit den induzierten Zustandsvariablen
+\[
+\theta(s) = \theta_0 + \int_0^s \kappa(\sigma)\,\dd\sigma,
+\]
+\[
+\gamma(s) = \gamma_0 + \int_0^s
+(\cos\theta(\sigma), \sin\theta(\sigma))\,\dd\sigma.
+\]
+\end{definition}
+
+\subsection{Interpretation}
+
+Ein Alignment wird nicht durch seine Position \(\gamma(s)\), sondern durch
+seine Krümmung \(\kappa(s)\) definiert.
+
+Die Kurve \(\gamma(s)\) ist eine durch Integration gewonnene abgeleitete
+Größe.
+
+Krümmung ist somit die primäre Entwurfsvariable, während Position eine Folge
+ist.
+
+\subsection{Zustandsstruktur}
+
+\begin{definition}[Alignment-Zustand]
+Der \textbf{Zustand} eines Alignments an der Position \(s\) ist gegeben durch
+\[
+(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+\]
+\end{definition}
+
+Dieser Zustand koppelt Geometrie, Orientierung und Dynamik in einer
+einheitlichen Repräsentation.
+
+\subsection{Strukturelle Natur}
+
+\begin{proposition}
+Ein Alignment ist ein niedrigdimensionales strukturiertes Objekt, auch wenn
+seine Realisierung hochdimensionale Daten umfassen kann.
+\end{proposition}
+
+Diese Struktur ermöglicht:
+\begin{itemize}
+\item effiziente Speicherung,
+\item robuste Optimierung,
+\item sinnvolle Interpretation.
+\end{itemize}
+
+\subsection{Beziehung zur Realisierung}
+
+Das Alignment repräsentiert die beabsichtigte Geometrie.
+
+Das physisch gebaute Gleis ist durch den Realisierungsoperator gegeben:
+\[
+\gamma_{\mathrm{real}} = \mathcal{R}(\kappa, \phi).
+\]
+
+Das Alignment existiert damit im Entwurfsraum, während das Gleis im
+physischen Raum existiert.
+
+\subsection{Beziehung zu Daten}
+
+Messdaten liefern üblicherweise abgetastete Positionen oder Polylinien.
+
+Ein Alignment muss aus solchen Daten über inverse Probleme rekonstruiert
+werden.
+
+\subsection{Zentrale Erkenntnis}
+
+\begin{proposition}
+Ein Alignment ist keine Kurve, sondern ein krümmungsgetriebenes generatives
+Modell einer Kurve.
+\end{proposition}
+
+\subsection{Zusammenfassung}
+
+\begin{summary}
+Das Alignment ist das zentrale Objekt der Eisenbahngeometrie.
+
+Es wird durch Krümmung und Überhöhung definiert, aus denen alle geometrischen
+und dynamischen Größen abgeleitet werden.
+
+Diese Sicht verschiebt den Schwerpunkt von der Beschreibung von Kurven zur
+Definition generativer Strukturen und bildet die Grundlage des
+Alignment-Based Information Modelling.
+\end{summary}

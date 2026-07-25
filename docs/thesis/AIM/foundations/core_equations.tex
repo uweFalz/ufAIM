@@ -3,11 +3,11 @@
 \chapter{Core Equations}
 \label{chap:core-equations}
 
-This chapter collects the equations that are used repeatedly throughout
-this thesis. It serves as a compact mathematical reference. The
-engineering interpretation, derivation, and application of each relation
-are developed in the chapters to which the corresponding concept
-belongs.
+The equations below are executable knowledge: each relation names the
+inputs it receives, the output it produces, the assumptions under which
+that output is meaningful, and the questions it cannot decide. The
+sequence follows the recurring CAD-curve and survey-polyline case from
+construction, through realization and representation, to comparison.
 
 % ============================================================
 \section{Intrinsic State and Controls}
@@ -36,6 +36,12 @@ u(s)
 The distinction between state and control follows the state model of
 \cref{chap:state-model}: the state records the condition of the
 alignment, while the controls govern its evolution along arc-length.
+
+\paragraph{Execution contract.}
+The equations receive a longitudinal domain, an initial state, and
+admissible controls. They produce a state trajectory. They assume the
+chosen state model and regularity conditions apply. They do not identify
+the engineering object or determine the authority of any data source.
 
 % ============================================================
 \section{Planar Intrinsic Geometry}
@@ -80,6 +86,15 @@ The canonical planar reconstruction system is therefore
 Given an initial position and heading, the curvature function determines
 the planar alignment trajectory.
 
+\paragraph{Execution contract.}
+The reconstruction receives \(\kappa(s)\), \(\gamma(s_0)\), and
+\(\theta(s_0)\); it produces \(\theta(s)\), \(\mathbf t(s)\), and
+\(\gamma(s)\). It assumes arc-length parameterization and sufficient
+regularity. A CAD curve sampled from \(\gamma\) is therefore a derived
+representation. The reconstruction cannot decide whether a surveyed
+polyline observes the same alignment or whether any discrepancy is
+acceptable.
+
 % ============================================================
 \section{Cant Evolution and Foundational pose3 System}
 % ============================================================
@@ -116,6 +131,12 @@ This equation expresses the state-system form only. Profile, metric
 realization, spatial frame construction, and physical interpretation are
 introduced separately.
 
+\paragraph{Execution contract.}
+The system receives curvature and cant-rate controls plus an initial
+state; it produces a pose trajectory. It assumes that the selected
+pose model is applicable. It does not produce a physical realization or
+an observation of one.
+
 % ============================================================
 \section{Railway Dynamic Relations}
 % ============================================================
@@ -148,6 +169,13 @@ v^3\kappa'
 These equations provide the foundational coupling between curvature,
 cant, and operational velocity. Their railway interpretation and limits
 are developed in the state and dynamics chapters.
+
+\paragraph{Execution contract.}
+These relations receive realized metric quantities and an applicable
+local engineering approximation; they produce acceleration, equilibrium,
+or jerk quantities. They assume the stated speed and differentiation
+conditions. They evaluate physical consequences but cannot determine
+operational admissibility or authorize a decision.
 
 % ============================================================
 \section{Track--World Relations}
@@ -196,6 +224,13 @@ x_2=\mathcal C(x_1).
 Coordinate transformation and world-to-track mapping are distinct
 operations: the former changes world-space representation, while the
 latter relates world space to an intrinsic track-related domain.
+
+\paragraph{Execution contract.}
+Track-to-world receives a realized alignment frame and track-related
+coordinates; it produces world coordinates. World-to-track receives a
+world point and the same applicable realization; it produces a candidate
+intrinsic interpretation. Uniqueness requires a suitable local domain.
+Neither operation establishes that two sources refer to the same object.
 
 % ============================================================
 \section{Representation and Engineering Realization}
@@ -255,6 +290,15 @@ The associated inverse problem seeks an intended curvature satisfying
 \label{eq:inverse-realization}
 \end{equation}
 
+\paragraph{Execution contract.}
+Sampling receives a continuous description and sample locations;
+interpolation receives sampled values and an interpolation rule;
+realization receives a target condition and a physical-response model.
+Their outputs retain those dependencies. In the test case, a survey
+polyline can support an observed description of realized geometry, but
+neither sampling nor interpolation turns the observation into physical
+reality or gives it constructive authority.
+
 % ============================================================
 \section{Surface Curvature}
 % ============================================================
@@ -277,6 +321,12 @@ The geodesic curvature is expressed intrinsically by
 The applicable surface, metric, connection, and engineering
 interpretation are established in the ellipsoid and spatial-realization
 chapters.
+
+\paragraph{Execution contract.}
+These equations receive a curve, surface, metric, and connection; they
+produce curvature components in that realization. Without those inputs
+the symbols are not executable. The components cannot decide which
+surface model is authoritative for a project.
 
 % ============================================================
 \section{Optimization Relations}
@@ -303,12 +353,20 @@ These equations specify common numerical structures only. Engineering
 observations, residuals, constraints, admissibility, and decisions retain
 their solver-independent meaning.
 
+\paragraph{Execution contract.}
+Optimization receives a declared objective, variables, residuals,
+constraints, and any realization operator included in the model; it
+produces a numerical candidate. Its validity depends on those choices
+and on solver assumptions. A minimum is an evaluation result, not an
+engineering decision.
+
 % ============================================================
 \section{Canonical Role}
 % ============================================================
 
-The equations collected in this chapter provide shared reference points
-for the remainder of the thesis. They do not collapse intrinsic
-geometry, spatial interpretation, metric realization, physical
-realization, dynamics, and optimization into one model. Instead, they
-make the mathematical relations between those responsibilities explicit.
+The equations now provide a dependency chain rather than a formula
+catalogue. They can reconstruct a design trajectory, realize it in a
+metric context, interpret observations, and compute qualified
+differences. The next chapters provide the state and operator machinery
+needed to execute that chain consistently. Engineering Concepts then
+name the responsibilities that computation must preserve.

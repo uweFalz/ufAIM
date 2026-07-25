@@ -1,0 +1,178 @@
+% outlook/bim-DE.tex
+\chapter{BIM und Alignment-Modellierung}
+
+\section*{Motivation}
+
+Building Information Modelling (BIM) ist zu einem zentralen Paradigma
+moderner Infrastrukturprojekte geworden. Sein Ziel ist die Integration
+von Geometrie, Semantik und Lebenszyklusinformationen in eine einheitliche
+digitale Repräsentation.
+
+Trotz dieses weiten Umfangs bleibt die Repräsentation von
+Eisenbahn-Alignments in BIM begrifflich und technisch begrenzt.
+
+\section{BIM als Paradigma der Datenintegration}
+
+BIM befasst sich grundlegend mit:
+\begin{itemize}
+\item objektbasierter Modellierung,
+\item semantischer Anreicherung von Geometrie,
+\item fachübergreifender Interoperabilität,
+\item Lebenszyklusmanagement von Infrastrukturanlagen.
+\end{itemize}
+
+Geometrie ist in diesem Kontext typischerweise Objekten wie Gebäuden,
+Brücken, Gleiselementen und Geländemodellen zugeordnet.
+
+Alignment-Geometrie ist häufig implizit in diese Objekte eingebettet,
+anstatt als primäre Modellierungseinheit behandelt zu werden.
+
+\section{Alignment in BIM-Standards}
+
+\subsection{IFC Alignment}
+
+Neuere Erweiterungen von IFC führen ausdrückliche Alignment-Entitäten ein.
+Sie sollen Horizontalalignment, Vertikalalignment, Überhöhung und
+Stationierung repräsentieren.
+
+Obwohl dies einen bedeutenden Fortschritt darstellt, bleiben mehrere
+Probleme bestehen:
+\begin{itemize}
+\item die Trennung der Komponenten,
+\item das Fehlen einer einheitlichen Zustandsrepräsentation,
+\item begrenzte Unterstützung dynamischer Interpretation,
+\item die Komplexität der Schemanutzung.
+\end{itemize}
+
+\subsection{Geschichtete Repräsentation}
+
+In den meisten BIM-bezogenen Formaten wird das Alignment in
+Horizontalgeometrie, Vertikalprofil und Überhöhungsdefinition zerlegt.
+Diese Zerlegung ist für den Datenaustausch praktisch, unterstützt jedoch
+nicht unmittelbar Berechnung oder Optimierung.
+
+\section{Grenzen gegenwärtiger BIM-Alignment-Modellierung}
+
+\subsection{Statische Repräsentation}
+
+BIM repräsentiert Geometrie hauptsächlich als statische Daten. Dynamische
+Eigenschaften wie Beschleunigung, Ruck oder Fahrzeugantwort gehören nicht
+zum Kernmodell.
+
+\subsection{Fragmentierung}
+
+Die Trennung horizontaler, vertikaler und überhöhungsbezogener Komponenten
+führt zu einer fragmentierten Repräsentation. Diese Fragmentierung
+erschwert Konsistenzprüfungen, dynamische Auswertung und
+optimierungsbasierten Entwurf.
+
+\subsection{Fehlender Berechnungskern}
+
+BIM-Standards richten sich auf Datenaustausch und Dokumentation. Sie
+stellen kein einheitliches Berechnungsmodell für Alignment-Analyse und
+-Optimierung bereit.
+
+\section{AIM als Berechnungsebene für BIM}
+
+\subsection{Begriffliche Rolle}
+
+Das AIM-Framework kann als Berechnungskern verstanden werden, der
+BIM-Datenmodelle ergänzt. Statt BIM zu ersetzen, vermittelt AIM zwischen
+externen Datenformaten und internem ingenieurwissenschaftlichem Schließen.
+
+\subsection{Kanonische Repräsentation}
+
+AIM führt eine einheitliche Repräsentation ein:
+\[
+(\gamma(s), \theta(s), \kappa(s), \phi(s)).
+\]
+
+Diese Repräsentation integriert Horizontalgeometrie sowie Vertikal- und
+Überhöhungsverhalten, unterstützt dynamische Auswertung und ist direkt in
+der Optimierung verwendbar.
+
+\subsection{Transformationskette}
+
+\begin{verbatim}
+BIM / IFC / LandXML
+→ Parsen
+→ breite Repräsentation
+→ Normalisierung
+→ AIM-Zustandsmodell
+→ Analyse / Optimierung
+→ Export
+\end{verbatim}
+
+Diese Kette trennt Belange des Datenaustauschs, der Berechnungsmodellierung
+und des ingenieurwissenschaftlichen Schließens.
+
+\section{Alignment-zentriertes BIM}
+
+\subsection{Perspektivwechsel}
+
+Das AIM-Framework legt einen Wechsel zur Alignment-zentrierten
+Modellierung nahe. Statt das Alignment als eine Komponente unter vielen
+zu behandeln, wird es zur primären Ordnungsstruktur.
+
+\subsection{Folgerungen}
+
+\begin{itemize}
+\item Infrastrukturelemente werden auf das Alignment bezogen,
+\item Geometrie wird aus dem Alignment-Zustand abgeleitet,
+\item dynamisches Verhalten wird Teil des Modells,
+\item Optimierung wird zu einer nativen Operation.
+\end{itemize}
+
+\section{Integration in BIM-Arbeitsabläufe}
+
+\subsection{Import}
+
+Bestehende BIM-Daten werden durch IFC- und LandXML-Parser sowie durch die
+Interpretation von Altformaten importiert.
+
+\subsection{Verarbeitung}
+
+Innerhalb von AIM werden die importierten Daten normalisiert,
+rekonstruiert, um eine dynamische Interpretation angereichert und
+gegebenenfalls optimiert.
+
+\subsection{Export}
+
+Ergebnisse können in IFC-Alignment-Strukturen, LandXML-Dateien oder andere
+Ingenieurformate zurückexportiert werden. Dies gewährleistet die
+Kompatibilität mit bestehenden BIM-Ökosystemen.
+
+\section{Bezug zu BIMinfra}
+
+Infrastruktur-BIM (häufig als BIMinfra bezeichnet) erweitert BIM-Begriffe
+auf lineare Infrastruktur wie Eisenbahnen und Straßen.
+
+AIM kann als Spezialisierung innerhalb von BIMinfra verstanden werden,
+die sich auf Alignment-zentrierte Modellierung, dynamische Interpretation
+und optimierungsgetriebenen Entwurf richtet.
+
+\section{Diskussion}
+
+BIM stellt ein leistungsfähiges Framework zur Datenintegration bereit,
+besitzt jedoch kein starkes Berechnungsmodell für Alignments.
+
+AIM schließt diese Lücke durch eine einheitliche Zustandsrepräsentation,
+dynamische Auswertung, Optimierungsunterstützung und die Integration
+heterogener Datenquellen.
+
+BIM und AIM können somit als komplementär gelten: BIM für Datenintegration
+und Lebenszyklus, AIM für Berechnung und Alignment-bezogenes Schließen.
+
+\section{Zusammenfassung}
+\begin{summary}
+Gegenwärtige BIM-Standards stellen wichtige Strukturen für Datenaustausch
+und semantische Modellierung bereit, bleiben jedoch in ihrer Behandlung
+des Eisenbahn-Alignments begrenzt.
+
+Das AIM-Framework ergänzt BIM durch eine einheitliche, zustandsbasierte
+und optimierungsbereite Repräsentation des Alignments.
+
+Dies ermöglicht den Übergang von statischer Datenverarbeitung zu
+dynamischer, berechnungsorientierter und Alignment-zentrierter
+Infrastrukturmodellierung.
+\end{summary}

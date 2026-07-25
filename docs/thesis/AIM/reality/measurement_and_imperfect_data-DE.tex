@@ -1,0 +1,73 @@
+% reality/measurement_and_imperfect_data-DE.tex
+\chapter{Messung und unvollkommene Daten}
+\label{chap:measurement-and-imperfect-data}
+\index{Beobachtung!Messdaten}
+\index{Datenqualität!unvollkommene Daten}
+
+Messung liefert Beobachtungsevidenz über realisierte Infrastruktur. Sie ersetzt
+weder konstruktive Identität noch die Modellierung realisierter Zustände.
+
+\section{Beobachtungskontext}
+Messdaten in Eisenbahnprojekten sind hinsichtlich Auflösung, Genauigkeit,
+Provenienz und Koordinatenkontext heterogen.
+\begin{definition}[Beobachtete Daten]
+\index{Beobachtete Daten}
+Beobachtete Daten bezeichnen Messgrößen, die in einem bestimmten
+Beobachtungskontext von Sensoren, Vermessungen oder historischen Datensätzen
+gewonnen wurden.
+\end{definition}
+\begin{principle}[Prinzip des Beobachtungskontexts]
+\index{Prinzip des Beobachtungskontexts}
+Beobachtete Daten müssen gemeinsam mit Sensor-, Stationierungs-, Koordinaten-
+und Topologiekontext interpretiert werden.
+\end{principle}
+
+\section{Eigenschaften unvollkommener Daten}
+Beobachtete Daten enthalten typischerweise zufälliges Rauschen, systematische
+Verzerrung, Unvollständigkeit und quellübergreifende Inkonsistenz.
+\begin{definition}[Systematischer Fehler]
+\index{Fehler!systematisch}
+Ein systematischer Fehler ist eine dauerhafte Beobachtungsabweichung, die
+durch Sensor-, Kalibrierungs- oder Transformationseinflüsse verursacht wird.
+\end{definition}
+\begin{definition}[Messunsicherheit]
+\index{Unsicherheit!Messung}
+Messunsicherheit quantifiziert das Intervall oder die Verteilung plausibler
+physischer Werte, die mit einer Beobachtung vereinbar sind.
+\end{definition}
+
+\section{Inferenz aus Beobachtung}
+Geometrie und Zustand werden durch Rekonstruktionsoperatoren und
+Interpretationsregeln aus Beobachtungen erschlossen.
+\begin{definition}[Diskrete Krümmungsschätzung]
+\index{Krümmung!diskrete Schätzung}
+Aus lokalen Richtungsstichproben kann eine diskrete Krümmungsschätzung
+geschrieben werden als
+\[
+\kappa_i \approx \frac{\theta_{i+1}-\theta_i}{\Delta s_i}.
+\]
+\end{definition}
+Solche Schätzungen hängen von der Abtastung ab und sind
+unsicherheitsempfindlich; in der Praxis sind deshalb Filterung und
+Regularisierung erforderlich.
+
+\section{Beobachtung und Laufzeitrekonstruktion}
+Beobachtung tritt über Laufzeitrekonstruktions-Pipelines in AIM ein, die Daten
+mit metrischer Realisierung, Stationierungs- und Topologiekontext verbinden.
+Beobachtete Werte werden als Evidenz für realisierten Zustand und nicht als
+kanonische Objektidentität interpretiert.
+
+\section{Ingenieurtechnische Verwendung}
+In Engineering-Abläufen beeinflussen unvollkommene Daten Validierung,
+Instandhaltungsplanung und Ziel--Realisiert-Vergleich. Robuste Abläufe
+erfordern Provenienzverfolgung, unsicherheitsbewusste Bewertung und
+ausdrückliche Verwaltung von Annahmen.
+\index{Provenienz!Verfolgung}
+
+\section{Verbindung zu AIM}
+\begin{summary}
+In AIM bilden Messung und unvollkommene Daten die Beobachtungsebene des Teils
+Realität. Diese Ebene unterstützt realisierungsbewusste Rekonstruktion und
+Interpretation und wahrt zugleich die Unterscheidung zwischen beobachteter
+Evidenz und Engineering Identity.
+\end{summary}

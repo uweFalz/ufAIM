@@ -4,91 +4,92 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{State}
 
-The preceding part established the intrinsic geometry of railway
-alignments. It showed that curvature evolution along arc length provides
-the canonical constructive description of geometry, while metric
-realization and physical interpretation remain separate concerns. The
-present part bridges that intrinsic description to an evaluable railway
-state.
+The straight--transition--arc Alignment from the preceding part is still the
+engineering object under discussion. Its identity, ordered construction,
+intrinsic parameter \(s\), curvature law \(\kappa(s)\), Berlinish transition
+partition, provenance, and applicability have already been established.
+State therefore does not begin with an anonymous coordinate tuple. It begins
+with a question about this identified object:
 
-The state part therefore follows a dependency-driven progression.
-Constructive alignment semantics yield the intrinsic planar
-reconstruction state \(\mathrm{pose2}\). Metric realization and
-engineering context then supply the additional information required to
-evaluate profile and cant. The resulting spatial interpretation is the
-runtime railway state \(\mathrm{pose3}\). From this state, world-to-track
-interpretation, derived runtime quantities, and operational behaviour
-are evaluated downstream.
+\begin{quote}
+At a selected \(s\), what railway state follows from the Alignment, and which
+additional laws and realization data are required to obtain it?
+\end{quote}
 
-The chapters in this part therefore separate persistent engineering
-information from the runtime interpretation of that information. They do
-not merge geometry, realization, physical interpretation, and
-operational state into a single object. Instead, they make the
-underlying dependency structure explicit.
+Curvature first determines change of heading and, with a starting pose, a
+planar trajectory. Vertical geometry and cant then add independent
+longitudinal laws. A stated frame convention combines these inputs into a
+spatial railway interpretation. Only after speed and, where necessary, a
+vehicle model are supplied do acceleration and other operational quantities
+follow. Evaluation for a purpose is later still: a computed consequence is
+not an engineering decision.
 
-This part establishes the state bridge from intrinsic geometry to
-runtime-evaluable railway interpretation.
-
-% ============================================================
-\section*{Relation to the AIM Roadmap}
-% ============================================================
-
-Within the AIM roadmap, the present part corresponds to the transition
-from curvature space toward railway states. The progression from
-curvature space to \(\mathrm{pose2}\) and further to \(\mathrm{pose3}\)
-forms the central bridge between intrinsic geometry and all later
-runtime, realization, and optimization concepts.
-
-The first figure addresses the orienting question: how does pose3 extend
-pose2 without replacing the intrinsic state anchor?
-
-\begin{figure}[ht]
+\begin{figure}[htbp]
 \centering
-\input{figures/state/icon_state_pose2_pose3}
-
-\caption{State icon: pose2 as intrinsic anchor and pose3 as downstream state extension.}
-\label{fig:icon-state-pose2-pose3}
-
+\input{figures/state/railway_state_dependency}
+\caption{Dependency from the identified Alignment to a qualified engineering consequence.}
+\label{fig:railway-state-dependency}
 \end{figure}
 
-\begin{figure}[ht]
+The arrows in \cref{fig:railway-state-dependency} denote dependency, not
+identity or authority. In particular, a realized pose does not become
+Alignment identity, an observation does not become physical reality, and an
+evaluation result does not decide whether a proposal is accepted.
+
+\section*{A Narrow Explanatory Contract}
+
+For this part, a \emph{railway-state record} may be read as the following
+Thesis-level explanatory structure:
+\[
+\mathcal S_{\mathrm{rail}}(s)=
+\bigl(
+\mathrm{AlignmentRef},s,\mathrm{pose},F,\kappa,
+\mathrm{vertical},\mathrm{cant},\mathrm{realization},
+\mathrm{provenance},t_{\mathrm{valid}},\mathrm{derived}
+\bigr).
+\]
+Speed is included only for a speed-qualified use. Observation provenance is
+included only for an observed-state estimate. This tuple is not a new
+canonical Kernel concept and not a universal storage schema; it merely keeps
+the dependencies and qualifications visible while the argument proceeds.
+
+\begin{table}[htbp]
 \centering
-\input{figures/state/support_pose2_vs_pose3}
-\caption{Supporting comparison: pose2 versus pose3 clarifies extension without replacement.}
-\label{fig:support-pose2-vs-pose3}
+\small
+\begin{tabular}{p{0.18\textwidth}p{0.28\textwidth}p{0.43\textwidth}}
+\toprule
+\textbf{Kind} & \textbf{Running example} & \textbf{What it does not establish}\\
+\midrule
+Intrinsic & \(s\), element order, \(\kappa(s)\) & coordinates, cant, physical condition, acceptance\\
+Realized & local pose, elevation, frame, represented coordinates & Alignment identity or the constructed asset's actual state\\
+Observed & time-stamped measured rail positions with method and uncertainty & defining geometry or unqualified truth\\
+Derived & \(v^2\kappa\), effective lateral action, comparison residual & authority, admissibility, or decision\\
+\bottomrule
+\end{tabular}
+\caption{Intrinsic, realized, observed, and derived quantities remain distinct.}
+\label{tab:railway-state-kinds}
+\end{table}
 
-\end{figure}
+The chapters now follow one dependency chain:
+\begin{align*}
+\text{Alignment identity}&\rightarrow s\rightarrow\kappa(s)
+\rightarrow\mathrm{pose2}\rightarrow\text{moving frame}\\
+&\rightarrow\text{elevation and cant}
+\rightarrow\mathrm{pose3}\\
+&\rightarrow\text{speed-derived quantities}
+\rightarrow\text{purpose-qualified evaluation}.
+\end{align*}
 
-The second figure reinforces the same question at comparison level so
-that the extension relation remains explicit before formal definitions
-are applied in later chapters.
-
-The state model developed here serves as the foundation for vehicle
-space, runtime evaluation, realization-aware modelling, and optimization
-in subsequent parts of this thesis.
-
-% ============================================================
 \begin{principle}[Railway-State Principle]
 \label{princ:railway-state}
-Within AIM, railway alignment is interpreted through state evolution
-rather than through coordinate geometry alone.
+Railway state is derived from an identified Alignment under stated additional
+laws, realization data, conventions, and use qualifications. No resulting
+pose, coordinate representation, observation, or evaluation owns the
+Alignment's identity or authority.
 \end{principle}
 
-% ============================================================
 \begin{summary}
-Geometry explains the structure of the railway.
+Part V is the physical unfolding of the already identified Alignment. It
+introduces each state quantity only when an engineering consequence requires
+it.
 \end{summary}
-
-\begin{summary}
-The state model explains how this structure is represented,
-reconstructed, interpreted, and evaluated.
-\end{summary}
-
-\begin{summary}
-The transition from geometry to state therefore marks the transition
-from intrinsic shape to operational meaning.
-\end{summary}
-
-With this state layer established, the next part can treat operational
-evolution as a downstream runtime interpretation rather than as a new
-geometric foundation.

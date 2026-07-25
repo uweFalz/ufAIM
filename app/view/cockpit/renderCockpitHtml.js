@@ -44,57 +44,55 @@ export function renderCockpitHtml(uiState = {}) {
 		: [];
 
 	const visibleCount = Number(context.contextCount ?? context.previewTracks ?? 0);
+	const hasSelection = Boolean(scene?.objectId || scene?.mode === "preview");
+	const isAlignment = String(scene?.type ?? "").toLowerCase() === "alignment" || Boolean(scene?.editor?.isNativeAlignment);
+	const isImport = scene?.mode === "preview" || Boolean(scene?.source?.fileName);
 
 	return `
 		<div class="cockpit-sofa cockpit-ivision cockpit-universe">
-			${section({
+			${!hasSelection ? section({
 				className: "cockpit-ivision__native",
-				title: tx("cockpit.section.file", "File"),
-				body: renderNativeAuthoringCard(),
-			})}
+				title: tx("cockpit.section.start", "Start"),
+				body: renderNativeAuthoringCard({ empty: true }),
+			}) : ""}
 
 			${section({
 				className: "cockpit-ivision__scene",
-				title: tx("cockpit.section.workspace", "Arbeitsansicht"),
+				title: hasSelection ? tx("cockpit.section.current", "Current context") : tx("cockpit.section.workspace", "Workspace"),
 				body: renderSceneCard(scene, context, visibleCount),
 			})}
 
 			${section({
-				className: "cockpit-ivision__context",
-				title: tx("cockpit.section.context", "Universe-Kontext"),
-				body: renderContextCard(context, visibleCount),
-			})}
-
-			${section({
 				className: "cockpit-ivision__actions",
-				title: tx("cockpit.section.actions", "Aktionen"),
+				title: tx("cockpit.section.next", "What can I do next?"),
 				body: `
 					<div class="cockpit-sofa__actions cockpit-ivision__actionbar">
 						${renderActionButtons(actions)}
 					</div>
+					${isAlignment ? renderAlignmentGuidance(scene) : ""}
 				`,
 			})}
 
-			${section({
+			${!hasSelection && spotRows.length ? section({
 				className: "cockpit-universe__objects",
-				title: `${tx("cockpit.section.objects", "Universe Objects")} · ${spotRows.length}`,
+				title: `${tx("cockpit.section.objects", "Objects")} · ${spotRows.length}`,
 				body: `
 					<div class="cockpit-sofa__list">
 						${renderSpotRows(spotRows)}
 					</div>
 				`,
-			})}
+			}) : ""}
 
-			${section({
+			${isImport ? section({
 				className: "cockpit-universe__inbox",
-				title: `${tx("cockpit.section.importInbox", "Import-Inbox")} · ${importRows.length}`,
+				title: `${tx("cockpit.section.importInbox", "Import result")} · ${importRows.length}`,
 				body: renderImportRows(importRows),
-			})}
+			}) : ""}
 		</div>
 	`;
 }
 
-function renderNativeAuthoringCard() {
+function renderNativeAuthoringCard({ empty = false } = {}) {
 	return card({
 		className: "cockpit-ivision__native-card",
 		body: `
@@ -107,24 +105,35 @@ function renderNativeAuthoringCard() {
 					${escapeHtml(tx("cockpit.action.newAlignment", "File → New Alignment"))}
 				</button>
 
-				<button
+				${empty ? "" : `<button
 					type="button"
 					class="cockpit-sofa__button cockpit-sofa__button--secondary"
 					data-cockpit-add-straight
 				>
 					${escapeHtml(tx("cockpit.action.addStraight", "+ Straight"))}
-				</button>
+				</button>`}
 
-				<button
+				${empty ? "" : `<button
 					type="button"
 					class="cockpit-sofa__button cockpit-sofa__button--secondary"
 					data-cockpit-clear-elements
 				>
 					${escapeHtml(tx("cockpit.action.clearElements", "Clear Elements"))}
-				</button>
+				</button>`}
 			</div>
 		`,
 	});
+}
+
+function renderAlignmentGuidance(scene) {
+	const selected = String(scene?.selectedElementId ?? "").trim();
+	return `
+		<p class="cockpit-guidance">
+			${escapeHtml(selected
+				? tx("cockpit.guidance.element", "The selected element can be edited here or in the curvature band.")
+				: tx("cockpit.guidance.alignment", "Select an element in the viewer or curvature band to edit its geometry."))}
+		</p>
+	`;
 }
 
 function renderSceneCard(scene, context, visibleCount) {

@@ -1,0 +1,143 @@
+% Deutsche Parallelfassung zu foundations/information_modelling.tex
+
+\chapter{Informationsmodellierung}
+\label{chap:information-modelling}
+
+\section{Ein Alignment, mehrere Darstellungen}
+
+Das bearbeitete Alignment erscheint nun an mehreren Stellen. Eine GIS-Sicht
+verortet es zwischen Gelände und Netzen. Ein CAD-Modell legt die genaue
+Konstruktionsgeometrie offen. Ein BIM- oder Austauschmodell verbindet es mit
+Projektobjekten und Lieferabläufen. Eine Vermessung hält Beobachtungen des
+physischen Gleises fest. Eine Berechnung bewertet eine Folge, und ein
+Entscheidungsnachweis hält fest, was ein verantwortlicher Ingenieur annimmt.
+
+Das bloße Zusammenführen dieser Aufzeichnungen ergibt noch kein kohärentes
+Informationsmodell. Dieselbe Koordinate kann ein Entwurfsziel, einen physisch
+realisierten Zustand oder eine gemessene Schätzung ausdrücken. Derselbe
+Identifier kann zwischen Dateien kopiert werden, ohne zu beweisen, dass sich
+die Aufzeichnungen auf dasselbe Engineering Object beziehen. Eine Regel kann
+neben einem Modell gespeichert sein, ohne für die aktuelle Aufgabe anwendbar
+zu sein.
+
+Informationsmodellierung beginnt hier: nicht mit einem größeren Container,
+sondern mit einer Darstellung dessen, worüber die Information eine Aussage
+macht, welche Rolle jede Aufzeichnung spielt und welche Beziehungen ihre
+Nutzung rechtfertigen. Auch die Interoperabilitätsforschung unterscheidet den
+Datenaustausch von den semantischen, organisatorischen und menschlichen
+Bedingungen, die für Zusammenarbeit erforderlich sind
+\cite{Turk2020Interoperability}.
+
+\section{Was Repräsentationen beitragen}
+
+Repräsentationen sind unverzichtbar, weil Ingenieurarbeit Auswahl erfordert.
+Geodatenstandards ordnen Zugriff, Verarbeitung, Visualisierung und
+Erschließung räumlicher Informationen \cite{OGCStandardsProgram2025}.
+CAD-Geometrie unterstützt genaue Konstruktion und technische Kommunikation
+\cite{KimKumarSnider2015Geometry}. IFC stellt standardisierte
+Beschreibungen für den Austausch von Informationen über gebaute Anlagen
+zwischen Anwendungen und Beteiligten bereit; Modellsichten werden auf
+anerkannte Arbeitsabläufe zugeschnitten
+\cite{BuildingSMARTIFC4x3Scope}.
+
+Jede Repräsentation beantwortet einen Zweck. Diese Stärke kennzeichnet zugleich
+ihre Grenze. Keine Kodierung, Modellsicht, Zeichnung oder Datenbankzeile
+begründet für sich genommen:
+
+\begin{itemize}
+\item ob zwei Aufzeichnungen dasselbe dauerhafte Engineering Object betreffen;
+\item ob ein Wert beabsichtigt, realisiert oder beobachtet ist;
+\item welches konstruktive Gesetz eine angezeigte Kurve erzeugt hat;
+\item welches Wissen anwendbar ist und wer seine Bedeutung verantwortet;
+\item ob ein Bewertungsergebnis als Entscheidung angenommen wurde.
+\end{itemize}
+
+Dabei handelt es sich nicht um fehlende Attribute mit allgemein
+selbstverständlichen Werten. Es sind ingenieurtechnische Unterscheidungen und
+Beziehungen, die ein Informationsmodell bewahren muss.
+
+\section{Warum das Alignment die Beziehungen ordnet}
+
+Jedes Informationsmodell wählt ausdrücklich oder implizit einen ordnenden
+Bezug. Im Eisenbahnwesen werden viele Fragen entlang oder relativ zu einem
+Alignment gestellt: Lage, Richtung, Krümmung, Überhöhung, Geschwindigkeit,
+fahrzeugbezogene Größen, Stationierung, Lichträume und die Anordnung
+benachbarter Objekte. Das Alignment liefert eine intrinsische longitudinale
+Ordnung und einen konstruktiven Krümmungsverlauf, aus denen ausgewählte
+Zustände abgeleitet werden können
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+
+AIM stellt das Alignment daher in das Zentrum dieser Beziehungen. Dadurch wird
+eine Eisenbahn nicht auf ein Objekt reduziert. Brücken, Tunnel, Weichen,
+Signale, Stationen, Gelände, Fahrzeuge, Beobachtungen und Entscheidungen
+behalten ihre eigenen Rollen. Alignment-zentriert bedeutet, dass Informationen,
+deren ingenieurtechnische Bedeutung von der longitudinalen Konstruktion oder
+einem gleisrelativen Zustand abhängt, einen ausdrücklichen Bezug besitzen, über
+den diese Abhängigkeit interpretiert werden kann.
+
+\begin{definition}[Alignment-Based Information Modelling]
+Alignment-Based Information Modelling (AIM) ist ein am Alignment
+ausgerichteter Ansatz der Informationsmodellierung, in dem
+Alignment-Identität und intrinsische Konstruktion den Bezug für die
+Verknüpfung geometrischer, räumlicher, betrieblicher, beobachtender und
+bewertender Informationen bilden, ohne das Engineering Object mit einer
+einzelnen Repräsentation gleichzusetzen.
+\end{definition}
+
+\section{Benachbarte Modellierungsparadigmen}
+
+BIM und AIM müssen nicht miteinander konkurrieren. BIM-Standards stellen
+objektorientierte Strukturen und Austauschmechanismen für die gebaute Umwelt
+bereit. AIM liefert die Alignment-spezifischen konstruktiven und
+zustandsbezogenen Abhängigkeiten, die zur Interpretation von
+Alignment-Informationen erforderlich sind. Ein BIM-Arbeitsablauf kann eine aus
+AIM abgeleitete Repräsentation tragen; dadurch wird er weder zum Owner der
+Alignment-Identität noch des Ingenieurwissens.
+
+Diese Thesis verwendet außerdem \emph{Process Information Modelling} (PIM) als
+vorgeschlagenen Oberbegriff für Ansätze, die an Ingenieurprozessen,
+Zustandsentwicklung, betrieblichem Verhalten und Lifecycle-Beziehungen statt
+ausschließlich an physischen Assets ausgerichtet sind. PIM ist eine Rahmung
+dieser Thesis, kein behaupteter externer Standard und keine Voraussetzung für
+die AIM-Argumentation.
+
+\section{Die Unterscheidungen, die das Modell bewahren muss}
+
+Das fortlaufende Beispiel verlangt nun sieben Antworten:
+
+\begin{description}[style=nextline]
+\item[Objektidentität]
+Wodurch betreffen die bearbeiteten und repräsentierten Aufzeichnungen ein
+Alignment?
+\item[Konstruktive Definition]
+Welches geordnete Krümmungsgesetz definiert das Alignment unabhängig von
+abgetasteten Koordinaten?
+\item[Realisierung]
+Wie erhält diese intrinsische Definition metrische Bedeutung, und wie steht
+die beabsichtigte Konstruktion zur physischen Infrastruktur?
+\item[Repräsentation]
+Welche Informationen wurden für diesen GIS-, CAD-, BIM-, numerischen oder
+visuellen Zweck ausgewählt?
+\item[Beobachtung]
+Welche quellengebundene Evidenz berichtet unter welchen Bedingungen und mit
+welcher Unsicherheit etwas über das Alignment oder seinen Zustand?
+\item[Wissen]
+Auf welche Informationen darf innerhalb eines ausdrücklichen Geltungsbereichs
+mit benannter Provenienz, Anwendbarkeit und Autorität vertraut werden?
+\item[Bewertung und Entscheidung]
+Welche Folge wurde berechnet, und welche verantwortete Handlung nimmt eine
+Alternative an, lehnt sie ab oder wählt sie aus?
+\end{description}
+
+Die Liste wird nicht als auswendig zu lernende Ontologie eingeführt. Jede
+Unterscheidung behebt ein bereits an der Krümmungsänderung sichtbares Versagen.
+Das nächste Kapitel macht ihre Rollen ausdrücklich, bevor spätere Kapitel die
+sicher berechenbaren Beziehungen formalisieren.
+
+\begin{summary}
+Repräsentationen machen Ingenieurinformationen für bestimmte Zwecke nutzbar;
+der Austausch allein begründet jedoch weder Identität, Zustand,
+Anwendbarkeit noch Autorität. AIM ordnet die fehlenden Beziehungen um das
+Alignment, sodass eine Ingenieurhandlung über ihre verschiedenen Darstellungen
+hinweg nachvollzogen werden kann.
+\end{summary}

@@ -1,82 +1,81 @@
 % kernel/engineering_identity.tex
 
-\chapter{Engineering Identity}
+\chapter{Identity Through Transition Change}
 \label{chap:engineering-identity}
 
-Engineering identity determines when information refers to the same
-engineering object and when it refers to another object. It must remain
-stable across representation changes, metric realizations, imports,
-observations, and project-specific views.
+The proposed transition now refers to one alignment. The engineer changes the
+length of the entry half-wave and recomputes the coupled parameters. Geometry
+and derived pose change. The subject need not.
 
-\section{Identity}
+\section{Object continuity and state succession}
 
 \begin{definition}[Engineering object identity]
 \label{def:engineering-object-identity}
-Engineering object identity is the basis by which an engineering object
+Engineering Object Identity is the basis by which an Engineering Object
 remains distinguishable throughout its engineering lifecycle.
 \end{definition}
 
-Identity is not equivalent to a file name, database key, coordinate
-value, label, or geometric approximation. Such values may support
-identification, but they remain attributes or references whose validity
-depends on context.
+Object identity answers \emph{which enduring alignment?}; state identity
+answers \emph{which qualified condition or revision of it?} The accepted
+predecessor and the calculated proposal may therefore refer to the same
+alignment while remaining different states. A recorded derivation relation
+connects them without overwriting the earlier evidence.
 
-\section{Identity Composition}
+A parameter edit normally supplies a candidate successor state: the alignment
+reference, longitudinal order, and traceable predecessor remain present while
+the parameterized construction changes. This is an explanatory case, not a
+universal lifecycle rule. Acceptance of the successor still requires the
+applicable authority.
 
-Engineering identity may be supported by several stable aspects,
-including conceptual role, constructive continuity, contextual
-placement, provenance, and relations to other engineering objects.
+\section{Constructive identity makes the edit intelligible}
+
+The Berlinish expression is not merely display geometry. Its ordered
+components, intrinsic longitudinal parameterization, function-family choices,
+and boundary relations make the construction inspectable. Replacing the
+clothoid core by another admissible family is therefore a constructive change,
+even if a sampled polyline happens to remain close to the old one. Resampling
+or transforming that polyline is only a representational change unless the
+engineering construction is also changed.
 
 \begin{definition}[Identity composition]
 \label{def:identity-composition}
-Identity composition is the coherent combination of identity aspects
-required to distinguish an engineering object without reducing identity
-to any single representation-dependent attribute.
+Identity composition is the coherent combination of stable identity aspects
+and canonical relations required to distinguish an object without reducing
+identity to a representation-dependent attribute.
 \end{definition}
 
-The applicable composition depends on the object type. The identity of
-an alignment, for example, is not exhausted by a sampled curve or a
-coordinate reference system. It includes the continuity of the
-alignment as an engineering object and its role within the railway
-system.
+For an alignment, Constructive Identity contributes the intrinsic sequence and
+longitudinal construction by which the elements form the alignment. Alignment
+Identity draws on that constructive distinction; it is not a CRS identifier,
+station label, database key, or generated geometry. Operational stationing may
+address positions along the object, but it does not replace intrinsic
+longitudinal parameterization as an identity-bearing construction.
 
-\section{Identity and Change}
+\section{When does change create another object?}
 
-An engineering object may change while retaining identity. Conversely,
-two objects may possess similar geometry or attributes without sharing
-identity.
+Some cases are clear. Coordinate transformation, serialization, rendering,
+and regeneration of derived geometry do not by themselves replace the
+alignment. Preserving the source record while deriving an editable model also
+does not erase the source identity or provenance. At the other end, an
+explicitly commissioned replacement alignment can be governed as another
+object even if it reuses much geometry.
 
-The distinction between modification and replacement is therefore an
-engineering decision rather than a consequence of numerical equality.
-Identity must be governed explicitly whenever revisions, imports,
-duplicate detection, or lifecycle transitions are evaluated.
+Between those cases lies a genuine boundary. Replacing a transition component
+may be admitted as a successor state or may participate in a replacement
+object, depending on the object-type-specific sameness conditions and the
+authorized engineering act. The active Kernel does not prescribe a universal
+threshold for that judgment. Geometric distance, a software key, or the solver
+operation cannot decide it.
 
-\section{Identity and Representation}
+\section{Provenance preserves the path through change}
 
-Representations carry references to engineering identity but do not own
-it. A representation may be regenerated, exchanged, simplified, or
-removed without destroying the represented object.
+The candidate records its predecessor, the calculation service and version,
+input conditions, chosen function families and parameters, resulting
+derivations, responsible actor, and time. If the candidate is rejected, this
+evidence remains. If it is accepted, the decision relates the new accepted
+state to its predecessor rather than rewriting history.
 
-Likewise, multiple representations may refer to the same object. Their
-agreement or disagreement is a question of representation quality and
-knowledge consistency, not object multiplicity.
-
-\section{Canonical Interpretation}
-
-\begin{proposition}
-Engineering identity is independent of representation identity.
-\end{proposition}
-
-\begin{proposition}
-Numerical or geometric equality is neither necessary nor sufficient for
-engineering identity.
-\end{proposition}
-
-\begin{proposition}
-The distinction between modification of an object and creation of a new
-object requires explicit engineering authority.
-\end{proposition}
-
-Engineering identity provides the continuity required for durable
-engineering knowledge and for consistent relations between states,
-observations, representations, realizations, and decisions.
+Identity now tells us which object and state the proposal concerns. It still
+does not tell us where the transition is metrically meaningful or whether its
+evidence is sufficient for a particular task. Those dependencies establish
+applicability.

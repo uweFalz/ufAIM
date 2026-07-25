@@ -15,7 +15,9 @@ export function makeAlignmentEditorBridge({ store, ui, messaging } = {}) {
 		title: document.getElementById("aeTitle"), element: document.getElementById("aeElementSel"), type: document.getElementById("aeElementType"),
 		length: document.getElementById("aeLength"), curvature: document.getElementById("aeCurvature"), radius: document.getElementById("aeRadius"),
 		transitionType: document.getElementById("aeTransitionType"), w1: document.getElementById("aeW1"), w2: document.getElementById("aeW2"),
-		signedContext: document.getElementById("aeSignedContext"), apply: document.getElementById("aeApply"), reset: document.getElementById("aeReset"), status: document.getElementById("aeStatus"),
+		signedContext: document.getElementById("aeSignedContext"), consequence: document.getElementById("aeConsequence"),
+		apply: document.getElementById("aeApply"), undo: document.getElementById("aeUndo"), reset: document.getElementById("aeReset"), status: document.getElementById("aeStatus"),
+		technical: document.getElementById("aeTechnicalDetails"),
 	};
 	let activeSnapshot = null;
 	let requestedElementId = null;
@@ -30,6 +32,44 @@ export function makeAlignmentEditorBridge({ store, ui, messaging } = {}) {
 	function elements() { return activeSnapshot?.alignmentData?.editModel?.elements ?? []; }
 	function selectedElement() { const id = selectedId(); return elements().find((entry) => String(entry?.id ?? "") === id) ?? null; }
 	function setDisabled(field, disabled) { if (field) field.disabled = Boolean(disabled); }
+	function showField(field, visible) {
+		if (!field) return;
+		field.classList.toggle("hidden", !visible);
+		document.querySelector(`label[for="${field.id}"]`)?.classList.toggle("hidden", !visible);
+	}
+	function technicalDetails(element, index) {
+		if (!fields.technical) return;
+		const source = activeSnapshot?.alignmentData?.source ?? activeSnapshot?.object?.meta?.source ?? null;
+		fields.technical.replaceChildren(...[
+			[t("alignment_editor.technical.id"), element?.id ?? "—"],
+			[t("alignment_editor.technical.position"), `${index + 1} / ${elements().length}`],
+			[t("alignment_editor.technical.provenance"), source?.kind ?? source?.parserId ?? "—"],
+			[t("alignment_editor.technical.representation"), activeSnapshot?.derived ? t("alignment_editor.technical.derived") : t("alignment_editor.technical.native")],
+		].flatMap(([label, value]) => {
+			const dt = document.createElement("dt"); dt.textContent = String(label);
+			const dd = document.createElement("dd"); dd.textContent = String(value);
+			return [dt, dd];
+		}));
+	}
+	function renderConsequence() {
+		const element = selectedElement();
+		if (!fields.consequence || !element) return;
+		const type = String(element.type ?? "").toLowerCase();
+		const length = asNumber(fields.length?.value);
+		if (type === "straight") fields.consequence.textContent = t("alignment_editor.preview.straight", { length: Number.isFinite(length) ? length : "—" });
+		else if (type === "arc") {
+			const curvature = asNumber(fields.curvature?.value);
+			const radius = Number.isFinite(curvature) && Math.abs(curvature) > 1e-12 ? 1 / curvature : asNumber(fields.radius?.value);
+			fields.consequence.textContent = t("alignment_editor.preview.arc", { length: Number.isFinite(length) ? length : "—", curvature: Number.isFinite(curvature) ? curvature : "—", radius: Number.isFinite(radius) ? radius.toFixed(2) : "—" });
+		} else {
+			fields.consequence.textContent = t("alignment_editor.preview.transition", {
+				length: Number.isFinite(length) ? length : "—",
+				family: fields.transitionType?.value || "—",
+				w1: fields.w1?.value || "—",
+				w2: fields.w2?.value || "—",
+			});
+		}
+	}
 
 	function setWorkspaceElement(elementId, source = "alignment-editor") {
 		const state = store.getState(); const selection = state.workspace_selection ?? {};
@@ -48,7 +88,9 @@ export function makeAlignmentEditorBridge({ store, ui, messaging } = {}) {
 			for (const field of [fields.type, fields.length, fields.curvature, fields.radius, fields.w1, fields.w2]) if (field) field.value = "";
 			if (fields.transitionType) fields.transitionType.value = "";
 			if (fields.signedContext) fields.signedContext.textContent = "";
+			if (fields.consequence) fields.consequence.textContent = t("alignment_editor.preview.none");
 			setDisabled(fields.apply, true);
+			setDisabled(fields.undo, !controller.service.canUndo());
 			return;
 		}
 		const type = String(element.type ?? "").toLowerCase();
@@ -62,11 +104,14 @@ export function makeAlignmentEditorBridge({ store, ui, messaging } = {}) {
 		if (fields.transitionType) fields.transitionType.value = String(element?.parameters?.transitionType ?? element?.transitionType ?? "");
 		if (fields.w1) fields.w1.value = element?.parameters?.w1 ?? element?.opts?.w1 ?? "";
 		if (fields.w2) fields.w2.value = element?.parameters?.w2 ?? element?.opts?.w2 ?? "";
-		setDisabled(fields.curvature, type !== "arc"); setDisabled(fields.radius, type !== "arc");
-		setDisabled(fields.transitionType, type !== "transition"); setDisabled(fields.w1, type !== "transition"); setDisabled(fields.w2, type !== "transition"); setDisabled(fields.apply, false);
+		showField(fields.curvature, type === "arc"); showField(fields.radius, type === "arc");
+		showField(fields.transitionType, type === "transition"); showField(fields.w1, type === "transition"); showField(fields.w2, type === "transition");
+		setDisabled(fields.apply, false); setDisabled(fields.undo, !controller.service.canUndo());
 		const list = elements(); const index = list.indexOf(element);
 		const curvatureAt = (candidate) => { const value = Number(candidate?.parameters?.curvature ?? candidate?.curvature); return Number.isFinite(value) ? value.toFixed(6) : "—"; };
 		if (fields.signedContext) fields.signedContext.textContent = t("alignment_editor.hint.signed_context", { prev: curvatureAt(list[index - 1]), next: curvatureAt(list[index + 1]) });
+		technicalDetails(element, index);
+		renderConsequence();
 	}
 
 	async function loadTransitionFamilies() {
@@ -137,6 +182,15 @@ export function makeAlignmentEditorBridge({ store, ui, messaging } = {}) {
 		if (result?.ok === false || result?.status === "rejected") return message("alignment_editor.status.validation_failed", "error");
 		if (result?.changed === false) return message("alignment_editor.status.no_changes_applied", "info");
 		requestedElementId = id; await refresh({ preserveSelection: false }); setWorkspaceElement(id); message("alignment_editor.status.recalculated", "ok");
+		window.dispatchEvent(new CustomEvent("ufaim:alignment-changed", { detail: { objectId: activeSnapshot?.object?.id ?? null, elementId: id, source: "alignment-editor" } }));
+	}
+
+	async function undo() {
+		const result = await controller.undoLastAlignmentChange();
+		if (!result?.changed) return message("alignment_editor.status.undo_unavailable", "warn");
+		await refresh({ preserveSelection: true });
+		message("alignment_editor.status.undone", "ok");
+		window.dispatchEvent(new CustomEvent("ufaim:alignment-changed", { detail: { objectId: activeSnapshot?.object?.id ?? null, source: "alignment-editor-undo" } }));
 	}
 
 	function wire() {
@@ -146,7 +200,11 @@ export function makeAlignmentEditorBridge({ store, ui, messaging } = {}) {
 		window.addEventListener("keydown", (event) => { if (event.key === "Escape" && isOpen()) setOpen(false); });
 		fields.element?.addEventListener("change", () => { renderForm(); setWorkspaceElement(selectedId()); message("alignment_editor.status.element_selected"); });
 		fields.apply?.addEventListener("click", () => void apply().catch(() => message("alignment_editor.status.calculation_failed", "error")));
+		fields.undo?.addEventListener("click", () => void undo().catch(() => message("alignment_editor.status.calculation_failed", "error")));
 		fields.reset?.addEventListener("click", () => { renderForm(); message("alignment_editor.status.inputs_reset"); });
+		for (const field of [fields.length, fields.curvature, fields.radius, fields.transitionType, fields.w1, fields.w2]) {
+			field?.addEventListener("input", () => { renderConsequence(); message("alignment_editor.status.preview_only", "info"); });
+		}
 		window.addEventListener("ufaim:alignment-editor-focus-element", (event) => void open({ elementId: event?.detail?.elementId, source: event?.detail?.source ?? "alignment-editor" }));
 		let lastPrimary = getWorkspacePrimaryId(store.getState());
 		store.subscribe(() => { const next = getWorkspacePrimaryId(store.getState()); if (String(next ?? "") === String(lastPrimary ?? "")) return; lastPrimary = next; if (isOpen()) void refresh({ preserveSelection: false }); });

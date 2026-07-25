@@ -13,6 +13,7 @@ import {
 	getRelationCandidates,
 	getPromotableAlignmentItems,
 	makePreviewCandidate,
+	makeImportResultEvidencePublication,
 	summarizeImportResultForLog,
 	summarizeRelationCandidatesForLog,
 	summarizeItemsForMasterLog,
@@ -32,6 +33,7 @@ export function makeImportController({
 	const safeLog = typeof logLine === "function"
 		? logLine
 		: (msg) => ui?.logLine?.(msg);
+	const trace = () => globalThis.__ufAIM_importTrace === true;
 
 	if (!store?.getState || !store?.setState) {
 		throw new Error("ImportController: missing store");
@@ -40,6 +42,51 @@ export function makeImportController({
 	const sampleStep = Number.isFinite(prefs?.view?.sampleStep)
 		? prefs.view.sampleStep
 		: 5;
+	let batchTail = Promise.resolve();
+	let commandTail = Promise.resolve();
+	const runtimeMetrics = {
+		queuedBatches: 0,
+		completedBatches: 0,
+		activeBatches: 0,
+		maxActiveBatches: 0,
+		activeCommands: 0,
+		maxActiveCommands: 0,
+		queuedCommands: 0,
+		maxQueueDepth: 0,
+		maxRoundTripMs: 0,
+		timeouts: 0,
+		payloadBytes: 0,
+		responseBytes: 0,
+		publishedSources: 0,
+		publishedItems: 0,
+		stateRefreshes: 0,
+	};
+
+	function sendImportCommand(name, payload, timeoutMs = 20000) {
+		runtimeMetrics.queuedCommands += 1;
+		runtimeMetrics.maxQueueDepth = Math.max(runtimeMetrics.maxQueueDepth, runtimeMetrics.queuedCommands);
+		runtimeMetrics.payloadBytes += estimateBytes(payload);
+		const execute = async () => {
+			runtimeMetrics.queuedCommands -= 1;
+			runtimeMetrics.activeCommands += 1;
+			runtimeMetrics.maxActiveCommands = Math.max(runtimeMetrics.maxActiveCommands, runtimeMetrics.activeCommands);
+			const started = performance.now();
+			try {
+				const response = await messaging.sendCmdAwait(name, payload, { timeoutMs });
+				runtimeMetrics.responseBytes += estimateBytes(response);
+				return response;
+			} catch (error) {
+				if (/timeout/i.test(String(error?.message ?? error))) runtimeMetrics.timeouts += 1;
+				throw error;
+			} finally {
+				runtimeMetrics.maxRoundTripMs = Math.max(runtimeMetrics.maxRoundTripMs, performance.now() - started);
+				runtimeMetrics.activeCommands -= 1;
+			}
+		};
+		const pending = commandTail.then(execute, execute);
+		commandTail = pending.catch(() => {});
+		return pending;
+	}
 
 	async function handleImportItemsMaster(items = []) {
 		if (!items.length) return;
@@ -50,30 +97,45 @@ export function makeImportController({
 		}
 
 		safeLog(`master import add: items=${items.length}`);
-		console.log("[ImportController] Import.AddItems ->", summarizeItemsForMasterLog(items));
+		if (trace()) console.debug("[ImportController] Import.AddItems ->", summarizeItemsForMasterLog(items));
 
-		await messaging.sendCmdAwait("Import.AddItems", { items });
+		await sendImportCommand("Import.AddItems", { items });
+	}
+
+	async function handleImportResultEvidenceMaster(publication) {
+		if (!publication?.evidence) return false;
+		if (!messaging?.sendCmdAwait) return false;
+		safeLog(`master import evidence: items=${publication.items.length}`);
+		await sendImportCommand("Import.PublishResultEvidence", publication, 30000);
+		runtimeMetrics.publishedSources += 1;
+		runtimeMetrics.publishedItems += publication.items.length;
+		return true;
 	}
 
 	async function refreshImportStateFromMaster() {
 		if (!messaging?.sendCmdAwait) return null;
 
-		const state = await messaging.sendCmdAwait("Import.GetState", {});
+		const state = await sendImportCommand("Import.GetState", {}, 12000);
+		runtimeMetrics.stateRefreshes += 1;
 		const count = Array.isArray(state?.items) ? state.items.length : 0;
 
 		safeLog(`master import state: items=${count}`);
-		console.log("[ImportController] Import.GetState <-", state);
+		if (trace()) console.debug("[ImportController] Import.GetState <-", {
+			itemCount: count,
+			sessionId: state?.sessionId ?? null,
+		});
 
 		return state;
 	}
 
 	function logRelationCandidates(fileName, relationCandidates) {
 		const summary = summarizeRelationCandidatesForLog(fileName, relationCandidates);
-		safeLog(`relation candidates: ${fileName} :: ${summary.count}`);
-		console.log("[ImportController] relationCandidates", summary);
+		if (trace()) safeLog(`relation candidates: ${fileName} :: ${summary.count}`);
+		if (trace()) console.debug("[ImportController] relationCandidates", summary);
 	}
 
 	function logGndRelationAnalysis(fileName, items, relationCandidates) {
+		if (!trace()) return;
 		if (!String(fileName ?? "").toLowerCase().includes("gnd")) return;
 		if (!relationCandidates?.length) return;
 
@@ -114,6 +176,7 @@ export function makeImportController({
 	}
 
 	function logGndCrsAnalysis(fileName, items, relationCandidates) {
+		if (!trace()) return;
 		if (!String(fileName ?? "").toLowerCase().includes("gnd")) return;
 		if (!items?.length) return;
 
@@ -192,11 +255,14 @@ export function makeImportController({
 		store.actions?.clearWorkspacePrimary?.();
 		store.actions?.setCursorS?.(0);
 
-		console.log("[ImportController] preview committed to store =", firstPreviewCandidate);
+		if (trace()) console.debug("[ImportController] preview committed", {
+			id: firstPreviewCandidate.id,
+			hasKernel: Boolean(firstPreviewCandidate.kernel),
+		});
 		return true;
 	}
 
-	async function importFiles(files) {
+	async function runImportBatch(files) {
 		const batch = Array.from(files ?? []);
 
 		messaging?.emitEvt?.("Import.DropObserved", {
@@ -209,28 +275,42 @@ export function makeImportController({
 
 		clearVisibleTracks();
 
-		await messaging?.sendCmdAwait?.("Import.BeginSession", {
+		await sendImportCommand("Import.BeginSession", {
 			source: "drop",
 		});
 
 		let firstPreviewCandidate = null;
 
-		for (const file of batch) {
-			safeLog(`import: ${file.name}`);
+		for (const [sourceIndex, file] of batch.entries()) {
+			const scenarioId = `source-${String(sourceIndex + 1).padStart(3, "0")}`;
+			safeLog(`import: ${scenarioId}`);
 
 			try {
-				const result = await importOneFile(file, { log: safeLog });
+				const result = await importOneFile(file, {
+					log: safeLog,
+					onImportPhase: ({ code, status }) => safeLog(`MDB: ${code}${status ? ` :: ${status}` : ""}`),
+				});
 
 				const items = getResultItems(result);
 				const rejected = getRejectedItems(result);
 				const relationCandidates = getRelationCandidates(result);
 				const promotableAlignmentItems = getPromotableAlignmentItems(items);
+				const publication = makeImportResultEvidencePublication(result, {
+					fileName: file.name,
+					parserId: result?.meta?.sourceFormat ?? null,
+					completedAt: new Date().toISOString(),
+				});
 
 				accountResult(stats, result);
 
-				safeLog(`import status: ${file.name} :: ${result?.status ?? "unknown"}`);
+				safeLog(`import status: ${scenarioId} :: ${result?.status ?? "unknown"}`);
+				if (result?.meta?.gndSource) {
+					const source = result.meta.gndSource;
+					safeLog(`GND ${scenarioId}: retained=${source.retainedEvidenceCount} :: status=${source.status}`);
+					if (trace()) safeLog(`GND ${scenarioId}: extractor=${source.extractor.id} ${source.extractor.version} :: core=${source.coreTables.join(", ")} :: additional=${source.additionalTables.join(", ") || "none"}`);
+				}
 
-				console.log(
+				if (trace()) console.debug(
 					"[ImportController] result",
 					summarizeImportResultForLog(file.name, result)
 				);
@@ -250,11 +330,18 @@ export function makeImportController({
 					safeLog(`Anzeige: ${file.name} :: ${newTracks.length} Spur(en)`);
 				}
 
-				await handleImportItemsMaster([...items, ...rejected]);
+				if (!(await handleImportResultEvidenceMaster(publication))) {
+					await handleImportItemsMaster([...items, ...rejected]);
+				}
 
 				if (!firstPreviewCandidate && promotableAlignmentItems.length > 0) {
-					firstPreviewCandidate = makePreviewCandidate(promotableAlignmentItems[0]);
-					console.log("[ImportController] firstPreviewCandidate =", firstPreviewCandidate);
+					const linkedCandidate = publication?.items?.find((item) => item?.id === promotableAlignmentItems[0]?.id) ?? promotableAlignmentItems[0];
+					firstPreviewCandidate = makePreviewCandidate(linkedCandidate, {
+						source: publication?.evidence?.source ?? null,
+					});
+					if (trace()) console.debug("[ImportController] firstPreviewCandidate", {
+						id: firstPreviewCandidate.id,
+					});
 				}
 
 				ui?.setImportSummary?.({
@@ -266,7 +353,6 @@ export function makeImportController({
 					error: false,
 				});
 
-				await refreshImportStateFromMaster();
 			} catch (err) {
 				stats.failed += 1;
 
@@ -283,8 +369,54 @@ export function makeImportController({
 
 		commitPreviewCandidate(firstPreviewCandidate);
 		commitVisibleTracks(visibleTracks);
+		await refreshImportStateFromMaster();
 
 		safeLog(makeBatchSummaryLine(stats));
+		return { stats, metrics: getRuntimeMetrics() };
+	}
+
+	function importFiles(files) {
+		const batch = Array.from(files ?? []);
+		runtimeMetrics.queuedBatches += 1;
+		const execute = async () => {
+			runtimeMetrics.activeBatches += 1;
+			runtimeMetrics.maxActiveBatches = Math.max(runtimeMetrics.maxActiveBatches, runtimeMetrics.activeBatches);
+			try {
+				return await runImportBatch(batch);
+			} finally {
+				runtimeMetrics.activeBatches -= 1;
+				runtimeMetrics.completedBatches += 1;
+			}
+		};
+		const pending = batchTail.then(execute, execute);
+		batchTail = pending.catch(() => {});
+		return pending;
+	}
+
+	function getRuntimeMetrics() {
+		return Object.freeze({ ...runtimeMetrics });
+	}
+
+	function publishSyntheticBatch(publications = [], { source = "synthetic-load-e2e" } = {}) {
+		const execute = async () => {
+			runtimeMetrics.activeBatches += 1;
+			runtimeMetrics.maxActiveBatches = Math.max(runtimeMetrics.maxActiveBatches, runtimeMetrics.activeBatches);
+			try {
+				await sendImportCommand("Import.BeginSession", { source });
+				for (const publication of publications) {
+					await handleImportResultEvidenceMaster(publication);
+				}
+				await refreshImportStateFromMaster();
+				return { metrics: getRuntimeMetrics() };
+			} finally {
+				runtimeMetrics.activeBatches -= 1;
+				runtimeMetrics.completedBatches += 1;
+			}
+		};
+		runtimeMetrics.queuedBatches += 1;
+		const pending = batchTail.then(execute, execute);
+		batchTail = pending.catch(() => {});
+		return pending;
 	}
 
 	function installDrop({ element } = {}) {
@@ -297,5 +429,15 @@ export function makeImportController({
 	return {
 		importFiles,
 		installDrop,
+		getRuntimeMetrics,
+		publishSyntheticBatch,
 	};
+}
+
+function estimateBytes(value) {
+	try {
+		return new TextEncoder().encode(JSON.stringify(value ?? null)).byteLength;
+	} catch {
+		return 0;
+	}
 }

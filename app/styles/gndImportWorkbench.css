@@ -1,0 +1,38 @@
+.uf-gnd-workbench {
+	inset: 56px 4vw 4vh;
+	width: auto;
+	max-width: none;
+	height: auto;
+	z-index: 40;
+}
+.uf-gnd-workbench .uf-panel__body { overflow: auto; padding: clamp(12px, 2vw, 28px); }
+.gnd-wb-record { max-width: 1180px; margin: 0 auto 32px; display: grid; gap: 18px; }
+.gnd-wb-hero { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(220px, 1fr); gap: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 16px; background: rgba(255,255,255,.035); }
+.gnd-wb-hero h2, .gnd-wb-card h4 { margin: 2px 0 8px; overflow-wrap: anywhere; }
+.gnd-wb-kicker { margin: 0; text-transform: uppercase; letter-spacing: .12em; font-size: 11px; opacity: .75; }
+.gnd-wb-decision { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-left: 3px solid #7cc7a5; background: rgba(124,199,165,.08); }
+.gnd-wb-facts { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 5px 12px; margin: 0; font-size: 12px; }
+.gnd-wb-facts dt { opacity: .68; }.gnd-wb-facts dd { margin: 0; overflow-wrap: anywhere; }
+.gnd-wb-facts--wide { padding: 12px 0; }
+.gnd-wb-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(250px,1fr)); gap: 12px; }
+.gnd-wb-card { border: 1px solid var(--borderSoft); border-radius: 14px; padding: 14px; background: rgba(255,255,255,.025); }
+.gnd-wb-card:focus-visible, .gnd-wb-disclosure summary:focus-visible, .gnd-wb-card button:focus-visible { outline: 2px solid #8cc8ff; outline-offset: 3px; }
+.gnd-wb-eligibility { font-weight: 650; }.gnd-wb-eligibility::before { content: "●"; margin-right: 7px; }
+.gnd-wb-eligibility.is-eligible::before { content: "✓"; }.gnd-wb-eligibility.is-withheld::before { content: "—"; }
+.gnd-wb-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.gnd-wb-diagnostic { font-size: 12px; border-top: 1px solid var(--borderSoft); padding-top: 8px; }
+.gnd-wb-details { display: grid; gap: 8px; }
+.gnd-wb-disclosure { border: 1px solid var(--borderSoft); border-radius: 10px; padding: 0 12px; }
+.gnd-wb-disclosure summary { cursor: pointer; font-weight: 650; padding: 12px 0; }
+.gnd-wb-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px; }
+.gnd-wb-table th,.gnd-wb-table td { padding: 7px; text-align: left; border-bottom: 1px solid var(--borderSoft); }
+.gnd-wb-json,.gnd-wb-raw { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 11px; }
+.gnd-wb-technical { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }.gnd-wb-technical pre { flex-basis: 100%; }
+.gnd-wb-message { padding: 12px; border-radius: 10px; background: rgba(255,255,255,.05); }.gnd-wb-message[data-kind="error"] { border-left: 3px solid #d98b8b; }.gnd-wb-message[data-kind="success"] { border-left: 3px solid #7cc7a5; }
+@media (max-width: 680px) {
+	.uf-gnd-workbench { inset: 48px 0 0; border-radius: 0; }
+	.gnd-wb-hero { grid-template-columns: 1fr; }
+	.gnd-wb-decision { grid-column: auto; }
+	.gnd-wb-cards { grid-template-columns: 1fr; }
+	.gnd-wb-facts { grid-template-columns: 1fr; }.gnd-wb-facts dd { margin-bottom: 6px; }
+}

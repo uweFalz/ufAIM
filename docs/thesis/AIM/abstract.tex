@@ -5,29 +5,56 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Abstract}
 
-Railway alignments are traditionally represented as geometric curves in
-space. This perspective is insufficient for modern engineering tasks,
-which require the integration of design, measurement, construction, and
-optimization.
+An engineer changes the curvature of a railway alignment. The design system
+immediately draws a new curve, but the engineering consequences do not remain
+inside that drawing. Measurements refer to a physical track; GIS data place it
+in a wider world; CAD and exchange models describe selected constructions;
+rules and decisions govern whether the change is admissible. Across these
+representations, the alignment must remain identifiable, while intended,
+realized, and observed states must remain distinguishable. The central problem
+is therefore not the exchange of geometry alone. It is how to make
+alignment-specific engineering knowledge available at the moment a change is
+interpreted, evaluated, or decided.
 
-This work introduces \emph{Alignment-Based Information Modelling (AIM)},
-a unified framework that reformulates alignment modelling as a
-curvature-driven and realization-aware system. Instead of treating
-geometry as a primary object, AIM represents alignments intrinsically
-through curvature and cant, from which all geometric and dynamic
-quantities are derived.
+The point of departure was more specific. Railway transition design must shape
+the passage between curvature states while a vehicle is physically constrained
+to follow its rail pair. Curvature, cant, speed, and their rates of change act
+through that constraint on vehicle, track, comfort, safety, and wear. The
+originating contribution called \emph{Berlinish} treats known transition forms
+through a composable grammar of entering half-wave, optional clothoid core, and
+exiting half-wave. \emph{axtranNew} arose as the intended calculation core for
+composing, solving, comparing, and optimizing such structures. These names
+denote an originating research contribution and an implementation lineage;
+they are not introduced here as approved Knowledge Kernel concepts.
 
-A central contribution is the introduction of a realization operator,
-which models the transformation from theoretical alignment to physically
-constructed track. This leads to the formulation of alignment design in
-realized space rather than in purely geometric terms.
+This thesis develops \emph{Alignment-Based Information Modelling (AIM)} as a
+knowledge-based, representation-aware, and implementation-capable response.
+Its central claim is that an alignment should be modelled through its intrinsic
+constructive structure---in particular its longitudinal ordering and curvature
+evolution---and then interpreted through explicit state, realization,
+observation, and evaluation relations. A curve is a necessary geometric
+realization of that structure, but it is not the whole engineering object.
 
-The framework combines parametric structure with discrete corrections in
-a hybrid representation, enabling robust reconstruction from imperfect
-data. Alignment optimization is formulated as a structured nonlinear
-least-squares problem with sparse analytical Jacobians, allowing
-efficient solution via SQP methods.
+The work contributes a conceptual separation of object identity, constructive
+definition, metric and physical realization, representation, observation,
+knowledge, and decision; a curvature-driven state and operator formulation; an
+alignment-specific engineering treatment of transitions, cant, constraints,
+and realization; a reference-oriented computational pipeline including hybrid
+reconstruction and structured optimization; and an explanatory sequence that
+connects these contributions from engineering problem to application.
 
-AIM provides a coherent foundation that unifies geometry, dynamics,
-data, and computation, establishing a new perspective on railway
-alignment engineering.
+The wider ufAIM environment follows from the need to preserve and operate this
+transition knowledge: a transition registry structures functions and families;
+TransEd makes them inspectable; SPOT carries the identity and state of concrete
+engineering objects; alignmentOS makes calculated alignment knowledge usable;
+the Knowledge Kernel stabilizes terminology and responsibility; Research tests
+and extends claims; and the Thesis explains their relation. The resulting
+framework is broader than its origin, but that origin supplies its first
+engineering necessity.
+
+The mathematical and numerical developments show how geometry can be derived
+from curvature, how relevant states and constraints can be evaluated, and how
+alignment problems can be posed for computation. They do not imply that a
+solver owns engineering knowledge or decision authority. AIM instead provides
+a disciplined way to preserve meaning while representations change and to
+apply engineering knowledge where consequences arise.

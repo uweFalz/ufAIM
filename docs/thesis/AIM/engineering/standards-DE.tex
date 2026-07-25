@@ -1,0 +1,139 @@
+\chapter{Normen und Datenmodelle}
+\section*{Motivation}
+Alignment-Daten existieren nicht isoliert, sondern in einer Landschaft
+etablierter Normen und Engineering-Datenmodelle. Relevante Formate sind
+LandXML, IFC (Industry Foundation Classes), railML sowie proprietäre und
+historische Formate. AIM ersetzt sie nicht, sondern stellt eine konsistente
+interne Darstellung für ihre Interpretation und Integration bereit.
+
+\section{Allgemeine Sicht}
+Bestehende Normen beschreiben Eisenbahngeometrie meist geschichtet oder
+fragmentiert: horizontales Alignment, vertikales Längsprofil, Überhöhung und
+zusätzliche Metadaten. AIM schlägt dagegen die einheitliche zustandsbasierte
+Darstellung
+\[
+(\gamma(s),\theta(s),\kappa(s),\phi(s))
+\]
+als kanonisches internes Modell vor.
+
+\section{LandXML}
+\subsection{Überblick}
+LandXML ist ein weit verbreitetes Austauschformat für Alignment-Daten. Es
+stellt typischerweise horizontale Geometrie (CoordGeom), vertikale Profile und
+Überhöhungsdefinitionen dar.
+
+\subsection{Eigenschaften}
+LandXML ist ein strukturiertes, hierarchisches XML-Format mit mehreren
+Alignments je Datei und ausdrücklichen Namen geometrischer Elemente.
+
+\subsection{Grenzen}
+Grenzen sind die Trennung horizontaler und vertikaler Geometrie, fehlende
+einheitliche dynamische Interpretation, Mehrdeutigkeit von CRS und
+inkonsistente Verwendung zwischen Softwaresystemen.
+
+\subsection{AIM-Interpretation}
+AIM behandelt LandXML als \emph{umfangreichen Container}: Alle verfügbaren
+Daten werden geparst, relevante Komponenten extrahiert und in ein einheitliches
+Zustandsmodell transformiert. Der Schritt
+\[
+\text{LandXML}\rightarrow\text{AIM (dünn besetzt)}
+\]
+ist für die weitere Verarbeitung wesentlich.
+
+\section{IFC}
+\subsection{Überblick}
+IFC ist eine allgemeine BIM-Norm für interdisziplinären Datenaustausch und wird
+für Infrastruktur durch Schemata wie IFC Rail und IFC Alignment erweitert.
+
+\subsection{Eigenschaften}
+IFC bietet ein objektorientiertes Datenmodell, reichhaltige Semantik,
+Integration von Geometrie und Metadaten sowie Beziehungen und Hierarchien.
+
+\subsection{Herausforderungen}
+Für Alignment-Modellierung sind komplexe Schemastruktur, mehrere
+Darstellungsalternativen, inkonsistente Werkzeugimplementierung und begrenzte
+Unterstützung weiterführender Alignment-Begriffe Herausforderungen.
+
+\subsection{AIM-Interpretation}
+AIM extrahiert Alignment-Geometrie, Referenzsysteme und semantische Beziehungen
+aus IFC und wirkt als Normalisierungsebene, die IFC-Komplexität in eine
+rechnerisch nutzbare Form überführt.
+
+\section{railML}
+\subsection{Überblick}
+railML ist eine eisenbahnspezifische XML-Norm mit Schwerpunkt auf
+Infrastruktur, Fahrplandaten und Fahrzeugen.
+
+\subsection{Relevanz für Alignment}
+railML stellt Eisenbahntopologie ausdrücklicher dar als die meisten anderen
+Formate; detaillierte Geometriemodellierung ist Netz- und Betriebsaspekten oft
+nachgeordnet.
+
+\subsection{AIM-Interpretation}
+Für AIM ist railML besonders für Netztopologie, Gleisverbindungen und
+Systemstruktur relevant.
+
+\section{Historische und proprietäre Formate}
+Viele Alignment-Daten liegen in proprietären oder historischen Formaten wie
+TRA/GRA (Technet Verm.Esn), Tabellenformaten und CAD-Exporten vor.
+
+\subsection{Eigenschaften}
+Typisch sind unvollständige oder implizite Struktur, fehlende Typinformation
+und Konventionsabhängigkeit statt formaler Schemas.
+
+\subsection{AIM-Strategie}
+Diese Formate werden durch Erkennung und Klassifikation, formatspezifische
+Parser und Rekonstruktion impliziter Struktur interpretiert.
+
+\section{Kanonisches internes Modell}
+\begin{definition}[AIM-Kernmodell]
+Der AIM-Rahmen verwendet die kanonische interne Darstellung
+\[
+(\gamma(s),\theta(s),\kappa(s),\phi(s)).
+\]
+\end{definition}
+Alle externen Formate werden darauf abgebildet. Vorteile sind einheitliche
+Behandlung von Geometrie und Dynamik, numerische Optimierbarkeit,
+Formatunabhängigkeit und Erweiterbarkeit auf neue Normen.
+
+\section{Transformationspipeline}
+\begin{verbatim}
+externe Datei
+→ Parser
+→ umfangreiche Darstellung
+→ Validierung
+→ dünn besetzte Konvertierung
+→ AIM-Zustandsmodell
+\end{verbatim}
+Diese Pipeline gewährleistet robuste und nachvollziehbare Datenverarbeitung.
+
+\section{Bezug zu BIM}
+\subsection{Begriffliche Position}
+BIM (Building Information Modelling) will Geometrie, Semantik und
+Lebenszyklusinformation integrieren. Alignment-Modellierung ist jedoch häufig
+unterrepräsentiert oder nachrangig.
+
+\subsection{AIM-Beitrag}
+AIM trägt ein strenges Alignment-Modell, dynamische Interpretation und
+optimierungsgetriebenen Entwurf zu BIM bei. In diesem Sinn ist AIM eine
+Spezialisierung von BIM für alignmentzentrierte Infrastrukturmodellierung.
+
+\section{Interoperabilität}
+Praktische Anwendung erfordert Interoperabilität mit bestehenden Werkzeugen
+und Abläufen. AIM unterstützt sie durch Importadapter, Exportkonverter und eine
+kanonische Zwischendarstellung.
+
+\section{Diskussion}
+Bestehende Normen konzentrieren sich primär auf Datenaustausch und
+Dokumentation. AIM ergänzt ein rechnerisch konsistentes Modell, dynamische
+Interpretation und Integration von Optimierungsverfahren. Damit verbindet es
+statische Datendarstellung mit aktivem Engineering-Entwurf.
+
+\section{Zusammenfassung}
+\begin{summary}
+Alignment-Daten werden von verschiedenen Normen mit eigenen Stärken und
+Grenzen bestimmt. AIM stellt eine einheitliche interne Darstellung bereit, die
+heterogene Quellen konsistent interpretiert. Durch normbasierten Austausch und
+ein zustandsbasiertes, optimierungsbereites Modell ermöglicht AIM den Übergang
+von statischer Datenbehandlung zu dynamischem rechnerischem Alignment-Entwurf.
+\end{summary}

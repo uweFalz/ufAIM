@@ -1,0 +1,173 @@
+\chapter{Von der ebenen Pose zum räumlichen Eisenbahnzustand}
+\label{chap:pose3-and-cant}
+
+An der gewählten Übergangsbogenposition liefert pose2 ebene Lage und Richtung.
+Ein Eisenbahnquerschnitt kann damit noch nicht angeordnet werden: Das
+horizontale Krümmungsgesetz des Alignments enthält weder Höhe noch Drehung der
+Schienenebene. Die räumliche Interpretation benötigt deshalb zusätzliche,
+eigenständig qualifizierte Längsgesetze.
+
+\section{Zusätzliche Gesetze, nicht zusätzliche Identität}
+
+\(h(s)\) bezeichne das Höhengesetz in der gewählten metrischen Realisierung.
+Soweit unterstützt, liefert \(h'(s)\) die Neigung und \(h''(s)\) unter der
+verwendeten Profilkonvention einen Beitrag zur vertikalen
+Krümmungsinformation. \(u(s)\) bezeichne die Überhöhung als
+Schienenhöhendifferenz:
+
+\begin{definition}[Überhöhungshöhendifferenz]
+\label{def:cant-height-difference}
+\[
+u\colon D_u\rightarrow \mathbb R
+\]
+ist ein Längsgesetz der Überhöhung mit eigenem Definitionsbereich \(D_u\),
+Einheiten, eigener Partition, Provenienz und Anwendbarkeit.
+\end{definition}
+
+Überhöhung ist keine horizontale Krümmung. Die Gesetze \(\kappa(s)\), \(h(s)\)
+und \(u(s)\) können unterschiedliche Abschnittsgrenzen und Quellen besitzen.
+Ihr gemeinsamer Parameter ermöglicht die synchrone Auswertung; er macht sie
+weder zu einer Eigenschaft noch verleiht er einem Gesetz Autorität über ein
+anderes.
+
+\begin{definition}[Überhöhungsreferenzkonvention]
+\label{def:cant-reference-convention}
+Eine Überhöhungskonvention gibt Vorzeichen, Drehachse,
+Spurweiteninterpretation, Bezugslinie oder Bezugsschiene sowie eine mögliche
+Verschiebung der Bezugslinie an.
+\end{definition}
+
+Nur für die hier verwendete Erklärungskonvention wird \(u\) über eine
+angegebene Spurweite \(g_{\mathrm{gauge}}>0\) gemessen, die Mittellinie bleibt
+Bezug, und positiver Roll folgt dem dargestellten rechtshändigen Frame. Dann
+gilt
+\begin{equation}
+\phi(s)=
+\arctan\!\left(\frac{u(s)}{g_{\mathrm{gauge}}}\right).
+\label{eq:derived-roll-angle}
+\end{equation}
+Diese Gleichung wandelt eine qualifizierte Darstellung der Überhöhung in einen
+Rollwinkel um. Sie ist keine universelle Überhöhungskonvention und bestimmt
+nicht, welches Überhöhungsgesetz zu entwerfen ist.
+
+\begin{figure}[htbp]
+\centering
+\input{figures/state/cant_interpretation-DE}
+\caption{Lokaler Querschnitt: Überhöhung dreht das Quer--Vertikal-Paar um die Tangente; Konvention und Spurweite bleiben explizite Eingaben.}
+\label{fig:cant-interpretation}
+\end{figure}
+
+\section{Das bewegte Eisenbahn-Frame}
+
+\begin{definition}[Nicht überhöhtes geometrisches Frame]
+\label{def:uncanted-frame}
+An \(s\) sei
+\[
+F_0(s)=\bigl(\mathbf t(s),\mathbf l_0(s),\mathbf z_0(s)\bigr)
+\]
+ein orientiertes orthonormales Frame: \(\mathbf t\) ist longitudinal,
+\(\mathbf l_0\) und \(\mathbf z_0\) sind Quer- und Vertikalrichtung aus einer
+angegebenen Realisierungs- und Transportkonvention.
+\end{definition}
+
+Horizontale Krümmung steuert die Richtungsänderung. Vertikale Geometrie steuert
+die Neigung von \(\mathbf t\). Die metrische Realisierung liefert räumlichen
+Bezug und Vertikalinterpretation. Eine Stetigkeitsregel transportiert den
+Querschnitt durch Geraden und Bereiche kleiner Krümmung, in denen eine reine
+Frenet-Konstruktion instabil wäre.
+
+\begin{definition}[Eisenbahn-Frame]
+\label{def:railway-frame}
+Das überhöhungsbewusste Gleis-Frame lautet
+\[
+F_{\mathrm{rail}}(s)=
+\bigl(\mathbf t(s),\mathbf l_\phi(s),\mathbf z_\phi(s)\bigr),
+\qquad
+(\mathbf l_\phi,\mathbf z_\phi)
+=R_{\mathbf t,\phi(s)}(\mathbf l_0,\mathbf z_0).
+\]
+\end{definition}
+
+Diese lokale rechtshändige Konstruktion wird gewählt, um Abhängigkeiten
+sichtbar zu machen; sie begründet keine universelle AIM-Frame-Konvention.
+Quellkonventionen müssen vor einem Vergleich von Vorzeichen oder Schienenlagen
+explizit transformiert werden.
+
+\begin{definition}[Fahrzeug-Frame]
+\label{def:vehicle-frame}
+\(F_{\mathrm{veh}}(s)\) bezeichnet ein optionales fahrzeugabhängiges Frame,
+das aus Gleis-Frame und angegebenem Fahrzeug- und Federungsmodell erzeugt wird.
+\end{definition}
+
+Ein Fahrzeug-Frame lässt sich nicht allein aus Alignment-Geometrie ableiten.
+
+\section{Was pose3 ergänzt}
+
+\begin{definition}[Laufzeit-pose3]
+\label{def:runtime-pose3}
+Für diese Erklärung auf Thesis-Ebene lautet die räumliche Eisenbahnpose an
+\(s\)
+\begin{equation}
+\mathrm{pose3}(s)=
+\bigl(\Gamma(s),F_{\mathrm{rail}}(s),
+h'(s),h''(s),u(s)\bigr),
+\label{eq:runtime-pose3}
+\end{equation}
+wobei nicht verfügbare oder nicht anwendbare Profilglieder entfallen und alle
+Größen durch ihre Realisierung und Konvention qualifiziert sind.
+\end{definition}
+
+\(\Gamma(s)\) ist die aus pose2, Profil, metrischer Interpretation und
+Koordinatendiensten zusammengesetzte räumliche Referenztrajektorie. Der
+Frame-Operator \(\mathcal F\) aus \cref{def:frame-operator} beschreibt die
+typisierte Auswertung. pose3 ergänzt die zur Orientierung eines
+Eisenbahnquerschnitts benötigten Größen; es ist weder die vollständige
+physische Anlage noch umfasst es Material, Zustand, Topologie,
+Fahrzeugverhalten oder Engineering-Autorität.
+
+\begin{proposition}[pose3-Rekonstruktionsprinzip]
+\label{prop:pose3-reconstruction}
+Aus \(\kappa(s)\), \(h(s)\) und \(u(s)\) sowie Anfangspose, metrischer
+Realisierung, Spurweite, Orientierungs- und Frame-Konventionen können die
+anwendbaren pose3-Felder ausgewertet werden. Das Ergebnis bewahrt seinen
+Alignment-Bezug und die Provenienz jeder zusätzlichen Eingabe.
+\end{proposition}
+
+\section{Soll, Realisierung, physischer Zustand und Beobachtung}
+
+Das beabsichtigte Alignment und seine Entwurfsgesetze erzeugen eine
+\emph{Soll-Pose}. Eine Metric Realization ordnet dieses Soll in einem
+metrischen Raum an. Die Ausführung erzeugt eine physische Anlage, deren Zustand
+sich mit der Zeit ändert. Vermessung erzeugt zeitgestempelte Beobachtungen oder
+Schätzungen des beobachteten Zustands in dargestellten Koordinaten. Diese
+Größen sind verbunden, aber nicht austauschbar.
+
+Eine CAD-Kurve kann die Solltrajektorie darstellen. Eine
+Vermessungspolylinie kann Beobachtungen der Schienen darstellen. Ein
+Soll--Ist-Vergleich muss beide Seiten durch Objektbezug, Zeit, Realisierung,
+Konvention, Provenienz und Unsicherheit qualifizieren, bevor eine Abweichung
+interpretiert werden kann. Koordinatensubtraktion allein kann weder den
+richtigen noch den akzeptablen Zustand bestimmen.
+
+\section{Wo Überhöhung und Krümmung zusammentreffen}
+
+Krümmung und Überhöhung bleiben getrennte Gesetze, auch wenn eine betriebliche
+Berechnung beide verwendet. Die Beziehungen in
+\cref{eq:effective-lateral-acceleration,eq:cant-equilibrium,eq:jerk-relation}
+sind vereinfachte, annahmenabhängige Interpretationen für die folgende
+Dynamikdiskussion. Sie sind keine autoritativen Entwurfskopplungsregeln.
+Anwendbare Normen, Fahrzeugmodelle, Geschwindigkeitsprofile und Entscheidungen
+bleiben getrennte Eingaben.
+
+\begin{summary}
+pose3 ist ein qualifizierter räumlicher Zustand, der aus dem identifizierten
+Alignment sowie Profil, Überhöhung, metrischer Realisierung und
+Frame-Konvention abgeleitet wird. Überhöhung dreht das Eisenbahn-Frame, ändert
+aber weder die Identität von \(\kappa(s)\) noch begründet sie
+Engineering-Autorität.
+\end{summary}
+
+\begin{proposition}[Gleiszustandsprinzip]
+pose3 beschreibt eine qualifizierte Eisenbahnpose. Fahrzeugzustände benötigen
+zusätzliche Vehicle-Space-Operatoren und Modelle.
+\end{proposition}

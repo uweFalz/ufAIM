@@ -1,120 +1,31 @@
 % foundations/operators.tex
 
-\chapter{Operators}
+\chapter{Typed Operators}
 \label{chap:operators}
 
-Engineering knowledge becomes operational through mappings between
-states, spaces, representations, and realizations. Within Alignment
-Information Modelling (AIM), such mappings are expressed as operators.
+The revised curvature has produced a revised intrinsic state. The next
+question is not which concepts exist, but which action produces each
+subsequent consequence. AIM represents such actions as typed operators.
 
-This chapter introduces the common operator concept and the principal
-operator families used throughout the thesis. Their detailed
-mathematical and engineering meaning is developed in the chapters to
-which they belong.
-
-\section{Operator Concept}
- 
 \begin{definition}[Operator]
 \label{def:operator}
 An operator is a mapping
 \[
-\mathcal O:\mathcal A\rightarrow\mathcal B
+\mathcal O_c:\mathcal A\rightarrow\mathcal B
 \]
-that evaluates, transforms, derives, or relates elements of a domain
-\(\mathcal A\) to elements of a codomain \(\mathcal B\).
+whose input type, output type, applicable context \(c\), assumptions,
+and result provenance are declared.
 \end{definition}
 
-The domain and codomain determine what kind of operation is being
-performed. Depending on the engineering question, an operator may act
-on states, functions, coordinate descriptions, observations,
-representations, or candidate solutions.
-
-An operator is not identified solely by an algorithm. Different
-implementations may realize the same engineering operation, while
-similar algorithms may represent conceptually different operators.
-
-\section{Canonical Operators}
-
-\begin{definition}[Coordinate transformation operator]
-\label{def:coordinate-transform-operator}
-The coordinate transformation operator \(\mathcal C\) maps one
-world-space representation into another world-space representation:
-\[
-\mathcal C:\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{world}}.
-\]
-\end{definition}
-
-\begin{definition}[Metric realization operator]
-\label{def:metric-realization-operator}
-The metric realization operator \(\mathcal G\) maps an intrinsic state
-description to its metric interpretation:
-\[
-\mathcal G:\mathcal X\rightarrow\mathcal X_{\mathrm{metric}}.
-\]
-\end{definition}
-
-\begin{definition}[Realization operator]
-\label{def:realization-operator}
-The realization operator \(\mathcal R\) maps a target engineering state
-to a realized engineering state:
-\[
-\mathcal R:\mathcal X_{\mathrm{target}}\rightarrow\mathcal X_{\mathrm{real}}.
-\]
-\end{definition}
-
-\begin{definition}[Evaluation operator]
-\label{def:evaluation-operator}
-The evaluation operator \(\mathcal E\) maps an engineering state and an
-applicable context to the derived quantities used for assessment:
-\[
-\mathcal E:\mathcal X\times\Omega_{\mathrm{track}}\rightarrow\mathcal Y.
-\]
-\end{definition}
-
-\begin{definition}[Frame operator]
-\label{def:frame-operator}
-The frame operator \(\mathcal F\) constructs the local frame associated
-with a state or position:
-\[
-\mathcal F:\mathcal X\rightarrow\mathcal F.
-\]
-\end{definition}
-
-\begin{definition}[Track-to-world operator]
-\label{def:track-to-world-operator}
-The track-to-world operator \(\mathcal P_{\mathrm{tw}}\) maps track-related
-coordinates to a world-space description:
-\[
-\mathcal P_{\mathrm{tw}}:\Omega_{\mathrm{track}}\rightarrow\Omega_{\mathrm{world}}.
-\]
-\end{definition}
-
-\begin{definition}[World-to-track operator]
-\label{def:world-to-track-operator}
-The world-to-track operator \(\mathcal P_{\mathrm{wt}}\) maps a world-space
-description back to a track-related interpretation:
-\[
-\mathcal P_{\mathrm{wt}}:\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{track}}.
-\]
-\end{definition}
-
-\section{Operators and Engineering States}
+The subscript is shown when context would otherwise be ambiguous. An
+algorithm may implement an operator, but the engineering contract is not
+defined by implementation alone.
 
 \begin{principle}[State--operator relation]
 \label{princ:state-operator-relation}
 Operators evaluate, transform, or relate engineering states without
 becoming constituents of the engineering object itself.
 \end{principle}
-
-A state describes an engineering object under a specified condition.
-An operator describes how such a description is obtained, transformed,
-compared, or interpreted.
-
-This distinction allows one state concept to participate in different
-engineering processes without redefining its identity. The same
-intrinsic alignment state may, for example, be metrically realized,
-spatially interpreted, represented, observed, or evaluated by different
-operators.
 
 \begin{proposition}
 \label{prop:operator-explicit-dependencies}
@@ -123,109 +34,149 @@ state shall be represented explicitly through operators or relations
 rather than hidden inside an undifferentiated state description.
 \end{proposition}
 
-\section{Operator Families}
+\section{Reconstruct the edited state}
 
-The operator framework distinguishes several canonical families. These
-families identify engineering responsibility; they do not prescribe a
-particular software architecture or numerical method.
+The geometric reconstruction operator can be written schematically as
+\[
+\mathcal D_{I,s_0}:
+(\mathrm{pose2}(s_0),\kappa)
+\longrightarrow \mathrm{pose2}|_I.
+\]
 
-\subsection{Geometric Operators}
+\paragraph{Execution contract.}
+Input: an initial pose, curvature function, and interval. Output: the
+derived state trajectory. Required context: longitudinal domain and
+boundary conditions. Applicability: the reconstruction axioms and
+regularity assumptions must hold. Preserved identity: the alignment to
+which the edited state is assigned. Provenance: the edit, initial state,
+and reconstruction method. It cannot decide admissibility or whether
+the edited state should replace an approved state.
 
-Geometric operators govern the evolution or reconstruction of intrinsic
-geometry. They act on geometric states and control functions defined
-along arc-length.
+\section{Realize the state metrically}
 
-Typical geometric operations include:
-\begin{itemize}
-\item integration of curvature into heading,
-\item reconstruction of position from tangent direction,
-\item evaluation of transition laws,
-\item propagation of local geometric state.
-\end{itemize}
+\begin{definition}[Metric realization operator]
+\label{def:metric-realization-operator}
+\[
+\mathcal G_c:\mathcal X\rightarrow\mathcal X_{\mathrm{metric}}.
+\]
+\end{definition}
 
-The foundational differential relations are collected in
-\cref{chap:core-equations}. Detailed curvature constructions are
-developed in the geometry part of the thesis.
+\paragraph{Execution contract.}
+Input: the intrinsic state. Output: its metric interpretation. Required
+context: metric model, embedding data, and applicable conventions.
+Applicability: the context must cover the state domain and requested
+quantities. Preserved identity: the engineering object and state role.
+Provenance: intrinsic source plus realization context. It cannot perform
+physical construction, create an observation, or select a decision.
 
-\subsection{Metric Realization Operators}
+\begin{definition}[Frame operator]
+\label{def:frame-operator}
+The frame operator constructs the local frame required by the applicable
+realization:
+\[
+\mathcal F_c:\mathcal X_{\mathrm{metric}}\rightarrow\mathcal F.
+\]
+\end{definition}
 
-Metric realization operators interpret intrinsic engineering
-descriptions within a metric space.
+Its output is derived orientation data. It preserves identity and
+inherits the state and realization provenance; it cannot determine which
+frame convention a project ought to adopt.
 
-They establish the metric meaning required for quantities such as
-distance, direction, curvature, position, and local frame orientation.
+\section{Relate track and world descriptions}
 
-A metric realization operator depends on an applicable realization
-context. Its result is therefore not determined by intrinsic information
-alone.
+\begin{definition}[Track-to-world operator]
+\label{def:track-to-world-operator}
+\[
+\mathcal P_{\mathrm{tw},c}:
+\Omega_{\mathrm{track}}\rightarrow\Omega_{\mathrm{world}}.
+\]
+\end{definition}
 
-Metric realization is developed in
-\cref{chap:metric-realization}.
+It receives track coordinates and a realized alignment frame and
+produces a world-space point. Its applicability requires a valid local
+frame over the requested domain. The result preserves the referenced
+object and carries the realization provenance; it cannot establish a
+physical or observed condition.
 
-\subsection{Spatial Operators}
+\begin{definition}[World-to-track operator]
+\label{def:world-to-track-operator}
+\[
+\mathcal P_{\mathrm{wt},c}:
+\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{track}}.
+\]
+\end{definition}
 
-Spatial operators relate intrinsic, track-related, and world-related
-descriptions.
+It receives a world-space point and applicable realized alignment and
+produces a candidate track-related interpretation. Existence and
+uniqueness depend on the search domain and geometry. Its provenance must
+retain the world source, realization, and selection rule. It cannot prove
+that a survey point observes the alignment or choose among ambiguous
+projections without an applicable rule.
 
-They include track-to-world mappings, world-to-track mappings, frame
-construction, spatial embedding, and coordinate transformation between
-world-space representations.
+\begin{definition}[Coordinate transformation operator]
+\label{def:coordinate-transform-operator}
+\[
+\mathcal C_c:
+\Omega_{\mathrm{world}}\rightarrow\Omega_{\mathrm{world}}.
+\]
+\end{definition}
 
-These operations remain conceptually distinct.
+It changes coordinate representation under a declared transformation
+context. It preserves the represented object's identity and retains
+source/target CRS provenance. It cannot replace world-to-track
+interpretation or metric realization.
 
-\subsection{Representation Operators}
+\section{Produce representations and observations}
 
-Representation operators derive a representation from engineering
-knowledge or engineering states.
+Sampling the revised metric trajectory produces a CAD curve or polyline
+representation. The representation operator receives qualified state
+knowledge and representation parameters; it produces a derived artifact,
+preserves object identity, and retains source-state and method provenance.
+It cannot become the constructive definition merely because it is
+stored, exchanged, or rendered.
 
-Examples include sampling, polyline generation, exchange
-representations, visualization primitives, and numerical
-approximations.
+An observation operation instead receives a physical condition through
+a measurement process and produces source-grounded evidence with time,
+method, conditions, and uncertainty. A survey polyline is usable in the
+comparison only through that provenance. Observation cannot turn its
+output into physical reality or admitted engineering knowledge by
+itself.
 
-A representation operator changes the form in which engineering
-information is communicated or processed. It does not change the
-identity of the represented engineering object.
+\section{Relate target and physical condition}
 
-\subsection{Observation Operators}
+\begin{definition}[Realization operator]
+\label{def:realization-operator}
+\[
+\mathcal R:
+\mathcal X_{\mathrm{target}}\rightarrow\mathcal X_{\mathrm{real}}.
+\]
+\end{definition}
 
-Observation operators relate an engineering object or state to an
-engineering observation.
+The operator receives a target state plus an applicable construction,
+maintenance, or physical-response model and produces a realized-state
+description. It preserves the identity of the engineering object while
+changing the condition described. Its provenance includes the target,
+process model, and relevant physical inputs. It cannot manufacture an
+observation of the result or decide that the realized condition is
+acceptable.
 
-They account for measurement geometry, sensor behaviour, sampling,
-uncertainty, and provenance.
+\section{Evaluate the qualified consequence}
 
-Observation does not by itself establish engineering knowledge.
+\begin{definition}[Evaluation operator]
+\label{def:evaluation-operator}
+\[
+\mathcal E_c:
+\mathcal X\times\Omega_{\mathrm{track}}\rightarrow\mathcal Y.
+\]
+\end{definition}
 
-\subsection{Engineering Realization Operators}
-
-Engineering realization operators relate an intended engineering state
-to a physically realized state.
-
-They may describe construction, maintenance, adjustment,
-discretization, structural response, and material behaviour.
-
-Engineering realization changes the physical engineering condition and
-must therefore be distinguished from metric realization and
-representation.
-
-\subsection{Evaluation Operators}
-
-Evaluation operators derive quantities used to assess engineering
-states, observations, proposals, or candidate solutions.
-
-Typical results include residuals, admissibility conditions, dynamic
-quantities, operational quantities, and comparison measures.
-
-Evaluation produces engineering evidence. It does not by itself
-establish an engineering decision.
-
-\subsection{Decision-support Operators}
-
-Decision-support operators organize or compare engineering evidence in
-support of proposal evaluation.
-
-They may include numerical solvers, optimization methods, ranking
-procedures, or constraint evaluation.
+For the recurring discrepancy, evaluation receives the metrically
+realized target state, compatible survey evidence, comparison locations,
+uncertainty, and applicable rules. It produces residuals or other
+qualified consequences. It preserves the identity and roles of its
+inputs, and its provenance records those inputs, context, operator
+version, and assumptions. It cannot admit evidence as knowledge, accept
+a proposal, or issue an engineering decision.
 
 \begin{principle}[Solver independence]
 \label{princ:operators-solver-independence}
@@ -234,27 +185,17 @@ and decisions are independent of the numerical solver used to evaluate
 them.
 \end{principle}
 
-\section{Operator Composition}
+\section{Composition without responsibility transfer}
 
-Complex engineering processes may require several operators to be
-composed.
-
-Let
+For compatible types,
 \[
 \mathcal O_1:\mathcal A\rightarrow\mathcal B,
 \qquad
-\mathcal O_2:\mathcal B\rightarrow\mathcal C.
-\]
-
-Their composition is
-
-\[
+\mathcal O_2:\mathcal B\rightarrow\mathcal C,
+\qquad
 \mathcal O_2\circ\mathcal O_1:
 \mathcal A\rightarrow\mathcal C.
 \]
-
-Composition expresses conceptual dependency. It does not prescribe a
-particular implementation.
 
 \begin{principle}[Operator separation]
 \label{princ:operator-separation}
@@ -263,40 +204,8 @@ conceptually distinguishable even when they participate in the same
 workflow.
 \end{principle}
 
-Metric realization, coordinate transformation, world-to-track mapping,
-representation, realization, observation, and evaluation therefore
-remain distinct engineering operations.
-
-\section{Context and Validity}
-
-Every operator is valid only within its declared domain, codomain, and
-context.
-
-Relevant context may include metric space, realization context,
-coordinate reference system, engineering standard, observation
-provenance, and operational conditions.
-
-Different implementations may realize the same canonical operator as
-long as they preserve the same engineering contract.
-
-\section{Canonical Interpretation}
-
-\begin{proposition}
-AIM describes engineering activity through explicit relations between
-engineering objects, states, knowledge, contexts, and operators.
-\end{proposition}
-
-\begin{proposition}
-Geometric reconstruction, metric realization, spatial interpretation,
-representation, observation, physical realization, and engineering
-evaluation are distinct operator responsibilities.
-\end{proposition}
-
-\begin{proposition}
-Operator composition establishes engineering dependency without
-eliminating conceptual responsibility boundaries.
-\end{proposition}
-
-The operator framework provides the common language through which later
-chapters describe engineering transformations while preserving the
-architectural boundaries established by the Knowledge Kernel.
+The curvature-edit chain can therefore be read as reconstruction,
+metric realization, representation or observation interpretation, and
+evaluation. Composition transmits values and provenance. It does not
+transfer identity, change truth mode silently, or confer decision
+authority on the final number.

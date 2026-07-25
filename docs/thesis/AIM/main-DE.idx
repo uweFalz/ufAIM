@@ -1,0 +1,85 @@
+\indexentry{Begriffliche Struktur|hyperpage}{23}
+\indexentry{Projektion!World--Track-Koordinatentransformation|hyperpage}{118}
+\indexentry{Bezugssystem!Track Space|hyperpage}{118}
+\indexentry{Prinzip des intrinsischen Raumprimats|hyperpage}{118}
+\indexentry{Track Space|hyperpage}{119}
+\indexentry{Koordinatensystem!Gleis|hyperpage}{119}
+\indexentry{Bogenlänge!und Stationierung|hyperpage}{119}
+\indexentry{Projektion!Track-to-World|hyperpage}{119}
+\indexentry{Projektion!World-to-Track|hyperpage}{120}
+\indexentry{Projektion!Unterschied zur Koordinatentransformation|hyperpage}{121}
+\indexentry{Projektionsunterscheidungsprinzip|hyperpage}{121}
+\indexentry{Projektion!Mehrdeutigkeit|hyperpage}{121}
+\indexentry{Projektionsmehrdeutigkeitsprinzip|hyperpage}{121}
+\indexentry{Zustand!qualifizierte Verwendung|hyperpage}{129}
+\indexentry{Laufzeitoperatoren|hyperpage}{131}
+\indexentry{Operator!Laufzeit|hyperpage}{131}
+\indexentry{Realisierung!Operator|hyperpage}{131}
+\indexentry{Dynamikoperator|hyperpage}{132}
+\indexentry{Fahrzeugzustand!Interpretationsoperator|hyperpage}{132}
+\indexentry{Betriebszustand!Bewertungsoperator|hyperpage}{132}
+\indexentry{Operatorkomposition|hyperpage}{132}
+\indexentry{Laufzeitdienste|hyperpage}{158}
+\indexentry{Architektur!Laufzeit|hyperpage}{158}
+\indexentry{Laufzeitdienst!Definition|hyperpage}{158}
+\indexentry{Laufzeitbewertung|hyperpage}{158}
+\indexentry{Prinzip der Laufzeitrekonstruktion|hyperpage}{159}
+\indexentry{Zustand!pose3!Laufzeitbewertung|hyperpage}{159}
+\indexentry{Projektion!Track--World-Laufzeitdienst|hyperpage}{160}
+\indexentry{Projektion!World--Track-Laufzeitdienst|hyperpage}{160}
+\indexentry{Bezugsrahmen!Laufzeitdienst|hyperpage}{161}
+\indexentry{Beschleunigung!effektive Querbeschleunigung|hyperpage}{161}
+\indexentry{Ruck!Laufzeit|hyperpage}{161}
+\indexentry{Detaillierungsgrad (LOD)!Laufzeitbewertung|hyperpage}{161}
+\indexentry{Laufzeitcache|hyperpage}{162}
+\indexentry{Pipeline!Laufzeitoperator|hyperpage}{162}
+\indexentry{Pipeline!realisierungsbewusste Laufzeit|hyperpage}{162}
+\indexentry{Abbildungen!Laufzeitarchitektur|hyperpage}{165}
+\indexentry{Beobachtung!Datenquellenkontext|hyperpage}{169}
+\indexentry{Datenquelle|hyperpage}{169}
+\indexentry{Datenquelle!Definition|hyperpage}{169}
+\indexentry{Beobachtungsprinzip|hyperpage}{169}
+\indexentry{Unsicherheit!Messung|hyperpage}{169}
+\indexentry{Interpretation!Beobachtungsdaten|hyperpage}{169}
+\indexentry{Rekonstruktion!aus Beobachtungsdaten|hyperpage}{170}
+\indexentry{Provenienz!Beobachtungsrekonstruktion|hyperpage}{170}
+\indexentry{Koordinatensystem|hyperpage}{171}
+\indexentry{Bezugssystem!World-Einbettung|hyperpage}{171}
+\indexentry{Koordinatenreferenzsystem (CRS)|hyperpage}{171}
+\indexentry{Prinzip des CRS-Kontexts|hyperpage}{171}
+\indexentry{Transformation!Koordinaten|hyperpage}{172}
+\indexentry{Bezugsrahmen!lokal|hyperpage}{172}
+\indexentry{Stationierung|hyperxindexformat{\see{Bezugssystem, Stationierung}}}{172}
+\indexentry{Realisierung!metrisch!Koordinatenbehandlung|hyperpage}{172}
+\indexentry{Bezugssystem!Stationierung|hyperpage}{173}
+\indexentry{Bezugssystem!Kilometrierungslinie|hyperpage}{173}
+\indexentry{Bezugssystem!Stationierungsebene|hyperpage}{173}
+\indexentry{Bezugssystem!äußere Stationierung|hyperpage}{173}
+\indexentry{Topologie!operative Kontinuität|hyperpage}{174}
+\indexentry{Beobachtung!Messdaten|hyperpage}{175}
+\indexentry{Datenqualität!unvollkommene Daten|hyperpage}{175}
+\indexentry{Beobachtete Daten|hyperpage}{175}
+\indexentry{Prinzip des Beobachtungskontexts|hyperpage}{175}
+\indexentry{Fehler!systematisch|hyperpage}{175}
+\indexentry{Unsicherheit!Messung|hyperpage}{175}
+\indexentry{Krümmung!diskrete Schätzung|hyperpage}{175}
+\indexentry{Provenienz!Verfolgung|hyperpage}{176}
+\indexentry{Topologie|hyperpage}{177}
+\indexentry{Besondere Elemente!Eisenbahnnetz|hyperpage}{177}
+\indexentry{Topologie!Eisenbahnnetzkontext|hyperpage}{177}
+\indexentry{Topologie!Verbindungspunkt|hyperpage}{177}
+\indexentry{Topologie!Graphdarstellung|hyperpage}{177}
+\indexentry{Optimierung!realisierungsbewusst|hyperpage}{263}
+\indexentry{Realisierung!Operator!in Optimierung|hyperpage}{263}
+\indexentry{Optimierung!auf realisierten Zuständen|hyperpage}{263}
+\indexentry{Zustand!pose3!Optimierung|hyperpage}{264}
+\indexentry{Beschleunigung!effektive Querbeschleunigung!Optimierungsziel|hyperpage}{264}
+\indexentry{Ruck!Optimierungsziel|hyperpage}{264}
+\indexentry{Bedingung!Realisierung|hyperpage}{264}
+\indexentry{Realisierung!inverse Formulierung|hyperpage}{264}
+\indexentry{Frequenzinterpretation!Realisierungsoperator als Tiefpassfilter|hyperpage}{265}
+\indexentry{Optimierung!dünn besetzt|hyperpage}{265}
+\indexentry{Optimierung!hybrid|hyperpage}{265}
+\indexentry{Optimierung!Laufzeit|hyperpage}{265}
+\indexentry{Fahrzeugraum!Optimierungsinterpretation|hyperpage}{265}
+\indexentry{Bezugssystem!ellipsoidbewusste Optimierung|hyperpage}{265}

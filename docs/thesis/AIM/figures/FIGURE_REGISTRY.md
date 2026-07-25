@@ -28,7 +28,11 @@ Status values:
 | FIG-013 | Track-Vehicle Relation | dynamics/track_vehicle_relation.tex | F2 Architecture | active | dynamics/vehicle_space |
 | FIG-014 | Runtime Dynamics | dynamics/runtime_dynamics.tex | F4 Process | active | dynamics/runtime_dynamics |
 | FIG-015 | Realization-Aware Dynamics | dynamics/realization_aware_dynamics.tex | F4 Process | active | dynamics/realization_aware_dynamics |
-| FIG-016 | Dynamic Balance Relation | dynamics/dynamic_balance_relation.tex | F3 Mathematical | active | dynamics/dynamic_balance |
+| FIG-016 | Railway-State Dependency | state/railway_state_dependency.tex | F4 Process | active | state/part_intro |
+| FIG-017 | Cant Moving Frame | state/cant_interpretation.tex | F3 Mathematical | active | state/pose3_and_cant |
+| FIG-018 | Dynamic Balance Relation | dynamics/dynamic_balance_relation.tex | F3 Mathematical | active | dynamics/dynamic_balance |
+| FIG-019 | Space-to-Time Dependency | dynamics/space_to_time_dependency.tex | F4 Process | active | dynamics/part_intro |
+| FIG-023 | Model--Objective--Candidate--Decision | dynamics/model_candidate_decision.tex | F4 Process | active | dynamics/optimization_in_state_space |
 
 ## Phase D Imported Figures
 
@@ -46,3 +50,4 @@ figures/phase_d/
 | FIG-019 | Cant Interpretation | state/cant_interpretation.tex | F3 Mathematical | active | state/pose3_and_cant |
 | FIG-020 | Schwerpunkt Trajectory | dynamics/schwerpunkt_trajectory.tex | F1 Overview | active | dynamics/schwerpunkt_state / modeling/schwerpunkt_trassierung |
 | FIG-021 | Sparse Model Structure | modeling/sparse_model_structure.tex | F2 Architecture | active | modeling/sparse |
+| FIG-022 | Curvature to Engineering Consequence | overview/curvature_consequence_chain.tex | F1 Overview | active | why/vision |

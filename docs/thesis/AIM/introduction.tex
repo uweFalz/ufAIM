@@ -2,194 +2,244 @@
 
 \chapter{Introduction}
 
-This chapter establishes the central engineering question of the thesis,
-defines the AIM perspective, and prepares the reader for the part-wise
-development that follows.
+\section{The Railway Problem Before the Information Problem}
 
-\section{A Shift in Perspective}
+A railway vehicle cannot choose a nearby path when the geometry becomes
+unfavourable. Its wheelsets are constrained to follow the rail pair. A
+transition between a straight and a circular arc therefore changes more than a
+drawn route: the curvature law and the development of cant, together with
+speed, govern how lateral acceleration, roll, force development, comfort, wear,
+and admissibility evolve along the vehicle trajectory.
 
-Railway alignment is commonly described as a geometric curve
-\(\gamma(s)\) embedded in space.
+Compare a clothoid with a transition whose curvature derivative also settles
+smoothly at its ends. Both can connect the same boundary curvatures. The
+clothoid gives constant \(\kappa'(s)\), whereas a smoothed law can suppress the
+endpoint changes of \(\kappa'(s)\) and control \(\kappa''(s)\). The latter may
+offer preferable physical behaviour, yet usually spends length on that
+smoothing. In the originating engineering comparison, the clothoid's decisive
+advantage was therefore not assumed to be universal dynamic superiority; it
+was often its compact, transparent construction. That observation opened the
+question that precedes AIM: how can different known transition forms be
+expressed, calculated, and compared within one functional language?
 
-This view is sufficient for visualization, but it fails to capture the
-quantities that actually govern railway design:
-curvature, cant, dynamics, and realization.
+The originating answer was \emph{Berlinish}, a generalized transition grammar,
+and \emph{axtranNew}, the intended calculation core that makes this grammar
+applicable. The broader ufAIM environment developed later because formulas and
+solver results alone could not keep the resulting knowledge durable,
+inspectable, editable, attributable, and usable across engineering workflows.
+This history is a Thesis interpretation of the development lineage, not a
+claim that Berlinish or axtranNew is an approved Kernel concept.
 
-In practice, railway tracks are not designed, constructed, or maintained
-as curves, but through operations acting on curvature and discrete
-control points.
+\section{A Change That Does Not Stay in One Model}
 
-\begin{summary}
-Alignment is not a curve.
-It is a curvature-driven system whose geometry emerges from its
-generative structure.
-\end{summary}
+Consider an alignment received in local engineering coordinates. An engineer
+changes the curvature of one transition. The geometric effect is immediate:
+the downstream course moves, derived positions change, and a new curve appears
+on the screen. Yet this apparently local edit opens a larger set of questions.
+Does the edited model still describe the same alignment? Which observations
+refer to the existing track, and which values express the proposed design?
+Which rules apply in this project context? Who is entitled to accept the
+consequence?
 
-The central question for the remainder of this chapter is therefore:
-what object organizes all later engineering meaning in AIM?
+No single view answers all of these questions. GIS can place the alignment
+among terrain, parcels, networks, and environmental data, but relevance must be
+selected from an abundance of available context. CAD gives the engineer exact
+construction and editing power, while usually presenting only the scope needed
+for the immediate task. BIM and exchange models can connect objects and
+attributes across disciplines, but delivery requirements often determine what
+is represented and at what depth. Measurements, calculation sheets, standards,
+issue records, and experienced engineers hold further parts of the meaning.
 
-\begin{figure}[ht]
-\centering
-\input{figures/overview/icon_introduction_alignment_center}
-\caption{Introduction icon: alignment as the organizing center of engineering meaning.}
-\label{fig:icon-introduction-alignment-center}
-\end{figure}
+This fragmentation is not evidence that the tools have failed. Each is useful
+within its purpose. The difficulty appears between their purposes: engineering
+knowledge is distributed across representations, documents, workflows, and
+people, while the consequence of an alignment change must be understood at one
+particular moment of action.
 
-\noindent
-The subsequent sections unfold this claim through problem formulation,
-framework definition, and consequences for modelling and design.
+\begin{quote}
+Engineering software can describe almost every visible consequence of an
+alignment change, yet it often cannot state what must remain the same while
+those descriptions change.
+\end{quote}
 
-\section{Limitations of Current Practice}
+That tension motivates this thesis.
 
-Despite a long tradition of railway engineering, alignment modelling
-remains fragmented across several domains:
+\section{The Problem Is Not Geometry Exchange Alone}
 
-\begin{itemize}
-\item geometric construction of curves,
-\item rule-based engineering design,
-\item data exchange formats such as LandXML and IFC,
-\item numerical evaluation and simulation.
-\end{itemize}
+Geometric interoperability matters, but successful transfer of coordinates or
+curve elements does not settle the engineering problem. Six distinctions must
+survive the transfer.
 
-These aspects are typically handled in separate tools and workflows,
-leading to discontinuities between modelling, analysis, and design.
+\begin{description}[style=nextline]
+\item[Identity]
+The engineering object must remain distinguishable across files, views,
+coordinate realizations, and workflow changes. Numerical equality alone does
+not establish that two descriptions concern the same object, and geometric
+change alone does not decide that one object has become another.
 
-In particular:
-\begin{itemize}
-\item geometry is treated independently of dynamics,
-\item transition curves are selected from predefined catalogues,
-\item data formats focus on representation rather than computation,
-\item optimization is not part of the core modelling paradigm.
-\end{itemize}
+\item[Constructive intent]
+The ordered longitudinal construction and its curvature evolution explain how
+the alignment is defined. Sampled points or rendered curves may expose this
+construction, but do not own it.
 
-As a consequence, alignment design lacks a unified internal model that
-connects data, geometry, dynamics, and realization.
+\item[Reality and observation]
+The intended alignment, the physically realized track, and an observation of
+that track are related but different. A measurement is evidence obtained under
+particular conditions; it is not automatically the physical state or accepted
+engineering knowledge.
 
-\section{Problem Statement}
+\item[Change and consequence]
+A curvature edit propagates into position, orientation, cant interaction,
+vehicle response, clearances, construction, and compliance. The dependencies
+that carry those consequences must be explicit enough to evaluate.
 
-The absence of a unified modelling framework leads to fundamental
-limitations:
+\item[Knowledge ownership]
+A format, viewer, solver, or database may carry and use engineering knowledge
+without acquiring authority over its meaning. Scope, provenance,
+applicability, and accountable ownership must remain visible.
 
-\begin{itemize}
-\item inconsistent interpretation of alignment data,
-\item separation of geometry and dynamics,
-\item limited support for optimization-based design,
-\item high effort for integrating heterogeneous data sources.
-\end{itemize}
+\item[Decision]
+Calculation and optimization can produce evidence and alternatives. They do not
+by themselves accept an engineering change. Evaluation and decision authority
+must remain distinct.
+\end{description}
 
-These issues become increasingly critical as infrastructure systems grow
-in complexity and demand higher levels of automation, precision, and
-traceability.
+The unresolved problem can therefore be stated concisely: how can an alignment
+retain coherent engineering meaning across representations and changes, while
+making the right knowledge applicable when an engineer acts?
 
-\section{AIM: A Unified Framework}
+\section{Research Question and Central Thesis}
 
-This work introduces \textbf{Alignment-Based Information Modelling (AIM)}
-as a framework addressing these limitations.
+The guiding research question is:
 
-The central idea is to represent alignment as a structured, state-based
-object defined by curvature and cant:
-\[
-(\kappa(s), \phi(s)),
-\]
-from which all geometric and dynamic quantities are derived.
+\begin{quote}
+How can alignment-specific engineering identity, construction, state, reality,
+observation, knowledge, and evaluation be organized so that changes remain
+traceable and their consequences become computable across representations?
+\end{quote}
 
-Within this framework:
-\begin{itemize}
-\item curvature is the primary modelling variable,
-\item geometry is obtained by integration,
-\item transition curves are interpreted as control functions,
-\item alignment becomes a generative system rather than a static object.
-\end{itemize}
+This question generalizes the originating transition problem. The initial
+technical question asked how curvature functions, boundary conditions,
+component lengths, and degrees of freedom could describe and solve railway
+transitions without declaring one curve family universally best. Once those
+calculated transitions had to survive editing, exchange, observation,
+comparison, and accountable use, the information-modelling question became
+unavoidable.
 
-\section{Core Claim}
+The thesis answers with Alignment-Based Information Modelling (AIM). It is
+knowledge-based: engineering use depends on admitted meaning and applicability.
+It is alignment-specific: longitudinal construction and curvature evolution
+organize the object. It is representation-aware: no file, view, or coordinate
+realization is mistaken for the object itself. It is implementation-capable:
+the relations are developed into states, operators, constraints, pipelines, and
+numerical methods.
 
-\begin{proposition}
-Railway alignment modelling can be reformulated as a curvature-driven,
-realization-aware, and optimization-ready system.
+\begin{proposition}[Central thesis]
+An alignment can be treated coherently across design, realization,
+observation, evaluation, and change when its intrinsic constructive identity is
+kept distinct from its representations and is connected to applicable
+engineering knowledge through explicit state and operator relations.
 \end{proposition}
 
-This reformulation enables a unified treatment of:
-\begin{itemize}
-\item geometry,
-\item dynamics,
-\item construction and realization,
-\item data integration,
-\item and optimization.
-\end{itemize}
+Curvature has a privileged role in this argument. For an alignment, ordered
+curvature evolution belongs to the intrinsic constructive structure, while
+position and pose arise through metric interpretation and integration. This is
+why the thesis moves from the familiar curve to a curvature-driven generative
+model. It does not deny geometry; it explains where geometry comes from and
+what geometry alone cannot own.
 
-\section{Consequences}
+\section{Contributions}
 
-Adopting this perspective leads to several key consequences:
+The work makes five kinds of contribution.
 
-\begin{itemize}
-\item alignment design becomes an optimization problem,
-\item realization is treated as an operator acting on the model,
-\item data reconstruction is formulated as an inverse problem,
-\item hybrid models bridge parametric structure and measured data,
-\item analytical derivatives arise naturally from the formulation.
-\end{itemize}
+\begin{description}[style=nextline]
+\item[Conceptual contribution]
+It establishes a coherent alignment-centred account of engineering object
+identity, constructive identity, representation, metric and physical
+realization, observation, engineering knowledge, evaluation, and decision.
 
-\section{Scope of the Work}
+\item[Formal and methodological contribution]
+It develops curvature-driven pose and state formulations, explicit spatial and
+runtime operators, realization-aware dependencies, constraint evaluation, and
+structured optimization formulations.
 
-The present manuscript develops the AIM framework across the following
-dimensions:
+It also makes the originating Berlinish composition explicit as a mathematical
+framework for relating half-wave, clothoid, asymmetric, and compound transition
+forms without promoting that research contribution to Kernel authority.
 
-\begin{itemize}
-\item mathematical foundations of curvature-based modelling,
-\item structured representation of alignment elements,
-\item classification and interpretation of transition curves,
-\item modelling of realization and construction processes,
-\item formulation of optimization problems and solution methods,
-\item integration of real-world data and coordinate systems,
-\item application to railway engineering use cases.
-\end{itemize}
+\item[Engineering contribution]
+It connects alignment transitions, cant, vehicle-related quantities,
+stationing, coordinate context, observations, construction effects, and railway
+rules without collapsing their different meanings into one geometric model.
 
-\section{Contribution}
+\item[Implementation and reference contribution]
+It specifies computational pipelines and sparse or hybrid representations that
+support reconstruction, evaluation, and optimization while preserving the
+boundary between canonical engineering meaning and derived products.
 
-The main contributions of this work are:
+Within that contribution, axtranNew denotes the calculation lineage from
+connection and boundary solving to editable alignment structures. The current
+reference implementation supports registry-based transition evaluation,
+sparse reconstruction, selected native edits, comparisons, and bounded
+optimization problems; a general production-ready optimizer remains future
+work.
 
-\begin{itemize}
-\item a unified state-based alignment model,
-\item the reinterpretation of transition curves as curvature control functions,
-\item the introduction of a realization-aware modelling perspective,
-\item the formulation of alignment design as a structured optimization problem,
-\item the development of a pipeline connecting data, model, and computation.
-\end{itemize}
+\item[Explanatory contribution]
+It provides a dependency-ordered account through which a technically qualified
+reader can move from an ordinary alignment edit to the conceptual and
+computational machinery needed to assess its consequences.
+\end{description}
 
-Together, these contributions establish a coherent framework linking
-theoretical modelling and practical engineering.
+These are foundation contributions. The thesis demonstrates formulations,
+relations, and implementation pathways; it does not claim to replace every
+domain tool, provide a complete multibody railway model, or transfer engineering
+decision authority to computation.
 
-\section{Structure of the Manuscript}
+\section{Methodological Orientation}
 
-The manuscript is organized into several parts, progressing from
-conceptual foundations to practical applications:
+The investigation alternates between conceptual separation and constructive
+demonstration. It first asks what kind of thing each item is---object,
+representation, state, observation, knowledge, or decision---and which
+dependencies are legitimate. It then develops mathematical models and
+operators that make selected dependencies computable. Railway examples,
+standards-related constraints, data reconstruction, and optimization test
+whether the distinctions remain useful under engineering pressure.
 
-\begin{itemize}
-\item motivation and conceptual shift,
-\item mathematical and state-based foundations,
-\item modelling and representation,
-\item realization and system perspective,
-\item optimization methods,
-\item engineering constraints and standards,
-\item applications and outlook.
-\end{itemize}
+The argument proceeds from examples to formalization. Equations are introduced
+when they expose a dependency or enable evaluation, not as substitutes for the
+engineering question. Numerical solutions are treated as candidates or
+evidence within an accountable process, not as self-authorizing answers.
 
-\section{Outlook}
+\section{How to Read the Thesis}
 
-The AIM framework is intended as a foundation for future development.
+The parts are ordered around questions the reader can carry forward.
 
-It opens the path toward:
-\begin{itemize}
-\item optimization-driven design systems,
-\item deeper integration with BIM,
-\item network-level alignment modelling,
-\item interactive and real-time engineering tools.
-\end{itemize}
+\begin{enumerate}[leftmargin=*]
+\item \emph{Why does an alignment require more than a curve?} The opening part
+  sharpens the practical problem and the AIM proposition.
+\item \emph{What must remain distinct before mathematics can help?}
+  Mathematical Foundations and Engineering Concepts establish identity,
+  knowledge, representation, realization, observation, and decision boundaries.
+\item \emph{How does intrinsic construction acquire geometric and operational
+  meaning?} Geometry, Railway State, and Dynamic Railway State derive pose,
+  cant, vehicle-related quantities, and admissibility from longitudinal state.
+\item \emph{How are consequences evaluated while a system is being used?}
+  Runtime and Evaluation makes the application of operators and knowledge
+  explicit.
+\item \emph{How do design, the physical track, and evidence about it remain
+  related without becoming identical?} Reality and Data treats coordinates,
+  measurement, construction, and realized state.
+\item \emph{How can the account be implemented and changed deliberately?}
+  Alignment Modelling, System and Pipeline, and Optimization develop sparse
+  models, computational dependencies, and solution methods. They also show how
+  Berlinish, axtranNew, transitionDB, TransEd, SPOT, and alignmentOS occupy
+  different roles in the development response.
+\item \emph{What survives contact with rules, exchange systems, and engineering
+  use?} Engineering and Standards, Applications, Discussion, and Outlook test
+  the framework's reach and state its limits.
+\end{enumerate}
 
-In this sense, the work contributes to a broader transition from static
-geometry toward computational infrastructure modelling.
-
-With this orientation fixed, the manuscript now proceeds through the
-part sequence from motivation and foundations to state, runtime,
-reality, modelling, optimization, engineering constraints, applications,
-discussion, and outlook.
+The curvature edit introduced at the start will recur as a test: what remains
+the same, what changes, what is observed, what is inferred, and who may decide?
+The next part begins by returning to that edit before any formal ontology is
+required.

@@ -1,456 +1,200 @@
-// app/controllers/bridges/transitionEditorBridge.js
-//
-// Bridge: UI <-> store.te_*  (no rendering, no math, no registry)
-//
-// Worker API used (ONLY):
-//   - Transition.ListPresets      -> [{id,label}, ...]
-//   - Transition.GetPresetSpec    -> { presetId, descriptor, cuts01?, meta? }  (pure data)
-
+// TransEd bridge: transitionDB commands and TransEd UI state only.
+// It intentionally has no SPOT or Alignment Editor dependency.
 import { clamp01 } from "@utils/helpers.js";
+import { t } from "../../i18n/strings.js";
 
-function setText(el, txt) {
-	if (!el) return;
-	el.textContent = String(txt ?? "");
+const LEVELS = ["constant", "simpleFcn", "protoFcn", "halfWave", "transition"];
+
+function text(el, value) { if (el) el.textContent = String(value ?? ""); }
+function clone(value) { return structuredClone(value); }
+function title(id) {
+	return String(id ?? "").replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-function fillSelect(sel, items, activeId) {
-	if (!sel) return;
-	sel.innerHTML = "";
-
-	for (const it of items || []) {
-		if (!it?.id) continue;
-		const opt = document.createElement("option");
-		opt.value = it.id;
-		opt.textContent = it.label ?? it.id;
-		sel.appendChild(opt);
-	}
-
-	if (activeId && (items || []).some((x) => x?.id === activeId)) {
-		sel.value = activeId;
-	}
+function cuts(spec) {
+	const part = spec?.descriptor?.normLengthPartition ?? [0, 1, 0];
+	return { w1: clamp01(Number(part[0]) || 0), w2: clamp01((Number(part[0]) || 0) + (Number(part[1]) || 0)) };
 }
-
-function fromSliderVal01(v1000) {
-	return clamp01(Number(v1000) / 1000);
+function card(label, value) {
+	const wrap = document.createElement("dl");
+	wrap.className = "te-detail-card";
+	const dt = document.createElement("dt"); dt.textContent = label;
+	const dd = document.createElement("dd");
+	if (typeof value === "object" && value !== null) {
+		const pre = document.createElement("pre"); pre.textContent = JSON.stringify(value, null, 2); dd.append(pre);
+	} else dd.textContent = String(value ?? "—");
+	wrap.append(dt, dd);
+	return wrap;
 }
-
-function cuts01FromSpecOrDescriptor(spec) {
-	const desc = spec?.descriptor ?? spec ?? null;
-
-	if (spec?.cuts01) {
-		return {
-			w1: clamp01(spec.cuts01.w1 ?? 0.25),
-			w2: clamp01(spec.cuts01.w2 ?? 0.75),
-		};
-	}
-
-	const lambdas = Array.isArray(desc?.normLengthPartition)
-		? desc.normLengthPartition.map((x) => Number(x) || 0)
-		: null;
-
-	if (lambdas && lambdas.length === 3) {
-		const w1 = clamp01(lambdas[0]);
-		const w2 = clamp01(lambdas[0] + lambdas[1]);
-		return { w1, w2 };
-	}
-
-	return { w1: 0.25, w2: 0.75 };
-}
-
-// -----------------------------------------------------------------------------
 
 export function makeTransitionEditorBridge({ store, ui, messaging, view } = {}) {
-	if (!store?.getState) throw new Error("TransitionEditorBridge: missing store");
-	if (!ui?.elements) throw new Error("TransitionEditorBridge: missing ui.elements");
-	if (!messaging?.sendCmdAwait) throw new Error("TransitionEditorBridge: missing messaging.sendCmdAwait");
+	if (!store?.getState || !ui?.elements || !messaging?.sendCmdAwait) throw new Error("TransitionEditorBridge: incomplete dependencies");
+	const byId = (id) => document.getElementById(id);
+	const ov = ui.elements.transitionOverlay ?? byId("transOverlay");
+	const nodes = {
+		levels: byId("teLevels"), records: byId("teRecordList"), breadcrumb: byId("teBreadcrumb"), details: byId("teDetails"),
+		kind: byId("teRecordKind"), title: byId("teRecordTitle"), status: byId("teRecordStatus"), controls: byId("teTransitionControls"),
+		preset: ui.elements.tePresetSelMain ?? byId("tePresetSelMain"), compare: byId("teComparePreset"), compareSummary: byId("teCompareSummary"), compareGraph: byId("teCompareGraph"),
+		part: [byId("tePart1"), byId("tePartCore"), byId("tePart2")], apply: byId("teApply"), reset: byId("teReset"), editStatus: byId("teEditStatus"), legend: byId("teLegend"),
+		w1: byId("teW1"), w2: byId("teW2"), w1Value: byId("teW1Val"), w2Value: byId("teW2Val"),
+	};
+	let catalogue = null;
+	let level = "transition";
+	let recordId = "";
+	let compareId = "";
+	let viewInit = null;
+	const send = (command, payload = {}) => messaging.sendCmdAwait(command, payload);
+	const records = () => catalogue?.records?.[level] ?? [];
 
-	const elPresetMain = ui.elements.tePresetSelMain ?? null;
-	const elPresetAlt = ui.elements.tePresetSelAlt ?? null;
-
-	const elW1 = ui.elements.teW1 ?? null;
-	const elW2 = ui.elements.teW2 ?? null;
-
-	const elW1Val = ui.elements.teW1Val ?? null;
-	const elW2Val = ui.elements.teW2Val ?? null;
-
-	const btnOpen = ui.elements.buttonTransition ?? document.getElementById("btnTrans");
-	const btnClose = ui.elements.buttonTransitionClose ?? document.getElementById("btnTransClose");
-	const ov = ui.elements.transitionOverlay ?? document.getElementById("transOverlay");
-
-	// -----------------------------------------------------------------------------
-	// view init
-
-	let _viewInitPromise = null;
-	async function ensureViewInitOnce() {
-		if (!view?.init) return;
-		if (_viewInitPromise) return _viewInitPromise;
-		_viewInitPromise = (async () => { await view.init(); })();
-		return _viewInitPromise;
+	async function ensureView() {
+		if (!viewInit) viewInit = Promise.resolve(view?.init?.());
+		await viewInit;
 	}
-
-	// -----------------------------------------------------------------------------
-	// store helpers
-
-	function setPresetId(id) {
-		if (store.actions?.setTePresetId) return store.actions.setTePresetId(String(id ?? ""));
-		if (store.actions?.setTransitionPresetId) return store.actions.setTransitionPresetId(String(id ?? ""));
-		if (store.actions?.setTePreset) return store.actions.setTePreset(String(id ?? ""));
+	function setOpen(open) {
+		(open ? ui.openTransition : ui.closeTransition)?.();
+		store.actions?.setTeOpen?.(open);
 	}
+	function setPlot(mode) { store.actions?.setTePlot?.(mode); renderCompare(); }
 
-	function setOpen(isOpen) {
-		if (store.actions?.setTeOpen) return store.actions.setTeOpen(Boolean(isOpen));
-		if (store.actions?.setTransitionOpen) return store.actions.setTransitionOpen(Boolean(isOpen));
-	}
-
-	function setW1(w1) {
-		if (store.actions?.setTeW1) return store.actions.setTeW1(Number(w1));
-		if (store.actions?.setTransitionW1) return store.actions.setTransitionW1(Number(w1));
-	}
-
-	function setW2(w2) {
-		if (store.actions?.setTeW2) return store.actions.setTeW2(Number(w2));
-		if (store.actions?.setTransitionW2) return store.actions.setTransitionW2(Number(w2));
-	}
-
-	function setPresetSpec(spec) {
-		if (store.actions?.setTePresetSpec) return store.actions.setTePresetSpec(spec);
-	}
-
-	function setSplitsPresetId(id) {
-		if (store.actions?.setTeSplitsPresetId) return store.actions.setTeSplitsPresetId(String(id ?? ""));
-	}
-
-	function setSplitsDirty(flag) {
-		if (store.actions?.setTeSplitsDirty) return store.actions.setTeSplitsDirty(Boolean(flag));
-	}
-
-	function setPlot(mode) {
-		if (store.actions?.setTePlot) return store.actions.setTePlot(String(mode ?? "k"));
-	}
-
-	function getPresetIdFromState(st) {
-		return String(st?.te_presetId ?? st?.te_preset ?? st?.transitionPresetId ?? "");
-	}
-
-	// -----------------------------------------------------------------------------
-	// UI helpers
-
-	function syncBounds(a1000, b1000) {
-		if (!elW1 || !elW2) return;
-		elW1.max = String(b1000);
-		elW2.min = String(a1000);
-	}
-
-	function setSliderPairAndLabels(w1, w2) {
-		const a = Math.round(clamp01(w1) * 1000);
-		const b = Math.round(clamp01(w2) * 1000);
-
-		if (elW1) elW1.value = String(a);
-		if (elW2) elW2.value = String(b);
-
-		setText(elW1Val, `${Math.round(clamp01(w1) * 100)}%`);
-		setText(elW2Val, `${Math.round(clamp01(w2) * 100)}%`);
-
-		syncBounds(a, b);
-	}
-
-	function markDirtyOwnedByCurrentPreset() {
-		const st = store.getState?.() ?? {};
-		const pid = String(st.te_presetId ?? "");
-		if (!pid) return;
-
-		if (String(st.te_splitsPresetId ?? "") !== pid) setSplitsPresetId(pid);
-		if (!Boolean(st.te_splitsDirty)) setSplitsDirty(true);
-	}
-
-	// -----------------------------------------------------------------------------
-	// worker
-
-	async function listPresets() {
-		return messaging.sendCmdAwait("Transition.ListPresets", {});
-	}
-
-	async function getPresetSpec(presetId) {
-		return messaging.sendCmdAwait("Transition.GetPresetSpec", { presetId });
-	}
-
-	// -----------------------------------------------------------------------------
-	// cache
-
-	const _specCache = new Map();
-	let _applySeq = 0;
-
-	async function openOverlayAndSync({ preserveSelection = true } = {}) {
-		ui.openTransition?.();
-		setOpen(true);
-
-		await ensureViewInitOnce();
-
-		const st = store.getState?.() ?? {};
-		const presetId = getPresetIdFromState(st);
-
-		if (presetId) {
-			await applyPresetSpecToStoreAndUI(presetId);
-			if (elPresetMain) elPresetMain.value = presetId;
-			if (elPresetAlt) elPresetAlt.value = presetId;
+	function renderLevels() {
+		nodes.levels.replaceChildren();
+		for (const item of catalogue?.levels ?? []) {
+			const button = document.createElement("button");
+			button.type = "button"; button.classList.toggle("is-active", item.id === level);
+			button.textContent = `${t(`transed.level.${item.id}`)} (${item.count})`;
+			button.addEventListener("click", () => selectLevel(item.id)); nodes.levels.append(button);
 		}
-
-		requestAnimationFrame(() => {
-			requestAnimationFrame(() => {
-				view?.resize?.();
-			});
-		});
+	}
+	function renderRecords() {
+		nodes.records.replaceChildren();
+		for (const item of records()) {
+			const button = document.createElement("button"); button.type = "button";
+			button.classList.toggle("is-active", item.id === recordId); button.textContent = title(item.id);
+			button.title = item.id; button.addEventListener("click", () => selectRecord(item.id)); nodes.records.append(button);
+		}
+	}
+	function renderDetails(item) {
+		const value = item?.value ?? {};
+		nodes.details.replaceChildren(
+			card(t("transed.field.identifier"), item?.id),
+			card(t("transed.field.access"), t(`transed.access.${item?.access}`)),
+			card(t("transed.field.representation"), value?.op ?? value?.type ?? (value?.coeff ? "polynomial" : value?.fcn ? "trigonometric" : "composition")),
+			card(t("transed.field.parameters"), value?.normLengthPartition ?? value?.coeff ?? value?.fcn ?? value?.source ?? value),
+			card(
+				t("transed.field.boundaries"),
+				value?.crop ?? ((value?.halfWave1 || value?.halfWave2)
+					? { halfWave1: value?.halfWave1, halfWave2: value?.halfWave2 }
+					: "—"),
+			),
+			card(t("transed.field.provenance"), value?.source ?? t("transed.provenance.database")),
+		);
+	}
+	function populateSelect(select, items, active) {
+		select.replaceChildren();
+		for (const item of items) { const option = document.createElement("option"); option.value = item.id; option.textContent = title(item.id); select.append(option); }
+		if (items.some((item) => item.id === active)) select.value = active;
 	}
 
-	function getCachedOrCurrentSpec(presetId) {
-		const pid = String(presetId ?? "");
-		if (!pid) return null;
-
-		const st = store.getState?.() ?? {};
-		const current = st.te_presetSpec ?? null;
-
-		if (current && String(current.presetId ?? "") === pid) {
-			return current;
-		}
-
-		return _specCache.get(pid) ?? null;
-	}
-
-	// -----------------------------------------------------------------------------
-	// main apply
-
-	async function applyPresetSpecToStoreAndUI(presetId, { force = false } = {}) {
-		const wantId = String(presetId ?? "");
-		if (!wantId) return null;
-
-		setPresetId(wantId);
-
-		if (!force) {
-			const cached = getCachedOrCurrentSpec(wantId);
-			if (cached) {
-				const cuts = cuts01FromSpecOrDescriptor(cached);
-				const w1 = clamp01(cuts.w1);
-				const w2 = clamp01(cuts.w2);
-
-				setPresetSpec(cached);
-				setSplitsPresetId(wantId);
-				setSplitsDirty(false);
-				setSliderPairAndLabels(w1, w2);
-				setW1(w1);
-				setW2(w2);
-
-				return cached;
-			}
-		}
-
-		const seq = ++_applySeq;
-		const raw = await getPresetSpec(wantId);
-		if (seq !== _applySeq) return null;
-
-		const desc = raw?.descriptor ?? raw ?? null;
-		if (!desc) {
-			console.warn("[TE Bridge] missing descriptor/spec for preset", { wantId, raw });
-			return null;
-		}
-
-		const gotId = String(raw?.presetId ?? desc?.id ?? wantId ?? "");
-		const cuts = cuts01FromSpecOrDescriptor(raw);
-
-		const spec = {
-			presetId: gotId,
-			descriptor: desc,
-			cuts01: cuts,
-			meta: raw?.meta ?? desc?.meta ?? null,
-		};
-
-		_specCache.set(gotId, spec);
-
-		setPresetSpec(spec);
-		setSplitsPresetId(gotId);
-		setSplitsDirty(false);
-
-		const w1 = clamp01(cuts.w1);
-		const w2 = clamp01(cuts.w2);
-
-		setSliderPairAndLabels(w1, w2);
-		setW1(w1);
-		setW2(w2);
-
+	async function applyPreset(id, { force = false } = {}) {
+		const spec = await send("Transition.GetPresetSpec", { presetId: id });
+		store.actions?.setTePresetId?.(id); store.actions?.setTePresetSpec?.(spec);
+		const { w1, w2 } = cuts(spec);
+		store.actions?.setTeSplitsPresetId?.(id); store.actions?.setTeSplitsDirty?.(false);
+		store.actions?.setTeW1?.(w1); store.actions?.setTeW2?.(w2);
+		nodes.w1.value = String(Math.round(w1 * 1000)); nodes.w2.value = String(Math.round(w2 * 1000));
+		nodes.w1.max = nodes.w2.value; nodes.w2.min = nodes.w1.value;
+		text(nodes.w1Value, `${Math.round(w1 * 100)}%`); text(nodes.w2Value, `${Math.round(w2 * 100)}%`);
+		const partition = spec?.descriptor?.normLengthPartition ?? [w1, w2 - w1, 1 - w2];
+		nodes.part.forEach((node, index) => { node.value = String(partition[index]); });
+		text(nodes.status, `${t(`transed.status.${spec?.meta?.status}`)} · ${t("transed.persistence.runtime")}`);
+		text(nodes.legend, `${title(id)} · κ(s), κ′(s), κ″(s) · u ∈ [0,1] · ${t("transed.domain.physicalUnavailable")}`);
+		if (force) await view?.samplePreset?.(id, { w1, w2 });
 		return spec;
 	}
 
-	// -----------------------------------------------------------------------------
-	// init
-
-	async function loadPresetsIntoUI() {
-		const res = await listPresets();
-		const items = Array.isArray(res)
-			? res
-			: (Array.isArray(res?.items) ? res.items : []);
-
-		const st = store.getState?.() ?? {};
-		const current = getPresetIdFromState(st);
-
-		const ids = items.map((x) => x?.id).filter(Boolean);
-		const active = (current && ids.includes(current)) ? current : (ids[0] ?? "");
-
-		fillSelect(elPresetMain, items, active);
-		fillSelect(elPresetAlt, items, active);
-
-		if (active) {
-			setPresetId(active);
-		}
+	async function selectLevel(next) {
+		if (!LEVELS.includes(next)) return false;
+		level = next; recordId = catalogue?.records?.[level]?.[0]?.id ?? "";
+		renderLevels(); renderRecords(); await selectRecord(recordId); return true;
+	}
+	async function selectRecord(id) {
+		const item = records().find((candidate) => candidate.id === id); if (!item) return false;
+		recordId = id; renderRecords(); text(nodes.breadcrumb, `${t("transed.catalogue")} › ${t(`transed.level.${level}`)} › ${title(id)}`);
+		text(nodes.kind, t(`transed.level.${level}`)); text(nodes.title, title(id)); renderDetails(item);
+		nodes.controls?.classList.toggle("hidden", level !== "transition");
+		if (level === "transition") { nodes.preset.value = id; await applyPreset(id); await renderCompare(); }
+		return true;
 	}
 
-	// -----------------------------------------------------------------------------
-	// wiring
-
-	function wirePresetSelect(sel) {
-		if (!sel) return;
-		sel.addEventListener("change", async () => {
-			const id = String(sel.value || "");
-			if (!id) return;
-
-			if (sel === elPresetMain && elPresetAlt) elPresetAlt.value = id;
-			if (sel === elPresetAlt && elPresetMain) elPresetMain.value = id;
-
-			await applyPresetSpecToStoreAndUI(id);
-		});
+	async function reloadCatalogue({ preserve = true } = {}) {
+		const previous = { level, recordId, compareId };
+		catalogue = await send("Transition.GetCatalogue", {});
+		level = preserve && LEVELS.includes(previous.level) ? previous.level : "transition";
+		recordId = preserve && catalogue.records[level].some((x) => x.id === previous.recordId) ? previous.recordId : catalogue.records[level][0]?.id ?? "";
+		const transitions = catalogue.records.transition;
+		compareId = preserve && transitions.some((x) => x.id === previous.compareId) ? previous.compareId : transitions.find((x) => x.id !== recordId)?.id ?? "";
+		populateSelect(nodes.preset, transitions, level === "transition" ? recordId : transitions[0]?.id);
+		populateSelect(nodes.compare, transitions, compareId); renderLevels(); renderRecords();
+		await selectRecord(recordId); return catalogue;
 	}
 
-	function wireSplitSliders() {
-		if (!elW1 || !elW2) return;
-
-		function onInput() {
-			let a = Number(elW1.value || 0);
-			let b = Number(elW2.value || 1000);
-
-			if (a > b) {
-				if (document.activeElement === elW1) a = b;
-				else b = a;
-			}
-
-			elW1.value = String(a);
-			elW2.value = String(b);
-			syncBounds(a, b);
-
-			const w1 = fromSliderVal01(a);
-			const w2 = fromSliderVal01(b);
-
-			setText(elW1Val, `${Math.round(w1 * 100)}%`);
-			setText(elW2Val, `${Math.round(w2 * 100)}%`);
-
-			setW1(w1);
-			setW2(w2);
-
-			markDirtyOwnedByCurrentPreset();
-		}
-
-		const markDirty = () => markDirtyOwnedByCurrentPreset();
-
-		elW1.addEventListener("pointerdown", markDirty);
-		elW2.addEventListener("pointerdown", markDirty);
-		elW1.addEventListener("mousedown", markDirty);
-		elW2.addEventListener("mousedown", markDirty);
-		elW1.addEventListener("touchstart", markDirty, { passive: true });
-		elW2.addEventListener("touchstart", markDirty, { passive: true });
-
-		elW1.addEventListener("input", onInput);
-		elW2.addEventListener("input", onInput);
-
-		syncBounds(Number(elW1.value || 0), Number(elW2.value || 1000));
+	function summary(samples, key) {
+		const values = samples?.samples?.map((x) => Number(x[key])).filter(Number.isFinite) ?? [];
+		return values.length ? { start: values[0], end: values.at(-1), min: Math.min(...values), max: Math.max(...values) } : null;
+	}
+	async function renderCompare() {
+		if (!recordId || level !== "transition" || !compareId || !view?.samplePreset) return null;
+		const primary = await view.samplePreset(recordId); const secondary = await view.samplePreset(compareId); if (!primary || !secondary) return null;
+		const modes = ["k", "k1", "k2"];
+		nodes.compareSummary.innerHTML = `<table><thead><tr><th></th><th>${title(recordId)}</th><th>${title(compareId)}</th></tr></thead><tbody>${modes.map((mode) => `<tr><th>${mode === "k" ? "κ" : mode === "k1" ? "κ′" : "κ″"}</th><td>${JSON.stringify(summary(primary, mode))}</td><td>${JSON.stringify(summary(secondary, mode))}</td></tr>`).join("")}</tbody></table>`;
+		const mode = store.getState()?.te_plot ?? "k"; const all = [...primary.samples, ...secondary.samples].map((x) => x[mode]).filter(Number.isFinite); const lo = Math.min(...all), hi = Math.max(...all), span = hi - lo || 1;
+		const points = (sample) => sample.samples.map((x) => `${x.u * 600},${170 - ((x[mode] - lo) / span) * 160}`).join(" ");
+		nodes.compareGraph.innerHTML = `<polyline class="primary" points="${points(primary)}"></polyline><polyline class="secondary" points="${points(secondary)}"></polyline>`;
+		return { primary, secondary, modes };
 	}
 
-	function wireOverlayOpenClose() {
-		btnOpen?.addEventListener("click", async () => {
-			await openOverlayAndSync({ preserveSelection: true });
-		});
-
-		btnClose?.addEventListener("click", () => {
-			ui.closeTransition?.();
-			setOpen(false);
-		});
-
-		ov?.addEventListener("click", (event) => {
-			if (event.target !== ov) return;
-			ui.closeTransition?.();
-			setOpen(false);
-		});
-
-		window.addEventListener("keydown", (event) => {
-			if (event.key !== "Escape") return;
-			ui.closeTransition?.();
-			setOpen(false);
-		});
+	async function applyWorkingCopy(values = nodes.part.map((node) => Number(node.value))) {
+		const result = await send("Transition.UpdateWorkingCopy", { presetId: recordId, normLengthPartition: values });
+		text(nodes.editStatus, result.ok ? t("transed.feedback.applied") : `${result.code}: ${result.reason}`);
+		if (result.ok) { await reloadCatalogue(); await applyPreset(recordId, { force: true }); }
+		return result;
 	}
-
-	function isOverlayOpen() {
-		return !!ov && !ov.classList.contains("hidden");
+	async function resetWorkingCopy() {
+		const result = await send("Transition.ResetWorkingCopy", { presetId: recordId }); text(nodes.editStatus, t("transed.feedback.reset"));
+		await reloadCatalogue(); await applyPreset(recordId, { force: true }); return result;
 	}
-
-	function wirePlotMode() {
-		const nodes =
-			(ui.elements.tePlotNodes && ui.elements.tePlotNodes.length)
-				? Array.from(ui.elements.tePlotNodes)
-				: [ui.elements.tePlotK, ui.elements.tePlotK1, ui.elements.tePlotK2].filter(Boolean);
-
-		if (!nodes.length) return;
-
-		for (const el of nodes) {
-			el.addEventListener("change", () => {
-				if (el.type === "radio" && !el.checked) return;
-				const v = String(el.value || "").toLowerCase();
-				if (v) setPlot(v);
-			});
-		}
-
-		const st = store.getState?.() ?? {};
-		const plot = String(st.te_plot ?? "k");
-		for (const el of nodes) {
-			el.checked = (String(el.value) === plot);
-		}
+	function snapshotState() { const st = store.getState(); return clone({ open: !!st.te_open, level, recordId, compareId, plot: st.te_plot ?? "k" }); }
+	async function restoreState(snapshot) {
+		if (!snapshot) return; level = snapshot.level; recordId = snapshot.recordId; compareId = snapshot.compareId; setPlot(snapshot.plot); await reloadCatalogue(); setOpen(snapshot.open);
 	}
-
-	// -----------------------------------------------------------------------------
-	// public API
+	async function open() { setOpen(true); await ensureView(); if (!catalogue) await reloadCatalogue(); requestAnimationFrame(() => view?.resize?.()); }
+	function close() { setOpen(false); }
 
 	async function wire() {
-		if (ui.elements.__teBridgeWired) return;
-		ui.elements.__teBridgeWired = true;
-
-		await loadPresetsIntoUI();
-
-		wirePlotMode();
-		wireOverlayOpenClose();
-		wirePresetSelect(elPresetMain);
-		wirePresetSelect(elPresetAlt);
-		wireSplitSliders();
-
-		const st = store.getState?.() ?? {};
-		const pid = getPresetIdFromState(st);
-		const hasSpec =
-			!!st.te_presetSpec &&
-			String(st.te_presetSpec?.presetId ?? "") === String(pid ?? "");
-
-		if (pid && !hasSpec) {
-			await applyPresetSpecToStoreAndUI(pid);
-			if (elPresetMain) elPresetMain.value = pid;
-			if (elPresetAlt) elPresetAlt.value = pid;
-		}
-
-		const overlayAlreadyOpen =
-			!ov?.classList?.contains("hidden") ||
-			Boolean(store.getState?.()?.te_open);
-
-		if (overlayAlreadyOpen) {
-			await openOverlayAndSync({ preserveSelection: true });
-		}
-
+		if (ui.elements.__teBridgeWired) return; ui.elements.__teBridgeWired = true;
+		await ensureView(); await reloadCatalogue({ preserve: false });
+		(ui.elements.buttonTransition ?? byId("btnTrans"))?.addEventListener("click", open);
+		(ui.elements.buttonTransitionClose ?? byId("btnTransClose"))?.addEventListener("click", close);
+		nodes.preset.addEventListener("change", () => { level = "transition"; selectRecord(nodes.preset.value); });
+		nodes.compare.addEventListener("change", () => { compareId = nodes.compare.value; renderCompare(); });
+		nodes.apply.addEventListener("click", () => applyWorkingCopy()); nodes.reset.addEventListener("click", resetWorkingCopy);
+		const updateSplits = (source) => {
+			let w1 = Number(nodes.w1.value) / 1000; let w2 = Number(nodes.w2.value) / 1000;
+			if (w1 > w2) { if (source === nodes.w1) w1 = w2; else w2 = w1; }
+			nodes.w1.value = String(Math.round(w1 * 1000)); nodes.w2.value = String(Math.round(w2 * 1000));
+			nodes.w1.max = nodes.w2.value; nodes.w2.min = nodes.w1.value;
+			text(nodes.w1Value, `${Math.round(w1 * 100)}%`); text(nodes.w2Value, `${Math.round(w2 * 100)}%`);
+			nodes.part[0].value = String(w1); nodes.part[1].value = String(w2 - w1); nodes.part[2].value = String(1 - w2);
+			store.actions?.setTeW1?.(w1); store.actions?.setTeW2?.(w2); store.actions?.setTeSplitsPresetId?.(recordId); store.actions?.setTeSplitsDirty?.(true);
+		};
+		nodes.w1.addEventListener("input", () => updateSplits(nodes.w1)); nodes.w2.addEventListener("input", () => updateSplits(nodes.w2));
+		document.querySelectorAll('input[name="tePlot"]').forEach((node) => {
+			node.checked = node.value === (store.getState()?.te_plot ?? "k");
+			node.addEventListener("change", () => node.checked && setPlot(node.value));
+		});
+		window.addEventListener("ufaim:language-changed", () => reloadCatalogue());
+		window.addEventListener("keydown", (event) => { if (event.key === "Escape" && store.getState().te_open) close(); });
+		if (store.getState().te_open) await open();
 	}
 
-	return {
-		wire,
-		loadPresetsIntoUI,
-		applyPresetSpecToStoreAndUI,
-	};
+	return { wire, open, close, reloadCatalogue, selectLevel, selectRecord, applyWorkingCopy, resetWorkingCopy, renderCompare, snapshotState, restoreState, getDebugState: () => ({ level, recordId, compareId, catalogue: clone(catalogue) }) };
 }

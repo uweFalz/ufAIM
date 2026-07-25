@@ -2,244 +2,131 @@
 
 \chapter{Conceptual Structure}
 \label{chap:conceptual-structure}
-
 \index{Conceptual structure}
 
-The preceding chapters established the mathematical language, the
-axiomatic foundation, the architectural principles, the state model,
-the operator framework, and the concept of metric realization.
-Together they describe how railway alignments can be modelled
-mathematically while preserving the conceptual boundaries established
-by the Knowledge Kernel.
+\section{The Ambiguity a Data Model Cannot Resolve Silently}
 
-The present chapter introduces the conceptual categories used
-throughout the remainder of the thesis. Its purpose is not to introduce
-new engineering concepts but to distinguish the fundamentally different
-roles played by engineering objects, states, representations,
-realizations, observations, and engineering knowledge.
+Suppose the edited CAD curve and a survey polyline differ by several
+centimetres. A data model can store both coordinate sets, attach identifiers,
+and calculate a residual. It cannot infer from those operations alone what the
+difference means. The survey may observe the physical track; the CAD curve may
+express an intended state; both may represent the same alignment; and the
+residual may or may not be acceptable under the applicable engineering
+knowledge.
 
-Maintaining these distinctions is essential because many ambiguities in
-existing railway information systems originate from treating different
-conceptual categories as if they were identical.
+Treating every record as another version of ``the alignment'' hides precisely
+the distinctions needed to reason about the discrepancy. Treating every
+different geometry as a different object loses continuity. Treating the measured
+record as reality confuses evidence with its subject. Treating a computed pass
+or fail as a decision transfers authority to an operation that does not own it.
 
-\section{Engineering Objects}
+The minimum remedy is to assign different formal roles to object, state,
+realization, representation, observation, knowledge, evaluation, and decision.
+Once separated, they can be related explicitly: an observation can concern a
+physical state; a representation can expose an intended state; an evaluation
+can compare them under applicable knowledge; a decision can use the resulting
+evidence without becoming identical to it.
 
-\index{Engineering object}
+\section{The Engineering Object and Its States}
 
-Engineering begins with engineering objects.
+An engineering object supplies durable distinguishability across changes of
+representation, realization, workflow, and project context. An alignment is
+therefore not identical to a CAD curve, GIS feature, exchange entity, database
+row, or rendered line. Multiple descriptions may concern the same alignment,
+and a changed description does not by itself decide whether the engineering
+object was modified or replaced.
 
-Engineering objects possess an engineering identity that is independent
-of how they are represented, realized, observed, or processed
-computationally.
-\index{Identity!engineering object}
+A state describes that object under a specified engineering context. Intended,
+metric, physical, operational, and evaluated states answer different questions
+about one object. State change can therefore be discussed without making object
+identity a side effect of coordinate equality.
 
-An alignment is therefore treated as an engineering object rather than
-as a curve, a CAD model, a numerical model, an exchange file, or a
-visualization.
+For the alignment, intrinsic longitudinal order and curvature evolution provide
+the constructive basis from which selected geometric states are derived. Later
+chapters formalize those derivations; the conceptual requirement here is that
+the derived state does not become the owner of identity.
 
-Multiple descriptions may refer to the same engineering object without
-creating additional engineering objects.
+\section{Realization and Representation}
 
-\section{Engineering States}
+Realization and representation answer different questions.
 
-\index{State!engineering concept}
+Metric realization asks how an intrinsic construction acquires measurable
+spatial meaning under an explicit metric space, context, and applicable rules.
+Physical realization asks how engineering intent becomes physical
+infrastructure. Neither is merely a change of file format.
 
-Engineering objects may exist under different conditions.
+A representation selects information so that it can be communicated, stored,
+exchanged, visualized, or processed. CAD geometry, GIS datasets, IFC entities,
+sampled polylines, plots, and runtime structures are representations. A
+representation may expose a realized state, but it cannot create missing
+realization semantics or establish identity by itself.
 
-These conditions are described by engineering states.
+This separation makes a useful question possible: does a difference arise from
+the object's intended construction, from the chosen metric context, from
+physical realization, from observation, or only from representation?
 
-A state therefore describes an engineering object under a specified
-engineering context rather than constituting the engineering object
-itself.
+\section{Observation and Knowledge}
 
-Throughout this thesis railway states are parameterized by intrinsic
-arc-length. A state trajectory therefore describes the evolution of an
-engineering object while preserving its engineering identity.
+An observation is source-grounded information about an object, state, or
+context, together with the provenance, method, time, conditions, and uncertainty
+needed to interpret it as evidence. A survey polyline is therefore not simply
+``the real alignment.'' It is an observation whose relation to a physical state
+must be established.
 
-Different engineering questions may require different state
-descriptions even though they refer to the same underlying engineering
-object.
+Engineering knowledge is information admitted for engineering use within an
+explicit scope, provenance, applicability, and authority. Observations may
+support knowledge; storage or repetition does not admit them automatically.
+Standards, engineering principles, derived results, and accountable decisions
+may also support knowledge without becoming interchangeable sources.
 
-\section{Representations}
+The distinction allows conflicting observations to remain recorded while an
+engineer determines what may be relied upon for the present task.
 
-\index{Representation}
+\section{Evaluation and Decision}
 
-Engineering information must frequently be communicated, exchanged,
-stored, visualized, or processed.
+Evaluation applies knowledge, constraints, preferences, and comparison methods
+to states or alternatives. It can derive a residual, identify a violation, rank
+candidates, or show how the curvature edit propagates. These results are
+evidence within an engineering process.
 
-Such descriptions are representations.
+Decision is the accountable act that accepts, rejects, or selects within a
+defined authority and context. A solver, viewer, or rule engine may support that
+act but does not exercise it merely by producing output. This boundary is what
+allows computation to become more capable without making responsibility less
+clear.
 
-Typical representations include:
+\section{Relations Made Available}
+
+With the roles separated, the thesis can state dependencies without category
+errors:
 
 \begin{itemize}
-\item CAD geometry,
-\item GIS datasets,
-\item exchange formats,
-\item numerical models,
-\item visualization geometry,
-\item runtime data structures,
-\item software-specific objects.
+\item one engineering object may have several states and representations;
+\item intrinsic construction may be metrically realized without transferring
+  identity to coordinates;
+\item a physical state may be observed without the observation becoming that
+  state;
+\item an observation may support knowledge through explicit interpretation and
+  admission;
+\item an evaluation may use applicable knowledge and produce evidence for a
+  decision without becoming the decision.
 \end{itemize}
 
-Representations derive their meaning from engineering knowledge.
-
-They communicate engineering information but do not themselves possess
-engineering authority.
-\index{Authority!engineering}
-
-Changing a representation therefore does not necessarily change the
-engineering object that it represents.
-
-\section{Realizations}
-
-\index{Realization}
-\index{Realization|seealso{Transformation}}
-
-Engineering descriptions become geometrically meaningful only after
-they are interpreted within an appropriate realization context.
-
-Metric realization assigns geometric meaning to intrinsic engineering
-information.
-\index{Realization!metric}
-
-Physical realization describes how engineering intent becomes physical
-infrastructure.
-\index{Realization!physical}
-
-Although both processes are forms of realization, they answer different
-engineering questions.
-
-Metric realization concerns geometric interpretation.
-
-Physical realization concerns construction reality.
-
-Neither process changes the engineering identity of the underlying
-engineering object.
-
-\section{Observations}
-
-\index{Observation}
-
-Engineering decisions depend upon information obtained from reality.
-
-Observations provide such information.
-
-Measurements, inspections, monitoring systems, surveys, imported data,
-and field records are observations of engineering objects rather than
-the engineering objects themselves.
-
-Observations provide evidence.
-
-Evidence may contribute to engineering knowledge, but observation alone
-does not establish engineering truth.
-
-\section{Engineering Knowledge}
-
-\index{Engineering knowledge}
-
-Engineering knowledge provides the accepted interpretation of
-engineering information.
-
-Knowledge may originate from engineering principles, approved
-standards, accepted engineering decisions, validated observations,
-derived engineering results, or established engineering rules.
-
-Representations communicate knowledge.
-
-Observations support knowledge.
-
-States describe engineering objects.
-
-Realizations interpret engineering objects.
-
-Each concept therefore fulfills a distinct responsibility within the
-overall engineering system.
-
-\section{Conceptual Relationships}
-
-The conceptual relationships established throughout the foundational
-chapters may be summarized schematically as
-
-\[
-\mathrm{Engineering\ Object}
-\longrightarrow
-\mathrm{State}
-\longrightarrow
-\mathrm{Representation}
-\]
-
-while realization and observation provide complementary relationships
-
-\[
-\mathrm{Engineering\ Object}
-\longrightarrow
-\mathrm{Realization}
-\]
-
-and
-
-\[
-\mathrm{Engineering\ Object}
-\longrightarrow
-\mathrm{Observation}.
-\]
-
-Engineering knowledge integrates these different forms of information
-into coherent engineering interpretation.
-
-No single category replaces another.
-
-Instead, each answers a different engineering question.
-
-\section{Relationship to the Knowledge Kernel}
-
-\index{Knowledge Kernel}
-
-The conceptual structure presented here mirrors the organization of the
-Knowledge Kernel.
-
-The Knowledge Kernel distinguishes engineering objects, states,
-representations, realizations, observations, engineering knowledge,
-constraints, and engineering decisions because each possesses a unique
-architectural responsibility.
-
-The thesis adopts the same conceptual organization in order to explain
-engineering concepts without introducing ambiguity between categories
-that serve fundamentally different purposes.
+These relations turn the earlier discrepancy into a tractable engineering
+question. The intended and observed records can be related to one alignment,
+their states and provenance can be identified, and a comparison can be made
+under stated knowledge and context.
 
 \section{Canonical Interpretation}
 
-\index{Canonical interpretation}
-
 \begin{proposition}
-Engineering objects, states, representations, realizations,
-observations, and engineering knowledge are distinct conceptual
-categories.
+Engineering objects, states, realizations, representations, observations,
+engineering knowledge, evaluations, and decisions have distinct roles. Their
+explicit relations preserve continuity while making selected consequences
+computable.
 \end{proposition}
 
-\begin{proposition}
-The same engineering object may possess multiple states, multiple
-representations, multiple observations, and multiple realizations while
-retaining one engineering identity.
-\end{proposition}
-
-\begin{proposition}
-Representations communicate engineering information but do not define
-engineering identity.
-\end{proposition}
-
-\begin{proposition}
-Observations provide evidence but do not automatically establish
-engineering knowledge.
-\end{proposition}
-
-\begin{proposition}
-Maintaining these conceptual distinctions preserves the architectural
-responsibility boundaries established by the Knowledge Kernel.
-\end{proposition}
-
-The conceptual structure established in this chapter forms the
-terminological bridge between the mathematical foundations developed in
-this part of the thesis and the subsequent parts on geometry, railway
-state, runtime evaluation, realization, optimization, and engineering
-applications.
+This conceptual structure now licenses the formal development. The following
+chapters state the axioms, notation, state models, and operators required to
+express these relations precisely. They may formalize a dependency; they may not
+erase the responsibility boundary that made the dependency meaningful.

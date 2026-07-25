@@ -1,0 +1,197 @@
+\chapter{Künftige Arbeiten}
+
+\section{Zweck dieses Kapitels}
+
+Das in dieser Arbeit vorgestellte AIM-Framework schafft eine mathematische
+und begriffliche Grundlage für die Alignment-zentrierte Modellierung.
+
+Viele Aspekte bleiben jedoch offen und bieten Möglichkeiten für weitere
+Forschung, Entwicklung und praktische Umsetzung.
+
+Dieses Kapitel umreißt mögliche Richtungen künftiger Arbeiten, von
+mathematischen Erweiterungen bis zu Softwarearchitektur und
+Ingenieuranwendungen.
+
+\section{Erweiterung des dynamischen Modells}
+
+\subsection{Von vereinfachter Dynamik zu Fahrzeugmodellen}
+
+Die gegenwärtige Formulierung verwendet vereinfachte dynamische Größen wie
+effektive Querbeschleunigung und Ruck.
+
+Künftige Arbeiten sollten dies zu realistischeren Fahrzeugmodellen
+erweitern, darunter:
+\begin{itemize}
+\item Mehrkörper-Fahrzeugdynamik,
+\item Rad--Schiene-Interaktion,
+\item Federungsverhalten,
+\item Gleiselastizität.
+\end{itemize}
+
+\subsection{Geschwindigkeitsabhängige Modellierung}
+
+Die Einbeziehung veränderlicher Geschwindigkeitsprofile
+\[
+v(s)
+\]
+eröffnet die Möglichkeit einer realistischeren Auswertung und Optimierung
+von Alignments unter Betriebsbedingungen.
+
+\section{Schwerpunkt-Trassierung}
+
+\subsection{Begriffliche Entwicklung}
+
+Die Idee, die Trajektorie eines dynamisch relevanten Punktes wie des
+Schwerpunkts zu entwerfen, stellt eine grundlegende Erweiterung des
+klassischen Alignment-Entwurfs dar.
+
+Weitere Arbeiten sind erforderlich, um:
+\begin{itemize}
+\item die Abbildung von Gleisgeometrie auf Fahrzeugtrajektorie zu formalisieren,
+\item vollständige dynamische Modelle einzubeziehen,
+\item geeignete Zielfunktionen zu bestimmen.
+\end{itemize}
+
+\subsection{Integration in die Optimierung}
+
+Eine wesentliche Forschungsrichtung ist die Kopplung der
+Schwerpunkt-Trassierung mit Optimierungsmethoden. Sie ermöglicht
+komfortorientierten Entwurf, dynamische Optimierung und die direkte
+Auswertung der Fahrzeugantwort.
+
+\section{Fortgeschrittene Optimierungsmethoden}
+
+\subsection{SQP-Erweiterungen}
+
+Während Sequential Quadratic Programming eine leistungsfähige Grundlage
+bietet, können künftige Arbeiten zugeschnittene SQP-Formulierungen für
+dünn besetzte Alignment-Strukturen, verbesserte Bedingungsbehandlung und
+adaptive Gewichtungsstrategien umfassen.
+
+\subsection{Globale Optimierung}
+
+Probleme der Alignment-Optimierung sind häufig nicht konvex. Künftige
+Forschung kann globale Optimierungsverfahren, Mehrstartstrategien und
+hybride deterministisch--stochastische Methoden untersuchen.
+
+\section{Modellierung auf Netzebene}
+
+\subsection{Vom einzelnen Alignment zum Netz}
+
+Reale Eisenbahnsysteme bestehen aus miteinander verbundenen Alignments,
+die komplexe Netze bilden.
+
+Künftige Arbeiten sollten das AIM-Framework auf Verzweigungsstrukturen,
+Weichen und Kreuzungen sowie die korridorweite Optimierung erweitern.
+
+\subsection{Topologische Bedingungen}
+
+Die systematische Behandlung topologischer Bedingungen bleibt eine
+wesentliche Herausforderung. Sie umfasst Knotenkonsistenz,
+Mehrgleiskopplung und netzweite Machbarkeitsbedingungen.
+
+\section{Bibliotheken für Bedingungen und Ziele}
+
+\subsection{Formalisierung von Bedingungen}
+
+Obwohl sich viele Eisenbahnregeln als Bedingungen ausdrücken lassen,
+bleibt die vollständige Formalisierung regulatorischer Rahmenwerke eine
+offene Aufgabe.
+
+Künftige Arbeiten sollten die systematische Kodierung von Standards, die
+Validierung an realen Projekten und die Parametrisierung für
+unterschiedliche Eisenbahnsysteme anstreben.
+
+\subsection{Entwurf von Zielfunktionen}
+
+Der Entwurf von Zielfunktionen ist für die optimierungsbasierte
+Alignment-Konstruktion entscheidend. Mögliche Erweiterungen umfassen
+Kostenmodelle, Instandhaltungsoptimierung, Energieeffizienz und
+Lebenszyklusbetrachtungen.
+
+\section{Integration mit BIM und Datenstandards}
+
+\subsection{Tiefere BIM-Integration}
+
+Die Integration von AIM in BIM-Arbeitsabläufe kann durch engere Kopplung
+mit IFC-Alignment-Modellen, bidirektionale Synchronisierung und die
+Einbettung von AIM-Zuständen in BIM-Objekte weiterentwickelt werden.
+
+\subsection{Erweiterungen von Standards}
+
+Das AIM-Framework könnte zudem Erweiterungen bestehender Standards
+anregen, beispielsweise die Aufnahme dynamischer Eigenschaften, die
+Unterstützung von Optimierungsmetadaten und die Repräsentation
+steuerungsbasierter Alignment-Modelle.
+
+\section{Interaktive Systeme und Echtzeitsysteme}
+
+\subsection{Live-Optimierung}
+
+Eine besonders aussichtsreiche Richtung ist die Entwicklung von Systemen,
+die während des Alignment-Entwurfs Rückmeldung in Echtzeit erlauben.
+Dazu gehören Live-Vorschau während der Optimierung, interaktive Anpassung
+von Bedingungen und unmittelbare Visualisierung dynamischer Wirkungen.
+
+\subsection{Benutzerinteraktion}
+
+Der Grabbeltisch-Begriff könnte auf interaktive Bedingungsdefinition,
+visuelle Fehlersuche in Alignment-Zuständen und intuitive Bearbeitung von
+Übergangsparametern erweitert werden.
+
+\section{KI und assistierter Entwurf}
+
+\subsection{Datengetriebene Ansätze}
+
+Verfahren des maschinellen Lernens könnten das AIM-Framework ergänzen,
+indem sie aus bestehenden Alignments lernen, Anfangslösungen vorschlagen
+und Muster in Entwurfsentscheidungen erkennen.
+
+\subsection{Hybride Systeme}
+
+Eine aussichtsreiche Richtung ist die Verbindung von physikbasierter
+Modellierung (AIM), datengetriebenen Methoden (KI) und interaktiver
+Benutzersteuerung.
+
+\section{Wiederbelebung von AXTRAN und darüber hinaus}
+
+Klassische Systeme wie AXTRAN haben die Machbarkeit eines
+optimierungsbasierten Alignment-Entwurfs gezeigt.
+
+Künftige Arbeiten könnten solche Systeme rekonstruieren und
+verallgemeinern, auf Probleme der Netzebene erweitern und moderne
+numerische sowie rechentechnische Verfahren integrieren.
+
+\section{Softwarearchitektur und Einsatz}
+
+\subsection{Skalierbarkeit}
+
+Praktische Anwendungen erfordern skalierbare Implementierungen, die große
+Datenmengen und komplexe Netze verarbeiten können.
+
+\subsection{Mehransichtssysteme}
+
+Künftige Systeme könnten synchronisierte Mehrfensteransichten,
+kombinierte 2D/3D-Repräsentationen und die Integration von GIS- und
+CAD-Funktionalität umfassen.
+
+\section{Langfristige Perspektive}
+
+Langfristig könnte das AIM-Framework zu einem neuen Paradigma der
+Infrastrukturmodellierung beitragen, in dem das Alignment zur zentralen
+Ordnungsstruktur wird, Geometrie, Dynamik und Optimierung vereinigt sind
+und der Ingenieurentwurf zu einem interaktiven Berechnungsprozess wird.
+
+\section{Zusammenfassung}
+\begin{summary}
+Das AIM-Framework eröffnet ein breites Spektrum von Forschungs- und
+Entwicklungsrichtungen.
+
+Dazu gehören Erweiterungen des dynamischen Modells, die BIM-Integration,
+Optimierung auf Netzebene, Echtzeitsysteme und KI-assistierter Entwurf.
+
+Gemeinsam weisen diese Richtungen auf eine Zukunft, in der das
+Eisenbahn-Alignment nicht länger als statische Geometrie, sondern als
+dynamisches, berechenbares und optimierbares System im Kern des
+Infrastrukturwesens behandelt wird.
+\end{summary}

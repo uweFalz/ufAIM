@@ -1,0 +1,90 @@
+\section{Konstruktion von Anfangsschätzungen}
+\subsection{Motivation}
+Die Leistung von SQP-Verfahren hängt stark vom anfänglichen Parametervektor
+ab. In Eisenbahnanwendungen liegen Anfangsdaten häufig als Messpolylinien,
+bestehende Alignments oder teilweise strukturierte Entwurfsdaten vor.
+
+\subsection{Eingabedarstellung}
+\begin{definition}[Eingabepolylinie]
+\[
+P=(p_0,\dots,p_M),\quad p_i\in\R^2
+\]
+bezeichne eine gemessene oder importierte Polylinie.
+\end{definition}
+
+\subsection{Bogenlängenparametrisierung}
+\begin{definition}
+Definiere die kumulierte Bogenlänge
+\[
+s_0=0,\quad s_{i+1}=s_i+\|p_{i+1}-p_i\|.
+\]
+\end{definition}
+Damit wird die Eingabe parametrisiert.
+
+\subsection{Anfängliche Krümmungsschätzung}
+\begin{definition}[Diskrete Krümmung]
+Für drei aufeinanderfolgende Punkte definiere
+\[
+\kappa_i\approx\frac{\theta_{i+1}-\theta_i}{\Delta s_i},
+\qquad\theta_i=\arg(p_{i+1}-p_i).
+\]
+\end{definition}
+Dies liefert eine erste Krümmungsschätzung aus geometrischen Daten.
+
+\subsection{Glättung}
+Rohe Krümmungsschätzungen sind typischerweise verrauscht.
+\begin{definition}[Glättungsoperator]
+Wende einen Glättungsfilter an:
+\[
+\kappa_i^{(0)}=\sum_jw_{ij}\kappa_j.
+\]
+\end{definition}
+Mögliche Verfahren sind gleitender Mittelwert, Gauß-Filter und Tiefpassfilter.
+
+\subsection{Anfängliche Überhöhungsschätzung}
+Überhöhung kann aus dem Gleichgewicht initialisiert werden:
+\[
+\phi_i^{(0)}=\arcsin\left(\frac{v^2\kappa_i^{(0)}}{g}\right).
+\]
+Alternativ kann sie nullgesetzt, aus Eingabedaten übernommen oder nach
+Entwurfsregeln approximiert werden.
+
+\subsection{Projektion auf das diskrete Gitter}
+\begin{definition}
+Interpoliere \(\kappa_i^{(0)},\phi_i^{(0)}\) auf das Optimierungsgitter
+\[
+s_0,\dots,s_N.
+\]
+\end{definition}
+
+\subsection{Heuristische Segmentierung}
+Das Eingabe-Alignment kann in Geraden, Kreisbögen und Übergangsbereiche
+segmentiert werden.
+\begin{definition}[Segmenterkennung]
+Ein Segment wird anhand der Krümmung klassifiziert:
+\[
+\kappa_i\approx0\Rightarrow\text{Gerade},
+\qquad
+\kappa_i\approx\text{konstant}\Rightarrow\text{Kreisbogen}.
+\]
+\end{definition}
+Diese Struktur verbessert die Anfangsschätzung und entspricht Ansätzen der
+Alignment-Rekonstruktion nach Kufver
+\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+
+\subsection{Abschließende Anfangsschätzung}
+\begin{definition}[Anfänglicher Parametervektor]
+\[
+\mathbf x_0=(\kappa_0^{(0)},\dots,\kappa_N^{(0)},
+\phi_0^{(0)},\dots,\phi_N^{(0)}).
+\]
+\end{definition}
+
+\subsection{Interpretation}
+Die Anfangsschätzung verbindet gemessene Geometrie, Glättung und physische
+Approximation.
+\begin{summary}
+Eine robuste Anfangsschätzung überführt geometrische Rohdaten in einen
+strukturierten, optimierungsgeeigneten Parametervektor. Sie ist die wesentliche
+Verbindung zwischen realen Daten und numerischen Verfahren.
+\end{summary}

@@ -1,0 +1,122 @@
+% dynamics/dynamic_balance-DE.tex
+\chapter{Dynamisches Gleichgewicht als qualifiziertes Residuum}
+\label{chap:dynamic-balance}
+
+\section*{Eine Rechnung, sechs verschiedene Rollen}
+
+Betrachtet wird der reduzierte Punktfolgetest \(M_{\mathrm{red}}\) im lokalen
+Gleis-Frame \(F_{\mathrm{track}}\). Positive Krümmung und positive Querwirkung
+verwenden dieselbe erklärte Seite; ein positiver Überhöhungswinkel \(\phi\)
+kompensiert diese Wirkung. Der Test setzt starre Durchfahrt, vorgegebenes
+\(v(t)\), geringe lokale Ausdehnung und einheitlichen Schwerebetrag \(g\)
+voraus. Er lässt Fahrzeugmasse und -trägheit, Federung, Rad--Schiene-Kontakt,
+Gleisnachgiebigkeit, Unregelmäßigkeiten, Aerodynamik und Regelung aus.
+
+\begin{principle}[Prinzip des dynamischen Gleichgewichts]
+\label{princ:dynamic-balance}
+Dynamisches Gleichgewicht ist eine nach Modell, Frame, Vorzeichen und Zweck
+qualifizierte Relation.
+\end{principle}
+
+\section{Gleichgewichtsrelation}
+
+\begin{definition}[Gleichgewichtsrelation]
+\label{def:balance-relation}
+Für \(M_{\mathrm{red}}\) lautet das Gleichgewichtsresiduum
+\[
+r_{\mathrm{bal}}(t)
+=v(t)^2\kappa(s(t))-g\sin\phi(s(t)).
+\]
+Die reduzierte Gleichgewichtsbedingung ist \(r_{\mathrm{bal}}=0\).
+\end{definition}
+
+\[
+\boxed{\begin{gathered}
+\text{verschwindendes reduziertes}\\
+\text{Gleichgewichtsresiduum}
+\end{gathered}}
+\not\Rightarrow
+\boxed{\begin{gathered}
+\text{verschwindende}\\
+\text{Wagenkastenbeschleunigung}
+\end{gathered}}
+\]
+
+Die Gleichheit hebt zwei Terme in diesem einen Frame und Modell auf. Sie
+begründet weder Mehrkörpergleichgewicht noch vorhergesagte Fahrzeugantwort,
+Messantwort, Fahrgastwahrnehmung, Sicherheit oder Komfort.
+
+\begin{definition}[Effektive Querbeschleunigung]
+\label{def:dynamics-effective-lateral-acceleration}
+Die historische Schreibweise \(a_{\mathrm{eff}}\) bezeichnet in diesem
+reduzierten Test \(r_{\mathrm{bal}}\). Die Benennung als Beschleunigung
+erweitert ihren Evidenzgehalt nicht.
+\end{definition}
+
+\begin{figure}[htbp]
+\centering
+\input{figures/dynamics/dynamic_balance_relation-DE}
+\caption{Das reduzierte Gleis-Frame-Residuum; ausgelassene Antwortphysik bleibt außerhalb der Relation.}
+\label{fig:dynamic-balance-relation}
+\end{figure}
+
+\section{Überhöhungsfehlbetrag, -überschuss und Verlauf}
+
+\begin{definition}[Überhöhungsfehlbetrag]
+\label{def:cant-deficiency}
+Unter den erklärten Vorzeichen und \(M_{\mathrm{red}}\) ist
+\(r_{\mathrm{bal}}>0\) ein reduzierter Überhöhungsfehlbetrag. Eine
+standardspezifische Größe benötigt weiterhin eigene Definition und
+Anwendbarkeit.
+\end{definition}
+
+\begin{definition}[Überhöhungsüberschuss]
+\label{def:excess-cant}
+Unter denselben Qualifikationen ist \(r_{\mathrm{bal}}<0\) ein reduzierter
+Überhöhungsüberschuss.
+\end{definition}
+
+\begin{definition}[Gleichgewichtstrajektorie]
+\label{def:dynamics-balance-trajectory}
+Die Gleichgewichtstrajektorie ist \(r_{\mathrm{bal}}(t)\), oder nur dort
+\(r_{\mathrm{bal}}(s)\), wo die Geschwindigkeit als Stationsfunktion
+vorgegeben wurde.
+\end{definition}
+
+Bei veränderlicher Geschwindigkeit gilt
+\[
+\dot r_{\mathrm{bal}}
+=2v\dot v\kappa+v^3\kappa'-gv\cos\phi\,\phi',
+\]
+unter denselben Annahmen. Die Ableitung ergänzt die Expositionsrate, aber
+weiterhin keine Fahrzeugantwort.
+
+\section{Die Rollen nicht zusammenziehen}
+
+\begin{center}
+\small
+\begin{tabular}{p{0.19\linewidth}p{0.33\linewidth}p{0.37\linewidth}}
+\toprule
+Rolle & Erzeugt & Begründet nicht\\
+\midrule
+Residuum & \(r_{\mathrm{bal}}\) aus \(M_{\mathrm{red}}\) & Wagenkastenantwort\\
+Vorhersage & \(x_M^{\mathrm{pred}}(t)\) aus identifiziertem \(M\) & Beobachtung\\
+Beobachtung & quellen- und unsicherheitsqualifizierte Schätzung & physische Wahrheit oder Ursache\\
+Vergleich & Differenz bei gleicher Identität, Zeit und gleichem Frame & Akzeptabilität\\
+Bewertung & Kriterienergebnis für einen Zweck & Auswahl oder Autorität\\
+Engineering Decision & dokumentierte Auswahl oder Ablehnung & universelle Gültigkeit\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\[
+\boxed{\text{vorhergesagte Antwort}
+\not\Rightarrow \text{akzeptabler ingenieurtechnischer Zustand}}
+\]
+
+CAD-Kurve und Vermessungspolylinie machen die Trennung konkret. Beide können
+zu einer vergleichbaren Gleis-Frame-Krümmungsschätzung realisiert werden;
+eine Abweichung ist jedoch nicht automatisch Ursache einer gemessenen
+Wagenkastenbeschleunigung. Diese Kausalaussage benötigt ein identifiziertes
+Antwortmodell, zugeordnete Beobachtungen und qualifizierte Evidenz. Mit genau
+dieser Zurückhaltung wird das folgende Vienna-Beispiel gelesen.

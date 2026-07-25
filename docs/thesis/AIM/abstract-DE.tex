@@ -1,0 +1,70 @@
+% Deutsche Parallelfassung zu abstract.tex
+
+\cleardoublepage
+\chapter*{Zusammenfassung}
+\phantomsection
+\addcontentsline{toc}{chapter}{Zusammenfassung}
+
+Ein Ingenieur ändert die Krümmung eines Eisenbahn-Alignments. Das
+Entwurfssystem zeichnet sofort eine neue Kurve, doch die ingenieurtechnischen
+Folgen bleiben nicht innerhalb dieser Zeichnung. Messungen beziehen sich auf
+ein physisches Gleis; GIS-Daten ordnen es in eine größere räumliche Umgebung
+ein; CAD- und Austauschmodelle beschreiben ausgewählte Konstruktionen; Regeln
+und Entscheidungen bestimmen, ob die Änderung zulässig ist. Über diese
+Repräsentationen hinweg muss das Alignment identifizierbar bleiben, während
+beabsichtigte, realisierte und beobachtete Zustände unterscheidbar bleiben
+müssen. Das zentrale Problem ist daher nicht allein der Austausch von
+Geometrie. Es besteht darin, Alignment-spezifisches Ingenieurwissen in dem
+Moment verfügbar zu machen, in dem eine Änderung interpretiert, bewertet oder
+entschieden wird.
+
+Der Ausgangspunkt war konkreter. Der Entwurf von Eisenbahnübergängen muss den
+Wechsel zwischen Krümmungszuständen gestalten, während ein Fahrzeug physisch
+gezwungen ist, seinem Schienenpaar zu folgen. Krümmung, Überhöhung,
+Geschwindigkeit und ihre Änderungsraten wirken durch diese Zwangsführung auf
+Fahrzeug, Gleis, Komfort, Sicherheit und Verschleiß. Der ursprüngliche Beitrag
+\emph{Berlinish} interpretiert bekannte Übergangsformen durch eine
+komponierbare Grammatik aus einlaufender Halbwelle, optionalem Klothoidenkern
+und auslaufender Halbwelle. \emph{axtranNew} entstand als vorgesehener
+Berechnungskern, der solche Strukturen zusammensetzt, löst, vergleicht und
+optimiert. Diese Namen bezeichnen einen ursprünglichen Forschungsbeitrag und
+eine Implementierungslinie; sie werden hier nicht als genehmigte Begriffe des
+Knowledge Kernel eingeführt.
+
+Diese Thesis entwickelt das \emph{Alignment-Based Information Modelling
+(AIM)} als wissensbasierte, repräsentationsbewusste und
+implementierungsfähige Antwort. Ihre zentrale These lautet, dass ein Alignment
+über seine intrinsische konstruktive Struktur modelliert werden soll,
+insbesondere über seine longitudinale Ordnung und seinen Krümmungsverlauf, und
+anschließend durch ausdrückliche Beziehungen zwischen Zustand, Realisierung,
+Beobachtung und Bewertung zu interpretieren ist. Eine Kurve ist eine
+notwendige geometrische Realisierung dieser Struktur, aber nicht das gesamte
+Engineering Object.
+
+Die Arbeit leistet eine begriffliche Trennung von Objektidentität,
+konstruktiver Definition, metrischer und physischer Realisierung,
+Repräsentation, Beobachtung, Wissen und Entscheidung; eine
+krümmungsgetriebene Formulierung von Zuständen und Operatoren; eine
+Alignment-spezifische ingenieurtechnische Behandlung von Übergängen,
+Überhöhung, Nebenbedingungen und Realisierung; eine referenzorientierte
+Berechnungspipeline einschließlich hybrider Rekonstruktion und strukturierter
+Optimierung; sowie eine Erklärungsfolge, die diese Beiträge vom
+Ingenieurproblem bis zur Anwendung miteinander verbindet.
+
+Die weitere ufAIM-Umgebung folgt aus der Notwendigkeit, dieses Übergangswissen
+zu bewahren und operativ zu verwenden: Eine Transition-Registry strukturiert
+Funktionen und Familien; TransEd macht sie untersuchbar; SPOT trägt Identität
+und Zustand konkreter Ingenieurobjekte; alignmentOS macht berechnetes
+Alignment-Wissen nutzbar; der Knowledge Kernel stabilisiert Terminologie und
+Verantwortung; Research prüft und erweitert Aussagen; und die Thesis erklärt
+ihren Zusammenhang. Das resultierende Framework reicht weiter als sein
+Ursprung, doch dieser Ursprung begründet seine erste ingenieurwissenschaftliche
+Notwendigkeit.
+
+Die mathematischen und numerischen Entwicklungen zeigen, wie Geometrie aus
+Krümmung abgeleitet, wie relevante Zustände und Nebenbedingungen bewertet und
+wie Alignment-Probleme für die Berechnung formuliert werden können. Sie
+implizieren nicht, dass ein Solver Ingenieurwissen oder Entscheidungsautorität
+besitzt. AIM bietet vielmehr eine disziplinierte Möglichkeit, Bedeutung bei
+wechselnden Repräsentationen zu bewahren und Ingenieurwissen dort anzuwenden,
+wo Folgen entstehen.

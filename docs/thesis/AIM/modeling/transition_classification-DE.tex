@@ -1,0 +1,138 @@
+\chapter{Übergangsfamilien und Klassifikation}
+
+\section*{Motivation}
+Übergangsbögen sind ein zentraler Bestandteil des Alignment-Entwurfs; ihre
+Behandlung in der Literatur ist jedoch auf geometrische, ingenieurtechnische
+und dynamische Sichtweisen verteilt. Für systematischen Vergleich, Bewertung
+und Optimierung ist deshalb eine einheitliche Klassifikation erforderlich.
+
+\section{Krümmungsbasierte Darstellung}
+\begin{proposition}
+Jeder Übergangsbogen kann durch eine Krümmungsfunktion
+\[
+\kappa:[0,L]\to\R
+\]
+dargestellt werden.
+\end{proposition}
+Diese Darstellung ist von der ursprünglichen Kurvendefinition unabhängig und
+stellt einen gemeinsamen mathematischen Rahmen bereit.
+
+\subsection{Normierung}
+\begin{definition}
+Ein normierter Übergang ist auf
+\[
+s\in[0,1]
+\]
+definiert mit
+\[
+\kappa(0)=0,\qquad\kappa(1)=1.
+\]
+\end{definition}
+Normierung entfernt den Maßstab und ermöglicht den unmittelbaren Vergleich von
+Übergangsfamilien.
+
+\section{Klassifikation nach funktionaler Form}
+\subsection{Lineare Krümmung: Klothoide}
+\begin{definition}
+\[
+\kappa(s)=as.
+\]
+\end{definition}
+Die Klothoide ist durch die konstante Krümmungsableitung
+\[
+\kappa'(s)=\text{konstant}
+\]
+gekennzeichnet. Diese Einfachheit erklärt ihre weite Verbreitung im
+Eisenbahningenieurwesen.
+
+\subsection{Polynomiale Krümmungsfamilien}
+\begin{definition}
+\[
+\kappa(s)=\sum_{i=0}^{n}a_i s^i.
+\]
+\end{definition}
+Polynomiale Übergänge erlauben die ausdrückliche Regelung höherer
+Krümmungsableitungen. Diese Freiheit ermöglicht Optimierung nach dynamischen
+Kriterien. Übergänge des Klauder-Typs gehören zu dieser Klasse und beziehen
+dynamische Erwägungen unmittelbar in den Krümmungsentwurf ein.
+
+\subsection{Geometrische Familien}
+Manche Übergangsbögen werden implizit oder durch geometrische Beziehungen
+statt durch ausdrückliche Krümmungsfunktionen definiert. Zur Integration in
+den vorliegenden Rahmen müssen sie in eine Krümmungsdarstellung überführt
+werden.
+
+\subsection{Engineering-basierte Familien}
+Engineering-Ansätze definieren Übergangsbögen häufig durch Entwurfsregeln oder
+empirische Erwägungen. Der Bloss-Übergang ist ein wichtiges Beispiel eines
+solchen praktischen Engineering-Kompromisses.
+
+\subsection{Optimierte und hybride Familien}
+Moderne Ansätze führen Übergangsbögen ein, die ausdrücklich auf dynamische
+Leistung optimiert sind. Dazu gehören Übergänge mit geglätteter Krümmung und
+ruckoptimierte Polynomkurven.
+
+\section{Klassifikation nach Verhalten höherer Ordnung}
+\subsection{Krümmungsableitungen}
+\begin{definition}
+\[
+\kappa'(s),\quad\kappa''(s)
+\]
+bezeichnen die erste und zweite Ableitung der Krümmung.
+\end{definition}
+Diese Größen bestimmen das dynamische Verhalten einschließlich
+Beschleunigungsänderung und Glattheit der Kraftentwicklung.
+
+\subsection{Glattheitsklassen}
+\begin{definition}
+Ein Übergang gehört zur Klasse \(C^k\), wenn \(\kappa\) \(k\)-mal stetig
+differenzierbar ist.
+\end{definition}
+Höhere Glattheit verbessert typischerweise die dynamische Leistung und
+verringert den Verschleiß.
+
+\section{Vergleich der Familien}
+\begin{center}
+\begin{tabular}{lccc}
+\textbf{Familie} & $\kappa$ & $\kappa'$ & $\kappa''$ \\
+\hline
+Klothoide & linear & konstant & 0 \\
+Polynomial & flexibel & flexibel & flexibel \\
+Engineering & implizit & implizit & implizit \\
+Optimiert & entworfen & kontrolliert & kontrolliert \\
+\end{tabular}
+\end{center}
+
+\section{Interpretation als Steuerungsfunktionen}
+\begin{proposition}
+Übergangsbögen können als Steuerungsfunktionen interpretiert werden, die durch
+Krümmungsentwicklung auf die Systemdynamik wirken.
+\end{proposition}
+Diese Interpretation verbindet geometrischen Entwurf unmittelbar mit
+dynamischer Leistung.
+
+\section{Verbindung zum Eisenbahningenieurwesen}
+Der Entwurf von Eisenbahnübergängen wird durch dynamische Bedingungen wie
+Beschleunigung, Ruck und Verschleiß bestimmt. Diese Bedingungen werden
+unmittelbar zu Anforderungen an
+\[
+\kappa(s),\quad\kappa'(s),\quad\kappa''(s).
+\]
+
+\section{Zentrale Erkenntnis}
+\begin{theorem}
+Übergangsbögen sind nicht lediglich geometrische Verbindungen, sondern
+Steuerungsfunktionen, die das Systemverhalten bestimmen.
+\end{theorem}
+
+\section{Schlussfolgerung}
+\begin{summary}
+Übergangsbögen bilden eine einheitliche Klasse von Krümmungsfunktionen.
+
+Ihre Klassifikation nach funktionaler Form und Verhalten höherer Ordnung
+stellt einen systematischen Rahmen für Vergleich, Optimierung und Integration
+in Engineering-Systeme bereit.
+
+Diese Sicht schafft eine unmittelbare Verbindung zwischen Geometrie und
+Systemdynamik.
+\end{summary}

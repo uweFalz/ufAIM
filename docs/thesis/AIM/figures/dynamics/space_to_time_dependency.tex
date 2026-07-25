@@ -1,0 +1,19 @@
+\begin{tikzpicture}[
+  node distance=5mm and 5mm,
+  box/.style={draw,rounded corners,align=center,minimum height=8mm,text width=27mm,font=\scriptsize},
+  arrow/.style={->,thick}
+]
+\node[box] (state) {qualified\\railway state};
+\node[box,right=of state] (travel) {traversal \(s(t)\)\\\(v,\dot v\)};
+\node[box,right=of travel] (exposure) {temporal exposure\\\(\kappa(s(t)),u(s(t))\)};
+\node[box,below=of exposure] (kin) {reduced\\kinematics};
+\node[box,left=of kin] (model) {vehicle--track\\response model};
+\node[box,left=of model] (eval) {purpose-qualified\\evaluation};
+\node[box,below=of eval] (decision) {possible Engineering\\Decision};
+\draw[arrow] (state)--(travel);
+\draw[arrow] (travel)--(exposure);
+\draw[arrow] (exposure)--(kin);
+\draw[arrow] (kin)--(model);
+\draw[arrow] (model)--(eval);
+\draw[arrow] (eval)--(decision);
+\end{tikzpicture}

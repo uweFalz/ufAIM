@@ -1,0 +1,96 @@
+\section{Hybride Darstellung und Blockstruktur}
+\subsection{Motivation}
+Rein parametrische Modelle sind niedrigdimensional und interpretierbar, aber
+für reale Daten wenig flexibel. Rein abgetastete Modelle sind maximal flexibel,
+führen jedoch zu hochdimensionalen, oft schlecht konditionierten Problemen.
+Eine hybride Formulierung verbindet beide Vorteile.
+
+\subsection{Hybride Darstellung}
+\begin{definition}[Hybrides Krümmungsmodell]
+\[
+\kappa(s)=\kappa_{\mathrm{param}}(s;\mathbf T)+\delta\kappa(s),
+\]
+wobei \(\kappa_{\mathrm{param}}\) ein strukturiertes parametrisches Modell und
+\(\delta\kappa(s)\) ein Korrekturterm ist.
+\end{definition}
+\begin{definition}[Hybrides Überhöhungsmodell]
+\[
+\phi(s)=\phi_{\mathrm{param}}(s;\mathbf T_\phi)+\delta\phi(s).
+\]
+\end{definition}
+
+\subsection{Diskretisierung der Korrekturen}
+\[
+\delta\kappa_i=\delta\kappa(s_i),\qquad
+\delta\phi_i=\delta\phi(s_i).
+\]
+\begin{definition}[Erweiterter Parametervektor]
+\[
+\mathbf x=(\mathbf T,\mathbf T_\phi,
+\delta\boldsymbol\kappa,\delta\boldsymbol\phi).
+\]
+\end{definition}
+
+\subsection{Regularisierung}
+Zur Vermeidung von Überanpassung gilt
+\[
+J_\delta=\int_0^L(\delta\kappa'(s))^2\,\dd s
++\int_0^L(\delta\phi'(s))^2\,\dd s.
+\]
+Damit erfasst die Korrektur nur glatte, physisch bedeutsame Abweichungen.
+
+\subsection{Residuenstruktur}
+Der Residuenvektor besteht aus parametrischen Beiträgen,
+Korrekturbeiträgen, physischen Bedingungen und Datenanpassungstermen.
+
+\subsection{Blockstruktur der Variablen}
+Der Parametervektor zerfällt natürlich in
+\[
+(\mathbf T,\delta\boldsymbol\kappa)
+\quad\text{und}\quad
+(\mathbf T_\phi,\delta\boldsymbol\phi).
+\]
+Es entsteht eine zweistufige Struktur mit parametrischen Variablen im groben
+und Korrekturvariablen im feinen Maßstab.
+
+\subsection{Blockstruktur der Jacobi-Matrix}
+\begin{definition}[Block-Jacobi-Matrix]
+\[
+J_r=\begin{pmatrix}
+J_{\kappa\kappa}^{\mathrm{param}}&J_{\kappa\kappa}^{\mathrm{corr}}&0&0\\
+0&0&J_{\phi\phi}^{\mathrm{param}}&J_{\phi\phi}^{\mathrm{corr}}\\
+J_{\mathrm{dyn},\kappa}&J_{\mathrm{dyn},\kappa}^{\delta}&
+J_{\mathrm{dyn},\phi}&J_{\mathrm{dyn},\phi}^{\delta}
+\end{pmatrix}.
+\]
+\end{definition}
+Parametrische und Korrekturterme sind schwach gekoppelt; Krümmung und
+Überhöhung weitgehend separierbar; die Kopplung erfolgt vor allem durch die
+Dynamik.
+
+\subsection{Hierarchische Interpretation}
+Die parametrische Ebene definiert die globale Alignment-Struktur, die
+Korrekturebene verfeinert lokale Abweichungen. Dies entspricht der Praxis:
+Entwurf definiert Absicht, Bau führt Abweichungen ein.
+
+\subsection{Rechenstrategie}
+Zunächst werden parametrische Variablen optimiert, dann Korrekturterme
+verfeinert; optional wechseln beide Ebenen.
+
+\subsection{Verbindung zum Detaillierungsgrad}
+Grober LOD verwendet nur das parametrische Modell, feiner LOD Parametrik und
+Korrekturen.
+
+\subsection{Zentrale Erkenntnis}
+\begin{proposition}
+Die hybride Formulierung trennt strukturelle Modellierung von Datenanpassung
+und bewahrt zugleich ein dünn besetztes, gut konditioniertes Problem.
+\end{proposition}
+
+\subsection{Verbindung zu AIM}
+\begin{summary}
+Hybride Modellierung und Blockstruktur ermöglichen interpretierbare
+Parametrik, robuste Behandlung unvollkommener Daten und effiziente Optimierung
+durch dünne Besetzung und Lokalität. Sie verbinden Engineering-Entwurf mit
+datengetriebener Rekonstruktion.
+\end{summary}
