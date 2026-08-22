@@ -36243,8 +36243,8 @@
     }
     if (!vals.length) return null;
     return {
-      sMin: Math.min(...vals),
-      sMax: Math.max(...vals)
+      sMin: vals.reduce((a, b) => Math.min(a, b)),
+      sMax: vals.reduce((a, b) => Math.max(a, b))
     };
   }
   function deriveSparseStationRange(sparseAlignment) {
@@ -37495,8 +37495,8 @@
     }
     if (!vals.length) return null;
     return {
-      sMin: Math.min(...vals),
-      sMax: Math.max(...vals)
+      sMin: vals.reduce((a, b) => Math.min(a, b)),
+      sMax: vals.reduce((a, b) => Math.max(a, b))
     };
   }
   function derivePointSeriesStationRange(points) {
@@ -37513,8 +37513,8 @@
     }
     if (!vals.length) return null;
     return {
-      sMin: Math.min(...vals),
-      sMax: Math.max(...vals)
+      sMin: vals.reduce((a, b) => Math.min(a, b)),
+      sMax: vals.reduce((a, b) => Math.max(a, b))
     };
   }
   function deriveObjectSignature2({
@@ -39609,12 +39609,10 @@ xlsx/xlsx.mjs:
 					}
 					return;
 				}
-				const xs = allPoints.map((point) => point.x);
-				const ys = allPoints.map((point) => point.y);
-				const minX = Math.min(...xs);
-				const maxX = Math.max(...xs);
-				const minY = Math.min(...ys);
-				const maxY = Math.max(...ys);
+				const minX = allPoints.reduce((m, point) => Math.min(m, point.x), Infinity);
+				const maxX = allPoints.reduce((m, point) => Math.max(m, point.x), -Infinity);
+				const minY = allPoints.reduce((m, point) => Math.min(m, point.y), Infinity);
+				const maxY = allPoints.reduce((m, point) => Math.max(m, point.y), -Infinity);
 				const spanX = Math.max(maxX - minX, 1);
 				const spanY = Math.max(maxY - minY, 1);
 				const padding = Math.max(spanX, spanY) * 0.05;
