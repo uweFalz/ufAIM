@@ -11,6 +11,7 @@ import { createGndDataset } from "./gnd/createGndDataset.js";
 import { createGndPadIndex } from "./gnd/createGndPadIndex.js";
 import { createGndEdgeIndex } from "./gnd/createGndEdgeIndex.js";
 import { buildGndSequences } from "./gnd/buildGndSequences.js";
+import { buildGndNormalizedSourceLayer } from "./gnd/buildGndNormalizedSourceLayer.js";
 
 import {
 	buildCoordGeomFromTraLikeRecords,
@@ -19,6 +20,7 @@ import {
 import {
 	getTraLikeSemanticMapForGND,
 } from "../shared/traLikeSemanticMaps.js";
+import { resolveGndType7TransitionId } from "./gnd/resolveGndType7TransitionId.js";
 
 import {
 	TECHNET_SHEET_NAMES as SHEET_NAMES,
@@ -70,6 +72,7 @@ export function parseGNDSourceEnvelope({ envelope, context = {} } = {}) {
 		sheetCount: envelope?.inventory?.length ?? 0,
 	};
 	const rawTables = envelopeToGndTables(envelope);
+	const normalizedSourceLayer = buildGndNormalizedSourceLayer(envelope);
 	const tables = Object.fromEntries(Object.entries(rawTables).map(([name, rows]) => [name, rows.map((row) => normalizeGndRow(row, { sheetName: name, rowIndex: row.__rowIndex }))]));
 	const dataset = createGndDataset({
 		source: {
@@ -108,6 +111,7 @@ export function parseGNDSourceEnvelope({ envelope, context = {} } = {}) {
 			sourceBackend: dataset.source.backend,
 			stage: "landFAT-with-gnd-attachments",
 			sourceEnvelope: envelope,
+			normalizedSourceLayer,
 			sheetNames: workbookInfo.sheetNames,
 			analysis: {
 				padCount: model.stats.padCount,
@@ -755,6 +759,9 @@ function assessConstructiveEdge(edge) {
 	if (!SUPPORTED_CONSTRUCTIVE_TYPES.has(typeCode)) {
 		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}TYP`, value: typeCode, code: "unsupported-constructive-type", decision: "retain-unresolved-source-element", geometryUsable: false });
 	}
+	if (typeCode === 7 && !resolveGndType7TransitionId(edge)) {
+		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}PAR2/${family}PAR3`, value: [edge?.radiusA ?? null, edge?.radiusE ?? null], code: "type7-halfwave-direction-unresolved", decision: "retain-unresolved-source-element; do-not-construct", geometryUsable: false });
+	}
 	if (TRANSITION_TYPES.has(typeCode) && Number.isFinite(edge?.radiusA) && Number.isFinite(edge?.radiusE) && Number(edge.radiusA) === Number(edge.radiusE)) {
 		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}PAR2/${family}PAR3`, value: [Number(edge.radiusA), Number(edge.radiusE)], code: "equal-radius-transition-unresolved", decision: "retain-unresolved-source-element; do-not-coerce-to-curve", geometryUsable: false });
 	}
@@ -812,6 +819,7 @@ export function convertSequenceToTraLikeRecords(seq, padIndex) {
 				? Number(edge.arcLength)
 				: s1 - s0,
 			kindCode: Number.isFinite(edge?.typeCode) ? Number(edge.typeCode) : null,
+			transitionType: Number(edge?.typeCode) === 7 ? resolveGndType7TransitionId(edge) : null,
 			radiusA: Number.isFinite(edge?.radiusA) ? Number(edge.radiusA) : null,
 			radiusE: Number.isFinite(edge?.radiusE) ? Number(edge.radiusE) : null,
 			valueOrigins: {
@@ -1089,7 +1097,12 @@ function makeAnalysisLandFAT({
 	for (const evidence of unresolvedAttachments) {
 		if (evidence?.attachmentStatus !== "uniquely-attachable" || !evidence?.attachmentKey) continue;
 		const current = attachmentsByKey.get(evidence.attachmentKey) ?? {};
-		current[evidence.kind] = evidence;
+		const prior = current[evidence.kind];
+		current[evidence.kind] = prior == null
+			? evidence
+			: Array.isArray(prior)
+				? [...prior, evidence]
+				: [prior, evidence];
 		attachmentsByKey.set(evidence.attachmentKey, current);
 	}
 

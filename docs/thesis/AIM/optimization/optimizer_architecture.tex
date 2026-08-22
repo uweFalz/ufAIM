@@ -1,282 +1,156 @@
-\chapter{Optimizer Architecture}
+\chapter{A Solver Architecture for Reviewable Candidates}
 
-\section{Overview}
+\section{Architecture begins at a responsibility boundary}
 
-The previous chapters introduced the mathematical and physical
-foundations of alignment modelling and optimization.
+\paragraph{Reader bridge.}
+The previous chapter produced a candidate contract. Architecture is needed
+because that contract can be lost when parsing, solving, visualization, and
+model editing are treated as one operation.
 
-In this chapter, these concepts are combined into a concrete system
-architecture that enables the implementation of a full alignment
-optimization engine.
+A solver service may consume a read-only problem declaration and return
+candidate evidence. It must not infer the engineering purpose, broaden the
+released freedoms, replace source observations, decide applicability, or
+write a result into an authoritative Alignment merely because a numerical run
+terminated.
 
-The architecture consists of the following main components:
-\begin{itemize}
-\item data ingestion (import and preprocessing),
-\item initial guess construction,
-\item constraint library,
-\item objective engine,
-\item numerical solver,
-\item live visualization.
-\end{itemize}
-
-
-\section{Data Flow}
-
-The overall data flow can be summarized as:
+For the running discrepancy, the conceptual flow is
 \[
-\text{Input Data}
-\rightarrow
-\text{Initial Guess}
-\rightarrow
-\text{Optimization}
-\rightarrow
-\text{Result}
+\begin{array}{c}
+\boxed{\mathcal P}\longrightarrow\boxed{\text{validate and assemble}}\\[0.4em]
+\downarrow\\[-0.2em]
+\boxed{\text{solve and verify}}\longrightarrow\boxed{\mathcal C}\\[0.4em]
+\downarrow\\[-0.2em]
+\boxed{\text{evaluate and decide}}
+\end{array}
 \]
+Only the middle operations belong to the solver responsibility. The final
+arrow is an engineering workflow boundary.
 
-In the implemented system, this flow is realized through a sequence of
-well-defined transformations.
+\section{The problem package}
 
-\begin{verbatim}
-Drop → Parser → Grabbeltisch → Initial Guess → SQP → Model → View
-\end{verbatim}
+A portable problem package needs more than geometry:
+\[
+\mathcal P=
+(id,I,P,M,x_0,\mathcal X_{\mathrm{free}},q,\mathcal F,
+J,W,\Sigma,\pi),
+\]
+where \(W\) records scaling and \(\pi\) records provenance. Validation checks
+that every free variable is declared, fixed inputs remain locked, units are
+compatible, objective terms name their source, and all referenced models and
+contexts are available. Failure of this check is not solver non-convergence;
+it is an incomplete or inapplicable problem declaration.
 
+\section{Assembly makes mathematical structure explicit}
 
-\section{Optimization Session}
+\paragraph{Reader bridge.}
+Once the engineering contract is complete, the architecture can translate it
+into numerical objects without changing its meaning.
 
-\begin{definition}[Optimization session]
-An optimization session encapsulates all data and operations required
-for a single optimization run.
-\end{definition}
-
-\begin{verbatim}
-class OptimizationSession {
-  constructor({ input, constraints, objectives }) {
-    this.input = input
-    this.constraints = constraints
-    this.objectives = objectives
-    this.initialGuess = null
-    this.result = null
-  }
-
-  buildInitialGuess() {}
-  runOptimization() {}
-  commitToModel(projectModel) {}
-}
-\end{verbatim}
-
-This abstraction separates:
+Assembly constructs:
 \begin{itemize}
-\item data preparation,
-\item numerical optimization,
-\item integration into the system model.
+\item the parameter vector and bounds from the released freedoms;
+\item equality and inequality functions from declared constraints;
+\item separately typed objective and diagnostic residuals;
+\item reconstruction and observation evaluators;
+\item scaling, derivative providers, and sparsity patterns;
+\item termination tolerances and independent verification settings.
 \end{itemize}
 
+Residuals are not interchangeable merely because they are stored in one
+vector. Type and provenance must survive assembly so that a reviewer can
+distinguish an endpoint constraint, an observation mismatch, a regularizer,
+and a numerical diagnostic.
 
-\section{Initial Guess Construction}
+\section{Why SQP, derivatives, and sparsity belong behind interfaces}
 
-The initial guess transforms raw geometric data into optimization
-variables.
+\paragraph{Reader bridge.}
+SQP is useful for a smooth nonlinear problem with visible equality and
+inequality constraints. It is one replaceable numerical method, not the
+owner of the problem.
 
-\begin{verbatim}
-function buildInitialGuess(polyline) {
-  const s = computeArcLength(polyline)
+At iterate \(x_k\), an SQP implementation forms a local quadratic model and
+linearized constraints, obtains a step \(p_k\), and applies a globalization
+rule such as a line search or trust region. The architecture must expose:
+\[
+x_k,\quad J(x_k),\quad r(x_k),\quad
+\nabla J(x_k),\quad A(x_k),\quad p_k,
+\]
+together with constraint margins, derivative provenance, scaling, and solver
+diagnostics.
 
-  const theta = computeDirections(polyline)
-  const kappa = diff(theta) / ds
+Analytic, automatic, or finite-difference derivatives may be supplied if their
+method and validation are recorded. Sparsity is a computational property of
+the declared dependency graph. Exploiting it can reduce work; it does not
+justify an undeclared objective or constraint.
 
-  const kappaSmooth = smooth(kappa)
+\section{Termination, convergence, and verification}
 
-  const phi = kappaSmooth.map(k =>
-    Math.asin(clamp(v*v*k/g, -1, 1))
-  )
+A solver may stop because a tolerance was met, progress stalled, an iteration
+limit was reached, or evaluation failed. These outcomes must remain distinct.
+A nominal convergence flag is credible only with the corresponding evidence,
+including:
+\begin{itemize}
+\item objective and step histories;
+\item equality residuals and inequality margins;
+\item a stationarity or optimality measure appropriate to the method;
+\item derivative and scaling checks where applicable;
+\item reconstruction on the declared verification grid;
+\item warnings, active assumptions, and numerical error estimates.
+\end{itemize}
 
-  return { kappa: kappaSmooth, phi }
-}
-\end{verbatim}
+This evidence establishes what happened within \(M\) and \(\mathcal P\). It
+does not establish that the observation model is correct, that the candidate
+is constructible, or that the purpose warrants adoption.
 
-This step is essential for robust convergence of the optimization
-algorithm.
+\section{The candidate package and review boundary}
 
+The service returns, without applying,
+\[
+\mathcal C=
+(\mathcal P.id,M.id,x^\star,\widehat\gamma^\star,
+r^\star,J^\star,\text{margins},\text{termination},
+\text{verification},\Sigma,\pi).
+\]
+A review surface may compare candidates, inspect residuals and sensitivities,
+and preview a representation. Preview is not Physical Realization; comparison
+is not evaluation under every relevant purpose; an ``Apply'' operation, if a
+future workflow provides one, requires a separate authorized command and
+preserved provenance.
 
-\section{Constraint Library}
+\section{Current AXTRAN evidence and the general architecture}
 
-\begin{definition}[Constraint]
-A constraint is a function mapping the current state to a residual.
-\end{definition}
+The architecture above is a scientific responsibility model and a direction
+for implementation. Current repository evidence for AXTRAN is narrower:
+AXTRAN is experimental; a single SQP step and a finite repeated loop are
+evidence of a numerical path. They do not demonstrate a general optimizer
+architecture, production robustness, live optimization, network
+optimization, vehicle-aware objectives, cant optimization, or automatic model
+integration.
 
-\begin{verbatim}
-function minRadius(kappa, Rmin) {
-  return Math.abs(kappa) - 1/Rmin
-}
-\end{verbatim}
+Accordingly, examples of richer sessions, visualization, alternative solvers,
+or network assembly are future or problem-specific possibilities. They must
+not be read as present AIM or AXTRAN capability.
 
-\begin{verbatim}
-function parallelConstraint(p1, p2, d) {
-  const dx = p1.x - p2.x
-  const dy = p1.y - p2.y
-  return Math.sqrt(dx*dx + dy*dy) - d
-}
-\end{verbatim}
+\section{What the engineer receives}
 
-All constraints are expressed uniformly as residuals and integrated into
-the optimization problem.
-
-
-\section{Objective Engine}
-
-\begin{definition}[Objective function]
-The objective function is constructed as a weighted sum of residual
-terms.
-\end{definition}
-
-\begin{verbatim}
-function objectiveJerk(kappa, phi, ds, v, g) {
-  const r = []
-  for (let i = 0; i < kappa.length - 1; i++) {
-    const dk = (kappa[i + 1] - kappa[i]) / ds
-    const dphi = (phi[i + 1] - phi[i]) / ds
-    const j = v*v*v*dk - g*v*Math.cos(phi[i]) * dphi
-    r.push(j)
-  }
-  return r
-}
-\end{verbatim}
-
-\begin{verbatim}
-function buildObjectiveResiduals(ctx, objectives) {
-  const r = []
-
-  for (const obj of objectives) {
-    const ri = obj.evaluate(ctx)
-    const w = Math.sqrt(obj.weight ?? 1)
-    for (const v of ri) r.push(w * v)
-  }
-
-  return r
-}
-\end{verbatim}
-
-This formulation enables flexible adaptation to different design
-criteria.
-
-
-\section{Residual Assembly}
-
-The optimization problem is expressed entirely in terms of residuals.
-
-\begin{verbatim}
-function buildResidualVector(ctx, constraints, objectives) {
-  return [
-    ...buildConstraintResiduals(ctx, constraints),
-    ...buildObjectiveResiduals(ctx, objectives)
-  ]
-}
-\end{verbatim}
-
-
-\section{Numerical Solver}
-
-\subsection{Gauss--Newton / SQP Core}
-
-\begin{verbatim}
-async function runSQPInteractive(x0, onStep) {
-  let x = x0
-
-  for (let k = 0; k < maxIter; k++) {
-
-    const r = residuals(x)
-    const J = jacobian(x)
-
-    const p = solve(J, r)
-
-    x = add(x, scale(p, alpha))
-
-    onStep({ x, k, r })
-
-    await nextFrame()
-  }
-
-  return x
-}
-\end{verbatim}
-
-The solver operates on the residual formulation and exploits sparsity.
-
-
-\section{Live Visualization}
-
-A key feature of the system is the live visualization of the optimization
-process.
-
-\begin{verbatim}
-optSession.runOptimization({
-  onStep: ({ x, k }) => {
-    const geom = reconstruct(x)
-
-    geoRender.updateAlignment(geom)
-    plotKappa(x.kappa)
-    plotPhi(x.phi)
-  }
-})
-\end{verbatim}
-
-This enables interactive exploration and debugging of the optimization.
-
-
-\section{Network Extension}
-
-The architecture extends naturally to networks of alignments.
-
-\begin{verbatim}
-function residuals(network) {
-
-  const r = []
-
-  for (edge of network.edges) {
-    r.push(...smoothness(edge))
-  }
-
-  for (node of network.nodes) {
-    r.push(...nodeConstraints(node))
-  }
-
-  return r
-}
-\end{verbatim}
-
-This allows simultaneous optimization of multiple connected tracks.
-
-
-\section{System Integration}
-
-The optimization engine is integrated into the user workflow through the
-interactive selection interface.
-
-\begin{verbatim}
-onUserFinalizeSelection(selection) {
-
-  const alignmentData =
-    buildAlignmentFromSelection(selection)
-
-  const optSession = new OptimizationSession({
-    alignmentData
-  })
-
-  optSession.buildInitialGuess()
-  optSession.runOptimization()
-}
-\end{verbatim}
-
-
-\section{Summary}
+For the CAD/survey discrepancy, the architecture returns one or more
+traceable curvature candidates and the evidence needed to question them:
+which parameters moved, what stayed fixed, which residuals improved, which
+constraints are close to active, why the run stopped, and which uncertainties
+remain. Applicability is then checked under the intended project and
+realization context. Evaluation compares consequences under declared
+purposes. An authorized Engineering Decision may accept, reject, or request a
+new problem formulation.
 
 \begin{summary}
-The presented architecture combines mathematical modelling, numerical
-optimization, and interactive visualization into a unified system.
+A solver architecture is trustworthy when it preserves the engineering
+problem on the way in and returns a reviewable candidate on the way out.
 
-By representing all constraints and objectives as residuals, the system
-achieves a high degree of modularity and extensibility.
+\[
+\boxed{\text{calculated}\neq\text{applicable}\neq
+\text{accepted}\neq\text{authoritative}}
+\]
 
-This architecture enables the transition from static alignment modelling
-to dynamic, optimization-driven design of railway infrastructure.
+The solver owns numerical work inside the declared contract. It does not own
+Alignment identity, applicability, acceptance, or authority.
 \end{summary}

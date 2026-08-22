@@ -1,0 +1,618 @@
+@startuml INCREMENTAL-MIGRATION
+title INCREMENTAL-MIGRATION — Productive Alignment Profile Spine
+top to bottom direction
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+legend left
+|= Status |= Meaning |
+|<#D9EAD3> accepted | committed and reviewed foundation |
+|<#EADCF8> current | authorized delivery bridge package |
+|<#FCE5CD> blocked | terminal blocker owned by another package |
+|<#D9EAF7> later | retained North-Star responsibility, not completed here |
+Purple arrow = current migration step
+Green arrow = accepted compatibility or dependency
+Orange dotted arrow = independent blocker boundary
+No step implies Knowledge Kernel approval.
+endlegend
+
+package "Accepted AIM Core foundations" as Accepted #D9EAD3 {
+  component "Explicit Alignment identity\nand repository seam" as Identity
+  component "Horizontal constructive state" as Horizontal
+  component "Track-network topology" as Topology
+  component "Vertical constructive state" as VerticalOld
+  component "Cant constructive state" as CantOld
+  component "Versioned chainage mapping" as ChainageOld
+  component "Profile evaluation service + port" as ServiceOld
+  component "Explicit-ID authoring contract\nand repository port" as AuthoringOld
+}
+
+package "Current physical source layout" as Current #D9EAD3 {
+  component "src/domain/alignment/vertical" as DomainVertical
+  component "src/domain/alignment/cant" as DomainCant
+  component "src/domain/alignment/chainage" as DomainChainage
+  component "src/domain/alignment/ports + services" as DomainService
+  component "src/services/alignment\nApplication Service + static adapter" as AppServices
+  component "src/domain/alignment/authoring + ports" as DomainAuthoring
+  component "src/domain/alignment/editor\ncreateEmptyAlignmentData.js" as DomainAggregateCreation
+  component "src/domain/alignment/editor\nalignmentEditOps.js" as DomainEditOperations
+  component "src/lib/geom/vec2.js" as LegacyVectorGeometry
+  component "src/domain/alignment/Alignment2D.js" as LegacyAlignment2D
+  component "src/domain/alignment/elements/AlignmentElement.js" as LegacyAlignmentElement
+  component "AlignmentFactory + concrete elements + frame helpers" as GeometryConsumers
+  component "AlignmentApplicationService +\nSpotAlignmentRepositoryAdapter" as AuthoringServices
+  component "src/domain/transition/versioned\nquantityRoles.js" as DomainTransitionGrammar
+  component "src/domain/transition/versioned\nbuildFutureAxtranInputContract.js" as DomainAxtranContract
+  component "src/domain/transition/versioned\nvalidateVersionedTransitionRegistry.js" as DomainRegistryValidation
+  component "src/domain/transition/versioned/continuity\nvalidateContinuityCandidate.js" as DomainContinuityValidation
+  component "src/domain/transition/versioned/continuity\nsolveTransitionContinuity.js" as DomainContinuitySolver
+  component "src/domain/transition/registry/ast\nevalAst.js" as DomainAstEvaluation
+  component "src/domain/transition/registry/ast\nsimplify.js" as DomainAstSimplification
+  component "src/domain/transition/registry/ast\nsymDiff.js" as DomainAstSymDiff
+  component "src/domain/transition/registry/ast\nsymInt.js" as DomainAstSymInt
+  component "src/domain/transition/service\nTransitionQueryService.js" as DomainTransitionQuery
+  component "src/domain/transition/build\nKappaFcnBuilder.js" as DomainKappaBuilder
+  component "buildProtoAst" as DomainAstConsumers
+  component "Concrete transitionLookup/db +\nRegistryResolver + Worker/Messaging/Runtime" as QueryOutside
+  component "Evaluator + registry + continuity\ntransitionDB + AXTRAN" as TransitionOutside
+}
+
+package "Accepted Package 001\nfa87f246 — standalone Profile Core" as P1Accepted #D9EAD3 {
+  component "src/aim-core/alignment/profile" as ProfileCore
+  component "Canonical Profile implementations" as Canonical
+  component "Browser-independent Core barrel" as Barrel
+  component "Legacy paths: logic-free\nre-export façades" as Facades
+  component "Application Service + adapter\nremain outside Core" as Outside
+}
+
+package "Accepted Package 002\ne03d38d — standalone Topology Core" as P2Accepted #D9EAD3 {
+  component "src/aim-core/alignment/topology" as TopologyCore
+  component "Canonical TrackNetworkTopology" as TopologyCanonical
+  component "Topology barrel + root Core barrel" as TopologyBarrels
+  component "Legacy topology path:\nlogic-free re-export façade" as TopologyFacade
+}
+
+package "Accepted Package 003\n5c7a99b — standalone Authoring Contracts" as P3Accepted #D9EAD3 {
+  component "src/aim-core/alignment/authoring" as AuthoringCore
+  component "Canonical request contract\n+ repository-port assertion" as AuthoringCanonical
+  component "Authoring barrel + root Core barrel" as AuthoringBarrels
+  component "Legacy authoring/port paths:\nlogic-free re-export façades" as AuthoringFacades
+  component "Application Service + SPOT adapter\nremain outside Core" as AuthoringOutside
+}
+
+package "Accepted Package 004\n70c8794 — standalone Transition Grammar" as P4Accepted #D9EAD3 {
+  component "src/aim-core/transition/grammar" as TransitionGrammarCore
+  component "Canonical quantity/role vocabulary" as TransitionGrammarCanonical
+  component "Grammar + transition + root Core barrels" as TransitionGrammarBarrels
+  component "Legacy quantityRoles path:\nlogic-free re-export façade" as TransitionGrammarFacade
+}
+
+package "Accepted Package 005\nb952210 — standalone AXTRAN declaration" as P5Accepted #D9EAD3 {
+  component "src/aim-core/transition/axtran" as AxtranContractCore
+  component "Canonical future-axtran-input/v1\nproblem declaration builder" as AxtranContractCanonical
+  component "AXTRAN + transition + root Core barrels" as AxtranContractBarrels
+  component "Legacy builder path:\nlogic-free re-export façade" as AxtranContractFacade
+}
+
+package "Accepted Package 006\n7367801 — transition Registry Validation" as P6Accepted #D9EAD3 {
+  component "src/aim-core/transition/registry" as RegistryValidationCore
+  component "Canonical versioned-registry\nvalidation/report implementation" as RegistryValidationCanonical
+  component "Registry + transition + root Core barrels" as RegistryValidationBarrels
+  component "Legacy validator path:\nlogic-free re-export façade" as RegistryValidationFacade
+}
+
+package "Accepted Package 007\n6321244 — Continuity Candidate Validation" as P7Accepted #D9EAD3 {
+  component "src/aim-core/transition/continuity" as ContinuityValidationCore
+  component "Canonical continuity-candidate\nvalidation/report implementation" as ContinuityValidationCanonical
+  component "Continuity + transition + root Core barrels" as ContinuityValidationBarrels
+  component "Legacy direct path + continuity index:\nreference-identical compatibility exports" as ContinuityValidationFacades
+  component "Continuity Model remains outside Core" as ContinuityOutside
+}
+
+package "Accepted Package 008\n77c0b38 — Transition AST Evaluation" as P8Accepted #D9EAD3 {
+  component "src/aim-core/transition/ast" as AstEvaluationCore
+  component "Canonical zero-import\nAST-to-number evaluation" as AstEvaluationCanonical
+  component "AST + transition + root Core barrels" as AstEvaluationBarrels
+  component "Legacy evalAst path:\nlogic-free re-export façade" as AstEvaluationFacade
+  component "KappaFcnBuilder remains outside Core\nvia reference-identical legacy façade" as AstEvaluationConsumer
+}
+
+package "Accepted Package 009\n84f7cd1 — Transition Query Core Service" as P9Accepted #D9EAD3 {
+  component "src/aim-core/transition/query" as TransitionQueryCore
+  component "Canonical zero-import catalogue,\npreset + runtime-working-copy query" as TransitionQueryCanonical
+  component "Query + transition + root Core barrels" as TransitionQueryBarrels
+  component "Legacy TransitionQueryService path:\nlogic-free re-export façade" as TransitionQueryFacade
+  component "Injected db + resolver shapes;\nconcrete consumers remain outside Core" as TransitionQueryBoundary
+}
+
+package "Accepted Package 010\n247730c — Transition AST Simplification" as P10Accepted #D9EAD3 {
+  component "src/aim-core/transition/ast" as AstSimplificationCore
+  component "Canonical zero-import AST constructors\n+ existing simplify behavior" as AstSimplificationCanonical
+  component "AST + transition + root Core barrels" as AstSimplificationBarrels
+  component "Legacy simplify path:\nlogic-free re-export façade" as AstSimplificationFacade
+  component "AST builder, symDiff, symInt + Kappa\nremain external consumers via façade" as AstSimplificationBoundary
+}
+
+package "Accepted Package 011\n18028cd — Transition AST Symbolic Differentiation" as P11Accepted #D9EAD3 {
+  component "src/aim-core/transition/ast/symDiff.js" as AstSymDiffCore
+  component "Canonical symbolic differentiation\nwith sole Simplification dependency" as AstSymDiffCanonical
+  component "AST + transition + root Core barrels" as AstSymDiffBarrels
+  component "Legacy symDiff path:\nlogic-free re-export façade" as AstSymDiffFacade
+  component "Kappa remains external;\nconsumes symDiff through façade" as AstSymDiffBoundary
+}
+
+package "Accepted Package 012\nd8a427f — Transition AST Symbolic Domain Integration" as P12Accepted #D9EAD3 {
+  component "src/aim-core/transition/ast/symInt.js" as AstSymIntCore
+  component "Canonical symbolic domain integration\nwith sole Simplification dependency" as AstSymIntCanonical
+  component "AST + transition + root Core barrels" as AstSymIntBarrels
+  component "Legacy symInt path:\nlogic-free re-export façade" as AstSymIntFacade
+  component "Kappa remains external;\nconsumes symInt through façade" as AstSymIntBoundary
+}
+
+package "Accepted Package 013\n60fde6d — Transition Proto-AST Builder" as P13Accepted #D9EAD3 {
+  component "src/aim-core/transition/ast/buildProtoAst.js" as ProtoAstCore
+  component "Canonical restricted u-domain AST builder\nwith sole Simplification dependency" as ProtoAstCanonical
+  component "AST + transition + root Core barrels" as ProtoAstBarrels
+  component "Legacy buildProtoAst path:\nlogic-free re-export façade" as ProtoAstFacade
+  component "Kappa remains external;\nconsumes builder through façade" as ProtoAstBoundary
+}
+
+package "Accepted Package 014\nf4f7444 — Transition Continuity Solver" as P14Accepted #D9EAD3 {
+  component "src/aim-core/transition/continuity/solveTransitionContinuity.js" as ContinuitySolverCore
+  component "Canonical deterministic continuity solver\nwith sole Grammar dependency" as ContinuitySolverCanonical
+  component "Continuity + transition + root Core barrels" as ContinuitySolverBarrels
+  component "Legacy solver path:\nlogic-free re-export façade" as ContinuitySolverFacade
+  component "Versioned Continuity Model remains external\nand is injected by shape" as ContinuityModelBoundary
+}
+
+package "Accepted Package 015\n162004b — Alignment Aggregate Creation" as P15Accepted #D9EAD3 {
+  component "src/aim-core/alignment/authoring/createEmptyAlignmentData.js" as AggregateCreationCore
+  component "Canonical zero-import empty Alignment\ndraft-envelope creation" as AggregateCreationCanonical
+  component "Authoring + root Core barrels" as AggregateCreationBarrels
+  component "Legacy editor path:\nlogic-free re-export façade" as AggregateCreationFacade
+  component "AlignmentApplicationService remains external\nand consumes the façade" as AggregateCreationBoundary
+}
+
+package "Accepted Package 016\nedbf6c8 — Alignment Edit Operations" as P16Accepted #D9EAD3 {
+  component "src/aim-core/alignment/authoring/alignmentEditOps.js" as EditOperationsCore
+  component "Canonical zero-import in-memory\nAlignmentData.editModel operations" as EditOperationsCanonical
+  component "Authoring + root Core barrels" as EditOperationsBarrels
+  component "Legacy editor path:\nlogic-free re-export façade" as EditOperationsFacade
+  component "AlignmentApplicationService + Curvature Band Controller\nremain external and consume the façade" as EditOperationsBoundary
+}
+
+package "Accepted Package 017\nf15d30f — 2D Vector Geometry" as P17Accepted #D9EAD3 {
+  component "src/aim-core/geometry/vec2.js" as VectorGeometryCore
+  component "Canonical zero-import ten-function\n2D vector primitives" as VectorGeometryCanonical
+  component "Geometry + root Core barrels" as VectorGeometryBarrels
+  component "src/lib/geom/vec2.js:\nlogic-free re-export façade" as VectorGeometryFacade
+  component "Alignment2D, elements and frame helpers\nconsume the reference-identical façade" as VectorGeometryBoundary
+}
+
+package "Accepted Package 018\n774ac5f — Alignment2D Geometry" as P18Accepted #D9EAD3 {
+  component "src/aim-core/geometry/Alignment2D.js" as Alignment2DCore
+  component "Canonical Alignment2D with sole\nfour-symbol Vector2D dependency" as Alignment2DCanonical
+  component "Geometry + root Core barrels" as Alignment2DBarrels
+  component "src/domain/alignment/Alignment2D.js:\nlogic-free re-export façade" as Alignment2DFacade
+  component "AlignmentFactory remains external\nand consumes the façade" as Alignment2DBoundary
+}
+
+package "Accepted Package 019\na95139c — Alignment Element Base Geometry" as P19Accepted #D9EAD3 {
+  component "src/aim-core/geometry/AlignmentElement.js" as AlignmentElementCore
+  component "Canonical abstract base with sole\nnormalize dependency" as AlignmentElementCanonical
+  component "Geometry + root Core barrels" as AlignmentElementBarrels
+  component "Legacy element base path:\nlogic-free re-export façade" as AlignmentElementFacade
+  component "Fixed + Transition elements remain external\nand inherit through the façade" as AlignmentElementBoundary
+}
+
+package "Accepted Package 020\n006dd9d — Pose Advance Geometry" as P20Accepted #D9EAD3 {
+  component "src/aim-core/geometry/poseAdvance2.js" as PoseAdvanceCore
+  component "Canonical planar pose advance with sole\nrot90 dependency" as PoseAdvanceCanonical
+  component "Geometry + root Core barrels" as PoseAdvanceBarrels
+  component "Legacy frame path:\nlogic-free re-export façade" as PoseAdvanceFacade
+  component "FixedElement consumes canonical advance\nwithout behavior change" as PoseAdvanceBoundary
+}
+
+package "Accepted Package 021\n3b3f291 — FixedElement Geometry" as P21Accepted #D9EAD3 {
+  component "src/aim-core/geometry/FixedElement.js" as FixedElementCore
+  component "Canonical FixedElement with exact\nbase + pose-advance dependencies" as FixedElementCanonical
+  component "Geometry + root Core barrels" as FixedElementBarrels
+  component "Legacy FixedElement path:\nlogic-free re-export façade" as FixedElementFacade
+  component "AlignmentFactory + ZeroLengthFixed remain external\nand consume the façade" as FixedElementBoundary
+}
+
+package "Accepted Package 022\na4a66a1 — Romberg Geometry Integration" as P22Accepted #D9EAD3 {
+  component "src/aim-core/geometry/romberg.js" as RombergCore
+  component "Canonical mutable zero-import\nRomberg integration singleton" as RombergCanonical
+  component "Geometry + root Core barrels" as RombergBarrels
+  component "Legacy numeric path:\nlogic-free re-export façade" as RombergFacade
+}
+
+package "Accepted Package 023\n9d5221c — TransitionElement Geometry" as P23Accepted #D9EAD3 {
+  component "src/aim-core/geometry/TransitionElement.js" as TransitionElementCore
+  component "Canonical TransitionElement with exact\nbase + vec2 + Romberg dependencies" as TransitionElementCanonical
+  component "Geometry + root Core barrels" as TransitionElementBarrels
+  component "Legacy TransitionElement path:\nlogic-free re-export façade" as TransitionElementFacade
+  component "AlignmentFactory + Kink remain external\nand consume the façade" as TransitionElementBoundary
+}
+
+package "Accepted Package 024\nbc49ca8 — ImmediateElement Geometry" as P24Accepted #D9EAD3 {
+  component "src/aim-core/geometry/ImmediateElement.js" as ImmediateElementCore
+  component "Canonical zero-length ImmediateElement\nwith sole TransitionElement dependency" as ImmediateElementCanonical
+  component "Geometry + root Core barrels" as ImmediateElementBarrels
+  component "Legacy ImmediateElement path:\nlogic-free re-export façade" as ImmediateElementFacade
+  component "AlignmentFactory remains external\nand consumes the façade" as ImmediateElementBoundary
+}
+
+package "Accepted Package 025\n9a3b854 — KinkElement Geometry" as P25Accepted #D9EAD3 {
+  component "src/aim-core/geometry/KinkElement.js" as KinkElementCore
+  component "Canonical zero-length KinkElement\nwith TransitionElement + Vector2D dependencies" as KinkElementCanonical
+  component "Geometry + root Core barrels" as KinkElementBarrels
+  component "Legacy KinkElement path:\nlogic-free re-export façade" as KinkElementFacade
+  component "AlignmentFactory remains external\nand consumes the façade" as KinkElementBoundary
+}
+
+package "Accepted APP-DELIVERY-1-BRIDGE-001A\nc5d0232 — Productive Profile Spine" as Bridge001AAccepted #D9EAD3 {
+  component "AlignmentData.profileState\nvertical + cant + chainage mappings" as ProductiveProfileState
+  component "RepositoryAlignmentProfileStateReaderAdapter" as RepositoryProfileReader
+  component "AlignmentProfileApplicationService\nrepository composition" as ProductiveProfileService
+  component "Spot mapper/repository\nlossless reopen" as ProductiveProfilePersistence
+}
+
+package "Accepted Package 026\n04f9aaf — Productive Geometry Primitives" as P26Accepted #D9EAD3 {
+  component "Canonical ZeroLengthFixed + pose2" as ProductiveGeometryPrimitives
+  component "Legacy one-line identity façades" as ProductiveGeometryFacades
+  component "AlignmentFactory + Sparse validator\nremain external consumers" as ProductiveGeometryConsumers
+}
+
+package "Accepted Package 027\n6c873fa — Transition Function Runtime Core" as P27Accepted #D9EAD3 {
+  component "src/aim-core/transition/runtime\nKappaFcnBuilder + helpers" as TransitionRuntimeCore
+  component "Legacy Kappa + anchor paths:\nlogic-free identity façades" as TransitionRuntimeFacades
+}
+
+package "Accepted Package 028\nf54b672 — Versioned Transition Core" as P28Accepted #D9EAD3 {
+  component "Canonical versioned upgrader + evaluator" as VersionedTransitionCore
+  component "Canonical injected RegistryResolver + validation" as VersionedRegistryCore
+  component "Canonical Versioned Continuity Model" as VersionedContinuityCore
+  component "Concrete transitionLookup JSON\nLegacy Registry adapter only" as VersionedRegistryAdapter
+  component "Versioned + continuity legacy paths:\nlogic-free identity façades" as VersionedTransitionFacades
+}
+
+package "Accepted Package 029\n50fcdbe — Alignment Aggregate Factory Core" as P29Accepted #D9EAD3 {
+  component "src/aim-core/alignment/aggregate\nAlignmentFactory" as AlignmentFactoryCore
+  component "Six canonical Geometry dependencies" as AlignmentFactoryGeometry
+  component "Injected resolver + runtime shapes" as AlignmentFactoryInjected
+  component "Legacy ignored Factory path adopted as\nlogic-free identity façade" as AlignmentFactoryFacade
+}
+
+package "Accepted Package 030\ne326a27 — Horizontal State + Realization Core" as P30Accepted #D9EAD3 {
+  component "Canonical HorizontalConstructiveState" as HorizontalStateCore
+  component "Canonical SparseAlignmentBuilder" as SparseBuilderCore
+  component "Configured Legacy adapters\nJSON + resolver + runtime injection" as HorizontalSparseAdapters
+  component "Productive services / views\nremain unchanged consumers" as HorizontalSparseConsumers
+}
+
+package "Terminal Package 031\nPublic API + Dependencies + Ownership Freeze" as Target #EADCF8 {
+  component "141-export deliberate Root manifest" as CorePublicApiFreeze
+  component "Global Core-only dependency gate" as CoreGlobalDependencyGate
+  component "Facade / adapter / residual inventory" as CoreResidualInventory
+  component "Four disjoint released ownership surfaces" as CoreOwnershipRelease
+}
+
+rectangle "APP-IMPORT-BACKGROUND-JOB-001-R2-C2\nterminal blocked; no commit\nIMPORT-JOB-CORRUPT-PAGE-TERMINATION-001\ncorrupt-page.mdb: extracting → staged" as ImportBlocker #FCE5CD
+
+package "Later AIM Core responsibilities\nretained; not completed by this package" as Later #D9EAF7 {
+  component "Complete horizontal geometry" as LaterHorizontal
+  component "Complete vertical / cant / chainage" as LaterProfiles
+  component "Spatial coupling + transported frame" as LaterSpatial
+  component "Topology and network services" as LaterTopology
+  component "AXTRAN + transition / transitionDB" as LaterAxtran
+  component "Speed + applicability" as LaterSpeed
+  component "Revision + persistence ports" as LaterPersistence
+  component "Engineering Workspace + synchronized views" as LaterWorkspace
+}
+
+Identity -[#2E7D32]-> Current
+Horizontal -[#2E7D32]-> Current
+Topology -[#2E7D32]-> Current
+VerticalOld -[#2E7D32]-> DomainVertical
+CantOld -[#2E7D32]-> DomainCant
+ChainageOld -[#2E7D32]-> DomainChainage
+ServiceOld -[#2E7D32]-> DomainService
+AuthoringOld -[#2E7D32]-> DomainAuthoring
+DomainTransitionGrammar -[#2E7D32]-> Current
+
+Current -[#2E7D32]-> P1Accepted : accepted physical separation
+DomainVertical -[#2E7D32]-> Canonical
+DomainCant -[#2E7D32]-> Canonical
+DomainChainage -[#2E7D32]-> Canonical
+DomainService -[#2E7D32]-> Canonical
+Canonical -[#2E7D32]-> Barrel
+Canonical -[#2E7D32]-> Facades
+AppServices -[#2E7D32]-> Outside
+Outside -[#2E7D32]-> ProfileCore
+
+P1Accepted -[#2E7D32]-> P2Accepted : accepted physical separation
+Topology -[#2E7D32]-> TopologyCanonical
+TopologyCanonical -[#2E7D32]-> TopologyCore
+TopologyCanonical -[#2E7D32]-> TopologyBarrels
+TopologyCanonical -[#2E7D32]-> TopologyFacade
+
+P2Accepted -[#2E7D32]-> P3Accepted : accepted physical separation
+AuthoringOld -[#2E7D32]-> AuthoringCanonical
+AuthoringCanonical -[#2E7D32]-> AuthoringCore
+AuthoringCanonical -[#2E7D32]-> AuthoringBarrels
+AuthoringCanonical -[#2E7D32]-> AuthoringFacades
+AuthoringServices -[#2E7D32]-> AuthoringOutside
+AuthoringOutside -[#2E7D32]-> AuthoringCore
+
+P3Accepted -[#2E7D32]-> P4Accepted : accepted physical separation
+DomainTransitionGrammar -[#6A1B9A,bold]-> TransitionGrammarCanonical
+TransitionGrammarCanonical -[#2E7D32]-> TransitionGrammarCore
+TransitionGrammarCanonical -[#2E7D32]-> TransitionGrammarBarrels
+TransitionGrammarCanonical -[#2E7D32]-> TransitionGrammarFacade
+TransitionOutside -[#2E7D32]-> TransitionGrammarFacade : compatibility import
+
+P4Accepted -[#2E7D32]-> P5Accepted : accepted physical separation
+DomainAxtranContract -[#6A1B9A,bold]-> AxtranContractCanonical
+AxtranContractCanonical -[#2E7D32]-> AxtranContractCore
+AxtranContractCanonical -[#2E7D32]-> AxtranContractBarrels
+AxtranContractCanonical -[#2E7D32]-> AxtranContractFacade
+AxtranContractCore -[#2E7D32]-> TransitionGrammarCore : quantity vocabulary
+TransitionOutside -[#2E7D32]-> AxtranContractFacade : compatibility import
+
+P5Accepted -[#2E7D32]-> P6Accepted : accepted physical separation
+DomainRegistryValidation -[#6A1B9A,bold]-> RegistryValidationCanonical
+RegistryValidationCanonical -[#2E7D32]-> RegistryValidationCore
+RegistryValidationCanonical -[#2E7D32]-> RegistryValidationBarrels
+RegistryValidationCanonical -[#2E7D32]-> RegistryValidationFacade
+RegistryValidationCore -[#2E7D32]-> TransitionGrammarCore : grammar validation
+TransitionOutside -[#2E7D32]-> RegistryValidationFacade : compatibility import
+
+P6Accepted -[#2E7D32]-> P7Accepted : accepted physical separation
+DomainContinuityValidation -[#6A1B9A,bold]-> ContinuityValidationCanonical
+ContinuityValidationCanonical -[#2E7D32]-> ContinuityValidationCore
+ContinuityValidationCanonical -[#2E7D32]-> ContinuityValidationBarrels
+ContinuityValidationCanonical -[#2E7D32]-> ContinuityValidationFacades
+ContinuityOutside -[#2E7D32]-> ContinuityValidationFacades : compatibility import
+
+P7Accepted -[#2E7D32]-> P8Accepted : accepted physical separation
+DomainAstEvaluation -[#6A1B9A,bold]-> AstEvaluationCanonical
+AstEvaluationCanonical -[#2E7D32]-> AstEvaluationCore
+AstEvaluationCanonical -[#2E7D32]-> AstEvaluationBarrels
+AstEvaluationCanonical -[#2E7D32]-> AstEvaluationFacade
+DomainKappaBuilder -[#2E7D32]-> AstEvaluationFacade : existing productive import
+AstEvaluationConsumer -[#2E7D32]-> AstEvaluationCore
+
+P8Accepted -[#2E7D32]-> P9Accepted : accepted physical separation
+DomainTransitionQuery -[#6A1B9A,bold]-> TransitionQueryCanonical
+TransitionQueryCanonical -[#2E7D32]-> TransitionQueryCore
+TransitionQueryCanonical -[#2E7D32]-> TransitionQueryBarrels
+TransitionQueryCanonical -[#2E7D32]-> TransitionQueryFacade
+QueryOutside -[#2E7D32]-> TransitionQueryFacade : existing productive imports
+TransitionQueryBoundary -[#2E7D32]-> TransitionQueryCore
+
+P9Accepted -[#2E7D32]-> P10Accepted : accepted physical separation
+DomainAstSimplification -[#6A1B9A,bold]-> AstSimplificationCanonical
+AstSimplificationCanonical -[#2E7D32]-> AstSimplificationCore
+AstSimplificationCanonical -[#2E7D32]-> AstSimplificationBarrels
+AstSimplificationCanonical -[#2E7D32]-> AstSimplificationFacade
+DomainAstConsumers -[#2E7D32]-> AstSimplificationFacade : existing productive imports
+DomainKappaBuilder -[#2E7D32]-> AstSimplificationFacade : existing productive import
+AstSimplificationBoundary -[#2E7D32]-> AstSimplificationCore
+
+P10Accepted -[#2E7D32]-> P11Accepted : accepted physical separation
+DomainAstSymDiff -[#2E7D32]-> AstSymDiffCanonical
+AstSymDiffCanonical -[#2E7D32]-> AstSymDiffCore
+AstSymDiffCanonical -[#2E7D32]-> AstSymDiffBarrels
+AstSymDiffCanonical -[#2E7D32]-> AstSymDiffFacade
+AstSymDiffCore -[#2E7D32]-> AstSimplificationCore : canonical simplify only
+DomainKappaBuilder -[#2E7D32]-> AstSymDiffFacade : existing productive import
+AstSymDiffBoundary -[#2E7D32]-> AstSymDiffCore
+
+P11Accepted -[#2E7D32]-> P12Accepted : accepted physical separation
+DomainAstSymInt -[#2E7D32]-> AstSymIntCanonical
+AstSymIntCanonical -[#2E7D32]-> AstSymIntCore
+AstSymIntCanonical -[#2E7D32]-> AstSymIntBarrels
+AstSymIntCanonical -[#2E7D32]-> AstSymIntFacade
+AstSymIntCore -[#2E7D32]-> AstSimplificationCore : canonical simplify only
+DomainKappaBuilder -[#2E7D32]-> AstSymIntFacade : existing productive import
+AstSymIntBoundary -[#2E7D32]-> AstSymIntCore
+
+P12Accepted -[#2E7D32]-> P13Accepted : accepted physical separation
+DomainAstConsumers -[#2E7D32]-> ProtoAstCanonical
+ProtoAstCanonical -[#2E7D32]-> ProtoAstCore
+ProtoAstCanonical -[#2E7D32]-> ProtoAstBarrels
+ProtoAstCanonical -[#2E7D32]-> ProtoAstFacade
+ProtoAstCore -[#2E7D32]-> AstSimplificationCore : canonical simplify only
+DomainKappaBuilder -[#2E7D32]-> ProtoAstFacade : existing productive import
+ProtoAstBoundary -[#2E7D32]-> ProtoAstCore
+
+P13Accepted -[#2E7D32]-> P14Accepted : accepted physical separation
+DomainContinuitySolver -[#2E7D32]-> ContinuitySolverCanonical
+ContinuitySolverCanonical -[#2E7D32]-> ContinuitySolverCore
+ContinuitySolverCanonical -[#2E7D32]-> ContinuitySolverBarrels
+ContinuitySolverCanonical -[#2E7D32]-> ContinuitySolverFacade
+ContinuitySolverCore -[#2E7D32]-> TransitionGrammarCore : schema vocabulary only
+ContinuityModelBoundary -[#2E7D32]-> ContinuitySolverCore : injected model shape
+
+P14Accepted -[#2E7D32]-> P15Accepted : accepted physical separation
+DomainAggregateCreation -[#2E7D32]-> AggregateCreationCanonical
+AggregateCreationCanonical -[#2E7D32]-> AggregateCreationCore
+AggregateCreationCanonical -[#2E7D32]-> AggregateCreationBarrels
+AggregateCreationCanonical -[#2E7D32]-> AggregateCreationFacade
+AggregateCreationBoundary -[#2E7D32]-> AggregateCreationFacade : existing productive import
+
+P15Accepted -[#2E7D32]-> P16Accepted : accepted physical separation
+DomainEditOperations -[#2E7D32]-> EditOperationsCanonical
+EditOperationsCanonical -[#2E7D32]-> EditOperationsCore
+EditOperationsCanonical -[#2E7D32]-> EditOperationsBarrels
+EditOperationsCanonical -[#2E7D32]-> EditOperationsFacade
+EditOperationsBoundary -[#2E7D32]-> EditOperationsFacade : existing productive imports
+
+P16Accepted -[#2E7D32]-> P17Accepted : accepted physical separation
+LegacyVectorGeometry -[#6A1B9A,bold]-> VectorGeometryCanonical
+VectorGeometryCanonical -[#2E7D32]-> VectorGeometryCore
+VectorGeometryCanonical -[#2E7D32]-> VectorGeometryBarrels
+VectorGeometryCanonical -[#2E7D32]-> VectorGeometryFacade
+GeometryConsumers -[#2E7D32]-> VectorGeometryFacade : existing productive imports
+
+P17Accepted -[#2E7D32]-> P18Accepted : accepted physical separation
+LegacyAlignment2D -[#6A1B9A,bold]-> Alignment2DCanonical
+Alignment2DCanonical -[#2E7D32]-> Alignment2DCore
+Alignment2DCanonical -[#2E7D32]-> VectorGeometryCore : exact four-symbol import
+Alignment2DCanonical -[#2E7D32]-> Alignment2DBarrels
+Alignment2DCanonical -[#2E7D32]-> Alignment2DFacade
+Alignment2DBoundary -[#2E7D32]-> Alignment2DFacade : existing productive import
+
+P18Accepted -[#6A1B9A,bold]-> P19Accepted : next physical Core boundary
+LegacyAlignmentElement -[#6A1B9A,bold]-> AlignmentElementCanonical
+AlignmentElementCanonical -[#2E7D32]-> AlignmentElementCore
+AlignmentElementCanonical -[#2E7D32]-> VectorGeometryCore : normalize only
+AlignmentElementCanonical -[#2E7D32]-> AlignmentElementBarrels
+AlignmentElementCanonical -[#2E7D32]-> AlignmentElementFacade
+AlignmentElementBoundary -[#2E7D32]-> AlignmentElementFacade : existing productive inheritance
+
+P19Accepted -[#6A1B9A,bold]-> P20Accepted : next physical Core boundary
+PoseAdvanceCanonical -[#2E7D32]-> PoseAdvanceCore
+PoseAdvanceCanonical -[#2E7D32]-> VectorGeometryCore : rot90 only
+PoseAdvanceCanonical -[#2E7D32]-> PoseAdvanceBarrels
+PoseAdvanceCanonical -[#2E7D32]-> PoseAdvanceFacade
+PoseAdvanceBoundary -[#2E7D32]-> PoseAdvanceCore : canonical dependency
+
+P20Accepted -[#6A1B9A,bold]-> P21Accepted : next physical Core boundary
+FixedElementCanonical -[#2E7D32]-> FixedElementCore
+FixedElementCanonical -[#2E7D32]-> AlignmentElementCore : canonical base
+FixedElementCanonical -[#2E7D32]-> PoseAdvanceCore : canonical advance
+FixedElementCanonical -[#2E7D32]-> FixedElementBarrels
+FixedElementCanonical -[#2E7D32]-> FixedElementFacade
+FixedElementBoundary -[#2E7D32]-> FixedElementFacade : existing productive imports
+
+P21Accepted -[#2E7D32]-> P22Accepted : accepted next boundary
+RombergCanonical -[#2E7D32]-> RombergCore
+RombergCanonical -[#2E7D32]-> RombergBarrels
+RombergCanonical -[#2E7D32]-> RombergFacade
+
+P22Accepted -[#2E7D32]-> P23Accepted : accepted next boundary
+TransitionElementCanonical -[#2E7D32]-> TransitionElementCore
+TransitionElementCanonical -[#2E7D32]-> AlignmentElementCore : canonical base
+TransitionElementCanonical -[#2E7D32]-> VectorCore : canonical normalize + rot90
+TransitionElementCanonical -[#2E7D32]-> RombergCore : canonical integration
+TransitionElementCanonical -[#2E7D32]-> TransitionElementBarrels
+TransitionElementCanonical -[#2E7D32]-> TransitionElementFacade
+TransitionElementBoundary -[#2E7D32]-> TransitionElementFacade : existing productive imports
+
+P23Accepted -[#2E7D32]-> P24Accepted : accepted next boundary
+ImmediateElementCanonical -[#2E7D32]-> ImmediateElementCore
+ImmediateElementCanonical -[#2E7D32]-> TransitionElementCore : canonical specialization
+ImmediateElementCanonical -[#2E7D32]-> ImmediateElementBarrels
+ImmediateElementCanonical -[#2E7D32]-> ImmediateElementFacade
+ImmediateElementBoundary -[#2E7D32]-> ImmediateElementFacade : existing productive import
+
+P24Accepted -[#2E7D32]-> P25Accepted : accepted physical Core boundary
+KinkElementCanonical -[#2E7D32]-> KinkElementCore
+KinkElementCanonical -[#2E7D32]-> TransitionElementCore : canonical specialization
+KinkElementCanonical -[#2E7D32]-> VectorCore : canonical rot
+KinkElementCanonical -[#2E7D32]-> KinkElementBarrels
+KinkElementCanonical -[#2E7D32]-> KinkElementFacade
+KinkElementBoundary -[#2E7D32]-> KinkElementFacade : existing productive import
+ProductiveProfileState -[#8E44AD]-> RepositoryProfileReader
+RepositoryProfileReader -[#8E44AD]-> AuthoringOld : loadById
+ProductiveProfileService -[#8E44AD]-> RepositoryProfileReader
+ProductiveProfileService -[#8E44AD]-> ProfileCore
+ProductiveProfilePersistence -[#8E44AD]-> ProductiveProfileState : preserve complete AlignmentData
+
+P25Accepted -[#2E7D32]-> Bridge001AAccepted : accepted productive bridge
+Bridge001AAccepted -[#2E7D32]-> P26Accepted : accepted completion sequence
+P26Accepted -[#2E7D32]-> P27Accepted : accepted completion package
+TransitionRuntimeCore -[#2E7D32]-> TransitionRuntimeFacades
+P27Accepted -[#2E7D32]-> P28Accepted : accepted completion package
+VersionedTransitionCore -[#2E7D32]-> TransitionRuntimeCore
+VersionedRegistryCore -[#2E7D32]-> VersionedTransitionCore
+VersionedContinuityCore -[#2E7D32]-> TransitionRuntimeCore
+VersionedRegistryAdapter -[#2E7D32]-> VersionedRegistryCore : injected catalogue
+VersionedTransitionCore -[#2E7D32]-> VersionedTransitionFacades
+VersionedContinuityCore -[#2E7D32]-> VersionedTransitionFacades
+P28Accepted -[#2E7D32]-> P29Accepted : accepted completion package
+AlignmentFactoryCore -[#2E7D32]-> AlignmentFactoryGeometry
+AlignmentFactoryInjected -[#2E7D32]-> AlignmentFactoryCore
+AlignmentFactoryCore -[#2E7D32]-> AlignmentFactoryFacade
+P29Accepted -[#2E7D32]-> P30Accepted : accepted completion package
+HorizontalStateCore -[#2E7D32]-> SparseBuilderCore
+SparseBuilderCore -[#2E7D32]-> AlignmentFactoryCore
+HorizontalSparseAdapters -[#2E7D32]-> HorizontalStateCore
+HorizontalSparseAdapters -[#2E7D32]-> SparseBuilderCore
+HorizontalSparseConsumers -[#2E7D32]-> HorizontalSparseAdapters
+AlignmentFactoryInjected -[#2E7D32]-> HorizontalSparseAdapters
+P30Accepted -[#6A1B9A,bold]-> Target : terminal completion gate
+CorePublicApiFreeze -[#2E7D32]-> CoreGlobalDependencyGate
+CoreGlobalDependencyGate -[#2E7D32]-> CoreResidualInventory
+CoreResidualInventory -[#2E7D32]-> CoreOwnershipRelease
+
+ImportBlocker ..[#EF6C00]> Target : separate ownership; no repair here
+Target -[#2E7D32]-> Later : enables independent work; does not close programme
+
+note right of Target
+Done only when:
+- one canonical implementation exists
+- old/new exports are reference-identical
+- façades contain no logic
+- Core has no App/browser/adapter dependency
+- protected Import/TransEd/North-Star WIP is unchanged
+- accepted Vector2D Core remains zero-import with its exact ten-function API
+- accepted Alignment2D imports only normalize, dot, sub and rot90 from canonical Vector2D
+- accepted AlignmentElement imports only normalize from canonical Vector2D
+- accepted PoseAdvance2 imports only rot90 from canonical Vector2D
+- accepted FixedElement imports only canonical AlignmentElement and PoseAdvance2
+- Romberg Core has zero imports and retains the exact mutable singleton API
+- every scalar/Fresnel loop, tolerance, error, invocation order and fallback remains unchanged
+- TransitionElement imports only canonical AlignmentElement, Vector2D and Romberg
+- every curvature, derivative, pose, quality, log, error and restoration behavior remains unchanged
+- ImmediateElement imports only canonical TransitionElement
+- its private zero runtime preset, zero length, curvature, pose identity, reverse and parallel remain unchanged
+- AlignmentFactory remains outside Core on the ImmediateElement identity façade
+- KinkElement imports only canonical TransitionElement and Vector2D rot
+- its private zero runtime preset, zero length, curvature, rotation, reverse and parallel remain unchanged
+- AlignmentFactory remains outside Core on the KinkElement identity façade
+- Package 025 is accepted at 9a3b854
+- Bridge 001A is accepted at c5d0232
+- Package 026 is accepted at 04f9aaf
+- Package 027 is accepted at 6c873fa
+- Package 028 is accepted at f54b672
+- KappaFcnBuilder is accepted canonical Transition Runtime Core
+- runtime imports only accepted canonical AST plus private clamp/anchor helpers
+- legacy Kappa and anchor paths are logic-free identity façades
+- versioned upgrader, evaluator, injected resolver and continuity model are canonical Core
+- concrete transitionLookup JSON remains solely outside Core in the legacy resolver adapter
+- AlignmentFactory is canonical Aggregate Core with exactly six Geometry imports
+- resolver and Kappa runtime remain injected shapes without concrete Core imports
+- the adopted legacy Factory path is a logic-free identity façade
+- productive buildSparse, Alignment, projection and App consumers remain byte-identical
+- composeTotal and solvePartitionC1 remain dormant Legacy residuals, not Core APIs
+- Package 029 is accepted at 50fcdbe
+- Package 030 is accepted at e326a27
+- Root API is frozen at exactly 141 exports
+- all executable Core dependencies resolve inside src/aim-core
+- bounded adapters and dormant residuals are explicitly inventoried
+- four disjoint Core ownership surfaces are released after independent acceptance
+- new native AlignmentData owns an explicit empty profileState record
+- legacy AlignmentData without profileState evaluates truthful absence
+- repository reads validate existing Core vertical, cant and chainage identities
+- Spot mapping and horizontal edits preserve profileState without conversion
+- synchronized visible profile/cant/chainage rendering remains a later package
+- AlignmentFactory remains outside Core on the TransitionElement identity façade
+- productive concrete Geometry elements and pose2 are accepted canonical Core
+- Alignment Aggregate Creation and Edit Operations remain accepted Core leaves
+- sparse realization, projection, CRS, repository/persistence, selection/focus and UI remain outside
+- this package introduces no unit, datum, topology, Cant or railway meaning
+- Transition Continuity Solver remains an accepted Core module with external injected model
+- transitionDB, AXTRAN solving and applicability remain outside Core
+- complete horizontal realization, remaining Core spine and workspace remain deferred
+end note
+
+note right of ImportBlocker
+C2 remains terminal blocked and unstaged.
+This package neither tests nor repairs Import.
+end note
+@enduml

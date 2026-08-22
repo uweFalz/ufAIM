@@ -1,0 +1,13 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+class Node{constructor(){this.children=[];this.dataset={};this.className="";this.textContent="";this.disabled=false;this.childElementCount=0;}append(...x){this.children.push(...x);this.childElementCount=this.children.length;}replaceChildren(...x){this.children=[...x];this.childElementCount=this.children.length;}setAttribute(n,v){if(n.startsWith("data-"))this.dataset[n.slice(5).replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=String(v);}get text(){return [this.textContent,...this.children.map(x=>x?.text??x?.textContent??"")].join(" ");}find(p){if(p(this))return this;for(const c of this.children){const f=c?.find?.(p);if(f)return f;}return null;}}
+globalThis.document={createElement:()=>new Node(),createElementNS:()=>new Node(),createDocumentFragment:()=>new Node()};
+const {renderGndImportWorkbench}=await import("../../../app/gndImportWorkbench/gndImportWorkbenchView.js");
+
+test("visible dataset cockpit explains usable incomplete and review actions",()=>{
+	const root=new Node();
+	renderGndImportWorkbench(root,{phase:"ready",records:[],items:[],rejectedItems:[],fileOutcomes:[{fileName:"a/track.mdb",status:"partial"}],lifecycle:{state:"completed",fileCount:2},dropState:null,datasetCompleteness:{sourceCount:2,status:"partial",sources:[{sourceIndex:0,path:"a/track.mdb",status:"completed"},{sourceIndex:1,path:"b/track.mdb",status:"unsupported"}],groups:[{id:"route:1720:source:sha",route:"1720",sourceFingerprint:"sha",sourcePaths:["a/track.mdb"],status:"review-required",families:{PP:"source-evidence",EL:"constructive",EH:"source-evidence-only",EU:"missing",EK:"missing"},roles:[{code:"0",status:"missing"},{code:"1",status:"present"},{code:"2",status:"present"},{code:"3",status:"missing"},{code:"4",status:"missing"}],diagnostics:["KM_LINE_REQUIRED"],associationStatus:"open-candidates",associationActions:[{evidenceId:"E1",candidateId:"R1",status:"candidate"}],promotableItemIds:["A1","A2"],canonicalObjectIds:["O1"]}]}});
+	assert.match(root.text,/GND DATASET COCKPIT/);assert.match(root.text,/2 Quellen · 1 Strecken-Prüfgruppen/);assert.match(root.text,/a\/track\.mdb/);assert.match(root.text,/b\/track\.mdb/);
+	assert.match(root.text,/PP source-evidence/);assert.match(root.text,/EH source-evidence-only/);assert.match(root.text,/KM_LINE_REQUIRED/);assert.match(root.text,/Quellenassoziation open-candidates/);
+	assert.ok(root.find(node=>node.dataset.datasetSourceAssociationReview==="R1"));assert.ok(root.find(node=>node.dataset.gndPromoteRoute==="route:1720:source:sha"));assert.ok(root.find(node=>node.dataset.reopenWorkspaceObject==="O1"));
+});

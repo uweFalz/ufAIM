@@ -59,6 +59,20 @@ export class AlignmentEditorController {
 		return this.service.updateArc(args);
 	}
 
+	async updateArcByAlignmentId(args = {}) {
+		if (
+			!isObject(args) ||
+			!String(args.alignmentId ?? "").trim() ||
+			!String(args.elementId ?? "").trim()
+		) {
+			return reject(
+				"ALIGNMENT_EDIT_ARC_REJECTED",
+				"invalid request: alignmentId and elementId are required"
+			);
+		}
+		return this.service.updateArcByAlignmentId(args);
+	}
+
 	async updateTransitionOnActiveAlignment(args = {}) {
 		if (!isObject(args) || !String(args.elementId ?? "").trim()) {
 			return reject("ALIGNMENT_EDIT_TRANSITION_REJECTED", "invalid request: elementId is required");

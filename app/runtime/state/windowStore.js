@@ -118,12 +118,14 @@ export function createWindowStore(initial) {
 			const primaryId = normalizeId(selection?.primaryId);
 			const contextIds = normalizeIdList(selection?.contextIds);
 			const elementId = normalizeId(selection?.elementId);
+			const elementDiscipline = elementId && ["horizontal", "vertical", "cant", "chainage"].includes(selection?.elementDiscipline) ? selection.elementDiscipline : null;
 
 			setState({
 				workspace_selection: {
 					primaryId,
 					contextIds,
 					elementId,
+					elementDiscipline,
 					source: selection?.source != null ? String(selection.source) : null,
 					crsId: selection?.crsId != null ? String(selection.crsId) : null,
 				},
@@ -143,6 +145,7 @@ export function createWindowStore(initial) {
 						primaryId: id,
 						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
 						elementId: preserveElementId ? (current.elementId ?? null) : null,
+						elementDiscipline: preserveElementId ? (current.elementDiscipline ?? null) : null,
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
@@ -160,6 +163,7 @@ export function createWindowStore(initial) {
 						primaryId: null,
 						contextIds: Array.isArray(current.contextIds) ? current.contextIds : [],
 						elementId: null,
+						elementDiscipline: null,
 						source: current.source ?? null,
 						crsId: current.crsId ?? null,
 					},
@@ -179,6 +183,7 @@ export function createWindowStore(initial) {
 						primaryId: current.primaryId ?? null,
 						contextIds,
 						elementId: current.elementId ?? null,
+						elementDiscipline: current.elementDiscipline ?? null,
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
@@ -203,6 +208,8 @@ export function createWindowStore(initial) {
 					workspace_selection: {
 						primaryId: current.primaryId ?? null,
 						contextIds,
+						elementId: current.elementId ?? null,
+						elementDiscipline: current.elementDiscipline ?? null,
 						source: source != null ? String(source) : null,
 						crsId: crsId != null ? String(crsId) : current.crsId ?? null,
 					},
@@ -219,6 +226,8 @@ export function createWindowStore(initial) {
 					workspace_selection: {
 						primaryId: current.primaryId ?? null,
 						contextIds: [],
+						elementId: current.elementId ?? null,
+						elementDiscipline: current.elementDiscipline ?? null,
 						source: current.source ?? null,
 						crsId: current.crsId ?? null,
 					},
@@ -232,6 +241,7 @@ export function createWindowStore(initial) {
 					primaryId: null,
 					contextIds: [],
 					elementId: null,
+					elementDiscipline: null,
 					source: null,
 					crsId: null,
 				},

@@ -1,6 +1,7 @@
 // src/model/spot/mutate/promoteImportItems.js
 
 import { assessSpotAdmission } from "../../../import/spot/assessSpotAdmission.js";
+import { materializeAlignmentDataFromSparse } from "../../../domain/alignment/editor/materializeAlignmentDataFromSparse.js";
 import { createAlignmentSpotObject } from "../model/createAlignmentSpotObject.js";
 
 export function promoteImportItems({ items = [], spotStore } = {}) {
@@ -22,10 +23,7 @@ export function promoteImportItems({ items = [], spotStore } = {}) {
 
 		const allowSoftReview =
 			decision?.admission === "review" &&
-			(
-				decision?.reason === "no_crs_context" ||
-				decision?.reason === "missing_crs_for_gnd"
-			) &&
+			item?.status?.promotable === true &&
 			isDrawableAlignmentItem(item);
 
 		if (decision?.admission === "safe" || allowSoftReview) {
@@ -123,6 +121,7 @@ function buildSpotAlignmentEntry(item, opts = {}) {
 		},
 		meta: buildSpotMeta(item, opts),
 	});
+	entry.data.alignmentData = materializeAlignmentDataFromSparse(entry);
 
 	entry.data.meta = clonePlainObject(payload.meta);
 	entry.data.extended = clonePlainObject(payload.extended);
@@ -547,7 +546,7 @@ function buildSpotMeta(item, opts = {}) {
 	}
 
 	return {
-		importItemId: item?.id ?? null,
+		importItemId: item?.evidenceItemId ?? item?.id ?? null,
 		evidenceId: item?.evidenceId ?? null,
 		sourceEvidence: item?.derived?.sourceEvidenceSnapshot ?? null,
 		source: clonePlainObject(item?.source),

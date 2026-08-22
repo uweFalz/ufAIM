@@ -40,8 +40,10 @@ const REQUIRED = {
 	"Import.BeginSession": [],
 	"Import.AddItems": ["items"],
 	"Import.PublishResultEvidence": ["evidence", "items"],
+	"Import.CommitJob": ["batchId", "source", "files"],
 	"Import.GetResultEvidence": [],
 	"Import.SetItemAccepted": ["itemId", "accepted"],
+	"Import.SetRelationDecision": ["evidenceId", "candidateId", "action", "expectedRevision"],
 
 	// ---------------------------------------------------------
 	// project

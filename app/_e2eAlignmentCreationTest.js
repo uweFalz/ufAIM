@@ -48,18 +48,33 @@ window.__alignmentCreationE2EPromise = (async () => {
 
 		result.phase = "undo";
 		const elementsBeforeRemoval = structuredClone(changed.alignmentData.editModel.elements);
+		const alignmentBeforeRemoval = structuredClone(changed.alignmentData);
 		const alignmentIdBeforeRemoval = alignmentIdentity(changed);
-		const removed = await creation.removeSelected(); assert(removed?.changed && removed.alignmentData.editModel.elements.length === 2, "selected element removal failed");
-		assert(alignmentIdentity(removed) === alignmentIdBeforeRemoval, "alignment identity changed during element removal");
-		assert(same(removed.alignmentData.editModel.elements, elementsBeforeRemoval.slice(0, 2)), "unrelated elements changed during removal");
-		const fallbackId = elementsBeforeRemoval[1].id;
-		assert(getWorkspaceSelection(store.getState()).elementId === fallbackId, "removal fallback did not select the preceding element");
+		const selectionBeforeRemoval = structuredClone(getWorkspaceSelection(store.getState()));
+		const removed = await creation.removeSelected();
+		assert(
+			removed?.changed === false &&
+			removed?.ok === false &&
+			removed?.status === "rejected" &&
+			removed?.code === "ALIGNMENT_EDIT_REMOVE_REJECTED" &&
+			String(removed?.reason ?? "").includes("sequence must end with fixed element"),
+			"removing the final arc would create straight → transition and must be intentionally rejected"
+		);
 		const persistedAfterRemoval = (await creation.getDebugState()).activeObject;
-		assert(persistedAfterRemoval?.data?.alignmentData?.editModel?.elements?.every((element) => element.id !== arcId), "removed element remains in authoritative SPOT state");
-		assert(window.__ufAIM_curvatureBand.getDebugState().elementId === fallbackId, "CurvatureBand retained the removed selection");
-		assert(window.__ufAIM_viewController.getDebugState().selectedElementId === fallbackId, "Viewer retained the removed selection");
-		const undone = await creation.undo(); assert(undone?.changed && undone?.status === "undone", "structural undo failed");
-		const restored = (await creation.getDebugState()).activeObject.data.alignmentData; assert(restored.editModel.elements.length === 3, "undo did not restore preceding valid state"); result.undoPassed = true;
+		assert(alignmentIdentity({ spotObject: persistedAfterRemoval, alignmentData: persistedAfterRemoval?.data?.alignmentData }) === alignmentIdBeforeRemoval, "alignment identity changed during rejected element removal");
+		assert(same(persistedAfterRemoval?.data?.alignmentData, alignmentBeforeRemoval), "rejected removal mutated authoritative Alignment state");
+		assert(same(persistedAfterRemoval?.data?.alignmentData?.editModel?.elements, elementsBeforeRemoval), "rejected removal mutated constructive elements");
+		assert(same(getWorkspaceSelection(store.getState()), selectionBeforeRemoval), "rejected removal mutated workspace selection");
+		assert(getWorkspaceSelection(store.getState()).elementId === arcId, "selected element changed after rejected removal");
+		assert(window.__ufAIM_curvatureBand.getDebugState().elementId === arcId, "CurvatureBand selection changed after rejected removal");
+		assert(window.__ufAIM_viewController.getDebugState().selectedElementId === arcId, "Viewer selection changed after rejected removal");
+		const undone = await creation.undo();
+		assert(undone?.changed === true && undone?.status === "undone", "curvature undo failed");
+		const alignmentAfterUndo = (await creation.getDebugState()).activeObject?.data?.alignmentData;
+		assert(alignmentAfterUndo?.editModel?.elements?.length === 3, "undo changed constructive element count");
+		assert(alignmentAfterUndo.editModel.elements.at(-1).id === arcId, "undo changed final arc identity");
+		assert(alignmentAfterUndo.editModel.elements.at(-1).parameters.curvature === 0.002, "undo did not revert the preceding curvature update");
+		result.undoPassed = true;
 
 		result.phase = "boundary";
 		assert(store.getState().te_open === snapshot.teOpen, "Alignment creation changed TransEd state"); assert(store.getState().ae_open === snapshot.aeOpen, "Alignment creation opened Alignment Editor without request");

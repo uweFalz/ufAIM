@@ -1,221 +1,137 @@
-\chapter{Numerische Rekonstruktion}
-\section*{Motivation}
-Im krümmungsbasierten Rahmen sind geometrische Objekte nicht ausdrücklich als
-Koordinatenmengen gegeben, sondern werden durch Integration aus
-Krümmungsinformation rekonstruiert. Numerische Verfahren sind deshalb keine
-bloßen Implementierungsdetails, sondern wesentlicher Teil der Modellierung.
+\chapter{Numerische Rekonstruktion für einen prüfbaren Kandidaten}
 
-\section{Rekonstruktionsprinzip}
-\begin{definition}[Rekonstruktion aus Krümmung]
-Es sei \(\kappaf(s)\) eine Krümmungsfunktion und
+\section{Warum eine Krümmungsänderung Numerik benötigt}
+
+Im durchgehenden Beispiel verändern die freien Variablen ausgewählte
+Koeffizienten eines intrinsischen Krümmungsgesetzes. Der feste Endpunkt, die
+Endrichtung und die Vermessungsbeobachtungen sind jedoch räumliche Größen.
+Jeder Versuchsvektor \(x\) muss deshalb rekonstruiert werden, bevor das Problem
+seine Übereinstimmung bewerten kann.
+
+Sei
 \[
-(x_0,y_0,\theta_0)
+\kappa_x:[0,L]\rightarrow\R
 \]
-eine Anfangspose. Die zugehörige Kurve entsteht durch Lösung von
+die Kandidatenkrümmung und \((\gamma_0,\theta_0)\) die feste Anfangspose. Das
+Modell \(M\) erzeugt
 \[
-\theta'(s)=\kappaf(s),\qquad
-\gamma'(s)=(\cos\theta(s),\sin\theta(s)).
+\theta_x'(s)=\kappa_x(s),\qquad
+\gamma_x'(s)=(\cos\theta_x(s),\sin\theta_x(s)).
 \]
-\end{definition}
-Selbst bei analytisch gegebenem \(\kappaf\) sind geschlossene Lösungen für
-\(\gamma\) im Allgemeinen nicht verfügbar.
+Diese Rekonstruktion erzeugt eine für die Evaluation verwendete Darstellung.
+Sie ändert weder die Alignment-Identität noch macht sie die dargestellte Kurve
+zu einem angenommenen Engineering-Zustand.
 
-\section{Diskretisierung}
-\begin{definition}[Diskretisierung]
-Eine Diskretisierung von \([0,L]\) ist eine endliche Folge
+\section{Vom kontinuierlichen Modell zu berechenbaren Abtastwerten}
+
+\paragraph{Lesebrücke.}
+Die Gleichungen beschreiben die Abhängigkeit exakt; ein Solver muss sie jedoch
+endlich und wiederholt auswerten. Diskretisierung ist die erklärte
+Approximation, die dies ermöglicht.
+
+Wähle
 \[
-0=s_0<s_1<\dots<s_n=L.
+0=s_0<s_1<\dots<s_N=L,\qquad \Delta s_i=s_{i+1}-s_i .
 \]
-\end{definition}
-\begin{definition}[Diskrete Rekonstruktion]
-Eine diskrete Rekonstruktion berechnet Näherungswerte
+Ein Mittelpunktsschritt liefert beispielsweise
 \[
-\gamma(s_i),\quad\theta(s_i)
-\]
-an den Diskretisierungspunkten.
-\end{definition}
-Die Wahl der Diskretisierung beeinflusst Rechenaufwand und geometrische
-Genauigkeit stark.
-\TODO{Formale Kriterien für gleichmäßige und adaptive Diskretisierungsstrategien.}
-
-\section{Integrationsverfahren}
-Das Rekonstruktionsproblem lässt sich als Anfangswertproblem eines Systems
-gewöhnlicher Differentialgleichungen formulieren.
-
-\subsection{Grundschema}
-\begin{definition}[Expliziter Schritt]
-Für \((\gamma_i,\theta_i)\) bei \(s_i\) berechnet ein expliziter Schritt
-\[
-\theta_{i+1}=\theta_i+\kappaf(s_i)\,\Delta s,
-\]
-\[
-\gamma_{i+1}=\gamma_i+(\cos\theta_i,\sin\theta_i)\,\Delta s.
-\]
-\end{definition}
-Dies ist ein Verfahren erster Ordnung und für hochgenaue Rekonstruktion im
-Allgemeinen unzureichend.
-
-\subsection{Verfahren höherer Ordnung}
-\TODO{Runge--Kutta-Verfahren für gekoppelte Systeme.}
-\TODO{Romberg-Integration für die Krümmungsintegration.}
-\TODO{Adaptive Schrittweitensteuerung.}
-\OPEN{Trennung von Krümmungsintegration und geometrischer Integration.}
-
-\section{Fehleranalyse}
-\begin{definition}[Lokaler Fehler]
-Der lokale Fehler eines Schritts ist die in einem einzelnen
-Integrationsschritt eingeführte Abweichung.
-\end{definition}
-\begin{definition}[Globaler Fehler]
-Der globale Fehler ist die über das gesamte Intervall akkumulierte Abweichung.
-\end{definition}
-Fehler entstehen durch Diskretisierung, numerische Integration und
-Approximation von Krümmungsgesetzen.
-\RESEARCH{Quantitative Schranken der Fehlerfortpflanzung bei krümmungsgetriebener Rekonstruktion.}
-
-\section{Empfindlichkeit}
-Der Rekonstruktionsprozess ist empfindlich gegenüber Krümmungsstörungen. Kleine
-Abweichungen in \(\kappaf\) können erhebliche geometrische Drift verursachen.
-\RESEARCH{Empfindlichkeitsanalyse gegenüber Krümmungsstörungen.}
-\OPEN{Beziehung zwischen Krümmungsrauschen und Positionsunsicherheit.}
-
-\section{Abtastung und Darstellung}
-\begin{definition}[Abtastung]
-Abtastung bezeichnet die Entnahme einer endlichen Punktmenge aus einer
-kontinuierlichen Kurvendarstellung.
-\end{definition}
-Sie ist für Visualisierung, Kollisionserkennung und Export in punktbasierte
-Formate erforderlich.
-\TODO{Fehlerkontrollierte Abtaststrategien.}
-\OPEN{Unterschied zwischen Abtastung für Visualisierung und für Berechnung.}
-
-\section{Rekonstruktion im dünn besetzten Modell}
-Im dünn besetzten Alignment-Modell erfolgt die Rekonstruktion elementweise.
-Jedes Element liefert ein lokales Krümmungsgesetz, das nacheinander integriert
-wird.
-\begin{definition}[Sequentielle Rekonstruktion]
-Sei \((e_1,\dots,e_n)\) ein dünn besetztes Alignment. Jedes Element wird
-nacheinander integriert; der Endzustand des vorangehenden Elements dient als
-Anfangszustand des folgenden.
-\end{definition}
-\OPEN{Behandlung numerischer Drift über Elementgrenzen hinweg.}
-
-\section{Numerische Stabilität}
-Numerische Stabilität ist besonders bei langen Alignments und stark gekrümmter
-Geometrie zentral.
-\RESEARCH{Stabilitätskriterien für krümmungsbasierte Integration.}
-\TODO{Verfahren zur Driftkorrektur und Renormierung.}
-
-\section{Verbindung zur Optimierung}
-Numerische Rekonstruktion ist eng mit Optimierungsproblemen verbunden. Bei
-Anpassungs- und Entwurfsaufgaben wird sie in iterativen Algorithmen wiederholt.
-\TODO{SQP-Formulierung für Alignment-Anpassung.}
-\RESEARCH{Verbindung zu Optimalsteuerungsproblemen.}
-
-\section{Zusammenfassung}
-\begin{summary}
-Numerische Rekonstruktion leitet durch Integration geometrische Darstellungen
-aus Krümmungsdaten ab. Sie führt Diskretisierung, Approximation und
-Fehlerfortpflanzung als intrinsische Bestandteile der Modellierung ein.
-
-Numerische Verfahren sind daher keine bloßen technischen Werkzeuge, sondern
-eine wesentliche Verbindung zwischen mathematischen Definitionen und
-praktischer Geometrie.
-\end{summary}
-
-\section{Numerische Rekonstruktion aus Krümmung}
-\subsection{Problemstellung}
-Für eine Krümmungsfunktion
-\[
-\kappa:[0,L]\to\R
-\]
-und Anfangsbedingungen
-\[
-\gamma(0),\quad\theta(0)
-\]
-entsteht das geometrische Alignment durch Lösung von
-\[
-\gamma'(s)=(\cos\theta(s),\sin\theta(s)),\qquad\theta'(s)=\kappa(s).
-\]
-Dies definiert ein nichtlineares Anfangswertproblem.
-
-\subsection{Diskrete Approximation}
-\begin{definition}[Diskretisierung]
-Es sei
-\[
-0=s_0<s_1<\dots<s_N=L
-\]
-eine Zerlegung mit Schrittweiten \(\Delta s_i\).
-\end{definition}
-Wir approximieren
-\[
-\kappa_i\approx\kappa(s_i).
-\]
-
-\subsection{Vorwärtsintegrationsschema}
-\begin{definition}[Explizite Integration]
-Für \((\gamma_i,\theta_i)\) definiere
-\[
-\theta_{i+1}=\theta_i+\kappa_i\Delta s_i,
-\]
-\[
-\gamma_{i+1}=\gamma_i+\Delta s_i(\cos\theta_i,\sin\theta_i).
-\]
-\end{definition}
-Dies entspricht einem expliziten Euler-Verfahren.
-
-\subsection{Mittelpunktschema}
-\begin{definition}[Mittelpunktverfahren]
-Definiere
-\[
-\theta_{i+\frac12}=\theta_i+\frac12\kappa_i\Delta s_i,
+\theta_{i+\frac12}=\theta_i+
+ \frac12\kappa_x(s_i)\Delta s_i,
 \]
 \[
 \gamma_{i+1}=\gamma_i+\Delta s_i
-(\cos\theta_{i+\frac12},\sin\theta_{i+\frac12}),
+(\cos\theta_{i+\frac12},\sin\theta_{i+\frac12}),\qquad
+\theta_{i+1}=\theta_i+\kappa_x(s_i)\Delta s_i.
 \]
+Andere Integrationsverfahren können geeignet sein. Verfahren, Toleranz und
+Abtastregel gehören zu \(M\); sie sind kein unsichtbares
+Implementierungsdetail.
+
+\section{Residuen beantworten erklärte Fragen}
+
+Für die feste Zielendpose \((\bar\gamma_L,\bar\theta_L)\) kann ein Modell das
+Endresiduum
 \[
-\theta_{i+1}=\theta_i+\kappa_i\Delta s_i.
+r_{\mathrm{end}}(x)=
+\begin{bmatrix}
+\gamma_x(L)-\bar\gamma_L\\
+\operatorname{wrap}(\theta_x(L)-\bar\theta_L)
+\end{bmatrix}
 \]
-\end{definition}
-Dies verbessert Genauigkeit und Stabilität gegenüber dem expliziten Schema.
-
-\subsection{Erweiterung auf pose3}
-Mit Überhöhung gilt
+erzeugen. Für Vermessungsbeobachtungen \(y_j\) kann ein Beobachtungsmodell
+\(h_j\) liefern:
 \[
-\phi_{i+1}=\phi_i+\omega_i\Delta s_i.
+r_{\mathrm{obs},j}(x)=h_j(\gamma_x)-y_j.
 \]
-Das vollständige diskrete System lautet damit
+Diese Residuen beantworten verschiedene Fragen und können verschiedene
+Einheiten, Unsicherheiten und Verantwortlichkeiten besitzen. Ein
+Nebenbedingungsresiduum beschreibt Zulässigkeit; ein Beobachtungsresiduum
+beschreibt eine Abweichung unter einem Beobachtungsmodell. Sie dürfen nicht
+stillschweigend zusammengeführt werden.
+
+Gehen Residuenfamilien in ein gemeinsames Kleinste-Quadrate-Ziel ein, muss die
+Skalierung erklärt werden, etwa
 \[
-(\gamma_i,\theta_i,\phi_i)\longrightarrow
-(\gamma_{i+1},\theta_{i+1},\phi_{i+1}).
+J(x)=
+\frac12\|W_{\mathrm{end}}r_{\mathrm{end}}(x)\|_2^2+
+\frac12\sum_j
+\|W_{\mathrm{obs},j}r_{\mathrm{obs},j}(x)\|_2^2+
+J_{\mathrm{reg}}(x).
 \]
+Die Matrizen \(W\) machen Einheiten und relativen Einfluss sichtbar. Ihre
+Werte stammen aus erklärtem Zweck, Unsicherheitsmodell oder verantwortlicher
+ingenieurtechnischer Festlegung, nicht aus dem numerischen Verfahren.
 
-\subsection{Numerische Stabilität}
-Die Rekonstruktion ist empfindlich gegenüber Schrittweite \(\Delta s\),
-Rauschen in \(\kappa_i\) und großen Koordinatenwerten. Für Stabilität sind
-hinreichend kleine Schrittweiten, geglättete Krümmung und lokale
-Koordinatenrahmen zu empfehlen.
+\section{Genauigkeit gehört zur Ergebnisevidenz}
 
-\subsection{Technik des gleitenden Ursprungs}
-Bei großen Koordinaten nimmt die numerische Genauigkeit ab.
-\begin{definition}[Gleitender Ursprung]
-Ein lokales Koordinatensystem wird eingeführt mit
+\paragraph{Lesebrücke.}
+Ein Kandidat kann wegen eines groben Gitters zulässig erscheinen, obwohl das
+zugrunde liegende kontinuierliche Modell die Nebenbedingung verletzt.
+Numerischer Fehler muss deshalb mit dem Ergebnis weitergegeben werden.
+
+Relevante Beiträge sind:
+\begin{itemize}
+\item Integrations- und Diskretisierungsfehler;
+\item Interpolations- oder Quadraturfehler in Beobachtungsresiduen;
+\item Gleitkomma- und lineare Lösungsfehler;
+\item Empfindlichkeit der rekonstruierten Lage gegenüber
+      Krümmungsstörungen;
+\item Modellform- und Beobachtungsunsicherheit, die numerische Verfeinerung
+      nicht beseitigen kann.
+\end{itemize}
+
+Ein belastbarer Lauf dokumentiert Verfahren und Gitter, Toleranzen,
+Verfeinerungsprüfungen sowie auf einem unabhängigen oder feineren
+Bewertungsgitter neu berechnete Residuen. Ein gleitender Ursprung oder lokaler
+metrischer Rahmen kann numerische Verluste bei großen Koordinatenwerten
+verringern; diese Darstellungsänderung verändert das intrinsische Alignment
+nicht.
+
+\section{Warum als Nächstes Ableitungen und dünne Besetzung erscheinen}
+
+Wiederholte Rekonstruktion macht die Abhängigkeit
 \[
-\gamma_i^{\text{local}}=\gamma_i-\gamma_{\text{ref}}.
+x\longmapsto\gamma_x\longmapsto r(x)\longmapsto J(x)
 \]
-\end{definition}
-Dies verringert numerische Fehler in Berechnung und Visualisierung.
+rechnerisch sichtbar. Ableitungen beschreiben, wie eine erlaubte
+Parameteränderung die Residuen beeinflusst. Dünne Besetzung hält fest, dass
+ein lokaler Krümmungsparameter gewöhnlich nur strukturierte Teile des
+zusammengesetzten Problems beeinflusst. Beides beantwortet Anforderungen an
+Aufwand und Nachvollziehbarkeit; keines wählt das ingenieurtechnische Ziel.
 
-\subsection{Konsistenz mit CRS}
-Die Rekonstruktion hängt von Anfangsposition, Anfangsorientierung und Definition
-des Koordinatensystems ab. Sie muss daher innerhalb eines konsistenten CRS
-erfolgen.
+Das Numerikkapitel hat damit den für das Optimierungsproblem erforderlichen
+Evaluator geliefert:
+\[
+(x;M,q)\longmapsto
+\bigl(\widehat\gamma_x,r(x),J(x),\varepsilon_{\mathrm{num}}\bigr).
+\]
+Sein Ergebnis ist Evidenz über einen Versuch, keine Entscheidung über das
+Alignment.
 
-\subsection{Interpretation}
 \begin{summary}
-Numerische Rekonstruktion verbindet krümmungsbasierte Modelle mit geometrischer
-Darstellung. Sie überführt abstrakte Funktionen in konkrete räumliche
-Geometrie und bewahrt dabei die für Analyse und Optimierung erforderliche
-Struktur.
+Numerische Rekonstruktion macht eine erklärte Krümmungsänderung auswertbar.
+Diskretisierung, Skalierung, Toleranzen und Fehlerschätzungen bleiben sichtbar,
+damit ein scheinbar gutes Solver-Ergebnis geprüft werden kann. Das nächste
+Kapitel kann nun untersuchen, wie die Freiheitsgrade effizient durchsucht
+werden, ohne die Verantwortung für Problem oder Entscheidung zu verschieben.
 \end{summary}

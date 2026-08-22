@@ -181,6 +181,26 @@ export function createSpotStore(initialState = {}) {
 		return removed;
 	}
 
+	function replaceState(nextState = {}) {
+		const nextObjects = {};
+		for (const object of Object.values(nextState?.objects ?? nextState?.spots ?? {})) {
+			if (!object?.id) continue;
+			const normalized = normalizeSpotObject(object);
+			nextObjects[normalized.id] = clone(normalized);
+		}
+		const nextCoordContexts = {};
+		for (const context of Object.values(nextState?.coordContexts ?? nextState?.crs ?? {})) {
+			const normalized = normalizeCoordContext(context);
+			nextCoordContexts[normalized.id] = clone(normalized);
+		}
+		state = {
+			meta: normalizeInitialMeta(nextState?.meta),
+			objects: nextObjects,
+			coordContexts: nextCoordContexts,
+		};
+		return getState();
+	}
+
 	return {
 		getState,
 		getMeta,
@@ -191,6 +211,7 @@ export function createSpotStore(initialState = {}) {
 		addObjects,
 		updateObject,
 		removeObject,
+		replaceState,
 
 		getCoordContext,
 		listCoordContexts,

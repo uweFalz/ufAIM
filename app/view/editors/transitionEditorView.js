@@ -46,6 +46,10 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 	}
 
 	let board = null;
+	let boardHost = null;
+	let observedRenderer = null;
+	let rendererRecovery = null;
+	let engineeringPreview = null;
 
 	// ------------------------------------------------------------
 	// local caches / rev
@@ -445,6 +449,8 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 
 	let vline1 = null;
 	let vline2 = null;
+	let vlineHit1 = null;
+	let vlineHit2 = null;
 
 	let hline0 = null;
 	let hline1 = null;
@@ -452,6 +458,149 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 	let hsplit1 = null;
 	let hsplit2 = null;
 	let referenceCurves = [];
+
+	function resetBoardReferences() {
+		curveIn = null;
+		curveMid = null;
+		curveOut = null;
+		vline1 = null;
+		vline2 = null;
+		vlineHit1 = null;
+		vlineHit2 = null;
+		hline0 = null;
+		hline1 = null;
+		hsplit1 = null;
+		hsplit2 = null;
+		referenceCurves = [];
+	}
+
+	function releaseBoard() {
+		vlineHit1?.rendNode?.remove?.();
+		vlineHit2?.rendNode?.remove?.();
+		if (board) {
+			try {
+				JXG.JSXGraph.freeBoard(board);
+			} catch {
+				// A detached or partially restored renderer may already be absent.
+			}
+		}
+		board = null;
+		boardHost = null;
+		resetBoardReferences();
+	}
+
+	function renderEngineeringPreview(projection) {
+		const host = document.getElementById("teDetails");
+		if (!host) return null;
+		if (!engineeringPreview?.isConnected) {
+			engineeringPreview = document.createElement("section");
+			engineeringPreview.dataset.transitionAxtranEngineeringPreview = "";
+			engineeringPreview.setAttribute("aria-label", "Transition AXTRAN Engineering Preview");
+			host.append(engineeringPreview);
+		}
+		const model = createTransitionAxtranEngineeringPreviewViewModel(projection);
+		engineeringPreview.replaceChildren();
+		const heading = document.createElement("h3");
+		heading.textContent = "Engineering Preview";
+		const status = document.createElement("strong");
+		status.dataset.previewStatus = model.status;
+		status.textContent = "UNAPPLIED / NICHT ANGEWENDET";
+		const grid = document.createElement("dl");
+		for (const [label, value] of model.rows) {
+			const dt = document.createElement("dt");
+			dt.textContent = label;
+			const dd = document.createElement("dd");
+			const pre = document.createElement("pre");
+			pre.textContent = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+			dd.append(pre);
+			grid.append(dt, dd);
+		}
+		engineeringPreview.append(heading, status, grid);
+		return engineeringPreview;
+	}
+
+	function rendererRect(host) {
+		const renderer = host?.querySelector?.(":scope > svg, :scope > canvas");
+		return renderer?.getBoundingClientRect?.() ?? null;
+	}
+
+	function currentRenderer(host = boardHost) {
+		return host?.querySelector?.(":scope > svg, :scope > canvas") ?? null;
+	}
+
+	const rendererSizeObserver = new ResizeObserver(() => {
+		const host = document.getElementById("transBoard");
+		const rect = rendererRect(host);
+		if (
+			host?.isConnected
+			&& host.getClientRects().length
+			&& (!rect || rect.width <= 1 || rect.height <= 1)
+		) {
+			scheduleRendererRecovery();
+		}
+	});
+
+	function observeRenderer(host) {
+		const renderer = currentRenderer(host);
+		if (renderer === observedRenderer) return;
+		if (observedRenderer) rendererSizeObserver.unobserve(observedRenderer);
+		observedRenderer = renderer;
+		if (renderer) {
+			renderer.dataset.transedPlotRole = "primary-function-renderer";
+			rendererSizeObserver.observe(renderer);
+		}
+	}
+
+	function ownsVisibleHost(host) {
+		if (!board || !host?.isConnected || boardHost !== host || board.containerObj !== host) return false;
+		const rect = rendererRect(host);
+		return Boolean(rect && rect.width > 1 && rect.height > 1);
+	}
+
+	async function prepareVisibleHost(host) {
+		host.dataset.transedPlotRole = "primary-function-host";
+		host.style.removeProperty("width");
+		host.style.removeProperty("height");
+		for (let frame = 0; frame < 12; frame += 1) {
+			const rect = host.getBoundingClientRect();
+			if (host.isConnected && host.getClientRects().length && rect.width >= 160 && rect.height >= 120) {
+				return { width: Math.round(rect.width), height: Math.round(rect.height) };
+			}
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+		}
+		const rect = host.getBoundingClientRect();
+		throw new Error(`TransitionEditorView: visible #transBoard has degenerate layout ${rect.width}x${rect.height}`);
+	}
+
+	function scheduleRendererRecovery() {
+		if (rendererRecovery) return rendererRecovery;
+		rendererRecovery = (async () => {
+			await new Promise((resolve) => requestAnimationFrame(resolve));
+			const host = document.getElementById("transBoard");
+			if (!host?.isConnected || !host.getClientRects().length) return false;
+			const rect = rendererRect(host);
+			if (ownsVisibleHost(host) && rect.width > 1 && rect.height > 1) return true;
+			await init();
+			return ownsVisibleHost(host);
+		})().catch((error) => {
+			console.error("TransitionEditorView: renderer recovery failed", error);
+			return false;
+		}).finally(() => {
+			rendererRecovery = null;
+		});
+		return rendererRecovery;
+	}
+
+	function restorePlotVisibility() {
+		for (const element of [
+			curveIn, curveMid, curveOut,
+			...referenceCurves,
+			vline1, vline2, hline0, hline1,
+			board?.defaultAxes?.x, board?.defaultAxes?.y,
+		]) {
+			if (element?.rendNode) board?.renderer?.display?.(element, true);
+		}
+	}
 
 	function updateSplitVisibility(st) {
 		const p = getPreset(st);
@@ -465,11 +614,109 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		if (hsplit2) hsplit2.setAttribute({ visible: show });
 	}
 
-	async function init() {
-		if (board) return;
+	function commitSplit(which, rawValue) {
+		const st = store.getState();
+		const current = getSplits(st);
+		const value = clampNumber(Number(rawValue), 0, 1);
+		const w1 = which === "w1" ? Math.min(value, current.w2) : current.w1;
+		const w2 = which === "w2" ? Math.max(value, current.w1) : current.w2;
+		store.actions?.setTeSplitsPresetId?.(getPresetIdFromState(st));
+		store.actions?.setTeSplitsDirty?.(true);
+		store.actions?.setTeW1?.(w1);
+		store.actions?.setTeW2?.(w2);
+		updateSeparatorAccessibility({ w1, w2 });
+		board?.fullUpdate?.();
+		restorePlotVisibility();
+		return { w1, w2 };
+	}
 
+	function updateSeparatorAccessibility({ w1, w2 } = getSplits(store.getState())) {
+		for (const [element, which, now, min, max] of [
+			[vlineHit1, "w1", w1, 0, w2],
+			[vlineHit2, "w2", w2, w1, 1],
+		]) {
+			const node = element?.rendNode;
+			if (!node) continue;
+			node.setAttribute("aria-label", which);
+			node.setAttribute("aria-valuemin", String(min));
+			node.setAttribute("aria-valuemax", String(max));
+			node.setAttribute("aria-valuenow", String(now));
+			node.style.left = `${((now + 0.05) / 1.1) * 100}%`;
+		}
+	}
+
+	function createSeparatorControl() {
+		const node = document.createElement("button");
+		node.type = "button";
+		node.style.position = "absolute";
+		node.style.zIndex = "4";
+		node.style.top = "0";
+		node.style.bottom = "0";
+		node.style.width = "18px";
+		node.style.transform = "translateX(-50%)";
+		node.style.border = "0";
+		node.style.padding = "0";
+		node.style.background = "transparent";
+		node.style.opacity = "0";
+		boardHost.append(node);
+		return { rendNode: node };
+	}
+
+	function wireSeparatorControl(element, which) {
+		const node = element?.rendNode;
+		if (!node) return;
+		node.dataset.transedSeparator = which;
+		node.setAttribute("role", "slider");
+		node.setAttribute("tabindex", "0");
+		node.setAttribute("aria-label", which);
+		node.style.cursor = "ew-resize";
+		let pointerId = null;
+		const valueFromPointer = (event) => {
+			const rect = boardHost.getBoundingClientRect();
+			const normalized = ((event.clientX - rect.left) / rect.width) * 1.1 - 0.05;
+			return clampNumber(normalized, 0, 1);
+		};
+		const move = (event) => {
+			if (event.pointerId !== pointerId) return;
+			commitSplit(which, valueFromPointer(event));
+			event.preventDefault();
+		};
+		const finish = (event) => {
+			if (event.pointerId !== pointerId) return;
+			pointerId = null;
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", finish);
+			window.removeEventListener("pointercancel", finish);
+		};
+		node.addEventListener("pointerdown", (event) => {
+			if (pointerId !== null) return;
+			pointerId = event.pointerId;
+			try { node.setPointerCapture(pointerId); } catch {}
+			window.addEventListener("pointermove", move);
+			window.addEventListener("pointerup", finish);
+			window.addEventListener("pointercancel", finish);
+			commitSplit(which, valueFromPointer(event));
+			event.preventDefault();
+		});
+		node.addEventListener("lostpointercapture", (event) => finish(event));
+		node.addEventListener("keydown", (event) => {
+			if (!["ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp", "Home", "End"].includes(event.key)) return;
+			const current = getSplits(store.getState())[which];
+			const step = event.shiftKey ? 0.01 : 0.001;
+			const next = event.key === "Home" ? 0
+				: event.key === "End" ? 1
+					: current + (["ArrowLeft", "ArrowDown"].includes(event.key) ? -step : step);
+			commitSplit(which, next);
+			event.preventDefault();
+		});
+	}
+
+	async function init() {
 		const host = document.getElementById("transBoard");
 		if (!host) throw new Error("TransitionEditorView: missing #transBoard");
+		const size = await prepareVisibleHost(host);
+		if (ownsVisibleHost(host)) return;
+		releaseBoard();
 
 		board = JXG.JSXGraph.initBoard("transBoard", {
 			boundingbox: [-0.05, 1.05, 1.05, -0.05],
@@ -478,18 +725,30 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			showCopyright: false,
 			zoom: { wheel: false, needshift: false, pinch: false },
 			pan: { enabled: false },
+			resize: { enabled: false },
 			keepaspectratio: false,
 		});
+		boardHost = host;
+		observeRenderer(host);
 
 		const resizeBoard = () => {
-			if (!board) return;
-			const w = host.clientWidth || 1;
-			const h = host.clientHeight || 1;
-			board.resizeContainer(w, h);
+			if (!board || boardHost !== host || !host.isConnected) return;
+			host.style.removeProperty("width");
+			host.style.removeProperty("height");
+			const w = host.clientWidth || size.width;
+			const h = host.clientHeight || size.height;
+			board.resizeContainer(w, h, true);
 			board.fullUpdate();
+			restorePlotVisibility();
+			observeRenderer(host);
 		};
 
 		requestAnimationFrame(() => resizeBoard());
+		window.addEventListener("resize", () => {
+			requestAnimationFrame(() => {
+				if (host.getClientRects().length) resizeBoard();
+			});
+		});
 
 		host.addEventListener("wheel", (ev) => { ev.preventDefault(); }, { passive: false });
 		host.addEventListener("touchmove", (ev) => { ev.preventDefault(); }, { passive: false });
@@ -573,6 +832,12 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			}
 		], { straightFirst: false, straightLast: false, dash: 2 });
 
+		vlineHit1 = createSeparatorControl();
+		vlineHit2 = createSeparatorControl();
+		wireSeparatorControl(vlineHit1, "w1");
+		wireSeparatorControl(vlineHit2, "w2");
+		updateSeparatorAccessibility();
+
 		hline0 = board.create("line", [[0, 0], [1, 0]], {
 			straightFirst: false,
 			straightLast: false,
@@ -630,21 +895,49 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			updateLegend(st);
 			updateSplitVisibility(st);
 			board.fullUpdate();
+			restorePlotVisibility();
 		}
 
 		let _pending = false;
 		let _lastPresetId = "";
 		let _lastPlot = "";
 		let _lastDescRef = null;
+		let _renderedPlotState = readPlotRenderState(store.getState());
+
+		function readPlotRenderState(st) {
+			const { w1, w2 } = getSplits(st);
+			return {
+				presetId: getPresetIdFromState(st),
+				descriptor: getDescriptor(st),
+				plot: String(st?.te_plot ?? "k"),
+				w1,
+				w2,
+			};
+		}
+
+		function isSamePlotRenderState(left, right) {
+			return Boolean(
+				left
+				&& right
+				&& left.presetId === right.presetId
+				&& left.descriptor === right.descriptor
+				&& left.plot === right.plot
+				&& left.w1 === right.w1
+				&& left.w2 === right.w2
+			);
+		}
 
 		function requestBoardUpdate() {
 			if (!board || _pending) return;
+			if (isSamePlotRenderState(readPlotRenderState(store.getState()), _renderedPlotState)) return;
 			_pending = true;
 
 			requestAnimationFrame(() => {
 				_pending = false;
 
 				const st = store.getState();
+				const nextPlotState = readPlotRenderState(st);
+				if (isSamePlotRenderState(nextPlotState, _renderedPlotState)) return;
 				const pid = getPresetIdFromState(st);
 				const plot = String(st?.te_plot ?? "k");
 
@@ -654,6 +947,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 						updateLegend(store.getState());
 						updateSplitVisibility(store.getState());
 						board?.fullUpdate();
+						_renderedPlotState = readPlotRenderState(store.getState());
 					});
 				}
 
@@ -669,7 +963,10 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 
 				updateLegend(st);
 				updateSplitVisibility(st);
+				updateSeparatorAccessibility();
 				board.fullUpdate();
+				restorePlotVisibility();
+				_renderedPlotState = nextPlotState;
 			});
 		}
 
@@ -681,15 +978,27 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 	return {
 		init,
 		samplePreset,
+		renderEngineeringPreview,
 
-		resize() {
-			if (!board) return;
+		async resize() {
 			const host = document.getElementById("transBoard");
 			if (!host) return;
-			const w = host.clientWidth || 1;
-			const h = host.clientHeight || 1;
-			board.resizeContainer(w, h);
+			await init();
+			const { width, height } = await prepareVisibleHost(host);
+			if (!ownsVisibleHost(host)) {
+				await init();
+			}
+			const w = host.clientWidth || width;
+			const h = host.clientHeight || height;
+			board.resizeContainer(w, h, true);
 			board.fullUpdate();
+			restorePlotVisibility();
+			observeRenderer(host);
+			const rendered = rendererRect(host);
+			if (!rendered || rendered.width <= 1 || rendered.height <= 1) {
+				releaseBoard();
+				await init();
+			}
 		},
 
 		_debug: {
@@ -700,4 +1009,41 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			plotValue,
 		},
 	};
+}
+
+export function createTransitionAxtranEngineeringPreviewViewModel(projection) {
+	const value = projection ?? {
+		status: "unapplied",
+		active: null,
+		selected: null,
+		descriptor: null,
+		evaluation: null,
+		continuity: { evaluation: null, candidate: null, validation: null },
+		axtranContract: null,
+		provenance: null,
+		errors: [{ code: "TRANSITION_AXTRAN_PREVIEW_UNAVAILABLE", message: "Active Alignment context unavailable" }],
+	};
+	return Object.freeze({
+		status: "unapplied",
+		rows: Object.freeze([
+			Object.freeze(["Active Alignment", value.active]),
+			Object.freeze(["Descriptor / record", {
+				recordId: value.selected?.recordId ?? null,
+				descriptor: value.descriptor,
+			}]),
+			Object.freeze(["Representative κ evaluation", value.evaluation]),
+			Object.freeze(["Continuity status / residuals", value.continuity?.evaluation]),
+			Object.freeze(["Continuity candidate validation", {
+				candidate: value.continuity?.candidate ?? null,
+				validation: value.continuity?.validation ?? null,
+			}]),
+			Object.freeze(["Prepared AXTRAN contract", {
+				contractVersion: value.axtranContract?.contractVersion ?? null,
+				status: value.axtranContract?.status ?? null,
+				contract: value.axtranContract,
+			}]),
+			Object.freeze(["Provenance", value.provenance]),
+			Object.freeze(["Structured errors", value.errors ?? []]),
+		]),
+	});
 }

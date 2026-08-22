@@ -74,21 +74,32 @@ J_\phi(\mathbf x)=\sum_{i=0}^{N-1}
 J_{\mathrm{dyn}}(\mathbf x)=\sum_{i=0}^{N}
 \bigl(v^2\kappa_i-g\sin\phi_i\bigr)^2\Delta s_i.
 \]
-\subsubsection{Schwerpunkt-Zielfunktion}
-Mit finiten Differenzen approximieren wir \(\|\gamma_c''(s_i)\|^2\) durch
-Differenzen zweiter Ordnung:
+\subsubsection{Mögliches Ziel eines Modellbezugspunkts}
+Für ein ausdrücklich identifiziertes Bezugspunktmodell \(M\) kann die Größe
 \[
-J_{\mathrm{veh}}(\mathbf x)=\sum_{i=1}^{N-1}
-\|\gamma_{c,i+1}-2\gamma_{c,i}+\gamma_{c,i-1}\|^2.
+\|\gamma_{P_M}''(s_i)\|^2
 \]
+durch finite Differenzen zweiter Ordnung approximiert werden:
+\[
+J_{P_M}(\mathbf x)=\sum_{i=1}^{N-1}
+\|\gamma_{P_M,i+1}-2\gamma_{P_M,i}+\gamma_{P_M,i-1}\|^2.
+\]
+Dieses mögliche Ziel erbt Modell-, Frame-, Diskretisierungs- und
+Anwendbarkeitsgrenzen des Schwerpunktbeispiels. Es ist kein Ziel für
+physischen Massenmittelpunkt, Komfort oder Sicherheit, solange dies nicht ein
+identifiziertes Modell und eine verantwortliche Quelle begründen.
 
 \subsection{Kombiniertes diskretes Problem}
 \begin{definition}[Diskrete Zielfunktion]
 \[
-J(\mathbf x)=\alpha J_{\mathrm{veh}}+\beta J_{\mathrm{dyn}}
+J(\mathbf x)=\alpha J_{P_M}+\beta J_{\mathrm{dyn}}
 +\gamma J_\kappa+\delta J_\phi.
 \]
 \end{definition}
+Die vier Terme haben verschiedene Bedeutungen und möglicherweise verschiedene
+Einheiten. Referenzskalen, Gewichte \(\alpha,\beta,\gamma,\delta\), ihre Quelle
+und ihr Zweck müssen erklärt sein, bevor dieser Ausdruck ein
+Optimierungsproblem definiert. Das Solver-Ergebnis bleibt ein Kandidat.
 
 \subsection{Bedingungen}
 \begin{definition}[Gleichheitsbedingungen]

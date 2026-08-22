@@ -1,0 +1,7 @@
+import assert from "node:assert/strict";
+import {readFile} from "node:fs/promises";
+import test from "node:test";
+const ROOT=new URL("../../../",import.meta.url),read=p=>readFile(new URL(p,ROOT),"utf8");
+test("dataset grouping has only fingerprint and raw PP route authority",async()=>{const source=(await Promise.all([read("app/domain/workspace/buildGndDatasetCompletenessCockpitModel.js"),read("app/domain/workspace/buildGndRouteWorkspaceModel.js")])).join("\n");assert.match(source,/sourceFingerprint/);assert.match(source,/assignment\.route/);assert.doesNotMatch(source,/proximity|distance|fileName.*route|path.*route|auto.?promot|topolog/i);});
+test("cockpit composes existing review promotion and object actions",async()=>{const [controller,view]=await Promise.all([read("app/gndImportWorkbench/gndImportWorkbenchController.js"),read("app/gndImportWorkbench/gndImportWorkbenchView.js")]);assert.match(controller,/setRelationDecision\(candidateId, "review"\)/);assert.match(view,/dataset-source-association-review/);assert.match(view,/gnd-promote-route/);assert.match(view,/reopen-workspace-object/);assert.doesNotMatch(controller+view,/Spot\.Promote|appendCant|createVertical|parseGND/);});
+test("source review is bound only to exact group target ids",async()=>{const model=await read("app/domain/workspace/buildGndDatasetCompletenessCockpitModel.js");assert.match(model,/route\.roles\.flatMap/);assert.match(model,/exactTargetIds\.has\(String\(candidate\.to/);assert.doesNotMatch(model,/review\.status === "reviewed"/);});

@@ -2,7 +2,7 @@
 
   \item Acceleration
     \subitem effective lateral, \hyperpage{160}
-      \subsubitem optimization objective, \hyperpage{271}
+      \subsubitem optimization objective, \hyperpage{267}
   \item Arc-length
     \subitem vs stationing, \hyperpage{119}
   \item Architecture
@@ -12,7 +12,7 @@
 
   \item Conceptual structure, \hyperpage{22}
   \item Constraint
-    \subitem realization, \hyperpage{272}
+    \subitem realization, \hyperpage{268}
   \item Coordinate reference system (CRS), \hyperpage{169}
   \item Coordinate system, \hyperpage{169}
     \subitem track, \hyperpage{119}
@@ -38,7 +38,7 @@
   \item Figures
     \subitem runtime architecture, \hyperpage{163}
   \item Frequency interpretation
-    \subitem realization operator as low-pass filter, \hyperpage{272}
+    \subitem realization operator as low-pass filter, \hyperpage{268}
 
   \indexspace
 
@@ -49,7 +49,7 @@
   \indexspace
 
   \item Jerk
-    \subitem optimization objective, \hyperpage{271}
+    \subitem optimization objective, \hyperpage{267}
     \subitem runtime, \hyperpage{160}
 
   \indexspace
@@ -71,11 +71,11 @@
     \subitem runtime, \hyperpage{132}
   \item Operator composition, \hyperpage{133}
   \item Optimization
-    \subitem hybrid, \hyperpage{273}
-    \subitem on realized states, \hyperpage{271}
-    \subitem realization-aware, \hyperpage{270}
-    \subitem runtime, \hyperpage{273}
-    \subitem sparse, \hyperpage{273}
+    \subitem hybrid, \hyperpage{269}
+    \subitem on realized states, \hyperpage{267}
+    \subitem realization-aware, \hyperpage{266}
+    \subitem runtime, \hyperpage{269}
+    \subitem sparse, \hyperpage{269}
 
   \indexspace
 
@@ -100,18 +100,18 @@
   \indexspace
 
   \item Realization
-    \subitem inverse formulation, \hyperpage{272}
+    \subitem inverse formulation, \hyperpage{268}
     \subitem metric
       \subsubitem coordinate handling, \hyperpage{170}
     \subitem operator, \hyperpage{132}
-      \subsubitem in optimization, \hyperpage{270}
+      \subsubitem in optimization, \hyperpage{266}
   \item Reconstruction
     \subitem from observation data, \hyperpage{168}
   \item Reference frame
     \subitem local, \hyperpage{170}
     \subitem runtime service, \hyperpage{160}
   \item Reference system
-    \subitem ellipsoid-aware optimization, \hyperpage{274}
+    \subitem ellipsoid-aware optimization, \hyperpage{270}
     \subitem kilometre line, \hyperpage{171}
     \subitem outer stationing, \hyperpage{171}
     \subitem stationing, \hyperpage{171}
@@ -132,7 +132,7 @@
     \subitem railway network, \hyperpage{175}
   \item State
     \subitem pose3
-      \subsubitem optimization, \hyperpage{271}
+      \subsubitem optimization, \hyperpage{267}
       \subsubitem runtime evaluation, \hyperpage{158}
     \subitem qualified use, \hyperpage{130}
   \item Stationing, 
@@ -157,7 +157,7 @@
   \indexspace
 
   \item Vehicle space
-    \subitem optimization interpretation, \hyperpage{273}
+    \subitem optimization interpretation, \hyperpage{269}
   \item Vehicle state
     \subitem interpretation operator, \hyperpage{133}
 

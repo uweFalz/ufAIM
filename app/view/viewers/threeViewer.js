@@ -85,6 +85,9 @@ export function makeThreeViewer({ canvas }) {
 	let trackClickHandler = null;
 	let alignmentElementClickHandler = null;
 	let markerClickHandler = null;
+	let workspaceViewMode = "main";
+	let workspaceCameraAnchor = null;
+	let workspaceCameraTangent = null;
 
 	// section line
 	const sectionMat = new THREE.LineBasicMaterial({
@@ -653,6 +656,43 @@ export function makeThreeViewer({ canvas }) {
 		setMarker(p.x ?? 0, p.y ?? 0, p.z ?? 0);
 	}
 
+	function setWorkspaceViewMode(mode) {
+		if (mode === "main") {
+			workspaceViewMode = "main";
+			pitch = Math.PI * 0.29;
+			radius = Math.max(radius, 80);
+			return true;
+		}
+		if (mode !== "q" || currentTrackPoints.length < 2) return false;
+
+		let nearestIndex = 0;
+		let nearestDistance = Infinity;
+		for (let index = 0; index < currentTrackPoints.length; index += 1) {
+			const point = currentTrackPoints[index];
+			const dx = Number(point?.x ?? 0) - marker.position.x;
+			const dy = Number(point?.y ?? 0) - marker.position.y;
+			const distance = dx * dx + dy * dy;
+			if (distance < nearestDistance) {
+				nearestDistance = distance;
+				nearestIndex = index;
+			}
+		}
+		const previous = currentTrackPoints[Math.max(0, nearestIndex - 1)];
+		const next = currentTrackPoints[Math.min(currentTrackPoints.length - 1, nearestIndex + 1)];
+		const dx = Number(next?.x ?? 0) - Number(previous?.x ?? 0);
+		const dy = Number(next?.y ?? 0) - Number(previous?.y ?? 0);
+		if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) === 0) return false;
+
+		workspaceViewMode = "q";
+		workspaceCameraAnchor = { x: marker.position.x, y: marker.position.y, z: marker.position.z };
+		workspaceCameraTangent = { x: dx, y: dy };
+		target.set(marker.position.x + dx, marker.position.y + dy, marker.position.z + 2.5);
+		yaw = Math.atan2(dy, dx) + Math.PI;
+		pitch = Math.acos(8 / 34);
+		radius = 34;
+		return true;
+	}
+
 	// picking
 	const raycaster = new THREE.Raycaster();
 	const mouse = new THREE.Vector2();
@@ -867,10 +907,15 @@ export function makeThreeViewer({ canvas }) {
 		setMarkerXYZ: setMarker,
 		setAlignmentProjection: updateAlignmentProjection,
 		setAlignmentSelection,
+		setWorkspaceViewMode,
 		clearAlignmentProjection,
 		onAlignmentElementClick,
 		onTrackClick,
 		getDebugState: () => ({
+			workspaceViewMode,
+			cameraSpace: "local-engineering",
+			cameraAnchor: workspaceCameraAnchor,
+			cameraTangent: workspaceCameraTangent,
 			selectedElementId: alignmentSelection.selectedElementId,
 			objectId: alignmentSelection.objectId,
 			segmentCount: alignmentSegmentLines.size,

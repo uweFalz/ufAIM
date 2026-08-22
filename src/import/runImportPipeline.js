@@ -33,11 +33,55 @@ import { assessGndReferenceEvidence } from "./evidence/assessGndReferenceEvidenc
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
 	const trace = context.trace === true || globalThis.__ufAIM_importTrace === true;
+	const signal = context?.signal;
+	const reportJobPhase = typeof context?.onJobPhase === "function"
+		? context.onJobPhase
+		: () => {};
+	const jobPhases = [
+		"queued",
+		"reading",
+		"sniffing",
+		"parser-loading",
+		"extracting",
+		"normalizing",
+	];
+	let currentJobPhase = "queued";
+	const setJobPhase = (phase) => {
+		reportJobPhase(phase);
+		currentJobPhase = phase;
+	};
+	const advanceJobToNormalizing = () => {
+		const currentIndex = jobPhases.indexOf(currentJobPhase);
+		const normalizingIndex = jobPhases.indexOf("normalizing");
+		for (let index = currentIndex + 1; index <= normalizingIndex; index += 1) {
+			setJobPhase(jobPhases[index]);
+		}
+	};
 
 	try {
-		const sniff = await sniffImportFile(file, { log, ...context });
+		throwIfAborted(signal);
+		setJobPhase("reading");
+		const bytes = context?.bytes instanceof Uint8Array
+			? context.bytes
+			: new Uint8Array(await file.arrayBuffer());
+		throwIfAborted(signal);
+		const text = context?.text ?? (fileExtension(file?.name) === "mdb"
+			? ""
+			: new TextDecoder().decode(bytes));
+		setJobPhase("sniffing");
+		const sniff = await sniffImportFile(file, {
+			...context,
+			log,
+			bytes,
+			text,
+			signal,
+			onParserLoading: () => setJobPhase("parser-loading"),
+		});
+		throwIfAborted(signal);
 
 		if (!sniff?.ok || !sniff?.parserId) {
+			setJobPhase("extracting");
+			setJobPhase("normalizing");
 			log(`import unknown: ${file?.name ?? "(unknown file)"} :: ${sniff?.reason ?? "sniff not ok"}`);
 			return {
 				ok: false,
@@ -56,10 +100,15 @@ export async function runImportPipeline(file, context = {}) {
 
 		log(`import: ${parser.meta?.label ?? parserId} :: ${file?.name ?? "(unknown file)"}`);
 
+		setJobPhase("extracting");
 		const parsed = await parser.parse({
 			file,
-			context: { ...context, log, sniff, parserId },
+			bytes,
+			text,
+			context: { ...context, log, sniff, parserId, bytes, text, signal },
 		});
+		throwIfAborted(signal);
+		setJobPhase("normalizing");
 
 		log(`parse ok: ${file?.name ?? "(unknown file)"}`);
 
@@ -162,7 +211,9 @@ export async function runImportPipeline(file, context = {}) {
 
 		return result;
 	} catch (err) {
+		if (err?.name === "AbortError" || signal?.aborted) throw err;
 		const sourceEnvelope = err?.sourceEnvelope ?? null;
+		advanceJobToNormalizing();
 		console.warn("[runImportPipeline] rejected", {
 			fileName: file?.name ?? null,
 			code: err?.code ?? "import-failed",
@@ -190,6 +241,20 @@ export async function runImportPipeline(file, context = {}) {
 			relationCandidates: [],
 		};
 	}
+}
+
+function throwIfAborted(signal) {
+	if (!signal?.aborted) return;
+	const error = new Error(String(signal.reason ?? "Import cancelled"));
+	error.name = "AbortError";
+	error.code = "IMPORT_JOB_CANCELLED";
+	throw error;
+}
+
+function fileExtension(fileName) {
+	const name = String(fileName ?? "");
+	const dot = name.lastIndexOf(".");
+	return dot < 0 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
 function summarizeGndSource(envelope, result) {

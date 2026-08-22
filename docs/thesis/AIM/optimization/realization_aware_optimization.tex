@@ -1,321 +1,261 @@
 % optimization/realization_aware_optimization.tex
-
-\chapter{Realization-Aware Optimization}
-
+\chapter{Qualified Realization-Aware Optimization}
 \index{Optimization!realization-aware}
 
-% ============================================================
-\section*{Motivation}
-% ============================================================
+\section*{Abstract for the general reader}
 
-Classical alignment optimization operates directly on analytical target
-geometry.
+An analytically smooth design is not guaranteed to be constructed exactly as
+drawn. Machines, materials, construction choices, maintenance and uncertainty
+can make the physical asset differ from design intent. Realization-aware
+optimization asks a useful question: if a declared realization model predicts
+such differences, should candidate design parameters be chosen with those
+predicted consequences in view?
 
-Real railway tracks, however, differ from their analytical target
-states.
+The answer is conditional. A coordinate transformation is not construction.
+An observation is not the physical asset. A model prediction is not an
+observation, and an optimum is not an Engineering Decision. This chapter
+therefore develops a candidate formulation, not a universal or continuously
+operating AIM capability.
 
-The physically realized alignment is influenced by:
-\begin{itemize}
-\item construction procedures,
-\item machine behaviour,
-\item ballast and track mechanics,
-\item local correction limits,
-\item discretization,
-\item and measurement feedback.
-\end{itemize}
+\section{Five objects that must remain separate}
 
-Thus, optimization should minimize:
+\begin{center}
+\small
+\begin{tabular}{p{0.25\linewidth}p{0.31\linewidth}p{0.35\linewidth}}
+\toprule
+Object & Role & Not interchangeable with\\
+\midrule
+Metric Realization & makes intrinsic construction spatially measurable & physical construction\\
+Physical Realization & relation from intent and process to an asset & coordinate transformation\\
+Physical State & asset condition at a stated time & observation\\
+Observation & source- and uncertainty-qualified evidence & physical truth\\
+Representation & carries coordinates or records & identity, reality or authority\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Let \(S_{\mathrm{int}}(x)\) be intended state produced by design variables
+\(x\). A qualified physical-realization model is written
 \[
-J\bigl(\mathcal R(\kappa,\phi)\bigr),
+\widehat S_{\mathrm{phys}}
+\in
+\mathcal R_M\!\left(
+S_{\mathrm{int}}(x),q,\xi
+\right),
 \]
-rather than:
+where \(M\) identifies the model, \(q\) contains fixed process and asset
+inputs, and \(\xi\) represents declared variability or uncertainty.
+\(\mathcal R_M\) may be deterministic, stochastic or set-valued. The notation
+does not establish that construction itself is an executable AIM operator.
+
+An observation model remains separate:
 \[
-J(\kappa,\phi).
-\]
-
-Within AIM, optimization is therefore interpreted as optimization of
-expected realized operational behaviour rather than of purely analytical
-geometry.
-
-% ============================================================
-\section{Realization Operator}
-% ============================================================
-
-\index{Realization!operator!in optimization}
-
-\begin{definition}[Realization operator]
-The realization operator is:
-\[
-\mathcal R :
-\mathrm{pose3}_{\mathrm{target}}
-\mapsto
-\mathrm{pose3}_{\mathrm{real}}.
-\]
-\end{definition}
-
-The operator represents the transformation from analytical target state
-to physically realized railway state.
-
-The realization operator may include:
-\begin{itemize}
-\item sampling,
-\item machine action,
-\item smoothing,
-\item local correction kernels,
-\item and structural response of the track.
-\end{itemize}
-
-% ============================================================
-\section{Optimization on Realized States}
-% ============================================================
-
-Objective functions should be evaluated on realized states rather than
-on analytical target states.
-
-\begin{definition}[Realization-aware optimization]
-\index{Optimization!on realized states}
-The general optimization problem is:
-\[
-\min_{\kappa,\phi}
-\;
-J\bigl(
-\mathcal R(\kappa,\phi)
-\bigr).
-\]
-\end{definition}
-
-This formulation explicitly integrates realization effects into the
-optimization process.
-
-% ============================================================
-\section{Pose3 Optimization}
-% ============================================================
-
-\index{State!pose3!optimization}
-
-Optimization operates on the coupled pose3 state:
-\[
-(\gamma,\theta,\phi).
-\]
-
-Curvature and cant must therefore be optimized jointly rather than
-independently.
-
-This reflects the dynamic coupling between geometry and vehicle
-behaviour.
-
-% ============================================================
-\section{Dynamic Objectives}
-% ============================================================
-
-\subsection{Effective Lateral Acceleration}
-
-\begin{definition}[Effective lateral acceleration]
-\index{Acceleration!effective lateral!optimization objective}
-The effective lateral acceleration is:
-\[
-a_{\mathrm{eff}}
+y^{\mathrm{obs}}
 =
-v^2\kappa-g\sin\phi.
+\mathcal O_N(S_{\mathrm{phys}},\eta),
 \]
-\end{definition}
+with observation method \(N\) and uncertainty \(\eta\). Coordinate conversion
+may be required to compare quantities in one frame, but it changes
+representation rather than physical state.
 
-This quantity represents the dynamically relevant acceleration acting
-on the vehicle.
+\section{Problem contract before the minimum}
 
-% ------------------------------------------------------------
+A realization-aware optimization problem is defined only after recording:
 
-\subsection{Jerk}
+\begin{center}
+\small
+\begin{tabular}{p{0.26\linewidth}p{0.64\linewidth}}
+\toprule
+Contract field & Required declaration\\
+\midrule
+problem identity and purpose & engineering question and lifecycle use\\
+realization relation & \(M\), inputs, output, frame, validity and status\\
+decision variables & known, fixed, free, bounded and unresolved quantities\\
+fixed inputs & intended endpoints, context, process assumptions and evidence\\
+feasible set \(\mathcal F\) & geometric, continuity, rule and model-applicability constraints\\
+objective \(J\) & source, units, scales, aggregation and purpose\\
+uncertainty boundary & variability represented and effects omitted\\
+status and provenance & implementation-backed, Research-supported or illustrative\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\begin{definition}[Jerk]
-\index{Jerk!optimization objective}
-The jerk is:
+Only then may a candidate problem be written:
 \[
-j
-=
-v^3\kappa'
--
-gv\cos\phi\,\phi'.
+\min_{x\in\mathcal F}
+J\!\left(
+x,\widehat S_{\mathrm{phys}},
+\mathcal D_K(\widehat S_{\mathrm{phys}},s(t))
+\right),
 \]
-\end{definition}
+where \(K\) is an identified response or comparison model when one is needed.
+If \(\mathcal R_M\) is uncertain, the problem must state whether \(J\) uses an
+expectation, scenarios, a bound, a risk measure or another declared
+construction. No uncertainty treatment is implied by the word
+\emph{realization-aware}.
 
-Jerk constraints strongly influence transition design and passenger
-comfort.
+\section{Curvature and cant: coupled question, separate ownership}
 
-% ------------------------------------------------------------
-
-\subsection{Typical Objective Components}
-
-Typical optimization objectives include:
-\begin{itemize}
-\item curvature smoothness,
-\item cant smoothness,
-\item jerk minimization,
-\item cant deficiency control,
-\item vehicle comfort,
-\item energy efficiency,
-\item realization robustness.
-\end{itemize}
-
-% ============================================================
-\section{Realization Constraints}
-% ============================================================
-
-\index{Constraint!realization}
-
-Optimization must respect realization constraints such as:
-\begin{itemize}
-\item machine limits,
-\item tamping limits,
-\item ballast behaviour,
-\item local correction ranges,
-\item and measurement resolution.
-\end{itemize}
-
-Thus, the feasible design space is constrained not only by geometry and
-standards, but also by realizability.
-
-% ============================================================
-\section{Inverse Realization}
-% ============================================================
-
-The optimization problem may be interpreted as an inverse realization
-problem.
-
-\begin{definition}[Inverse realization formulation]
-\index{Realization!inverse formulation}
-The objective is:
+Curvature \(\kappa(s)\) belongs to intrinsic horizontal construction. Cant
+\(u(s)\), or its angle \(\phi(s)\), is a separate longitudinal law with its
+own provenance and responsibility. A model may couple their consequences, for
+example through the reduced residual
 \[
-\mathcal R(\kappa_{\mathrm{target}},\phi_{\mathrm{target}})
-\approx
-(\kappa_{\mathrm{desired}},\phi_{\mathrm{desired}}).
+r_{\mathrm{bal}}=v^2\kappa-g\sin\phi,
 \]
-\end{definition}
+without making the two laws one quantity.
 
-The analytical target state therefore acts as a pre-image under the
-realization operator.
+The decision vector may therefore be any explicitly selected partition:
+\[
+x=(x_\kappa,x_u,x_p).
+\]
+In one problem, \(x_\kappa\) may be free while cant is fixed. In another,
+curvature is fixed and cant is investigated. Both may be free only when the
+purpose, constraints and responsible objective source support joint
+investigation. There is no universal AIM rule requiring joint optimization.
 
-% ============================================================
-\section{Frequency Interpretation}
-% ============================================================
+\section{Objectives, units and scaling}
 
-\index{Frequency interpretation!realization operator as low-pass filter}
+Possible objective components include curvature variation, cant variation,
+the reduced balance residual, response-model output, cost or realization
+sensitivity. They are distinct objectives. For example,
+\[
+J_\kappa=\int_0^L(\kappa')^2\,\dd s,
+\qquad
+J_r=\int_0^T r_{\mathrm{bal}}^2\,\dd t
+\]
+have different domains, units and meanings. \(J_r\) is not comfort or vehicle
+response without an applicable model and criterion.
 
-The realization operator acts approximately as a low-pass filter on
-curvature and cant.
+A combined objective
+\[
+J=\sum_i w_i\,J_i/J_{i,0}
+\]
+is meaningful only when the reference scales \(J_{i,0}\), weights \(w_i\),
+their source and their purpose are recorded. The solver supplies none of
+these engineering choices.
 
-High-frequency components are attenuated during realization.
+\section{Constraints and applicability}
 
-Optimization must therefore avoid introducing geometrically meaningless
-high-frequency corrections that cannot survive realization.
+Candidate constraints may describe machine limits, continuity, permitted
+parameter ranges, process envelopes or applicable rules. Each constraint
+requires a source, units, validity and lifecycle scope. Measurement resolution
+is an observation qualification, not automatically a construction constraint.
+Tamping behaviour, ballast response or correction kernels enter only through
+an identified and supported realization model.
 
-% ============================================================
-\section{Sparse and Hybrid Optimization}
-% ============================================================
+The feasible set \(\mathcal F\) establishes mathematical feasibility under
+that declaration. It does not establish constructability, operational
+acceptability or authority outside the model's applicability.
 
-\index{Optimization!sparse}
-\index{Optimization!hybrid}
+\section{Uncertainty and calibration boundary}
 
-Sparse and hybrid models are particularly suitable for
-realization-aware optimization.
-
-Sparse structures provide:
+The minimum useful separation is:
 \begin{itemize}
-\item numerical stability,
-\item low parameter dimension,
-\item and interpretable geometry.
+\item process and construction variability in \(\xi\);
+\item observation uncertainty in \(\eta\);
+\item operational variability in \(s(t)\) and other use inputs;
+\item numerical residual from the solver;
+\item parameter uncertainty inside \(M\) or \(K\);
+\item model-form uncertainty about whether \(M\) or \(K\) is adequate.
 \end{itemize}
 
-Hybrid models additionally permit:
-\begin{itemize}
-\item local corrections,
-\item realization compensation,
-\item and adaptive refinement.
-\end{itemize}
+Calibration evidence may support parameters for a stated asset, process and
+domain. Agreement with one observation does not prove a universal
+realization law. An unexplained target--observation deviation does not identify
+construction as its cause.
 
-% ============================================================
-\section{Runtime Optimization}
-% ============================================================
+\section{Inverse and frequency interpretations}
 
+The expression
+\[
+\mathcal R_M(S_{\mathrm{int}}(x),q,\xi)
+\approx S_{\mathrm{desired}}
+\]
+defines an inverse problem only after the comparison quantity, norm,
+uncertainty treatment and applicability are declared. A solution is one
+candidate pre-image under \(M\), not proof of what the physical process will
+produce.
+
+Likewise, describing \(\mathcal R_M\) as a low-pass filter is a possible
+linearized or empirical model, not a property of Physical Realization in
+general. Frequency penalties are defensible only when evidence supports that
+model over the stated spatial or temporal range.
+
+\section{Repeated optimization is a workflow hypothesis}
 \index{Optimization!runtime}
 
-Optimization may operate continuously during:
-\begin{itemize}
-\item construction,
-\item maintenance,
-\item measurement feedback,
-\item and operational monitoring.
-\end{itemize}
+Construction, maintenance or observation feedback may motivate repeated
+problem formulation and recalculation:
+\[
+\text{new evidence}
+\to\text{qualified model update}
+\to\text{new candidate}
+\to\text{evaluation}.
+\]
+That sequence does not imply a continuously operating optimizer, automatic
+control or current AXTRAN runtime functionality. Such a workflow requires
+identified triggers, data qualification, model versioning, convergence
+handling, authority and implementation evidence. In this Thesis it remains a
+possible workflow and Research direction.
 
-Thus, optimization becomes a runtime process rather than a purely
-offline planning step.
+\section{Candidate, evaluation and decision}
 
-% ============================================================
-\section{Vehicle-Space Interpretation}
-% ============================================================
+A result shall preserve at least
+\[
+C_R=
+(\mathcal P.id,M.id,K.id,x^\star,\mathcal F,J,
+\text{residuals},\text{convergence},\text{scenarios},\text{provenance}).
+\]
+It is a non-authoritative calculation candidate. Later evidence may make it
+inapplicable or stale. Purpose-qualified evaluation may compare it with rules
+and evidence; an Engineering Decision may then select or reject it under
+documented authority. The dependency is the one shown in
+\cref{fig:model-candidate-decision}.
 
-\index{Vehicle space!optimization interpretation}
+\[
+\boxed{\text{calculated}
+\neq\text{applicable}
+\neq\text{accepted}
+\neq\text{authoritative}}
+\]
 
-The physically relevant object is not necessarily the track centerline,
-but the motion of the railway vehicle within space.
+\section{Vehicle, Earth and implementation boundaries}
 
-This includes:
-\begin{itemize}
-\item vehicle center of gravity,
-\item bogie motion,
-\item vehicle envelope,
-\item platform interaction,
-\item and clearance behaviour.
-\end{itemize}
+Where a purpose requires vehicle-related quantities, an identified response or
+clearance model supplies them. The qualified Schwerpunkt example is referenced
+without redefining it: physical centre of mass, model reference point,
+envelope and clearance remain different subjects.
 
-Such interpretations connect realization-aware optimization to
-Schwerpunkt-oriented alignment concepts
-\cite{Hasslinger2002Schwerpunkt}.
+Ellipsoidal Metric Realization may matter at large scale or high precision,
+but it does not make physical construction an ellipsoid operator. Coordinate
+and surface models qualify where quantities are evaluated; they do not create
+an optimization objective.
 
-% ============================================================
-\section{Ellipsoid-Aware Optimization}
-% ============================================================
+The formulations in this chapter are scientifically usable problem contracts
+and candidates. They are not evidence that current AIM, AXTRAN, transitionDB
+or TransEd implements general realization-aware, vehicle, construction or
+runtime optimization.
 
-\index{Reference system!ellipsoid-aware optimization}
+\section{Claim-status summary}
 
-For large-scale or high-precision systems, optimization may be performed
-directly on the Earth reference surface.
+\begin{center}
+\small
+\begin{tabular}{p{0.34\linewidth}p{0.20\linewidth}p{0.36\linewidth}}
+\toprule
+Former claim & Disposition & Qualified result\\
+\midrule
+deterministic realization operator & reformulated & identified relation \(\mathcal R_M\)\\
+mandatory joint curvature/cant optimization & removed & problem-dependent freedom selection\\
+universal dynamic objectives & reformulated & model- and purpose-qualified components\\
+continuous runtime optimization & unsupported & possible repeated workflow/open work\\
+optimum as applicable result & contradictory & non-authoritative candidate\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-In this case:
-\begin{itemize}
-\item curvature becomes geodesic curvature,
-\item frames become surface-attached frames,
-\item and world-to-track projection depends on ellipsoid geometry.
-\end{itemize}
-
-% ============================================================
-\section{Key Insight}
-% ============================================================
-
-\begin{proposition}
-The relevant optimization target is not the analytical alignment itself,
-but the expected realized operational behaviour.
-\end{proposition}
-
-This fundamentally changes the interpretation of railway alignment
-optimization.
-
-% ============================================================
-\section{Connection to AIM}
-% ============================================================
-
-\begin{summary}
-Realization-aware optimization extends classical alignment optimization
-toward physically realizable railway states.
-
-Within AIM, optimization is formulated on:
-\begin{itemize}
-\item pose3 states,
-\item realization operators,
-\item runtime projection structures,
-\item and dynamically relevant vehicle-space behaviour.
-\end{itemize}
-
-This provides a unified framework linking geometry, realization,
-dynamics, optimization, and operational interpretation.
-\end{summary}
+The potential remains substantial: design candidates can be tested against
+explicit realization hypotheses instead of assuming perfect construction.
+The scientific gain comes from making the hypothesis, uncertainty and
+responsibility inspectable, not from calling the result universally
+realization-aware.

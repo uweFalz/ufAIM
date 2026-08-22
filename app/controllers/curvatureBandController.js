@@ -6,6 +6,7 @@ import { makeAlignment2DFromSparse } from "@alignment/build/AlignmentFactory.js"
 import { RegistryResolver } from "@transition/registry/RegistryResolver.js";
 import { KappaFcnBuilder } from "@transition/build/KappaFcnBuilder.js";
 import { AlignmentEditorController } from "@app/controllers/alignmentEditorController.js";
+import { dispatchProductiveAlignmentChange } from "@app/controllers/alignmentCreationController.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const resolver = new RegistryResolver();
@@ -21,6 +22,7 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 	const resizeHandle = document.getElementById("curvatureBandResize");
 	const editor = new AlignmentEditorController({ store, messaging });
 	let snapshot = null;
+	let emptyAlignmentId = null;
 	let drag = null;
 	let loadToken = 0;
 	let unsubscribe = null;
@@ -47,7 +49,43 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		window.addEventListener("pointermove", resize);
 		window.addEventListener("pointerup", finishResize);
 		unsubscribe = store.subscribe(() => void loadAndRender());
+		window.addEventListener("ufaim:alignment-changed", onAlignmentChanged);
 		void loadAndRender();
+	}
+
+	function onAlignmentChanged(event) {
+		const change = event?.detail ?? null;
+		event?.detail?.waitUntil?.(refreshFromVerifiedChange(change));
+	}
+
+	async function refreshFromVerifiedChange(change) {
+		await loadAndRender(change);
+		if (change?.source !== "alignment-editor") return;
+		const objectId = String(change?.objectId ?? "").trim();
+		const elementId = String(change?.elementId ?? "").trim();
+		const revision = change?.revision ?? null;
+		const changeRevision = change?.alignmentData?.meta?.modifiedAt ?? change?.spotObject?.meta?.modifiedAt ?? null;
+		const element = snapshot?.alignmentData?.editModel?.elements?.find(
+			(entry) => String(entry?.id ?? "") === elementId
+		);
+		const curvature = Number(element?.parameters?.curvature ?? element?.curvature);
+		const mismatch =
+			!snapshot?.object ? "missing-object"
+				: String(snapshot.id ?? "") !== objectId || String(snapshot.object?.id ?? "") !== objectId ? "wrong-id"
+					: snapshot.object?.type !== "alignment" ? "wrong-type"
+						: revision == null
+							|| String(changeRevision ?? "") !== String(revision)
+							|| String(snapshot.alignmentData?.meta?.modifiedAt ?? "") !== String(revision) ? "stale-revision"
+							: !element ? "missing-element"
+								: !Number.isFinite(curvature) ? "invalid-curvature"
+									: null;
+		if (mismatch) {
+			root.dataset.state = "rejected";
+			output.textContent = `Curvature band: persisted Alignment acknowledgement mismatch (${mismatch})`;
+			throw new Error(output.textContent);
+		}
+		root.dataset.state = "committed";
+		output.textContent = formatValue(curvature);
 	}
 
 	function readPresentation() {
@@ -113,22 +151,32 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		savePresentation();
 	}
 
-	async function loadAndRender() {
+	async function loadAndRender(change = null) {
 		if (drag) return;
 		const token = ++loadToken;
 		const id = getWorkspacePrimaryId(store.getState?.() ?? {});
-		if (!id) { snapshot = null; render(); return; }
-		const raw = await messaging.sendCmdAwait("Spot.GetState", {});
-		if (token !== loadToken) return;
-		const state = unwrap(raw);
-		const object = getSpotObjectById(state, id);
-		const alignmentData = object?.data?.alignmentData ?? editor.service.materializeAlignmentDataFromSparse(object);
-		if (!alignmentData?.editModel?.elements?.length) { snapshot = null; render(); return; }
+		if (!id) { snapshot = null; emptyAlignmentId = null; render(); return; }
+		let object = String(change?.objectId ?? "") === String(id) ? change?.spotObject ?? null : null;
+		let alignmentData = object && change?.alignmentData ? change.alignmentData : null;
+		if (!object || !alignmentData) {
+			const raw = await messaging.sendCmdAwait("Spot.GetState", {});
+			if (token !== loadToken) return;
+			const state = unwrap(raw);
+			object = getSpotObjectById(state, id);
+			alignmentData = object?.data?.alignmentData ?? editor.service.materializeAlignmentDataFromSparse(object);
+		}
+		if (alignmentData?.editModel && !alignmentData.editModel.elements?.length) {
+			snapshot = null;
+			emptyAlignmentId = id;
+			render();
+			return;
+		}
 		try {
 			const sparse = alignmentData.sparseAlignment ?? buildSparseFromEditModel(alignmentData);
 			const built = makeAlignment2DFromSparse({ startPose: sparse.startPose, sparse: sparse.sparse ?? sparse.elements, descriptorResolver: resolver, kappaBuilder: KappaFcnBuilder });
 			snapshot = { id, object, alignmentData, sparse, alignment: built.alignment };
-		} catch { snapshot = null; }
+			emptyAlignmentId = null;
+		} catch { snapshot = null; emptyAlignmentId = null; }
 		render();
 	}
 
@@ -137,7 +185,12 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 		if (context) context.textContent = snapshot
 			? `${snapshot.object?.name ?? snapshot.object?.data?.name ?? snapshot.id} · ${snapshot.alignmentData?.editModel?.elements?.length ?? 0}`
 			: "";
-		if (!snapshot) { text(svg, 16, 62, "Select an editable alignment", "band-empty"); return; }
+		if (!snapshot) {
+			text(svg, 16, 62, emptyAlignmentId
+				? "Noch keine Trassierungselemente · füge als ersten Schritt eine Gerade hinzu"
+				: "Wähle ein bearbeitbares Alignment", "band-empty");
+			return;
+		}
 		const active = preview ?? snapshot;
 		const elements = active.sparse?.elements ?? active.sparse?.sparse ?? [];
 		const total = Math.max(1, Number(active.sparse?.length) || elements.reduce((n, e) => n + Number(e.arcLength || 0), 0));
@@ -231,11 +284,47 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 			let result = { changed: false };
 			if (session.preview && session.proposedCurvature !== session.originalCurvature) {
 				result = await editor.updateArcOnActiveAlignment({ elementId: session.elementId, curvature: session.proposedCurvature });
-				root.dataset.state = result?.changed ? "committed" : "rejected";
-				output.textContent = result?.changed ? formatValue(session.proposedCurvature) : String(result?.reason ?? "Edit rejected");
-			} else root.dataset.state = "selected";
-			lastCommit = { changed: Boolean(result?.changed), state: root.dataset.state, elementId: session.elementId, curvature: session.proposedCurvature, error: result?.changed ? null : (result?.reason ?? null) };
-			await loadAndRender();
+			}
+			if (result?.changed) {
+				const verifiedChange = await readVerifiedCanonicalChange({
+					result,
+					session,
+				});
+				await dispatchProductiveAlignmentChange({
+					...verifiedChange,
+					elementId: session.elementId,
+					source: "curvature-band",
+				});
+				await loadAndRender(verifiedChange);
+				window.dispatchEvent(
+					new CustomEvent(
+						"ufaim:alignment-editor-focus-element",
+						{
+							detail: {
+								elementId: session.elementId,
+								objectId: verifiedChange.objectId,
+								source: "curvature-band",
+								verifiedChange,
+							},
+						}
+					)
+				);
+				root.dataset.state = "committed";
+				output.textContent = formatValue(session.proposedCurvature);
+			} else {
+				root.dataset.state = session.preview ? "rejected" : "selected";
+				output.textContent = session.preview
+					? String(result?.reason ?? "Edit rejected")
+					: formatValue(session.originalCurvature);
+				await loadAndRender();
+			}
+			lastCommit = {
+				changed: Boolean(result?.changed),
+				state: root.dataset.state,
+				elementId: session.elementId,
+				curvature: session.proposedCurvature,
+				error: result?.changed ? null : (result?.reason ?? null),
+			};
 			return lastCommit;
 		} catch (error) {
 			root.dataset.state = "rejected";
@@ -244,6 +333,39 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 			await loadAndRender();
 			return lastCommit;
 		}
+	}
+
+	async function readVerifiedCanonicalChange({ result, session }) {
+		const objectId = String(result?.alignmentChange?.objectId ?? snapshot?.id ?? "").trim();
+		const expectedRevision = result?.alignmentChange?.revision ?? null;
+		const raw = await messaging.sendCmdAwait("Spot.GetState", {});
+		const state = unwrap(raw);
+		const spotObject = getSpotObjectById(state, objectId);
+		const alignmentData = spotObject?.data?.alignmentData ?? null;
+		const element = alignmentData?.editModel?.elements?.find(
+			(entry) => String(entry?.id ?? "") === String(session.elementId)
+		);
+		const curvature = Number(element?.parameters?.curvature ?? element?.curvature);
+		const revision = alignmentData?.meta?.modifiedAt ?? spotObject?.meta?.modifiedAt ?? null;
+		const previousRevision = session.originalData?.meta?.modifiedAt ?? null;
+		const mismatch =
+			!spotObject ? "missing-object"
+				: spotObject.type !== "alignment" ? "wrong-type"
+					: String(spotObject.id ?? "") !== objectId || String(alignmentData?.id ?? "") !== objectId ? "wrong-id"
+						: !Number.isFinite(curvature) || curvature !== Number(session.proposedCurvature) ? "stale-curvature"
+							: revision == null || String(revision) !== String(expectedRevision ?? "") ? "stale-revision"
+								: String(revision) === String(previousRevision ?? "") ? "unchanged-revision"
+									: null;
+		if (mismatch) throw new Error(`Curvature band: persisted Alignment acknowledgement mismatch (${mismatch})`);
+		return {
+			...(result.alignmentChange ?? {}),
+			objectId,
+			spotObject,
+			alignmentData,
+			sparseAlignment: alignmentData.sparseAlignment ?? null,
+			kernel: spotObject?.data?.kernel ?? alignmentData.sparseAlignment ?? null,
+			revision,
+		};
 	}
 
 	function onKeyDown(event) {
@@ -315,7 +437,10 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 			presentation: { ...presentation },
 			lastCommit,
 		}),
-		destroy: () => unsubscribe?.(),
+		destroy: () => {
+			unsubscribe?.();
+			window.removeEventListener("ufaim:alignment-changed", onAlignmentChanged);
+		},
 	};
 }
 

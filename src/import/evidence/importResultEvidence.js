@@ -1,3 +1,5 @@
+import { buildGndSevenLineRoleEvidence } from "./buildGndSevenLineRoleEvidence.js";
+
 export const IMPORT_RESULT_EVIDENCE_SCHEMA = "ufAIM.import-result-evidence";
 export const IMPORT_RESULT_EVIDENCE_VERSION = 1;
 
@@ -19,8 +21,10 @@ export function createImportResultEvidencePublication({
 
 	const sha256 = nonEmpty(envelope?.source?.sha256 ?? summary?.sha256);
 	const evidenceId = makeEvidenceId({ sha256, idFactory });
-	const accepted = asArray(result.items).map((item) => withEvidenceId(item, evidenceId));
-	const rejected = asArray(result.rejected).map((item) => withEvidenceId(item, evidenceId));
+	const sourceScope = makeSourceScope({ sha256, evidenceId });
+	const itemIdMap = makeQualifiedItemIdMap([...asArray(result.items), ...asArray(result.rejected)], sourceScope);
+	const accepted = asArray(result.items).map((item) => withEvidenceIdentity(item, evidenceId, itemIdMap));
+	const rejected = asArray(result.rejected).map((item) => withEvidenceIdentity(item, evidenceId, itemIdMap));
 	const diagnostics = clone(asArray(result?.meta?.diagnostics));
 	const unresolvedEvidence = collectUnresolvedEvidence([...accepted, ...rejected]);
 	const source = {
@@ -38,7 +42,7 @@ export function createImportResultEvidencePublication({
 		source,
 		inventory: clone(asArray(envelope?.inventory)),
 		diagnostics,
-		relationCandidates: clone(asArray(result.relationCandidates)),
+		relationCandidates: qualifyRelationCandidates(asArray(result.relationCandidates), sourceScope, itemIdMap),
 		acceptedItemIds: accepted.map((item) => item.id).filter(Boolean),
 		rejectedItemIds: rejected.map((item) => item.id).filter(Boolean),
 		unresolvedEvidence,
@@ -59,6 +63,7 @@ export function createImportResultEvidencePublication({
 			completedAt: completedAt == null ? "unavailable-in-completed-result" : "caller-supplied-completion-time",
 		},
 	};
+	evidence.sevenLineRoleEvidence = buildGndSevenLineRoleEvidence(evidence);
 	return { evidence: deepFreeze(evidence), items: [...accepted, ...rejected] };
 }
 
@@ -71,14 +76,19 @@ export function makeCompactSpotEvidenceSnapshot(item, evidence) {
 		evidenceId: evidence.evidenceId,
 		source: clone(evidence.source),
 		inventorySummary: asArray(evidence.inventory).map(({ name, rowCount, columnCount, interpreted }) => ({ name, rowCount, columnCount, interpreted })),
+		familyEvidence: makeCompactFamilyEvidence(evidence),
+		sevenLineRoleEvidence: clone(evidence.sevenLineRoleEvidence),
+		relationEvidence: makeCompactRelationEvidence(evidence),
 		spatialResolution: clone(item?.derived?.spatialRef ?? item?.payload?.spatialRef ?? null),
 		diagnostics: clone(candidateDiagnostics),
 		unresolvedAttachments: clone(asArray(item?.payload?.extended?.unresolvedAttachments)),
 		truthfulnessStatus: evidence.truthfulnessStatus,
-		candidate: { itemId: item.id ?? null, kind: item.kind ?? null },
+		candidate: { itemId: item.evidenceItemId ?? item.id ?? null, kind: item.kind ?? null },
 		provenance: {
 			source: "import-result-evidence.source",
 			inventorySummary: "import-result-evidence.inventory:summary",
+			familyEvidence: "import-result-evidence.inventory|diagnostics|unresolvedEvidence:family-summary",
+			relationEvidence: "import-result-evidence.relationCandidates:identity-preserving-summary",
 			spatialResolution: "import-session-item.derived.spatialRef|payload.spatialRef",
 			diagnostics: "import-result-evidence.diagnostics:candidate-filtered",
 			unresolvedAttachments: "import-session-item.payload.extended.unresolvedAttachments",
@@ -87,6 +97,29 @@ export function makeCompactSpotEvidenceSnapshot(item, evidence) {
 		},
 	});
 }
+
+function makeCompactFamilyEvidence(evidence) {
+	return ["EL", "EH", "EU", "EK"].map((family) => {
+		const inventory = asArray(evidence.inventory).filter((entry) => familyFromInventoryName(entry?.name) === family);
+		const diagnostics = asArray(evidence.diagnostics).filter((entry) => String(entry?.family ?? "").toUpperCase() === family);
+		const unresolved = asArray(evidence.unresolvedEvidence).filter((entry) => asArray(entry?.sourceElements).some((source) => String(source?.family ?? "").toUpperCase() === family));
+		const rowCount = inventory.reduce((sum, entry) => sum + finiteCount(entry?.rowCount), 0);
+		const constructive = family === "EL" && rowCount > 0 && (
+			diagnostics.some((entry) => entry?.geometryUsable === true) ||
+			String(evidence?.truthfulnessStatus ?? "").includes("construction-available")
+		);
+		return { family, status: constructive ? "constructive" : rowCount > 0 || diagnostics.length || unresolved.length ? "partial-evidence" : "missing", rowCount, sourceRefs: inventory.map((entry) => entry?.name).filter(Boolean), diagnosticCodes: diagnostics.map((entry) => entry?.code).filter(Boolean), unresolvedCount: unresolved.length };
+	});
+}
+
+function makeCompactRelationEvidence(evidence) {
+	const candidates = asArray(evidence.relationCandidates).map((association) => ({ id: association?.id ?? null, type: association?.type ?? association?.kind ?? null, from: association?.from ?? association?.fromId ?? null, to: association?.to ?? association?.toId ?? null, status: "candidate", claimScope: association?.claimScope ?? "source-association-only", intrinsicMappingStatus: association?.intrinsicMappingStatus ?? "not-established", domainRelationStatus: association?.domainRelationStatus ?? "not-established", provenance: clone(association?.provenance ?? { source: association?.source ?? null, origin: association?.origin ?? null, derivedBy: association?.derivedBy ?? null, method: association?.method ?? null, reasons: association?.reasons ?? null }) }));
+	const reviewedCandidateId = evidence?.relationDecision?.reviewedCandidateId ?? evidence?.relationDecision?.confirmedCandidateId ?? null;
+	return { status: reviewedCandidateId ? "reviewed" : candidates.length ? "open-candidates" : "missing", candidateCount: candidates.length, reviewedCandidateId, reviewRevision: Number(evidence?.relationDecision?.revision ?? 0), reviewProvenance: clone(evidence?.relationDecision?.provenance ?? null), claimScope: "source-association-only", intrinsicMappingStatus: "not-established", domainRelationStatus: "not-established", candidates: candidates.map((candidate) => ({ ...candidate, status: candidate.id === reviewedCandidateId ? "reviewed" : "candidate" })) };
+}
+
+function familyFromInventoryName(name) { return /(?:^|_)(EL|EH|EU|EK)$/i.exec(String(name ?? ""))?.[1]?.toUpperCase() ?? null; }
+function finiteCount(value) { const number = Number(value); return Number.isFinite(number) && number > 0 ? number : 0; }
 
 export function withSpotEvidenceSnapshot(item, evidence) {
 	const snapshot = makeCompactSpotEvidenceSnapshot(item, evidence);
@@ -134,7 +167,43 @@ function diagnosticBelongsToItem(diagnostic, item) {
 	return families.has(diagnostic?.family) || rowRefs.has(diagnostic?.rowRef) || diagnostic?.geometryUsable === true;
 }
 
-function withEvidenceId(item, evidenceId) { return isObject(item) ? { ...item, evidenceId } : item; }
+function makeSourceScope({ sha256, evidenceId }) {
+	return `src_${sha256 || evidenceId.replace(/^evidence_v1_nohash_/, "")}`;
+}
+
+function makeQualifiedItemIdMap(items, sourceScope) {
+	return new Map(items
+		.filter((item) => isObject(item) && nonEmpty(item.id))
+		.map((item) => [String(item.id), `${String(item.id)}__${sourceScope}`]));
+}
+
+function withEvidenceIdentity(item, evidenceId, itemIdMap) {
+	if (!isObject(item)) return item;
+	const sourceItemId = nonEmpty(item.id);
+	return {
+		...item,
+		id: sourceItemId ? itemIdMap.get(sourceItemId) : item.id,
+		evidenceId,
+		sourceItemId,
+	};
+}
+
+function qualifyRelationCandidates(relations, sourceScope, itemIdMap) {
+	return clone(relations.map((relation) => {
+		if (!isObject(relation)) return relation;
+		const qualifyReference = (value) => itemIdMap.get(String(value ?? "")) ?? value;
+		const sourceRelationId = nonEmpty(relation.id);
+		return {
+			...relation,
+			id: sourceRelationId ? `${sourceRelationId}__${sourceScope}` : relation.id,
+			sourceRelationId,
+			...(Object.hasOwn(relation, "from") ? { from: qualifyReference(relation.from) } : {}),
+			...(Object.hasOwn(relation, "to") ? { to: qualifyReference(relation.to) } : {}),
+			...(Object.hasOwn(relation, "fromId") ? { fromId: qualifyReference(relation.fromId) } : {}),
+			...(Object.hasOwn(relation, "toId") ? { toId: qualifyReference(relation.toId) } : {}),
+		};
+	}));
+}
 function makeEvidenceId({ sha256, idFactory }) { return `evidence_v1_${sha256 ? sha256.slice(0, 16) : "nohash"}_${String(idFactory()).replace(/[^a-zA-Z0-9_-]/g, "")}`; }
 function defaultIdFactory() { return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`; }
 function inferParserId(fileName, envelope) { const lower = String(fileName ?? "").toLowerCase(); if (lower.endsWith(".mdb")) return "gnd-edit-mdb"; if (envelope?.source?.format === "XLSX") return "gnd-edit-xlsx"; return null; }

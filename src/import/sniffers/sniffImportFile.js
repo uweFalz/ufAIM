@@ -10,21 +10,15 @@ function getFileExtension(file) {
 	return name.slice(idx + 1).toLowerCase();
 }
 
-async function readFileTextSafe(file) {
+async function readFileBytesSafe(file, signal) {
 	try {
-		if (!file || typeof file.text !== 'function') return '';
-		return await file.text();
-	} catch {
-		return '';
-	}
-}
-
-async function readFileBytesSafe(file) {
-	try {
+		throwIfAborted(signal);
 		if (!file || typeof file.arrayBuffer !== 'function') return new Uint8Array();
 		const buffer = await file.arrayBuffer();
+		throwIfAborted(signal);
 		return new Uint8Array(buffer);
-	} catch {
+	} catch (error) {
+		if (error?.name === "AbortError" || signal?.aborted) throw error;
 		return new Uint8Array();
 	}
 }
@@ -36,15 +30,23 @@ function matchesExtension(ext, extensions = []) {
 
 export async function sniffImportFile(file, context = {}) {
 	const extension = getFileExtension(file);
-	const text = extension === 'mdb' ? '' : await readFileTextSafe(file);
-	const bytes = await readFileBytesSafe(file);
+	const signal = context?.signal;
+	throwIfAborted(signal);
+	const bytes = context?.bytes instanceof Uint8Array
+		? context.bytes
+		: await readFileBytesSafe(file, signal);
+	const text = typeof context?.text === "string"
+		? context.text
+		: extension === "mdb" ? "" : new TextDecoder().decode(bytes);
 
 	const parserIds = getParserIds();
 
 	const extensionCandidates = [];
 	const looksLikeCandidates = [];
 
+	context?.onParserLoading?.();
 	for (const parserId of parserIds) {
+		throwIfAborted(signal);
 		let mod;
 		try {
 			mod = await loadParserModule(parserId);
@@ -69,6 +71,7 @@ export async function sniffImportFile(file, context = {}) {
 		if (typeof sniff.looksLike === 'function') {
 			try {
 				const looksLike = await sniff.looksLike({ file, text, bytes, context });
+				throwIfAborted(signal);
 				if (looksLike) {
 					looksLikeCandidates.push({
 						parserId,
@@ -77,6 +80,7 @@ export async function sniffImportFile(file, context = {}) {
 					});
 				}
 			} catch (err) {
+				if (err?.name === "AbortError" || signal?.aborted) throw err;
 				console.warn(`[sniffImportFile] looksLike failed for "${parserId}":`, err);
 			}
 		}
@@ -95,6 +99,14 @@ export async function sniffImportFile(file, context = {}) {
 		confidence: best?.confidence || 0,
 		reason: best?.reason || 'no parser matched'
 	};
+}
+
+function throwIfAborted(signal) {
+	if (!signal?.aborted) return;
+	const error = new Error(String(signal.reason ?? "Import cancelled"));
+	error.name = "AbortError";
+	error.code = "IMPORT_JOB_CANCELLED";
+	throw error;
 }
 
 export default sniffImportFile;

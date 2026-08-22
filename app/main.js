@@ -5,12 +5,22 @@ import { systemPrefs } from "@runtime/systemPrefs.js";
 import { WindowRuntime } from "@runtime/WindowRuntime.js";
 import { workerImportMirror } from "@app/examples/workerImportMirror.js";
 import { registerDevNoCacheSW } from "@app/bootstrap/registerDevNoCacheSW.js";
-import { beginAppE2ELifecycle, completeHarness, finalizeAppE2ELifecycle } from "@app/_e2eLifecycle.js";
 
-import "@alignment/_e2eAlignmentTest.js";
-import "@src/shared/runtime/_e2eWorkspaceSelectionAccessTest.js";
-import "@src/import/parsers/_e2eParserValidationTest.js";
-import "@src/services/alignment/_e2eAlignmentEditModelBoundaryTest.js";
+const startupQuery = new URLSearchParams(window.location.search);
+const E2E_ENABLED = startupQuery.get("e2e") === "1"
+	|| startupQuery.has("aimCoreAuthoringAcceptance");
+let e2eLifecycle = null;
+
+if (E2E_ENABLED) {
+	window.__appE2EEnabled = true;
+	e2eLifecycle = await import("@app/_e2eLifecycle.js");
+	await Promise.all([
+		import("@alignment/_e2eAlignmentTest.js"),
+		import("@src/shared/runtime/_e2eWorkspaceSelectionAccessTest.js"),
+		import("@src/import/parsers/_e2eParserValidationTest.js"),
+		import("@src/services/alignment/_e2eAlignmentEditModelBoundaryTest.js"),
+	]);
+}
 
 await registerDevNoCacheSW({
 	enabled: !systemPrefs?.debug?.disableServiceWorker,
@@ -54,7 +64,7 @@ export const APP_E2E_DAG = Object.freeze({
 		"importLoadStability",
 	],
 });
-window.__appE2EDag = APP_E2E_DAG;
+if (E2E_ENABLED) window.__appE2EDag = APP_E2E_DAG;
 
 async function runRuntimeHarness(owner, load, promiseName) {
 	const resultNames = {
@@ -87,7 +97,7 @@ async function runRuntimeHarness(owner, load, promiseName) {
 		if (!executionPromise || typeof executionPromise.then !== "function") {
 			throw new Error(`${owner} execution promise missing after module load: ${promiseName}`);
 		}
-		const completed = await completeHarness(owner, executionPromise, window[resultNames[owner]]);
+		const completed = await e2eLifecycle.completeHarness(owner, executionPromise, window[resultNames[owner]]);
 		window[resultNames[owner]] = completed;
 	} catch (error) {
 		console.error(`${owner} harness failed`, error);
@@ -97,17 +107,19 @@ async function runRuntimeHarness(owner, load, promiseName) {
 try {
 	await runtime.start();
 	window.messaging = runtime.messaging;
-	await beginAppE2ELifecycle();
-	await runRuntimeHarness("alignmentNativeUi", () => import("@app/_e2eAlignmentNativeUiTest.js"), "__alignmentNativeEditorUiE2EPromise");
-	await runRuntimeHarness("geoRuntimeAcceptance", () => import("@app/_e2eGeoRuntimeAcceptanceTest.js"), "__geoRuntimeAcceptanceE2EPromise");
-	await runRuntimeHarness("curvatureBand", () => import("@app/_e2eCurvatureBandTest.js"), "__curvatureBandE2EPromise");
-	await runRuntimeHarness("spotWorkspace", () => import("@app/_e2eSpotWorkspaceTest.js"), "__spotWorkspaceE2EPromise");
-	await runRuntimeHarness("alignmentCreation", () => import("@app/_e2eAlignmentCreationTest.js"), "__alignmentCreationE2EPromise");
-	await runRuntimeHarness("transEdDepth", () => import("@app/_e2eTransEdDepthTest.js"), "__transEdDepthE2EPromise");
-	await runRuntimeHarness("gndMdbDrop", () => import("@app/_e2eGndMdbDropTest.js"), "__gndMdbDropE2EPromise");
-	await runRuntimeHarness("gndImportWorkbench", () => import("@app/_e2eGndImportWorkbenchTest.js"), "__gndImportWorkbenchE2EPromise");
-	await runRuntimeHarness("uiRecovery", () => import("@app/_e2eUiRecoveryTest.js"), "__uiRecoveryE2EPromise");
-	await runRuntimeHarness("importLoadStability", () => import("@app/_e2eImportLoadStabilityTest.js"), "__importLoadStabilityE2EPromise");
+	if (E2E_ENABLED) {
+		await e2eLifecycle.beginAppE2ELifecycle();
+		await runRuntimeHarness("alignmentNativeUi", () => import("@app/_e2eAlignmentNativeUiTest.js"), "__alignmentNativeEditorUiE2EPromise");
+		await runRuntimeHarness("geoRuntimeAcceptance", () => import("@app/_e2eGeoRuntimeAcceptanceTest.js"), "__geoRuntimeAcceptanceE2EPromise");
+		await runRuntimeHarness("curvatureBand", () => import("@app/_e2eCurvatureBandTest.js"), "__curvatureBandE2EPromise");
+		await runRuntimeHarness("spotWorkspace", () => import("@app/_e2eSpotWorkspaceTest.js"), "__spotWorkspaceE2EPromise");
+		await runRuntimeHarness("alignmentCreation", () => import("@app/_e2eAlignmentCreationTest.js"), "__alignmentCreationE2EPromise");
+		await runRuntimeHarness("transEdDepth", () => import("@app/_e2eTransEdDepthTest.js"), "__transEdDepthE2EPromise");
+		await runRuntimeHarness("gndMdbDrop", () => import("@app/_e2eGndMdbDropTest.js"), "__gndMdbDropE2EPromise");
+		await runRuntimeHarness("gndImportWorkbench", () => import("@app/_e2eGndImportWorkbenchTest.js"), "__gndImportWorkbenchE2EPromise");
+		await runRuntimeHarness("uiRecovery", () => import("@app/_e2eUiRecoveryTest.js"), "__uiRecoveryE2EPromise");
+		await runRuntimeHarness("importLoadStability", () => import("@app/_e2eImportLoadStabilityTest.js"), "__importLoadStabilityE2EPromise");
+	}
 } catch (err) {
 	console.error(err);
 	const logElement = document.getElementById("log");
@@ -115,7 +127,7 @@ try {
 		logElement.textContent = "runtime boot failed ❌\n" + String(err);
 	}
 } finally {
-	if (window.__appE2ELifecycleApi) {
-		await finalizeAppE2ELifecycle(window.__parserValidationE2E ?? null);
+	if (E2E_ENABLED && window.__appE2ELifecycleApi) {
+		await e2eLifecycle.finalizeAppE2ELifecycle(window.__parserValidationE2E ?? null);
 	}
 }

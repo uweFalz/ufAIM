@@ -126,6 +126,7 @@ function renderImportRow(row) {
 		className: [
 			row.isPreviewActive ? "is-active" : "",
 			row.accepted ? "is-accepted" : "",
+			row.rejected ? "has-warning" : "",
 		],
 		main: `
 			${titleLine(row.label ?? row.itemId ?? "item")}
@@ -137,9 +138,7 @@ function renderImportRow(row) {
 			])}
 
 			${metaLine([
-				row.promotable
-					? tx("cockpit.usable", "verwertbar")
-					: tx("cockpit.notUsable", "nicht verwertbar"),
+				row.statusLabel,
 				row.hasSparse ? tx("cockpit.kernel", "Kernel") : null,
 				row.accepted ? tx("cockpit.inUniverse", "im Universe") : null,
 				Number.isFinite(Number(row.lengthHint))
@@ -149,12 +148,13 @@ function renderImportRow(row) {
 					? `${tx("cockpit.relations", "Relationen")}:${row.relationCount}`
 					: null,
 			])}
+			${row.reason ? divLine(`${tx("cockpit.notes", "Grund")}: ${row.reason}`) : ""}
 		`,
 		actions: `
-			${button({
+			${row.hasSparse && row.promotable ? button({
 				label: tx("cockpit.action.preview", "Vorschau"),
 				attrs: { "data-cockpit-preview": row.itemId },
-			})}
+			}) : ""}
 
 			${row.promotable ? button({
 				label: tx("cockpit.action.acceptAndShow", "Übernehmen & anzeigen"),

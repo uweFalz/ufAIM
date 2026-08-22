@@ -1,0 +1,54 @@
+{
+  "fixtureVersion": "aim-core-profile-demo/0.1",
+  "alignmentId": "demo-alignment-A",
+  "positions": [0, 50, 100, 150, 200],
+  "vertical": {
+    "id": "demo-vertical-A",
+    "elements": [
+      {
+        "id": "V-constant",
+        "type": "constant-gradient",
+        "startS": 0,
+        "endS": 200,
+        "startElevation": 10,
+        "gradient": 0.01
+      }
+    ]
+  },
+  "cant": {
+    "id": "demo-cant-A",
+    "elements": [
+      {
+        "id": "C-linear",
+        "type": "linear-cross-level",
+        "startS": 0,
+        "endS": 200,
+        "startCrossLevel": 0,
+        "crossLevelRate": 0.001
+      }
+    ]
+  },
+  "chainageMappings": [
+    {
+      "id": "demo-chainage-K-v1",
+      "schemeId": "K",
+      "schemeVersion": "v1",
+      "segments": [
+        {
+          "id": "BACK",
+          "startS": 0,
+          "endS": 100,
+          "startAddress": 1000,
+          "direction": 1
+        },
+        {
+          "id": "AHEAD",
+          "startS": 100,
+          "endS": 200,
+          "startAddress": 1200,
+          "direction": 1
+        }
+      ]
+    }
+  ]
+}

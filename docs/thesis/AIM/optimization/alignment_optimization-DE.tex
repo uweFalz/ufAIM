@@ -1,21 +1,99 @@
-\chapter{Optimierung von Alignments}
+\chapter{Vom Alignment-Problem zum mathematischen Kandidaten}
 
-Dieses Kapitelbündel beantwortet, wie Alignment-Entwurf und Rekonstruktion in
-AIM als Optimierungsprobleme formuliert werden. Es begründet eine
-kontinuierlich-diskrete Entwicklung vom Problemkontext über Funktionale im
-Krümmungsraum und diskrete Formulierungen bis zur SQP-orientierten
-Lösungsarchitektur.
+\section*{Lesebrücke: die Frage wird in die Mathematik weitergeführt}
 
-Die Folge ist bewusst kumulativ: Jeder Abschnitt verwendet das vorangehende
-Ergebnis und ergänzt eine Ebene formaler und ingenieurtechnischer Spezifität.
+Der numerische Evaluator kann nun jede erlaubte Krümmungsänderung
+rekonstruieren und prüfen. Nun müssen diese Änderungen durchsucht werden, ohne
+die ingenieurtechnische Erklärung zu vergessen, die den Zahlen Bedeutung
+gegeben hat.
+
+Für die Abweichung zwischen CAD-Kurve und Vermessungspolylinie verwendet das
+Kapitelbündel folgenden festen Lesevertrag:
+\begin{center}
+\begin{tabular}{p{0.25\textwidth}p{0.65\textwidth}}
+\toprule
+Engineering Object & das identifizierte Alignment; seine Identität bleibt erhalten\\
+Zweck & Kandidaten zur Behandlung einer erklärten Abweichung im Übergangsbereich gewinnen\\
+Freie Variablen & ausgewählte intrinsische Krümmungsparameter und nur ausdrücklich freigegebene Größen\\
+Feste Eingaben & Anfangs-/Endpose, gesperrte Elemente, Metrik- und Beobachtungskontext, Quelldaten\\
+Nebenbedingungen & Stetigkeit, feste Randbedingungen, erklärte Grenzen und Anwendbarkeitsbedingungen\\
+Ziel & erklärte, einheitenbewusste Residuentermen mit dokumentierter Skalierung und Quelle\\
+Ausgabe & Kandidatenparameter, rekonstruierte Darstellung, Residuen, Konvergenz- und Numerikevidenz\\
+\bottomrule
+\end{tabular}
+\end{center}
+Dieser Vertrag ist eine beispielhafte Formulierung, kein universelles AIM-Ziel.
+
+\section*{Der Weg durch den Deep Dive}
+
+Die folgenden Abschnitte bauen aufeinander auf. Zuerst wird die
+ingenieurtechnische Frage als kontinuierliches Krümmungsproblem formuliert.
+Danach legt die Diskretisierung einen endlichen Vektor von Freiheitsgraden und
+Nebenbedingungen offen. SQP erscheint anschließend, weil die Rekonstruktion
+das Problem nichtlinear macht und Gleichungs- sowie
+Ungleichungsnebenbedingungen sichtbar bleiben müssen. Anfangsschätzungen sind
+wichtig, weil lokale Verfahren Nichtkonvexität nicht aufheben. Analytische
+Ableitungen, dünne Besetzung und hybride Parametrisierungen erscheinen
+schließlich, weil sie Rechenaufwand verringern und Einflüsse nachvollziehbar
+machen.
 
 \input{optimization/alignment/00_context_and_problem-DE}
+
+\paragraph{Lesebrücke zur kontinuierlichen Formulierung.}
+Zweck und Verantwortlichkeiten stehen nun fest. Der nächste Abschnitt
+formuliert Glattheit oder Anpassung über der intrinsischen Längsdomäne; er
+wählt noch kein numerisches Verfahren.
 \input{optimization/alignment/10_continuous_curvature_optimization-DE}
+
+\paragraph{Lesebrücke zur Diskretisierung.}
+Das Funktional wird erst berechenbar, wenn Parametrisierung und Gitter
+festlegen, welche Größen sich ändern dürfen. Eine Gitterverfeinerung ändert das
+numerische Modell, nicht das Engineering Object.
 \input{optimization/alignment/20_discrete_formulation-DE}
+
+\paragraph{Lesebrücke zu SQP.}
+Die Rekonstruktion koppelt Krümmungsparameter nichtlinear an Endpunkt- und
+Beobachtungsresiduen. SQP wird als ein lokales Verfahren für dieses sichtbare
+Problem eingeführt, nicht als Definition von Optimierung und nicht als Evidenz
+für einen allgemeinen produktiven Solver.
 \input{optimization/alignment/30_sqp_concrete-DE}
+
+\paragraph{Lesebrücke zur Initialisierung.}
+Ein konvergierter lokaler Lauf beantwortet eine Frage in der Umgebung seines
+Startpunkts. Anfangsschätzungen und Mehrfachstarts gehören deshalb zur
+Provenienz eines Kandidaten und dürfen nicht hinter einem Erfolgskennzeichen
+verschwinden.
 \input{optimization/alignment/40_initial_guesses-DE}
+
+\paragraph{Lesebrücke zu Ableitungen und dünner Besetzung.}
+Mit wachsender Zahl freigegebener Krümmungsparameter wiederholt dichte
+numerische Differentiation teure Rekonstruktionen und verdeckt lokale
+Abhängigkeiten. Analytische Struktur und dünne Besetzung beantworten dieses
+Aufwands- und Nachvollziehbarkeitsproblem.
 \input{optimization/alignment/50_sqp_analytic_structure-DE}
+
+\paragraph{Lesebrücke zu alternativen Parametrisierungen.}
+Keine Parametrisierung ist für jeden erklärten Zweck am besten. Der letzte
+Abschnitt vergleicht parametrische und hybride Varianten als Modellalternativen,
+deren Freiheiten und Approximationen dokumentiert bleiben müssen.
 \input{optimization/alignment/60_parametric_and_hybrid-DE}
 
-Gemeinsam begründen diese Abschnitte das Optimierungsrückgrat für die folgenden
-Kapitel zu Optimiererarchitektur und realisierungsbewusster Optimierung.
+\section*{Was das mathematische Kapitel verlässt}
+
+Das mathematische Ergebnis ist nicht nur \(x^\star\). Eine prüfbare Übergabe
+lautet
+\[
+\begin{aligned}
+\mathcal C=(\,&\mathcal P.id,M.id,x^\star,r(x^\star),J(x^\star),\\
+             &\text{Nebenbedingungsabstände},\text{Abbruchgrund},
+             \varepsilon_{\mathrm{num}},\text{Provenienz}\,).
+\end{aligned}
+\]
+Der Abbruchgrund beschreibt, warum der Algorithmus endete;
+Konvergenzevidenz beschreibt, was das numerische Verfahren festgestellt hat.
+Beides beweist weder Anwendbarkeit in einem anderen Kontext noch Annahme durch
+eine Ingenieurin oder einen Ingenieur.
+
+Das folgende Architekturkapitel fragt daher, wie ein Dienst diesen Vertrag
+über Datenaufnahme, Berechnung und Prüfung erhalten kann, ohne den Kandidaten
+stillschweigend in das autoritative Modell zu übernehmen.

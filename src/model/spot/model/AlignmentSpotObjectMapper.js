@@ -6,6 +6,7 @@
 // - maps native AlignmentData to canonical Alignment SpotObjects
 // - reads AlignmentData from Alignment SpotObjects
 // - preserves existing SPOT identity, references and metadata during updates
+// - preserves complete AlignmentData, including optional profileState, by reference
 //
 // NOT:
 // - no Alignment editing
@@ -88,7 +89,8 @@ export function createAlignmentSpotObjectFromData(
 		// data.kernel is the runtime-consumable geometry kernel.
 		kernel: sparseAlignment,
 
-		// AlignmentData remains the native editable engineering state.
+		// AlignmentData remains the complete native editable engineering state.
+		// Optional profileState stays inside this record without projection.
 		alignmentData,
 
 		extended: isObject(extended) ? extended : {},
@@ -125,7 +127,7 @@ export function createAlignmentSpotObjectFromData(
  *
  * Updates:
  *
- * - AlignmentData
+ * - complete AlignmentData, including optional profileState
  * - SparseAlignment
  * - kernel
  * - name / label

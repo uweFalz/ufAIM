@@ -1,399 +1,193 @@
 % modeling/schwerpunkt_trassierung-DE.tex
-\chapter{Schwerpunkt-Trassierung}
+\chapter{Qualifizierte Schwerpunkt-Trassierung}
 
-\section*{Motivation}
+\section*{Die Idee auf einer Seite}
 
-Der klassische Trassierungsentwurf trennt:
-\begin{itemize}
-\item geometrischen Entwurf (Alignment),
-\item Überhöhungsentwurf und
-\item dynamische Bewertung.
-\end{itemize}
+Die historische Anziehungskraft der \emph{Schwerpunkt-Trassierung} lässt sich
+einfach ausdrücken. Eine Gleismittellinie ist nicht die Bahn jedes dynamisch
+relevanten Punktes eines Fahrzeugs. Ändert eine Alignment-Bearbeitung die
+Krümmung, kann sich auch die für einen gewählten Fahrzeugbezugspunkt
+vorhergesagte Bewegung ändern. Berlinish und axtranNew nutzten diesen Gedanken,
+um über einzelne Kurvenformeln hinauszusehen; auch Engineering- und
+Patentliteratur bezieht Trassierung auf die Bewegung des Fahrzeugmassenmittels
+\cite{Hasslinger2002Schwerpunkt}.
 
-Diese Trennung führt zu suboptimalen Lösungen, weil Geometrie und Dynamik
-intrinsisch gekoppelt sind. In der Eisenbahnpraxis zeigt sich diese Kopplung im
-Zusammenwirken von Krümmung, Überhöhung, Geschwindigkeit und Fahrzeugreaktion
-\cite{Klein1998Trassierung,EN13803_2017,BrustadDalmo2020Review}.
+Dieser Ursprung ist stark und nützlich, aber keine Validierung. Das Wort
+\emph{Schwerpunkt} kann Verschiedenes bezeichnen:
 
-Das Konzept der \emph{Schwerpunkt-Trassierung} will diese Aspekte durch ein
-einheitliches Entwurfsprinzip auf Grundlage der Bewegung eines repräsentativen
-Punkts verbinden.
+\begin{center}
+\small
+\begin{tabular}{p{0.29\linewidth}p{0.28\linewidth}p{0.34\linewidth}}
+\toprule
+Verwendung & Erforderliche Qualifikation & Status hier\\
+\midrule
+physischer Massenmittelpunkt & bestimmtes Fahrzeug und Beladung & physische Eigenschaft\\
+Modellbezugspunkt \(P_M\) & Modell \(M\), Frame und Parameter & vorhergesagte Modellgröße\\
+Berlinish-/axtranNew-Idee & Quelle und historischer Zweck & Projektprovenienz\\
+Optimierungsaggregat & Variablen, Ziel und Skalierung & problemspezifische Konstruktion\\
+„Zentrum“ als Betonung & kein mathematisches Objekt & nur Metapher\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-Die Vorstellung, Trassierung auf die Bewegung des Fahrzeugschwerpunkts statt
-lediglich auf die Gleismittellinie zu beziehen, erscheint auch in
-Engineering-Praxis und Patentliteratur \cite{Hasslinger2002Schwerpunkt}.
-
-Dies unterstützt die weiter gefasste AIM-Interpretation eines Alignments als
-dynamisch relevante räumliche Zustandstrajektorie und nicht als rein
-geometrische Kurve.
-
-\section{Begriffliche Idee}
-
-\begin{definition}[Referenztrajektorie]
-Es bezeichne
+Dieses Kapitel untersucht die zweite und vierte Bedeutung. Es erzeugt weder
+einen kanonischen \emph{Schwerpunktzustand} noch ändert es die Alignment
+Identity. Der Leser kommt mit dem Vertrag aus
+\cref{chap:optimization-in-state-space} hierher:
 \[
-\gamma_c:I\to\R^2
-\]
-eine Referenztrajektorie, welche die Bewegung eines charakteristischen Punkts
-des Fahrzeugsystems darstellt.
-\end{definition}
-
-Dieser Punkt kann interpretiert werden als:
-\begin{itemize}
-\item Massenschwerpunkt,
-\item dynamisch relevanter Bezugspunkt oder
-\item abstrakte Entwurfstrajektorie.
-\end{itemize}
-
-Der begriffliche Wechsel besteht darin, den Gleisentwurf anhand der Bewegung
-eines solchen Bezugspunkts statt allein anhand der Geometrie zu bewerten.
-
-\section{Bezug zur Gleisgeometrie}
-
-Die physische Gleismittellinie \(\gamma(s)\) und der Überhöhungswinkel
-\(\phi(s)\) induzieren eine räumliche Konfiguration des Fahrzeugs.
-
-\begin{definition}[Induzierte Referenztrajektorie]
-Für einen pose3-Zustand
-\[
-(\gamma(s),\theta(s),\phi(s))
-\]
-ist die induzierte Referenztrajektorie
-\[
-\gamma_c(s)=\gamma(s)+d\,n(s,\phi(s)),
-\]
-wobei \(d\) ein charakteristischer Versatz und \(n(s,\phi)\) eine von
-Orientierung und Überhöhung abhängige Richtung ist.
-\end{definition}
-
-Die genaue Form von \(n(s,\phi)\) hängt vom gewählten mechanischen Modell ab.
-
-\RESEARCH{Präzise Definition der Versatzrichtung anhand des Fahrzeugmodells.}
-\OPEN{Konsistente Integration lokaler Gleisrahmen und globaler CRS-Transformationen in das Schwerpunktmodell.}
-
-\section{Schwerpunktprinzip}
-
-\begin{definition}[Schwerpunktprinzip]
-Ein Eisenbahn-Alignment erfüllt das Schwerpunktprinzip, wenn die induzierte
-Referenztrajektorie \(\gamma_c(s)\) vorgegebene Glattheits- und dynamische
-Eigenschaften besitzt.
-\end{definition}
-
-In dieser Formulierung ist nicht das Gleis selbst, sondern die induzierte
-Trajektorie des Bezugspunkts der primäre Entwurfsgegenstand. Die
-Entwurfsaufgabe rückt damit näher an fahrzeugorientiertes Engineering als an
-rein geometrische Konstruktion.
-
-\section{Variationsformulierung}
-
-\begin{definition}[Schwerpunktfunktional]
-Es sei
-\[
-J_c[\gamma_c]=\int_0^L\|\gamma_c''(s)\|^2\,\dd s.
-\]
-\end{definition}
-
-Dieses Funktional bestraft die Krümmung der Referenztrajektorie und fördert
-damit glatte Bewegung.
-
-\begin{definition}[Schwerpunkt-Optimierungsproblem]
-Gesucht ist
-\[
-(\kappa,\phi),
-\]
-sodass die induzierte Trajektorie \(\gamma_c\) unter den pose3-Dynamiken das
-Funktional
-\[
-J_c[\gamma_c]
-\]
-minimiert.
-\end{definition}
-
-Diese Formulierung erweitert die Variationsinterpretation des
-Übergangsentwurfs von Krümmungsgesetzen allein auf fahrzeugrelevante
-abgeleitete Bewegung.
-
-\section{Kopplung an pose3}
-
-Die Trajektorie \(\gamma_c\) hängt ab von
-\[
-\gamma(s),\quad\theta(s),\quad\phi(s).
-\]
-Damit wird das Schwerpunktproblem zu einem beschränkten Optimierungsproblem in
-den Variablen
-\[
-\kappa(s),\quad\phi(s).
+\text{Modell}\to\text{Ziel}\to\text{Kandidat}
+\to\text{Bewertung}\to\text{Engineering Decision}.
 \]
 
-Schwerpunkt-Trassierung liegt somit natürlich im zuvor eingeführten
-pose3-basierten Zustandsmodell und in der weiter gefassten Sicht der
-Trassierungsoptimierung
-\cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+\section{Historische These, heutige Grenze}
 
-\section{Interpretation}
+Die ursprüngliche These lautete, Übergangsentwurf könne über eine
+repräsentative fahrzeugbezogene Trajektorie statt allein über Gleisgeometrie
+beurteilt werden. Ihre Originalität liegt darin, konstruktive Krümmung,
+Überhöhung und fahrzeugbezogene Folge in einer Berechnungsfrage zu verbinden.
+Sie bleibt eine Forschungs- und Modellierungsthese: Keine aktive
+Kernel-Autorität begründet ein Schwerpunktprinzip, einen universellen
+Bezugspunkt, ein Antwortmodell oder ein Ziel.
 
-Die Schwerpunktformulierung verschiebt die Sicht
-\begin{itemize}
-\item von der Gleisgeometrie
-\item zur Fahrzeugbewegung.
-\end{itemize}
+Der physisch relevante Massenmittelpunkt gehört zu einem bestimmten beladenen
+Fahrzeug und ändert sich mit der Beladung. Ein Modellbezugspunkt \(P_M\) gehört
+dagegen zu einem identifizierten Modell \(M\). Er darf nur unter ausdrücklichen
+Starrkörper-, Beladungs- und Frame-Annahmen mit einem angenommenen
+Massenmittelpunkt zusammenfallen. Eine repräsentative Trajektorie oder ein
+gewichtetes Optimierungsaggregat muss mit keinem von beiden übereinstimmen.
 
-Es entsteht ein einheitlicher Rahmen, in dem Geometrie, Überhöhung und Dynamik
-gleichzeitig optimiert werden. Diese Sicht entspricht der allgemeinen
-Feststellung, dass Übergangs- und Alignment-Qualität nicht allein anhand der
-Geometrie beurteilt werden kann
-\cite{BrustadDalmo2020Review,EN13803_2017}.
+\section{Ein bewusst reduziertes Bezugspunktmodell}
 
-\section{Bezug zum klassischen Entwurf}
-
-\begin{proposition}
-Klassische Übergangsbögen entsprechen Sonderfällen der
-Schwerpunktformulierung, in denen die Referenztrajektorie mit der
-Gleismittellinie zusammenfällt.
-\end{proposition}
-
-In diesem Fall reduziert sich das Problem auf krümmungsbasierte Optimierung in
-der Ebene. Der klassische Alignment-Entwurf wird daher nicht widerlegt,
-sondern als Sonderfall einer allgemeineren Formulierung eingebettet.
-
-\section{Vorteile}
-\begin{itemize}
-\item einheitliche Modellierung von Geometrie und Dynamik,
-\item natürliche Integration der Überhöhung,
-\item Kompatibilität mit Optimierungsrahmen und
-\item Erweiterbarkeit auf fahrzeugspezifische Modelle.
-\end{itemize}
-
-Diese Vorteile folgen daraus, dass das Modell Alignment als zustandsbestimmtes
-physisches System und nicht als statische geometrische Linie behandelt.
-
-\section{Offene Probleme}
-\OPEN{Präzise mechanische Interpretation der Referenztrajektorie.}
-\OPEN{Integration mit vollständigen Fahrdynamikmodellen.}
-\OPEN{Erweiterung auf netzweiten Alignment-Entwurf.}
-\OPEN{Ausdrückliche Behandlung von CRS, lokalen Gleisrahmen und Koordinatentransformationen in großräumigen Alignment-Systemen.}
-
-\section{Verbindung zum AIM-Rahmen}
-\begin{summary}
-Schwerpunkt-Trassierung erweitert den klassischen Alignment-Entwurf
-begrifflich und mathematisch.
-
-Statt geometrische Elemente vorzuschreiben, definiert sie die Entwurfsaufgabe
-anhand einer aus dem Eisenbahnzustand abgeleiteten Referenztrajektorie.
-
-Dies entspricht der AIM-Sicht des Alignments als funktionalem Objekt, das von
-Krümmung und deren abgeleiteten Größen bestimmt wird.
-\end{summary}
-
-\section{Fahrzeugmodell}
-
-\subsection{Starrkörperapproximation}
-Das Eisenbahnfahrzeug wird als Starrkörper mit charakteristischem
-Massenschwerpunkt modelliert.
-
-\begin{definition}[Massenschwerpunkt]
-Es bezeichne
+Sei \(\gamma(s)\) eine ebene Realisierung des Alignments mit Tangente \(t(s)\),
+Normaler \(n(s)\), Richtung \(\theta(s)\) und Krümmung \(\kappa(s)\):
 \[
-C(s)\in\R^3
+t=(\cos\theta,\sin\theta),\qquad
+n=(-\sin\theta,\cos\theta),\qquad n'=-\kappa t.
 \]
-die räumliche Position des Fahrzeugschwerpunkts.
-\end{definition}
-
-Für ebene Gleisgeometrie betrachten wir die Projektion
+Gewählt wird das illustrative Modell
 \[
-\gamma_c(s)\in\R^2
+M_{\mathrm{off}}=(P_M,d,F_{\mathrm{track}},
+\text{starrer Versatz},\text{ebene Realisierung}),
 \]
-der Schwerpunkttrajektorie.
-
-Dieses Modell ist bewusst vereinfacht. Es ersetzt keine vollständige
-Mehrkörpersimulation, sondern führt eine mathematisch handhabbare
-fahrzeugbezogene Zustandsebene ein.
-
-\subsection{Gleiskoordinatenrahmen}
-\begin{definition}[Frenet-Rahmen]
-Es seien
+wobei \(d\) ein fester vorzeichenbehafteter Versatz ist. Die repräsentierte
+Bezugspunktbahn lautet
 \[
-t(s)=(\cos\theta(s),\sin\theta(s))
-\]
-die Tangentenrichtung und
-\[
-n(s)=(-\sin\theta(s),\cos\theta(s))
-\]
-die Normalenrichtung.
-\end{definition}
-
-Das Paar \((t,n)\) definiert ein lokales, an das Gleis gebundenes
-Koordinatensystem. Dieser lokale Rahmen genügt für die vorliegende
-Formulierung; künftige Erweiterungen sollen ihn konsistent mit einem globalen
-Projekt-CRS verbinden.
-
-\subsection{Überhöhungsdrehung}
-\begin{definition}[Gedrehte Normale]
-Der Überhöhungswinkel \(\phi(s)\) definiert eine Drehung des Querschnitts.
-\end{definition}
-
-In einem vereinfachten Modell bleibt die laterale Versatzrichtung an
-\(n(s)\) ausgerichtet, während vertikale Wirkungen implizit erfasst werden.
-Diese Vereinfachung ist auf der vorliegenden begrifflichen Stufe vertretbar;
-eine vollständige Behandlung muss den dreidimensional gedrehten Querschnitt
-und dessen Transformation in den globalen Rahmen ausdrücklich einbeziehen.
-
-\subsection{Versatz des Massenschwerpunkts}
-\begin{definition}[Versatzmodell]
-Es bezeichne \(d>0\) einen charakteristischen lateralen Versatz. Die
-Schwerpunkttrajektorie wird angenähert durch
-\[
-\gamma_c(s)=\gamma(s)+d\,n(s).
-\]
-\end{definition}
-
-Verfeinerte Modelle können eine Abhängigkeit von \(\phi(s)\) einbeziehen, etwa
-\[
-\gamma_c(s)=\gamma(s)+d\,\cos\phi(s)\,n(s).
-\]
-\RESEARCH{Einbeziehung vollständiger dreidimensionaler Fahrzeuggeometrie.}
-
-\section{Dynamik des Massenschwerpunkts}
-
-\subsection{Geschwindigkeit und Beschleunigung}
-\begin{proposition}
-Die Geschwindigkeit des Massenschwerpunkts ist
-\[
-\gamma_c'(s)=t(s)+d\,n'(s).
-\]
-\end{proposition}
-
-Mit
-\[
-n'(s)=-\kappa(s)\,t(s)
-\]
-folgt
-\[
-\gamma_c'(s)=(1-d\kappa(s))\,t(s).
+\gamma_{P_M}(s)=\gamma(s)+d\,n(s).
 \]
 
-\begin{proposition}
-Die Beschleunigung des Massenschwerpunkts ist proportional zu
+Sie ist eine geometrische Ausgabe von \(M_{\mathrm{off}}\), keine gemessene
+Fahrzeugtrajektorie und nicht automatisch die Bahn eines physischen
+Massenmittelpunkts. Überhöhung, Federung, Trägheit, Rad--Schiene-Kontakt,
+Lastumlagerung, Gleisnachgiebigkeit und Unregelmäßigkeiten fehlen.
+
+Ableitung nach der Station ergibt
 \[
-\gamma_c''(s)
-=
--d\kappa'(s)\,t(s)
-+(1-d\kappa(s))\kappa(s)\,n(s).
+\gamma_{P_M}'=(1-d\kappa)t,
 \]
-\end{proposition}
-
-Somit beeinflussen Krümmung und ihre Ableitung die Schwerpunktbewegung. Darin
-liegt ein zentraler begrifflicher Vorteil der Formulierung: Sie macht die
-dynamische Relevanz geometrischer Größen höherer Ordnung ausdrücklich.
-
-\subsection{Effektive Kräfte}
-\begin{definition}[Querbeschleunigung]
-Die Querbeschleunigung des Massenschwerpunkts ist
 \[
-a_c(s)=v^2(1-d\kappa(s))\kappa(s).
+\gamma_{P_M}''
+=-d\kappa't+(1-d\kappa)\kappa n.
 \]
-\end{definition}
-
-Mit Überhöhung ergibt sich die effektive Beschleunigung
+Dies sind Stationsableitungen. Zeitliche Kinematik entsteht erst durch ein
+qualifiziertes Durchfahrtsgesetz \(s(t)\):
 \[
-a_{\mathrm{eff}}(s)=v^2\kappa(s)-g\sin\phi(s).
+\dot\gamma_{P_M}=v\,\gamma_{P_M}',\qquad
+\ddot\gamma_{P_M}=\dot v\,\gamma_{P_M}'+v^2\gamma_{P_M}''.
 \]
+Auch dann beschreiben sie die vorgeschriebene Punktbahn des reduzierten
+Modells, keine mechanisch gelöste Wagenkastenantwort.
 
-Der zweite Ausdruck spiegelt dieselbe Krümmungs--Überhöhungs-Kopplung, die in
-Eisenbahnentwurfsnormen und dynamischer Alignment-Interpretation erscheint
-\cite{Klein1998Trassierung,EN13803_2017}.
+\section{Von der Modellausgabe zum Optimierungsproblem}
 
-\section{Gekoppeltes Entwurfsproblem}
+Eine illustrative Untersuchung kann fragen, ob die Änderung eines Übergangs
+die Variation dieser Modellbahn reduziert. Zuerst ist das Problem zu erklären:
 
-\begin{definition}[Fahrzeugbezogene Zielfunktion]
-Definiere
+\begin{center}
+\small
+\begin{tabular}{p{0.27\linewidth}p{0.63\linewidth}}
+\toprule
+Vertragsfeld & Erklärung im Beispiel\\
+\midrule
+Problemidentität & Bezugspunktbahn-Sensitivität eines Übergangs\\
+Modell & \(M_{\mathrm{off}}\) mit erklärtem \(d\) und ebenem Gleis-Frame\\
+Entscheidungsvariablen & gewählte Übergangsparameter \(x=(L,\alpha)\)\\
+feste Eingaben & Endzustände, Familie, Realisierung, \(d\), Testdurchfahrt\\
+abgeleitete Größen & \(\kappa,\gamma,\gamma_{P_M}\) und ihre Ableitungen\\
+Nebenbedingungen & Kontinuität, Parameter- und erklärte Engineering-Grenzen\\
+offene Freiheiten & Überhöhung und Fahrzeugantwort, sofern nicht ergänzt\\
+Provenienz & Berlinish-/axtranNew-inspiriertes Modellierungsexperiment\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Ein mögliches geometrisches Sensitivitätsziel ist
 \[
-J_{\mathrm{veh}}[\kappa,\phi]
-=
-\int_0^L\|\gamma_c''(s)\|^2\,\dd s.
+J_P(x)=\int_0^{L(x)}
+\left\|\gamma_{P_M}''(s;x)\right\|^2\,\dd s .
 \]
-\end{definition}
-Dieses Funktional misst unmittelbar die Glattheit der Schwerpunktbewegung.
+Seine Quelle ist das erklärte Experiment; es misst eine Eigenschaft der
+stationsbezogenen Bahn. Es ist nicht von selbst ein Komfort-, Sicherheits-,
+Verschleiß-, Kosten- oder Energieziel.
 
-\begin{definition}[Dynamische Zielfunktion]
-Definiere
+Wird zusätzlich das reduzierte Gleichgewichtsresiduum untersucht, kann ein
+getrenntes Ziel lauten:
 \[
-J_{\mathrm{dyn}}[\kappa,\phi]
-=
-\int_0^L\Bigl(v^2\kappa(s)-g\sin\phi(s)\Bigr)^2\,\dd s.
+J_r(x)=\int_0^{T(x)}
+r_{\mathrm{bal}}(t;x)^2\,\dd t,
+\qquad
+r_{\mathrm{bal}}=v^2\kappa-g\sin\phi,
 \]
-\end{definition}
-
-\begin{definition}[Kombiniertes Fahrzeugfunktional]
-Eine kombinierte Zielfunktion ist
+unter den Annahmen von \cref{chap:dynamic-balance}. Beide Ziele haben andere
+Einheiten und Bedeutungen. Ein kombiniertes Ziel
 \[
-J[\kappa,\phi]
-=
-\alpha J_{\mathrm{veh}}
-+\beta J_{\mathrm{dyn}}
-+\gamma\int_0^L(\kappa'(s))^2\,\dd s
-+\delta\int_0^L(\phi'(s))^2\,\dd s.
+J=w_PJ_P/J_{P,0}+w_rJ_r/J_{r,0}
 \]
-\end{definition}
+ist nur definiert, wenn eine verantwortliche Quelle Skalen, Gewichte, Zweck
+und Anwendbarkeit vorgibt. Weder Modell noch Solver besitzen diese Wahl.
 
-Sie verbindet geometrische Glättung, dynamischen Ausgleich und
-Regularisierung höherer Ordnung in einem Optimierungsrahmen.
+\section{Freiheitsgrade und Kandidatenstatus}
 
-\section{Schwerpunkt-Trassierung (formale Definition)}
-\begin{definition}[Schwerpunkt-Alignment]
-Ein Schwerpunkt-Alignment ist ein Paar
+Im beschränkten Beispiel sind \(L\) und \(\alpha\) innerhalb erklärter Grenzen
+frei. Endzustände und gewählte Familie sind fest; Koeffizienten und End-Pose
+werden abgeleitet; Kontinuität wird beschränkt. Überhöhung,
+Durchfahrtsgesetz, \(d\), Fahrzeugparameter oder Realisierungsdaten können
+fest, variabel oder offen sein, doch ihre Rolle muss dokumentiert werden. Sie
+werden nicht allein durch das Wort \emph{Schwerpunkt} zu Variablen.
+
+Ein Solver-Ergebnis ist daher
 \[
-(\kappa,\phi),
+C_{\mathrm{SP}}=
+(\mathcal P.id,M_{\mathrm{off}}.id,x^\star,J,
+\text{Residuen},\text{Konvergenz},\text{Provenienz}),
 \]
-das das Funktional
+ein Berechnungskandidat. Seine Anwendbarkeit muss weiterhin anhand
+qualifizierter Evidenz, Regeln, Lifecycle und Zweck bewertet werden. Auswahl
+oder Ablehnung benötigt eine Engineering Decision mit Autorität.
+
 \[
-J[\kappa,\phi]
-\]
-unter folgenden Bedingungen minimiert:
-\begin{itemize}
-\item pose3-Dynamik,
-\item Randbedingungen und
-\item Engineering-Beschränkungen.
-\end{itemize}
-\end{definition}
-
-Damit wird Alignment-Entwurf zur Optimierung einer fahrzeugbezogenen
-Zustandstrajektorie statt zur bloßen Komposition geometrischer Elemente.
-
-\section{Interpretation}
-In dieser Formulierung ist das Gleis nicht mehr der primäre Entwurfsgegenstand;
-die Bewegung des Fahrzeugs wird zentral.
-
-Der klassische Alignment-Entwurf ergibt sich als Sonderfall mit
-\[
-d=0\quad\text{und}\quad\phi(s)=0.
+\boxed{\text{berechnet}
+\neq\text{anwendbar}
+\neq\text{angenommen}
+\neq\text{autoritativ}}
 \]
 
-\section{Diskussion}
-Das dargestellte Modell ist bewusst vereinfacht. Es erfasst jedoch bereits:
-\begin{itemize}
-\item die Kopplung zwischen Krümmung und Überhöhung,
-\item den Einfluss von Krümmungsableitungen und
-\item die Beziehung zwischen Geometrie und Dynamik.
-\end{itemize}
+Der aktuelle Kontinuitätssolver trägt nur die bereits in
+\cref{chap:optimization-in-state-space} erklärte beschränkte
+Kontinuitätsaussage. Dieses Kapitel behauptet keine aktuelle AXTRAN-Fahrzeug-,
+Überhöhungs-, Komfort- oder Netzoptimierung und keine automatische
+ingenieurtechnische Auswahl.
 
-Sein Hauptbeitrag ist deshalb begrifflich und strukturell: Es definiert eine
-mathematisch kohärente Verbindung zwischen Alignment-Geometrie und
-fahrzeugorientiertem Entwurfsdenken.
+\section{Wissenschaftliches Potenzial ohne Kanonisierung}
 
-\RESEARCH{Erweiterung auf vollständige Mehrkörper-Fahrzeugmodelle.}
-\RESEARCH{Kalibrierung anhand gemessener Gleisdaten.}
-\OPEN{Integration in praktische Entwurfsabläufe.}
+Die Modellidee überlebt mit Qualifikation. Weiterführende Arbeit kann
+\(M_{\mathrm{off}}\) durch ein identifiziertes Starrkörper- oder
+Mehrkörpermodell ersetzen, Parameter anhand qualifizierter Evidenz kalibrieren,
+Beobachtungs- und Modellformunsicherheit fortpflanzen oder mehrere
+Fahrzeugbezugspunkte vergleichen. Jede Erweiterung muss Subjekt, Modell,
+Frame, Eingaben, Gültigkeit und Zweck angeben.
 
-\section{Verbindung zum AIM-Rahmen}
-\begin{summary}
-Die Verbindung von pose3 und einem fahrzeugbezogenen Modell stellt eine
-strenge Grundlage für Schwerpunkt-Trassierung bereit.
-
-Sie überführt Alignment-Entwurf in ein Problem der Optimierung der Bewegung
-eines repräsentativen physischen Systems.
-
-Dies unterstützt die zentrale AIM-Idee, dass Alignment nicht lediglich ein
-geometrisches Objekt, sondern eine funktionale, durch Krümmung und ihre
-physischen Folgen bestimmte Entität ist.
-\end{summary}
+Die historische Metapher bleibt produktiv, weil sie eine bessere
+nachgelagerte Frage stellt: Welche Folge erzeugt eine Alignment-Konstruktion
+für ein bestimmtes fahrzeugbezogenes Modell? Die Antwort bleibt
+modellspezifische Evidenz. Sie definiert Alignment nicht neu, begründet keine
+universelle Gültigkeit und entscheidet nicht, was Engineering annehmen soll.

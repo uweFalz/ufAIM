@@ -36,6 +36,7 @@ import {
 	getWorkspaceContextIds as readWorkspaceContextIds,
 	getWorkspaceSelectedElementId as readWorkspaceSelectedElementId,
 } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import { resolveViewerElementSelection } from "@app/domain/workspace/buildCrossViewElementSelectionModel.js";
 
 export function makeViewController({
 	store,
@@ -604,14 +605,22 @@ export function makeViewController({
 
 	function syncSelectionState(state, activeGeometry) {
 		const selectedElementId = readWorkspaceSelectedElementId(state);
+		const selectedDiscipline = state?.workspace_selection?.elementDiscipline ?? null;
 		const projection = activeGeometry?.projection ?? null;
 		const segmentIds = new Set(
 			Array.isArray(projection?.segments)
 				? projection.segments.map((segment) => String(segment?.elementId ?? segment?.id ?? "")).filter(Boolean)
 				: []
 		);
+		const resolution = resolveViewerElementSelection({ selectedElementId, selectedDiscipline, segmentIds });
 
-		if (selectedElementId && !segmentIds.has(selectedElementId)) {
+		if (resolution.retainShared && resolution.viewerElementId === null) {
+			cachedSelectionElementId = null;
+			threeA.setAlignmentSelection?.(null);
+			return null;
+		}
+
+		if (resolution.clearShared) {
 			const primaryId = getFocusObjectId(state);
 			const contextIds = getWorkspaceContextIds(state);
 			if (primaryId) {
@@ -682,6 +691,9 @@ export function makeViewController({
 			segmentKinds: Array.isArray(projection?.segments)
 				? [...new Set(projection.segments.map((segment) => String(segment?.kind ?? "unknown")))]
 				: [],
+			elements: Array.isArray(projection?.segments)
+				? projection.segments.map((segment) => ({ id: String(segment?.elementId ?? segment?.id ?? ""), elementId: String(segment?.elementId ?? segment?.id ?? ""), kind: segment?.kind ?? null, s0: segment?.s0, s1: segment?.s1, length: segment?.length, isTransition: Boolean(segment?.isTransition), isArc: Boolean(segment?.isArc), isStraight: Boolean(segment?.isStraight) }))
+				: [],
 			projectionSignature,
 			crsId,
 			mode: renderMode,
@@ -728,6 +740,7 @@ export function makeViewController({
 			primaryId: objectId,
 			contextIds,
 			elementId,
+			elementDiscipline: "horizontal",
 			source: "viewer",
 			crsId: state?.workspace_selection?.crsId ?? null,
 		});
@@ -775,10 +788,12 @@ export function makeViewController({
 		const sectionInfo = samplePointAndTangent(poly, cum, cursorS);
 
 		if (sectionInfo) {
+			lastRenderSnapshot.cursor = { s: cursorS, x: sectionInfo.x, y: sectionInfo.y, tangent: { x: sectionInfo.tx, y: sectionInfo.ty } };
 			threeA.setMarkerFromWorld?.({ x: sectionInfo.x, y: sectionInfo.y, z: 0 });
 			const line = makeSectionLine(sectionInfo, 30);
 			threeA.setSectionLineFromWorld?.(line.p0, line.p1);
 		} else {
+			lastRenderSnapshot.cursor = null;
 			threeA.clearMarker?.();
 			threeA.clearSectionLine?.();
 		}
@@ -790,7 +805,7 @@ export function makeViewController({
 		threeA.setTrackFromWorldPolyline?.(poly);
 	}
 
-	async function syncOperatingMode(activeGeometry) {
+	async function syncOperatingMode(activeGeometry, state) {
 		const proj4 = proj4Module.default ?? globalThis.proj4 ?? null;
 		const sourceContract = activeGeometry?.projection?.georeference ?? null;
 		const resolution = sourceContract?.horizontal?.status ? sourceContract.horizontal : sourceContract?.resolution ?? null;
@@ -819,6 +834,12 @@ export function makeViewController({
 		}
 		if (mapEnabled) {
 			mapA.setRenderPrimitives(geographic.geometry);
+			const cum = ensureChainageCache(activeGeometry?.polyline2d);
+			const cursor = cum ? samplePointAndTangent(activeGeometry.polyline2d, cum, Number(state?.cursor?.s ?? 0)) : null;
+			if (cursor) {
+				const projected = transform([cursor.x, cursor.y]);
+				mapA.setCursor({ longitude: Number(projected?.[0]), latitude: Number(projected?.[1]), objectId: activeGeometry?.objectId ?? null, s: Number(state?.cursor?.s), crsId: resolution?.resolvedEpsg ?? null });
+			} else mapA.setCursor(null);
 			mapA.fitToContent();
 			lastRenderSnapshot.placement = "geographic";
 			lastRenderSnapshot.georeference = geographic.georeference;
@@ -895,7 +916,7 @@ export function makeViewController({
 				syncAlignmentProjection(activeGeometry, state, { selectedElementId: currentSelectedElementId });
 				syncSectionSamplingAndMarker(state, poly);
 				syncActiveTrack(poly);
-				await syncOperatingMode(activeGeometry);
+				await syncOperatingMode(activeGeometry, state);
 			} catch (err) {
 				console.error("[ViewController] handler crashed (isolated):", err);
 				ui?.logInfo?.(

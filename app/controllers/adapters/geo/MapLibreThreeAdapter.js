@@ -41,7 +41,19 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 
 	setCursor(cursor) {
 		this.cursor = cursor;
-		// später: cursor marker / station highlight
+		if (!this.map) return;
+		const valid = Number.isFinite(cursor?.longitude) && Number.isFinite(cursor?.latitude);
+		const geojson = { type: "Feature", properties: { objectId: cursor?.objectId ?? null, s: cursor?.s ?? null }, geometry: valid ? { type: "Point", coordinates: [cursor.longitude, cursor.latitude] } : null };
+		const apply = () => {
+			if (this.map.getSource("ufaim-cursor")) this.map.getSource("ufaim-cursor").setData(geojson);
+			else {
+				this.map.addSource("ufaim-cursor", { type: "geojson", data: geojson });
+				this.map.addLayer({ id: "ufaim-cursor", type: "circle", source: "ufaim-cursor", paint: { "circle-radius": 7, "circle-color": "#ffc107", "circle-stroke-color": "#101820", "circle-stroke-width": 2 } });
+			}
+		};
+		if (this.map.loaded()) apply(); else this.map.once("load", apply);
+		this.debug ??= {};
+		this.debug.cursor = valid ? { ...cursor } : null;
 	}
 
 	fitToContent(options = {}) {

@@ -38,12 +38,84 @@ from a stable conceptual core rather than project-specific ad-hoc
 semantics.
 
 % ============================================================
+\section{From Kernel Meaning to a Shared Engineering Workspace}
+% ============================================================
+
+The application consequence can be stated as a responsibility chain rather
+than as an implementation stack. The Knowledge Kernel owns the meaning of
+engineering objects, states, evidence, realization, and evaluation. Services
+operationalize that meaning for bounded tasks such as import review,
+admission, reconstruction, projection, and persistence. They may implement
+or demonstrate Kernel contracts, but their interfaces and current data shapes
+do not redefine those contracts. The visible application then presents the
+service results as task-appropriate representations.
+
+In the Reference Implementation, the name \emph{alignmentOS} denotes this
+separation between alignment knowledge and the applications that use it. This
+is an implementation correspondence and product interpretation, not an
+additional canonical Kernel concept. New applications can reuse existing
+services or add bounded services without transferring engineering meaning to
+the user interface.
+
+\subsection{Admission before use}
+
+Import is not a conversion shortcut from a file to an Alignment. Parsing first
+produces source-grounded candidates and evidence. These records remain outside
+the downstream engineering workspace until an explicit admission action
+establishes which durable object they concern and which information may be used
+constructively. Rejection, ambiguity, missing evidence, and partial evidence
+remain observable outcomes rather than being repaired by defaults.
+
+Durable distinguishability belongs to Engineering Object Identity under the
+active Kernel record KC-ID-001, not to a file, store key, geometry, or view
+model. The current Reference Implementation maps an admitted engineering
+object to a \emph{SpotObject} and presents admitted objects and their explicit
+relations in the loaded SPOT universe. Both names describe current
+implementation correspondence here. They are not introduced as Kernel
+definitions, and in particular they do not promote the unresolved SPOT-universe
+Research concept or make a particular store implementation authoritative.
+
+\subsection{One object, several synchronized views}
+
+The engineering workspace may expose one admitted Alignment through a plan or
+world-oriented Main view, a track-oriented q-view, and longitudinal L-views.
+These are synchronized cameras and representations over the same object,
+selection, intrinsic cursor, and revision. They do not create three Alignment
+identities. View-specific sampling, projection, or presentation remains
+downstream of the shared engineering state.
+
+The Reference Implementation demonstrates this correspondence by admitting a
+reviewed import candidate, reading the admitted object back from persistence,
+and presenting the same active identity across its synchronized views. That
+demonstration is evidence of an implementation path, not the source of Kernel
+meaning.
+
+\subsection{Truthful GND admission as a worked example}
+
+A GND import illustrates why the admission boundary matters. An EL record may
+support constructive horizontal geometry when its type, parameters, sequence,
+and transition meaning are sufficiently established. EH and EU records may at
+the same time remain partial evidence for vertical and cant information. EK or
+the relation between source tracks, kilometre line, and Alignment may remain
+unresolved. The admitted object must preserve these different epistemic states
+and their provenance; filename, drop order, spatial proximity, or a successful
+parse does not supply the missing relation.
+
+The resulting workspace can therefore show a usable horizontal Alignment while
+also showing that profile, cant, kilometre addressing, or source relations need
+review. This is not an incomplete presentation of a secretly complete object.
+It is the truthful presentation of the engineering knowledge currently
+available.
+
+% ============================================================
 \section{Connection to AIM}
 % ============================================================
 
 \begin{summary}
-The contribution of the Applications part is to show how approved AIM
+The contribution of the Applications part is to show how Kernel-governed AIM
 concepts translate into concrete engineering consequences, including
 runtime-supported evaluation, realization-aware comparison, and
-interoperable representation for decision support.
+interoperable representation for decision support. Import evidence becomes
+engineering state only through explicit admission, and synchronized views
+remain representations of one durable object.
 \end{summary}

@@ -22,10 +22,13 @@ import {
 
 export function buildImportRows(windowState = {}, importState = {}) {
 	const items = Array.isArray(importState?.items) ? importState.items : [];
+	const rejectedItems = Array.isArray(importState?.rejectedItems) ? importState.rejectedItems : [];
 	const previewId = String(windowState?.preview_item?.id ?? "");
 
-	return items.map((item) => {
+	return [...items, ...rejectedItems].map((item) => {
 		const itemId = String(item?.id ?? "");
+		const rejected = item?.status?.rejected === true;
+		const promotable = item?.status?.promotable === true && !rejected;
 
 		return {
 			itemId,
@@ -33,9 +36,16 @@ export function buildImportRows(windowState = {}, importState = {}) {
 			fileName: item?.source?.fileName ?? null,
 			kind: item?.kind ?? "unknown",
 			crsId: deriveImportItemCrsId(item),
-			promotable: item?.status?.promotable === true,
+			promotable,
+			rejected,
 			accepted: item?.status?.accepted === true,
 			hasSparse: Boolean(item?.derived?.sparseAlignment),
+			statusLabel: rejected
+				? "abgelehnt"
+				: promotable
+					? "qualifizierter Kandidat"
+					: "partiell / nicht übernehmbar",
+			reason: readImportReason(item),
 			isPreviewActive: previewId !== "" && previewId === itemId,
 			stationRange: deriveImportStationRange(item),
 			lengthHint: deriveImportLengthHint(item),
@@ -43,6 +53,18 @@ export function buildImportRows(windowState = {}, importState = {}) {
 			qualityFlags: deriveImportQualityFlags(item),
 		};
 	});
+}
+
+function readImportReason(item) {
+	return (
+		item?.status?.reason ??
+		item?.status?.code ??
+		item?.rejectionReason ??
+		item?.reason ??
+		item?.diagnostics?.[0]?.reason ??
+		item?.diagnostics?.[0]?.message ??
+		null
+	);
 }
 
 // -----------------------------------------------------------------------------

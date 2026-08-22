@@ -30,10 +30,86 @@ Anwendungen werden reproduzierbar und vergleichbar, weil sie aus einem
 stabilen Begriffskern statt aus projektspezifischer Ad-hoc-Semantik
 abgeleitet werden.
 
+\section{Von Kernel-Bedeutung zum gemeinsamen Engineering-Workspace}
+
+Die Anwendungskonsequenz lässt sich als Verantwortungsfolge statt als
+Implementierungsstapel beschreiben. Der Knowledge Kernel besitzt die Bedeutung
+von Ingenieurobjekten, Zuständen, Evidenz, Realisierung und Auswertung. Services
+operationalisieren diese Bedeutung für begrenzte Aufgaben wie Importprüfung,
+Zulassung, Rekonstruktion, Projektion und Persistenz. Sie können Kernel-Verträge
+umsetzen oder demonstrieren, doch ihre Schnittstellen und gegenwärtigen
+Datenformen definieren diese Verträge nicht neu. Die sichtbare Anwendung stellt
+die Service-Ergebnisse anschließend in aufgabengerechten Repräsentationen dar.
+
+In der Referenzimplementierung bezeichnet \emph{alignmentOS} diese Trennung
+zwischen Alignment-Wissen und den Anwendungen, die es nutzen. Dies ist eine
+Implementierungskorrespondenz und Produktinterpretation, kein zusätzlicher
+kanonischer Kernel-Begriff. Neue Anwendungen können vorhandene Services
+wiederverwenden oder begrenzte Services ergänzen, ohne Ingenieurbedeutung an
+die Benutzeroberfläche zu übertragen.
+
+\subsection{Zulassung vor Nutzung}
+
+Import ist keine Abkürzung von einer Datei zu einem Alignment. Das Parsen
+erzeugt zunächst quellengestützte Kandidaten und Evidenz. Diese Datensätze
+bleiben außerhalb des nachgelagerten Engineering-Workspace, bis eine
+ausdrückliche Zulassung festlegt, welchen dauerhaften Gegenstand sie betreffen
+und welche Informationen konstruktiv verwendet werden dürfen. Ablehnung,
+Mehrdeutigkeit, fehlende Evidenz und Teilevidenz bleiben sichtbare Ergebnisse,
+statt durch Vorgaben repariert zu werden.
+
+Dauerhafte Unterscheidbarkeit gehört nach dem aktiven Kernel-Datensatz
+KC-ID-001 zur Engineering Object Identity, nicht zu Datei, Speicherschlüssel,
+Geometrie oder View-Modell. Die gegenwärtige Referenzimplementierung bildet
+einen zugelassenen Ingenieurgegenstand als \emph{SpotObject} ab und stellt
+zugelassene Objekte sowie ihre ausdrücklichen Relationen im geladenen
+SPOT-Universum bereit. Beide Namen beschreiben hier die gegenwärtige
+Implementierungskorrespondenz. Sie werden nicht als Kernel-Definitionen
+eingeführt und erheben insbesondere den ungeklärten SPOT-Universumsbegriff aus
+der Forschung nicht zum kanonischen Begriff; auch machen sie keine bestimmte
+Speicherimplementierung autoritativ.
+
+\subsection{Ein Objekt, mehrere synchronisierte Sichten}
+
+Der Engineering-Workspace kann ein zugelassenes Alignment durch eine plan-
+oder weltorientierte Main-View, eine gleisbezogene q-View und longitudinale
+L-Views zeigen. Dies sind synchronisierte Kameras und Repräsentationen über
+dasselbe Objekt, dieselbe Auswahl, denselben intrinsischen Cursor und dieselbe
+Revision. Sie erzeugen nicht drei Alignment-Identitäten. Viewspezifische
+Abtastung, Projektion oder Darstellung bleibt dem gemeinsamen
+Ingenieurzustand nachgeordnet.
+
+Die Referenzimplementierung demonstriert diese Korrespondenz, indem sie einen
+geprüften Importkandidaten zulässt, das zugelassene Objekt aus der Persistenz
+zurückliest und dieselbe aktive Identität in den synchronisierten Sichten
+darstellt. Diese Demonstration ist Evidenz für einen Implementierungsweg, nicht
+die Quelle der Kernel-Bedeutung.
+
+\subsection{Wahrhaftige GND-Zulassung als Beispiel}
+
+Ein GND-Import zeigt, warum die Zulassungsgrenze erforderlich ist. Ein
+EL-Datensatz kann konstruktive Horizontalgeometrie stützen, wenn Typ,
+Parameter, Folge und Übergangsbedeutung hinreichend geklärt sind. EH- und
+EU-Datensätze können zugleich nur Teilevidenz für Gradiente und Überhöhung
+bleiben. EK oder die Relation zwischen Quellgleisen, Kilometrierungslinie und
+Alignment kann ungeklärt bleiben. Das zugelassene Objekt muss diese
+unterschiedlichen Erkenntnisstände und ihre Provenienz bewahren; Dateiname,
+Drop-Reihenfolge, räumliche Nähe oder erfolgreiches Parsen liefern die fehlende
+Relation nicht.
+
+Der resultierende Workspace kann daher ein nutzbares horizontales Alignment
+zeigen und zugleich kenntlich machen, dass Gradiente, Überhöhung,
+Kilometrierungsadressierung oder Quellrelationen geprüft werden müssen. Dies
+ist keine unvollständige Darstellung eines insgeheim vollständigen Objekts,
+sondern die wahrhaftige Darstellung des gegenwärtig verfügbaren
+Ingenieurwissens.
+
 \section{Verbindung zu AIM}
 \begin{summary}
-Der Beitrag des Anwendungsteils besteht darin zu zeigen, wie genehmigte
+Der Beitrag des Anwendungsteils besteht darin zu zeigen, wie Kernel-gesteuerte
 AIM-Begriffe zu konkreten Ingenieurfolgen führen, darunter
 laufzeitgestützte Auswertung, realisierungsbewusster Vergleich und
-interoperable Repräsentation zur Entscheidungsunterstützung.
+interoperable Repräsentation zur Entscheidungsunterstützung. Import-Evidenz
+wird erst durch ausdrückliche Zulassung zum Ingenieurzustand, und
+synchronisierte Sichten bleiben Repräsentationen eines dauerhaften Objekts.
 \end{summary}

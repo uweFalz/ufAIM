@@ -80,17 +80,27 @@ export function createImportSessionService({
 		return replaceImportState(makeInitialState());
 	}
 
-	function getSessionState() {
-		return publicState(getImportState());
+	function getSessionState({ projection = "full" } = {}) {
+		// Import.GetState is deliberately the public/session projection. Do not
+		// normalize the private resultEvidence collection only to discard it in
+		// publicState: physical GND datasets can retain hundreds of megabytes of
+		// source evidence, while callers here need only items and session status.
+		if (projection === "summary") return publicStateSummary(getState());
+		return publicState(getState());
 	}
 
-	function getResultEvidence({ evidenceId = null } = {}) {
-		const records = getImportState().resultEvidence;
+	function getResultEvidence({ evidenceId = null, projection = "full" } = {}) {
+		const rawState = getState();
+		const records = Array.isArray(rawState?.resultEvidence)
+			? rawState.resultEvidence.filter(isObject)
+			: [];
 		if (isNonEmptyString(evidenceId)) {
 			const record = records.find((entry) => entry.evidenceId === evidenceId) ?? null;
-			return clone({ schema: "ufAIM.import-result-evidence", version: 1, found: Boolean(record), evidenceId, record });
+			const projected = record && projection === "workbench" ? projectEvidenceForWorkbench(record) : record;
+			return clone({ schema: "ufAIM.import-result-evidence", version: 1, found: Boolean(record), evidenceId, record: projected });
 		}
-		return clone({ schema: "ufAIM.import-result-evidence", version: 1, found: true, records });
+		const projected = projection === "workbench" ? records.map(projectEvidenceForWorkbench) : records;
+		return clone({ schema: "ufAIM.import-result-evidence", version: 1, found: true, records: projected });
 	}
 
 	function publishResultEvidence({ evidence, items = [] } = {}) {
@@ -118,6 +128,117 @@ export function createImportSessionService({
 			resultEvidence: [...prev.resultEvidence, record],
 			error: null,
 		});
+	}
+
+	function commitJob({ batchId, source = null, files } = {}) {
+		if (!isNonEmptyString(batchId)) throw new Error("Import.CommitJob requires batchId");
+		if (!Array.isArray(files) || files.length === 0) {
+			throw new Error("Import.CommitJob requires non-empty files");
+		}
+		const accepted = [];
+		const rejected = [];
+		const resultEvidence = [];
+		const jobIds = new Set();
+		const itemIds = new Set();
+		const evidenceIds = new Set();
+
+		for (const file of files) {
+			if (!isObject(file) || !isNonEmptyString(file.jobId) || !isNonEmptyString(file.fileName)) {
+				throw new Error("Import.CommitJob file requires jobId and fileName");
+			}
+			if (jobIds.has(file.jobId)) throw new Error(`Import.CommitJob duplicate jobId: ${file.jobId}`);
+			jobIds.add(file.jobId);
+			if (!isObject(file.publication) || !isObject(file.publication.evidence)) {
+				throw new Error(`Import.CommitJob invalid publication: ${file.jobId}`);
+			}
+			if (!Array.isArray(file.items) || !Array.isArray(file.rejectedItems)) {
+				throw new Error(`Import.CommitJob invalid item arrays: ${file.jobId}`);
+			}
+			const evidence = file.publication.evidence;
+			if (
+				evidence.schema !== "ufAIM.import-result-evidence"
+				|| evidence.version !== 1
+				|| !isNonEmptyString(evidence.evidenceId)
+			) {
+				throw new Error(`Import.CommitJob invalid evidence: ${file.jobId}`);
+			}
+			if (evidenceIds.has(evidence.evidenceId)) {
+				throw new Error(`Import.CommitJob duplicate evidenceId: ${evidence.evidenceId}`);
+			}
+			evidenceIds.add(evidence.evidenceId);
+			const publishedItems = Array.isArray(file.publication.items) ? file.publication.items.filter(isObject) : [];
+			const qualifiedBySourceItemId = new Map();
+			const qualifiedPublicationIds = new Set();
+			let hasQualifiedPublicationItems = false;
+			for (const published of publishedItems) {
+				if (!isNonEmptyString(published?.sourceItemId) || !isNonEmptyString(published?.id)) continue;
+				hasQualifiedPublicationItems = true;
+				const sourceItemId = String(published.sourceItemId);
+				const publicationId = String(published.id);
+				if (qualifiedBySourceItemId.has(sourceItemId)) throw new Error(`Import.CommitJob ambiguous publication sourceItemId: ${sourceItemId}`);
+				if (qualifiedPublicationIds.has(publicationId)) throw new Error(`Import.CommitJob ambiguous publication item ID: ${publicationId}`);
+				qualifiedBySourceItemId.set(sourceItemId, publicationId);
+				qualifiedPublicationIds.add(publicationId);
+			}
+			const fileAccepted = [];
+			const fileRejected = [];
+			const rawItemIds = new Set();
+			const rawItems = [...file.items, ...file.rejectedItems];
+			for (const raw of rawItems) {
+				const sourceItemId = isObject(raw) && isNonEmptyString(raw.id) ? String(raw.id) : null;
+				if (!sourceItemId || rawItemIds.has(sourceItemId)) {
+					throw new Error(`Import.CommitJob duplicate or invalid item ID: ${String(sourceItemId ?? "")}`);
+				}
+				rawItemIds.add(sourceItemId);
+			}
+			for (const raw of rawItems) {
+				const sourceItemId = String(raw.id);
+				const evidenceItemId = qualifiedBySourceItemId.get(sourceItemId)
+					?? (qualifiedPublicationIds.has(sourceItemId) ? sourceItemId : null);
+				if (hasQualifiedPublicationItems && sourceItemId && !evidenceItemId) throw new Error(`Import.CommitJob publication item identity missing: ${sourceItemId}`);
+				const linked = isObject(raw) ? { ...raw, evidenceId: evidence.evidenceId, ...(evidenceItemId ? { evidenceItemId } : {}) } : raw;
+				const validation = normalizeAndValidateImportItem(linked);
+				const normalized = validation.ok
+					? normalizeItemAcceptance(validation.item)
+					: { ...makeRejectedEnvelope(linked, validation.validation), evidenceId: evidence.evidenceId };
+				if (!isNonEmptyString(normalized?.id) || itemIds.has(normalized.id)) {
+					throw new Error(`Import.CommitJob duplicate or invalid item ID: ${String(normalized?.id ?? "")}`);
+				}
+				itemIds.add(normalized.id);
+				if (isRejectedImportItem(normalized)) fileRejected.push(normalized);
+				else fileAccepted.push(normalized);
+			}
+			accepted.push(...fileAccepted);
+			rejected.push(...fileRejected);
+			resultEvidence.push(deepFreeze(clone({
+				...evidence,
+				acceptedItemIds: fileAccepted.map((item) => item.evidenceItemId ?? item.id),
+				rejectedItemIds: fileRejected.map((item) => item.evidenceItemId ?? item.id),
+			})));
+		}
+
+		const previous = getImportState();
+		const continuesBatch = previous?.sessionId === String(batchId);
+		const nextItems = continuesBatch
+			? mergeNewById(previous.items, accepted)
+			: accepted;
+		const nextRejected = continuesBatch
+			? mergeNewById(previous.rejectedItems, rejected)
+			: rejected;
+		const nextEvidence = continuesBatch
+			? mergeNewByKey(previous.resultEvidence, resultEvidence, "evidenceId")
+			: resultEvidence;
+		const next = ensureShape({
+			sessionId: String(batchId),
+			phase: derivePhase({ items: nextItems, rejectedItems: nextRejected }),
+			source: normalizeSource(source),
+			items: nextItems,
+			rejectedItems: nextRejected,
+			resultEvidence: nextEvidence,
+			error: null,
+			stats: makeStats(nextItems, nextRejected),
+		});
+		return replaceImportState(next);
 	}
 
 	function addItems({ items = [] } = {}) {
@@ -245,6 +366,27 @@ export function createImportSessionService({
 		return replaceImportState(next);
 	}
 
+	function setRelationDecision({ evidenceId, candidateId = null, action, expectedRevision } = {}) {
+		if (!isNonEmptyString(evidenceId) || !["review", "withdraw-review", "confirm", "unconfirm"].includes(action)) return { ok: false, code: "INVALID_SOURCE_ASSOCIATION_REVIEW" };
+		const reviewAction = action === "confirm" ? "review" : action === "unconfirm" ? "withdraw-review" : action;
+		const prev = getImportState();
+		const index = prev.resultEvidence.findIndex((entry) => entry?.evidenceId === evidenceId);
+		if (index < 0) return { ok: false, code: "RELATION_EVIDENCE_NOT_FOUND" };
+		const record = prev.resultEvidence[index];
+		const revision = Number(record?.relationDecision?.revision ?? 0);
+		if (Number(expectedRevision) !== revision) return { ok: false, code: "STALE_RELATION_DECISION", revision };
+		const candidate = record.relationCandidates?.find((entry) => entry?.id === candidateId) ?? null;
+		const currentReviewedId = record?.relationDecision?.reviewedCandidateId ?? record?.relationDecision?.confirmedCandidateId ?? null;
+		if (reviewAction === "review" && !candidate) return { ok: false, code: "SOURCE_ASSOCIATION_CANDIDATE_NOT_FOUND", revision };
+		if (reviewAction === "withdraw-review" && (!candidateId || currentReviewedId !== candidateId)) return { ok: false, code: "SOURCE_ASSOCIATION_NOT_REVIEWED", revision };
+		const relationDecision = deepFreeze({ revision: revision + 1, reviewedCandidateId: reviewAction === "review" ? candidateId : null, decidedAt: new Date().toISOString(), provenance: { kind: "explicit-user-import-session-source-association-review", evidenceId, candidateId, claimScope: "source-association-only" } });
+		const nextRecord = deepFreeze(clone({ ...record, relationDecision }));
+		const resultEvidence = [...prev.resultEvidence]; resultEvidence[index] = nextRecord;
+		const patchItem = (item) => item?.evidenceId !== evidenceId ? item : ({ ...item, derived: { ...(item.derived ?? {}), sourceEvidenceSnapshot: updateSnapshotRelation(item?.derived?.sourceEvidenceSnapshot, nextRecord) } });
+		replaceImportState({ ...prev, resultEvidence, items: prev.items.map(patchItem), rejectedItems: prev.rejectedItems.map(patchItem) });
+		return { ok: true, evidenceId, relationDecision: clone(relationDecision) };
+	}
+
 	function acceptItem({ itemId } = {}) {
 		return setItemAccepted({ itemId, accepted: true });
 	}
@@ -257,6 +399,7 @@ export function createImportSessionService({
 		getState: getSessionState,
 		getResultEvidence,
 		publishResultEvidence,
+		commitJob,
 		beginSession,
 		clearSession,
 		addItems,
@@ -265,9 +408,17 @@ export function createImportSessionService({
 		setError,
 		resetToReady,
 		setItemAccepted,
+		setRelationDecision,
 		acceptItem,
 		unacceptItem,
 	};
+}
+
+function updateSnapshotRelation(snapshot, record) {
+	if (!isObject(snapshot)) return snapshot;
+	const reviewedCandidateId = record?.relationDecision?.reviewedCandidateId ?? record?.relationDecision?.confirmedCandidateId ?? null;
+	const candidates = Array.isArray(record?.relationCandidates) ? record.relationCandidates.map((entry) => ({ id: entry?.id ?? null, type: entry?.type ?? entry?.kind ?? null, from: entry?.from ?? entry?.fromId ?? null, to: entry?.to ?? entry?.toId ?? null, status: entry?.id === reviewedCandidateId ? "reviewed" : "candidate", claimScope: entry?.claimScope ?? "source-association-only", intrinsicMappingStatus: entry?.intrinsicMappingStatus ?? "not-established", domainRelationStatus: entry?.domainRelationStatus ?? "not-established", provenance: clone(entry?.provenance ?? { source: entry?.source ?? null, origin: entry?.origin ?? null, derivedBy: entry?.derivedBy ?? null, method: entry?.method ?? null, reasons: entry?.reasons ?? null }) })) : [];
+	return deepFreeze(clone({ ...snapshot, relationEvidence: { status: reviewedCandidateId ? "reviewed" : candidates.length ? "open-candidates" : "missing", candidateCount: candidates.length, reviewedCandidateId, reviewRevision: Number(record?.relationDecision?.revision ?? 0), reviewProvenance: record?.relationDecision?.provenance ?? null, claimScope: "source-association-only", intrinsicMappingStatus: "not-established", domainRelationStatus: "not-established", candidates } }));
 }
 
 // -----------------------------------------------------------------------------
@@ -314,8 +465,57 @@ function ensureShape(state) {
 }
 
 function publicState(state) {
-	const { resultEvidence: _privateEvidence, ...rest } = ensureShape(state);
-	return clone(rest);
+	const base = isObject(state) ? state : {};
+	const items = Array.isArray(base.items)
+		? base.items.filter(isObject).map(normalizeItemAcceptance)
+		: [];
+	const rejectedItems = Array.isArray(base.rejectedItems)
+		? base.rejectedItems.filter(isObject)
+		: [];
+	return clone({
+		sessionId: base.sessionId ?? null,
+		phase: normalizePhase(base.phase),
+		source: base.source ? normalizeSource(base.source) : null,
+		items,
+		rejectedItems,
+		error: base.error ? normalizeError(base.error) : null,
+		stats: makeStats(items, rejectedItems),
+	});
+}
+
+function publicStateSummary(state) {
+	const base = isObject(state) ? state : {};
+	const items = Array.isArray(base.items) ? base.items.filter(isObject) : [];
+	const rejectedItems = Array.isArray(base.rejectedItems) ? base.rejectedItems.filter(isObject) : [];
+	return clone({
+		sessionId: base.sessionId ?? null,
+		phase: normalizePhase(base.phase),
+		source: base.source ? normalizeSource(base.source) : null,
+		error: base.error ? normalizeError(base.error) : null,
+		stats: makeStats(items, rejectedItems),
+	});
+}
+
+function projectEvidenceForWorkbench(record) {
+	const envelope = isObject(record?.sourceEnvelope) ? record.sourceEnvelope : null;
+	const tables = Array.isArray(envelope?.tables) ? envelope.tables : [];
+	return {
+		...record,
+		sourceEnvelope: envelope ? {
+			source: clone(envelope.source ?? null),
+			extractor: clone(envelope.extractor ?? null),
+			inventory: clone(envelope.inventory ?? null),
+			diagnostics: clone(envelope.diagnostics ?? null),
+			tables: tables.map((table, index) => ({
+				name: table?.name ?? null,
+				rowCount: Number.isFinite(Number(table?.rowCount)) ? Number(table.rowCount) : Array.isArray(table?.rows) ? table.rows.length : null,
+				columnCount: Number.isFinite(Number(table?.columnCount)) ? Number(table.columnCount) : Array.isArray(table?.columns) ? table.columns.length : null,
+				tableIndex: index,
+				rowsDeferred: true,
+			})),
+			projection: "workbench-summary",
+		} : null,
+	};
 }
 
 function normalizeAndValidateImportItem(raw) {
@@ -398,6 +598,22 @@ function dedupeById(items) {
 	}
 
 	return [...map.values()];
+}
+
+function mergeNewById(existing, incoming) {
+	return mergeNewByKey(existing, incoming, "id");
+}
+
+function mergeNewByKey(existing, incoming, key) {
+	const out = Array.isArray(existing) ? [...existing] : [];
+	const seen = new Set(out.map((entry) => String(entry?.[key] ?? "")).filter(Boolean));
+	for (const entry of Array.isArray(incoming) ? incoming : []) {
+		const value = String(entry?.[key] ?? "");
+		if (!value || seen.has(value)) continue;
+		seen.add(value);
+		out.push(entry);
+	}
+	return out;
 }
 
 function derivePhase({ items = [], rejectedItems = [], error = null } = {}) {

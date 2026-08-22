@@ -1,3 +1,5 @@
+import { validateImportSessionItem } from "@src/import/validation/validateImportSessionItem.js";
+
 const result = {
 	passed: false,
 	phase: "waiting",
@@ -49,7 +51,57 @@ function makeItem(sourceIndex, itemIndex, truthfulnessStatus) {
 			eligibility: { eligible: safe, reason: safe ? null : truthfulnessStatus },
 		},
 		payload: { id: `load_${sourceIndex}_${itemIndex}`, name: `Load ${sourceIndex}/${itemIndex}` },
-		derived: safe ? { sparseAlignment: { elements: [] }, spatialRef: { status: "resolved", crsId: "EPSG:25832" } } : {},
+		derived: safe ? {
+			sparseAlignment: {
+				type: "sparseAlignment",
+				version: "sparse_v1",
+				id: `load_${sourceIndex}_${itemIndex}_sparse`,
+				name: `Load ${sourceIndex}/${itemIndex}`,
+				startPose: {
+					p: { x: 0, y: sourceIndex * 100 + itemIndex },
+					t: { x: 1, y: 0 },
+				},
+				sparse: [
+					{
+						id: `load_${sourceIndex}_${itemIndex}_fixed`,
+						type: "fixed",
+						kind: "straight",
+						poseA: {
+							p: { x: 0, y: sourceIndex * 100 + itemIndex },
+							t: { x: 1, y: 0 },
+						},
+						arcLength: 1,
+						curvature: 0,
+						sStart: 0,
+						sEnd: 1,
+					},
+				],
+				elements: [
+					{
+						id: `load_${sourceIndex}_${itemIndex}_fixed`,
+						type: "fixed",
+						kind: "straight",
+						poseA: {
+							p: { x: 0, y: sourceIndex * 100 + itemIndex },
+							t: { x: 1, y: 0 },
+						},
+						arcLength: 1,
+						curvature: 0,
+						sStart: 0,
+						sEnd: 1,
+					},
+				],
+				length: 1,
+				source: {
+					kind: "synthetic-load-e2e",
+					derived: true,
+				},
+			},
+			spatialRef: {
+				status: "resolved",
+				crsId: "EPSG:25832",
+			},
+		} : {},
 	};
 }
 function makePublication(sourceIndex, itemsPerSource) {
@@ -109,6 +161,11 @@ window.__importLoadStabilityE2EPromise = (async () => {
 		originalState = unwrap(await window.messaging.sendCmdAwait("Import.GetState", {}, { timeoutMs: 12000 }));
 		originalEvidence = unwrap(await window.messaging.sendCmdAwait("Import.GetResultEvidence", {}, { timeoutMs: 12000 }));
 		const publications = Array.from({ length: sourceCount }, (_, index) => makePublication(index, itemsPerSource));
+		const generatedItems = publications.flatMap((publication) => publication.items);
+		const invalidItems = generatedItems
+			.map((item) => ({ item, validation: validateImportSessionItem(item) }))
+			.filter(({ validation }) => !validation.ok);
+		assert(generatedItems.length === 384 && invalidItems.length === 0, `pre-publication validation failed: ${invalidItems.length} of ${generatedItems.length} items invalid`);
 		const beforeMetrics = window.__ufAIM_importController.getRuntimeMetrics();
 		await window.__ufAIM_importController.publishSyntheticBatch(publications);
 		const state = unwrap(await window.messaging.sendCmdAwait("Import.GetState", {}, { timeoutMs: 12000 }));

@@ -1,146 +1,267 @@
-\chapter{Realisierungsbewusste Optimierung}
+% optimization/realization_aware_optimization-DE.tex
+\chapter{Qualifizierte realisierungsbewusste Optimierung}
 \index{Optimierung!realisierungsbewusst}
 
-\section*{Motivation}
-Klassische Alignment-Optimierung wirkt unmittelbar auf analytische
-Zielgeometrie. Reale Gleise unterscheiden sich jedoch von ihren analytischen
-Zielzuständen. Das physisch realisierte Alignment wird durch Bauverfahren,
-Maschinenverhalten, Schotter- und Gleismechanik, lokale Korrekturgrenzen,
-Diskretisierung und Messrückkopplung beeinflusst.
+\section*{Kurzfassung für interessierte Leser}
 
-Optimierung soll deshalb
+Ein analytisch glatter Entwurf wird nicht zwangsläufig genau wie gezeichnet
+gebaut. Maschinen, Materialien, Bauentscheidungen, Instandhaltung und
+Unsicherheit können dazu führen, dass das physische Asset von der
+Entwurfsabsicht abweicht. Realisierungsbewusste Optimierung stellt eine
+nützliche Frage: Sollen mögliche Entwurfsparameter unter Berücksichtigung
+solcher Folgen gewählt werden, wenn ein erklärtes Realisierungsmodell sie
+vorhersagt?
+
+Die Antwort gilt nur unter Bedingungen. Eine Koordinatentransformation ist
+keine Konstruktion. Eine Beobachtung ist nicht das physische Asset. Eine
+Modellvorhersage ist keine Beobachtung und ein Optimum keine Engineering
+Decision. Dieses Kapitel entwickelt daher eine mögliche Formulierung, keine
+universelle oder kontinuierlich laufende AIM-Fähigkeit.
+
+\section{Fünf getrennt zu haltende Gegenstände}
+
+\begin{center}
+\small
+\begin{tabular}{p{0.25\linewidth}p{0.31\linewidth}p{0.35\linewidth}}
+\toprule
+Gegenstand & Rolle & Nicht austauschbar mit\\
+\midrule
+Metric Realization & macht intrinsische Konstruktion räumlich messbar & physischer Konstruktion\\
+Physical Realization & Relation von Absicht und Prozess zum Asset & Koordinatentransformation\\
+Physical State & Assetzustand zu einem Zeitpunkt & Beobachtung\\
+Observation & quellen- und unsicherheitsqualifizierte Evidenz & physischer Wahrheit\\
+Representation & trägt Koordinaten oder Nachweise & Identität, Realität oder Autorität\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Sei \(S_{\mathrm{int}}(x)\) der von Entwurfsvariablen \(x\) erzeugte
+beabsichtigte Zustand. Ein qualifiziertes Modell physischer Realisierung lautet
 \[
-J\bigl(\mathcal R(\kappa,\phi)\bigr)
+\widehat S_{\mathrm{phys}}
+\in
+\mathcal R_M\!\left(
+S_{\mathrm{int}}(x),q,\xi
+\right),
 \]
-statt \(J(\kappa,\phi)\) minimieren. In AIM optimiert sie das erwartete
-realisierte operative Verhalten und nicht rein analytische Geometrie.
+wobei \(M\) das Modell identifiziert, \(q\) feste Prozess- und Asseteingaben
+enthält und \(\xi\) erklärte Variabilität oder Unsicherheit repräsentiert.
+\(\mathcal R_M\) kann deterministisch, stochastisch oder mengenwertig sein.
+Die Schreibweise begründet nicht, dass Konstruktion selbst ein ausführbarer
+AIM-Operator ist.
 
-\section{Realisierungsoperator}
-\index{Realisierung!Operator!in Optimierung}
-\begin{definition}[Realisierungsoperator]
+Ein Beobachtungsmodell bleibt getrennt:
 \[
-\mathcal R:\mathrm{pose3}_{\mathrm{target}}
-\mapsto\mathrm{pose3}_{\mathrm{real}}.
+y^{\mathrm{obs}}
+=
+\mathcal O_N(S_{\mathrm{phys}},\eta),
 \]
-\end{definition}
-Der Operator stellt die Transformation vom analytischen Zielzustand zum
-physisch realisierten Eisenbahnzustand dar. Er kann Abtastung,
-Maschinenwirkung, Glättung, lokale Korrekturkerne und strukturelle
-Gleisreaktion umfassen.
+mit Beobachtungsmethode \(N\) und Unsicherheit \(\eta\).
+Koordinatenumrechnung kann nötig sein, um Größen in einem Frame zu vergleichen;
+sie ändert Repräsentation statt physischen Zustand.
 
-\section{Optimierung auf realisierten Zuständen}
-Zielfunktionen sollen auf realisierten statt analytischen Zielzuständen
-bewertet werden.
-\begin{definition}[Realisierungsbewusste Optimierung]
-\index{Optimierung!auf realisierten Zuständen}
+\section{Problemvertrag vor dem Minimum}
+
+Ein realisierungsbewusstes Optimierungsproblem ist erst definiert, wenn
+folgende Angaben dokumentiert sind:
+
+\begin{center}
+\small
+\begin{tabular}{p{0.26\linewidth}p{0.64\linewidth}}
+\toprule
+Vertragsfeld & Erforderliche Erklärung\\
+\midrule
+Problemidentität und Zweck & Engineering-Frage und Lifecycle-Nutzung\\
+Realisierungsrelation & \(M\), Eingaben, Ausgabe, Frame, Gültigkeit und Status\\
+Entscheidungsvariablen & bekannte, feste, freie, beschränkte und offene Größen\\
+feste Eingaben & beabsichtigte Endzustände, Kontext, Prozessannahmen, Evidenz\\
+zulässige Menge \(\mathcal F\) & Geometrie-, Kontinuitäts-, Regel- und Modellgrenzen\\
+Ziel \(J\) & Quelle, Einheiten, Skalen, Aggregation und Zweck\\
+Unsicherheitsgrenze & repräsentierte Variabilität und ausgelassene Wirkungen\\
+Status und Provenienz & implementiert, forschungsbelegt oder illustrativ\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Erst dann kann ein mögliches Problem geschrieben werden:
 \[
-\min_{\kappa,\phi}\;J\bigl(\mathcal R(\kappa,\phi)\bigr).
+\min_{x\in\mathcal F}
+J\!\left(
+x,\widehat S_{\mathrm{phys}},
+\mathcal D_K(\widehat S_{\mathrm{phys}},s(t))
+\right),
 \]
-\end{definition}
-Diese Formulierung integriert Realisierungseffekte ausdrücklich.
+wobei \(K\) bei Bedarf ein identifiziertes Antwort- oder Vergleichsmodell ist.
+Ist \(\mathcal R_M\) unsicher, muss das Problem angeben, ob \(J\) Erwartungswert,
+Szenarien, Schranke, Risikomaß oder eine andere erklärte Konstruktion
+verwendet. Das Wort \emph{realisierungsbewusst} enthält keine
+Unsicherheitstheorie.
 
-\section{pose3-Optimierung}
-\index{Zustand!pose3!Optimierung}
-Optimierung wirkt auf den gekoppelten pose3-Zustand
+\section{Krümmung und Überhöhung: gekoppelte Frage, getrennte Verantwortung}
+
+Krümmung \(\kappa(s)\) gehört zur intrinsischen horizontalen Konstruktion.
+Überhöhung \(u(s)\), beziehungsweise ihr Winkel \(\phi(s)\), ist ein getrenntes
+Längsgesetz mit eigener Provenienz und Verantwortung. Ein Modell darf ihre
+Folgen koppeln, etwa durch das reduzierte Residuum
 \[
-(\gamma,\theta,\phi).
+r_{\mathrm{bal}}=v^2\kappa-g\sin\phi,
 \]
-Krümmung und Überhöhung müssen deshalb gemeinsam optimiert werden. Dies
-spiegelt die dynamische Kopplung von Geometrie und Fahrzeugverhalten.
+ohne beide Gesetze zu einer Größe zu machen.
 
-\section{Dynamische Ziele}
-\subsection{Effektive Querbeschleunigung}
-\begin{definition}[Effektive Querbeschleunigung]
-\index{Beschleunigung!effektive Querbeschleunigung!Optimierungsziel}
+Der Entscheidungsvektor kann daher jede ausdrücklich gewählte Aufteilung
+besitzen:
 \[
-a_{\mathrm{eff}}=v^2\kappa-g\sin\phi.
+x=(x_\kappa,x_u,x_p).
 \]
-\end{definition}
-Diese Größe ist die dynamisch maßgebliche Beschleunigung am Fahrzeug.
+In einem Problem ist \(x_\kappa\) frei und die Überhöhung fest. In einem
+anderen wird bei fester Krümmung die Überhöhung untersucht. Beide dürfen nur
+dann frei sein, wenn Zweck, Nebenbedingungen und verantwortliche Zielquelle
+eine gemeinsame Untersuchung tragen. Es gibt keine universelle AIM-Regel für
+gemeinsame Optimierung.
 
-\subsection{Ruck}
-\begin{definition}[Ruck]
-\index{Ruck!Optimierungsziel}
+\section{Ziele, Einheiten und Skalierung}
+
+Mögliche Zielkomponenten sind Krümmungsvariation, Überhöhungsvariation,
+reduziertes Gleichgewichtsresiduum, Antwortmodellausgabe, Kosten oder
+Realisierungsempfindlichkeit. Sie sind verschiedene Ziele. Beispielsweise
 \[
-j=v^3\kappa'-gv\cos\phi\,\phi'.
+J_\kappa=\int_0^L(\kappa')^2\,\dd s,
+\qquad
+J_r=\int_0^T r_{\mathrm{bal}}^2\,\dd t
 \]
-\end{definition}
-Ruckbedingungen beeinflussen Übergangsentwurf und Fahrgastkomfort stark.
+haben verschiedene Bereiche, Einheiten und Bedeutungen. \(J_r\) ist ohne
+anwendbares Modell und Kriterium weder Komfort noch Fahrzeugantwort.
 
-\subsection{Typische Zielfunktionskomponenten}
-Typische Ziele sind Krümmungs- und Überhöhungsglattheit, Ruckminimierung,
-Regelung des Überhöhungsfehlbetrags, Fahrzeugkomfort, Energieeffizienz und
-Realisierungsrobustheit.
-
-\section{Realisierungsbedingungen}
-\index{Bedingung!Realisierung}
-Optimierung muss Maschinen- und Stopfgrenzen, Schotterverhalten, lokale
-Korrekturbereiche und Messauflösung einhalten. Der zulässige Entwurfsraum wird
-nicht nur von Geometrie und Normen, sondern auch von Realisierbarkeit begrenzt.
-
-\section{Inverse Realisierung}
-Das Problem kann als inverses Realisierungsproblem verstanden werden.
-\begin{definition}[Formulierung inverser Realisierung]
-\index{Realisierung!inverse Formulierung}
+Ein kombiniertes Ziel
 \[
-\mathcal R(\kappa_{\mathrm{target}},\phi_{\mathrm{target}})
-\approx(\kappa_{\mathrm{desired}},\phi_{\mathrm{desired}}).
+J=\sum_i w_i\,J_i/J_{i,0}
 \]
-\end{definition}
-Der analytische Zielzustand ist damit ein Urbild unter dem
-Realisierungsoperator.
+ist nur sinnvoll, wenn Referenzskalen \(J_{i,0}\), Gewichte \(w_i\), deren
+Quelle und Zweck dokumentiert sind. Der Solver liefert keine dieser
+Engineering-Entscheidungen.
 
-\section{Frequenzinterpretation}
-\index{Frequenzinterpretation!Realisierungsoperator als Tiefpassfilter}
-Der Realisierungsoperator wirkt näherungsweise als Tiefpass auf Krümmung und
-Überhöhung. Hochfrequente Komponenten werden gedämpft. Optimierung muss daher
-geometrisch bedeutungslose hochfrequente Korrekturen vermeiden, die die
-Realisierung nicht überstehen.
+\section{Nebenbedingungen und Anwendbarkeit}
 
-\section{Dünn besetzte und hybride Optimierung}
-\index{Optimierung!dünn besetzt}
-\index{Optimierung!hybrid}
-Dünn besetzte und hybride Modelle eignen sich besonders für
-realisierungsbewusste Optimierung. Dünn besetzte Strukturen bieten numerische
-Stabilität, geringe Parameterdimension und interpretierbare Geometrie.
-Hybride Modelle erlauben zusätzlich lokale Korrekturen,
-Realisierungskompensation und adaptive Verfeinerung.
+Mögliche Nebenbedingungen beschreiben Maschinengrenzen, Kontinuität, erlaubte
+Parameterbereiche, Prozesshüllen oder anwendbare Regeln. Jede benötigt Quelle,
+Einheiten, Gültigkeit und Lifecycle-Bereich. Messauflösung ist eine
+Beobachtungsqualifikation und nicht automatisch Konstruktionsbedingung.
+Stopfverhalten, Schotterantwort oder Korrekturkerne gehen nur durch ein
+identifiziertes und belegtes Realisierungsmodell ein.
 
-\section{Laufzeitoptimierung}
+Die zulässige Menge \(\mathcal F\) begründet mathematische Zulässigkeit unter
+dieser Erklärung. Außerhalb der Modellanwendbarkeit begründet sie weder
+Baubarkeit noch operative Akzeptabilität oder Autorität.
+
+\section{Unsicherheits- und Kalibrierungsgrenze}
+
+Die kleinste nützliche Trennung umfasst:
+\begin{itemize}
+\item Prozess- und Konstruktionsvariabilität in \(\xi\);
+\item Beobachtungsunsicherheit in \(\eta\);
+\item operative Variabilität in \(s(t)\) und weiteren Nutzungseingaben;
+\item numerisches Residuum des Solvers;
+\item Parameterunsicherheit innerhalb von \(M\) oder \(K\);
+\item Modellformunsicherheit hinsichtlich der Eignung von \(M\) oder \(K\).
+\end{itemize}
+
+Kalibrierungsevidenz kann Parameter für ein angegebenes Asset, einen Prozess
+und einen Bereich stützen. Übereinstimmung mit einer Beobachtung beweist kein
+universelles Realisierungsgesetz. Eine ungeklärte Soll--Beobachtungs-Abweichung
+identifiziert Konstruktion nicht als Ursache.
+
+\section{Inverse und Frequenzinterpretationen}
+
+Der Ausdruck
+\[
+\mathcal R_M(S_{\mathrm{int}}(x),q,\xi)
+\approx S_{\mathrm{desired}}
+\]
+definiert erst dann ein inverses Problem, wenn Vergleichsgröße, Norm,
+Unsicherheitsbehandlung und Anwendbarkeit erklärt sind. Eine Lösung ist ein
+mögliches Urbild unter \(M\), kein Nachweis dessen, was der physische Prozess
+erzeugen wird.
+
+Ebenso ist die Beschreibung von \(\mathcal R_M\) als Tiefpass ein mögliches
+linearisiertes oder empirisches Modell, keine allgemeine Eigenschaft von
+Physical Realization. Frequenzstrafen sind nur vertretbar, wenn Evidenz das
+Modell im angegebenen räumlichen oder zeitlichen Bereich trägt.
+
+\section{Wiederholte Optimierung ist eine Workflow-Hypothese}
 \index{Optimierung!Laufzeit}
-Optimierung kann während Bau, Instandhaltung, Messrückkopplung und operativer
-Überwachung kontinuierlich wirken. Sie wird damit zum Laufzeitprozess statt zu
-einem rein offline ausgeführten Planungsschritt.
 
-\section{Fahrzeugbezogene Interpretation}
-\index{Fahrzeugraum!Optimierungsinterpretation}
-Der physisch maßgebliche Gegenstand ist nicht zwingend die Gleismittellinie,
-sondern die Bewegung des Fahrzeugs im Raum. Dazu gehören Fahrzeugschwerpunkt,
-Drehgestellbewegung, Fahrzeughüllraum, Bahnsteiginteraktion und
-Lichtraumverhalten. Diese Sicht verbindet realisierungsbewusste Optimierung mit
-schwerpunktorientierten Alignment-Konzepten \cite{Hasslinger2002Schwerpunkt}.
+Bau, Instandhaltung oder Beobachtungsrückkopplung können erneute
+Problemformulierung und Berechnung anregen:
+\[
+\text{neue Evidenz}
+\to\text{qualifizierte Modelländerung}
+\to\text{neuer Kandidat}
+\to\text{Bewertung}.
+\]
+Diese Folge begründet weder kontinuierlich laufenden Optimierer noch
+automatische Regelung oder aktuelle AXTRAN-Runtime-Funktionalität. Ein solcher
+Workflow benötigt identifizierte Auslöser, Datenqualifikation,
+Modellversionierung, Konvergenzbehandlung, Autorität und
+Implementierungsevidenz. In dieser Thesis bleibt er ein möglicher Ablauf und
+eine Forschungsrichtung.
 
-\section{Ellipsoidbewusste Optimierung}
-\index{Bezugssystem!ellipsoidbewusste Optimierung}
-Für großräumige oder hochgenaue Systeme kann unmittelbar auf der
-Erdreferenzfläche optimiert werden. Dann wird Krümmung zur geodätischen
-Krümmung, Rahmen werden oberflächengebunden und World--Track-Projektion hängt
-von Ellipsoidgeometrie ab.
+\section{Kandidat, Bewertung und Entscheidung}
 
-\section{Zentrale Erkenntnis}
-\begin{proposition}
-Das maßgebliche Optimierungsziel ist nicht das analytische Alignment selbst,
-sondern das erwartete realisierte operative Verhalten.
-\end{proposition}
-Dies verändert die Interpretation von Alignment-Optimierung grundlegend.
+Ein Ergebnis bewahrt mindestens
+\[
+C_R=
+(\mathcal P.id,M.id,K.id,x^\star,\mathcal F,J,
+\text{Residuen},\text{Konvergenz},\text{Szenarien},\text{Provenienz}).
+\]
+Es ist ein nichtautoritativer Berechnungskandidat. Spätere Evidenz kann ihn
+unanwendbar oder veraltet machen. Eine zweckqualifizierte Bewertung darf ihn
+mit Regeln und Evidenz vergleichen; eine Engineering Decision kann ihn danach
+unter dokumentierter Autorität auswählen oder ablehnen. Die Abhängigkeit zeigt
+\cref{fig:model-candidate-decision}.
 
-\section{Verbindung zu AIM}
-\begin{summary}
-Realisierungsbewusste Optimierung erweitert klassische Alignment-Optimierung
-zu physisch realisierbaren Eisenbahnzuständen. In AIM wird sie auf
-pose3-Zuständen, Realisierungsoperatoren, Projektionsstrukturen zur Laufzeit und
-dynamisch relevantem fahrzeugbezogenem Verhalten formuliert.
+\[
+\boxed{\text{berechnet}
+\neq\text{anwendbar}
+\neq\text{angenommen}
+\neq\text{autoritativ}}
+\]
 
-Damit entsteht ein einheitlicher Rahmen für Geometrie, Realisierung, Dynamik,
-Optimierung und operative Interpretation.
-\end{summary}
+\section{Fahrzeug-, Erd- und Implementierungsgrenzen}
+
+Wo ein Zweck fahrzeugbezogene Größen verlangt, liefert ein identifiziertes
+Antwort- oder Lichtraummodell diese. Das qualifizierte Schwerpunktbeispiel wird
+nur referenziert: physischer Massenmittelpunkt, Modellbezugspunkt, Hüllkurve
+und Lichtraum bleiben verschiedene Gegenstände.
+
+Ellipsoidische Metric Realization kann bei großen Maßstäben oder hoher
+Genauigkeit relevant sein, macht physische Konstruktion aber nicht zu einem
+Ellipsoidoperator. Koordinaten- und Oberflächenmodelle qualifizieren, wo Größen
+bewertet werden; sie erzeugen kein Optimierungsziel.
+
+Die Formulierungen dieses Kapitels sind wissenschaftlich nutzbare
+Problemverträge und Kandidaten. Sie belegen nicht, dass AIM, AXTRAN,
+transitionDB oder TransEd gegenwärtig allgemeine realisierungsbewusste,
+fahrzeugbezogene, baubezogene oder Runtime-Optimierung implementiert.
+
+\section{Zusammenfassung des Aussagestatus}
+
+\begin{center}
+\small
+\begin{tabular}{p{0.34\linewidth}p{0.20\linewidth}p{0.36\linewidth}}
+\toprule
+Frühere Aussage & Behandlung & Qualifiziertes Ergebnis\\
+\midrule
+deterministischer Realisierungsoperator & neu formuliert & identifizierte Relation \(\mathcal R_M\)\\
+zwingende gemeinsame Optimierung & entfernt & problembezogene Freiheitswahl\\
+universelle dynamische Ziele & neu formuliert & modell- und zweckqualifizierte Komponenten\\
+kontinuierliche Runtime-Optimierung & unbelegt & möglicher wiederholter Ablauf/offene Arbeit\\
+Optimum als anwendbares Ergebnis & widersprüchlich & nichtautoritativer Kandidat\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Das Potenzial bleibt erheblich: Entwurfskandidaten können gegen ausdrückliche
+Realisierungshypothesen geprüft werden, statt perfekte Konstruktion
+vorauszusetzen. Der wissenschaftliche Gewinn entsteht durch prüfbare
+Hypothese, Unsicherheit und Verantwortung, nicht durch die Benennung eines
+Ergebnisses als universell realisierungsbewusst.

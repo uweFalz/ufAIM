@@ -8,12 +8,17 @@
 .alignmentCreation button:disabled { opacity: .35; cursor: default; }
 .alignmentCreation__new { border-color: rgba(32,213,204,.7) !important; background: rgba(32,213,204,.14) !important; }
 .alignmentCreation__construct { display: none; align-items: center; gap: 6px; min-width: 0; }
+.alignmentCreation__construct input, .alignmentCreation__construct select { min-width: 7rem; max-width: 12rem; border: 1px solid rgba(255,255,255,.15); border-radius: 7px; padding: 4px 6px; background: rgba(0,0,0,.2); color: inherit; }
+.alignmentCreation__construct [data-add-length] { width: 8rem; }
+.alignmentCreation__construct [data-add-signed-value] { width: 11rem; }
+.alignmentCreation__construct [data-transition-pair-hint] { max-width: 11rem; color: rgba(255,255,255,.62); font: 10px/1.2 system-ui,sans-serif; }
 .alignmentCreation.has-alignment .alignmentCreation__new { display: none; }
 .alignmentCreation.has-alignment .alignmentCreation__construct { display: flex; }
 .alignmentCreation__divider { width: 1px; height: 20px; background: rgba(255,255,255,.14); margin: 0 2px; }
 .alignmentCreation output { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,.65); font: 11px/1.2 system-ui,sans-serif; }
 .alignmentCreation output[data-kind="error"] { color: #ffb454; }
 .alignmentCreation output[data-kind="ok"] { color: #77ddd7; }
+.alignmentCreation output[data-kind="pending"] { color: #8ec7ff; }
 .alignmentCreation.is-busy { pointer-events: none; opacity: .72; }
 .uf-curvatureBand .band-segment.is-straight { stroke: #aab4c2; }
 .uf-curvatureBand .band-segment.is-arc { stroke: #20d5cc; }

@@ -64,6 +64,7 @@ function normalizeWorkspaceSelection(sel) {
 		elementId: x.elementId != null && String(x.elementId).trim()
 			? String(x.elementId).trim()
 			: null,
+		elementDiscipline: ["horizontal", "vertical", "cant", "chainage"].includes(x.elementDiscipline) ? x.elementDiscipline : null,
 		source: x.source != null ? String(x.source) : null,
 		crsId: x.crsId != null ? String(x.crsId) : null,
 	};
@@ -186,6 +187,7 @@ export function makeInitialState() {
 			primaryId: null,
 			contextIds: [],
 			elementId: null,
+			elementDiscipline: null,
 			source: null,
 			crsId: null,
 		},

@@ -1,0 +1,8 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { readFile } from "node:fs/promises";
+const paths=["../../../app/domain/workspace/buildGndRelationReviewModel.js","../../../app/domain/workspace/buildPromotedGndWorkspaceEvidence.js","../../../app/gndImportWorkbench/gndImportWorkbenchController.js","../../../app/gndImportWorkbench/gndImportWorkbenchView.js","../../../src/shared/messaging/service/ImportSessionService.js","../../../app/runtime/init/initFeatures.js"];
+const files=await Promise.all(paths.map(path=>readFile(new URL(path,import.meta.url),"utf8")));
+test("source association review has no parser Core geometry or heuristic authority",()=>{const source=files.join("\n");assert.doesNotMatch(source,/aim-core|parseGND|PSTRRIKZ|spatial.?near|drop.?order/i);assert.match(source,/explicit-user-import-session-source-association-review/);assert.match(source,/expectedRevision/);assert.match(source,/Import\.GetResultEvidence/);assert.match(source,/source-association-only/);assert.match(source,/not-established/);});
+test("visible and domain projection use neutral review terminology",()=>{const visible=files[3];const domain=files.slice(0,2).join("\n");assert.doesNotMatch(visible,/Relation bestätigen|Bestätigung lösen|confirmed|unconfirm/i);assert.doesNotMatch(domain,/explicitly confirmed|relation remains partial/i);assert.match(visible,/Quellenassoziation als geprüft markieren/);assert.match(visible,/Prüfung zurücknehmen/);assert.match(domain,/reviewed/);});
+test("object workspace activation routes canonical refocus through promoted evidence hydration",()=>{const init=files[5];assert.match(init,/onActivate:[\s\S]*promotedAlignmentJourney\?\.activateCanonicalAlignment[\s\S]*activateCanonicalAlignment\(objectId\)/);});

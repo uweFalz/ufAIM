@@ -7,8 +7,8 @@ import transitionLookup from "@transition/transitionLookup.json" with { type: "j
 import { KappaFcnBuilder } from "@transition/build/KappaFcnBuilder.js";
 import { RegistryResolver } from "@transition/registry/RegistryResolver.js";
 
-import { Alignment2D } from "./Alignment2D.js";
-import { FixedElement } from "./elements/FixedElement.js";
+import { Alignment2D } from "../../aim-core/geometry/Alignment2D.js";
+import { FixedElement } from "../../aim-core/geometry/FixedElement.js";
 
 import { buildChangeTransitionTypeProblem } from "../optimization/alignment/buildChangeTransitionTypeProblem.js";
 import { solveEqualityQP } from "../../lib/math/optim/qp/solveEqualityQP.js";

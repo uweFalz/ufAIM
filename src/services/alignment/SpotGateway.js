@@ -136,16 +136,26 @@ export class SpotGateway {
 				}
 			);
 
+		const storedObject =
+			await this.getObjectById(
+				spotObject.id
+			);
+
+		assertPersistedSpotObject(
+			storedObject,
+			spotObject
+		);
+
 		if (focus) {
 			this.focusObject(
-				spotObject.id,
+				storedObject.id,
 				{ source }
 			);
 		}
 
 		return {
 			result,
-			spotObject,
+			spotObject: storedObject,
 		};
 	}
 
@@ -341,6 +351,50 @@ function assertSpotObject(
 		throw new Error(
 			`${caller}: missing SpotObject`
 		);
+	}
+}
+
+function assertPersistedSpotObject(
+	storedObject,
+	requestedObject
+) {
+	if (!storedObject) {
+		throw new Error(
+			"SpotGateway.saveObject: persisted object acknowledgement missing"
+		);
+	}
+	if (
+		storedObject.id !== requestedObject.id ||
+		storedObject.type !== requestedObject.type
+	) {
+		throw new Error(
+			"SpotGateway.saveObject: persisted object identity mismatch"
+		);
+	}
+	if (
+		requestedObject.type === "alignment" &&
+		(
+			!samePlainData(
+				storedObject?.data?.alignmentData,
+				requestedObject?.data?.alignmentData
+			) ||
+			!samePlainData(
+				storedObject?.data?.kernel,
+				requestedObject?.data?.kernel
+			)
+		)
+	) {
+		throw new Error(
+			"SpotGateway.saveObject: persisted Alignment acknowledgement mismatch"
+		);
+	}
+}
+
+function samePlainData(left, right) {
+	try {
+		return JSON.stringify(left) === JSON.stringify(right);
+	} catch {
+		return false;
 	}
 }
 

@@ -28,8 +28,24 @@ import { createImportResultEvidencePublication } from "@src/import/evidence/impo
 // pipeline
 // ------------------------------------------------------------
 
-export async function importOneFile(file, { log, onImportPhase } = {}) {
-	return await runImportPipeline(file, { log, onImportPhase });
+export async function importOneFile(file, {
+	log,
+	onImportPhase,
+	onJobPhase,
+	onHeartbeat,
+	signal,
+	bytes,
+	text,
+} = {}) {
+	return await runImportPipeline(file, {
+		log,
+		onImportPhase,
+		onJobPhase,
+		onHeartbeat,
+		signal,
+		bytes,
+		text,
+	});
 }
 
 export function makeImportResultEvidencePublication(result, { fileName, parserId, completedAt } = {}) {

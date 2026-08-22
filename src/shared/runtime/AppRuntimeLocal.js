@@ -46,6 +46,12 @@ function summarizeCommandPayload(name, payload) {
 			itemCount: Array.isArray(payload?.items) ? payload.items.length : 0,
 		};
 	}
+	if (name === "Import.CommitJob") {
+		return {
+			batchId: payload?.batchId ?? null,
+			fileCount: Array.isArray(payload?.files) ? payload.files.length : 0,
+		};
+	}
 	return payload;
 }
 
@@ -174,8 +180,16 @@ export class AppRuntimeLocal {
 				return mkAck(msg, this.importService.publishResultEvidence(msg.payload ?? {}));
 			}
 
+			if (msg.name === "Import.CommitJob") {
+				return mkAck(msg, this.importService.commitJob(msg.payload ?? {}));
+			}
+
 			if (msg.name === "Import.SetItemAccepted") {
 				return mkAck(msg, this.importService.setItemAccepted(msg.payload ?? {}));
+			}
+
+			if (msg.name === "Import.SetRelationDecision") {
+				return mkAck(msg, this.importService.setRelationDecision(msg.payload ?? {}));
 			}
 
 			return mkErr(msg, new Error(`Unknown cmd: ${msg.name}`), { src: { ctx:"local:runtime", role:"master" } });

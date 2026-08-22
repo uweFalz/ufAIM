@@ -212,7 +212,7 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		},
 
 		getDebugState() {
-			return three.getDebugState?.() ?? null;
+			return { ...(three.getDebugState?.() ?? {}), coordinateSpace: "local-engineering" };
 		},
 	};
 }

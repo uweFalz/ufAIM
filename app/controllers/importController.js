@@ -2,6 +2,10 @@
 
 import { installFileDrop } from "@io/input/fileDrop.js";
 import { buildVisibleTracksFromImportItems } from "@app/io/import/importVisibleTracksAdapter.js";
+import {
+	createImportJob,
+	throwIfImportJobAborted,
+} from "@app/io/import/ImportJob.js";
 
 import {
 	importOneFile,
@@ -44,6 +48,18 @@ export function makeImportController({
 		: 5;
 	let batchTail = Promise.resolve();
 	let commandTail = Promise.resolve();
+	let disposeDrop = null;
+	let activeImportJob = null;
+	let visibleTracksSnapshot = [];
+	const terminalOutcomeObservers = new Set();
+	const importActivityObservers = new Set();
+	let fileDropLifecycle = Object.freeze({
+		state: "idle",
+		code: null,
+		fileCount: 0,
+		message: null,
+	});
+	const fileDropLifecycleHistory = [fileDropLifecycle];
 	const runtimeMetrics = {
 		queuedBatches: 0,
 		completedBatches: 0,
@@ -115,9 +131,12 @@ export function makeImportController({
 	async function refreshImportStateFromMaster() {
 		if (!messaging?.sendCmdAwait) return null;
 
-		const state = await sendImportCommand("Import.GetState", {}, 12000);
+		// The terminal import path only needs status and counts. Requesting every
+		// imported item here makes a large, already-committed GND session cross
+		// the Worker boundary a second time and can turn success into a timeout.
+		const state = await sendImportCommand("Import.GetState", { projection: "summary" }, 12000);
 		runtimeMetrics.stateRefreshes += 1;
-		const count = Array.isArray(state?.items) ? state.items.length : 0;
+		const count = Number(state?.stats?.accepted ?? 0);
 
 		safeLog(`master import state: items=${count}`);
 		if (trace()) console.debug("[ImportController] Import.GetState <-", {
@@ -223,6 +242,7 @@ export function makeImportController({
 
 	function commitVisibleTracks(tracks = []) {
 		if (!tracks.length) return false;
+		visibleTracksSnapshot = tracks.map((track) => ({ ...track, polyline2d: [...(track?.polyline2d ?? [])] }));
 
 		if (store.actions?.setWorkspaceVisibleTracks) {
 			store.actions.setWorkspaceVisibleTracks({
@@ -237,7 +257,12 @@ export function makeImportController({
 	}
 
 	function clearVisibleTracks() {
+		visibleTracksSnapshot = [];
 		store.actions?.clearWorkspaceVisibleTracks?.();
+	}
+
+	function getVisibleTracks() {
+		return structuredClone(visibleTracksSnapshot);
 	}
 
 	function commitPreviewCandidate(firstPreviewCandidate) {
@@ -264,34 +289,84 @@ export function makeImportController({
 
 	async function runImportBatch(files) {
 		const batch = Array.from(files ?? []);
+		const fileNames = Object.freeze(batch.map((file) => String(file?.name ?? "")));
+		const fileStates = batch.map((file, sourceIndex) => ({
+			sourceIndex,
+			fileName: String(file?.name ?? ""),
+			state: "queued",
+			phase: null,
+		}));
+		const snapshotFileStates = () => Object.freeze(fileStates.map((entry) => Object.freeze({ ...entry })));
+		const batchId = globalThis.crypto?.randomUUID?.()
+			?? `import-batch-${Date.now()}-${Math.random()}`;
+		const stagedFiles = [];
+		const failedFiles = [];
 
 		messaging?.emitEvt?.("Import.DropObserved", {
 			fileCount: batch.length,
+			batchId,
 			window: "local",
 		});
 
 		const stats = makeBatchStats(batch.length);
-		const visibleTracks = [];
-
-		clearVisibleTracks();
-
-		await sendImportCommand("Import.BeginSession", {
-			source: "drop",
-		});
-
-		let firstPreviewCandidate = null;
 
 		for (const [sourceIndex, file] of batch.entries()) {
+			const job = createImportJob({ file });
+			activeImportJob = job;
+			fileStates[sourceIndex] = { ...fileStates[sourceIndex], state: "processing", phase: job.snapshot().phase };
+			publishImportActivity(Object.freeze({
+				state: "processing",
+				fileCount: batch.length,
+				fileNames,
+				fileStates: snapshotFileStates(),
+				activeFileIndex: sourceIndex,
+				activeFileName: String(file?.name ?? ""),
+				job: job.snapshot(),
+			}));
 			const scenarioId = `source-${String(sourceIndex + 1).padStart(3, "0")}`;
 			safeLog(`import: ${scenarioId}`);
 
 			try {
 				const result = await importOneFile(file, {
 					log: safeLog,
-					onImportPhase: ({ code, status }) => safeLog(`MDB: ${code}${status ? ` :: ${status}` : ""}`),
+						onImportPhase: ({ code, status }) => {
+						fileStates[sourceIndex] = { ...fileStates[sourceIndex], phase: String(code ?? "unknown") };
+						safeLog(`MDB: ${code}${status ? ` :: ${status}` : ""}`);
+						publishImportActivity(Object.freeze({
+							state: "processing",
+							fileCount: batch.length,
+							fileNames,
+							activeFileName: String(file?.name ?? ""),
+							activeFileIndex: sourceIndex,
+							fileStates: snapshotFileStates(),
+							importPhase: Object.freeze({
+								code: String(code ?? "unknown"),
+								status: status == null ? null : String(status),
+							}),
+							job: job.snapshot(),
+						}));
+					},
+					onJobPhase: (phase) => {
+						job.update({ phase });
+						fileStates[sourceIndex] = { ...fileStates[sourceIndex], phase: String(phase ?? "unknown") };
+						publishImportActivity(Object.freeze({
+							state: "processing",
+							fileCount: batch.length,
+							fileNames,
+							activeFileName: String(file?.name ?? ""),
+							activeFileIndex: sourceIndex,
+							fileStates: snapshotFileStates(),
+							job: job.snapshot(),
+						}));
+					},
+					signal: job.signal,
 				});
+				throwIfImportJobAborted(job.signal);
 
-				const items = getResultItems(result);
+				const items = applyExistingSourceTrustAssessment(
+					getResultItems(result),
+					result
+				);
 				const rejected = getRejectedItems(result);
 				const relationCandidates = getRelationCandidates(result);
 				const promotableAlignmentItems = getPromotableAlignmentItems(items);
@@ -324,59 +399,187 @@ export function makeImportController({
 					fileName: file.name,
 					sampleStep,
 				});
-				if (newTracks.length) {
-					visibleTracks.push(...newTracks);
-					commitVisibleTracks(visibleTracks);
-					safeLog(`Anzeige: ${file.name} :: ${newTracks.length} Spur(en)`);
-				}
-
-				if (!(await handleImportResultEvidenceMaster(publication))) {
-					await handleImportItemsMaster([...items, ...rejected]);
-				}
-
-				if (!firstPreviewCandidate && promotableAlignmentItems.length > 0) {
-					const linkedCandidate = publication?.items?.find((item) => item?.id === promotableAlignmentItems[0]?.id) ?? promotableAlignmentItems[0];
-					firstPreviewCandidate = makePreviewCandidate(linkedCandidate, {
-						source: publication?.evidence?.source ?? null,
-					});
-					if (trace()) console.debug("[ImportController] firstPreviewCandidate", {
-						id: firstPreviewCandidate.id,
-					});
-				}
-
-				ui?.setImportSummary?.({
-					fileName: file.name,
-					items: items.length,
-					rejected: rejected.length,
-					promotable: promotableAlignmentItems.length,
-					visible: newTracks.length,
-					error: false,
+				job.update({ phase: "staged" });
+				const outcome = Object.freeze({
+					fileName: String(file?.name ?? ""),
+					extension: fileExtension(file?.name),
+					status: String(result?.status ?? "unknown"),
+					reason: result?.reason == null ? null : String(result.reason),
+					parserId: result?.meta?.sourceFormat == null
+						? null
+						: String(result.meta.sourceFormat),
+					itemCount: items.length,
+					rejectedCount: rejected.length,
+					evidencePublished: Boolean(publication?.evidence),
+					failed: false,
 				});
+				stagedFiles.push({
+					sourceIndex,
+					job,
+					file,
+					result,
+					items,
+					rejectedItems: rejected,
+					publication,
+					promotableAlignmentItems,
+					newTracks,
+					outcome,
+				});
+				fileStates[sourceIndex] = { ...fileStates[sourceIndex], state: "staged", phase: "staged" };
+				publishImportActivity(Object.freeze({
+					state: "processing",
+					fileCount: batch.length,
+					fileNames,
+					fileStates: snapshotFileStates(),
+					activeFileIndex: sourceIndex,
+					activeFileName: String(file?.name ?? ""),
+					job: job.snapshot(),
+				}));
 
 			} catch (err) {
+				if (err?.name === "AbortError" || job.signal.aborted) {
+					for (const staged of stagedFiles) {
+						staged.job.abort("batch-cancelled");
+					}
+					return {
+						status: "cancelled",
+						batchId,
+						fileOutcomes: Object.freeze([]),
+						jobs: Object.freeze([
+							...stagedFiles.map((staged) => staged.job.snapshot()),
+							job.snapshot(),
+						]),
+						stats,
+						metrics: getRuntimeMetrics(),
+					};
+				}
 				stats.failed += 1;
-
-				console.error("import failed detail:", err);
-
-				ui?.setImportSummary?.({
-					fileName: file.name,
-					error: true,
+				job.fail(err);
+				const outcome = Object.freeze({
+					fileName: String(file?.name ?? ""),
+					extension: fileExtension(file?.name),
+					status: "failed",
+					reason: String(err?.code ?? err?.message ?? "IMPORT_FILE_FAILED"),
+					parserId: null,
+					itemCount: 0,
+					rejectedCount: 0,
+					evidencePublished: false,
+					failed: true,
 				});
-
-				ui?.setStatusError?.();
+				failedFiles.push({ sourceIndex, job, file, outcome });
+				fileStates[sourceIndex] = { ...fileStates[sourceIndex], state: "failed", phase: "failed" };
+				publishImportActivity(Object.freeze({
+					state: "processing",
+					fileCount: batch.length,
+					fileNames,
+					fileStates: snapshotFileStates(),
+					activeFileIndex: sourceIndex,
+					activeFileName: String(file?.name ?? ""),
+					job: job.snapshot(),
+				}));
 			}
 		}
 
-		commitPreviewCandidate(firstPreviewCandidate);
+		const commitCandidates = [...stagedFiles];
+		stagedFiles.length = 0;
+		for (const staged of commitCandidates) {
+			staged.job.update({ phase: "committing" });
+			try {
+				if (staged.publication?.evidence) {
+					await sendImportCommand("Import.CommitJob", {
+						batchId,
+						source: { fileName: staged.file.name },
+						files: [{
+							jobId: staged.job.jobId,
+							fileName: staged.file.name,
+							publication: staged.publication,
+							items: staged.items,
+							rejectedItems: staged.rejectedItems,
+						}],
+					}, 30000);
+					runtimeMetrics.publishedSources += 1;
+					runtimeMetrics.publishedItems += staged.items.length + staged.rejectedItems.length;
+				}
+				stagedFiles.push(staged);
+			} catch (error) {
+				staged.job.fail(error);
+				failedFiles.push({
+					sourceIndex: staged.sourceIndex,
+					job: staged.job,
+					file: staged.file,
+					outcome: Object.freeze({
+						...staged.outcome,
+						status: "failed",
+						reason: String(error?.code ?? error?.message ?? "IMPORT_COMMIT_FAILED"),
+						itemCount: 0,
+						rejectedCount: 0,
+						evidencePublished: false,
+						failed: true,
+					}),
+				});
+				fileStates[staged.sourceIndex] = { ...fileStates[staged.sourceIndex], state: "failed", phase: "failed" };
+			}
+		}
+
+		const visibleTracks = stagedFiles.flatMap((staged) => staged.newTracks);
+		const firstPreviewCandidate = stagedFiles
+			.flatMap((staged) => staged.promotableAlignmentItems.map((item) => ({
+				item,
+				source: staged.publication?.evidence?.source ?? null,
+			})))
+			.map(({ item, source }) => makePreviewCandidate(item, { source }))
+			.find(Boolean) ?? null;
+		clearVisibleTracks();
 		commitVisibleTracks(visibleTracks);
+		commitPreviewCandidate(firstPreviewCandidate);
+		const fileOutcomes = [...stagedFiles, ...failedFiles]
+			.sort((a, b) => a.sourceIndex - b.sourceIndex)
+			.map((entry) => entry.outcome);
+		for (const staged of stagedFiles) {
+			staged.job.complete(staged.outcome);
+			const outcomeStatus = String(staged.outcome?.status ?? "").toLowerCase();
+			if (["unsupported", "unknown"].includes(outcomeStatus)) {
+				fileStates[staged.sourceIndex] = { ...fileStates[staged.sourceIndex], state: "unsupported", phase: "unsupported" };
+			} else {
+				fileStates[staged.sourceIndex] = { ...fileStates[staged.sourceIndex], state: "completed", phase: "completed" };
+			}
+			safeLog(`file outcome: ${JSON.stringify(staged.outcome)}`);
+		}
+		const itemCount = stagedFiles.reduce((total, staged) => total + staged.items.length, 0);
+		const rejectedCount = stagedFiles.reduce((total, staged) => total + staged.rejectedItems.length, 0);
+		ui?.setImportSummary?.({
+			fileName: batch.length === 1 ? batch[0].name : `${batch.length} files`,
+			items: itemCount,
+			rejected: rejectedCount,
+			promotable: stagedFiles.reduce((total, staged) => total + staged.promotableAlignmentItems.length, 0),
+			visible: visibleTracks.length,
+			error: false,
+		});
 		await refreshImportStateFromMaster();
 
 		safeLog(makeBatchSummaryLine(stats));
-		return { stats, metrics: getRuntimeMetrics() };
+		return {
+			status: failedFiles.length ? (stagedFiles.length ? "partial" : "failed") : "succeeded",
+			batchId,
+			stats,
+			metrics: getRuntimeMetrics(),
+			fileOutcomes: Object.freeze(fileOutcomes),
+			fileStates: snapshotFileStates(),
+			jobs: Object.freeze([...stagedFiles, ...failedFiles]
+				.sort((a, b) => a.sourceIndex - b.sourceIndex)
+				.map((entry) => entry.job.snapshot())),
+		};
 	}
 
 	function importFiles(files) {
 		const batch = Array.from(files ?? []);
+		const fileNames = Object.freeze(batch.map((file) => String(file?.name ?? "")));
+		publishImportActivity(Object.freeze({
+			state: "accepted",
+			fileCount: batch.length,
+			fileNames,
+			job: null,
+		}));
 		runtimeMetrics.queuedBatches += 1;
 		const execute = async () => {
 			runtimeMetrics.activeBatches += 1;
@@ -388,9 +591,43 @@ export function makeImportController({
 				runtimeMetrics.completedBatches += 1;
 			}
 		};
-		const pending = batchTail.then(execute, execute);
+		const pending = batchTail.then(execute, execute).then((outcome) => {
+			const terminal = Object.freeze({
+				state: outcome?.status === "cancelled" ? "cancelled" : outcome?.status === "failed" ? "failed" : "completed",
+				code: null,
+				fileCount: batch.length,
+				fileNames,
+				fileStates: outcome?.fileStates ?? null,
+				message: null,
+				outcome,
+			});
+			publishImportActivity(terminal);
+			publishTerminalOutcome(terminal);
+			return outcome;
+		}, (error) => {
+			const terminal = Object.freeze({
+				state: "failed",
+				code: String(error?.code ?? "IMPORT_BATCH_FAILED"),
+				fileCount: batch.length,
+				fileNames,
+				fileStates: null,
+				message: String(error?.message ?? error),
+				outcome: null,
+			});
+			publishImportActivity(terminal);
+			publishTerminalOutcome(terminal);
+			throw error;
+		});
 		batchTail = pending.catch(() => {});
 		return pending;
+	}
+
+	function getActiveImportJob() {
+		return activeImportJob?.snapshot() ?? null;
+	}
+
+	function cancelActiveImportJob(reason = "user-request") {
+		return activeImportJob?.abort(reason) ?? false;
 	}
 
 	function getRuntimeMetrics() {
@@ -419,19 +656,97 @@ export function makeImportController({
 		return pending;
 	}
 
-	function installDrop({ element } = {}) {
-		installFileDrop({
+	function installDrop({ element, onLifecycle } = {}) {
+		disposeDrop?.();
+		const installedDisposer = installFileDrop({
 			element: element ?? document.documentElement,
 			onFiles: importFiles,
+			onLifecycle: (detail) => {
+				fileDropLifecycle = detail;
+				fileDropLifecycleHistory.push(detail);
+				onLifecycle?.(detail);
+				publishImportActivity(detail);
+				if (detail?.state === "rejected" || (detail?.state === "failed" && detail?.code === "FILE_DROP_COLLECTION_FAILED")) publishTerminalOutcome(detail);
+			},
 		});
+		disposeDrop = installedDisposer;
+		return function disposeInstalledDrop() {
+			installedDisposer();
+			if (disposeDrop === installedDisposer) disposeDrop = null;
+		};
+	}
+
+	function getFileDropLifecycle() {
+		return fileDropLifecycle;
+	}
+
+	function getFileDropLifecycleHistory() {
+		return Object.freeze([...fileDropLifecycleHistory]);
+	}
+
+	function subscribeTerminalOutcomes(observer) {
+		if (typeof observer !== "function") {
+			throw new TypeError("ImportController: terminal outcome observer must be a function");
+		}
+		terminalOutcomeObservers.add(observer);
+		return () => terminalOutcomeObservers.delete(observer);
+	}
+
+	function subscribeImportActivity(observer) {
+		if (typeof observer !== "function") {
+			throw new TypeError("ImportController: import activity observer must be a function");
+		}
+		importActivityObservers.add(observer);
+		return () => importActivityObservers.delete(observer);
+	}
+
+	function publishImportActivity(detail) {
+		for (const observer of importActivityObservers) {
+			Promise.resolve(observer(detail)).catch((error) => {
+				console.error("[ImportController] import activity observer failed", error);
+			});
+		}
+	}
+
+	function publishTerminalOutcome(detail) {
+		for (const observer of terminalOutcomeObservers) {
+			Promise.resolve(observer(detail)).catch((error) => {
+				console.error("[ImportController] terminal outcome observer failed", error);
+			});
+		}
 	}
 
 	return {
 		importFiles,
 		installDrop,
+		getFileDropLifecycle,
+		getFileDropLifecycleHistory,
+		subscribeTerminalOutcomes,
+		subscribeImportActivity,
+		getActiveImportJob,
+		cancelActiveImportJob,
 		getRuntimeMetrics,
+		getVisibleTracks,
 		publishSyntheticBatch,
 	};
+}
+
+export function applyExistingSourceTrustAssessment(items, result) {
+	const list = Array.isArray(items) ? items : [];
+	if (!result?.meta?.gndSource) return list;
+	return list.map((item) => {
+		if (item?.kind !== "alignment") return item;
+		return {
+			...item,
+			derived: {
+				...(item?.derived ?? {}),
+				importAssessment: {
+					sourceTrustClass: "authoritative_context",
+					sourceFormat: result?.meta?.sourceFormat ?? null,
+				},
+			},
+		};
+	});
 }
 
 function estimateBytes(value) {
@@ -440,4 +755,12 @@ function estimateBytes(value) {
 	} catch {
 		return 0;
 	}
+}
+
+function fileExtension(fileName) {
+	const name = String(fileName ?? "");
+	const dot = name.lastIndexOf(".");
+	return dot > 0 && dot < name.length - 1
+		? name.slice(dot).toLowerCase()
+		: "";
 }

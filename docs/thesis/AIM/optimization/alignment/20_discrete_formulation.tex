@@ -131,20 +131,26 @@ v^2 \kappa_i - g \sin\phi_i
 \Delta s_i.
 \]
 
-\subsubsection{Schwerpunkt Objective}
+\subsubsection{Model-reference-point candidate objective}
 
-Using finite differences, we approximate
+For an explicitly identified reference-point model \(M\), finite differences
+may approximate
 \[
-\|\gamma_c''(s_i)\|^2
+\|\gamma_{P_M}''(s_i)\|^2
 \]
-by second-order differences of \(\gamma_c\).
+by second-order differences of \(\gamma_{P_M}\):
 
 \[
-J_{\mathrm{veh}}(\mathbf{x})
+J_{P_M}(\mathbf{x})
 =
 \sum_{i=1}^{N-1}
-\|\gamma_{c,i+1} - 2\gamma_{c,i} + \gamma_{c,i-1}\|^2.
+\|\gamma_{P_M,i+1} - 2\gamma_{P_M,i} + \gamma_{P_M,i-1}\|^2.
 \]
+
+This candidate objective inherits the model, frame, discretization and
+applicability limits stated in the Schwerpunkt example. It is not a physical
+centre-of-mass, comfort or safety objective unless an identified model and
+responsible source establish that interpretation.
 
 \subsection{Combined Discrete Problem}
 
@@ -152,7 +158,7 @@ J_{\mathrm{veh}}(\mathbf{x})
 \[
 J(\mathbf{x})
 =
-\alpha J_{\mathrm{veh}}
+\alpha J_{P_M}
 +
 \beta J_{\mathrm{dyn}}
 +
@@ -161,6 +167,11 @@ J(\mathbf{x})
 \delta J_\phi.
 \]
 \end{definition}
+
+The four terms have different meanings and may have different units.
+Reference scales, weights \(\alpha,\beta,\gamma,\delta\), their source and
+purpose must be declared before this expression defines an optimization
+problem. A solver result remains a candidate.
 
 \subsection{Constraints}
 
@@ -230,4 +241,3 @@ dimensional nonlinear optimization problem.
 This provides the direct link between theoretical modelling and
 practical implementation.
 \end{summary}
-

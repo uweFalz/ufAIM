@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import transitionLookup from "../../src/domain/transition/transitionLookup.json" with { type: "json" };
 import { RegistryResolver } from "../../src/domain/transition/registry/RegistryResolver.js";
-import { createTransitionQueryService } from "../../src/domain/transition/service/TransitionQueryService.js";
+import { createTransitionQueryService } from "../../src/aim-core/transition/query/createTransitionQueryService.js";
 
 test("TransitionQueryService preserves catalogue and cuts semantics", () => {
 	const resolver = new RegistryResolver(transitionLookup);
@@ -17,7 +17,7 @@ test("TransitionQueryService preserves catalogue and cuts semantics", () => {
 	assert.equal(catalogue.levels.find((x) => x.id === "simpleFcn")?.count, 20);
 	assert.equal(catalogue.levels.find((x) => x.id === "protoFcn")?.count, 28);
 	assert.equal(catalogue.levels.find((x) => x.id === "halfWave")?.count, 28);
-	assert.equal(catalogue.levels.find((x) => x.id === "transition")?.count, 29);
+	assert.equal(catalogue.levels.find((x) => x.id === "transition")?.count, 31);
 
 	const bloss = service.getPresetSpec("bloss");
 	assert.equal(bloss.cuts01.w1, 0.5);

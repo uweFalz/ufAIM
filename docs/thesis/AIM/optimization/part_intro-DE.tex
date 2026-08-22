@@ -3,88 +3,93 @@
 \phantomsection
 \addcontentsline{toc}{chapter}{Optimierung}
 
-Dieser Teil legt dar, wie AIM Eisenbahnbewertung in strukturierte
-ingenieurtechnische Verbesserung überführt.
+\section*{Kurzfassung für Leserinnen und Leser}
 
-\section*{Was wissen wir bereits?}
-Die vorangehenden Teile haben Eisenbahngeometrie, Eisenbahnzustände,
-Laufzeitbewertung, realisierungsbewusste Modellierung, dünn besetzte
-Alignment-Darstellungen und Verarbeitungspipelines begründet.
+Optimierung hilft, wenn ein ingenieurtechnisches Problem mehr als eine
+mögliche Änderung zulässt. Sie durchsucht erklärte Freiheitsgrade nach
+Kandidaten, die erklärte Nebenbedingungen erfüllen und unter einem erklärten
+Ziel gut abschneiden. Sie kann weder den Zweck dieses Ziels liefern noch die
+Anwendbarkeit ihrer Eingaben feststellen, einen Kandidaten annehmen oder eine
+Engineering Decision treffen.
 
-In AIM können Eisenbahn-Alignments durch einen kohärenten operatorbasierten
-Rahmen dargestellt, rekonstruiert, bewertet, gemessen, realisiert und
-analysiert werden. Der Rahmen kann Eisenbahnsysteme und ihr Zusammenwirken mit
-der Realität beschreiben. Beschreibung allein ist jedoch nicht das
-abschließende Ziel des Eisenbahningenieurwesens.
+Dieser Teil verfolgt ein Beispiel. Eine Vermessungspolylinie und eine
+CAD-Kurve weichen in einem Übergangsbereich voneinander ab. Die Identität des
+Alignments bleibt fest. Die Ingenieurin oder der Ingenieur erlaubt eine
+begrenzte Änderung ausgewählter intrinsischer Krümmungsparameter; Endpunkte,
+Endrichtungen, Projektkontext und Quellbeobachtungen bleiben fest. Die Frage
+lautet nicht »Welche Kurve ist wahr?«, sondern:
+\begin{quote}
+Welche Krümmungsänderung ist für diesen erklärten Zweck, unter diesen
+Nebenbedingungen, Annahmen und Beobachtungen ein prüfbarer Kandidat?
+\end{quote}
 
-\section*{Was fehlt noch?}
-Engineering-Entwurf erfordert Verbesserung. Alignments müssen an Bedingungen,
-operative Anforderungen, Baubedingungen, Komfortkriterien,
-Realisierungswirkungen und wirtschaftliche Ziele angepasst werden. Messungen
-müssen interpretiert, Entwürfe verfeinert, widersprüchliche Ziele ausgeglichen
-und Alternativen bewertet werden.
+\section*{Der Vertrag vor der Berechnung}
 
-Das fehlende Element ist daher Optimierung. Sie überführt
-Eisenbahnmodellierung von beschreibender Analyse in aktiven Entwurf und
-Entscheidungsunterstützung.
+Ein Optimierungsproblem erhält erst durch erklärte Verantwortlichkeiten eine
+Bedeutung. Für das durchgehende Beispiel sei
+\[
+\mathcal P=(I,P,M,x,q,\mathcal F,J,\Sigma),
+\]
+wobei \(I\) das Engineering Object identifiziert, \(P\) den Zweck nennt,
+\(M\) das Rekonstruktions- und Bewertungsmodell bezeichnet, \(x\) die freien
+Variablen, \(q\) feste Eingaben und Kontext, \(\mathcal F\) die zulässige
+Menge, \(J\) das Ziel mit Einheiten und Skalierung und \(\Sigma\) die
+Unsicherheitsgrenze enthält. Kein Eintrag darf aus einem Solver-Ergebnis
+abgeleitet werden.
 
-\section*{Was folgt?}
-Dieser Teil formuliert Alignment-Entwurf, Rekonstruktion und Verbesserung als
-Optimierungsprobleme. Optimierung wird in AIM nicht nachträglich von außen
-ergänzt; sie geht natürlich aus den intrinsischen Zustands- und
-Krümmungsdarstellungen der vorangehenden Teile hervor.
+Der Leserpfad folgt den Abhängigkeiten dieses Vertrags:
+\[
+\begin{array}{c}
+\text{ingenieurtechnische Frage}\\
+\downarrow\\
+\text{erklärte Freiheiten, feste Eingaben, Ziel, Nebenbedingungen}\\
+\downarrow\\
+\text{numerische Rekonstruktion und Residuenbewertung}\\
+\downarrow\\
+\text{mathematischer Kandidat und Konvergenzevidenz}\\
+\downarrow\\
+\text{Anwendbarkeitsprüfung und ingenieurtechnische Evaluation}\\
+\downarrow\\
+\text{Engineering Decision außerhalb des Solvers.}
+\end{array}
+\]
 
-Die folgenden Kapitel untersuchen:
-\begin{itemize}
-\item numerische Grundlagen,
-\item Alignment-Optimierung,
-\item strukturierte Residuenformulierungen,
-\item dünn besetzte und blockstrukturierte Löser,
-\item Optimiererarchitekturen und
-\item realisierungsbewusste Optimierung.
-\end{itemize}
+\section*{Warum die technischen Kapitel in dieser Reihenfolge folgen}
 
-Besonderes Gewicht liegt auf der analytischen Struktur von
-Alignment-Modellen, um effiziente und interpretierbare Optimierungsverfahren
-zu gewinnen.
-
-\section*{Bezug zur AIM-Roadmap}
-In der AIM-Roadmap entspricht dieser Teil dem Übergang von Laufzeitbewertung
-und Realisierung zur systematischen Verbesserung von Eisenbahnsystemen.
-
-Die folgende Abbildung beantwortet die Orientierungsfrage: Welche
-Bewertungsschleife macht Verbesserung reproduzierbar statt ad hoc?
+Numerische Rekonstruktion erscheint zuerst, weil jede versuchsweise
+Krümmungsänderung in Geometrie überführt werden muss, bevor Endpunkt- und
+Beobachtungsresiduen auswertbar sind. Die Alignment-Optimierung formuliert
+danach das kontinuierliche und diskrete Problem und führt SQP, Ableitungen und
+dünne Besetzung erst ein, wenn das wachsende Problem sie erfordert. Das
+Architekturkapitel beschreibt die Verantwortungsgrenzen eines möglichen
+Solver-Dienstes und trennt sie von der begrenzten experimentellen
+AXTRAN-Evidenz. Die abschließende Spezialisierung untersucht, wie ein erklärtes
+Realisierungsmodell in die Bewertung eingehen kann, ohne Modell, Realisierung,
+Beobachtung oder Entscheidung zusammenfallen zu lassen.
 
 \begin{figure}[ht]
 \centering
 \input{figures/optimization/icon_optimization_evaluation_loop-DE}
-\caption{Optimierungssymbol: iterative Bewertungsschleife von Parametern zu aktualisierten Parametern.}
+\caption{Optimierung erzeugt einen überarbeiteten Kandidaten und Evidenz für die Prüfung; die Schleife nimmt den Kandidaten nicht an.}
 \label{fig:icon-optimization-evaluation-loop}
 \end{figure}
 
-Die Abfolge
-\[
-\text{Laufzeit und Realisierung}\rightarrow\text{Optimierung}
-\rightarrow\text{verbesserter Entwurf}
-\]
-markiert den Übergang von der Bewertung zur aktiven Verbesserung.
-Optimierung verbindet damit Eisenbahninformationsmodellierung und
-ingenieurtechnische Entscheidungsfindung.
-
 \begin{principle}[Optimierungsprinzip]
 \label{princ:optimization-principle}
-In AIM wird Eisenbahnoptimierung als systematische Verbesserung von
-Eisenbahnzuständen, Realisierungen und operativem Verhalten durch
-strukturierte Zielfunktionen und operatorbasierte Modelle interpretiert.
+Eine AIM-Optimierungsformulierung muss Engineering Object und Zweck,
+Freiheitsgrade und feste Eingaben, Modell, Ziel und Skalierung,
+Nebenbedingungen, Unsicherheitsgrenze und Provenienz erklären. Ihr numerisches
+Ergebnis ist ein Kandidat mit Residuen- und Konvergenzevidenz, keine
+Engineering Decision.
 \end{principle}
 
 \begin{summary}
-Geometrie erklärt Form. Zustände erklären Konfiguration. Laufzeit erklärt
-Bewertung. Realität erklärt Realisierung. Optimierung erklärt Verbesserung.
+Optimierung macht aus Evaluation keine Autorität. Sie macht eine erklärte
+ingenieurtechnische Frage rechnerisch durchsuchbar und liefert Kandidaten, die
+geprüft, verglichen und evaluiert werden können.
 
-Dieser Teil überführt AIM damit von einem beschreibenden Rahmen in einen
-Rahmen für Eisenbahnentwurf, Rekonstruktion und Entscheidungsunterstützung.
+\[
+\boxed{\text{berechnet}\neq\text{anwendbar}\neq
+\text{angenommen}\neq\text{autoritativ}}
+\]
 \end{summary}
-
-Diese Optimierungssicht bereitet den Teil Engineering vor, in dem Verbesserung
-durch Zulässigkeit, Normen und praktische Eisenbahnregeln gefiltert wird.

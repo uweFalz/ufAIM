@@ -1,7 +1,7 @@
 import { getLanguage } from "@app/i18n/strings.js";
 import { getWorkspaceSelection } from "@src/shared/runtime/workspaceSelectionAccess.js";
 
-const result = { passed: false, phase: "waiting", failures: [], levelsCovered: [], selectionPassed: false, editingPassed: false, comparePassed: false, languagePassed: false, boundaryPassed: false, restorationPassed: false, restorationDiagnostics: [], completedAt: null };
+const result = { passed: false, phase: "waiting", failures: [], levelsCovered: [], selectionPassed: false, separatorInteractionPassed: false, restoredRendererRecoveryPassed: false, rendererCollapseRecoveryPassed: false, editingPassed: false, comparePassed: false, languagePassed: false, boundaryPassed: false, restorationPassed: false, restorationDiagnostics: [], completedAt: null };
 window.__transEdDepthE2E = result;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function waitFor(test, label, timeout = 30000) { const started = Date.now(); while (Date.now() - started < timeout) { if (await test()) return; await sleep(40); } throw new Error(`readiness timeout: ${JSON.stringify({ dependency: label, elapsedMs: Date.now() - started, dependencyPhase: window.__alignmentCreationE2E?.phase ?? null, dependencyPromiseExists: Boolean(window.__alignmentCreationE2EPromise), prerequisiteFailed: window.__alignmentCreationE2E?.passed === false && Boolean(window.__alignmentCreationE2E?.completedAt), runtimeSurfaces: { messaging: Boolean(window.messaging), store: Boolean(window.__ufAIM_store), transEd: Boolean(window.__ufAIM_teBridge) } })}`); }
@@ -33,6 +33,82 @@ window.__transEdDepthE2EPromise = (async () => {
 		assert(editedId, "no clean transition record available"); await bridge.selectLevel("transition"); await bridge.selectRecord(editedId);
 		const state = bridge.getDebugState(); assert(state.recordId === editedId && document.getElementById("teRecordTitle")?.textContent, "selection did not propagate to details");
 		assert(document.getElementById("transBoard")?.children.length > 0, "selected transition has no graph"); result.selectionPassed = true;
+		assert(!document.querySelector('#teW1[type="range"], #teW2[type="range"]'), "standalone w1/w2 sliders remain in normal UI");
+		const hostRectBeforeDrag = document.getElementById("transBoard").getBoundingClientRect();
+		const w1Separator = document.querySelector('[data-transed-separator="w1"]');
+		assert(w1Separator?.getAttribute("role") === "slider", "w1 plot separator is not keyboard accessible");
+		const dragX = hostRectBeforeDrag.left + ((0.3 + 0.05) / 1.1) * hostRectBeforeDrag.width;
+		for (const type of ["pointerdown", "pointermove", "pointerup"]) {
+			w1Separator.dispatchEvent(new PointerEvent(type, {
+				bubbles: true,
+				pointerId: 501,
+				pointerType: "mouse",
+				clientX: dragX,
+				clientY: hostRectBeforeDrag.top + hostRectBeforeDrag.height / 2,
+				buttons: type === "pointerup" ? 0 : 1,
+			}));
+		}
+		await waitFor(() => Math.abs(Number(store.getState().te_w1) - 0.3) < 0.01, "w1 separator drag state");
+		assert(Number(store.getState().te_w1) <= Number(store.getState().te_w2), "separator drag violated w1 <= w2");
+		const beyondW2X = hostRectBeforeDrag.right + 100;
+		for (const type of ["pointerdown", "pointermove", "pointerup"]) {
+			w1Separator.dispatchEvent(new PointerEvent(type, {
+				bubbles: true,
+				pointerId: 502,
+				pointerType: "mouse",
+				clientX: beyondW2X,
+				clientY: hostRectBeforeDrag.top + hostRectBeforeDrag.height / 2,
+				buttons: type === "pointerup" ? 0 : 1,
+			}));
+		}
+		await waitFor(() => Number(store.getState().te_w1) === Number(store.getState().te_w2), "w1 separator upper-order clamp");
+		const numericW1 = document.getElementById("teW1");
+		numericW1.value = "0.200";
+		numericW1.dispatchEvent(new Event("input", { bubbles: true }));
+		await waitFor(() => Math.abs(Number(store.getState().te_w1) - 0.2) < 0.001, "numeric w1 edit state");
+		await waitFor(() => {
+			const boardRect = document.getElementById("transBoard").getBoundingClientRect();
+			const separatorRect = document.querySelector('[data-transed-separator="w1"]')?.getBoundingClientRect();
+			const expectedX = boardRect.left + ((0.2 + 0.05) / 1.1) * boardRect.width;
+			return separatorRect && Math.abs(separatorRect.left - expectedX) < 8;
+		}, "numeric w1 edit separator synchronization");
+		assert(document.querySelector('[data-transed-plot-role="primary-function-renderer"]')?.getBoundingClientRect().width > 200, "plot collapsed after separator interaction");
+		result.separatorInteractionPassed = true;
+		const ownedHost = document.getElementById("transBoard");
+		const restoredHost = ownedHost.cloneNode(false);
+		restoredHost.style.width = "1px";
+		restoredHost.style.height = "1px";
+		ownedHost.replaceWith(restoredHost);
+		await bridge.open();
+		await waitFor(() => {
+			const host = document.getElementById("transBoard");
+			const renderer = host?.querySelector(":scope > svg, :scope > canvas");
+			const hostRect = host?.getBoundingClientRect();
+			const rendererRect = renderer?.getBoundingClientRect();
+			return host !== ownedHost
+				&& hostRect?.width > 200
+				&& hostRect?.height > 180
+				&& rendererRect?.width > 200
+				&& rendererRect?.height > 180;
+		}, "TransEd recovery from restored 1x1 renderer host");
+		result.restoredRendererRecoveryPassed = true;
+		const activeHost = document.getElementById("transBoard");
+		const collapsedRenderer = activeHost.querySelector(":scope > svg, :scope > canvas");
+		assert(collapsedRenderer, "primary function renderer missing before collapse regression");
+		collapsedRenderer.style.width = "1px";
+		collapsedRenderer.style.height = "1px";
+		collapsedRenderer.setAttribute("width", "1");
+		collapsedRenderer.setAttribute("height", "1");
+		await waitFor(() => {
+			const host = document.getElementById("transBoard");
+			const renderer = host?.querySelector(":scope > svg, :scope > canvas");
+			const rendererRect = renderer?.getBoundingClientRect();
+			return renderer !== collapsedRenderer
+				&& renderer?.dataset.transedPlotRole === "primary-function-renderer"
+				&& rendererRect?.width > 200
+				&& rendererRect?.height > 180;
+		}, "TransEd recovery from post-initialization 1x1 function renderer");
+		result.rendererCollapseRecoveryPassed = true;
 
 		result.phase = "editing"; const original = catalogueBefore.records.transition.find((entry) => entry.id === editedId).value.normLengthPartition;
 		const valid = [0.2, 0.6, 0.2]; const applied = await bridge.applyWorkingCopy(valid); assert(applied.ok, "valid owning-level edit rejected");

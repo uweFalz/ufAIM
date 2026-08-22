@@ -1,23 +1,93 @@
-\chapter{Optimization of Alignments}
+\chapter{From an Alignment Problem to a Mathematical Candidate}
 
-This chapter bundle answers how alignment design and reconstruction are
-formulated as optimization problems within AIM. It establishes a
-continuous-to-discrete progression from problem context, to curvature-
-space functionals, to discrete formulations, to SQP-oriented solution
-architecture.
+\section*{Reader bridge: the question carried into the mathematics}
 
-The sequence is intentionally cumulative: each included section reuses
-the previous result and adds one layer of formal and engineering
-specificity.
+The numerical evaluator can now reconstruct and test any permitted curvature
+edit. The remaining task is to search those edits without forgetting the
+engineering declaration that gave the numbers meaning.
+
+For the CAD-curve/survey-polyline discrepancy, the chapter bundle uses the
+following fixed reading contract:
+\begin{center}
+\begin{tabular}{p{0.25\textwidth}p{0.65\textwidth}}
+\toprule
+Engineering Object & the identified Alignment; identity is preserved\\
+Purpose & obtain candidates for reconciling a declared transition-region discrepancy\\
+Free variables & selected intrinsic curvature parameters and only those explicitly released\\
+Fixed inputs & start/end pose, locked elements, metric and observation context, source data\\
+Constraints & continuity, fixed boundary conditions, declared bounds and applicability conditions\\
+Objective & declared, unit-aware residual terms with recorded scaling and source\\
+Output & candidate parameters, reconstructed representation, residuals, convergence and numerical evidence\\
+\bottomrule
+\end{tabular}
+\end{center}
+This contract is an illustrative formulation, not a universal AIM objective.
+
+\section*{The route through the deep dive}
+
+The following sections are cumulative. First, the engineering question is
+written as a continuous curvature problem. Second, discretization exposes a
+finite vector of freedoms and constraints. Third, SQP appears because the
+reconstruction makes the problem nonlinear while equality and inequality
+conditions must remain visible. Initial guesses matter because local methods
+do not erase non-convexity. Finally, analytic derivatives, sparsity, and hybrid
+parameterizations appear because they reduce computational work and make
+influence traceable.
 
 \input{optimization/alignment/00_context_and_problem}
+
+\paragraph{Reader bridge to the continuous formulation.}
+The purpose and responsibilities are now fixed. The next section expresses
+smoothness or fit over the intrinsic longitudinal domain; it does not yet
+select a numerical algorithm.
 \input{optimization/alignment/10_continuous_curvature_optimization}
+
+\paragraph{Reader bridge to discretization.}
+The functional becomes computable only after a parameterization and grid
+declare which quantities may move. Refining that grid changes the numerical
+model, not the Engineering Object.
 \input{optimization/alignment/20_discrete_formulation}
+
+\paragraph{Reader bridge to SQP.}
+Reconstruction couples curvature parameters nonlinearly to endpoint and
+observation residuals. SQP is introduced as one local constrained method for
+this visible need, not as the definition of optimization and not as evidence
+of a general production solver.
 \input{optimization/alignment/30_sqp_concrete}
+
+\paragraph{Reader bridge to initialization.}
+A converged local run answers a question near its starting point. Initial
+guesses and multiple starts therefore belong to the provenance of a candidate
+and cannot be hidden behind a success flag.
 \input{optimization/alignment/40_initial_guesses}
+
+\paragraph{Reader bridge to derivatives and sparsity.}
+As the number of released curvature parameters grows, dense numerical
+differentiation repeats expensive reconstruction and obscures local
+dependency. Analytic structure and sparsity answer that cost and auditability
+problem.
 \input{optimization/alignment/50_sqp_analytic_structure}
+
+\paragraph{Reader bridge to alternative parameterizations.}
+No single parameterization is best for every declared purpose. The final
+section compares parametric and hybrid choices as model alternatives whose
+freedoms and approximations must remain recorded.
 \input{optimization/alignment/60_parametric_and_hybrid}
 
-Together, these sections establish the optimization backbone used by
-the subsequent optimizer-architecture and realization-aware
-optimization chapters.
+\section*{What leaves the mathematical chapter}
+
+The mathematical result is not merely \(x^\star\). A reviewable handover is
+\[
+\begin{aligned}
+\mathcal C=(\,&\mathcal P.id,M.id,x^\star,r(x^\star),J(x^\star),\\
+             &\text{constraint margins},\text{termination},
+             \varepsilon_{\mathrm{num}},\text{provenance}\,).
+\end{aligned}
+\]
+Termination reports why the algorithm stopped; convergence evidence reports
+what the numerical method established. Neither proves applicability to a
+different context or acceptance by an engineer.
+
+The next architecture chapter therefore asks how a service can preserve this
+contract across ingestion, calculation, and review without silently committing
+the candidate to the authoritative model.

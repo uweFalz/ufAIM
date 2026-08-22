@@ -1,324 +1,131 @@
-\chapter{Numerical Reconstruction}
+\chapter{Numerical Reconstruction for a Reviewable Candidate}
 
-\section*{Motivation}
+\section{Why a curvature edit needs numerics}
 
-In the curvature-based framework, geometric objects are not given
-explicitly as coordinate sets. Instead, they are reconstructed from
-curvature information by integration.
+In the running example, the free variables change selected coefficients of an
+intrinsic curvature law. Yet the fixed endpoint, direction, and survey
+observations are spatial quantities. Each trial vector \(x\) must therefore be
+reconstructed before the problem can say how well it fits.
 
-As a consequence, numerical methods are not merely implementation
-details, but an essential part of the modelling process.
-
-
-\section{Reconstruction Principle}
-
-\begin{definition}[Reconstruction from curvature]
-Let $\kappaf(s)$ be a curvature function and let
-\[
-(x_0,y_0,\theta_0)
-\]
-be a start pose. The corresponding curve is obtained by solving
-\[
-\theta'(s) = \kappaf(s),
-\qquad
-\gamma'(s) = (\cos\theta(s),\sin\theta(s)).
-\]
-\end{definition}
-
-Even if $\kappaf$ is given analytically, closed-form solutions for
-$\gamma$ are generally not available.
-
-
-\section{Discretization}
-
-\begin{definition}[Discretization]
-A discretization of the parameter interval $[0,L]$ is a finite sequence
-\[
-0 = s_0 < s_1 < \dots < s_n = L.
-\]
-\end{definition}
-
-\begin{definition}[Discrete reconstruction]
-A discrete reconstruction computes approximate values
-\[
-\gamma(s_i), \quad \theta(s_i)
-\]
-at the discretization points.
-\end{definition}
-
-The choice of discretization strongly influences both computational cost
-and geometric accuracy.
-
-\TODO{Formal criteria for discretization strategies (uniform vs adaptive).}
-
-
-\section{Integration Methods}
-
-The reconstruction problem can be formulated as an initial value problem
-for a system of ordinary differential equations.
-
-\subsection{Basic Scheme}
-
-\begin{definition}[Explicit step]
-Given $(\gamma_i,\theta_i)$ at $s_i$, an explicit step computes
-\[
-\theta_{i+1} = \theta_i + \kappaf(s_i)\,\Delta s,
-\]
-\[
-\gamma_{i+1} = \gamma_i + (\cos\theta_i,\sin\theta_i)\,\Delta s.
-\]
-\end{definition}
-
-This corresponds to a first-order method and is generally insufficient
-for high-precision reconstruction.
-
-\subsection{Higher-Order Methods}
-
-\TODO{Runge--Kutta methods for coupled systems.}
-
-\TODO{Romberg integration for curvature integration.}
-
-\TODO{Adaptive step size control.}
-
-\OPEN{Separation of curvature integration and geometric integration.}
-
-
-\section{Error Analysis}
-
-\begin{definition}[Local error]
-The local error of a step is the deviation introduced at a single
-integration step.
-\end{definition}
-
-\begin{definition}[Global error]
-The global error is the accumulated deviation over the entire interval.
-\end{definition}
-
-Errors arise from:
-\begin{itemize}
-\item discretization,
-\item numerical integration,
-\item approximation of curvature laws.
-\end{itemize}
-
-\RESEARCH{Quantitative bounds for error propagation in curvature-driven reconstruction.}
-
-\section{Sensitivity}
-
-The reconstruction process is sensitive to perturbations in curvature.
-Small deviations in $\kappaf$ may lead to significant geometric drift.
-
-\RESEARCH{Sensitivity analysis with respect to curvature perturbations.}
-
-\OPEN{Relation between curvature noise and positional uncertainty.}
-
-
-\section{Sampling and Representation}
-
-\begin{definition}[Sampling]
-Sampling refers to the extraction of a finite set of points from a
-continuous curve representation.
-\end{definition}
-
-Sampling is required for:
-\begin{itemize}
-\item visualization,
-\item collision detection,
-\item export to point-based formats.
-\end{itemize}
-
-\TODO{Error-controlled sampling strategies.}
-
-\OPEN{Difference between sampling for visualization and sampling for computation.}
-
-
-\section{Reconstruction in the Sparse Model}
-
-In the sparse alignment model, reconstruction is performed element-wise.
-Each element contributes a local curvature law, which is integrated
-sequentially.
-
-\begin{definition}[Sequential reconstruction]
-Let $(e_1,\dots,e_n)$ be a sparse alignment. The reconstruction proceeds
-by integrating each element in sequence, using the end state of the
-previous element as initial state for the next.
-\end{definition}
-
-\OPEN{Handling of numerical drift across element boundaries.}
-
-
-\section{Numerical Stability}
-
-Numerical stability is a central concern, especially for long alignments
-or highly curved geometries.
-
-\RESEARCH{Stability criteria for curvature-based integration.}
-
-\TODO{Techniques for drift correction and re-normalization.}
-
-
-\section{Connection to Optimization}
-
-Numerical reconstruction is closely linked to optimization problems.
-In fitting and design tasks, reconstruction is performed repeatedly
-within iterative algorithms.
-
-\TODO{SQP formulation for alignment fitting.}
-
-\RESEARCH{Connection to optimal control problems.}
-
-
-\section{Summary}
-
-\begin{summary}
-Numerical reconstruction is the process of deriving geometric
-representations from curvature data by integration.
-
-It introduces discretization, approximation, and error propagation as
-intrinsic components of the modelling framework.
-
-Therefore, numerical methods are not merely technical tools, but an
-essential layer connecting mathematical definitions with practical
-geometry.
-\end{summary}
-
-\section{Numerical Reconstruction from Curvature}
-
-\subsection{Problem Statement}
-
-Given a curvature function
-\[
-\kappa : [0,L] \to \R,
-\]
-and initial conditions
-\[
-\gamma(0), \quad \theta(0),
-\]
-the geometric alignment is obtained by solving:
-\[
-\gamma'(s) = (\cos\theta(s), \sin\theta(s)),
-\qquad
-\theta'(s) = \kappa(s).
-\]
-
-This defines a nonlinear initial value problem.
-
-
-\subsection{Discrete Approximation}
-
-\begin{definition}[Discretization]
 Let
 \[
-0 = s_0 < s_1 < \dots < s_N = L
+\kappa_x:[0,L]\rightarrow\R
 \]
-be a partition with step sizes \(\Delta s_i\).
-\end{definition}
-
-We approximate:
+be the candidate curvature, and let the fixed start pose be
+\((\gamma_0,\theta_0)\). The model \(M\) produces
 \[
-\kappa_i \approx \kappa(s_i).
+\theta_x'(s)=\kappa_x(s),\qquad
+\gamma_x'(s)=(\cos\theta_x(s),\sin\theta_x(s)).
 \]
+This reconstruction produces a representation used for evaluation. It neither
+changes Alignment identity nor turns the represented curve into an accepted
+engineering state.
 
+\section{From a continuous model to computable samples}
 
-\subsection{Forward Integration Scheme}
+\paragraph{Reader bridge.}
+The equations state the dependency exactly, but a solver must evaluate it
+finitely and repeatedly. Discretization is the declared approximation that
+makes this possible.
 
-\begin{definition}[Explicit integration]
-Given \((\gamma_i, \theta_i)\), define:
+Choose
 \[
-\theta_{i+1} = \theta_i + \kappa_i \Delta s_i,
+0=s_0<s_1<\dots<s_N=L,\qquad \Delta s_i=s_{i+1}-s_i .
 \]
+For example, a midpoint step gives
 \[
-\gamma_{i+1} = \gamma_i + \Delta s_i
-(\cos\theta_i, \sin\theta_i).
-\]
-\end{definition}
-
-This corresponds to an explicit Euler scheme.
-
-
-\subsection{Midpoint Scheme}
-
-\begin{definition}[Midpoint method]
-Define:
-\[
-\theta_{i+\frac{1}{2}} = \theta_i + \frac{1}{2}\kappa_i \Delta s_i,
+\theta_{i+\frac12}=\theta_i+
+ \frac12\kappa_x(s_i)\Delta s_i,
 \]
 \[
-\gamma_{i+1} = \gamma_i + \Delta s_i
-(\cos\theta_{i+\frac{1}{2}}, \sin\theta_{i+\frac{1}{2}}),
+\gamma_{i+1}=\gamma_i+\Delta s_i
+(\cos\theta_{i+\frac12},\sin\theta_{i+\frac12}),\qquad
+\theta_{i+1}=\theta_i+\kappa_x(s_i)\Delta s_i.
 \]
+Other integration schemes may be appropriate. The method, tolerance, and
+sampling rule are part of \(M\); they are not invisible implementation detail.
+
+\section{Residuals answer declared questions}
+
+For the fixed target end pose \((\bar\gamma_L,\bar\theta_L)\), a model may
+produce the endpoint residual
 \[
-\theta_{i+1} = \theta_i + \kappa_i \Delta s_i.
+r_{\mathrm{end}}(x)=
+\begin{bmatrix}
+\gamma_x(L)-\bar\gamma_L\\
+\operatorname{wrap}(\theta_x(L)-\bar\theta_L)
+\end{bmatrix}.
 \]
-\end{definition}
-
-This improves accuracy and stability compared to the explicit scheme.
-
-
-\subsection{Extension to Pose3}
-
-Including cant, we obtain:
+For survey observations \(y_j\), an observation model \(h_j\) may produce
 \[
-\phi_{i+1} = \phi_i + \omega_i \Delta s_i.
+r_{\mathrm{obs},j}(x)=
+h_j(\gamma_x)-y_j.
 \]
+These residuals answer different questions and can have different units,
+uncertainties, and responsibilities. A constraint residual records
+feasibility; an observation residual records discrepancy under an observation
+model. They must not be silently pooled.
 
-Thus, the full discrete system is:
+If residual families enter one least-squares objective, scaling must be
+declared, for example
 \[
-(\gamma_i, \theta_i, \phi_i)
-\;\longrightarrow\;
-(\gamma_{i+1}, \theta_{i+1}, \phi_{i+1}).
+J(x)=
+\frac12\|W_{\mathrm{end}}r_{\mathrm{end}}(x)\|_2^2+
+\frac12\sum_j
+\|W_{\mathrm{obs},j}r_{\mathrm{obs},j}(x)\|_2^2+
+J_{\mathrm{reg}}(x).
 \]
+The matrices \(W\) make units and relative influence explicit; their values
+come from the stated purpose, uncertainty model, or responsible engineering
+choice, not from the numerical method.
 
+\section{Accuracy belongs to the result evidence}
 
-\subsection{Numerical Stability}
+\paragraph{Reader bridge.}
+A candidate may appear feasible because of a coarse grid rather than because
+the underlying continuous model satisfies the constraint. Numerical error
+must therefore travel with the result.
 
-The reconstruction is sensitive to:
+Relevant contributions include:
 \begin{itemize}
-\item step size \(\Delta s\),
-\item noise in \(\kappa_i\),
-\item and large coordinate values.
+\item integration and discretization error;
+\item interpolation or quadrature error in observation residuals;
+\item floating-point and linear-solve error;
+\item sensitivity of reconstructed position to curvature perturbations;
+\item model-form and observation uncertainty, which numerical refinement
+      cannot remove.
 \end{itemize}
 
-To ensure stability:
-\begin{itemize}
-\item sufficiently small step sizes must be used,
-\item curvature should be smoothed,
-\item and local coordinate frames are recommended.
-\end{itemize}
+A defensible run records the method and mesh, tolerances, refinement checks,
+and residuals recomputed on an independent or finer evaluation grid. A
+floating origin or local metric frame can reduce numerical loss for large
+coordinate values, but such a representation change does not alter the
+intrinsic Alignment.
 
+\section{Why derivatives and sparsity appear next}
 
-\subsection{Floating Origin Technique}
-
-For large coordinates, numerical precision degrades.
-
-\begin{definition}[Floating origin]
-A local coordinate system is introduced such that:
+Repeated reconstruction makes the dependence
 \[
-\gamma_i^{\text{local}} = \gamma_i - \gamma_{\text{ref}}.
+x\longmapsto\gamma_x\longmapsto r(x)\longmapsto J(x)
 \]
-\end{definition}
+computationally visible. Derivatives quantify how a permitted parameter
+change affects the residuals. Sparsity records that a local curvature
+parameter usually affects only structured portions of the assembled problem.
+Both are responses to cost and traceability needs; neither selects the
+engineering objective.
 
-This reduces numerical errors in computation and visualization.
-
-
-\subsection{Consistency with CRS}
-
-Reconstruction depends on:
-\begin{itemize}
-\item initial position,
-\item initial orientation,
-\item and coordinate system definition.
-\end{itemize}
-
-Thus, numerical reconstruction must be performed within a consistent CRS.
-
-
-\subsection{Interpretation}
+The numerical chapter has therefore supplied the evaluator required by the
+optimization problem:
+\[
+(x;M,q)\longmapsto
+\bigl(\widehat\gamma_x,r(x),J(x),\varepsilon_{\mathrm{num}}\bigr).
+\]
+Its output is evidence about a trial, not a decision about the Alignment.
 
 \begin{summary}
-Numerical reconstruction provides the link between curvature-based
-models and geometric representation.
-
-It transforms abstract functions into concrete spatial geometry,
-while preserving the structure required for analysis and optimization.
+Numerical reconstruction makes a declared curvature edit evaluable. Its
+discretization, scaling, tolerances, and error estimates remain visible so
+that an apparently good solver result can be reviewed. The next chapter can
+now ask how to search the freedoms efficiently without changing who owns the
+problem or the decision.
 \end{summary}

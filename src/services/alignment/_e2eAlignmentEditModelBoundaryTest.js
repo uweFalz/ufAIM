@@ -1,6 +1,7 @@
 // src/services/alignment/_e2eAlignmentEditModelBoundaryTest.js
 
 import { AlignmentApplicationService } from "./AlignmentApplicationService.js";
+import AlignmentProfileApplicationService from "./AlignmentProfileApplicationService.js";
 import { AlignmentMapper } from "@src/model/spot/model/AlignmentSpotObjectMapper.js";
 import { createAlignmentSpotObject } from "@src/model/spot/model/createAlignmentSpotObject.js";
 import { validateSparseAlignment } from "@spot/validation/validateSparseAlignment.js";
@@ -10,6 +11,18 @@ import { makeAlignment2DFromSparse } from "@src/domain/alignment/build/Alignment
 import { RegistryResolver } from "@src/domain/transition/registry/RegistryResolver.js";
 import { KappaFcnBuilder } from "@src/domain/transition/build/KappaFcnBuilder.js";
 import transitionLookup from "@src/domain/transition/transitionLookup.json" with { type: "json" };
+import {
+	appendVerticalElement,
+	createVerticalConstructiveState,
+} from "@src/aim-core/alignment/profile/VerticalConstructiveState.js";
+import {
+	appendCantElement,
+	createCantConstructiveState,
+} from "@src/aim-core/alignment/profile/CantConstructiveState.js";
+import {
+	appendChainageSegment,
+	createChainageMapping,
+} from "@src/aim-core/alignment/profile/ChainageMapping.js";
 
 function assert(condition, message) {
 	if (!condition) {
@@ -26,21 +39,30 @@ function makeGateway() {
 	let active = null;
 	let lastSaved = null;
 	const saveCalls = [];
+	const objects = new Map();
 
 	return {
 		gateway: {
 			async getActiveAlignment() {
 				return active;
 			},
+			async getObjectById(objectId) {
+				return objects.get(objectId) ?? null;
+			},
 			async saveObject(object, opts = {}) {
 				saveCalls.push({ object, opts });
 				lastSaved = object;
-				active = object;
+				objects.set(object.id, object);
+				if (opts.focus) active = object;
 				return object;
 			},
 		},
 		setActive(object) {
 			active = object;
+			if (object?.id) objects.set(object.id, object);
+		},
+		setObject(object) {
+			if (object?.id) objects.set(object.id, object);
 		},
 		getLastSaved() {
 			return lastSaved;
@@ -103,6 +125,57 @@ function makeComposedNativeAlignmentData({ id = "native_composed_1", name = "Nat
 	return alignmentData;
 }
 
+function makeProfileState(alignmentId) {
+	const vertical = appendVerticalElement(
+		createVerticalConstructiveState({
+			id: `${alignmentId}-vertical`,
+			alignmentId,
+		}),
+		{
+			id: "V",
+			type: "constant-gradient",
+			startS: 0,
+			endS: 100,
+			startElevation: 10,
+			gradient: 0.01,
+		}
+	);
+	const cant = appendCantElement(
+		createCantConstructiveState({
+			id: `${alignmentId}-cant`,
+			alignmentId,
+		}),
+		{
+			id: "C",
+			type: "linear-cross-level",
+			startS: 0,
+			endS: 100,
+			startCrossLevel: 0,
+			crossLevelRate: 0.001,
+		}
+	);
+	const chainageMapping = appendChainageSegment(
+		createChainageMapping({
+			id: `${alignmentId}-K-v1`,
+			alignmentId,
+			schemeId: "K",
+			schemeVersion: "v1",
+		}),
+		{
+			id: "K0",
+			startS: 0,
+			endS: 100,
+			startAddress: 1000,
+			direction: 1,
+		}
+	);
+	return {
+		vertical,
+		cant,
+		chainageMappings: [chainageMapping],
+	};
+}
+
 function assertBoundaryContinuity(alignment, sparse, eps = 2e-3) {
 	let s = 0;
 	for (let i = 0; i < sparse.length - 1; i++) {
@@ -157,6 +230,15 @@ const alignmentEditModelBoundaryPromise = (async function runAlignmentEditModelB
 	assert(created?.alignmentData?.type === "AlignmentData", "new alignment data missing");
 	assert(created?.alignmentData?.editModel, "new alignment editModel missing");
 	assert(created?.alignmentData?.sparseAlignment == null, "new alignment should not invent sparseAlignment");
+	assert(
+		JSON.stringify(created?.alignmentData?.profileState) ===
+			JSON.stringify({
+				vertical: null,
+				cant: null,
+				chainageMappings: [],
+			}),
+		"new alignment should carry explicit empty profileState"
+	);
 	assert(created?.spotObject?.data?.alignmentData?.editModel, "spotObject missing embedded alignmentData");
 	assert(created?.spotObject?.data?.kernel == null, "new alignment kernel should be null");
 	assert(gateway.getSaveCalls().at(-1)?.opts?.focus === true, "new alignment should request focus");
@@ -275,6 +357,148 @@ const alignmentEditModelBoundaryPromise = (async function runAlignmentEditModelB
 
 	gateway.setActive(composedSpot);
 
+	assert(
+		service.hasNativeEditModel(composedAlignmentData),
+		"service should recognize valid constructive horizontal state"
+	);
+	const duplicateIdentity = structuredClone(composedAlignmentData);
+	duplicateIdentity.editModel.elements[1].id =
+		duplicateIdentity.editModel.elements[0].id;
+	assert(
+		!service.hasNativeEditModel(duplicateIdentity),
+		"service should reject duplicate constructive element IDs"
+	);
+	const adjacentFixedState = structuredClone(composedAlignmentData);
+	adjacentFixedState.editModel.elements = [
+		adjacentFixedState.editModel.elements[0],
+		adjacentFixedState.editModel.elements[2],
+	];
+	let adjacentFixedMessage = "";
+	try {
+		service.assertStructurallyEditableSequence(adjacentFixedState);
+	} catch (error) {
+		adjacentFixedMessage = String(error?.message ?? error);
+	}
+	assert(
+		adjacentFixedMessage ===
+			"adjacent fixed alignment elements require an explicit " +
+				"transition: S0 -> A2",
+		"service should preserve adjacent-fixed rejection text"
+	);
+	const emptyConstructiveState = structuredClone(composedAlignmentData);
+	emptyConstructiveState.editModel.elements = [];
+	assert(
+		service.deriveSparseAlignmentFromEditModel(
+			emptyConstructiveState
+		) === null,
+		"empty constructive horizontal state should realize to null"
+	);
+	const composedBeforeDerivation = structuredClone(
+		composedAlignmentData
+	);
+	const composedRealization =
+		service.deriveSparseAlignmentFromEditModel(
+			composedAlignmentData
+		);
+	expectValidSparse(
+		composedRealization,
+		"domain-owned composed realization valid"
+	);
+	assert(
+		JSON.stringify(composedAlignmentData) ===
+			JSON.stringify(composedBeforeDerivation),
+		"horizontal realization must preserve constructive input"
+	);
+
+	const explicitAlignmentData = makeComposedNativeAlignmentData({
+		id: "explicit_non_active",
+		name: "Explicit Non Active",
+	});
+	explicitAlignmentData.profileState = makeProfileState(
+		explicitAlignmentData.id
+	);
+	explicitAlignmentData.source.provenance = {
+		kind: "synthetic-e2e",
+		reference: "profile-spine",
+	};
+	explicitAlignmentData.extension = {
+		owner: "alignment-edit-boundary",
+	};
+	const explicitProfileBefore = structuredClone(
+		explicitAlignmentData.profileState
+	);
+	const explicitKeysBefore = Object.keys(explicitAlignmentData);
+	const explicitSpot = createAlignmentSpotObject({
+		id: explicitAlignmentData.id,
+		name: explicitAlignmentData.name,
+		kernel: explicitAlignmentData.sparseAlignment,
+		sparseAlignment: explicitAlignmentData.sparseAlignment,
+		alignmentData: explicitAlignmentData,
+		meta: { source: { kind: "editor", native: true } },
+	});
+	gateway.setObject(explicitSpot);
+	store.actions.setWorkspaceSelection({
+		primaryId: composedSpot.id,
+		contextIds: ["retained-context"],
+		elementId: "A2",
+		source: "explicit-id-boundary-e2e",
+	});
+	const selectionBeforeExplicit = structuredClone(
+		store.getState().workspace_selection
+	);
+	const explicitEdit = await service.updateArcByAlignmentId({
+		alignmentId: explicitSpot.id,
+		elementId: "A2",
+		curvature: 1 / 225,
+	});
+	assert(explicitEdit?.status === "changed", "explicit-ID arc edit should change non-active alignment");
+	assert(explicitEdit?.alignmentId === explicitSpot.id, "explicit-ID result identity mismatch");
+	assert(explicitEdit?.alignmentState?.editModel?.elements?.find((e) => e.id === "A2")?.parameters?.curvature === 1 / 225, "explicit-ID arc curvature should update");
+	assert(
+		JSON.stringify(explicitEdit?.alignmentState?.profileState) ===
+			JSON.stringify(explicitProfileBefore),
+		"horizontal edit must preserve profileState"
+	);
+	assert(JSON.stringify(store.getState().workspace_selection) === JSON.stringify(selectionBeforeExplicit), "explicit-ID arc edit must preserve active selection byte-equivalently");
+	assert(gateway.getSaveCalls().at(-1)?.opts?.focus === false, "explicit-ID adapter save must disable focus");
+	const reloadedExplicit = await service.alignmentRepository.loadById(
+		explicitSpot.id
+	);
+	assert(
+		JSON.stringify(reloadedExplicit) ===
+			JSON.stringify(explicitEdit.alignmentState),
+		"repository reopen must preserve complete AlignmentData"
+	);
+	assert(
+		JSON.stringify(reloadedExplicit.profileState) ===
+			JSON.stringify(explicitProfileBefore),
+		"repository reopen must preserve profileState"
+	);
+	assert(
+		JSON.stringify(Object.keys(reloadedExplicit)) ===
+			JSON.stringify(explicitKeysBefore),
+		"repository reopen must preserve AlignmentData key order"
+	);
+	assert(
+		reloadedExplicit.source.provenance.reference === "profile-spine" &&
+			reloadedExplicit.extension.owner === "alignment-edit-boundary",
+		"repository reopen must preserve provenance and unknown siblings"
+	);
+	const profileService = new AlignmentProfileApplicationService({
+		alignmentRepository: service.alignmentRepository,
+	});
+	const reopenedEvaluation = await profileService.evaluateAt({
+		alignmentId: explicitSpot.id,
+		s: 50,
+	});
+	assert(
+		reopenedEvaluation.vertical.value.elevation === 10.5 &&
+			reopenedEvaluation.cant.value.crossLevel === 0.05 &&
+			reopenedEvaluation.chainage.mappings[0].candidates[0]
+				.address === 1050,
+		"reopened profile evaluation must preserve vertical/cant/chainage values"
+	);
+
 	const baseSparse = composedSpot.data.kernel;
 	expectValidSparse(baseSparse, "composed base sparse valid");
 	const baseAlignment = buildAlignmentFromSparse(baseSparse);
@@ -287,6 +511,7 @@ const alignmentEditModelBoundaryPromise = (async function runAlignmentEditModelB
 		curvature: 1 / 220,
 	});
 	assert(posArcEdit?.changed === true, "positive arc edit should change alignment");
+	assert(store.getState().workspace_selection.elementId === "A2", "active arc wrapper should preserve selected element");
 	expectValidSparse(posArcEdit.sparseAlignment, "positive arc edit sparse valid");
 	assert(posArcEdit.alignmentData.editModel.elements.find((e) => e.id === "A2")?.parameters?.curvature > 0, "positive arc curvature should remain positive");
 

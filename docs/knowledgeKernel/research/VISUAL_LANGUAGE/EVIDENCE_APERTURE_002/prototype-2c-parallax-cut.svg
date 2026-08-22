@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 1240 1754" role="img" aria-labelledby="t d">
+  <title id="t">Evidence Aperture 2C — Parallax Cut</title>
+  <desc id="d">A heavy alignment occupies a lower-left plane. An observation crosses a narrow diagonal aperture into a displaced represented trace on the upper-right plane. Human authority remains detached.</desc>
+  <rect width="1240" height="1754" fill="#F3F4F2"/>
+  <g fill="#191D21">
+    <text x="105" y="165" font-family="Latin Modern Roman, Georgia, serif" font-size="66" font-weight="700">AIM Foundations</text>
+    <text x="110" y="222" font-family="Latin Modern Sans, Arial, sans-serif" font-size="23" letter-spacing="3">EVIDENCE APERTURE · 2C</text>
+  </g>
+
+  <!-- Two planes divided by an aperture cut -->
+  <path d="M-30 1490 L695 770 L1270 770 L1270 1490Z" fill="#167C80" opacity=".07"/>
+  <path d="M320 1040 L1020 340 L1270 340 L1270 1010 L655 1010Z" fill="#191D21" opacity=".06"/>
+
+  <!-- Physical subject -->
+  <path d="M-90 1355 C185 1215 350 1305 535 1188 C620 1135 665 1080 710 1010"
+        fill="none" stroke="#167C80" stroke-width="38" stroke-linecap="round"/>
+  <g stroke="#F3F4F2" stroke-width="8">
+    <path d="M182 1244l17 46"/><path d="M410 1236l7 49"/><path d="M610 1110l33 36"/>
+  </g>
+
+  <!-- Narrow aperture cut -->
+  <path d="M640 1055 L948 747" stroke="#F3F4F2" stroke-width="72"/>
+  <path d="M640 1055 L948 747" stroke="#191D21" stroke-width="10"/>
+  <path d="M677 1018 L911 784" stroke="#C58A22" stroke-width="6" stroke-dasharray="16 13"/>
+
+  <!-- Witness is the only crossing mark -->
+  <circle cx="680" cy="1015" r="28" fill="#F3F4F2" stroke="#C58A22" stroke-width="11"/>
+  <circle cx="642" cy="1054" r="7" fill="#C58A22"/>
+  <circle cx="615" cy="1081" r="5" fill="#C58A22"/>
+  <path d="M703 992 L875 820" stroke="#C58A22" stroke-width="14" stroke-linecap="round"/>
+
+  <!-- Displaced representation -->
+  <path d="M850 790 C945 650 1050 720 1300 500" fill="none" stroke="#191D21" stroke-width="15"/>
+  <path d="M870 845 C970 705 1070 770 1300 565" fill="none" stroke="#191D21" stroke-width="4" stroke-dasharray="14 12" opacity=".52"/>
+  <path d="M1030 610v104M1014 610h32M1014 714h32" stroke="#C58A22" stroke-width="7"/>
+
+  <!-- Detached authority and stop -->
+  <g transform="translate(840 360)">
+    <circle r="64" fill="#F3F4F2" stroke="#D94A32" stroke-width="12"/>
+    <circle r="42" fill="none" stroke="#191D21" stroke-width="5"/>
+    <circle cy="-11" r="11" fill="#191D21"/>
+    <path d="M-22 21Q0 4 22 21" fill="none" stroke="#191D21" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <path d="M754 447h172" stroke="#D94A32" stroke-width="9"/>
+
+  <g transform="translate(110 1558)" fill="#191D21">
+    <rect width="1020" height="2"/>
+    <text y="55" font-family="Latin Modern Roman, Georgia, serif" font-size="25">Uwe Falz</text>
+    <text x="1020" y="55" text-anchor="end" font-family="Latin Modern Sans, Arial, sans-serif" font-size="20" letter-spacing="2">RESEARCH PROTOTYPE</text>
+  </g>
+</svg>

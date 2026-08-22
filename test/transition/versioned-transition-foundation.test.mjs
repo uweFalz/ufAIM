@@ -5,15 +5,17 @@ import transitionLookup from "../../src/domain/transition/transitionLookup.json"
 import { KappaFcnBuilder } from "../../src/domain/transition/build/KappaFcnBuilder.js";
 import { RegistryResolver } from "../../src/domain/transition/registry/RegistryResolver.js";
 import {
-	buildFutureAxtranInputContract,
 	createLegacyRoundTripSnapshot,
 	createVersionedTransitionEvaluator,
+	upgradeLegacyTransitionLookup,
+} from "../../src/domain/transition/versioned/index.js";
+import { buildFutureAxtranInputContract } from "../../src/aim-core/transition/axtran/buildFutureAxtranInputContract.js";
+import { validateVersionedTransitionRegistry } from "../../src/aim-core/transition/registry/validateVersionedTransitionRegistry.js";
+import {
 	TRANSITION_COMPONENT_ORDER,
 	TransitionComponentRole,
 	TransitionQuantityRole,
-	upgradeLegacyTransitionLookup,
-	validateVersionedTransitionRegistry,
-} from "../../src/domain/transition/versioned/index.js";
+} from "../../src/aim-core/transition/grammar/TransitionQuantityRoles.js";
 
 function clone(value) {
 	return structuredClone(value);
@@ -66,7 +68,7 @@ test("inventory and strict validation report for versioned registry", () => {
 		simpleFcn: 20,
 		protoFcn: 28,
 		halfWave: 28,
-		transition: 29,
+		transition: 31,
 	});
 
 	assert.ok(report.warnings.some((w) => w.code === "VIENNA6_PARTV6_DUPLICATE"));
@@ -206,7 +208,7 @@ test("golden compatibility for all transition records and all quantities", () =>
 	const evaluator = createVersionedTransitionEvaluator({ registryResolver: resolver });
 
 	const ids = Object.keys(transitionLookup.transition);
-	assert.equal(ids.length, 29);
+	assert.equal(ids.length, 31);
 
 	const sampleU = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1];
 	const checks = [

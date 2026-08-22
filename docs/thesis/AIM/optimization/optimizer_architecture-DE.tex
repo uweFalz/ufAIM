@@ -1,180 +1,164 @@
-\chapter{Optimiererarchitektur}
-\section{Überblick}
-Die vorangehenden Kapitel haben die mathematischen und physischen Grundlagen
-von Alignment-Modellierung und -Optimierung eingeführt. Hier werden sie zu
-einer konkreten Systemarchitektur für eine vollständige Optimierungsengine
-verbunden.
+\chapter{Eine Solver-Architektur für prüfbare Kandidaten}
 
-Hauptkomponenten sind Datenaufnahme und Vorverarbeitung, Konstruktion der
-Anfangsschätzung, Bedingungsbibliothek, Zielfunktionsengine, numerischer Löser
-und Live-Visualisierung.
+\section{Architektur beginnt an einer Verantwortungsgrenze}
 
-\section{Datenfluss}
+\paragraph{Lesebrücke.}
+Das vorangehende Kapitel hat einen Kandidatenvertrag erzeugt. Architektur ist
+nötig, weil dieser Vertrag verloren gehen kann, wenn Parsen, Lösen,
+Visualisieren und Modellbearbeitung als eine Operation behandelt werden.
+
+Ein Solver-Dienst darf eine schreibgeschützte Problemerklärung einlesen und
+Kandidatenevidenz zurückgeben. Er darf weder den ingenieurtechnischen Zweck
+ableiten noch die freigegebenen Freiheitsgrade erweitern, Quellbeobachtungen
+ersetzen, Anwendbarkeit entscheiden oder ein Ergebnis allein wegen des
+Abbruchs eines numerischen Laufs in ein autoritatives Alignment schreiben.
+
+Für die durchgehende Abweichung lautet der konzeptionelle Ablauf
 \[
-\text{Eingabedaten}\rightarrow\text{Anfangsschätzung}
-\rightarrow\text{Optimierung}\rightarrow\text{Ergebnis}
+\begin{array}{c}
+\boxed{\mathcal P}\longrightarrow\boxed{\text{prüfen und zusammenstellen}}\\[0.4em]
+\downarrow\\[-0.2em]
+\boxed{\text{lösen und verifizieren}}\longrightarrow\boxed{\mathcal C}\\[0.4em]
+\downarrow\\[-0.2em]
+\boxed{\text{evaluieren und entscheiden}}
+\end{array}
 \]
-Im implementierten System lautet die Folge:
-\begin{verbatim}
-Drop → Parser → Grabbeltisch → Initial Guess → SQP → Model → View
-\end{verbatim}
+Nur die mittleren Operationen gehören zur Solver-Verantwortung. Der letzte
+Pfeil ist eine Grenze zum ingenieurtechnischen Ablauf.
 
-\section{Optimierungssitzung}
-\begin{definition}[Optimierungssitzung]
-Eine Optimierungssitzung kapselt alle Daten und Operationen eines einzelnen
-Optimierungslaufs.
-\end{definition}
-\begin{verbatim}
-class OptimizationSession {
-  constructor({ input, constraints, objectives }) {
-    this.input = input
-    this.constraints = constraints
-    this.objectives = objectives
-    this.initialGuess = null
-    this.result = null
-  }
-  buildInitialGuess() {}
-  runOptimization() {}
-  commitToModel(projectModel) {}
-}
-\end{verbatim}
-Diese Abstraktion trennt Datenvorbereitung, numerische Optimierung und
-Integration in das Systemmodell.
+\section{Das Problempaket}
 
-\section{Konstruktion der Anfangsschätzung}
-Die Anfangsschätzung überführt geometrische Rohdaten in Optimierungsvariablen.
-\begin{verbatim}
-function buildInitialGuess(polyline) {
-  const s = computeArcLength(polyline)
-  const theta = computeDirections(polyline)
-  const kappa = diff(theta) / ds
-  const kappaSmooth = smooth(kappa)
-  const phi = kappaSmooth.map(k =>
-    Math.asin(clamp(v*v*k/g, -1, 1))
-  )
-  return { kappa: kappaSmooth, phi }
-}
-\end{verbatim}
-Dieser Schritt ist für robuste Konvergenz wesentlich.
+Ein übertragbares Problempaket benötigt mehr als Geometrie:
+\[
+\mathcal P=
+(id,I,P,M,x_0,\mathcal X_{\mathrm{free}},q,\mathcal F,
+J,W,\Sigma,\pi),
+\]
+wobei \(W\) die Skalierung und \(\pi\) die Provenienz dokumentiert. Die
+Prüfung stellt sicher, dass jede freie Variable erklärt ist, feste Eingaben
+gesperrt bleiben, Einheiten zusammenpassen, Zielterme ihre Quelle nennen und
+alle referenzierten Modelle und Kontexte vorliegen. Ein Scheitern dieser
+Prüfung ist keine Solver-Nichtkonvergenz, sondern eine unvollständige oder
+nicht anwendbare Problemerklärung.
 
-\section{Bedingungsbibliothek}
-\begin{definition}[Bedingung]
-Eine Bedingung ist eine Funktion, die den aktuellen Zustand auf ein Residuum
-abbildet.
-\end{definition}
-\begin{verbatim}
-function minRadius(kappa, Rmin) {
-  return Math.abs(kappa) - 1/Rmin
-}
-\end{verbatim}
-\begin{verbatim}
-function parallelConstraint(p1, p2, d) {
-  const dx = p1.x - p2.x
-  const dy = p1.y - p2.y
-  return Math.sqrt(dx*dx + dy*dy) - d
-}
-\end{verbatim}
-Alle Bedingungen werden einheitlich als Residuen ausgedrückt.
+\section{Die Zusammenstellung macht mathematische Struktur sichtbar}
 
-\section{Zielfunktionsengine}
-\begin{definition}[Zielfunktion]
-Die Zielfunktion wird als gewichtete Summe von Residuentermen konstruiert.
-\end{definition}
-\begin{verbatim}
-function objectiveJerk(kappa, phi, ds, v, g) {
-  const r = []
-  for (let i = 0; i < kappa.length - 1; i++) {
-    const dk = (kappa[i + 1] - kappa[i]) / ds
-    const dphi = (phi[i + 1] - phi[i]) / ds
-    const j = v*v*v*dk - g*v*Math.cos(phi[i]) * dphi
-    r.push(j)
-  }
-  return r
-}
-\end{verbatim}
-\begin{verbatim}
-function buildObjectiveResiduals(ctx, objectives) {
-  const r = []
-  for (const obj of objectives) {
-    const ri = obj.evaluate(ctx)
-    const w = Math.sqrt(obj.weight ?? 1)
-    for (const v of ri) r.push(w * v)
-  }
-  return r
-}
-\end{verbatim}
-Dies ermöglicht flexible Anpassung an verschiedene Entwurfskriterien.
+\paragraph{Lesebrücke.}
+Ist der ingenieurtechnische Vertrag vollständig, darf die Architektur ihn in
+numerische Objekte übersetzen, ohne seine Bedeutung zu verändern.
 
-\section{Zusammenstellung der Residuen}
-Das gesamte Problem wird in Residuen ausgedrückt.
-\begin{verbatim}
-function buildResidualVector(ctx, constraints, objectives) {
-  return [
-    ...buildConstraintResiduals(ctx, constraints),
-    ...buildObjectiveResiduals(ctx, objectives)
-  ]
-}
-\end{verbatim}
+Die Zusammenstellung erzeugt:
+\begin{itemize}
+\item Parametervektor und Grenzen aus den freigegebenen Freiheitsgraden;
+\item Gleichungs- und Ungleichungsfunktionen aus erklärten Nebenbedingungen;
+\item getrennt typisierte Ziel- und Diagnoseresiduen;
+\item Rekonstruktions- und Beobachtungsevaluatoren;
+\item Skalierung, Ableitungsanbieter und Muster dünner Besetzung;
+\item Abbruchtoleranzen und Einstellungen für unabhängige Verifikation.
+\end{itemize}
 
-\section{Numerischer Löser}
-\subsection{Gauss--Newton-/SQP-Kern}
-\begin{verbatim}
-async function runSQPInteractive(x0, onStep) {
-  let x = x0
-  for (let k = 0; k < maxIter; k++) {
-    const r = residuals(x)
-    const J = jacobian(x)
-    const p = solve(J, r)
-    x = add(x, scale(p, alpha))
-    onStep({ x, k, r })
-    await nextFrame()
-  }
-  return x
-}
-\end{verbatim}
-Der Löser arbeitet auf der Residuenformulierung und nutzt dünne Besetzung.
+Residuen werden nicht austauschbar, nur weil sie in einem Vektor gespeichert
+sind. Typ und Provenienz müssen die Zusammenstellung überdauern, damit eine
+Prüfung Endpunktbedingung, Beobachtungsabweichung, Regularisierung und
+numerische Diagnose unterscheiden kann.
 
-\section{Live-Visualisierung}
-\begin{verbatim}
-optSession.runOptimization({
-  onStep: ({ x, k }) => {
-    const geom = reconstruct(x)
-    geoRender.updateAlignment(geom)
-    plotKappa(x.kappa)
-    plotPhi(x.phi)
-  }
-})
-\end{verbatim}
-Dies ermöglicht interaktive Untersuchung und Fehlersuche.
+\section{Warum SQP, Ableitungen und dünne Besetzung hinter Schnittstellen gehören}
 
-\section{Netzerweiterung}
-\begin{verbatim}
-function residuals(network) {
-  const r = []
-  for (edge of network.edges) r.push(...smoothness(edge))
-  for (node of network.nodes) r.push(...nodeConstraints(node))
-  return r
-}
-\end{verbatim}
-Damit können mehrere verbundene Gleise gleichzeitig optimiert werden.
+\paragraph{Lesebrücke.}
+SQP ist für ein glattes nichtlineares Problem mit sichtbaren Gleichungs- und
+Ungleichungsnebenbedingungen nützlich. Es ist ein austauschbares numerisches
+Verfahren, nicht Eigentümer des Problems.
 
-\section{Systemintegration}
-Die Engine wird über die interaktive Auswahloberfläche in den Nutzerablauf
-eingebunden.
-\begin{verbatim}
-onUserFinalizeSelection(selection) {
-  const alignmentData = buildAlignmentFromSelection(selection)
-  const optSession = new OptimizationSession({ alignmentData })
-  optSession.buildInitialGuess()
-  optSession.runOptimization()
-}
-\end{verbatim}
+Bei \(x_k\) bildet eine SQP-Implementierung ein lokales quadratisches Modell
+und linearisierte Nebenbedingungen, bestimmt einen Schritt \(p_k\) und wendet
+eine Globalisierungsregel wie Liniensuche oder Vertrauensbereich an. Die
+Architektur muss
+\[
+x_k,\quad J(x_k),\quad r(x_k),\quad
+\nabla J(x_k),\quad A(x_k),\quad p_k
+\]
+sowie Nebenbedingungsabstände, Ableitungsprovenienz, Skalierung und
+Solver-Diagnosen offenlegen.
 
-\section{Zusammenfassung}
+Analytische, automatische oder finite Differenzen dürfen Ableitungen liefern,
+wenn Verfahren und Validierung dokumentiert sind. Dünne Besetzung ist eine
+rechnerische Eigenschaft des erklärten Abhängigkeitsgraphen. Ihre Nutzung kann
+Aufwand verringern; sie rechtfertigt kein unerklärtes Ziel und keine
+unerklärte Nebenbedingung.
+
+\section{Abbruch, Konvergenz und Verifikation}
+
+Ein Solver kann enden, weil eine Toleranz erreicht ist, der Fortschritt
+stockt, eine Iterationsgrenze erreicht oder eine Auswertung fehlgeschlagen ist.
+Diese Ergebnisse müssen getrennt bleiben. Ein nominelles
+Konvergenzkennzeichen ist nur mit der zugehörigen Evidenz belastbar:
+\begin{itemize}
+\item Ziel- und Schrittverläufe;
+\item Gleichungsresiduen und Abstände zu Ungleichungsgrenzen;
+\item ein zum Verfahren passendes Stationaritäts- oder Optimalitätsmaß;
+\item gegebenenfalls Ableitungs- und Skalierungsprüfungen;
+\item Rekonstruktion auf dem erklärten Verifikationsgitter;
+\item Warnungen, aktive Annahmen und numerische Fehlerschätzungen.
+\end{itemize}
+
+Diese Evidenz belegt, was innerhalb von \(M\) und \(\mathcal P\) geschah. Sie
+belegt weder die Richtigkeit des Beobachtungsmodells noch die Baubarkeit des
+Kandidaten oder dass sein Zweck die Übernahme rechtfertigt.
+
+\section{Kandidatenpaket und Prüfgrenze}
+
+Der Dienst gibt, ohne anzuwenden, zurück:
+\[
+\mathcal C=
+(\mathcal P.id,M.id,x^\star,\widehat\gamma^\star,
+r^\star,J^\star,\text{Abstände},\text{Abbruch},
+\text{Verifikation},\Sigma,\pi).
+\]
+Eine Prüfoberfläche darf Kandidaten vergleichen, Residuen und
+Empfindlichkeiten untersuchen und eine Darstellung als Vorschau zeigen. Eine
+Vorschau ist keine Physical Realization; ein Vergleich ist keine Evaluation
+unter jedem relevanten Zweck. Eine »Anwenden«-Operation würde in einem
+künftigen Ablauf einen getrennten autorisierten Befehl mit erhaltener
+Provenienz erfordern.
+
+\section{Aktuelle AXTRAN-Evidenz und allgemeine Architektur}
+
+Die vorstehende Architektur ist ein wissenschaftliches
+Verantwortungsmodell und eine Implementierungsrichtung. Die aktuelle
+Repository-Evidenz für AXTRAN ist enger: AXTRAN ist experimentell; ein
+einzelner SQP-Schritt und eine endlich bleibende wiederholte Schleife belegen
+einen numerischen Pfad. Sie belegen keine allgemeine Optimiererarchitektur,
+Produktionsrobustheit, Live-, Netz-, Fahrzeug- oder
+Überhöhungsoptimierung und keine automatische Modellintegration.
+
+Beispiele reichhaltiger Sitzungen, Visualisierung, alternativer Solver oder
+Netzzusammenstellung sind daher künftige oder problemspezifische
+Möglichkeiten. Sie dürfen nicht als gegenwärtige AIM- oder AXTRAN-Fähigkeit
+gelesen werden.
+
+\section{Was die Ingenieurin oder der Ingenieur erhält}
+
+Für die CAD-/Vermessungsabweichung gibt die Architektur einen oder mehrere
+nachvollziehbare Krümmungskandidaten und die für ihre Befragung erforderliche
+Evidenz zurück: Welche Parameter änderten sich, was blieb fest, welche
+Residuen verbesserten sich, welche Nebenbedingungen sind nahezu aktiv, warum
+endete der Lauf und welche Unsicherheiten bleiben? Danach wird die
+Anwendbarkeit im vorgesehenen Projekt- und Realisierungskontext geprüft.
+Evaluation vergleicht Folgen unter erklärten Zwecken. Eine autorisierte
+Engineering Decision darf annehmen, ablehnen oder eine neue
+Problemformulierung verlangen.
+
 \begin{summary}
-Die Architektur verbindet mathematische Modellierung, numerische Optimierung
-und interaktive Visualisierung. Durch einheitliche Residuen für Bedingungen
-und Ziele erreicht sie hohe Modularität und Erweiterbarkeit und ermöglicht den
-Übergang von statischer Alignment-Modellierung zu dynamischem,
-optimierungsgetriebenem Eisenbahninfrastrukturentwurf.
+Eine Solver-Architektur ist vertrauenswürdig, wenn sie das
+ingenieurtechnische Problem beim Eintritt bewahrt und beim Austritt einen
+prüfbaren Kandidaten liefert.
+
+\[
+\boxed{\text{berechnet}\neq\text{anwendbar}\neq
+\text{angenommen}\neq\text{autoritativ}}
+\]
+
+Der Solver verantwortet numerische Arbeit innerhalb des erklärten Vertrags.
+Er besitzt weder Alignment-Identität noch Anwendbarkeit, Annahme oder
+Autorität.
 \end{summary}

@@ -91,11 +91,14 @@ test("XLSX and MDB produce equivalent immutable evidence records with stable ref
 		assert.equal(pub.evidence.source.sha256, "a".repeat(64));
 		assert.equal(pub.evidence.inventory[0].name, "X_ASC11_PP");
 		assert.equal(pub.evidence.diagnostics[0].code, "cant-context-ambiguous-unattached");
-		assert.equal(pub.evidence.relationCandidates[0].id, "relation-1");
+		assert.equal(pub.evidence.relationCandidates[0].id, `relation-1__src_${"a".repeat(64)}`);
+		assert.equal(pub.evidence.relationCandidates[0].from, `candidate-1__src_${"a".repeat(64)}`);
+		assert.equal(pub.evidence.relationCandidates[0].to, `rejected-1__src_${"a".repeat(64)}`);
 		assert.equal(pub.evidence.sourceEnvelope.tables[0].rows[0].cells[0].value, "PRIVATE-ROW-MUST-NOT-LOG");
 		assert.equal(pub.evidence.truthfulnessStatus, "ambiguous-evidence-retained");
 		assert.ok(Object.isFrozen(pub.evidence));
 		assert.ok(pub.items.every((entry) => entry.evidenceId === pub.evidence.evidenceId));
+		assert.deepEqual(pub.items.map((entry) => entry.sourceItemId), ["candidate-1", "rejected-1"]);
 	}
 });
 
@@ -120,6 +123,115 @@ test("one atomic publication stores one envelope and GetState exposes references
 	assert.deepEqual(missing, { schema: "ufAIM.import-result-evidence", version: 1, found: false, evidenceId: "not-found", record: null });
 	one.record.source.sha256 = "mutated-reader-copy";
 	assert.equal(api.getResultEvidence({ evidenceId: pub.evidence.evidenceId }).record.source.sha256, "a".repeat(64));
+});
+
+test("Import.CommitJob applies one complete batch with one state write and one event", () => {
+	let state = null;
+	let writes = 0;
+	const events = [];
+	const api = createImportSessionService({
+		getState: () => state,
+		setState: (next) => { writes += 1; state = next; },
+		router: { broadcastEvt: (name, payload) => events.push({ name, payload }) },
+	});
+	const pub = publication();
+	const items = pub.items.filter((item) => item?.status?.valid !== false);
+	const rejectedItems = pub.items.filter((item) => item?.status?.valid === false);
+	const committed = api.commitJob({
+		batchId: "batch-A",
+		source: { fileName: "synthetic.xlsx" },
+		files: [{
+			jobId: "job-A",
+			fileName: "synthetic.xlsx",
+			publication: pub,
+			items,
+			rejectedItems,
+		}],
+	});
+	assert.equal(writes, 1);
+	assert.equal(events.length, 1);
+	assert.equal(events[0].name, "Import.StateChanged");
+	assert.equal(committed.sessionId, "batch-A");
+	assert.equal(api.getResultEvidence().records.length, 1);
+});
+
+test("Import.CommitJob accumulates files with identical source-local item IDs in one batch", () => {
+	const { api } = service();
+	const first = publication();
+	const secondResult = result();
+	secondResult.sourceEnvelope.source.fileName = "second.xlsx";
+	secondResult.sourceEnvelope.source.sha256 = "b".repeat(64);
+	const second = createImportResultEvidencePublication({
+		result: secondResult,
+		fileName: "second.xlsx",
+		idFactory: () => "fixed",
+		completedAt: "2026-07-24T00:00:00.000Z",
+	});
+	for (const [index, pub] of [first, second].entries()) {
+		api.commitJob({
+			batchId: "batch-multiple",
+			source: { fileName: pub.evidence.source.fileName },
+			files: [{
+				jobId: `job-${index}`,
+				fileName: pub.evidence.source.fileName,
+				publication: pub,
+				items: pub.items.filter((entry) => entry.status.valid !== false),
+				rejectedItems: pub.items.filter((entry) => entry.status.valid === false),
+			}],
+		});
+	}
+	assert.equal(api.getResultEvidence().records.length, 2);
+	assert.equal(api.getState().items.length, 2);
+	assert.equal(api.getState().rejectedItems.length, 2);
+	assert.deepEqual(api.getState().items.map((entry) => entry.sourceItemId), ["candidate-1", "candidate-1"]);
+	assert.equal(new Set(api.getState().items.map((entry) => entry.id)).size, 2);
+});
+
+test("Import.CommitJob validation and duplicate failures are mutation-free", () => {
+	const { api, events, internal } = service();
+	const before = structuredClone(internal());
+	assert.throws(() => api.commitJob({
+		batchId: "batch-invalid",
+		source: null,
+		files: [],
+	}));
+	assert.deepEqual(internal(), before);
+	assert.equal(events.length, 0);
+
+	const pub = publication();
+	const duplicate = {
+		jobId: "job-duplicate",
+		fileName: "synthetic.xlsx",
+		publication: pub,
+		items: pub.items,
+		rejectedItems: [],
+	};
+	assert.throws(() => api.commitJob({
+		batchId: "batch-duplicate",
+		source: null,
+		files: [duplicate, duplicate],
+	}));
+	assert.deepEqual(internal(), before);
+	assert.equal(events.length, 0);
+});
+
+test("Import.CommitJob still rejects a true duplicate inside one physical source", () => {
+	const { api, events, internal } = service();
+	const pub = publication();
+	const accepted = pub.items.find((entry) => entry.status.valid !== false);
+	const before = structuredClone(internal());
+	assert.throws(() => api.commitJob({
+		batchId: "batch-source-duplicate",
+		files: [{
+			jobId: "job-source-duplicate",
+			fileName: "synthetic.xlsx",
+			publication: pub,
+			items: [accepted, structuredClone(accepted)],
+			rejectedItems: [],
+		}],
+	}), /duplicate or invalid item ID/);
+	assert.deepEqual(internal(), before);
+	assert.equal(events.length, 0);
 });
 
 test("session clearing removes items and complete evidence deterministically", () => {
@@ -165,11 +277,29 @@ test("SPOT promotion retains compact evidence after ImportSession clearing", () 
 	assert.equal(promoted.count.addedObjects, 1);
 	assert.equal(objects[0].meta.sourceEvidence.evidenceId, pub.evidence.evidenceId);
 	assert.equal(objects[0].meta.sourceEvidence.source.sha256, "a".repeat(64));
+	assert.equal(objects[0].data.alignmentData.id, objects[0].id);
+	assert.equal(objects[0].data.alignmentData.sparseAlignment, objects[0].data.kernel);
 	assert.equal(Object.hasOwn(objects[0].meta.sourceEvidence, "sourceEnvelope"), false);
 	assert.equal(objects[0].meta.sourceEvidence.unresolvedAttachments[0].evidenceClass, "ambiguous-unattached-source-evidence");
 	api.beginSession({ source: "cleared" });
 	assert.equal(api.getResultEvidence().records.length, 0);
 	assert.equal(objects[0].meta.sourceEvidence.source.sha256, "a".repeat(64));
+});
+
+test("a truthfulness-gated drawable alignment remains adoptable as unresolved local work", () => {
+	const objects = [];
+	const item = {
+		id: "LOCAL_A",
+		kind: "alignment",
+		status: { valid: true, promotable: true },
+		payload: { name: "Local alignment" },
+		derived: {
+			sparseAlignment: { type: "sparseAlignment", version: "sparse_v1", startPose: { x: 0, y: 0, heading: 0 }, sparse: [] },
+		},
+	};
+	const result = promoteImportItems({ items: [item], spotStore: { addObjects: (entries) => objects.push(...entries), addCrs: () => {} } });
+	assert.equal(result.count.addedObjects, 1);
+	assert.deepEqual(objects[0].meta.warnings, ["unknown_source_policy", "no_crs_context"]);
 });
 
 test("evidence publication and reads do not log raw source rows", () => {
@@ -190,6 +320,7 @@ test("evidence publication and reads do not log raw source rows", () => {
 test("local runtime exposes publish and read commands without parser execution", async () => {
 	validatePayload("cmd", "Import.PublishResultEvidence", { evidence: {}, items: [] });
 	validatePayload("cmd", "Import.GetResultEvidence", {});
+	validatePayload("cmd", "Import.CommitJob", { batchId: "batch", source: null, files: [] });
 	const logs = [];
 	const original = console.log;
 	console.log = (...args) => logs.push(JSON.stringify(args));

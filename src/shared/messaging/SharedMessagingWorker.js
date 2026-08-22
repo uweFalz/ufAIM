@@ -11,6 +11,7 @@ import { createDebugService } from "./service/DebugService.js";
 import { createSolverService } from "../../services/optimization/SolverService.js";
 import { getWorkspacePrimaryId } from "../runtime/workspaceSelectionAccess.js";
 import { withSpotEvidenceSnapshot } from "../../import/evidence/importResultEvidence.js";
+import { IndexedDbSpotStateAdapter } from "../persistence/IndexedDbSpotStateAdapter.js";
 
 const router = startWorkerRouter(self);
 const ctx = createWorkerContext({ router });
@@ -71,7 +72,9 @@ const importInboxService = createImportSessionService({
 const spotService = createSpotService({
 	spotStore: ctx.spotStore,
 	router: ctx.router,
+	persistence: new IndexedDbSpotStateAdapter(),
 });
+const spotHydration = spotService.hydrate();
 
 const debug = createDebugService({
 	router: ctx.router,
@@ -134,20 +137,21 @@ router.onCmd(
 // Import.* API
 // ------------------------------------------------------------
 
-router.onCmd("Import.GetState", async () => {
-	const state = importInboxService.getState();
+router.onCmd("Import.GetState", async ({ projection = "full" } = {}) => {
+	const state = importInboxService.getState({ projection });
 
 	debug.log("Import.GetState", {
+		projection,
 		itemCount: Array.isArray(state?.items)
 			? state.items.length
-			: 0,
+			: Number(state?.stats?.accepted ?? 0),
 	});
 
 	return state;
 });
 
-router.onCmd("Import.GetResultEvidence", async ({ evidenceId = null } = {}) => {
-	const response = importInboxService.getResultEvidence({ evidenceId });
+router.onCmd("Import.GetResultEvidence", async ({ evidenceId = null, projection = "full" } = {}) => {
+	const response = importInboxService.getResultEvidence({ evidenceId, projection });
 	debug.log("Import.GetResultEvidence", { evidenceId, found: response.found, recordCount: response.records?.length ?? (response.record ? 1 : 0) });
 	return response;
 });
@@ -207,6 +211,14 @@ router.onCmd("Import.PublishResultEvidence", async ({ evidence, items = [] } = {
 	return importInboxService.publishResultEvidence({ evidence, items });
 });
 
+router.onCmd("Import.CommitJob", async (payload = {}) => {
+	debug.log("Import.CommitJob", {
+		batchId: payload?.batchId ?? null,
+		fileCount: Array.isArray(payload?.files) ? payload.files.length : 0,
+	});
+	return importInboxService.commitJob(payload);
+});
+
 router.onCmd(
 	"Import.SetItemAccepted",
 	async ({ itemId, accepted } = {}) => {
@@ -222,11 +234,17 @@ router.onCmd(
 	}
 );
 
+router.onCmd("Import.SetRelationDecision", async (payload = {}) => {
+	debug.log("Import.SetRelationDecision", { evidenceId: payload?.evidenceId ?? null, candidateId: payload?.candidateId ?? null, action: payload?.action ?? null });
+	return importInboxService.setRelationDecision(payload);
+});
+
 // ------------------------------------------------------------
 // Spot.* API
 // ------------------------------------------------------------
 
 router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
+	await spotHydration;
 	const objects = Array.isArray(spots) ? spots : [];
 
 	debug.log("Spot.AddCandidates", {
@@ -239,6 +257,7 @@ router.onCmd("Spot.AddCandidates", async ({ spots = [] } = {}) => {
 });
 
 router.onCmd("Spot.AddObjects", async ({ objects = [] } = {}) => {
+	await spotHydration;
 	const list = Array.isArray(objects) ? objects : [];
 
 	debug.log("Spot.AddObjects", {
@@ -252,6 +271,7 @@ router.onCmd("Spot.AddObjects", async ({ objects = [] } = {}) => {
 });
 
 router.onCmd("Spot.GetState", async () => {
+	await spotHydration;
 	const state = spotService.getState();
 	const objects = Object.values(state?.objects ?? {});
 
@@ -274,6 +294,7 @@ router.onCmd("Spot.GetState", async () => {
 });
 
 router.onCmd("Spot.GetUiState", async () => {
+	await spotHydration;
 	const uiState = spotService.getUiState();
 
 	debug.log("Spot.GetUiState", {
@@ -287,16 +308,19 @@ router.onCmd("Spot.GetUiState", async () => {
 });
 
 router.onCmd("Spot.RenameObject", async ({ objectId, name } = {}) => {
+	await spotHydration;
 	return spotService.renameObject({ objectId, name });
 });
 
 router.onCmd("Spot.RemoveObject", async ({ objectId } = {}) => {
+	await spotHydration;
 	return spotService.removeObject({ objectId });
 });
 
 router.onCmd(
 	"Spot.PromoteImportItems",
 	async ({ items = [] } = {}) => {
+		await spotHydration;
 		const list = enrichItemsWithEvidence(Array.isArray(items) ? items : []);
 
 		debug.log("Spot.PromoteImportItems", {
@@ -328,6 +352,7 @@ router.onCmd(
 router.onCmd(
 	"Spot.PromoteImportItemsById",
 	async ({ itemIds = [] } = {}) => {
+		await spotHydration;
 		const ids = Array.isArray(itemIds)
 			? itemIds
 				.map((value) => String(value ?? "").trim())

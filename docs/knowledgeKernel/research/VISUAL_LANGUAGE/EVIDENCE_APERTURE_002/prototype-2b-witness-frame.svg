@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 1240 1754" role="img" aria-labelledby="t d">
+  <title id="t">Evidence Aperture 2B — Witness Frame</title>
+  <desc id="d">Three provenance-bearing observation stems rise from an alignment toward a large frame containing only a thin representation. A human authority seal remains outside.</desc>
+  <rect width="1240" height="1754" fill="#F3F4F2"/>
+  <g fill="#191D21">
+    <text x="105" y="165" font-family="Latin Modern Roman, Georgia, serif" font-size="66" font-weight="700">AIM Foundations</text>
+    <text x="110" y="222" font-family="Latin Modern Sans, Arial, sans-serif" font-size="23" letter-spacing="3">EVIDENCE APERTURE · 2B</text>
+  </g>
+
+  <!-- Representation frame -->
+  <path d="M360 390 H1000 V1030 H360" fill="none" stroke="#191D21" stroke-width="22"/>
+  <path d="M430 790 C560 650 708 760 920 580" fill="none" stroke="#191D21" stroke-width="9"/>
+  <path d="M430 838 C565 704 720 805 920 638" fill="none" stroke="#191D21" stroke-width="4" stroke-dasharray="14 12" opacity=".48"/>
+  <path d="M820 542v120M802 542h36M802 662h36" stroke="#C58A22" stroke-width="8"/>
+
+  <!-- Plural observations -->
+  <g fill="none" stroke="#C58A22" stroke-linecap="round">
+    <path d="M250 1210 C280 1040 355 920 475 835" stroke-width="12"/>
+    <path d="M525 1205 C540 1040 585 930 640 770" stroke-width="12" stroke-dasharray="20 13"/>
+    <path d="M820 1185 C810 1025 815 870 830 655" stroke-width="12"/>
+  </g>
+  <g fill="#C58A22">
+    <circle cx="250" cy="1210" r="12"/><circle cx="218" cy="1240" r="7"/><circle cx="192" cy="1262" r="5"/>
+    <circle cx="525" cy="1205" r="12"/><circle cx="492" cy="1235" r="7"/><circle cx="464" cy="1258" r="5"/>
+    <circle cx="820" cy="1185" r="12"/><circle cx="786" cy="1215" r="7"/><circle cx="758" cy="1238" r="5"/>
+  </g>
+
+  <!-- Subject remains below/outside frame -->
+  <path d="M-80 1340 C210 1180 420 1325 640 1230 C845 1140 1030 1275 1320 1115"
+        fill="none" stroke="#167C80" stroke-width="36" stroke-linecap="round"/>
+  <g stroke="#F3F4F2" stroke-width="8">
+    <path d="M215 1230l15 47"/><path d="M515 1261l3 49"/><path d="M814 1191l13 47"/><path d="M1080 1184l20 43"/>
+  </g>
+
+  <!-- Authority outside frame -->
+  <g transform="translate(1082 315)">
+    <circle r="62" fill="#F3F4F2" stroke="#D94A32" stroke-width="12"/>
+    <circle r="41" fill="none" stroke="#191D21" stroke-width="5"/>
+    <circle cy="-11" r="11" fill="#191D21"/>
+    <path d="M-22 21Q0 4 22 21" fill="none" stroke="#191D21" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <path d="M1015 315h-92" stroke="#D94A32" stroke-width="6" stroke-dasharray="12 13"/>
+
+  <g transform="translate(110 1558)" fill="#191D21">
+    <rect width="1020" height="2"/>
+    <text y="55" font-family="Latin Modern Roman, Georgia, serif" font-size="25">Uwe Falz</text>
+    <text x="1020" y="55" text-anchor="end" font-family="Latin Modern Sans, Arial, sans-serif" font-size="20" letter-spacing="2">RESEARCH PROTOTYPE</text>
+  </g>
+</svg>

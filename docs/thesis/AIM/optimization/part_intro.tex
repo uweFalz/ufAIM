@@ -1,137 +1,91 @@
 % optimization/part_intro.tex
-
 \chapter*{Optimization}
 \phantomsection
 \addcontentsline{toc}{chapter}{Optimization}
 
-This part establishes how AIM turns railway evaluation into structured
-engineering improvement.
+\section*{Reader abstract}
 
-% ============================================================
-\section*{What do we already know?}
-% ============================================================
+Optimization helps when an engineering problem admits more than one possible
+change. It searches declared freedoms for candidates that satisfy declared
+constraints and compare well under a declared objective. It cannot supply the
+purpose of that objective, establish the applicability of its inputs, accept a
+candidate, or make an Engineering Decision.
 
-The previous parts established railway geometry, railway states,
-runtime evaluation, realization-aware modelling, sparse alignment
-representations, and processing pipelines.
+This part follows one example. A survey polyline and a CAD curve disagree in a
+transition region. The Alignment identity is fixed. The engineer permits a
+bounded edit of selected intrinsic curvature parameters, while the endpoints,
+end directions, project context, and source observations remain fixed. The
+question is not ``Which curve is true?'' but:
+\begin{quote}
+Which curvature edit is a reviewable candidate for this stated purpose, under
+these constraints, assumptions, and observations?
+\end{quote}
 
-Within AIM, railway alignments can be represented, reconstructed,
-evaluated, measured, realized, and analyzed through a coherent
-operator-based framework.
+\section*{The contract before the calculation}
 
-The framework is therefore capable of describing railway systems and
-their interaction with reality.
+An optimization problem is meaningful only after its responsibilities have
+been declared. For the running example, let
+\[
+\mathcal P=(I,P,M,x,q,\mathcal F,J,\Sigma),
+\]
+where \(I\) identifies the Engineering Object, \(P\) states the purpose,
+\(M\) is the reconstruction and evaluation model, \(x\) contains the free
+variables, \(q\) contains fixed inputs and context, \(\mathcal F\) is the
+feasible set, \(J\) is the objective with units and scaling, and \(\Sigma\)
+states the uncertainty boundary. None of these entries may be inferred from a
+solver result.
 
-However, description alone is not the ultimate objective of railway
-engineering.
+The reader path now follows the dependencies of this contract:
+\[
+\begin{array}{c}
+\text{engineering question}\\
+\downarrow\\
+\text{declared freedoms, fixed inputs, objective, constraints}\\
+\downarrow\\
+\text{numerical reconstruction and residual evaluation}\\
+\downarrow\\
+\text{mathematical candidate and convergence evidence}\\
+\downarrow\\
+\text{applicability check and engineering evaluation}\\
+\downarrow\\
+\text{Engineering Decision outside the solver.}
+\end{array}
+\]
 
-% ============================================================
-\section*{What is still missing?}
-% ============================================================
+\section*{Why the technical chapters follow in this order}
 
-Engineering design requires improvement.
-
-Railway alignments must be adapted to constraints, operational
-requirements, construction conditions, comfort criteria, realization
-effects, and economic objectives.
-
-Measurements must be interpreted.
-
-Designs must be refined.
-
-Conflicting objectives must be balanced.
-
-Alternative solutions must be evaluated.
-
-The missing element is therefore optimization.
-
-Optimization transforms railway modelling from descriptive analysis
-into active design and decision support.
-
-% ============================================================
-\section*{What comes next?}
-% ============================================================
-
-This part formulates railway alignment design, reconstruction, and
-improvement as optimization problems.
-
-Within AIM, optimization is not an external component added after
-modelling.
-
-It emerges naturally from the intrinsic state and curvature
-representations developed throughout the previous parts.
-
-The chapters that follow investigate:
-\begin{itemize}
-\item numerical foundations,
-\item alignment optimization,
-\item structured residual formulations,
-\item sparse and block-structured solvers,
-\item optimizer architectures,
-\item and realization-aware optimization.
-\end{itemize}
-
-Special emphasis is placed on exploiting the analytical structure of
-railway alignment models in order to obtain efficient and interpretable
-optimization procedures.
-
-% ============================================================
-\section*{Relation to the AIM Roadmap}
-% ============================================================
-
-Within the AIM roadmap, the present part corresponds to the transition
-from runtime evaluation and realization toward systematic improvement
-of railway systems.
-
-The figure below answers the orienting question for this part: which
-evaluation loop makes improvement reproducible instead of ad hoc?
+Numerical reconstruction appears first because every trial curvature edit must
+be turned into geometry before endpoint and observation residuals can be
+evaluated. Alignment optimization then states the continuous and discrete
+problem and introduces SQP, derivatives, and sparsity only when the growing
+problem makes them necessary. The architecture chapter describes the
+responsibility boundaries of a possible solver service and distinguishes them
+from the limited experimental AXTRAN evidence. The final specialization asks
+how a declared realization model may enter the evaluation without collapsing
+model, realization, observation, or decision.
 
 \begin{figure}[ht]
 \centering
 \input{figures/optimization/icon_optimization_evaluation_loop}
-\caption{Optimization icon: iterative evaluation loop from parameters to updated parameters.}
+\caption{Optimization produces a revised candidate and evidence for review; the loop does not accept the candidate.}
 \label{fig:icon-optimization-evaluation-loop}
 \end{figure}
 
-The progression
-\[
-\text{Runtime and Realization}
-\rightarrow
-\text{Optimization}
-\rightarrow
-\text{Improved Design}
-\]
-marks the transition from evaluating railway systems toward actively
-improving them.
-
-Optimization therefore forms the bridge between railway information
-modelling and railway engineering decision making.
-
-% ============================================================
 \begin{principle}[Optimization Principle]
 \label{princ:optimization-principle}
-Within AIM, railway optimization is interpreted as the systematic
-improvement of railway states, realizations, and operational behaviour
-through structured objective functions and operator-based models.
+An AIM optimization formulation shall declare its Engineering Object and
+purpose, freedoms and fixed inputs, model, objective and scaling, constraints,
+uncertainty boundary, and provenance. Its numerical output is a candidate with
+residual and convergence evidence, not an Engineering Decision.
 \end{principle}
 
-% ============================================================
 \begin{summary}
-Geometry explains shape.
+Optimization does not turn evaluation into authority. It makes a declared
+engineering question computationally searchable and returns candidates that
+can be inspected, compared, and evaluated.
 
-States explain configuration.
-
-Runtime explains evaluation.
-
-Reality explains realization.
-
-Optimization explains improvement.
-
-The present part therefore transforms AIM from a descriptive framework
-into a framework capable of supporting railway design, reconstruction,
-and decision making.
+\[
+\boxed{\text{calculated}\neq\text{applicable}\neq
+\text{accepted}\neq\text{authoritative}}
+\]
 \end{summary}
-
-This optimization perspective prepares the Engineering part, where
-improvement is filtered through admissibility, standards, and practical
-railway rules.

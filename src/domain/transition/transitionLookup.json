@@ -365,6 +365,20 @@
 			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
+		"s_form_halfwave_in": {
+			"label": "S-Form Halbwelle · zunehmende Krümmung",
+			"halfWave1": "HW_BIQUAD",
+			"halfWave2": "HW_BIQUAD",
+			"normLengthPartition": [1.0, 0.0, 0.0]
+		},
+
+		"s_form_halfwave_out": {
+			"label": "S-Form Halbwelle · abnehmende Krümmung",
+			"halfWave1": "HW_BIQUAD",
+			"halfWave2": "HW_BIQUAD",
+			"normLengthPartition": [0.0, 0.0, 1.0]
+		},
+
 		"ruch_schuhr": {
 			"halfWave1": "HW_BIQUAD",
 			"halfWave2": "HW_BIQUAD",

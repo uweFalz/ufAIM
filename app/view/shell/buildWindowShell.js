@@ -24,10 +24,21 @@ export function buildWindowShell() {
 	appRoot.innerHTML = `
 		<div class="uf-shell" id="ufShell">
 			<div class="uf-toolbar">
+				<div class="uf-workspaceModes" role="group" aria-label="alignmentOS workspace views">
+					<strong class="uf-workspaceModes__brand">alignmentOS</strong>
+					<button type="button" class="btn btn--ghost" data-workspace-view-mode="main" aria-pressed="true">Main</button>
+					<button type="button" class="btn btn--ghost" data-workspace-view-mode="q" aria-pressed="false">q · Lok</button>
+					<button type="button" class="btn btn--ghost" data-workspace-view-mode="l" aria-pressed="false">L · Bänder</button>
+					<output class="uf-workspaceModes__status" data-workspace-view-status="ready" aria-live="polite">World / Map</output>
+				</div>
 				<input id="fileImport" type="file" multiple style="display:none" />
 
-				<button id="btnImport" class="btn" data-i18n="btn_import"></button>
-				<button id="btnGndImportWorkbench" class="btn" data-i18n="gnd_workbench.entry"></button>
+				<div class="uf-toolbarGroup uf-toolbarGroup--global">
+					<button id="btnImport" class="btn" data-i18n="btn_import"></button>
+					<button id="btnGndImportWorkbench" class="btn" data-i18n="gnd_workbench.entry"></button>
+					<button id="btnSpot" class="btn" data-i18n="btn_spot"></button>
+					<button id="btnCommandPalette" class="btn btn--ghost" type="button" aria-haspopup="dialog" aria-expanded="false">Befehle</button>
+				</div>
 
 				<div class="uf-lang">
 					<button
@@ -41,20 +52,20 @@ export function buildWindowShell() {
 					<div id="langMenu" class="uf-langMenu hidden"></div>
 				</div>
 
-				<button id="btnSpot" class="btn" data-i18n="btn_spot"></button>
-				<button id="btnTrans" class="btn" data-i18n="btn_transition"></button>
-				<button id="btnAlignmentEditor" class="btn" data-i18n="btn_alignment_editor"></button>
+				<div class="uf-toolbarGroup uf-toolbarGroup--context">
+					<button id="btnTrans" class="btn" data-i18n="btn_transition"></button>
+					<button id="btnAlignmentEditor" class="btn" data-i18n="btn_alignment_editor"></button>
+					<button
+						id="btnCockpit"
+						class="btn btn--primary"
+						data-i18n="panel_cockpit"
+						data-i18n-title="panel_cockpit"
+						data-i18n-aria-label="panel_cockpit"
+					></button>
+				</div>
 				<button id="btnToggleBands" class="btn hidden" data-i18n="btn_bands"></button>
 				<button id="btnToggleSection" class="btn hidden" data-i18n="btn_section"></button>
 				<button id="btnToggleDebug" class="btn hidden" data-i18n="btn_status_debug"></button>
-
-				<button
-					id="btnCockpit"
-					class="btn btn--primary"
-					data-i18n="panel_cockpit"
-					data-i18n-title="panel_cockpit"
-					data-i18n-aria-label="panel_cockpit"
-				></button>
 
 				<div class="uf-toolbar__spacer"></div>
 
@@ -88,7 +99,7 @@ export function buildWindowShell() {
 					<option value="left" data-i18n="slot_left"></option>
 				</select-->
 
-				<label class="hint" style="display:inline-flex; align-items:center; gap:6px;">
+				<label class="hint uf-autoFitControl" style="display:inline-flex; align-items:center; gap:6px;">
 					<input id="chkAutoFit" type="checkbox" />
 					<span data-i18n="label_autofit"></span>
 				</label>
@@ -100,9 +111,42 @@ export function buildWindowShell() {
 				<!--button id="btnPinsClear" class="btn" data-i18n="btn_pins_clear" data-i18n-title="btn_pins_clear_title"></button-->
 				<!--span id="pinsInfo" class="hint" data-i18n="pins_info_empty"></span-->
 			</div>
+			<section id="workspaceContextBar" class="uf-workspaceContextBar" data-context-bar-status="absent" data-context-bar-mode="main" aria-label="Workspace context" aria-live="polite"></section>
+			<section id="importActivityRail" class="uf-importActivityRail hidden" aria-live="assertive" aria-atomic="true">
+				<div class="uf-importActivityRail__pulse" aria-hidden="true"></div>
+				<div class="uf-importActivityRail__copy">
+					<strong data-import-activity-title>Import</strong>
+					<span data-import-activity-detail></span>
+					<div data-import-activity-files></div>
+				</div>
+				<button type="button" class="btn" data-import-activity-open>Import ansehen</button>
+			</section>
+			<section id="alignmentIntelligence" class="uf-alignmentIntelligence" data-alignment-intelligence-status="finding" data-alignment-intelligence-mode="main" aria-label="Alignment Intelligence">
+				<header><strong>Alignment Intelligence</strong><output data-alignment-intelligence-identity>Import finding · no evidence</output></header>
+				<ul data-alignment-intelligence-capabilities></ul>
+			</section>
 
 			<div class="uf-workspace">
-				<div class="uf-stageWrap" id="geoStage">
+				<div class="uf-stageWrap" id="geoStage" tabindex="-1">
+					<section class="uf-startSurface" data-workspace-start-surface aria-labelledby="workspaceStartTitle">
+						<div class="uf-startSurface__copy">
+							<p class="uf-startSurface__eyebrow">alignmentOS · Engineering Workspace</p>
+							<h1 id="workspaceStartTitle">Arbeite mit einem Alignment.</h1>
+							<p>Importiere Bestandsdaten oder beginne eine neue Trassierung. Geometrie, Höhen, Überhöhung und Kilometrierung bleiben in einem gemeinsamen Arbeitszustand.</p>
+						</div>
+						<div class="uf-startSurface__actions">
+							<button type="button" class="uf-startAction uf-startAction--primary" data-workspace-import>
+								<strong>Daten hineinziehen</strong><span>Mehrere Dateien oder einen Projektordner</span>
+							</button>
+							<button type="button" class="uf-startAction" data-workspace-create>
+								<strong>Neues Alignment</strong><span>Mit einer leeren Trassierung beginnen</span>
+							</button>
+							<button type="button" class="uf-startAction" data-workspace-open>
+								<strong>Vorhandene Objekte</strong><span>Persistierten Arbeitsstand öffnen</span>
+							</button>
+						</div>
+						<footer><span>1 · Daten verstehen</span><span>2 · Alignment bearbeiten</span><span>3 · Folgen prüfen</span></footer>
+					</section>
 					<div id="viewMap" class="uf-geoMap"></div>
 					<div class="uf-stage">
 						<canvas id="view3d"></canvas>
@@ -133,6 +177,17 @@ export function buildWindowShell() {
 						>×</button>
 					</header>
 					<div id="cockpitPanelBody" class="uf-cockpitPanel__body"></div>
+					<section id="initialCrossSection" class="uf-initialSection" aria-label="Initial alignment cross-section">
+						<header><strong>Cross-section at shared s</strong><output data-initial-section-station>—</output></header>
+						<svg viewBox="0 0 360 150" role="img" aria-label="Local alignment reference frame">
+							<line class="uf-initialSection__ground" x1="28" y1="105" x2="332" y2="105" />
+							<line class="uf-initialSection__axis" x1="180" y1="128" x2="180" y2="35" />
+							<circle class="uf-initialSection__origin" cx="180" cy="105" r="5" />
+							<text x="188" y="43">up</text><text x="290" y="98">lateral</text>
+						</svg>
+						<dl><dt>World</dt><dd data-initial-section-world>—</dd><dt>Tangent</dt><dd data-initial-section-tangent>—</dd></dl>
+						<p data-initial-section-evidence>No qualified cross-section evidence</p>
+					</section>
 				</aside>
 			</div>
 		</div>
@@ -140,7 +195,9 @@ export function buildWindowShell() {
 
 	if (overlayRoot) {
 		overlayRoot.innerHTML = `
-			<section id="gndImportWorkbenchOverlay" class="uf-panel uf-gnd-workbench hidden" aria-labelledby="gndWorkbenchTitle">
+			<section id="canonicalObjectQuickSwitcherOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="quick-switcher" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="canonicalObjectQuickSwitcherTitle"><header class="uf-panel__header"><span id="canonicalObjectQuickSwitcherTitle">Objekt wechseln</span><button id="btnCanonicalObjectQuickSwitcherClose" class="btn btn--ghost" type="button" aria-label="Schließen">×</button></header><div id="canonicalObjectQuickSwitcherBody" class="uf-panel__body"></div></section>
+			<section id="engineeringCommandPaletteOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="command-palette" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="engineeringCommandPaletteTitle"><header class="uf-panel__header"><span id="engineeringCommandPaletteTitle">Befehle</span><button id="btnCommandPaletteClose" class="btn btn--ghost" type="button" aria-label="Schließen">×</button></header><div id="engineeringCommandPaletteBody" class="uf-panel__body"></div></section>
+			<section id="gndImportWorkbenchOverlay" class="uf-panel uf-gnd-workbench hidden" data-tool-surface data-tool-kind="workbench" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="gndWorkbenchTitle">
 				<header class="uf-panel__header">
 					<span id="gndWorkbenchTitle" data-i18n="gnd_workbench.title"></span>
 					<button id="btnGndImportWorkbenchClose" class="btn btn--ghost" data-i18n-title="btn_close_title" data-i18n-aria-label="btn_close_title">×</button>
@@ -148,9 +205,9 @@ export function buildWindowShell() {
 				<div id="gndImportWorkbenchBody" class="uf-panel__body"></div>
 			</section>
 
-			<section id="spotOverlay" class="uf-panel hidden">
+			<section id="spotOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="objects" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="spotOverlayTitle">
 				<header class="uf-panel__header">
-					<span data-i18n="panel_spot"></span>
+					<span id="spotOverlayTitle" data-i18n="panel_spot"></span>
 					<button
 						id="btnSpotClose"
 						class="btn btn--ghost"
@@ -176,7 +233,7 @@ export function buildWindowShell() {
 				<div class="uf-panel__body te-workspace" data-te-workspace>
 					<main class="te-main">
 						<header class="te-summary"><div><p id="teRecordKind" class="hint"></p><h2 id="teRecordTitle"></h2><p id="teRecordStatus" class="hint"></p></div><div class="te-primary-controls"><select id="tePresetSelMain" class="select" aria-label="Preset"></select><div class="te-plot-modes"><label><input type="radio" name="tePlot" id="tePlotK" value="k" /> κ</label><label><input type="radio" name="tePlot" id="tePlotK1" value="k1" /> κ′</label><label><input type="radio" name="tePlot" id="tePlotK2" value="k2" /> κ″</label></div></div></header>
-						<section class="te-preview"><div id="transBoard" class="jxgbox"></div><section class="te-splits" aria-label="Transition boundaries"><label for="teW1"><span data-i18n="label_te_w1"></span><output id="teW1Val">—</output></label><input type="range" id="teW1" min="0" max="1000" /><label for="teW2"><span data-i18n="label_te_w2"></span><output id="teW2Val">—</output></label><input type="range" id="teW2" min="0" max="1000" /></section><div id="teLegend" class="hint"></div></section>
+						<section class="te-preview"><div id="transBoard" class="jxgbox" data-transed-plot-role="primary-function-host"></div><section class="te-splits" aria-label="Transition boundaries"><label for="teW1"><span data-i18n="label_te_w1"></span><input type="number" id="teW1" min="0" max="1" step="0.001" inputmode="decimal" /><output id="teW1Val">—</output></label><label for="teW2"><span data-i18n="label_te_w2"></span><input type="number" id="teW2" min="0" max="1" step="0.001" inputmode="decimal" /><output id="teW2Val">—</output></label></section><div id="teLegend" class="hint"></div></section>
 						<details class="te-depth"><summary data-i18n="transed.depth.catalogue"></summary><nav class="te-catalogue" aria-label="transitionDB"><div id="teBreadcrumb" class="te-breadcrumb"></div><div id="teLevels" class="te-levels"></div><div id="teRecordList" class="te-record-list"></div></nav></details>
 						<details class="te-depth"><summary data-i18n="transed.depth.details"></summary><section id="teDetails" class="te-details"></section></details>
 						<details class="te-depth"><summary data-i18n="transed.depth.edit"></summary><section id="teTransitionControls" class="uf-trans-controls">
@@ -184,12 +241,12 @@ export function buildWindowShell() {
 							<select id="tePresetSelAlt" class="select hidden"></select>
 							<div class="te-actions"><button id="teApply" class="btn" data-i18n="transed.apply"></button><button id="teReset" class="btn btn--ghost" data-i18n="transed.reset"></button><output id="teEditStatus" class="hint"></output></div>
 						</section></details>
-						<details class="te-depth"><summary data-i18n="transed.compare"></summary><section class="te-compare"><header><select id="teComparePreset" class="select"></select></header><div id="teCompareSummary"></div><svg id="teCompareGraph" viewBox="0 0 600 180" role="img"></svg></section></details>
+						<details class="te-depth"><summary data-i18n="transed.compare"></summary><section class="te-compare"><header><select id="teComparePreset" class="select"></select></header><div id="teCompareSummary"></div><svg id="teCompareGraph" viewBox="0 0 600 180" role="img" data-transed-plot-role="transition-comparison"></svg></section></details>
 					</main>
 				</div>
 			</section>
 
-			<section id="alignmentEditorOverlay" class="uf-panel hidden">
+			<section id="alignmentEditorOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="authoring" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="aeTitle">
 				<header class="uf-panel__header">
 					<span data-i18n="alignment_editor.title"></span>
 					<button id="btnAlignmentEditorClose" class="btn btn--ghost" data-i18n-title="btn_close_title" data-i18n-aria-label="btn_close_title">×</button>
@@ -211,6 +268,7 @@ export function buildWindowShell() {
 						<div id="aeConsequence" class="uf-align-edit__consequence" aria-live="polite"></div>
 						<div class="uf-align-edit__actions"><button id="aeApply" type="button" class="btn btn--primary" data-i18n="alignment_editor.action.apply"></button><button id="aeUndo" type="button" class="btn btn--ghost" data-i18n="alignment_editor.action.undo"></button><button id="aeReset" type="button" class="btn btn--ghost" data-i18n="alignment_editor.action.reset"></button></div>
 						<div id="aeStatus" class="uf-align-edit__status" data-kind="info"></div>
+						<section id="aeSequenceReview" class="uf-align-edit__sequence" aria-label="Horizontale Sequenz und Konsequenzen"></section>
 						<details class="uf-align-edit__technical">
 							<summary data-i18n="alignment_editor.technical"></summary>
 							<dl id="aeTechnicalDetails"></dl>
@@ -218,6 +276,13 @@ export function buildWindowShell() {
 					</section>
 				</div>
 			</section>
+
+			<section id="verticalProfileAuthoringOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="vertical-authoring" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="verticalProfileAuthoringTitle">
+				<header class="uf-panel__header"><span id="verticalProfileAuthoringTitle">Vertical / Gradiente</span><button id="btnVerticalProfileAuthoringClose" class="btn btn--ghost" aria-label="Schließen">×</button></header>
+				<div id="verticalProfileAuthoringBody" class="uf-panel__body"></div>
+			</section>
+			<section id="cantAuthoringOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="cant-authoring" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="cantAuthoringTitle"><header class="uf-panel__header"><span id="cantAuthoringTitle">Überhöhung / Cant</span><button id="btnCantAuthoringClose" class="btn btn--ghost" aria-label="Schließen">×</button></header><div id="cantAuthoringBody" class="uf-panel__body"></div></section>
+			<section id="chainageAuthoringOverlay" class="uf-panel hidden" data-tool-surface data-tool-kind="chainage-authoring" role="complementary" aria-modal="false" aria-hidden="true" aria-labelledby="chainageAuthoringTitle"><header class="uf-panel__header"><span id="chainageAuthoringTitle">Stationierung / Chainage</span><button id="btnChainageAuthoringClose" class="btn btn--ghost" aria-label="Schließen">×</button></header><div id="chainageAuthoringBody" class="uf-panel__body"></div></section>
 
 			<section id="overlayBands" class="uf-panel hidden">
 				<header class="uf-panel__header">

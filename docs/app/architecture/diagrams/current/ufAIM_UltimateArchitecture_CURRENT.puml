@@ -92,6 +92,166 @@ package "@kernel\n(calculation module)" {
 
 }
 
+package "AIM Core\n(browser-independent)" {
+
+  [Public API Manifest + Global Dependency Gate] as CoreApiFreeze
+
+  package "src/aim-core/alignment/profile" {
+
+    [VerticalConstructiveState] as ProfileVertical
+
+    [CantConstructiveState] as ProfileCant
+
+    [ChainageMapping] as ProfileChainage
+
+    [AlignmentProfileEvaluationService] as ProfileEvaluation
+
+    [AlignmentProfileStateReaderPort] as ProfilePort
+
+  }
+
+  package "src/aim-core/alignment/topology" {
+
+    [TrackNetworkTopology] as CoreTopology
+
+  }
+
+  package "src/aim-core/alignment/authoring" {
+
+    [AlignmentAuthoringContract] as AuthoringContract
+
+    [AlignmentRepositoryPort] as AuthoringPort
+
+    [Alignment Aggregate Creation] as AlignmentAggregateCreation
+
+    [Alignment Edit Operations] as AlignmentEditOperations
+
+  }
+
+  package "src/aim-core/alignment/aggregate" {
+
+    [Alignment Aggregate Factory] as CoreAlignmentFactory
+
+    [SparseAlignment Builder] as CoreSparseAlignmentBuilder
+
+    [Horizontal Constructive State] as CoreHorizontalConstructiveState
+
+  }
+
+  package "src/aim-core/geometry" {
+
+    [Vector2D Primitives] as VectorGeometry2D
+
+    [Alignment2D Geometry] as CoreAlignment2D
+
+    [Alignment Element Base] as CoreAlignmentElement
+
+    [Pose Advance 2D] as CorePoseAdvance2
+
+    [Fixed Element Geometry] as CoreFixedElement
+
+    [Romberg Integration] as CoreRomberg
+
+    [Transition Element Geometry] as CoreTransitionElement
+
+    [Immediate Element Geometry] as CoreImmediateElement
+
+    [Kink Element Geometry] as CoreKinkElement
+
+  }
+
+  package "src/aim-core/transition/grammar" {
+
+    [TransitionQuantityRoles] as TransitionGrammar
+
+  }
+
+  package "src/aim-core/transition/axtran" {
+
+    [AXTRAN Problem Declaration] as AxtranProblemDeclaration
+
+  }
+
+  package "src/aim-core/transition/registry" {
+
+    [Transition Registry Validation] as TransitionRegistryValidation
+
+    [Injected RegistryResolver] as TransitionRegistryResolver
+
+  }
+
+  package "src/aim-core/transition/continuity" {
+
+    [Continuity Candidate Validation] as ContinuityCandidateValidation
+
+    [Transition Continuity Solver] as TransitionContinuitySolver
+
+    [Versioned Continuity Model] as VersionedContinuityModel
+
+  }
+
+  package "src/aim-core/transition/versioned" {
+
+    [Legacy Registry Upgrader] as VersionedTransitionUpgrader
+
+    [Versioned Transition Evaluator] as VersionedTransitionEvaluator
+
+  }
+
+  package "src/aim-core/transition/ast" {
+
+    [Transition Proto-AST Builder] as TransitionProtoAstBuilder
+
+    [Transition AST Evaluation] as TransitionAstEvaluation
+
+    [Transition AST Simplification] as TransitionAstSimplification
+
+    [Transition AST Symbolic Differentiation] as TransitionAstSymDiff
+
+    [Transition AST Symbolic Domain Integration] as TransitionAstSymInt
+
+  }
+
+  package "src/aim-core/transition/query" {
+
+    [Transition Query Core Service] as TransitionQueryCore
+
+  }
+
+  package "src/aim-core/transition/runtime" {
+
+    [KappaFcnBuilder] as TransitionFunctionRuntime
+
+    [computeAnchorsFromTotal] as TransitionRuntimeAnchors
+
+    [clamp01] as TransitionRuntimeClamp
+
+  }
+
+}
+
+package "Application Services / Adapters" {
+
+  [AlignmentProfileApplicationService] as ProfileApplication
+
+  [StaticAlignmentProfileStateReaderAdapter] as ProfileAdapter
+
+  [RepositoryAlignmentProfileStateReaderAdapter] as RepositoryProfileAdapter
+
+  [AlignmentApplicationService] as AlignmentApplication
+
+  [SpotAlignmentRepositoryAdapter] as SpotAuthoringAdapter
+
+  [Registry / Alignment / App Kappa consumers] as ExternalKappaConsumers
+
+  [Concrete Transition DB] as ConcreteTransitionDb
+
+  [Legacy Registry JSON Adapter] as ConcreteRegistryResolver
+
+  [Worker / Messaging / Runtime] as TransitionQueryConsumers
+
+}
+
 package "Window Clients" {
 
   package "Window A" {
@@ -190,6 +350,156 @@ package "Window Clients" {
 
 [ViewController B] --> [Alignment Calculation]
 
+[Cockpit / iVision A] --> ProfileApplication
+
+ProfileApplication --> ProfileEvaluation
+
+ProfileEvaluation --> ProfileVertical
+
+ProfileEvaluation --> ProfileCant
+
+ProfileEvaluation --> ProfileChainage
+
+ProfileEvaluation --> ProfilePort
+
+ProfileAdapter --> ProfilePort
+
+ProfileApplication --> RepositoryProfileAdapter : productive repository path
+
+RepositoryProfileAdapter --> ProfilePort
+
+RepositoryProfileAdapter --> AuthoringPort : loadById
+
+AlignmentApplication --> AuthoringContract
+
+AlignmentApplication --> AuthoringPort
+
+AlignmentApplication --> AlignmentAggregateCreation : reference-identical legacy facade
+
+AlignmentApplication --> AlignmentEditOperations : reference-identical legacy facade
+
+[Curvature Band Controller] --> AlignmentEditOperations : reference-identical legacy facade
+
+[Alignment Elements] --> VectorGeometry2D : reference-identical legacy facade
+
+CoreAlignment2D --> VectorGeometry2D : canonical four-symbol dependency
+
+CoreAlignmentElement --> VectorGeometry2D : canonical normalize dependency
+
+CoreAlignmentFactory --> CoreAlignment2D : canonical Geometry
+
+[Pose2 + PoseAdvance2] --> VectorGeometry2D : reference-identical legacy facade
+
+CorePoseAdvance2 --> VectorGeometry2D : canonical rot90 dependency
+
+CoreFixedElement --> CoreAlignmentElement : canonical base dependency
+
+CoreFixedElement --> CorePoseAdvance2 : canonical advance dependency
+
+CoreAlignmentFactory --> CoreFixedElement : canonical Geometry
+
+CoreTransitionElement --> VectorGeometry2D : canonical normalize + rot90
+
+CoreTransitionElement --> CoreAlignmentElement : canonical base dependency
+
+CoreTransitionElement --> CoreRomberg : canonical integration dependency
+
+CoreAlignmentFactory --> CoreTransitionElement : canonical Geometry
+
+CoreImmediateElement --> CoreTransitionElement : canonical specialization
+
+CoreAlignmentFactory --> CoreImmediateElement : canonical Geometry
+
+CoreKinkElement --> CoreTransitionElement : canonical specialization
+
+CoreKinkElement --> VectorGeometry2D : canonical rot dependency
+
+CoreAlignmentFactory --> CoreKinkElement : canonical Geometry
+
+CoreAlignmentFactory --> [ZeroLengthFixed Geometry] : canonical Geometry
+
+[Authoring state] --> CoreHorizontalConstructiveState
+
+CoreHorizontalConstructiveState --> CoreSparseAlignmentBuilder : pure realization
+
+CoreSparseAlignmentBuilder --> CoreAlignmentFactory : canonical Factory
+
+[Productive services / views] --> [Configured Horizontal / Sparse adapters]
+
+[Configured Horizontal / Sparse adapters] --> CoreHorizontalConstructiveState
+
+[Configured Horizontal / Sparse adapters] --> CoreSparseAlignmentBuilder
+
+[Injected Transition resolver / runtime shapes] --> CoreAlignmentFactory
+
+[Injected Transition resolver / runtime shapes] --> [Configured Horizontal / Sparse adapters]
+
+[Concrete transitionLookup JSON] --> [Configured Horizontal / Sparse adapters]
+
+[Application services / adapters / views] --> CoreApiFreeze : public Core API only
+
+CoreApiFreeze ..> CoreAlignmentFactory : freezes Root identity
+
+CoreApiFreeze ..> TransitionGrammar : freezes Root identity
+
+CoreApiFreeze ..> ProfileEvaluation : freezes Root identity
+
+CoreApiFreeze ..> CoreTopology : freezes Root identity
+
+SpotAuthoringAdapter --> AuthoringPort
+
+AxtranProblemDeclaration --> TransitionGrammar
+
+TransitionRegistryValidation --> TransitionGrammar
+
+TransitionRegistryResolver --> VersionedTransitionUpgrader
+
+TransitionRegistryResolver --> TransitionRegistryValidation
+
+ConcreteTransitionDb --> ConcreteRegistryResolver
+
+ConcreteRegistryResolver --> TransitionRegistryResolver : injected catalogue
+
+TransitionContinuitySolver --> TransitionGrammar
+
+TransitionContinuitySolver --> VersionedContinuityModel : injected model shape
+
+VersionedTransitionEvaluator --> TransitionFunctionRuntime
+
+VersionedTransitionEvaluator --> TransitionGrammar
+
+VersionedContinuityModel --> TransitionFunctionRuntime
+
+VersionedContinuityModel --> TransitionGrammar
+
+TransitionFunctionRuntime --> TransitionAstEvaluation : canonical Core
+
+TransitionFunctionRuntime --> TransitionAstSimplification : canonical Core
+
+TransitionProtoAstBuilder --> TransitionAstSimplification
+
+TransitionAstSymDiff --> TransitionAstSimplification
+
+TransitionFunctionRuntime --> TransitionAstSymDiff : canonical Core
+
+TransitionAstSymInt --> TransitionAstSimplification
+
+TransitionFunctionRuntime --> TransitionAstSymInt : canonical Core
+
+TransitionFunctionRuntime --> TransitionProtoAstBuilder : canonical Core
+
+TransitionFunctionRuntime --> TransitionRuntimeAnchors : private runtime helper
+
+TransitionFunctionRuntime --> TransitionRuntimeClamp : private runtime helper
+
+ExternalKappaConsumers --> TransitionFunctionRuntime : reference-identical legacy facade
+
+TransitionQueryCore --> ConcreteTransitionDb : injected data shape
+
+TransitionQueryCore --> ConcreteRegistryResolver : injected resolver shape
+
+TransitionQueryConsumers --> TransitionQueryCore : reference-identical legacy facade
+
 [Alignment Calculation] --> [SparseAlignment]
 
 [Alignment Calculation] --> [Transition Families]
@@ -271,6 +581,314 @@ ufAIM is knowledge,
 not the representation technology.
 
 Views are projections of know-how.
+
+end note
+
+note bottom of ProfileEvaluation
+
+Standalone Profile Core module.
+
+No browser, UI, Import/GND, Worker/Messaging,
+
+persistence technology, or renderer dependency.
+
+Legacy src/domain paths are compatibility re-export façades.
+
+end note
+
+note bottom of RepositoryProfileAdapter
+
+Reads optional AlignmentData.profileState through the existing repository port.
+Missing legacy state remains explicit absence; present Core states and chainage
+mapping identities are validated without conversion or fabricated values.
+
+end note
+
+note bottom of CoreTopology
+
+Explicit stable node, edge, Alignment incidence,
+
+and orientation identities only.
+
+No geometric coincidence, GND/import inference,
+
+App service, persistence, or UI responsibility.
+
+end note
+
+note bottom of AuthoringContract
+
+Explicit-ID update-arc request/result vocabulary
+
+and repository-port shape only.
+
+Application orchestration, SPOT, selection/focus,
+
+storage technology, Worker/Messaging, and UI remain outside Core.
+
+end note
+
+note bottom of AlignmentAggregateCreation
+
+Zero-import creation of the existing empty native/local-cartesian draft only.
+
+Edit operations, sparse realization, geometry, repository/persistence and UI
+
+remain outside Core. This package changes no Cant or datum semantics.
+
+end note
+
+note bottom of AlignmentEditOperations
+
+Zero-import in-memory operations over the existing AlignmentData.editModel only.
+
+The Application Service and Curvature Band Controller remain outside Core
+
+and consume the reference-identical legacy façade. Sparse realization, geometry,
+
+repository/persistence, selection/focus, UI and Cant/profile/topology stay outside.
+
+end note
+
+note bottom of VectorGeometry2D
+
+Zero-import vec, dot, length, arithmetic, rotation and normalization primitives.
+
+Alignment elements and frame helpers remain external consumers through the
+
+reference-identical legacy façade. No CRS, datum, topology, Cant, unit or railway meaning.
+
+end note
+
+note bottom of CoreAlignment2D
+
+Browser-independent chain-length dispatch, poses, transforms and world-to-track
+
+sampling over injected element objects. Concrete elements,
+
+sparse realization, projection and UI remain outside Core.
+
+end note
+
+note bottom of CoreAlignmentElement
+
+Browser-independent arc-length storage/clamp, abstract element protocol,
+
+convenience delegation and left-normal track-to-world calculation only.
+
+Concrete elements, pose advancement, Factory and realization remain outside Core.
+
+end note
+
+note bottom of CorePoseAdvance2
+
+Browser-independent planar constant-curvature pose advancement only.
+
+FixedElement consumes this function through its canonical Core dependency.
+
+No CRS, Cant, unit, 3D, Factory or railway meaning is introduced.
+
+end note
+
+note bottom of CoreFixedElement
+
+Browser-independent fixed-curvature Alignment element behavior only.
+
+Alignment Aggregate Factory and ZeroLengthFixed consume the canonical class.
+
+No realization, CRS or Cant meaning is added.
+
+end note
+
+note bottom of CoreRomberg
+
+Browser-independent mutable Romberg scalar and Fresnel integration utility.
+
+Existing algorithm and tolerances only; no new mathematical approval.
+
+end note
+
+note bottom of CoreTransitionElement
+
+Browser-independent TransitionElement geometry with exact existing runtimePreset,
+
+curvature, derivative, pose, quality and restoration behavior.
+
+Alignment Aggregate Factory consumes the canonical TransitionElement directly.
+
+No new transition mathematics, CRS, Cant or Kernel approval.
+
+end note
+
+note bottom of CoreKinkElement
+
+Zero-length directional KinkElement specialization with exact existing private
+
+zero runtime preset, rotation, curvature, reverse and parallel behavior.
+
+Alignment Aggregate Factory consumes the canonical specialization directly.
+
+No kink convention, continuity interpretation or Kernel approval is introduced.
+
+end note
+
+note bottom of CoreImmediateElement
+
+Zero-length ImmediateElement specialization with the exact existing private
+
+zero runtime preset, curvature, pose identity, reverse and parallel behavior.
+
+Alignment Aggregate Factory consumes the canonical specialization directly.
+
+No discontinuity redesign, new geometry or Kernel approval.
+
+end note
+
+note bottom of TransitionGrammar
+
+Zero-import versioned quantity, component-role,
+
+representation-level and zero-length-policy vocabulary only.
+
+Evaluators, registry upgrade, continuity and transitionDB
+
+remain outside this module.
+
+end note
+
+note bottom of AxtranProblemDeclaration
+
+Solver-agnostic future-axtran-input/v1 declaration only.
+
+Solvers, candidates, residuals, applicability,
+
+transition evaluation/continuity and productive wiring remain outside.
+
+end note
+
+note bottom of TransitionRegistryValidation
+
+Existing versioned-registry integrity reports and optional
+
+legacy-comparison diagnostics only.
+
+The injected RegistryResolver, upgrader, evaluator and continuity model
+
+are canonical Core; concrete JSON ownership remains in the legacy adapter.
+
+end note
+
+note bottom of ContinuityCandidateValidation
+
+Zero-import structural validation/report behavior for
+
+non-authoritative continuity solver candidates only.
+
+Concrete Continuity Model, approval workflow, persistence,
+
+transitionDB and AXTRAN remain outside.
+
+end note
+
+note bottom of TransitionContinuitySolver
+
+Existing deterministic continuity solver behavior only.
+
+Depends only on canonical Transition Grammar and an injected model shape.
+
+The canonical Versioned Continuity Model supplies that injected shape.
+
+Candidate approval, concrete transitionDB,
+
+and AXTRAN remain outside Core.
+
+end note
+
+note bottom of TransitionAstEvaluation
+
+Zero-import AST-to-number evaluation leaf only.
+
+AST construction, simplify, symDiff and symInt are sibling Core leaves.
+
+Transition Function Runtime consumes them; continuity and solving remain separate.
+
+end note
+
+note bottom of TransitionAstSimplification
+
+Zero-import existing AST constructors and algebraic simplification only.
+
+symDiff, symInt, Transition Function Runtime, evaluation consumers,
+
+continuity, transitionDB and solving remain outside Core.
+
+end note
+
+note bottom of TransitionAstSymDiff
+
+Existing symbolic d/du rules only.
+
+Depends exclusively on canonical AST Simplification.
+
+Transition Function Runtime consumes this canonical leaf.
+
+Solver/evaluator responsibilities remain separate.
+
+end note
+
+note bottom of TransitionAstSymInt
+
+Existing restricted symbolic domain integration I(u)=integral(0..u) only.
+
+Depends exclusively on canonical AST Simplification.
+
+Transition Function Runtime consumes this canonical leaf.
+
+Solver/evaluator responsibilities remain separate.
+
+end note
+
+note bottom of TransitionProtoAstBuilder
+
+Existing restricted u-domain Proto-AST construction only.
+
+Depends exclusively on canonical AST Simplification.
+
+Resolves simpleFcn references; proto-internal references remain disabled.
+
+Transition Function Runtime consumes this canonical leaf.
+
+Solver/evaluator responsibilities remain separate.
+
+end note
+
+note bottom of TransitionQueryCore
+
+Zero-import catalogue, preset and runtime-working-copy query service.
+
+Concrete transitionLookup/db, RegistryResolver, Worker/Messaging,
+
+runtime, persistence, UI and transition evaluation remain outside Core.
+
+Existing consumers retain the reference-identical legacy facade.
+
+end note
+
+note bottom of TransitionFunctionRuntime
+
+Existing productive Kappa family runtime only.
+
+Depends exclusively on canonical AST modules and private zero-import
+
+clamp/anchor helpers. Alignment and App
+
+consumers remain outside Core through the identity facade; Versioned
+
+evaluation and continuity now consume the canonical Runtime directly.
+
+composeTotal and solvePartitionC1 remain dormant nonproductive Legacy debt
+
+and are not Runtime Core APIs.
 
 end note
 

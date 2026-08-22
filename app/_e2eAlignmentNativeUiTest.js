@@ -62,6 +62,17 @@ function chooseSelectValue(select, value) {
 	select.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+function pointer(type, y, pointerId = 74) {
+	return new PointerEvent(type, {
+		bubbles: true,
+		clientX: 400,
+		clientY: y,
+		pointerId,
+		pointerType: "mouse",
+		buttons: type === "pointerup" ? 0 : 1,
+	});
+}
+
 function readViewerDebugState() {
 	return window.__ufAIM_viewController?.getDebugState?.() ?? null;
 }
@@ -301,30 +312,43 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 		const beforeArcEl = beforeArcData?.editModel?.elements?.find((el) => String(el?.type ?? "") === "arc");
 		assert(beforeArcEl?.id, "active alignment should contain arc element");
 		assert(String(elementSel.value ?? "") === String(beforeArcEl.id), "preserved Editor selection should remain on the active arc before editing");
+		const productiveRefreshes = [];
+		const captureProductiveRefresh = (event) => productiveRefreshes.push(event.detail);
+		window.addEventListener("ufaim:alignment-changed", captureProductiveRefresh);
 
 		setInputValue(lengthInput, 110);
 		setInputValue(curvatureInput, 1 / 220);
-		setInputValue(radiusInput, "");
+		assert(Math.abs(Number(radiusInput.value) - 220) < 1e-9, "curvature input should keep its signed radius reciprocal synchronized");
 		setInputValue(lengthInput, 999);
 		resetBtn.click();
 		assert(Math.abs(Number(lengthInput.value) - Number(beforeArcEl?.parameters?.length)) < 1e-9, "reset should restore current arc length input value");
 
 		setInputValue(lengthInput, 110);
-		setInputValue(curvatureInput, 1 / 220);
-		setInputValue(radiusInput, "");
+		setInputValue(radiusInput, -220);
+		assert(Math.abs(Number(curvatureInput.value) - (-1 / 220)) < 1e-12, "signed radius input should keep curvature synchronized");
 		applyBtn.click();
 
 		setPhase("arc-edit-persisting");
 		await waitFor(async () => {
 			const current = await readActiveAlignmentData(store, messaging);
 			const arc = current?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeArcEl.id));
-			return Math.abs(Number(arc?.parameters?.length) - 110) < 1e-9 && Math.abs(Number(arc?.parameters?.curvature) - (1 / 220)) < 1e-12;
+			return Math.abs(Number(arc?.parameters?.length) - 110) < 1e-9 && Math.abs(Number(arc?.parameters?.curvature) - (-1 / 220)) < 1e-12;
 		}, { label: "persisted arc model state" });
 
 		const afterArcData = await readActiveAlignmentData(store, messaging);
 		const afterArcEl = afterArcData?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeArcEl.id));
 		assert(Math.abs(Number(afterArcEl?.parameters?.length) - 110) < 1e-9, "arc length should update via UI apply");
-		assert(Math.abs(Number(afterArcEl?.parameters?.curvature) - (1 / 220)) < 1e-12, "arc curvature should update via UI apply");
+		assert(Math.abs(Number(afterArcEl?.parameters?.curvature) - (-1 / 220)) < 1e-12, "signed arc radius should update productive curvature via UI apply");
+		await waitFor(() => productiveRefreshes.length === 1, { label: "single productive alignment refresh" });
+		assert(productiveRefreshes[0]?.alignmentData === afterArcData || productiveRefreshes[0]?.alignmentData?.id === afterArcData?.id, "productive refresh should identify the persisted Alignment");
+		assert(productiveRefreshes[0]?.elementId === beforeArcEl.id, "productive refresh should retain the edited element selection");
+		assert(productiveRefreshes[0]?.revision === afterArcData?.meta?.modifiedAt, "productive refresh should carry the persisted revision");
+		await waitFor(
+			() => document.getElementById("curvatureBand")?.dataset?.state === "committed"
+				&& document.getElementById("curvatureBandValue")?.textContent?.includes("-0.004545"),
+			{ label: "curvature band canonical label after editor commit" }
+		);
+		window.removeEventListener("ufaim:alignment-changed", captureProductiveRefresh);
 		await waitFor(() => {
 			const state = readViewerDebugState();
 			return state?.projectionSignature && state.projectionSignature !== projectionSignatureBeforeEdits;
@@ -332,7 +356,31 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 		const projectionSignatureAfterArc = readViewerDebugState()?.projectionSignature ?? null;
 		assert(projectionSignatureAfterArc !== projectionSignatureBeforeEdits, "viewer projection should refresh after arc edit");
 
-		const beforeTransitionData = afterArcData;
+		setPhase("curvature-band-pointer-commit");
+		const bandArc = document.querySelector(`#curvatureBandSvg .band-hit[data-element-id="${beforeArcEl.id}"]`);
+		assert(bandArc, "real curvature-band hit target should expose the edited arc");
+		bandArc.dispatchEvent(pointer("pointerdown", 70));
+		window.dispatchEvent(pointer("pointermove", 20));
+		window.dispatchEvent(pointer("pointerup", 20));
+		const bandCommit = await window.__ufAIM_curvatureBand.whenCommitSettled();
+		assert(bandCommit?.changed === true && bandCommit?.state === "committed", `curvature-band pointer commit rejected: ${bandCommit?.error ?? "unknown reason"}`);
+		const afterBandData = await readActiveAlignmentData(store, messaging);
+		const afterBandArc = afterBandData?.editModel?.elements?.find((el) => String(el?.id ?? "") === String(beforeArcEl.id));
+		assert(Math.abs(Number(afterBandArc?.parameters?.curvature) - Number(bandCommit.curvature)) < 1e-12, "canonical SPOT arc must equal the pointer-drag curvature");
+		assert(afterBandData?.meta?.modifiedAt !== afterArcData?.meta?.modifiedAt, "curvature-band pointer commit must advance the persisted revision");
+		await waitFor(
+			() => Math.abs(Number(curvatureInput.value) - Number(afterBandArc.parameters.curvature)) < 1e-12,
+			{ label: "element editor canonical curvature after band pointer commit" }
+		);
+		assert(String(elementSel.value ?? "") === String(beforeArcEl.id), "element editor selection should remain on the pointer-edited arc");
+		assert(String(getWorkspacePrimaryId(store.getState?.() ?? {})) === String(afterBandData.id), "active Alignment should remain the canonical pointer-edited object");
+		await waitFor(() => {
+			const signature = readViewerDebugState()?.projectionSignature;
+			return signature && signature !== projectionSignatureAfterArc;
+		}, { label: "viewer canonical geometry after band pointer commit" });
+		const projectionSignatureAfterBand = readViewerDebugState()?.projectionSignature ?? null;
+
+		const beforeTransitionData = afterBandData;
 		const beforeTransitionEl = beforeTransitionData?.editModel?.elements?.find((el) => String(el?.type ?? "") === "transition");
 		assert(beforeTransitionEl?.id, "active alignment should contain transition element");
 
@@ -364,10 +412,10 @@ window.__alignmentNativeEditorUiE2EPromise = (async function runAlignmentNativeU
 		assert(Math.abs(Number(afterTransitionEl?.parameters?.w2) - 0.7) < 1e-9, "transition w2 should update via UI apply");
 		await waitFor(() => {
 			const state = readViewerDebugState();
-			return state?.projectionSignature && state.projectionSignature !== projectionSignatureAfterArc;
+			return state?.projectionSignature && state.projectionSignature !== projectionSignatureAfterBand;
 		}, { label: "viewer refresh after transition edit" });
 		const projectionSignatureAfterTransition = readViewerDebugState()?.projectionSignature ?? null;
-		assert(projectionSignatureAfterTransition !== projectionSignatureAfterArc, "viewer projection should refresh after transition edit");
+		assert(projectionSignatureAfterTransition !== projectionSignatureAfterBand, "viewer projection should refresh after transition edit");
 
 		const beforeStraightData = afterTransitionData;
 		const beforeStraightEl = beforeStraightData?.editModel?.elements?.find((el) => String(el?.type ?? "") === "straight");

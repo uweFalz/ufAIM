@@ -137,10 +137,10 @@ This representation:
 
 \begin{verbatim}
 BIM / IFC / LandXML
-→ parsing
-→ fat representation
-→ normalization
-→ AIM state model
+→ parsing and source evidence
+→ reviewable import candidates
+→ explicit admission or rejection
+→ admitted engineering object and qualified state
 → analysis / optimization
 → export
 \end{verbatim}
@@ -148,9 +148,20 @@ BIM / IFC / LandXML
 This pipeline separates:
 \begin{itemize}
 \item data exchange concerns,
+\item evidence review and admission responsibility,
 \item computational modelling,
 \item engineering reasoning.
 \end{itemize}
+
+A successful parse is therefore not an admission decision. Imported source
+records may remain partial, ambiguous, or unresolved, and those limitations
+must remain attached to their provenance. Only an explicit admission step can
+make a durable engineering object available to downstream services. The
+current Reference Implementation is one demonstration of this separation; it
+maps such an object to a SpotObject in its loaded SPOT universe, but neither
+implementation term defines Kernel meaning or authority. Durable
+distinguishability remains governed by the active KC-ID-001 Engineering Object
+Identity record.
 
 
 \section{Alignment-Centred BIM}
@@ -177,7 +188,7 @@ primary organizing structure.
 
 \subsection{Import}
 
-Existing BIM data is imported via:
+Existing BIM data is examined via:
 \begin{itemize}
 \item IFC parsing,
 \item LandXML parsing,
@@ -187,13 +198,19 @@ Existing BIM data is imported via:
 
 \subsection{Processing}
 
-Within AIM, the imported data is:
+Within AIM, admitted information may be:
 \begin{itemize}
 \item normalized,
 \item reconstructed,
 \item enriched with dynamic interpretation,
 \item potentially optimized.
 \end{itemize}
+
+Information that has not been admitted remains import evidence. Missing object
+relations, coordinate meaning, stationing interpretation, or source authority
+must not be inferred from filenames, import order, or representational
+similarity. Several synchronized workspace views may present an admitted
+Alignment, but they remain representations of the same object and revision.
 
 
 \subsection{Export}

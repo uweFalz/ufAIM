@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import transitionLookup from "../../src/domain/transition/transitionLookup.json" with { type: "json" };
 import { RegistryResolver } from "../../src/domain/transition/registry/RegistryResolver.js";
 import { upgradeLegacyTransitionLookup } from "../../src/domain/transition/versioned/upgradeLegacyTransitionLookup.js";
-import { TransitionQuantityRole } from "../../src/domain/transition/versioned/quantityRoles.js";
+import { TransitionQuantityRole } from "../../src/aim-core/transition/grammar/TransitionQuantityRoles.js";
 import { createVersionedContinuityModel } from "../../src/domain/transition/versioned/continuity/createVersionedContinuityModel.js";
-import { createTransitionContinuitySolver } from "../../src/domain/transition/versioned/continuity/solveTransitionContinuity.js";
-import { validateContinuityCandidate } from "../../src/domain/transition/versioned/continuity/validateContinuityCandidate.js";
+import { createTransitionContinuitySolver } from "../../src/aim-core/transition/continuity/solveTransitionContinuity.js";
+import { validateContinuityCandidate } from "../../src/aim-core/transition/continuity/validateContinuityCandidate.js";
 
 const K = TransitionQuantityRole.CURVATURE;
 const K1 = TransitionQuantityRole.CURVATURE_FIRST_DERIVATIVE;
@@ -308,10 +308,10 @@ test("repository evidence: nonzero three-component and asymmetric composition", 
 	assert.equal(gubar.joins.length, 2);
 });
 
-test("repository compatibility: all 29 transition records evaluate without mutation", () => {
+test("repository compatibility: all 31 transition records evaluate without mutation", () => {
 	const before = structuredClone(versioned);
 	const ids = Object.keys(versioned.records.transition);
-	assert.equal(ids.length, 29);
+	assert.equal(ids.length, 31);
 	for (const id of ids) {
 		const evaluation = registryModel.evaluate({ transitionRecord: versioned.records.transition[id], parameters: {} });
 		assert.equal(evaluation.ok, true, `${id} should evaluate`);

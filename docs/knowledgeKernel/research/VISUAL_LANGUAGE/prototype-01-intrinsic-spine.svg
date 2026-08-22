@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 1240 1754" role="img" aria-labelledby="title desc">
+  <title id="title">Intrinsic Spine — Knowledge Kernel cover concept</title>
+  <desc id="desc">A heavy curved intrinsic alignment with station ticks crosses a square Kernel datum; two lighter contextual realizations run nearby.</desc>
+  <rect width="1240" height="1754" fill="#F4F0E8"/>
+  <g fill="#15181B">
+    <text x="116" y="178" font-family="Latin Modern Sans, Arial, sans-serif" font-size="68" font-weight="700" letter-spacing="3">AIM FOUNDATIONS</text>
+    <text x="120" y="242" font-family="Latin Modern Roman, Georgia, serif" font-size="29">Three faces of the Knowledge Kernel · Direction 01</text>
+  </g>
+  <g fill="none" stroke="#15181B" opacity=".10" stroke-width="2">
+    <path d="M120 420H1120M120 610H1120M120 800H1120M120 990H1120M120 1180H1120M120 1370H1120"/>
+    <path d="M230 340V1450M480 340V1450M730 340V1450M980 340V1450"/>
+  </g>
+  <path d="M-70 1350 C190 1230 285 1015 478 1038 C650 1059 661 706 858 748 C1010 780 1090 585 1310 470"
+        fill="none" stroke="#167C80" stroke-width="10" opacity=".20"/>
+  <path d="M-70 1300 C196 1185 300 990 480 1018 C658 1046 681 680 862 724 C1020 760 1095 550 1310 430"
+        fill="none" stroke="#167C80" stroke-width="5" opacity=".34" stroke-dasharray="18 18"/>
+  <path d="M-70 1325 C194 1205 294 1002 480 1028 C654 1053 670 692 860 736 C1016 770 1092 567 1310 450"
+        fill="none" stroke="#15181B" stroke-width="24" stroke-linecap="round"/>
+  <g stroke="#F4F0E8" stroke-width="7">
+    <path d="M165 1192l34 42"/><path d="M302 1065l42 28"/><path d="M449 1011l2 52"/>
+    <path d="M594 902l47 16"/><path d="M699 748l50 10"/><path d="M843 714l-8 50"/>
+    <path d="M996 632l29 42"/><path d="M1120 527l31 40"/>
+  </g>
+  <path d="M480 1028 C430 915 362 842 292 780" fill="none" stroke="#15181B" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="292" cy="780" r="14" fill="#15181B"/>
+  <g transform="translate(620 790)">
+    <rect x="-92" y="-92" width="184" height="184" fill="#F4F0E8" stroke="#D64A32" stroke-width="15"/>
+    <rect x="-64" y="-64" width="128" height="128" fill="#15181B"/>
+    <path d="M-44 18 C-10 -30 18 36 48 -16" fill="none" stroke="#F4F0E8" stroke-width="9"/>
+  </g>
+  <circle cx="1002" cy="644" r="27" fill="#F4F0E8" stroke="#C58A22" stroke-width="8"/>
+  <path d="M1002 611v-50" stroke="#C58A22" stroke-width="5"/>
+  <g font-family="Latin Modern Sans, Arial, sans-serif" fill="#15181B">
+    <text x="528" y="704" font-size="24" letter-spacing="4">KNOWLEDGE KERNEL</text>
+    <text x="142" y="1426" font-size="25" letter-spacing="3">INTRINSIC s · ORDER · CURVATURE</text>
+    <text x="870" y="900" font-size="22" opacity=".64">metric realizations</text>
+    <text x="1018" y="570" font-size="19">observation</text>
+  </g>
+  <g transform="translate(120 1565)" fill="#15181B">
+    <rect width="1000" height="2"/>
+    <text y="56" font-family="Latin Modern Roman, Georgia, serif" font-size="25">Uwe Falz</text>
+    <text x="1000" y="56" text-anchor="end" font-family="Latin Modern Sans, Arial, sans-serif" font-size="21" letter-spacing="2">RESEARCH PROTOTYPE</text>
+  </g>
+</svg>

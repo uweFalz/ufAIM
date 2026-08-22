@@ -6,6 +6,15 @@
 .spotWorkspace__eyebrow { text-transform:uppercase; letter-spacing:.14em; font-size:10px; font-weight:700; }
 .spotWorkspace__header input { width:min(220px,34vw); padding:9px 12px; border:1px solid rgba(255,255,255,.16); border-radius:10px; background:rgba(255,255,255,.06); color:inherit; }
 .spotWorkspace__list { display:grid; gap:10px; }
+.spotWorkspace__navigator { display:grid; gap:18px; }
+.spotWorkspace__routeGroup { padding:14px; border:1px solid rgba(87,215,207,.2); border-radius:16px; background:rgba(10,28,31,.36); }
+.spotWorkspace__routeGroup > header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:2px 4px 12px; }
+.spotWorkspace__routeGroup > header p { margin:0; color:#78dcd4; font-size:10px; font-weight:750; letter-spacing:.12em; text-transform:uppercase; }
+.spotWorkspace__routeGroup > header h3 { margin:2px 0 0; font-size:18px; }
+.spotWorkspace__routeGroup > header > span { color:#aeb7c1; font-size:12px; }
+.spotWorkspace__routeGroup.is-review-required { border-color:rgba(224,170,88,.3); background:rgba(54,38,16,.18); }
+.spotWorkspace__routeGroup.is-review-required > header p { color:#e0aa58; }
+.spotWorkspace__groupNote { margin:0 4px 12px; color:#aeb7c1; font-size:12px; }
 .spotWorkspace__card { position:relative; padding:18px; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:rgba(255,255,255,.045); transition:border-color .15s ease, background .15s ease; }
 .spotWorkspace__card:hover { border-color:rgba(255,255,255,.22); background:rgba(255,255,255,.065); }
 .spotWorkspace__card.is-active { border-color:#57d7cf; box-shadow:0 0 0 1px rgba(87,215,207,.24); }
@@ -23,6 +32,8 @@
 .spotWorkspace__facts span { padding:4px 8px; border-radius:999px; background:rgba(255,255,255,.07); color:#cbd2da; font-size:12px; }
 .spotWorkspace__facts .is-geographic { color:#8de6d9; }
 .spotWorkspace__source { margin:12px 0 0; color:#bcc5ce; }
+.spotWorkspace__completeness { margin:7px 0 0; color:#aeb7c1; font-size:12px; }
+.spotWorkspace__diagnostics { margin:8px 0 0; color:#f0bd70; font-size:12px; font-weight:650; }
 .spotWorkspace__notice { margin-top:12px; padding:10px 12px; border-left:2px solid #e0aa58; background:rgba(224,170,88,.08); }
 .spotWorkspace__notice p { display:flex; flex-direction:column; margin:0 0 5px; }
 .spotWorkspace__notice p:last-child { margin:0; }
@@ -56,4 +67,27 @@
 	.spotWorkspace__header h2 + p { margin-top:5px; font-size:12px; }
 	.spotWorkspace__header input { width:100%; box-sizing:border-box; }
 	.spotWorkspace__menu { flex-wrap:wrap; }
+	.spotWorkspace__routeGroup { padding:10px; }
+	.spotWorkspace__routeGroup > header { align-items:flex-start; }
+}
+.spotWorkspace__loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	min-height: 12rem;
+	color: var(--uf-text-muted, #9aa8b7);
+}
+
+.spotWorkspace__loading > span {
+	width: 1.1rem;
+	height: 1.1rem;
+	border: 2px solid color-mix(in srgb, currentColor 28%, transparent);
+	border-top-color: currentColor;
+	border-radius: 50%;
+	animation: spot-workspace-spin 0.8s linear infinite;
+}
+
+@keyframes spot-workspace-spin {
+	to { transform: rotate(360deg); }
 }

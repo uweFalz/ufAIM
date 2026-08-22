@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="210mm" height="297mm" viewBox="0 0 1240 1754" role="img" aria-labelledby="title desc">
+  <title id="title">Evidence Aperture — Knowledge Kernel cover concept</title>
+  <desc id="desc">An observation ray rises from a physical alignment through a central context aperture toward an evaluable representation, stopping before a separate authority seal.</desc>
+  <rect width="1240" height="1754" fill="#F3F4F2"/>
+  <g fill="#1B1E22">
+    <text x="108" y="172" font-family="Latin Modern Roman, Georgia, serif" font-size="68" font-weight="700">AIM Foundations</text>
+    <text x="112" y="232" font-family="Latin Modern Sans, Arial, sans-serif" font-size="27" letter-spacing="2">Evidence, interpretation, authority · Direction 03</text>
+  </g>
+  <path d="M-80 1400 C210 1250 365 1335 575 1240 S930 1125 1320 1210"
+        fill="none" stroke="#167C80" stroke-width="26" stroke-linecap="round"/>
+  <path d="M-80 1435 C210 1285 365 1370 575 1275 S930 1160 1320 1245"
+        fill="none" stroke="#167C80" stroke-width="5" opacity=".28"/>
+  <path d="M100 1130 L1100 520" stroke="#C58A22" stroke-width="13" stroke-linecap="round"/>
+  <path d="M175 1190 L595 934" stroke="#1B1E22" stroke-width="4" opacity=".18"/>
+  <path d="M80 1050 L595 934" stroke="#1B1E22" stroke-width="4" opacity=".12"/>
+  <g transform="translate(620 865) rotate(45)">
+    <rect x="-112" y="-112" width="224" height="224" fill="#F3F4F2" stroke="#1B1E22" stroke-width="15"/>
+    <rect x="-58" y="-58" width="116" height="116" fill="none" stroke="#D64A32" stroke-width="11"/>
+  </g>
+  <path d="M730 795 L1100 570 L1100 880 L730 1010Z" fill="#1B1E22" opacity=".07"/>
+  <path d="M730 795 L1100 570" stroke="#1B1E22" stroke-width="3"/>
+  <path d="M730 1010 L1100 880" stroke="#1B1E22" stroke-width="3"/>
+  <path d="M1100 520 L1100 475" stroke="#C58A22" stroke-width="13" stroke-linecap="round"/>
+  <g transform="translate(1095 350)">
+    <circle r="66" fill="none" stroke="#D64A32" stroke-width="12"/>
+    <circle r="43" fill="none" stroke="#1B1E22" stroke-width="5"/>
+    <path d="M-22 0h44M0-22v44" stroke="#1B1E22" stroke-width="5"/>
+  </g>
+  <g font-family="Latin Modern Sans, Arial, sans-serif" fill="#1B1E22">
+    <text x="92" y="1490" font-size="23" letter-spacing="3">INTENDED / PHYSICAL SUBJECT</text>
+    <text x="176" y="1082" font-size="22">observation + provenance</text>
+    <text x="520" y="720" font-size="22" letter-spacing="2">EXPLICIT CONTEXT</text>
+    <text x="820" y="920" font-size="22">representation / evaluation</text>
+    <text x="964" y="257" font-size="22" letter-spacing="2">AUTHORITY</text>
+    <text x="946" y="461" font-size="18">no automatic passage</text>
+  </g>
+  <path d="M992 475h206" stroke="#D64A32" stroke-width="4" stroke-dasharray="10 12"/>
+  <g transform="translate(110 1580)" fill="#1B1E22">
+    <rect width="1020" height="2"/>
+    <text y="55" font-family="Latin Modern Roman, Georgia, serif" font-size="25">Uwe Falz</text>
+    <text x="1020" y="55" text-anchor="end" font-family="Latin Modern Sans, Arial, sans-serif" font-size="21" letter-spacing="2">RESEARCH PROTOTYPE</text>
+  </g>
+</svg>

@@ -23,6 +23,31 @@ import { clamp01 } from "@utils/helpers.js";
 import { makeSpotView } from "@app/view/overlays/spotView.js";
 import { savePanelLayout } from "@app/view/shell/panelLayoutStore.js";
 
+export function createObjectWorkspaceHydrator({ ui, messaging, store } = {}) {
+	let pending = null;
+	async function refreshCanonicalUiState({ requireVisible = true } = {}) {
+		if (requireVisible && ui?.elements?.overlaySpot?.classList.contains("hidden")) return false;
+		if (pending) return pending;
+		ui?.showSpotLoading?.();
+		pending = (async () => {
+			try {
+				const spotUiState = await messaging.sendCmdAwait("Spot.GetUiState", {});
+				ui?.setSpotState?.(spotUiState);
+				ui?.refreshSpot?.(store.getState());
+				return spotUiState;
+			} catch (error) {
+				ui?.showSpotError?.(error);
+				return false;
+			} finally {
+				pending = null;
+			}
+		})();
+		return pending;
+	}
+	const refresh = async (options) => Boolean(await refreshCanonicalUiState(options));
+	return { refresh, refreshCanonicalUiState, retry: () => refresh({ requireVisible: false }), isLoading: () => Boolean(pending) };
+}
+
 // ------------------------------------------------------------
 // helpers
 // ------------------------------------------------------------
@@ -124,6 +149,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		buttonTransition: document.getElementById("btnTrans"),
 		buttonTransitionClose: document.getElementById("btnTransClose"),
 		alignmentEditorOverlay: document.getElementById("alignmentEditorOverlay"),
+		verticalProfileAuthoringOverlay: document.getElementById("verticalProfileAuthoringOverlay"),
+		cantAuthoringOverlay: document.getElementById("cantAuthoringOverlay"),
+		chainageAuthoringOverlay: document.getElementById("chainageAuthoringOverlay"),
 		buttonAlignmentEditor: document.getElementById("btnAlignmentEditor"),
 		buttonAlignmentEditorClose: document.getElementById("btnAlignmentEditorClose"),
 
@@ -383,6 +411,27 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function setBoardSectionText(text) {
 		if (!elements.boardSection) return;
 		elements.boardSection.textContent = String(text ?? "");
+	}
+
+	function setInitialCrossSection({ s, sectionInfo, evidenceStatus = "not-provided" } = {}) {
+		const root = document.getElementById("initialCrossSection");
+		if (!root) return;
+		const finite = (value) => Number.isFinite(Number(value));
+		const available = sectionInfo && [sectionInfo.x, sectionInfo.y, sectionInfo.tx, sectionInfo.ty].every(finite);
+		root.dataset.initialSectionStatus = available ? "located" : "unavailable";
+		const station = root.querySelector("[data-initial-section-station]");
+		const world = root.querySelector("[data-initial-section-world]");
+		const tangent = root.querySelector("[data-initial-section-tangent]");
+		const evidence = root.querySelector("[data-initial-section-evidence]");
+		if (station) station.textContent = finite(s) ? `s ${String(Number(s))}` : "s —";
+		if (world) world.textContent = available ? `x ${String(Number(sectionInfo.x))} · y ${String(Number(sectionInfo.y))}` : "not located";
+		if (tangent) tangent.textContent = available ? `tx ${String(Number(sectionInfo.tx))} · ty ${String(Number(sectionInfo.ty))}` : "not available";
+		if (evidence) {
+			evidence.dataset.initialSectionEvidence = evidenceStatus;
+			evidence.textContent = evidenceStatus === "not-provided"
+				? "Reference frame only · no qualified rail or section evidence"
+				: String(evidenceStatus);
+		}
 	}
 
 	function setSelectOptions(selectEl, items, activeValue = "") {
@@ -680,17 +729,54 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		setPrimary(elements.buttonTransition, visible);
 	}
 
+	let stopAlignmentEditorResponsive = null;
 	function openAlignmentEditor() {
+		document.getElementById("btnCommandPaletteClose")?.click();
+		document.getElementById("btnGndImportWorkbenchClose")?.click();
+		if (!elements.overlaySpot?.classList.contains("hidden")) closeSpot();
+		if (!elements.verticalProfileAuthoringOverlay?.classList.contains("hidden")) closeVerticalProfileAuthoring();
+		if (!elements.cantAuthoringOverlay?.classList.contains("hidden")) closeCantAuthoring();
+		if (!elements.chainageAuthoringOverlay?.classList.contains("hidden")) closeChainageAuthoring();
+		stopAlignmentEditorResponsive?.();
+		stopAlignmentEditorResponsive = watchWorkspaceToolSurface({ surface: elements.alignmentEditorOverlay, kind: "authoring" });
 		show(elements.alignmentEditorOverlay);
+		elements.alignmentEditorOverlay?.setAttribute?.("aria-hidden", "false");
 		markPanelHidden(elements.alignmentEditorOverlay, false);
 		setPrimary(elements.buttonAlignmentEditor, true);
+		elements.alignmentEditorOverlay?.querySelector?.("select, input, button")?.focus?.();
 	}
 
 	function closeAlignmentEditor() {
+		stopAlignmentEditorResponsive?.(); stopAlignmentEditorResponsive = null;
 		hide(elements.alignmentEditorOverlay);
+		elements.alignmentEditorOverlay?.setAttribute?.("aria-hidden", "true");
+		clearWorkspaceToolSurface({ kind: "authoring" });
 		markPanelHidden(elements.alignmentEditorOverlay, true);
 		setPrimary(elements.buttonAlignmentEditor, false);
+		document.getElementById("geoStage")?.focus?.();
 	}
+	let stopVerticalAuthoringResponsive = null;
+	function openVerticalProfileAuthoring() {
+		document.getElementById("btnCommandPaletteClose")?.click();
+		document.getElementById("btnGndImportWorkbenchClose")?.click();
+		if (!elements.overlaySpot?.classList.contains("hidden")) closeSpot();
+		if (!elements.alignmentEditorOverlay?.classList.contains("hidden")) closeAlignmentEditor();
+		if (!elements.cantAuthoringOverlay?.classList.contains("hidden")) closeCantAuthoring();
+		if (!elements.chainageAuthoringOverlay?.classList.contains("hidden")) closeChainageAuthoring();
+		stopVerticalAuthoringResponsive?.();
+		stopVerticalAuthoringResponsive = watchWorkspaceToolSurface({ surface: elements.verticalProfileAuthoringOverlay, kind: "vertical-authoring" });
+		show(elements.verticalProfileAuthoringOverlay); elements.verticalProfileAuthoringOverlay?.setAttribute?.("aria-hidden", "false"); markPanelHidden(elements.verticalProfileAuthoringOverlay, false);
+		elements.verticalProfileAuthoringOverlay?.querySelector?.("input, button")?.focus?.();
+	}
+	function closeVerticalProfileAuthoring() {
+		stopVerticalAuthoringResponsive?.(); stopVerticalAuthoringResponsive = null;
+		hide(elements.verticalProfileAuthoringOverlay); elements.verticalProfileAuthoringOverlay?.setAttribute?.("aria-hidden", "true"); clearWorkspaceToolSurface({ kind: "vertical-authoring" }); markPanelHidden(elements.verticalProfileAuthoringOverlay, true); document.getElementById("geoStage")?.focus?.();
+	}
+	let stopCantAuthoringResponsive=null;
+	function openCantAuthoring(){document.getElementById("btnGndImportWorkbenchClose")?.click();if(!elements.overlaySpot?.classList.contains("hidden"))closeSpot();if(!elements.alignmentEditorOverlay?.classList.contains("hidden"))closeAlignmentEditor();if(!elements.verticalProfileAuthoringOverlay?.classList.contains("hidden"))closeVerticalProfileAuthoring();if(!elements.chainageAuthoringOverlay?.classList.contains("hidden"))closeChainageAuthoring();stopCantAuthoringResponsive?.();stopCantAuthoringResponsive=watchWorkspaceToolSurface({surface:elements.cantAuthoringOverlay,kind:"cant-authoring"});show(elements.cantAuthoringOverlay);elements.cantAuthoringOverlay?.setAttribute?.("aria-hidden","false");markPanelHidden(elements.cantAuthoringOverlay,false);elements.cantAuthoringOverlay?.querySelector?.("input, button")?.focus?.();}
+	function closeCantAuthoring(){stopCantAuthoringResponsive?.();stopCantAuthoringResponsive=null;hide(elements.cantAuthoringOverlay);elements.cantAuthoringOverlay?.setAttribute?.("aria-hidden","true");clearWorkspaceToolSurface({kind:"cant-authoring"});markPanelHidden(elements.cantAuthoringOverlay,true);document.getElementById("geoStage")?.focus?.();}
+	let stopChainageAuthoringResponsive=null;function openChainageAuthoring(){document.getElementById("btnGndImportWorkbenchClose")?.click();if(!elements.overlaySpot?.classList.contains("hidden"))closeSpot();if(!elements.alignmentEditorOverlay?.classList.contains("hidden"))closeAlignmentEditor();if(!elements.verticalProfileAuthoringOverlay?.classList.contains("hidden"))closeVerticalProfileAuthoring();if(!elements.cantAuthoringOverlay?.classList.contains("hidden"))closeCantAuthoring();stopChainageAuthoringResponsive?.();stopChainageAuthoringResponsive=watchWorkspaceToolSurface({surface:elements.chainageAuthoringOverlay,kind:"chainage-authoring"});show(elements.chainageAuthoringOverlay);elements.chainageAuthoringOverlay?.setAttribute?.("aria-hidden","false");markPanelHidden(elements.chainageAuthoringOverlay,false);}
+	function closeChainageAuthoring(){stopChainageAuthoringResponsive?.();stopChainageAuthoringResponsive=null;hide(elements.chainageAuthoringOverlay);elements.chainageAuthoringOverlay?.setAttribute?.("aria-hidden","true");clearWorkspaceToolSurface({kind:"chainage-authoring"});markPanelHidden(elements.chainageAuthoringOverlay,true);}
 
 	function toggleAlignmentEditor() {
 		if (elements.alignmentEditorOverlay?.classList.contains("hidden")) openAlignmentEditor();
@@ -716,17 +802,31 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	// ------------------------------------------------------------
 	// SPOT overlay
 	// ------------------------------------------------------------
+	let stopSpotResponsive = null;
 	function openSpot() {
-		closeCockpit();
+		document.getElementById("btnCommandPaletteClose")?.click();
+		document.getElementById("btnGndImportWorkbenchClose")?.click();
+		document.getElementById("btnAlignmentEditorClose")?.click();
+		document.getElementById("btnVerticalProfileAuthoringClose")?.click();
+		document.getElementById("btnCantAuthoringClose")?.click();
+		document.getElementById("btnChainageAuthoringClose")?.click();
+		stopSpotResponsive?.();
+		stopSpotResponsive = watchWorkspaceToolSurface({ surface: elements.overlaySpot, kind: "objects" });
 		show(elements.overlaySpot);
+		elements.overlaySpot?.setAttribute?.("aria-hidden", "false");
 		markPanelHidden(elements.overlaySpot, false);
 		setPrimary(elements.buttonSpot, true);
+		elements.overlaySpot?.querySelector?.("button, [tabindex]")?.focus?.();
 	}
 
 	function closeSpot() {
+		stopSpotResponsive?.(); stopSpotResponsive = null;
 		hide(elements.overlaySpot);
+		elements.overlaySpot?.setAttribute?.("aria-hidden", "true");
+		clearWorkspaceToolSurface({ kind: "objects" });
 		markPanelHidden(elements.overlaySpot, true);
 		setPrimary(elements.buttonSpot, false);
+		document.getElementById("geoStage")?.focus?.();
 	}
 
 	function toggleSpot() {
@@ -788,6 +888,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		// boards
 		setBoardBandsText,
 		setBoardSectionText,
+		setInitialCrossSection,
 		setSelectOptions,
 		setSlider01,
 		readSlider01,
@@ -807,6 +908,9 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		// SPOT
 		setSpotState: spotView.setSpotState,
 		getSpotState: spotView.getSpotState,
+		showSpotLoading: spotView.showLoading,
+		showSpotError: spotView.showError,
+		getSpotLoadState: spotView.getLoadState,
 		setSpotHtml: spotView.setSpotHtml,
 		setSpotText: spotView.setSpotText,
 		renderSpotHtml: spotView.renderSpotHtml,
@@ -830,6 +934,12 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		closeTransition,
 		toggleTransition,
 		openAlignmentEditor,
+		openVerticalProfileAuthoring,
+		closeVerticalProfileAuthoring,
+		openCantAuthoring,
+		closeCantAuthoring,
+		openChainageAuthoring,
+		closeChainageAuthoring,
 		closeAlignmentEditor,
 		toggleAlignmentEditor,
 
@@ -841,4 +951,31 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		wirePinControls,
 		setPinsInfoText,
 	};
+}
+
+export function configureWorkspaceToolSurface({ surface, kind, windowRef = globalThis.window, documentRef = globalThis.document } = {}) {
+	const narrow = windowRef?.matchMedia?.("(max-width: 760px)")?.matches === true;
+	surface?.setAttribute?.("role", narrow ? "dialog" : "complementary");
+	surface?.setAttribute?.("aria-modal", String(narrow));
+	surface?.setAttribute?.("data-tool-presentation", narrow ? "sheet" : "dock");
+	const shell = documentRef?.getElementById?.("ufShell");
+	if (shell?.dataset) {
+		if (narrow && shell.dataset.toolDock === kind) delete shell.dataset.toolDock;
+		else if (!narrow) shell.dataset.toolDock = kind;
+	}
+	return narrow ? "sheet" : "dock";
+}
+
+export function watchWorkspaceToolSurface({ surface, kind, windowRef = globalThis.window, documentRef = globalThis.document } = {}) {
+	const query = windowRef?.matchMedia?.("(max-width: 760px)") ?? null;
+	const apply = () => configureWorkspaceToolSurface({ surface, kind, windowRef: { matchMedia: () => query ?? { matches: false } }, documentRef });
+	apply();
+	query?.addEventListener?.("change", apply);
+	if (!query?.addEventListener) query?.addListener?.(apply);
+	return () => { query?.removeEventListener?.("change", apply); if (!query?.removeEventListener) query?.removeListener?.(apply); };
+}
+
+export function clearWorkspaceToolSurface({ kind, documentRef = globalThis.document } = {}) {
+	const shell = documentRef?.getElementById?.("ufShell");
+	if (shell?.dataset?.toolDock === kind) delete shell.dataset.toolDock;
 }

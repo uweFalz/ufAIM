@@ -223,6 +223,59 @@ and commit identifiers.
 - No structural move, merge, or cleanup may run in parallel with semantic Kernel
   work unless Rock explicitly coordinates it.
 
+## Browser Acceptance Hygiene
+
+- Browser acceptance after JavaScript or ES-module changes must run from a
+  demonstrably fresh origin so that cached modules cannot be mistaken for the
+  current working tree.
+- The normal local mechanism is to restart the repository-root server on a new,
+  unused port and open the application from that port. Changing the port for
+  this purpose is test hygiene, not a scope change or architectural decision.
+- A mission may prescribe a preferred port, but it must permit another free
+  local port when the preferred port is occupied or its browser origin has
+  already loaded the pre-change modules.
+- A stale browser cache, reused browser backend, or occupied preferred port is
+  not by itself a mission blocker. Retry on a fresh local origin before
+  reporting `blocked`.
+- Record the effective server root, port, and URL in the validation evidence.
+
+### Visible user-journey gate
+
+For a package whose purpose is a visible user action, browser acceptance has a
+strict order. The first gate is the uninterrupted normal-start user journey;
+reload, reopen, hydration, or direct state inspection are secondary durability
+evidence and cannot substitute for it.
+
+The primary gate must exercise the real visible control path and record, in
+order:
+
+1. the user's initiating action;
+2. immediate acknowledgement of that action;
+3. a persistent busy/progress indication while work is active;
+4. the terminal visible outcome, including exact failure or partial-evidence
+   reasons where applicable;
+5. the resulting object or engineering state in every presentation surface
+   named by the mission; and
+6. the absence of false success, silent failure, or unexplained disappearance.
+
+For file import, synthetic page-state injection, direct controller calls, an
+E2E query flag, console-only evidence, or an HTML reload is not sufficient for
+this primary gate. The acceptance must use the normal-start file-picker or drop
+surface with the declared physical fixture. A browser-tool failure before the
+file reaches that surface is an acceptance-environment blocker, not evidence
+that the product journey passed or failed.
+
+Only after the primary gate passes may the mission run the secondary durability
+gate: same-origin reload, object-list hydration, explicit reopen/refocus, and
+semantic identity comparison. Reports must list the two gates separately as
+`visible user journey` and `durability/reopen`. A passing durability gate never
+upgrades a missing or failed visible user journey.
+
+Normal-start acceptance must not depend on a hidden test harness. Automated
+controller, view, and browser-harness tests remain valuable regression evidence,
+but they do not replace the visible user-journey gate when the package changes
+what a person sees or operates.
+
 ## Prohibited Report Content
 
 Do not include:

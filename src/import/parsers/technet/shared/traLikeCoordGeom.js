@@ -252,6 +252,11 @@ function makeSpiral(ctx) {
 	};
 }
 
+function resolveRecordSpiralType(rec, kind) {
+	const sourceQualified = String(rec?.transitionType ?? "").trim();
+	return sourceQualified || kind?.spiType || null;
+}
+
 function makeKink(ctx) {
 	return {
 		...baseElement(ctx),
@@ -394,7 +399,7 @@ export function mapTraLikeRecordToElements(
 			direction,
 			radiusStart: makeRadius(R1),
 			radiusEnd: makeRadius(R2),
-			spiType: kind.spiType,
+			spiType: resolveRecordSpiralType(rec, kind),
 			staStart,
 			source,
 			extras: makeElementExtras(rec, kind, semanticMap),

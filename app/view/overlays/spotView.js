@@ -68,29 +68,61 @@ function renderCard(row, activeObjectId, state, capabilities) {
 		<button class="spotWorkspace__select" data-spot-activate="${escapeHtml(id)}" aria-label="${escapeHtml(t("spot_workspace_select_named", { name: row?.label ?? id }))}"></button>
 		<div class="spotWorkspace__cardHead"><div><span class="spotWorkspace__type">${escapeHtml(typeLabel(row?.type))}</span><h3>${escapeHtml(row?.label ?? id)}</h3></div><div class="spotWorkspace__corner">${active ? `<span class="spotWorkspace__active">${escapeHtml(t("spot_workspace_active"))}</span>` : ""}<button class="spotWorkspace__more" data-spot-menu="${escapeHtml(id)}" aria-label="${escapeHtml(t("spot_workspace_actions"))}">•••</button></div></div>
 		<div class="spotWorkspace__facts"><span>${escapeHtml(t(row?.sourceKind === "imported" ? "spot_workspace_imported" : "spot_workspace_created"))}</span><span class="is-${escapeHtml(row?.spatialMode ?? "local")}">${escapeHtml(spatialLabel(row?.spatialMode))}</span></div>
+		${row?.gndRoute ? `<p class="spotWorkspace__source" data-spot-gnd-route="${escapeHtml(row.gndRoute.route ?? "review-required")}" data-spot-gnd-role="${escapeHtml(row.gndRoute.role ?? "review-required")}">Strecke ${escapeHtml(row.gndRoute.route ?? "Prüfung erforderlich")} · Quellrolle ${escapeHtml(row.gndRoute.role ?? "Prüfung erforderlich")} · ${escapeHtml(row.gndRoute.sourceAssociationStatus)}</p>` : ""}
+		${row?.gndNavigator?.sevenLine ? `<p class="spotWorkspace__completeness" data-spot-seven-line-summary>7 Bänder · ${escapeHtml(row.gndNavigator.sevenLine.constructive)} konstruktiv · ${escapeHtml(row.gndNavigator.sevenLine.partial)} Quellevidenz · ${escapeHtml(row.gndNavigator.sevenLine.reviewRequired)} zu prüfen · ${escapeHtml(row.gndNavigator.sevenLine.missing)} fehlend${row.gndNavigator.sevenLine.notApplicable ? ` · ${escapeHtml(row.gndNavigator.sevenLine.notApplicable)} nicht anwendbar` : ""}</p>` : ""}
+		${row?.gndNavigator?.diagnostics?.length ? `<p class="spotWorkspace__diagnostics" data-spot-route-diagnostics>${row.gndNavigator.diagnostics.map(escapeHtml).join(" · ")}</p>` : ""}
 		${row?.sourceLabel ? `<p class="spotWorkspace__source">${escapeHtml(t("spot_workspace_source"))}: ${escapeHtml(row.sourceLabel)}</p>` : ""}
 		${renderEvidence(row)}
 		${renderContext(row, state, capabilities)}
 	</article>`;
 }
 
+export function groupSpotRowsForRouteNavigator(rows = []) {
+	const groups = new Map(); const reviewRequired = [];
+	for (const row of rows) {
+		const route = String(row?.gndNavigator?.route ?? "").trim();
+		const fingerprint = String(row?.gndNavigator?.sourceFingerprint ?? "").trim();
+		if (!route || !fingerprint || row?.gndNavigator?.status !== "qualified") { reviewRequired.push(row); continue; }
+		const key = `${fingerprint}\u0000${route}`;
+		const group = groups.get(key) ?? { id: key, route, sourceFingerprint: fingerprint, rows: [] };
+		group.rows.push(row); groups.set(key, group);
+	}
+	return { groups: [...groups.values()], reviewRequired };
+}
+
+function renderRouteGroup(group, activeObjectId, interaction, capabilities) {
+	return `<section class="spotWorkspace__routeGroup" data-spot-route-group="${escapeHtml(group.route)}" data-spot-source-fingerprint="${escapeHtml(group.sourceFingerprint)}"><header><div><p>Strecken-Arbeitsraum</p><h3>Strecke ${escapeHtml(group.route)}</h3></div><span>${escapeHtml(group.rows.length)} ${group.rows.length === 1 ? "Objekt" : "Objekte"}</span></header><div class="spotWorkspace__list">${group.rows.map((row) => renderCard(row, activeObjectId, interaction, capabilities)).join("")}</div></section>`;
+}
+
 export function renderSpotHtml({ spotState, storeState, query = "", capabilities = {}, interaction = {} }) {
 	const rows = Array.isArray(spotState?.rows) ? spotState.rows : []; const activeObjectId = getWorkspacePrimaryId(storeState); const normalized = String(query).trim().toLocaleLowerCase();
-	const visible = rows.filter((row) => !normalized || [row?.label, row?.type, row?.sourceLabel, spatialLabel(row?.spatialMode)].some((value) => String(value ?? "").toLocaleLowerCase().includes(normalized)));
+	const visible = rows.filter((row) => !normalized || [row?.label, row?.type, row?.sourceLabel, row?.gndRoute?.route, row?.gndRoute?.role, spatialLabel(row?.spatialMode)].some((value) => String(value ?? "").toLocaleLowerCase().includes(normalized)));
+	const navigator = groupSpotRowsForRouteNavigator(visible);
+	const groupedHtml = navigator.groups.map((group) => renderRouteGroup(group, activeObjectId, interaction, capabilities)).join("");
+	const reviewHtml = navigator.reviewRequired.length ? `<section class="spotWorkspace__routeGroup is-review-required" data-spot-route-review-required><header><div><p>Prüfung erforderlich</p><h3>Nicht eindeutig zugeordnet</h3></div><span>${escapeHtml(navigator.reviewRequired.length)} ${navigator.reviewRequired.length === 1 ? "Objekt" : "Objekte"}</span></header><p class="spotWorkspace__groupNote">Keine Strecke oder Quellgruppe wird aus Name, Pfad, Reihenfolge oder Geometrie abgeleitet.</p><div class="spotWorkspace__list">${navigator.reviewRequired.map((row) => renderCard(row, activeObjectId, interaction, capabilities)).join("")}</div></section>` : "";
 	return `<section class="spotWorkspace" aria-label="${escapeHtml(t("spot_workspace_aria"))}"><header class="spotWorkspace__header"><div><p class="spotWorkspace__eyebrow">${escapeHtml(t("spot_workspace_eyebrow"))}</p><h2>${escapeHtml(t("spot_workspace_title"))}</h2><p>${escapeHtml(t("spot_workspace_count", { count: rows.length }))}</p></div><label><span class="sr-only">${escapeHtml(t("spot_workspace_search"))}</span><input type="search" data-spot-search value="${escapeHtml(query)}" placeholder="${escapeHtml(t("spot_workspace_search"))}" /></label></header>
-	${rows.length === 0 ? `<div class="spotWorkspace__empty"><h3>${escapeHtml(t("spot_workspace_empty_title"))}</h3><p>${escapeHtml(t("spot_workspace_empty_text"))}</p><div>${capabilities.create ? `<button data-spot-create>${escapeHtml(t("spot_workspace_create"))}</button>` : ""}${capabilities.import ? `<button data-spot-import>${escapeHtml(t("spot_workspace_import"))}</button>` : ""}</div></div>` : visible.length ? `<div class="spotWorkspace__list">${visible.map((row) => renderCard(row, activeObjectId, interaction, capabilities)).join("")}</div>` : `<div class="spotWorkspace__empty"><h3>${escapeHtml(t("spot_workspace_no_match_title"))}</h3><p>${escapeHtml(t("spot_workspace_no_match_text"))}</p></div>`}
+	${rows.length === 0 ? `<div class="spotWorkspace__empty"><h3>${escapeHtml(t("spot_workspace_empty_title"))}</h3><p>${escapeHtml(t("spot_workspace_empty_text"))}</p><div>${capabilities.create ? `<button data-spot-create>${escapeHtml(t("spot_workspace_create"))}</button>` : ""}${capabilities.import ? `<button data-spot-import>${escapeHtml(t("spot_workspace_import"))}</button>` : ""}</div></div>` : visible.length ? `<div class="spotWorkspace__navigator" data-spot-route-navigator>${groupedHtml}${reviewHtml}</div>` : `<div class="spotWorkspace__empty"><h3>${escapeHtml(t("spot_workspace_no_match_title"))}</h3><p>${escapeHtml(t("spot_workspace_no_match_text"))}</p></div>`}
 	<div class="spotWorkspace__undo" data-spot-undo ${interaction.undoVisible ? "" : "hidden"}><span>${escapeHtml(t("spot_workspace_removed"))}</span><button>${escapeHtml(t("spot_workspace_undo"))}</button></div></section>`;
+}
+
+export function renderSpotLoadingHtml() {
+	return `<div class="spotWorkspace__loading" role="status" data-spot-workspace-state="loading"><span aria-hidden="true"></span>Objekte werden geladen …</div>`;
+}
+
+export function renderSpotErrorHtml(message) {
+	return `<div class="spotWorkspace__empty spotWorkspace__error" role="alert" data-spot-workspace-state="error"><h3>Objekte konnten nicht geladen werden</h3><p>${escapeHtml(message ?? "Unbekannter Fehler")}</p><div><button data-spot-retry>Erneut versuchen</button></div></div>`;
 }
 
 export function makeSpotView({ rootEl } = {}) {
 	if (!rootEl) throw new Error("spotView: missing rootEl"); ensureStylesheet();
-	let spotState = null; let storeState = null; let query = ""; let lastRemoved = null; let actions = {}; let interaction = { menuId: null, renameId: null, renameDraft: "", removeId: null, detailsId: null, undoVisible: false };
+	let spotState = null; let storeState = null; let query = ""; let phase = "loading"; let loadError = null; let lastRemoved = null; let actions = {}; let interaction = { menuId: null, renameId: null, renameDraft: "", removeId: null, detailsId: null, undoVisible: false };
 	const capabilities = () => ({ rename: typeof actions.onRename === "function", remove: typeof actions.onRemove === "function", create: typeof actions.onCreate === "function", import: typeof actions.onImport === "function", edit: typeof actions.onEdit === "function" });
-	const render = () => { rootEl.innerHTML = renderSpotHtml({ spotState, storeState, query, capabilities: capabilities(), interaction }); };
+	const render = () => { rootEl.innerHTML = phase === "loading" ? renderSpotLoadingHtml() : phase === "error" ? renderSpotErrorHtml(loadError) : renderSpotHtml({ spotState, storeState, query, capabilities: capabilities(), interaction }); };
 	const closeContext = () => { interaction = { ...interaction, menuId: null, renameId: null, removeId: null, detailsId: null }; };
 	rootEl.addEventListener("input", (event) => { if (!event.target.matches("[data-spot-search]")) return; query = event.target.value; render(); const search = rootEl.querySelector("[data-spot-search]"); search?.focus(); search?.setSelectionRange?.(query.length, query.length); });
 	rootEl.addEventListener("submit", async (event) => { const form = event.target.closest("[data-spot-rename-form]"); if (!form) return; event.preventDefault(); const name = form.querySelector("[data-spot-rename-input]")?.value?.trim(); if (!name) return; const result = await actions.onRename?.({ objectId: form.dataset.spotRenameForm, name }); if (result?.uiState) spotState = result.uiState; closeContext(); render(); });
 	rootEl.addEventListener("click", async (event) => {
+		if (event.target.closest("[data-spot-retry]")) return actions.onRetry?.();
 		const menu = event.target.closest("[data-spot-menu]"); if (menu) { const id = menu.dataset.spotMenu; interaction = { ...interaction, menuId: interaction.menuId === id ? null : id, renameId: null, removeId: null, detailsId: null }; render(); return; }
 		const startRename = event.target.closest("[data-spot-start-rename]"); if (startRename) { const id = startRename.dataset.spotStartRename; const row = spotState?.rows?.find((item) => String(item.spotId) === id); interaction = { ...interaction, menuId: null, renameId: id, renameDraft: row?.label ?? "" }; render(); rootEl.querySelector("[data-spot-rename-input]")?.select(); return; }
 		const startRemove = event.target.closest("[data-spot-start-remove]"); if (startRemove) { interaction = { ...interaction, menuId: null, removeId: startRemove.dataset.spotStartRemove }; render(); return; }
@@ -103,5 +135,18 @@ export function makeSpotView({ rootEl } = {}) {
 		if (event.target.closest("[data-spot-create]")) actions.onCreate?.(); if (event.target.closest("[data-spot-import]")) actions.onImport?.();
 	});
 	window.addEventListener("keydown", (event) => { if (event.key !== "Escape" || rootEl.closest("#spotOverlay")?.classList.contains("hidden")) return; if (interaction.menuId || interaction.renameId || interaction.removeId || interaction.detailsId) { closeContext(); render(); } else document.getElementById("btnSpotClose")?.click(); });
-	return { setSpotState: (value) => { spotState = value ?? null; }, getSpotState: () => spotState, setSpotHtml: (html) => { rootEl.innerHTML = String(html ?? ""); }, setSpotText: (text) => { rootEl.textContent = String(text ?? ""); }, refresh: (value) => { storeState = value ?? storeState; render(); }, wireActions: (callbacks = {}) => { actions = { ...actions, ...callbacks }; render(); }, renderSpotHtml, getQuery: () => query, setQuery: (value) => { query = String(value ?? ""); render(); } };
+	return {
+		setSpotState: (value) => { spotState = value ?? null; phase = "ready"; loadError = null; },
+		getSpotState: () => spotState,
+		showLoading: () => { phase = "loading"; loadError = null; render(); },
+		showError: (error) => { phase = "error"; loadError = String(error?.message ?? error ?? "Unbekannter Fehler"); render(); },
+		getLoadState: () => phase,
+		setSpotHtml: (html) => { rootEl.innerHTML = String(html ?? ""); },
+		setSpotText: (text) => { rootEl.textContent = String(text ?? ""); },
+		refresh: (value) => { storeState = value ?? storeState; render(); },
+		wireActions: (callbacks = {}) => { actions = { ...actions, ...callbacks }; render(); },
+		renderSpotHtml,
+		getQuery: () => query,
+		setQuery: (value) => { query = String(value ?? ""); render(); },
+	};
 }

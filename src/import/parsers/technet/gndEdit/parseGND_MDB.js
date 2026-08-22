@@ -12,6 +12,8 @@ export async function parseGND_MDB({ file, bytes, context = {} } = {}) {
 		fileName: file?.name ?? "unknown.mdb",
 		coreTableNames: Object.values(TECHNET_SHEET_NAMES),
 		limits: context?.mdbLimits,
+		signal: context?.signal,
+		onHeartbeat: context?.onHeartbeat,
 	});
 	phase("fingerprinted", { sha256: envelope.source.sha256 });
 	phase("access-format-checked", { format: envelope.source.format });

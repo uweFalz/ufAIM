@@ -43,6 +43,11 @@ export function syncOverlays(ui, state) {
 
 export function syncSectionBoard(ui, state, sectionInfo) {
 	ui.setBoardSectionText?.(renderSectionText(state, sectionInfo));
+	ui.setInitialCrossSection?.({
+		s: Number(state?.cursor?.s ?? 0),
+		sectionInfo,
+		evidenceStatus: "not-provided",
+	});
 }
 
 export function syncPinsBadge(ui, state) {

@@ -175,6 +175,8 @@ function buildRow(object) {
 	const evidence = collectEvidence(object);
 	const warnings = collectWarnings(object, evidence);
 	const spatial = buildSpatialSummary(object);
+	const routeContext = buildGndRouteContext(object);
+	const navigatorContext = buildGndNavigatorContext(object);
 
 	return {
 		spotId,
@@ -197,6 +199,8 @@ function buildRow(object) {
 			message: item?.message ?? null,
 			ambiguityReason: item?.ambiguityReason ?? item?.rejectionReason ?? null,
 		})),
+		gndRoute: routeContext,
+		gndNavigator: navigatorContext,
 
 		missing: buildMissing(object),
 		notes: buildNotes(object),
@@ -213,6 +217,78 @@ function buildRow(object) {
 			lifecycle: object?.meta?.lifecycle ?? null,
 		},
 	};
+}
+
+function buildGndRouteContext(object) {
+	const snapshot = object?.meta?.sourceEvidence ?? object?.data?.sourceEvidence ?? null;
+	const targetId = String(object?.meta?.importItemId ?? "").trim();
+	const assignments = (snapshot?.sevenLineRoleEvidence?.assignments ?? []).filter((entry) => (entry?.targetItemIds ?? []).some((id) => String(id) === targetId));
+	if (!assignments.length) return null;
+	const routes = [...new Set(assignments.map((entry) => String(entry.route ?? "").trim()).filter(Boolean))];
+	const roles = [...new Set(assignments.map((entry) => String(entry.directionCode ?? "").trim()).filter(Boolean))];
+	const relation = snapshot?.relationEvidence ?? {};
+	return { route: routes.length === 1 ? routes[0] : null, role: roles.length === 1 ? roles[0] : null, status: routes.length === 1 && roles.length === 1 ? "qualified" : "review-required", sourceAssociationStatus: relation.status ?? "missing", reviewRevision: Number(relation.reviewRevision ?? 0) };
+}
+
+function buildGndNavigatorContext(object) {
+	const snapshot = object?.meta?.sourceEvidence ?? object?.data?.sourceEvidence ?? null;
+	const targetId = String(object?.meta?.importItemId ?? "").trim();
+	const assignments = (snapshot?.sevenLineRoleEvidence?.assignments ?? []).filter((entry) => (entry?.targetItemIds ?? []).some((id) => String(id) === targetId));
+	if (!assignments.length) return null;
+	const routes = [...new Set(assignments.map((entry) => String(entry.route ?? "").trim()).filter(Boolean))];
+	const roles = [...new Set(assignments.map((entry) => String(entry.directionCode ?? "").trim()).filter(Boolean))];
+	const relation = snapshot?.relationEvidence ?? {};
+	const relationCandidates = (relation.candidates ?? []).filter((candidate) => String(candidate?.to ?? candidate?.toId ?? "").trim() === targetId);
+	const reviewedCandidateId = relation.reviewedCandidateId ?? relation.confirmedCandidateId ?? null;
+	const reviewed = relationCandidates.some((candidate) => String(candidate?.id ?? "") === String(reviewedCandidateId ?? ""));
+	const sourceAssociationStatus = reviewed ? "reviewed" : relationCandidates.length ? "open-candidates" : "missing";
+	const route = routes.length === 1 ? routes[0] : null;
+	const role = roles.length === 1 ? roles[0] : null;
+	const sourceFingerprint = String(snapshot?.source?.sha256 ?? snapshot?.source?.fingerprint ?? "").trim() || null;
+	const routeAssignments = route ? (snapshot?.sevenLineRoleEvidence?.assignments ?? []).filter((entry) => String(entry?.route ?? "").trim() === route) : [];
+	const directionCodes = new Set(routeAssignments.map((entry) => String(entry?.directionCode ?? "").trim()));
+	const diagnostics = [...new Set([
+		...(directionCodes.has("1") && directionCodes.has("2") && !directionCodes.has("3") ? ["KM_LINE_REQUIRED"] : []),
+	])];
+	return {
+		route,
+		role,
+		status: route && role ? "qualified" : "review-required",
+		sourceFingerprint,
+		sourceAssociationStatus,
+		reviewRevision: sourceAssociationStatus === "reviewed" ? Number(relation.reviewRevision ?? 0) : 0,
+		sevenLine: buildSevenLineSummary(routeAssignments, relation, targetId),
+		diagnostics,
+	};
+}
+
+function buildSevenLineSummary(assignments, relation, targetId) {
+	const definitions = [["EH", "1"], ["EH", "2"], ["EU", "2"], ["EL", "2"], ["EK", "3"], ["EL", "1"], ["EU", "1"]];
+	const codes = new Set(assignments.map((entry) => String(entry?.directionCode ?? "")));
+	const singleTrack = codes.has("0") && !codes.has("1") && !codes.has("2");
+	const states = definitions.map(([family, role], index) => {
+		if (singleTrack && [1, 2, 3].includes(index)) return "not-applicable";
+		const effectiveRole = singleTrack && [0, 5, 6].includes(index) ? "0" : role;
+		const present = assignments.some((entry) => String(entry?.family ?? "").toUpperCase() === family && String(entry?.directionCode ?? "") === effectiveRole);
+		if (!present) return "missing";
+		if (family === "EL") return "constructive";
+		if (family === "EH" || family === "EU") return hasExactReviewedSourceAssociation({ relation, targetId, family, assignments: assignments.filter((entry) => String(entry?.family ?? "").toUpperCase() === family && String(entry?.directionCode ?? "") === effectiveRole) }) ? "partial" : "review-required";
+		return "partial";
+	});
+	return Object.freeze({ total: 7, constructive: states.filter((value) => value === "constructive").length, partial: states.filter((value) => value === "partial").length, reviewRequired: states.filter((value) => value === "review-required").length, missing: states.filter((value) => value === "missing").length, notApplicable: states.filter((value) => value === "not-applicable").length });
+}
+
+function hasExactReviewedSourceAssociation({ relation, targetId, family, assignments }) {
+	const reviewedCandidateId = relation?.reviewedCandidateId ?? relation?.confirmedCandidateId ?? null;
+	if (!reviewedCandidateId || !targetId) return false;
+	const candidate = (relation?.candidates ?? []).find((entry) => String(entry?.id ?? "") === String(reviewedCandidateId) && String(entry?.to ?? entry?.toId ?? "").trim() === targetId);
+	if (!candidate || candidate.claimScope !== "source-association-only") return false;
+	const source = candidate?.provenance?.source ?? candidate?.source ?? {};
+	if (String(source?.family ?? "").toUpperCase() !== family) return false;
+	const attachmentSourceIds = (source?.attachment ?? candidate?.attachment ?? []).map((entry) => String(entry?.sourceId ?? entry ?? "").trim()).filter(Boolean);
+	if (!attachmentSourceIds.length) return false;
+	const assignmentSourceIds = new Set(assignments.flatMap((entry) => entry?.sourceIds ?? []).map((id) => String(id).trim()).filter(Boolean));
+	return attachmentSourceIds.every((id) => assignmentSourceIds.has(id));
 }
 
 function buildStats(rows) {

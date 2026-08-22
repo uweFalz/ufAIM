@@ -69,17 +69,17 @@
 \indexentry{Topology!railway network context|hyperpage}{175}
 \indexentry{Topology!connection point|hyperpage}{175}
 \indexentry{Topology!graph representation|hyperpage}{175}
-\indexentry{Optimization!realization-aware|hyperpage}{270}
-\indexentry{Realization!operator!in optimization|hyperpage}{270}
-\indexentry{Optimization!on realized states|hyperpage}{271}
-\indexentry{State!pose3!optimization|hyperpage}{271}
-\indexentry{Acceleration!effective lateral!optimization objective|hyperpage}{271}
-\indexentry{Jerk!optimization objective|hyperpage}{271}
-\indexentry{Constraint!realization|hyperpage}{272}
-\indexentry{Realization!inverse formulation|hyperpage}{272}
-\indexentry{Frequency interpretation!realization operator as low-pass filter|hyperpage}{272}
-\indexentry{Optimization!sparse|hyperpage}{273}
-\indexentry{Optimization!hybrid|hyperpage}{273}
-\indexentry{Optimization!runtime|hyperpage}{273}
-\indexentry{Vehicle space!optimization interpretation|hyperpage}{273}
-\indexentry{Reference system!ellipsoid-aware optimization|hyperpage}{274}
+\indexentry{Optimization!realization-aware|hyperpage}{266}
+\indexentry{Realization!operator!in optimization|hyperpage}{266}
+\indexentry{Optimization!on realized states|hyperpage}{267}
+\indexentry{State!pose3!optimization|hyperpage}{267}
+\indexentry{Acceleration!effective lateral!optimization objective|hyperpage}{267}
+\indexentry{Jerk!optimization objective|hyperpage}{267}
+\indexentry{Constraint!realization|hyperpage}{268}
+\indexentry{Realization!inverse formulation|hyperpage}{268}
+\indexentry{Frequency interpretation!realization operator as low-pass filter|hyperpage}{268}
+\indexentry{Optimization!sparse|hyperpage}{269}
+\indexentry{Optimization!hybrid|hyperpage}{269}
+\indexentry{Optimization!runtime|hyperpage}{269}
+\indexentry{Vehicle space!optimization interpretation|hyperpage}{269}
+\indexentry{Reference system!ellipsoid-aware optimization|hyperpage}{270}

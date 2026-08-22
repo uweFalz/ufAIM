@@ -1,473 +1,188 @@
 % modeling/schwerpunkt_trassierung.tex
+\chapter{Schwerpunkt-Trassierung as a Qualified Model Idea}
 
-\chapter{Schwerpunkt-Trassierung}
+\section*{The idea in one page}
 
-\section*{Motivation}
+The historical attraction of \emph{Schwerpunkt-Trassierung} is easy to state.
+A track centreline is not the path of every dynamically relevant point on a
+vehicle. If an Alignment edit changes curvature, the motion predicted for a
+chosen vehicle reference point can change as well. Berlinish and axtranNew
+project thinking used this insight to look beyond isolated curve formulae;
+engineering and patent literature likewise relates alignment to vehicle
+centre-of-mass motion \cite{Hasslinger2002Schwerpunkt}.
 
-Classical railway alignment design separates:
-\begin{itemize}
-\item geometric design (alignment),
-\item cant design,
-\item dynamic evaluation.
-\end{itemize}
+That origin is strong and useful, but it is not validation. The word
+\emph{Schwerpunkt} can refer to several different things:
 
-This separation leads to suboptimal solutions, as geometry and dynamics
-are intrinsically coupled. In railway practice, this coupling appears
-through the interaction of curvature, cant, speed, and vehicle response
-\cite{Klein1998Trassierung,EN13803_2017,BrustadDalmo2020Review}.
+\begin{center}
+\small
+\begin{tabular}{p{0.29\linewidth}p{0.28\linewidth}p{0.34\linewidth}}
+\toprule
+Use & Required qualification & Status here\\
+\midrule
+physical centre of mass & particular vehicle and loading & physical property\\
+model reference point \(P_M\) & model \(M\), frame and parameters & predicted model quantity\\
+Berlinish/axtranNew idea & source and historical purpose & project provenance\\
+optimization aggregate & variables, objective and scaling & problem-specific construction\\
+``centre'' as emphasis & no mathematical object & metaphor only\\
+\bottomrule
+\end{tabular}
+\end{center}
 
-The concept of \emph{Schwerpunkt-Trassierung} aims to unify these aspects
-by defining a single design principle based on the motion of a
-representative point.
-
-The idea that railway alignment should be related to the motion of the
-vehicle centre of gravity rather than merely to the track centerline has
-also appeared in engineering practice and patent literature
-\cite{Hasslinger2002Schwerpunkt}.
-
-This supports the broader AIM interpretation that alignment should be
-understood as a dynamically relevant spatial state trajectory rather
-than as a purely geometric curve.
-
-\section{Conceptual Idea}
-
-\begin{definition}[Reference trajectory]
-Let
+This chapter investigates the second and fourth meanings. It neither creates a
+canonical \emph{Schwerpunkt State} nor changes Alignment identity. The reader
+arrives here from the contract established in
+\cref{chap:optimization-in-state-space}:
 \[
-\gamma_c : I \to \R^2
-\]
-denote a reference trajectory representing the motion of a
-characteristic point of the vehicle system.
-\end{definition}
-
-This point may be interpreted as:
-\begin{itemize}
-\item the center of mass,
-\item a dynamically relevant reference point,
-\item or an abstract design trajectory.
-\end{itemize}
-
-The conceptual shift consists in evaluating track design through the
-motion of such a reference point rather than through geometry alone.
-
-\section{Relation to Track Geometry}
-
-The physical track centerline \(\gamma(s)\) and cant angle \(\phi(s)\)
-induce a spatial configuration of the vehicle.
-
-\begin{definition}[Induced reference trajectory]
-Given a pose3 state
-\[
-(\gamma(s),\theta(s),\phi(s)),
-\]
-the induced reference trajectory is
-\[
-\gamma_c(s)
-=
-\gamma(s)
-+
-d\, n(s,\phi(s)),
-\]
-where:
-\begin{itemize}
-\item \(d\) is a characteristic offset,
-\item \(n(s,\phi)\) is a direction depending on orientation and cant.
-\end{itemize}
-\end{definition}
-
-The exact form of \(n(s,\phi)\) depends on the chosen mechanical model.
-
-\RESEARCH{Precise definition of offset direction based on vehicle model.}
-
-\OPEN{Consistent integration of local track frames and global CRS transformations in the Schwerpunkt model.}
-
-\section{Schwerpunkt Principle}
-
-\begin{definition}[Schwerpunkt principle]
-A railway alignment is said to satisfy the Schwerpunkt principle if the
-induced reference trajectory \(\gamma_c(s)\) possesses prescribed
-smoothness and dynamical properties.
-\end{definition}
-
-In this formulation, the primary design object is not the track itself,
-but the induced trajectory of the reference point.
-
-This makes the design task closer to vehicle-oriented engineering than
-to purely geometric construction.
-
-\section{Variational Formulation}
-
-\begin{definition}[Schwerpunkt functional]
-Let
-\[
-J_c[\gamma_c]
-=
-\int_0^L
-\|\gamma_c''(s)\|^2 \,\dd s.
-\]
-\end{definition}
-
-This functional penalizes curvature of the reference trajectory and
-therefore promotes smooth motion.
-
-\begin{definition}[Schwerpunkt optimization problem]
-Find
-\[
-(\kappa,\phi)
-\]
-such that the induced trajectory \(\gamma_c\) minimizes
-\[
-J_c[\gamma_c]
-\]
-subject to the pose3 dynamics.
-\end{definition}
-
-This formulation extends the variational interpretation of transition
-design from curvature laws alone to vehicle-relevant derived motion.
-
-\section{Coupling to Pose3}
-
-The trajectory \(\gamma_c\) depends on:
-\[
-\gamma(s), \quad \theta(s), \quad \phi(s).
+\text{model}\to\text{objective}\to\text{candidate}
+\to\text{evaluation}\to\text{Engineering Decision}.
 \]
 
-Thus, the Schwerpunkt problem becomes a constrained optimization problem
-in the variables:
+\section{Historical proposition, present boundary}
+
+The original proposition was that transition design might be judged through a
+representative vehicle-related trajectory rather than through track geometry
+alone. Its originality lies in connecting constructive curvature, cant and
+vehicle-oriented consequence within one computational question. It remains a
+research and modelling proposition: no active Kernel authority establishes a
+Schwerpunkt principle, one universal reference point, one response model or one
+objective.
+
+The physically relevant centre of mass belongs to a particular loaded vehicle
+and changes with loading. A model reference point \(P_M\) belongs instead to an
+identified model \(M\). It may coincide with an assumed centre of mass only
+under explicit rigid-body, loading and frame assumptions. A representative
+trajectory or weighted optimization aggregate need not coincide with either.
+
+\section{A deliberately reduced reference-point model}
+
+Let \(\gamma(s)\) be a planar realization of the Alignment, with tangent
+\(t(s)\), normal \(n(s)\), heading \(\theta(s)\) and curvature \(\kappa(s)\):
 \[
-\kappa(s), \quad \phi(s).
+t=(\cos\theta,\sin\theta),\qquad
+n=(-\sin\theta,\cos\theta),\qquad n'=-\kappa t.
+\]
+Choose the illustrative model
+\[
+M_{\mathrm{off}}=(P_M,d,F_{\mathrm{track}},
+\text{rigid offset},\text{planar realization}),
+\]
+where \(d\) is a fixed signed offset. Its represented reference-point path is
+\[
+\gamma_{P_M}(s)=\gamma(s)+d\,n(s).
 \]
 
-This places Schwerpunkt-Trassierung naturally within the pose3-based
-state model introduced earlier and within the broader optimization
-perspective of railway alignment \cite{Kufver1997MathematicalDescription,Kufver2000RailwayAlignment}.
+This is a geometric output of \(M_{\mathrm{off}}\), not a measured vehicle
+trajectory and not automatically a physical centre-of-mass path. Cant,
+suspension, inertia, wheel--rail contact, load transfer, track flexibility and
+irregularities are omitted.
 
-\section{Interpretation}
-
-The Schwerpunkt formulation shifts the perspective:
-\begin{itemize}
-\item from track geometry
-\item to vehicle motion.
-\end{itemize}
-
-This leads to a unified framework in which:
-\begin{itemize}
-\item geometry,
-\item cant,
-\item and dynamics
-\end{itemize}
-are optimized simultaneously.
-
-Such a viewpoint is consistent with the general observation that railway
-transition and alignment quality cannot be judged from geometry alone
-\cite{BrustadDalmo2020Review,EN13803_2017}.
-
-\section{Relation to Classical Design}
-
-\begin{proposition}
-Classical transition curves correspond to special cases of the
-Schwerpunkt formulation where the reference trajectory coincides with
-the track centerline.
-\end{proposition}
-
-In this case, the problem reduces to curvature-based optimization in
-the plane.
-
-Thus, classical alignment design is not contradicted, but embedded as a
-special case of a more general formulation.
-
-\section{Advantages}
-
-\begin{itemize}
-\item unified modelling of geometry and dynamics,
-\item natural integration of cant,
-\item compatibility with optimization frameworks,
-\item extensibility to vehicle-specific models.
-\end{itemize}
-
-These advantages derive from the fact that the model treats alignment as
-a state-governed physical system rather than as a static geometric line.
-
-\section{Open Problems}
-
-\OPEN{Precise mechanical interpretation of the reference trajectory.}
-
-\OPEN{Integration with full vehicle dynamics models.}
-
-\OPEN{Extension to network-level alignment design.}
-
-\OPEN{Explicit treatment of CRS, local track frames, and coordinate transformations in large-scale alignment systems.}
-
-\section{Connection to the AIM Framework}
-
-\begin{summary}
-Schwerpunkt-Trassierung provides a conceptual and mathematical extension
-of classical alignment design.
-
-Instead of prescribing geometric elements, it defines the design
-problem in terms of a reference trajectory derived from the railway
-state.
-
-This aligns with the AIM philosophy of treating alignment as a
-functional object governed by curvature and its derived quantities.
-\end{summary}
-
-\section{Vehicle Model}
-
-\subsection{Rigid Body Approximation}
-
-We model the railway vehicle as a rigid body with a characteristic
-center of mass.
-
-\begin{definition}[Center of mass]
-Let
+Differentiation with respect to station gives
 \[
-C(s) \in \R^3
+\gamma_{P_M}'=(1-d\kappa)t,
 \]
-denote the spatial position of the vehicle center of mass.
-\end{definition}
-
-For planar track geometry, we consider the projection
 \[
-\gamma_c(s) \in \R^2
+\gamma_{P_M}''
+=-d\kappa't+(1-d\kappa)\kappa n.
 \]
-of the center of mass trajectory.
-
-This is intentionally a simplified model. Its purpose is not to replace
-full multibody simulation, but to introduce a mathematically tractable
-vehicle-related state layer.
-
-\subsection{Track Coordinate Frame}
-
-\begin{definition}[Frenet frame]
-Let
+These are station derivatives. They become temporal kinematics only after a
+qualified traversal \(s(t)\) is supplied:
 \[
-t(s) = (\cos\theta(s),\sin\theta(s))
+\dot\gamma_{P_M}=v\,\gamma_{P_M}',\qquad
+\ddot\gamma_{P_M}=\dot v\,\gamma_{P_M}'+v^2\gamma_{P_M}''.
 \]
-be the tangent direction and
+Even then, they describe the prescribed point path of the reduced model, not a
+vehicle-body response solved from mechanics.
+
+\section{From model output to an optimization problem}
+
+An illustrative investigation can ask whether changing a transition reduces
+variation of this model path. It must first declare the problem:
+
+\begin{center}
+\small
+\begin{tabular}{p{0.27\linewidth}p{0.63\linewidth}}
+\toprule
+Contract field & Declaration in the example\\
+\midrule
+problem identity & reference-point path sensitivity for one transition\\
+model & \(M_{\mathrm{off}}\) with stated \(d\) and planar track frame\\
+decision variables & selected transition parameters \(x=(L,\alpha)\)\\
+fixed inputs & endpoint states, family, realization, \(d\), traversal test\\
+derived quantities & \(\kappa,\gamma,\gamma_{P_M}\) and their derivatives\\
+constraints & continuity, parameter bounds and declared engineering bounds\\
+unresolved freedoms & cant and vehicle response unless explicitly added\\
+provenance & Berlinish/axtranNew-inspired modelling experiment\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+One possible geometric sensitivity objective is
 \[
-n(s) = (-\sin\theta(s),\cos\theta(s))
+J_P(x)=\int_0^{L(x)}
+\left\|\gamma_{P_M}''(s;x)\right\|^2\,\dd s .
 \]
-the normal direction.
-\end{definition}
+Its source is the stated experiment; it measures a station-domain path
+property. It is not self-evidently a comfort, safety, wear, cost or energy
+objective.
 
-The pair \((t,n)\) defines a local coordinate system attached to the
-track.
-
-This local frame is sufficient for the present formulation, but future
-extensions should consistently relate it to a global project CRS.
-
-\subsection{Cant Rotation}
-
-\begin{definition}[Rotated normal]
-Let the cant angle \(\phi(s)\) define a rotation of the cross-section.
-\end{definition}
-
-In a simplified model, the lateral offset direction remains aligned
-with \(n(s)\), while vertical effects are captured implicitly.
-
-This simplification is acceptable at the present conceptual stage, but a
-full treatment should explicitly include the three-dimensional rotated
-cross-section and its transformation into the global frame.
-
-\subsection{Center of Mass Offset}
-
-\begin{definition}[Offset model]
-Let \(d>0\) denote a characteristic lateral offset.
-The center of mass trajectory is approximated by
+If the reduced balance residual is also examined, a separate objective may be
 \[
-\gamma_c(s)
-=
-\gamma(s) + d\,n(s).
+J_r(x)=\int_0^{T(x)}
+r_{\mathrm{bal}}(t;x)^2\,\dd t,
+\qquad
+r_{\mathrm{bal}}=v^2\kappa-g\sin\phi,
 \]
-\end{definition}
-
-More refined models may include dependence on \(\phi(s)\), e.g.
+under the assumptions of \cref{chap:dynamic-balance}. The two objectives have
+different units and meanings. A combined objective
 \[
-\gamma_c(s)
-=
-\gamma(s) + d\,\cos\phi(s)\,n(s).
+J=w_PJ_P/J_{P,0}+w_rJ_r/J_{r,0}
+\]
+is defined only when a responsible source supplies the scales, weights,
+purpose and applicability. Neither the model nor the solver owns those
+choices.
+
+\section{Degrees of freedom and candidate status}
+
+In the bounded example, \(L\) and \(\alpha\) are free within declared bounds.
+Endpoint states and the chosen family are fixed; coefficients and terminal
+pose are derived; continuity is constrained. Cant, traversal, \(d\), vehicle
+parameters or realization data may be fixed, made variable, or left
+unresolved, but their role must be recorded. They do not become variables
+merely because the word \emph{Schwerpunkt} is used.
+
+A solver result is therefore
+\[
+C_{\mathrm{SP}}=
+(\mathcal P.id,M_{\mathrm{off}}.id,x^\star,J,
+\text{residuals},\text{convergence},\text{provenance}),
+\]
+a calculation candidate. It remains subject to applicability evaluation
+against qualified evidence, rules, lifecycle and purpose. Selection or
+rejection requires an Engineering Decision with authority.
+
+\[
+\boxed{\text{calculated}
+\neq\text{applicable}
+\neq\text{accepted}
+\neq\text{authoritative}}
 \]
 
-\RESEARCH{Inclusion of full 3D vehicle geometry.}
+The current continuity solver supports only the bounded continuity claim
+already stated in \cref{chap:optimization-in-state-space}. This chapter does
+not claim current AXTRAN vehicle, cant, comfort, network or automatic
+engineering-selection optimization.
 
-\section{Dynamics of the Center of Mass}
+\section{Scientific potential without canonization}
 
-\subsection{Velocity and Acceleration}
+The model idea survives with qualification. More capable work may replace
+\(M_{\mathrm{off}}\) with an identified rigid-body or multibody model, calibrate
+parameters from qualified evidence, propagate observation and model-form
+uncertainty, or compare several vehicle reference points. Each extension must
+state its subject, model, frame, inputs, validity and purpose.
 
-\begin{proposition}
-The velocity of the center of mass is
-\[
-\gamma_c'(s)
-=
-t(s) + d\,n'(s).
-\]
-\end{proposition}
-
-Using
-\[
-n'(s) = -\kappa(s)\,t(s),
-\]
-we obtain
-\[
-\gamma_c'(s)
-=
-(1 - d\kappa(s))\,t(s).
-\]
-
-\begin{proposition}
-The acceleration of the center of mass is proportional to
-\[
-\gamma_c''(s)
-=
-- d\kappa'(s)\,t(s)
-+
-(1 - d\kappa(s))\kappa(s)\,n(s).
-\]
-\end{proposition}
-
-Thus, both curvature and its derivative influence the motion of the
-center of mass.
-
-This is one of the key conceptual benefits of the formulation: it makes
-the dynamic relevance of higher-order geometric quantities explicit.
-
-\subsection{Effective Forces}
-
-\begin{definition}[Lateral acceleration]
-The lateral acceleration of the center of mass is
-\[
-a_c(s)
-=
-v^2 (1 - d\kappa(s))\kappa(s).
-\]
-\end{definition}
-
-Including cant yields the effective acceleration
-\[
-a_{\mathrm{eff}}(s)
-=
-v^2 \kappa(s) - g\sin\phi(s).
-\]
-
-The latter term reflects the same curvature--cant coupling that appears
-in railway design standards and in dynamic alignment interpretation
-\cite{Klein1998Trassierung,EN13803_2017}.
-
-\section{Coupled Design Problem}
-
-\begin{definition}[Vehicle-based objective]
-Define
-\[
-J_{\mathrm{veh}}[\kappa,\phi]
-=
-\int_0^L
-\|\gamma_c''(s)\|^2
-\,\dd s.
-\]
-\end{definition}
-
-This functional directly measures the smoothness of the motion of the
-center of mass.
-
-\begin{definition}[Dynamic objective]
-Define
-\[
-J_{\mathrm{dyn}}[\kappa,\phi]
-=
-\int_0^L
-\Bigl(
-v^2 \kappa(s) - g\sin\phi(s)
-\Bigr)^2
-\,\dd s.
-\]
-\end{definition}
-
-\begin{definition}[Combined vehicle functional]
-A combined objective is
-\[
-J[\kappa,\phi]
-=
-\alpha J_{\mathrm{veh}}
-+
-\beta J_{\mathrm{dyn}}
-+
-\gamma \int_0^L (\kappa'(s))^2 \,\dd s
-+
-\delta \int_0^L (\phi'(s))^2 \,\dd s.
-\]
-\end{definition}
-
-This combines geometric smoothing, dynamic balancing, and higher-order
-regularization within a single optimization framework.
-
-\section{Schwerpunkt-Trassierung (Formal Definition)}
-
-\begin{definition}[Schwerpunkt alignment]
-A Schwerpunkt alignment is a pair
-\[
-(\kappa,\phi)
-\]
-that minimizes the functional
-\[
-J[\kappa,\phi]
-\]
-subject to:
-\begin{itemize}
-\item pose3 dynamics,
-\item boundary conditions,
-\item engineering constraints.
-\end{itemize}
-\end{definition}
-
-This turns alignment design into the optimization of a vehicle-related
-state trajectory rather than the mere composition of geometric elements.
-
-\section{Interpretation}
-
-In this formulation:
-\begin{itemize}
-\item the track is no longer the primary design object,
-\item the motion of the vehicle becomes central.
-\end{itemize}
-
-Classical alignment design is recovered as a special case where
-\[
-d=0
-\quad \text{and} \quad
-\phi(s)=0.
-\]
-
-\section{Discussion}
-
-The presented model is intentionally simplified.
-However, it already captures:
-\begin{itemize}
-\item coupling between curvature and cant,
-\item influence of curvature derivatives,
-\item relation between geometry and dynamics.
-\end{itemize}
-
-Its main contribution is therefore conceptual and structural: it defines
-a mathematically coherent bridge between alignment geometry and
-vehicle-oriented design thinking.
-
-\RESEARCH{Extension to full multibody vehicle models.}
-
-\RESEARCH{Calibration using measured track data.}
-
-\OPEN{Integration into practical design workflows.}
-
-\section{Connection to the AIM Framework}
-
-\begin{summary}
-The combination of pose3 and a vehicle-based model provides a rigorous
-foundation for Schwerpunkt-Trassierung.
-
-It transforms alignment design into a problem of optimizing the motion
-of a representative physical system.
-
-This supports the central AIM idea that alignment is not merely a
-geometric object, but a functional entity governed by curvature and
-its physical implications.
-\end{summary}
+The historical metaphor remains productive because it asks a better downstream
+question: what consequence does an Alignment construction produce for a
+specified vehicle-related model? The answer remains model-specific evidence.
+It does not redefine Alignment, establish universal validity or decide what
+engineering shall accept.

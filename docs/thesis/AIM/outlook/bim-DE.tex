@@ -95,16 +95,28 @@ der Optimierung verwendbar.
 
 \begin{verbatim}
 BIM / IFC / LandXML
-→ Parsen
-→ breite Repräsentation
-→ Normalisierung
-→ AIM-Zustandsmodell
+→ Parsen und Quellevidenz
+→ prüfbare Importkandidaten
+→ ausdrückliche Zulassung oder Ablehnung
+→ zugelassener Ingenieurgegenstand und qualifizierter Zustand
 → Analyse / Optimierung
 → Export
 \end{verbatim}
 
-Diese Kette trennt Belange des Datenaustauschs, der Berechnungsmodellierung
-und des ingenieurwissenschaftlichen Schließens.
+Diese Kette trennt Belange des Datenaustauschs, die Verantwortung für
+Evidenzprüfung und Zulassung, die Berechnungsmodellierung und das
+ingenieurwissenschaftliche Schließen.
+
+Erfolgreiches Parsen ist daher keine Zulassungsentscheidung. Importierte
+Quelldatensätze können partiell, mehrdeutig oder ungeklärt bleiben; diese
+Grenzen müssen mit ihrer Provenienz erhalten bleiben. Erst eine ausdrückliche
+Zulassung kann einen dauerhaften Ingenieurgegenstand für nachgelagerte Services
+verfügbar machen. Die gegenwärtige Referenzimplementierung ist eine
+Demonstration dieser Trennung; sie bildet einen solchen Gegenstand als
+SpotObject in ihrem geladenen SPOT-Universum ab, doch keiner der beiden
+Implementierungsbegriffe definiert Kernel-Bedeutung oder Autorität. Dauerhafte
+Unterscheidbarkeit bleibt dem aktiven Kernel-Datensatz KC-ID-001 Engineering
+Object Identity zugeordnet.
 
 \section{Alignment-zentriertes BIM}
 
@@ -128,13 +140,20 @@ zu behandeln, wird es zur primären Ordnungsstruktur.
 \subsection{Import}
 
 Bestehende BIM-Daten werden durch IFC- und LandXML-Parser sowie durch die
-Interpretation von Altformaten importiert.
+Interpretation von Altformaten untersucht.
 
 \subsection{Verarbeitung}
 
-Innerhalb von AIM werden die importierten Daten normalisiert,
+Innerhalb von AIM dürfen zugelassene Informationen normalisiert,
 rekonstruiert, um eine dynamische Interpretation angereichert und
-gegebenenfalls optimiert.
+gegebenenfalls optimiert werden.
+
+Nicht zugelassene Informationen bleiben Import-Evidenz. Fehlende
+Objektrelationen, Koordinatenbedeutung, Kilometrierungsinterpretation oder
+Quellenautorität dürfen nicht aus Dateinamen, Importreihenfolge oder
+repräsentationaler Ähnlichkeit abgeleitet werden. Mehrere synchronisierte
+Workspace-Sichten können ein zugelassenes Alignment darstellen, bleiben aber
+Repräsentationen desselben Objekts und derselben Revision.
 
 \subsection{Export}
 

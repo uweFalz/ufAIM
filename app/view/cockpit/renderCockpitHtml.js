@@ -46,7 +46,7 @@ export function renderCockpitHtml(uiState = {}) {
 	const visibleCount = Number(context.contextCount ?? context.previewTracks ?? 0);
 	const hasSelection = Boolean(scene?.objectId || scene?.mode === "preview");
 	const isAlignment = String(scene?.type ?? "").toLowerCase() === "alignment" || Boolean(scene?.editor?.isNativeAlignment);
-	const isImport = scene?.mode === "preview" || Boolean(scene?.source?.fileName);
+	const hasImportCandidates = importRows.length > 0;
 
 	return `
 		<div class="cockpit-sofa cockpit-ivision cockpit-universe">
@@ -83,9 +83,9 @@ export function renderCockpitHtml(uiState = {}) {
 				`,
 			}) : ""}
 
-			${isImport ? section({
+			${hasImportCandidates ? section({
 				className: "cockpit-universe__inbox",
-				title: `${tx("cockpit.section.importInbox", "Import result")} · ${importRows.length}`,
+				title: `${tx("cockpit.section.importInbox", "Import result")} · ${importRows.length} Kandidaten`,
 				body: renderImportRows(importRows),
 			}) : ""}
 		</div>
@@ -127,11 +127,15 @@ function renderNativeAuthoringCard({ empty = false } = {}) {
 
 function renderAlignmentGuidance(scene) {
 	const selected = String(scene?.selectedElementId ?? "").trim();
+	const elements = Array.isArray(scene?.editor?.elements) ? scene.editor.elements : [];
+	const guidance = elements.length === 0
+		? tx("cockpit.guidance.emptyAlignment", "Begin with + Straight in the curvature band.")
+		: selected
+			? tx("cockpit.guidance.element", "The selected element can be edited here or in the curvature band.")
+			: tx("cockpit.guidance.alignment", "Select an element in the viewer or curvature band to edit its geometry.");
 	return `
 		<p class="cockpit-guidance">
-			${escapeHtml(selected
-				? tx("cockpit.guidance.element", "The selected element can be edited here or in the curvature band.")
-				: tx("cockpit.guidance.alignment", "Select an element in the viewer or curvature band to edit its geometry."))}
+			${escapeHtml(guidance)}
 		</p>
 	`;
 }
