@@ -943,6 +943,7 @@ function buildCoordGeomAlignmentFromSequence({
 				padEnd: seq?.padEnd ?? null,
 				seedCount: seq?.seedCount ?? 0,
 				seedIds: arr(seq?.seedIds),
+				stationReferenceConfidence: Number(seq?.seedCount) === 1 ? "single-edge-unverified" : "multi-edge-cross-checked",
 				recordCount: records.length,
 				edgeChain: arr(seq?.edgeChain),
 				quality: seq?.quality ?? null,
@@ -1110,6 +1111,9 @@ function makeAnalysisLandFAT({
 	const alignments = [];
 	for (const [index, seq] of arr(model?.coordGeomSequences).entries()) {
 		const edgeDiagnostics = arr(seq?.edgeChain).map(assessConstructiveEdge).filter(Boolean);
+		if ((seq?.family === "EL" || seq?.family === "EK") && Number(seq?.seedCount) === 1) {
+			diagnostics.push(makeDiagnostic({ severity: "warning", family: seq.family, rowRef: seq?.edgeChain?.[0]?.extras?.rowRef ?? null, field: "PP.STRECKE/PP.STRRIKZ", value: seq?.strRikz ?? null, code: "single-edge-station-reference-unverified", decision: "retain-and-construct; line identity (strRikz) rests on one PAD-node-pair match, never cross-checked by a second chained edge", geometryUsable: true }));
+		}
 		for (const edge of arr(seq?.edgeChain)) {
 			const par4 = edge?.parameters?.par4;
 			if (Number.isFinite(par4) && par4 !== 0) diagnostics.push(makeDiagnostic({ severity: "warning", family: edge.family, rowRef: edge?.extras?.rowRef ?? null, field: `${edge.family}PAR4`, value: par4, code: "nonzero-source-field-not-decoded", decision: "retain-as-source-evidence", geometryUsable: edgeDiagnostics.length === 0 }));
