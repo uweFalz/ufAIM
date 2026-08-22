@@ -38790,6 +38790,13 @@ xlsx/xlsx.mjs:
 					.filter(Number.isFinite);
 			}
 
+			function clipPointsToRange(points, range) {
+				if (!range) return points;
+				const from = range.from - 5;
+				const to = range.to + 5;
+				return points.filter((point) => Number.isFinite(point.x) && point.x >= from && point.x <= to);
+			}
+
 			function sevenLineTracks(entry) {
 				const related = relatedDiagramEntries(entry);
 				const selectedFrame = geoFrameInfo(entry);
@@ -38843,7 +38850,7 @@ xlsx/xlsx.mjs:
 					const requiredMissing = side === "kilometer" && referenceRequired && !candidate;
 					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired);
 					if (!sideVisible) continue;
-					const points = kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys);
+					const points = clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange);
 					bands.push(band(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
@@ -38853,7 +38860,7 @@ xlsx/xlsx.mjs:
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : ["cant", "value", "superelevation", "u"];
-					bands.push(band(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys)));
+					bands.push(band(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
 				}
 				return { anchor, entries, bands, hasUnknown: bySide.unknown.length > 0, missingKilometerLine: referenceRequired && !kmAlignment };
 			}
