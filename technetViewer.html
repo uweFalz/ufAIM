@@ -220,6 +220,18 @@
 				color: GrayText;
 				font-size: 0.8rem;
 			}
+			#diagramCode {
+				color: GrayText;
+				font-size: 0.7rem;
+				font-weight: 400;
+				border: 1px solid GrayText;
+				border-radius: 3px;
+				padding: 0 0.3rem;
+				opacity: 0.7;
+			}
+			#diagramCode:empty {
+				display: none;
+			}
 			#diagram {
 				width: 100%;
 				height: 100%;
@@ -450,6 +462,73 @@
 			}
 			.raw-file-title { text-transform: none; letter-spacing: 0; }
 			.raw-object-organized { color: #237a43; }
+			.drag-handle {
+				color: GrayText;
+				opacity: 0.55;
+				margin-right: 0.5rem;
+				font-size: 0.95rem;
+				letter-spacing: -0.1em;
+			}
+			.object-row:hover .drag-handle { opacity: 0.9; }
+			.inbox-drag-hint {
+				display: flex;
+				align-items: flex-start;
+				gap: 0.5rem;
+				margin: 0.6rem;
+				padding: 0.55rem 0.65rem;
+				border-radius: 6px;
+				background: color-mix(in srgb, Highlight 10%, Canvas);
+				box-shadow: inset 3px 0 Highlight;
+				font: 0.76rem/1.35 system-ui, sans-serif;
+				color: var(--secondary);
+			}
+			.inbox-drag-hint p { margin: 0; flex: 1; }
+			.inbox-drag-hint button {
+				flex: none;
+				border: 0;
+				background: transparent;
+				color: inherit;
+				opacity: 0.6;
+				cursor: pointer;
+				font-size: 0.85rem;
+				line-height: 1;
+				padding: 0.1rem 0.2rem;
+			}
+			.inbox-drag-hint button:hover { opacity: 1; }
+			.row-suggestion {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+				padding: 0.3rem 0.75rem 0.55rem calc(2.15rem + 0.75rem);
+				border-bottom: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				background: Canvas;
+				font-size: 0.72rem;
+				color: GrayText;
+			}
+			.row-suggestion button {
+				flex: none;
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.15rem 0.55rem;
+				cursor: pointer;
+				font: inherit;
+			}
+			.row-suggestion button:hover {
+				background: color-mix(in srgb, Highlight 14%, Canvas);
+				color: inherit;
+			}
+			.outbox-lane-placeholder {
+				margin: 0.3rem 0 0;
+				padding: 0.3rem 0.4rem;
+				border: 1px dashed color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				color: GrayText;
+				font-size: 0.7rem;
+				text-align: center;
+			}
 			#viewer.inbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 16rem; }
 			#viewer.outbox-collapsed { grid-template-columns: 17.5rem minmax(0, 1fr) 0; }
 			#viewer.inbox-collapsed.outbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 0; }
@@ -941,10 +1020,11 @@
 							<div id="diagramResizeHandle" role="separator" aria-label="Diagrammhöhe ändern" aria-orientation="horizontal" tabindex="0"></div>
 							<div id="diagramToolbar">
 								<strong id="diagramTitle">Diagramm</strong>
+								<span id="diagramCode" title=""></span>
 								<span id="diagramNote"></span>
 								<div id="diagramModes" aria-label="Diagrammmodus">
-									<button type="button" data-diagram-mode="7l" aria-pressed="true">7L</button>
-									<button type="button" data-diagram-mode="ivhw" aria-pressed="false">Weichenhöhenplan</button>
+									<button type="button" data-diagram-mode="7l" aria-pressed="true" title="7-Linien-Diagramm: Krümmung, Höhe und Überhöhung über der Kilometrierung (entspricht dem IVMG-Trassenplan)">Diagramm</button>
+									<button type="button" data-diagram-mode="ivhw" aria-pressed="false" title="Weichenhöhenplan: Schienenhöhen im Vergleich, wie im gelieferten IVWH-Plan (RiL 885.1103)">Höhenplan</button>
 								</div>
 							</div>
 							<svg id="diagram" role="img" aria-label="Stationsbezogene Diagramme für Krümmung, Höhe und Überhöhung"></svg>
@@ -38185,6 +38265,7 @@ xlsx/xlsx.mjs:
 			const diagramResizeHandle = document.querySelector("#diagramResizeHandle");
 			const diagram = document.querySelector("#diagram");
 			const diagramTitle = document.querySelector("#diagramTitle");
+			const diagramCode = document.querySelector("#diagramCode");
 			const diagramNote = document.querySelector("#diagramNote");
 			const viewModeButtons = Array.from(document.querySelectorAll("#viewModes button"));
 			const validate7lButton = document.querySelector("#validate7l");
@@ -38206,6 +38287,8 @@ xlsx/xlsx.mjs:
 			let geoEntryById = new Map();
 			let mapDrag = null;
 			let draggedOrganizationEntry = null;
+			let dragHintDismissed = false;
+			let dragHintUsed = false;
 			let listingZoom = 1;
 			let diagramHeightManual = false;
 			let diagramResize = null;
@@ -38488,6 +38571,40 @@ xlsx/xlsx.mjs:
 				if (entry.item.kind === "cant") return side === "right" ? "cantRight" : side === "left" ? "cantLeft" : "UNASSIGNED";
 				if (entry.item.kind === "alignment") return side === "right" ? "curvatureRight" : side === "left" ? "curvatureLeft" : side === "kilometer" ? "curvatureKilometer" : "UNASSIGNED";
 				return "UNASSIGNED";
+			}
+
+			function suggestRoleForEntry(entry) {
+				if (sevenLineRole(entry) !== "UNASSIGNED") return null;
+				const kind = entry.item.kind;
+				const roleBySide = kind === "profile" ? { right: "gradientRight", left: "gradientLeft" }
+					: kind === "cant" ? { right: "cantRight", left: "cantLeft" }
+					: kind === "alignment" ? { right: "curvatureRight", left: "curvatureLeft" }
+					: null;
+				if (!roleBySide) return null;
+				const frame = geoFrameInfo(entry);
+				if (!frame) return null;
+				const range = stationRangeForEntry(entry);
+				const lsys = effectiveLsys(entry) || frame.lsys;
+				const takenSides = new Set();
+				for (const candidate of allViewerEntries()) {
+					if (candidate === entry || candidate.item.kind !== kind) continue;
+					const candidateFrame = geoFrameInfo(candidate);
+					if (!candidateFrame || candidateFrame.track !== frame.track) continue;
+					if ((effectiveLsys(candidate) || candidateFrame.lsys) !== lsys) continue;
+					if (range) {
+						const candidateRange = stationRangeForEntry(candidate);
+						if (candidateRange && !(candidateRange.from <= range.to + 5 && candidateRange.to >= range.from - 5)) continue;
+					}
+					const candidateRole = sevenLineRole(candidate);
+					if (candidateRole === roleBySide.right) takenSides.add("right");
+					else if (candidateRole === roleBySide.left) takenSides.add("left");
+				}
+				const missing = takenSides.has("right") && !takenSides.has("left") ? "left"
+					: takenSides.has("left") && !takenSides.has("right") ? "right"
+					: null;
+				if (!missing) return null;
+				const groupDef = SEVEN_LINE_GROUPS.find((group) => group.role === roleBySide[missing]);
+				return groupDef ? { role: roleBySide[missing], groupDef } : null;
 			}
 
 			function sourceFamilyForEntry(entry) {
@@ -39011,7 +39128,9 @@ xlsx/xlsx.mjs:
 					!profile && (unresolved.profile || loadedHasFamily(anchor.loaded, "EH")) && "EH",
 					!cant && (unresolved.cant || loadedHasFamily(anchor.loaded, "EU")) && "EU",
 				].filter(Boolean);
-				diagramTitle.textContent = `7 Linien · ${objectDisplayName(anchor)}`;
+				diagramTitle.textContent = objectDisplayName(anchor);
+				diagramCode.textContent = "7L";
+				diagramCode.title = "7-Linien-Modell (Krümmung, Höhe, Überhöhung) · entspricht dem IVMG-Trassenplan";
 				diagramNote.textContent = missingKilometerLine
 					? "Kilometerlinie fehlt · zweigleisige Streckenzuordnung unvollständig"
 					: unresolvedNames.length
@@ -39058,7 +39177,9 @@ xlsx/xlsx.mjs:
 
 			function renderIvhwDiagram(entry) {
 				const emptyState = (note) => {
-					diagramTitle.textContent = "Weichenhöhenplan";
+					diagramTitle.textContent = "Höhenplan";
+					diagramCode.textContent = "IVHW";
+					diagramCode.title = "Weichenhöhenplan · Planwerk-Code lvhw · RiL 885.1103";
 					diagramNote.textContent = note;
 					diagramPanel.dataset.autoHeight = "144";
 					if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", "144px");
@@ -39106,8 +39227,10 @@ xlsx/xlsx.mjs:
 				}
 
 				diagramTitle.textContent = multiTrack
-					? `Weichenhöhenplan · ${trackData.length} Gleise`
-					: `Weichenhöhenplan · ${objectDisplayName(entry)}`;
+					? `Höhenplan · ${trackData.length} Gleise`
+					: `Höhenplan · ${objectDisplayName(entry)}`;
+				diagramCode.textContent = "IVHW";
+				diagramCode.title = "Weichenhöhenplan · Planwerk-Code lvhw · RiL 885.1103";
 				diagramNote.textContent = multiTrack
 					? "Bezug: gemeinsame externe GND-Kilometrierung der ausgewählten Gleise · keine Übereinstimmung wird erzwungen"
 					: trackData[0].hasCant
@@ -40307,6 +40430,7 @@ xlsx/xlsx.mjs:
 				};
 				status.classList.remove("error");
 				status.textContent = `${objectListName(entry)} → ${groupDef.title}`;
+				dragHintUsed = true;
 				renderObjectTree(entry.loaded?.fileName ?? null);
 			}
 
@@ -40420,6 +40544,12 @@ xlsx/xlsx.mjs:
 							button.addEventListener("click", () => selectObject(entry, entry.button));
 							lane.append(button);
 						}
+						if (!laneEntries.length) {
+							const placeholder = document.createElement("div");
+							placeholder.className = "outbox-lane-placeholder";
+							placeholder.textContent = "Objekt aus der Inbox hierher ziehen";
+							lane.append(placeholder);
+						}
 						lane.addEventListener("dragover", (event) => {
 							if (!draggedOrganizationEntry) return;
 							event.preventDefault();
@@ -40441,6 +40571,23 @@ xlsx/xlsx.mjs:
 				const previousSelection = selectedEntry;
 				const allEntries = allViewerEntries();
 				tablesNav.replaceChildren(renderBulkCrsEditor(allEntries));
+				const hasUnassigned = allEntries.some((entry) => sevenLineRole(entry) === "UNASSIGNED");
+				if (hasUnassigned && !dragHintUsed && !dragHintDismissed) {
+					const hint = document.createElement("div");
+					hint.className = "inbox-drag-hint";
+					const text = document.createElement("p");
+					text.textContent = "Objekte per Ziehen (⠿) rechts einsortieren, oder Vorschlag übernehmen, wo vorhanden.";
+					const dismiss = document.createElement("button");
+					dismiss.type = "button";
+					dismiss.textContent = "✕";
+					dismiss.setAttribute("aria-label", "Hinweis ausblenden");
+					dismiss.addEventListener("click", () => {
+						dragHintDismissed = true;
+						hint.remove();
+					});
+					hint.append(text, dismiss);
+					tablesNav.append(hint);
+				}
 				let firstPreferred = null;
 				for (const loaded of loadedFiles) {
 					const file = document.createElement("details");
@@ -40467,13 +40614,22 @@ xlsx/xlsx.mjs:
 						});
 						const button = document.createElement("button");
 						button.draggable = true;
+						button.title = "Zum Zuordnen rechts in die passende Zeile ziehen";
+						const label = document.createElement("span");
+						label.style.display = "flex";
+						label.style.alignItems = "center";
+						const handle = document.createElement("span");
+						handle.className = "drag-handle";
+						handle.textContent = "⠿";
+						handle.setAttribute("aria-hidden", "true");
 						const name = document.createElement("span");
 						name.textContent = objectListName(entry);
+						label.append(handle, name);
 						const kind = document.createElement("span");
 						kind.dataset.kind = "true";
 						kind.className = geoFrameInfo(entry) && sevenLineRole(entry) !== "UNASSIGNED" ? "raw-object-organized" : "";
 						kind.textContent = `${sourceFamilyForEntry(entry)}${kind.className ? " · in 7L" : " · roh"}`;
-						button.append(name, kind);
+						button.append(label, kind);
 						entry.button = button;
 						button.addEventListener("click", () => selectObject(entry, button));
 						button.addEventListener("dragstart", (event) => {
@@ -40488,6 +40644,19 @@ xlsx/xlsx.mjs:
 						});
 						row.append(checkbox, button);
 						file.append(row);
+						const suggestion = suggestRoleForEntry(entry);
+						if (suggestion) {
+							const hint = document.createElement("div");
+							hint.className = "row-suggestion";
+							const text = document.createElement("span");
+							text.textContent = `Vorschlag: ${suggestion.groupDef.title}`;
+							const accept = document.createElement("button");
+							accept.type = "button";
+							accept.textContent = "Übernehmen";
+							accept.addEventListener("click", () => assignEntryToSevenLine(entry, suggestion.groupDef, geoFrameInfo(entry)));
+							hint.append(text, accept);
+							file.append(hint);
+						}
 						if (loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = entry;
 					}
 					tablesNav.append(file);
