@@ -95,10 +95,55 @@ function mergeSeedsWithinFamily({
 			}
 		}
 
-		merged.push(finalizeMergedSequence(seq, padIndex));
+		merged.push(withSourceOrderWitness(finalizeMergedSequence(seq, padIndex), seq.edgeChain));
 	}
 
 	return merged.sort(compareMergedSequences);
+}
+
+function withSourceOrderWitness(sequence, edgeChain) {
+	const assembledRows = arr(edgeChain).map(sourceRow);
+	const sourceRows = [...assembledRows].sort(compareSourceRows);
+	return {
+		...sequence,
+		sourceOrderWitness: deepFreeze({
+			sourceRows,
+			assembledRows,
+			classification: classifySourceOrder(assembledRows),
+			blockAuthority: "not-available-in-table-export",
+		}),
+	};
+}
+
+function sourceRow(edge) {
+	const ordinal = finiteOrNull(edge?.sourceOrdinal ?? edge?.extras?.sourceOrdinal);
+	return { rowRef: asTrimmedString(edge?.extras?.rowRef), sourceOrdinal: ordinal };
+}
+
+function compareSourceRows(a, b) {
+	if (a.sourceOrdinal == null && b.sourceOrdinal == null) return String(a.rowRef ?? "").localeCompare(String(b.rowRef ?? ""));
+	if (a.sourceOrdinal == null) return 1;
+	if (b.sourceOrdinal == null) return -1;
+	return a.sourceOrdinal - b.sourceOrdinal || String(a.rowRef ?? "").localeCompare(String(b.rowRef ?? ""));
+}
+
+function classifySourceOrder(rows) {
+	const ordinals = rows.map((row) => row.sourceOrdinal);
+	if (ordinals.some((value) => value == null) || new Set(ordinals).size !== ordinals.length) return "non-monotone";
+	if (ordinals.every((value, index) => index === 0 || value > ordinals[index - 1])) return "preserved";
+	if (ordinals.every((value, index) => index === 0 || value < ordinals[index - 1])) return "reordered";
+	return "non-monotone";
+}
+
+function finiteOrNull(value) {
+	const number = Number(value);
+	return Number.isFinite(number) ? number : null;
+}
+
+function deepFreeze(value) {
+	if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+	for (const child of Object.values(value)) deepFreeze(child);
+	return Object.freeze(value);
 }
 
 function makeGrowingSequence(seed, family) {

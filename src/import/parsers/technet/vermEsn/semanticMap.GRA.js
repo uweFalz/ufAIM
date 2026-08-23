@@ -100,7 +100,7 @@ export const VERMESN_GRA_SEMANTIC_MAP = {
 
 		semanticAlerts: {
 			gleisscheren: {
-				status: "important-open-topic",
+				status: "source-evidence-supported",
 				eyeCatcher: true,
 				note: "GRA kann laut Handbuch / Altbestand auch Gleisscheren-/Rampen-Semantik tragen; dieselben Felder werden dann anders gelesen.",
 				fieldMeaningShift: {
@@ -110,7 +110,7 @@ export const VERMESN_GRA_SEMANTIC_MAP = {
 					T: "Überhöhung1 + Kennzeichen Rampe statt Tangentenlänge",
 					Pkt: "Überhöhung2 bzw. kontextabhängige Zusatzbedeutung",
 				},
-				parserRule: "Nicht implizit umdeuten; zunächst markieren, warnen und source-nah erhalten.",
+				parserRule: "GRA(0).S und GRA(0).Pkt bestimmen die getrennten Folgen aus Neigungswechseln und Gleisscheren. Gleisscheren source-nah als gekoppelte TRA/GRA-Konstruktionsclaims erhalten; niemals als PVI interpretieren oder ohne TRA-Bindung berechnen.",
 			},
 
 			kmLineGradientMarkers: {

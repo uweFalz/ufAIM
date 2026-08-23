@@ -481,6 +481,7 @@ function finalizeMergedSequence(seq, padIndex) {
 		seedCount: arr(seq?.seedIds).length,
 		seedIds: arr(seq?.seedIds),
 		edgeChain: arr(seq?.edgeChain),
+		sourceOrderWitness: seq?.sourceOrderWitness ?? null,
 	};
 }
 
@@ -569,6 +570,7 @@ function finalizeTypedSequence(seq, type) {
 		seedIds: arr(seq?.seedIds),
 
 		edgeChain: arr(seq?.edgeChain),
+		sourceOrderWitness: seq?.sourceOrderWitness ?? null,
 
 		plKeys: Array.from(normalizeSet(seq?.candidates?.plKeys)).sort(),
 		ppKeys: Array.from(normalizeSet(seq?.candidates?.ppKeys)).sort(),
@@ -946,6 +948,7 @@ function buildCoordGeomAlignmentFromSequence({
 				stationReferenceConfidence: Number(seq?.seedCount) === 1 ? "single-edge-unverified" : "multi-edge-cross-checked",
 				recordCount: records.length,
 				edgeChain: arr(seq?.edgeChain),
+				sourceOrderWitness: seq?.sourceOrderWitness ?? null,
 				quality: seq?.quality ?? null,
 				attachmentKey,
 			},
@@ -1029,6 +1032,7 @@ function buildUnresolvedAttachmentEvidence(seq, kind, fileName, { evidenceState 
 				par4: makeValueOrigin(edge?.parameters?.par4 == null ? "unresolved" : "source", `${prefix}4`),
 			},
 		})),
+		sourceOrderWitness: seq?.sourceOrderWitness ?? null,
 	};
 }
 

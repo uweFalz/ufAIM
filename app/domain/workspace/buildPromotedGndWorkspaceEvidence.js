@@ -48,7 +48,9 @@ export function buildPromotedGndWorkspaceEvidence(spotObject) {
 	const routes = [...new Set(targetAssignments.map((entry) => String(entry?.route ?? "").trim()).filter(Boolean))];
 	const roles = [...new Set(targetAssignments.map((entry) => String(entry?.directionCode ?? "").trim()).filter(Boolean))];
 	const routeContext = Object.freeze({ route: routes.length === 1 ? routes[0] : null, sourceRole: roles.length === 1 ? roles[0] : null, status: routes.length === 1 && roles.length === 1 ? "constructive" : "review-required" });
-	return Object.freeze({ evidenceId: snapshot.evidenceId ?? null, provenance: snapshot.source ?? null, routeContext, sevenLineRoleEvidence: snapshot.sevenLineRoleEvidence ?? null, sevenLineRoleAssembly, ...families, relation: relationProjection });
+	const constructiveStationFrame = snapshot.constructiveStationFrame ?? null;
+	const projectedFamilies = { ...families, EK: Object.freeze({ ...families.EK, constructiveStationFrame }) };
+	return Object.freeze({ evidenceId: snapshot.evidenceId ?? null, provenance: snapshot.source ?? null, routeContext, sevenLineRoleEvidence: snapshot.sevenLineRoleEvidence ?? null, sevenLineRoleAssembly, constructiveStationFrame, ...projectedFamilies, relation: relationProjection });
 }
 
 function readSourceEvidenceSnapshot(spotObject) {

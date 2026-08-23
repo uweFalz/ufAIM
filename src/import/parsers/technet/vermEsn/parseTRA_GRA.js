@@ -44,6 +44,7 @@ import {
 	decodeBinary,
 	baseMetaFromFile,
 } from "./sharedVermesn.js";
+import { extractGraSourceRecords } from "./extractGraSourceRecords.js";
 
 // -------------------------------------------------------------------------------------------------
 // small helpers
@@ -447,6 +448,8 @@ export function liftParsedGraToLandFAT(parsedGra, opts = {}) {
 		rows = null,
 		header = null,
 		raw = null,
+		trackScissorClaims = [],
+		graRecordDiagnostics = [],
 	} = parsedGra;
 
 	const alignmentId = opts.alignmentId ?? `${name ?? "gra"}_alignment`;
@@ -517,6 +520,8 @@ export function liftParsedGraToLandFAT(parsedGra, opts = {}) {
 					},
 				},
 				specialCases,
+				coupledCantGradientConstructions: trackScissorClaims,
+				graRecordDiagnostics,
 				legacy: {
 					grade,
 					cant1d,
@@ -714,9 +719,10 @@ const staEquations = extractStaEquationsFromTraLikeRecords(sliced.rows, traSeman
 	if (extension === "gra") {
 		const decoded = decodeBinary(buffer, "GRA");
 		const sliced = sliceDataRows(decoded.rowsRaw);
+		const graRecords = extractGraSourceRecords(sliced.header, sliced.rows);
 
-		const specialCases = detectGraSpecialCases(sliced.rows);
-		const profilePoints = extractGraProfilePoints(sliced.rows, specialCases);
+		const specialCases = detectGraSpecialCases(graRecords.profileRows);
+		const profilePoints = extractGraProfilePoints(graRecords.profileRows, specialCases);
 		const grade = buildLegacyGradeFromProfilePoints(profilePoints);
 
 		const parsedGra = {
@@ -733,6 +739,8 @@ const staEquations = extractStaEquationsFromTraLikeRecords(sliced.rows, traSeman
 
 			profilePoints,
 			specialCases,
+			trackScissorClaims: graRecords.trackScissorClaims,
+			graRecordDiagnostics: graRecords.diagnostics,
 			grade,
 			cant1d: null,
 

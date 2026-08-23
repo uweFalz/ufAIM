@@ -9,7 +9,7 @@ function promotedObject() {
 		{ family: "EH", status: "constructive", rowCount: 2, sourceRefs: ["X_ASC_EH"] },
 		{ family: "EU", status: "partial-evidence", rowCount: 2, sourceRefs: ["X_ASC_EU"] },
 		{ family: "EK", status: "partial-evidence", rowCount: 2, sourceRefs: ["X_ASC_EK"] },
-	], relationEvidence: { status: "open-candidates", candidateCount: 1, candidates: [{ id: "R1", from: "EH1", to: "GND-A1" }] } } } };
+	], constructiveStationFrame: { schema: "ufAIM.gnd-constructive-station-frame-evidence", status: "evidence-only", constructiveAdmission: "not-performed", claims: [{ claimId: "EK:1", claimKind: "kilometre-jump-candidate" }] }, relationEvidence: { status: "open-candidates", candidateCount: 1, candidates: [{ id: "R1", from: "EH1", to: "GND-A1" }] } } } };
 }
 
 test("promoted GND evidence keeps EL constructive while EH/EU/EK and relation remain qualified evidence", () => {
@@ -18,6 +18,8 @@ test("promoted GND evidence keeps EL constructive while EH/EU/EK and relation re
 	assert.equal(evidence.EH.status, "partial-evidence");
 	assert.equal(evidence.EU.status, "partial-evidence");
 	assert.equal(evidence.EK.status, "partial-evidence");
+	assert.equal(evidence.constructiveStationFrame.status, "evidence-only");
+	assert.equal(evidence.EK.constructiveStationFrame.claims[0].claimKind, "kilometre-jump-candidate");
 	assert.equal(evidence.relation.status, "partial-evidence");
 	assert.equal(evidence.relation.candidateCount, 1);
 });

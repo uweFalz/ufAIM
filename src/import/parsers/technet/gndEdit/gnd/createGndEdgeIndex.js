@@ -29,6 +29,7 @@ function buildEdge(row, family, rowIndex) {
 
 	return {
 		id: `${family}_${rowIndex + 1}`,
+		sourceOrdinal: toFiniteNumber(row?.__rowIndex),
 
 		family,
 
@@ -72,6 +73,7 @@ function buildEdge(row, family, rowIndex) {
 
 		extras: {
 			rowRef: refOf(row),
+			sourceOrdinal: toFiniteNumber(row?.__rowIndex),
 
 			kmStart:
 				family === "EK"

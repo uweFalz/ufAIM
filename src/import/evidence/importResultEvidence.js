@@ -1,4 +1,5 @@
 import { buildGndSevenLineRoleEvidence } from "./buildGndSevenLineRoleEvidence.js";
+import { buildGndConstructiveStationFrameEvidence } from "./buildGndConstructiveStationFrameEvidence.js";
 
 export const IMPORT_RESULT_EVIDENCE_SCHEMA = "ufAIM.import-result-evidence";
 export const IMPORT_RESULT_EVIDENCE_VERSION = 1;
@@ -48,6 +49,7 @@ export function createImportResultEvidencePublication({
 		unresolvedEvidence,
 		truthfulnessStatus: deriveTruthfulnessStatus({ result, diagnostics, unresolvedEvidence, envelope }),
 		sourceEnvelope: clone(envelope),
+		constructiveStationFrame: buildGndConstructiveStationFrameEvidence({ sourceEnvelope: envelope, evidenceId }),
 		completedAt: completedAt ?? null,
 		provenance: {
 			evidenceId: sha256 ? "generated:source-sha256-plus-collision-safe-suffix" : "generated:source-result-plus-collision-safe-suffix",
@@ -61,6 +63,7 @@ export function createImportResultEvidencePublication({
 			truthfulnessStatus: "derived-from-existing-result-status-diagnostics-and-evidence-classes",
 			sourceEnvelope: envelope ? "result.sourceEnvelope" : "unavailable-in-completed-result",
 			completedAt: completedAt == null ? "unavailable-in-completed-result" : "caller-supplied-completion-time",
+			constructiveStationFrame: "compact GND EK and PP source-evidence projection; no address decoding or intrinsic binding",
 		},
 	};
 	evidence.sevenLineRoleEvidence = buildGndSevenLineRoleEvidence(evidence);
@@ -77,6 +80,7 @@ export function makeCompactSpotEvidenceSnapshot(item, evidence) {
 		source: clone(evidence.source),
 		inventorySummary: asArray(evidence.inventory).map(({ name, rowCount, columnCount, interpreted }) => ({ name, rowCount, columnCount, interpreted })),
 		familyEvidence: makeCompactFamilyEvidence(evidence),
+		constructiveStationFrame: makeItemStationFrame(evidence, item),
 		sevenLineRoleEvidence: clone(evidence.sevenLineRoleEvidence),
 		relationEvidence: makeCompactRelationEvidence(evidence),
 		spatialResolution: clone(item?.derived?.spatialRef ?? item?.payload?.spatialRef ?? null),
@@ -88,6 +92,7 @@ export function makeCompactSpotEvidenceSnapshot(item, evidence) {
 			source: "import-result-evidence.source",
 			inventorySummary: "import-result-evidence.inventory:summary",
 			familyEvidence: "import-result-evidence.inventory|diagnostics|unresolvedEvidence:family-summary",
+			constructiveStationFrame: "import-result-evidence.constructiveStationFrame:evidence-only-compact-projection",
 			relationEvidence: "import-result-evidence.relationCandidates:identity-preserving-summary",
 			spatialResolution: "import-session-item.derived.spatialRef|payload.spatialRef",
 			diagnostics: "import-result-evidence.diagnostics:candidate-filtered",
@@ -116,6 +121,23 @@ function makeCompactRelationEvidence(evidence) {
 	const candidates = asArray(evidence.relationCandidates).map((association) => ({ id: association?.id ?? null, type: association?.type ?? association?.kind ?? null, from: association?.from ?? association?.fromId ?? null, to: association?.to ?? association?.toId ?? null, status: "candidate", claimScope: association?.claimScope ?? "source-association-only", intrinsicMappingStatus: association?.intrinsicMappingStatus ?? "not-established", domainRelationStatus: association?.domainRelationStatus ?? "not-established", provenance: clone(association?.provenance ?? { source: association?.source ?? null, origin: association?.origin ?? null, derivedBy: association?.derivedBy ?? null, method: association?.method ?? null, reasons: association?.reasons ?? null }) }));
 	const reviewedCandidateId = evidence?.relationDecision?.reviewedCandidateId ?? evidence?.relationDecision?.confirmedCandidateId ?? null;
 	return { status: reviewedCandidateId ? "reviewed" : candidates.length ? "open-candidates" : "missing", candidateCount: candidates.length, reviewedCandidateId, reviewRevision: Number(evidence?.relationDecision?.revision ?? 0), reviewProvenance: clone(evidence?.relationDecision?.provenance ?? null), claimScope: "source-association-only", intrinsicMappingStatus: "not-established", domainRelationStatus: "not-established", candidates: candidates.map((candidate) => ({ ...candidate, status: candidate.id === reviewedCandidateId ? "reviewed" : "candidate" })) };
+}
+
+function makeItemStationFrame(evidence, item) {
+	const frame = evidence?.constructiveStationFrame;
+	if (!isObject(frame)) return null;
+	const itemId = String(item?.id ?? "");
+	const contexts = asArray(evidence?.sevenLineRoleEvidence?.assignments)
+		.filter((assignment) => asArray(assignment?.targetItemIds).some((id) => String(id) === itemId))
+		.map((assignment) => ({ route: assignment?.route ?? null, directionCode: assignment?.directionCode ?? null }));
+	if (!contexts.length) return null;
+	const claims = asArray(frame.claims).filter((claim) => contexts.some((context) => claimMatchesContext(claim, context)));
+	return clone({ ...frame, claims, status: claims.length ? "evidence-only" : "missing", diagnostics: [...new Set(claims.flatMap((claim) => asArray(claim?.blockers)))] });
+}
+
+function claimMatchesContext(claim, context) {
+	const stationContexts = [...asArray(claim?.stationContexts?.start), ...asArray(claim?.stationContexts?.end)];
+	return stationContexts.some((entry) => String(entry?.route ?? "") === String(context.route ?? "") && String(entry?.directionCode ?? "") === String(context.directionCode ?? ""));
 }
 
 function familyFromInventoryName(name) { return /(?:^|_)(EL|EH|EU|EK)$/i.exec(String(name ?? ""))?.[1]?.toUpperCase() ?? null; }
