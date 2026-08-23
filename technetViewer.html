@@ -38995,24 +38995,58 @@ xlsx/xlsx.mjs:
 				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
 			}
 
+			function vermEsnFileStem(fileName) {
+				return String(fileName ?? "").replace(/\.(tra|gra)$/i, "").toLowerCase();
+			}
+
+			// VermEsn TRA/GRA pairs are delivered as separate files (unlike GND-Edit,
+			// where PAD identity joins alignment/profile/cant within one MDB) and each
+			// upload is parsed and related in isolation -- so a TRA's own stationReference
+			// relations never mention its GRA counterpart. Bridge that gap purely by
+			// filename stem (Gls401.TRA <-> Gls401.GRA): this is a physical-file fact,
+			// independent of whatever 7L role the user later assigns either side.
+			function stemPairedRelations() {
+				const byStem = new Map();
+				for (const loaded of loadedFiles) {
+					if (loaded.objects[0]?.parser !== "vermEsn") continue;
+					const stem = vermEsnFileStem(loaded.fileName);
+					if (!byStem.has(stem)) byStem.set(stem, []);
+					byStem.get(stem).push(loaded);
+				}
+				const relations = [];
+				for (const files of byStem.values()) {
+					if (files.length < 2) continue;
+					const objects = files.flatMap((loaded) => loaded.objects);
+					const alignments = objects.filter((entry) => entry.item.kind === "alignment");
+					const profiles = objects.filter((entry) => entry.item.kind === "profile");
+					for (const alignment of alignments) {
+						for (const profile of profiles) {
+							relations.push({ type: "stationReference", fromId: profile.item.id, toId: alignment.item.id, reason: "vermesn_filename_stem_pairing" });
+						}
+					}
+				}
+				return relations;
+			}
+
 			function relatedDiagramEntries(entry) {
-				const loaded = entry?.loaded;
-				if (!loaded) return { anchor: entry, entries: [entry] };
+				if (!entry?.loaded) return { anchor: entry, entries: [entry] };
+				const allEntries = allViewerEntries();
+				const relations = [...loadedFiles.flatMap((loaded) => loaded.relations), ...stemPairedRelations()];
 				let anchor = entry.item.kind === "alignment" ? entry : null;
 				if (!anchor) {
-					const relation = loaded.relations.find((candidate) =>
+					const relation = relations.find((candidate) =>
 						candidate.type === "stationReference" && candidate.fromId === entry.item.id
 					);
-					anchor = loaded.objects.find((candidate) => candidate.item.id === relation?.toId) ?? null;
+					anchor = allEntries.find((candidate) => candidate.item.id === relation?.toId) ?? null;
 				}
-				anchor ??= loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? entry;
+				anchor ??= entry.loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? entry;
 				const linkedIds = new Set([anchor.item.id]);
-				for (const relation of loaded.relations) {
+				for (const relation of relations) {
 					if (relation.type === "stationReference" && relation.toId === anchor.item.id) linkedIds.add(relation.fromId);
 				}
 				return {
 					anchor,
-					entries: loaded.objects.filter((candidate) => linkedIds.has(candidate.item.id)),
+					entries: allEntries.filter((candidate) => linkedIds.has(candidate.item.id)),
 				};
 			}
 
