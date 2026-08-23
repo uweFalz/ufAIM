@@ -39123,7 +39123,13 @@ xlsx/xlsx.mjs:
 					const sequence = gndSequenceForEntry(candidate);
 					return candidate.item.kind === "alignment" && sequence?.family === "EL" && ["1", "2"].includes(String(sequence.strRikz ?? ""));
 				});
-				const referenceRequired = gndRouteTrackNeedsReference || (!entries.some((candidate) => gndSequenceForEntry(candidate)) && twoTrack);
+				// The twoTrack fallback below assumes "left + right present, no GND
+				// evidence either way" means a genuine double-track Strecke missing its
+				// Kilometerlinie. That only holds when the track id itself looks like a
+				// real Streckennummer -- a manually named group (a Weiche's own legs
+				// sorted into re/li, e.g. "W401-402" or "DKW510") is not a Strecke and
+				// has no Kilometerlinie to be missing.
+				const referenceRequired = gndRouteTrackNeedsReference || (!entries.some((candidate) => gndSequenceForEntry(candidate)) && twoTrack && isValidRouteNumber(selectedFrame?.track));
 				const equations = bySide.kilometer.find((candidate) => candidate.item.kind === "staEq")
 					?? entries.find((candidate) => candidate.item.kind === "staEq");
 				const definitions = [
