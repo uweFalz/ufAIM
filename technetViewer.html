@@ -38806,7 +38806,10 @@ xlsx/xlsx.mjs:
 				if (gndSequence?.family === "EK" && ["0", "3"].includes(strRikz)) return "kilometer";
 				if (strRikz === "1") return "right";
 				if (strRikz === "2") return "left";
-				if (["4", "5"].includes(strRikz)) return "right";
+				// STRRIKZ 4/5 = Bahnhofsgleis (Gleisnummer in PSTRECKE, siehe
+				// VERM.ESN-Handbuch Satzart 11): kein Richtungsgleis, hat also
+				// keine feste links/rechts-Zuordnung. Faellt bewusst durch auf
+				// die Heuristik unten statt hier als "right" behauptet zu werden.
 				const preservedRole = entry.item?.payload?.extended?.viewer7L?.lineRole;
 				if (String(preservedRole).includes("Right")) return "right";
 				if (String(preservedRole).includes("Left")) return "left";
