@@ -46,10 +46,14 @@
 			}
 			#titlebar,
 			#viewModes,
+			#diagramModes,
 			#mapToolbar {
 				display: flex;
 				align-items: center;
 				gap: 0.5rem;
+			}
+			#diagramModes {
+				margin-left: auto;
 			}
 			#titlebar {
 				min-height: 2.7rem;
@@ -74,7 +78,8 @@
 				margin-right: auto;
 			}
 			#titlebar button:disabled { opacity: 0.45; }
-			#viewModes button[aria-pressed="true"] {
+			#viewModes button[aria-pressed="true"],
+			#diagramModes button[aria-pressed="true"] {
 				background: Highlight;
 				color: HighlightText;
 			}
@@ -246,6 +251,8 @@
 			.diagram-curvature { stroke: #d14c32; }
 			.diagram-height { stroke: #2866c7; }
 			.diagram-cant { stroke: #2e8b57; }
+			.ivhw-rail-a { stroke: #2866c7; fill: #2866c7; }
+			.ivhw-rail-b { stroke: #b5601a; fill: #b5601a; }
 			.diagram-label {
 				fill: CanvasText;
 				font: 13px system-ui, sans-serif;
@@ -935,6 +942,10 @@
 							<div id="diagramToolbar">
 								<strong id="diagramTitle">Diagramm</strong>
 								<span id="diagramNote"></span>
+								<div id="diagramModes" aria-label="Diagrammmodus">
+									<button type="button" data-diagram-mode="7l" aria-pressed="true">7L</button>
+									<button type="button" data-diagram-mode="ivhw" aria-pressed="false">Weichenhöhenplan</button>
+								</div>
 							</div>
 							<svg id="diagram" role="img" aria-label="Stationsbezogene Diagramme für Krümmung, Höhe und Überhöhung"></svg>
 						</div>
@@ -38198,6 +38209,8 @@ xlsx/xlsx.mjs:
 			let listingZoom = 1;
 			let diagramHeightManual = false;
 			let diagramResize = null;
+			let diagramMode = "7l";
+			const diagramModeButtons = Array.from(document.querySelectorAll("#diagramModes button"));
 			const listingCache = new WeakMap();
 			const mapGeometryCache = new WeakMap();
 			const performanceSamples = [];
@@ -38913,6 +38926,10 @@ xlsx/xlsx.mjs:
 
 			function renderDiagram(entry = selectedEntry) {
 				diagram.replaceChildren();
+				if (diagramMode === "ivhw") {
+					renderIvhwDiagram(entry);
+					return;
+				}
 				if (!entry) {
 					diagramPanel.dataset.autoHeight = "144";
 					if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", "144px");
@@ -39002,6 +39019,127 @@ xlsx/xlsx.mjs:
 					: hasUnknown
 						? `${entries.length} verknüpfte Objekte · Gleisseite noch zuzuordnen`
 						: `${tracks.length} von 7 Bändern · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
+			}
+
+			function intrinsicPointSeries(entry, valueKeys) {
+				const points = entry?.item?.payload?.points ?? [];
+				return points.map((point) => {
+					const x = stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage);
+					const raw = valueKeys.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
+					return { x, y: numberValue(raw) };
+				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).sort((a, b) => a.x - b.x);
+			}
+
+			function interpolateSeriesAt(series, x) {
+				if (!series.length) return 0;
+				if (x <= series[0].x) return series[0].y;
+				if (x >= series[series.length - 1].x) return series[series.length - 1].y;
+				for (let index = 1; index < series.length; index += 1) {
+					if (x <= series[index].x) {
+						const a = series[index - 1];
+						const b = series[index];
+						const t = b.x === a.x ? 0 : (x - a.x) / (b.x - a.x);
+						return a.y + (b.y - a.y) * t;
+					}
+				}
+				return series[series.length - 1].y;
+			}
+
+			// Weichenhöhenplan (IVHW), Basisfall: Höhenverlauf beider Schienen EINES
+			// Gleises über seine eigene intrinsische Station (element.staStart/point.station,
+			// nie externalStation) -- kein Streckenbezug, kein Gleisvergleich, kein
+			// Weichen-Clustering. relatedDiagramEntries() statt sevenLineTracks(), weil das
+			// nur die an DIESES Gleis gebundene Gradiente/Überhöhung liefert, nicht
+			// gleichnamige Objekte aus anderen Dateien (siehe Krümmungsband-Fix).
+			function renderIvhwDiagram(entry) {
+				const emptyState = (note) => {
+					diagramTitle.textContent = "Weichenhöhenplan";
+					diagramNote.textContent = note;
+					diagramPanel.dataset.autoHeight = "144";
+					if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", "144px");
+				};
+				if (!entry || entry.item?.kind !== "alignment") {
+					emptyState("kein Gleis ausgewählt");
+					return;
+				}
+				const related = relatedDiagramEntries(entry);
+				const profile = related.entries.find((candidate) => candidate.item.kind === "profile");
+				const cant = related.entries.find((candidate) => candidate.item.kind === "cant");
+				const zSeries = profile ? intrinsicPointSeries(profile, ["elevation", "height", "z"]) : [];
+				const uSeries = cant ? intrinsicPointSeries(cant, ["cant", "value", "superelevation", "u"]) : [];
+
+				diagramTitle.textContent = `Weichenhöhenplan · ${objectDisplayName(entry)}`;
+				if (!zSeries.length) {
+					emptyState("keine Gradiente (Höhe) für dieses Gleis verknüpft");
+					return;
+				}
+				diagramNote.textContent = uSeries.length
+					? "Bezug: intrinsische Station dieses Gleises · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
+					: "Bezug: intrinsische Station dieses Gleises · keine Überhöhungsdaten verknüpft, beide Schienen auf Gradientenhöhe";
+
+				// Zwei Schienenhöhen aus Gradiente (z, m) + Überhöhung (u, mm) je Station der
+				// Gradiente. Welche Schiene (li/re) tatsächlich die höhere ist, hängt von der
+				// Bogenrichtung ab und wird hier bewusst NICHT behauptet -- ungeprüft gegen
+				// Ril 885.1103 (Musterplan liegt nicht vor). Bis geklärt: neutral als
+				// Schiene A/B beschriftet, A = Gradiente, B = Gradiente + Überhöhung.
+				const railA = zSeries;
+				const railB = zSeries.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
+
+				let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+				for (const point of [...railA, ...railB]) {
+					xMin = Math.min(xMin, point.x);
+					xMax = Math.max(xMax, point.x);
+					yMin = Math.min(yMin, point.y);
+					yMax = Math.max(yMax, point.y);
+				}
+				const xSpan = Math.max(xMax - xMin, 1);
+				const ySpan = Math.max(yMax - yMin, 0.05);
+
+				// Amtlicher Planmaßstab (Ril 885.1103): Länge 1:500, Höhe 1:5 -- die Höhe ist
+				// exakt 100x überhöht gegenüber der Länge. Die absolute Pixelgröße passt sich
+				// dem Panel an, das 100:1-Verhältnis bleibt exakt.
+				const width = 1000;
+				const left = 90;
+				const right = 30;
+				const top = 25;
+				const bottom = 40;
+				const plotWidth = width - left - right;
+				const pxPerMeterX = plotWidth / xSpan;
+				const pxPerMeterY = pxPerMeterX * 100;
+				const plotHeight = Math.max(60, ySpan * pxPerMeterY + 40);
+				const height = top + plotHeight + bottom;
+				diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
+				const displayHeight = Math.min(520, Math.max(220, Math.round(height / width * 900)));
+				diagramPanel.dataset.autoHeight = String(displayHeight);
+				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${displayHeight}px`);
+
+				const yBase = top + plotHeight - 20;
+				const xAt = (x) => left + (x - xMin) * pxPerMeterX;
+				const yAt = (y) => yBase - (y - yMin) * pxPerMeterY;
+
+				for (let tick = 0; tick <= 5; tick += 1) {
+					const x = left + plotWidth * tick / 5;
+					diagram.append(svgElement("line", { x1: x, x2: x, y1: top, y2: yBase, class: "diagram-grid" }));
+					const label = svgElement("text", { x, y: height - 12, "text-anchor": "middle", class: "diagram-label diagram-muted" });
+					label.textContent = station(xMin + xSpan * tick / 5).trim();
+					diagram.append(label);
+				}
+				diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBase, y2: yBase, class: "diagram-axis" }));
+
+				const scaleLabel = svgElement("text", { x: width - right, y: top + 12, "text-anchor": "end", class: "diagram-label diagram-muted" });
+				scaleLabel.textContent = "L 1:500 · H 1:5";
+				diagram.append(scaleLabel);
+
+				const pathFor = (series) => series.map((point, index) => `${index ? "L" : "M"} ${xAt(point.x)} ${yAt(point.y)}`).join(" ");
+				diagram.append(svgElement("path", { d: pathFor(railA), class: "diagram-series ivhw-rail-a" }));
+				diagram.append(svgElement("path", { d: pathFor(railB), class: "diagram-series ivhw-rail-b" }));
+
+				const legendA = svgElement("text", { x: 12, y: top + 12, class: "diagram-label ivhw-rail-a" });
+				legendA.textContent = "— Schiene A (Gradiente)";
+				diagram.append(legendA);
+				const legendB = svgElement("text", { x: 12, y: top + 26, class: "diagram-label ivhw-rail-b" });
+				legendB.textContent = "— Schiene B (Gradiente + Überhöhung)";
+				diagram.append(legendB);
 			}
 
 			function inverseTransverseMercator(easting, northing, strip) {
@@ -41031,6 +41169,13 @@ xlsx/xlsx.mjs:
 				if (event.key === "Home") resetDiagramHeight();
 				else setDiagramHeight(diagramPanel.getBoundingClientRect().height + (event.key === "ArrowUp" ? 24 : -24));
 			});
+			for (const button of diagramModeButtons) {
+				button.addEventListener("click", () => {
+					diagramMode = button.dataset.diagramMode;
+					for (const candidate of diagramModeButtons) candidate.setAttribute("aria-pressed", String(candidate === button));
+					renderDiagram();
+				});
+			}
 			for (const button of viewModeButtons) {
 				button.addEventListener("click", () => setViewMode(button.dataset.mode));
 			}
