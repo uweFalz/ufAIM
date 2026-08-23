@@ -39021,15 +39021,6 @@ xlsx/xlsx.mjs:
 						: `${tracks.length} von 7 Bändern · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
 			}
 
-			function intrinsicPointSeries(entry, valueKeys) {
-				const points = entry?.item?.payload?.points ?? [];
-				return points.map((point) => {
-					const x = stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage);
-					const raw = valueKeys.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
-					return { x, y: numberValue(raw) };
-				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).sort((a, b) => a.x - b.x);
-			}
-
 			function interpolateSeriesAt(series, x) {
 				if (!series.length) return 0;
 				if (x <= series[0].x) return series[0].y;
@@ -39045,12 +39036,26 @@ xlsx/xlsx.mjs:
 				return series[series.length - 1].y;
 			}
 
-			// Weichenhöhenplan (IVHW), Basisfall: Höhenverlauf beider Schienen EINES
-			// Gleises über seine eigene intrinsische Station (element.staStart/point.station,
-			// nie externalStation) -- kein Streckenbezug, kein Gleisvergleich, kein
-			// Weichen-Clustering. relatedDiagramEntries() statt sevenLineTracks(), weil das
-			// nur die an DIESES Gleis gebundene Gradiente/Überhöhung liefert, nicht
-			// gleichnamige Objekte aus anderen Dateien (siehe Krümmungsband-Fix).
+			// Weichenhöhenplan (IVHW). Basisfall (nur die Referenz ausgewählt, keine
+			// weiteren Gleise): Höhenverlauf beider Schienen EINES Gleises über seine
+			// eigene intrinsische Station (element.staStart/point.station, nie
+			// externalStation) -- kein Streckenbezug, kein Weichen-Clustering.
+			// Sobald über bulkSelectedEntries weitere Gleise dazugewählt werden, ist die
+			// intrinsische Station jedes Gleises für sich bedeutungslos (Station 0 liegt
+			// nicht am selben Ort) -- dann wird auf die gemeinsame externe GND-
+			// Kilometrierung umgeschaltet, die reale Übereinstimmung voraussetzt statt sie
+			// zu behaupten: Gleise ohne diese Übereinstimmung landen einfach nicht
+			// überlappend im Plot, es wird nichts erzwungen oder projiziert.
+			// relatedDiagramEntries() statt sevenLineTracks() je Gleis, weil das nur die an
+			// GENAU DIESES Gleis gebundene Gradiente/Überhöhung liefert, nicht gleichnamige
+			// Objekte aus anderen Dateien (siehe Krümmungsband-Fix).
+			const IVHW_RAIL_PALETTE = [
+				["#2866c7", "#b5601a"],
+				["#7a2ea6", "#c74f8f"],
+				["#2e8b57", "#9b8b1f"],
+				["#c0392b", "#1f8ba7"],
+			];
+
 			function renderIvhwDiagram(entry) {
 				const emptyState = (note) => {
 					diagramTitle.textContent = "Weichenhöhenplan";
@@ -39062,35 +39067,61 @@ xlsx/xlsx.mjs:
 					emptyState("kein Gleis ausgewählt");
 					return;
 				}
-				const related = relatedDiagramEntries(entry);
-				const profile = related.entries.find((candidate) => candidate.item.kind === "profile");
-				const cant = related.entries.find((candidate) => candidate.item.kind === "cant");
-				const zSeries = profile ? intrinsicPointSeries(profile, ["elevation", "height", "z"]) : [];
-				const uSeries = cant ? intrinsicPointSeries(cant, ["cant", "value", "superelevation", "u"]) : [];
+				const additional = [...bulkSelectedEntries].filter((candidate) => candidate !== entry && candidate.item?.kind === "alignment");
+				const tracks = [entry, ...additional];
+				const multiTrack = tracks.length > 1;
 
-				diagramTitle.textContent = `Weichenhöhenplan · ${objectDisplayName(entry)}`;
-				if (!zSeries.length) {
-					emptyState("keine Gradiente (Höhe) für dieses Gleis verknüpft");
-					return;
+				function stationOf(point) {
+					return multiTrack
+						? stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage)
+						: stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage);
 				}
-				diagramNote.textContent = uSeries.length
-					? "Bezug: intrinsische Station dieses Gleises · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
-					: "Bezug: intrinsische Station dieses Gleises · keine Überhöhungsdaten verknüpft, beide Schienen auf Gradientenhöhe";
+				function seriesFor(pointEntry, valueKeys) {
+					const points = pointEntry?.item?.payload?.points ?? [];
+					return points.map((point) => {
+						const raw = valueKeys.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
+						return { x: stationOf(point), y: numberValue(raw) };
+					}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).sort((a, b) => a.x - b.x);
+				}
 
 				// Zwei Schienenhöhen aus Gradiente (z, m) + Überhöhung (u, mm) je Station der
 				// Gradiente. Welche Schiene (li/re) tatsächlich die höhere ist, hängt von der
 				// Bogenrichtung ab und wird hier bewusst NICHT behauptet -- ungeprüft gegen
 				// Ril 885.1103 (Musterplan liegt nicht vor). Bis geklärt: neutral als
 				// Schiene A/B beschriftet, A = Gradiente, B = Gradiente + Überhöhung.
-				const railA = zSeries;
-				const railB = zSeries.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
+				const trackData = tracks.map((track) => {
+					const related = relatedDiagramEntries(track);
+					const profile = related.entries.find((candidate) => candidate.item.kind === "profile");
+					const cant = related.entries.find((candidate) => candidate.item.kind === "cant");
+					const zSeries = profile ? seriesFor(profile, ["elevation", "height", "z"]) : [];
+					const uSeries = cant ? seriesFor(cant, ["cant", "value", "superelevation", "u"]) : [];
+					const railA = zSeries;
+					const railB = zSeries.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
+					return { track, railA, railB, hasCant: uSeries.length > 0 };
+				}).filter((data) => data.railA.length);
+
+				if (!trackData.length) {
+					emptyState(multiTrack ? "keine Gradiente (Höhe) für die ausgewählten Gleise verknüpft" : "keine Gradiente (Höhe) für dieses Gleis verknüpft");
+					return;
+				}
+
+				diagramTitle.textContent = multiTrack
+					? `Weichenhöhenplan · ${trackData.length} Gleise`
+					: `Weichenhöhenplan · ${objectDisplayName(entry)}`;
+				diagramNote.textContent = multiTrack
+					? "Bezug: gemeinsame externe GND-Kilometrierung der ausgewählten Gleise · keine Übereinstimmung wird erzwungen"
+					: trackData[0].hasCant
+						? "Bezug: intrinsische Station dieses Gleises · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
+						: "Bezug: intrinsische Station dieses Gleises · keine Überhöhungsdaten verknüpft, beide Schienen auf Gradientenhöhe";
 
 				let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
-				for (const point of [...railA, ...railB]) {
-					xMin = Math.min(xMin, point.x);
-					xMax = Math.max(xMax, point.x);
-					yMin = Math.min(yMin, point.y);
-					yMax = Math.max(yMax, point.y);
+				for (const data of trackData) {
+					for (const point of [...data.railA, ...data.railB]) {
+						xMin = Math.min(xMin, point.x);
+						xMax = Math.max(xMax, point.x);
+						yMin = Math.min(yMin, point.y);
+						yMax = Math.max(yMax, point.y);
+					}
 				}
 				const xSpan = Math.max(xMax - xMin, 1);
 				const ySpan = Math.max(yMax - yMin, 0.05);
@@ -39101,7 +39132,8 @@ xlsx/xlsx.mjs:
 				const width = 1000;
 				const left = 90;
 				const right = 30;
-				const top = 25;
+				const legendRows = trackData.length;
+				const top = 18 + legendRows * 14;
 				const bottom = 40;
 				const plotWidth = width - left - right;
 				const pxPerMeterX = plotWidth / xSpan;
@@ -39109,7 +39141,7 @@ xlsx/xlsx.mjs:
 				const plotHeight = Math.max(60, ySpan * pxPerMeterY + 40);
 				const height = top + plotHeight + bottom;
 				diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
-				const displayHeight = Math.min(520, Math.max(220, Math.round(height / width * 900)));
+				const displayHeight = Math.min(560, Math.max(220, Math.round(height / width * 900)));
 				diagramPanel.dataset.autoHeight = String(displayHeight);
 				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${displayHeight}px`);
 
@@ -39126,20 +39158,26 @@ xlsx/xlsx.mjs:
 				}
 				diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBase, y2: yBase, class: "diagram-axis" }));
 
-				const scaleLabel = svgElement("text", { x: width - right, y: top + 12, "text-anchor": "end", class: "diagram-label diagram-muted" });
+				const scaleLabel = svgElement("text", { x: width - right, y: 14, "text-anchor": "end", class: "diagram-label diagram-muted" });
 				scaleLabel.textContent = "L 1:500 · H 1:5";
 				diagram.append(scaleLabel);
 
 				const pathFor = (series) => series.map((point, index) => `${index ? "L" : "M"} ${xAt(point.x)} ${yAt(point.y)}`).join(" ");
-				diagram.append(svgElement("path", { d: pathFor(railA), class: "diagram-series ivhw-rail-a" }));
-				diagram.append(svgElement("path", { d: pathFor(railB), class: "diagram-series ivhw-rail-b" }));
-
-				const legendA = svgElement("text", { x: 12, y: top + 12, class: "diagram-label ivhw-rail-a" });
-				legendA.textContent = "— Schiene A (Gradiente)";
-				diagram.append(legendA);
-				const legendB = svgElement("text", { x: 12, y: top + 26, class: "diagram-label ivhw-rail-b" });
-				legendB.textContent = "— Schiene B (Gradiente + Überhöhung)";
-				diagram.append(legendB);
+				trackData.forEach((data, index) => {
+					const [colorA, colorB] = IVHW_RAIL_PALETTE[index % IVHW_RAIL_PALETTE.length];
+					diagram.append(svgElement("path", { d: pathFor(data.railA), class: "diagram-series", style: `stroke:${colorA}` }));
+					diagram.append(svgElement("path", { d: pathFor(data.railB), class: "diagram-series", style: `stroke:${colorB}` }));
+					const legendY = 14 + index * 14;
+					const legend = svgElement("text", { x: 12, y: legendY, class: "diagram-label" });
+					const dashA = svgElement("tspan", { style: `fill:${colorA}` });
+					dashA.textContent = "— ";
+					const dashB = svgElement("tspan", { style: `fill:${colorB}` });
+					dashB.textContent = "— ";
+					const name = svgElement("tspan", {});
+					name.textContent = objectDisplayName(data.track);
+					legend.append(dashA, dashB, name);
+					diagram.append(legend);
+				});
 			}
 
 			function inverseTransverseMercator(easting, northing, strip) {
@@ -40425,6 +40463,7 @@ xlsx/xlsx.mjs:
 							else bulkSelectedEntries.delete(entry);
 							const label = tablesNav.querySelector(".bulk-crs-head strong");
 							if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+							if (diagramMode === "ivhw") renderDiagram();
 						});
 						const button = document.createElement("button");
 						button.draggable = true;
