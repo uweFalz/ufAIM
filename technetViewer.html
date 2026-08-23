@@ -91,7 +91,8 @@
 				gap: 0.55rem;
 				min-height: 2rem;
 			}
-			#files {
+			#files,
+			#folderFiles {
 				position: absolute;
 				width: 1px;
 				height: 1px;
@@ -552,6 +553,60 @@
 				font-size: 0.7rem;
 				text-align: center;
 			}
+			.outbox-new-group {
+				padding: 0.5rem 0.75rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 28%, transparent);
+			}
+			.outbox-new-group-toggle {
+				border: 1px dashed color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				width: 100%;
+				padding: 0.3rem;
+				cursor: pointer;
+				font: 600 0.72rem system-ui, sans-serif;
+			}
+			.outbox-new-group-form {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+				margin-top: 0.4rem;
+			}
+			.outbox-new-group-form input {
+				font: inherit;
+				font-size: 0.75rem;
+				padding: 0.3rem 0.4rem;
+				border: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				border-radius: 4px;
+				background: Canvas;
+				color: inherit;
+			}
+			.outbox-new-group-form button {
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.25rem 0.5rem;
+				cursor: pointer;
+				font: inherit;
+				font-size: 0.72rem;
+			}
+			.outbox-frame-draft > summary {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.outbox-frame-draft-remove {
+				flex: none;
+				border: 0;
+				background: transparent;
+				color: inherit;
+				opacity: 0.6;
+				cursor: pointer;
+				font-size: 0.8rem;
+			}
+			.outbox-frame-draft-remove:hover { opacity: 1; }
 			#viewer.inbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 16rem; }
 			#viewer.outbox-collapsed { grid-template-columns: 17.5rem minmax(0, 1fr) 0; }
 			#viewer.inbox-collapsed.outbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 0; }
@@ -990,6 +1045,8 @@
 			<section id="dropzone">
 				<input id="files" type="file" multiple />
 				<label class="import-button" for="files">＋ Daten</label>
+				<input id="folderFiles" type="file" webkitdirectory multiple />
+				<label class="import-button" for="folderFiles" title="Ordner über den Dateidialog laden, ohne Drag &amp; Drop">Ordner …</label>
 				<div class="hint">Dateien, ZIPs oder Ordner hierher ziehen</div>
 			</section>
 			<section>
@@ -38248,6 +38305,7 @@ xlsx/xlsx.mjs:
 
 
 			const fileInput = document.querySelector("#files");
+			const folderFileInput = document.querySelector("#folderFiles");
 			const dropzone = document.querySelector("#dropzone");
 			const status = document.querySelector("#status");
 			const output = document.querySelector("#output");
@@ -38312,6 +38370,7 @@ xlsx/xlsx.mjs:
 			let draggedOrganizationEntry = null;
 			let dragHintDismissed = false;
 			let dragHintUsed = false;
+			let draftSevenLineFrames = [];
 			let listingZoom = 1;
 			let diagramHeightManual = false;
 			let diagramResize = null;
@@ -40530,19 +40589,117 @@ xlsx/xlsx.mjs:
 				return `Abschnitt ${station(sectionPackage.range.from).trim()} – ${station(sectionPackage.range.to).trim()}`;
 			}
 
+			function buildSevenLineLanes(frame, entries, current) {
+				const fragment = document.createDocumentFragment();
+				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
+					const lane = document.createElement("div");
+					const laneEntries = entries.filter((entry) => sevenLineRole(entry) === groupDef.role);
+					lane.className = `outbox-lane${laneEntries.includes(current) ? " contains-selection" : ""}`;
+					const title = document.createElement("div");
+					title.className = "outbox-lane-title";
+					title.innerHTML = `<span>${groupDef.title}</span><span>${laneEntries.length || "–"}</span>`;
+					lane.append(title);
+					for (const entry of laneEntries) {
+						const objectRow = document.createElement("div");
+						objectRow.className = "outbox-object-row";
+						const checkbox = document.createElement("input");
+						checkbox.type = "checkbox";
+						checkbox.className = "object-select";
+						checkbox.checked = bulkSelectedEntries.has(entry);
+						checkbox.setAttribute("aria-label", `${objectListName(entry)} zur Mehrfachauswahl hinzufügen`);
+						checkbox.addEventListener("change", () => {
+							if (checkbox.checked) bulkSelectedEntries.add(entry);
+							else bulkSelectedEntries.delete(entry);
+							const label = tablesNav.querySelector(".bulk-crs-head strong");
+							if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+							if (diagramMode === "ivhw") renderDiagram();
+						});
+						const button = document.createElement("button");
+						button.type = "button";
+						button.draggable = true;
+						button.title = "Zum Umsortieren in eine andere Zeile ziehen";
+						button.className = `outbox-object${entry === current ? " selected" : ""}`;
+						button.textContent = objectListName(entry);
+						entry.button = button;
+						button.addEventListener("click", () => selectObject(entry, button));
+						button.addEventListener("dragstart", (event) => {
+							draggedOrganizationEntry = { entry, row: objectRow };
+							objectRow.classList.add("dragging");
+							event.dataTransfer.effectAllowed = "copy";
+							event.dataTransfer.setData("text/plain", String(entry.item.id ?? objectDisplayName(entry)));
+						});
+						button.addEventListener("dragend", () => {
+							objectRow.classList.remove("dragging");
+							draggedOrganizationEntry = null;
+						});
+						objectRow.append(checkbox, button);
+						lane.append(objectRow);
+					}
+					if (!laneEntries.length) {
+						const placeholder = document.createElement("div");
+						placeholder.className = "outbox-lane-placeholder";
+						placeholder.textContent = "Objekt aus der Inbox hierher ziehen";
+						lane.append(placeholder);
+					}
+					lane.addEventListener("dragover", (event) => {
+						if (!draggedOrganizationEntry) return;
+						event.preventDefault();
+						lane.classList.add("drag-target");
+					});
+					lane.addEventListener("dragleave", () => lane.classList.remove("drag-target"));
+					lane.addEventListener("drop", (event) => {
+						event.preventDefault();
+						lane.classList.remove("drag-target");
+						if (draggedOrganizationEntry) assignEntryToSevenLine(draggedOrganizationEntry.entry, groupDef, frame);
+					});
+					fragment.append(lane);
+				}
+				return fragment;
+			}
+
+			function buildNewGroupControl(current) {
+				const control = document.createElement("div");
+				control.className = "outbox-new-group";
+				const toggle = document.createElement("button");
+				toggle.type = "button";
+				toggle.className = "outbox-new-group-toggle";
+				toggle.textContent = "+ Neue Gruppe";
+				const form = document.createElement("div");
+				form.className = "outbox-new-group-form hidden";
+				const trackInput = document.createElement("input");
+				trackInput.type = "text";
+				trackInput.placeholder = "Gleis-/Streckenbezeichnung";
+				const lsysInput = document.createElement("input");
+				lsysInput.type = "text";
+				lsysInput.placeholder = "LSYS (optional)";
+				const create = document.createElement("button");
+				create.type = "button";
+				create.textContent = "Anlegen";
+				create.addEventListener("click", () => {
+					const track = trackInput.value.trim();
+					if (!track) { trackInput.focus(); return; }
+					draftSevenLineFrames.push({ track, lsys: lsysInput.value.trim() || null });
+					renderSevenLineOutbox(current);
+				});
+				toggle.addEventListener("click", () => form.classList.toggle("hidden"));
+				form.append(trackInput, lsysInput, create);
+				control.append(toggle, form);
+				return control;
+			}
+
 			function renderSevenLineOutbox(current = selectedEntry) {
 				outboxContent.replaceChildren();
 				outboxContent.className = "outbox-tree";
+				outboxContent.append(buildNewGroupControl(current));
 				const organized = allViewerEntries().filter(isOutboxOrganized);
 				const baseFrames = groupBy(organized, (entry) => {
 					const frame = geoFrameInfo(entry);
-					return `${frame.track}\u0000${effectiveLsys(entry) || frame.lsys || "LSYS?"}`;
+					return `${frame.track} ${effectiveLsys(entry) || frame.lsys || "LSYS?"}`;
 				});
 				if (!baseFrames.size) {
 					const empty = document.createElement("span");
-					empty.textContent = "Noch keine 7L-Struktur. GND oder strukturiertes LandXML erzeugt hier den ersten Rahmen.";
+					empty.textContent = "Noch keine 7L-Struktur. GND/LandXML erzeugt sie automatisch, oder lege oben eine Gruppe manuell an.";
 					outboxContent.append(empty);
-					return;
 				}
 				const packages = [...baseFrames.values()].flatMap((entries) => sectionPackages(entries));
 				for (const sectionPackage of packages) {
@@ -40555,69 +40712,32 @@ xlsx/xlsx.mjs:
 					const summary = document.createElement("summary");
 					summary.textContent = `${isValidRouteNumber(frame.track) ? `Strecke ${frame.track}` : frame.track} · ${sectionLabel(sectionPackage)} · ${effectiveLsys(entries[0]) || frame.lsys || "LSYS?"}`;
 					node.append(summary);
-					for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
-						const lane = document.createElement("div");
-						const laneEntries = entries.filter((entry) => sevenLineRole(entry) === groupDef.role);
-						lane.className = `outbox-lane${laneEntries.includes(current) ? " contains-selection" : ""}`;
-						const title = document.createElement("div");
-						title.className = "outbox-lane-title";
-						title.innerHTML = `<span>${groupDef.title}</span><span>${laneEntries.length || "–"}</span>`;
-						lane.append(title);
-						for (const entry of laneEntries) {
-							const objectRow = document.createElement("div");
-							objectRow.className = "outbox-object-row";
-							const checkbox = document.createElement("input");
-							checkbox.type = "checkbox";
-							checkbox.className = "object-select";
-							checkbox.checked = bulkSelectedEntries.has(entry);
-							checkbox.setAttribute("aria-label", `${objectListName(entry)} zur Mehrfachauswahl hinzufügen`);
-							checkbox.addEventListener("change", () => {
-								if (checkbox.checked) bulkSelectedEntries.add(entry);
-								else bulkSelectedEntries.delete(entry);
-								const label = tablesNav.querySelector(".bulk-crs-head strong");
-								if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
-								if (diagramMode === "ivhw") renderDiagram();
-							});
-							const button = document.createElement("button");
-							button.type = "button";
-							button.draggable = true;
-							button.title = "Zum Umsortieren in eine andere Zeile ziehen";
-							button.className = `outbox-object${entry === current ? " selected" : ""}`;
-							button.textContent = objectListName(entry);
-							entry.button = button;
-							button.addEventListener("click", () => selectObject(entry, button));
-							button.addEventListener("dragstart", (event) => {
-								draggedOrganizationEntry = { entry, row: objectRow };
-								objectRow.classList.add("dragging");
-								event.dataTransfer.effectAllowed = "copy";
-								event.dataTransfer.setData("text/plain", String(entry.item.id ?? objectDisplayName(entry)));
-							});
-							button.addEventListener("dragend", () => {
-								objectRow.classList.remove("dragging");
-								draggedOrganizationEntry = null;
-							});
-							objectRow.append(checkbox, button);
-							lane.append(objectRow);
-						}
-						if (!laneEntries.length) {
-							const placeholder = document.createElement("div");
-							placeholder.className = "outbox-lane-placeholder";
-							placeholder.textContent = "Objekt aus der Inbox hierher ziehen";
-							lane.append(placeholder);
-						}
-						lane.addEventListener("dragover", (event) => {
-							if (!draggedOrganizationEntry) return;
-							event.preventDefault();
-							lane.classList.add("drag-target");
-						});
-						lane.addEventListener("dragleave", () => lane.classList.remove("drag-target"));
-						lane.addEventListener("drop", (event) => {
-							event.preventDefault();
-							lane.classList.remove("drag-target");
-							if (draggedOrganizationEntry) assignEntryToSevenLine(draggedOrganizationEntry.entry, groupDef, packageFrame);
-						});
-						node.append(lane);
-					}
+					node.append(buildSevenLineLanes(packageFrame, entries, current));
+					outboxContent.append(node);
+				}
+				const organizedTracks = new Set([...baseFrames.keys()].map((key) => key.split(" ")[0]));
+				draftSevenLineFrames = draftSevenLineFrames.filter((draft) => !organizedTracks.has(draft.track));
+				for (const draft of draftSevenLineFrames) {
+					const frame = { track: draft.track, lsys: draft.lsys, direction: "unbekannt", source: "user" };
+					const node = document.createElement("details");
+					node.className = "outbox-frame outbox-frame-draft";
+					node.open = true;
+					const summary = document.createElement("summary");
+					const label = document.createElement("span");
+					label.textContent = `${isValidRouteNumber(draft.track) ? `Strecke ${draft.track}` : draft.track} · neu · ${draft.lsys || "LSYS?"}`;
+					const remove = document.createElement("button");
+					remove.type = "button";
+					remove.className = "outbox-frame-draft-remove";
+					remove.textContent = "✕";
+					remove.title = "Leere Gruppe entfernen";
+					remove.addEventListener("click", (event) => {
+						event.preventDefault();
+						draftSevenLineFrames = draftSevenLineFrames.filter((candidate) => candidate !== draft);
+						renderSevenLineOutbox(current);
+					});
+					summary.append(label, remove);
+					node.append(summary);
+					node.append(buildSevenLineLanes(frame, [], current));
 					outboxContent.append(node);
 				}
 			}
@@ -41374,31 +41494,48 @@ xlsx/xlsx.mjs:
 			}
 
 			async function collectDroppedFiles(dataTransfer) {
-				const items = Array.from(dataTransfer?.items ?? []);
-				const entries = items.map((item) => item.webkitGetAsEntry?.()).filter(Boolean);
-				if (!entries.length) return Array.from(dataTransfer?.files ?? []);
-				const files = [];
-				const pending = entries.slice();
-				for (let pendingIndex = 0; pendingIndex < pending.length; pendingIndex += 1) {
-					const entry = pending[pendingIndex];
-					if (entry?.isFile) {
-						files.push(await readEntryFile(entry));
-						continue;
+				try {
+					const items = Array.from(dataTransfer?.items ?? []);
+					const entries = items.map((item) => item.webkitGetAsEntry?.()).filter(Boolean);
+					if (entries.length) {
+						const files = [];
+						const pending = entries.slice();
+						for (let pendingIndex = 0; pendingIndex < pending.length; pendingIndex += 1) {
+							const entry = pending[pendingIndex];
+							if (entry?.isFile) {
+								files.push(await readEntryFile(entry));
+								continue;
+							}
+							if (!entry?.isDirectory) continue;
+							const reader = entry.createReader();
+							while (true) {
+								const children = await readDirectoryBatch(reader);
+								if (!children.length) break;
+								for (const child of children) pending.push(child);
+							}
+						}
+						return files;
 					}
-					if (!entry?.isDirectory) continue;
-					const reader = entry.createReader();
-					while (true) {
-						const children = await readDirectoryBatch(reader);
-						if (!children.length) break;
-						for (const child of children) pending.push(child);
-					}
+				} catch (error) {
+					// Chrome can throw while negotiating DataTransferItem flavors for very
+					// large native drags ("... Data URL has exceeded the URL length
+					// limitations ..."); dataTransfer.files below does not go through that
+					// per-item negotiation and is unaffected.
 				}
-				return files;
+				try {
+					return Array.from(dataTransfer?.files ?? []);
+				} catch {
+					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
+				}
 			}
 
 			fileInput.addEventListener("change", async () => {
 				await inspectFiles(fileInput.files);
 				fileInput.value = "";
+			});
+			folderFileInput.addEventListener("change", async () => {
+				await inspectFiles(folderFileInput.files);
+				folderFileInput.value = "";
 			});
 			function setDiagramHeight(height, { manual = true } = {}) {
 				const minimum = 96;
