@@ -453,6 +453,25 @@
 				font-size: 0.72rem;
 			}
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
+			.outbox-object-row {
+				display: flex;
+				align-items: center;
+				gap: 0.35rem;
+				margin-top: 0.28rem;
+			}
+			.outbox-object-row .object-select {
+				flex: none;
+				margin: 0;
+			}
+			.outbox-object-row .outbox-object {
+				flex: 1;
+				margin: 0 !important;
+				cursor: grab;
+			}
+			.outbox-object-row.dragging .outbox-object {
+				opacity: 0.45;
+				cursor: grabbing;
+			}
 			.outbox-frame.contains-selection {
 				border-color: var(--accent);
 				box-shadow: inset 3px 0 0 var(--accent);
@@ -461,7 +480,11 @@
 				background: color-mix(in srgb, var(--accent) 8%, transparent);
 			}
 			.raw-file-title { text-transform: none; letter-spacing: 0; }
-			.raw-object-organized { color: #237a43; }
+			.file-group-done {
+				padding: 0.5rem 0.9rem;
+				color: #237a43;
+				font-size: 0.76rem;
+			}
 			.drag-handle {
 				color: GrayText;
 				opacity: 0.55;
@@ -38574,7 +38597,7 @@ xlsx/xlsx.mjs:
 			}
 
 			function suggestRoleForEntry(entry) {
-				if (sevenLineRole(entry) !== "UNASSIGNED") return null;
+				if (isOutboxOrganized(entry)) return null;
 				const kind = entry.item.kind;
 				const roleBySide = kind === "profile" ? { right: "gradientRight", left: "gradientLeft" }
 					: kind === "cant" ? { right: "cantRight", left: "cantLeft" }
@@ -38605,6 +38628,10 @@ xlsx/xlsx.mjs:
 				if (!missing) return null;
 				const groupDef = SEVEN_LINE_GROUPS.find((group) => group.role === roleBySide[missing]);
 				return groupDef ? { role: roleBySide[missing], groupDef } : null;
+			}
+
+			function isOutboxOrganized(entry) {
+				return Boolean(geoFrameInfo(entry)) && sevenLineRole(entry) !== "UNASSIGNED";
 			}
 
 			function sourceFamilyForEntry(entry) {
@@ -40506,7 +40533,7 @@ xlsx/xlsx.mjs:
 			function renderSevenLineOutbox(current = selectedEntry) {
 				outboxContent.replaceChildren();
 				outboxContent.className = "outbox-tree";
-				const organized = allViewerEntries().filter((entry) => geoFrameInfo(entry) && sevenLineRole(entry) !== "UNASSIGNED");
+				const organized = allViewerEntries().filter(isOutboxOrganized);
 				const baseFrames = groupBy(organized, (entry) => {
 					const frame = geoFrameInfo(entry);
 					return `${frame.track}\u0000${effectiveLsys(entry) || frame.lsys || "LSYS?"}`;
@@ -40537,12 +40564,40 @@ xlsx/xlsx.mjs:
 						title.innerHTML = `<span>${groupDef.title}</span><span>${laneEntries.length || "–"}</span>`;
 						lane.append(title);
 						for (const entry of laneEntries) {
+							const objectRow = document.createElement("div");
+							objectRow.className = "outbox-object-row";
+							const checkbox = document.createElement("input");
+							checkbox.type = "checkbox";
+							checkbox.className = "object-select";
+							checkbox.checked = bulkSelectedEntries.has(entry);
+							checkbox.setAttribute("aria-label", `${objectListName(entry)} zur Mehrfachauswahl hinzufügen`);
+							checkbox.addEventListener("change", () => {
+								if (checkbox.checked) bulkSelectedEntries.add(entry);
+								else bulkSelectedEntries.delete(entry);
+								const label = tablesNav.querySelector(".bulk-crs-head strong");
+								if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+								if (diagramMode === "ivhw") renderDiagram();
+							});
 							const button = document.createElement("button");
 							button.type = "button";
+							button.draggable = true;
+							button.title = "Zum Umsortieren in eine andere Zeile ziehen";
 							button.className = `outbox-object${entry === current ? " selected" : ""}`;
 							button.textContent = objectListName(entry);
-							button.addEventListener("click", () => selectObject(entry, entry.button));
-							lane.append(button);
+							entry.button = button;
+							button.addEventListener("click", () => selectObject(entry, button));
+							button.addEventListener("dragstart", (event) => {
+								draggedOrganizationEntry = { entry, row: objectRow };
+								objectRow.classList.add("dragging");
+								event.dataTransfer.effectAllowed = "copy";
+								event.dataTransfer.setData("text/plain", String(entry.item.id ?? objectDisplayName(entry)));
+							});
+							button.addEventListener("dragend", () => {
+								objectRow.classList.remove("dragging");
+								draggedOrganizationEntry = null;
+							});
+							objectRow.append(checkbox, button);
+							lane.append(objectRow);
 						}
 						if (!laneEntries.length) {
 							const placeholder = document.createElement("div");
@@ -40571,7 +40626,7 @@ xlsx/xlsx.mjs:
 				const previousSelection = selectedEntry;
 				const allEntries = allViewerEntries();
 				tablesNav.replaceChildren(renderBulkCrsEditor(allEntries));
-				const hasUnassigned = allEntries.some((entry) => sevenLineRole(entry) === "UNASSIGNED");
+				const hasUnassigned = allEntries.some((entry) => !isOutboxOrganized(entry));
 				if (hasUnassigned && !dragHintUsed && !dragHintDismissed) {
 					const hint = document.createElement("div");
 					hint.className = "inbox-drag-hint";
@@ -40593,11 +40648,18 @@ xlsx/xlsx.mjs:
 					const file = document.createElement("details");
 					file.className = "file-group workspace-section";
 					file.open = loaded.objects.includes(previousSelection) || loaded.fileName === preferredFileName;
+					const pendingObjects = loaded.objects.filter((entry) => !isOutboxOrganized(entry));
 					const summary = document.createElement("summary");
 					summary.className = "workspace-section-title raw-file-title";
-					summary.innerHTML = `<span>${loaded.fileName}</span><span class="workspace-section-count">${loaded.objects.length}</span>`;
+					summary.innerHTML = `<span>${loaded.fileName}</span><span class="workspace-section-count">${pendingObjects.length}/${loaded.objects.length}</span>`;
 					file.append(summary);
-					for (const entry of loaded.objects) {
+					if (!pendingObjects.length) {
+						const done = document.createElement("div");
+						done.className = "file-group-done";
+						done.textContent = "Vollständig einsortiert · siehe rechts";
+						file.append(done);
+					}
+					for (const entry of pendingObjects) {
 						const row = document.createElement("div");
 						row.className = "object-row";
 						const checkbox = document.createElement("input");
@@ -40627,8 +40689,7 @@ xlsx/xlsx.mjs:
 						label.append(handle, name);
 						const kind = document.createElement("span");
 						kind.dataset.kind = "true";
-						kind.className = geoFrameInfo(entry) && sevenLineRole(entry) !== "UNASSIGNED" ? "raw-object-organized" : "";
-						kind.textContent = `${sourceFamilyForEntry(entry)}${kind.className ? " · in 7L" : " · roh"}`;
+						kind.textContent = `${sourceFamilyForEntry(entry)} · roh`;
 						button.append(label, kind);
 						entry.button = button;
 						button.addEventListener("click", () => selectObject(entry, button));
