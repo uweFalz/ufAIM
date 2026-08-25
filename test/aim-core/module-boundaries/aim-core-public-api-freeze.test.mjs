@@ -22,18 +22,18 @@ test("public API manifest is deeply frozen grouped unique and exhaustive", () =>
 	for (const names of Object.values(AIM_CORE_PUBLIC_API_GROUPS)) {
 		assert.equal(Object.isFrozen(names), true);
 	}
-	assert.equal(AIM_CORE_PUBLIC_API_NAMES.length, 141);
-	assert.equal(new Set(AIM_CORE_PUBLIC_API_NAMES).size, 141);
+	assert.equal(AIM_CORE_PUBLIC_API_NAMES.length, 151);
+	assert.equal(new Set(AIM_CORE_PUBLIC_API_NAMES).size, 151);
 	assert.deepEqual(
 		[...Object.values(AIM_CORE_PUBLIC_API_GROUPS).flat()].sort(),
 		AIM_CORE_PUBLIC_API_NAMES
 	);
 });
 
-test("Root namespace is exactly the deliberate 141-export manifest", async () => {
+test("Root namespace is exactly the deliberate 151-export manifest", async () => {
 	const root = await import(`${ROOT_URL.href}?root-freeze=${Date.now()}`);
 	assert.deepEqual(Object.keys(root).sort(), AIM_CORE_PUBLIC_API_NAMES);
-	assert.equal(Object.keys(root).length, 141);
+	assert.equal(Object.keys(root).length, 151);
 	assert.equal("AIM_CORE_PUBLIC_API_GROUPS" in root, false);
 	assert.equal("AIM_CORE_PUBLIC_API_NAMES" in root, false);
 });

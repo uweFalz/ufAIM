@@ -13,24 +13,34 @@ const EXPECTED_API = [
 	"AlignmentProfileEvaluationService",
 	"AlignmentProfileEvaluationServiceError",
 	"CANT_CONSTRUCTIVE_STATE_VERSION",
+	"RAIL_PAIR_CANT_CONSTRUCTIVE_STATE_VERSION",
+	"RAIL_PAIR_REALIZATION_VERSION",
 	"CHAINAGE_MAPPING_VERSION",
 	"CantConstructiveStateError",
+	"RailPairCantConstructiveStateError",
+	"RailPairRealizationError",
 	"ChainageMappingError",
 	"VERTICAL_CONSTRUCTIVE_STATE_VERSION",
 	"VerticalConstructiveStateError",
 	"appendCantElement",
+	"appendRailOffsetElement",
 	"appendChainageSegment",
 	"appendVerticalElement",
 	"assertAlignmentProfileStateReaderPort",
 	"assertCantConstructiveState",
+	"assertRailPairCantConstructiveState",
 	"assertChainageMapping",
 	"assertVerticalConstructiveState",
 	"createCantConstructiveState",
+	"createRailPairCantConstructiveState",
 	"createChainageMapping",
 	"createVerticalConstructiveState",
 	"evaluateCantAt",
+	"evaluateRailPairCantAt",
 	"evaluateVerticalAt",
 	"isCantConstructiveState",
+	"isRailPairCantConstructiveState",
+	"realizeRailPairAt",
 	"isChainageMapping",
 	"isVerticalConstructiveState",
 	"mapChainageToIntrinsic",
@@ -55,7 +65,7 @@ function importSpecifiers(source) {
 
 test("standalone Profile Core has only internal relative static dependencies", async () => {
 	const files = await javascriptFiles(PROFILE_ROOT);
-	assert.equal(files.length, 6);
+	assert.equal(files.length, 8);
 	for (const file of files) {
 		const source = await readFile(file, "utf8");
 		for (const specifier of importSpecifiers(source)) {
