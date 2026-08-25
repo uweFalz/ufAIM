@@ -222,3 +222,16 @@ This is the append-only canonical log of effective Knowledge Kernel governance d
 - **Status:** effective; affected Kernel concept remains `candidate`
 - **Supersedes:** None
 - **Follow-up:** Domain-specific profiles and lifecycle rules require separately authorized evidence and candidate work; none is created by this decision.
+
+## KD-2026-018
+
+- **Decision ID:** `KD-2026-018`
+- **Date:** 2026-08-23
+- **Authority:** Uwe Falz
+- **Question:** What active Kernel candidate shall govern the construction-to-rail-pair and rail-pair-to-vehicle boundary?
+- **Decision:** Create [`KC-REALIZATION-008 Rail-Pair Realization`](../REALIZATION/KC-REALIZATION-008_Rail_Pair_Realization.md) with status `candidate`. Its primary railway cross-section construction comprises a provenance-bearing horizontal anchor rule, sparse left and right governing-rail offsets, and qualified separation. The realized geometric rail-pair midpoint is the preferred derived kinematic anchor. Rail-Pair Realization remains distinct from idealized wheelset kinematics, wheel--rail contact, Physical Realization, observation, and vehicle dynamics.
+- **Rationale:** [`RPR-D001`](../research/RAIL_PAIR_REALIZATION/DECISION_NOTE_RPR_D001.md) preserves both common and differential rail-offset modes, demonstrates the insufficiency of scalar cross-level, separates sparse zero from missing evidence, and prevents derived rail geometry and pose3 from becoming redundant constructive truth. Independent review `RPR-D001-REVIEW-001` found no active Kernel conflict and required the horizontal anchor rule included in version `0.3`. Uwe Falz confirmed the construction basis and accepted the derived midpoint point-approach recommendation.
+- **Affected Files:** [`KC-REALIZATION-008`](../REALIZATION/KC-REALIZATION-008_Rail_Pair_Realization.md), [`REALIZATION/README.md`](../REALIZATION/README.md), [`RPR-D001 version 0.3`](../research/RAIL_PAIR_REALIZATION/DECISION_NOTE_RPR_D001.md)
+- **Status:** effective; affected Kernel concept remains `candidate`
+- **Supersedes:** [`GAP2-D003`](../research/RESEARCH_ALIGNMENT_GAP_002/DECISION_RECORD_GAP2_D003.md) only for future-Core wording that makes the governing-rail midpoint the native persistent constructive reference. It retains paired-rail construction, persistent left/right identity, qualified governing references and separation, explicit source-reference transformations, and the midpoint as preferred derived runtime working trajectory. The Research records remain unchanged provenance.
+- **Follow-up:** Architecture, RefImpl, and Thesis conformance packages; focused Research on separation taxonomy, multi-rail governing-pair selection, native cant laws, and intended versus physical or observed rail states.

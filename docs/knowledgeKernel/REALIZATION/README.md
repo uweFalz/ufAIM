@@ -15,6 +15,7 @@ Realization defines how intrinsic engineering definitions acquire measurable spa
 | [`KC-REALIZATION-005`](KC-REALIZATION-005_Physical_Realization.md) | Physical Realization | `candidate` | `RESEARCH-REALIZATION-001`: supported with reformulation; accepted by `KD-2026-007` |
 | [`KC-REALIZATION-006`](KC-REALIZATION-006_World_To_Track.md) | World-to-Track | `candidate` | `KC-FOUND-007`: partial correspondence |
 | [`KC-REALIZATION-007`](KC-REALIZATION-007_Track_To_World.md) | Track-to-World | `candidate` | `KC-FOUND-007`: partial correspondence |
+| [`KC-REALIZATION-008`](KC-REALIZATION-008_Rail_Pair_Realization.md) | Rail-Pair Realization | `candidate` | `RPR-D001`: direct, accepted after independent review |
 
 No entry is approved by KERNEL-REPAIR-003.
 
@@ -37,6 +38,7 @@ No entry is approved by KERNEL-REPAIR-003.
 | KC-REALIZATION-005 | `RESEARCH-REALIZATION-001` direct reformulation provenance | `KD-2026-007`, FC-001, FC-002 | target/physical/observed separation required; conformance unverified | construction/realization and observation chapters | `candidate` |
 | KC-REALIZATION-006 | `KC-FOUND-007` partial; `KC-FOUND-004` boundary | `KD-2026-006`, FC-001, FC-002 | incomplete projection correspondence | world-to-track and runtime chapters | `candidate` |
 | KC-REALIZATION-007 | `KC-FOUND-007` partial; `KC-FOUND-004` boundary | `KD-2026-006`, FC-001, FC-002 | coordinate helpers; incomplete | world-to-track and operator chapters | `candidate` |
+| KC-REALIZATION-008 | `RPR-D001` direct; `GAP2-D003` reformulated provenance | `KD-2026-018`, FC-001, FC-002 | scalar Cant Core is incomplete correspondence | sparse, pose3, frames, and vehicle-space chapters require follow-up | `candidate` |
 
 Implementation and Thesis matches are correspondence evidence, not authority or demonstrated conformance.
 
@@ -46,3 +48,6 @@ Implementation and Thesis matches are correspondence evidence, not authority or 
 - Physical Asset Identity (`KRD-001`), the complete Physical State model (`KRD-002`), and variability/uncertainty semantics (`KRD-003`) remain separate follow-up work.
 - Metric-space operation minima, Realization Context compatibility, operator result semantics, and directional projection contracts require later Research and conformance packages.
 - World-to-Track is potentially multivalued; Track-to-World is only conditionally paired with it. Neither is declared a global inverse.
+- Rail-Pair Realization is established as a candidate by `KD-2026-018`; exact
+  governing references, separation taxonomy, multi-rail selection, native
+  cant laws, and physical/observed rail-state relations remain open.
