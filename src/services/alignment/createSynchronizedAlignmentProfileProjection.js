@@ -26,6 +26,24 @@ function cantReferenceProjection(cantState) {
 	if (cantState === null) {
 		return Object.freeze({ status: "absent" });
 	}
+	if (cantState.type === "RailPairCantConstructiveState") {
+		return Object.freeze({
+			status: "known",
+			workingReference: cantState.anchorRule.kind,
+			scalarCrossLevelStatus: "derived",
+			pairedRails: cloneAndFreeze({
+				status: "known",
+				leftRailId: cantState.railPair.leftRailId,
+				rightRailId: cantState.railPair.rightRailId,
+				separation: cantState.railPair.separation,
+			}),
+			sourceReference: cloneAndFreeze(cantState.anchorRule),
+			transformation: Object.freeze({
+				status: "not-required",
+				reason: "PAIRED_RAIL_CONSTRUCTION_IS_AUTHORITATIVE",
+			}),
+		});
+	}
 
 	const pairedRails = isObject(cantState.pairedRails)
 		? cloneAndFreeze(cantState.pairedRails)

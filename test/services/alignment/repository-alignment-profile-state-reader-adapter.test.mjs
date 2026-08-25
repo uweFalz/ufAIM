@@ -382,6 +382,7 @@ test("source dependencies are Core-only without SPOT or browser coupling", async
 		"../../aim-core/alignment/profile/AlignmentProfileStateReaderPort.js",
 		"../../aim-core/alignment/profile/VerticalConstructiveState.js",
 		"../../aim-core/alignment/profile/CantConstructiveState.js",
+		"../../aim-core/alignment/profile/RailPairCantConstructiveState.js",
 		"../../aim-core/alignment/profile/ChainageMapping.js",
 	]);
 	for (const forbidden of [

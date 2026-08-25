@@ -8,6 +8,9 @@ import {
 	isCantConstructiveState,
 } from "../../aim-core/alignment/profile/CantConstructiveState.js";
 import {
+	isRailPairCantConstructiveState,
+} from "../../aim-core/alignment/profile/RailPairCantConstructiveState.js";
+import {
 	isChainageMapping,
 } from "../../aim-core/alignment/profile/ChainageMapping.js";
 
@@ -83,7 +86,11 @@ function installRecord(recordsByAlignmentId, record) {
 		);
 	}
 
-	if (record.cant !== null && !isCantConstructiveState(record.cant)) {
+	if (
+		record.cant !== null &&
+		!isCantConstructiveState(record.cant) &&
+		!isRailPairCantConstructiveState(record.cant)
+	) {
 		fail("INVALID_RECORD", `invalid cant state for ${alignmentId}`);
 	}
 	if (record.cant !== null && record.cant.alignmentId !== alignmentId) {

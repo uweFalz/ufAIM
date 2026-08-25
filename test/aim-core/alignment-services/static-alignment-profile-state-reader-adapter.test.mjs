@@ -261,7 +261,7 @@ test("rejects duplicate mapping identity within one record with DUPLICATE_MAPPIN
 	);
 });
 
-test("integration and dependency test: AlignmentProfileEvaluationService evaluates the adapter’s synthetic vertical/cant/chainage state correctly, and source scan confirms only the four authorized Core imports with no forbidden dependency", async () => {
+test("integration and dependency test: AlignmentProfileEvaluationService evaluates the adapter’s synthetic vertical/cant/chainage state correctly, and source scan confirms only authorized Core imports with no forbidden dependency", async () => {
 	const adapter = new StaticAlignmentProfileStateReaderAdapter({
 		records: [completeRecord()],
 	});
@@ -289,6 +289,7 @@ test("integration and dependency test: AlignmentProfileEvaluationService evaluat
 		"../../aim-core/alignment/profile/AlignmentProfileStateReaderPort.js",
 		"../../aim-core/alignment/profile/VerticalConstructiveState.js",
 		"../../aim-core/alignment/profile/CantConstructiveState.js",
+		"../../aim-core/alignment/profile/RailPairCantConstructiveState.js",
 		"../../aim-core/alignment/profile/ChainageMapping.js",
 	]);
 	for (const forbidden of [

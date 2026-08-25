@@ -19,6 +19,10 @@ import {
 	createCantConstructiveState,
 } from "../../../src/aim-core/alignment/profile/CantConstructiveState.js";
 import {
+	appendRailOffsetElement,
+	createRailPairCantConstructiveState,
+} from "../../../src/aim-core/alignment/profile/RailPairCantConstructiveState.js";
+import {
 	appendChainageSegment,
 	createChainageMapping,
 } from "../../../src/aim-core/alignment/profile/ChainageMapping.js";
@@ -57,6 +61,46 @@ function cantState({ empty = false } = {}) {
 				startCrossLevel: 0,
 				crossLevelRate: 0.001,
 			});
+}
+
+function railPairCantState() {
+	let state = createRailPairCantConstructiveState({
+		id: "rail-pair-cant-A",
+		alignmentId,
+		coverage: {
+			status: "complete",
+			authority: "admitted-construction",
+			startS: 0,
+			endS: 100,
+		},
+		railPair: {
+			leftRailId: "rail-left",
+			rightRailId: "rail-right",
+			separation: {
+				kind: "horizontal-projection-between-governing-references",
+				unit: "alignment-length-unit",
+				value: 1.5,
+				measurementDefinition: "fixture-gauge",
+				provenance: { sourceId: "fixture-gauge-rule" },
+			},
+		},
+		anchorRule: {
+			id: "fixture-anchor",
+			version: "1.0.0",
+			kind: "midpoint",
+			provenance: { sourceId: "fixture-anchor-rule" },
+		},
+	});
+	state = appendRailOffsetElement(state, {
+		id: "right-ramp",
+		railId: "rail-right",
+		type: "linear-rail-offset",
+		startS: 0,
+		endS: 100,
+		startOffset: 0,
+		offsetRate: 0.001,
+	});
+	return state;
 }
 
 function mapping({
@@ -153,6 +197,20 @@ test("evaluates vertical, cant, and one chainage mapping for explicit Alignment 
 	assert.equal(result.chainage.mappings[0].candidates[0].address, 1050);
 	assert.equal(Object.isFrozen(result), true);
 	assert.equal(Object.isFrozen(result.chainage.mappings[0]), true);
+});
+
+test("dual-read evaluates paired-rail Cant without flattening it to scalar state", async () => {
+	const paired = railPairCantState();
+	const service = new AlignmentProfileEvaluationService({
+		stateReader: fakeReader({ cant: paired, chainage: [] }),
+	});
+	const result = await service.evaluateAt({ alignmentId, s: 50 });
+	assert.equal(result.cant.status, "evaluated");
+	assert.equal(result.cant.value.left.offset, 0);
+	assert.equal(result.cant.value.right.offset, 0.05);
+	assert.equal(result.cant.value.crossLevel, 0.05);
+	assert.equal(result.cant.value.commonOffset, 0.025);
+	assert.equal(paired.type, "RailPairCantConstructiveState");
 });
 
 test("invokes every port read exactly once with the trimmed explicit Alignment ID", async () => {
@@ -393,7 +451,7 @@ test("wraps thrown/rejected port reads as PORT_READ_FAILED, wraps unexpected eva
 	assert.deepEqual(vertical, before);
 });
 
-test("source/document dependency scan proves the port has zero imports and the service imports only the four authorized Core modules, with no forbidden dependency", async () => {
+test("source/document dependency scan proves the port has zero imports and the service imports only authorized Core modules, with no forbidden dependency", async () => {
 	const portUrl = new URL(
 		"../../../src/aim-core/alignment/profile/AlignmentProfileStateReaderPort.js",
 		import.meta.url
@@ -419,6 +477,7 @@ test("source/document dependency scan proves the port has zero imports and the s
 		"./AlignmentProfileStateReaderPort.js",
 		"./VerticalConstructiveState.js",
 		"./CantConstructiveState.js",
+		"./RailPairCantConstructiveState.js",
 		"./ChainageMapping.js",
 	]);
 	for (const forbidden of [

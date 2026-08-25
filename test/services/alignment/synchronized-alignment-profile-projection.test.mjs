@@ -10,6 +10,10 @@ import {
 	createCantConstructiveState,
 } from "../../../src/aim-core/alignment/profile/CantConstructiveState.js";
 import {
+	appendRailOffsetElement,
+	createRailPairCantConstructiveState,
+} from "../../../src/aim-core/alignment/profile/RailPairCantConstructiveState.js";
+import {
 	appendChainageSegment,
 	createChainageMapping,
 } from "../../../src/aim-core/alignment/profile/ChainageMapping.js";
@@ -116,6 +120,50 @@ function repository(initial) {
 			return stored;
 		},
 	};
+}
+
+function railPairProfileState() {
+	let cant = createRailPairCantConstructiveState({
+		id: "rail-pair-sync",
+		alignmentId,
+		coverage: {
+			status: "complete",
+			authority: "admitted-construction",
+			startS: 0,
+			endS: 200,
+		},
+		railPair: {
+			leftRailId: "left-sync",
+			rightRailId: "right-sync",
+			separation: {
+				kind: "horizontal-projection-between-governing-references",
+				unit: "alignment-length-unit",
+				value: 1.5,
+				measurementDefinition: "fixture-gauge",
+				provenance: { sourceId: "fixture-gauge-rule" },
+			},
+		},
+		anchorRule: {
+			id: "midpoint-sync",
+			version: "1.0.0",
+			kind: "midpoint",
+			provenance: { sourceId: "fixture-anchor-rule" },
+		},
+	});
+	cant = appendRailOffsetElement(cant, {
+		id: "left-rise",
+		railId: "left-sync",
+		type: "linear-rail-offset",
+		startS: 0,
+		endS: 200,
+		startOffset: 0,
+		offsetRate: 0.0004,
+	});
+	return Object.freeze({
+		vertical: null,
+		cant,
+		chainageMappings: Object.freeze([]),
+	});
 }
 
 test("projects vertical cant and chainage from one intrinsic cursor and revision immutably", async () => {
@@ -286,6 +334,39 @@ test("save/reopen retains profile state and unrelated horizontal state losslessl
 		reopened.chainageMappings[0],
 		nextProfile.chainageMappings[0]
 	);
+});
+
+test("rail-pair Cant survives save, reopen, evaluation, and synchronized projection", async () => {
+	const profileState = railPairProfileState();
+	const horizontal = Object.freeze({ identity: "H-rail-pair" });
+	const repo = repository({
+		type: "AlignmentData",
+		id: alignmentId,
+		revision: "R-RAIL-PAIR",
+		horizontal,
+	});
+	const service = new AlignmentProfileApplicationService({
+		alignmentRepository: repo,
+	});
+	const reopened = await service.saveProfileState({ alignmentId, profileState });
+	assert.strictEqual(reopened.cant, profileState.cant);
+	assert.strictEqual(repo.readStored().profileState, profileState);
+	assert.strictEqual(repo.readStored().horizontal, horizontal);
+
+	const projected = await service.projectAt({ alignmentId, s: 100 });
+	assert.equal(projected.cant.value.left.offset, 0.04);
+	assert.equal(projected.cant.value.right.offset, 0);
+	assert.equal(projected.cant.value.crossLevel, -0.04);
+	assert.equal(projected.cant.reference.status, "known");
+	assert.equal(projected.cant.reference.scalarCrossLevelStatus, "derived");
+	assert.deepEqual(projected.cant.reference.pairedRails, {
+		status: "known",
+		leftRailId: "left-sync",
+		rightRailId: "right-sync",
+		separation: profileState.cant.railPair.separation,
+	});
+	assert.deepEqual(projected.state.cant, profileState.cant);
+	assert.notStrictEqual(projected.state.cant, profileState.cant);
 });
 
 test("save requires explicit profile intent and rejects malformed profile state without writing", async () => {

@@ -11,6 +11,9 @@ import {
 	isCantConstructiveState,
 } from "../../aim-core/alignment/profile/CantConstructiveState.js";
 import {
+	isRailPairCantConstructiveState,
+} from "../../aim-core/alignment/profile/RailPairCantConstructiveState.js";
+import {
 	isChainageMapping,
 } from "../../aim-core/alignment/profile/ChainageMapping.js";
 
@@ -117,7 +120,8 @@ function validateProfileState(alignmentData, alignmentId) {
 
 	if (
 		profileState.cant !== null &&
-		!isCantConstructiveState(profileState.cant)
+		!isCantConstructiveState(profileState.cant) &&
+		!isRailPairCantConstructiveState(profileState.cant)
 	) {
 		fail(
 			"INVALID_PROFILE_STATE",

@@ -8,6 +8,10 @@ import {
 	isCantConstructiveState,
 } from "./CantConstructiveState.js";
 import {
+	evaluateRailPairCantAt,
+	isRailPairCantConstructiveState,
+} from "./RailPairCantConstructiveState.js";
+import {
 	isChainageMapping,
 	mapIntrinsicToChainage,
 } from "./ChainageMapping.js";
@@ -118,7 +122,9 @@ export class AlignmentProfileEvaluationService {
 		if (
 			(vertical !== null &&
 				!isVerticalConstructiveState(vertical)) ||
-			(cant !== null && !isCantConstructiveState(cant)) ||
+			(cant !== null &&
+				!isCantConstructiveState(cant) &&
+				!isRailPairCantConstructiveState(cant)) ||
 			!Array.isArray(chainageMappings) ||
 			!chainageMappings.every(isChainageMapping)
 		) {
@@ -166,8 +172,15 @@ export class AlignmentProfileEvaluationService {
 		const cantResult = evaluateComponent({
 			state: cant,
 			absentStatus: "absent",
-			evaluate: (value) => evaluateCantAt(value, { s }),
-			notCoveredCodes: ["EMPTY_CANT", "POSITION_OUTSIDE_DOMAIN"],
+			evaluate: (value) =>
+				isRailPairCantConstructiveState(value)
+					? evaluateRailPairCantAt(value, { s })
+					: evaluateCantAt(value, { s }),
+			notCoveredCodes: [
+				"EMPTY_CANT",
+				"POSITION_OUTSIDE_DOMAIN",
+				"POSITION_OUTSIDE_COVERAGE",
+			],
 			label: "cant",
 		});
 
