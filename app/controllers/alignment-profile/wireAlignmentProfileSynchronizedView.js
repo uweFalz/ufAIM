@@ -164,6 +164,7 @@ export function wireAlignmentProfileSynchronizedView({
 	terminalConstantCantDomainEditController = null,
 	terminalLinearCantDomainEditController = null,
 	terminalLinearCantCompositeEditController = null,
+	railPairCantRailLawEditController = null,
 	chainageLookupController = null,
 	longitudinalController = null,
 	cantCrossLevelController = null,
@@ -212,6 +213,8 @@ export function wireAlignmentProfileSynchronizedView({
 			typeof terminalLinearCantDomainEditController?.update !== "function") ||
 		(terminalLinearCantCompositeEditController !== null &&
 			typeof terminalLinearCantCompositeEditController?.update !== "function") ||
+		(railPairCantRailLawEditController !== null &&
+			typeof railPairCantRailLawEditController?.update !== "function") ||
 		(chainageLookupController !== null &&
 			typeof chainageLookupController?.lookup !== "function") ||
 		(longitudinalController !== null &&
@@ -1387,6 +1390,21 @@ export function wireAlignmentProfileSynchronizedView({
 		}
 	}
 
+	async function updateRailPairCantRailLaw(input) {
+		if (!railPairCantRailLawEditController) throw new Error("rail-pair Cant law editing is unavailable");
+		const { selected, canonical } = await readActiveProfileContext();
+		const result = await railPairCantRailLawEditController.update({ ...input, alignmentId: selected.alignmentId, revision: canonical.revision, s: selected.s, profileState: canonical.alignmentData.profileState });
+		const afterSelection = readCursorAndSelection(store);
+		if (afterSelection.alignmentId !== selected.alignmentId || !Object.is(afterSelection.s, selected.s)) throw Object.assign(new Error("active Alignment or cursor changed during rail-pair Cant save"), { code: "ACTIVE_CONTEXT_CHANGED" });
+		const readbackState = unwrap(await messaging.sendCmdAwait("Spot.GetState", {}));
+		const readback = canonicalAlignmentFromState(readbackState, selected.alignmentId);
+		if (!readback || !Object.is(readback.revision, result.snapshot.revision) || !sameValue(readback.alignmentData.profileState, result.profileState)) throw Object.assign(new Error("rail-pair Cant edit does not match canonical SPOT readback"), { code: "PROFILE_READBACK_MISMATCH" });
+		renderProjection(result.projection, readback.alignmentData.profileState);
+		await renderLongitudinal({ selected: afterSelection, canonical: readback });
+		publishVerifiedReceipt("cant", "updateRailPairCantRailLaw", selected, readback, result);
+		return result;
+	}
+
 	if (authoringController) {
 		view.setBasicVerticalAuthoringHandler?.(
 			submitBasicVerticalProfile
@@ -1517,6 +1535,7 @@ export function wireAlignmentProfileSynchronizedView({
 		updateTerminalConstantCantDomain,
 		updateTerminalLinearCantDomain,
 		updateTerminalLinearCantComposite,
+		updateRailPairCantRailLaw,
 		lookupChainageAddress,
 		useChainageCandidate,
 		stop() {

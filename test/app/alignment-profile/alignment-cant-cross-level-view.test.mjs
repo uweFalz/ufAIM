@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { appendCantElement, createCantConstructiveState } from "../../../src/aim-core/alignment/profile/CantConstructiveState.js";
 import { createCantCrossLevelViewController } from "../../../app/controllers/alignment-profile/createCantCrossLevelViewController.js";
+import { appendRailOffsetElement, createRailPairCantConstructiveState } from "../../../src/aim-core/alignment/profile/RailPairCantConstructiveState.js";
 
 let cant = appendCantElement(createCantConstructiveState({ id: "CANT1", alignmentId: "A1" }), { id: "C1", type: "constant-cross-level", startS: 0, endS: 50, startCrossLevel: 0.05 });
 cant = appendCantElement(cant, { id: "C2", type: "linear-cross-level", startS: 50, endS: 100, startCrossLevel: 0.05, crossLevelRate: 0.001 });
@@ -43,4 +44,23 @@ test("absent malformed and evaluator failures never fabricate a view", () => {
 	const broken = { ...cant, elements: [{ ...cant.elements[0], startCrossLevel: NaN }, cant.elements[1]] };
 	assert.equal(controller.project({ alignmentId: "A1", revision: 1, s: 0, profileState: { cant: broken } }).status, "error");
 	assert.throws(() => controller.project({ alignmentId: "", revision: 1, s: 0, profileState: { cant } }), { code: "INVALID_CONTEXT" });
+});
+
+test("projects explicit rail laws and derives cross-section values at the same intrinsic cursor", () => {
+	let railPair = createRailPairCantConstructiveState({
+		id: "RP1", alignmentId: "A1", coverage: { status: "complete", startS: 0, endS: 100, authority: "admitted-construction" },
+		railPair: { leftRailId: "L", rightRailId: "R", separation: { kind: "horizontal-projection-between-governing-references", unit: "alignment-length-unit", value: 1.5, measurementDefinition: "edges", provenance: { sourceId: "S1" } } },
+		anchorRule: { id: "AR1", version: "1", kind: "midpoint", provenance: { sourceId: "S2" } },
+	});
+	railPair = appendRailOffsetElement(railPair, { id: "L1", railId: "L", type: "linear-rail-offset", startS: 0, endS: 100, startOffset: 0.02, offsetRate: 0.001 });
+	railPair = appendRailOffsetElement(railPair, { id: "R1", railId: "R", type: "constant-rail-offset", startS: 0, endS: 100, startOffset: -0.01 });
+	const result = createCantCrossLevelViewController().project({ alignmentId: "A1", revision: 5, s: 40, profileState: { cant: railPair } });
+	assert.equal(result.representation, "rail-pair");
+	assert.equal(result.cursor.left.railId, "L");
+	assert.equal(result.cursor.right.railId, "R");
+	assert.equal(result.crossSection.s, 40);
+	assert.ok(Math.abs(result.crossSection.crossLevel + 0.07) < 1e-12);
+	assert.ok(Math.abs(result.crossSection.commonOffset - 0.025) < 1e-12);
+	assert.equal(result.crossSection.midpointStatus, "derived");
+	assert.equal(result.reference.scalarCrossLevelStatus, "derived");
 });

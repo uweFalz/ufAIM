@@ -1,4 +1,5 @@
-import { evaluateCantAt } from "../../../src/aim-core/alignment/profile/CantConstructiveState.js";
+import { evaluateCantAt, isCantConstructiveState } from "../../../src/aim-core/alignment/profile/CantConstructiveState.js";
+import { evaluateRailPairCantAt, isRailPairCantConstructiveState } from "../../../src/aim-core/alignment/profile/RailPairCantConstructiveState.js";
 
 export class CantCrossLevelViewControllerError extends Error {
 	constructor(code, message) {
@@ -43,18 +44,23 @@ function context({ alignmentId, revision, s } = {}) {
 function cantDomain(profileState, alignmentId) {
 	const cant = profileState?.cant;
 	if (cant === null || cant === undefined) return null;
-	if (
-		!cant ||
-		typeof cant !== "object" ||
-		cant.alignmentId !== alignmentId ||
-		!Array.isArray(cant.elements) ||
-		cant.elements.length === 0
-	) {
+	if (!isCantConstructiveState(cant) && !isRailPairCantConstructiveState(cant)) {
 		throw new CantCrossLevelViewControllerError(
 			"INVALID_CANT_STATE",
 			"persisted Cant state is malformed or belongs to another Alignment"
 		);
 	}
+	if (cant.alignmentId !== alignmentId) throw new CantCrossLevelViewControllerError("INVALID_CANT_STATE", "persisted Cant state belongs to another Alignment");
+	if (isRailPairCantConstructiveState(cant)) {
+		return {
+			cant,
+			representation: "rail-pair",
+			startS: cant.coverage.startS,
+			endS: cant.coverage.endS,
+			boundaries: [...new Set([cant.coverage.startS, ...cant.elements.flatMap((element) => [element.startS, element.endS]), cant.coverage.endS])].sort((a, b) => a - b),
+		};
+	}
+	if (cant.elements.length === 0) throw new CantCrossLevelViewControllerError("INVALID_CANT_STATE", "persisted Cant state has no visible elements");
 	const first = cant.elements[0];
 	const last = cant.elements.at(-1);
 	if (
@@ -75,6 +81,7 @@ function cantDomain(profileState, alignmentId) {
 	}
 	return {
 		cant,
+		representation: "legacy-scalar",
 		startS: first.startS,
 		endS: last.endS,
 		boundaries: [first.startS, ...cant.elements.map((element) => element.endS)],
@@ -113,11 +120,15 @@ export function createCantCrossLevelViewController() {
 			const samples = [];
 			try {
 				for (const s of positions) {
-					const value = evaluateCantAt(domain.cant, { s });
-					if (!Number.isFinite(value.crossLevel) || !Number.isFinite(value.twist)) {
+					const value = domain.representation === "rail-pair" ? evaluateRailPairCantAt(domain.cant, { s }) : evaluateCantAt(domain.cant, { s });
+					if (value.status === "unknown" || !Number.isFinite(value.crossLevel)) {
 						throw new CantCrossLevelViewControllerError("CANT_EVALUATION_FAILED", "Cant evaluation returned non-finite evidence");
 					}
-					samples.push(freezeEntry(value));
+					samples.push(domain.representation === "rail-pair" ? Object.freeze({
+						...value,
+						left: Object.freeze({ railId: domain.cant.railPair.leftRailId, ...value.left }),
+						right: Object.freeze({ railId: domain.cant.railPair.rightRailId, ...value.right }),
+					}) : freezeEntry(value));
 				}
 			} catch (error) {
 				return unavailable({ ...current, status: "error", code: String(error?.code ?? "CANT_EVALUATION_FAILED"), message: String(error?.message ?? error) });
@@ -127,10 +138,11 @@ export function createCantCrossLevelViewController() {
 				cursor = Object.freeze({ status: "not-covered", s: current.s });
 			} else {
 				const sample = samples.find((entry) => Object.is(entry.s, current.s));
-				cursor = Object.freeze({ status: "evaluated", ...sample });
+				cursor = Object.freeze({ ...sample, status: "evaluated" });
 			}
 			return Object.freeze({
 				status: "projected",
+				representation: domain.representation,
 				alignmentId: current.alignmentId,
 				revision: current.revision,
 				domain: freezeEntry({ parameterKind: "intrinsic-s", startS: domain.startS, endS: domain.endS }),
@@ -138,7 +150,23 @@ export function createCantCrossLevelViewController() {
 				elements: Object.freeze(domain.cant.elements.map(freezeEntry)),
 				samples: Object.freeze(samples),
 				cursor,
-				reference: referenceEvidence(),
+				reference: domain.representation === "rail-pair" ? Object.freeze({
+					status: "known",
+					workingReference: domain.cant.anchorRule.kind,
+					scalarCrossLevelStatus: "derived",
+					pairedRails: Object.freeze({ status: "known", leftRailId: domain.cant.railPair.leftRailId, rightRailId: domain.cant.railPair.rightRailId, separation: domain.cant.railPair.separation }),
+					sourceReference: domain.cant.anchorRule,
+					transformation: Object.freeze({ status: "not-required", reason: "PAIRED_RAIL_CONSTRUCTION_IS_AUTHORITATIVE" }),
+				}) : referenceEvidence(),
+				crossSection: domain.representation === "rail-pair" && cursor.left && cursor.right ? Object.freeze({
+					status: "evaluated",
+					s: current.s,
+					left: cursor.left,
+					right: cursor.right,
+					crossLevel: cursor.crossLevel,
+					commonOffset: cursor.commonOffset,
+					midpointStatus: "derived",
+				}) : null,
 				error: null,
 			});
 		},

@@ -36,6 +36,7 @@ import { createTerminalConstantCantCrossLevelEditController } from "@app/control
 import { createTerminalConstantCantDomainEditController } from "@app/controllers/alignment-profile/createTerminalConstantCantDomainEditController.js";
 import { createTerminalLinearCantDomainEditController } from "@app/controllers/alignment-profile/createTerminalLinearCantDomainEditController.js";
 import { createTerminalLinearCantCompositeEditController } from "@app/controllers/alignment-profile/createTerminalLinearCantCompositeEditController.js";
+import { createRailPairCantRailLawEditController } from "@app/controllers/alignment-profile/createRailPairCantRailLawEditController.js";
 import { createChainageAddressLookupController } from "@app/controllers/alignment-profile/createChainageAddressLookupController.js";
 import { createLongitudinalProfileController } from "@app/controllers/alignment-profile/createLongitudinalProfileController.js";
 import { AlignmentLongitudinalProfileView } from "@app/view/alignment-profile/AlignmentLongitudinalProfileView.js";
@@ -488,6 +489,11 @@ function setupAlignmentProfileRuntime(ctx) {
 			alignmentProfileApplicationService,
 			projectionController,
 		});
+	const railPairCantRailLawEditController =
+		createRailPairCantRailLawEditController({
+			alignmentProfileApplicationService,
+			projectionController,
+		});
 	const chainageLookupController =
 		createChainageAddressLookupController({ projectionController });
 	const longitudinalController =
@@ -516,6 +522,7 @@ function setupAlignmentProfileRuntime(ctx) {
 		terminalConstantCantDomainEditController,
 		terminalLinearCantDomainEditController,
 		terminalLinearCantCompositeEditController,
+		railPairCantRailLawEditController,
 		chainageLookupController,
 		longitudinalController,
 		cantCrossLevelController,

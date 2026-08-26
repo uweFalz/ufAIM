@@ -106,6 +106,31 @@ export function createSynchronizedAlignmentProfileProjection({
 			profileSnapshot.chainageMappings ?? []
 		),
 	});
+	const railPairCant = profileSnapshot.cant?.type === "RailPairCantConstructiveState";
+	const evaluatedRailPair = railPairCant && evaluation.cant?.status === "evaluated"
+		? evaluation.cant.value
+		: null;
+	const cantProjection = railPairCant
+		? Object.freeze({
+			...cloneAndFreeze(evaluation.cant),
+			representation: "rail-pair",
+			left: evaluatedRailPair === null ? null : Object.freeze({
+				railId: profileSnapshot.cant.railPair.leftRailId,
+				...cloneAndFreeze(evaluatedRailPair.left),
+			}),
+			right: evaluatedRailPair === null ? null : Object.freeze({
+				railId: profileSnapshot.cant.railPair.rightRailId,
+				...cloneAndFreeze(evaluatedRailPair.right),
+			}),
+			crossLevel: evaluatedRailPair?.crossLevel ?? null,
+			commonOffset: evaluatedRailPair?.commonOffset ?? null,
+			reference: cantReferenceProjection(profileSnapshot.cant),
+		})
+		: Object.freeze({
+			...cloneAndFreeze(evaluation.cant),
+			...(profileSnapshot.cant === null ? {} : { representation: "legacy-scalar" }),
+			reference: cantReferenceProjection(profileSnapshot.cant),
+		});
 
 	return Object.freeze({
 		contractVersion:
@@ -119,10 +144,7 @@ export function createSynchronizedAlignmentProfileProjection({
 		revision: cloneAndFreeze(profileSnapshot.revision ?? null),
 		profileStatePresence: profileSnapshot.presence,
 		vertical: cloneAndFreeze(evaluation.vertical),
-		cant: Object.freeze({
-			...cloneAndFreeze(evaluation.cant),
-			reference: cantReferenceProjection(profileSnapshot.cant),
-		}),
+		cant: cantProjection,
 		chainage: cloneAndFreeze(evaluation.chainage),
 		state,
 	});
