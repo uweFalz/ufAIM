@@ -62,7 +62,10 @@ export class AlignmentCantCrossLevelView {
 			Array.isArray(viewModel.boundaries) &&
 			viewModel.boundaries.every(Number.isFinite) &&
 			Array.isArray(viewModel.samples) &&
-			viewModel.samples.every((sample) => Number.isFinite(sample?.s) && Number.isFinite(sample?.crossLevel) && Number.isFinite(sample?.twist));
+			viewModel.samples.every((sample) => Number.isFinite(sample?.s) && Number.isFinite(sample?.crossLevel) &&
+				(viewModel.representation === "rail-pair"
+					? Number.isFinite(sample?.left?.offset) && Number.isFinite(sample?.right?.offset) && typeof sample?.left?.railId === "string" && typeof sample?.right?.railId === "string"
+					: Number.isFinite(sample?.twist)));
 		if (!evidenceValid) {
 			const unavailable = documentRef.createElement("p");
 			unavailable.dataset.cantCrossLevelEmpty = "";
@@ -127,6 +130,14 @@ export class AlignmentCantCrossLevelView {
 		path.dataset.cantCrossLevelPath = "";
 		attributes(path, { points: viewModel.samples.map((sample) => `${x(sample.s)},${y(sample.crossLevel)}`).join(" "), fill: "none", stroke: "currentColor" });
 		svg.append(path);
+		if (viewModel.representation === "rail-pair") {
+			for (const [side, label] of [["left", "Left rail offset"], ["right", "Right rail offset"]]) {
+				const railPath = svgElement(documentRef, "polyline");
+				railPath.dataset.cantRailOffsetPath = side;
+				attributes(railPath, { points: viewModel.samples.map((sample) => `${x(sample.s)},${y(sample[side].offset)}`).join(" "), fill: "none", stroke: side === "left" ? "#63e6ff" : "#ffcf66", "stroke-dasharray": "4 2", "aria-label": `${label} for ${viewModel.samples[0][side].railId}` });
+				svg.append(railPath);
+			}
+		}
 		for (const element of viewModel.elements) {
 			const label = svgElement(documentRef, "text");
 			label.dataset.cantElementId = String(element.id);
@@ -141,10 +152,10 @@ export class AlignmentCantCrossLevelView {
 			marker.textContent = String(boundary);
 			svg.append(marker);
 		}
-		if (viewModel.cursor?.status === "evaluated" && Number.isFinite(viewModel.cursor.crossLevel) && Number.isFinite(viewModel.cursor.twist)) {
+		if (viewModel.cursor?.status === "evaluated" && Number.isFinite(viewModel.cursor.crossLevel) && (viewModel.representation === "rail-pair" || Number.isFinite(viewModel.cursor.twist))) {
 			const cursor = svgElement(documentRef, "circle");
 			cursor.dataset.cantCursor = "";
-			attributes(cursor, { cx: x(viewModel.cursor.s), cy: y(viewModel.cursor.crossLevel), r: 4, "aria-label": `Shared s ${String(viewModel.cursor.s)}, cross-level ${String(viewModel.cursor.crossLevel)}, twist ${String(viewModel.cursor.twist)}, element ${String(viewModel.cursor.elementId)}` });
+			attributes(cursor, { cx: x(viewModel.cursor.s), cy: y(viewModel.cursor.crossLevel), r: 4, "aria-label": viewModel.representation === "rail-pair" ? `Shared s ${String(viewModel.cursor.s)}, derived cross-level ${String(viewModel.cursor.crossLevel)}` : `Shared s ${String(viewModel.cursor.s)}, cross-level ${String(viewModel.cursor.crossLevel)}, twist ${String(viewModel.cursor.twist)}, element ${String(viewModel.cursor.elementId)}` });
 			svg.append(cursor);
 		}
 		if (hitTarget) svg.append(hitTarget);
@@ -152,8 +163,16 @@ export class AlignmentCantCrossLevelView {
 		const cursorEvidence = documentRef.createElement("p");
 		cursorEvidence.dataset.cantCursorEvidence = "";
 		cursorEvidence.textContent = viewModel.cursor?.status === "evaluated"
-			? `Shared s=${String(viewModel.cursor.s)} · element=${String(viewModel.cursor.elementId)} · cross-level=${String(viewModel.cursor.crossLevel)} · twist=${String(viewModel.cursor.twist)}`
+			? viewModel.representation === "rail-pair"
+				? `Shared s=${String(viewModel.cursor.s)} · left=${String(viewModel.cursor.left.railId)}:${String(viewModel.cursor.left.offset)} · right=${String(viewModel.cursor.right.railId)}:${String(viewModel.cursor.right.offset)} · cross-level=${String(viewModel.cursor.crossLevel)} (derived) · common offset=${String(viewModel.cursor.commonOffset)} (derived)`
+				: `Shared s=${String(viewModel.cursor.s)} · element=${String(viewModel.cursor.elementId)} · cross-level=${String(viewModel.cursor.crossLevel)} · twist=${String(viewModel.cursor.twist)}`
 			: `Shared s=${String(viewModel.cursor?.s)} · ${String(viewModel.cursor?.status ?? "unavailable")}`;
+		if (viewModel.representation === "rail-pair" && viewModel.crossSection) {
+			const section = documentRef.createElement("pre");
+			section.dataset.railPairCrossSection = "";
+			section.textContent = JSON.stringify(viewModel.crossSection, null, 2);
+			region.append(section);
+		}
 		const reference = documentRef.createElement("pre");
 		reference.dataset.cantReferenceEvidence = "";
 		reference.textContent = JSON.stringify(viewModel.reference, null, 2);

@@ -83,6 +83,10 @@ export class AlignmentProfileSynchronizedView {
 	#terminalLinearCantDomainStatus = null;
 	#onTerminalLinearCantCompositeSubmit = null;
 	#terminalLinearCantCompositeStatus = null;
+	#onRailPairCantRailLawSubmit = null;
+	#railPairCantRailLawStatus = null;
+	#onRailPairCantAdmissionSubmit = null;
+	#railPairCantAdmissionStatus = null;
 	#onChainageLookup = null;
 	#onChainageCandidateUse = null;
 	#chainageLookupStatus = null;
@@ -322,6 +326,34 @@ export class AlignmentProfileSynchronizedView {
 		if (this.#terminalLinearCantCompositeStatus) this.#terminalLinearCantCompositeStatus.textContent = String(value ?? "");
 	}
 
+	setRailPairCantRailLawHandler(onSubmit) {
+		if (typeof onSubmit !== "function") throw new TypeError("rail-pair Cant law editing requires an onSubmit handler");
+		this.#onRailPairCantRailLawSubmit = onSubmit;
+	}
+
+	renderRailPairCantRailLawStatus(value) {
+		if (!this.#railPairCantRailLawStatus) return;
+		const status = String(value ?? "");
+		this.#railPairCantRailLawStatus.textContent = status;
+		this.#railPairCantRailLawStatus.dataset.status = status.startsWith("error:") ? "error" : status;
+		const button = this.#railPairCantRailLawStatus.parentElement?.querySelector?.("[data-rail-pair-cant-submit]");
+		if (button) button.disabled = ["acknowledged", "saving"].includes(status);
+	}
+
+	setRailPairCantAdmissionHandler(onSubmit) {
+		if (typeof onSubmit !== "function") throw new TypeError("Rail-Pair Cant admission requires an onSubmit handler");
+		this.#onRailPairCantAdmissionSubmit = onSubmit;
+	}
+
+	renderRailPairCantAdmissionStatus(value) {
+		if (!this.#railPairCantAdmissionStatus) return;
+		const status = String(value ?? "");
+		this.#railPairCantAdmissionStatus.textContent = status;
+		this.#railPairCantAdmissionStatus.dataset.status = status.startsWith("error:") ? "error" : status;
+		const button = this.#railPairCantAdmissionStatus.parentElement?.querySelector?.("[data-rail-pair-cant-admit-submit]");
+		if (button) button.disabled = ["acknowledged", "saving"].includes(status);
+	}
+
 	setChainageAddressLookupHandlers({ onLookup, onUseCandidate } = {}) {
 		if (typeof onLookup !== "function" || typeof onUseCandidate !== "function") {
 			throw new TypeError("chainage address lookup requires lookup and candidate handlers");
@@ -368,6 +400,99 @@ export class AlignmentProfileSynchronizedView {
 			"vertical",
 			viewModel.vertical
 		);
+
+		if (this.#onRailPairCantAdmissionSubmit && viewModel.canCreateRailPairCant === true) {
+			const details = documentRef.createElement("details");
+			details.dataset.railPairCantAdmission = "";
+			const summary = documentRef.createElement("summary");
+			summary.textContent = "Create and admit explicit Rail-Pair Cant";
+			const fields = [
+				["Cant state ID", "cantStateId"], ["Left rail ID", "leftRailId"], ["Right rail ID", "rightRailId"],
+				["Separation kind", "separationKind"], ["Separation unit", "separationUnit"], ["Separation value", "separationValue", "number"],
+				["Separation measurement definition", "separationMeasurementDefinition"], ["Separation provenance source ID", "separationProvenanceSourceId"],
+				["Anchor rule ID", "anchorRuleId"], ["Anchor rule version", "anchorRuleVersion"], ["Anchor kind", "anchorKind"],
+				["Anchor provenance source ID", "anchorProvenanceSourceId"], ["Anchor rail ID (named-rail anchor)", "anchorRailId"],
+				["Anchor left lateral offset (qualified-other)", "anchorLeftLateralOffset", "number"], ["Anchor right lateral offset (qualified-other)", "anchorRightLateralOffset", "number"],
+				["Coverage start intrinsic s", "coverageStartS", "number"], ["Coverage end intrinsic s", "coverageEndS", "number"],
+				["First rail side (left/right)", "railSide"], ["First element ID", "elementId"], ["Law type", "lawType"],
+				["Element start intrinsic s", "elementStartS", "number"], ["Element end intrinsic s", "elementEndS", "number"],
+				["Start rail offset", "startOffset", "number"], ["Offset rate (linear law)", "offsetRate", "number"],
+			];
+			const inputs = {};
+			for (const [labelText, name, type = "text"] of fields) {
+				const label = documentRef.createElement("label"); label.textContent = labelText;
+				const input = documentRef.createElement("input"); input.name = name; input.type = type; if (type === "number") input.step = "any";
+				inputs[name] = input; label.append(input); details.append(label);
+			}
+			const confirmationLabel = documentRef.createElement("label");
+			const confirmation = documentRef.createElement("input"); confirmation.type = "checkbox"; confirmation.name = "admitCompleteConstruction";
+			confirmationLabel.append(confirmation); confirmationLabel.append(" I explicitly admit the stated coverage as complete construction");
+			const submit = documentRef.createElement("button"); submit.type = "button"; submit.dataset.railPairCantAdmitSubmit = ""; submit.textContent = "Create, admit and save Rail-Pair Cant";
+			this.#railPairCantAdmissionStatus = documentRef.createElement("strong"); this.#railPairCantAdmissionStatus.dataset.railPairCantAdmissionStatus = ""; this.#railPairCantAdmissionStatus.setAttribute("role", "status"); this.#railPairCantAdmissionStatus.setAttribute("aria-live", "polite");
+			submit.onclick = () => {
+				this.renderRailPairCantAdmissionStatus("acknowledged");
+				const request = Object.fromEntries(Object.entries(inputs).map(([name, input]) => [name, input.value]));
+				request.admitCompleteConstruction = confirmation.checked;
+				void this.#onRailPairCantAdmissionSubmit(request);
+			};
+			details.prepend(summary); details.append(confirmationLabel, submit, this.#railPairCantAdmissionStatus); root.append(details);
+		}
+
+		if (this.#onRailPairCantRailLawSubmit && viewModel.railPairCantState?.type === "RailPairCantConstructiveState" && viewModel.railPairCantState.coverage?.status === "complete" && viewModel.railPairCantState.coverage?.authority === "admitted-construction") {
+			const cant = viewModel.railPairCantState;
+			const choices = cant.elements.map((element) => ({
+				element,
+				railSide: element.railId === cant.railPair.leftRailId ? "left" : "right",
+			}));
+			if (choices.length > 0) {
+				const details = documentRef.createElement("details");
+				details.dataset.railPairCantRailLawEdit = "";
+				const summary = documentRef.createElement("summary");
+				summary.textContent = "Edit exact rail-height law";
+				const selectLabel = documentRef.createElement("label");
+				selectLabel.textContent = "Persisted rail law";
+				const select = documentRef.createElement("select");
+				select.name = "railPairCantElement";
+				for (const [index, choice] of choices.entries()) {
+					const option = documentRef.createElement("option");
+					option.value = String(index);
+					option.textContent = `${choice.railSide} · railId=${choice.element.railId} · elementId=${choice.element.id}`;
+					select.append(option);
+				}
+				selectLabel.append(select);
+				const identity = documentRef.createElement("pre");
+				identity.dataset.railPairCantIdentity = "";
+				const offsetLabel = documentRef.createElement("label");
+				offsetLabel.textContent = "Start rail offset";
+				const offset = documentRef.createElement("input");
+				offset.name = "railPairCantStartOffset";
+				offset.type = "number";
+				offset.step = "any";
+				offsetLabel.append(offset);
+				const showChoice = () => {
+					const choice = choices[Number(select.value)] ?? choices[0];
+					identity.textContent = JSON.stringify({ railSide: choice.railSide, railId: choice.element.railId, elementId: choice.element.id, type: choice.element.type, startS: choice.element.startS, endS: choice.element.endS }, null, 2);
+					offset.value = String(choice.element.startOffset);
+				};
+				select.onchange = showChoice;
+				showChoice();
+				const submit = documentRef.createElement("button");
+				submit.type = "button";
+				submit.dataset.railPairCantSubmit = "";
+				submit.textContent = "Save exact rail law";
+				this.#railPairCantRailLawStatus = documentRef.createElement("strong");
+				this.#railPairCantRailLawStatus.dataset.railPairCantStatus = "";
+				this.#railPairCantRailLawStatus.setAttribute("role", "status");
+				this.#railPairCantRailLawStatus.setAttribute("aria-live", "polite");
+				submit.onclick = () => {
+					const choice = choices[Number(select.value)] ?? choices[0];
+					this.renderRailPairCantRailLawStatus("acknowledged");
+					void this.#onRailPairCantRailLawSubmit({ railSide: choice.railSide, railId: choice.element.railId, elementId: choice.element.id, startOffset: offset.value, ...(choice.element.type === "linear-rail-offset" ? { offsetRate: choice.element.offsetRate } : {}) });
+				};
+				details.append(summary, selectLabel, identity, offsetLabel, submit, this.#railPairCantRailLawStatus);
+				root.append(details);
+			}
+		}
 		appendProjectionSection(
 			documentRef,
 			root,

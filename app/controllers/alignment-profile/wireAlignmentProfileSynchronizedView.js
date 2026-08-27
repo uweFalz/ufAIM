@@ -165,6 +165,7 @@ export function wireAlignmentProfileSynchronizedView({
 	terminalLinearCantDomainEditController = null,
 	terminalLinearCantCompositeEditController = null,
 	railPairCantRailLawEditController = null,
+	railPairCantAdmissionController = null,
 	chainageLookupController = null,
 	longitudinalController = null,
 	cantCrossLevelController = null,
@@ -215,6 +216,8 @@ export function wireAlignmentProfileSynchronizedView({
 			typeof terminalLinearCantCompositeEditController?.update !== "function") ||
 		(railPairCantRailLawEditController !== null &&
 			typeof railPairCantRailLawEditController?.update !== "function") ||
+		(railPairCantAdmissionController !== null &&
+			typeof railPairCantAdmissionController?.admit !== "function") ||
 		(chainageLookupController !== null &&
 			typeof chainageLookupController?.lookup !== "function") ||
 		(longitudinalController !== null &&
@@ -1392,17 +1395,45 @@ export function wireAlignmentProfileSynchronizedView({
 
 	async function updateRailPairCantRailLaw(input) {
 		if (!railPairCantRailLawEditController) throw new Error("rail-pair Cant law editing is unavailable");
-		const { selected, canonical } = await readActiveProfileContext();
-		const result = await railPairCantRailLawEditController.update({ ...input, alignmentId: selected.alignmentId, revision: canonical.revision, s: selected.s, profileState: canonical.alignmentData.profileState });
-		const afterSelection = readCursorAndSelection(store);
-		if (afterSelection.alignmentId !== selected.alignmentId || !Object.is(afterSelection.s, selected.s)) throw Object.assign(new Error("active Alignment or cursor changed during rail-pair Cant save"), { code: "ACTIVE_CONTEXT_CHANGED" });
-		const readbackState = unwrap(await messaging.sendCmdAwait("Spot.GetState", {}));
-		const readback = canonicalAlignmentFromState(readbackState, selected.alignmentId);
-		if (!readback || !Object.is(readback.revision, result.snapshot.revision) || !sameValue(readback.alignmentData.profileState, result.profileState)) throw Object.assign(new Error("rail-pair Cant edit does not match canonical SPOT readback"), { code: "PROFILE_READBACK_MISMATCH" });
-		renderProjection(result.projection, readback.alignmentData.profileState);
-		await renderLongitudinal({ selected: afterSelection, canonical: readback });
-		publishVerifiedReceipt("cant", "updateRailPairCantRailLaw", selected, readback, result);
-		return result;
+		view.renderRailPairCantRailLawStatus?.("saving");
+		try {
+			const { selected, canonical } = await readActiveProfileContext();
+			const result = await railPairCantRailLawEditController.update({ ...input, alignmentId: selected.alignmentId, revision: canonical.revision, s: selected.s, profileState: canonical.alignmentData.profileState });
+			const afterSelection = readCursorAndSelection(store);
+			if (afterSelection.alignmentId !== selected.alignmentId || !Object.is(afterSelection.s, selected.s)) throw Object.assign(new Error("active Alignment or cursor changed during rail-pair Cant save"), { code: "ACTIVE_CONTEXT_CHANGED" });
+			const readbackState = unwrap(await messaging.sendCmdAwait("Spot.GetState", {}));
+			const readback = canonicalAlignmentFromState(readbackState, selected.alignmentId);
+			if (!readback || !Object.is(readback.revision, result.snapshot.revision) || !sameValue(readback.alignmentData.profileState, result.profileState)) throw Object.assign(new Error("rail-pair Cant edit does not match canonical SPOT readback"), { code: "PROFILE_READBACK_MISMATCH" });
+			renderProjection(result.projection, readback.alignmentData.profileState);
+			await renderLongitudinal({ selected: afterSelection, canonical: readback });
+			view.renderRailPairCantRailLawStatus?.("saved");
+			publishVerifiedReceipt("cant", "updateRailPairCantRailLaw", selected, readback, result);
+			return result;
+		} catch (error) {
+			view.renderRailPairCantRailLawStatus?.(`error: ${String(error?.code ?? error?.message ?? error)}`);
+			return null;
+		}
+	}
+
+	async function admitRailPairCant(input) {
+		if (!railPairCantAdmissionController) throw new Error("Rail-Pair Cant admission is unavailable");
+		view.renderRailPairCantAdmissionStatus?.("saving");
+		try {
+			const { selected, canonical } = await readActiveProfileContext();
+			const result = await railPairCantAdmissionController.admit({ ...input, alignmentId: selected.alignmentId, revision: canonical.revision, s: selected.s, profileState: canonical.alignmentData.profileState });
+			const afterSelection = readCursorAndSelection(store);
+			if (afterSelection.alignmentId !== selected.alignmentId || !Object.is(afterSelection.s, selected.s)) throw Object.assign(new Error("active context changed during Rail-Pair admission"), { code: "ACTIVE_CONTEXT_CHANGED" });
+			const readback = canonicalAlignmentFromState(unwrap(await messaging.sendCmdAwait("Spot.GetState", {})), selected.alignmentId);
+			if (!readback || !Object.is(readback.revision, result.snapshot.revision) || !sameValue(readback.alignmentData.profileState, result.profileState)) throw Object.assign(new Error("Rail-Pair admission does not match canonical SPOT readback"), { code: "PROFILE_READBACK_MISMATCH" });
+			renderProjection(result.projection, readback.alignmentData.profileState);
+			await renderLongitudinal({ selected: afterSelection, canonical: readback });
+			view.renderRailPairCantAdmissionStatus?.("saved");
+			publishVerifiedReceipt("cant", "admitRailPairCant", selected, readback, result);
+			return result;
+		} catch (error) {
+			view.renderRailPairCantAdmissionStatus?.(`error: ${String(error?.code ?? error?.message ?? error)}`);
+			return null;
+		}
 	}
 
 	if (authoringController) {
@@ -1496,6 +1527,10 @@ export function wireAlignmentProfileSynchronizedView({
 	if (terminalLinearCantCompositeEditController) {
 		view.setTerminalLinearCantCompositeHandler?.(updateTerminalLinearCantComposite);
 	}
+	if (railPairCantRailLawEditController) {
+		view.setRailPairCantRailLawHandler?.(updateRailPairCantRailLaw);
+	}
+	if (railPairCantAdmissionController) view.setRailPairCantAdmissionHandler?.(admitRailPairCant);
 	if (chainageLookupController) {
 		view.setChainageAddressLookupHandlers?.({ onLookup: lookupChainageAddress, onUseCandidate: useChainageCandidate });
 	}
@@ -1536,6 +1571,7 @@ export function wireAlignmentProfileSynchronizedView({
 		updateTerminalLinearCantDomain,
 		updateTerminalLinearCantComposite,
 		updateRailPairCantRailLaw,
+		admitRailPairCant,
 		lookupChainageAddress,
 		useChainageCandidate,
 		stop() {

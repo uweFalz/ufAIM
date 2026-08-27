@@ -1334,6 +1334,17 @@ html[dir="rtl"] #props {
 [data-longitudinal-design-lane] > header p { margin:3px 0 0; color:var(--muted); font-size:10px; }
 [data-longitudinal-design-lane] > pre { max-height:120px; overflow:auto; margin:0; padding:7px; border-radius:7px; background:rgba(0,0,0,.18); font-size:9px; }
 [data-longitudinal-design-lane] details { padding:7px; border:1px solid var(--borderSoft); border-radius:7px; }
+[data-rail-pair-cant-rail-law-edit] { display:grid; gap:8px; border-color:rgba(99,230,190,.48) !important; }
+[data-rail-pair-cant-admission] { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:8px; border-color:rgba(99,230,190,.48) !important; }
+[data-rail-pair-cant-admission] summary, [data-rail-pair-cant-admission] [role="status"] { grid-column:1/-1; }
+[data-rail-pair-cant-admission] label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
+[data-rail-pair-cant-admission] label:has(input[type="checkbox"]) { display:flex; align-items:center; }
+[data-rail-pair-cant-rail-law-edit] label { display:grid; gap:4px; color:var(--muted); font-size:11px; }
+[data-rail-pair-cant-rail-law-edit] pre { margin:0; padding:7px; border-radius:7px; background:rgba(0,0,0,.18); font-size:9px; }
+[data-rail-pair-cant-status][data-status="acknowledged"], [data-rail-pair-cant-status][data-status="saving"] { color:#63d3ff; }
+[data-rail-pair-cant-status][data-status="saved"] { color:#63e6be; }
+[data-rail-pair-cant-status][data-status="error"] { color:#ff7b72; }
+[data-rail-pair-cross-section] { overflow:auto; padding:7px; border-left:3px solid #63e6be; background:rgba(0,0,0,.18); font-size:10px; }
 [data-longitudinal-design-lane][data-lane-status="constructive"] { border-color:rgba(99,230,190,.48); }
 [data-longitudinal-design-lane][data-lane-status="partial-evidence"], [data-longitudinal-design-lane][data-lane-status="review-required"] { border-color:rgba(255,207,102,.55); }
 [data-longitudinal-design-lane][data-lane-focused="true"] { outline:2px solid rgba(99,211,255,.75); outline-offset:2px; background:rgba(99,211,255,.07); }

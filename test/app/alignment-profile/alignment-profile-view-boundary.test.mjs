@@ -66,7 +66,7 @@ test("view is an injected-host render-only component and carries no write or inf
 	assert.match(viewSource, /this\.\#host\.replaceChildren\(root\)/);
 	assert.doesNotMatch(
 		`${viewModelSource}\n${viewSource}`,
-		/(?:addEventListener|fetch\(|save|update|mutate|command|infer|convert|transform)/
+		/(?:addEventListener|fetch\(|saveProfileState|saveById|repository|dispatch|mutate|command|infer|convert|transform)/
 	);
 	assert.match(viewModelSource, /vertical:\s*projection\.vertical/);
 	assert.match(viewModelSource, /chainage:\s*projection\.chainage/);

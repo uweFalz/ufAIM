@@ -8,8 +8,12 @@ const read = (path) => readFile(new URL(path, ROOT), "utf8");
 test("controller depends only on canonical Cant evaluation with no local law", async () => {
 	const source = await read("app/controllers/alignment-profile/createCantCrossLevelViewController.js");
 	const imports = [...source.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
-	assert.deepEqual(imports, ["../../../src/aim-core/alignment/profile/CantConstructiveState.js"]);
+	assert.deepEqual(imports, [
+		"../../../src/aim-core/alignment/profile/CantConstructiveState.js",
+		"../../../src/aim-core/alignment/profile/RailPairCantConstructiveState.js",
+	]);
 	assert.match(source, /evaluateCantAt/);
+	assert.match(source, /evaluateRailPairCantAt/);
 	assert.doesNotMatch(source, /crossLevelRate\s*\*|saveProfileState|repository|Spot\.|Worker|Messaging|IndexedDB|localStorage|document|window/);
 });
 

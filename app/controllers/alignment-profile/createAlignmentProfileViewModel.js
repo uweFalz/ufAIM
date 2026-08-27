@@ -21,6 +21,14 @@ export function createAlignmentProfileViewModel(projection) {
 		vertical: projection.vertical,
 		chainage: projection.chainage,
 		cant: projection.cant,
+		canCreateRailPairCant:
+			projection.profileStatePresence === "present" && projection.state?.cant === null,
+		railPairCantState:
+			projection.state?.cant?.type === "RailPairCantConstructiveState" &&
+			projection.state.cant.coverage?.status === "complete" &&
+			projection.state.cant.coverage?.authority === "admitted-construction"
+				? projection.state.cant
+				: null,
 	});
 }
 
