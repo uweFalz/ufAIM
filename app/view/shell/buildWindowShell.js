@@ -268,6 +268,7 @@ export function buildWindowShell() {
 						<div id="aeConsequence" class="uf-align-edit__consequence" aria-live="polite"></div>
 						<div class="uf-align-edit__actions"><button id="aeApply" type="button" class="btn btn--primary" data-i18n="alignment_editor.action.apply"></button><button id="aeUndo" type="button" class="btn btn--ghost" data-i18n="alignment_editor.action.undo"></button><button id="aeReset" type="button" class="btn btn--ghost" data-i18n="alignment_editor.action.reset"></button></div>
 						<div id="aeStatus" class="uf-align-edit__status" data-kind="info"></div>
+						<section id="aeRealizationReceipt" class="uf-align-edit__sequence" aria-live="polite" aria-label="Verifizierter horizontaler Konsequenzbeleg"></section>
 						<section id="aeSequenceReview" class="uf-align-edit__sequence" aria-label="Horizontale Sequenz und Konsequenzen"></section>
 						<details class="uf-align-edit__technical">
 							<summary data-i18n="alignment_editor.technical"></summary>

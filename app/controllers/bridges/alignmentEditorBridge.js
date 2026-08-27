@@ -5,6 +5,8 @@ import { t } from "@app/i18n/strings.js";
 import { buildHorizontalSequenceConsequenceReview } from "@app/domain/workspace/buildHorizontalSequenceConsequenceReview.js";
 import { clearDraftAfterCanonicalRefresh, createAuthoringDraftStore } from "@app/domain/workspace/createAuthoringDraftStore.js";
 import { createAuthoringChangePreview } from "@app/view/workspace/renderAuthoringChangePreview.js";
+import { buildHorizontalRealizationChangeReceipt } from "@app/domain/workspace/buildHorizontalRealizationChangeReceipt.js";
+import { renderHorizontalRealizationChangeReceipt } from "@app/view/workspace/renderHorizontalRealizationChangeReceipt.js";
 
 function unwrap(raw) { return raw?.state ?? raw?.payload ?? raw ?? null; }
 function asNumber(value) { if (value == null || String(value).trim() === "") return undefined; const number = Number(value); return Number.isFinite(number) ? number : Number.NaN; }
@@ -55,6 +57,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		apply: document.getElementById("aeApply"), undo: document.getElementById("aeUndo"), reset: document.getElementById("aeReset"), status: document.getElementById("aeStatus"),
 		technical: document.getElementById("aeTechnicalDetails"),
 		sequenceReview: document.getElementById("aeSequenceReview"),
+		realizationReceipt: document.getElementById("aeRealizationReceipt"),
 	};
 	let activeSnapshot = null;
 	let requestedElementId = null;
@@ -225,6 +228,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		verifiedChange = null,
 	} = {}) {
 		pendingRemovalId = null;
+		if (!verifiedChange) renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, null);
 		ui.applyI18n?.(overlay);
 		const previous = preserveSelection ? selectedId() : "";
 		const requested = requestedElementId;
@@ -290,10 +294,12 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 
 	async function apply() {
 		if (applying) return false;
+		renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, null);
 		const element = selectedElement();
 		if (!element) return message("alignment_editor.status.no_element_selected", "warn");
 		rememberDraft(); applying = true; renderChangePreview(element,draftValues()); setDisabled(fields.apply, true); message("alignment_editor.action.apply", "info", "saving");
 		const id = String(element.id); const type = String(element.type).toLowerCase();
+		const beforeAlignmentData = activeSnapshot?.alignmentData;
 		let result;
 		try {
 		if (type === "straight") result = await controller.updateStraightLengthOnActiveAlignment({ elementId: id, length: asNumber(fields.length?.value) });
@@ -309,7 +315,10 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		else result = { changed: false, ok: false, status: "rejected", code: "ALIGNMENT_EDIT_UNSUPPORTED" };
 		if (result?.ok === false || result?.status === "rejected") { message("alignment_editor.status.validation_failed", "error", "error"); return false; }
 		if (result?.changed === false) { message("alignment_editor.status.no_changes_applied", "info", "ready"); return false; }
-		requestedElementId = id;const refreshed=await clearDraftAfterCanonicalRefresh({refresh:()=>refresh({ preserveSelection: false }),clear:()=>drafts.clear(draftIdentity(element))});if(!refreshed)return false;setWorkspaceElement(id); message("alignment_editor.status.recalculated", "ok", "saved");
+		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id });
+		requestedElementId = id;const refreshed=await clearDraftAfterCanonicalRefresh({refresh:()=>refresh({ preserveSelection: false, verifiedChange: result.alignmentChange }),clear:()=>drafts.clear(draftIdentity(element))});if(!refreshed)return false;
+		if (String(activeSnapshot?.object?.id ?? "") !== receipt.objectId || selectedId() !== receipt.elementId) throw new Error("verified receipt context changed");
+		setWorkspaceElement(id); renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt); message("alignment_editor.status.recalculated", "ok", "saved");
 		await dispatchProductiveAlignmentChange({
 			...(result.alignmentChange ?? {}),
 			objectId: result.alignmentChange?.objectId ?? activeSnapshot?.object?.id ?? null,
