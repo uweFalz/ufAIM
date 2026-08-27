@@ -156,8 +156,8 @@ test("generic canonical object hydrates once with null evidence and keeps exact 
 	await new Promise((resolve) => setTimeout(resolve, 0));
 	assert.equal(refreshCount, 1);
 	const explicit = await controller.activateCanonicalAlignment("GENERIC");
-	assert.equal(explicit.ok, true);
-	assert.equal(explicit.evidence, undefined);
+	assert.equal(explicit.ok, false);
+	assert.equal(explicit.code, "PROMOTED_ALIGNMENT_CANONICAL_REVISION_UNAVAILABLE");
 	assert.equal(refreshCount, 2);
 });
 

@@ -4,7 +4,7 @@ import { buildPromotedGndWorkspaceEvidence } from "../../../app/domain/workspace
 import { createPromotedAlignmentWorkspaceJourneyController } from "../../../app/controllers/workspace/createPromotedAlignmentWorkspaceJourneyController.js";
 
 function promotedObject() {
-	return { id: "GND-A1", meta: { importItemId: "GND-A1", sourceEvidence: { schema: "ufAIM.spot-import-evidence", evidenceId: "EV1", source: { fileName: "source.mdb" }, familyEvidence: [
+	return { id: "GND-A1", data: { alignmentData: { id: "GND-A1", revision: 3 } }, meta: { importItemId: "GND-A1", sourceEvidence: { schema: "ufAIM.spot-import-evidence", evidenceId: "EV1", source: { fileName: "source.mdb" }, familyEvidence: [
 		{ family: "EL", status: "constructive", rowCount: 3, sourceRefs: ["X_ASC_EL"] },
 		{ family: "EH", status: "constructive", rowCount: 2, sourceRefs: ["X_ASC_EH"] },
 		{ family: "EU", status: "partial-evidence", rowCount: 2, sourceRefs: ["X_ASC_EU"] },
@@ -32,6 +32,7 @@ test("exact promoted identity refreshes SPOT surfaces and receives persisted evi
 		store: { getState: () => state },
 		alignmentBimWorkspace: { activate(mode) { calls.push(mode); return true; } },
 		viewController: { getDebugState: () => ({ objectId: "GND-A1" }) },
+		profileSource: { async refresh() { return { status: "projected", alignmentId: "GND-A1", revision: 3, cursor: { parameterKind: "intrinsic-s", s: 25 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" } }; } },
 		alignmentIntelligence: { setPromotedEvidence(value) { calls.push(value.evidenceId); }, setActiveContext(value) { calls.push(value.objectId); } },
 	});
 	const result = await controller.activateCanonicalAlignment("GND-A1");

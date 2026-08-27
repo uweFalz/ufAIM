@@ -633,6 +633,7 @@ export async function initFeatures(ctx) {
 		store: ctx.store,
 		alignmentBimWorkspace: ctx.alignmentBimWorkspace,
 		viewController: ctx.viewController,
+		profileSource: ctx.alignmentProfileSynchronizedView,
 		alignmentIntelligence: ctx.alignmentIntelligence,
 	});
 	ctx.gndImportWorkbench = makeGndImportWorkbenchController({

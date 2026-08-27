@@ -5,6 +5,7 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 	store,
 	alignmentBimWorkspace,
 	viewController,
+	profileSource = null,
 	alignmentIntelligence = null,
 } = {}) {
 	if (
@@ -18,6 +19,17 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 	let hydratedObjectId = null;
 	let hydrationObjectId = null;
 	let hydrationPromise = null;
+	const sameValue = (left, right) => {
+		if (Object.is(left, right)) return true;
+		if (Array.isArray(left) || Array.isArray(right)) return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((entry, index) => sameValue(entry, right[index]));
+		if (!left || !right || typeof left !== "object" || typeof right !== "object") return false;
+		const leftKeys = Object.keys(left), rightKeys = Object.keys(right);
+		return leftKeys.length === rightKeys.length && leftKeys.every((key) => Object.prototype.hasOwnProperty.call(right, key) && sameValue(left[key], right[key]));
+	};
+	const canonicalRevision = (object) => {
+		const alignmentData = object?.data?.alignmentData;
+		return alignmentData && Object.prototype.hasOwnProperty.call(alignmentData, "revision") ? alignmentData.revision : undefined;
+	};
 
 	async function rehydrateCanonicalAlignment(objectId, { refreshSurfaces = true } = {}) {
 		const requestedId = String(objectId ?? "").trim();
@@ -32,7 +44,7 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 					alignmentIntelligence.setPromotedEvidence?.(null);
 					return { ok: false, code: "PROMOTED_ALIGNMENT_CANONICAL_REFRESH_UNAVAILABLE" };
 				}
-				return { ok: true, objectId: requestedId, evidence: null };
+				return { ok: true, objectId: requestedId, evidence: null, revision: undefined };
 			}
 			const spot = await cockpit.refreshSpotState?.();
 			const promotedObject = readSpotObjects(spot).find((entry) => String(entry?.id ?? "") === requestedId) ?? null;
@@ -48,13 +60,13 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 				alignmentIntelligence?.setActiveContext?.({ objectId: requestedId, s: Number(store.getState()?.cursor?.s) });
 				if (refreshSurfaces) await cockpit.refreshAll?.();
 				hydratedObjectId = requestedId;
-				return { ok: true, objectId: requestedId, evidence: null };
+				return { ok: true, objectId: requestedId, evidence: null, revision: canonicalRevision(promotedObject) };
 			}
 			alignmentIntelligence?.setPromotedEvidence?.(evidence);
 			alignmentIntelligence?.setActiveContext?.({ objectId: requestedId, s: Number(store.getState()?.cursor?.s) });
 			if (refreshSurfaces) await cockpit.refreshAll?.();
 			hydratedObjectId = requestedId;
-			return { ok: true, objectId: requestedId, evidence };
+			return { ok: true, objectId: requestedId, evidence, revision: canonicalRevision(promotedObject) };
 		})();
 		hydrationPromise = run;
 		try {
@@ -84,12 +96,26 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		}
 		const hydrated = await rehydrateCanonicalAlignment(requestedId);
 		if (hydrated.ok !== true) return hydrated;
+		if (hydrated.revision === undefined || hydrated.revision === null) return { ok: false, code: "PROMOTED_ALIGNMENT_CANONICAL_REVISION_UNAVAILABLE" };
+		if (typeof profileSource?.refresh !== "function") return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_REFRESH_UNAVAILABLE" };
+		let profileProjection;
+		try { profileProjection = await profileSource.refresh(); }
+		catch { return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_REFRESH_FAILED" }; }
+		const after = store.getState();
+		const afterId = String(after?.workspace_selection?.primaryId ?? "").trim();
+		const afterS = Number(after?.cursor?.s);
+		if (afterId !== requestedId || !Object.is(afterS, s)) return { ok: false, code: "PROMOTED_ALIGNMENT_ACTIVE_CONTEXT_CHANGED" };
+		const hasLanes = ["vertical", "cant", "chainage"].every((key) => Object.prototype.hasOwnProperty.call(profileProjection ?? {}, key));
+		if (profileProjection?.status !== "projected" || profileProjection.alignmentId !== requestedId || !sameValue(profileProjection.revision, hydrated.revision) || profileProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(profileProjection.cursor.s, s) || !hasLanes) {
+			return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_READBACK_MISMATCH" };
+		}
 
 		return {
 			ok: true,
 			objectId: requestedId,
 			s,
 			projection: viewController.getDebugState(),
+			profileProjection,
 			...(hydrated.evidence ? { evidence: hydrated.evidence } : {}),
 		};
 	}
