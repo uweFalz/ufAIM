@@ -41,6 +41,7 @@ import { createChainageAddressLookupController } from "@app/controllers/alignmen
 import { createLongitudinalProfileController } from "@app/controllers/alignment-profile/createLongitudinalProfileController.js";
 import { AlignmentLongitudinalProfileView } from "@app/view/alignment-profile/AlignmentLongitudinalProfileView.js";
 import { createCantCrossLevelViewController } from "@app/controllers/alignment-profile/createCantCrossLevelViewController.js";
+import { createAlignmentChangeProfileRefreshBridge } from "@app/controllers/alignment-profile/createAlignmentChangeProfileRefreshBridge.js";
 import { AlignmentCantCrossLevelView } from "@app/view/alignment-profile/AlignmentCantCrossLevelView.js";
 import { VerticalProfileAuthoringDockView } from "@app/view/alignment-profile/VerticalProfileAuthoringDockView.js";
 import { createVerticalProfileAuthoringDockController } from "@app/controllers/alignment-profile/createVerticalProfileAuthoringDockController.js";
@@ -590,6 +591,12 @@ export async function initFeatures(ctx) {
 	if (ctx.prefs.isDev) window.__ufAIM_curvatureBand = ctx.curvatureBand;
 	setupCockpitRuntime(ctx);
 	setupAlignmentProfileRuntime(ctx);
+	ctx.alignmentChangeProfileRefreshBridge =
+		createAlignmentChangeProfileRefreshBridge({
+			store: ctx.store,
+			profileSource: ctx.alignmentProfileSynchronizedView,
+		});
+	ctx.alignmentChangeProfileRefreshBridge.start();
 	setupTopologyRuntime(ctx);
 	ctx.alignmentEditorBridge = setupAlignmentEditorRuntime(ctx);
 	ctx.alignmentCreation = makeAlignmentCreationController({ store: ctx.store, messaging: ctx.messaging, curvatureBand: ctx.curvatureBand, cockpit: ctx.cockpit, viewController: ctx.viewController });
