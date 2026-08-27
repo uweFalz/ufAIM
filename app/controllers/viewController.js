@@ -38,6 +38,26 @@ import {
 } from "@src/shared/runtime/workspaceSelectionAccess.js";
 import { resolveViewerElementSelection } from "@app/domain/workspace/buildCrossViewElementSelectionModel.js";
 
+function cloneAndFreeze(value) {
+	if (Array.isArray(value)) return Object.freeze(value.map(cloneAndFreeze));
+	if (!value || typeof value !== "object") return value;
+	return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, cloneAndFreeze(entry)])));
+}
+
+export function createMainHorizontalProjectionReadback(snapshot) {
+	const cursorS = Number(snapshot?.cursor?.s);
+	if (snapshot?.mode !== "active" || !snapshot.objectId || snapshot.revision === null || snapshot.revision === undefined || !snapshot.projectionSignature || !Number.isFinite(cursorS)) return null;
+	return cloneAndFreeze({
+		status: "rendered",
+		objectId: snapshot.objectId,
+		revision: snapshot.revision,
+		cursor: { parameterKind: "intrinsic-s", s: cursorS },
+		projectionSignature: snapshot.projectionSignature,
+		mode: snapshot.mode,
+		selectedElementId: snapshot.selectedElementId ?? null,
+	});
+}
+
 export function makeViewController({
 	store,
 	ui,
@@ -116,6 +136,14 @@ export function makeViewController({
 
 	let auxOwnedTracks = [];
 	let workspaceContextTracks = [];
+	let renderActiveState = null;
+
+	function canonicalAlignmentRevision(activeGeometry) {
+		const alignmentData = activeGeometry?.spotObject?.data?.alignmentData;
+		return alignmentData && Object.prototype.hasOwnProperty.call(alignmentData, "revision")
+			? alignmentData.revision
+			: null;
+	}
 
 	function getFocusObjectId(state) {
 		return readWorkspacePrimaryId(state);
@@ -654,6 +682,7 @@ export function makeViewController({
 			threeA.clearAlignmentProjection?.();
 			lastRenderSnapshot = {
 				objectId: activeGeometry?.objectId ?? null,
+				revision: canonicalAlignmentRevision(activeGeometry),
 				selectedElementId,
 				segmentCount: 0,
 				boundaryCount: 0,
@@ -685,6 +714,7 @@ export function makeViewController({
 
 		lastRenderSnapshot = {
 			objectId: activeGeometry?.objectId ?? null,
+			revision: canonicalAlignmentRevision(activeGeometry),
 			selectedElementId,
 			segmentCount: Array.isArray(projection?.segments) ? projection.segments.length : 0,
 			boundaryCount: Array.isArray(projection?.boundaries) ? projection.boundaries.length : 0,
@@ -864,7 +894,7 @@ export function makeViewController({
 
 		let renderToken = 0;
 
-		const handler = async (state) => {
+		const handler = async (state, { propagateErrors = false } = {}) => {
 			const token = ++renderToken;
 
 			try {
@@ -896,6 +926,7 @@ export function makeViewController({
 					await applyGeomChangePolicy(state, null);
 					lastRenderSnapshot = {
 						objectId: activeGeometry?.objectId ?? null,
+						revision: canonicalAlignmentRevision(activeGeometry),
 						selectedElementId,
 						segmentCount: 0,
 						boundaryCount: 0,
@@ -904,7 +935,7 @@ export function makeViewController({
 						placement: "local",
 						message: "no-track",
 					};
-					return;
+					return { ...lastRenderSnapshot };
 				}
 
 				await syncGeometryPolicyIfNeeded(state, activeGeometry, geomChanged);
@@ -917,13 +948,16 @@ export function makeViewController({
 				syncSectionSamplingAndMarker(state, poly);
 				syncActiveTrack(poly);
 				await syncOperatingMode(activeGeometry, state);
+				return { ...lastRenderSnapshot };
 			} catch (err) {
+				if (propagateErrors) throw err;
 				console.error("[ViewController] handler crashed (isolated):", err);
 				ui?.logInfo?.(
 					t("viewcontroller_crashed", { message: String(err?.message ?? err) })
 				);
 			}
 		};
+		renderActiveState = handler;
 
 		wireSpotUiUpdatesOnce(() => {
 			void handler(store.getState());
@@ -948,6 +982,12 @@ export function makeViewController({
 		invalidateSpotCache,
 		invalidateGeometryCache,
 		invalidateAllCaches,
+		async refreshHorizontalProjection() {
+			if (typeof renderActiveState !== "function") return null;
+			invalidateAllCaches();
+			const snapshot = await renderActiveState(store.getState(), { propagateErrors: true });
+			return createMainHorizontalProjectionReadback(snapshot);
+		},
 		getDebugState: () => ({ ...lastRenderSnapshot }),
 		debugSelectAlignmentElement: (elementId) =>
 			selectAlignmentElementFromViewer({

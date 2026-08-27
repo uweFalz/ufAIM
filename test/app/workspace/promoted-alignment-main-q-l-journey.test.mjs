@@ -10,7 +10,7 @@ test("canonical promoted Alignment becomes the one Main workspace context", asyn
 		cockpit: { async activateSpotObject(id) { calls.push(["activate", id]); state.workspace_selection.primaryId = id; return true; }, async refreshSpotState() { return { objects: [{ id: "A1", data: { alignmentData: { id: "A1", revision: 2 } } }] }; }, async refreshAll() {} },
 		store: { getState: () => state },
 		alignmentBimWorkspace: { activate(mode) { calls.push(["mode", mode]); return true; } },
-		viewController: { getDebugState: () => ({ mode: "active", objectId: "A1" }) },
+		viewController: { getDebugState: () => ({ mode: "active", objectId: "A1" }), async refreshHorizontalProjection() { calls.push(["horizontal", "A1"]); return { status: "rendered", objectId: "A1", revision: 2, cursor: { parameterKind: "intrinsic-s", s: 0 }, projectionSignature: "P2", mode: "active", selectedElementId: null }; } },
 		profileSource: { async refresh() { calls.push(["profile", "A1"]); return profileProjection; } },
 	});
 
@@ -20,8 +20,9 @@ test("canonical promoted Alignment becomes the one Main workspace context", asyn
 		s: 0,
 		projection: { mode: "active", objectId: "A1" },
 		profileProjection,
+		horizontalProjection: { status: "rendered", objectId: "A1", revision: 2, cursor: { parameterKind: "intrinsic-s", s: 0 }, projectionSignature: "P2", mode: "active", selectedElementId: null },
 	});
-	assert.deepEqual(calls, [["activate", "A1"], ["mode", "main"], ["profile", "A1"]]);
+	assert.deepEqual(calls, [["activate", "A1"], ["mode", "main"], ["profile", "A1"], ["horizontal", "A1"]]);
 });
 
 test("identity mismatch cannot produce a false workspace handoff", async () => {

@@ -31,7 +31,7 @@ test("exact promoted identity refreshes SPOT surfaces and receives persisted evi
 		cockpit: { async activateSpotObject(id) { state.workspace_selection.primaryId = id; return true; }, async refreshSpotState() { return { objects: [promotedObject()] }; }, async refreshAll() { calls.push("refresh"); } },
 		store: { getState: () => state },
 		alignmentBimWorkspace: { activate(mode) { calls.push(mode); return true; } },
-		viewController: { getDebugState: () => ({ objectId: "GND-A1" }) },
+		viewController: { getDebugState: () => ({ objectId: "GND-A1" }), async refreshHorizontalProjection() { return { status: "rendered", objectId: "GND-A1", revision: 3, cursor: { parameterKind: "intrinsic-s", s: 25 }, projectionSignature: "GND-P3", mode: "active", selectedElementId: null }; } },
 		profileSource: { async refresh() { return { status: "projected", alignmentId: "GND-A1", revision: 3, cursor: { parameterKind: "intrinsic-s", s: 25 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" } }; } },
 		alignmentIntelligence: { setPromotedEvidence(value) { calls.push(value.evidenceId); }, setActiveContext(value) { calls.push(value.objectId); } },
 	});

@@ -98,9 +98,13 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		if (hydrated.ok !== true) return hydrated;
 		if (hydrated.revision === undefined || hydrated.revision === null) return { ok: false, code: "PROMOTED_ALIGNMENT_CANONICAL_REVISION_UNAVAILABLE" };
 		if (typeof profileSource?.refresh !== "function") return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_REFRESH_UNAVAILABLE" };
+		if (typeof viewController?.refreshHorizontalProjection !== "function") return { ok: false, code: "PROMOTED_ALIGNMENT_HORIZONTAL_REFRESH_UNAVAILABLE" };
 		let profileProjection;
 		try { profileProjection = await profileSource.refresh(); }
 		catch { return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_REFRESH_FAILED" }; }
+		let horizontalProjection;
+		try { horizontalProjection = await viewController.refreshHorizontalProjection(); }
+		catch { return { ok: false, code: "PROMOTED_ALIGNMENT_HORIZONTAL_REFRESH_FAILED" }; }
 		const after = store.getState();
 		const afterId = String(after?.workspace_selection?.primaryId ?? "").trim();
 		const afterS = Number(after?.cursor?.s);
@@ -109,6 +113,9 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		if (profileProjection?.status !== "projected" || profileProjection.alignmentId !== requestedId || !sameValue(profileProjection.revision, hydrated.revision) || profileProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(profileProjection.cursor.s, s) || !hasLanes) {
 			return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_READBACK_MISMATCH" };
 		}
+		if (horizontalProjection?.status !== "rendered" || horizontalProjection.objectId !== requestedId || !sameValue(horizontalProjection.revision, hydrated.revision) || horizontalProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(horizontalProjection.cursor.s, s) || horizontalProjection.mode !== "active" || !horizontalProjection.projectionSignature) {
+			return { ok: false, code: "PROMOTED_ALIGNMENT_HORIZONTAL_READBACK_MISMATCH" };
+		}
 
 		return {
 			ok: true,
@@ -116,6 +123,7 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 			s,
 			projection: viewController.getDebugState(),
 			profileProjection,
+			horizontalProjection,
 			...(hydrated.evidence ? { evidence: hydrated.evidence } : {}),
 		};
 	}

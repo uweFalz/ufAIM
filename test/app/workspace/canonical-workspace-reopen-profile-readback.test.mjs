@@ -4,8 +4,9 @@ import test from "node:test";
 import { createPromotedAlignmentWorkspaceJourneyController } from "../../../app/controllers/workspace/createPromotedAlignmentWorkspaceJourneyController.js";
 
 const projection = (overrides = {}) => ({ status: "projected", alignmentId: "A1", revision: { id: "R2" }, cursor: { parameterKind: "intrinsic-s", s: 40 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" }, ...overrides });
+const horizontal = (overrides = {}) => ({ status: "rendered", objectId: "A1", revision: { id: "R2" }, cursor: { parameterKind: "intrinsic-s", s: 40 }, projectionSignature: "P-R2", mode: "active", selectedElementId: null, ...overrides });
 
-function fixture({ profileSource, revision = { id: "R2" } } = {}) {
+function fixture({ profileSource, horizontalSource = { async refreshHorizontalProjection() { return horizontal(); } }, revision = { id: "R2" } } = {}) {
 	const state = { workspace_selection: { primaryId: null }, cursor: { s: 40 } };
 	const controller = createPromotedAlignmentWorkspaceJourneyController({
 		cockpit: {
@@ -15,7 +16,7 @@ function fixture({ profileSource, revision = { id: "R2" } } = {}) {
 		},
 		store: { getState: () => state },
 		alignmentBimWorkspace: { activate() { return true; } },
-		viewController: { getDebugState: () => ({ objectId: "A1", mode: "active" }) },
+		viewController: { getDebugState: () => ({ objectId: "A1", mode: "active" }), ...horizontalSource },
 		profileSource,
 	});
 	return { controller, state };
@@ -37,8 +38,21 @@ test("canonical reopen resolves only after exact synchronized profile readback",
 	assert.deepEqual(result.profileProjection, projection());
 });
 
+test("canonical reopen also waits for Main horizontal completion", async () => {
+	let release;
+	const gate = new Promise((resolve) => { release = resolve; });
+	const { controller } = fixture({ profileSource: { async refresh() { return projection(); } }, horizontalSource: { async refreshHorizontalProjection() { await gate; return horizontal(); } } });
+	let settled = false;
+	const pending = controller.activateCanonicalAlignment("A1").then((value) => { settled = true; return value; });
+	await new Promise((resolve) => setImmediate(resolve));
+	assert.equal(settled, false);
+	release();
+	assert.equal((await pending).ok, true);
+});
+
 test("missing port or canonical revision fails closed", async () => {
 	assert.equal((await fixture({ profileSource: null }).controller.activateCanonicalAlignment("A1")).code, "PROMOTED_ALIGNMENT_PROFILE_REFRESH_UNAVAILABLE");
+	assert.equal((await fixture({ profileSource: { async refresh() { return projection(); } }, horizontalSource: null }).controller.activateCanonicalAlignment("A1")).code, "PROMOTED_ALIGNMENT_HORIZONTAL_REFRESH_UNAVAILABLE");
 	assert.equal((await fixture({ profileSource: { async refresh() { return projection(); } }, revision: null }).controller.activateCanonicalAlignment("A1")).code, "PROMOTED_ALIGNMENT_CANONICAL_REVISION_UNAVAILABLE");
 });
 
@@ -46,11 +60,12 @@ test("context switch, refresh failure, and every malformed readback fail closed"
 	const switched = fixture({ profileSource: null });
 	switched.controller = createPromotedAlignmentWorkspaceJourneyController({
 		cockpit: { async activateSpotObject(id) { switched.state.workspace_selection.primaryId = id; return true; }, async refreshSpotState() { return { objects: [{ id: "A1", data: { alignmentData: { revision: { id: "R2" } } } }] }; }, async refreshAll() {} },
-		store: { getState: () => switched.state }, alignmentBimWorkspace: { activate() { return true; } }, viewController: { getDebugState: () => ({}) },
+		store: { getState: () => switched.state }, alignmentBimWorkspace: { activate() { return true; } }, viewController: { getDebugState: () => ({}), async refreshHorizontalProjection() { return horizontal(); } },
 		profileSource: { async refresh() { switched.state.cursor.s = 41; return projection(); } },
 	});
 	assert.equal((await switched.controller.activateCanonicalAlignment("A1")).code, "PROMOTED_ALIGNMENT_ACTIVE_CONTEXT_CHANGED");
 	assert.equal((await fixture({ profileSource: { async refresh() { throw new Error("failed"); } } }).controller.activateCanonicalAlignment("A1")).code, "PROMOTED_ALIGNMENT_PROFILE_REFRESH_FAILED");
+	assert.equal((await fixture({ profileSource: { async refresh() { return projection(); } }, horizontalSource: { async refreshHorizontalProjection() { throw new Error("failed"); } } }).controller.activateCanonicalAlignment("A1")).code, "PROMOTED_ALIGNMENT_HORIZONTAL_REFRESH_FAILED");
 	for (const malformed of [
 		projection({ status: "error" }), projection({ alignmentId: "B" }), projection({ revision: { id: "R1" } }),
 		projection({ cursor: { parameterKind: "chainage", s: 40 } }), projection({ cursor: { parameterKind: "intrinsic-s", s: 41 } }),
@@ -59,6 +74,10 @@ test("context switch, refresh failure, and every malformed readback fail closed"
 		const result = await fixture({ profileSource: { async refresh() { return malformed; } } }).controller.activateCanonicalAlignment("A1");
 		assert.equal(result.code, "PROMOTED_ALIGNMENT_PROFILE_READBACK_MISMATCH");
 	}
+	for (const malformed of [horizontal({ status: "unavailable" }), horizontal({ objectId: "B" }), horizontal({ revision: { id: "R1" } }), horizontal({ cursor: { parameterKind: "chainage", s: 40 } }), horizontal({ cursor: { parameterKind: "intrinsic-s", s: 41 } }), horizontal({ mode: "preview" }), horizontal({ projectionSignature: null })]) {
+		const result = await fixture({ profileSource: { async refresh() { return projection(); } }, horizontalSource: { async refreshHorizontalProjection() { return malformed; } } }).controller.activateCanonicalAlignment("A1");
+		assert.equal(result.code, "PROMOTED_ALIGNMENT_HORIZONTAL_READBACK_MISMATCH");
+	}
 });
 
 test("runtime injects the existing profile port without claiming awaited horizontal rendering", () => {
@@ -66,5 +85,5 @@ test("runtime injects the existing profile port without claiming awaited horizon
 	const init = fs.readFileSync(new URL("../../../app/runtime/init/initFeatures.js", import.meta.url), "utf8");
 	assert.match(init, /profileSource: ctx\.alignmentProfileSynchronizedView/);
 	assert.match(journey, /await profileSource\.refresh\(\)/);
-	assert.doesNotMatch(journey, /profileProjection\.horizontal|viewController\.refresh/);
+	assert.doesNotMatch(journey, /profileProjection\.horizontal|viewController\.refresh\(/);
 });
