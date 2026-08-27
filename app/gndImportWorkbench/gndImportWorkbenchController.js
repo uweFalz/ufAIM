@@ -277,14 +277,31 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 			render();
 			return false;
 		}
-		const activated = await cockpit?.activateSpotObject?.(requestedId);
-		if (activated !== true) {
-			state.workspaceFeedback = "WORKSPACE_OBJECT_NOT_ACTIVATED";
+		if (typeof promotedAlignmentJourney?.activateCanonicalAlignment !== "function") {
+			state.workspaceFeedback = "WORKSPACE_REOPEN_JOURNEY_UNAVAILABLE";
 			render();
 			return false;
 		}
-		close({ restore: false });
-		return true;
+		try {
+			const result = await promotedAlignmentJourney.activateCanonicalAlignment(requestedId);
+			if (result?.ok !== true) {
+				state.workspaceFeedback = result?.code ?? "WORKSPACE_REOPEN_NOT_ACKNOWLEDGED";
+				render();
+				return false;
+			}
+			if (String(result.objectId ?? "").trim() !== requestedId) {
+				state.workspaceFeedback = "WORKSPACE_REOPEN_IDENTITY_MISMATCH";
+				render();
+				return false;
+			}
+			state.workspaceFeedback = null;
+			close({ restore: false });
+			return true;
+		} catch (error) {
+			state.workspaceFeedback = String(error?.code ?? "WORKSPACE_REOPEN_FAILED");
+			render();
+			return false;
+		}
 	}
 
 	async function handleTerminalOutcome(detail) {

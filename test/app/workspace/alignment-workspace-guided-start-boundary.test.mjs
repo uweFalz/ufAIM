@@ -27,3 +27,14 @@ test("package has no Kernel parser persistence or Viewer coupling", async () => 
 	const source = (await Promise.all([read("app/gndImportWorkbench/gndImportWorkbenchController.js"), read("app/gndImportWorkbench/gndImportWorkbenchView.js"), read("app/styles/gndImportWorkbench.css")])).join("\n");
 	assert.doesNotMatch(source, /technetViewer|docs\/knowledgeKernel|src\/aim-core|IndexedDbSpotStateAdapter|runImportPipeline/);
 });
+
+test("workspace reopen uses only the canonical journey and exact acknowledgement", async () => {
+	const controller = await read("app/gndImportWorkbench/gndImportWorkbenchController.js");
+	const reopen = controller.slice(controller.indexOf("async function reopenObject"), controller.indexOf("async function handleTerminalOutcome"));
+	assert.match(reopen, /refreshWorkspaceState\(\)/);
+	assert.match(reopen, /promotedAlignmentJourney\?\.activateCanonicalAlignment/);
+	assert.match(reopen, /result\?\.ok !== true/);
+	assert.match(reopen, /result\.objectId/);
+	assert.doesNotMatch(reopen, /cockpit\?\.activateSpotObject/);
+	assert.ok(reopen.indexOf("close({ restore: false })") > reopen.indexOf("WORKSPACE_REOPEN_IDENTITY_MISMATCH"));
+});

@@ -37,3 +37,40 @@ test("workspace retry performs one authoritative refresh and exposes canonical o
 	assert.deepEqual(objects.map((entry)=>entry.id),["A1"]);
 	assert.equal(controller.getState().workspacePhase,"ready");
 });
+
+async function reopenFixture(journey) {
+	const { overlay } = installDocument();
+	const controller = makeGndImportWorkbenchController({
+		store: { actions: {} },
+		messaging: { async sendCmdAwait(name) { assert.equal(name, "Spot.GetState"); return { objects: [{ id: "A1", type: "alignment" }] }; } },
+		cockpit: { async activateSpotObject() { assert.fail("reopen must not bypass the canonical journey"); } },
+		promotedAlignmentJourney: journey,
+	});
+	controller.start();
+	await new Promise((resolve) => setImmediate(resolve));
+	return { controller, overlay };
+}
+
+test("returning workspace closes only after exact canonical journey acknowledgement", async () => {
+	const calls = [];
+	const { controller, overlay } = await reopenFixture({ async activateCanonicalAlignment(id) { calls.push(id); return { ok: true, objectId: id }; } });
+	assert.equal(await controller.reopenObject(" A1 "), true);
+	assert.deepEqual(calls, ["A1"]);
+	assert.equal(overlay.classList.contains("hidden"), true);
+	assert.equal(controller.getState().workspaceFeedback, null);
+});
+
+test("missing port, rejection, identity mismatch, and error remain fail-closed and visible", async () => {
+	const cases = [
+		{ journey: null, feedback: "WORKSPACE_REOPEN_JOURNEY_UNAVAILABLE" },
+		{ journey: { async activateCanonicalAlignment() { return { ok: false, code: "PROMOTED_ALIGNMENT_MAIN_UNAVAILABLE" }; } }, feedback: "PROMOTED_ALIGNMENT_MAIN_UNAVAILABLE" },
+		{ journey: { async activateCanonicalAlignment() { return { ok: true, objectId: "OTHER" }; } }, feedback: "WORKSPACE_REOPEN_IDENTITY_MISMATCH" },
+		{ journey: { async activateCanonicalAlignment() { throw Object.assign(new Error("boom"), { code: "CANONICAL_REFRESH_FAILED" }); } }, feedback: "CANONICAL_REFRESH_FAILED" },
+	];
+	for (const { journey, feedback } of cases) {
+		const { controller, overlay } = await reopenFixture(journey);
+		assert.equal(await controller.reopenObject("A1"), false);
+		assert.equal(overlay.classList.contains("hidden"), false);
+		assert.equal(controller.getState().workspaceFeedback, feedback);
+	}
+});
