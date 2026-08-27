@@ -170,7 +170,7 @@ test("hydrated persisted objects are reopened by exact canonical identity", asyn
 	const controller = makeGndImportWorkbenchController({
 		store: { actions: {} },
 		messaging: { async sendCmdAwait(name) { if (name === "Spot.GetState") return { state: { objects: { A1: { id: "A1", type: "alignment" } } } }; return { items: [], rejectedItems: [], records: [] }; } },
-		cockpit: { async activateSpotObject(id) { activated.push(id); return true; } },
+		promotedAlignmentJourney: { async activateCanonicalAlignment(id) { activated.push(id); return { ok: true, objectId: id }; } },
 	});
 	assert.deepEqual((await controller.refreshWorkspaceState()).map((entry) => entry.id), ["A1"]);
 	assert.equal(await controller.reopenObject("A1"), true);

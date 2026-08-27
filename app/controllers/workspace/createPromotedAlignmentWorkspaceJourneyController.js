@@ -30,6 +30,19 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		const alignmentData = object?.data?.alignmentData;
 		return alignmentData && Object.prototype.hasOwnProperty.call(alignmentData, "revision") ? alignmentData.revision : undefined;
 	};
+	const canonicalProfileState = (object) => {
+		const alignmentData = object?.data?.alignmentData;
+		if (!alignmentData || typeof alignmentData !== "object" || Array.isArray(alignmentData)) return null;
+		if (!Object.prototype.hasOwnProperty.call(alignmentData, "profileState")) {
+			return { presence: "absent", vertical: null, cant: null, chainageMappings: [] };
+		}
+		const profileState = alignmentData.profileState;
+		if (!profileState || typeof profileState !== "object" || Array.isArray(profileState) ||
+			!Object.prototype.hasOwnProperty.call(profileState, "vertical") ||
+			!Object.prototype.hasOwnProperty.call(profileState, "cant") ||
+			!Array.isArray(profileState.chainageMappings)) return null;
+		return { presence: "present", vertical: profileState.vertical, cant: profileState.cant, chainageMappings: profileState.chainageMappings };
+	};
 
 	async function rehydrateCanonicalAlignment(objectId, { refreshSurfaces = true } = {}) {
 		const requestedId = String(objectId ?? "").trim();
@@ -60,13 +73,13 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 				alignmentIntelligence?.setActiveContext?.({ objectId: requestedId, s: Number(store.getState()?.cursor?.s) });
 				if (refreshSurfaces) await cockpit.refreshAll?.();
 				hydratedObjectId = requestedId;
-				return { ok: true, objectId: requestedId, evidence: null, revision: canonicalRevision(promotedObject) };
+				return { ok: true, objectId: requestedId, evidence: null, revision: canonicalRevision(promotedObject), profileState: canonicalProfileState(promotedObject) };
 			}
 			alignmentIntelligence?.setPromotedEvidence?.(evidence);
 			alignmentIntelligence?.setActiveContext?.({ objectId: requestedId, s: Number(store.getState()?.cursor?.s) });
 			if (refreshSurfaces) await cockpit.refreshAll?.();
 			hydratedObjectId = requestedId;
-			return { ok: true, objectId: requestedId, evidence, revision: canonicalRevision(promotedObject) };
+			return { ok: true, objectId: requestedId, evidence, revision: canonicalRevision(promotedObject), profileState: canonicalProfileState(promotedObject) };
 		})();
 		hydrationPromise = run;
 		try {
@@ -97,6 +110,7 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		const hydrated = await rehydrateCanonicalAlignment(requestedId);
 		if (hydrated.ok !== true) return hydrated;
 		if (hydrated.revision === undefined || hydrated.revision === null) return { ok: false, code: "PROMOTED_ALIGNMENT_CANONICAL_REVISION_UNAVAILABLE" };
+		if (hydrated.profileState === null) return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_STATE_READBACK_MISMATCH" };
 		if (typeof profileSource?.refresh !== "function") return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_REFRESH_UNAVAILABLE" };
 		if (typeof viewController?.refreshHorizontalProjection !== "function") return { ok: false, code: "PROMOTED_ALIGNMENT_HORIZONTAL_REFRESH_UNAVAILABLE" };
 		let profileProjection;
@@ -112,6 +126,12 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		const hasLanes = ["vertical", "cant", "chainage"].every((key) => Object.prototype.hasOwnProperty.call(profileProjection ?? {}, key));
 		if (profileProjection?.status !== "projected" || profileProjection.alignmentId !== requestedId || !sameValue(profileProjection.revision, hydrated.revision) || profileProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(profileProjection.cursor.s, s) || !hasLanes) {
 			return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_READBACK_MISMATCH" };
+		}
+		if (profileProjection.state?.presence !== hydrated.profileState.presence ||
+			!sameValue(profileProjection.state?.vertical, hydrated.profileState.vertical) ||
+			!sameValue(profileProjection.state?.cant, hydrated.profileState.cant) ||
+			!sameValue(profileProjection.state?.chainageMappings, hydrated.profileState.chainageMappings)) {
+			return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_STATE_READBACK_MISMATCH" };
 		}
 		if (horizontalProjection?.status !== "rendered" || horizontalProjection.objectId !== requestedId || !sameValue(horizontalProjection.revision, hydrated.revision) || horizontalProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(horizontalProjection.cursor.s, s) || horizontalProjection.mode !== "active" || !horizontalProjection.projectionSignature) {
 			return { ok: false, code: "PROMOTED_ALIGNMENT_HORIZONTAL_READBACK_MISMATCH" };

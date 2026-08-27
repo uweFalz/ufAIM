@@ -3,7 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 import { createPromotedAlignmentWorkspaceJourneyController } from "../../../app/controllers/workspace/createPromotedAlignmentWorkspaceJourneyController.js";
 
-const projection = (overrides = {}) => ({ status: "projected", alignmentId: "A1", revision: { id: "R2" }, cursor: { parameterKind: "intrinsic-s", s: 40 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" }, ...overrides });
+const projection = (overrides = {}) => ({ status: "projected", alignmentId: "A1", revision: { id: "R2" }, cursor: { parameterKind: "intrinsic-s", s: 40 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" }, state: { presence: "absent", vertical: null, cant: null, chainageMappings: [] }, ...overrides });
 const horizontal = (overrides = {}) => ({ status: "rendered", objectId: "A1", revision: { id: "R2" }, cursor: { parameterKind: "intrinsic-s", s: 40 }, projectionSignature: "P-R2", mode: "active", selectedElementId: null, ...overrides });
 
 function fixture({ profileSource, horizontalSource = { async refreshHorizontalProjection() { return horizontal(); } }, revision = { id: "R2" } } = {}) {
@@ -73,6 +73,16 @@ test("context switch, refresh failure, and every malformed readback fail closed"
 	]) {
 		const result = await fixture({ profileSource: { async refresh() { return malformed; } } }).controller.activateCanonicalAlignment("A1");
 		assert.equal(result.code, "PROMOTED_ALIGNMENT_PROFILE_READBACK_MISMATCH");
+	}
+	for (const state of [
+		undefined,
+		{ presence: "present", vertical: null, cant: null, chainageMappings: [] },
+		{ presence: "absent", vertical: { id: "V1" }, cant: null, chainageMappings: [] },
+		{ presence: "absent", vertical: null, cant: { id: "C1" }, chainageMappings: [] },
+		{ presence: "absent", vertical: null, cant: null, chainageMappings: [{ id: "CH1" }] },
+	]) {
+		const result = await fixture({ profileSource: { async refresh() { return projection({ state }); } } }).controller.activateCanonicalAlignment("A1");
+		assert.equal(result.code, "PROMOTED_ALIGNMENT_PROFILE_STATE_READBACK_MISMATCH");
 	}
 	for (const malformed of [horizontal({ status: "unavailable" }), horizontal({ objectId: "B" }), horizontal({ revision: { id: "R1" } }), horizontal({ cursor: { parameterKind: "chainage", s: 40 } }), horizontal({ cursor: { parameterKind: "intrinsic-s", s: 41 } }), horizontal({ mode: "preview" }), horizontal({ projectionSignature: null })]) {
 		const result = await fixture({ profileSource: { async refresh() { return projection(); } }, horizontalSource: { async refreshHorizontalProjection() { return malformed; } } }).controller.activateCanonicalAlignment("A1");

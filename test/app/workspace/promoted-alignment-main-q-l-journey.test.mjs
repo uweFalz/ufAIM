@@ -5,7 +5,7 @@ import { createPromotedAlignmentWorkspaceJourneyController } from "../../../app/
 test("canonical promoted Alignment becomes the one Main workspace context", async () => {
 	const calls = [];
 	const state = { workspace_selection: { primaryId: null }, cursor: { s: 0 } };
-	const profileProjection = { status: "projected", alignmentId: "A1", revision: 2, cursor: { parameterKind: "intrinsic-s", s: 0 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" } };
+	const profileProjection = { status: "projected", alignmentId: "A1", revision: 2, cursor: { parameterKind: "intrinsic-s", s: 0 }, vertical: { status: "absent" }, cant: { status: "absent" }, chainage: { status: "absent" }, state: { presence: "absent", vertical: null, cant: null, chainageMappings: [] } };
 	const controller = createPromotedAlignmentWorkspaceJourneyController({
 		cockpit: { async activateSpotObject(id) { calls.push(["activate", id]); state.workspace_selection.primaryId = id; return true; }, async refreshSpotState() { return { objects: [{ id: "A1", data: { alignmentData: { id: "A1", revision: 2 } } }] }; }, async refreshAll() {} },
 		store: { getState: () => state },

@@ -9,8 +9,11 @@ test("promotion hands canonical identity to App orchestration without domain inf
 	assert.match(workbench, /acceptImportItem\(itemId, \{ show: false \}\)/);
 	assert.match(workbench, /acceptImportItem\(itemId, \{ show: true \}\)/);
 	assert.match(workbench, /promotedAlignmentJourney\.activateCanonicalAlignment\(String\(promoted\.id\)\)/);
-	assert.doesNotMatch(journey, /aim-core|parsers|repository|messaging|gradient|cant|chainage|station/i);
-	assert.doesNotMatch(journey, /Math\.|parseFloat|toFixed/);
+	assert.doesNotMatch(journey, /from\s+["'][^"']*(?:aim-core|parsers|repository|messaging)[^"']*["']/i);
+	assert.doesNotMatch(journey, /(?:saveProfileState|saveById|dispatch\(|store\.set|store\.actions|Math\.|parseFloat|toFixed)/);
+	assert.match(journey, /profileProjection\.state\?\.vertical/);
+	assert.match(journey, /profileProjection\.state\?\.cant/);
+	assert.match(journey, /profileProjection\.state\?\.chainageMappings/);
 });
 
 test("journey requires exact selected identity and finite existing cursor", () => {
