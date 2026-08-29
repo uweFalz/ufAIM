@@ -1110,7 +1110,6 @@ html[dir="rtl"] #props {
 	display: none;
 }
 
-.uf-shell[data-workspace-empty="true"] #btnTrans,
 .uf-shell[data-workspace-empty="true"] #btnAlignmentEditor,
 .uf-shell[data-workspace-empty="true"] #btnCockpit,
 .uf-shell[data-workspace-empty="true"] .cursor,

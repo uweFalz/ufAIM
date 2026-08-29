@@ -37,6 +37,7 @@ export function buildWindowShell() {
 					<button id="btnImport" class="btn" data-i18n="btn_import"></button>
 					<button id="btnGndImportWorkbench" class="btn" data-i18n="gnd_workbench.entry"></button>
 					<button id="btnSpot" class="btn" data-i18n="btn_spot"></button>
+					<button id="btnTrans" class="btn" data-i18n="btn_transition"></button>
 					<button id="btnCommandPalette" class="btn btn--ghost" type="button" aria-haspopup="dialog" aria-expanded="false">Befehle</button>
 				</div>
 
@@ -53,7 +54,6 @@ export function buildWindowShell() {
 				</div>
 
 				<div class="uf-toolbarGroup uf-toolbarGroup--context">
-					<button id="btnTrans" class="btn" data-i18n="btn_transition"></button>
 					<button id="btnAlignmentEditor" class="btn" data-i18n="btn_alignment_editor"></button>
 					<button
 						id="btnCockpit"
