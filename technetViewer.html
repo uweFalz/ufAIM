@@ -38451,10 +38451,25 @@ xlsx/xlsx.mjs:
 				return { code, kind: family === "S" ? "soldner" : "other-gk", label: `${LSYS_FAMILIES[family]} · Streifen ${strip} · GIS-Lage geschätzt`, geographic: false, strip };
 			}
 
-			function coordinateStripForEntry(entry) {
+			function ownCoordinateStrip(entry) {
 				const element = entry?.item?.payload?.coordGeom?.elements?.[0];
 				const easting = element?.start?.easting ?? element?.end?.easting;
 				return inferredGkStrip(easting) ?? classifyLsys(systemsForEntry(entry).lsys).strip ?? null;
+			}
+
+			// A cant (EU) object from a combined VermEsn TRA file has no coordinate
+			// geometry of its own -- only station/value pairs -- but it shares exact
+			// point identity (PAD, matching GND-Edit's PL concept) with the alignment
+			// (EL) parsed from the same TRA. Borrowing that sibling's strip is not a
+			// guess: it is the same physical reference, just not carried on this object.
+			function siblingAlignmentStrip(entry) {
+				if (entry?.item?.kind === "alignment") return null;
+				const alignment = relatedDiagramEntries(entry).entries.find((candidate) => candidate.item.kind === "alignment");
+				return alignment ? ownCoordinateStrip(alignment) : null;
+			}
+
+			function coordinateStripForEntry(entry) {
+				return ownCoordinateStrip(entry) ?? siblingAlignmentStrip(entry) ?? null;
 			}
 
 			function userLsysForEntry(entry, choice) {
