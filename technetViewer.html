@@ -39250,15 +39250,35 @@ xlsx/xlsx.mjs:
 				const profile = entries.find((candidate) => candidate.item.kind === "profile");
 				const cant = entries.find((candidate) => candidate.item.kind === "cant");
 				const unresolved = anchor?.item?.payload?.extras?.unresolvedAttachments ?? {};
+				// loadedHasFamily() only sees whether the file has an EH/EU table at
+				// all -- not whether any row of it actually covers this Kilometerlinie
+				// segment's own station range. familyExistsForSameRoute() checks the
+				// stronger, segment-relevant claim: is there an EH/EU object for the
+				// SAME Strecke anywhere in the file? If so and it still wasn't picked
+				// up, the segment genuinely has no coverage (a data gap, not an
+				// unresolved link) and gets its own, less misleading message.
+				const familyExistsForSameRoute = (kind) => {
+					const route = gndSequenceForEntry(anchor)?.strecke;
+					if (!route) return false;
+					return (anchor.loaded?.objects ?? []).some((candidate) =>
+						candidate.item.kind === kind && gndSequenceForEntry(candidate)?.strecke === route
+					);
+				};
+				const outOfRangeNames = [
+					!profile && familyExistsForSameRoute("profile") && "EH",
+					!cant && familyExistsForSameRoute("cant") && "EU",
+				].filter(Boolean);
 				const unresolvedNames = [
-					!profile && (unresolved.profile || loadedHasFamily(anchor.loaded, "EH")) && "EH",
-					!cant && (unresolved.cant || loadedHasFamily(anchor.loaded, "EU")) && "EU",
+					!profile && !outOfRangeNames.includes("EH") && (unresolved.profile || loadedHasFamily(anchor.loaded, "EH")) && "EH",
+					!cant && !outOfRangeNames.includes("EU") && (unresolved.cant || loadedHasFamily(anchor.loaded, "EU")) && "EU",
 				].filter(Boolean);
 				diagramTitle.textContent = objectDisplayName(anchor);
 				diagramCode.textContent = "7L";
 				diagramCode.title = "7-Linien-Modell (Krümmung, Höhe, Überhöhung) · entspricht dem IVMG-Trassenplan";
 				diagramNote.textContent = missingKilometerLine
 					? "Kilometerlinie fehlt · zweigleisige Streckenzuordnung unvollständig"
+					: outOfRangeNames.length
+					? `${outOfRangeNames.join(" / ")} für diesen Streckenabschnitt nicht vorhanden · Datei deckt nur andere Abschnitte ab`
 					: unresolvedNames.length
 					? `${unresolvedNames.join(" / ")} vorhanden, aber noch nicht sicher dekodiert`
 					: hasUnknown
