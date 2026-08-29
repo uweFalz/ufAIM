@@ -140,7 +140,7 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 		root?.querySelector("button, summary, [tabindex]")?.focus();
 	}
 
-	function close({ restore = true } = {}) {
+	function close({ restore = true, preserveImportStatus = false } = {}) {
 		stopToolResponsive?.(); stopToolResponsive = null;
 		stopJobObservation();
 		removeDragFrame();
@@ -152,9 +152,11 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 		if (restore) restoreSurfaceState(prior);
 		prior = null;
 		state.dropState = null;
-		state.lifecycle = null;
-		state.jobSnapshot = null;
-		state.fileOutcomes = [];
+		if (!preserveImportStatus) {
+			state.lifecycle = null;
+			state.jobSnapshot = null;
+			state.fileOutcomes = [];
+		}
 		document.getElementById("geoStage")?.focus?.();
 	}
 
@@ -325,7 +327,8 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 				evidencePublished: false,
 				failed: detail?.state === "failed" || detail?.state === "rejected",
 			}];
-		await open();
+		await refresh();
+		close({ preserveImportStatus: true });
 		// Terminal observers use this only as an acknowledgement. A shallow
 		// snapshot avoids cloning the potentially large Workbench model again.
 		return { ...state };

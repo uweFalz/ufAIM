@@ -96,14 +96,23 @@ test("large Workbench refresh is single-flight and renders compact 422-item stat
 	assert.match(textOf(root), /Alignment 422/);
 });
 
-test("terminal drop outcome opens the workbench and retains exact unsupported facts without fabrication", async () => {
-	installDocument();
+test("terminal drop outcome dismisses the status overlay and retains exact facts for explicit reopen", async () => {
+	const { overlay } = installDocument();
 	const messaging = { async sendCmdAwait(name) { return name === "Import.GetState" ? { items: [], rejectedItems: [] } : { records: [] }; } };
 	const controller = makeGndImportWorkbenchController({ store: { actions: {} }, messaging, cockpit: {} });
+	controller.start();
+	await Promise.resolve();
+	await Promise.resolve();
+	controller.handleImportActivity(Object.freeze({ state: "processing", fileCount: 1, fileNames: ["unsupported.xyz"] }));
+	assert.equal(overlay.classList.contains("hidden"), false);
 	const outcome = Object.freeze({ fileName: "unsupported.xyz", parserId: null, status: "unsupported", reason: "UNSUPPORTED_FILE_TYPE", itemCount: 0, rejectedCount: 0, evidencePublished: false, failed: false });
 	const state = await controller.handleTerminalOutcome(Object.freeze({ state: "completed", fileCount: 1, outcome: { fileOutcomes: Object.freeze([outcome]) } }));
+	assert.equal(overlay.classList.contains("hidden"), true);
 	assert.deepEqual(state.fileOutcomes, [outcome]);
 	assert.deepEqual(state.items, []); assert.deepEqual(state.rejectedItems, []); assert.deepEqual(state.records, []);
+	await controller.open();
+	assert.equal(overlay.classList.contains("hidden"), false);
+	assert.deepEqual(controller.getState().fileOutcomes, [outcome]);
 });
 
 test("explicit promotion uses show true and succeeds only after canonical ImportSession and SPOT verification", async () => {
