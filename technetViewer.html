@@ -39921,9 +39921,9 @@ xlsx/xlsx.mjs:
 							filter: ["in", ["get", "pointQuality"], ["literal", ["limited", "unknown"]]],
 							paint: {
 								"line-color": ["case", ["==", ["get", "pointQuality"], "limited"], "#ff453a", "#8e8e93"],
-								"line-width": ["case", ["==", ["get", "active"], 1], 7, 5.5],
-								"line-opacity": 0.58,
-								"line-blur": 2,
+								"line-width": ["case", ["==", ["get", "active"], 1], 5, 3],
+								"line-opacity": 0.55,
+								"line-blur": 0.6,
 							},
 						});
 						maplibreMap.addLayer({
@@ -39942,7 +39942,7 @@ xlsx/xlsx.mjs:
 							source: "technet",
 							filter: ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], 0]],
 							paint: {
-								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#0084ff"],
+								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#0047e0"],
 								"line-width": ["case", ["==", ["get", "active"], 1], 4.5, 2.4],
 								"line-opacity": 0.95,
 							},
@@ -39953,7 +39953,7 @@ xlsx/xlsx.mjs:
 							source: "technet",
 							filter: ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], 1]],
 							paint: {
-								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#0084ff"],
+								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#0047e0"],
 								"line-width": ["case", ["==", ["get", "active"], 1], 4.5, 2.4],
 								"line-opacity": 0.95,
 								"line-dasharray": [4, 2.5],
@@ -39965,9 +39965,9 @@ xlsx/xlsx.mjs:
 							source: "technet",
 							filter: ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], 0]],
 							paint: {
-								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#b07a00"],
+								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#ff9500"],
 								"line-width": ["case", ["==", ["get", "active"], 1], 4.2, 2.2],
-								"line-opacity": ["case", ["==", ["get", "active"], 1], 0.9, 0.58],
+								"line-opacity": ["case", ["==", ["get", "active"], 1], 0.9, 0.72],
 								"line-dasharray": [2, 3],
 							},
 						});
@@ -39977,9 +39977,9 @@ xlsx/xlsx.mjs:
 							source: "technet",
 							filter: ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], 1]],
 							paint: {
-								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#b07a00"],
+								"line-color": ["case", ["==", ["get", "active"], 1], "#ff2d55", "#ff9500"],
 								"line-width": ["case", ["==", ["get", "active"], 1], 4.2, 2.2],
-								"line-opacity": ["case", ["==", ["get", "active"], 1], 0.9, 0.58],
+								"line-opacity": ["case", ["==", ["get", "active"], 1], 0.9, 0.72],
 								"line-dasharray": [5, 2.5],
 							},
 						});
