@@ -69,6 +69,13 @@ function wrapAngle(angle) {
  *        lateralDerivative(parameters, station), as built by
  *        createAlignmentPoseJacobian. When supplied the finite-difference path
  *        is not used at all.
+ * @param {Array<{id: string, residual: (x: number[]) => number, gradient: number[]}>}
+ *        [input.extraEqualities]
+ *        additional linear equalities on the free variables, used by the
+ *        lexicographic driver to hold a budget from an earlier tier
+ * @param {number[]} [input.startAt]
+ *        starting point in free-variable order; defaults to the declared one.
+ *        Used to warm start a later phase from an earlier phase's result.
  * @param {number} [input.maxIterations]
  */
 export function solveAlignmentProblem({
@@ -76,6 +83,8 @@ export function solveAlignmentProblem({
 	buildAlignment,
 	analyticJacobian = null,
 	objective = "points",
+	extraEqualities = [],
+	startAt = null,
 	maxIterations = 60,
 	relaxationWeight = 1e6,
 } = {}) {
@@ -89,7 +98,13 @@ export function solveAlignmentProblem({
 
 	const { codec, constraints, residuals } = problem;
 	const scales = [...codec.freeScales];
-	const x0 = [...codec.encode()];
+	const declared = [...codec.encode()];
+	if (startAt && startAt.length !== declared.length) {
+		error("START_LENGTH", "startAt must have one entry per free variable", {
+			expected: declared.length, received: startAt.length,
+		});
+	}
+	const x0 = startAt ? [...startAt] : declared;
 
 	const hardPoints = residuals.hardPoints;
 	const softPoints = residuals.softPoints;
@@ -142,6 +157,11 @@ export function solveAlignmentProblem({
 		return values;
 	}
 
+	/** Residuals of the equalities carried over from an earlier tier. */
+	function extraResiduals(x) {
+		return extraEqualities.map((constraint) => constraint.residual(x));
+	}
+
 	/** Soft point residuals, each in units of its own tolerance. */
 	function softResiduals(built) {
 		return softPoints.map((point) => {
@@ -167,7 +187,7 @@ export function solveAlignmentProblem({
 		const geometry = analyticJacobian(overlay);
 		jacobianEvaluations += 1;
 
-		const h = equalityResiduals(built);
+		const h = [...equalityResiduals(built), ...extraResiduals(x)];
 
 		// end pose: three rows straight from the chain rule
 		const poseRows = geometry.endPoseJacobian(parameterSpecs);
@@ -183,6 +203,7 @@ export function solveAlignmentProblem({
 				? geometry.lateralDerivative(parameterSpecs, projected.s)
 				: parameterSpecs.map(() => 0));
 		}
+		for (const constraint of extraEqualities) Jh.push([...constraint.gradient]);
 
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
@@ -206,7 +227,7 @@ export function solveAlignmentProblem({
 		if (typeof analyticJacobian === "function") return evaluateAnalytically(x);
 
 		const built = realise(x);
-		const h = equalityResiduals(built);
+		const h = [...equalityResiduals(built), ...extraResiduals(x)];
 
 		const jacobian = finiteDiffJacobian({
 			x,
@@ -214,9 +235,8 @@ export function solveAlignmentProblem({
 			relative: 1e-4,
 			residual: (probe) => {
 				const probed = realise(probe);
-				return objective === "points"
-					? [...equalityResiduals(probed), ...softResiduals(probed)]
-					: equalityResiduals(probed);
+				const base = [...equalityResiduals(probed), ...extraResiduals(probe)];
+				return objective === "points" ? [...base, ...softResiduals(probed)] : base;
 			},
 		});
 		if (!jacobian.ok) {
@@ -258,6 +278,7 @@ export function solveAlignmentProblem({
 
 	const built = run.x ? realise(run.x) : null;
 	const finalEquality = built ? equalityResiduals(built) : [];
+	const finalExtra = run.x ? extraResiduals(run.x) : [];
 	const finalSoft = built ? softResiduals(built) : [];
 
 	return Object.freeze({
@@ -288,6 +309,11 @@ export function solveAlignmentProblem({
 				: 0,
 			// slack of the relaxed QP in the last recorded iteration: how far the
 			// linearised constraints had to be given up to stay solvable
+			extraEqualityResiduals: Object.freeze(extraEqualities.map((constraint, i) => Object.freeze({
+				id: constraint.id,
+				residual: finalExtra[i] ?? null,
+			}))),
+			accumulatedLength: run.x ? accumulatedLength(run.x) : null,
 			finalRelaxation: run.history?.at(-1)?.delta ?? null,
 			history: Object.freeze(run.history ?? []),
 			reason: run.reason ?? null,
