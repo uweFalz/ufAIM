@@ -291,6 +291,78 @@
 			#railwayOpacity {
 				width: 6rem;
 			}
+			#mapFilterToggle[aria-pressed="true"] {
+				background: color-mix(in srgb, Highlight 16%, Canvas);
+				border-color: Highlight;
+			}
+			#mapFilterPanel {
+				position: absolute;
+				top: 100%;
+				right: 0.65rem;
+				z-index: 4;
+				width: 15rem;
+				max-height: 70vh;
+				overflow-y: auto;
+				padding: 0.6rem 0.75rem;
+				border: 1px solid GrayText;
+				border-radius: 0.5rem;
+				background: var(--surface);
+				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+				font-family: system-ui, sans-serif;
+				font-size: 0.8rem;
+			}
+			#mapFilterPanel fieldset {
+				border: 0;
+				padding: 0;
+				margin: 0 0 0.65rem;
+			}
+			#mapFilterPanel fieldset:last-child {
+				margin-bottom: 0;
+			}
+			#mapFilterPanel legend {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+				padding: 0;
+				margin-bottom: 0.3rem;
+				font-weight: 650;
+				font-size: 0.72rem;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				color: var(--secondary);
+			}
+			#mapFilterPanel legend button {
+				margin-left: auto;
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.1rem 0.4rem;
+				font: inherit;
+				font-size: 0.68rem;
+				text-transform: none;
+				letter-spacing: normal;
+				cursor: pointer;
+			}
+			#mapFilterPanel legend button + button {
+				margin-left: 0.25rem;
+			}
+			#mapFilterPanel label {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+				padding: 0.15rem 0;
+				cursor: pointer;
+			}
+			.map-filter-options {
+				max-height: 12rem;
+				overflow-y: auto;
+			}
+			.map-filter-options label span {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
 			#multi2d {
 				grid-column: 1;
 				grid-row: 2;
@@ -1087,6 +1159,8 @@
 							<button id="mapZoomOut" type="button">−</button>
 							<button id="mapZoomIn" type="button">+</button>
 							<button id="reopenText" class="hidden" type="button">Text</button>
+							<button id="mapFilterToggle" type="button" aria-pressed="false" aria-haspopup="true">Filter</button>
+						<div id="mapFilterPanel" class="hidden" aria-label="Kartenfilter"></div>
 						</div>
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
 						<div id="maplibreMap" class="hidden" aria-label="OpenRailwayMap mit geladenen Trassen"></div>
@@ -38342,6 +38416,8 @@ xlsx/xlsx.mjs:
 			const railwayOpacity = document.querySelector("#railwayOpacity");
 			const railwayOpacityValue = document.querySelector("#railwayOpacityValue");
 			const maplibreMapElement = document.querySelector("#maplibreMap");
+			const mapFilterToggle = document.querySelector("#mapFilterToggle");
+			const mapFilterPanel = document.querySelector("#mapFilterPanel");
 			const diagramPanel = document.querySelector("#diagramPanel");
 			const diagramResizeHandle = document.querySelector("#diagramResizeHandle");
 			const diagram = document.querySelector("#diagram");
@@ -38365,6 +38441,57 @@ xlsx/xlsx.mjs:
 			let railwayMapActive = false;
 			let railwayMapPreference = "auto";
 			let railwayLayerOpacity = 0.15;
+			// Each entry describes one filter dimension end-to-end: its checkbox options
+			// (static, or `dynamic` to derive them from loaded data via valueForEntry),
+			// values that always pass regardless of selection (alwaysInclude), and
+			// values that instead gate MapLibre layer visibility (layerVisibility) rather
+			// than the shared geometry filter expression. Adding a new criterion later is
+			// one array entry (+ a matching property in geographicFeatureCollection()).
+			function routeForEntry(entry) {
+				return String(geoFrameInfo(entry)?.track ?? gndSequenceForEntry(entry)?.strecke ?? "");
+			}
+			const MAP_FILTER_DIMENSIONS = [
+				{
+					key: "side",
+					label: "Seite",
+					property: "side",
+					alwaysInclude: ["kilometer", "unknown"],
+					options: [
+						{ value: "right", label: "Rechts" },
+						{ value: "left", label: "Links" },
+					],
+				},
+				{
+					key: "confidence",
+					label: "Herkunft",
+					property: "confidence",
+					layerVisibility: {
+						confirmed: ["technet-lines", "technet-kilometer-lines"],
+						inferred: ["technet-lines-inferred", "technet-kilometer-lines-inferred"],
+					},
+					options: [
+						{ value: "confirmed", label: "DB_REF (bestätigt)" },
+						{ value: "inferred", label: "Vermutet" },
+					],
+				},
+				{
+					key: "route",
+					label: "Strecke",
+					property: "route",
+					dynamic: true,
+					// An entry with no resolvable route/Strecke gets route: "" and never appears
+					// as a checkbox (knownValuesForDimension skips falsy values) -- alwaysInclude
+					// keeps it visible on the map regardless, instead of silently unfilterable.
+					alwaysInclude: [""],
+					valueForEntry: routeForEntry,
+					formatLabel: (value) => (isValidRouteNumber(value) ? `Strecke ${value}` : value),
+				},
+			];
+			const mapFilterState = new Map(MAP_FILTER_DIMENSIONS.map((dimension) => [
+				dimension.key,
+				new Set(dimension.dynamic ? [] : dimension.options.map((option) => option.value)),
+			]));
+			const mapFilterSeenValues = new Map(MAP_FILTER_DIMENSIONS.map((dimension) => [dimension.key, new Set()]));
 			let geoEntryById = new Map();
 			let mapDrag = null;
 			let draggedOrganizationEntry = null;
@@ -39780,6 +39907,7 @@ xlsx/xlsx.mjs:
 						if (coordinates.length < 2) continue;
 						const id = String(featureIndex++);
 						geoEntryById.set(id, entry);
+						const side = sevenLineSide(entry);
 						features.push({
 							type: "Feature",
 							properties: {
@@ -39787,7 +39915,9 @@ xlsx/xlsx.mjs:
 								active: entry === selectedEntry ? 1 : 0,
 								confidence,
 								pointQuality: pointQualityForEntry(entry),
-								kilometerLine: sevenLineSide(entry) === "kilometer" ? 1 : 0,
+								kilometerLine: side === "kilometer" ? 1 : 0,
+								side,
+								route: routeForEntry(entry),
 							},
 							geometry: { type: "LineString", coordinates },
 						});
@@ -39820,6 +39950,127 @@ xlsx/xlsx.mjs:
 			function renderBasemap() {
 				const source = maplibreMap?.getSource("technet");
 				if (source) source.setData(geographicFeatureCollection());
+			}
+
+			function knownValuesForDimension(dimension) {
+				const values = new Set();
+				for (const entry of allViewerEntries()) {
+					if (entry.item.kind !== "alignment") continue;
+					const value = dimension.valueForEntry(entry);
+					if (value) values.add(value);
+				}
+				return [...values].sort((a, b) => a.localeCompare(b, "de", { numeric: true }));
+			}
+
+			function dimensionLabelFor(dimension, value) {
+				return dimension.dynamic ? dimension.formatLabel(value) : dimension.options.find((option) => option.value === value)?.label ?? value;
+			}
+
+			// Newly-appearing values in a dynamic dimension default to shown (added to both
+			// sets together); a value the user has explicitly unchecked stays unchecked across
+			// a reload/re-sync as long as it remains known. If a value drops out of the data
+			// entirely it's also forgotten from mapFilterSeenValues, so it defaults to shown
+			// again if it later reappears -- there's no way to distinguish "user unchecked it"
+			// from "it transiently vanished" once it's gone, and defaulting to visible avoids
+			// silently hiding data the user never chose to hide.
+			// Returns the known-values list per dynamic dimension so callers (renderMapFilterPanel)
+			// don't have to recompute it.
+			function syncMapFilterState() {
+				const knownByDimension = new Map();
+				for (const dimension of MAP_FILTER_DIMENSIONS) {
+					if (!dimension.dynamic) continue;
+					const known = knownValuesForDimension(dimension);
+					knownByDimension.set(dimension.key, known);
+					const knownSet = new Set(known);
+					const selected = mapFilterState.get(dimension.key);
+					const seen = mapFilterSeenValues.get(dimension.key);
+					for (const value of [...selected]) if (!knownSet.has(value)) selected.delete(value);
+					for (const value of [...seen]) if (!knownSet.has(value)) seen.delete(value);
+					for (const value of known) {
+						if (seen.has(value)) continue;
+						seen.add(value);
+						selected.add(value);
+					}
+				}
+				return knownByDimension;
+			}
+
+			function renderMapFilterPanel() {
+				const knownByDimension = syncMapFilterState();
+				mapFilterPanel.replaceChildren();
+				for (const dimension of MAP_FILTER_DIMENSIONS) {
+					const values = dimension.dynamic ? knownByDimension.get(dimension.key) : dimension.options.map((option) => option.value);
+					const selected = mapFilterState.get(dimension.key);
+					const fieldset = document.createElement("fieldset");
+					const legend = document.createElement("legend");
+					const legendLabel = document.createElement("span");
+					legendLabel.textContent = dimension.label;
+					const allButton = document.createElement("button");
+					allButton.type = "button";
+					allButton.textContent = "Alle";
+					allButton.addEventListener("click", () => {
+						for (const value of values) selected.add(value);
+						renderMapFilterPanel();
+						applyMapFilters();
+					});
+					const noneButton = document.createElement("button");
+					noneButton.type = "button";
+					noneButton.textContent = "Keine";
+					noneButton.addEventListener("click", () => {
+						selected.clear();
+						renderMapFilterPanel();
+						applyMapFilters();
+					});
+					legend.append(legendLabel, allButton, noneButton);
+					fieldset.append(legend);
+					const optionsContainer = document.createElement("div");
+					optionsContainer.className = "map-filter-options";
+					for (const value of values) {
+						const label = document.createElement("label");
+						const checkbox = document.createElement("input");
+						checkbox.type = "checkbox";
+						checkbox.checked = selected.has(value);
+						checkbox.addEventListener("change", () => {
+							if (checkbox.checked) selected.add(value);
+							else selected.delete(value);
+							applyMapFilters();
+						});
+						const span = document.createElement("span");
+						span.textContent = dimensionLabelFor(dimension, value);
+						label.append(checkbox, span);
+						optionsContainer.append(label);
+					}
+					fieldset.append(optionsContainer);
+					mapFilterPanel.append(fieldset);
+				}
+			}
+
+			function dimensionCondition(dimension) {
+				const selected = [...(mapFilterState.get(dimension.key) ?? new Set())];
+				const always = dimension.alwaysInclude ?? [];
+				return ["in", ["get", dimension.property], ["literal", [...new Set([...selected, ...always])]]];
+			}
+
+			function applyMapFilters() {
+				if (!maplibreMap || !maplibreMap.getLayer("technet-lines")) return;
+				const geometryDimensions = MAP_FILTER_DIMENSIONS.filter((dimension) => !dimension.layerVisibility);
+				const commonCond = ["all", ...geometryDimensions.map(dimensionCondition)];
+				maplibreMap.setFilter("technet-lines", ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], 0], commonCond]);
+				maplibreMap.setFilter("technet-lines-inferred", ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], 0], commonCond]);
+				maplibreMap.setFilter("technet-kilometer-lines", ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], 1], commonCond]);
+				maplibreMap.setFilter("technet-kilometer-lines-inferred", ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], 1], commonCond]);
+				for (const dimension of MAP_FILTER_DIMENSIONS) {
+					if (!dimension.layerVisibility) continue;
+					const selected = mapFilterState.get(dimension.key) ?? new Set();
+					for (const [value, layerIds] of Object.entries(dimension.layerVisibility)) {
+						const visible = selected.has(value);
+						for (const layerId of layerIds) maplibreMap.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
+					}
+				}
+				const layerVisibilityDimensions = MAP_FILTER_DIMENSIONS.filter((dimension) => dimension.layerVisibility);
+				const visibilityCond = ["all", ...layerVisibilityDimensions.map(dimensionCondition)];
+				maplibreMap.setFilter("technet-lines-halo", ["all", visibilityCond, commonCond]);
+				maplibreMap.setFilter("technet-quality-halo", ["all", ["in", ["get", "pointQuality"], ["literal", ["limited", "unknown"]]], visibilityCond, commonCond]);
 			}
 
 			function ensureMapLibre() {
@@ -39999,6 +40250,7 @@ xlsx/xlsx.mjs:
 					mapEmpty.classList.add("hidden");
 					maplibreMap.resize();
 					renderBasemap();
+					applyMapFilters();
 					fitBasemap();
 					baseMapLoad.disabled = false;
 					baseMapLoad.setAttribute("aria-pressed", "true");
@@ -40919,6 +41171,9 @@ xlsx/xlsx.mjs:
 				}
 				appendPlanningTree();
 				renderSevenLineOutbox(previousSelection);
+				syncMapFilterState();
+				applyMapFilters();
+				if (!mapFilterPanel.classList.contains("hidden")) renderMapFilterPanel();
 				const next = previousSelection && allEntries.includes(previousSelection) ? previousSelection : firstPreferred ?? allEntries[0];
 				if (next?.button) selectObject(next, next.button);
 			}
@@ -41713,6 +41968,12 @@ xlsx/xlsx.mjs:
 				if (maplibreMap?.getLayer("underlay-dimmer")) {
 					maplibreMap.setPaintProperty("underlay-dimmer", "fill-opacity", (1 - railwayLayerOpacity) * 0.82);
 				}
+			});
+			mapFilterToggle.addEventListener("click", () => {
+				const willOpen = mapFilterPanel.classList.contains("hidden");
+				mapFilterPanel.classList.toggle("hidden", !willOpen);
+				mapFilterToggle.setAttribute("aria-pressed", String(willOpen));
+				if (willOpen) renderMapFilterPanel();
 			});
 			listingZoomOut.addEventListener("click", () => zoomListing(-0.1));
 			listingZoomIn.addEventListener("click", () => zoomListing(0.1));
