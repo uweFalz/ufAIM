@@ -44,6 +44,9 @@ test("the main stage owns an always-visible import activity rail with exact mult
 	assert.match(shell, /id="importActivityRail"/);
 	assert.match(shell, /data-import-activity-files/);
 	assert.match(shell, /data-import-activity-open/);
+	assert.match(shell, /data-import-activity-dismiss/);
+	assert.match(init, /data-import-activity-dismiss/);
+	assert.match(init, /importActivityRail.*classList\.add\("hidden"\)/s);
 	assert.match(init, /updateImportActivityRail/);
 	assert.match(init, /Drop-Inhalt wird gelesen/);
 	assert.match(init, /Ordner und Dateien werden gesammelt/);

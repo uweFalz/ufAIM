@@ -1203,6 +1203,8 @@ html[dir="rtl"] #props {
 .uf-importActivityRail__copy > span { color: var(--textMuted); font-size: 12px; }
 .uf-importActivityRail [data-import-activity-files] { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
 .uf-importActivityRail [data-import-activity-files] span { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; border-radius: 999px; background: rgba(255,255,255,.07); font-size: 11px; }
+.uf-importActivityRail__actions { display: flex; align-items: center; gap: 8px; }
+.uf-importActivityRail [data-import-activity-dismiss] { min-width: 34px; padding-inline: 9px; font-size: 18px; line-height: 1; }
 @keyframes uf-import-spin { to { transform: rotate(360deg); } }
 
 .uf-alignmentIntelligence header {

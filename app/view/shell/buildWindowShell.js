@@ -119,7 +119,10 @@ export function buildWindowShell() {
 					<span data-import-activity-detail></span>
 					<div data-import-activity-files></div>
 				</div>
-				<button type="button" class="btn" data-import-activity-open>Import ansehen</button>
+				<div class="uf-importActivityRail__actions">
+					<button type="button" class="btn" data-import-activity-open>Import ansehen</button>
+					<button type="button" class="btn btn--ghost" data-import-activity-dismiss aria-label="Importstatus schließen" title="Importstatus schließen">×</button>
+				</div>
 			</section>
 			<section id="alignmentIntelligence" class="uf-alignmentIntelligence" data-alignment-intelligence-status="finding" data-alignment-intelligence-mode="main" aria-label="Alignment Intelligence">
 				<header><strong>Alignment Intelligence</strong><output data-alignment-intelligence-identity>Import finding · no evidence</output><button id="btnAlignmentIntelligence" class="btn btn--ghost" type="button" aria-controls="alignmentIntelligence" aria-expanded="false"><span data-i18n="workspace_details"></span><span aria-hidden="true">⌄</span></button></header>

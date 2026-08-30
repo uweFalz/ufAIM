@@ -100,6 +100,9 @@ function setupImportUI(ctx) {
 	document.querySelector("[data-import-activity-open]")?.addEventListener("click", () => {
 		document.getElementById("btnGndImportWorkbench")?.click();
 	});
+	document.querySelector("[data-import-activity-dismiss]")?.addEventListener("click", () => {
+		document.getElementById("importActivityRail")?.classList.add("hidden");
+	});
 
 	ctx.disposeFileDrop = importer.installDrop({
 		element: document.documentElement,
