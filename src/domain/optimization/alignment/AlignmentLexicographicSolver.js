@@ -236,15 +236,22 @@ export function solveAlignmentLexicographic({
 			);
 		}
 
-		if (result.candidate.variables?.length) x = [...result.candidate.variables];
 		last = result;
 
-		// Freeze this tier's attainment into a budget for the tiers below it, but
-		// only if that attainment is real. A tier that bought its objective by
-		// giving feasibility back has established nothing, and handing its value
-		// down as a limit would make every tier below fail for its predecessor's
-		// reason. The tier is reported as establishing no budget instead.
-		if (index < tiers.length - 1 && !tierZeroSatisfied(result.diagnostics, feasibilityTolerance)) {
+		// A tier that bought its objective by giving feasibility back has
+		// established nothing: neither a budget for the tiers below it nor a point
+		// worth continuing from. Handing its value down as a limit would make
+		// every tier below fail for its predecessor's reason, and handing its
+		// point down would throw away a better one the run already holds. Both are
+		// withheld, and the tier is reported. Only the last tier's result is kept
+		// regardless, because it is the answer and the caller has to see it.
+		const established = tierZeroSatisfied(result.diagnostics, feasibilityTolerance);
+		const isLast = index === tiers.length - 1;
+		if ((established || isLast) && result.candidate.variables?.length) {
+			x = [...result.candidate.variables];
+		}
+
+		if (!established && !isLast) {
 			skipped.push(Object.freeze({
 				tier: `tier-${index + 1}`,
 				objective: tier.objective,
@@ -256,7 +263,7 @@ export function solveAlignmentLexicographic({
 						(point) => Math.abs(point.residual ?? 0))
 				),
 			}));
-		} else if (index < tiers.length - 1) {
+		} else if (!isLast) {
 			const linear = linearObjective(tier.objective, codec);
 			const attained = linear.value(x);
 			const relative = tier.relative ?? 0;
