@@ -22,7 +22,7 @@ export function buildWindowShell() {
 	if (!appRoot) throw new Error("buildWindowShell: missing #app-root");
 
 	appRoot.innerHTML = `
-		<div class="uf-shell" id="ufShell">
+		<div class="uf-shell is-intelligence-collapsed" id="ufShell">
 			<div class="uf-toolbar">
 				<div class="uf-workspaceModes" role="group" aria-label="alignmentOS workspace views">
 					<strong class="uf-workspaceModes__brand">alignmentOS</strong>
@@ -122,7 +122,7 @@ export function buildWindowShell() {
 				<button type="button" class="btn" data-import-activity-open>Import ansehen</button>
 			</section>
 			<section id="alignmentIntelligence" class="uf-alignmentIntelligence" data-alignment-intelligence-status="finding" data-alignment-intelligence-mode="main" aria-label="Alignment Intelligence">
-				<header><strong>Alignment Intelligence</strong><output data-alignment-intelligence-identity>Import finding · no evidence</output></header>
+				<header><strong>Alignment Intelligence</strong><output data-alignment-intelligence-identity>Import finding · no evidence</output><button id="btnAlignmentIntelligence" class="btn btn--ghost" type="button" aria-controls="alignmentIntelligence" aria-expanded="false"><span data-i18n="workspace_details"></span><span aria-hidden="true">⌄</span></button></header>
 				<ul data-alignment-intelligence-capabilities></ul>
 			</section>
 

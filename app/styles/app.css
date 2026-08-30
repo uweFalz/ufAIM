@@ -1238,6 +1238,12 @@ html[dir="rtl"] #props {
 .uf-alignmentIntelligence [data-alignment-capability-status="not-covered"] span { color: #ffcf66; }
 .uf-alignmentIntelligence [data-alignment-capability-status="missing"] span { color: var(--muted); }
 
+.uf-alignmentIntelligence > header > button { display:inline-flex; align-items:center; gap:5px; margin-left:auto; padding:4px 7px; }
+.uf-alignmentIntelligence > header > button [aria-hidden="true"] { transition:transform 160ms ease; }
+.uf-shell.is-intelligence-collapsed .uf-alignmentIntelligence { max-height:44px; overflow:hidden; }
+.uf-shell.is-intelligence-collapsed .uf-alignmentIntelligence > :not(header) { display:none; }
+.uf-shell:not(.is-intelligence-collapsed) .uf-alignmentIntelligence > header > button [aria-hidden="true"] { transform:rotate(180deg); }
+
 .uf-alignmentIntelligence [data-alignment-engineering-hud] { display: grid; gap: 7px; margin-bottom: 8px; }
 .uf-alignmentIntelligence [data-hud-context] { color: var(--text); font-size: 12px; font-weight: 650; }
 .uf-alignmentIntelligence [data-hud-values] { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); gap: 6px; }

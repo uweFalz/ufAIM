@@ -115,6 +115,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 
 		buttonCockpit: document.getElementById("btnCockpit"),
 		buttonCockpitClose: document.getElementById("btnCockpitClose"),
+		buttonAlignmentIntelligence: document.getElementById("btnAlignmentIntelligence"),
 		shell: document.getElementById("ufShell"),
 		
 		// Debug
@@ -335,6 +336,13 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		if (!elements.shell) return;
 		if (elements.shell.classList.contains("is-cockpit-collapsed")) openCockpit();
 		else closeCockpit();
+	}
+
+	function toggleAlignmentIntelligence() {
+		if (!elements.shell || !elements.buttonAlignmentIntelligence) return false;
+		const collapsed = elements.shell.classList.toggle("is-intelligence-collapsed");
+		elements.buttonAlignmentIntelligence.setAttribute("aria-expanded", String(!collapsed));
+		return !collapsed;
 	}
 
 	// ------------------------------------------------------------
@@ -786,6 +794,7 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 	function wireOverlayButtons() {
 		elements.buttonCockpit?.addEventListener("click", toggleCockpit);
 		elements.buttonCockpitClose?.addEventListener("click", closeCockpit);
+		elements.buttonAlignmentIntelligence?.addEventListener("click", toggleAlignmentIntelligence);
 
 		elements.buttonDebug?.addEventListener("click", toggleDebug);
 		elements.buttonDebugClose?.addEventListener("click", closeDebug);

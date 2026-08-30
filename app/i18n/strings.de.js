@@ -42,6 +42,7 @@ export const de = {
 	btn_bands: "Bänder",
 	btn_section: "Schnitt",
 	btn_status_debug: "Status / Debug",
+	workspace_details: "Details",
 
 	btn_cursor_minus_title: "s verringern",
 	btn_cursor_plus_title: "s erhöhen",
