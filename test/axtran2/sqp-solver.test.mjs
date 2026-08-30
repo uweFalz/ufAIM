@@ -210,6 +210,90 @@ test("SQP honours bounds on the variables", () => {
 	closeAll(run.x, [1, 2], 1e-6, "both bounds are active at the optimum");
 });
 
+// ---------------------------------------------------------------- globalisation
+
+test("the trust region bounds the step, and a linear objective needs it to", () => {
+	// min x + y on the unit circle: the objective supplies no curvature at all,
+	// so the reduced Hessian is whatever BFGS scrapes from the constraint and
+	// the Newton step can be enormous. Every step must stay inside the region.
+	const evaluate = ([x, y]) => ({
+		f: x + y, gradF: [1, 1],
+		h: [x * x + y * y - 1], Jh: [[2 * x, 2 * y]],
+	});
+	const run = solveSQP({ x0: [1, 0], evaluate, trustRadius: 0.25, maxIterations: 200 });
+	assert.equal(run.ok, true);
+	closeAll(run.x, [-Math.SQRT1_2, -Math.SQRT1_2], 1e-6, "minimum on the circle");
+	// The recorded radius is the one this iteration grew or shrank to, so the
+	// step is checked against the region it was actually drawn from - the
+	// previous entry's. The box is per component, so the norm may reach sqrt(n)
+	// times the radius.
+	const steps = run.history.filter((entry) => entry.stepNorm !== undefined);
+	assert.ok(steps.length > 3, "there is something to check");
+	steps.forEach((entry, i) => {
+		const region = i === 0 ? 0.25 : steps[i - 1].radius;
+		assert.ok(
+			entry.stepNorm <= region * Math.SQRT2 + 1e-9,
+			`iteration ${entry.iteration}: step ${entry.stepNorm} outside a region of ${region}`
+		);
+	});
+	assert.ok(
+		steps.some((entry) => entry.radius > 0.25),
+		"and the region grows again once full steps are accepted"
+	);
+});
+
+test("stationarity is measured on the free variables, not against a bound", () => {
+	// At (1, 2) the gradient is (-8, -6) and nothing is left to do: both bounds
+	// hold it. A plain gradient test would call that a residual of 10 and refuse
+	// to stop; only the projected one sees an optimum.
+	const evaluate = ([x, y]) => ({
+		f: (x - 5) ** 2 + (y - 5) ** 2,
+		gradF: [2 * (x - 5), 2 * (y - 5)], h: [], Jh: [],
+	});
+	const run = solveSQP({ x0: [0, 0], evaluate, lower: [-10, -10], upper: [1, 2], maxIterations: 40 });
+	assert.equal(run.ok, true, `status ${run.status}`);
+	closeAll(run.x, [1, 2], 1e-6, "both bounds are active at the optimum");
+	assert.ok(run.iterations < 10, `took ${run.iterations} iterations for a two-step walk`);
+});
+
+test("a collapsed step is not reported as stationary while the gradient says otherwise", () => {
+	// A trust region small enough to freeze the iteration must not be allowed to
+	// look like convergence: the step goes to zero either because the point is
+	// stationary or because the region collapsed onto it, and only the KKT
+	// residual tells the two apart. Measured before this guard, a run reported
+	// merit_stationary at a KKT residual of 3.09.
+	const evaluate = ([x, y]) => ({
+		f: (x - 5) ** 2 + (y - 5) ** 2,
+		gradF: [2 * (x - 5), 2 * (y - 5)], h: [], Jh: [],
+	});
+	const run = solveSQP({
+		x0: [0, 0], evaluate, trustRadius: 1e-9, minTrustRadius: 1e-9, maxIterations: 5,
+	});
+	assert.equal(run.ok, false, "a frozen iteration is not a solved one");
+	assert.equal(run.status, "max_iterations");
+	assert.ok(Math.hypot(run.x[0] - 5, run.x[1] - 5) > 1, "and it is nowhere near the optimum");
+});
+
+test("the second-order correction rescues the step the l1 kink would reject", () => {
+	// min x on the unit circle, solution (-1, 0). Near it the constraint curves
+	// away from every descent direction, so a step that lowers the objective
+	// raises the violation at second order and the merit charges for it at once.
+	// That is the Maratos effect; the correction re-closes the constraint at the
+	// trial point instead of backtracking to nothing.
+	const evaluate = ([x, y]) => ({
+		f: x, gradF: [1, 0],
+		h: [x * x + y * y - 1], Jh: [[2 * x, 2 * y]],
+	});
+	const from = [Math.cos(2.9), Math.sin(2.9)];
+	const run = solveSQP({ x0: from, evaluate, maxIterations: 120 });
+	assert.equal(run.ok, true, `status ${run.status}`);
+	closeAll(run.x, [-1, 0], 1e-5, "minimum on the circle");
+	assert.ok(
+		run.history.some((entry) => entry.correction === true),
+		"the correction was actually used, so this test measures it"
+	);
+});
+
 // ---------------------------------------------------------------- boundary
 
 test("the optimisation library stays free of domain and platform dependencies", async () => {
