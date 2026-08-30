@@ -177,6 +177,45 @@ test("an unspent budget leaves the phase below it unconstrained", () => {
 	assert.deepEqual(run.phases.at(-1).diagnostics.extraEqualityResiduals.length, 0);
 });
 
+test("a tier that established nothing does not move the starting point either", () => {
+	// The warm start reaches a genuinely feasible point. One iteration of tier 1
+	// then walks away from it, minimising a length against constraints it no
+	// longer meets. Carrying that point into tier 2 would throw away the better
+	// one the run already holds, so tier 2 has to begin where tier 1 did.
+	// Whether tier 1 happens to hold feasibility for a given iteration count is
+	// the tier's own open question and would make this test measure that instead.
+	// A tolerance of zero settles it: nothing passes the gate, so the handover is
+	// what is under test here.
+	const SHUT_GATE = { feasibilityTolerance: 0 };
+	const warm = solveAlignmentProblem({ ...common, objective: "points", maxIterations: 3 });
+	const run = solveAlignmentLexicographic({
+		...common, ...SHUT_GATE,
+		warmStart: { objective: "points", maxIterations: 3 },
+		maxIterations: 1,
+	});
+	assert.equal(run.skippedBudgets.length, 1, "tier 1 established nothing");
+
+	const tier1 = run.phases.find((phase) => phase.label === "tier-1");
+	assert.ok(
+		tier1.candidate.variables.some((value, i) =>
+			Math.abs(value - warm.candidate.variables[i]) > 1e-9),
+		"tier 1 did move, so there is something to discard"
+	);
+
+	// the same single points iteration, started at the warm start by hand
+	const reference = solveAlignmentProblem({
+		...common, objective: "points",
+		startAt: warm.candidate.variables, maxIterations: 1,
+	});
+	const tier2 = run.phases.find((phase) => phase.label === "tier-2");
+	tier2.candidate.variables.forEach((value, i) => {
+		assert.ok(
+			Math.abs(value - reference.candidate.variables[i]) < 1e-12,
+			`variable ${i}: tier 2 gave ${value}, the warm start gives ${reference.candidate.variables[i]}`
+		);
+	});
+});
+
 // ---------------------------------------------------------------- reporting
 
 // ---------------------------------------------------------------- feasibility gate
@@ -224,7 +263,46 @@ test("the feasibility gate asks about tier 0 only, never about the tier's own ob
 	assert.equal(tierZeroSatisfied({ ...met, endPoseResidual: [1e-6, 0, 0.2] }), false);
 });
 
-// ---------------------------------------------------------------- reporting
+test("a tier that established nothing does not move the starting point either", () => {
+	// The warm start reaches a genuinely feasible point. One iteration of tier 1
+	// then walks away from it, minimising a length against constraints it no
+	// longer meets. Carrying that point into tier 2 would throw away the better
+	// one the run already holds, so tier 2 has to begin where tier 1 did.
+	// Whether tier 1 happens to hold feasibility for a given iteration count is
+	// the tier's own open question and would make this test measure that instead.
+	// A tolerance of zero settles it: nothing passes the gate, so the handover is
+	// what is under test here.
+	const SHUT_GATE = { feasibilityTolerance: 0 };
+	const warm = solveAlignmentProblem({ ...common, objective: "points", maxIterations: 3 });
+	const run = solveAlignmentLexicographic({
+		...common, ...SHUT_GATE,
+		warmStart: { objective: "points", maxIterations: 3 },
+		maxIterations: 1,
+	});
+	assert.equal(run.skippedBudgets.length, 1, "tier 1 established nothing");
+
+	const tier1 = run.phases.find((phase) => phase.label === "tier-1");
+	assert.ok(
+		tier1.candidate.variables.some((value, i) =>
+			Math.abs(value - warm.candidate.variables[i]) > 1e-9),
+		"tier 1 did move, so there is something to discard"
+	);
+
+	// the same single points iteration, started at the warm start by hand
+	const reference = solveAlignmentProblem({
+		...common, objective: "points",
+		startAt: warm.candidate.variables, maxIterations: 1,
+	});
+	const tier2 = run.phases.find((phase) => phase.label === "tier-2");
+	tier2.candidate.variables.forEach((value, i) => {
+		assert.ok(
+			Math.abs(value - reference.candidate.variables[i]) < 1e-12,
+			`variable ${i}: tier 2 gave ${value}, the warm start gives ${reference.candidate.variables[i]}`
+		);
+	});
+});
+
+
 
 test("a phase that did not converge is reported, not smoothed over", () => {
 	// one iteration cannot converge anything; the run must say so
