@@ -2,20 +2,15 @@
 
 //
 // ...
+import { withRelativePathFile } from "./relativePathFile.js";
+
 //
 export const FILE_DROP_LIFECYCLE_EVENT = "ufaim:file-drop-lifecycle";
 
 function readEntryFile(entry) {
 	return new Promise((resolve, reject) => entry.file((file) => {
 		const path = String(entry.fullPath ?? file?.name ?? "").replace(/^\/+/, "");
-		if (!path || path === file?.name || typeof File !== "function") {
-			resolve(file);
-			return;
-		}
-		resolve(new File([file], path, {
-			type: file.type,
-			lastModified: file.lastModified,
-		}));
+		resolve(withRelativePathFile(file, path));
 	}, reject));
 }
 

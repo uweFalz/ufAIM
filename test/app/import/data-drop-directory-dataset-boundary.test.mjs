@@ -14,7 +14,8 @@ test("directory dataset scope never derives engineering meaning from path name o
 test("relative paths are provenance-only and directory capability has honest fallback",async()=>{
 	const [picker,view]=await Promise.all([read("app/io/input/directoryPicker.js"),read("app/gndImportWorkbench/gndImportWorkbenchView.js")]);
 	assert.match(picker,/relativePath/);
-	assert.match(picker,/new FileCtor\(\[source\], relativePath/);
+	assert.match(picker,/withRelativePathFile\(source, relativePath\)/);
+	assert.doesNotMatch(picker,/new (?:File|FileCtor)\(\[source\]/);
 	assert.match(view,/Ordner per Drag & Drop/);
 	assert.match(view,/model\.directoryPickerSupported/);
 	assert.match(view,/model\.directoryPickerSupported === true/);
