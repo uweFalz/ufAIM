@@ -167,7 +167,10 @@ test("SQP reproduces the published solution of Gerdts example 3.2.3", () => {
 	for (const start of [[0, 0], [3, 3], [-5, 8]]) {
 		const run = solveSQP({ x0: start, evaluate, maxIterations: 60 });
 		assert.equal(run.ok, true, `start ${start}`);
-		closeAll(run.x, [0.6, 0.2], 1e-8, `solution from ${start}`);
+		// the KKT test is relative to the gradient, so it stops a little earlier
+		// than an absolute one would; 1e-7 on a solution of order 1 is still
+		// seven digits
+		closeAll(run.x, [0.6, 0.2], 1e-7, `solution from ${start}`);
 		close(run.multipliers.equality[0], 28 / 5, 1e-6, `multiplier from ${start}`);
 	}
 });

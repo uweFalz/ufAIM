@@ -36,9 +36,10 @@ export function solveSQP({
 	lower,
 	upper,
 	maxIterations = 100,
-	// A finite-difference gradient cannot support an arbitrarily tight KKT
-	// residual; below its own noise floor the iteration only thrashes. The
-	// merit criterion below is what actually stops such a run.
+	// The KKT test is relative to the gradient. An absolute threshold is
+	// meaningless when the objective gradient is of order 1e5, which it is as
+	// soon as residuals are scaled by a tolerance: an absolute 1e-8 would then
+	// demand thirteen digits of stationarity and never be reached.
 	kktTolerance = 1e-8,
 	feasibilityTolerance = 1e-9,
 	stepTolerance = 1e-12,
@@ -89,8 +90,12 @@ export function solveSQP({
 				value + (state.Jh ?? []).reduce((sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0))
 		);
 
-		if (violation.total <= feasibilityTolerance && kkt <= kktTolerance) {
-			history.push({ iteration, status: "converged", kkt, violation: violation.total });
+		const gradientScale = Math.max(1, Math.hypot(...state.gradF));
+		if (violation.total <= feasibilityTolerance && kkt <= kktTolerance * gradientScale) {
+			history.push({
+				iteration, status: "converged", kkt, violation: violation.total,
+				relativeKkt: kkt / gradientScale,
+			});
 			return {
 				ok: true, status: "converged", x, state, history,
 				iterations: iteration, multipliers: step.multipliers, hessian: H,
