@@ -45,6 +45,8 @@ export function solveSQP({
 	stepTolerance = 1e-12,
 	meritTolerance = 1e-12,
 	stallLimit = 2,
+	penaltyRule = "monotone",
+	penaltySafety = 20,
 	relaxationWeight = 1e4,
 	initialHessianScale = 1,
 } = {}) {
@@ -109,7 +111,8 @@ export function solveSQP({
 			};
 		}
 
-		weights = updatePenaltyWeights(weights, step.multipliers);
+		weights = updatePenaltyWeights(weights, step.multipliers, { rule: penaltyRule, safety: penaltySafety });
+
 		const meritAt0 = l1Merit(state, weights);
 
 		// Feasible, and the merit no longer moves: the iteration has reached what
@@ -132,9 +135,19 @@ export function solveSQP({
 		previousMerit = meritAt0;
 
 		let trialState = null;
+		// exact directional derivative of the l1 merit along the step
+		const penaltyDrop = (state.h ?? []).reduce(
+			(sum, value, j) => sum + (weights.equality[j] ?? 0) * Math.abs(value), 0
+		);
+		const directional = step.gradientAlongStep - (1 - (step.delta ?? 0)) * penaltyDrop;
+		// the curvature bound is the theoretical guarantee; when it is zero the
+		// Hessian has no curvature along the step and only the penalty term can
+		// supply descent
+		const predictedDecrease = Math.min(directional, step.curvature);
+
 		const search = lineSearchArmijo({
 			meritAt0,
-			predictedDecrease: step.predictedDecrease,
+			predictedDecrease,
 			meritAt: (alpha) => {
 				const candidate = x.map((value, i) =>
 					Math.min(Math.max(value + alpha * step.d[i], lo[i]), up[i]));
