@@ -64,11 +64,17 @@ function wrapAngle(angle) {
  *        receives the decoded free-variable overlay and returns
  *        { worldToTrack, endPose, lengths } for that parameter set
  * @param {"points"|"accumulated-length"} [input.objective]
+ * @param {(overlay: object) => object} [input.analyticJacobian]
+ *        optional; returns an object with endPoseJacobian(parameters) and
+ *        lateralDerivative(parameters, station), as built by
+ *        createAlignmentPoseJacobian. When supplied the finite-difference path
+ *        is not used at all.
  * @param {number} [input.maxIterations]
  */
 export function solveAlignmentProblem({
 	problem,
 	buildAlignment,
+	analyticJacobian = null,
 	objective = "points",
 	maxIterations = 60,
 	relaxationWeight = 1e6,
@@ -97,6 +103,18 @@ export function solveAlignmentProblem({
 	const upper = codec.freeNames.map(() => Infinity);
 
 	let builds = 0;
+	let jacobianEvaluations = 0;
+
+	// codec names carry the element id; the analytic Jacobian addresses elements
+	// by their position in the sequence
+	const parameterSpecs = codec.freeNames.map((name) => {
+		const dot = name.lastIndexOf(".");
+		const elementId = name.slice(0, dot);
+		return {
+			elementIndex: codec.elementSequence.indexOf(elementId),
+			kind: name.slice(dot + 1),
+		};
+	});
 
 	function realise(x) {
 		builds += 1;
@@ -143,7 +161,50 @@ export function solveAlignmentProblem({
 		return total;
 	}
 
+	function evaluateAnalytically(x) {
+		const overlay = codec.decode(x);
+		const built = realise(x);
+		const geometry = analyticJacobian(overlay);
+		jacobianEvaluations += 1;
+
+		const h = equalityResiduals(built);
+
+		// end pose: three rows straight from the chain rule
+		const poseRows = geometry.endPoseJacobian(parameterSpecs);
+		const Jh = [
+			poseRows.map((d) => d.dx),
+			poseRows.map((d) => d.dy),
+			poseRows.map((d) => d.dtheta),
+		];
+		// hardened Zwangspunkte: one row each, at their own foot station
+		for (const point of hardPoints) {
+			const projected = built.worldToTrack(point.x, point.y);
+			Jh.push(Number.isFinite(projected?.s)
+				? geometry.lateralDerivative(parameterSpecs, projected.s)
+				: parameterSpecs.map(() => 0));
+		}
+
+		if (objective === "accumulated-length") {
+			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
+			return { f: accumulatedLength(x), gradF, h, Jh };
+		}
+
+		const r = softResiduals(built);
+		const Jr = softPoints.map((point) => {
+			const projected = built.worldToTrack(point.x, point.y);
+			if (!Number.isFinite(projected?.s)) return parameterSpecs.map(() => 0);
+			const row = geometry.lateralDerivative(parameterSpecs, projected.s);
+			return row.map((value) => value / point.tolerance);
+		});
+		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
+		const gradF = parameterSpecs.map((_, j) =>
+			Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
+		return { f, gradF, h, Jh };
+	}
+
 	function evaluate(x) {
+		if (typeof analyticJacobian === "function") return evaluateAnalytically(x);
+
 		const built = realise(x);
 		const h = equalityResiduals(built);
 
@@ -213,6 +274,8 @@ export function solveAlignmentProblem({
 		diagnostics: Object.freeze({
 			iterations: run.iterations,
 			alignmentBuilds: builds,
+			jacobianKind: typeof analyticJacobian === "function" ? "analytic" : "finite-difference",
+			jacobianEvaluations,
 			endPoseResidual: finalEquality.slice(0, 3),
 			endPoseDistance: built ? Math.hypot(finalEquality[0], finalEquality[1]) : null,
 			hardPointResiduals: Object.freeze(hardPoints.map((point, i) => Object.freeze({
