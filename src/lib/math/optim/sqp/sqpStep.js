@@ -137,14 +137,28 @@ export function solveRelaxedQpStep({
 	const d = qp.z.slice(0, n);
 	const delta = qp.z[n];
 
-	// multipliers of the equalities, from the stationarity condition
-	// H d + c + Jh' mu = 0, solved in least squares
+	// Multipliers of the equalities from the stationarity condition
+	//
+	//     H d + c + Jh' mu + (bound multipliers) = 0
+	//
+	// restricted to the variables that are NOT sitting on a bound. A bound in
+	// the working set absorbs part of the gradient, and attributing that part to
+	// the equalities understates mu. The penalty weights are then too small and
+	// the merit lets feasibility be traded back for objective, which is exactly
+	// what a linear objective will do given the chance.
+	const pinned = new Set(qp.activeBounds ?? []);
+	const freeRows = [];
+	for (let i = 0; i < n; i++) if (!pinned.has(i)) freeRows.push(i);
+
 	const stationarity = matVec(H, d).map((value, i) => -(value + gradF[i]));
 	let mu = new Array(m).fill(0);
-	if (m > 0) {
-		const gram = Jh.map((rowA) => Jh.map((rowB) => dot(rowA, rowB)));
-		for (let i = 0; i < m; i++) gram[i][i] += 1e-12;
-		const rhs = Jh.map((row) => dot(row, stationarity));
+	if (m > 0 && freeRows.length > 0) {
+		const JhFree = Jh.map((row) => freeRows.map((i) => row[i]));
+		const stationarityFree = freeRows.map((i) => stationarity[i]);
+		const gram = JhFree.map((rowA) => JhFree.map((rowB) => dot(rowA, rowB)));
+		const gramScale = Math.max(...gram.map((row, i) => Math.abs(row[i])), 1);
+		for (let i = 0; i < m; i++) gram[i][i] += 1e-12 * gramScale;
+		const rhs = JhFree.map((row) => dot(row, stationarityFree));
 		// small symmetric solve by Gaussian elimination with partial pivoting
 		const M = gram.map((row, i) => [...row, rhs[i]]);
 		for (let k = 0; k < m; k++) {
@@ -164,8 +178,17 @@ export function solveRelaxedQpStep({
 		if (!mu.every(Number.isFinite)) mu = new Array(m).fill(0);
 	}
 
-	// predicted decrease of the merit: l1'(x; d; eta) <= -d' H d
-	const predictedDecrease = -dot(d, matVec(H, d));
+	// Gerdts' bound l1'(x; d; eta) <= -d'Hd is a guarantee, not the value. Using
+	// it as the Armijo reference is far too weak: it accepts a step that barely
+	// dips the merit, which for a linear objective means trading feasibility
+	// away. The caller gets both, and should use the exact directional
+	// derivative
+	//
+	//     l1'(x; d; eta) = grad f . d - (1 - delta) * sum_j eta_j |h_j|
+	//
+	// which is exact for the relaxed step, since the linearised constraints are
+	// met up to the slack.
+	const curvature = -dot(d, matVec(H, d));
 
 	return {
 		ok: true,
@@ -173,7 +196,9 @@ export function solveRelaxedQpStep({
 		d,
 		delta,
 		multipliers: { equality: mu, inequality: [] },
-		predictedDecrease,
+		curvature,
+		gradientAlongStep: dot(gradF, d),
+		predictedDecrease: curvature,
 		activeBounds: qp.activeBounds,
 		qpIterations: qp.iterations,
 	};

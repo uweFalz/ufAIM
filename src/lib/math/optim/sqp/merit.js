@@ -11,11 +11,27 @@
 //
 // The weights must dominate the multipliers of the QP subproblem, otherwise the
 // search direction is not guaranteed to be a descent direction of the merit.
-// Powell's update, which weighs every constraint on its own rather than using a
-// single global penalty, is used here:
+// Two rules are offered:
 //
-//     eta_i     <- max{ |lambda_i|, (eta_i + |lambda_i|) / 2 }
-//     etaHat_j  <- max{ |mu_j|,     (etaHat_j + |mu_j|) / 2 }
+//   "monotone" (Gerdts 3.8)  eta_i <- max{ eta_i, |lambda_i| + epsilon }
+//   "powell"                 eta_i <- max{ |lambda_i|, (eta_i + |lambda_i|)/2 }
+//
+// Powell's is the practical refinement and lets a weight fall again once its
+// multiplier drops. That is desirable when the multipliers are trustworthy and
+// harmful when they are not: with a linear objective and active bounds the
+// least-squares reconstruction of the multipliers understates them, the weights
+// decay with them, and the iteration then buys objective by giving feasibility
+// back. Measured on a nine-element alignment: the constraint violation was
+// already at 7e-5 and grew back to 2.4 as the length kept falling.
+//
+// The monotone rule is therefore the default. It never lets a weight decay, so
+// feasibility once bought stays bought.
+//
+// The weights also carry a safety factor. The estimate eta >= |lambda| is a
+// local statement; away from the solution a nonlinear constraint can grow more
+// than its linearisation promised, and a weight sitting just above its
+// multiplier has no margin left. Measured: with eta = 1.05 against |mu| = 0.9
+// the iteration still traded feasibility away, and a factor of two stopped it.
 //
 // Pure numerics: no dependencies.
 
@@ -49,12 +65,21 @@ export function l1Merit(state, weights) {
 	return (state?.f ?? 0) + penalty;
 }
 
-/** Powell's per-constraint weight update from the QP multipliers. */
-export function updatePenaltyWeights(weights, multipliers) {
+/**
+ * Per-constraint weight update from the QP multipliers.
+ * @param {"monotone"|"powell"} [rule]
+ */
+export function updatePenaltyWeights(
+	weights,
+	multipliers,
+	{ rule = "monotone", epsilon = 1e-6, safety = 2 } = {}
+) {
 	const step = (previous = [], current = []) => current.map((value, i) => {
-		const magnitude = Math.abs(value);
+		const magnitude = Math.abs(value) * safety;
 		const old = previous[i] ?? 0;
-		return Math.max(magnitude, 0.5 * (old + magnitude));
+		return rule === "powell"
+			? Math.max(magnitude, 0.5 * (old + magnitude))
+			: Math.max(old, magnitude + epsilon);
 	});
 	return Object.freeze({
 		inequality: step(weights?.inequality, multipliers?.inequality),
