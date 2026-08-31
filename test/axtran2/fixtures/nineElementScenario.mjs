@@ -19,6 +19,7 @@ const { createAlignmentConstraintBuilder } = await load("src/domain/optimization
 const { createAlignmentResidualBuilder } = await load("src/domain/optimization/alignment/AlignmentResidualBuilder.js");
 const { createAlignmentOptimizationProblem } = await load("src/domain/optimization/alignment/AlignmentOptimizationProblem.js");
 const { createIntrinsicMetricContext } = await load("src/domain/optimization/alignment/MetricContext.js");
+const { hauptbahn } = await load("src/domain/optimization/alignment/profiles/index.js");
 
 const lookup = (await import(new URL("src/domain/transition/transitionLookup.json", ROOT), { with: { type: "json" } })).default;
 const deps = { descriptorResolver: new RegistryResolver(lookup), kappaBuilder: KappaFcnBuilder };
@@ -92,9 +93,13 @@ export function createNineElementScenario({
 	startLengths = [200, 95, 292, 86, 156, 84, 268, 76, 180],
 	startCurvatures = [1 / 660, -1 / 950],
 	hardPointNames = [],
-	// Tier 3. The truth runs R1 = 700 and R2 = 900 with 80 to 90 m transitions,
-	// so these limits admit it comfortably and still forbid the collapse.
-	design = { minimumRadius: 600, minimumLength: { straight: 40, arc: 60, transition: 60 } },
+	// Tier 3, from a declared profile rather than from bare numbers. V = 100 km/h
+	// with 140 mm of cant gives a smallest radius of 491.7 m and a shortest
+	// transition of 77.8 m, so the truth - R1 = 700, R2 = 900, transitions of 80
+	// and 90 m - is admissible under it, narrowly. That is deliberate: a profile
+	// the scenario satisfies with room to spare would not show whether the limits
+	// reach the solver at all.
+	design = hauptbahn({ speedKmh: 100, cantMm: 140 }),
 } = {}) {
 	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);
 	const endPose = poseOf(truth, truth.arcLength);
