@@ -405,6 +405,29 @@ that it did not run rather than passing it over: a check that quietly does not
 run is the same fail-open one level up. The production projector does report it,
 so on the real scenario the check runs and no point is inadmissible.
 
+**Every `world2Track` caller, surveyed.** The clamped-foot-point leak was in two
+places, not one:
+
+| caller | verdict |
+|---|---|
+| `AlignmentSQPSolver` | had it; closed |
+| `AlignmentResidualBuilder` | **had it too**; closed |
+| `_e2eAlignmentTest`, `_e2eAlignmentEditModelBoundaryTest` | build points from `poseAt(s)` inside `[0, arcLength]`, so every one has a genuine foot point |
+| `alignment2d-geometry-core-compatibility.test` | documents the two null paths, corroborating the reading of the source |
+| `AlignmentElement.world2Track` | throws "not implemented" |
+
+The residual builder's case was the worse of the two: its result feeds the
+sharpening ranking, so a point past an end came back `projected: true,
+met: true` — the point most in need of being surfaced was the one ranked as
+excellent. The report now keeps "no foot point at all" and "fell onto an
+extension" apart, since the first is usually a broken alignment and the second a
+point past an end.
+
+`Alignment2D` was not changed. Clamping the foot station is defensible as
+"nearest point on the alignment"; what is not defensible is treating the result
+as a lateral offset without saying it was measured from an extension, and that
+belongs with the consumer.
+
 **AXTRAN2-REVIEW-003, raw declarations bypassing the gate.** The admission gate
 asked "is this a profile that is not confirmed?" and let everything else
 through — so the one form carrying no provenance at all, a plain object, was the
