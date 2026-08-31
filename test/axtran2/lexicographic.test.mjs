@@ -302,35 +302,49 @@ test("a reference reports what the answer cost the tier that established it", ()
 
 // ---------------------------------------------------------------- tier 3
 
-test("the design limits reach the solver as bounds on the result", () => {
+test("the declared profile reaches the solver as bounds on the result", () => {
 	// A curvature bound is not a bound on a length, and the solver used to read
-	// only the latter. The declared smallest radius has to survive the whole way
-	// to the candidate.
-	const limited = createNineElementScenario({
-		pointCount: 6,
-		startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180],
-		startCurvatures: [1 / 695, -1 / 905],
-		design: { minimumRadius: 600, minimumLength: { straight: 40, arc: 60, transition: 60 } },
-	});
+	// only the latter. Whatever the profile derives has to survive the whole way
+	// to the candidate - and the length tier is the case that matters, because
+	// it is the one that pushes against every limit it can find.
+	const profile = scenario.problem.constraints.design;
 	const run = solveAlignmentLexicographic({
-		problem: limited.problem,
-		buildAlignment: limited.buildAlignment,
-		analyticJacobian: limited.analyticJacobian,
+		...common,
 		tiers: [{ objective: "accumulated-length" }],
 		warmStart: false,
-		maxIterations: 200,
+		maxIterations: 300,
 	});
-	const { lengths, curvatures } = limited.materialise(
-		limited.problem.codec.decode(run.candidate.variables));
+	const { lengths, curvatures } = scenario.materialise(
+		scenario.problem.codec.decode(run.candidate.variables));
+
 	for (const curvature of curvatures) {
 		assert.ok(
-			Math.abs(curvature) <= 1 / 600 + 1e-9,
-			`radius ${(1 / Math.abs(curvature)).toFixed(1)} m is tighter than the declared 600 m`
+			Math.abs(curvature) <= 1 / profile.minimumRadius + 1e-9,
+			`radius ${(1 / Math.abs(curvature)).toFixed(1)} m is tighter than the profile's `
+				+ `${profile.minimumRadius.toFixed(1)} m`
 		);
 	}
-	// E1, E3, E5, E7 are the transitions and E0, E4, E8 straights
-	[1, 3, 5, 7].forEach((i) => assert.ok(lengths[i] >= 60 - 1e-9, `transition ${i} at ${lengths[i]}`));
-	assert.ok(lengths[4] >= 40 - 1e-9, `straight E4 at ${lengths[4]}`);
+	// E1, E3, E5, E7 are the transitions
+	[1, 3, 5, 7].forEach((i) => assert.ok(
+		lengths[i] >= profile.minimumTransitionLength - 1e-9,
+		`transition ${i} is ${lengths[i].toFixed(1)} m against a floor of `
+			+ `${profile.minimumTransitionLength.toFixed(1)} m`
+	));
+
+	// and the limits are not decoration: minimising the length puts the
+	// alignment on them
+	assert.ok(
+		Math.abs(Math.abs(curvatures[0]) - 1 / profile.minimumRadius) < 1e-9,
+		"the length tier ran the first arc down onto the radius limit"
+	);
+});
+
+test("the profile the scenario declares carries its own provenance", () => {
+	const profile = scenario.problem.constraints.design;
+	assert.ok(profile.id, "it is named");
+	assert.equal(profile.status, "candidate", "and does not claim to have been checked");
+	assert.ok(profile.derivations.length >= 2, "and shows how its numbers were reached");
+	assert.equal(profile.radiusBinding, "kinematics");
 });
 
 test("a tier held to the budget of a vertex says so at once", () => {

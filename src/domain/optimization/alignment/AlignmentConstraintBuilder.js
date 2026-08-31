@@ -170,6 +170,9 @@ function requirePose(pose, label) {
  *        element id to "straight" | "arc" | "transition"; required only when a
  *        design profile declares limits per kind
  * @param {object} [declaration.design]                            tier 3
+ *        either a profile from createAlignmentDesignProfile, which carries its
+ *        own provenance and per-element exceptions, or the plain form below,
+ *        which carries none and is therefore not reviewable
  * @param {number} [declaration.design.minimumRadius]              metres
  * @param {Record<string,number>|number} [declaration.design.minimumLength]
  *        smallest admissible length, per element kind or for all of them
@@ -222,7 +225,12 @@ export function createAlignmentConstraintBuilder({
 		}));
 	}
 
-	const profile = design ? readDesign(design) : null;
+	// A design profile built by createAlignmentDesignProfile arrives ready, with
+	// its provenance and its per-element exceptions. The plain object form stays
+	// for callers that only want a radius and a length, and it carries no
+	// provenance - which is why it may not be used for anything reviewable.
+	const built = design?.version?.startsWith("axtran2/alignment-design-profile/") ? design : null;
+	const profile = built ? null : design ? readDesign(design) : null;
 	const kindOf = (id) => {
 		if (!elementKinds) return null;
 		const kind = elementKinds[id] ?? null;
@@ -232,7 +240,7 @@ export function createAlignmentConstraintBuilder({
 		}
 		return kind;
 	};
-	if (profile?.minimumLengthByKind && !elementKinds) {
+	if ((profile?.minimumLengthByKind || built) && !elementKinds) {
 		error("MISSING_ELEMENT_KINDS",
 			"a design profile with lengths per element kind needs elementKinds");
 	}
@@ -245,7 +253,9 @@ export function createAlignmentConstraintBuilder({
 	const bounds = elementSequence.map((id) => {
 		const sequence = minimumOf(id);
 		const kind = kindOf(id);
-		const designMinimum = profile ? profile.minimumLengthFor(kind) : 0;
+		const designMinimum = built
+			? built.minimumLengthFor(kind, id)
+			: profile ? profile.minimumLengthFor(kind) : 0;
 		const minimum = Math.max(sequence, designMinimum);
 		return Object.freeze({
 			id: `sequence.${id}`,
@@ -265,17 +275,26 @@ export function createAlignmentConstraintBuilder({
 	// may run either way, and may straighten out entirely, but may not be
 	// tighter than the design allows.
 	const designBounds = [];
-	if (profile?.maximumCurvature !== null && profile?.maximumCurvature !== undefined) {
+	const curvatureCap = built
+		? (id) => built.maximumCurvatureFor(id)
+		: profile?.maximumCurvature !== null && profile?.maximumCurvature !== undefined
+			? () => profile.maximumCurvature
+			: null;
+	if (curvatureCap) {
 		for (const id of elementSequence) {
 			if (elementKinds && kindOf(id) !== "arc") continue;
+			const cap = curvatureCap(id);
 			designBounds.push(Object.freeze({
 				id: `design.${id}.curvature`,
 				kind: "design-limit",
 				elementId: id,
 				quantity: "curvature",
-				minimum: -profile.maximumCurvature,
-				maximum: profile.maximumCurvature,
-				reason: "minimum-radius",
+				minimum: -cap,
+				maximum: cap,
+				reason: built?.exceptionFor(id)?.minimumRadius ? "exception" : "minimum-radius",
+				source: built?.exceptionFor(id)?.minimumRadius
+					? built.exceptionFor(id).source
+					: built?.source ?? null,
 				unit: "1/m",
 			}));
 		}
@@ -287,7 +306,16 @@ export function createAlignmentConstraintBuilder({
 		equalities: Object.freeze(equalities.map(Object.freeze)),
 		bounds: Object.freeze(bounds),
 		designBounds: Object.freeze(designBounds),
-		design: profile?.declared ?? null,
+		design: built
+			? Object.freeze({
+				id: built.id, source: built.source, status: built.status,
+				minimumRadius: built.minimumRadius, radiusBinding: built.radiusBinding,
+				minimumTransitionLength: built.minimumTransitionLength,
+				transitionBinding: built.transitionBinding,
+				derivations: built.derivations,
+				exceptions: built.exceptionIds,
+			})
+			: profile?.declared ?? null,
 		equalityCount: equalities.length,
 		hardPointNames: Object.freeze([...seenHard]),
 	});
