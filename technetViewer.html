@@ -47,6 +47,7 @@
 			#titlebar,
 			#viewModes,
 			#diagramModes,
+			#diagramPresentation,
 			#mapToolbar {
 				display: flex;
 				align-items: center;
@@ -79,7 +80,8 @@
 			}
 			#titlebar button:disabled { opacity: 0.45; }
 			#viewModes button[aria-pressed="true"],
-			#diagramModes button[aria-pressed="true"] {
+			#diagramModes button[aria-pressed="true"],
+			#diagramPresentation button[aria-pressed="true"] {
 				background: Highlight;
 				color: HighlightText;
 			}
@@ -237,6 +239,42 @@
 				width: 100%;
 				height: 100%;
 				background: color-mix(in srgb, CanvasText 3%, Canvas);
+			}
+			#diagramTable {
+				width: 100%;
+				height: 100%;
+				overflow: auto;
+				padding: 0.6rem 0.75rem;
+				background: color-mix(in srgb, CanvasText 3%, Canvas);
+				font-family: system-ui, sans-serif;
+				box-sizing: border-box;
+			}
+			.diagram-table-section {
+				margin-bottom: 1rem;
+			}
+			.diagram-table-section strong {
+				display: block;
+				font-size: 0.78rem;
+				margin-bottom: 0.3rem;
+			}
+			.diagram-table-empty {
+				color: GrayText;
+				font-size: 0.76rem;
+			}
+			table.diagram-table {
+				border-collapse: collapse;
+				font-size: 0.74rem;
+			}
+			table.diagram-table th,
+			table.diagram-table td {
+				padding: 0.15rem 0.6rem 0.15rem 0;
+				text-align: right;
+				font-variant-numeric: tabular-nums;
+			}
+			table.diagram-table th {
+				color: GrayText;
+				font-weight: 600;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 30%, transparent);
 			}
 			.diagram-axis,
 			.diagram-grid {
@@ -552,6 +590,21 @@
 			.outbox-lane.contains-selection {
 				background: color-mix(in srgb, var(--accent) 8%, transparent);
 			}
+			.outbox-junctions > summary { color: GrayText; }
+			.outbox-junction-list { padding: 0.3rem 0.55rem 0.6rem; }
+			.outbox-junction-row {
+				display: block;
+				width: 100%;
+				margin: 0.22rem 0 0;
+				padding: 0.35rem 0.5rem;
+				border: 1px solid color-mix(in srgb, GrayText 25%, transparent);
+				border-radius: 6px;
+				background: transparent;
+				text-align: left;
+				font-size: 0.72rem;
+				cursor: pointer;
+			}
+			.outbox-junction-row:hover { background: color-mix(in srgb, Highlight 10%, Canvas); }
 			.raw-file-title { text-transform: none; letter-spacing: 0; }
 			.file-group-done {
 				padding: 0.5rem 0.9rem;
@@ -1180,8 +1233,13 @@
 									<button type="button" data-diagram-mode="7l" aria-pressed="true" title="7-Linien-Diagramm: Krümmung, Höhe und Überhöhung über der Kilometrierung (entspricht dem IVMG-Trassenplan)">Diagramm</button>
 									<button type="button" data-diagram-mode="ivhw" aria-pressed="false" title="Weichenhöhenplan: Schienenhöhen im Vergleich, wie im gelieferten IVWH-Plan (RiL 885.1103)">Höhenplan</button>
 								</div>
+								<div id="diagramPresentation" aria-label="Ansicht">
+									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
+									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
+								</div>
 							</div>
 							<svg id="diagram" role="img" aria-label="Stationsbezogene Diagramme für Krümmung, Höhe und Überhöhung"></svg>
+							<div id="diagramTable" class="hidden" aria-label="Stationswerte als Tabelle"></div>
 						</div>
 					</div>
 				</div>
@@ -38421,6 +38479,7 @@ xlsx/xlsx.mjs:
 			const diagramPanel = document.querySelector("#diagramPanel");
 			const diagramResizeHandle = document.querySelector("#diagramResizeHandle");
 			const diagram = document.querySelector("#diagram");
+			const diagramTable = document.querySelector("#diagramTable");
 			const diagramTitle = document.querySelector("#diagramTitle");
 			const diagramCode = document.querySelector("#diagramCode");
 			const diagramNote = document.querySelector("#diagramNote");
@@ -38503,6 +38562,8 @@ xlsx/xlsx.mjs:
 			let diagramResize = null;
 			let diagramMode = "7l";
 			const diagramModeButtons = Array.from(document.querySelectorAll("#diagramModes button"));
+			let diagramPresentation = "chart";
+			const diagramPresentationButtons = Array.from(document.querySelectorAll("#diagramPresentation button"));
 			const listingCache = new WeakMap();
 			const mapGeometryCache = new WeakMap();
 			const performanceSamples = [];
@@ -39309,8 +39370,52 @@ xlsx/xlsx.mjs:
 				return element;
 			}
 
+			function renderDiagramTable(seriesList) {
+				diagramTable.replaceChildren();
+				for (const series of seriesList) {
+					const section = document.createElement("div");
+					section.className = "diagram-table-section";
+					const heading = document.createElement("strong");
+					heading.textContent = series.label;
+					section.append(heading);
+					if (!series.points.length) {
+						const empty = document.createElement("span");
+						empty.className = "diagram-table-empty";
+						empty.textContent = series.emptyNote ?? "keine Werte";
+						section.append(empty);
+						diagramTable.append(section);
+						continue;
+					}
+					const table = document.createElement("table");
+					table.className = "diagram-table";
+					const head = document.createElement("tr");
+					head.innerHTML = `<th>Station</th><th>${series.valueLabel ?? "Wert"}</th>`;
+					table.append(head);
+					for (const point of series.points) {
+						const row = document.createElement("tr");
+						const stationCell = document.createElement("td");
+						stationCell.textContent = station(point.x).trim();
+						const valueCell = document.createElement("td");
+						valueCell.textContent = point.y.toFixed(3).replace(".", ",");
+						row.append(stationCell, valueCell);
+						table.append(row);
+					}
+					section.append(table);
+					diagramTable.append(section);
+				}
+			}
+
+			function activateDiagramPresentation(presentation) {
+				diagramPresentation = presentation;
+				for (const candidate of diagramPresentationButtons) candidate.setAttribute("aria-pressed", String(candidate.dataset.diagramPresentation === presentation));
+				diagram.classList.toggle("hidden", presentation === "table");
+				diagramTable.classList.toggle("hidden", presentation !== "table");
+				renderDiagram();
+			}
+
 			function renderDiagram(entry = selectedEntry) {
 				diagram.replaceChildren();
+				diagramTable.replaceChildren();
 				if (diagramMode === "ivhw") {
 					renderIvhwDiagram(entry);
 					return;
@@ -39346,49 +39451,59 @@ xlsx/xlsx.mjs:
 				const left = 238;
 				const right = 30;
 				const top = 25;
-				diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
-				for (let tick = 0; tick <= 5; tick += 1) {
-					const x = left + (width - left - right) * tick / 5;
-					const line = svgElement("line", { x1: x, x2: x, y1: top, y2: height - 35, class: "diagram-grid" });
-					diagram.append(line);
-					const label = svgElement("text", { x, y: height - 12, "text-anchor": "middle", class: "diagram-label diagram-muted" });
-					label.textContent = station(xMin + xSpan * tick / 5).trim();
-					diagram.append(label);
-				}
-				tracks.forEach((track, index) => {
-					const yTop = top + index * (trackHeight + gap);
-					const yBottom = yTop + trackHeight;
-					diagram.append(svgElement("rect", { x: 0, y: yTop, width, height: trackHeight, class: "diagram-band" }));
-					diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBottom, y2: yBottom, class: "diagram-axis" }));
-					const label = svgElement("text", { x: 12, y: yTop + 18, class: "diagram-label" });
-					label.textContent = track.label;
-					diagram.append(label);
-					if (!track.points.length) {
-						const empty = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
-						empty.textContent = track.requiredMissing
+				if (diagramPresentation === "table") {
+					renderDiagramTable(tracks.map((track) => ({
+						label: track.label,
+						points: track.points,
+						emptyNote: track.requiredMissing
 							? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
-							: "keine sicher verknüpfte, numerische Reihe";
-						diagram.append(empty);
-						return;
+							: "keine sicher verknüpfte, numerische Reihe",
+					})));
+				} else {
+					diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
+					for (let tick = 0; tick <= 5; tick += 1) {
+						const x = left + (width - left - right) * tick / 5;
+						const line = svgElement("line", { x1: x, x2: x, y1: top, y2: height - 35, class: "diagram-grid" });
+						diagram.append(line);
+						const label = svgElement("text", { x, y: height - 12, "text-anchor": "middle", class: "diagram-label diagram-muted" });
+						label.textContent = station(xMin + xSpan * tick / 5).trim();
+						diagram.append(label);
 					}
-					let yMin = Infinity;
-					let yMax = -Infinity;
-					for (const point of track.points) {
-						yMin = Math.min(yMin, point.y);
-						yMax = Math.max(yMax, point.y);
-					}
-					const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
-					const d = track.points.map((point, pointIndex) => {
-						const x = left + (point.x - xMin) / xSpan * (width - left - right);
-						const y = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
-						return `${pointIndex ? "L" : "M"} ${x} ${y}`;
-					}).join(" ");
-					diagram.append(svgElement("path", { d, class: `diagram-series ${track.className}` }));
-					for (const jump of track.jumps ?? []) {
-						const x = left + (jump - xMin) / xSpan * (width - left - right);
-						diagram.append(svgElement("line", { x1: x, x2: x, y1: yTop + 7, y2: yBottom - 7, class: "diagram-jump" }));
-					}
-				});
+					tracks.forEach((track, index) => {
+						const yTop = top + index * (trackHeight + gap);
+						const yBottom = yTop + trackHeight;
+						diagram.append(svgElement("rect", { x: 0, y: yTop, width, height: trackHeight, class: "diagram-band" }));
+						diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBottom, y2: yBottom, class: "diagram-axis" }));
+						const label = svgElement("text", { x: 12, y: yTop + 18, class: "diagram-label" });
+						label.textContent = track.label;
+						diagram.append(label);
+						if (!track.points.length) {
+							const empty = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
+							empty.textContent = track.requiredMissing
+								? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
+								: "keine sicher verknüpfte, numerische Reihe";
+							diagram.append(empty);
+							return;
+						}
+						let yMin = Infinity;
+						let yMax = -Infinity;
+						for (const point of track.points) {
+							yMin = Math.min(yMin, point.y);
+							yMax = Math.max(yMax, point.y);
+						}
+						const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
+						const d = track.points.map((point, pointIndex) => {
+							const x = left + (point.x - xMin) / xSpan * (width - left - right);
+							const y = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
+							return `${pointIndex ? "L" : "M"} ${x} ${y}`;
+						}).join(" ");
+						diagram.append(svgElement("path", { d, class: `diagram-series ${track.className}` }));
+						for (const jump of track.jumps ?? []) {
+							const x = left + (jump - xMin) / xSpan * (width - left - right);
+							diagram.append(svgElement("line", { x1: x, x2: x, y1: yTop + 7, y2: yBottom - 7, class: "diagram-jump" }));
+						}
+					});
+				}
 				const profile = entries.find((candidate) => candidate.item.kind === "profile");
 				const cant = entries.find((candidate) => candidate.item.kind === "cant");
 				const unresolved = anchor?.item?.payload?.extras?.unresolvedAttachments ?? {};
@@ -39551,15 +39666,23 @@ xlsx/xlsx.mjs:
 				const pxPerMeterY = pxPerMeterX * 100;
 				const plotHeight = Math.max(60, ySpan * pxPerMeterY + 40);
 				const height = top + plotHeight + bottom;
-				diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
 				const displayHeight = Math.min(560, Math.max(220, Math.round(height / width * 900)));
 				diagramPanel.dataset.autoHeight = String(displayHeight);
 				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${displayHeight}px`);
+
+				if (diagramPresentation === "table") {
+					renderDiagramTable(trackData.flatMap((data) => [
+						{ label: `${objectDisplayName(data.track)} · Schiene A`, points: data.railA, valueLabel: "Höhe (m)" },
+						{ label: `${objectDisplayName(data.track)} · Schiene B`, points: data.railB, valueLabel: "Höhe (m)" },
+					]));
+					return;
+				}
 
 				const yBase = top + plotHeight - 20;
 				const xAt = (x) => left + (x - xMin) * pxPerMeterX;
 				const yAt = (y) => yBase - (y - yMin) * pxPerMeterY;
 
+				diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
 				for (let tick = 0; tick <= 5; tick += 1) {
 					const x = left + plotWidth * tick / 5;
 					diagram.append(svgElement("line", { x1: x, x2: x, y1: top, y2: yBase, class: "diagram-grid" }));
@@ -41014,10 +41137,108 @@ xlsx/xlsx.mjs:
 				return control;
 			}
 
+			// A Weiche/Abzweig has no dedicated table in GND -- it shows up implicitly
+			// as two or more alignment objects whose geometry touches at exactly ONE
+			// shared endpoint (they meet there, then diverge). Two records for the SAME
+			// physical track (e.g. an EK and an EL family row for one Gleis) instead
+			// share BOTH endpoints -- that pair is folded into one track before
+			// clustering so it can never masquerade as a junction. No switch numbering
+			// is invented: only the coordinates GND already carries are used.
+			function alignmentEndpoints(entry) {
+				const elements = entry?.item?.payload?.coordGeom?.elements;
+				const start = elements?.[0]?.start;
+				const end = elements?.[elements.length - 1]?.end;
+				if (!start || !end) return null;
+				return { start, end };
+			}
+
+			function endpointKey(point) {
+				return `${Math.round(point.easting * 100)}:${Math.round(point.northing * 100)}`;
+			}
+
+			function samePhysicalTrack(a, b) {
+				return endpointKey(a.start) === endpointKey(b.start) && endpointKey(a.end) === endpointKey(b.end);
+			}
+
+			function detectJunctionClusters() {
+				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment");
+				const tracks = [];
+				for (const entry of alignments) {
+					const points = alignmentEndpoints(entry);
+					if (!points) continue;
+					const existing = tracks.find((track) => samePhysicalTrack(track.points, points));
+					if (existing) existing.members.push(entry);
+					else tracks.push({ points, representative: entry, members: [entry] });
+				}
+				const byPoint = new Map();
+				for (const track of tracks) {
+					for (const point of [track.points.start, track.points.end]) {
+						const key = endpointKey(point);
+						if (!byPoint.has(key)) byPoint.set(key, []);
+						byPoint.get(key).push(track);
+					}
+				}
+				return [...byPoint.entries()]
+					.filter(([, tracksAtPoint]) => tracksAtPoint.length > 1)
+					// Consecutive segments of the SAME Strecke meet end-to-start wherever a
+					// long alignment is chunked into multiple records -- that is the track
+					// continuing, not a switch. A real Weiche joins DIFFERENT Gleis identities,
+					// so require at least two distinct Strecke values among the tracks at a
+					// shared point (verified against a real "mit Weichen" GND fixture: without
+					// this, 17 of 21 candidates were same-Strecke continuations, not junctions).
+					.filter(([, tracksAtPoint]) => new Set(tracksAtPoint.map((track) => gndSequenceForEntry(track.representative)?.strecke)).size > 1)
+					.map(([key, tracksAtPoint]) => {
+						const entries = tracksAtPoint.map((track) => track.representative);
+						const stationRaws = entries
+							.filter((entry) => !geoFrameInfo(entry)?.selfReferencing)
+							.map((entry) => gndSequenceForEntry(entry)?.stationStart)
+							.filter((value) => Number.isFinite(numberValue(value)));
+						return { id: key, entries, stationRaw: stationRaws.length ? Math.min(...stationRaws) : null };
+					})
+					.sort((a, b) => (a.stationRaw ?? Infinity) - (b.stationRaw ?? Infinity));
+			}
+
+			function activateDiagramMode(mode) {
+				diagramMode = mode;
+				for (const candidate of diagramModeButtons) candidate.setAttribute("aria-pressed", String(candidate.dataset.diagramMode === mode));
+				renderDiagram();
+			}
+
+			function activateJunctionCluster(junction) {
+				bulkSelectedEntries.clear();
+				for (const entry of junction.entries) bulkSelectedEntries.add(entry);
+				activateDiagramMode("ivhw");
+				const reference = junction.entries[0];
+				selectObject(reference, reference.button);
+			}
+
 			function renderSevenLineOutbox(current = selectedEntry) {
 				outboxContent.replaceChildren();
 				outboxContent.className = "outbox-tree";
 				outboxContent.append(buildNewGroupControl(current));
+				const junctions = detectJunctionClusters();
+				if (junctions.length) {
+					const node = document.createElement("details");
+					node.className = "outbox-frame outbox-junctions";
+					node.open = junctions.some((junction) => junction.entries.includes(current));
+					const summary = document.createElement("summary");
+					summary.textContent = `Weichen (aus Geometrie erkannt) · ${junctions.length}`;
+					node.append(summary);
+					const list = document.createElement("div");
+					list.className = "outbox-junction-list";
+					for (const junction of junctions) {
+						const row = document.createElement("button");
+						row.type = "button";
+						row.className = "outbox-junction-row";
+						const label = junction.stationRaw != null ? `km ${station(junction.stationRaw).trim().split(" ")[0]}` : "Lage offen";
+						row.textContent = `${label} · ${junction.entries.length} Gleise`;
+						row.title = junction.entries.map((entry) => objectDisplayName(entry)).join(" · ");
+						row.addEventListener("click", () => activateJunctionCluster(junction));
+						list.append(row);
+					}
+					node.append(list);
+					outboxContent.append(node);
+				}
 				const organized = allViewerEntries().filter(isOutboxOrganized);
 				const baseFrames = groupBy(organized, (entry) => {
 					const frame = geoFrameInfo(entry);
@@ -41906,11 +42127,10 @@ xlsx/xlsx.mjs:
 				else setDiagramHeight(diagramPanel.getBoundingClientRect().height + (event.key === "ArrowUp" ? 24 : -24));
 			});
 			for (const button of diagramModeButtons) {
-				button.addEventListener("click", () => {
-					diagramMode = button.dataset.diagramMode;
-					for (const candidate of diagramModeButtons) candidate.setAttribute("aria-pressed", String(candidate === button));
-					renderDiagram();
-				});
+				button.addEventListener("click", () => activateDiagramMode(button.dataset.diagramMode));
+			}
+			for (const button of diagramPresentationButtons) {
+				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
 			for (const button of viewModeButtons) {
 				button.addEventListener("click", () => setViewMode(button.dataset.mode));
