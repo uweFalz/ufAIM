@@ -378,6 +378,41 @@ named. Mid-solve that costs a backtrack, not the run; at the declared start it
 reaches the caller; in the final proposal it is reported rather than thrown, so
 the diagnosis is not lost with the candidate.
 
+**And then the projector was measured, which corrected the account above.**
+`Alignment2D.world2Track` returns null for exactly two reasons — an alignment
+with no elements, and a non-finite input point — and neither depends on the
+alignment's shape. Shortening does not make points stop projecting. It makes
+them project onto the clamped end:
+
+| point | s | q [m] | dist [m] |
+|---|---|---|---|
+| on the alignment | 715.0 | 0.0500 | 0.050 |
+| 10 m past the end | 1430.0 | 0.0500 | 10.000 |
+| 1000 m past the end | 1430.0 | 0.0500 | 1000.000 |
+
+A point a kilometre from the track reports an offset of 5 cm and passes any
+tolerance. That is worse than a zero, because it looks like an answer, and a
+null check cannot see it.
+
+The distance can. At a true foot point the offset *is* the distance; where the
+station was clamped they differ by the longitudinal overshoot. Measured,
+`dist − |q|` is 2.8e-17 m at genuine foot points across the whole alignment and
+already 9.9e-4 m one centimetre past the end — fourteen orders apart. The
+threshold sits at 1e-9, catching an overshoot of about ten microns.
+
+A projector that reports no distance forgoes the check, and the proposal records
+that it did not run rather than passing it over: a check that quietly does not
+run is the same fail-open one level up. The production projector does report it,
+so on the real scenario the check runs and no point is inadmissible.
+
+**AXTRAN2-REVIEW-003, raw declarations bypassing the gate.** The admission gate
+asked "is this a profile that is not confirmed?" and let everything else
+through — so the one form carrying no provenance at all, a plain object, was the
+one form treated as confirmed. A bare `{ minimumRadius: 400 }` became a binding
+constraint and the result called itself admissible. A raw declaration can never
+be confirmed, since there is no source to read, so it now always requires the
+explicit word.
+
 **AXTRAN2-REVIEW-002, unread limits as binding constraints.** A candidate
 profile was consumed exactly like a confirmed one, and its numbers do not stay
 advisory once they arrive: they become the curvature bound and the transition
