@@ -9,6 +9,8 @@ const {
 	BUDGET_MODES,
 	DEFAULT_TIERS,
 	tierZeroSatisfied,
+	tierZeroReport,
+	FEASIBILITY_TOLERANCE,
 } = await import(new URL("AlignmentLexicographicSolver.js", BASE));
 const { solveAlignmentProblem } = await import(new URL("AlignmentSQPSolver.js", BASE));
 const { createNineElementScenario } = await import(new URL("fixtures/nineElementScenario.mjs", import.meta.url));
@@ -427,7 +429,17 @@ test("a tier that gave up feasibility hands nothing down", () => {
 	assert.equal(run.skippedBudgets.length, 1);
 	assert.equal(run.skippedBudgets[0].tier, "tier-1");
 	assert.equal(run.skippedBudgets[0].reason, "infeasible");
-	assert.ok(run.skippedBudgets[0].endPoseDistance > 1e-3, "and it says how far off it was");
+	assert.ok(
+		run.skippedBudgets[0].endPoseDistance > FEASIBILITY_TOLERANCE,
+		"and it says how far off it was"
+	);
+	// "infeasible" on its own sends the reader back to the trace
+	assert.ok(
+		["end-pose position", "end-pose heading", "hardened Zwangspunkt"]
+			.includes(run.skippedBudgets[0].failing),
+		`it names which part of tier 0 it failed: "${run.skippedBudgets[0].failing}"`
+	);
+	assert.equal(run.skippedBudgets[0].tolerance, FEASIBILITY_TOLERANCE, "and against what");
 	assert.equal(run.ok, false);
 	assert.equal(run.status, "tier_established_no_budget");
 
@@ -438,8 +450,9 @@ test("a tier that gave up feasibility hands nothing down", () => {
 test("the feasibility gate asks about tier 0 only, never about the tier's own objective", () => {
 	assert.equal(tierZeroSatisfied(null), false);
 	const met = {
-		endPoseDistance: 1e-6, endPoseResidual: [1e-6, 0, 1e-7],
-		hardPointResiduals: [{ name: "Z", residual: 2e-5 }],
+		endPoseDistance: 1e-9, endPoseResidual: [1e-9, 0, 1e-13],
+		hardPointResiduals: [{ name: "Z", residual: 2e-9 }],
+		alignmentLength: 1430,
 	};
 	assert.equal(tierZeroSatisfied(met), true, "a huge objective value is not this gate's business");
 	assert.equal(tierZeroSatisfied({ ...met, endPoseDistance: 0.5 }), false);
@@ -448,9 +461,66 @@ test("the feasibility gate asks about tier 0 only, never about the tier's own ob
 		false,
 		"a hardened Zwangspunkt is tier 0 too"
 	);
-	// the heading is checked separately: two poses can coincide in position and
-	// still leave the alignment pointing somewhere else
-	assert.equal(tierZeroSatisfied({ ...met, endPoseResidual: [1e-6, 0, 0.2] }), false);
+});
+
+test("the heading is judged as a distance, over the length it accumulates on", () => {
+	// A heading is not a length and cannot be held against one. Compared with a
+	// tolerance in metres it was let off by the ratio between them: 1e-6 rad
+	// looks tiny and is 1.4 mm of drift at the end of this alignment, while the
+	// position beside it was being held to a thousandth of that.
+	const base = {
+		endPoseDistance: 0, endPoseResidual: [0, 0, 0], hardPointResiduals: [],
+		alignmentLength: 1430,
+	};
+	const heading = (radians) => ({ ...base, endPoseResidual: [0, 0, radians] });
+
+	assert.equal(tierZeroSatisfied(heading(1e-6)), false, "1.43e-3 m of drift is outside the gate");
+	assert.equal(tierZeroSatisfied(heading(1e-12)), true, "1.43e-9 m of drift is inside it");
+	// and the case the old comparison got wrong: an angle small enough to look
+	// harmless in radians, large enough to matter as a distance
+	assert.equal(tierZeroSatisfied(heading(1e-10)), false, "1.43e-7 m of drift is not");
+
+	const report = tierZeroReport(heading(1e-6));
+	assert.equal(report.failing, "end-pose heading");
+	assert.equal(report.leverArm, 1430);
+	assert.ok(Math.abs(report.heading - 1.43e-3) < 1e-12, "the drift, in metres");
+	assert.equal(report.headingRadians, 1e-6, "and the angle it came from");
+
+	// with no length to lean on, the angle is compared in radians and the report
+	// says so rather than passing a radian off as a metre
+	const blind = tierZeroReport({ ...heading(1e-6), alignmentLength: null });
+	assert.equal(blind.leverArmKnown, false);
+	assert.equal(blind.heading, 1e-6);
+});
+
+test("the tolerance sits in the middle of the band the measurements leave it", () => {
+	// The gate asks whether a tier honoured tier 0, not whether it converged -
+	// and those are different questions. The closures measured on this scenario,
+	// at iteration counts from 1 to 300, fall into two groups with nothing
+	// between them, and the threshold has to land in the gap.
+	assert.equal(FEASIBILITY_TOLERANCE, 1e-8);
+	const at = (closure) => ({
+		endPoseDistance: closure, endPoseResidual: [0, 0, 0],
+		hardPointResiduals: [], alignmentLength: 1430,
+	});
+	// the tightest that must be accepted is a points phase stopped at 20
+	// iterations: still moving, but the end pose met to 1e-10
+	const honours = [0, 3.95e-14, 1.09e-10];
+	const doesNot = [1.69e-6, 1.17e-5, 3.23e-5, 1.97e-3, 1.16e-1];
+
+	for (const closure of honours) {
+		assert.equal(tierZeroSatisfied(at(closure), FEASIBILITY_TOLERANCE), true, `${closure} m`);
+	}
+	for (const closure of doesNot) {
+		assert.equal(tierZeroSatisfied(at(closure), FEASIBILITY_TOLERANCE), false, `${closure} m`);
+	}
+
+	// and the verdict is the same anywhere in the band, which is the argument
+	// for the value: it is not delicate
+	for (const tolerance of [1e-9, 1e-8, 1e-7]) {
+		assert.equal(honours.every((c) => tierZeroSatisfied(at(c), tolerance)), true, `at ${tolerance}`);
+		assert.equal(doesNot.some((c) => tierZeroSatisfied(at(c), tolerance)), false, `at ${tolerance}`);
+	}
 });
 
 test("a tier that established nothing does not move the starting point either", () => {
