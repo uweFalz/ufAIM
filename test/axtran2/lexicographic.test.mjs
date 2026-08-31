@@ -6,6 +6,7 @@ const {
 	solveAlignmentLexicographic,
 	AlignmentLexicographicError,
 	BUDGETABLE_OBJECTIVES,
+	BUDGET_MODES,
 	DEFAULT_TIERS,
 	tierZeroSatisfied,
 } = await import(new URL("AlignmentLexicographicSolver.js", BASE));
@@ -35,10 +36,43 @@ const OPEN_GATE = { feasibilityTolerance: Infinity };
 
 // ---------------------------------------------------------------- declaration
 
-test("the default order is the declared one: length first, points second", () => {
+test("the default order is the declared one, and the length tier only reports", () => {
+	// Decision OD-2, reading (b): epsilon at the full span, which is the same
+	// thing as not constraining at all.
 	assert.deepEqual(DEFAULT_TIERS.map((tier) => tier.objective), ["accumulated-length", "points"]);
-	assert.equal(DEFAULT_TIERS[0].relative, 0, "the default order is strict");
-	assert.equal(DEFAULT_TIERS[0].absolute, 0);
+	assert.equal(DEFAULT_TIERS[0].budget, "reference");
+	assert.equal(DEFAULT_TIERS[0].relative, undefined, "no epsilon: there is nothing to widen");
+	assert.equal(DEFAULT_TIERS[0].absolute, undefined);
+	assert.deepEqual([...BUDGET_MODES], ["reference", "limit"]);
+});
+
+test("declaring an epsilon and a reference at once is a contradiction, not a preference", () => {
+	assert.throws(
+		() => solveAlignmentLexicographic({
+			...common, warmStart: false, maxIterations: 1,
+			tiers: [
+				{ objective: "accumulated-length", budget: "reference", absolute: 2 },
+				{ objective: "points" },
+			],
+		}),
+		(e) => e instanceof AlignmentLexicographicError && e.code === "CONTRADICTORY_BUDGET"
+	);
+	assert.throws(
+		() => solveAlignmentLexicographic({
+			...common, warmStart: false, maxIterations: 1,
+			tiers: [{ objective: "accumulated-length", budget: "cap" }, { objective: "points" }],
+		}),
+		(e) => e.code === "UNKNOWN_BUDGET_MODE"
+	);
+});
+
+test("a declared epsilon makes a tier a limit without being told to", () => {
+	const run = solveAlignmentLexicographic({
+		...common, ...OPEN_GATE, warmStart: false, maxIterations: 2,
+		tiers: [{ objective: "accumulated-length", absolute: 0.5 }, { objective: "points" }],
+	});
+	assert.equal(run.budgets[0].mode, "limit");
+	assert.equal(run.budgets[0].slack, 0.5);
 });
 
 test("a tier that cannot hand down a budget is refused before any phase runs", () => {
@@ -119,8 +153,12 @@ test("the warm start moves the starting point, and only that", () => {
 // ---------------------------------------------------------------- budget
 
 test("a strict tier freezes exactly what it attained", () => {
-	const run = solveAlignmentLexicographic({ ...common, ...OPEN_GATE, warmStart: false, maxIterations: 3 });
+	const run = solveAlignmentLexicographic({
+		...common, ...OPEN_GATE, warmStart: false, maxIterations: 3,
+		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }],
+	});
 	assert.equal(run.budgets.length, 1, "only the tier above the last hands one down");
+	assert.equal(run.budgets[0].mode, "limit");
 	const [budget] = run.budgets;
 	assert.equal(budget.objective, "accumulated-length");
 	assert.equal(budget.slack, 0, "epsilon = 0");
@@ -145,7 +183,10 @@ test("a declared epsilon widens the budget by exactly that much", () => {
 });
 
 test("a held budget is met by the phase that inherits it", () => {
-	const run = solveAlignmentLexicographic({ ...common, ...OPEN_GATE, warmStart: false, maxIterations: 6 });
+	const run = solveAlignmentLexicographic({
+		...common, ...OPEN_GATE, warmStart: false, maxIterations: 6,
+		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }],
+	});
 	const [budget] = run.budgets;
 	const final = run.phases.at(-1);
 	assert.ok(
@@ -214,6 +255,49 @@ test("a tier that established nothing does not move the starting point either", 
 			`variable ${i}: tier 2 gave ${value}, the warm start gives ${reference.candidate.variables[i]}`
 		);
 	});
+});
+
+// ---------------------------------------------------------------- reference
+
+test("a reference tier constrains nothing and hands no point down", () => {
+	// Under reading (b) the length tier says what its objective could achieve and
+	// then stops. The tier below must be solved exactly as if it stood alone.
+	const run = solveAlignmentLexicographic({
+		...common, ...OPEN_GATE, warmStart: false, maxIterations: 4,
+	});
+	assert.equal(run.budgets[0].mode, "reference");
+	assert.equal(run.budgets[0].limit, null, "a reference is not something to compare against");
+	assert.equal(run.budgets[0].slack, null);
+	assert.equal(
+		run.phases.filter((phase) => phase.label.endsWith("budget-active")).length, 0,
+		"nothing was held, so no held phase ran"
+	);
+	assert.deepEqual(run.phases.at(-1).diagnostics.extraEqualityResiduals.length, 0);
+
+	// and the last tier began at the declared alignment, not at tier 1's answer
+	const alone = solveAlignmentProblem({ ...common, objective: "points", maxIterations: 4 });
+	run.phases.at(-1).candidate.variables.forEach((value, i) => {
+		assert.ok(
+			Math.abs(value - alone.candidate.variables[i]) < 1e-12,
+			`variable ${i}: in the run ${value}, standing alone ${alone.candidate.variables[i]}`
+		);
+	});
+});
+
+test("a reference reports what the answer cost the tier that established it", () => {
+	const run = solveAlignmentLexicographic({
+		...common, ...OPEN_GATE, warmStart: false, maxIterations: 4,
+	});
+	const [budget] = run.budgets;
+	assert.ok(Number.isFinite(budget.attained), "what the length tier reached");
+	assert.ok(Number.isFinite(budget.spent), "what the answer used");
+	assert.ok(
+		Math.abs(budget.span - (budget.spent - budget.attained)) < 1e-12,
+		"and the span is exactly the difference"
+	);
+	// the span is what the points cost in length, so it cannot be negative: the
+	// length tier's own optimum is the smallest value available
+	assert.ok(budget.span >= -1e-9, `span ${budget.span}`);
 });
 
 // ---------------------------------------------------------------- tier 3
