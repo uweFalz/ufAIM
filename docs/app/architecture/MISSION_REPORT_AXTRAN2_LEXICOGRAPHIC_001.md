@@ -16,8 +16,8 @@ converge and the declaration of tier 3 that made it mean something.
 
 ## 2. Status
 
-Complete and pushed. Branch `feat/axtran2-sqp-solver`, seven commits from
-`1916c27` to `c0ebe62`.
+Complete and pushed. Branch `feat/axtran2-sqp-solver`, eight commits from
+`1916c27` to this report.
 
 Both objectives converge. Tier 1 reaches its optimum in 105 iterations with the
 end pose closed to 2.8e-13 m, and that optimum is now an alignment rather than a
