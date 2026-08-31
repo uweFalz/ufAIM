@@ -24,7 +24,11 @@ end pose closed to 2.8e-13 m, and that optimum is now an alignment rather than a
 collapse: both radii on the declared 600 m floor, all four transitions on their
 60 m floor.
 
-**All four decisions are made, and tier 3 is partly verified against EBO.** Epsilon is at the full span, reading (b), and
+**All four decisions are made, tier 3 is partly verified against EBO, and two
+review findings are closed.** The end-to-end run reports `ok=true`,
+`status=converged` and `admissible=false` — it converged, and it is evidence
+rather than an engineering answer, because the rate limits it ran on are still
+unread. Epsilon is at the full span, reading (b), and
 tier 3 is a declared profile with provenance and the real cant kinematics. The tier-0 gate compares metres with metres at 1e-8 m, a value read off the
 measurements rather than chosen. What is left of OD-3 is a person checking the
 profile numbers against the rule book they name, which no code can do.
@@ -355,6 +359,40 @@ limit and none of its values.
 
 `AXTRAN2_OPTIMIZATION_BOUNDARY.md` was read, not modified.
 
+### Two admission boundaries, from review
+
+**AXTRAN2-REVIEW-001, unprojectable points.** An unprojectable point became a
+zero residual and a zero Jacobian row. For a hardened Zwangspunkt zero reads as
+"exactly met", so a constraint with no evaluable meaning was recorded as the best
+possible outcome — while the declaration layer, in the same kernel, already
+refused to score such a point at all.
+
+For the soft points it was worse than silent. Tier 1 minimises length;
+shortening moves the alignment's end past measured points, which then stop
+projecting and score zero. **Shortening was rewarded by making the measurements
+disappear** — the objective and the defect pointed the same way, which is how
+this survived being measured so often.
+
+An unprojectable point now makes the evaluation inadmissible, with the point
+named. Mid-solve that costs a backtrack, not the run; at the declared start it
+reaches the caller; in the final proposal it is reported rather than thrown, so
+the diagnosis is not lost with the candidate.
+
+**AXTRAN2-REVIEW-002, unread limits as binding constraints.** A candidate
+profile was consumed exactly like a confirmed one, and its numbers do not stay
+advisory once they arrive: they become the curvature bound and the transition
+floor, and the length tier runs the alignment onto every one of them. Building
+constraints from an unconfirmed profile now requires an explicit
+`admitUnconfirmedDesign: "evidence-only"`, and the admission travels through
+constraints, problem, proposal and driver.
+
+The separation this creates is the point:
+
+    ok=true  status=converged  admission=evidence-only  admissible=false
+
+`ok` is about the solve. `admissible` is about the answer. They were one field
+before, which is exactly the confusion the review found.
+
 ## 8. Conflicts, Risks, and Open Decisions
 
 **Correction to a correction of mine.** I had reported the finding "minimising
@@ -408,6 +446,10 @@ alignment — and they are precisely the ones that could not be checked from her
 Verification is now tracked per limit rather than per profile, and a profile
 cannot call itself `confirmed` while any of its limits is unread: the module
 refuses it. A profile marked confirmed is one nobody will check again.
+
+Since AXTRAN2-REVIEW-002 this also has teeth downstream: a candidate profile
+cannot become a constraint without an explicit `evidence-only` admission, and
+every result built on one is marked inadmissible.
 
 **OD-4 (decided: 1e-8 m, and the comparison it makes was wrong).** Before the
 value there was a defect. Three quantities were tested against one number — a
