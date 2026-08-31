@@ -216,6 +216,98 @@ test("a tier that established nothing does not move the starting point either", 
 	});
 });
 
+// ---------------------------------------------------------------- tier 3
+
+test("the design limits reach the solver as bounds on the result", () => {
+	// A curvature bound is not a bound on a length, and the solver used to read
+	// only the latter. The declared smallest radius has to survive the whole way
+	// to the candidate.
+	const limited = createNineElementScenario({
+		pointCount: 6,
+		startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180],
+		startCurvatures: [1 / 695, -1 / 905],
+		design: { minimumRadius: 600, minimumLength: { straight: 40, arc: 60, transition: 60 } },
+	});
+	const run = solveAlignmentLexicographic({
+		problem: limited.problem,
+		buildAlignment: limited.buildAlignment,
+		analyticJacobian: limited.analyticJacobian,
+		tiers: [{ objective: "accumulated-length" }],
+		warmStart: false,
+		maxIterations: 200,
+	});
+	const { lengths, curvatures } = limited.materialise(
+		limited.problem.codec.decode(run.candidate.variables));
+	for (const curvature of curvatures) {
+		assert.ok(
+			Math.abs(curvature) <= 1 / 600 + 1e-9,
+			`radius ${(1 / Math.abs(curvature)).toFixed(1)} m is tighter than the declared 600 m`
+		);
+	}
+	// E1, E3, E5, E7 are the transitions and E0, E4, E8 straights
+	[1, 3, 5, 7].forEach((i) => assert.ok(lengths[i] >= 60 - 1e-9, `transition ${i} at ${lengths[i]}`));
+	assert.ok(lengths[4] >= 40 - 1e-9, `straight E4 at ${lengths[4]}`);
+});
+
+test("a tier held to the budget of a vertex says so at once", () => {
+	// Under the design limits the length optimum is a vertex of the feasible
+	// set: four transitions on their length floor, both arcs on the curvature
+	// bound, six active bounds and four equalities pinning all nine variables.
+	// A tier held to that budget has no admissible direction at all, and has to
+	// report that rather than iterate against it until the count runs out.
+	const codec = scenario.problem.codec;
+	const gradient = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
+	const total = (x) => gradient.reduce((sum, weight, i) => sum + weight * x[i], 0);
+
+	const length = solveAlignmentProblem({ ...common, objective: "accumulated-length", maxIterations: 300 });
+	assert.equal(length.status, "stationary", "the length tier reached its own optimum");
+	const limit = total(length.candidate.variables);
+
+	const held = solveAlignmentProblem({
+		...common, objective: "points", maxIterations: 40,
+		startAt: [...length.candidate.variables],
+		extraEqualities: [{ id: "budget", gradient, residual: (x) => total(x) - limit }],
+	});
+	assert.equal(held.status, "stationary");
+	assert.ok(held.diagnostics.iterations <= 2, `took ${held.diagnostics.iterations} iterations`);
+	// Which of the three ways it recognised there was nothing to do depends on
+	// how the multipliers land, and all three are correct answers to the same
+	// question. What must not happen is iterating against a pinned working set
+	// until the count runs out, which is what the assertions above forbid.
+	assert.ok(
+		["stationary", "no_admissible_direction", "degenerate_vertex"]
+			.includes(held.diagnostics.history.at(-1).reason),
+		`reported "${held.diagnostics.history.at(-1).reason}"`
+	);
+	// and it is still exactly the length tier's alignment, because there was
+	// nowhere admissible to go
+	held.candidate.variables.forEach((value, i) => {
+		assert.ok(
+			Math.abs(value - length.candidate.variables[i]) < 1e-9,
+			`variable ${i} moved to ${value} from ${length.candidate.variables[i]}`
+		);
+	});
+});
+
+test("a budget is honoured from its own witness, not from the point that broke it", () => {
+	// The witness satisfies the budget exactly, so the held phase starts inside
+	// the constraint it must honour. Starting at the overspending free optimum
+	// began it outside, and the solve ran away: measured, the trust region grew
+	// 30 -> 60 -> 121 and the QP's active set gave up after 67 releases.
+	const run = solveAlignmentLexicographic({
+		...common, warmStart: false, maxIterations: 8,
+		feasibilityTolerance: Infinity,   // so a short tier 1 still hands a budget down
+	});
+	const held = run.phases.find((phase) => phase.label.endsWith("budget-active"));
+	if (!held) return;    // the free optimum was affordable; nothing to hold
+	const [row] = held.diagnostics.extraEqualityResiduals;
+	assert.ok(
+		Math.abs(row.residual) < 1e-6,
+		`the held phase ended off its budget by ${row.residual}`
+	);
+	assert.notEqual(held.status, "qp_failed", "and it did not run away getting there");
+});
+
 // ---------------------------------------------------------------- reporting
 
 // ---------------------------------------------------------------- feasibility gate

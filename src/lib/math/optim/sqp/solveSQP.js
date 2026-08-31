@@ -147,16 +147,32 @@ export function solveSQP({
 		// not what held it there. Then no admissible descent direction exists -
 		// which is exactly what happens when the active constraints pin every
 		// degree of freedom, as they do at a vertex of the feasible set.
-		const pinnedByModel = step.qpStatus === "solved" && radius > stepTolerance;
-		if (stepNorm <= stepTolerance && violation.total <= feasibilityTolerance
+		// "solved" is the subproblem at its own optimum. "stationary_on_working_set"
+		// is the subproblem at a degenerate vertex: it released a bound and was
+		// blocked again by the same one without moving, so it cannot prove
+		// optimality and cannot move either. For the question being asked here -
+		// is there an admissible direction - the two answer the same way, and
+		// they are told apart in the reason rather than run together.
+		const pinnedByModel = radius > stepTolerance
+			&& (step.qpStatus === "solved" || step.qpStatus === "stationary_on_working_set");
+		// The step tolerance is relative to the point. An absolute 1e-12 means
+		// nothing where the variables are hundreds of metres: measured at a
+		// vertex, the steps were 3.6e-10 and then 9.0e-16, all of them zero for
+		// any purpose and only the last of them small enough to say so.
+		const stepScale = Math.max(1, Math.hypot(...x));
+		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasibilityTolerance
 			&& (stationary || pinnedByModel)) {
 			history.push({
 				iteration, status: "step_too_small", kkt, violation: violation.total,
-				reason: stationary ? "stationary" : "no_admissible_direction",
+				reason: stationary
+					? "stationary"
+					: step.qpStatus === "solved" ? "no_admissible_direction" : "degenerate_vertex",
 			});
 			return {
 				ok: true, status: "stationary",
-				reason: stationary ? "stationary" : "no_admissible_direction",
+				reason: stationary
+					? "stationary"
+					: step.qpStatus === "solved" ? "no_admissible_direction" : "degenerate_vertex",
 				x, state, history,
 				iterations: iteration, multipliers: step.multipliers, hessian: H,
 			};
@@ -300,6 +316,7 @@ export function solveSQP({
 			delta: step.delta,
 			radius,
 			qpIterations: step.qpIterations,
+			qpStatus: step.qpStatus,
 			// per constraint, because the aggregate hides which one is in trouble
 			// and the answer to that is usually a scaling question
 			equalities: Object.freeze((state.h ?? []).map((value, j) => Object.freeze({
