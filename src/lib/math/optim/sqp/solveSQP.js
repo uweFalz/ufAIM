@@ -102,7 +102,10 @@ export function solveSQP({
 		});
 
 		if (!step.ok) {
-			history.push({ iteration, status: "qp_failed", reason: step.status, detail: step.reason ?? null });
+			history.push({
+				iteration, status: "qp_failed", reason: step.status,
+				detail: step.detail ?? step.reason ?? null,
+			});
 			return { ok: false, status: "qp_failed", x, state, history, iterations: iteration };
 		}
 
@@ -138,10 +141,23 @@ export function solveSQP({
 				iterations: iteration, multipliers: step.multipliers, hessian: H,
 			};
 		}
-		if (stepNorm <= stepTolerance && violation.total <= feasibilityTolerance && stationary) {
-			history.push({ iteration, status: "step_too_small", kkt, violation: violation.total });
+		// A zero step is stationarity when the subproblem that produced it was
+		// free to say otherwise. Two things have to hold: the subproblem reached
+		// its own optimum rather than being truncated, and the trust region was
+		// not what held it there. Then no admissible descent direction exists -
+		// which is exactly what happens when the active constraints pin every
+		// degree of freedom, as they do at a vertex of the feasible set.
+		const pinnedByModel = step.qpStatus === "solved" && radius > stepTolerance;
+		if (stepNorm <= stepTolerance && violation.total <= feasibilityTolerance
+			&& (stationary || pinnedByModel)) {
+			history.push({
+				iteration, status: "step_too_small", kkt, violation: violation.total,
+				reason: stationary ? "stationary" : "no_admissible_direction",
+			});
 			return {
-				ok: true, status: "stationary", x, state, history,
+				ok: true, status: "stationary",
+				reason: stationary ? "stationary" : "no_admissible_direction",
+				x, state, history,
 				iterations: iteration, multipliers: step.multipliers, hessian: H,
 			};
 		}

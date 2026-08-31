@@ -92,6 +92,9 @@ export function createNineElementScenario({
 	startLengths = [200, 95, 292, 86, 156, 84, 268, 76, 180],
 	startCurvatures = [1 / 660, -1 / 950],
 	hardPointNames = [],
+	// Tier 3. The truth runs R1 = 700 and R2 = 900 with 80 to 90 m transitions,
+	// so these limits admit it comfortably and still forbid the collapse.
+	design = { minimumRadius: 600, minimumLength: { straight: 40, arc: 60, transition: 60 } },
 } = {}) {
 	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);
 	const endPose = poseOf(truth, truth.arcLength);
@@ -136,6 +139,8 @@ export function createNineElementScenario({
 			elementSequence: codec.elementSequence,
 			minimumElementLength: 20,
 			hardPoints: hardPointNames.map((name) => ({ name })),
+			elementKinds: Object.fromEntries(TYPES.map((type, i) => [`E${i}`, type])),
+			design,
 		}),
 		residuals: createAlignmentResidualBuilder({
 			metricContext: createIntrinsicMetricContext(),

@@ -6,7 +6,8 @@ const load = (name) => import(new URL(name, BASE));
 
 const { createAlignmentVariableCodec, AlignmentVariableCodecError, VARIABLE_ROLES } =
 	await load("AlignmentVariableCodec.js");
-const { createAlignmentConstraintBuilder } = await load("AlignmentConstraintBuilder.js");
+const { createAlignmentConstraintBuilder, AlignmentConstraintBuilderError, ELEMENT_KINDS } =
+	await load("AlignmentConstraintBuilder.js");
 const { createAlignmentResidualBuilder, AlignmentResidualBuilderError } =
 	await load("AlignmentResidualBuilder.js");
 const { createAlignmentOptimizationProblem, AlignmentOptimizationProblemError } =
@@ -309,4 +310,96 @@ test("the declaration layer declares only; it neither solves nor applies", async
 			assert.match(spec, /^\.\/[A-Za-z]+\.js$/, `${name} imports outside the package: ${spec}`);
 		}
 	}
+});
+
+// ---------------------------------------------------------------- tier 3
+
+const KINDS = { E0: "straight", E1: "transition", E2: "arc", E3: "transition" };
+const tier3 = (design) => createAlignmentConstraintBuilder({
+	endPose: END_POSE,
+	elementSequence: ["E0", "E1", "E2", "E3"],
+	minimumElementLength: 20,
+	elementKinds: KINDS,
+	design,
+});
+
+test("a smallest radius becomes a two-sided bound on curvature, and only on arcs", () => {
+	// A curve may run either way and may straighten out entirely; what it may
+	// not do is be tighter than the design allows. That is a box, not a floor.
+	const built = tier3({ minimumRadius: 600 });
+	assert.equal(built.designBounds.length, 1, "one bound, on the one arc");
+	const [bound] = built.designBounds;
+	assert.equal(bound.elementId, "E2");
+	assert.equal(bound.quantity, "curvature");
+	assert.equal(bound.reason, "minimum-radius");
+	assert.ok(Math.abs(bound.maximum - 1 / 600) < 1e-15);
+	assert.ok(Math.abs(bound.minimum + 1 / 600) < 1e-15, "the other direction is admissible too");
+});
+
+test("a design length takes over from the sequence bound, and says so", () => {
+	const built = tier3({ minimumLength: { straight: 40, arc: 60, transition: 60 } });
+	const byId = Object.fromEntries(built.bounds.map((bound) => [bound.elementId, bound]));
+	assert.equal(byId.E0.minimum, 40);
+	assert.equal(byId.E0.binding, "design", "40 is stricter than the sequence bound of 20");
+	assert.equal(byId.E1.minimum, 60);
+	assert.equal(byId.E0.sequenceMinimum, 20, "and the sequence bound is still recorded");
+
+	// the other way round: where the sequence is stricter it keeps speaking
+	const sequenceWins = createAlignmentConstraintBuilder({
+		endPose: END_POSE, elementSequence: ["E0"], minimumElementLength: 90,
+		elementKinds: { E0: "straight" }, design: { minimumLength: { straight: 40 } },
+	});
+	assert.equal(sequenceWins.bounds[0].minimum, 90);
+	assert.equal(sequenceWins.bounds[0].binding, "element-sequence");
+});
+
+test("the kinematic derivation is offered, never invented", () => {
+	// R >= V^2 / a, cant-free. 50 m/s at 0.65 m/s^2 is 3846 m.
+	const derived = tier3({ speed: 50, lateralAcceleration: 0.65 });
+	assert.ok(Math.abs(derived.design.minimumRadius - 2500 / 0.65) < 1e-9);
+	assert.equal(derived.design.radiusFrom, "V^2/a");
+
+	// L >= V^3 / (R j), the conservative form
+	const withJerk = tier3({ minimumRadius: 4000, speed: 50, lateralAcceleration: 0.65, lateralJerk: 0.4 });
+	const byId = Object.fromEntries(withJerk.bounds.map((bound) => [bound.elementId, bound]));
+	assert.ok(Math.abs(byId.E1.minimum - 125000 / (4000 * 0.4)) < 1e-9);
+	assert.ok(byId.E2.minimum < byId.E1.minimum, "the rule speaks about transitions only");
+
+	// and with nothing declared, nothing is invented
+	const bare = createAlignmentConstraintBuilder({
+		endPose: END_POSE, elementSequence: ["E0"], minimumElementLength: 20,
+	});
+	assert.equal(bare.design, null);
+	assert.deepEqual([...bare.designBounds], []);
+});
+
+test("a declared radius tighter than the kinematics allows is refused, not overruled", () => {
+	// The engineer's rule book knows things this kinematics does not - cant, for
+	// one - so a declared value may be looser than V^2/a. It may not be tighter:
+	// that is a contradiction, and guessing which one was meant is not this
+	// module's business.
+	assert.throws(
+		() => tier3({ minimumRadius: 500, speed: 50, lateralAcceleration: 0.65 }),
+		(e) => e instanceof AlignmentConstraintBuilderError && e.code === "DESIGN_CONFLICT"
+	);
+	assert.doesNotThrow(() => tier3({ minimumRadius: 5000, speed: 50, lateralAcceleration: 0.65 }));
+});
+
+test("a design profile that names element kinds needs to be told them", () => {
+	assert.deepEqual([...ELEMENT_KINDS], ["straight", "arc", "transition"]);
+	assert.throws(
+		() => createAlignmentConstraintBuilder({
+			endPose: END_POSE, elementSequence: ["E0"],
+			design: { minimumLength: { straight: 40 } },
+		}),
+		(e) => e.code === "MISSING_ELEMENT_KINDS"
+	);
+	assert.throws(
+		() => createAlignmentConstraintBuilder({
+			endPose: END_POSE, elementSequence: ["E0"],
+			elementKinds: { E0: "spiral" }, design: { minimumRadius: 600 },
+		}),
+		(e) => e.code === "UNKNOWN_ELEMENT_KIND"
+	);
+	assert.throws(() => tier3({ minimumRadius: -1 }), (e) => e.code === "INVALID_DESIGN");
 });
