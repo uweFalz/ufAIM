@@ -8,7 +8,7 @@ order end to end:
     tier 0   poseA, poseE, element sequence   never traded
     tier 1   accumulated element length       minimised
     tier 2   reality check via point offsets
-    tier 3   design limits                    declared in this mission
+    tier 3   design limits                    declared, with provenance
 
 The order is ranked, not weighted. The mission began as the orchestration
 between tiers 1 and 2, and grew to include the solver work that made tier 1
@@ -24,7 +24,12 @@ end pose closed to 2.8e-13 m, and that optimum is now an alignment rather than a
 collapse: both radii on the declared 600 m floor, all four transitions on their
 60 m floor.
 
-**OD-2 is decided: reading (b), epsilon at the full span.** The length tier
+**OD-2 and OD-3 are decided.** Epsilon is at the full span, reading (b), and
+tier 3 is a declared profile with provenance and the real cant kinematics. What
+is left of OD-3 is a person checking the numbers against the rule book they
+name, which no code can do.
+
+**OD-2, reading (b), epsilon at the full span.** The length tier
 establishes what its objective could achieve, reports it, and stops
 constraining. The answer is the points optimum and the length tier has said what
 it cost — on the measured scenario, 5.889 m.
@@ -76,27 +81,44 @@ may not hand down a budget it reached by giving feasibility back, and it may not
 hand down that point either. Both are withheld and the tier is reported through
 `skippedBudgets`.
 
-### Tier 3, the design limits
+### Tier 3, a declared profile with provenance
 
-The constraint builder now takes a design profile: a smallest admissible radius,
-which becomes a two-sided bound on every free curvature — a curve may run either
-way and may straighten out entirely, but may not be tighter than the design
-allows — and a smallest admissible length per element kind, which takes over
+The design limits are a profile, not numbers in a fixture. A smallest admissible
+radius becomes a two-sided bound on every free curvature — a curve may run
+either way and may straighten out entirely, but may not be tighter than the
+design allows — and a smallest admissible length per element kind takes over
 from the sequence bound wherever it is stricter, recording which of the two is
 speaking.
 
-No limit is invented. Values are declared, because they live in the engineer's
-rule book and not in a calculation kernel. What the module will do on request is
-the pure kinematics:
+**Provenance is required, not encouraged.** Every declared value is
+`{ value, source }`; a bare number is refused, and so is a profile that does not
+say where it comes from. A limit nobody can trace cannot be reviewed, and will
+be copied into the next project by someone who assumes it was.
 
-    R >= V^2 / a          from the unbalanced lateral acceleration limit
-    L >= V^3 / (R j)      from the limit on its rate of change
+The kinematics is the real one, with cant. With `s` the dynamic gauge, `u` the
+applied cant and `u_f` the deficiency:
 
-Both are cant-free, since cant is not modelled, and the second is conservative
-twice over: the honest form bounds `|dkappa|`, which is a variable, and
-enforcing that needs a general inequality the solver does not carry. A declared
-radius tighter than `V^2/a` is refused rather than silently overruled — the rule
-book knows things this kinematics does not.
+    R >= s V^2 / (g (u + u_f))
+    L >= V u / (du/dt)          cant ramp in time
+    L >= n u                    cant ramp in space, gradient 1:n
+    L >= V u_f / (du_f/dt)      deficiency change rate
+
+All four are physics and geometry; every limit inside them is a rule-book number
+and is declared. A transition takes the longest of the three length rules, and
+the two that did not bind stay on the record with the formula that produced
+them. A rule-book floor — EBO's smallest radius — is not a competing derivation
+but a floor: the binding radius is the larger of it and the kinematics, and
+which one spoke is reported.
+
+Local departures are declared per element with their own reason, because real
+projects keep curves they inherited and station throats run tighter than the
+open line. An exception that cannot say why is refused; it is indistinguishable
+from an error.
+
+Cant itself is not modelled. AXTRAN2 optimises the horizontal alignment, and
+cant enters as an assumption at its declared maximum — which makes the three
+length rules the worst case for an element running the full cant range, and
+conservative for one that does not.
 
 ### The solver work this required
 
@@ -134,7 +156,10 @@ Five defects, each named by a measurement rather than guessed at:
 Added:
 
 - `src/domain/optimization/alignment/AlignmentLexicographicSolver.js`
+- `src/domain/optimization/alignment/AlignmentDesignProfile.js`
+- `src/domain/optimization/alignment/profiles/index.js`
 - `test/axtran2/lexicographic.test.mjs`
+- `test/axtran2/design-profile.test.mjs`
 - `test/axtran2/fixtures/nineElementScenario.mjs`
 - `docs/app/architecture/MISSION_REPORT_AXTRAN2_LEXICOGRAPHIC_001.md`
 
@@ -161,9 +186,26 @@ the three end-pose equalities. Points sampled from the truth with a fixed-seed
 lateral disturbance of ±0.04 m, tolerance 0.15 m. Start perturbed to 3.6 m of
 end-pose offset. Analytic Jacobian throughout.
 
-Design profile: minimum radius 600 m, minimum lengths 40 m straight, 60 m arc,
-60 m transition. The truth satisfies all of them comfortably, so the target
-stays reachable and every measurement is about the solver or the objective.
+Design profile: `hauptbahn-V100` at 140 mm of cant, which derives a smallest
+radius of 491.8 m and a shortest transition of 77.8 m. The scenario's own truth
+— R1 = 700, R2 = 900, transitions of 80 and 90 m — satisfies those narrowly, on
+purpose: a profile with room to spare would not show whether the limits reach
+the solver at all.
+
+Measurements taken before the profile existed used bare limits of 600 m and
+40/60/60 m and are labelled where they appear.
+
+The derivations, checked the cheapest way there is — a faster line must need a
+larger radius and longer transitions:
+
+| profile | R_min [m] | shortest transition [m] |
+|---|---|---|
+| hauptbahn-V100 | 453.9 | 88.9 |
+| hauptbahn-V160 | 1162.1 | 142.2 |
+| hauptbahn-V200 | 1627.9 | 177.8 |
+
+Worth stating: under `hauptbahn-V160` this scenario's own truth would be
+inadmissible — 700 m against a required 1162 m. That is the profile working.
 
 ### Convergence, before and after the solver work
 
@@ -222,17 +264,26 @@ vertex — four transitions on their length floor, both arcs on the curvature
 bound, six active bounds and four equalities pinning all nine variables — so
 tier 2 has no admissible direction and returns tier 1's alignment unchanged.
 
-### The two-phase run end to end, as decided
+### The two-phase run end to end, as decided, under the declared profile
 
-Reading (b), the default: no warm start, 400 iterations allowed per phase.
+Reading (b), the default: no warm start, 400 iterations allowed per phase,
+under `hauptbahn-V100` at 140 mm.
 
-| phase | verdict | ΣL [m] | end pose [m] | outside | rms | R1 | R2 |
-|---|---|---|---|---|---|---|---|
-| tier-1 | `stationary` at 105 | 1424.105 | 2.8e-13 | 8/12 | 52.878 | 600 | −600 |
-| tier-2 | `stationary` at **171** | 1429.994 | **0.0** | **0/12** | **0.0640** | 702 | −902 |
+| phase | verdict | ΣL [m] | end pose [m] | outside | rms | R1 | R2 | profile |
+|---|---|---|---|---|---|---|---|---|
+| tier-1 | `stationary` at 123 | 1423.234 | **0.0** | 8/12 | 65.956 | 492 | −492 | held |
+| tier-2 | `stationary` at **57** | 1429.994 | **0.0** | **0/12** | **0.0828** | 702 | −901 | held |
 
-`ok=true`, `status=converged`, no tier skipped, 197 s. The reference reports:
-achievable 1424.105 m, spent 1429.994 m, **span 5.889 m**.
+`ok=true`, `status=converged`, no tier skipped. The reference reports:
+achievable 1423.234 m, spent 1429.994 m, **span 6.760 m**.
+
+The length tier sits exactly on the radius limit and on the transition floor,
+which is what a limit is for. Both phases honour every limit in the profile.
+
+Under the earlier bare limits of 600 m and 40/60/60 m the same run gave
+1424.105 m and 1429.994 m with rms 0.0640, a span of 5.889 m, and tier 2 taking
+171 iterations. The real profile costs a little point quality — its transition
+floor is 77.8 m against 60 — and buys a wider, honest span.
 
 Both tiers reach their own optimum, every declared design limit holds, the end
 pose closes exactly, and no point is outside its tolerance.
@@ -304,10 +355,27 @@ answer, only measures it. If a later scenario should show the span growing large
 enough that the length matters engineeringly, the decision is worth revisiting
 against that number rather than against this one.
 
-**OD-3 (decision required).** The design profile used here — 600 m radius, 40 m
-and 60 m lengths — was chosen so the test scenario satisfies it comfortably. It
-is a fixture value, not an engineering one. What are the real limits, and are
-they per project, per line category, or per element?
+**OD-3 (decided, with one part left to a person).** The limits are a declared
+profile. Where they live is answered by design: a profile is declared **with the
+problem**, because two alignments in one project can sit under different rules —
+a new line and a reconstruction, an open line and a station throat. What is
+shared is named in `profiles/index.js` so it can be referenced rather than
+retyped; what is local is an `exception` on the problem's own profile, with its
+own reason.
+
+**What remains is not a design question but a reading one.** Every shipped
+profile is `status: "candidate"`, and that is the accurate state, not modesty:
+the values were entered from the sources each one names, and the current text of
+those sources was not read while writing them. Each such value carries `CHECK`
+in its source string. Before a profile is used for anything anyone signs, its
+numbers have to be checked against the rule book it names and the status moved
+to `confirmed`. No code does that.
+
+The values most in need of checking are the rate limits — `maximumCantRate`,
+`maximumDeficiencyRate`, `cantGradient` — because they differ by line category
+and by whether the case is the normal one or an exception. The radius floor
+(EBO § 6) and the cant maxima want checking too, but a wrong rate limit changes
+every transition length in the alignment.
 
 **OD-4 (decision required).** `feasibilityTolerance`, the geometric closure
 below which a tier may hand a budget down, is 1e-3 m. A millimetre-level
@@ -325,10 +393,12 @@ middle of the epsilon table is quoted as upper bounds and not as optima.
 held is not released. With two tiers there is never more than one budget and the
 case does not arise. Stated in the module.
 
-**R-4 (limitation, accepted).** The transition-length rule is enforced in its
-conservative constant form. The honest form bounds `|dkappa|`, a variable, and
-needs a general inequality the solver does not carry. It is stricter than
-required whenever a transition does not run the full curvature range.
+**R-4 (limitation, accepted).** The transition-length rules are enforced at the
+declared maximum cant, which is the worst case. An element that does not run the
+full cant range is held to a longer transition than it needs. The honest form
+couples length to the curvature change, which the solver carries as neither a
+bound nor an equality, and it is the same conservatism as bounding `|dkappa|` by
+`1/R`.
 
 Conflicts with parallel missions: None.
 Terminology collisions: None.
@@ -338,20 +408,20 @@ Terminology collisions: None.
 The priority order is carried end to end and the decision it waited on is made.
 Nothing in this package is left half-built.
 
-Next safe step: OD-3 — replace the fixture design profile with real limits. That
-is a declaration, not a calculation: the constraint builder already holds the
-shape and none of the values, so the work is deciding the numbers and where they
-live, not writing solver code.
+Next safe step: confirm the shipped profiles against the rule book and move
+their status to `confirmed`. That is reading and checking, not building — the
+only change in the repository is a status field and, where a number turns out
+wrong, the number.
 
-Files that step may touch: whatever declares a problem for AXTRAN2. The solver,
-the driver and the constraint builder should not need changing.
+Files that step may touch: `src/domain/optimization/alignment/profiles/index.js`
+and nothing else. The profile module, the constraint builder, the solver and the
+driver should not need changing.
 
 Independent streams: the viewer and IVHW work is untouched and can proceed in
 parallel. `docs/knowledgeKernel/` was not modified.
 
-Done criterion for the next package: a real design profile is declared outside
-the test fixture, the driver runs against it, and the resulting alignment
-honours every limit in it with its point residuals recorded against the
-tolerances.
+Done criterion for the next package: every value in a shipped profile has been
+checked against the source it names, no `CHECK` remains in a source string, and
+the profile's status is `confirmed`.
 
 Recommendations here do not authorize a new mission.
