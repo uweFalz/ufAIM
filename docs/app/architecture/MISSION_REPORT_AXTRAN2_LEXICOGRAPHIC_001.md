@@ -24,7 +24,7 @@ end pose closed to 2.8e-13 m, and that optimum is now an alignment rather than a
 collapse: both radii on the declared 600 m floor, all four transitions on their
 60 m floor.
 
-**OD-2, OD-3 and OD-4 are decided.** Epsilon is at the full span, reading (b), and
+**All four decisions are made, and tier 3 is partly verified against EBO.** Epsilon is at the full span, reading (b), and
 tier 3 is a declared profile with provenance and the real cant kinematics. The tier-0 gate compares metres with metres at 1e-8 m, a value read off the
 measurements rather than chosen. What is left of OD-3 is a person checking the
 profile numbers against the rule book they name, which no code can do.
@@ -382,19 +382,32 @@ shared is named in `profiles/index.js` so it can be referenced rather than
 retyped; what is local is an `exception` on the problem's own profile, with its
 own reason.
 
-**What remains is not a design question but a reading one.** Every shipped
-profile is `status: "candidate"`, and that is the accurate state, not modesty:
-the values were entered from the sources each one names, and the current text of
-those sources was not read while writing them. Each such value carries `CHECK`
-in its source string. Before a profile is used for anything anyone signs, its
-numbers have to be checked against the rule book it names and the status moved
-to `confirmed`. No code does that.
+**Partially verified.** EBO § 6 was read at gesetze-im-internet.de and
+cross-checked at buzer.de. It gives three of the numbers:
 
-The values most in need of checking are the rate limits — `maximumCantRate`,
-`maximumDeficiencyRate`, `cantGradient` — because they differ by line category
-and by whether the case is the normal one or an exception. The radius floor
-(EBO § 6) and the cant maxima want checking too, but a wrong rate limit changes
-every transition length in the alignment.
+| | value | clause | verdict |
+|---|---|---|---|
+| smallest radius, through main tracks | 300 m | § 6 (1) | **read** |
+| cap on cant | 180 mm | § 6 (3) | **read**, and now enforced |
+| flattest cant ramp | 1:400 | § 6 (4) | **read** — and it was miscited |
+
+It was checked explicitly that EBO states nothing about cant deficiency or about
+the rate of cant change over time. Those live in Ril 800.0110, which is not
+publicly available and was **not** read.
+
+The miscitation is worth recording as its own finding: the 1:400 ramp had been
+attributed to Ril 800.0110. It is a binding regulation, not an operator's design
+rule. The value was right and the citation was not, which is the sort of error
+the `CHECK` markers exist to surface.
+
+**What remains unread, per limit:** `maximumCant`, `maximumCantDeficiency`,
+`maximumCantRate`, `maximumDeficiencyRate`, and the two project lengths. The two
+rate limits matter most — a wrong one changes every transition length in the
+alignment — and they are precisely the ones that could not be checked from here.
+
+Verification is now tracked per limit rather than per profile, and a profile
+cannot call itself `confirmed` while any of its limits is unread: the module
+refuses it. A profile marked confirmed is one nobody will check again.
 
 **OD-4 (decided: 1e-8 m, and the comparison it makes was wrong).** Before the
 value there was a defect. Three quantities were tested against one number — a
@@ -453,14 +466,18 @@ Terminology collisions: None.
 The priority order is carried end to end and the decision it waited on is made.
 Nothing in this package is left half-built.
 
-All four open decisions are made. Next safe step: confirm the shipped profiles
-against the rule book and move their status to `confirmed`. That is reading and checking, not building — the
+Next safe step: read Ril 800.0110 for the four unread limits — the two rate
+limits above all — mark them `verified` and move the profiles to `confirmed`.
+The module will refuse the status until every one of them is read, so this
+cannot be done by halves. That is reading and checking, not building — the
 only change in the repository is a status field and, where a number turns out
 wrong, the number.
 
 Files that step may touch: `src/domain/optimization/alignment/profiles/index.js`
 and nothing else. The profile module, the constraint builder, the solver and the
-driver should not need changing.
+driver should not need changing. Whether the numbers themselves survive the
+reading is the open question — the EBO check already turned up one wrong
+citation.
 
 Independent streams: the viewer and IVHW work is untouched and can proceed in
 parallel. `docs/knowledgeKernel/` was not modified.
