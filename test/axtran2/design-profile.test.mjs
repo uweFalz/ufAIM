@@ -55,9 +55,10 @@ test("a limit without a source is refused, and so is the profile", () => {
 
 test("a profile says whether its numbers have been checked", () => {
 	assert.deepEqual([...PROFILE_STATUSES], ["candidate", "confirmed"]);
-	assert.equal(minimal().status, "candidate", "unchecked is the default, not confirmed");
-	assert.equal(minimal({ status: "confirmed" }).status, "confirmed");
+	assert.equal(minimal().status, "candidate", "unread is the default, not confirmed");
 	assert.throws(() => minimal({ status: "probably fine" }), (e) => e.code === "UNKNOWN_STATUS");
+	// claiming "confirmed" is a separate matter and is not free: see the test
+	// that follows on what it costs
 });
 
 // ---------------------------------------------------------------- kinematics
@@ -159,12 +160,86 @@ test("a local departure is declared per element, with its own reason", () => {
 
 // ---------------------------------------------------------------- declared profiles
 
+test("a profile cannot call itself confirmed while a limit is unread", () => {
+	// "confirmed" is a claim about every number in the profile. A profile marked
+	// so is one nobody will check again, which is exactly why the claim may not
+	// be made loosely.
+	assert.throws(
+		() => minimal({ status: "confirmed" }),
+		(e) => {
+			assert.equal(e.code, "UNVERIFIED_LIMITS");
+			assert.ok(e.detail.unverified.includes("maximumCant"));
+			return true;
+		}
+	);
+	const read = createAlignmentDesignProfile({
+		id: "t", source: "test",
+		speed: { value: kmh(100), source: "read", verified: true },
+		maximumCant: { value: mm(150), source: "read", verified: true },
+		maximumCantDeficiency: { value: mm(100), source: "read", verified: true },
+		status: "confirmed",
+	});
+	assert.equal(read.status, "confirmed");
+	assert.deepEqual([...read.unverified], [], "confirmed means nothing is left unread");
+
+	// and unread limits are named even while the profile stays a candidate
+	assert.ok(minimal().unverified.includes("maximumCantDeficiency"));
+});
+
+test("a cant above the regulation is refused, whatever the design rules allow", () => {
+	// EBO § 6 (3) caps the cant at 180 mm. An operator's design rule cannot lift
+	// a regulation, so a declared cant above the declared cap is an error rather
+	// than a preference.
+	assert.throws(
+		() => minimal({
+			maximumCant: sourced(mm(200)),
+			regulatoryCantLimit: sourced(mm(180), "EBO § 6 (3)"),
+		}),
+		(e) => {
+			assert.equal(e.code, "CANT_ABOVE_REGULATION");
+			assert.ok(/200 mm/.test(e.message) && /180 mm/.test(e.message));
+			return true;
+		}
+	);
+	assert.doesNotThrow(() => minimal({
+		maximumCant: sourced(mm(180)),
+		regulatoryCantLimit: sourced(mm(180), "EBO § 6 (3)"),
+	}), "the cap itself is admissible");
+});
+
+test("what EBO gives is cited as EBO, and what it does not is still marked CHECK", () => {
+	// Read at gesetze-im-internet.de and cross-checked at buzer.de on 2026-08-31:
+	// § 6 (1) the 300 m floor, § 6 (3) the 180 mm cant cap, § 6 (4) the 1:400
+	// ramp. It says nothing about cant deficiency or about rates over time, which
+	// was checked explicitly - so those stay unread and stay flagged.
+	const profile = DECLARED_PROFILES["hauptbahn-V160"]();
+	const declared = profile.declared;
+
+	for (const name of ["absoluteMinimumRadius", "cantGradient", "regulatoryCantLimit"]) {
+		assert.equal(declared[name].verified, true, `${name} should be read`);
+		assert.match(declared[name].source, /EBO § 6/, `${name} should cite EBO`);
+		assert.doesNotMatch(declared[name].source, /CHECK/, `${name} should not still be flagged`);
+	}
+	assert.equal(declared.cantGradient.value, 400, "1:400, from § 6 (4) and not from an operator rule");
+	assert.equal(declared.absoluteMinimumRadius.value, 300);
+	assert.equal(declared.regulatoryCantLimit.value, 0.18);
+
+	for (const name of ["maximumCant", "maximumCantDeficiency", "maximumCantRate", "maximumDeficiencyRate"]) {
+		assert.equal(declared[name].verified, false, `${name} has not been read`);
+		assert.match(declared[name].source, /CHECK/, `${name} must still say so`);
+	}
+	// the rate limits are the ones that matter most, and they are the unread ones
+	assert.ok(profile.unverified.includes("maximumCantRate"));
+	assert.ok(profile.unverified.includes("maximumDeficiencyRate"));
+});
+
 test("the shipped profiles are candidates, and every one of them says so", () => {
 	const names = Object.keys(DECLARED_PROFILES);
 	assert.ok(names.length >= 2);
 	for (const name of names) {
 		const profile = DECLARED_PROFILES[name]();
 		assert.equal(profile.status, "candidate", `${name} claims to be confirmed`);
+		assert.ok(profile.unverified.length > 0, `${name} is a candidate with nothing unread?`);
 		assert.ok(profile.minimumRadius > 0);
 		assert.ok(profile.minimumTransitionLength > 0);
 		// every declared limit carries a source
