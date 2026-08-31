@@ -132,7 +132,7 @@ export function solveRelaxedQpStep({
 	const z0 = [...new Array(n).fill(0), m > 0 ? 1 : 0];
 
 	const qp = solveBoxQP({ H: Hz, c: cz, A, b, lower: lo, upper: up, z0, damping });
-	if (!qp.ok) return { ok: false, status: qp.status, reason: qp.reason ?? null };
+	if (!qp.ok) return { ok: false, status: qp.status, reason: qp.reason ?? null, detail: qp.detail ?? null };
 
 	const d = qp.z.slice(0, n);
 	const delta = qp.z[n];
@@ -192,6 +192,11 @@ export function solveRelaxedQpStep({
 
 	return {
 		ok: true,
+		// whether the subproblem reached its own optimum, as opposed to being
+		// truncated. A zero step from a solved subproblem means no admissible
+		// descent direction exists; a zero step from a truncated one means
+		// nothing at all.
+		qpStatus: qp.status,
 		status: "solved",
 		d,
 		delta,

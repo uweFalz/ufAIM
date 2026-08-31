@@ -109,13 +109,28 @@ export function solveAlignmentProblem({
 	const hardPoints = residuals.hardPoints;
 	const softPoints = residuals.softPoints;
 
-	// Lower bounds on the element lengths keep the element sequence intact.
-	// A curvature variable carries no bound.
-	const boundByName = new Map(
-		constraints.bounds.map((bound) => [`${bound.elementId}.length`, bound.minimum])
-	);
-	const lower = codec.freeNames.map((name) => boundByName.get(name) ?? -Infinity);
+	// Bounds on the variables come from two declarations that meet here. The
+	// element sequence contributes one lower bound per element length, so that
+	// no element vanishes. The design limits contribute a two-sided bound on
+	// every free curvature, so that no curve is tighter than admissible. Where
+	// both speak about one variable the stricter one holds, which is what
+	// intersecting the intervals does.
+	const lower = codec.freeNames.map(() => -Infinity);
 	const upper = codec.freeNames.map(() => Infinity);
+	const indexOfName = new Map(codec.freeNames.map((name, i) => [name, i]));
+	for (const bound of [...constraints.bounds, ...(constraints.designBounds ?? [])]) {
+		const index = indexOfName.get(`${bound.elementId}.${bound.quantity ?? "length"}`);
+		if (index === undefined) continue;   // the quantity is held, not free
+		if (Number.isFinite(bound.minimum)) lower[index] = Math.max(lower[index], bound.minimum);
+		if (Number.isFinite(bound.maximum)) upper[index] = Math.min(upper[index], bound.maximum);
+	}
+	codec.freeNames.forEach((name, i) => {
+		if (lower[i] > upper[i]) {
+			error("EMPTY_BOUND_INTERVAL",
+				`the declared bounds leave nothing admissible for "${name}"`,
+				{ name, lower: lower[i], upper: upper[i] });
+		}
+	});
 
 	let builds = 0;
 	let jacobianEvaluations = 0;

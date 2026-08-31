@@ -219,6 +219,16 @@ export function solveAlignmentLexicographic({
 		// which cannot loop but can end on a boundary a full active-set method
 		// would have left. With the declared two-tier order there is never more
 		// than one budget, and the question does not arise.
+		//
+		// Where the held phase starts is not a detail. Starting it at the
+		// overspending free optimum begins the solve outside the very constraint
+		// it must honour, and on the nine-element scenario that was fatal: the
+		// budget row opened at 5.89 m, the trust region grew 30 -> 60 -> 121 while
+		// the relaxation gave the linearisation up entirely, and the QP's active
+		// set churned through 67 releases before running out. Every budget has a
+		// witness that satisfies it exactly - the point the tier attained it at -
+		// so the held phase starts there and never leaves a satisfied constraint
+		// to come back to it.
 		const active = [];
 		for (let pass = 0; pass < budgets.length; pass++) {
 			const reached = result.candidate.variables?.length ? result.candidate.variables : x;
@@ -228,9 +238,13 @@ export function solveAlignmentLexicographic({
 					> BUDGET_TOLERANCE * Math.max(1, Math.abs(budget.limit)));
 			if (added.length === 0) break;
 			active.push(...added);
+			// the witness of the most recently added budget satisfies every budget
+			// added before it as well, since those were already held when it was
+			// attained
+			const witness = added.at(-1).attainedAt;
 			result = run(
 				tier.objective,
-				[...reached],
+				[...witness],
 				active.map(asEquality),
 				`tier-${index + 1}/budget-active`
 			);
@@ -277,6 +291,9 @@ export function solveAlignmentLexicographic({
 				attained,
 				limit: attained + slack,
 				slack,
+				// the point this value was attained at, which satisfies the budget
+				// exactly and is therefore where a phase held to it should begin
+				attainedAt: [...x],
 			});
 		}
 	});

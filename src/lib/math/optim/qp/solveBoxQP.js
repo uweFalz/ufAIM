@@ -189,6 +189,7 @@ export function solveBoxQP({
 	upper,
 	z0,
 	maxIterations = 200,
+	blandAfter = 6,
 	damping = 1e-10,
 	tolerance = 1e-10,
 } = {}) {
@@ -208,6 +209,15 @@ export function solveBoxQP({
 	let iterations = 0;
 	let released = 0;
 	let blocked = 0;
+	// Degenerate steps are how a cycle shows itself: the working set keeps
+	// changing while the point does not move. The guard below catches the
+	// shortest cycle - release one bound, be blocked by the same one at once -
+	// but a longer one walks straight past it. After enough steps of length zero
+	// the rule for choosing what to release and what to block switches to
+	// Bland's: always the lowest index that qualifies. It is a poor rule for
+	// speed and the only one that provably cannot cycle, so it is used as the
+	// fallback it is, never as the default.
+	let degenerate = 0;
 	// Anti-cycling: a bound that was just released and is immediately blocked
 	// again at a zero-length step would loop forever. The point is stationary
 	// within its working set, which is the answer.
@@ -237,13 +247,19 @@ export function solveBoxQP({
 					for (let i = 0; i < n; i++) gradient[i] -= projection * basis[i];
 				}
 			}
+			const bland = degenerate >= blandAfter;
 			let worst = -1;
 			let worstValue = -tolerance;
 			for (let i = 0; i < n; i++) {
 				if (!working[i]) continue;
 				// at a lower bound the gradient must be >= 0, at an upper bound <= 0
 				const multiplier = z[i] <= lo[i] + EPS ? gradient[i] : -gradient[i];
-				if (multiplier < worstValue) { worstValue = multiplier; worst = i; }
+				if (bland) {
+					if (multiplier < -tolerance) { worst = i; break; }
+				} else if (multiplier < worstValue) {
+					worstValue = multiplier;
+					worst = i;
+				}
 			}
 			if (worst < 0) {
 				return {
@@ -261,13 +277,18 @@ export function solveBoxQP({
 		// longest step along `direction` that keeps every bound
 		let alpha = 1;
 		let blocking = -1;
+		// Under Bland's rule the blocking variable is the lowest index attaining
+		// the shortest step, not the last one found to attain it.
+		const strictlyShorter = degenerate >= blandAfter
+			? (limit) => limit < alpha - EPS
+			: (limit) => limit < alpha;
 		for (let i = 0; i < n; i++) {
 			if (direction[i] > EPS && Number.isFinite(up[i])) {
 				const limit = (up[i] - z[i]) / direction[i];
-				if (limit < alpha) { alpha = limit; blocking = i; }
+				if (strictlyShorter(limit)) { alpha = limit; blocking = i; }
 			} else if (direction[i] < -EPS && Number.isFinite(lo[i])) {
 				const limit = (lo[i] - z[i]) / direction[i];
-				if (limit < alpha) { alpha = limit; blocking = i; }
+				if (strictlyShorter(limit)) { alpha = limit; blocking = i; }
 			}
 		}
 		alpha = Math.max(0, Math.min(1, alpha));
@@ -282,6 +303,14 @@ export function solveBoxQP({
 			};
 		}
 
+		// Degeneracy is about the point not moving, which is a question about the
+		// step, not about alpha on its own: a step of 1e-10 along a direction of
+		// norm 1e4 moves as far as a full step along a short one. Testing alpha
+		// against a constant let a cycle of very short steps run past the guard
+		// and burn the whole iteration budget.
+		if (alpha * norm <= tolerance) degenerate++;
+		else degenerate = 0;
+
 		z = z.map((value, i) => value + alpha * direction[i]);
 		for (let i = 0; i < n; i++) {
 			z[i] = Math.min(Math.max(z[i], lo[i]), up[i]);
@@ -289,5 +318,15 @@ export function solveBoxQP({
 		if (blocking >= 0 && alpha < 1) { working[blocking] = true; blocked++; lastReleased = -1; }
 	}
 
-	return { ok: false, status: "max_iterations", z, iterations };
+	// An exhausted active set is not self-explanatory, and the caller cannot see
+	// the working set from outside. Report what it was doing when it ran out.
+	return {
+		ok: false, status: "max_iterations", z, iterations,
+		detail: Object.freeze({
+			variables: n,
+			equalities: A.length,
+			workingSet: working.map((v, i) => (v ? i : -1)).filter((i) => i >= 0),
+			released, blocked, degenerate,
+		}),
+	};
 }
