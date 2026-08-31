@@ -115,8 +115,70 @@ test("a candidate the solve wanders onto is rejected, and the run continues", ()
 		problem, buildAlignment: shrinking, objective: "points", maxIterations: 20,
 	});
 	assert.ok(result.candidate.variables.length === codec.freeCount);
-	assert.deepEqual([...result.diagnostics.unprojectablePoints], [],
+	assert.deepEqual([...result.diagnostics.inadmissiblePoints], [],
 		"whatever it ended on carries every declared point");
+});
+
+test("a point beyond the end is refused, though it projects perfectly well", () => {
+	// This is the case that actually occurs. The production projector clamps the
+	// foot station to [0, arcLength] and never returns null for a point past an
+	// end: it returns the offset from the extended end tangent. Measured on the
+	// nine-element alignment, a point 1000 m past the end reports q = 0.0500 m,
+	// comfortably inside any tolerance, while sitting a kilometre from the track.
+	// A null check cannot see that; the distance can.
+	const point = { name: "M", x: 400, y: 0.05, tolerance: 0.1 };
+	const { problem, buildAlignment } = scenario({ points: [point] });
+
+	// 100 m past the end of a 300 m alignment, reported the way the production
+	// projector reports it: a small offset and a large distance
+	const clamping = (overlay) => ({
+		...buildAlignment(overlay),
+		worldToTrack: () => ({ q: 0.05, s: 300, dist: 100 }),
+	});
+	assert.throws(
+		() => solveAlignmentProblem({
+			problem, buildAlignment: clamping, objective: "points", maxIterations: 5,
+		}),
+		(e) => {
+			assert.equal(e.code, "EXTRAPOLATED_PROJECTION");
+			assert.ok(Math.abs(e.detail.overshoot - Math.sqrt(100 ** 2 - 0.05 ** 2)) < 1e-9);
+			assert.match(e.message, /extended tangent/);
+			return true;
+		}
+	);
+
+	// a genuine foot point has dist = |q| and passes
+	const honest = (overlay) => ({
+		...buildAlignment(overlay),
+		worldToTrack: (x, y) => ({ q: y, s: x, dist: Math.abs(y) }),
+	});
+	assert.doesNotThrow(() => solveAlignmentProblem({
+		problem, buildAlignment: honest, objective: "points", maxIterations: 3,
+	}));
+});
+
+test("a projector that reports no distance records that the check did not run", () => {
+	// A check that quietly does not run is the same fail-open one level up.
+	const point = { name: "M", x: 100, y: 0.05, tolerance: 0.1 };
+	const { problem, buildAlignment } = scenario({ points: [point] });
+	const silent = (overlay) => ({
+		...buildAlignment(overlay),
+		worldToTrack: (x, y) => ({ q: y, s: x }),          // no dist
+	});
+	const result = solveAlignmentProblem({
+		problem, buildAlignment: silent, objective: "points", maxIterations: 3,
+	});
+	assert.equal(result.diagnostics.extrapolationChecked, false);
+
+	const withDistance = solveAlignmentProblem({
+		problem,
+		buildAlignment: (overlay) => ({
+			...buildAlignment(overlay),
+			worldToTrack: (x, y) => ({ q: y, s: x, dist: Math.abs(y) }),
+		}),
+		objective: "points", maxIterations: 3,
+	});
+	assert.equal(withDistance.diagnostics.extrapolationChecked, true);
 });
 
 // ---------------------------------------------------------------- admission
@@ -193,6 +255,44 @@ test("saying the word admits the profile and marks the result as evidence", () =
 	});
 	assert.equal(proposal.admission, EVIDENCE_ONLY);
 	assert.equal(proposal.admissible, false, "however cleanly it converged");
+});
+
+test("a raw design declaration cannot pass as confirmed", () => {
+	// Regression, AXTRAN2-REVIEW-003. The gate asked "is this a profile that is
+	// not confirmed?" and let everything else through, so the one form carrying
+	// no provenance at all - a plain object - was the one form treated as
+	// confirmed. A bare { minimumRadius: 400 } became a binding constraint and
+	// the result called itself admissible.
+	assert.throws(
+		() => createAlignmentConstraintBuilder({
+			endPose: END_POSE,
+			elementSequence: ["E0", "E1"],
+			elementKinds: { E0: "arc", E1: "transition" },
+			design: { minimumRadius: 400, minimumLength: { transition: 55 } },
+		}),
+		(e) => {
+			assert.ok(e instanceof AlignmentConstraintBuilderError);
+			assert.equal(e.code, "UNSOURCED_DESIGN_DECLARATION");
+			assert.match(e.message, /no provenance/);
+			assert.match(e.message, /createAlignmentDesignProfile/, "and what to build instead");
+			return true;
+		}
+	);
+
+	// with the word it builds, and the result is evidence - never confirmed,
+	// because there is no source to read
+	const admitted = createAlignmentConstraintBuilder({
+		endPose: END_POSE,
+		elementSequence: ["E0", "E1"],
+		elementKinds: { E0: "arc", E1: "transition" },
+		design: { minimumRadius: 400 },
+		admitUnconfirmedDesign: EVIDENCE_ONLY,
+	});
+	assert.equal(admitted.admission, EVIDENCE_ONLY);
+	assert.equal(admitted.admissible, false);
+	// the limit itself still works; it is the claim about it that was wrong
+	assert.ok(Math.abs(admitted.designBounds[0].maximum - 1 / 400) < 1e-15);
+	assert.equal(admitted.designBounds[0].source, null, "and it still has no source to give");
 });
 
 test("a confirmed profile needs no word, and yields an admissible result", () => {
