@@ -156,6 +156,52 @@ export function solveAlignmentProblem({
 		return built;
 	}
 
+	/**
+	 * Project one declared point onto a candidate alignment, or refuse.
+	 *
+	 * A point that cannot be projected has no residual, and zero is the one value
+	 * it must not be given: for a hardened Zwangspunkt zero reads as "exactly
+	 * met", so a constraint with no evaluable meaning would be recorded as the
+	 * best possible outcome. The declaration layer already refuses to score such
+	 * a point - AlignmentResidualBuilder reports it as `projected: false,
+	 * residual: null, met: false` - and the solver contradicting its own
+	 * declaration layer is the defect, not the missing number.
+	 *
+	 * For the soft points the same zero is worse than silent, it is perverse.
+	 * Tier 1 minimises length; shortening the alignment moves its end past
+	 * measured points, which then stop projecting and score zero. Shortening
+	 * would be rewarded by making the measurements disappear.
+	 *
+	 * So an unprojectable point makes the whole evaluation inadmissible. During
+	 * the solve that rejects the trial point - the line search treats a failed
+	 * evaluation as a step not taken - and at the declared start it comes out to
+	 * the caller with the point named.
+	 */
+	function project(built, point, role) {
+		const projected = built.worldToTrack(point.x, point.y);
+		if (!Number.isFinite(projected?.q)) {
+			error(
+				"UNPROJECTABLE_POINT",
+				`${role} "${point.name}" cannot be projected onto this alignment, so it has no `
+					+ "residual; the candidate is not admissible",
+				{ pointName: point.name, role, x: point.x, y: point.y }
+			);
+		}
+		return projected;
+	}
+
+	/** Which declared points a candidate fails to carry, for reporting. */
+	function unprojectablePoints(built) {
+		const failed = [];
+		for (const [role, points] of [["zwangspunkt", hardPoints], ["measured point", softPoints]]) {
+			for (const point of points) {
+				const projected = built.worldToTrack(point.x, point.y);
+				if (!Number.isFinite(projected?.q)) failed.push(Object.freeze({ name: point.name, role }));
+			}
+		}
+		return failed;
+	}
+
 	/** Equality residuals: end pose first, then every hardened Zwangspunkt. */
 	function equalityResiduals(built) {
 		const pose = built.endPose;
@@ -166,8 +212,7 @@ export function solveAlignmentProblem({
 			wrapAngle(pose.theta - target.theta),
 		];
 		for (const point of hardPoints) {
-			const projected = built.worldToTrack(point.x, point.y);
-			values.push(Number.isFinite(projected?.q) ? projected.q - point.target : 0);
+			values.push(project(built, point, "zwangspunkt").q - point.target);
 		}
 		return values;
 	}
@@ -179,11 +224,8 @@ export function solveAlignmentProblem({
 
 	/** Soft point residuals, each in units of its own tolerance. */
 	function softResiduals(built) {
-		return softPoints.map((point) => {
-			const projected = built.worldToTrack(point.x, point.y);
-			if (!Number.isFinite(projected?.q)) return 0;
-			return (projected.q - point.target) / point.tolerance;
-		});
+		return softPoints.map((point) =>
+			(project(built, point, "measured point").q - point.target) / point.tolerance);
 	}
 
 	function accumulatedLength(x) {
@@ -213,10 +255,10 @@ export function solveAlignmentProblem({
 		];
 		// hardened Zwangspunkte: one row each, at their own foot station
 		for (const point of hardPoints) {
-			const projected = built.worldToTrack(point.x, point.y);
-			Jh.push(Number.isFinite(projected?.s)
-				? geometry.lateralDerivative(parameterSpecs, projected.s)
-				: parameterSpecs.map(() => 0));
+			// project() has already refused anything unprojectable, so a row here
+			// always stands for a residual that exists
+			const projected = project(built, point, "zwangspunkt");
+			Jh.push(geometry.lateralDerivative(parameterSpecs, projected.s));
 		}
 		for (const constraint of extraEqualities) Jh.push([...constraint.gradient]);
 
@@ -227,8 +269,7 @@ export function solveAlignmentProblem({
 
 		const r = softResiduals(built);
 		const Jr = softPoints.map((point) => {
-			const projected = built.worldToTrack(point.x, point.y);
-			if (!Number.isFinite(projected?.s)) return parameterSpecs.map(() => 0);
+			const projected = project(built, point, "measured point");
 			const row = geometry.lateralDerivative(parameterSpecs, projected.s);
 			return row.map((value) => value / point.tolerance);
 		});
@@ -243,6 +284,10 @@ export function solveAlignmentProblem({
 
 		const built = realise(x);
 		const h = [...equalityResiduals(built), ...extraResiduals(x)];
+		// Before any derivative work: a point that cannot be projected has to
+		// surface as itself, not as a differencing failure three frames later.
+		// This costs nothing - the residuals are needed below anyway.
+		const r = objective === "points" ? softResiduals(built) : null;
 
 		const jacobian = finiteDiffJacobian({
 			x,
@@ -265,7 +310,6 @@ export function solveAlignmentProblem({
 			return { f: accumulatedLength(x), gradF, h, Jh };
 		}
 
-		const r = softResiduals(built);
 		const Jr = jacobian.J.slice(h.length);
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
@@ -291,17 +335,26 @@ export function solveAlignmentProblem({
 		x: scaledRun.x ? unscale(scaledRun.x, scales) : null,
 	};
 
+	// The result is reported even when the point it ended on cannot carry every
+	// declared point: refusing to report would lose the diagnosis along with the
+	// candidate. The proposal says so instead, and is not ok.
 	const built = run.x ? realise(run.x) : null;
-	const finalEquality = built ? equalityResiduals(built) : [];
+	const unprojectable = built ? unprojectablePoints(built) : [];
+	const finalEquality = built && unprojectable.length === 0 ? equalityResiduals(built) : [];
 	const finalExtra = run.x ? extraResiduals(run.x) : [];
-	const finalSoft = built ? softResiduals(built) : [];
+	const finalSoft = built && unprojectable.length === 0 ? softResiduals(built) : [];
 
 	return Object.freeze({
 		version: ALIGNMENT_SQP_SOLVER_VERSION,
 		type: "proposal",
 		objective,
-		status: run.status,
-		ok: run.ok === true,
+		status: unprojectable.length ? "unprojectable_points" : run.status,
+		ok: run.ok === true && unprojectable.length === 0,
+		// Whether this proposal may be treated as an engineering answer. A run
+		// that converged cleanly on limits nobody has read is still evidence and
+		// not an answer, and the two must not look alike.
+		admission: problem.admission ?? "confirmed",
+		admissible: problem.admissible !== false && unprojectable.length === 0,
 		candidate: Object.freeze({
 			variables: Object.freeze(run.x ? [...run.x] : []),
 			names: codec.freeNames,
@@ -312,6 +365,9 @@ export function solveAlignmentProblem({
 			alignmentBuilds: builds,
 			jacobianKind: typeof analyticJacobian === "function" ? "analytic" : "finite-difference",
 			jacobianEvaluations,
+			// declared points the final candidate cannot carry; empty is the normal
+			// case and anything else makes the proposal inadmissible
+			unprojectablePoints: Object.freeze(unprojectable),
 			endPoseResidual: finalEquality.slice(0, 3),
 			endPoseDistance: built ? Math.hypot(finalEquality[0], finalEquality[1]) : null,
 			hardPointResiduals: Object.freeze(hardPoints.map((point, i) => Object.freeze({

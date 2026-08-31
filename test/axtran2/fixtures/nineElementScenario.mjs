@@ -20,6 +20,7 @@ const { createAlignmentResidualBuilder } = await load("src/domain/optimization/a
 const { createAlignmentOptimizationProblem } = await load("src/domain/optimization/alignment/AlignmentOptimizationProblem.js");
 const { createIntrinsicMetricContext } = await load("src/domain/optimization/alignment/MetricContext.js");
 const { hauptbahn } = await load("src/domain/optimization/alignment/profiles/index.js");
+const { EVIDENCE_ONLY } = await load("src/domain/optimization/alignment/AlignmentConstraintBuilder.js");
 
 const lookup = (await import(new URL("src/domain/transition/transitionLookup.json", ROOT), { with: { type: "json" } })).default;
 const deps = { descriptorResolver: new RegistryResolver(lookup), kappaBuilder: KappaFcnBuilder };
@@ -146,6 +147,9 @@ export function createNineElementScenario({
 			hardPoints: hardPointNames.map((name) => ({ name })),
 			elementKinds: Object.fromEntries(TYPES.map((type, i) => [`E${i}`, type])),
 			design,
+			// The shipped profiles are candidates: their rate limits come from a
+			// rule book nobody has read. A scenario may run on them, and says so.
+			admitUnconfirmedDesign: EVIDENCE_ONLY,
 		}),
 		residuals: createAlignmentResidualBuilder({
 			metricContext: createIntrinsicMetricContext(),
