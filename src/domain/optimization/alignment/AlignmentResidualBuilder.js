@@ -26,6 +26,15 @@
 
 import { assertMetricComparability } from "./MetricContext.js";
 
+/**
+ * Relative slop below which a foot point counts as a genuine perpendicular foot
+ * rather than a station clamped to an end. Measured: `dist - |q|` is 2.8e-17 m
+ * at real foot points across a 1430 m alignment and already 9.9e-4 m one
+ * centimetre past the end, so anything between separates them; this catches an
+ * overshoot of about ten microns.
+ */
+export const FOOT_POINT_TOLERANCE = 1e-9;
+
 export const ALIGNMENT_RESIDUAL_BUILDER_VERSION =
 	"axtran2/alignment-residual-builder/0.2";
 
@@ -121,7 +130,24 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 
 		/**
 		 * Evaluate every residual against one alignment.
-		 * @param {(x:number,y:number)=>({q:number,s:number}|null)} worldToTrack
+		 *
+		 * Two ways a point has no residual here, and neither is scored.
+		 *
+		 * It may not project at all, which the projector says with a null.
+		 *
+		 * Or it may project onto an extension of the alignment rather than onto
+		 * the alignment. Projectors clamp the foot station to the ends -
+		 * Alignment2D does - so a point past an end comes back with the offset
+		 * from the END TANGENT and no hint that it did. Measured on a 1430 m
+		 * alignment, a point a kilometre past the end reports an offset of
+		 * 0.0500 m and would be scored as comfortably met. The distance gives it
+		 * away: at a true foot point the offset IS the distance, and where the
+		 * station was clamped they differ by the longitudinal overshoot.
+		 *
+		 * A projector that reports no distance cannot be checked for this, and
+		 * such a point carries `extrapolated: null` rather than `false`.
+		 *
+		 * @param {(x:number,y:number)=>({q:number,s:number,dist?:number}|null)} worldToTrack
 		 */
 		evaluate(worldToTrack) {
 			if (typeof worldToTrack !== "function") {
@@ -131,15 +157,27 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 				const projected = worldToTrack(point.x, point.y);
 				if (!isObject(projected) || !isFiniteNumber(projected.q)) {
 					return Object.freeze({
-						...point, projected: false, station: null,
-						offset: null, deviation: null, residual: null, met: false,
+						...point, projected: false, extrapolated: null, overshoot: null,
+						station: null, offset: null, deviation: null, residual: null, met: false,
+					});
+				}
+				const station = isFiniteNumber(projected.s) ? projected.s : null;
+				const checkable = isFiniteNumber(projected.dist);
+				const gap = checkable ? projected.dist - Math.abs(projected.q) : 0;
+				if (checkable && gap > FOOT_POINT_TOLERANCE * Math.max(1, Math.abs(projected.q))) {
+					return Object.freeze({
+						...point, projected: false, extrapolated: true,
+						overshoot: Math.sqrt(Math.max(0, projected.dist ** 2 - projected.q ** 2)),
+						station, offset: projected.q, deviation: null, residual: null, met: false,
 					});
 				}
 				const deviation = projected.q - point.target;
 				return Object.freeze({
 					...point,
 					projected: true,
-					station: isFiniteNumber(projected.s) ? projected.s : null,
+					extrapolated: checkable ? false : null,
+					overshoot: null,
+					station,
 					offset: projected.q,
 					deviation,
 					residual: deviation / point.tolerance,

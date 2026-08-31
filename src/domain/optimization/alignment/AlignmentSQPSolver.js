@@ -29,6 +29,7 @@
 // The alignment builder and the projector are injected, so this module stays
 // free of geometry imports and of any realization binding.
 
+import { FOOT_POINT_TOLERANCE } from "./AlignmentResidualBuilder.js";
 import { solveSQP } from "../../../lib/math/optim/sqp/solveSQP.js";
 import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacobian.js";
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
@@ -88,7 +89,7 @@ export function solveAlignmentProblem({
 	maxIterations = 60,
 	// Relative slop below which a foot point counts as a genuine perpendicular
 	// foot rather than a station clamped to an end. See project().
-	extrapolationTolerance = 1e-9,
+	extrapolationTolerance = FOOT_POINT_TOLERANCE,
 	relaxationWeight = 1e6,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");

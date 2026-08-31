@@ -160,6 +160,71 @@ test("an unprojectable point is reported, not silently scored", () => {
 	assert.equal(point.met, false);
 });
 
+test("a point that fell onto an extension of the alignment is not scored either", () => {
+	// Projectors clamp the foot station to the ends - Alignment2D does - so a
+	// point past an end comes back with the offset from the extended end tangent
+	// and no hint that it did. Measured on a 1430 m alignment, a point a
+	// kilometre past the end reports an offset of 0.0500 m, which would be
+	// scored as comfortably met. The distance gives it away: at a true foot
+	// point the offset IS the distance.
+	const residuals = createAlignmentResidualBuilder({
+		metricContext: INTRINSIC,
+		points: [{ name: "P", x: 0, y: 0.05, tolerance: 0.1 }],
+	});
+
+	const [beyond] = residuals.evaluate(() => ({ q: 0.05, s: 1430, dist: 1000 }));
+	assert.equal(beyond.projected, false, "it must not be scored");
+	assert.equal(beyond.extrapolated, true);
+	assert.equal(beyond.met, false);
+	assert.equal(beyond.residual, null);
+	assert.ok(Math.abs(beyond.overshoot - Math.sqrt(1000 ** 2 - 0.05 ** 2)) < 1e-9);
+	assert.equal(beyond.offset, 0.05, "the misleading number is kept, for the diagnosis");
+	assert.equal(beyond.station, 1430);
+
+	// a genuine foot point has dist = |q| and is scored as before
+	const [honest] = residuals.evaluate(() => ({ q: 0.05, s: 700, dist: 0.05 }));
+	assert.equal(honest.projected, true);
+	assert.equal(honest.extrapolated, false);
+	assert.equal(honest.met, true);
+	assert.equal(honest.residual, 0.5);
+
+	// a projector that reports no distance cannot be checked, and says so rather
+	// than claiming it passed
+	const [unchecked] = residuals.evaluate(() => ({ q: 0.05, s: 700 }));
+	assert.equal(unchecked.projected, true);
+	assert.equal(unchecked.extrapolated, null, "unknown, not false");
+});
+
+test("the diagnostics keep the two unscoreable cases apart", () => {
+	const residuals = createAlignmentResidualBuilder({
+		metricContext: INTRINSIC,
+		points: [
+			{ name: "onTrack", x: 10, y: 0.02, tolerance: 0.1 },
+			{ name: "beyondEnd", x: 999, y: 0.05, tolerance: 0.1 },
+		],
+	});
+	const codec = codecOf();
+	const problem = createAlignmentOptimizationProblem({
+		codec,
+		constraints: createAlignmentConstraintBuilder({
+			endPose: END_POSE, elementSequence: codec.elementSequence, minimumElementLength: 20,
+		}),
+		residuals,
+	});
+	const report = evaluateAlignmentOptimizationProblem({
+		problem,
+		worldToTrack: (x, y) => (x > 500
+			? { q: 0.05, s: 500, dist: x - 500 }      // clamped to the end
+			: { q: y, s: x, dist: Math.abs(y) }),
+	});
+	assert.equal(report.summary.unprojected, 1);
+	assert.equal(report.summary.extrapolated, 1, "and it is the same one, named as what it is");
+	assert.deepEqual(report.summary.extrapolatedPoints.map((p) => p.name), ["beyondEnd"]);
+	assert.ok(report.summary.extrapolatedPoints[0].overshoot > 400);
+	// and it is kept out of the ranking rather than ranked as excellent
+	assert.equal(report.sharpening.every((p) => p.name !== "beyondEnd"), true);
+});
+
 // ---------------------------------------------------------------- problem
 
 test("the degree-of-freedom budget subtracts poseE and each hardened Zwangspunkt", () => {
