@@ -24,13 +24,16 @@ end pose closed to 2.8e-13 m, and that optimum is now an alignment rather than a
 collapse: both radii on the declared 600 m floor, all four transitions on their
 60 m floor.
 
-One thing is settled by measurement rather than left open: **the strict order,
-`epsilon = 0`, is answered entirely by tier 1.** Its optimum is a vertex of the
-feasible set, so tier 2 inherits no freedom at all and returns that alignment
-unchanged, in a single iteration. Choosing `epsilon` is therefore choosing how
-much of the answer tier 2 is allowed to give. Section 6 measures what each
-choice costs; the choice itself is OD-2, and it is the one thing this mission
-cannot make.
+**OD-2 is decided: reading (b), epsilon at the full span.** The length tier
+establishes what its objective could achieve, reports it, and stops
+constraining. The answer is the points optimum and the length tier has said what
+it cost — on the measured scenario, 5.889 m.
+
+Epsilon at the full span and no constraint at all are the same thing, so the
+limit is not imposed rather than computed and then never binding. A tier now
+hands its value down either as a `limit`, which constrains, or as a `reference`,
+which reports; `reference` is the default. Readings (a) and (c) remain one
+declaration away.
 
 ## 3. Baseline and Scope
 
@@ -219,9 +222,28 @@ vertex — four transitions on their length floor, both arcs on the curvature
 bound, six active bounds and four equalities pinning all nine variables — so
 tier 2 has no admissible direction and returns tier 1's alignment unchanged.
 
-### The two-phase run end to end
+### The two-phase run end to end, as decided
 
-Strict order, no warm start, 300 iterations per phase:
+Reading (b), the default: no warm start, 400 iterations allowed per phase.
+
+| phase | verdict | ΣL [m] | end pose [m] | outside | rms | R1 | R2 |
+|---|---|---|---|---|---|---|---|
+| tier-1 | `stationary` at 105 | 1424.105 | 2.8e-13 | 8/12 | 52.878 | 600 | −600 |
+| tier-2 | `stationary` at **171** | 1429.994 | **0.0** | **0/12** | **0.0640** | 702 | −902 |
+
+`ok=true`, `status=converged`, no tier skipped, 197 s. The reference reports:
+achievable 1424.105 m, spent 1429.994 m, **span 5.889 m**.
+
+Both tiers reach their own optimum, every declared design limit holds, the end
+pose closes exactly, and no point is outside its tolerance.
+
+Because a reference tier hands no point down, tier 2 starts at the declared
+alignment rather than at tier 1's vertex. That is measurably better, not merely
+tidier: 171 iterations against 359, and rms 0.0640 against 0.0739.
+
+### The same run under the readings not taken
+
+Reading (a), the strict order, no warm start, 300 iterations per phase:
 
 | phase | verdict | ΣL [m] | end pose [m] | outside | rms |
 |---|---|---|---|---|---|
@@ -232,22 +254,12 @@ Strict order, no warm start, 300 iterations per phase:
 with `skippedBudgets` empty — tier 1 established a real budget — and the held
 phase recognising at once that it had nowhere admissible to go.
 
-At `epsilon = 6 m`, which exceeds the span, the budget is affordable and no
-held phase is needed. With 1000 iterations allowed per phase:
-
-| phase | verdict | ΣL [m] | end pose [m] | outside | rms | R1 | R2 |
-|---|---|---|---|---|---|---|---|
-| tier-1 | `stationary` at 105 | 1424.105 | 2.8e-13 | 8/12 | 52.878 | 600 | −600 |
-| tier-2 | `stationary` at 359 | 1429.993 | **0.0** | **0/12** | **0.0739** | 701 | −902 |
-
-`ok=true`, `status=converged`, budget 1430.105, no tier skipped. Both tiers
-reach their own optimum, every declared design limit holds, the end pose closes
-exactly, and no point is outside its tolerance. That is the run in full.
-
-Tier 2 needs more iterations inside the driver than on its own — 359 against 171
-— because it starts at tier 1's vertex rather than at the declared alignment.
-The warm start exists for exactly this and was left off here so that the phases
-could be read without it.
+An explicit `epsilon = 6 m`, which exceeds the span, reaches the same answer the
+long way round: the budget is computed, found affordable, never held, and tier 2
+still starts at tier 1's vertex because a limit tier does hand its point down.
+`ok=true` at 1429.993 m with rms 0.0739, after 359 iterations. That this costs
+188 more iterations and a slightly worse optimum than the decided default is the
+argument for not expressing (b) as a very large epsilon.
 
 ### Tests
 
@@ -281,23 +293,16 @@ a penalty weight. That retraction was wrong: forcing the weight large pinned the
 solve near its starting point and I mistook where it stopped for where the
 optimum is. The original finding stands, and section 6 shows it in full.
 
-**OD-2 (decision required).** What is epsilon? The measurements cannot settle
-it, because it is a question about worth and not about geometry. Three readings,
-all defensible:
+**OD-2 (decided: reading (b)).** Epsilon at the full span. Implemented as a
+reference rather than as a limit, because the two are the same thing and only
+one of them runs machinery for nothing. The default tier order carries it.
+Readings (a) — `absolute: 0` — and (c) — any positive epsilon — remain declared
+options and are still tested.
 
-  a. `epsilon = 0`. The length is genuinely first and the points only check the
-     result, never shape it. The answer is tier 1's alignment; tier 2 becomes a
-     report. On this scenario that means 8 of 12 points outside tolerance.
-  b. `epsilon` at the full span, here 5.889 m. Tier 1 establishes what is
-     achievable and then stops constraining. The answer is the points optimum,
-     and tier 1 has told you what it cost.
-  c. Somewhere between — the only reading under which both tiers shape the
-     answer, and the only one that needs the middle of the table measured
-     properly first.
-
-The driver takes epsilon as a declared parameter and chooses nothing. Its
-current default is 0, which is (a); if the intent is (b) or (c), the default
-should change with the decision.
+One consequence worth stating: under (b) the length tier never shapes the
+answer, only measures it. If a later scenario should show the span growing large
+enough that the length matters engineeringly, the decision is worth revisiting
+against that number rather than against this one.
 
 **OD-3 (decision required).** The design profile used here — 600 m radius, 40 m
 and 60 m lengths — was chosen so the test scenario satisfies it comfortably. It
@@ -308,11 +313,13 @@ they per project, per line category, or per element?
 below which a tier may hand a budget down, is 1e-3 m. A millimetre-level
 default, not derived from any requirement.
 
-**R-2 (risk, open).** The intermediate epsilon rows do not converge in 150
-iterations, and a budget-held points phase costs about 2 seconds per iteration
-against 0.35 for a free one — some 24 alignment builds per iteration instead of
-4, from backtracking and the second-order correction. If reading (c) is chosen,
-this has to be addressed before the middle of the trade can be quoted.
+**R-2 (risk, dormant under the decision).** A budget-held points phase costs
+about 2 seconds per iteration against 0.35 for a free one — some 24 alignment
+builds per iteration instead of 4, from backtracking and the second-order
+correction — and the intermediate epsilon rows do not converge in 150 iterations
+because of it. Under reading (b) no held phase runs at all, so nothing pays this
+today. It returns the moment anyone declares a real epsilon, which is why the
+middle of the epsilon table is quoted as upper bounds and not as optima.
 
 **R-3 (limitation, accepted).** The budget active set only grows; a budget once
 held is not released. With two tiers there is never more than one budget and the
@@ -328,23 +335,23 @@ Terminology collisions: None.
 
 ## 9. Handover
 
-Next safe step: decide OD-2, then set the driver's default epsilon to match. No
-code change is needed to try any of the three readings — epsilon is already a
-parameter — so this can be answered by running the driver, not by writing
-anything.
+The priority order is carried end to end and the decision it waited on is made.
+Nothing in this package is left half-built.
 
-If reading (c) is chosen, R-2 comes first: the middle of the trade cannot be
-quoted from rows that stopped on `max_iterations`.
+Next safe step: OD-3 — replace the fixture design profile with real limits. That
+is a declaration, not a calculation: the constraint builder already holds the
+shape and none of the values, so the work is deciding the numbers and where they
+live, not writing solver code.
 
-Files the next step may touch: `AlignmentLexicographicSolver.js` for the
-default, `src/lib/math/optim/sqp/` if R-2 is taken up. The constraint builder
-and the declaration layer should not need changing.
+Files that step may touch: whatever declares a problem for AXTRAN2. The solver,
+the driver and the constraint builder should not need changing.
 
 Independent streams: the viewer and IVHW work is untouched and can proceed in
 parallel. `docs/knowledgeKernel/` was not modified.
 
-Done criterion for the next package: the driver runs at the decided epsilon,
-reports `ok=true`, and the resulting alignment honours every declared design
-limit with its point residuals recorded against the tolerances.
+Done criterion for the next package: a real design profile is declared outside
+the test fixture, the driver runs against it, and the resulting alignment
+honours every limit in it with its point residuals recorded against the
+tolerances.
 
 Recommendations here do not authorize a new mission.
