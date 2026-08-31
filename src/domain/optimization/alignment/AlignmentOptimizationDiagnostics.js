@@ -59,6 +59,10 @@ export function evaluateAlignmentOptimizationProblem({
 	const soft = evaluated.filter((p) => p.enforcement === "soft");
 	const hard = evaluated.filter((p) => p.enforcement === "hard");
 	const unprojected = evaluated.filter((p) => !p.projected);
+	// A point with no foot point at all and one that fell onto an extension of
+	// the alignment are both unscoreable, and they are not the same problem: the
+	// first is usually a broken alignment, the second a point past an end.
+	const extrapolated = unprojected.filter((p) => p.extrapolated === true);
 
 	// Sharpening order: soft points by how far outside their own tolerance they
 	// sit. This is the pass that must run before anything is hardened.
@@ -109,6 +113,10 @@ export function evaluateAlignmentOptimizationProblem({
 			soft: soft.length,
 			hard: hard.length,
 			unprojected: unprojected.length,
+			extrapolated: extrapolated.length,
+			extrapolatedPoints: Object.freeze(extrapolated.map((p) => Object.freeze({
+				name: p.name, station: p.station, offset: p.offset, overshoot: p.overshoot,
+			}))),
 			softMet: metSoft,
 			softOutsideTolerance: soft.length - metSoft,
 			softResidualRms: rms,
