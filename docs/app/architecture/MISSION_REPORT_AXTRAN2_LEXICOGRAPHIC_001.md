@@ -24,10 +24,10 @@ end pose closed to 2.8e-13 m, and that optimum is now an alignment rather than a
 collapse: both radii on the declared 600 m floor, all four transitions on their
 60 m floor.
 
-**OD-2 and OD-3 are decided.** Epsilon is at the full span, reading (b), and
-tier 3 is a declared profile with provenance and the real cant kinematics. What
-is left of OD-3 is a person checking the numbers against the rule book they
-name, which no code can do.
+**OD-2, OD-3 and OD-4 are decided.** Epsilon is at the full span, reading (b), and
+tier 3 is a declared profile with provenance and the real cant kinematics. The tier-0 gate compares metres with metres at 1e-8 m, a value read off the
+measurements rather than chosen. What is left of OD-3 is a person checking the
+profile numbers against the rule book they name, which no code can do.
 
 **OD-2, reading (b), epsilon at the full span.** The length tier
 establishes what its objective could achieve, reports it, and stops
@@ -312,9 +312,28 @@ still starts at tier 1's vertex because a limit tier does hand its point down.
 188 more iterations and a slightly worse optimum than the decided default is the
 argument for not expressing (b) as a very large epsilon.
 
+### The tier-0 gate
+
+The heading, judged as the distance it accumulates to over the alignment's own
+length, alongside the position it sits beside:
+
+| objective | iterations | verdict | position [m] | heading [m] |
+|---|---|---|---|---|
+| accumulated-length | 1 | `max_iterations` | 1.14e-2 | 9.54e-3 |
+| accumulated-length | 3 | `max_iterations` | 1.17e-5 | 5.89e-5 |
+| accumulated-length | 60 | `max_iterations` | 4.15e-3 | 1.04e-2 |
+| accumulated-length | 300 | `stationary` | 0.0 | 3.95e-14 |
+| points | 5 | `max_iterations` | 1.69e-6 | 2.35e-6 |
+| points | 20 | `max_iterations` | 4.45e-11 | **1.09e-10** |
+| points | 300 | `stationary` | 0.0 | 0.0 |
+
+The row in bold is the one that sets the band's upper edge, and the reason the
+gate must not be a convergence test: it stopped on `max_iterations` with its own
+objective still moving, and it honoured tier 0 to 1e-10. It has to be accepted.
+
 ### Tests
 
-66 in `test/axtran2`, all passing: 21 declaration, 19 solver, 20 lexicographic,
+81 in `test/axtran2`, all passing: 21 declaration, 19 solver, 20 lexicographic,
 6 analytic Jacobian. Full suite 1538 of 1543. The three failures are
 pre-existing and environmental: `test/samples/` is untracked local data absent
 from this worktree (two tests), and one test spawns `rg`, which exists here only
@@ -377,9 +396,35 @@ and by whether the case is the normal one or an exception. The radius floor
 (EBO § 6) and the cant maxima want checking too, but a wrong rate limit changes
 every transition length in the alignment.
 
-**OD-4 (decision required).** `feasibilityTolerance`, the geometric closure
-below which a tier may hand a budget down, is 1e-3 m. A millimetre-level
-default, not derived from any requirement.
+**OD-4 (decided: 1e-8 m, and the comparison it makes was wrong).** Before the
+value there was a defect. Three quantities were tested against one number — a
+distance in metres, a lateral offset in metres, and a heading in radians — and
+they are not comparable. Over this alignment 1e-3 rad is 1.43 m of drift, so the
+heading was held a thousand times more loosely than the position beside it. The
+heading is now multiplied by the alignment's own length and compared as the
+length it is; where no length is available the angle is compared in radians and
+the report says so.
+
+The value is measured. This gate is not an engineering tolerance — how exactly
+the end pose is met is the solver's business — it asks whether a tier honoured
+tier 0 at all, and a tier can answer yes without having converged. Reading the
+closure off both objectives at 1 to 300 iterations:
+
+| | end-pose closure |
+|---|---|
+| honours tier 0 | 0, 3.95e-14, 1.09e-10 m |
+| does not | 1.69e-6, 1.17e-5, 3.23e-5, 1.97e-3 … 1.16e-1 m |
+
+Any threshold between those groups gives the same verdict on all of them. 1e-8
+is the middle of the band on a log scale: 92 times above the tightest result
+that must be accepted, 169 times below the loosest that must be refused.
+
+This also corrects reasoning of mine. I had argued for 1e-6 from a gap of ten
+orders of magnitude between converged tiers and stopped ones. The gap is a
+factor of 1.5e4, and it is not between converged and not: the tightest case that
+must be accepted is a points phase stopped at 20 iterations, still moving on its
+own objective while meeting the end pose to 1e-10. Conflating the two questions
+would have put the threshold at the edge of the band rather than in its middle.
 
 **R-2 (risk, dormant under the decision).** A budget-held points phase costs
 about 2 seconds per iteration against 0.35 for a free one — some 24 alignment
@@ -408,8 +453,8 @@ Terminology collisions: None.
 The priority order is carried end to end and the decision it waited on is made.
 Nothing in this package is left half-built.
 
-Next safe step: confirm the shipped profiles against the rule book and move
-their status to `confirmed`. That is reading and checking, not building — the
+All four open decisions are made. Next safe step: confirm the shipped profiles
+against the rule book and move their status to `confirmed`. That is reading and checking, not building — the
 only change in the repository is a status field and, where a number turns out
 wrong, the number.
 
