@@ -39365,7 +39365,18 @@ xlsx/xlsx.mjs:
 					const range = stationRangeForEntry(candidate);
 					return !range || range.from <= selectedRange.to + 5 && range.to >= selectedRange.from - 5;
 				};
-				const sameTrackEntries = selectedFrame
+				// The station-range check above is only a real safety net for GND
+				// (source: "gnd"), whose Kilometrierung is externally anchored and
+				// globally comparable. VermEsn/TRA data (and any other manually-typed
+				// group, source: "user"/"landXML-7L") has no such guarantee -- a TRA
+				// file's own station column restarts near 0 for every independently
+				// surveyed segment, so two unrelated Weichen almost always show
+				// "overlapping" ranges (verified against real Landshut fixtures:
+				// W401-402.TRA spans 0-79m, W403-404.TRA spans 0-88m -- entirely
+				// different physical switches). Cross-file matching by name alone is
+				// therefore restricted to GND; everything else relies solely on the
+				// already-safe, explicit relatedDiagramEntries relations below.
+				const sameTrackEntries = selectedFrame?.source === "gnd"
 					? loadedFiles.flatMap((loaded) => loaded.objects).filter((candidate) => {
 						const frame = geoFrameInfo(candidate);
 						return frame?.track === selectedFrame.track
