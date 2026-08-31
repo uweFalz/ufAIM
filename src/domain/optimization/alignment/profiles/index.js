@@ -7,22 +7,30 @@
 // a rule book, and a rule book is not a property of an optimiser. Everything
 // here is a number someone wrote down, together with where they wrote it.
 //
-// Every profile below carries `status: "candidate"`. That is not modesty, it is
-// the accurate state: the values were entered from the sources named in each
-// `source` string, and the current text of those sources was NOT read while
-// writing this file. Before a profile is used for anything anyone signs, its
-// numbers have to be checked against the rule book it names, and its status
-// moved to "confirmed". Nothing in the kernel does that; a human does.
+// Each limit carries `verified: true` only if its source has actually been read.
+// A profile cannot call itself "confirmed" while any of its limits has not - the
+// profile module refuses it - so the status below is a consequence of the table,
+// not a judgement anyone made about it.
 //
-// What the sources mean here:
+// What has been read, and what has not:
 //
-//   "EBO § 6"    the German Eisenbahn-Bau- und Betriebsordnung, the binding
-//                floor. Where it speaks, the kinematics may not go below it.
-//   "Ril ..."    the operator's design rules, which is where the rate limits
-//                live. These are the values most in need of checking, because
-//                they differ by line category and by whether the case is the
-//                normal one or an exception.
-//   "project"    a number this project chose, which the rule book leaves open.
+//   EBO § 6      READ, at gesetze-im-internet.de and cross-checked at buzer.de
+//                on 2026-08-31. It gives three of the numbers here: the 300 m
+//                floor for through main tracks (§ 6 (1)), the 180 mm cap on cant
+//                (§ 6 (3)), and the flattest admissible cant ramp of 1:400
+//                (§ 6 (4)). It states NOTHING about cant deficiency or about the
+//                rate of cant change over time, which was checked explicitly.
+//
+//   Ril 800.0110 NOT READ, and not publicly available. Every rate limit lives
+//                there, and every one of them is still marked CHECK. These are
+//                also the values that matter most: a wrong rate changes every
+//                transition length in the alignment.
+//
+//   project      a number this project chose, which the rule book leaves open.
+//
+// One correction from that reading: the 1:400 cant ramp was attributed here to
+// Ril 800.0110. It is EBO § 6 (4) - a binding regulation, not an operator's
+// design rule - and it is now cited as such.
 //
 // Where a profile belongs. A profile is declared WITH THE PROBLEM, because two
 // alignments in one project can sit under different rules - a new line and a
@@ -59,32 +67,47 @@ export function hauptbahn({
 } = {}) {
 	return createAlignmentDesignProfile({
 		id: `hauptbahn-V${speedKmh}`,
-		source: "EBO § 6 with the operator's design rules; entered, not verified",
+		source: "EBO § 6 for the regulatory limits, the operator's design rules for the rates",
 		status: "candidate",
-		speed: { value: kmh(speedKmh), source: "project: declared design speed" },
+		speed: {
+			value: kmh(speedKmh),
+			source: "project: declared design speed",
+			verified: true,
+		},
 		maximumCant: {
 			value: mm(cantMm),
-			source: "Ril 800.0110: largest cant for the line category — CHECK",
+			source: "Ril 800.0110: largest cant for the line category — CHECK; "
+				+ "below the EBO § 6 (3) cap of 180 mm, which is checked here",
+		},
+		regulatoryCantLimit: {
+			value: mm(180),
+			source: "EBO § 6 (3): cant may not exceed 180 mm, operational deviations included",
+			verified: true,
 		},
 		maximumCantDeficiency: {
 			value: mm(cantDeficiencyMm),
-			source: "Ril 800.0110: largest cant deficiency, normal case — CHECK",
+			source: "Ril 800.0110: largest cant deficiency, normal case — CHECK; "
+				+ "EBO § 6 states no limit on this, so nothing binding constrains it",
 		},
 		absoluteMinimumRadius: {
 			value: 300,
-			source: "EBO § 6: smallest radius in through main tracks — CHECK",
+			source: "EBO § 6 (1): smallest radius in through main tracks, new construction",
+			verified: true,
 		},
 		maximumCantRate: {
 			value: mm(50),
-			source: "Ril 800.0110: largest rate of cant change over time — CHECK",
+			source: "Ril 800.0110: largest rate of cant change over time — CHECK; "
+				+ "EBO § 6 states no limit on this",
 		},
 		maximumDeficiencyRate: {
 			value: mm(55),
-			source: "Ril 800.0110: largest rate of deficiency change over time — CHECK",
+			source: "Ril 800.0110: largest rate of deficiency change over time — CHECK; "
+				+ "EBO § 6 states no limit on this",
 		},
 		cantGradient: {
 			value: 400,
-			source: "Ril 800.0110: flattest admissible cant ramp, 1:n — CHECK",
+			source: "EBO § 6 (4): every change of cant runs over a ramp no steeper than 1:400",
+			verified: true,
 		},
 		minimumLength: {
 			straight: { value: 20, source: "project: shortest element the sequence keeps" },

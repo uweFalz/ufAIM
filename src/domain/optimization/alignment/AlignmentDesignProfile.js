@@ -94,9 +94,11 @@ function positive(value, label) {
 }
 
 /**
- * A declared limit: its value and where it came from. The source is a free
- * string on purpose - this module cannot check a citation, and pretending to
- * would be worse than carrying it plainly.
+ * A declared limit: its value, where it came from, and whether anyone has read
+ * that source. The source is a free string on purpose - this module cannot check
+ * a citation, and pretending to would be worse than carrying it plainly. What it
+ * can do is refuse to let a profile call itself confirmed while any of its
+ * limits is still unread.
  */
 function requireSourced(entry, label) {
 	if (!isObject(entry)) {
@@ -108,7 +110,11 @@ function requireSourced(entry, label) {
 	if (!source) {
 		error("MISSING_PROVENANCE", `${label} carries no source`, { limit: label });
 	}
-	return Object.freeze({ value: positive(entry.value, `${label}.value`), source });
+	return Object.freeze({
+		value: positive(entry.value, `${label}.value`),
+		source,
+		verified: entry.verified === true,
+	});
 }
 
 function optionalSourced(entry, label) {
@@ -130,6 +136,9 @@ function optionalSourced(entry, label) {
  * @param {{value:number,source:string}} [declaration.maximumDeficiencyRate] m/s
  * @param {{value:number,source:string}} [declaration.absoluteMinimumRadius]
  *        a floor the kinematics may not undercut, from the rule book itself
+ * @param {{value:number,source:string}} [declaration.regulatoryCantLimit]
+ *        a cap on the cant from the regulation itself, which the declared
+ *        maximumCant may not exceed
  * @param {{value:number,source:string}} [declaration.dynamicGauge]        m
  * @param {Record<string,{value:number,source:string}>} [declaration.minimumLength]
  *        per element kind, where the rule book states one directly
@@ -152,6 +161,17 @@ export function createAlignmentDesignProfile(declaration = {}) {
 
 	const speed = requireSourced(declaration.speed, "speed");
 	const cant = requireSourced(declaration.maximumCant, "maximumCant");
+	// A regulation may cap the cant outright, independently of what the line's
+	// own design rules allow. EBO does. The cap is declared like everything else,
+	// because which regulation applies is not this module's business - what is,
+	// is refusing a value that exceeds one that was declared.
+	const cantCap = optionalSourced(declaration.regulatoryCantLimit, "regulatoryCantLimit");
+	if (cantCap && cant.value > cantCap.value) {
+		error("CANT_ABOVE_REGULATION",
+			`maximumCant of ${(cant.value * 1000).toFixed(0)} mm exceeds the declared regulatory `
+				+ `limit of ${(cantCap.value * 1000).toFixed(0)} mm`,
+			{ declared: cant.value, limit: cantCap.value, source: cantCap.source });
+	}
 	const deficiency = requireSourced(declaration.maximumCantDeficiency, "maximumCantDeficiency");
 	const gauge = optionalSourced(declaration.dynamicGauge, "dynamicGauge");
 	const s = gauge?.value ?? STANDARD_DYNAMIC_GAUGE;
@@ -261,11 +281,36 @@ export function createAlignmentDesignProfile(declaration = {}) {
 		}
 	}
 
+	// "confirmed" is a claim about every number in the profile, so it cannot be
+	// made while any of them is still unread. This is the one thing the module
+	// can do about provenance beyond carrying it: stop the claim from being made
+	// loosely, since a profile marked confirmed is one nobody will check again.
+	const limits = {
+		speed, maximumCant: cant, maximumCantDeficiency: deficiency,
+		maximumCantRate: cantRate, cantGradient: gradient,
+		maximumDeficiencyRate: deficiencyRate, absoluteMinimumRadius: floor,
+		dynamicGauge: gauge, regulatoryCantLimit: cantCap,
+	};
+	const unverified = Object.entries(limits)
+		.filter(([, entry]) => entry !== null && entry.verified !== true)
+		.map(([name]) => name);
+	for (const [kind, entry] of Object.entries(declaredLengths)) {
+		if (entry.verified !== true) unverified.push(`minimumLength.${kind}`);
+	}
+	if (status === "confirmed" && unverified.length > 0) {
+		error("UNVERIFIED_LIMITS",
+			`profile "${id}" cannot be confirmed while ${unverified.length} of its limits are `
+				+ `unread: ${unverified.join(", ")}`,
+			{ unverified });
+	}
+
 	return Object.freeze({
 		version: ALIGNMENT_DESIGN_PROFILE_VERSION,
 		id,
 		source,
 		status,
+		/** Limits whose source nobody has read yet. Empty is what confirmed means. */
+		unverified: Object.freeze(unverified),
 		speed: speed.value,
 		dynamicGauge: s,
 		minimumRadius,
@@ -276,10 +321,7 @@ export function createAlignmentDesignProfile(declaration = {}) {
 		transitionBinding,
 		derivations: Object.freeze(derivations),
 		declared: Object.freeze({
-			speed, maximumCant: cant, maximumCantDeficiency: deficiency,
-			maximumCantRate: cantRate, cantGradient: gradient,
-			maximumDeficiencyRate: deficiencyRate, absoluteMinimumRadius: floor,
-			dynamicGauge: gauge,
+			...limits,
 			minimumLength: Object.freeze({ ...declaredLengths }),
 		}),
 		exceptionFor: (elementId) => exceptions.get(elementId) ?? null,
