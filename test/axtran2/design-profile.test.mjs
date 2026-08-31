@@ -11,7 +11,7 @@ const {
 } = await import(new URL("AlignmentDesignProfile.js", BASE));
 const { hauptbahn, DECLARED_PROFILES, kmh, mm } =
 	await import(new URL("profiles/index.js", BASE));
-const { createAlignmentConstraintBuilder } =
+const { createAlignmentConstraintBuilder, EVIDENCE_ONLY } =
 	await import(new URL("AlignmentConstraintBuilder.js", BASE));
 
 const sourced = (value, source = "test") => ({ value, source });
@@ -271,7 +271,10 @@ test("a profile reaches the constraint builder with its provenance intact", () =
 		minimumElementLength: 20,
 		elementKinds: { E0: "straight", E1: "arc", E2: "transition" },
 		design: profile,
+		admitUnconfirmedDesign: EVIDENCE_ONLY,
 	});
+	assert.equal(built.admission, EVIDENCE_ONLY);
+	assert.equal(built.admissible, false, "a candidate profile cannot yield an admissible answer");
 
 	assert.equal(built.design.id, "hauptbahn-V100");
 	assert.equal(built.design.status, "candidate");

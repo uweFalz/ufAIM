@@ -110,6 +110,10 @@ export function createAlignmentOptimizationProblem({
 		constraints,
 		residuals,
 		metricContext: residuals.metricContext,
+		// carried from the constraints so that nothing downstream has to know how
+		// a design profile is declared in order to know whether it was confirmed
+		admission: constraints.admission ?? "confirmed",
+		admissible: constraints.admissible !== false,
 		budget: Object.freeze({
 			freeVariables: codec.freeCount,
 			heldVariables: codec.heldCount,

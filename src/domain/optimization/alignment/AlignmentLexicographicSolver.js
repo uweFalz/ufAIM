@@ -429,6 +429,13 @@ export function solveAlignmentLexicographic({
 		status: skipped.length
 			? "tier_established_no_budget"
 			: phases.find((phase) => phase.label !== "warm-start" && !phase.ok)?.status ?? "converged",
+		// carried from the problem so that a run on unread design limits is
+		// evidence and says so, however cleanly its phases converged
+		admission: problem.admission ?? "confirmed",
+		admissible: problem.admissible !== false
+			&& phases.every((phase) => phase.diagnostics?.unprojectablePoints?.length !== undefined
+				? phase.diagnostics.unprojectablePoints.length === 0
+				: true),
 		candidate: last?.candidate ?? null,
 		// What each tier established, and what the answer actually spent against
 		// it. The two are free-variable sums, so neither is the alignment's total

@@ -40,6 +40,13 @@
 export const ALIGNMENT_CONSTRAINT_BUILDER_VERSION =
 	"axtran2/alignment-constraint-builder/0.1";
 
+/**
+ * The word a caller has to say to build constraints from a design profile whose
+ * numbers nobody has read. It is spelled out rather than a boolean so that it
+ * cannot be passed by accident and reads, at the call site, as what it is.
+ */
+export const EVIDENCE_ONLY = "evidence-only";
+
 export class AlignmentConstraintBuilderError extends Error {
 	constructor(code, message) {
 		super(message);
@@ -173,6 +180,8 @@ function requirePose(pose, label) {
  *        either a profile from createAlignmentDesignProfile, which carries its
  *        own provenance and per-element exceptions, or the plain form below,
  *        which carries none and is therefore not reviewable
+ * @param {"evidence-only"} [declaration.admitUnconfirmedDesign]
+ *        required to build constraints from a profile that is not confirmed
  * @param {number} [declaration.design.minimumRadius]              metres
  * @param {Record<string,number>|number} [declaration.design.minimumLength]
  *        smallest admissible length, per element kind or for all of them
@@ -187,6 +196,7 @@ export function createAlignmentConstraintBuilder({
 	hardPoints = [],
 	elementKinds = null,
 	design = null,
+	admitUnconfirmedDesign = null,
 } = {}) {
 	const target = requirePose(endPose, "endPose");
 
@@ -230,6 +240,24 @@ export function createAlignmentConstraintBuilder({
 	// for callers that only want a radius and a length, and it carries no
 	// provenance - which is why it may not be used for anything reviewable.
 	const built = design?.version?.startsWith("axtran2/alignment-design-profile/") ? design : null;
+
+	// Admission. A profile marked "candidate" is one whose numbers nobody has
+	// read yet, and those numbers do not stay advisory once they are here: they
+	// become the curvature bound and the transition floor, and the solver runs
+	// its alignment onto them. Consuming a candidate exactly like a confirmed
+	// profile would let an unread limit shape an answer that then looks like any
+	// other. So it takes an explicit word, and the constraints carry which word
+	// was given, all the way out to the proposal.
+	const admission = built === null || built.status === "confirmed"
+		? "confirmed"
+		: admitUnconfirmedDesign;
+	if (admission !== "confirmed" && admission !== EVIDENCE_ONLY) {
+		error("UNCONFIRMED_DESIGN_PROFILE",
+			`design profile "${built.id}" is a ${built.status} - unread: `
+				+ `${built.unverified.join(", ")}. To use it anyway, declare `
+				+ `admitUnconfirmedDesign: "${EVIDENCE_ONLY}"; the result is then not admissible `
+				+ "as an engineering answer.");
+	}
 	const profile = built ? null : design ? readDesign(design) : null;
 	const kindOf = (id) => {
 		if (!elementKinds) return null;
@@ -303,6 +331,10 @@ export function createAlignmentConstraintBuilder({
 	return Object.freeze({
 		version: ALIGNMENT_CONSTRAINT_BUILDER_VERSION,
 		endPose: target,
+		// "confirmed" or "evidence-only": whether an answer built on these
+		// constraints may be treated as an engineering result
+		admission,
+		admissible: admission === "confirmed",
 		equalities: Object.freeze(equalities.map(Object.freeze)),
 		bounds: Object.freeze(bounds),
 		designBounds: Object.freeze(designBounds),
