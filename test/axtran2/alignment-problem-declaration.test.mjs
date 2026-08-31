@@ -6,7 +6,7 @@ const load = (name) => import(new URL(name, BASE));
 
 const { createAlignmentVariableCodec, AlignmentVariableCodecError, VARIABLE_ROLES } =
 	await load("AlignmentVariableCodec.js");
-const { createAlignmentConstraintBuilder, AlignmentConstraintBuilderError, ELEMENT_KINDS } =
+const { createAlignmentConstraintBuilder, AlignmentConstraintBuilderError, ELEMENT_KINDS, EVIDENCE_ONLY } =
 	await load("AlignmentConstraintBuilder.js");
 const { createAlignmentResidualBuilder, AlignmentResidualBuilderError } =
 	await load("AlignmentResidualBuilder.js");
@@ -315,12 +315,16 @@ test("the declaration layer declares only; it neither solves nor applies", async
 // ---------------------------------------------------------------- tier 3
 
 const KINDS = { E0: "straight", E1: "transition", E2: "arc", E3: "transition" };
+// The plain-object form carries no provenance, so it is never admissible and
+// always needs the word. These tests are about the arithmetic of the limits,
+// not about admission, and say so once here.
 const tier3 = (design) => createAlignmentConstraintBuilder({
 	endPose: END_POSE,
 	elementSequence: ["E0", "E1", "E2", "E3"],
 	minimumElementLength: 20,
 	elementKinds: KINDS,
 	design,
+	admitUnconfirmedDesign: EVIDENCE_ONLY,
 });
 
 test("a smallest radius becomes a two-sided bound on curvature, and only on arcs", () => {
@@ -348,6 +352,7 @@ test("a design length takes over from the sequence bound, and says so", () => {
 	const sequenceWins = createAlignmentConstraintBuilder({
 		endPose: END_POSE, elementSequence: ["E0"], minimumElementLength: 90,
 		elementKinds: { E0: "straight" }, design: { minimumLength: { straight: 40 } },
+		admitUnconfirmedDesign: EVIDENCE_ONLY,
 	});
 	assert.equal(sequenceWins.bounds[0].minimum, 90);
 	assert.equal(sequenceWins.bounds[0].binding, "element-sequence");
@@ -391,6 +396,7 @@ test("a design profile that names element kinds needs to be told them", () => {
 		() => createAlignmentConstraintBuilder({
 			endPose: END_POSE, elementSequence: ["E0"],
 			design: { minimumLength: { straight: 40 } },
+			admitUnconfirmedDesign: EVIDENCE_ONLY,
 		}),
 		(e) => e.code === "MISSING_ELEMENT_KINDS"
 	);
@@ -398,6 +404,7 @@ test("a design profile that names element kinds needs to be told them", () => {
 		() => createAlignmentConstraintBuilder({
 			endPose: END_POSE, elementSequence: ["E0"],
 			elementKinds: { E0: "spiral" }, design: { minimumRadius: 600 },
+			admitUnconfirmedDesign: EVIDENCE_ONLY,
 		}),
 		(e) => e.code === "UNKNOWN_ELEMENT_KIND"
 	);

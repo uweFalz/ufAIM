@@ -86,6 +86,9 @@ export function solveAlignmentProblem({
 	extraEqualities = [],
 	startAt = null,
 	maxIterations = 60,
+	// Relative slop below which a foot point counts as a genuine perpendicular
+	// foot rather than a station clamped to an end. See project().
+	extrapolationTolerance = 1e-9,
 	relaxationWeight = 1e6,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
@@ -134,6 +137,9 @@ export function solveAlignmentProblem({
 
 	let builds = 0;
 	let jacobianEvaluations = 0;
+	// set when a projector reported no distance, so the extrapolation check could
+	// not be made for at least one point
+	let distanceMissing = false;
 
 	// codec names carry the element id; the analytic Jacobian addresses elements
 	// by their position in the sequence
@@ -176,6 +182,24 @@ export function solveAlignmentProblem({
 	 * the solve that rejects the trial point - the line search treats a failed
 	 * evaluation as a step not taken - and at the declared start it comes out to
 	 * the caller with the point named.
+	 *
+	 * The second way, which is the one that actually happens. The production
+	 * projector clamps the foot station to [0, arcLength] and never returns null
+	 * for a point beyond the ends: it returns the offset from the END TANGENT,
+	 * extended. Measured on the nine-element alignment, a point 1000 m past the
+	 * end reports q = 0.0500 m - comfortably inside any tolerance - while sitting
+	 * a kilometre away from the track. That is a lateral offset from a line the
+	 * alignment does not occupy, and nothing in the number says so.
+	 *
+	 * It is cheap to catch. At a true foot point the offset IS the distance;
+	 * where the station was clamped, the two differ by the longitudinal overshoot.
+	 * Measured: dist - |q| is 2.8e-17 m at genuine foot points across the whole
+	 * alignment, and already 9.9e-4 m one centimetre past the end. Any threshold
+	 * between separates them, and 1e-9 catches an overshoot of about ten microns.
+	 *
+	 * A projector that reports no distance forgoes this check. That is recorded
+	 * rather than passed over, because a check that quietly does not run is the
+	 * same fail-open one level up.
 	 */
 	function project(built, point, role) {
 		const projected = built.worldToTrack(point.x, point.y);
@@ -187,16 +211,39 @@ export function solveAlignmentProblem({
 				{ pointName: point.name, role, x: point.x, y: point.y }
 			);
 		}
+		if (Number.isFinite(projected.dist)) {
+			const gap = projected.dist - Math.abs(projected.q);
+			if (gap > extrapolationTolerance * Math.max(1, Math.abs(projected.q))) {
+				const overshoot = Math.sqrt(Math.max(0, projected.dist ** 2 - projected.q ** 2));
+				error(
+					"EXTRAPOLATED_PROJECTION",
+					`${role} "${point.name}" has no foot point on this alignment: it lies `
+						+ `${overshoot.toFixed(3)} m beyond an end, and its offset of `
+						+ `${projected.q.toFixed(4)} m is measured from the extended tangent, not `
+						+ "from the alignment",
+					{ pointName: point.name, role, overshoot, offset: projected.q, distance: projected.dist }
+				);
+			}
+		} else {
+			distanceMissing = true;
+		}
 		return projected;
 	}
 
-	/** Which declared points a candidate fails to carry, for reporting. */
-	function unprojectablePoints(built) {
+	/** Which declared points a candidate fails to carry, and why. */
+	function inadmissiblePoints(built) {
 		const failed = [];
 		for (const [role, points] of [["zwangspunkt", hardPoints], ["measured point", softPoints]]) {
 			for (const point of points) {
-				const projected = built.worldToTrack(point.x, point.y);
-				if (!Number.isFinite(projected?.q)) failed.push(Object.freeze({ name: point.name, role }));
+				try {
+					project(built, point, role);
+				} catch (caught) {
+					if (!(caught instanceof AlignmentSqpSolverError)) throw caught;
+					failed.push(Object.freeze({
+						name: point.name, role, reason: caught.code,
+						overshoot: caught.detail?.overshoot ?? null,
+					}));
+				}
 			}
 		}
 		return failed;
@@ -339,22 +386,22 @@ export function solveAlignmentProblem({
 	// declared point: refusing to report would lose the diagnosis along with the
 	// candidate. The proposal says so instead, and is not ok.
 	const built = run.x ? realise(run.x) : null;
-	const unprojectable = built ? unprojectablePoints(built) : [];
-	const finalEquality = built && unprojectable.length === 0 ? equalityResiduals(built) : [];
+	const inadmissible = built ? inadmissiblePoints(built) : [];
+	const finalEquality = built && inadmissible.length === 0 ? equalityResiduals(built) : [];
 	const finalExtra = run.x ? extraResiduals(run.x) : [];
-	const finalSoft = built && unprojectable.length === 0 ? softResiduals(built) : [];
+	const finalSoft = built && inadmissible.length === 0 ? softResiduals(built) : [];
 
 	return Object.freeze({
 		version: ALIGNMENT_SQP_SOLVER_VERSION,
 		type: "proposal",
 		objective,
-		status: unprojectable.length ? "unprojectable_points" : run.status,
-		ok: run.ok === true && unprojectable.length === 0,
+		status: inadmissible.length ? "inadmissible_points" : run.status,
+		ok: run.ok === true && inadmissible.length === 0,
 		// Whether this proposal may be treated as an engineering answer. A run
 		// that converged cleanly on limits nobody has read is still evidence and
 		// not an answer, and the two must not look alike.
 		admission: problem.admission ?? "confirmed",
-		admissible: problem.admissible !== false && unprojectable.length === 0,
+		admissible: problem.admissible !== false && inadmissible.length === 0,
 		candidate: Object.freeze({
 			variables: Object.freeze(run.x ? [...run.x] : []),
 			names: codec.freeNames,
@@ -365,9 +412,12 @@ export function solveAlignmentProblem({
 			alignmentBuilds: builds,
 			jacobianKind: typeof analyticJacobian === "function" ? "analytic" : "finite-difference",
 			jacobianEvaluations,
-			// declared points the final candidate cannot carry; empty is the normal
-			// case and anything else makes the proposal inadmissible
-			unprojectablePoints: Object.freeze(unprojectable),
+			// declared points the final candidate cannot carry, with the reason;
+			// empty is the normal case and anything else makes it inadmissible
+			inadmissiblePoints: Object.freeze(inadmissible),
+			// false when a projector reported no distance, so no point could be
+			// checked for being an extrapolation past an end
+			extrapolationChecked: !distanceMissing,
 			endPoseResidual: finalEquality.slice(0, 3),
 			endPoseDistance: built ? Math.hypot(finalEquality[0], finalEquality[1]) : null,
 			hardPointResiduals: Object.freeze(hardPoints.map((point, i) => Object.freeze({

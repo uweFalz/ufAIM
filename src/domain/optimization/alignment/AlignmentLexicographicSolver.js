@@ -433,9 +433,10 @@ export function solveAlignmentLexicographic({
 		// evidence and says so, however cleanly its phases converged
 		admission: problem.admission ?? "confirmed",
 		admissible: problem.admissible !== false
-			&& phases.every((phase) => phase.diagnostics?.unprojectablePoints?.length !== undefined
-				? phase.diagnostics.unprojectablePoints.length === 0
-				: true),
+			&& phases.every((phase) => (phase.diagnostics?.inadmissiblePoints?.length ?? 0) === 0)
+			// a phase whose projector reported no distance could not be checked for
+			// extrapolation past an end, which is not the same as having passed it
+			&& phases.every((phase) => phase.diagnostics?.extrapolationChecked !== false),
 		candidate: last?.candidate ?? null,
 		// What each tier established, and what the answer actually spent against
 		// it. The two are free-variable sums, so neither is the alignment's total

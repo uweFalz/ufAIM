@@ -248,10 +248,29 @@ export function createAlignmentConstraintBuilder({
 	// profile would let an unread limit shape an answer that then looks like any
 	// other. So it takes an explicit word, and the constraints carry which word
 	// was given, all the way out to the proposal.
-	const admission = built === null || built.status === "confirmed"
+	// Three cases, and only the first two can ever be confirmed.
+	//
+	//   no design at all       nothing unread, because there is nothing
+	//   a confirmed profile    every limit read, which the profile module checks
+	//   anything else          needs the word
+	//
+	// The plain-object form belongs to the third case and belongs there
+	// permanently. It carries no provenance at all - not an unread source, no
+	// source - so it is strictly less trustworthy than a candidate profile and
+	// must never be the more privileged of the two. Treating it as confirmed
+	// because it is not a profile was the hole: a raw { minimumRadius: 400 }
+	// became a binding constraint and the result called itself admissible.
+	const admission = design === null || built?.status === "confirmed"
 		? "confirmed"
 		: admitUnconfirmedDesign;
 	if (admission !== "confirmed" && admission !== EVIDENCE_ONLY) {
+		if (built === null) {
+			error("UNSOURCED_DESIGN_DECLARATION",
+				"a design declared as a plain object carries no provenance and can never be "
+					+ `confirmed. Build it with createAlignmentDesignProfile, or declare `
+					+ `admitUnconfirmedDesign: "${EVIDENCE_ONLY}"; the result is then not `
+					+ "admissible as an engineering answer.");
+		}
 		error("UNCONFIRMED_DESIGN_PROFILE",
 			`design profile "${built.id}" is a ${built.status} - unread: `
 				+ `${built.unverified.join(", ")}. To use it anyway, declare `
