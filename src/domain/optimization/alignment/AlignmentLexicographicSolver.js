@@ -103,12 +103,37 @@ function budgetModeOf(tier) {
 export const BUDGET_TOLERANCE = 1e-9;
 
 /**
- * Geometric closure below which a phase result counts as feasible, in metres.
- * A budget frozen from an infeasible result is worse than no budget at all: it
- * is a limit the constraints cannot honour, so every tier below inherits an
+ * Geometric closure below which a phase result counts as honouring tier 0, in
+ * metres. A budget frozen from a result that does not is worse than no budget:
+ * it is a limit the constraints cannot honour, so every tier below inherits an
  * impossible problem and reports failure for a reason that is not its own.
+ *
+ * This is NOT an engineering tolerance, and reading it as one was the mistake in
+ * its first value. How exactly the end pose is met is the solver's business,
+ * governed by the solver's own feasibility tolerance. This gate asks one
+ * narrower question: did the tier honour tier 0 at all, or did it stop somewhere
+ * short and hand down a value it never earned? A tier can answer yes and still
+ * not have converged - honouring the constraints is not the same as proving its
+ * own objective optimal, and the gate must not conflate them.
+ *
+ * The value is therefore measured, not chosen. Running both objectives at
+ * iteration counts from 1 to 300 on the nine-element scenario and reading the
+ * end-pose closure off each:
+ *
+ *     honours tier 0        0, 3.95e-14, 1.09e-10 m
+ *     does not          1.69e-6, 1.17e-5, 3.23e-5, 1.97e-3 ... 1.16e-1 m
+ *
+ * so any threshold between 1.09e-10 and 1.69e-6 returns the same verdict on
+ * every one of them, and outside that band some case flips. 1e-8 is the middle
+ * of it on a log scale, which is where the margin against both neighbours is
+ * largest: 92 times above the tightest result that must be accepted, 169 times
+ * below the loosest that must be refused.
+ *
+ * Note what the band is bounded by at the top. That is a points phase stopped at
+ * 20 iterations, which met the end pose to 1e-10 while its own objective was
+ * still moving. It has to be accepted, and it is: it honoured tier 0.
  */
-export const FEASIBILITY_TOLERANCE = 1e-3;
+export const FEASIBILITY_TOLERANCE = 1e-8;
 
 export class AlignmentLexicographicError extends Error {
 	constructor(code, message, detail = null) {
@@ -127,15 +152,54 @@ function error(code, message, detail) {
  * Whether a phase result honours tier 0 - the end pose and every hardened
  * Zwangspunkt. This is not a quality judgement about the tier's own objective;
  * it only asks whether the point the tier reached is a real alignment.
+ *
+ * Everything is compared in metres, including the heading. Three quantities
+ * used to be tested against one number: a distance in metres, a lateral offset
+ * in metres, and an angle in radians. They are not comparable, and the angle was
+ * the one that suffered - 1e-3 rad over a 1430 m alignment is 1.43 m of drift,
+ * so the heading was being held a thousand times more loosely than the position
+ * beside it. The heading is now multiplied by the alignment's own length, which
+ * is the distance over which that heading error accumulates, and the result is a
+ * length like the others.
+ *
+ * Without a length to use as the lever arm the heading is compared in radians
+ * and the check says so, because silently treating a radian as a metre is how
+ * the first version of this went wrong.
  */
 export function tierZeroSatisfied(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
-	if (!diagnostics) return false;
-	if (!(Math.abs(diagnostics.endPoseDistance ?? Infinity) <= tolerance)) return false;
-	const angular = Math.abs(diagnostics.endPoseResidual?.[2] ?? Infinity);
-	if (!(angular <= tolerance)) return false;
-	return (diagnostics.hardPointResiduals ?? []).every(
-		(point) => Math.abs(point.residual ?? Infinity) <= tolerance
+	return tierZeroReport(diagnostics, tolerance).satisfied;
+}
+
+/** The same question, with the three answers it is made of. */
+export function tierZeroReport(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
+	if (!diagnostics) {
+		return Object.freeze({ satisfied: false, reason: "no diagnostics", leverArm: null });
+	}
+	const leverArm = Number.isFinite(diagnostics.alignmentLength) && diagnostics.alignmentLength > 0
+		? diagnostics.alignmentLength
+		: null;
+	const position = Math.abs(diagnostics.endPoseDistance ?? Infinity);
+	const headingRadians = Math.abs(diagnostics.endPoseResidual?.[2] ?? Infinity);
+	const heading = headingRadians * (leverArm ?? 1);
+	const worstHardPoint = Math.max(
+		0, ...(diagnostics.hardPointResiduals ?? []).map((point) => Math.abs(point.residual ?? Infinity))
 	);
+	const failing = position > tolerance
+		? "end-pose position"
+		: heading > tolerance
+			? "end-pose heading"
+			: worstHardPoint > tolerance ? "hardened Zwangspunkt" : null;
+	return Object.freeze({
+		satisfied: failing === null,
+		failing,
+		tolerance,
+		leverArm,
+		leverArmKnown: leverArm !== null,
+		position,
+		headingRadians,
+		heading,
+		worstHardPoint,
+	});
 }
 
 /**
@@ -315,16 +379,19 @@ export function solveAlignmentLexicographic({
 		}
 
 		if (!established && !isLast) {
+			const report = tierZeroReport(result.diagnostics, feasibilityTolerance);
 			skipped.push(Object.freeze({
 				tier: `tier-${index + 1}`,
 				objective: tier.objective,
 				reason: "infeasible",
-				endPoseDistance: result.diagnostics?.endPoseDistance ?? null,
-				worstHardPoint: Math.max(
-					0,
-					...(result.diagnostics?.hardPointResiduals ?? []).map(
-						(point) => Math.abs(point.residual ?? 0))
-				),
+				// which of the three parts of tier 0 it failed, and by how much,
+				// because "infeasible" on its own sends the reader back to the trace
+				failing: report.failing,
+				endPoseDistance: report.position,
+				headingOffset: report.heading,
+				headingLeverArm: report.leverArm,
+				worstHardPoint: report.worstHardPoint,
+				tolerance: feasibilityTolerance,
 			}));
 		} else if (!isLast) {
 			const linear = linearObjective(tier.objective, codec);

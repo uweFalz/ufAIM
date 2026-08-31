@@ -329,6 +329,13 @@ export function solveAlignmentProblem({
 				residual: finalExtra[i] ?? null,
 			}))),
 			accumulatedLength: run.x ? accumulatedLength(run.x) : null,
+			// The whole alignment, held elements included. accumulatedLength is the
+			// objective and sums only the free ones; this is the thing that has a
+			// physical length, and a heading error needs it as a lever arm before
+			// it can be compared against a distance.
+			alignmentLength: Array.isArray(built?.lengths)
+				? built.lengths.reduce((sum, value) => sum + value, 0)
+				: null,
 			finalRelaxation: run.history?.at(-1)?.delta ?? null,
 			history: Object.freeze(run.history ?? []),
 			reason: run.reason ?? null,
