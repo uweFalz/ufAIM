@@ -21,6 +21,21 @@
 // "half a metre of length is worth spending on the points", and it has to be
 // declared, not discovered.
 //
+// A tier may also hand its value down as a REFERENCE rather than as a limit,
+// which is what epsilon set to the full span amounts to. Then the tier
+// establishes what its objective could achieve, reports it, and stops
+// constraining: the answer is the lower tier's own optimum, and the upper tier
+// has said what that answer cost. Since the limit would never bind, it is not
+// imposed at all - computing a number that is then always inactive would be
+// theatre, and the machinery it needs (a held phase, its witness, its active
+// set) would run for nothing.
+//
+// A reference tier does not hand its point down either. It establishes neither
+// a constraint nor a direction, so the tier below it starts where the run
+// started rather than at an optimum it does not have to respect. Measured on
+// the nine-element alignment, starting the points tier at the length tier's
+// vertex cost 359 iterations against 171 from the declared alignment.
+//
 // Budgets are linear. "accumulated-length" is a sum of free lengths, so its
 // budget is one linear row and the solver can hold it exactly. A budget on a
 // nonlinear tier would need its gradient rebuilt every iteration and is
@@ -50,10 +65,39 @@ export const ALIGNMENT_LEXICOGRAPHIC_VERSION = "axtran2/alignment-lexicographic/
 /** Objectives whose budget is a single linear row in the free variables. */
 export const BUDGETABLE_OBJECTIVES = Object.freeze(["accumulated-length"]);
 
+/** How a tier hands its attainment to the tiers below it. */
+export const BUDGET_MODES = Object.freeze(["reference", "limit"]);
+
+// Decision OD-2, reading (b): the length tier establishes what is achievable and
+// then stops constraining. Readings (a) and (c) are a declared epsilon away -
+// `{ objective: "accumulated-length", absolute: 0 }` for the strict order, any
+// positive absolute or relative for a real budget.
 export const DEFAULT_TIERS = Object.freeze([
-	Object.freeze({ objective: "accumulated-length", relative: 0, absolute: 0 }),
+	Object.freeze({ objective: "accumulated-length", budget: "reference" }),
 	Object.freeze({ objective: "points" }),
 ]);
+
+/**
+ * Whether a tier constrains the tiers below it or only reports to them.
+ * A declared epsilon is a limit by construction; declaring one and asking for a
+ * reference at the same time is a contradiction, not a preference.
+ */
+function budgetModeOf(tier) {
+	const declaredEpsilon = tier.relative !== undefined || tier.absolute !== undefined;
+	if (tier.budget !== undefined) {
+		if (!BUDGET_MODES.includes(tier.budget)) {
+			error("UNKNOWN_BUDGET_MODE",
+				`budget must be one of ${BUDGET_MODES.join(", ")}, not "${tier.budget}"`, { tier });
+		}
+		if (tier.budget === "reference" && declaredEpsilon) {
+			error("CONTRADICTORY_BUDGET",
+				"a tier cannot both declare an epsilon and hand its value down as a reference",
+				{ tier });
+		}
+		return tier.budget;
+	}
+	return declaredEpsilon ? "limit" : "reference";
+}
 
 /** Relative slop below which a budget counts as met rather than overspent. */
 export const BUDGET_TOLERANCE = 1e-9;
@@ -202,6 +246,7 @@ export function solveAlignmentLexicographic({
 	const skipped = [];
 
 	tiers.forEach((tier, index) => {
+		const mode = budgetModeOf(tier);
 		const asEquality = (budget) => ({
 			id: budget.id,
 			gradient: budget.gradient,
@@ -233,7 +278,8 @@ export function solveAlignmentLexicographic({
 		for (let pass = 0; pass < budgets.length; pass++) {
 			const reached = result.candidate.variables?.length ? result.candidate.variables : x;
 			const added = budgets.filter((budget) =>
-				!active.includes(budget)
+				budget.mode === "limit"
+				&& !active.includes(budget)
 				&& budget.value(reached) - budget.limit
 					> BUDGET_TOLERANCE * Math.max(1, Math.abs(budget.limit)));
 			if (added.length === 0) break;
@@ -261,7 +307,10 @@ export function solveAlignmentLexicographic({
 		// regardless, because it is the answer and the caller has to see it.
 		const established = tierZeroSatisfied(result.diagnostics, feasibilityTolerance);
 		const isLast = index === tiers.length - 1;
-		if ((established || isLast) && result.candidate.variables?.length) {
+		// A reference tier constrains nothing below it, so it has no claim on
+		// where the tier below it starts either.
+		const advances = isLast || (established && mode === "limit");
+		if (advances && result.candidate.variables?.length) {
 			x = [...result.candidate.variables];
 		}
 
@@ -279,21 +328,25 @@ export function solveAlignmentLexicographic({
 			}));
 		} else if (!isLast) {
 			const linear = linearObjective(tier.objective, codec);
-			const attained = linear.value(x);
+			const reached = result.candidate.variables?.length ? result.candidate.variables : x;
+			const attained = linear.value(reached);
 			const relative = tier.relative ?? 0;
 			const absolute = tier.absolute ?? 0;
 			const slack = Math.max(Math.abs(attained) * relative, absolute);
 			budgets.push({
 				id: `tier-${index + 1}:${tier.objective}`,
 				objective: tier.objective,
+				mode,
 				gradient: linear.gradient,
 				value: linear.value,
 				attained,
-				limit: attained + slack,
-				slack,
+				// a reference imposes no limit; saying "Infinity" would invite it to
+				// be compared against, and null cannot be
+				limit: mode === "limit" ? attained + slack : null,
+				slack: mode === "limit" ? slack : null,
 				// the point this value was attained at, which satisfies the budget
 				// exactly and is therefore where a phase held to it should begin
-				attainedAt: [...x],
+				attainedAt: [...reached],
 			});
 		}
 	});
@@ -310,13 +363,26 @@ export function solveAlignmentLexicographic({
 			? "tier_established_no_budget"
 			: phases.find((phase) => phase.label !== "warm-start" && !phase.ok)?.status ?? "converged",
 		candidate: last?.candidate ?? null,
-		budgets: Object.freeze(budgets.map((budget) => Object.freeze({
-			id: budget.id,
-			objective: budget.objective,
-			attained: budget.attained,
-			limit: budget.limit,
-			slack: budget.slack,
-		}))),
+		// What each tier established, and what the answer actually spent against
+		// it. The two are free-variable sums, so neither is the alignment's total
+		// length - but their difference is, because the held elements are the same
+		// constant on both sides. The span is the number that means something on
+		// its own: it is what the tiers below cost the tier above.
+		budgets: Object.freeze(budgets.map((budget) => {
+			const spent = last?.candidate?.variables?.length
+				? budget.value(last.candidate.variables)
+				: null;
+			return Object.freeze({
+				id: budget.id,
+				objective: budget.objective,
+				mode: budget.mode,
+				attained: budget.attained,
+				spent,
+				span: spent === null ? null : spent - budget.attained,
+				limit: budget.limit,
+				slack: budget.slack,
+			});
+		})),
 		skippedBudgets: Object.freeze(skipped),
 		phases: Object.freeze(phases),
 		diagnostics: last?.diagnostics ?? null,
