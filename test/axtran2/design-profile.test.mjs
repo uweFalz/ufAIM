@@ -207,28 +207,51 @@ test("a cant above the regulation is refused, whatever the design rules allow", 
 	}), "the cap itself is admissible");
 });
 
-test("what EBO gives is cited as EBO, and what it does not is still marked CHECK", () => {
-	// Read at gesetze-im-internet.de and cross-checked at buzer.de on 2026-08-31:
-	// § 6 (1) the 300 m floor, § 6 (3) the 180 mm cant cap, § 6 (4) the 1:400
-	// ramp. It says nothing about cant deficiency or about rates over time, which
-	// was checked explicitly - so those stay unread and stay flagged.
+test("each limit is cited to the document that actually contains it", () => {
+	// EBO § 6 read at gesetze-im-internet.de and cross-checked at buzer.de;
+	// Ril 800.0110 read in version 3.0, valid from 2021-02-01. Between them they
+	// settle four of the six limits, and they settle which document each belongs
+	// to - which is where this file had been wrong twice.
 	const profile = DECLARED_PROFILES["hauptbahn-V160"]();
 	const declared = profile.declared;
 
-	for (const name of ["absoluteMinimumRadius", "cantGradient", "regulatoryCantLimit"]) {
-		assert.equal(declared[name].verified, true, `${name} should be read`);
-		assert.match(declared[name].source, /EBO § 6/, `${name} should cite EBO`);
-		assert.doesNotMatch(declared[name].source, /CHECK/, `${name} should not still be flagged`);
+	// EBO: the 300 m floor (§ 6 (1)) and the 180 mm cant cap (§ 6 (3))
+	for (const name of ["absoluteMinimumRadius", "regulatoryCantLimit"]) {
+		assert.equal(declared[name].verified, true);
+		assert.match(declared[name].source, /EBO § 6/);
 	}
-	assert.equal(declared.cantGradient.value, 400, "1:400, from § 6 (4) and not from an operator rule");
 	assert.equal(declared.absoluteMinimumRadius.value, 300);
 	assert.equal(declared.regulatoryCantLimit.value, 0.18);
 
-	for (const name of ["maximumCant", "maximumCantDeficiency", "maximumCantRate", "maximumDeficiencyRate"]) {
-		assert.equal(declared[name].verified, false, `${name} has not been read`);
-		assert.match(declared[name].source, /CHECK/, `${name} must still say so`);
+	// Ril: the cant and the deficiency
+	assert.equal(declared.maximumCant.verified, true);
+	assert.equal(declared.maximumCant.value, 0.16, "Tab. 4, ballasted track");
+	assert.match(declared.maximumCant.source, /Ril 800\.0110/);
+	assert.equal(declared.maximumCantDeficiency.verified, true);
+	assert.equal(declared.maximumCantDeficiency.value, 0.13, "Tab. 5, r >= 650 m");
+
+	// The ramp gradient is in both, and 1:400 is the outer bound rather than the
+	// planning value for every category - Ril names flatter ones.
+	assert.equal(declared.cantGradient.verified, true);
+	assert.match(declared.cantGradient.source, /EBO § 6 \(4\)/);
+	assert.match(declared.cantGradient.source, /1:600/, "and that Ril goes flatter");
+});
+
+test("the two rate limits are not Ril quantities, and say so", () => {
+	// The finding that reading the primary source produced. Ril 800.0110 governs
+	// the transition through the ramp gradient and the ramp length; it contains
+	// no rate over time anywhere - not "mm/s", not "Änderungsgeschwindigkeit",
+	// not once in 31 pages. Both rates had been attributed to it. They are the
+	// EN 13803 way of stating the same requirement, and reading Ril cannot
+	// confirm them, however carefully it is read.
+	const profile = DECLARED_PROFILES["hauptbahn-V160"]();
+	for (const name of ["maximumCantRate", "maximumDeficiencyRate"]) {
+		const limit = profile.declared[name];
+		assert.equal(limit.verified, false, `${name} cannot be verified against Ril`);
+		assert.match(limit.source, /CHECK/);
+		assert.match(limit.source, /NOT in Ril 800\.0110/, `${name} must not claim to be Ril`);
+		assert.match(limit.source, /EN 13803/, "and must name where it does come from");
 	}
-	// the rate limits are the ones that matter most, and they are the unread ones
 	assert.ok(profile.unverified.includes("maximumCantRate"));
 	assert.ok(profile.unverified.includes("maximumDeficiencyRate"));
 });

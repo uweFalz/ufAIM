@@ -21,10 +21,14 @@
 //                (§ 6 (4)). It states NOTHING about cant deficiency or about the
 //                rate of cant change over time, which was checked explicitly.
 //
-//   Ril 800.0110 NOT READ, and not publicly available. Every rate limit lives
-//                there, and every one of them is still marked CHECK. These are
-//                also the values that matter most: a wrong rate changes every
-//                transition length in the alignment.
+//   Ril 800.0110 READ, version 3.0, valid from 2021-02-01. It settles the cant
+//                and the deficiency, and it overturns an assumption of this file:
+//                it works in ramp gradients and ramp lengths, and contains NO
+//                rate over time at all - not "mm/s", not "Änderungs-
+//                geschwindigkeit", not once in 31 pages. The two rate limits
+//                below were attributed to it and are not in it. They are the
+//                EN 13803 style of formulating the same requirement, and they
+//                stay CHECK against that standard, which has not been read.
 //
 //   project      a number this project chose, which the rule book leaves open.
 //
@@ -62,7 +66,7 @@ export const mm = (value) => value / 1000;
 export function hauptbahn({
 	speedKmh,
 	cantMm = 160,
-	cantDeficiencyMm = 100,
+	cantDeficiencyMm = 130,
 	exceptions = undefined,
 } = {}) {
 	return createAlignmentDesignProfile({
@@ -76,8 +80,9 @@ export function hauptbahn({
 		},
 		maximumCant: {
 			value: mm(cantMm),
-			source: "Ril 800.0110: largest cant for the line category — CHECK; "
-				+ "below the EBO § 6 (3) cap of 180 mm, which is checked here",
+			source: "Ril 800.0110 (V3.0, 2021-02-01) Tab. 4: 160 mm on ballasted track, "
+				+ "170 mm on slab track; the table cites the EBO § 6 (3) cap of 180 mm itself",
+			verified: cantMm <= 160,
 		},
 		regulatoryCantLimit: {
 			value: mm(180),
@@ -86,27 +91,37 @@ export function hauptbahn({
 		},
 		maximumCantDeficiency: {
 			value: mm(cantDeficiencyMm),
-			source: "Ril 800.0110: largest cant deficiency, normal case — CHECK; "
-				+ "EBO § 6 states no limit on this, so nothing binding constrains it",
+			source: "Ril 800.0110 (V3.0) Tab. 5: zul uf = 130 mm at r >= 650 m, 150 mm for "
+				+ "approved vehicles; 100 mm applies to temporary bridges and to axle loads "
+				+ "above 22.5 t, not generally. EBO states no limit on this at all",
+			verified: cantDeficiencyMm <= 130,
 		},
 		absoluteMinimumRadius: {
 			value: 300,
 			source: "EBO § 6 (1): smallest radius in through main tracks, new construction",
 			verified: true,
 		},
+		// NOT a Ril 800.0110 quantity. Ril governs the transition through the ramp
+		// gradient (Tab. 7) and the ramp length (Tab. 8), and states no rate over
+		// time anywhere. These two are the EN 13803 formulation of the same
+		// requirement, kept because this kernel's transition rule is written that
+		// way, and unverified because EN 13803 has not been read.
 		maximumCantRate: {
 			value: mm(50),
-			source: "Ril 800.0110: largest rate of cant change over time — CHECK; "
-				+ "EBO § 6 states no limit on this",
+			source: "EN 13803 style, largest rate of cant change over time — CHECK; "
+				+ "NOT in Ril 800.0110, which uses ramp gradient and ramp length instead",
 		},
 		maximumDeficiencyRate: {
 			value: mm(55),
-			source: "Ril 800.0110: largest rate of deficiency change over time — CHECK; "
-				+ "EBO § 6 states no limit on this",
+			source: "EN 13803 style, largest rate of deficiency change over time — CHECK; "
+				+ "NOT in Ril 800.0110, which uses ramp gradient and ramp length instead",
 		},
 		cantGradient: {
 			value: 400,
-			source: "EBO § 6 (4): every change of cant runs over a ramp no steeper than 1:400",
+			source: "EBO § 6 (4), and Ril 800.0110 (V3.0) Tab. 7 which cites it: 1:400 is the "
+				+ "steepest admissible ramp. Ril names flatter values per line category "
+				+ "(1:600, and 1:3000 on slab track with central approval), so 1:400 is the "
+				+ "outer bound and not the planning value for every category",
 			verified: true,
 		},
 		minimumLength: {
@@ -124,5 +139,5 @@ export function hauptbahn({
 export const DECLARED_PROFILES = Object.freeze({
 	"hauptbahn-V100": () => hauptbahn({ speedKmh: 100 }),
 	"hauptbahn-V160": () => hauptbahn({ speedKmh: 160 }),
-	"hauptbahn-V200": () => hauptbahn({ speedKmh: 200, cantDeficiencyMm: 130 }),
+	"hauptbahn-V200": () => hauptbahn({ speedKmh: 200 }),
 });
