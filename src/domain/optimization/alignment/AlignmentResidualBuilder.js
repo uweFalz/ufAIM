@@ -35,6 +35,17 @@ import { assertMetricComparability } from "./MetricContext.js";
  */
 export const FOOT_POINT_TOLERANCE = 1e-9;
 
+/**
+ * How far past an end a foot point may sit and still count as being on the
+ * alignment, in metres. Used when the projector reports the longitudinal
+ * residual itself, which is exact where the distance route is quadratic: one
+ * centimetre past an end gives u = 1.00e-2 directly and only 9.9e-4 through the
+ * distance. Measured, u is 7.6e-14 m at a point exactly on an end, so a micron
+ * is far above the projector's own noise and far below anything an engineer
+ * would call "past the end".
+ */
+export const FOOT_POINT_OVERSHOOT = 1e-6;
+
 export const ALIGNMENT_RESIDUAL_BUILDER_VERSION =
 	"axtran2/alignment-residual-builder/0.2";
 
@@ -74,6 +85,39 @@ function requireMetricContext(context) {
  * @param {Array} declaration.points
  * @param {object} declaration.metricContext  from createMetricContext
  */
+/**
+ * Whether a projection is a genuine perpendicular foot point, from whichever
+ * evidence the projector offered.
+ *
+ * The longitudinal residual is the direct answer and is preferred when it is
+ * there: `clamped && |u| > tolerance` says the station was pinned to an end and
+ * the point lies that far past it. Where only the distance is reported the same
+ * question is answered indirectly - at a true foot point the offset IS the
+ * distance - which works but is quadratic in the overshoot and so far less
+ * sensitive: one centimetre past an end shows as u = 1.00e-2 directly and only
+ * 9.9e-4 through the distance. A projector offering neither cannot be checked at
+ * all, and that is reported rather than passed over.
+ */
+export function footPointOf(projected) {
+	if (isFiniteNumber(projected?.u)) {
+		const overshoot = Math.abs(projected.u);
+		const extrapolated = projected.clamped !== false && overshoot > FOOT_POINT_OVERSHOOT;
+		return { checkable: true, extrapolated, overshoot: extrapolated ? overshoot : null };
+	}
+	if (isFiniteNumber(projected?.dist) && isFiniteNumber(projected?.q)) {
+		const gap = projected.dist - Math.abs(projected.q);
+		const extrapolated = gap > FOOT_POINT_TOLERANCE * Math.max(1, Math.abs(projected.q));
+		return {
+			checkable: true,
+			extrapolated,
+			overshoot: extrapolated
+				? Math.sqrt(Math.max(0, projected.dist ** 2 - projected.q ** 2))
+				: null,
+		};
+	}
+	return { checkable: false, extrapolated: false, overshoot: null };
+}
+
 export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 	const context = requireMetricContext(metricContext);
 
@@ -162,12 +206,10 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 					});
 				}
 				const station = isFiniteNumber(projected.s) ? projected.s : null;
-				const checkable = isFiniteNumber(projected.dist);
-				const gap = checkable ? projected.dist - Math.abs(projected.q) : 0;
-				if (checkable && gap > FOOT_POINT_TOLERANCE * Math.max(1, Math.abs(projected.q))) {
+				const foot = footPointOf(projected);
+				if (foot.extrapolated) {
 					return Object.freeze({
-						...point, projected: false, extrapolated: true,
-						overshoot: Math.sqrt(Math.max(0, projected.dist ** 2 - projected.q ** 2)),
+						...point, projected: false, extrapolated: true, overshoot: foot.overshoot,
 						station, offset: projected.q, deviation: null, residual: null, met: false,
 					});
 				}
@@ -175,7 +217,7 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 				return Object.freeze({
 					...point,
 					projected: true,
-					extrapolated: checkable ? false : null,
+					extrapolated: foot.checkable ? false : null,
 					overshoot: null,
 					station,
 					offset: projected.q,
