@@ -177,10 +177,7 @@ export function createNineElementScenario({
 			lengths,
 			curvatures,
 			endPose: poseOf(alignment, alignment.arcLength),
-			// reportFoot asks the projector for the longitudinal residual, which
-			// says exactly whether the foot point was clamped to an end
-			worldToTrack: (x, y) =>
-				alignment.world2Track(x, y, { samples: 400, refineSteps: 40, reportFoot: true }),
+			worldToTrack: (x, y) => alignment.world2Track(x, y, { samples: 400, refineSteps: 40 }),
 		};
 	};
 
