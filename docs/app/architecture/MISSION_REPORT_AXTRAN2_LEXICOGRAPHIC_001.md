@@ -456,6 +456,30 @@ Found while checking the guards: the "legacy" class the compatibility suite
 compares against is a one-line re-export of the canonical one, so that half of
 the parity assertion has been tautological since the extraction landed.
 
+**AXTRAN2-REVIEW-004, the two layers disagreeing.** The rule for `admissible`
+was written twice — once in the solver, once in the phase driver — and the two
+drifted. The driver refused a run whose foot-point check could not be made; the
+solver ignored that and reported `admissible: true`. The same run was an answer
+or evidence depending on which layer you asked. The driver now asks each phase
+for its own verdict, so the rule exists once.
+
+The regression test that should have caught it asserted only the diagnostic
+flag, not the verdict. It now asserts both, and a second test pins that the two
+layers agree.
+
+Alongside it, the same finding's diagnostics edge. Where the residuals could not
+be evaluated they were derived from an empty list: `Math.hypot()` of nothing gave
+`NaN` for the end pose, and — not in the finding, but the same defect —
+`softOutsideTolerance` and `softResidualRms` gave **0**, which reads as a
+flawless result. The zero is the worse of the two, because a `NaN` gets noticed.
+All of them are `null` now.
+
+Found while writing the regression test: the final report projected every point
+twice, once for the admissibility list and once for the residuals, and a
+projector that answered the first pass and not the second threw out of a
+function whose only job at that point is to report. The builder contract never
+promised a pure projector. That second pass is guarded now.
+
 **AXTRAN2-REVIEW-003, raw declarations bypassing the gate.** The admission gate
 asked "is this a profile that is not confirmed?" and let everything else
 through — so the one form carrying no provenance at all, a plain object, was the

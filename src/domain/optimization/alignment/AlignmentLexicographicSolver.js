@@ -285,6 +285,8 @@ export function solveAlignmentLexicographic({
 			objective,
 			status: result.status,
 			ok: result.ok,
+			admission: result.admission,
+			admissible: result.admissible,
 			budgets: Object.freeze(extraEqualities.map((constraint) => constraint.id)),
 			candidate: result.candidate,
 			diagnostics: result.diagnostics,
@@ -432,11 +434,11 @@ export function solveAlignmentLexicographic({
 		// carried from the problem so that a run on unread design limits is
 		// evidence and says so, however cleanly its phases converged
 		admission: problem.admission ?? "confirmed",
-		admissible: problem.admissible !== false
-			&& phases.every((phase) => (phase.diagnostics?.inadmissiblePoints?.length ?? 0) === 0)
-			// a phase whose projector reported no distance could not be checked for
-			// extrapolation past an end, which is not the same as having passed it
-			&& phases.every((phase) => phase.diagnostics?.extrapolationChecked !== false),
+		// Asked of each phase rather than restated here. The rule was written twice
+		// once - here and in the solver - and the two drifted apart: the solver
+		// ignored a check that could not run, this did not, and the same run was
+		// admissible or not depending on which layer was asked.
+		admissible: phases.every((phase) => phase.admissible === true),
 		candidate: last?.candidate ?? null,
 		// What each tier established, and what the answer actually spent against
 		// it. The two are free-variable sums, so neither is the alignment's total

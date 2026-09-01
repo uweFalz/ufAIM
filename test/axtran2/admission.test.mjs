@@ -15,6 +15,7 @@ const { createAlignmentResidualBuilder } = await load("AlignmentResidualBuilder.
 const { createAlignmentOptimizationProblem } = await load("AlignmentOptimizationProblem.js");
 const { createIntrinsicMetricContext } = await load("MetricContext.js");
 const { solveAlignmentProblem, AlignmentSqpSolverError } = await load("AlignmentSQPSolver.js");
+const { solveAlignmentLexicographic } = await load("AlignmentLexicographicSolver.js");
 const { createAlignmentDesignProfile } = await load("AlignmentDesignProfile.js");
 const { hauptbahn } = await load("profiles/index.js");
 
@@ -169,6 +170,10 @@ test("a projector that reports no distance records that the check did not run", 
 		problem, buildAlignment: silent, objective: "points", maxIterations: 3,
 	});
 	assert.equal(result.diagnostics.extrapolationChecked, false);
+	// AXTRAN2-REVIEW-004: recording that the check did not run is not enough.
+	// A check that could not run has not passed, so the proposal is evidence and
+	// not an answer - the same verdict a point known to be past an end gets.
+	assert.equal(result.admissible, false, "a check that could not run has not passed");
 
 	const withDistance = solveAlignmentProblem({
 		problem,
@@ -179,6 +184,85 @@ test("a projector that reports no distance records that the check did not run", 
 		objective: "points", maxIterations: 3,
 	});
 	assert.equal(withDistance.diagnostics.extrapolationChecked, true);
+});
+
+test("the direct solver and the phase driver agree on what is admissible", () => {
+	// AXTRAN2-REVIEW-004 existed because the rule was written twice, and the two
+	// copies drifted: the driver refused a run whose foot-point check could not
+	// be made, the solver did not, and the same run was admissible or not
+	// depending on which layer was asked. The driver now asks the phases.
+	const point = { name: "M", x: 100, y: 0.05, tolerance: 0.1 };
+	const { problem, buildAlignment } = scenario({ points: [point] });
+	const silent = (overlay) => ({
+		...buildAlignment(overlay),
+		worldToTrack: (x, y) => ({ q: y, s: x }),          // nothing to check with
+	});
+
+	const direct = solveAlignmentProblem({
+		problem, buildAlignment: silent, objective: "points", maxIterations: 3,
+	});
+	const driven = solveAlignmentLexicographic({
+		problem, buildAlignment: silent,
+		tiers: [{ objective: "points" }], warmStart: false, maxIterations: 3,
+	});
+	assert.equal(direct.admissible, false);
+	assert.equal(driven.admissible, direct.admissible, "the two layers must not disagree");
+	assert.equal(driven.phases[0].admissible, false, "and the phase carries its own verdict");
+
+	// and where the check can be made, both say yes
+	const checkable = (overlay) => ({
+		...buildAlignment(overlay),
+		worldToTrack: (x, y) => ({ q: y, s: x, dist: Math.abs(y) }),
+	});
+	const okDirect = solveAlignmentProblem({
+		problem, buildAlignment: checkable, objective: "points", maxIterations: 3,
+	});
+	const okDriven = solveAlignmentLexicographic({
+		problem, buildAlignment: checkable,
+		tiers: [{ objective: "points" }], warmStart: false, maxIterations: 3,
+	});
+	assert.equal(okDirect.admissible, true);
+	assert.equal(okDriven.admissible, true);
+});
+
+test("an unevaluable candidate reports null, never NaN and never a flattering zero", () => {
+	// Where the residuals could not be evaluated the diagnostics used to be
+	// derived from an empty list: Math.hypot() of nothing gave NaN for the end
+	// pose, and the mean of nothing gave 0 for the point quality. The zero is the
+	// worse of the two, because a NaN gets noticed and a zero reads as flawless.
+	const point = { name: "M", x: 100, y: 0.05, tolerance: 0.1 };
+	const { problem, buildAlignment } = scenario({ points: [point] });
+
+	// The branch is only reachable with a projector that is not a pure function
+	// of the alignment: one that answers throughout the solve and fails for the
+	// final report. Which call that is depends on how the solve goes, so the
+	// test counts them first and then fails on the last one. A fixed number
+	// would keep passing while quietly testing nothing.
+	const run = (worldToTrack) => solveAlignmentProblem({
+		problem,
+		buildAlignment: (overlay) => ({ ...buildAlignment(overlay), worldToTrack }),
+		objective: "points", maxIterations: 4,
+	});
+	const honest = (x, y) => ({ q: y, s: x, dist: Math.abs(y) });
+
+	let counted = 0;
+	run((x, y) => { counted += 1; return honest(x, y); });
+	assert.ok(counted > 0, "the dry run projected something");
+
+	let calls = 0;
+	const result = run((x, y) => (++calls >= counted ? null : honest(x, y)));
+
+	assert.ok(result.diagnostics.inadmissiblePoints.length > 0, "the branch was reached");
+	assert.equal(result.admissible, false);
+	assert.equal(result.ok, false);
+	for (const key of ["endPoseResidual", "endPoseDistance", "softOutsideTolerance", "softResidualRms"]) {
+		const value = result.diagnostics[key];
+		assert.equal(value, null, `${key} should be null, got ${JSON.stringify(value)}`);
+	}
+	// nothing anywhere in the diagnostics is NaN
+	const nans = JSON.stringify(result.diagnostics, (k, v) =>
+		(typeof v === "number" && Number.isNaN(v) ? "NaN" : v));
+	assert.doesNotMatch(nans, /"NaN"/, "a NaN survived into the diagnostics");
 });
 
 // ---------------------------------------------------------------- admission
