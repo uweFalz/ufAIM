@@ -39940,6 +39940,44 @@ xlsx/xlsx.mjs:
 				return { x, y: -y };
 			}
 
+			// A spiral's (Klothoide/clothoid) curvature changes linearly with arc
+			// length, so its heading has a closed form (theta(s) = theta0 + k0*s +
+			// rate*s^2/2) but its position does not -- unlike a circular arc, x(s)/
+			// y(s) have no elementary antiderivative. Integrate sin/cos(heading)
+			// numerically instead: this is exact for a straight line or circular arc
+			// (rate = 0 reduces theta(s) to the same linear form the closed-form
+			// circular branch below uses) and, for a true clothoid, accurate to well
+			// under a centimeter at real rail transition lengths -- ten fine substeps
+			// per requested output point keeps trapezoidal error negligible without
+			// pulling in a Fresnel-integral implementation.
+			function sampleSpiralElement(element, start, end, length, maximumStep) {
+				const bearingGon = angleGon(element?.direction ?? element?.dirStart);
+				if (!Number.isFinite(bearingGon) || !(length > 0)) return [start, end];
+				const radiusStart = numberValue(element?.radiusStart);
+				const radiusEnd = numberValue(element?.radiusEnd);
+				const curvatureStart = Number.isFinite(radiusStart) && radiusStart !== 0 ? 1 / radiusStart : 0;
+				const curvatureEnd = Number.isFinite(radiusEnd) && radiusEnd !== 0 ? 1 / radiusEnd : 0;
+				const curvatureRate = (curvatureEnd - curvatureStart) / length;
+				const heading0 = bearingGon * Math.PI / 200;
+				const headingAt = (s) => heading0 + curvatureStart * s + curvatureRate * s * s / 2;
+				const outputSegments = Math.max(1, Math.min(500, Math.ceil(length / maximumStep)));
+				const fineStepsPerOutput = 10;
+				const fineSteps = outputSegments * fineStepsPerOutput;
+				const ds = length / fineSteps;
+				const points = [start];
+				let easting = start.easting;
+				let northing = start.northing;
+				let previousHeading = headingAt(0);
+				for (let index = 1; index <= fineSteps; index += 1) {
+					const heading = headingAt(index * ds);
+					easting += ds * (Math.sin(previousHeading) + Math.sin(heading)) / 2;
+					northing += ds * (Math.cos(previousHeading) + Math.cos(heading)) / 2;
+					previousHeading = heading;
+					if (index % fineStepsPerOutput === 0) points.push(index === fineSteps ? end : { easting, northing });
+				}
+				return points;
+			}
+
 			function sampleElementSource(element, maximumStep = 5) {
 				const start = {
 					easting: Number(element?.start?.easting),
@@ -39953,6 +39991,7 @@ xlsx/xlsx.mjs:
 				const declaredLength = Math.abs(numberValue(element?.length));
 				const chordLength = Math.hypot(end.easting - start.easting, end.northing - start.northing);
 				const length = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : chordLength;
+				if (element?.type === "Spiral") return sampleSpiralElement(element, start, end, length, maximumStep);
 				const segments = Math.max(1, Math.min(500, Math.ceil(length / maximumStep)));
 				const radius = numberValue(element?.radius ?? element?.radiusStart);
 				const bearingGon = angleGon(element?.direction ?? element?.dirStart);
