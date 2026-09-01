@@ -381,10 +381,37 @@ export function solveAlignmentProblem({
 	// declared point: refusing to report would lose the diagnosis along with the
 	// candidate. The proposal says so instead, and is not ok.
 	const built = run.x ? realise(run.x) : null;
-	const inadmissible = built ? inadmissiblePoints(built) : [];
-	const finalEquality = built && inadmissible.length === 0 ? equalityResiduals(built) : [];
+	const inadmissible = built ? [...inadmissiblePoints(built)] : [];
+	// Residuals exist only where every declared point could be evaluated. Where
+	// they do not, the diagnostics say null rather than a number derived from an
+	// empty list: Math.hypot() of nothing is NaN, and the mean of nothing came
+	// out as 0, which reads as a flawless result and is the more dangerous of the
+	// two because nobody looks twice at a zero.
+	let finalEquality = null;
+	let finalSoft = null;
+	if (built !== null && inadmissible.length === 0) {
+		// Guarded even though inadmissiblePoints has just projected every one of
+		// them. That check and these residuals are two passes over the same
+		// projector, and a projector is not required to answer the same way
+		// twice - the builder contract says nothing of the sort. Without this the
+		// second pass throws out of a function whose whole job at this point is
+		// to report, and the caller loses the diagnosis along with the candidate.
+		try {
+			finalEquality = equalityResiduals(built);
+			finalSoft = softResiduals(built);
+		} catch (caught) {
+			if (!(caught instanceof AlignmentSqpSolverError)) throw caught;
+			finalEquality = null;
+			finalSoft = null;
+			inadmissible.push(Object.freeze({
+				name: caught.detail?.pointName ?? null,
+				role: caught.detail?.role ?? null,
+				reason: caught.code,
+				overshoot: caught.detail?.overshoot ?? null,
+			}));
+		}
+	}
 	const finalExtra = run.x ? extraResiduals(run.x) : [];
-	const finalSoft = built && inadmissible.length === 0 ? softResiduals(built) : [];
 
 	return Object.freeze({
 		version: ALIGNMENT_SQP_SOLVER_VERSION,
@@ -396,7 +423,14 @@ export function solveAlignmentProblem({
 		// that converged cleanly on limits nobody has read is still evidence and
 		// not an answer, and the two must not look alike.
 		admission: problem.admission ?? "confirmed",
-		admissible: problem.admissible !== false && inadmissible.length === 0,
+		// A check that could not run has not passed. Where the projector offered
+		// neither a longitudinal residual nor a distance, nothing here knows
+		// whether a declared point sits past an end, and a proposal that cannot
+		// know that is evidence rather than an answer - the same verdict it gets
+		// for a point it knows is past one.
+		admissible: problem.admissible !== false
+			&& inadmissible.length === 0
+			&& !footCheckMissing,
 		candidate: Object.freeze({
 			variables: Object.freeze(run.x ? [...run.x] : []),
 			names: codec.freeNames,
@@ -413,16 +447,24 @@ export function solveAlignmentProblem({
 			// false when a projector offered neither a longitudinal residual nor a
 			// distance, so no point could be checked for lying past an end
 			extrapolationChecked: !footCheckMissing,
-			endPoseResidual: finalEquality.slice(0, 3),
-			endPoseDistance: built ? Math.hypot(finalEquality[0], finalEquality[1]) : null,
+			// null throughout where the residuals could not be evaluated: not a
+			// number, and not a zero standing in for one
+			endPoseResidual: finalEquality ? Object.freeze(finalEquality.slice(0, 3)) : null,
+			endPoseDistance: finalEquality
+				? Math.hypot(finalEquality[0], finalEquality[1])
+				: null,
 			hardPointResiduals: Object.freeze(hardPoints.map((point, i) => Object.freeze({
 				name: point.name,
-				residual: finalEquality[3 + i] ?? null,
+				residual: finalEquality?.[3 + i] ?? null,
 			}))),
-			softOutsideTolerance: finalSoft.filter((value) => Math.abs(value) > 1).length,
-			softResidualRms: finalSoft.length
-				? Math.sqrt(finalSoft.reduce((sum, v) => sum + v * v, 0) / finalSoft.length)
-				: 0,
+			softOutsideTolerance: finalSoft
+				? finalSoft.filter((value) => Math.abs(value) > 1).length
+				: null,
+			softResidualRms: finalSoft
+				? (finalSoft.length
+					? Math.sqrt(finalSoft.reduce((sum, v) => sum + v * v, 0) / finalSoft.length)
+					: 0)
+				: null,
 			// slack of the relaxed QP in the last recorded iteration: how far the
 			// linearised constraints had to be given up to stay solvable
 			extraEqualityResiduals: Object.freeze(extraEqualities.map((constraint, i) => Object.freeze({
