@@ -29,7 +29,7 @@
 // The alignment builder and the projector are injected, so this module stays
 // free of geometry imports and of any realization binding.
 
-import { FOOT_POINT_TOLERANCE } from "./AlignmentResidualBuilder.js";
+import { footPointOf } from "./AlignmentResidualBuilder.js";
 import { solveSQP } from "../../../lib/math/optim/sqp/solveSQP.js";
 import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacobian.js";
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
@@ -87,9 +87,6 @@ export function solveAlignmentProblem({
 	extraEqualities = [],
 	startAt = null,
 	maxIterations = 60,
-	// Relative slop below which a foot point counts as a genuine perpendicular
-	// foot rather than a station clamped to an end. See project().
-	extrapolationTolerance = FOOT_POINT_TOLERANCE,
 	relaxationWeight = 1e6,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
@@ -138,9 +135,10 @@ export function solveAlignmentProblem({
 
 	let builds = 0;
 	let jacobianEvaluations = 0;
-	// set when a projector reported no distance, so the extrapolation check could
-	// not be made for at least one point
-	let distanceMissing = false;
+	// set when a projector offered neither a longitudinal residual nor a
+	// distance, so the extrapolation check could not be made for at least one
+	// point
+	let footCheckMissing = false;
 
 	// codec names carry the element id; the analytic Jacobian addresses elements
 	// by their position in the sequence
@@ -212,22 +210,18 @@ export function solveAlignmentProblem({
 				{ pointName: point.name, role, x: point.x, y: point.y }
 			);
 		}
-		if (Number.isFinite(projected.dist)) {
-			const gap = projected.dist - Math.abs(projected.q);
-			if (gap > extrapolationTolerance * Math.max(1, Math.abs(projected.q))) {
-				const overshoot = Math.sqrt(Math.max(0, projected.dist ** 2 - projected.q ** 2));
-				error(
-					"EXTRAPOLATED_PROJECTION",
-					`${role} "${point.name}" has no foot point on this alignment: it lies `
-						+ `${overshoot.toFixed(3)} m beyond an end, and its offset of `
-						+ `${projected.q.toFixed(4)} m is measured from the extended tangent, not `
-						+ "from the alignment",
-					{ pointName: point.name, role, overshoot, offset: projected.q, distance: projected.dist }
-				);
-			}
-		} else {
-			distanceMissing = true;
+		const foot = footPointOf(projected);
+		if (foot.extrapolated) {
+			error(
+				"EXTRAPOLATED_PROJECTION",
+				`${role} "${point.name}" has no foot point on this alignment: it lies `
+					+ `${foot.overshoot.toFixed(3)} m beyond an end, and its offset of `
+					+ `${projected.q.toFixed(4)} m is measured from the extended tangent, not `
+					+ "from the alignment",
+				{ pointName: point.name, role, overshoot: foot.overshoot, offset: projected.q }
+			);
 		}
+		if (!foot.checkable) footCheckMissing = true;
 		return projected;
 	}
 
@@ -416,9 +410,9 @@ export function solveAlignmentProblem({
 			// declared points the final candidate cannot carry, with the reason;
 			// empty is the normal case and anything else makes it inadmissible
 			inadmissiblePoints: Object.freeze(inadmissible),
-			// false when a projector reported no distance, so no point could be
-			// checked for being an extrapolation past an end
-			extrapolationChecked: !distanceMissing,
+			// false when a projector offered neither a longitudinal residual nor a
+			// distance, so no point could be checked for lying past an end
+			extrapolationChecked: !footCheckMissing,
 			endPoseResidual: finalEquality.slice(0, 3),
 			endPoseDistance: built ? Math.hypot(finalEquality[0], finalEquality[1]) : null,
 			hardPointResiduals: Object.freeze(hardPoints.map((point, i) => Object.freeze({

@@ -134,6 +134,36 @@ export class Alignment2D {
 	// world → track (v1: robust, sampling + refinement)
 	// ------------------------------------------------------------
 
+	/**
+	 * Nearest point on the alignment to (x, y).
+	 *
+	 * The foot station is clamped to [0, arcLength], so a point beyond an end
+	 * does not fail: it comes back with the offset measured from the END TANGENT,
+	 * extended. That is a defensible answer to "nearest point on the alignment"
+	 * and a misleading one to "how far is this point from the track" - `q` is
+	 * then an offset from a line the alignment does not occupy.
+	 *
+	 * Nothing in the default result says which of the two happened. Passing
+	 * `reportFoot: true` adds the two facts that do:
+	 *
+	 *   u        the longitudinal residual at the reported station, in metres.
+	 *            Zero at a true perpendicular foot point; at a clamped end it is
+	 *            the distance past that end.
+	 *   clamped  whether the reported station sits on an end at all.
+	 *
+	 * Together they answer it exactly: `clamped && |u| > tolerance` is an
+	 * extrapolation, and the caller chooses the tolerance rather than finding one
+	 * buried here.
+	 *
+	 * The default shape is unchanged on purpose. It is pinned by the geometry
+	 * compatibility suite and this is a released Core surface; making these
+	 * fields unconditional is a contract change and belongs to whoever owns that
+	 * contract, not to a caller who needs the information.
+	 *
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {{samples?:number, refineSteps?:number, reportFoot?:boolean}} [opts]
+	 */
 	world2Track(x, y, opts = {}) {
 		if (this.elements.length === 0) return null;
 
@@ -235,7 +265,7 @@ export class Alignment2D {
 
 		const seg = this._findSegment(best.s);
 
-		return {
+		const result = {
 			s: best.s,
 			q: best.q,
 			dist: best.dist,
@@ -243,5 +273,12 @@ export class Alignment2D {
 			tangent: best.tangent,
 			elementIndex: seg?.index ?? null,
 		};
+
+		if (opts.reportFoot === true) {
+			result.u = best.u;
+			result.clamped = best.s <= 0 || best.s >= this._arcLength;
+		}
+
+		return result;
 	}
 }
