@@ -423,10 +423,36 @@ excellent. The report now keeps "no foot point at all" and "fell onto an
 extension" apart, since the first is usually a broken alignment and the second a
 point past an end.
 
-`Alignment2D` was not changed. Clamping the foot station is defensible as
-"nearest point on the alignment"; what is not defensible is treating the result
-as a lateral offset without saying it was measured from an extension, and that
-belongs with the consumer.
+`Alignment2D` now says which of the two it did. Clamping the foot station is
+defensible as "nearest point on the alignment"; what is not defensible is
+returning the result with nothing to distinguish it from a real foot point.
+Every result carries:
+
+| field | meaning |
+|---|---|
+| `u` | longitudinal residual at the reported station, in metres — zero at a true foot point, the distance past the end otherwise |
+| `clamped` | whether the reported station sits on an end at all |
+
+It takes the pair: a point exactly on an end is clamped with `u = 0` and is a
+real foot point, so `clamped && |u| > tolerance` is the extrapolation, and the
+tolerance stays with the caller rather than being buried in Core.
+
+This changes the result shape of a released Core surface, and the pinned key
+list in the geometry compatibility suite moved with it — deliberately, with the
+reason recorded where the pin lives. It was an opt-in first; the caution was
+aimed at the wrong risk, since a caller who does not know to ask is exactly the
+one who will misread `q`. Checked before changing it: nothing in the repository
+spreads, serialises or key-compares a `world2Track` result.
+
+`u` is also better evidence than the distance the consumers had been inferring
+from. The distance route is quadratic in the overshoot — one centimetre past an
+end shows as `1.00e-2` in `u` and only `9.9e-4` through `dist − |q|`. Both
+consumers prefer `u`, fall back to the distance, and report that no check ran
+when a projector offers neither; the decision lives in one function.
+
+Found while checking the guards: the "legacy" class the compatibility suite
+compares against is a one-line re-export of the canonical one, so that half of
+the parity assertion has been tautological since the extraction landed.
 
 **AXTRAN2-REVIEW-003, raw declarations bypassing the gate.** The admission gate
 asked "is this a profile that is not confirmed?" and let everything else
