@@ -184,6 +184,10 @@ test("world2Track preserves sampling refinement correction and result order", ()
 		samples: 8,
 		refineSteps: 4,
 	});
+	// u and clamped joined this list by decision, not by accident: without them
+	// nothing in the result says whether the foot station was pinned to an end,
+	// and a caller who does not know to ask is the one who reads q as a distance
+	// from the track when it is a distance from a line the track does not occupy.
 	assert.deepEqual(Object.keys(result), [
 		"s",
 		"q",
@@ -191,6 +195,8 @@ test("world2Track preserves sampling refinement correction and result order", ()
 		"point",
 		"tangent",
 		"elementIndex",
+		"u",
+		"clamped",
 	]);
 	assert.equal(result.s, 4);
 	assert.equal(result.q, 3);
@@ -203,24 +209,17 @@ test("world2Track preserves sampling refinement correction and result order", ()
 	}
 });
 
-test("world2Track keeps its shape unless the foot report is asked for", () => {
-	// The default result is pinned by the test above and this is a released Core
-	// surface, so the two facts that say whether the foot point was clamped are
-	// offered on request rather than added to the contract.
+test("the foot report needs no asking for", () => {
+	// It was an opt-in when it was added. Nobody has to remember it now, which is
+	// the whole point of the change: the caller who does not know to ask is the
+	// one who most needs the answer.
 	const alignment = new canonical.Alignment2D([
 		makeElement({ id: "straight", arcLength: 10 }),
 	]);
 	const plain = alignment.world2Track(4, 3);
-	assert.equal("u" in plain, false, "nothing appears uninvited");
-	assert.equal("clamped" in plain, false);
-
-	const reported = alignment.world2Track(4, 3, { reportFoot: true });
-	assert.deepEqual(Object.keys(reported), [
-		"s", "q", "dist", "point", "tangent", "elementIndex", "u", "clamped",
-	]);
 	// (4, 3) sits beside the middle of a ten-metre straight: a real foot point
-	assert.equal(reported.u, 0);
-	assert.equal(reported.clamped, false);
+	assert.equal(plain.u, 0);
+	assert.equal(plain.clamped, false);
 });
 
 test("world2Track says when it clamped the foot point to an end", () => {
@@ -232,13 +231,13 @@ test("world2Track says when it clamped the foot point to an end", () => {
 		makeElement({ id: "straight", arcLength: 10 }),
 	]);
 
-	const beyond = alignment.world2Track(17, 3, { reportFoot: true });
+	const beyond = alignment.world2Track(17, 3);
 	assert.equal(beyond.s, 10, "the station was pinned to the end");
 	assert.equal(beyond.q, 3, "and the offset is measured from the extended tangent");
 	assert.equal(beyond.clamped, true);
 	assert.equal(beyond.u, 7, "seven metres past the end");
 
-	const atTheEnd = alignment.world2Track(10, 3, { reportFoot: true });
+	const atTheEnd = alignment.world2Track(10, 3);
 	assert.equal(atTheEnd.clamped, true, "the station is on an end");
 	assert.equal(atTheEnd.u, 0, "but the point is not past it: a genuine foot point");
 });

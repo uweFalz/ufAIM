@@ -143,26 +143,28 @@ export class Alignment2D {
 	 * and a misleading one to "how far is this point from the track" - `q` is
 	 * then an offset from a line the alignment does not occupy.
 	 *
-	 * Nothing in the default result says which of the two happened. Passing
-	 * `reportFoot: true` adds the two facts that do:
+	 * The result says which of the two happened:
 	 *
 	 *   u        the longitudinal residual at the reported station, in metres.
 	 *            Zero at a true perpendicular foot point; at a clamped end it is
 	 *            the distance past that end.
 	 *   clamped  whether the reported station sits on an end at all.
 	 *
-	 * Together they answer it exactly: `clamped && |u| > tolerance` is an
-	 * extrapolation, and the caller chooses the tolerance rather than finding one
-	 * buried here.
+	 * It takes the pair. At a point sitting exactly on an end the station is
+	 * clamped and u is zero, and that is a real foot point;
+	 * `clamped && |u| > tolerance` is the extrapolation, and the caller chooses
+	 * the tolerance rather than finding one buried here.
 	 *
-	 * The default shape is unchanged on purpose. It is pinned by the geometry
-	 * compatibility suite and this is a released Core surface; making these
-	 * fields unconditional is a contract change and belongs to whoever owns that
-	 * contract, not to a caller who needs the information.
+	 * These two were an opt-in when they were added, because the result shape is
+	 * pinned by the geometry compatibility suite and this is a released Core
+	 * surface. They are unconditional now, by decision: a caller who does not
+	 * know to ask is exactly the caller who will read q as a distance from the
+	 * track when it is a distance from a line the track does not occupy, and two
+	 * consumers had already done so. The pinned key list moved with the decision.
 	 *
 	 * @param {number} x
 	 * @param {number} y
-	 * @param {{samples?:number, refineSteps?:number, reportFoot?:boolean}} [opts]
+	 * @param {{samples?:number, refineSteps?:number}} [opts]
 	 */
 	world2Track(x, y, opts = {}) {
 		if (this.elements.length === 0) return null;
@@ -265,20 +267,15 @@ export class Alignment2D {
 
 		const seg = this._findSegment(best.s);
 
-		const result = {
+		return {
 			s: best.s,
 			q: best.q,
 			dist: best.dist,
 			point: best.point,
 			tangent: best.tangent,
 			elementIndex: seg?.index ?? null,
+			u: best.u,
+			clamped: best.s <= 0 || best.s >= this._arcLength,
 		};
-
-		if (opts.reportFoot === true) {
-			result.u = best.u;
-			result.clamped = best.s <= 0 || best.s >= this._arcLength;
-		}
-
-		return result;
 	}
 }
