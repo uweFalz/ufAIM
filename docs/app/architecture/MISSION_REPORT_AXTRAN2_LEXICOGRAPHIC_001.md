@@ -548,10 +548,28 @@ attributed to Ril 800.0110. It is a binding regulation, not an operator's design
 rule. The value was right and the citation was not, which is the sort of error
 the `CHECK` markers exist to surface.
 
-**What remains unread, per limit:** `maximumCant`, `maximumCantDeficiency`,
-`maximumCantRate`, `maximumDeficiencyRate`, and the two project lengths. The two
-rate limits matter most — a wrong one changes every transition length in the
-alignment — and they are precisely the ones that could not be checked from here.
+**Ril 800.0110 has since been read**, version 3.0, valid from 2021-02-01, and it
+settled two of the four and overturned the premise of the other two:
+
+| limit | Ril says | verdict |
+|---|---|---|
+| `maximumCant` | Tab. 4: 160 mm ballasted, 170 mm slab; cites the EBO cap itself | **read**, 160 mm stands |
+| `maximumCantDeficiency` | Tab. 5: `zul uf` = 130 mm at r ≥ 650 m, 150 mm for approved vehicles | **read**, corrected from 100 mm |
+| `cantGradient` | Tab. 7: 1:400 citing EBO § 6 (4), and flatter values per category (1:600, 1:3000 on slab track) | **read**, 1:400 is the outer bound |
+| `maximumCantRate`, `maximumDeficiencyRate` | **nothing** | see below |
+
+The 100 mm deficiency this file had been carrying is a real Ril number, but for
+temporary bridges and axle loads above 22.5 t — not the general case. Corrected
+to 130 mm, which moves every derived radius: V100 from 453.9 to 407.0 m, V160
+from 1162.1 to 1041.9 m.
+
+**And the finding.** Ril 800.0110 governs the transition through the ramp
+gradient and the ramp length. It contains no rate over time anywhere — not
+`mm/s`, not `Änderungsgeschwindigkeit`, not once in 31 pages. Both rate limits
+had been attributed to it and are not in it. They are the EN 13803 way of
+stating the same requirement, which is how this kernel's transition rule is
+written, so they remain and remain unverified — but against EN 13803, which has
+not been read. Reading Ril more carefully could never have confirmed them.
 
 Verification is now tracked per limit rather than per profile, and a profile
 cannot call itself `confirmed` while any of its limits is unread: the module
