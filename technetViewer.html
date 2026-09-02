@@ -176,6 +176,33 @@
 				grid-row: 1;
 				background: #e9eaec;
 			}
+			#mapLegend {
+				position: absolute;
+				top: 0.6rem;
+				left: 0.6rem;
+				z-index: 3;
+				padding: 0.4rem 0.6rem;
+				border-radius: 0.5rem;
+				background: var(--surface);
+				border: 1px solid GrayText;
+				font: 0.72rem system-ui, sans-serif;
+				display: flex;
+				flex-direction: column;
+				gap: 0.25rem;
+				pointer-events: none;
+			}
+			.map-legend-row {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+			}
+			.map-legend-swatch {
+				display: inline-block;
+				width: 1.1rem;
+				height: 0.2rem;
+				border-radius: 2px;
+				flex: none;
+			}
 			#diagramPanel {
 				display: grid;
 				grid-template-rows: 0.45rem auto minmax(0, 1fr);
@@ -1225,6 +1252,10 @@
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
 						<div id="maplibreMap" class="hidden" aria-label="OpenRailwayMap mit geladenen Trassen"></div>
 						<div id="mapEmpty" class="hidden"></div>
+						<div id="mapLegend" class="hidden" aria-label="Kartenlegende">
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#00a651"></span>DB_REF (bestätigt)</div>
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#e6007e"></span>nicht DB_REF (vermutet)</div>
+						</div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
 							<div class="box-head"><span>Outbox</span></div>
@@ -38538,6 +38569,7 @@ xlsx/xlsx.mjs:
 			const mapEmpty = document.querySelector("#mapEmpty");
 			const baseMapLoad = document.querySelector("#baseMapLoad");
 			const railwayOpacityControl = document.querySelector("#railwayOpacityControl");
+			const mapLegend = document.querySelector("#mapLegend");
 			const railwayOpacity = document.querySelector("#railwayOpacity");
 			const railwayOpacityValue = document.querySelector("#railwayOpacityValue");
 			const maplibreMapElement = document.querySelector("#maplibreMap");
@@ -40317,6 +40349,7 @@ xlsx/xlsx.mjs:
 				maplibreMapElement.classList.add("hidden");
 				multi2d.classList.remove("hidden");
 				railwayOpacityControl.classList.add("hidden");
+				mapLegend.classList.add("hidden");
 				baseMapLoad.setAttribute("aria-pressed", "false");
 				baseMapLoad.textContent = "OpenRailwayMap ein";
 				renderMap(activeMapMode);
@@ -40469,6 +40502,7 @@ xlsx/xlsx.mjs:
 					multi2d.classList.add("hidden");
 					maplibreMapElement.classList.remove("hidden");
 					railwayOpacityControl.classList.remove("hidden");
+					mapLegend.classList.remove("hidden");
 					mapEmpty.classList.add("hidden");
 					maplibreMap.resize();
 					renderBasemap();
@@ -40482,6 +40516,7 @@ xlsx/xlsx.mjs:
 					baseMapLoad.setAttribute("aria-pressed", "false");
 					baseMapLoad.textContent = "OpenRailwayMap ein";
 					railwayOpacityControl.classList.add("hidden");
+					mapLegend.classList.add("hidden");
 					crsNote.textContent = error.message;
 				}
 			}
