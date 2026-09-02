@@ -19,6 +19,17 @@ const { solveAlignmentLexicographic } = await load("AlignmentLexicographicSolver
 const { createAlignmentDesignProfile } = await load("AlignmentDesignProfile.js");
 const { hauptbahn } = await load("profiles/index.js");
 
+// An unconfirmed profile, built here rather than borrowed from the shipped ones:
+// those are confirmed now, and a test about admission must not depend on that
+// staying true.
+const unread = () => createAlignmentDesignProfile({
+	id: "unread", source: "test",
+	speed: { value: 44.4, source: "project", verified: true },
+	maximumCant: { value: 0.16, source: "somebody's note — CHECK" },
+	maximumCantDeficiency: { value: 0.13, source: "somebody's note — CHECK" },
+	cantGradient: { value: 600, source: "somebody's note — CHECK" },
+});
+
 // ---------------------------------------------------------------- a toy line
 
 // A straight run along +x, so the lateral offset of a point is simply its y and
@@ -271,7 +282,7 @@ test("a design profile nobody has read may not silently become a constraint", ()
 	// Its numbers do not stay advisory once they are here: they become the
 	// curvature bound and the transition floor, and the solver runs the alignment
 	// onto them.
-	const candidate = hauptbahn({ speedKmh: 160 });
+	const candidate = unread();
 	assert.equal(candidate.status, "candidate");
 
 	assert.throws(
@@ -284,7 +295,7 @@ test("a design profile nobody has read may not silently become a constraint", ()
 		(e) => {
 			assert.ok(e instanceof AlignmentConstraintBuilderError);
 			assert.equal(e.code, "UNCONFIRMED_DESIGN_PROFILE");
-			assert.match(e.message, /maximumCantRate/, "and it names what is unread");
+			assert.match(e.message, /maximumCant/, "and it names what is unread");
 			assert.match(e.message, /evidence-only/, "and what to declare to proceed anyway");
 			return true;
 		}
@@ -292,7 +303,7 @@ test("a design profile nobody has read may not silently become a constraint", ()
 });
 
 test("saying the word admits the profile and marks the result as evidence", () => {
-	const candidate = hauptbahn({ speedKmh: 160 });
+	const candidate = unread();
 	const constraints = createAlignmentConstraintBuilder({
 		endPose: END_POSE,
 		elementSequence: ["E0", "E1"],

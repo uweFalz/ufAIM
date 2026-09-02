@@ -423,36 +423,25 @@ test("a design length takes over from the sequence bound, and says so", () => {
 	assert.equal(sequenceWins.bounds[0].binding, "element-sequence");
 });
 
-test("the kinematic derivation is offered, never invented", () => {
-	// R >= V^2 / a, cant-free. 50 m/s at 0.65 m/s^2 is 3846 m.
-	const derived = tier3({ speed: 50, lateralAcceleration: 0.65 });
-	assert.ok(Math.abs(derived.design.minimumRadius - 2500 / 0.65) < 1e-9);
-	assert.equal(derived.design.radiusFrom, "V^2/a");
+test("the plain form declares literal limits and derives nothing", () => {
+	// It used to carry a kinematics of its own, which meant two different
+	// transition rules lived in this kernel - and the wrong one, once the
+	// governing rule book turned out to state the requirement as a ramp gradient
+	// rather than as a rate over time. Deriving belongs with
+	// createAlignmentDesignProfile, which carries the provenance that makes a
+	// derivation reviewable; this form carries none and is never admissible.
+	const built = tier3({ minimumRadius: 600, minimumLength: { transition: 80 } });
+	assert.ok(Math.abs(built.designBounds[0].maximum - 1 / 600) < 1e-15);
+	const byId = Object.fromEntries(built.bounds.map((bound) => [bound.elementId, bound]));
+	assert.equal(byId.E1.minimum, 80, "the declared transition length, taken as given");
+	assert.equal(built.admissible, false);
 
-	// L >= V^3 / (R j), the conservative form
-	const withJerk = tier3({ minimumRadius: 4000, speed: 50, lateralAcceleration: 0.65, lateralJerk: 0.4 });
-	const byId = Object.fromEntries(withJerk.bounds.map((bound) => [bound.elementId, bound]));
-	assert.ok(Math.abs(byId.E1.minimum - 125000 / (4000 * 0.4)) < 1e-9);
-	assert.ok(byId.E2.minimum < byId.E1.minimum, "the rule speaks about transitions only");
-
-	// and with nothing declared, nothing is invented
+	// nothing is invented where nothing is declared
 	const bare = createAlignmentConstraintBuilder({
 		endPose: END_POSE, elementSequence: ["E0"], minimumElementLength: 20,
 	});
 	assert.equal(bare.design, null);
 	assert.deepEqual([...bare.designBounds], []);
-});
-
-test("a declared radius tighter than the kinematics allows is refused, not overruled", () => {
-	// The engineer's rule book knows things this kinematics does not - cant, for
-	// one - so a declared value may be looser than V^2/a. It may not be tighter:
-	// that is a contradiction, and guessing which one was meant is not this
-	// module's business.
-	assert.throws(
-		() => tier3({ minimumRadius: 500, speed: 50, lateralAcceleration: 0.65 }),
-		(e) => e instanceof AlignmentConstraintBuilderError && e.code === "DESIGN_CONFLICT"
-	);
-	assert.doesNotThrow(() => tier3({ minimumRadius: 5000, speed: 50, lateralAcceleration: 0.65 }));
 });
 
 test("a design profile that names element kinds needs to be told them", () => {

@@ -344,7 +344,7 @@ test("the declared profile reaches the solver as bounds on the result", () => {
 test("the profile the scenario declares carries its own provenance", () => {
 	const profile = scenario.problem.constraints.design;
 	assert.ok(profile.id, "it is named");
-	assert.equal(profile.status, "candidate", "and does not claim to have been checked");
+	assert.equal(profile.status, "confirmed", "every limit's source has been read");
 	assert.ok(profile.derivations.length >= 2, "and shows how its numbers were reached");
 	assert.equal(profile.radiusBinding, "kinematics");
 });

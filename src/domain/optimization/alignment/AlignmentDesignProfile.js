@@ -53,10 +53,20 @@ export const ALIGNMENT_DESIGN_PROFILE_VERSION = "axtran2/alignment-design-profil
 export const GRAVITY = 9.80665;
 
 /**
- * Dynamic gauge for standard-gauge track: the distance between the running
- * edges plus the contact-point offset, which is what the cant formulas use.
- * Nominal track gauge is 1.435 m; this is not that number and the difference
- * matters at the third digit of every radius below.
+ * Dynamic gauge for standard-gauge track: the distance between the wheel contact
+ * points, which is what the cant relation uses. Nominal track gauge is 1.435 m;
+ * this is not that number, and the difference matters at the third digit of
+ * every radius derived below.
+ *
+ * It is geometry of the vehicle-track pair, not a rule-book limit, which is why
+ * it is a constant here rather than a declared limit with provenance. The check
+ * that it is the right constant is that it reproduces the factor the German
+ * literature quotes for the equilibrium cant: with V in km/h,
+ *
+ *     u0 = s V^2 / (g R) = 1.5 / (3.6^2 * 9.80665) * V^2 / R = 11.806 V^2 / R mm
+ *
+ * against the quoted 11.8. Ril 800.0110 names u0 but prints its formula as a
+ * graphic, so this was checked against the constant and not against that page.
  */
 export const STANDARD_DYNAMIC_GAUGE = 1.5;
 
@@ -136,6 +146,9 @@ function optionalSourced(entry, label) {
  * @param {{value:number,source:string}} [declaration.maximumDeficiencyRate] m/s
  * @param {{value:number,source:string}} [declaration.absoluteMinimumRadius]
  *        a floor the kinematics may not undercut, from the rule book itself
+ * @param {{value:number,source:string}} [declaration.regulatoryGradientLimit]
+ *        the flattest gradient a regulation permits as the steepest ramp; the
+ *        declared cantGradient may not be steeper
  * @param {{value:number,source:string}} [declaration.regulatoryCantLimit]
  *        a cap on the cant from the regulation itself, which the declared
  *        maximumCant may not exceed
@@ -176,9 +189,17 @@ export function createAlignmentDesignProfile(declaration = {}) {
 	const gauge = optionalSourced(declaration.dynamicGauge, "dynamicGauge");
 	const s = gauge?.value ?? STANDARD_DYNAMIC_GAUGE;
 
-	const cantRate = optionalSourced(declaration.maximumCantRate, "maximumCantRate");
 	const gradient = optionalSourced(declaration.cantGradient, "cantGradient");
-	const deficiencyRate = optionalSourced(declaration.maximumDeficiencyRate, "maximumDeficiencyRate");
+	// A ramp may not be steeper than the regulation allows, the same way the cant
+	// may not exceed its cap. Steeper means a smaller m, so the declared gradient
+	// has to be at least the limit.
+	const gradientCap = optionalSourced(declaration.regulatoryGradientLimit, "regulatoryGradientLimit");
+	if (gradient && gradientCap && gradient.value < gradientCap.value) {
+		error("RAMP_STEEPER_THAN_REGULATION",
+			`a ramp gradient of 1:${gradient.value} is steeper than the declared regulatory `
+				+ `limit of 1:${gradientCap.value}`,
+			{ declared: gradient.value, limit: gradientCap.value, source: gradientCap.source });
+	}
 	const floor = optionalSourced(declaration.absoluteMinimumRadius, "absoluteMinimumRadius");
 
 	const V = speed.value;
@@ -201,37 +222,24 @@ export function createAlignmentDesignProfile(declaration = {}) {
 		radiusBinding = "absolute-minimum";
 	}
 
-	// (2), (3), (4): the transition has to satisfy every rate it is subject to,
-	// so the longest of them binds.
-	const transitionRules = [];
-	if (cantRate) {
-		transitionRules.push(Object.freeze({
-			value: (V * cant.value) / cantRate.value,
-			formula: "V u / (du/dt)", from: Object.freeze([speed.source, cant.source, cantRate.source]),
-		}));
-	}
-	if (gradient) {
-		transitionRules.push(Object.freeze({
-			value: gradient.value * cant.value,
-			formula: "n u", from: Object.freeze([gradient.source, cant.source]),
-		}));
-	}
-	if (deficiencyRate) {
-		transitionRules.push(Object.freeze({
-			value: (V * deficiency.value) / deficiencyRate.value,
-			formula: "V u_f / (du_f/dt)",
-			from: Object.freeze([speed.source, deficiency.source, deficiencyRate.source]),
-		}));
-	}
-	let transitionMinimum = 0;
+	// (2) L >= m du. The cant change du across one ramp is a variable, and the
+	// solver carries neither that coupling nor a general inequality, so du is
+	// bounded by the largest cant the profile admits. Stricter than required
+	// wherever a transition does not run the full range - the same conservatism
+	// as bounding |dkappa| by 1/R, and there for the same reason.
+	let transitionMinimum = null;
 	let transitionBinding = null;
-	for (const rule of transitionRules) {
-		if (rule.value > transitionMinimum) {
-			transitionMinimum = rule.value;
-			transitionBinding = rule.formula;
-		}
-		derivations.push(Object.freeze({ quantity: "minimumTransitionLength", ...rule }));
+	if (gradient) {
+		transitionMinimum = gradient.value * cant.value;
+		transitionBinding = "m du";
+		derivations.push(Object.freeze({
+			quantity: "minimumTransitionLength",
+			value: transitionMinimum,
+			formula: "m du, du bounded by the largest admissible cant",
+			from: Object.freeze([gradient.source, cant.source]),
+		}));
 	}
+
 
 	// Lengths the rule book states outright, which override nothing but raise
 	// what the kinematics produced where they are stricter.
@@ -287,8 +295,8 @@ export function createAlignmentDesignProfile(declaration = {}) {
 	// loosely, since a profile marked confirmed is one nobody will check again.
 	const limits = {
 		speed, maximumCant: cant, maximumCantDeficiency: deficiency,
-		maximumCantRate: cantRate, cantGradient: gradient,
-		maximumDeficiencyRate: deficiencyRate, absoluteMinimumRadius: floor,
+		cantGradient: gradient, regulatoryGradientLimit: gradientCap,
+		absoluteMinimumRadius: floor,
 		dynamicGauge: gauge, regulatoryCantLimit: cantCap,
 	};
 	const unverified = Object.entries(limits)

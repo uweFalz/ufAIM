@@ -70,48 +70,21 @@ function isFiniteNumber(value) {
 export const ELEMENT_KINDS = Object.freeze(["straight", "arc", "transition"]);
 
 /**
- * Read a design profile into the two things the solver can hold: a largest
- * admissible curvature and a smallest admissible length per element kind.
- * Declared numbers win over derived ones, and a derivation that contradicts a
- * declared number is refused rather than silently overruled - the engineer's
- * rule book knows things this kinematics does not.
+ * The plain-object form of a design declaration: literal limits, nothing
+ * derived. It used to carry a kinematics of its own, which meant two different
+ * transition rules lived in this kernel - and the wrong one, once the governing
+ * rule book turned out to state the requirement as a ramp gradient rather than
+ * as a rate over time. Deriving anything belongs in
+ * createAlignmentDesignProfile, which carries the provenance that makes a
+ * derivation reviewable. This form carries none and is never admissible.
  */
 function readDesign(declaration) {
 	if (!isObject(declaration)) error("INVALID_DESIGN", "design must be an object");
-	const { minimumRadius, minimumLength, speed, lateralAcceleration, lateralJerk } = declaration;
+	const { minimumRadius, minimumLength } = declaration;
 
-	let radius = minimumRadius ?? null;
-	if (radius !== null && (!isFiniteNumber(radius) || radius <= 0)) {
+	if (minimumRadius !== undefined
+		&& (!isFiniteNumber(minimumRadius) || minimumRadius <= 0)) {
 		error("INVALID_DESIGN", "design.minimumRadius must be a positive number of metres");
-	}
-
-	let derivedRadius = null;
-	if (speed !== undefined || lateralAcceleration !== undefined) {
-		if (!isFiniteNumber(speed) || speed <= 0) {
-			error("INVALID_DESIGN", "design.speed must be a positive number, in m/s");
-		}
-		if (!isFiniteNumber(lateralAcceleration) || lateralAcceleration <= 0) {
-			error("INVALID_DESIGN",
-				"design.lateralAcceleration must be a positive number, in m/s^2, to derive a radius");
-		}
-		derivedRadius = (speed * speed) / lateralAcceleration;
-		if (radius === null) radius = derivedRadius;
-		else if (radius < derivedRadius) {
-			error("DESIGN_CONFLICT",
-				`declared minimumRadius ${radius} m is tighter than V^2/a = ${derivedRadius.toFixed(1)} m`);
-		}
-	}
-
-	let transitionMinimum = null;
-	if (lateralJerk !== undefined) {
-		if (!isFiniteNumber(lateralJerk) || lateralJerk <= 0) {
-			error("INVALID_DESIGN", "design.lateralJerk must be a positive number, in m/s^3");
-		}
-		if (radius === null) {
-			error("INVALID_DESIGN",
-				"a transition length from the jerk limit needs a radius to bound the curvature range");
-		}
-		transitionMinimum = (speed * speed * speed) / (radius * lateralJerk);
 	}
 
 	const byKind = isObject(minimumLength) ? { ...minimumLength } : null;
@@ -129,34 +102,18 @@ function readDesign(declaration) {
 			}
 		}
 	}
-	if (transitionMinimum !== null) {
-		const declared = byKind?.transition ?? flat ?? 0;
-		if (declared >= transitionMinimum) transitionMinimum = declared;
-	}
 
 	return {
-		maximumCurvature: radius === null ? null : 1 / radius,
-		minimumLengthByKind: byKind !== null || transitionMinimum !== null,
+		maximumCurvature: minimumRadius === undefined ? null : 1 / minimumRadius,
+		minimumLengthByKind: byKind !== null,
 		minimumLengthFor(kind) {
-			if (kind === "transition" && transitionMinimum !== null) return transitionMinimum;
 			if (byKind && kind !== null) return byKind[kind] ?? 0;
 			return flat ?? 0;
 		},
-		declared: Object.freeze({
-			minimumRadius: radius,
-			radiusFrom: minimumRadius !== undefined && minimumRadius !== null
-				? "declared"
-				: derivedRadius !== null ? "V^2/a" : null,
-			minimumTransitionLength: transitionMinimum,
-			transitionLengthFrom: transitionMinimum !== null && lateralJerk !== undefined
-				? "V^3/(R j), conservative: |dkappa| bounded by 1/R"
-				: transitionMinimum !== null ? "declared" : null,
-			speed: speed ?? null,
-			lateralAcceleration: lateralAcceleration ?? null,
-			lateralJerk: lateralJerk ?? null,
-		}),
+		declared: Object.freeze({ minimumRadius: minimumRadius ?? null }),
 	};
 }
+
 
 function requirePose(pose, label) {
 	if (!isObject(pose)) error("INVALID_POSE", `${label} must be an object`);

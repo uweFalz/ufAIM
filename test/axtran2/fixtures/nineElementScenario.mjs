@@ -95,12 +95,12 @@ export function createNineElementScenario({
 	startCurvatures = [1 / 660, -1 / 950],
 	hardPointNames = [],
 	// Tier 3, from a declared profile rather than from bare numbers. V = 100 km/h
-	// with 140 mm of cant gives a smallest radius of 491.7 m and a shortest
-	// transition of 77.8 m, so the truth - R1 = 700, R2 = 900, transitions of 80
-	// and 90 m - is admissible under it, narrowly. That is deliberate: a profile
-	// the scenario satisfies with room to spare would not show whether the limits
-	// reach the solver at all.
-	design = hauptbahn({ speedKmh: 100, cantMm: 140 }),
+	// at 130 mm of cant gives a smallest radius of 453.9 m and, at the Ril
+	// planning gradient of 1:600, a shortest transition of 78.0 m. The truth -
+	// R1 = 700, R2 = 900, transitions of 80 and 90 m - clears both, narrowly. That
+	// is deliberate: a profile the scenario satisfies with room to spare would not
+	// show whether the limits reach the solver at all.
+	design = hauptbahn({ speedKmh: 100, cantMm: 130 }),
 } = {}) {
 	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);
 	const endPose = poseOf(truth, truth.arcLength);

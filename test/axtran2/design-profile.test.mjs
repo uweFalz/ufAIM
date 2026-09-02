@@ -105,31 +105,55 @@ test("a rule-book floor is not a competing derivation but a floor", () => {
 	assert.ok(fast.minimumRadius > 300);
 });
 
-test("a transition is as long as the strictest of its rate limits", () => {
-	// L >= V u / (du/dt), L >= n u, L >= V u_f / (du_f/dt): all three apply, so
-	// the longest binds, and the others are still reported.
-	const V = kmh(100);
+test("the ramp length is the gradient, not a rate", () => {
+	// L = m du. Ril 800.0110 Tab. 7 sets m; du is the cant change across the ramp
+	// and is bounded here by the largest cant the profile admits, because the
+	// solver carries neither that coupling nor a general inequality.
 	const profile = createAlignmentDesignProfile({
 		id: "t", source: "test",
-		speed: sourced(V), maximumCant: sourced(mm(150)), maximumCantDeficiency: sourced(mm(100)),
-		maximumCantRate: sourced(mm(50)),
-		cantGradient: sourced(400),
-		maximumDeficiencyRate: sourced(mm(55)),
+		speed: sourced(kmh(100)), maximumCant: sourced(mm(150)),
+		maximumCantDeficiency: sourced(mm(100)), cantGradient: sourced(600),
 	});
-	const byRate = (V * 0.15) / 0.05;
-	const byGradient = 400 * 0.15;
-	const byDeficiency = (V * 0.10) / 0.055;
-	assert.ok(Math.abs(profile.minimumTransitionLength - Math.max(byRate, byGradient, byDeficiency)) < 1e-9);
-	assert.equal(profile.transitionBinding, "V u / (du/dt)");
-	assert.equal(
-		profile.derivations.filter((d) => d.quantity === "minimumTransitionLength").length, 3,
-		"the rules that did not bind are still on the record"
-	);
+	assert.ok(Math.abs(profile.minimumTransitionLength - 600 * 0.15) < 1e-9);
+	assert.equal(profile.transitionBinding, "m du");
 
-	// with no rate declared there is no transition length to derive, and the
+	// with no gradient declared there is no transition length to derive, and the
 	// module says so rather than inventing one
 	assert.equal(minimal().minimumTransitionLength, null);
 	assert.equal(minimal().minimumLengthFor("transition"), 0);
+
+	// a declared length raises the derived one where it is stricter
+	const declaredLonger = createAlignmentDesignProfile({
+		id: "t", source: "test",
+		speed: sourced(kmh(100)), maximumCant: sourced(mm(100)),
+		maximumCantDeficiency: sourced(mm(130)), cantGradient: sourced(600),
+		minimumLength: { transition: sourced(90) },
+	});
+	assert.equal(declaredLonger.minimumLengthFor("transition"), 90, "60 m derived, 90 m declared");
+});
+
+test("a ramp steeper than the regulation is refused, whatever the design rules allow", () => {
+	// EBO § 6 (4) caps the ramp at 1:400. Steeper means a smaller m, so a gradient
+	// below the declared limit is an error, the same way a cant above its cap is.
+	assert.throws(
+		() => minimal({ cantGradient: sourced(250), regulatoryGradientLimit: sourced(400, "EBO § 6 (4)") }),
+		(e) => {
+			assert.equal(e.code, "RAMP_STEEPER_THAN_REGULATION");
+			assert.match(e.message, /1:250/);
+			assert.match(e.message, /1:400/);
+			return true;
+		}
+	);
+	assert.doesNotThrow(() => minimal({
+		cantGradient: sourced(600), regulatoryGradientLimit: sourced(400, "EBO § 6 (4)"),
+	}), "flatter than the limit is what a planning value is");
+});
+
+test("the gauge constant reproduces the factor the literature quotes", () => {
+	// The one number in the radius derivation that is not a declared limit. It is
+	// geometry of the vehicle-track pair, and the check on it is that it gives
+	// u0 = 11.8 V^2 / R with V in km/h.
+	assert.ok(Math.abs(STANDARD_DYNAMIC_GAUGE / (3.6 ** 2 * GRAVITY) * 1000 - 11.8) < 0.01);
 });
 
 // ---------------------------------------------------------------- exceptions
@@ -137,7 +161,7 @@ test("a transition is as long as the strictest of its rate limits", () => {
 test("a local departure is declared per element, with its own reason", () => {
 	const profile = minimal({
 		speed: sourced(kmh(160)),
-		maximumCantRate: sourced(mm(50)),
+		cantGradient: sourced(600),
 		exceptions: {
 			E2: { minimumRadius: 400, source: "existing curve retained, approved 2019" },
 			E5: { minimumLength: 40, source: "station throat" },
@@ -209,75 +233,60 @@ test("a cant above the regulation is refused, whatever the design rules allow", 
 
 test("each limit is cited to the document that actually contains it", () => {
 	// EBO § 6 read at gesetze-im-internet.de and cross-checked at buzer.de;
-	// Ril 800.0110 read in version 3.0, valid from 2021-02-01. Between them they
-	// settle four of the six limits, and they settle which document each belongs
-	// to - which is where this file had been wrong twice.
-	const profile = DECLARED_PROFILES["hauptbahn-V160"]();
-	const declared = profile.declared;
+	// Ril 800.0110 read in version 3.0, valid from 2021-02-01. Between them every
+	// limit has a source someone has looked at, which is what "confirmed" means.
+	const declared = DECLARED_PROFILES["hauptbahn-V160"]().declared;
 
-	// EBO: the 300 m floor (§ 6 (1)) and the 180 mm cant cap (§ 6 (3))
-	for (const name of ["absoluteMinimumRadius", "regulatoryCantLimit"]) {
-		assert.equal(declared[name].verified, true);
+	assert.equal(declared.absoluteMinimumRadius.value, 300, "EBO § 6 (1)");
+	assert.equal(declared.regulatoryCantLimit.value, 0.18, "EBO § 6 (3)");
+	assert.equal(declared.regulatoryGradientLimit.value, 400, "EBO § 6 (4)");
+	for (const name of ["absoluteMinimumRadius", "regulatoryCantLimit", "regulatoryGradientLimit"]) {
 		assert.match(declared[name].source, /EBO § 6/);
 	}
-	assert.equal(declared.absoluteMinimumRadius.value, 300);
-	assert.equal(declared.regulatoryCantLimit.value, 0.18);
 
-	// Ril: the cant and the deficiency
-	assert.equal(declared.maximumCant.verified, true);
-	assert.equal(declared.maximumCant.value, 0.16, "Tab. 4, ballasted track");
-	assert.match(declared.maximumCant.source, /Ril 800\.0110/);
-	assert.equal(declared.maximumCantDeficiency.verified, true);
-	assert.equal(declared.maximumCantDeficiency.value, 0.13, "Tab. 5, r >= 650 m");
-
-	// The ramp gradient is in both, and 1:400 is the outer bound rather than the
-	// planning value for every category - Ril names flatter ones.
-	assert.equal(declared.cantGradient.verified, true);
-	assert.match(declared.cantGradient.source, /EBO § 6 \(4\)/);
-	assert.match(declared.cantGradient.source, /1:600/, "and that Ril goes flatter");
-});
-
-test("the two rate limits are not Ril quantities, and say so", () => {
-	// The finding that reading the primary source produced. Ril 800.0110 governs
-	// the transition through the ramp gradient and the ramp length; it contains
-	// no rate over time anywhere - not "mm/s", not "Änderungsgeschwindigkeit",
-	// not once in 31 pages. Both rates had been attributed to it. They are the
-	// EN 13803 way of stating the same requirement, and reading Ril cannot
-	// confirm them, however carefully it is read.
-	const profile = DECLARED_PROFILES["hauptbahn-V160"]();
-	for (const name of ["maximumCantRate", "maximumDeficiencyRate"]) {
-		const limit = profile.declared[name];
-		assert.equal(limit.verified, false, `${name} cannot be verified against Ril`);
-		assert.match(limit.source, /CHECK/);
-		assert.match(limit.source, /NOT in Ril 800\.0110/, `${name} must not claim to be Ril`);
-		assert.match(limit.source, /EN 13803/, "and must name where it does come from");
+	assert.equal(declared.maximumCant.value, 0.16, "Ril Tab. 4, ballasted track");
+	assert.equal(declared.maximumCantDeficiency.value, 0.13, "Ril Tab. 5, r >= 650 m");
+	assert.equal(declared.cantGradient.value, 600, "Ril Tab. 7, Regelwert");
+	for (const name of ["maximumCant", "maximumCantDeficiency", "cantGradient"]) {
+		assert.match(declared[name].source, /Ril 800\.0110/);
 	}
-	assert.ok(profile.unverified.includes("maximumCantRate"));
-	assert.ok(profile.unverified.includes("maximumDeficiencyRate"));
+
+	for (const limit of Object.values(declared)) {
+		if (limit === null || typeof limit.source !== "string") continue;
+		assert.equal(limit.verified, true, `unread: ${limit.source}`);
+		assert.doesNotMatch(limit.source, /CHECK/);
+	}
 });
 
-test("the shipped profiles are candidates, and every one of them says so", () => {
+test("the rate limits are gone, along with the rule that needed them", () => {
+	// Reading Ril produced the finding that retired them: it governs the
+	// transition through the ramp gradient and states no rate over time anywhere.
+	// A limit the governing rule book does not contain could never be confirmed
+	// against it, so the rule was changed to the one the rule book uses rather
+	// than the limits re-sourced to another document.
+	const profile = DECLARED_PROFILES["hauptbahn-V160"]();
+	assert.equal("maximumCantRate" in profile.declared, false);
+	assert.equal("maximumDeficiencyRate" in profile.declared, false);
+	assert.equal(profile.transitionBinding, "m du");
+});
+
+test("the shipped profiles are confirmed, and nothing in them is unread", () => {
 	const names = Object.keys(DECLARED_PROFILES);
 	assert.ok(names.length >= 2);
 	for (const name of names) {
 		const profile = DECLARED_PROFILES[name]();
-		assert.equal(profile.status, "candidate", `${name} claims to be confirmed`);
-		assert.ok(profile.unverified.length > 0, `${name} is a candidate with nothing unread?`);
+		assert.equal(profile.status, "confirmed", `${name} still has something unread`);
+		assert.deepEqual([...profile.unverified], [], `${name}: ${profile.unverified.join(", ")}`);
 		assert.ok(profile.minimumRadius > 0);
 		assert.ok(profile.minimumTransitionLength > 0);
-		// every declared limit carries a source
-		for (const [key, entry] of Object.entries(profile.declared)) {
-			if (entry === null || key === "minimumLength") continue;
-			assert.ok(entry.source && entry.source.trim(), `${name}.${key} has no source`);
-		}
 	}
 
-	// faster line, larger radius and longer transitions - the ordering the
-	// physics demands, which is the cheapest check that these are derived and
-	// not typed in
+	// Faster line, larger radius - the cheapest check that these are derived and
+	// not typed in. The transition does NOT follow speed: the Ril rule is gradient
+	// times cant change, and neither of those is a speed.
 	const [slow, fast] = [DECLARED_PROFILES["hauptbahn-V100"](), DECLARED_PROFILES["hauptbahn-V200"]()];
 	assert.ok(fast.minimumRadius > slow.minimumRadius);
-	assert.ok(fast.minimumTransitionLength > slow.minimumTransitionLength);
+	assert.equal(fast.minimumTransitionLength, slow.minimumTransitionLength);
 });
 
 // ---------------------------------------------------------------- into the constraints
@@ -285,7 +294,7 @@ test("the shipped profiles are candidates, and every one of them says so", () =>
 test("a profile reaches the constraint builder with its provenance intact", () => {
 	const profile = hauptbahn({
 		speedKmh: 100,
-		cantMm: 140,
+		cantMm: 130,
 		exceptions: { E1: { minimumRadius: 400, source: "existing curve retained" } },
 	});
 	const built = createAlignmentConstraintBuilder({
@@ -294,13 +303,14 @@ test("a profile reaches the constraint builder with its provenance intact", () =
 		minimumElementLength: 20,
 		elementKinds: { E0: "straight", E1: "arc", E2: "transition" },
 		design: profile,
-		admitUnconfirmedDesign: EVIDENCE_ONLY,
 	});
-	assert.equal(built.admission, EVIDENCE_ONLY);
-	assert.equal(built.admissible, false, "a candidate profile cannot yield an admissible answer");
+	// No admitUnconfirmedDesign: the shipped profiles are confirmed now, so they
+	// need no word and the answer built on them is admissible.
+	assert.equal(built.admission, "confirmed");
+	assert.equal(built.admissible, true);
 
 	assert.equal(built.design.id, "hauptbahn-V100");
-	assert.equal(built.design.status, "candidate");
+	assert.equal(built.design.status, "confirmed");
 	assert.ok(built.design.derivations.length >= 2, "the derivations travel with it");
 	assert.deepEqual([...built.design.exceptions], ["E1"]);
 
