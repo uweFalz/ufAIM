@@ -329,6 +329,7 @@
 			.diagram-curvature { stroke: #d14c32; }
 			.diagram-height { stroke: #2866c7; }
 			.diagram-cant { stroke: #2e8b57; }
+			.diagram-speed { stroke: #7a2ea6; }
 			.ivhw-rail-a { stroke: #2866c7; fill: #2866c7; }
 			.ivhw-rail-b { stroke: #b5601a; fill: #b5601a; }
 			.diagram-label {
@@ -39388,6 +39389,27 @@ xlsx/xlsx.mjs:
 				return points.filter((point) => Number.isFinite(point.x) && point.x >= from && point.x <= to);
 			}
 
+			// Zulaessige Geschwindigkeit aus Radius und Ueberhoehung (Ril 800.0110):
+			// v [km/h] = sqrt(R[m] * (u[mm] + ue_fehl[mm]) / 11.8). ue_fehl ist der
+			// Ueberhoehungsfehlbetrag; ohne Fahrzeugdaten wird hier der DB-Regelwert
+			// 130 mm angenommen -- das ist eine Annahme, kein gemessener Wert, daher
+			// im Bandnamen ausgewiesen statt still vorausgesetzt. Geraden (Kruemmung
+			// 0, R unendlich) liefern aus dieser Formel keine Geschwindigkeitsgrenze
+			// und werden als Luecke dargestellt statt einen Wert zu erfinden.
+			const CANT_DEFICIENCY_REGELWERT_MM = 130;
+			function speedLimitSeries(curvaturePoints, cantPoints, cantDeficiencyMm = CANT_DEFICIENCY_REGELWERT_MM) {
+				return curvaturePoints
+					.map((point) => {
+						const curvature = Math.abs(point.y);
+						if (!(curvature > 1e-9)) return null;
+						const radius = 1 / curvature;
+						const cant = Math.abs(interpolateSeriesAt(cantPoints, point.x));
+						const speed = Math.sqrt(radius * (cant + cantDeficiencyMm) / 11.8);
+						return Number.isFinite(speed) ? { x: point.x, y: speed } : null;
+					})
+					.filter(Boolean);
+			}
+
 			function sevenLineTracks(entry) {
 				const related = relatedDiagramEntries(entry);
 				const selectedFrame = geoFrameInfo(entry);
@@ -39462,6 +39484,19 @@ xlsx/xlsx.mjs:
 					bands.push(band(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
+					}));
+				}
+				for (const side of ["left", "right"]) {
+					if (side === "left" && !leftPresent) continue;
+					if (side === "right" && !rightPresent) continue;
+					const curvatureCandidate = first(side, "alignment");
+					if (!curvatureCandidate) continue;
+					const cantCandidate = first(side, "cant");
+					const curvaturePoints = curvatureSeries(curvatureCandidate);
+					const cantPoints = cantCandidate ? pointSeries(cantCandidate, ["cant", "value", "superelevation", "u"]) : [];
+					const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
+					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · zul. v (Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm, Regelwert) [km/h]`, "diagram-speed", points, {
+						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
 					}));
 				}
 				for (const kind of ["profile", "alignment", "cant"]) {
@@ -39564,9 +39599,9 @@ xlsx/xlsx.mjs:
 					renderDiagramTable(tracks.map((track) => ({
 						label: track.label,
 						points: track.points,
-						emptyNote: track.requiredMissing
+						emptyNote: track.emptyNote ?? (track.requiredMissing
 							? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
-							: "keine sicher verknüpfte, numerische Reihe",
+							: "keine sicher verknüpfte, numerische Reihe"),
 					})));
 				} else {
 					diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -39588,9 +39623,9 @@ xlsx/xlsx.mjs:
 						diagram.append(label);
 						if (!track.points.length) {
 							const empty = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
-							empty.textContent = track.requiredMissing
+							empty.textContent = track.emptyNote ?? (track.requiredMissing
 								? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
-								: "keine sicher verknüpfte, numerische Reihe";
+								: "keine sicher verknüpfte, numerische Reihe");
 							diagram.append(empty);
 							return;
 						}
@@ -39649,7 +39684,11 @@ xlsx/xlsx.mjs:
 					? `${unresolvedNames.join(" / ")} vorhanden, aber noch nicht sicher dekodiert`
 					: hasUnknown
 						? `${entries.length} verknüpfte Objekte · Gleisseite noch zuzuordnen`
-						: `${tracks.length} von 7 Bändern · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
+						: (() => {
+							const sevenLineBandCount = tracks.filter((track) => track.className !== "diagram-speed").length;
+							const speedBandCount = tracks.length - sevenLineBandCount;
+							return `${sevenLineBandCount} von 7 Bändern${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""} · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
+						})();
 			}
 
 			function interpolateSeriesAt(series, x) {
