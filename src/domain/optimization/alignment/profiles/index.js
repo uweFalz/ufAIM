@@ -12,6 +12,11 @@
 // profile module refuses it - so the status below is a consequence of the table,
 // not a judgement anyone made about it.
 //
+// What is NOT in the table, and deliberately: the dynamic gauge. It is geometry
+// of the vehicle-track pair rather than a rule-book limit, it lives in the
+// profile module as a constant, and the check on it is that it reproduces the
+// 11.8 factor quoted for the equilibrium cant. See STANDARD_DYNAMIC_GAUGE.
+//
 // What has been read, and what has not:
 //
 //   EBO § 6      READ, at gesetze-im-internet.de and cross-checked at buzer.de
@@ -22,13 +27,20 @@
 //                rate of cant change over time, which was checked explicitly.
 //
 //   Ril 800.0110 READ, version 3.0, valid from 2021-02-01. It settles the cant
-//                and the deficiency, and it overturns an assumption of this file:
-//                it works in ramp gradients and ramp lengths, and contains NO
-//                rate over time at all - not "mm/s", not "Änderungs-
-//                geschwindigkeit", not once in 31 pages. The two rate limits
-//                below were attributed to it and are not in it. They are the
-//                EN 13803 style of formulating the same requirement, and they
-//                stay CHECK against that standard, which has not been read.
+//                (Tab. 4), the deficiency (Tab. 5) and the ramp gradient
+//                (Tab. 7), and it governs the transition through that gradient
+//                and a ramp length - it contains NO rate over time at all, not
+//                "mm/s", not "Änderungsgeschwindigkeit", not once in 31 pages.
+//                Two rate limits used to be declared here and attributed to it.
+//                They are gone, and so is the rate-based rule they fed: the
+//                kernel now states the requirement the way the governing rule
+//                book does.
+//
+//                Not readable from the document's text layer: Tab. 8's cells,
+//                which give the ramp length per ramp form. They are equation
+//                graphics. For a straight ramp this costs nothing, because a
+//                gradient of 1:m says exactly that du of cant takes m*du metres;
+//                for the curved forms the factors were not read.
 //
 //   project      a number this project chose, which the rule book leaves open.
 //
@@ -67,12 +79,20 @@ export function hauptbahn({
 	speedKmh,
 	cantMm = 160,
 	cantDeficiencyMm = 130,
+	// Ril 800.0110 Tab. 7: 1:600 or flatter is the planning value, 1:400 the
+	// discretion limit. The planning value is the default; designing at the
+	// discretion limit everywhere is a decision and has to be made as one.
+	rampGradient = 600,
 	exceptions = undefined,
 } = {}) {
 	return createAlignmentDesignProfile({
 		id: `hauptbahn-V${speedKmh}`,
 		source: "EBO § 6 for the regulatory limits, the operator's design rules for the rates",
-		status: "candidate",
+		// Every limit below names a source that has been read: Ril 800.0110 V3.0 for
+		// the cant, the deficiency and the ramp gradient; EBO § 6 for the three
+		// regulatory bounds; the project for its own element floors. The module
+		// refuses this status while any of them is unread.
+		status: "confirmed",
 		speed: {
 			value: kmh(speedKmh),
 			source: "project: declared design speed",
@@ -106,27 +126,25 @@ export function hauptbahn({
 		// time anywhere. These two are the EN 13803 formulation of the same
 		// requirement, kept because this kernel's transition rule is written that
 		// way, and unverified because EN 13803 has not been read.
-		maximumCantRate: {
-			value: mm(50),
-			source: "EN 13803 style, largest rate of cant change over time — CHECK; "
-				+ "NOT in Ril 800.0110, which uses ramp gradient and ramp length instead",
-		},
-		maximumDeficiencyRate: {
-			value: mm(55),
-			source: "EN 13803 style, largest rate of deficiency change over time — CHECK; "
-				+ "NOT in Ril 800.0110, which uses ramp gradient and ramp length instead",
-		},
 		cantGradient: {
+			value: rampGradient,
+			source: "Ril 800.0110 (V3.0) Tab. 7: Regelwert 1:600 or flatter, Ermessensgrenze "
+				+ "1:400, Mindestwert 1:3000 (1:1500 for a curved ramp), flatter than that on "
+				+ "slab track with central approval",
+			verified: true,
+		},
+		regulatoryGradientLimit: {
 			value: 400,
-			source: "EBO § 6 (4), and Ril 800.0110 (V3.0) Tab. 7 which cites it: 1:400 is the "
-				+ "steepest admissible ramp. Ril names flatter values per line category "
-				+ "(1:600, and 1:3000 on slab track with central approval), so 1:400 is the "
-				+ "outer bound and not the planning value for every category",
+			source: "EBO § 6 (4): a cant ramp may be no steeper than 1:400, which Ril 800.0110 "
+				+ "Tab. 7 cites as the EBO limit for Hauptbahnen",
 			verified: true,
 		},
 		minimumLength: {
-			straight: { value: 20, source: "project: shortest element the sequence keeps" },
-			arc: { value: 20, source: "project: shortest element the sequence keeps" },
+			// The project's own decision, so its source is the project and reading
+			// it is not pending on anyone. Ril states no such floor for straights
+			// and arcs; what it constrains is the transition, through Tab. 7.
+			straight: { value: 20, source: "project: shortest element the sequence keeps", verified: true },
+			arc: { value: 20, source: "project: shortest element the sequence keeps", verified: true },
 		},
 		exceptions,
 	});

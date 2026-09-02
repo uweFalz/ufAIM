@@ -522,7 +522,7 @@ answer, only measures it. If a later scenario should show the span growing large
 enough that the length matters engineeringly, the decision is worth revisiting
 against that number rather than against this one.
 
-**OD-3 (decided, with one part left to a person).** The limits are a declared
+**OD-3 (closed).** The limits are a declared
 profile. Where they live is answered by design: a profile is declared **with the
 problem**, because two alignments in one project can sit under different rules —
 a new line and a reconstruction, an open line and a station throat. What is
@@ -563,13 +563,39 @@ temporary bridges and axle loads above 22.5 t — not the general case. Correcte
 to 130 mm, which moves every derived radius: V100 from 453.9 to 407.0 m, V160
 from 1162.1 to 1041.9 m.
 
-**And the finding.** Ril 800.0110 governs the transition through the ramp
-gradient and the ramp length. It contains no rate over time anywhere — not
-`mm/s`, not `Änderungsgeschwindigkeit`, not once in 31 pages. Both rate limits
-had been attributed to it and are not in it. They are the EN 13803 way of
-stating the same requirement, which is how this kernel's transition rule is
-written, so they remain and remain unverified — but against EN 13803, which has
-not been read. Reading Ril more carefully could never have confirmed them.
+**And the finding, which changed the model rather than the numbers.** Ril
+800.0110 governs the transition through the ramp gradient and the ramp length.
+It contains no rate over time anywhere — not `mm/s`, not
+`Änderungsgeschwindigkeit`, not once in 31 pages. Both rate limits had been
+attributed to it and were not in it. They were the EN 13803 way of stating the
+same requirement, and a limit the governing rule book does not contain could
+never be confirmed against it, however carefully it was read.
+
+So the rule was changed to the one the rule book uses:
+
+    L >= m du        ramp of gradient 1:m, Ril Tab. 7
+
+with `du` bounded by the largest admissible cant, because it is a variable the
+solver carries as neither a bound nor an equality — the same conservatism as
+bounding `|dkappa|` by `1/R`. For a straight ramp this *is* Tab. 8: a gradient
+of 1:m says exactly that `du` of cant takes `m·du` metres. Tab. 8's cells for
+the curved ramp forms could not be read — they are equation graphics and the
+document's text layer carries only the row headings.
+
+Tab. 7's tiers are declared, not merged: 1:600 is the planning value and the
+default, 1:400 the discretion limit, which is also the EBO § 6 (4) bound and is
+now enforced the way the cant cap is. Designing at the discretion limit
+everywhere is a decision and has to be made as one.
+
+The plain-object form of a design declaration carried a second, divergent
+kinematics of its own. It now declares literal limits and derives nothing:
+deriving belongs where the provenance is.
+
+**With that, every limit's source has been read**, and the shipped profiles are
+`confirmed`. The one number in the radius derivation that is not a declared
+limit is the dynamic gauge, which is geometry of the vehicle-track pair rather
+than a rule-book value; the check on it is that it reproduces the factor the
+literature quotes, `u0 = 11.8 V²/R`.
 
 Verification is now tracked per limit rather than per profile, and a profile
 cannot call itself `confirmed` while any of its limits is unread: the module
