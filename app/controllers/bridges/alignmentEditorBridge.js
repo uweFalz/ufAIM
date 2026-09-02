@@ -301,6 +301,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		const id = String(element.id); const type = String(element.type).toLowerCase();
 		const beforeAlignmentData = activeSnapshot?.alignmentData;
 		let result;
+		let persistedReceipt = false;
 		try {
 		if (type === "straight") result = await controller.updateStraightLengthOnActiveAlignment({ elementId: id, length: asNumber(fields.length?.value) });
 		else if (type === "arc") {
@@ -318,16 +319,42 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id });
 		requestedElementId = id;const refreshed=await clearDraftAfterCanonicalRefresh({refresh:()=>refresh({ preserveSelection: false, verifiedChange: result.alignmentChange }),clear:()=>drafts.clear(draftIdentity(element))});if(!refreshed)return false;
 		if (String(activeSnapshot?.object?.id ?? "") !== receipt.objectId || selectedId() !== receipt.elementId) throw new Error("verified receipt context changed");
-		setWorkspaceElement(id); renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt); message("alignment_editor.status.recalculated", "ok", "saved");
-		await dispatchProductiveAlignmentChange({
-			...(result.alignmentChange ?? {}),
-			objectId: result.alignmentChange?.objectId ?? activeSnapshot?.object?.id ?? null,
-			elementId: id,
-			source: "alignment-editor",
-		});
-		receiptSource?.publish?.({verified:true,objectId:result.alignmentChange?.objectId??activeSnapshot?.object?.id,revision:result.alignmentChange?.revision,discipline:"horizontal",elementId:id,operation:type.startsWith("update")?type:`update-${type}`,source:result.alignmentChange?.source??"alignment-editor"});
+		setWorkspaceElement(id); renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt); persistedReceipt = true; message("alignment_editor.status.recalculated", "ok", "saved");
+		try {
+			await dispatchProductiveAlignmentChange({
+				...(result.alignmentChange ?? {}),
+				objectId: result.alignmentChange?.objectId ?? activeSnapshot?.object?.id ?? null,
+				elementId: id,
+				source: "alignment-editor",
+			});
+		} catch (error) {
+			if (fields.status) {
+				fields.status.textContent = `Geometrie gespeichert · Folgeansicht noch nicht aktualisiert (${String(error?.message ?? error)})`;
+				fields.status.dataset.kind = "warn";
+			}
+			setAuthoringState("saved");
+		}
+		try {
+			receiptSource?.publish?.({verified:true,objectId:result.alignmentChange?.objectId??activeSnapshot?.object?.id,revision:result.alignmentChange?.revision,discipline:"horizontal",elementId:id,operation:type.startsWith("update")?type:`update-${type}`,source:result.alignmentChange?.source??"alignment-editor"});
+		} catch (error) {
+			if (fields.status) {
+				fields.status.textContent = `Geometrie gespeichert · Folgeansicht noch nicht aktualisiert (${String(error?.message ?? error)})`;
+				fields.status.dataset.kind = "warn";
+			}
+			setAuthoringState("saved");
+		}
 		return true;
-		} catch { message("alignment_editor.status.calculation_failed", "error", "error"); return false; }
+		} catch (error) {
+			if (persistedReceipt) {
+				if (fields.status) {
+					fields.status.textContent = `Geometrie gespeichert · Folgeansicht noch nicht aktualisiert (${String(error?.message ?? error)})`;
+					fields.status.dataset.kind = "warn";
+				}
+				setAuthoringState("saved");
+				return true;
+			}
+			message("alignment_editor.status.calculation_failed", "error", "error"); return false;
+		}
 		finally { applying = false; renderForm(); }
 	}
 
