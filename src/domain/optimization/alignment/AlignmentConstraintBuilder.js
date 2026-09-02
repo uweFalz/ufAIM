@@ -154,6 +154,24 @@ export function createAlignmentConstraintBuilder({
 	elementKinds = null,
 	design = null,
 	admitUnconfirmedDesign = null,
+	// How the ramp rule L >= m du is carried.
+	//
+	//   "bound"       du at its largest, collapsed into a box bound on the
+	//                 transition length. Stricter than required wherever a
+	//                 transition does not run the full cant range.
+	//   "constraint"  the exact form: du is the cant change between the
+	//                 neighbouring curvatures, which are variables, so it becomes
+	//                 a general inequality coupling a length to two curvatures.
+	//
+	// "bound" is the default, and not because it is the better statement of the
+	// requirement - it is the worse one. It is the default because the exact form
+	// is not yet safe to run: measured on the nine-element scenario the length
+	// tier reaches the identical answer either way, but the points tier ends at
+	// an rms of 2.47 against 0.083, from a feasible start with margin. Something
+	// in the interaction between these rows, the relaxation and the trust region
+	// is wrong, and it has not been found. Until it is, the exact form is
+	// available and measured, not relied on.
+	rampLengthAs = "bound",
 } = {}) {
 	const target = requirePose(endPose, "endPose");
 
@@ -257,9 +275,18 @@ export function createAlignmentConstraintBuilder({
 	const bounds = elementSequence.map((id) => {
 		const sequence = minimumOf(id);
 		const kind = kindOf(id);
-		const designMinimum = built
-			? built.minimumLengthFor(kind, id)
-			: profile ? profile.minimumLengthFor(kind) : 0;
+		// When the ramp rule travels as a constraint, the transition's floor here
+		// is only what the sequence and the project ask for. Leaving the
+		// du-at-its-largest value in the bound as well would keep the
+		// conservatism the constraint exists to remove, and the constraint would
+		// never bind.
+		const carriedAsConstraint = rampLengthAs === "constraint" && kind === "transition"
+			&& built?.rampGradient !== null && built?.rampGradient !== undefined;
+		const designMinimum = carriedAsConstraint
+			? 0
+			: built
+				? built.minimumLengthFor(kind, id)
+				: profile ? profile.minimumLengthFor(kind) : 0;
 		const minimum = Math.max(sequence, designMinimum);
 		return Object.freeze({
 			id: `sequence.${id}`,
@@ -304,9 +331,41 @@ export function createAlignmentConstraintBuilder({
 		}
 	}
 
+	// One ramp rule per transition, when a profile declares a gradient and the
+	// caller wants it carried exactly. The neighbours are named rather than
+	// resolved here: which curvature sits at each end is a question about the
+	// codec, and this module does not have one.
+	const rampConstraints = [];
+	if (built?.rampGradient && rampLengthAs === "constraint" && elementKinds) {
+		elementSequence.forEach((id, index) => {
+			if (kindOf(id) !== "transition") return;
+			rampConstraints.push(Object.freeze({
+				id: `ramp.${id}`,
+				elementId: id,
+				elementIndex: index,
+				entryElementId: elementSequence[index - 1] ?? null,
+				exitElementId: elementSequence[index + 1] ?? null,
+				gradient: built.rampGradient,
+				unit: "m",
+			}));
+		});
+	}
+
 	return Object.freeze({
 		version: ALIGNMENT_CONSTRAINT_BUILDER_VERSION,
 		endPose: target,
+		rampLengthAs,
+		rampConstraints: Object.freeze(rampConstraints),
+		// the cant a design would apply at a curvature, and its derivative; the
+		// solver needs both to evaluate the ramp rule and its Jacobian
+		cantModel: built
+			? Object.freeze({
+				cantAt: (curvature) => built.cantAt(curvature),
+				cantSlopeAt: (curvature) => built.cantSlopeAt(curvature),
+				cappedBeyond: built.cappedBeyond,
+			})
+			: null,
+		elementKinds: elementKinds ? Object.freeze({ ...elementKinds }) : null,
 		// "confirmed" or "evidence-only": whether an answer built on these
 		// constraints may be treated as an engineering result
 		admission,

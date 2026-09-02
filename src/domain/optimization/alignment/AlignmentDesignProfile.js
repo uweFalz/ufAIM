@@ -335,6 +335,44 @@ export function createAlignmentDesignProfile(declaration = {}) {
 		exceptionFor: (elementId) => exceptions.get(elementId) ?? null,
 		exceptionIds: Object.freeze([...exceptions.keys()]),
 
+		/**
+		 * The cant a design would apply at a given curvature, and its derivative.
+		 *
+		 * L >= m du needs du, and du is the difference of the cant at the two ends
+		 * of the transition - a function of the curvatures there, which are
+		 * variables. Bounding it by the largest admissible cant, as this module
+		 * did, is safe and blunt; this is the honest form.
+		 *
+		 * Which cant a design applies is not fixed by the profile, so the largest
+		 * one anybody would apply is taken: the equilibrium cant, capped at the
+		 * profile's maximum. That is the conservative direction for a MINIMUM
+		 * length - assuming less cant would shorten the ramp a design is allowed
+		 * to need, which is the wrong way to be wrong.
+		 *
+		 *     u0(k) = s V^2 |k| / g,   u(k) = min(u_max, u0(k))
+		 *
+		 * The cap is a kink, and above it the derivative is zero: past
+		 * |k| = u_max g / (s V^2) more curvature buys no more cant, so it cannot
+		 * lengthen the ramp either.
+		 */
+		cantAt(curvature) {
+			const equilibrium = (s * V * V * Math.abs(curvature)) / GRAVITY;
+			return Math.min(cant.value, equilibrium);
+		},
+
+		/** d(cant)/d(curvature), zero where the cap binds. */
+		cantSlopeAt(curvature) {
+			const equilibrium = (s * V * V * Math.abs(curvature)) / GRAVITY;
+			if (equilibrium >= cant.value) return 0;
+			return ((s * V * V) / GRAVITY) * Math.sign(curvature);
+		},
+
+		/** Curvature at which the cap starts to bind. */
+		cappedBeyond: (cant.value * GRAVITY) / (s * V * V),
+
+		/** The m of the ramp gradient, or null when none is declared. */
+		rampGradient: gradient?.value ?? null,
+
 		/** Smallest admissible length for one element, exceptions included. */
 		minimumLengthFor(kind, elementId = null) {
 			const exception = elementId === null ? null : exceptions.get(elementId);

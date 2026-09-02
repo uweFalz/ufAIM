@@ -647,7 +647,47 @@ middle of the epsilon table is quoted as upper bounds and not as optima.
 held is not released. With two tiers there is never more than one budget and the
 case does not arise. Stated in the module.
 
-**R-4 (limitation, accepted).** The transition-length rules are enforced at the
+**R-4 (machinery built, resolution not reached).** The ramp rule `L >= m du`
+takes `du` at its largest, because `du` is the cant change between the
+neighbouring curvatures and those are variables. Resolving that needs a general
+inequality, which the solver did not carry.
+
+It carries one now. `C z <= d` enters the QP as `C z + s = d` with `s >= 0`, so
+the active set needs no second kind of member — a pinned slack *is* an active
+row — and the reduced Hessian stays positive definite, since the slack is
+determined by the step. The SQP threads `g`/`Jg` through the step, the
+multipliers, the Lagrangian for BFGS and the exact directional derivative; the
+merit already handled inequalities. Verified against analytic optima: a binding
+row prices at exactly 4, an inactive one at 0, and a multiplier is never
+reported negative.
+
+The exact ramp rule is written against it and is available as
+`rampLengthAs: "constraint"`. It is **not** the default, and the measurements
+say why.
+
+*What the conservatism costs here: nothing.* The design speed and cant put the
+whole admissible curvature range inside the cap — cant stops growing past
+R = 907.9 m, and every curve in this scenario is tighter than that — so `du`
+equals its bound exactly and the length tier reaches the identical answer either
+way: 1422.598 m, R = 454, transitions on 78 m. For a flatter curve the two
+differ by a factor of two (R = 2000 needs 35 m against the bound's 78), so the
+conservatism is real in general and simply absent here.
+
+*And what stopped it being the default.* With the exact form the points tier
+ends at an rms of 2.47 against 0.083, from a feasible start with margin, and
+from the declared start the QP gives up entirely. The trace shows the relaxation
+fully engaged (`delta = 1`) with the violation stuck at 0.39. Something in the
+interaction between these rows, the relaxation and the trust region is wrong and
+I did not find it.
+
+One thing was found and fixed on the way: the first formulation emitted two
+mirrored rows per ramp to avoid the kink in `|du|`. In the capped region both
+lose their curvature terms and become the same row twice with different
+right-hand sides — a degenerate pair the active set held both members of while
+the trust region collapsed to 2e-10. It is one row now, with the sign taken at
+the current point.
+
+**R-4 (limitation, still carried).** The transition-length rules are enforced at the
 declared maximum cant, which is the worst case. An element that does not run the
 full cant range is held to a longer transition than it needs. The honest form
 couples length to the curvature change, which the solver carries as neither a

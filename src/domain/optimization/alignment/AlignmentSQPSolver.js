@@ -270,6 +270,80 @@ export function solveAlignmentProblem({
 			(project(built, point, "measured point").q - point.target) / point.tolerance);
 	}
 
+	// ---------------------------------------------------------------- ramp rule
+	//
+	// L >= m du per transition, with du the cant change between the curvatures on
+	// either side. Both are variables, so this is a genuine inequality coupling a
+	// length to two curvatures - not something a box bound can hold, which is why
+	// it used to be collapsed into one by taking du at its largest.
+	//
+	// One row per ramp, m |du| - L <= 0, with the sign of du taken at the current
+	// point. The obvious alternative - two rows, m(u_out - u_in) - L <= 0 and its
+	// mirror - avoids choosing a sign but is degenerate exactly where this
+	// problem lives: in the capped curvature region the cant slope is zero, both
+	// rows lose their curvature terms, and what is left is the same row twice
+	// with different right-hand sides. Measured, the active set held both members
+	// of a pair at once and the trust region collapsed to 2e-10 while the
+	// objective sat still.
+	//
+	// The sign is a kink, and at du = 0 it does not matter: the curvature terms
+	// vanish with the slope and the row reads -L <= 0.
+	//
+	// The cant model has a kink of its own where its cap starts to bind; past it
+	// the slope is zero, which is correct - more curvature buys no more cant
+	// there, so it cannot lengthen the ramp either.
+	//
+	// Nothing here builds an alignment: the rule reads variables and the declared
+	// values, so its Jacobian is exact and free.
+	const slotByName = new Map(codec.slots.map((slot) => [slot.name, slot]));
+	const freeIndexByName = new Map(codec.freeNames.map((name, i) => [name, i]));
+	const rampRules = constraints.rampConstraints ?? [];
+	const cantModel = constraints.cantModel;
+
+	/** The curvature of one element: where it lives, and what it is worth. */
+	function curvatureOf(elementId, x) {
+		if (elementId === null) return { value: 0, index: null };
+		const slot = slotByName.get(`${elementId}.curvature`);
+		if (!slot) return { value: 0, index: null };      // a straight, or a transition
+		const index = freeIndexByName.get(slot.name);
+		return index === undefined
+			? { value: slot.value, index: null }
+			: { value: x[index], index };
+	}
+
+	function lengthOf(elementId, x) {
+		const slot = slotByName.get(`${elementId}.length`);
+		if (!slot) return { value: 0, index: null };
+		const index = freeIndexByName.get(slot.name);
+		return index === undefined
+			? { value: slot.value, index: null }
+			: { value: x[index], index };
+	}
+
+	/** The ramp rows and their Jacobian, for one point. */
+	function rampRows(x) {
+		if (rampRules.length === 0 || !cantModel) return { g: [], Jg: [] };
+		const g = [];
+		const Jg = [];
+		for (const rule of rampRules) {
+			const entry = curvatureOf(rule.entryElementId, x);
+			const exit = curvatureOf(rule.exitElementId, x);
+			const length = lengthOf(rule.elementId, x);
+			const change = cantModel.cantAt(exit.value) - cantModel.cantAt(entry.value);
+			const slopeIn = cantModel.cantSlopeAt(entry.value);
+			const slopeOut = cantModel.cantSlopeAt(exit.value);
+
+			const sign = change < 0 ? -1 : 1;
+			g.push(sign * rule.gradient * change - length.value);
+			const row = new Array(codec.freeCount).fill(0);
+			if (length.index !== null) row[length.index] = -1;
+			if (exit.index !== null) row[exit.index] += sign * rule.gradient * slopeOut;
+			if (entry.index !== null) row[entry.index] -= sign * rule.gradient * slopeIn;
+			Jg.push(row);
+		}
+		return { g, Jg };
+	}
+
 	function accumulatedLength(x) {
 		// Only the free lengths vary; the held ones are a constant offset that
 		// does not change the gradient.
@@ -304,9 +378,11 @@ export function solveAlignmentProblem({
 		}
 		for (const constraint of extraEqualities) Jh.push([...constraint.gradient]);
 
+		const ramps = rampRows(x);
+
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
-			return { f: accumulatedLength(x), gradF, h, Jh };
+			return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
 		}
 
 		const r = softResiduals(built);
@@ -318,7 +394,7 @@ export function solveAlignmentProblem({
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = parameterSpecs.map((_, j) =>
 			Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
-		return { f, gradF, h, Jh };
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
 	}
 
 	function evaluate(x) {
@@ -346,16 +422,18 @@ export function solveAlignmentProblem({
 		}
 
 		const Jh = jacobian.J.slice(0, h.length);
+		// exact and free: the ramp rule reads variables, not geometry
+		const ramps = rampRows(x);
 
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
-			return { f: accumulatedLength(x), gradF, h, Jh };
+			return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
 		}
 
 		const Jr = jacobian.J.slice(h.length);
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
-		return { f, gradF, h, Jh };
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
 	}
 
 	// The solve runs in scaled coordinates. A length in metres and a curvature
@@ -471,6 +549,11 @@ export function solveAlignmentProblem({
 				id: constraint.id,
 				residual: finalExtra[i] ?? null,
 			}))),
+			// worst ramp rule slack: positive means a transition is shorter than its
+			// cant change allows
+			rampSlack: run.x && rampRules.length
+				? Math.max(...rampRows(run.x).g)
+				: null,
 			accumulatedLength: run.x ? accumulatedLength(run.x) : null,
 			// The whole alignment, held elements included. accumulatedLength is the
 			// objective and sums only the free ones; this is the thing that has a

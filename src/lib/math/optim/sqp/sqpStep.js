@@ -103,6 +103,8 @@ export function solveRelaxedQpStep({
 	gradF,
 	h = [],
 	Jh = [],
+	g = [],
+	Jg = [],
 	lower,
 	upper,
 	relaxationWeight = 1e4,
@@ -131,7 +133,23 @@ export function solveRelaxedQpStep({
 	// (d, delta) = (0, 1) is feasible for the relaxed problem by construction
 	const z0 = [...new Array(n).fill(0), m > 0 ? 1 : 0];
 
-	const qp = solveBoxQP({ H: Hz, c: cz, A, b, lower: lo, upper: up, z0, damping });
+	// Inequalities are relaxed by the same slack, so that (d, delta) = (0, 1)
+	// stays feasible for them too:
+	//
+	//     g + Jg d <= 0   relaxed to   Jg d - g delta <= -g
+	//
+	// which at (0, 1) reads -g <= -g. Without the relaxation an inconsistent
+	// linearised inequality would make the subproblem infeasible, which is the
+	// failure the relaxation exists to prevent for the equalities.
+	const p = g.length;
+	const C = [];
+	const dRhs = [];
+	for (let i = 0; i < p; i++) {
+		C.push([...(Jg[i] ?? new Array(n).fill(0)), -g[i]]);
+		dRhs.push(-g[i]);
+	}
+
+	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping });
 	if (!qp.ok) return { ok: false, status: qp.status, reason: qp.reason ?? null, detail: qp.detail ?? null };
 
 	const d = qp.z.slice(0, n);
@@ -150,32 +168,55 @@ export function solveRelaxedQpStep({
 	const freeRows = [];
 	for (let i = 0; i < n; i++) if (!pinned.has(i)) freeRows.push(i);
 
+	// The active set carries both kinds: the equalities always, and the
+	// inequality rows the subproblem ended up holding. An inactive row carries
+	// no multiplier at all, and fitting one to it would put weight on a
+	// constraint that is not binding.
+	const activeRows = new Set(qp.activeRows ?? []);
+	const inequalityActive = [];
+	for (let i = 0; i < p; i++) if (activeRows.has(i)) inequalityActive.push(i);
+	const fitted = [...Jh, ...inequalityActive.map((i) => Jg[i])];
+	const fittedCount = fitted.length;
+
 	const stationarity = matVec(H, d).map((value, i) => -(value + gradF[i]));
 	let mu = new Array(m).fill(0);
-	if (m > 0 && freeRows.length > 0) {
-		const JhFree = Jh.map((row) => freeRows.map((i) => row[i]));
+	let lambda = new Array(p).fill(0);
+	if (fittedCount > 0 && freeRows.length > 0) {
+		const JhFree = fitted.map((row) => freeRows.map((i) => row[i]));
 		const stationarityFree = freeRows.map((i) => stationarity[i]);
 		const gram = JhFree.map((rowA) => JhFree.map((rowB) => dot(rowA, rowB)));
 		const gramScale = Math.max(...gram.map((row, i) => Math.abs(row[i])), 1);
-		for (let i = 0; i < m; i++) gram[i][i] += 1e-12 * gramScale;
+		for (let i = 0; i < fittedCount; i++) gram[i][i] += 1e-12 * gramScale;
 		const rhs = JhFree.map((row) => dot(row, stationarityFree));
 		// small symmetric solve by Gaussian elimination with partial pivoting
 		const M = gram.map((row, i) => [...row, rhs[i]]);
-		for (let k = 0; k < m; k++) {
+		let solved = new Array(fittedCount).fill(0);
+		let singular = false;
+		for (let k = 0; k < fittedCount; k++) {
 			let pivot = k;
-			for (let i = k + 1; i < m; i++) if (Math.abs(M[i][k]) > Math.abs(M[pivot][k])) pivot = i;
-			if (Math.abs(M[pivot][k]) < 1e-300) { mu = new Array(m).fill(0); break; }
+			for (let i = k + 1; i < fittedCount; i++) {
+				if (Math.abs(M[i][k]) > Math.abs(M[pivot][k])) pivot = i;
+			}
+			if (Math.abs(M[pivot][k]) < 1e-300) { singular = true; break; }
 			[M[k], M[pivot]] = [M[pivot], M[k]];
-			for (let i = 0; i < m; i++) {
+			for (let i = 0; i < fittedCount; i++) {
 				if (i === k) continue;
 				const factor = M[i][k] / M[k][k];
-				for (let j = k; j <= m; j++) M[i][j] -= factor * M[k][j];
+				for (let j = k; j <= fittedCount; j++) M[i][j] -= factor * M[k][j];
 			}
 		}
-		if (mu.every((value) => value === 0)) {
-			mu = M.map((row, i) => (Math.abs(row[i]) > 1e-300 ? row[m] / row[i] : 0));
+		if (!singular) {
+			solved = M.map((row, i) =>
+				(Math.abs(row[i]) > 1e-300 ? row[fittedCount] / row[i] : 0));
 		}
-		if (!mu.every(Number.isFinite)) mu = new Array(m).fill(0);
+		if (!solved.every(Number.isFinite)) solved = new Array(fittedCount).fill(0);
+		mu = solved.slice(0, m);
+		// An inequality multiplier is one-sided: a negative one says the row
+		// should not be held at all, and reporting it as negative would let the
+		// penalty weights grow on a constraint that wants releasing.
+		inequalityActive.forEach((row, k) => {
+			lambda[row] = Math.max(0, solved[m + k]);
+		});
 	}
 
 	// Gerdts' bound l1'(x; d; eta) <= -d'Hd is a guarantee, not the value. Using
@@ -200,7 +241,8 @@ export function solveRelaxedQpStep({
 		status: "solved",
 		d,
 		delta,
-		multipliers: { equality: mu, inequality: [] },
+		multipliers: { equality: mu, inequality: lambda },
+		activeRows: Object.freeze([...inequalityActive]),
 		curvature,
 		gradientAlongStep: dot(gradF, d),
 		predictedDecrease: curvature,

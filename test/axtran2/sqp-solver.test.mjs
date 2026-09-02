@@ -319,3 +319,59 @@ test("the optimisation library stays free of domain and platform dependencies", 
 		}
 	}
 });
+
+// ---------------------------------------------------------------- inequalities
+
+test("the box QP holds a general inequality row", () => {
+	// C z <= d enters as C z + s = d with s >= 0, so the active set needs no
+	// second kind of member: a pinned slack IS an active row.
+	const H = [[1, 0], [0, 1]];
+	const c = [-1, -1];
+	const free = solveBoxQP({ H, c, lower: [-9, -9], upper: [9, 9], z0: [0, 0] });
+	closeAll(free.z, [1, 1], 1e-9, "unconstrained minimum");
+
+	const binding = solveBoxQP({
+		H, c, C: [[1, 1]], d: [1], lower: [-9, -9], upper: [9, 9], z0: [0, 0],
+	});
+	closeAll(binding.z, [0.5, 0.5], 1e-9, "on the row");
+	assert.deepEqual([...binding.activeRows], [0]);
+	assert.equal(binding.z.length, 2, "the slack does not leak into the answer");
+
+	const slack = solveBoxQP({
+		H, c, C: [[1, 1]], d: [5], lower: [-9, -9], upper: [9, 9], z0: [0, 0],
+	});
+	closeAll(slack.z, [1, 1], 1e-9, "a row with room to spare changes nothing");
+	assert.deepEqual([...slack.activeRows], []);
+});
+
+test("SQP solves against an inequality, and prices it", () => {
+	// min (x-3)^2 + (y-3)^2 subject to x + y <= 2. The solution is (1,1), where
+	// the objective gradient is (-4,-4), so the multiplier is 4.
+	const evaluate = ([x, y]) => ({
+		f: (x - 3) ** 2 + (y - 3) ** 2, gradF: [2 * (x - 3), 2 * (y - 3)],
+		h: [], Jh: [], g: [x + y - 2], Jg: [[1, 1]],
+	});
+	const run = solveSQP({ x0: [0, 0], evaluate, maxIterations: 60 });
+	assert.equal(run.ok, true, `status ${run.status}`);
+	closeAll(run.x, [1, 1], 1e-6, "on the constraint");
+	close(run.multipliers.inequality[0], 4, 1e-5, "and it knows what the row costs");
+
+	// the same problem with the row well clear of the optimum
+	const loose = ([x, y]) => ({
+		f: (x - 3) ** 2 + (y - 3) ** 2, gradF: [2 * (x - 3), 2 * (y - 3)],
+		h: [], Jh: [], g: [x + y - 20], Jg: [[1, 1]],
+	});
+	const unbound = solveSQP({ x0: [0, 0], evaluate: loose, maxIterations: 60 });
+	assert.equal(unbound.ok, true);
+	closeAll(unbound.x, [3, 3], 1e-6, "the unconstrained minimum");
+	assert.equal(unbound.multipliers.inequality[0], 0,
+		"an inactive row carries no multiplier, so it puts no weight on the merit");
+});
+
+test("an inequality multiplier is never reported negative", () => {
+	// A negative one says the row wants releasing, not that it should be weighted
+	// more heavily - and the penalty weights are taken from |multiplier|.
+	const evaluate = ([x]) => ({ f: (x - 1) ** 2, gradF: [2 * (x - 1)], h: [], Jh: [], g: [x - 5], Jg: [[1]] });
+	const run = solveSQP({ x0: [0], evaluate, maxIterations: 40 });
+	assert.ok(run.multipliers.inequality.every((value) => value >= 0));
+});

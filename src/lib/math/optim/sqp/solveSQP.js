@@ -81,7 +81,10 @@ export function solveSQP({
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
 	let H = identityMatrix(n, initialHessianScale);
 	let state = evaluate(x);
-	let weights = createPenaltyWeights({ equalityCount: state.h?.length ?? 0 });
+	let weights = createPenaltyWeights({
+		equalityCount: state.h?.length ?? 0,
+		inequalityCount: state.g?.length ?? 0,
+	});
 	const history = [];
 	let previousMerit = null;
 	let stalls = 0;
@@ -95,6 +98,8 @@ export function solveSQP({
 			gradF: state.gradF,
 			h: state.h ?? [],
 			Jh: state.Jh ?? [],
+			g: state.g ?? [],
+			Jg: state.Jg ?? [],
 			// bounds on the step: the bounds on x, tightened by the trust region
 			lower: x.map((value, i) => Math.max(lo[i] - value, -radius)),
 			upper: x.map((value, i) => Math.min(up[i] - value, radius)),
@@ -116,8 +121,14 @@ export function solveSQP({
 		// stays large and would deny a perfectly good optimum. A component
 		// pressing outwards through an active bound is held by it and contributes
 		// nothing; only what could still move counts.
+		// The Lagrangian carries both blocks. An inequality held at its bound
+		// contributes exactly like an equality; an inactive one has multiplier
+		// zero and contributes nothing, which is what makes this the same
+		// expression for both.
 		const lagrangeAt = state.gradF.map((value, i) =>
-			value + (state.Jh ?? []).reduce((sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0));
+			value
+			+ (state.Jh ?? []).reduce((sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
+			+ (state.Jg ?? []).reduce((sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const kkt = Math.hypot(...lagrangeAt.map((value, i) => {
 			if (x[i] <= lo[i] && value > 0) return 0;
 			if (x[i] >= up[i] && value < 0) return 0;
@@ -204,8 +215,12 @@ export function solveSQP({
 
 		let trialState = null;
 		// exact directional derivative of the l1 merit along the step
+		// Only the violated part of an inequality is charged, so only the violated
+		// part can be given up - which is what the relaxation gives back.
 		const penaltyDrop = (state.h ?? []).reduce(
 			(sum, value, j) => sum + (weights.equality[j] ?? 0) * Math.abs(value), 0
+		) + (state.g ?? []).reduce(
+			(sum, value, j) => sum + (weights.inequality[j] ?? 0) * Math.max(0, value), 0
 		);
 		const directional = step.gradientAlongStep - (1 - (step.delta ?? 0)) * penaltyDrop;
 		// the curvature bound is the theoretical guarantee; when it is zero the
@@ -298,8 +313,11 @@ export function solveSQP({
 
 		// Powell's modified BFGS on the Lagrangian gradient difference
 		const lagrangeGradient = (evaluated) => evaluated.gradF.map((value, i) =>
-			value + (evaluated.Jh ?? []).reduce(
-				(sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0));
+			value
+			+ (evaluated.Jh ?? []).reduce(
+				(sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
+			+ (evaluated.Jg ?? []).reduce(
+				(sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const s = trialState.x.map((value, i) => value - x[i]);
 		const y = lagrangeGradient(trialState.state).map((value, i) => value - lagrangeGradient(state)[i]);
 		H = modifiedBfgsUpdate(H, s, y);
@@ -317,6 +335,13 @@ export function solveSQP({
 			radius,
 			qpIterations: step.qpIterations,
 			qpStatus: step.qpStatus,
+			activeRows: step.activeRows ?? [],
+			inequalities: Object.freeze((state.g ?? []).map((value, j) => Object.freeze({
+				residual: value,
+				violated: value > 0,
+				multiplier: step.multipliers.inequality[j] ?? 0,
+				weight: weights.inequality[j],
+			}))),
 			// per constraint, because the aggregate hides which one is in trouble
 			// and the answer to that is usually a scaling question
 			equalities: Object.freeze((state.h ?? []).map((value, j) => Object.freeze({

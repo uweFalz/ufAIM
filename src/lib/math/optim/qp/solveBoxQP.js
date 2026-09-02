@@ -176,15 +176,68 @@ function solveFreeBlock({ H, c, A, b, z, free, damping }) {
  * @param {number[]}   problem.c
  * @param {number[][]} [problem.A]      equality matrix
  * @param {number[]}   [problem.b]      equality right-hand side
+ * @param {number[][]} [problem.C]      inequality matrix, C z <= d
+ * @param {number[]}   [problem.d]      inequality right-hand side
  * @param {number[]}   problem.lower
  * @param {number[]}   problem.upper
  * @param {number[]}   problem.z0       feasible starting point
  */
+/**
+ * General inequalities enter as slacks: C z <= d becomes C z + s = d with
+ * s >= 0, which is one equality row and one bound - both of which this solver
+ * already handles, so the active set needs no second kind of member and no
+ * second multiplier convention.
+ *
+ * The reduced Hessian stays positive definite under the transformation. A null
+ * direction of the extended equality block satisfies A p = 0 and C p + q = 0,
+ * so q is determined by p and contributes nothing of its own; the curvature
+ * along it is p' H p, which is what it was before.
+ */
+function withSlacks({ H, c, A, b, C, d, lower, upper, z0 }) {
+	const n = c.length;
+	const k = C.length;
+	if (k === 0) return { H, c, A, b, lower, upper, z0, n, k };
+
+	const zero = (rows, cols) => Array.from({ length: rows }, () => new Array(cols).fill(0));
+	const N = n + k;
+	const Hx = zero(N, N);
+	for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) Hx[i][j] = H[i][j];
+	const cx = [...c, ...new Array(k).fill(0)];
+
+	const Ax = A.map((row) => [...row, ...new Array(k).fill(0)]);
+	const bx = [...b];
+	C.forEach((row, i) => {
+		const extended = [...row, ...new Array(k).fill(0)];
+		extended[n + i] = 1;
+		Ax.push(extended);
+		bx.push(d[i]);
+	});
+
+	// the slack starts where the constraint currently stands, clipped into its
+	// own bound, so a starting point that already violates a row does not put the
+	// extended problem outside its box
+	const slack0 = C.map((row, i) => {
+		let value = d[i];
+		for (let j = 0; j < n; j++) value -= row[j] * z0[j];
+		return Math.max(0, value);
+	});
+
+	return {
+		H: Hx, c: cx, A: Ax, b: bx,
+		lower: [...lower, ...new Array(k).fill(0)],
+		upper: [...upper, ...new Array(k).fill(Infinity)],
+		z0: [...z0, ...slack0],
+		n, k,
+	};
+}
+
 export function solveBoxQP({
 	H,
 	c,
 	A = [],
 	b = [],
+	C = [],
+	d = [],
 	lower,
 	upper,
 	z0,
@@ -193,13 +246,41 @@ export function solveBoxQP({
 	damping = 1e-10,
 	tolerance = 1e-10,
 } = {}) {
-	const n = c?.length ?? 0;
-	if (!n || !Array.isArray(z0) || z0.length !== n) {
+	const declaredN = c?.length ?? 0;
+	if (!declaredN || !Array.isArray(z0) || z0.length !== declaredN) {
 		return { ok: false, status: "invalid", reason: "dimension mismatch" };
 	}
+	if (C.length !== d.length) {
+		return { ok: false, status: "invalid", reason: "C and d disagree in length" };
+	}
+	const extended = withSlacks({
+		H, c, A, b, C, d,
+		lower: lower ?? new Array(declaredN).fill(-Infinity),
+		upper: upper ?? new Array(declaredN).fill(Infinity),
+		z0,
+	});
+	({ H, c, A, b, lower, upper, z0 } = extended);
+	const slackCount = extended.k;
+	const n = c.length;
+	const declared = n - slackCount;
+	// Every exit truncates z back to the declared variables and separates the two
+	// kinds of working-set member: a pinned variable is a bound, a pinned slack
+	// is an active inequality row. Leaving slack indices in activeBounds would
+	// have the caller treat a row as a variable.
+	const finish = (result, working) => Object.freeze({
+		...result,
+		z: result.z ? result.z.slice(0, declared) : result.z,
+		slacks: result.z ? result.z.slice(declared) : [],
+		activeBounds: working
+			? working.map((v, i) => (v ? i : -1)).filter((i) => i >= 0 && i < declared)
+			: (result.activeBounds ?? []),
+		activeRows: working
+			? working.map((v, i) => (v ? i - declared : -1)).filter((i) => i >= 0)
+			: [],
+	});
 
-	const lo = lower ?? new Array(n).fill(-Infinity);
-	const up = upper ?? new Array(n).fill(Infinity);
+	const lo = lower;
+	const up = upper;
 
 	let z = z0.map((value, i) => Math.min(Math.max(value, lo[i]), up[i]));
 	const atLower = z.map((value, i) => value <= lo[i] + EPS);
@@ -226,7 +307,7 @@ export function solveBoxQP({
 	for (; iterations < maxIterations; iterations++) {
 		const free = working.map((isPinned) => !isPinned);
 		const target = solveFreeBlock({ H, c, A, b, z, free, damping });
-		if (!target) return { ok: false, status: "reduced_system_failed", z, iterations };
+		if (!target) return finish({ ok: false, status: "reduced_system_failed", z, iterations }, working);
 
 		const direction = target.map((value, i) => (free[i] ? value - z[i] : 0));
 		const norm = Math.hypot(...direction);
@@ -262,11 +343,7 @@ export function solveBoxQP({
 				}
 			}
 			if (worst < 0) {
-				return {
-					ok: true, status: "solved", z, iterations,
-					activeBounds: working.map((v, i) => (v ? i : -1)).filter((i) => i >= 0),
-					released, blocked,
-				};
+				return finish({ ok: true, status: "solved", z, iterations, released, blocked }, working);
 			}
 			working[worst] = false;
 			released++;
@@ -296,11 +373,10 @@ export function solveBoxQP({
 		if (alpha <= EPS && blocking === lastReleased && blocking >= 0) {
 			// released, then immediately blocked again without moving
 			working[blocking] = true;
-			return {
-				ok: true, status: "stationary_on_working_set", z, iterations,
-				activeBounds: working.map((v, i) => (v ? i : -1)).filter((i) => i >= 0),
-				released, blocked,
-			};
+			return finish(
+				{ ok: true, status: "stationary_on_working_set", z, iterations, released, blocked },
+				working
+			);
 		}
 
 		// Degeneracy is about the point not moving, which is a question about the
@@ -320,13 +396,15 @@ export function solveBoxQP({
 
 	// An exhausted active set is not self-explanatory, and the caller cannot see
 	// the working set from outside. Report what it was doing when it ran out.
-	return {
+	return finish({
 		ok: false, status: "max_iterations", z, iterations,
 		detail: Object.freeze({
 			variables: n,
+			declaredVariables: declared,
+			slacks: slackCount,
 			equalities: A.length,
 			workingSet: working.map((v, i) => (v ? i : -1)).filter((i) => i >= 0),
 			released, blocked, degenerate,
 		}),
-	};
+	}, working);
 }
