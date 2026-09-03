@@ -739,10 +739,36 @@ baseline, because the stationarity thresholds are calibrated against unscaled
 gradients. Normalising inside the multiplier fit achieves what it was meant to
 without touching the problem the solver is given.
 
-**What remains.** The exact ramp rule's points tier reaches rms 0.0935 against
-the bound form's 0.0832 and ends on `qp_failed` rather than a verdict. Much
-closer than the 0.3477 it started at, and not yet parity. `rampLengthAs` still
-defaults to `"bound"`.
+**The `qp_failed` is gone, and it was never the pivot rule.** The active set was
+cycling among nine working sets, one of them visited forty-four times, *with
+Bland's rule running* — which cannot happen to a correct implementation of it.
+So the fault lay in the directions, not in the choice of pivot:
+
+- The rank test in the null-basis construction was **absolute**. Comparing a
+  residual against 1e-10 asks a question about units, not about rank, and the
+  rows are 141, 376 and 0.51 in norm. Each row is normalised first, which
+  changes neither the row space nor the null space.
+- Each vector was orthogonalised **once**. One pass of modified Gram-Schmidt
+  loses orthogonality on nearly dependent rows, and a null basis that is not
+  quite null yields directions along which the objective does not fall. Twice
+  now — the standard remedy, one extra pass.
+
+With that, both tiers of the two-phase run report `converged` for the first
+time: the KKT test met outright, in 8 seconds, with the answer unchanged.
+
+**What remains, and it is no longer the QP.** The exact ramp rule reaches an
+answer that is stable to six digits between iteration 400 and 900 — 1424.886 m
+either way — and never satisfies the stopping test. The trace says why, and it
+is not the constraint: the trust region collapses to its floor, the subproblem
+then pins nearly every variable, and the multipliers are fitted only on what is
+left. Nothing balances the objective gradient, so the KKT residual sits at
+`‖∇f‖ = 2.65` forever.
+
+Making the KKT projection consistent with that pinning would produce a verdict,
+and it would be a false one — the guard is correctly refusing to call a
+collapsed trust region a solution. The open question is why the region collapses
+under the exact rule and not under the bound, and that is the next package.
+`rampLengthAs` still defaults to `"bound"`.
 
 One thing was found and fixed on the way: the first formulation emitted two
 mirrored rows per ramp to avoid the kink in `|du|`. In the capped region both

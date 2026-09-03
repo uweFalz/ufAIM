@@ -69,24 +69,53 @@ function solveSpd(matrix, rhs) {
 }
 
 /** Orthonormal basis of the row space and of the null space of `rows`. */
+/**
+ * An orthonormal basis of the row space, and one of its null space.
+ *
+ * Two things here are not incidental.
+ *
+ * The rank test is relative. Deciding independence by comparing a residual
+ * against an absolute 1e-10 asks a question about units, not about rank: the
+ * rows this solver is handed are a position in metres, a position in metres and
+ * a heading in radians, with norms measured at 141, 376 and 0.51. A residual of
+ * 1e-9 is noise under the first and meaningful under the third. Each row is
+ * normalised before it is orthogonalised, which changes neither the row space
+ * nor the null space and makes the test scale-free.
+ *
+ * And each vector is orthogonalised twice. One pass of modified Gram-Schmidt
+ * loses orthogonality when the rows are close to dependent, and a null basis
+ * that is not quite null yields directions along which the objective does not
+ * fall. Measured before this: an active set cycling among nine working sets,
+ * one of them visited forty-four times, with Bland's rule running - which cannot
+ * happen to a correct implementation, so the fault was never in the pivot rule.
+ * Twice is enough; it is the standard remedy and costs one more pass.
+ */
 function orthogonalDecomposition(rows, dimension) {
 	const rowBasis = [];
 	for (const row of rows) {
-		let residual = row.slice();
-		for (const basis of rowBasis) {
-			const projection = dot(residual, basis);
-			residual = residual.map((value, i) => value - projection * basis[i]);
+		const scale = Math.hypot(...row);
+		if (!(scale > 0) || !Number.isFinite(scale)) continue;
+		let residual = row.map((value) => value / scale);
+		for (let pass = 0; pass < 2; pass++) {
+			for (const basis of rowBasis) {
+				const projection = dot(residual, basis);
+				residual = residual.map((value, i) => value - projection * basis[i]);
+			}
 		}
 		const norm = Math.hypot(...residual);
+		// relative to the normalised row, so this is a rank test and not a
+		// question about the units the caller happened to use
 		if (norm > 1e-10) rowBasis.push(residual.map((value) => value / norm));
 	}
 	const nullBasis = [];
 	for (let axis = 0; axis < dimension && nullBasis.length < dimension - rowBasis.length; axis++) {
 		let candidate = new Array(dimension).fill(0);
 		candidate[axis] = 1;
-		for (const basis of [...rowBasis, ...nullBasis]) {
-			const projection = dot(candidate, basis);
-			candidate = candidate.map((value, i) => value - projection * basis[i]);
+		for (let pass = 0; pass < 2; pass++) {
+			for (const basis of [...rowBasis, ...nullBasis]) {
+				const projection = dot(candidate, basis);
+				candidate = candidate.map((value, i) => value - projection * basis[i]);
+			}
 		}
 		const norm = Math.hypot(...candidate);
 		if (norm > 1e-8) nullBasis.push(candidate.map((value) => value / norm));
@@ -437,6 +466,7 @@ export function solveBoxQP({
 			equalities: A.length,
 			workingSet: working.map((v, i) => (v ? i : -1)).filter((i) => i >= 0),
 			released, blocked, degenerate,
+			bland: degenerate >= blandAfter,
 		}),
 	}, working);
 }
