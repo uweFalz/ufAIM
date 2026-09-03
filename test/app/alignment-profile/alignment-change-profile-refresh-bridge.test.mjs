@@ -12,6 +12,7 @@ class WindowTarget extends EventTarget {
 }
 
 const projected = (revision = 2, s = 25) => ({ status: "projected", alignmentId: "A1", revision, cursor: { parameterKind: "intrinsic-s", s } });
+const eventWithWait = (detail) => ({ detail: { ...detail, waitUntil() {} } });
 
 test("exact verified change registers one profile refresh through waitUntil", async () => {
 	const windowRef = new WindowTarget(); let refreshes = 0, waited = null;
@@ -58,6 +59,38 @@ test("revision cursor and post-refresh selection mismatches reject the registere
 	const operation = bridge.refreshForChange({ detail: { objectId: "A1", revision: 2, waitUntil(value) { waited = value; } } });
 	assert.strictEqual(waited, operation);
 	await assert.rejects(() => operation, (error) => error.code === "ACTIVE_CONTEXT_CHANGED");
+});
+
+test("an exact concurrently published projection closes a cancelled refresh race", async () => {
+	const windowRef = new WindowTarget();
+	const state = { workspace_selection: { primaryId: "A1" }, cursor: { s: 60 } };
+	const current = { status: "projected", alignmentId: "A1", revision: 2, cursor: { parameterKind: "intrinsic-s", s: 60 } };
+	const bridge = createAlignmentChangeProfileRefreshBridge({
+		store: { getState: () => state },
+		profileSource: {
+			async refresh() { return null; },
+			getCurrentProjection() { return current; },
+		},
+		windowRef,
+	});
+	await bridge.refreshForChange(eventWithWait({ objectId: "A1", revision: 2 }));
+});
+
+test("a cancelled refresh cannot reuse a stale published projection", async () => {
+	const windowRef = new WindowTarget();
+	const state = { workspace_selection: { primaryId: "A1" }, cursor: { s: 60 } };
+	const bridge = createAlignmentChangeProfileRefreshBridge({
+		store: { getState: () => state },
+		profileSource: {
+			async refresh() { return null; },
+			getCurrentProjection() { return { status: "projected", alignmentId: "A1", revision: 1, cursor: { parameterKind: "intrinsic-s", s: 60 } }; },
+		},
+		windowRef,
+	});
+	await assert.rejects(
+		bridge.refreshForChange(eventWithWait({ objectId: "A1", revision: 2 })),
+		(error) => error?.code === "PROFILE_REFRESH_READBACK_MISMATCH"
+	);
 });
 
 test("invalid construction is rejected and stopped bridge no longer participates", async () => {

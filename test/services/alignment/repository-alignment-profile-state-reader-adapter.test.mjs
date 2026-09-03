@@ -157,6 +157,32 @@ test("loads one revision-qualified profile snapshot in one repository read", asy
 	assert.deepEqual(repo.loadCalls, [alignmentId]);
 });
 
+test("uses persisted modifiedAt as the canonical revision when no explicit revision exists", async () => {
+	const profileState = makeProfileState();
+	const value = {
+		...alignment(profileState),
+		meta: { modifiedAt: "2026-09-03T12:00:00.000Z" },
+	};
+	const adapter = new RepositoryAlignmentProfileStateReaderAdapter({
+		alignmentRepository: repository(value),
+	});
+	const snapshot = await adapter.loadProfileSnapshotByAlignmentId(alignmentId);
+	assert.equal(snapshot.revision, value.meta.modifiedAt);
+});
+
+test("an explicit revision remains authoritative over persisted modifiedAt", async () => {
+	const value = {
+		...alignment(makeProfileState()),
+		revision: "revision-explicit",
+		meta: { modifiedAt: "2026-09-03T12:00:00.000Z" },
+	};
+	const adapter = new RepositoryAlignmentProfileStateReaderAdapter({
+		alignmentRepository: repository(value),
+	});
+	const snapshot = await adapter.loadProfileSnapshotByAlignmentId(alignmentId);
+	assert.equal(snapshot.revision, value.revision);
+});
+
 test("missing Alignment and legacy missing profileState are absent without mutation", async () => {
 	for (const value of [
 		null,
