@@ -12,4 +12,5 @@ test("successful radius edit renders receipt only after verified refresh at exac
 	const render = bridge.indexOf("renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt)");
 	const dispatch = bridge.indexOf("dispatchProductiveAlignmentChange", render);
 	assert.ok(check > 0 && render > check && dispatch > render);
+	assert.match(bridge, /Geometrie gespeichert · Folgeansicht noch nicht aktualisiert/);
 });

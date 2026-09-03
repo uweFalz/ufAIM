@@ -217,7 +217,8 @@ export class AlignmentApplicationService {
 	async addTransitionArc({
 		transitionLength = 60,
 		arcLength = 100,
-		curvature = 0.002,
+		curvature,
+		radius,
 		transitionType = "clothoid",
 		w1,
 		w2,
@@ -228,7 +229,7 @@ export class AlignmentApplicationService {
 			edit: (alignmentData) => {
 				this._assertTransitionTypeSupported(transitionType);
 				const withTransition = addTransitionElement(alignmentData, { length: transitionLength, transitionType, w1, w2 });
-				return addArcElement(withTransition, { length: arcLength, curvature });
+				return addArcElement(withTransition, { length: arcLength, curvature, radius });
 			},
 		});
 	}
