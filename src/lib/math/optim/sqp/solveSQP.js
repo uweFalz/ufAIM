@@ -53,6 +53,7 @@ export function solveSQP({
 	penaltyRule = "monotone",
 	penaltySafety = 20,
 	relaxationWeight = 1e4,
+	qpIterations = 200,
 	initialHessianScale = 1,
 	// Box trust region on the step. A linear objective gets its curvature only
 	// from the constraints, so the reduced Hessian can be genuinely tiny and the
@@ -104,6 +105,7 @@ export function solveSQP({
 			lower: x.map((value, i) => Math.max(lo[i] - value, -radius)),
 			upper: x.map((value, i) => Math.min(up[i] - value, radius)),
 			relaxationWeight,
+			qpIterations,
 		});
 
 		if (!step.ok) {
@@ -164,13 +166,18 @@ export function solveSQP({
 		// optimality and cannot move either. For the question being asked here -
 		// is there an admissible direction - the two answer the same way, and
 		// they are told apart in the reason rather than run together.
-		const pinnedByModel = radius > stepTolerance
+		// The region has to be big enough for a zero step to mean something. An
+		// absolute threshold does not say that where the variables are hundreds of
+		// metres: measured, a run reported a vertex at a KKT residual of 22.5 with
+		// its region collapsed to 1.08e-10, which is not a vertex but a solver
+		// that had stopped being able to move.
+		const stepScale = Math.max(1, Math.hypot(...x));
+		const pinnedByModel = radius > stepTolerance * stepScale
 			&& (step.qpStatus === "solved" || step.qpStatus === "stationary_on_working_set");
 		// The step tolerance is relative to the point. An absolute 1e-12 means
 		// nothing where the variables are hundreds of metres: measured at a
 		// vertex, the steps were 3.6e-10 and then 9.0e-16, all of them zero for
 		// any purpose and only the last of them small enough to say so.
-		const stepScale = Math.max(1, Math.hypot(...x));
 		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasibilityTolerance
 			&& (stationary || pinnedByModel)) {
 			history.push({

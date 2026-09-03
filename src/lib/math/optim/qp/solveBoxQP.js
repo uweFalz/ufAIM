@@ -290,15 +290,29 @@ export function solveBoxQP({
 	let iterations = 0;
 	let released = 0;
 	let blocked = 0;
-	// Degenerate steps are how a cycle shows itself: the working set keeps
-	// changing while the point does not move. The guard below catches the
-	// shortest cycle - release one bound, be blocked by the same one at once -
-	// but a longer one walks straight past it. After enough steps of length zero
-	// the rule for choosing what to release and what to block switches to
-	// Bland's: always the lowest index that qualifies. It is a poor rule for
-	// speed and the only one that provably cannot cycle, so it is used as the
-	// fallback it is, never as the default.
+	// A stalled active set is one whose OBJECTIVE stops falling, and that is the
+	// test, because it is the only one that catches every way of stalling. Steps
+	// of length zero were the first guess and they are only the loudest case: a
+	// cycle that moves a little each time walks straight past a step-length test
+	// and past a step-length test made relative too, since the movement is real
+	// and only the progress is not. Measured on the alignment ramp rules, this
+	// solver ran 4000 iterations with 65 releases and never once registered a
+	// degenerate step, while returning the identical answer it had after 200.
+	//
+	// After enough iterations without progress the rule for choosing what to
+	// release and what to block switches to Bland's: always the lowest index that
+	// qualifies. It is a poor rule for speed and the only one that provably
+	// cannot cycle, so it is the fallback it is, never the default.
 	let degenerate = 0;
+	let bestObjective = Infinity;
+	const objectiveAt = (point) => {
+		let value = 0;
+		for (let i = 0; i < n; i++) {
+			value += c[i] * point[i];
+			for (let j = 0; j < n; j++) value += 0.5 * point[i] * H[i][j] * point[j];
+		}
+		return value;
+	};
 	// Anti-cycling: a bound that was just released and is immediately blocked
 	// again at a zero-length step would loop forever. The point is stationary
 	// within its working set, which is the answer.
@@ -371,27 +385,45 @@ export function solveBoxQP({
 		alpha = Math.max(0, Math.min(1, alpha));
 
 		if (alpha <= EPS && blocking === lastReleased && blocking >= 0) {
-			// released, then immediately blocked again without moving
+			// Released, then immediately blocked again without moving - the
+			// shortest cycle there is. This used to end the solve, which gave up
+			// before Bland's rule had been tried at all, and handed back a
+			// direction the subproblem could not vouch for; the caller's line
+			// search then backtracked it into the ground.
+			//
+			// So try Bland, once. Not "after twelve more rounds of the same
+			// two-cycle" - that was the first attempt and it cost a solve that ran
+			// in seventy seconds fifteen minutes, because each round is a full
+			// null-space solve. Bland is switched on immediately, and if the same
+			// thing happens with it already running then there really is nothing
+			// left to try.
 			working[blocking] = true;
-			return finish(
-				{ ok: true, status: "stationary_on_working_set", z, iterations, released, blocked },
-				working
-			);
+			if (degenerate >= blandAfter) {
+				return finish(
+					{ ok: true, status: "stationary_on_working_set", z, iterations, released, blocked },
+					working
+				);
+			}
+			degenerate = blandAfter;
+			continue;
 		}
-
-		// Degeneracy is about the point not moving, which is a question about the
-		// step, not about alpha on its own: a step of 1e-10 along a direction of
-		// norm 1e4 moves as far as a full step along a short one. Testing alpha
-		// against a constant let a cycle of very short steps run past the guard
-		// and burn the whole iteration budget.
-		if (alpha * norm <= tolerance) degenerate++;
-		else degenerate = 0;
 
 		z = z.map((value, i) => value + alpha * direction[i]);
 		for (let i = 0; i < n; i++) {
 			z[i] = Math.min(Math.max(z[i], lo[i]), up[i]);
 		}
 		if (blocking >= 0 && alpha < 1) { working[blocking] = true; blocked++; lastReleased = -1; }
+
+		// Progress, or the lack of it. Everything above may have changed the
+		// working set; what decides whether that was progress is the objective.
+		const objective = objectiveAt(z);
+		if (objective < bestObjective - tolerance * Math.max(1, Math.abs(bestObjective))) {
+			bestObjective = objective;
+			degenerate = 0;
+		} else {
+			degenerate++;
+			if (objective < bestObjective) bestObjective = objective;
+		}
 	}
 
 	// An exhausted active set is not self-explanatory, and the caller cannot see

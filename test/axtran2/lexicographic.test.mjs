@@ -369,7 +369,12 @@ test("a tier held to the budget of a vertex says so at once", () => {
 		extraEqualities: [{ id: "budget", gradient, residual: (x) => total(x) - limit }],
 	});
 	assert.equal(held.status, "stationary");
-	assert.ok(held.diagnostics.iterations <= 2, `took ${held.diagnostics.iterations} iterations`);
+	// Well inside the 40 it was given, which is the point: it recognises the
+	// vertex instead of iterating against it. It is no longer one or two, because
+	// the subproblem now tries Bland's rule before declaring itself stationary on
+	// its working set - it used to give up on the first immediate re-block and
+	// hand back a direction it could not vouch for.
+	assert.ok(held.diagnostics.iterations <= 15, `took ${held.diagnostics.iterations} iterations`);
 	// Which of the three ways it recognised there was nothing to do depends on
 	// how the multipliers land, and all three are correct answers to the same
 	// question. What must not happen is iterating against a pinned working set
@@ -379,11 +384,15 @@ test("a tier held to the budget of a vertex says so at once", () => {
 			.includes(held.diagnostics.history.at(-1).reason),
 		`reported "${held.diagnostics.history.at(-1).reason}"`
 	);
-	// and it is still exactly the length tier's alignment, because there was
-	// nowhere admissible to go
+	// and it is still the length tier's alignment, because there was nowhere
+	// admissible to go. Not bit-identical any more: the subproblem takes a few
+	// genuine steps before it declares itself stationary on its working set,
+	// where it used to give up on the first immediate re-block, so the point
+	// drifts by around 4e-8 m. A tolerance of a micron is far below anything an
+	// alignment cares about and far above that drift.
 	held.candidate.variables.forEach((value, i) => {
 		assert.ok(
-			Math.abs(value - length.candidate.variables[i]) < 1e-9,
+			Math.abs(value - length.candidate.variables[i]) < 1e-6,
 			`variable ${i} moved to ${value} from ${length.candidate.variables[i]}`
 		);
 	});
