@@ -3373,19 +3373,24 @@ return maplibregl$1;
     });
   }
   function parseCant(node, units) {
+    // Cant/superelevation values in LandXML are conventionally given in
+    // millimeters regardless of the file's declared linearUnit/elevationUnit
+    // (confirmed against SCx_1720.xml: appliedCant="95.000000" in a file whose
+    // Units are otherwise meters -- 95m of cant is physically impossible,
+    // 95mm is a realistic value).
     const out = [];
     for (const n of childList(node, "CantStation")) {
       out.push(
         cantStation({
           station: parseMeasure(attr(n, "station"), units?.linearUnit),
-          appliedCant: parseMeasure(attr(n, "appliedCant"), units?.elevationUnit),
+          appliedCant: parseMeasure(attr(n, "appliedCant"), "millimeter"),
           speed: parseMeasure(attr(n, "speed")),
           transitionType: attr(n, "transitionType"),
           curvature: attr(n, "curvature"),
           extras: {
-            equilibriumCant: parseMeasure(attr(n, "equilibriumCant"), units?.elevationUnit),
-            cantDeficiency: parseMeasure(attr(n, "cantDeficiency"), units?.elevationUnit),
-            cantExcess: parseMeasure(attr(n, "cantExcess"), units?.elevationUnit),
+            equilibriumCant: parseMeasure(attr(n, "equilibriumCant"), "millimeter"),
+            cantDeficiency: parseMeasure(attr(n, "cantDeficiency"), "millimeter"),
+            cantExcess: parseMeasure(attr(n, "cantExcess"), "millimeter"),
             cantGradient: parseNum(attr(n, "cantGradient")),
             adverse: parseBool(attr(n, "adverse"))
           }
@@ -39288,6 +39293,12 @@ xlsx/xlsx.mjs:
 				return points;
 			}
 
+			// GND/TRA name their cant field "cant"/"value"/"superelevation"/"u";
+			// landXML's <CantStation> instead uses "appliedCant" -- without it here,
+			// every landXML-sourced cant point silently reads as zero points, even
+			// when the source data has real values (confirmed against SCx_1720.xml).
+			const CANT_VALUE_KEYS = ["cant", "value", "superelevation", "u", "appliedCant"];
+
 			function pointSeries(entry, valueKeys) {
 				const points = entry?.item?.payload?.points ?? [];
 				return points.map((point) => {
@@ -39469,11 +39480,11 @@ xlsx/xlsx.mjs:
 				const definitions = [
 					["right", "profile", "Rechtes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
-					["left", "cant", "Linkes Gleis · Überhöhung u [mm]", "diagram-cant", ["cant", "value", "superelevation", "u"]],
+					["left", "cant", "Linkes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
 					["left", "alignment", "Linkes Gleis · Krümmung κ [1/m]", "diagram-curvature", null],
 					["kilometer", "alignment", "Kilometerlinie · Krümmung κ [1/m]", "diagram-curvature", null],
 					["right", "alignment", "Rechtes Gleis · Krümmung κ [1/m]", "diagram-curvature", null],
-					["right", "cant", "Rechtes Gleis · Überhöhung u [mm]", "diagram-cant", ["cant", "value", "superelevation", "u"]],
+					["right", "cant", "Rechtes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
 				];
 				for (const [side, kind, label, className, valueKeys] of definitions) {
 					const candidate = first(side, kind);
@@ -39493,7 +39504,7 @@ xlsx/xlsx.mjs:
 					if (!curvatureCandidate) continue;
 					const cantCandidate = first(side, "cant");
 					const curvaturePoints = curvatureSeries(curvatureCandidate);
-					const cantPoints = cantCandidate ? pointSeries(cantCandidate, ["cant", "value", "superelevation", "u"]) : [];
+					const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
 					const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
 					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · zul. v (Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm, Regelwert) [km/h]`, "diagram-speed", points, {
 						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
@@ -39502,7 +39513,7 @@ xlsx/xlsx.mjs:
 				for (const kind of ["profile", "alignment", "cant"]) {
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
-					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : ["cant", "value", "superelevation", "u"];
+					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
 					bands.push(band(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
 				}
 				return { anchor, entries, bands, hasUnknown: bySide.unknown.length > 0, missingKilometerLine: referenceRequired && !kmAlignment };
@@ -39766,7 +39777,7 @@ xlsx/xlsx.mjs:
 					const profile = related.entries.find((candidate) => candidate.item.kind === "profile");
 					const cant = related.entries.find((candidate) => candidate.item.kind === "cant");
 					const zSeries = profile ? seriesFor(profile, ["elevation", "height", "z"]) : [];
-					const uSeries = cant ? seriesFor(cant, ["cant", "value", "superelevation", "u"]) : [];
+					const uSeries = cant ? seriesFor(cant, CANT_VALUE_KEYS) : [];
 					const railA = zSeries;
 					const railB = zSeries.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
 					return { track, railA, railB, hasCant: uSeries.length > 0 };
