@@ -673,12 +673,50 @@ way: 1422.598 m, R = 454, transitions on 78 m. For a flatter curve the two
 differ by a factor of two (R = 2000 needs 35 m against the bound's 78), so the
 conservatism is real in general and simply absent here.
 
-*And what stopped it being the default.* With the exact form the points tier
-ends at an rms of 2.47 against 0.083, from a feasible start with margin, and
-from the declared start the QP gives up entirely. The trace shows the relaxation
-fully engaged (`delta = 1`) with the violation stuck at 0.39. Something in the
-interaction between these rows, the relaxation and the trust region is wrong and
-I did not find it.
+*And what stopped it being the default.* Four defects, since found and fixed,
+and one that remains:
+
+1. **The relaxation tightened satisfied inequalities.** Mirroring the equalities
+   as `Jg d - g delta <= -g` reads, for a satisfied `g < 0`, as `Jg d <= -g` at
+   `delta = 0` and `Jg d <= 0` at `delta = 1`. Raising the slack squeezed every
+   row that was not the problem: three rows slack by 22.6, 11.5 and 3.6 m were
+   being crushed while the one violated row went uncorrected. A relaxation may
+   only ever loosen — `-max(0, g) delta`.
+2. **The variable scaling never reached `Jg`.** `scaleEvaluator` transformed
+   `gradF` and `Jh`; the spread passed `Jg` through untouched, leaving the
+   inequality Jacobian in physical units against a scaled step — a factor of a
+   thousand on the curvature columns.
+3. **The QP's stall detector tested step length, not progress.** A cycle that
+   moves a little each time walks past it: 4000 active-set iterations returned
+   the identical answer 200 had. It tests the objective now.
+4. **The QP gave up before Bland's rule was tried**, handing back a direction it
+   could not vouch for, which the line search then backtracked into the ground.
+
+With those, both objectives converge under the exact rule and the points tier
+reaches every tolerance:
+
+| | verdict | ΣL [m] | end pose | outside | rms |
+|---|---|---|---|---|---|
+| bound, length | `stationary` at 161 | 1422.598 | 5.1e-13 | 8/12 | 73.71 |
+| exact, length | `stationary` at 207 | 1425.186 | 0.0 | 8/12 | 98.47 |
+| bound, points | `stationary` at 171 | 1429.994 | 0.0 | 0/12 | **0.0832** |
+| exact, points | `max_iterations` | 1430.028 | 2.3e-13 | 0/12 | **0.3477** |
+
+**What remains, with its cause named.** The exact form's points tier stops at an
+rms four times the bound form's, and the trace says why: the penalty weight on
+the end-pose heading reaches 4.5e6 against a multiplier of 0.10. The three
+end-pose Jacobian rows differ in norm by a factor of seven hundred — 141, 376
+and 0.51 — so the smallest row produces a wild multiplier estimate, and the
+monotone penalty rule locks it in for good. After that the merit rejects any
+step that touches the heading: 23 backtracks, `alpha = 1e-7`, the trust region
+at its floor.
+
+Scaling the constraint rows is the obvious answer and was tried. It regressed
+the known-good baseline — the bound form's length tier fell from `stationary` at
+161 to `max_iterations` — because the stationarity thresholds are calibrated
+against unscaled gradients. It was reverted rather than defended. That is the
+next package, and it is a change to the merit and the stopping tests, not to the
+inequality path.
 
 One thing was found and fixed on the way: the first formulation emitted two
 mirrored rows per ramp to avoid the kink in `|du|`. In the capped region both

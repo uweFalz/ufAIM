@@ -109,6 +109,7 @@ export function solveRelaxedQpStep({
 	upper,
 	relaxationWeight = 1e4,
 	damping = 1e-10,
+	qpIterations = 200,
 } = {}) {
 	const n = gradF.length;
 	const m = h.length;
@@ -133,23 +134,34 @@ export function solveRelaxedQpStep({
 	// (d, delta) = (0, 1) is feasible for the relaxed problem by construction
 	const z0 = [...new Array(n).fill(0), m > 0 ? 1 : 0];
 
-	// Inequalities are relaxed by the same slack, so that (d, delta) = (0, 1)
-	// stays feasible for them too:
+	// Inequalities are relaxed only where they are violated:
 	//
-	//     g + Jg d <= 0   relaxed to   Jg d - g delta <= -g
+	//     g + Jg d <= 0   relaxed to   Jg d - max(0, g) delta <= -g
 	//
-	// which at (0, 1) reads -g <= -g. Without the relaxation an inconsistent
-	// linearised inequality would make the subproblem infeasible, which is the
-	// failure the relaxation exists to prevent for the equalities.
+	// The obvious form, mirroring the equalities as Jg d - g delta <= -g, is
+	// wrong, and wrong in the direction that hurts. For a satisfied constraint
+	// g < 0 it reads Jg d <= -g at delta = 0 - the true linearisation, with all
+	// the room the slack allows - and Jg d <= 0 at delta = 1. So raising the
+	// slack TIGHTENS every constraint that was not the problem. Measured on the
+	// alignment ramp rules, three rows slack by 22.6, 11.5 and 3.6 m were being
+	// squeezed to nothing while the one violated row went uncorrected: the
+	// subproblem sat at delta = 1 with the violation stuck at 0.39 and the active
+	// set churning through 66 releases.
+	//
+	// A relaxation may only ever loosen. With max(0, g) the violated rows behave
+	// as before - at delta = 1 a violated one becomes Jg d <= 0, which is "do not
+	// make it worse" - and the satisfied ones keep their full room at every
+	// delta. (d, delta) = (0, 1) is still feasible for all of them, which is what
+	// the relaxation is for.
 	const p = g.length;
 	const C = [];
 	const dRhs = [];
 	for (let i = 0; i < p; i++) {
-		C.push([...(Jg[i] ?? new Array(n).fill(0)), -g[i]]);
+		C.push([...(Jg[i] ?? new Array(n).fill(0)), -Math.max(0, g[i])]);
 		dRhs.push(-g[i]);
 	}
 
-	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping });
+	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping, maxIterations: qpIterations });
 	if (!qp.ok) return { ok: false, status: qp.status, reason: qp.reason ?? null, detail: qp.detail ?? null };
 
 	const d = qp.z.slice(0, n);
