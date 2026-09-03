@@ -88,6 +88,10 @@ export function solveAlignmentProblem({
 	startAt = null,
 	maxIterations = 60,
 	relaxationWeight = 1e6,
+	// forwarded rather than fixed here: which penalty rule suits an alignment is
+	// a question about this problem, not about the optimiser
+	penaltyRule,
+	penaltySafety,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
 	if (typeof buildAlignment !== "function") {
@@ -449,6 +453,8 @@ export function solveAlignmentProblem({
 		maxIterations,
 		relaxationWeight,
 		initialHessianScale: 1,
+		...(penaltyRule === undefined ? {} : { penaltyRule }),
+		...(penaltySafety === undefined ? {} : { penaltySafety }),
 	});
 	const run = {
 		...scaledRun,

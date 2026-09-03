@@ -195,11 +195,35 @@ export function solveRelaxedQpStep({
 	let lambda = new Array(p).fill(0);
 	if (fittedCount > 0 && freeRows.length > 0) {
 		const JhFree = fitted.map((row) => freeRows.map((i) => row[i]));
+		// The fit is solved in a row-normalised basis. Writing Jh = D U with D the
+		// row norms and U unit rows, the normal equations
+		//
+		//     Jh Jh' mu = Jh s     become     U U' (D mu) = U s
+		//
+		// so the same multipliers come out of a Gram matrix with a unit diagonal
+		// instead of one whose diagonal spans the square of the row norms. That
+		// is not a different estimate, it is the same one computed stably.
+		//
+		// It matters because the rows are not comparable. The three end-pose rows
+		// of an alignment are a position in metres, a position in metres and a
+		// heading in radians, with norms measured at 141, 376 and 0.51. The Gram
+		// diagonal then spans 2e4 to 0.26 and the regularisation, taken from the
+		// largest entry, does nothing at all for the smallest row - whose
+		// multiplier is free to come out enormous. Measured, a heading multiplier
+		// of 0.10 had at some iteration been estimated near 2.3e5, and the
+		// monotone penalty rule locked a weight of 4.5e6 in for the rest of the
+		// run. After that the merit rejects any step that touches the heading.
+		const rowNorms = JhFree.map((row) => {
+			const norm = Math.hypot(...row);
+			return Number.isFinite(norm) && norm > 0 ? norm : 1;
+		});
+		const unitRows = JhFree.map((row, j) => row.map((value) => value / rowNorms[j]));
 		const stationarityFree = freeRows.map((i) => stationarity[i]);
-		const gram = JhFree.map((rowA) => JhFree.map((rowB) => dot(rowA, rowB)));
-		const gramScale = Math.max(...gram.map((row, i) => Math.abs(row[i])), 1);
-		for (let i = 0; i < fittedCount; i++) gram[i][i] += 1e-12 * gramScale;
-		const rhs = JhFree.map((row) => dot(row, stationarityFree));
+		const gram = unitRows.map((rowA) => unitRows.map((rowB) => dot(rowA, rowB)));
+		// every diagonal entry is 1 by construction, so one absolute term
+		// regularises every direction equally
+		for (let i = 0; i < fittedCount; i++) gram[i][i] += 1e-12;
+		const rhs = unitRows.map((row) => dot(row, stationarityFree));
 		// small symmetric solve by Gaussian elimination with partial pivoting
 		const M = gram.map((row, i) => [...row, rhs[i]]);
 		let solved = new Array(fittedCount).fill(0);
@@ -222,6 +246,8 @@ export function solveRelaxedQpStep({
 				(Math.abs(row[i]) > 1e-300 ? row[fittedCount] / row[i] : 0));
 		}
 		if (!solved.every(Number.isFinite)) solved = new Array(fittedCount).fill(0);
+		// back out of the normalised basis: the fit returned D mu
+		solved = solved.map((value, j) => value / rowNorms[j]);
 		mu = solved.slice(0, m);
 		// An inequality multiplier is one-sided: a negative one says the row
 		// should not be held at all, and reporting it as negative would let the

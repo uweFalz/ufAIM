@@ -702,21 +702,47 @@ reaches every tolerance:
 | bound, points | `stationary` at 171 | 1429.994 | 0.0 | 0/12 | **0.0832** |
 | exact, points | `max_iterations` | 1430.028 | 2.3e-13 | 0/12 | **0.3477** |
 
-**What remains, with its cause named.** The exact form's points tier stops at an
-rms four times the bound form's, and the trace says why: the penalty weight on
-the end-pose heading reaches 4.5e6 against a multiplier of 0.10. The three
-end-pose Jacobian rows differ in norm by a factor of seven hundred — 141, 376
-and 0.51 — so the smallest row produces a wild multiplier estimate, and the
-monotone penalty rule locks it in for good. After that the merit rejects any
-step that touches the heading: 23 backtracks, `alpha = 1e-7`, the trust region
-at its floor.
+**The penalty weight blow-up, and the two things that caused it.** The heading
+weight reached 4.5e6 against a multiplier of 0.10, after which the merit
+rejected any step that touched the heading at all: 23 backtracks, `alpha = 1e-7`,
+the trust region at its floor. Two independent causes, both now fixed.
 
-Scaling the constraint rows is the obvious answer and was tried. It regressed
-the known-good baseline — the bound form's length tier fell from `stationary` at
-161 to `max_iterations` — because the stationarity thresholds are calibrated
-against unscaled gradients. It was reverted rather than defended. That is the
-next package, and it is a change to the merit and the stopping tests, not to the
-inequality path.
+*The estimate was computed in a badly conditioned basis.* The fit solves
+`Jh Jh' mu = Jh s`, and the three end-pose rows differ in norm by a factor of
+seven hundred — 141, 376 and 0.51 — so the Gram diagonal spans 2e4 to 0.26 and
+the regularisation, taken from the largest entry, does nothing for the smallest
+row. Writing `Jh = D U` turns the normal equations into `U U' (D mu) = U s`,
+whose Gram matrix has a unit diagonal. Same multipliers, computed stably.
+
+*And the rule that consumed it never forgot.* The monotone rule of Gerdts 3.8
+was the default here, chosen on the reasoning that a decaying weight decays
+exactly when the multipliers are least trustworthy. That weighed the wrong risk:
+a rule that never decays makes one bad early estimate permanent. Powell's rule
+is the default now.
+
+Measured on the points tier, the two together:
+
+| | verdict | iterations | rms | weights | time |
+|---|---|---|---|---|---|
+| monotone, before both | `stationary` | 171 | 0.0832 | — | 220 s |
+| monotone, stabilised fit | `stationary` | 86 | 0.0832 | 1640, 6010, 1.23e6 | 100 s |
+| Powell, stabilised fit | `stationary` | **45** | 0.0832 | **3.8, 21, 3130** | **9 s** |
+
+The whole two-phase run now takes 9 seconds against 197, with the identical
+answer: tier 1 `converged` at 126, tier 2 `stationary` at 45, `ok=true`,
+`admissible=true`, span 7.396 m. Tier 1 reports `converged` rather than
+`stationary` for the first time — the KKT test is met outright, which it never
+was while the weights were six orders too large.
+
+Scaling the constraint *rows* was tried first and reverted: it regressed the
+baseline, because the stationarity thresholds are calibrated against unscaled
+gradients. Normalising inside the multiplier fit achieves what it was meant to
+without touching the problem the solver is given.
+
+**What remains.** The exact ramp rule's points tier reaches rms 0.0935 against
+the bound form's 0.0832 and ends on `qp_failed` rather than a verdict. Much
+closer than the 0.3477 it started at, and not yet parity. `rampLengthAs` still
+defaults to `"bound"`.
 
 One thing was found and fixed on the way: the first formulation emitted two
 mirrored rows per ramp to avoid the kink in `|du|`. In the capped region both
