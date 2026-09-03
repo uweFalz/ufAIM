@@ -360,7 +360,14 @@ test("a tier held to the budget of a vertex says so at once", () => {
 	const total = (x) => gradient.reduce((sum, weight, i) => sum + weight * x[i], 0);
 
 	const length = solveAlignmentProblem({ ...common, objective: "accumulated-length", maxIterations: 300 });
-	assert.equal(length.status, "stationary", "the length tier reached its own optimum");
+	// "converged" is the KKT test met outright; "stationary" is the weaker
+	// verdict of a step that has nowhere to go. Either says the tier reached its
+	// own optimum, which is all this test needs - and which of the two comes back
+	// depends on how well the multipliers are conditioned, not on the alignment.
+	assert.ok(
+		["converged", "stationary"].includes(length.status),
+		`the length tier reached its own optimum, reported "${length.status}"`
+	);
 	const limit = total(length.candidate.variables);
 
 	const held = solveAlignmentProblem({

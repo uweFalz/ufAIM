@@ -50,7 +50,17 @@ export function solveSQP({
 	// the run has converged.
 	stationarityTolerance = 1e-4,
 	stallLimit = 2,
-	penaltyRule = "monotone",
+	// Powell's rule, which lets a weight fall again when its multiplier drops.
+	// The monotone rule of Gerdts 3.8 was the default, chosen because a weight
+	// that decays does so exactly when the multipliers are least trustworthy.
+	// That reasoning was wrong about which risk is larger. A rule that never
+	// decays makes one bad early estimate permanent, and measured on an alignment
+	// fit it did: a heading weight of 1.2e6 against a multiplier of order one,
+	// locked in for the rest of the run, after which the merit rejected every
+	// step that touched the heading. The same fit under Powell's rule reaches the
+	// identical answer in 45 iterations instead of 86, in 9 seconds instead of
+	// 100, with weights of 3.8, 21 and 3130.
+	penaltyRule = "powell",
 	penaltySafety = 20,
 	relaxationWeight = 1e4,
 	qpIterations = 200,
