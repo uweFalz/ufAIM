@@ -36810,7 +36810,11 @@ return maplibregl$1;
       profileRef: alignment2.profileRef ?? inferInlineRef(alignment2?.profile, "profile"),
       cantRef: alignment2.cantRef ?? inferInlineRef(alignment2?.cant, "cant"),
       staEqRef: alignment2.staEqRef ?? inferStaEqRef(alignment2?.staEquations ?? alignment2?.staEq ?? null),
-      meta: isObject9(alignment2.meta) ? alignment2.meta : {},
+      // GND/VermEsn alignments carry a top-level .meta; landXML's createAlignment
+      // has no such field and nests the same information (desc, oID, state, ...)
+      // under .extras.meta instead -- fall back to that so landXML's desc
+      // (e.g. "Kilometrierungslinie 1720") survives into item.payload.meta.
+      meta: isObject9(alignment2.meta) ? alignment2.meta : (isObject9(alignment2?.extras?.meta) ? alignment2.extras.meta : {}),
       extended: {
         ...(isObject9(alignment2.extended) ? alignment2.extended : {}),
         ...(isObject9(alignment2?.extras?.viewer7L) ? { viewer7L: alignment2.extras.viewer7L } : {}),
@@ -39353,9 +39357,24 @@ xlsx/xlsx.mjs:
 					anchor = allEntries.find((candidate) => candidate.item.id === relation?.toId) ?? null;
 				}
 				anchor ??= entry.loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? entry;
+				// Follow stationReference relations transitively, not just one hop from
+				// the anchor: a landXML Kilometrierungslinie can itself be related to
+				// other alignments (e.g. Richtungs-/Gegenrichtungsgleis), and those
+				// alignments' OWN profile/cant would otherwise never be reached, even
+				// though the alignments themselves are (verified against SCx_1720.xml:
+				// A101720R's cant only surfaced once this closure ran two hops instead
+				// of one). GND/VermEsn relations are already flat (one hop), so this is
+				// a no-op for them -- confirmed no change in entry/band counts there.
 				const linkedIds = new Set([anchor.item.id]);
-				for (const relation of relations) {
-					if (relation.type === "stationReference" && relation.toId === anchor.item.id) linkedIds.add(relation.fromId);
+				const frontier = [anchor.item.id];
+				while (frontier.length) {
+					const currentId = frontier.pop();
+					for (const relation of relations) {
+						if (relation.type === "stationReference" && relation.toId === currentId && !linkedIds.has(relation.fromId)) {
+							linkedIds.add(relation.fromId);
+							frontier.push(relation.fromId);
+						}
+					}
 				}
 				return {
 					anchor,
@@ -39382,6 +39401,15 @@ xlsx/xlsx.mjs:
 				if (direction.includes("kilometer") || /(?:^|[\s_.-])km(?:$|[\s_.-])/.test(name)) return "kilometer";
 				if (direction.includes("rechts") || /(?:^|[\s_.-])(rechts|right|rg)(?:$|[\s_.-])/.test(name)) return "right";
 				if (direction.includes("links") || /(?:^|[\s_.-])(links|left|lg)(?:$|[\s_.-])/.test(name)) return "left";
+				// A profile/cant/staEq object has no direction signal of its own -- it
+				// was never dragged into a 7L lane, its owning alignment was. Inherit
+				// that alignment's side instead of defaulting to "unknown" (confirmed
+				// against SCx_1720.xml: A101720R::cant only resolved to "right" once
+				// this ran, matching A101720R itself, which the user actually assigned).
+				if (entry.item?.kind !== "alignment") {
+					const owningAlignment = relatedDiagramEntries(entry).anchor;
+					if (owningAlignment && owningAlignment !== entry) return sevenLineSide(owningAlignment);
+				}
 				return "unknown";
 			}
 
@@ -41999,6 +42027,151 @@ xlsx/xlsx.mjs:
 				performance: () => performanceSamples.slice(),
 			});
 
+			// landXML files often carry multiple Alignments for one Strecke: a
+			// Kilometrierungslinie (real, absolute Bahn-km) plus Richtungs-/
+			// Gegenrichtungsgleis alignments whose own staStart restarts near 0
+			// (dateilokal) -- confirmed against SCx_1720.xml: A101720S runs
+			// km 210695-273008, A101720R/L/M all start near 0. Their profile/cant
+			// points inherit that local station too, so on any diagram combining
+			// them with the Kilometerlinie they land nowhere near it and get
+			// clipped away entirely (clipPointsToRange() against the anchor's
+			// range) instead of just looking wrong.
+			//
+			// Fix: sample the Kilometrierungslinie into a dense polyline, then for
+			// every other alignment's element boundaries (which DO carry real
+			// easting/northing tied to that alignment's own local station) find the
+			// nearest point on that polyline -- its station is the true external
+			// station for that local station. Interpolating over those matched
+			// pairs gives a local-to-external mapping good for any local station,
+			// including profile/cant points (local-station-only, no coordinates of
+			// their own). Writing the result into extras.externalStation is
+			// deliberate: every consumer (curvatureSeries, pointSeries,
+			// stationRangeForEntry) already prefers that field over the raw local
+			// station, so nothing downstream needs to change.
+			function landXmlAlignmentDesc(entry) {
+				return String(entry?.item?.payload?.meta?.desc ?? "");
+			}
+
+			function isLandXmlKilometrierungslinie(entry) {
+				return /kilometrierungslinie/i.test(landXmlAlignmentDesc(entry));
+			}
+
+			function referenceStationPolyline(alignmentEntry, maximumStep = 10) {
+				const points = [];
+				for (const element of alignmentEntry?.item?.payload?.coordGeom?.elements ?? []) {
+					const elementStart = stationScalar(element?.extras?.externalStation ?? element.staStart);
+					if (!Number.isFinite(elementStart)) continue;
+					const length = Math.abs(numberValue(element.length));
+					const sampled = sampleElementSource(element, maximumStep);
+					const segments = sampled.length - 1;
+					sampled.forEach((point, index) => {
+						const ratio = segments > 0 ? index / segments : 0;
+						points.push({ easting: point.easting, northing: point.northing, station: elementStart + ratio * length });
+					});
+				}
+				return points;
+			}
+
+			function nearestStationOnPolyline(polyline, easting, northing) {
+				let best = null;
+				let bestDistanceSq = Infinity;
+				for (let i = 0; i < polyline.length - 1; i += 1) {
+					const a = polyline[i];
+					const b = polyline[i + 1];
+					const dx = b.easting - a.easting;
+					const dy = b.northing - a.northing;
+					const lengthSq = dx * dx + dy * dy;
+					const t = lengthSq > 1e-9 ? Math.max(0, Math.min(1, ((easting - a.easting) * dx + (northing - a.northing) * dy) / lengthSq)) : 0;
+					const projEasting = a.easting + t * dx;
+					const projNorthing = a.northing + t * dy;
+					const distanceSq = (easting - projEasting) ** 2 + (northing - projNorthing) ** 2;
+					if (distanceSq < bestDistanceSq) {
+						bestDistanceSq = distanceSq;
+						best = a.station + t * (b.station - a.station);
+					}
+				}
+				return best;
+			}
+
+			function landXmlStationMapping(targetEntry, referencePolyline) {
+				const elements = targetEntry?.item?.payload?.coordGeom?.elements ?? [];
+				const pairs = [];
+				for (const element of elements) {
+					const local = numberValue(element.staStart);
+					if (Number.isFinite(local) && element.start) {
+						const external = nearestStationOnPolyline(referencePolyline, element.start.easting, element.start.northing);
+						if (Number.isFinite(external)) pairs.push({ local, external });
+					}
+				}
+				const lastElement = elements[elements.length - 1];
+				if (lastElement?.end) {
+					const local = numberValue(lastElement.staStart) + Math.abs(numberValue(lastElement.length));
+					const external = nearestStationOnPolyline(referencePolyline, lastElement.end.easting, lastElement.end.northing);
+					if (Number.isFinite(local) && Number.isFinite(external)) pairs.push({ local, external });
+				}
+				pairs.sort((a, b) => a.local - b.local);
+				return pairs;
+			}
+
+			function mapLandXmlStation(pairs, localStation) {
+				if (!pairs.length || !Number.isFinite(localStation)) return null;
+				if (localStation <= pairs[0].local) return pairs[0].external;
+				if (localStation >= pairs[pairs.length - 1].local) return pairs[pairs.length - 1].external;
+				for (let i = 1; i < pairs.length; i += 1) {
+					if (localStation <= pairs[i].local) {
+						const a = pairs[i - 1];
+						const b = pairs[i];
+						const ratio = b.local === a.local ? 0 : (localStation - a.local) / (b.local - a.local);
+						return a.external + ratio * (b.external - a.external);
+					}
+				}
+				return pairs[pairs.length - 1].external;
+			}
+
+			function applyLandXmlStationMapping(targetEntry, pairs) {
+				for (const element of targetEntry?.item?.payload?.coordGeom?.elements ?? []) {
+					const localStart = numberValue(element.staStart);
+					const length = Math.abs(numberValue(element.length));
+					const externalStart = mapLandXmlStation(pairs, localStart);
+					if (externalStart == null) continue;
+					element.extras = element.extras ?? {};
+					element.extras.externalStation = externalStart;
+					if (Number.isFinite(length)) {
+						const externalEnd = mapLandXmlStation(pairs, localStart + length);
+						if (externalEnd != null) element.extras.externalStationEnd = externalEnd;
+					}
+				}
+			}
+
+			function applyLandXmlStationMappingToPoints(pointsEntry, pairs) {
+				for (const point of pointsEntry?.item?.payload?.points ?? []) {
+					const external = mapLandXmlStation(pairs, numberValue(point.station));
+					if (external == null) continue;
+					point.extras = point.extras ?? {};
+					point.extras.externalStation = external;
+				}
+			}
+
+			function reconcileLandXmlStationing(objects) {
+				const alignments = objects.filter((entry) => entry.item.kind === "alignment");
+				if (alignments.length < 2) return;
+				const reference = alignments.find(isLandXmlKilometrierungslinie);
+				if (!reference) return;
+				const referencePolyline = referenceStationPolyline(reference);
+				if (referencePolyline.length < 2) return;
+				for (const target of alignments) {
+					if (target === reference) continue;
+					const pairs = landXmlStationMapping(target, referencePolyline);
+					if (pairs.length < 2) continue;
+					applyLandXmlStationMapping(target, pairs);
+					for (const sibling of relatedDiagramEntries(target).entries) {
+						if (sibling.item.kind === "profile" || sibling.item.kind === "cant") {
+							applyLandXmlStationMappingToPoints(sibling, pairs);
+						}
+					}
+				}
+			}
+
 			function renderResultObjects(result, fileName, { deferRender = false } = {}) {
 				const objects = (result?.items ?? [])
 					.filter((item) =>
@@ -42029,6 +42202,7 @@ xlsx/xlsx.mjs:
 				};
 				for (const entry of objects) entry.loaded = loadedFile;
 				loadedFiles.push(loadedFile);
+				if (objects[0]?.parser === "landXML") reconcileLandXmlStationing(objects);
 				validate7lButton.disabled = false;
 				exportLandxmlButton.disabled = !allViewerEntries().some((entry) => entry.item.kind === "alignment");
 				if (!deferRender) {
