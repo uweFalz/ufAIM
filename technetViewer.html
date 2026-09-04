@@ -39290,8 +39290,9 @@ xlsx/xlsx.mjs:
 					const s1 = Number.isFinite(stationScalar(externalEnd)) ? stationScalar(externalEnd) : s0 + length;
 					const radiusStart = numberValue(element.radius ?? element.radiusStart);
 					const radiusEnd = numberValue(element.radius ?? element.radiusEnd);
-					const k0 = element.type === "Line" || !Number.isFinite(radiusStart) || radiusStart === 0 ? 0 : 1 / radiusStart;
-					const k1 = element.type === "Line" || !Number.isFinite(radiusEnd) || radiusEnd === 0 ? 0 : 1 / radiusEnd;
+					const rotationSign = curveRotationSign(element);
+					const k0 = element.type === "Line" || !Number.isFinite(radiusStart) || radiusStart === 0 ? 0 : rotationSign / radiusStart;
+					const k1 = element.type === "Line" || !Number.isFinite(radiusEnd) || radiusEnd === 0 ? 0 : rotationSign / radiusEnd;
 					points.push({ x: s0, y: k0 }, { x: s1, y: k1 });
 				}
 				return points;
@@ -40060,16 +40061,79 @@ xlsx/xlsx.mjs:
 			// under a centimeter at real rail transition lengths -- ten fine substeps
 			// per requested output point keeps trapezoidal error negligible without
 			// pulling in a Fresnel-integral implementation.
+			// Signed turn direction for the Krümmung diagram: landXML's radius is
+			// an unsigned magnitude with direction carried separately in rot, so
+			// without this every curve/spiral shows identical positive curvature
+			// regardless of which way it actually turns. VermEsn/GND never set
+			// rot (their radius is pre-signed instead), so this is a no-op there.
+			function curveRotationSign(element) {
+				const rot = element?.type === "Spiral" ? element?.extras?.rot : element?.rot;
+				return rot === "cw" ? -1 : 1;
+			}
+
+			// landXML's dirStart/dirEnd on a Curve turn out not to be a reliable
+			// tangent bearing for this sampler's purposes (confirmed against
+			// SCx_1720.xml: reconstructing a Curve's own declared <End> from
+			// <Start> + dirStart + radius, in either rotational sign, leaves
+			// 200-1000m of residual error -- the visible "spike" this was
+			// reported against). A Curve's <Center> has no such ambiguity -- it
+			// is a literal coordinate -- so this sweeps around it directly
+			// instead (verified to sub-millimetre accuracy on both a rot="cw"
+			// and a rot="ccw" curve from that file). VermEsn/GND curves carry no
+			// <Center> (and store radius pre-signed with direction baked in), so
+			// they fall through to the original heading-based formula unchanged.
+			// Returns null when center/radius/rot aren't all available.
+			function curveCenterSweep(element, length, segments) {
+				const center = {
+					easting: Number(element?.center?.easting),
+					northing: Number(element?.center?.northing),
+				};
+				const start = {
+					easting: Number(element?.start?.easting),
+					northing: Number(element?.start?.northing),
+				};
+				const radius = numberValue(element?.radius ?? element?.radiusStart);
+				const rot = element?.rot;
+				if (!Number.isFinite(center.easting) || !Number.isFinite(center.northing)) return null;
+				if (!Number.isFinite(radius) || radius === 0) return null;
+				if (rot !== "cw" && rot !== "ccw") return null;
+				const sign = rot === "cw" ? -1 : 1;
+				const angle0 = Math.atan2(start.northing - center.northing, start.easting - center.easting);
+				const points = [];
+				for (let index = 0; index <= segments; index += 1) {
+					const distance = length * (index / segments);
+					const angle = angle0 + sign * distance / radius;
+					points.push({
+						easting: center.easting + radius * Math.cos(angle),
+						northing: center.northing + radius * Math.sin(angle),
+					});
+				}
+				return points;
+			}
+
+			// landXML's PI is the literal coordinate where the spiral's entry and
+			// exit tangent lines intersect, so Start-to-PI is the true initial
+			// tangent bearing in plain (easting, northing) math terms -- no
+			// dirStart-convention guessing needed (verified to sub-millimetre
+			// accuracy against SCx_1720.xml's rot="cw" INF-to-922m spiral at
+			// staStart 269585.199751, using cos->easting/sin->northing with that
+			// native angle, matching the same convention curveCenterSweep uses).
+			// VermEsn/GND spirals carry no <PI>, so they keep the original
+			// dirStart-based formula below untouched.
+			function nativeHeadingFromPi(element, start) {
+				const pi = { easting: Number(element?.pi?.easting), northing: Number(element?.pi?.northing) };
+				if (!Number.isFinite(pi.easting) || !Number.isFinite(pi.northing)) return null;
+				if (pi.easting === start.easting && pi.northing === start.northing) return null;
+				return Math.atan2(pi.northing - start.northing, pi.easting - start.easting);
+			}
+
 			function sampleSpiralElement(element, start, end, length, maximumStep) {
-				const bearingGon = angleGon(element?.direction ?? element?.dirStart);
-				if (!Number.isFinite(bearingGon) || !(length > 0)) return [start, end];
+				const rot = element?.extras?.rot;
+				const nativeHeading0 = (rot === "cw" || rot === "ccw") ? nativeHeadingFromPi(element, start) : null;
 				const radiusStart = numberValue(element?.radiusStart);
 				const radiusEnd = numberValue(element?.radiusEnd);
-				const curvatureStart = Number.isFinite(radiusStart) && radiusStart !== 0 ? 1 / radiusStart : 0;
-				const curvatureEnd = Number.isFinite(radiusEnd) && radiusEnd !== 0 ? 1 / radiusEnd : 0;
-				const curvatureRate = (curvatureEnd - curvatureStart) / length;
-				const heading0 = bearingGon * Math.PI / 200;
-				const headingAt = (s) => heading0 + curvatureStart * s + curvatureRate * s * s / 2;
+				const magnitudeStart = Number.isFinite(radiusStart) && radiusStart !== 0 ? 1 / radiusStart : 0;
+				const magnitudeEnd = Number.isFinite(radiusEnd) && radiusEnd !== 0 ? 1 / radiusEnd : 0;
 				const outputSegments = Math.max(1, Math.min(500, Math.ceil(length / maximumStep)));
 				const fineStepsPerOutput = 10;
 				const fineSteps = outputSegments * fineStepsPerOutput;
@@ -40077,6 +40141,26 @@ xlsx/xlsx.mjs:
 				const points = [start];
 				let easting = start.easting;
 				let northing = start.northing;
+				if (nativeHeading0 != null) {
+					const sign = rot === "cw" ? -1 : 1;
+					const curvatureStart = sign * magnitudeStart;
+					const curvatureRate = sign * (magnitudeEnd - magnitudeStart) / length;
+					const headingAt = (s) => nativeHeading0 + curvatureStart * s + curvatureRate * s * s / 2;
+					let previousHeading = headingAt(0);
+					for (let index = 1; index <= fineSteps; index += 1) {
+						const heading = headingAt(index * ds);
+						easting += ds * (Math.cos(previousHeading) + Math.cos(heading)) / 2;
+						northing += ds * (Math.sin(previousHeading) + Math.sin(heading)) / 2;
+						previousHeading = heading;
+						if (index % fineStepsPerOutput === 0) points.push(index === fineSteps ? end : { easting, northing });
+					}
+					return points;
+				}
+				const bearingGon = angleGon(element?.direction ?? element?.dirStart);
+				if (!Number.isFinite(bearingGon) || !(length > 0)) return [start, end];
+				const curvatureRate = (magnitudeEnd - magnitudeStart) / length;
+				const heading0 = bearingGon * Math.PI / 200;
+				const headingAt = (s) => heading0 + magnitudeStart * s + curvatureRate * s * s / 2;
 				let previousHeading = headingAt(0);
 				for (let index = 1; index <= fineSteps; index += 1) {
 					const heading = headingAt(index * ds);
@@ -40103,6 +40187,13 @@ xlsx/xlsx.mjs:
 				const length = Number.isFinite(declaredLength) && declaredLength > 0 ? declaredLength : chordLength;
 				if (element?.type === "Spiral") return sampleSpiralElement(element, start, end, length, maximumStep);
 				const segments = Math.max(1, Math.min(500, Math.ceil(length / maximumStep)));
+				if (element?.type === "Curve") {
+					const centerSweep = curveCenterSweep(element, length, segments);
+					if (centerSweep) {
+						centerSweep[centerSweep.length - 1] = end;
+						return centerSweep;
+					}
+				}
 				const radius = numberValue(element?.radius ?? element?.radiusStart);
 				const bearingGon = angleGon(element?.direction ?? element?.dirStart);
 				const isCircular = element?.type === "Curve" && Number.isFinite(radius) && radius !== 0 && Number.isFinite(bearingGon);
