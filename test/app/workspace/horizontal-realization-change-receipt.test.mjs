@@ -33,3 +33,15 @@ test("fails closed for unverifiable identity, revision, sparse identity, target,
 	]) assert.throws(() => buildHorizontalRealizationChangeReceipt({ beforeAlignmentData: alignment(.01), alignmentChange: change, activeObjectId: "A1", activeElementId: change.elementId }));
 	assert.throws(() => buildHorizontalRealizationChangeReceipt({ beforeAlignmentData: alignment(.01), alignmentChange: { ...valid, alignmentData: alignment(.01) }, activeObjectId: "A1", activeElementId: "ARC" }), /no verified/);
 });
+
+test("carries only explicitly evidence-only and inadmissible AXTRAN2 output", () => {
+	const evidence = { type: "axtran2-consequence-evidence", status: "evidence-only", admissible: false, version: "alignment-axtran-evidence/0.1", diagnostics: { iterations: 2 } };
+	const receipt = buildHorizontalRealizationChangeReceipt({
+		beforeAlignmentData: alignment(0.01),
+		alignmentChange: { objectId: "A1", elementId: "ARC", revision: 7, alignmentData: alignment(0.02), spotObject: { id: "A1" } },
+		activeObjectId: "A1", activeElementId: "ARC", axtranEvidence: evidence,
+	});
+	assert.equal(receipt.diagnostics.status, "evidence-only");
+	assert.equal(receipt.diagnostics.evidence, evidence);
+	assert.equal(receipt.diagnostics.evidence.admissible, false);
+});

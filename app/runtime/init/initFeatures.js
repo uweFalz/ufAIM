@@ -15,6 +15,7 @@ import { createTransitionAxtranPreviewController } from "@app/controllers/transi
 import { TransitionAxtranApplicationService } from "@src/services/transition/TransitionAxtranApplicationService.js";
 import { TransitionCatalogueAdapter } from "@src/services/transition/TransitionCatalogueAdapter.js";
 import { AlignmentApplicationService } from "@src/services/alignment/AlignmentApplicationService.js";
+import { AlignmentAxtranEvidenceService } from "@src/services/alignment/AlignmentAxtranEvidenceService.js";
 import { AlignmentProfileApplicationService } from "@src/services/alignment/AlignmentProfileApplicationService.js";
 import { createAlignmentProfileProjectionController } from "@app/controllers/alignment-profile/createAlignmentProfileProjectionController.js";
 import { AlignmentProfileSynchronizedView } from "@app/view/alignment-profile/AlignmentProfileSynchronizedView.js";
@@ -392,7 +393,7 @@ async function setupTransitionRuntime(ctx) {
 }
 
 function setupAlignmentEditorRuntime(ctx) {
-	const bridge = makeAlignmentEditorBridge({ store: ctx.store, ui: ctx.ui, messaging: ctx.messaging, receiptSource:ctx.authoringReceiptRail });
+	const bridge = makeAlignmentEditorBridge({ store: ctx.store, ui: ctx.ui, messaging: ctx.messaging, receiptSource:ctx.authoringReceiptRail, axtranEvidenceService:new AlignmentAxtranEvidenceService() });
 	bridge.wire();
 	if (ctx.prefs.isDev) window.__ufAIM_aeBridge = bridge;
 	return bridge;

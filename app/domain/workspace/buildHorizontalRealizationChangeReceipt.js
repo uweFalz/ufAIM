@@ -35,7 +35,7 @@ function equal(left, right) {
 	return JSON.stringify(left) === JSON.stringify(right);
 }
 
-export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange, activeObjectId, activeElementId } = {}) {
+export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange, activeObjectId, activeElementId, axtranEvidence = null } = {}) {
 	const objectId = text(alignmentChange?.objectId);
 	const elementId = text(alignmentChange?.elementId);
 	const revision = alignmentChange?.revision;
@@ -58,12 +58,21 @@ export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, a
 		if (fields.length) changes.push(Object.freeze({ elementId: id, target: id === elementId, fields: Object.freeze(fields) }));
 	}
 	if (!changes.length || !changes.some((entry) => entry.target)) throw new Error("no verified target realization change observed");
+	const diagnostics = axtranEvidence?.type === "axtran2-consequence-evidence"
+		&& axtranEvidence?.status === "evidence-only"
+		&& axtranEvidence?.admissible === false
+		? Object.freeze({
+			status: "evidence-only",
+			message: "AXTRAN2 consequence evidence · evidence-only · not an admissible engineering answer.",
+			evidence: axtranEvidence,
+		})
+		: Object.freeze({ status: "not-available", message: "AXTRAN diagnostics are not available in the current result contract." });
 	return Object.freeze({
 		status: "verified",
 		objectId,
 		elementId,
 		revision,
 		changes: Object.freeze(changes),
-		diagnostics: Object.freeze({ status: "not-available", message: "AXTRAN diagnostics are not available in the current result contract." }),
+		diagnostics,
 	});
 }
