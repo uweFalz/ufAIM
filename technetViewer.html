@@ -1243,6 +1243,7 @@
 									<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
 									<span id="railwayOpacityValue">15 %</span>
 							</label>
+							<button id="precisionToggle" class="hidden" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Punktgenauigkeit (meanPointError) einfärben, statt nach DB_REF/vermutet">Präzision ein</button>
 							<button id="mapFit" type="button">Alles</button>
 							<button id="mapZoomOut" type="button">−</button>
 							<button id="mapZoomIn" type="button">+</button>
@@ -1256,6 +1257,14 @@
 						<div id="mapLegend" class="hidden" aria-label="Kartenlegende">
 							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#00a651"></span>DB_REF (bestätigt)</div>
 							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#e6007e"></span>nicht DB_REF (vermutet)</div>
+						</div>
+						<div id="precisionLegend" class="hidden" aria-label="Präzisionslegende (Prototyp)">
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#00c853"></span>&lt; 1 cm</div>
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#8bc34a"></span>1–3 cm</div>
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#ffeb3b"></span>3–10 cm</div>
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#ff9800"></span>10–30 cm</div>
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#d32f2f"></span>&gt; 30 cm</div>
+							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#8e8e93"></span>keine Angabe</div>
 						</div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
@@ -38580,6 +38589,8 @@ xlsx/xlsx.mjs:
 			const baseMapLoad = document.querySelector("#baseMapLoad");
 			const railwayOpacityControl = document.querySelector("#railwayOpacityControl");
 			const mapLegend = document.querySelector("#mapLegend");
+			const precisionToggle = document.querySelector("#precisionToggle");
+			const precisionLegend = document.querySelector("#precisionLegend");
 			const railwayOpacity = document.querySelector("#railwayOpacity");
 			const railwayOpacityValue = document.querySelector("#railwayOpacityValue");
 			const maplibreMapElement = document.querySelector("#maplibreMap");
@@ -38608,6 +38619,7 @@ xlsx/xlsx.mjs:
 			let railwayMapActive = false;
 			let railwayMapPreference = "auto";
 			let railwayLayerOpacity = 0.15;
+			let precisionModeActive = false;
 			// Each entry describes one filter dimension end-to-end: its checkbox options
 			// (static, or `dynamic` to derive them from loaded data via valueForEntry),
 			// values that always pass regardless of selection (alwaysInclude), and
@@ -38660,6 +38672,8 @@ xlsx/xlsx.mjs:
 			]));
 			const mapFilterSeenValues = new Map(MAP_FILTER_DIMENSIONS.map((dimension) => [dimension.key, new Set()]));
 			let geoEntryById = new Map();
+			let precisionEntryById = new Map();
+			let precisionPopup = null;
 			let mapDrag = null;
 			let draggedOrganizationEntry = null;
 			let dragHintDismissed = false;
@@ -40366,6 +40380,67 @@ xlsx/xlsx.mjs:
 				return { type: "FeatureCollection", features };
 			}
 
+			// Prototype: GND carries a real per-point survey precision
+			// (meanPointError, decoded from MP/MPEXP in metres) that today only
+			// ever collapses into a coarse alignment-wide "Qualität offen /
+			// limited" label (pointQualityForEntry below) -- the actual number
+			// is discarded. This renders it directly instead, one small
+			// LineString feature per coordGeom element (not per whole
+			// alignment, since precision varies point to point) so the map can
+			// colour a continuous gradient along the track.
+			function precisionForElement(element) {
+				const candidates = [element?.extras?.meanPointError, element?.extras?.meanPointErrorEnd]
+					.filter((item) => item && Number.isFinite(item.value));
+				if (!candidates.length) return null;
+				return candidates.reduce((sum, item) => sum + item.value, 0) / candidates.length;
+			}
+
+			function precisionFeatureCollection() {
+				const features = [];
+				precisionEntryById = new Map();
+				let featureIndex = 0;
+				for (const loaded of loadedFiles) {
+					for (const entry of loaded.objects) {
+						if (entry.item.kind !== "alignment") continue;
+						for (const element of entry.item?.payload?.coordGeom?.elements ?? []) {
+							const coordinates = [];
+							for (const point of sampleElementSource(element)) {
+								const coordinate = geographicPoint(point, entry);
+								if (!coordinate) continue;
+								const pair = [coordinate.longitude, coordinate.latitude];
+								if (!coordinates.length || pair[0] !== coordinates.at(-1)[0] || pair[1] !== coordinates.at(-1)[1]) {
+									coordinates.push(pair);
+								}
+							}
+							if (coordinates.length < 2) continue;
+							const id = String(featureIndex++);
+							precisionEntryById.set(id, entry);
+							features.push({
+								type: "Feature",
+								properties: {
+									id,
+									active: entry === selectedEntry ? 1 : 0,
+									precisionValue: precisionForElement(element),
+									precisionStation: stationScalar(element?.extras?.externalStation ?? element?.staStart),
+								},
+								geometry: { type: "LineString", coordinates },
+							});
+						}
+					}
+				}
+				return { type: "FeatureCollection", features };
+			}
+
+			// < 1cm in mm, < 1m in cm, otherwise m -- matches the legend buckets
+			// and keeps the number the size a surveyor actually thinks in.
+			function formatPrecisionValue(value) {
+				if (!Number.isFinite(value)) return "keine Angabe";
+				if (value < 0.0005) return "< 1 mm";
+				if (value < 0.01) return `${Math.round(value * 1000)} mm`;
+				if (value < 1) return `${(value * 100).toFixed(1)} cm`;
+				return `${value.toFixed(2)} m`;
+			}
+
 			function pointQualityForEntry(entry) {
 				const evidence = [];
 				for (const element of entry?.item?.payload?.coordGeom?.elements ?? []) {
@@ -40390,6 +40465,22 @@ xlsx/xlsx.mjs:
 			function renderBasemap() {
 				const source = maplibreMap?.getSource("technet");
 				if (source) source.setData(geographicFeatureCollection());
+				const precisionSource = maplibreMap?.getSource("technet-precision");
+				if (precisionSource) precisionSource.setData(precisionFeatureCollection());
+			}
+
+			function togglePrecisionMode() {
+				if (!maplibreMap) return;
+				precisionModeActive = !precisionModeActive;
+				const confidenceLayers = ["technet-quality-halo", "technet-lines-halo", "technet-lines", "technet-kilometer-lines", "technet-lines-inferred", "technet-kilometer-lines-inferred"];
+				const precisionLayers = ["technet-precision-lines", "technet-precision-unknown"];
+				for (const id of confidenceLayers) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "none" : "visible");
+				for (const id of precisionLayers) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "visible" : "none");
+				precisionToggle.setAttribute("aria-pressed", String(precisionModeActive));
+				precisionToggle.textContent = precisionModeActive ? "Präzision aus" : "Präzision ein";
+				mapLegend.classList.toggle("hidden", precisionModeActive);
+				precisionLegend.classList.toggle("hidden", !precisionModeActive);
+				if (!precisionModeActive) { precisionPopup?.remove(); precisionPopup = null; }
 			}
 
 			function knownValuesForDimension(dimension) {
@@ -40519,6 +40610,9 @@ xlsx/xlsx.mjs:
 				multi2d.classList.remove("hidden");
 				railwayOpacityControl.classList.add("hidden");
 				mapLegend.classList.add("hidden");
+				precisionToggle.classList.add("hidden");
+				precisionLegend.classList.add("hidden");
+				if (precisionModeActive) togglePrecisionMode();
 				baseMapLoad.setAttribute("aria-pressed", "false");
 				baseMapLoad.textContent = "OpenRailwayMap ein";
 				renderMap(activeMapMode);
@@ -40658,6 +40752,44 @@ xlsx/xlsx.mjs:
 								"line-dasharray": [5, 2.5],
 							},
 						});
+						maplibreMap.addSource("technet-precision", { type: "geojson", data: precisionFeatureCollection() });
+						maplibreMap.addLayer({
+							id: "technet-precision-lines",
+							type: "line",
+							source: "technet-precision",
+							layout: { visibility: "none" },
+							filter: ["!=", ["get", "precisionValue"], null],
+							paint: {
+								"line-color": [
+									// Flat solid green through 3mm -- the typical DB survey pass
+									// threshold -- so the common case reads as unambiguous "good"
+									// instead of a yellow-green blend, then grades through the
+									// legend buckets.
+									"interpolate", ["linear"], ["get", "precisionValue"],
+									0, "#00c853",
+									0.003, "#00c853",
+									0.01, "#8bc34a",
+									0.03, "#ffeb3b",
+									0.1, "#ff9800",
+									0.3, "#d32f2f",
+								],
+								"line-width": ["case", ["==", ["get", "active"], 1], 5, 3],
+								"line-opacity": 0.95,
+							},
+						});
+						maplibreMap.addLayer({
+							id: "technet-precision-unknown",
+							type: "line",
+							source: "technet-precision",
+							layout: { visibility: "none" },
+							filter: ["==", ["get", "precisionValue"], null],
+							paint: {
+								"line-color": "#8e8e93",
+								"line-width": ["case", ["==", ["get", "active"], 1], 5, 3],
+								"line-opacity": 0.7,
+								"line-dasharray": [2, 2],
+							},
+						});
 						const selectMapFeature = (event) => {
 							const entry = geoEntryById.get(String(event.features?.[0]?.properties?.id));
 							if (entry) selectObject(entry, entry.button);
@@ -40666,12 +40798,36 @@ xlsx/xlsx.mjs:
 						maplibreMap.on("click", "technet-kilometer-lines", selectMapFeature);
 						maplibreMap.on("click", "technet-lines-inferred", selectMapFeature);
 						maplibreMap.on("click", "technet-kilometer-lines-inferred", selectMapFeature);
+						const showPrecisionPopup = (event) => {
+							const feature = event.features?.[0];
+							if (!feature) return;
+							precisionPopup?.remove();
+							const props = feature.properties;
+							const stationLabel = Number.isFinite(props.precisionStation) ? `bei km ${station(props.precisionStation).trim()}` : null;
+							precisionPopup = new globalThis.maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "220px" })
+								.setLngLat(event.lngLat)
+								.setHTML(
+									`<strong>Punktgenauigkeit: ${xml(formatPrecisionValue(props.precisionValue))}</strong>` +
+									(stationLabel ? `<br>${xml(stationLabel)}` : "") +
+									`<br><span style="opacity:.7">(GND meanPointError, Prototyp)</span>`,
+								)
+								.addTo(maplibreMap);
+							const entry = precisionEntryById.get(String(props.id));
+							if (entry) selectObject(entry, entry.button);
+						};
+						const precisionHoverLayers = ["technet-precision-lines", "technet-precision-unknown"];
+						for (const layerId of precisionHoverLayers) {
+							maplibreMap.on("click", layerId, showPrecisionPopup);
+							maplibreMap.on("mouseenter", layerId, () => { maplibreMap.getCanvas().style.cursor = "pointer"; });
+							maplibreMap.on("mouseleave", layerId, () => { maplibreMap.getCanvas().style.cursor = ""; });
+						}
 					}
 					railwayMapActive = true;
 					multi2d.classList.add("hidden");
 					maplibreMapElement.classList.remove("hidden");
 					railwayOpacityControl.classList.remove("hidden");
 					mapLegend.classList.remove("hidden");
+					precisionToggle.classList.remove("hidden");
 					mapEmpty.classList.add("hidden");
 					maplibreMap.resize();
 					renderBasemap();
@@ -40686,6 +40842,7 @@ xlsx/xlsx.mjs:
 					baseMapLoad.textContent = "OpenRailwayMap ein";
 					railwayOpacityControl.classList.add("hidden");
 					mapLegend.classList.add("hidden");
+					precisionToggle.classList.add("hidden");
 					crsNote.textContent = error.message;
 				}
 			}
@@ -42631,6 +42788,7 @@ xlsx/xlsx.mjs:
 			mapZoomIn.addEventListener("click", () => zoomMap(0.8));
 			gisAssign.addEventListener("click", () => setViewMode("listing"));
 			baseMapLoad.addEventListener("click", () => toggleRailwayMap());
+			precisionToggle.addEventListener("click", () => togglePrecisionMode());
 			railwayOpacity.addEventListener("input", () => {
 				railwayLayerOpacity = Number(railwayOpacity.value) / 100;
 				railwayOpacityValue.textContent = `${railwayOpacity.value} %`;
