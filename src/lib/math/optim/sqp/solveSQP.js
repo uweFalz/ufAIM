@@ -77,6 +77,18 @@ export function solveSQP({
 	minTrustRadius = 1e-10,
 	trustGrowth = 2,
 	trustShrink = 0.5,
+	// How close to a bound counts as held by it. An exact test is too sharp: the
+	// iterate is clamped into the box after every step, but a step that stops
+	// just short leaves the variable beside its bound rather than on it, and the
+	// bound is then invisible to everything that asks. Measured on an alignment
+	// fit, a curvature sat 1.9e-9 under its minimum-radius limit - held for every
+	// practical purpose, and 1.9e-9 too far away to be recognised. Relative,
+	// because the bounds are engineering magnitudes, not numbers near one.
+	boundTolerance = 1e-6,
+	// How close to its bound an inequality counts as held by it, relative to its
+	// own magnitude. The rows are engineering quantities and are not comparable
+	// to each other.
+	activeTolerance = 1e-6,
 } = {}) {
 	if (!Array.isArray(x0) || typeof evaluate !== "function") {
 		return { ok: false, status: "invalid", reason: "x0 and evaluate are required" };
@@ -87,6 +99,15 @@ export function solveSQP({
 	const up = upper ?? new Array(n).fill(Infinity);
 
 	let x = x0.map((value, i) => Math.min(Math.max(value, lo[i]), up[i]));
+	const nearBound = (value, bound) => Number.isFinite(bound)
+		&& Math.abs(value - bound) <= boundTolerance * Math.max(1, Math.abs(bound));
+	const heldByBounds = (point) => {
+		const held = [];
+		for (let i = 0; i < n; i++) {
+			if (nearBound(point[i], lo[i]) || nearBound(point[i], up[i])) held.push(i);
+		}
+		return held;
+	};
 	let radius = Number.isFinite(trustRadius)
 		? trustRadius
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
@@ -116,6 +137,11 @@ export function solveSQP({
 			upper: x.map((value, i) => Math.min(up[i] - value, radius)),
 			relaxationWeight,
 			qpIterations,
+			pinnedVariables: heldByBounds(x),
+			activeInequalities: (state.g ?? []).reduce((held, value, j) => {
+				if (value > -activeTolerance * Math.max(1, Math.abs(value))) held.push(j);
+				return held;
+			}, []),
 		});
 
 		if (!step.ok) {
@@ -142,8 +168,8 @@ export function solveSQP({
 			+ (state.Jh ?? []).reduce((sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
 			+ (state.Jg ?? []).reduce((sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const kkt = Math.hypot(...lagrangeAt.map((value, i) => {
-			if (x[i] <= lo[i] && value > 0) return 0;
-			if (x[i] >= up[i] && value < 0) return 0;
+			if (nearBound(x[i], lo[i]) && value > 0) return 0;
+			if (nearBound(x[i], up[i]) && value < 0) return 0;
 			return value;
 		}));
 

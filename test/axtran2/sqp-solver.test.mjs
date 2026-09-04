@@ -375,3 +375,58 @@ test("an inequality multiplier is never reported negative", () => {
 	const run = solveSQP({ x0: [0], evaluate, maxIterations: 40 });
 	assert.ok(run.multipliers.inequality.every((value) => value >= 0));
 });
+
+test("the multiplier fit takes the pinned variables from the problem, not the subproblem", () => {
+	// The QP's box is the problem's bounds intersected with the trust region, so
+	// a small region pins variables that nothing in the problem holds. Fitted on
+	// what is left, the multipliers describe the trust region rather than the
+	// constraints: measured on an alignment fit, an end-pose multiplier came out
+	// at -8.9 where the problem's own active set gives +90.1, and the KKT
+	// residual built from it was wrong by four orders of magnitude.
+	const common = {
+		H: identityMatrix(2),
+		gradF: [1, 10],
+		h: [0],
+		Jh: [[1, 1]],
+		// far tighter than anything this problem asks for
+		lower: [-1e-9, -1e-9],
+		upper: [1e-9, 1e-9],
+	};
+	const fromSubproblem = solveRelaxedQpStep(common);
+	const fromProblem = solveRelaxedQpStep({ ...common, pinnedVariables: [] });
+
+	// Nothing here holds either variable, so the fit runs on both columns:
+	// min |grad f + Jh' lambda| over [1 + lambda, 10 + lambda] gives -5.5.
+	assert.ok(Math.abs(fromProblem.multipliers.equality[0] + 5.5) < 1e-6,
+		`expected -5.5, got ${fromProblem.multipliers.equality[0]}`);
+	// Read from the subproblem, the trust region has pinned the first column and
+	// the second alone answers 10 + lambda = 0.
+	assert.ok(Math.abs(fromSubproblem.multipliers.equality[0] + 10) < 1e-6,
+		`expected -10, got ${fromSubproblem.multipliers.equality[0]}`);
+});
+
+test("an inequality is held by its own residual, not by the subproblem's working set", () => {
+	// Same contamination on the rows. A region too small to move onto a row loses
+	// it from the working set, the multiplier goes to zero and the penalty weight
+	// decays after it - while the row is binding at the point all along.
+	const common = {
+		H: identityMatrix(1),
+		gradF: [-1],
+		h: [],
+		Jh: [],
+		g: [-1e-7],          // held at the point
+		Jg: [[1]],
+		lower: [-1e-9],      // and out of the subproblem's reach
+		upper: [1e-9],
+	};
+	const fromSubproblem = solveRelaxedQpStep(common);
+	const fromProblem = solveRelaxedQpStep({
+		...common, pinnedVariables: [], activeInequalities: [0],
+	});
+
+	assert.deepEqual([...fromSubproblem.activeRows], []);
+	assert.equal(fromSubproblem.multipliers.inequality[0], 0);
+	assert.deepEqual([...fromProblem.activeRows], [0]);
+	assert.ok(Math.abs(fromProblem.multipliers.inequality[0] - 1) < 1e-6,
+		`expected 1, got ${fromProblem.multipliers.inequality[0]}`);
+});
