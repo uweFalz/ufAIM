@@ -101,6 +101,10 @@ export function createNineElementScenario({
 	// is deliberate: a profile the scenario satisfies with room to spare would not
 	// show whether the limits reach the solver at all.
 	design = hauptbahn({ speedKmh: 100, cantMm: 130 }),
+	// "bound" states the ramp rule as a lower bound on the transition length,
+	// "constraint" as the inequality the rule actually is. The second is the
+	// harder path and the one that exercises the merit.
+	rampLengthAs = "bound",
 } = {}) {
 	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);
 	const endPose = poseOf(truth, truth.arcLength);
@@ -150,6 +154,7 @@ export function createNineElementScenario({
 			// The shipped profiles are candidates: their rate limits come from a
 			// rule book nobody has read. A scenario may run on them, and says so.
 			admitUnconfirmedDesign: EVIDENCE_ONLY,
+			rampLengthAs,
 		}),
 		residuals: createAlignmentResidualBuilder({
 			metricContext: createIntrinsicMetricContext(),

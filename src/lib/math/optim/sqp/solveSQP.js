@@ -61,7 +61,23 @@ export function solveSQP({
 	// identical answer in 45 iterations instead of 86, in 9 seconds instead of
 	// 100, with weights of 3.8, 21 and 3130.
 	penaltyRule = "powell",
-	penaltySafety = 20,
+	// The margin over |multiplier| that the l1 merit needs to be exact. Powell
+	// asks for eta > |mu|; this is the factor applied to it. It stood at 20
+	// without a reason recorded, and 20 is far past what exactness needs.
+	//
+	// The cost of the excess is that the merit is then dominated by the penalty
+	// term, and a step that lowers the objective while lifting the violation a
+	// little - which is what an SQP step legitimately does - is refused. The
+	// search backtracks, the region shrinks, and once it is smaller than the
+	// violation the relaxation takes over: at delta = 1 the merit's constraint
+	// term is multiplied by (1 - delta) and the violation can no longer be paid
+	// off at all. Measured on the nine-element scenario under the exact ramp
+	// rule, it froze at 4.6e-5 for the last hundred iterations.
+	//
+	// At 2 the same fit clears it to 4.8e-13, and every other row improves with
+	// it: the bound path converges in 91 iterations instead of 151 and its points
+	// run reaches "converged" again rather than stopping at "stationary".
+	penaltySafety = 2,
 	relaxationWeight = 1e4,
 	qpIterations = 200,
 	initialHessianScale = 1,
