@@ -24,7 +24,7 @@ export function createAlignmentBimWorkspaceController({
 	let unavailableMessage = null;
 	let unsubscribe = null;
 	let cameraCoordinator = null;
-	let lastObjectId = null;
+	let lastContentIdentity = null;
 	const handlers = new Map();
 	const startSurface = documentRef.querySelector("[data-workspace-start-surface]");
 	const readState = () => store?.getState?.() ?? {};
@@ -41,9 +41,10 @@ export function createAlignmentBimWorkspaceController({
 		}
 		status.dataset.workspaceViewStatus = message ? "unavailable" : "ready";
 		const state = readState();
-		const objectId = String(state?.workspace_selection?.primaryId ?? "").trim();
-		shell.dataset.workspaceEmpty = objectId ? "false" : "true";
-		startSurface?.classList.toggle("hidden", Boolean(objectId));
+		const content = readWorkspaceContent(state);
+		const objectId = content.objectId;
+		shell.dataset.workspaceEmpty = content.present ? "false" : "true";
+		startSurface?.classList.toggle("hidden", content.present);
 		const s = Number(state?.cursor?.s);
 		const label = ({
 			main: "World / Map",
@@ -53,7 +54,9 @@ export function createAlignmentBimWorkspaceController({
 		status.dataset.workspaceCameraContext = cameraContext(mode).replace(/^ · /, "");
 		status.textContent = message ?? (objectId && Number.isFinite(s)
 			? `${label} · ${objectId} · s ${String(s)}`
-			: label);
+			: content.previewId
+				? `${label} · Importvorschau ${content.previewId}`
+				: content.present ? `${label} · Importgeometrie` : label);
 		globalThis.requestAnimationFrame?.(() => threeViewer.scheduleResize?.());
 	}
 
@@ -95,13 +98,13 @@ export function createAlignmentBimWorkspaceController({
 		wireAction("[data-workspace-create]", createAlignment);
 		wireAction("[data-workspace-open]", openObjects);
 		unsubscribe = store?.subscribe?.(() => {
-			const objectId = String(readState()?.workspace_selection?.primaryId ?? "").trim() || null;
-			const objectChanged = objectId !== lastObjectId;
-			lastObjectId = objectId;
+			const content = readWorkspaceContent(readState());
+			const contentChanged = content.identity !== lastContentIdentity;
+			lastContentIdentity = content.identity;
 			render(activeMode, unavailableMessage);
-			synchronizeCamera(activeMode, { fit: activeMode === "main" && objectChanged });
+			synchronizeCamera(activeMode, { fit: activeMode === "main" && content.present && contentChanged });
 		}) ?? null;
-		lastObjectId = String(readState()?.workspace_selection?.primaryId ?? "").trim() || null;
+		lastContentIdentity = readWorkspaceContent(readState()).identity;
 		activate("main");
 	}
 
@@ -121,6 +124,20 @@ export function createAlignmentBimWorkspaceController({
 	}
 
 	return { start, dispose, activate, setCameraCoordinator(value) { cameraCoordinator = value ?? null; render(activeMode, unavailableMessage); }, getActiveMode: () => activeMode };
+}
+
+function readWorkspaceContent(state = {}) {
+	const objectId = String(state?.workspace_selection?.primaryId ?? "").trim() || null;
+	const previewId = state?.preview_item?.kernel
+		? String(state.preview_item.id ?? "preview").trim() || "preview"
+		: null;
+	const tracks = Array.isArray(state?.workspace_visible_tracks)
+		? state.workspace_visible_tracks.filter((track) => Array.isArray(track?.polyline2d) && track.polyline2d.length >= 2)
+		: [];
+	const identity = objectId
+		? `object:${objectId}`
+		: previewId ? `preview:${previewId}` : tracks.length ? `tracks:${tracks.map((track) => String(track?.id ?? "track")).join("|")}` : null;
+	return Object.freeze({ objectId, previewId, present: Boolean(identity), identity });
 }
 
 export default createAlignmentBimWorkspaceController;
