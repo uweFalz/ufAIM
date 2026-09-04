@@ -110,6 +110,27 @@ export function solveRelaxedQpStep({
 	relaxationWeight = 1e4,
 	damping = 1e-10,
 	qpIterations = 200,
+	// Which variables the PROBLEM's own bounds hold. The multiplier fit below
+	// drops their columns, because a bound absorbs part of the gradient and
+	// attributing that part to the equalities distorts them.
+	//
+	// Taken from the subproblem instead, that set is contaminated. The QP's box
+	// is the problem's bounds intersected with the trust region, so a small
+	// region pins variables that nothing in the problem holds, and the fit then
+	// runs on a subspace that has little to do with the constraints. Measured on
+	// an alignment fit at radius 2.6e-7: the third end-pose multiplier came out
+	// at -8.9 where a fit over the problem's own active set gives +90.1 - wrong
+	// sign and an order of magnitude. The whole KKT residual of 54.4 sat in the
+	// single component that error produced, against a true residual of 5e-3.
+	pinnedVariables = null,
+	// Which inequality rows the PROBLEM holds at the current point, by their own
+	// residuals. Same contamination as the bounds if read from the subproblem:
+	// measured, a run that had reached a KKT residual of 6.0e-3 with rows 0 and 3
+	// held lost both of them once the region reached 1e-10, because the QP could
+	// no longer move onto them. The multipliers then went to zero, the penalty
+	// weights decayed after them, and the residual settled at 4.3e-2 - a worse
+	// answer reported about the same point.
+	activeInequalities = null,
 } = {}) {
 	const n = gradF.length;
 	const m = h.length;
@@ -176,15 +197,15 @@ export function solveRelaxedQpStep({
 	// the equalities understates mu. The penalty weights are then too small and
 	// the merit lets feasibility be traded back for objective, which is exactly
 	// what a linear objective will do given the chance.
-	const pinned = new Set(qp.activeBounds ?? []);
+	const pinned = new Set(pinnedVariables ?? qp.activeBounds ?? []);
 	const freeRows = [];
 	for (let i = 0; i < n; i++) if (!pinned.has(i)) freeRows.push(i);
 
 	// The active set carries both kinds: the equalities always, and the
-	// inequality rows the subproblem ended up holding. An inactive row carries
+	// inequality rows that are held at the current point. An inactive row carries
 	// no multiplier at all, and fitting one to it would put weight on a
 	// constraint that is not binding.
-	const activeRows = new Set(qp.activeRows ?? []);
+	const activeRows = new Set(activeInequalities ?? qp.activeRows ?? []);
 	const inequalityActive = [];
 	for (let i = 0; i < p; i++) if (activeRows.has(i)) inequalityActive.push(i);
 	const fitted = [...Jh, ...inequalityActive.map((i) => Jg[i])];
