@@ -62,6 +62,11 @@ function hasOwn(record, member) {
 	return Object.prototype.hasOwnProperty.call(record, member);
 }
 
+function canonicalRevision(alignmentData) {
+	if (hasOwn(alignmentData, "revision")) return alignmentData.revision;
+	return alignmentData?.meta?.modifiedAt ?? null;
+}
+
 function validateProfileState(alignmentData, alignmentId) {
 	if (
 		alignmentData === null ||
@@ -78,9 +83,7 @@ function validateProfileState(alignmentData, alignmentId) {
 	if (!hasOwn(alignmentData, "profileState")) {
 		return Object.freeze({
 			...ABSENT_SNAPSHOT,
-			revision: hasOwn(alignmentData, "revision")
-				? alignmentData.revision
-				: null,
+			revision: canonicalRevision(alignmentData),
 		});
 	}
 
@@ -169,9 +172,7 @@ function validateProfileState(alignmentData, alignmentId) {
 
 	return Object.freeze({
 		presence: "present",
-		revision: hasOwn(alignmentData, "revision")
-			? alignmentData.revision
-			: null,
+		revision: canonicalRevision(alignmentData),
 		vertical: profileState.vertical,
 		cant: profileState.cant,
 		chainageMappings: Object.freeze([

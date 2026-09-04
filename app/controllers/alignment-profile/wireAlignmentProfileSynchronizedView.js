@@ -93,7 +93,7 @@ function canonicalAlignmentFromState(state, alignmentId) {
 			"revision"
 		)
 			? alignmentData.revision
-			: null,
+			: alignmentData?.meta?.modifiedAt ?? null,
 	};
 }
 
