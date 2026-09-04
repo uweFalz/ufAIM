@@ -27,5 +27,26 @@ export function renderHorizontalRealizationChangeReceipt(container, receipt) {
 	const boundary = document.createElement("p");
 	boundary.textContent = receipt.diagnostics.message;
 	container.append(heading, identity, list, boundary);
+	const evidence = receipt.diagnostics?.evidence;
+	if (receipt.diagnostics?.status === "evidence-only" && evidence) {
+		const detail = document.createElement("dl");
+		detail.dataset.axtranEvidence = "evidence-only";
+		for (const [label, value] of [
+			["Producer", evidence.version],
+			["Proposal", evidence.proposalStatus],
+			["Objective", evidence.objective],
+			["Admissible", evidence.admissible],
+			["Iterations", evidence.diagnostics?.iterations],
+			["End-pose residual [m]", evidence.diagnostics?.endPoseDistance],
+			["Derived-point RMS", evidence.diagnostics?.softResidualRms],
+		]) {
+			const term = document.createElement("dt");
+			term.textContent = label;
+			const description = document.createElement("dd");
+			description.textContent = format(value);
+			detail.append(term, description);
+		}
+		container.append(detail);
+	}
 	return true;
 }

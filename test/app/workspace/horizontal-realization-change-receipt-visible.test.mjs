@@ -15,5 +15,12 @@ test("authoring surface exposes a live verified receipt separate from draft cons
 	assert.match(bridge, /verified receipt context changed/);
 	assert.match(view, /Observed persisted realization changes/);
 	assert.match(model, /AXTRAN diagnostics are not available/);
-	assert.doesNotMatch(view, /residual|optimization|candidate|solution/i);
+	assert.doesNotMatch(view, /applyCandidate|saveCandidate|canonical replacement/i);
+});
+
+test("visible receipt labels AXTRAN2 output as evidence-only and inadmissible", () => {
+	assert.match(view, /data\.axtranEvidence|dataset\.axtranEvidence/);
+	assert.match(view, /Admissible/);
+	assert.match(model, /AXTRAN2 consequence evidence · evidence-only/);
+	assert.match(model, /axtranEvidence\?\.admissible === false/);
 });

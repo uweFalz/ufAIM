@@ -43,7 +43,7 @@ export function authorizeHorizontalElementRemoval({ activeObjectId = null, snaps
 	return Object.freeze({ authorized, objectId: active || null, elementId: requested || null, reason: authorized ? null : "exact active horizontal element unavailable" });
 }
 
-export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource = null } = {}) {
+export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource = null, axtranEvidenceService = null } = {}) {
 	if (!store?.getState || !messaging?.sendCmdAwait) throw new Error("AlignmentEditorBridge: missing runtime dependencies");
 	const controller = new AlignmentEditorController({ store, messaging });
 	const overlay = document.getElementById("alignmentEditorOverlay");
@@ -316,7 +316,13 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		else result = { changed: false, ok: false, status: "rejected", code: "ALIGNMENT_EDIT_UNSUPPORTED" };
 		if (result?.ok === false || result?.status === "rejected") { message("alignment_editor.status.validation_failed", "error", "error"); return false; }
 		if (result?.changed === false) { message("alignment_editor.status.no_changes_applied", "info", "ready"); return false; }
-		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id });
+		let axtranEvidence = null;
+		try {
+			axtranEvidence = axtranEvidenceService?.evaluateChange?.({ beforeAlignmentData, afterAlignmentData: result.alignmentChange?.alignmentData }) ?? null;
+		} catch {
+			axtranEvidence = null;
+		}
+		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id, axtranEvidence });
 		requestedElementId = id;const refreshed=await clearDraftAfterCanonicalRefresh({refresh:()=>refresh({ preserveSelection: false, verifiedChange: result.alignmentChange }),clear:()=>drafts.clear(draftIdentity(element))});if(!refreshed)return false;
 		if (String(activeSnapshot?.object?.id ?? "") !== receipt.objectId || selectedId() !== receipt.elementId) throw new Error("verified receipt context changed");
 		setWorkspaceElement(id); renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt); persistedReceipt = true; message("alignment_editor.status.recalculated", "ok", "saved");
