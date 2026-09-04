@@ -612,3 +612,33 @@ test("one tier through the driver is the same solve as calling the solver direct
 		);
 	});
 });
+
+test("the merit pays off a violated ramp inequality instead of freezing on it", () => {
+	// The l1 merit's exactness needs eta > |mu|; the factor applied to that stood
+	// at 20 without a reason recorded. Past what exactness needs, the penalty term
+	// dominates the merit and an SQP step that lowers the objective while lifting
+	// the violation a little is refused. The search backtracks, the region shrinks,
+	// and below the violation's own scale the relaxation takes over - at delta = 1
+	// the constraint term is multiplied by (1 - delta) and the violation can never
+	// be paid off. Measured, it froze at 4.6e-5 for the last hundred iterations.
+	const scenario = createNineElementScenario({
+		pointCount: 12,
+		startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180],
+		startCurvatures: [1 / 695, -1 / 905],
+		rampLengthAs: "constraint",
+	});
+	const run = solveAlignmentProblem({
+		problem: scenario.problem,
+		buildAlignment: scenario.buildAlignment,
+		analyticJacobian: scenario.analyticJacobian,
+		objective: "accumulated-length",
+		maxIterations: 200,
+	});
+	const last = (run.diagnostics.history ?? []).filter((e) => e.violation !== undefined).pop();
+	assert.ok(last, "the run recorded no accepted iteration");
+	assert.ok(last.violation < 1e-9,
+		`expected the violation driven below 1e-9, got ${last.violation.toExponential(2)}`);
+	// and the row itself, not just the aggregate
+	assert.ok(Math.max(...last.inequalities.map((row) => row.residual)) <= 1e-9,
+		`a ramp row is still violated: ${last.inequalities.map((r) => r.residual.toExponential(1)).join(" ")}`);
+});
