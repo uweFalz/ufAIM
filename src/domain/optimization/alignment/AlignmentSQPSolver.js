@@ -86,6 +86,11 @@ export function solveAlignmentProblem({
 	objective = "points",
 	extraEqualities = [],
 	startAt = null,
+	// Free variables to hold at their starting value, by codec name. Held by
+	// collapsing their bounds onto the point, which is what "held" already means
+	// everywhere below it: the subproblem cannot step, and the multiplier fit
+	// drops the column because a bound absorbs that part of the gradient.
+	pinned = [],
 	maxIterations = 60,
 	relaxationWeight = 1e6,
 	// forwarded rather than fixed here: which penalty rule suits an alignment is
@@ -128,6 +133,19 @@ export function solveAlignmentProblem({
 		if (index === undefined) continue;   // the quantity is held, not free
 		if (Number.isFinite(bound.minimum)) lower[index] = Math.max(lower[index], bound.minimum);
 		if (Number.isFinite(bound.maximum)) upper[index] = Math.min(upper[index], bound.maximum);
+	}
+	if (!Array.isArray(pinned)) error("INVALID_PINNED", "pinned must be an array of free-variable names");
+	for (const name of pinned) {
+		const index = indexOfName.get(name);
+		if (index === undefined) {
+			error("UNKNOWN_PINNED", `"${name}" is not a free variable of this problem`, { name });
+		}
+		// onto the starting point, not onto the declaration: a progressive solve
+		// pins what the previous stage left behind, not what the problem was
+		// written with
+		const value = Math.min(Math.max(x0[index], lower[index]), upper[index]);
+		lower[index] = value;
+		upper[index] = value;
 	}
 	codec.freeNames.forEach((name, i) => {
 		if (lower[i] > upper[i]) {
