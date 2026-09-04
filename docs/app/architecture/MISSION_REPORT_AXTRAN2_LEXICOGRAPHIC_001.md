@@ -757,8 +757,19 @@ With that, both tiers of the two-phase run report `converged` for the first
 time: the KKT test met outright, in 8 seconds, with the answer unchanged.
 
 **What remains, and it is no longer the QP.** The exact ramp rule reaches an
-answer that is stable to six digits between iteration 400 and 900 — 1424.886 m
-either way — and never satisfies the stopping test. The trace says why, and it
+answer and then runs on the spot. Both objectives, at 400 and at 900 iterations:
+
+| objective | ΣL [m] | outside | rms | 400 → 900 |
+|---|---|---|---|---|
+| accumulated-length | 1424.886 | 7/12 | 77.4256 | identical, 2 s → 3 s |
+| points | 1429.995 | **0/12** | **0.0990** | identical, 888 s → 2078 s |
+
+Five hundred further iterations buy twenty minutes and nothing else. The points
+tier meets every tolerance and lands within a fifth of the bound form's rms of
+0.0832 — so the exact rule is not producing a worse alignment, it is producing
+the same one without ever saying so.
+
+It never satisfies the stopping test. The trace says why, and it
 is not the constraint: the trust region collapses to its floor, the subproblem
 then pins nearly every variable, and the multipliers are fitted only on what is
 left. Nothing balances the objective gradient, so the KKT residual sits at
