@@ -134,7 +134,7 @@ export function buildWindowShell() {
 					<section class="uf-startSurface" data-workspace-start-surface aria-labelledby="workspaceStartTitle">
 						<div class="uf-startSurface__copy">
 							<p class="uf-startSurface__eyebrow">alignmentOS · Engineering Workspace</p>
-							<h1 id="workspaceStartTitle">Arbeite mit einem Alignment.</h1>
+							<h1 id="workspaceStartTitle">Wo soll deine Trassierung entstehen?</h1>
 							<p>Importiere Bestandsdaten oder beginne eine neue Trassierung. Geometrie, Höhen, Überhöhung und Kilometrierung bleiben in einem gemeinsamen Arbeitszustand.</p>
 						</div>
 						<div class="uf-startSurface__actions">
