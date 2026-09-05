@@ -330,6 +330,7 @@
 			.diagram-height { stroke: #2866c7; }
 			.diagram-cant { stroke: #2e8b57; }
 			.diagram-speed { stroke: #7a2ea6; }
+			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
 			.ivhw-rail-a { stroke: #2866c7; fill: #2866c7; }
 			.ivhw-rail-b { stroke: #b5601a; fill: #b5601a; }
 			.diagram-label {
@@ -428,6 +429,115 @@
 				overflow: hidden;
 				text-overflow: ellipsis;
 				white-space: nowrap;
+			}
+			#rejectListToggle[aria-pressed="true"] {
+				background: color-mix(in srgb, Highlight 16%, Canvas);
+				border-color: Highlight;
+			}
+			#rejectListCount {
+				display: inline-block;
+				min-width: 1.1em;
+				padding: 0 0.3em;
+				border-radius: 999px;
+				background: #d32f2f;
+				color: #fff;
+				font-size: 0.72rem;
+				font-weight: 650;
+				text-align: center;
+			}
+			#rejectListCount[data-empty="true"] {
+				background: color-mix(in srgb, GrayText 35%, transparent);
+			}
+			#rejectListPanel {
+				position: absolute;
+				top: 100%;
+				right: 0.65rem;
+				z-index: 4;
+				width: 19rem;
+				max-height: 70vh;
+				overflow-y: auto;
+				padding: 0.5rem;
+				border: 1px solid GrayText;
+				border-radius: 0.5rem;
+				background: var(--surface);
+				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+				font-family: system-ui, sans-serif;
+				font-size: 0.8rem;
+			}
+			.reject-row {
+				display: grid;
+				grid-template-columns: 0.5rem 1fr auto;
+				align-items: center;
+				gap: 0.5rem;
+				width: 100%;
+				padding: 0.3rem 0.4rem;
+				border: 0;
+				border-radius: 0.35rem;
+				background: transparent;
+				color: inherit;
+				font: inherit;
+				text-align: left;
+				cursor: pointer;
+			}
+			.reject-row:hover {
+				background: color-mix(in srgb, Highlight 10%, transparent);
+			}
+			.reject-row-swatch {
+				width: 0.5rem;
+				height: 0.5rem;
+				border-radius: 999px;
+				flex-shrink: 0;
+			}
+			.reject-row-station {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				color: var(--secondary);
+			}
+			.reject-row-value {
+				font-variant-numeric: tabular-nums;
+				font-weight: 650;
+				white-space: nowrap;
+			}
+			#rejectListPanel .reject-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+				padding: 0.1rem 0.4rem 0.5rem;
+				font-size: 0.72rem;
+				color: var(--secondary);
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				font-weight: 650;
+			}
+			.reject-export {
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.15rem 0.5rem;
+				font: inherit;
+				font-size: 0.68rem;
+				text-transform: none;
+				letter-spacing: normal;
+				font-weight: 500;
+				cursor: pointer;
+			}
+			.reject-export:hover {
+				background: color-mix(in srgb, Highlight 12%, transparent);
+				border-color: Highlight;
+			}
+			#rejectListPanel .reject-scope-note {
+				padding: 0.2rem 0.4rem 0.5rem;
+				color: var(--secondary);
+				font-size: 0.72rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 30%, transparent);
+				margin-bottom: 0.3rem;
+			}
+			#rejectListPanel .reject-empty {
+				padding: 0.5rem 0.4rem;
+				color: var(--secondary);
 			}
 			#multi2d {
 				grid-column: 1;
@@ -1244,6 +1354,8 @@
 									<span id="railwayOpacityValue">15 %</span>
 							</label>
 							<button id="precisionToggle" class="hidden" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Punktgenauigkeit (meanPointError) einfärben, statt nach DB_REF/vermutet">Präzision ein</button>
+							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Prototyp: alle Segmente über 3 mm gemeldeter Punktgenauigkeit (meanPointError), zur Einzelprüfung">Ausschuss (&gt; 3 mm) <span id="rejectListCount">0</span></button>
+							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste (Prototyp)"></div>
 							<button id="mapFit" type="button">Alles</button>
 							<button id="mapZoomOut" type="button">−</button>
 							<button id="mapZoomIn" type="button">+</button>
@@ -38591,6 +38703,9 @@ xlsx/xlsx.mjs:
 			const mapLegend = document.querySelector("#mapLegend");
 			const precisionToggle = document.querySelector("#precisionToggle");
 			const precisionLegend = document.querySelector("#precisionLegend");
+			const rejectListToggle = document.querySelector("#rejectListToggle");
+			const rejectListCount = document.querySelector("#rejectListCount");
+			const rejectListPanel = document.querySelector("#rejectListPanel");
 			const railwayOpacity = document.querySelector("#railwayOpacity");
 			const railwayOpacityValue = document.querySelector("#railwayOpacityValue");
 			const maplibreMapElement = document.querySelector("#maplibreMap");
@@ -38620,6 +38735,10 @@ xlsx/xlsx.mjs:
 			let railwayMapPreference = "auto";
 			let railwayLayerOpacity = 0.15;
 			let precisionModeActive = false;
+			// The threshold Uwe named as the cutoff: everything the GND reports
+			// as measured worse than this goes on the reject list, not just
+			// gets colored differently on the map.
+			const PRECISION_REJECT_THRESHOLD = 0.003;
 			// Each entry describes one filter dimension end-to-end: its checkbox options
 			// (static, or `dynamic` to derive them from loaded data via valueForEntry),
 			// values that always pass regardless of selection (alwaysInclude), and
@@ -39450,6 +39569,25 @@ xlsx/xlsx.mjs:
 			// im Bandnamen ausgewiesen statt still vorausgesetzt. Geraden (Kruemmung
 			// 0, R unendlich) liefern aus dieser Formel keine Geschwindigkeitsgrenze
 			// und werden als Luecke dargestellt statt einen Wert zu erfinden.
+			//
+			// Auf sehr grossen Radien liefert die reine Formel Werte weit jenseits
+			// jeder realen Relevanz (500+ km/h) -- die Kurve erlaubt das physikalisch,
+			// aber kein deutsches Netz faehrt oder plant das. Aktuell schnellste DB-
+			// Strecke (Nuernberg-Ingolstadt-Muenchen) faehrt 300 km/h; China faehrt auf
+			// neuesten Strecken ~400 km/h, aber das ist fuer ein DB-Werkzeug irrelevant.
+			// Gedeckelt statt roh ausgegeben, damit die Zahl nicht unglaubwuerdig wirkt.
+			const V_MAX_DE_KMH = 300;
+			// Signalisierte Geschwindigkeiten sind keine beliebigen Dezimalwerte,
+			// sondern Stufen -- klassisch 10 km/h, mit ETCS kuenftig auch 5 km/h
+			// (nicht hier umgesetzt, nur als spaetere Erweiterung vorgesehen: die
+			// Stufenweite ist deshalb ein Parameter, kein fest verdrahteter Wert).
+			// Immer abrunden, nie aufrunden -- eine Kurve, die 179.5 km/h zulaesst,
+			// darf als Signalwert nur 170 zeigen, nicht 180: aufrunden wuerde mehr
+			// Sicherheit vortaeuschen, als die Physik hergibt.
+			const SPEED_STEP_KMH = 10;
+			function roundDownToSpeedStep(speedKmh, stepKmh = SPEED_STEP_KMH) {
+				return Math.floor(speedKmh / stepKmh) * stepKmh;
+			}
 			const CANT_DEFICIENCY_REGELWERT_MM = 130;
 			function speedLimitSeries(curvaturePoints, cantPoints, cantDeficiencyMm = CANT_DEFICIENCY_REGELWERT_MM) {
 				return curvaturePoints
@@ -39458,7 +39596,34 @@ xlsx/xlsx.mjs:
 						if (!(curvature > 1e-9)) return null;
 						const radius = 1 / curvature;
 						const cant = Math.abs(interpolateSeriesAt(cantPoints, point.x));
-						const speed = Math.sqrt(radius * (cant + cantDeficiencyMm) / 11.8);
+						const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cant + cantDeficiencyMm) / 11.8), V_MAX_DE_KMH));
+						return Number.isFinite(speed) ? { x: point.x, y: speed } : null;
+					})
+					.filter(Boolean);
+			}
+
+			// GWB (GeschwindigkeitsWegeBand) diagnostic, not a design proposal:
+			// same v = sqrt(R*(u+ue_fehl)/11.8) formula as above, but with an
+			// assumed ceiling cant instead of the actually-surveyed one, so the
+			// gap between the two curves reads directly as "how much headroom is
+			// there if cant alone were raised." 160mm is the commonly-cited
+			// absolute cant ceiling on standard-gauge DB track -- an assumption
+			// stated in the band label, same as the 130mm deficiency value above,
+			// not a derived or vehicle-checked number. This deliberately stops
+			// there: it does NOT check Ueberhoehungsrampenlaenge (the transition
+			// length actually available may be too short to ramp up to this cant
+			// at any real speed) or model the Klothoide-to-Bloss reshaping Uwe
+			// described -- that needs Ril 800.0110's ramp-rate limits, which
+			// aren't available here. So this locates the bottleneck curves; it
+			// does not tell you whether raising the cant is actually buildable.
+			const CANT_MAX_ANNAHME_MM = 160;
+			function potentialSpeedLimitSeries(curvaturePoints, cantMaxMm = CANT_MAX_ANNAHME_MM, cantDeficiencyMm = CANT_DEFICIENCY_REGELWERT_MM) {
+				return curvaturePoints
+					.map((point) => {
+						const curvature = Math.abs(point.y);
+						if (!(curvature > 1e-9)) return null;
+						const radius = 1 / curvature;
+						const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cantMaxMm + cantDeficiencyMm) / 11.8), V_MAX_DE_KMH));
 						return Number.isFinite(speed) ? { x: point.x, y: speed } : null;
 					})
 					.filter(Boolean);
@@ -39549,8 +39714,12 @@ xlsx/xlsx.mjs:
 					const curvaturePoints = curvatureSeries(curvatureCandidate);
 					const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
 					const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
-					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · zul. v (Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm, Regelwert) [km/h]`, "diagram-speed", points, {
+					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · zul. v (Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm, Regelwert · ${SPEED_STEP_KMH}er-Schritte, abgerundet · gedeckelt ${V_MAX_DE_KMH} km/h) [km/h]`, "diagram-speed", points, {
 						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
+					}));
+					const potentialPoints = clipPointsToRange(potentialSpeedLimitSeries(curvaturePoints), selectedRange);
+					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · GWB: pot. v bei u_max ${CANT_MAX_ANNAHME_MM} mm (Annahme, ohne Rampen-/Fahrzeugprüfung · ${SPEED_STEP_KMH}er-Schritte, abgerundet · gedeckelt ${V_MAX_DE_KMH} km/h) [km/h]`, "diagram-speed-potential", potentialPoints, {
+						emptyNote: "keine Krümmung in diesem Abschnitt",
 					}));
 				}
 				for (const kind of ["profile", "alignment", "cant"]) {
@@ -39739,7 +39908,7 @@ xlsx/xlsx.mjs:
 					: hasUnknown
 						? `${entries.length} verknüpfte Objekte · Gleisseite noch zuzuordnen`
 						: (() => {
-							const sevenLineBandCount = tracks.filter((track) => track.className !== "diagram-speed").length;
+							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed")).length;
 							const speedBandCount = tracks.length - sevenLineBandCount;
 							return `${sevenLineBandCount} von 7 Bändern${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""} · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
 						})();
@@ -40415,6 +40584,7 @@ xlsx/xlsx.mjs:
 							if (coordinates.length < 2) continue;
 							const id = String(featureIndex++);
 							precisionEntryById.set(id, entry);
+							const sourcePoint = element?.start;
 							features.push({
 								type: "Feature",
 								properties: {
@@ -40422,6 +40592,10 @@ xlsx/xlsx.mjs:
 									active: entry === selectedEntry ? 1 : 0,
 									precisionValue: precisionForElement(element),
 									precisionStation: stationScalar(element?.extras?.externalStation ?? element?.staStart),
+									precisionEasting: numberValue(sourcePoint?.easting),
+									precisionNorthing: numberValue(sourcePoint?.northing),
+									fileName: loaded.fileName ?? "",
+									objectName: objectDisplayName(entry),
 								},
 								geometry: { type: "LineString", coordinates },
 							});
@@ -40439,6 +40613,160 @@ xlsx/xlsx.mjs:
 				if (value < 0.01) return `${Math.round(value * 1000)} mm`;
 				if (value < 1) return `${(value * 100).toFixed(1)} cm`;
 				return `${value.toFixed(2)} m`;
+			}
+
+			function focusPrecisionFeature(properties, lngLat) {
+				precisionPopup?.remove();
+				const stationLabel = Number.isFinite(properties.precisionStation) ? `bei km ${station(properties.precisionStation).trim()}` : null;
+				precisionPopup = new globalThis.maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "220px" })
+					.setLngLat(lngLat)
+					.setHTML(
+						`<strong>Punktgenauigkeit: ${xml(formatPrecisionValue(properties.precisionValue))}</strong>` +
+						(stationLabel ? `<br>${xml(stationLabel)}` : "") +
+						`<br><span style="opacity:.7">(GND meanPointError, Prototyp)</span>`,
+					)
+					.addTo(maplibreMap);
+				const entry = precisionEntryById.get(String(properties.id));
+				if (entry) selectObject(entry, entry.button);
+			}
+
+			// Uwe's ask: don't just color the map, enumerate every segment worse
+			// than the threshold so the ProjektIng can work through them one by
+			// one -- the PM only needs the count on the button, the PI opens the
+			// panel and gets the full list.
+			function collectRejectList() {
+				return precisionFeatureCollection().features
+					.filter((feature) => Number.isFinite(feature.properties.precisionValue) && feature.properties.precisionValue > PRECISION_REJECT_THRESHOLD)
+					.sort((a, b) => b.properties.precisionValue - a.properties.precisionValue);
+			}
+
+			function precisionSwatchColor(value) {
+				if (value <= 0.003) return "#00c853";
+				if (value <= 0.01) return "#8bc34a";
+				if (value <= 0.03) return "#ffeb3b";
+				if (value <= 0.1) return "#ff9800";
+				return "#d32f2f";
+			}
+
+			// Apple Maps-style scoping: a pin list narrows to what's actually on
+			// screen as you pan/zoom, instead of making the reader match rows
+			// against a viewport full of other lines. "Visible" means any point
+			// of the segment falls inside the current bounds -- partially
+			// on-screen still counts, only fully-scrolled-off segments drop out.
+			function isFeatureVisibleInViewport(feature) {
+				if (!maplibreMap) return true;
+				const bounds = maplibreMap.getBounds();
+				return feature.geometry.coordinates.some((coordinate) => bounds.contains(coordinate));
+			}
+
+			function csvField(value) {
+				const text = String(value ?? "");
+				return /[;"\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+			}
+
+			function csvNumber(value, decimals) {
+				return Number.isFinite(value) ? value.toFixed(decimals).replace(".", ",") : "";
+			}
+
+			// The PI's actual next action (Nachvermessung beauftragen, gegen den
+			// Lageplan abgleichen) needs a document, not an open browser tab --
+			// German-locale CSV (semicolon-separated, comma decimals, UTF-8 BOM)
+			// so it opens straight into Excel with no import wizard. Always the
+			// full list, never just what's currently scrolled into view: a
+			// handoff document that silently drops rows because someone was
+			// zoomed in when they exported it would be worse than none.
+			function buildRejectListCsv() {
+				const items = collectRejectList();
+				const lines = [
+					`Ausschussliste (Prototyp) - Punktgenauigkeit > ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (GND meanPointError)`,
+					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
+					"",
+					["Datei", "Objekt", "Station", "Punktgenauigkeit_m", "Easting", "Northing"].join(";"),
+				];
+				for (const feature of items) {
+					const p = feature.properties;
+					lines.push([
+						csvField(p.fileName),
+						csvField(p.objectName),
+						csvField(Number.isFinite(p.precisionStation) ? station(p.precisionStation).trim() : ""),
+						csvNumber(p.precisionValue, 4),
+						csvNumber(p.precisionEasting, 3),
+						csvNumber(p.precisionNorthing, 3),
+					].join(";"));
+				}
+				return lines.join("\r\n");
+			}
+
+			function downloadRejectListCsv() {
+				const csv = buildRejectListCsv();
+				const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = `ausschussliste-${new Date().toISOString().slice(0, 10)}.csv`;
+				link.click();
+				setTimeout(() => URL.revokeObjectURL(url), 1000);
+			}
+
+			function renderRejectList() {
+				const all = collectRejectList();
+				const items = all.filter(isFeatureVisibleInViewport);
+				rejectListCount.textContent = String(items.length);
+				rejectListCount.dataset.empty = String(items.length === 0);
+				rejectListPanel.replaceChildren();
+				if (all.length) {
+					const head = document.createElement("div");
+					head.className = "reject-head";
+					const label = document.createElement("span");
+					label.textContent = `${all.length} gesamt`;
+					const exportButton = document.createElement("button");
+					exportButton.type = "button";
+					exportButton.className = "reject-export";
+					exportButton.textContent = "CSV exportieren";
+					exportButton.title = "Vollständige Liste (alle Dateien, unabhängig vom Kartenausschnitt) als CSV für Excel";
+					exportButton.addEventListener("click", downloadRejectListCsv);
+					head.append(label, exportButton);
+					rejectListPanel.append(head);
+				}
+				if (all.length && items.length !== all.length) {
+					const scopeNote = document.createElement("div");
+					scopeNote.className = "reject-scope-note";
+					scopeNote.textContent = `${items.length} von ${all.length} im aktuellen Kartenausschnitt`;
+					rejectListPanel.append(scopeNote);
+				}
+				if (!items.length) {
+					const empty = document.createElement("div");
+					empty.className = "reject-empty";
+					empty.textContent = all.length
+						? "Keine dieser Stellen liegt im aktuellen Kartenausschnitt — herauszoomen oder verschieben."
+						: `Keine Segmente über ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} gemeldet.`;
+					rejectListPanel.append(empty);
+					return;
+				}
+				for (const feature of items) {
+					const props = feature.properties;
+					const row = document.createElement("button");
+					row.type = "button";
+					row.className = "reject-row";
+					const swatch = document.createElement("span");
+					swatch.className = "reject-row-swatch";
+					swatch.style.background = precisionSwatchColor(props.precisionValue);
+					const stationEl = document.createElement("span");
+					stationEl.className = "reject-row-station";
+					stationEl.textContent = Number.isFinite(props.precisionStation) ? `km ${station(props.precisionStation).trim()}` : "Station unbekannt";
+					const valueEl = document.createElement("span");
+					valueEl.className = "reject-row-value";
+					valueEl.textContent = formatPrecisionValue(props.precisionValue);
+					row.append(swatch, stationEl, valueEl);
+					row.addEventListener("click", () => {
+						if (!maplibreMap) return;
+						if (!precisionModeActive) togglePrecisionMode();
+						const coordinate = feature.geometry.coordinates[Math.floor(feature.geometry.coordinates.length / 2)];
+						maplibreMap.flyTo({ center: coordinate, zoom: 17 });
+						focusPrecisionFeature(props, coordinate);
+					});
+					rejectListPanel.append(row);
+				}
 			}
 
 			function pointQualityForEntry(entry) {
@@ -40467,6 +40795,7 @@ xlsx/xlsx.mjs:
 				if (source) source.setData(geographicFeatureCollection());
 				const precisionSource = maplibreMap?.getSource("technet-precision");
 				if (precisionSource) precisionSource.setData(precisionFeatureCollection());
+				renderRejectList();
 			}
 
 			function togglePrecisionMode() {
@@ -40612,6 +40941,9 @@ xlsx/xlsx.mjs:
 				mapLegend.classList.add("hidden");
 				precisionToggle.classList.add("hidden");
 				precisionLegend.classList.add("hidden");
+				rejectListToggle.classList.add("hidden");
+				rejectListPanel.classList.add("hidden");
+				rejectListToggle.setAttribute("aria-pressed", "false");
 				if (precisionModeActive) togglePrecisionMode();
 				baseMapLoad.setAttribute("aria-pressed", "false");
 				baseMapLoad.textContent = "OpenRailwayMap ein";
@@ -40801,19 +41133,7 @@ xlsx/xlsx.mjs:
 						const showPrecisionPopup = (event) => {
 							const feature = event.features?.[0];
 							if (!feature) return;
-							precisionPopup?.remove();
-							const props = feature.properties;
-							const stationLabel = Number.isFinite(props.precisionStation) ? `bei km ${station(props.precisionStation).trim()}` : null;
-							precisionPopup = new globalThis.maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "220px" })
-								.setLngLat(event.lngLat)
-								.setHTML(
-									`<strong>Punktgenauigkeit: ${xml(formatPrecisionValue(props.precisionValue))}</strong>` +
-									(stationLabel ? `<br>${xml(stationLabel)}` : "") +
-									`<br><span style="opacity:.7">(GND meanPointError, Prototyp)</span>`,
-								)
-								.addTo(maplibreMap);
-							const entry = precisionEntryById.get(String(props.id));
-							if (entry) selectObject(entry, entry.button);
+							focusPrecisionFeature(feature.properties, event.lngLat);
 						};
 						const precisionHoverLayers = ["technet-precision-lines", "technet-precision-unknown"];
 						for (const layerId of precisionHoverLayers) {
@@ -40821,6 +41141,7 @@ xlsx/xlsx.mjs:
 							maplibreMap.on("mouseenter", layerId, () => { maplibreMap.getCanvas().style.cursor = "pointer"; });
 							maplibreMap.on("mouseleave", layerId, () => { maplibreMap.getCanvas().style.cursor = ""; });
 						}
+						maplibreMap.on("moveend", () => renderRejectList());
 					}
 					railwayMapActive = true;
 					multi2d.classList.add("hidden");
@@ -40828,6 +41149,7 @@ xlsx/xlsx.mjs:
 					railwayOpacityControl.classList.remove("hidden");
 					mapLegend.classList.remove("hidden");
 					precisionToggle.classList.remove("hidden");
+					rejectListToggle.classList.remove("hidden");
 					mapEmpty.classList.add("hidden");
 					maplibreMap.resize();
 					renderBasemap();
@@ -40843,6 +41165,7 @@ xlsx/xlsx.mjs:
 					railwayOpacityControl.classList.add("hidden");
 					mapLegend.classList.add("hidden");
 					precisionToggle.classList.add("hidden");
+					rejectListToggle.classList.add("hidden");
 					crsNote.textContent = error.message;
 				}
 			}
@@ -42801,6 +43124,12 @@ xlsx/xlsx.mjs:
 				mapFilterPanel.classList.toggle("hidden", !willOpen);
 				mapFilterToggle.setAttribute("aria-pressed", String(willOpen));
 				if (willOpen) renderMapFilterPanel();
+			});
+			rejectListToggle.addEventListener("click", () => {
+				const willOpen = rejectListPanel.classList.contains("hidden");
+				rejectListPanel.classList.toggle("hidden", !willOpen);
+				rejectListToggle.setAttribute("aria-pressed", String(willOpen));
+				if (willOpen) renderRejectList();
 			});
 			listingZoomOut.addEventListener("click", () => zoomListing(-0.1));
 			listingZoomIn.addEventListener("click", () => zoomListing(0.1));
