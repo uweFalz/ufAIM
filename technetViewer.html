@@ -262,10 +262,22 @@
 			#diagramCode:empty {
 				display: none;
 			}
-			#diagram {
-				width: 100%;
-				height: 100%;
+			/* Three stacked figures can be taller than any panel. Render the SVG at
+			   its natural height (width-driven, from the viewBox) inside a scrolling
+			   box instead of letting a "meet" downscale shrink all three to fit --
+			   measured 0.39x on a full 7L+IVHW+GWB stack, i.e. 5px labels. */
+			#diagramScroll {
+				min-height: 0;
+				overflow-y: auto;
+				overflow-x: hidden;
 				background: color-mix(in srgb, CanvasText 3%, Canvas);
+			}
+			#diagram {
+				display: block;
+				width: 100%;
+				max-width: 1250px;
+				margin: 0 auto;
+				height: auto;
 			}
 			#diagramTable {
 				width: 100%;
@@ -338,6 +350,9 @@
 				font: 13px system-ui, sans-serif;
 			}
 			.diagram-muted { fill: GrayText; }
+			.diagram-figure-strip { fill: color-mix(in srgb, CanvasText 7%, Canvas); }
+			.diagram-figure-title { font-weight: 650; font-size: 14px; }
+			.diagram-figure-sub { font-size: 11px; }
 			.diagram-footnote { font-size: 11px; }
 			.diagram-axis-value { font-size: 11px; font-variant-numeric: tabular-nums; }
 			#mapToolbar {
@@ -1391,16 +1406,14 @@
 								<strong id="diagramTitle">Diagramm</strong>
 								<span id="diagramCode" title=""></span>
 								<span id="diagramNote"></span>
-								<div id="diagramModes" aria-label="Diagrammmodus">
-									<button type="button" data-diagram-mode="7l" aria-pressed="true" title="7-Linien-Diagramm: Krümmung, Höhe und Überhöhung über der Kilometrierung (entspricht dem IVMG-Trassenplan)">Diagramm</button>
-									<button type="button" data-diagram-mode="ivhw" aria-pressed="false" title="Weichenhöhenplan: Schienenhöhen im Vergleich, wie im gelieferten IVWH-Plan (RiL 885.1103)">Höhenplan</button>
-								</div>
 								<div id="diagramPresentation" aria-label="Ansicht">
 									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
 									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
 								</div>
 							</div>
-							<svg id="diagram" role="img" aria-label="Stationsbezogene Diagramme für Krümmung, Höhe und Überhöhung"></svg>
+							<div id="diagramScroll">
+								<svg id="diagram" role="img" aria-label="Drei Abbildungen: IVMG-Trassenplan, IVHW-Weichenhöhenplan, GWB-Geschwindigkeitswegeband"></svg>
+							</div>
 							<div id="diagramTable" class="hidden" aria-label="Stationswerte als Tabelle"></div>
 						</div>
 					</div>
@@ -38716,6 +38729,7 @@ xlsx/xlsx.mjs:
 			const diagramPanel = document.querySelector("#diagramPanel");
 			const diagramResizeHandle = document.querySelector("#diagramResizeHandle");
 			const diagram = document.querySelector("#diagram");
+			const diagramScroll = document.querySelector("#diagramScroll");
 			const diagramTable = document.querySelector("#diagramTable");
 			const diagramTitle = document.querySelector("#diagramTitle");
 			const diagramCode = document.querySelector("#diagramCode");
@@ -38803,8 +38817,6 @@ xlsx/xlsx.mjs:
 			let listingZoom = 1;
 			let diagramHeightManual = false;
 			let diagramResize = null;
-			let diagramMode = "7l";
-			const diagramModeButtons = Array.from(document.querySelectorAll("#diagramModes button"));
 			let diagramPresentation = "chart";
 			const diagramPresentationButtons = Array.from(document.querySelectorAll("#diagramPresentation button"));
 			const listingCache = new WeakMap();
@@ -39839,28 +39851,147 @@ xlsx/xlsx.mjs:
 			function activateDiagramPresentation(presentation) {
 				diagramPresentation = presentation;
 				for (const candidate of diagramPresentationButtons) candidate.setAttribute("aria-pressed", String(candidate.dataset.diagramPresentation === presentation));
-				diagram.classList.toggle("hidden", presentation === "table");
+				diagramScroll.classList.toggle("hidden", presentation === "table");
 				diagramTable.classList.toggle("hidden", presentation !== "table");
 				renderDiagram();
+			}
+
+			// Drei feste Abbildungen untereinander -- IVMG, IVHW, GWB -- statt eines
+			// Modus-Umschalters mit variablem Bänderstapel ("unten nur noch drei
+			// Abbildungen sehen"). Jede Abbildung ist ein verschachteltes <svg> mit
+			// eigener viewBox: Bänderstapel (IVMG, GWB) und Weichenhöhenplan (IVHW)
+			// behalten so ihre eigene Koordinatenmathematik, nur die Höhen werden
+			// addiert. IVMG und GWB teilen sich die Kilometrierungsachse; IVHW hat
+			// bewusst seine eigene (intrinsische bzw. externe Station, siehe dort).
+			const FIGURE_WIDTH = 1000;
+			const FIGURE_TITLE_HEIGHT = 30;
+
+			function drawFigureTitle(target, y, title, subtitle) {
+				target.append(svgElement("rect", { x: 0, y, width: FIGURE_WIDTH, height: FIGURE_TITLE_HEIGHT, class: "diagram-figure-strip" }));
+				const text = svgElement("text", { x: 12, y: y + 20, class: "diagram-label diagram-figure-title" });
+				text.textContent = title;
+				target.append(text);
+				if (subtitle) {
+					const sub = svgElement("text", { x: FIGURE_WIDTH - 30, y: y + 20, "text-anchor": "end", class: "diagram-label diagram-muted diagram-figure-sub" });
+					sub.textContent = subtitle;
+					target.append(sub);
+				}
+				return FIGURE_TITLE_HEIGHT;
+			}
+
+			function nestedFigure(target, y, height) {
+				const figure = svgElement("svg", { x: 0, y, width: FIGURE_WIDTH, height, viewBox: `0 0 ${FIGURE_WIDTH} ${height}` });
+				target.append(figure);
+				return figure;
+			}
+
+			function drawEmptyFigure(target, y, note) {
+				const height = 56;
+				const figure = nestedFigure(target, y, height);
+				figure.append(svgElement("rect", { x: 0, y: 0, width: FIGURE_WIDTH, height, class: "diagram-band" }));
+				const text = svgElement("text", { x: 250, y: 33, class: "diagram-label diagram-muted" });
+				text.textContent = note;
+				figure.append(text);
+				return height;
+			}
+
+			function bandEmptyNote(track) {
+				return track.emptyNote ?? (track.requiredMissing
+					? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
+					: "keine sicher verknüpfte, numerische Reihe");
+			}
+
+			// Bänderstapel über einer gemeinsamen Kilometrierungsachse; liefert die
+			// verbrauchte Höhe zurück. Labels umbrechen in <tspan>-Zeilen, Min/Max
+			// stehen rechtsbündig in der Beschriftungsspalte, Fußnoten einmal unten.
+			function drawBandStack(target, y, tracks, xMin, xMax, footnotes = []) {
+				const xSpan = Math.max(xMax - xMin, 1);
+				const width = FIGURE_WIDTH;
+				const trackHeight = 112;
+				const gap = 8;
+				const footnoteHeight = footnotes.length * 16;
+				const height = 42 + tracks.length * (trackHeight + gap) + footnoteHeight;
+				const left = 238;
+				const right = 30;
+				const top = 25;
+				const axisY = height - footnoteHeight - 12;
+				const figure = nestedFigure(target, y, height);
+				for (let tick = 0; tick <= 5; tick += 1) {
+					const x = left + (width - left - right) * tick / 5;
+					figure.append(svgElement("line", { x1: x, x2: x, y1: top, y2: axisY - 23, class: "diagram-grid" }));
+					const label = svgElement("text", { x, y: axisY, "text-anchor": "middle", class: "diagram-label diagram-muted" });
+					label.textContent = station(xMin + xSpan * tick / 5).trim();
+					figure.append(label);
+				}
+				footnotes.forEach((footnote, index) => {
+					const note = svgElement("text", { x: 12, y: height - 6 - (footnotes.length - 1 - index) * 16, class: "diagram-label diagram-muted diagram-footnote" });
+					note.textContent = footnote;
+					figure.append(note);
+				});
+				tracks.forEach((track, index) => {
+					const yTop = top + index * (trackHeight + gap);
+					const yBottom = yTop + trackHeight;
+					figure.append(svgElement("rect", { x: 0, y: yTop, width, height: trackHeight, class: "diagram-band" }));
+					figure.append(svgElement("line", { x1: left, x2: width - right, y1: yBottom, y2: yBottom, class: "diagram-axis" }));
+					// ~160 units of the 238-unit gutter for the label, the rest for the
+					// right-aligned min/max readouts; at 13px that is ~24 chars/line,
+					// three lines fit above the min readout in a 112-unit band.
+					figure.append(wrappedText({ x: 12, y: yTop + 18, class: "diagram-label" }, wrapText(track.label, 24).slice(0, 3), 16));
+					if (!track.points.length) {
+						const empty = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
+						empty.textContent = bandEmptyNote(track);
+						figure.append(empty);
+						return;
+					}
+					let yMin = Infinity;
+					let yMax = -Infinity;
+					for (const point of [...track.points, ...(track.overlay?.points ?? [])]) {
+						yMin = Math.min(yMin, point.y);
+						yMax = Math.max(yMax, point.y);
+					}
+					const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
+					const pathFor = (points) => points.map((point, pointIndex) => {
+						const x = left + (point.x - xMin) / xSpan * (width - left - right);
+						const py = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
+						return `${pointIndex ? "L" : "M"} ${x} ${py}`;
+					}).join(" ");
+					if (track.overlay?.points?.length) {
+						figure.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
+					}
+					figure.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
+					// Min/max readouts in the label gutter -- a band without numbers
+					// is a shape, not a measurement; the PI needs to read "70" and
+					// "140" off it, not guess from the line height.
+					const unit = track.unit ? ` ${track.unit}` : "";
+					const maxLabel = svgElement("text", { x: left - 8, y: yTop + 19, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
+					maxLabel.textContent = `${axisValue(yMax)}${unit}`;
+					const minLabel = svgElement("text", { x: left - 8, y: yBottom - 11, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
+					minLabel.textContent = `${axisValue(yMin)}${unit}`;
+					figure.append(maxLabel, minLabel);
+					for (const jump of track.jumps ?? []) {
+						const x = left + (jump - xMin) / xSpan * (width - left - right);
+						figure.append(svgElement("line", { x1: x, x2: x, y1: yTop + 7, y2: yBottom - 7, class: "diagram-jump" }));
+					}
+				});
+				return height;
 			}
 
 			function renderDiagram(entry = selectedEntry) {
 				diagram.replaceChildren();
 				diagramTable.replaceChildren();
-				if (diagramMode === "ivhw") {
-					renderIvhwDiagram(entry);
-					return;
-				}
 				if (!entry) {
 					diagramPanel.dataset.autoHeight = "144";
 					if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", "144px");
 					return;
 				}
-				const { anchor, entries, bands: tracks, hasUnknown, missingKilometerLine } = sevenLineTracks(entry);
+				const { anchor, entries, bands, hasUnknown, missingKilometerLine } = sevenLineTracks(entry);
+				const ivmgTracks = bands.filter((track) => !track.className.startsWith("diagram-speed"));
+				const gwbTracks = bands.filter((track) => track.className.startsWith("diagram-speed"));
+				const ivhw = buildIvhwData(entry);
 				let xMin = Infinity;
 				let xMax = -Infinity;
-				for (const track of tracks) {
-					for (const point of track.points) {
+				for (const track of bands) {
+					for (const point of [...track.points, ...(track.overlay?.points ?? [])]) {
 						xMin = Math.min(xMin, point.x);
 						xMax = Math.max(xMax, point.x);
 					}
@@ -39871,103 +40002,47 @@ xlsx/xlsx.mjs:
 				}
 				if (!Number.isFinite(xMin)) xMin = 0;
 				if (!Number.isFinite(xMax)) xMax = 1;
-				const xSpan = Math.max(xMax - xMin, 1);
-				const width = 1000;
-				const trackHeight = 112;
-				const gap = 8;
-				const footnotes = [...new Set(tracks.map((track) => track.footnote).filter(Boolean))]
+				const footnotes = [...new Set(gwbTracks.map((track) => track.footnote).filter(Boolean))]
 					.flatMap((footnote) => wrapText(footnote, 165));
-				const footnoteHeight = footnotes.length * 16;
-				const height = Math.max(250, 42 + tracks.length * (trackHeight + gap) + footnoteHeight);
-				// Size the panel to the viewBox so the SVG renders ~1:1. The old
-				// 72px-per-band auto height against a 120-unit-per-band viewBox
-				// forced a "meet" downscale to ~0.5x -- 13px labels came out at
-				// under 7px (measured 6.8px on a 1400px-wide window), which is
-				// what made the whole panel read as unusable. 72px covers the
-				// diagram toolbar and padding, as before.
-				const autoHeight = Math.round(height) + 72;
-				diagramPanel.dataset.autoHeight = String(autoHeight);
-				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${autoHeight}px`);
-				const left = 238;
-				const right = 30;
-				const top = 25;
-				const axisY = height - footnoteHeight - 12;
 				if (diagramPresentation === "table") {
-					renderDiagramTable(tracks.flatMap((track) => {
-						const row = {
-							label: track.label,
-							points: track.points,
-							emptyNote: track.emptyNote ?? (track.requiredMissing
-								? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
-								: "keine sicher verknüpfte, numerische Reihe"),
-						};
-						return track.overlay
-							? [row, { label: `${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote }]
-							: [row];
-					}));
+					renderDiagramTable([
+						...ivmgTracks.map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) })),
+						...(ivhw.trackData ?? []).flatMap((data) => [
+							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene A`, points: data.railA, valueLabel: "Höhe (m)" },
+							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene B`, points: data.railB, valueLabel: "Höhe (m)" },
+						]),
+						...gwbTracks.flatMap((track) => {
+							const row = { label: `GWB · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) };
+							return track.overlay
+								? [row, { label: `GWB · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote }]
+								: [row];
+						}),
+					]);
 				} else {
-					diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
-					for (let tick = 0; tick <= 5; tick += 1) {
-						const x = left + (width - left - right) * tick / 5;
-						const line = svgElement("line", { x1: x, x2: x, y1: top, y2: axisY - 23, class: "diagram-grid" });
-						diagram.append(line);
-						const label = svgElement("text", { x, y: axisY, "text-anchor": "middle", class: "diagram-label diagram-muted" });
-						label.textContent = station(xMin + xSpan * tick / 5).trim();
-						diagram.append(label);
-					}
-					footnotes.forEach((footnote, index) => {
-						const note = svgElement("text", { x: 12, y: height - 6 - (footnotes.length - 1 - index) * 16, class: "diagram-label diagram-muted diagram-footnote" });
-						note.textContent = footnote;
-						diagram.append(note);
-					});
-					tracks.forEach((track, index) => {
-						const yTop = top + index * (trackHeight + gap);
-						const yBottom = yTop + trackHeight;
-						diagram.append(svgElement("rect", { x: 0, y: yTop, width, height: trackHeight, class: "diagram-band" }));
-						diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBottom, y2: yBottom, class: "diagram-axis" }));
-						// ~160 units of the 238-unit gutter for the label, the rest for the
-						// right-aligned min/max readouts; at 13px that is ~24 chars/line,
-						// three lines fit above the min readout in a 112-unit band.
-						diagram.append(wrappedText({ x: 12, y: yTop + 18, class: "diagram-label" }, wrapText(track.label, 24).slice(0, 3), 16));
-						if (!track.points.length) {
-							const empty = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
-							empty.textContent = track.emptyNote ?? (track.requiredMissing
-								? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
-								: "keine sicher verknüpfte, numerische Reihe");
-							diagram.append(empty);
-							return;
-						}
-						let yMin = Infinity;
-						let yMax = -Infinity;
-						for (const point of [...track.points, ...(track.overlay?.points ?? [])]) {
-							yMin = Math.min(yMin, point.y);
-							yMax = Math.max(yMax, point.y);
-						}
-						const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
-						const pathFor = (points) => points.map((point, pointIndex) => {
-							const x = left + (point.x - xMin) / xSpan * (width - left - right);
-							const y = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
-							return `${pointIndex ? "L" : "M"} ${x} ${y}`;
-						}).join(" ");
-						if (track.overlay?.points?.length) {
-							diagram.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
-						}
-						diagram.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
-						// Min/max readouts in the label gutter -- a band without numbers
-						// is a shape, not a measurement; the PI needs to read "70" and
-						// "140" off it, not guess from the line height.
-						const unit = track.unit ? ` ${track.unit}` : "";
-						const maxLabel = svgElement("text", { x: left - 8, y: yTop + 19, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
-						maxLabel.textContent = `${axisValue(yMax)}${unit}`;
-						const minLabel = svgElement("text", { x: left - 8, y: yBottom - 11, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
-						minLabel.textContent = `${axisValue(yMin)}${unit}`;
-						diagram.append(maxLabel, minLabel);
-						for (const jump of track.jumps ?? []) {
-							const x = left + (jump - xMin) / xSpan * (width - left - right);
-							diagram.append(svgElement("line", { x1: x, x2: x, y1: yTop + 7, y2: yBottom - 7, class: "diagram-jump" }));
-						}
-					});
+					let y = 0;
+					y += drawFigureTitle(diagram, y, "IVMG · Trassenplan", "Krümmung · Gradiente · Überhöhung über der Kilometrierung · Ril 883.5220");
+					y += ivmgTracks.length
+						? drawBandStack(diagram, y, ivmgTracks, xMin, xMax)
+						: drawEmptyFigure(diagram, y, "keine Lage-, Höhen- oder Überhöhungsreihe sicher verknüpft");
+					y += drawFigureTitle(diagram, y, "IVHW · Weichenhöhenplan", ivhw.subtitle);
+					y += ivhw.trackData
+						? drawIvhwPlot(diagram, y, ivhw)
+						: drawEmptyFigure(diagram, y, ivhw.note);
+					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "zul. v durchgezogen · Potenzial gestrichelt · Ril 800.0110 · Diagnose, kein Entwurf");
+					y += gwbTracks.length
+						? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
+						: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
+					diagram.setAttribute("viewBox", `0 0 ${FIGURE_WIDTH} ${y}`);
+					// The SVG now sizes itself from the viewBox at the panel's width, so
+					// the panel's auto height is the rendered height (+72px chrome),
+					// clamped by setDiagramHeight() to what the window can show; past
+					// that, #diagramScroll scrolls instead of shrinking the figures.
+					const renderedWidth = diagram.getBoundingClientRect().width || FIGURE_WIDTH;
+					const autoHeight = Math.round(y * renderedWidth / FIGURE_WIDTH) + 72;
+					diagramPanel.dataset.autoHeight = String(autoHeight);
+					if (!diagramHeightManual) setDiagramHeight(autoHeight, { manual: false });
 				}
+				const tracks = bands;
 				const profile = entries.find((candidate) => candidate.item.kind === "profile");
 				const cant = entries.find((candidate) => candidate.item.kind === "cant");
 				const unresolved = anchor?.item?.payload?.extras?.unresolvedAttachments ?? {};
@@ -39994,8 +40069,8 @@ xlsx/xlsx.mjs:
 					!cant && !outOfRangeNames.includes("EU") && (unresolved.cant || loadedHasFamily(anchor.loaded, "EU")) && "EU",
 				].filter(Boolean);
 				diagramTitle.textContent = objectDisplayName(anchor);
-				diagramCode.textContent = "7L";
-				diagramCode.title = "7-Linien-Modell (Krümmung, Höhe, Überhöhung) · entspricht dem IVMG-Trassenplan";
+				diagramCode.textContent = "IVMG · IVHW · GWB";
+				diagramCode.title = "Trassenplan (Ril 883.5220) · Weichenhöhenplan (Ril 883.5240) · Geschwindigkeitswegeband (Ril 800.0110, Diagnose)";
 				diagramNote.textContent = missingKilometerLine
 					? "Kilometerlinie fehlt · zweigleisige Streckenzuordnung unvollständig"
 					: outOfRangeNames.length
@@ -40046,18 +40121,11 @@ xlsx/xlsx.mjs:
 				["#c0392b", "#1f8ba7"],
 			];
 
-			function renderIvhwDiagram(entry) {
-				const emptyState = (note) => {
-					diagramTitle.textContent = "Höhenplan";
-					diagramCode.textContent = "IVHW";
-					diagramCode.title = "Weichenhöhenplan · Planwerk-Code lvhw · RiL 885.1103";
-					diagramNote.textContent = note;
-					diagramPanel.dataset.autoHeight = "144";
-					if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", "144px");
-				};
+			// Datenteil des Weichenhöhenplans ohne DOM-Nebenwirkungen: liefert entweder
+			// { note } (leer, mit Grund) oder { trackData, subtitle, multiTrack }.
+			function buildIvhwData(entry) {
 				if (!entry || entry.item?.kind !== "alignment") {
-					emptyState("kein Gleis ausgewählt");
-					return;
+					return { note: "kein Gleis ausgewählt", subtitle: "" };
 				}
 				const additional = [...bulkSelectedEntries].filter((candidate) => candidate !== entry && candidate.item?.kind === "alignment");
 				const tracks = [entry, ...additional];
@@ -40093,21 +40161,23 @@ xlsx/xlsx.mjs:
 				}).filter((data) => data.railA.length);
 
 				if (!trackData.length) {
-					emptyState(multiTrack ? "keine Gradiente (Höhe) für die ausgewählten Gleise verknüpft" : "keine Gradiente (Höhe) für dieses Gleis verknüpft");
-					return;
+					return {
+						note: multiTrack ? "keine Gradiente (Höhe) für die ausgewählten Gleise verknüpft" : "keine Gradiente (Höhe) für dieses Gleis verknüpft",
+						subtitle: multiTrack ? `${tracks.length} Gleise ausgewählt` : "",
+					};
 				}
-
-				diagramTitle.textContent = multiTrack
-					? `Höhenplan · ${trackData.length} Gleise`
-					: `Höhenplan · ${objectDisplayName(entry)}`;
-				diagramCode.textContent = "IVHW";
-				diagramCode.title = "Weichenhöhenplan · Planwerk-Code lvhw · RiL 885.1103";
-				diagramNote.textContent = multiTrack
-					? "Bezug: gemeinsame externe GND-Kilometrierung der ausgewählten Gleise · keine Übereinstimmung wird erzwungen"
+				const subtitle = multiTrack
+					? `${trackData.length} Gleise · gemeinsame externe GND-Kilometrierung · keine Übereinstimmung wird erzwungen`
 					: trackData[0].hasCant
-						? "Bezug: intrinsische Station dieses Gleises · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
-						: "Bezug: intrinsische Station dieses Gleises · keine Überhöhungsdaten verknüpft, beide Schienen auf Gradientenhöhe";
+						? "intrinsische Station · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
+						: "intrinsische Station · keine Überhöhung verknüpft, beide Schienen auf Gradientenhöhe";
+				return { trackData, subtitle, multiTrack };
+			}
 
+			// Zeichenteil des Weichenhöhenplans in eine verschachtelte Abbildung;
+			// liefert die verbrauchte Höhe zurück. Der amtliche Maßstab bleibt exakt.
+			function drawIvhwPlot(target, y, ivhw) {
+				const { trackData } = ivhw;
 				let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
 				for (const data of trackData) {
 					for (const point of [...data.railA, ...data.railB]) {
@@ -40131,44 +40201,43 @@ xlsx/xlsx.mjs:
 				const bottom = 40;
 				const plotWidth = width - left - right;
 				const pxPerMeterX = plotWidth / xSpan;
-				const pxPerMeterY = pxPerMeterX * 100;
+				// 100x exaggeration is the official ratio (L 1:500 / H 1:5). As one of
+				// three stacked figures it can no longer claim the whole panel, so a
+				// steep or long profile gets its exaggeration reduced until it fits
+				// 420 units -- and the scale label says so, instead of the nested svg
+				// silently clipping the top of the curve.
+				const officialExaggeration = 100;
+				const maxPlotHeight = 420;
+				const exaggeration = Math.min(officialExaggeration, (maxPlotHeight - 40) / Math.max(ySpan * pxPerMeterX, 1e-9));
+				const pxPerMeterY = pxPerMeterX * exaggeration;
 				const plotHeight = Math.max(60, ySpan * pxPerMeterY + 40);
 				const height = top + plotHeight + bottom;
-				const displayHeight = Math.min(560, Math.max(220, Math.round(height / width * 900)));
-				diagramPanel.dataset.autoHeight = String(displayHeight);
-				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${displayHeight}px`);
-
-				if (diagramPresentation === "table") {
-					renderDiagramTable(trackData.flatMap((data) => [
-						{ label: `${objectDisplayName(data.track)} · Schiene A`, points: data.railA, valueLabel: "Höhe (m)" },
-						{ label: `${objectDisplayName(data.track)} · Schiene B`, points: data.railB, valueLabel: "Höhe (m)" },
-					]));
-					return;
-				}
+				const figure = nestedFigure(target, y, height);
 
 				const yBase = top + plotHeight - 20;
 				const xAt = (x) => left + (x - xMin) * pxPerMeterX;
-				const yAt = (y) => yBase - (y - yMin) * pxPerMeterY;
+				const yAt = (value) => yBase - (value - yMin) * pxPerMeterY;
 
-				diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
 				for (let tick = 0; tick <= 5; tick += 1) {
 					const x = left + plotWidth * tick / 5;
-					diagram.append(svgElement("line", { x1: x, x2: x, y1: top, y2: yBase, class: "diagram-grid" }));
+					figure.append(svgElement("line", { x1: x, x2: x, y1: top, y2: yBase, class: "diagram-grid" }));
 					const label = svgElement("text", { x, y: height - 12, "text-anchor": "middle", class: "diagram-label diagram-muted" });
 					label.textContent = station(xMin + xSpan * tick / 5).trim();
-					diagram.append(label);
+					figure.append(label);
 				}
-				diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBase, y2: yBase, class: "diagram-axis" }));
+				figure.append(svgElement("line", { x1: left, x2: width - right, y1: yBase, y2: yBase, class: "diagram-axis" }));
 
 				const scaleLabel = svgElement("text", { x: width - right, y: 14, "text-anchor": "end", class: "diagram-label diagram-muted" });
-				scaleLabel.textContent = "L 1:500 · H 1:5";
-				diagram.append(scaleLabel);
+				scaleLabel.textContent = exaggeration >= officialExaggeration - 1e-9
+					? "L 1:500 · H 1:5"
+					: `L 1:500 · H 1:${Math.round(500 / exaggeration)} · gestaucht statt amtlich 1:5, sonst passt es nicht`;
+				figure.append(scaleLabel);
 
 				const pathFor = (series) => series.map((point, index) => `${index ? "L" : "M"} ${xAt(point.x)} ${yAt(point.y)}`).join(" ");
 				trackData.forEach((data, index) => {
 					const [colorA, colorB] = IVHW_RAIL_PALETTE[index % IVHW_RAIL_PALETTE.length];
-					diagram.append(svgElement("path", { d: pathFor(data.railA), class: "diagram-series", style: `stroke:${colorA}` }));
-					diagram.append(svgElement("path", { d: pathFor(data.railB), class: "diagram-series", style: `stroke:${colorB}` }));
+					figure.append(svgElement("path", { d: pathFor(data.railA), class: "diagram-series", style: `stroke:${colorA}` }));
+					figure.append(svgElement("path", { d: pathFor(data.railB), class: "diagram-series", style: `stroke:${colorB}` }));
 					const legendY = 14 + index * 14;
 					const legend = svgElement("text", { x: 12, y: legendY, class: "diagram-label" });
 					const dashA = svgElement("tspan", { style: `fill:${colorA}` });
@@ -40178,8 +40247,9 @@ xlsx/xlsx.mjs:
 					const name = svgElement("tspan", {});
 					name.textContent = objectDisplayName(data.track);
 					legend.append(dashA, dashB, name);
-					diagram.append(legend);
+					figure.append(legend);
 				});
+				return height;
 			}
 
 			function inverseTransverseMercator(easting, northing, strip) {
@@ -41942,7 +42012,7 @@ xlsx/xlsx.mjs:
 							else bulkSelectedEntries.delete(entry);
 							const label = tablesNav.querySelector(".bulk-crs-head strong");
 							if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
-							if (diagramMode === "ivhw") renderDiagram();
+							renderDiagram();
 						});
 						const button = document.createElement("button");
 						button.type = "button";
@@ -42078,16 +42148,10 @@ xlsx/xlsx.mjs:
 					.sort((a, b) => (a.stationRaw ?? Infinity) - (b.stationRaw ?? Infinity));
 			}
 
-			function activateDiagramMode(mode) {
-				diagramMode = mode;
-				for (const candidate of diagramModeButtons) candidate.setAttribute("aria-pressed", String(candidate.dataset.diagramMode === mode));
-				renderDiagram();
-			}
-
 			function activateJunctionCluster(junction) {
 				bulkSelectedEntries.clear();
 				for (const entry of junction.entries) bulkSelectedEntries.add(entry);
-				activateDiagramMode("ivhw");
+				renderDiagram();
 				const reference = junction.entries[0];
 				selectObject(reference, reference.button);
 			}
@@ -42220,7 +42284,7 @@ xlsx/xlsx.mjs:
 							else bulkSelectedEntries.delete(entry);
 							const label = tablesNav.querySelector(".bulk-crs-head strong");
 							if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
-							if (diagramMode === "ivhw") renderDiagram();
+							renderDiagram();
 						});
 						const button = document.createElement("button");
 						button.draggable = true;
@@ -42958,7 +43022,15 @@ xlsx/xlsx.mjs:
 				for (let index = 0; index < incoming.length; index += 1) {
 					const file = incoming[index];
 					status.textContent = `${index + 1}/${incoming.length}: ${file.name} wird verarbeitet …`;
-					await new Promise((resolve) => requestAnimationFrame(resolve));
+					// Yield to the UI between import steps. Plain requestAnimationFrame never
+					// fires while the tab is hidden, which froze the whole import at this
+					// line whenever the browser pane was not visible (every stall on
+					// 2026-09-06 was exactly this). Race it against a short timer: smooth
+					// when visible, still progressing when not.
+					await new Promise((resolve) => {
+						const timer = setTimeout(resolve, 100);
+						requestAnimationFrame(() => { clearTimeout(timer); resolve(); });
+					});
 					const before = loadedFiles.length;
 					const result = await inspectFile(file, { deferRender: true });
 					if (loadedFiles.length === before) {
@@ -43152,9 +43224,6 @@ xlsx/xlsx.mjs:
 				if (event.key === "Home") resetDiagramHeight();
 				else setDiagramHeight(diagramPanel.getBoundingClientRect().height + (event.key === "ArrowUp" ? 24 : -24));
 			});
-			for (const button of diagramModeButtons) {
-				button.addEventListener("click", () => activateDiagramMode(button.dataset.diagramMode));
-			}
 			for (const button of diagramPresentationButtons) {
 				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
