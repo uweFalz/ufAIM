@@ -272,37 +272,32 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 	}
 
 	async function reopenObject(objectId) {
+		const rejectReopen = (code) => {
+			state.workspaceFeedback = code;
+			showOverlay();
+			return false;
+		};
 		const requestedId = String(objectId ?? "").trim();
 		const objects = await refreshWorkspaceState();
 		if (!requestedId || !objects.some((entry) => String(entry?.id ?? "") === requestedId)) {
-			state.workspaceFeedback = "WORKSPACE_OBJECT_NOT_FOUND";
-			render();
-			return false;
+			return rejectReopen("WORKSPACE_OBJECT_NOT_FOUND");
 		}
 		if (typeof promotedAlignmentJourney?.activateCanonicalAlignment !== "function") {
-			state.workspaceFeedback = "WORKSPACE_REOPEN_JOURNEY_UNAVAILABLE";
-			render();
-			return false;
+			return rejectReopen("WORKSPACE_REOPEN_JOURNEY_UNAVAILABLE");
 		}
 		try {
 			const result = await promotedAlignmentJourney.activateCanonicalAlignment(requestedId);
 			if (result?.ok !== true) {
-				state.workspaceFeedback = result?.code ?? "WORKSPACE_REOPEN_NOT_ACKNOWLEDGED";
-				render();
-				return false;
+				return rejectReopen(result?.code ?? "WORKSPACE_REOPEN_NOT_ACKNOWLEDGED");
 			}
 			if (String(result.objectId ?? "").trim() !== requestedId) {
-				state.workspaceFeedback = "WORKSPACE_REOPEN_IDENTITY_MISMATCH";
-				render();
-				return false;
+				return rejectReopen("WORKSPACE_REOPEN_IDENTITY_MISMATCH");
 			}
 			state.workspaceFeedback = null;
 			close({ restore: false });
 			return true;
 		} catch (error) {
-			state.workspaceFeedback = String(error?.code ?? "WORKSPACE_REOPEN_FAILED");
-			render();
-			return false;
+			return rejectReopen(String(error?.code ?? "WORKSPACE_REOPEN_FAILED"));
 		}
 	}
 
@@ -489,7 +484,7 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 		});
 		unsubTerminalOutcomes = importController?.subscribeTerminalOutcomes?.(handleTerminalOutcome) ?? null;
 		unsubImportActivity = importController?.subscribeImportActivity?.(handleImportActivity) ?? null;
-		void refreshWorkspaceState().then(showOverlay, showOverlay);
+		void refreshWorkspaceState();
 	}
 
 	function getState() { return structuredClone(state); }

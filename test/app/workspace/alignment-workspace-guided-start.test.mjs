@@ -12,12 +12,12 @@ function installDocument() {
 	return { overlay, clicks };
 }
 
-test("normal start opens the guided surface after canonical workspace hydration", async () => {
+test("normal start hydrates quietly without covering the spatial stage", async () => {
 	const { overlay } = installDocument();
 	const controller = makeGndImportWorkbenchController({ store:{actions:{}}, messaging:{ async sendCmdAwait(name){ if(name==="Spot.GetState") return {objects:[]}; throw new Error(name); } }, cockpit:{} });
 	controller.start();
 	await new Promise((resolve)=>setImmediate(resolve));
-	assert.equal(overlay.classList.contains("hidden"), false);
+	assert.equal(overlay.classList.contains("hidden"), true);
 	assert.equal(controller.getState().workspacePhase, "ready");
 });
 

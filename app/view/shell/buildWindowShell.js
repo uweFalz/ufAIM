@@ -22,7 +22,7 @@ export function buildWindowShell() {
 	if (!appRoot) throw new Error("buildWindowShell: missing #app-root");
 
 	appRoot.innerHTML = `
-		<div class="uf-shell is-intelligence-collapsed" id="ufShell">
+		<div class="uf-shell is-intelligence-collapsed is-cockpit-collapsed" id="ufShell">
 			<div class="uf-toolbar">
 				<div class="uf-workspaceModes" role="group" aria-label="alignmentOS workspace views">
 					<strong class="uf-workspaceModes__brand">alignmentOS</strong>
