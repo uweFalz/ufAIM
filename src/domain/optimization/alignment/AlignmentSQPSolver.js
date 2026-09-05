@@ -165,6 +165,53 @@ export function solveAlignmentProblem({
 		return built;
 	}
 
+	// The end pose is three rows in two units: two positions in metres and a
+	// heading in radians. Left that way they are not comparable, and everything
+	// downstream inherits it. Measured on the nine-element scenario: row norms of
+	// 87, 254 and 0.407, so the subproblem satisfied the heading row two hundred
+	// times less accurately than the positions - Jh d + h came back as
+	// [-2.3e-7, -1.1e-7, +2.2e-5] where the linearisation says all three are
+	// zero. The heading multiplier is correspondingly large, so its penalty
+	// weight was 367, and a step the subproblem called feasible raised the merit
+	// by 8.1e-3 against an objective gain of 7.3e-3. The line search then failed
+	// at every step length, the region collapsed, the relaxation took over and
+	// the subproblem finally degenerated.
+	//
+	// The remedy is the one the diagnostics already use and the solve did not: a
+	// heading error is a distance once it is carried out to the far end, so the
+	// heading row is multiplied by that lever arm and all three rows are metres.
+	//
+	// This is exact in the dual. Scaling a row by s scales its multiplier by 1/s,
+	// so grad f + Jh' lambda is unchanged and the KKT residual with it. An
+	// earlier attempt at row scaling was reverted because the stationarity
+	// thresholds are calibrated against unscaled gradients; that objection does
+	// not reach this, because the gradient it is measured against does not move.
+	//
+	// Fixed before the solve, from the starting alignment, like the variable
+	// scaling above it. A scale that follows the iterate is not a scale but
+	// another nonlinearity, and the merit built on it would have no fixed
+	// stationary point to find.
+	const HEADING_ROW = 2;
+	const leverArm = (() => {
+		let built = null;
+		try { built = realise(x0); } catch { return 1; }
+		const total = Array.isArray(built?.lengths)
+			? built.lengths.reduce((sum, value) => sum + value, 0)
+			: null;
+		return Number.isFinite(total) && total > 0 ? total : 1;
+	})();
+
+	/**
+	 * In place, on the rows the solve sees. The residuals reported at the end are
+	 * taken from equalityResiduals directly and stay in their own units: a heading
+	 * is reported as an angle, whatever the solve had to do to weigh it.
+	 */
+	function scaleEqualityRows(h, Jh) {
+		if (leverArm === 1 || h.length <= HEADING_ROW) return;
+		h[HEADING_ROW] *= leverArm;
+		Jh[HEADING_ROW] = Jh[HEADING_ROW].map((value) => value * leverArm);
+	}
+
 	/**
 	 * Project one declared point onto a candidate alignment, or refuse.
 	 *
@@ -381,6 +428,7 @@ export function solveAlignmentProblem({
 			Jh.push(geometry.lateralDerivative(parameterSpecs, projected.s));
 		}
 		for (const constraint of extraEqualities) Jh.push([...constraint.gradient]);
+		scaleEqualityRows(h, Jh);
 
 		const ramps = rampRows(x);
 
@@ -426,6 +474,7 @@ export function solveAlignmentProblem({
 		}
 
 		const Jh = jacobian.J.slice(0, h.length);
+		scaleEqualityRows(h, Jh);
 		// exact and free: the ramp rule reads variables, not geometry
 		const ramps = rampRows(x);
 
