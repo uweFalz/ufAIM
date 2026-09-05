@@ -125,6 +125,13 @@ to an implementation synthesis unless the real-data case demonstrates a
 failure prevented by the complete boundary that the comparison systems do not
 prevent.
 
+### Decision record
+
+**`DISS-04-DECISION-001`, Option A, approved by Uwe Falz on 2026-09-05.** C3 is retained as the responsibility-and-preservation claim stated
+above. The audit matrix was applied to the incorporated EN/DE TeX sources by
+the repair package documented in
+`MISSION_REPORT_DISSERTATION_MATHEMATICAL_REPAIR_005.md`.
+
 ## Incorporation gate
 
 No audited claim should enter dissertation contribution prose until P053,

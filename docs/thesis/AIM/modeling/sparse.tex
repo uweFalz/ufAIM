@@ -150,8 +150,10 @@ with position $(x_0,y_0)\in\R^2$ and initial direction
 $\theta_0\in\R$.
 \end{definition}
 
-\begin{proposition}
-The planar alignment is reconstructed by successive integration of the
+\begin{corollary}[Reconstruction chain]
+\label{cor:sparse-reconstruction-chain}
+By \cref{prop:curvature-driven-reconstruction}, the planar alignment is
+reconstructed from the start pose by successive integration of the
 curvature law:
 \[
 \kappa(s)
@@ -160,7 +162,7 @@ curvature law:
 \rightarrow
 \gamma(s).
 \]
-\end{proposition}
+\end{corollary}
 
 Together with the ordered element sequence and the local curvature laws,
 the start pose determines the alignment geometry by successive

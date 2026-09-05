@@ -39,20 +39,53 @@ J[\kappa^\ast]=\min_{\kappa\in\mathcal A}J[\kappa].
 \end{definition}
 
 \subsection{Euler--Lagrange-Gleichung}
-\begin{proposition}
-Ist \(\kappa^\ast\) ein Minimierer, dann gilt
+\begin{proposition}[Schwache Euler--Lagrange-Gleichung]
+\label{prop:curvature-el}
+Minimiert \(\kappa^\ast\in\mathcal A\) das Funktional \(J\) über
+\(\mathcal A\), dann gilt
 \[
-\kappa^{\ast\prime\prime}(s)=0.
+\kappa^{\ast\prime\prime}=0
+\]
+im Distributionssinn auf \((0,L)\); insbesondere ist \(\kappa^\ast\) affin.
+\end{proposition}
+
+\begin{proof}
+Für jedes \(\eta\in H_0^1(0,L)\) und \(\epsilon\in\R\) liegt
+\(\kappa^\ast+\epsilon\eta\) in \(\mathcal A\). Minimalität liefert
+\[
+0=\frac{\dd}{\dd\epsilon}J[\kappa^\ast+\epsilon\eta]\Big|_{\epsilon=0}
+=2\int_0^L\kappa^{\ast\prime}(s)\,\eta'(s)\,\dd s .
+\]
+Die distributionelle Ableitung von \(\kappa^{\ast\prime}\) verschwindet
+also, \(\kappa^{\ast\prime}\) ist konstant und \(\kappa^\ast\) affin.
+\end{proof}
+
+\subsection{Interpretation}
+\begin{proposition}[Eindeutiger Minimierer]
+\label{prop:curvature-el-minimizer}
+Das Funktional \(J\) besitzt in \(\mathcal A\) genau einen Minimierer,
+nämlich
+\[
+\kappa^\ast(s)=\frac{\kappa_1}{L}\,s,
+\qquad
+J[\kappa^\ast]=\frac{\kappa_1^2}{L}.
 \]
 \end{proposition}
 
-\subsection{Interpretation}
-\begin{proposition}
-Der Minimierer lautet
+\begin{proof}
+Nach \cref{prop:curvature-el} ist ein Minimierer affin; die Randwerte
+\(\kappa^\ast(0)=0\) und \(\kappa^\ast(L)=\kappa_1\) lassen nur
+\(\kappa^\ast(s)=\kappa_1 s/L\) zu. Existenz und Eindeutigkeit folgen auch
+unmittelbar aus der Cauchy--Schwarz-Ungleichung: für jedes
+\(\kappa\in\mathcal A\) gilt
 \[
-\kappa^\ast(s)=\frac{\kappa_1}{L}s.
+\kappa_1^2
+=\Bigl(\int_0^L\kappa'(s)\,\dd s\Bigr)^2
+\le L\int_0^L\bigl(\kappa'(s)\bigr)^2\,\dd s
+= L\,J[\kappa],
 \]
-\end{proposition}
+mit Gleichheit genau dann, wenn \(\kappa'\) konstant ist.
+\end{proof}
 
 Die Klothoide erscheint somit als Lösung eines Variationsproblems. Dies
 verbindet klassischen Eisenbahnübergangsentwurf mit Optimierung im
@@ -65,12 +98,46 @@ Klothoide \cite{Glover1900TransitionCurves,Higgins1922TransitionSpiral}.
 J_2[\kappa]=\int_0^L\bigl(\kappa''(s)\bigr)^2\,\dd s.
 \]
 \end{definition}
-\begin{proposition}
-Minimierer erfüllen
+Das Funktional \(J_2\) ist auf der \(H^1\)-Menge \(\mathcal A\) nicht
+definiert; es benötigt eine zweite Ableitung und eigene Randbedingungen.
+
+\begin{definition}[Eingespannte zulässige Menge]
 \[
-\kappa^{(4)}(s)=0.
+\mathcal A_2=
+\left\{\kappa\in H^2(0,L)\mid
+\kappa(0)=0,\;\kappa(L)=\kappa_1,\;
+\kappa'(0)=\kappa'(L)=0\right\}.
 \]
+\end{definition}
+
+\begin{proposition}[Euler--Lagrange-Gleichung vierter Ordnung]
+\label{prop:curvature-el-fourth-order}
+Minimiert \(\kappa^\ast\in\mathcal A_2\) das Funktional \(J_2\) über
+\(\mathcal A_2\), dann gilt \(\kappa^{\ast(4)}=0\) im Distributionssinn auf
+\((0,L)\). Folglich ist \(\kappa^\ast\) das kubische Polynom
+\[
+\kappa^\ast(s)
+=\kappa_1\Bigl(3\bigl(\tfrac{s}{L}\bigr)^2-2\bigl(\tfrac{s}{L}\bigr)^3\Bigr),
+\]
+und es ist der eindeutige Minimierer.
 \end{proposition}
+
+\begin{proof}
+Zulässige Variationen sind \(\eta\in H_0^2(0,L)\), also \(\eta=\eta'=0\) an
+beiden Enden. Stationarität liefert
+\(\int_0^L\kappa^{\ast\prime\prime}\eta''\,\dd s=0\) für alle solchen
+\(\eta\), d.\,h. \(\kappa^{\ast(4)}=0\) distributionell; \(\kappa^\ast\)
+ist daher ein kubisches Polynom. Die vier Randbedingungen bestimmen seine
+Koeffizienten eindeutig. Die Differenz zweier Minimierer liegt in
+\(H_0^2(0,L)\) und hat verschwindende zweite Ableitung, ist also null; das
+liefert die Eindeutigkeit.
+\end{proof}
+
+Andere Randvorgaben führen stattdessen auf natürliche Randbedingungen.
+Werden nur \(\kappa(0)\) und \(\kappa(L)\) vorgeschrieben, lauten sie
+\(\kappa''(0)=\kappa''(L)=0\), und der Minimierer reduziert sich auf das
+affine Gesetz aus \cref{prop:curvature-el-minimizer}. Die Gleichung vierter
+Ordnung selbst bleibt unverändert.
 Dies erklärt das Auftreten kubischer Übergangsgesetze und verbindet sie mit
 modernem polynomialem Übergangsentwurf
 \cite{ZboinskiWoznica2017Polynomial}.
@@ -210,17 +277,33 @@ funktionalen Optimierung. Der Übergangsbogen wird nicht mehr aus einem Katalog
 gewählt, sondern entsteht als Teil eines optimalen gekoppelten Zustands.
 
 \subsection{Sonderfälle}
-\begin{proposition}
-Für \(\phi(s)\equiv0\) reduziert sich das gekoppelte Problem auf reine
-Krümmungsoptimierung.
-\end{proposition}
-\begin{proposition}
-Gilt \(a_{\mathrm{eff}}(s)=0\) für alle \(s\), dann ist
+\begin{corollary}[Substitution \(\phi\equiv0\)]
+\label{cor:coupled-substitution-phi-zero}
+Die Substitution \(\phi\equiv0\) entfernt die Überhöhung als Variable. Das
+gekoppelte Funktional reduziert sich auf das reine Krümmungsfunktional
 \[
-v^2\kappa(s)=g\sin\phi(s),
+J[\kappa,0]
+=\alpha v^4\int_0^L\kappa(s)^2\,\dd s
++\beta v^6\int_0^L\bigl(\kappa'(s)\bigr)^2\,\dd s
++\gamma J_\kappa[\kappa],
 \]
-und der Entwurf ist vollkommen ausgeglichen.
-\end{proposition}
+das nur für \(\alpha=\beta=0\) mit \(J_\kappa\) allein übereinstimmt.
+\end{corollary}
+
+\begin{corollary}[Ausgleichsidentität]
+\label{cor:balance-identity}
+\(a_{\mathrm{eff}}(s)=0\) für alle \(s\) gilt genau dann, wenn
+\[
+v^2\kappa(s)=g\sin\phi(s)
+\qquad\text{für alle } s .
+\]
+\end{corollary}
+
+Die Identität ist eine algebraische Folge der Definition von
+\(a_{\mathrm{eff}}\). Einen solchen Entwurf \emph{vollkommen ausgeglichen}
+zu nennen, ist eine ingenieurtechnische Interpretation, die nur unter der
+ebenen lokalen Näherung bei konstanter Geschwindigkeit und der genannten
+Vorzeichenkonvention gilt; sie ist keine Aussage über Fahrzeugdynamik.
 Der klassische Gleichgewichtsentwurf erscheint somit als Sonderfall.
 
 \subsection{Bezug zur Optimalsteuerung}

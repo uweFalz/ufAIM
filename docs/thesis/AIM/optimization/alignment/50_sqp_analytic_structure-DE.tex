@@ -2,19 +2,26 @@
 \subsection{Motivation}
 In klassischer numerischer Optimierung werden Jacobi-Matrizen häufig durch
 finite Differenzen oder automatische Differentiation berechnet. Im AIM-Rahmen
-ist dies nicht erforderlich: Das Alignment-Modell ist intrinsisch
-differenzierbar.
+ist dies für den Rekonstruktionsblock nicht erforderlich: Die ebene
+Rekonstruktion ist unter den nachfolgend genannten Voraussetzungen nach ihren
+Parametern differenzierbar.
 
 \subsection{Grundlegende Beobachtung}
-\begin{proposition}
-Alle Zustandsvariablen entstehen durch Bogenlängenintegration:
+\begin{corollary}[Ebene Rekonstruktionsintegrale]
+\label{cor:planar-reconstruction-integrals}
+Nach \cref{prop:curvature-driven-reconstruction} entstehen die ebenen
+pose2-Variablen aus dem Krümmungsgesetz durch Bogenlängenintegration:
 \[
 \theta(s)=\theta_0+\int_0^s\kappa(\sigma)\,\dd\sigma,
 \]
 \[
 \gamma(s)=\gamma_0+\int_0^s(\cos\theta,\sin\theta)\,\dd\sigma.
 \]
-\end{proposition}
+\end{corollary}
+
+Profil, Überhöhung, Kilometrierung und Realisierungszustand entstehen nicht
+aus diesen beiden Integralen; sie benötigen eigene Längsgesetze und
+Operatoren.
 
 \subsection{Parametertypen}
 \begin{definition}
@@ -23,13 +30,26 @@ Primäre Parameterklassen sind Krümmungsparameter \(dK\), Längenparameter
 \end{definition}
 
 \subsection{Analytische Ableitungen}
-\begin{proposition}
+\begin{proposition}[Parameterableitung der Richtung]
+\label{prop:heading-parameter-derivative}
+Sei \(\kappa(\sigma,p)\) für fast alle \(\sigma\) nach dem Parameter \(p\)
+differenzierbar, und gelte
+\(\lvert\partial_p\kappa(\sigma,p)\rvert\le m(\sigma)\) lokal gleichmäßig in
+\(p\) mit \(m\in L^1(0,s)\). Dann ist
 \[
 \frac{\partial\theta(s)}{\partial p}
 =\int_0^s\frac{\partial\kappa}{\partial p}\,\dd\sigma.
 \]
 \end{proposition}
-\begin{proposition}
+\begin{proof}
+Unter der genannten Majorantenbedingung ist die Differentiation unter dem
+Integral auf
+\(\theta(s,p)=\theta_0+\int_0^s\kappa(\sigma,p)\,\dd\sigma\) anwendbar.
+\end{proof}
+
+\begin{proposition}[Parameterableitung der Position]
+\label{prop:position-parameter-derivative}
+Unter den Voraussetzungen von \cref{prop:heading-parameter-derivative} gilt
 \[
 \frac{\partial\gamma(s)}{\partial p}
 =\int_0^s
@@ -37,15 +57,34 @@ Primäre Parameterklassen sind Krümmungsparameter \(dK\), Längenparameter
 \frac{\partial\theta}{\partial p}\,\dd\sigma.
 \]
 \end{proposition}
-Alle Ableitungen reduzieren sich auf Bogenlängenintegrale.
+\begin{proof}
+Die Kettenregel, angewandt auf
+\(\sigma\mapsto(\cos\theta(\sigma,p),\sin\theta(\sigma,p))\), liefert den
+Integranden \((-\sin\theta,\cos\theta)^{\!\top}\partial_p\theta\). Nach
+\cref{prop:heading-parameter-derivative} ist
+\(\lvert\partial_p\theta\rvert\le\lVert m\rVert_{L^1(0,s)}\) auf \([0,s]\),
+der Integrand ist also majorisiert und die Differentiation unter dem
+Integral zulässig.
+\end{proof}
+Unter diesen Voraussetzungen reduzieren sich alle Ableitungen auf
+Bogenlängenintegrale.
 
 \subsection{Zentrale Erkenntnis}
-\begin{proposition}
-Das Optimierungsproblem besitzt exakte Jacobi-Matrizen ohne numerische
-Approximation.
+\begin{proposition}[Exakte Jacobi-Matrizen des glatten Rekonstruktionsblocks]
+\label{prop:exact-jacobians-smooth-block}
+Für Residuen und Nebenbedingungen, die differenzierbare Verknüpfungen der
+Parametrisierung, von \(\theta\) und von \(\gamma\) sind, ist die
+Jacobi-Matrix durch
+\cref{prop:heading-parameter-derivative,prop:position-parameter-derivative}
+exakt gegeben und benötigt keine Finite-Differenzen-Approximation.
 \end{proposition}
-Dies beseitigt finite Differenzen, numerische Instabilität und hohen
-Rechenaufwand.
+Die Aussage ist auf den glatten Rekonstruktionsblock beschränkt. Nicht
+differenzierbare Admissionslogik, Wechsel der aktiven Menge bei
+Ungleichungsnebenbedingungen und Black-Box-Operatoren besitzen nicht
+automatisch exakte Jacobi-Matrizen und sind getrennt zu behandeln.
+Innerhalb dieses Blocks entfallen finite Differenzen samt
+Abbruchfehler, wiederholte Rekonstruktion je gestörtem Parameter und der
+damit verbundene Rechenaufwand.
 
 \subsection{Blockstruktur}
 Der Parametervektor zerfällt in \((\boldsymbol\kappa,\boldsymbol\phi)\) und

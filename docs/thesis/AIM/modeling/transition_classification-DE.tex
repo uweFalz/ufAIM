@@ -7,15 +7,29 @@ und dynamische Sichtweisen verteilt. Für systematischen Vergleich, Bewertung
 und Optimierung ist deshalb eine einheitliche Klassifikation erforderlich.
 
 \section{Krümmungsbasierte Darstellung}
-\begin{proposition}
-Jeder Übergangsbogen kann durch eine Krümmungsfunktion
+\begin{proposition}[Krümmungsdarstellung von Übergangsbögen]
+\label{prop:transition-curvature-representation}
+Jede reguläre ebene Kurve der Klasse \(C^2\), die auf \([0,L]\) nach der
+Bogenlänge parametrisiert ist, bestimmt eine stetige Krümmungsfunktion
 \[
-\kappa:[0,L]\to\R
+\kappa:[0,L]\to\R ;
 \]
-dargestellt werden.
+umgekehrt bestimmt \(\kappa\) zusammen mit der Anfangspose die Kurve
+eindeutig (\cref{prop:curvature-driven-reconstruction}). Übergangsbögen,
+die diese Voraussetzungen erfüllen, werden daher bis auf die Anfangspose
+durch ihre Krümmungsfunktion dargestellt.
 \end{proposition}
-Diese Darstellung ist von der ursprünglichen Kurvendefinition unabhängig und
-stellt einen gemeinsamen mathematischen Rahmen bereit.
+\begin{proof}
+Für eine \(C^2\)-Kurve mit Einheitsgeschwindigkeit gilt
+\(\gamma'=(\cos\theta,\sin\theta)\) mit einer \(C^1\)-Richtung \(\theta\),
+und \(\kappa=\theta'\) ist stetig \cite{DoCarmo1976Curves}. Die Umkehrung
+ist \cref{prop:curvature-driven-reconstruction}.
+\end{proof}
+Die Voraussetzungen sind wesentlich: Eine Polylinie besitzt in ihren
+Knoten keine klassische Krümmung, und eine beliebig parametrisierte Kurve
+muss zunächst nach der Bogenlänge umparametrisiert werden. Unter diesen
+Voraussetzungen ist die Darstellung von der ursprünglichen Kurvendefinition
+unabhängig und stellt einen gemeinsamen mathematischen Rahmen bereit.
 
 \subsection{Normierung}
 \begin{definition}

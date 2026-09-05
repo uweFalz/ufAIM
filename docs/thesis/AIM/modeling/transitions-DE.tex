@@ -98,14 +98,19 @@ allein durch geometrische Anpassung begründet werden; sie muss
 Krümmungsentwicklung und Laufzeitkriterien auf Ableitungsebene einschließen.
 
 \section{Skalierung}
-\begin{proposition}
-Sei \(\widehat{\kappa}\) ein normiertes Übergangsgesetz. Dann ist ein
-physischer Übergang gegeben durch
+\begin{definition}[Skaliertes Übergangsgesetz]
+\label{def:scaled-transition-law}
+Seien \(L>0\), \(\kappa_0,\kappa_1\in\R\) und \(\widehat{\kappa}:[0,1]\to\R\)
+ein normiertes Übergangsgesetz mit \(\widehat{\kappa}(0)=0\) und
+\(\widehat{\kappa}(1)=1\). Das skalierte Übergangsgesetz ist
 \[
 \kappa(s)=\kappa_0+(\kappa_1-\kappa_0)\,
-\widehat{\kappa}\!\left(\frac{s}{L}\right).
+\widehat{\kappa}\!\left(\frac{s}{L}\right),
+\qquad s\in[0,L].
 \]
-\end{proposition}
+Es erfüllt nach Konstruktion \(\kappa(0)=\kappa_0\) und
+\(\kappa(L)=\kappa_1\).
+\end{definition}
 Dies trennt Form und Maßstab und begründet wiederverwendbare
 Übergangsfamilien und parametrisierten Entwurf.
 

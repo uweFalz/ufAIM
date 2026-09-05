@@ -79,18 +79,38 @@ This yields a drastic reduction in problem size.
 
 \subsection{Derivative Structure}
 
-\begin{proposition}
-Derivatives reduce to:
+\begin{proposition}[Derivative structure]
+\label{prop:parametric-derivative-structure}
+For a shape parameter \(p\in\mathbf{T}\), with \(L\), \(\kappa_0\), and
+\(\kappa_1\) fixed,
 \[
 \frac{\partial \kappa}{\partial p}
 =
 (\kappa_1 - \kappa_0)
 \frac{\partial \widehat{\kappa}}{\partial p}.
 \]
+For the remaining parameters the derivatives carry additional terms:
+\[
+\frac{\partial \kappa}{\partial \kappa_0}=1-\widehat{\kappa},
+\qquad
+\frac{\partial \kappa}{\partial \kappa_1}=\widehat{\kappa},
+\qquad
+\frac{\partial \kappa}{\partial L}
+=
+-(\kappa_1-\kappa_0)\,\frac{s}{L^2}\,
+\partial_1\widehat{\kappa}\!\left(\frac{s}{L},\mathbf{T}\right),
+\]
+where \(\partial_1\) denotes the derivative with respect to the first
+argument.
 \end{proposition}
 
+\begin{proof}
+Differentiate the parametric curvature model term by term; the
+\(L\)-derivative follows from the chain rule applied to \(s/L\).
+\end{proof}
+
 Thus, all derivatives are computed analytically from prototype
-functions.
+functions, provided the parameter type is respected.
 
 
 \subsection{Integration into Reconstruction}

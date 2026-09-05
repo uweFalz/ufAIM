@@ -59,21 +59,53 @@ J[\kappa^\ast]
 
 \subsection{Euler--Lagrange Equation}
 
-\begin{proposition}
-If \(\kappa^\ast\) is a minimizer, then
+\begin{proposition}[Weak Euler--Lagrange equation]
+\label{prop:curvature-el}
+If \(\kappa^\ast\in\mathcal{A}\) minimizes \(J\) over \(\mathcal{A}\), then
 \[
-\kappa^{\ast\prime\prime}(s)=0.
+\kappa^{\ast\prime\prime}=0
 \]
+in the sense of distributions on \((0,L)\); in particular \(\kappa^\ast\)
+is affine.
 \end{proposition}
+
+\begin{proof}
+For every \(\eta\in H_0^1(0,L)\) and \(\epsilon\in\R\) the function
+\(\kappa^\ast+\epsilon\eta\) lies in \(\mathcal{A}\). Minimality gives
+\[
+0=\frac{\dd}{\dd\epsilon}J[\kappa^\ast+\epsilon\eta]\Big|_{\epsilon=0}
+=2\int_0^L\kappa^{\ast\prime}(s)\,\eta'(s)\,\dd s .
+\]
+Hence the distributional derivative of \(\kappa^{\ast\prime}\) vanishes,
+so \(\kappa^{\ast\prime}\) is constant and \(\kappa^\ast\) is affine.
+\end{proof}
 
 \subsection{Interpretation}
 
-\begin{proposition}
-The minimizer is
+\begin{proposition}[Unique minimizer]
+\label{prop:curvature-el-minimizer}
+The functional \(J\) has exactly one minimizer in \(\mathcal{A}\), namely
 \[
-\kappa^\ast(s)=\frac{\kappa_1}{L}s .
+\kappa^\ast(s)=\frac{\kappa_1}{L}\,s ,
+\qquad
+J[\kappa^\ast]=\frac{\kappa_1^2}{L}.
 \]
 \end{proposition}
+
+\begin{proof}
+By \cref{prop:curvature-el} a minimizer is affine; the boundary values
+\(\kappa^\ast(0)=0\) and \(\kappa^\ast(L)=\kappa_1\) leave only
+\(\kappa^\ast(s)=\kappa_1 s/L\). Existence and uniqueness also follow
+directly from the Cauchy--Schwarz inequality: for every
+\(\kappa\in\mathcal{A}\),
+\[
+\kappa_1^2
+=\Bigl(\int_0^L\kappa'(s)\,\dd s\Bigr)^2
+\le L\int_0^L\bigl(\kappa'(s)\bigr)^2\,\dd s
+= L\,J[\kappa],
+\]
+with equality if and only if \(\kappa'\) is constant.
+\end{proof}
 
 Thus, the clothoid appears as the solution of a variational problem.
 This connects classical railway transition design with an optimization
@@ -91,12 +123,52 @@ J_2[\kappa]
 \]
 \end{definition}
 
-\begin{proposition}
-Minimizers satisfy
+The functional \(J_2\) is not defined on the \(H^1\) set \(\mathcal{A}\);
+it requires a second derivative and its own boundary conditions.
+
+\begin{definition}[Clamped admissible set]
 \[
-\kappa^{(4)}(s)=0.
+\mathcal{A}_2
+=
+\left\{
+\kappa \in H^2(0,L)
+\mid
+\kappa(0)=0,\;
+\kappa(L)=\kappa_1,\;
+\kappa'(0)=\kappa'(L)=0
+\right\}.
 \]
+\end{definition}
+
+\begin{proposition}[Fourth-order Euler--Lagrange equation]
+\label{prop:curvature-el-fourth-order}
+If \(\kappa^\ast\in\mathcal{A}_2\) minimizes \(J_2\) over \(\mathcal{A}_2\),
+then \(\kappa^{\ast(4)}=0\) in the sense of distributions on \((0,L)\).
+Consequently \(\kappa^\ast\) is the cubic polynomial
+\[
+\kappa^\ast(s)
+=
+\kappa_1\Bigl(3\bigl(\tfrac{s}{L}\bigr)^2-2\bigl(\tfrac{s}{L}\bigr)^3\Bigr),
+\]
+and it is the unique minimizer.
 \end{proposition}
+
+\begin{proof}
+Admissible variations are \(\eta\in H_0^2(0,L)\), so that
+\(\eta=\eta'=0\) at both ends. Stationarity gives
+\(\int_0^L\kappa^{\ast\prime\prime}\eta''\,\dd s=0\) for all such
+\(\eta\), i.e.\ \(\kappa^{\ast(4)}=0\) distributionally; hence
+\(\kappa^\ast\) is a cubic polynomial. The four boundary conditions
+determine its coefficients uniquely. The difference of two minimizers
+lies in \(H_0^2(0,L)\) and has vanishing second derivative, hence is
+zero; this gives uniqueness.
+\end{proof}
+
+Other boundary choices lead to natural boundary conditions instead. If
+only \(\kappa(0)\) and \(\kappa(L)\) are prescribed, the natural
+conditions are \(\kappa''(0)=\kappa''(L)=0\), and the minimizer reduces to
+the affine law of \cref{prop:curvature-el-minimizer}. The fourth-order
+equation itself is unchanged.
 
 This explains the occurrence of cubic transition laws and links them to
 modern polynomial transition design
@@ -301,18 +373,36 @@ catalogue, but emerges as part of an optimal coupled state.
 
 \subsection{Special Cases}
 
-\begin{proposition}
-If \(\phi(s)\equiv 0\), the coupled problem reduces to a pure curvature
-optimization problem.
-\end{proposition}
-
-\begin{proposition}
-If \(a_{\mathrm{eff}}(s)=0\) for all \(s\), then
+\begin{corollary}[Substitution \(\phi\equiv 0\)]
+\label{cor:coupled-substitution-phi-zero}
+Substituting \(\phi\equiv 0\) removes cant as a variable. The coupled
+functional reduces to the curvature-only functional
 \[
-v^2 \kappa(s)=g\sin\phi(s),
+J[\kappa,0]
+=
+\alpha v^4\int_0^L\kappa(s)^2\,\dd s
++
+\beta v^6\int_0^L\bigl(\kappa'(s)\bigr)^2\,\dd s
++
+\gamma J_\kappa[\kappa],
 \]
-and the design is perfectly balanced.
-\end{proposition}
+which coincides with \(J_\kappa\) alone only for \(\alpha=\beta=0\).
+\end{corollary}
+
+\begin{corollary}[Balance identity]
+\label{cor:balance-identity}
+\(a_{\mathrm{eff}}(s)=0\) for all \(s\) if and only if
+\[
+v^2 \kappa(s)=g\sin\phi(s)
+\qquad\text{for all } s .
+\]
+\end{corollary}
+
+The identity is an algebraic consequence of the definition of
+\(a_{\mathrm{eff}}\). Calling such a design \emph{perfectly balanced} is an
+engineering interpretation that holds only under the constant-speed,
+planar local approximation and the stated sign convention; it is not a
+statement about vehicle dynamics.
 
 These special cases show that classical equilibrium design appears as a
 subcase of the coupled optimization framework.

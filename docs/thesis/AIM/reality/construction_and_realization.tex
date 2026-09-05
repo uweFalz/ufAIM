@@ -111,12 +111,27 @@ If this process converges,
 
 \begin{proposition}[Fixed point interpretation]
 \label{prop:realization-fixed-point}
-If iterative realization converges,
+If iterative realization converges to \(\gamma_{\mathrm{real}}\) and
+\(\mathcal A_{\gamma_{\mathrm{target}}}\) is continuous at
+\(\gamma_{\mathrm{real}}\), then
 \[
 \gamma_{\mathrm{real}}=
 \mathcal A_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}}).
 \]
 \end{proposition}
+
+\begin{proof}
+Taking limits on both sides of
+\(\gamma_{k+1}=\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k)\) and using
+continuity at the limit gives
+\(\gamma_{\mathrm{real}}
+=\lim_{k\to\infty}\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k)
+=\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}})\).
+\end{proof}
+
+Continuity cannot be dropped. On \(\R\), the map with
+\(\mathcal A(0)=1\) and \(\mathcal A(x)=x/2\) for \(x\neq0\) produces
+orbits converging to \(0\), which is not a fixed point.
 
 % ============================================================
 \section{Sampling, Locality, and Filtering}
@@ -221,10 +236,14 @@ The relevant design criterion is performance of realized state, not only
 analytic smoothness of target state.
 \end{proposition}
 
-\begin{proposition}
+\begin{definition}[Physical design space]
 \label{prop:physical-design-space}
-The physical design space is the image of the realization operator.
-\end{proposition}
+The physical design space is the image of the realization operator
+\(\mathcal R\) over the admissible target states.
+\end{definition}
+
+Whether \(\mathcal R\) adequately models a construction process is a
+separate empirical question; the definition does not answer it.
 
 % ============================================================
 \section{Connection to AIM}

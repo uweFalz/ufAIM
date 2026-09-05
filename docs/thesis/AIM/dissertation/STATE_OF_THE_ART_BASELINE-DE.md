@@ -80,12 +80,16 @@ verwendet Krümmung und modelliert Überhöhung als Schienenhöhendifferenz
 (S04–S08, S11). Damit sind gemeinsamer Längsparameter und kombiniertes
 Horizontal-/Vertikal-/Cant-Modell nicht neu.
 
-**Ergebnis: `survives with reformulation`.** Verbleibender Kandidat ist die
-Kombination explizit autoritativer linker/rechter Schienengesetze, ausschließlich
-abgeleiteter midpoint-/crossLevel-/commonOffset-Größen und strikter Grenzen
-zwischen intrinsischer Position, Kilometrierung, Identität und qualifizierter
-Realisierung einschließlich verlustfreiem semantischem Wiederöffnen. Ohne
-Einzel- und Integrationsnachweis sinkt C3 auf Implementierungssynthese.
+**Ergebnis: `survives with further reformulation` — entschieden (`DISS-04-DECISION-001`, Option A, genehmigt von Uwe Falz am 2026-09-05).**
+C3 wird als Verantwortungs- und Erhaltungsbehauptung beibehalten: explizit
+autoritative linke/rechte Schienengesetze, ausschließlich abgeleitete
+midpoint-/crossLevel-/commonOffset-Größen und strikte Grenzen zwischen
+intrinsischer Position, Kilometrierung, Identität und qualifizierter
+Realisierung einschließlich verlustfreiem semantischem Wiederöffnen. IFC 4.3.2
+speichert bereits explizite linke/rechte Cant-Endwerte je Segment; für das
+Datenmodell selbst wird keine Neuheit beansprucht. Einzel- und
+Integrationsnachweis müssen in DISS-05 erbracht werden; sonst sinkt C3 auf
+Implementierungssynthese (`DISS-04-RISK-001`).
 
 ### C4 — Fail-closed Admission und Workflow epistemischer Zustände
 

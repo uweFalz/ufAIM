@@ -106,12 +106,27 @@ Konvergiert dieser Prozess, gilt
 
 \begin{proposition}[Fixpunktinterpretation]
 \label{prop:realization-fixed-point}
-Konvergiert die iterative Realisierung, gilt
+Konvergiert die iterative Realisierung gegen \(\gamma_{\mathrm{real}}\) und
+ist \(\mathcal A_{\gamma_{\mathrm{target}}}\) in \(\gamma_{\mathrm{real}}\)
+stetig, dann gilt
 \[
 \gamma_{\mathrm{real}}=
 \mathcal A_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}}).
 \]
 \end{proposition}
+
+\begin{proof}
+Grenzübergang auf beiden Seiten von
+\(\gamma_{k+1}=\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k)\) und
+Stetigkeit im Grenzwert ergeben
+\(\gamma_{\mathrm{real}}
+=\lim_{k\to\infty}\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_k)
+=\mathcal A_{\gamma_{\mathrm{target}}}(\gamma_{\mathrm{real}})\).
+\end{proof}
+
+Auf die Stetigkeit kann nicht verzichtet werden. Auf \(\R\) erzeugt die
+Abbildung mit \(\mathcal A(0)=1\) und \(\mathcal A(x)=x/2\) für \(x\neq0\)
+Orbits, die gegen \(0\) konvergieren, obwohl \(0\) kein Fixpunkt ist.
 
 \section{Abtastung, Lokalität und Filterung}
 
@@ -213,10 +228,14 @@ Das maßgebliche Entwurfskriterium ist die Leistung des realisierten Zustands,
 nicht allein die analytische Glattheit des Zielzustands.
 \end{proposition}
 
-\begin{proposition}
+\begin{definition}[Physischer Entwurfsraum]
 \label{prop:physical-design-space}
-Der physische Entwurfsraum ist das Bild des Realisierungsoperators.
-\end{proposition}
+Der physische Entwurfsraum ist das Bild des Realisierungsoperators
+\(\mathcal R\) über den zulässigen Zielzuständen.
+\end{definition}
+
+Ob \(\mathcal R\) einen Bauprozess angemessen modelliert, ist eine
+getrennte empirische Frage; die Definition beantwortet sie nicht.
 
 \section{Verbindung zu AIM}
 

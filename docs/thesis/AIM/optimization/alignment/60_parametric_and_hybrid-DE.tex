@@ -38,13 +38,32 @@ Darstellung \(O(1)\) Parameter je Element. Dies reduziert die Problemgröße
 drastisch.
 
 \subsection{Ableitungsstruktur}
-\begin{proposition}
+\begin{proposition}[Ableitungsstruktur]
+\label{prop:parametric-derivative-structure}
+Für einen Formparameter \(p\in\mathbf T\) bei festen \(L\), \(\kappa_0\)
+und \(\kappa_1\) gilt
 \[
 \frac{\partial\kappa}{\partial p}
 =(\kappa_1-\kappa_0)\frac{\partial\widehat\kappa}{\partial p}.
 \]
+Für die übrigen Parameter treten zusätzliche Terme auf:
+\[
+\frac{\partial\kappa}{\partial\kappa_0}=1-\widehat\kappa,
+\qquad
+\frac{\partial\kappa}{\partial\kappa_1}=\widehat\kappa,
+\qquad
+\frac{\partial\kappa}{\partial L}
+=-(\kappa_1-\kappa_0)\,\frac{s}{L^2}\,
+\partial_1\widehat\kappa\!\left(\frac{s}{L},\mathbf T\right),
+\]
+wobei \(\partial_1\) die Ableitung nach dem ersten Argument bezeichnet.
 \end{proposition}
-Alle Ableitungen werden analytisch aus Prototypfunktionen berechnet.
+\begin{proof}
+Gliedweise Differentiation des parametrischen Krümmungsmodells; die
+\(L\)-Ableitung folgt aus der Kettenregel für \(s/L\).
+\end{proof}
+Alle Ableitungen werden analytisch aus Prototypfunktionen berechnet, sofern
+der Parametertyp beachtet wird.
 
 \subsection{Integration in die Rekonstruktion}
 Die parametrische Darstellung wird bewertet durch

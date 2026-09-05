@@ -65,12 +65,17 @@ trajectory, but neither becomes the law that generated it.
 
 \section{Persistent Information and Derived State}
 
-\begin{proposition}
+\begin{principle}[Persistent construction, derived pose2]
 \label{prop:pose2-persistent-kernel}
 The Alignment's intrinsic curvature construction is persistent engineering
 information; pose2 is its planar state under specified initial and realization
 conditions.
-\end{proposition}
+\end{principle}
+
+This is a responsibility contract, not a mathematical theorem. Its
+mathematical content is the reconstruction of
+\cref{prop:curvature-driven-reconstruction}; its normative content is
+validated by Kernel trace and by semantic reopen, not by proof.
 
 This replaces the misleading idea that pose2 itself is a persistent
 ``kernel'' or owns Alignment identity. Sparse \(\mathrm{cGeom}\) elements can

@@ -82,12 +82,15 @@ uses curvature and models superelevation as rail-height difference (S04–S08,
 S11). These sources defeat the broad claim that a shared longitudinal parameter
 or combined horizontal/vertical/cant model is new.
 
-**Result: `survives with reformulation`.** The remaining candidate is the
-combination of explicit authoritative left/right rail laws, derived-only
-midpoint/cross-level/common-offset quantities, and strict boundaries between
-intrinsic position, chainage, identity and qualified realization, including
-lossless semantic reopen. Each component and the integration must be evidenced;
-otherwise C3 is reduced to implementation synthesis.
+**Result: `survives with further reformulation` — decided (`DISS-04-DECISION-001`, Option A, approved by Uwe Falz on 2026-09-05).** C3 is
+retained as a responsibility-and-preservation claim: explicit authoritative
+left/right rail laws, derived-only midpoint/cross-level/common-offset
+quantities, and strict boundaries between intrinsic position, chainage,
+identity and qualified realization, including lossless semantic reopen. IFC
+4.3.2 already stores explicit left/right cant endpoints per segment, so no
+novelty is claimed for the data model itself. Each component and the
+integration must be evidenced in DISS-05; otherwise C3 is reduced to
+implementation synthesis (`DISS-04-RISK-001`).
 
 ### C4 — Fail-closed admission and epistemic-state workflow
 

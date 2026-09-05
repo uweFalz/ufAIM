@@ -9,22 +9,28 @@
 In classical numerical optimization, Jacobians are often computed by
 finite differences or automatic differentiation.
 
-Within the AIM framework, this is not necessary.
-The alignment model is inherently differentiable.
+Within the AIM framework, this is not necessary for the reconstruction
+block: the planar reconstruction is differentiable in its parameters
+under explicit hypotheses stated below.
 
 % ============================================================
 \subsection{Fundamental Observation}
 % ============================================================
 
-\begin{proposition}
-All state variables are obtained via arc-length integration:
+\begin{corollary}[Planar reconstruction integrals]
+\label{cor:planar-reconstruction-integrals}
+By \cref{prop:curvature-driven-reconstruction}, the planar pose2 variables
+are obtained from the curvature law by arc-length integration:
 \[
 \theta(s) = \theta_0 + \int_0^s \kappa(\sigma)\,\dd\sigma,
 \]
 \[
 \gamma(s) = \gamma_0 + \int_0^s (\cos\theta,\sin\theta)\,\dd\sigma.
 \]
-\end{proposition}
+\end{corollary}
+
+Profile, cant, chainage, and realization state are not obtained from these
+two integrals; they require their own longitudinal laws and operators.
 
 % ============================================================
 \subsection{Parameter Types}
@@ -43,7 +49,12 @@ Primary parameter classes:
 \subsection{Analytical Derivatives}
 % ============================================================
 
-\begin{proposition}
+\begin{proposition}[Parameter derivative of heading]
+\label{prop:heading-parameter-derivative}
+Let \(\kappa(\sigma,p)\) be differentiable in the parameter \(p\) for
+almost every \(\sigma\), and let
+\(\lvert\partial_p\kappa(\sigma,p)\rvert\le m(\sigma)\) locally uniformly
+in \(p\) with \(m\in L^1(0,s)\). Then
 \[
 \frac{\partial \theta(s)}{\partial p}
 =
@@ -52,7 +63,15 @@ Primary parameter classes:
 \]
 \end{proposition}
 
-\begin{proposition}
+\begin{proof}
+Under the stated domination hypothesis, differentiation under the integral
+sign applies to
+\(\theta(s,p)=\theta_0+\int_0^s\kappa(\sigma,p)\,\dd\sigma\).
+\end{proof}
+
+\begin{proposition}[Parameter derivative of position]
+\label{prop:position-parameter-derivative}
+Under the hypotheses of \cref{prop:heading-parameter-derivative},
 \[
 \frac{\partial \gamma(s)}{\partial p}
 =
@@ -65,21 +84,41 @@ Primary parameter classes:
 \]
 \end{proposition}
 
-All derivatives reduce to arc-length integrals.
+\begin{proof}
+The chain rule applied to
+\(\sigma\mapsto(\cos\theta(\sigma,p),\sin\theta(\sigma,p))\) gives the
+integrand \((-\sin\theta,\cos\theta)^{\!\top}\partial_p\theta\). By
+\cref{prop:heading-parameter-derivative},
+\(\lvert\partial_p\theta\rvert\le\lVert m\rVert_{L^1(0,s)}\) on \([0,s]\),
+so the integrand is dominated and differentiation under the integral sign
+is admissible.
+\end{proof}
+
+Within these hypotheses, all derivatives reduce to arc-length integrals.
 
 % ============================================================
 \subsection{Key Insight}
 % ============================================================
 
-\begin{proposition}
-The optimization problem admits exact Jacobians without numerical approximation.
+\begin{proposition}[Exact Jacobians of the smooth reconstruction block]
+\label{prop:exact-jacobians-smooth-block}
+For residuals and constraints that are differentiable compositions of the
+parameterization, \(\theta\), and \(\gamma\), the Jacobian is given exactly
+by
+\cref{prop:heading-parameter-derivative,prop:position-parameter-derivative}
+and requires no finite-difference approximation.
 \end{proposition}
 
-This eliminates:
+The statement is restricted to the smooth reconstruction block.
+Nondifferentiable admission logic, active-set changes of inequality
+constraints, and black-box operators do not automatically admit exact
+Jacobians and must be treated separately.
+
+Within that block, this removes:
 \begin{itemize}
-\item finite differences,
-\item numerical instability,
-\item high computational cost.
+\item finite differences and their truncation error,
+\item repeated reconstruction for each perturbed parameter,
+\item the associated computational cost.
 \end{itemize}
 
 % ============================================================

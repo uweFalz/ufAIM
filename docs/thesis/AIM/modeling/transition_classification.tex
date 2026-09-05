@@ -12,15 +12,31 @@ evaluate, and optimize transition concepts systematically.
 
 \section{Curvature-Based Representation}
 
-\begin{proposition}
-Any transition curve can be represented by a curvature function
+\begin{proposition}[Curvature representation of transition curves]
+\label{prop:transition-curvature-representation}
+Every regular planar curve of class \(C^2\), parameterized by arc length
+on \([0,L]\), determines a continuous curvature function
 \[
-\kappa : [0,L] \to \R.
+\kappa : [0,L] \to \R ;
 \]
+conversely, \(\kappa\) together with the initial pose determines the curve
+uniquely (\cref{prop:curvature-driven-reconstruction}). Transition curves
+satisfying these hypotheses are therefore represented by their curvature
+functions up to the initial pose.
 \end{proposition}
 
-This representation is independent of the original definition of the
-curve and provides a common mathematical framework.
+\begin{proof}
+For a unit-speed \(C^2\) curve, \(\gamma'=(\cos\theta,\sin\theta)\) with a
+\(C^1\) heading \(\theta\), and \(\kappa=\theta'\) is continuous
+\cite{DoCarmo1976Curves}. The converse is
+\cref{prop:curvature-driven-reconstruction}.
+\end{proof}
+
+The hypotheses matter: a polyline has no classical curvature at its
+vertices, and a curve given in an arbitrary parameterization must first be
+reparameterized by arc length. Within these hypotheses the representation
+is independent of the original definition of the curve and provides a
+common mathematical framework.
 
 
 \subsection{Normalization}

@@ -106,12 +106,15 @@ Konstruktion zu abgeleiteter Geometrie wird.
 \begin{proposition}[Krümmungsgetriebene Rekonstruktion]
 \label{prop:curvature-driven-reconstruction}
 Bei gegebener Anfangsposition \(\gamma(s_0)\), gegebenem Anfangswinkel
-\(\theta(s_0)\) und einer hinreichend regulären Krümmungsfunktion \(\kappa\)
-ist die ebene Trajektorie auf \(I\) eindeutig bestimmt.
+\(\theta(s_0)\) und einer integrierbaren Krümmungsfunktion
+\(\kappa\in L^1(I)\) ist die ebene Trajektorie auf \(I\) als absolut
+stetige Kurve eindeutig bestimmt.
 \end{proposition}
 
 \begin{proof}
-Die Integration von \cref{ax:heading-evolution} ergibt
+Für \(\kappa\in L^1(I)\) existieren beide nachstehenden Integrale und
+definieren absolut stetige Funktionen. Die Integration von
+\cref{ax:heading-evolution} ergibt
 \[
 \theta(s)=\theta(s_0)+\int_{s_0}^{s}\kappa(\sigma)\,\dd\sigma.
 \]

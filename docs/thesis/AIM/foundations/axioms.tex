@@ -102,12 +102,14 @@ intrinsic construction into derived geometry.
 \begin{proposition}[Curvature-driven reconstruction]
 \label{prop:curvature-driven-reconstruction}
 Given an initial position \(\gamma(s_0)\), an initial heading
-\(\theta(s_0)\), and a sufficiently regular curvature function
-\(\kappa\), the planar trajectory is uniquely determined on \(I\).
+\(\theta(s_0)\), and an integrable curvature function
+\(\kappa\in L^1(I)\), the planar trajectory is uniquely determined on
+\(I\) as an absolutely continuous curve.
 \end{proposition}
 
 \begin{proof}
-Integration of \cref{ax:heading-evolution} gives
+For \(\kappa\in L^1(I)\) both integrals below exist and define absolutely
+continuous functions. Integration of \cref{ax:heading-evolution} gives
 \[
 \theta(s)=\theta(s_0)+\int_{s_0}^{s}\kappa(\sigma)\,\dd\sigma.
 \]

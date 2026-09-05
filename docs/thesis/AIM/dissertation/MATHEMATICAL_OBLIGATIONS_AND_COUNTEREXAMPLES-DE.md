@@ -130,6 +130,13 @@ folgenreiche Änderung und semantisches Wiederöffnen überstehen. Ohne Nachweis
 eines durch diese vollständige Grenze verhinderten Fehlers in der realen
 Fallstudie kann auch dies auf Implementierungssynthese sinken.
 
+### Entscheidungsprotokoll
+
+**`DISS-04-DECISION-001`, Option A, genehmigt von Uwe Falz am 2026-09-05.** C3 wird als die oben formulierte Verantwortungs- und
+Erhaltungsbehauptung beibehalten. Die Auditmatrix wurde durch das in
+`MISSION_REPORT_DISSERTATION_MATHEMATICAL_REPAIR_005.md` dokumentierte
+Reparaturpaket auf die eingebundenen EN/DE-TeX-Quellen angewendet.
+
 ## Einbindungsgate
 
 Kein geprüfter Anspruch darf in den Beitragsprosatext gelangen, bevor P053,

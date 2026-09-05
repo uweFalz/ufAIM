@@ -253,16 +253,27 @@ isolation.
 ### C3 — Intrinsic multi-band constructive model
 
 - **Addresses:** RQ3.
-- **Contribution claim:** horizontal, vertical, explicit rail-pair and chainage
-  laws can remain separately authoritative while being evaluated at one
-  intrinsic position and composed into qualified realizations.
-- **Falsifier:** synchronized views disagree on the selected constructive state,
-  derived cant quantities require independent authority, or chainage and world
-  realization collapse into intrinsic identity.
-- **Novelty boundary:** controlled multi-band composition and responsibility
-  separation; not the individual mathematics of its established components.
-- **Evidence:** closed mathematical obligations, synchronized cursor tests,
-  degeneracy cases, CRS/metric qualification and semantic reopen.
+- **Contribution claim (responsibility-and-preservation form, `DISS-04-DECISION-001`, Option A, approved by Uwe Falz on 2026-09-05):**
+  admitted left/right rail laws retain constructive authority; midpoint,
+  cross-level and common offset remain derived-only quantities; intrinsic
+  position, chainage and qualified realization remain distinct; and these role
+  assignments survive consequential change and semantic reopen while
+  horizontal, vertical, rail-pair and chainage laws are evaluated at one
+  intrinsic position.
+- **Falsifier:** a derived cant quantity acquires independent authority,
+  chainage or world realization collapses into intrinsic identity, synchronized
+  views disagree on the selected constructive state, or a semantic reopen loses
+  a role assignment.
+- **Novelty boundary:** the responsibility-and-preservation claim only. No
+  novelty is claimed for curvature reconstruction, a shared distance-along
+  parameter, combined horizontal/vertical/cant state, explicit left/right cant
+  values, named cant families or 3D pose generation; all have close prior art
+  (IFC 4.3.2, Rail Topology Ontology, Seo et al. 2020).
+- **Evidence:** closed mathematical obligations (DISS-04 repair package),
+  synchronized cursor tests, degeneracy cases, CRS/metric qualification and
+  semantic reopen. The claim is defended only if the real-data case (DISS-05)
+  shows a concrete semantic failure prevented by the complete boundary and not
+  already prevented by comparison systems (`DISS-04-RISK-001`).
 - **Propositions:** P024, P027–P049, P051–P065, P067–P073, P083–P089.
 
 ### C4 — Fail-closed admission and epistemic-state workflow

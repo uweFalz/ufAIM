@@ -119,13 +119,18 @@ evaluation. Pose3 adds the quantities needed to orient a railway
 cross-section; it is not the complete physical asset and does not include
 materials, condition, topology, vehicle behaviour, or engineering authority.
 
-\begin{proposition}[pose3 reconstruction principle]
+\begin{principle}[pose3 reconstruction principle]
 \label{prop:pose3-reconstruction}
 Given \(\kappa(s)\), \(h(s)\), and \(u(s)\), together with a starting pose,
 metric realization, gauge, orientation and frame conventions, the applicable
 pose3 fields can be evaluated. The result preserves its Alignment reference
 and the provenance of every additional input.
-\end{proposition}
+\end{principle}
+
+The evaluability follows only after metric, frame, transport, gauge, and
+convention operators have been chosen; the preservation of Alignment
+reference and provenance is a contract on those operators, not a
+mathematical consequence of \(\kappa\), \(h\), and \(u\).
 
 \section{Target, Realization, Physical State, and Observation}
 

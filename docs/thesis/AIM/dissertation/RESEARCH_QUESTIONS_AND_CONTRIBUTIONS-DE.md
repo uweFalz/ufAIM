@@ -272,19 +272,30 @@ Visualisierung für sich.
 ### B3 — Intrinsisches konstruktives Mehrbandmodell
 
 - **Adressiert:** F3.
-- **Beitragsbehauptung:** Horizontale, vertikale, ausdrückliche Rail-Pair- und
-  Kilometrierungsgesetze können getrennt autoritativ bleiben, während sie an
-  einer intrinsischen Position ausgewertet und zu qualifizierten
-  Realisierungen komponiert werden.
-- **Falsifikator:** Synchronisierte Sichten widersprechen sich im ausgewählten
-  konstruktiven Zustand, abgeleitete Überhöhungsgrößen benötigen eigenständige
-  Autorität oder Kilometrierung und Weltrealisierung kollabieren in die
-  intrinsische Identität.
-- **Neuheitsgrenze:** Kontrollierte Mehrbandkomposition und
-  Verantwortungstrennung, nicht die Einzelmathematik etablierter Komponenten.
-- **Evidenz:** Geschlossene mathematische Verpflichtungen, synchrone
-  Cursortests, Degenerationsfälle, CRS-/Metrikqualifizierung und semantische
-  Wiederöffnung.
+- **Beitragsbehauptung (Verantwortungs- und Erhaltungsform, `DISS-04-DECISION-001`, Option A, genehmigt von Uwe Falz am 2026-09-05):**
+  Zugelassene linke/rechte Schienengesetze behalten konstruktive Autorität;
+  midpoint, crossLevel und commonOffset bleiben ausschließlich abgeleitete
+  Größen; intrinsische Position, Kilometrierung und qualifizierte Realisierung
+  bleiben getrennt; und diese Rollenzuweisungen überstehen folgenreiche
+  Änderung und semantisches Wiederöffnen, während horizontale, vertikale,
+  Rail-Pair- und Kilometrierungsgesetze an einer intrinsischen Position
+  ausgewertet werden.
+- **Falsifikator:** Eine abgeleitete Überhöhungsgröße erlangt eigenständige
+  Autorität, Kilometrierung oder Weltrealisierung kollabiert in die intrinsische
+  Identität, synchronisierte Sichten widersprechen sich im ausgewählten
+  konstruktiven Zustand, oder ein semantisches Wiederöffnen verliert eine
+  Rollenzuweisung.
+- **Neuheitsgrenze:** Ausschließlich die Verantwortungs- und Erhaltungsbehauptung.
+  Keine Neuheit wird beansprucht für Krümmungsrekonstruktion, gemeinsamen
+  Längsparameter, kombinierten Horizontal-/Vertikal-/Cant-Zustand, explizite
+  linke/rechte Cant-Werte, benannte Cant-Familien oder 3D-Posenerzeugung; alle
+  haben nahe Vorarbeiten (IFC 4.3.2, Rail Topology Ontology, Seo et al. 2020).
+- **Evidenz:** Geschlossene mathematische Verpflichtungen (DISS-04-Reparaturpaket),
+  synchrone Cursortests, Degenerationsfälle, CRS-/Metrikqualifizierung und
+  semantische Wiederöffnung. Die Behauptung ist nur verteidigt, wenn der
+  Realdatenfall (DISS-05) einen konkreten semantischen Fehler zeigt, den die
+  vollständige Grenze verhindert und Vergleichssysteme nicht bereits verhindern
+  (`DISS-04-RISK-001`).
 - **Propositionen:** P024, P027–P049, P051–P065, P067–P073, P083–P089.
 
 ### B4 — Fail-closed Admission und epistemischer Zustandsworkflow

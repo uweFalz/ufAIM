@@ -125,13 +125,18 @@ Eisenbahnquerschnitts benötigten Größen; es ist weder die vollständige
 physische Anlage noch umfasst es Material, Zustand, Topologie,
 Fahrzeugverhalten oder Engineering-Autorität.
 
-\begin{proposition}[pose3-Rekonstruktionsprinzip]
+\begin{principle}[pose3-Rekonstruktionsprinzip]
 \label{prop:pose3-reconstruction}
 Aus \(\kappa(s)\), \(h(s)\) und \(u(s)\) sowie Anfangspose, metrischer
 Realisierung, Spurweite, Orientierungs- und Frame-Konventionen können die
 anwendbaren pose3-Felder ausgewertet werden. Das Ergebnis bewahrt seinen
 Alignment-Bezug und die Provenienz jeder zusätzlichen Eingabe.
-\end{proposition}
+\end{principle}
+
+Die Auswertbarkeit ergibt sich erst nach Wahl von Metrik-, Frame-,
+Transport-, Spurweiten- und Konventionsoperatoren; die Bewahrung von
+Alignment-Bezug und Provenienz ist ein Vertrag über diese Operatoren, keine
+mathematische Folge von \(\kappa\), \(h\) und \(u\).
 
 \section{Soll, Realisierung, physischer Zustand und Beobachtung}
 

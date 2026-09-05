@@ -202,9 +202,11 @@ evolution and derivative-level runtime criteria.
 \section{Scaling}
 % ============================================================
 
-\begin{proposition}
-Let $\widehat{\kappa}$ be a normalized transition law.
-Then a physical transition is given by
+\begin{definition}[Scaled transition law]
+\label{def:scaled-transition-law}
+Let $L>0$, $\kappa_0,\kappa_1\in\R$, and let $\widehat{\kappa}:[0,1]\to\R$
+be a normalized transition law with $\widehat{\kappa}(0)=0$ and
+$\widehat{\kappa}(1)=1$. The scaled transition law is
 \[
 \kappa(s)
 =
@@ -215,9 +217,12 @@ Then a physical transition is given by
 \widehat{\kappa}
 \!\left(
 \frac{s}{L}
-\right).
+\right),
+\qquad s\in[0,L].
 \]
-\end{proposition}
+It satisfies $\kappa(0)=\kappa_0$ and $\kappa(L)=\kappa_1$ by
+construction.
+\end{definition}
 
 This separates shape from scale and provides the basis for reusable
 transition families and parameterized design.
