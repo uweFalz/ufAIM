@@ -47,6 +47,20 @@ export const ALIGNMENT_CONSTRAINT_BUILDER_VERSION =
  */
 export const EVIDENCE_ONLY = "evidence-only";
 
+/**
+ * How the cant-ramp rule reaches the solver.
+ *
+ *   "bound"       du at its largest, collapsed into a box bound
+ *   "constraint"  the inequality the rule actually is
+ *   "none"        not at all - a diagnostic, never an answer
+ *
+ * "none" exists because the rule has been the suspect in every convergence
+ * failure this kernel has had, and a suspect has to be removable before it can
+ * be cleared or convicted. It is never admissible: an alignment built without
+ * the ramp rule can violate EBO § 6 (4) and nothing downstream would notice.
+ */
+export const RAMP_LENGTH_MODES = Object.freeze(["bound", "constraint", "none"]);
+
 export class AlignmentConstraintBuilderError extends Error {
 	constructor(code, message) {
 		super(message);
@@ -173,6 +187,10 @@ export function createAlignmentConstraintBuilder({
 	// available and measured, not relied on.
 	rampLengthAs = "bound",
 } = {}) {
+	if (!RAMP_LENGTH_MODES.includes(rampLengthAs)) {
+		error("UNKNOWN_RAMP_MODE",
+			`rampLengthAs must be one of ${RAMP_LENGTH_MODES.join(", ")}`, { rampLengthAs });
+	}
 	const target = requirePose(endPose, "endPose");
 
 	if (!Array.isArray(elementSequence) || elementSequence.length === 0) {
@@ -280,9 +298,15 @@ export function createAlignmentConstraintBuilder({
 		// du-at-its-largest value in the bound as well would keep the
 		// conservatism the constraint exists to remove, and the constraint would
 		// never bind.
-		const carriedAsConstraint = rampLengthAs === "constraint" && kind === "transition"
-			&& built?.rampGradient !== null && built?.rampGradient !== undefined;
-		const designMinimum = carriedAsConstraint
+		const hasRampRule = built?.rampGradient !== null && built?.rampGradient !== undefined;
+		const carriedAsConstraint = rampLengthAs === "constraint" && kind === "transition" && hasRampRule;
+		// Under "none" the transition keeps only what the sequence asks. That is
+		// exact for a profile whose transition floor comes from the ramp rule
+		// alone, which is how the shipped ones are written; a profile that also
+		// declared a transition minimum would lose that too. Diagnostic mode, and
+		// the result says so by never being admissible.
+		const rampRemoved = rampLengthAs === "none" && kind === "transition" && hasRampRule;
+		const designMinimum = carriedAsConstraint || rampRemoved
 			? 0
 			: built
 				? built.minimumLengthFor(kind, id)
@@ -369,7 +393,9 @@ export function createAlignmentConstraintBuilder({
 		// "confirmed" or "evidence-only": whether an answer built on these
 		// constraints may be treated as an engineering result
 		admission,
-		admissible: admission === "confirmed",
+		// A solve with the ramp rule taken out is evidence about the solver, never
+		// an engineering answer, however well sourced the rest of the profile is.
+		admissible: admission === "confirmed" && rampLengthAs !== "none",
 		equalities: Object.freeze(equalities.map(Object.freeze)),
 		bounds: Object.freeze(bounds),
 		designBounds: Object.freeze(designBounds),

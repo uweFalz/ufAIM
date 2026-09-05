@@ -634,11 +634,16 @@ test("the merit pays off a violated ramp inequality instead of freezing on it", 
 		objective: "accumulated-length",
 		maxIterations: 200,
 	});
-	const last = (run.diagnostics.history ?? []).filter((e) => e.violation !== undefined).pop();
-	assert.ok(last, "the run recorded no accepted iteration");
+	const history = run.diagnostics.history ?? [];
+	const last = history.filter((e) => e.violation !== undefined).pop();
+	assert.ok(last, "the run recorded no violation at all");
 	assert.ok(last.violation < 1e-9,
 		`expected the violation driven below 1e-9, got ${last.violation.toExponential(2)}`);
-	// and the row itself, not just the aggregate
-	assert.ok(Math.max(...last.inequalities.map((row) => row.residual)) <= 1e-9,
-		`a ramp row is still violated: ${last.inequalities.map((r) => r.residual.toExponential(1)).join(" ")}`);
+	// and the row itself, not just the aggregate. Taken from the last iteration
+	// that reported rows: a run that reaches "converged" ends on a terminal entry
+	// which carries the violation but not the per-row breakdown.
+	const rows = history.filter((e) => Array.isArray(e.inequalities)).pop();
+	assert.ok(rows, "the run recorded no accepted iteration");
+	assert.ok(Math.max(...rows.inequalities.map((row) => row.residual)) <= 1e-9,
+		`a ramp row is still violated: ${rows.inequalities.map((r) => r.residual.toExponential(1)).join(" ")}`);
 });
