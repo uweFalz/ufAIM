@@ -338,6 +338,8 @@
 				font: 13px system-ui, sans-serif;
 			}
 			.diagram-muted { fill: GrayText; }
+			.diagram-footnote { font-size: 11px; }
+			.diagram-axis-value { font-size: 11px; font-variant-numeric: tabular-nums; }
 			#mapToolbar {
 				padding: 0.4rem 0.65rem;
 				border-bottom: 1px solid GrayText;
@@ -39617,6 +39619,24 @@ xlsx/xlsx.mjs:
 			// aren't available here. So this locates the bottleneck curves; it
 			// does not tell you whether raising the cant is actually buildable.
 			const CANT_MAX_ANNAHME_MM = 160;
+			// One band, two series on a shared scale: the solid line is what the
+			// surveyed cant allows today, the dashed overlay what the assumed cant
+			// ceiling would allow -- the vertical gap between them IS the GWB
+			// diagnostic. Drawing them as two separately autoscaled bands (the
+			// first version) made that gap invisible. The assumptions behind both
+			// numbers go into one footnote under the diagram, not into the label,
+			// which SVG won't wrap and which otherwise runs across the plot.
+			const SPEED_DIAGNOSTIC_FOOTNOTE = `zul. v: Ril 800.0110 mit Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm (DB-Regelwert, Fahrzeugklasse nicht geprüft) · GWB-Potenzial: gleiche Formel mit u_max ${CANT_MAX_ANNAHME_MM} mm (Annahme; Rampenlänge/Klothoide→Bloss nicht geprüft) · beide in ${SPEED_STEP_KMH}er-Schritten abgerundet, gedeckelt ${V_MAX_DE_KMH} km/h · Gerade = keine kurvenbedingte Grenze`;
+			function speedDiagnosticBand(prefix, curvaturePoints, cantPoints, selectedRange, band) {
+				const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
+				const potentialPoints = clipPointsToRange(potentialSpeedLimitSeries(curvaturePoints), selectedRange);
+				return band(`${prefix} · zul. v — / GWB-Potenzial ┄ [km/h]`, "diagram-speed", points, {
+					emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
+					overlay: { label: "GWB-Potenzial", className: "diagram-speed-potential", points: potentialPoints },
+					footnote: SPEED_DIAGNOSTIC_FOOTNOTE,
+					unit: "km/h",
+				});
+			}
 			function potentialSpeedLimitSeries(curvaturePoints, cantMaxMm = CANT_MAX_ANNAHME_MM, cantDeficiencyMm = CANT_DEFICIENCY_REGELWERT_MM) {
 				return curvaturePoints
 					.map((point) => {
@@ -39713,14 +39733,7 @@ xlsx/xlsx.mjs:
 					const cantCandidate = first(side, "cant");
 					const curvaturePoints = curvatureSeries(curvatureCandidate);
 					const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
-					const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
-					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · zul. v (Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm, Regelwert · ${SPEED_STEP_KMH}er-Schritte, abgerundet · gedeckelt ${V_MAX_DE_KMH} km/h) [km/h]`, "diagram-speed", points, {
-						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
-					}));
-					const potentialPoints = clipPointsToRange(potentialSpeedLimitSeries(curvaturePoints), selectedRange);
-					bands.push(band(`${side === "left" ? "Linkes" : "Rechtes"} Gleis · GWB: pot. v bei u_max ${CANT_MAX_ANNAHME_MM} mm (Annahme, ohne Rampen-/Fahrzeugprüfung · ${SPEED_STEP_KMH}er-Schritte, abgerundet · gedeckelt ${V_MAX_DE_KMH} km/h) [km/h]`, "diagram-speed-potential", potentialPoints, {
-						emptyNote: "keine Krümmung in diesem Abschnitt",
-					}));
+					bands.push(speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, curvaturePoints, cantPoints, selectedRange, band));
 				}
 				for (const kind of ["profile", "alignment", "cant"]) {
 					const candidate = first("unknown", kind);
@@ -39728,7 +39741,58 @@ xlsx/xlsx.mjs:
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
 					bands.push(band(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
 				}
+				// Speed/GWB needs curvature + cant, not a resolved li/re role -- before
+				// a 7L-Struktur is assigned, every freshly-imported alignment sits in
+				// "unknown" and the li/re loop above never runs, so without this the
+				// speed bands (and GWB with them) were unreachable from a plain click
+				// on a just-imported object (confirmed: STR_1720_KM_211-273_GND.MDB's
+				// "Gleis 0" showed only Kruemmung/Ueberhoehung, no zul.v/GWB at all).
+				const unknownCurvatureCandidate = first("unknown", "alignment");
+				if (unknownCurvatureCandidate) {
+					const unknownCantCandidate = first("unknown", "cant");
+					const curvaturePoints = curvatureSeries(unknownCurvatureCandidate);
+					const cantPoints = unknownCantCandidate ? pointSeries(unknownCantCandidate, CANT_VALUE_KEYS) : [];
+					bands.push(speedDiagnosticBand("Gleis · Zuordnung offen", curvaturePoints, cantPoints, selectedRange, band));
+				}
 				return { anchor, entries, bands, hasUnknown: bySide.unknown.length > 0, missingKilometerLine: referenceRequired && !kmAlignment };
+			}
+
+			// SVG <text> never wraps. Band labels live in a 238-unit gutter and the
+			// footnote in a 1000-unit row, so anything longer than ~30 / ~170
+			// characters used to run straight across the plot. Greedy word wrap
+			// into <tspan> lines; the caller decides the character budget from the
+			// available width and font size.
+			function wrapText(text, maxChars) {
+				const lines = [];
+				let line = "";
+				for (const word of String(text ?? "").split(/\s+/).filter(Boolean)) {
+					const candidate = line ? `${line} ${word}` : word;
+					if (candidate.length <= maxChars || !line) line = candidate;
+					else { lines.push(line); line = word; }
+				}
+				if (line) lines.push(line);
+				return lines;
+			}
+
+			function wrappedText(attributes, lines, lineHeight) {
+				const text = svgElement("text", attributes);
+				lines.forEach((line, index) => {
+					const tspan = svgElement("tspan", { x: attributes.x, dy: index ? lineHeight : 0 });
+					tspan.textContent = line;
+					text.append(tspan);
+				});
+				return text;
+			}
+
+			// Compact axis readout: km/h and mm are whole numbers, curvature in 1/m
+			// lives around 1e-3 and needs significant digits, heights need cm.
+			function axisValue(value) {
+				if (!Number.isFinite(value)) return "";
+				const magnitude = Math.abs(value);
+				if (magnitude === 0) return "0";
+				if (magnitude >= 100) return String(Math.round(value));
+				if (magnitude >= 1) return value.toFixed(1).replace(/\.0$/, "");
+				return Number(value.toPrecision(3)).toString();
 			}
 
 			function svgElement(name, attributes = {}) {
@@ -39793,9 +39857,6 @@ xlsx/xlsx.mjs:
 					return;
 				}
 				const { anchor, entries, bands: tracks, hasUnknown, missingKilometerLine } = sevenLineTracks(entry);
-				const autoHeight = 72 + tracks.length * 72;
-				diagramPanel.dataset.autoHeight = String(autoHeight);
-				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${autoHeight}px`);
 				let xMin = Infinity;
 				let xMax = -Infinity;
 				for (const track of tracks) {
@@ -39814,36 +39875,60 @@ xlsx/xlsx.mjs:
 				const width = 1000;
 				const trackHeight = 112;
 				const gap = 8;
-				const height = Math.max(250, 42 + tracks.length * (trackHeight + gap));
+				const footnotes = [...new Set(tracks.map((track) => track.footnote).filter(Boolean))]
+					.flatMap((footnote) => wrapText(footnote, 165));
+				const footnoteHeight = footnotes.length * 16;
+				const height = Math.max(250, 42 + tracks.length * (trackHeight + gap) + footnoteHeight);
+				// Size the panel to the viewBox so the SVG renders ~1:1. The old
+				// 72px-per-band auto height against a 120-unit-per-band viewBox
+				// forced a "meet" downscale to ~0.5x -- 13px labels came out at
+				// under 7px (measured 6.8px on a 1400px-wide window), which is
+				// what made the whole panel read as unusable. 72px covers the
+				// diagram toolbar and padding, as before.
+				const autoHeight = Math.round(height) + 72;
+				diagramPanel.dataset.autoHeight = String(autoHeight);
+				if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", `${autoHeight}px`);
 				const left = 238;
 				const right = 30;
 				const top = 25;
+				const axisY = height - footnoteHeight - 12;
 				if (diagramPresentation === "table") {
-					renderDiagramTable(tracks.map((track) => ({
-						label: track.label,
-						points: track.points,
-						emptyNote: track.emptyNote ?? (track.requiredMissing
-							? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
-							: "keine sicher verknüpfte, numerische Reihe"),
-					})));
+					renderDiagramTable(tracks.flatMap((track) => {
+						const row = {
+							label: track.label,
+							points: track.points,
+							emptyNote: track.emptyNote ?? (track.requiredMissing
+								? "Pflichtbezug fehlt: zwei Streckengleise benötigen eine Kilometerlinie"
+								: "keine sicher verknüpfte, numerische Reihe"),
+						};
+						return track.overlay
+							? [row, { label: `${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote }]
+							: [row];
+					}));
 				} else {
 					diagram.setAttribute("viewBox", `0 0 ${width} ${height}`);
 					for (let tick = 0; tick <= 5; tick += 1) {
 						const x = left + (width - left - right) * tick / 5;
-						const line = svgElement("line", { x1: x, x2: x, y1: top, y2: height - 35, class: "diagram-grid" });
+						const line = svgElement("line", { x1: x, x2: x, y1: top, y2: axisY - 23, class: "diagram-grid" });
 						diagram.append(line);
-						const label = svgElement("text", { x, y: height - 12, "text-anchor": "middle", class: "diagram-label diagram-muted" });
+						const label = svgElement("text", { x, y: axisY, "text-anchor": "middle", class: "diagram-label diagram-muted" });
 						label.textContent = station(xMin + xSpan * tick / 5).trim();
 						diagram.append(label);
 					}
+					footnotes.forEach((footnote, index) => {
+						const note = svgElement("text", { x: 12, y: height - 6 - (footnotes.length - 1 - index) * 16, class: "diagram-label diagram-muted diagram-footnote" });
+						note.textContent = footnote;
+						diagram.append(note);
+					});
 					tracks.forEach((track, index) => {
 						const yTop = top + index * (trackHeight + gap);
 						const yBottom = yTop + trackHeight;
 						diagram.append(svgElement("rect", { x: 0, y: yTop, width, height: trackHeight, class: "diagram-band" }));
 						diagram.append(svgElement("line", { x1: left, x2: width - right, y1: yBottom, y2: yBottom, class: "diagram-axis" }));
-						const label = svgElement("text", { x: 12, y: yTop + 18, class: "diagram-label" });
-						label.textContent = track.label;
-						diagram.append(label);
+						// ~160 units of the 238-unit gutter for the label, the rest for the
+						// right-aligned min/max readouts; at 13px that is ~24 chars/line,
+						// three lines fit above the min readout in a 112-unit band.
+						diagram.append(wrappedText({ x: 12, y: yTop + 18, class: "diagram-label" }, wrapText(track.label, 24).slice(0, 3), 16));
 						if (!track.points.length) {
 							const empty = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
 							empty.textContent = track.emptyNote ?? (track.requiredMissing
@@ -39854,17 +39939,29 @@ xlsx/xlsx.mjs:
 						}
 						let yMin = Infinity;
 						let yMax = -Infinity;
-						for (const point of track.points) {
+						for (const point of [...track.points, ...(track.overlay?.points ?? [])]) {
 							yMin = Math.min(yMin, point.y);
 							yMax = Math.max(yMax, point.y);
 						}
 						const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
-						const d = track.points.map((point, pointIndex) => {
+						const pathFor = (points) => points.map((point, pointIndex) => {
 							const x = left + (point.x - xMin) / xSpan * (width - left - right);
 							const y = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
 							return `${pointIndex ? "L" : "M"} ${x} ${y}`;
 						}).join(" ");
-						diagram.append(svgElement("path", { d, class: `diagram-series ${track.className}` }));
+						if (track.overlay?.points?.length) {
+							diagram.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
+						}
+						diagram.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
+						// Min/max readouts in the label gutter -- a band without numbers
+						// is a shape, not a measurement; the PI needs to read "70" and
+						// "140" off it, not guess from the line height.
+						const unit = track.unit ? ` ${track.unit}` : "";
+						const maxLabel = svgElement("text", { x: left - 8, y: yTop + 19, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
+						maxLabel.textContent = `${axisValue(yMax)}${unit}`;
+						const minLabel = svgElement("text", { x: left - 8, y: yBottom - 11, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
+						minLabel.textContent = `${axisValue(yMin)}${unit}`;
+						diagram.append(maxLabel, minLabel);
 						for (const jump of track.jumps ?? []) {
 							const x = left + (jump - xMin) / xSpan * (width - left - right);
 							diagram.append(svgElement("line", { x1: x, x2: x, y1: yTop + 7, y2: yBottom - 7, class: "diagram-jump" }));
