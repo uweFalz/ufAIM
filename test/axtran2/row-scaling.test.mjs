@@ -85,3 +85,22 @@ test("the heading is met, and met as tightly as the positions", () => {
 		);
 	}
 });
+
+test("the exact ramp rule fits the points as fast as the bound does", () => {
+	// A step along which the merit does not fall is not searched along. Before
+	// that rule the exact form spent eight backtracking episodes on the twelve
+	// point scenario and stopped at 73 iterations; the bound form took 43. Now
+	// both take 44, and this run is cheap enough to keep in the suite.
+	const bound = solve("bound", "points", 60).run;
+	const exact = solve("constraint", "points", 60).run;
+	assert.ok(bound.ok, `bound: ${bound.status} @${bound.diagnostics.iterations}`);
+	assert.ok(exact.ok, `constraint: ${exact.status} @${exact.diagnostics.iterations}`);
+	assert.ok(
+		Math.abs(bound.diagnostics.softResidualRms - exact.diagnostics.softResidualRms) < 1e-4,
+		`rms: bound ${bound.diagnostics.softResidualRms}, exact ${exact.diagnostics.softResidualRms}`,
+	);
+	assert.equal(
+		(exact.diagnostics.history ?? []).filter((e) => e.backtracks >= 10).length, 0,
+		"the exact form should no longer backtrack its way along the ramp row",
+	);
+});

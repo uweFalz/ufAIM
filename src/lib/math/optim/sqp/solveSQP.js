@@ -287,6 +287,29 @@ export function solveSQP({
 		// supply descent
 		const predictedDecrease = Math.min(directional, step.curvature);
 
+		// A step along which the merit does not fall is not searched along. The
+		// exact directional derivative is known here, and when it is not negative
+		// there is no step length that Armijo can accept - yet the curvature bound
+		// used as its reference is negative, so the search would be sent hunting
+		// for a decrease the model itself denies. Measured on the exact ramp rule
+		// with eight declared points: thirty to thirty-eight backtracks to alpha
+		// near 1e-11 at a merit slope of +5.8e-5, repeatedly, while the iterate
+		// crept along an active ramp row.
+		//
+		// Such a step is the quasi-Newton matrix speaking, not the problem: with
+		// the equalities met to 1e-6 the subproblem returned |d| = 1.3 to restore
+		// them, an objective rise of 2.8e-4 against a penalty drop of 2.3e-4. The
+		// estimate is discarded and the region tightened, and the next subproblem
+		// starts from the identity again. On the twelve-point scenario this
+		// alone takes the exact form from 73 iterations with eight backtracking
+		// episodes to 44 with none - the same count as the bound form.
+		if (!(directional < 0)) {
+			H = identityMatrix(n, initialHessianScale);
+			radius = Math.max(minTrustRadius, radius * trustShrink);
+			history.push({ iteration, status: "no_descent", directional, radius });
+			continue;
+		}
+
 		// Second-order correction. The l1 merit has a kink at every feasible
 		// point, and a good step that reduces the objective at first order can
 		// raise the violation at second order and be charged for it immediately.
