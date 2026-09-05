@@ -102,8 +102,9 @@ export function createNineElementScenario({
 	// show whether the limits reach the solver at all.
 	design = hauptbahn({ speedKmh: 100, cantMm: 130 }),
 	// "bound" states the ramp rule as a lower bound on the transition length,
-	// "constraint" as the inequality the rule actually is. The second is the
-	// harder path and the one that exercises the merit.
+	// "constraint" as the inequality the rule actually is, "none" not at all.
+	// The second is the harder path; the third is a diagnostic and never
+	// admissible.
 	rampLengthAs = "bound",
 } = {}) {
 	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);

@@ -9,7 +9,7 @@ const BASE = new URL("../../src/domain/optimization/alignment/", import.meta.url
 const load = (name) => import(new URL(name, BASE));
 
 const { createAlignmentVariableCodec } = await load("AlignmentVariableCodec.js");
-const { createAlignmentConstraintBuilder, EVIDENCE_ONLY, AlignmentConstraintBuilderError } =
+const { createAlignmentConstraintBuilder, EVIDENCE_ONLY, RAMP_LENGTH_MODES, AlignmentConstraintBuilderError } =
 	await load("AlignmentConstraintBuilder.js");
 const { createAlignmentResidualBuilder } = await load("AlignmentResidualBuilder.js");
 const { createAlignmentOptimizationProblem } = await load("AlignmentOptimizationProblem.js");
@@ -412,4 +412,63 @@ test("a problem with no design profile at all is admissible", () => {
 	const { problem } = scenario({ points: [{ name: "M", x: 100, y: 0.02, tolerance: 0.1 }] });
 	assert.equal(problem.admission, "confirmed");
 	assert.equal(problem.admissible, true);
+});
+
+// A third way a result can look like an answer without being one: the ramp rule
+// taken out so the solver can be watched without it. That has to be a mode, not
+// a hand edit, and it has to be impossible to ship.
+
+const rampScenario = (rampLengthAs) => createAlignmentConstraintBuilder({
+	endPose: END_POSE,
+	elementSequence: ["E0", "E1", "E2"],
+	elementKinds: { E0: "straight", E1: "transition", E2: "arc" },
+	minimumElementLength: 20,
+	design: hauptbahn({ speedKmh: 100, cantMm: 130 }),
+	rampLengthAs,
+});
+
+test("the ramp rule can be taken out, and then the result is never admissible", () => {
+	assert.deepEqual([...RAMP_LENGTH_MODES], ["bound", "constraint", "none"]);
+
+	const held = rampScenario("bound");
+	assert.equal(held.admission, "confirmed");
+	assert.equal(held.admissible, true, "a confirmed profile is admissible while the rule is in");
+
+	const removed = rampScenario("none");
+	assert.equal(removed.admission, "confirmed", "the profile is still confirmed");
+	assert.equal(removed.admissible, false,
+		"but an alignment built without the ramp rule can violate EBO § 6 (4)");
+});
+
+test("taking it out removes the ramp floor from the transition and nothing else", () => {
+	const boundOf = (built, id) => built.bounds.find((b) => b.elementId === id);
+	const held = rampScenario("bound");
+	const removed = rampScenario("none");
+
+	// V = 100 at 130 mm of cant, at the Ril planning gradient of 1:600, asks for
+	// 78.0 m of transition; without the rule only the sequence floor is left
+	assert.ok(boundOf(held, "E1").minimum > 20, `expected a ramp floor, got ${boundOf(held, "E1").minimum}`);
+	assert.equal(boundOf(held, "E1").binding, "design");
+	assert.equal(boundOf(removed, "E1").minimum, 20);
+	assert.equal(boundOf(removed, "E1").binding, "element-sequence");
+
+	// the straight and the arc are untouched: their floor was never the ramp rule
+	for (const id of ["E0", "E2"]) {
+		assert.equal(boundOf(removed, id).minimum, boundOf(held, id).minimum, `${id} moved`);
+	}
+	// and nothing is carried as an inequality either
+	assert.deepEqual([...removed.rampConstraints], []);
+});
+
+test("a ramp mode nobody defined is refused rather than read as \"bound\"", () => {
+	// it used to fall through: an unknown value produced no constraint and no
+	// widened bound, which is silently "none" with none of its guards
+	assert.throws(
+		() => rampScenario("off"),
+		(caught) => {
+			assert.ok(caught instanceof AlignmentConstraintBuilderError);
+			assert.equal(caught.code, "UNKNOWN_RAMP_MODE");
+			return true;
+		},
+	);
 });
