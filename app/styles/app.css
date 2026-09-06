@@ -312,23 +312,24 @@ html[dir="rtl"] #props {
 	grid-template-rows: 1fr auto;
 	align-items: center;
 	gap: clamp(28px, 5vw, 76px);
-	padding: clamp(96px, 12vh, 150px) clamp(32px, 7vw, 120px) clamp(250px, 28vh, 330px);
+	pointer-events: none;
+	padding: clamp(94px, 11vh, 132px) clamp(24px, 4vw, 64px) clamp(32px, 5vh, 64px);
 	background:
-		radial-gradient(circle at 18% 28%, rgba(32, 213, 204, .13), transparent 34%),
-		linear-gradient(135deg, rgba(9, 14, 22, .97), rgba(8, 12, 18, .91));
+		linear-gradient(90deg, rgba(5, 10, 16, .88) 0%, rgba(5, 10, 16, .58) 28%, transparent 62%),
+		linear-gradient(0deg, rgba(5, 10, 16, .86) 0%, transparent 34%);
 }
 
-.uf-startSurface__copy { max-width: 720px; }
+.uf-startSurface__copy { max-width: 560px; text-shadow: 0 2px 20px rgba(0,0,0,.72); }
 .uf-startSurface__eyebrow { margin: 0 0 14px; color: #65e3dc; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-.uf-startSurface h1 { margin: 0; max-width: 680px; font-size: clamp(42px, 6.4vw, 88px); line-height: .96; letter-spacing: -.045em; }
+.uf-startSurface h1 { margin: 0; max-width: 560px; font-size: clamp(36px, 4.4vw, 62px); line-height: .98; letter-spacing: -.04em; }
 .uf-startSurface__copy > p:last-child { max-width: 650px; margin: 24px 0 0; color: var(--muted); font-size: clamp(16px, 1.5vw, 20px); line-height: 1.55; }
-.uf-startSurface__actions { display: grid; gap: 12px; }
-.uf-startAction { display: grid; gap: 5px; width: 100%; padding: 18px 20px; color: var(--text); text-align: left; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,.035); cursor: pointer; }
+.uf-startSurface__actions { align-self: end; display: grid; gap: 10px; width: min(440px, 100%); pointer-events: auto; }
+.uf-startAction { display: grid; gap: 4px; width: 100%; padding: 14px 16px; color: var(--text); text-align: left; border: 1px solid rgba(255,255,255,.2); border-radius: 12px; background: rgba(7,12,18,.78); box-shadow: 0 12px 34px rgba(0,0,0,.28); backdrop-filter: blur(14px); cursor: pointer; }
 .uf-startAction:hover { border-color: rgba(101, 227, 220, .65); background: rgba(101, 227, 220, .075); transform: translateY(-1px); }
 .uf-startAction strong { font-size: 16px; }
 .uf-startAction span { color: var(--muted); font-size: 12px; }
 .uf-startAction--primary { border-color: rgba(101, 227, 220, .52); background: rgba(101, 227, 220, .10); }
-.uf-startSurface footer { grid-column: 1 / -1; display: flex; gap: 28px; padding-top: 18px; border-top: 1px solid var(--borderSoft); color: var(--muted); font-size: 12px; }
+.uf-startSurface footer { display: none; }
 
 @media (max-width: 900px) {
 	.uf-startSurface { grid-template-columns: 1fr; align-content: center; padding: 90px 24px 230px; }
@@ -423,6 +424,8 @@ html[dir="rtl"] #props {
 .uf-stageWrap.is-geographic > .uf-stage { pointer-events: none; opacity: 0; }
 .uf-stageWrap.is-geographic > .uf-geoMap { z-index: 3; }
 .uf-stageWrap.is-geographic + * { --uf-geographic-active: 1; }
+.uf-stageWrap.is-spatial-start > .uf-stage { pointer-events: none; opacity: 0; }
+.uf-stageWrap.is-spatial-start > .uf-geoMap { z-index: 3; }
 
 /* ------------------------------------------------------------------ */
 /* floating panels */

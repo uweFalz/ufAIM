@@ -835,6 +835,35 @@ export function makeViewController({
 		threeA.setTrackFromWorldPolyline?.(poly);
 	}
 
+	async function syncSpatialStart() {
+		const stage = document.getElementById("geoStage");
+		const badge = document.getElementById("geoModeBadge");
+		stage?.classList.remove("is-geographic");
+		if (!mapA) return false;
+		if (!mapA.map) {
+			const container = document.getElementById("viewMap");
+			if (!container) return false;
+			try { await mapA.mount(container); }
+			catch (error) {
+				stage?.classList.remove("is-spatial-start");
+				if (badge) {
+					badge.textContent = "LOCAL";
+					badge.title = `Startkarte nicht verfügbar: ${String(error?.message ?? error)}`;
+				}
+				return false;
+			}
+		}
+		mapA.clearRenderPrimitives?.();
+		mapA.setCursor?.(null);
+		mapA.resize?.();
+		stage?.classList.add("is-spatial-start");
+		if (badge) {
+			badge.textContent = "MAP";
+			badge.title = "Startkarte · noch ohne Projektgeoreferenz";
+		}
+		return true;
+	}
+
 	async function syncOperatingMode(activeGeometry, state) {
 		const proj4 = proj4Module.default ?? globalThis.proj4 ?? null;
 		const sourceContract = activeGeometry?.projection?.georeference ?? null;
@@ -843,6 +872,7 @@ export function makeViewController({
 		const geographic = projectGeographicGeometry({ projection: activeGeometry?.projection, resolution, transform });
 		const stage = document.getElementById("geoStage");
 		const badge = document.getElementById("geoModeBadge");
+		stage?.classList.remove("is-spatial-start");
 		const enabled = Boolean(geographic.ok && mapA);
 		if (enabled && !mapA.map) {
 			const container = document.getElementById("viewMap");
@@ -924,6 +954,9 @@ export function makeViewController({
 					clear3DKeepAux();
 
 					await applyGeomChangePolicy(state, null);
+					const spatialStart = !getFocusObjectId(state) && !activeGeometry?.isPreview
+						? await syncSpatialStart()
+						: false;
 					lastRenderSnapshot = {
 						objectId: activeGeometry?.objectId ?? null,
 						revision: canonicalAlignmentRevision(activeGeometry),
@@ -932,7 +965,7 @@ export function makeViewController({
 						boundaryCount: 0,
 						crsId: activeGeometry?.spotObject?.crsId ?? null,
 						mode: activeGeometry?.isPreview ? "preview" : "empty",
-						placement: "local",
+						placement: spatialStart ? "map-context" : "local",
 						message: "no-track",
 					};
 					return { ...lastRenderSnapshot };

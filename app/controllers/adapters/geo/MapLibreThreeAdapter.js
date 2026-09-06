@@ -9,17 +9,29 @@ export class MapLibreThreeAdapter extends GeoMainViewAdapter {
 
 		const injected = globalThis.__ufAIM_geoE2EMapLibre ?? null;
 		const mapLibreModule = injected ? null : await import("maplibregl");
-		const maplibregl = injected ?? mapLibreModule?.default ?? mapLibreModule?.maplibregl ?? globalThis.maplibregl;
+		const maplibregl = injected
+			?? (mapLibreModule?.default?.Map ? mapLibreModule.default : null)
+			?? (mapLibreModule?.Map ? mapLibreModule : null)
+			?? mapLibreModule?.maplibregl
+			?? globalThis.maplibregl;
 		if (!maplibregl?.Map) throw new Error("MapLibre module did not expose a Map constructor.");
 
 		this.maplibregl = maplibregl;
 		this.map = new maplibregl.Map({
 			container,
 			style: this.options.style ?? "https://demotiles.maplibre.org/style.json",
-			center: this.options.center ?? [13.405, 52.52],
-			zoom: this.options.zoom ?? 10,
+			center: this.options.center ?? [10.45, 51.16],
+			zoom: this.options.zoom ?? 5.4,
 		});
 		this.debug = { mounted: true, removed: false, geojson: null, fitBounds: null };
+	}
+
+	clearRenderPrimitives() {
+		this.primitives = null;
+		const geojson = { type: "Feature", properties: {}, geometry: null };
+		this.debug ??= {};
+		this.debug.geojson = geojson;
+		this.map?.getSource?.("ufaim-alignment")?.setData?.(geojson);
 	}
 
 	setRenderPrimitives(primitives) {

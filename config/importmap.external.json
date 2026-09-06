@@ -4,7 +4,7 @@
 		"OrbitControls":     "https://unpkg.com/three/examples/jsm/controls/OrbitControls.js",
 		"TransformControls": "https://unpkg.com/three/examples/jsm/controls/TransformControls.js",
 		"jsxgraph":          "https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.mjs",
-		"maplibregl":        "https://unpkg.com/maplibre-gl/dist/maplibre-gl.js",
+		"maplibregl":        "https://cdn.jsdelivr.net/npm/maplibre-gl/+esm",
 		"proj4js":           "https://cdn.jsdelivr.net/npm/proj4/dist/proj4.js",
 		"fflate":            "https://cdn.jsdelivr.net/npm/fflate/esm/browser.js",
 		"sheetjs":           "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs"
