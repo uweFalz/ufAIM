@@ -39672,7 +39672,12 @@ xlsx/xlsx.mjs:
 					.filter(Boolean);
 			}
 
-			function sevenLineTracks(entry) {
+			// ---- Main · Zuordnung ------------------------------------------------
+			// Which objects belong to the selected one, which side each plays in
+			// the 7L structure, and which station range the diagram covers. No
+			// series, no formulas: this is the "linking" part of Main, and every
+			// band derivation below reads only from what it returns.
+			function sevenLineAssignment(entry) {
 				const related = relatedDiagramEntries(entry);
 				const selectedFrame = geoFrameInfo(entry);
 				const selectedRange = stationRangeForEntry(entry);
@@ -39707,8 +39712,6 @@ xlsx/xlsx.mjs:
 				if (!bySide[sevenLineSide(anchor)].includes(anchor)) bySide[sevenLineSide(anchor)].unshift(anchor);
 
 				const first = (side, kind) => bySide[side].find((candidate) => candidate.item.kind === kind);
-				const band = (label, className, points, extra = {}) => ({ label, className, points, ...extra });
-				const bands = [];
 				const kmAlignment = first("kilometer", "alignment");
 				const rightAlignment = first("right", "alignment");
 				const leftAlignment = first("left", "alignment");
@@ -39728,6 +39731,23 @@ xlsx/xlsx.mjs:
 				const referenceRequired = gndRouteTrackNeedsReference || (!entries.some((candidate) => gndSequenceForEntry(candidate)) && twoTrack && isValidRouteNumber(selectedFrame?.track));
 				const equations = bySide.kilometer.find((candidate) => candidate.item.kind === "staEq")
 					?? entries.find((candidate) => candidate.item.kind === "staEq");
+				return {
+					anchor, entries, bySide, first, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations,
+					hasUnknown: bySide.unknown.length > 0,
+					missingKilometerLine: referenceRequired && !kmAlignment,
+				};
+			}
+
+			// ---- Ableitungen über der Zuordnung -----------------------------------
+			// Each takes the assignment and returns bands; none of them looks at
+			// loadedFiles, frames, or relations itself. sevenLineTracks() below
+			// concatenates them in the order the diagram has always shown.
+			const makeBand = (label, className, points, extra = {}) => ({ label, className, points, ...extra });
+
+			// IVMG · Trassenplan rows for the assigned sides: Gradiente, Überhöhung,
+			// Krümmung per Gleis plus the Kilometerlinie's curvature.
+			function deriveTrassenplanBands(assignment) {
+				const { first, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations } = assignment;
 				const definitions = [
 					["right", "profile", "Rechtes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
@@ -39737,17 +39757,25 @@ xlsx/xlsx.mjs:
 					["right", "alignment", "Rechtes Gleis · Krümmung κ [1/m]", "diagram-curvature", null],
 					["right", "cant", "Rechtes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
 				];
+				const bands = [];
 				for (const [side, kind, label, className, valueKeys] of definitions) {
 					const candidate = first(side, kind);
 					const requiredMissing = side === "kilometer" && referenceRequired && !candidate;
 					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired);
 					if (!sideVisible) continue;
 					const points = clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange);
-					bands.push(band(label, className, points, {
+					bands.push(makeBand(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
 					}));
 				}
+				return bands;
+			}
+
+			// GWB · zul. v / Potenzial for the assigned sides.
+			function deriveSpeedBands(assignment) {
+				const { first, selectedRange, rightPresent, leftPresent } = assignment;
+				const bands = [];
 				for (const side of ["left", "right"]) {
 					if (side === "left" && !leftPresent) continue;
 					if (side === "right" && !rightPresent) continue;
@@ -39756,28 +39784,50 @@ xlsx/xlsx.mjs:
 					const cantCandidate = first(side, "cant");
 					const curvaturePoints = curvatureSeries(curvatureCandidate);
 					const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
-					bands.push(speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, curvaturePoints, cantPoints, selectedRange, band));
+					bands.push(speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, curvaturePoints, cantPoints, selectedRange, makeBand));
 				}
+				return bands;
+			}
+
+			// Trassenplan rows for objects without a resolved side ("Zuordnung offen").
+			function deriveUnknownTrassenplanBands(assignment) {
+				const { first, selectedRange } = assignment;
+				const bands = [];
 				for (const kind of ["profile", "alignment", "cant"]) {
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
-					bands.push(band(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
+					bands.push(makeBand(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
 				}
-				// Speed/GWB needs curvature + cant, not a resolved li/re role -- before
-				// a 7L-Struktur is assigned, every freshly-imported alignment sits in
-				// "unknown" and the li/re loop above never runs, so without this the
-				// speed bands (and GWB with them) were unreachable from a plain click
-				// on a just-imported object (confirmed: STR_1720_KM_211-273_GND.MDB's
-				// "Gleis 0" showed only Kruemmung/Ueberhoehung, no zul.v/GWB at all).
-				const unknownCurvatureCandidate = first("unknown", "alignment");
-				if (unknownCurvatureCandidate) {
-					const unknownCantCandidate = first("unknown", "cant");
-					const curvaturePoints = curvatureSeries(unknownCurvatureCandidate);
-					const cantPoints = unknownCantCandidate ? pointSeries(unknownCantCandidate, CANT_VALUE_KEYS) : [];
-					bands.push(speedDiagnosticBand("Gleis · Zuordnung offen", curvaturePoints, cantPoints, selectedRange, band));
-				}
-				return { anchor, entries, bands, hasUnknown: bySide.unknown.length > 0, missingKilometerLine: referenceRequired && !kmAlignment };
+				return bands;
+			}
+
+			// Speed/GWB needs curvature + cant, not a resolved li/re role -- before
+			// a 7L-Struktur is assigned, every freshly-imported alignment sits in
+			// "unknown" and deriveSpeedBands() yields nothing, so without this the
+			// speed bands (and GWB with them) were unreachable from a plain click
+			// on a just-imported object (confirmed: STR_1720_KM_211-273_GND.MDB's
+			// "Gleis 0" showed only Kruemmung/Ueberhoehung, no zul.v/GWB at all).
+			function deriveUnknownSpeedBands(assignment) {
+				const { first, selectedRange } = assignment;
+				const curvatureCandidate = first("unknown", "alignment");
+				if (!curvatureCandidate) return [];
+				const cantCandidate = first("unknown", "cant");
+				const curvaturePoints = curvatureSeries(curvatureCandidate);
+				const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
+				return [speedDiagnosticBand("Gleis · Zuordnung offen", curvaturePoints, cantPoints, selectedRange, makeBand)];
+			}
+
+			function sevenLineTracks(entry) {
+				const assignment = sevenLineAssignment(entry);
+				const bands = [
+					...deriveTrassenplanBands(assignment),
+					...deriveSpeedBands(assignment),
+					...deriveUnknownTrassenplanBands(assignment),
+					...deriveUnknownSpeedBands(assignment),
+				];
+				const { anchor, entries, hasUnknown, missingKilometerLine } = assignment;
+				return { anchor, entries, bands, hasUnknown, missingKilometerLine };
 			}
 
 			// SVG <text> never wraps. Band labels live in a 238-unit gutter and the
