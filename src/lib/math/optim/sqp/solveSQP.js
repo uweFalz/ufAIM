@@ -91,6 +91,16 @@ export function solveSQP({
 	// costs nothing: the subproblem already carries bounds.
 	trustRadius = null,          // default: a tenth of the largest variable
 	minTrustRadius = 1e-10,
+	// How many consecutive iterations the subproblem may come back fully
+	// relaxed and without a step before that is reported as the verdict it is.
+	// The relaxation makes (d, delta) = (0, 1) feasible by construction, so a
+	// subproblem that returns exactly that has said: no step within the bounds
+	// meets the linearised constraints. Measured on a real turnout with a
+	// transition on its floor - the only linearised way to close the end pose
+	// was to shorten it - the solve returned that answer 199 times in a row and
+	// was reported as max_iterations. It is not a step that ran out; it is a
+	// point at which the model cannot move, and the caller needs to know which.
+	relaxedStallLimit = 5,
 	trustGrowth = 2,
 	trustShrink = 0.5,
 	// How close to a bound counts as held by it. An exact test is too sharp: the
@@ -124,6 +134,8 @@ export function solveSQP({
 		}
 		return held;
 	};
+	let relaxedStalls = 0;
+	let relaxedStallViolation = 0;
 	let radius = Number.isFinite(trustRadius)
 		? trustRadius
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
@@ -169,6 +181,31 @@ export function solveSQP({
 		}
 
 		const stepNorm = Math.hypot(...step.d);
+		// "Fully relaxed" in practice is delta within a thousandth of one, and
+		// "without progress" is measured on the violation, not on the step: the
+		// subproblem hands back a step of 2.5e-4 every time, and the violation
+		// creeps from 14.84 to 14.81 over sixty of them.
+		{
+			const violationNow = constraintViolation(state).total;
+			if (step.delta >= 1 - 1e-3) {
+				if (relaxedStalls === 0) relaxedStallViolation = violationNow;
+				relaxedStalls += 1;
+				const progress = relaxedStallViolation > 0 ? 1 - violationNow / relaxedStallViolation : 0;
+				if (relaxedStalls >= relaxedStallLimit && progress < 0.01) {
+					history.push({
+						iteration, status: "infeasible_subproblem", delta: step.delta, violation: violationNow,
+						reason: `the subproblem came back fully relaxed ${relaxedStalls} times in a row and the violation fell by ${(progress * 100).toFixed(2)} %`,
+					});
+					return {
+						ok: false, status: "infeasible_subproblem", x, state, history, iterations: iteration,
+						reason: "no step within the bounds meets the linearised constraints",
+					};
+				}
+				if (relaxedStalls >= relaxedStallLimit) { relaxedStalls = 0; }
+			} else {
+				relaxedStalls = 0;
+			}
+		}
 		// Stationarity is measured on the PROJECTED Lagrangian gradient. At a
 		// solution held by a bound, the gradient is balanced by that bound's own
 		// multiplier, which does not appear here at all - so the plain gradient
