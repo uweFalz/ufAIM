@@ -53,8 +53,7 @@
 				align-items: center;
 				gap: 0.5rem;
 			}
-			#gwbLineSpeedLabel {
-				margin-left: auto;
+			.gwb-input {
 				display: flex;
 				align-items: center;
 				gap: 0.3rem;
@@ -62,12 +61,15 @@
 				color: #555;
 				white-space: nowrap;
 			}
-			#gwbLineSpeed {
-				width: 4.4rem;
+			#gwbLineSpeedLabel { margin-left: auto; }
+			.gwb-input input,
+			.gwb-input select {
 				padding: 0.3rem 0.4rem;
 				border: 1px solid var(--hairline);
 				border-radius: 0.45rem;
+				background: #fff;
 			}
+			.gwb-input input { width: 4.6rem; }
 			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
 			#titlebar {
 				min-height: 2.7rem;
@@ -253,8 +255,9 @@
 			}
 			#diagramToolbar {
 				display: flex;
+				flex-wrap: wrap;
 				align-items: center;
-				gap: 0.75rem;
+				gap: 0.5rem 0.75rem;
 				padding: 0.6rem 0.75rem;
 				border-bottom: 1px solid GrayText;
 				font-family: system-ui, sans-serif;
@@ -1419,7 +1422,9 @@
 								<strong id="diagramTitle">Diagramm</strong>
 								<span id="diagramCode" title=""></span>
 								<span id="diagramNote"></span>
-								<label id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
+								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
+								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
+								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
 								<button id="gwbBogenCsv" type="button" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
 								<button id="gwbAbschnittCsv" type="button" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
 								<div id="diagramPresentation" aria-label="Ansicht">
@@ -38791,12 +38796,14 @@ xlsx/xlsx.mjs:
 			// says so.
 			const CANT_DEFICIENCY_MM = 130;
 			// Cant a Bogen may be given, 800.0110 7 (1) and Tab. 4: not below 20 mm,
-			// multiples of 5, Ermessensgrenze 160 mm on Schotteroberbau (170 mm
-			// Feste Fahrbahn, 180 mm EBO -- the Oberbau is unknown here, so the
-			// lower one is used).
+			// multiples of 5, Ermessensgrenze 160 mm on Schotteroberbau, 170 mm on
+			// Fester Fahrbahn (180 mm is the EBO limit, Zustimmungswert -- not
+			// offered). The Oberbau is in no geometry file, so the toolbar select
+			// sets it; Schotter is the default because it is the lower value.
 			const CANT_MIN_MM = 20;
 			const CANT_STEP_MM = 5;
-			const CANT_MAX_MM = 160;
+			const CANT_MAX_BY_OBERBAU_MM = { Schotter: 160, FesteFahrbahn: 170 };
+			const OBERBAU_LABEL = { Schotter: "Schotteroberbau", FesteFahrbahn: "Feste Fahrbahn" };
 			// Überhöhungsrampe, 800.0110 Tab. 8 (Ermessensgrenze; Regelwert would
 			// be 10 / 7.5): length l_R >= k * v * du / 1000 [m, km/h, mm]. Tab. 7:
 			// gradient not steeper than 1:400 (Ermessensgrenze = EBO); for Bloss
@@ -38838,9 +38845,10 @@ xlsx/xlsx.mjs:
 			// distance, a shorter one is merged into the lower step (Bild 14; the
 			// Ril also allows extending it backwards, Bild 13 -- not modelled).
 			// Not applied above 160 km/h (5 (10) b 3, and the tables end there).
-			// The line's Regelbremsweg is in no geometry file: 1000 m is what
-			// 457.0201's own example uses (700 m would be a Nebenbahn).
-			const REGELBREMSWEG_M = 1000;
+			// The line's Regelbremsweg is in no geometry file, so the toolbar
+			// input sets it; 1000 m is the default because 457.0201's own example
+			// uses it (700 m would be a Nebenbahn).
+			const REGELBREMSWEG_DEFAULT_M = 1000;
 			const FAHRDYNAMIK_MAX_KMH = 160;
 			// Streckengeschwindigkeit on Geraden and wide Bögen: no geometry file
 			// carries the VzG value, so the toolbar input sets it; the default is
@@ -38943,6 +38951,18 @@ xlsx/xlsx.mjs:
 			let diagramPresentation = "chart";
 			const diagramPresentationButtons = Array.from(document.querySelectorAll("#diagramPresentation button"));
 			const gwbLineSpeedInput = document.getElementById("gwbLineSpeed");
+			const gwbBrakeDistanceInput = document.getElementById("gwbBrakeDistance");
+			const gwbOberbauSelect = document.getElementById("gwbOberbau");
+			function regelbremswegM() {
+				const value = Number(gwbBrakeDistanceInput?.value);
+				return Number.isFinite(value) && value > 0 ? value : REGELBREMSWEG_DEFAULT_M;
+			}
+			function oberbauKey() {
+				return gwbOberbauSelect && gwbOberbauSelect.value in CANT_MAX_BY_OBERBAU_MM ? gwbOberbauSelect.value : "Schotter";
+			}
+			function cantMaxMm() {
+				return CANT_MAX_BY_OBERBAU_MM[oberbauKey()];
+			}
 			const gwbBogenCsvButton = document.getElementById("gwbBogenCsv");
 			const gwbAbschnittCsvButton = document.getElementById("gwbAbschnittCsv");
 			function lineSpeedKmh() {
@@ -39793,7 +39813,7 @@ xlsx/xlsx.mjs:
 			// is 800.0110 9 / Tab. 10 Vergleichsradius, not modelled). Reads only
 			// the interpreted elements and the mm cant series; writes nothing back.
 			const GWB_VARIANTS = ["Klothoide", "Bloss"];
-			const SPEED_DIAGNOSTIC_FOOTNOTE = `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Fahrzeugklasse nicht geprüft) · GWB-Vorschlag ┄: je Bogen u bis ${CANT_MAX_MM} mm (Tab. 4) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · Platz für die Bloss-Verlängerung, Vergleichsradius (Tab. 10) und Fahrdynamik der Stufen nicht geprüft · Diagnose, kein Entwurf`;
+			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Fahrzeugklasse nicht geprüft) · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · Platz für die Bloss-Verlängerung, Vergleichsradius (Tab. 10) und Fahrdynamik der Stufen nicht geprüft · Diagnose, kein Entwurf`;
 			function gwbElements(entry) {
 				const list = [];
 				const signOf = (radius, element) => radius < 0 ? -1 : radius > 0 ? curveRotationSign(element) : 0;
@@ -39894,7 +39914,7 @@ xlsx/xlsx.mjs:
 				const list = gwbElements(alignmentEntry);
 				const cantMm = cantEntry ? cantSeriesMm(cantEntry) : [];
 				const candidates = [0];
-				for (let u = CANT_MIN_MM; u <= CANT_MAX_MM; u += CANT_STEP_MM) candidates.push(u);
+				for (let u = CANT_MIN_MM; u <= cantMaxMm(); u += CANT_STEP_MM) candidates.push(u);
 				const units = [];
 				for (let index = 0; index < list.length; index += 1) {
 					const head = list[index];
@@ -40024,7 +40044,7 @@ xlsx/xlsx.mjs:
 							const before = section.v;
 							let needed = NaN;
 							while (section.v > Math.max(prev.v, next.v)) {
-								needed = Math.max(REGELBREMSWEG_M, fahrdynamikWeg(prev.v, section.v) + BEHARRUNG_M[section.v] + fahrdynamikWeg(section.v, next.v));
+								needed = Math.max(regelbremswegM(), fahrdynamikWeg(prev.v, section.v) + BEHARRUNG_M[section.v] + fahrdynamikWeg(section.v, next.v));
 								if (!(length < needed)) break;
 								section.v -= SPEED_STEP_KMH;
 							}
@@ -40032,10 +40052,10 @@ xlsx/xlsx.mjs:
 								trims.push({ from: section.from, to: section.to, before, after: section.v, length, needed, rule: "Fahrdynamik-Regel 457.0201 5 (10) b" });
 								changed = true;
 							}
-						} else if (prev.v > section.v && section.v > next.v && length < REGELBREMSWEG_M) {
+						} else if (prev.v > section.v && section.v > next.v && length < regelbremswegM()) {
 							// 5 (10) a): fallende Treppe -- a step shorter than the Bremsweg
 							// is merged into the lower one (Bild 14).
-							trims.push({ from: section.from, to: section.to, before: section.v, after: next.v, length, needed: REGELBREMSWEG_M, rule: "Bremsweg 457.0201 5 (10) a" });
+							trims.push({ from: section.from, to: section.to, before: section.v, after: next.v, length, needed: regelbremswegM(), rule: "Bremsweg 457.0201 5 (10) a" });
 							section.v = next.v;
 							changed = true;
 						}
@@ -40051,7 +40071,7 @@ xlsx/xlsx.mjs:
 			function sectionLines(prefix, today, proposal) {
 				if (!proposal) return [];
 				const km = (x) => (x / 1000).toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
-				const lines = [`${prefix} · Abschnitte nach 457.0201 (Strecke ${proposal.vLine} km/h angenommen, Regelbremsweg ${REGELBREMSWEG_M} m): heute ${today.sections.length}, Vorschlag ${proposal.sections.length} Stufen · Vorschlag: ${proposal.sections.map((section) => `km ${km(section.from)}–${km(section.to)} ${section.v}`).join(" · ")}`];
+				const lines = [`${prefix} · Abschnitte nach 457.0201 (Strecke ${proposal.vLine} km/h angenommen, Regelbremsweg ${regelbremswegM()} m): heute ${today.sections.length}, Vorschlag ${proposal.sections.length} Stufen · Vorschlag: ${proposal.sections.map((section) => `km ${km(section.from)}–${km(section.to)} ${section.v}`).join(" · ")}`];
 				for (const [label, result] of [["heute", today], ["Vorschlag", proposal]]) {
 					for (const trim of result.trims) {
 						lines.push(`  ${label}: km ${km(trim.from)}–${km(trim.to)} ${trim.before} → ${trim.after} km/h · ${trim.rule}: ${Math.round(trim.length)} m vorhanden, ${Math.round(trim.needed)} m nötig`);
@@ -40076,7 +40096,7 @@ xlsx/xlsx.mjs:
 					band(`${prefix} · zul. v — / GWB-Vorschlag ┄ [km/h]`, "diagram-speed", points, {
 						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
 						overlay: { label: "GWB-Vorschlag", className: "diagram-speed-potential", points: gwbProposalSeries(units, selectedRange) },
-						footnote: [SPEED_DIAGNOSTIC_FOOTNOTE, ...gwbProposalLines(prefix, units)],
+						footnote: [speedDiagnosticFootnote(), ...gwbProposalLines(prefix, units)],
 						unit: "km/h",
 						proposal: units,
 					}),
@@ -41377,7 +41397,7 @@ xlsx/xlsx.mjs:
 				const lines = [
 					`GWB-Vorschlag je Bogen (Diagnose, kein Entwurf) - ${objectDisplayName(entry)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
-					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${CANT_DEFICIENCY_MM} mm (Tab. 5), u ${CANT_MIN_MM}..${CANT_MAX_MM} mm (Tab. 4), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; nicht geprueft: Platz fuer die Bloss-Verlaengerung, Vergleichsradius (Tab. 10), Fahrzeugklasse`,
+					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${CANT_DEFICIENCY_MM} mm (Tab. 5), u ${CANT_MIN_MM}..${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; nicht geprueft: Platz fuer die Bloss-Verlaengerung, Vergleichsradius (Tab. 10), Fahrzeugklasse`,
 					"",
 					["Gleis", "km_von", "km_bis", "Radius_m", "u_heute_mm", "v_heute_kmh", "Bestand_haltbar_kmh", "Bestand_Grenze", "u_Vorschlag_mm", "v_Vorschlag_kmh", "Variante", "Anfang_Uebergangsbogen", "Anfang_Laenge_heute_m", "Anfang_Laenge_Vorschlag_m", "Ende_Uebergangsbogen", "Ende_Laenge_heute_m", "Ende_Laenge_Vorschlag_m", "Grenze_danach", "Korbbogen_Hinweis", "Potenzial"].join(";"),
 				];
@@ -41418,7 +41438,7 @@ xlsx/xlsx.mjs:
 				const lines = [
 					`Geschwindigkeitsabschnitte nach Ril 457.0201 (Diagnose, kein VzG) - ${objectDisplayName(entry)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
-					`Annahmen: Streckengeschwindigkeit ${lineSpeedKmh()} km/h auf Geraden, Regelbremsweg ${REGELBREMSWEG_M} m, Fahrdynamik-Regel 5 (10) b mit Anhang 2 bis ${FAHRDYNAMIK_MAX_KMH} km/h, fallende Stufen kuerzer als der Bremsweg in die untere Stufe gefasst (5 (10) a, Bild 14); Bogenwerte aus dem GWB-Vorschlag (Ril 800.0110)`,
+					`Annahmen: Streckengeschwindigkeit ${lineSpeedKmh()} km/h auf Geraden, Regelbremsweg ${regelbremswegM()} m, Fahrdynamik-Regel 5 (10) b mit Anhang 2 bis ${FAHRDYNAMIK_MAX_KMH} km/h, fallende Stufen kuerzer als der Bremsweg in die untere Stufe gefasst (5 (10) a, Bild 14); Bogenwerte aus dem GWB-Vorschlag (Ril 800.0110)`,
 					"",
 					["Gleis", "Fall", "km_von", "km_bis", "Laenge_m", "v_kmh", "Hinweis"].join(";"),
 				];
@@ -43817,7 +43837,7 @@ xlsx/xlsx.mjs:
 			for (const button of diagramPresentationButtons) {
 				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
-			gwbLineSpeedInput.addEventListener("change", () => renderDiagram());
+			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect]) control.addEventListener("change", () => renderDiagram());
 			gwbBogenCsvButton.addEventListener("click", () => downloadCsv(`gwb-boegen-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbBogenCsv(selectedEntry)));
 			gwbAbschnittCsvButton.addEventListener("click", () => downloadCsv(`gwb-abschnitte-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbAbschnittCsv(selectedEntry)));
 			for (const button of viewModeButtons) {
