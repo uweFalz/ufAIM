@@ -38756,24 +38756,60 @@ xlsx/xlsx.mjs:
 			// measurement and not part of Main (see interpretedGeometry()). Each
 			// one is shown in the UI where it applies (band label, footnote,
 			// button) instead of being silently baked in. Change them here only.
+			// Sources: Ril 800.0110 "Linienführung" V3.0 (gültig ab 01.02.2021)
+			// and Ril 457.0201 "Gestaltungsregeln für das VzG" (13.12.2009).
+			// Where the Ril grades a value Regelwert / Ermessensgrenze /
+			// Zustimmungswert, the Ermessensgrenze is used: 800.0110 4 (3) says a
+			// Geschwindigkeitsanhebung is first to be checked by exhausting the
+			// parameters up to the Ermessensgrenze, without construction -- which
+			// is exactly the GWB question. Regelwert would be the target for a
+			// Neubau, Zustimmungswert needs the Zentrale; neither is modelled.
 			//
 			// Reject list: everything the GND reports as measured worse than this
 			// goes on the Ausschussliste, not just colored differently (Uwe's cut).
 			const PRECISION_REJECT_THRESHOLD = 0.003;
-			// Ril 800.0110 speed formula: Ueberhoehungsfehlbetrag without vehicle
-			// data -- the DB Regelwert; a Neigetechnik class would be ~300 mm.
-			const CANT_DEFICIENCY_REGELWERT_MM = 130;
-			// GWB potential: commonly cited absolute cant ceiling on standard-gauge
-			// DB track; ramp length / Klothoide-to-Bloss are NOT checked (needs
-			// Ril 800.0110 limits not available here) -- diagnosis, not design.
-			const CANT_MAX_ANNAHME_MM = 160;
-			// Cap for both speed bands: large radii give 500+ km/h from the pure
-			// formula, but no German line runs or plans beyond 300 (Nuernberg-
-			// Ingolstadt-Muenchen); China's ~400 is irrelevant to a DB tool.
+			// Überhöhungsfehlbetrag in the speed formula v = sqrt(r (u + uf) / 11.8):
+			// 800.0110 Tab. 5, zul uf = 130 mm is the Ermessensgrenze for Gleis
+			// (150 mm only with r >= 650 m and vehicle approval; Neigetechnik is a
+			// class of its own). The vehicle class is not checked -- the footnote
+			// says so.
+			const CANT_DEFICIENCY_MM = 130;
+			// Cant a Bogen may be given, 800.0110 7 (1) and Tab. 4: not below 20 mm,
+			// multiples of 5, Ermessensgrenze 160 mm on Schotteroberbau (170 mm
+			// Feste Fahrbahn, 180 mm EBO -- the Oberbau is unknown here, so the
+			// lower one is used).
+			const CANT_MIN_MM = 20;
+			const CANT_STEP_MM = 5;
+			const CANT_MAX_MM = 160;
+			// Überhöhungsrampe, 800.0110 Tab. 8 (Ermessensgrenze; Regelwert would
+			// be 10 / 7.5): length l_R >= k * v * du / 1000 [m, km/h, mm]. Tab. 7:
+			// gradient not steeper than 1:400 (Ermessensgrenze = EBO); for Bloss
+			// the steepest point is the middle, m_MB = 2/3 * l_RB / du * 1000
+			// (Bild 2).
+			const RAMP_LENGTH_FACTOR = { Klothoide: 8, Bloss: 6 };
+			const RAMP_GRADIENT_MIN_M = 400;
+			const BLOSS_GRADIENT_SHARE = 2 / 3;
+			// Übergangsbogen, 800.0110 Tab. 9: min l_U >= k * v * duf / 1000.
+			const TRANSITION_LENGTH_FACTOR = { Klothoide: 4, Bloss: 4.5 };
+			// Reshaping a Klothoide into a Bloss with the same f-Maß, 800.0110
+			// 8 (2): the Bogen stays put, the Übergangsbogen grows by sqrt(5/3).
+			// Bloss ramps want du >= 40 mm (Fn. 23).
+			const BLOSS_LENGTH_FROM_KLOTHOIDE = Math.sqrt(5 / 3);
+			const BLOSS_MIN_DELTA_U_MM = 40;
+			// Korbbogen keep one cant while the Fehlbetrag difference between the
+			// radii stays within 40 mm (800.0110 7 (4), v <= 200 km/h); beyond it
+			// each radius wants its own cant, i.e. a ramp between the Bögen. That
+			// is a design consequence, not a speed limit, so it is reported on the
+			// proposal line and not enforced.
+			const KORBBOGEN_MAX_DELTA_UF_MM = 40;
+			// Cap for both speed bands: 800.0110's tables end at 300 km/h and no
+			// German line runs or plans beyond it (Nuernberg-Ingolstadt-Muenchen);
+			// China's ~400 is irrelevant to a DB tool.
 			const V_MAX_DE_KMH = 300;
-			// Signalled speeds are steps -- classically 10 km/h, with ETCS later
-			// also 5 (a parameter, not wired in). Always round DOWN: a curve that
-			// allows 179.5 must show 170, never 180.
+			// Signalled speeds are steps: 457.0201 5 (11) rounds Spalte 2 DOWN to a
+			// multiple of 10; 5 is allowed only where no Lf / Zs 3 signalling is
+			// needed (ETCS later -- a parameter, not wired in). Always round DOWN:
+			// a curve that allows 179.5 must show 170, never 180.
 			const SPEED_STEP_KMH = 10;
 			function roundDownToSpeedStep(speedKmh, stepKmh = SPEED_STEP_KMH) {
 				return Math.floor(speedKmh / stepKmh) * stepKmh;
@@ -39488,6 +39524,31 @@ xlsx/xlsx.mjs:
 					return { x, y: numberValue(raw) };
 				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
 			}
+			// Cant in millimetres, whatever the source stored. GND (X_ASC23_EU)
+			// delivers appliedCant as {value: 0.055, unit: "meter"}; TRA/GRA-derived
+			// cant and hand-typed 7L groups may carry plain numbers in mm. Until
+			// this existed, the cant band was labelled [mm] but plotted 0.055, the
+			// speed formula added 130 mm to 0.055 (so "zul. v" was computed as if
+			// u = 0: r 2404 m, u 55 mm showed 160 instead of 190 km/h) and the IVHW
+			// Schiene B sat 0.055 mm above Schiene A. This is Main (interpretation
+			// of a unit the source declares), the unit-less fallback is the one
+			// heuristic: no real cant is below 1 mm, every metre-valued one is.
+			function cantMillimetres(raw) {
+				const value = numberValue(raw);
+				if (!Number.isFinite(value)) return NaN;
+				const unit = raw && typeof raw === "object" ? String(raw.unit ?? "").toLowerCase() : "";
+				if (unit === "meter" || unit === "metre" || unit === "m") return value * 1000;
+				if (unit === "millimeter" || unit === "millimetre" || unit === "mm") return value;
+				return Math.abs(value) < 1 ? value * 1000 : value;
+			}
+			function cantSeriesMm(entry) {
+				const points = entry?.item?.payload?.points ?? [];
+				return points.map((point) => {
+					const x = stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage);
+					const raw = CANT_VALUE_KEYS.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
+					return { x, y: cantMillimetres(raw) };
+				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+			}
 
 			function vermEsnFileStem(fileName) {
 				return String(fileName ?? "").replace(/\.(tra|gra)$/i, "").toLowerCase();
@@ -39602,74 +39663,258 @@ xlsx/xlsx.mjs:
 				if (!range) return points;
 				const from = range.from - 5;
 				const to = range.to + 5;
-				return points.filter((point) => Number.isFinite(point.x) && point.x >= from && point.x <= to);
+				const kept = [];
+				let dropped = false;
+				for (const point of points) {
+					if (!(Number.isFinite(point.x) && point.x >= from && point.x <= to)) { dropped = true; continue; }
+					kept.push(dropped && !point.gap ? { ...point, gap: true } : point);
+					dropped = false;
+				}
+				return kept;
 			}
 
-			// Zulaessige Geschwindigkeit aus Radius und Ueberhoehung (Ril 800.0110):
-			// v [km/h] = sqrt(R[m] * (u[mm] + ue_fehl[mm]) / 11.8). ue_fehl ist der
-			// Ueberhoehungsfehlbetrag; ohne Fahrzeugdaten wird hier der DB-Regelwert
-			// 130 mm angenommen -- das ist eine Annahme, kein gemessener Wert, daher
-			// im Bandnamen ausgewiesen statt still vorausgesetzt. Geraden (Kruemmung
-			// 0, R unendlich) liefern aus dieser Formel keine Geschwindigkeitsgrenze
-			// und werden als Luecke dargestellt statt einen Wert zu erfinden.
-			// Deckel (V_MAX_DE_KMH), Stufen (SPEED_STEP_KMH) und Ue_fehl: siehe den
-			// ABLEITUNG-Annahmen-Block oben.
-			function speedLimitSeries(curvaturePoints, cantPoints, cantDeficiencyMm = CANT_DEFICIENCY_REGELWERT_MM) {
-				return curvaturePoints
-					.map((point) => {
-						const curvature = Math.abs(point.y);
-						if (!(curvature > 1e-9)) return null;
-						const radius = 1 / curvature;
-						const cant = Math.abs(interpolateSeriesAt(cantPoints, point.x));
-						const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cant + cantDeficiencyMm) / 11.8), V_MAX_DE_KMH));
-						return Number.isFinite(speed) ? { x: point.x, y: speed } : null;
-					})
-					.filter(Boolean);
+			// Zulaessige Geschwindigkeit aus Radius und Ueberhoehung (Ril 800.0110,
+			// ausgleichende Ueberhoehung u0 = 11.8 v^2 / r, Tab. 4/5):
+			// v [km/h] = sqrt(r[m] * (u[mm] + uf[mm]) / 11.8). uf ist der
+			// Ueberhoehungsfehlbetrag; ohne Fahrzeugdaten gilt die Ermessensgrenze
+			// fuer Gleis (CANT_DEFICIENCY_MM) -- eine Annahme, kein gemessener Wert,
+			// daher in der Fussnote ausgewiesen statt still vorausgesetzt. Geraden
+			// (Kruemmung 0, r unendlich) liefern aus dieser Formel keine Grenze und
+			// werden als Luecke dargestellt statt einen Wert zu erfinden. cantPoints
+			// must be in mm (cantSeriesMm). Deckel und Stufen: Annahmen-Block oben.
+			function speedLimitSeries(curvaturePoints, cantPoints, cantDeficiencyMm = CANT_DEFICIENCY_MM) {
+				const series = [];
+				let gap = false;
+				for (const point of curvaturePoints) {
+					const curvature = Math.abs(point.y);
+					if (!(curvature > 1e-9)) { gap = true; continue; }
+					const radius = 1 / curvature;
+					const cant = Math.abs(interpolateSeriesAt(cantPoints, point.x));
+					const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cant + cantDeficiencyMm) / 11.8), V_MAX_DE_KMH));
+					if (!Number.isFinite(speed)) continue;
+					series.push(gap ? { x: point.x, y: speed, gap: true } : { x: point.x, y: speed });
+					gap = false;
+				}
+				return series;
 			}
 
-			// GWB (GeschwindigkeitsWegeBand) diagnostic, not a design proposal:
-			// same v = sqrt(R*(u+ue_fehl)/11.8) formula as above, but with an
-			// assumed ceiling cant instead of the actually-surveyed one, so the
-			// gap between the two curves reads directly as "how much headroom is
-			// there if cant alone were raised." 160mm is the commonly-cited
-			// absolute cant ceiling on standard-gauge DB track -- an assumption
-			// stated in the band label, same as the 130mm deficiency value above,
-			// not a derived or vehicle-checked number. This deliberately stops
-			// there: it does NOT check Ueberhoehungsrampenlaenge (the transition
-			// length actually available may be too short to ramp up to this cant
-			// at any real speed) or model the Klothoide-to-Bloss reshaping Uwe
-			// described -- that needs Ril 800.0110's ramp-rate limits, which
-			// aren't available here. So this locates the bottleneck curves; it
-			// does not tell you whether raising the cant is actually buildable.
-			// (CANT_MAX_ANNAHME_MM lives in the ABLEITUNG-Annahmen block above.)
+			// ---- ABLEITUNG · GWB-Vorschlag (Ril 800.0110 V3.0) --------------------
+			// Second half of the GWB. Not "what would 160 mm give" (the first
+			// version, which skipped the ramp) but "what is reachable per Bogen
+			// without moving the track" -- the check 800.0110 4 (3) prescribes for
+			// a Geschwindigkeitsanhebung: exhaust the parameters up to the
+			// Ermessensgrenze, no construction. Per Bogen (consecutive Kreisbögen
+			// of one sense = one Korbbogen unit sharing one cant, 7 (4)) the cant u
+			// is varied over 0 and CANT_MIN..CANT_MAX in CANT_STEP and the highest
+			// SPEED_STEP that passes every check is kept:
+			//   Bogen        uf = 11.8 v^2 / r_min - u <= CANT_DEFICIENCY_MM     (Tab. 5)
+			//   Rampe        l_R >= k_R v du / 1000, k_R Klothoide 8 / Bloss 6    (Tab. 8)
+			//   Neigung      l_R / du (Bloss: 2/3 of it) not steeper than 1:400  (Tab. 7)
+			//   Übergang     l_U >= k_U v duf / 1000, k_U Klothoide 4 / Bloss 4.5 (Tab. 9)
+			// with l_R = l_U (8 (1): UA = RA, UE = RE), du against the neighbour's
+			// cant and duf against the neighbour's Fehlbetrag at the same v; a
+			// Gegenbogen neighbour adds instead of subtracts. Two variants: keep the
+			// existing Übergangsbogen, or reshape a Klothoide into a Bloss with the
+			// same f-Maß (8 (2), l_UB = sqrt(5/3) l_U) so the Bogen stays where it
+			// is. Whether the extra Bloss length fits into the neighbours, and the
+			// Fahrdynamik of the resulting steps (457.0201 5 (10)), are NOT checked.
+			// A Bogen side without Übergangsbogen keeps its cant (8 (1) wants ramps
+			// on the Übergangsbogen) and its Krümmungswechsel is not judged (that
+			// is 800.0110 9 / Tab. 10 Vergleichsradius, not modelled). Reads only
+			// the interpreted elements and the mm cant series; writes nothing back.
+			const GWB_VARIANTS = ["Klothoide", "Bloss"];
+			const SPEED_DIAGNOSTIC_FOOTNOTE = `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Fahrzeugklasse nicht geprüft) · GWB-Vorschlag ┄: je Bogen u bis ${CANT_MAX_MM} mm (Tab. 4) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · Platz für die Bloss-Verlängerung, Vergleichsradius (Tab. 10) und Fahrdynamik der Stufen nicht geprüft · Diagnose, kein Entwurf`;
+			function gwbElements(entry) {
+				const list = [];
+				const signOf = (radius, element) => radius < 0 ? -1 : radius > 0 ? curveRotationSign(element) : 0;
+				for (const element of entry?.item?.payload?.coordGeom?.elements ?? []) {
+					if (element.type !== "Line" && element.type !== "Curve" && element.type !== "Spiral") continue;
+					const s0 = stationScalar(element?.extras?.externalStation ?? element.staStart);
+					const length = Math.abs(numberValue(element.length));
+					if (!Number.isFinite(s0) || !(length > 0)) continue;
+					const externalEnd = stationScalar(element?.extras?.externalStationEnd);
+					const s1 = Number.isFinite(externalEnd) ? externalEnd : s0 + length;
+					const rawStart = element.type === "Line" ? 0 : numberValue(element.radius ?? element.radiusStart);
+					const rawEnd = element.type === "Line" ? 0 : numberValue(element.radius ?? element.radiusEnd);
+					list.push({
+						type: element.type,
+						spiType: element.type === "Spiral" ? /bloss/i.test(String(element.spiType ?? "")) ? "Bloss" : String(element.spiType || "Klothoide") : "",
+						s0, s1, length,
+						radiusStart: Number.isFinite(rawStart) ? Math.abs(rawStart) : 0,
+						radiusEnd: Number.isFinite(rawEnd) ? Math.abs(rawEnd) : 0,
+						signStart: Number.isFinite(rawStart) ? signOf(rawStart, element) : 0,
+						signEnd: Number.isFinite(rawEnd) ? signOf(rawEnd, element) : 0,
+					});
+				}
+				return list;
+			}
+			// One side of a Bogen unit: what the ramp on that side has to work
+			// with. vMax is what the neighbour itself allows today -- a transition
+			// between two Bögen is run at the lower of the two speeds, so its ramp
+			// and length are judged at min(v, vMax), not at the unit's v.
+			function gwbSide(list, index, step, cantMm, label) {
+				const member = list[index];
+				const neighbour = list[index + step];
+				const cantAt = (x) => Math.abs(interpolateSeriesAt(cantMm, x));
+				const finish = (side) => ({ ...side, vMax: side.radius > 0 ? roundDownToSpeedStep(Math.min(Math.sqrt(side.radius * (side.cantMm + CANT_DEFICIENCY_MM) / 11.8), V_MAX_DE_KMH)) : Infinity });
+				if (!neighbour) return finish({ label, kind: "Ende", existing: "", lU: 0, cantMm: cantAt(step < 0 ? member.s0 : member.s1), radius: 0, opposite: false });
+				if (neighbour.type === "Spiral") {
+					const farRadius = step < 0 ? neighbour.radiusStart : neighbour.radiusEnd;
+					const farSign = step < 0 ? neighbour.signStart : neighbour.signEnd;
+					return finish({ label, kind: "Übergangsbogen", existing: neighbour.spiType, lU: neighbour.length, cantMm: cantAt(step < 0 ? neighbour.s0 : neighbour.s1), radius: farRadius, opposite: farRadius > 0 && farSign !== member.signStart });
+				}
+				const probe = step < 0 ? neighbour.s1 - Math.min(1, neighbour.length / 2) : neighbour.s0 + Math.min(1, neighbour.length / 2);
+				return finish({ label, kind: neighbour.type === "Curve" ? "Gegenbogen" : "Gerade", existing: "", lU: 0, cantMm: cantAt(probe), radius: neighbour.radiusStart, opposite: neighbour.type === "Curve" && neighbour.signStart !== member.signStart });
+			}
+			// null when (v, u) passes every check for one member Bogen of the unit,
+			// else the first binding limit as text -- the same text is shown as
+			// "danach bindend" for the proposal. A Korbbogen shares u but each
+			// radius has its own v; only the outer members see a side ramp.
+			function gwbFailure(v, u, unit, variant, memberIndex) {
+				if (v > V_MAX_DE_KMH) return `Deckel ${V_MAX_DE_KMH} km/h`;
+				const member = unit.members[memberIndex];
+				const uf = 11.8 * v * v / member.radius - u;
+				if (uf > CANT_DEFICIENCY_MM + 1e-9) return `Bogen r ${Math.round(member.radius)} m (uf > ${CANT_DEFICIENCY_MM} mm)`;
+				const sides = unit.sides.filter((side, sideIndex) => sideIndex === 0 ? memberIndex === 0 : memberIndex === unit.members.length - 1);
+				for (const side of sides) {
+					const vSide = Math.min(v, side.vMax);
+					const deltaU = side.opposite ? u + side.cantMm : Math.abs(u - side.cantMm);
+					const type = side.existing === "Bloss" || variant === "Bloss" ? "Bloss" : "Klothoide";
+					const lR = side.existing === "Bloss" || variant === "Klothoide" ? side.lU : side.lU * BLOSS_LENGTH_FROM_KLOTHOIDE;
+					if (deltaU > 0.5) {
+						if (!(lR > 0)) return `${side.label}: kein Übergangsbogen für Δu ${Math.round(deltaU)} mm`;
+						if (type === "Bloss" && deltaU < BLOSS_MIN_DELTA_U_MM) return `${side.label}: Bloss braucht Δu ≥ ${BLOSS_MIN_DELTA_U_MM} mm`;
+						if (lR < RAMP_LENGTH_FACTOR[type] * vSide * deltaU / 1000) return `${side.label}: Rampe ${Math.round(lR)} m < ${RAMP_LENGTH_FACTOR[type]}·v·Δu/1000`;
+						const gradient = (type === "Bloss" ? BLOSS_GRADIENT_SHARE : 1) * lR * 1000 / deltaU;
+						if (gradient < RAMP_GRADIENT_MIN_M) return `${side.label}: Rampenneigung 1:${Math.round(gradient)} steiler als 1:${RAMP_GRADIENT_MIN_M}`;
+					}
+					if (!(lR > 0)) continue;
+					// Both Fehlbeträge at the speed the transition is actually run at.
+					const ufHere = 11.8 * vSide * vSide / member.radius - u;
+					const ufSide = side.radius > 0 ? 11.8 * vSide * vSide / side.radius - side.cantMm : 0;
+					const deltaUf = side.opposite ? Math.abs(ufHere) + Math.abs(ufSide) : Math.abs(ufHere - ufSide);
+					if (deltaUf > 0.5 && lR < TRANSITION_LENGTH_FACTOR[type] * vSide * deltaUf / 1000) return `${side.label}: Übergangsbogen ${Math.round(lR)} m < ${TRANSITION_LENGTH_FACTOR[type]}·v·Δuf/1000`;
+				}
+				return null;
+			}
+			// Highest speed step each member reaches under (u, variant); the unit's
+			// v is the bottleneck member. The best cant maximises that bottleneck;
+			// ties go to the cant closest to today's (least change for the same v).
+			function gwbMemberSpeed(unit, variant, u, memberIndex) {
+				for (let v = V_MAX_DE_KMH; v >= SPEED_STEP_KMH; v -= SPEED_STEP_KMH) {
+					if (!gwbFailure(v, u, unit, variant, memberIndex)) return v;
+				}
+				return 0;
+			}
+			function gwbBest(unit, variant, candidates) {
+				let best = null;
+				for (const u of candidates) {
+					const memberSpeeds = unit.members.map((member, memberIndex) => gwbMemberSpeed(unit, variant, u, memberIndex));
+					const v = Math.min(...memberSpeeds);
+					if (!(v > 0)) continue;
+					const closer = best && v === best.v && Math.abs(u - unit.uToday) < Math.abs(best.u - unit.uToday);
+					if (!best || v > best.v || closer) {
+						const bottleneck = memberSpeeds.indexOf(v);
+						best = { v, u, variant, memberSpeeds, binding: gwbFailure(v + SPEED_STEP_KMH, u, unit, variant, bottleneck) };
+					}
+				}
+				return best;
+			}
+			function deriveGwbProposal(alignmentEntry, cantEntry, selectedRange) {
+				const list = gwbElements(alignmentEntry);
+				const cantMm = cantEntry ? cantSeriesMm(cantEntry) : [];
+				const candidates = [0];
+				for (let u = CANT_MIN_MM; u <= CANT_MAX_MM; u += CANT_STEP_MM) candidates.push(u);
+				const units = [];
+				for (let index = 0; index < list.length; index += 1) {
+					const head = list[index];
+					if (head.type !== "Curve" || !(head.radiusStart > 0)) continue;
+					let last = index;
+					while (list[last + 1]?.type === "Curve" && list[last + 1].radiusStart > 0 && list[last + 1].signStart === head.signStart) last += 1;
+					const members = list.slice(index, last + 1);
+					const first = index;
+					index = last;
+					const from = members[0].s0;
+					const to = members[members.length - 1].s1;
+					if (selectedRange && (to < selectedRange.from - 5 || from > selectedRange.to + 5)) continue;
+					const radii = members.map((member) => member.radiusStart);
+					const uToday = Math.max(...members.map((member) => Math.abs(interpolateSeriesAt(cantMm, (member.s0 + member.s1) / 2))));
+					const sides = [gwbSide(list, first, -1, cantMm, "Anfang"), gwbSide(list, last, 1, cantMm, "Ende")];
+					const unit = { from, to, radii, radiusMin: Math.min(...radii), radiusMax: Math.max(...radii), uToday, sides };
+					unit.members = members.map((member) => ({ s0: member.s0, s1: member.s1, radius: member.radiusStart }));
+					unit.memberSpeedsToday = unit.members.map((member) => roundDownToSpeedStep(Math.min(Math.sqrt(member.radius * (uToday + CANT_DEFICIENCY_MM) / 11.8), V_MAX_DE_KMH)));
+					unit.vToday = Math.min(...unit.memberSpeedsToday);
+					unit.todayCheck = gwbBest(unit, "Klothoide", [uToday]);
+					unit.proposal = null;
+					for (const variant of GWB_VARIANTS) {
+						const best = gwbBest(unit, variant, candidates.includes(uToday) ? candidates : [...candidates, uToday]);
+						if (best && (!unit.proposal || best.v > unit.proposal.v)) unit.proposal = best;
+					}
+					// The proposed step spans the Bogen plus its Übergangsbögen -- that is
+					// the section a VzG entry would cover.
+					unit.span = {
+						from: list[first - 1]?.type === "Spiral" ? list[first - 1].s0 : from,
+						to: list[last + 1]?.type === "Spiral" ? list[last + 1].s1 : to,
+					};
+					units.push(unit);
+				}
+				return units;
+			}
+			// 800.0110 7 (4): a Korbbogen keeps one cant only while the Fehlbetrag
+			// spread between its radii stays within 40 mm -- reported, not enforced.
+			function korbbogenNote(unit, v, u) {
+				if (!(unit.radiusMax > unit.radiusMin)) return "";
+				const spread = Math.abs(11.8 * v * v / unit.radiusMin - 11.8 * v * v / unit.radiusMax);
+				return spread > KORBBOGEN_MAX_DELTA_UF_MM ? ` · Korbbogen: Δuf ${Math.round(spread)} mm > ${KORBBOGEN_MAX_DELTA_UF_MM}, nach 7 (4) je Radius eigene Überhöhung (Rampe zwischen den Bögen)` : "";
+			}
+			function gwbProposalSeries(units, selectedRange) {
+				const clamp = (x) => selectedRange ? Math.min(Math.max(x, selectedRange.from), selectedRange.to) : x;
+				return units.flatMap((unit) => unit.proposal ? unit.members.flatMap((member, memberIndex) => {
+					const v = unit.proposal.memberSpeeds[memberIndex];
+					const from = memberIndex === 0 ? unit.span.from : member.s0;
+					const to = memberIndex === unit.members.length - 1 ? unit.span.to : member.s1;
+					return [memberIndex === 0 ? { x: clamp(from), y: v, gap: true } : { x: clamp(from), y: v }, { x: clamp(to), y: v }];
+				}) : []);
+			}
+			// The PI's lines under the GWB figure: one per Bogen with potential, one
+			// per Bogen whose today's cant the ramp does not carry at today's v, and
+			// one summary. Bögen already at the cap or without headroom are counted,
+			// not listed.
+			function gwbProposalLines(prefix, units) {
+				const km = (x) => (x / 1000).toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+				const gains = units.filter((unit) => unit.proposal && unit.proposal.v > unit.vToday);
+				const short = units.filter((unit) => unit.todayCheck && unit.todayCheck.v < unit.vToday);
+				if (!units.length) return [];
+				const lines = [`${prefix} · GWB-Vorschlag: ${units.length} ${units.length === 1 ? "Bogen" : "Bögen"} im Abschnitt · ${gains.length} mit Potenzial · ${units.length - gains.length} ohne (Deckel, Bogen oder Rampe bindend)${short.length ? ` · ${short.length} mit Bestand unter den Werten der 800.0110 (2021)` : ""}`];
+				for (const unit of gains) {
+					const proposal = unit.proposal;
+					const transitions = unit.sides.filter((side) => side.lU > 0).map((side) => proposal.variant === "Bloss" && side.existing !== "Bloss"
+						? `${side.label} ${side.existing} ${Math.round(side.lU)} m → Bloss ${Math.round(side.lU * BLOSS_LENGTH_FROM_KLOTHOIDE)} m`
+						: `${side.label} ${side.existing} ${Math.round(side.lU)} m bleibt`).join(", ");
+					lines.push(`▸ km ${km(unit.from)}–${km(unit.to)} · r ${unit.radii.map((radius) => Math.round(radius)).join("/")} m · u ${Math.round(unit.uToday)} → ${proposal.u} mm · v ${unit.memberSpeedsToday.join("/")} → ${proposal.memberSpeeds.join("/")} km/h · ${transitions || "ohne Übergangsbogen"} · danach bindend: ${proposal.binding}${korbbogenNote(unit, proposal.v, proposal.u)}`);
+				}
+				for (const unit of short) {
+					lines.push(`▹ km ${km(unit.from)}–${km(unit.to)} · r ${unit.radii.map((radius) => Math.round(radius)).join("/")} m · Bestand u ${Math.round(unit.uToday)} mm trägt nach 800.0110 (2021) nur ${unit.todayCheck.memberSpeeds.join("/")} km/h (${unit.todayCheck.binding}); die Bogenformel allein gäbe ${unit.memberSpeedsToday.join("/")}${korbbogenNote(unit, unit.todayCheck.v, unit.uToday)}`);
+				}
+				return lines;
+			}
 			// One band, two series on a shared scale: the solid line is what the
-			// surveyed cant allows today, the dashed overlay what the assumed cant
-			// ceiling would allow -- the vertical gap between them IS the GWB
-			// diagnostic. Drawing them as two separately autoscaled bands (the
-			// first version) made that gap invisible. The assumptions behind both
-			// numbers go into one footnote under the diagram, not into the label,
-			// which SVG won't wrap and which otherwise runs across the plot.
-			const SPEED_DIAGNOSTIC_FOOTNOTE = `zul. v: Ril 800.0110 mit Ü_fehl ${CANT_DEFICIENCY_REGELWERT_MM} mm (DB-Regelwert, Fahrzeugklasse nicht geprüft) · GWB-Potenzial: gleiche Formel mit u_max ${CANT_MAX_ANNAHME_MM} mm (Annahme; Rampenlänge/Klothoide→Bloss nicht geprüft) · beide in ${SPEED_STEP_KMH}er-Schritten abgerundet, gedeckelt ${V_MAX_DE_KMH} km/h · Gerade = keine kurvenbedingte Grenze`;
-			function speedDiagnosticBand(prefix, curvaturePoints, cantPoints, selectedRange, band) {
+			// surveyed cant allows today (Bogenformel), the dashed overlay the
+			// GWB-Vorschlag per Bogen -- the vertical gap between them IS the GWB
+			// diagnostic. The assumptions and the per-Bogen lines go into the
+			// footnotes under the figure, not into the label.
+			function speedDiagnosticBand(prefix, alignmentEntry, cantEntry, selectedRange, band) {
+				const curvaturePoints = curvatureSeries(alignmentEntry);
+				const cantPoints = cantEntry ? cantSeriesMm(cantEntry) : [];
 				const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
-				const potentialPoints = clipPointsToRange(potentialSpeedLimitSeries(curvaturePoints), selectedRange);
-				return band(`${prefix} · zul. v — / GWB-Potenzial ┄ [km/h]`, "diagram-speed", points, {
+				const units = deriveGwbProposal(alignmentEntry, cantEntry, selectedRange);
+				return band(`${prefix} · zul. v — / GWB-Vorschlag ┄ [km/h]`, "diagram-speed", points, {
 					emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
-					overlay: { label: "GWB-Potenzial", className: "diagram-speed-potential", points: potentialPoints },
-					footnote: SPEED_DIAGNOSTIC_FOOTNOTE,
+					overlay: { label: "GWB-Vorschlag", className: "diagram-speed-potential", points: gwbProposalSeries(units, selectedRange) },
+					footnote: [SPEED_DIAGNOSTIC_FOOTNOTE, ...gwbProposalLines(prefix, units)],
 					unit: "km/h",
+					proposal: units,
 				});
-			}
-			function potentialSpeedLimitSeries(curvaturePoints, cantMaxMm = CANT_MAX_ANNAHME_MM, cantDeficiencyMm = CANT_DEFICIENCY_REGELWERT_MM) {
-				return curvaturePoints
-					.map((point) => {
-						const curvature = Math.abs(point.y);
-						if (!(curvature > 1e-9)) return null;
-						const radius = 1 / curvature;
-						const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cantMaxMm + cantDeficiencyMm) / 11.8), V_MAX_DE_KMH));
-						return Number.isFinite(speed) ? { x: point.x, y: speed } : null;
-					})
-					.filter(Boolean);
 			}
 
 			// ---- Main · Zuordnung ------------------------------------------------
@@ -39763,7 +40008,7 @@ xlsx/xlsx.mjs:
 					const requiredMissing = side === "kilometer" && referenceRequired && !candidate;
 					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired);
 					if (!sideVisible) continue;
-					const points = clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange);
+					const points = clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : pointSeries(candidate, valueKeys), selectedRange);
 					bands.push(makeBand(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
@@ -39781,10 +40026,7 @@ xlsx/xlsx.mjs:
 					if (side === "right" && !rightPresent) continue;
 					const curvatureCandidate = first(side, "alignment");
 					if (!curvatureCandidate) continue;
-					const cantCandidate = first(side, "cant");
-					const curvaturePoints = curvatureSeries(curvatureCandidate);
-					const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
-					bands.push(speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, curvaturePoints, cantPoints, selectedRange, makeBand));
+					bands.push(speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, curvatureCandidate, first(side, "cant"), selectedRange, makeBand));
 				}
 				return bands;
 			}
@@ -39797,7 +40039,7 @@ xlsx/xlsx.mjs:
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
-					bands.push(makeBand(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
+					bands.push(makeBand(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
 				}
 				return bands;
 			}
@@ -39812,10 +40054,7 @@ xlsx/xlsx.mjs:
 				const { first, selectedRange } = assignment;
 				const curvatureCandidate = first("unknown", "alignment");
 				if (!curvatureCandidate) return [];
-				const cantCandidate = first("unknown", "cant");
-				const curvaturePoints = curvatureSeries(curvatureCandidate);
-				const cantPoints = cantCandidate ? pointSeries(cantCandidate, CANT_VALUE_KEYS) : [];
-				return [speedDiagnosticBand("Gleis · Zuordnung offen", curvaturePoints, cantPoints, selectedRange, makeBand)];
+				return [speedDiagnosticBand("Gleis · Zuordnung offen", curvatureCandidate, first("unknown", "cant"), selectedRange, makeBand)];
 			}
 
 			function sevenLineTracks(entry) {
@@ -40011,10 +40250,13 @@ xlsx/xlsx.mjs:
 						yMax = Math.max(yMax, point.y);
 					}
 					const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
+					// A point flagged `gap` starts a new sub-path: the speed series only
+					// exist where there is curvature, and joining two Bögen across a
+					// Gerade with a slanted line would draw a limit that is not there.
 					const pathFor = (points) => points.map((point, pointIndex) => {
 						const x = left + (point.x - xMin) / xSpan * (width - left - right);
 						const py = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
-						return `${pointIndex ? "L" : "M"} ${x} ${py}`;
+						return `${pointIndex && !point.gap ? "L" : "M"} ${x} ${py}`;
 					}).join(" ");
 					if (track.overlay?.points?.length) {
 						figure.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
@@ -40063,7 +40305,7 @@ xlsx/xlsx.mjs:
 				}
 				if (!Number.isFinite(xMin)) xMin = 0;
 				if (!Number.isFinite(xMax)) xMax = 1;
-				const footnotes = [...new Set(gwbTracks.map((track) => track.footnote).filter(Boolean))]
+				const footnotes = [...new Set(gwbTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter(Boolean))]
 					.flatMap((footnote) => wrapText(footnote, 165));
 				if (diagramPresentation === "table") {
 					renderDiagramTable([
@@ -40089,7 +40331,7 @@ xlsx/xlsx.mjs:
 					y += ivhw.trackData
 						? drawIvhwPlot(diagram, y, ivhw)
 						: drawEmptyFigure(diagram, y, ivhw.note);
-					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "zul. v durchgezogen · Potenzial gestrichelt · Ril 800.0110 · Diagnose, kein Entwurf");
+					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "zul. v durchgezogen · GWB-Vorschlag gestrichelt · Ril 800.0110 V3.0 (2021) / 457.0201 · Diagnose, kein Entwurf");
 					y += gwbTracks.length
 						? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
 						: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
@@ -40201,7 +40443,7 @@ xlsx/xlsx.mjs:
 					const points = pointEntry?.item?.payload?.points ?? [];
 					return points.map((point) => {
 						const raw = valueKeys.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
-						return { x: stationOf(point), y: numberValue(raw) };
+						return { x: stationOf(point), y: numberValue(raw), raw };
 					}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).sort((a, b) => a.x - b.x);
 				}
 
@@ -40215,7 +40457,7 @@ xlsx/xlsx.mjs:
 					const profile = related.entries.find((candidate) => candidate.item.kind === "profile");
 					const cant = related.entries.find((candidate) => candidate.item.kind === "cant");
 					const zSeries = profile ? seriesFor(profile, ["elevation", "height", "z"]) : [];
-					const uSeries = cant ? seriesFor(cant, CANT_VALUE_KEYS) : [];
+					const uSeries = cant ? seriesFor(cant, CANT_VALUE_KEYS).map((point) => ({ x: point.x, y: cantMillimetres(point.raw) })) : [];
 					const railA = zSeries;
 					const railB = zSeries.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
 					return { track, railA, railB, hasCant: uSeries.length > 0 };
