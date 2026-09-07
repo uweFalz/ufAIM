@@ -57,6 +57,59 @@ function request(action) {
 	return value;
 }
 
+function reconnectingIndexedDb() {
+	const values = new Map();
+	const storeNames = new Set();
+	let openCount = 0;
+
+	function database({ closeOnSecondTransaction = false } = {}) {
+		let transactionCount = 0;
+		return {
+			objectStoreNames: { contains: (name) => storeNames.has(name) },
+			createObjectStore(name) { storeNames.add(name); },
+			transaction() {
+				transactionCount += 1;
+				if (closeOnSecondTransaction && transactionCount === 2) {
+					const error = new Error("The database connection is closing.");
+					error.name = "InvalidStateError";
+					throw error;
+				}
+				const transaction = {
+					error: null,
+					objectStore: () => ({
+						get(key) { return request(() => values.get(key)); },
+						put(value, key) {
+							return request(() => {
+								values.set(key, structuredClone(value));
+								queueMicrotask(() => transaction.oncomplete?.());
+								return key;
+							});
+						},
+					}),
+				};
+				return transaction;
+			},
+		};
+	}
+
+	return {
+		indexedDB: {
+			open() {
+				openCount += 1;
+				const current = database({ closeOnSecondTransaction: openCount === 1 });
+				const openRequest = {};
+				queueMicrotask(() => {
+					openRequest.result = current;
+					openRequest.onupgradeneeded?.();
+					openRequest.onsuccess?.();
+				});
+				return openRequest;
+			},
+		},
+		get openCount() { return openCount; },
+	};
+}
+
 test("empty database and full canonical state roundtrip", async () => {
 	const adapter = new IndexedDbSpotStateAdapter({ indexedDB: fakeIndexedDb(), dbName: "test-a" });
 	assert.equal(await adapter.load(), null);
@@ -84,6 +137,16 @@ test("transaction failure rejects truthfully without replacing prior state", asy
 	const adapter = new IndexedDbSpotStateAdapter({ indexedDB: fakeIndexedDb({ failWrite: true }), dbName: "test-c" });
 	await assert.rejects(adapter.save({ meta: {}, objects: {}, coordContexts: {} }), /write failed/);
 	assert.equal(await adapter.load(), null);
+});
+
+test("a closing database connection is reopened once and the exact snapshot is persisted", async () => {
+	const fixture = reconnectingIndexedDb();
+	const adapter = new IndexedDbSpotStateAdapter({ indexedDB: fixture.indexedDB, dbName: "test-reconnect" });
+	assert.equal(await adapter.load(), null);
+	const state = { meta: { revision: 1 }, objects: { A: { id: "A", type: "alignment", data: {}, refs: {}, meta: {} } }, coordContexts: {} };
+	await adapter.save(state);
+	assert.equal(fixture.openCount, 2);
+	assert.deepEqual(await adapter.load(), state);
 });
 
 test("schema names and version are deliberate and frozen", () => {

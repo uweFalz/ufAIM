@@ -15,30 +15,34 @@ export class IndexedDbSpotStateAdapter {
 		this.dbName = String(dbName);
 		this.storeName = String(storeName);
 		this.databasePromise = null;
+		this.database = null;
 	}
 
 	async load() {
-		const database = await this.open();
-		return runRequest(
-			database
-				.transaction(this.storeName, "readonly")
-				.objectStore(this.storeName)
-				.get(STATE_KEY)
-		).then((value) => value == null ? null : structuredClone(value));
+		return this.withConnectionRetry(async (database) => {
+			const value = await runRequest(
+				database
+					.transaction(this.storeName, "readonly")
+					.objectStore(this.storeName)
+					.get(STATE_KEY)
+			);
+			return value == null ? null : structuredClone(value);
+		});
 	}
 
 	async save(state) {
 		const snapshot = structuredClone(state);
-		const database = await this.open();
-		const transaction = database.transaction(this.storeName, "readwrite");
-		const request = transaction.objectStore(this.storeName).put(snapshot, STATE_KEY);
-		await Promise.all([runRequest(request), runTransaction(transaction)]);
-		return structuredClone(snapshot);
+		return this.withConnectionRetry(async (database) => {
+			const transaction = database.transaction(this.storeName, "readwrite");
+			const request = transaction.objectStore(this.storeName).put(snapshot, STATE_KEY);
+			await Promise.all([runRequest(request), runTransaction(transaction)]);
+			return structuredClone(snapshot);
+		});
 	}
 
 	open() {
 		if (!this.databasePromise) {
-			this.databasePromise = new Promise((resolve, reject) => {
+			const opening = new Promise((resolve, reject) => {
 				const request = this.indexedDB.open(this.dbName, 1);
 				request.onupgradeneeded = () => {
 					const database = request.result;
@@ -46,12 +50,45 @@ export class IndexedDbSpotStateAdapter {
 						database.createObjectStore(this.storeName);
 					}
 				};
-				request.onsuccess = () => resolve(request.result);
+				request.onsuccess = () => {
+					const database = request.result;
+					this.database = database;
+					const release = () => this.releaseDatabase(database);
+					database.onclose = release;
+					database.onversionchange = () => {
+						database.close?.();
+						release();
+					};
+					resolve(database);
+				};
 				request.onerror = () => reject(request.error ?? new Error("IndexedDbSpotStateAdapter: database open failed"));
 				request.onblocked = () => reject(new Error("IndexedDbSpotStateAdapter: database open blocked"));
 			});
+			this.databasePromise = opening;
+			opening.catch(() => {
+				if (this.databasePromise === opening) this.databasePromise = null;
+			});
 		}
 		return this.databasePromise;
+	}
+
+	async withConnectionRetry(operation) {
+		for (let attempt = 0; attempt < 2; attempt += 1) {
+			const database = await this.open();
+			try {
+				return await operation(database);
+			} catch (error) {
+				if (attempt > 0 || !isRetryableConnectionError(error)) throw error;
+				this.releaseDatabase(database);
+			}
+		}
+		throw new Error("IndexedDbSpotStateAdapter: connection retry exhausted");
+	}
+
+	releaseDatabase(database) {
+		if (database !== this.database) return;
+		this.database = null;
+		this.databasePromise = null;
 	}
 }
 
@@ -68,6 +105,12 @@ function runTransaction(transaction) {
 		transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDbSpotStateAdapter: transaction failed"));
 		transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDbSpotStateAdapter: transaction aborted"));
 	});
+}
+
+function isRetryableConnectionError(error) {
+	const name = String(error?.name ?? "");
+	const message = String(error?.message ?? error ?? "").toLowerCase();
+	return name === "InvalidStateError" || name === "AbortError" || message.includes("connection is closing") || message.includes("transaction was aborted");
 }
 
 export const INDEXED_DB_SPOT_STATE_SCHEMA = Object.freeze({
