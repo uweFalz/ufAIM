@@ -69,7 +69,12 @@ export function solveAlignmentProgressive({
 	objective = "points",
 	initialSpan = 3,
 	sweeps = SWEEPS,
-	maxIterations = 60,
+	// Measured, not chosen: on the nine-element scenario the bound form
+	// converges at 82 and 91 iterations, the exact form at 100; over the corpus
+	// of real alignments (#17) the length objective reaches a verdict on 85 %
+	// and the points objective on 75 % within 200, and nothing that reaches one
+	// does so past it. Sixty stopped the bound form halfway to its own answer.
+	maxIterations = 200,
 	// How far from the end pose a stage may still be and count as having kept it.
 	// Not zero, and the reason is measured: a stage that reaches the end pose
 	// exactly reports a distance of 0, and a rule of "no worse than before" then

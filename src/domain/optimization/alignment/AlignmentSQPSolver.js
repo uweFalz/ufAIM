@@ -91,7 +91,12 @@ export function solveAlignmentProblem({
 	// everywhere below it: the subproblem cannot step, and the multiplier fit
 	// drops the column because a bound absorbs that part of the gradient.
 	pinned = [],
-	maxIterations = 60,
+	// Measured, not chosen: on the nine-element scenario the bound form
+	// converges at 82 and 91 iterations, the exact form at 100; over the corpus
+	// of real alignments (#17) the length objective reaches a verdict on 85 %
+	// and the points objective on 75 % within 200, and nothing that reaches one
+	// does so past it. Sixty stopped the bound form halfway to its own answer.
+	maxIterations = 200,
 	relaxationWeight = 1e6,
 	// forwarded rather than fixed here: which penalty rule suits an alignment is
 	// a question about this problem, not about the optimiser
