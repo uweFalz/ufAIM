@@ -21,3 +21,8 @@ test("initial cross-section fabricates no rail section or station semantics", ()
 	assert.match(ui, /Reference frame only · no qualified rail or section evidence/);
 	assert.doesNotMatch(ui, /gauge|railDistance|platformHeight|stationing/i);
 });
+
+test("the dedicated L view remains visible and interactive with the Cockpit overlay collapsed", () => {
+	assert.match(css, /data-workspace-view="l"\]\.is-cockpit-collapsed \.uf-cockpitPanel\s*\{[^}]*width:\s*auto !important;[^}]*opacity:\s*1;/s);
+	assert.match(css, /data-workspace-view="l"\]\.is-cockpit-collapsed \.uf-cockpitPanel__header,[^}]*\.uf-cockpitPanel__body\s*\{[^}]*pointer-events:\s*auto;/s);
+});
