@@ -246,7 +246,12 @@ export function solveAlignmentLexicographic({
 	analyticJacobian = null,
 	tiers = DEFAULT_TIERS,
 	warmStart = { objective: "points" },
-	maxIterations = 60,
+	// Measured, not chosen: on the nine-element scenario the bound form
+	// converges at 82 and 91 iterations, the exact form at 100; over the corpus
+	// of real alignments (#17) the length objective reaches a verdict on 85 %
+	// and the points objective on 75 % within 200, and nothing that reaches one
+	// does so past it. Sixty stopped the bound form halfway to its own answer.
+	maxIterations = 200,
 	feasibilityTolerance = FEASIBILITY_TOLERANCE,
 	relaxationWeight = 1e6,
 } = {}) {
