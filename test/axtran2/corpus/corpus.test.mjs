@@ -106,3 +106,28 @@ test("the scenario frees what may move and holds what anchors", { skip }, async 
 		if (Number.isFinite(patch.length)) assert.ok(Math.abs(patch.length / e.length - 1) <= 0.03 + 1e-9, `${e.id}.length`);
 	}
 });
+
+test("a turnout whose linearisation is blocked on a floor is restored, and then solved", { skip }, async () => {
+	// The point the design was measured on (docs/app/architecture/
+	// AXTRAN2_RESTORATION_PHASE_DESIGN.md): a transition on its floor, the
+	// end pose reachable only by lifting it, which the linearisation at the
+	// perturbed start cannot see. Before restoration: infeasible_subproblem
+	// at iteration 5 with the end pose 8 m off.
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	for (const name of ["ABCH_Gl_064_DBREF2016.TRA", "Abzw-li_DKW503.TRA", "AHRO_Abzw_W_104_DBREF2016.TRA"]) {
+		const file = find(name, SAMPLES.pathname);
+		assert.ok(file, `${name} not found under test/samples`);
+		const sc = await createTraScenario(file);
+		for (const objective of ["accumulated-length", "points"]) {
+			const off = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200, restoration: "off" });
+			assert.equal(off.status, "infeasible_subproblem", `${name}/${objective} without restoration: ${off.status}`);
+			const on = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200 });
+			assert.ok(on.ok, `${name}/${objective} with restoration: ${on.status} ${on.reason ?? ""}`);
+			assert.equal(on.diagnostics.restorations, 1);
+			assert.ok(on.diagnostics.restorationSteps <= 5, `${on.diagnostics.restorationSteps} restoration steps`);
+			assert.ok(on.diagnostics.endPoseDistance < 1e-6, `end pose ${on.diagnostics.endPoseDistance}`);
+		}
+	}
+});

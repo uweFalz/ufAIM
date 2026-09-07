@@ -97,6 +97,8 @@ export function solveAlignmentProblem({
 	// a question about this problem, not about the optimiser
 	penaltyRule,
 	penaltySafety,
+	restoration,
+	restorationLimit,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
 	if (typeof buildAlignment !== "function") {
@@ -522,6 +524,8 @@ export function solveAlignmentProblem({
 		initialHessianScale: 1,
 		...(penaltyRule === undefined ? {} : { penaltyRule }),
 		...(penaltySafety === undefined ? {} : { penaltySafety }),
+		...(restoration === undefined ? {} : { restoration }),
+		...(restorationLimit === undefined ? {} : { restorationLimit }),
 	});
 	const run = {
 		...scaledRun,
@@ -636,6 +640,8 @@ export function solveAlignmentProblem({
 				? built.lengths.reduce((sum, value) => sum + value, 0)
 				: null,
 			finalRelaxation: run.history?.at(-1)?.delta ?? null,
+			restorations: (run.history ?? []).filter((entry) => entry.status === "restored").length,
+			restorationSteps: run.restorationSteps ?? 0,
 			history: Object.freeze(run.history ?? []),
 			reason: run.reason ?? null,
 		}),

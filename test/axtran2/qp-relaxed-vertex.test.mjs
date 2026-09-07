@@ -65,9 +65,22 @@ test("a subproblem that cannot move is reported, not run out", () => {
 	// out of reach. The relaxation returns (0, 1) every time; the solve has to
 	// say so instead of spending its whole budget on it.
 	const evaluate = ([x]) => ({ f: x, gradF: [1], h: [x - 5], Jh: [[1]], g: [], Jg: [] });
-	const run = solveSQP({ x0: [0], evaluate, lower: [-1], upper: [1], maxIterations: 60 });
+	const run = solveSQP({ x0: [0], evaluate, lower: [-1], upper: [1], maxIterations: 60, restoration: "off" });
 	assert.equal(run.status, "infeasible_subproblem");
 	assert.equal(run.ok, false);
 	assert.ok(run.iterations < 20, `took ${run.iterations} iterations to say so`);
 	assert.match(run.reason, /linearised constraints/);
+});
+
+test("restoration must not fake a success where the box excludes feasibility", () => {
+	// x = 5 is not in [-1, 1]. Restoration drives x to the bound and can go no
+	// further; that is reported as restoration_failed with the violation it
+	// reached, never as a feasible start.
+	const evaluate = ([x]) => ({ f: x, gradF: [1], h: [x - 5], Jh: [[1]], g: [], Jg: [] });
+	const run = solveSQP({ x0: [0], evaluate, lower: [-1], upper: [1], maxIterations: 60 });
+	assert.equal(run.status, "restoration_failed");
+	assert.equal(run.ok, false);
+	assert.ok(Math.abs(run.x[0] - 1) < 1e-9, `restoration should reach the bound, x = ${run.x[0]}`);
+	assert.match(run.reason, /restoration_stalled|violation went from/);
+	assert.ok(run.history.some((entry) => entry.status === "restoration_stalled"));
 });
