@@ -14,6 +14,7 @@
 import { solveRelaxedQpStep, modifiedBfgsUpdate, identityMatrix } from "./sqpStep.js";
 import { l1Merit, updatePenaltyWeights, createPenaltyWeights, constraintViolation } from "./merit.js";
 import { lineSearchArmijo } from "./lineSearchArmijo.js";
+import { restoreFeasibility } from "./restoreFeasibility.js";
 
 export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.1";
 
@@ -101,6 +102,17 @@ export function solveSQP({
 	// was reported as max_iterations. It is not a step that ran out; it is a
 	// point at which the model cannot move, and the caller needs to know which.
 	relaxedStallLimit = 5,
+	// What to do at that verdict. "on-verdict" restores feasibility - minimises
+	// the violation alone under the bounds, by projected Gauss-Newton steps -
+	// and continues from the feasible point it reaches; "off" stops with the
+	// verdict as before. Measured on every small alignment the corpus had left
+	// without a verdict: at most three restoration steps, landing on the file's
+	// own geometry, after which the solve has nothing left to do. The design is
+	// in docs/app/architecture/AXTRAN2_RESTORATION_PHASE_DESIGN.md.
+	restoration = "on-verdict",
+	// how often a solve may restore; a verdict, a restoration and a verdict
+	// again is a loop, and the third verdict is reported as one
+	restorationLimit = 2,
 	trustGrowth = 2,
 	trustShrink = 0.5,
 	// How close to a bound counts as held by it. An exact test is too sharp: the
@@ -136,6 +148,8 @@ export function solveSQP({
 	};
 	let relaxedStalls = 0;
 	let relaxedStallViolation = 0;
+	let restorations = 0;
+	let restorationSteps = 0;
 	let radius = Number.isFinite(trustRadius)
 		? trustRadius
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
@@ -196,8 +210,39 @@ export function solveSQP({
 						iteration, status: "infeasible_subproblem", delta: step.delta, violation: violationNow,
 						reason: `the subproblem came back fully relaxed ${relaxedStalls} times in a row and the violation fell by ${(progress * 100).toFixed(2)} %`,
 					});
+					if (restoration === "on-verdict" && restorations < restorationLimit) {
+						restorations += 1;
+						const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance });
+						restorationSteps += restored.steps;
+						history.push({
+							iteration, status: restored.ok ? "restored" : restored.status, restoration: restorations,
+							steps: restored.steps, violationBefore: restored.violationBefore, violationAfter: restored.violationAfter,
+						});
+						if (!restored.ok) {
+							return {
+								ok: false, status: "restoration_failed", x: restored.x, state: restored.state, history,
+								iterations: iteration, restorationSteps,
+								reason: `${restored.status}: the violation went from ${restored.violationBefore.toExponential(2)} to ${restored.violationAfter.toExponential(2)} in ${restored.steps} steps`,
+							};
+						}
+						// continue from the feasible point as from a fresh start: the
+						// curvature estimate and the penalty weights described the path to
+						// the vertex, not the path from here
+						x = restored.x;
+						state = restored.state;
+						H = identityMatrix(n, initialHessianScale);
+						weights = createPenaltyWeights({
+							equalityCount: state.h?.length ?? 0,
+							inequalityCount: state.g?.length ?? 0,
+						});
+						radius = Number.isFinite(trustRadius) ? trustRadius : Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
+						relaxedStalls = 0;
+						previousMerit = null;
+						stalls = 0;
+						continue;
+					}
 					return {
-						ok: false, status: "infeasible_subproblem", x, state, history, iterations: iteration,
+						ok: false, status: "infeasible_subproblem", x, state, history, iterations: iteration, restorationSteps,
 						reason: "no step within the bounds meets the linearised constraints",
 					};
 				}
@@ -240,7 +285,7 @@ export function solveSQP({
 			});
 			return {
 				ok: true, status: "converged", x, state, history,
-				iterations: iteration, multipliers: step.multipliers, hessian: H,
+				iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
 			};
 		}
 		// A zero step is stationarity when the subproblem that produced it was
@@ -281,7 +326,7 @@ export function solveSQP({
 					? "stationary"
 					: step.qpStatus === "solved" ? "no_admissible_direction" : "degenerate_vertex",
 				x, state, history,
-				iterations: iteration, multipliers: step.multipliers, hessian: H,
+				iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
 			};
 		}
 
@@ -301,7 +346,7 @@ export function solveSQP({
 				history.push({ iteration, status: "merit_stationary", kkt, violation: violation.total });
 				return {
 					ok: true, status: "stationary", x, state, history,
-					iterations: iteration, multipliers: step.multipliers, hessian: H,
+					iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
 				};
 			}
 		} else {
@@ -477,6 +522,6 @@ export function solveSQP({
 
 	return {
 		ok: false, status: "max_iterations", x, state, history,
-		iterations: maxIterations, hessian: H,
+		iterations: maxIterations, restorationSteps, hessian: H,
 	};
 }
