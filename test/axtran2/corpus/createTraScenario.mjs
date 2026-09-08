@@ -77,12 +77,31 @@ export function chooseProfile(elements, { cantMm = 130, sourceName = "as-built" 
 	for (const e of chosen.tooShort) {
 		exceptions[e.id] = { ...(exceptions[e.id] ?? { source: `corpus: inherited ${e.type} of ${sourceName}` }), minimumLength: e.length * (1 - 1e-6) };
 	}
+	// The exact form asks each transition for m·|Δu| between its neighbours'
+	// cants. A length exception lowers the bound, not that row: a 0.2 m
+	// transition into a 190 m arc needs its own, steeper m or the truth is out
+	// of reach under rampLengthAs "constraint" and never fairly measurable.
+	const profile = hauptbahn({ speedKmh: chosen.speedKmh, cantMm });
+	const tooSteep = [];
+	elements.forEach((e, index) => {
+		if (e.type !== "transition" || !(e.length > 0) || !profile.rampGradient) return;
+		const entry = elements[index - 1]?.curvature ?? 0;
+		const exit = elements[index + 1]?.curvature ?? 0;
+		const change = Math.abs(profile.cantAt(exit) - profile.cantAt(entry));
+		if (change === 0 || e.length >= profile.rampGradient * change * (1 - 1e-9)) return;
+		tooSteep.push(e);
+		exceptions[e.id] = {
+			...(exceptions[e.id] ?? { source: `corpus: inherited ramp of ${sourceName}` }),
+			rampGradient: (e.length / change) * (1 - 1e-6),
+		};
+	});
 	return Object.freeze({
 		speedKmh: chosen.speedKmh,
 		design: hauptbahn({ speedKmh: chosen.speedKmh, cantMm, exceptions: Object.keys(exceptions).length ? exceptions : undefined }),
 		exceptionCount: Object.keys(exceptions).length,
 		inheritedRadii: chosen.tooTight.length,
 		inheritedLengths: chosen.tooShort.length,
+		inheritedRamps: tooSteep.length,
 	});
 }
 

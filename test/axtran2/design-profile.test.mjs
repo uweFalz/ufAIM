@@ -182,6 +182,45 @@ test("a local departure is declared per element, with its own reason", () => {
 	);
 });
 
+test("a ramp exception steepens one transition's rule, and no other", () => {
+	// A turnout's 0.2 m transition into a 219 m arc is far steeper than
+	// 1:600 allows. Like a retained radius below the floor, it is inherited
+	// and says so; the exact rule then asks that transition for its own m.
+	const profile = minimal({
+		speed: sourced(kmh(80)),
+		cantGradient: sourced(600),
+		exceptions: { E2: { rampGradient: 3.02, source: "inherited ramp of turnout W 608" } },
+	});
+	assert.equal(profile.rampGradient, 600);
+	assert.equal(profile.rampGradientFor("E2"), 3.02);
+	assert.equal(profile.rampGradientFor("E3"), 600, "and E3 keeps the profile's own m");
+	assert.equal(profile.rampGradientFor(), 600);
+	assert.equal(profile.exceptionFor("E2").rampGradient, 3.02);
+
+	assert.throws(
+		() => minimal({ exceptions: { E2: { rampGradient: 0, source: "x" } } }),
+		(e) => /rampGradient/.test(e.message)
+	);
+
+	// the exact form's ramp row carries the exception's m and its source
+	const built = createAlignmentConstraintBuilder({
+		endPose: { x: 1000, y: 250, theta: 0.3 },
+		elementSequence: ["E0", "E1", "E2", "E3", "E4"],
+		minimumElementLength: 0.1,
+		elementKinds: { E0: "straight", E1: "arc", E2: "transition", E3: "arc", E4: "transition" },
+		design: hauptbahn({ speedKmh: 80, cantMm: 130, exceptions: { E2: { rampGradient: 3.02, source: "inherited ramp of turnout W 608" } } }),
+		rampLengthAs: "constraint",
+	});
+	const rows = built.rampConstraints;
+	assert.deepEqual(rows.map((r) => r.elementId), ["E2", "E4"]);
+	assert.equal(rows[0].gradient, 3.02);
+	assert.equal(rows[0].reason, "exception");
+	assert.match(rows[0].source, /W 608/);
+	assert.equal(rows[1].gradient, built.design.rampGradient ?? rows[1].gradient);
+	assert.equal(rows[1].reason, "ramp-gradient");
+	assert.ok(rows[1].gradient > 100, `E4 keeps the profile's m, got ${rows[1].gradient}`);
+});
+
 // ---------------------------------------------------------------- declared profiles
 
 test("a profile cannot call itself confirmed while a limit is unread", () => {

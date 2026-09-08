@@ -11,7 +11,7 @@ const present = existsSync(new URL("eifel/", SAMPLES));
 const skip = present ? false : "test/samples is not checked out on this machine";
 
 const { loadTraAlignment, buildProductionAlignment } = await import("./loadTraAlignment.mjs");
-const { createTraScenario, chooseProfile, momentsFor, deps } = await import("./createTraScenario.mjs");
+const { createTraScenario, chooseProfile, distanceToTruth, momentsFor, deps } = await import("./createTraScenario.mjs");
 const { createAlignmentPoseJacobian } =
 	await import(new URL("../../../src/domain/optimization/alignment/AlignmentPoseJacobian.js", import.meta.url));
 
@@ -84,6 +84,36 @@ test("the chosen profile admits the truth, with a named exception for every inhe
 		for (const id of profile.design.exceptionIds) {
 			assert.match(profile.design.exceptionFor(id).source, /corpus: inherited/);
 		}
+	}
+});
+
+test("a truth with a dwarf transition is admissible under the exact ramp rule, too", { skip }, async () => {
+	// ASWA W 608: transitions of 0.16 m and 1.04 m between R 1450 and R 219.
+	// A length exception lowers their bound, not the exact form's ramp row,
+	// which asked for m·|Δu| at 1:600 and left the truth out of reach: both
+	// objectives ended restoration_failed, 37× the truth's distance away.
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const file = find("ASWA_Abzw_W_608_DBREF2016.TRA", SAMPLES.pathname);
+	assert.ok(file, "ASWA_Abzw_W_608_DBREF2016.TRA not found under test/samples");
+	const a = await loadTraAlignment(file);
+	const profile = chooseProfile(a.elements, { sourceName: "ASWA" });
+	assert.equal(profile.inheritedRamps, 2);
+	a.elements.forEach((e, index) => {
+		if (e.type !== "transition") return;
+		const cantAt = (k) => profile.design.cantAt(k ?? 0);
+		const change = Math.abs(cantAt(a.elements[index + 1]?.curvature) - cantAt(a.elements[index - 1]?.curvature));
+		const need = profile.design.rampGradientFor(e.id) * change;
+		assert.ok(e.length >= need * (1 - 1e-9), `${e.id}: ${e.length} m against a ramp of ${need} m`);
+	});
+	const sc = await createTraScenario(file, { rampLengthAs: "constraint" });
+	for (const objective of ["accumulated-length", "points"]) {
+		const run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200 });
+		assert.ok(run.ok, `${objective}: ${run.status} ${run.reason ?? ""}`);
+		assert.equal(run.admissible, true);
+		assert.ok(run.diagnostics.endPoseDistance < 1e-6, `end pose ${run.diagnostics.endPoseDistance}`);
+		assert.ok(distanceToTruth(sc, run.candidate.variables) < 1e-3, "the truth is where it stays");
 	}
 });
 

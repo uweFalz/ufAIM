@@ -285,6 +285,11 @@ export function createAlignmentDesignProfile(declaration = {}) {
 					? null : positive(entry.minimumRadius, `exceptions.${elementId}.minimumRadius`),
 				minimumLength: entry.minimumLength === undefined
 					? null : positive(entry.minimumLength, `exceptions.${elementId}.minimumLength`),
+				// The m of the ramp rule for this one transition. Like minimumRadius
+				// it may go below what the profile declares: an inherited ramp is
+				// steeper than the regulation, and says so through its source.
+				rampGradient: entry.rampGradient === undefined
+					? null : positive(entry.rampGradient, `exceptions.${elementId}.rampGradient`),
 			}));
 		}
 	}
@@ -372,6 +377,15 @@ export function createAlignmentDesignProfile(declaration = {}) {
 
 		/** The m of the ramp gradient, or null when none is declared. */
 		rampGradient: gradient?.value ?? null,
+
+		/** The m of the ramp rule for one transition, exceptions included. */
+		rampGradientFor(elementId = null) {
+			const exception = elementId === null ? null : exceptions.get(elementId);
+			if (exception?.rampGradient !== null && exception?.rampGradient !== undefined) {
+				return exception.rampGradient;
+			}
+			return gradient?.value ?? null;
+		},
 
 		/** Smallest admissible length for one element, exceptions included. */
 		minimumLengthFor(kind, elementId = null) {

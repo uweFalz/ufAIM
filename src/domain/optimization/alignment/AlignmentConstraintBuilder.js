@@ -369,7 +369,11 @@ export function createAlignmentConstraintBuilder({
 				elementIndex: index,
 				entryElementId: elementSequence[index - 1] ?? null,
 				exitElementId: elementSequence[index + 1] ?? null,
-				gradient: built.rampGradient,
+				gradient: built.rampGradientFor(id),
+				reason: built.exceptionFor(id)?.rampGradient ? "exception" : "ramp-gradient",
+				source: built.exceptionFor(id)?.rampGradient
+					? built.exceptionFor(id).source
+					: built.source ?? null,
 				unit: "m",
 			}));
 		});
