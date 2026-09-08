@@ -95,6 +95,7 @@ function setupImportUI(ctx) {
 		ui: ctx.ui,
 		messaging: ctx.messaging,
 		store: ctx.store,
+		readImportState: () => ctx.messaging.sendCmdAwait("Import.GetState", {}),
 	});
 	ctx.objectWorkspaceHydrator = objectWorkspaceHydrator;
 
@@ -108,6 +109,12 @@ function setupImportUI(ctx) {
 	ctx.disposeFileDrop = importer.installDrop({
 		element: document.documentElement,
 			onLifecycle: ({ state, code, fileCount, fileNames, message, outcome }) => {
+			const importedObjects = state === "completed"
+				? (outcome?.fileOutcomes ?? []).reduce((sum, entry) => sum + Number(entry?.itemCount ?? 0), 0)
+				: 0;
+			if (state !== "idle") {
+				objectWorkspaceHydrator.setImportActivity({ state, fileCount, objectCount: importedObjects });
+			}
 			updateImportActivityRail({ state, code, fileCount, fileNames, message, outcome });
 			if (state === "idle") {
 				ctx.ui.setStatusOk?.();
@@ -223,6 +230,7 @@ function setupImportUI(ctx) {
 
 		onCreate: async () => await ctx.cockpit?.createNewAlignment?.(),
 		onImport: () => document.getElementById("btnImport")?.click(),
+		onReviewImport: () => document.getElementById("btnGndImportWorkbench")?.click(),
 		onRetry: () => objectWorkspaceHydrator.retry(),
 	});
 	ctx.ui?.elements?.buttonSpot?.addEventListener("click", () => {

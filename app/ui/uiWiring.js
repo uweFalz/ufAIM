@@ -23,16 +23,40 @@ import { clamp01 } from "@utils/helpers.js";
 import { makeSpotView } from "@app/view/overlays/spotView.js";
 import { savePanelLayout } from "@app/view/shell/panelLayoutStore.js";
 
-export function createObjectWorkspaceHydrator({ ui, messaging, store } = {}) {
+export function createObjectWorkspaceHydrator({ ui, messaging, store, readImportState } = {}) {
 	let pending = null;
+	let importActivity = null;
+	function activityFromImportState(importState) {
+		if (!Array.isArray(importState?.items)) return importActivity;
+		const candidates = importState.items.filter((item) => item?.status?.accepted !== true);
+		if (!candidates.length) return null;
+		return {
+			state: "completed",
+			fileCount: new Set(candidates.map((item) => item?.source?.fileName).filter(Boolean)).size,
+			objectCount: candidates.length,
+		};
+	}
+	function setImportActivity(value) {
+		importActivity = value ?? null;
+		const current = ui?.getSpotState?.();
+		if (!current) return;
+		ui?.setSpotState?.({ ...current, importActivity });
+		ui?.refreshSpot?.(store.getState());
+	}
 	async function refreshCanonicalUiState({ requireVisible = true } = {}) {
 		if (requireVisible && ui?.elements?.overlaySpot?.classList.contains("hidden")) return false;
 		if (pending) return pending;
 		ui?.showSpotLoading?.();
 		pending = (async () => {
 			try {
-				const spotUiState = await messaging.sendCmdAwait("Spot.GetUiState", {});
-				ui?.setSpotState?.(spotUiState);
+				const [spotUiState, importState] = await Promise.all([
+					messaging.sendCmdAwait("Spot.GetUiState", {}),
+					typeof readImportState === "function"
+						? Promise.resolve(readImportState()).catch(() => null)
+						: null,
+				]);
+				importActivity = activityFromImportState(importState);
+				ui?.setSpotState?.({ ...spotUiState, importActivity });
 				ui?.refreshSpot?.(store.getState());
 				return spotUiState;
 			} catch (error) {
@@ -45,7 +69,7 @@ export function createObjectWorkspaceHydrator({ ui, messaging, store } = {}) {
 		return pending;
 	}
 	const refresh = async (options) => Boolean(await refreshCanonicalUiState(options));
-	return { refresh, refreshCanonicalUiState, retry: () => refresh({ requireVisible: false }), isLoading: () => Boolean(pending) };
+	return { refresh, refreshCanonicalUiState, retry: () => refresh({ requireVisible: false }), setImportActivity, isLoading: () => Boolean(pending) };
 }
 
 // ------------------------------------------------------------
