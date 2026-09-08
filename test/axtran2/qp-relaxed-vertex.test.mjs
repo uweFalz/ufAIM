@@ -141,6 +141,15 @@ test("a provided Hessian is used with a secant estimate for the constraints", ()
 		}
 		assert.ok(Math.hypot(run.x[0] - best.x, run.x[1] - best.y) < 1e-4, `${hessian}: ${run.x} against ${[best.x, best.y]}`);
 	}
+	// the history says which curvature each step used (Fletcher-Xu): the
+	// provided one while the objective falls fast, BFGS once it does not
+	const far = solveSQP({ x0: [10, 10], evaluate, maxIterations: 100, hessian: "provided" });
+	assert.ok(far.ok, `${far.status}`);
+	const modes = far.history.map((e) => e.hessian).filter(Boolean);
+	assert.equal(modes[0], "gauss-newton", `first step from far away: ${modes.slice(0, 5)}`);
+	assert.ok(modes.includes("bfgs"), `modes ${[...new Set(modes)]}`);
+	assert.deepEqual([...new Set(solveSQP({ x0: [1.5, 1.5], evaluate, maxIterations: 100 }).history.map((e) => e.hessian).filter(Boolean))], ["bfgs"]);
+
 	// without a hessian in the state, "provided" is BFGS
 	const plain = solveSQP({ x0: [1.5, 1.5], evaluate: (x) => { const { hessian, ...rest } = evaluate(x); return rest; }, maxIterations: 100, hessian: "provided" });
 	assert.ok(plain.ok, `${plain.status}`);
