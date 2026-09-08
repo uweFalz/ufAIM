@@ -286,7 +286,7 @@ export function solveSQP({
 				iteration, status: "qp_failed", reason: step.status,
 				detail: step.detail ?? step.reason ?? null,
 			});
-			return { ok: false, status: "qp_failed", x, state, history, iterations: iteration };
+			return { ok: false, status: "qp_failed", x, state, history, iterations: iteration, restorationSteps };
 		}
 
 		const stepNorm = Math.hypot(...step.d);
@@ -540,7 +540,7 @@ export function solveSQP({
 				iteration, status: "line_search_failed", reason: search.status,
 				predictedDecrease: step.predictedDecrease, delta: step.delta, radius,
 			});
-			return { ok: false, status: "line_search_failed", reason: search.status, x, state, history, iterations: iteration };
+			return { ok: false, status: "line_search_failed", reason: search.status, x, state, history, iterations: iteration, restorationSteps };
 		}
 
 		// The line search's own verdict sizes the region: a full step accepted
