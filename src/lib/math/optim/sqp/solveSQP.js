@@ -42,6 +42,15 @@ export function solveSQP({
 	// soon as residuals are scaled by a tolerance: an absolute 1e-8 would then
 	// demand thirteen digits of stationarity and never be reached.
 	kktTolerance = 1e-8,
+	// The feasibility test is relative to the point, like the step test: a
+	// violation is measured in the constraints' units, and those grow with
+	// the variables. Measured on a 20 km alignment the end pose stalled at
+	// 1e-5 under every Hessian with full steps and no backtracking - the
+	// residual (production geometry) and its Jacobian (moment chain)
+	// disagree by that much over that length - and an absolute 1e-9 called
+	// a fit at the noise floor unfinished, a restoration from 140 to 3.7e-9
+	// failed, and a verdict fired at 2e-9. 1e-9 of ‖x‖ is 1e-5 there and
+	// 1e-7 on a 100 m turnout.
 	feasibilityTolerance = 1e-9,
 	stepTolerance = 1e-12,
 	meritTolerance = 1e-12,
@@ -196,13 +205,15 @@ export function solveSQP({
 	let previousMerit = null;
 	let stalls = 0;
 
+	const feasibilityScale = () => Math.max(1, Math.hypot(...x));
+
 	// Restore feasibility from x and continue as from a fresh start: the
 	// curvature estimate and the penalty weights described the path to here,
 	// not the path from the feasible point. Returns the failure to hand back,
 	// or null when the solve may go on.
 	function restoreFrom(iteration) {
 		restorations += 1;
-		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance });
+		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance: feasibilityTolerance * feasibilityScale() });
 		restorationSteps += restored.steps;
 		// A restoration that stalls short of the tolerance but inside the
 		// region is a start the solve can finish from; measured on 71 elements
@@ -248,6 +259,7 @@ export function solveSQP({
 
 	for (let iteration = 0; iteration < maxIterations; iteration++) {
 		const violation = constraintViolation(state);
+		const feasible = feasibilityTolerance * feasibilityScale();
 
 		// stationarity of the Lagrangian, using the multipliers of the last QP
 		const step = solveRelaxedQpStep({
@@ -289,7 +301,7 @@ export function solveSQP({
 			// rows, and "no progress on the violation" is then true of noise.
 			// Measured on 41 elements with a provided Hessian: the verdict fired
 			// at a violation of 9e-13 and restored a point that needed nothing.
-			if (step.delta >= 1 - 1e-3 && violationNow > feasibilityTolerance) {
+			if (step.delta >= 1 - 1e-3 && violationNow > feasible) {
 				if (relaxedStalls === 0) relaxedStallViolation = violationNow;
 				relaxedStalls += 1;
 				const progress = relaxedStallViolation > 0 ? 1 - violationNow / relaxedStallViolation : 0;
@@ -340,7 +352,7 @@ export function solveSQP({
 		// apart. Measured before this guard: a run reported merit_stationary at a
 		// KKT residual of 3.09, having shrunk its region to 8e-6.
 		const stationary = kkt <= stationarityTolerance * gradientScale;
-		if (violation.total <= feasibilityTolerance && kkt <= kktTolerance * gradientScale) {
+		if (violation.total <= feasible && kkt <= kktTolerance * gradientScale) {
 			history.push({
 				iteration, status: "converged", kkt, violation: violation.total,
 				relativeKkt: kkt / gradientScale,
@@ -374,7 +386,7 @@ export function solveSQP({
 		// nothing where the variables are hundreds of metres: measured at a
 		// vertex, the steps were 3.6e-10 and then 9.0e-16, all of them zero for
 		// any purpose and only the last of them small enough to say so.
-		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasibilityTolerance
+		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasible
 			&& (stationary || pinnedByModel)) {
 			history.push({
 				iteration, status: "step_too_small", kkt, violation: violation.total,
@@ -400,7 +412,7 @@ export function solveSQP({
 		// this gradient can resolve. Report it as stationary rather than running
 		// out of iterations, which reads like a failure and is not one.
 		if (previousMerit !== null
-			&& violation.total <= feasibilityTolerance
+			&& violation.total <= feasible
 			&& stationary
 			&& Math.abs(previousMerit - meritAt0) <= meritTolerance * (1 + Math.abs(meritAt0))) {
 			stalls += 1;
