@@ -161,3 +161,30 @@ restoring says so in its report - but the budget of a later tier is unaffected.
   before reaches a different point after.
 - Gerdts 3.2.3 and the nine-element scenario unchanged: the phase never
   triggers there.
+
+## 8. Measured at scale: the eager start
+
+Added after the measurement the risk above asked for (branch
+`feat/axtran2-scaling`). On 64 elements (`3250_4-11_S`, 82 variables, 144
+points) the ordinary solve does not fail at the verdict but before it: the
+start's end pose is 613 m off against a trust region of 23 m, the merit takes
+a tenth of every step, the region shrinks to 3 m, 74 of 83 subproblem
+variables sit on their box, and the active set crawls through 80–170
+iterations per subproblem until it runs out at the 29th step (`qp_failed`,
+`max_iterations`). The verdict's trigger never fires because δ oscillates
+between 0 and 1 instead of staying at 1.
+
+`restoration: "eager"` is "on-verdict" plus one restoration before the first
+subproblem when the start's violation exceeds `eagerViolationRadii` (10)
+trust radii - a linearisation is only good for a step the size of its region.
+Measured on that file: four restoration steps, 403 → 2e-12, then 200
+iterations to rms 0.124 (noise floor 0.154) with the end pose at 3e-5 m,
+against `qp_failed` at 29. The verdict is still missing there: from the
+feasible start BFGS needs about 80 iterations before the region opens and
+the full step is taken, and after that the KKT residual creeps. The default
+stays "on-verdict"; the alignment solver forwards "eager" unchanged.
+
+What restoration does not fix at scale: the restoration's own region never
+grows (it only halves on rejection), so a start much further than its
+initial radius stalls within the 30-step budget - seen on the synthetic
+circle test at 99 against 1, not on any corpus file.

@@ -14,6 +14,7 @@
 // admissible so that recovering it is a fair question.
 
 import { createHash } from "node:crypto";
+import { normalize, rot90 } from "../../../src/aim-core/geometry/vec2.js";
 import { loadTraAlignment, buildProductionAlignment } from "./loadTraAlignment.mjs";
 
 const ROOT = new URL("../../../", import.meta.url);
@@ -40,6 +41,40 @@ export function momentsFor(family = "clothoid") {
 		momentCache.set(family, Object.freeze({ ...createTransitionMoments({ id: family, curvatureIntegral: khat }), khat }));
 	}
 	return momentCache.get(family);
+}
+
+/** Newton on the longitudinal offset u(s) = (X - p(s))·t(s), from a remembered foot. */
+function newtonFoot(alignment, x, y, s0, { window = 200, tolerance = 1e-9, maxSteps = 30 } = {}) {
+	const L = alignment.arcLength;
+	let s = s0;
+	for (let step = 0; step < maxSteps; step++) {
+		const pose = alignment.poseAt(s, { quality: "balanced" });
+		const t = normalize(pose.t);
+		const n = rot90(t);
+		const d = { x: x - pose.p.x, y: y - pose.p.y };
+		const u = d.x * t.x + d.y * t.y;
+		const q = d.x * n.x + d.y * n.y;
+		if (Math.abs(u) <= tolerance) {
+			return { s, q, dist: Math.hypot(d.x, d.y), point: pose.p, tangent: t, elementIndex: null, u, clamped: s <= 0 || s >= L };
+		}
+		// d/ds of (X - p)·t is -(1 - q·kappa): the plain s += u is Newton only on
+		// a straight, and on a curve far from the point it contracts by q·kappa
+		// each step (measured 0.32, alternating, 270 m off on R 200).
+		const kappa = alignment.curvatureAt(s);
+		const slope = 1 - q * kappa;
+		s += Math.abs(slope) > 1e-3 ? u / slope : u;
+		if (s < 0 || s > L || Math.abs(s - s0) > window) return null;
+	}
+	return null;
+}
+
+function projectWithMemory(alignment, x, y, feet) {
+	const key = `${x},${y}`;
+	const remembered = feet.get(key);
+	const local = remembered === undefined ? null : newtonFoot(alignment, x, y, remembered);
+	const projected = local ?? alignment.world2Track(x, y, { samples: 400, refineSteps: 40 });
+	feet.set(key, projected.s);
+	return projected;
 }
 
 /** deterministic in the file name, so a run is reproducible without a random source */
@@ -166,12 +201,22 @@ export async function createTraScenario(source, {
 		elements: trueElements.map((e, i) => ({ id: e.id, quantities: role(e, i), values: startValues[i] })),
 	});
 
-	// points along the truth, disturbed laterally
-	const pointCount = Math.max(6, Math.min(60, Math.round(truth.arcLength / pointSpacing)));
+	// Points along the truth, disturbed laterally. Two things scale with the
+	// file. The cap of 60 was the projection's cost, and on 41 elements it left
+	// 60 points against 46 unknowns: a fit below the noise floor that walked a
+	// flat valley for a thousand iterations. Three points an element at least.
+	// And the start is perturbed by up to `perturbation` of every length, so it
+	// can be short by that share of the whole; a point that far from an end may
+	// have no foot on the start, and the kernel rightly refuses to fit it. The
+	// points keep that margin from both ends.
+	const maxPoints = Math.max(60, 3 * trueElements.length);
+	const margin = Math.min(0.25 * truth.arcLength, Math.max(pointSpacing, perturbation * truth.arcLength));
+	const span = truth.arcLength - 2 * margin;
+	const pointCount = Math.max(6, Math.min(maxPoints, Math.round(span / pointSpacing)));
 	const pointJitter = noise(loaded.name + ":points");
 	const points = [];
 	for (let i = 0; i < pointCount; i++) {
-		const s = (truth.arcLength * (i + 0.5)) / pointCount;
+		const s = margin + (span * (i + 0.5)) / pointCount;
 		const p = truth.poseAt(s);
 		const offset = spread * pointJitter();
 		points.push({ name: `M${i}`, x: p.p.x - offset * p.t.y, y: p.p.y + offset * p.t.x, tolerance });
@@ -200,13 +245,22 @@ export async function createTraScenario(source, {
 			...(e.type === "arc" ? { curvature: Number.isFinite(patch.curvature) ? patch.curvature : startValues[i].curvature } : {}),
 		};
 	});
+	// The projection was the solve's cost, not the solver: world2Track scans the
+	// whole alignment (400 samples, 40 refinements, 8 ms a point on 8.5 km) and
+	// the kernel projects every point at every evaluation. Measured on 41
+	// elements, 84 % of a 449 s run was in that scan. A point's foot moves
+	// little between evaluations, so it is found again by Newton on the
+	// longitudinal offset from where it was last time, on the same production
+	// geometry; the full scan remains for the first time and for any foot that
+	// leaves its window or an end.
+	const feet = new Map();
 	const buildAlignment = (overlay) => {
 		const elements = materialise(overlay);
 		const alignment = buildProductionAlignment({ elements, startPose, deps });
 		return {
 			lengths: elements.map((e) => e.length),
 			endPose: poseOf(alignment, alignment.arcLength),
-			worldToTrack: (x, y) => alignment.world2Track(x, y, { samples: 400, refineSteps: 40 }),
+			worldToTrack: (x, y) => projectWithMemory(alignment, x, y, feet),
 		};
 	};
 	const analyticJacobian = (overlay) => chainOf(materialise(overlay));
@@ -221,7 +275,7 @@ export async function createTraScenario(source, {
 		elementFloor,
 		equalityCount: 3,
 		freeCount: codec.freeCount,
-		pointCount,
+		pointCount, pointMargin: margin,
 	});
 }
 
