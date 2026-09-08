@@ -146,7 +146,10 @@ test("a turnout whose linearisation is blocked on a floor is restored, and then 
 	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
 	const { readdirSync } = await import("node:fs");
 	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
-	for (const name of ["ABCH_Gl_064_DBREF2016.TRA", "Abzw-li_DKW503.TRA", "AHRO_Abzw_W_104_DBREF2016.TRA"]) {
+	// Since the start's length perturbation sums to zero (the end no longer
+	// wanders), only the double slip still starts blocked on its floor; the
+	// two Büchen turnouts start near enough to solve without a verdict.
+	for (const name of ["Abzw-li_DKW503.TRA"]) {
 		const file = find(name, SAMPLES.pathname);
 		assert.ok(file, `${name} not found under test/samples`);
 		const sc = await createTraScenario(file);
@@ -160,4 +163,36 @@ test("a turnout whose linearisation is blocked on a floor is restored, and then 
 			assert.ok(on.diagnostics.endPoseDistance < 1e-6, `end pose ${on.diagnostics.endPoseDistance}`);
 		}
 	}
+});
+
+test("a length prior holds what the points cannot see, and says nothing else", { skip }, async () => {
+	// 5500R074-082, 41 elements: J'J at the fit has 32 of 46 eigenvalues below
+	// 1e-10 of the largest - lengths traded between a transition and its
+	// neighbouring arc move the lateral residuals by millimetres. A weak
+	// pseudo-observation on the free lengths turns that valley into a bowl.
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const sc = await createTraScenario(at("Landshut/5500R074-082.TRA"));
+	const common = { problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points", maxIterations: 200, restoration: "eager", hessian: "gauss-newton" };
+	const free = solveAlignmentProblem(common);
+	const held = solveAlignmentProblem({ ...common, lengthPrior: { sigma: 0.05 } });
+	assert.ok(held.ok, `with the prior: ${held.status} ${held.reason ?? ""}`);
+	assert.ok(held.diagnostics.iterations < free.diagnostics.iterations || !free.ok, "the prior reaches a verdict sooner");
+	assert.ok(held.diagnostics.softResidualRms < 0.2, `rms ${held.diagnostics.softResidualRms}`);
+	assert.ok(held.diagnostics.endPoseDistance < 1e-6);
+	// a tight prior keeps the free lengths near their start - as near as the
+	// end pose, which the start does not meet, allows; without it they roam
+	const pinned = solveAlignmentProblem({ ...common, lengthPrior: { sigma: 1e-3 } });
+	assert.ok(pinned.candidate, `${pinned.status}`);
+	const x0 = [...sc.codec.encode()];
+	const lengthIndices = sc.codec.freeNames.map((name, i) => (name.endsWith(".length") ? i : -1)).filter((i) => i >= 0);
+	assert.ok(lengthIndices.length > 0);
+	const travel = (run) => lengthIndices.reduce((sum, i) => sum + Math.abs(run.candidate.variables[i] - x0[i]) / x0[i], 0) / lengthIndices.length;
+	assert.ok(travel(pinned) < 0.2 * travel(free), `lengths travelled ${travel(pinned)} with the prior, ${travel(free)} without`);
+	assert.ok(travel(held) < travel(free), `sigma 0.05: ${travel(held)} against ${travel(free)}`);
+	// the option is validated
+	assert.throws(() => solveAlignmentProblem({ ...common, lengthPrior: { sigma: 0 } }), (e) => e.code === "INVALID_OPTION");
+	assert.throws(() => solveAlignmentProblem({ ...common, lengthPrior: { sigma: 0.1, elements: "E1" } }), (e) => e.code === "INVALID_OPTION");
+	// named elements only: a prior on one transition leaves the others free
+	const one = solveAlignmentProblem({ ...common, lengthPrior: { sigma: 1e-4, elements: [sc.truth.elements.find((e) => e.type === "transition").id] } });
+	assert.ok(one.candidate, `${one.status}`);
 });
