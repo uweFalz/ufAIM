@@ -111,6 +111,7 @@ export function solveAlignmentProblem({
 	hessian = "bfgs",
 	structuredStart,
 	hybridSwitch,
+	qpIterations,
 	// A weak pseudo-observation on free lengths, as a geodetic adjustment
 	// carries one on a weakly determined parameter: { sigma, elements? } adds
 	// a residual (L - L0) / (sigma · L0) for every free length of the named
@@ -587,6 +588,7 @@ export function solveAlignmentProblem({
 		hessian: hessian === "gauss-newton" ? "provided" : "bfgs",
 		...(structuredStart === undefined ? {} : { structuredStart }),
 		...(hybridSwitch === undefined ? {} : { hybridSwitch }),
+		...(qpIterations === undefined ? {} : { qpIterations }),
 	});
 	const run = {
 		...scaledRun,
