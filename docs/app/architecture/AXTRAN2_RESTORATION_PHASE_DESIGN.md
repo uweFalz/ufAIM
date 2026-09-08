@@ -175,14 +175,25 @@ iterations per subproblem until it runs out at the 29th step (`qp_failed`,
 between 0 and 1 instead of staying at 1.
 
 `restoration: "eager"` is "on-verdict" plus one restoration before the first
-subproblem when the start's violation exceeds `eagerViolationRadii` (10)
-trust radii - a linearisation is only good for a step the size of its region.
+subproblem when the start's violation exceeds `eagerViolationRadii` trust
+radii - a linearisation is only good for a step the size of its region. One
+radius, not ten: on 71 elements the same failure came from 239 against 70,
+while 41 elements from 83 against 91 solved.
 Measured on that file: four restoration steps, 403 → 2e-12, then 200
 iterations to rms 0.124 (noise floor 0.154) with the end pose at 3e-5 m,
 against `qp_failed` at 29. The verdict is still missing there: from the
 feasible start BFGS needs about 80 iterations before the region opens and
 the full step is taken, and after that the KKT residual creeps. The default
 stays "on-verdict"; the alignment solver forwards "eager" unchanged.
+
+A restoration that stalls short of the tolerance but inside the region,
+having reduced the violation, hands back: on 71 elements over 20 km three
+steps took 140 to 3.7e-9 and the absolute 1e-9 then called that a failure.
+One that did not move does not hand back, whatever the region says. The
+feasibility tolerance itself is relative to the point now (1e-9 of ‖x‖),
+which is what the 20 km case needed: the residual comes from the production
+geometry and its Jacobian from the moment chain, and over that length they
+disagree by 1e-5.
 
 What restoration does not fix at scale: the restoration's own region never
 grows (it only halves on rejection), so a start much further than its

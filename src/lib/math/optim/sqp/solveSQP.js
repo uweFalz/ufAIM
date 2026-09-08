@@ -42,6 +42,15 @@ export function solveSQP({
 	// soon as residuals are scaled by a tolerance: an absolute 1e-8 would then
 	// demand thirteen digits of stationarity and never be reached.
 	kktTolerance = 1e-8,
+	// The feasibility test is relative to the point, like the step test: a
+	// violation is measured in the constraints' units, and those grow with
+	// the variables. Measured on a 20 km alignment the end pose stalled at
+	// 1e-5 under every Hessian with full steps and no backtracking - the
+	// residual (production geometry) and its Jacobian (moment chain)
+	// disagree by that much over that length - and an absolute 1e-9 called
+	// a fit at the noise floor unfinished, a restoration from 140 to 3.7e-9
+	// failed, and a verdict fired at 2e-9. 1e-9 of ‖x‖ is 1e-5 there and
+	// 1e-7 on a 100 m turnout.
 	feasibilityTolerance = 1e-9,
 	stepTolerance = 1e-12,
 	meritTolerance = 1e-12,
@@ -82,6 +91,15 @@ export function solveSQP({
 	relaxationWeight = 1e4,
 	qpIterations = 200,
 	initialHessianScale = 1,
+	// Where the curvature estimate comes from. "bfgs" builds it from the
+	// Lagrangian gradient differences, from the identity. "provided" takes the
+	// evaluator's hessian at every point it has one - a Gauss-Newton J'J for a
+	// least-squares objective - and falls back to BFGS where it has none. A
+	// provided Hessian carries no constraint curvature; that is the trade.
+	hessian: hessianSource = "bfgs",
+	// the multiple of the identity the constraint-curvature estimate starts
+	// from when the Hessian is provided (see below)
+	structuredStart = 1e-4,
 	// Box trust region on the step. A linear objective gets its curvature only
 	// from the constraints, so the reduced Hessian can be genuinely tiny and the
 	// QP's Newton step correspondingly enormous - measured at |d| = 150 in a
@@ -162,8 +180,23 @@ export function solveSQP({
 	let radius = Number.isFinite(trustRadius)
 		? trustRadius
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
-	let H = identityMatrix(n, initialHessianScale);
 	let state = evaluate(x);
+	// A provided Hessian is the objective's curvature only. The constraints'
+	// share of the Lagrangian curvature is estimated alongside by BFGS on the
+	// multiplier-weighted constraint gradient differences (structured secant,
+	// Dennis-Gay-Welsch), from the identity BFGS itself starts from, and the
+	// two are added. From a thousandth of it the sum was near singular where
+	// the residuals were few (six points against eleven unknowns): the
+	// subproblem cycled through 67 releases at the first step, and on another
+	// file the region shrank 77 times to 1e-10. Measured without it on 41 elements: Gauss-Newton alone took
+	// the objective down in a fifth of the iterations and then could not close
+	// the end pose, rejecting every step at the finish.
+	let B = identityMatrix(n, structuredStart * initialHessianScale);
+	const curvatureOf = (evaluated) => {
+		if (hessianSource !== "provided" || !evaluated.hessian) return null;
+		return evaluated.hessian.map((row, i) => row.map((value, j) => value + B[i][j]));
+	};
+	let H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 	let weights = createPenaltyWeights({
 		equalityCount: state.h?.length ?? 0,
 		inequalityCount: state.g?.length ?? 0,
@@ -172,13 +205,15 @@ export function solveSQP({
 	let previousMerit = null;
 	let stalls = 0;
 
+	const feasibilityScale = () => Math.max(1, Math.hypot(...x));
+
 	// Restore feasibility from x and continue as from a fresh start: the
 	// curvature estimate and the penalty weights described the path to here,
 	// not the path from the feasible point. Returns the failure to hand back,
 	// or null when the solve may go on.
 	function restoreFrom(iteration) {
 		restorations += 1;
-		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance });
+		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance: feasibilityTolerance * feasibilityScale() });
 		restorationSteps += restored.steps;
 		// A restoration that stalls short of the tolerance but inside the
 		// region is a start the solve can finish from; measured on 71 elements
@@ -204,7 +239,8 @@ export function solveSQP({
 		}
 		x = restored.x;
 		state = restored.state;
-		H = identityMatrix(n, initialHessianScale);
+		B = identityMatrix(n, structuredStart * initialHessianScale);
+		H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 		weights = createPenaltyWeights({
 			equalityCount: state.h?.length ?? 0,
 			inequalityCount: state.g?.length ?? 0,
@@ -223,6 +259,7 @@ export function solveSQP({
 
 	for (let iteration = 0; iteration < maxIterations; iteration++) {
 		const violation = constraintViolation(state);
+		const feasible = feasibilityTolerance * feasibilityScale();
 
 		// stationarity of the Lagrangian, using the multipliers of the last QP
 		const step = solveRelaxedQpStep({
@@ -259,7 +296,12 @@ export function solveSQP({
 		// creeps from 14.84 to 14.81 over sixty of them.
 		{
 			const violationNow = constraintViolation(state).total;
-			if (step.delta >= 1 - 1e-3) {
+			// A fully relaxed subproblem at a feasible point is not a verdict
+			// about feasibility: with h at 1e-12 any delta satisfies the relaxed
+			// rows, and "no progress on the violation" is then true of noise.
+			// Measured on 41 elements with a provided Hessian: the verdict fired
+			// at a violation of 9e-13 and restored a point that needed nothing.
+			if (step.delta >= 1 - 1e-3 && violationNow > feasible) {
 				if (relaxedStalls === 0) relaxedStallViolation = violationNow;
 				relaxedStalls += 1;
 				const progress = relaxedStallViolation > 0 ? 1 - violationNow / relaxedStallViolation : 0;
@@ -310,7 +352,7 @@ export function solveSQP({
 		// apart. Measured before this guard: a run reported merit_stationary at a
 		// KKT residual of 3.09, having shrunk its region to 8e-6.
 		const stationary = kkt <= stationarityTolerance * gradientScale;
-		if (violation.total <= feasibilityTolerance && kkt <= kktTolerance * gradientScale) {
+		if (violation.total <= feasible && kkt <= kktTolerance * gradientScale) {
 			history.push({
 				iteration, status: "converged", kkt, violation: violation.total,
 				relativeKkt: kkt / gradientScale,
@@ -344,7 +386,7 @@ export function solveSQP({
 		// nothing where the variables are hundreds of metres: measured at a
 		// vertex, the steps were 3.6e-10 and then 9.0e-16, all of them zero for
 		// any purpose and only the last of them small enough to say so.
-		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasibilityTolerance
+		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasible
 			&& (stationary || pinnedByModel)) {
 			history.push({
 				iteration, status: "step_too_small", kkt, violation: violation.total,
@@ -370,7 +412,7 @@ export function solveSQP({
 		// this gradient can resolve. Report it as stationary rather than running
 		// out of iterations, which reads like a failure and is not one.
 		if (previousMerit !== null
-			&& violation.total <= feasibilityTolerance
+			&& violation.total <= feasible
 			&& stationary
 			&& Math.abs(previousMerit - meritAt0) <= meritTolerance * (1 + Math.abs(meritAt0))) {
 			stalls += 1;
@@ -418,7 +460,8 @@ export function solveSQP({
 		// alone takes the exact form from 73 iterations with eight backtracking
 		// episodes to 44 with none - the same count as the bound form.
 		if (!(directional < 0)) {
-			H = identityMatrix(n, initialHessianScale);
+			B = identityMatrix(n, structuredStart * initialHessianScale);
+			H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 			radius = Math.max(minTrustRadius, radius * trustShrink);
 			history.push({ iteration, status: "no_descent", directional, radius });
 			continue;
@@ -514,9 +557,22 @@ export function solveSQP({
 				(sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
 			+ (evaluated.Jg ?? []).reduce(
 				(sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
+		const constraintGradient = (evaluated) => evaluated.gradF.map((_, i) =>
+			(evaluated.Jh ?? []).reduce(
+				(sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
+			+ (evaluated.Jg ?? []).reduce(
+				(sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const s = trialState.x.map((value, i) => value - x[i]);
-		const y = lagrangeGradient(trialState.state).map((value, i) => value - lagrangeGradient(state)[i]);
-		H = modifiedBfgsUpdate(H, s, y);
+		if (hessianSource === "provided" && trialState.state.hessian) {
+			const before = constraintGradient(state);
+			const yc = constraintGradient(trialState.state).map((value, i) => value - before[i]);
+			B = modifiedBfgsUpdate(B, s, yc);
+			H = curvatureOf(trialState.state);
+		} else {
+			const before = lagrangeGradient(state);
+			const y = lagrangeGradient(trialState.state).map((value, i) => value - before[i]);
+			H = modifiedBfgsUpdate(H, s, y);
+		}
 
 		history.push({
 			iteration,

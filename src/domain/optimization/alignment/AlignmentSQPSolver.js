@@ -105,8 +105,16 @@ export function solveAlignmentProblem({
 	restoration,
 	restorationLimit,
 	eagerViolationRadii,
+	// "bfgs" (default) or "gauss-newton": for the points objective the
+	// Hessian is then J'J of the residuals, exact where the residuals are
+	// small and free of the identity start BFGS has to learn from
+	hessian = "bfgs",
+	structuredStart,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
+	if (hessian !== "bfgs" && hessian !== "gauss-newton") {
+		error("INVALID_OPTION", `hessian must be "bfgs" or "gauss-newton", got ${JSON.stringify(hessian)}`);
+	}
 	if (typeof buildAlignment !== "function") {
 		error("MISSING_BUILDER", "buildAlignment is required");
 	}
@@ -472,7 +480,20 @@ export function solveAlignmentProblem({
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = parameterSpecs.map((_, j) =>
 			Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+	}
+
+	/** J'J of the residual Jacobian: the Gauss-Newton curvature of ½‖r‖². */
+	function gaussNewton(Jr) {
+		const n = codec.freeCount;
+		const H = Array.from({ length: n }, () => new Array(n).fill(0));
+		for (const row of Jr) {
+			for (let i = 0; i < n; i++) {
+				if (row[i] === 0) continue;
+				for (let j = 0; j < n; j++) H[i][j] += row[i] * row[j];
+			}
+		}
+		return H;
 	}
 
 	function evaluate(x) {
@@ -512,7 +533,7 @@ export function solveAlignmentProblem({
 		const Jr = jacobian.J.slice(h.length);
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	// The solve runs in scaled coordinates. A length in metres and a curvature
@@ -533,6 +554,8 @@ export function solveAlignmentProblem({
 		...(restoration === undefined ? {} : { restoration }),
 		...(restorationLimit === undefined ? {} : { restorationLimit }),
 		...(eagerViolationRadii === undefined ? {} : { eagerViolationRadii }),
+		hessian: hessian === "gauss-newton" ? "provided" : "bfgs",
+		...(structuredStart === undefined ? {} : { structuredStart }),
 	});
 	const run = {
 		...scaledRun,

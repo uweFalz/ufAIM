@@ -46,6 +46,8 @@ export function scaleEvaluator(evaluate, scales) {
 			gradF: state.gradF?.map((value, i) => value * (scales[i] ?? 1)),
 			Jh: state.Jh?.map(scaleRow),
 			Jg: state.Jg?.map(scaleRow),
+			// a second derivative carries one scale per index
+			hessian: state.hessian?.map((row, i) => row.map((value, j) => value * (scales[i] ?? 1) * (scales[j] ?? 1))),
 		};
 	};
 }
