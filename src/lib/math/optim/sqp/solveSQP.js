@@ -82,6 +82,15 @@ export function solveSQP({
 	relaxationWeight = 1e4,
 	qpIterations = 200,
 	initialHessianScale = 1,
+	// Where the curvature estimate comes from. "bfgs" builds it from the
+	// Lagrangian gradient differences, from the identity. "provided" takes the
+	// evaluator's hessian at every point it has one - a Gauss-Newton J'J for a
+	// least-squares objective - and falls back to BFGS where it has none. A
+	// provided Hessian carries no constraint curvature; that is the trade.
+	hessian: hessianSource = "bfgs",
+	// the multiple of the identity the constraint-curvature estimate starts
+	// from when the Hessian is provided (see below)
+	structuredStart = 1e-4,
 	// Box trust region on the step. A linear objective gets its curvature only
 	// from the constraints, so the reduced Hessian can be genuinely tiny and the
 	// QP's Newton step correspondingly enormous - measured at |d| = 150 in a
@@ -162,8 +171,23 @@ export function solveSQP({
 	let radius = Number.isFinite(trustRadius)
 		? trustRadius
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
-	let H = identityMatrix(n, initialHessianScale);
 	let state = evaluate(x);
+	// A provided Hessian is the objective's curvature only. The constraints'
+	// share of the Lagrangian curvature is estimated alongside by BFGS on the
+	// multiplier-weighted constraint gradient differences (structured secant,
+	// Dennis-Gay-Welsch), from the identity BFGS itself starts from, and the
+	// two are added. From a thousandth of it the sum was near singular where
+	// the residuals were few (six points against eleven unknowns): the
+	// subproblem cycled through 67 releases at the first step, and on another
+	// file the region shrank 77 times to 1e-10. Measured without it on 41 elements: Gauss-Newton alone took
+	// the objective down in a fifth of the iterations and then could not close
+	// the end pose, rejecting every step at the finish.
+	let B = identityMatrix(n, structuredStart * initialHessianScale);
+	const curvatureOf = (evaluated) => {
+		if (hessianSource !== "provided" || !evaluated.hessian) return null;
+		return evaluated.hessian.map((row, i) => row.map((value, j) => value + B[i][j]));
+	};
+	let H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 	let weights = createPenaltyWeights({
 		equalityCount: state.h?.length ?? 0,
 		inequalityCount: state.g?.length ?? 0,
@@ -204,7 +228,8 @@ export function solveSQP({
 		}
 		x = restored.x;
 		state = restored.state;
-		H = identityMatrix(n, initialHessianScale);
+		B = identityMatrix(n, structuredStart * initialHessianScale);
+		H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 		weights = createPenaltyWeights({
 			equalityCount: state.h?.length ?? 0,
 			inequalityCount: state.g?.length ?? 0,
@@ -259,7 +284,12 @@ export function solveSQP({
 		// creeps from 14.84 to 14.81 over sixty of them.
 		{
 			const violationNow = constraintViolation(state).total;
-			if (step.delta >= 1 - 1e-3) {
+			// A fully relaxed subproblem at a feasible point is not a verdict
+			// about feasibility: with h at 1e-12 any delta satisfies the relaxed
+			// rows, and "no progress on the violation" is then true of noise.
+			// Measured on 41 elements with a provided Hessian: the verdict fired
+			// at a violation of 9e-13 and restored a point that needed nothing.
+			if (step.delta >= 1 - 1e-3 && violationNow > feasibilityTolerance) {
 				if (relaxedStalls === 0) relaxedStallViolation = violationNow;
 				relaxedStalls += 1;
 				const progress = relaxedStallViolation > 0 ? 1 - violationNow / relaxedStallViolation : 0;
@@ -418,7 +448,8 @@ export function solveSQP({
 		// alone takes the exact form from 73 iterations with eight backtracking
 		// episodes to 44 with none - the same count as the bound form.
 		if (!(directional < 0)) {
-			H = identityMatrix(n, initialHessianScale);
+			B = identityMatrix(n, structuredStart * initialHessianScale);
+			H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 			radius = Math.max(minTrustRadius, radius * trustShrink);
 			history.push({ iteration, status: "no_descent", directional, radius });
 			continue;
@@ -514,9 +545,22 @@ export function solveSQP({
 				(sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
 			+ (evaluated.Jg ?? []).reduce(
 				(sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
+		const constraintGradient = (evaluated) => evaluated.gradF.map((_, i) =>
+			(evaluated.Jh ?? []).reduce(
+				(sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
+			+ (evaluated.Jg ?? []).reduce(
+				(sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const s = trialState.x.map((value, i) => value - x[i]);
-		const y = lagrangeGradient(trialState.state).map((value, i) => value - lagrangeGradient(state)[i]);
-		H = modifiedBfgsUpdate(H, s, y);
+		if (hessianSource === "provided" && trialState.state.hessian) {
+			const before = constraintGradient(state);
+			const yc = constraintGradient(trialState.state).map((value, i) => value - before[i]);
+			B = modifiedBfgsUpdate(B, s, yc);
+			H = curvatureOf(trialState.state);
+		} else {
+			const before = lagrangeGradient(state);
+			const y = lagrangeGradient(trialState.state).map((value, i) => value - before[i]);
+			H = modifiedBfgsUpdate(H, s, y);
+		}
 
 		history.push({
 			iteration,

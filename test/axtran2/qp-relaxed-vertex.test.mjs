@@ -111,3 +111,47 @@ test("eager restoration gets feasible first when the start is far outside the re
 	assert.notEqual(near.history[0]?.status, "restored");
 	assert.ok(near.ok, `${near.status}`);
 });
+
+test("a provided Hessian is used with a secant estimate for the constraints", () => {
+	// Least squares ½‖r‖² with r = (x - 3, y - 1, x - y) on the circle
+	// x² + y² = 4. The evaluator hands over J'J; the constraint's curvature is
+	// what the structured secant has to supply, and the solve has to close the
+	// circle exactly, not only fit the residuals.
+	const evaluate = ([x, y]) => {
+		const r = [x - 3, y - 1, x - y];
+		const J = [[1, 0], [0, 1], [1, -1]];
+		const hessian = [[2, -1], [-1, 2]];
+		return {
+			f: 0.5 * r.reduce((s, v) => s + v * v, 0),
+			gradF: [0, 1].map((j) => J.reduce((s, row, i) => s + row[j] * r[i], 0)),
+			h: [x * x + y * y - 4], Jh: [[2 * x, 2 * y]], g: [], Jg: [], hessian,
+		};
+	};
+	for (const hessian of ["provided", "bfgs"]) {
+		const run = solveSQP({ x0: [1.5, 1.5], evaluate, maxIterations: 100, hessian });
+		assert.ok(run.ok, `${hessian}: ${run.status} ${run.reason ?? ""}`);
+		assert.ok(Math.abs(run.x[0] ** 2 + run.x[1] ** 2 - 4) < 1e-8, `${hessian}: off the circle`);
+		// the minimiser of the fit on the circle, checked against a fine scan
+		let best = null;
+		for (let k = 0; k < 20000; k++) {
+			const t = (2 * Math.PI * k) / 20000;
+			const [x, y] = [2 * Math.cos(t), 2 * Math.sin(t)];
+			const f = evaluate([x, y]).f;
+			if (!best || f < best.f) best = { f, x, y };
+		}
+		assert.ok(Math.hypot(run.x[0] - best.x, run.x[1] - best.y) < 1e-4, `${hessian}: ${run.x} against ${[best.x, best.y]}`);
+	}
+	// without a hessian in the state, "provided" is BFGS
+	const plain = solveSQP({ x0: [1.5, 1.5], evaluate: (x) => { const { hessian, ...rest } = evaluate(x); return rest; }, maxIterations: 100, hessian: "provided" });
+	assert.ok(plain.ok, `${plain.status}`);
+});
+
+test("a provided Hessian is scaled with both of its indices", async () => {
+	const { scaleEvaluator } = await import("../../src/lib/math/optim/scale/variableScaling.js");
+	const scales = [1, 1e-3];
+	const evaluate = () => ({ f: 0, gradF: [1, 1], h: [], Jh: [], g: [], Jg: [], hessian: [[1, 2], [2, 3]] });
+	const scaled = scaleEvaluator(evaluate, scales)([0, 0]);
+	assert.deepEqual(scaled.hessian, [[1, 2e-3], [2e-3, 3e-6]]);
+	assert.deepEqual(scaled.gradF, [1, 1e-3]);
+	assert.equal(scaleEvaluator(() => ({ f: 0, gradF: [1, 1], h: [], Jh: [] }), scales)([0, 0]).hessian, undefined);
+});
