@@ -89,7 +89,11 @@ export function solveSQP({
 	// run reaches "converged" again rather than stopping at "stationary".
 	penaltySafety = 2,
 	relaxationWeight = 1e4,
-	qpIterations = 200,
+	// The active-set subproblem's budget. Fixed at 200 it ran out on 82
+	// variables with 74 of them on the box after a far start: 80 to 170
+	// releases and blocks per subproblem, qp_failed at the 29th step. Ten per
+	// variable, never under 200: the same two runs reach a fit instead.
+	qpIterations: qpIterationsGiven = null,
 	initialHessianScale = 1,
 	// Where the curvature estimate comes from. "bfgs" builds it from the
 	// Lagrangian gradient differences, from the identity. "provided" takes the
@@ -163,6 +167,7 @@ export function solveSQP({
 	}
 
 	const n = x0.length;
+	const qpIterations = qpIterationsGiven ?? Math.max(200, 10 * n);
 	const lo = lower ?? new Array(n).fill(-Infinity);
 	const up = upper ?? new Array(n).fill(Infinity);
 
