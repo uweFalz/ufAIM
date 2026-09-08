@@ -303,7 +303,11 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 		let dx = 0;
 		let dy = 0;
 		let dtheta = 0;
-		for (let index = 0; index < resolved.length; index++) {
+		// a parameter reaches its own element and, as an inherited end
+		// curvature, the transitions on either side - never a fourth one
+		const first = Math.max(0, parameter.elementIndex - 1);
+		const last = Math.min(resolved.length - 1, parameter.elementIndex + 1);
+		for (let index = first; index <= last; index++) {
 			const derivative = localDerivative(index, parameter);
 			if (!derivative) continue;
 			if (s <= stations[index]) continue;
