@@ -251,7 +251,7 @@ export function solveAlignmentLexicographic({
 	// of real alignments (#17) the length objective reaches a verdict on 85 %
 	// and the points objective on 75 % within 200, and nothing that reaches one
 	// does so past it. Sixty stopped the bound form halfway to its own answer.
-	maxIterations = 200,
+	maxIterations = 1000,
 	feasibilityTolerance = FEASIBILITY_TOLERANCE,
 	relaxationWeight = 1e6,
 } = {}) {

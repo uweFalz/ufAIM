@@ -4,7 +4,7 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length] [--ramp bound|constraint] \
-//        [--iterations 200] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--json out.json]
+//        [--iterations 1000] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -25,7 +25,7 @@ const from = Number(args.from ?? 0);
 const to = Number(args.to ?? Infinity);
 const objectives = (args.objectives ?? "accumulated-length,points").split(",");
 const rampLengthAs = args.ramp ?? "bound";
-const maxIterations = Number(args.iterations ?? 200);
+const maxIterations = Number(args.iterations ?? 1000);
 const hessian = args.hessian ?? "bfgs";
 const restoration = args.restoration ?? "on-verdict";
 const structuredStart = args.structuredStart === undefined ? undefined : Number(args.structuredStart);
