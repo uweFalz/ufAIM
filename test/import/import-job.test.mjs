@@ -245,6 +245,9 @@ test("source contract reads once, carries bytes, and uses only atomic commit pub
 		controller.indexOf("function importFiles")
 	);
 	assert(productive.includes('"Import.CommitJob"'));
+	assert.match(productive, /staged\.items\.length > 0/);
+	assert.match(productive, /staged\.rejectedItems\.length > 0/);
+	assert.match(productive, /\.\.\.\(staged\.publication \? \{ publication: staged\.publication \} : \{\}\)/);
 	assert.match(productive, /const commitCandidates = \[\.\.\.stagedFiles\]/);
 	assert.match(productive, /for \(const staged of commitCandidates\)/);
 	assert.match(productive, /files: \[\{/);

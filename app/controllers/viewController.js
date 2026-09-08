@@ -18,6 +18,7 @@ import {
 	makeSectionLine,
 	unionBbox,
 	pickBboxFromArtifactOrPolyline,
+	computeBboxUnionFromTracks,
 	buildChunkMetrics,
 } from "@app/controllers/viewGeometry.js";
 
@@ -414,13 +415,36 @@ export function makeViewController({
 		const includeContext =
 			(opts.includeContext !== undefined) ? Boolean(opts.includeContext) : true;
 
-		let bbox = activeGeometry?.bbox ?? null;
+		let bbox = activeGeometry?.bbox ?? computeVisibleImportBbox(state);
 
 		if (includePins) bbox = unionBbox(bbox, computeAuxBboxUnion(state));
 		if (includeChunks) bbox = unionBbox(bbox, computeChunkBboxUnion(state));
 		if (includeContext) bbox = unionBbox(bbox, await computeWorkspaceContextBboxUnion(state));
 
 		return bbox;
+	}
+
+	function computeVisibleImportBbox(state) {
+		const tracks = Array.isArray(state?.workspace_visible_tracks)
+			? state.workspace_visible_tracks
+			: [];
+		return computeBboxUnionFromTracks(tracks);
+	}
+
+	function activateLocalImportView(state, { fit = false, padding = cfg.fitPadding } = {}) {
+		const bbox = computeVisibleImportBbox(state);
+		if (!bbox) return false;
+		const stage = document.getElementById("geoStage");
+		const badge = document.getElementById("geoModeBadge");
+		stage?.classList.remove("is-spatial-start", "is-geographic");
+		if (mapA?.map) mapA.destroy();
+		if (badge) {
+			badge.textContent = "LOCAL";
+			badge.title = "Importgeometrie · lokales Koordinatensystem · keine EPSG-Aussage";
+		}
+		threeA.setOriginFromBbox(bbox);
+		if (fit) threeA.zoomToFitWorldBbox?.(bbox, { padding });
+		return true;
 	}
 
 	async function recenterToActive() {
@@ -442,7 +466,7 @@ export function makeViewController({
 		const activeGeometry = await getActiveGeometry(st);
 		const poly = activeGeometry?.polyline2d;
 
-		if (!Array.isArray(poly) || poly.length < 2) return false;
+		if ((!Array.isArray(poly) || poly.length < 2) && !computeVisibleImportBbox(st)) return false;
 
 		const bbox = await computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
@@ -451,6 +475,7 @@ export function makeViewController({
 
 		threeA.setOriginFromBbox(bbox);
 		threeA.zoomToFitWorldBbox?.(bbox, { padding });
+		if (!activeGeometry) activateLocalImportView(st);
 		return true;
 	}
 
@@ -459,7 +484,7 @@ export function makeViewController({
 		const activeGeometry = await getActiveGeometry(st);
 		const poly = activeGeometry?.polyline2d;
 
-		if (!Array.isArray(poly) || poly.length < 2) return false;
+		if ((!Array.isArray(poly) || poly.length < 2) && !computeVisibleImportBbox(st)) return false;
 
 		const bbox = await computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
@@ -473,6 +498,7 @@ export function makeViewController({
 		} else {
 			threeA.zoomToFitWorldBbox?.(bbox, { padding });
 		}
+		if (!activeGeometry) activateLocalImportView(st);
 
 		return true;
 	}
@@ -482,7 +508,7 @@ export function makeViewController({
 		const activeGeometry = await getActiveGeometry(st);
 		const poly = activeGeometry?.polyline2d;
 
-		if (!Array.isArray(poly) || poly.length < 2) return false;
+		if ((!Array.isArray(poly) || poly.length < 2) && !computeVisibleImportBbox(st)) return false;
 
 		const bbox = await computeFitBboxFromState(st, activeGeometry, opts);
 		if (!bbox) return false;
@@ -492,6 +518,7 @@ export function makeViewController({
 
 		threeA.setOriginFromBbox(bbox);
 		threeA.zoomToFitWorldBboxSoftAnimated?.(bbox, { padding, durationMs });
+		if (!activeGeometry) activateLocalImportView(st);
 		return true;
 	}
 
@@ -953,8 +980,9 @@ export function makeViewController({
 					redrawAuxFromState(state);
 					clear3DKeepAux();
 
-					await applyGeomChangePolicy(state, null);
-					const spatialStart = !getFocusObjectId(state) && !activeGeometry?.isPreview
+					const localImport = activateLocalImportView(state, { fit: geomChanged });
+					if (!localImport) await applyGeomChangePolicy(state, null);
+					const spatialStart = !localImport && !getFocusObjectId(state) && !activeGeometry?.isPreview
 						? await syncSpatialStart()
 						: false;
 					lastRenderSnapshot = {
@@ -965,8 +993,8 @@ export function makeViewController({
 						boundaryCount: 0,
 						crsId: activeGeometry?.spotObject?.crsId ?? null,
 						mode: activeGeometry?.isPreview ? "preview" : "empty",
-						placement: spatialStart ? "map-context" : "local",
-						message: "no-track",
+						placement: spatialStart ? "map-context" : localImport ? "local-import" : "local",
+						message: localImport ? "visible-import-tracks" : "no-track",
 					};
 					return { ...lastRenderSnapshot };
 				}

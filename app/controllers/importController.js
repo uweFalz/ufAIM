@@ -485,14 +485,18 @@ export function makeImportController({
 		for (const staged of commitCandidates) {
 			staged.job.update({ phase: "committing" });
 			try {
-				if (staged.publication?.evidence) {
+				if (
+					staged.publication?.evidence
+					|| staged.items.length > 0
+					|| staged.rejectedItems.length > 0
+				) {
 					await sendImportCommand("Import.CommitJob", {
 						batchId,
 						source: { fileName: staged.file.name },
 						files: [{
 							jobId: staged.job.jobId,
 							fileName: staged.file.name,
-							publication: staged.publication,
+							...(staged.publication ? { publication: staged.publication } : {}),
 							items: staged.items,
 							rejectedItems: staged.rejectedItems,
 						}],

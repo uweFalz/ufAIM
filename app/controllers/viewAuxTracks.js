@@ -337,9 +337,11 @@ export function createViewAuxTracks({
 			crsId: t?.crsId ?? null,
 			source: t?.source ?? "track",
 			style: {
-				alpha: t.source === "spot" ? 0.65 : 0.45,
-				width: t.source === "spot" ? 2.0 : 1.6,
+				color: t.source === "import-drop" ? 0x25d9d0 : 0x9ca3af,
+				opacity: t.source === "import-drop" ? 0.96 : 0.72,
 				dashed: false,
+				zOffset: t.source === "import-drop" ? 0.16 : 0.08,
+				renderOrder: t.source === "import-drop" ? 22 : 12,
 			},
 		}))
 		.filter((t) => Array.isArray(t.polyline2d) && t.polyline2d.length >= 2);

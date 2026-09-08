@@ -187,6 +187,47 @@ test("Import.CommitJob accumulates files with identical source-local item IDs in
 	assert.equal(new Set(api.getState().items.map((entry) => entry.id)).size, 2);
 });
 
+test("Import.CommitJob retains non-GND candidates without fabricating result evidence", () => {
+	const { api } = service();
+	const candidate = result().items[0];
+	const committed = api.commitJob({
+		batchId: "batch-vermesn",
+		source: { fileName: "W467-468.TRA" },
+		files: [{
+			jobId: "job-vermesn",
+			fileName: "W467-468.TRA",
+			items: [candidate],
+			rejectedItems: [],
+		}],
+	});
+	assert.equal(committed.phase, "ready");
+	assert.equal(committed.items.length, 1);
+	assert.equal(committed.items[0].sourceItemId, candidate.id);
+	assert.match(committed.items[0].id, new RegExp(`^${candidate.id}__src_batch-vermesn_job-vermesn$`));
+	assert.equal(committed.items[0].evidenceId, undefined);
+	assert.equal(api.getResultEvidence().records.length, 0);
+});
+
+test("Import.CommitJob source-qualifies repeated non-GND candidate IDs", () => {
+	const { api } = service();
+	const candidate = result().items[0];
+	for (const [index, fileName] of ["first.TRA", "second.TRA"].entries()) {
+		api.commitJob({
+			batchId: "batch-vermesn-many",
+			source: { fileName },
+			files: [{
+				jobId: `job-vermesn-${index}`,
+				fileName,
+				items: [structuredClone(candidate)],
+				rejectedItems: [],
+			}],
+		});
+	}
+	assert.equal(api.getState().items.length, 2);
+	assert.equal(new Set(api.getState().items.map((item) => item.id)).size, 2);
+	assert.deepEqual(api.getState().items.map((item) => item.sourceItemId), [candidate.id, candidate.id]);
+});
+
 test("Import.CommitJob validation and duplicate failures are mutation-free", () => {
 	const { api, events, internal } = service();
 	const before = structuredClone(internal());

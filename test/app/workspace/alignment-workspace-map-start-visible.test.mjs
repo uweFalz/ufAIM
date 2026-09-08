@@ -15,7 +15,11 @@ test("empty AIM starts on a neutral map without claiming project georeference", 
 	assert.match(controller, /async function syncSpatialStart\(\)/);
 	assert.match(controller, /badge\.textContent = "MAP"/);
 	assert.match(controller, /Startkarte · noch ohne Projektgeoreferenz/);
-	assert.match(controller, /placement: spatialStart \? "map-context" : "local"/);
+	assert.match(controller, /placement: spatialStart \? "map-context" : localImport \? "local-import" : "local"/);
+	assert.match(controller, /function activateLocalImportView\(state/);
+	assert.match(controller, /Importgeometrie · lokales Koordinatensystem · keine EPSG-Aussage/);
+	assert.match(controller, /message: localImport \? "visible-import-tracks" : "no-track"/);
+	assert.match(controller, /computeBboxUnionFromTracks\(tracks\)/);
 	assert.match(adapter, /center: this\.options\.center \?\? \[10\.45, 51\.16\]/);
 	assert.match(adapter, /zoom: this\.options\.zoom \?\? 5\.4/);
 	assert.match(css, /\.uf-stageWrap\.is-spatial-start > \.uf-geoMap \{ z-index: 3; \}/);

@@ -148,11 +148,51 @@ export function createImportSessionService({
 			}
 			if (jobIds.has(file.jobId)) throw new Error(`Import.CommitJob duplicate jobId: ${file.jobId}`);
 			jobIds.add(file.jobId);
-			if (!isObject(file.publication) || !isObject(file.publication.evidence)) {
-				throw new Error(`Import.CommitJob invalid publication: ${file.jobId}`);
-			}
 			if (!Array.isArray(file.items) || !Array.isArray(file.rejectedItems)) {
 				throw new Error(`Import.CommitJob invalid item arrays: ${file.jobId}`);
+			}
+			const hasEvidencePublication = isObject(file.publication)
+				&& isObject(file.publication.evidence);
+			if (file.publication != null && !hasEvidencePublication) {
+				throw new Error(`Import.CommitJob invalid publication: ${file.jobId}`);
+			}
+			if (!hasEvidencePublication) {
+				const sourceScope = makeCommittedSourceScope({
+					batchId,
+					jobId: file.jobId,
+				});
+				const fileAccepted = [];
+				const fileRejected = [];
+				const rawItemIds = new Set();
+				const rawItems = [...file.items, ...file.rejectedItems];
+				for (const raw of rawItems) {
+					const sourceItemId = isObject(raw) && isNonEmptyString(raw.id) ? String(raw.id) : null;
+					if (!sourceItemId || rawItemIds.has(sourceItemId)) {
+						throw new Error(`Import.CommitJob duplicate or invalid item ID: ${String(sourceItemId ?? "")}`);
+					}
+					rawItemIds.add(sourceItemId);
+				}
+				for (const raw of rawItems) {
+					const sourceItemId = String(raw.id);
+					const linked = {
+						...raw,
+						id: `${sourceItemId}__${sourceScope}`,
+						sourceItemId,
+					};
+					const validation = normalizeAndValidateImportItem(linked);
+					const normalized = validation.ok
+						? normalizeItemAcceptance(validation.item)
+						: makeRejectedEnvelope(linked, validation.validation);
+					if (!isNonEmptyString(normalized?.id) || itemIds.has(normalized.id)) {
+						throw new Error(`Import.CommitJob duplicate or invalid item ID: ${String(normalized?.id ?? "")}`);
+					}
+					itemIds.add(normalized.id);
+					if (isRejectedImportItem(normalized)) fileRejected.push(normalized);
+					else fileAccepted.push(normalized);
+				}
+				accepted.push(...fileAccepted);
+				rejected.push(...fileRejected);
+				continue;
 			}
 			const evidence = file.publication.evidence;
 			if (
@@ -692,6 +732,13 @@ function makeSessionId() {
 
 function makeFallbackRejectedId() {
 	return `rejected_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function makeCommittedSourceScope({ batchId, jobId }) {
+	const safe = (value) => String(value ?? "")
+		.replace(/[^a-zA-Z0-9_-]/g, "_")
+		.slice(0, 96);
+	return `src_${safe(batchId)}_${safe(jobId)}`;
 }
 
 function isObject(x) {

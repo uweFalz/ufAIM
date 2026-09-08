@@ -123,6 +123,30 @@ export function makeThreeAdapter({ three, transform } = {}) {
 		three.setAuxTrackPoints?.(outOld);
 	}
 
+	function setAuxTracksFromWorldPolylinesStyled(list) {
+		if (!Array.isArray(list) || list.length === 0) {
+			clearAuxTracks();
+			return;
+		}
+
+		const tracks = list.flatMap((item) => {
+			const id = String(item?.id ?? item?.key ?? "");
+			const ptsWorld = item?.polyline2d;
+			if (!id || !Array.isArray(ptsWorld) || ptsWorld.length < 2) return [];
+			return [{
+				id,
+				pointsXY: xform.toLocalPolyline(ptsWorld).map(toThreeLocal),
+				style: item?.style && typeof item.style === "object" ? { ...item.style } : {},
+			}];
+		});
+
+		if (three.setAuxTracks) {
+			three.setAuxTracks(tracks);
+			return;
+		}
+		setAuxTracksFromWorldPolylines(list);
+	}
+
 	function setAlignmentProjection(payload) {
 		three.setAlignmentProjection?.(payload);
 	}
@@ -195,6 +219,7 @@ export function makeThreeAdapter({ three, transform } = {}) {
 
 		setTrackFromWorldPolyline,
 		setAuxTracksFromWorldPolylines,
+		setAuxTracksFromWorldPolylinesStyled,
 		setAlignmentProjection,
 		setAlignmentSelection,
 
