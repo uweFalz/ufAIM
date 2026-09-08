@@ -82,43 +82,60 @@ function solveSpd(matrix, rhs) {
  * normalised before it is orthogonalised, which changes neither the row space
  * nor the null space and makes the test scale-free.
  *
- * And each vector is orthogonalised twice. One pass of modified Gram-Schmidt
- * loses orthogonality when the rows are close to dependent, and a null basis
- * that is not quite null yields directions along which the objective does not
- * fall. Measured before this: an active set cycling among nine working sets,
- * one of them visited forty-four times, with Bland's rule running - which cannot
- * happen to a correct implementation, so the fault was never in the pivot rule.
- * Twice is enough; it is the standard remedy and costs one more pass.
+ * And the bases are orthogonal to working precision. One pass of modified
+ * Gram-Schmidt lost orthogonality when the rows were close to dependent, and a
+ * null basis that is not quite null yields directions along which the
+ * objective does not fall. Measured then: an active set cycling among nine
+ * working sets, one of them visited forty-four times, with Bland's rule
+ * running - which cannot happen to a correct implementation, so the fault was
+ * never in the pivot rule. A second pass was the remedy; Householder
+ * reflections give the same guarantee without it, and without the cost.
  */
 function orthogonalDecomposition(rows, dimension) {
-	const rowBasis = [];
-	for (const row of rows) {
-		const scale = Math.hypot(...row);
+	// Householder QR of A', the rows as columns: r reflectors, each applied to
+	// the columns still to come and later to the unit vectors that make up
+	// the bases. The first r columns of Q span the rows, the rest their null
+	// space, orthogonal to working precision by construction. Modified
+	// Gram-Schmidt against every basis vector found so far, twice, cost
+	// O(d^3) with an array allocated per projection: two thirds of a 3.7 s
+	// SQP step at 151 variables, against O(r d^2) here with r the row count.
+	const columns = rows.map((row) => row.slice());
+	const reflectors = [];   // { offset, v } for H = I - 2 v v' on indices >= offset
+	const kept = [];         // which rows carry a reflector (rank)
+	const apply = (vector, reflector) => {
+		const { offset, v } = reflector;
+		let projection = 0;
+		for (let i = 0; i < v.length; i++) projection += v[i] * vector[offset + i];
+		if (projection === 0) return;
+		for (let i = 0; i < v.length; i++) vector[offset + i] -= 2 * projection * v[i];
+	};
+	for (let c = 0; c < columns.length; c++) {
+		const column = columns[c];
+		const scale = Math.hypot(...column);
 		if (!(scale > 0) || !Number.isFinite(scale)) continue;
-		let residual = row.map((value) => value / scale);
-		for (let pass = 0; pass < 2; pass++) {
-			for (const basis of rowBasis) {
-				const projection = dot(residual, basis);
-				residual = residual.map((value, i) => value - projection * basis[i]);
-			}
-		}
-		const norm = Math.hypot(...residual);
-		// relative to the normalised row, so this is a rank test and not a
-		// question about the units the caller happened to use
-		if (norm > 1e-10) rowBasis.push(residual.map((value) => value / norm));
+		for (const reflector of reflectors) apply(column, reflector);
+		const offset = reflectors.length;
+		let norm = 0;
+		for (let i = offset; i < dimension; i++) norm += column[i] * column[i];
+		norm = Math.sqrt(norm);
+		// relative to the row, so this is a rank test and not a question about
+		// the units the caller happened to use
+		if (!(norm / scale > 1e-10)) continue;
+		const v = column.slice(offset);
+		v[0] += (v[0] >= 0 ? 1 : -1) * norm;
+		const vNorm = Math.hypot(...v);
+		for (let i = 0; i < v.length; i++) v[i] /= vNorm;
+		reflectors.push({ offset, v });
+		kept.push(c);
 	}
+	const rank = reflectors.length;
+	const rowBasis = [];
 	const nullBasis = [];
-	for (let axis = 0; axis < dimension && nullBasis.length < dimension - rowBasis.length; axis++) {
-		let candidate = new Array(dimension).fill(0);
-		candidate[axis] = 1;
-		for (let pass = 0; pass < 2; pass++) {
-			for (const basis of [...rowBasis, ...nullBasis]) {
-				const projection = dot(candidate, basis);
-				candidate = candidate.map((value, i) => value - projection * basis[i]);
-			}
-		}
-		const norm = Math.hypot(...candidate);
-		if (norm > 1e-8) nullBasis.push(candidate.map((value) => value / norm));
+	for (let j = 0; j < dimension; j++) {
+		const vector = new Array(dimension).fill(0);
+		vector[j] = 1;
+		for (let k = rank - 1; k >= 0; k--) apply(vector, reflectors[k]);
+		(j < rank ? rowBasis : nullBasis).push(vector);
 	}
 	return { rowBasis, nullBasis };
 }
@@ -172,14 +189,38 @@ function solveFreeBlock({ H, c, A, b, z, free, damping }) {
 		gradient[i] = sum;
 	}
 
-	// reduce onto the null space of the free equalities
-	const reducedH = nullBasis.map((left) => nullBasis.map((right) => {
-		let sum = 0;
-		for (let i = 0; i < m; i++) {
-			for (let j = 0; j < m; j++) sum += left[i] * H[freeIndex[i]][freeIndex[j]] * right[j];
+	// reduce onto the null space of the free equalities: Z' (H Z), in two
+	// products. Written as one quadruple loop this was O(m^4) - 5e8 operations
+	// per active-set iteration at 151 variables, half of a 48 s SQP step.
+	const k = nullBasis.length;
+	const HZ = Array.from({ length: m }, (_, i) => {
+		const row = H[freeIndex[i]];
+		const out = new Array(k).fill(0);
+		for (let j = 0; j < m; j++) {
+			const hij = row[freeIndex[j]];
+			if (hij === 0) continue;
+			for (let q = 0; q < k; q++) out[q] += hij * nullBasis[q][j];
 		}
-		return sum;
-	}));
+		return out;
+	});
+	const reducedH = nullBasis.map((left) => {
+		const out = new Array(k).fill(0);
+		for (let i = 0; i < m; i++) {
+			const li = left[i];
+			if (li === 0) continue;
+			const hz = HZ[i];
+			for (let q = 0; q < k; q++) out[q] += li * hz[q];
+		}
+		return out;
+	});
+	// exactly symmetric, as the quadruple loop was up to round-off
+	for (let a = 0; a < k; a++) {
+		for (let b = a + 1; b < k; b++) {
+			const mean = 0.5 * (reducedH[a][b] + reducedH[b][a]);
+			reducedH[a][b] = mean;
+			reducedH[b][a] = mean;
+		}
+	}
 	const reducedG = nullBasis.map((basis) => {
 		let sum = 0;
 		for (let i = 0; i < m; i++) sum += basis[i] * gradient[freeIndex[i]];
