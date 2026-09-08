@@ -110,6 +110,17 @@ export function solveAlignmentProblem({
 	// small and free of the identity start BFGS has to learn from
 	hessian = "bfgs",
 	structuredStart,
+	hybridSwitch,
+	// A weak pseudo-observation on free lengths, as a geodetic adjustment
+	// carries one on a weakly determined parameter: { sigma, elements? } adds
+	// a residual (L - L0) / (sigma · L0) for every free length of the named
+	// elements (all free lengths when unnamed), L0 the start value. Measured
+	// on the corpus giants: a length traded between a transition and its
+	// neighbouring arc moves the lateral residuals by millimetres, J'J has
+	// eigenvalues down to 1e-13 of its largest, and the fit walks that valley
+	// for thousands of iterations without a verdict. The prior says what the
+	// points cannot; it is a modelling decision and off by default.
+	lengthPrior = null,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
 	if (hessian !== "bfgs" && hessian !== "gauss-newton") {
@@ -131,6 +142,22 @@ export function solveAlignmentProblem({
 		});
 	}
 	const x0 = startAt ? [...startAt] : declared;
+	if (lengthPrior !== null && (!(lengthPrior.sigma > 0) || (lengthPrior.elements !== undefined && !Array.isArray(lengthPrior.elements)))) {
+		error("INVALID_OPTION", "lengthPrior needs a positive sigma and, if given, an array of element ids");
+	}
+	const priorColumns = lengthPrior === null ? [] : codec.freeNames.map((name, i) => ({ name, i })).filter(({ name }) => {
+		if (!name.endsWith(".length")) return false;
+		if (lengthPrior.elements === undefined) return true;
+		return lengthPrior.elements.includes(name.slice(0, name.lastIndexOf(".")));
+	}).filter(({ i }) => x0[i] > 0).map(({ i }) => ({ i, scale: 1 / (lengthPrior.sigma * x0[i]), start: x0[i] }));
+	/** residual rows of the length prior at x, and their Jacobian rows */
+	function priorRows(x) {
+		const n = codec.freeCount;
+		return {
+			r: priorColumns.map(({ i, scale, start }) => (x[i] - start) * scale),
+			Jr: priorColumns.map(({ i, scale }) => { const row = new Array(n).fill(0); row[i] = scale; return row; }),
+		};
+	}
 
 	const hardPoints = residuals.hardPoints;
 	const softPoints = residuals.softPoints;
@@ -471,12 +498,13 @@ export function solveAlignmentProblem({
 			return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
 		}
 
-		const r = softResiduals(built);
-		const Jr = softPoints.map((point) => {
+		const prior = priorRows(x);
+		const r = [...softResiduals(built), ...prior.r];
+		const Jr = [...softPoints.map((point) => {
 			const projected = project(built, point, "measured point");
 			const row = geometry.lateralDerivative(parameterSpecs, projected.s);
 			return row.map((value) => value / point.tolerance);
-		});
+		}), ...prior.Jr];
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = parameterSpecs.map((_, j) =>
 			Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
@@ -530,9 +558,11 @@ export function solveAlignmentProblem({
 			return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
 		}
 
-		const Jr = jacobian.J.slice(h.length);
-		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
-		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
+		const prior = priorRows(x);
+		const Jr = [...jacobian.J.slice(h.length), ...prior.Jr];
+		const rAll = [...r, ...prior.r];
+		const f = 0.5 * rAll.reduce((sum, value) => sum + value * value, 0);
+		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * rAll[i], 0));
 		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
@@ -556,6 +586,7 @@ export function solveAlignmentProblem({
 		...(eagerViolationRadii === undefined ? {} : { eagerViolationRadii }),
 		hessian: hessian === "gauss-newton" ? "provided" : "bfgs",
 		...(structuredStart === undefined ? {} : { structuredStart }),
+		...(hybridSwitch === undefined ? {} : { hybridSwitch }),
 	});
 	const run = {
 		...scaledRun,
