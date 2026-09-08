@@ -233,7 +233,7 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 	 * Perturbation of the pose at station `s` caused by a unit change of one
 	 * element's local transform. Returns { dx, dy, dtheta } in world coordinates.
 	 */
-	function propagate(elementIndex, localDerivative, s) {
+	function propagate(elementIndex, localDerivative, s, target = poseAt(s)) {
 		// nothing upstream of the element moves
 		if (s <= stations[elementIndex]) return { dx: 0, dy: 0, dtheta: 0 };
 
@@ -242,9 +242,12 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 		const sin = Math.sin(entry.theta);
 
 		if (s >= stations[elementIndex + 1]) {
-			// the whole element lies upstream: rigid propagation from its exit
+			// the whole element lies upstream: rigid propagation from its exit.
+			// The pose at the station is the caller's to supply: computed here
+			// it was one quadrature per parameter per upstream element per
+			// point - 3.5 million per evaluation on 110 elements with 212
+			// points, three quarters of a 27 s SQP step.
 			const exit = entries[elementIndex + 1];
-			const target = poseAt(s);
 			const dxWorld = cos * localDerivative.dx - sin * localDerivative.dy;
 			const dyWorld = sin * localDerivative.dx + cos * localDerivative.dy;
 			const lever = { x: target.x - exit.x, y: target.y - exit.y };
@@ -296,17 +299,21 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 	 * transform of that element alone, which keeps the chain rule exact while
 	 * costing one extra quadrature.
 	 */
-	function poseDerivative(parameter, s) {
+	function poseDerivative(parameter, s, target = poseAt(s)) {
 		let dx = 0;
 		let dy = 0;
 		let dtheta = 0;
-		for (let index = 0; index < resolved.length; index++) {
+		// a parameter reaches its own element and, as an inherited end
+		// curvature, the transitions on either side - never a fourth one
+		const first = Math.max(0, parameter.elementIndex - 1);
+		const last = Math.min(resolved.length - 1, parameter.elementIndex + 1);
+		for (let index = first; index <= last; index++) {
 			const derivative = localDerivative(index, parameter);
 			if (!derivative) continue;
 			if (s <= stations[index]) continue;
 
 			if (s >= stations[index + 1]) {
-				const contribution = propagate(index, derivative, s);
+				const contribution = propagate(index, derivative, s, target);
 				dx += contribution.dx;
 				dy += contribution.dy;
 				dtheta += contribution.dtheta;
@@ -340,7 +347,7 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 				dy: (plus.dy - minus.dy) / (2 * step),
 				dtheta: (plus.dtheta - minus.dtheta) / (2 * step),
 			};
-			const contribution = propagate(index, partial, s);
+			const contribution = propagate(index, partial, s, target);
 			dx += contribution.dx;
 			dy += contribution.dy;
 			dtheta += contribution.dtheta;
@@ -360,7 +367,7 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 
 		/** d(end pose)/d(parameter) for every declared parameter. */
 		endPoseJacobian(parameters) {
-			return parameters.map((parameter) => poseDerivative(parameter, arcLength));
+			return parameters.map((parameter) => poseDerivative(parameter, arcLength, endPose));
 		},
 
 		/**
@@ -372,7 +379,7 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 			const pose = poseAt(station);
 			const normal = { x: -Math.sin(pose.theta), y: Math.cos(pose.theta) };
 			return parameters.map((parameter) => {
-				const d = poseDerivative(parameter, station);
+				const d = poseDerivative(parameter, station, pose);
 				return -(normal.x * d.dx + normal.y * d.dy);
 			});
 		},

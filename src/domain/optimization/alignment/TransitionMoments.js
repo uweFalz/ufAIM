@@ -213,6 +213,46 @@ export function createTransitionMoments({
  * Build KHat for a family from its normalised curvature law kappaHat, by
  * quadrature. Used when only kappaHat is available, as from the registry.
  */
-export function curvatureIntegralFrom(kappaHat, nodes = 80) {
-	return (u) => (u === 0 ? 0 : u * integrate01((t) => kappaHat(t * u), nodes));
+export function curvatureIntegralFrom(kappaHat, nodes = 80, { intervals = 4096 } = {}) {
+	// The integral is tabulated once and read by cubic Hermite interpolation,
+	// whose derivative data is kappaHat itself and therefore exact at every
+	// node. Integrating afresh on every call cost 80 evaluations of the
+	// curvature function - an interpreted expression tree - and the pose
+	// Jacobian asks 41 times per point: three quarters of a 27 s SQP step on
+	// 110 elements was spent there. The interpolation error is bounded by
+	// h^4/384 · max|kappaHat'''| with h = 1/4096, below double precision for
+	// the smooth families; the direct integral stays available at nodes <= 0.
+	if (!(intervals > 0)) {
+		return (u) => (u === 0 ? 0 : u * integrate01((t) => kappaHat(t * u), nodes));
+	}
+	let table = null;
+	const build = () => {
+		const h = 1 / intervals;
+		const { nodes: gn, weights: gw } = gaussLegendre(Math.min(nodes, 16));
+		const value = new Array(intervals + 1).fill(0);
+		const slope = new Array(intervals + 1).fill(0);
+		slope[0] = kappaHat(0);
+		for (let i = 0; i < intervals; i++) {
+			let sum = 0;
+			for (let q = 0; q < gn.length; q++) sum += gw[q] * kappaHat((i + gn[q]) * h);
+			value[i + 1] = value[i] + h * sum;
+			slope[i + 1] = kappaHat((i + 1) * h);
+		}
+		table = { h, value, slope };
+	};
+	return (u) => {
+		if (u <= 0) return 0;
+		if (!table) build();
+		const { h, value, slope } = table;
+		if (u >= 1) return value[intervals] + (u - 1) * slope[intervals];
+		const i = Math.min(intervals - 1, Math.floor(u / h));
+		const t = (u - i * h) / h;
+		const t2 = t * t;
+		const t3 = t2 * t;
+		// cubic Hermite on [u_i, u_{i+1}] with the exact end slopes
+		return (2 * t3 - 3 * t2 + 1) * value[i]
+			+ (t3 - 2 * t2 + t) * h * slope[i]
+			+ (-2 * t3 + 3 * t2) * value[i + 1]
+			+ (t3 - t2) * h * slope[i + 1];
+	};
 }
