@@ -216,12 +216,19 @@ export async function createTraScenario(source, {
 	// file. The cap of 60 was the projection's cost, and on 41 elements it left
 	// 60 points against 46 unknowns: a fit below the noise floor that walked a
 	// flat valley for a thousand iterations. Three points an element at least.
-	// The points keep half a spacing from the ends: the start is as long as the
-	// truth now (the perturbation sums to zero), so a point near an end has a
-	// foot on it, and an element every point can see is one the fit can
-	// determine.
+	// The points keep clear of the ends only as far as the start's end misses
+	// the truth's: the length perturbation sums to zero, so that miss is the
+	// curvatures' alone, and an element every point can see is one the fit
+	// can determine.
 	const maxPoints = Math.max(60, 3 * trueElements.length);
-	const margin = Math.min(0.25 * truth.arcLength, 0.5 * pointSpacing);
+	// The start's end still wanders with the curvature perturbation - 13 m
+	// short on 11 km - and a point beyond the start's end has no foot on it.
+	// Only the longitudinal part of the miss matters: how far the truth's end
+	// lies ahead of the start's, along the start's end tangent. The margin
+	// covers one and a half times that, and never less than half a spacing.
+	const startEnd = chainOf(trueElements.map((e, i) => ({ ...e, ...startValues[i] }))).endPose;
+	const shortBy = (truthChain.endPose.x - startEnd.x) * Math.cos(startEnd.theta) + (truthChain.endPose.y - startEnd.y) * Math.sin(startEnd.theta);
+	const margin = Math.min(0.25 * truth.arcLength, Math.max(0.5 * pointSpacing, 1.5 * shortBy));
 	const span = truth.arcLength - 2 * margin;
 	const pointCount = Math.max(6, Math.min(maxPoints, Math.round(span / pointSpacing)));
 	const pointJitter = noise(loaded.name + ":points");

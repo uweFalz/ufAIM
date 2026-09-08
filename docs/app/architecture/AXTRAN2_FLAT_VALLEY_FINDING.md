@@ -98,10 +98,12 @@ along the null directions, not the gradient's norm. That is the open item.
 ## 4. Scenario corrections made on the way
 
 - The corpus start's length perturbation sums to zero over the free lengths,
-  so the start is as long as the truth and its end does not wander; the
-  points keep half a spacing from the ends instead of 3 % of the length. Whole
-  elements had lain in the margin, seen by no point: five exact zero
-  eigenvalues where there is now one.
+  so the start is as long as the truth; the points keep clear of the ends only
+  as far as the start's end falls short of the truth's along its tangent (the
+  curvature perturbation still leaves it 13 m short on 11 km), and never less
+  than half a spacing, instead of 3 % of the length. Whole elements had lain
+  in the margin, seen by no point: five exact zero eigenvalues where there is
+  now one.
 - Only the double slip `Abzw-li_DKW503` still starts blocked on its floor for
   the restoration regression; the two Büchen turnouts start near enough to
   solve without a verdict.
