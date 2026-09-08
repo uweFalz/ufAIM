@@ -195,12 +195,22 @@ export async function createTraScenario(source, {
 		elements: trueElements.map((e, i) => ({ id: e.id, quantities: role(e, i), values: startValues[i] })),
 	});
 
-	// points along the truth, disturbed laterally
-	const pointCount = Math.max(6, Math.min(60, Math.round(truth.arcLength / pointSpacing)));
+	// Points along the truth, disturbed laterally. Two things scale with the
+	// file. The cap of 60 was the projection's cost, and on 41 elements it left
+	// 60 points against 46 unknowns: a fit below the noise floor that walked a
+	// flat valley for a thousand iterations. Three points an element at least.
+	// And the start is perturbed by up to `perturbation` of every length, so it
+	// can be short by that share of the whole; a point that far from an end may
+	// have no foot on the start, and the kernel rightly refuses to fit it. The
+	// points keep that margin from both ends.
+	const maxPoints = Math.max(60, 3 * trueElements.length);
+	const margin = Math.min(0.25 * truth.arcLength, Math.max(pointSpacing, perturbation * truth.arcLength));
+	const span = truth.arcLength - 2 * margin;
+	const pointCount = Math.max(6, Math.min(maxPoints, Math.round(span / pointSpacing)));
 	const pointJitter = noise(loaded.name + ":points");
 	const points = [];
 	for (let i = 0; i < pointCount; i++) {
-		const s = (truth.arcLength * (i + 0.5)) / pointCount;
+		const s = margin + (span * (i + 0.5)) / pointCount;
 		const p = truth.poseAt(s);
 		const offset = spread * pointJitter();
 		points.push({ name: `M${i}`, x: p.p.x - offset * p.t.y, y: p.p.y + offset * p.t.x, tolerance });
@@ -259,7 +269,7 @@ export async function createTraScenario(source, {
 		elementFloor,
 		equalityCount: 3,
 		freeCount: codec.freeCount,
-		pointCount,
+		pointCount, pointMargin: margin,
 	});
 }
 
