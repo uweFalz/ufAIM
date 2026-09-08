@@ -113,6 +113,13 @@ export function solveSQP({
 	// how often a solve may restore; a verdict, a restoration and a verdict
 	// again is a loop, and the third verdict is reported as one
 	restorationLimit = 2,
+	// "eager" restores on the verdict too, and before the first subproblem
+	// when the start violates the constraints by more than this many trust
+	// radii. A linearisation is only good for a step the size of its region;
+	// measured on 64 elements with the end pose 613 m off and a region of
+	// 23 m, the merit took a tenth of every step, the region shrank to 3 m, and
+	// the box-dominated subproblem ran out of iterations at the 29th step.
+	eagerViolationRadii = 10,
 	trustGrowth = 2,
 	trustShrink = 0.5,
 	// How close to a bound counts as held by it. An exact test is too sharp: the
@@ -163,6 +170,44 @@ export function solveSQP({
 	let previousMerit = null;
 	let stalls = 0;
 
+	// Restore feasibility from x and continue as from a fresh start: the
+	// curvature estimate and the penalty weights described the path to here,
+	// not the path from the feasible point. Returns the failure to hand back,
+	// or null when the solve may go on.
+	function restoreFrom(iteration) {
+		restorations += 1;
+		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance });
+		restorationSteps += restored.steps;
+		history.push({
+			iteration, status: restored.ok ? "restored" : restored.status, restoration: restorations,
+			steps: restored.steps, violationBefore: restored.violationBefore, violationAfter: restored.violationAfter,
+		});
+		if (!restored.ok) {
+			return {
+				ok: false, status: "restoration_failed", x: restored.x, state: restored.state, history,
+				iterations: iteration, restorationSteps,
+				reason: `${restored.status}: the violation went from ${restored.violationBefore.toExponential(2)} to ${restored.violationAfter.toExponential(2)} in ${restored.steps} steps`,
+			};
+		}
+		x = restored.x;
+		state = restored.state;
+		H = identityMatrix(n, initialHessianScale);
+		weights = createPenaltyWeights({
+			equalityCount: state.h?.length ?? 0,
+			inequalityCount: state.g?.length ?? 0,
+		});
+		radius = Number.isFinite(trustRadius) ? trustRadius : Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
+		relaxedStalls = 0;
+		previousMerit = null;
+		stalls = 0;
+		return null;
+	}
+
+	if (restoration === "eager" && constraintViolation(state).total > eagerViolationRadii * radius) {
+		const failure = restoreFrom(0);
+		if (failure) return failure;
+	}
+
 	for (let iteration = 0; iteration < maxIterations; iteration++) {
 		const violation = constraintViolation(state);
 
@@ -210,35 +255,9 @@ export function solveSQP({
 						iteration, status: "infeasible_subproblem", delta: step.delta, violation: violationNow,
 						reason: `the subproblem came back fully relaxed ${relaxedStalls} times in a row and the violation fell by ${(progress * 100).toFixed(2)} %`,
 					});
-					if (restoration === "on-verdict" && restorations < restorationLimit) {
-						restorations += 1;
-						const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance });
-						restorationSteps += restored.steps;
-						history.push({
-							iteration, status: restored.ok ? "restored" : restored.status, restoration: restorations,
-							steps: restored.steps, violationBefore: restored.violationBefore, violationAfter: restored.violationAfter,
-						});
-						if (!restored.ok) {
-							return {
-								ok: false, status: "restoration_failed", x: restored.x, state: restored.state, history,
-								iterations: iteration, restorationSteps,
-								reason: `${restored.status}: the violation went from ${restored.violationBefore.toExponential(2)} to ${restored.violationAfter.toExponential(2)} in ${restored.steps} steps`,
-							};
-						}
-						// continue from the feasible point as from a fresh start: the
-						// curvature estimate and the penalty weights described the path to
-						// the vertex, not the path from here
-						x = restored.x;
-						state = restored.state;
-						H = identityMatrix(n, initialHessianScale);
-						weights = createPenaltyWeights({
-							equalityCount: state.h?.length ?? 0,
-							inequalityCount: state.g?.length ?? 0,
-						});
-						radius = Number.isFinite(trustRadius) ? trustRadius : Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
-						relaxedStalls = 0;
-						previousMerit = null;
-						stalls = 0;
+					if ((restoration === "on-verdict" || restoration === "eager") && restorations < restorationLimit) {
+						const failure = restoreFrom(iteration);
+						if (failure) return failure;
 						continue;
 					}
 					return {

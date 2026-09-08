@@ -84,3 +84,30 @@ test("restoration must not fake a success where the box excludes feasibility", (
 	assert.match(run.reason, /restoration_stalled|violation went from/);
 	assert.ok(run.history.some((entry) => entry.status === "restoration_stalled"));
 });
+
+test("eager restoration gets feasible first when the start is far outside the region", () => {
+	// Minimise x² + y² on the circle of radius 100, the constraint row scaled
+	// by 50 as the alignment's heading row is by its lever arm. From (95, 0)
+	// the start violates it by 250 against a region of 9.5. Under "eager" the
+	// run restores before its first subproblem and the history says so at
+	// iteration 0; under the default it does not restore at all (the
+	// subproblem never comes back fully relaxed here).
+	const evaluate = ([x, y]) => ({
+		f: 0.5 * (x * x + y * y), gradF: [x, y],
+		h: [50 * (Math.hypot(x, y) - 100)], Jh: [[50 * x / Math.hypot(x, y), 50 * y / Math.hypot(x, y)]], g: [], Jg: [],
+	});
+	const eager = solveSQP({ x0: [95, 0], evaluate, maxIterations: 100, restoration: "eager" });
+	assert.equal(eager.history[0]?.status, "restored", `eager: ${eager.history[0]?.status}`);
+	assert.equal(eager.history[0].iteration, 0);
+	assert.ok(eager.history[0].violationBefore > 200 && eager.history[0].violationAfter < 1e-9);
+	assert.ok(eager.ok, `${eager.status} ${eager.reason ?? ""}`);
+	assert.ok(Math.abs(Math.hypot(...eager.x) - 100) < 1e-6);
+
+	const lazy = solveSQP({ x0: [95, 0], evaluate, maxIterations: 100 });
+	assert.ok(!lazy.history.some((entry) => entry.status === "restored"), "on-verdict does not restore a start");
+
+	// a start inside the region is not restored, eager or not
+	const near = solveSQP({ x0: [99.5, 0], evaluate, maxIterations: 100, restoration: "eager" });
+	assert.notEqual(near.history[0]?.status, "restored");
+	assert.ok(near.ok, `${near.status}`);
+});
