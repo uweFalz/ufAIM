@@ -118,8 +118,10 @@ export function solveSQP({
 	// radii. A linearisation is only good for a step the size of its region;
 	// measured on 64 elements with the end pose 613 m off and a region of
 	// 23 m, the merit took a tenth of every step, the region shrank to 3 m, and
-	// the box-dominated subproblem ran out of iterations at the 29th step.
-	eagerViolationRadii = 10,
+	// the box-dominated subproblem ran out of iterations at the 29th step. One
+	// radius, not ten: on 71 elements the same happened from 239 against 70,
+	// while 41 elements from 83 against 91 solved.
+	eagerViolationRadii = 1,
 	trustGrowth = 2,
 	trustShrink = 0.5,
 	// How close to a bound counts as held by it. An exact test is too sharp: the

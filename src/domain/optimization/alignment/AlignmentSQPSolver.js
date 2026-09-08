@@ -104,6 +104,7 @@ export function solveAlignmentProblem({
 	penaltySafety,
 	restoration,
 	restorationLimit,
+	eagerViolationRadii,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
 	if (typeof buildAlignment !== "function") {
@@ -531,6 +532,7 @@ export function solveAlignmentProblem({
 		...(penaltySafety === undefined ? {} : { penaltySafety }),
 		...(restoration === undefined ? {} : { restoration }),
 		...(restorationLimit === undefined ? {} : { restorationLimit }),
+		...(eagerViolationRadii === undefined ? {} : { eagerViolationRadii }),
 	});
 	const run = {
 		...scaledRun,

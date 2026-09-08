@@ -106,8 +106,8 @@ test("eager restoration gets feasible first when the start is far outside the re
 	const lazy = solveSQP({ x0: [95, 0], evaluate, maxIterations: 100 });
 	assert.ok(!lazy.history.some((entry) => entry.status === "restored"), "on-verdict does not restore a start");
 
-	// a start inside the region is not restored, eager or not
-	const near = solveSQP({ x0: [99.5, 0], evaluate, maxIterations: 100, restoration: "eager" });
+	// a start whose violation is within the region is not restored, eager or not
+	const near = solveSQP({ x0: [99.9, 0], evaluate, maxIterations: 100, restoration: "eager" });
 	assert.notEqual(near.history[0]?.status, "restored");
 	assert.ok(near.ok, `${near.status}`);
 });
