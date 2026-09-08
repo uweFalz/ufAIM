@@ -100,6 +100,9 @@ export function solveSQP({
 	// the multiple of the identity the constraint-curvature estimate starts
 	// from when the Hessian is provided (see below)
 	structuredStart = 1e-4,
+	// the relative decrease of the objective a step has to achieve for the
+	// next subproblem to use the provided curvature again (Fletcher-Xu)
+	hybridSwitch = 0.2,
 	// Box trust region on the step. A linear objective gets its curvature only
 	// from the constraints, so the reduced Hessian can be genuinely tiny and the
 	// QP's Newton step correspondingly enormous - measured at |d| = 150 in a
@@ -192,6 +195,7 @@ export function solveSQP({
 	// the objective down in a fifth of the iterations and then could not close
 	// the end pose, rejecting every step at the finish.
 	let B = identityMatrix(n, structuredStart * initialHessianScale);
+	let hybridMode = hessianSource === "provided" ? "gauss-newton" : "bfgs";
 	const curvatureOf = (evaluated) => {
 		if (hessianSource !== "provided" || !evaluated.hessian) return null;
 		return evaluated.hessian.map((row, i) => row.map((value, j) => value + B[i][j]));
@@ -564,10 +568,29 @@ export function solveSQP({
 				(sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const s = trialState.x.map((value, i) => value - x[i]);
 		if (hessianSource === "provided" && trialState.state.hessian) {
-			const before = constraintGradient(state);
-			const yc = constraintGradient(trialState.state).map((value, i) => value - before[i]);
-			B = modifiedBfgsUpdate(B, s, yc);
-			H = curvatureOf(trialState.state);
+			// Fletcher-Xu: the provided curvature is the objective's Gauss-Newton
+			// part, good while the residuals fall and blind to their curvature
+			// once they do not. Measured on 64 elements: in the valley the
+			// subproblem predicted a decrease of 3e-4 a step and got 1e-8, a
+			// thousand full steps with the gradient halving every hundred. So
+			// the step decides. A step that took at least hybridSwitch of the
+			// objective keeps Gauss-Newton with the constraints' secant; one
+			// that did not updates the whole current matrix by BFGS on the
+			// Lagrangian, which learns what the residuals' curvature adds. The
+			// next large decrease hands back to Gauss-Newton.
+			const decrease = (state.f - trialState.state.f) / Math.max(Math.abs(state.f), 1e-300);
+			if (decrease >= hybridSwitch) {
+				const before = constraintGradient(state);
+				const yc = constraintGradient(trialState.state).map((value, i) => value - before[i]);
+				B = modifiedBfgsUpdate(B, s, yc);
+				H = curvatureOf(trialState.state);
+				hybridMode = "gauss-newton";
+			} else {
+				const before = lagrangeGradient(state);
+				const y = lagrangeGradient(trialState.state).map((value, i) => value - before[i]);
+				H = modifiedBfgsUpdate(H, s, y);
+				hybridMode = "bfgs";
+			}
 		} else {
 			const before = lagrangeGradient(state);
 			const y = lagrangeGradient(trialState.state).map((value, i) => value - before[i]);
@@ -586,6 +609,8 @@ export function solveSQP({
 			delta: step.delta,
 			radius,
 			qpIterations: step.qpIterations,
+			gradientScale,
+			hessian: hybridMode,
 			qpStatus: step.qpStatus,
 			activeRows: step.activeRows ?? [],
 			inequalities: Object.freeze((state.g ?? []).map((value, j) => Object.freeze({

@@ -185,11 +185,22 @@ export async function createTraScenario(source, {
 		length: i === 0 || (holdLast && i === last) || e.held ? "held" : "free",
 		...(e.type === "arc" ? { curvature: e.held ? "held" : "free" } : {}),
 	});
+	// The length perturbation sums to zero over the free lengths, so the start
+	// is as long as the truth and its end does not wander off by the share of
+	// the whole. Independent ±3 % per element had left a 110-element start
+	// 111 m short, and the margin that kept the points off the missing end
+	// put whole elements out of every point's sight: five exact zero
+	// eigenvalues of J'J on 64 elements, a valley the solver could not leave.
 	const jitter = noise(loaded.name);
+	const draws = trueElements.map((e, i) => ({ role: role(e, i), length: jitter(), curvature: e.type === "arc" ? jitter() : 0 }));
+	const freeLengths = draws.filter((d) => d.role.length === "free");
+	const meanDraw = freeLengths.reduce((sum, d) => sum + d.length, 0) / Math.max(1, freeLengths.length);
+	// centred, and rescaled so the largest shift is still `perturbation`
+	const widest = Math.max(1, ...freeLengths.map((d) => Math.abs(d.length - meanDraw)));
 	const startValues = trueElements.map((e, i) => {
-		const r = role(e, i);
-		const values = { length: r.length === "free" ? Math.max(elementFloor, e.length * (1 + perturbation * jitter())) : e.length };
-		if (e.type === "arc") values.curvature = r.curvature === "free" ? e.curvature * (1 + perturbation * jitter()) : e.curvature;
+		const { role: r, length: drawL, curvature: drawK } = draws[i];
+		const values = { length: r.length === "free" ? Math.max(elementFloor, e.length * (1 + perturbation * ((drawL - meanDraw) / widest))) : e.length };
+		if (e.type === "arc") values.curvature = r.curvature === "free" ? e.curvature * (1 + perturbation * drawK) : e.curvature;
 		return values;
 	});
 	if (!trueElements.some((e) => e.type === "arc" && !e.held)) {
@@ -205,12 +216,19 @@ export async function createTraScenario(source, {
 	// file. The cap of 60 was the projection's cost, and on 41 elements it left
 	// 60 points against 46 unknowns: a fit below the noise floor that walked a
 	// flat valley for a thousand iterations. Three points an element at least.
-	// And the start is perturbed by up to `perturbation` of every length, so it
-	// can be short by that share of the whole; a point that far from an end may
-	// have no foot on the start, and the kernel rightly refuses to fit it. The
-	// points keep that margin from both ends.
+	// The points keep clear of the ends only as far as the start's end misses
+	// the truth's: the length perturbation sums to zero, so that miss is the
+	// curvatures' alone, and an element every point can see is one the fit
+	// can determine.
 	const maxPoints = Math.max(60, 3 * trueElements.length);
-	const margin = Math.min(0.25 * truth.arcLength, Math.max(pointSpacing, perturbation * truth.arcLength));
+	// The start's end still wanders with the curvature perturbation - 13 m
+	// short on 11 km - and a point beyond the start's end has no foot on it.
+	// Only the longitudinal part of the miss matters: how far the truth's end
+	// lies ahead of the start's, along the start's end tangent. The margin
+	// covers one and a half times that, and never less than half a spacing.
+	const startEnd = chainOf(trueElements.map((e, i) => ({ ...e, ...startValues[i] }))).endPose;
+	const shortBy = (truthChain.endPose.x - startEnd.x) * Math.cos(startEnd.theta) + (truthChain.endPose.y - startEnd.y) * Math.sin(startEnd.theta);
+	const margin = Math.min(0.25 * truth.arcLength, Math.max(0.5 * pointSpacing, 1.5 * shortBy));
 	const span = truth.arcLength - 2 * margin;
 	const pointCount = Math.max(6, Math.min(maxPoints, Math.round(span / pointSpacing)));
 	const pointJitter = noise(loaded.name + ":points");

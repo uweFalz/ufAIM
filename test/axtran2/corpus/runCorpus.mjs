@@ -4,7 +4,7 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length] [--ramp bound|constraint] \
-//        [--iterations 200] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--json out.json]
+//        [--iterations 200] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -29,6 +29,8 @@ const maxIterations = Number(args.iterations ?? 200);
 const hessian = args.hessian ?? "bfgs";
 const restoration = args.restoration ?? "on-verdict";
 const structuredStart = args.structuredStart === undefined ? undefined : Number(args.structuredStart);
+const hybridSwitch = args.hybridSwitch === undefined ? undefined : Number(args.hybridSwitch);
+const lengthPrior = args.lengthPrior === undefined ? undefined : { sigma: Number(args.lengthPrior) };
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
 
 const trusted = [];
@@ -57,7 +59,7 @@ for (const { file, n } of trusted.slice(from, to)) {
 	for (const objective of objectives) {
 		const t0 = Date.now();
 		let run;
-		try { run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations, hessian, restoration, structuredStart }); }
+		try { run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations, hessian, restoration, structuredStart, hybridSwitch, lengthPrior }); }
 		catch (error) { console.log(`${rel(file).slice(-42).padEnd(42)} ${objective}: solver threw ${error.code ?? ""} ${error.message.slice(0, 60)}`); rows.push({ file: rel(file), n, objective, error: error.message }); continue; }
 		const d = run.diagnostics;
 		const variables = run.candidate?.variables ?? [];
