@@ -14,6 +14,7 @@ export function createAlignmentProfileViewModel(projection) {
 	}
 
 	return Object.freeze({
+		status: "projected",
 		alignmentId: projection.alignmentId,
 		revision: projection.revision,
 		cursor: projection.cursor,

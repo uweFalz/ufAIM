@@ -45,7 +45,13 @@ export function createAlignmentChangeProfileRefreshBridge({ store, profileSource
 	let started = false;
 	function refreshForChange(event) {
 		const expected = requireEvent(event, activeContext(store));
-		const operation = Promise.resolve().then(() => profileSource.refresh()).then((projection) => requireProjection(projection, expected, store));
+		const operation = Promise.resolve()
+			.then(() => profileSource.refresh())
+			.then((projection) => requireProjection(
+				projection ?? profileSource.getCurrentProjection?.(),
+				expected,
+				store
+			));
 		expected.detail.waitUntil(operation);
 		return operation;
 	}
