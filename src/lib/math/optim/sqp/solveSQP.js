@@ -180,11 +180,18 @@ export function solveSQP({
 		restorations += 1;
 		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance });
 		restorationSteps += restored.steps;
+		// A restoration that stalls short of the tolerance but inside the
+		// region is a start the solve can finish from; measured on 71 elements
+		// over 20 km, three steps took the violation from 140 to 3.7e-9 and the
+		// absolute 1e-9 then called that a failure. What the box genuinely
+		// excludes stays one: the residual there is a distance, not a rounding.
+		const withinRegion = restored.violationAfter <= eagerViolationRadii * radius;
 		history.push({
-			iteration, status: restored.ok ? "restored" : restored.status, restoration: restorations,
+			iteration, status: restored.ok || withinRegion ? "restored" : restored.status, restoration: restorations,
+			feasible: restored.ok,
 			steps: restored.steps, violationBefore: restored.violationBefore, violationAfter: restored.violationAfter,
 		});
-		if (!restored.ok) {
+		if (!restored.ok && !withinRegion) {
 			return {
 				ok: false, status: "restoration_failed", x: restored.x, state: restored.state, history,
 				iterations: iteration, restorationSteps,
