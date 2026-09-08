@@ -185,7 +185,11 @@ export function solveSQP({
 		// over 20 km, three steps took the violation from 140 to 3.7e-9 and the
 		// absolute 1e-9 then called that a failure. What the box genuinely
 		// excludes stays one: the residual there is a distance, not a rounding.
-		const withinRegion = restored.violationAfter <= eagerViolationRadii * radius;
+		// A restoration that did not move is not one, whatever the region says:
+		// measured on 110 elements, two of them returned in zero steps and were
+		// counted as restored. Progress is required as well as the region.
+		const withinRegion = restored.violationAfter <= eagerViolationRadii * radius
+			&& restored.violationAfter < restored.violationBefore;
 		history.push({
 			iteration, status: restored.ok || withinRegion ? "restored" : restored.status, restoration: restorations,
 			feasible: restored.ok,
