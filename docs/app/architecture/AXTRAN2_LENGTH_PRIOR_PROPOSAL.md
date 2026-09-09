@@ -1,6 +1,13 @@
 # AXTRAN2: the length prior as a question to the user journey
 
-A proposal, not a decision. It follows from the flat-valley finding
+**Decided 2026-09-09 (Uwe Falz): A.** The app's main journey keeps the plan,
+`lengthPrior` with σ = 5 % shown and editable (2 % for an as-built record,
+20 % for a sketch); B stays the explicit alternative; C waits for the
+lexicographic layer. The implementation in the app is a Delivery 1 task of
+its own; the solver side is complete. The text below is the proposal as it
+was put, with two paragraphs brought up to date.
+
+It follows from the flat-valley finding
 (`AXTRAN2_FLAT_VALLEY_FINDING.md`): the points fit cannot determine where a
 transition hands over to its neighbouring arc, and `lengthPrior` on the
 alignment solver - a residual (L − L₀)/(σ·L₀) per free length - turns that
@@ -24,12 +31,12 @@ construction, and only in directions the points do not see.
 
 No plan, or a plan not to be trusted. Then a prior toward L₀ is a prior
 toward whatever the start happened to be, which is not a statement anyone
-made. The honest verdict is the solver's `stationary` with the reason
-`objective_stalled`: the fit is complete within the data's resolution, and
-the report should name the directions the points did not determine - the
-transitions and their neighbours - rather than present the lengths as found.
-That naming is not built; the eigenvectors of J'J at the fit give it
-(finding, §1), and it would be a diagnostics field, not a change to the solve.
+made. There is no verdict for this case - a stall verdict was tried and
+rejected (finding, §3) - but there is the report: `diagnostics.determinacy`
+(#30) names the directions the points did not determine, each with its
+play, the transitions and their neighbours among them. The result should
+show that list beside the lengths, and say that on forty and more elements
+the solve runs to its budget without a verdict.
 
 ## C. The regulation's own answer
 
@@ -48,8 +55,8 @@ One question at the start of a fit, with three answers - keep my plan (and
 how sure am I: 2 / 5 / 20 %), measurements only, or rules where the
 measurements are silent - and one sentence in the result that says which
 was chosen and what it did. Everything else is already in the solver:
-`lengthPrior` for A, the stalled verdict for B, the lexicographic solver
-for C.
+`lengthPrior` for A, `diagnostics.determinacy` for B, the lexicographic
+solver for C.
 
 Recommendation: A as the default for the app's main journey (the user
 arrives with an alignment), σ = 5 % shown and editable; B as the explicit
