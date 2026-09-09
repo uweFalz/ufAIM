@@ -1425,6 +1425,7 @@
 								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
 								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
+								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nicht modelliert">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option></select></label>
 								<button id="gwbBogenCsv" type="button" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
 								<button id="gwbAbschnittCsv" type="button" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
 								<div id="diagramPresentation" aria-label="Ansicht">
@@ -38762,6 +38763,9 @@ xlsx/xlsx.mjs:
 			let planningFiles = [];
 			let selectedEntry = null;
 			const bulkSelectedEntries = new Set();
+			// The Weiche the IVHW draws. Set by the Outbox's "Weichen (aus Geometrie
+			// erkannt)" rows, dropped as soon as something outside it is selected.
+			let activeJunction = null;
 			let selectedPlanningFile = null;
 			let planningPreviewUrl = null;
 			let fullMapViewBox = null;
@@ -38790,11 +38794,15 @@ xlsx/xlsx.mjs:
 			// goes on the Ausschussliste, not just colored differently (Uwe's cut).
 			const PRECISION_REJECT_THRESHOLD = 0.003;
 			// Überhöhungsfehlbetrag in the speed formula v = sqrt(r (u + uf) / 11.8):
-			// 800.0110 Tab. 5, zul uf = 130 mm is the Ermessensgrenze for Gleis
-			// (150 mm only with r >= 650 m and vehicle approval; Neigetechnik is a
-			// class of its own). The vehicle class is not checked -- the footnote
-			// says so.
+			// 800.0110 Tab. 5, zul uf = 130 mm is the Ermessensgrenze for Gleis;
+			// 150 mm only for vehicles with the corresponding Zulassung (Fn. 18)
+			// and r >= 650 m -- below 650 m the 150 is a Zustimmungswert and not
+			// offered. Neigetechnik (~300 mm) is a class of its own, not modelled.
+			// The vehicle class is in no geometry file, so the toolbar select sets
+			// it; "Regel" is the default.
 			const CANT_DEFICIENCY_MM = 130;
+			const CANT_DEFICIENCY_ZULASSUNG_MM = 150;
+			const CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M = 650;
 			// Cant a Bogen may be given, 800.0110 7 (1) and Tab. 4: not below 20 mm,
 			// multiples of 5, Ermessensgrenze 160 mm on Schotteroberbau, 170 mm on
 			// Fester Fahrbahn (180 mm is the EBO limit, Zustimmungswert -- not
@@ -38825,6 +38833,23 @@ xlsx/xlsx.mjs:
 			// is a design consequence, not a speed limit, so it is reported on the
 			// proposal line and not enforced.
 			const KORBBOGEN_MAX_DELTA_UF_MM = 40;
+			// Krümmungswechsel ohne Übergangsbogen, 800.0110 9 (3) and Tab. 10: the
+			// Vergleichsradius rW (Gerade/Kreisbogen: r; Korbbogen: r1 r2 / (r1 - r2);
+			// Gegenbogen: r1 r2 / (r1 + r2)) may go down to the Ermessensgrenze of
+			// Tab. 10 column 3 (Gleise und Weichen), linear between the rows. Below
+			// 40 km/h the table carries footnoted special values (150 m, Gegenbogen
+			// 75/100 m), 150 is used; above 200 km/h the Zentrale decides -- the
+			// 200 km/h value is used and the footnote says so.
+			const VERGLEICHSRADIUS_ERMESSEN_M = { 25: 150, 30: 150, 40: 178, 50: 278, 60: 400, 70: 545, 80: 710, 90: 900, 100: 1110, 110: 1410, 120: 1745, 130: 2130, 140: 2575, 150: 3085, 160: 3675, 170: 4350, 180: 5125, 190: 6000, 200: 7000 };
+			function vergleichsradiusMinM(speedKmh) {
+				const speeds = Object.keys(VERGLEICHSRADIUS_ERMESSEN_M).map(Number).sort((a, b) => a - b);
+				const v = Math.min(Math.max(speedKmh, speeds[0]), speeds[speeds.length - 1]);
+				const upper = speeds.find((candidate) => candidate >= v);
+				const lower = [...speeds].reverse().find((candidate) => candidate <= v);
+				if (upper === lower) return VERGLEICHSRADIUS_ERMESSEN_M[upper];
+				const t = (v - lower) / (upper - lower);
+				return VERGLEICHSRADIUS_ERMESSEN_M[lower] + t * (VERGLEICHSRADIUS_ERMESSEN_M[upper] - VERGLEICHSRADIUS_ERMESSEN_M[lower]);
+			}
 			// Cap for both speed bands: 800.0110's tables end at 300 km/h and no
 			// German line runs or plans beyond it (Nuernberg-Ingolstadt-Muenchen);
 			// China's ~400 is irrelevant to a DB tool.
@@ -38953,12 +38978,19 @@ xlsx/xlsx.mjs:
 			const gwbLineSpeedInput = document.getElementById("gwbLineSpeed");
 			const gwbBrakeDistanceInput = document.getElementById("gwbBrakeDistance");
 			const gwbOberbauSelect = document.getElementById("gwbOberbau");
+			const gwbFahrzeugSelect = document.getElementById("gwbFahrzeug");
 			function regelbremswegM() {
 				const value = Number(gwbBrakeDistanceInput?.value);
 				return Number.isFinite(value) && value > 0 ? value : REGELBREMSWEG_DEFAULT_M;
 			}
 			function oberbauKey() {
 				return gwbOberbauSelect && gwbOberbauSelect.value in CANT_MAX_BY_OBERBAU_MM ? gwbOberbauSelect.value : "Schotter";
+			}
+			function fahrzeugKey() {
+				return gwbFahrzeugSelect?.value === "Zulassung" ? "Zulassung" : "Regel";
+			}
+			function cantDeficiencyMm(radiusM) {
+				return fahrzeugKey() === "Zulassung" && radiusM >= CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M ? CANT_DEFICIENCY_ZULASSUNG_MM : CANT_DEFICIENCY_MM;
 			}
 			function cantMaxMm() {
 				return CANT_MAX_BY_OBERBAU_MM[oberbauKey()];
@@ -39061,7 +39093,10 @@ xlsx/xlsx.mjs:
 			// guess: it is the same physical reference, just not carried on this object.
 			function siblingAlignmentStrip(entry) {
 				if (entry?.item?.kind === "alignment") return null;
-				const alignment = relatedDiagramEntries(entry).entries.find((candidate) => candidate.item.kind === "alignment");
+				// The anchor is the alignment this object references directly; the
+				// closure's first alignment may be the km line since the root change.
+				const anchor = relatedDiagramEntries(entry).anchor;
+				const alignment = anchor?.item?.kind === "alignment" ? anchor : null;
 				return alignment ? ownCoordinateStrip(alignment) : null;
 			}
 
@@ -39693,8 +39728,19 @@ xlsx/xlsx.mjs:
 				// A101720R's cant only surfaced once this closure ran two hops instead
 				// of one). GND/VermEsn relations are already flat (one hop), so this is
 				// a no-op for them -- confirmed no change in entry/band counts there.
-				const linkedIds = new Set([anchor.item.id]);
-				const frontier = [anchor.item.id];
+				// A landXML Gleis references its Kilometrierungslinie, and the other
+				// Gleis of the Strecke references the same line. Selecting one Gleis
+				// must still show the whole 7L, so the closure starts at the line the
+				// anchor references (GND/VermEsn have no alignment->alignment
+				// relations, so this is a no-op for them).
+				const outgoing = relations.find((candidate) => candidate.type === "stationReference" && candidate.fromId === anchor.item.id);
+				const referenced = outgoing ? allEntries.find((candidate) => candidate.item.id === outgoing.toId) : null;
+				const root = referenced?.item.kind === "alignment" ? referenced : anchor;
+				// Both start the walk: the anchor's own profile/cant reference the
+				// anchor, not the root, and the anchor is already "linked" so the walk
+				// from the root alone would never look at its referrers.
+				const linkedIds = new Set([anchor.item.id, root.item.id]);
+				const frontier = [...new Set([root.item.id, anchor.item.id])];
 				while (frontier.length) {
 					const currentId = frontier.pop();
 					for (const relation of relations) {
@@ -39710,6 +39756,14 @@ xlsx/xlsx.mjs:
 				};
 			}
 
+			// Objects that reference `alignment` directly (its own profile, cant,
+			// staEq) -- not the transitive 7L closure, which since the km-line root
+			// also holds the other Gleis's objects.
+			function referencingEntries(alignment) {
+				const relations = [...loadedFiles.flatMap((loaded) => loaded.relations), ...stemPairedRelations()];
+				const ids = new Set(relations.filter((relation) => relation.type === "stationReference" && relation.toId === alignment.item.id).map((relation) => relation.fromId));
+				return allViewerEntries().filter((candidate) => ids.has(candidate.item.id));
+			}
 			function sevenLineSide(entry) {
 				const gndSequence = gndSequenceForEntry(entry);
 				const strRikz = String(gndSequence?.strRikz ?? "").trim();
@@ -39724,6 +39778,14 @@ xlsx/xlsx.mjs:
 				if (String(preservedRole).includes("Right")) return "right";
 				if (String(preservedRole).includes("Left")) return "left";
 				if (preservedRole === "curvatureKilometer") return "kilometer";
+				// landXML carries the role in the Alignment desc ("Kilometrierungslinie
+				// 1720", "Richtungsgleis 1720 (DR0)", "Gegenrichtungsgleis 1720 (DR0)").
+				// Same convention as GND STRRIKZ: Richtungsgleis = 1 = rechts,
+				// Gegenrichtungsgleis = 2 = links. "gegen" must be tested first.
+				const desc = landXmlAlignmentDesc(entry).toLocaleLowerCase("de-DE");
+				if (desc.includes("kilometrierungslinie")) return "kilometer";
+				if (desc.includes("gegenrichtungsgleis")) return "left";
+				if (desc.includes("richtungsgleis")) return "right";
 				const direction = String(geoFrameInfo(entry)?.direction ?? "").toLocaleLowerCase("de-DE");
 				const name = objectDisplayName(entry).toLocaleLowerCase("de-DE");
 				if (direction.includes("kilometer") || /(?:^|[\s_.-])km(?:$|[\s_.-])/.test(name)) return "kilometer";
@@ -39749,6 +39811,18 @@ xlsx/xlsx.mjs:
 					.filter(Number.isFinite);
 			}
 
+			// Several segments of one side become one series with a gap (new
+			// sub-path) at every segment start -- the single-track stretch between
+			// two left-track segments must stay empty, not be bridged by a line.
+			function concatSeries(seriesList) {
+				return seriesList.flatMap((series) => series.map((point, index) => index === 0 ? { ...point, gap: true } : point));
+			}
+			function intersectRange(a, b) {
+				if (!a) return b;
+				if (!b) return a;
+				const range = { from: Math.max(a.from, b.from), to: Math.min(a.to, b.to) };
+				return range.to > range.from ? range : null;
+			}
 			function clipPointsToRange(points, range) {
 				if (!range) return points;
 				const from = range.from - 5;
@@ -39772,7 +39846,7 @@ xlsx/xlsx.mjs:
 			// (Kruemmung 0, r unendlich) liefern aus dieser Formel keine Grenze und
 			// werden als Luecke dargestellt statt einen Wert zu erfinden. cantPoints
 			// must be in mm (cantSeriesMm). Deckel und Stufen: Annahmen-Block oben.
-			function speedLimitSeries(curvaturePoints, cantPoints, cantDeficiencyMm = CANT_DEFICIENCY_MM) {
+			function speedLimitSeries(curvaturePoints, cantPoints) {
 				const series = [];
 				let gap = false;
 				for (const point of curvaturePoints) {
@@ -39780,7 +39854,7 @@ xlsx/xlsx.mjs:
 					if (!(curvature > 1e-9)) { gap = true; continue; }
 					const radius = 1 / curvature;
 					const cant = Math.abs(interpolateSeriesAt(cantPoints, point.x));
-					const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cant + cantDeficiencyMm) / 11.8), V_MAX_DE_KMH));
+					const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cant + cantDeficiencyMm(radius)) / 11.8), V_MAX_DE_KMH));
 					if (!Number.isFinite(speed)) continue;
 					series.push(gap ? { x: point.x, y: speed, gap: true } : { x: point.x, y: speed });
 					gap = false;
@@ -39813,7 +39887,7 @@ xlsx/xlsx.mjs:
 			// is 800.0110 9 / Tab. 10 Vergleichsradius, not modelled). Reads only
 			// the interpreted elements and the mm cant series; writes nothing back.
 			const GWB_VARIANTS = ["Klothoide", "Bloss"];
-			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Fahrzeugklasse nicht geprüft) · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · Platz für die Bloss-Verlängerung, Vergleichsradius (Tab. 10) und Fahrdynamik der Stufen nicht geprüft · Diagnose, kein Entwurf`;
+			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m (Fahrzeug mit Zulassung, Fn. 18), sonst ${CANT_DEFICIENCY_MM}` : `${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Regelfahrzeug)`} · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · ohne Übergangsbogen gegen den Vergleichsradius (9 (3), Tab. 10 Ermessensgrenze; über 200 km/h der Wert für 200) · Platz für die Bloss-Verlängerung nicht geprüft · Diagnose, kein Entwurf`;
 			function gwbElements(entry) {
 				const list = [];
 				const signOf = (radius, element) => radius < 0 ? -1 : radius > 0 ? curveRotationSign(element) : 0;
@@ -39828,7 +39902,8 @@ xlsx/xlsx.mjs:
 					const rawEnd = element.type === "Line" ? 0 : numberValue(element.radius ?? element.radiusEnd);
 					list.push({
 						type: element.type,
-						spiType: element.type === "Spiral" ? /bloss/i.test(String(element.spiType ?? "")) ? "Bloss" : String(element.spiType || "Klothoide") : "",
+						// landXML spells it "clothoid"; the Ril tables and the PI say Klothoide.
+						spiType: element.type === "Spiral" ? /bloss/i.test(String(element.spiType ?? "")) ? "Bloss" : /^\s*$|cloth|kloth/i.test(String(element.spiType ?? "")) ? "Klothoide" : String(element.spiType) : "",
 						s0, s1, length,
 						radiusStart: Number.isFinite(rawStart) ? Math.abs(rawStart) : 0,
 						radiusEnd: Number.isFinite(rawEnd) ? Math.abs(rawEnd) : 0,
@@ -39846,7 +39921,7 @@ xlsx/xlsx.mjs:
 				const member = list[index];
 				const neighbour = list[index + step];
 				const cantAt = (x) => Math.abs(interpolateSeriesAt(cantMm, x));
-				const finish = (side) => ({ ...side, vMax: side.radius > 0 ? roundDownToSpeedStep(Math.min(Math.sqrt(side.radius * (side.cantMm + CANT_DEFICIENCY_MM) / 11.8), V_MAX_DE_KMH)) : Infinity });
+				const finish = (side) => ({ ...side, vMax: side.radius > 0 ? roundDownToSpeedStep(Math.min(Math.sqrt(side.radius * (side.cantMm + cantDeficiencyMm(side.radius)) / 11.8), V_MAX_DE_KMH)) : Infinity });
 				if (!neighbour) return finish({ label, kind: "Ende", existing: "", lU: 0, cantMm: cantAt(step < 0 ? member.s0 : member.s1), radius: 0, opposite: false });
 				if (neighbour.type === "Spiral") {
 					const farRadius = step < 0 ? neighbour.radiusStart : neighbour.radiusEnd;
@@ -39864,7 +39939,15 @@ xlsx/xlsx.mjs:
 				if (v > V_MAX_DE_KMH) return `Deckel ${V_MAX_DE_KMH} km/h`;
 				const member = unit.members[memberIndex];
 				const uf = 11.8 * v * v / member.radius - u;
-				if (uf > CANT_DEFICIENCY_MM + 1e-9) return `Bogen r ${Math.round(member.radius)} m (uf > ${CANT_DEFICIENCY_MM} mm)`;
+				const ufLimit = cantDeficiencyMm(member.radius);
+				if (uf > ufLimit + 1e-9) return `Bogen r ${Math.round(member.radius)} m (uf > ${ufLimit} mm)`;
+				// Inside a Korbbogen the radii meet without Übergangsbogen (9 (3)).
+				for (const other of [unit.members[memberIndex - 1], unit.members[memberIndex + 1]]) {
+					if (!other || Math.abs(other.radius - member.radius) < 1e-9) continue;
+					const rW = member.radius * other.radius / Math.abs(member.radius - other.radius);
+					const rWMin = vergleichsradiusMinM(v);
+					if (rW < rWMin) return `Korbbogen r ${Math.round(member.radius)}/${Math.round(other.radius)} m: rW ${Math.round(rW)} m < ${Math.round(rWMin)} m (Tab. 10)`;
+				}
 				const sides = unit.sides.filter((side, sideIndex) => sideIndex === 0 ? memberIndex === 0 : memberIndex === unit.members.length - 1);
 				for (const side of sides) {
 					const vSide = Math.min(v, side.vMax);
@@ -39878,7 +39961,17 @@ xlsx/xlsx.mjs:
 						const gradient = (type === "Bloss" ? BLOSS_GRADIENT_SHARE : 1) * lR * 1000 / deltaU;
 						if (gradient < RAMP_GRADIENT_MIN_M) return `${side.label}: Rampenneigung 1:${Math.round(gradient)} steiler als 1:${RAMP_GRADIENT_MIN_M}`;
 					}
-					if (!(lR > 0)) continue;
+					if (!(lR > 0)) {
+						// No Übergangsbogen on this side: the Krümmungswechsel is judged by
+						// its Vergleichsradius (9 (3), Tab. 10) at the speed it is run at.
+						if (side.kind === "Ende") continue;
+						const rW = side.radius > 0
+							? member.radius * side.radius / (side.opposite ? member.radius + side.radius : Math.max(Math.abs(member.radius - side.radius), 1e-9))
+							: member.radius;
+						const rWMin = vergleichsradiusMinM(vSide);
+						if (rW < rWMin) return `${side.label}: ohne Übergangsbogen, rW ${Math.round(rW)} m < ${Math.round(rWMin)} m (Tab. 10)`;
+						continue;
+					}
 					// Both Fehlbeträge at the speed the transition is actually run at.
 					const ufHere = 11.8 * vSide * vSide / member.radius - u;
 					const ufSide = side.radius > 0 ? 11.8 * vSide * vSide / side.radius - side.cantMm : 0;
@@ -39932,7 +40025,7 @@ xlsx/xlsx.mjs:
 					const sides = [gwbSide(list, first, -1, cantMm, "Anfang"), gwbSide(list, last, 1, cantMm, "Ende")];
 					const unit = { from, to, radii, radiusMin: Math.min(...radii), radiusMax: Math.max(...radii), uToday, sides };
 					unit.members = members.map((member) => ({ s0: member.s0, s1: member.s1, radius: member.radiusStart }));
-					unit.memberSpeedsToday = unit.members.map((member) => roundDownToSpeedStep(Math.min(Math.sqrt(member.radius * (uToday + CANT_DEFICIENCY_MM) / 11.8), V_MAX_DE_KMH)));
+					unit.memberSpeedsToday = unit.members.map((member) => roundDownToSpeedStep(Math.min(Math.sqrt(member.radius * (uToday + cantDeficiencyMm(member.radius)) / 11.8), V_MAX_DE_KMH)));
 					unit.vToday = Math.min(...unit.memberSpeedsToday);
 					unit.todayCheck = gwbBest(unit, "Klothoide", [uToday]);
 					unit.proposal = null;
@@ -40066,7 +40159,7 @@ xlsx/xlsx.mjs:
 				return { sections, trims, vLine };
 			}
 			function sectionSeries(result) {
-				return (result?.sections ?? []).flatMap((section) => [{ x: section.from, y: section.v }, { x: section.to, y: section.v }]);
+				return (result?.sections ?? []).flatMap((section) => [section.gap ? { x: section.from, y: section.v, gap: true } : { x: section.from, y: section.v }, { x: section.to, y: section.v }]);
 			}
 			function sectionLines(prefix, today, proposal) {
 				if (!proposal) return [];
@@ -40085,13 +40178,30 @@ xlsx/xlsx.mjs:
 			// diagnostic. Second: the same two cases as VzG-like Abschnitte over
 			// the whole range. The assumptions and the per-Bogen lines go into the
 			// footnotes under the figure, not into the label.
-			function speedDiagnosticBand(prefix, alignmentEntry, cantEntry, selectedRange, band) {
-				const curvaturePoints = curvatureSeries(alignmentEntry);
-				const cantPoints = cantEntry ? cantSeriesMm(cantEntry) : [];
-				const points = clipPointsToRange(speedLimitSeries(curvaturePoints, cantPoints), selectedRange);
-				const units = deriveGwbProposal(alignmentEntry, cantEntry, selectedRange);
-				const today = deriveSpeedSections(units, selectedRange, lineSpeedKmh(), false);
-				const proposal = deriveSpeedSections(units, selectedRange, lineSpeedKmh(), true);
+			// Sections of several segments of one side, concatenated; the first
+			// section of every segment opens a new sub-path so the stretch where
+			// the Gleis does not exist stays empty.
+			function mergeSectionResults(results) {
+				const present = results.filter(Boolean);
+				if (!present.length) return null;
+				return {
+					vLine: present[0].vLine,
+					sections: present.flatMap((result) => result.sections.map((section, index) => index === 0 ? { ...section, gap: true } : section)),
+					trims: present.flatMap((result) => result.trims),
+				};
+			}
+			function speedDiagnosticBand(prefix, segments, selectedRange, band) {
+				const live = segments
+					.map((segment) => ({ ...segment, range: intersectRange(segment.range, selectedRange) }))
+					.filter((segment) => segment.alignment && (segment.range || !selectedRange));
+				const points = clipPointsToRange(concatSeries(live.map((segment) => speedLimitSeries(curvatureSeries(segment.alignment), segment.cant ? cantSeriesMm(segment.cant) : []))), selectedRange);
+				const perSegment = live.map((segment) => {
+					const units = deriveGwbProposal(segment.alignment, segment.cant, segment.range);
+					return { units, today: deriveSpeedSections(units, segment.range, lineSpeedKmh(), false), proposal: deriveSpeedSections(units, segment.range, lineSpeedKmh(), true) };
+				});
+				const units = perSegment.flatMap((part) => part.units);
+				const today = mergeSectionResults(perSegment.map((part) => part.today));
+				const proposal = mergeSectionResults(perSegment.map((part) => part.proposal));
 				return [
 					band(`${prefix} · zul. v — / GWB-Vorschlag ┄ [km/h]`, "diagram-speed", points, {
 						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
@@ -40169,8 +40279,28 @@ xlsx/xlsx.mjs:
 				const referenceRequired = gndRouteTrackNeedsReference || (!entries.some((candidate) => gndSequenceForEntry(candidate)) && twoTrack && isValidRouteNumber(selectedFrame?.track));
 				const equations = bySide.kilometer.find((candidate) => candidate.item.kind === "staEq")
 					?? entries.find((candidate) => candidate.item.kind === "staEq");
+				// A side is not one alignment: a Strecke that starts two-track, runs
+				// single-track and becomes two-track again (SCx_1720.xml: A101720L
+				// km 210,7-223,1 and A101720M km 228,6-273,0 are both the
+				// Gegenrichtungsgleis) has several alignments on the same side, each
+				// covering its own km range. segments(side) lists them in km order,
+				// each paired with the profile/cant that references it directly; a
+				// side with a single alignment keeps the old "first of that kind"
+				// pairing so GND/TRA groups without explicit relations still resolve.
+				const segments = (side) => {
+					const alignments = bySide[side]
+						.filter((candidate) => candidate.item.kind === "alignment")
+						.map((alignment) => ({ alignment, range: stationRangeForEntry(alignment) }))
+						.sort((a, b) => (a.range?.from ?? 0) - (b.range?.from ?? 0));
+					return alignments.map((segment) => {
+						const own = referencingEntries(segment.alignment);
+						const pick = (kind) => bySide[side].find((candidate) => candidate.item.kind === kind && own.includes(candidate))
+							?? (alignments.length === 1 ? first(side, kind) : null);
+						return { ...segment, profile: pick("profile"), cant: pick("cant") };
+					});
+				};
 				return {
-					anchor, entries, bySide, first, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations,
+					anchor, entries, bySide, first, segments, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations,
 					hasUnknown: bySide.unknown.length > 0,
 					missingKilometerLine: referenceRequired && !kmAlignment,
 				};
@@ -40185,7 +40315,7 @@ xlsx/xlsx.mjs:
 			// IVMG · Trassenplan rows for the assigned sides: Gradiente, Überhöhung,
 			// Krümmung per Gleis plus the Kilometerlinie's curvature.
 			function deriveTrassenplanBands(assignment) {
-				const { first, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations } = assignment;
+				const { first, segments, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations } = assignment;
 				const definitions = [
 					["right", "profile", "Rechtes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
@@ -40197,11 +40327,15 @@ xlsx/xlsx.mjs:
 				];
 				const bands = [];
 				for (const [side, kind, label, className, valueKeys] of definitions) {
-					const candidate = first(side, kind);
-					const requiredMissing = side === "kilometer" && referenceRequired && !candidate;
+					const sideSegments = segments(side);
+					const loose = sideSegments.length ? null : first(side, kind);
+					const requiredMissing = side === "kilometer" && referenceRequired && !kmAlignment;
 					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired);
 					if (!sideVisible) continue;
-					const points = clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : pointSeries(candidate, valueKeys), selectedRange);
+					const seriesOf = (alignment, profile, cant) => kind === "alignment" ? curvatureSeries(alignment) : kind === "cant" ? (cant ? cantSeriesMm(cant) : []) : (profile ? pointSeries(profile, valueKeys) : []);
+					const points = clipPointsToRange(loose
+						? seriesOf(loose, loose, loose)
+						: concatSeries(sideSegments.map((segment) => seriesOf(segment.alignment, segment.profile, segment.cant))), selectedRange);
 					bands.push(makeBand(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
@@ -40211,15 +40345,17 @@ xlsx/xlsx.mjs:
 			}
 
 			// GWB · zul. v / Potenzial for the assigned sides.
+			// GWB only for Gleise: the Kilometerlinie carries no train, so it gets
+			// no speed band, and each side's segments are one band with gaps.
 			function deriveSpeedBands(assignment) {
-				const { first, selectedRange, rightPresent, leftPresent } = assignment;
+				const { segments, selectedRange, rightPresent, leftPresent } = assignment;
 				const bands = [];
 				for (const side of ["left", "right"]) {
 					if (side === "left" && !leftPresent) continue;
 					if (side === "right" && !rightPresent) continue;
-					const curvatureCandidate = first(side, "alignment");
-					if (!curvatureCandidate) continue;
-					bands.push(...speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, curvatureCandidate, first(side, "cant"), selectedRange, makeBand));
+					const sideSegments = segments(side);
+					if (!sideSegments.length) continue;
+					bands.push(...speedDiagnosticBand(`${side === "left" ? "Linkes" : "Rechtes"} Gleis`, sideSegments, selectedRange, makeBand));
 				}
 				return bands;
 			}
@@ -40247,7 +40383,7 @@ xlsx/xlsx.mjs:
 				const { first, selectedRange } = assignment;
 				const curvatureCandidate = first("unknown", "alignment");
 				if (!curvatureCandidate) return [];
-				return speedDiagnosticBand("Gleis · Zuordnung offen", curvatureCandidate, first("unknown", "cant"), selectedRange, makeBand);
+				return speedDiagnosticBand("Gleis · Zuordnung offen", [{ alignment: curvatureCandidate, cant: first("unknown", "cant"), range: stationRangeForEntry(curvatureCandidate) }], selectedRange, makeBand);
 			}
 
 			function sevenLineTracks(entry) {
@@ -40528,7 +40664,7 @@ xlsx/xlsx.mjs:
 					y += ivhw.trackData
 						? drawIvhwPlot(diagram, y, ivhw)
 						: drawEmptyFigure(diagram, y, ivhw.note);
-					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis: Bogengrenzen (zul. v — / Vorschlag ┄) und Abschnitte (heute — / Vorschlag ┄) · Ril 800.0110 V3.0 (2021) / 457.0201 · Diagnose, kein Entwurf");
+					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis Bogengrenzen und Abschnitte · heute — / Vorschlag ┄ · Ril 800.0110 (2021) / 457.0201 · Diagnose");
 					y += gwbTracks.length
 						? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
 						: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
@@ -40623,12 +40759,18 @@ xlsx/xlsx.mjs:
 
 			// Datenteil des Weichenhöhenplans ohne DOM-Nebenwirkungen: liefert entweder
 			// { note } (leer, mit Grund) oder { trackData, subtitle, multiTrack }.
+			// The IVHW is a Weichenhöhenplan (Ril 883.5240): rails of the Gleise
+			// meeting at one Weiche over a shared station. It belongs to the Weiche,
+			// not to the selected Streckengleis -- those live in IVMG and GWB -- so
+			// it only draws for a junction picked in the Outbox.
 			function buildIvhwData(entry) {
 				if (!entry || entry.item?.kind !== "alignment") {
 					return { note: "kein Gleis ausgewählt", subtitle: "" };
 				}
-				const additional = [...bulkSelectedEntries].filter((candidate) => candidate !== entry && candidate.item?.kind === "alignment");
-				const tracks = [entry, ...additional];
+				if (!activeJunction) {
+					return { note: "gehört zur Weiche · in der Outbox unter „Weichen (aus Geometrie erkannt)“ wählen", subtitle: "Streckengleise: IVMG und GWB" };
+				}
+				const tracks = activeJunction.entries.filter((candidate) => candidate.item?.kind === "alignment");
 				const multiTrack = tracks.length > 1;
 
 				function stationOf(point) {
@@ -40650,9 +40792,9 @@ xlsx/xlsx.mjs:
 				// Ril 885.1103 (Musterplan liegt nicht vor). Bis geklärt: neutral als
 				// Schiene A/B beschriftet, A = Gradiente, B = Gradiente + Überhöhung.
 				const trackData = tracks.map((track) => {
-					const related = relatedDiagramEntries(track);
-					const profile = related.entries.find((candidate) => candidate.item.kind === "profile");
-					const cant = related.entries.find((candidate) => candidate.item.kind === "cant");
+					const own = referencingEntries(track);
+					const profile = own.find((candidate) => candidate.item.kind === "profile");
+					const cant = own.find((candidate) => candidate.item.kind === "cant");
 					const zSeries = profile ? seriesFor(profile, ["elevation", "height", "z"]) : [];
 					const uSeries = cant ? seriesFor(cant, CANT_VALUE_KEYS).map((point) => ({ x: point.x, y: cantMillimetres(point.raw) })) : [];
 					const railA = zSeries;
@@ -41397,7 +41539,7 @@ xlsx/xlsx.mjs:
 				const lines = [
 					`GWB-Vorschlag je Bogen (Diagnose, kein Entwurf) - ${objectDisplayName(entry)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
-					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${CANT_DEFICIENCY_MM} mm (Tab. 5), u ${CANT_MIN_MM}..${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; nicht geprueft: Platz fuer die Bloss-Verlaengerung, Vergleichsradius (Tab. 10), Fahrzeugklasse`,
+					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m, sonst ${CANT_DEFICIENCY_MM}` : CANT_DEFICIENCY_MM + " mm"} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); nicht geprueft: Platz fuer die Bloss-Verlaengerung`,
 					"",
 					["Gleis", "km_von", "km_bis", "Radius_m", "u_heute_mm", "v_heute_kmh", "Bestand_haltbar_kmh", "Bestand_Grenze", "u_Vorschlag_mm", "v_Vorschlag_kmh", "Variante", "Anfang_Uebergangsbogen", "Anfang_Laenge_heute_m", "Anfang_Laenge_Vorschlag_m", "Ende_Uebergangsbogen", "Ende_Laenge_heute_m", "Ende_Laenge_Vorschlag_m", "Grenze_danach", "Korbbogen_Hinweis", "Potenzial"].join(";"),
 				];
@@ -42126,6 +42268,7 @@ xlsx/xlsx.mjs:
 				clearPlanningPreview();
 				selectedPlanningFile = null;
 				selectedEntry = entry;
+				if (activeJunction && !activeJunction.entries.includes(entry)) activeJunction = null;
 				for (let parent = button?.closest("details"); parent; parent = parent.parentElement?.closest("details")) parent.open = true;
 				for (const candidate of tablesNav.querySelectorAll("button")) {
 					candidate.classList.toggle("selected", candidate === button);
@@ -42758,6 +42901,7 @@ xlsx/xlsx.mjs:
 			}
 
 			function activateJunctionCluster(junction) {
+				activeJunction = junction;
 				bulkSelectedEntries.clear();
 				for (const entry of junction.entries) bulkSelectedEntries.add(entry);
 				renderDiagram();
@@ -43238,8 +43382,11 @@ xlsx/xlsx.mjs:
 				const sameTrack = frame ? allViewerEntries().filter((candidate) => geoFrameInfo(candidate)?.track === frame.track) : relatedDiagramEntries(entry).entries;
 				const role = sevenLineRole(entry);
 				const side = role.includes("Right") ? "Right" : role.includes("Left") ? "Left" : null;
-				const profile = side ? sameTrack.find((candidate) => sevenLineRole(candidate) === `gradient${side}`) : null;
-				const cant = side ? sameTrack.find((candidate) => sevenLineRole(candidate) === `cant${side}`) : null;
+				// Prefer what references this alignment directly; a side can hold
+				// several segments, each with its own profile and cant.
+				const own = referencingEntries(entry);
+				const profile = side ? own.find((candidate) => candidate.item.kind === "profile") ?? sameTrack.find((candidate) => sevenLineRole(candidate) === `gradient${side}`) : null;
+				const cant = side ? own.find((candidate) => candidate.item.kind === "cant") ?? sameTrack.find((candidate) => sevenLineRole(candidate) === `cant${side}`) : null;
 				const equations = role === "curvatureKilometer" ? sameTrack.find((candidate) => candidate.item.kind === "staEq") : null;
 				const profilePoints = profile?.item?.payload?.points ?? [];
 				const cantPoints = cant?.item?.payload?.points ?? [];
@@ -43505,7 +43652,9 @@ xlsx/xlsx.mjs:
 					const pairs = landXmlStationMapping(target, referencePolyline);
 					if (pairs.length < 2) continue;
 					applyLandXmlStationMapping(target, pairs);
-					for (const sibling of relatedDiagramEntries(target).entries) {
+					// Only this alignment's own profile/cant -- the 7L closure would also
+					// hand over the other Gleis's objects and map them twice.
+					for (const sibling of referencingEntries(target)) {
 						if (sibling.item.kind === "profile" || sibling.item.kind === "cant") {
 							applyLandXmlStationMappingToPoints(sibling, pairs);
 						}
@@ -43837,7 +43986,7 @@ xlsx/xlsx.mjs:
 			for (const button of diagramPresentationButtons) {
 				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
-			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect]) control.addEventListener("change", () => renderDiagram());
+			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect]) control.addEventListener("change", () => renderDiagram());
 			gwbBogenCsvButton.addEventListener("click", () => downloadCsv(`gwb-boegen-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbBogenCsv(selectedEntry)));
 			gwbAbschnittCsvButton.addEventListener("click", () => downloadCsv(`gwb-abschnitte-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbAbschnittCsv(selectedEntry)));
 			for (const button of viewModeButtons) {
