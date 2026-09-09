@@ -10,7 +10,11 @@ import { createAlignmentOptimizationProblem } from "../../domain/optimization/al
 import { createIntrinsicMetricContext } from "../../domain/optimization/alignment/MetricContext.js";
 import { solveAlignmentProblem } from "../../domain/optimization/alignment/AlignmentSQPSolver.js";
 
-export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.1";
+export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.2";
+export const FIT_MODES = Object.freeze(["keep-plan", "measurements-only"]);
+// Decided for the app's main journey (AXTRAN2_LENGTH_PRIOR_PROPOSAL.md, A):
+// the edited plan is kept where the samples are indifferent, with sigma 5 %.
+export const DEFAULT_PLAN_SIGMA = 0.05;
 
 const resolver = new RegistryResolver(transitionLookup);
 const dependencies = Object.freeze({ descriptorResolver: resolver, kappaBuilder: KappaFcnBuilder });
@@ -90,10 +94,12 @@ function declaredElements(alignmentData) {
 }
 
 export class AlignmentAxtranEvidenceService {
-	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 12 } = {}) {
+	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 12, fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA } = {}) {
 		if (!beforeAlignmentData?.editModel?.elements || !afterAlignmentData?.editModel?.elements) {
 			throw new Error("AXTRAN evidence requires before and after native AlignmentData");
 		}
+		if (!FIT_MODES.includes(fitMode)) throw new Error(`AXTRAN evidence fit mode must be one of ${FIT_MODES.join(", ")}`);
+		if (!(planSigma > 0)) throw new Error("AXTRAN evidence plan sigma must be positive");
 		const before = alignmentFromData(beforeAlignmentData);
 		const declarations = declaredElements(afterAlignmentData);
 		const declaredIds = new Set(declarations.map((element) => element.id));
@@ -123,7 +129,22 @@ export class AlignmentAxtranEvidenceService {
 				worldToTrack: (x, y) => alignment.world2Track(x, y, { samples: 240, refineSteps: 32 }),
 			};
 		};
-		const proposal = solveAlignmentProblem({ problem, buildAlignment, objective: "points", maxIterations });
+		const proposal = solveAlignmentProblem({
+			problem, buildAlignment, objective: "points", maxIterations,
+			// keep-plan: a weak pseudo-observation on every free length toward the
+			// edited value, the geodetic answer to lengths the samples cannot see
+			...(fitMode === "keep-plan" ? { lengthPrior: { sigma: planSigma } } : {}),
+		});
+		const determinacy = proposal.diagnostics?.determinacy ?? null;
+		// the lengths the samples did not determine, by element, with the play
+		// of the direction each one leads
+		const undetermined = Object.freeze((determinacy?.directions ?? [])
+			.filter((direction) => direction.components?.[0]?.name?.endsWith(".length"))
+			.map((direction) => Object.freeze({
+				elementId: direction.components[0].name.slice(0, -".length".length),
+				play: direction.play,
+			}))
+			.filter((entry, index, all) => all.findIndex((other) => other.elementId === entry.elementId) === index));
 		return Object.freeze({
 			version: ALIGNMENT_AXTRAN_EVIDENCE_VERSION,
 			type: "axtran2-consequence-evidence",
@@ -133,6 +154,9 @@ export class AlignmentAxtranEvidenceService {
 			proposalStatus: proposal.status,
 			ok: proposal.ok,
 			objective: proposal.objective,
+			fitMode,
+			planSigma: fitMode === "keep-plan" ? planSigma : null,
+			undetermined,
 			candidate: proposal.candidate,
 			diagnostics: proposal.diagnostics,
 			note: "Derived from the pre-edit canonical realization; proposal-only and never applied automatically.",
