@@ -80,3 +80,30 @@ test("reports evidence for imported alignments with zero-length immediate transi
 	assert.equal(result.candidate.names.includes("A1.curvature"), true);
 	assert.equal(result.candidate.names.some((name) => name.startsWith("I1.") || name.startsWith("I2.")), false);
 });
+
+test("the fit mode is the user's answer to the length prior, and the evidence says which lengths the samples did not determine", () => {
+	const service = new AlignmentAxtranEvidenceService();
+	const input = { beforeAlignmentData: alignment(1 / 300), afterAlignmentData: alignment(1 / 350), sampleCount: 8, maxIterations: 40 };
+	const kept = service.evaluateChange(input);
+	assert.equal(kept.fitMode, "keep-plan", "keep-plan is the default, as decided");
+	assert.equal(kept.planSigma, 0.05);
+	assert.ok(Array.isArray(kept.undetermined));
+	for (const entry of kept.undetermined) {
+		assert.equal(typeof entry.elementId, "string");
+		assert.ok(entry.play > 0);
+	}
+	const free = service.evaluateChange({ ...input, fitMode: "measurements-only" });
+	assert.equal(free.fitMode, "measurements-only");
+	assert.equal(free.planSigma, null);
+	// the two modes are two different problems: the lengths differ
+	const lengthsOf = (result) => result.candidate.names.map((name, i) => (name.endsWith(".length") ? result.candidate.variables[i] : null)).filter((v) => v !== null);
+	const kl = lengthsOf(kept), fl = lengthsOf(free);
+	assert.ok(kl.length >= 2 && kl.length === fl.length);
+	assert.ok(kl.some((value, i) => Math.abs(value - fl[i]) > 1e-9), "keep-plan and measurements-only give different lengths");
+	// the plan is the edited alignment: with the prior, the lengths stay nearer to it
+	const plan = [100, 60, 100];
+	const travel = (lengths) => lengths.reduce((sum, value, i) => sum + Math.abs(value - plan[i]) / plan[i], 0);
+	assert.ok(travel(kl) <= travel(fl) + 1e-12, `kept ${travel(kl)} against free ${travel(fl)}`);
+	assert.throws(() => service.evaluateChange({ ...input, fitMode: "guess" }), /fit mode must be one of/);
+	assert.throws(() => service.evaluateChange({ ...input, planSigma: 0 }), /plan sigma must be positive/);
+});

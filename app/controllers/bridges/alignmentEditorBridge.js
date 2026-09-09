@@ -58,6 +58,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		technical: document.getElementById("aeTechnicalDetails"),
 		sequenceReview: document.getElementById("aeSequenceReview"),
 		realizationReceipt: document.getElementById("aeRealizationReceipt"),
+		fitMode: document.getElementById("aeFitMode"),
 	};
 	let activeSnapshot = null;
 	let requestedElementId = null;
@@ -318,7 +319,12 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		if (result?.changed === false) { message("alignment_editor.status.no_changes_applied", "info", "ready"); return false; }
 		let axtranEvidence = null;
 		try {
-			axtranEvidence = axtranEvidenceService?.evaluateChange?.({ beforeAlignmentData, afterAlignmentData: result.alignmentChange?.alignmentData }) ?? null;
+			// The fit mode is the user's answer to the one question the length
+			// prior asks (docs/app/architecture/AXTRAN2_LENGTH_PRIOR_PROPOSAL.md,
+			// decided A): keep the edited plan where the samples are indifferent,
+			// or samples only. Read at apply time, never remembered for them.
+			const fitMode = fields.fitMode?.value === "measurements-only" ? "measurements-only" : "keep-plan";
+			axtranEvidence = axtranEvidenceService?.evaluateChange?.({ beforeAlignmentData, afterAlignmentData: result.alignmentChange?.alignmentData, fitMode }) ?? null;
 		} catch {
 			axtranEvidence = null;
 		}

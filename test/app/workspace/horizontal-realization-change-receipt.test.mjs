@@ -45,3 +45,26 @@ test("carries only explicitly evidence-only and inadmissible AXTRAN2 output", ()
 	assert.equal(receipt.diagnostics.evidence, evidence);
 	assert.equal(receipt.diagnostics.evidence.admissible, false);
 });
+
+test("the receipt carries one sentence on the fit mode and the undetermined lengths", () => {
+	const receiptWith = (axtranEvidence) => buildHorizontalRealizationChangeReceipt({
+		beforeAlignmentData: alignment(0.01),
+		alignmentChange: { objectId: "A1", elementId: "ARC", revision: 7, alignmentData: alignment(0.02), spotObject: { id: "A1" } },
+		activeObjectId: "A1", activeElementId: "ARC", axtranEvidence,
+	});
+	const evidence = (fitMode, undetermined) => ({
+		type: "axtran2-consequence-evidence", status: "evidence-only", admissible: false, admission: "evidence-only",
+		proposalStatus: "converged", ok: true, objective: "points", fitMode, planSigma: fitMode === "keep-plan" ? 0.05 : null,
+		undetermined, candidate: { names: [], variables: [] }, diagnostics: {},
+	});
+	const kept = receiptWith(evidence("keep-plan", [{ elementId: "T1", play: 12.5 }, { elementId: "A1", play: Infinity }]));
+	assert.equal(kept.diagnostics.fitMode, "keep-plan");
+	assert.match(kept.diagnostics.sentence, /hielt den bearbeiteten Plan \(σ 5 %\)/);
+	assert.match(kept.diagnostics.sentence, /nicht bestimmt: T1, A1\./);
+	const free = receiptWith(evidence("measurements-only", []));
+	assert.equal(free.diagnostics.fitMode, "measurements-only");
+	assert.match(free.diagnostics.sentence, /folgte nur den Proben; jede Länge von den Proben bestimmt\./);
+	const legacy = receiptWith({ ...evidence("keep-plan", []), fitMode: undefined, planSigma: undefined, undetermined: undefined });
+	assert.equal(legacy.diagnostics.fitMode, null);
+	assert.equal(legacy.diagnostics.sentence, null);
+});
