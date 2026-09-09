@@ -49,3 +49,34 @@ test("fails closed when the visible alignment has too few free quantities", () =
 		/at least three free quantities/,
 	);
 });
+
+test("reports evidence for imported alignments with zero-length immediate transitions", () => {
+	const imported = (curvature) => ({
+		type: "AlignmentData",
+		id: "W467-468",
+		name: "W467-468",
+		source: { kind: "vermEsn", native: true },
+		editModel: {
+			startPose: { p: { x: 4510649.6, y: 5379185.5 }, t: { x: 0.46, y: 0.88 } },
+			elements: [
+				{ id: "A1", type: "arc", parameters: { length: 41.5, curvature } },
+				{ id: "I1", type: "transition", parameters: { length: 0, transitionType: "immediate" } },
+				{ id: "A2", type: "arc", parameters: { length: 19.7, curvature: -1 / 628.3 } },
+				{ id: "I2", type: "transition", parameters: { length: 0, transitionType: "immediate" } },
+				{ id: "A3", type: "arc", parameters: { length: 41.6, curvature: 1 / 3004.3 } },
+			],
+		},
+	});
+	const result = new AlignmentAxtranEvidenceService().evaluateChange({
+		beforeAlignmentData: imported(-1 / 272.33),
+		afterAlignmentData: imported(-1 / 280),
+		sampleCount: 8,
+		maxIterations: 4,
+	});
+
+	assert.equal(result.type, "axtran2-consequence-evidence");
+	assert.equal(result.status, "evidence-only");
+	assert.equal(result.admissible, false);
+	assert.equal(result.candidate.names.includes("A1.curvature"), true);
+	assert.equal(result.candidate.names.some((name) => name.startsWith("I1.") || name.startsWith("I2.")), false);
+});

@@ -68,21 +68,24 @@ function sampleReference(alignment, count) {
 }
 
 function declaredElements(alignmentData) {
-	return alignmentData.editModel.elements.map((element) => {
+	return alignmentData.editModel.elements.flatMap((element) => {
 		const kind = kindOf(element);
 		const length = lengthOf(element);
 		const curvature = kind === "arc" ? curvatureOf(element) : null;
+		if (kind === "transition" && String(element?.parameters?.transitionType ?? element?.transitionType ?? "").trim().toLowerCase() === "immediate" && length === 0) {
+			return [];
+		}
 		if (!String(element?.id ?? "").trim() || !Number.isFinite(length) || length <= 0 || (kind === "arc" && !Number.isFinite(curvature))) {
 			throw new Error("AXTRAN evidence requires finite native horizontal elements");
 		}
-		return {
+		return [{
 			id: String(element.id),
 			quantities: {
 				length: "free",
 				...(kind === "arc" ? { curvature: "free" } : {}),
 			},
 			values: { length, ...(kind === "arc" ? { curvature } : {}) },
-		};
+		}];
 	});
 }
 
@@ -93,6 +96,7 @@ export class AlignmentAxtranEvidenceService {
 		}
 		const before = alignmentFromData(beforeAlignmentData);
 		const declarations = declaredElements(afterAlignmentData);
+		const declaredIds = new Set(declarations.map((element) => element.id));
 		const codec = createAlignmentVariableCodec({ elements: declarations });
 		if (codec.freeCount < 3) throw new Error("AXTRAN evidence requires at least three free quantities");
 		const kinds = Object.fromEntries(afterAlignmentData.editModel.elements.map((element) => [String(element.id), kindOf(element)]));
@@ -113,7 +117,9 @@ export class AlignmentAxtranEvidenceService {
 			const alignment = alignmentFromData(withOverlay(afterAlignmentData, overlay));
 			return {
 				endPose: poseOf(alignment),
-				lengths: afterAlignmentData.editModel.elements.map((element) => Number(overlay[element.id]?.length ?? lengthOf(element))),
+				lengths: afterAlignmentData.editModel.elements
+					.filter((element) => declaredIds.has(String(element.id)))
+					.map((element) => Number(overlay[element.id]?.length ?? lengthOf(element))),
 				worldToTrack: (x, y) => alignment.world2Track(x, y, { samples: 240, refineSteps: 32 }),
 			};
 		};

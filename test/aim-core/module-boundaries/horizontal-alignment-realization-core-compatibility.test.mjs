@@ -167,6 +167,23 @@ test("canonical dependency injection preserves exact calls references and order"
 	assert.equal(result.length, 90);
 });
 
+test("canonical realization preserves an explicit zero-length immediate transition", () => {
+	const state = makeState();
+	state.editModel.elements[1] = {
+		id: "T1",
+		type: "transition",
+		parameters: {
+			length: 0,
+			transitionType: "immediate",
+		},
+	};
+	const result = canonicalBuild(state, dependencies());
+	assert.equal(result.sparse[1].type, "transition");
+	assert.equal(result.sparse[1].transType, "immediate");
+	assert.equal(result.sparse[1].arcLength, 0);
+	assert.equal(result.length, 60);
+});
+
 test("canonical derive forwards dependencies and legacy derive remains equivalent", () => {
 	const state = makeState();
 	const calls = [];

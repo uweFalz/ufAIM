@@ -50,6 +50,7 @@ export function buildSparseAlignment(
 
 	for (const el of sparse) {
 		if (el.type !== "transition") continue;
+		if (Number(el.arcLength) === 0) continue;
 		descriptorResolver.resolveTransitionDescriptor(el.transType);
 	}
 
@@ -158,17 +159,25 @@ function buildSparseElementFromEditor(element, index) {
 	}
 
 	if (kind === "transition") {
-		const length = readPositiveLength(
-			element?.parameters?.length ?? element?.length ?? element?.arcLength,
-			"buildSparseAlignment: transition length"
-		);
-
 		const transType = String(
 			element?.parameters?.transitionType ?? element?.transitionType ?? element?.transType ?? ""
 		).trim().toLowerCase();
 
 		if (!transType) {
 			throw new Error("buildSparseAlignment: transition type is required");
+		}
+
+		const length = transType === "immediate"
+			? readNonNegativeLength(
+				element?.parameters?.length ?? element?.length ?? element?.arcLength,
+				"buildSparseAlignment: immediate transition length"
+			)
+			: readPositiveLength(
+				element?.parameters?.length ?? element?.length ?? element?.arcLength,
+				"buildSparseAlignment: transition length"
+			);
+		if (transType === "immediate" && length !== 0) {
+			throw new Error("buildSparseAlignment: immediate transition length must be zero");
 		}
 
 		const opts = readTransitionOpts(element);
@@ -322,6 +331,19 @@ function readPositiveLength(value, caller) {
 	const n = Number(value);
 	if (!Number.isFinite(n) || n <= 0) {
 		throw new Error(`${caller}: must be a positive number`);
+	}
+
+	return n;
+}
+
+function readNonNegativeLength(value, caller) {
+	if (isObject(value) && Number.isFinite(Number(value.value))) {
+		return Number(value.value);
+	}
+
+	const n = Number(value);
+	if (!Number.isFinite(n) || n < 0) {
+		throw new Error(`${caller}: must be a non-negative number`);
 	}
 
 	return n;
