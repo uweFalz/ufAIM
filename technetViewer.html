@@ -40611,8 +40611,8 @@ xlsx/xlsx.mjs:
 					renderDiagramTable([
 						...ivmgTracks.map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) })),
 						...(ivhw.trackData ?? []).flatMap((data) => [
-							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene A`, points: data.railA, valueLabel: "Höhe (m)" },
-							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene B`, points: data.railB, valueLabel: "Höhe (m)" },
+							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideA ?? "A"}`, points: data.railA, valueLabel: "Höhe (m)" },
+							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideB ?? "B"}`, points: data.railB, valueLabel: "Höhe (m)" },
 						]),
 						...gwbTracks.flatMap((track) => {
 							const row = { label: `GWB · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) };
@@ -40726,6 +40726,88 @@ xlsx/xlsx.mjs:
 
 			// Datenteil des Weichenhöhenplans ohne DOM-Nebenwirkungen: liefert entweder
 			// { note } (leer, mit Grund) oder { trackData, subtitle, multiTrack }.
+			// Which rail is the higher one at a Weiche. Uwe: bei ABW in der Regel
+			// die äußere, bei IBW bestimmt durch das durchgehende Gleis -- both are
+			// one rule: the raised rail is the outer rail of the through track's
+			// curve at the Weiche, and the branch inherits it. The through track is
+			// the Gleis that continues past the junction point; the branch ends
+			// there (landXML), or -- GND chunks every alignment at the Weiche -- the
+			// pair of chunks that continue each other tangentially. Curvature sign
+			// follows curvatureSeries in km direction (positive = Linksbogen), so a
+			// Linksbogen raises the right rail. Form: branch curving the same way
+			// = IBW, the opposite way = ABW, through track straight = EW.
+			function junctionRailSides(junction, tracks) {
+				if (!junction?.point || !Number.isFinite(stationScalar(junction.stationRaw))) return null;
+				const near = (end) => Math.hypot(end.easting - junction.point.easting, end.northing - junction.point.northing) < 1;
+				// How each Gleis meets the point: which of its ends (if any), the unit
+				// vector pointing AWAY from the point along the Gleis, and the
+				// curvature at that end (sign in the Gleis's own stationing direction).
+				// The km line is no Gleis: it never carries a rail or a Weiche.
+				const arms = tracks.filter((track) => sevenLineSide(track) !== "kilometer").map((track) => {
+					const ends = alignmentEndpoints(track);
+					const atStart = Boolean(ends) && near(ends.start);
+					const atEnd = Boolean(ends) && !atStart && near(ends.end);
+					if (!atStart && !atEnd) return { track, continuing: true };
+					const polyline = referenceStationPolyline(track, 2);
+					if (polyline.length < 2) return { track, continuing: true };
+					const [p, q] = atStart ? [polyline[0], polyline[1]] : [polyline[polyline.length - 1], polyline[polyline.length - 2]];
+					const length = Math.hypot(q.easting - p.easting, q.northing - p.northing) || 1;
+					const series = curvatureSeries(track);
+					const kappa = series.length ? (atStart ? series[0].y : series[series.length - 1].y) : 0;
+					return { track, atStart, atEnd, away: { x: (q.easting - p.easting) / length, y: (q.northing - p.northing) / length }, kappa };
+				});
+				const station = stationScalar(junction.stationRaw);
+				let through = null;
+				let kappa = 0;
+				let travel = null;
+				let throughName = "";
+				const continuing = arms.find((arm) => arm.continuing);
+				if (continuing) {
+					// landXML: the Gleis that runs past the point is the through track.
+					through = [continuing.track];
+					kappa = interpolateSeriesAt(curvatureSeries(continuing.track), station);
+					const polyline = referenceStationPolyline(continuing.track, 2);
+					const index = polyline.findIndex((point) => point.station >= station);
+					const p = polyline[Math.max(0, index - 1)];
+					const q = polyline[Math.min(polyline.length - 1, Math.max(1, index))];
+					const length = Math.hypot(q.easting - p.easting, q.northing - p.northing) || 1;
+					travel = { x: (q.easting - p.easting) / length, y: (q.northing - p.northing) / length };
+					throughName = objectDisplayName(continuing.track);
+				} else {
+					// GND: every chunk ends at the point. The through track is the pair
+					// whose away-vectors are opposite (tangent continuity, within 2 gon);
+					// the outgoing chunk (junction at its start) carries the travel
+					// direction and curvature in km direction.
+					let best = null;
+					for (let i = 0; i < arms.length; i += 1) for (let j = i + 1; j < arms.length; j += 1) {
+						const dot = arms[i].away.x * arms[j].away.x + arms[i].away.y * arms[j].away.y;
+						if (dot < -Math.cos(2 * Math.PI / 200) && (!best || dot < best.dot)) best = { dot, pair: [arms[i], arms[j]] };
+					}
+					if (!best) return { through: null, higher: null, form: null };
+					const outgoing = best.pair.find((arm) => arm.atStart) ?? best.pair[0];
+					const incoming = best.pair.find((arm) => arm !== outgoing);
+					through = best.pair.map((arm) => arm.track);
+					kappa = outgoing.atStart ? outgoing.kappa : -outgoing.kappa;
+					travel = outgoing.atStart ? outgoing.away : { x: -incoming.away.x, y: -incoming.away.y };
+					throughName = through.map((track) => objectDisplayName(track)).join(" / ");
+				}
+				// The branch's curvature, read in the through track's travel direction.
+				const branch = arms.find((arm) => !arm.continuing && !through.includes(arm.track));
+				let kappaBranch = 0;
+				if (branch && travel) {
+					const along = branch.away.x * travel.x + branch.away.y * travel.y;
+					const stationingAlongTravel = branch.atStart ? along > 0 : along < 0;
+					kappaBranch = stationingAlongTravel ? branch.kappa : -branch.kappa;
+				}
+				const straight = Math.abs(kappa) < 1e-6;
+				return {
+					through,
+					throughName,
+					higher: straight ? null : kappa > 0 ? "rechts" : "links",
+					bogen: straight ? "Gerade" : kappa > 0 ? "Linksbogen" : "Rechtsbogen",
+					form: straight ? "EW" : Math.abs(kappaBranch) < 1e-6 ? null : Math.sign(kappaBranch) === Math.sign(kappa) ? "IBW" : "ABW",
+				};
+			}
 			// The IVHW is a Weichenhöhenplan (Ril 883.5240): rails of the Gleise
 			// meeting at one Weiche over a shared station. It belongs to the Weiche,
 			// not to the selected Streckengleis -- those live in IVMG and GWB -- so
@@ -40737,7 +40819,7 @@ xlsx/xlsx.mjs:
 				if (!activeJunction) {
 					return { note: "gehört zur Weiche · in der Outbox unter „Weichen (aus Geometrie erkannt)“ wählen", subtitle: "Streckengleise: IVMG und GWB" };
 				}
-				const tracks = activeJunction.entries.filter((candidate) => candidate.item?.kind === "alignment");
+				const tracks = activeJunction.entries.filter((candidate) => candidate.item?.kind === "alignment" && sevenLineSide(candidate) !== "kilometer");
 				const multiTrack = tracks.length > 1;
 
 				function stationOf(point) {
@@ -40785,14 +40867,20 @@ xlsx/xlsx.mjs:
 						subtitle: multiTrack ? `${tracks.length} Gleise ausgewählt` : "",
 					};
 				}
-				const subtitle = activeJunction.window
+				const rails = junctionRailSides(activeJunction, tracks);
+				const railNote = rails?.higher
+					? ` · ${rails.form ? `${rails.form}, ` : ""}${rails.bogen} von ${rails.throughName}: höhere Schiene ${rails.higher} (Bogenaußenseite), Zweiggleis erbt`
+					: rails?.through ? ` · ${rails.throughName} an der Weiche gerade: keine Seite bestimmbar, Schiene A/B` : " · durchgehendes Gleis nicht bestimmbar (keine tangentiale Fortsetzung), Schiene A/B";
+				const subtitle = (activeJunction.window
 					? `${trackData.length} Gleise · ±${activeJunction.window} m um km ${station(activeJunction.stationRaw).trim()} · Gradiente alle 5 m interpoliert`
 					: multiTrack
 					? `${trackData.length} Gleise · gemeinsame externe GND-Kilometrierung · keine Übereinstimmung wird erzwungen`
 					: trackData[0].hasCant
 						? "intrinsische Station · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
-						: "intrinsische Station · keine Überhöhung verknüpft, beide Schienen auf Gradientenhöhe";
-				return { trackData, subtitle, multiTrack };
+						: "intrinsische Station · keine Überhöhung verknüpft, beide Schienen auf Gradientenhöhe") + railNote;
+				const sideA = rails?.higher ? (rails.higher === "rechts" ? "links" : "rechts") : "A";
+				const sideB = rails?.higher ?? "B";
+				return { trackData, subtitle, multiTrack, rails: { sideA, sideB } };
 			}
 
 			// Zeichenteil des Weichenhöhenplans in eine verschachtelte Abbildung;
@@ -40862,9 +40950,9 @@ xlsx/xlsx.mjs:
 					const legendY = 14 + index * 14;
 					const legend = svgElement("text", { x: 12, y: legendY, class: "diagram-label" });
 					const dashA = svgElement("tspan", { style: `fill:${colorA}` });
-					dashA.textContent = "— ";
+					dashA.textContent = `— ${ivhw.rails?.sideA ?? "A"} `;
 					const dashB = svgElement("tspan", { style: `fill:${colorB}` });
-					dashB.textContent = "— ";
+					dashB.textContent = `— ${ivhw.rails?.sideB ?? "B"} `;
 					const name = svgElement("tspan", {});
 					name.textContent = objectDisplayName(data.track);
 					legend.append(dashA, dashB, name);
@@ -42874,7 +42962,8 @@ xlsx/xlsx.mjs:
 							.filter((entry) => !geoFrameInfo(entry)?.selfReferencing)
 							.map((entry) => gndSequenceForEntry(entry)?.stationStart)
 							.filter((value) => Number.isFinite(numberValue(value)));
-						return { id: key, entries, stationRaw: stationRaws.length ? Math.min(...stationRaws) : null };
+						const point = [tracksAtPoint[0].points.start, tracksAtPoint[0].points.end].find((candidate) => endpointKey(candidate) === key);
+						return { id: key, entries, point, stationRaw: stationRaws.length ? Math.min(...stationRaws) : null };
 					});
 				return [...gndClusters, ...detectLandXmlJunctions()]
 					.sort((a, b) => (a.stationRaw ?? Infinity) - (b.stationRaw ?? Infinity));
@@ -42923,7 +43012,7 @@ xlsx/xlsx.mjs:
 							if (!hit || hit.distance > LANDXML_JUNCTION_TOLERANCE_M) continue;
 							const id = endpointKey(point);
 							if (clusters.some((cluster) => cluster.id === id)) continue;
-							clusters.push({ id, entries: [gleis, other], stationRaw: hit.station, window: LANDXML_JUNCTION_WINDOW_M });
+							clusters.push({ id, entries: [gleis, other], point, stationRaw: hit.station, window: LANDXML_JUNCTION_WINDOW_M });
 						}
 					}
 				}
