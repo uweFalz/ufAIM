@@ -33,6 +33,7 @@ import { footPointOf } from "./AlignmentResidualBuilder.js";
 import { solveSQP } from "../../../lib/math/optim/sqp/solveSQP.js";
 import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacobian.js";
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
+import { symmetricEigen } from "../../../lib/math/lina/symmetricEigen.js";
 
 export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.1";
 
@@ -122,8 +123,26 @@ export function solveAlignmentProblem({
 	// for thousands of iterations without a verdict. The prior says what the
 	// points cannot; it is a modelling decision and off by default.
 	lengthPrior = null,
+	// What the points determine. "report" appends to the diagnostics, for the
+	// points objective, the directions of the fit's J'J along which a unit
+	// move - one metre of length, 1e-3/m of curvature - changes the residual
+	// norm by less than determinacyThreshold tolerances: the exact null of a
+	// straight's length no lateral offset can see, and the near-null trades of
+	// length between a transition and its neighbouring arcs (docs/app/
+	// architecture/AXTRAN2_FLAT_VALLEY_FINDING.md). Absolute, not relative to
+	// the largest eigenvalue: curvature directions are 1e10 more sensitive
+	// than lengths in these units and would make every length look
+	// undetermined. A tenth of a tolerance per unit: a metre along such a
+	// direction moves the residual norm by less than 1.5 cm over all points
+	// together. The report says which lengths the points did not decide; it
+	// changes nothing about the solve.
+	determinacy = "report",
+	determinacyThreshold = 0.1,
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
+	if (determinacy !== "report" && determinacy !== "off") {
+		error("INVALID_OPTION", `determinacy must be "report" or "off", got ${JSON.stringify(determinacy)}`);
+	}
 	if (hessian !== "bfgs" && hessian !== "gauss-newton") {
 		error("INVALID_OPTION", `hessian must be "bfgs" or "gauss-newton", got ${JSON.stringify(hessian)}`);
 	}
@@ -525,6 +544,70 @@ export function solveAlignmentProblem({
 		return H;
 	}
 
+	/** The point residuals' Jacobian at x, in physical units, tolerance-scaled rows. */
+	function residualJacobianAt(x, built) {
+		if (typeof analyticJacobian === "function") {
+			const geometry = analyticJacobian(codec.decode(x));
+			return softPoints.map((point) => {
+				const projected = project(built, point, "measured point");
+				return geometry.lateralDerivative(parameterSpecs, projected.s).map((value) => value / point.tolerance);
+			});
+		}
+		const jacobian = finiteDiffJacobian({
+			x, scales, relative: 1e-4,
+			residual: (probe) => softResiduals(realise(probe)),
+		});
+		return jacobian.ok ? jacobian.J : null;
+	}
+
+	/**
+	 * Which directions of the free variables the points determine, and which
+	 * they do not: the eigenpairs of J'J in the solver's scaled coordinates
+	 * with eigenvalues under the threshold of the largest, each named by its
+	 * strongest components.
+	 */
+	function determinacyReport(x, built) {
+		const Jr = residualJacobianAt(x, built);
+		if (!Jr || Jr.length === 0) return null;
+		const n = codec.freeCount;
+		const A = Array.from({ length: n }, () => new Array(n).fill(0));
+		for (const row of Jr) {
+			const scaled = row.map((value, j) => value * scales[j]);
+			for (let i = 0; i < n; i++) {
+				if (scaled[i] === 0) continue;
+				for (let j = 0; j < n; j++) A[i][j] += scaled[i] * scaled[j];
+			}
+		}
+		const { values, vectors, converged } = symmetricEigen(A);
+		const largest = values[0];
+		if (!(largest > 0)) return null;
+		const weak = [];
+		values.forEach((value, k) => {
+			// sqrt of the eigenvalue: tolerances of residual norm per unit move
+			if (Math.sqrt(Math.max(0, value)) > determinacyThreshold) return;
+			const components = vectors[k]
+				.map((weight, j) => ({ name: codec.freeNames[j], weight }))
+				.sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
+				.slice(0, 4)
+				.map(({ name, weight }) => Object.freeze({ name, weight: Number(weight.toFixed(4)) }));
+			const sensitivity = Math.sqrt(Math.max(0, value));
+			weak.push(Object.freeze({
+				sensitivity,
+				// how far along the direction, in units, before the residual norm
+				// has grown by one tolerance; Infinity for an exact null
+				play: sensitivity > 0 ? 1 / sensitivity : Infinity,
+				components: Object.freeze(components),
+			}));
+		});
+		return Object.freeze({
+			variables: n, points: Jr.length, largestEigenvalue: largest, threshold: determinacyThreshold,
+			converged, undetermined: weak.length,
+			directions: Object.freeze(weak),
+			// the variables that lead an undetermined direction, once each
+			lengthsNotDetermined: Object.freeze([...new Set(weak.map((d) => d.components[0]?.name).filter(Boolean))]),
+		});
+	}
+
 	function evaluate(x) {
 		if (typeof analyticJacobian === "function") return evaluateAnalytically(x);
 
@@ -605,6 +688,16 @@ export function solveAlignmentProblem({
 	// empty list: Math.hypot() of nothing is NaN, and the mean of nothing came
 	// out as 0, which reads as a flawless result and is the more dangerous of the
 	// two because nobody looks twice at a zero.
+	// The determinacy report projects every point once more; it goes before
+	// the final residuals so that a projector failing on its last call fails
+	// the report of record, not this one.
+	let determinacyReported = null;
+	if (determinacy === "report" && objective === "points" && built !== null && inadmissible.length === 0) {
+		try { determinacyReported = determinacyReport(run.x, built); } catch (caught) {
+			if (!(caught instanceof AlignmentSqpSolverError)) throw caught;
+			determinacyReported = null;
+		}
+	}
 	let finalEquality = null;
 	let finalSoft = null;
 	if (built !== null && inadmissible.length === 0) {
@@ -656,6 +749,7 @@ export function solveAlignmentProblem({
 		}),
 		diagnostics: Object.freeze({
 			iterations: run.iterations,
+			determinacy: determinacyReported,
 			alignmentBuilds: builds,
 			jacobianKind: typeof analyticJacobian === "function" ? "analytic" : "finite-difference",
 			jacobianEvaluations,

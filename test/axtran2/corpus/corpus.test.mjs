@@ -196,3 +196,36 @@ test("a length prior holds what the points cannot see, and says nothing else", {
 	const one = solveAlignmentProblem({ ...common, lengthPrior: { sigma: 1e-4, elements: [sc.truth.elements.find((e) => e.type === "transition").id] } });
 	assert.ok(one.candidate, `${one.status}`);
 });
+
+test("the diagnostics say which lengths the points did not determine", { skip }, async () => {
+	// A straight's length is invisible to lateral offsets on it: an exact
+	// null of J'J, unlimited play. The report names it, and stays silent
+	// where the solve is not the points objective or the report is off.
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const sc = await createTraScenario(find("ABCH_Gl_064_DBREF2016.TRA", SAMPLES.pathname));
+	const common = { problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points" };
+	const run = solveAlignmentProblem(common);
+	assert.ok(run.ok, `${run.status}`);
+	const d = run.diagnostics.determinacy;
+	assert.ok(d, "a report for the points objective");
+	assert.equal(d.variables, sc.freeCount);
+	assert.equal(d.points, sc.pointCount);
+	assert.ok(d.converged);
+	const last = sc.truth.elements.at(-1);
+	assert.equal(last.type, "straight");
+	const nullDirection = d.directions.find((dir) => dir.components[0].name === `${last.id}.length`);
+	assert.ok(nullDirection, `the last straight's length leads an undetermined direction: ${JSON.stringify(d.lengthsNotDetermined)}`);
+	assert.equal(nullDirection.play, Infinity);
+	assert.ok(Math.abs(Math.abs(nullDirection.components[0].weight) - 1) < 1e-3);
+	assert.ok(d.lengthsNotDetermined.includes(`${last.id}.length`));
+	// every reported direction is below the threshold, and named
+	for (const dir of d.directions) {
+		assert.ok(dir.sensitivity <= d.threshold);
+		assert.ok(dir.components.length >= 1 && dir.components.length <= 4);
+	}
+	assert.equal(solveAlignmentProblem({ ...common, objective: "accumulated-length" }).diagnostics.determinacy, null);
+	assert.equal(solveAlignmentProblem({ ...common, determinacy: "off" }).diagnostics.determinacy, null);
+	assert.throws(() => solveAlignmentProblem({ ...common, determinacy: "maybe" }), (e) => e.code === "INVALID_OPTION");
+});

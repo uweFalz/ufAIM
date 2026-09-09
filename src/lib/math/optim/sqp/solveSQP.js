@@ -214,7 +214,12 @@ export function solveSQP({
 	let previousMerit = null;
 	let stalls = 0;
 
-	const feasibilityScale = () => Math.max(1, Math.hypot(...x));
+	// The 1-norm, not the 2-norm: the constraints' units grow with the sum of
+	// the variables (an end pose over the whole length), and the 2-norm of a
+	// hundred short lengths is a fifth of it. Measured on 110 elements over
+	// 11 km the verdict fired at a violation of 2e-6 against a 2-norm scale of
+	// 2e-6, with the objective flat and every step full.
+	const feasibilityScale = () => Math.max(1, x.reduce((sum, value) => sum + Math.abs(value), 0));
 
 	// Restore feasibility from x and continue as from a fresh start: the
 	// curvature estimate and the penalty weights described the path to here,
