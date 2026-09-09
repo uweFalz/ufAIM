@@ -39837,30 +39837,6 @@ xlsx/xlsx.mjs:
 				return kept;
 			}
 
-			// Zulaessige Geschwindigkeit aus Radius und Ueberhoehung (Ril 800.0110,
-			// ausgleichende Ueberhoehung u0 = 11.8 v^2 / r, Tab. 4/5):
-			// v [km/h] = sqrt(r[m] * (u[mm] + uf[mm]) / 11.8). uf ist der
-			// Ueberhoehungsfehlbetrag; ohne Fahrzeugdaten gilt die Ermessensgrenze
-			// fuer Gleis (CANT_DEFICIENCY_MM) -- eine Annahme, kein gemessener Wert,
-			// daher in der Fussnote ausgewiesen statt still vorausgesetzt. Geraden
-			// (Kruemmung 0, r unendlich) liefern aus dieser Formel keine Grenze und
-			// werden als Luecke dargestellt statt einen Wert zu erfinden. cantPoints
-			// must be in mm (cantSeriesMm). Deckel und Stufen: Annahmen-Block oben.
-			function speedLimitSeries(curvaturePoints, cantPoints) {
-				const series = [];
-				let gap = false;
-				for (const point of curvaturePoints) {
-					const curvature = Math.abs(point.y);
-					if (!(curvature > 1e-9)) { gap = true; continue; }
-					const radius = 1 / curvature;
-					const cant = Math.abs(interpolateSeriesAt(cantPoints, point.x));
-					const speed = roundDownToSpeedStep(Math.min(Math.sqrt(radius * (cant + cantDeficiencyMm(radius)) / 11.8), V_MAX_DE_KMH));
-					if (!Number.isFinite(speed)) continue;
-					series.push(gap ? { x: point.x, y: speed, gap: true } : { x: point.x, y: speed });
-					gap = false;
-				}
-				return series;
-			}
 
 			// ---- ABLEITUNG · GWB-Vorschlag (Ril 800.0110 V3.0) --------------------
 			// Second half of the GWB. Not "what would 160 mm give" (the first
@@ -40050,15 +40026,6 @@ xlsx/xlsx.mjs:
 				const spread = Math.abs(11.8 * v * v / unit.radiusMin - 11.8 * v * v / unit.radiusMax);
 				return spread > KORBBOGEN_MAX_DELTA_UF_MM ? ` · Korbbogen: Δuf ${Math.round(spread)} mm > ${KORBBOGEN_MAX_DELTA_UF_MM}, nach 7 (4) je Radius eigene Überhöhung (Rampe zwischen den Bögen)` : "";
 			}
-			function gwbProposalSeries(units, selectedRange) {
-				const clamp = (x) => selectedRange ? Math.min(Math.max(x, selectedRange.from), selectedRange.to) : x;
-				return units.flatMap((unit) => unit.proposal ? unit.members.flatMap((member, memberIndex) => {
-					const v = unit.proposal.memberSpeeds[memberIndex];
-					const from = memberIndex === 0 ? unit.span.from : member.s0;
-					const to = memberIndex === unit.members.length - 1 ? unit.span.to : member.s1;
-					return [memberIndex === 0 ? { x: clamp(from), y: v, gap: true } : { x: clamp(from), y: v }, { x: clamp(to), y: v }];
-				}) : []);
-			}
 			// The PI's lines under the GWB figure: one per Bogen with potential, one
 			// per Bogen whose today's cant the ramp does not carry at today's v, and
 			// one summary. Bögen already at the cap or without headroom are counted,
@@ -40194,7 +40161,6 @@ xlsx/xlsx.mjs:
 				const live = segments
 					.map((segment) => ({ ...segment, range: intersectRange(segment.range, selectedRange) }))
 					.filter((segment) => segment.alignment && (segment.range || !selectedRange));
-				const points = clipPointsToRange(concatSeries(live.map((segment) => speedLimitSeries(curvatureSeries(segment.alignment), segment.cant ? cantSeriesMm(segment.cant) : []))), selectedRange);
 				const perSegment = live.map((segment) => {
 					const units = deriveGwbProposal(segment.alignment, segment.cant, segment.range);
 					return { units, today: deriveSpeedSections(units, segment.range, lineSpeedKmh(), false), proposal: deriveSpeedSections(units, segment.range, lineSpeedKmh(), true) };
@@ -40202,19 +40168,20 @@ xlsx/xlsx.mjs:
 				const units = perSegment.flatMap((part) => part.units);
 				const today = mergeSectionResults(perSegment.map((part) => part.today));
 				const proposal = mergeSectionResults(perSegment.map((part) => part.proposal));
+				// One band per Gleis, and it is continuous -- a Geschwindigkeits-
+				// Wege-Band is a step profile over the whole way: Streckengeschwindig-
+				// keit on Geraden, the Bogen limit in Bögen, then the 457.0201 trims.
+				// The per-Bogen limits that feed it are not drawn as pieces any more
+				// (Uwe: "Stückchen, keine durchgehenden Linien"); they live in the lines
+				// under the figure and in the Bögen-CSV. The only gaps left are where
+				// the Gleis itself does not exist.
 				return [
-					band(`${prefix} · zul. v — / GWB-Vorschlag ┄ [km/h]`, "diagram-speed", points, {
-						emptyNote: "keine Krümmung in diesem Abschnitt · keine kurvenbedingte Geschwindigkeitsgrenze",
-						overlay: { label: "GWB-Vorschlag", className: "diagram-speed-potential", points: gwbProposalSeries(units, selectedRange) },
-						footnote: [speedDiagnosticFootnote(), ...gwbProposalLines(prefix, units)],
+					band(`${prefix} · GWB heute — / Vorschlag ┄ [km/h]`, "diagram-speed diagram-speed-sections", sectionSeries(today), {
+						emptyNote: "kein Stationsbereich · kein Geschwindigkeitsband ableitbar",
+						overlay: { label: "Vorschlag", className: "diagram-speed-potential", points: sectionSeries(proposal) },
+						footnote: [speedDiagnosticFootnote(), ...gwbProposalLines(prefix, units), ...sectionLines(prefix, today, proposal)],
 						unit: "km/h",
 						proposal: units,
-					}),
-					band(`${prefix} · Abschnitte heute — / Vorschlag ┄ [km/h]`, "diagram-speed diagram-speed-sections", sectionSeries(today), {
-						emptyNote: "kein Stationsbereich · keine Abschnitte ableitbar",
-						overlay: { label: "Abschnitte Vorschlag", className: "diagram-speed-potential", points: sectionSeries(proposal) },
-						footnote: sectionLines(prefix, today, proposal),
-						unit: "km/h",
 						sections: { today, proposal },
 					}),
 				];
@@ -40664,7 +40631,7 @@ xlsx/xlsx.mjs:
 					y += ivhw.trackData
 						? drawIvhwPlot(diagram, y, ivhw)
 						: drawEmptyFigure(diagram, y, ivhw.note);
-					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis Bogengrenzen und Abschnitte · heute — / Vorschlag ┄ · Ril 800.0110 (2021) / 457.0201 · Diagnose");
+					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis durchgehend · heute — / Vorschlag ┄ · Geraden mit Streckengeschwindigkeit · Ril 800.0110 (2021) / 457.0201 · Diagnose");
 					y += gwbTracks.length
 						? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
 						: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
