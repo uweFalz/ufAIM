@@ -178,8 +178,16 @@ export function createExistingAlignmentIntelligenceJourneyController({
 
 function profileCapabilities(projection, finding) {
 	if (!projection) return {};
-	const vertical = projection.vertical?.status === "evaluated" ? { status: "constructive", value: { elevation: projection.vertical.value?.elevation, gradient: projection.vertical.value?.gradient }, provenancePresent: true } : finding?.EH;
-	const cant = projection.cant?.status === "evaluated" ? { status: "constructive", value: { crossLevel: projection.cant.value?.crossLevel, twist: projection.cant.value?.twist }, provenancePresent: true } : finding?.EU;
+	const vertical = projection.vertical?.status === "evaluated"
+		? { status: "constructive", value: { elevation: projection.vertical.value?.elevation, gradient: projection.vertical.value?.gradient }, provenancePresent: true }
+		: projection.vertical?.status === "source-evidence"
+			? { status: "partial-evidence", value: projection.vertical.value, provenancePresent: true, admissible: false }
+			: finding?.EH;
+	const cant = projection.cant?.status === "evaluated"
+		? { status: "constructive", value: { crossLevel: projection.cant.value?.crossLevel, twist: projection.cant.value?.twist }, provenancePresent: true }
+		: projection.cant?.status === "source-evidence"
+			? { status: "partial-evidence", value: projection.cant.value, provenancePresent: true, admissible: false }
+			: finding?.EU;
 	const chainage = ["evaluated", "unique", "complete"].includes(projection.chainage?.status) ? { status: "constructive", value: projection.chainage, provenancePresent: true } : finding?.EK;
 	return { vertical, cant, chainage };
 }

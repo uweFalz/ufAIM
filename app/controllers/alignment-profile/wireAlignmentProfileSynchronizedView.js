@@ -315,7 +315,7 @@ export function wireAlignmentProfileSynchronizedView({
 		return true;
 	});
 
-	async function renderLongitudinal({ selected, canonical }) {
+	async function renderLongitudinal({ selected, canonical, profileProjection = null }) {
 		if (!longitudinalController || !longitudinalView) {
 			renderCantCrossLevel({ selected, canonical });
 			return null;
@@ -325,19 +325,21 @@ export function wireAlignmentProfileSynchronizedView({
 			revision: canonical.revision,
 			s: selected.s,
 			profileState: canonical.alignmentData.profileState,
+			sourceProjection: profileProjection?.vertical ?? null,
 		});
 		longitudinalView.render(viewModel);
-		renderCantCrossLevel({ selected, canonical });
+		renderCantCrossLevel({ selected, canonical, profileProjection });
 		return viewModel;
 	}
 
-	function renderCantCrossLevel({ selected, canonical }) {
+	function renderCantCrossLevel({ selected, canonical, profileProjection = null }) {
 		if (!cantCrossLevelController || !cantCrossLevelView) return null;
 		const viewModel = cantCrossLevelController.project({
 			alignmentId: selected.alignmentId,
 			revision: canonical.revision,
 			s: selected.s,
 			profileState: canonical.alignmentData.profileState,
+			sourceProjection: profileProjection?.cant ?? null,
 		});
 		cantCrossLevelView.render(viewModel);
 		return viewModel;
@@ -387,7 +389,7 @@ export function wireAlignmentProfileSynchronizedView({
 				projection,
 				canonical.alignmentData.profileState
 			);
-			await renderLongitudinal({ selected, canonical });
+			await renderLongitudinal({ selected, canonical, profileProjection: projection });
 			if (stopped || token !== refreshToken) return null;
 			return result;
 		} catch (error) {
@@ -1588,8 +1590,8 @@ export function wireAlignmentProfileSynchronizedView({
 }
 
 function buildLaneCoverage(viewModel, profileState) {
-	const verticalElements = profileState?.vertical?.elements ?? [];
-	const cantElements = profileState?.cant?.elements ?? [];
+	const verticalElements = profileState?.vertical?.elements ?? viewModel?.vertical?.sourceRecords ?? [];
+	const cantElements = profileState?.cant?.elements ?? viewModel?.cant?.sourceRecords ?? [];
 	const mappings = profileState?.chainageMappings ?? [];
 	const chainageSegments = mappings.flatMap((mapping) => mapping?.segments ?? []);
 	return Object.freeze({

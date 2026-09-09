@@ -137,8 +137,19 @@ function installRecord(recordsByAlignmentId, record) {
 			vertical: record.vertical,
 			cant: record.cant,
 			chainageMappings: Object.freeze([...record.chainageMappings]),
+			...(isSourceAttachments(record.sourceAttachments)
+				? { sourceAttachments: record.sourceAttachments }
+				: {}),
 		})
 	);
+}
+
+function isSourceAttachments(value) {
+	return !!value &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		value.contractVersion === "import/source-declared-alignment-attachments/0.1" &&
+		value.association === "source-declared-inline-alignment-child";
 }
 
 export class StaticAlignmentProfileStateReaderAdapter {

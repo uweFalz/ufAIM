@@ -96,6 +96,52 @@ function samplePositions({ startS, endS, boundaries }, cursorS) {
 	return [...positions].sort((left, right) => left - right);
 }
 
+function sourceEvidenceProjection(sourceProjection, context) {
+	if (sourceProjection?.status !== "source-evidence") return null;
+	const sourceRecords = Array.isArray(sourceProjection.sourceRecords)
+		? sourceProjection.sourceRecords
+		: [];
+	const samples = sourceRecords
+		.filter((record) => Number.isFinite(record?.s) && Number.isFinite(record?.elevation))
+		.map((record) => freezeEntry({
+			s: record.s,
+			elevation: record.elevation,
+			gradient: null,
+			elementId: record.id,
+			type: record.type,
+			sourceStation: record.sourceStation,
+		}));
+	if (samples.length === 0) return null;
+	const elevations = samples.map((sample) => sample.elevation);
+	return Object.freeze({
+		status: "projected",
+		representation: "source-declared-profile-records",
+		admission: "evidence-only",
+		admissible: false,
+		reason: sourceProjection.reason,
+		alignmentId: context.alignmentId,
+		revision: context.revision,
+		domain: freezeEntry({
+			parameterKind: "intrinsic-s",
+			startS: samples[0].s,
+			endS: samples.at(-1).s,
+		}),
+		boundaries: Object.freeze([...new Set(samples.map((sample) => sample.s))]),
+		elevationExtent: freezeEntry({ min: Math.min(...elevations), max: Math.max(...elevations) }),
+		samples: Object.freeze(samples),
+		cursor: Object.freeze({
+			status: "source-evidence",
+			s: context.s,
+			exact: sourceProjection.value?.exact ?? [],
+			before: sourceProjection.value?.before ?? null,
+			after: sourceProjection.value?.after ?? null,
+		}),
+		elementDefinitions: Object.freeze(sourceRecords.map(freezeEntry)),
+		activeElementDefinition: null,
+		error: null,
+	});
+}
+
 export function createLongitudinalProfileController({
 	alignmentProfileApplicationService,
 } = {}) {
@@ -110,7 +156,7 @@ export function createLongitudinalProfileController({
 	}
 
 	return Object.freeze({
-		async project({ alignmentId, revision, s, profileState } = {}) {
+		async project({ alignmentId, revision, s, profileState, sourceProjection = null } = {}) {
 			const context = normalizedContext({ alignmentId, revision, s });
 			let domain;
 			try {
@@ -123,9 +169,7 @@ export function createLongitudinalProfileController({
 					message: error.message,
 				});
 			}
-			if (!domain) {
-				return unavailable({ ...context, status: "absent" });
-			}
+			if (!domain) return sourceEvidenceProjection(sourceProjection, context) ?? unavailable({ ...context, status: "absent" });
 			const elementDefinitions = Object.freeze(
 				profileState.vertical.elements.map(freezeEntry)
 			);

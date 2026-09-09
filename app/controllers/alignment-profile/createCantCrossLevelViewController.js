@@ -99,6 +99,48 @@ function referenceEvidence() {
 	});
 }
 
+function sourceEvidenceProjection(sourceProjection, current) {
+	if (sourceProjection?.status !== "source-evidence") return null;
+	const elements = (Array.isArray(sourceProjection.sourceRecords) ? sourceProjection.sourceRecords : [])
+		.filter((record) => Number.isFinite(record?.s) && Number.isFinite(record?.crossLevel))
+		.map(freezeEntry);
+	if (elements.length === 0) return null;
+	return Object.freeze({
+		status: "projected",
+		representation: "source-declared-scalar-cant",
+		admission: "evidence-only",
+		admissible: false,
+		reason: sourceProjection.reason,
+		alignmentId: current.alignmentId,
+		revision: current.revision,
+		domain: freezeEntry({ parameterKind: "intrinsic-s", startS: elements[0].s, endS: elements.at(-1).s }),
+		boundaries: Object.freeze([...new Set(elements.map((element) => element.s))]),
+		elements: Object.freeze(elements),
+		samples: Object.freeze(elements.map((element) => freezeEntry({
+			s: element.s,
+			crossLevel: element.crossLevel,
+			appliedCant: element.appliedCant,
+			elementId: element.id,
+			declaredCantUnit: element.declaredCantUnit,
+		}))),
+		cursor: Object.freeze({
+			status: "source-evidence",
+			s: current.s,
+			exact: sourceProjection.value?.exact ?? [],
+			before: sourceProjection.value?.before ?? null,
+			after: sourceProjection.value?.after ?? null,
+		}),
+		reference: sourceProjection.reference ?? referenceEvidence(),
+		crossSection: Object.freeze({
+			status: "evidence-only",
+			admissible: false,
+			reason: "PAIRED_RAIL_CONSTRUCTION_NOT_AVAILABLE",
+			pairedRails: Object.freeze({ status: "unknown" }),
+		}),
+		error: null,
+	});
+}
+
 export function createCantCrossLevelViewController() {
 	return Object.freeze({
 		project(input = {}) {
@@ -109,7 +151,7 @@ export function createCantCrossLevelViewController() {
 			} catch (error) {
 				return unavailable({ ...current, status: "error", code: error.code ?? "INVALID_CANT_STATE", message: error.message });
 			}
-			if (!domain) return unavailable({ ...current, status: "absent" });
+			if (!domain) return sourceEvidenceProjection(input.sourceProjection, current) ?? unavailable({ ...current, status: "absent" });
 			const positions = [...domain.boundaries];
 			if (
 				current.s >= domain.startS &&

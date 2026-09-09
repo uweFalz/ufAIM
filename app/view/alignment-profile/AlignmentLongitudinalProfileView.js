@@ -151,7 +151,9 @@ export class AlignmentLongitudinalProfileView {
 		heading.textContent = "Longitudinal profile";
 		const status = documentRef.createElement("strong");
 		status.dataset.longitudinalProfileStatus = viewModel?.status ?? "error";
-		status.textContent = viewModel?.status ?? "error";
+		status.textContent = viewModel?.admission === "evidence-only"
+			? "evidence-only · admissible=false"
+			: viewModel?.status ?? "error";
 		region.append(heading, status);
 
 		if (viewModel?.status !== "projected") {
@@ -358,6 +360,7 @@ export class AlignmentLongitudinalProfileView {
 			fill: "none",
 			stroke: "currentColor",
 			"stroke-width": 2,
+			...(viewModel.admission === "evidence-only" ? { "stroke-dasharray": "7 4" } : {}),
 		});
 		svg.append(path);
 
@@ -519,6 +522,26 @@ export class AlignmentLongitudinalProfileView {
 					gradientIsFinite ? `, gradient ${viewModel.cursor.gradient}` : ""
 				}`
 			);
+		}
+		if (
+			viewModel.cursor?.status === "source-evidence" &&
+			Number.isFinite(viewModel.cursor.s) &&
+			viewModel.cursor.s >= viewModel.domain.startS &&
+			viewModel.cursor.s <= viewModel.domain.endS
+		) {
+			const sourceCursorGuide = svgElement(documentRef, "line");
+			sourceCursorGuide.dataset.longitudinalSourceCursorGuide = "";
+			setAttributes(sourceCursorGuide, {
+				x1: x(viewModel.cursor.s),
+				x2: x(viewModel.cursor.s),
+				y1: MARGIN,
+				y2: HEIGHT - MARGIN,
+				stroke: "currentColor",
+				"stroke-width": 2,
+				"stroke-dasharray": "3 3",
+				"aria-label": `Shared intrinsic-s evidence cursor at ${viewModel.cursor.s}`,
+			});
+			svg.append(sourceCursorGuide);
 		}
 		if (hitTarget) svg.append(hitTarget);
 		region.append(svg);
@@ -720,9 +743,10 @@ export class AlignmentLongitudinalProfileView {
 
 		const cursorEvidence = documentRef.createElement("p");
 		cursorEvidence.dataset.longitudinalCursorEvidence = "";
-		cursorEvidence.textContent =
-			viewModel.cursor.status === "evaluated"
-				? `Shared s=${viewModel.cursor.s} · elevation=${viewModel.cursor.elevation} m · gradient=${viewModel.cursor.gradient} m/m`
+		cursorEvidence.textContent = viewModel.cursor.status === "evaluated"
+			? `Shared s=${viewModel.cursor.s} · elevation=${viewModel.cursor.elevation} m · gradient=${viewModel.cursor.gradient} m/m`
+			: viewModel.cursor.status === "source-evidence"
+				? `Shared s=${viewModel.cursor.s} · source records bracketed · evidence-only · admissible=false`
 				: `Shared s=${viewModel.cursor.s} · not-covered`;
 		region.append(cursorEvidence);
 		this.#host.replaceChildren(region);

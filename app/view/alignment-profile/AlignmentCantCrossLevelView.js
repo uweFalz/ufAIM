@@ -45,7 +45,9 @@ export class AlignmentCantCrossLevelView {
 		heading.textContent = "Cant cross-level";
 		const status = documentRef.createElement("strong");
 		status.dataset.cantCrossLevelStatus = viewModel?.status ?? "error";
-		status.textContent = viewModel?.status ?? "error";
+		status.textContent = viewModel?.admission === "evidence-only"
+			? "evidence-only · admissible=false"
+			: viewModel?.status ?? "error";
 		region.append(heading, status);
 		if (viewModel?.status !== "projected") {
 			const empty = documentRef.createElement("p");
@@ -65,7 +67,7 @@ export class AlignmentCantCrossLevelView {
 			viewModel.samples.every((sample) => Number.isFinite(sample?.s) && Number.isFinite(sample?.crossLevel) &&
 				(viewModel.representation === "rail-pair"
 					? Number.isFinite(sample?.left?.offset) && Number.isFinite(sample?.right?.offset) && typeof sample?.left?.railId === "string" && typeof sample?.right?.railId === "string"
-					: Number.isFinite(sample?.twist)));
+					: viewModel.representation === "source-declared-scalar-cant" || Number.isFinite(sample?.twist)));
 		if (!evidenceValid) {
 			const unavailable = documentRef.createElement("p");
 			unavailable.dataset.cantCrossLevelEmpty = "";
@@ -128,7 +130,12 @@ export class AlignmentCantCrossLevelView {
 		}
 		const path = svgElement(documentRef, "polyline");
 		path.dataset.cantCrossLevelPath = "";
-		attributes(path, { points: viewModel.samples.map((sample) => `${x(sample.s)},${y(sample.crossLevel)}`).join(" "), fill: "none", stroke: "currentColor" });
+		attributes(path, {
+			points: viewModel.samples.map((sample) => `${x(sample.s)},${y(sample.crossLevel)}`).join(" "),
+			fill: "none",
+			stroke: "currentColor",
+			...(viewModel.admission === "evidence-only" ? { "stroke-dasharray": "7 4" } : {}),
+		});
 		svg.append(path);
 		if (viewModel.representation === "rail-pair") {
 			for (const [side, label] of [["left", "Left rail offset"], ["right", "Right rail offset"]]) {
@@ -158,6 +165,26 @@ export class AlignmentCantCrossLevelView {
 			attributes(cursor, { cx: x(viewModel.cursor.s), cy: y(viewModel.cursor.crossLevel), r: 4, "aria-label": viewModel.representation === "rail-pair" ? `Shared s ${String(viewModel.cursor.s)}, derived cross-level ${String(viewModel.cursor.crossLevel)}` : `Shared s ${String(viewModel.cursor.s)}, cross-level ${String(viewModel.cursor.crossLevel)}, twist ${String(viewModel.cursor.twist)}, element ${String(viewModel.cursor.elementId)}` });
 			svg.append(cursor);
 		}
+		if (
+			viewModel.cursor?.status === "source-evidence" &&
+			Number.isFinite(viewModel.cursor.s) &&
+			viewModel.cursor.s >= viewModel.domain.startS &&
+			viewModel.cursor.s <= viewModel.domain.endS
+		) {
+			const sourceCursorGuide = svgElement(documentRef, "line");
+			sourceCursorGuide.dataset.cantSourceCursorGuide = "";
+			attributes(sourceCursorGuide, {
+				x1: x(viewModel.cursor.s),
+				x2: x(viewModel.cursor.s),
+				y1: MARGIN,
+				y2: HEIGHT - MARGIN,
+				stroke: "currentColor",
+				"stroke-width": 2,
+				"stroke-dasharray": "3 3",
+				"aria-label": `Shared intrinsic-s evidence cursor at ${String(viewModel.cursor.s)}`,
+			});
+			svg.append(sourceCursorGuide);
+		}
 		if (hitTarget) svg.append(hitTarget);
 		region.append(svg);
 		const cursorEvidence = documentRef.createElement("p");
@@ -166,10 +193,13 @@ export class AlignmentCantCrossLevelView {
 			? viewModel.representation === "rail-pair"
 				? `Shared s=${String(viewModel.cursor.s)} · left=${String(viewModel.cursor.left.railId)}:${String(viewModel.cursor.left.offset)} · right=${String(viewModel.cursor.right.railId)}:${String(viewModel.cursor.right.offset)} · cross-level=${String(viewModel.cursor.crossLevel)} (derived) · common offset=${String(viewModel.cursor.commonOffset)} (derived)`
 				: `Shared s=${String(viewModel.cursor.s)} · element=${String(viewModel.cursor.elementId)} · cross-level=${String(viewModel.cursor.crossLevel)} · twist=${String(viewModel.cursor.twist)}`
-			: `Shared s=${String(viewModel.cursor?.s)} · ${String(viewModel.cursor?.status ?? "unavailable")}`;
-		if (viewModel.representation === "rail-pair" && viewModel.crossSection) {
+			: viewModel.cursor?.status === "source-evidence"
+				? `Shared s=${String(viewModel.cursor.s)} · scalar source records bracketed · evidence-only · admissible=false`
+				: `Shared s=${String(viewModel.cursor?.s)} · ${String(viewModel.cursor?.status ?? "unavailable")}`;
+		if (viewModel.crossSection) {
 			const section = documentRef.createElement("pre");
-			section.dataset.railPairCrossSection = "";
+			section.dataset.cantCrossSection = "";
+			if (viewModel.representation === "rail-pair") section.dataset.railPairCrossSection = "";
 			section.textContent = JSON.stringify(viewModel.crossSection, null, 2);
 			region.append(section);
 		}

@@ -3,6 +3,10 @@
 import { assessSpotAdmission } from "../../../import/spot/assessSpotAdmission.js";
 import { materializeAlignmentDataFromSparse } from "../../../domain/alignment/editor/materializeAlignmentDataFromSparse.js";
 import { createAlignmentSpotObject } from "../model/createAlignmentSpotObject.js";
+import {
+	appendChainageSegment,
+	createChainageMapping,
+} from "../../../aim-core/alignment/profile/ChainageMapping.js";
 
 export function promoteImportItems({ items = [], spotStore } = {}) {
 	if (!spotStore || typeof spotStore.addObjects !== "function") {
@@ -122,6 +126,7 @@ function buildSpotAlignmentEntry(item, opts = {}) {
 		meta: buildSpotMeta(item, opts),
 	});
 	entry.data.alignmentData = materializeAlignmentDataFromSparse(entry);
+	installSourceDeclaredAttachments(entry.data.alignmentData, payload, sparseAlignment, item);
 
 	entry.data.meta = clonePlainObject(payload.meta);
 	entry.data.extended = clonePlainObject(payload.extended);
@@ -131,6 +136,114 @@ function buildSpotAlignmentEntry(item, opts = {}) {
 		crs,
 		entry,
 	};
+}
+
+function installSourceDeclaredAttachments(alignmentData, payload, sparseAlignment, item) {
+	if (!isObject(alignmentData)) return;
+	const attachments = payload?.sourceAttachments;
+	if (
+		!isObject(attachments) ||
+		attachments.contractVersion !== "import/source-declared-alignment-attachments/0.1" ||
+		attachments.association !== "source-declared-inline-alignment-child"
+	) return;
+
+	alignmentData.sourceAttachments = clonePlainValue(attachments);
+	const chainageMappings = buildSourceDeclaredChainageMappings({
+		alignmentId: alignmentData.id,
+		attachments,
+		sparseAlignment,
+		item,
+	});
+	alignmentData.profileState = {
+		vertical: null,
+		cant: null,
+		chainageMappings,
+	};
+}
+
+function buildSourceDeclaredChainageMappings({ alignmentId, attachments, sparseAlignment, item }) {
+	const startAddress = readMeasureValue(attachments?.alignmentStation?.start);
+	const totalLength = sparseTotalLength(sparseAlignment);
+	if (!Number.isFinite(startAddress) || !Number.isFinite(totalLength) || totalLength <= 0) return [];
+
+	const sourceEquations = Array.isArray(attachments?.staEquations) ? attachments.staEquations : [];
+	const equations = sourceEquations.length > 0
+		? sourceEquations
+			.map((equation) => normalizeStationEquation(equation, startAddress, totalLength))
+			.filter(Boolean)
+			.sort((left, right) => left.s - right.s)
+		: [];
+	if (equations.length !== sourceEquations.length) return [];
+	if (equations.some((equation, index) => index > 0 && equation.s <= equations[index - 1].s)) return [];
+
+	const direction = equations.some((equation) => equation.direction === -1) ? -1 : 1;
+	if (equations.some((equation) => equation.direction !== direction)) return [];
+
+	let mapping = createChainageMapping({
+		id: `${safeIdStem(alignmentId)}-source-chainage`,
+		alignmentId,
+		schemeId: `landxml-source:${safeIdStem(item?.source?.fileName ?? "dataset")}`,
+		schemeVersion: "source-declared-v1",
+	});
+	let startS = 0;
+	let address = startAddress;
+	let segmentIndex = 1;
+	for (const equation of equations) {
+		const impliedBack = address + direction * (equation.s - startS);
+		if (Number.isFinite(equation.back) && Math.abs(impliedBack - equation.back) > 1e-6) return [];
+		if (equation.s > startS) {
+			mapping = appendChainageSegment(mapping, {
+				id: `${safeIdStem(alignmentId)}-source-chainage-${segmentIndex}`,
+				startS,
+				endS: equation.s,
+				startAddress: address,
+				direction,
+				source: "LandXML StaEquation",
+			});
+			segmentIndex += 1;
+		}
+		startS = equation.s;
+		address = equation.ahead;
+	}
+	if (startS >= totalLength) return mapping.segments.length > 0 ? [mapping] : [];
+	mapping = appendChainageSegment(mapping, {
+		id: `${safeIdStem(alignmentId)}-source-chainage-${segmentIndex}`,
+		startS,
+		endS: totalLength,
+		startAddress: address,
+		direction,
+		source: "LandXML alignment stationing",
+	});
+	return [mapping];
+}
+
+function normalizeStationEquation(equation, startAddress, totalLength) {
+	const internal = readMeasureValue(equation?.staInternal ?? equation?.station);
+	const ahead = readMeasureValue(equation?.staAhead);
+	const back = readMeasureValue(equation?.staBack);
+	if (![internal, ahead].every(Number.isFinite)) return null;
+	const s = internal - startAddress;
+	if (!(s > 0 && s < totalLength)) return null;
+	const increment = String(equation?.staIncrement ?? "increasing").trim().toLowerCase();
+	return {
+		s,
+		ahead,
+		back,
+		direction: ["decreasing", "-1", "negative"].includes(increment) ? -1 : 1,
+	};
+}
+
+function sparseTotalLength(sparseAlignment) {
+	const explicit = Number(sparseAlignment?.totalLength ?? sparseAlignment?.arcLength);
+	if (Number.isFinite(explicit) && explicit > 0) return explicit;
+	const elements = Array.isArray(sparseAlignment?.elements)
+		? sparseAlignment.elements
+		: Array.isArray(sparseAlignment?.sparse) ? sparseAlignment.sparse : [];
+	const sum = elements.reduce((total, element) => {
+		const length = Number(element?.arcLength ?? element?.length);
+		return Number.isFinite(length) && length > 0 ? total + length : total;
+	}, 0);
+	return sum > 0 ? sum : null;
 }
 
 function buildSpotProfileEntry(item, opts = {}) {
@@ -648,6 +761,14 @@ function readMeasureValue(value) {
 
 function clonePlainObject(value) {
 	return isObject(value) ? { ...value } : {};
+}
+
+function clonePlainValue(value) {
+	if (Array.isArray(value)) return value.map(clonePlainValue);
+	if (!isObject(value)) return value;
+	return Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => [key, clonePlainValue(entry)])
+	);
 }
 
 function asArray(value) {

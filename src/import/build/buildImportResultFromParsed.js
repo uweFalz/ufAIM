@@ -140,11 +140,12 @@ function buildResultFromLandFAT({ doc, source, meta }) {
 		});
 
 		outcomes.push(
-		buildAlignmentImportOutcome({
-			alignment,
-			source: alignmentSource,
-			containerSpatialRef,
-		})
+			buildAlignmentImportOutcome({
+				alignment,
+				source: alignmentSource,
+				containerSpatialRef,
+				containerUnits: doc?.units ?? null,
+			})
 		);
 
 		// -------------------------------------------------------------

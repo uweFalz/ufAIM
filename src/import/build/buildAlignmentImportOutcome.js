@@ -64,6 +64,7 @@ export function buildAlignmentImportOutcome({
 	preferredId = null,
 	annotations = [],
 	containerSpatialRef = null,
+	containerUnits = null,
 } = {}) {
 	if (!isObject(alignment)) {
 		return makeRejectedImportItem({
@@ -80,7 +81,10 @@ export function buildAlignmentImportOutcome({
 		});
 	}
 
-	const payload = normalizeAlignmentPayload(alignment);
+	const payload = normalizeAlignmentPayload(alignment, {
+		source,
+		containerUnits,
+	});
 	const itemId = preferredId ?? deriveAlignmentId(payload, source);
 
 	let sparseAlignment = null;
@@ -630,7 +634,7 @@ function deriveImportSpatialRef({
 // payload normalization
 // -----------------------------------------------------------------------------
 
-function normalizeAlignmentPayload(alignment) {
+function normalizeAlignmentPayload(alignment, { source, containerUnits } = {}) {
 	return {
 		kind: "alignment",
 		id: alignment.id ?? null,
@@ -644,10 +648,77 @@ function normalizeAlignmentPayload(alignment) {
 		staEqRef:
 			alignment.staEqRef ??
 			inferStaEqRef(alignment?.staEquations ?? alignment?.staEq ?? null),
+		sourceAttachments: normalizeSourceAttachments(alignment, {
+			source,
+			containerUnits,
+		}),
 
 		meta: isObject(alignment.meta) ? alignment.meta : {},
 		extended: isObject(alignment.extended) ? alignment.extended : {},
 	};
+}
+
+function normalizeSourceAttachments(alignment, { source, containerUnits } = {}) {
+	const profile = isObject(alignment?.profile) ? clonePlainValue(alignment.profile) : null;
+	const cant = Array.isArray(alignment?.cant) && alignment.cant.length > 0
+		? clonePlainValue(alignment.cant)
+		: null;
+	const staEquations = Array.isArray(alignment?.staEquations) && alignment.staEquations.length > 0
+		? clonePlainValue(alignment.staEquations)
+		: null;
+	const sourceMeta = isObject(alignment?.extras?.meta) ? alignment.extras.meta : {};
+	const start = normalizeMeasure(sourceMeta.staStart);
+	const length = normalizeMeasure(sourceMeta.length);
+
+	if (!profile && !cant && !staEquations && !start) return null;
+
+	return {
+		contractVersion: "import/source-declared-alignment-attachments/0.1",
+		association: "source-declared-inline-alignment-child",
+		source: {
+			fileName: source?.fileName ?? null,
+			parserId: source?.parserId ?? null,
+			objectName: source?.objectName ?? alignment?.name ?? alignment?.id ?? null,
+		},
+		units: isObject(containerUnits) ? clonePlainValue(containerUnits) : null,
+		alignmentStation: start || length ? { start, length } : null,
+		profile,
+		cant,
+		staEquations,
+		admission: {
+			vertical: profile ? {
+				status: "evidence-only",
+				admissible: false,
+				reason: "SOURCE_PROFILE_NOT_ADMITTED_AS_CONSTRUCTIVE_STATE",
+			} : null,
+			cant: cant ? {
+				status: "evidence-only",
+				admissible: false,
+				reason: "PAIRED_RAIL_CONSTRUCTION_NOT_AVAILABLE",
+			} : null,
+		},
+	};
+}
+
+function normalizeMeasure(value) {
+	if (isObject(value) && Number.isFinite(Number(value.value))) {
+		return {
+			value: Number(value.value),
+			...(typeof value.unit === "string" && value.unit.trim()
+				? { unit: value.unit.trim() }
+				: {}),
+		};
+	}
+	const numeric = Number(value);
+	return Number.isFinite(numeric) ? { value: numeric } : null;
+}
+
+function clonePlainValue(value) {
+	if (Array.isArray(value)) return value.map(clonePlainValue);
+	if (!isObject(value)) return value;
+	return Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => [key, clonePlainValue(entry)])
+	);
 }
 
 function normalizeCoordGeom(coordGeom) {

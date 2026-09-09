@@ -84,6 +84,9 @@ function validateProfileState(alignmentData, alignmentId) {
 		return Object.freeze({
 			...ABSENT_SNAPSHOT,
 			revision: canonicalRevision(alignmentData),
+			...(isSourceAttachments(alignmentData.sourceAttachments)
+				? { sourceAttachments: alignmentData.sourceAttachments }
+				: {}),
 		});
 	}
 
@@ -178,7 +181,18 @@ function validateProfileState(alignmentData, alignmentId) {
 		chainageMappings: Object.freeze([
 			...profileState.chainageMappings,
 		]),
+		...(isSourceAttachments(alignmentData.sourceAttachments)
+			? { sourceAttachments: alignmentData.sourceAttachments }
+			: {}),
 	});
+}
+
+function isSourceAttachments(value) {
+	return !!value &&
+		typeof value === "object" &&
+		!Array.isArray(value) &&
+		value.contractVersion === "import/source-declared-alignment-attachments/0.1" &&
+		value.association === "source-declared-inline-alignment-child";
 }
 
 export class RepositoryAlignmentProfileStateReaderAdapter {

@@ -34,14 +34,26 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		const alignmentData = object?.data?.alignmentData;
 		if (!alignmentData || typeof alignmentData !== "object" || Array.isArray(alignmentData)) return null;
 		if (!Object.prototype.hasOwnProperty.call(alignmentData, "profileState")) {
-			return { presence: "absent", vertical: null, cant: null, chainageMappings: [] };
+			return {
+				presence: "absent",
+				vertical: null,
+				cant: null,
+				chainageMappings: [],
+				sourceAttachments: alignmentData.sourceAttachments ?? null,
+			};
 		}
 		const profileState = alignmentData.profileState;
 		if (!profileState || typeof profileState !== "object" || Array.isArray(profileState) ||
 			!Object.prototype.hasOwnProperty.call(profileState, "vertical") ||
 			!Object.prototype.hasOwnProperty.call(profileState, "cant") ||
 			!Array.isArray(profileState.chainageMappings)) return null;
-		return { presence: "present", vertical: profileState.vertical, cant: profileState.cant, chainageMappings: profileState.chainageMappings };
+		return {
+			presence: "present",
+			vertical: profileState.vertical,
+			cant: profileState.cant,
+			chainageMappings: profileState.chainageMappings,
+			sourceAttachments: alignmentData.sourceAttachments ?? null,
+		};
 	};
 
 	async function rehydrateCanonicalAlignment(objectId, { refreshSurfaces = true } = {}) {
@@ -130,7 +142,8 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		if (profileProjection.state?.presence !== hydrated.profileState.presence ||
 			!sameValue(profileProjection.state?.vertical, hydrated.profileState.vertical) ||
 			!sameValue(profileProjection.state?.cant, hydrated.profileState.cant) ||
-			!sameValue(profileProjection.state?.chainageMappings, hydrated.profileState.chainageMappings)) {
+			!sameValue(profileProjection.state?.chainageMappings, hydrated.profileState.chainageMappings) ||
+			!sameValue(profileProjection.state?.sourceAttachments ?? null, hydrated.profileState.sourceAttachments)) {
 			return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_STATE_READBACK_MISMATCH" };
 		}
 		if (horizontalProjection?.status !== "rendered" || horizontalProjection.objectId !== requestedId || !sameValue(horizontalProjection.revision, hydrated.revision) || horizontalProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(horizontalProjection.cursor.s, s) || horizontalProjection.mode !== "active" || !horizontalProjection.projectionSignature) {
