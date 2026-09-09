@@ -91,9 +91,21 @@ that.
 Without a prior the honest verdict on a giant is: rms at the noise floor,
 end pose met, gradient not resolvable - the fit is done and the problem is
 ill-determined in the directions listed above. The solver does not say that
-yet; it says `max_iterations`. A verdict "stationary within the data's
-resolution" would need a criterion that measures the residual's sensitivity
-along the null directions, not the gradient's norm. That is the open item.
+yet; it says `max_iterations`.
+
+A least-squares stall verdict was tried for this (2026-09-09): feasible,
+full uncut steps, the objective changing by no more than 1e-6 of itself for
+five steps in a row. On the corpus it gained two verdicts per objective and
+lost nothing measurable. On the giants it never fired - the objective still
+falls by 6e-5 of itself a step at iteration 400, and the end pose hovers at
+8e-6 against a relative tolerance of 3e-6 - and in the ladder and
+lexicographic tests it fired too early, on tiers that were slow rather than
+finished. Slow progress and a stall are not told apart by the objective's
+change alone, and that is exactly the giants' state. Rejected. What would
+tell them apart is the residual's sensitivity along the null directions of
+J'J - the eigenvectors above - reported as a diagnostic: "these lengths the
+points do not determine". That is a diagnostics feature, not a verdict rule,
+and it is the remaining open item here.
 
 ## 4. Scenario corrections made on the way
 
