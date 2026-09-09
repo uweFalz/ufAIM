@@ -29,12 +29,20 @@ export function renderHorizontalRealizationChangeReceipt(container, receipt) {
 	container.append(heading, identity, list, boundary);
 	const evidence = receipt.diagnostics?.evidence;
 	if (receipt.diagnostics?.status === "evidence-only" && evidence) {
+		if (receipt.diagnostics.sentence) {
+			const fit = document.createElement("p");
+			fit.dataset.fitMode = receipt.diagnostics.fitMode ?? "unknown";
+			fit.textContent = receipt.diagnostics.sentence;
+			container.append(fit);
+		}
 		const detail = document.createElement("dl");
 		detail.dataset.axtranEvidence = "evidence-only";
 		for (const [label, value] of [
 			["Producer", evidence.version],
 			["Proposal", evidence.proposalStatus],
 			["Objective", evidence.objective],
+			["Fit mode", evidence.fitMode],
+			["Undetermined lengths", Array.isArray(evidence.undetermined) ? (evidence.undetermined.map((entry) => entry.elementId).join(", ") || "none") : null],
 			["Admissible", evidence.admissible],
 			["Iterations", evidence.diagnostics?.iterations],
 			["End-pose residual [m]", evidence.diagnostics?.endPoseDistance],

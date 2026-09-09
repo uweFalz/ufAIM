@@ -35,6 +35,25 @@ function equal(left, right) {
 	return JSON.stringify(left) === JSON.stringify(right);
 }
 
+/**
+ * One sentence on what the fit did with the lengths: which mode ran, and
+ * which lengths the samples did not determine - the answer to the question
+ * the length prior asks (AXTRAN2_LENGTH_PRIOR_PROPOSAL.md).
+ */
+function fitSentence(evidence) {
+	const mode = evidence?.fitMode === "measurements-only" ? "measurements-only" : evidence?.fitMode === "keep-plan" ? "keep-plan" : null;
+	if (mode === null) return null;
+	const sigma = Number.isFinite(evidence?.planSigma) ? `${(evidence.planSigma * 100).toFixed(0)} %` : null;
+	const lead = mode === "keep-plan"
+		? `Fit hielt den bearbeiteten Plan (σ ${sigma ?? "?"}), wo die Proben gleichgültig waren`
+		: "Fit folgte nur den Proben";
+	const undetermined = Array.isArray(evidence?.undetermined) ? evidence.undetermined.map((entry) => text(entry?.elementId)).filter(Boolean) : [];
+	const tail = undetermined.length
+		? `; von den Proben nicht bestimmt: ${undetermined.join(", ")}.`
+		: "; jede Länge von den Proben bestimmt.";
+	return `${lead}${tail}`;
+}
+
 export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange, activeObjectId, activeElementId, axtranEvidence = null } = {}) {
 	const objectId = text(alignmentChange?.objectId);
 	const elementId = text(alignmentChange?.elementId);
@@ -64,6 +83,8 @@ export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, a
 		? Object.freeze({
 			status: "evidence-only",
 			message: "AXTRAN2 consequence evidence · evidence-only · not an admissible engineering answer.",
+			fitMode: axtranEvidence.fitMode ?? null,
+			sentence: fitSentence(axtranEvidence),
 			evidence: axtranEvidence,
 		})
 		: Object.freeze({ status: "not-available", message: "AXTRAN diagnostics are not available in the current result contract." });
