@@ -40764,8 +40764,18 @@ xlsx/xlsx.mjs:
 					const cant = own.find((candidate) => candidate.item.kind === "cant");
 					const zSeries = profile ? seriesFor(profile, ["elevation", "height", "z"]) : [];
 					const uSeries = cant ? seriesFor(cant, CANT_VALUE_KEYS).map((point) => ({ x: point.x, y: cantMillimetres(point.raw) })) : [];
-					const railA = zSeries;
-					const railB = zSeries.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
+					// A landXML junction sits on Gleise tens of km long with profile
+					// points hundreds of metres apart: the Weichenhöhenplan shows the
+					// window around the Weiche, the Gradiente sampled every 5 m.
+					let railA = zSeries;
+					if (activeJunction.window && Number.isFinite(activeJunction.stationRaw) && zSeries.length) {
+						const from = Math.max(zSeries[0].x, activeJunction.stationRaw - activeJunction.window);
+						const to = Math.min(zSeries[zSeries.length - 1].x, activeJunction.stationRaw + activeJunction.window);
+						railA = [];
+						for (let x = from; x <= to + 1e-6; x += 5) railA.push({ x, y: interpolateSeriesAt(zSeries, x) });
+						if (railA.length && railA[railA.length - 1].x < to) railA.push({ x: to, y: interpolateSeriesAt(zSeries, to) });
+					}
+					const railB = railA.map((point) => ({ x: point.x, y: point.y + interpolateSeriesAt(uSeries, point.x) / 1000 }));
 					return { track, railA, railB, hasCant: uSeries.length > 0 };
 				}).filter((data) => data.railA.length);
 
@@ -40775,7 +40785,9 @@ xlsx/xlsx.mjs:
 						subtitle: multiTrack ? `${tracks.length} Gleise ausgewählt` : "",
 					};
 				}
-				const subtitle = multiTrack
+				const subtitle = activeJunction.window
+					? `${trackData.length} Gleise · ±${activeJunction.window} m um km ${station(activeJunction.stationRaw).trim()} · Gradiente alle 5 m interpoliert`
+					: multiTrack
 					? `${trackData.length} Gleise · gemeinsame externe GND-Kilometrierung · keine Übereinstimmung wird erzwungen`
 					: trackData[0].hasCant
 						? "intrinsische Station · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
@@ -42847,7 +42859,7 @@ xlsx/xlsx.mjs:
 						byPoint.get(key).push(track);
 					}
 				}
-				return [...byPoint.entries()]
+				const gndClusters = [...byPoint.entries()]
 					.filter(([, tracksAtPoint]) => tracksAtPoint.length > 1)
 					// Consecutive segments of the SAME Strecke meet end-to-start wherever a
 					// long alignment is chunked into multiple records -- that is the track
@@ -42863,8 +42875,59 @@ xlsx/xlsx.mjs:
 							.map((entry) => gndSequenceForEntry(entry)?.stationStart)
 							.filter((value) => Number.isFinite(numberValue(value)));
 						return { id: key, entries, stationRaw: stationRaws.length ? Math.min(...stationRaws) : null };
-					})
+					});
+				return [...gndClusters, ...detectLandXmlJunctions()]
 					.sort((a, b) => (a.stationRaw ?? Infinity) - (b.stationRaw ?? Infinity));
+			}
+
+			// landXML has no Streckennummer per Gleis, and its Weichen are not
+			// alignments of their own: the Gegenrichtungsgleis simply ends ON the
+			// Richtungsgleis where the line goes single-track (SCx_1720.xml:
+			// A101720L ends at km 223,067 on A101720R, 1 µm off the axis; A101720M
+			// starts at km 228,589 on it). So a junction is an endpoint of one Gleis
+			// lying on another Gleis of a different 7L side -- the km line and
+			// same-side continuations excluded -- and its station is the km of that
+			// point on the Gleis it touches. Parallel starts (L's start is 4,8 m
+			// from R) and the km line (2 m from R) stay outside the tolerance.
+			const LANDXML_JUNCTION_TOLERANCE_M = 0.5;
+			const LANDXML_JUNCTION_WINDOW_M = 250;
+			function distanceAndStationOnPolyline(polyline, point) {
+				let best = null;
+				for (let index = 0; index + 1 < polyline.length; index += 1) {
+					const a = polyline[index];
+					const b = polyline[index + 1];
+					const dx = b.easting - a.easting;
+					const dy = b.northing - a.northing;
+					const lengthSq = dx * dx + dy * dy;
+					const t = lengthSq > 1e-9 ? Math.max(0, Math.min(1, ((point.easting - a.easting) * dx + (point.northing - a.northing) * dy) / lengthSq)) : 0;
+					const distance = Math.hypot(point.easting - (a.easting + t * dx), point.northing - (a.northing + t * dy));
+					if (!best || distance < best.distance) best = { distance, station: a.station + t * (b.station - a.station) };
+				}
+				return best;
+			}
+			function detectLandXmlJunctions() {
+				const gleise = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && entry.parser === "landXML" && sevenLineSide(entry) !== "kilometer");
+				const polylines = new Map();
+				const polylineOf = (entry) => {
+					if (!polylines.has(entry)) polylines.set(entry, referenceStationPolyline(entry, 5));
+					return polylines.get(entry);
+				};
+				const clusters = [];
+				for (const gleis of gleise) {
+					const ends = alignmentEndpoints(gleis);
+					if (!ends) continue;
+					for (const point of [ends.start, ends.end]) {
+						for (const other of gleise) {
+							if (other === gleis || sevenLineSide(other) === sevenLineSide(gleis)) continue;
+							const hit = distanceAndStationOnPolyline(polylineOf(other), point);
+							if (!hit || hit.distance > LANDXML_JUNCTION_TOLERANCE_M) continue;
+							const id = endpointKey(point);
+							if (clusters.some((cluster) => cluster.id === id)) continue;
+							clusters.push({ id, entries: [gleis, other], stationRaw: hit.station, window: LANDXML_JUNCTION_WINDOW_M });
+						}
+					}
+				}
+				return clusters;
 			}
 
 			function activateJunctionCluster(junction) {
