@@ -266,6 +266,7 @@ export function buildWindowShell() {
 							<label id="aeTransitionTypeLabel" for="aeTransitionType" data-i18n="alignment_editor.label.transition_family"></label><select id="aeTransitionType" class="select"></select>
 							<label id="aeW1Label" for="aeW1" data-i18n="alignment_editor.label.w1"></label><input id="aeW1" class="input" type="number" min="0" max="1" step="0.001" />
 							<label id="aeW2Label" for="aeW2" data-i18n="alignment_editor.label.w2"></label><input id="aeW2" class="input" type="number" min="0" max="1" step="0.001" />
+							<label id="aeFitModeLabel" for="aeFitMode" data-i18n="alignment_editor.label.fit_mode"></label><select id="aeFitMode" class="select"><option value="keep-plan" data-i18n="alignment_editor.fit_mode.keep_plan"></option><option value="measurements-only" data-i18n="alignment_editor.fit_mode.measurements_only"></option></select>
 						</div>
 						<div id="aeSignedContext" class="uf-align-edit__hint"></div>
 						<div id="aeConsequence" class="uf-align-edit__consequence" aria-live="polite"></div>
