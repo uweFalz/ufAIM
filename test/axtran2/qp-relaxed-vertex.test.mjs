@@ -164,3 +164,26 @@ test("a provided Hessian is scaled with both of its indices", async () => {
 	assert.deepEqual(scaled.gradF, [1, 1e-3]);
 	assert.equal(scaleEvaluator(() => ({ f: 0, gradF: [1, 1], h: [], Jh: [] }), scales)([0, 0]).hessian, undefined);
 });
+
+test("filter acceptance with the switching condition reaches the same answers as the merit", () => {
+	// Least squares on the circle (above) and the vertex problem of #18: the
+	// filter accepts by dominance where the model promises little, by Armijo
+	// on f where it promises much, and leaves the filter alone on f-type steps.
+	const circle = ([x, y]) => {
+		const r = [x - 3, y - 1, x - y];
+		const J = [[1, 0], [0, 1], [1, -1]];
+		return { f: 0.5 * r.reduce((s, v) => s + v * v, 0), gradF: [0, 1].map((j) => J.reduce((s, row, i) => s + row[j] * r[i], 0)), h: [50 * (Math.hypot(x, y) - 100)], Jh: [[50 * x / Math.hypot(x, y), 50 * y / Math.hypot(x, y)]], g: [], Jg: [] };
+	};
+	const merit = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200 });
+	const filter = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200, acceptance: "filter" });
+	const dominance = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200, acceptance: "filter", filterSwitching: false });
+	for (const [label, run] of [["merit", merit], ["filter", filter], ["dominance only", dominance]]) {
+		assert.ok(run.ok, `${label}: ${run.status} ${run.reason ?? ""}`);
+		assert.ok(Math.abs(Math.hypot(...run.x) - 100) < 1e-6, `${label}: off the circle`);
+		assert.ok(Math.hypot(run.x[0] - merit.x[0], run.x[1] - merit.x[1]) < 1e-4, `${label}: ${run.x} against ${merit.x}`);
+	}
+	// the box-excluded equality of #18 keeps its verdict under the filter
+	const boxed = solveSQP({ x0: [0], evaluate: ([x]) => ({ f: x, gradF: [1], h: [x - 5], Jh: [[1]], g: [], Jg: [] }), lower: [-1], upper: [1], maxIterations: 60, restoration: "off", acceptance: "filter" });
+	assert.equal(boxed.status, "infeasible_subproblem");
+	assert.throws(() => solveSQP({ x0: [0], evaluate: circle, acceptance: "vote" }), /acceptance must be/);
+});
