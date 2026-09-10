@@ -32,6 +32,8 @@ const structuredStart = args.structuredStart === undefined ? undefined : Number(
 const hybridSwitch = args.hybridSwitch === undefined ? undefined : Number(args.hybridSwitch);
 const lengthPrior = args.lengthPrior === undefined ? undefined : { sigma: Number(args.lengthPrior) };
 const acceptance = args.acceptance;
+const filterCeiling = args.filterCeiling === undefined ? undefined : Number(args.filterCeiling);
+const filterSwitching = args.filterSwitching === undefined ? undefined : args.filterSwitching !== "false";
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
 
 const trusted = [];
@@ -60,7 +62,7 @@ for (const { file, n } of trusted.slice(from, to)) {
 	for (const objective of objectives) {
 		const t0 = Date.now();
 		let run;
-		try { run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations, hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance }); }
+		try { run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations, hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling }); }
 		catch (error) { console.log(`${rel(file).slice(-42).padEnd(42)} ${objective}: solver threw ${error.code ?? ""} ${error.message.slice(0, 60)}`); rows.push({ file: rel(file), n, objective, error: error.message }); continue; }
 		const d = run.diagnostics;
 		const variables = run.candidate?.variables ?? [];
