@@ -15,6 +15,7 @@ Package `DELIVERY1-LANDSHUT-CANDIDATE-REACHABILITY-001`, responsible stream `app
 - Publication branch: `codex/delivery1-landshut-reachability-0910`.
 - Scope: Cockpit import-row presentation, its regression tests, and this report. Excluded: parsers, admission decisions, solver semantics, `docs/knowledgeKernel/`, Thesis, technetViewer and dataset publication.
 - During the work, `origin/main` advanced to `310f447c54411f4fa6dc849e420a0877b7c532c5` (PR 41). `git diff --name-only 3fcd185..origin/main` showed seven solver/corpus/design-document files, with no overlap with this package. Browser evidence below is specifically from `3fcd185` plus the two-file patch, not a claim that PR 41 was browser-validated.
+- Integration: the clean isolated branch was rebased without conflict onto `310f447`. Commit `4aed0fe21857aa95e2f4d0e7f2b252b9bc03ac48` was then fast-forward pushed to `origin/main`; no force push and no shared-checkout update occurred.
 
 ## 4. Work Performed
 
@@ -80,6 +81,8 @@ Closed the first tab, opened a new tab on the same origin, used “Vorhandene Ob
 - `node --test test/app/import/import-object-cockpit-overlay-boundary.test.mjs test/app/import/import-multiple-batch-visible.test.mjs test/app/import/import-object-workbench-surfaces.test.mjs`: `passed`, 7 tests. These are regression evidence, not substitutes for the normal browser journey.
 - `git diff --check`: `passed` for implementation/test edits.
 - Remote target read with `git ls-remote origin refs/heads/main`: `passed`, `310f447c54411f4fa6dc849e420a0877b7c532c5`. Initial sandbox DNS failure was retried with approved network access; not a product blocker.
+- Final integration regression: all four listed test files were rerun together after the isolated rebase, `passed`, 11/11. `git diff origin/main --check` passed and the worktree was clean. Full browser acceptance on the changed PR 41 solver baseline was `not run`; the candidate-list renderer itself was unchanged by that rebase.
+- Publication: `git push origin HEAD:refs/heads/main` returned `310f447..4aed0fe`; `git ls-remote origin refs/heads/main` equaled local `HEAD` (`4aed0fe21857aa95e2f4d0e7f2b252b9bc03ac48`), `passed`. This report-only follow-up records that verified publication.
 
 ## 7. Kernel and Architecture Impact
 
@@ -102,7 +105,7 @@ RefImpl change is limited to making existing import candidates reachable without
 
 ## 9. Handover
 
-The narrow candidate-list patch may be integrated under the existing App push/merge authorization, with this partial report preserving the outstanding journey defects. No update of the dirty shared checkout is authorized by that integration. Re-run its focused regression tests on the final integration baseline and report the actual publication result separately.
+The narrow candidate-list patch is integrated on `origin/main` as `4aed0fe21857aa95e2f4d0e7f2b252b9bc03ac48`, under the existing App push/merge authorization, with the outstanding journey defects preserved above. No update of the dirty shared checkout was made or is implied by that integration. Its existing port 8080 therefore does not acquire this change merely by reloading.
 
 Next safe App step: investigate `RISK-LANDSHUT-001` at import promotion → canonical realization → presentation using W467–468 before any edit. Inspect the existing source attachment and consequence persistence contracts for `RISK-LANDSHUT-002/003`; do not invent a parser, automatic association or a new architecture. Only repair a demonstrated boundary defect, isolated from `origin/main`.
 
