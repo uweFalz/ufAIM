@@ -188,8 +188,42 @@ function profileCapabilities(projection, finding) {
 		: projection.cant?.status === "source-evidence"
 			? { status: "partial-evidence", value: projection.cant.value, provenancePresent: true, admissible: false }
 			: finding?.EU;
+	const speed = projection.speed?.status === "source-evidence"
+		? {
+			status: "partial-evidence",
+			value: compactSourceSpeedValue(projection.speed.value),
+			provenancePresent: true,
+			admission: projection.speed.admission ?? "evidence-only",
+			admissible: false,
+			reason: projection.speed.reason ?? "SOURCE_SPEED_NOT_ADMITTED_AS_CONSTRUCTIVE_STATE",
+		}
+		: { status: "missing", reason: projection.speed?.reason ?? "SOURCE_SPEED_EVIDENCE_NOT_AVAILABLE" };
 	const chainage = ["evaluated", "unique", "complete"].includes(projection.chainage?.status) ? { status: "constructive", value: projection.chainage, provenancePresent: true } : finding?.EK;
-	return { vertical, cant, chainage };
+	return { vertical, cant, speed, chainage };
+}
+
+function compactSourceSpeedValue(value) {
+	const exact = Array.isArray(value?.exact) ? value.exact[0] ?? null : null;
+	if (exact) return sourceSpeedFact(exact, "exact-source-record");
+	const before = value?.before ?? null;
+	const after = value?.after ?? null;
+	if (before && after && Object.is(before.speed, after.speed) && Object.is(before.declaredSpeedUnit, after.declaredSpeedUnit)) {
+		return sourceSpeedFact(before, "equal-bracketing-source-records");
+	}
+	return Object.freeze({
+		support: value?.status ?? "not-covered",
+		before: before ? sourceSpeedFact(before, "before") : null,
+		after: after ? sourceSpeedFact(after, "after") : null,
+	});
+}
+
+function sourceSpeedFact(record, support) {
+	return Object.freeze({
+		sourceSpeed: record?.speed ?? null,
+		unit: record?.declaredSpeedUnit ?? "not-declared",
+		support,
+		sourceType: record?.type ?? null,
+	});
 }
 
 function localSpatialReason(georeference) {

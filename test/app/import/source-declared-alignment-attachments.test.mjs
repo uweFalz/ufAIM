@@ -63,8 +63,9 @@ function importedAlignment() {
 			},
 		},
 		cant: [
-			{ type: "CantStation", station: { value: 1000, unit: "meter" }, appliedCant: { value: 0, unit: "millimeter" } },
-			{ type: "CantStation", station: { value: 1100, unit: "meter" }, appliedCant: { value: 95, unit: "millimeter" } },
+			{ type: "CantStation", station: { value: 1000, unit: "meter" }, appliedCant: { value: 0, unit: "millimeter" }, speed: { value: 120 } },
+			{ type: "SpeedStation", station: { value: 1050, unit: "meter" }, speed: { value: 100 } },
+			{ type: "CantStation", station: { value: 1100, unit: "meter" }, appliedCant: { value: 95, unit: "millimeter" }, speed: { value: 120 } },
 		],
 		staEquations: [
 			{ type: "StaEquation", staInternal: { value: 1050 }, staBack: { value: 1050 }, staAhead: { value: 2000 }, staIncrement: "increasing" },
@@ -96,7 +97,10 @@ test("source-declared Vertical, Cant, and StaEquation stay attached to the promo
 	const imported = outcome.item.payload.sourceAttachments;
 	assert.equal(imported.association, "source-declared-inline-alignment-child");
 	assert.equal(imported.profile.profAlign.pvis.length, 2);
-	assert.equal(imported.cant[1].appliedCant.value, 95);
+	assert.equal(imported.cant[2].appliedCant.value, 95);
+	assert.equal(imported.cant[0].speed.value, 120);
+	assert.equal(imported.cant[1].type, "SpeedStation");
+	assert.equal(imported.admission.speed.admissible, false);
 	assert.equal(imported.staEquations[0].staAhead.value, 2000);
 
 	const alignmentData = object.data.alignmentData;
@@ -128,6 +132,15 @@ test("one shared intrinsic-s cursor projects source evidence, chainage, longitud
 	assert.equal(projection.cant.admission, "evidence-only");
 	assert.equal(projection.cant.admissible, false);
 	assert.equal(projection.cant.reference.scalarCrossLevelStatus, "partial-evidence");
+	assert.equal(projection.speed.status, "source-evidence");
+	assert.equal(projection.speed.admission, "evidence-only");
+	assert.equal(projection.speed.admissible, false);
+	assert.equal(projection.speed.sourceRecords.length, 3);
+	assert.equal(projection.speed.sourceRecords[1].type, "SpeedStation");
+	assert.equal(projection.speed.sourceRecords[1].speed, 100);
+	assert.equal(projection.speed.sourceRecords[1].declaredSpeedUnit, null);
+	assert.equal(projection.speed.value.before.speed, 100);
+	assert.equal(projection.speed.value.after.speed, 120);
 	assert.equal(projection.chainage.mappings[0].candidates[0].address, 2025);
 
 	const longitudinal = await createLongitudinalProfileController({

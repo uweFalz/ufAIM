@@ -40,6 +40,17 @@ function projection(overrides = {}) {
 				}),
 			}),
 		}),
+		speed: Object.freeze({
+			status: "source-evidence",
+			admission: "evidence-only",
+			admissible: false,
+		}),
+		state: Object.freeze({
+			presence: "present",
+			vertical: null,
+			cant: null,
+			chainageMappings: Object.freeze([]),
+		}),
 		...overrides,
 	});
 }
@@ -150,6 +161,8 @@ test("view model retains the exact evaluated fields and uncertain statuses witho
 	assert.strictEqual(model.vertical, source.vertical);
 	assert.strictEqual(model.chainage, source.chainage);
 	assert.strictEqual(model.cant, source.cant);
+	assert.strictEqual(model.speed, source.speed);
+	assert.strictEqual(model.state, source.state);
 	assert.equal(model.vertical.status, "unknown");
 	assert.equal(model.chainage.status, "ambiguous");
 	assert.equal(model.cant.status, "partial");

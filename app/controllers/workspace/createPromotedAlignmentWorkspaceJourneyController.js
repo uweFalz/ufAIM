@@ -135,7 +135,7 @@ export function createPromotedAlignmentWorkspaceJourneyController({
 		const afterId = String(after?.workspace_selection?.primaryId ?? "").trim();
 		const afterS = Number(after?.cursor?.s);
 		if (afterId !== requestedId || !Object.is(afterS, s)) return { ok: false, code: "PROMOTED_ALIGNMENT_ACTIVE_CONTEXT_CHANGED" };
-		const hasLanes = ["vertical", "cant", "chainage"].every((key) => Object.prototype.hasOwnProperty.call(profileProjection ?? {}, key));
+		const hasLanes = ["vertical", "cant", "speed", "chainage"].every((key) => Object.prototype.hasOwnProperty.call(profileProjection ?? {}, key));
 		if (profileProjection?.status !== "projected" || profileProjection.alignmentId !== requestedId || !sameValue(profileProjection.revision, hydrated.revision) || profileProjection?.cursor?.parameterKind !== "intrinsic-s" || !Object.is(profileProjection.cursor.s, s) || !hasLanes) {
 			return { ok: false, code: "PROMOTED_ALIGNMENT_PROFILE_READBACK_MISMATCH" };
 		}

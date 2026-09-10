@@ -11,6 +11,8 @@ function capability(name, input, fallback = "missing") {
 		sourceRefs: Object.freeze([...(input?.sourceRefs ?? [])]),
 		value: input?.value ?? null,
 		provenancePresent: Boolean(input?.provenancePresent || input?.evidenceId || input?.sourceRefs?.length),
+		admission: input?.admission ?? null,
+		admissible: input?.admissible === true ? true : input?.admissible === false ? false : null,
 		relationStatus: input?.relationStatus ?? null,
 		reviewedCandidateId: input?.reviewedCandidateId ?? null,
 		reviewRevision: Number(input?.reviewRevision ?? 0),

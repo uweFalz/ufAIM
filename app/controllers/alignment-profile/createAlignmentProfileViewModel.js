@@ -22,6 +22,8 @@ export function createAlignmentProfileViewModel(projection) {
 		vertical: projection.vertical,
 		chainage: projection.chainage,
 		cant: projection.cant,
+		speed: projection.speed,
+		state: projection.state,
 		canCreateRailPairCant:
 			projection.profileStatePresence === "present" && projection.state?.cant === null,
 		railPairCantState:

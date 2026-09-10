@@ -669,6 +669,7 @@ function normalizeSourceAttachments(alignment, { source, containerUnits } = {}) 
 	const sourceMeta = isObject(alignment?.extras?.meta) ? alignment.extras.meta : {};
 	const start = normalizeMeasure(sourceMeta.staStart);
 	const length = normalizeMeasure(sourceMeta.length);
+	const hasSpeed = cant?.some((entry) => normalizeMeasure(entry?.speed) !== null) ?? false;
 
 	if (!profile && !cant && !staEquations && !start) return null;
 
@@ -695,6 +696,11 @@ function normalizeSourceAttachments(alignment, { source, containerUnits } = {}) 
 				status: "evidence-only",
 				admissible: false,
 				reason: "PAIRED_RAIL_CONSTRUCTION_NOT_AVAILABLE",
+			} : null,
+			speed: hasSpeed ? {
+				status: "evidence-only",
+				admissible: false,
+				reason: "SOURCE_SPEED_NOT_ADMITTED_AS_CONSTRUCTIVE_STATE",
 			} : null,
 		},
 	};

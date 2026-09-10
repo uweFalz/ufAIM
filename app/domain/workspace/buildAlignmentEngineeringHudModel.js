@@ -35,6 +35,8 @@ function field(label, capability = {}) {
 		value: capability?.value ?? null,
 		reason: capability?.reason ?? capability?.code ?? null,
 		provenancePresent: Boolean(capability?.provenancePresent || capability?.evidenceId || capability?.sourceRefs?.length),
+		admission: capability?.admission ?? null,
+		admissible: capability?.admissible === true ? true : capability?.admissible === false ? false : null,
 	};
 }
 

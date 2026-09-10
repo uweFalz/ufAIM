@@ -197,6 +197,10 @@ test("projects vertical cant and chainage from one intrinsic cursor and revision
 		42100
 	);
 	assert.equal(result.state.presence, "present");
+	assert.deepEqual(result.speed, {
+		status: "absent",
+		reason: "SOURCE_SPEED_EVIDENCE_NOT_AVAILABLE",
+	});
 	assert.deepEqual(result.state.vertical, profileState.vertical);
 	assert.deepEqual(result.state.cant, profileState.cant);
 	assert.deepEqual(

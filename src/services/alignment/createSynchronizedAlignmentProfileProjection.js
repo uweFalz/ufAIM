@@ -1,5 +1,5 @@
 export const SYNCHRONIZED_ALIGNMENT_PROFILE_PROJECTION_VERSION =
-	"app-service/synchronized-alignment-profile-projection/0.2";
+	"app-service/synchronized-alignment-profile-projection/0.3";
 
 const WORKING_REFERENCE = "midpointGoverningRailEdges";
 
@@ -144,6 +144,28 @@ function sourceCantRecords(attachments) {
 	return records.filter((entry) => Number.isFinite(entry.s)).sort((left, right) => left.s - right.s || left.id.localeCompare(right.id));
 }
 
+function sourceSpeedRecords(attachments) {
+	const origin = sourceOrigin(attachments);
+	if (!Number.isFinite(origin)) return [];
+	const records = [];
+	for (const [index, entry] of (Array.isArray(attachments?.cant) ? attachments.cant : []).entries()) {
+		if (!["CantStation", "SpeedStation"].includes(entry?.type)) continue;
+		const sourceStation = measureValue(entry?.station);
+		const speed = measureValue(entry?.speed);
+		if (!Number.isFinite(sourceStation) || !Number.isFinite(speed)) continue;
+		records.push({
+			id: `source-speed-${entry.type === "SpeedStation" ? "station" : "cant-station"}-${index + 1}`,
+			type: entry.type,
+			s: sourceStation - origin,
+			sourceStation,
+			speed,
+			declaredStationUnit: entry?.station?.unit ?? attachments?.units?.linearUnit ?? null,
+			declaredSpeedUnit: entry?.speed?.unit ?? null,
+		});
+	}
+	return records.filter((entry) => Number.isFinite(entry.s)).sort((left, right) => left.s - right.s || left.id.localeCompare(right.id));
+}
+
 function sourceEvidenceValue(records, s) {
 	const exact = records.filter((entry) => Object.is(entry.s, s));
 	const before = [...records].reverse().find((entry) => entry.s < s) ?? null;
@@ -202,6 +224,22 @@ function sourceCantProjection(attachments, s) {
 			sourceReference: Object.freeze({ status: "unknown", reason: "SOURCE_REFERENCE_NOT_AVAILABLE" }),
 			transformation: Object.freeze({ status: "not-performed", reason: "COMPLETE_SOURCE_CONVENTION_NOT_AVAILABLE" }),
 		}),
+		provenance: cloneAndFreeze({ association: attachments?.association, source: attachments?.source }),
+	});
+}
+
+function sourceSpeedProjection(attachments, s) {
+	const records = sourceSpeedRecords(attachments);
+	if (records.length === 0) return null;
+	return Object.freeze({
+		status: "source-evidence",
+		representation: "source-declared-speed-records",
+		admission: "evidence-only",
+		admissible: false,
+		reason: attachments?.admission?.speed?.reason ?? "SOURCE_SPEED_NOT_ADMITTED_AS_CONSTRUCTIVE_STATE",
+		domain: cloneAndFreeze(sourceEvidenceDomain(records)),
+		sourceRecords: cloneAndFreeze(records),
+		value: cloneAndFreeze(sourceEvidenceValue(records, s)),
 		provenance: cloneAndFreeze({ association: attachments?.association, source: attachments?.source }),
 	});
 }
@@ -265,6 +303,8 @@ export function createSynchronizedAlignmentProfileProjection({
 	const cantProjection = profileSnapshot.cant === null
 		? sourceCantProjection(profileSnapshot.sourceAttachments, evaluation.s) ?? constructiveCantProjection
 		: constructiveCantProjection;
+	const speedProjection = sourceSpeedProjection(profileSnapshot.sourceAttachments, evaluation.s)
+		?? Object.freeze({ status: "absent", reason: "SOURCE_SPEED_EVIDENCE_NOT_AVAILABLE" });
 
 	return Object.freeze({
 		contractVersion:
@@ -279,6 +319,7 @@ export function createSynchronizedAlignmentProfileProjection({
 		profileStatePresence: profileSnapshot.presence,
 		vertical: verticalProjection,
 		cant: cantProjection,
+		speed: speedProjection,
 		chainage: cloneAndFreeze(evaluation.chainage),
 		state,
 	});

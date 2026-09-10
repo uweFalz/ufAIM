@@ -22,11 +22,15 @@ test("canonical profile projection supplies only evaluated values and retains ho
 		profileSource: { getCurrentProjection: () => null, subscribeProjection(fn) { profileListener = fn; return () => {}; } }, view: { render(model) { rendered.push(model); } },
 	});
 	controller.start(); controller.setPromotedEvidence({ evidenceId: "E", routeContext: { route: "1720", sourceRole: "1" }, EH: { status: "partial-evidence", evidenceId: "E" }, EU: { status: "partial-evidence", evidenceId: "E" }, EK: { status: "missing" }, relation: { status: "partial-evidence", relationStatus: "open-candidates" } });
-	profileListener({ vertical: { status: "evaluated", value: { elevation: 10, gradient: 0.01 } }, cant: { status: "evaluated", value: { crossLevel: 0.04, twist: 0.001 } }, chainage: { status: "unique", candidates: [{ address: 3025 }] } });
+	profileListener({ vertical: { status: "evaluated", value: { elevation: 10, gradient: 0.01 } }, cant: { status: "evaluated", value: { crossLevel: 0.04, twist: 0.001 } }, speed: { status: "source-evidence", admission: "evidence-only", admissible: false, reason: "SOURCE_SPEED_NOT_ADMITTED_AS_CONSTRUCTIVE_STATE", value: { status: "exact-source-record", exact: [{ type: "CantStation", speed: 120, declaredSpeedUnit: null }], before: null, after: null } }, chainage: { status: "unique", candidates: [{ address: 3025 }] } });
 	const model = rendered.at(-1);
 	assert.deepEqual(model.capabilities.vertical.value, { elevation: 10, gradient: 0.01 });
 	assert.deepEqual(model.capabilities.cant.value, { crossLevel: 0.04, twist: 0.001 });
-	assert.equal(model.capabilities.speed.status, "missing"); assert.equal(model.capabilities.section.status, "not-covered");
+	assert.equal(model.capabilities.speed.status, "partial-evidence");
+	assert.deepEqual(model.capabilities.speed.value, { sourceSpeed: 120, unit: "not-declared", support: "exact-source-record", sourceType: "CantStation" });
+	assert.equal(model.capabilities.speed.admission, "evidence-only");
+	assert.equal(model.capabilities.speed.admissible, false);
+	assert.equal(model.capabilities.section.status, "not-covered");
 	assert.equal(model.context.route, "1720"); assert.equal(model.context.sourceRole, "1");
 });
 

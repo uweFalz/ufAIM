@@ -157,7 +157,7 @@ export class ExistingAlignmentIntelligenceView {
 			const card = this.document.createElement("article"); card.dataset.qLokField = field.id; card.dataset.qLokStatus = field.status;
 			const label = this.document.createElement("strong"); label.textContent = field.label;
 			const value = this.document.createElement("span"); value.textContent = formatHudValue(field.value) ?? field.reason ?? "—";
-			const status = this.document.createElement("small"); status.textContent = `${field.status} · Provenienz ${field.provenancePresent ? "vorhanden" : "nicht belegt"}${field.reason ? ` · ${field.reason}` : ""}`;
+			const status = this.document.createElement("small"); status.textContent = formatQualification(field, "Provenienz");
 			card.append?.(label, value, status); current.append?.(card);
 		}
 		panel.append?.(current);
@@ -245,7 +245,7 @@ export class ExistingAlignmentIntelligenceView {
 			const item = this.document.createElement("article"); item.dataset.hudField = field.id; item.dataset.hudStatus = field.status;
 			const label = this.document.createElement("strong"); label.textContent = field.label;
 			const value = this.document.createElement("span"); value.textContent = formatHudValue(field.value) ?? field.reason ?? "—";
-			const status = this.document.createElement("small"); status.textContent = `${field.status} · provenance ${field.provenancePresent ? "present" : "absent"}${field.reason ? ` · ${field.reason}` : ""}`;
+			const status = this.document.createElement("small"); status.textContent = formatQualification(field, "provenance");
 			item.append?.(label, value, status); values.append?.(item);
 		}
 		section.append?.(values);
@@ -276,6 +276,16 @@ function formatHudValue(value) {
 	if (value === null || value === undefined) return null;
 	if (typeof value !== "object") return String(value);
 	return Object.entries(value).filter(([, entry]) => entry !== null && entry !== undefined).map(([key, entry]) => `${key} ${typeof entry === "object" ? JSON.stringify(entry) : String(entry)}`).join(" · ") || null;
+}
+
+function formatQualification(field, provenanceLabel) {
+	return [
+		field.status,
+		`${provenanceLabel} ${field.provenancePresent ? (provenanceLabel === "Provenienz" ? "vorhanden" : "present") : (provenanceLabel === "Provenienz" ? "nicht belegt" : "absent")}`,
+		field.admission,
+		field.admissible === false ? "admissible=false" : field.admissible === true ? "admissible=true" : null,
+		field.reason,
+	].filter(Boolean).join(" · ");
 }
 
 export default ExistingAlignmentIntelligenceView;
