@@ -674,7 +674,13 @@ function resolveCurvature(seg) {
 	if (rot === "ccw") return 1 / r;
 	if (rot === "cw") return -1 / r;
 
-	return 1 / r;
+	// No rotation attribute: the radius carries the direction the way the
+	// technet formats state it - a right-hand curve has a positive radius, a
+	// left-hand one a negative - and the kernel's curvature grows to the left.
+	// Read as +1/R the whole Verm.esn corpus came in mirrored: measured on
+	// W467-468 the chain missed the file's own end point by 9.5 km (#17).
+	// LandXML always carries rot and never reaches this line.
+	return -1 / r;
 }
 
 function resolveTransitionType(seg) {
@@ -690,6 +696,9 @@ function resolveTransitionType(seg) {
 		spiral: "clothoid",
 		bloss: "bloss",
 		cubic: "bloss",
+		// "ÜB S-Form" of Verm.esn is the Helmert transition (also called S-Form)
+		"üb s-form": "helmert",
+		helmert: "helmert",
 		immediate: "immediate",
 		kink: "kink",
 	};

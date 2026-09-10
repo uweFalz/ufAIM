@@ -18,6 +18,7 @@ const { createAlignmentPoseJacobian } =
 // five alignments across the corpus, small to long, clothoid and Bloss, one
 // with a junction arc inserted
 const FILES = [
+	"metroB/5904S.TRA",
 	"Landshut/W424-426.TRA",
 	"metroB/Freihöls_Gleis3.TRA",
 	"Landshut/5500L074-082.TRA",
@@ -228,4 +229,29 @@ test("the diagnostics say which lengths the points did not determine", { skip },
 	assert.equal(solveAlignmentProblem({ ...common, objective: "accumulated-length" }).diagnostics.determinacy, null);
 	assert.equal(solveAlignmentProblem({ ...common, determinacy: "off" }).diagnostics.determinacy, null);
 	assert.throws(() => solveAlignmentProblem({ ...common, determinacy: "maybe" }), (e) => e.code === "INVALID_OPTION");
+});
+
+test("the production bridge reads a right-hand curve as a right-hand curve, and ÜB S-Form as Helmert", { skip }, async () => {
+	// Verm.esn states a right-hand curve with a positive radius; the kernel's
+	// curvature grows to the left. Read as +1/R the bridge mirrored every
+	// imported alignment: on W467-468 the production chain missed the file's
+	// own end point by 9.5 km (#17). And "ÜB S-Form" is the Helmert transition.
+	const { readFile } = await import("node:fs/promises");
+	const { parseTraGraAuto } = await import(new URL("../../../src/import/parsers/technet/vermEsn/parseTRA_GRA.js", import.meta.url));
+	const { buildSparseFromLandFAT } = await import(new URL("../../../src/import/build/buildSparseFromLandFAT.js", import.meta.url));
+	const { makeAlignment2DFromSparse } = await import(new URL("../../../src/aim-core/alignment/aggregate/AlignmentFactory.js", import.meta.url));
+	for (const [name, family] of [["Landshut/W467-468.TRA", null], ["metroB/5904S.TRA", "helmert"]]) {
+		const bytes = await readFile(at(name));
+		const document = await parseTraGraAuto({ name, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) });
+		const bridged = buildSparseFromLandFAT(document.alignments[0]);
+		if (family) {
+			const families = new Set(bridged.sparse.filter((e) => e.kind === "transition" || e.transType).map((e) => e.transType));
+			assert.ok(families.has(family), `${name}: transition families ${[...families]}`);
+		}
+		const { alignment } = makeAlignment2DFromSparse({ startPose: bridged.startPose, sparse: bridged.sparse, ...deps });
+		const loaded = await loadTraAlignment(at(name));
+		const end = alignment.poseAt(alignment.arcLength, { quality: "exact" });
+		const miss = Math.hypot(end.p.x - loaded.endPoint.x, end.p.y - loaded.endPoint.y);
+		assert.ok(miss < 1e-3, `${name}: the bridge's alignment misses the file's end point by ${miss.toExponential(2)} m over ${alignment.arcLength.toFixed(0)} m`);
+	}
 });
