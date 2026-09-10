@@ -60,10 +60,7 @@ decided alone.
 - The reference order is fit for the app's option C ("rules where the
   measurements are silent") as far as the length is concerned: run it, show
   the span. Nothing to build in the solver for that.
-- The strict order needs the budget-active phase made robust before it can
-  be offered: a length equality at a vertex should be solved as the
-  restoration solves the end pose - by the projected Gauss-Newton on the
-  violated rows - rather than by the SQP from the vertex. Not built.
+- The strict order's budget-active phase: see the next section.
 - The four `max_iterations` under the reference are the points objective's
   own (the flat valley); the prior would end them as in #26.
 
@@ -79,3 +76,33 @@ baseline notes). The length spent over the shortest admissible alignment is
 34 m on average and 1628 m at most - the Kyll valley lines (25 elements),
 where the as-built winds and the design limits would admit a far shorter
 alignment through the same poses. That number is what tier 1 is for.
+
+## The budget-active phase, made as robust as it gets (2026-09-10)
+
+Five things were built or tried for the strict order's held phase, each
+measured on 0–161 against the 118 of 161 it finished before:
+
+| change | ok / 161 | what it did |
+|---|---|---|
+| Gauss-Newton curvature for the phases | 119 | nothing for the failures |
+| eager restoration | 118 | never triggers: the witness start is feasible |
+| start at the overspending optimum, restored onto the budget first | 80 | worse: the restoration from the fit onto the budget manifold stalls (47 restoration_failed) |
+| **a subproblem that runs out shrinks the region and tries again** (kept, `solveSQP`) | 120 | qp_failed 12 → 3; a smaller box changes the degenerate active set |
+| **a zero step shrinks the region and ends at its floor** (kept, `solveSQP`) | 120 | the 872-iteration idle loop at a collapsed region ends as `line_search_failed` at 130 instead of `max_iterations` at 1000 |
+
+The single objectives are unchanged by the two kept changes (322 of 322
+rows identical on 0–161).
+
+What remains, on the two files looked at closely: at a degenerate vertex
+with the length held as an equality the subproblem answers
+`stationary_on_working_set` with a zero step while δ sits at 0.57, and the
+region collapses to its floor (`AHBI_Gl_037`); or the iteration zigzags
+with a step of 4e-3, f and the violation unchanged to nine digits and a
+KKT residual of 3, for as long as the budget lasts (`AHBI_Gl_033`) - a
+non-stationary point the filter's margins cannot tell from progress. Both
+are the same thing seen twice: the feasible set under a hard length
+equality at the length optimum's vertex is a sliver cut by bounds, and the
+points fit on it is a bad fit (rms 7.5, over a metre) whose level sets are
+steep against that sliver. The verdict rate of the strict order is a
+property of the question, and a robust phase reports it early and by name
+rather than answering it.
