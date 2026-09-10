@@ -6,7 +6,7 @@
 
 ## 2. Status
 
-`complete` — das autorisierte Quell-Attachment-Paket ist implementiert, auf den aktuellen `origin/main`-Stand rebaset, automatisiert geprüft und am realen SCx-Beispiel auf einem frischen Browser-Origin sichtbar durchfahren. Delivery 1 bleibt wegen der in Abschnitt 8 dokumentierten Importlatenz `ROT`.
+`complete` — das autorisierte Quell-Attachment-Paket ist implementiert, auf den aktuellen `origin/main`-Stand rebaset, automatisiert geprüft, am realen SCx-Beispiel auf einem frischen Browser-Origin sichtbar durchfahren und nach `origin/main` integriert. Delivery 1 bleibt wegen der in Abschnitt 8 dokumentierten Importlatenz `ROT`.
 
 ## 3. Baseline and Scope
 
@@ -72,6 +72,7 @@ Deleted: None.
 - Sichtbare synchronisierte Sichten am gemeinsamen `s=1000` — `passed`: Horizontalzustand, 147 Vertical-Records, 52 Cant-Records, Chainage-Adresse `1000.543023` und Cross-section lagen gleichzeitig im direkten `L · Bänder`-Arbeitsbereich vor; source Vertical/Cant waren `evidence-only · admissible=false`, `pairedRails.status=unknown`.
 - Verlustfreies Schließen/Wiederöffnen: unabhängiger zweiter Tab desselben frischen Origin, `Vorhandene Objekte` -> `A101720R` — `passed`; `el_0005` wurde als `k=0.00016366612111292964` entsprechend Radius `6110` wieder gelesen, anschließend erschienen dieselben vier Sichten bei `s=1000` und dieselbe Chainage-Adresse.
 - Die primäre Fahrt verwendete ausschließlich sichtbare App-Aktionen; DOM-Abfragen dienten nur der exakten Ergebnisprotokollierung. Keine falsche Erfolgsanzeige oder verschwundenen Objekte wurden beobachtet.
+- Integrationspush: `git push origin HEAD:main` — `passed`; Pushbereich `6c4477f..cd3af86`, anschließend `HEAD == origin/main == cd3af868ea979ff37c7b1e4523128ddd04bade81` und isolierter Worktree sauber.
 
 ## 7. Kernel and Architecture Impact
 
@@ -89,8 +90,9 @@ Thesis impact: none.
 - `RISK-APP-D1-ATTACH-002`: die Radiusänderung auf dem 331-Element-Alignment brauchte trotz interaktiver Schranke `11654 ms` und erzeugte einen sichtbaren Receipt mit `102497` Zeichen. Korrektheit und Readback bestanden, aber Reaktionszeit und visuelle Menge bleiben Delivery-Risiken.
 - Die vier ungelesenen Ril-800.0110-Grenzen bleiben außerhalb dieses Pakets. Sie halten Source Vertical/Cant und AXTRAN korrekt `evidence-only` / `admissible=false` und blockieren nicht die sichtbare fachliche Fahrt.
 - Kein Konflikt mit fremden Thesis-, Viewer-, technetViewer- oder `.claude/`-Änderungen des gemeinsamen Checkouts wurde übernommen.
+- `OPS-APP-D1-ATTACH-001`: `Rock-Schichtführung` bleibt halbstündlich aktiv, enthält aber weiterhin den Vor-Integrations-Prompt. Die persistente Prompt-Aktualisierung wurde nicht ausgeführt, weil Uwes Integrationsfreigabe keine separate Automationsänderung autorisiert. Eine Aktualisierung benötigt eine ausdrückliche Freigabe; die Repository-Integration ist davon nicht betroffen.
 - Open decisions: None.
 
 ## 9. Handover
 
-Das freigegebene Paket wird aus dem isolierten Branch nach `origin/main` gepusht; Delivery 1 bleibt danach wegen `RISK-APP-D1-ATTACH-001` `ROT`. Nächster sicherer App-Schritt ist ein eng begrenztes Import-Latenzpaket am belegten SCx-Pfad; Voraussetzung ist derselbe reale Datensatz und ein neuer Browser-Origin. Es darf Import-Orchestrierung und deren Laufzeitdiagnostik berühren, nicht `docs/knowledgeKernel/`, Thesis, IVHW oder Viewer/technetViewer. Andere Streams können unabhängig fortfahren, sofern sie diese App-Dateien nicht editieren. Done-Kriterium des nächsten Pakets: `SCx_1720.xml` erreicht auf frischem Origin in einer festgelegten interaktiven Zeitgrenze sichtbar `12 Kandidaten`, ohne Source Attachments, 331-Element-Promotion, evidence-only-Kennzeichnung oder verlustfreien Readback zu verlieren.
+Das freigegebene Paket ist nach `origin/main` gepusht; Delivery 1 bleibt wegen `RISK-APP-D1-ATTACH-001` `ROT`. Nächster sicherer App-Schritt ist ein eng begrenztes Import-Latenzpaket am belegten SCx-Pfad; Voraussetzung ist derselbe reale Datensatz und ein neuer Browser-Origin. Es darf Import-Orchestrierung und deren Laufzeitdiagnostik berühren, nicht `docs/knowledgeKernel/`, Thesis, IVHW oder Viewer/technetViewer. Andere Streams können unabhängig fortfahren, sofern sie diese App-Dateien nicht editieren. Done-Kriterium des nächsten Pakets: `SCx_1720.xml` erreicht auf frischem Origin in einer festgelegten interaktiven Zeitgrenze sichtbar `12 Kandidaten`, ohne Source Attachments, 331-Element-Promotion, evidence-only-Kennzeichnung oder verlustfreien Readback zu verlieren. Die halbstündliche Schichtführungs-Automation darf erst nach separater ausdrücklicher Freigabe auf diesen Stand umgestellt werden.
