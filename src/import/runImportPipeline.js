@@ -33,6 +33,8 @@ import { assessGndReferenceEvidence } from "./evidence/assessGndReferenceEvidenc
 export async function runImportPipeline(file, context = {}) {
 	const log = typeof context.log === "function" ? context.log : () => {};
 	const trace = context.trace === true || globalThis.__ufAIM_importTrace === true;
+	const traceStartedAt = trace ? performance.now() : null;
+	let tracePreviousAt = traceStartedAt;
 	const signal = context?.signal;
 	const reportJobPhase = typeof context?.onJobPhase === "function"
 		? context.onJobPhase
@@ -47,6 +49,16 @@ export async function runImportPipeline(file, context = {}) {
 	];
 	let currentJobPhase = "queued";
 	const setJobPhase = (phase) => {
+		if (trace) {
+			const traceNow = performance.now();
+			console.debug("[runImportPipeline] phase", {
+				fileName: file?.name ?? null,
+				phase,
+				elapsedMs: traceNow - traceStartedAt,
+				deltaMs: traceNow - tracePreviousAt,
+			});
+			tracePreviousAt = traceNow;
+		}
 		reportJobPhase(phase);
 		currentJobPhase = phase;
 	};
