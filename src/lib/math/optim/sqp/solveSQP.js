@@ -94,13 +94,23 @@ export function solveSQP({
 	// releases and blocks per subproblem, qp_failed at the 29th step. Ten per
 	// variable, never under 200: the same two runs reach a fit instead.
 	qpIterations: qpIterationsGiven = null,
-	// PROTOTYPE (design measurement, docs/app/architecture/AXTRAN2_FILTER_MERIT_DESIGN.md):
-	// "filter" accepts a trial by a Fletcher-Leyffer filter on (violation, f)
-	// instead of the l1 merit's Armijo test; the merit still prices the
-	// verdicts and the weights. Off by default.
-	acceptance = "merit",
+	// How a trial step is accepted. "filter": a Fletcher-Leyffer filter on
+	// (violation, f) with the switching condition below; "merit": the l1
+	// merit's Armijo test. The filter is the default since the measurement in
+	// docs/app/architecture/AXTRAN2_FILTER_MERIT_DESIGN.md: level or better
+	// than the merit on the whole corpus (points objective 161 of 161
+	// verdicts against 159, no row worse), half the iterations on the length
+	// objective, and the only rule under which the shortest alignment over
+	// 110 and 119 elements reaches a verdict - the merit prices a metre of
+	// end miss at two metres of length there and walks kilometres off. The
+	// merit keeps pricing the weights and the merit_stationary verdict.
+	acceptance = "filter",
 	filterMargin = 1e-5,
-	filterCeiling = 1e4,
+	// the violation may not exceed this multiple of max(1, its value at the
+	// first subproblem): 1e4 in the literature; 1e2 measured, it keeps the
+	// 110-element shortest alignment on its sample points where 1e4 let it
+	// walk off them
+	filterCeiling = 1e2,
 	// The switching condition (Wächter-Biegler 2006, (19)-(20)): when the
 	// model predicts a decrease of f that is large against the violation,
 	// [-alpha ∇f'd]^sF · alpha^(1-sF) > delta · h^sTheta, the trial has to
@@ -286,6 +296,9 @@ export function solveSQP({
 		relaxedStalls = 0;
 		previousMerit = null;
 		stalls = 0;
+		// the filter described the path to the verdict, not the path from here
+		filter.length = 0;
+		filterCeilingValue = null;
 		return null;
 	}
 
@@ -496,7 +509,20 @@ export function solveSQP({
 		// starts from the identity again. On the twelve-point scenario this
 		// alone takes the exact form from 73 iterations with eight backtracking
 		// episodes to 44 with none - the same count as the bound form.
-		if (!(directional < 0)) {
+		// The no-descent rule is the merit's: under the filter a step the merit
+		// cannot fall along may still be an h-type step, and the filter decides.
+		// Measured on the vertex tier of the nine-element scenario: the rule
+		// shrank the region 36 times around a step the filter would have judged,
+		// and the subproblem ran out.
+		// A step of length zero has nothing for the filter to judge: the relaxed
+		// subproblem is at a vertex the box holds, and the relaxed-stall verdict
+		// above counts its way to infeasible_subproblem; sent to the search it
+		// came back line_search_failed at once (the box-excluded equality of #18).
+		if (acceptance === "filter" && stepNorm <= stepTolerance * Math.max(1, Math.hypot(...x))) {
+			history.push({ iteration, status: "no_step", delta: step.delta, violation: violation.total });
+			continue;
+		}
+		if (!(directional < 0) && acceptance !== "filter") {
 			B = identityMatrix(n, structuredStart * initialHessianScale);
 			H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
 			radius = Math.max(minTrustRadius, radius * trustShrink);
@@ -549,7 +575,13 @@ export function solveSQP({
 		const armijo = (value, alpha) => value <= meritAt0 + 0.1 * alpha * predictedDecrease;
 
 		let corrected = null;
-		if (full && !armijo(full.merit, 1) && (state.h ?? []).length && predictedDecrease < 0) {
+		// Under the filter the correction is tried whenever the full step raises
+		// the violation, not only when it is refused: measured on the
+		// nine-element scenario, accepting the raw step at once crept to a vertex
+		// 0.2 m longer than the one the corrected steps reach.
+		const raisesViolation = acceptance === "filter" && full
+			&& constraintViolation(full.state).total > violation.total;
+		if (full && (!armijo(full.merit, 1) || raisesViolation) && (state.h ?? []).length && (predictedDecrease < 0 || raisesViolation)) {
 			// smallest d that satisfies Jh(x) d = -h(x + d): the same subproblem
 			// with no objective and the trial point's residuals
 			const soc = solveRelaxedQpStep({
