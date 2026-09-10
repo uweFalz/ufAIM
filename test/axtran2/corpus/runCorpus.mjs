@@ -3,7 +3,7 @@
 // Every trusted alignment of the corpus through the solver, one line per run.
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
-//        [--objectives points,accumulated-length] [--ramp bound|constraint] \
+//        [--objectives points,accumulated-length,lexicographic] [--ramp bound|constraint] \
 //        [--iterations 1000] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
@@ -18,6 +18,7 @@ import { createTraScenario, distanceToTruth, momentsFor } from "./createTraScena
 
 const ROOT = new URL("../../../", import.meta.url);
 const { solveAlignmentProblem } = await import(new URL("src/domain/optimization/alignment/AlignmentSQPSolver.js", ROOT));
+const { solveAlignmentLexicographic } = await import(new URL("src/domain/optimization/alignment/AlignmentLexicographicSolver.js", ROOT));
 const { createAlignmentPoseJacobian } = await import(new URL("src/domain/optimization/alignment/AlignmentPoseJacobian.js", ROOT));
 
 const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => (a.startsWith("--") ? [a.slice(2), all[i + 1]] : [])).filter((e) => e.length));
@@ -32,6 +33,12 @@ const structuredStart = args.structuredStart === undefined ? undefined : Number(
 const hybridSwitch = args.hybridSwitch === undefined ? undefined : Number(args.hybridSwitch);
 const lengthPrior = args.lengthPrior === undefined ? undefined : { sigma: Number(args.lengthPrior) };
 const acceptance = args.acceptance;
+// lexicographic tiers: "reference" (default: the length tier reports, does not
+// constrain), "strict" (absolute epsilon 0), or "absolute=<m>" for a budget
+const tiersArg = String(args.tiers ?? "reference");
+const tiers = tiersArg === "reference"
+	? undefined
+	: [{ objective: "accumulated-length", absolute: tiersArg === "strict" ? 0 : Number(tiersArg.split("=")[1]) }, { objective: "points" }];
 const filterCeiling = args.filterCeiling === undefined ? undefined : Number(args.filterCeiling);
 const filterSwitching = args.filterSwitching === undefined ? undefined : args.filterSwitching !== "false";
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
@@ -52,7 +59,7 @@ for (const file of await listTraFiles(samples)) {
 trusted.sort((a, b) => a.n - b.n || a.file.localeCompare(b.file));
 
 const rel = (file) => file.split("/samples/")[1] ?? file;
-console.log(`corpus: ${trusted.length} trusted alignments, ${excluded.length} excluded; running ${from}..${Math.min(to, trusted.length) - 1}, ${objectives.join("+")}, ramp as ${rampLengthAs}, hessian ${hessian}, restoration ${restoration}`);
+console.log(`corpus: ${trusted.length} trusted alignments, ${excluded.length} excluded; running ${from}..${Math.min(to, trusted.length) - 1}, ${objectives.join("+")}${objectives.includes("lexicographic") ? ` (tiers ${tiersArg})` : ""}, ramp as ${rampLengthAs}, hessian ${hessian}, restoration ${restoration}`);
 console.log("file                                       n free pts  V exc | objective           □ [status         ] @it   rms   endpose  admiss  truth%    dL m    s");
 const rows = [];
 for (const { file, n } of trusted.slice(from, to)) {
@@ -62,7 +69,34 @@ for (const { file, n } of trusted.slice(from, to)) {
 	for (const objective of objectives) {
 		const t0 = Date.now();
 		let run;
-		try { run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations, hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling }); }
+		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling };
+		if (objective === "lexicographic") {
+			// the declared order: the length tier as a reference, then the points
+			let lex;
+			try { lex = solveAlignmentLexicographic({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations, solver, ...(tiers ? { tiers } : {}) }); }
+			catch (error) { console.log(`${rel(file).slice(-42).padEnd(42)} lexicographic: solver threw ${error.code ?? ""} ${error.message.slice(0, 60)}`); rows.push({ file: rel(file), n, objective, error: error.message }); continue; }
+			const final = lex.phases.at(-1);
+			const d = final?.diagnostics ?? {};
+			const variables = final?.candidate?.variables ?? [];
+			const truthDistance = variables.length ? distanceToTruth(sc, variables) : null;
+			const sumTruth = sc.truth.elements.reduce((s, e) => s + e.length, 0);
+			const sumL = variables.length ? sc.materialise(sc.codec.decode(variables)).reduce((s, e) => s + e.length, 0) : null;
+			const seconds = (Date.now() - t0) / 1000;
+			const phases = lex.phases.map((p) => `${p.label}:${p.status}@${p.diagnostics?.iterations ?? "-"}`).join(" ");
+			const budget = lex.budgets?.[0] ?? null;
+			const row = {
+				file: rel(file), n, free: sc.freeCount, points: sc.pointCount, speedKmh: sc.profile.speedKmh, exceptions: sc.profile.exceptionCount,
+				objective, status: lex.status, ok: lex.ok, admissible: final?.admissible ?? null,
+				phases: lex.phases.map((p) => ({ label: p.label, status: p.status, ok: p.ok, iterations: p.diagnostics?.iterations ?? null })),
+				iterations: lex.phases.reduce((s, p) => s + (p.diagnostics?.iterations ?? 0), 0),
+				rms: d.softResidualRms ?? null, endPoseDistance: d.endPoseDistance ?? null, truthDistance, lengthChange: sumL === null ? null : sumL - sumTruth,
+				lengthAttained: budget?.attained ?? null, lengthSpent: budget?.spent ?? null, seconds,
+			};
+			rows.push(row);
+			console.log(`${rel(file).slice(-42).padEnd(42)} ${String(n).padStart(2)} ${String(sc.freeCount).padStart(4)} ${String(sc.pointCount).padStart(3)} | lexicographic [${lex.status.padEnd(14)}] ${phases} rms ${(row.rms ?? NaN).toFixed(3)} dL ${row.lengthChange === null ? "-" : row.lengthChange.toFixed(2)} (ref ${budget?.span === null || budget?.span === undefined ? "-" : budget.span.toFixed(2)}) ${seconds.toFixed(0)}s`);
+			continue;
+		}
+		try { run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations, ...solver }); }
 		catch (error) { console.log(`${rel(file).slice(-42).padEnd(42)} ${objective}: solver threw ${error.code ?? ""} ${error.message.slice(0, 60)}`); rows.push({ file: rel(file), n, objective, error: error.message }); continue; }
 		const d = run.diagnostics;
 		const variables = run.candidate?.variables ?? [];
