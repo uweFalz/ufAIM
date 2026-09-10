@@ -79,11 +79,18 @@ function withOverlay(alignmentData, overlay) {
 			elements: alignmentData.editModel.elements.map((element) => {
 				const patch = overlay[element.id];
 				if (!patch) return element;
+				// The sparse builder reads a radius before a curvature wherever both
+				// are present, and the editor stores both. A curvature patch that
+				// left parameters.radius at the old value changed nothing in the
+				// geometry: the curvature variable moved, the residuals did not, the
+				// chain contradicted them, and every browser edit's evidence ended
+				// in a failed line search. Both are kept consistent.
+				const radius = patch.curvature === undefined ? {} : { radius: patch.curvature ? 1 / patch.curvature : null };
 				return {
 					...element,
-					parameters: { ...element.parameters, ...patch },
+					parameters: { ...element.parameters, ...patch, ...radius },
 					...(patch.length === undefined ? {} : { length: patch.length }),
-					...(patch.curvature === undefined ? {} : { curvature: patch.curvature, radius: null }),
+					...(patch.curvature === undefined ? {} : { curvature: patch.curvature, ...radius }),
 				};
 			}),
 		},

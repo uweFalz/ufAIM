@@ -180,3 +180,21 @@ test("the evidence fit converges with its budget, on the chain that agrees with 
 	assert.ok(before.diagnostics.endPoseDistance < 1e-6, `the unchanged alignment meets its own end pose: ${before.diagnostics.endPoseDistance}`);
 	assert.ok(Number.isFinite(chain.endPose.x) && Math.abs(chain.arcLength - 260) < 1e-9);
 });
+
+test("an arc that carries a radius beside its curvature still follows the curvature variable", () => {
+	// The editor stores both; the sparse builder prefers the radius. A
+	// curvature patch that left the radius behind moved nothing in the
+	// geometry, and every browser edit's evidence ended in a failed line
+	// search with the end pose metres off.
+	const shape = (radius) => ({ type: "AlignmentData", id: "alignment_x", name: "Prüfung", source: { kind: "native", native: true }, editModel: { startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } }, elements: [
+		{ id: "straight_1", type: "straight", length: 120, parameters: { length: 120 } },
+		{ id: "transition_1", type: "transition", length: 60, transitionType: "bloss", parameters: { length: 60, transitionType: "bloss", w1: null, w2: null } },
+		{ id: "arc_1", type: "arc", length: 150, curvature: 1 / radius, radius, parameters: { curvature: 1 / radius, length: 150, radius } },
+	] } });
+	const result = new AlignmentAxtranEvidenceService().evaluateChange({ beforeAlignmentData: shape(300), afterAlignmentData: shape(320) });
+	assert.ok(result.ok, `${result.proposalStatus} @${result.diagnostics.iterations}, end pose ${result.diagnostics.endPoseDistance}`);
+	assert.ok(result.diagnostics.endPoseDistance < 1e-6);
+	assert.ok(result.diagnostics.iterations < 50);
+	const curvature = result.candidate.variables[result.candidate.names.indexOf("arc_1.curvature")];
+	assert.ok(Math.abs(curvature - 1 / 300) < 1e-6, `the fit brings the curvature back toward the samples: ${curvature}`);
+});
