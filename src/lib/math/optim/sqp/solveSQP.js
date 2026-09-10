@@ -332,6 +332,18 @@ export function solveSQP({
 		});
 
 		if (!step.ok) {
+			// A subproblem that ran out is the box overreaching as much as a
+			// failed search is: at a degenerate vertex with an extra equality
+			// (the lexicographic budget phase) the active set cycled through 67
+			// releases and 66 blocks with Bland's rule running, on eight
+			// variables. A smaller region changes the working set. Shrink and
+			// try again; give up only once the region is too small to be the
+			// explanation.
+			if (step.status === "max_iterations" && radius > minTrustRadius) {
+				radius = Math.max(minTrustRadius, radius * trustShrink);
+				history.push({ iteration, status: "trust_shrunk", reason: "qp_failed", radius });
+				continue;
+			}
 			history.push({
 				iteration, status: "qp_failed", reason: step.status,
 				detail: step.detail ?? step.reason ?? null,
@@ -519,7 +531,18 @@ export function solveSQP({
 		// above counts its way to infeasible_subproblem; sent to the search it
 		// came back line_search_failed at once (the box-excluded equality of #18).
 		if (acceptance === "filter" && stepNorm <= stepTolerance * Math.max(1, Math.hypot(...x))) {
-			history.push({ iteration, status: "no_step", delta: step.delta, violation: violation.total });
+			// A zero step with the relaxation at one is the relaxed-stall verdict's
+			// case above. Any other zero step is the region: at a degenerate vertex
+			// with an extra equality the subproblem came back with delta 0.57 and
+			// no step 872 times in a row while the region sat at 1e-9 - a loop to
+			// the budget, not a verdict. Shrink the region as after a failed
+			// search, and stop at its floor.
+			if (radius <= minTrustRadius) {
+				history.push({ iteration, status: "line_search_failed", reason: "region_collapsed", delta: step.delta, violation: violation.total, radius });
+				return { ok: false, status: "line_search_failed", reason: "region_collapsed", x, state, history, iterations: iteration, restorationSteps };
+			}
+			radius = Math.max(minTrustRadius, radius * trustShrink);
+			history.push({ iteration, status: "no_step", delta: step.delta, violation: violation.total, radius });
 			continue;
 		}
 		if (!(directional < 0) && acceptance !== "filter") {

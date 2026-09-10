@@ -362,6 +362,10 @@ export function solveAlignmentLexicographic({
 			// the witness of the most recently added budget satisfies every budget
 			// added before it as well, since those were already held when it was
 			// attained
+			// Starting instead at the overspending optimum, projected onto the
+			// budget by an eager restoration, was measured on the corpus
+			// (AXTRAN2_LEXICOGRAPHIC_CORPUS_2026-09-10.md): 80 of 161 strict
+			// orders finished against 120 from the witness. The witness stays.
 			const witness = added.at(-1).attainedAt;
 			result = run(
 				tier.objective,

@@ -255,3 +255,27 @@ test("the production bridge reads a right-hand curve as a right-hand curve, and 
 		assert.ok(miss < 1e-3, `${name}: the bridge's alignment misses the file's end point by ${miss.toExponential(2)} m over ${alignment.arcLength.toFixed(0)} m`);
 	}
 });
+
+test("a held phase that cannot move ends with a verdict, not with its budget", { skip }, async () => {
+	// AHBI_Gl_037 under the strict order: at the length optimum's vertex with
+	// the length held as an equality the subproblem answers a zero step with
+	// the relaxation at 0.57 and the region at its floor. That used to idle
+	// for the whole budget (872 no-step rounds); it ends as line_search_failed
+	// at the region's floor now, and a subproblem that runs out gets a smaller
+	// region before it is given up on.
+	const { solveAlignmentLexicographic } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentLexicographicSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const sc = await createTraScenario(find("AHBI_Gl_037_DBREF2016.TRA", SAMPLES.pathname));
+	const lex = solveAlignmentLexicographic({
+		problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations: 1000,
+		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }],
+	});
+	const held = lex.phases.find((p) => p.label.endsWith("budget-active"));
+	assert.ok(held, `phases ${lex.phases.map((p) => p.label)}`);
+	assert.notEqual(held.status, "max_iterations", "the phase names its failure instead of running out");
+	assert.notEqual(held.status, "qp_failed", "a subproblem that ran out was retried with a smaller region");
+	assert.ok(held.diagnostics.iterations < 400, `${held.diagnostics.iterations} iterations`);
+	const history = held.diagnostics.history ?? [];
+	assert.ok(history.some((e) => e.status === "trust_shrunk" && e.reason === "qp_failed") || history.some((e) => e.status === "no_step"), "the region was shrunk on the way");
+});
