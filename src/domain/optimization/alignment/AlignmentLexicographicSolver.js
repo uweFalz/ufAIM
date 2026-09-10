@@ -254,6 +254,9 @@ export function solveAlignmentLexicographic({
 	maxIterations = 1000,
 	feasibilityTolerance = FEASIBILITY_TOLERANCE,
 	relaxationWeight = 1e6,
+	// options handed to every phase's solve unchanged - hessian, restoration,
+	// lengthPrior, acceptance and the like; the phases' own inputs win
+	solver = {},
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
 	if (!Array.isArray(tiers) || tiers.length === 0) {
@@ -276,6 +279,7 @@ export function solveAlignmentLexicographic({
 
 	const run = (objective, start, extraEqualities, label, iterations = maxIterations) => {
 		const result = solveAlignmentProblem({
+			...solver,
 			problem,
 			buildAlignment,
 			startAt: start,
