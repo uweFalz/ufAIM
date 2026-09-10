@@ -14,7 +14,6 @@
 // admissible so that recovering it is a fair question.
 
 import { createHash } from "node:crypto";
-import { normalize, rot90 } from "../../../src/aim-core/geometry/vec2.js";
 import { loadTraAlignment, buildProductionAlignment } from "./loadTraAlignment.mjs";
 
 const ROOT = new URL("../../../", import.meta.url);
@@ -22,7 +21,8 @@ const load = (path) => import(new URL(path, ROOT));
 const { RegistryResolver } = await load("src/domain/transition/registry/RegistryResolver.js");
 const { KappaFcnBuilder } = await load("src/domain/transition/build/KappaFcnBuilder.js");
 const lookup = (await import(new URL("src/domain/transition/transitionLookup.json", ROOT), { with: { type: "json" } })).default;
-const { createTransitionMoments, curvatureIntegralFrom } = await load("src/domain/optimization/alignment/TransitionMoments.js");
+const { createTransitionMomentsCatalogue } = await load("src/domain/optimization/alignment/TransitionMomentsCatalogue.js");
+const { createFootMemory } = await load("src/domain/optimization/alignment/AlignmentPointProjection.js");
 const { createAlignmentPoseJacobian } = await load("src/domain/optimization/alignment/AlignmentPoseJacobian.js");
 const { createAlignmentVariableCodec } = await load("src/domain/optimization/alignment/AlignmentVariableCodec.js");
 const { createAlignmentConstraintBuilder } = await load("src/domain/optimization/alignment/AlignmentConstraintBuilder.js");
@@ -33,49 +33,7 @@ const { hauptbahn } = await load("src/domain/optimization/alignment/profiles/ind
 
 export const deps = Object.freeze({ descriptorResolver: new RegistryResolver(lookup), kappaBuilder: KappaFcnBuilder });
 
-const momentCache = new Map();
-export function momentsFor(family = "clothoid") {
-	if (!momentCache.has(family)) {
-		const preset = KappaFcnBuilder.buildPresetFromDescriptor(deps.descriptorResolver.resolveTransitionDescriptor(family));
-		const khat = curvatureIntegralFrom((u) => preset.kappa(Math.max(0, Math.min(1, u))));
-		momentCache.set(family, Object.freeze({ ...createTransitionMoments({ id: family, curvatureIntegral: khat }), khat }));
-	}
-	return momentCache.get(family);
-}
-
-/** Newton on the longitudinal offset u(s) = (X - p(s))·t(s), from a remembered foot. */
-function newtonFoot(alignment, x, y, s0, { window = 200, tolerance = 1e-9, maxSteps = 30 } = {}) {
-	const L = alignment.arcLength;
-	let s = s0;
-	for (let step = 0; step < maxSteps; step++) {
-		const pose = alignment.poseAt(s, { quality: "balanced" });
-		const t = normalize(pose.t);
-		const n = rot90(t);
-		const d = { x: x - pose.p.x, y: y - pose.p.y };
-		const u = d.x * t.x + d.y * t.y;
-		const q = d.x * n.x + d.y * n.y;
-		if (Math.abs(u) <= tolerance) {
-			return { s, q, dist: Math.hypot(d.x, d.y), point: pose.p, tangent: t, elementIndex: null, u, clamped: s <= 0 || s >= L };
-		}
-		// d/ds of (X - p)·t is -(1 - q·kappa): the plain s += u is Newton only on
-		// a straight, and on a curve far from the point it contracts by q·kappa
-		// each step (measured 0.32, alternating, 270 m off on R 200).
-		const kappa = alignment.curvatureAt(s);
-		const slope = 1 - q * kappa;
-		s += Math.abs(slope) > 1e-3 ? u / slope : u;
-		if (s < 0 || s > L || Math.abs(s - s0) > window) return null;
-	}
-	return null;
-}
-
-function projectWithMemory(alignment, x, y, feet) {
-	const key = `${x},${y}`;
-	const remembered = feet.get(key);
-	const local = remembered === undefined ? null : newtonFoot(alignment, x, y, remembered);
-	const projected = local ?? alignment.world2Track(x, y, { samples: 400, refineSteps: 40 });
-	feet.set(key, projected.s);
-	return projected;
-}
+export const momentsFor = createTransitionMomentsCatalogue(deps);
 
 /** deterministic in the file name, so a run is reproducible without a random source */
 function noise(seedText) {
@@ -271,14 +229,14 @@ export async function createTraScenario(source, {
 	// longitudinal offset from where it was last time, on the same production
 	// geometry; the full scan remains for the first time and for any foot that
 	// leaves its window or an end.
-	const feet = new Map();
+	const feet = createFootMemory({ samples: 400, refineSteps: 40 });
 	const buildAlignment = (overlay) => {
 		const elements = materialise(overlay);
 		const alignment = buildProductionAlignment({ elements, startPose, deps });
 		return {
 			lengths: elements.map((e) => e.length),
 			endPose: poseOf(alignment, alignment.arcLength),
-			worldToTrack: (x, y) => projectWithMemory(alignment, x, y, feet),
+			worldToTrack: (x, y) => feet.project(alignment, x, y),
 		};
 	};
 	const analyticJacobian = (overlay) => chainOf(materialise(overlay));
