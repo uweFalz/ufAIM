@@ -9,8 +9,11 @@ import { createAlignmentResidualBuilder } from "../../domain/optimization/alignm
 import { createAlignmentOptimizationProblem } from "../../domain/optimization/alignment/AlignmentOptimizationProblem.js";
 import { createIntrinsicMetricContext } from "../../domain/optimization/alignment/MetricContext.js";
 import { solveAlignmentProblem } from "../../domain/optimization/alignment/AlignmentSQPSolver.js";
+import { createAlignmentPoseJacobian } from "../../domain/optimization/alignment/AlignmentPoseJacobian.js";
+import { createTransitionMomentsCatalogue } from "../../domain/optimization/alignment/TransitionMomentsCatalogue.js";
+import { createFootMemory } from "../../domain/optimization/alignment/AlignmentPointProjection.js";
 
-export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.2";
+export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.3";
 export const FIT_MODES = Object.freeze(["keep-plan", "measurements-only"]);
 // Decided for the app's main journey (AXTRAN2_LENGTH_PRIOR_PROPOSAL.md, A):
 // the edited plan is kept where the samples are indifferent, with sigma 5 %.
@@ -20,6 +23,28 @@ const MAX_INTERACTIVE_SOLVER_VARIABLES = 96;
 
 const resolver = new RegistryResolver(transitionLookup);
 const dependencies = Object.freeze({ descriptorResolver: resolver, kappaBuilder: KappaFcnBuilder });
+const momentsFor = createTransitionMomentsCatalogue(dependencies);
+
+function startPoseOf(alignmentData) {
+	const pose = alignmentData?.editModel?.startPose ?? {};
+	const x = Number(pose?.p?.x ?? 0), y = Number(pose?.p?.y ?? 0);
+	const tx = Number(pose?.t?.x ?? 1), ty = Number(pose?.t?.y ?? 0);
+	return Object.freeze({ x, y, theta: Math.atan2(ty, tx) });
+}
+
+/** The declared elements as the pose Jacobian's chain wants them, the overlay applied. */
+function chainElements(alignmentData, declaredIds, overlay = {}) {
+	return alignmentData.editModel.elements
+		.filter((element) => declaredIds.has(String(element.id)))
+		.map((element) => {
+			const kind = kindOf(element);
+			const patch = overlay[element.id] ?? {};
+			const length = Number.isFinite(patch.length) ? patch.length : lengthOf(element);
+			if (kind === "arc") return { id: String(element.id), type: "arc", length, curvature: Number.isFinite(patch.curvature) ? patch.curvature : curvatureOf(element) };
+			if (kind === "transition") return { id: String(element.id), type: "transition", length, family: String(element?.parameters?.transitionType ?? element?.transitionType ?? "clothoid") };
+			return { id: String(element.id), type: "straight", length };
+		});
+}
 
 function kindOf(element) {
 	return String(element?.type ?? element?.kind ?? "").trim().toLowerCase();
@@ -54,11 +79,18 @@ function withOverlay(alignmentData, overlay) {
 			elements: alignmentData.editModel.elements.map((element) => {
 				const patch = overlay[element.id];
 				if (!patch) return element;
+				// The sparse builder reads a radius before a curvature wherever both
+				// are present, and the editor stores both. A curvature patch that
+				// left parameters.radius at the old value changed nothing in the
+				// geometry: the curvature variable moved, the residuals did not, the
+				// chain contradicted them, and every browser edit's evidence ended
+				// in a failed line search. Both are kept consistent.
+				const radius = patch.curvature === undefined ? {} : { radius: patch.curvature ? 1 / patch.curvature : null };
 				return {
 					...element,
-					parameters: { ...element.parameters, ...patch },
+					parameters: { ...element.parameters, ...patch, ...radius },
 					...(patch.length === undefined ? {} : { length: patch.length }),
-					...(patch.curvature === undefined ? {} : { curvature: patch.curvature, radius: null }),
+					...(patch.curvature === undefined ? {} : { curvature: patch.curvature, ...radius }),
 				};
 			}),
 		},
@@ -96,7 +128,7 @@ function declaredElements(alignmentData) {
 }
 
 export class AlignmentAxtranEvidenceService {
-	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 12, fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA } = {}) {
+	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA } = {}) {
 		if (!beforeAlignmentData?.editModel?.elements || !afterAlignmentData?.editModel?.elements) {
 			throw new Error("AXTRAN evidence requires before and after native AlignmentData");
 		}
@@ -123,6 +155,13 @@ export class AlignmentAxtranEvidenceService {
 		const problem = createAlignmentOptimizationProblem({ codec, constraints, residuals });
 		const observationOnly = codec.freeCount > MAX_INTERACTIVE_SOLVER_VARIABLES;
 		const effectiveMaxIterations = observationOnly ? 0 : maxIterations;
+		// The residuals come from the production geometry; the derivatives from
+		// the moment chain on the same elements, exact where a finite difference
+		// cost one alignment build per free quantity. The samples' feet are
+		// remembered between evaluations (#23). Measured on 21 elements, 26
+		// free: 53 s -> under a second for a converged fit.
+		const feet = createFootMemory({ samples: 240, refineSteps: 32 });
+		const startPose = startPoseOf(afterAlignmentData);
 		const buildAlignment = (overlay) => {
 			const alignment = alignmentFromData(withOverlay(afterAlignmentData, overlay));
 			return {
@@ -130,9 +169,10 @@ export class AlignmentAxtranEvidenceService {
 				lengths: afterAlignmentData.editModel.elements
 					.filter((element) => declaredIds.has(String(element.id)))
 					.map((element) => Number(overlay[element.id]?.length ?? lengthOf(element))),
-				worldToTrack: (x, y) => alignment.world2Track(x, y, { samples: 240, refineSteps: 32 }),
+				worldToTrack: (x, y) => feet.project(alignment, x, y),
 			};
 		};
+		const analyticJacobian = (overlay) => createAlignmentPoseJacobian({ elements: chainElements(afterAlignmentData, declaredIds, overlay), startPose, momentsFor });
 		// The editor needs the consequence proposal, not the global weak-direction
 		// eigendecomposition.  On a real imported alignment that report is cubic in
 		// the number of free variables and can block the browser for minutes.
@@ -141,7 +181,9 @@ export class AlignmentAxtranEvidenceService {
 		const proposal = solveAlignmentProblem({
 			problem,
 			buildAlignment,
+			analyticJacobian,
 			objective: "points",
+			hessian,
 			maxIterations: effectiveMaxIterations,
 			// keep-plan: a weak pseudo-observation on every free length toward the
 			// edited value, the geodetic answer to lengths the samples cannot see

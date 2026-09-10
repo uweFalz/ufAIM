@@ -151,3 +151,50 @@ test("bounds interactive evidence for a 331-element imported alignment", () => {
 		effectiveMaxIterations: 0,
 	});
 });
+
+test("the evidence fit converges with its budget, on the chain that agrees with the geometry", async () => {
+	// Twelve iterations of BFGS with a finite-difference Jacobian left the
+	// browser's radius edit at max_iterations with the end pose 2.5 m off; the
+	// moment chain, the remembered feet and Gauss-Newton reach a verdict in a
+	// handful, in milliseconds.
+	const { createAlignmentPoseJacobian } = await import("../../../src/domain/optimization/alignment/AlignmentPoseJacobian.js");
+	const { createTransitionMomentsCatalogue } = await import("../../../src/domain/optimization/alignment/TransitionMomentsCatalogue.js");
+	const { RegistryResolver } = await import("../../../src/domain/transition/registry/RegistryResolver.js");
+	const { KappaFcnBuilder } = await import("../../../src/domain/transition/build/KappaFcnBuilder.js");
+	const lookup = (await import("../../../src/domain/transition/transitionLookup.json", { with: { type: "json" } })).default;
+	const service = new AlignmentAxtranEvidenceService();
+	const started = Date.now();
+	const result = service.evaluateChange({ beforeAlignmentData: alignment(1 / 300), afterAlignmentData: alignment(1 / 320) });
+	assert.ok(result.ok, `${result.proposalStatus}`);
+	assert.ok(result.diagnostics.iterations < 50, `${result.diagnostics.iterations} iterations`);
+	assert.ok(result.diagnostics.endPoseDistance < 1e-6, `end pose ${result.diagnostics.endPoseDistance}`);
+	assert.equal(result.diagnostics.jacobianKind, "analytic");
+	assert.equal(result.diagnostics.interactiveBudget.effectiveMaxIterations, 200);
+	assert.ok(Date.now() - started < 5000, "well under a second, allowed five on a loaded machine");
+	// the chain the derivatives come from ends where the production geometry ends
+	const momentsFor = createTransitionMomentsCatalogue({ descriptorResolver: new RegistryResolver(lookup), kappaBuilder: KappaFcnBuilder });
+	const chain = createAlignmentPoseJacobian({ startPose: { x: 0, y: 0, theta: 0 }, momentsFor, elements: [
+		{ id: "S1", type: "straight", length: 100 }, { id: "T1", type: "transition", length: 60, family: "bloss" }, { id: "A1", type: "arc", length: 100, curvature: 1 / 300 },
+	] });
+	const before = service.evaluateChange({ beforeAlignmentData: alignment(1 / 300), afterAlignmentData: alignment(1 / 300), maxIterations: 0 });
+	assert.ok(before.diagnostics.endPoseDistance < 1e-6, `the unchanged alignment meets its own end pose: ${before.diagnostics.endPoseDistance}`);
+	assert.ok(Number.isFinite(chain.endPose.x) && Math.abs(chain.arcLength - 260) < 1e-9);
+});
+
+test("an arc that carries a radius beside its curvature still follows the curvature variable", () => {
+	// The editor stores both; the sparse builder prefers the radius. A
+	// curvature patch that left the radius behind moved nothing in the
+	// geometry, and every browser edit's evidence ended in a failed line
+	// search with the end pose metres off.
+	const shape = (radius) => ({ type: "AlignmentData", id: "alignment_x", name: "Prüfung", source: { kind: "native", native: true }, editModel: { startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } }, elements: [
+		{ id: "straight_1", type: "straight", length: 120, parameters: { length: 120 } },
+		{ id: "transition_1", type: "transition", length: 60, transitionType: "bloss", parameters: { length: 60, transitionType: "bloss", w1: null, w2: null } },
+		{ id: "arc_1", type: "arc", length: 150, curvature: 1 / radius, radius, parameters: { curvature: 1 / radius, length: 150, radius } },
+	] } });
+	const result = new AlignmentAxtranEvidenceService().evaluateChange({ beforeAlignmentData: shape(300), afterAlignmentData: shape(320) });
+	assert.ok(result.ok, `${result.proposalStatus} @${result.diagnostics.iterations}, end pose ${result.diagnostics.endPoseDistance}`);
+	assert.ok(result.diagnostics.endPoseDistance < 1e-6);
+	assert.ok(result.diagnostics.iterations < 50);
+	const curvature = result.candidate.variables[result.candidate.names.indexOf("arc_1.curvature")];
+	assert.ok(Math.abs(curvature - 1 / 300) < 1e-6, `the fit brings the curvature back toward the samples: ${curvature}`);
+});
