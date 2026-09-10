@@ -140,7 +140,20 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 		root?.querySelector("button, summary, [tabindex]")?.focus();
 	}
 
+	function openCreation() {
+		if (state.newAlignmentPhase === "creating") return false;
+		state.newAlignmentRequested = true;
+		state.newAlignmentPhase = "idle";
+		state.workspaceFeedback = null;
+		showOverlay();
+		const nameInput = root?.querySelector("[data-new-alignment-name]");
+		nameInput?.scrollIntoView?.({ block: "nearest" });
+		nameInput?.focus?.();
+		return true;
+	}
+
 	function close({ restore = true, preserveImportStatus = false } = {}) {
+		state.newAlignmentRequested = false;
 		stopToolResponsive?.(); stopToolResponsive = null;
 		stopJobObservation();
 		removeDragFrame();
@@ -245,12 +258,12 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 	async function createAlignment(name) {
 		if (state.newAlignmentPhase === "creating") return false;
 		const explicitName = String(name ?? "").trim();
-		if (name !== undefined && !explicitName) { state.workspaceFeedback = "Name für das neue Alignment erforderlich"; state.newAlignmentPhase = "error"; render(); return false; }
+		if (!explicitName) { state.workspaceFeedback = "Name für das neue Alignment erforderlich"; state.newAlignmentPhase = "error"; render(); return false; }
 		state.workspaceFeedback = null;
 		state.newAlignmentPhase = "creating";
 		render();
 		try {
-			const result = name === undefined ? await alignmentCreation?.create?.() : await alignmentCreation?.create?.({ name: explicitName });
+			const result = await alignmentCreation?.create?.({ name: explicitName });
 			const requestedId = String(result?.spotObject?.id ?? result?.alignmentData?.id ?? "").trim();
 			if (!requestedId) throw new Error("ALIGNMENT_CREATION_NOT_ACKNOWLEDGED");
 			const objects = await refreshWorkspaceState();
@@ -489,7 +502,7 @@ export function makeGndImportWorkbenchController({ store, messaging, cockpit, im
 
 	function getState() { return structuredClone(state); }
 	function destroy() { unsub?.(); unsubTerminalOutcomes?.(); unsubImportActivity?.(); windowRef?.removeEventListener?.("keydown", onToolEscape); close(); }
-	return { start, destroy, open, close, refresh, refreshWorkspaceState, preview, promote, promoteRoute, setRelationDecision, reviewDatasetAssociation, chooseFiles, chooseDirectory, openObjects, createAlignment, reopenObject, handleTerminalOutcome, handleImportActivity, getState };
+	return { start, destroy, open, openCreation, close, refresh, refreshWorkspaceState, preview, promote, promoteRoute, setRelationDecision, reviewDatasetAssociation, chooseFiles, chooseDirectory, openObjects, createAlignment, reopenObject, handleTerminalOutcome, handleImportActivity, getState };
 }
 
 function terminalJob(detail) {

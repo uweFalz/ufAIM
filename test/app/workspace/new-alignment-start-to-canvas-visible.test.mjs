@@ -8,3 +8,12 @@ const model=phase=>({phase:"ready",records:[],items:[],rejectedItems:[],fileOutc
 
 test("guided start requires a visible explicit name and claims no invented engineering facts",()=>{const root=new Node();renderGndImportWorkbench(root,model("idle"));const input=root.find(x=>Object.hasOwn(x.dataset,"newAlignmentName"));assert.ok(input);assert.equal(input.placeholder,"Name des Alignments");assert.match(root.text,/ohne erfundene Geometrie, Geschwindigkeit, Stationierung oder CRS/);assert.match(root.text,/Neues Alignment anlegen/);});
 test("real pending and error phases are visible and disable duplicate submit",()=>{const busy=new Node();renderGndImportWorkbench(busy,model("creating"));assert.match(busy.text,/wird angelegt/);assert.equal(busy.find(x=>x.dataset.createAlignment==="true").disabled,true);const failed=new Node();renderGndImportWorkbench(failed,model("error"));assert.match(failed.text,/Erneut anlegen/);});
+
+test("requested creation stays visible with saved objects and prior import outcomes", () => {
+	const root = new Node();
+	renderGndImportWorkbench(root, { ...model("error"), newAlignmentRequested: true, workspaceObjects: [{ id: "existing" }], fileOutcomes: [{ fileName: "existing.xml" }], workspaceFeedback: "Name für das neue Alignment erforderlich" });
+	assert.ok(root.find(node => Object.hasOwn(node.dataset, "newAlignmentName")));
+	assert.match(root.text, /Name eingeben/);
+	assert.match(root.text, /Erneut anlegen/);
+	assert.match(root.find(node => node.role === "alert").text, /Name für das neue Alignment erforderlich/);
+});

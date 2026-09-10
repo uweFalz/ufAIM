@@ -167,7 +167,7 @@ test("empty hydrated start delegates file choice and Alignment creation through 
 	assert.deepEqual(await controller.refreshWorkspaceState(), []);
 	controller.chooseFiles();
 	assert.equal(fileChoices, 1);
-	assert.equal(await controller.createAlignment(), "A1");
+	assert.equal(await controller.createAlignment("A"), "A1");
 	assert.equal(creates, 1);
 	assert.equal(activations, 1);
 	assert.equal(controller.getState().workspaceObjects[0].id, "A1");

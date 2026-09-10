@@ -10,7 +10,30 @@ function installDocument() {
 	const overlay = new Node(), root = new Node(); overlay.classList={ contains:()=>false, add(){}, remove(){} };
 	globalThis.document={ documentElement:{style:{},dataset:{}}, createElement:()=>new Node(), createDocumentFragment:()=>new Node(), querySelectorAll:()=>[], getElementById:id=>id==="gndImportWorkbenchOverlay"?overlay:id==="gndImportWorkbenchBody"?root:null };
 	globalThis.window={ addEventListener(){} };
+	return { root, overlay };
 }
+
+test("opening creation requests a name before any save, even with an existing workspace", async () => {
+	const { root, overlay } = installDocument();
+	let creates = 0, focused = 0, opened = 0;
+	overlay.classList.remove = () => { opened++; };
+	root.querySelector = selector => selector === "[data-new-alignment-name]" ? { focus() { focused++; } } : null;
+	const controller = makeGndImportWorkbenchController({
+		store: { actions: {} },
+		messaging: { async sendCmdAwait() { return { objects: [{ id: "existing", type: "alignment" }] }; } },
+		alignmentCreation: { async create() { creates++; } },
+	});
+	controller.start();
+	await controller.refreshWorkspaceState();
+	assert.equal(controller.openCreation(), true);
+	assert.equal(creates, 0);
+	assert.equal(opened, 1);
+	assert.equal(focused, 1);
+	assert.equal(controller.getState().newAlignmentRequested, true);
+	assert.equal(controller.getState().workspaceObjects[0].id, "existing");
+	controller.close();
+	assert.equal(controller.getState().newAlignmentRequested, false);
+});
 
 test("explicit name creates once, verifies canonical object, activates canvas and opens authoring", async () => {
 	installDocument(); let creates=0, activations=0, opened=null, release;
@@ -23,6 +46,7 @@ test("explicit name creates once, verifies canonical object, activates canvas an
 test("missing explicit name performs zero create and exposes retryable error", async () => {
 	installDocument(); let creates=0; const controller=makeGndImportWorkbenchController({store:{actions:{}},messaging:{},alignmentCreation:{async create(){creates++;}}});
 	assert.equal(await controller.createAlignment("   "),false); assert.equal(creates,0); assert.equal(controller.getState().newAlignmentPhase,"error"); assert.match(controller.getState().workspaceFeedback,/Name/);
+	assert.equal(await controller.createAlignment(),false); assert.equal(creates,0);
 });
 
 test("direct creation input uses the same explicit trimmed-name contract", async () => {

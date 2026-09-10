@@ -4,6 +4,17 @@ import { buildGndSourceEvidenceBands } from "../domain/workspace/buildGndSourceE
 export function renderGndImportWorkbench(root, model) {
 	if (!root) return;
 	root.replaceChildren();
+	if (model.newAlignmentRequested) {
+		const section = element("section", "gnd-wb-new-alignment");
+		section.append(element("h2", "", "Neues Alignment"), element("p", "", "Name eingeben und im lokalen Arbeitsbereich beginnen."), renderNewAlignmentForm(model));
+		if (model.workspaceFeedback) {
+			const feedback = element("p", "", model.workspaceFeedback);
+			feedback.setAttribute("role", "alert");
+			section.append(feedback);
+		}
+		root.append(section);
+		return;
+	}
 
 	const fragment = document.createDocumentFragment();
 	const lifecycle = renderImportLifecycle(model);
@@ -449,10 +460,7 @@ function renderWorkspaceStart(model) {
 		importActions.append(button("Dateien wählen", "import-choose-files", "true"));
 		if (model.directoryPickerSupported === true) importActions.append(button("Ordner wählen", "import-choose-directory", "true"));
 		else importActions.append(element("span", "gnd-wb-start-capability", "Ordner per Drag & Drop"));
-		const createActions = element("div", "gnd-wb-start-actions gnd-wb-new-alignment");
-		const name = element("input", "input"); name.dataset.newAlignmentName = ""; name.type = "text"; name.placeholder = "Name des Alignments"; name.setAttribute("aria-label", "Name des neuen Alignments"); name.disabled = model.newAlignmentPhase === "creating";
-		const create = button(model.newAlignmentPhase === "creating" ? "Alignment wird angelegt …" : model.newAlignmentPhase === "error" ? "Erneut anlegen" : "Neues Alignment anlegen", "create-alignment", "true"); create.disabled = model.newAlignmentPhase === "creating";
-		createActions.append(name, create);
+		const createActions = renderNewAlignmentForm(model);
 		paths.append(
 			startPath("01", "Daten hier ablegen / Datei wählen", "Mehrere Dateien und ganze Verzeichnisse hineinziehen; sie werden als ein Dataset gemeinsam analysiert.", importActions, true),
 			startPath("02", "Vorhandene Objekte öffnen", "Persistierte Arbeitsstände im Objekt-Overlay suchen und fokussieren.", button("Objekte öffnen", "open-workspace-objects", "true")),
@@ -478,6 +486,14 @@ function renderWorkspaceStart(model) {
 	}
 	if (model.workspaceFeedback) section.append(message(model.workspaceFeedback, "error"));
 	return section;
+}
+
+function renderNewAlignmentForm(model) {
+	const actions = element("div", "gnd-wb-start-actions gnd-wb-new-alignment");
+	const name = element("input", "input"); name.dataset.newAlignmentName = ""; name.type = "text"; name.placeholder = "Name des Alignments"; name.setAttribute("aria-label", "Name des neuen Alignments"); name.disabled = model.newAlignmentPhase === "creating";
+	const create = button(model.newAlignmentPhase === "creating" ? "Alignment wird angelegt …" : model.newAlignmentPhase === "error" ? "Erneut anlegen" : "Neues Alignment anlegen", "create-alignment", "true"); create.disabled = model.newAlignmentPhase === "creating";
+	actions.append(name, create);
+	return actions;
 }
 
 function startPath(number, title, copy, action, primary = false) {

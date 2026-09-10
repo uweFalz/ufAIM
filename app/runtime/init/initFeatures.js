@@ -595,7 +595,7 @@ export async function initFeatures(ctx) {
 		threeViewer: ctx.threeViewer,
 		store: ctx.store,
 		openImport: () => document.getElementById("btnImport")?.click(),
-		createAlignment: () => ctx.gndImportWorkbench?.createAlignment?.(),
+		createAlignment: () => ctx.gndImportWorkbench?.openCreation?.(),
 		openObjects: () => document.getElementById("btnSpot")?.click(),
 	});
 	ctx.alignmentBimWorkspace.start();
