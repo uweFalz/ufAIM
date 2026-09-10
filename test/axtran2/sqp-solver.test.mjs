@@ -296,6 +296,29 @@ test("the second-order correction rescues the step the l1 kink would reject", ()
 	);
 });
 
+test("a creep is reported as one: stationary, infeasible, and the violation not closing within the budget", () => {
+	// A constraint whose Jacobian is twice its true slope: the subproblem
+	// closes the linearised residual in one step, the true residual halves.
+	// With no objective the point is stationary at once, and the halving
+	// rate over the window says how many iterations the tolerance needs.
+	// The Maratos creep on AHBI_Gl_033 looked like this with a rate of one
+	// part in ten thousand a step (AXTRAN2_LEXICOGRAPHIC_CORPUS_2026-09-10.md).
+	const evaluate = ([x]) => ({ f: 0, gradF: [0], h: [x], Jh: [[2]] });
+	const short = solveSQP({ x0: [1], evaluate, maxIterations: 25, creepWindow: 5, restoration: "off" });
+	assert.equal(short.status, "infeasible_stationary", `status ${short.status}`);
+	assert.equal(short.reason, "creep");
+	const verdict = short.history.find((entry) => entry.status === "infeasible_stationary");
+	assert.ok(Math.abs(verdict.ratio - 0.5) < 1e-6, `rate ${verdict.ratio}`);
+	assert.ok(verdict.needed > verdict.remaining, `${verdict.needed} needed against ${verdict.remaining} left`);
+	// the same rate with budget enough for it is a run that finishes
+	const long = solveSQP({ x0: [1], evaluate, maxIterations: 200, creepWindow: 5, restoration: "off" });
+	assert.equal(long.status, "converged", `status ${long.status}`);
+	// and with the restoration on, the verdict is handed to it first
+	const restored = solveSQP({ x0: [1], evaluate, maxIterations: 25, creepWindow: 5 });
+	assert.equal(restored.status, "converged", `status ${restored.status}`);
+	assert.ok(restored.history.some((entry) => entry.status === "restored"), "the restoration closed what the creep could not");
+});
+
 // ---------------------------------------------------------------- boundary
 
 test("the optimisation library stays free of domain and platform dependencies", async () => {
