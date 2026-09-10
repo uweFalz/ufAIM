@@ -156,4 +156,32 @@ Corpus 0–161 under `bound`, filter + switching (ceiling 1e4 and 1e2 give the s
 `filterSTheta`, `filterSF`, `filterDelta`, `filterEta`; the filter is a list
 of `{ h, f }` per solve. `AlignmentSQPSolver` forwards `acceptance`,
 `filterMargin`, `filterCeiling`, `filterSwitching`; `runCorpus.mjs` takes
-`--acceptance`, `--filterSwitching`, `--filterCeiling`. Off by default.
+`--acceptance`, `--filterSwitching`, `--filterCeiling`. **Default since
+2026-09-10 (decided by Uwe Falz): `acceptance: "filter"`, `filterCeiling` 1e2**;
+`"merit"` stays available.
+
+## 6. What the flip needed beyond the option
+
+The suite found three things the corpus had not, all on the nine-element
+reference scenario and the lexicographic vertex tier:
+
+- **The second-order correction is tried whenever the raw step raises the
+  violation**, not only when the step is refused. Accepting the raw step at
+  once crept to a vertex 0.2 m longer than the corrected steps reach
+  (1042.794 against 1042.598); with the correction first the filter converges
+  there at 55 iterations where the merit takes 82.
+- **The merit's no-descent rule is the merit's.** Under the filter a step
+  the merit cannot fall along may still be an h-type step; the rule shrank
+  the region 36 times around such a step at the vertex tier and the
+  subproblem ran out (`qp_failed`). Skipped under the filter: the tier ends
+  `stationary` at 3.
+- **A step of length zero goes back to the loop**, not to the search: the
+  relaxed-stall verdict counts its way to `infeasible_subproblem` (the
+  box-excluded equality of #18), where the search answered
+  `line_search_failed` at once.
+- The filter is cleared with the restoration's fresh start, as the curvature
+  estimate and the weights are.
+
+Tests that measure the merit's own mechanics - the Maratos correction, the
+weights paying off a violated ramp row, the no-descent rule's backtracking -
+now say `acceptance: "merit"`; everything else runs on the default.
