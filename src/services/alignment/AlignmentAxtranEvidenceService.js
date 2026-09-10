@@ -16,6 +16,8 @@ export const FIT_MODES = Object.freeze(["keep-plan", "measurements-only"]);
 // the edited plan is kept where the samples are indifferent, with sigma 5 %.
 export const DEFAULT_PLAN_SIGMA = 0.05;
 
+const MAX_INTERACTIVE_SOLVER_VARIABLES = 96;
+
 const resolver = new RegistryResolver(transitionLookup);
 const dependencies = Object.freeze({ descriptorResolver: resolver, kappaBuilder: KappaFcnBuilder });
 
@@ -119,6 +121,8 @@ export class AlignmentAxtranEvidenceService {
 			points: sampleReference(before, sampleCount),
 		});
 		const problem = createAlignmentOptimizationProblem({ codec, constraints, residuals });
+		const observationOnly = codec.freeCount > MAX_INTERACTIVE_SOLVER_VARIABLES;
+		const effectiveMaxIterations = observationOnly ? 0 : maxIterations;
 		const buildAlignment = (overlay) => {
 			const alignment = alignmentFromData(withOverlay(afterAlignmentData, overlay));
 			return {
@@ -129,13 +133,32 @@ export class AlignmentAxtranEvidenceService {
 				worldToTrack: (x, y) => alignment.world2Track(x, y, { samples: 240, refineSteps: 32 }),
 			};
 		};
+		// The editor needs the consequence proposal, not the global weak-direction
+		// eigendecomposition.  On a real imported alignment that report is cubic in
+		// the number of free variables and can block the browser for minutes.
+		// Keep that diagnostic for normal-sized fits while making the large-import
+		// editor path explicitly bounded.
 		const proposal = solveAlignmentProblem({
-			problem, buildAlignment, objective: "points", maxIterations,
+			problem,
+			buildAlignment,
+			objective: "points",
+			maxIterations: effectiveMaxIterations,
 			// keep-plan: a weak pseudo-observation on every free length toward the
 			// edited value, the geodetic answer to lengths the samples cannot see
 			...(fitMode === "keep-plan" ? { lengthPrior: { sigma: planSigma } } : {}),
+			...(observationOnly ? { determinacy: "off" } : {}),
 		});
-		const determinacy = proposal.diagnostics?.determinacy ?? null;
+		const diagnostics = Object.freeze({
+			...proposal.diagnostics,
+			interactiveBudget: Object.freeze({
+				mode: observationOnly ? "observation-only" : "iterative",
+				freeVariables: codec.freeCount,
+				threshold: MAX_INTERACTIVE_SOLVER_VARIABLES,
+				requestedMaxIterations: maxIterations,
+				effectiveMaxIterations,
+			}),
+		});
+		const determinacy = diagnostics.determinacy ?? null;
 		// the lengths the samples did not determine, by element, with the play
 		// of the direction each one leads
 		const undetermined = Object.freeze((determinacy?.directions ?? [])
@@ -158,8 +181,10 @@ export class AlignmentAxtranEvidenceService {
 			planSigma: fitMode === "keep-plan" ? planSigma : null,
 			undetermined,
 			candidate: proposal.candidate,
-			diagnostics: proposal.diagnostics,
-			note: "Derived from the pre-edit canonical realization; proposal-only and never applied automatically.",
+			diagnostics,
+			note: observationOnly
+				? "Derived from the pre-edit canonical realization at the edited point; observation-only, proposal-only, and never applied automatically."
+				: "Derived from the pre-edit canonical realization; proposal-only and never applied automatically.",
 		});
 	}
 }

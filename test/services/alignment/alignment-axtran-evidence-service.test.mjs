@@ -20,6 +20,27 @@ function alignment(curvature) {
 	};
 }
 
+function longImportedAlignment(count = 331) {
+	return {
+		type: "AlignmentData",
+		id: "A-LONG",
+		name: "A-LONG",
+		source: { kind: "landXML", native: true },
+		editModel: {
+			startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } },
+			elements: Array.from({ length: count }, (_, index) => index % 2 === 0 ? ({
+				id: `S${index + 1}`,
+				type: "straight",
+				parameters: { length: 10 },
+			}) : ({
+				id: `I${index + 1}`,
+				type: "transition",
+				parameters: { length: 0, transitionType: "immediate" },
+			})),
+		},
+	};
+}
+
 test("reports a real AXTRAN2 proposal as explicit non-admissible evidence", () => {
 	const service = new AlignmentAxtranEvidenceService();
 	const result = service.evaluateChange({
@@ -106,4 +127,27 @@ test("the fit mode is the user's answer to the length prior, and the evidence sa
 	assert.ok(travel(kl) <= travel(fl) + 1e-12, `kept ${travel(kl)} against free ${travel(fl)}`);
 	assert.throws(() => service.evaluateChange({ ...input, fitMode: "guess" }), /fit mode must be one of/);
 	assert.throws(() => service.evaluateChange({ ...input, planSigma: 0 }), /plan sigma must be positive/);
+});
+
+test("bounds interactive evidence for a 331-element imported alignment", () => {
+	const imported = longImportedAlignment();
+	const result = new AlignmentAxtranEvidenceService().evaluateChange({
+		beforeAlignmentData: imported,
+		afterAlignmentData: structuredClone(imported),
+		sampleCount: 2,
+		maxIterations: 12,
+	});
+
+	assert.equal(result.type, "axtran2-consequence-evidence");
+	assert.equal(result.status, "evidence-only");
+	assert.equal(result.admissible, false);
+	assert.equal(result.diagnostics.determinacy, null);
+	assert.equal(result.diagnostics.iterations, 0);
+	assert.deepEqual(result.diagnostics.interactiveBudget, {
+		mode: "observation-only",
+		freeVariables: 166,
+		threshold: 96,
+		requestedMaxIterations: 12,
+		effectiveMaxIterations: 0,
+	});
 });
