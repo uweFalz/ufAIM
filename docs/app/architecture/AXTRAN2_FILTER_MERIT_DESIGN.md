@@ -166,7 +166,9 @@ The suite found three things the corpus had not, all on the nine-element
 reference scenario and the lexicographic vertex tier:
 
 - **The second-order correction is tried whenever the raw step raises the
-  violation**, not only when the step is refused. Accepting the raw step at
+  violation**, not only when the step is refused (and, since 2026-09-10,
+  whenever it leaves more than a tenth of it: `correctionClosure` 0.1, see
+  the lexicographic corpus note). Accepting the raw step at
   once crept to a vertex 0.2 m longer than the corrected steps reach
   (1042.794 against 1042.598); with the correction first the filter converges
   there at 55 iterations where the merit takes 82.
