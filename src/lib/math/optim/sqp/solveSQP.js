@@ -119,14 +119,16 @@ export function solveSQP({
 	// margins, and an accepted h-type step adds the point left behind.
 	filterSwitching = true,
 	// The correction is also tried when the full step leaves more than this
-	// fraction of the violation behind; 1 is the rule above (a rising
-	// violation only). Measured at 0.1 on the corpus 0–161: the strict
-	// lexicographic order unchanged at 120 of 161, the single objectives 159
-	// and 161 of 161 to 160 and 161 with 127 of 322 rows moving either way,
-	// and the creep on AHBI_Gl_033 (below) closed in 74 iterations instead of
-	// running out. Neutral on the whole, decisive on one file; left at 1
-	// until the flip is decided.
-	correctionClosure = 1,
+	// fraction of the violation behind, not only when it raises it: a step
+	// that closes the linearised constraints and leaves nine tenths of the
+	// true residual is the Maratos effect at work whether or not the residual
+	// grew. Measured at 0.1 on the corpus 0–161 against 1 (a rising violation
+	// only): the strict lexicographic order unchanged at 120 of 161, the
+	// single objectives 159 and 161 of 161 to 160 and 161 with 127 of 322
+	// rows moving either way, and the creep on AHBI_Gl_033 (below) closed in
+	// 74 iterations instead of ending as a verdict. Decided as the default on
+	// 2026-09-10 (Uwe Falz).
+	correctionClosure = 0.1,
 	// A point that is stationary to stationarityTolerance and infeasible,
 	// whose violation over this many consecutive such iterations shrinks at a
 	// rate that will not reach the tolerance within the budget, is a creep
