@@ -47,3 +47,28 @@ test("Cockpit keeps the canonical object identity after promotion", () => {
 	assert.match(html, /Imported A1/);
 	assert.doesNotMatch(html, /Import result/);
 });
+
+test("all 163 import candidates remain reachable beyond the first twelve", () => {
+	const importRows = Array.from({ length: 163 }, (_, index) => ({
+		itemId: `item-${index}`, label: `Candidate ${index}`, fileName: `source-${index}.TRA`,
+		kind: "alignment", promotable: true, hasSparse: true,
+	}));
+	const html = renderCockpitHtml({ collections: { importRows } });
+	const [initial, remainder] = html.split('<details class="cockpit-import-remainder">');
+	assert.equal((initial.match(/data-cockpit-accept-show=/g) ?? []).length, 12);
+	assert.match(remainder, /<summary>151 weitere Importobjekte<\/summary>/);
+	assert.equal((remainder.match(/data-cockpit-accept-show=/g) ?? []).length, 151);
+	for (const row of importRows) assert.equal(html.split(`data-cockpit-accept-show="${row.itemId}"`).length - 1, 1);
+});
+
+test("small import lists need no disclosure and withheld candidates stay non-promotable", () => {
+	const importRows = Array.from({ length: 13 }, (_, index) => ({
+		itemId: `item-${index}`, label: `Candidate ${index}`, promotable: index < 12,
+		reason: index === 12 ? "AMBIGUOUS_RELATION" : null,
+	}));
+	const small = renderCockpitHtml({ collections: { importRows: importRows.slice(0, 12) } });
+	assert.doesNotMatch(small, /cockpit-import-remainder/);
+	const full = renderCockpitHtml({ collections: { importRows } });
+	assert.match(full, /AMBIGUOUS_RELATION/);
+	assert.doesNotMatch(full, /data-cockpit-accept-show="item-12"/);
+});

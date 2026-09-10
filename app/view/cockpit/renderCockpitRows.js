@@ -108,16 +108,21 @@ export function renderImportRows(rows = []) {
 
 	const sortedRows = [...rows].sort(compareImportRows);
 	const visibleRows = sortedRows.slice(0, 12);
-	const hiddenCount = Math.max(0, sortedRows.length - visibleRows.length);
+	const remainingRows = sortedRows.slice(visibleRows.length);
 
 	return `
 		<div class="cockpit-sofa__list">
 			${visibleRows.map(renderImportRow).join("")}
 		</div>
 
-		${hiddenCount > 0 ? empty(
-			`… ${hiddenCount} ${tx("cockpit.moreImportObjects", "weitere Importobjekte")}`
-		) : ""}
+		${remainingRows.length > 0 ? `
+			<details class="cockpit-import-remainder">
+				<summary>${escapeHtml(`${remainingRows.length} ${tx("cockpit.moreImportObjects", "weitere Importobjekte")}`)}</summary>
+				<div class="cockpit-sofa__list">
+					${remainingRows.map(renderImportRow).join("")}
+				</div>
+			</details>
+		` : ""}
 	`;
 }
 
