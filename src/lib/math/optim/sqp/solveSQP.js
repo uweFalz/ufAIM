@@ -118,6 +118,26 @@ export function solveSQP({
 	// alone; otherwise the filter decides against the current point with the
 	// margins, and an accepted h-type step adds the point left behind.
 	filterSwitching = true,
+	// The correction is also tried when the full step leaves more than this
+	// fraction of the violation behind; 1 is the rule above (a rising
+	// violation only). Measured at 0.1 on the corpus 0–161: the strict
+	// lexicographic order unchanged at 120 of 161, the single objectives 159
+	// and 161 of 161 to 160 and 161 with 127 of 322 rows moving either way,
+	// and the creep on AHBI_Gl_033 (below) closed in 74 iterations instead of
+	// running out. Neutral on the whole, decisive on one file; left at 1
+	// until the flip is decided.
+	correctionClosure = 1,
+	// A point that is stationary to stationarityTolerance and infeasible,
+	// whose violation over this many consecutive such iterations shrinks at a
+	// rate that will not reach the tolerance within the budget, is a creep
+	// and is reported as one. Measured on AHBI_Gl_033 under the strict
+	// lexicographic order: from iteration 40 to 1000 every step was full and
+	// uncorrected, f fell by 5e-3 a step, the relative KKT residual sat at
+	// 1.4e-5 and the violation at 1.5e-4 fell by one part in ten thousand a
+	// step - the Maratos effect without its correction, since the correction
+	// is only tried when the violation rises. Twenty iterations tell that
+	// rate from the Newton closure of a converging run.
+	creepWindow = 20,
 	filterSTheta = 1.1,
 	filterSF = 2.3,
 	filterDelta = 1,
@@ -213,6 +233,7 @@ export function solveSQP({
 		return held;
 	};
 	let relaxedStalls = 0;
+	const creep = [];
 	let relaxedStallViolation = 0;
 	let restorations = 0;
 	let restorationSteps = 0;
@@ -294,6 +315,7 @@ export function solveSQP({
 		});
 		radius = Number.isFinite(trustRadius) ? trustRadius : Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
 		relaxedStalls = 0;
+		creep.length = 0;
 		previousMerit = null;
 		stalls = 0;
 		// the filter described the path to the verdict, not the path from here
@@ -423,6 +445,40 @@ export function solveSQP({
 				ok: true, status: "converged", x, state, history,
 				iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
 			};
+		}
+		// Stationary and infeasible, with the violation shrinking too slowly to
+		// reach the tolerance within the budget: the objective is at rest on
+		// the linearised constraints and the constraints themselves are not
+		// closing, which no further step of the same kind will change. The
+		// rate is read off the window as a geometric mean; a violation that
+		// does not fall at all needs infinitely many iterations. The verdict
+		// is handed to the restoration like the fully relaxed subproblem's,
+		// and reported as such when it comes back.
+		if (stationary && violation.total > feasible) {
+			creep.push(violation.total);
+			if (creep.length > creepWindow) creep.shift();
+			if (creep.length === creepWindow) {
+				const ratio = Math.pow(violation.total / creep[0], 1 / (creepWindow - 1));
+				const needed = ratio < 1 ? Math.log(feasible / violation.total) / Math.log(ratio) : Infinity;
+				if (needed > maxIterations - iteration) {
+					history.push({
+						iteration, status: "infeasible_stationary", reason: "creep", kkt, violation: violation.total,
+						ratio, needed: Number.isFinite(needed) ? needed : null, remaining: maxIterations - iteration,
+					});
+					creep.length = 0;
+					if ((restoration === "on-verdict" || restoration === "eager") && restorations < restorationLimit) {
+						const failure = restoreFrom(iteration);
+						if (failure) return failure;
+						continue;
+					}
+					return {
+						ok: false, status: "infeasible_stationary", reason: "creep", x, state, history,
+						iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
+					};
+				}
+			}
+		} else {
+			creep.length = 0;
 		}
 		// A zero step is stationarity when the subproblem that produced it was
 		// free to say otherwise. Two things have to hold: the subproblem reached
@@ -603,7 +659,7 @@ export function solveSQP({
 		// nine-element scenario, accepting the raw step at once crept to a vertex
 		// 0.2 m longer than the one the corrected steps reach.
 		const raisesViolation = acceptance === "filter" && full
-			&& constraintViolation(full.state).total > violation.total;
+			&& constraintViolation(full.state).total > correctionClosure * violation.total;
 		if (full && (!armijo(full.merit, 1) || raisesViolation) && (state.h ?? []).length && (predictedDecrease < 0 || raisesViolation)) {
 			// smallest d that satisfies Jh(x) d = -h(x + d): the same subproblem
 			// with no objective and the trial point's residuals

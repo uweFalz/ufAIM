@@ -279,3 +279,26 @@ test("a held phase that cannot move ends with a verdict, not with its budget", {
 	const history = held.diagnostics.history ?? [];
 	assert.ok(history.some((e) => e.status === "trust_shrunk" && e.reason === "qp_failed") || history.some((e) => e.status === "no_step"), "the region was shrunk on the way");
 });
+
+test("a held phase that creeps is told so, not left to its budget", { skip }, async () => {
+	// AHBI_Gl_033 under the strict order: from iteration 40 the held phase
+	// took a full, uncorrected step every time, f fell by 5e-3 a step, the
+	// relative KKT residual sat at 1.4e-5 and the violation at 1.5e-4 fell by
+	// one part in ten thousand a step - the Maratos effect without its
+	// correction. The creep verdict reads that rate off twenty iterations,
+	// hands the point to the restoration twice, and reports the third.
+	const { solveAlignmentLexicographic } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentLexicographicSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const sc = await createTraScenario(find("AHBI_Gl_033_DBREF2016.TRA", SAMPLES.pathname));
+	const lex = solveAlignmentLexicographic({
+		problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations: 1000,
+		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }],
+	});
+	const held = lex.phases.find((p) => p.label.endsWith("budget-active"));
+	assert.ok(held, `phases ${lex.phases.map((p) => p.label)}`);
+	assert.notEqual(held.status, "max_iterations", "the phase names its state instead of running out");
+	assert.ok(held.diagnostics.iterations < 300, `${held.diagnostics.iterations} iterations`);
+	const history = held.diagnostics.history ?? [];
+	assert.ok(history.some((e) => e.status === "infeasible_stationary" && e.reason === "creep"), "the creep was named");
+});
