@@ -14,6 +14,8 @@ export function projectAlignmentGeometry({
 	georeference = null,
 	source = "spot-object",
 	maxStep = 5,
+	maxPoints = Infinity,
+	includeSegments = true,
 } = {}) {
 	const input = makeAlignmentProjectionInput({
 		objectId,
@@ -28,6 +30,8 @@ export function projectAlignmentGeometry({
 	const geom = projectAlignmentPreview({
 		input,
 		maxStep,
+		maxPoints,
+		includeSegments,
 	});
 
 	if (!geom?.polyline2d || geom.polyline2d.length < 2) {

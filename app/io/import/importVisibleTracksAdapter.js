@@ -13,6 +13,8 @@
 
 import { projectAlignmentGeometry } from "@src/domain/projection/ViewProjectionController.js";
 
+export const IMPORT_PREVIEW_MAX_POINTS_PER_ALIGNMENT = 256;
+
 export function buildVisibleTracksFromImportItems({
 	items = [],
 	fileName = "",
@@ -29,6 +31,8 @@ export function buildVisibleTracksFromImportItems({
 			source: "import-item",
 			crsId: deriveItemCrsId(item),
 			maxStep: sampleStep,
+			maxPoints: IMPORT_PREVIEW_MAX_POINTS_PER_ALIGNMENT,
+			includeSegments: false,
 		});
 
 		const points = projected?.polyline2d;

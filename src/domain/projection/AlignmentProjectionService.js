@@ -31,6 +31,8 @@ export function makeAlignmentProjectionInput({
 export function projectAlignmentPreview({
 	input,
 	maxStep = 5,
+	maxPoints = Infinity,
+	includeSegments = true,
 } = {}) {
 	const geometry = input?.geometry ?? null;
 	if (!geometry) return null;
@@ -59,7 +61,7 @@ export function projectAlignmentPreview({
 
 	if (!alignment || !Number.isFinite(alignment.arcLength)) return null;
 
-	const polyline2d = sampleAlignment2D(alignment, maxStep);
+	const polyline2d = sampleAlignment2D(alignment, maxStep, maxPoints);
 
 	if (DEBUG_PROJECTION) {
 		console.log("[Projection] sampled:", {
@@ -78,11 +80,18 @@ export function projectAlignmentPreview({
 		: Array.isArray(geometry.elements)
 		? geometry.elements
 		: [];
-	const segmentData = sampleAlignmentSegments({
-		alignment,
-		sparse,
-		maxStep,
-	});
+	const segmentData = includeSegments
+		? sampleAlignmentSegments({
+			alignment,
+			sparse,
+			maxStep,
+		})
+		: {
+			segments: [],
+			boundaries: [],
+			startPoint: polyline2d[0] ?? null,
+			endPoint: polyline2d[polyline2d.length - 1] ?? null,
+		};
 
 	if (DEBUG_PROJECTION) {
 		console.log("[Projection] bbox:", bbox);
@@ -234,10 +243,26 @@ function pushBoundary(out, seen, boundary) {
 	out.push(boundary);
 }
 
-function sampleAlignment2D(alignment, maxStep) {
+function sampleAlignment2D(alignment, maxStep, maxPoints = Infinity) {
 	const ds = Number.isFinite(maxStep) && maxStep > 0 ? maxStep : 5;
 	const L = Math.max(0, Number(alignment.arcLength) || 0);
 	if (!(L > 0)) return null;
+	const pointLimit = Number.isFinite(maxPoints)
+		? Math.max(2, Math.floor(maxPoints))
+		: Infinity;
+
+	if (pointLimit !== Infinity) {
+		const intervalCount = Math.min(
+			Math.max(1, Math.ceil(L / ds)),
+			pointLimit - 1
+		);
+		const out = [];
+		for (let index = 0; index <= intervalCount; index += 1) {
+			const p = alignment.pointAt(L * index / intervalCount);
+			if (p) out.push({ x: p.x, y: p.y });
+		}
+		return out.length >= 2 ? out : null;
+	}
 
 	const out = [];
 	let s = 0;
