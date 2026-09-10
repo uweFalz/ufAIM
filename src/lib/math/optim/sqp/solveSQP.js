@@ -94,6 +94,13 @@ export function solveSQP({
 	// releases and blocks per subproblem, qp_failed at the 29th step. Ten per
 	// variable, never under 200: the same two runs reach a fit instead.
 	qpIterations: qpIterationsGiven = null,
+	// PROTOTYPE (design measurement, docs/app/architecture/AXTRAN2_FILTER_MERIT_DESIGN.md):
+	// "filter" accepts a trial by a Fletcher-Leyffer filter on (violation, f)
+	// instead of the l1 merit's Armijo test; the merit still prices the
+	// verdicts and the weights. Off by default.
+	acceptance = "merit",
+	filterMargin = 1e-5,
+	filterCeiling = 1e4,
 	initialHessianScale = 1,
 	// Where the curvature estimate comes from. "bfgs" builds it from the
 	// Lagrangian gradient differences, from the identity. "provided" takes the
@@ -213,6 +220,8 @@ export function solveSQP({
 	const history = [];
 	let previousMerit = null;
 	let stalls = 0;
+	const filter = [];
+	let filterCeilingValue = null;
 
 	// The 1-norm, not the 2-norm: the constraints' units grow with the sum of
 	// the variables (an end pose over the whole length), and the 2-norm of a
@@ -490,11 +499,24 @@ export function solveSQP({
 		// digits. The correction re-linearises the constraints at the trial point
 		// and adds the smallest step that closes them, which restores the
 		// quadratic convergence the plain search throws away.
+		// filter acceptance: not dominated by any remembered (h, f), nor by the
+		// current point, with the margins; and under the ceiling
+		if (acceptance === "filter" && filterCeilingValue === null) filterCeilingValue = filterCeiling * Math.max(1, violation.total);
+		const filterAccepts = (evaluated) => {
+			const h = constraintViolation(evaluated).total;
+			const f = evaluated.f;
+			if (!(h <= filterCeilingValue)) return false;
+			const beats = (entry) => h <= (1 - filterMargin) * entry.h || f <= entry.f - filterMargin * entry.h;
+			return beats({ h: violation.total, f: state.f }) && filter.every(beats);
+		};
+		const meritOfState = (evaluated, alpha) => acceptance === "filter"
+			? (filterAccepts(evaluated) ? meritAt0 + alpha * predictedDecrease : Infinity)
+			: l1Merit(evaluated, weights);
 		const meritOf = (candidate) => {
 			let evaluated;
 			try { evaluated = evaluate(candidate); } catch { return null; }
 			if (!Number.isFinite(evaluated?.f)) return null;
-			return { merit: l1Merit(evaluated, weights), state: evaluated };
+			return { merit: meritOfState(evaluated, 1), state: evaluated };
 		};
 		const clamp = (candidate) => candidate.map((value, i) =>
 			Math.min(Math.max(value, lo[i]), up[i]));
@@ -534,7 +556,7 @@ export function solveSQP({
 				try { evaluated = evaluate(candidate); } catch { return null; }
 				if (!Number.isFinite(evaluated?.f)) return null;
 				trialState = { x: candidate, state: evaluated };
-				return l1Merit(evaluated, weights);
+				return meritOfState(evaluated, alpha);
 			},
 		});
 		if (corrected) trialState = { x: corrected.x, state: corrected.state };
@@ -557,6 +579,12 @@ export function solveSQP({
 			return { ok: false, status: "line_search_failed", reason: search.status, x, state, history, iterations: iteration, restorationSteps };
 		}
 
+		if (acceptance === "filter") {
+			// an h-type step (f did not fall by the margin) adds the point left
+			// behind to the filter; an f-type step leaves the filter alone
+			const fType = trialState.state.f <= state.f - filterMargin * violation.total;
+			if (!fType) filter.push({ h: violation.total, f: state.f });
+		}
 		// The line search's own verdict sizes the region: a full step accepted
 		// means the model held that far and may be trusted further; backtracking
 		// means it did not, and the region follows the step that was accepted.
