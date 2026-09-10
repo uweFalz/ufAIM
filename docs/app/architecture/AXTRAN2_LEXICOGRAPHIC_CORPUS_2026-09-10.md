@@ -142,9 +142,23 @@ run finished.
 
 The correction on weak closure is the better answer to the Maratos creep
 where it is one - it turns the verdict on `AHBI_Gl_033` into a solution -
-and neutral everywhere else; the option is in the solver at its old value
-of 1 and the flip is a decision, not a measurement.
+and neutral everywhere else. **Decided 2026-09-10 (Uwe Falz):
+`correctionClosure` 0.1 is the default.** Measured with the creep verdict
+in place, against the default of 1 on 0–161:
 
-The strict order's rate stays 120 of 161. The first failure above (region
-collapse at a degenerate vertex, `AHBI_Gl_037`) stands as described.
+| | `correctionClosure` 1 | 0.1 (default) |
+|---|---|---|
+| strict order ok / 161 | 120 | 122 |
+| single objectives ok | 159 + 161 | 160 + 161 |
+| single objectives, iterations | 12 560 | 12 243 |
+| single rows moved (status or iterations) | | 124 of 322, none to a failure; 20 swaps converged ↔ stationary, one `qp_failed` → `stationary` |
+| strict rows moved | | 27 of 161: 7 failures → converged (`AHBI_Gl_033` among them, at 74), 5 converged → failure (`1285_261-262_KM`, `AHBI_Gl_073`, `AHBI_Gl_031`, `AHBI_Gl_075`, `Ka_NCH_Gl1A`) |
+
+The held phase is a chaotic question, and a change to any step rule
+reshuffles which sliver fits it finds; the net is two more, and no single
+objective got worse. The verdict stays for the creeps the correction does
+not close (the unit test holds the rule at 1 to measure it).
+
+The first failure above (region collapse at a degenerate vertex,
+`AHBI_Gl_037`) stands as described.
 
