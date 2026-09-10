@@ -285,7 +285,9 @@ test("the second-order correction rescues the step the l1 kink would reject", ()
 		h: [x * x + y * y - 1], Jh: [[2 * x, 2 * y]],
 	});
 	const from = [Math.cos(2.9), Math.sin(2.9)];
-	const run = solveSQP({ x0: from, evaluate, maxIterations: 120 });
+	// the merit's Maratos effect and its correction; the filter accepts the
+	// step the l1 kink would reject and needs no rescue
+	const run = solveSQP({ x0: from, evaluate, maxIterations: 120, acceptance: "merit" });
 	assert.equal(run.ok, true, `status ${run.status}`);
 	closeAll(run.x, [-1, 0], 1e-5, "minimum on the circle");
 	assert.ok(

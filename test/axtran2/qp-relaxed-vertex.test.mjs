@@ -174,8 +174,8 @@ test("filter acceptance with the switching condition reaches the same answers as
 		const J = [[1, 0], [0, 1], [1, -1]];
 		return { f: 0.5 * r.reduce((s, v) => s + v * v, 0), gradF: [0, 1].map((j) => J.reduce((s, row, i) => s + row[j] * r[i], 0)), h: [50 * (Math.hypot(x, y) - 100)], Jh: [[50 * x / Math.hypot(x, y), 50 * y / Math.hypot(x, y)]], g: [], Jg: [] };
 	};
-	const merit = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200 });
-	const filter = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200, acceptance: "filter" });
+	const merit = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200, acceptance: "merit" });
+	const filter = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200 });
 	const dominance = solveSQP({ x0: [60, 60], evaluate: circle, maxIterations: 200, acceptance: "filter", filterSwitching: false });
 	for (const [label, run] of [["merit", merit], ["filter", filter], ["dominance only", dominance]]) {
 		assert.ok(run.ok, `${label}: ${run.status} ${run.reason ?? ""}`);
