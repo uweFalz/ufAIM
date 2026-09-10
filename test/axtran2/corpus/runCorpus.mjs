@@ -4,7 +4,7 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length,lexicographic] [--ramp bound|constraint] \
-//        [--iterations 1000] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--json out.json]
+//        [--iterations 1000] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -41,6 +41,7 @@ const tiers = tiersArg === "reference"
 	: [{ objective: "accumulated-length", absolute: tiersArg === "strict" ? 0 : Number(tiersArg.split("=")[1]) }, { objective: "points" }];
 const filterCeiling = args.filterCeiling === undefined ? undefined : Number(args.filterCeiling);
 const filterSwitching = args.filterSwitching === undefined ? undefined : args.filterSwitching !== "false";
+const correctionClosure = args.correctionClosure === undefined ? undefined : Number(args.correctionClosure);
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
 
 const trusted = [];
@@ -69,7 +70,7 @@ for (const { file, n } of trusted.slice(from, to)) {
 	for (const objective of objectives) {
 		const t0 = Date.now();
 		let run;
-		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling };
+		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling, correctionClosure };
 		if (objective === "lexicographic") {
 			// the declared order: the length tier as a reference, then the points
 			let lex;

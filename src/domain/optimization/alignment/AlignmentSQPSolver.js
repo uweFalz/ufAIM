@@ -117,6 +117,7 @@ export function solveAlignmentProblem({
 	filterMargin,
 	filterCeiling,
 	filterSwitching,
+	correctionClosure,
 	// A weak pseudo-observation on free lengths, as a geodetic adjustment
 	// carries one on a weakly determined parameter: { sigma, elements? } adds
 	// a residual (L - L0) / (sigma · L0) for every free length of the named
@@ -680,6 +681,7 @@ export function solveAlignmentProblem({
 		...(filterMargin === undefined ? {} : { filterMargin }),
 		...(filterCeiling === undefined ? {} : { filterCeiling }),
 		...(filterSwitching === undefined ? {} : { filterSwitching }),
+		...(correctionClosure === undefined ? {} : { correctionClosure }),
 	});
 	const run = {
 		...scaledRun,
