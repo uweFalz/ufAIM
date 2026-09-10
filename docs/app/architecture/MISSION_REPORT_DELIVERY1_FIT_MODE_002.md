@@ -16,6 +16,8 @@ Mission `APP-DELIVERY1-FIT-MODE-002`, stream `app`: give the AXTRAN consequence 
 
 ## 4. Work Performed
 
+- Found on the way, in the browser: the editor stores an arc's radius beside its curvature and the sparse builder reads the radius first, so the evidence overlay's curvature patch moved nothing in the geometry - every browser edit's evidence had ended in a failed line search with the end pose metres off (max_iterations at 12 in FIT-MODE-001, restoration_failed at 21 with the budget). The overlay keeps both consistent now.
+
 - Evidence service: `maxIterations` 12 → 200, `hessian` "gauss-newton", derivatives from the moment chain (`createAlignmentPoseJacobian`) instead of finite differences, sample feet remembered between evaluations. Version 0.3. The observation-only bound above 96 free variables stands.
 - Helpers: `AlignmentPointProjection` and `TransitionMomentsCatalogue` under `src/domain/optimization/alignment/`, used by the service and the corpus scenario.
 
@@ -32,7 +34,9 @@ Modified: `src/services/alignment/AlignmentAxtranEvidenceService.js`, `test/serv
 | 9 elements, 11 free | max_iterations, end pose 0.22 m, rms 70, 2.2 s | stationary @9, end pose 0, rms 0.000, 0.0 s |
 | 21 elements, 26 free | max_iterations, end pose 1.4 m, rms 567, 5.0 s | max_iterations @200, end pose 2e-6, rms 0.002, 0.4 s |
 
-Tests: service 6/6 (one new), axtran2 and corpus 151/151, app and services 696/701 (the five are the environment and two pre-existing on main). Corpus 0–161: 322 of 322 rows identical after the scenario's switch to the helpers.
+Browser, worktree served on 8083: straight 120 m, Bloss 60 m, arc R 300, radius edited to 320 and applied - the receipt shows producer 0.3, proposal `converged`, 4 iterations, end-pose residual 4e-14 m, derived-point rms 6e-10, the sentence "Fit hielt den bearbeiteten Plan (σ 5 %) …", under a second from click to receipt. Before the radius fix the same edit ended `restoration_failed` at 21 with 2.96 m.
+
+Tests: service 7/7 (two new), axtran2 and corpus 151/151, app, services, axtran2 and corpus together 842/847 (the five are the environment and two pre-existing on main). Corpus 0–161: 322 of 322 rows identical after the scenario's switch to the helpers.
 
 ## 7. Risks and Open Points
 
@@ -41,8 +45,8 @@ Tests: service 6/6 (one new), axtran2 and corpus 151/151, app and services 696/7
 
 ## 8. Next Step
 
-Review, browser check of a radius edit, integrate.
+Review and integrate.
 
 ## 9. Effort
 
-Three commits, one session.
+Four commits, one session, one browser run.
