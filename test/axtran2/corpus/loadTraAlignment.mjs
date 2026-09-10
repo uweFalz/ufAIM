@@ -43,7 +43,9 @@ registerHooks({
 const { parseTraGraAuto } = await import(new URL("src/import/parsers/technet/vermEsn/parseTRA_GRA.js", ROOT));
 
 /** what this loader can express; anything else is reported, not guessed at */
-export const FAMILIES = Object.freeze({ klothoide: "clothoid", clothoid: "clothoid", bloss: "bloss" });
+// "ÜB S-Form" is the Helmert transition (also called S-Form); "S-Form (1f
+// geschw.)" is another record kind and stays unsupported until named
+export const FAMILIES = Object.freeze({ klothoide: "clothoid", clothoid: "clothoid", bloss: "bloss", "üb s-form": "helmert" });
 
 const measure = (m) => (m && typeof m === "object" && "value" in m ? Number(m.value) : Number(m));
 // R > 0 is a right-hand curve in Verm.esn; the kernel's heading grows to the left
