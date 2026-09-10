@@ -85,7 +85,49 @@ Corpus 0–161 under `bound`, both objectives, filter against merit:
 | length | 159 | 158 (−1: AHBI_Gl_075 max_iterations) | 56 → 33 | 2 rows longer by > 1 cm |
 | points | 159 | 158 (+2 / −3, two of them `qp_failed`) | 41 → 42 | rms worse on 8 rows, better on 1 |
 
-## 4. Proposal
+## 3a. Measured with the switching condition (2026-09-10)
+
+The switching condition of Wächter-Biegler (s_θ 1.1, s_f 2.3, δ 1, η_f 1e-4)
+was built into the prototype: when the model predicts a large decrease of f
+against the violation, the trial must satisfy Armijo on f and is an f-type
+step that leaves the filter alone; otherwise the filter decides against the
+current point with the margins, and an accepted h-type step adds the point
+left behind, margins taken.
+
+Length objective, eager start, budget 1000:
+
+| file | merit | filter + switching, ceiling 1e4 | ceiling 1e2 |
+|---|---|---|---|
+| 1280_026-042, 119 el. | infeasible_subproblem @37, end pose 1.0e3 m | stationary @289 | stationary @509, 4 restoration steps, end pose 1.5e-9 |
+| 5500R074-082, 41 el. | stationary @386, 1.8 s | stationary @391, 0.9 s | stationary @425, 0.9 s |
+| 2631K139, 110 el. | stationary @647, 82 s | inadmissible_points @21 | **stationary @614, 31 s** |
+
+Corpus 0–161 under `bound`, filter + switching (ceiling 1e4 and 1e2 give the same rows) against merit:
+
+| objective | verdicts | mean iterations | quality |
+|---|---|---|---|
+| length | 159 → 158 (AHBI_Gl_075: converged at 1326 instead of stationary at 21) | 56 → 33 | 2 rows longer by > 1 cm |
+| points | 159 → **161** (AHBI_Gl_021_034, Gls432 gained; the two `qp_failed` of §3 gone) | 44 → 41 | rms worse 0, better 0 |
+
+## 4. Proposal (revised)
+
+- With the switching condition the filter is level or better than the merit
+  on everything measured: every giant reaches a verdict with the ceiling
+  1e2, the corpus gains two points verdicts and loses one slow length
+  verdict, the length objective needs half the iterations, no row is worse
+  in rms. The recommendation is now **`acceptance: "filter"` with
+  `filterCeiling` 1e2 as the default**. The switch is one word; it is not
+  flipped on this branch, because every verdict, restoration and hybrid
+  decision since #10 was measured against the merit and a default change
+  is a decision, not a measurement.
+- The merit keeps its two jobs either way: Powell's weights price the
+  `merit_stationary` verdict, and `acceptance: "merit"` stays available.
+- The 110-element `inadmissible_points` under ceiling 1e4 is the length
+  objective without the points as constraints walking off its samples; the
+  ceiling 1e2 keeps it on them. The lexicographic layer, where points precede
+  length, remains the right home for that objective.
+
+## 4b. Proposal (as first written)
 
 - **Not the default.** On the corpus the filter is level on verdicts and
   worse on the points objective's quality; the merit with Powell's weights is
@@ -109,9 +151,9 @@ Corpus 0–161 under `bound`, both objectives, filter against merit:
 
 ## 5. Where it plugs in
 
-`solveSQP`: options `acceptance` ("merit" | "filter"), `filterMargin`,
-`filterCeiling`; the filter is a list of `{ h, f }` per solve, reset with
-the restoration's fresh start. `AlignmentSQPSolver` forwards the three;
-`runCorpus.mjs` takes `--acceptance`. The prototype is on this branch, off
-by default, tests unchanged (188 of 188 across axtran2, corpus and the
-evidence service).
+`solveSQP`: options `acceptance` ("merit" | "filter", validated),
+`filterMargin`, `filterCeiling`, `filterSwitching` (default true),
+`filterSTheta`, `filterSF`, `filterDelta`, `filterEta`; the filter is a list
+of `{ h, f }` per solve. `AlignmentSQPSolver` forwards `acceptance`,
+`filterMargin`, `filterCeiling`, `filterSwitching`; `runCorpus.mjs` takes
+`--acceptance`, `--filterSwitching`, `--filterCeiling`. Off by default.
