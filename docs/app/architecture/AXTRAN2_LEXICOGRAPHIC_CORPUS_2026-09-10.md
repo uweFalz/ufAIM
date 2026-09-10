@@ -106,3 +106,45 @@ points fit on it is a bad fit (rms 7.5, over a metre) whose level sets are
 steep against that sliver. The verdict rate of the strict order is a
 property of the question, and a robust phase reports it early and by name
 rather than answering it.
+
+## The zigzag that was a creep (2026-09-10)
+
+The second failure above was misread. Looked at with twelve digits,
+`AHBI_Gl_033`'s held phase does not zigzag: from iteration 40 to 1000 every
+step is full and uncorrected, f falls by 5e-3 a step, the relative KKT
+residual sits at 1.4e-5 - stationary to the solver's own tolerance of
+1e-4 - and the violation sits at 1.5e-4 with the relaxation at zero,
+falling by one part in ten thousand a step. The subproblem closes the
+linearised constraints every time; the tangential step along the
+objective's descent regenerates the same residual at second order. That is
+the Maratos effect, and the correction that answers it is only tried when
+the full step *raises* the violation, which this one never does.
+
+Two things were built against it and measured on the corpus 0–161:
+
+| change | strict order ok / 161 | single objectives | what it did |
+|---|---|---|---|
+| second-order correction also when the step leaves more than a tenth of the violation (`correctionClosure` 0.1) | 120 | 160 + 161 of 161 (from 159 + 161); 127 of 322 rows move either way, iterations 12 542 → 12 300 | `AHBI_Gl_033` converges at 74; elsewhere neutral with noise |
+| the same at 0.5 | 119 | not measured | still creeps at 5e-5, with a correction every step |
+| **creep verdict** (kept: `infeasible_stationary`, reason `creep`) | 120 | 159 + 161, 321 of 322 rows identical | `AHBI_Gl_033` ends at 100 instead of 1000; `Gls401v` length fires at 35, restored in one step, converged at 52 instead of 51 |
+
+The verdict: a point stationary to `stationarityTolerance` and infeasible,
+whose violation over `creepWindow` (20) consecutive such iterations shrinks
+at a geometric rate that will not reach the tolerance within the budget
+that is left - or does not shrink at all. It is handed to the restoration
+like the fully relaxed subproblem's verdict and reported once the
+restoration limit is spent. On `AHBI_Gl_033` the restoration closes the
+1.5e-4 twice and the descent creeps back into it both times; the third is
+reported. On `Gls401v` under the plain length objective the violation was
+*growing* over the window (ratio 1.16 a step, full steps of 0.57 m with the
+objective descending), the one restoration step took it to 7e-12 and the
+run finished.
+
+The correction on weak closure is the better answer to the Maratos creep
+where it is one - it turns the verdict on `AHBI_Gl_033` into a solution -
+and neutral everywhere else; the option is in the solver at its old value
+of 1 and the flip is a decision, not a measurement.
+
+The strict order's rate stays 120 of 161. The first failure above (region
+collapse at a degenerate vertex, `AHBI_Gl_037`) stands as described.
+
