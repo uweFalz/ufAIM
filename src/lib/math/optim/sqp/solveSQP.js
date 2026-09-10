@@ -101,6 +101,17 @@ export function solveSQP({
 	acceptance = "merit",
 	filterMargin = 1e-5,
 	filterCeiling = 1e4,
+	// The switching condition (Wächter-Biegler 2006, (19)-(20)): when the
+	// model predicts a decrease of f that is large against the violation,
+	// [-alpha ∇f'd]^sF · alpha^(1-sF) > delta · h^sTheta, the trial has to
+	// satisfy Armijo on f (eta) and is an f-type step that leaves the filter
+	// alone; otherwise the filter decides against the current point with the
+	// margins, and an accepted h-type step adds the point left behind.
+	filterSwitching = true,
+	filterSTheta = 1.1,
+	filterSF = 2.3,
+	filterDelta = 1,
+	filterEta = 1e-4,
 	initialHessianScale = 1,
 	// Where the curvature estimate comes from. "bfgs" builds it from the
 	// Lagrangian gradient differences, from the identity. "provided" takes the
@@ -175,6 +186,9 @@ export function solveSQP({
 
 	const n = x0.length;
 	const qpIterations = qpIterationsGiven ?? Math.max(200, 10 * n);
+	if (acceptance !== "merit" && acceptance !== "filter") {
+		throw new Error(`solveSQP: acceptance must be "merit" or "filter", got ${JSON.stringify(acceptance)}`);
+	}
 	const lo = lower ?? new Array(n).fill(-Infinity);
 	const up = upper ?? new Array(n).fill(Infinity);
 
@@ -502,15 +516,25 @@ export function solveSQP({
 		// filter acceptance: not dominated by any remembered (h, f), nor by the
 		// current point, with the margins; and under the ceiling
 		if (acceptance === "filter" && filterCeilingValue === null) filterCeilingValue = filterCeiling * Math.max(1, violation.total);
-		const filterAccepts = (evaluated) => {
+		let acceptedType = null;
+		const filterAccepts = (evaluated, alpha) => {
 			const h = constraintViolation(evaluated).total;
 			const f = evaluated.f;
 			if (!(h <= filterCeilingValue)) return false;
 			const beats = (entry) => h <= (1 - filterMargin) * entry.h || f <= entry.f - filterMargin * entry.h;
-			return beats({ h: violation.total, f: state.f }) && filter.every(beats);
+			if (!filter.every(beats)) return false;
+			const model = alpha * step.gradientAlongStep;
+			const switching = filterSwitching && model < 0
+				&& Math.pow(-model, filterSF) * Math.pow(alpha, 1 - filterSF) > filterDelta * Math.pow(violation.total, filterSTheta);
+			if (switching) {
+				if (f <= state.f + filterEta * model) { acceptedType = "f"; return true; }
+				return false;
+			}
+			if (beats({ h: violation.total, f: state.f })) { acceptedType = "h"; return true; }
+			return false;
 		};
 		const meritOfState = (evaluated, alpha) => acceptance === "filter"
-			? (filterAccepts(evaluated) ? meritAt0 + alpha * predictedDecrease : Infinity)
+			? (filterAccepts(evaluated, alpha) ? meritAt0 + alpha * predictedDecrease : Infinity)
 			: l1Merit(evaluated, weights);
 		const meritOf = (candidate) => {
 			let evaluated;
@@ -580,10 +604,9 @@ export function solveSQP({
 		}
 
 		if (acceptance === "filter") {
-			// an h-type step (f did not fall by the margin) adds the point left
-			// behind to the filter; an f-type step leaves the filter alone
-			const fType = trialState.state.f <= state.f - filterMargin * violation.total;
-			if (!fType) filter.push({ h: violation.total, f: state.f });
+			// an h-type step adds the point left behind to the filter, with the
+			// margins taken; an f-type step leaves the filter alone
+			if (acceptedType !== "f") filter.push({ h: (1 - filterMargin) * violation.total, f: state.f - filterMargin * violation.total });
 		}
 		// The line search's own verdict sizes the region: a full step accepted
 		// means the model held that far and may be trusted further; backtracking
