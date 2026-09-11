@@ -256,8 +256,7 @@ test("a kink turns the chain the way the geometry kernel turns, and moves nothin
 		];
 		const raw = [
 			sw.fixed({ poseA: null, arcLength: lengths[0], curvature: 0 }),
-			// the turn as the factory reads it (the writer's kink() wants a vector the factory cannot read)
-			{ type: "transition", poseA: null, arcLength: 0, transType: "kink", deltaDir: -0.0123 },
+			sw.kink({ poseA: null, deltaDir: { x: Math.cos(-0.0123), y: Math.sin(-0.0123) } }),
 			sw.fixed({ poseA: null, arcLength: lengths[1], curvature: 0 }),
 			sw.fixed({ poseA: null, arcLength: lengths[2], curvature }),
 		];
