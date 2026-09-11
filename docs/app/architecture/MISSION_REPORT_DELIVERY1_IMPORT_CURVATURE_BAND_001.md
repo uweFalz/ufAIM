@@ -12,6 +12,7 @@
 
 - Repository: `/Users/uwefalz/Developer/ufAIM`; isolated worktree `/private/tmp/ufAIM-delivery1-import-curvature-0911`.
 - Branch `codex/delivery1-import-curvature-band-0911`, created fresh from `origin/main` at `69ad473863d45b08b6455620e9dd9ddfa8196b5e`. Fresh tree was clean before the package changes. Remote main was checked again after the browser run and remained at that commit.
+- Implementation, regression tests and this report were integrated into `origin/main` as `e874b6f51bf5c451db2366aa00c1a028b09159e5` under the existing scoped App push/merge authorization. The 2026-09-11 handover follow-up changes this report only; no additional App changes or browser acceptance are claimed.
 - The shared checkout remains on `6c4477f64ac66ec9dffc493a73203b00d60a1f34` with foreign Thesis source/bibliography/generated artifacts and untracked `.claude/`; none were touched. No shared-checkout pull, merge, stash, or server replacement.
 - Scope: `app/controllers/curvatureBandController.js`, its focused regression test and this report. Excluded: parser changes, canonical-state migration, source associations, AXTRAN solver, `docs/knowledgeKernel/`, Thesis, technetViewer and new packages.
 - Work began from the 2026-09-10 22:06 UTC heartbeat and continued on 2026-09-11. A long blocking browser file-transfer call is not evidence of continuous App computation or an App performance measurement.
@@ -62,6 +63,7 @@ Physical fixture: `/Users/uwefalz/Developer/ufAIM/test/samples/Landshut/W467-468
 - `node --test test/app/workspace/import-curvature-band-intervals.test.mjs test/app/workspace/horizontal-sequence-control.test.mjs test/app/workspace/horizontal-sequence-authoring.test.mjs test/app/import/import-object-cockpit-overlay.test.mjs`: `passed`, 12 tests. Regression checks do not substitute for direct pointer or full journey acceptance.
 - `git diff --check`: `passed`.
 - `git ls-remote origin refs/heads/main`: `passed`, unchanged baseline `69ad473863d45b08b6455620e9dd9ddfa8196b5e` before publication.
+- Publication: `passed`; `git push origin HEAD:refs/heads/main` advanced remote main from `69ad473` to `e874b6f` without force or changes to the shared checkout. Read-only `git ls-remote origin refs/heads/main` on 2026-09-11 independently confirmed `e874b6f51bf5c451db2366aa00c1a028b09159e5`. The sandbox network attempt failed DNS resolution; the permitted network retry succeeded. This was not an App defect.
 
 ## 7. Kernel and Architecture Impact
 
@@ -82,7 +84,7 @@ The existing band now renders imported sparse elements without requiring an edit
 
 ## 9. Handover
 
-Integrate only this narrow display repair under the existing App push/merge authorization; do not update the dirty shared checkout or promise a new result from reloading its existing port 8080. The fresh 8201 runtime is the tested worktree, not that shared server.
+The narrow display repair is integrated as `e874b6f51bf5c451db2366aa00c1a028b09159e5`. Do not update the dirty shared checkout or promise a new result from reloading its existing port 8080. The fresh 8201 runtime is the tested worktree, not that shared server.
 
 Next safe work: prove normal pointer selection with a functioning browser input backend and trace why Main lacks the selected imported alignment despite an available local geometric projection. Continue source-attachment and consequence-reopen investigations only at the demonstrated boundaries, using a fresh `origin/main` worktree. Do not convert this partial display success into a full-delivery verdict or start unrelated repair packages.
 
