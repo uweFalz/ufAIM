@@ -78,3 +78,29 @@ stage reaches the end pose exactly), the ramp test reads the rows at the
 converged point, which the terminal history entry now carries, and the
 corpus creep test accepts a phase that closes as well as one that names
 its creep - `AHBI_Gl_033` closes under both correction rules now.
+
+## The thirteen giants, remeasured (2026-09-12)
+
+The files with 109 to 164 elements, left out above because they take
+91 % of a corpus run, on the merged state (multipliers, cap, warm start)
+against the baseline of 2026-09-11:
+
+| | points ok | length ok | strict ok | points time | length time | strict time |
+|---|---|---|---|---|---|---|
+| before | 0 / 13 | 2 / 13 | 0 / 13 | 4791 s | 599 s | 13 591 s |
+| after | 0 / 13 | **10 / 13** | 0 / 13 | **2905 s** | 1062 s | **6438 s** |
+
+The length objective now ends `stationary` on ten (four were
+`inadmissible_points`, four `infeasible_subproblem`): the subproblem no
+longer stops short of its optimum, and the length runs reach a point they
+can name. The points objective is what it was, no verdict on any of the
+thirteen - the flat valley of AXTRAN2_FLAT_VALLEY_FINDING.md, untouched by
+the active set. The strict order is 0 of 13 either way; what changed is
+how it fails: ten of thirteen now establish a length budget and fail at
+once in the held phase (`infeasible_subproblem` at 15), where before eight
+established none. The budgets are the degenerate ones (the length tier
+shortens the alignment by 3.4 to 10.9 km, as before): the held phase is
+being asked for the points fit of a collapsed alignment, and says no.
+
+Time: the points runs take 61 % of before, the strict runs 47 %.
+
