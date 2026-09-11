@@ -1501,6 +1501,8 @@ html[dir="rtl"] #props {
 }
 
 .uf-shell.is-cockpit-collapsed .uf-cockpitPanel {
+	/* A visually closed panel must also leave the focus/accessibility tree. */
+	visibility: hidden;
 	flex-basis: 0 !important;
 	width: 0 !important;
 	min-width: 0 !important;
@@ -1515,6 +1517,8 @@ html[dir="rtl"] #props {
 }
 
 .uf-shell[data-workspace-view="l"].is-cockpit-collapsed .uf-cockpitPanel {
+	/* In L the same panel is the primary profile workspace, not a sidebar. */
+	visibility: visible;
 	flex: 1 1 auto !important;
 	width: auto !important;
 	min-width: 0 !important;
