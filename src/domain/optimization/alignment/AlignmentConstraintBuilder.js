@@ -81,7 +81,9 @@ function isFiniteNumber(value) {
 	return typeof value === "number" && Number.isFinite(value);
 }
 
-export const ELEMENT_KINDS = Object.freeze(["straight", "arc", "transition"]);
+// a kink is a heading jump of zero length; it has no quantity of its own and
+// no floor, and is a kind so that a sequence carrying one can be declared
+export const ELEMENT_KINDS = Object.freeze(["straight", "arc", "transition", "kink"]);
 
 /**
  * The plain-object form of a design declaration: literal limits, nothing

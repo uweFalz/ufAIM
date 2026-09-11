@@ -56,8 +56,8 @@ const headingOf = (direction) => Math.PI / 2 - measure(direction);
 /**
  * @param {string|URL} file  a .TRA
  * @returns {Promise<object>} { name, startPose, endPose, elements, families, held, unsupported, stationEquations }
- *   elements: [{ id, type, length, curvature?, family?, held? }] in kernel terms;
- *   held marks zero-length arcs inserted at a transition-to-transition junction
+ *   elements: [{ id, type, length, curvature?, family?, deltaDir?, held? }] in kernel terms;
+ *   held marks zero-length arcs inserted at a transition-to-transition junction, and kinks
  */
 export async function loadTraAlignment(file) {
 	const bytes = await readFile(file);
@@ -74,6 +74,7 @@ export async function loadTraAlignment(file) {
 	const unsupported = [];
 	const families = new Set();
 	let inserted = 0;
+	let kinks = 0;
 	for (let i = 0; i < records.length; i++) {
 		const record = records[i];
 		const length = measure(record.length);
@@ -100,6 +101,28 @@ export async function loadTraAlignment(file) {
 					elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: junction, held: true });
 					inserted += 1;
 				}
+			}
+		} else if (record.type === "Kink") {
+			// A Knick: a heading jump of zero length between two elements, which
+			// station tracks have where the rule book allows a bend without a
+			// transition. The file's kink record carries the interior angle
+			// around 200 gon; the turn is read off the neighbours' directions
+			// instead, which the parser already has in radians. Directions grow
+			// clockwise in the file and the kernel's heading grows to the left,
+			// so the turn changes sign; the closure test says whether that is
+			// right. Measured over the 95 kinks of the corpus: all between two
+			// straights or a straight and an arc, median 0.015 gon, largest
+			// 0.063 gon.
+			const before = records[i - 1];
+			const after = records[i + 1];
+			const dirIn = before ? measure(before.dirEnd ?? before.direction) : NaN;
+			const dirOut = after ? measure(after.dirStart ?? after.direction) : NaN;
+			if (!Number.isFinite(dirIn) || !Number.isFinite(dirOut)) {
+				unsupported.push({ index: i, type: record.type, why: "a kink without a direction on both sides" });
+			} else {
+				const turn = Math.atan2(Math.sin(dirOut - dirIn), Math.cos(dirOut - dirIn));
+				elements.push({ id, type: "kink", length: 0, deltaDir: -turn, held: true });
+				kinks += 1;
 			}
 		} else {
 			unsupported.push({ index: i, type: record.type });
@@ -135,6 +158,7 @@ export async function loadTraAlignment(file) {
 		mergedRecords: mergedCount,
 		families: Object.freeze([...families]),
 		insertedJunctionArcs: inserted,
+		kinks,
 		unsupported: Object.freeze(unsupported),
 		stationEquations: alignment?.staEquations?.length ?? 0,
 		recordCount: records.length,
@@ -182,6 +206,13 @@ const sw = await import(new URL("src/import/build/sparseWriter.js", ROOT));
 export function buildProductionAlignment({ elements, startPose, deps }) {
 	const raw = elements.map((e) => {
 		if (e.type === "transition") return sw.transition({ poseA: null, arcLength: e.length, transType: e.family });
+		// The factory reads a kink's deltaDir as the turn in radians, as its
+		// own header says. The writer's kink() and the sparse validation want
+		// the turn's unit vector instead, and the factory reads NaN from that -
+		// every kink the LandFAT bridge writes goes straight through today
+		// (reported in AXTRAN2_CORPUS_BASELINE_2026-09-10.md). The stub is
+		// written here the way the factory reads it.
+		if (e.type === "kink") return { type: "transition", poseA: null, arcLength: 0, transType: "kink", deltaDir: e.deltaDir, meta: { sourceType: "Kink" } };
 		const curvature = e.type === "arc" ? e.curvature : 0;
 		return e.length > 0
 			? sw.fixed({ poseA: null, arcLength: e.length, curvature })

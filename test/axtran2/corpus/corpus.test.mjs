@@ -24,6 +24,8 @@ const FILES = [
 	"Landshut/5500L074-082.TRA",
 	"Landshut/5500S074-082.TRA",
 	"metroB/5904072S_ER0.TRA",
+	// and one with a kink
+	"Landshut/W403-404.TRA",
 ];
 const at = (name) => new URL(name, SAMPLES);
 
@@ -35,6 +37,28 @@ test("the loader's chain reaches every file's own end point", { skip }, async ()
 		const miss = Math.hypot(chain.endPose.x - a.endPoint.x, chain.endPose.y - a.endPoint.y);
 		assert.ok(miss < 1e-3, `${name}: chain misses the recorded end point by ${miss.toExponential(2)} m over ${chain.arcLength.toFixed(0)} m`);
 	}
+});
+
+test("a kink is the file's own turn, read with the right sign", { skip }, async () => {
+	// A Knick record is a heading jump of zero length. Landshut/W403-404 has
+	// one of 0.03 gon in seven elements: with it the chain closes on the
+	// file's end point, without it or mirrored it misses by centimetres. And
+	// the scenario built on it solves.
+	const a = await loadTraAlignment(at("Landshut/W403-404.TRA"));
+	assert.equal(a.kinks, 1);
+	const kink = a.elements.find((e) => e.type === "kink");
+	assert.ok(kink && kink.held && kink.length === 0 && Math.abs(kink.deltaDir) > 1e-5, JSON.stringify(kink));
+	const miss = (elements) => {
+		const chain = createAlignmentPoseJacobian({ elements, startPose: a.startPose, momentsFor });
+		return Math.hypot(chain.endPose.x - a.endPoint.x, chain.endPose.y - a.endPoint.y);
+	};
+	assert.ok(miss(a.elements) < 1e-3, `with the kink: ${miss(a.elements).toExponential(2)} m`);
+	assert.ok(miss(a.elements.map((e) => e.type === "kink" ? { ...e, deltaDir: 0 } : e)) > 1e-2, "without the kink the chain misses");
+	assert.ok(miss(a.elements.map((e) => e.type === "kink" ? { ...e, deltaDir: -e.deltaDir } : e)) > 1e-2, "mirrored the chain misses");
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const sc = await createTraScenario(at("Landshut/W403-404.TRA"));
+	const run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points", maxIterations: 200 });
+	assert.ok(run.ok, `points on a kink file: ${run.status} ${run.reason ?? ""}`);
 });
 
 test("a right-hand curve in the file is a right-hand curve in the kernel", { skip }, async () => {
