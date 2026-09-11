@@ -148,7 +148,38 @@ export function makeThreeAdapter({ three, transform } = {}) {
 	}
 
 	function setAlignmentProjection(payload) {
-		three.setAlignmentProjection?.(payload);
+		const projection = payload?.projection;
+		if (!projection) {
+			three.setAlignmentProjection?.(payload);
+			return;
+		}
+
+		// The viewer draws and hit-tests all primitives in its floating-origin
+		// space, just like the active track and cursor. Never rewrite the source
+		// projection: it is also used for engineering and geographic evaluation.
+		const point = (value) => value ? toThreeLocal(xform.toLocal(value)) : value;
+		const points = (values) => Array.isArray(values) ? values.map(point) : values;
+		three.setAlignmentProjection?.({
+			...payload,
+			projection: {
+				...projection,
+				polyline2d: points(projection.polyline2d),
+				bbox: makeLocalBbox(projection.bbox),
+				bboxCenter: point(projection.bboxCenter),
+				startPoint: point(projection.startPoint),
+				endPoint: point(projection.endPoint),
+				segments: projection.segments?.map((segment) => ({
+					...segment,
+					points2d: points(segment.points2d),
+					startPoint: point(segment.startPoint),
+					endPoint: point(segment.endPoint),
+				})),
+				boundaries: projection.boundaries?.map((boundary) => ({
+					...boundary,
+					point2d: point(boundary.point2d),
+				})),
+			},
+		});
 	}
 
 	function setAlignmentSelection(payload) {
