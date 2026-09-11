@@ -636,6 +636,13 @@
 				stroke-dasharray: 10 6;
 			}
 			.km-lines-hidden .map-object.kilometer-line { display: none; }
+			.spurplan-edge { stroke: #1d5c8a; stroke-width: 2; cursor: pointer; }
+			.spurplan-edge:hover { stroke-width: 4; }
+			.spurplan-selected { stroke: Highlight; stroke-width: 4; }
+			.spurplan-node { fill: #fff; stroke: #1d5c8a; stroke-width: 1.5; }
+			.spurplan-kreuzung, .spurplan-knoten { fill: #1d5c8a; }
+			.spurplan-end { stroke: #1d5c8a; stroke-width: 2; }
+			.spurplan-label { font-size: 11px; }
 			.map-object.inferred-crs {
 				color: #b26a00;
 				opacity: 0.5;
@@ -40490,6 +40497,77 @@ xlsx/xlsx.mjs:
 				return figure;
 			}
 
+			// Spurplan: the schematic of the computed Gleis graph. x is the km on
+			// the axis, y the row; an edge is a straight line between its two
+			// nodes, so parallel Gleise come out horizontal and a Weiche as the
+			// diagonal into the next row -- the classic Spurplan without inventing
+			// a layout. Each Gleis is named once, at its longest edge; the
+			// selected one is highlighted; a click on an edge selects its Gleis.
+			function drawSpurplan(target, y, topology, xMin, xMax, selected) {
+				const drawable = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null);
+				const rows = topology.rows ?? [0, 0];
+				const rowCount = rows[1] - rows[0] + 1;
+				const rowPitch = 22;
+				const top = 26;
+				const left = 60;
+				const right = 30;
+				const height = top + rowCount * rowPitch + 44;
+				const width = FIGURE_WIDTH;
+				const figure = nestedFigure(target, y, height);
+				figure.append(svgElement("rect", { x: 0, y: 0, width, height, class: "diagram-band" }));
+				const xSpan = Math.max(xMax - xMin, 1);
+				const xAt = (km) => left + (km - xMin) / xSpan * (width - left - right);
+				const yAt = (row) => top + (rows[1] - row) * rowPitch + rowPitch / 2;
+				const axisY = height - 24;
+				for (let tick = 0; tick <= 5; tick += 1) {
+					const x = left + (width - left - right) * tick / 5;
+					figure.append(svgElement("line", { x1: x, x2: x, y1: top - 8, y2: axisY - 6, class: "diagram-grid" }));
+					const label = svgElement("text", { x, y: height - 8, "text-anchor": "middle", class: "diagram-label diagram-muted" });
+					label.textContent = station(xMin + xSpan * tick / 5).trim();
+					figure.append(label);
+				}
+				figure.append(svgElement("line", { x1: left, x2: width - right, y1: axisY, y2: axisY, class: "diagram-axis" }));
+				const inRange = (edge) => Math.max(edge.from.km, edge.to.km) >= xMin && Math.min(edge.from.km, edge.to.km) <= xMax;
+				const visible = drawable.filter(inRange);
+				const longestEdge = new Map();
+				for (const edge of visible) {
+					const length = Math.abs(edge.to.km - edge.from.km);
+					if (!longestEdge.has(edge.entry) || length > longestEdge.get(edge.entry).length) longestEdge.set(edge.entry, { edge, length });
+				}
+				for (const edge of visible) {
+					const x1 = xAt(edge.from.km);
+					const x2 = xAt(edge.to.km);
+					const y1 = yAt(edge.from.row);
+					const y2 = yAt(edge.to.row);
+					const isSelected = edge.entry === selected;
+					const line = svgElement("line", { x1, x2, y1, y2, class: `diagram-series spurplan-edge${isSelected ? " spurplan-selected" : ""}` });
+					line.addEventListener("click", () => selectObject(edge.entry, edge.entry.button));
+					const title = svgElement("title");
+					title.textContent = `${objectDisplayName(edge.entry)}${edge.part ? ` (${edge.part})` : ""} · ${edge.from.kind} → ${edge.to.kind}`;
+					line.append(title);
+					figure.append(line);
+				}
+				for (const node of topology.nodes) {
+					if (node.km == null || node.km < xMin || node.km > xMax) continue;
+					if (node.kind === "Weiche" || node.kind === "Kreuzung" || node.kind === "Knoten") {
+						const dot = svgElement("circle", { cx: xAt(node.km), cy: yAt(node.row), r: node.kind === "Weiche" ? 3 : 4, class: `spurplan-node spurplan-${node.kind.toLowerCase()}` });
+						const title = svgElement("title");
+						title.textContent = `${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}`;
+						dot.append(title);
+						figure.append(dot);
+					} else if (node.kind === "Ende") {
+						figure.append(svgElement("line", { x1: xAt(node.km), x2: xAt(node.km), y1: yAt(node.row) - 5, y2: yAt(node.row) + 5, class: "spurplan-end" }));
+					}
+				}
+				for (const [entry, { edge, length }] of longestEdge) {
+					if (Math.abs(xAt(edge.to.km) - xAt(edge.from.km)) < 48) continue;
+					const label = svgElement("text", { x: (xAt(edge.from.km) + xAt(edge.to.km)) / 2, y: (yAt(edge.from.row) + yAt(edge.to.row)) / 2 - 5, "text-anchor": "middle", class: "diagram-label diagram-muted spurplan-label" });
+					label.textContent = objectDisplayName(entry).replace(" · Nebengleis", "");
+					figure.append(label);
+				}
+				return height;
+			}
+
 			function drawEmptyFigure(target, y, note) {
 				const height = 56;
 				const figure = nestedFigure(target, y, height);
@@ -40644,6 +40722,29 @@ xlsx/xlsx.mjs:
 					y += gwbTracks.length
 						? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
 						: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
+					const topology = deriveTopology();
+					const placed = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null);
+					const placedEdges = placed.length;
+					// The window follows the selected Gleis in the AXIS frame (its own
+					// stations may be local -- a Nebengleis runs 0..78 m -- while the
+					// topology's km are the Kilometerlinie's): its edges' km, padded by
+					// a quarter, at least 200 m, so a yard Gleis shows its yard and the
+					// Strecke shows the line. A Gleis without placed edges shows all.
+					const ownKm = placed.filter((edge) => edge.entry === entry).flatMap((edge) => [edge.from.km, edge.to.km]);
+					const allKm = placed.flatMap((edge) => [edge.from.km, edge.to.km]);
+					const spurplanRange = (() => {
+						if (!allKm.length) return [NaN, NaN];
+						const source = ownKm.length ? ownKm : allKm;
+						const low = Math.min(...source);
+						const high = Math.max(...source);
+						const pad = ownKm.length ? Math.max(200, (high - low) * 0.25) : 0;
+						return [Math.max(Math.min(...allKm), low - pad), Math.min(Math.max(...allKm), high + pad)];
+					})();
+					const count = (kind) => topology.nodes.filter((node) => node.kind === kind).length;
+					y += drawFigureTitle(diagram, y, "Spurplan · Topologie (gerechnet)", `${topology.gleise} Gleise · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen · ${placedEdges}/${topology.edges.length} Kanten · Achse: ${topology.axisIsGleis ? "längstes Gleis" : "Kilometerlinie"} · Fenster um das gewählte Gleis · Schema`);
+					y += placedEdges && Number.isFinite(spurplanRange[0])
+						? drawSpurplan(diagram, y, topology, spurplanRange[0], spurplanRange[1], entry)
+						: drawEmptyFigure(diagram, y, topology.gleise > 1 ? "kein Knoten an einer Achse · Spurplan nicht zeichenbar" : "ein Gleis allein hat keine Topologie");
 					diagram.setAttribute("viewBox", `0 0 ${FIGURE_WIDTH} ${y}`);
 					// The SVG now sizes itself from the viewBox at the panel's width, so
 					// the panel's auto height is the rendered height (+72px chrome),
@@ -43014,7 +43115,11 @@ xlsx/xlsx.mjs:
 					const lengthSq = dx * dx + dy * dy;
 					const t = lengthSq > 1e-9 ? Math.max(0, Math.min(1, ((point.easting - a.easting) * dx + (point.northing - a.northing) * dy) / lengthSq)) : 0;
 					const distance = Math.hypot(point.easting - (a.easting + t * dx), point.northing - (a.northing + t * dy));
-					if (!best || distance < best.distance) best = { distance, station: a.station + t * (b.station - a.station) };
+					if (!best || distance < best.distance) {
+						// side: +1 left of the polyline's direction, -1 right (cross product).
+						const cross = dx * (point.northing - a.northing) - dy * (point.easting - a.easting);
+						best = { distance, station: a.station + t * (b.station - a.station), side: cross >= 0 ? 1 : -1 };
+					}
 				}
 				return best;
 			}
@@ -43061,6 +43166,8 @@ xlsx/xlsx.mjs:
 			// A node takes its km from a Kilometerlinie only when it lies within a
 			// Bahnhof's width of it; a projection from farther away is not its km.
 			const TOPOLOGY_KM_MAX_DISTANCE_M = 60;
+			const TOPOLOGY_AXIS_MAX_DISTANCE_M = 150;
+			const TOPOLOGY_ROW_GAP_M = 2.5;
 			// The Outbox renders on every selection; the graph only changes with
 			// the loaded objects (166 Gleise take ~0,8 s), so it is cached per set.
 			let topologyCache = { key: "", result: null };
@@ -43076,6 +43183,8 @@ xlsx/xlsx.mjs:
 				const gleise = alignments.filter((entry) => sevenLineSide(entry) !== "kilometer");
 				const kmLines = alignments.filter((entry) => sevenLineSide(entry) === "kilometer").map((entry) => referenceStationPolyline(entry, 5)).filter((polyline) => polyline.length > 1);
 				const polylines = new Map();
+				const longest = gleise.map((entry) => ({ entry, length: Math.abs(numberValue(stationRangeForEntry(entry)?.to) - numberValue(stationRangeForEntry(entry)?.from)) || 0 })).sort((a, b) => b.length - a.length)[0];
+				const references = kmLines.length ? kmLines : longest ? [referenceStationPolyline(longest.entry, 5)] : [];
 				const polylineOf = (entry) => {
 					if (!polylines.has(entry)) polylines.set(entry, referenceStationPolyline(entry, 2));
 					return polylines.get(entry);
@@ -43146,15 +43255,36 @@ xlsx/xlsx.mjs:
 					}
 					node.degree = arms.length;
 					node.kind = arms.length === 1 ? "Ende" : arms.length === 2 ? (throughPairs ? "Fortsetzung" : "Knick") : arms.length === 3 ? "Weiche" : arms.length === 4 && throughPairs >= 2 ? "Kreuzung" : "Knoten";
+					// The Spurplan's axis: the nearest Kilometerlinie; a batch without one
+					// (VermEsn) takes its longest Gleis, so x and rows still share one
+					// frame. offset is the signed distance from that axis (+ = left in
+					// its direction), the row grouping happens below.
 					let best = null;
-					for (const kmLine of kmLines) {
-						const hit = distanceAndStationOnPolyline(kmLine, node.point);
+					for (const reference of references) {
+						const hit = distanceAndStationOnPolyline(reference, node.point);
 						if (hit && (!best || hit.distance < best.distance)) best = hit;
 					}
-					node.km = best && best.distance <= TOPOLOGY_KM_MAX_DISTANCE_M ? best.station : null;
+					const within = best && best.distance <= (kmLines.length ? TOPOLOGY_KM_MAX_DISTANCE_M : TOPOLOGY_AXIS_MAX_DISTANCE_M);
+					node.km = within ? best.station : null;
+					node.offset = within ? best.side * best.distance : null;
 					node.names = [...new Set(arms.map((arm) => objectDisplayName(arm.entry)))];
 				}
-				return { nodes, edges, gleise: gleise.length, kmLines: kmLines.length };
+				// Rows: node offsets sorted and split where a gap exceeds half a
+				// Gleisabstand -- 4,0 and 4,5 m spacing and curved yards all land in
+				// their own row without a fixed raster. Row 0 is the axis's row,
+				// larger rows lie to the left of the axis direction.
+				const placed = nodes.filter((node) => node.offset != null).sort((a, b) => a.offset - b.offset);
+				let rowIndex = -1;
+				let rowLast = null;
+				let axisRow = 0;
+				for (const node of placed) {
+					if (rowLast == null || node.offset - rowLast > TOPOLOGY_ROW_GAP_M) rowIndex += 1;
+					node.row = rowIndex;
+					rowLast = node.offset;
+					if (Math.abs(node.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
+				}
+				for (const node of placed) node.row -= axisRow;
+				return { nodes, edges, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: placed.length ? [Math.min(...placed.map((node) => node.row)), Math.max(...placed.map((node) => node.row))] : null };
 			}
 
 			function activateJunctionCluster(junction) {
