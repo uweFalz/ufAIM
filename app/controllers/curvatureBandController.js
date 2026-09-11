@@ -11,6 +11,21 @@ import { dispatchProductiveAlignmentChange } from "@app/controllers/alignmentCre
 const NS = "http://www.w3.org/2000/svg";
 const resolver = new RegistryResolver();
 
+// Imported sparse_v1 stubs need not carry editor-only kind/sStart/sEnd fields.
+// Index the same sparse sequence supplied to the curvature runtime. This is
+// a read-only presentation index, not a rewrite or admission of import data.
+export function buildCurvatureBandIntervals(sparse, editModel) {
+	const kinds = new Map((editModel?.elements ?? []).map(element => [String(element.id), element.type]));
+	let station = 0;
+	return (sparse?.sparse ?? sparse?.elements ?? []).map(element => {
+		const length = Number(element.arcLength);
+		if (!Number.isFinite(length) || length < 0) throw new Error("Curvature band: invalid runtime element length");
+		const sStart = station;
+		station += length;
+		return { id: element.id, kind: kinds.get(String(element.id)) ?? "unknown", sStart, sEnd: station };
+	});
+}
+
 export function makeCurvatureBandController({ store, messaging } = {}) {
 	const root = document.getElementById("curvatureBand");
 	const svg = document.getElementById("curvatureBandSvg");
@@ -192,8 +207,8 @@ export function makeCurvatureBandController({ store, messaging } = {}) {
 			return;
 		}
 		const active = preview ?? snapshot;
-		const elements = active.sparse?.elements ?? active.sparse?.sparse ?? [];
-		const total = Math.max(1, Number(active.sparse?.length) || elements.reduce((n, e) => n + Number(e.arcLength || 0), 0));
+		const elements = buildCurvatureBandIntervals(active.sparse, active.alignmentData?.editModel);
+		const total = Math.max(1, Number(active.alignment.arcLength));
 		const samples = Array.from({ length: 161 }, (_, i) => active.alignment.curvatureAt(total * i / 160));
 		const maxK = Math.max(1e-5, ...samples.map((k) => Math.abs(Number(k) || 0))) * 1.25;
 		const width = Math.max(400, svg.clientWidth || 900), height = Math.max(100, svg.clientHeight || 140);
