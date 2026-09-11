@@ -114,14 +114,15 @@ files, and it is a modelling one: what the fit should do at a bend
 assigned to one side of it, or bends below some angle treated as the
 measurement noise they are at 4 cm) is a decision, not a measurement.
 
-**A production finding, reported and not fixed.** The sparse model carries
+**A production finding, fixed on 2026-09-11 (PR #43).** The sparse model carries
 a kink's turn as its unit vector (`validateSparseAlignment` demands an
 object, `buildSparseFromLandFAT.deltaDirVec` writes `{cos, sin}` of the
 angle), and `AlignmentFactory.readDeltaDir` reads `Number(stub.deltaDir)`,
 which is NaN for an object and becomes 0: every kink the LandFAT bridge
 imports goes straight through in the app. The factory's header documents
 `deltaDir` as the angle. A reader that accepts both (`atan2(y, x)` for the
-vector) is a four-line change to the factory, whose body is pinned by
-`alignment-aggregate-factory-core-module-boundary.test.mjs` as an adopted
-baseline; that pin is why it is reported here rather than changed.
+vector) is what the factory does now; the adopted-baseline hash in
+`alignment-aggregate-factory-core-module-boundary.test.mjs` follows the
+body, and the corpus loader writes its kinks through the writer's vector
+like the bridge, so there is one contract.
 

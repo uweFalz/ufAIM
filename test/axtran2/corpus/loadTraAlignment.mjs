@@ -206,13 +206,11 @@ const sw = await import(new URL("src/import/build/sparseWriter.js", ROOT));
 export function buildProductionAlignment({ elements, startPose, deps }) {
 	const raw = elements.map((e) => {
 		if (e.type === "transition") return sw.transition({ poseA: null, arcLength: e.length, transType: e.family });
-		// The factory reads a kink's deltaDir as the turn in radians, as its
-		// own header says. The writer's kink() and the sparse validation want
-		// the turn's unit vector instead, and the factory reads NaN from that -
-		// every kink the LandFAT bridge writes goes straight through today
-		// (reported in AXTRAN2_CORPUS_BASELINE_2026-09-10.md). The stub is
-		// written here the way the factory reads it.
-		if (e.type === "kink") return { type: "transition", poseA: null, arcLength: 0, transType: "kink", deltaDir: e.deltaDir, meta: { sourceType: "Kink" } };
+		// the sparse model carries a kink's turn as its unit vector, as the
+		// LandFAT bridge writes it; a turn of exactly zero is nothing
+		if (e.type === "kink") return e.deltaDir
+			? sw.kink({ poseA: null, deltaDir: { x: Math.cos(e.deltaDir), y: Math.sin(e.deltaDir) }, meta: { sourceType: "Kink" } })
+			: sw.zeroFixed({ poseA: null, curvature: 0 });
 		const curvature = e.type === "arc" ? e.curvature : 0;
 		return e.length > 0
 			? sw.fixed({ poseA: null, arcLength: e.length, curvature })
