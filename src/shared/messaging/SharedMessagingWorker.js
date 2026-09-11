@@ -270,6 +270,11 @@ router.onCmd("Spot.AddObjects", async ({ objects = [] } = {}) => {
 	});
 });
 
+router.onCmd("Spot.StoreHorizontalReceipt", async ({ objectId, entry } = {}) => {
+	await spotHydration;
+	return spotService.storeHorizontalReceipt({ objectId, entry });
+});
+
 router.onCmd("Spot.GetState", async () => {
 	await spotHydration;
 	const state = spotService.getState();

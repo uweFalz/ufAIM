@@ -64,6 +64,7 @@ const REQUIRED = {
 	// ---------------------------------------------------------
 	"Spot.AddCandidates": ["spots"],
 	"Spot.AddObjects": ["objects"],
+	"Spot.StoreHorizontalReceipt": ["objectId", "entry"],
 	"Spot.GetState": [],
 	"Spot.GetUiState": [],
 	"Spot.RenameObject": ["objectId", "name"],

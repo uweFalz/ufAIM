@@ -25,6 +25,7 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 	}
 
 	let hydrationPromise = null;
+	let pendingMutation = Promise.resolve();
 
 	function hydrate() {
 		if (!hydrationPromise) {
@@ -105,9 +106,9 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 		const id = String(objectId ?? "").trim();
 		const nextName = String(name ?? "").trim();
 		if (!id || !nextName) throw new Error("SpotService.renameObject: objectId and name are required");
-		const current = spotStore.getObject?.(id);
-		if (!current) throw new Error(`SpotService.renameObject: unknown object ${id}`);
 		return mutateAndPersist(() => {
+			const current = spotStore.getObject?.(id);
+			if (!current) throw new Error(`SpotService.renameObject: unknown object ${id}`);
 			const alignmentData = current?.data?.alignmentData && typeof current.data.alignmentData === "object"
 				? { ...current.data.alignmentData, name: nextName }
 				: current?.data?.alignmentData;
@@ -135,16 +136,56 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 		});
 	}
 
-	async function mutateAndPersist(mutate, finalize) {
-		const before = getState();
-		try {
-			const result = mutate();
-			if (persistence) await persistence.save(getState());
+	async function storeHorizontalReceipt({ objectId, entry } = {}) {
+		await hydrate();
+		if (!persistence) throw new Error("SpotService.storeHorizontalReceipt: durable storage unavailable");
+		const savedEntry = structuredClone(entry);
+		return mutateAndPersist(() => {
+			const current = spotStore.getObject?.(objectId);
+			const alignmentData = current?.data?.alignmentData;
+			const receipt = savedEntry?.receipt;
+			const revision = alignmentData?.meta?.modifiedAt ?? current?.meta?.modifiedAt;
+			const diagnostics = receipt?.diagnostics;
+			const evidence = diagnostics?.evidence;
+			const diagnosticsValid = diagnostics?.status === "not-available" ? evidence == null
+				: diagnostics?.status === "evidence-only" && evidence?.type === "axtran2-consequence-evidence" && evidence.status === "evidence-only" && evidence.admissible === false;
+			const elements = alignmentData?.sparseAlignment?.elements ?? alignmentData?.sparseAlignment?.sparse;
+			if (current?.type !== "alignment" || savedEntry?.version !== 1 || receipt?.status !== "verified"
+				|| receipt.objectId !== objectId || alignmentData?.id !== objectId || revision == null || receipt.revision !== revision
+				|| !receipt.elementId || !Array.isArray(elements) || !elements.some((element) => element.id === receipt.elementId)
+				|| !savedEntry.beforeSparseAlignment || !sameReceiptData(savedEntry.afterSparseAlignment, alignmentData.sparseAlignment)
+				|| !Array.isArray(receipt.changes) || !receipt.changes.some((change) => change.target === true && change.elementId === receipt.elementId && change.fields?.length)
+				|| !diagnosticsValid) throw new Error("SpotService.storeHorizontalReceipt: stale or invalid evidence context");
+			const extended = current.data.extended ?? {};
+			const previous = extended.horizontalRealizationReceipts ?? [];
+			if (!Array.isArray(previous)) throw new Error("SpotService.storeHorizontalReceipt: invalid existing archive");
+			const matching = previous.find((item) => item?.receipt?.revision === revision && item?.receipt?.elementId === receipt.elementId);
+			if (matching && !sameReceiptData(matching, savedEntry)) throw new Error("SpotService.storeHorizontalReceipt: conflicting evidence for revision");
+			spotStore.updateObject(objectId, { data: { extended: {
+				...extended,
+				horizontalRealizationReceipts: matching ? previous : [...previous, savedEntry],
+			} } });
+			return { ok: true, spotObject: spotStore.getObject(objectId) };
+		}, (result) => result);
+	}
+
+	function mutateAndPersist(mutate, finalize) {
+		// Keep the evidence compare/write and rollback indivisible relative to
+		// other object mutations, including edits or deletion from another tab.
+		const operation = pendingMutation.then(async () => {
+			const before = getState();
+			let result;
+			try {
+				result = mutate();
+				if (persistence) await persistence.save(getState());
+			} catch (error) {
+				spotStore.replaceState(before);
+				throw error;
+			}
 			return finalize(result);
-		} catch (error) {
-			spotStore.replaceState(before);
-			throw error;
-		}
+		});
+		pendingMutation = operation.catch(() => {});
+		return operation;
 	}
 
 	return {
@@ -156,7 +197,15 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 		promoteItems,
 		renameObject,
 		removeObject,
+		storeHorizontalReceipt,
 	};
+}
+
+function sameReceiptData(left, right) {
+	if (Object.is(left, right)) return true;
+	if (!left || !right || typeof left !== "object" || typeof right !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
+	const keys = Object.keys(left);
+	return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key) && sameReceiptData(left[key], right[key]));
 }
 
 function isSpotLikeObject(object) {

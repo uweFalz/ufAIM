@@ -32,7 +32,43 @@ function observedFields(element) {
 }
 
 function equal(left, right) {
-	return JSON.stringify(left) === JSON.stringify(right);
+	if (Object.is(left, right)) return true;
+	if (!left || !right || typeof left !== "object" || typeof right !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
+	const keys = Object.keys(left);
+	return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key) && equal(left[key], right[key]));
+}
+
+// App evidence only: retain the supplied snapshots, never reconstruct a past
+// solver run from today's geometry. This is not an engineering revision.
+export function archiveHorizontalRealizationChangeReceipt({ receipt, beforeAlignmentData, alignmentChange } = {}) {
+	return structuredClone({
+		version: 1,
+		receipt,
+		beforeSparseAlignment: beforeAlignmentData?.sparseAlignment,
+		afterSparseAlignment: alignmentChange?.alignmentData?.sparseAlignment,
+	});
+}
+
+export function restoreHorizontalRealizationChangeReceipt({ spotObject, elementId } = {}) {
+	const entries = spotObject?.data?.extended?.horizontalRealizationReceipts;
+	const alignmentData = spotObject?.data?.alignmentData;
+	const revision = alignmentData?.meta?.modifiedAt ?? spotObject?.meta?.modifiedAt;
+	if (!Array.isArray(entries) || !alignmentData || revision == null) return null;
+	for (const entry of [...entries].reverse()) {
+		try {
+			const receipt = entry?.receipt;
+			if (entry?.version !== 1 || receipt?.status !== "verified" || receipt.objectId !== spotObject.id || receipt.elementId !== elementId || receipt.revision !== revision) continue;
+			if (!equal(entry.afterSparseAlignment, alignmentData.sparseAlignment)) continue;
+			const rebuilt = buildHorizontalRealizationChangeReceipt({
+				beforeAlignmentData: { id: spotObject.id, sparseAlignment: entry.beforeSparseAlignment },
+				alignmentChange: { objectId: spotObject.id, elementId, revision, alignmentData, spotObject },
+				activeObjectId: spotObject.id, activeElementId: elementId,
+				axtranEvidence: receipt.diagnostics?.evidence,
+			});
+			if (equal(rebuilt, receipt)) return rebuilt;
+		} catch { /* Malformed or stale saved evidence is never shown as verified. */ }
+	}
+	return null;
 }
 
 /**

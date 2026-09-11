@@ -5,7 +5,7 @@ import { t } from "@app/i18n/strings.js";
 import { buildHorizontalSequenceConsequenceReview } from "@app/domain/workspace/buildHorizontalSequenceConsequenceReview.js";
 import { clearDraftAfterCanonicalRefresh, createAuthoringDraftStore } from "@app/domain/workspace/createAuthoringDraftStore.js";
 import { createAuthoringChangePreview } from "@app/view/workspace/renderAuthoringChangePreview.js";
-import { buildHorizontalRealizationChangeReceipt } from "@app/domain/workspace/buildHorizontalRealizationChangeReceipt.js";
+import { buildHorizontalRealizationChangeReceipt, archiveHorizontalRealizationChangeReceipt, restoreHorizontalRealizationChangeReceipt } from "@app/domain/workspace/buildHorizontalRealizationChangeReceipt.js";
 import { renderHorizontalRealizationChangeReceipt } from "@app/view/workspace/renderHorizontalRealizationChangeReceipt.js";
 
 function unwrap(raw) { return raw?.state ?? raw?.payload ?? raw ?? null; }
@@ -137,6 +137,8 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 	function renderForm() {
 		arcInputAuthority = null;
 		const element = selectedElement();
+		if (!applying) renderHorizontalRealizationChangeReceipt(fields.realizationReceipt,
+			restoreHorizontalRealizationChangeReceipt({ spotObject: activeSnapshot?.object, elementId: element?.id }));
 		if (!element) {
 			for (const field of [fields.type, fields.length, fields.curvature, fields.radius, fields.w1, fields.w2]) if (field) field.value = "";
 			if (fields.transitionType) fields.transitionType.value = "";
@@ -303,6 +305,8 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		const beforeAlignmentData = activeSnapshot?.alignmentData;
 		let result;
 		let persistedReceipt = false;
+		let geometrySaved = false;
+		let receiptSaveError = null;
 		try {
 		if (type === "straight") result = await controller.updateStraightLengthOnActiveAlignment({ elementId: id, length: asNumber(fields.length?.value) });
 		else if (type === "arc") {
@@ -317,6 +321,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		else result = { changed: false, ok: false, status: "rejected", code: "ALIGNMENT_EDIT_UNSUPPORTED" };
 		if (result?.ok === false || result?.status === "rejected") { message("alignment_editor.status.validation_failed", "error", "error"); return false; }
 		if (result?.changed === false) { message("alignment_editor.status.no_changes_applied", "info", "ready"); return false; }
+		geometrySaved = Boolean(result?.alignmentChange?.spotObject);
 		let axtranEvidence = null;
 		try {
 			// The fit mode is the user's answer to the one question the length
@@ -329,9 +334,18 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 			axtranEvidence = null;
 		}
 		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id, axtranEvidence });
+		try {
+			const entry = archiveHorizontalRealizationChangeReceipt({ receipt, beforeAlignmentData, alignmentChange: result.alignmentChange });
+			const saved = unwrap(await messaging.sendCmdAwait("Spot.StoreHorizontalReceipt", { objectId: receipt.objectId, entry }));
+			if (!saved?.ok || !restoreHorizontalRealizationChangeReceipt({ spotObject: saved.spotObject, elementId: id })) throw new Error("durable receipt readback unavailable");
+			result.alignmentChange.spotObject = saved.spotObject;
+			persistedReceipt = true;
+		} catch (error) { receiptSaveError = error; }
 		requestedElementId = id;const refreshed=await clearDraftAfterCanonicalRefresh({refresh:()=>refresh({ preserveSelection: false, verifiedChange: result.alignmentChange }),clear:()=>drafts.clear(draftIdentity(element))});if(!refreshed)return false;
 		if (String(activeSnapshot?.object?.id ?? "") !== receipt.objectId || selectedId() !== receipt.elementId) throw new Error("verified receipt context changed");
-		setWorkspaceElement(id); renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt); persistedReceipt = true; message("alignment_editor.status.recalculated", "ok", "saved");
+		setWorkspaceElement(id);
+		if (persistedReceipt) renderHorizontalRealizationChangeReceipt(fields.realizationReceipt, receipt);
+		message("alignment_editor.status.recalculated", "ok", "saved");
 		try {
 			await dispatchProductiveAlignmentChange({
 				...(result.alignmentChange ?? {}),
@@ -347,13 +361,17 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 			setAuthoringState("saved");
 		}
 		try {
-			receiptSource?.publish?.({verified:true,objectId:result.alignmentChange?.objectId??activeSnapshot?.object?.id,revision:result.alignmentChange?.revision,discipline:"horizontal",elementId:id,operation:type.startsWith("update")?type:`update-${type}`,source:result.alignmentChange?.source??"alignment-editor"});
+			if (persistedReceipt) receiptSource?.publish?.({verified:true,objectId:result.alignmentChange?.objectId??activeSnapshot?.object?.id,revision:result.alignmentChange?.revision,discipline:"horizontal",elementId:id,operation:type.startsWith("update")?type:`update-${type}`,source:result.alignmentChange?.source??"alignment-editor"});
 		} catch (error) {
 			if (fields.status) {
 				fields.status.textContent = `Geometrie gespeichert · Folgeansicht noch nicht aktualisiert (${String(error?.message ?? error)})`;
 				fields.status.dataset.kind = "warn";
 			}
 			setAuthoringState("saved");
+		}
+		if (receiptSaveError && fields.status) {
+			fields.status.textContent = `Geometrie gespeichert · Konsequenzbeleg nicht gesichert (${String(receiptSaveError?.message ?? receiptSaveError)})`;
+			fields.status.dataset.kind = "warn";
 		}
 		return true;
 		} catch (error) {
@@ -362,6 +380,11 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 					fields.status.textContent = `Geometrie gespeichert · Folgeansicht noch nicht aktualisiert (${String(error?.message ?? error)})`;
 					fields.status.dataset.kind = "warn";
 				}
+				setAuthoringState("saved");
+				return true;
+			}
+			if (geometrySaved) {
+				if (fields.status) { fields.status.textContent = `Geometrie gespeichert · Konsequenzbeleg nicht gesichert (${String(error?.message ?? error)})`; fields.status.dataset.kind = "warn"; }
 				setAuthoringState("saved");
 				return true;
 			}
