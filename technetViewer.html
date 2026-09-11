@@ -635,6 +635,7 @@
 			.map-object.kilometer-line {
 				stroke-dasharray: 10 6;
 			}
+			.km-lines-hidden .map-object.kilometer-line { display: none; }
 			.map-object.inferred-crs {
 				color: #b26a00;
 				opacity: 0.5;
@@ -1387,6 +1388,7 @@
 									<span id="railwayOpacityValue">15 %</span>
 							</label>
 							<button id="precisionToggle" class="hidden" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Punktgenauigkeit (meanPointError) einfärben, statt nach DB_REF/vermutet">Präzision ein</button>
+							<button id="kmLineToggle" type="button" aria-pressed="true" title="Kilometerlinien auf der Karte und im Diagramm ein- oder ausblenden — die Gleise bleiben">km-Linien aus</button>
 							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Prototyp: alle Segmente über 3 mm gemeldeter Punktgenauigkeit (meanPointError), zur Einzelprüfung">Ausschuss (&gt; 3 mm) <span id="rejectListCount">0</span></button>
 							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste (Prototyp)"></div>
 							<button id="mapFit" type="button">Alles</button>
@@ -38739,6 +38741,13 @@ xlsx/xlsx.mjs:
 			const railwayOpacityControl = document.querySelector("#railwayOpacityControl");
 			const mapLegend = document.querySelector("#mapLegend");
 			const precisionToggle = document.querySelector("#precisionToggle");
+			const kmLineToggle = document.querySelector("#kmLineToggle");
+			// Kilometerlinien carry no train and no rail; on a two-track Strecke
+			// they run between the Gleise and hide them. One switch for the map
+			// (both confidence layers, the precision layers, the SVG fallback) and
+			// the IVMG's Kilometerlinie row; the Gleise and the km reference of the
+			// 7L are untouched.
+			let kilometerLinesVisible = true;
 			const precisionLegend = document.querySelector("#precisionLegend");
 			const rejectListToggle = document.querySelector("#rejectListToggle");
 			const rejectListCount = document.querySelector("#rejectListCount");
@@ -40297,7 +40306,7 @@ xlsx/xlsx.mjs:
 					const sideSegments = segments(side);
 					const loose = sideSegments.length ? null : first(side, kind);
 					const requiredMissing = side === "kilometer" && referenceRequired && !kmAlignment;
-					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired);
+					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired) && kilometerLinesVisible;
 					if (!sideVisible) continue;
 					const seriesOf = (alignment, profile, cant) => kind === "alignment" ? curvatureSeries(alignment) : kind === "cant" ? (cant ? cantSeriesMm(cant) : []) : (profile ? pointSeries(profile, valueKeys) : []);
 					const points = clipPointsToRange(loose
@@ -41486,6 +41495,7 @@ xlsx/xlsx.mjs:
 									id,
 									active: entry === selectedEntry ? 1 : 0,
 									precisionValue: item.precisionValue,
+									kilometerLine: sevenLineSide(entry) === "kilometer" ? 1 : 0,
 									precisionStation: item.station,
 									precisionEasting: item.easting,
 									precisionNorthing: item.northing,
@@ -41782,6 +41792,14 @@ xlsx/xlsx.mjs:
 				renderRejectList();
 			}
 
+			function toggleKilometerLines() {
+				kilometerLinesVisible = !kilometerLinesVisible;
+				kmLineToggle.setAttribute("aria-pressed", String(kilometerLinesVisible));
+				kmLineToggle.textContent = kilometerLinesVisible ? "km-Linien aus" : "km-Linien ein";
+				viewer.classList.toggle("km-lines-hidden", !kilometerLinesVisible);
+				applyMapFilters();
+				renderDiagram();
+			}
 			function togglePrecisionMode() {
 				if (!maplibreMap) return;
 				precisionModeActive = !precisionModeActive;
@@ -41901,8 +41919,14 @@ xlsx/xlsx.mjs:
 				const commonCond = ["all", ...geometryDimensions.map(dimensionCondition)];
 				maplibreMap.setFilter("technet-lines", ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], 0], commonCond]);
 				maplibreMap.setFilter("technet-lines-inferred", ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], 0], commonCond]);
-				maplibreMap.setFilter("technet-kilometer-lines", ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], 1], commonCond]);
-				maplibreMap.setFilter("technet-kilometer-lines-inferred", ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], 1], commonCond]);
+				// kilometerLine is 0/1; comparing against 2 matches nothing, so the km
+				// layers go dark and the precision layers drop their km features.
+				const kmWanted = kilometerLinesVisible ? 1 : 2;
+				maplibreMap.setFilter("technet-kilometer-lines", ["all", ["==", ["get", "confidence"], "confirmed"], ["==", ["get", "kilometerLine"], kmWanted], commonCond]);
+				maplibreMap.setFilter("technet-kilometer-lines-inferred", ["all", ["==", ["get", "confidence"], "inferred"], ["==", ["get", "kilometerLine"], kmWanted], commonCond]);
+				const kmAllowed = ["!=", ["get", "kilometerLine"], kilometerLinesVisible ? 2 : 1];
+				if (maplibreMap.getLayer("technet-precision-lines")) maplibreMap.setFilter("technet-precision-lines", ["all", ["!=", ["get", "precisionValue"], null], kmAllowed]);
+				if (maplibreMap.getLayer("technet-precision-unknown")) maplibreMap.setFilter("technet-precision-unknown", ["all", ["==", ["get", "precisionValue"], null], kmAllowed]);
 				for (const dimension of MAP_FILTER_DIMENSIONS) {
 					if (!dimension.layerVisibility) continue;
 					const selected = mapFilterState.get(dimension.key) ?? new Set();
@@ -44159,6 +44183,7 @@ xlsx/xlsx.mjs:
 			gisAssign.addEventListener("click", () => setViewMode("listing"));
 			baseMapLoad.addEventListener("click", () => toggleRailwayMap());
 			precisionToggle.addEventListener("click", () => togglePrecisionMode());
+			kmLineToggle.addEventListener("click", () => toggleKilometerLines());
 			railwayOpacity.addEventListener("input", () => {
 				railwayLayerOpacity = Number(railwayOpacity.value) / 100;
 				railwayOpacityValue.textContent = `${railwayOpacity.value} %`;
