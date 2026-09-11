@@ -39698,6 +39698,26 @@ xlsx/xlsx.mjs:
 				return String(fileName ?? "").replace(/\.(tra|gra)$/i, "").toLowerCase();
 			}
 
+			// VermEsn-Bündelung nach 7L: a TRA/GRA file carries no Strecke and no
+			// side of its own, but the delivery names it -- "5500S074-082.TRA" is
+			// Strecke 5500, S = Streckenkilometrierung (Kilometerlinie), R =
+			// Richtungsgleis (rechts), L = Gegenrichtungsgleis (links), 074-082 the
+			// km-Abschnitt; "_Gls403" marks a Bahnhofsgleis stationed on that
+			// Strecke. "Gls401", "W403-404", "Abzw-li_DKW503" name no Strecke and
+			// stay singletons. This is the file-name convention of the Landshut
+			// delivery, not a VermEsn field: the frame it yields is labelled
+			// source "vermesn-name", and a user assignment (frameEdit) wins.
+			const VERMESN_NAME_PATTERN = /^(\d{4})([LRS])(\d{3})?(?:-(\d{3}))?(?:_(.+))?$/i;
+			function vermEsnNameFrame(entry) {
+				if (entry?.parser !== "vermEsn") return null;
+				const stem = String(entry.loaded?.fileName ?? "").replace(/\.(tra|gra)$/i, "");
+				const match = VERMESN_NAME_PATTERN.exec(stem);
+				if (!match) return null;
+				const [, track, letter, from, to, gleis] = match;
+				const side = gleis ? "unknown" : { s: "kilometer", r: "right", l: "left" }[letter.toLowerCase()];
+				return { track, side, segment: from ? `${from}${to ? `-${to}` : ""}` : null, gleis: gleis ?? null };
+			}
+
 			// VermEsn TRA/GRA pairs are delivered as separate files (unlike GND-Edit,
 			// where PAD identity joins alignment/profile/cant within one MDB) and each
 			// upload is parsed and related in isolation -- so a TRA's own stationReference
@@ -39797,6 +39817,8 @@ xlsx/xlsx.mjs:
 				if (String(preservedRole).includes("Right")) return "right";
 				if (String(preservedRole).includes("Left")) return "left";
 				if (preservedRole === "curvatureKilometer") return "kilometer";
+				const nameFrame = vermEsnNameFrame(entry);
+				if (nameFrame && nameFrame.side !== "unknown") return nameFrame.side;
 				// landXML carries the role in the Alignment desc ("Kilometrierungslinie
 				// 1720", "Richtungsgleis 1720 (DR0)", "Gegenrichtungsgleis 1720 (DR0)").
 				// Same convention as GND STRRIKZ: Richtungsgleis = 1 = rechts,
@@ -40229,14 +40251,24 @@ xlsx/xlsx.mjs:
 				// "overlapping" ranges (verified against real Landshut fixtures:
 				// W401-402.TRA spans 0-79m, W403-404.TRA spans 0-88m -- entirely
 				// different physical switches). Cross-file matching by name alone is
-				// therefore restricted to GND; everything else relies solely on the
-				// already-safe, explicit relatedDiagramEntries relations below.
+				// therefore restricted to GND. VermEsn files named after the Landshut
+				// convention (source "vermesn-name") bundle by Strecke and km-Abschnitt
+				// from the name instead ("5500S074-082" + "5500R074-082" + "5500L074-082");
+				// a file without an Abschnitt ("5720S") joins every Abschnitt of its
+				// Strecke. Everything else relies solely on the already-safe, explicit
+				// relatedDiagramEntries relations below.
+				const sameLsys = (candidate, frame) => (effectiveLsys(candidate) || frame.lsys) === (effectiveLsys(entry) || selectedFrame.lsys);
 				const sameTrackEntries = selectedFrame?.source === "gnd"
 					? loadedFiles.flatMap((loaded) => loaded.objects).filter((candidate) => {
 						const frame = geoFrameInfo(candidate);
-						return frame?.track === selectedFrame.track
-							&& (effectiveLsys(candidate) || frame.lsys) === (effectiveLsys(entry) || selectedFrame.lsys)
-							&& overlapsSelectedRange(candidate);
+						return frame?.track === selectedFrame.track && sameLsys(candidate, frame) && overlapsSelectedRange(candidate);
+					})
+					: selectedFrame?.source === "vermesn-name"
+					? loadedFiles.flatMap((loaded) => loaded.objects).filter((candidate) => {
+						const frame = geoFrameInfo(candidate);
+						return frame?.source === "vermesn-name" && frame.track === selectedFrame.track
+							&& (!frame.segment || !selectedFrame.segment || frame.segment === selectedFrame.segment)
+							&& sameLsys(candidate, frame);
 					})
 					: [];
 				const entries = [...new Set([...related.entries, ...sameTrackEntries])];
@@ -40347,6 +40379,11 @@ xlsx/xlsx.mjs:
 			}
 
 			// Trassenplan rows for objects without a resolved side ("Zuordnung offen").
+			// A Bahnhofsgleis bundled by file name has no side but a name.
+			function unknownSideLabel(entry) {
+				const frame = geoFrameInfo(entry);
+				return frame?.source === "vermesn-name" ? frame.direction : "Gleis · Zuordnung offen";
+			}
 			function deriveUnknownTrassenplanBands(assignment) {
 				const { first, selectedRange } = assignment;
 				const bands = [];
@@ -40354,7 +40391,7 @@ xlsx/xlsx.mjs:
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
-					bands.push(makeBand(`Gleis · Zuordnung offen · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
+					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
 				}
 				return bands;
 			}
@@ -40369,7 +40406,7 @@ xlsx/xlsx.mjs:
 				const { first, selectedRange } = assignment;
 				const curvatureCandidate = first("unknown", "alignment");
 				if (!curvatureCandidate) return [];
-				return speedDiagnosticBand("Gleis · Zuordnung offen", [{ alignment: curvatureCandidate, cant: first("unknown", "cant"), range: stationRangeForEntry(curvatureCandidate) }], selectedRange, makeBand);
+				return speedDiagnosticBand(unknownSideLabel(curvatureCandidate), [{ alignment: curvatureCandidate, cant: first("unknown", "cant"), range: stationRangeForEntry(curvatureCandidate) }], selectedRange, makeBand);
 			}
 
 			function sevenLineTracks(entry) {
@@ -41023,7 +41060,7 @@ xlsx/xlsx.mjs:
 				const subtitle = (activeJunction.window
 					? `${trackData.length} Gleise · ±${activeJunction.window} m um km ${station(activeJunction.stationRaw).trim()} · Gradiente alle 5 m interpoliert`
 					: multiTrack
-					? `${trackData.length} Gleise · ${trackData.some((data) => data.track.parser === "vermEsn") ? "Station je Gleis, ohne gemeinsame Kilometrierung nicht übereinandergelegt" : "gemeinsame externe Kilometrierung"}`
+					? `${trackData.length} Gleise · ${trackData.some((data) => data.track.parser === "vermEsn" && !data.track.externalStationReference) ? "Station je Gleis, ohne gemeinsame Kilometrierung nicht übereinandergelegt" : "gemeinsame externe Kilometrierung"}`
 					: trackData[0].hasCant
 						? "intrinsische Station · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
 						: "intrinsische Station · keine Überhöhung verknüpft, beide Schienen auf Gradientenhöhe") + railNote;
@@ -42544,6 +42581,18 @@ xlsx/xlsx.mjs:
 					hsys: viewer7L.HSYS || systemsForEntry(entry).hsys || "HSYS?",
 					source: "landXML-7L",
 				};
+				const nameFrame = vermEsnNameFrame(entry);
+				if (nameFrame) {
+					const directionNames = { kilometer: "Kilometerlinie", right: "rechts", left: "links" };
+					return {
+						track: nameFrame.track,
+						direction: directionNames[nameFrame.side] ?? (nameFrame.gleis ? `Bahnhofsgleis ${nameFrame.gleis}` : "unbekannt"),
+						lsys: effectiveLsys(entry) || "LSYS?",
+						hsys: systemsForEntry(entry).hsys || "HSYS?",
+						segment: nameFrame.segment,
+						source: "vermesn-name",
+					};
+				}
 				if (entry.parser !== "gndEdit") return null;
 				const gndSequence = gndSequenceForEntry(entry);
 				if (gndSequence) {
@@ -44027,6 +44076,89 @@ xlsx/xlsx.mjs:
 				}
 			}
 
+			// The same reconciliation for VermEsn, across files: the Gleise of a
+			// Strecke arrive as separate TRA files whose stations restart at 0
+			// (5500R074-082.TRA: 0-8503 m) while the S file carries Bahn-km
+			// (5500S074-082.TRA: 73860-82361). Once both are loaded, every Gleis of
+			// that Strecke and km-Abschnitt is projected onto the Kilometerlinie.
+			// A Gleis whose own stations already lie inside the Kilometerlinie's
+			// range keeps them (5720R000_Gls403: 29000-38877 like 5720S) --
+			// delivered km beat projected km. Profile/cant points follow only when
+			// they share the TRA's local frame; 5500R074-082.GRA already carries
+			// km 73910-80510 and stays. Runs after every VermEsn file and marks
+			// each finished Gleis (externalStationReference), so it is idempotent.
+			// A TRA that names no Strecke (W403-404, Gls401v) is projected onto
+			// the Kilometerlinie both its ends lie within TOPOLOGY_KM_MAX_DISTANCE_M
+			// of -- the same distance the topology accepts for a node's km -- so a
+			// Weiche picked in the Spurplan shows its own TRA/GRA at the Strecke's km.
+			function reconcileVermEsnStationing() {
+				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && entry.parser === "vermEsn");
+				const named = alignments.filter((entry) => vermEsnNameFrame(entry));
+				const rangeLength = (entry) => { const range = stationRangeForEntry(entry); return range ? range.to - range.from : 0; };
+				const within = (inner, outer, slack) => inner && outer && inner.from >= outer.from - slack && inner.to <= outer.to + slack;
+				const compatibleSegment = (a, b) => !a.segment || !b.segment || a.segment === b.segment;
+				const polylines = new Map();
+				const polylineOf = (reference) => {
+					if (!polylines.has(reference)) polylines.set(reference, referenceStationPolyline(reference));
+					return polylines.get(reference);
+				};
+				// trustDelivered: a named Gleis whose stations already lie in the
+				// Kilometerlinie's range keeps them; a singleton's stations are
+				// file-local by nature (W403-404.TRA: 0-88 m) and are always projected.
+				const project = (target, reference, trustDelivered) => {
+					const localRange = stationRangeForEntry(target);
+					const referenceRange = stationRangeForEntry(reference);
+					if (!localRange || !referenceRange) return;
+					if (trustDelivered && within(localRange, referenceRange, 50)) { target.externalStationReference = reference.item.id; return; }
+					const polyline = polylineOf(reference);
+					if (polyline.length < 2) return;
+					const pairs = landXmlStationMapping(target, polyline);
+					if (pairs.length < 2) return;
+					applyLandXmlStationMapping(target, pairs);
+					listingCache.delete(target);
+					for (const sibling of referencingEntries(target)) {
+						if (sibling.item.kind !== "profile" && sibling.item.kind !== "cant") continue;
+						if (!within(stationRangeForEntry(sibling), localRange, 50)) continue;
+						applyLandXmlStationMappingToPoints(sibling, pairs);
+						listingCache.delete(sibling);
+					}
+					target.externalStationReference = reference.item.id;
+				};
+				const allReferences = [];
+				for (const [, entries] of groupBy(named, (entry) => vermEsnNameFrame(entry).track)) {
+					const references = entries.filter((entry) => vermEsnNameFrame(entry).side === "kilometer").sort((a, b) => rangeLength(b) - rangeLength(a));
+					allReferences.push(...references);
+					for (const target of entries) {
+						if (target.externalStationReference) continue;
+						const targetFrame = vermEsnNameFrame(target);
+						const reference = targetFrame.side === "kilometer" ? null : references.find((candidate) => compatibleSegment(vermEsnNameFrame(candidate), targetFrame));
+						if (reference) project(target, reference, true);
+					}
+				}
+				// Where two Strecken run side by side (Landshut: 5500 and 5632 through
+				// the Bahnhof), a singleton's GRA decides -- W403-404.GRA is delivered
+				// at km 75008-75099, inside 5500's Kilometerlinie, so that one wins
+				// over the merely nearer 5632. Without a GRA, the nearer line wins.
+				for (const target of alignments) {
+					if (target.externalStationReference || vermEsnNameFrame(target)) continue;
+					const ends = alignmentEndpoints(target);
+					if (!ends) continue;
+					const profile = referencingEntries(target).find((sibling) => sibling.item.kind === "profile");
+					const profileRange = profile ? stationRangeForEntry(profile) : null;
+					let best = null;
+					for (const reference of allReferences) {
+						const polyline = polylineOf(reference);
+						if (polyline.length < 2) continue;
+						const hits = [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(polyline, point));
+						if (hits.some((hit) => !hit || hit.distance > TOPOLOGY_KM_MAX_DISTANCE_M)) continue;
+						const distance = Math.max(hits[0].distance, hits[1].distance);
+						const holdsProfile = within(profileRange, stationRangeForEntry(reference), 50) ? 0 : 1;
+						if (!best || holdsProfile < best.holdsProfile || (holdsProfile === best.holdsProfile && distance < best.distance)) best = { reference, distance, holdsProfile };
+					}
+					if (best) project(target, best.reference, false);
+				}
+			}
+
 			function renderResultObjects(result, fileName, { deferRender = false } = {}) {
 				const objects = (result?.items ?? [])
 					.filter((item) =>
@@ -44059,6 +44191,7 @@ xlsx/xlsx.mjs:
 				loadedFiles.push(loadedFile);
 				geometryModelCache = new WeakMap();
 				if (objects[0]?.parser === "landXML") reconcileLandXmlStationing(objects);
+				if (objects[0]?.parser === "vermEsn") reconcileVermEsnStationing();
 				validate7lButton.disabled = false;
 				exportLandxmlButton.disabled = !allViewerEntries().some((entry) => entry.item.kind === "alignment");
 				if (!deferRender) {
