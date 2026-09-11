@@ -108,8 +108,19 @@ function readFixedCurvature(stub) {
 	return Number.isFinite(k) ? k : null;
 }
 
+// The turn of a kink, in radians. The sparse model carries it as the unit
+// vector of the turn ({x: cos, y: sin}: validateSparseAlignment demands an
+// object and the LandFAT bridge writes one); a plain number is the angle
+// itself, as this file's header says. Read as a number alone, a vector came
+// back NaN, and every imported kink went straight through.
 function readDeltaDir(stub) {
-	const beta = Number(stub?.deltaDir ?? stub?.beta);
+	const raw = stub?.deltaDir ?? stub?.beta;
+	if (raw && typeof raw === "object") {
+		const x = Number(raw.x);
+		const y = Number(raw.y);
+		return Number.isFinite(x) && Number.isFinite(y) && (x !== 0 || y !== 0) ? Math.atan2(y, x) : null;
+	}
+	const beta = Number(raw);
 	return Number.isFinite(beta) ? beta : null;
 }
 

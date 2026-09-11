@@ -12,8 +12,10 @@ const LEGACY = new URL(
 	"src/domain/alignment/build/AlignmentFactory.js",
 	ROOT
 );
+// the adopted body, plus readDeltaDir reading the sparse model's unit vector
+// (2026-09-11): the hash is the canonical body as it stands
 const BASELINE_HASH =
-	"70e1cd5cffe39f1d096cc61b117cb5fad1d2980a0b194e217cbc1a470368632f";
+	"852c48c95e8544350b54b2e2fbb6632a39e743935d80a8f134aa90bb2c99a754";
 const IMPORTS = [
 	"../../geometry/Alignment2D.js",
 	"../../geometry/FixedElement.js",

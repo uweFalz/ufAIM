@@ -64,6 +64,30 @@ test("representative sparse sequence constructs every existing element specializ
 	assert.strictEqual(alignment.pose0.p === START.p, false);
 });
 
+test("a kink's turn is read from the sparse model's unit vector as well as from the angle", () => {
+	// validateSparseAlignment and the LandFAT bridge carry deltaDir as
+	// {x: cos, y: sin}; read as a number that was NaN and the kink went
+	// straight through
+	const turn = -0.2;
+	const asVector = build([
+		{ id: "F", type: "fixed", arcLength: 10, curvature: 0 },
+		{ id: "K", type: "transition", arcLength: 0, transType: "kink", deltaDir: { x: Math.cos(turn), y: Math.sin(turn) } },
+		{ id: "G", type: "fixed", arcLength: 10, curvature: 0 },
+	]).alignment;
+	const asAngle = build([
+		{ id: "F", type: "fixed", arcLength: 10, curvature: 0 },
+		{ id: "K", type: "transition", arcLength: 0, transType: "kink", deltaDir: turn },
+		{ id: "G", type: "fixed", arcLength: 10, curvature: 0 },
+	]).alignment;
+	assert.equal(asVector.elements[1] instanceof KinkElement, true);
+	assert.ok(Math.abs(asVector.elements[1].deltaDir - turn) < 1e-15, `vector read as ${asVector.elements[1].deltaDir}`);
+	assert.equal(asAngle.elements[1].deltaDir, turn);
+	const endVector = asVector.poseAt(20);
+	const endAngle = asAngle.poseAt(20);
+	assert.ok(Math.hypot(endVector.p.x - endAngle.p.x, endVector.p.y - endAngle.p.y) < 1e-12, "the two forms are one geometry");
+	assert.ok(Math.abs(Math.atan2(endVector.t.y, endVector.t.x) - turn) < 1e-12, "and the heading turned by the angle");
+});
+
 test("warnings fallbacks and exact collaborator errors remain unchanged", () => {
 	const missingType = build([
 		{ id: "F", type: "fixed", arcLength: "bad", curvature: "bad" },
