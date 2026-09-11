@@ -1081,6 +1081,13 @@
 			}
 			.source-file-summary { color: GrayText; }
 			.route-title { font-weight: 700; }
+			.geo-frame-source {
+				margin-left: 0.5rem;
+				font-weight: 400;
+				font-size: 0.76rem;
+				color: GrayText;
+				cursor: help;
+			}
 			.lsys-title {
 				padding-left: 1.35rem;
 				background: color-mix(in srgb, CanvasText 2%, Canvas);
@@ -42619,6 +42626,20 @@ xlsx/xlsx.mjs:
 				};
 			}
 
+			// Where a Strecke assignment comes from when it is not the file's own
+			// data: the VermEsn file name, landXML's 7L feature, or the user's
+			// hand. Returns a muted span for a title, or null for GND.
+			function frameSourceHint(entries) {
+				const labels = { "vermesn-name": "aus Dateiname", user: "per Hand", "landXML-7L": "aus landXML-7L" };
+				const sources = [...new Set(entries.map((entry) => labels[geoFrameInfo(entry)?.source]).filter(Boolean))];
+				if (!sources.length) return null;
+				const hint = document.createElement("span");
+				hint.className = "geo-frame-source";
+				hint.textContent = sources.join(", ");
+				if (sources.includes("aus Dateiname")) hint.title = "Strecke, Seite und km-Abschnitt aus der Dateinamen-Konvention: 5500S074-082 = Strecke 5500, S = Kilometerlinie, R = rechts, L = links, 074-082 = km-Abschnitt, _Gls403 = Bahnhofsgleis dieser Strecke. Ein Drag in eine andere Lane überschreibt.";
+				return hint;
+			}
+
 			function geoFrameKey(frame) {
 				return String(frame.track);
 			}
@@ -43370,6 +43391,8 @@ xlsx/xlsx.mjs:
 					node.open = entries.includes(current);
 					const summary = document.createElement("summary");
 					summary.textContent = `${isValidRouteNumber(frame.track) ? `Strecke ${frame.track}` : frame.track} · ${sectionLabel(sectionPackage)} · ${effectiveLsys(entries[0]) || frame.lsys || "LSYS?"}`;
+					const sourceHint = frameSourceHint(entries);
+					if (sourceHint) summary.append(sourceHint);
 					node.append(summary);
 					node.append(buildSevenLineLanes(packageFrame, entries, current));
 					outboxContent.append(node);
@@ -43636,6 +43659,8 @@ xlsx/xlsx.mjs:
 						const routeTitle = document.createElement("summary");
 						routeTitle.className = "geo-frame-title route-title";
 						routeTitle.textContent = `Strecke ${routeNumber} · ${routeEntries.length}`;
+						const routeSource = frameSourceHint(routeEntries);
+						if (routeSource) routeTitle.append(routeSource);
 						route.append(routeTitle);
 						const byLsys = groupBy(routeEntries, (entry) => effectiveLsys(entry) || "LSYS?");
 						for (const [lsys, entries] of byLsys) {
