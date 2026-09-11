@@ -106,11 +106,12 @@ export function chooseProfile(elements, { cantMm = 130, sourceName = "as-built" 
  * @param {number} [options.tolerance]      per-point tolerance, metres
  * @param {number} [options.perturbation]   relative perturbation of the free quantities at the start
  * @param {string} [options.rampLengthAs]
+ * @param {"held"|"free"} [options.kinkStation]  whether the element before a kink keeps its length (default held)
  */
 export async function createTraScenario(source, {
 	pointSpacing = 50, spread = 0.04, tolerance = 0.15, perturbation = 0.03,
 	rampLengthAs = "bound", minimumElementLength = null, cantMm = 130,
-	holdLast = false,
+	holdLast = false, kinkStation = "held",
 } = {}) {
 	const loaded = typeof source === "object" && source.elements ? source : await loadTraAlignment(source);
 	if (loaded.unsupported.length) {
@@ -139,8 +140,14 @@ export async function createTraScenario(source, {
 	// the last one is what reaches poseE and stays free - measured, holding it
 	// as the fixture does left three-element turnouts with two variables
 	// against three equalities. A junction arc of zero length holds everything.
+	// A kink's station is the file's datum: the record sits where it sits. Left
+	// free, the two straights it joins are all but one element - a 0.03 gon
+	// kink moved 21 m along them for a centimetre of lateral effect on
+	// Landshut/5634S000-007 - and the fit walks that valley for the whole
+	// budget. The element before a kink keeps its length.
+	const beforeKink = (i) => kinkStation === "held" && trueElements[i + 1]?.type === "kink";
 	const role = (e, i) => ({
-		length: i === 0 || (holdLast && i === last) || e.held ? "held" : "free",
+		length: i === 0 || (holdLast && i === last) || e.held || beforeKink(i) ? "held" : "free",
 		...(e.type === "arc" ? { curvature: e.held ? "held" : "free" } : {}),
 	});
 	// The length perturbation sums to zero over the free lengths, so the start

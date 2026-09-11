@@ -4,7 +4,7 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length,lexicographic] [--ramp bound|constraint] \
-//        [--iterations 1000] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--json out.json]
+//        [--iterations 1000] [--hessian bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -42,6 +42,7 @@ const tiers = tiersArg === "reference"
 const filterCeiling = args.filterCeiling === undefined ? undefined : Number(args.filterCeiling);
 const filterSwitching = args.filterSwitching === undefined ? undefined : args.filterSwitching !== "false";
 const correctionClosure = args.correctionClosure === undefined ? undefined : Number(args.correctionClosure);
+const kinkStation = args.kinkStation ?? "held";
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
 
 const trusted = [];
@@ -65,7 +66,7 @@ console.log("file                                       n free pts  V exc | obje
 const rows = [];
 for (const { file, n } of trusted.slice(from, to)) {
 	let sc;
-	try { sc = await createTraScenario(file, { rampLengthAs }); }
+	try { sc = await createTraScenario(file, { rampLengthAs, kinkStation }); }
 	catch (error) { console.log(`${rel(file).slice(-42).padEnd(42)} scenario: ${error.message.slice(0, 90)}`); rows.push({ file: rel(file), n, error: error.message }); continue; }
 	for (const objective of objectives) {
 		const t0 = Date.now();
