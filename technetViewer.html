@@ -43043,6 +43043,120 @@ xlsx/xlsx.mjs:
 				return clusters;
 			}
 
+			// ---- ABLEITUNG · Topologie (gerechnet) --------------------------------
+			// GND names its Weichen through Streckennummern, landXML through the
+			// desc, TRA/GRA name nothing -- so the Spurplan's graph is computed
+			// from geometry alone, the same way for every format and independent
+			// of the CRS as long as one batch lives in one system. A node is where
+			// an alignment's end meets another end, or lies on another alignment
+			// away from its ends (that alignment is split there); an edge is an
+			// alignment between two nodes. The node's kind follows its degree and
+			// its tangents: Ende (1), Fortsetzung (2, tangential -- GND chunks a
+			// Gleis at every Weiche, so these are seams, not Weichen), Knick (2,
+			// not tangential), Weiche (3), Kreuzung (4 with two through pairs),
+			// Knoten otherwise. Kilometerlinien are not Gleise and take no part;
+			// where they exist a node gets its km from the nearest one.
+			const TOPOLOGY_TOLERANCE_M = 0.3;
+			const TOPOLOGY_TANGENT_COS = -Math.cos(2 * Math.PI / 200);
+			// A node takes its km from a Kilometerlinie only when it lies within a
+			// Bahnhof's width of it; a projection from farther away is not its km.
+			const TOPOLOGY_KM_MAX_DISTANCE_M = 60;
+			// The Outbox renders on every selection; the graph only changes with
+			// the loaded objects (166 Gleise take ~0,8 s), so it is cached per set.
+			let topologyCache = { key: "", result: null };
+			function deriveTopology() {
+				const key = allViewerEntries().map((entry) => entry.item.id).join("|");
+				if (topologyCache.key === key && topologyCache.result) return topologyCache.result;
+				const result = computeTopology();
+				topologyCache = { key, result };
+				return result;
+			}
+			function computeTopology() {
+				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && alignmentEndpoints(entry));
+				const gleise = alignments.filter((entry) => sevenLineSide(entry) !== "kilometer");
+				const kmLines = alignments.filter((entry) => sevenLineSide(entry) === "kilometer").map((entry) => referenceStationPolyline(entry, 5)).filter((polyline) => polyline.length > 1);
+				const polylines = new Map();
+				const polylineOf = (entry) => {
+					if (!polylines.has(entry)) polylines.set(entry, referenceStationPolyline(entry, 2));
+					return polylines.get(entry);
+				};
+				const close = (a, b) => Math.hypot(a.easting - b.easting, a.northing - b.northing) <= TOPOLOGY_TOLERANCE_M;
+				const unit = (from, to) => {
+					const length = Math.hypot(to.easting - from.easting, to.northing - from.northing) || 1;
+					return { x: (to.easting - from.easting) / length, y: (to.northing - from.northing) / length };
+				};
+				const nodes = [];
+				const nodeFor = (point) => {
+					let node = nodes.find((candidate) => close(candidate.point, point));
+					if (!node) {
+						node = { id: nodes.length, point: { easting: point.easting, northing: point.northing }, arms: [] };
+						nodes.push(node);
+					}
+					return node;
+				};
+				// 1. Every end: its node, its tangent away from the node, and whether it
+				//    lies on another Gleis away from that Gleis's ends (a cut there).
+				const cuts = new Map();
+				for (const gleis of gleise) {
+					const polyline = polylineOf(gleis);
+					if (polyline.length < 2) continue;
+					const ends = alignmentEndpoints(gleis);
+					for (const [end, atStart] of [[ends.start, true], [ends.end, false]]) {
+						const node = nodeFor(end);
+						const [p, q] = atStart ? [polyline[0], polyline[1]] : [polyline[polyline.length - 1], polyline[polyline.length - 2]];
+						node.arms.push({ entry: gleis, atStart, station: p.station, away: unit(p, q) });
+						for (const other of gleise) {
+							if (other === gleis) continue;
+							const otherEnds = alignmentEndpoints(other);
+							if (close(otherEnds.start, end) || close(otherEnds.end, end)) continue;
+							const hit = distanceAndStationOnPolyline(polylineOf(other), end);
+							if (!hit || hit.distance > TOPOLOGY_TOLERANCE_M) continue;
+							if (!cuts.has(other)) cuts.set(other, []);
+							if (!cuts.get(other).some((cut) => cut.node === node)) cuts.get(other).push({ station: hit.station, node });
+						}
+					}
+				}
+				// 2. Edges: each Gleis between its ends and its cuts; a cut gives the
+				//    node the through Gleis's two tangents.
+				const edges = [];
+				for (const gleis of gleise) {
+					const polyline = polylineOf(gleis);
+					if (polyline.length < 2) continue;
+					const ends = alignmentEndpoints(gleis);
+					const stops = [
+						{ station: polyline[0].station, node: nodeFor(ends.start) },
+						...(cuts.get(gleis) ?? []).sort((a, b) => a.station - b.station),
+						{ station: polyline[polyline.length - 1].station, node: nodeFor(ends.end) },
+					];
+					for (let index = 0; index + 1 < stops.length; index += 1) {
+						edges.push({ id: edges.length, entry: gleis, from: stops[index].node, to: stops[index + 1].node, stationFrom: stops[index].station, stationTo: stops[index + 1].station, part: stops.length > 2 ? `${index + 1}/${stops.length - 1}` : "" });
+					}
+					for (const cut of cuts.get(gleis) ?? []) {
+						const index = Math.max(1, polyline.findIndex((point) => point.station >= cut.station));
+						const dir = unit(polyline[index - 1], polyline[index]);
+						cut.node.arms.push({ entry: gleis, through: true, station: cut.station, away: dir }, { entry: gleis, through: true, station: cut.station, away: { x: -dir.x, y: -dir.y } });
+					}
+				}
+				// 3. Kinds, km, names.
+				for (const node of nodes) {
+					const arms = node.arms;
+					let throughPairs = 0;
+					for (let i = 0; i < arms.length; i += 1) for (let j = i + 1; j < arms.length; j += 1) {
+						if (arms[i].away.x * arms[j].away.x + arms[i].away.y * arms[j].away.y < TOPOLOGY_TANGENT_COS) throughPairs += 1;
+					}
+					node.degree = arms.length;
+					node.kind = arms.length === 1 ? "Ende" : arms.length === 2 ? (throughPairs ? "Fortsetzung" : "Knick") : arms.length === 3 ? "Weiche" : arms.length === 4 && throughPairs >= 2 ? "Kreuzung" : "Knoten";
+					let best = null;
+					for (const kmLine of kmLines) {
+						const hit = distanceAndStationOnPolyline(kmLine, node.point);
+						if (hit && (!best || hit.distance < best.distance)) best = hit;
+					}
+					node.km = best && best.distance <= TOPOLOGY_KM_MAX_DISTANCE_M ? best.station : null;
+					node.names = [...new Set(arms.map((arm) => objectDisplayName(arm.entry)))];
+				}
+				return { nodes, edges, gleise: gleise.length, kmLines: kmLines.length };
+			}
+
 			function activateJunctionCluster(junction) {
 				activeJunction = junction;
 				bulkSelectedEntries.clear();
@@ -43074,6 +43188,30 @@ xlsx/xlsx.mjs:
 						row.textContent = `${label} · ${junction.entries.length} Gleise`;
 						row.title = junction.entries.map((entry) => objectDisplayName(entry)).join(" · ");
 						row.addEventListener("click", () => activateJunctionCluster(junction));
+						list.append(row);
+					}
+					node.append(list);
+					outboxContent.append(node);
+				}
+				const topology = deriveTopology();
+				if (topology.gleise > 1) {
+					const count = (kind) => topology.nodes.filter((node) => node.kind === kind).length;
+					const node = document.createElement("details");
+					node.className = "outbox-frame outbox-junctions";
+					const summary = document.createElement("summary");
+					summary.textContent = `Topologie (gerechnet) · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen · ${count("Ende")} Enden · ${topology.edges.length} Kanten`;
+					summary.title = `${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? " · km von der nächsten Kilometerlinie" : " · keine Kilometerlinie, Stationen der Gleise"}`;
+					node.append(summary);
+					const list = document.createElement("div");
+					list.className = "outbox-junction-list";
+					const listed = topology.nodes.filter((candidate) => ["Weiche", "Kreuzung", "Knoten", "Knick"].includes(candidate.kind)).sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+					for (const item of listed) {
+						const row = document.createElement("button");
+						row.type = "button";
+						row.className = "outbox-junction-row";
+						row.textContent = `${item.kind} · ${item.km != null ? `km ${station(item.km).trim()}` : "km offen"} · ${item.names.join(" / ")}`;
+						row.title = `Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}`;
+						row.addEventListener("click", () => selectObject(item.arms[0].entry, item.arms[0].entry.button));
 						list.append(row);
 					}
 					node.append(list);
