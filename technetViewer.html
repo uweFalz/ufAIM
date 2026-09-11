@@ -643,6 +643,9 @@
 			.spurplan-kreuzung, .spurplan-knoten { fill: #1d5c8a; }
 			.spurplan-end { stroke: #1d5c8a; stroke-width: 2; }
 			.spurplan-label { font-size: 11px; }
+			.spurplan-node { cursor: pointer; }
+			.spurplan-active { fill: Highlight; stroke: Highlight; }
+			.outbox-junction-active { background: color-mix(in srgb, Highlight 18%, Canvas); }
 			.map-object.inferred-crs {
 				color: #b26a00;
 				opacity: 0.5;
@@ -40550,7 +40553,9 @@ xlsx/xlsx.mjs:
 				for (const node of topology.nodes) {
 					if (node.km == null || node.km < xMin || node.km > xMax) continue;
 					if (node.kind === "Weiche" || node.kind === "Kreuzung" || node.kind === "Knoten") {
-						const dot = svgElement("circle", { cx: xAt(node.km), cy: yAt(node.row), r: node.kind === "Weiche" ? 3 : 4, class: `spurplan-node spurplan-${node.kind.toLowerCase()}` });
+						const active = activeJunction?.node === node;
+						const dot = svgElement("circle", { cx: xAt(node.km), cy: yAt(node.row), r: active ? 6 : node.kind === "Weiche" ? 3 : 4, class: `spurplan-node spurplan-${node.kind.toLowerCase()}${active ? " spurplan-active" : ""}` });
+						dot.addEventListener("click", () => activateJunctionCluster(junctionFromNode(node)));
 						const title = svgElement("title");
 						title.textContent = `${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}`;
 						dot.append(title);
@@ -40847,7 +40852,7 @@ xlsx/xlsx.mjs:
 			// Linksbogen raises the right rail. Form: branch curving the same way
 			// = IBW, the opposite way = ABW, through track straight = EW.
 			function junctionRailSides(junction, tracks) {
-				if (!junction?.point || !Number.isFinite(stationScalar(junction.stationRaw))) return null;
+				if (!junction?.point) return null;
 				const near = (end) => Math.hypot(end.easting - junction.point.easting, end.northing - junction.point.northing) < 1;
 				// How each Gleis meets the point: which of its ends (if any), the unit
 				// vector pointing AWAY from the point along the Gleis, and the
@@ -40866,18 +40871,23 @@ xlsx/xlsx.mjs:
 					const kappa = series.length ? (atStart ? series[0].y : series[series.length - 1].y) : 0;
 					return { track, atStart, atEnd, away: { x: (q.easting - p.easting) / length, y: (q.northing - p.northing) / length }, kappa };
 				});
-				const station = stationScalar(junction.stationRaw);
 				let through = null;
 				let kappa = 0;
 				let travel = null;
 				let throughName = "";
 				const continuing = arms.find((arm) => arm.continuing);
 				if (continuing) {
-					// landXML: the Gleis that runs past the point is the through track.
-					through = [continuing.track];
-					kappa = interpolateSeriesAt(curvatureSeries(continuing.track), station);
+					// The Gleis that runs past the point is the through track. Its
+					// curvature is read at the point's station on ITS OWN polyline --
+					// the same stationing curvatureSeries() uses -- so this needs no
+					// shared km frame and works for VermEsn as well.
 					const polyline = referenceStationPolyline(continuing.track, 2);
-					const index = polyline.findIndex((point) => point.station >= station);
+					const hit = distanceAndStationOnPolyline(polyline, junction.point);
+					if (!hit) return { through: null, higher: null, form: null };
+					const ownStation = hit.station;
+					through = [continuing.track];
+					kappa = interpolateSeriesAt(curvatureSeries(continuing.track), ownStation);
+					const index = polyline.findIndex((point) => point.station >= ownStation);
 					const p = polyline[Math.max(0, index - 1)];
 					const q = polyline[Math.min(polyline.length - 1, Math.max(1, index))];
 					const length = Math.hypot(q.easting - p.easting, q.northing - p.northing) || 1;
@@ -40927,7 +40937,7 @@ xlsx/xlsx.mjs:
 					return { note: "kein Gleis ausgewählt", subtitle: "" };
 				}
 				if (!activeJunction) {
-					return { note: "gehört zur Weiche · in der Outbox unter „Weichen (aus Geometrie erkannt)“ wählen", subtitle: "Streckengleise: IVMG und GWB" };
+					return { note: "gehört zur Weiche · im Spurplan einen Weichenpunkt anklicken oder in der Outbox unter „Weichen · Topologie“", subtitle: "Streckengleise: IVMG und GWB" };
 				}
 				const tracks = activeJunction.entries.filter((candidate) => candidate.item?.kind === "alignment" && sevenLineSide(candidate) !== "kilometer");
 				const multiTrack = tracks.length > 1;
@@ -40984,7 +40994,7 @@ xlsx/xlsx.mjs:
 				const subtitle = (activeJunction.window
 					? `${trackData.length} Gleise · ±${activeJunction.window} m um km ${station(activeJunction.stationRaw).trim()} · Gradiente alle 5 m interpoliert`
 					: multiTrack
-					? `${trackData.length} Gleise · gemeinsame externe GND-Kilometrierung · keine Übereinstimmung wird erzwungen`
+					? `${trackData.length} Gleise · ${trackData.some((data) => data.track.parser === "vermEsn") ? "Station je Gleis, ohne gemeinsame Kilometrierung nicht übereinandergelegt" : "gemeinsame externe Kilometrierung"}`
 					: trackData[0].hasCant
 						? "intrinsische Station · Schiene A = Gradiente, Schiene B = Gradiente + Überhöhung"
 						: "intrinsische Station · keine Überhöhung verknüpft, beide Schienen auf Gradientenhöhe") + railNote;
@@ -43046,65 +43056,11 @@ xlsx/xlsx.mjs:
 				return { start, end };
 			}
 
-			function endpointKey(point) {
-				return `${Math.round(point.easting * 100)}:${Math.round(point.northing * 100)}`;
-			}
 
-			function samePhysicalTrack(a, b) {
-				return endpointKey(a.start) === endpointKey(b.start) && endpointKey(a.end) === endpointKey(b.end);
-			}
-
-			function detectJunctionClusters() {
-				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment");
-				const tracks = [];
-				for (const entry of alignments) {
-					const points = alignmentEndpoints(entry);
-					if (!points) continue;
-					const existing = tracks.find((track) => samePhysicalTrack(track.points, points));
-					if (existing) existing.members.push(entry);
-					else tracks.push({ points, representative: entry, members: [entry] });
-				}
-				const byPoint = new Map();
-				for (const track of tracks) {
-					for (const point of [track.points.start, track.points.end]) {
-						const key = endpointKey(point);
-						if (!byPoint.has(key)) byPoint.set(key, []);
-						byPoint.get(key).push(track);
-					}
-				}
-				const gndClusters = [...byPoint.entries()]
-					.filter(([, tracksAtPoint]) => tracksAtPoint.length > 1)
-					// Consecutive segments of the SAME Strecke meet end-to-start wherever a
-					// long alignment is chunked into multiple records -- that is the track
-					// continuing, not a switch. A real Weiche joins DIFFERENT Gleis identities,
-					// so require at least two distinct Strecke values among the tracks at a
-					// shared point (verified against a real "mit Weichen" GND fixture: without
-					// this, 17 of 21 candidates were same-Strecke continuations, not junctions).
-					.filter(([, tracksAtPoint]) => new Set(tracksAtPoint.map((track) => gndSequenceForEntry(track.representative)?.strecke)).size > 1)
-					.map(([key, tracksAtPoint]) => {
-						const entries = tracksAtPoint.map((track) => track.representative);
-						const stationRaws = entries
-							.filter((entry) => !geoFrameInfo(entry)?.selfReferencing)
-							.map((entry) => gndSequenceForEntry(entry)?.stationStart)
-							.filter((value) => Number.isFinite(numberValue(value)));
-						const point = [tracksAtPoint[0].points.start, tracksAtPoint[0].points.end].find((candidate) => endpointKey(candidate) === key);
-						return { id: key, entries, point, stationRaw: stationRaws.length ? Math.min(...stationRaws) : null };
-					});
-				return [...gndClusters, ...detectLandXmlJunctions()]
-					.sort((a, b) => (a.stationRaw ?? Infinity) - (b.stationRaw ?? Infinity));
-			}
-
-			// landXML has no Streckennummer per Gleis, and its Weichen are not
-			// alignments of their own: the Gegenrichtungsgleis simply ends ON the
-			// Richtungsgleis where the line goes single-track (SCx_1720.xml:
-			// A101720L ends at km 223,067 on A101720R, 1 µm off the axis; A101720M
-			// starts at km 228,589 on it). So a junction is an endpoint of one Gleis
-			// lying on another Gleis of a different 7L side -- the km line and
-			// same-side continuations excluded -- and its station is the km of that
-			// point on the Gleis it touches. Parallel starts (L's start is 4,8 m
-			// from R) and the km line (2 m from R) stay outside the tolerance.
-			const LANDXML_JUNCTION_TOLERANCE_M = 0.5;
-			const LANDXML_JUNCTION_WINDOW_M = 250;
+			// A Weiche picked for the IVHW shows ±JUNCTION_WINDOW_M around its
+			// point, the Gradiente interpolated every 5 m (profile points lie
+			// hundreds of metres apart on a Strecke).
+			const JUNCTION_WINDOW_M = 250;
 			function distanceAndStationOnPolyline(polyline, point) {
 				let best = null;
 				for (let index = 0; index + 1 < polyline.length; index += 1) {
@@ -43122,30 +43078,6 @@ xlsx/xlsx.mjs:
 					}
 				}
 				return best;
-			}
-			function detectLandXmlJunctions() {
-				const gleise = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && entry.parser === "landXML" && sevenLineSide(entry) !== "kilometer");
-				const polylines = new Map();
-				const polylineOf = (entry) => {
-					if (!polylines.has(entry)) polylines.set(entry, referenceStationPolyline(entry, 5));
-					return polylines.get(entry);
-				};
-				const clusters = [];
-				for (const gleis of gleise) {
-					const ends = alignmentEndpoints(gleis);
-					if (!ends) continue;
-					for (const point of [ends.start, ends.end]) {
-						for (const other of gleise) {
-							if (other === gleis || sevenLineSide(other) === sevenLineSide(gleis)) continue;
-							const hit = distanceAndStationOnPolyline(polylineOf(other), point);
-							if (!hit || hit.distance > LANDXML_JUNCTION_TOLERANCE_M) continue;
-							const id = endpointKey(point);
-							if (clusters.some((cluster) => cluster.id === id)) continue;
-							clusters.push({ id, entries: [gleis, other], point, stationRaw: hit.station, window: LANDXML_JUNCTION_WINDOW_M });
-						}
-					}
-				}
-				return clusters;
 			}
 
 			// ---- ABLEITUNG · Topologie (gerechnet) --------------------------------
@@ -43177,6 +43109,20 @@ xlsx/xlsx.mjs:
 				const result = computeTopology();
 				topologyCache = { key, result };
 				return result;
+			}
+			// A topology node as the IVHW's junction: its Gleise, its point, its
+			// km on the axis (null when the axis is a Gleis -- VermEsn without a
+			// Kilometerlinie has no shared station for a window or a rail side).
+			function junctionFromNode(node) {
+				const axisIsGleis = deriveTopology().axisIsGleis;
+				return {
+					id: `topology-${node.id}`,
+					node,
+					entries: [...new Set(node.arms.map((arm) => arm.entry))],
+					point: node.point,
+					stationRaw: !axisIsGleis && node.km != null ? node.km : null,
+					window: !axisIsGleis && node.km != null ? JUNCTION_WINDOW_M : null,
+				};
 			}
 			function computeTopology() {
 				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && alignmentEndpoints(entry));
@@ -43300,36 +43246,14 @@ xlsx/xlsx.mjs:
 				outboxContent.replaceChildren();
 				outboxContent.className = "outbox-tree";
 				outboxContent.append(buildNewGroupControl(current));
-				const junctions = detectJunctionClusters();
-				if (junctions.length) {
-					const node = document.createElement("details");
-					node.className = "outbox-frame outbox-junctions";
-					node.open = junctions.some((junction) => junction.entries.includes(current));
-					const summary = document.createElement("summary");
-					summary.textContent = `Weichen (aus Geometrie erkannt) · ${junctions.length}`;
-					node.append(summary);
-					const list = document.createElement("div");
-					list.className = "outbox-junction-list";
-					for (const junction of junctions) {
-						const row = document.createElement("button");
-						row.type = "button";
-						row.className = "outbox-junction-row";
-						const label = junction.stationRaw != null ? `km ${station(junction.stationRaw).trim().split(" ")[0]}` : "Lage offen";
-						row.textContent = `${label} · ${junction.entries.length} Gleise`;
-						row.title = junction.entries.map((entry) => objectDisplayName(entry)).join(" · ");
-						row.addEventListener("click", () => activateJunctionCluster(junction));
-						list.append(row);
-					}
-					node.append(list);
-					outboxContent.append(node);
-				}
 				const topology = deriveTopology();
 				if (topology.gleise > 1) {
 					const count = (kind) => topology.nodes.filter((node) => node.kind === kind).length;
 					const node = document.createElement("details");
 					node.className = "outbox-frame outbox-junctions";
 					const summary = document.createElement("summary");
-					summary.textContent = `Topologie (gerechnet) · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen · ${count("Ende")} Enden · ${topology.edges.length} Kanten`;
+					node.open = Boolean(activeJunction?.node);
+					summary.textContent = `Weichen · Topologie (gerechnet) · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen · ${count("Ende")} Enden · ${topology.edges.length} Kanten`;
 					summary.title = `${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? " · km von der nächsten Kilometerlinie" : " · keine Kilometerlinie, Stationen der Gleise"}`;
 					node.append(summary);
 					const list = document.createElement("div");
@@ -43339,9 +43263,10 @@ xlsx/xlsx.mjs:
 						const row = document.createElement("button");
 						row.type = "button";
 						row.className = "outbox-junction-row";
-						row.textContent = `${item.kind} · ${item.km != null ? `km ${station(item.km).trim()}` : "km offen"} · ${item.names.join(" / ")}`;
+						row.textContent = `${item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"} · ${item.names.join(" / ")}`;
 						row.title = `Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}`;
-						row.addEventListener("click", () => selectObject(item.arms[0].entry, item.arms[0].entry.button));
+						if (activeJunction?.node === item) row.classList.add("outbox-junction-active");
+						row.addEventListener("click", () => activateJunctionCluster(junctionFromNode(item)));
 						list.append(row);
 					}
 					node.append(list);
