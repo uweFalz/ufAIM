@@ -72,6 +72,7 @@ export const en = {
 
 	panel_spot: "Objects",
 	panel_cockpit: "Cockpit",
+	panel_cockpit_import: "Review import",
 	panel_transition: "Transition Editor",
 	btn_alignment_editor: "Alignment Editor",
 	panel_bands: "Bands",

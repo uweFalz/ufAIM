@@ -72,6 +72,7 @@ export const de = {
 
 	panel_spot: "Objekte",
 	panel_cockpit: "Cockpit",
+	panel_cockpit_import: "Import prüfen",
 	panel_transition: "Transition Editor",
 	btn_alignment_editor: "Alignment-Editor",
 	panel_bands: "Bänder",
