@@ -299,21 +299,28 @@ test("a held phase that cannot move ends with a verdict, not with its budget", {
 	assert.ok(held, `phases ${lex.phases.map((p) => p.label)}`);
 	assert.notEqual(held.status, "max_iterations", "the phase names its failure instead of running out");
 	assert.notEqual(held.status, "qp_failed", "a subproblem that ran out was retried with a smaller region");
-	assert.ok(held.diagnostics.iterations < 400, `${held.diagnostics.iterations} iterations`);
+	// 130 iterations when this was built; 549 with the subproblem warm-started
+	// and its multipliers read correctly (AXTRAN2_QP_ACTIVE_SET_2026-09-11.md),
+	// which take a different path to the same collapse. What is held is that
+	// it is a verdict and not the budget.
+	assert.ok(held.diagnostics.iterations < 1000, `${held.diagnostics.iterations} iterations`);
 	const history = held.diagnostics.history ?? [];
 	assert.ok(history.some((e) => e.status === "trust_shrunk" && e.reason === "qp_failed") || history.some((e) => e.status === "no_step"), "the region was shrunk on the way");
 });
 
-test("a held phase that creeps is told so, not left to its budget - and closed under the default correction rule", { skip }, async () => {
+test("a held phase that once crept is either told so or closed, never left to its budget", { skip }, async () => {
 	// AHBI_Gl_033 under the strict order with the correction tried only on a
 	// rising violation: from iteration 40 the held phase took a full,
 	// uncorrected step every time, f fell by 5e-3 a step, the relative KKT
 	// residual sat at 1.4e-5 and the violation at 1.5e-4 fell by one part in
 	// ten thousand a step - the Maratos effect without its correction. The
-	// creep verdict reads that rate off twenty iterations, hands the point to
-	// the restoration twice, and reports the third. Under the default rule
-	// (the correction also when the step leaves more than a tenth of the
-	// violation) the same phase converges.
+	// creep verdict read that rate off twenty iterations, handed the point to
+	// the restoration twice, and reported the third. With the subproblem's
+	// bound multipliers read correctly (qp-multipliers.test.mjs) the same
+	// phase ends stationary at 51 under that rule and at 204 under the
+	// default; what this holds is that it never runs out, and that the
+	// creep, when it happens, is named. The verdict itself is measured in
+	// sqp-solver.test.mjs.
 	const { solveAlignmentLexicographic } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentLexicographicSolver.js", import.meta.url));
 	const { readdirSync } = await import("node:fs");
 	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
@@ -328,12 +335,13 @@ test("a held phase that creeps is told so, not left to its budget - and closed u
 	assert.notEqual(held.status, "max_iterations", "the phase names its state instead of running out");
 	assert.ok(held.diagnostics.iterations < 300, `${held.diagnostics.iterations} iterations`);
 	const history = held.diagnostics.history ?? [];
-	assert.ok(history.some((e) => e.status === "infeasible_stationary" && e.reason === "creep"), "the creep was named");
+	assert.ok(["converged", "stationary"].includes(held.status) || history.some((e) => e.status === "infeasible_stationary" && e.reason === "creep"),
+		`the phase closed or the creep was named: ${held.status}`);
 	const corrected = solveAlignmentLexicographic({
 		problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations: 1000,
 		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }],
 	});
 	const closed = corrected.phases.find((p) => p.label.endsWith("budget-active"));
 	assert.equal(corrected.status, "converged", `under the default correction rule: ${corrected.status}, held phase ${closed?.status}@${closed?.diagnostics?.iterations}`);
-	assert.ok(closed.diagnostics.iterations < 200, `${closed.diagnostics.iterations} iterations`);
+	assert.ok(closed.diagnostics.iterations < 300, `${closed.diagnostics.iterations} iterations`);
 });
