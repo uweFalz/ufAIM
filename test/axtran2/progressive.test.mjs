@@ -116,8 +116,14 @@ test("a stage that reaches the end pose exactly does not freeze the ladder", () 
 	const strict = solveAlignmentProgressive({ ...common, feasibilityTolerance: 0 });
 	const tolerant = solveAlignmentProgressive({ ...common });
 	const acceptedBy = (run) => run.stages.filter((s) => s.accepted).length;
-	assert.ok(acceptedBy(tolerant) > acceptedBy(strict),
+	// The freeze itself no longer reproduces: with the subproblem's bound
+	// multipliers read correctly (qp-multipliers.test.mjs) every stage reaches
+	// the end pose exactly and the strict ladder accepts all nine as well.
+	// What the tolerance guarantees is what is held: the tolerant ladder never
+	// accepts fewer, and it runs through.
+	assert.ok(acceptedBy(tolerant) >= acceptedBy(strict),
 		`tolerant accepted ${acceptedBy(tolerant)}, strict ${acceptedBy(strict)}`);
+	assert.equal(acceptedBy(tolerant), tolerant.stages.length, "every rung accepted");
 	assert.equal(tolerant.status, "converged");
 });
 

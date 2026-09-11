@@ -315,6 +315,16 @@ export function solveBoxQP({
 	blandAfter = 6,
 	damping = 1e-10,
 	tolerance = 1e-10,
+	// The previous subproblem's working set, as { atLower, atUpper, activeRows }
+	// in the declared coordinates (rows are inequality rows). The solve still
+	// starts at z0, which is what it can prove feasible, and makes one move
+	// towards the optimum of that working set: the target satisfies the
+	// equalities and so does z0, so every point between them does, and the
+	// ratio test on the bounds decides how far the move goes. Landing on it
+	// replaces the release-and-block walk that rebuilds the same set from
+	// nothing every iteration. A working set that no longer fits costs one
+	// free-block solve and leaves the walk where the ratio test stopped it.
+	warmStart = null,
 } = {}) {
 	const declaredN = c?.length ?? 0;
 	if (!declaredN || !Array.isArray(z0) || z0.length !== declaredN) {
@@ -347,6 +357,14 @@ export function solveBoxQP({
 		activeRows: working
 			? working.map((v, i) => (v ? i - declared : -1)).filter((i) => i >= 0)
 			: [],
+		// which side each pinned declared variable sits on, for the next warm start
+		activeLower: working && result.z
+			? working.map((v, i) => (v && i < declared && result.z[i] <= lower[i] + EPS ? i : -1)).filter((i) => i >= 0)
+			: [],
+		activeUpper: working && result.z
+			? working.map((v, i) => (v && i < declared && !(result.z[i] <= lower[i] + EPS) && result.z[i] >= upper[i] - EPS ? i : -1)).filter((i) => i >= 0)
+			: [],
+		warm: result.warm ?? null,
 	});
 
 	const lo = lower;
@@ -356,6 +374,39 @@ export function solveBoxQP({
 	const atLower = z.map((value, i) => value <= lo[i] + EPS);
 	const atUpper = z.map((value, i) => value >= up[i] - EPS);
 	const working = z.map((_, i) => atLower[i] || atUpper[i]);
+
+	let warm = null;
+	if (warmStart && typeof warmStart === "object") {
+		const pinnedValue = new Array(n).fill(null);
+		for (const index of warmStart.atLower ?? []) if (index >= 0 && index < declared && Number.isFinite(lo[index])) pinnedValue[index] = lo[index];
+		for (const index of warmStart.atUpper ?? []) if (index >= 0 && index < declared && Number.isFinite(up[index])) pinnedValue[index] = up[index];
+		for (const row of warmStart.activeRows ?? []) { const index = declared + row; if (row >= 0 && index < n) pinnedValue[index] = lo[index]; }
+		const pinnedCount = pinnedValue.filter((value) => value !== null).length;
+		if (pinnedCount > 0 || (warmStart.atLower ?? []).length + (warmStart.atUpper ?? []).length + (warmStart.activeRows ?? []).length === 0) {
+			const seeded = z.map((value, i) => (pinnedValue[i] === null ? value : pinnedValue[i]));
+			const target = solveFreeBlock({ H, c, A, b, z: seeded, free: pinnedValue.map((value) => value === null), damping });
+			if (target) {
+				const direction = target.map((value, i) => value - z[i]);
+				let alpha = 1;
+				let blocking = -1;
+				for (let i = 0; i < n; i++) {
+					if (direction[i] > EPS && Number.isFinite(up[i])) {
+						const limit = (up[i] - z[i]) / direction[i];
+						if (limit < alpha) { alpha = limit; blocking = i; }
+					} else if (direction[i] < -EPS && Number.isFinite(lo[i])) {
+						const limit = (lo[i] - z[i]) / direction[i];
+						if (limit < alpha) { alpha = limit; blocking = i; }
+					}
+				}
+				alpha = Math.max(0, Math.min(1, alpha));
+				if (alpha > EPS) {
+					z = z.map((value, i) => Math.min(Math.max(value + alpha * direction[i], lo[i]), up[i]));
+					for (let i = 0; i < n; i++) working[i] = z[i] <= lo[i] + EPS || z[i] >= up[i] - EPS;
+					warm = Object.freeze({ alpha, pinned: pinnedCount, blocking });
+				}
+			}
+		}
+	}
 
 	let iterations = 0;
 	let released = 0;
@@ -387,6 +438,14 @@ export function solveBoxQP({
 	// again at a zero-length step would loop forever. The point is stationary
 	// within its working set, which is the answer.
 	let lastReleased = -1;
+	// Zero-length steps in a row: a release that is blocked at once by another
+	// bound swaps two members of the working set without moving the point.
+	// Bland's rule bounds that in exact arithmetic; with the multipliers of a
+	// degenerate vertex it does not, measured on the lexicographic vertex tier
+	// as 101 releases and 98 blocks in 200 iterations at one and the same z.
+	// More such swaps than there are variables, with Bland already running,
+	// is the vertex: the point is reported stationary on its working set.
+	let zeroSteps = 0;
 
 	for (; iterations < maxIterations; iterations++) {
 		const free = working.map((isPinned) => !isPinned);
@@ -404,12 +463,48 @@ export function solveBoxQP({
 				for (let j = 0; j < n; j++) sum += H[i][j] * z[j];
 				gradient[i] = sum;
 			}
-			// remove the equality contribution so the bound multiplier is what remains
+			// The bound multipliers. The equality multipliers come from the free
+			// block's own stationarity, g_F + A_F' mu = 0 in least squares (exact
+			// at the free block's optimum, where g_F lies in the row space of
+			// A_F), and what a pinned variable's gradient component leaves after
+			// the equalities have had theirs is its bound multiplier:
+			// nu_P = -(g_P + A_P' mu). Projecting the whole gradient off the row
+			// space of A, over all n coordinates, was the test before this: it
+			// returns -(I - P) nu, the null-space part of nu, and where a pinned
+			// variable's column has a part in the row space that is not the
+			// multiplier. Measured on the lexicographic vertex tier: a subproblem
+			// reported solved with an objective 1.8e-6 above what another working
+			// set reaches, and answers at degenerate vertices that depended on
+			// the path taken to them.
+			//
+			// At a degenerate vertex the free columns do not determine mu: A_F
+			// is rank-deficient and the multipliers form a set, not a point,
+			// so a pinned variable's nu depends on which mu is picked. The
+			// pinned columns are given a millionth of the weight in the fit.
+			// Where A_F determines mu that is invisible; where it does not,
+			// the pinned columns decide, which is what the old test did with
+			// full weight. Measured on the strict lexicographic order, whose
+			// held phase lives at such vertices, with the exact fit alone:
+			// 129 -> 124 of 235.
 			if (A.length > 0) {
-				const { rowBasis } = orthogonalDecomposition(A, n);
-				for (const basis of rowBasis) {
-					const projection = dot(gradient, basis);
-					for (let i = 0; i < n; i++) gradient[i] -= projection * basis[i];
+				const freeIndex = [];
+				const pinnedIndex = [];
+				for (let i = 0; i < n; i++) (working[i] ? pinnedIndex : freeIndex).push(i);
+				const Af = A.map((row) => freeIndex.map((i) => row[i]));
+				const Ap = A.map((row) => pinnedIndex.map((i) => row[i]));
+				const pinnedWeight = 1e-6;
+				const gram = Af.map((rowA, r) => Af.map((rowB, q) => dot(rowA, rowB) + pinnedWeight * dot(Ap[r], Ap[q])));
+				const gramScale = Math.max(...gram.map((row, r) => Math.abs(row[r])), 1);
+				for (let r = 0; r < gram.length; r++) gram[r][r] += 1e-12 * gramScale;
+				const rhs = Af.map((row, r) => -row.reduce((sum, value, k) => sum + value * gradient[freeIndex[k]], 0)
+					- pinnedWeight * Ap[r].reduce((sum, value, k) => sum + value * gradient[pinnedIndex[k]], 0));
+				const mu = solveSpd(gram, rhs);
+				if (mu) {
+					for (let i = 0; i < n; i++) {
+						let sum = 0;
+						for (let r = 0; r < A.length; r++) sum += A[r][i] * mu[r];
+						gradient[i] += sum;
+					}
 				}
 			}
 			const bland = degenerate >= blandAfter;
@@ -427,7 +522,7 @@ export function solveBoxQP({
 				}
 			}
 			if (worst < 0) {
-				return finish({ ok: true, status: "solved", z, iterations, released, blocked }, working);
+				return finish({ ok: true, status: "solved", z, iterations, released, blocked, warm }, working);
 			}
 			working[worst] = false;
 			released++;
@@ -453,6 +548,11 @@ export function solveBoxQP({
 			}
 		}
 		alpha = Math.max(0, Math.min(1, alpha));
+		zeroSteps = alpha <= EPS ? zeroSteps + 1 : 0;
+		if (zeroSteps > n && degenerate >= blandAfter) {
+			if (blocking >= 0) working[blocking] = true;
+			return finish({ ok: true, status: "stationary_on_working_set", z, iterations, released, blocked, warm }, working);
+		}
 
 		if (alpha <= EPS && blocking === lastReleased && blocking >= 0) {
 			// Released, then immediately blocked again without moving - the
@@ -470,7 +570,7 @@ export function solveBoxQP({
 			working[blocking] = true;
 			if (degenerate >= blandAfter) {
 				return finish(
-					{ ok: true, status: "stationary_on_working_set", z, iterations, released, blocked },
+					{ ok: true, status: "stationary_on_working_set", z, iterations, released, blocked, warm },
 					working
 				);
 			}
@@ -499,7 +599,7 @@ export function solveBoxQP({
 	// An exhausted active set is not self-explanatory, and the caller cannot see
 	// the working set from outside. Report what it was doing when it ran out.
 	return finish({
-		ok: false, status: "max_iterations", z, iterations,
+		ok: false, status: "max_iterations", z, iterations, warm,
 		detail: Object.freeze({
 			variables: n,
 			declaredVariables: declared,

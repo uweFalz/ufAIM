@@ -118,6 +118,7 @@ export function solveAlignmentProblem({
 	filterCeiling,
 	filterSwitching,
 	correctionClosure,
+	qpWarmStart,
 	// A weak pseudo-observation on free lengths, as a geodetic adjustment
 	// carries one on a weakly determined parameter: { sigma, elements? } adds
 	// a residual (L - L0) / (sigma · L0) for every free length of the named
@@ -682,6 +683,7 @@ export function solveAlignmentProblem({
 		...(filterCeiling === undefined ? {} : { filterCeiling }),
 		...(filterSwitching === undefined ? {} : { filterSwitching }),
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
+		...(qpWarmStart === undefined ? {} : { qpWarmStart }),
 	});
 	const run = {
 		...scaledRun,

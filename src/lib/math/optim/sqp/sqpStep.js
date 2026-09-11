@@ -123,6 +123,8 @@ export function solveRelaxedQpStep({
 	// sign and an order of magnitude. The whole KKT residual of 54.4 sat in the
 	// single component that error produced, against a true residual of 5e-3.
 	pinnedVariables = null,
+	// the previous subproblem's working set (see solveBoxQP), or null
+	warmStart = null,
 	// Which inequality rows the PROBLEM holds at the current point, by their own
 	// residuals. Same contamination as the bounds if read from the subproblem:
 	// measured, a run that had reached a KKT residual of 6.0e-3 with rows 0 and 3
@@ -182,9 +184,7 @@ export function solveRelaxedQpStep({
 		dRhs.push(-g[i]);
 	}
 
-	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping, maxIterations: qpIterations });
-	if (!qp.ok) return { ok: false, status: qp.status, reason: qp.reason ?? null, detail: qp.detail ?? null };
-
+	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping, maxIterations: qpIterations, warmStart });
 	const d = qp.z.slice(0, n);
 	const delta = qp.z[n];
 
@@ -307,5 +307,8 @@ export function solveRelaxedQpStep({
 		predictedDecrease: curvature,
 		activeBounds: qp.activeBounds,
 		qpIterations: qp.iterations,
+		// what the next subproblem may start from
+		warmStart: Object.freeze({ atLower: qp.activeLower ?? [], atUpper: qp.activeUpper ?? [], activeRows: qp.activeRows ?? [] }),
+		qpWarm: qp.warm ?? null,
 	};
 }

@@ -140,6 +140,14 @@ export function solveSQP({
 	// is only tried when the violation rises. Twenty iterations tell that
 	// rate from the Newton closure of a converging run.
 	creepWindow = 20,
+	// Each subproblem starts from the working set the previous one ended with
+	// (solveBoxQP's warmStart). Measured on a 64-element points fit the
+	// active set was half of the solve's time, rebuilding much the same set
+	// from nothing at every iteration. On the corpus (235 files, both
+	// objectives and the strict order) the warm start halves the active-set
+	// iterations (536k -> 248k and 1.31M -> 583k) and takes 8 % and 18 % off
+	// the time, with the verdicts unchanged or better.
+	qpWarmStart = true,
 	filterSTheta = 1.1,
 	filterSF = 2.3,
 	filterDelta = 1,
@@ -236,6 +244,7 @@ export function solveSQP({
 	};
 	let relaxedStalls = 0;
 	const creep = [];
+	let warmStart = null;
 	let relaxedStallViolation = 0;
 	let restorations = 0;
 	let restorationSteps = 0;
@@ -318,6 +327,7 @@ export function solveSQP({
 		radius = Number.isFinite(trustRadius) ? trustRadius : Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
 		relaxedStalls = 0;
 		creep.length = 0;
+		warmStart = null;
 		previousMerit = null;
 		stalls = 0;
 		// the filter described the path to the verdict, not the path from here
@@ -348,6 +358,7 @@ export function solveSQP({
 			upper: x.map((value, i) => Math.min(up[i] - value, radius)),
 			relaxationWeight,
 			qpIterations,
+			warmStart: qpWarmStart ? warmStart : null,
 			pinnedVariables: heldByBounds(x),
 			activeInequalities: (state.g ?? []).reduce((held, value, j) => {
 				if (value > -activeTolerance * Math.max(1, Math.abs(value))) held.push(j);
@@ -355,6 +366,7 @@ export function solveSQP({
 			}, []),
 		});
 
+		if (step.ok) warmStart = step.warmStart ?? null;
 		if (!step.ok) {
 			// A subproblem that ran out is the box overreaching as much as a
 			// failed search is: at a degenerate vertex with an extra equality
@@ -442,6 +454,16 @@ export function solveSQP({
 			history.push({
 				iteration, status: "converged", kkt, violation: violation.total,
 				relativeKkt: kkt / gradientScale,
+				// the rows at the point that converged, not only their aggregate:
+				// the accepted entries carry the rows of the point they started
+				// from, and a last step that closes a row leaves that row's
+				// closure recorded nowhere else
+				inequalities: Object.freeze((state.g ?? []).map((value, j) => Object.freeze({
+					residual: value, violated: value > 0, multiplier: step.multipliers.inequality[j] ?? 0, weight: weights.inequality[j],
+				}))),
+				equalities: Object.freeze((state.h ?? []).map((value, j) => Object.freeze({
+					residual: value, multiplier: step.multipliers.equality[j] ?? 0, weight: weights.equality[j],
+				}))),
 			});
 			return {
 				ok: true, status: "converged", x, state, history,
@@ -783,6 +805,7 @@ export function solveSQP({
 			delta: step.delta,
 			radius,
 			qpIterations: step.qpIterations,
+			qpWarm: step.qpWarm ?? null,
 			gradientScale,
 			hessian: hybridMode,
 			qpStatus: step.qpStatus,
