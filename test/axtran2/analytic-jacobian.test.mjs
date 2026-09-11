@@ -235,3 +235,75 @@ test("an arc curvature reaches the transitions on either side", () => {
 		"the curvature of arc E2 already moves the exit of transition E1, which inherits it"
 	);
 });
+
+// ---------------------------------------------------------------- kink
+
+test("a kink turns the chain the way the geometry kernel turns, and moves nothing", async () => {
+	// A Knick is a heading jump of zero length between two elements; the
+	// corpus has 95 of them, all below 0.07 gon. The chain and the kernel have
+	// to agree on its sign, since the residuals are read off the kernel and
+	// the Jacobian off the chain. Poses along the whole alignment, and the
+	// end-pose derivatives of the elements downstream of the kink against
+	// central differences of the kernel.
+	const sw = await load("src/import/build/sparseWriter.js");
+	const startPose = { x: 12, y: -7, theta: 0.4 };
+	const build = (lengths, curvature) => {
+		const elements = [
+			{ id: "E0", type: "straight", length: lengths[0] },
+			{ id: "E1", type: "kink", length: 0, deltaDir: -0.0123, held: true },
+			{ id: "E2", type: "straight", length: lengths[1] },
+			{ id: "E3", type: "arc", length: lengths[2], curvature },
+		];
+		const raw = [
+			sw.fixed({ poseA: null, arcLength: lengths[0], curvature: 0 }),
+			// the turn as the factory reads it (the writer's kink() wants a vector the factory cannot read)
+			{ type: "transition", poseA: null, arcLength: 0, transType: "kink", deltaDir: -0.0123 },
+			sw.fixed({ poseA: null, arcLength: lengths[1], curvature: 0 }),
+			sw.fixed({ poseA: null, arcLength: lengths[2], curvature }),
+		];
+		const sparse = sw.enforceAlternation(raw).map((el, i) => ({ id: el.id ?? `S${i}`, ...el }));
+		const pose = { p: { x: startPose.x, y: startPose.y }, t: { x: Math.cos(startPose.theta), y: Math.sin(startPose.theta) } };
+		const real = makeAlignment2DFromSparse({ startPose: pose, sparse, ...deps }).alignment;
+		return { real, analytic: createAlignmentPoseJacobian({ elements, startPose, momentsFor: () => null }) };
+	};
+	const lengths = [80, 100, 120];
+	const curvature = 1 / 400;
+	const { real, analytic } = build(lengths, curvature);
+	assert.ok(Math.abs(analytic.arcLength - real.arcLength) < 1e-9, "arc length");
+	let worst = 0;
+	for (let i = 1; i <= 20; i++) {
+		const s = (real.arcLength * i) / 21;
+		const a = analytic.poseAt(s);
+		const b = poseOf(real, s);
+		worst = Math.max(worst, Math.hypot(a.x - b.x, a.y - b.y), Math.abs(a.theta - b.theta));
+	}
+	assert.ok(worst < 1e-8, `worst pose deviation ${worst}`);
+	// the turn is there: without it the end is somewhere else
+	const straightThrough = createAlignmentPoseJacobian({ elements: [
+		{ id: "E0", type: "straight", length: 80 }, { id: "E2", type: "straight", length: 100 }, { id: "E3", type: "arc", length: 120, curvature },
+	], startPose, momentsFor: () => null });
+	assert.ok(Math.hypot(straightThrough.endPose.x - analytic.endPose.x, straightThrough.endPose.y - analytic.endPose.y) > 1, "the kink moved the end");
+
+	const parameters = [{ elementIndex: 2, kind: "length" }, { elementIndex: 3, kind: "length" }, { elementIndex: 3, kind: "curvature" }];
+	const rows = analytic.endPoseJacobian(parameters);
+	parameters.forEach((parameter, index) => {
+		const step = parameter.kind === "length" ? 1e-4 : 1e-10;
+		const bump = (sign) => {
+			const l = [...lengths];
+			let k = curvature;
+			if (parameter.kind === "length") l[parameter.elementIndex === 2 ? 1 : 2] += sign * step;
+			else k += sign * step;
+			const { real: bumped } = build(l, k);
+			return poseOf(bumped, bumped.arcLength);
+		};
+		const plus = bump(1);
+		const minus = bump(-1);
+		const reference = { dx: (plus.x - minus.x) / (2 * step), dy: (plus.y - minus.y) / (2 * step), dtheta: (plus.theta - minus.theta) / (2 * step) };
+		const scale = Math.max(Math.abs(reference.dx), Math.abs(reference.dy), Math.abs(reference.dtheta), 1e-9);
+		for (const key of ["dx", "dy", "dtheta"]) {
+			assert.ok(Math.abs(rows[index][key] - reference[key]) / scale < 1e-6,
+				`${parameter.elementIndex}.${parameter.kind} ${key}: analytic ${rows[index][key]}, differenced ${reference[key]}`);
+		}
+	});
+});
+

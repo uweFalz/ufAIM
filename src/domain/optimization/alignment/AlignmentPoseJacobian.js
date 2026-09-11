@@ -115,6 +115,19 @@ function arcTransform(L, k) {
 	};
 }
 
+// A kink turns the heading by deltaDir and moves nothing: a rigid rotation
+// with no length and no curvature, so every derivative is zero and the turn
+// itself is a constant of the geometry, never a variable.
+function kinkTransform(deltaDir) {
+	return {
+		dx: 0, dy: 0, dtheta: deltaDir,
+		dxdL: 0, dydL: 0, dthetadL: 0,
+		dxdk: 0, dydk: 0, dthetadk: 0,
+		dxdkA: 0, dydkA: 0, dthetadkA: 0,
+		dxdkB: 0, dydkB: 0, dthetadkB: 0,
+	};
+}
+
 function straightTransform(L) {
 	return {
 		dx: L, dy: 0, dtheta: 0,
@@ -129,6 +142,7 @@ function straightTransform(L) {
  */
 function partialTransform(element, local, moments) {
 	if (element.type === "straight") return { dx: local, dy: 0, dtheta: 0 };
+	if (element.type === "kink") return { dx: 0, dy: 0, dtheta: element.deltaDir };
 	if (element.type === "arc") {
 		const t = arcTransform(local, element.curvature);
 		return { dx: t.dx, dy: t.dy, dtheta: t.dtheta };
@@ -181,8 +195,10 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 	// curvature of each element at its two ends; a transition inherits from its
 	// neighbours, which is the coupling that makes an arc curvature move three
 	// elements rather than one
+	// a kink carries no curvature: a transition beside one inherits the
+	// straight's answer
 	const curvatureOf = (element) =>
-		element.type === "arc" ? element.curvature : element.type === "straight" ? 0 : null;
+		element.type === "arc" ? element.curvature : element.type === "straight" || element.type === "kink" ? 0 : null;
 
 	const resolved = elements.map((element, index) => {
 		if (element.type !== "transition") {
@@ -201,6 +217,7 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 
 	const localOf = (element) => {
 		if (element.type === "straight") return straightTransform(element.length);
+		if (element.type === "kink") return kinkTransform(element.deltaDir ?? 0);
 		if (element.type === "arc") return arcTransform(element.length, element.curvature);
 		const moments = momentsFor(element.family);
 		return moments.element(element.length, element.entryCurvature, element.exitCurvature);

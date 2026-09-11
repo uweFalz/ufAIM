@@ -70,7 +70,9 @@ export const GRAVITY = 9.80665;
  */
 export const STANDARD_DYNAMIC_GAUGE = 1.5;
 
-export const ELEMENT_KINDS = Object.freeze(["straight", "arc", "transition"]);
+// a kink is a heading jump of zero length; it has no quantity of its own and
+// no floor, and is a kind so that a sequence carrying one can be declared
+export const ELEMENT_KINDS = Object.freeze(["straight", "arc", "transition", "kink"]);
 
 /**
  * Whether a profile's numbers have been confirmed against the rule book they

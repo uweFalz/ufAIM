@@ -445,7 +445,7 @@ test("the plain form declares literal limits and derives nothing", () => {
 });
 
 test("a design profile that names element kinds needs to be told them", () => {
-	assert.deepEqual([...ELEMENT_KINDS], ["straight", "arc", "transition"]);
+	assert.deepEqual([...ELEMENT_KINDS], ["straight", "arc", "transition", "kink"]);
 	assert.throws(
 		() => createAlignmentConstraintBuilder({
 			endPose: END_POSE, elementSequence: ["E0"],
