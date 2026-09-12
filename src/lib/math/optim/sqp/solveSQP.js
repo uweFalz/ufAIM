@@ -148,6 +148,21 @@ export function solveSQP({
 	// iterations (536k -> 248k and 1.31M -> 583k) and takes 8 % and 18 % off
 	// the time, with the verdicts unchanged or better.
 	qpWarmStart = true,
+	// A least-squares fit whose data leave directions undetermined walks a
+	// flat valley: the objective falls by 1e-7 to 1e-5 of itself a step for
+	// thousands of steps, the KKT residual oscillates and never drops
+	// (AXTRAN2_FLAT_VALLEY_FINDING.md). The gradient there lies in the
+	// determined directions - g = J'r is in the row space of J - so it is
+	// not small and never will be, and the model's own decrement along them
+	// overpromises by orders. The adjustment's own notion of done is the one
+	// that holds: every residual within its tolerance, the constraints met,
+	// the last step worth less than a thousandth, and directions the data do
+	// not determine. Then the solve ends "stationary" with the reason
+	// "within_tolerance". The caller hands in the determined subspace built
+	// from the state ({ basis, curvature }) and a state.residualMax in
+	// tolerance units; with a length prior every direction is determined
+	// and this never fires.
+	determinedSubspace = null,
 	filterSTheta = 1.1,
 	filterSF = 2.3,
 	filterDelta = 1,
@@ -275,6 +290,7 @@ export function solveSQP({
 	});
 	const history = [];
 	let previousMerit = null;
+	let previousF = null;
 	let stalls = 0;
 	const filter = [];
 	let filterCeilingValue = null;
@@ -329,6 +345,7 @@ export function solveSQP({
 		creep.length = 0;
 		warmStart = null;
 		previousMerit = null;
+		previousF = null;
 		stalls = 0;
 		// the filter described the path to the verdict, not the path from here
 		filter.length = 0;
@@ -437,11 +454,12 @@ export function solveSQP({
 			value
 			+ (state.Jh ?? []).reduce((sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
 			+ (state.Jg ?? []).reduce((sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
-		const kkt = Math.hypot(...lagrangeAt.map((value, i) => {
+		const reducedLagrange = lagrangeAt.map((value, i) => {
 			if (nearBound(x[i], lo[i]) && value > 0) return 0;
 			if (nearBound(x[i], up[i]) && value < 0) return 0;
 			return value;
-		}));
+		});
+		const kkt = Math.hypot(...reducedLagrange);
 
 		const gradientScale = Math.max(1, Math.hypot(...state.gradF));
 		// Every verdict of "we are done" has to answer the KKT question. A step
@@ -450,6 +468,34 @@ export function solveSQP({
 		// apart. Measured before this guard: a run reported merit_stationary at a
 		// KKT residual of 3.09, having shrunk its region to 8e-6.
 		const stationary = kkt <= stationarityTolerance * gradientScale;
+		// relative to the objective, and to one where the objective is below
+		// one: a least-squares fit in tolerance units under one is within noise
+		const lastDecrease = previousF === null ? null : (previousF - state.f) / Math.max(Math.abs(state.f), 1);
+		previousF = state.f;
+		let determinedCheck = null;
+		if (determinedSubspace && !stationary && violation.total <= feasible && lastDecrease !== null && Math.abs(lastDecrease) < 1e-3) {
+			const subspace = determinedSubspace(state);
+			const basis = subspace?.basis;
+			if (Array.isArray(basis) && basis.length > 0 && basis.length < n) {
+				const components = basis.map((direction) => direction.reduce((sum, weight, i) => sum + weight * reducedLagrange[i], 0));
+				const along = Math.hypot(...components);
+				// the Newton decrement of the Lagrangian in the data's own metric:
+				// what the remaining gradient can still buy, by the model's own
+				// accounting, along the directions the data determine
+				const decrement = 0.5 * components.reduce((sum, c, k) => sum + (c * c) / Math.max(subspace.curvature[k], 1e-300), 0);
+				determinedCheck = { determinedKkt: along, decrement, determined: basis.length, undetermined: n - basis.length, residualMax: state.residualMax ?? null };
+				if (Number.isFinite(state.residualMax) && state.residualMax <= 1) {
+					history.push({
+						iteration, status: "stationary", reason: "within_tolerance", kkt, violation: violation.total,
+						...determinedCheck, lastDecrease,
+					});
+					return {
+						ok: true, status: "stationary", reason: "within_tolerance", determined: basis.length, undetermined: n - basis.length,
+						x, state, history, iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
+					};
+				}
+			}
+		}
 		if (violation.total <= feasible && kkt <= kktTolerance * gradientScale) {
 			history.push({
 				iteration, status: "converged", kkt, violation: violation.total,
@@ -807,6 +853,8 @@ export function solveSQP({
 			qpIterations: step.qpIterations,
 			qpWarm: step.qpWarm ?? null,
 			gradientScale,
+			lastDecrease,
+			...(determinedCheck ?? {}),
 			hessian: hybridMode,
 			qpStatus: step.qpStatus,
 			activeRows: step.activeRows ?? [],

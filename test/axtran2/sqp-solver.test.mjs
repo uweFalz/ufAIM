@@ -323,6 +323,35 @@ test("a creep is reported as one: stationary, infeasible, and the violation not 
 	assert.ok(restored.history.some((entry) => entry.status === "restored"), "the restoration closed what the creep could not");
 });
 
+test("a least-squares fit within its tolerances, with directions its data do not determine, is done", () => {
+	// r = (x1 - 1, x2 - 3) in tolerance units, and x3 that no residual sees;
+	// f gets a slope 1e-3 along x3 from nowhere the data know about. Without a
+	// word from the caller the solve walks x3 until the budget runs out; told
+	// the determined subspace and the largest residual, it ends where the
+	// adjustment is done: every residual within tolerance, the constraints met,
+	// the last step worth less than a thousandth, and x3 undetermined.
+	const evaluate = ([x1, x2, x3]) => {
+		const r = [x1 - 1, x2 - 3];
+		return {
+			f: 0.5 * (r[0] * r[0] + r[1] * r[1]) + 1e-3 * x3,
+			gradF: [r[0], r[1], 1e-3],
+			residualJacobian: [[1, 0, 0], [0, 1, 0]],
+			residualMax: Math.max(Math.abs(r[0]), Math.abs(r[1])),
+		};
+	};
+	const determinedSubspace = () => ({ basis: [[1, 0, 0], [0, 1, 0]], curvature: [1, 1] });
+	const blind = solveSQP({ x0: [0, 0, 0], evaluate, maxIterations: 40 });
+	assert.equal(blind.status, "max_iterations", `without the subspace: ${blind.status}`);
+	const told = solveSQP({ x0: [0, 0, 0], evaluate, maxIterations: 40, determinedSubspace });
+	assert.equal(told.status, "stationary", `status ${told.status} ${told.reason ?? ""}`);
+	assert.equal(told.reason, "within_tolerance");
+	assert.equal(told.undetermined, 1);
+	assert.ok(Math.abs(told.x[0] - 1) < 1 && Math.abs(told.x[1] - 3) < 1, "every residual within its tolerance");
+	// a residual still outside its tolerance keeps the fit going
+	const outside = solveSQP({ x0: [0, 0, 0], evaluate: (x) => ({ ...evaluate(x), residualMax: 1.5 }), maxIterations: 40, determinedSubspace });
+	assert.equal(outside.status, "max_iterations", `outside tolerance: ${outside.status}`);
+});
+
 // ---------------------------------------------------------------- boundary
 
 test("the optimisation library stays free of domain and platform dependencies", async () => {

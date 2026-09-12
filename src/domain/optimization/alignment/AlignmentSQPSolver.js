@@ -119,6 +119,12 @@ export function solveAlignmentProblem({
 	filterSwitching,
 	correctionClosure,
 	qpWarmStart,
+	// The points fit ends "stationary" with the reason "within_tolerance" once
+	// every point is within its tolerance, the constraints are met, the last
+	// step gained less than a thousandth and the points leave directions
+	// undetermined (see determinedSubspaceOf and solveSQP's determinedSubspace);
+	// off, the flat valley runs to max_iterations.
+	undeterminedVerdict = true,
 	// A weak pseudo-observation on free lengths, as a geodetic adjustment
 	// carries one on a weakly determined parameter: { sigma, elements? } adds
 	// a residual (L - L0) / (sigma · L0) for every free length of the named
@@ -534,7 +540,34 @@ export function solveAlignmentProblem({
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
 		const gradF = parameterSpecs.map((_, j) =>
 			Jr.reduce((sum, row, i) => sum + row[j] * r[i], 0));
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		// the largest residual in tolerance units: at most one, every point is
+		// within its tolerance, which is the adjustment's own notion of done
+		const residualMax = r.reduce((worst, value) => Math.max(worst, Math.abs(value)), 0);
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, residualJacobian: Jr, residualMax, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+	}
+
+	/**
+	 * The directions the residuals determine, as an orthonormal basis in the
+	 * solver's scaled coordinates: the eigenvectors of J'J whose eigenvalue's
+	 * root - tolerances of residual norm per unit move - clears the
+	 * determinacy threshold. What solveSQP tests its Lagrangian against when
+	 * the fit stops gaining (its determinedSubspace). The same threshold as
+	 * the determinacy report, on the same matrix.
+	 */
+	function determinedSubspaceOf(state) {
+		const Jr = state.residualJacobian;
+		if (!Array.isArray(Jr) || Jr.length === 0) return null;
+		const n = codec.freeCount;
+		const A = Array.from({ length: n }, () => new Array(n).fill(0));
+		for (const row of Jr) {
+			for (let i = 0; i < n; i++) {
+				if (row[i] === 0) continue;
+				for (let j = 0; j < n; j++) A[i][j] += row[i] * row[j];
+			}
+		}
+		const { values, vectors } = symmetricEigen(A);
+		const kept = values.map((value, k) => k).filter((k) => Math.sqrt(Math.max(0, values[k])) > determinacyThreshold);
+		return { basis: kept.map((k) => vectors[k]), curvature: kept.map((k) => values[k]) };
 	}
 
 	/** J'J of the residual Jacobian: the Gauss-Newton curvature of ½‖r‖². */
@@ -684,6 +717,7 @@ export function solveAlignmentProblem({
 		...(filterSwitching === undefined ? {} : { filterSwitching }),
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
 		...(qpWarmStart === undefined ? {} : { qpWarmStart }),
+		...(objective === "points" && undeterminedVerdict ? { determinedSubspace: determinedSubspaceOf } : {}),
 	});
 	const run = {
 		...scaledRun,
