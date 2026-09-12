@@ -119,3 +119,60 @@ and it is the remaining open item here.
 - Only the double slip `Abzw-li_DKW503` still starts blocked on its floor for
   the restoration regression; the two Büchen turnouts start near enough to
   solve without a verdict.
+
+## 5. The verdict (2026-09-13)
+
+The open item of §3 is closed by naming what "done" means to an
+adjustment rather than to a gradient. The gradient of a least-squares
+objective lies in the row space of its Jacobian - g = J'r - so in the flat
+valley it sits in the directions the points *do* determine, and it is not
+small: measured on `3250_4-11_S` at iteration 400, the relative KKT
+residual was 4.5e-2 with the whole of it in the determined subspace. Nor
+does the model's own decrement help - the Gauss-Newton curvature along the
+weakest determined directions promised twelve times the objective at
+iteration 150. What holds is the adjustment's own rule:
+
+- every residual within its tolerance (`state.residualMax` ≤ 1, in
+  tolerance units, priors included),
+- the constraints met,
+- the last accepted step worth less than a thousandth of the objective,
+- and directions the points do not determine (the eigenvectors of J'J
+  under the determinacy threshold, computed in the loop from the state's
+  residual Jacobian).
+
+Then the solve ends `stationary` with the reason `within_tolerance`, the
+history entry carrying the determined and undetermined counts, and the
+determinacy report names the open directions. With every direction
+determined - a tight prior, a small problem - it never fires and the
+ordinary verdicts stand. Off with `undeterminedVerdict: false`.
+
+Measured on the corpus without the giants, points objective, solver
+defaults:
+
+| | ok / 235 | iterations | time | rms (ok rows) |
+|---|---|---|---|---|
+| before | 190 | 59 711 | 275 s | 0.124 |
+| **verdict** (default) | **235** | **7 940** | **97 s** | 0.137 |
+| verdict + Gauss-Newton | 235 | 3 220 | 35 s | 0.125 |
+
+All 45 runs that ran out or failed their search now end within tolerance;
+`3250_4-11_S` ends at 226 under BFGS and 91 under Gauss-Newton.
+
+The thirteen giants, points objective:
+
+| | ok / 13 | time | what fails |
+|---|---|---|---|
+| before | 0 | 2905 s | thirteen run out |
+| **verdict, BFGS** (default) | **9** | 2481 s | two collapse at the start (`infeasible_subproblem` at 55 and 75), two fail their search at 65 and 99 - `2631K139`, `2631R139`, `1280_026-049` twice |
+| verdict, Gauss-Newton | 7 | 2931 s | six run out with residuals outside tolerance (rms 0.16 to 0.83) |
+
+The strict lexicographic order, whose second tier is a points fit under
+the length budget: 123 → **125** of 235 with the verdict (787 → 400 s),
+120 with Gauss-Newton as well.
+
+Gauss-Newton solves three of BFGS's four giants and loses six others; BFGS
+stays the default, Gauss-Newton the app's setting for interactive sizes,
+where it is faster and tighter. The four giants BFGS loses fail before the
+valley - at the start, where the end pose is hundreds of metres off - and
+are the next question, not this one.
+
