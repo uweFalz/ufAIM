@@ -201,7 +201,14 @@ test("a length prior holds what the points cannot see, and says nothing else", {
 	const free = solveAlignmentProblem(common);
 	const held = solveAlignmentProblem({ ...common, lengthPrior: { sigma: 0.05 } });
 	assert.ok(held.ok, `with the prior: ${held.status} ${held.reason ?? ""}`);
-	assert.ok(held.diagnostics.iterations < free.diagnostics.iterations || !free.ok, "the prior reaches a verdict sooner");
+	// Both reach a verdict now: the fit ends where every residual is within
+	// its tolerance and says what the points left open ("within_tolerance"),
+	// with or without the prior - a prior of 5 % is a weak observation and
+	// leaves the weakest directions under the determinacy threshold. What the
+	// prior changes is where the lengths end up, below.
+	assert.ok(free.ok, `without the prior: ${free.status} ${free.diagnostics.reason ?? ""}`);
+	assert.equal(free.diagnostics.reason, "within_tolerance");
+	assert.ok((free.diagnostics.determinacy?.undetermined ?? 0) > 0, "the points leave directions open");
 	assert.ok(held.diagnostics.softResidualRms < 0.2, `rms ${held.diagnostics.softResidualRms}`);
 	assert.ok(held.diagnostics.endPoseDistance < 1e-6);
 	// a tight prior keeps the free lengths near their start - as near as the
@@ -345,3 +352,24 @@ test("a held phase that once crept is either told so or closed, never left to it
 	assert.equal(corrected.status, "converged", `under the default correction rule: ${corrected.status}, held phase ${closed?.status}@${closed?.diagnostics?.iterations}`);
 	assert.ok(closed.diagnostics.iterations < 300, `${closed.diagnostics.iterations} iterations`);
 });
+
+test("the flat valley ends where the adjustment is done: every point within tolerance, the rest undetermined", { skip }, async () => {
+	// posN/3250_4-11_S, 64 elements, 82 free quantities, 153 points: the
+	// file of AXTRAN2_FLAT_VALLEY_FINDING.md, which walked its valley for
+	// thousands of iterations without a verdict. It ends "stationary" with
+	// the reason "within_tolerance" now, at 226 iterations under BFGS and at
+	// 91 under Gauss-Newton, naming the 39 directions the points leave open.
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const sc = await createTraScenario(find("3250_4-11_S_CR0_260402.TRA", SAMPLES.pathname));
+	for (const hessian of ["gauss-newton", "bfgs"]) {
+		const run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points", maxIterations: 400, hessian });
+		assert.equal(run.status, "stationary", `${hessian}: ${run.status} ${run.diagnostics.reason ?? ""} @${run.diagnostics.iterations}`);
+		assert.equal(run.diagnostics.reason, "within_tolerance");
+		assert.ok(run.diagnostics.iterations < 300, `${hessian}: ${run.diagnostics.iterations} iterations`);
+		assert.ok(run.diagnostics.determinacy.undetermined > 0, "the undetermined directions are named");
+		assert.ok(run.diagnostics.softResidualRms < 1, `rms ${run.diagnostics.softResidualRms} in tolerance units`);
+	}
+});
+
