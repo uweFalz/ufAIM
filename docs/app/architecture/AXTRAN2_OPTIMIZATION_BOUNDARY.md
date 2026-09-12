@@ -138,20 +138,30 @@ Diagnostics may include:
 
 ## SOLVER STATUS
 
-Current SQP is experimental.
+Measured, not experimental (state of 2026-09-12; the block above it stood
+from before #22 and was stale).
 
 Known current state:
 
-- equality QP step works
-- one SQP step works
-- repeated SQP loop stays finite
-- convergence not yet reliable
-- line search / trust region missing
+- SQP with Powell's relaxation, a Fletcher-Leyffer filter with the
+  Wächter-Biegler switching condition, a box trust region, second-order
+  correction, BFGS or Gauss-Newton with a structured secant, restoration
+  on verdict (docs/app/architecture/AXTRAN2_*.md)
+- every end of a solve is a named verdict: converged, stationary,
+  infeasible_subproblem, restoration_failed, line_search_failed,
+  qp_failed, infeasible_stationary, max_iterations
+- the subproblem's active set answers the true optimum
+  (test/axtran2/qp-multipliers.test.mjs) and starts warm
+- measured on 248 as-built alignments (AXTRAN2_CORPUS_BASELINE_2026-09-10.md):
+  points 190, length 235, strict lexicographic order 123 of 235 without
+  the thirteen giants; the giants have no points verdict
+- interactive use is bounded at 96 free variables
+  (AlignmentAxtranEvidenceService)
+- the heritage intent, line by line: test/axtran2/heritage-lage.test.mjs
 
 Current solver status:
 
 ```txt
-experimental
-not production-ready
+measured
 proposal-only
 non-mutating
