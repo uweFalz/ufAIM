@@ -174,9 +174,100 @@
 			#workspace.mode-map {
 				grid-template-rows: minmax(0, 1fr);
 			}
-			#workspace.mode-crs {
+			#workspace.mode-crs,
+			#workspace.mode-links,
+			#workspace.mode-delivery {
 				grid-template-rows: minmax(0, 1fr);
 			}
+			#deliveryPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				grid-column: 2;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				background: Canvas;
+			}
+			#deliveryToolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.4rem 0.9rem;
+				align-items: baseline;
+				padding: 0.5rem 0.8rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
+				font-size: 0.84rem;
+			}
+			#deliveryNote { color: GrayText; }
+			#deliveryLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; font-size: 0.76rem; color: GrayText; }
+			.delivery-legend-item { position: relative; padding-left: 0.95rem; }
+			.delivery-legend-item::before { content: ""; position: absolute; left: 0; top: 0.35em; width: 0.62em; height: 0.5em; background: var(--delivery-color); }
+			.delivery-legend-item.delivery-junction::before { background: none; border-left: 0.31em solid transparent; border-right: 0.31em solid transparent; border-bottom: 0.55em solid var(--delivery-color); width: 0; height: 0; }
+			.delivery-alignment { --delivery-color: #2b6cb0; }
+			.delivery-profile { --delivery-color: #2f855a; }
+			.delivery-cant { --delivery-color: #b7791f; }
+			.delivery-staeq { --delivery-color: #6b7280; }
+			.delivery-junction { --delivery-color: #b8329a; }
+			#deliveryScroll { overflow: auto; padding: 0.4rem 0.6rem; }
+			.delivery-svg { display: block; }
+			.delivery-header { font: 600 11px system-ui, sans-serif; fill: CanvasText; }
+			.delivery-axis line { stroke: GrayText; stroke-width: 0.8; }
+			.delivery-axis text { font: 9.5px system-ui, sans-serif; fill: GrayText; }
+			.delivery-grid { stroke: color-mix(in srgb, GrayText 25%, transparent); stroke-width: 0.6; }
+			.delivery-row text { font: 11px system-ui, sans-serif; fill: CanvasText; cursor: pointer; }
+			.delivery-row.delivery-selected text { font-weight: 700; }
+			.delivery-row rect { cursor: pointer; }
+			.delivery-row .delivery-alignment { fill: var(--delivery-color); }
+			.delivery-row .delivery-profile { fill: var(--delivery-color); }
+			.delivery-row .delivery-cant { fill: var(--delivery-color); }
+			.delivery-row .delivery-staeq { fill: var(--delivery-color); }
+			.delivery-row .delivery-junction { fill: var(--delivery-color); cursor: pointer; }
+			.delivery-row .delivery-local { fill: color-mix(in srgb, #2b6cb0 55%, transparent); }
+			#linksPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				grid-column: 2;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				background: Canvas;
+			}
+			#linksToolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.4rem 0.9rem;
+				align-items: baseline;
+				padding: 0.5rem 0.8rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
+				font-size: 0.84rem;
+			}
+			#linksNote { color: GrayText; }
+			#linksLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; font-size: 0.76rem; color: GrayText; }
+			.links-legend-item { position: relative; padding-left: 0.95rem; }
+			.links-legend-item::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--link-color); }
+			#linksScroll { overflow: auto; padding: 0.4rem 0.6rem; }
+			.links-svg { display: block; }
+			.links-header { font: 600 11px system-ui, sans-serif; fill: GrayText; }
+			.links-node text { font: 11px system-ui, sans-serif; fill: CanvasText; cursor: pointer; }
+			.links-node.links-selected text { font-weight: 700; }
+			.links-node.links-unlinked text { fill: #b42318; }
+			.links-node.links-alignment rect { fill: #2b6cb0; }
+			.links-node.links-profile rect { fill: #2f855a; }
+			.links-node.links-cant rect { fill: #b7791f; }
+			.links-node.links-staEq rect { fill: #6b7280; }
+			.links-arc { fill: none; stroke: var(--link-color); stroke-width: 1.2; opacity: 0.55; cursor: pointer; }
+			.links-arc.links-arc-selected { stroke-width: 2.2; opacity: 1; }
+			.links-svg:has(.links-arc-selected) .links-arc:not(.links-arc-selected) { opacity: 0.16; }
+			.links-reason-identity { --link-color: #2b6cb0; }
+			.links-reason-relation { --link-color: #0f8a8a; }
+			.links-reason-file { --link-color: #3d9970; }
+			.links-reason-stem { --link-color: #7b5cbf; }
+			.links-reason-name { --link-color: #c77c02; }
+			.links-reason-projection { --link-color: #2f855a; }
+			.links-reason-strecke { --link-color: #4a6fa5; }
+			.links-reason-touch { --link-color: #8a8f98; }
+			.links-reason-user { --link-color: #b8329a; }
 			#mapPanel {
 				display: grid;
 				grid-template-rows: auto minmax(0, 1fr);
@@ -1361,6 +1452,8 @@
 				<div id="viewModes" class="hidden" aria-label="Ansicht">
 					<button type="button" data-mode="listing" aria-pressed="false">Listing</button>
 					<button type="button" data-mode="crs" aria-pressed="true">GIS</button>
+					<button type="button" data-mode="delivery" aria-pressed="false">Lieferung</button>
+					<button type="button" data-mode="links" aria-pressed="false">Verknüpfung</button>
 				</div>
 			</div>
 			<section id="dropzone">
@@ -1435,6 +1528,22 @@
 							<div class="box-head"><span>Outbox</span></div>
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
+						<div id="deliveryPanel" class="hidden">
+							<div id="deliveryToolbar">
+								<strong>Lieferung · Bild</strong>
+								<span id="deliveryNote"></span>
+								<div id="deliveryLegend"><span class="delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="delivery-legend-item delivery-profile">Gradiente</span><span class="delivery-legend-item delivery-cant">Überhöhung</span><span class="delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
+							</div>
+							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
+						</div>
+						<div id="linksPanel" class="hidden">
+							<div id="linksToolbar">
+								<strong>Verknüpfung · Bild</strong>
+								<span id="linksNote"></span>
+								<div id="linksLegend"></div>
+							</div>
+							<div id="linksScroll"><div id="linksContent"></div></div>
+						</div>
 						<div id="diagramPanel">
 							<div id="diagramResizeHandle" role="separator" aria-label="Diagrammhöhe ändern" aria-orientation="horizontal" tabindex="0"></div>
 							<div id="diagramToolbar">
@@ -38775,6 +38884,15 @@ xlsx/xlsx.mjs:
 			const mapFilterToggle = document.querySelector("#mapFilterToggle");
 			const mapFilterPanel = document.querySelector("#mapFilterPanel");
 			const diagramPanel = document.querySelector("#diagramPanel");
+			const linksPanel = document.querySelector("#linksPanel");
+			const linksContent = document.querySelector("#linksContent");
+			const linksNote = document.querySelector("#linksNote");
+			const linksLegend = document.querySelector("#linksLegend");
+			const linksScroll = document.querySelector("#linksScroll");
+			const deliveryPanel = document.querySelector("#deliveryPanel");
+			const deliveryContent = document.querySelector("#deliveryContent");
+			const deliveryNote = document.querySelector("#deliveryNote");
+			const deliveryScroll = document.querySelector("#deliveryScroll");
 			const diagramResizeHandle = document.querySelector("#diagramResizeHandle");
 			const diagram = document.querySelector("#diagram");
 			const diagramScroll = document.querySelector("#diagramScroll");
@@ -40862,7 +40980,7 @@ xlsx/xlsx.mjs:
 				diagramTitle.textContent = objectDisplayName(anchor);
 				diagramCode.textContent = "IVMG · IVHW · GWB";
 				diagramCode.title = "Trassenplan (Ril 883.5220) · Weichenhöhenplan (Ril 883.5240) · Geschwindigkeitswegeband (Ril 800.0110, Diagnose)";
-				diagramNote.textContent = missingKilometerLine
+				const mainNote = missingKilometerLine
 					? "Kilometerlinie fehlt · zweigleisige Streckenzuordnung unvollständig"
 					: outOfRangeNames.length
 					? `${outOfRangeNames.join(" / ")} für diesen Streckenabschnitt nicht vorhanden · Datei deckt nur andere Abschnitte ab`
@@ -40875,6 +40993,30 @@ xlsx/xlsx.mjs:
 							const speedBandCount = tracks.length - sevenLineBandCount;
 							return `${sevenLineBandCount} von 7 Bändern${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""} · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
 						})();
+				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
+			}
+
+			// A Gleis's own Gradiente/Überhöhung should cover its Krümmung; the
+			// delivery cuts them separately (Landshut W403-404: TRA km 74,970-75,058,
+			// GRA 75,008-75,099). Where a band starts later or ends earlier than the
+			// Krümmung by more than 5 m, the header says so instead of the diagram
+			// silently showing a shorter band. Overhang beyond the Krümmung is not
+			// reported -- it clips harmlessly.
+			function coverageNote(anchor) {
+				if (anchor?.item?.kind !== "alignment") return "";
+				const range = stationRangeForEntry(anchor);
+				if (!range) return "";
+				const own = referencingEntries(anchor);
+				const parts = [];
+				for (const [kind, label] of [["profile", "Gradiente"], ["cant", "Überhöhung"]]) {
+					const ownRange = stationRangeForEntry(own.find((candidate) => candidate.item.kind === kind));
+					if (!ownRange) continue;
+					const disjoint = ownRange.to < range.from || ownRange.from > range.to;
+					if (disjoint || ownRange.from > range.from + 5 || ownRange.to < range.to - 5) {
+						parts.push(`${label} ${station(ownRange.from).trim()} – ${station(ownRange.to).trim()} deckt Krümmung ${station(range.from).trim()} – ${station(range.to).trim()} ${disjoint ? "nicht" : "nur teilweise"}`);
+					}
+				}
+				return parts.join(" · ");
 			}
 
 			function interpolateSeriesAt(series, x) {
@@ -42484,6 +42626,10 @@ xlsx/xlsx.mjs:
 				dataPanel.classList.toggle("hidden", mode !== "listing");
 				reopenText.classList.toggle("hidden", mode === "listing" || !hasObjects);
 				mapPanel.classList.toggle("hidden", mode !== "crs");
+				linksPanel.classList.toggle("hidden", mode !== "links");
+				if (mode === "links" && hasObjects) renderLinks();
+				deliveryPanel.classList.toggle("hidden", mode !== "delivery");
+				if (mode === "delivery" && hasObjects) renderDelivery();
 				diagramPanel.classList.toggle("hidden", !hasObjects);
 				toggleText.setAttribute("aria-pressed", String(mode === "listing"));
 				for (const button of viewModeButtons) {
@@ -42575,6 +42721,8 @@ xlsx/xlsx.mjs:
 						button?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
 						outboxContent.querySelector(".outbox-object.selected")?.scrollIntoView?.({ block: "center", inline: "nearest" });
 					});
+					if (workspace.classList.contains("mode-links")) renderLinks();
+					if (workspace.classList.contains("mode-delivery")) renderDelivery();
 					recordPerformance("select-to-view", started, { kind: entry.item.kind });
 			}
 
@@ -44091,6 +44239,7 @@ xlsx/xlsx.mjs:
 					const pairs = landXmlStationMapping(target, referencePolyline);
 					if (pairs.length < 2) continue;
 					applyLandXmlStationMapping(target, pairs);
+					target.externalStationReference = reference.item.id;
 					// Only this alignment's own profile/cant -- the 7L closure would also
 					// hand over the other Gleis's objects and map them twice.
 					for (const sibling of referencingEntries(target)) {
@@ -44099,6 +44248,352 @@ xlsx/xlsx.mjs:
 						}
 					}
 				}
+			}
+
+			// ---- Main · Verknüpfung (Bild) ----------------------------------------
+			// Every link the viewer makes between two loaded objects, with the
+			// reason it was made -- so the user sees the linking itself, not only
+			// its result. Nothing here derives a new link; it collects the ones
+			// Main already holds: the source relations (GND PAD identity, landXML
+			// stationReference), the TRA/GRA file stem, the VermEsn file name,
+			// the station projection onto a Kilometerlinie, GND Streckennummern,
+			// the topology's touch points, and the user's own hand.
+			const LINK_REASONS = {
+				identity: "Identität (PAD, GND)",
+				relation: "Relation (landXML)",
+				file: "Selbe Datei (VermEsn)",
+				stem: "Dateistamm (TRA ↔ GRA)",
+				name: "Dateiname (Strecke, Seite)",
+				projection: "Projektion auf die Kilometerlinie",
+				strecke: "Streckennummer (GND)",
+				touch: "Berührpunkt (Topologie)",
+				user: "per Hand",
+			};
+			function deriveLinks() {
+				const entries = allViewerEntries();
+				const byId = new Map(entries.map((entry) => [entry.item.id, entry]));
+				const alignments = entries.filter((entry) => entry.item.kind === "alignment");
+				const edges = [];
+				const seen = new Set();
+				const add = (from, to, reason, detail = "") => {
+					if (!from || !to || from === to) return;
+					if (seen.has(`${from.item.id}|${to.item.id}|${reason}`) || seen.has(`${to.item.id}|${from.item.id}|${reason}`)) return;
+					seen.add(`${from.item.id}|${to.item.id}|${reason}`);
+					edges.push({ from, to, reason, detail });
+				};
+				for (const loaded of loadedFiles) {
+					for (const relation of loaded.relations) {
+						if (relation.type !== "stationReference") continue;
+						const from = byId.get(relation.fromId);
+						add(from, byId.get(relation.toId), from?.parser === "gndEdit" ? "identity" : from?.parser === "vermEsn" ? "file" : "relation", relation.method ?? relation.reason ?? "");
+					}
+				}
+				for (const relation of stemPairedRelations()) add(byId.get(relation.fromId), byId.get(relation.toId), "stem");
+				const isKm = (sequence) => ["0", "3"].includes(String(sequence?.strRikz ?? ""));
+				for (const entry of entries) {
+					const nameFrame = vermEsnNameFrame(entry);
+					if (nameFrame && nameFrame.side !== "kilometer") {
+						const km = alignments.find((candidate) => { const frame = vermEsnNameFrame(candidate); return frame?.side === "kilometer" && frame.track === nameFrame.track && (!nameFrame.segment || !frame.segment || frame.segment === nameFrame.segment); });
+						add(entry, km, "name", `Strecke ${nameFrame.track} · ${nameFrame.gleis ?? nameFrame.side}`);
+					}
+					if (entry.externalStationReference) add(entry, byId.get(entry.externalStationReference), "projection");
+					if (entry.frameEdit?.source === "user") {
+						const km = alignments.find((candidate) => candidate !== entry && sevenLineSide(candidate) === "kilometer" && geoFrameInfo(candidate)?.track === entry.frameEdit.track);
+						add(entry, km, "user", entry.frameEdit.direction ?? "");
+					}
+					const sequence = gndSequenceForEntry(entry);
+					if (sequence && entry.item.kind === "alignment" && !isKm(sequence)) {
+						const range = stationRangeForEntry(entry);
+						const km = alignments.find((candidate) => {
+							const other = gndSequenceForEntry(candidate);
+							if (!other || other.strecke !== sequence.strecke || !isKm(other)) return false;
+							const otherRange = stationRangeForEntry(candidate);
+							return !range || !otherRange || (otherRange.from <= range.to + 5 && otherRange.to >= range.from - 5);
+						});
+						add(entry, km, "strecke", `Strecke ${sequence.strecke}`);
+					}
+				}
+				for (const node of deriveTopology().nodes) {
+					if (!["Weiche", "Kreuzung", "Knoten"].includes(node.kind)) continue;
+					const members = [...new Set(node.arms.map((arm) => arm.entry))];
+					for (let i = 0; i < members.length; i += 1) for (let j = i + 1; j < members.length; j += 1) add(members[i], members[j], "touch", `${node.kind}${node.km != null ? ` · km ${station(node.km).trim()}` : ""}`);
+				}
+				const linked = new Set(edges.flatMap((edge) => [edge.from, edge.to]));
+				return { entries, edges, unlinked: entries.filter((entry) => !linked.has(entry)) };
+			}
+			// Row order keeps arcs short: by Strecke, inside it the Kilometerlinie
+			// first, then every Gleis followed by the objects that reference it
+			// directly, then what is left; objects without a Strecke last.
+			function linkRows(links) {
+				// landXML names its Strecke only in the desc ("Kilometrierungslinie
+				// 1720"); for the picture that is enough to group by.
+				const trackOf = (entry) => {
+					const frame = geoFrameInfo(entry);
+					if (frame && isValidRouteNumber(frame.track)) return `Strecke ${frame.track}`;
+					const anchor = entry.item.kind === "alignment" ? entry : relatedDiagramEntries(entry).anchor;
+					const fromDesc = /\b(\d{4})\b/.exec(landXmlAlignmentDesc(anchor))?.[1];
+					return fromDesc ? `Strecke ${fromDesc}` : "ohne Strecke";
+				};
+				const groups = groupBy(links.entries, trackOf);
+				const keys = [...groups.keys()].sort((a, b) => (a === "ohne Strecke") - (b === "ohne Strecke") || a.localeCompare(b, "de"));
+				const sideRank = { kilometer: 0, right: 1, left: 2, unknown: 3 };
+				const rows = [];
+				for (const key of keys) {
+					const members = groups.get(key);
+					rows.push({ header: key, count: members.length });
+					const placed = new Set();
+					const alignmentsHere = members.filter((entry) => entry.item.kind === "alignment")
+						.sort((a, b) => sideRank[sevenLineSide(a)] - sideRank[sevenLineSide(b)] || String(a.loaded.fileName).localeCompare(String(b.loaded.fileName), "de") || objectDisplayName(a).localeCompare(objectDisplayName(b), "de"));
+					for (const alignment of alignmentsHere) {
+						rows.push({ entry: alignment });
+						placed.add(alignment);
+						for (const own of referencingEntries(alignment)) {
+							if (members.includes(own) && !placed.has(own)) { rows.push({ entry: own }); placed.add(own); }
+						}
+					}
+					for (const entry of members) if (!placed.has(entry)) { rows.push({ entry }); placed.add(entry); }
+				}
+				return rows;
+			}
+			// Arc diagram: one row per object, one arc per link on the right,
+			// coloured by reason; the selected object's arcs stand out, the rest
+			// fade. Click on a row selects the object, click on an arc its Gleis.
+			function renderLinks() {
+				if (!loadedFiles.length) { linksContent.replaceChildren(); linksNote.textContent = ""; linksLegend.replaceChildren(); return; }
+				const started = performance.now();
+				const links = deriveLinks();
+				const rows = linkRows(links);
+				// Fit the panel: labels take what the arcs leave, arcs at least 70 px.
+				const panelWidth = Math.max(320, linksScroll.clientWidth - 24);
+				const ROW = 16, TOP = 8;
+				const ARC_MAX = Math.max(70, Math.min(150, panelWidth - 330 - 36));
+				const LABEL_W = Math.max(200, panelWidth - ARC_MAX - 36);
+				const LABEL_CHARS = Math.floor((LABEL_W - 30) / 6.1);
+				const WIDTH = LABEL_W + ARC_MAX + 36;
+				const height = TOP + rows.length * ROW + 8;
+				const svg = svgElement("svg", { class: "links-svg", width: WIDTH, height, viewBox: `0 0 ${WIDTH} ${height}` });
+				const yOf = new Map();
+				rows.forEach((row, index) => {
+					const y = TOP + index * ROW + ROW / 2;
+					if (row.header) {
+						const text = svgElement("text", { x: 4, y: y + 4, class: "links-header" });
+						text.textContent = `${row.header} · ${row.count}`;
+						svg.append(text);
+						return;
+					}
+					yOf.set(row.entry, y);
+					const unlinked = links.unlinked.includes(row.entry);
+					const group = svgElement("g", { class: `links-node links-${row.entry.item.kind}${row.entry === selectedEntry ? " links-selected" : ""}${unlinked ? " links-unlinked" : ""}` });
+					const mark = svgElement("rect", { x: 14, y: y - 4, width: 8, height: 8, rx: row.entry.item.kind === "alignment" ? 0 : 4 });
+					const text = svgElement("text", { x: 28, y: y + 4 });
+					const name = `${row.entry.loaded.fileName} · ${objectListName(row.entry)}`;
+					text.textContent = `${name.length > LABEL_CHARS ? `${name.slice(0, LABEL_CHARS - 1)}…` : name}${unlinked ? " · unverknüpft" : ""}`;
+					const title = svgElement("title");
+					title.textContent = `${name} · ${familyForEntry(row.entry)}${unlinked ? " · unverknüpft" : ""}`;
+					group.append(mark, text, title);
+					group.addEventListener("click", () => selectObject(row.entry, row.entry.button ?? null));
+					svg.append(group);
+				});
+				const counts = {};
+				const reasonOrder = Object.keys(LINK_REASONS);
+				for (const edge of links.edges) {
+					const y1 = yOf.get(edge.from);
+					const y2 = yOf.get(edge.to);
+					if (y1 == null || y2 == null) continue;
+					counts[edge.reason] = (counts[edge.reason] ?? 0) + 1;
+					const [a, b] = y1 < y2 ? [y1, y2] : [y2, y1];
+					const ry = (b - a) / 2;
+					const rx = Math.min(ry, ARC_MAX) + reasonOrder.indexOf(edge.reason) * 3;
+					const selected = edge.from === selectedEntry || edge.to === selectedEntry;
+					const path = svgElement("path", { d: `M ${LABEL_W} ${a} A ${rx} ${ry} 0 0 1 ${LABEL_W} ${b}`, class: `links-arc links-reason-${edge.reason}${selected ? " links-arc-selected" : ""}` });
+					const title = svgElement("title");
+					title.textContent = `${LINK_REASONS[edge.reason]}${edge.detail ? ` · ${edge.detail}` : ""}\n${objectListName(edge.from)} ↔ ${objectListName(edge.to)}`;
+					path.append(title);
+					path.addEventListener("click", () => selectObject(edge.to.item.kind === "alignment" ? edge.to : edge.from, null));
+					svg.append(path);
+				}
+				linksContent.replaceChildren(svg);
+				linksLegend.replaceChildren(...reasonOrder.filter((reason) => counts[reason]).map((reason) => {
+					const item = document.createElement("span");
+					item.className = `links-legend-item links-reason-${reason}`;
+					item.textContent = `${LINK_REASONS[reason]} · ${counts[reason]}`;
+					return item;
+				}));
+				linksNote.textContent = `${links.entries.length} Objekte · ${links.edges.length} Verknüpfungen · ${links.unlinked.length} unverknüpft`;
+				recordPerformance("links-render", started, { objects: links.entries.length });
+			}
+
+			// ---- Main · Lieferung (Bild) ------------------------------------------
+			// The whole delivery as one picture: per Strecke a km axis, per Trasse
+			// a bar where its Krümmung lies and thinner bars where its own
+			// Gradiente and Überhöhung cover it, Stationsgleichungen as ticks,
+			// Weichen from the topology as marks. Only objects that live in the
+			// Strecke's km frame sit on its axis (GND external stationing, VermEsn
+			// Kilometerlinie or projected, landXML Kilometrierungslinie or
+			// reconciled); everything with file-local stations is listed apart
+			// with a local axis, so a local 0-88 m never lands on km 0.
+			function deliveryTrackOf(entry) {
+				const referenced = entry.externalStationReference ? allViewerEntries().find((candidate) => candidate.item.id === entry.externalStationReference) : null;
+				if (referenced && referenced !== entry) return deliveryTrackOf(referenced);
+				const frame = geoFrameInfo(entry);
+				if (frame && isValidRouteNumber(frame.track)) return frame.track;
+				const anchor = entry.item.kind === "alignment" ? entry : relatedDiagramEntries(entry).anchor;
+				return /\b(\d{4})\b/.exec(landXmlAlignmentDesc(anchor))?.[1] ?? null;
+			}
+			function inKilometerFrame(entry) {
+				if (entry.externalStationReference) return true;
+				const frame = geoFrameInfo(entry);
+				if (frame?.source === "gnd") return !frame.selfReferencing;
+				if (entry.parser === "vermEsn") return vermEsnNameFrame(entry)?.side === "kilometer";
+				if (entry.parser === "landXML") return isLandXmlKilometrierungslinie(entry);
+				return false;
+			}
+			function deriveDelivery() {
+				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && stationRangeForEntry(entry));
+				const sideRank = { kilometer: 0, right: 1, left: 2, unknown: 3 };
+				// A row holds one Trasse -- or, for a GND Kilometerlinie delivered in
+				// pieces (Eifel 2631: 17), all pieces of one Strecke in a single row,
+				// because it is one line.
+				const rowFor = (entry) => {
+					const own = referencingEntries(entry);
+					return {
+						entry,
+						entries: [entry],
+						ranges: [stationRangeForEntry(entry)],
+						profiles: [stationRangeForEntry(own.find((candidate) => candidate.item.kind === "profile"))].filter(Boolean),
+						cants: [stationRangeForEntry(own.find((candidate) => candidate.item.kind === "cant"))].filter(Boolean),
+						staEqs: own.filter((candidate) => candidate.item.kind === "staEq").flatMap(stationEquationPositions),
+						junctions: [],
+					};
+				};
+				const mergeKilometerPieces = (rows) => {
+					const pieces = rows.filter((row) => sevenLineSide(row.entry) === "kilometer" && row.entry.parser === "gndEdit");
+					if (pieces.length < 2) return rows;
+					pieces.sort((a, b) => a.ranges[0].from - b.ranges[0].from);
+					const merged = {
+						entry: pieces[0].entry,
+						entries: pieces.map((row) => row.entry),
+						ranges: pieces.flatMap((row) => row.ranges),
+						profiles: pieces.flatMap((row) => row.profiles),
+						cants: pieces.flatMap((row) => row.cants),
+						staEqs: pieces.flatMap((row) => row.staEqs),
+						junctions: [],
+					};
+					return [merged, ...rows.filter((row) => !pieces.includes(row))];
+				};
+				const sortRows = (rows) => rows.sort((a, b) => sideRank[sevenLineSide(a.entry)] - sideRank[sevenLineSide(b.entry)] || a.ranges[0].from - b.ranges[0].from || objectDisplayName(a.entry).localeCompare(objectDisplayName(b.entry), "de"));
+				const groups = [];
+				const byTrack = groupBy(alignments.filter((entry) => inKilometerFrame(entry) && deliveryTrackOf(entry)), deliveryTrackOf);
+				for (const track of [...byTrack.keys()].sort()) {
+					const rows = sortRows(mergeKilometerPieces(byTrack.get(track).map(rowFor)));
+					const spans = rows.flatMap((row) => [...row.ranges, ...row.profiles, ...row.cants]);
+					groups.push({ label: `Strecke ${track}`, track, rows, from: Math.min(...spans.map((span) => span.from)), to: Math.max(...spans.map((span) => span.to)), local: false });
+				}
+				const local = alignments.filter((entry) => !(inKilometerFrame(entry) && deliveryTrackOf(entry)));
+				if (local.length) {
+					const rows = sortRows(local.map(rowFor));
+					groups.push({ label: "ohne Strecke · lokale Stationen je Trasse", track: null, rows, from: 0, to: Math.max(...rows.map((row) => row.ranges[0].to - row.ranges[0].from)), local: true });
+				}
+				const rowsByEntry = new Map(groups.flatMap((group) => group.rows.flatMap((row) => row.entries.map((entry) => [entry, row]))));
+				for (const node of deriveTopology().nodes) {
+					if (!["Weiche", "Kreuzung"].includes(node.kind) || node.km == null) continue;
+					for (const entry of new Set(node.arms.map((arm) => arm.entry))) {
+						const row = rowsByEntry.get(entry);
+						if (row && !row.junctions.includes(node)) row.junctions.push(node);
+					}
+				}
+				return groups;
+			}
+			// km with one decimal, and never "-0,0" for a Strecke that starts at 0.
+			function kmLabel(station) {
+				const value = Math.round(station / 100) / 10;
+				return (value === 0 ? 0 : value).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+			}
+			function niceStep(span, target = 8) {
+				const raw = Math.max(span / target, 1);
+				const power = 10 ** Math.floor(Math.log10(raw));
+				return [1, 2, 5, 10].map((factor) => factor * power).find((step) => step >= raw);
+			}
+			function renderDelivery() {
+				if (!loadedFiles.length) { deliveryContent.replaceChildren(); deliveryNote.textContent = ""; return; }
+				const started = performance.now();
+				const groups = deriveDelivery();
+				const panelWidth = Math.max(360, deliveryScroll.clientWidth - 24);
+				const LABEL_W = Math.min(220, Math.max(150, Math.round(panelWidth * 0.32)));
+				const PLOT_W = panelWidth - LABEL_W - 16;
+				const ROW = 22, HEADER = 22, AXIS = 18, GAP = 12, TOP = 6;
+				let height = TOP;
+				for (const group of groups) height += HEADER + AXIS + group.rows.length * ROW + GAP;
+				const svg = svgElement("svg", { class: "delivery-svg", width: panelWidth, height, viewBox: `0 0 ${panelWidth} ${height}` });
+				let y = TOP;
+				let junctionCount = 0;
+				for (const group of groups) {
+					const span = Math.max(group.to - group.from, 1);
+					const xAt = (station) => LABEL_W + Math.max(0, Math.min(1, (station - group.from) / span)) * PLOT_W;
+					const header = svgElement("text", { x: 4, y: y + 14, class: "delivery-header" });
+					header.textContent = `${group.label} · ${group.rows.length} Trassen${group.local ? "" : ` · km ${kmLabel(group.from)} – ${kmLabel(group.to)}`}`;
+					svg.append(header);
+					y += HEADER;
+					const axis = svgElement("g", { class: "delivery-axis" });
+					axis.append(svgElement("line", { x1: LABEL_W, x2: LABEL_W + PLOT_W, y1: y + AXIS - 4, y2: y + AXIS - 4 }));
+					const step = niceStep(span, Math.max(4, Math.floor(PLOT_W / 70)));
+					const rowsTop = y + AXIS;
+					const rowsBottom = rowsTop + group.rows.length * ROW;
+					for (let tick = Math.ceil(group.from / step) * step; tick <= group.to + 1e-6; tick += step) {
+						const x = xAt(tick);
+						axis.append(svgElement("line", { x1: x, x2: x, y1: y + AXIS - 8, y2: y + AXIS - 4 }));
+						const label = svgElement("text", { x, y: y + AXIS - 10, "text-anchor": "middle" });
+						label.textContent = group.local ? `${Math.round(tick)} m` : kmLabel(tick);
+						axis.append(label);
+						svg.append(svgElement("line", { x1: x, x2: x, y1: rowsTop, y2: rowsBottom, class: "delivery-grid" }));
+					}
+					svg.append(axis);
+					y += AXIS;
+					for (const row of group.rows) {
+						const offset = group.local ? row.ranges[0].from : 0;
+						const g = svgElement("g", { class: `delivery-row${row.entries.includes(selectedEntry) ? " delivery-selected" : ""}` });
+						const label = svgElement("text", { x: 4, y: y + 14 });
+						const name = `${objectListName(row.entry)}${row.entries.length > 1 ? ` · ${row.entries.length} Stücke` : ""} · ${row.entry.loaded.fileName}`;
+						const chars = Math.floor((LABEL_W - 10) / 6.1);
+						label.textContent = name.length > chars ? `${name.slice(0, chars - 1)}…` : name;
+						g.append(label);
+						const bar = (range, cls, top, h) => {
+							if (!range) return;
+							const x1 = xAt(range.from - offset), x2 = xAt(range.to - offset);
+							const rect = svgElement("rect", { x: x1, y: y + top, width: Math.max(1, x2 - x1), height: h, class: cls });
+							g.append(rect);
+						};
+						for (const range of row.profiles) bar(range, "delivery-profile", 4, 3);
+						for (const range of row.ranges) bar(range, group.local ? "delivery-alignment delivery-local" : "delivery-alignment", 8, 6);
+						for (const range of row.cants) bar(range, "delivery-cant", 15, 3);
+						for (const station of row.staEqs) g.append(svgElement("rect", { x: xAt(station - offset) - 1, y: y + 6, width: 2, height: 10, class: "delivery-staeq" }));
+						for (const node of row.junctions) {
+							if (group.local) continue;
+							const x = xAt(node.km);
+							if (node.km < group.from || node.km > group.to) continue;
+							junctionCount += 1;
+							const mark = svgElement("path", { d: `M ${x} ${y + 3} l 4 7 h -8 z`, class: "delivery-junction" });
+							const title = svgElement("title");
+							title.textContent = `${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}`;
+							mark.append(title);
+							mark.addEventListener("click", (event) => { event.stopPropagation(); activateJunctionCluster(junctionFromNode(node)); });
+							g.append(mark);
+						}
+						const title = svgElement("title");
+						const fmt = (ranges) => ranges.length ? ranges.map((range) => `${station(range.from).trim()} – ${station(range.to).trim()}`).join(", ") : "fehlt";
+						title.textContent = `${name}\nKrümmung ${fmt(row.ranges)}\nGradiente ${fmt(row.profiles)}\nÜberhöhung ${fmt(row.cants)}${row.staEqs.length ? `\n${row.staEqs.length} Stationsgleichung(en)` : ""}`;
+						g.append(title);
+						g.addEventListener("click", () => selectObject(row.entry, row.entry.button ?? null));
+						svg.append(g);
+						y += ROW;
+					}
+					y += GAP;
+				}
+				deliveryContent.replaceChildren(svg);
+				const trassen = groups.reduce((sum, group) => sum + group.rows.length, 0);
+				const missing = groups.flatMap((group) => group.rows).filter((row) => !row.profiles.length || !row.cants.length).length;
+				deliveryNote.textContent = `${groups.filter((group) => !group.local).length} Strecken · ${trassen} Trassen · ${missing} ohne Gradiente oder Überhöhung · ${junctionCount} Weichenmarken`;
+				recordPerformance("delivery-render", started, { trassen });
 			}
 
 			// The same reconciliation for VermEsn, across files: the Gleise of a
