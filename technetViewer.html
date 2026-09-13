@@ -457,6 +457,11 @@
 				font: 13px system-ui, sans-serif;
 			}
 			.diagram-muted { fill: GrayText; }
+			.diagram-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
+			.diagram-cursor-label { fill: #d0433f; pointer-events: none; }
+			#diagramCursor { color: #d0433f; font-variant-numeric: tabular-nums; }
+			.map-cursor circle { fill: #d0433f; stroke: #ffffff; stroke-width: 1.5; pointer-events: none; }
+			.delivery-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
 			.diagram-figure-strip { fill: color-mix(in srgb, CanvasText 7%, Canvas); }
 			.diagram-figure-title { font-weight: 650; font-size: 14px; }
 			.diagram-figure-sub { font-size: 11px; }
@@ -1550,6 +1555,7 @@
 								<strong id="diagramTitle">Diagramm</strong>
 								<span id="diagramCode" title=""></span>
 								<span id="diagramNote"></span>
+								<span id="diagramCursor" title="Cursor: eine Station in allen Bildern — Maus über IVMG, IVHW, GWB, Spurplan, Karte oder Lieferung"></span>
 								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
 								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
@@ -38897,6 +38903,7 @@ xlsx/xlsx.mjs:
 			const diagram = document.querySelector("#diagram");
 			const diagramScroll = document.querySelector("#diagramScroll");
 			const diagramTable = document.querySelector("#diagramTable");
+			const diagramCursor = document.querySelector("#diagramCursor");
 			const diagramTitle = document.querySelector("#diagramTitle");
 			const diagramCode = document.querySelector("#diagramCode");
 			const diagramNote = document.querySelector("#diagramNote");
@@ -40679,6 +40686,7 @@ xlsx/xlsx.mjs:
 				const height = top + rowCount * rowPitch + 44;
 				const width = FIGURE_WIDTH;
 				const figure = nestedFigure(target, y, height);
+				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: "axis" });
 				figure.append(svgElement("rect", { x: 0, y: 0, width, height, class: "diagram-band" }));
 				const xSpan = Math.max(xMax - xMin, 1);
 				const xAt = (km) => left + (km - xMin) / xSpan * (width - left - right);
@@ -40795,6 +40803,7 @@ xlsx/xlsx.mjs:
 				const top = 25;
 				const axisY = height - footnoteHeight - 12;
 				const figure = nestedFigure(target, y, height);
+				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: "diagram" });
 				for (let tick = 0; tick <= 5; tick += 1) {
 					const x = left + (width - left - right) * tick / 5;
 					figure.append(svgElement("line", { x1: x, x2: x, y1: top, y2: axisY - 23, class: "diagram-grid" }));
@@ -40858,9 +40867,187 @@ xlsx/xlsx.mjs:
 				return height;
 			}
 
+			// ---- Cursor · eine Station, alle Bilder --------------------------------
+			// One station, set by the mouse in any picture (IVMG, IVHW, GWB,
+			// Spurplan, GIS, Lieferung) and shown in all of them: a line in every
+			// figure that shares the frame, a marker on the map at that station of
+			// the selected Trasse, a line in the Lieferung row of its Strecke, and
+			// the values there in the diagram toolbar. Figures register their
+			// x-scale while drawing; nothing here derives a value, it reads the
+			// bands already drawn. Frames: "diagram" is the selected Trasse's own
+			// station, "axis" the km on the Spurplan's axis -- the same only when
+			// the Trasse lives in the Kilometerlinie's frame.
+			let cursorStation = null;
+			let cursorFigures = [];
+			let cursorContext = null;
+			let deliveryCursorGroups = [];
+			let deliverySvg = null;
+			function registerCursorFigure(figure) { cursorFigures.push(figure); }
+			function cursorFrameFits(frame) { return frame === "diagram" || (frame === "axis" && Boolean(cursorContext?.inKm)); }
+			function svgPointFromEvent(svg, event) {
+				const ctm = svg.getScreenCTM();
+				if (!ctm) return null;
+				const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(ctm.inverse());
+				return { x: point.x, y: point.y };
+			}
+			function cursorPolyline() {
+				if (!cursorContext?.anchor) return [];
+				cursorContext.polyline ??= referenceStationPolyline(cursorContext.anchor, 5);
+				return cursorContext.polyline;
+			}
+			function cursorMappedPolyline(mode) {
+				cursorContext.mapped ??= {};
+				cursorContext.mapped[mode] ??= cursorPolyline()
+					.map((point) => ({ station: point.station, mapped: mapPoint(point, cursorContext.anchor, mode) }))
+					.filter((item) => item.mapped);
+				return cursorContext.mapped[mode];
+			}
+			function cursorPointAt(station) {
+				const polyline = cursorPolyline();
+				for (let index = 0; index + 1 < polyline.length; index += 1) {
+					const a = polyline[index];
+					const b = polyline[index + 1];
+					if (a.station === b.station || (station - a.station) * (station - b.station) > 0) continue;
+					const t = (station - a.station) / (b.station - a.station);
+					return { easting: a.easting + t * (b.easting - a.easting), northing: a.northing + t * (b.northing - a.northing) };
+				}
+				return null;
+			}
+			function setCursor(station) {
+				cursorStation = Number.isFinite(station) ? station : null;
+				drawDiagramCursor();
+				drawMapCursor();
+				drawDeliveryCursor();
+				updateCursorReadout();
+			}
+			function cursorFromMap(x, y, tolerance, mode) {
+				if (!cursorContext?.anchor) return;
+				let best = null;
+				for (const item of cursorMappedPolyline(mode)) {
+					const distance = Math.hypot(item.mapped.x - x, item.mapped.y - y);
+					if (!best || distance < best.distance) best = { distance, station: item.station };
+				}
+				if (best && best.distance <= tolerance) setCursor(best.station);
+			}
+			function drawDiagramCursor() {
+				let layer = diagram.querySelector("#diagramCursorLayer");
+				if (!layer) {
+					layer = svgElement("g", { id: "diagramCursorLayer" });
+					diagram.append(layer);
+				}
+				layer.replaceChildren();
+				if (cursorStation == null) return;
+				let labelled = false;
+				for (const figure of cursorFigures) {
+					if (!cursorFrameFits(figure.frame) || cursorStation < figure.xMin || cursorStation > figure.xMax) continue;
+					const x = figure.left + (cursorStation - figure.xMin) / Math.max(figure.xMax - figure.xMin, 1e-9) * (FIGURE_WIDTH - figure.left - figure.right);
+					layer.append(svgElement("line", { x1: x, x2: x, y1: figure.y, y2: figure.y + figure.height, class: "diagram-cursor" }));
+					if (!labelled) {
+						const label = svgElement("text", { x: x + 4, y: figure.y + 12, class: "diagram-label diagram-cursor-label" });
+						label.textContent = `${cursorContext?.inKm ? "km" : "Station"} ${station(cursorStation).trim()}`;
+						layer.append(label);
+						labelled = true;
+					}
+				}
+			}
+			function drawMapCursor() {
+				const anchor = cursorContext?.anchor;
+				const point = cursorStation == null || !anchor ? null : cursorPointAt(cursorStation);
+				if (maplibreMap?.getSource?.("cursor")) {
+					const geographic = point ? geographicPoint(point, anchor) : null;
+					maplibreMap.getSource("cursor").setData({
+						type: "FeatureCollection",
+						features: geographic ? [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: [geographic.longitude, geographic.latitude] } }] : [],
+					});
+				}
+				multi2d.querySelector(".map-cursor")?.remove();
+				if (!point || !currentMapViewBox) return;
+				const mapped = mapPoint(point, anchor, activeMapMode);
+				if (!mapped) return;
+				const scale = currentMapViewBox.width / Math.max(multi2d.getBoundingClientRect().width, 1);
+				const marker = svgElement("g", { class: "map-cursor", transform: `translate(${mapped.x} ${mapped.y}) scale(${scale})` });
+				marker.append(svgElement("circle", { r: 6 }));
+				multi2d.append(marker);
+			}
+			function drawDeliveryCursor() {
+				if (!deliverySvg) return;
+				let layer = deliverySvg.querySelector("#deliveryCursorLayer");
+				if (!layer) {
+					layer = svgElement("g", { id: "deliveryCursorLayer" });
+					deliverySvg.append(layer);
+				}
+				layer.replaceChildren();
+				if (cursorStation == null || !cursorContext?.inKm || !cursorContext.track) return;
+				for (const group of deliveryCursorGroups) {
+					if (group.track !== cursorContext.track || cursorStation < group.from || cursorStation > group.to) continue;
+					const x = group.labelW + (cursorStation - group.from) / Math.max(group.to - group.from, 1) * group.plotW;
+					layer.append(svgElement("line", { x1: x, x2: x, y1: group.top - 4, y2: group.bottom, class: "delivery-cursor" }));
+				}
+			}
+			// Value of a band at x: linear between neighbours, or the left
+			// neighbour for step bands (speed); null across a gap or outside.
+			function bandValueAt(points, x, step) {
+				for (let index = 0; index + 1 < points.length; index += 1) {
+					const a = points[index];
+					const b = points[index + 1];
+					if (x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x) || b.gap) continue;
+					if (step || a.x === b.x) return a.y;
+					return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+				}
+				return null;
+			}
+			function cursorBandText(band, x) {
+				const cls = band.className ?? "";
+				if (cls.includes("curvature")) {
+					const kappa = bandValueAt(band.points, x, false);
+					if (kappa == null) return null;
+					return Math.abs(kappa) < 1e-6 ? "Gerade" : `r ${Math.round(1 / Math.abs(kappa))} m`;
+				}
+				if (cls.includes("height")) {
+					const z = bandValueAt(band.points, x, false);
+					return z == null ? null : `z ${z.toFixed(2)} m`;
+				}
+				if (cls.includes("cant")) {
+					const u = bandValueAt(band.points, x, false);
+					return u == null ? null : `u ${Math.round(u)} mm`;
+				}
+				if (cls.includes("speed")) {
+					const today = bandValueAt(band.points, x, true);
+					const proposal = band.overlay ? bandValueAt(band.overlay.points, x, true) : null;
+					return today == null ? null : `v ${Math.round(today)}${proposal != null && Math.round(proposal) !== Math.round(today) ? ` ┄ ${Math.round(proposal)}` : ""} km/h`;
+				}
+				return null;
+			}
+			function updateCursorReadout() {
+				if (cursorStation == null || !cursorContext?.bands) {
+					diagramCursor.textContent = "";
+					return;
+				}
+				const parts = [`${cursorContext.inKm ? "km" : "Station"} ${station(cursorStation).trim()}`];
+				const bySide = new Map();
+				for (const band of cursorContext.bands) {
+					const text = cursorBandText(band, cursorStation);
+					if (text == null) continue;
+					const side = String(band.label ?? "").split(" · ")[0];
+					if (!bySide.has(side)) bySide.set(side, []);
+					bySide.get(side).push(text);
+				}
+				for (const [side, values] of bySide) parts.push(`${side}: ${values.join(", ")}`);
+				diagramCursor.textContent = parts.join(" · ");
+			}
+			let cursorFrameRequest = 0;
+			function scheduleCursor(update) {
+				if (cursorFrameRequest) return;
+				cursorFrameRequest = requestAnimationFrame(() => {
+					cursorFrameRequest = 0;
+					update();
+				});
+			}
+
 			function renderDiagram(entry = selectedEntry) {
 				diagram.replaceChildren();
 				diagramTable.replaceChildren();
+				cursorFigures = [];
 				if (!entry) {
 					gwbBogenCsvButton.disabled = true;
 					gwbAbschnittCsvButton.disabled = true;
@@ -40942,6 +41129,10 @@ xlsx/xlsx.mjs:
 						? drawSpurplan(diagram, y, topology, spurplanRange[0], spurplanRange[1], entry)
 						: drawEmptyFigure(diagram, y, topology.gleise > 1 ? "kein Knoten an einer Achse · Spurplan nicht zeichenbar" : "ein Gleis allein hat keine Topologie");
 					diagram.setAttribute("viewBox", `0 0 ${FIGURE_WIDTH} ${y}`);
+					if (cursorContext?.anchor !== anchor) cursorContext = { anchor };
+					Object.assign(cursorContext, { bands, inKm: inKilometerFrame(anchor), track: deliveryTrackOf(anchor) });
+					drawDiagramCursor();
+					updateCursorReadout();
 					// The SVG now sizes itself from the viewBox at the panel's width, so
 					// the panel's auto height is the rendered height (+72px chrome),
 					// clamped by setDiagramHeight() to what the window can show; past
@@ -41257,6 +41448,7 @@ xlsx/xlsx.mjs:
 				const plotHeight = Math.max(60, ySpan * pxPerMeterY + 40);
 				const height = top + plotHeight + bottom;
 				const figure = nestedFigure(target, y, height);
+				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: activeJunction?.window ? "diagram" : null });
 
 				const yBase = top + plotHeight - 20;
 				const xAt = (x) => left + (x - xMin) * pxPerMeterX;
@@ -41642,6 +41834,7 @@ xlsx/xlsx.mjs:
 				if (!currentMapViewBox) return;
 				const { x, y, width, height } = currentMapViewBox;
 				multi2d.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+				drawMapCursor();
 			}
 
 			function fitMap() {
@@ -42456,6 +42649,20 @@ xlsx/xlsx.mjs:
 								"line-dasharray": [2, 2],
 							},
 						});
+						maplibreMap.addSource("cursor", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+						maplibreMap.addLayer({
+							id: "cursor-point",
+							type: "circle",
+							source: "cursor",
+							paint: { "circle-radius": 6, "circle-color": "#d0433f", "circle-stroke-color": "#ffffff", "circle-stroke-width": 1.5 },
+						});
+						maplibreMap.on("mousemove", (event) => scheduleCursor(() => {
+							const radius = 6378137;
+							const x = radius * event.lngLat.lng * Math.PI / 180;
+							const y = -radius * Math.log(Math.tan(Math.PI / 4 + event.lngLat.lat * Math.PI / 360));
+							const unitsPerPixel = 40075016.686 / (256 * 2 ** maplibreMap.getZoom());
+							cursorFromMap(x, y, 25 * unitsPerPixel, "crs");
+						}));
 						const selectMapFeature = (event) => {
 							const entry = geoEntryById.get(String(event.features?.[0]?.properties?.id));
 							if (entry) selectObject(entry, entry.button);
@@ -44518,6 +44725,7 @@ xlsx/xlsx.mjs:
 				if (!loadedFiles.length) { deliveryContent.replaceChildren(); deliveryNote.textContent = ""; return; }
 				const started = performance.now();
 				const groups = deriveDelivery();
+				deliveryCursorGroups = [];
 				const panelWidth = Math.max(360, deliveryScroll.clientWidth - 24);
 				const LABEL_W = Math.min(220, Math.max(150, Math.round(panelWidth * 0.32)));
 				const PLOT_W = panelWidth - LABEL_W - 16;
@@ -44539,6 +44747,7 @@ xlsx/xlsx.mjs:
 					const step = niceStep(span, Math.max(4, Math.floor(PLOT_W / 70)));
 					const rowsTop = y + AXIS;
 					const rowsBottom = rowsTop + group.rows.length * ROW;
+					if (!group.local) deliveryCursorGroups.push({ track: group.track, from: group.from, to: group.to, labelW: LABEL_W, plotW: PLOT_W, top: rowsTop, bottom: rowsBottom });
 					for (let tick = Math.ceil(group.from / step) * step; tick <= group.to + 1e-6; tick += step) {
 						const x = xAt(tick);
 						axis.append(svgElement("line", { x1: x, x2: x, y1: y + AXIS - 8, y2: y + AXIS - 4 }));
@@ -44590,6 +44799,17 @@ xlsx/xlsx.mjs:
 					y += GAP;
 				}
 				deliveryContent.replaceChildren(svg);
+				deliverySvg = svg;
+				svg.addEventListener("mousemove", (event) => scheduleCursor(() => {
+					const point = svgPointFromEvent(svg, event);
+					if (!point || !cursorContext?.inKm) return;
+					const group = deliveryCursorGroups.find((candidate) => candidate.track === cursorContext.track && point.y >= candidate.top - 4 && point.y <= candidate.bottom);
+					if (!group) return;
+					const ratio = (point.x - group.labelW) / group.plotW;
+					if (ratio < 0 || ratio > 1) return;
+					setCursor(group.from + ratio * (group.to - group.from));
+				}));
+				drawDeliveryCursor();
 				const trassen = groups.reduce((sum, group) => sum + group.rows.length, 0);
 				const missing = groups.flatMap((group) => group.rows).filter((row) => !row.profiles.length || !row.cants.length).length;
 				deliveryNote.textContent = `${groups.filter((group) => !group.local).length} Strecken · ${trassen} Trassen · ${missing} ohne Gradiente oder Überhöhung · ${junctionCount} Weichenmarken`;
@@ -45089,6 +45309,22 @@ xlsx/xlsx.mjs:
 				event.preventDefault();
 				zoomMap(event.deltaY > 0 ? 1.12 : 0.89, { x: event.clientX, y: event.clientY });
 			}, { passive: false });
+			multi2d.addEventListener("pointermove", (event) => scheduleCursor(() => {
+				if (mapDrag || !currentMapViewBox) return;
+				const point = svgPointFromEvent(multi2d, event);
+				if (!point) return;
+				const tolerance = 25 * currentMapViewBox.width / Math.max(multi2d.getBoundingClientRect().width, 1);
+				cursorFromMap(point.x, point.y, tolerance, activeMapMode);
+			}));
+			diagram.addEventListener("mousemove", (event) => scheduleCursor(() => {
+				const point = svgPointFromEvent(diagram, event);
+				if (!point) return;
+				const figure = cursorFigures.find((candidate) => cursorFrameFits(candidate.frame) && point.y >= candidate.y && point.y <= candidate.y + candidate.height);
+				if (!figure) return;
+				const ratio = (point.x - figure.left) / (FIGURE_WIDTH - figure.left - figure.right);
+				if (ratio < 0 || ratio > 1) return;
+				setCursor(figure.xMin + ratio * (figure.xMax - figure.xMin));
+			}));
 			multi2d.addEventListener("pointerdown", startMapPan);
 			multi2d.addEventListener("pointermove", moveMapPan);
 			multi2d.addEventListener("pointerup", endMapPan);
