@@ -176,9 +176,40 @@
 			}
 			#workspace.mode-crs,
 			#workspace.mode-links,
-			#workspace.mode-delivery {
+			#workspace.mode-delivery,
+			#workspace.mode-spurplan {
 				grid-template-rows: minmax(0, 1fr);
 			}
+			#spurplanPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				grid-column: 2;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				background: Canvas;
+			}
+			#spurplanToolbar {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.4rem 0.9rem;
+				align-items: baseline;
+				padding: 0.5rem 0.8rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
+				font-size: 0.84rem;
+			}
+			#spurplanNote { color: GrayText; }
+			#spurplanLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; font-size: 0.76rem; color: GrayText; }
+			.spurplan-legend-item { position: relative; padding-left: 0.95rem; }
+			.spurplan-legend-item::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 0.7em; height: 0.28em; background: var(--speed-color); }
+			#spurplanScroll { overflow: auto; padding: 0.4rem 0.6rem; }
+			.spurplan-svg { display: block; }
+			.spurplan-speed { stroke-width: 3; }
+			.spurplan-speed:hover { stroke-width: 5; }
+			.spurplan-halo { stroke: Highlight; stroke-width: 9; opacity: 0.35; pointer-events: none; }
+			.spurplan-stub { stroke: GrayText; stroke-width: 1.5; stroke-dasharray: 3 3; }
+			.spurplan-junction-label { font-size: 9.5px; fill: #b8329a; }
 			#deliveryPanel {
 				display: grid;
 				grid-template-rows: auto minmax(0, 1fr);
@@ -1457,6 +1488,7 @@
 				<div id="viewModes" class="hidden" aria-label="Ansicht">
 					<button type="button" data-mode="listing" aria-pressed="false">Listing</button>
 					<button type="button" data-mode="crs" aria-pressed="true">GIS</button>
+					<button type="button" data-mode="spurplan" aria-pressed="false">Spurplan</button>
 					<button type="button" data-mode="delivery" aria-pressed="false">Lieferung</button>
 					<button type="button" data-mode="links" aria-pressed="false">Verknüpfung</button>
 				</div>
@@ -1533,6 +1565,15 @@
 							<div class="box-head"><span>Outbox</span></div>
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
+						<div id="spurplanPanel" class="hidden">
+							<div id="spurplanToolbar">
+								<strong>Spurplan · Hauptbild</strong>
+								<span id="spurplanNote"></span>
+								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
+								<div id="spurplanLegend"></div>
+							</div>
+							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
+						</div>
 						<div id="deliveryPanel" class="hidden">
 							<div id="deliveryToolbar">
 								<strong>Lieferung · Bild</strong>
@@ -38895,6 +38936,12 @@ xlsx/xlsx.mjs:
 			const linksNote = document.querySelector("#linksNote");
 			const linksLegend = document.querySelector("#linksLegend");
 			const linksScroll = document.querySelector("#linksScroll");
+			const spurplanPanel = document.querySelector("#spurplanPanel");
+			const spurplanContent = document.querySelector("#spurplanContent");
+			const spurplanNote = document.querySelector("#spurplanNote");
+			const spurplanLegend = document.querySelector("#spurplanLegend");
+			const spurplanScroll = document.querySelector("#spurplanScroll");
+			const spurplanColoring = document.querySelector("#spurplanColoring");
 			const deliveryPanel = document.querySelector("#deliveryPanel");
 			const deliveryContent = document.querySelector("#deliveryContent");
 			const deliveryNote = document.querySelector("#deliveryNote");
@@ -40650,21 +40697,21 @@ xlsx/xlsx.mjs:
 			const FIGURE_WIDTH = 1000;
 			const FIGURE_TITLE_HEIGHT = 30;
 
-			function drawFigureTitle(target, y, title, subtitle) {
-				target.append(svgElement("rect", { x: 0, y, width: FIGURE_WIDTH, height: FIGURE_TITLE_HEIGHT, class: "diagram-figure-strip" }));
+			function drawFigureTitle(target, y, title, subtitle, width = FIGURE_WIDTH) {
+				target.append(svgElement("rect", { x: 0, y, width, height: FIGURE_TITLE_HEIGHT, class: "diagram-figure-strip" }));
 				const text = svgElement("text", { x: 12, y: y + 20, class: "diagram-label diagram-figure-title" });
 				text.textContent = title;
 				target.append(text);
 				if (subtitle) {
-					const sub = svgElement("text", { x: FIGURE_WIDTH - 30, y: y + 20, "text-anchor": "end", class: "diagram-label diagram-muted diagram-figure-sub" });
+					const sub = svgElement("text", { x: width - 30, y: y + 20, "text-anchor": "end", class: "diagram-label diagram-muted diagram-figure-sub" });
 					sub.textContent = subtitle;
 					target.append(sub);
 				}
 				return FIGURE_TITLE_HEIGHT;
 			}
 
-			function nestedFigure(target, y, height) {
-				const figure = svgElement("svg", { x: 0, y, width: FIGURE_WIDTH, height, viewBox: `0 0 ${FIGURE_WIDTH} ${height}` });
+			function nestedFigure(target, y, height, width = FIGURE_WIDTH) {
+				const figure = svgElement("svg", { x: 0, y, width, height, viewBox: `0 0 ${width} ${height}` });
 				target.append(figure);
 				return figure;
 			}
@@ -40675,8 +40722,15 @@ xlsx/xlsx.mjs:
 			// diagonal into the next row -- the classic Spurplan without inventing
 			// a layout. Each Gleis is named once, at its longest edge; the
 			// selected one is highlighted; a click on an edge selects its Gleis.
-			function drawSpurplan(target, y, topology, xMin, xMax, selected) {
-				const drawable = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null);
+			// options (the main Spurplan view uses them, the diagram's fourth
+			// figure keeps the defaults): axis -- draw only nodes on that axis and
+			// stubs where a Gleis leaves for another Strecke; width -- the panel's
+			// pixels instead of FIGURE_WIDTH; ticks; speeds -- Map edge → clipped
+			// GWB sections, drawn as coloured segments; cursorFrame; junctionLabels.
+			function drawSpurplan(target, y, topology, xMin, xMax, selected, options = {}) {
+				const onAxis = (node) => !options.axes || options.axes.has(node.axis);
+				const drawable = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null && onAxis(edge.from) && onAxis(edge.to));
+				const stubs = !options.axes ? [] : topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null && onAxis(edge.from) !== onAxis(edge.to));
 				const rows = topology.rows ?? [0, 0];
 				const rowCount = rows[1] - rows[0] + 1;
 				const rowPitch = 22;
@@ -40684,24 +40738,37 @@ xlsx/xlsx.mjs:
 				const left = 60;
 				const right = 30;
 				const height = top + rowCount * rowPitch + 44;
-				const width = FIGURE_WIDTH;
-				const figure = nestedFigure(target, y, height);
-				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: "axis" });
+				const width = options.width ?? FIGURE_WIDTH;
+				const tickCount = options.ticks ?? 5;
+				const figure = nestedFigure(target, y, height, width);
+				registerCursorFigure({ y, height, left, right, xMin, xMax, width, target, frame: options.cursorFrame === undefined ? "axis" : options.cursorFrame });
 				figure.append(svgElement("rect", { x: 0, y: 0, width, height, class: "diagram-band" }));
 				const xSpan = Math.max(xMax - xMin, 1);
 				const xAt = (km) => left + (km - xMin) / xSpan * (width - left - right);
 				const yAt = (row) => top + (rows[1] - row) * rowPitch + rowPitch / 2;
 				const axisY = height - 24;
-				for (let tick = 0; tick <= 5; tick += 1) {
-					const x = left + (width - left - right) * tick / 5;
+				for (let tick = 0; tick <= tickCount; tick += 1) {
+					const x = left + (width - left - right) * tick / tickCount;
 					figure.append(svgElement("line", { x1: x, x2: x, y1: top - 8, y2: axisY - 6, class: "diagram-grid" }));
 					const label = svgElement("text", { x, y: height - 8, "text-anchor": "middle", class: "diagram-label diagram-muted" });
-					label.textContent = station(xMin + xSpan * tick / 5).trim();
+					label.textContent = station(xMin + xSpan * tick / tickCount).trim();
 					figure.append(label);
 				}
 				figure.append(svgElement("line", { x1: left, x2: width - right, y1: axisY, y2: axisY, class: "diagram-axis" }));
 				const inRange = (edge) => Math.max(edge.from.km, edge.to.km) >= xMin && Math.min(edge.from.km, edge.to.km) <= xMax;
 				const visible = drawable.filter(inRange);
+				for (const edge of stubs) {
+					const here = onAxis(edge.from) ? edge.from : edge.to;
+					const there = here === edge.from ? edge.to : edge.from;
+					if (here.km < xMin || here.km > xMax) continue;
+					const x = xAt(here.km);
+					const direction = there.km >= here.km ? 1 : -1;
+					const stub = svgElement("line", { x1: x, x2: x + direction * 22, y1: yAt(here.row), y2: yAt(here.row), class: "spurplan-stub" });
+					const title = svgElement("title");
+					title.textContent = `${objectDisplayName(edge.entry)} → ${topology.axes?.[there.axis]?.label ?? "andere Achse"}`;
+					stub.append(title);
+					figure.append(stub);
+				}
 				const longestEdge = new Map();
 				for (const edge of visible) {
 					const length = Math.abs(edge.to.km - edge.from.km);
@@ -40713,15 +40780,34 @@ xlsx/xlsx.mjs:
 					const y1 = yAt(edge.from.row);
 					const y2 = yAt(edge.to.row);
 					const isSelected = edge.entry === selected;
+					const name = `${objectDisplayName(edge.entry)}${edge.part ? ` (${edge.part})` : ""} · ${edge.from.kind} → ${edge.to.kind}`;
+					const segments = options.speeds?.get(edge);
+					if (segments?.length) {
+						// Station in the Gleis's own frame → position along the edge.
+						const span = edge.stationTo - edge.stationFrom || 1;
+						const at = (station) => { const t = Math.max(0, Math.min(1, (station - edge.stationFrom) / span)); return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)]; };
+						if (isSelected) figure.append(svgElement("line", { x1, x2, y1, y2, class: "spurplan-halo" }));
+						for (const segment of segments) {
+							const [ax, ay] = at(segment.from);
+							const [bx, by] = at(segment.to);
+							const line = svgElement("line", { x1: ax, x2: bx, y1: ay, y2: by, class: "diagram-series spurplan-edge spurplan-speed", style: `stroke:${spurplanSpeedColor(segment.v)}` });
+							line.addEventListener("click", () => selectObject(edge.entry, edge.entry.button));
+							const title = svgElement("title");
+							title.textContent = `${name}\nv ${segment.v} km/h · ${station(segment.from).trim()} – ${station(segment.to).trim()}`;
+							line.append(title);
+							figure.append(line);
+						}
+						continue;
+					}
 					const line = svgElement("line", { x1, x2, y1, y2, class: `diagram-series spurplan-edge${isSelected ? " spurplan-selected" : ""}` });
 					line.addEventListener("click", () => selectObject(edge.entry, edge.entry.button));
 					const title = svgElement("title");
-					title.textContent = `${objectDisplayName(edge.entry)}${edge.part ? ` (${edge.part})` : ""} · ${edge.from.kind} → ${edge.to.kind}`;
+					title.textContent = name;
 					line.append(title);
 					figure.append(line);
 				}
 				for (const node of topology.nodes) {
-					if (node.km == null || node.km < xMin || node.km > xMax) continue;
+					if (node.km == null || node.km < xMin || node.km > xMax || !onAxis(node)) continue;
 					if (node.kind === "Weiche" || node.kind === "Kreuzung" || node.kind === "Knoten") {
 						const active = activeJunction?.node === node;
 						const dot = svgElement("circle", { cx: xAt(node.km), cy: yAt(node.row), r: active ? 6 : node.kind === "Weiche" ? 3 : 4, class: `spurplan-node spurplan-${node.kind.toLowerCase()}${active ? " spurplan-active" : ""}` });
@@ -40767,6 +40853,26 @@ xlsx/xlsx.mjs:
 						label.textContent = text;
 						figure.append(label);
 						break;
+					}
+				}
+				// Weichen named where the data names them (VermEsn: W403-404, DKW503,
+				// EKW410 as the TRA's name), else by km; same first-free-spot rule.
+				if (options.junctionLabels) {
+					const junctionName = (node) => node.names.find((candidate) => /^(W|DKW|EKW|ABW|IBW)\s*-?\d/i.test(candidate)) ?? `km ${station(node.km).trim()}`;
+					for (const node of topology.nodes) {
+						if (node.km == null || node.km < xMin || node.km > xMax || !onAxis(node) || (node.kind !== "Weiche" && node.kind !== "Kreuzung")) continue;
+						const text = junctionName(node);
+						const labelWidth = text.length * 5.4 + 4;
+						const x = xAt(node.km);
+						for (const baseline of [yAt(node.row) + 15, yAt(node.row) - 7]) {
+							const box = { x1: x - labelWidth / 2, x2: x + labelWidth / 2, y1: baseline - 9, y2: baseline + 2 };
+							if (overlaps(box) || box.x1 < left || box.x2 > width - right) continue;
+							placedBoxes.push(box);
+							const label = svgElement("text", { x, y: baseline, "text-anchor": "middle", class: "diagram-label spurplan-junction-label" });
+							label.textContent = text;
+							figure.append(label);
+							break;
+						}
 					}
 				}
 				return height;
@@ -40882,7 +40988,16 @@ xlsx/xlsx.mjs:
 			let cursorContext = null;
 			let deliveryCursorGroups = [];
 			let deliverySvg = null;
-			function registerCursorFigure(figure) { cursorFigures.push(figure); }
+			function registerCursorFigure(figure) { cursorFigures.push({ target: diagram, width: FIGURE_WIDTH, ...figure }); }
+			function cursorFromFigureEvent(svg, event) {
+				const point = svgPointFromEvent(svg, event);
+				if (!point) return;
+				const figure = cursorFigures.find((candidate) => candidate.target === svg && cursorFrameFits(candidate.frame) && point.y >= candidate.y && point.y <= candidate.y + candidate.height);
+				if (!figure) return;
+				const ratio = (point.x - figure.left) / (figure.width - figure.left - figure.right);
+				if (ratio < 0 || ratio > 1) return;
+				setCursor(figure.xMin + ratio * (figure.xMax - figure.xMin));
+			}
 			function cursorFrameFits(frame) { return frame === "diagram" || (frame === "axis" && Boolean(cursorContext?.inKm)); }
 			function svgPointFromEvent(svg, event) {
 				const ctm = svg.getScreenCTM();
@@ -40930,23 +41045,27 @@ xlsx/xlsx.mjs:
 				if (best && best.distance <= tolerance) setCursor(best.station);
 			}
 			function drawDiagramCursor() {
-				let layer = diagram.querySelector("#diagramCursorLayer");
-				if (!layer) {
-					layer = svgElement("g", { id: "diagramCursorLayer" });
-					diagram.append(layer);
-				}
-				layer.replaceChildren();
-				if (cursorStation == null) return;
-				let labelled = false;
-				for (const figure of cursorFigures) {
-					if (!cursorFrameFits(figure.frame) || cursorStation < figure.xMin || cursorStation > figure.xMax) continue;
-					const x = figure.left + (cursorStation - figure.xMin) / Math.max(figure.xMax - figure.xMin, 1e-9) * (FIGURE_WIDTH - figure.left - figure.right);
-					layer.append(svgElement("line", { x1: x, x2: x, y1: figure.y, y2: figure.y + figure.height, class: "diagram-cursor" }));
-					if (!labelled) {
-						const label = svgElement("text", { x: x + 4, y: figure.y + 12, class: "diagram-label diagram-cursor-label" });
-						label.textContent = `${cursorContext?.inKm ? "km" : "Station"} ${station(cursorStation).trim()}`;
-						layer.append(label);
-						labelled = true;
+				const targets = new Set([diagram, ...cursorFigures.map((figure) => figure.target)]);
+				for (const target of targets) {
+					if (!target.isConnected) continue;
+					let layer = target.querySelector(":scope > .cursor-layer");
+					if (!layer) {
+						layer = svgElement("g", { class: "cursor-layer" });
+						target.append(layer);
+					}
+					layer.replaceChildren();
+					if (cursorStation == null) continue;
+					let labelled = false;
+					for (const figure of cursorFigures) {
+						if (figure.target !== target || !cursorFrameFits(figure.frame) || cursorStation < figure.xMin || cursorStation > figure.xMax) continue;
+						const x = figure.left + (cursorStation - figure.xMin) / Math.max(figure.xMax - figure.xMin, 1e-9) * (figure.width - figure.left - figure.right);
+						layer.append(svgElement("line", { x1: x, x2: x, y1: figure.y, y2: figure.y + figure.height, class: "diagram-cursor" }));
+						if (!labelled) {
+							const label = svgElement("text", { x: x + 4, y: figure.y + 12, class: "diagram-label diagram-cursor-label" });
+							label.textContent = `${cursorContext?.inKm ? "km" : "Station"} ${station(cursorStation).trim()}`;
+							layer.append(label);
+							labelled = true;
+						}
 					}
 				}
 			}
@@ -41047,7 +41166,7 @@ xlsx/xlsx.mjs:
 			function renderDiagram(entry = selectedEntry) {
 				diagram.replaceChildren();
 				diagramTable.replaceChildren();
-				cursorFigures = [];
+				cursorFigures = cursorFigures.filter((figure) => figure.target !== diagram);
 				if (!entry) {
 					gwbBogenCsvButton.disabled = true;
 					gwbAbschnittCsvButton.disabled = true;
@@ -42837,6 +42956,8 @@ xlsx/xlsx.mjs:
 				if (mode === "links" && hasObjects) renderLinks();
 				deliveryPanel.classList.toggle("hidden", mode !== "delivery");
 				if (mode === "delivery" && hasObjects) renderDelivery();
+				spurplanPanel.classList.toggle("hidden", mode !== "spurplan");
+				if (mode === "spurplan" && hasObjects) renderSpurplanView();
 				diagramPanel.classList.toggle("hidden", !hasObjects);
 				toggleText.setAttribute("aria-pressed", String(mode === "listing"));
 				for (const button of viewModeButtons) {
@@ -42930,6 +43051,7 @@ xlsx/xlsx.mjs:
 					});
 					if (workspace.classList.contains("mode-links")) renderLinks();
 					if (workspace.classList.contains("mode-delivery")) renderDelivery();
+					if (workspace.classList.contains("mode-spurplan")) renderSpurplanView();
 					recordPerformance("select-to-view", started, { kind: entry.item.kind });
 			}
 
@@ -43553,7 +43675,11 @@ xlsx/xlsx.mjs:
 			// Bahnhof's width of it; a projection from farther away is not its km.
 			const TOPOLOGY_KM_MAX_DISTANCE_M = 60;
 			const TOPOLOGY_AXIS_MAX_DISTANCE_M = 150;
-			const TOPOLOGY_ROW_GAP_M = 2.5;
+			// Rows split where neighbouring offsets differ by more than this. 1,5 m:
+			// the Kilometerlinie of a two-track Strecke runs 2 m from either Gleis
+			// (Landshut 5500 S between R and L), so 2,5 m folded all three into one
+			// row; real parallel Gleise are 3,5 m apart or more, still one row each.
+			const TOPOLOGY_ROW_GAP_M = 1.5;
 			// The Outbox renders on every selection; the graph only changes with
 			// the loaded objects (166 Gleise take ~0,8 s), so it is cached per set.
 			let topologyCache = { key: "", result: null };
@@ -43581,10 +43707,18 @@ xlsx/xlsx.mjs:
 			function computeTopology() {
 				const alignments = allViewerEntries().filter((entry) => entry.item.kind === "alignment" && alignmentEndpoints(entry));
 				const gleise = alignments.filter((entry) => sevenLineSide(entry) !== "kilometer");
-				const kmLines = alignments.filter((entry) => sevenLineSide(entry) === "kilometer").map((entry) => referenceStationPolyline(entry, 5)).filter((polyline) => polyline.length > 1);
+				const kmLineAxes = alignments.filter((entry) => sevenLineSide(entry) === "kilometer").map((entry) => ({ entry, polyline: referenceStationPolyline(entry, 5) })).filter((axis) => axis.polyline.length > 1);
+				const kmLines = kmLineAxes.map((axis) => axis.polyline);
 				const polylines = new Map();
 				const longest = gleise.map((entry) => ({ entry, length: Math.abs(numberValue(stationRangeForEntry(entry)?.to) - numberValue(stationRangeForEntry(entry)?.from)) || 0 })).sort((a, b) => b.length - a.length)[0];
 				const references = kmLines.length ? kmLines : longest ? [referenceStationPolyline(longest.entry, 5)] : [];
+				// Which axis gave a node its km, so the main Spurplan can draw one
+				// band per Strecke instead of mixing every Strecke's km on one x.
+				const axisEntries = kmLines.length ? kmLineAxes.map((axis) => axis.entry) : longest ? [longest.entry] : [];
+				const axes = axisEntries.map((entry, index) => {
+					const track = deliveryTrackOf(entry);
+					return { index, entry, track, label: track && isValidRouteNumber(track) ? `Strecke ${track}` : `Achse ${objectDisplayName(entry)}` };
+				});
 				const polylineOf = (entry) => {
 					if (!polylines.has(entry)) polylines.set(entry, referenceStationPolyline(entry, 2));
 					return polylines.get(entry);
@@ -43660,13 +43794,14 @@ xlsx/xlsx.mjs:
 					// frame. offset is the signed distance from that axis (+ = left in
 					// its direction), the row grouping happens below.
 					let best = null;
-					for (const reference of references) {
+					references.forEach((reference, axisIndex) => {
 						const hit = distanceAndStationOnPolyline(reference, node.point);
-						if (hit && (!best || hit.distance < best.distance)) best = hit;
-					}
+						if (hit && (!best || hit.distance < best.distance)) best = { ...hit, axisIndex };
+					});
 					const within = best && best.distance <= (kmLines.length ? TOPOLOGY_KM_MAX_DISTANCE_M : TOPOLOGY_AXIS_MAX_DISTANCE_M);
 					node.km = within ? best.station : null;
 					node.offset = within ? best.side * best.distance : null;
+					node.axis = within ? best.axisIndex : null;
 					node.names = [...new Set(arms.map((arm) => objectDisplayName(arm.entry)))];
 				}
 				// Rows: node offsets sorted and split where a gap exceeds half a
@@ -43684,7 +43819,7 @@ xlsx/xlsx.mjs:
 					if (Math.abs(node.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
 				}
 				for (const node of placed) node.row -= axisRow;
-				return { nodes, edges, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: placed.length ? [Math.min(...placed.map((node) => node.row)), Math.max(...placed.map((node) => node.row))] : null };
+				return { nodes, edges, axes, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: placed.length ? [Math.min(...placed.map((node) => node.row)), Math.max(...placed.map((node) => node.row))] : null };
 			}
 
 			function activateJunctionCluster(junction) {
@@ -44630,6 +44765,107 @@ xlsx/xlsx.mjs:
 				recordPerformance("links-render", started, { objects: links.entries.length });
 			}
 
+			// ---- Spurplan · Hauptbild ---------------------------------------------
+			// The computed Gleis graph as the entry picture: one band per Strecke
+			// (per axis the topology used for km), the whole extent, edges coloured
+			// by the GWB (today or proposal, the same derivation the diagram
+			// uses, per Gleis and cached per input set), Weichen named where the
+			// data names them, a km grid, and the shared cursor. Click on an edge
+			// selects the Gleis, on a Weiche opens the IVHW.
+			const SPURPLAN_SPEED_CLASSES = [[40, "#b42318"], [60, "#d0433f"], [80, "#e08a2b"], [100, "#c9a800"], [120, "#7bb342"], [160, "#2f855a"], [Infinity, "#2b6cb0"]];
+			function spurplanSpeedColor(v) { return SPURPLAN_SPEED_CLASSES.find(([max]) => v <= max)[1]; }
+			const spurplanSpeedCache = new Map();
+			let spurplanSvg = null;
+			function gleisSpeedSections(entry, useProposal) {
+				const key = `${entry.item.id}|${useProposal}|${lineSpeedKmh()}|${regelbremswegM()}|${oberbauKey()}|${fahrzeugKey()}`;
+				if (spurplanSpeedCache.has(key)) return spurplanSpeedCache.get(key);
+				let sections = null;
+				try {
+					const range = stationRangeForEntry(entry);
+					const cant = referencingEntries(entry).find((candidate) => candidate.item.kind === "cant") ?? null;
+					const units = deriveGwbProposal(entry, cant, range);
+					sections = deriveSpeedSections(units, range, lineSpeedKmh(), useProposal)?.sections ?? null;
+				} catch (error) {
+					sections = null;
+				}
+				spurplanSpeedCache.set(key, sections);
+				return sections;
+			}
+			function edgeSpeedSegments(edge, useProposal) {
+				const sections = gleisSpeedSections(edge.entry, useProposal);
+				if (!sections) return null;
+				const low = Math.min(edge.stationFrom, edge.stationTo);
+				const high = Math.max(edge.stationFrom, edge.stationTo);
+				return sections
+					.map((section) => ({ from: Math.max(section.from, low), to: Math.min(section.to, high), v: section.v }))
+					.filter((segment) => segment.to > segment.from && Number.isFinite(segment.v));
+			}
+			function renderSpurplanView() {
+				if (!loadedFiles.length) { spurplanContent.replaceChildren(); spurplanNote.textContent = ""; spurplanLegend.replaceChildren(); return; }
+				const started = performance.now();
+				const topology = deriveTopology();
+				const coloring = spurplanColoring.value;
+				const panelWidth = Math.max(480, spurplanScroll.clientWidth - 20);
+				if (spurplanSvg) cursorFigures = cursorFigures.filter((figure) => figure.target !== spurplanSvg);
+				const svg = svgElement("svg", { class: "spurplan-svg" });
+				const speeds = new Map();
+				if (coloring !== "none") {
+					for (const edge of topology.edges) {
+						const segments = edgeSpeedSegments(edge, coloring === "proposal");
+						if (segments?.length) speeds.set(edge, segments);
+					}
+				}
+				const anchorTrack = selectedEntry ? deliveryTrackOf(selectedEntry) : null;
+				let y = 0;
+				let bands = 0;
+				let junctions = 0;
+				// One band per Strecke: a GND Kilometerlinie delivered in pieces
+				// (Eifel 2631: 17) is one axis here, not seventeen bands.
+				const bandsByLabel = new Map();
+				for (const axis of topology.axes ?? []) {
+					if (!bandsByLabel.has(axis.label)) bandsByLabel.set(axis.label, { label: axis.label, track: axis.track, axes: new Set() });
+					bandsByLabel.get(axis.label).axes.add(axis.index);
+				}
+				for (const axis of bandsByLabel.values()) {
+					const nodes = topology.nodes.filter((node) => axis.axes.has(node.axis) && node.km != null);
+					if (!nodes.length) continue;
+					const kms = nodes.map((node) => node.km);
+					const pad = Math.max(50, (Math.max(...kms) - Math.min(...kms)) * 0.02);
+					const xMin = Math.min(...kms) - pad;
+					const xMax = Math.max(...kms) + pad;
+					const here = nodes.filter((node) => node.kind === "Weiche" || node.kind === "Kreuzung").length;
+					junctions += here;
+					y += drawFigureTitle(svg, y, axis.label, `km ${kmLabel(xMin)} – ${kmLabel(xMax)} · ${nodes.length} Knoten · ${here} Weichen/Kreuzungen`, panelWidth);
+					y += drawSpurplan(svg, y, topology, xMin, xMax, selectedEntry, {
+						axes: axis.axes,
+						width: panelWidth,
+						ticks: Math.max(5, Math.floor((panelWidth - 90) / 110)),
+						speeds,
+						cursorFrame: axis.track && axis.track === anchorTrack ? "axis" : null,
+						junctionLabels: true,
+					});
+					y += 10;
+					bands += 1;
+				}
+				if (!bands) y += drawEmptyFigure(svg, y, topology.gleise > 1 ? "kein Knoten an einer Achse · Spurplan nicht zeichenbar" : "ein Gleis allein hat keine Topologie");
+				svg.setAttribute("viewBox", `0 0 ${panelWidth} ${y}`);
+				svg.setAttribute("width", panelWidth);
+				svg.setAttribute("height", y);
+				spurplanContent.replaceChildren(svg);
+				spurplanSvg = svg;
+				svg.addEventListener("mousemove", (event) => scheduleCursor(() => cursorFromFigureEvent(svg, event)));
+				drawDiagramCursor();
+				spurplanLegend.replaceChildren(...(coloring === "none" ? [] : SPURPLAN_SPEED_CLASSES.map(([max, color], index) => {
+					const item = document.createElement("span");
+					item.className = "spurplan-legend-item";
+					item.style.setProperty("--speed-color", color);
+					item.textContent = index === SPURPLAN_SPEED_CLASSES.length - 1 ? `> ${SPURPLAN_SPEED_CLASSES[index - 1][0]} km/h` : `≤ ${max}`;
+					return item;
+				})));
+				spurplanNote.textContent = `${bands} ${bands === 1 ? "Strecke" : "Strecken"} · ${topology.gleise} Gleise · ${junctions} Weichen/Kreuzungen · ${coloring === "none" ? "ohne Färbung" : `${speeds.size}/${topology.edges.length} Kanten nach GWB ${coloring === "proposal" ? "Vorschlag" : "heute"} gefärbt`}`;
+				recordPerformance("spurplan-render", started, { bands, edges: topology.edges.length });
+			}
+
 			// ---- Main · Lieferung (Bild) ------------------------------------------
 			// The whole delivery as one picture: per Strecke a km axis, per Trasse
 			// a bar where its Krümmung lies and thinner bars where its own
@@ -45224,7 +45460,8 @@ xlsx/xlsx.mjs:
 			for (const button of diagramPresentationButtons) {
 				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
-			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect]) control.addEventListener("change", () => renderDiagram());
+			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect]) control.addEventListener("change", () => { renderDiagram(); if (workspace.classList.contains("mode-spurplan")) renderSpurplanView(); });
+			spurplanColoring.addEventListener("change", () => renderSpurplanView());
 			gwbBogenCsvButton.addEventListener("click", () => downloadCsv(`gwb-boegen-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbBogenCsv(selectedEntry)));
 			gwbAbschnittCsvButton.addEventListener("click", () => downloadCsv(`gwb-abschnitte-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbAbschnittCsv(selectedEntry)));
 			for (const button of viewModeButtons) {
@@ -45316,15 +45553,7 @@ xlsx/xlsx.mjs:
 				const tolerance = 25 * currentMapViewBox.width / Math.max(multi2d.getBoundingClientRect().width, 1);
 				cursorFromMap(point.x, point.y, tolerance, activeMapMode);
 			}));
-			diagram.addEventListener("mousemove", (event) => scheduleCursor(() => {
-				const point = svgPointFromEvent(diagram, event);
-				if (!point) return;
-				const figure = cursorFigures.find((candidate) => cursorFrameFits(candidate.frame) && point.y >= candidate.y && point.y <= candidate.y + candidate.height);
-				if (!figure) return;
-				const ratio = (point.x - figure.left) / (FIGURE_WIDTH - figure.left - figure.right);
-				if (ratio < 0 || ratio > 1) return;
-				setCursor(figure.xMin + ratio * (figure.xMax - figure.xMin));
-			}));
+			diagram.addEventListener("mousemove", (event) => scheduleCursor(() => cursorFromFigureEvent(diagram, event)));
 			multi2d.addEventListener("pointerdown", startMapPan);
 			multi2d.addEventListener("pointermove", moveMapPan);
 			multi2d.addEventListener("pointerup", endMapPan);
