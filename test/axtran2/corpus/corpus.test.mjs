@@ -179,9 +179,12 @@ test("a turnout whose linearisation is blocked on a floor is restored, and then 
 		assert.ok(file, `${name} not found under test/samples`);
 		const sc = await createTraScenario(file);
 		for (const objective of ["accumulated-length", "points"]) {
-			const off = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200, restoration: "off" });
+			// the restoration is what this measures, so the Hessian is held to
+			// BFGS: under "auto" the solver would answer the blocked start with a
+			// Gauss-Newton attempt instead
+			const off = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200, restoration: "off", hessian: "bfgs" });
 			assert.equal(off.status, "infeasible_subproblem", `${name}/${objective} without restoration: ${off.status}`);
-			const on = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200 });
+			const on = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective, maxIterations: 200, hessian: "bfgs" });
 			assert.ok(on.ok, `${name}/${objective} with restoration: ${on.status} ${on.reason ?? ""}`);
 			assert.equal(on.diagnostics.restorations, 1);
 			assert.ok(on.diagnostics.restorationSteps <= 5, `${on.diagnostics.restorationSteps} restoration steps`);
@@ -371,5 +374,21 @@ test("the flat valley ends where the adjustment is done: every point within tole
 		assert.ok(run.diagnostics.determinacy.undetermined > 0, "the undetermined directions are named");
 		assert.ok(run.diagnostics.softResidualRms < 1, `rms ${run.diagnostics.softResidualRms} in tolerance units`);
 	}
+});
+
+test("a giant whose start is hundreds of metres off no longer collapses on stale feet", { skip }, async () => {
+	// eifel/2631R139, 110 elements, the end pose 686 m off at the start:
+	// BFGS from the identity took box-sized steps, the feet remembered from
+	// before them were read on a geometry that had moved by hundreds of
+	// metres, the residuals lied, the subproblem relaxed to nothing and two
+	// restorations later the run was a verdict at 55 with rms 3216. A foot
+	// whose station moved farther than Newton's window is forgotten now, and
+	// the same run ends within tolerance.
+	const { solveAlignmentProblem } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentSQPSolver.js", import.meta.url));
+	const sc = await createTraScenario(at("eifel/2631R139_Bestand_VR_DBREF03_A.TRA"));
+	const run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points", maxIterations: 1000 });
+	assert.ok(run.ok, `${run.status} ${run.diagnostics.reason ?? ""} @${run.diagnostics.iterations}`);
+	assert.equal(run.diagnostics.attempts.length, 1, "the first attempt holds");
+	assert.ok(run.diagnostics.softResidualRms < 0.2, `rms ${run.diagnostics.softResidualRms}`);
 });
 

@@ -279,6 +279,11 @@ export function solveAlignmentLexicographic({
 
 	const run = (objective, start, extraEqualities, label, iterations = maxIterations) => {
 		const result = solveAlignmentProblem({
+			// The phases run BFGS unless told otherwise: the solver's default
+			// "auto" retries a failed fit with other Hessians, and a held
+			// phase fails for what it is asked (a sliver at a vertex), not for
+			// its Hessian - measured, Gauss-Newton loses five of 235 there.
+			hessian: "bfgs",
 			...solver,
 			problem,
 			buildAlignment,

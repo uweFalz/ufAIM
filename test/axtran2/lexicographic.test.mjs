@@ -349,6 +349,22 @@ test("the profile the scenario declares carries its own provenance", () => {
 	assert.equal(profile.radiusBinding, "kinematics");
 });
 
+test("the solver's \"auto\" tries BFGS, Gauss-Newton and an eager BFGS in turn, and names the attempts", () => {
+	// A budget of one iteration fails every attempt, so all three are seen;
+	// a fit the first attempt carries records one.
+	const short = solveAlignmentProblem({ ...common, objective: "points", maxIterations: 1 });
+	assert.equal(short.ok, false);
+	assert.deepEqual(short.diagnostics.attempts.map((a) => `${a.hessian}/${a.restoration}`), ["bfgs/on-verdict", "gauss-newton/on-verdict", "bfgs/eager"]);
+	assert.ok(short.diagnostics.attempts.every((a) => a.status === "max_iterations"));
+	const fit = solveAlignmentProblem({ ...common, objective: "points", maxIterations: 300 });
+	assert.ok(fit.ok, fit.status);
+	assert.equal(fit.diagnostics.attempts.length, 1);
+	assert.equal(fit.diagnostics.hessian, "bfgs");
+	// asked for one Hessian, the solver tries that one
+	const one = solveAlignmentProblem({ ...common, objective: "points", maxIterations: 1, hessian: "gauss-newton" });
+	assert.deepEqual(one.diagnostics.attempts.map((a) => a.hessian), ["gauss-newton"]);
+});
+
 test("a tier held to the budget of a vertex says so at once", () => {
 	// Under the design limits the length optimum is a vertex of the feasible
 	// set: four transitions on their length floor, both arcs on the curvature
