@@ -176,3 +176,54 @@ where it is faster and tighter. The four giants BFGS loses fail before the
 valley - at the start, where the end pose is hundreds of metres off - and
 are the next question, not this one.
 
+## 6. The four that collapsed at the start (2026-09-13)
+
+Of the thirteen giants, four ended before the valley: `2631K139`,
+`2631R139`, `1280_026-049_RE` and `1280_026-049_KM`, the end pose 700 to
+1000 m off at the start, BFGS from the identity taking box-sized steps
+that the search cut to 3 %, the subproblem relaxed to nothing, two
+restorations and a verdict at 55 to 99 with rms in the thousands. Four
+settings on the four:
+
+| | BFGS | BFGS, eager restoration | Gauss-Newton | Gauss-Newton, eager |
+|---|---|---|---|---|
+| 2631K139 | collapse | collapse | 109 | 73 |
+| 2631R139 | collapse | collapse | 63 | collapse |
+| 1280_026-049_RE | collapse | 272 | runs out (rms 0.31) | 108 |
+| 1280_026-049_KM | collapse | 269 | 184 | 74 |
+
+Gauss-Newton carries the start and BFGS the valley (§2), and nothing
+carried both: Gauss-Newton's own BFGS phase, on the stiff J'J it switched
+from, crawled at 0.2 % of the objective a step on `6100_247-282` for nine
+hundred steps where BFGS from the identity finishes in 490; a lower
+switching threshold made it worse (pure Gauss-Newton: rms 1.5 and 12 at
+1000 on the two stall files), and a fresh identity at the switch
+(`hybridReset`, measured and dropped) lost the two Eifel giants again.
+
+**What the collapse was.** The retry of a failed attempt exposed it: the
+foot memory (`AlignmentPointProjection`) finds a point's foot by Newton
+from the station it had last time, and after the geometry had moved by
+hundreds of metres that station was on another part of the alignment
+entirely. The residuals lied, the Jacobian lied with them, and the BFGS
+start collapsed on its own early steps for the same reason. A foot is now
+remembered with the place the alignment had at its station; moved by
+more than Newton's window (200 m) it is forgotten and the point is
+scanned. With that alone, plain BFGS carries all four: 236, 322, 421 and
+299 iterations. At 50 m the check rescanned so often that the corpus
+points runs took 175 s against 97; at 200 m, 105 s.
+
+**And a retry for what remains.** `hessian: "auto"`, the solver's default
+now: BFGS, then Gauss-Newton, then BFGS with an eager restoration, stopping
+at the first verdict that is ok, the attempts named in the diagnostics.
+It costs nothing where the first attempt holds; it carried
+`1280_043-049_RE`, which BFGS alone still loses at 40. The lexicographic
+order's phases stay on BFGS: a held phase fails for what it is asked, not
+for its Hessian.
+
+Corpus without the giants, defaults: points 235 of 235 in 105 s, strict
+order 124 of 235 (from 125; chaotic at the vertex, as before). **The
+thirteen giants, points objective, defaults: 13 of 13**, 251 to 571
+iterations, 3801 s in all, of which `1280_043-049_RE` took 989 s across
+its three attempts. Every one of them ends `stationary` within tolerance,
+rms 0.113 to 0.155.
+
