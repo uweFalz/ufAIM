@@ -106,10 +106,20 @@ export function solveAlignmentProblem({
 	restoration,
 	restorationLimit,
 	eagerViolationRadii,
-	// "bfgs" (default) or "gauss-newton": for the points objective the
-	// Hessian is then J'J of the residuals, exact where the residuals are
-	// small and free of the identity start BFGS has to learn from
-	hessian = "bfgs",
+	// "bfgs", "gauss-newton" or "auto" (default). For the points objective
+	// the Gauss-Newton Hessian is J'J of the residuals, exact where the
+	// residuals are small and free of the identity start BFGS has to learn
+	// from. Neither carries every alignment: measured on the thirteen giants
+	// of the corpus, BFGS from the identity collapses at a start whose end
+	// pose is hundreds of metres off (four of thirteen, box-sized steps the
+	// search cuts to 3 %, a subproblem relaxed to nothing, two restorations
+	// and a verdict), and Gauss-Newton stalls in the valley with residuals
+	// outside tolerance (six of thirteen), its BFGS phase crawling on the
+	// stiff J'J it switched away from. "auto" tries them in the order the
+	// corpus ranks them - BFGS, then Gauss-Newton, then BFGS with an eager
+	// restoration - and stops at the first verdict that is ok; the attempts
+	// are in the diagnostics. It costs nothing where the first one holds.
+	hessian = "auto",
 	structuredStart,
 	hybridSwitch,
 	qpIterations,
@@ -155,7 +165,7 @@ export function solveAlignmentProblem({
 	if (determinacy !== "report" && determinacy !== "off") {
 		error("INVALID_OPTION", `determinacy must be "report" or "off", got ${JSON.stringify(determinacy)}`);
 	}
-	if (hessian !== "bfgs" && hessian !== "gauss-newton") {
+	if (hessian !== "bfgs" && hessian !== "gauss-newton" && hessian !== "auto") {
 		error("INVALID_OPTION", `hessian must be "bfgs" or "gauss-newton", got ${JSON.stringify(hessian)}`);
 	}
 	if (typeof buildAlignment !== "function") {
@@ -232,6 +242,7 @@ export function solveAlignmentProblem({
 
 	let builds = 0;
 	let jacobianEvaluations = 0;
+	let hessianMode = hessian === "auto" ? "bfgs" : hessian;
 	// set when a projector offered neither a longitudinal residual nor a
 	// distance, so the extrapolation check could not be made for at least one
 	// point
@@ -543,7 +554,7 @@ export function solveAlignmentProblem({
 		// the largest residual in tolerance units: at most one, every point is
 		// within its tolerance, which is the adjustment's own notion of done
 		const residualMax = r.reduce((worst, value) => Math.max(worst, Math.abs(value)), 0);
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, residualJacobian: Jr, residualMax, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, residualJacobian: Jr, residualMax, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	/**
@@ -686,7 +697,7 @@ export function solveAlignmentProblem({
 		const rAll = [...r, ...prior.r];
 		const f = 0.5 * rAll.reduce((sum, value) => sum + value * value, 0);
 		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * rAll[i], 0));
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessian === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	// The solve runs in scaled coordinates. A length in metres and a curvature
@@ -694,7 +705,16 @@ export function solveAlignmentProblem({
 	// identity Hessian against a gradient of that spread drives the QP into its
 	// bounds on every iteration. The scaling is by engineering magnitude, fixed
 	// before the solve, not by Jacobian norm.
-	const scaledRun = solveSQP({
+	// the attempts of "auto", or the one the caller asked for
+	const plan = hessian === "auto"
+		? [{ hessian: "bfgs", restoration }, { hessian: "gauss-newton", restoration }, { hessian: "bfgs", restoration: "eager" }]
+		: [{ hessian, restoration }];
+	const attempts = [];
+	let scaledRun = null;
+	for (const attempt of plan) {
+		hessianMode = attempt.hessian;
+		const restorationMode = attempt.restoration;
+		scaledRun = solveSQP({
 		x0: toScaled(x0, scales),
 		evaluate: scaleEvaluator(evaluate, scales),
 		lower: toScaled(lower, scales),
@@ -704,10 +724,10 @@ export function solveAlignmentProblem({
 		initialHessianScale: 1,
 		...(penaltyRule === undefined ? {} : { penaltyRule }),
 		...(penaltySafety === undefined ? {} : { penaltySafety }),
-		...(restoration === undefined ? {} : { restoration }),
+		...(restorationMode === undefined ? {} : { restoration: restorationMode }),
 		...(restorationLimit === undefined ? {} : { restorationLimit }),
 		...(eagerViolationRadii === undefined ? {} : { eagerViolationRadii }),
-		hessian: hessian === "gauss-newton" ? "provided" : "bfgs",
+		hessian: hessianMode === "gauss-newton" ? "provided" : "bfgs",
 		...(structuredStart === undefined ? {} : { structuredStart }),
 		...(hybridSwitch === undefined ? {} : { hybridSwitch }),
 		...(qpIterations === undefined ? {} : { qpIterations }),
@@ -718,7 +738,13 @@ export function solveAlignmentProblem({
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
 		...(qpWarmStart === undefined ? {} : { qpWarmStart }),
 		...(objective === "points" && undeterminedVerdict ? { determinedSubspace: determinedSubspaceOf } : {}),
-	});
+		});
+		attempts.push(Object.freeze({
+			hessian: attempt.hessian, restoration: attempt.restoration ?? "on-verdict",
+			status: scaledRun.status, reason: scaledRun.reason ?? null, iterations: scaledRun.iterations,
+		}));
+		if (scaledRun.ok) break;
+	}
 	const run = {
 		...scaledRun,
 		x: scaledRun.x ? unscale(scaledRun.x, scales) : null,
@@ -794,6 +820,8 @@ export function solveAlignmentProblem({
 			overlay: run.x ? codec.decode(run.x) : null,
 		}),
 		diagnostics: Object.freeze({
+			hessian: hessianMode,
+			attempts: Object.freeze(attempts),
 			iterations: run.iterations,
 			determinacy: determinacyReported,
 			alignmentBuilds: builds,
