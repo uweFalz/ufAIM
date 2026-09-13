@@ -236,7 +236,7 @@ export async function createTraScenario(source, {
 	// longitudinal offset from where it was last time, on the same production
 	// geometry; the full scan remains for the first time and for any foot that
 	// leaves its window or an end.
-	const feet = createFootMemory({ samples: 400, refineSteps: 40 });
+	const feet = createFootMemory({ samples: 400, refineSteps: 40, ...(process.env.STALE ? { staleDistance: Number(process.env.STALE) } : {}) });
 	const buildAlignment = (overlay) => {
 		const elements = materialise(overlay);
 		const alignment = buildProductionAlignment({ elements, startPose, deps });
