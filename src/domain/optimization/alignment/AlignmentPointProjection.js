@@ -40,21 +40,40 @@ export function newtonFoot(alignment, x, y, s0, { window = 200, tolerance = 1e-9
  * A projector with memory, one per solve: `project(alignment, x, y)` answers
  * like `alignment.world2Track(x, y)` and remembers each point's foot.
  *
- * @param {{samples?: number, refineSteps?: number}} [scan]  the full scan's resolution
+ * A memory is only as good as the geometry it was made on. A foot is
+ * remembered with the place the alignment had at its station; when the
+ * alignment has moved that place by more than staleDistance since, the
+ * memory says nothing about where the foot is now and the full scan runs.
+ * Measured on 2631R139: after a first attempt had collapsed the geometry,
+ * a second attempt from the same start read every foot through the
+ * memory of the wreck, found local feet on a 200 m window that were not
+ * the nearest, and ran a thousand iterations where a fresh solve takes 63.
+ * Within a healthy solve a station moves by metres a step; 50 m is far.
+ *
+ * @param {{samples?: number, refineSteps?: number, staleDistance?: number}} [scan]  the full scan's resolution
  */
-export function createFootMemory({ samples = 400, refineSteps = 40 } = {}) {
+export function createFootMemory({ samples = 400, refineSteps = 40, staleDistance = 50 } = {}) {
 	const feet = new Map();
+	let scans = 0;
 	return Object.freeze({
 		version: ALIGNMENT_POINT_PROJECTION_VERSION,
 		project(alignment, x, y) {
 			const key = `${x},${y}`;
 			const remembered = feet.get(key);
-			const local = remembered === undefined ? null : newtonFoot(alignment, x, y, remembered);
+			let fresh = remembered !== undefined && remembered.s <= alignment.arcLength;
+			if (fresh) {
+				const there = alignment.poseAt(remembered.s, { quality: "balanced" }).p;
+				fresh = Math.hypot(there.x - remembered.x, there.y - remembered.y) <= staleDistance;
+			}
+			const local = fresh ? newtonFoot(alignment, x, y, remembered.s) : null;
+			if (!local) scans += 1;
 			const projected = local ?? alignment.world2Track(x, y, { samples, refineSteps });
-			if (projected) feet.set(key, projected.s);
+			if (projected) feet.set(key, { s: projected.s, x: projected.point.x, y: projected.point.y });
 			return projected;
 		},
 		forget() { feet.clear(); },
 		get size() { return feet.size; },
+		/** how often the full scan ran: the first time for every point, and for every foot the memory could not vouch for */
+		get scans() { return scans; },
 	});
 }
