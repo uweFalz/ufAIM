@@ -162,3 +162,57 @@ not close (the unit test holds the rule at 1 to measure it).
 The first failure above (region collapse at a degenerate vertex,
 `AHBI_Gl_037`) stands as described.
 
+## The degenerate length budget, and the corridor that would fix it (2026-09-14)
+
+The length tier asks for the shortest admissible chain between the poses,
+and nothing in that question holds the chain to the measurements. On the
+giants it shortens the alignment by 3 to 11 km (`dL` in the tables of
+AXTRAN2_QP_ACTIVE_SET_2026-09-11.md) and hands the strict order a budget
+no fit can meet; the held phase then fails at once, `infeasible_subproblem`
+at 15. On `3250_4-11_S` (64 elements) the same tier ends `stationary` at
+263 with the alignment 1008 m shorter and the points 3125 tolerances off.
+The strict order's rms of 7 to 17 on the files it does finish is the mild
+form of the same thing: the length optimum has left the points, and the
+held phase fits what it can on the length-preserving manifold.
+
+What would fix it is a corridor - the measured points as a constraint of
+the length tier, so that the question becomes the shortest alignment that
+still carries them. Two forms were built and measured on `3250_4-11_S`:
+
+| corridor | length tier alone, from the perturbed start | in the strict order, from the warm start |
+|---|---|---|
+| two rows per point, \|r_i\| ≤ 1 | 306 slacks in the subproblem; three attempts, 4260 s, `infeasible_subproblem` at rms 0.66 | 1328 s, tier 1 `infeasible_subproblem` at 322, no budget |
+| one row, rms ≤ 1 (Σr²/N − 1 ≤ 0) | `restoration_failed` at 0: restoring the corridor from a far start is a points fit, and the restoration's Gauss-Newton stalls at rms 24 | reaches the answer - the alignment 1.2 m shorter than the warm start, at rms 1.00 - and cannot end there: `restoration_failed` at 291 |
+
+The one-row form is the right size and shows what the answer is: within
+the noise the shortest alignment is a metre shorter, not a kilometre. It
+does not converge on the corridor's boundary. The row is quadratic in the
+residuals and its linearisation has no slope along the directions the
+points do not determine - exactly the directions the length gradient
+pulls along - so every subproblem overshoots the corridor at second order
+(rms 9 after the first steps, from 0.16), the region and the filter bring
+it back over eighty iterations, and at the boundary the region collapses
+with the subproblem fully relaxed while the corridor stands 0.4 % over;
+the restoration, Gauss-Newton on that one row against four end-pose rows,
+stalls there. What the subproblem lacks is the constraint's curvature,
+μ · 2J'J/N, the Lagrangian's second-order term: the evaluator contract
+carries no multipliers, so the model cannot form it, and BFGS learns it
+too slowly to hold the boundary.
+
+Neither form is in the code. What is: the finding that the strict order
+as declared - length first, points second, with no corridor - is a
+question whose first tier is unbounded by reality on any alignment long
+enough for the end pose to leave the shape free. A corridor tier needs the
+multipliers in the model, which is a contract change to solveSQP's
+evaluator (a state.hessian that may depend on the last multipliers), and
+that is the item this closes on.
+
+The thirteen giants under the strict order today, for the record: 0 of
+13, as on 2026-09-12. Nine establish no budget (the length tier ends
+`stationary` but the run is not held to it), three establish a degenerate
+one - the alignment 4.0, 10.9 and 10.9 km shorter - and fail at once in
+the held phase, one runs out in its second tier. The run took 5.7 hours,
+most of it on one file whose failed phases were retried with two more
+Hessians because the corpus runner passed `hessian` explicitly and
+overrode the phases' BFGS; the runner now passes it only when asked.
+
