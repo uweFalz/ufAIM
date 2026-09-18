@@ -199,13 +199,32 @@ stalls there. What the subproblem lacks is the constraint's curvature,
 carries no multipliers, so the model cannot form it, and BFGS learns it
 too slowly to hold the boundary.
 
-Neither form is in the code. What is: the finding that the strict order
-as declared - length first, points second, with no corridor - is a
-question whose first tier is unbounded by reality on any alignment long
-enough for the end pose to leave the shape free. A corridor tier needs the
-multipliers in the model, which is a contract change to solveSQP's
-evaluator (a state.hessian that may depend on the last multipliers), and
-that is the item this closes on.
+What the subproblem lacked is now in the model (2026-09-19). solveSQP
+hands the evaluator the multipliers of the last subproblem (null before
+the first), and the alignment solver folds the corridor's curvature,
+μ · 2J'J/N, into the Hessian it provides; the length tier runs in
+Gauss-Newton mode with the hybrid switch at zero, so the model is the
+Lagrangian's. On `3250_4-11_S` the tier ends `stationary` at 926 with the
+alignment 1.26 m shorter at rms 1.000, and the strict order finishes on
+that budget - the held phase at 2.
+
+Measured on the corpus without the giants:
+
+| | ok / 235 | \|ΔL\| to the truth, mean / max | rms of the fit |
+|---|---|---|---|
+| strict order, no corridor (2026-09-13) | 124 | kilometres on the long ones | 7 to 17 |
+| **strict order, corridor** (default now) | **199** | **0.16 m / 2.0 m** | 0.80 |
+| length objective alone, corridor, from the perturbed start | 187 | 0.08 m / 1.0 m | 0.78 |
+
+The corridor is the lexicographic order's default for its length tiers
+(`solver: { corridor: false }` turns it off). It is not the default of a
+single length fit: from a perturbed start the corridor has to be reached
+first, which is a points fit the restoration does badly (25 of 235
+`restoration_failed`), and the warm start of the lexicographic order is
+what provides it. The thirty-six strict runs that still fail are 15 with no
+budget (the length tier not finished), 18 out of budget in the length
+tier - the corridor's boundary is reached at 600 and held slowly - and 3
+verdicts.
 
 The thirteen giants under the strict order today, for the record: 0 of
 13, as on 2026-09-12. Nine establish no budget (the length tier ends
