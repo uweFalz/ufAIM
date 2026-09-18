@@ -27,7 +27,14 @@ function dot(a, b) {
 /**
  * @param {object} input
  * @param {number[]} input.x0
- * @param {(x: number[]) => ({ f: number, gradF: number[], h: number[], Jh: number[][] })} input.evaluate
+ * @param {(x: number[], context?: {multipliers: {equality: number[], inequality: number[]}|null}) => ({ f: number, gradF: number[], h: number[], Jh: number[][] })} input.evaluate
+ *        The context carries the multipliers of the last subproblem, or null
+ *        before the first: an evaluator that provides a Hessian may fold a
+ *        constraint's curvature into it, mu times the constraint's second
+ *        derivative, which is the Lagrangian's and not the objective's. A
+ *        quadratic constraint held at its boundary needs that term or every
+ *        subproblem overshoots it at second order (measured on the corridor
+ *        of the length objective: rms 9 from 0.16 after the first steps).
  * @param {number[]} [input.lower]   bounds on x, not on the step
  * @param {number[]} [input.upper]
  */
@@ -266,7 +273,7 @@ export function solveSQP({
 	let radius = Number.isFinite(trustRadius)
 		? trustRadius
 		: Math.max(1, 0.1 * Math.max(...x.map(Math.abs), 0));
-	let state = evaluate(x);
+	let state = evaluate(x, { multipliers: null });
 	// A provided Hessian is the objective's curvature only. The constraints'
 	// share of the Lagrangian curvature is estimated alongside by BFGS on the
 	// multiplier-weighted constraint gradient differences (structured secant,
@@ -713,7 +720,7 @@ export function solveSQP({
 			: l1Merit(evaluated, weights);
 		const meritOf = (candidate) => {
 			let evaluated;
-			try { evaluated = evaluate(candidate); } catch { return null; }
+			try { evaluated = evaluate(candidate, { multipliers: step.multipliers }); } catch { return null; }
 			if (!Number.isFinite(evaluated?.f)) return null;
 			return { merit: meritOfState(evaluated, 1), state: evaluated };
 		};
@@ -758,7 +765,7 @@ export function solveSQP({
 				const candidate = x.map((value, i) =>
 					Math.min(Math.max(value + alpha * step.d[i], lo[i]), up[i]));
 				let evaluated;
-				try { evaluated = evaluate(candidate); } catch { return null; }
+				try { evaluated = evaluate(candidate, { multipliers: step.multipliers }); } catch { return null; }
 				if (!Number.isFinite(evaluated?.f)) return null;
 				trialState = { x: candidate, state: evaluated };
 				return meritOfState(evaluated, alpha);
