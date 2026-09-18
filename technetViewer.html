@@ -1093,6 +1093,9 @@
 				background: Canvas;
 				cursor: grab;
 			}
+			.object-row.dependent > button { cursor: default; padding-left: 1.4rem; font-size: 0.92em; opacity: 0.85; }
+			.object-row.organized > button { cursor: default; opacity: 0.6; }
+			.inbox-filter { font: inherit; font-size: 0.8rem; max-width: 9rem; }
 			.object-row.dragging {
 				opacity: 0.45;
 				cursor: grabbing;
@@ -39640,6 +39643,11 @@ xlsx/xlsx.mjs:
 				if (entry.displayLsys !== undefined) return normalizeLsys(entry.displayLsys);
 				const sourceLsys = normalizeLsys(systemsForEntry(entry).lsys);
 				if (sourceLsys && (entry.parser === "gndEdit" || entry.loaded?.sourceLsysMixed)) return sourceLsys;
+				// A Gradiente/Überhöhung has no Lage of its own: it is the Trasse's.
+				if (entry.item?.kind !== "alignment") {
+					const anchor = relatedDiagramEntries(entry).anchor;
+					if (anchor && anchor !== entry && anchor.item?.kind === "alignment") return effectiveLsys(anchor);
+				}
 				return normalizeLsys(entry.loaded?.displayLsys || sourceLsys);
 			}
 
@@ -43077,7 +43085,7 @@ xlsx/xlsx.mjs:
 						source: "vermesn-name",
 					};
 				}
-				if (entry.parser !== "gndEdit") return null;
+				if (entry.parser !== "gndEdit") return inheritedFrame(entry);
 				const gndSequence = gndSequenceForEntry(entry);
 				if (gndSequence) {
 					const directionNames = { 0: "Kilometerlinie", 1: "rechts", 2: "links", 3: "Kilometerlinie (alt)", 4: "Nebengleis", 5: "Bahnhofs-/sonstiges Gleis" };
@@ -43115,6 +43123,17 @@ xlsx/xlsx.mjs:
 				hint.textContent = sources.join(", ");
 				if (sources.includes("aus Dateiname")) hint.title = "Strecke, Seite und km-Abschnitt aus der Dateinamen-Konvention: 5500S074-082 = Strecke 5500, S = Kilometerlinie, R = rechts, L = links, 074-082 = km-Abschnitt, _Gls403 = Bahnhofsgleis dieser Strecke. Ein Drag in eine andere Lane überschreibt.";
 				return hint;
+			}
+
+			// A Gradiente, Überhöhung or Stationsgleichung is never assigned on its
+			// own: it references a Trasse and goes where the Trasse goes. So its
+			// frame is the Trasse's, including one the user set by hand.
+			function inheritedFrame(entry) {
+				if (entry.item?.kind === "alignment") return null;
+				const anchor = relatedDiagramEntries(entry).anchor;
+				if (!anchor || anchor === entry || anchor.item?.kind !== "alignment") return null;
+				const frame = geoFrameInfo(anchor);
+				return frame ? { ...frame, inherited: true } : null;
 			}
 
 			function geoFrameKey(frame) {
@@ -43341,6 +43360,22 @@ xlsx/xlsx.mjs:
 				editor.className = "bulk-crs";
 				const head = document.createElement("div");
 				head.className = "bulk-crs-head";
+				const filter = document.createElement("select");
+				filter.className = "inbox-filter";
+				filter.setAttribute("aria-label", "Inbox-Filter");
+				filter.title = "Reste: was noch nicht rechts einsortiert ist. Sonst alles oder eine Objektart, einsortiert oder nicht.";
+				for (const [value, label] of INBOX_FILTERS) {
+					const option = document.createElement("option");
+					option.value = value;
+					option.textContent = label;
+					filter.append(option);
+				}
+				filter.value = inboxFilter;
+				filter.addEventListener("change", () => {
+					inboxFilter = filter.value;
+					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				});
+				head.append(filter);
 				const count = document.createElement("strong");
 				count.textContent = `${bulkSelectedEntries.size} ausgewählt`;
 				const selectAll = document.createElement("button");
@@ -43384,17 +43419,25 @@ xlsx/xlsx.mjs:
 
 				const rerender = () => renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 				selectAll.addEventListener("click", () => {
-					for (const entry of allEntries) bulkSelectedEntries.add(entry);
+					for (const entry of allEntries) {
+						if (entry.item.kind === "alignment" || entry.item.kind === "profile") bulkSelectedEntries.add(entry);
+					}
 					rerender();
 				});
 				clear.addEventListener("click", () => {
 					bulkSelectedEntries.clear();
 					rerender();
 				});
+				// Lage: only a Trasse has one; its Gradiente/Überhöhung read it from
+				// the Trasse (effectiveLsys). Höhe: only a Gradiente has one; a
+				// selected Trasse passes it to its own Gradiente(n).
 				applyLsys.addEventListener("click", () => {
 					if (!bulkSelectedEntries.size) return;
 					let unresolved = 0;
+					let applied = 0;
 					for (const entry of bulkSelectedEntries) {
+						if (entry.item.kind !== "alignment") continue;
+						applied += 1;
 						const value = userLsysForEntry(entry, lsys.value);
 						if (value === null) {
 							unresolved += 1;
@@ -43407,21 +43450,30 @@ xlsx/xlsx.mjs:
 					geometryModelCache.delete(entry);
 					}
 					status.classList.toggle("error", unresolved > 0);
-					status.textContent = unresolved
-						? `${unresolved} Objekte ohne erkennbaren Meridianstreifen; Lagezuordnung dort unverändert.`
-						: `${lsys.options[lsys.selectedIndex].textContent} für ${bulkSelectedEntries.size} Objekte gesetzt; Meridianstreifen automatisch erkannt.`;
+					status.textContent = !applied
+						? "Lage gilt für Trassen; keine Trasse ausgewählt."
+						: unresolved
+						? `${unresolved} Trassen ohne erkennbaren Meridianstreifen; Lagezuordnung dort unverändert.`
+						: `${lsys.options[lsys.selectedIndex].textContent} für ${applied} Trassen gesetzt (Gradiente und Überhöhung folgen); Meridianstreifen automatisch erkannt.`;
 					rerender();
 				});
 				applyHsys.addEventListener("click", () => {
 					if (!bulkSelectedEntries.size) return;
 					const value = hsys.value;
+					const targets = new Set();
 					for (const entry of bulkSelectedEntries) {
+						if (entry.item.kind === "profile") targets.add(entry);
+						if (entry.item.kind === "alignment") for (const dependent of inboxDependents(entry)) if (dependent.item.kind === "profile") targets.add(dependent);
+					}
+					for (const entry of targets) {
 						if (value === "AUTO") delete entry.displayHsys;
 						else entry.displayHsys = value;
 						listingCache.delete(entry);
 					}
 					status.classList.remove("error");
-					status.textContent = `${hsys.options[hsys.selectedIndex].textContent} für ${bulkSelectedEntries.size} Objekte gesetzt.`;
+					status.textContent = targets.size
+						? `${hsys.options[hsys.selectedIndex].textContent} für ${targets.size} Gradienten gesetzt.`
+						: "Höhe gilt für Gradienten; die Auswahl hat keine.";
 					rerender();
 				});
 				return editor;
@@ -43914,6 +43966,114 @@ xlsx/xlsx.mjs:
 				}
 			}
 
+			// Inbox = what is left. A Trasse is one row and takes its Gradiente,
+			// Überhöhung and Stationsgleichung with it -- they reference the Trasse
+			// and are never assigned on their own, they inherit its Strecke, side
+			// and Lage. An EH/EU/EK that references no Trasse at all is an orphan
+			// row. What is organized sits on the right and is gone from here,
+			// unless the filter asks for everything or for one family.
+			let inboxFilter = "rest";
+			const INBOX_FILTERS = [["rest", "Reste"], ["all", "alles"], ["EL", "Trassen (EL/TRA)"], ["EH", "Gradienten (EH/GRA)"], ["EU", "Überhöhungen (EU)"], ["EK", "Stationsgleichungen (EK)"]];
+			function inboxFamily(entry) {
+				return { alignment: "EL", profile: "EH", cant: "EU", staEq: "EK" }[entry.item.kind] ?? entry.item.kind;
+			}
+			function inboxDependents(alignment) {
+				return referencingEntries(alignment).filter((candidate) => candidate.item.kind !== "alignment");
+			}
+			function inboxRows(loaded) {
+				const claimed = new Set(allViewerEntries().filter((entry) => entry.item.kind === "alignment").flatMap(inboxDependents));
+				if (["EL", "EH", "EU", "EK"].includes(inboxFilter)) {
+					return loaded.objects
+						.filter((entry) => inboxFamily(entry) === inboxFilter)
+						.map((entry) => ({ entry, organized: isOutboxOrganized(entry), orphan: entry.item.kind !== "alignment" && !claimed.has(entry), dependent: claimed.has(entry), dependents: [] }));
+				}
+				const rows = [];
+				for (const entry of loaded.objects) {
+					const isAlignment = entry.item.kind === "alignment";
+					if (!isAlignment && claimed.has(entry)) continue;
+					const organized = isOutboxOrganized(entry);
+					if (inboxFilter === "rest" && organized) continue;
+					rows.push({ entry, organized, orphan: !isAlignment, dependents: isAlignment ? inboxDependents(entry) : [] });
+				}
+				return rows;
+			}
+			function appendInboxRow(file, entry, { organized = false, orphan = false, dependent = false } = {}) {
+				const row = document.createElement("div");
+				row.className = `object-row${dependent ? " dependent" : ""}${organized ? " organized" : ""}`;
+				// Lage belongs to a Trasse, Höhe to a Gradiente; an Überhöhung or
+				// Stationsgleichung gets no checkbox -- there is nothing to assign.
+				const selectable = !dependent && (entry.item.kind === "alignment" || entry.item.kind === "profile");
+				if (selectable) {
+					const checkbox = document.createElement("input");
+					checkbox.type = "checkbox";
+					checkbox.className = "object-select";
+					checkbox.checked = bulkSelectedEntries.has(entry);
+					checkbox.setAttribute("aria-label", `${objectListName(entry)} zur Mehrfachauswahl hinzufügen`);
+					checkbox.addEventListener("change", () => {
+						if (checkbox.checked) bulkSelectedEntries.add(entry);
+						else bulkSelectedEntries.delete(entry);
+						const label = tablesNav.querySelector(".bulk-crs-head strong");
+						if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+						renderDiagram();
+					});
+					row.append(checkbox);
+				} else {
+					row.append(document.createElement("span"));
+				}
+				const draggable = !dependent && !organized;
+				const button = document.createElement("button");
+				button.draggable = draggable;
+				button.title = draggable ? "Zum Zuordnen rechts in die passende Zeile ziehen" : dependent ? "Geht mit seiner Trasse" : "Bereits rechts einsortiert";
+				const label = document.createElement("span");
+				label.style.display = "flex";
+				label.style.alignItems = "center";
+				if (draggable) {
+					const handle = document.createElement("span");
+					handle.className = "drag-handle";
+					handle.textContent = "⠿";
+					handle.setAttribute("aria-hidden", "true");
+					label.append(handle);
+				}
+				const name = document.createElement("span");
+				name.textContent = `${dependent ? "↳ " : ""}${objectListName(entry)}`;
+				label.append(name);
+				const kind = document.createElement("span");
+				kind.dataset.kind = "true";
+				const family = sourceFamilyForEntry(entry);
+				kind.textContent = dependent ? `${family} · gehört zur Trasse` : organized ? `${family} · rechts einsortiert` : orphan ? `${family} · ohne Trasse` : `${family} · roh`;
+				button.append(label, kind);
+				entry.button = button;
+				button.addEventListener("click", () => selectObject(entry, button));
+				if (draggable) {
+					button.addEventListener("dragstart", (event) => {
+						draggedOrganizationEntry = { entry, row };
+						row.classList.add("dragging");
+						event.dataTransfer.effectAllowed = "copy";
+						event.dataTransfer.setData("text/plain", String(entry.item.id ?? objectDisplayName(entry)));
+					});
+					button.addEventListener("dragend", () => {
+						row.classList.remove("dragging");
+						draggedOrganizationEntry = null;
+					});
+				}
+				row.append(button);
+				file.append(row);
+				if (!draggable) return;
+				const suggestion = suggestRoleForEntry(entry);
+				if (suggestion) {
+					const hint = document.createElement("div");
+					hint.className = "row-suggestion";
+					const text = document.createElement("span");
+					text.textContent = `Vorschlag: ${suggestion.groupDef.title}`;
+					const accept = document.createElement("button");
+					accept.type = "button";
+					accept.textContent = "Übernehmen";
+					accept.addEventListener("click", () => assignEntryToSevenLine(entry, suggestion.groupDef, geoFrameInfo(entry)));
+					hint.append(text, accept);
+					file.append(hint);
+				}
+			}
+
 			function renderRawInbox(preferredFileName = null) {
 				const previousSelection = selectedEntry;
 				const allEntries = allViewerEntries();
@@ -43940,77 +44100,22 @@ xlsx/xlsx.mjs:
 					const file = document.createElement("details");
 					file.className = "file-group workspace-section";
 					file.open = loaded.objects.includes(previousSelection) || loaded.fileName === preferredFileName;
-					const pendingObjects = loaded.objects.filter((entry) => !isOutboxOrganized(entry));
+					const rows = inboxRows(loaded);
+					const openCount = rows.filter((row) => !row.organized).length;
 					const summary = document.createElement("summary");
 					summary.className = "workspace-section-title raw-file-title";
-					summary.innerHTML = `<span>${loaded.fileName}</span><span class="workspace-section-count">${pendingObjects.length}/${loaded.objects.length}</span>`;
+					summary.innerHTML = `<span>${loaded.fileName}</span><span class="workspace-section-count">${inboxFilter === "rest" ? `${openCount} offen` : `${rows.length}`}</span>`;
 					file.append(summary);
-					if (!pendingObjects.length) {
+					if (!rows.length) {
 						const done = document.createElement("div");
 						done.className = "file-group-done";
-						done.textContent = "Vollständig einsortiert · siehe rechts";
+						done.textContent = inboxFilter === "rest" ? "Vollständig einsortiert · siehe rechts" : "nichts in dieser Auswahl";
 						file.append(done);
 					}
-					for (const entry of pendingObjects) {
-						const row = document.createElement("div");
-						row.className = "object-row";
-						const checkbox = document.createElement("input");
-						checkbox.type = "checkbox";
-						checkbox.className = "object-select";
-						checkbox.checked = bulkSelectedEntries.has(entry);
-						checkbox.setAttribute("aria-label", `${objectListName(entry)} zur Mehrfachauswahl hinzufügen`);
-						checkbox.addEventListener("change", () => {
-							if (checkbox.checked) bulkSelectedEntries.add(entry);
-							else bulkSelectedEntries.delete(entry);
-							const label = tablesNav.querySelector(".bulk-crs-head strong");
-							if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
-							renderDiagram();
-						});
-						const button = document.createElement("button");
-						button.draggable = true;
-						button.title = "Zum Zuordnen rechts in die passende Zeile ziehen";
-						const label = document.createElement("span");
-						label.style.display = "flex";
-						label.style.alignItems = "center";
-						const handle = document.createElement("span");
-						handle.className = "drag-handle";
-						handle.textContent = "⠿";
-						handle.setAttribute("aria-hidden", "true");
-						const name = document.createElement("span");
-						name.textContent = objectListName(entry);
-						label.append(handle, name);
-						const kind = document.createElement("span");
-						kind.dataset.kind = "true";
-						kind.textContent = `${sourceFamilyForEntry(entry)} · roh`;
-						button.append(label, kind);
-						entry.button = button;
-						button.addEventListener("click", () => selectObject(entry, button));
-						button.addEventListener("dragstart", (event) => {
-							draggedOrganizationEntry = { entry, row };
-							row.classList.add("dragging");
-							event.dataTransfer.effectAllowed = "copy";
-							event.dataTransfer.setData("text/plain", String(entry.item.id ?? objectDisplayName(entry)));
-						});
-						button.addEventListener("dragend", () => {
-							row.classList.remove("dragging");
-							draggedOrganizationEntry = null;
-						});
-						row.append(checkbox, button);
-						file.append(row);
-						const suggestion = suggestRoleForEntry(entry);
-						if (suggestion) {
-							const hint = document.createElement("div");
-							hint.className = "row-suggestion";
-							const text = document.createElement("span");
-							text.textContent = `Vorschlag: ${suggestion.groupDef.title}`;
-							const accept = document.createElement("button");
-							accept.type = "button";
-							accept.textContent = "Übernehmen";
-							accept.addEventListener("click", () => assignEntryToSevenLine(entry, suggestion.groupDef, geoFrameInfo(entry)));
-							hint.append(text, accept);
-							file.append(hint);
-						}
-						if (loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = entry;
+					for (const row of rows) {
+						appendInboxRow(file, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent) });
+						for (const dependent of row.dependents) appendInboxRow(file, dependent, { organized: row.organized, dependent: true });
+						if (loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = row.entry;
 					}
 					tablesNav.append(file);
 				}
