@@ -284,6 +284,12 @@ export function solveAlignmentLexicographic({
 			// phase fails for what it is asked (a sliver at a vertex), not for
 			// its Hessian - measured, Gauss-Newton loses five of 235 there.
 			hessian: "bfgs",
+			// The length tier runs under the corridor of the points: without it
+			// the tier shortens a long alignment by kilometres and hands down a
+			// budget no fit can meet. Measured on the corpus, strict order:
+			// 124 -> 199 of 235, the length spent within 2 m of the truth. The
+			// corridor wants a feasible start, which the warm start provides.
+			corridor: true,
 			...solver,
 			problem,
 			buildAlignment,
