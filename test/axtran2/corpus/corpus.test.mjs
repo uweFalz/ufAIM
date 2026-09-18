@@ -304,6 +304,10 @@ test("a held phase that cannot move ends with a verdict, not with its budget", {
 	const lex = solveAlignmentLexicographic({
 		problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations: 1000,
 		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }],
+		// the vertex this measures is the length optimum without the corridor;
+		// under it (the order's default) the points hold the arcs and there is
+		// no such vertex - the solver's region mechanics are what this holds
+		solver: { corridor: false },
 	});
 	const held = lex.phases.find((p) => p.label.endsWith("budget-active"));
 	assert.ok(held, `phases ${lex.phases.map((p) => p.label)}`);

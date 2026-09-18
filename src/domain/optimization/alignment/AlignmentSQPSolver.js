@@ -178,7 +178,9 @@ export function solveAlignmentProblem({
 	if (determinacy !== "report" && determinacy !== "off") {
 		error("INVALID_OPTION", `determinacy must be "report" or "off", got ${JSON.stringify(determinacy)}`);
 	}
-	if (corridor && typeof analyticJacobian !== "function") {
+	// a no-op on the points objective, which needs no row and may run without
+	// the analytic Jacobian
+	if (corridor && objective === "accumulated-length" && typeof analyticJacobian !== "function") {
 		error("INVALID_OPTION", "the corridor needs the analytic Jacobian for its row");
 	}
 	if (hessian !== "bfgs" && hessian !== "gauss-newton" && hessian !== "auto") {
