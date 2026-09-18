@@ -392,3 +392,25 @@ test("a giant whose start is hundreds of metres off no longer collapses on stale
 	assert.ok(run.diagnostics.softResidualRms < 0.2, `rms ${run.diagnostics.softResidualRms}`);
 });
 
+test("under the corridor the length tier asks the right question: a metre shorter, not a kilometre", { skip }, async () => {
+	// 3250_4-11_S, 64 elements: the length tier without a corridor ends 1008 m
+	// shorter with the points 3125 tolerances off, and the strict order fails
+	// on that budget. With the corridor - the points' rms in tolerance units
+	// at most one, its curvature in the model - the tier ends 1.3 m shorter
+	// at rms 1.00, and the strict order finishes on it.
+	const { solveAlignmentLexicographic } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentLexicographicSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const sc = await createTraScenario(find("3250_4-11_S_CR0_260402.TRA", SAMPLES.pathname));
+	const sumTruth = sc.truth.elements.reduce((s, e) => s + e.length, 0);
+	const lex = solveAlignmentLexicographic({
+		problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations: 1000,
+		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }], solver: { corridor: true },
+	});
+	assert.ok(lex.ok, `${lex.status} ${lex.phases.map((p) => `${p.label}:${p.status}@${p.diagnostics?.iterations}`).join(" ")}`);
+	const final = lex.phases.at(-1);
+	const length = sc.materialise(sc.codec.decode(final.candidate.variables)).reduce((s, e) => s + e.length, 0);
+	assert.ok(Math.abs(length - sumTruth) < 10, `${(length - sumTruth).toFixed(1)} m against the truth`);
+	assert.ok(final.diagnostics.softResidualRms <= 1.001, `rms ${final.diagnostics.softResidualRms}`);
+});
+
