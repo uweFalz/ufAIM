@@ -27,7 +27,11 @@ const to = Number(args.to ?? Infinity);
 const objectives = (args.objectives ?? "accumulated-length,points").split(",");
 const rampLengthAs = args.ramp ?? "bound";
 const maxIterations = Number(args.iterations ?? 1000);
-const hessian = args.hessian ?? "auto";
+// undefined unless asked: the solver's default is "auto" for a single fit and
+// the lexicographic order holds its phases to BFGS, and a value passed here
+// would override both (measured: a strict run on the giants retried every
+// failed phase with two more Hessians, 12 932 s on one file)
+const hessian = args.hessian;
 const restoration = args.restoration ?? "on-verdict";
 const structuredStart = args.structuredStart === undefined ? undefined : Number(args.structuredStart);
 const hybridSwitch = args.hybridSwitch === undefined ? undefined : Number(args.hybridSwitch);
@@ -63,7 +67,7 @@ for (const file of await listTraFiles(samples)) {
 trusted.sort((a, b) => a.n - b.n || a.file.localeCompare(b.file));
 
 const rel = (file) => file.split("/samples/")[1] ?? file;
-console.log(`corpus: ${trusted.length} trusted alignments, ${excluded.length} excluded; running ${from}..${Math.min(to, trusted.length) - 1}, ${objectives.join("+")}${objectives.includes("lexicographic") ? ` (tiers ${tiersArg})` : ""}, ramp as ${rampLengthAs}, hessian ${hessian}, restoration ${restoration}`);
+console.log(`corpus: ${trusted.length} trusted alignments, ${excluded.length} excluded; running ${from}..${Math.min(to, trusted.length) - 1}, ${objectives.join("+")}${objectives.includes("lexicographic") ? ` (tiers ${tiersArg})` : ""}, ramp as ${rampLengthAs}, hessian ${hessian ?? "solver default"}, restoration ${restoration}`);
 console.log("file                                       n free pts  V exc | objective           □ [status         ] @it   rms   endpose  admiss  truth%    dL m    s");
 const rows = [];
 for (const { file, n } of trusted.slice(from, to)) {
