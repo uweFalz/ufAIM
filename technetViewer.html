@@ -42953,6 +42953,17 @@ xlsx/xlsx.mjs:
 				recordPerformance("render-map", started, { mode, objects: alignmentEntries.length, points: allPoints.length });
 			}
 
+			// The first load opens the Lieferung: the whole delivery as one picture
+			// before any single object. Later loads keep whatever view is open.
+			let firstLoadShown = false;
+			function startViewMode() {
+				if (!firstLoadShown) {
+					firstLoadShown = true;
+					return "delivery";
+				}
+				return viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? "listing";
+			}
+
 			function setViewMode(mode) {
 				const hasObjects = loadedFiles.length > 0;
 				workspace.className = `mode-${mode}`;
@@ -45284,8 +45295,7 @@ xlsx/xlsx.mjs:
 					renderObjectTree(fileName);
 					output.classList.add("hidden");
 					dropzone.classList.add("loaded");
-					const activeMode = viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? "listing";
-					setViewMode(activeMode);
+					setViewMode(startViewMode());
 				}
 				return true;
 			}
@@ -45391,8 +45401,7 @@ xlsx/xlsx.mjs:
 					renderObjectTree(lastLoadedFileName || incoming.at(-1)?.name || null);
 					output.classList.add("hidden");
 					dropzone.classList.add("loaded");
-					const activeMode = viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? "listing";
-					setViewMode(activeMode);
+					setViewMode(startViewMode());
 					void applyDefaultRailwayMap();
 					recordPerformance("batch-render", renderStarted, { files: incoming.length, objects: allViewerEntries().length });
 				}
