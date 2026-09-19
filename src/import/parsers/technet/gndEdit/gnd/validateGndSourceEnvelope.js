@@ -28,7 +28,7 @@ export function validateGndSourceEnvelope(envelope, { requireCompleteCore = fals
 		}
 	}
 	if (requireCompleteCore && diagnostics.length) {
-		const error = coded("GND_SOURCE_INCOMPLETE", "MDB does not contain complete readable GND core evidence");
+		const error = coded("GND_SOURCE_INCOMPLETE", "Source does not contain complete readable GND core evidence");
 		error.diagnostics = diagnostics;
 		throw error;
 	}

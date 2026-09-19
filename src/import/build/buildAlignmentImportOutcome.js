@@ -654,7 +654,10 @@ function normalizeAlignmentPayload(alignment, { source, containerUnits } = {}) {
 		}),
 
 		meta: isObject(alignment.meta) ? alignment.meta : {},
-		extended: isObject(alignment.extended) ? alignment.extended : {},
+		extended: {
+			...(isObject(alignment.extended) ? alignment.extended : {}),
+			...(isObject(alignment?.extras?.gndSequence) ? { gndSequence: alignment.extras.gndSequence } : {}),
+		},
 	};
 }
 

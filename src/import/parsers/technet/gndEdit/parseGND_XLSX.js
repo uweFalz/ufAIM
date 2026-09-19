@@ -77,7 +77,7 @@ export function parseGNDSourceEnvelope({ envelope, context = {} } = {}) {
 	const dataset = createGndDataset({
 		source: {
 			parserId: "gndEdit",
-			backend: envelope?.source?.format?.includes("Jet") ? "mdb" : "xlsx",
+			backend: envelope?.source?.format === "DBB" ? "dbb" : envelope?.source?.format?.includes("Jet") ? "mdb" : "xlsx",
 			fileName,
 		},
 		workbookInfo,
@@ -867,6 +867,7 @@ function buildCoordGeomAlignmentFromSequence({
 	fileName,
 	padIndex,
 	attachmentsByKey,
+	sourceBackend,
 }) {
 	const family = seq?.family ?? "EL";
 	const strecke = seq?.strecke ?? "unknown";
@@ -886,6 +887,11 @@ function buildCoordGeomAlignmentFromSequence({
 		records.length >= 2
 			? buildCoordGeomFromTraLikeRecords(records, gndSemanticMap)
 			: fat.createCoordGeom({ elements: [] });
+	// Preserve the source address separately for consumers such as the Viewer.
+	// This is a copy of evidence, not an intrinsic-station decoder or rebase.
+	for (const element of coordGeom.elements) {
+		if (element.staStart) element.extras = { ...element.extras, externalStation: { ...element.staStart } };
+	}
 
 	const attachments = attachmentsByKey?.get?.(attachmentKey) ?? null;
 
@@ -911,7 +917,7 @@ function buildCoordGeomAlignmentFromSequence({
 			source: {
 				fileName: fileName ?? "",
 				format: "gndEdit",
-				sourceBackend: "xlsx",
+				sourceBackend,
 			},
 			sourceSemantics: {
 				stage: "landFAT-with-gnd-attachments",
@@ -1128,7 +1134,7 @@ function makeAnalysisLandFAT({
 			continue;
 		}
 		try {
-			alignments.push(buildCoordGeomAlignmentFromSequence({ seq, index, fileName, padIndex: model?.padIndex ?? null, attachmentsByKey }));
+			alignments.push(buildCoordGeomAlignmentFromSequence({ seq, index, fileName, padIndex: model?.padIndex ?? null, attachmentsByKey, sourceBackend: metaExtra?.sourceBackend }));
 		} catch (error) {
 			diagnostics.push(makeDiagnostic({ severity: "error", family: seq?.family ?? null, field: "coordGeom", value: String(error?.message ?? error), code: "constructive-interpretation-rejected", decision: "retain-source-sequence; do-not-construct", geometryUsable: false }));
 			unresolvedSourceElements.push(...arr(seq?.edgeChain).map((edge) => ({ family: edge.family, rowRef: edge?.extras?.rowRef ?? null, typeCode: edge.typeCode, parameters: edge.parameters, decision: "not-constructed" })));
