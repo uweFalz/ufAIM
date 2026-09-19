@@ -4,7 +4,7 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length,lexicographic] [--ramp bound|constraint] \
-//        [--iterations 1000] [--hessian auto|bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--qpWarmStart false] [--undeterminedVerdict false] [--json out.json]
+//        [--iterations 1000] [--hessian auto|bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--qpWarmStart false] [--undeterminedVerdict false] [--corridor true] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -49,6 +49,7 @@ const correctionClosure = args.correctionClosure === undefined ? undefined : Num
 const kinkStation = args.kinkStation ?? "held";
 const qpWarmStart = args.qpWarmStart === undefined ? undefined : args.qpWarmStart !== "false";
 const undeterminedVerdict = args.undeterminedVerdict === undefined ? undefined : args.undeterminedVerdict !== "false";
+const corridor = args.corridor === undefined ? undefined : args.corridor !== "false";
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
 
 const trusted = [];
@@ -77,7 +78,7 @@ for (const { file, n } of trusted.slice(from, to)) {
 	for (const objective of objectives) {
 		const t0 = Date.now();
 		let run;
-		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling, correctionClosure, qpWarmStart, undeterminedVerdict };
+		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling, correctionClosure, qpWarmStart, undeterminedVerdict, corridor };
 		if (objective === "lexicographic") {
 			// the declared order: the length tier as a reference, then the points
 			let lex;

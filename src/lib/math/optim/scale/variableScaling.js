@@ -38,9 +38,9 @@ export function scale(values, scales) {
  */
 export function scaleEvaluator(evaluate, scales) {
 	const scaleRow = (row) => row.map((value, i) => value * (scales[i] ?? 1));
-	return (scaledX) => {
+	return (scaledX, context) => {
 		const x = unscale(scaledX, scales);
-		const state = evaluate(x);
+		const state = evaluate(x, context);
 		return {
 			...state,
 			gradF: state.gradF?.map((value, i) => value * (scales[i] ?? 1)),

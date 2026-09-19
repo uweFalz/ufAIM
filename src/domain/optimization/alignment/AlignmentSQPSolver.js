@@ -135,6 +135,19 @@ export function solveAlignmentProblem({
 	// undetermined (see determinedSubspaceOf and solveSQP's determinedSubspace);
 	// off, the flat valley runs to max_iterations.
 	undeterminedVerdict = true,
+	// The measured points as a corridor for the length objective: one
+	// inequality, the residual rms in tolerance units at most one,
+	// sum(r_i^2)/N - 1 <= 0. The length objective asks for the shortest
+	// admissible chain between the poses, and without the corridor nothing
+	// holds that chain to the measurements: the length tier shortened the
+	// giants by 3 to 11 km and handed the strict order a budget no fit could
+	// meet (AXTRAN2_LEXICOGRAPHIC_CORPUS_2026-09-10.md). The row is quadratic
+	// and its curvature, mu * 2 J'J / N, goes into the provided Hessian with
+	// the multiplier of the last subproblem; without it the row was reached
+	// and could not be held. Under the corridor the length objective runs
+	// with that Hessian (Gauss-Newton mode), whatever the hessian option says.
+	// A no-op on the points objective, which carries the points already.
+	corridor = false,
 	// A weak pseudo-observation on free lengths, as a geodetic adjustment
 	// carries one on a weakly determined parameter: { sigma, elements? } adds
 	// a residual (L - L0) / (sigma · L0) for every free length of the named
@@ -164,6 +177,11 @@ export function solveAlignmentProblem({
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");
 	if (determinacy !== "report" && determinacy !== "off") {
 		error("INVALID_OPTION", `determinacy must be "report" or "off", got ${JSON.stringify(determinacy)}`);
+	}
+	// a no-op on the points objective, which needs no row and may run without
+	// the analytic Jacobian
+	if (corridor && objective === "accumulated-length" && typeof analyticJacobian !== "function") {
+		error("INVALID_OPTION", "the corridor needs the analytic Jacobian for its row");
 	}
 	if (hessian !== "bfgs" && hessian !== "gauss-newton" && hessian !== "auto") {
 		error("INVALID_OPTION", `hessian must be "bfgs" or "gauss-newton", got ${JSON.stringify(hessian)}`);
@@ -509,7 +527,7 @@ export function solveAlignmentProblem({
 		return total;
 	}
 
-	function evaluateAnalytically(x) {
+	function evaluateAnalytically(x, context = null) {
 		const overlay = codec.decode(x);
 		const built = realise(x);
 		const geometry = analyticJacobian(overlay);
@@ -538,7 +556,27 @@ export function solveAlignmentProblem({
 
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
-			return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
+			if (!corridorActive || softPoints.length === 0) {
+				return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
+			}
+			const N = softPoints.length;
+			let sum = 0;
+			const row = new Array(codec.freeCount).fill(0);
+			const Jr = [];
+			for (const point of softPoints) {
+				const projected = project(built, point, "measured point");
+				const r = (projected.q - point.target) / point.tolerance;
+				sum += r * r;
+				const dr = geometry.lateralDerivative(parameterSpecs, projected.s).map((value) => value / point.tolerance);
+				Jr.push(dr);
+				for (let j = 0; j < row.length; j++) row[j] += (2 / N) * r * dr[j];
+			}
+			// the corridor's row sits after the ramp rows; its multiplier is the
+			// last subproblem's, one before the first
+			const mu = context?.multipliers?.inequality?.[ramps.g.length];
+			const weight = (Number.isFinite(mu) ? Math.max(mu, 0) : 1) * (2 / N);
+			const curvature = gaussNewton(Jr).map((hRow) => hRow.map((value) => value * weight));
+			return { f: accumulatedLength(x), gradF, h, Jh, g: [...ramps.g, sum / N - 1], Jg: [...ramps.Jg, row], hessian: curvature };
 		}
 
 		const prior = priorRows(x);
@@ -658,8 +696,8 @@ export function solveAlignmentProblem({
 		});
 	}
 
-	function evaluate(x) {
-		if (typeof analyticJacobian === "function") return evaluateAnalytically(x);
+	function evaluate(x, context = null) {
+		if (typeof analyticJacobian === "function") return evaluateAnalytically(x, context);
 
 		const built = realise(x);
 		const h = [...equalityResiduals(built), ...extraResiduals(x)];
@@ -706,9 +744,12 @@ export function solveAlignmentProblem({
 	// bounds on every iteration. The scaling is by engineering magnitude, fixed
 	// before the solve, not by Jacobian norm.
 	// the attempts of "auto", or the one the caller asked for
-	const plan = hessian === "auto"
-		? [{ hessian: "bfgs", restoration }, { hessian: "gauss-newton", restoration }, { hessian: "bfgs", restoration: "eager" }]
-		: [{ hessian, restoration }];
+	const corridorActive = corridor && objective === "accumulated-length";
+	const plan = corridorActive
+		? [{ hessian: "gauss-newton", restoration }]
+		: hessian === "auto"
+			? [{ hessian: "bfgs", restoration }, { hessian: "gauss-newton", restoration }, { hessian: "bfgs", restoration: "eager" }]
+			: [{ hessian, restoration }];
 	const attempts = [];
 	let scaledRun = null;
 	for (const attempt of plan) {
@@ -729,7 +770,7 @@ export function solveAlignmentProblem({
 		...(eagerViolationRadii === undefined ? {} : { eagerViolationRadii }),
 		hessian: hessianMode === "gauss-newton" ? "provided" : "bfgs",
 		...(structuredStart === undefined ? {} : { structuredStart }),
-		...(hybridSwitch === undefined ? {} : { hybridSwitch }),
+		...(hybridSwitch === undefined ? (corridorActive ? { hybridSwitch: 0 } : {}) : { hybridSwitch }),
 		...(qpIterations === undefined ? {} : { qpIterations }),
 		...(acceptance === undefined ? {} : { acceptance }),
 		...(filterMargin === undefined ? {} : { filterMargin }),
