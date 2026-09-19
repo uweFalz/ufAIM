@@ -352,6 +352,32 @@ test("a least-squares fit within its tolerances, with directions its data do not
 	assert.equal(outside.status, "max_iterations", `outside tolerance: ${outside.status}`);
 });
 
+test("the evaluator is handed the last multipliers, and a constraint's curvature in the provided Hessian holds its boundary", () => {
+	// minimise -x1 on the disc x1^2 + x2^2 <= 1: the answer is (1, 0) on the
+	// boundary, where the Lagrangian's curvature is all the constraint's,
+	// mu * 2I, and the objective has none. An evaluator that provides only
+	// the objective's curvature (zero) overshoots the boundary at second
+	// order every step; one that folds mu * 2I in holds it.
+	const seen = [];
+	const evaluate = (withCurvature) => ([x1, x2], context) => {
+		seen.push(context?.multipliers ?? null);
+		const mu = context?.multipliers?.inequality?.[0];
+		const weight = withCurvature ? (Number.isFinite(mu) ? Math.max(mu, 0) : 1) * 2 : 0;
+		return {
+			f: -x1, gradF: [-1, 0],
+			g: [x1 * x1 + x2 * x2 - 1], Jg: [[2 * x1, 2 * x2]],
+			hessian: [[weight, 0], [0, weight]],
+		};
+	};
+	const held = solveSQP({ x0: [0.2, 0.6], evaluate: evaluate(true), hessian: "provided", hybridSwitch: 0, maxIterations: 60 });
+	assert.ok(held.ok, `with the curvature: ${held.status} ${held.reason ?? ""}`);
+	assert.ok(Math.abs(held.x[0] - 1) < 1e-5 && Math.abs(held.x[1]) < 1e-4, `answer ${held.x}`);
+	assert.equal(seen[0], null, "before the first subproblem there are no multipliers");
+	assert.ok(seen.slice(1).every((m) => m && Array.isArray(m.inequality)), "every later evaluation carries the last subproblem's multipliers");
+	const blind = solveSQP({ x0: [0.2, 0.6], evaluate: evaluate(false), hessian: "provided", hybridSwitch: 0, maxIterations: 60 });
+	assert.ok(!blind.ok || blind.iterations > held.iterations, `without it: ${blind.status} @${blind.iterations} against ${held.iterations}`);
+});
+
 // ---------------------------------------------------------------- boundary
 
 test("the optimisation library stays free of domain and platform dependencies", async () => {

@@ -199,13 +199,34 @@ stalls there. What the subproblem lacks is the constraint's curvature,
 carries no multipliers, so the model cannot form it, and BFGS learns it
 too slowly to hold the boundary.
 
-Neither form is in the code. What is: the finding that the strict order
-as declared - length first, points second, with no corridor - is a
-question whose first tier is unbounded by reality on any alignment long
-enough for the end pose to leave the shape free. A corridor tier needs the
-multipliers in the model, which is a contract change to solveSQP's
-evaluator (a state.hessian that may depend on the last multipliers), and
-that is the item this closes on.
+What the subproblem lacked is now in the model (2026-09-19). solveSQP
+hands the evaluator the multipliers of the last subproblem (null before
+the first), and the alignment solver folds the corridor's curvature,
+μ · 2J'J/N, into the Hessian it provides; the length tier runs in
+Gauss-Newton mode with the hybrid switch at zero, so the model is the
+Lagrangian's. On `3250_4-11_S` the tier ends `stationary` at 926 with the
+alignment 1.26 m shorter at rms 1.000, and the strict order finishes on
+that budget - the held phase at 2.
+
+Measured on the corpus without the giants:
+
+| | ok / 235 | \|ΔL\| to the truth, mean / max | rms of the fit |
+|---|---|---|---|
+| strict order, no corridor (same day, same code) | 139 | 105 m mean, 1629 m max | 7 to 17 |
+| **strict order, corridor** (default now) | **199** | **0.16 m / 2.0 m** | 0.80 |
+| length objective alone, corridor, from the perturbed start | 187 | 0.08 m / 1.0 m | 0.78 |
+
+The corridor is the lexicographic order's default for its length tiers
+whenever a points tier is in the order (`solver: { corridor: false }`
+turns it off; an order of length alone is a length fit and runs to the
+bounds). It is not the default of a
+single length fit: from a perturbed start the corridor has to be reached
+first, which is a points fit the restoration does badly (25 of 235
+`restoration_failed`), and the warm start of the lexicographic order is
+what provides it. The thirty-six strict runs that still fail are 15 with no
+budget (the length tier not finished), 18 out of budget in the length
+tier - the corridor's boundary is reached at 600 and held slowly - and 3
+verdicts.
 
 The thirteen giants under the strict order today, for the record: 0 of
 13, as on 2026-09-12. Nine establish no budget (the length tier ends
@@ -215,4 +236,19 @@ the held phase, one runs out in its second tier. The run took 5.7 hours,
 most of it on one file whose failed phases were retried with two more
 Hessians because the corpus runner passed `hessian` explicitly and
 overrode the phases' BFGS; the runner now passes it only when asked.
+
+The thirteen giants under the strict order with the corridor: 0 of 13 by
+verdict, and the answers are the right ones. Ten reach the corridor's
+boundary and run out of the length tier's budget there, the alignment
+1.9 to 5.7 m shorter at rms 1.00; the held phase then finishes on five of
+them and runs out on four. Two fail the length tier before the boundary
+(`line_search_failed` at 393, `restoration_failed` at 101). Two things
+in that table are open items rather than results: on the two
+`1280_..._KM` files the held phase reports `stationary` at 2 and 6 with
+rms 23 763 and 24 339 - a verdict on a collapsed geometry, which the
+within-tolerance rule does not cover and the step-too-small rule should
+not grant; and one run of `6100_247-282_LI` took 46 123 s where its twin
+took 737 s, which is a cost with no explanation yet. The length tier at
+the boundary is the slow part everywhere: 1000 iterations for the last
+metres, where the corpus's 64-element file needs 926.
 
