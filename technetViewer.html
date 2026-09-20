@@ -108,8 +108,13 @@
 				gap: 0.55rem;
 				min-height: 2rem;
 			}
+			#sessionOffer, #assignmentTools { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+			#sessionOffer.hidden, #assignmentTools.hidden { display: none; }
+			#sessionOfferText { opacity: 0.85; }
+			button.import-button { font: inherit; font-size: 0.86rem; color: inherit; }
 			#files,
-			#folderFiles {
+			#folderFiles,
+			#assignmentImport {
 				position: absolute;
 				width: 1px;
 				height: 1px;
@@ -1504,6 +1509,8 @@
 				<input id="folderFiles" type="file" webkitdirectory multiple />
 				<label class="import-button" for="folderFiles" title="Ordner über den Dateidialog laden, ohne Drag &amp; Drop">Ordner …</label>
 				<div class="hint">Dateien, ZIPs oder Ordner hierher ziehen</div>
+				<span id="sessionOffer" class="hidden"><span id="sessionOfferText"></span><button type="button" id="reopenAccept" class="import-button">Wieder öffnen</button><button type="button" id="reopenDiscard" class="import-button" title="Gespeicherte Lieferung aus dem Browser löschen">Verwerfen</button></span>
+				<span id="assignmentTools" class="hidden"><button type="button" id="assignmentExport" class="import-button" title="Handzuordnungen, Lage/Höhe je Datei und Objekt, Eingaben, Färbung und Zoom als JSON sichern">Zuordnung ⤓</button><input id="assignmentImport" type="file" accept=".json,application/json" /><label class="import-button" for="assignmentImport" title="Gesicherte Zuordnung auf die geladenen Dateien anwenden">Zuordnung ⤒</label></span>
 			</section>
 			<section>
 				<div id="status">Karte bereit · Daten können überall abgelegt werden.</div>
@@ -41398,6 +41405,7 @@ xlsx/xlsx.mjs:
 					Object.assign(cursorContext, { bands, inKm: inKilometerFrame(anchor), track: deliveryTrackOf(anchor) });
 					drawDiagramCursor();
 					updateCursorReadout();
+					scheduleStateSave();
 					// The SVG now sizes itself from the viewBox at the panel's width, so
 					// the panel's auto height is the rendered height (+72px chrome),
 					// clamped by setDiagramHeight() to what the window can show; past
@@ -44278,6 +44286,7 @@ xlsx/xlsx.mjs:
 			}
 
 			function renderObjectTree(preferredFileName = null) {
+				scheduleStateSave();
 				return renderRawInbox(preferredFileName);
 				const previousSelection = selectedEntry;
 				const previousPlanningSelection = selectedPlanningFile;
@@ -45194,6 +45203,7 @@ xlsx/xlsx.mjs:
 				})));
 				spurplanNote.textContent = `${bands} ${bands === 1 ? "Strecke" : "Strecken"} · ${topology.gleise} Gleise · ${junctions} Weichen/Kreuzungen · ${coloring === "none" ? "ohne Färbung" : `${speeds.size}/${topology.edges.length} Kanten nach GWB ${coloring === "proposal" ? "Vorschlag" : "heute"} gefärbt`}`;
 				recordPerformance("spurplan-render", started, { bands, edges: topology.edges.length });
+				scheduleStateSave();
 			}
 
 			// ---- Main · Lieferung (Bild) ------------------------------------------
@@ -45552,8 +45562,14 @@ xlsx/xlsx.mjs:
 				}
 			}
 
-			async function inspectFiles(files) {
+			async function inspectFiles(files, { reopening = false } = {}) {
 				const batchStarted = performance.now();
+				// A delivery that is imported without reopening the stored one
+				// replaces it in the browser: the store holds one delivery, not a
+				// history.
+				if (!reopening && !viewerStore.sessionStarted) await viewerStore.clear();
+				viewerStore.sessionStarted = true;
+				sessionOffer.classList.add("hidden");
 				const sources = Array.from(files ?? []);
 				const incoming = [];
 				const foundations = [];
@@ -45603,7 +45619,10 @@ xlsx/xlsx.mjs:
 						}
 						addedFoundations += addPlanningFiles([file], { importFailure });
 						warnings.push(`${file.name}: ${importFailure}`);
-					} else lastLoadedFileName = file.name;
+					} else {
+						lastLoadedFileName = file.name;
+						void viewerStore.rememberFile(file);
+					}
 				}
 				if (loadedFiles.length || planningFiles.length) {
 					const renderStarted = performance.now();
@@ -45615,6 +45634,7 @@ xlsx/xlsx.mjs:
 					renderObjectTree(lastLoadedFileName || incoming.at(-1)?.name || null);
 					output.classList.add("hidden");
 					dropzone.classList.add("loaded");
+					assignmentTools.classList.remove("hidden");
 					setViewMode(startViewMode());
 					void applyDefaultRailwayMap();
 					recordPerformance("batch-render", renderStarted, { files: incoming.length, objects: allViewerEntries().length });
@@ -45738,6 +45758,202 @@ xlsx/xlsx.mjs:
 					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
 				}
 			}
+
+			// ---- Wiederöffnen -------------------------------------------------------
+			// The browser keeps the current delivery: every imported data file as
+			// it was dropped, plus what the user did to it -- hand assignments in
+			// the 7L lanes, Lage/Höhe per file and object, drafts, the GWB inputs,
+			// Spurplan colouring and zoom, view, selection. On the next open the
+			// page offers to bring it back; importing something else first
+			// replaces it. The same state travels as a JSON file ("Zuordnung ⤓/⤒"),
+			// keyed by file name and object id, so it can be applied to the same
+			// files on another machine. Nothing here touches the data itself.
+			const VIEWER_DB_NAME = "technetViewer";
+			const viewerStore = {
+				sessionStarted: false,
+				restoring: false,
+				open() {
+					return new Promise((resolve, reject) => {
+						if (!globalThis.indexedDB) { reject(new Error("IndexedDB nicht verfügbar")); return; }
+						const request = indexedDB.open(VIEWER_DB_NAME, 1);
+						request.onupgradeneeded = () => {
+							const db = request.result;
+							if (!db.objectStoreNames.contains("files")) db.createObjectStore("files", { keyPath: "name" });
+							if (!db.objectStoreNames.contains("state")) db.createObjectStore("state");
+						};
+						request.onsuccess = () => resolve(request.result);
+						request.onerror = () => reject(request.error);
+					});
+				},
+				async run(store, mode, work) {
+					const db = await this.open();
+					try {
+						return await new Promise((resolve, reject) => {
+							const tx = db.transaction(store, mode);
+							const request = work(tx.objectStore(store));
+							tx.oncomplete = () => resolve(request?.result);
+							tx.onerror = () => reject(tx.error);
+							tx.onabort = () => reject(tx.error);
+						});
+					} finally {
+						db.close();
+					}
+				},
+				async rememberFile(file) {
+					try {
+						await this.run("files", "readwrite", (store) => store.put({ name: file.name, blob: file, lastModified: file.lastModified ?? Date.now(), addedAt: Date.now() }));
+					} catch (error) {
+						console.warn("Lieferung nicht gespeichert:", error);
+					}
+				},
+				async files() {
+					try { return (await this.run("files", "readonly", (store) => store.getAll())) ?? []; } catch { return []; }
+				},
+				async saveState(state) {
+					try { await this.run("state", "readwrite", (store) => store.put(state, "current")); } catch (error) { console.warn("Zustand nicht gespeichert:", error); }
+				},
+				async state() {
+					try { return await this.run("state", "readonly", (store) => store.get("current")); } catch { return null; }
+				},
+				async clear() {
+					try {
+						await this.run("files", "readwrite", (store) => store.clear());
+						await this.run("state", "readwrite", (store) => store.clear());
+					} catch { /* nothing stored */ }
+				},
+			};
+			const stateKey = (entry) => `${entry.loaded?.fileName ?? "?"}|${entry.item?.id ?? "?"}`;
+			function captureViewerState() {
+				const entries = {};
+				for (const entry of allViewerEntries()) {
+					const record = {};
+					for (const field of ["userFamily", "userLineRole", "frameEdit", "organizationEdit", "displayLsys", "displayHsys"]) {
+						if (entry[field] !== undefined && entry[field] !== null) record[field] = entry[field];
+					}
+					if (Object.keys(record).length) entries[stateKey(entry)] = record;
+				}
+				const files = {};
+				for (const loaded of loadedFiles) files[loaded.fileName] = { displayLsys: loaded.displayLsys, displayLsysSource: loaded.displayLsysSource };
+				return {
+					version: 1,
+					savedAt: new Date().toISOString(),
+					fileNames: loadedFiles.map((loaded) => loaded.fileName),
+					entries,
+					files,
+					drafts: draftSevenLineFrames,
+					gwb: { lineSpeed: gwbLineSpeedInput.value, brakeDistance: gwbBrakeDistanceInput.value, oberbau: gwbOberbauSelect.value, fahrzeug: gwbFahrzeugSelect.value },
+					spurplan: { coloring: spurplanColoring.value, zoom: [...spurplanZoom.entries()] },
+					kilometerLinesVisible,
+					viewMode: viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? null,
+					selected: selectedEntry ? stateKey(selectedEntry) : null,
+				};
+			}
+			function applyViewerState(state) {
+				if (!state || typeof state !== "object") return { applied: 0, missing: 0 };
+				viewerStore.restoring = true;
+				let applied = 0;
+				let missing = 0;
+				try {
+					const byKey = new Map(allViewerEntries().map((entry) => [stateKey(entry), entry]));
+					for (const [key, record] of Object.entries(state.entries ?? {})) {
+						const entry = byKey.get(key);
+						if (!entry) { missing += 1; continue; }
+						for (const field of ["userFamily", "userLineRole", "frameEdit", "organizationEdit", "displayLsys", "displayHsys"]) {
+							if (record[field] !== undefined) entry[field] = record[field];
+						}
+						listingCache.delete(entry);
+						mapGeometryCache.delete(entry);
+						geometryModelCache.delete(entry);
+						applied += 1;
+					}
+					for (const loaded of loadedFiles) {
+						const record = state.files?.[loaded.fileName];
+						if (!record || record.displayLsys === undefined) continue;
+						loaded.displayLsys = record.displayLsys;
+						loaded.displayLsysSource = record.displayLsysSource ?? loaded.displayLsysSource;
+						for (const entry of loaded.objects) { listingCache.delete(entry); mapGeometryCache.delete(entry); geometryModelCache.delete(entry); }
+					}
+					if (Array.isArray(state.drafts)) draftSevenLineFrames = state.drafts;
+					if (state.gwb) {
+						if (state.gwb.lineSpeed) gwbLineSpeedInput.value = state.gwb.lineSpeed;
+						if (state.gwb.brakeDistance) gwbBrakeDistanceInput.value = state.gwb.brakeDistance;
+						if (state.gwb.oberbau) gwbOberbauSelect.value = state.gwb.oberbau;
+						if (state.gwb.fahrzeug) gwbFahrzeugSelect.value = state.gwb.fahrzeug;
+					}
+					if (state.spurplan) {
+						if (state.spurplan.coloring) spurplanColoring.value = state.spurplan.coloring;
+						spurplanZoom.clear();
+						for (const [label, window] of state.spurplan.zoom ?? []) spurplanZoom.set(label, window);
+					}
+					if (typeof state.kilometerLinesVisible === "boolean" && state.kilometerLinesVisible !== kilometerLinesVisible) toggleKilometerLines();
+					spurplanSpeedCache.clear();
+					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+					const selected = state.selected ? byKey.get(state.selected) : null;
+					if (selected) selectObject(selected, selected.button ?? null);
+					if (state.viewMode && viewModeButtons.some((button) => button.dataset.mode === state.viewMode)) setViewMode(state.viewMode);
+				} finally {
+					viewerStore.restoring = false;
+				}
+				scheduleStateSave();
+				return { applied, missing };
+			}
+			let stateSaveTimer = 0;
+			function scheduleStateSave() {
+				if (viewerStore.restoring || !loadedFiles.length) return;
+				clearTimeout(stateSaveTimer);
+				stateSaveTimer = setTimeout(() => { void viewerStore.saveState(captureViewerState()); }, 800);
+			}
+			const sessionOffer = document.querySelector("#sessionOffer");
+			const sessionOfferText = document.querySelector("#sessionOfferText");
+			const assignmentTools = document.querySelector("#assignmentTools");
+			async function offerReopen() {
+				const stored = await viewerStore.files();
+				if (!stored.length || loadedFiles.length) return;
+				const state = await viewerStore.state();
+				const when = state?.savedAt ? new Date(state.savedAt) : new Date(Math.max(...stored.map((record) => record.addedAt ?? 0)));
+				sessionOfferText.textContent = `Zuletzt: ${stored.length} ${stored.length === 1 ? "Datei" : "Dateien"} vom ${when.toLocaleDateString("de-DE")}, ${when.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
+				sessionOffer.classList.remove("hidden");
+			}
+			document.querySelector("#reopenAccept").addEventListener("click", async () => {
+				sessionOffer.classList.add("hidden");
+				const stored = await viewerStore.files();
+				const files = stored.map((record) => new File([record.blob], record.name, { lastModified: record.lastModified ?? Date.now() }));
+				const state = await viewerStore.state();
+				await inspectFiles(files, { reopening: true });
+				const result = applyViewerState(state);
+				status.textContent = `${status.textContent} · wieder geöffnet${result.applied ? `, ${result.applied} Objekte mit gesicherter Zuordnung` : ""}${result.missing ? `, ${result.missing} nicht mehr gefunden` : ""}`;
+			});
+			document.querySelector("#reopenDiscard").addEventListener("click", async () => {
+				await viewerStore.clear();
+				sessionOffer.classList.add("hidden");
+				status.textContent = "Gespeicherte Lieferung verworfen.";
+			});
+			document.querySelector("#assignmentExport").addEventListener("click", () => {
+				const state = captureViewerState();
+				const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = `zuordnung-${state.savedAt.slice(0, 10)}.json`;
+				link.click();
+				setTimeout(() => URL.revokeObjectURL(url), 1000);
+			});
+			const assignmentImport = document.querySelector("#assignmentImport");
+			assignmentImport.addEventListener("change", async () => {
+				const file = assignmentImport.files?.[0];
+				assignmentImport.value = "";
+				if (!file) return;
+				try {
+					const state = JSON.parse(await file.text());
+					const result = applyViewerState(state);
+					status.classList.remove("error");
+					status.textContent = `Zuordnung aus ${file.name}: ${result.applied} Objekte übernommen${result.missing ? `, ${result.missing} nicht in den geladenen Dateien` : ""}.`;
+				} catch (error) {
+					status.classList.add("error");
+					status.textContent = `Zuordnung konnte nicht gelesen werden: ${error?.message ?? error}`;
+				}
+			});
+			void offerReopen();
 
 			fileInput.addEventListener("change", async () => {
 				await inspectFiles(fileInput.files);
