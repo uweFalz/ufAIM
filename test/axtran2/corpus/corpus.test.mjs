@@ -418,3 +418,30 @@ test("under the corridor the length tier asks the right question: a metre shorte
 	assert.ok(final.diagnostics.softResidualRms <= 1.001, `rms ${final.diagnostics.softResidualRms}`);
 });
 
+test("a wreck walked back to the truth by halving leaves no foot on the wrong branch", { skip }, async () => {
+	// 1280_043-049_KM, 164 elements over 22 km. A trial step that put every
+	// curvature on its bound and every length 98 m longer coiled the far end
+	// next to the start; the points of km 19 found a foot at station 850, ten
+	// kilometres off, and a line search's forty halvings back to the start
+	// carried that branch all the way: 61 feet wrong at the truth, rms 25 000
+	// where the scan says 0.15. A foot on a wreck is not remembered now.
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	const file = find("1280_043-049_DBREF2016_KM.TRA", SAMPLES.pathname);
+	const sc = await createTraScenario(file);
+	const truth = Object.fromEntries(sc.truth.elements.map((e, i) => [e.id, sc.truth.values[i]]));
+	const wreck = Object.fromEntries(Object.entries(truth).map(([id, v]) => [id, { ...v, ...(v.length !== undefined ? { length: v.length + 98 } : {}), ...(v.curvature !== undefined ? { curvature: 1 / 300 } : {}) }]));
+	const between = (t) => Object.fromEntries(Object.entries(truth).map(([id, v]) => [id, Object.fromEntries(Object.entries(v).map(([k, a]) => [k, a + t * (wreck[id][k] - a)]))]));
+	const feetOf = (built) => sc.points.map((p) => built.worldToTrack(p.x, p.y));
+	feetOf(sc.buildAlignment(truth));
+	feetOf(sc.buildAlignment(wreck));
+	for (let k = 1; k <= 40; k++) feetOf(sc.buildAlignment(between(Math.pow(2, -k))));
+	const back = feetOf(sc.buildAlignment(truth));
+	const fresh = await createTraScenario(file);
+	const ref = feetOf(fresh.buildAlignment(truth));
+	const wrong = back.filter((w, i) => Math.abs(w.s - ref[i].s) > 1).length;
+	assert.equal(wrong, 0, `${wrong} feet on the wrong branch after the walk back`);
+	const rms = Math.sqrt(back.reduce((s, w, i) => s + (w.q / sc.points[i].tolerance) ** 2, 0) / back.length);
+	assert.ok(rms < 0.2, `rms ${rms} at the truth`);
+});
+

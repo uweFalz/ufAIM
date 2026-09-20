@@ -51,3 +51,28 @@ test("a memory made on a wreck is not trusted: a station that moved far means a 
 	assert.ok(Math.abs(remembered.s - scanned.s) < 1e-6, `memory ${remembered.s}, scan ${scanned.s}`);
 	assert.ok(Math.abs(remembered.q) < 0.031, `lateral ${remembered.q} where the point sits 3 cm off`);
 });
+
+test("a foot on a wreck is not remembered", () => {
+	// A foot farther from its point than the stale distance is a foot on a
+	// wreck. Remembered, it seeds Newton on the way back to sense, and Newton
+	// stays on its branch: a stationary point of the distance at every step,
+	// never the nearest. Forgotten, the next evaluation scans.
+	const feet = createFootMemory();
+	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);
+	const pose = truth.poseAt(0.8 * truth.arcLength);
+	const point = { x: pose.p.x + 0.03 * pose.t.y, y: pose.p.y - 0.03 * pose.t.x };
+	feet.project(truth, point.x, point.y);
+	assert.equal(feet.size, 1);
+	// a wreck: the first straight run out to four kilometres, so the point of
+	// the truth's last stretch lies far from anything the wreck has
+	const wreck = build(TRUE_LENGTHS.map((l, i) => (i === 0 ? 4000 : l)), TRUE_CURVATURES.map((k) => -k));
+	const onWreck = feet.project(wreck, point.x, point.y);
+	assert.ok(onWreck.dist > 200, `the wreck's foot is ${onWreck.dist} m from the point`);
+	assert.equal(feet.size, 0, "a foot on a wreck is not remembered");
+	const scansBefore = feet.scans;
+	const back = feet.project(truth, point.x, point.y);
+	assert.equal(feet.scans, scansBefore + 1, "the next evaluation scans");
+	assert.ok(Math.abs(back.s - 0.8 * truth.arcLength) < 1e-6 && Math.abs(back.q) < 0.031, `back on the truth: s ${back.s}, q ${back.q}`);
+	assert.equal(feet.size, 1);
+});
+
