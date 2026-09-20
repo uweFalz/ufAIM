@@ -292,7 +292,12 @@ export function solveAlignmentLexicographic({
 			// start provides. An order without a points tier is a length fit and
 			// runs to the bounds, as it should.
 			corridor: tiers.some((tier) => tier.objective === "points"),
-			...solver,
+			// an option the caller left undefined is one the caller did not say,
+			// not one it set to nothing: measured, a runner passing { corridor:
+			// undefined, hessian: undefined } switched the corridor off and the
+			// phases to "auto" (strict order 199 -> 137 of 235, and 12 932 s on
+			// one giant retrying every failed phase with two more Hessians)
+			...Object.fromEntries(Object.entries(solver).filter(([, value]) => value !== undefined)),
 			problem,
 			buildAlignment,
 			startAt: start,

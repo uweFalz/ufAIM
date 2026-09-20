@@ -68,7 +68,19 @@ export function createFootMemory({ samples = 400, refineSteps = 40, staleDistanc
 			const local = fresh ? newtonFoot(alignment, x, y, remembered.s) : null;
 			if (!local) scans += 1;
 			const projected = local ?? alignment.world2Track(x, y, { samples, refineSteps });
-			if (projected) feet.set(key, { s: projected.s, x: projected.point.x, y: projected.point.y });
+			// A foot farther from its point than the stale distance is a foot on
+			// a wreck, and not one to remember: Newton from it stays on its
+			// branch while the geometry walks back to sense. Measured on a
+			// 22 km alignment: a trial step that put every curvature on its
+			// bound coiled the far end next to the start, the points of km 19
+			// found a foot at station 850 ten kilometres off, and the line
+			// search's forty halvings back to the start carried that branch all
+			// the way - a stationary point of the distance at every step, never
+			// the nearest - until the fit ended at rms 19 596 a hair's breadth
+			// from a point where the scan says 1.0. Forgotten instead, the next
+			// evaluation resumes from the last foot worth the name.
+			if (projected && projected.dist <= staleDistance) feet.set(key, { s: projected.s, x: projected.point.x, y: projected.point.y });
+			else feet.delete(key);
 			return projected;
 		},
 		forget() { feet.clear(); },

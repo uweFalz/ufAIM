@@ -252,3 +252,43 @@ took 737 s, which is a cost with no explanation yet. The length tier at
 the boundary is the slow part everywhere: 1000 iterations for the last
 metres, where the corpus's 64-element file needs 926.
 
+## The "verdict on a collapsed geometry" was the foot memory's branch (2026-09-20)
+
+The two `1280_..._KM` giants whose held phase reported `stationary` at
+rms 23 763 were reproduced with a trace, and the collapse was earlier and
+elsewhere: the free points phase, started at the corridor's witness
+(rms 1.00, checked through a fresh scan), evaluated to f = 8.5e10 a
+hair's breadth from it - a discontinuity in the residuals, not in the
+solver. The trace of the evaluations found it. A trial step of the
+points fit put every curvature on its bound (1/300) and every length
+98 m longer; on that geometry the far end of the 22 km alignment coils
+next to its start, and the points of km 19 found their nearest foot at
+station 850, ten kilometres off. The line search halved that step forty
+times back to the start, and at every halving the foot memory's Newton
+started from the station it remembered - which stayed a stationary point
+of the distance, never the nearest - so the wrong branch walked all the
+way back to the witness: 61 feet wrong at the truth, rms 25 000 where the
+scan says 0.15. The check of #48 (a station moved by more than 200 m is
+stale) could not see it: each halving moved the geometry a little, and
+the branch was inherited across a continuous path.
+
+The rule now: a foot farther from its point than the stale distance is a
+foot on a wreck and is not remembered; the next evaluation scans and
+resumes from the last foot worth the name. The path from the wreck back
+to the truth leaves no foot wrong (`corpus.test.mjs`, 5 s on the giant),
+the free points phase from the witness ends within tolerance on both
+files, and their held phases run to the corridor's boundary and out of
+their budget there at rms 1.00 - the slow boundary, not a collapse.
+
+Found on the way: the corpus runner passed every solver option it knew,
+undefined where not asked, and the lexicographic order spread them over
+its own defaults - `corridor: undefined` switched the corridor off and
+`hessian: undefined` put the phases on "auto" (the 12 932 s giant of
+2026-09-14). The order now ignores an option the caller left undefined.
+The strict order of 2026-09-19 (199 of 235) had been measured with the
+corridor passed explicitly and the phases on "auto"; measured again with
+the two fixes and the phases on BFGS: 196 of 235 in 791 s (the three are
+files the "auto" retries had carried; the phases stay on BFGS, and the
+retry there remains a choice). Points 235 of 235 and the giants 13 of 13
+are unchanged by the memory rule.
+
