@@ -200,6 +200,8 @@
 				font-size: 0.84rem;
 			}
 			#spurplanNote { color: GrayText; }
+			#spurplanHint { color: GrayText; font-size: 0.76rem; cursor: help; }
+			.spurplan-svg { touch-action: pan-y; }
 			#spurplanLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; font-size: 0.76rem; color: GrayText; }
 			.spurplan-legend-item { position: relative; padding-left: 0.95rem; }
 			.spurplan-legend-item::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 0.7em; height: 0.28em; background: var(--speed-color); }
@@ -1572,6 +1574,7 @@
 							<div id="spurplanToolbar">
 								<strong>Spurplan · Hauptbild</strong>
 								<span id="spurplanNote"></span>
+								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
 								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
 								<div id="spurplanLegend"></div>
 							</div>
@@ -40749,8 +40752,15 @@ xlsx/xlsx.mjs:
 				const width = options.width ?? FIGURE_WIDTH;
 				const tickCount = options.ticks ?? 5;
 				const figure = nestedFigure(target, y, height, width);
-				registerCursorFigure({ y, height, left, right, xMin, xMax, width, target, frame: options.cursorFrame === undefined ? "axis" : options.cursorFrame });
+				registerCursorFigure({ y, height, left, right, xMin, xMax, width, target, key: options.figureKey ?? null, frame: options.cursorFrame === undefined ? "axis" : options.cursorFrame });
 				figure.append(svgElement("rect", { x: 0, y: 0, width, height, class: "diagram-band" }));
+				// A zoomed window cuts edges at the plot's edge instead of letting
+				// them run under the labels.
+				const clipId = `spurplan-clip-${Math.random().toString(36).slice(2, 9)}`;
+				const clip = svgElement("clipPath", { id: clipId });
+				clip.append(svgElement("rect", { x: left, y: 0, width: width - left - right, height }));
+				figure.append(clip);
+				const content = svgElement("g", { "clip-path": `url(#${clipId})` });
 				const xSpan = Math.max(xMax - xMin, 1);
 				const xAt = (km) => left + (km - xMin) / xSpan * (width - left - right);
 				const yAt = (row) => top + (rows[1] - row) * rowPitch + rowPitch / 2;
@@ -40775,7 +40785,7 @@ xlsx/xlsx.mjs:
 					const title = svgElement("title");
 					title.textContent = `${objectDisplayName(edge.entry)} → ${topology.axes?.[there.axis]?.label ?? "andere Achse"}`;
 					stub.append(title);
-					figure.append(stub);
+					content.append(stub);
 				}
 				const longestEdge = new Map();
 				for (const edge of visible) {
@@ -40794,7 +40804,7 @@ xlsx/xlsx.mjs:
 						// Station in the Gleis's own frame → position along the edge.
 						const span = edge.stationTo - edge.stationFrom || 1;
 						const at = (station) => { const t = Math.max(0, Math.min(1, (station - edge.stationFrom) / span)); return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)]; };
-						if (isSelected) figure.append(svgElement("line", { x1, x2, y1, y2, class: "spurplan-halo" }));
+						if (isSelected) content.append(svgElement("line", { x1, x2, y1, y2, class: "spurplan-halo" }));
 						for (const segment of segments) {
 							const [ax, ay] = at(segment.from);
 							const [bx, by] = at(segment.to);
@@ -40803,7 +40813,7 @@ xlsx/xlsx.mjs:
 							const title = svgElement("title");
 							title.textContent = `${name}\nv ${segment.v} km/h · ${station(segment.from).trim()} – ${station(segment.to).trim()}`;
 							line.append(title);
-							figure.append(line);
+							content.append(line);
 						}
 						continue;
 					}
@@ -40812,7 +40822,7 @@ xlsx/xlsx.mjs:
 					const title = svgElement("title");
 					title.textContent = name;
 					line.append(title);
-					figure.append(line);
+					content.append(line);
 				}
 				for (const node of topology.nodes) {
 					if (node.km == null || node.km < xMin || node.km > xMax || !onAxis(node)) continue;
@@ -40823,9 +40833,9 @@ xlsx/xlsx.mjs:
 						const title = svgElement("title");
 						title.textContent = `${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}`;
 						dot.append(title);
-						figure.append(dot);
+						content.append(dot);
 					} else if (node.kind === "Ende") {
-						figure.append(svgElement("line", { x1: xAt(node.km), x2: xAt(node.km), y1: yAt(node.row) - 5, y2: yAt(node.row) + 5, class: "spurplan-end" }));
+						content.append(svgElement("line", { x1: xAt(node.km), x2: xAt(node.km), y1: yAt(node.row) - 5, y2: yAt(node.row) + 5, class: "spurplan-end" }));
 					}
 				}
 				// Labels: longest Gleis first, each takes the first free spot -- above
@@ -40859,7 +40869,7 @@ xlsx/xlsx.mjs:
 						placedBoxes.push(box);
 						const label = svgElement("text", { x, y: baseline, "text-anchor": "middle", class: "diagram-label diagram-muted spurplan-label" });
 						label.textContent = text;
-						figure.append(label);
+						content.append(label);
 						break;
 					}
 				}
@@ -40878,11 +40888,12 @@ xlsx/xlsx.mjs:
 							placedBoxes.push(box);
 							const label = svgElement("text", { x, y: baseline, "text-anchor": "middle", class: "diagram-label spurplan-junction-label" });
 							label.textContent = text;
-							figure.append(label);
+							content.append(label);
 							break;
 						}
 					}
 				}
+				figure.append(content);
 				return height;
 			}
 
@@ -44892,6 +44903,77 @@ xlsx/xlsx.mjs:
 			function spurplanSpeedColor(v) { return SPURPLAN_SPEED_CLASSES.find(([max]) => v <= max)[1]; }
 			const spurplanSpeedCache = new Map();
 			let spurplanSvg = null;
+			// Zoom per Strecke band: a km window narrower than the band's full
+			// extent, kept across re-renders (selection, colouring) and reset by
+			// a double click. ⌘/Strg + wheel (a trackpad pinch sends the same)
+			// zooms around the mouse's km, a drag pans; a plain wheel still
+			// scrolls the panel.
+			const SPURPLAN_MIN_WINDOW_M = 100;
+			const spurplanZoom = new Map();
+			const spurplanBandExtents = new Map();
+			function spurplanWindow(label, full) {
+				const zoom = spurplanZoom.get(label);
+				if (!zoom) return full;
+				const span = Math.max(SPURPLAN_MIN_WINDOW_M, Math.min(zoom.xMax - zoom.xMin, full.xMax - full.xMin));
+				const xMin = Math.max(full.xMin, Math.min(zoom.xMin, full.xMax - span));
+				return { xMin, xMax: xMin + span };
+			}
+			function spurplanFigureAt(svg, event) {
+				const point = svgPointFromEvent(svg, event);
+				if (!point) return null;
+				const figure = cursorFigures.find((candidate) => candidate.target === svg && candidate.key && point.y >= candidate.y && point.y <= candidate.y + candidate.height);
+				if (!figure) return null;
+				const ratio = (point.x - figure.left) / (figure.width - figure.left - figure.right);
+				return { figure, point, ratio, km: figure.xMin + ratio * (figure.xMax - figure.xMin) };
+			}
+			function wireSpurplanZoom(svg) {
+				svg.addEventListener("wheel", (event) => {
+					if (!event.ctrlKey && !event.metaKey) return;
+					const hit = spurplanFigureAt(svg, event);
+					if (!hit) return;
+					event.preventDefault();
+					const { figure, km } = hit;
+					const full = spurplanBandExtents.get(figure.key);
+					if (!full) return;
+					const span = figure.xMax - figure.xMin;
+					const factor = Math.exp(Math.max(-1, Math.min(1, event.deltaY / 100)) * 0.35);
+					const nextSpan = Math.max(SPURPLAN_MIN_WINDOW_M, Math.min(full.xMax - full.xMin, span * factor));
+					const xMin = km - (km - figure.xMin) * nextSpan / span;
+					if (nextSpan >= full.xMax - full.xMin - 1e-6) spurplanZoom.delete(figure.key);
+					else spurplanZoom.set(figure.key, { xMin, xMax: xMin + nextSpan });
+					scheduleCursor(() => renderSpurplanView());
+				}, { passive: false });
+				let drag = null;
+				svg.addEventListener("pointerdown", (event) => {
+					if (event.button !== 0) return;
+					const hit = spurplanFigureAt(svg, event);
+					if (!hit || !spurplanZoom.has(hit.figure.key)) return;
+					drag = { key: hit.figure.key, startX: hit.point.x, xMin: hit.figure.xMin, xMax: hit.figure.xMax, plotWidth: hit.figure.width - hit.figure.left - hit.figure.right, moved: false };
+				});
+				svg.addEventListener("pointermove", (event) => {
+					if (!drag) return;
+					const point = svgPointFromEvent(svg, event);
+					if (!point) return;
+					const shift = (drag.startX - point.x) / drag.plotWidth * (drag.xMax - drag.xMin);
+					if (!drag.moved && Math.abs(point.x - drag.startX) < 3) return;
+					drag.moved = true;
+					const full = spurplanBandExtents.get(drag.key);
+					const span = drag.xMax - drag.xMin;
+					const xMin = Math.max(full.xMin, Math.min(full.xMax - span, drag.xMin + shift));
+					spurplanZoom.set(drag.key, { xMin, xMax: xMin + span });
+					scheduleCursor(() => renderSpurplanView());
+				});
+				const endDrag = () => { drag = null; };
+				svg.addEventListener("pointerup", endDrag);
+				svg.addEventListener("pointercancel", endDrag);
+				svg.addEventListener("pointerleave", endDrag);
+				svg.addEventListener("dblclick", (event) => {
+					const hit = spurplanFigureAt(svg, event);
+					if (!hit || !spurplanZoom.has(hit.figure.key)) return;
+					spurplanZoom.delete(hit.figure.key);
+					renderSpurplanView();
+				});
+			}
 			function gleisSpeedSections(entry, useProposal) {
 				const key = `${entry.item.id}|${useProposal}|${lineSpeedKmh()}|${regelbremswegM()}|${oberbauKey()}|${fahrzeugKey()}`;
 				if (spurplanSpeedCache.has(key)) return spurplanSpeedCache.get(key);
@@ -44942,23 +45024,27 @@ xlsx/xlsx.mjs:
 					if (!bandsByLabel.has(axis.label)) bandsByLabel.set(axis.label, { label: axis.label, track: axis.track, axes: new Set() });
 					bandsByLabel.get(axis.label).axes.add(axis.index);
 				}
+				spurplanBandExtents.clear();
 				for (const axis of bandsByLabel.values()) {
 					const nodes = topology.nodes.filter((node) => axis.axes.has(node.axis) && node.km != null);
 					if (!nodes.length) continue;
 					const kms = nodes.map((node) => node.km);
 					const pad = Math.max(50, (Math.max(...kms) - Math.min(...kms)) * 0.02);
-					const xMin = Math.min(...kms) - pad;
-					const xMax = Math.max(...kms) + pad;
+					const full = { xMin: Math.min(...kms) - pad, xMax: Math.max(...kms) + pad };
+					spurplanBandExtents.set(axis.label, full);
+					const window = spurplanWindow(axis.label, full);
+					const zoomed = window.xMin > full.xMin + 1e-6 || window.xMax < full.xMax - 1e-6;
 					const here = nodes.filter((node) => node.kind === "Weiche" || node.kind === "Kreuzung").length;
 					junctions += here;
-					y += drawFigureTitle(svg, y, axis.label, `km ${kmLabel(xMin)} – ${kmLabel(xMax)} · ${nodes.length} Knoten · ${here} Weichen/Kreuzungen`, panelWidth);
-					y += drawSpurplan(svg, y, topology, xMin, xMax, selectedEntry, {
+					y += drawFigureTitle(svg, y, axis.label, `km ${kmLabel(window.xMin)} – ${kmLabel(window.xMax)}${zoomed ? ` von ${kmLabel(full.xMin)} – ${kmLabel(full.xMax)} · Ausschnitt, Doppelklick zeigt alles` : ""} · ${nodes.length} Knoten · ${here} Weichen/Kreuzungen`, panelWidth);
+					y += drawSpurplan(svg, y, topology, window.xMin, window.xMax, selectedEntry, {
 						axes: axis.axes,
 						width: panelWidth,
 						ticks: Math.max(5, Math.floor((panelWidth - 90) / 110)),
 						speeds,
 						cursorFrame: axis.track && axis.track === anchorTrack ? "axis" : null,
 						junctionLabels: true,
+						figureKey: axis.label,
 					});
 					y += 10;
 					bands += 1;
@@ -44970,6 +45056,7 @@ xlsx/xlsx.mjs:
 				spurplanContent.replaceChildren(svg);
 				spurplanSvg = svg;
 				svg.addEventListener("mousemove", (event) => scheduleCursor(() => cursorFromFigureEvent(svg, event)));
+				wireSpurplanZoom(svg);
 				drawDiagramCursor();
 				spurplanLegend.replaceChildren(...(coloring === "none" ? [] : SPURPLAN_SPEED_CLASSES.map(([max, color], index) => {
 					const item = document.createElement("span");
@@ -45576,6 +45663,19 @@ xlsx/xlsx.mjs:
 			}
 			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect]) control.addEventListener("change", () => { renderDiagram(); if (workspace.classList.contains("mode-spurplan")) renderSpurplanView(); });
 			spurplanColoring.addEventListener("change", () => renderSpurplanView());
+			// The three pictures size themselves to their panel; when the panel
+			// changes (Inbox/Outbox folded, window resized), the open one redraws.
+			let panelResizeRequest = 0;
+			new ResizeObserver(() => {
+				if (panelResizeRequest) return;
+				panelResizeRequest = requestAnimationFrame(() => {
+					panelResizeRequest = 0;
+					if (!loadedFiles.length) return;
+					if (workspace.classList.contains("mode-spurplan")) renderSpurplanView();
+					else if (workspace.classList.contains("mode-delivery")) renderDelivery();
+					else if (workspace.classList.contains("mode-links")) renderLinks();
+				});
+			}).observe(workspace);
 			gwbBogenCsvButton.addEventListener("click", () => downloadCsv(`gwb-boegen-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbBogenCsv(selectedEntry)));
 			gwbAbschnittCsvButton.addEventListener("click", () => downloadCsv(`gwb-abschnitte-${new Date().toISOString().slice(0, 10)}.csv`, buildGwbAbschnittCsv(selectedEntry)));
 			for (const button of viewModeButtons) {
