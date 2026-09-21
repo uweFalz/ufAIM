@@ -136,6 +136,18 @@ export function solveSQP({
 	// 74 iterations instead of ending as a verdict. Decided as the default on
 	// 2026-09-10 (Uwe Falz).
 	correctionClosure = 0.1,
+	// Which rows the second-order correction closes at the trial point:
+	// "equalities", or "all" - the inequalities with them. A corridor row
+	// violated at second order by every step, like an equality, is never
+	// corrected under "equalities": measured on an 11-element station track,
+	// the length tier walked three hundred full steps with the corridor 4e-3
+	// over, the correction closing the end pose each time, until the
+	// subproblem relaxed to nothing; "all" settles it at 297. But measured on
+	// the corpus, strict order: "all" 209 of 235, "equalities" 225 - six
+	// files carried by the one, twenty-two by the other. The correction
+	// onto a curved inequality overshoots where the equalities alone did
+	// not. "equalities" stays; the choice is measured, not settled.
+	correctionRows = "equalities",
 	// A point that is stationary to stationarityTolerance and infeasible,
 	// whose violation over this many consecutive such iterations shrinks at a
 	// rate that will not reach the tolerance within the budget, is a creep
@@ -326,8 +338,10 @@ export function solveSQP({
 	// curvature estimate and the penalty weights described the path to here,
 	// not the path from the feasible point. Returns the failure to hand back,
 	// or null when the solve may go on.
-	function restoreFrom(iteration, tolerance = feasibilityTolerance * feasibilityScale()) {
-		restorations += 1;
+	function restoreFrom(iteration, tolerance = feasibilityTolerance * feasibilityScale(), counted = true) {
+		// a best-effort closure at a verdict is not one of the restorations
+		// the limit counts, which are answers to a subproblem that relaxed
+		if (counted) restorations += 1;
 		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance: tolerance });
 		restorationSteps += restored.steps;
 		// A restoration that stalls short of the tolerance but inside the
@@ -502,9 +516,10 @@ export function solveSQP({
 					const asked = objectiveSettled.feasibility ?? Infinity;
 					let closed = violation.total <= asked;
 					if (!closed && restoration !== "off") {
-						// to the absolute standard asked, not the solve's relative one
-						const failure = restoreFrom(iteration, asked);
-						if (failure) return failure;
+						// to the absolute standard asked, not the solve's relative one;
+						// best effort - a restoration that cannot reach it does not
+						// fail a solve that has settled, the window starts over
+						restoreFrom(iteration, asked, false);
 						closed = constraintViolation(state).total <= asked;
 					}
 					if (closed) {
@@ -545,6 +560,17 @@ export function solveSQP({
 			}
 		}
 		if (violation.total <= feasible && kkt <= kktTolerance * gradientScale) {
+			// converged to the solve's relative tolerance; closed to the absolute
+			// one the caller asked for with objectiveSettled.feasibility, since a
+			// caller that asks for 1e-9 on a settled length wants no less on a
+			// converged one (measured: three turnouts converged at 1e-8 to 3e-8
+			// and failed the lexicographic gate of 1e-8 for want of a step)
+			const asked = objectiveSettled?.feasibility ?? Infinity;
+			if (violation.total > asked && restoration !== "off") {
+				// best effort: a restoration that cannot reach the asked tolerance
+				// leaves the converged point as it is, and the caller's gate decides
+				restoreFrom(iteration, asked, false);
+			}
 			history.push({
 				iteration, status: "converged", kkt, violation: violation.total,
 				relativeKkt: kkt / gradientScale,
@@ -786,6 +812,7 @@ export function solveSQP({
 				gradF: new Array(n).fill(0),
 				h: full.state.h ?? [],
 				Jh: state.Jh ?? [],
+				...(correctionRows === "all" ? { g: full.state.g ?? [], Jg: state.Jg ?? [] } : {}),
 				lower: x.map((value, i) => Math.max(lo[i] - value - step.d[i], -radius)),
 				upper: x.map((value, i) => Math.min(up[i] - value - step.d[i], radius)),
 				relaxationWeight,

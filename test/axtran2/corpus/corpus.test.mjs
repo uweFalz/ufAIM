@@ -452,3 +452,30 @@ test("a wreck walked back to the truth by halving leaves no foot on the wrong br
 	assert.ok(rms < 0.2, `rms ${rms} at the truth`);
 });
 
+test("a station track's length tier is corrected back onto the corridor when asked, and a turnout's converged tier passes the gate", { skip }, async () => {
+	// Bahnhofsgleis 5, 11 elements: the length tier walked three hundred full
+	// steps with the corridor 4e-3 over, the second-order correction closing
+	// the end pose every time and leaving the corridor - an inequality - where
+	// it was, until the subproblem relaxed to nothing at 410. With the
+	// correction on all rows (correctionRows "all") the tier settles at 297;
+	// on the corpus that rule loses more than it wins (209 against 225 of
+	// 235), so it is an option and this file asks for it.
+	// ASWA_W_623-624, 3 elements: the tier converged at an end pose of 3.4e-8
+	// and failed the order's gate of 1e-8; converged closes to the asked
+	// feasibility as settled does.
+	const { solveAlignmentLexicographic } = await import(new URL("../../../src/domain/optimization/alignment/AlignmentLexicographicSolver.js", import.meta.url));
+	const { readdirSync } = await import("node:fs");
+	const find = (name, dir) => { for (const e of readdirSync(dir, { withFileTypes: true })) { const p = `${dir}/${e.name}`; if (e.isDirectory()) { const r = find(name, p); if (r) return r; } else if (e.name === name) return p; } return null; };
+	for (const [name, budgetIterations, solver] of [["Bahnhofsgleis 5.TRA", 600, { correctionRows: "all" }], ["ASWA_W_623-624_DBREF2016.TRA", 40, {}]]) {
+		const sc = await createTraScenario(find(name, SAMPLES.pathname));
+		const lex = solveAlignmentLexicographic({
+			problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, maxIterations: 1000,
+			tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }], solver,
+		});
+		assert.ok(lex.ok, `${name}: ${lex.status} ${lex.phases.map((p) => `${p.label}:${p.status}@${p.diagnostics?.iterations}`).join(" ")}`);
+		const tier1 = lex.phases.find((p) => p.label === "tier-1");
+		assert.ok(tier1.diagnostics.iterations < budgetIterations, `${name}: tier-1 took ${tier1.diagnostics.iterations}`);
+		assert.ok(tier1.diagnostics.endPoseDistance < 1e-8, `${name}: tier-1 end pose ${tier1.diagnostics.endPoseDistance}`);
+	}
+});
+

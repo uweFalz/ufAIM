@@ -128,6 +128,7 @@ export function solveAlignmentProblem({
 	filterCeiling,
 	filterSwitching,
 	correctionClosure,
+	correctionRows,
 	qpWarmStart,
 	// The points fit ends "stationary" with the reason "within_tolerance" once
 	// every point is within its tolerance, the constraints are met, the last
@@ -783,6 +784,7 @@ export function solveAlignmentProblem({
 		...(filterCeiling === undefined ? {} : { filterCeiling }),
 		...(filterSwitching === undefined ? {} : { filterSwitching }),
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
+		...(correctionRows === undefined ? {} : { correctionRows }),
 		...(qpWarmStart === undefined ? {} : { qpWarmStart }),
 		...(objective === "points" && undeterminedVerdict ? { determinedSubspace: determinedSubspaceOf } : {}),
 		// The length tier under the corridor creeps along a curved constraint
@@ -792,8 +794,10 @@ export function solveAlignmentProblem({
 		// balanced by one row's gradient in a 43-dimensional determined space.
 		// A length that has settled to a millimetre over twenty full steps is
 		// what the tier hands down, and the millimetre is nothing against the
-		// centimetres of the measurements.
-		...(objectiveSettled ? { objectiveSettled } : corridorActive ? { objectiveSettled: { steps: 20, absolute: 1e-3, feasibility: 1e-9 } } : {}),
+		// centimetres of the measurements. The constraints are closed to 1e-8
+		// for the lexicographic gate; 1e-9 sat at the noise floor of a 7.5 km
+		// chain (a restoration from 1.2e-9 took no step it could accept).
+		...(objectiveSettled ? { objectiveSettled } : corridorActive ? { objectiveSettled: { steps: 20, absolute: 1e-3, feasibility: 1e-8 } } : {}),
 		});
 		attempts.push(Object.freeze({
 			hessian: attempt.hessian, restoration: attempt.restoration ?? "on-verdict",
