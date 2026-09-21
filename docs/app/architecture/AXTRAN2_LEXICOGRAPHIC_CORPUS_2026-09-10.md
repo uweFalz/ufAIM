@@ -292,3 +292,45 @@ files the "auto" retries had carried; the phases stay on BFGS, and the
 retry there remains a choice). Points 235 of 235 and the giants 13 of 13
 are unchanged by the memory rule.
 
+## The slow boundary: a length that has settled is a length (2026-09-21)
+
+The length tier under the corridor took 852 iterations on `3250_4-11_S`
+and the whole budget on every giant. The trace at the boundary: from
+iteration 100 the length changed by 3 mm in total, every step full with a
+correction, the corridor exactly active, the multiplier constant at 0.64,
+and the KKT residual between 3e-3 and 5e-2 of the gradient - all of it in
+the determined directions, where one row's gradient cannot balance a
+43-dimensional projection of the length's. The iteration crawls along a
+strongly curved constraint with a linear objective, and what it is
+crawling after is millimetres.
+
+**The rule.** `objectiveSettled: { steps, absolute, feasibility }` in
+solveSQP: at a feasible point, when the objective's whole swing over
+`steps` accepted steps is at most `absolute` in its own unit, the solve
+ends `stationary` with the reason `objective_settled` - after one
+restoration to the absolute `feasibility` asked, since a creeping tier
+leaves the end pose at 4e-6 where the order's gate wants 1e-8. This is
+not the rate test on a residual norm that AXTRAN2_FLAT_VALLEY_FINDING.md
+§3 rejected; it is the caller saying what a millimetre of length is
+worth. The alignment solver sets it for the length objective under the
+corridor (twenty steps, a millimetre, 1e-9), and the lexicographic order
+sets it for its held points phase (twenty steps, a hundredth of a squared
+tolerance): from a witness that is a settled length rather than a KKT
+point, the fit at that length improves by a part in a thousand and then
+walks the valley - f 76.50 to 76.33 over a thousand iterations, its
+residuals above tolerance by the corridor's own construction. Measured,
+that phase ends at its first window everywhere: the witness is the
+answer, as the theory says it must be.
+
+| | strict ok / 235 | iterations | time | \|ΔL\| mean / max | giants strict |
+|---|---|---|---|---|---|
+| 2026-09-20 | 196 | 77 094 | 791 s | 0.15 m / 2.0 m | 0 / 13 (16.7 h) |
+| **settled tiers** | **220** | **41 456** | 1049 s | 0.23 m / 2.0 m | **12 / 13 (2.6 h)** |
+
+`3250_4-11_S`: the length tier at 143 instead of 852, the order in 25 s
+instead of 57. The giants end 1.9 to 5.7 m shorter at rms 1.00, the held
+phase at 20 on every one; the one that fails, `1280_026-049_RE`, loses
+its length tier to a failed restoration at 812. The remaining thirteen of
+the 235 establish no budget (the length tier fails before the boundary),
+two are `infeasible_subproblem`.
+
