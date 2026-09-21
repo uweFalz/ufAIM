@@ -170,6 +170,18 @@ export function solveSQP({
 	// tolerance units; with a length prior every direction is determined
 	// and this never fires.
 	determinedSubspace = null,
+	// An objective with a unit of its own may be done when it has settled: at
+	// a feasible point, over `steps` consecutive accepted steps, the whole
+	// change of the objective is at most `absolute` in the objective's unit.
+	// Then the solve ends "stationary" with the reason "objective_settled",
+	// after a restoration when the constraints are met to the solve's
+	// relative tolerance but not to the absolute `feasibility` the caller
+	// asked for (a length tier creeping along a curved corridor leaves the
+	// end pose at 4e-6 for hundreds of iterations; one restoration step
+	// closes it). This is not a rate test on a residual norm (that one was
+	// tried and rejected): it is the caller saying what a millimetre of
+	// length is worth. Null: never.
+	objectiveSettled = null,
 	filterSTheta = 1.1,
 	filterSF = 2.3,
 	filterDelta = 1,
@@ -298,6 +310,7 @@ export function solveSQP({
 	const history = [];
 	let previousMerit = null;
 	let previousF = null;
+	const settledWindow = [];
 	let stalls = 0;
 	const filter = [];
 	let filterCeilingValue = null;
@@ -313,9 +326,9 @@ export function solveSQP({
 	// curvature estimate and the penalty weights described the path to here,
 	// not the path from the feasible point. Returns the failure to hand back,
 	// or null when the solve may go on.
-	function restoreFrom(iteration) {
+	function restoreFrom(iteration, tolerance = feasibilityTolerance * feasibilityScale()) {
 		restorations += 1;
-		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance: feasibilityTolerance * feasibilityScale() });
+		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance: tolerance });
 		restorationSteps += restored.steps;
 		// A restoration that stalls short of the tolerance but inside the
 		// region is a start the solve can finish from; measured on 71 elements
@@ -353,6 +366,7 @@ export function solveSQP({
 		warmStart = null;
 		previousMerit = null;
 		previousF = null;
+		settledWindow.length = 0;
 		stalls = 0;
 		// the filter described the path to the verdict, not the path from here
 		filter.length = 0;
@@ -479,6 +493,33 @@ export function solveSQP({
 		// one: a least-squares fit in tolerance units under one is within noise
 		const lastDecrease = previousF === null ? null : (previousF - state.f) / Math.max(Math.abs(state.f), 1);
 		previousF = state.f;
+		if (objectiveSettled && violation.total <= feasible) {
+			settledWindow.push(state.f);
+			if (settledWindow.length > objectiveSettled.steps + 1) settledWindow.shift();
+			if (settledWindow.length === objectiveSettled.steps + 1) {
+				const swing = Math.max(...settledWindow) - Math.min(...settledWindow);
+				if (swing <= objectiveSettled.absolute) {
+					const asked = objectiveSettled.feasibility ?? Infinity;
+					let closed = violation.total <= asked;
+					if (!closed && restoration !== "off") {
+						// to the absolute standard asked, not the solve's relative one
+						const failure = restoreFrom(iteration, asked);
+						if (failure) return failure;
+						closed = constraintViolation(state).total <= asked;
+					}
+					if (closed) {
+						history.push({ iteration, status: "stationary", reason: "objective_settled", kkt, violation: constraintViolation(state).total, swing, steps: objectiveSettled.steps });
+						return {
+							ok: true, status: "stationary", reason: "objective_settled",
+							x, state, history, iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,
+						};
+					}
+					settledWindow.length = 0;
+				}
+			}
+		} else if (objectiveSettled) {
+			settledWindow.length = 0;
+		}
 		let determinedCheck = null;
 		if (determinedSubspace && !stationary && violation.total <= feasible && lastDecrease !== null && Math.abs(lastDecrease) < 1e-3) {
 			const subspace = determinedSubspace(state);
