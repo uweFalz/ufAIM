@@ -334,3 +334,34 @@ its length tier to a failed restoration at 812. The remaining thirteen of
 the 235 establish no budget (the length tier fails before the boundary),
 two are `infeasible_subproblem`.
 
+## The thirteen without a budget (2026-09-22)
+
+Two kinds. Four turnouts of three to seven elements whose length tier
+*converged* - at an end pose of 1.2e-8 to 3.4e-8, over the order's gate
+of 1e-8: the solve's feasibility is relative to the point, the gate is
+absolute, and a converged tier restored nothing. It closes now to the
+absolute feasibility the settled rule asks (1e-8; 1e-9 sat at the noise
+floor of a 7.5 km chain, where a restoration from 1.2e-9 found no step
+it could accept), best effort, uncounted against the restoration limit.
+
+Nine station tracks of 7 to 33 elements whose length tier failed before
+the boundary, `infeasible_subproblem` or a stalled restoration at 200 to
+800 iterations. On `Bahnhofsgleis 5` the tier walked three hundred full
+steps with the corridor 4e-3 over: the second-order correction closed the
+end pose at every step and left the corridor, an inequality, where it
+was. A correction on all rows (`correctionRows: "all"`) settles that tier
+at 297 - and loses on the corpus: 209 of 235 against 225 with the
+equalities alone, six files carried by the one rule and twenty-two by the
+other. The correction onto a curved inequality overshoots where the
+equalities alone did not; the rule stays on the equalities and the
+option is measured, not settled.
+
+| strict order, 0–235 | ok | iterations | time |
+|---|---|---|---|
+| 2026-09-21 | 220 | 41 456 | 1049 s |
+| converged closes to the gate | **225** | 41 560 | 583 s |
+| … and the correction on all rows | 209 | 56 039 | 644 s |
+
+Ten remain: eight without a budget, two `infeasible_subproblem`; the
+single objectives are unchanged (235 and 235).
+
