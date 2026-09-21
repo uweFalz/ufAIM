@@ -71,6 +71,14 @@
 			}
 			.gwb-input input { width: 4.6rem; }
 			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
+			#jump { position: relative; margin-left: auto; }
+			#jump.hidden { display: none; }
+			#jumpInput { width: 17rem; max-width: 30vw; padding: 0.3rem 0.55rem; border: 1px solid var(--hairline); border-radius: 0.55rem; background: var(--glass); font-size: 0.86rem; }
+			#jumpResults { position: absolute; right: 0; top: calc(100% + 0.25rem); z-index: 20; min-width: 22rem; max-width: 40vw; margin: 0; padding: 0.25rem 0; list-style: none; background: Canvas; border: 1px solid var(--hairline); border-radius: 0.55rem; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+			#jumpResults.hidden { display: none; }
+			#jumpResults li { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.35rem 0.7rem; font-size: 0.84rem; cursor: pointer; }
+			#jumpResults li.active, #jumpResults li:hover { background: color-mix(in srgb, Highlight 16%, Canvas); }
+			#jumpResults li .jump-kind { color: GrayText; font-size: 0.76rem; white-space: nowrap; }
 			#titlebar {
 				min-height: 2.7rem;
 				padding: 0 0.35rem;
@@ -1501,6 +1509,10 @@
 					<button type="button" data-mode="spurplan" aria-pressed="false">Spurplan</button>
 					<button type="button" data-mode="delivery" aria-pressed="false">Lieferung</button>
 					<button type="button" data-mode="links" aria-pressed="false">Verknüpfung</button>
+				</div>
+				<div id="jump" class="hidden">
+					<input id="jumpInput" type="search" placeholder="Suche: Gleis, Weiche, km 75,0+12" aria-label="Suche und Sprung" autocomplete="off" spellcheck="false" title="Gleis-, Weichen- oder Dateiname, oder eine Kilometrierung wie 75,0+12 · ⌘/Strg+K oder / springt hierher · ← → bewegen den Cursor 10 m, mit ⇧ 100 m · Esc löscht den Cursor">
+					<ul id="jumpResults" class="hidden" role="listbox"></ul>
 				</div>
 			</div>
 			<section id="dropzone">
@@ -45635,6 +45647,7 @@ xlsx/xlsx.mjs:
 					output.classList.add("hidden");
 					dropzone.classList.add("loaded");
 					assignmentTools.classList.remove("hidden");
+					jumpBox.classList.remove("hidden");
 					setViewMode(startViewMode());
 					void applyDefaultRailwayMap();
 					recordPerformance("batch-render", renderStarted, { files: incoming.length, objects: allViewerEntries().length });
@@ -45758,6 +45771,214 @@ xlsx/xlsx.mjs:
 					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
 				}
 			}
+
+			// ---- Suche und Sprung ------------------------------------------------------
+			// One field finds a Gleis, Weiche or file by name, or reads a
+			// Kilometrierung ("75,0+12", "km 75", "75012"). A hit selects the
+			// object (or activates the Weiche, or sets the cursor to the km) and
+			// pulls every picture along: the map centres on it, the diagram opens,
+			// the Spurplan zooms its Strecke's band to it. Arrow keys move the
+			// cursor, Esc clears it.
+			const jumpBox = document.querySelector("#jump");
+			const jumpInput = document.querySelector("#jumpInput");
+			const jumpResults = document.querySelector("#jumpResults");
+			let jumpActive = -1;
+			let jumpMatches = [];
+			function parseStationQuery(text) {
+				const query = String(text ?? "").trim().toLowerCase().replace(/\s+/g, "");
+				let match = /^(?:km)?(\d{1,3})[,.](\d)(?:\+(\d{1,3})(?:[,.](\d{1,2}))?)?$/.exec(query);
+				if (match) return Number(match[1]) * 1000 + Number(match[2]) * 100 + Number(match[3] ?? 0) + Number(`0.${match[4] ?? "0"}`);
+				match = /^km(\d{1,3})(?:[,.](\d{1,3}))?$/.exec(query);
+				if (match) return Number(match[1]) * 1000 + Number(`0.${match[2] ?? "0"}`) * 1000;
+				match = /^(\d{4,6})(?:[,.](\d{1,2}))?$/.exec(query);
+				if (match) return Number(`${match[1]}.${match[2] ?? "0"}`);
+				return null;
+			}
+			function jumpCandidates(text) {
+				const query = String(text ?? "").trim().toLowerCase();
+				if (!query) return [];
+				const hits = [];
+				const station = parseStationQuery(query);
+				if (station != null) hits.push({ kind: "km", label: `km ${stationLabel(station)}`, note: "Cursor setzen", station });
+				for (const entry of allViewerEntries()) {
+					const name = objectListName(entry);
+					const file = entry.loaded?.fileName ?? "";
+					const haystack = `${name} ${file}`.toLowerCase();
+					if (!haystack.includes(query)) continue;
+					hits.push({ kind: "object", label: name, note: `${sourceFamilyForEntry(entry)} · ${file}`, entry, rank: entry.item.kind === "alignment" ? 0 : 1 });
+				}
+				for (const node of deriveTopology().nodes) {
+					if (node.kind !== "Weiche" && node.kind !== "Kreuzung") continue;
+					const name = node.names.find((candidate) => /^(W|DKW|EKW|ABW|IBW)\s*-?\d/i.test(candidate)) ?? null;
+					const label = `${name ?? node.kind}${node.km != null ? ` km ${stationLabel(node.km)}` : ""}`;
+					const haystack = `${label} ${node.names.join(" ")}`.toLowerCase();
+					if (!haystack.includes(query)) continue;
+					hits.push({ kind: "junction", label, note: `${node.kind} · ${node.names.join(" / ")}`, node, rank: 0 });
+				}
+				hits.sort((a, b) => (a.rank ?? -1) - (b.rank ?? -1) || a.label.length - b.label.length);
+				return hits.slice(0, 8);
+			}
+			function stationLabel(value) { return station(value).trim(); }
+			function openDiagramPanel() {
+				if (viewer.classList.contains("diagram-collapsed")) toggleDiagram.click();
+			}
+			function centerMapOnEntry(entry) {
+				if (maplibreMap && !maplibreMapElement.classList.contains("hidden") && globalThis.maplibregl) {
+					const bounds = new globalThis.maplibregl.LngLatBounds();
+					for (const coordinate of interpretedGeometry(entry).coordinates ?? []) bounds.extend(coordinate);
+					if (!bounds.isEmpty()) maplibreMap.fitBounds(bounds, { padding: 64, maxZoom: 17, duration: 500 });
+					return;
+				}
+				const points = mapPathForEntry(entry, activeMapMode).points;
+				if (!points.length || !currentMapViewBox) return;
+				const xs = points.map((point) => point.x);
+				const ys = points.map((point) => point.y);
+				const rect = multi2d.getBoundingClientRect();
+				const aspect = rect.width && rect.height ? rect.width / rect.height : 1.5;
+				let width = Math.max(Math.max(...xs) - Math.min(...xs), 50) * 1.3;
+				let height = Math.max(Math.max(...ys) - Math.min(...ys), 50) * 1.3;
+				if (width / height < aspect) width = height * aspect; else height = width / aspect;
+				currentMapViewBox = { x: (Math.min(...xs) + Math.max(...xs)) / 2 - width / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 - height / 2, width, height };
+				applyMapViewBox();
+			}
+			function centerMapOnPoint(point, entry) {
+				if (!point) return;
+				if (maplibreMap && !maplibreMapElement.classList.contains("hidden")) {
+					const geographic = geographicPoint(point, entry);
+					if (geographic) maplibreMap.flyTo({ center: [geographic.longitude, geographic.latitude], zoom: Math.max(maplibreMap.getZoom(), 16), duration: 500 });
+					return;
+				}
+				const mapped = mapPoint(point, entry, activeMapMode);
+				if (!mapped || !currentMapViewBox) return;
+				currentMapViewBox = { ...currentMapViewBox, x: mapped.x - currentMapViewBox.width / 2, y: mapped.y - currentMapViewBox.height / 2 };
+				applyMapViewBox();
+			}
+			// A Gleis's km extent on one axis: a Weiche between two Strecken has
+			// nodes on both (W403-404: 5500 at km 74,97 and 5632 at km 0,99), so
+			// the band with more of its nodes wins and only their km count.
+			function spurplanExtentFor(entry) {
+				const topology = deriveTopology();
+				const byAxis = new Map();
+				for (const edge of topology.edges) {
+					if (edge.entry !== entry) continue;
+					for (const node of [edge.from, edge.to]) {
+						if (node.km == null || node.axis == null) continue;
+						if (!byAxis.has(node.axis)) byAxis.set(node.axis, []);
+						byAxis.get(node.axis).push(node.km);
+					}
+				}
+				const best = [...byAxis.entries()].sort((a, b) => b[1].length - a[1].length)[0];
+				if (!best) return null;
+				return { label: topology.axes?.[best[0]]?.label ?? null, from: Math.min(...best[1]), to: Math.max(...best[1]) };
+			}
+			function spurplanFocus(label, from, to) {
+				if (!label) return;
+				const full = spurplanBandExtents.get(label);
+				const pad = Math.max(150, (to - from) * 0.25);
+				let xMin = from - pad;
+				let xMax = to + pad;
+				if (full) { xMin = Math.max(full.xMin, xMin); xMax = Math.min(full.xMax, xMax); }
+				if (xMax - xMin < SPURPLAN_MIN_WINDOW_M) { const mid = (xMin + xMax) / 2; xMin = mid - SPURPLAN_MIN_WINDOW_M / 2; xMax = mid + SPURPLAN_MIN_WINDOW_M / 2; }
+				spurplanZoom.set(label, { xMin, xMax });
+				if (workspace.classList.contains("mode-spurplan")) renderSpurplanView();
+			}
+			function jumpToEntry(entry) {
+				selectObject(entry, entry.button ?? null);
+				openDiagramPanel();
+				centerMapOnEntry(entry);
+				const extent = spurplanExtentFor(entry);
+				if (extent) spurplanFocus(extent.label, extent.from, extent.to);
+			}
+			function jumpToJunction(node) {
+				activateJunctionCluster(junctionFromNode(node));
+				openDiagramPanel();
+				const entry = node.arms[0]?.entry;
+				if (entry) centerMapOnPoint(node.point, entry);
+				if (node.km != null && node.axis != null) spurplanFocus(deriveTopology().axes?.[node.axis]?.label ?? null, node.km - 250, node.km + 250);
+			}
+			function jumpToStation(targetStation) {
+				// The km lives on a Kilometerlinie's frame: pick one if the current
+				// selection has none.
+				if (!cursorContext?.inKm) {
+					const kmLine = allViewerEntries().find((entry) => entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer" && inKilometerFrame(entry))
+						?? allViewerEntries().find((entry) => entry.item.kind === "alignment" && inKilometerFrame(entry));
+					if (!kmLine) { status.textContent = "Keine Kilometrierung geladen, zu der ein km passen könnte."; return; }
+					selectObject(kmLine, kmLine.button ?? null);
+				}
+				setCursor(targetStation);
+				openDiagramPanel();
+				const point = cursorPointAt(targetStation);
+				if (point && cursorContext?.anchor) centerMapOnPoint(point, cursorContext.anchor);
+				else status.textContent = `km ${stationLabel(targetStation)} liegt außerhalb von ${objectListName(cursorContext?.anchor ?? {}) || "der gewählten Trasse"}.`;
+				if (cursorContext?.track) spurplanFocus(`Strecke ${cursorContext.track}`, targetStation - 500, targetStation + 500);
+			}
+			function runJump(hit) {
+				if (!hit) return;
+				if (hit.kind === "object") jumpToEntry(hit.entry);
+				else if (hit.kind === "junction") jumpToJunction(hit.node);
+				else if (hit.kind === "km") jumpToStation(hit.station);
+				closeJumpResults();
+			}
+			function closeJumpResults() {
+				jumpResults.classList.add("hidden");
+				jumpResults.replaceChildren();
+				jumpMatches = [];
+				jumpActive = -1;
+			}
+			function renderJumpResults() {
+				jumpMatches = jumpCandidates(jumpInput.value);
+				jumpResults.replaceChildren();
+				if (!jumpMatches.length) { jumpResults.classList.add("hidden"); return; }
+				jumpActive = 0;
+				jumpMatches.forEach((hit, index) => {
+					const item = document.createElement("li");
+					item.setAttribute("role", "option");
+					item.className = index === jumpActive ? "active" : "";
+					const label = document.createElement("span");
+					label.textContent = hit.label;
+					const kind = document.createElement("span");
+					kind.className = "jump-kind";
+					kind.textContent = hit.note;
+					item.append(label, kind);
+					item.addEventListener("mousedown", (event) => { event.preventDefault(); runJump(hit); });
+					jumpResults.append(item);
+				});
+				jumpResults.classList.remove("hidden");
+			}
+			jumpInput.addEventListener("input", renderJumpResults);
+			jumpInput.addEventListener("focus", () => { if (jumpInput.value) renderJumpResults(); });
+			jumpInput.addEventListener("blur", () => setTimeout(closeJumpResults, 150));
+			jumpInput.addEventListener("keydown", (event) => {
+				if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+					if (!jumpMatches.length) return;
+					event.preventDefault();
+					jumpActive = (jumpActive + (event.key === "ArrowDown" ? 1 : jumpMatches.length - 1)) % jumpMatches.length;
+					[...jumpResults.children].forEach((item, index) => item.classList.toggle("active", index === jumpActive));
+				} else if (event.key === "Enter") {
+					event.preventDefault();
+					if (!jumpMatches.length) renderJumpResults();
+					runJump(jumpMatches[Math.max(0, jumpActive)]);
+				} else if (event.key === "Escape") {
+					closeJumpResults();
+					jumpInput.blur();
+				}
+			});
+			document.addEventListener("keydown", (event) => {
+				const target = event.target;
+				const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable);
+				if (typing) return;
+				if ((event.key === "k" && (event.metaKey || event.ctrlKey)) || event.key === "/") {
+					if (jumpBox.classList.contains("hidden")) return;
+					event.preventDefault();
+					jumpInput.focus();
+					jumpInput.select();
+				} else if ((event.key === "ArrowLeft" || event.key === "ArrowRight") && cursorStation != null && !event.metaKey && !event.ctrlKey && !event.altKey) {
+					event.preventDefault();
+					setCursor(cursorStation + (event.key === "ArrowRight" ? 1 : -1) * (event.shiftKey ? 100 : 10));
+				} else if (event.key === "Escape" && cursorStation != null) {
+					setCursor(null);
+				}
+			});
 
 			// ---- Wiederöffnen -------------------------------------------------------
 			// The browser keeps the current delivery: every imported data file as
