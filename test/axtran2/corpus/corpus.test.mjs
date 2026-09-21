@@ -412,6 +412,13 @@ test("under the corridor the length tier asks the right question: a metre shorte
 		tiers: [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }], solver: { corridor: true },
 	});
 	assert.ok(lex.ok, `${lex.status} ${lex.phases.map((p) => `${p.label}:${p.status}@${p.diagnostics?.iterations}`).join(" ")}`);
+	// the length tier ends when the length has settled to a millimetre, not
+	// when the KKT residual of a linear objective on a curved constraint
+	// happens to be small: 143 iterations where it took 852 to be told
+	// merit_stationary, the length 2 mm apart
+	const tier1 = lex.phases.find((p) => p.label === "tier-1");
+	assert.equal(tier1.diagnostics.reason, "objective_settled", `tier-1: ${tier1.status} ${tier1.diagnostics.reason ?? ""} @${tier1.diagnostics.iterations}`);
+	assert.ok(tier1.diagnostics.iterations < 300, `tier-1 took ${tier1.diagnostics.iterations}`);
 	const final = lex.phases.at(-1);
 	const length = sc.materialise(sc.codec.decode(final.candidate.variables)).reduce((s, e) => s + e.length, 0);
 	assert.ok(Math.abs(length - sumTruth) < 10, `${(length - sumTruth).toFixed(1)} m against the truth`);

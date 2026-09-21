@@ -148,6 +148,12 @@ export function solveAlignmentProblem({
 	// with that Hessian (Gauss-Newton mode), whatever the hessian option says.
 	// A no-op on the points objective, which carries the points already.
 	corridor = false,
+	// { steps, absolute, feasibility? }: the objective is done when it has
+	// settled (solveSQP's objectiveSettled). Set by the solver itself for the
+	// length objective under the corridor; a caller may set it for a phase
+	// whose purpose it knows - the lexicographic order does for its held
+	// points phase, whose fit at a fixed length settles rather than converges.
+	objectiveSettled,
 	// A weak pseudo-observation on free lengths, as a geodetic adjustment
 	// carries one on a weakly determined parameter: { sigma, elements? } adds
 	// a residual (L - L0) / (sigma · L0) for every free length of the named
@@ -576,7 +582,7 @@ export function solveAlignmentProblem({
 			const mu = context?.multipliers?.inequality?.[ramps.g.length];
 			const weight = (Number.isFinite(mu) ? Math.max(mu, 0) : 1) * (2 / N);
 			const curvature = gaussNewton(Jr).map((hRow) => hRow.map((value) => value * weight));
-			return { f: accumulatedLength(x), gradF, h, Jh, g: [...ramps.g, sum / N - 1], Jg: [...ramps.Jg, row], hessian: curvature };
+			return { f: accumulatedLength(x), gradF, h, Jh, g: [...ramps.g, sum / N - 1], Jg: [...ramps.Jg, row], hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
 		}
 
 		const prior = priorRows(x);
@@ -779,6 +785,15 @@ export function solveAlignmentProblem({
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
 		...(qpWarmStart === undefined ? {} : { qpWarmStart }),
 		...(objective === "points" && undeterminedVerdict ? { determinedSubspace: determinedSubspaceOf } : {}),
+		// The length tier under the corridor creeps along a curved constraint
+		// with a linear objective: measured on 64 elements, the length moved by
+		// 3 mm between iteration 100 and 852, the corridor corrected at every
+		// step, and the KKT residual never small - the objective's gradient is
+		// balanced by one row's gradient in a 43-dimensional determined space.
+		// A length that has settled to a millimetre over twenty full steps is
+		// what the tier hands down, and the millimetre is nothing against the
+		// centimetres of the measurements.
+		...(objectiveSettled ? { objectiveSettled } : corridorActive ? { objectiveSettled: { steps: 20, absolute: 1e-3, feasibility: 1e-9 } } : {}),
 		});
 		attempts.push(Object.freeze({
 			hessian: attempt.hessian, restoration: attempt.restoration ?? "on-verdict",

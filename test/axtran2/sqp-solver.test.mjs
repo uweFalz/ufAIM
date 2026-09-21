@@ -378,6 +378,25 @@ test("the evaluator is handed the last multipliers, and a constraint's curvature
 	assert.ok(!blind.ok || blind.iterations > held.iterations, `without it: ${blind.status} @${blind.iterations} against ${held.iterations}`);
 });
 
+test("an objective with a unit of its own is done when it has settled, if the caller says what a unit is worth", () => {
+	// f = x^4: Newton on it contracts by two thirds a step, so with the KKT
+	// tolerance at zero no stationarity verdict ever comes, while the
+	// objective falls below any allowance. Told that a change under 1e-9 over
+	// twenty steps is nothing, the solve ends "objective_settled" in the
+	// thirties; not told, it runs out; told an allowance it cannot meet in
+	// the budget, it runs out too.
+	const evaluate = ([x]) => ({ f: x ** 4, gradF: [4 * x ** 3], hessian: [[12 * x * x]] });
+	const common = { x0: [1], evaluate, hessian: "provided", hybridSwitch: 0, kktTolerance: 0, stationarityTolerance: 0, maxIterations: 200 };
+	const settled = solveSQP({ ...common, objectiveSettled: { steps: 20, absolute: 1e-9 } });
+	assert.equal(settled.status, "stationary", `${settled.status} ${settled.reason ?? ""} @${settled.iterations}`);
+	assert.equal(settled.reason, "objective_settled");
+	assert.ok(settled.iterations < 60, `${settled.iterations} iterations`);
+	const entry = settled.history.find((e) => e.reason === "objective_settled");
+	assert.ok(entry.swing <= 1e-9 && entry.steps === 20, JSON.stringify(entry));
+	assert.equal(solveSQP(common).status, "max_iterations", "without the option the solve runs out");
+	assert.equal(solveSQP({ ...common, objectiveSettled: { steps: 20, absolute: 0 } }).status, "max_iterations", "an allowance of nothing is never met");
+});
+
 // ---------------------------------------------------------------- boundary
 
 test("the optimisation library stays free of domain and platform dependencies", async () => {
