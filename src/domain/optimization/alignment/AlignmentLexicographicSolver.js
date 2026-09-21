@@ -277,7 +277,7 @@ export function solveAlignmentLexicographic({
 	let x = [...codec.encode()];
 	let last = null;
 
-	const run = (objective, start, extraEqualities, label, iterations = maxIterations) => {
+	const run = (objective, start, extraEqualities, label, iterations = maxIterations, phaseOptions = {}) => {
 		const result = solveAlignmentProblem({
 			// The phases run BFGS unless told otherwise: the solver's default
 			// "auto" retries a failed fit with other Hessians, and a held
@@ -298,6 +298,7 @@ export function solveAlignmentLexicographic({
 			// phases to "auto" (strict order 199 -> 137 of 235, and 12 932 s on
 			// one giant retrying every failed phase with two more Hessians)
 			...Object.fromEntries(Object.entries(solver).filter(([, value]) => value !== undefined)),
+			...phaseOptions,
 			problem,
 			buildAlignment,
 			startAt: start,
@@ -385,11 +386,23 @@ export function solveAlignmentLexicographic({
 			// (AXTRAN2_LEXICOGRAPHIC_CORPUS_2026-09-10.md): 80 of 161 strict
 			// orders finished against 120 from the witness. The witness stays.
 			const witness = added.at(-1).attainedAt;
+			// The held phase fits the points at a fixed length. From a witness the
+			// length tier left when its length had settled - not a KKT point of
+			// the corridor problem, where the points' gradient is parallel to the
+			// length's and the held phase has nothing to do - the fit at that
+			// length improves by a part in a thousand and then walks the flat
+			// valley of the points, its residuals above tolerance by the
+			// corridor's own construction (rms one). Measured on 64 elements:
+			// f 76.50 -> 76.33 over a thousand iterations. A fit whose objective
+			// has settled to a hundredth of a squared tolerance over twenty steps
+			// is what this phase can give.
 			result = run(
 				tier.objective,
 				[...witness],
 				active.map(asEquality),
-				`tier-${index + 1}/budget-active`
+				`tier-${index + 1}/budget-active`,
+				maxIterations,
+				tier.objective === "points" ? { objectiveSettled: { steps: 20, absolute: 1e-2 } } : {}
 			);
 		}
 
