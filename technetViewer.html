@@ -863,10 +863,20 @@
 				border-bottom: 1px solid color-mix(in srgb, GrayText 28%, transparent);
 			}
 			.outbox-frame > summary {
-				padding: 0.65rem 0.75rem;
+				padding: 0.55rem 0.75rem;
 				font: 650 0.78rem system-ui, sans-serif;
 				cursor: pointer;
 			}
+			#outboxContent .outbox-frame-name { display: inline; margin: 0; color: inherit; font-size: inherit; }
+			.outbox-route-sections { padding-left: 0.5rem; border-left: 2px solid color-mix(in srgb, GrayText 30%, transparent); }
+			.outbox-route-sections .outbox-frame > summary { font-weight: 550; }
+			#outboxContent .outbox-frame-meta { display: block; margin-top: 0.2rem; color: GrayText; font: 400 0.7rem system-ui, sans-serif; }
+			#outboxContent .outbox-frame-meta .geo-frame-source { display: inline; margin: 0; font-size: inherit; }
+			#outboxContent .lane-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 0.3rem; }
+			#outboxContent .lane-cell { display: block; margin: 0; padding: 0.15rem 0; border-radius: 3px; border: 1px solid color-mix(in srgb, GrayText 35%, transparent); color: GrayText; font: 500 0.56rem/1.1 system-ui, sans-serif; text-align: center; white-space: normal; position: relative; }
+			#outboxContent .lane-cell.filled { background: color-mix(in srgb, var(--accent) 18%, Canvas); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: CanvasText; }
+			#outboxContent .lane-cell.current { background: var(--accent); border-color: var(--accent); color: white; }
+			#outboxContent .lane-cell[data-count]::after { content: attr(data-count); position: absolute; top: -0.45rem; right: -0.2rem; min-width: 0.9rem; padding: 0 0.15rem; border-radius: 999px; background: var(--accent); color: white; font-size: 0.5rem; line-height: 0.9rem; }
 			.outbox-lane {
 				min-height: 2.25rem;
 				padding: 0.38rem 0.55rem;
@@ -43753,6 +43763,24 @@ xlsx/xlsx.mjs:
 				return `Abschnitt ${station(sectionPackage.range.from).trim()} – ${station(sectionPackage.range.to).trim()}`;
 			}
 
+			const LANE_SHORT = { gradientRight: "GRA re", gradientLeft: "GRA li", cantLeft: "EU li", curvatureLeft: "TRA li", curvatureKilometer: "km", curvatureRight: "TRA re", cantRight: "EU re" };
+			function buildLaneStrip(entries, current) {
+				const strip = document.createElement("span");
+				strip.className = "lane-strip";
+				let filled = 0;
+				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
+					const laneEntries = entries.filter((entry) => sevenLineRole(entry) === groupDef.role);
+					if (laneEntries.length) filled += 1;
+					const cell = document.createElement("span");
+					cell.className = `lane-cell${laneEntries.length ? " filled" : ""}${laneEntries.includes(current) ? " current" : ""}`;
+					cell.textContent = LANE_SHORT[groupDef.role] ?? groupDef.title;
+					if (laneEntries.length > 1) cell.dataset.count = String(laneEntries.length);
+					cell.title = `${groupDef.title}: ${laneEntries.length ? laneEntries.map(objectListName).join(", ") : "leer"}`;
+					strip.append(cell);
+				}
+				strip.title = `${filled} von 7 Zeilen belegt`;
+				return strip;
+			}
 			function buildSevenLineLanes(frame, entries, current) {
 				const fragment = document.createDocumentFragment();
 				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
@@ -44106,20 +44134,52 @@ xlsx/xlsx.mjs:
 					outboxContent.append(empty);
 				}
 				const packages = [...baseFrames.values()].flatMap((entries) => sectionPackages(entries));
-				for (const sectionPackage of packages) {
+				// Compact: one closed row per Strecke. A Strecke delivered in many
+				// Abschnitte (Eifel 2631: 15) is one row with the strip over all of
+				// them and the Abschnitte inside; a single Abschnitt is its own row.
+				const trackName = (frame) => isValidRouteNumber(frame.track) ? `Strecke ${frame.track}` : String(frame.track);
+				const buildSummary = (name, entries, sourceEntries) => {
+					const summary = document.createElement("summary");
+					const title = document.createElement("span");
+					title.className = "outbox-frame-name";
+					title.textContent = name;
+					summary.append(title, buildLaneStrip(entries, current));
+					const meta = document.createElement("span");
+					meta.className = "outbox-frame-meta";
+					const systems = [...new Set(sourceEntries.map((entry) => effectiveLsys(entry) || geoFrameInfo(entry)?.lsys || "LSYS?"))];
+					meta.textContent = systems.join(" / ");
+					const sourceHint = frameSourceHint(sourceEntries);
+					if (sourceHint) meta.append(document.createTextNode(" · "), sourceHint);
+					summary.append(meta);
+					return summary;
+				};
+				const buildSectionFrame = (sectionPackage, nameWithTrack) => {
 					const entries = sectionPackage.entries;
 					const frame = geoFrameInfo(entries[0]);
 					const packageFrame = { ...frame, sectionId: sectionPackage.sectionId || null, stationFrom: sectionPackage.range?.from ?? null, stationTo: sectionPackage.range?.to ?? null };
 					const node = document.createElement("details");
 					node.className = `outbox-frame${entries.includes(current) ? " contains-selection" : ""}`;
 					node.open = entries.includes(current);
-					const summary = document.createElement("summary");
-					summary.textContent = `${isValidRouteNumber(frame.track) ? `Strecke ${frame.track}` : frame.track} · ${sectionLabel(sectionPackage)} · ${effectiveLsys(entries[0]) || frame.lsys || "LSYS?"}`;
-					const sourceHint = frameSourceHint(entries);
-					if (sourceHint) summary.append(sourceHint);
-					node.append(summary);
+					node.append(buildSummary(`${nameWithTrack ? `${trackName(frame)} · ` : ""}${sectionLabel(sectionPackage)}`, entries, entries));
 					node.append(buildSevenLineLanes(packageFrame, entries, current));
-					outboxContent.append(node);
+					return node;
+				};
+				const byTrack = groupBy(packages, (sectionPackage) => String(geoFrameInfo(sectionPackage.entries[0])?.track));
+				for (const [, trackPackages] of byTrack) {
+					if (trackPackages.length === 1) {
+						outboxContent.append(buildSectionFrame(trackPackages[0], true));
+						continue;
+					}
+					const allEntries = trackPackages.flatMap((sectionPackage) => sectionPackage.entries);
+					const route = document.createElement("details");
+					route.className = `outbox-frame outbox-route${allEntries.includes(current) ? " contains-selection" : ""}`;
+					route.open = allEntries.includes(current);
+					route.append(buildSummary(`${trackName(geoFrameInfo(allEntries[0]))} · ${trackPackages.length} Abschnitte`, allEntries, allEntries));
+					const inner = document.createElement("div");
+					inner.className = "outbox-route-sections";
+					for (const sectionPackage of trackPackages) inner.append(buildSectionFrame(sectionPackage, false));
+					route.append(inner);
+					outboxContent.append(route);
 				}
 				const organizedTracks = new Set([...baseFrames.keys()].map((key) => key.split(" ")[0]));
 				draftSevenLineFrames = draftSevenLineFrames.filter((draft) => !organizedTracks.has(draft.track));
