@@ -365,3 +365,29 @@ option is measured, not settled.
 Ten remain: eight without a budget, two `infeasible_subproblem`; the
 single objectives are unchanged (235 and 235).
 
+## The correction onto a curved inequality, four rules measured (2026-09-22)
+
+The nine station tracks of the section above fail because the
+second-order correction closes the equalities at the trial point and
+leaves a violated corridor where it is. Four rules for which inequality
+rows the correction closes, measured on the strict order, 0–235:
+
+| `correctionRows` | ok / 235 | iterations | won against "equalities" | lost |
+|---|---|---|---|---|
+| **"equalities"** (default) | 225 | 41 560 | – | – |
+| "all" - every row, as inequalities | 209 | 56 039 | 6 | 22 |
+| "active" - the subproblem's working set, as equalities (Fletcher) | 215 | 50 824 | 10 | 20 |
+| "violated" - the rows the trial violates, as inequalities | 227 | 49 581 | 8 | 6 |
+
+Every rule that corrects onto the corridor carries the station tracks
+(`Bahnhofsgleis 5`, `Gleis_5`, `AHRO_Gl_104`, `Gls404v`, ...) and loses
+others - "violated" loses `3250_4-11_S` itself, to a collapsed region at
+174. A correction onto a curved inequality is a step of the same order as
+the one it corrects, and where the corridor is strongly curved it
+overshoots as the raw step did, on the other side. The net of the best
+rule is two files on a reshuffle of fourteen, which is not a result; the
+default stays on the equalities and the four rules stay as options.
+What would settle it is not another rule but a correction that knows the
+corridor's curvature - the μ·2J'J/N the subproblem has since #50, which
+the correction (an identity-Hessian least-norm step) does not use.
+
