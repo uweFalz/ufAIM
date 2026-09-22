@@ -71,7 +71,10 @@
 			}
 			.gwb-input input { width: 4.6rem; }
 			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
-			#jump { position: relative; margin-left: auto; }
+			#coupleToggle { margin-left: auto; }
+			#coupleToggle.hidden { display: none; }
+			#coupleToggle[aria-pressed="true"] { background: color-mix(in srgb, Highlight 18%, Canvas); border-color: Highlight; }
+			#jump { position: relative; }
 			#jump.hidden { display: none; }
 			#titlebar h1 { white-space: nowrap; }
 			#jumpInput { width: 14rem; max-width: 24vw; min-width: 7rem; padding: 0.3rem 0.55rem; border: 1px solid var(--hairline); border-radius: 0.55rem; background: var(--glass); font-size: 0.86rem; }
@@ -1513,6 +1516,7 @@
 					<button type="button" data-mode="delivery" aria-pressed="false">Lieferung</button>
 					<button type="button" data-mode="links" aria-pressed="false">Verknüpfung</button>
 				</div>
+				<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen.">Kopplung</button>
 				<div id="jump" class="hidden">
 					<input id="jumpInput" type="search" placeholder="Suche: Gleis, Weiche, km 75,0+12" aria-label="Suche und Sprung" autocomplete="off" spellcheck="false" title="Gleis-, Weichen- oder Dateiname, oder eine Kilometrierung wie 75,0+12 · ⌘/Strg+K oder / springt hierher · ← → bewegen den Cursor 10 m, mit ⇧ 100 m · Esc löscht den Cursor">
 					<ul id="jumpResults" class="hidden" role="listbox"></ul>
@@ -43154,6 +43158,11 @@ xlsx/xlsx.mjs:
 						maplibreMapElement.classList.add("hidden");
 						multi2d.classList.remove("hidden");
 					}
+					if (pendingMapFocus && hasObjects) {
+						const focus = pendingMapFocus;
+						pendingMapFocus = null;
+						requestAnimationFrame(() => centerMapOnEntry(focus));
+					}
 				}
 				renderDiagram();
 			}
@@ -43232,6 +43241,7 @@ xlsx/xlsx.mjs:
 					if (workspace.classList.contains("mode-links")) renderLinks();
 					if (workspace.classList.contains("mode-delivery")) renderDelivery();
 					if (workspace.classList.contains("mode-spurplan")) renderSpurplanView();
+					followSelection(entry);
 					recordPerformance("select-to-view", started, { kind: entry.item.kind });
 			}
 
@@ -45585,6 +45595,16 @@ xlsx/xlsx.mjs:
 				if (!reopening && !viewerStore.sessionStarted) await viewerStore.clear();
 				viewerStore.sessionStarted = true;
 				sessionOffer.classList.add("hidden");
+				// The load's own first selection must not move the map or zoom the
+				// Spurplan: a fresh delivery shows itself whole.
+				followSuppressed = true;
+				try {
+					await inspectFilesBatch(files, batchStarted);
+				} finally {
+					followSuppressed = false;
+				}
+			}
+			async function inspectFilesBatch(files, batchStarted) {
 				const sources = Array.from(files ?? []);
 				const incoming = [];
 				const foundations = [];
@@ -45651,6 +45671,7 @@ xlsx/xlsx.mjs:
 					dropzone.classList.add("loaded");
 					assignmentTools.classList.remove("hidden");
 					jumpBox.classList.remove("hidden");
+					coupleToggle.classList.remove("hidden");
 					document.querySelector("#viewModes").classList.remove("hidden");
 					setViewMode(startViewMode());
 					void applyDefaultRailwayMap();
@@ -45887,14 +45908,16 @@ xlsx/xlsx.mjs:
 				if (workspace.classList.contains("mode-spurplan")) renderSpurplanView();
 			}
 			function jumpToEntry(entry) {
-				selectObject(entry, entry.button ?? null);
+				withFollowSuppressed(() => selectObject(entry, entry.button ?? null));
+				lastFollowedEntry = entry;
 				openDiagramPanel();
 				centerMapOnEntry(entry);
 				const extent = spurplanExtentFor(entry);
 				if (extent) spurplanFocus(extent.label, extent.from, extent.to);
 			}
 			function jumpToJunction(node) {
-				activateJunctionCluster(junctionFromNode(node));
+				withFollowSuppressed(() => activateJunctionCluster(junctionFromNode(node)));
+				lastFollowedEntry = node.arms[0]?.entry ?? lastFollowedEntry;
 				openDiagramPanel();
 				const entry = node.arms[0]?.entry;
 				if (entry) centerMapOnPoint(node.point, entry);
@@ -45907,7 +45930,8 @@ xlsx/xlsx.mjs:
 					const kmLine = allViewerEntries().find((entry) => entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer" && inKilometerFrame(entry))
 						?? allViewerEntries().find((entry) => entry.item.kind === "alignment" && inKilometerFrame(entry));
 					if (!kmLine) { status.textContent = "Keine Kilometrierung geladen, zu der ein km passen könnte."; return; }
-					selectObject(kmLine, kmLine.button ?? null);
+					withFollowSuppressed(() => selectObject(kmLine, kmLine.button ?? null));
+					lastFollowedEntry = kmLine;
 				}
 				setCursor(targetStation);
 				openDiagramPanel();
@@ -45915,6 +45939,45 @@ xlsx/xlsx.mjs:
 				if (point && cursorContext?.anchor) centerMapOnPoint(point, cursorContext.anchor);
 				else status.textContent = `km ${stationLabel(targetStation)} liegt außerhalb von ${objectListName(cursorContext?.anchor ?? {}) || "der gewählten Trasse"}.`;
 				if (cursorContext?.track) spurplanFocus(`Strecke ${cursorContext.track}`, targetStation - 500, targetStation + 500);
+			}
+			// ---- Kopplung: eine Auswahl zieht alle Bilder nach ------------------------
+			// Every selection -- Inbox, Outbox, Lieferung, Verknüpfung, Spurplan,
+			// map -- passes through selectObject; with the coupling on, the map
+			// centres on the object (now, or when the GIS is next shown) and the
+			// Spurplan zooms the object's band to it. Only
+			// a changed selection follows: the panels re-select the same object
+			// on every re-render, and that must not move anything. Jumps and the
+			// restore do their own focusing and switch the follow off meanwhile.
+			let selectionCoupled = true;
+			let followSuppressed = false;
+			let lastFollowedEntry = null;
+			let pendingMapFocus = null;
+			const coupleToggle = document.querySelector("#coupleToggle");
+			coupleToggle.addEventListener("click", () => {
+				selectionCoupled = !selectionCoupled;
+				coupleToggle.setAttribute("aria-pressed", String(selectionCoupled));
+				scheduleStateSave();
+			});
+			function setSelectionCoupled(value) {
+				selectionCoupled = Boolean(value);
+				coupleToggle.setAttribute("aria-pressed", String(selectionCoupled));
+			}
+			function followSelection(entry) {
+				if (!selectionCoupled || followSuppressed || viewerStore.restoring || !entry) return;
+				const target = entry.item?.kind === "alignment" ? entry : relatedDiagramEntries(entry).anchor;
+				if (!target || target.item?.kind !== "alignment" || target === lastFollowedEntry) return;
+				lastFollowedEntry = target;
+				// The diagram is not opened here: open, it takes the height the
+				// window can give and can squeeze the map to nothing; a jump opens
+				// it, a selection only feeds it when it is open.
+				if (workspace.classList.contains("mode-crs")) centerMapOnEntry(target);
+				else pendingMapFocus = target;
+				const extent = spurplanExtentFor(target);
+				if (extent) spurplanFocus(extent.label, extent.from, extent.to);
+			}
+			function withFollowSuppressed(work) {
+				followSuppressed = true;
+				try { return work(); } finally { followSuppressed = false; }
 			}
 			function runJump(hit) {
 				if (!hit) return;
@@ -46069,6 +46132,7 @@ xlsx/xlsx.mjs:
 					gwb: { lineSpeed: gwbLineSpeedInput.value, brakeDistance: gwbBrakeDistanceInput.value, oberbau: gwbOberbauSelect.value, fahrzeug: gwbFahrzeugSelect.value },
 					spurplan: { coloring: spurplanColoring.value, zoom: [...spurplanZoom.entries()] },
 					kilometerLinesVisible,
+					coupled: selectionCoupled,
 					viewMode: viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? null,
 					selected: selectedEntry ? stateKey(selectedEntry) : null,
 				};
@@ -46111,6 +46175,7 @@ xlsx/xlsx.mjs:
 						for (const [label, window] of state.spurplan.zoom ?? []) spurplanZoom.set(label, window);
 					}
 					if (typeof state.kilometerLinesVisible === "boolean" && state.kilometerLinesVisible !== kilometerLinesVisible) toggleKilometerLines();
+					if (typeof state.coupled === "boolean") setSelectionCoupled(state.coupled);
 					spurplanSpeedCache.clear();
 					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 					const selected = state.selected ? byKey.get(state.selected) : null;
