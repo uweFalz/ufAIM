@@ -137,7 +137,9 @@ export function solveSQP({
 	// 2026-09-10 (Uwe Falz).
 	correctionClosure = 0.1,
 	// Which rows the second-order correction closes at the trial point:
-	// "equalities", or "all" - the inequalities with them. A corridor row
+	// "equalities"; "all" - every inequality with them; "active" - the
+	// rows the subproblem held, closed as equalities (Fletcher's rule);
+	// "violated" - the rows the trial violates, as inequalities. A corridor row
 	// violated at second order by every step, like an equality, is never
 	// corrected under "equalities": measured on an 11-element station track,
 	// the length tier walked three hundred full steps with the corridor 4e-3
@@ -807,12 +809,31 @@ export function solveSQP({
 		if (full && (!armijo(full.merit, 1) || raisesViolation) && (state.h ?? []).length && (predictedDecrease < 0 || raisesViolation)) {
 			// smallest d that satisfies Jh(x) d = -h(x + d): the same subproblem
 			// with no objective and the trial point's residuals
+			// which inequality rows the correction closes at the trial point:
+			// none ("equalities"), every row ("all"), the rows the subproblem
+			// held active ("active": Fletcher's rule - closed as equalities, the
+			// working set is what the step believed in) or the rows the trial
+			// violates ("violated", as inequalities)
+			const correctionInequalities = (trial) => {
+				const g = trial.g ?? [];
+				const Jg = state.Jg ?? [];
+				if (correctionRows === "all") return { g, Jg };
+				if (correctionRows === "violated") {
+					const rows = g.map((value, j) => j).filter((j) => g[j] > 0);
+					return { g: rows.map((j) => g[j]), Jg: rows.map((j) => Jg[j]) };
+				}
+				if (correctionRows === "active") {
+					const rows = step.activeRows ?? [];
+					return { h: [...(trial.h ?? []), ...rows.map((j) => g[j])], Jh: [...(state.Jh ?? []), ...rows.map((j) => Jg[j])] };
+				}
+				return {};
+			};
 			const soc = solveRelaxedQpStep({
 				H: identityMatrix(n, 1),
 				gradF: new Array(n).fill(0),
 				h: full.state.h ?? [],
 				Jh: state.Jh ?? [],
-				...(correctionRows === "all" ? { g: full.state.g ?? [], Jg: state.Jg ?? [] } : {}),
+				...correctionInequalities(full.state),
 				lower: x.map((value, i) => Math.max(lo[i] - value - step.d[i], -radius)),
 				upper: x.map((value, i) => Math.min(up[i] - value - step.d[i], radius)),
 				relaxationWeight,
