@@ -40905,9 +40905,14 @@ xlsx/xlsx.mjs:
 				const onAxis = (node) => !options.axes || options.axes.has(node.axis);
 				const drawable = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null && onAxis(edge.from) && onAxis(edge.to));
 				const stubs = !options.axes ? [] : topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null && onAxis(edge.from) !== onAxis(edge.to));
-				const rows = topology.rows ?? [0, 0];
+				// Rows: the band's own (the main view passes the rows its nodes use,
+				// so a two-row Strecke is not as tall as the ten-row yard next to
+				// it), else the topology's global range.
+				const rows = options.rows ?? topology.rows ?? [0, 0];
 				const rowCount = rows[1] - rows[0] + 1;
-				const rowPitch = 22;
+				// Bahnhofsmodus: zoomed in, the rows spread out with the zoom (square
+				// root, capped), so a yard's ten rows and their names get room.
+				const rowPitch = options.rowPitch ?? 22;
 				const top = 26;
 				const left = 60;
 				const right = 30;
@@ -45255,6 +45260,10 @@ xlsx/xlsx.mjs:
 					spurplanBandExtents.set(axis.label, full);
 					const window = spurplanWindow(axis.label, full);
 					const zoomed = window.xMin > full.xMin + 1e-6 || window.xMax < full.xMax - 1e-6;
+					const zoomFactor = (full.xMax - full.xMin) / Math.max(window.xMax - window.xMin, 1);
+					const rowPitch = Math.min(64, Math.round(22 * Math.max(1, Math.sqrt(zoomFactor))));
+					const bandRows = nodes.filter((node) => node.row != null).map((node) => node.row);
+					const rowsHere = bandRows.length ? [Math.min(...bandRows), Math.max(...bandRows)] : topology.rows;
 					const here = nodes.filter((node) => node.kind === "Weiche" || node.kind === "Kreuzung").length;
 					junctions += here;
 					y += drawFigureTitle(svg, y, axis.label, `km ${kmLabel(window.xMin)} – ${kmLabel(window.xMax)}${zoomed ? ` von ${kmLabel(full.xMin)} – ${kmLabel(full.xMax)} · Ausschnitt, Doppelklick zeigt alles` : ""} · ${nodes.length} Knoten · ${here} Weichen/Kreuzungen`, panelWidth);
@@ -45266,6 +45275,8 @@ xlsx/xlsx.mjs:
 						cursorFrame: axis.track && axis.track === anchorTrack ? "axis" : null,
 						junctionLabels: true,
 						figureKey: axis.label,
+						rowPitch,
+						rows: rowsHere,
 					});
 					y += 10;
 					bands += 1;
