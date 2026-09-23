@@ -391,3 +391,37 @@ What would settle it is not another rule but a correction that knows the
 corridor's curvature - the μ·2J'J/N the subproblem has since #50, which
 the correction (an identity-Hessian least-norm step) does not use.
 
+## The correction in the Lagrangian's metric, measured and not taken (2026-09-23)
+
+The section above ended on a correction that knows the corridor's
+curvature. Built as `correctionMetric: "hessian"`: the correction is the
+step of least H-norm that closes the rows, H the Lagrangian's Hessian
+the subproblem uses, which for the corridor is μ · 2J'J/N - so the
+correction becomes the Gauss-Newton step of the residuals, (J'J)⁻¹J'r,
+instead of the step of least Euclidean norm along J'r, the direction in
+which the squares curve most. On the three files looked at it does what
+the argument says: `Bahnhofsgleis 5` and `AHBI_Gl_074` converge on the
+equalities alone, `3250_4-11_S` at 463.
+
+| strict order, 0–235 | ok | iterations | time |
+|---|---|---|---|
+| identity metric, equalities (default) | 225 | 41 560 | 583 s |
+| Hessian metric, equalities | 206 | 64 126 | 700 s |
+| Hessian metric, violated rows | 215 | 65 075 | 1022 s |
+
+Eight to ten files won, twenty-seven and twenty lost. The single
+objectives move too: the points fit unchanged in count, the length fit
+234 of 235, 221 of 470 rows identical. The metric is right for the
+corridor row and wrong for the rest of the step: H carries the BFGS
+estimate and the structured secant along with J'J, and a correction in
+that metric leaves the end-pose rows to move along whatever H has
+learnt. The default stays on the identity; the option is measured.
+
+Where this leaves the ten strict files: eight without a budget, two
+`infeasible_subproblem`, every one a station track whose length tier
+loses the corridor before the boundary. Four corrections onto the
+corridor and one change of metric each carry them and lose more
+elsewhere. The problem they share - a curved inequality that the
+correction of one order cannot hold from a distance - is stated; its
+answer is not another rule in this file.
+
