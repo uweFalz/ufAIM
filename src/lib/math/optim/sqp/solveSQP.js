@@ -150,6 +150,14 @@ export function solveSQP({
 	// onto a curved inequality overshoots where the equalities alone did
 	// not. "equalities" stays; the choice is measured, not settled.
 	correctionRows = "equalities",
+	// The metric of the correction: "identity", the step of least norm that
+	// closes the rows, which moves along the rows' gradients - for a
+	// corridor on the residuals, along J'r, the direction of steepest
+	// curvature of the squares, where it overshoots as the raw step did; or
+	// "hessian", the step of least H-norm with the Lagrangian's curvature,
+	// which for the corridor is the Gauss-Newton step of the residuals,
+	// (J'J)^-1 J'r, and closes the row along the residuals' own geometry.
+	correctionMetric = "identity",
 	// A point that is stationary to stationarityTolerance and infeasible,
 	// whose violation over this many consecutive such iterations shrinks at a
 	// rate that will not reach the tolerance within the budget, is a creep
@@ -829,7 +837,7 @@ export function solveSQP({
 				return {};
 			};
 			const soc = solveRelaxedQpStep({
-				H: identityMatrix(n, 1),
+				H: correctionMetric === "hessian" ? H : identityMatrix(n, 1),
 				gradF: new Array(n).fill(0),
 				h: full.state.h ?? [],
 				Jh: state.Jh ?? [],
