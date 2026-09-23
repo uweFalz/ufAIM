@@ -53,6 +53,8 @@
 				align-items: center;
 				gap: 0.5rem;
 			}
+			.picture-export { display: inline-flex; gap: 0.3rem; margin-left: auto; }
+			.picture-export button { font: inherit; font-size: 0.78rem; padding: 0.2rem 0.5rem; }
 			.gwb-input {
 				display: flex;
 				align-items: center;
@@ -1620,6 +1622,7 @@
 								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
 								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
 								<div id="spurplanLegend"></div>
+								<span class="picture-export" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 							</div>
 							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
 						</div>
@@ -1627,6 +1630,7 @@
 							<div id="deliveryToolbar">
 								<strong>Lieferung · Bild</strong>
 								<span id="deliveryNote"></span>
+								<span class="picture-export" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 								<div id="deliveryLegend"><span class="delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="delivery-legend-item delivery-profile">Gradiente</span><span class="delivery-legend-item delivery-cant">Überhöhung</span><span class="delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
 							</div>
 							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
@@ -1636,6 +1640,7 @@
 								<strong>Verknüpfung · Bild</strong>
 								<span id="linksNote"></span>
 								<div id="linksLegend"></div>
+								<span class="picture-export" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 							</div>
 							<div id="linksScroll"><div id="linksContent"></div></div>
 						</div>
@@ -1652,6 +1657,7 @@
 								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nicht modelliert">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option></select></label>
 								<button id="gwbBogenCsv" type="button" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
 								<button id="gwbAbschnittCsv" type="button" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
+								<span class="picture-export" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 								<div id="diagramPresentation" aria-label="Ansicht">
 									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
 									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
@@ -45982,6 +45988,87 @@ xlsx/xlsx.mjs:
 					return Array.from(dataTransfer?.files ?? []);
 				} catch {
 					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
+				}
+			}
+
+			// ---- Bildexport ----------------------------------------------------------
+			// Spurplan, Lieferung, Verknüpfung and the diagram leave the page as
+			// SVG or PNG. The pictures draw with CSS classes, so the clone gets the
+			// computed style of every element written inline, a background in the
+			// page's colour, and the SVG namespace -- then it stands alone in a
+			// browser, an Office document or an image viewer. PNG renders the
+			// same SVG through a canvas at double resolution.
+			const EXPORT_STYLE_PROPS = ["fill", "fill-opacity", "stroke", "stroke-width", "stroke-dasharray", "stroke-linecap", "stroke-linejoin", "stroke-opacity", "opacity", "font-family", "font-size", "font-weight", "font-style", "text-anchor", "paint-order", "dominant-baseline", "letter-spacing", "display", "visibility"];
+			function standaloneSvg(svg) {
+				const clone = svg.cloneNode(true);
+				const sourceElements = [svg, ...svg.querySelectorAll("*")];
+				const cloneElements = [clone, ...clone.querySelectorAll("*")];
+				sourceElements.forEach((element, index) => {
+					const computed = getComputedStyle(element);
+					const target = cloneElements[index];
+					for (const prop of EXPORT_STYLE_PROPS) {
+						const value = computed.getPropertyValue(prop);
+						if (value && value !== "normal" && value !== "auto") target.style.setProperty(prop, value);
+					}
+					target.removeAttribute("class");
+				});
+				const viewBox = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(Number);
+				const width = svg.getAttribute("width") ?? (viewBox.length === 4 ? viewBox[2] : svg.getBoundingClientRect().width);
+				const height = svg.getAttribute("height") ?? (viewBox.length === 4 ? viewBox[3] : svg.getBoundingClientRect().height);
+				clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+				clone.setAttribute("width", width);
+				clone.setAttribute("height", height);
+				if (viewBox.length !== 4) clone.setAttribute("viewBox", `0 0 ${width} ${height}`);
+				const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+				const box = clone.getAttribute("viewBox").split(/[\s,]+/).map(Number);
+				background.setAttribute("x", box[0]); background.setAttribute("y", box[1]); background.setAttribute("width", box[2]); background.setAttribute("height", box[3]);
+				background.setAttribute("fill", getComputedStyle(document.body).backgroundColor || "#ffffff");
+				clone.insertBefore(background, clone.firstChild);
+				return { text: new XMLSerializer().serializeToString(clone), width: Number(width), height: Number(height) };
+			}
+			function downloadBlob(name, blob) {
+				const url = URL.createObjectURL(blob);
+				const link = document.createElement("a");
+				link.href = url;
+				link.download = name;
+				link.click();
+				setTimeout(() => URL.revokeObjectURL(url), 1000);
+			}
+			async function exportPicture(which, format) {
+				const svg = which === "spurplan" ? spurplanSvg : which === "delivery" ? deliverySvg : which === "links" ? linksContent.querySelector("svg") : diagram;
+				if (!svg || !svg.isConnected) { status.textContent = "Kein Bild zum Exportieren; die Ansicht ist leer."; return; }
+				const stamp = new Date().toISOString().slice(0, 10);
+				const label = { spurplan: "spurplan", delivery: "lieferung", links: "verknuepfung", diagram: "diagramm" }[which];
+				const { text, width, height } = standaloneSvg(svg);
+				if (format === "svg") {
+					downloadBlob(`${label}-${stamp}.svg`, new Blob([text], { type: "image/svg+xml;charset=utf-8" }));
+					status.textContent = `${label}-${stamp}.svg gespeichert.`;
+					return;
+				}
+				const image = new Image();
+				image.decoding = "async";
+				await new Promise((resolve, reject) => {
+					image.onload = resolve;
+					image.onerror = () => reject(new Error("SVG konnte nicht gerastert werden"));
+					image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(text)}`;
+				});
+				const scale = 2;
+				const canvas = document.createElement("canvas");
+				canvas.width = Math.round(width * scale);
+				canvas.height = Math.round(height * scale);
+				const context = canvas.getContext("2d");
+				context.scale(scale, scale);
+				context.drawImage(image, 0, 0, width, height);
+				const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+				downloadBlob(`${label}-${stamp}.png`, blob);
+				status.textContent = `${label}-${stamp}.png gespeichert (${canvas.width} × ${canvas.height} px).`;
+			}
+			for (const group of document.querySelectorAll(".picture-export")) {
+				for (const button of group.querySelectorAll("button")) {
+					button.addEventListener("click", () => exportPicture(group.dataset.picture, button.dataset.format).catch((error) => {
+						status.classList.add("error");
+						status.textContent = `Bild konnte nicht exportiert werden: ${error?.message ?? error}`;
+					}));
 				}
 			}
 
