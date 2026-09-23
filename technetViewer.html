@@ -15,13 +15,63 @@
 				--sidebar: #f1f1f3;
 				--secondary: rgba(60,60,67,0.62);
 				--accent: #0a84ff;
+				--ink: #1d1d1f;
+				--titlebar: rgba(250,250,252,0.88);
+				--panel-glass: rgba(255,255,255,0.94);
+				--button: linear-gradient(#fff, #f7f7f8);
+				--button-hover: #ececf0;
+				--button-active: #dfdfe4;
+				--map-ground: #e9eaec;
+				--stone-halo: #ffffff;
+			}
+			/* Dunkelmodus: follows the system unless the user picked one (◐ in the
+			   title bar, kept in localStorage). The page draws with system colours
+			   (Canvas, CanvasText, GrayText, Highlight), so color-scheme flips
+			   most of it; these tokens cover the rest. */
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) {
+					color-scheme: dark;
+					--glass: rgba(44,44,48,0.84);
+					--hairline: rgba(200,200,210,0.2);
+					--window: #1c1c1e;
+					--surface: #2a2a2d;
+					--sidebar: #232326;
+					--secondary: rgba(220,220,230,0.62);
+					--accent: #3c9cff;
+					--ink: #f2f2f5;
+					--titlebar: rgba(30,30,33,0.88);
+					--panel-glass: rgba(38,38,42,0.94);
+					--button: linear-gradient(#3a3a3e, #303034);
+					--button-hover: #454549;
+					--button-active: #505055;
+					--map-ground: #2c2c30;
+					--stone-halo: #1c1c1e;
+				}
+			}
+			:root[data-theme="dark"] {
+				color-scheme: dark;
+				--glass: rgba(44,44,48,0.84);
+				--hairline: rgba(200,200,210,0.2);
+				--window: #1c1c1e;
+				--surface: #2a2a2d;
+				--sidebar: #232326;
+				--secondary: rgba(220,220,230,0.62);
+				--accent: #3c9cff;
+				--ink: #f2f2f5;
+				--titlebar: rgba(30,30,33,0.88);
+				--panel-glass: rgba(38,38,42,0.94);
+				--button: linear-gradient(#3a3a3e, #303034);
+				--button-hover: #454549;
+				--button-active: #505055;
+				--map-ground: #2c2c30;
+				--stone-halo: #1c1c1e;
 			}
 			body {
 				margin: 0;
 				height: 100vh;
 				overflow: hidden;
 				background: var(--window);
-				color: #1d1d1f;
+				color: var(--ink);
 			}
 			body.dragover {
 				outline: 4px solid Highlight;
@@ -69,11 +119,12 @@
 				padding: 0.3rem 0.4rem;
 				border: 1px solid var(--hairline);
 				border-radius: 0.45rem;
-				background: #fff;
+				background: var(--surface);
 			}
 			.gwb-input input { width: 4.6rem; }
 			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
-			#coupleToggle { margin-left: auto; }
+			#themeToggle { margin-left: auto; }
+			#coupleToggle { margin-left: 0; }
 			#coupleToggle.hidden { display: none; }
 			#coupleToggle[aria-pressed="true"] { background: color-mix(in srgb, Highlight 18%, Canvas); border-color: Highlight; }
 			#jump { position: relative; }
@@ -90,7 +141,7 @@
 				row-gap: 0.25rem;
 				min-height: 2.7rem;
 				padding: 0 0.35rem;
-				background: rgba(250,250,252,0.88);
+				background: var(--titlebar);
 				backdrop-filter: blur(24px) saturate(1.5);
 			}
 			button,
@@ -100,12 +151,12 @@
 				border: 1px solid var(--hairline);
 				border-radius: 0.55rem;
 				padding: 0.38rem 0.68rem;
-				background: linear-gradient(#fff, #f7f7f8);
+				background: var(--button);
 				color: inherit;
 				cursor: pointer;
 			}
-			button:hover { background: #ececf0; }
-			button:active { background: #dfdfe4; }
+			button:hover { background: var(--button-hover); }
+			button:active { background: var(--button-active); }
 			#titlebar h1 {
 				margin-right: auto;
 			}
@@ -166,6 +217,10 @@
 			#status.error {
 				color: #c62828;
 			}
+			#importProgress { position: relative; height: 1.15rem; margin: 0.15rem 0 0.3rem; border-radius: 0.4rem; background: color-mix(in srgb, GrayText 18%, transparent); overflow: hidden; font: 0.74rem system-ui, sans-serif; }
+			#importProgress.hidden { display: none; }
+			#importProgressBar { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); opacity: 0.55; transition: width 120ms linear; }
+			#importProgressText { position: relative; display: block; padding: 0 0.55rem; line-height: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 			#viewer {
 				display: grid;
 				grid-template-columns: 17.5rem minmax(0, 1fr) 16rem;
@@ -334,7 +389,7 @@
 				z-index: 1;
 				grid-column: 2;
 				grid-row: 1;
-				background: #e9eaec;
+				background: var(--map-ground);
 			}
 			#mapLegend {
 				position: absolute;
@@ -514,7 +569,7 @@
 			.diagram-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
 			.diagram-cursor-label { fill: #d0433f; pointer-events: none; }
 			#diagramCursor { color: #d0433f; font-variant-numeric: tabular-nums; }
-			.map-cursor circle { fill: #d0433f; stroke: #ffffff; stroke-width: 1.5; pointer-events: none; }
+			.map-cursor circle { fill: #d0433f; stroke: var(--stone-halo); stroke-width: 1.5; pointer-events: none; }
 			.delivery-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
 			.diagram-figure-strip { fill: color-mix(in srgb, CanvasText 7%, Canvas); }
 			.diagram-figure-title { font-weight: 650; font-size: 14px; }
@@ -789,14 +844,14 @@
 			.km-lines-hidden .km-stones { display: none; }
 			.km-stones { pointer-events: none; }
 			.km-stone-minor { fill: #1d5c8a; opacity: 0.75; }
-			.km-stone-major circle { fill: #fff; stroke: #1d5c8a; stroke-width: 2; }
-			.km-stone-major text { font: 600 11px system-ui, sans-serif; fill: #1d5c8a; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
-			.km-stone-label { font: 600 11px system-ui, sans-serif; color: #1d5c8a; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; }
+			.km-stone-major circle { fill: var(--stone-halo); stroke: #1d5c8a; stroke-width: 2; }
+			.km-stone-major text { font: 600 11px system-ui, sans-serif; fill: #4d9be0; paint-order: stroke; stroke: var(--stone-halo); stroke-width: 3px; }
+			.km-stone-label { font: 600 11px system-ui, sans-serif; color: #4d9be0; text-shadow: 0 0 3px var(--stone-halo), 0 0 3px var(--stone-halo), 0 0 3px var(--stone-halo); pointer-events: none; }
 			.km-labels-hidden .km-stone-label { display: none; }
-			.spurplan-edge { stroke: #1d5c8a; stroke-width: 2; cursor: pointer; }
+			.spurplan-edge { stroke: #4d9be0; stroke-width: 2; cursor: pointer; }
 			.spurplan-edge:hover { stroke-width: 4; }
 			.spurplan-selected { stroke: Highlight; stroke-width: 4; }
-			.spurplan-node { fill: #fff; stroke: #1d5c8a; stroke-width: 1.5; }
+			.spurplan-node { fill: Canvas; stroke: #4d9be0; stroke-width: 1.5; }
 			.spurplan-kreuzung, .spurplan-knoten { fill: #1d5c8a; }
 			.spurplan-end { stroke: #1d5c8a; stroke-width: 2; }
 			.spurplan-label { font-size: 11px; }
@@ -1198,7 +1253,7 @@
 			#tables button:hover,
 			#tables button.selected {
 				background: rgba(10,132,255,0.16);
-				color: #1d1d1f;
+				color: var(--ink);
 			}
 			#tables button.selected {
 				background: var(--accent);
@@ -1326,7 +1381,7 @@
 				border: 1px solid var(--hairline);
 				border-radius: 0.85rem;
 				box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.22);
-				background: rgba(255,255,255,0.94);
+				background: var(--panel-glass);
 				backdrop-filter: blur(20px) saturate(1.2);
 				overflow: hidden;
 			}
@@ -1535,6 +1590,7 @@
 					<button type="button" data-mode="delivery" aria-pressed="false">Lieferung</button>
 					<button type="button" data-mode="links" aria-pressed="false">Verknüpfung</button>
 				</div>
+				<button id="themeToggle" type="button" title="Erscheinungsbild: System · Hell · Dunkel">◐ System</button>
 				<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen.">Kopplung</button>
 				<div id="jump" class="hidden">
 					<input id="jumpInput" type="search" placeholder="Suche: Gleis, Weiche, km 75,0+12" aria-label="Suche und Sprung" autocomplete="off" spellcheck="false" title="Gleis-, Weichen- oder Dateiname, oder eine Kilometrierung wie 75,0+12 · ⌘/Strg+K oder / springt hierher · ← → bewegen den Cursor 10 m, mit ⇧ 100 m · Esc löscht den Cursor">
@@ -1552,6 +1608,7 @@
 			</section>
 			<section>
 				<div id="status">Karte bereit · Daten können überall abgelegt werden.</div>
+				<div id="importProgress" class="hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="importProgressBar"></div><span id="importProgressText"></span></div>
 				<div id="workspace" class="mode-crs">
 					<div id="viewer" class="inbox-collapsed outbox-collapsed diagram-collapsed">
 						<button id="toggleInbox" class="edge-toggle" type="button" aria-label="Inbox ein- oder ausblenden" aria-pressed="false">›</button>
@@ -45754,6 +45811,7 @@ xlsx/xlsx.mjs:
 						log: (message) => logLines.push(String(message)),
 						onJobPhase: (phase) => {
 							status.textContent = `${file.name}: ${phase} …`;
+							progress.step(phase);
 						},
 						onImportPhase: ({ code }) => {
 							status.textContent = `${file.name}: ${code} …`;
@@ -45826,8 +45884,10 @@ xlsx/xlsx.mjs:
 					status.textContent = "Keine Datei gefunden.";
 					return;
 				}
+				progress.begin(incoming.length);
 				for (let index = 0; index < incoming.length; index += 1) {
 					const file = incoming[index];
+					progress.file(index, file.name);
 					status.textContent = `${index + 1}/${incoming.length}: ${file.name} wird verarbeitet …`;
 					// Yield to the UI between import steps. Plain requestAnimationFrame never
 					// fires while the tab is hidden, which froze the whole import at this
@@ -45853,6 +45913,7 @@ xlsx/xlsx.mjs:
 						void viewerStore.rememberFile(file);
 					}
 				}
+				progress.end();
 				if (loadedFiles.length || planningFiles.length) {
 					const renderStarted = performance.now();
 					viewer.classList.remove("inbox-collapsed", "outbox-collapsed");
@@ -45990,6 +46051,50 @@ xlsx/xlsx.mjs:
 					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
 				}
 			}
+
+			// ---- Erscheinungsbild ------------------------------------------------------
+			const themeToggle = document.querySelector("#themeToggle");
+			const THEME_CYCLE = [["system", "◐ System"], ["light", "☀ Hell"], ["dark", "☾ Dunkel"]];
+			function applyTheme(value) {
+				if (value === "light" || value === "dark") document.documentElement.dataset.theme = value;
+				else delete document.documentElement.dataset.theme;
+				themeToggle.textContent = THEME_CYCLE.find(([key]) => key === value)?.[1] ?? THEME_CYCLE[0][1];
+				try { localStorage.setItem("technetViewer.theme", value); } catch { /* no storage */ }
+			}
+			themeToggle.addEventListener("click", () => {
+				const current = document.documentElement.dataset.theme ?? "system";
+				const index = THEME_CYCLE.findIndex(([key]) => key === current);
+				applyTheme(THEME_CYCLE[(index + 1) % THEME_CYCLE.length][0]);
+			});
+			try { applyTheme(localStorage.getItem("technetViewer.theme") ?? "system"); } catch { applyTheme("system"); }
+
+			// ---- Ladefortschritt -------------------------------------------------------
+			// One bar for the whole batch: "Datei 3 von 12 · name · Phase", the
+			// bar at (files done + this file's phase share) / files. The phases
+			// are the import's own job phases in their order; an unknown phase
+			// counts as half a file.
+			const importProgress = document.querySelector("#importProgress");
+			const importProgressBar = document.querySelector("#importProgressBar");
+			const importProgressText = document.querySelector("#importProgressText");
+			const IMPORT_PHASES = ["reading", "parser-loading", "extracting", "normalizing", "file-recognized", "fingerprinted", "access-format-checked", "tables-extracted", "gnd-evidence-interpreted", "truthfulness-gate"];
+			const IMPORT_PHASE_LABELS = { reading: "lesen", "parser-loading": "Parser laden", extracting: "entpacken", normalizing: "normalisieren", "file-recognized": "erkannt", fingerprinted: "Fingerabdruck", "access-format-checked": "Format geprüft", "tables-extracted": "Tabellen gelesen", "gnd-evidence-interpreted": "Geometrie gedeutet", "truthfulness-gate": "geprüft" };
+			const progress = {
+				total: 0, index: 0, name: "", phase: null,
+				begin(total) { this.total = total; this.index = 0; this.phase = null; importProgress.classList.remove("hidden"); this.draw(); },
+				file(index, name) { this.index = index; this.name = name; this.phase = null; this.draw(); },
+				step(phase) { this.phase = phase; this.draw(); },
+				end() { importProgress.classList.add("hidden"); },
+				draw() {
+					if (!this.total) return;
+					const order = IMPORT_PHASES.indexOf(this.phase);
+					const share = this.phase == null ? 0 : order >= 0 ? (order + 1) / (IMPORT_PHASES.length + 1) : 0.5;
+					const percent = Math.min(100, Math.round((this.index + share) / this.total * 100));
+					importProgressBar.style.width = `${percent}%`;
+					importProgress.setAttribute("aria-valuenow", String(percent));
+					const phaseLabel = this.phase ? (IMPORT_PHASE_LABELS[this.phase] ?? this.phase) : "wird gelesen";
+					importProgressText.textContent = `Datei ${this.index + 1} von ${this.total} · ${this.name} · ${phaseLabel} · ${percent} %`;
+				},
+			};
 
 			// ---- Bildexport ----------------------------------------------------------
 			// Spurplan, Lieferung, Verknüpfung and the diagram leave the page as
