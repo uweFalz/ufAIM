@@ -54,6 +54,11 @@ bib/
 node_modules/
 dist/
 build/
+# `build/` is meant for bundler output, but it also matched three source
+# folders that happen to carry the name - the import bridge and the two
+# domain builders. Tracked files there were shown as ignored, git add
+# needed -f, and a new file there was silently left out of a commit.
+!src/**/build/
 coverage/
 *.map
 
