@@ -154,4 +154,22 @@ Found on the way: the foot memory's stale distance stood at 50 m in the
 code since #48, which documented and measured 200 m - the edit that set
 the default had failed silently. Set now; the points runs take 178 s
 against 209 with the 50, the strict order is unchanged at 225 of 235.
+## Held poses: the turnout's tangent (2026-09-26)
+
+The one building block the turnout case lacked: a pose held at an element
+joint. `heldPoses: [{ afterElement, x?, y?, theta? }]` on the constraint
+builder declares each named component as an equality on the pose at the
+exit of that element - the turnout's tangent at its start or end, or its
+whole pose - held while the elements on either side are fitted, under any
+objective. The chain reads the pose at the joint's station and gives its
+Jacobian there (`stationAfter`, `poseJacobianAt`); the rows sit with the
+end pose's, a heading row weighed by the length it accumulates on. The
+finite-difference path refuses them: a joint's pose is the chain's.
+
+Measured on the nine-element scenario (`held-pose.test.mjs`): the joint
+after the middle straight held at the truth's pose, the fit meets it to
+1e-6 m and 1e-8 rad and the answer is the truth's; the tangent alone held
+2 mrad off the truth bends the chain, the heading is met exactly, the end
+pose still, and the points pay 40 % in rms - under the length objective as
+well. Not yet in the app's evidence path, which declares no held poses.
 

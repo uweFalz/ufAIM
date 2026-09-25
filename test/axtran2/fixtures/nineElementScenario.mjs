@@ -94,6 +94,7 @@ export function createNineElementScenario({
 	startLengths = [200, 95, 292, 86, 156, 84, 268, 76, 180],
 	startCurvatures = [1 / 660, -1 / 950],
 	hardPointNames = [],
+	heldPoses = [],
 	// Tier 3, from a declared profile rather than from bare numbers. V = 100 km/h
 	// at 130 mm of cant gives a smallest radius of 453.9 m and, at the Ril
 	// planning gradient of 1:600, a shortest transition of 78.0 m. The truth -
@@ -150,6 +151,7 @@ export function createNineElementScenario({
 			elementSequence: codec.elementSequence,
 			minimumElementLength: 20,
 			hardPoints: hardPointNames.map((name) => ({ name })),
+			heldPoses,
 			elementKinds: Object.fromEntries(TYPES.map((type, i) => [`E${i}`, type])),
 			design,
 			// The shipped profiles are candidates: their rate limits come from a
