@@ -125,6 +125,8 @@
 			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
 			#themeToggle { margin-left: auto; }
 			#coupleToggle { margin-left: 0; }
+			#precisionKind { font: inherit; font-size: 0.8rem; }
+			#precisionKind.hidden { display: none; }
 			#coupleToggle.hidden { display: none; }
 			#coupleToggle[aria-pressed="true"] { background: color-mix(in srgb, Highlight 18%, Canvas); border-color: Highlight; }
 			#jump { position: relative; }
@@ -1641,7 +1643,8 @@
 									<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
 									<span id="railwayOpacityValue">15 %</span>
 							</label>
-							<button id="precisionToggle" class="hidden" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Punktgenauigkeit (meanPointError) einfärben, statt nach DB_REF/vermutet">Präzision ein</button>
+							<button id="precisionToggle" class="hidden" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Genauigkeit einfärben, statt nach DB_REF/vermutet — Lage (meanPointError, MP) oder Höhe (meanHeightError, MH)">Präzision ein</button>
+							<select id="precisionKind" class="hidden" aria-label="Genauigkeit: Lage oder Höhe" title="Lage: mittlerer Punktfehler der Trassenpunkte (GND MP). Höhe: mittlerer Höhenfehler der Gradientenpunkte (GND MH), auf die Trasse gelegt über den nächsten Gradientenpunkt in Stationsrichtung"><option value="point">Lage (MP)</option><option value="height">Höhe (MH)</option></select>
 							<button id="kmLineToggle" type="button" aria-pressed="true" title="Kilometerlinien auf der Karte und im Diagramm ein- oder ausblenden — die Gleise bleiben">km-Linien aus</button>
 							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Prototyp: alle Segmente über 3 mm gemeldeter Punktgenauigkeit (meanPointError), zur Einzelprüfung">Ausschuss (&gt; 3 mm) <span id="rejectListCount">0</span></button>
 							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste (Prototyp)"></div>
@@ -32294,6 +32297,19 @@ return maplibregl$1;
     }
     return null;
   }
+  // The same PH record carries the height's own survey precision (MH/MHEXP,
+  // decoded like MP/MPEXP); it travels with the profile point as
+  // extras.meanHeightError, the way meanPointError travels with a coordinate.
+  function resolveHeightErrorFromPadNode(padNode, phKeys) {
+    const tuples = normalizeSet2(phKeys);
+    for (const rec of arr3(padNode?.phRecords)) {
+      for (const tupleKey of tuples) {
+        const tuple = parseTupleKey(tupleKey);
+        if (asTrimmedString4(rec?.hsys) === asTrimmedString4(tuple?.hsys) && Number.isFinite(rec?.elevation)) return rec.meanHeightError ?? null;
+      }
+    }
+    return null;
+  }
 
   function oneOrManyGndEvidence(value) {
     return Array.isArray(value) ? value : value ? [value] : [];
@@ -32343,10 +32359,11 @@ return maplibregl$1;
           const key = `${stationValue}|${elevationValue}`;
           if (seen.has(key)) continue;
           seen.add(key);
+          const meanHeightError = resolveHeightErrorFromPadNode(node, phKeys);
           pvis.push(pvi({
             station: gndMeasure(stationValue),
             elevation: gndMeasure(elevationValue),
-            extras: { source: "GND.EH", internalStationing: true, externalStation: gndMeasure(externalStation), rowRef: element?.rowRef ?? null, typeCode: element?.typeCode ?? null, parameters: element?.parameters ?? {} }
+            extras: { source: "GND.EH", internalStationing: true, externalStation: gndMeasure(externalStation), rowRef: element?.rowRef ?? null, typeCode: element?.typeCode ?? null, parameters: element?.parameters ?? {}, ...(meanHeightError ? { meanHeightError } : {}) }
           }));
         }
       }
@@ -42379,9 +42396,49 @@ xlsx/xlsx.mjs:
 				return candidates.reduce((sum, item) => sum + item.value, 0) / candidates.length;
 			}
 
+			// Höhenpräzision: the GND reports it per Gradientenpunkt (MH/MHEXP on
+			// the PH record), not per Trassenelement. On the map it is laid onto
+			// the Trasse through its own Gradiente: an element takes the height
+			// error of the nearest Gradientenpunkt in station, within
+			// HEIGHT_PRECISION_REACH_M; farther away it stays "keine Angabe".
+			// Assumption, stated: the height error of a point stands for the
+			// stretch around it, not just for the point.
+			const HEIGHT_PRECISION_REACH_M = 250;
+			const precisionKindSelect = document.querySelector("#precisionKind");
+			function precisionKind() { return precisionKindSelect.value === "height" ? "height" : "point"; }
+			function precisionKindLabel(kind = precisionKind()) { return kind === "height" ? "Höhengenauigkeit (GND meanHeightError)" : "Punktgenauigkeit (GND meanPointError)"; }
+			const heightPrecisionCache = new WeakMap();
+			function heightPrecisionPoints(alignment) {
+				if (heightPrecisionCache.has(alignment)) return heightPrecisionCache.get(alignment);
+				const points = [];
+				for (const profile of referencingEntries(alignment).filter((candidate) => candidate.item.kind === "profile")) {
+					for (const point of profile.item?.payload?.points ?? []) {
+						const error = point?.extras?.meanHeightError;
+						const station = stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta);
+						if (!error || !Number.isFinite(error.value) || !Number.isFinite(station)) continue;
+						points.push({ station, value: error.value });
+					}
+				}
+				points.sort((a, b) => a.station - b.station);
+				heightPrecisionCache.set(alignment, points);
+				return points;
+			}
+			function heightPrecisionForElement(alignment, station) {
+				if (!Number.isFinite(station)) return null;
+				const points = heightPrecisionPoints(alignment);
+				let best = null;
+				for (const point of points) {
+					const distance = Math.abs(point.station - station);
+					if (distance > HEIGHT_PRECISION_REACH_M) continue;
+					if (!best || distance < best.distance) best = { distance, value: point.value };
+				}
+				return best ? best.value : null;
+			}
+
 			function precisionFeatureCollection() {
 				const features = [];
 				precisionEntryById = new Map();
+				const kind = precisionKind();
 				let featureIndex = 0;
 				for (const loaded of loadedFiles) {
 					for (const entry of loaded.objects) {
@@ -42395,7 +42452,7 @@ xlsx/xlsx.mjs:
 								properties: {
 									id,
 									active: entry === selectedEntry ? 1 : 0,
-									precisionValue: item.precisionValue,
+									precisionValue: kind === "height" ? heightPrecisionForElement(entry, item.station) : item.precisionValue,
 									kilometerLine: sevenLineSide(entry) === "kilometer" ? 1 : 0,
 									precisionStation: item.station,
 									precisionEasting: item.easting,
@@ -42427,9 +42484,9 @@ xlsx/xlsx.mjs:
 				precisionPopup = new globalThis.maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: "220px" })
 					.setLngLat(lngLat)
 					.setHTML(
-						`<strong>Punktgenauigkeit: ${xml(formatPrecisionValue(properties.precisionValue))}</strong>` +
+						`<strong>${precisionKind() === "height" ? "Höhengenauigkeit" : "Punktgenauigkeit"}: ${xml(formatPrecisionValue(properties.precisionValue))}</strong>` +
 						(stationLabel ? `<br>${xml(stationLabel)}` : "") +
-						`<br><span style="opacity:.7">(GND meanPointError, Prototyp)</span>`,
+						`<br><span style="opacity:.7">(${precisionKind() === "height" ? "GND meanHeightError am nächsten Gradientenpunkt" : "GND meanPointError"}, Prototyp)</span>`,
 					)
 					.addTo(maplibreMap);
 				const entry = precisionEntryById.get(String(properties.id));
@@ -42484,10 +42541,10 @@ xlsx/xlsx.mjs:
 			function buildRejectListCsv() {
 				const items = collectRejectList();
 				const lines = [
-					`Ausschussliste (Prototyp) - Punktgenauigkeit > ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (GND meanPointError)`,
+					`Ausschussliste (Prototyp) - ${precisionKindLabel()} > ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
 					"",
-					["Datei", "Objekt", "Station", "Punktgenauigkeit_m", "Easting", "Northing"].join(";"),
+					["Datei", "Objekt", "Station", precisionKind() === "height" ? "Hoehengenauigkeit_m" : "Punktgenauigkeit_m", "Easting", "Northing"].join(";"),
 				];
 				for (const feature of items) {
 					const p = feature.properties;
@@ -42780,6 +42837,7 @@ xlsx/xlsx.mjs:
 				for (const id of precisionLayers) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "visible" : "none");
 				precisionToggle.setAttribute("aria-pressed", String(precisionModeActive));
 				precisionToggle.textContent = precisionModeActive ? "Präzision aus" : "Präzision ein";
+				precisionKindSelect.classList.toggle("hidden", !precisionModeActive);
 				mapLegend.classList.toggle("hidden", precisionModeActive);
 				precisionLegend.classList.toggle("hidden", !precisionModeActive);
 				if (!precisionModeActive) { precisionPopup?.remove(); precisionPopup = null; }
@@ -46513,6 +46571,7 @@ xlsx/xlsx.mjs:
 					spurplan: { coloring: spurplanColoring.value, zoom: [...spurplanZoom.entries()] },
 					kilometerLinesVisible,
 					coupled: selectionCoupled,
+					precisionKind: precisionKind(),
 					viewMode: viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? null,
 					selected: selectedEntry ? stateKey(selectedEntry) : null,
 				};
@@ -46556,6 +46615,7 @@ xlsx/xlsx.mjs:
 					}
 					if (typeof state.kilometerLinesVisible === "boolean" && state.kilometerLinesVisible !== kilometerLinesVisible) toggleKilometerLines();
 					if (typeof state.coupled === "boolean") setSelectionCoupled(state.coupled);
+					if (state.precisionKind === "height" || state.precisionKind === "point") precisionKindSelect.value = state.precisionKind;
 					spurplanSpeedCache.clear();
 					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 					const selected = state.selected ? byKey.get(state.selected) : null;
@@ -46742,6 +46802,13 @@ xlsx/xlsx.mjs:
 			gisAssign.addEventListener("click", () => setViewMode("listing"));
 			baseMapLoad.addEventListener("click", () => toggleRailwayMap());
 			precisionToggle.addEventListener("click", () => togglePrecisionMode());
+			precisionKindSelect.addEventListener("change", () => {
+				rejectListToggle.title = `Prototyp: alle Segmente über 3 mm gemeldeter ${precisionKind() === "height" ? "Höhengenauigkeit (meanHeightError)" : "Punktgenauigkeit (meanPointError)"}, zur Einzelprüfung`;
+				precisionPopup?.remove(); precisionPopup = null;
+				if (maplibreMap?.getSource("technet-precision")) maplibreMap.getSource("technet-precision").setData(precisionFeatureCollection());
+				renderRejectList();
+				scheduleStateSave();
+			});
 			kmLineToggle.addEventListener("click", () => toggleKilometerLines());
 			railwayOpacity.addEventListener("input", () => {
 				railwayLayerOpacity = Number(railwayOpacity.value) / 100;
