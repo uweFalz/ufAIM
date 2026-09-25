@@ -229,6 +229,17 @@ export function solveAlignmentProblem({
 	}
 
 	const hardPoints = residuals.hardPoints;
+	// poses held at element joints, read off the chain at the exit station of
+	// the element they follow; a heading row is weighed by the length it
+	// accumulates on, as the end pose's is
+	const heldPoses = (constraints.heldPoses ?? []).map((held) => {
+		const index = codec.elementSequence.indexOf(held.afterElement);
+		if (index < 0) error("INVALID_HELD_POSE", `held pose after "${held.afterElement}": no such element`);
+		return { ...held, index, components: ["x", "y", "theta"].filter((key) => held[key] !== undefined) };
+	});
+	if (heldPoses.length > 0 && typeof analyticJacobian !== "function") {
+		error("UNSUPPORTED", "held poses need the analytic Jacobian: the pose at a joint is read off the chain");
+	}
 	const softPoints = residuals.softPoints;
 
 	// Bounds on the variables come from two declarations that meet here. The
@@ -341,6 +352,24 @@ export function solveAlignmentProblem({
 		if (leverArm === 1 || h.length <= HEADING_ROW) return;
 		h[HEADING_ROW] *= leverArm;
 		Jh[HEADING_ROW] = Jh[HEADING_ROW].map((value) => value * leverArm);
+	}
+
+	/** residual rows and Jacobian rows of the held poses, from the chain */
+	function heldPoseRows(geometry) {
+		const h = [];
+		const Jh = [];
+		for (const held of heldPoses) {
+			const station = geometry.stationAfter(held.index);
+			const pose = geometry.poseAt(station);
+			const rows = geometry.poseJacobianAt(parameterSpecs, station);
+			for (const key of held.components) {
+				const weight = key === "theta" ? Math.max(station, 1) : 1;
+				const residual = key === "theta" ? wrapAngle(pose.theta - held.theta) : pose[key] - held[key];
+				h.push(residual * weight);
+				Jh.push(rows.map((d) => (key === "x" ? d.dx : key === "y" ? d.dy : d.dtheta) * weight));
+			}
+		}
+		return { h, Jh };
 	}
 
 	/**
@@ -542,7 +571,8 @@ export function solveAlignmentProblem({
 		const geometry = analyticJacobian(overlay);
 		jacobianEvaluations += 1;
 
-		const h = [...equalityResiduals(built), ...extraResiduals(x)];
+		const joints = heldPoseRows(geometry);
+		const h = [...equalityResiduals(built), ...joints.h, ...extraResiduals(x)];
 
 		// end pose: three rows straight from the chain rule
 		const poseRows = geometry.endPoseJacobian(parameterSpecs);
@@ -558,6 +588,7 @@ export function solveAlignmentProblem({
 			const projected = project(built, point, "zwangspunkt");
 			Jh.push(geometry.lateralDerivative(parameterSpecs, projected.s));
 		}
+		for (const row of joints.Jh) Jh.push(row);
 		for (const constraint of extraEqualities) Jh.push([...constraint.gradient]);
 		scaleEqualityRows(h, Jh);
 

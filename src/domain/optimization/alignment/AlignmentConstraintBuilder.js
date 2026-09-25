@@ -167,6 +167,12 @@ export function createAlignmentConstraintBuilder({
 	elementSequence,
 	minimumElementLength = 0,
 	hardPoints = [],
+	// Poses held at an element joint: [{ afterElement, x?, y?, theta? }],
+	// each named component an equality on the pose at the exit of that
+	// element. A turnout is the case: its tangent (theta), or its whole
+	// pose, at the turnout's start or end, held while the elements on either
+	// side are fitted. At least one component per entry.
+	heldPoses = [],
 	elementKinds = null,
 	design = null,
 	admitUnconfirmedDesign = null,
@@ -228,6 +234,21 @@ export function createAlignmentConstraintBuilder({
 		equalities.push(Object.freeze({
 			id: `zwang.${name}`, kind: "zwangspunkt", pointName: name, unit: "m",
 		}));
+	}
+	const heldPoseRows = [];
+	for (const held of heldPoses) {
+		if (!isObject(held) || typeof held.afterElement !== "string" || !elementSequence.includes(held.afterElement)) {
+			error("INVALID_HELD_POSE", "each held pose names an element of the sequence it follows (afterElement)");
+		}
+		const components = ["x", "y", "theta"].filter((key) => held[key] !== undefined);
+		if (components.length === 0) error("INVALID_HELD_POSE", `the pose after "${held.afterElement}" holds nothing: give x, y or theta`);
+		for (const key of components) {
+			if (!isFiniteNumber(held[key])) error("INVALID_HELD_POSE", `the pose after "${held.afterElement}" has a non-finite ${key}`);
+			equalities.push(Object.freeze({
+				id: `pose.${held.afterElement}.${key}`, kind: "held-pose", afterElement: held.afterElement, component: key, unit: key === "theta" ? "rad" : "m",
+			}));
+		}
+		heldPoseRows.push(Object.freeze({ afterElement: held.afterElement, ...Object.fromEntries(components.map((key) => [key, held[key]])) }));
 	}
 
 	// A design profile built by createAlignmentDesignProfile arrives ready, with
@@ -417,5 +438,6 @@ export function createAlignmentConstraintBuilder({
 			: profile?.declared ?? null,
 		equalityCount: equalities.length,
 		hardPointNames: Object.freeze([...seenHard]),
+		heldPoses: Object.freeze(heldPoseRows),
 	});
 }

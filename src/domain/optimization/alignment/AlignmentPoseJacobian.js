@@ -386,6 +386,14 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 		endPoseJacobian(parameters) {
 			return parameters.map((parameter) => poseDerivative(parameter, arcLength, endPose));
 		},
+		/** the station at the exit of element `index`, and the pose Jacobian there */
+		stationAfter(index) {
+			return stations[index + 1];
+		},
+		poseJacobianAt(parameters, station) {
+			const pose = poseAt(station);
+			return parameters.map((parameter) => poseDerivative(parameter, station, pose));
+		},
 
 		/**
 		 * d(lateral offset)/d(parameter) at a foot station.
