@@ -130,6 +130,7 @@ export function solveAlignmentProblem({
 	correctionClosure,
 	correctionRows,
 	correctionMetric,
+	pinnedWeight,
 	qpWarmStart,
 	// The points fit ends "stationary" with the reason "within_tolerance" once
 	// every point is within its tolerance, the constraints are met, the last
@@ -787,6 +788,7 @@ export function solveAlignmentProblem({
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
 		...(correctionRows === undefined ? {} : { correctionRows }),
 		...(correctionMetric === undefined ? {} : { correctionMetric }),
+		...(pinnedWeight === undefined ? {} : { pinnedWeight }),
 		...(qpWarmStart === undefined ? {} : { qpWarmStart }),
 		...(objective === "points" && undeterminedVerdict ? { determinedSubspace: determinedSubspaceOf } : {}),
 		// The length tier under the corridor creeps along a curved constraint

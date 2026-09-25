@@ -125,6 +125,7 @@ export function solveRelaxedQpStep({
 	pinnedVariables = null,
 	// the previous subproblem's working set (see solveBoxQP), or null
 	warmStart = null,
+	pinnedWeight,
 	// Which inequality rows the PROBLEM holds at the current point, by their own
 	// residuals. Same contamination as the bounds if read from the subproblem:
 	// measured, a run that had reached a KKT residual of 6.0e-3 with rows 0 and 3
@@ -184,7 +185,7 @@ export function solveRelaxedQpStep({
 		dRhs.push(-g[i]);
 	}
 
-	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping, maxIterations: qpIterations, warmStart });
+	const qp = solveBoxQP({ H: Hz, c: cz, A, b, C, d: dRhs, lower: lo, upper: up, z0, damping, maxIterations: qpIterations, warmStart, ...(pinnedWeight === undefined ? {} : { pinnedWeight }) });
 	const d = qp.z.slice(0, n);
 	const delta = qp.z[n];
 
