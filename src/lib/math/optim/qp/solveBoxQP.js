@@ -325,6 +325,9 @@ export function solveBoxQP({
 	// nothing every iteration. A working set that no longer fits costs one
 	// free-block solve and leaves the walk where the ratio test stopped it.
 	warmStart = null,
+	// the weight of the pinned columns in the fit of the equality
+	// multipliers, which decides only at a degenerate vertex (see below)
+	pinnedWeight = 1e-6,
 } = {}) {
 	const declaredN = c?.length ?? 0;
 	if (!declaredN || !Array.isArray(z0) || z0.length !== declaredN) {
@@ -492,7 +495,6 @@ export function solveBoxQP({
 				for (let i = 0; i < n; i++) (working[i] ? pinnedIndex : freeIndex).push(i);
 				const Af = A.map((row) => freeIndex.map((i) => row[i]));
 				const Ap = A.map((row) => pinnedIndex.map((i) => row[i]));
-				const pinnedWeight = 1e-6;
 				const gram = Af.map((rowA, r) => Af.map((rowB, q) => dot(rowA, rowB) + pinnedWeight * dot(Ap[r], Ap[q])));
 				const gramScale = Math.max(...gram.map((row, r) => Math.abs(row[r])), 1);
 				for (let r = 0; r < gram.length; r++) gram[r][r] += 1e-12 * gramScale;

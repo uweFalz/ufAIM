@@ -158,6 +158,9 @@ export function solveSQP({
 	// which for the corridor is the Gauss-Newton step of the residuals,
 	// (J'J)^-1 J'r, and closes the row along the residuals' own geometry.
 	correctionMetric = "identity",
+	// the subproblem's weight of the pinned columns in its multiplier fit
+	// (solveBoxQP.pinnedWeight); undefined leaves the subproblem's own
+	pinnedWeight,
 	// A point that is stationary to stationarityTolerance and infeasible,
 	// whose violation over this many consecutive such iterations shrinks at a
 	// rate that will not reach the tolerance within the budget, is a creep
@@ -421,6 +424,7 @@ export function solveSQP({
 			relaxationWeight,
 			qpIterations,
 			warmStart: qpWarmStart ? warmStart : null,
+			pinnedWeight,
 			pinnedVariables: heldByBounds(x),
 			activeInequalities: (state.g ?? []).reduce((held, value, j) => {
 				if (value > -activeTolerance * Math.max(1, Math.abs(value))) held.push(j);

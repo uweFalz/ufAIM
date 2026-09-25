@@ -4,7 +4,7 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length,lexicographic] [--ramp bound|constraint] \
-//        [--iterations 1000] [--hessian auto|bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--qpWarmStart false] [--undeterminedVerdict false] [--corridor true] [--correctionRows equalities|all|active|violated] [--correctionMetric identity|hessian] [--json out.json]
+//        [--iterations 1000] [--hessian auto|bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--qpWarmStart false] [--undeterminedVerdict false] [--corridor true] [--correctionRows equalities|all|active|violated] [--correctionMetric identity|hessian] [--pinnedWeight 1e-6] [--json out.json]
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -52,6 +52,7 @@ const undeterminedVerdict = args.undeterminedVerdict === undefined ? undefined :
 const corridor = args.corridor === undefined ? undefined : args.corridor !== "false";
 const correctionRows = args.correctionRows;
 const correctionMetric = args.correctionMetric;
+const pinnedWeight = args.pinnedWeight === undefined ? undefined : Number(args.pinnedWeight);
 const samples = args.samples ?? new URL("../../samples/", import.meta.url).pathname;
 
 const trusted = [];
@@ -80,7 +81,7 @@ for (const { file, n } of trusted.slice(from, to)) {
 	for (const objective of objectives) {
 		const t0 = Date.now();
 		let run;
-		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling, correctionClosure, qpWarmStart, undeterminedVerdict, corridor, correctionRows, correctionMetric };
+		const solver = { hessian, restoration, structuredStart, hybridSwitch, lengthPrior, acceptance, filterSwitching, filterCeiling, correctionClosure, qpWarmStart, undeterminedVerdict, corridor, correctionRows, correctionMetric, pinnedWeight };
 		if (objective === "lexicographic") {
 			// the declared order: the length tier as a reference, then the points
 			let lex;
