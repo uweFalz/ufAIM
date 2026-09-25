@@ -126,3 +126,32 @@ vector) is what the factory does now; the adopted-baseline hash in
 body, and the corpus loader writes its kinks through the writer's vector
 like the bridge, so there is one contract.
 
+## The distance at a kink, defined (2026-09-26)
+
+The open item of the kink section - a fit whose optimum sits on a bend
+and cannot be certified - had two parts, and both are closed.
+
+**The definition** (Uwe Falz): the residual of a point is its distance to
+the polyline; where the point has no perpendicular on either line - in
+the wedge outside a bend - that is the distance to the vertex itself,
+signed by the side. The foot memory now returns such a foot with
+`vertex: true`, `q` the signed distance to the vertex and `direction` the
+unit vector the derivative runs along, and the analytic Jacobian takes
+that direction in place of the normal (`lateralDerivative(parameters, s,
+direction)`), so that dq = -direction · dV. Tested on a bend of 0.3 rad
+(`point-projection.test.mjs`). On the corpus's kinks of 0.03 gon the
+wedge is a tenth of a millimetre wide and the rule never fires; it is
+there for the angles a turnout or a profile has.
+
+**The certification** was settled on the way, by the verdict of #47: a
+points fit ends within tolerance with its undetermined directions named,
+and `AHRO_Gl_110` - the file whose foot sat on the kink at u = 0.000 for
+a thousand iterations - ends at 46 with rms 0.140. The inner corner of a
+bend, where both lines have a foot and the nearer is taken, stays a
+corner of the residual and no longer needs a verdict of its own.
+
+Found on the way: the foot memory's stale distance stood at 50 m in the
+code since #48, which documented and measured 200 m - the edit that set
+the default had failed silently. Set now; the points runs take 178 s
+against 209 with the 50, the strict order is unchanged at 225 of 235.
+
