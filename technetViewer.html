@@ -80,15 +80,10 @@
 			main {
 				display: grid;
 				grid-template-rows: auto auto minmax(0, 1fr);
-				gap: 0.55rem;
+				gap: 0;
 				height: 100vh;
-				padding: 0.7rem;
+				min-width: 0;
 				box-sizing: border-box;
-			}
-			main > section:last-of-type {
-				display: grid;
-				grid-template-rows: auto minmax(0, 1fr);
-				min-height: 0;
 			}
 			h1 {
 				margin: 0;
@@ -113,7 +108,7 @@
 				color: #555;
 				white-space: nowrap;
 			}
-			#gwbLineSpeedLabel { margin-left: auto; }
+			#gwbLineSpeedLabel { margin-left: 0; }
 			.gwb-input input,
 			.gwb-input select {
 				padding: 0.3rem 0.4rem;
@@ -123,8 +118,7 @@
 			}
 			.gwb-input input { width: 4.6rem; }
 			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
-			#themeToggle { margin-left: auto; }
-			#coupleToggle { margin-left: 0; }
+			#themeToggle { margin-left: 0; }
 			#precisionKind { font: inherit; font-size: 0.8rem; }
 			#precisionKind.hidden { display: none; }
 			#coupleToggle.hidden { display: none; }
@@ -138,14 +132,88 @@
 			#jumpResults li { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.35rem 0.7rem; font-size: 0.84rem; cursor: pointer; }
 			#jumpResults li.active, #jumpResults li:hover { background: color-mix(in srgb, Highlight 16%, Canvas); }
 			#jumpResults li .jump-kind { color: GrayText; font-size: 0.76rem; white-space: nowrap; }
+			/* ---- Maßsystem: drei Schriftgrößen, ein Abstandsraster, ein Radius ---- */
+			:root { --fs-1: 0.72rem; --fs-2: 0.82rem; --fs-3: 0.95rem; --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem; --r: 0.55rem; }
+			#app { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); height: 100vh; }
+			#rail { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-1); background: var(--sidebar); border-right: 1px solid var(--hairline); }
+			.rail-brand { font: 700 var(--fs-3)/1 system-ui, sans-serif; letter-spacing: 0.04em; text-align: center; color: var(--accent); padding: var(--sp-2) 0 var(--sp-3); }
+			#viewModes { flex-direction: column; gap: var(--sp-1); }
+			#viewModes button, .rail-bottom button { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; width: 100%; padding: 0.45rem 0.1rem; border: 0; border-radius: var(--r); background: transparent; color: var(--secondary); font-size: 0.62rem; line-height: 1.1; }
+			#viewModes button .glyph, .rail-bottom button .glyph { font-size: 1.15rem; line-height: 1; }
+			#viewModes button:hover, .rail-bottom button:hover { background: color-mix(in srgb, CanvasText 6%, transparent); color: var(--ink); }
+			#viewModes button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+			#viewModes.hidden { display: flex; }
+			#viewModes.hidden button { opacity: 0.35; pointer-events: none; }
+			.rail-bottom { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-1); }
+			#coupleToggle[aria-pressed="true"] { color: var(--accent); }
 			#titlebar {
-				flex-wrap: wrap;
-				row-gap: 0.25rem;
-				min-height: 2.7rem;
-				padding: 0 0.35rem;
+				min-height: 2.6rem;
+				padding: var(--sp-1) var(--sp-3);
 				background: var(--titlebar);
+				border-bottom: 1px solid var(--hairline);
 				backdrop-filter: blur(24px) saturate(1.5);
 			}
+			#titlebar h1 { margin: 0; font-size: var(--fs-3); }
+			#status { flex: 1; min-width: 0; text-align: right; font-size: var(--fs-1); color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			/* ---- Menüs: ein Knopf, ein Blatt darunter ---- */
+			.menu { position: relative; }
+			.menu > summary { list-style: none; cursor: pointer; padding: 0.3rem 0.6rem; border: 1px solid var(--hairline); border-radius: var(--r); background: var(--button); font-size: var(--fs-2); white-space: nowrap; user-select: none; }
+			.menu > summary::-webkit-details-marker { display: none; }
+			.menu[open] > summary { background: var(--button-active); }
+			.menu-body { position: absolute; top: calc(100% + 0.3rem); right: 0; z-index: 40; min-width: 14rem; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); background: Canvas; border: 1px solid var(--hairline); border-radius: 0.65rem; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+			.menu-body.row { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-width: 34rem; }
+			.menu-item, .menu-body > .menu-item, .menu-body label.menu-item { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 0.4rem 0.6rem; border: 0; border-radius: var(--r); background: transparent; color: inherit; font-size: var(--fs-2); text-align: left; cursor: pointer; white-space: nowrap; }
+			.menu-item:hover { background: color-mix(in srgb, CanvasText 7%, transparent); }
+			.menu-item:disabled { opacity: 0.4; cursor: default; }
+			.menu-item.hidden { display: none; }
+			#assignmentTools { display: contents; }
+			#assignmentTools.hidden { display: none; }
+			.menu-body .picture-export { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; }
+			.menu-body .picture-export button { text-align: left; border: 0; background: transparent; padding: 0.4rem 0.6rem; border-radius: var(--r); font-size: var(--fs-2); }
+			.menu-body .picture-export button:hover { background: color-mix(in srgb, CanvasText 7%, transparent); }
+			/* ---- Bühne und Willkommen ---- */
+			#stage { position: relative; min-height: 0; display: grid; }
+			#dropzone { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; padding: var(--sp-4); background: var(--window); }
+			#dropzone.loaded { display: none; }
+			.welcome { max-width: 34rem; padding: 2rem 2.2rem; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 1rem; background: var(--surface); text-align: center; box-shadow: 0 1rem 3rem rgba(0,0,0,0.08); }
+			body.dragover .welcome { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+			.welcome-eyebrow { margin: 0 0 var(--sp-2); font: 600 var(--fs-1) system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+			.welcome h2 { margin: 0 0 var(--sp-2); font-size: 1.45rem; line-height: 1.2; }
+			.welcome-sub { margin: 0 auto var(--sp-3); max-width: 30rem; color: var(--secondary); font-size: var(--fs-2); line-height: 1.5; }
+			.welcome-formats { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); margin-bottom: var(--sp-4); }
+			.welcome-formats span { padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid var(--hairline); font-size: var(--fs-1); color: var(--secondary); }
+			.welcome-actions { display: flex; justify-content: center; gap: var(--sp-2); }
+			.welcome .hint { margin-top: var(--sp-2); font-size: var(--fs-1); color: var(--secondary); }
+			.import-button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+			#sessionOffer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--hairline); font-size: var(--fs-2); }
+			#sessionOffer.hidden { display: none; }
+			/* ---- Werkzeugleisten ---- */
+			.chip { padding: 0.1rem 0.55rem; border-radius: 999px; border: 1px solid var(--hairline); font-size: var(--fs-1); color: var(--secondary); max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			.chip:empty { display: none; }
+			.tb-spacer { flex: 1; }
+			.tb-group { display: inline-flex; }
+			.tb-group button { border-radius: 0; padding: 0.3rem 0.55rem; }
+			.tb-group button:first-child { border-radius: var(--r) 0 0 var(--r); }
+			.tb-group button:last-child { border-radius: 0 var(--r) var(--r) 0; }
+			.tb-group button + button { border-left: 0; }
+			#mapToolbar strong, #diagramToolbar strong, #spurplanToolbar strong, #deliveryToolbar strong, #linksToolbar strong { font-size: var(--fs-2); }
+			#mapToolbar button, #diagramToolbar button, #spurplanToolbar button, #deliveryToolbar button, #linksToolbar button { font-size: var(--fs-2); padding: 0.3rem 0.6rem; }
+			#railwayOpacityControl.menu-item { display: flex; }
+			#railwayOpacityControl.hidden { display: none; }
+			#precisionKind.menu-item { border: 1px solid var(--hairline); background: var(--surface); }
+			#rejectListToggle { color: var(--accent); }
+			#rejectListToggle[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, Canvas); }
+			#mapPanel #mapLegend, #mapPanel #precisionLegend { top: auto; bottom: 0.6rem; }
+			/* Nothing in the chain may ask for more width than the pane: the
+			   diagram's 1000-unit SVG is the one that used to. */
+			main, #stage, #workspace, #diagramPanel, #diagramScroll { min-width: 0; }
+			main, #stage, #workspace { grid-template-columns: minmax(0, 1fr); }
+			main { overflow: hidden; }
+			#diagram { max-width: 100%; }
+			.raw-file-title { display: flex; align-items: baseline; gap: var(--sp-2); }
+			.raw-file-title > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.raw-file-title .workspace-section-count { flex: none; white-space: nowrap; }
+			.inbox-drag-hint { margin: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-1); color: var(--secondary); border: 1px dashed var(--hairline); border-radius: var(--r); background: transparent; }
 			button,
 			select,
 			input { font: inherit; }
@@ -159,9 +227,7 @@
 			}
 			button:hover { background: var(--button-hover); }
 			button:active { background: var(--button-active); }
-			#titlebar h1 {
-				margin-right: auto;
-			}
+			#titlebar h1 { margin-right: var(--sp-2); }
 			#titlebar button:disabled { opacity: 0.45; }
 			#viewModes button[aria-pressed="true"],
 			#diagramModes button[aria-pressed="true"],
@@ -169,16 +235,6 @@
 				background: Highlight;
 				color: HighlightText;
 			}
-			#dropzone {
-				min-height: 0;
-				padding: 0;
-				display: flex;
-				align-items: center;
-				gap: 0.55rem;
-				min-height: 2rem;
-			}
-			#sessionOffer, #assignmentTools { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
-			#sessionOffer.hidden, #assignmentTools.hidden { display: none; }
 			#sessionOfferText { opacity: 0.85; }
 			button.import-button { font: inherit; font-size: 0.86rem; color: inherit; }
 			#files,
@@ -219,22 +275,20 @@
 			#status.error {
 				color: #c62828;
 			}
-			#importProgress { position: relative; height: 1.15rem; margin: 0.15rem 0 0.3rem; border-radius: 0.4rem; background: color-mix(in srgb, GrayText 18%, transparent); overflow: hidden; font: 0.74rem system-ui, sans-serif; }
+			#importProgress { position: relative; height: 1.15rem; margin: 0; border-radius: 0.4rem; background: color-mix(in srgb, GrayText 18%, transparent); overflow: hidden; font: 0.74rem system-ui, sans-serif; }
 			#importProgress.hidden { display: none; }
 			#importProgressBar { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); opacity: 0.55; transition: width 120ms linear; }
 			#importProgressText { position: relative; display: block; padding: 0 0.55rem; line-height: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 			#viewer {
 				display: grid;
-				grid-template-columns: 17.5rem minmax(0, 1fr) 16rem;
+				grid-template-columns: clamp(13rem, 21vw, 17.5rem) minmax(0, 1fr) clamp(12rem, 19vw, 16rem);
 				grid-template-rows: minmax(0, 1fr) clamp(6rem, var(--diagram-content-height, 13.5rem), calc(100% - 7rem));
 				min-height: 0;
 				height: 100%;
 				position: relative;
-				border: 1px solid GrayText;
-				border-color: var(--hairline);
-				border-radius: 0.75rem;
+				border: 0;
+				border-radius: 0;
 				background: var(--surface);
-				box-shadow: 0 1rem 3rem rgba(0,0,0,0.12);
 				overflow: hidden;
 			}
 			#workspace {
@@ -579,6 +633,8 @@
 			.diagram-footnote { font-size: 11px; }
 			.diagram-axis-value { font-size: 11px; font-variant-numeric: tabular-nums; }
 			#mapToolbar {
+				flex-wrap: wrap;
+				row-gap: 0.3rem;
 				padding: 0.4rem 0.65rem;
 				border-bottom: 1px solid GrayText;
 				font-family: system-ui, sans-serif;
@@ -586,9 +642,7 @@
 				z-index: 3;
 				background: var(--surface);
 			}
-			#mapToolbar strong {
-				margin-right: auto;
-			}
+			#mapToolbar strong { margin-right: 0; }
 			#railwayOpacityControl {
 				display: inline-flex;
 				align-items: center;
@@ -1192,7 +1246,11 @@
 			}
 			.object-row.dependent > button { cursor: default; padding-left: 1.4rem; font-size: 0.92em; opacity: 0.85; }
 			.object-row.organized > button { cursor: default; opacity: 0.6; }
-			.inbox-filter { font: inherit; font-size: 0.8rem; max-width: 9rem; }
+			.inbox-filter { font: inherit; font-size: var(--fs-2); max-width: 100%; }
+			.inbox-top { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--hairline); }
+			.inbox-top .inbox-filter { flex: 1; }
+			.inbox-crs { border-top: 1px solid var(--hairline); }
+			.inbox-crs > summary { padding: var(--sp-2) var(--sp-3); font: 600 var(--fs-2) system-ui, sans-serif; cursor: pointer; }
 			.object-row.dragging {
 				opacity: 0.45;
 				cursor: grabbing;
@@ -1579,38 +1637,60 @@
 	</style>
 	</head>
 	<body>
+		<div id="app">
+		<nav id="rail" aria-label="Ansichten">
+			<div class="rail-brand" title="Technet-Datei-Viewer">TV</div>
+			<div id="viewModes" class="hidden" aria-label="Ansicht">
+				<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span>Lieferung</button>
+				<button type="button" data-mode="crs" aria-pressed="true" title="GIS: Karte mit Präzision und Kilometersteinen"><span class="glyph">◎</span>GIS</button>
+				<button type="button" data-mode="spurplan" aria-pressed="false" title="Spurplan: der gerechnete Gleisgraph, GWB-gefärbt"><span class="glyph">⌥</span>Spurplan</button>
+				<button type="button" data-mode="links" aria-pressed="false" title="Verknüpfung: jedes Objekt, jede Verbindung, ihr Grund"><span class="glyph">⌾</span>Verknüpfung</button>
+				<button type="button" data-mode="listing" aria-pressed="false" title="Listing: die Zahlen des gewählten Objekts"><span class="glyph">≡</span>Listing</button>
+			</div>
+			<div class="rail-bottom">
+				<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen."><span class="glyph">⇄</span>Kopplung</button>
+				<button id="themeToggle" type="button" title="Erscheinungsbild: System · Hell · Dunkel">◐ System</button>
+				<button id="toggleFullscreen" type="button" aria-label="GIS-Vollbild" aria-pressed="false" title="Karte im Vollbild">⛶</button>
+			</div>
+		</nav>
 		<main>
 			<div id="titlebar">
 				<h1>Technet-Datei-Viewer</h1>
-				<button id="toggleFullscreen" type="button" aria-label="GIS-Vollbild" aria-pressed="false">⛶</button>
-				<button id="validate7l" class="hidden" type="button" disabled>Prüfen</button>
-				<button id="exportLandxml" type="button" disabled>Exportieren</button>
-				<div id="viewModes" class="hidden" aria-label="Ansicht">
-					<button type="button" data-mode="listing" aria-pressed="false">Listing</button>
-					<button type="button" data-mode="crs" aria-pressed="true">GIS</button>
-					<button type="button" data-mode="spurplan" aria-pressed="false">Spurplan</button>
-					<button type="button" data-mode="delivery" aria-pressed="false">Lieferung</button>
-					<button type="button" data-mode="links" aria-pressed="false">Verknüpfung</button>
-				</div>
-				<button id="themeToggle" type="button" title="Erscheinungsbild: System · Hell · Dunkel">◐ System</button>
-				<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen.">Kopplung</button>
 				<div id="jump" class="hidden">
 					<input id="jumpInput" type="search" placeholder="Suche: Gleis, Weiche, km 75,0+12" aria-label="Suche und Sprung" autocomplete="off" spellcheck="false" title="Gleis-, Weichen- oder Dateiname, oder eine Kilometrierung wie 75,0+12 · ⌘/Strg+K oder / springt hierher · ← → bewegen den Cursor 10 m, mit ⇧ 100 m · Esc löscht den Cursor">
 					<ul id="jumpResults" class="hidden" role="listbox"></ul>
 				</div>
+				<span id="status">Bereit · Daten hierher ziehen oder über „Daten“ laden.</span>
+				<details id="dataMenu" class="menu">
+					<summary>Daten ▾</summary>
+					<div class="menu-body">
+						<label class="menu-item" for="files">＋ Dateien laden …</label>
+						<label class="menu-item" for="folderFiles" title="Ordner über den Dateidialog laden, ohne Drag &amp; Drop">＋ Ordner laden …</label>
+						<span id="assignmentTools" class="hidden"><button type="button" id="assignmentExport" class="menu-item" title="Handzuordnungen, Lage/Höhe je Datei und Objekt, Eingaben, Färbung und Zoom als JSON sichern">Zuordnung sichern ⤓</button><label class="menu-item" for="assignmentImport" title="Gesicherte Zuordnung auf die geladenen Dateien anwenden">Zuordnung anwenden ⤒</label></span>
+						<button id="exportLandxml" type="button" class="menu-item" disabled>landXML exportieren</button>
+						<button id="validate7l" class="hidden menu-item" type="button" disabled>7L prüfen</button>
+					</div>
+				</details>
 			</div>
+			<div id="importProgress" class="hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="importProgressBar"></div><span id="importProgressText"></span></div>
+			<section id="stage">
 			<section id="dropzone">
-				<input id="files" type="file" multiple />
-				<label class="import-button" for="files">＋ Daten</label>
-				<input id="folderFiles" type="file" webkitdirectory multiple />
-				<label class="import-button" for="folderFiles" title="Ordner über den Dateidialog laden, ohne Drag &amp; Drop">Ordner …</label>
-				<div class="hint">Dateien, ZIPs oder Ordner hierher ziehen</div>
-				<span id="sessionOffer" class="hidden"><span id="sessionOfferText"></span><button type="button" id="reopenAccept" class="import-button">Wieder öffnen</button><button type="button" id="reopenDiscard" class="import-button" title="Gespeicherte Lieferung aus dem Browser löschen">Verwerfen</button></span>
-				<span id="assignmentTools" class="hidden"><button type="button" id="assignmentExport" class="import-button" title="Handzuordnungen, Lage/Höhe je Datei und Objekt, Eingaben, Färbung und Zoom als JSON sichern">Zuordnung ⤓</button><input id="assignmentImport" type="file" accept=".json,application/json" /><label class="import-button" for="assignmentImport" title="Gesicherte Zuordnung auf die geladenen Dateien anwenden">Zuordnung ⤒</label></span>
+				<div class="welcome">
+					<p class="welcome-eyebrow">Technet-Datei-Viewer</p>
+					<h2>Bahnvermessung sehen, bevor jemand sie rechnet.</h2>
+					<p class="welcome-sub">Trassen, Gradienten und Überhöhungen aus GND, VermEsn und landXML — als Karte, Spurplan, Lieferungsbild, Verknüpfungsbild und 7L-Diagramm. Alles im Browser, nichts verlässt den Rechner.</p>
+					<div class="welcome-formats"><span>GND · MDB, DBB</span><span>VermEsn · TRA, GRA</span><span>landXML</span><span>ZIP, Ordner</span></div>
+					<input id="files" type="file" multiple />
+					<input id="folderFiles" type="file" webkitdirectory multiple />
+					<input id="assignmentImport" type="file" accept=".json,application/json" />
+					<div class="welcome-actions">
+						<label class="import-button primary" for="files">＋ Dateien laden</label>
+						<label class="import-button" for="folderFiles">Ordner laden</label>
+					</div>
+					<div class="hint">oder Dateien, ZIPs und Ordner hierher ziehen</div>
+					<span id="sessionOffer" class="hidden"><span id="sessionOfferText"></span><button type="button" id="reopenAccept" class="import-button primary">Wieder öffnen</button><button type="button" id="reopenDiscard" class="import-button" title="Gespeicherte Lieferung aus dem Browser löschen">Verwerfen</button></span>
+				</div>
 			</section>
-			<section>
-				<div id="status">Karte bereit · Daten können überall abgelegt werden.</div>
-				<div id="importProgress" class="hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="importProgressBar"></div><span id="importProgressText"></span></div>
 				<div id="workspace" class="mode-crs">
 					<div id="viewer" class="inbox-collapsed outbox-collapsed diagram-collapsed">
 						<button id="toggleInbox" class="edge-toggle" type="button" aria-label="Inbox ein- oder ausblenden" aria-pressed="false">›</button>
@@ -1636,24 +1716,28 @@
 						<div id="mapPanel">
 						<div id="mapToolbar">
 							<strong id="mapTitle">GIS · Orientierung</strong>
-							<span id="crsNote"></span>
+							<span id="crsNote" class="chip"></span>
 							<button id="gisAssign" class="hidden" type="button">Lage zuordnen</button>
-							<button id="baseMapLoad" type="button" aria-pressed="false">OpenRailwayMap ein</button>
-							<label id="railwayOpacityControl" class="hidden">Karte
-									<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
-									<span id="railwayOpacityValue">15 %</span>
-							</label>
-							<button id="precisionToggle" class="hidden" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Genauigkeit einfärben, statt nach DB_REF/vermutet — Lage (meanPointError, MP) oder Höhe (meanHeightError, MH)">Präzision ein</button>
-							<select id="precisionKind" class="hidden" aria-label="Genauigkeit: Lage oder Höhe" title="Lage: mittlerer Punktfehler der Trassenpunkte (GND MP). Höhe: mittlerer Höhenfehler der Gradientenpunkte (GND MH), auf die Trasse gelegt über den nächsten Gradientenpunkt in Stationsrichtung"><option value="point">Lage (MP)</option><option value="height">Höhe (MH)</option></select>
-							<button id="kmLineToggle" type="button" aria-pressed="true" title="Kilometerlinien auf der Karte und im Diagramm ein- oder ausblenden — die Gleise bleiben">km-Linien aus</button>
-							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Prototyp: alle Segmente über 3 mm gemeldeter Punktgenauigkeit (meanPointError), zur Einzelprüfung">Ausschuss (&gt; 3 mm) <span id="rejectListCount">0</span></button>
+							<span class="tb-spacer"></span>
+							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Prototyp: alle Segmente über 3 mm gemeldeter Punktgenauigkeit (meanPointError), zur Einzelprüfung">Ausschuss <span id="rejectListCount">0</span></button>
 							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste (Prototyp)"></div>
-							<button id="mapFit" type="button">Alles</button>
-							<button id="mapZoomOut" type="button">−</button>
-							<button id="mapZoomIn" type="button">+</button>
-							<button id="reopenText" class="hidden" type="button">Text</button>
-							<button id="mapFilterToggle" type="button" aria-pressed="false" aria-haspopup="true">Filter</button>
-						<div id="mapFilterPanel" class="hidden" aria-label="Kartenfilter"></div>
+							<details id="layersMenu" class="menu">
+								<summary>Ebenen ▾</summary>
+								<div class="menu-body">
+									<button id="baseMapLoad" type="button" class="menu-item" aria-pressed="false">OpenRailwayMap ein</button>
+									<label id="railwayOpacityControl" class="hidden menu-item">Karte
+											<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
+											<span id="railwayOpacityValue">15 %</span>
+									</label>
+									<button id="kmLineToggle" type="button" class="menu-item" aria-pressed="true" title="Kilometerlinien auf der Karte und im Diagramm ein- oder ausblenden — die Gleise bleiben">km-Linien aus</button>
+									<button id="precisionToggle" class="hidden menu-item" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Genauigkeit einfärben, statt nach DB_REF/vermutet — Lage (meanPointError, MP) oder Höhe (meanHeightError, MH)">Präzision ein</button>
+									<select id="precisionKind" class="hidden menu-item" aria-label="Genauigkeit: Lage oder Höhe" title="Lage: mittlerer Punktfehler der Trassenpunkte (GND MP). Höhe: mittlerer Höhenfehler der Gradientenpunkte (GND MH), auf die Trasse gelegt über den nächsten Gradientenpunkt in Stationsrichtung"><option value="point">Genauigkeit: Lage (MP)</option><option value="height">Genauigkeit: Höhe (MH)</option></select>
+									<button id="mapFilterToggle" type="button" class="menu-item" aria-pressed="false" aria-haspopup="true">Filter …</button>
+									<button id="reopenText" class="hidden menu-item" type="button">Text</button>
+								</div>
+							</details>
+							<div id="mapFilterPanel" class="hidden" aria-label="Kartenfilter"></div>
+							<span class="tb-group"><button id="mapFit" type="button" title="Alles zeigen">Alles</button><button id="mapZoomOut" type="button" aria-label="Herauszoomen">−</button><button id="mapZoomIn" type="button" aria-label="Hineinzoomen">+</button></span>
 						</div>
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
 						<div id="maplibreMap" class="hidden" aria-label="OpenRailwayMap mit geladenen Trassen"></div>
@@ -1711,13 +1795,23 @@
 								<span id="diagramCode" title=""></span>
 								<span id="diagramNote"></span>
 								<span id="diagramCursor" title="Cursor: eine Station in allen Bildern — Maus über IVMG, IVHW, GWB, Spurplan, Karte oder Lieferung"></span>
+								<details id="assumptionsMenu" class="menu">
+									<summary title="Vier Werte, die in keiner Geometriedatei stehen — Annahmen für das GWB nach Ril 800.0110 / 457.0201">Annahmen ▾</summary>
+									<div class="menu-body row">
 								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
 								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
 								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nicht modelliert">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option></select></label>
-								<button id="gwbBogenCsv" type="button" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
-								<button id="gwbAbschnittCsv" type="button" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
+									</div>
+								</details>
+								<details class="menu">
+									<summary>Export ▾</summary>
+									<div class="menu-body">
+								<button id="gwbBogenCsv" type="button" class="menu-item" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
+								<button id="gwbAbschnittCsv" type="button" class="menu-item" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
 								<span class="picture-export" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
 								<div id="diagramPresentation" aria-label="Ansicht">
 									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
 									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
@@ -1732,7 +1826,9 @@
 				</div>
 				<pre id="output" class="hidden">Noch keine Datei geladen.</pre>
 			</section>
+			</section>
 		</main>
+		</div>
 		<script id="maplibre-js">
 /**
  * MapLibre GL JS
@@ -39423,6 +39519,7 @@ xlsx/xlsx.mjs:
 			let draggedOrganizationEntry = null;
 			let dragHintDismissed = false;
 			let dragHintUsed = false;
+			let inboxCrsOpen = null;
 			let draftSevenLineFrames = [];
 			let listingZoom = 1;
 			let diagramHeightManual = false;
@@ -43288,6 +43385,7 @@ xlsx/xlsx.mjs:
 				crsNote.textContent = mode === "crs"
 					? `${compatibleObjects}/${alignmentEntries.length} DB_REF · ${inferredObjects} GK vermutet · ${limitedQualityObjects} nur GIS · ${unknownQualityObjects} Qualität offen`
 					: "";
+				crsNote.title = crsNote.textContent;
 				gisAssign.classList.toggle("hidden", mode !== "crs" || compatibleObjects === alignmentEntries.length);
 				mapEmpty.classList.add("hidden");
 				multi2d.replaceChildren();
@@ -44562,7 +44660,23 @@ xlsx/xlsx.mjs:
 			function renderRawInbox(preferredFileName = null) {
 				const previousSelection = selectedEntry;
 				const allEntries = allViewerEntries();
-				tablesNav.replaceChildren(renderBulkCrsEditor(allEntries));
+				// Data first: the filter alone at the top, the Lage/Höhe editor as a
+				// collapsed section after the files -- open when something lacks a
+				// Lage, closed otherwise.
+				const crsEditor = renderBulkCrsEditor(allEntries);
+				const inboxTop = document.createElement("div");
+				inboxTop.className = "inbox-top";
+				const filterSelect = crsEditor.querySelector(".inbox-filter");
+				if (filterSelect) inboxTop.append(filterSelect);
+				tablesNav.replaceChildren(inboxTop);
+				const crsSection = document.createElement("details");
+				crsSection.className = "inbox-crs";
+				const lsysMissing = allEntries.some((entry) => entry.item.kind === "alignment" && !effectiveLsys(entry));
+				crsSection.open = inboxCrsOpen ?? lsysMissing;
+				crsSection.addEventListener("toggle", () => { inboxCrsOpen = crsSection.open; });
+				const crsSummary = document.createElement("summary");
+				crsSummary.textContent = `Lage und Höhe zuweisen${lsysMissing ? " · Lage fehlt" : ""}`;
+				crsSection.append(crsSummary, crsEditor);
 				const hasUnassigned = allEntries.some((entry) => !isOutboxOrganized(entry));
 				if (hasUnassigned && !dragHintUsed && !dragHintDismissed) {
 					const hint = document.createElement("div");
@@ -44604,6 +44718,7 @@ xlsx/xlsx.mjs:
 					}
 					tablesNav.append(file);
 				}
+				tablesNav.append(crsSection);
 				appendPlanningTree();
 				renderSevenLineOutbox(previousSelection);
 				syncMapFilterState();
@@ -46109,6 +46224,16 @@ xlsx/xlsx.mjs:
 					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
 				}
 			}
+
+			// ---- Menüs: Klick außerhalb oder Esc schließt ------------------------------
+			document.addEventListener("pointerdown", (event) => {
+				for (const menu of document.querySelectorAll("details.menu[open]")) {
+					if (!menu.contains(event.target)) menu.removeAttribute("open");
+				}
+			});
+			document.addEventListener("keydown", (event) => {
+				if (event.key === "Escape") for (const menu of document.querySelectorAll("details.menu[open]")) menu.removeAttribute("open");
+			});
 
 			// ---- Erscheinungsbild ------------------------------------------------------
 			const themeToggle = document.querySelector("#themeToggle");
