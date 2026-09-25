@@ -104,3 +104,20 @@ being asked for the points fit of a collapsed alignment, and says no.
 
 Time: the points runs take 61 % of before, the strict runs 47 %.
 
+## The multiplier at a degenerate vertex, weighed (2026-09-25)
+
+The millionth of weight the pinned columns carry in the fit of the
+equality multipliers - which decides only where the free columns do
+not - is an option now (`pinnedWeight`, solveBoxQP through the runner),
+and three values were measured on the corpus, 0–235:
+
+| `pinnedWeight` | strict order ok / 235 | points | length | strict rows identical to 1e-6 |
+|---|---|---|---|---|
+| 0 (the free block alone) | 223 | 235 | 235 | 187 |
+| **1e-6** (default) | 225 | 235 | 235 | – |
+| 1e-3 | 228 | 235 | 235 | 125 |
+
+Nothing changes on the single objectives; the strict order moves by a
+few files on a reshuffle of forty to a hundred and ten rows. The weight
+is what it was called on 2026-09-11, a choice, and it stays at 1e-6.
+
