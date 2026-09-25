@@ -48,11 +48,60 @@ export function newtonFoot(alignment, x, y, s0, { window = 200, tolerance = 1e-9
  * a second attempt from the same start read every foot through the
  * memory of the wreck, found local feet on a 200 m window that were not
  * the nearest, and ran a thousand iterations where a fresh solve takes 63.
- * Within a healthy solve a station moves by metres a step; 50 m is far.
+ * The distance is Newton's own window: a station that moved farther than
+ * Newton could have followed is stale by definition. Measured on the
+ * corpus, 50 m rescanned so often that the points runs took 175 s against
+ * 97 without the check; at 200 m they take 105 s. (#48 documented and
+ * measured 200 m and committed 50: the edit that set the default had
+ * failed silently, and the runs since then carried the 50.)
  *
  * @param {{samples?: number, refineSteps?: number, staleDistance?: number}} [scan]  the full scan's resolution
  */
-export function createFootMemory({ samples = 400, refineSteps = 40, staleDistance = 50 } = {}) {
+/**
+ * The vertices of an alignment: the stations of its kinks, once per
+ * alignment instance. A kink is a zero-length element that turns.
+ */
+const vertexCache = new WeakMap();
+function verticesOf(alignment) {
+	let vertices = vertexCache.get(alignment);
+	if (vertices) return vertices;
+	vertices = [];
+	let station = 0;
+	for (const element of alignment.elements ?? []) {
+		const length = element.arcLength ?? 0;
+		if (length === 0 && typeof element.deltaDir === "number" && element.deltaDir !== 0) vertices.push(station);
+		station += length;
+	}
+	vertexCache.set(alignment, vertices);
+	return vertices;
+}
+
+/**
+ * The distance at a kink. A point in the wedge outside a bend has no
+ * perpendicular on either line: its nearest point of the polyline is the
+ * vertex, and its residual is the distance to that point, signed by the
+ * side it lies on - not the lateral offset from one of the two lines,
+ * which is what a foot returned at the vertex with u != 0 would give. The
+ * derivative then runs along the direction to the vertex, which the foot
+ * carries as `direction` (so that dq = -direction · dV).
+ */
+function atVertex(alignment, projected, x, y) {
+	if (!projected || Math.abs(projected.u ?? 0) <= 1e-9) return projected;
+	const vertices = verticesOf(alignment);
+	if (vertices.length === 0) return projected;
+	const station = vertices.find((v) => Math.abs(v - projected.s) <= 1e-6);
+	if (station === undefined) return projected;
+	const vertex = alignment.poseAt(station, { quality: "balanced" }).p;
+	const d = { x: x - vertex.x, y: y - vertex.y };
+	const dist = Math.hypot(d.x, d.y);
+	if (!(dist > 0)) return { ...projected, s: station, q: 0, dist: 0, u: 0, vertex: true };
+	const t = normalize(projected.tangent);
+	const n = rot90(t);
+	const sign = d.x * n.x + d.y * n.y >= 0 ? 1 : -1;
+	return { ...projected, s: station, q: sign * dist, dist, u: 0, point: vertex, vertex: true, direction: { x: (sign * d.x) / dist, y: (sign * d.y) / dist } };
+}
+
+export function createFootMemory({ samples = 400, refineSteps = 40, staleDistance = 200 } = {}) {
 	const feet = new Map();
 	let scans = 0;
 	return Object.freeze({
@@ -67,7 +116,7 @@ export function createFootMemory({ samples = 400, refineSteps = 40, staleDistanc
 			}
 			const local = fresh ? newtonFoot(alignment, x, y, remembered.s) : null;
 			if (!local) scans += 1;
-			const projected = local ?? alignment.world2Track(x, y, { samples, refineSteps });
+			const projected = atVertex(alignment, local ?? alignment.world2Track(x, y, { samples, refineSteps }), x, y);
 			// A foot farther from its point than the stale distance is a foot on
 			// a wreck, and not one to remember: Newton from it stays on its
 			// branch while the geometry walks back to sense. Measured on a

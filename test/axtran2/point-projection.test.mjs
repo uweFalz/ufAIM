@@ -76,3 +76,39 @@ test("a foot on a wreck is not remembered", () => {
 	assert.equal(feet.size, 1);
 });
 
+
+test("a point in the wedge outside a kink measures its distance to the vertex, signed by side", async () => {
+	// A straight, a kink of 0.3 rad to the left, a straight. A point beyond
+	// the vertex in the wedge between the two normals has no perpendicular on
+	// either line; its residual is its distance to the vertex, positive on the
+	// left, and the foot says so with the direction the derivative runs along.
+	// A point beside one of the lines keeps its ordinary foot.
+	const { buildProductionAlignment } = await import(new URL("corpus/loadTraAlignment.mjs", import.meta.url));
+	const { deps } = await import(new URL("corpus/createTraScenario.mjs", import.meta.url));
+	const elements = [
+		{ id: "E0", type: "straight", length: 100 },
+		{ id: "E1", type: "kink", length: 0, deltaDir: 0.3, held: true },
+		{ id: "E2", type: "straight", length: 100 },
+	];
+	const alignment = buildProductionAlignment({ elements, startPose: { x: 0, y: 0, theta: 0 }, deps });
+	const feet = createFootMemory();
+	// the vertex is (100, 0); the wedge on the outer (right) side runs between
+	// the normal of the first line (pointing to -y) and that of the second
+	// (rotated by 0.3): a point at (100.1, -2) lies inside it
+	const wedge = feet.project(alignment, 100.1, -2);
+	assert.equal(wedge.vertex, true, `foot ${JSON.stringify(wedge)}`);
+	assert.ok(Math.abs(wedge.s - 100) < 1e-9);
+	const distance = Math.hypot(0.1, 2);
+	assert.ok(Math.abs(wedge.q + distance) < 1e-9, `q ${wedge.q} against -${distance}`);
+	assert.ok(Math.abs(wedge.direction.x - (-0.1 / distance)) < 1e-9 && Math.abs(wedge.direction.y - 2 / distance) < 1e-9, `direction ${JSON.stringify(wedge.direction)}`);
+	// remembered and asked again, the same answer
+	const again = feet.project(alignment, 100.1, -2);
+	assert.ok(again.vertex && Math.abs(again.q - wedge.q) < 1e-12);
+	// beside the first line: the ordinary foot, no vertex
+	const beside = feet.project(alignment, 50, -0.03);
+	assert.ok(!beside.vertex && Math.abs(beside.s - 50) < 1e-6 && Math.abs(beside.q + 0.03) < 1e-9, JSON.stringify(beside));
+	// on the inner side near the vertex both lines have a foot, and the
+	// nearer one is taken
+	const inner = feet.project(alignment, 100.5, 0.5);
+	assert.ok(!inner.vertex, JSON.stringify(inner));
+});

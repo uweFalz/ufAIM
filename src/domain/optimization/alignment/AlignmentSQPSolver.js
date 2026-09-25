@@ -556,7 +556,7 @@ export function solveAlignmentProblem({
 			// project() has already refused anything unprojectable, so a row here
 			// always stands for a residual that exists
 			const projected = project(built, point, "zwangspunkt");
-			Jh.push(geometry.lateralDerivative(parameterSpecs, projected.s));
+			Jh.push(geometry.lateralDerivative(parameterSpecs, projected.s, projected.direction ?? null));
 		}
 		for (const constraint of extraEqualities) Jh.push([...constraint.gradient]);
 		scaleEqualityRows(h, Jh);
@@ -576,7 +576,7 @@ export function solveAlignmentProblem({
 				const projected = project(built, point, "measured point");
 				const r = (projected.q - point.target) / point.tolerance;
 				sum += r * r;
-				const dr = geometry.lateralDerivative(parameterSpecs, projected.s).map((value) => value / point.tolerance);
+				const dr = geometry.lateralDerivative(parameterSpecs, projected.s, projected.direction ?? null).map((value) => value / point.tolerance);
 				Jr.push(dr);
 				for (let j = 0; j < row.length; j++) row[j] += (2 / N) * r * dr[j];
 			}
@@ -592,7 +592,7 @@ export function solveAlignmentProblem({
 		const r = [...softResiduals(built), ...prior.r];
 		const Jr = [...softPoints.map((point) => {
 			const projected = project(built, point, "measured point");
-			const row = geometry.lateralDerivative(parameterSpecs, projected.s);
+			const row = geometry.lateralDerivative(parameterSpecs, projected.s, projected.direction ?? null);
 			return row.map((value) => value / point.tolerance);
 		}), ...prior.Jr];
 		const f = 0.5 * r.reduce((sum, value) => sum + value * value, 0);
@@ -647,7 +647,7 @@ export function solveAlignmentProblem({
 			const geometry = analyticJacobian(codec.decode(x));
 			return softPoints.map((point) => {
 				const projected = project(built, point, "measured point");
-				return geometry.lateralDerivative(parameterSpecs, projected.s).map((value) => value / point.tolerance);
+				return geometry.lateralDerivative(parameterSpecs, projected.s, projected.direction ?? null).map((value) => value / point.tolerance);
 			});
 		}
 		const jacobian = finiteDiffJacobian({

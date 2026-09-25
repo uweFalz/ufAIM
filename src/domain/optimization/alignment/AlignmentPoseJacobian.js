@@ -392,9 +392,16 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 		 * q = n . (P - p), so dq = -n . dp; the moving foot point contributes
 		 * nothing to first order.
 		 */
-		lateralDerivative(parameters, station) {
+		/**
+		 * Derivative of a point's lateral residual at the foot station `s`,
+		 * -n · dp(s) with n the normal there. A foot with no perpendicular - a
+		 * point in the wedge outside a kink, whose nearest point of the
+		 * polyline is the vertex - measures its distance to the vertex along
+		 * `direction` instead, and the derivative is -direction · dp(s).
+		 */
+		lateralDerivative(parameters, station, direction = null) {
 			const pose = poseAt(station);
-			const normal = { x: -Math.sin(pose.theta), y: Math.cos(pose.theta) };
+			const normal = direction ?? { x: -Math.sin(pose.theta), y: Math.cos(pose.theta) };
 			return parameters.map((parameter) => {
 				const d = poseDerivative(parameter, station, pose);
 				return -(normal.x * d.dx + normal.y * d.dy);
