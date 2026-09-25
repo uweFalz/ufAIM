@@ -133,7 +133,7 @@
 			#jumpResults li.active, #jumpResults li:hover { background: color-mix(in srgb, Highlight 16%, Canvas); }
 			#jumpResults li .jump-kind { color: GrayText; font-size: 0.76rem; white-space: nowrap; }
 			/* ---- Maßsystem: drei Schriftgrößen, ein Abstandsraster, ein Radius ---- */
-			:root { --fs-1: 0.72rem; --fs-2: 0.82rem; --fs-3: 0.95rem; --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem; --r: 0.55rem; }
+			:root { --fs-0: 0.62rem; --fs-1: 0.72rem; --fs-2: 0.82rem; --fs-3: 0.95rem; --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem; --r: 0.55rem; }
 			#app { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); height: 100vh; }
 			#rail { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-1); background: var(--sidebar); border-right: 1px solid var(--hairline); }
 			.rail-brand { font: 700 var(--fs-3)/1 system-ui, sans-serif; letter-spacing: 0.04em; text-align: center; color: var(--accent); padding: var(--sp-2) 0 var(--sp-3); }
@@ -203,7 +203,6 @@
 			#precisionKind.menu-item { border: 1px solid var(--hairline); background: var(--surface); }
 			#rejectListToggle { color: var(--accent); }
 			#rejectListToggle[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, Canvas); }
-			#mapPanel #mapLegend, #mapPanel #precisionLegend { top: auto; bottom: 0.6rem; }
 			/* Nothing in the chain may ask for more width than the pane: the
 			   diagram's 1000-unit SVG is the one that used to. */
 			main, #stage, #workspace, #diagramPanel, #diagramScroll { min-width: 0; }
@@ -329,14 +328,12 @@
 				align-items: baseline;
 				padding: 0.5rem 0.8rem;
 				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				font-size: 0.84rem;
+				font-size: var(--fs-2);
 			}
-			#spurplanNote { color: GrayText; }
+			#spurplanNote { color: var(--secondary); }
 			#spurplanHint { color: GrayText; font-size: 0.76rem; cursor: help; }
 			.spurplan-svg { touch-action: pan-y; }
-			#spurplanLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; font-size: 0.76rem; color: GrayText; }
-			.spurplan-legend-item { position: relative; padding-left: 0.95rem; }
-			.spurplan-legend-item::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 0.7em; height: 0.28em; background: var(--speed-color); }
+			.spurplan-legend-item { --swatch: var(--speed-color); }
 			#spurplanScroll { overflow: auto; padding: 0.4rem 0.6rem; }
 			.spurplan-svg { display: block; }
 			.spurplan-speed { stroke-width: 3; }
@@ -361,13 +358,10 @@
 				align-items: baseline;
 				padding: 0.5rem 0.8rem;
 				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				font-size: 0.84rem;
+				font-size: var(--fs-2);
 			}
-			#deliveryNote { color: GrayText; }
-			#deliveryLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; font-size: 0.76rem; color: GrayText; }
-			.delivery-legend-item { position: relative; padding-left: 0.95rem; }
-			.delivery-legend-item::before { content: ""; position: absolute; left: 0; top: 0.35em; width: 0.62em; height: 0.5em; background: var(--delivery-color); }
-			.delivery-legend-item.delivery-junction::before { background: none; border-left: 0.31em solid transparent; border-right: 0.31em solid transparent; border-bottom: 0.55em solid var(--delivery-color); width: 0; height: 0; }
+			#deliveryNote { color: var(--secondary); }
+			.delivery-legend-item { --swatch: var(--delivery-color); }
 			.delivery-alignment { --delivery-color: #2b6cb0; }
 			.delivery-profile { --delivery-color: #2f855a; }
 			.delivery-cant { --delivery-color: #b7791f; }
@@ -405,12 +399,10 @@
 				align-items: baseline;
 				padding: 0.5rem 0.8rem;
 				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				font-size: 0.84rem;
+				font-size: var(--fs-2);
 			}
-			#linksNote { color: GrayText; }
-			#linksLegend { display: flex; flex-wrap: wrap; gap: 0.3rem 0.8rem; font-size: 0.76rem; color: GrayText; }
-			.links-legend-item { position: relative; padding-left: 0.95rem; }
-			.links-legend-item::before { content: ""; position: absolute; left: 0; top: 0.3em; width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--link-color); }
+			#linksNote { color: var(--secondary); }
+			.links-legend-item { --swatch: var(--link-color); }
 			#linksScroll { overflow: auto; padding: 0.4rem 0.6rem; }
 			.links-svg { display: block; }
 			.links-header { font: 600 11px system-ui, sans-serif; fill: GrayText; }
@@ -447,33 +439,16 @@
 				grid-row: 1;
 				background: var(--map-ground);
 			}
-			#mapLegend {
-				position: absolute;
-				top: 0.6rem;
-				left: 0.6rem;
-				z-index: 3;
-				padding: 0.4rem 0.6rem;
-				border-radius: 0.5rem;
-				background: var(--surface);
-				border: 1px solid GrayText;
-				font: 0.72rem system-ui, sans-serif;
-				display: flex;
-				flex-direction: column;
-				gap: 0.25rem;
-				pointer-events: none;
-			}
-			.map-legend-row {
-				display: flex;
-				align-items: center;
-				gap: 0.4rem;
-			}
-			.map-legend-swatch {
-				display: inline-block;
-				width: 1.1rem;
-				height: 0.2rem;
-				border-radius: 2px;
-				flex: none;
-			}
+			/* One legend for every picture: swatch, label, the small type step,
+			   secondary ink. The swatch is a line, a box, a dot or a triangle
+			   per picture; on the map the legend floats as a card. */
+			.legend { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-1); line-height: 1.3; color: var(--secondary); }
+			.legend-item { position: relative; padding-left: 1.05rem; white-space: nowrap; }
+			.legend-item::before { content: ""; position: absolute; left: 0; top: 50%; width: 0.75em; height: 0.28em; border-radius: 1px; background: var(--swatch); transform: translateY(-50%); }
+			.legend-item.swatch-box::before { width: 0.62em; height: 0.58em; border-radius: 2px; }
+			.legend-item.swatch-dot::before { width: 0.6em; height: 0.6em; border-radius: 50%; }
+			.legend-item.swatch-tri::before { width: 0; height: 0; border-radius: 0; background: none; border-left: 0.34em solid transparent; border-right: 0.34em solid transparent; border-bottom: 0.6em solid var(--swatch); }
+			.legend-card { position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 3; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--hairline); border-radius: var(--r); background: var(--panel-glass); backdrop-filter: blur(12px); box-shadow: 0 0.3rem 1rem rgba(0,0,0,0.12); color: CanvasText; pointer-events: none; }
 			#diagramPanel {
 				display: grid;
 				grid-template-rows: 0.45rem auto minmax(0, 1fr);
@@ -965,42 +940,42 @@
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				padding: 0.7rem 0.8rem;
-				border-bottom: 1px solid color-mix(in srgb, GrayText 35%, transparent);
-				font-size: 0.78rem;
+				padding: var(--sp-2) var(--sp-3);
+				border-bottom: 1px solid var(--hairline);
+				font-size: var(--fs-1);
 				font-weight: 700;
-				letter-spacing: 0.05em;
+				letter-spacing: 0.08em;
 				text-transform: uppercase;
 				color: var(--secondary);
 			}
 			#outboxContent { padding: 0.8rem; }
 			#outboxContent strong,
 			#outboxContent span { display: block; }
-			#outboxContent span { margin-top: 0.35rem; color: GrayText; font-size: 0.8rem; }
+			#outboxContent span { margin-top: var(--sp-1); color: var(--secondary); font-size: var(--fs-1); }
 			#outboxContent button { margin-top: 0.8rem; }
 			#outboxContent.outbox-tree { padding: 0; }
 			.outbox-frame {
 				border-bottom: 1px solid color-mix(in srgb, GrayText 28%, transparent);
 			}
 			.outbox-frame > summary {
-				padding: 0.55rem 0.75rem;
-				font: 650 0.78rem system-ui, sans-serif;
+				padding: var(--sp-2) var(--sp-3);
+				font: 650 var(--fs-2)/1.3 system-ui, sans-serif;
 				cursor: pointer;
 			}
 			#outboxContent .outbox-frame-name { display: inline; margin: 0; color: inherit; font-size: inherit; }
 			.outbox-route-sections { padding-left: 0.5rem; border-left: 2px solid color-mix(in srgb, GrayText 30%, transparent); }
 			.outbox-route-sections .outbox-frame > summary { font-weight: 550; }
-			#outboxContent .outbox-frame-meta { display: block; margin-top: 0.2rem; color: GrayText; font: 400 0.7rem system-ui, sans-serif; }
+			#outboxContent .outbox-frame-meta { display: block; margin-top: 0.15rem; color: var(--secondary); font: 400 var(--fs-1)/1.35 system-ui, sans-serif; }
 			#outboxContent .outbox-frame-meta .geo-frame-source { display: inline; margin: 0; font-size: inherit; }
-			#outboxContent .lane-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 0.3rem; }
-			#outboxContent .lane-cell { display: block; margin: 0; padding: 0.15rem 0; border-radius: 3px; border: 1px solid color-mix(in srgb, GrayText 35%, transparent); color: GrayText; font: 500 0.56rem/1.1 system-ui, sans-serif; text-align: center; white-space: normal; position: relative; }
+			#outboxContent .lane-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: var(--sp-2); }
+			#outboxContent .lane-cell { display: block; margin: 0; padding: 0.12rem 0; border-radius: 3px; border: 1px solid var(--hairline); color: var(--secondary); font: 500 var(--fs-0)/1.15 system-ui, sans-serif; text-align: center; white-space: normal; position: relative; }
 			#outboxContent .lane-cell.filled { background: color-mix(in srgb, var(--accent) 18%, Canvas); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: CanvasText; }
 			#outboxContent .lane-cell.current { background: var(--accent); border-color: var(--accent); color: white; }
 			#outboxContent .lane-cell[data-count]::after { content: attr(data-count); position: absolute; top: -0.45rem; right: -0.2rem; min-width: 0.9rem; padding: 0 0.15rem; border-radius: 999px; background: var(--accent); color: white; font-size: 0.5rem; line-height: 0.9rem; }
 			.outbox-lane {
 				min-height: 2.25rem;
-				padding: 0.38rem 0.55rem;
-				border-top: 1px solid color-mix(in srgb, GrayText 15%, transparent);
+				padding: var(--sp-2) var(--sp-3);
+				border-top: 1px solid var(--hairline);
 				transition: background 120ms, box-shadow 120ms;
 			}
 			.outbox-lane.drag-target {
@@ -1010,25 +985,29 @@
 			.outbox-lane-title {
 				display: flex;
 				justify-content: space-between;
-				color: GrayText;
-				font: 600 0.7rem system-ui, sans-serif;
+				color: var(--secondary);
+				font: 600 var(--fs-1)/1.3 system-ui, sans-serif;
+				letter-spacing: 0.01em;
 			}
 			.outbox-object {
 				display: block !important;
 				width: 100%;
-				margin: 0.28rem 0 0 !important;
-				padding: 0.35rem 0.45rem !important;
+				margin: var(--sp-1) 0 0 !important;
+				padding: 0.3rem var(--sp-2) !important;
 				border: 0 !important;
+				border-radius: calc(var(--r) - 0.15rem);
 				background: transparent !important;
 				text-align: left;
-				font-size: 0.72rem;
+				font-size: var(--fs-2);
+				line-height: 1.3;
 			}
+			.outbox-object:hover { background: var(--button-hover) !important; }
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
 			.outbox-object-row {
 				display: flex;
 				align-items: center;
-				gap: 0.35rem;
-				margin-top: 0.28rem;
+				gap: var(--sp-2);
+				margin-top: var(--sp-1);
 			}
 			.outbox-object-row .object-select {
 				flex: none;
@@ -1050,18 +1029,18 @@
 			.outbox-lane.contains-selection {
 				background: color-mix(in srgb, var(--accent) 8%, transparent);
 			}
-			.outbox-junctions > summary { color: GrayText; }
+			.outbox-junctions > summary { color: var(--secondary); font-size: var(--fs-2); }
 			.outbox-junction-list { padding: 0.3rem 0.55rem 0.6rem; }
 			.outbox-junction-row {
 				display: block;
 				width: 100%;
-				margin: 0.22rem 0 0;
-				padding: 0.35rem 0.5rem;
-				border: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				border-radius: 6px;
+				margin: var(--sp-1) 0 0;
+				padding: 0.3rem var(--sp-2);
+				border: 1px solid var(--hairline);
+				border-radius: calc(var(--r) - 0.15rem);
 				background: transparent;
 				text-align: left;
-				font-size: 0.72rem;
+				font-size: var(--fs-2);
 				cursor: pointer;
 			}
 			.outbox-junction-row:hover { background: color-mix(in srgb, Highlight 10%, Canvas); }
@@ -1132,10 +1111,10 @@
 			.outbox-lane-placeholder {
 				margin: 0.3rem 0 0;
 				padding: 0.3rem 0.4rem;
-				border: 1px dashed color-mix(in srgb, GrayText 45%, transparent);
+				border: 1px dashed color-mix(in srgb, var(--secondary) 55%, transparent);
 				border-radius: 4px;
-				color: GrayText;
-				font-size: 0.7rem;
+				color: var(--secondary);
+				font-size: var(--fs-1);
 				text-align: center;
 			}
 			.outbox-new-group {
@@ -1487,15 +1466,25 @@
 				font-family: system-ui, sans-serif;
 			}
 			#toolbar {
-				border-bottom: 1px solid GrayText;
+				border-bottom: 1px solid var(--hairline);
+				font-size: var(--fs-2);
 			}
 			#tableTitle {
-				font-weight: 700;
+				font-weight: 650;
+			}
+			#tableMeta {
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
 			}
 			#listingZoomLabel {
 				margin-left: auto;
-				color: GrayText;
-				font-size: 0.8rem;
+				align-self: center;
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
 			}
 			#search {
 				margin-left: auto;
@@ -1505,14 +1494,21 @@
 			#gridWrap {
 				overflow: auto;
 			}
+			/* The listing: a monospace grid with tabular figures on the glass
+			   panel; the object line is the only bold one. Zoom scales this base. */
 			#listing {
 				min-width: max-content;
 				min-height: 100%;
+				padding: var(--sp-3) var(--sp-4);
 				border: 0;
 				border-radius: 0;
-				background: Canvas;
+				background: transparent;
+				color: CanvasText;
+				font: 0.8rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+				font-variant-numeric: tabular-nums;
 				white-space: pre;
 			}
+			#listing::first-line { font-weight: 700; }
 			.planning-preview {
 				display: block;
 				width: 100%;
@@ -1742,17 +1738,17 @@
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
 						<div id="maplibreMap" class="hidden" aria-label="OpenRailwayMap mit geladenen Trassen"></div>
 						<div id="mapEmpty" class="hidden"></div>
-						<div id="mapLegend" class="hidden" aria-label="Kartenlegende">
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#00a651"></span>DB_REF (bestätigt)</div>
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#e6007e"></span>nicht DB_REF (vermutet)</div>
+						<div id="mapLegend" class="legend legend-card hidden" aria-label="Kartenlegende">
+							<span class="legend-item" style="--swatch:#00a651">DB_REF (bestätigt)</span>
+							<span class="legend-item" style="--swatch:#e6007e">nicht DB_REF (vermutet)</span>
 						</div>
-						<div id="precisionLegend" class="hidden" aria-label="Präzisionslegende (Prototyp)">
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#00c853"></span>&lt; 1 cm</div>
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#8bc34a"></span>1–3 cm</div>
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#ffeb3b"></span>3–10 cm</div>
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#ff9800"></span>10–30 cm</div>
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#d32f2f"></span>&gt; 30 cm</div>
-							<div class="map-legend-row"><span class="map-legend-swatch" style="background:#8e8e93"></span>keine Angabe</div>
+						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende (Prototyp)">
+							<span class="legend-item" style="--swatch:#00c853">&lt; 1 cm</span>
+							<span class="legend-item" style="--swatch:#8bc34a">1–3 cm</span>
+							<span class="legend-item" style="--swatch:#ffeb3b">3–10 cm</span>
+							<span class="legend-item" style="--swatch:#ff9800">10–30 cm</span>
+							<span class="legend-item" style="--swatch:#d32f2f">&gt; 30 cm</span>
+							<span class="legend-item" style="--swatch:#8e8e93">keine Angabe</span>
 						</div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
@@ -1765,7 +1761,7 @@
 								<span id="spurplanNote"></span>
 								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
 								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
-								<div id="spurplanLegend"></div>
+								<div id="spurplanLegend" class="legend"></div>
 								<span class="picture-export" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 							</div>
 							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
@@ -1775,7 +1771,7 @@
 								<strong>Lieferung · Bild</strong>
 								<span id="deliveryNote"></span>
 								<span class="picture-export" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
-								<div id="deliveryLegend"><span class="delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="delivery-legend-item delivery-profile">Gradiente</span><span class="delivery-legend-item delivery-cant">Überhöhung</span><span class="delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
+								<div id="deliveryLegend" class="legend"><span class="legend-item swatch-box delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="legend-item swatch-box delivery-legend-item delivery-profile">Gradiente</span><span class="legend-item swatch-box delivery-legend-item delivery-cant">Überhöhung</span><span class="legend-item swatch-box delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="legend-item swatch-tri delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
 							</div>
 							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
 						</div>
@@ -1783,7 +1779,7 @@
 							<div id="linksToolbar">
 								<strong>Verknüpfung · Bild</strong>
 								<span id="linksNote"></span>
-								<div id="linksLegend"></div>
+								<div id="linksLegend" class="legend"></div>
 								<span class="picture-export" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 							</div>
 							<div id="linksScroll"><div id="linksContent"></div></div>
@@ -39678,7 +39674,7 @@ xlsx/xlsx.mjs:
 
 			function zoomListing(step) {
 				listingZoom = Math.min(2, Math.max(0.65, listingZoom + step));
-				listing.style.fontSize = `${listingZoom}rem`;
+				listing.style.fontSize = `${listingZoom * 0.8}rem`;
 				listingZoomLabel.textContent = `${Math.round(listingZoom * 100)} %`;
 			}
 
@@ -45463,7 +45459,7 @@ xlsx/xlsx.mjs:
 				linksContent.replaceChildren(svg);
 				linksLegend.replaceChildren(...reasonOrder.filter((reason) => counts[reason]).map((reason) => {
 					const item = document.createElement("span");
-					item.className = `links-legend-item links-reason-${reason}`;
+					item.className = `legend-item swatch-dot links-legend-item links-reason-${reason}`;
 					item.textContent = `${LINK_REASONS[reason]} · ${counts[reason]}`;
 					return item;
 				}));
@@ -45645,7 +45641,7 @@ xlsx/xlsx.mjs:
 				drawDiagramCursor();
 				spurplanLegend.replaceChildren(...(coloring === "none" ? [] : SPURPLAN_SPEED_CLASSES.map(([max, color], index) => {
 					const item = document.createElement("span");
-					item.className = "spurplan-legend-item";
+					item.className = "legend-item spurplan-legend-item";
 					item.style.setProperty("--speed-color", color);
 					item.textContent = index === SPURPLAN_SPEED_CLASSES.length - 1 ? `> ${SPURPLAN_SPEED_CLASSES[index - 1][0]} km/h` : `≤ ${max}`;
 					return item;
