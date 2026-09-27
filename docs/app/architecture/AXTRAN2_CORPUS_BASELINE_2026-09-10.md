@@ -200,3 +200,24 @@ the curve supplies; on a start pose sitting on the toe's own straight the
 pose would be redundant, and the declaration refuses six equalities
 against four unknowns - which is the right answer to that declaration.
 
+## Bent turnouts (2026-09-28)
+
+A turnout bent onto a curve is the same turnout in the line's curvature:
+the main an arc of the line's curvature, the branch the arc whose
+curvature is the turnout's plus the line's - an Innenbogenweiche where
+both turn the same way, an Außenbogenweiche where they turn against each
+other, the branch then straighter than the line or straight or curving
+the other way. The crossing angle between the two is the turnout's;
+bending keeps it. `bentOnto(spec, mainCurvature)` gives the bent spec, the
+two held elements follow. The branch's arc length is taken as the straight
+turnout's, the bending being small; the difference is second order in
+the line's curvature and is stated in the file.
+
+`turnout.test.mjs`: an EW 60-500-1:12 bent onto R 1000 the same way
+carries 1/500 + 1/1000 on the branch and 1/1000 on the main and turns
+against the main by the crossing angle to 1e-12; bent against a line as
+tight as itself the branch comes out straight. The Weicheneinrechnung of
+an Innenbogenweiche on R 900 - the toe held on the curve, the bent branch
+held, the connection fitted - meets the toe to 1e-6 m and the end pose to
+1e-6.
+
