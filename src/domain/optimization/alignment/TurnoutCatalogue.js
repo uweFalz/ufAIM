@@ -94,14 +94,47 @@ export function turnout({ designation = null, radius = null, ratio = null, side,
 }
 
 /**
+ * The same turnout bent onto a curve: the main track an arc of the line's
+ * curvature, the branch the arc whose curvature is the turnout's plus the
+ * line's - an Innenbogenweiche where both turn the same way, an
+ * Außenbogenweiche where they turn against each other (the branch may then
+ * come out straighter than the line, or even curve the other way). The
+ * crossing angle between the two is the turnout's, as bending keeps it; the
+ * branch's arc length is what its own curvature takes to turn by the angle
+ * beyond the main, which is the same length for both tracks to first order
+ * and is taken as the straight turnout's here, the bending being small.
+ *
+ * @param {object} spec           from turnout()
+ * @param {number} mainCurvature  the line's curvature at the turnout, kernel sign (left positive)
+ */
+export function bentOnto(spec, mainCurvature) {
+	if (!spec || !Number.isFinite(spec.curvature)) error("INVALID_TURNOUT", "bentOnto needs a spec from turnout()");
+	if (!Number.isFinite(mainCurvature)) error("INVALID_TURNOUT", "bentOnto needs the line's curvature");
+	const branchCurvature = spec.curvature + mainCurvature;
+	const sameWay = Math.sign(spec.curvature) === Math.sign(mainCurvature);
+	return Object.freeze({
+		...spec,
+		id: `${spec.id}@${mainCurvature === 0 ? "straight" : (sameWay ? "IBW" : "ABW") + "-R" + Math.round(1 / Math.abs(mainCurvature))}`,
+		bent: Object.freeze({ kind: mainCurvature === 0 ? "EW" : sameWay ? "IBW" : "ABW", mainCurvature, branchCurvature }),
+		mainCurvature,
+		curvature: branchCurvature,
+	});
+}
+
+/**
  * The turnout as kernel elements, held: the branch an arc of the turnout's
  * curvature from the toe to the crossing angle, the main a straight of the
- * same extent. Ids are `${prefix}.branch` and `${prefix}.main`.
+ * same extent - or, for a bent turnout, an arc of the line's curvature.
+ * Ids are `${prefix}.branch` and `${prefix}.main`.
  */
 export function turnoutElements(spec, { prefix = spec.id } = {}) {
 	if (!spec || !Number.isFinite(spec.branchLength)) error("INVALID_TURNOUT", "turnoutElements needs a spec from turnout()");
-	return Object.freeze({
-		branch: Object.freeze({ id: `${prefix}.branch`, type: "arc", length: spec.branchLength, curvature: spec.curvature, held: true, turnout: spec.designation ?? spec.id }),
-		main: Object.freeze({ id: `${prefix}.main`, type: "straight", length: spec.mainLength, held: true, turnout: spec.designation ?? spec.id }),
-	});
+	const mainCurvature = spec.mainCurvature ?? 0;
+	const main = mainCurvature === 0
+		? { id: `${prefix}.main`, type: "straight", length: spec.mainLength, held: true, turnout: spec.designation ?? spec.id }
+		: { id: `${prefix}.main`, type: "arc", length: spec.branchLength, curvature: mainCurvature, held: true, turnout: spec.designation ?? spec.id };
+	const branch = spec.curvature === 0
+		? { id: `${prefix}.branch`, type: "straight", length: spec.branchLength, held: true, turnout: spec.designation ?? spec.id }
+		: { id: `${prefix}.branch`, type: "arc", length: spec.branchLength, curvature: spec.curvature, held: true, turnout: spec.designation ?? spec.id };
+	return Object.freeze({ branch: Object.freeze(branch), main: Object.freeze(main) });
 }

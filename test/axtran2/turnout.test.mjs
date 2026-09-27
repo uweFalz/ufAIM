@@ -89,3 +89,58 @@ test("a toe held half a metre off the survey bends the connection and is met exa
 	const plain = solveAlignmentProblem({ problem: free.problem, buildAlignment: free.buildAlignment, analyticJacobian: free.analyticJacobian, objective: "points", maxIterations: 300 });
 	assert.ok(plain.ok && run.diagnostics.softResidualRms > plain.diagnostics.softResidualRms, `held ${run.diagnostics.softResidualRms} against free ${plain.diagnostics.softResidualRms}`);
 });
+
+test("a turnout bent onto a curve keeps its crossing angle: IBW adds the curvatures, ABW subtracts them", async () => {
+	const { bentOnto } = await import(new URL("TurnoutCatalogue.js", BASE));
+	const ew = turnout({ designation: "EW 60-500-1:12", side: "left" });
+	// the line curves left with R 1000: a left-hand branch on it is an Innenbogenweiche
+	const ibw = bentOnto(ew, 1 / 1000);
+	assert.equal(ibw.bent.kind, "IBW");
+	assert.ok(Math.abs(ibw.curvature - (1 / 500 + 1 / 1000)) < 1e-15, "the branch takes both curvatures");
+	assert.ok(Math.abs(ibw.mainCurvature - 1 / 1000) < 1e-15);
+	// the same branch on a line curving right is an Außenbogenweiche
+	const abw = bentOnto(ew, -1 / 1000);
+	assert.equal(abw.bent.kind, "ABW");
+	assert.ok(Math.abs(abw.curvature - (1 / 500 - 1 / 1000)) < 1e-15);
+	// bent onto a line as tight as itself, against it, the branch comes out straight
+	const straight = bentOnto(ew, -1 / 500);
+	assert.equal(straight.curvature, 0);
+	assert.equal(turnoutElements(straight).branch.type, "straight");
+	// the two arcs of a bent turnout turn against each other by the crossing angle
+	const elements = turnoutElements(ibw, { prefix: "W2" });
+	assert.equal(elements.main.type, "arc");
+	const turnOfBranch = elements.branch.length * elements.branch.curvature;
+	const turnOfMain = elements.main.length * elements.main.curvature;
+	assert.ok(Math.abs((turnOfBranch - turnOfMain) - ew.angle) < 1e-12, `${turnOfBranch - turnOfMain} against ${ew.angle}`);
+	assert.throws(() => bentOnto(ew, NaN), /curvature/);
+});
+
+test("the Weicheneinrechnung of an Innenbogenweiche: the toe on the curve, the branch bent with it", async () => {
+	const { bentOnto } = await import(new URL("TurnoutCatalogue.js", BASE));
+	const lineCurvature = 1 / 900;
+	const ibw = bentOnto(turnout({ designation: "EW 60-500-1:12", side: "left" }), lineCurvature);
+	const bent = turnoutElements(ibw, { prefix: "W2" }).branch;
+	// the toe sits inside the line's curve: the arc before it carries the
+	// line's curvature, and the branch leaves it with both
+	const elements = [
+		{ id: "E0", type: "straight", length: 40 },
+		{ id: "E1", type: "transition", length: 70, family: "bloss" },
+		{ id: "E2", type: "arc", length: 180, curvature: lineCurvature },
+		{ id: "E3", type: "arc", length: bent.length, curvature: bent.curvature, held: true },
+		{ id: "E4", type: "transition", length: 60, family: "bloss" },
+		{ id: "E5", type: "arc", length: 160, curvature: 1 / 700 },
+		{ id: "E6", type: "straight", length: 150 },
+	];
+	const chain = createAlignmentPoseJacobian({ elements, startPose, momentsFor });
+	const toeOnCurve = chain.poseAt(chain.stationAfter(2));
+	const sc = await createTraScenario({ name: "ibw-EW60-500-R900", startPose, elements, unsupported: [], kinks: 0 }, { pointSpacing: 10, heldPoses: [{ afterElement: "E2", ...toeOnCurve }] });
+	assert.ok(!sc.codec.freeNames.some((name) => name.startsWith("E3.")));
+	const run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points", maxIterations: 300 });
+	assert.ok(run.ok, `${run.status} ${run.diagnostics.reason ?? ""}`);
+	const fitted = sc.analyticJacobian(sc.codec.decode(run.candidate.variables));
+	const at = fitted.poseAt(fitted.stationAfter(2));
+	assert.ok(Math.hypot(at.x - toeOnCurve.x, at.y - toeOnCurve.y) < 1e-6 && Math.abs(at.theta - toeOnCurve.theta) < 1e-8, "the toe on the curve is where it was held");
+	const turn = fitted.poseAt(fitted.stationAfter(3)).theta - at.theta;
+	assert.ok(Math.abs(turn - bent.length * bent.curvature) < 1e-9, "the bent branch turns by its own curvature times its length");
+	assert.ok(run.diagnostics.endPoseDistance < 1e-6 && run.diagnostics.softResidualRms < 1, `rms ${run.diagnostics.softResidualRms}`);
+});
