@@ -1226,35 +1226,35 @@
 				z-index: 2;
 				accent-color: var(--accent);
 			}
+			/* The CRS editor under "Lage und Höhe zuweisen": the count with Alle
+			   and Keine, then Lage and Höhe as labelled rows, then the two apply
+			   buttons side by side. On the frame's scale, tinted so it reads as
+			   the one editing area of the Inbox. */
 			.bulk-crs {
-				position: sticky;
-				top: 0;
-				z-index: 6;
 				display: grid;
-				gap: 0.45rem;
-				padding: 0.7rem 0.75rem;
-				border-bottom: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				gap: var(--sp-2);
+				padding: var(--sp-2) var(--sp-3) var(--sp-3);
 				background: color-mix(in srgb, Canvas 94%, var(--accent));
-				font: 0.78rem system-ui, sans-serif;
+				font: var(--fs-2)/1.3 system-ui, sans-serif;
 			}
 			.bulk-crs-head,
-			.bulk-crs-actions { display: flex; align-items: center; gap: 0.4rem; }
-			.bulk-crs-head strong { margin-right: auto; }
-			.bulk-crs button {
-				width: auto !important;
-				padding: 0.28rem 0.5rem !important;
-				border: 1px solid color-mix(in srgb, GrayText 35%, transparent) !important;
-				border-radius: 0.45rem;
-				background: Canvas !important;
+			.bulk-crs-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+			.bulk-crs-head strong { margin-right: auto; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+			#tables .bulk-crs button {
+				width: auto;
+				padding: 0.25rem 0.55rem;
+				border: 1px solid var(--hairline);
+				border-radius: calc(var(--r) - 0.15rem);
+				background: var(--button);
+				font-size: var(--fs-2);
 			}
-			.bulk-crs-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+			#tables .bulk-crs button:hover { background: var(--button-hover); }
+			.bulk-crs-actions button { flex: 1; }
+			.bulk-crs-pair { display: inline-flex; gap: var(--sp-1); }
+			.bulk-crs-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-2) var(--sp-3); }
+			.bulk-crs-label { color: var(--secondary); font-size: var(--fs-1); }
 			.bulk-crs select,
-			.bulk-crs input { min-width: 0; width: 100%; }
-			.organization-hint {
-				padding: 0.55rem 0.75rem;
-				color: GrayText;
-				font: 0.8rem system-ui, sans-serif;
-			}
+			.bulk-crs input { min-width: 0; width: 100%; padding: 0.25rem 0.4rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: inherit; font-size: var(--fs-2); }
 			.geo-frame-node {
 				padding: 0;
 				border: 0;
@@ -43894,7 +43894,10 @@ xlsx/xlsx.mjs:
 				const clear = document.createElement("button");
 				clear.type = "button";
 				clear.textContent = "Keine";
-				head.append(count, selectAll, clear);
+				const pair = document.createElement("span");
+				pair.className = "bulk-crs-pair";
+				pair.append(selectAll, clear);
+				head.append(count, pair);
 
 				const fields = document.createElement("div");
 				fields.className = "bulk-crs-fields";
@@ -43914,7 +43917,13 @@ xlsx/xlsx.mjs:
 					option.textContent = label;
 					hsys.append(option);
 				}
-				fields.append(lsys, hsys);
+				const labelFor = (text) => {
+					const label = document.createElement("span");
+					label.className = "bulk-crs-label";
+					label.textContent = text;
+					return label;
+				};
+				fields.append(labelFor("Lage"), lsys, labelFor("Höhe"), hsys);
 
 				const actions = document.createElement("div");
 				actions.className = "bulk-crs-actions";
