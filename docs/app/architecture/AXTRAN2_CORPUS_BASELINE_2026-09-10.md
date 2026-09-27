@@ -173,3 +173,30 @@ after the middle straight held at the truth's pose, the fit meets it to
 pose still, and the points pay 40 % in rms - under the length objective as
 well. Not yet in the app's evidence path, which declares no held poses.
 
+## Turnouts: the catalogue as held elements (2026-09-27)
+
+A turnout designation is its own catalogue: "EW 60-500-1:12" names the
+rail, the radius and the crossing ratio, and what the kernel needs follows
+by geometry - the crossing angle atan(1/n), the branch as an arc of R from
+the toe to that angle (R · atan(1/n)), the main as the straight of the
+same extent (R · sin). `TurnoutCatalogue.js` parses the designation,
+builds the spec (`turnout({ designation, side })`) and its two held
+elements (`turnoutElements`), a left-hand branch with positive curvature
+in the kernel's frame. The lengths a catalogue prints between
+Weichenanfang and Weichenende include the straight through the crossing;
+Ril 800.0120 was not read for this, every spec says so and carries the
+status "candidate".
+
+The Weicheneinrechnung, as the original AXTRAN was used for it and as
+`turnout.test.mjs` runs it: the main track's approach through a curve
+onto the toe's straight, the toe's pose held there (`heldPoses`), the
+branch of an EW 60-500-1:12 held from the catalogue, then a transition,
+an arc and a straight fitted to a survey every 10 m and the end pose.
+The fit meets the toe to 1e-6 m and 1e-8 rad, the branch turns by the
+crossing angle to 1e-9, the end pose to 1e-6; a toe held half a metre off
+the survey bends the connection, is met exactly, and the points pay. A
+toe held in x, y and theta needs three free quantities before it, which
+the curve supplies; on a start pose sitting on the toe's own straight the
+pose would be redundant, and the declaration refuses six equalities
+against four unknowns - which is the right answer to that declaration.
+
