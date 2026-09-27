@@ -198,3 +198,43 @@ test("an arc that carries a radius beside its curvature still follows the curvat
 	const curvature = result.candidate.variables[result.candidate.names.indexOf("arc_1.curvature")];
 	assert.ok(Math.abs(curvature - 1 / 300) < 1e-6, `the fit brings the curvature back toward the samples: ${curvature}`);
 });
+
+test("a pose held at a joint reaches the evidence fit, and the evidence reports how it was met", () => {
+	// the turnout's case at the service: the tangent after the first straight
+	// held at the heading the alignment starts with, which the straight
+	// keeps - so the hold is consistent, and the fit must keep it while the
+	// arc's curvature change is fitted around it
+	const five = (curvature) => ({
+		type: "AlignmentData", id: "A5", name: "A5", source: { kind: "editor", native: true },
+		editModel: {
+			startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } },
+			elements: [
+				{ id: "S1", type: "straight", parameters: { length: 100 } },
+				{ id: "T1", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "A1", type: "arc", parameters: { length: 100, curvature } },
+				{ id: "T2", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "S2", type: "straight", parameters: { length: 100 } },
+			],
+		},
+	});
+	const service = new AlignmentAxtranEvidenceService();
+	const result = service.evaluateChange({
+		beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350),
+		sampleCount: 10, maxIterations: 60, heldPoses: [{ afterElement: "S1", theta: 0 }],
+	});
+	assert.equal(result.status, "evidence-only");
+	assert.deepEqual(result.heldPoses.map((h) => h.afterElement), ["S1"]);
+	assert.ok(Array.isArray(result.diagnostics.heldPoseResiduals), "the evidence says how the held pose was met");
+	const [row] = result.diagnostics.heldPoseResiduals;
+	assert.equal(row.afterElement, "S1");
+	assert.equal(row.component, "theta");
+	assert.ok(Math.abs(row.residual) < 1e-8, `held heading off by ${row.residual}`);
+	// a pose that names no element of the alignment is refused, not ignored
+	assert.throws(() => service.evaluateChange({
+		beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), sampleCount: 10, maxIterations: 4,
+		heldPoses: [{ afterElement: "X9", theta: 0 }],
+	}), /INVALID_HELD_POSE|names an element/);
+	assert.throws(() => service.evaluateChange({
+		beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), heldPoses: "S1",
+	}), /array/);
+});
