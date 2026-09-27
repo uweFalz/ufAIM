@@ -92,20 +92,18 @@
 			#titlebar,
 			#viewModes,
 			#diagramModes,
-			#diagramPresentation,
-			#mapToolbar {
+			#diagramPresentation {
 				display: flex;
 				align-items: center;
 				gap: 0.5rem;
 			}
-			.picture-export { display: inline-flex; gap: 0.3rem; margin-left: auto; }
-			.picture-export button { font: inherit; font-size: 0.78rem; padding: 0.2rem 0.5rem; }
+			.picture-export { margin-left: auto; }
 			.gwb-input {
 				display: flex;
 				align-items: center;
 				gap: 0.3rem;
-				font-size: 0.85rem;
-				color: #555;
+				font-size: var(--fs-2);
+				color: var(--secondary);
 				white-space: nowrap;
 			}
 			#gwbLineSpeedLabel { margin-left: 0; }
@@ -196,8 +194,25 @@
 			.tb-group button:first-child { border-radius: var(--r) 0 0 var(--r); }
 			.tb-group button:last-child { border-radius: 0 var(--r) var(--r) 0; }
 			.tb-group button + button { border-left: 0; }
-			#mapToolbar strong, #diagramToolbar strong, #spurplanToolbar strong, #deliveryToolbar strong, #linksToolbar strong { font-size: var(--fs-2); }
+			/* The picture bars, one rule for all five: the title, a note in the
+			   small step, the controls pushed right by a spacer or the export pair,
+			   the legend on a row of its own. */
+			#mapToolbar, #diagramToolbar, #spurplanToolbar, #deliveryToolbar, #linksToolbar {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: var(--sp-2) var(--sp-3);
+				padding: var(--sp-2) var(--sp-3);
+				border-bottom: 1px solid var(--hairline);
+				background: var(--surface);
+				font: var(--fs-2)/1.3 system-ui, sans-serif;
+			}
+			#mapToolbar strong, #diagramToolbar strong, #spurplanToolbar strong, #deliveryToolbar strong, #linksToolbar strong { font-size: var(--fs-2); white-space: nowrap; }
 			#mapToolbar button, #diagramToolbar button, #spurplanToolbar button, #deliveryToolbar button, #linksToolbar button { font-size: var(--fs-2); padding: 0.3rem 0.6rem; }
+			#diagramNote, #spurplanNote, #deliveryNote, #linksNote, #spurplanHint { color: var(--secondary); font-size: var(--fs-1); min-width: 0; }
+			#spurplanHint { cursor: help; }
+			#spurplanLegend, #deliveryLegend, #linksLegend { flex-basis: 100%; }
+			#diagramCursor { font-size: var(--fs-1); }
 			#railwayOpacityControl.menu-item { display: flex; }
 			#railwayOpacityControl.hidden { display: none; }
 			#precisionKind.menu-item { border: 1px solid var(--hairline); background: var(--surface); }
@@ -321,17 +336,6 @@
 				overflow: hidden;
 				background: Canvas;
 			}
-			#spurplanToolbar {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.4rem 0.9rem;
-				align-items: baseline;
-				padding: 0.5rem 0.8rem;
-				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				font-size: var(--fs-2);
-			}
-			#spurplanNote { color: var(--secondary); }
-			#spurplanHint { color: GrayText; font-size: 0.76rem; cursor: help; }
 			.spurplan-svg { touch-action: pan-y; }
 			.spurplan-legend-item { --swatch: var(--speed-color); }
 			#spurplanScroll { overflow: auto; padding: 0.4rem 0.6rem; }
@@ -351,16 +355,6 @@
 				overflow: hidden;
 				background: Canvas;
 			}
-			#deliveryToolbar {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.4rem 0.9rem;
-				align-items: baseline;
-				padding: 0.5rem 0.8rem;
-				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				font-size: var(--fs-2);
-			}
-			#deliveryNote { color: var(--secondary); }
 			.delivery-legend-item { --swatch: var(--delivery-color); }
 			.delivery-alignment { --delivery-color: #2b6cb0; }
 			.delivery-profile { --delivery-color: #2f855a; }
@@ -392,16 +386,6 @@
 				overflow: hidden;
 				background: Canvas;
 			}
-			#linksToolbar {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.4rem 0.9rem;
-				align-items: baseline;
-				padding: 0.5rem 0.8rem;
-				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
-				font-size: var(--fs-2);
-			}
-			#linksNote { color: var(--secondary); }
 			.links-legend-item { --swatch: var(--link-color); }
 			#linksScroll { overflow: auto; padding: 0.4rem 0.6rem; }
 			.links-svg { display: block; }
@@ -484,27 +468,14 @@
 				right: 40%;
 				background: Highlight;
 			}
-			#diagramToolbar {
-				display: flex;
-				flex-wrap: wrap;
-				align-items: center;
-				gap: 0.5rem 0.75rem;
-				padding: 0.6rem 0.75rem;
-				border-bottom: 1px solid GrayText;
-				font-family: system-ui, sans-serif;
-			}
-			#diagramNote {
-				color: GrayText;
-				font-size: 0.8rem;
-			}
 			#diagramCode {
-				color: GrayText;
-				font-size: 0.7rem;
+				padding: 0.1rem 0.55rem;
+				border: 1px solid var(--hairline);
+				border-radius: 999px;
+				color: var(--secondary);
+				font-size: var(--fs-1);
 				font-weight: 400;
-				border: 1px solid GrayText;
-				border-radius: 3px;
-				padding: 0 0.3rem;
-				opacity: 0.7;
+				white-space: nowrap;
 			}
 			#diagramCode:empty {
 				display: none;
@@ -599,7 +570,7 @@
 			.diagram-muted { fill: GrayText; }
 			.diagram-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
 			.diagram-cursor-label { fill: #d0433f; pointer-events: none; }
-			#diagramCursor { color: #d0433f; font-variant-numeric: tabular-nums; }
+			#diagramCursor { color: #d0433f; font-variant-numeric: tabular-nums; white-space: nowrap; }
 			.map-cursor circle { fill: #d0433f; stroke: var(--stone-halo); stroke-width: 1.5; pointer-events: none; }
 			.delivery-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
 			.diagram-figure-strip { fill: color-mix(in srgb, CanvasText 7%, Canvas); }
@@ -608,14 +579,8 @@
 			.diagram-footnote { font-size: 11px; }
 			.diagram-axis-value { font-size: 11px; font-variant-numeric: tabular-nums; }
 			#mapToolbar {
-				flex-wrap: wrap;
-				row-gap: 0.3rem;
-				padding: 0.4rem 0.65rem;
-				border-bottom: 1px solid GrayText;
-				font-family: system-ui, sans-serif;
 				position: relative;
 				z-index: 3;
-				background: var(--surface);
 			}
 			#mapToolbar strong { margin-right: 0; }
 			#railwayOpacityControl {
@@ -1776,8 +1741,8 @@
 								<span id="spurplanNote"></span>
 								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
 								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
+								<span class="picture-export tb-group" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 								<div id="spurplanLegend" class="legend"></div>
-								<span class="picture-export" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 							</div>
 							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
 						</div>
@@ -1785,7 +1750,7 @@
 							<div id="deliveryToolbar">
 								<strong>Lieferung · Bild</strong>
 								<span id="deliveryNote"></span>
-								<span class="picture-export" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<span class="picture-export tb-group" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 								<div id="deliveryLegend" class="legend"><span class="legend-item swatch-box delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="legend-item swatch-box delivery-legend-item delivery-profile">Gradiente</span><span class="legend-item swatch-box delivery-legend-item delivery-cant">Überhöhung</span><span class="legend-item swatch-box delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="legend-item swatch-tri delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
 							</div>
 							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
@@ -1794,8 +1759,8 @@
 							<div id="linksToolbar">
 								<strong>Verknüpfung · Bild</strong>
 								<span id="linksNote"></span>
+								<span class="picture-export tb-group" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 								<div id="linksLegend" class="legend"></div>
-								<span class="picture-export" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 							</div>
 							<div id="linksScroll"><div id="linksContent"></div></div>
 						</div>
@@ -1806,6 +1771,7 @@
 								<span id="diagramCode" title=""></span>
 								<span id="diagramNote"></span>
 								<span id="diagramCursor" title="Cursor: eine Station in allen Bildern — Maus über IVMG, IVHW, GWB, Spurplan, Karte oder Lieferung"></span>
+								<span class="tb-spacer"></span>
 								<details id="assumptionsMenu" class="menu">
 									<summary title="Vier Werte, die in keiner Geometriedatei stehen — Annahmen für das GWB nach Ril 800.0110 / 457.0201">Annahmen ▾</summary>
 									<div class="menu-body row">
@@ -1820,7 +1786,7 @@
 									<div class="menu-body">
 								<button id="gwbBogenCsv" type="button" class="menu-item" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
 								<button id="gwbAbschnittCsv" type="button" class="menu-item" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
-								<span class="picture-export" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<span class="picture-export tb-group" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 									</div>
 								</details>
 								<div id="diagramPresentation" aria-label="Ansicht">
