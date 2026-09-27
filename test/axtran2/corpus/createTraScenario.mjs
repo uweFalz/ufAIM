@@ -107,11 +107,12 @@ export function chooseProfile(elements, { cantMm = 130, sourceName = "as-built" 
  * @param {number} [options.perturbation]   relative perturbation of the free quantities at the start
  * @param {string} [options.rampLengthAs]
  * @param {"held"|"free"} [options.kinkStation]  whether the element before a kink keeps its length (default held)
+ * @param {Array} [options.heldPoses]  poses held at element joints, as the constraint builder takes them
  */
 export async function createTraScenario(source, {
 	pointSpacing = 50, spread = 0.04, tolerance = 0.15, perturbation = 0.03,
 	rampLengthAs = "bound", minimumElementLength = null, cantMm = 130,
-	holdLast = false, kinkStation = "held",
+	holdLast = false, kinkStation = "held", heldPoses = [],
 } = {}) {
 	const loaded = typeof source === "object" && source.elements ? source : await loadTraAlignment(source);
 	if (loaded.unsupported.length) {
@@ -213,6 +214,7 @@ export async function createTraScenario(source, {
 			elementSequence: codec.elementSequence,
 			minimumElementLength: elementFloor,
 			hardPoints: [],
+			heldPoses,
 			elementKinds: Object.fromEntries(trueElements.map((e) => [e.id, e.type])),
 			design: profile.design,
 			rampLengthAs,
