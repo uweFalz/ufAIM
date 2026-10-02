@@ -35,6 +35,13 @@ export const STANDARD_TURNOUTS = Object.freeze([
 	"EW 60-300-1:9", "EW 60-500-1:12", "EW 60-760-1:14", "EW 60-1200-1:18.5", "EW 60-2500-1:26.5",
 ]);
 
+/** crossing turnouts in common use: one curved diagonal (EKW) or both (DKW) */
+export const STANDARD_CROSSINGS = Object.freeze([
+	"EKW 49-190-1:9", "DKW 49-190-1:9", "EKW 60-190-1:9", "DKW 60-190-1:9", "DKW 60-500-1:12",
+]);
+export const CROSSING_KINDS = Object.freeze(["EKW", "DKW"]);
+export const CROSSING_ROUTES = Object.freeze(["straight", "curved"]);
+
 export class TurnoutCatalogueError extends Error {
 	constructor(code, message, detail = null) {
 		super(message);
@@ -137,4 +144,83 @@ export function turnoutElements(spec, { prefix = spec.id } = {}) {
 		? { id: `${prefix}.branch`, type: "straight", length: spec.branchLength, held: true, turnout: spec.designation ?? spec.id }
 		: { id: `${prefix}.branch`, type: "arc", length: spec.branchLength, curvature: spec.curvature, held: true, turnout: spec.designation ?? spec.id };
 	return Object.freeze({ branch: Object.freeze(branch), main: Object.freeze(main) });
+}
+
+/**
+ * A crossing turnout - Kreuzungsweiche - as the route a train takes through
+ * it. Two straight tracks cross at the crossing angle alpha = atan(1/n); the
+ * connecting curves of radius R lie inside the crossing, tangent to both
+ * tracks, and so turn through alpha themselves. The geometry is symmetric
+ * about the crossing centre, which fixes everything from R and n:
+ *
+ *     centre       R * tan(alpha / 2)   from the curve's tangent point on the
+ *                                       entering track to the centre
+ *     straight     2 R * tan(alpha / 2) the entering track between the two
+ *                                       tangent points, the crossing centre
+ *                                       in its middle
+ *     curved       R * alpha            the connecting arc, from the tangent
+ *                                       point on the entering track to the
+ *                                       one on the crossing track
+ *
+ * From one entry there are two routes: straight along the entering track, or
+ * curved onto the crossing track. The side says which way the crossing
+ * track lies, seen in the direction of travel, and that is the way the
+ * curve turns. An EKW has a curve on one diagonal only, a DKW on both; which
+ * diagonal that is in an EKW is the declarer's knowledge of the layout, not
+ * the designation's, and the route from one entry reads the same for both.
+ *
+ * As with turnout(), the catalogue's lengths between the Weichenanfänge
+ * (Ril 800.0120) are not derived here; the status is "candidate".
+ *
+ * @param {object} input
+ * @param {string} [input.designation]   e.g. "DKW 60-190-1:9"; or kind, radius and ratio
+ * @param {"EKW"|"DKW"} [input.kind]
+ * @param {number} [input.radius]
+ * @param {number} [input.ratio]
+ * @param {"left"|"right"} input.side    which way the crossing track lies, in the direction of travel
+ * @param {string} [input.id]
+ */
+export function crossing({ designation = null, kind = null, radius = null, ratio = null, side, id = null } = {}) {
+	const parsed = designation !== null ? parseTurnoutDesignation(designation) : null;
+	const K = parsed?.kind ?? kind;
+	const R = parsed?.radius ?? radius;
+	const n = parsed?.ratio ?? ratio;
+	if (!CROSSING_KINDS.includes(K)) error("INVALID_CROSSING", `a crossing turnout is one of ${CROSSING_KINDS.join(", ")}, not "${K}"`);
+	if (!(Number.isFinite(R) && R > 0)) error("INVALID_CROSSING", "a crossing turnout needs a positive radius");
+	if (!(Number.isFinite(n) && n > 0)) error("INVALID_CROSSING", "a crossing turnout needs a positive crossing ratio 1:n");
+	if (!TURNOUT_SIDES.includes(side)) error("INVALID_CROSSING", `side must be one of ${TURNOUT_SIDES.join(", ")}`);
+	const angle = Math.atan(1 / n);
+	const centreOffset = R * Math.tan(angle / 2);
+	return Object.freeze({
+		version: TURNOUT_CATALOGUE_VERSION,
+		id: id ?? (designation ?? `${K}-R${R}-1:${n}`),
+		designation: designation ?? null,
+		kind: K,
+		rail: parsed?.rail ?? null,
+		radius: R,
+		ratio: n,
+		side,
+		angle,
+		curvature: (side === "left" ? 1 : -1) / R,
+		centreOffset,
+		straightLength: 2 * centreOffset,
+		curvedLength: R * angle,
+		status: "candidate",
+		source: "R and 1:n as designated; the crossing centre, the straight between the tangent points and the "
+			+ "connecting arc are geometry of two tracks crossing at the angle. The catalogue's lengths (Ril 800.0120) were not read.",
+	});
+}
+
+/**
+ * One route through the crossing turnout as a held kernel element: the
+ * straight along the entering track, or the connecting arc onto the crossing
+ * track. Id is `${prefix}.${route}`.
+ */
+export function crossingElement(spec, { route, prefix = spec.id } = {}) {
+	if (!spec || !Number.isFinite(spec.centreOffset)) error("INVALID_CROSSING", "crossingElement needs a spec from crossing()");
+	if (!CROSSING_ROUTES.includes(route)) error("INVALID_CROSSING", `route must be one of ${CROSSING_ROUTES.join(", ")}`);
+	const turnout = spec.designation ?? spec.id;
+	return Object.freeze(route === "straight"
+		? { id: `${prefix}.straight`, type: "straight", length: spec.straightLength, held: true, turnout }
+		: { id: `${prefix}.curved`, type: "arc", length: spec.curvedLength, curvature: spec.curvature, held: true, turnout });
 }
