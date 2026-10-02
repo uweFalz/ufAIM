@@ -41088,6 +41088,20 @@ xlsx/xlsx.mjs:
 			// stubs where a Gleis leaves for another Strecke; width -- the panel's
 			// pixels instead of FIGURE_WIDTH; ticks; speeds -- Map edge → clipped
 			// GWB sections, drawn as coloured segments; cursorFrame; junctionLabels.
+			// Round km marks for a station axis, as the Lieferung draws them: a
+			// 1-2-5 step for the window's width, labelled "140,0" from 100 m up
+			// and as km + m below that (a Spurplan zoomed to its 100 m window).
+			// Before, the Spurplan, the 7L band and the IVHW cut the window into
+			// fifths and labelled "73,6 + 90,29".
+			function roundTicks(xMin, xMax, plotWidth) {
+				const span = Math.max(xMax - xMin, 1);
+				const step = niceStep(span, Math.max(3, Math.floor(plotWidth / 60)));
+				const marks = [];
+				for (let value = Math.ceil(xMin / step) * step; value <= xMax + 1e-6; value += step) {
+					marks.push({ value, label: step >= 100 ? kmLabel(value) : station(value).trim() });
+				}
+				return marks;
+			}
 			function drawSpurplan(target, y, topology, xMin, xMax, selected, options = {}) {
 				const onAxis = (node) => !options.axes || options.axes.has(node.axis);
 				const drawable = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null && onAxis(edge.from) && onAxis(edge.to));
@@ -41105,7 +41119,6 @@ xlsx/xlsx.mjs:
 				const right = 30;
 				const height = top + rowCount * rowPitch + 44;
 				const width = options.width ?? FIGURE_WIDTH;
-				const tickCount = options.ticks ?? 5;
 				const figure = nestedFigure(target, y, height, width);
 				registerCursorFigure({ y, height, left, right, xMin, xMax, width, target, key: options.figureKey ?? null, frame: options.cursorFrame === undefined ? "axis" : options.cursorFrame });
 				figure.append(svgElement("rect", { x: 0, y: 0, width, height, class: "diagram-band" }));
@@ -41120,11 +41133,11 @@ xlsx/xlsx.mjs:
 				const xAt = (km) => left + (km - xMin) / xSpan * (width - left - right);
 				const yAt = (row) => top + (rows[1] - row) * rowPitch + rowPitch / 2;
 				const axisY = height - 24;
-				for (let tick = 0; tick <= tickCount; tick += 1) {
-					const x = left + (width - left - right) * tick / tickCount;
+				for (const mark of roundTicks(xMin, xMax, width - left - right)) {
+					const x = left + (width - left - right) * (mark.value - xMin) / xSpan;
 					figure.append(svgElement("line", { x1: x, x2: x, y1: top - 8, y2: axisY - 6, class: "diagram-grid" }));
 					const label = svgElement("text", { x, y: height - 8, "text-anchor": "middle", class: "diagram-label diagram-muted" });
-					label.textContent = station(xMin + xSpan * tick / tickCount).trim();
+					label.textContent = mark.label;
 					figure.append(label);
 				}
 				figure.append(svgElement("line", { x1: left, x2: width - right, y1: axisY, y2: axisY, class: "diagram-axis" }));
@@ -41284,11 +41297,11 @@ xlsx/xlsx.mjs:
 				const axisY = height - footnoteHeight - 12;
 				const figure = nestedFigure(target, y, height);
 				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: "diagram" });
-				for (let tick = 0; tick <= 5; tick += 1) {
-					const x = left + (width - left - right) * tick / 5;
+				for (const mark of roundTicks(xMin, xMax, width - left - right)) {
+					const x = left + (width - left - right) * (mark.value - xMin) / xSpan;
 					figure.append(svgElement("line", { x1: x, x2: x, y1: top, y2: axisY - 23, class: "diagram-grid" }));
 					const label = svgElement("text", { x, y: axisY, "text-anchor": "middle", class: "diagram-label diagram-muted" });
-					label.textContent = station(xMin + xSpan * tick / 5).trim();
+					label.textContent = mark.label;
 					figure.append(label);
 				}
 				footnotes.forEach((footnote, index) => {
@@ -41948,11 +41961,11 @@ xlsx/xlsx.mjs:
 				const xAt = (x) => left + (x - xMin) * pxPerMeterX;
 				const yAt = (value) => yBase - (value - yMin) * pxPerMeterY;
 
-				for (let tick = 0; tick <= 5; tick += 1) {
-					const x = left + plotWidth * tick / 5;
+				for (const mark of roundTicks(xMin, xMax, plotWidth)) {
+					const x = left + plotWidth * (mark.value - xMin) / xSpan;
 					figure.append(svgElement("line", { x1: x, x2: x, y1: top, y2: yBase, class: "diagram-grid" }));
 					const label = svgElement("text", { x, y: height - 12, "text-anchor": "middle", class: "diagram-label diagram-muted" });
-					label.textContent = station(xMin + xSpan * tick / 5).trim();
+					label.textContent = mark.label;
 					figure.append(label);
 				}
 				figure.append(svgElement("line", { x1: left, x2: width - right, y1: yBase, y2: yBase, class: "diagram-axis" }));
@@ -45652,7 +45665,6 @@ xlsx/xlsx.mjs:
 					y += drawSpurplan(svg, y, topology, window.xMin, window.xMax, selectedEntry, {
 						axes: axis.axes,
 						width: panelWidth,
-						ticks: Math.max(5, Math.floor((panelWidth - 90) / 110)),
 						speeds,
 						cursorFrame: axis.track && axis.track === anchorTrack ? "axis" : null,
 						junctionLabels: true,
