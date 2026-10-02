@@ -221,3 +221,27 @@ an Innenbogenweiche on R 900 - the toe held on the curve, the bent branch
 held, the connection fitted - meets the toe to 1e-6 m and the end pose to
 1e-6.
 
+
+## Crossing turnouts (2026-10-03)
+
+A Kreuzungsweiche is two straight tracks crossing at the crossing angle
+α = atan(1/n), with connecting arcs of radius R inside the crossing,
+tangent to both tracks and so turning through α themselves. The geometry
+is symmetric about the crossing centre, which fixes everything from R
+and n: the centre lies R · tan(α/2) beyond the arc's tangent point on the
+entering track, the straight between the two tangent points is twice
+that, the connecting arc is R · α. From one entry there are two routes,
+straight along the entering track or curved onto the crossing track;
+`crossing({ designation | kind, radius, ratio, side })` gives the spec
+and `crossingElement(spec, { route })` one route as a held element. An
+EKW has a curve on one diagonal, a DKW on both; which diagonal that is
+in an EKW is the declarer's knowledge of the layout, and the route from
+one entry reads the same for both. Status "candidate" as for `turnout()`:
+Ril 800.0120 was not read, the catalogue's lengths are not derived.
+
+`turnout.test.mjs`: a DKW 60-190-1:9 walked both ways from one entry
+pose - the arc's end lies on the crossing track through the centre to
+1e-9 m, at the same distance beyond the centre as the tangent point lies
+before it. The Einrechnung of its straight route between two fitted
+connections, the crossing's entry held, meets entry and centre to 1e-6 m
+and the end pose to 1e-6.
