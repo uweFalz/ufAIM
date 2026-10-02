@@ -128,7 +128,7 @@ function declaredElements(alignmentData) {
 }
 
 export class AlignmentAxtranEvidenceService {
-	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA } = {}) {
+	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA, heldPoses = [] } = {}) {
 		if (!beforeAlignmentData?.editModel?.elements || !afterAlignmentData?.editModel?.elements) {
 			throw new Error("AXTRAN evidence requires before and after native AlignmentData");
 		}
@@ -140,6 +140,11 @@ export class AlignmentAxtranEvidenceService {
 		const codec = createAlignmentVariableCodec({ elements: declarations });
 		if (codec.freeCount < 3) throw new Error("AXTRAN evidence requires at least three free quantities");
 		const kinds = Object.fromEntries(afterAlignmentData.editModel.elements.map((element) => [String(element.id), kindOf(element)]));
+		// Poses held at element joints, in the alignment's own frame - a
+		// turnout's tangent or pose at its start or end - as the constraint
+		// builder takes them ({ afterElement, x?, y?, theta? }). Who declares
+		// them is the journey's question; here they are carried and reported.
+		if (!Array.isArray(heldPoses)) throw new Error("AXTRAN evidence heldPoses must be an array");
 		const constraints = createAlignmentConstraintBuilder({
 			endPose: poseOf(before),
 			elementSequence: codec.elementSequence,
@@ -147,6 +152,7 @@ export class AlignmentAxtranEvidenceService {
 			elementKinds: kinds,
 			design: {},
 			admitUnconfirmedDesign: EVIDENCE_ONLY,
+			heldPoses,
 		});
 		const residuals = createAlignmentResidualBuilder({
 			metricContext: createIntrinsicMetricContext(),
@@ -222,6 +228,7 @@ export class AlignmentAxtranEvidenceService {
 			fitMode,
 			planSigma: fitMode === "keep-plan" ? planSigma : null,
 			undetermined,
+			heldPoses: constraints.heldPoses,
 			candidate: proposal.candidate,
 			diagnostics,
 			note: observationOnly

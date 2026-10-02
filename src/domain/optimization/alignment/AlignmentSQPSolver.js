@@ -849,6 +849,20 @@ export function solveAlignmentProblem({
 	// declared point: refusing to report would lose the diagnosis along with the
 	// candidate. The proposal says so instead, and is not ok.
 	const built = run.x ? realise(run.x) : null;
+	// the held poses at the answer, unweighted, from the chain that holds them
+	let heldPoseReport = null;
+	if (heldPoses.length > 0 && run.x) {
+		try {
+			const geometry = analyticJacobian(codec.decode(run.x));
+			heldPoseReport = Object.freeze(heldPoses.flatMap((held) => {
+				const pose = geometry.poseAt(geometry.stationAfter(held.index));
+				return held.components.map((key) => Object.freeze({
+					afterElement: held.afterElement, component: key,
+					residual: key === "theta" ? wrapAngle(pose.theta - held.theta) : pose[key] - held[key],
+				}));
+			}));
+		} catch { heldPoseReport = null; }
+	}
 	const inadmissible = built ? [...inadmissiblePoints(built)] : [];
 	// Residuals exist only where every declared point could be evaluated. Where
 	// they do not, the diagnostics say null rather than a number derived from an
@@ -931,6 +945,7 @@ export function solveAlignmentProblem({
 			// null throughout where the residuals could not be evaluated: not a
 			// number, and not a zero standing in for one
 			endPoseResidual: finalEquality ? Object.freeze(finalEquality.slice(0, 3)) : null,
+			heldPoseResiduals: heldPoseReport,
 			endPoseDistance: finalEquality
 				? Math.hypot(finalEquality[0], finalEquality[1])
 				: null,
