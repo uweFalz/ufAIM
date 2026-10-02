@@ -149,9 +149,10 @@ function error(code, message, detail) {
 }
 
 /**
- * Whether a phase result honours tier 0 - the end pose and every hardened
- * Zwangspunkt. This is not a quality judgement about the tier's own objective;
- * it only asks whether the point the tier reached is a real alignment.
+ * Whether a phase result honours tier 0 - the end pose, every hardened
+ * Zwangspunkt and every pose held at a joint. This is not a quality judgement
+ * about the tier's own objective; it only asks whether the point the tier
+ * reached is a real alignment.
  *
  * Everything is compared in metres, including the heading. Three quantities
  * used to be tested against one number: a distance in metres, a lateral offset
@@ -184,11 +185,23 @@ export function tierZeroReport(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
 	const worstHardPoint = Math.max(
 		0, ...(diagnostics.hardPointResiduals ?? []).map((point) => Math.abs(point.residual ?? Infinity))
 	);
+	// A pose held at a joint is tier 0 as much as the end pose is: the turnout's
+	// tangent is a constraint of every phase, never an objective. Its heading is
+	// judged the way the end pose's is, as the drift it would accumulate over
+	// the alignment's length; a position component is a length already.
+	const worstHeldPose = Math.max(
+		0, ...(diagnostics.heldPoseResiduals ?? []).map((row) => {
+			const residual = Math.abs(row.residual ?? Infinity);
+			return row.component === "theta" ? residual * (leverArm ?? 1) : residual;
+		})
+	);
 	const failing = position > tolerance
 		? "end-pose position"
 		: heading > tolerance
 			? "end-pose heading"
-			: worstHardPoint > tolerance ? "hardened Zwangspunkt" : null;
+			: worstHardPoint > tolerance
+				? "hardened Zwangspunkt"
+				: worstHeldPose > tolerance ? "held pose" : null;
 	return Object.freeze({
 		satisfied: failing === null,
 		failing,
@@ -199,6 +212,7 @@ export function tierZeroReport(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
 		headingRadians,
 		heading,
 		worstHardPoint,
+		worstHeldPose,
 	});
 }
 
@@ -437,6 +451,7 @@ export function solveAlignmentLexicographic({
 				headingOffset: report.heading,
 				headingLeverArm: report.leverArm,
 				worstHardPoint: report.worstHardPoint,
+				worstHeldPose: report.worstHeldPose,
 				tolerance: feasibilityTolerance,
 			}));
 		} else if (!isLast) {

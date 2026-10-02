@@ -13,7 +13,7 @@ const {
 	FEASIBILITY_TOLERANCE,
 } = await import(new URL("AlignmentLexicographicSolver.js", BASE));
 const { solveAlignmentProblem } = await import(new URL("AlignmentSQPSolver.js", BASE));
-const { createNineElementScenario } = await import(new URL("fixtures/nineElementScenario.mjs", import.meta.url));
+const { createNineElementScenario, build, TRUE_LENGTHS, TRUE_CURVATURES } = await import(new URL("fixtures/nineElementScenario.mjs", import.meta.url));
 
 // A short, cheap scenario: the driver's contract is orchestration, and the
 // phases only have to run, not to reach their optima, for that to be testable.
@@ -493,6 +493,48 @@ test("the feasibility gate asks about tier 0 only, never about the tier's own ob
 		false,
 		"a hardened Zwangspunkt is tier 0 too"
 	);
+});
+
+test("a pose held at a joint is tier 0: the gate refuses a tier that let it go", () => {
+	// the turnout's tangent is a constraint of every phase; a tier that bought
+	// its objective by bending the joint has established nothing, exactly like
+	// one that let the end pose go. A held heading is judged as drift over the
+	// alignment's length, as the end pose's is; a held position is a length.
+	const met = {
+		endPoseDistance: 0, endPoseResidual: [0, 0, 0], hardPointResiduals: [], alignmentLength: 1430,
+		heldPoseResiduals: [{ afterElement: "E4", component: "theta", residual: 1e-12 }],
+	};
+	assert.equal(tierZeroSatisfied(met), true);
+	const bent = { ...met, heldPoseResiduals: [{ afterElement: "E4", component: "theta", residual: 1e-6 }] };
+	assert.equal(tierZeroSatisfied(bent), false, "1.43e-3 m of drift at the joint is outside the gate");
+	const report = tierZeroReport(bent);
+	assert.equal(report.failing, "held pose");
+	assert.ok(Math.abs(report.worstHeldPose - 1.43e-3) < 1e-12, "the drift, in metres");
+	const shifted = { ...met, heldPoseResiduals: [{ afterElement: "E4", component: "x", residual: 2e-8 }] };
+	assert.equal(tierZeroReport(shifted).failing, "held pose");
+	assert.equal(tierZeroReport(shifted).worstHeldPose, 2e-8, "a position component is a metre already");
+	// no held poses, or a solver that could not report them: nothing to refuse on
+	assert.equal(tierZeroSatisfied({ ...met, heldPoseResiduals: null }), true);
+});
+
+test("the lexicographic run carries a held joint through every phase", () => {
+	// one heading held at the joint of a short scenario, both tiers run: the
+	// answer honours it, and the gate saw it in the diagnostics it judged
+	const truth = build(TRUE_LENGTHS, TRUE_CURVATURES);
+	const jointPose = truth.poseAt(TRUE_LENGTHS.slice(0, 5).reduce((a, b) => a + b, 0));
+	const theta = Math.atan2(jointPose.t.y, jointPose.t.x);
+	const held = createNineElementScenario({ pointCount: 12, heldPoses: [{ afterElement: "E4", theta }] });
+	const run = solveAlignmentLexicographic({
+		problem: held.problem, buildAlignment: held.buildAlignment, analyticJacobian: held.analyticJacobian,
+		warmStart: false, maxIterations: 120, tiers: [{ objective: "accumulated-length", absolute: 0.5 }, { objective: "points" }],
+	});
+	const rows = run.diagnostics.heldPoseResiduals;
+	assert.ok(Array.isArray(rows) && rows.length === 1, "the last phase reports the held joint");
+	assert.equal(rows[0].afterElement, "E4");
+	assert.ok(Math.abs(rows[0].residual) < 1e-6, `held heading off by ${rows[0].residual}`);
+	for (const skipped of run.skippedBudgets ?? []) {
+		assert.ok("worstHeldPose" in skipped, "a refused tier says how far the joint was off");
+	}
 });
 
 test("the heading is judged as a distance, over the length it accumulates on", () => {
