@@ -159,7 +159,14 @@
 			.menu > summary::-webkit-details-marker { display: none; }
 			.menu[open] > summary { background: var(--button-active); }
 			.menu-body { position: absolute; top: calc(100% + 0.3rem); right: 0; z-index: 40; min-width: 14rem; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); background: Canvas; border: 1px solid var(--hairline); border-radius: 0.65rem; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
-			.menu-body.row { flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); min-width: 34rem; }
+			.menu-body.row { display: grid; grid-template-columns: auto auto; align-items: center; gap: var(--sp-2) var(--sp-4); min-width: 0; width: max-content; }
+			.menu-body.row .gwb-input { justify-content: space-between; }
+			/* Open, the leaf lives in the top layer (Popover API): nothing clips
+			   it (the map panel paints contained), nothing covers it (the welcome
+			   card, the panels), and it may be wider than its bar. Script sets top
+			   and left under the summary; the absolute rules above are the
+			   fallback without popover support. */
+			.menu-body:popover-open { position: fixed; inset: auto; margin: 0; max-width: calc(100vw - 1rem); overflow: auto; color: inherit; }
 			.menu-item, .menu-body > .menu-item, .menu-body label.menu-item { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 0.4rem 0.6rem; border: 0; border-radius: var(--r); background: transparent; color: inherit; font-size: var(--fs-2); text-align: left; cursor: pointer; white-space: nowrap; }
 			.menu-item:hover { background: color-mix(in srgb, CanvasText 7%, transparent); }
 			.menu-item:disabled { opacity: 0.4; cursor: default; }
@@ -269,18 +276,6 @@
 				background: var(--glass);
 				cursor: pointer;
 				font-size: 0.86rem;
-			}
-			#dropzone .hint { font-size: 0.8rem; opacity: 0.72; }
-			#dropzone.dragover {
-				border-color: Highlight;
-				background: color-mix(in srgb, Highlight 12%, Canvas);
-			}
-			#dropzone.loaded {
-				min-height: 0;
-				padding: 0;
-			}
-			#dropzone p {
-				margin: 0;
 			}
 			#status {
 				min-height: 1.25rem;
@@ -1639,7 +1634,7 @@
 				<span id="status">Bereit · Daten hierher ziehen oder über „Daten“ laden.</span>
 				<details id="dataMenu" class="menu">
 					<summary>Daten ▾</summary>
-					<div class="menu-body">
+					<div class="menu-body" popover="manual">
 						<label class="menu-item" for="files">＋ Dateien laden …</label>
 						<label class="menu-item" for="folderFiles" title="Ordner über den Dateidialog laden, ohne Drag &amp; Drop">＋ Ordner laden …</label>
 						<span id="assignmentTools" class="hidden"><button type="button" id="assignmentExport" class="menu-item" title="Handzuordnungen, Lage/Höhe je Datei und Objekt, Eingaben, Färbung und Zoom als JSON sichern">Zuordnung sichern ⤓</button><label class="menu-item" for="assignmentImport" title="Gesicherte Zuordnung auf die geladenen Dateien anwenden">Zuordnung anwenden ⤒</label></span>
@@ -1699,7 +1694,7 @@
 							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste (Prototyp)"></div>
 							<details id="layersMenu" class="menu">
 								<summary>Ebenen ▾</summary>
-								<div class="menu-body">
+								<div class="menu-body" popover="manual">
 									<button id="baseMapLoad" type="button" class="menu-item" aria-pressed="false">OpenRailwayMap ein</button>
 									<label id="railwayOpacityControl" class="hidden menu-item">Karte
 											<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
@@ -1774,7 +1769,7 @@
 								<span class="tb-spacer"></span>
 								<details id="assumptionsMenu" class="menu">
 									<summary title="Vier Werte, die in keiner Geometriedatei stehen — Annahmen für das GWB nach Ril 800.0110 / 457.0201">Annahmen ▾</summary>
-									<div class="menu-body row">
+									<div class="menu-body row" popover="manual">
 								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
 								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
@@ -1783,7 +1778,7 @@
 								</details>
 								<details class="menu">
 									<summary>Export ▾</summary>
-									<div class="menu-body">
+									<div class="menu-body" popover="manual">
 								<button id="gwbBogenCsv" type="button" class="menu-item" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
 								<button id="gwbAbschnittCsv" type="button" class="menu-item" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
 								<span class="picture-export tb-group" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
@@ -40067,15 +40062,19 @@ xlsx/xlsx.mjs:
 				const item = entry.item;
 				const elements = item?.payload?.coordGeom?.elements ?? [];
 				const gndSequence = gndSequenceForEntry(entry);
+				// Two station columns when the file's own stations are not the km:
+				// GND (äußere Referenz) and a Trasse projected onto a Kilometerlinie.
+				const projected = Boolean(entry.externalStationReference) && elements.some((element) => element?.extras?.externalStation != null);
+				const twoColumns = Boolean(gndSequence) || projected;
 				const stationLabel = gndSequence
 					? "äußere Referenz"
-					: elements.some((element) => isKilometrierung(element.staStart)) ? "Kilometrierung" : "Stationierung";
+					: projected ? "Kilometerlinie" : elements.some((element) => isKilometrierung(element.staStart)) ? "Kilometrierung" : "Stationierung";
 				const lines = [
 					`Trasse ${objectDisplayName(entry)}`,
 					systemHeader(entry),
 					"",
-					gndSequence ? `${stationLabel.padStart(16)}    intern (Länge)              Y             X    Richtung       R1          R2       Länge  Element` : `${stationLabel.padStart(16)}              Y             X    Richtung       R1          R2       Länge  Element`,
-					gndSequence ? "---------------------------------------------------------------------------------------------------------------------" : "--------------------------------------------------------------------------------------------------",
+					twoColumns ? `${stationLabel.padStart(16)}    intern (Länge)              Y             X    Richtung       R1          R2       Länge  Element` : `${stationLabel.padStart(16)}              Y             X    Richtung       R1          R2       Länge  Element`,
+					twoColumns ? "---------------------------------------------------------------------------------------------------------------------" : "--------------------------------------------------------------------------------------------------",
 				];
 				elements.forEach((element, index) => {
 					const radius1 = element.radius ?? element.radiusStart;
@@ -40083,8 +40082,8 @@ xlsx/xlsx.mjs:
 					const direction = element.direction ?? element.dirStart;
 					const type = elementDisplayType(element);
 					lines.push(
-						`${station(gndSequence ? element?.extras?.externalStation ?? element.staStart : element.staStart)} ` +
-						(gndSequence ? `${station(element.staStart)} ` : "") +
+						`${station(twoColumns ? element?.extras?.externalStation ?? element.staStart : element.staStart)} ` +
+						(twoColumns ? `${station(element.staStart)} ` : "") +
 						`${fixed(element.start?.easting, 4, 13)} ` +
 						`${fixed(element.start?.northing, 4, 13)} ` +
 						`${fixed(angleGon(direction), 6, 11)} ` +
@@ -40106,15 +40105,17 @@ xlsx/xlsx.mjs:
 				const item = entry.item;
 				const points = item?.payload?.points ?? [];
 				const isGndProfile = entry.parser === "gndEdit";
-				const stationLabel = isGndProfile ? "äußere Referenz" : points.some((point) => isKilometrierung(point.station))
+				const projected = points.some((point) => point?.extras?.externalStation != null);
+				const twoColumns = isGndProfile || projected;
+				const stationLabel = isGndProfile ? "äußere Referenz" : projected ? "Kilometerlinie" : points.some((point) => isKilometrierung(point.station))
 					? "Kilometrierung"
 					: "Stationierung";
 				const lines = [
 					`Gradiente ${objectDisplayName(entry)}`,
 					systemHeader(entry),
 					"",
-					isGndProfile ? ` Lfd.Nr.  ${stationLabel.padStart(16)}    intern (Länge)          Höhe        Radius         Tangente   Punkt` : ` Lfd.Nr.  ${stationLabel.padStart(16)}          Höhe        Radius         Tangente   Punkt`,
-					isGndProfile ? "---------------------------------------------------------------------------------------------------" : "----------------------------------------------------------------------------------",
+					twoColumns ? ` Lfd.Nr.  ${stationLabel.padStart(16)}    intern (Länge)          Höhe        Radius         Tangente   Punkt` : ` Lfd.Nr.  ${stationLabel.padStart(16)}          Höhe        Radius         Tangente   Punkt`,
+					twoColumns ? "---------------------------------------------------------------------------------------------------" : "----------------------------------------------------------------------------------",
 				];
 				points.forEach((point, index) => {
 					const semantics = point?.extras?.sourceSemantics ?? {};
@@ -40123,8 +40124,8 @@ xlsx/xlsx.mjs:
 						.join(".");
 					lines.push(
 						`${String(index + 1).padStart(7)} ` +
-						`${station(isGndProfile ? point?.extras?.externalStation ?? point.station : point.station)} ` +
-						(isGndProfile ? `${station(point.station)} ` : "") +
+						`${station(twoColumns ? point?.extras?.externalStation ?? point.station : point.station)} ` +
+						(twoColumns ? `${station(point.station)} ` : "") +
 						`${fixed(point.elevation, 4, 13)} ` +
 						`${fixed(semantics.radius ?? point.radius, 3, 13)} ` +
 						`${fixed(semantics.tangentLength ?? point.tangentLength, 3, 16)}   ` +
@@ -40208,8 +40209,13 @@ xlsx/xlsx.mjs:
 				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
 			}
 
+			// The Eifel delivery marks one file of a pair with a trailing "_A"
+			// (2631R139_Philippsheimer..._DBREF03.TRA with ..._DBREF03_A.GRA,
+			// Gleis2_Bf_Auw_..._DBREF03.GRA with ..._DBREF03_A.TRA): the suffix
+			// does not take part in the pairing. Assumed from the delivery, not
+			// a VermEsn rule; no sample has X and X_A as two different objects.
 			function vermEsnFileStem(fileName) {
-				return String(fileName ?? "").replace(/\.(tra|gra)$/i, "").toLowerCase();
+				return String(fileName ?? "").replace(/(?:_a)?\.(tra|gra)$/i, "").toLowerCase();
 			}
 
 			// VermEsn-Bündelung nach 7L: a TRA/GRA file carries no Strecke and no
@@ -40221,15 +40227,35 @@ xlsx/xlsx.mjs:
 			// stay singletons. This is the file-name convention of the Landshut
 			// delivery, not a VermEsn field: the frame it yields is labelled
 			// source "vermesn-name", and a user assignment (frameEdit) wins.
-			const VERMESN_NAME_PATTERN = /^(\d{4})([LRS])(\d{3})?(?:-(\d{3}))?(?:_(.+))?$/i;
+			// The Eifel delivery names the same things its own way:
+			// "2631K139_Bestand_VR_DBREF03" -- K = Kilometerlinie (it is the one
+			// file carrying the Stationsgleichungen), R/L as above, 139 the km
+			// where the Abschnitt begins, the rest a description (Bestand or a
+			// Neuplanung variant, a trailing "_A"). Several variants of one side
+			// and Abschnitt then share a 7L lane, each under its own name.
+			// "Gleis2_Bf_Auw_Bestand_VR_DBREF03" is a Bahnhofsgleis of a named
+			// Bahnhof with no Strecke in the name: framed by the Bahnhof, side
+			// unknown, so it stays in the Inbox for the user like "_Gls403".
+			// A suffix is a Bahnhofsgleis only when it starts with "Gls"; any
+			// other suffix is the variant and leaves the side as the letter says.
+			const VERMESN_NAME_PATTERN = /^(\d{4})([KLRS])(\d{3})?(?:-(\d{3}))?(?:_(.+))?$/i;
+			const VERMESN_BAHNHOF_PATTERN = /^Gleis(\d+)_Bf_([^_]+)(?:_(.+))?$/i;
 			function vermEsnNameFrame(entry) {
 				if (entry?.parser !== "vermEsn") return null;
 				const stem = String(entry.loaded?.fileName ?? "").replace(/\.(tra|gra)$/i, "");
 				const match = VERMESN_NAME_PATTERN.exec(stem);
-				if (!match) return null;
-				const [, track, letter, from, to, gleis] = match;
-				const side = gleis ? "unknown" : { s: "kilometer", r: "right", l: "left" }[letter.toLowerCase()];
-				return { track, side, segment: from ? `${from}${to ? `-${to}` : ""}` : null, gleis: gleis ?? null };
+				if (match) {
+					const [, track, letter, from, to, suffix] = match;
+					const gleis = suffix && /^gls/i.test(suffix) ? suffix : null;
+					const side = gleis ? "unknown" : { s: "kilometer", k: "kilometer", r: "right", l: "left" }[letter.toLowerCase()];
+					return { track, side, segment: from ? `${from}${to ? `-${to}` : ""}` : null, gleis, variant: gleis ? null : suffix ?? null };
+				}
+				const bahnhof = VERMESN_BAHNHOF_PATTERN.exec(stem);
+				if (bahnhof) {
+					const [, gleis, name, variant] = bahnhof;
+					return { track: `Bf ${name}`, side: "unknown", segment: null, gleis, variant: variant ?? null };
+				}
+				return null;
 			}
 
 			// VermEsn TRA/GRA pairs are delivered as separate files (unlike GND-Edit,
@@ -44030,14 +44056,28 @@ xlsx/xlsx.mjs:
 				let from = Infinity;
 				let to = -Infinity;
 				const add = (value) => {
+					// A missing value is no station: a VermEsn Kilometersprung has its
+					// station and a delta but no staAhead, and that null once read as
+					// km 0 and pulled the Eifel Abschnitt down to "0,0 + 00,00".
+					if (value == null) return;
 					const scalar = stationScalar(value);
 					if (!Number.isFinite(scalar)) return;
 					from = Math.min(from, scalar);
 					to = Math.max(to, scalar);
 				};
-				for (const element of entry?.item?.payload?.coordGeom?.elements ?? []) {
+				// An object with external km on any element or point is measured in
+				// that frame only: an element or point the projection (or the GND
+				// reference) did not reach keeps its file-local station, and mixing
+				// that into the range put an Eifel Abschnitt at "0,0 + 00,00 – ...".
+				// The Überhöhung of a projected Trasse carries mapped points but no
+				// externalStationReference of its own, so the points decide.
+				const elements = entry?.item?.payload?.coordGeom?.elements ?? [];
+				const points = entry?.item?.payload?.points ?? [];
+				const projected = elements.some((element) => element?.extras?.externalStation != null) || points.some((point) => point?.extras?.externalStation != null);
+				for (const element of elements) {
 					const externalStart = element?.extras?.externalStation;
 					const externalEnd = element?.extras?.externalStationEnd;
+					if (projected && externalStart == null) continue;
 					const start = stationScalar(externalStart ?? element.staStart);
 					const length = Math.abs(numberValue(element.length));
 					if (Number.isFinite(start)) {
@@ -44046,7 +44086,10 @@ xlsx/xlsx.mjs:
 						else if (Number.isFinite(length)) add(start + length);
 					}
 				}
-				for (const point of entry?.item?.payload?.points ?? []) add(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage);
+				for (const point of points) {
+					if (projected && point?.extras?.externalStation == null) continue;
+					add(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage);
+				}
 				for (const equation of entry?.item?.payload?.equations ?? entry?.item?.payload?.staEquations ?? []) {
 					add(equation.stationBack ?? equation.staBack ?? equation.station);
 					add(equation.stationAhead ?? equation.staAhead);
@@ -45847,7 +45890,11 @@ xlsx/xlsx.mjs:
 				const named = alignments.filter((entry) => vermEsnNameFrame(entry));
 				const rangeLength = (entry) => { const range = stationRangeForEntry(entry); return range ? range.to - range.from : 0; };
 				const within = (inner, outer, slack) => inner && outer && inner.from >= outer.from - slack && inner.to <= outer.to + slack;
-				const compatibleSegment = (a, b) => !a.segment || !b.segment || a.segment === b.segment;
+				// Landshut names the Abschnitt as a range (074-082) on every file,
+				// Eifel only its start km (139, 142, 148) while the one Kilometerlinie
+				// K139 runs through all of them: a start-only segment is compatible
+				// with any reference and project() decides by range and geometry.
+				const compatibleSegment = (a, b) => !a.segment || !b.segment || a.segment === b.segment || !a.segment.includes("-") || !b.segment.includes("-");
 				const polylines = new Map();
 				const polylineOf = (reference) => {
 					if (!polylines.has(reference)) polylines.set(reference, referenceStationPolyline(reference));
@@ -46219,6 +46266,35 @@ xlsx/xlsx.mjs:
 			});
 			document.addEventListener("keydown", (event) => {
 				if (event.key === "Escape") for (const menu of document.querySelectorAll("details.menu[open]")) menu.removeAttribute("open");
+			});
+			// The open leaf goes to the top layer (Popover API) and sits under its
+			// summary, right-aligned, clamped to the viewport. Measured before:
+			// the Ebenen leaf was clipped by the map panel (contain: paint), the
+			// Daten leaf hidden behind the welcome card, the Annahmen leaf 384 px
+			// off the left edge. The details element stays the one source of
+			// open/closed; the popover follows it.
+			for (const menu of document.querySelectorAll("details.menu")) {
+				const body = menu.querySelector(".menu-body");
+				if (!body || typeof body.showPopover !== "function") continue;
+				menu.addEventListener("toggle", () => {
+					if (!menu.open) {
+						if (body.matches(":popover-open")) body.hidePopover();
+						return;
+					}
+					const anchor = menu.querySelector("summary").getBoundingClientRect();
+					body.showPopover();
+					const width = body.offsetWidth;
+					body.style.left = `${Math.max(8, Math.min(anchor.right - width, window.innerWidth - width - 8))}px`;
+					// Below the summary; above it when the bar sits at the bottom (the
+					// diagram's) and the leaf would leave the window.
+					const below = anchor.bottom + 4;
+					const fits = below + body.offsetHeight <= window.innerHeight - 8;
+					body.style.top = `${fits ? below : Math.max(8, anchor.top - 4 - body.offsetHeight)}px`;
+					body.style.maxHeight = `${Math.max(120, (fits ? window.innerHeight - below : anchor.top - 4) - 8)}px`;
+				});
+			}
+			window.addEventListener("resize", () => {
+				for (const menu of document.querySelectorAll("details.menu[open]")) menu.removeAttribute("open");
 			});
 
 			// ---- Erscheinungsbild ------------------------------------------------------
