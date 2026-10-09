@@ -798,6 +798,12 @@
 				color: GrayText;
 				font-size: 0.8rem;
 			}
+			.tile-consent { position: absolute; left: 50%; top: 50%; z-index: 6; width: min(26rem, calc(100% - 2rem)); padding: var(--sp-4); border: 1px solid var(--hairline); border-radius: var(--r); background: var(--panel-glass); backdrop-filter: blur(14px); box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.18); transform: translate(-50%, -50%); font-size: var(--fs-2); line-height: 1.45; }
+			.tile-consent p { margin: 0 0 var(--sp-2); }
+			.tile-consent-title { font-weight: 650; font-size: var(--fs-3); }
+			.tile-consent code { font-size: var(--fs-1); }
+			.tile-consent-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-2); }
+			.tile-consent-hint { color: var(--secondary); font-size: var(--fs-1); }
 			#mapEmpty {
 				position: relative;
 				inset: auto;
@@ -1650,7 +1656,7 @@
 				<div class="welcome">
 					<p class="welcome-eyebrow">Technet-Datei-Viewer</p>
 					<h2>Bahnvermessung sehen, bevor jemand sie rechnet.</h2>
-					<p class="welcome-sub">Trassen, Gradienten und Überhöhungen aus GND, VermEsn und landXML — als Karte, Spurplan, Lieferungsbild, Verknüpfungsbild und 7L-Diagramm. Alles im Browser, nichts verlässt den Rechner.</p>
+					<p class="welcome-sub">Trassen, Gradienten und Überhöhungen aus GND, VermEsn und landXML — als Karte, Spurplan, Lieferungsbild, Verknüpfungsbild und 7L-Diagramm. Alles im Browser. Nur die Kartenkacheln von OpenStreetMap und OpenRailwayMap kommen von außen, und nur, wenn du es erlaubst.</p>
 					<div class="welcome-formats"><span>GND · MDB, DBB</span><span>VermEsn · TRA, GRA</span><span>landXML</span><span>ZIP, Ordner</span></div>
 					<input id="files" type="file" multiple />
 					<input id="folderFiles" type="file" webkitdirectory multiple />
@@ -1696,7 +1702,8 @@
 							<details id="layersMenu" class="menu">
 								<summary>Ebenen ▾</summary>
 								<div class="menu-body" popover="manual">
-									<button id="baseMapLoad" type="button" class="menu-item" aria-pressed="false">OpenRailwayMap ein</button>
+									<button id="baseMapLoad" type="button" class="menu-item" aria-pressed="false" title="Lädt Kacheln von OpenStreetMap und OpenRailwayMap — fragt vorher, weil der Ausschnitt die Projektlage verrät">OpenRailwayMap ein</button>
+									<button id="tileConsentForget" type="button" class="hidden menu-item" title="Die in diesem Browser gemerkte Erlaubnis für Kartenkacheln zurücknehmen">Kachel-Erlaubnis vergessen</button>
 									<label id="railwayOpacityControl" class="hidden menu-item">Karte
 											<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
 											<span id="railwayOpacityValue">15 %</span>
@@ -1714,6 +1721,12 @@
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
 						<div id="maplibreMap" class="hidden" aria-label="OpenRailwayMap mit geladenen Trassen"></div>
 						<div id="mapEmpty" class="hidden"></div>
+						<div id="tileConsent" class="tile-consent hidden" role="dialog" aria-label="Kartenkacheln von außen laden?">
+							<p class="tile-consent-title">Kartenkacheln von außen laden?</p>
+							<p>Die Kartenebene holt Kacheln von <code>tile.openstreetmap.org</code> und <code>tiles.openrailwaymap.org</code>. Die Kachelkoordinaten nennen diesen Servern den Ausschnitt, also die Lage des Projekts. Alles andere bleibt im Browser.</p>
+							<div class="tile-consent-actions"><button type="button" id="tileConsentOnce" class="import-button primary">Jetzt laden</button><button type="button" id="tileConsentAlways" class="import-button">Immer in diesem Browser</button><button type="button" id="tileConsentNo" class="import-button">Ohne Karte weiter</button></div>
+							<p class="tile-consent-hint">Die Lageansicht ohne Kacheln zeigt die Trassen weiterhin; „Immer“ lässt sich im Menü „Ebenen“ zurücknehmen.</p>
+						</div>
 						<div id="mapLegend" class="legend legend-card hidden" aria-label="Kartenlegende">
 							<span class="legend-item" style="--swatch:#00a651">DB_REF (bestätigt)</span>
 							<span class="legend-item" style="--swatch:#e6007e">nicht DB_REF (vermutet)</span>
@@ -39228,6 +39241,8 @@ xlsx/xlsx.mjs:
 			const crsNote = document.querySelector("#crsNote");
 			const gisAssign = document.querySelector("#gisAssign");
 			const mapEmpty = document.querySelector("#mapEmpty");
+			const tileConsentCard = document.querySelector("#tileConsent");
+			const tileConsentForget = document.querySelector("#tileConsentForget");
 			const baseMapLoad = document.querySelector("#baseMapLoad");
 			const railwayOpacityControl = document.querySelector("#railwayOpacityControl");
 			const mapLegend = document.querySelector("#mapLegend");
@@ -43147,12 +43162,56 @@ xlsx/xlsx.mjs:
 				});
 			}
 
+			// ---- Kartenkacheln: nur mit Einwilligung ------------------------------
+			// The one thing that leaves the browser: tile requests to OpenStreetMap
+			// and OpenRailwayMap carry z/x/y, i.e. the viewport, i.e. where the
+			// project lies. So no tile loads without a yes -- once for this
+			// session, or remembered in this browser (localStorage). "Ohne Karte
+			// weiter" keeps the SVG Lageansicht, which asks nothing of anyone. The
+			// automatic switch-on after an import asks the same question; the card
+			// waits in the map pane until it is answered.
+			const TILE_CONSENT_KEY = "technetViewer.tiles";
+			let tileConsent = (() => { try { return localStorage.getItem(TILE_CONSENT_KEY) === "allowed" ? "allowed" : null; } catch { return null; } })();
+			let tileConsentPending = null;
+			let tileConsentResolve = null;
+			function askTileConsent() {
+				if (tileConsent === "allowed") return Promise.resolve(true);
+				if (tileConsentPending) return tileConsentPending;
+				tileConsentCard.classList.remove("hidden");
+				tileConsentPending = new Promise((resolve) => { tileConsentResolve = resolve; });
+				return tileConsentPending;
+			}
+			function answerTileConsent(answer) {
+				tileConsentCard.classList.add("hidden");
+				if (answer === "always") {
+					tileConsent = "allowed";
+					try { localStorage.setItem(TILE_CONSENT_KEY, "allowed"); } catch { /* no storage */ }
+					tileConsentForget.classList.remove("hidden");
+				} else if (answer === "once") {
+					tileConsent = "allowed";
+				} else {
+					railwayMapPreference = "off";
+				}
+				const resolve = tileConsentResolve;
+				tileConsentPending = null;
+				tileConsentResolve = null;
+				resolve?.(answer !== "no");
+			}
+			function forgetTileConsent() {
+				tileConsent = null;
+				try { localStorage.removeItem(TILE_CONSENT_KEY); } catch { /* no storage */ }
+				tileConsentForget.classList.add("hidden");
+				status.textContent = "Kachel-Erlaubnis vergessen; die Karte fragt beim nächsten Mal wieder.";
+			}
+			if (tileConsent === "allowed") tileConsentForget.classList.remove("hidden");
 			async function toggleRailwayMap({ automatic = false } = {}) {
 				if (railwayMapActive) {
 					if (!automatic) railwayMapPreference = "off";
 					deactivateRailwayMap();
 					return;
 				}
+				if (!(await askTileConsent())) return;
+				if (railwayMapActive) return;
 				if (!automatic) railwayMapPreference = "on";
 				baseMapLoad.disabled = true;
 				baseMapLoad.textContent = "OpenRailwayMap wird geladen …";
@@ -47029,6 +47088,10 @@ xlsx/xlsx.mjs:
 			mapZoomIn.addEventListener("click", () => zoomMap(0.8));
 			gisAssign.addEventListener("click", () => setViewMode("listing"));
 			baseMapLoad.addEventListener("click", () => toggleRailwayMap());
+			document.querySelector("#tileConsentOnce").addEventListener("click", () => answerTileConsent("once"));
+			document.querySelector("#tileConsentAlways").addEventListener("click", () => answerTileConsent("always"));
+			document.querySelector("#tileConsentNo").addEventListener("click", () => answerTileConsent("no"));
+			tileConsentForget.addEventListener("click", forgetTileConsent);
 			precisionToggle.addEventListener("click", () => togglePrecisionMode());
 			precisionKindSelect.addEventListener("change", () => {
 				rejectListToggle.title = `Alle Segmente über σ_r = ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (Ril 883.3100) gemeldeter ${precisionKind() === "height" ? "Höhengenauigkeit (meanHeightError)" : "Punktgenauigkeit (meanPointError)"}, zur Einzelprüfung`;
