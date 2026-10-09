@@ -427,6 +427,7 @@
 			.legend-item.swatch-box::before { width: 0.62em; height: 0.58em; border-radius: 2px; }
 			.legend-item.swatch-dot::before { width: 0.6em; height: 0.6em; border-radius: 50%; }
 			.legend-item.swatch-tri::before { width: 0; height: 0; border-radius: 0; background: none; border-left: 0.34em solid transparent; border-right: 0.34em solid transparent; border-bottom: 0.6em solid var(--swatch); }
+			.legend-source { flex-basis: 100%; margin-top: var(--sp-1); font-size: var(--fs-0); color: var(--secondary); }
 			.legend-card { position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 3; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--hairline); border-radius: var(--r); background: var(--panel-glass); backdrop-filter: blur(12px); box-shadow: 0 0.3rem 1rem rgba(0,0,0,0.12); color: CanvasText; pointer-events: none; }
 			#diagramPanel {
 				display: grid;
@@ -1690,8 +1691,8 @@
 							<span id="crsNote" class="chip"></span>
 							<button id="gisAssign" class="hidden" type="button">Lage zuordnen</button>
 							<span class="tb-spacer"></span>
-							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Prototyp: alle Segmente über 3 mm gemeldeter Punktgenauigkeit (meanPointError), zur Einzelprüfung">Ausschuss <span id="rejectListCount">0</span></button>
-							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste (Prototyp)"></div>
+							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Alle Segmente über σ_r = 5 mm gemeldeter Punktgenauigkeit (meanPointError, Ril 883.3100), zur Einzelprüfung">Ausschuss <span id="rejectListCount">0</span></button>
+							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste nach Ril 883.3100"></div>
 							<details id="layersMenu" class="menu">
 								<summary>Ebenen ▾</summary>
 								<div class="menu-body" popover="manual">
@@ -1701,7 +1702,7 @@
 											<span id="railwayOpacityValue">15 %</span>
 									</label>
 									<button id="kmLineToggle" type="button" class="menu-item" aria-pressed="true" title="Kilometerlinien auf der Karte und im Diagramm ein- oder ausblenden — die Gleise bleiben">km-Linien aus</button>
-									<button id="precisionToggle" class="hidden menu-item" type="button" aria-pressed="false" title="Prototyp: Gleis nach gemeldeter Genauigkeit einfärben, statt nach DB_REF/vermutet — Lage (meanPointError, MP) oder Höhe (meanHeightError, MH)">Präzision ein</button>
+									<button id="precisionToggle" class="hidden menu-item" type="button" aria-pressed="false" title="Gleis nach gemeldeter Genauigkeit einfärben (Skala nach Ril 883.3100), statt nach DB_REF/vermutet — Lage (meanPointError, MP) oder Höhe (meanHeightError, MH)">Präzision ein</button>
 									<select id="precisionKind" class="hidden menu-item" aria-label="Genauigkeit: Lage oder Höhe" title="Lage: mittlerer Punktfehler der Trassenpunkte (GND MP). Höhe: mittlerer Höhenfehler der Gradientenpunkte (GND MH), auf die Trasse gelegt über den nächsten Gradientenpunkt in Stationsrichtung"><option value="point">Genauigkeit: Lage (MP)</option><option value="height">Genauigkeit: Höhe (MH)</option></select>
 									<button id="mapFilterToggle" type="button" class="menu-item" aria-pressed="false" aria-haspopup="true">Filter …</button>
 									<button id="reopenText" class="hidden menu-item" type="button">Text</button>
@@ -1717,14 +1718,7 @@
 							<span class="legend-item" style="--swatch:#00a651">DB_REF (bestätigt)</span>
 							<span class="legend-item" style="--swatch:#e6007e">nicht DB_REF (vermutet)</span>
 						</div>
-						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende (Prototyp)">
-							<span class="legend-item" style="--swatch:#00c853">&lt; 1 cm</span>
-							<span class="legend-item" style="--swatch:#8bc34a">1–3 cm</span>
-							<span class="legend-item" style="--swatch:#ffeb3b">3–10 cm</span>
-							<span class="legend-item" style="--swatch:#ff9800">10–30 cm</span>
-							<span class="legend-item" style="--swatch:#d32f2f">&gt; 30 cm</span>
-							<span class="legend-item" style="--swatch:#8e8e93">keine Angabe</span>
-						</div>
+						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende nach Ril 883.3100"></div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
 							<div class="box-head"><span>Outbox</span></div>
@@ -39312,9 +39306,26 @@ xlsx/xlsx.mjs:
 			// is exactly the GWB question. Regelwert would be the target for a
 			// Neubau, Zustimmungswert needs the Zentrale; neither is modelled.
 			//
-			// Reject list: everything the GND reports as measured worse than this
-			// goes on the Ausschussliste, not just colored differently (Uwe's cut).
-			const PRECISION_REJECT_THRESHOLD = 0.003;
+			// Precision scale, calibrated on the Ril: 883.3100 (1) asks of the
+			// Aufnahme von Gleisen und Weichen a relative accuracy sigma_r = 5 mm
+			// in Lage and in Höhe (to the surrounding DB_REF-Festpunktfeld) and
+			// an absolute sigma_a,3D = 20 mm for the ETRF89 coordinate of the
+			// single point; 883.3000 (5) allows a GVP 10 mm in Lage (5 mm in
+			// Höhe). The GND's meanPointError / meanHeightError is the reported
+			// sigma of the measured point, so it is read against these: within
+			// sigma_r, within the GVP Lage, within sigma_a, beyond. The 3 mm
+			// cut before was a guess from the first data set.
+			const PRECISION_CLASSES = [
+				{ max: 0.005, color: "#00c853", label: "≤ 5 mm", note: "σ_r Lage/Höhe, Ril 883.3100" },
+				{ max: 0.01, color: "#8bc34a", label: "≤ 10 mm", note: "σ_r,2D der GVP-Lage, Ril 883.3000" },
+				{ max: 0.02, color: "#ffeb3b", label: "≤ 20 mm", note: "σ_a,3D absolut, Ril 883.3100" },
+				{ max: Infinity, color: "#d32f2f", label: "> 20 mm", note: "außerhalb Ril 883.3100" },
+			];
+			const PRECISION_UNKNOWN_COLOR = "#8e8e93";
+			// Reject list: everything the GND reports as measured worse than
+			// sigma_r goes on the Ausschussliste, not just colored differently.
+			const PRECISION_REJECT_THRESHOLD = PRECISION_CLASSES[0].max;
+			const PRECISION_SOURCE = "Ril 883.3100 (1), 883.3000 (5)";
 			// Überhöhungsfehlbetrag in the speed formula v = sqrt(r (u + uf) / 11.8):
 			// 800.0110 Tab. 5, zul uf = 130 mm is the Ermessensgrenze for Gleis;
 			// 150 mm only for vehicles with the corresponding Zulassung (Fn. 18)
@@ -42599,7 +42610,7 @@ xlsx/xlsx.mjs:
 					.setHTML(
 						`<strong>${precisionKind() === "height" ? "Höhengenauigkeit" : "Punktgenauigkeit"}: ${xml(formatPrecisionValue(properties.precisionValue))}</strong>` +
 						(stationLabel ? `<br>${xml(stationLabel)}` : "") +
-						`<br><span style="opacity:.7">(${precisionKind() === "height" ? "GND meanHeightError am nächsten Gradientenpunkt" : "GND meanPointError"}, Prototyp)</span>`,
+						`<br><span style="opacity:.7">(${precisionKind() === "height" ? "GND meanHeightError am nächsten Gradientenpunkt" : "GND meanPointError"}, Skala nach Ril 883.3100)</span>`,
 					)
 					.addTo(maplibreMap);
 				const entry = precisionEntryById.get(String(properties.id));
@@ -42616,13 +42627,34 @@ xlsx/xlsx.mjs:
 					.sort((a, b) => b.properties.precisionValue - a.properties.precisionValue);
 			}
 
-			function precisionSwatchColor(value) {
-				if (value <= 0.003) return "#00c853";
-				if (value <= 0.01) return "#8bc34a";
-				if (value <= 0.03) return "#ffeb3b";
-				if (value <= 0.1) return "#ff9800";
-				return "#d32f2f";
+			function precisionStepExpression() {
+				const expression = ["step", ["get", "precisionValue"], PRECISION_CLASSES[0].color];
+				for (let index = 1; index < PRECISION_CLASSES.length; index += 1) expression.push(PRECISION_CLASSES[index - 1].max, PRECISION_CLASSES[index].color);
+				return expression;
 			}
+			function precisionSwatchColor(value) {
+				return (PRECISION_CLASSES.find((cls) => value <= cls.max) ?? PRECISION_CLASSES.at(-1)).color;
+			}
+			// The legend is the table, so both say the same thing.
+			function renderPrecisionLegend() {
+				const items = PRECISION_CLASSES.map((cls) => {
+					const item = document.createElement("span");
+					item.className = "legend-item";
+					item.style.setProperty("--swatch", cls.color);
+					item.textContent = cls.label;
+					item.title = cls.note;
+					return item;
+				});
+				const unknown = document.createElement("span");
+				unknown.className = "legend-item";
+				unknown.style.setProperty("--swatch", PRECISION_UNKNOWN_COLOR);
+				unknown.textContent = "keine Angabe";
+				const source = document.createElement("span");
+				source.className = "legend-source";
+				source.textContent = `σ nach ${PRECISION_SOURCE}`;
+				precisionLegend.replaceChildren(...items, unknown, source);
+			}
+			renderPrecisionLegend();
 
 			// Apple Maps-style scoping: a pin list narrows to what's actually on
 			// screen as you pan/zoom, instead of making the reader match rows
@@ -42654,7 +42686,7 @@ xlsx/xlsx.mjs:
 			function buildRejectListCsv() {
 				const items = collectRejectList();
 				const lines = [
-					`Ausschussliste (Prototyp) - ${precisionKindLabel()} > ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)}`,
+					`Ausschussliste - ${precisionKindLabel()} > σ_r ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (Ril 883.3100)`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
 					"",
 					["Datei", "Objekt", "Station", precisionKind() === "height" ? "Hoehengenauigkeit_m" : "Punktgenauigkeit_m", "Easting", "Northing"].join(";"),
@@ -42946,8 +42978,15 @@ xlsx/xlsx.mjs:
 				precisionModeActive = !precisionModeActive;
 				const confidenceLayers = ["technet-quality-halo", "technet-lines-halo", "technet-lines", "technet-kilometer-lines", "technet-lines-inferred", "technet-kilometer-lines-inferred"];
 				const precisionLayers = ["technet-precision-lines", "technet-precision-unknown"];
-				for (const id of confidenceLayers) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "none" : "visible");
-				for (const id of precisionLayers) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "visible" : "none");
+				// Toggled while the style still loads (a slow tile host, a hidden tab),
+				// setLayoutProperty throws "Style is not done loading"; the layers then
+				// follow the state as soon as the style is there.
+				const applyVisibility = () => {
+					for (const id of confidenceLayers) if (maplibreMap.getLayer(id)) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "none" : "visible");
+					for (const id of precisionLayers) if (maplibreMap.getLayer(id)) maplibreMap.setLayoutProperty(id, "visibility", precisionModeActive ? "visible" : "none");
+				};
+				if (maplibreMap.isStyleLoaded()) applyVisibility();
+				else maplibreMap.once("styledata", applyVisibility);
 				precisionToggle.setAttribute("aria-pressed", String(precisionModeActive));
 				precisionToggle.textContent = precisionModeActive ? "Präzision aus" : "Präzision ein";
 				precisionKindSelect.classList.toggle("hidden", !precisionModeActive);
@@ -43242,19 +43281,9 @@ xlsx/xlsx.mjs:
 							layout: { visibility: "none" },
 							filter: ["!=", ["get", "precisionValue"], null],
 							paint: {
-								"line-color": [
-									// Flat solid green through 3mm -- the typical DB survey pass
-									// threshold -- so the common case reads as unambiguous "good"
-									// instead of a yellow-green blend, then grades through the
-									// legend buckets.
-									"interpolate", ["linear"], ["get", "precisionValue"],
-									0, "#00c853",
-									0.003, "#00c853",
-									0.01, "#8bc34a",
-									0.03, "#ffeb3b",
-									0.1, "#ff9800",
-									0.3, "#d32f2f",
-								],
+								// The same classes as the SVG and the legend: a step per Ril
+								// class, no blend between them.
+								"line-color": precisionStepExpression(),
 								"line-width": ["case", ["==", ["get", "active"], 1], 5, 3],
 								"line-opacity": 0.95,
 							},
@@ -43266,7 +43295,7 @@ xlsx/xlsx.mjs:
 							layout: { visibility: "none" },
 							filter: ["==", ["get", "precisionValue"], null],
 							paint: {
-								"line-color": "#8e8e93",
+								"line-color": PRECISION_UNKNOWN_COLOR,
 								"line-width": ["case", ["==", ["get", "active"], 1], 5, 3],
 								"line-opacity": 0.7,
 								"line-dasharray": [2, 2],
@@ -47002,7 +47031,7 @@ xlsx/xlsx.mjs:
 			baseMapLoad.addEventListener("click", () => toggleRailwayMap());
 			precisionToggle.addEventListener("click", () => togglePrecisionMode());
 			precisionKindSelect.addEventListener("change", () => {
-				rejectListToggle.title = `Prototyp: alle Segmente über 3 mm gemeldeter ${precisionKind() === "height" ? "Höhengenauigkeit (meanHeightError)" : "Punktgenauigkeit (meanPointError)"}, zur Einzelprüfung`;
+				rejectListToggle.title = `Alle Segmente über σ_r = ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (Ril 883.3100) gemeldeter ${precisionKind() === "height" ? "Höhengenauigkeit (meanHeightError)" : "Punktgenauigkeit (meanPointError)"}, zur Einzelprüfung`;
 				precisionPopup?.remove(); precisionPopup = null;
 				if (maplibreMap?.getSource("technet-precision")) maplibreMap.getSource("technet-precision").setData(precisionFeatureCollection());
 				renderRejectList();
