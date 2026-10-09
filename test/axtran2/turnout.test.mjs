@@ -144,3 +144,68 @@ test("the Weicheneinrechnung of an Innenbogenweiche: the toe on the curve, the b
 	assert.ok(Math.abs(turn - bent.length * bent.curvature) < 1e-9, "the bent branch turns by its own curvature times its length");
 	assert.ok(run.diagnostics.endPoseDistance < 1e-6 && run.diagnostics.softResidualRms < 1, `rms ${run.diagnostics.softResidualRms}`);
 });
+
+test("a crossing turnout: two tracks crossing at the angle, the connecting arc tangent to both", async () => {
+	const { crossing, crossingElement, STANDARD_CROSSINGS } = await import(new URL("TurnoutCatalogue.js", BASE));
+	const dkw = crossing({ designation: "DKW 60-190-1:9", side: "left" });
+	assert.equal(dkw.kind, "DKW");
+	const alpha = Math.atan(1 / 9);
+	assert.ok(Math.abs(dkw.centreOffset - 190 * Math.tan(alpha / 2)) < 1e-12);
+	assert.ok(Math.abs(dkw.straightLength - 2 * dkw.centreOffset) < 1e-12);
+	assert.ok(Math.abs(dkw.curvedLength - 190 * alpha) < 1e-12);
+	assert.equal(dkw.status, "candidate");
+	// both routes from one entry pose, walked as kernel chains: the straight
+	// passes the crossing centre in its middle, the arc ends on the crossing
+	// track - the line through the centre at the crossing angle - at the
+	// same distance beyond the centre as the tangent point lies before it
+	const entry = { x: 10, y: -3, theta: 0.3 };
+	const walk = (element) => createAlignmentPoseJacobian({ elements: [element], startPose: entry, momentsFor });
+	const straight = walk(crossingElement(dkw, { route: "straight", prefix: "K1" }));
+	const curved = walk(crossingElement(dkw, { route: "curved", prefix: "K1" }));
+	const centre = straight.poseAt(dkw.centreOffset);
+	const end = curved.poseAt(curved.stationAfter(0));
+	assert.ok(Math.abs(end.theta - (entry.theta + alpha)) < 1e-12, "the curve leaves at the crossing angle, to the left");
+	const beyond = { x: end.x - centre.x, y: end.y - centre.y };
+	const crossingTrack = { x: Math.cos(entry.theta + alpha), y: Math.sin(entry.theta + alpha) };
+	const along = beyond.x * crossingTrack.x + beyond.y * crossingTrack.y;
+	const across = -beyond.x * crossingTrack.y + beyond.y * crossingTrack.x;
+	assert.ok(Math.abs(across) < 1e-9, `the arc's end lies on the crossing track: ${across} m off it`);
+	assert.ok(Math.abs(along - dkw.centreOffset) < 1e-9, `${along} beyond the centre, against ${dkw.centreOffset}`);
+	assert.equal(crossing({ designation: "EKW 49-190-1:9", side: "right" }).curvature, -1 / 190);
+	for (const designation of STANDARD_CROSSINGS) assert.ok(crossing({ designation, side: "left" }).curvedLength > 20, designation);
+	assert.throws(() => crossing({ designation: "EW 60-500-1:12", side: "left" }), /EKW, DKW/);
+	assert.throws(() => crossingElement(dkw, { route: "branch" }), /route/);
+});
+
+test("the Einrechnung of a DKW: its straight held between two fitted connections, the crossing centre held", async () => {
+	const { crossing, crossingElement } = await import(new URL("TurnoutCatalogue.js", BASE));
+	const dkw = crossing({ designation: "DKW 60-190-1:9", side: "right" });
+	const through = crossingElement(dkw, { route: "straight", prefix: "K1" });
+	const elements = [
+		{ id: "E0", type: "straight", length: 40 },
+		{ id: "E1", type: "transition", length: 70, family: "bloss" },
+		{ id: "E2", type: "arc", length: 180, curvature: 1 / 900 },
+		{ id: "E3", type: "transition", length: 70, family: "bloss" },
+		{ id: "E4", type: "straight", length: 60 },
+		{ id: "E5", type: "straight", length: through.length, held: true },
+		{ id: "E6", type: "straight", length: 60 },
+		{ id: "E7", type: "transition", length: 60, family: "bloss" },
+		{ id: "E8", type: "arc", length: 200, curvature: -1 / 800 },
+		{ id: "E9", type: "straight", length: 150 },
+	];
+	const chain = createAlignmentPoseJacobian({ elements, startPose, momentsFor });
+	// the crossing centre is the point the layout fixes: held as the pose
+	// at the crossing element's entry, from which the centre follows
+	const entry = chain.poseAt(chain.stationAfter(4));
+	const sc = await createTraScenario({ name: "dkw-60-190", startPose, elements, unsupported: [], kinks: 0 }, { pointSpacing: 10, heldPoses: [{ afterElement: "E4", ...entry }] });
+	assert.ok(!sc.codec.freeNames.some((name) => name.startsWith("E5.")), "the crossing's straight has no free quantity");
+	const run = solveAlignmentProblem({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, objective: "points", maxIterations: 300 });
+	assert.ok(run.ok, `${run.status} ${run.diagnostics.reason ?? ""}`);
+	const fitted = sc.analyticJacobian(sc.codec.decode(run.candidate.variables));
+	const at = fitted.poseAt(fitted.stationAfter(4));
+	assert.ok(Math.hypot(at.x - entry.x, at.y - entry.y) < 1e-6 && Math.abs(at.theta - entry.theta) < 1e-8, "the crossing's entry is where it was held");
+	const centre = fitted.poseAt(fitted.stationAfter(4) + dkw.centreOffset);
+	const truthCentre = chain.poseAt(chain.stationAfter(4) + dkw.centreOffset);
+	assert.ok(Math.hypot(centre.x - truthCentre.x, centre.y - truthCentre.y) < 1e-6, "and so is the crossing centre");
+	assert.ok(run.diagnostics.endPoseDistance < 1e-6 && run.diagnostics.softResidualRms < 1, `rms ${run.diagnostics.softResidualRms}`);
+});
