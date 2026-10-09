@@ -245,3 +245,35 @@ pose - the arc's end lies on the crossing track through the centre to
 before it. The Einrechnung of its straight route between two fitted
 connections, the crossing's entry held, meets entry and centre to 1e-6 m
 and the end pose to 1e-6.
+
+## The AXTRAN mark: 22 km, 5 011 points (2026-10-10)
+
+The original AXTRAN's user remembers 20 km with 5 000 survey points as
+the size it handled. The scenario for that mark is 1280_043-049_KM:
+22 km, 164 elements, 228 free quantities, points every 4.4 m giving
+5 011 points, the points fit alone with the end pose held (the
+scenario's point cap lifted for the run; the cap stays in the file).
+A profile of the first run (2026-09-25, 36 min on the code of that day)
+put two thirds of the time into `Alignment2D.poseAt`, which walked every
+element from the start for every query, and `_findSegment`, which walked
+them from the end.
+
+PR #67 replaces both walks with a binary search over the element
+offsets and ends. The boundary rules are unchanged - the curvature at a
+shared station belongs to the last element starting there, the pose to
+the first ending there, zero-length elements included - and a test pins
+the search to the walks it replaced. Measured:
+
+| | old walk | binary search |
+|---|---|---|
+| `poseAt` per call, 231-element production alignment | 1.67 µs | 0.21 µs |
+| `curvatureAt` per call | 0.11 µs | 0.06 µs |
+| corpus 0–235, both objectives, 470 rows | identical | identical |
+| corpus points run, parallel load | 140 s | 101 s |
+| AXTRAN mark, same day, same scenario | 1 429 s | 775 s |
+
+The mark's two runs agree in every digit: `within_tolerance` at
+iteration 321, rms 0.193 m, end pose 8.8e-7 m. The search changes the
+time and nothing else. What remains of the 775 s is the fit's own work:
+5 011 feet per iteration on the production geometry and the Jacobian
+chain over 228 quantities.
