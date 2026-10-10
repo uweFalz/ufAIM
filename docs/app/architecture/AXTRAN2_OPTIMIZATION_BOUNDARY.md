@@ -138,25 +138,42 @@ Diagnostics may include:
 
 ## SOLVER STATUS
 
-Measured, not experimental (state of 2026-09-12; the block above it stood
-from before #22 and was stale).
+Measured, not experimental (state of 2026-10-11; the block of 2026-09-12
+is kept in git history).
 
 Known current state:
 
 - SQP with Powell's relaxation, a Fletcher-Leyffer filter with the
   Wächter-Biegler switching condition, a box trust region, second-order
-  correction, BFGS or Gauss-Newton with a structured secant, restoration
-  on verdict (docs/app/architecture/AXTRAN2_*.md)
-- every end of a solve is a named verdict: converged, stationary,
-  infeasible_subproblem, restoration_failed, line_search_failed,
-  qp_failed, infeasible_stationary, max_iterations
+  correction on the equalities (closure 0.1), BFGS or Gauss-Newton with a
+  structured secant and the `auto` ladder, restoration on verdict
+  (docs/app/architecture/AXTRAN2_*.md)
+- every end of a solve is a named verdict: converged, stationary with the
+  reason within_tolerance (every point within its tolerance, the rest
+  undetermined by the points), objective_settled, infeasible_subproblem,
+  restoration_failed, line_search_failed, qp_failed,
+  infeasible_stationary (creep), max_iterations
 - the subproblem's active set answers the true optimum
   (test/axtran2/qp-multipliers.test.mjs) and starts warm
+- constraints declared, not coded: end pose, hardened Zwangspunkte, held
+  elements, held poses at element joints (the turnout's tangent), kink
+  stations, design profile with inherited exceptions; objectives: points,
+  accumulated length under a points corridor, in lexicographic order with
+  a tier-0 gate that judges end pose, Zwangspunkte and held poses alike
+- turnouts as held elements from their designation (EW, IBW/ABW, EKW/DKW;
+  TurnoutCatalogue.js, status candidate: Ril 800.0120 not read)
 - measured on 248 as-built alignments (AXTRAN2_CORPUS_BASELINE_2026-09-10.md):
-  points 190, length 235, strict lexicographic order 123 of 235 without
-  the thirteen giants; the giants have no points verdict
+  points 235 of 235 and length 235 of 235 without the thirteen giants,
+  strict lexicographic order 225 of 235 (ten station tracks open); giants
+  points 13 of 13, strict 12 of 13
+- the AXTRAN mark, 22 km with 5 011 survey points and 228 free
+  quantities: within_tolerance in 775 s after the search in
+  Alignment2D.poseAt (#67)
+- the adapter tools/axtran2/fitTra.mjs: TRA, survey list and Zwangspunkte
+  in, fitted TRA with station equations, report and residual list out -
+  the one path with real points; the corpus fits synthetic ones
 - interactive use is bounded at 96 free variables
-  (AlignmentAxtranEvidenceService)
+  (AlignmentAxtranEvidenceService); held poses reach the service
 - the heritage intent, line by line: test/axtran2/heritage-lage.test.mjs
 
 Current solver status:
