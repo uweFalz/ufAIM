@@ -7,7 +7,8 @@ import { join } from "node:path";
 // The AXTRAN adapter: TRA, survey points and Zwangspunkte in, TRA and
 // residuals out. Three things are pinned: the lists are read as the field
 // writes them, a TRA survives the round trip through the writer, and a
-// perturbed file is fitted back onto points taken from the original.
+// perturbed file is fitted back onto points taken from the original. Station
+// equations (Kilometersprünge) travel through the round trip by distance.
 
 const TOOLS = new URL("../../tools/axtran2/", import.meta.url);
 const { parsePointList, PointListError } = await import(new URL("pointLists.mjs", TOOLS));
@@ -56,6 +57,7 @@ async function roundTripFiles() {
 	const picked = [];
 	let withKink = null;
 	let withJunction = null;
+	let withJump = null;
 	for (const file of files) {
 		let a;
 		try { a = await loadTraAlignment(file); } catch { continue; }
@@ -66,9 +68,10 @@ async function roundTripFiles() {
 		if (picked.length < 6 && a.elements.length <= 40) picked.push(file);
 		if (!withKink && a.kinks > 0) withKink = file;
 		if (!withJunction && a.insertedJunctionArcs > 0) withJunction = file;
-		if (picked.length >= 6 && withKink && withJunction) break;
+		if (!withJump && a.kilometreJumps.length > 0) withJump = file;
+		if (picked.length >= 6 && withKink && withJunction && withJump) break;
 	}
-	return [...new Set([...picked, withKink, withJunction].filter(Boolean))];
+	return [...new Set([...picked, withKink, withJunction, withJump].filter(Boolean))];
 }
 
 /** the curvature the chain gives a transition at one end: its neighbour's, where that is an arc or a straight */
@@ -93,13 +96,16 @@ test("a TRA survives the round trip through the writer", async () => {
 		const startStation = rowsRaw[1].station;
 		const startPose = { x: 0, y: 0, theta: original.startPose.theta };
 		const chain = createAlignmentPoseJacobian({ elements: original.elements, startPose, momentsFor });
+		const toWorld = (p) => ({ x: p.x + original.startPose.x, y: p.y + original.startPose.y, theta: p.theta });
 		const written = writeTra({
 			elements: original.elements,
-			poseOfElement: (i) => { const p = chain.entryPose(i); return { x: p.x + original.startPose.x, y: p.y + original.startPose.y, theta: p.theta }; },
-			endPose: { x: chain.endPose.x + original.startPose.x, y: chain.endPose.y + original.startPose.y, theta: chain.endPose.theta },
+			poseOfElement: (i) => toWorld(chain.entryPose(i)),
+			poseAtStation: (s) => toWorld(chain.poseAt(s)),
+			endPose: toWorld(chain.endPose),
+			jumps: original.kilometreJumps,
 			startStation,
 			header: bytes.subarray(0, 78),
-			cantAt: cantLookup(rowsRaw.slice(1), startStation),
+			cantAt: cantLookup(rowsRaw.slice(1), startStation, original.kilometreJumps),
 		});
 		const out = join(scratch, "rt-" + file.split("/").pop());
 		await writeFile(out, written.bytes);
@@ -139,6 +145,21 @@ test("a TRA survives the round trip through the writer", async () => {
 		if (original.mergedRecords === 0 && original.insertedJunctionArcs === 0 && original.stationEquations === 0) {
 			for (let i = 1; i < rowsRaw.length; i++) assert.equal(backRows[i].cantA, rowsRaw[i].cantA, `${name} record ${i}: cant`);
 		}
+		// station equations come back where they were, with the chainage they carry
+		const jumpsIn = rowsRaw.filter((r) => r.kindCode === 6);
+		const jumpsOut = backRows.filter((r) => r.kindCode === 6);
+		assert.equal(jumpsOut.length, jumpsIn.length, `${name}: ${jumpsIn.length} station equations in, ${jumpsOut.length} out`);
+		jumpsIn.forEach((r, k) => {
+			const w = jumpsOut[k];
+			assert.ok(Math.abs(w.station - r.station) < 1e-6, `${name} jump ${k}: station ${r.station} -> ${w.station}`);
+			assert.ok(Math.abs(w.arcLength - r.arcLength) < 1e-9, `${name} jump ${k}: delta`);
+			assert.ok(Math.hypot(w.easting - r.easting, w.northing - r.northing) < 2e-4, `${name} jump ${k}: point ${Math.hypot(w.easting - r.easting, w.northing - r.northing)} m off`);
+		});
+		// and where nothing was merged away, every record keeps its station
+		if (backRows.length === rowsRaw.length) {
+			for (let i = 1; i < rowsRaw.length; i++) assert.ok(Math.abs(backRows[i].station - rowsRaw[i].station) < 1e-6, `${name} record ${i}: station ${rowsRaw[i].station} -> ${backRows[i].station}`);
+		}
+		assert.equal(back.kilometreJumps.length, original.kilometreJumps.length, `${name}: the loader reads the jumps back`);
 	}
 });
 
@@ -186,8 +207,10 @@ test("a perturbed TRA is fitted back onto points taken from the original, with a
 	const written = writeTra({
 		elements: perturbed,
 		poseOfElement: (i) => { const p = chain.entryPose(i); return { ...world(p), theta: p.theta }; },
+		poseAtStation: (s) => { const p = chain.poseAt(s); return { ...world(p), theta: p.theta }; },
 		endPose: { ...world(chain.endPose), theta: chain.endPose.theta },
-		startStation: rowsRaw[1].station, header: bytes.subarray(0, 78), cantAt: cantLookup(rowsRaw.slice(1), rowsRaw[1].station),
+		jumps: original.kilometreJumps,
+		startStation: rowsRaw[1].station, header: bytes.subarray(0, 78), cantAt: cantLookup(rowsRaw.slice(1), rowsRaw[1].station, original.kilometreJumps),
 	});
 	const perturbedFile = join(scratch, "perturbed.TRA");
 	await writeFile(perturbedFile, written.bytes);

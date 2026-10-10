@@ -18,7 +18,7 @@
 // coordinate.
 //
 // The lists are read by tools/axtran2/pointLists.mjs, the file is written
-// by tools/axtran2/traWriter.mjs; the fit is the same problem the corpus
+// by tools/axtran2/traWriter.mjs, station equations included; the fit is the same problem the corpus
 // runs (test/axtran2/corpus/createTraScenario.mjs), with real points.
 
 import { readFile, writeFile } from "node:fs/promises";
@@ -180,10 +180,12 @@ export async function fitTra({
 	const written = writeTra({
 		elements: fitted,
 		poseOfElement: (i) => toWorld(fittedChain.entryPose(i)),
+		poseAtStation: (s) => toWorld(fittedChain.poseAt(s)),
 		endPose: toWorld(fittedChain.endPose),
+		jumps: loaded.kilometreJumps,
 		startStation,
 		header: bytes.subarray(0, 78),
-		cantAt: cantLookup(sourceRows, startStation),
+		cantAt: cantLookup(sourceRows, startStation, loaded.kilometreJumps),
 	});
 	const d = run.diagnostics;
 	const sumBefore = elements.reduce((s, e) => s + e.length, 0);
@@ -205,7 +207,7 @@ export async function fitTra({
 			before: { length: e.length, radius: radiusOf(e) }, after: { length: fitted[i].length, radius: radiusOf(fitted[i]) },
 		}))),
 		points: Object.freeze(rows),
-		output: Object.freeze({ records: written.records, dropped: written.dropped, stationEquationsNotWritten: loaded.stationEquations }),
+		output: Object.freeze({ records: written.records, dropped: written.dropped, stationEquations: loaded.kilometreJumps.length }),
 	});
 	return Object.freeze({ report, tra: written.bytes, run, fitted, csv: formatResidualList(rows) });
 }
@@ -251,7 +253,7 @@ async function main() {
 	console.log(`verdict ${verdict.status}${verdict.reason ? "/" + verdict.reason : ""} after ${verdict.iterations} iterations in ${verdict.seconds.toFixed(1)} s`);
 	console.log(`rms ${fit.rms?.toFixed(3)} (tolerance units), ${fit.outsideTolerance} outside, end pose ${fit.endPoseDistance?.toExponential(1)} m, length ${fit.lengthChange >= 0 ? "+" : ""}${fit.lengthChange?.toFixed(3)} m`);
 	for (const h of fit.hardPoints ?? []) console.log(`Zwangspunkt ${h.name}: residual ${h.residual?.toExponential(1)}`);
-	console.log(`written ${out} (${result.report.output.records} records${result.report.output.stationEquationsNotWritten ? `, ${result.report.output.stationEquationsNotWritten} station equations not carried` : ""})`);
+	console.log(`written ${out} (${result.report.output.records} records${result.report.output.stationEquations ? `, ${result.report.output.stationEquations} station equations` : ""})`);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

@@ -295,8 +295,12 @@ the kink at its end and R1 = 200 gon plus the clockwise turn (measured
 on every kink of the corpus), a transition's R1/R2 the neighbours' radii
 as the chain realises them - which repairs a record that disagreed with
 its own neighbour (6100_247-289 E212: R1 2468 m beside an arc of 275 m).
-Cants travel with their source records; station equations are not
-carried and the report counts them. The pose chain gained `entryPose(i)`
+Cants travel with their source records. Station equations (Kz 6) are put
+back by their distance along the alignment, with the station before the
+jump and the jump in L; since the loader merges the two straights a jump
+splits, the writer splits such an element into two records again at the
+jump's original offset (added 2026-10-11, eleven corpus files carry
+them, 1121_046-047_KM two). The pose chain gained `entryPose(i)`
 because at a shared station `poseAt` answers for the element that ends
 there, which after a kink is the pose before the turn.
 

@@ -27,8 +27,11 @@
 //   - cants U1/U2 are copied from the source record whose station range held
 //     the element's original start; the fit does not touch cant.
 //
-// What this writer cannot carry it says: station equations (Kz 6) are not
-// written, and the report lists them.
+// Station equations (Kz 6, Kilometersprung) are put back where they were:
+// by distance along the alignment, with the station before the jump and
+// the jump in L. The loader merges the two straights a jump splits, so an
+// element a jump falls inside is written as two records again, split at
+// the jump's original distance from the element's start.
 
 export const TRA_RECORD_BYTES = 78;
 
@@ -89,20 +92,34 @@ function curvatureBeside(elements, index, step) {
  * @param {{x,y,theta}} input.endPose       the pose after the last element, in world coordinates
  * @param {number} input.startStation    the file's station at the first element
  * @param {ArrayBuffer|Uint8Array|null} [input.header]  the source file's header record, copied; a blank one otherwise
- * @param {Function} [input.cantAt]       original start station of an element -> { cantA, cantE }
+ * @param {Function} [input.poseAtStation] station along the fitted elements -> pose, for the pieces a jump splits off
+ * @param {Array} [input.jumps]           [{ distance, delta }] station equations by original distance (loadTraAlignment: kilometreJumps)
+ * @param {Function} [input.cantAt]       original distance of a record's start -> { cantA, cantE }
  * @returns {{ bytes: Uint8Array, records: number, dropped: Array }}
  */
-export function writeTra({ elements, poseOfElement, endPose, startStation = 0, header = null, cantAt = null }) {
+export function writeTra({ elements, poseOfElement, endPose, poseAtStation = null, jumps = [], startStation = 0, header = null, cantAt = null }) {
 	if (!Array.isArray(elements) || elements.length === 0) error("NO_ELEMENTS", "writeTra needs elements");
 	if (typeof poseOfElement !== "function") error("NO_POSES", "writeTra needs poseOfElement(index)");
 	if (!endPose || ![endPose.x, endPose.y, endPose.theta].every(Number.isFinite)) error("NO_END_POSE", "writeTra needs the end pose");
+	if (jumps.length && typeof poseAtStation !== "function") error("NO_POSES", "writeTra needs poseAtStation(station) to place station equations");
 	const rows = [];
 	const dropped = [];
-	let station = 0;
-	let originalStation = 0;
+	const pending = [...jumps].sort((a, b) => a.distance - b.distance);
+	let station = 0;         // along the fitted elements
+	let chainage = 0;        // station with the jumps applied
+	let originalStation = 0; // along the original lengths, where the jumps are placed
+	const EPS = 1e-6;
+	// a Kz 6 row at the current point: the pose before the jump, the station before it
+	const jumpRow = (jump, pose) => {
+		rows.push({ jump, kindCode: KZ.stationEquation, radiusA: 0, radiusE: 0, easting: pose.x, northing: pose.y,
+			direction: directionOfHeading(pose.theta), station: startStation + chainage, arcLength: jump.delta, cantA: 0, cantE: 0 });
+		chainage += jump.delta;
+	};
 	for (let i = 0; i < elements.length; i++) {
 		const e = elements[i];
 		const originalLength = e.originalLength ?? e.length;
+		// jumps at this element's start (or left over from an element that could not hold one)
+		while (pending.length && pending[0].distance <= originalStation + EPS) jumpRow(pending.shift(), poseOfElement(i));
 		if (e.type === "kink") {
 			// folded into the straight before it; a kink without one is a
 			// zero-length Kz 5 record so the turn is not lost
@@ -112,7 +129,7 @@ export function writeTra({ elements, poseOfElement, endPose, startStation = 0, h
 			} else {
 				const pose = poseOfElement(i);
 				rows.push({ element: e, kindCode: KZ.kink, radiusA: 200 - (e.deltaDir ?? 0) * (200 / Math.PI), radiusE: 0,
-					easting: pose.x, northing: pose.y, direction: directionOfHeading(pose.theta), station: startStation + station, arcLength: 0,
+					easting: pose.x, northing: pose.y, direction: directionOfHeading(pose.theta), station: startStation + chainage, arcLength: 0,
 					...(cantAt ? cantAt(originalStation) : {}) });
 			}
 			continue;
@@ -122,30 +139,46 @@ export function writeTra({ elements, poseOfElement, endPose, startStation = 0, h
 			dropped.push({ id: e.id, why: "zero length" });
 			continue;
 		}
-		const pose = poseOfElement(i);
-		const row = {
-			element: e,
-			easting: pose.x, northing: pose.y, direction: directionOfHeading(pose.theta),
-			station: startStation + station, arcLength: e.length,
-			...(cantAt ? cantAt(originalStation) : {}),
-		};
-		if (e.type === "straight") { row.kindCode = KZ.straight; row.radiusA = 0; row.radiusE = 0; }
-		else if (e.type === "arc") { row.kindCode = KZ.arc; row.radiusA = radiusOfCurvature(e.curvature); row.radiusE = row.radiusA; }
+		const shape = {};
+		if (e.type === "straight") { shape.kindCode = KZ.straight; shape.radiusA = 0; shape.radiusE = 0; }
+		else if (e.type === "arc") { shape.kindCode = KZ.arc; shape.radiusA = radiusOfCurvature(e.curvature); shape.radiusE = shape.radiusA; }
 		else if (e.type === "transition") {
 			const kz = FAMILY_KZ[e.family];
 			if (kz === undefined) error("UNKNOWN_FAMILY", `no Kz for the transition family "${e.family}" of ${e.id}`);
-			row.kindCode = kz;
-			row.radiusA = radiusOfCurvature(curvatureBeside(elements, i, -1));
-			row.radiusE = radiusOfCurvature(curvatureBeside(elements, i, +1));
+			shape.kindCode = kz;
+			shape.radiusA = radiusOfCurvature(curvatureBeside(elements, i, -1));
+			shape.radiusE = radiusOfCurvature(curvatureBeside(elements, i, +1));
 		} else error("UNKNOWN_ELEMENT", `cannot write an element of type "${e.type}" (${e.id})`);
-		rows.push(row);
+		// jumps inside this element split it: a straight or an arc into pieces
+		// of the same shape at the jump's original offset from the start; a
+		// transition cannot be split and keeps its jumps for its end
+		const inside = [];
+		while (pending.length && pending[0].distance < originalStation + originalLength - EPS) {
+			const jump = pending.shift();
+			if (e.type === "transition") { dropped.push({ id: e.id, why: `station equation at ${jump.distance.toFixed(3)} m moved to the end of a transition` }); pending.unshift({ ...jump, distance: originalStation + originalLength }); break; }
+			inside.push(jump);
+		}
+		let localStart = 0;
+		const pieces = [...inside.map((j) => Math.min(e.length, Math.max(0, j.distance - originalStation))), e.length];
+		pieces.forEach((localEnd, k) => {
+			const length = localEnd - localStart;
+			if (length > EPS || k === 0) {
+				const pose = k === 0 ? poseOfElement(i) : poseAtStation(station + localStart);
+				rows.push({ element: e, ...shape, easting: pose.x, northing: pose.y, direction: directionOfHeading(pose.theta),
+					station: startStation + chainage, arcLength: length, ...(cantAt ? cantAt(originalStation + localStart) : {}) });
+				chainage += length;
+			}
+			if (k < inside.length) jumpRow(inside[k], poseAtStation(station + localEnd));
+			localStart = localEnd;
+		});
 		station += e.length;
 		originalStation += originalLength;
 	}
+	while (pending.length) jumpRow(pending.shift(), endPose);
 	const end = endPose;
 	const last = rows[rows.length - 1];
-	rows.push({ kindCode: last.kindCode === KZ.kink ? KZ.straight : last.kindCode, radiusA: last.kindCode === KZ.kink ? 0 : last.radiusE, radiusE: last.kindCode === KZ.kink ? 0 : last.radiusE,
-		easting: end.x, northing: end.y, direction: directionOfHeading(end.theta), station: startStation + station, arcLength: 0,
+	const lastShape = last.kindCode === KZ.kink || last.kindCode === KZ.stationEquation ? { kindCode: KZ.straight, radiusA: 0, radiusE: 0 } : { kindCode: last.kindCode, radiusA: last.radiusE, radiusE: last.radiusE };
+	rows.push({ ...lastShape, easting: end.x, northing: end.y, direction: directionOfHeading(end.theta), station: startStation + chainage, arcLength: 0,
 		cantA: last.cantE ?? 0, cantE: last.cantE ?? 0 });
 
 	const bytes = new Uint8Array((rows.length + 1) * TRA_RECORD_BYTES);
@@ -161,11 +194,15 @@ export function writeTra({ elements, poseOfElement, endPose, startStation = 0, h
 	return Object.freeze({ bytes, records: rows.length - 1, dropped: Object.freeze(dropped) });
 }
 
-/** the source rows' cant, looked up by the station an element started at in the source */
-export function cantLookup(sourceRows, startStation) {
+/**
+ * The source rows' cant, looked up by the station an element started at in
+ * the source: the distance along the original lengths plus the jumps before it.
+ */
+export function cantLookup(sourceRows, startStation, jumps = []) {
 	const rows = sourceRows.filter((r) => r.kindCode !== KZ.stationEquation && Number.isFinite(r.station));
 	return (originalStation) => {
-		const s = startStation + originalStation;
+		const jumped = jumps.filter((j) => j.distance <= originalStation + 1e-6).reduce((sum, j) => sum + j.delta, 0);
+		const s = startStation + originalStation + jumped;
 		let best = null;
 		for (const r of rows) {
 			if (r.station <= s + 1e-6 && (best === null || r.station >= best.station)) best = r;

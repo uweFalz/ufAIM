@@ -34,8 +34,9 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
 
 - the fitted TRA (`--out`, default `<name>_axtran2.TRA`): the same records
   with fitted lengths and radii, directions and stations recomputed, cants
-  copied from the source records. Station equations are not carried; the
-  report says how many there were.
+  copied from the source records, station equations (Kilometersprünge) put
+  back at their distance along the alignment with the chainage they carry;
+  an element a jump falls inside is written as two records again.
 - `--report` JSON: input summary, verdict (status, reason, iterations,
   seconds), rms in tolerance units, points outside tolerance, end-pose
   closure, Zwangspunkt residuals, every element before and after, every
