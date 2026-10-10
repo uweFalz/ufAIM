@@ -277,3 +277,34 @@ iteration 321, rms 0.193 m, end pose 8.8e-7 m. The search changes the
 time and nothing else. What remains of the 775 s is the fit's own work:
 5 011 feet per iteration on the production geometry and the Jacobian
 chain over 228 quantities.
+
+## The adapter: TRA and lists in, TRA and residuals out (2026-10-11)
+
+What the original AXTRAN's user did by hand - sort the survey points,
+prepare the start alignment, fit, compare in a spreadsheet - is one call:
+`tools/axtran2/fitTra.mjs` takes a Verm.esn TRA, a survey list and a
+Zwangspunkt list and writes the fitted TRA, a JSON report and a residual
+list (tools/axtran2/README.md). The TRA is the start and the end pose,
+the points are soft residuals in tolerance units, a Zwangspunkt is an
+equality on the lateral offset; the problem is the corpus scenario's with
+real points, in a local frame at the file's start.
+
+The writer (`traWriter.mjs`) is the loader's inverse: 78-byte records,
+R = -1/κ, direction clockwise from north, a Kz 5 record a straight with
+the kink at its end and R1 = 200 gon plus the clockwise turn (measured
+on every kink of the corpus), a transition's R1/R2 the neighbours' radii
+as the chain realises them - which repairs a record that disagreed with
+its own neighbour (6100_247-289 E212: R1 2468 m beside an arc of 275 m).
+Cants travel with their source records; station equations are not
+carried and the report counts them. The pose chain gained `entryPose(i)`
+because at a shared station `poseAt` answers for the element that ends
+there, which after a kink is the pose before the turn.
+
+`adapter.test.mjs`: the lists as the field writes them (decimal comma,
+`Nr;Y;X`, per-point tolerance, Zwangspunkt distance); the round trip
+over eight trusted corpus files including kinks and junction arcs
+(lengths, curvatures, families, kink turns and the end record to 1e-6);
+a perturbed file (±2 % lengths, ±3 % curvatures) fitted back onto points
+from the original with a Zwangspunkt 3 m off the axis, met to 1e-6. On
+the command line, 2631R142 with 131 synthetic points: 42 elements, 60
+free, `within_tolerance` @37 in 1.0 s, Zwangspunkt residual 8e-8.
