@@ -555,6 +555,7 @@
 			.diagram-curvature { stroke: #d14c32; }
 			.diagram-height { stroke: #2866c7; }
 			.diagram-cant { stroke: #2e8b57; }
+			.diagram-spacing { stroke: #8e44ad; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
 			.ivhw-rail-a { stroke: #2866c7; fill: #2866c7; }
@@ -41025,7 +41026,68 @@ xlsx/xlsx.mjs:
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
 					}));
 				}
+				// Gleisabstand: where both Streckengleise are assigned, the distance
+				// from the rechtes Gleis to the linkes, measured in the plane every
+				// 20 m, as a band of its own next to the Kilometerlinie. The IVMG
+				// (Ril 883.5220) carries it where two Gleise run side by side; the
+				// band ends where the nearest point of the other Gleis sits on one
+				// of its ends or farther than TRACK_SPACING_MAX_M away.
+				if (rightPresent && leftPresent) {
+					const rightSegments = segments("right");
+					const leftSegments = segments("left");
+					if (rightSegments.length && leftSegments.length) {
+						const series = clipPointsToRange(trackSpacingSeries(rightSegments.map((segment) => segment.alignment), leftSegments.map((segment) => segment.alignment)), selectedRange);
+						const band = makeBand("Gleisabstand · rechtes zu linkem Gleis e [m]", "diagram-spacing", series, { emptyNote: `kein linkes Gleis innerhalb ${TRACK_SPACING_MAX_M} m neben dem rechten` });
+						const kmIndex = bands.findIndex((candidate) => candidate.label.startsWith("Kilometerlinie"));
+						const leftIndex = bands.findIndex((candidate) => candidate.label.startsWith("Linkes Gleis · Krümmung"));
+						bands.splice((kmIndex >= 0 ? kmIndex : leftIndex >= 0 ? leftIndex : bands.length - 1) + 1, 0, band);
+					}
+				}
 				return bands;
+			}
+			
+			// The plane distance from each sample of the rechtes Gleis to the
+			// nearest point of the linkes Gleis. A plain distance, not the Ril's
+			// Gleisabstand on a common normal -- on Streckengleise the two differ
+			// by less than a centimetre. Each linkes Gleis is searched on its own
+			// polyline so no phantom segment joins two Abschnitte. A sample whose
+			// nearest point is an end of the other Gleis (the Gleis runs out) or
+			// farther than TRACK_SPACING_MAX_M (a Weiche, a Bahnhof, single track)
+			// leaves a gap in the series instead of a value.
+			const TRACK_SPACING_STEP_M = 20;
+			const TRACK_SPACING_MAX_M = 25;
+			function nearestPointOnPolyline(polyline, easting, northing) {
+				let best = null;
+				for (let i = 0; i < polyline.length - 1; i += 1) {
+					const a = polyline[i];
+					const b = polyline[i + 1];
+					const dx = b.easting - a.easting;
+					const dy = b.northing - a.northing;
+					const lengthSq = dx * dx + dy * dy;
+					const t = lengthSq > 1e-9 ? Math.max(0, Math.min(1, ((easting - a.easting) * dx + (northing - a.northing) * dy) / lengthSq)) : 0;
+					const distance = Math.hypot(easting - (a.easting + t * dx), northing - (a.northing + t * dy));
+					if (!best || distance < best.distance) best = { distance, atEnd: (i === 0 && t === 0) || (i === polyline.length - 2 && t === 1) };
+				}
+				return best;
+			}
+			function trackSpacingSeries(rightAlignments, leftAlignments) {
+				const leftPolylines = leftAlignments.map((alignment) => referenceStationPolyline(alignment, 10)).filter((polyline) => polyline.length >= 2);
+				if (!leftPolylines.length) return [];
+				const points = [];
+				let open = false;
+				for (const alignment of rightAlignments) {
+					for (const sample of referenceStationPolyline(alignment, TRACK_SPACING_STEP_M)) {
+						let nearest = null;
+						for (const polyline of leftPolylines) {
+							const candidate = nearestPointOnPolyline(polyline, sample.easting, sample.northing);
+							if (candidate && (!nearest || candidate.distance < nearest.distance)) nearest = candidate;
+						}
+						if (!nearest || nearest.atEnd || nearest.distance > TRACK_SPACING_MAX_M) { open = false; continue; }
+						points.push({ x: sample.station, y: Math.round(nearest.distance * 1000) / 1000, gap: !open });
+						open = true;
+					}
+				}
+				return points;
 			}
 
 			// GWB · zul. v / Potenzial for the assigned sides.
@@ -41642,6 +41704,10 @@ xlsx/xlsx.mjs:
 				if (cls.includes("cant")) {
 					const u = bandValueAt(band.points, x, false);
 					return u == null ? null : `u ${Math.round(u)} mm`;
+				}
+				if (cls.includes("spacing")) {
+					const e = bandValueAt(band.points, x, false);
+					return e == null ? null : `e ${e.toFixed(2)} m`;
 				}
 				if (cls.includes("speed")) {
 					const today = bandValueAt(band.points, x, true);
