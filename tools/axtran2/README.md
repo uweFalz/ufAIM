@@ -57,6 +57,6 @@ reason says why; the output TRA is still written and the report says how
 far off it is.
 
 Modules: `pointLists.mjs` (the lists), `traWriter.mjs` (the file, the
-inverse of `test/axtran2/corpus/loadTraAlignment.mjs`), `fitTra.mjs` (the
+inverse of `src/import/parsers/technet/vermEsn/traAlignment.js`), `fitTra.mjs` (the
 fit, the same problem the corpus runs with real points). Tests:
 `test/axtran2/adapter.test.mjs`.

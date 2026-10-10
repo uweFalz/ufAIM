@@ -312,3 +312,18 @@ a perturbed file (±2 % lengths, ±3 % curvatures) fitted back onto points
 from the original with a Zwangspunkt 3 m off the axis, met to 1e-6. On
 the command line, 2631R142 with 131 synthetic points: 42 elements, 60
 free, `within_tolerance` @37 in 1.0 s, Zwangspunkt residual 8e-8.
+
+## The TRA reader in src (2026-10-12)
+
+The reader that turns a Verm.esn TRA into kernel elements lived under
+`test/axtran2/corpus/loadTraAlignment.mjs` since the corpus began, and
+the adapter imported it from there. It is now
+`src/import/parsers/technet/vermEsn/traAlignment.js`
+(`traAlignmentFromBytes`, `traAlignmentFromDocument`,
+`kilometreJumpsOf`, `FAMILIES`; no file system), and the production
+geometry builder is
+`src/domain/optimization/alignment/ProductionAlignment.js`. The corpus
+loader keeps its name and re-exports both, reading the file and
+registering the Node alias hooks the production parsers need. Nothing
+else changed: the corpus validation and the adapter's round trip run as
+before.

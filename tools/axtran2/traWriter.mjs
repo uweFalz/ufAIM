@@ -1,8 +1,8 @@
 // tools/axtran2/traWriter.mjs
 //
 // A kernel element sequence back into a Verm.esn TRA file: the inverse of
-// test/axtran2/corpus/loadTraAlignment.mjs, so that a fitted alignment can
-// go back to where it came from.
+// src/import/parsers/technet/vermEsn/traAlignment.js, so that a fitted
+// alignment can go back to where it came from.
 //
 // The file is 78-byte records (src/import/parsers/technet/vermEsn/
 // sharedVermesn.js): R1 R2 Y X T S as f64, Kz as u16, L U1 U2 as f64, C as
