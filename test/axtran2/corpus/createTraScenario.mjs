@@ -48,10 +48,13 @@ export const SPEED_CANDIDATES = Object.freeze([200, 160, 140, 120, 100, 80]);
  * does not. Judged against the bound form's floors, which are the conservative
  * ones: the exact ramp rule asks less of a transition between similar radii.
  */
-export function chooseProfile(elements, { cantMm = 130, sourceName = "as-built" } = {}) {
+export function chooseProfile(elements, { cantMm = 130, sourceName = "as-built", speedKmh: asked = null } = {}) {
 	const arcs = elements.filter((e) => e.type === "arc" && e.length > 0);
 	let chosen = null;
-	for (const speedKmh of SPEED_CANDIDATES) {
+	// a speed asked for is taken as it is, with the same inherited exceptions
+	// where the file does not admit it; otherwise the fastest candidate that does
+	const candidates = Number.isFinite(asked) && asked > 0 ? [asked] : SPEED_CANDIDATES;
+	for (const speedKmh of candidates) {
 		const profile = hauptbahn({ speedKmh, cantMm });
 		const tooTight = arcs.filter((e) => 1 / Math.abs(e.curvature) < profile.minimumRadius * (1 - 1e-9));
 		// every kind has a floor: the ramp rule's for a transition, the profile's

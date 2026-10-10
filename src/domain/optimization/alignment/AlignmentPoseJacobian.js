@@ -390,6 +390,16 @@ export function createAlignmentPoseJacobian({ elements, startPose, momentsFor } 
 		stationAfter(index) {
 			return stations[index + 1];
 		},
+		/**
+		 * The pose element `index` starts with. At a shared station poseAt()
+		 * answers for the element that ends there, which after a kink is the
+		 * pose before the turn; a writer that needs the heading an element
+		 * actually leaves with asks here.
+		 */
+		entryPose(index) {
+			if (!Number.isInteger(index) || index < 0 || index >= entries.length) return null;
+			return Object.freeze({ ...entries[index] });
+		},
 		poseJacobianAt(parameters, station) {
 			const pose = poseAt(station);
 			return parameters.map((parameter) => poseDerivative(parameter, station, pose));
