@@ -1659,7 +1659,7 @@
 			<section id="stage">
 			<section id="dropzone">
 				<div class="welcome">
-					<p class="welcome-eyebrow">Technet-Datei-Viewer</p>
+					<p class="welcome-eyebrow" id="welcomeEyebrow">Technet-Datei-Viewer</p>
 					<h2>Bahnvermessung sehen, bevor jemand sie rechnet.</h2>
 					<p class="welcome-sub">Trassen, Gradienten und Überhöhungen aus GND, VermEsn und landXML — als Karte, Spurplan, Lieferungsbild, Verknüpfungsbild und 7L-Diagramm. Alles im Browser. Nur die Kartenkacheln von OpenStreetMap und OpenRailwayMap kommen von außen, und nur, wenn du es erlaubst.</p>
 					<div class="welcome-formats"><span>GND · MDB, DBB</span><span>VermEsn · TRA, GRA</span><span>landXML</span><span>ZIP, Ordner</span></div>
@@ -47252,6 +47252,13 @@ xlsx/xlsx.mjs:
 			});
 			document.querySelector("#tileSourceReset").addEventListener("click", async () => { await applyTileSources(null); tileSourceEditor.open = false; status.textContent = "Kachelquelle: OpenStreetMap und OpenRailwayMap."; });
 			renderTileConsentText();
+			// A packed copy (tools/pack-technet-viewer.mjs) carries its build in a
+			// meta tag; the welcome card shows it, so a hand-out answers "which
+			// version is this" by itself. The repo file has no such tag.
+			{
+				const build = document.querySelector('meta[name="technet-viewer-build"]')?.content;
+				if (build) document.querySelector("#welcomeEyebrow").textContent += ` · Build ${build}`;
+			}
 			precisionToggle.addEventListener("click", () => togglePrecisionMode());
 			precisionKindSelect.addEventListener("change", () => {
 				rejectListToggle.title = `Alle Segmente über σ_r = ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (Ril 883.3100) gemeldeter ${precisionKind() === "height" ? "Höhengenauigkeit (meanHeightError)" : "Punktgenauigkeit (meanPointError)"}, zur Einzelprüfung`;
