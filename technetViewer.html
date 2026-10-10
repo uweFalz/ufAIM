@@ -804,6 +804,11 @@
 			.tile-consent code { font-size: var(--fs-1); }
 			.tile-consent-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-2); }
 			.tile-consent-hint { color: var(--secondary); font-size: var(--fs-1); }
+			.tile-source { margin: var(--sp-2) 0; font-size: var(--fs-1); }
+			.tile-source > summary { cursor: pointer; color: var(--secondary); }
+			.tile-source label { display: grid; gap: 0.15rem; margin-top: var(--sp-2); color: var(--secondary); }
+			.tile-source input { width: 100%; min-width: 0; padding: 0.25rem 0.4rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: CanvasText; font: inherit; font-size: var(--fs-1); }
+			.tile-source-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
 			#mapEmpty {
 				position: relative;
 				inset: auto;
@@ -1704,6 +1709,7 @@
 								<div class="menu-body" popover="manual">
 									<button id="baseMapLoad" type="button" class="menu-item" aria-pressed="false" title="Lädt Kacheln von OpenStreetMap und OpenRailwayMap — fragt vorher, weil der Ausschnitt die Projektlage verrät">OpenRailwayMap ein</button>
 									<button id="tileConsentForget" type="button" class="hidden menu-item" title="Die in diesem Browser gemerkte Erlaubnis für Kartenkacheln zurücknehmen">Kachel-Erlaubnis vergessen</button>
+									<button id="tileSourceOpen" type="button" class="menu-item" title="Welcher Server die Kacheln liefert — ein interner Kachelserver statt OpenStreetMap, je Browser gemerkt">Kachelquelle …</button>
 									<label id="railwayOpacityControl" class="hidden menu-item">Karte
 											<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
 											<span id="railwayOpacityValue">15 %</span>
@@ -1719,12 +1725,19 @@
 							<span class="tb-group"><button id="mapFit" type="button" title="Alles zeigen">Alles</button><button id="mapZoomOut" type="button" aria-label="Herauszoomen">−</button><button id="mapZoomIn" type="button" aria-label="Hineinzoomen">+</button></span>
 						</div>
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
-						<div id="maplibreMap" class="hidden" aria-label="OpenRailwayMap mit geladenen Trassen"></div>
+						<div id="maplibreMap" class="hidden" aria-label="Kartenebene mit geladenen Trassen"></div>
 						<div id="mapEmpty" class="hidden"></div>
 						<div id="tileConsent" class="tile-consent hidden" role="dialog" aria-label="Kartenkacheln von außen laden?">
 							<p class="tile-consent-title">Kartenkacheln von außen laden?</p>
-							<p>Die Kartenebene holt Kacheln von <code>tile.openstreetmap.org</code> und <code>tiles.openrailwaymap.org</code>. Die Kachelkoordinaten nennen diesen Servern den Ausschnitt, also die Lage des Projekts. Alles andere bleibt im Browser.</p>
-							<div class="tile-consent-actions"><button type="button" id="tileConsentOnce" class="import-button primary">Jetzt laden</button><button type="button" id="tileConsentAlways" class="import-button">Immer in diesem Browser</button><button type="button" id="tileConsentNo" class="import-button">Ohne Karte weiter</button></div>
+							<p id="tileConsentText"></p>
+							<div class="tile-consent-actions"><button type="button" id="tileConsentOnce" class="import-button primary">Jetzt laden</button><button type="button" id="tileConsentAlways" class="import-button">Immer in diesem Browser</button><button type="button" id="tileConsentNo" class="import-button">Ohne Karte weiter</button><button type="button" id="tileConsentClose" class="import-button hidden">Schließen</button></div>
+							<details id="tileSourceEditor" class="tile-source">
+								<summary>Anderen Kachelserver verwenden</summary>
+								<label>Basiskarte, URL-Vorlage mit {z}/{x}/{y}<input id="tileBaseInput" type="text" spellcheck="false" placeholder="https://kacheln.intern/osm/{z}/{x}/{y}.png" /></label>
+								<label>Bahn-Overlay, leer = keins<input id="tileRailwayInput" type="text" spellcheck="false" placeholder="https://kacheln.intern/bahn/{z}/{x}/{y}.png" /></label>
+								<label>Quellenvermerk<input id="tileAttributionInput" type="text" placeholder="© OpenStreetMap-Mitwirkende" /></label>
+								<div class="tile-source-actions"><button type="button" id="tileSourceApply" class="import-button primary">Übernehmen</button><button type="button" id="tileSourceReset" class="import-button">Standard (OpenStreetMap)</button></div>
+							</details>
 							<p class="tile-consent-hint">Die Lageansicht ohne Kacheln zeigt die Trassen weiterhin; „Immer“ lässt sich im Menü „Ebenen“ zurücknehmen.</p>
 						</div>
 						<div id="mapLegend" class="legend legend-card hidden" aria-label="Kartenlegende">
@@ -39243,6 +39256,12 @@ xlsx/xlsx.mjs:
 			const mapEmpty = document.querySelector("#mapEmpty");
 			const tileConsentCard = document.querySelector("#tileConsent");
 			const tileConsentForget = document.querySelector("#tileConsentForget");
+			const tileConsentText = document.querySelector("#tileConsentText");
+			const tileConsentClose = document.querySelector("#tileConsentClose");
+			const tileSourceEditor = document.querySelector("#tileSourceEditor");
+			const tileBaseInput = document.querySelector("#tileBaseInput");
+			const tileRailwayInput = document.querySelector("#tileRailwayInput");
+			const tileAttributionInput = document.querySelector("#tileAttributionInput");
 			const baseMapLoad = document.querySelector("#baseMapLoad");
 			const railwayOpacityControl = document.querySelector("#railwayOpacityControl");
 			const mapLegend = document.querySelector("#mapLegend");
@@ -43150,7 +43169,7 @@ xlsx/xlsx.mjs:
 				rejectListToggle.setAttribute("aria-pressed", "false");
 				if (precisionModeActive) togglePrecisionMode();
 				baseMapLoad.setAttribute("aria-pressed", "false");
-				baseMapLoad.textContent = "OpenRailwayMap ein";
+				baseMapLoad.textContent = `${railwayMapName()} ein`;
 				renderMap(activeMapMode);
 			}
 
@@ -43162,6 +43181,75 @@ xlsx/xlsx.mjs:
 				});
 			}
 
+			// ---- Kachelquellen: hier trägt die Firma ihren Kachelserver ein --------
+			// One place, meant to be edited before the file is handed around: URL
+			// templates with {z}/{x}/{y}. "railway" empty runs without the
+			// OpenRailwayMap overlay (an internal tile server usually has none);
+			// the attribution is shown on the map and belongs to whoever made
+			// the tiles (ODbL asks for it on anything derived from OpenStreetMap).
+			// A per-browser override, set from the consent card or "Kachelquelle"
+			// in the Ebenen menu, lives in localStorage and wins over this block.
+			const TILE_SOURCES_DEFAULT = {
+				base: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+				railway: "https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
+				attribution: "© OpenStreetMap-Mitwirkende · © OpenRailwayMap",
+			};
+			const TILE_SOURCES_KEY = "technetViewer.tileSources";
+			let tileSourcesOverride = (() => { try { const raw = localStorage.getItem(TILE_SOURCES_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; } })();
+			function tileSources() { return tileSourcesOverride ? { ...TILE_SOURCES_DEFAULT, ...tileSourcesOverride } : TILE_SOURCES_DEFAULT; }
+			function tileHostOf(template) { try { return new URL(template).host; } catch { return template; } }
+			function railwayMapName() { return tileSourcesOverride ? "Kartenebene" : "OpenRailwayMap"; }
+			function buildTileStyle() {
+				const sources = tileSources();
+				const style = {
+					version: 8,
+					sources: { osm: { type: "raster", tiles: [sources.base], tileSize: 256, attribution: sources.attribution ?? "" } },
+					layers: [{ id: "osm", type: "raster", source: "osm" }],
+				};
+				if (sources.railway) {
+					style.sources.railway = { type: "raster", tiles: [sources.railway], tileSize: 256 };
+					style.layers.push({ id: "openrailwaymap", type: "raster", source: "railway", paint: { "raster-opacity": 1 } });
+				}
+				return style;
+			}
+			function renderTileConsentText() {
+				const sources = tileSources();
+				const hosts = [tileHostOf(sources.base), sources.railway ? tileHostOf(sources.railway) : null].filter(Boolean);
+				const codes = hosts.map((host) => { const code = document.createElement("code"); code.textContent = host; return code; });
+				tileConsentText.replaceChildren("Die Kartenebene holt Kacheln von ", codes[0], ...(codes[1] ? [" und ", codes[1]] : []), `. Die Kachelkoordinaten nennen ${codes[1] ? "diesen Servern" : "diesem Server"} den Ausschnitt, also die Lage des Projekts. Alles andere bleibt im Browser.`);
+				tileBaseInput.value = sources.base;
+				tileRailwayInput.value = sources.railway ?? "";
+				tileAttributionInput.value = sources.attribution ?? "";
+				baseMapLoad.textContent = `${railwayMapName()} ${railwayMapActive ? "aus" : "ein"}`;
+			}
+			// The map is built on its sources, so a change rebuilds it on the one
+			// init path (toggleRailwayMap) instead of patching sources in place.
+			async function applyTileSources(override) {
+				tileSourcesOverride = override;
+				try {
+					if (override) localStorage.setItem(TILE_SOURCES_KEY, JSON.stringify(override));
+					else localStorage.removeItem(TILE_SOURCES_KEY);
+				} catch { /* no storage: this session only */ }
+				renderTileConsentText();
+				if (!maplibreMap) return;
+				const wasActive = railwayMapActive;
+				if (wasActive) deactivateRailwayMap();
+				maplibreMap.remove();
+				maplibreMap = null;
+				if (wasActive) await toggleRailwayMap({ automatic: true });
+			}
+			function readTileSourceEditor() {
+				const base = tileBaseInput.value.trim();
+				if (!/\{z\}/.test(base) || !/\{x\}/.test(base) || !/\{y\}/.test(base)) {
+					status.classList.add("error");
+					status.textContent = "Die Kachel-URL braucht {z}, {x} und {y}.";
+					return null;
+				}
+				status.classList.remove("error");
+				const override = { base, railway: tileRailwayInput.value.trim(), attribution: tileAttributionInput.value.trim() };
+				const isDefault = override.base === TILE_SOURCES_DEFAULT.base && override.railway === TILE_SOURCES_DEFAULT.railway && override.attribution === TILE_SOURCES_DEFAULT.attribution;
+				return isDefault ? null : override;
+			}
 			// ---- Kartenkacheln: nur mit Einwilligung ------------------------------
 			// The one thing that leaves the browser: tile requests to OpenStreetMap
 			// and OpenRailwayMap carry z/x/y, i.e. the viewport, i.e. where the
@@ -43214,32 +43302,12 @@ xlsx/xlsx.mjs:
 				if (railwayMapActive) return;
 				if (!automatic) railwayMapPreference = "on";
 				baseMapLoad.disabled = true;
-				baseMapLoad.textContent = "OpenRailwayMap wird geladen …";
+				baseMapLoad.textContent = `${railwayMapName()} wird geladen …`;
 				try {
 					if (!maplibreMap) {
 						maplibreMap = new globalThis.maplibregl.Map({
 							container: maplibreMapElement,
-							style: {
-								version: 8,
-									sources: {
-										osm: {
-											type: "raster",
-											tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-											tileSize: 256,
-											attribution: "© OpenStreetMap-Mitwirkende",
-										},
-										railway: {
-											type: "raster",
-											tiles: ["https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"],
-											tileSize: 256,
-											attribution: "© OpenRailwayMap",
-										},
-									},
-									layers: [
-										{ id: "osm", type: "raster", source: "osm" },
-										{ id: "openrailwaymap", type: "raster", source: "railway", paint: { "raster-opacity": 1 } },
-									],
-							},
+							style: buildTileStyle(),
 							center: [10.5, 51],
 							zoom: 5,
 						});
@@ -43414,11 +43482,11 @@ xlsx/xlsx.mjs:
 					fitBasemap();
 					baseMapLoad.disabled = false;
 					baseMapLoad.setAttribute("aria-pressed", "true");
-					baseMapLoad.textContent = "OpenRailwayMap aus";
+					baseMapLoad.textContent = `${railwayMapName()} aus`;
 				} catch (error) {
 					baseMapLoad.disabled = false;
 					baseMapLoad.setAttribute("aria-pressed", "false");
-					baseMapLoad.textContent = "OpenRailwayMap ein";
+					baseMapLoad.textContent = `${railwayMapName()} ein`;
 					railwayOpacityControl.classList.add("hidden");
 					mapLegend.classList.add("hidden");
 					precisionToggle.classList.add("hidden");
@@ -47092,6 +47160,17 @@ xlsx/xlsx.mjs:
 			document.querySelector("#tileConsentAlways").addEventListener("click", () => answerTileConsent("always"));
 			document.querySelector("#tileConsentNo").addEventListener("click", () => answerTileConsent("no"));
 			tileConsentForget.addEventListener("click", forgetTileConsent);
+			tileConsentClose.addEventListener("click", () => { tileConsentCard.classList.add("hidden"); tileConsentClose.classList.add("hidden"); });
+			document.querySelector("#tileSourceOpen").addEventListener("click", () => { renderTileConsentText(); tileSourceEditor.open = true; tileConsentClose.classList.remove("hidden"); tileConsentCard.classList.remove("hidden"); });
+			document.querySelector("#tileSourceApply").addEventListener("click", async () => {
+				const override = readTileSourceEditor();
+				if (override === null && status.classList.contains("error")) return;
+				await applyTileSources(override);
+				tileSourceEditor.open = false;
+				status.textContent = override ? `Kachelquelle: ${tileHostOf(override.base)}${override.railway ? ` und ${tileHostOf(override.railway)}` : ""} (in diesem Browser gemerkt).` : "Kachelquelle: OpenStreetMap und OpenRailwayMap.";
+			});
+			document.querySelector("#tileSourceReset").addEventListener("click", async () => { await applyTileSources(null); tileSourceEditor.open = false; status.textContent = "Kachelquelle: OpenStreetMap und OpenRailwayMap."; });
+			renderTileConsentText();
 			precisionToggle.addEventListener("click", () => togglePrecisionMode());
 			precisionKindSelect.addEventListener("change", () => {
 				rejectListToggle.title = `Alle Segmente über σ_r = ${formatPrecisionValue(PRECISION_REJECT_THRESHOLD)} (Ril 883.3100) gemeldeter ${precisionKind() === "height" ? "Höhengenauigkeit (meanHeightError)" : "Punktgenauigkeit (meanPointError)"}, zur Einzelprüfung`;
