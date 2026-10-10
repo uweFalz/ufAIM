@@ -41,6 +41,27 @@ registerHooks({
 });
 
 const { parseTraGraAuto } = await import(new URL("src/import/parsers/technet/vermEsn/parseTRA_GRA.js", ROOT));
+const { decodeBinary } = await import(new URL("src/import/parsers/technet/vermEsn/sharedVermesn.js", ROOT));
+
+/**
+ * The file's station equations (Kz 6, Kilometersprung), placed by the
+ * distance along the records before them: a Kz 6 row sits between two
+ * element records at the point where the chainage jumps, carrying the
+ * station before the jump and in L the jump itself. The distance is what a
+ * writer needs to put the row back, because the loader below merges the
+ * two straights a jump usually splits.
+ */
+export function kilometreJumpsOf(bytes) {
+	const { rowsRaw } = decodeBinary(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "TRA");
+	const rows = rowsRaw.slice(1, -1);
+	const jumps = [];
+	let distance = 0;
+	for (const row of rows) {
+		if (row.kindCode === 6) { jumps.push(Object.freeze({ distance, delta: row.arcLength, station: row.station })); continue; }
+		if (Number.isFinite(row.arcLength)) distance += row.arcLength;
+	}
+	return Object.freeze(jumps);
+}
 
 /** what this loader can express; anything else is reported, not guessed at */
 // "ÜB S-Form" is the Helmert transition (also called S-Form); "S-Form (1f
@@ -161,6 +182,7 @@ export async function loadTraAlignment(file) {
 		kinks,
 		unsupported: Object.freeze(unsupported),
 		stationEquations: alignment?.staEquations?.length ?? 0,
+		kilometreJumps: kilometreJumpsOf(bytes),
 		recordCount: records.length,
 	});
 }
