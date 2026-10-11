@@ -269,7 +269,7 @@ export function solveAlignmentLexicographic({
 	feasibilityTolerance = FEASIBILITY_TOLERANCE,
 	relaxationWeight = 1e6,
 	// options handed to every phase's solve unchanged - hessian, restoration,
-	// lengthPrior, acceptance and the like; the phases' own inputs win
+	// lengthPrior, correctionClosure and the like; the phases' own inputs win
 	solver = {},
 } = {}) {
 	if (!problem?.codec) error("MISSING_PROBLEM", "problem is required");

@@ -1,7 +1,7 @@
 // src/lib/math/optim/sqp/solveSQP.js
 //
 // Globalised SQP loop: relaxed QP subproblem, Powell's modified BFGS, Powell's
-// per-constraint penalty weights, and an Armijo line search on the l1 merit.
+// per-constraint penalty weights, and a filter on (violation, f) for the step.
 //
 // Follows Gerdts, Optimierung, Algorithmus 3.2.5, with two deliberate
 // differences that are recorded where they occur: the QP subproblem is Powell's
@@ -101,17 +101,15 @@ export function solveSQP({
 	// releases and blocks per subproblem, qp_failed at the 29th step. Ten per
 	// variable, never under 200: the same two runs reach a fit instead.
 	qpIterations: qpIterationsGiven = null,
-	// How a trial step is accepted. "filter": a Fletcher-Leyffer filter on
-	// (violation, f) with the switching condition below; "merit": the l1
-	// merit's Armijo test. The filter is the default since the measurement in
-	// docs/app/architecture/AXTRAN2_FILTER_MERIT_DESIGN.md: level or better
-	// than the merit on the whole corpus (points objective 161 of 161
-	// verdicts against 159, no row worse), half the iterations on the length
-	// objective, and the only rule under which the shortest alignment over
-	// 110 and 119 elements reaches a verdict - the merit prices a metre of
-	// end miss at two metres of length there and walks kilometres off. The
-	// merit keeps pricing the weights and the merit_stationary verdict.
-	acceptance = "filter",
+	// How a trial step is accepted: a Fletcher-Leyffer filter on (violation, f)
+	// with the switching condition below. The l1 merit's Armijo test was the
+	// alternative ("acceptance: merit") until 2026-10-11 and was removed after
+	// the measurement in docs/app/architecture/AXTRAN2_FILTER_MERIT_DESIGN.md
+	// had decided for the filter: level or better on the whole corpus, half the
+	// iterations on the length objective, the only rule under which the
+	// shortest alignment over 110 and 119 elements reaches a verdict. The
+	// merit still prices the penalty weights and the merit_stationary verdict.
+	acceptance = undefined,
 	filterMargin = 1e-5,
 	// the violation may not exceed this multiple of max(1, its value at the
 	// first subproblem): 1e4 in the literature; 1e2 measured, it keeps the
@@ -285,8 +283,8 @@ export function solveSQP({
 
 	const n = x0.length;
 	const qpIterations = qpIterationsGiven ?? Math.max(200, 10 * n);
-	if (acceptance !== "merit" && acceptance !== "filter") {
-		throw new Error(`solveSQP: acceptance must be "merit" or "filter", got ${JSON.stringify(acceptance)}`);
+	if (acceptance !== undefined) {
+		throw new Error(`solveSQP: acceptance is no longer an option (got ${JSON.stringify(acceptance)}); the filter is the rule, the merit's Armijo test was removed on 2026-10-11`);
 	}
 	const lo = lower ?? new Array(n).fill(-Infinity);
 	const up = upper ?? new Array(n).fill(Infinity);
@@ -719,32 +717,17 @@ export function solveSQP({
 		// supply descent
 		const predictedDecrease = Math.min(directional, step.curvature);
 
-		// A step along which the merit does not fall is not searched along. The
-		// exact directional derivative is known here, and when it is not negative
-		// there is no step length that Armijo can accept - yet the curvature bound
-		// used as its reference is negative, so the search would be sent hunting
-		// for a decrease the model itself denies. Measured on the exact ramp rule
-		// with eight declared points: thirty to thirty-eight backtracks to alpha
-		// near 1e-11 at a merit slope of +5.8e-5, repeatedly, while the iterate
-		// crept along an active ramp row.
-		//
-		// Such a step is the quasi-Newton matrix speaking, not the problem: with
-		// the equalities met to 1e-6 the subproblem returned |d| = 1.3 to restore
-		// them, an objective rise of 2.8e-4 against a penalty drop of 2.3e-4. The
-		// estimate is discarded and the region tightened, and the next subproblem
-		// starts from the identity again. On the twelve-point scenario this
-		// alone takes the exact form from 73 iterations with eight backtracking
-		// episodes to 44 with none - the same count as the bound form.
-		// The no-descent rule is the merit's: under the filter a step the merit
-		// cannot fall along may still be an h-type step, and the filter decides.
-		// Measured on the vertex tier of the nine-element scenario: the rule
-		// shrank the region 36 times around a step the filter would have judged,
-		// and the subproblem ran out.
+		// The merit's no-descent rule lived here until 2026-10-11: a step along
+		// which the l1 merit does not fall was not searched along but discarded
+		// with the quasi-Newton estimate. Under the filter a step the merit
+		// cannot fall along may still be an h-type step, and the filter decides;
+		// measured on the vertex tier of the nine-element scenario, the rule
+		// shrank the region 36 times around a step the filter would have judged.
 		// A step of length zero has nothing for the filter to judge: the relaxed
 		// subproblem is at a vertex the box holds, and the relaxed-stall verdict
 		// above counts its way to infeasible_subproblem; sent to the search it
 		// came back line_search_failed at once (the box-excluded equality of #18).
-		if (acceptance === "filter" && stepNorm <= stepTolerance * Math.max(1, Math.hypot(...x))) {
+		if (stepNorm <= stepTolerance * Math.max(1, Math.hypot(...x))) {
 			// A zero step with the relaxation at one is the relaxed-stall verdict's
 			// case above. Any other zero step is the region: at a degenerate vertex
 			// with an extra equality the subproblem came back with delta 0.57 and
@@ -759,13 +742,6 @@ export function solveSQP({
 			history.push({ iteration, status: "no_step", delta: step.delta, violation: violation.total, radius });
 			continue;
 		}
-		if (!(directional < 0) && acceptance !== "filter") {
-			B = identityMatrix(n, structuredStart * initialHessianScale);
-			H = curvatureOf(state) ?? identityMatrix(n, initialHessianScale);
-			radius = Math.max(minTrustRadius, radius * trustShrink);
-			history.push({ iteration, status: "no_descent", directional, radius });
-			continue;
-		}
 
 		// Second-order correction. The l1 merit has a kink at every feasible
 		// point, and a good step that reduces the objective at first order can
@@ -778,7 +754,7 @@ export function solveSQP({
 		// quadratic convergence the plain search throws away.
 		// filter acceptance: not dominated by any remembered (h, f), nor by the
 		// current point, with the margins; and under the ceiling
-		if (acceptance === "filter" && filterCeilingValue === null) filterCeilingValue = filterCeiling * Math.max(1, violation.total);
+		if (filterCeilingValue === null) filterCeilingValue = filterCeiling * Math.max(1, violation.total);
 		let acceptedType = null;
 		const filterAccepts = (evaluated, alpha) => {
 			const h = constraintViolation(evaluated).total;
@@ -796,9 +772,9 @@ export function solveSQP({
 			if (beats({ h: violation.total, f: state.f })) { acceptedType = "h"; return true; }
 			return false;
 		};
-		const meritOfState = (evaluated, alpha) => acceptance === "filter"
-			? (filterAccepts(evaluated, alpha) ? meritAt0 + alpha * predictedDecrease : Infinity)
-			: l1Merit(evaluated, weights);
+		// the search's "merit" of a trial under the filter: the model's promise
+		// where the filter accepts, nothing where it refuses
+		const meritOfState = (evaluated, alpha) => (filterAccepts(evaluated, alpha) ? meritAt0 + alpha * predictedDecrease : Infinity);
 		const meritOf = (candidate) => {
 			let evaluated;
 			try { evaluated = evaluate(candidate, { multipliers: step.multipliers }); } catch { return null; }
@@ -816,7 +792,7 @@ export function solveSQP({
 		// the violation, not only when it is refused: measured on the
 		// nine-element scenario, accepting the raw step at once crept to a vertex
 		// 0.2 m longer than the one the corrected steps reach.
-		const raisesViolation = acceptance === "filter" && full
+		const raisesViolation = full
 			&& constraintViolation(full.state).total > correctionClosure * violation.total;
 		if (full && (!armijo(full.merit, 1) || raisesViolation) && (state.h ?? []).length && (predictedDecrease < 0 || raisesViolation)) {
 			// smallest d that satisfies Jh(x) d = -h(x + d): the same subproblem
@@ -892,11 +868,9 @@ export function solveSQP({
 			return { ok: false, status: "line_search_failed", reason: search.status, x, state, history, iterations: iteration, restorationSteps };
 		}
 
-		if (acceptance === "filter") {
-			// an h-type step adds the point left behind to the filter, with the
-			// margins taken; an f-type step leaves the filter alone
-			if (acceptedType !== "f") filter.push({ h: (1 - filterMargin) * violation.total, f: state.f - filterMargin * violation.total });
-		}
+		// an h-type step adds the point left behind to the filter, with the
+		// margins taken; an f-type step leaves the filter alone
+		if (acceptedType !== "f") filter.push({ h: (1 - filterMargin) * violation.total, f: state.f - filterMargin * violation.total });
 		// The line search's own verdict sizes the region: a full step accepted
 		// means the model held that far and may be trusted further; backtracking
 		// means it did not, and the region follows the step that was accepted.
