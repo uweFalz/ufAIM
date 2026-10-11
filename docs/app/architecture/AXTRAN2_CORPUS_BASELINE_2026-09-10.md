@@ -327,3 +327,22 @@ loader keeps its name and re-exports both, reading the file and
 registering the Node alias hooks the production parsers need. Nothing
 else changed: the corpus validation and the adapter's round trip run as
 before.
+
+## Options frozen, the merit acceptance removed (2026-10-11)
+
+Decided by Uwe on 2026-10-11: what was measured and not adopted stays
+as an option of `solveSQP` and `solveAlignmentProblem` for whoever wants
+to re-measure it, but leaves the runner and is listed here as measured,
+not default. One rule leaves altogether.
+
+| option | default | measured on strict 0-235 (225 under the default) | PR | status |
+|---|---|---|---|---|
+| `correctionRows` | `equalities` | `all` 209, `active` 215, `violated` 227 - a reshuffle, not a gain | #54 | option, no runner flag |
+| `correctionMetric` | `identity` | `hessian` 206 and 215; length fit 234 of 235 | #55 | option, no runner flag |
+| `pinnedWeight` | `1e-6` | `0` 223, `1e-3` 228 - a reshuffle | #57 | option, no runner flag |
+| `acceptance: "merit"` | - | the filter level or better everywhere (points 161 of 161 against 159, AXTRAN2_FILTER_MERIT_DESIGN.md) | #36 | removed; the option is refused |
+
+The removal changes nothing on the filter's path: the merit's no-descent
+rule and its Armijo branch of the search went, the penalty weights and
+the `merit_stationary` verdict stay. Corpus 0-235, both objectives,
+before and after: every row identical in verdict, iterations and rms.
