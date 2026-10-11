@@ -1794,6 +1794,7 @@
 								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
 								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
+								<label class="gwb-input" title="Überhöhungsgrenze für den GWB-Vorschlag: die Ermessensgrenze nach Ril 800.0110 Tab. 4 (160 mm Schotter, 170 mm Feste Fahrbahn), oder der Genehmigungsbereich bis zur EBO-Grenze 180 mm (§ 6 (3) EBO) — ein Zustimmungswert, der die Zentrale braucht">Grenze <select id="gwbCantLimit"><option value="Ermessen">Ermessensgrenze (Tab. 4)</option><option value="EBO">Zustimmung bis EBO 180 mm</option></select></label>
 								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nicht modelliert">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option></select></label>
 									</div>
 								</details>
@@ -39420,7 +39421,8 @@ xlsx/xlsx.mjs:
 			// Geschwindigkeitsanhebung is first to be checked by exhausting the
 			// parameters up to the Ermessensgrenze, without construction -- which
 			// is exactly the GWB question. Regelwert would be the target for a
-			// Neubau, Zustimmungswert needs the Zentrale; neither is modelled.
+			// Neubau; the Zustimmungswert needs the Zentrale and is offered for one
+			// value only, the Überhöhung up to the EBO-Grenze (switch "Grenze").
 			//
 			// Precision scale, calibrated on the Ril: 883.3100 (1) asks of the
 			// Aufnahme von Gleisen und Weichen a relative accuracy sigma_r = 5 mm
@@ -39454,12 +39456,15 @@ xlsx/xlsx.mjs:
 			const CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M = 650;
 			// Cant a Bogen may be given, 800.0110 7 (1) and Tab. 4: not below 20 mm,
 			// multiples of 5, Ermessensgrenze 160 mm on Schotteroberbau, 170 mm on
-			// Fester Fahrbahn (180 mm is the EBO limit, Zustimmungswert -- not
-			// offered). The Oberbau is in no geometry file, so the toolbar select
-			// sets it; Schotter is the default because it is the lower value.
+			// Fester Fahrbahn. Above that lies the Genehmigungsbereich up to the
+			// EBO-Grenze u = 180 mm (Tab. 4, § 6 (3) EBO): a Zustimmungswert, so it
+			// is a switch of its own and not the default. The Oberbau is in no
+			// geometry file, so the toolbar select sets it; Schotter is the
+			// default because it is the lower value.
 			const CANT_MIN_MM = 20;
 			const CANT_STEP_MM = 5;
 			const CANT_MAX_BY_OBERBAU_MM = { Schotter: 160, FesteFahrbahn: 170 };
+			const CANT_MAX_EBO_MM = 180;
 			const OBERBAU_LABEL = { Schotter: "Schotteroberbau", FesteFahrbahn: "Feste Fahrbahn" };
 			// Überhöhungsrampe, 800.0110 Tab. 8 (Ermessensgrenze; Regelwert would
 			// be 10 / 7.5): length l_R >= k * v * du / 1000 [m, km/h, mm]. Tab. 7:
@@ -39629,6 +39634,7 @@ xlsx/xlsx.mjs:
 			const gwbBrakeDistanceInput = document.getElementById("gwbBrakeDistance");
 			const gwbOberbauSelect = document.getElementById("gwbOberbau");
 			const gwbFahrzeugSelect = document.getElementById("gwbFahrzeug");
+			const gwbCantLimitSelect = document.getElementById("gwbCantLimit");
 			function regelbremswegM() {
 				const value = Number(gwbBrakeDistanceInput?.value);
 				return Number.isFinite(value) && value > 0 ? value : REGELBREMSWEG_DEFAULT_M;
@@ -39642,8 +39648,14 @@ xlsx/xlsx.mjs:
 			function cantDeficiencyMm(radiusM) {
 				return fahrzeugKey() === "Zulassung" && radiusM >= CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M ? CANT_DEFICIENCY_ZULASSUNG_MM : CANT_DEFICIENCY_MM;
 			}
+			function cantLimitKey() {
+				return gwbCantLimitSelect?.value === "EBO" ? "EBO" : "Ermessen";
+			}
 			function cantMaxMm() {
-				return CANT_MAX_BY_OBERBAU_MM[oberbauKey()];
+				return cantLimitKey() === "EBO" ? CANT_MAX_EBO_MM : CANT_MAX_BY_OBERBAU_MM[oberbauKey()];
+			}
+			function cantLimitLabel() {
+				return cantLimitKey() === "EBO" ? "Zustimmungswert bis EBO-Grenze § 6 (3), über der Ermessensgrenze der Tab. 4" : `Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}`;
 			}
 			const gwbBogenCsvButton = document.getElementById("gwbBogenCsv");
 			const gwbAbschnittCsvButton = document.getElementById("gwbAbschnittCsv");
@@ -40571,7 +40583,7 @@ xlsx/xlsx.mjs:
 			// is 800.0110 9 / Tab. 10 Vergleichsradius, not modelled). Reads only
 			// the interpreted elements and the mm cant series; writes nothing back.
 			const GWB_VARIANTS = ["Klothoide", "Bloss"];
-			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m (Fahrzeug mit Zulassung, Fn. 18), sonst ${CANT_DEFICIENCY_MM}` : `${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Regelfahrzeug)`} · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · ohne Übergangsbogen gegen den Vergleichsradius (9 (3), Tab. 10 Ermessensgrenze; über 200 km/h der Wert für 200) · Platz für die Bloss-Verlängerung nicht geprüft · Diagnose, kein Entwurf`;
+			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m (Fahrzeug mit Zulassung, Fn. 18), sonst ${CANT_DEFICIENCY_MM}` : `${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Regelfahrzeug)`} · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (${cantLimitLabel()}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · ohne Übergangsbogen gegen den Vergleichsradius (9 (3), Tab. 10 Ermessensgrenze; über 200 km/h der Wert für 200) · Platz für die Bloss-Verlängerung nicht geprüft · Diagnose, kein Entwurf`;
 			function gwbElements(entry) {
 				const list = [];
 				const signOf = (radius, element) => radius < 0 ? -1 : radius > 0 ? curveRotationSign(element) : 0;
@@ -42900,7 +42912,7 @@ xlsx/xlsx.mjs:
 				const lines = [
 					`GWB-Vorschlag je Bogen (Diagnose, kein Entwurf) - ${objectDisplayName(entry)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
-					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m, sonst ${CANT_DEFICIENCY_MM}` : CANT_DEFICIENCY_MM + " mm"} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (Tab. 4, ${OBERBAU_LABEL[oberbauKey()]}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); nicht geprueft: Platz fuer die Bloss-Verlaengerung`,
+					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m, sonst ${CANT_DEFICIENCY_MM}` : CANT_DEFICIENCY_MM + " mm"} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (${cantLimitLabel()}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); nicht geprueft: Platz fuer die Bloss-Verlaengerung`,
 					"",
 					["Gleis", "km_von", "km_bis", "Radius_m", "u_heute_mm", "v_heute_kmh", "Bestand_haltbar_kmh", "Bestand_Grenze", "u_Vorschlag_mm", "v_Vorschlag_kmh", "Variante", "Anfang_Uebergangsbogen", "Anfang_Laenge_heute_m", "Anfang_Laenge_Vorschlag_m", "Ende_Uebergangsbogen", "Ende_Laenge_heute_m", "Ende_Laenge_Vorschlag_m", "Grenze_danach", "Korbbogen_Hinweis", "Potenzial"].join(";"),
 				];
@@ -47069,7 +47081,7 @@ xlsx/xlsx.mjs:
 					entries,
 					files,
 					drafts: draftSevenLineFrames,
-					gwb: { lineSpeed: gwbLineSpeedInput.value, brakeDistance: gwbBrakeDistanceInput.value, oberbau: gwbOberbauSelect.value, fahrzeug: gwbFahrzeugSelect.value },
+					gwb: { lineSpeed: gwbLineSpeedInput.value, brakeDistance: gwbBrakeDistanceInput.value, oberbau: gwbOberbauSelect.value, fahrzeug: gwbFahrzeugSelect.value, cantLimit: gwbCantLimitSelect.value },
 					spurplan: { coloring: spurplanColoring.value, zoom: [...spurplanZoom.entries()] },
 					kilometerLinesVisible,
 					coupled: selectionCoupled,
@@ -47109,6 +47121,7 @@ xlsx/xlsx.mjs:
 						if (state.gwb.brakeDistance) gwbBrakeDistanceInput.value = state.gwb.brakeDistance;
 						if (state.gwb.oberbau) gwbOberbauSelect.value = state.gwb.oberbau;
 						if (state.gwb.fahrzeug) gwbFahrzeugSelect.value = state.gwb.fahrzeug;
+					if (state.gwb.cantLimit) gwbCantLimitSelect.value = state.gwb.cantLimit;
 					}
 					if (state.spurplan) {
 						if (state.spurplan.coloring) spurplanColoring.value = state.spurplan.coloring;
@@ -47236,7 +47249,7 @@ xlsx/xlsx.mjs:
 			for (const button of diagramPresentationButtons) {
 				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
-			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect]) control.addEventListener("change", () => { renderDiagram(); if (workspace.classList.contains("mode-spurplan")) renderSpurplanView(); });
+			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect, gwbCantLimitSelect]) control.addEventListener("change", () => { renderDiagram(); if (workspace.classList.contains("mode-spurplan")) renderSpurplanView(); });
 			spurplanColoring.addEventListener("change", () => renderSpurplanView());
 			// The three pictures size themselves to their panel; when the panel
 			// changes (Inbox/Outbox folded, window resized), the open one redraws.
