@@ -64,6 +64,7 @@ export function restoreHorizontalRealizationChangeReceipt({ spotObject, elementI
 				alignmentChange: { objectId: spotObject.id, elementId, revision, alignmentData, spotObject },
 				activeObjectId: spotObject.id, activeElementId: elementId,
 				axtranEvidence: receipt.diagnostics?.evidence,
+				axtranRefusal: receipt.diagnostics?.refusal,
 			});
 			if (equal(rebuilt, receipt)) return rebuilt;
 		} catch { /* Malformed or stale saved evidence is never shown as verified. */ }
@@ -90,7 +91,34 @@ function fitSentence(evidence) {
 	return `${lead}${tail}`;
 }
 
-export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange, activeObjectId, activeElementId, axtranEvidence = null } = {}) {
+/**
+ * One sentence on what was held: the poses at joints with how far the fit
+ * met them, the elements held as a turnout's branch with the designation.
+ */
+function holdSentence(evidence) {
+	const parts = [];
+	const poses = Array.isArray(evidence?.heldPoses) ? evidence.heldPoses : [];
+	const residuals = Array.isArray(evidence?.diagnostics?.heldPoseResiduals) ? evidence.diagnostics.heldPoseResiduals : [];
+	for (const pose of poses) {
+		const id = text(pose?.afterElement);
+		if (!id) continue;
+		const components = ["x", "y", "theta"].filter((key) => pose[key] !== undefined);
+		const label = components.length === 1 && components[0] === "theta" ? "Richtung" : components.includes("theta") ? "Lage und Richtung" : "Lage";
+		// the largest residual among this joint's components; no arithmetic
+		// beyond a comparison, the receipt owns no geometry
+		const worst = residuals
+			.filter((row) => text(row?.afterElement) === id && Number.isFinite(row?.residual))
+			.reduce((largest, row) => { const size = row.residual < 0 ? -row.residual : row.residual; return size > largest ? size : largest; }, -1);
+		const met = worst >= 0 ? ` (Residuum ${worst.toExponential(1)})` : "";
+		parts.push(`${label} nach ${id} gehalten${met}`);
+	}
+	const turnout = evidence?.turnout;
+	if (turnout?.designation) parts.push(`${text(turnout.elementId)} als Zweig der ${text(turnout.designation)} ${turnout.side === "left" ? "links" : "rechts"} gehalten (Katalog: Kandidat)`);
+	else if (Array.isArray(evidence?.heldElements) && evidence.heldElements.length) parts.push(`gehalten: ${evidence.heldElements.map(text).join(", ")}`);
+	return parts.length ? `${parts.join("; ")}.` : null;
+}
+
+export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange, activeObjectId, activeElementId, axtranEvidence = null, axtranRefusal = null } = {}) {
 	const objectId = text(alignmentChange?.objectId);
 	const elementId = text(alignmentChange?.elementId);
 	const revision = alignmentChange?.revision;
@@ -121,9 +149,16 @@ export function buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, a
 			message: "AXTRAN2 consequence evidence · evidence-only · not an admissible engineering answer.",
 			fitMode: axtranEvidence.fitMode ?? null,
 			sentence: fitSentence(axtranEvidence),
+			holdSentence: holdSentence(axtranEvidence),
 			evidence: axtranEvidence,
 		})
-		: Object.freeze({ status: "not-available", message: "AXTRAN diagnostics are not available in the current result contract." });
+		: text(axtranRefusal?.message)
+			? Object.freeze({
+				status: "refused",
+				message: `AXTRAN2 hat die Deklaration verweigert: ${text(axtranRefusal.message)}`,
+				refusal: Object.freeze({ code: text(axtranRefusal.code) || "AXTRAN_EVIDENCE_REFUSED", message: text(axtranRefusal.message) }),
+			})
+			: Object.freeze({ status: "not-available", message: "AXTRAN diagnostics are not available in the current result contract." });
 	return Object.freeze({
 		status: "verified",
 		objectId,

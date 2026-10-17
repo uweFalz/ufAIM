@@ -1,4 +1,5 @@
 import { getWorkspacePrimaryId } from "@src/shared/runtime/workspaceSelectionAccess.js";
+import { turnout as turnoutSpec, STANDARD_TURNOUTS } from "../../../src/domain/optimization/alignment/TurnoutCatalogue.js";
 import { AlignmentEditorController } from "@app/controllers/alignmentEditorController.js";
 import { dispatchProductiveAlignmentChange } from "@app/controllers/alignmentCreationController.js";
 import { t } from "@app/i18n/strings.js";
@@ -59,6 +60,9 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		sequenceReview: document.getElementById("aeSequenceReview"),
 		realizationReceipt: document.getElementById("aeRealizationReceipt"),
 		fitMode: document.getElementById("aeFitMode"),
+		holdPose: document.getElementById("aeHoldPose"),
+		turnout: document.getElementById("aeTurnout"),
+		turnoutSide: document.getElementById("aeTurnoutSide"),
 	};
 	let activeSnapshot = null;
 	let requestedElementId = null;
@@ -122,6 +126,55 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		}
 	}
 
+	// What the editor declares for the evidence beside the edit itself: the
+	// pose at the joint after the edited element, held from the pre-edit
+	// realization (its tangent, or its whole pose); and a turnout, which holds
+	// the edited arc as the catalogue's branch and the pose at its toe - the
+	// joint before it - so the fit bends the connections on either side.
+	function elementBefore(element) {
+		const all = elements();
+		const index = all.findIndex((entry) => String(entry?.id ?? "") === String(element?.id ?? ""));
+		return index > 0 ? all[index - 1] : null;
+	}
+	function turnoutDeclaration(element) {
+		const designation = String(fields.turnout?.value ?? "").trim();
+		if (!designation || String(element?.type ?? "").toLowerCase() !== "arc") return null;
+		const side = fields.turnoutSide?.value === "left" ? "left" : "right";
+		return { elementId: String(element.id), designation, side };
+	}
+	function holdDeclarations(element) {
+		const heldPoses = [];
+		const heldElements = [];
+		const hold = String(fields.holdPose?.value ?? "none");
+		if (hold === "heading") heldPoses.push({ afterElement: String(element.id), hold: ["theta"] });
+		else if (hold === "pose") heldPoses.push({ afterElement: String(element.id), hold: ["x", "y", "theta"] });
+		const turnout = turnoutDeclaration(element);
+		if (turnout) {
+			heldElements.push(turnout.elementId);
+			const toe = elementBefore(element);
+			if (toe) heldPoses.push({ afterElement: String(toe.id), hold: ["x", "y", "theta"] });
+		}
+		return { heldPoses, heldElements, turnout };
+	}
+	function applyTurnoutToFields(element) {
+		const declaration = turnoutDeclaration(element);
+		if (!declaration) return;
+		const spec = turnoutSpec({ designation: declaration.designation, side: declaration.side });
+		if (fields.length) fields.length.value = String(spec.branchLength);
+		if (fields.curvature) fields.curvature.value = String(spec.curvature);
+		if (fields.radius) fields.radius.value = String(1 / spec.curvature);
+		arcInputAuthority = "curvature";
+		rememberDraft(); renderConsequence(); message("alignment_editor.status.preview_only", "info", "dirty");
+	}
+	function renderTurnoutOptions() {
+		if (!fields.turnout || fields.turnout.options.length > 1) return;
+		for (const designation of STANDARD_TURNOUTS) {
+			const option = document.createElement("option");
+			option.value = designation; option.textContent = designation;
+			fields.turnout.append(option);
+		}
+	}
+
 	function setWorkspaceElement(elementId, source = "alignment-editor") {
 		const state = store.getState(); const selection = state.workspace_selection ?? {};
 		store.actions?.setWorkspaceSelection?.({
@@ -164,6 +217,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		if(draft){for(const name of ["length","curvature","radius","transitionType","w1","w2"])if(fields[name]&&draft[name]!==undefined)fields[name].value=String(draft[name]);arcInputAuthority=draft.arcInputAuthority??null;}
 		renderChangePreview(element,draft);
 		showField(fields.curvature, type === "arc"); showField(fields.radius, type === "arc");
+		renderTurnoutOptions(); showField(fields.turnout, type === "arc"); showField(fields.turnoutSide, type === "arc");
 		showField(fields.transitionType, type === "transition"); showField(fields.w1, type === "transition"); showField(fields.w2, type === "transition");
 		setDisabled(fields.apply, false); setDisabled(fields.undo, !controller.service.canUndo());
 		const list = elements(); const index = list.indexOf(element);
@@ -323,17 +377,22 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		if (result?.changed === false) { message("alignment_editor.status.no_changes_applied", "info", "ready"); return false; }
 		geometrySaved = Boolean(result?.alignmentChange?.spotObject);
 		let axtranEvidence = null;
+		let axtranRefusal = null;
 		try {
 			// The fit mode is the user's answer to the one question the length
 			// prior asks (docs/app/architecture/AXTRAN2_LENGTH_PRIOR_PROPOSAL.md,
 			// decided A): keep the edited plan where the samples are indifferent,
 			// or samples only. Read at apply time, never remembered for them.
 			const fitMode = fields.fitMode?.value === "measurements-only" ? "measurements-only" : "keep-plan";
-			axtranEvidence = axtranEvidenceService?.evaluateChange?.({ beforeAlignmentData, afterAlignmentData: result.alignmentChange?.alignmentData, fitMode }) ?? null;
-		} catch {
+			axtranEvidence = axtranEvidenceService?.evaluateChange?.({ beforeAlignmentData, afterAlignmentData: result.alignmentChange?.alignmentData, fitMode, ...holdDeclarations(element) }) ?? null;
+		} catch (error) {
+			// a hold the geometry cannot carry (six equalities against four
+			// unknowns, a pose after an element the pre-edit alignment does not
+			// have) is a refusal the user has to see, not a missing receipt
 			axtranEvidence = null;
+			axtranRefusal = { code: String(error?.code ?? error?.name ?? "AXTRAN_EVIDENCE_REFUSED"), message: String(error?.message ?? error) };
 		}
-		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id, axtranEvidence });
+		const receipt = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData, alignmentChange: result.alignmentChange, activeObjectId: activeSnapshot?.object?.id, activeElementId: id, axtranEvidence, axtranRefusal });
 		try {
 			const entry = archiveHorizontalRealizationChangeReceipt({ receipt, beforeAlignmentData, alignmentChange: result.alignmentChange });
 			const saved = unwrap(await messaging.sendCmdAwait("Spot.StoreHorizontalReceipt", { objectId: receipt.objectId, entry }));
@@ -428,7 +487,9 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		closeButton?.addEventListener("click", () => setOpen(false));
 		overlay?.addEventListener("click", (event) => { if (event.target === overlay) setOpen(false); });
 		window.addEventListener("keydown", (event) => { if (event.key === "Escape" && isOpen()) setOpen(false); });
-		fields.element?.addEventListener("change", () => { renderForm(); setWorkspaceElement(selectedId()); message("alignment_editor.status.element_selected"); });
+		fields.element?.addEventListener("change", () => { if (fields.holdPose) fields.holdPose.value = "none"; if (fields.turnout) fields.turnout.value = ""; renderForm(); setWorkspaceElement(selectedId()); message("alignment_editor.status.element_selected"); });
+		fields.turnout?.addEventListener("change", () => applyTurnoutToFields(selectedElement()));
+		fields.turnoutSide?.addEventListener("change", () => applyTurnoutToFields(selectedElement()));
 		fields.apply?.addEventListener("click", () => void apply().catch(() => message("alignment_editor.status.calculation_failed", "error")));
 		fields.undo?.addEventListener("click", () => void undo().catch(() => message("alignment_editor.status.calculation_failed", "error")));
 		fields.reset?.addEventListener("click", () => { drafts.clear(draftIdentity());renderForm(); message("alignment_editor.status.inputs_reset"); });

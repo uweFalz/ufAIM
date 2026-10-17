@@ -26,6 +26,7 @@ export function renderHorizontalRealizationChangeReceipt(container, receipt) {
 	}
 	const boundary = document.createElement("p");
 	boundary.textContent = receipt.diagnostics.message;
+	if (receipt.diagnostics?.status === "refused") boundary.dataset.axtranRefusal = receipt.diagnostics.refusal?.code ?? "refused";
 	container.append(heading, identity, list, boundary);
 	const evidence = receipt.diagnostics?.evidence;
 	if (receipt.diagnostics?.status === "evidence-only" && evidence) {
@@ -34,6 +35,12 @@ export function renderHorizontalRealizationChangeReceipt(container, receipt) {
 			fit.dataset.fitMode = receipt.diagnostics.fitMode ?? "unknown";
 			fit.textContent = receipt.diagnostics.sentence;
 			container.append(fit);
+		}
+		if (receipt.diagnostics.holdSentence) {
+			const held = document.createElement("p");
+			held.dataset.heldDeclarations = String((evidence.heldPoses?.length ?? 0) + (evidence.heldElements?.length ?? 0));
+			held.textContent = receipt.diagnostics.holdSentence;
+			container.append(held);
 		}
 		const detail = document.createElement("dl");
 		detail.dataset.axtranEvidence = "evidence-only";
@@ -47,6 +54,8 @@ export function renderHorizontalRealizationChangeReceipt(container, receipt) {
 			["Iterations", evidence.diagnostics?.iterations],
 			["End-pose residual [m]", evidence.diagnostics?.endPoseDistance],
 			["Derived-point RMS", evidence.diagnostics?.softResidualRms],
+			...(Array.isArray(evidence.heldPoses) && evidence.heldPoses.length ? [["Held poses", evidence.heldPoses.map((pose) => `${pose.afterElement}: ${["x", "y", "theta"].filter((key) => pose[key] !== undefined).join(", ")}`).join("; ")]] : []),
+			...(evidence.turnout?.designation ? [["Turnout", `${evidence.turnout.designation} ${evidence.turnout.side ?? ""} at ${evidence.turnout.elementId}`]] : []),
 		]) {
 			const term = document.createElement("dt");
 			term.textContent = label;

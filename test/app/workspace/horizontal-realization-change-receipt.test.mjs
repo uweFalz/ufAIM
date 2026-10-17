@@ -68,3 +68,24 @@ test("the receipt carries one sentence on the fit mode and the undetermined leng
 	assert.equal(legacy.diagnostics.fitMode, null);
 	assert.equal(legacy.diagnostics.sentence, null);
 });
+
+test("the receipt says what was held and how it was met, and shows a refusal instead of nothing", () => {
+	const change = { objectId: "A1", elementId: "ARC", revision: 7, alignmentData: alignment(0.02), spotObject: { id: "A1" } };
+	const evidence = {
+		type: "axtran2-consequence-evidence", status: "evidence-only", admissible: false, admission: "evidence-only",
+		proposalStatus: "converged", ok: true, objective: "points", fitMode: "keep-plan", planSigma: 0.05, undetermined: [],
+		heldPoses: [{ afterElement: "NEXT", theta: 0.1 }], heldElements: ["ARC"], turnout: { elementId: "ARC", designation: "EW 60-500-1:12", side: "right" },
+		candidate: { names: [], variables: [] }, diagnostics: { heldPoseResiduals: [{ afterElement: "NEXT", component: "theta", residual: 3e-10 }] },
+	};
+	const held = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData: alignment(0.01), alignmentChange: change, activeObjectId: "A1", activeElementId: "ARC", axtranEvidence: evidence });
+	assert.equal(held.diagnostics.status, "evidence-only");
+	assert.match(held.diagnostics.holdSentence, /Richtung nach NEXT gehalten \(Residuum 3\.0e-10\)/);
+	assert.match(held.diagnostics.holdSentence, /ARC als Zweig der EW 60-500-1:12 rechts gehalten/);
+	const refused = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData: alignment(0.01), alignmentChange: change, activeObjectId: "A1", activeElementId: "ARC", axtranRefusal: { code: "OVER_CONSTRAINED", message: "6 equalities against 4 unknowns" } });
+	assert.equal(refused.diagnostics.status, "refused");
+	assert.match(refused.diagnostics.message, /verweigert: 6 equalities/);
+	assert.equal(refused.diagnostics.refusal.code, "OVER_CONSTRAINED");
+	// nothing held: no sentence, the receipt reads as before
+	const plain = buildHorizontalRealizationChangeReceipt({ beforeAlignmentData: alignment(0.01), alignmentChange: change, activeObjectId: "A1", activeElementId: "ARC", axtranEvidence: { ...evidence, heldPoses: [], heldElements: [], turnout: null } });
+	assert.equal(plain.diagnostics.holdSentence, null);
+});

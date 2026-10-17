@@ -267,6 +267,9 @@ export function buildWindowShell() {
 							<label id="aeW1Label" for="aeW1" data-i18n="alignment_editor.label.w1"></label><input id="aeW1" class="input" type="number" min="0" max="1" step="0.001" />
 							<label id="aeW2Label" for="aeW2" data-i18n="alignment_editor.label.w2"></label><input id="aeW2" class="input" type="number" min="0" max="1" step="0.001" />
 							<label id="aeFitModeLabel" for="aeFitMode" data-i18n="alignment_editor.label.fit_mode"></label><select id="aeFitMode" class="select"><option value="keep-plan" data-i18n="alignment_editor.fit_mode.keep_plan"></option><option value="measurements-only" data-i18n="alignment_editor.fit_mode.measurements_only"></option></select>
+							<label id="aeHoldPoseLabel" for="aeHoldPose" data-i18n="alignment_editor.label.hold_pose"></label><select id="aeHoldPose" class="select"><option value="none" data-i18n="alignment_editor.hold_pose.none"></option><option value="heading" data-i18n="alignment_editor.hold_pose.heading"></option><option value="pose" data-i18n="alignment_editor.hold_pose.pose"></option></select>
+							<label id="aeTurnoutLabel" for="aeTurnout" data-i18n="alignment_editor.label.turnout"></label><select id="aeTurnout" class="select"><option value="" data-i18n="alignment_editor.turnout.none"></option></select>
+							<label id="aeTurnoutSideLabel" for="aeTurnoutSide" data-i18n="alignment_editor.label.turnout_side"></label><select id="aeTurnoutSide" class="select"><option value="right" data-i18n="alignment_editor.turnout_side.right"></option><option value="left" data-i18n="alignment_editor.turnout_side.left"></option></select>
 						</div>
 						<div id="aeSignedContext" class="uf-align-edit__hint"></div>
 						<div id="aeConsequence" class="uf-align-edit__consequence" aria-live="polite"></div>

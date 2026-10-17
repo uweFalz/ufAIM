@@ -43,7 +43,7 @@ test("the editor asks the one question the length prior needs, and the receipt a
 	}
 	assert.match(bridge, /fitMode: document\.getElementById\("aeFitMode"\)/);
 	assert.match(bridge, /fields\.fitMode\?\.value === "measurements-only" \? "measurements-only" : "keep-plan"/);
-	assert.match(bridge, /evaluateChange\?\.\(\{ beforeAlignmentData, afterAlignmentData: result\.alignmentChange\?\.alignmentData, fitMode \}\)/);
+	assert.match(bridge, /evaluateChange\?\.\(\{ beforeAlignmentData, afterAlignmentData: result\.alignmentChange\?\.alignmentData, fitMode, \.\.\.holdDeclarations\(element\) \}\)/);
 	assert.doesNotMatch(bridge, /localStorage\.[gs]etItem\([^)]*fitMode/);
 	assert.match(service, /DEFAULT_PLAN_SIGMA = 0\.05/);
 	assert.match(service, /lengthPrior: \{ sigma: planSigma \}/);
