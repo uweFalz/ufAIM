@@ -238,3 +238,74 @@ test("a pose held at a joint reaches the evidence fit, and the evidence reports 
 		beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), heldPoses: "S1",
 	}), /array/);
 });
+
+test("the editor's declaration: a pose held by component takes the pre-edit realization's values, a turnout holds its branch", () => {
+	// the editor says only what to hold, never a number: the heading after S1
+	// is the pre-edit alignment's, which here is the start heading
+	const five = (curvature) => ({
+		type: "AlignmentData", id: "A6", name: "A6", source: { kind: "editor", native: true },
+		editModel: {
+			startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } },
+			elements: [
+				{ id: "S1", type: "straight", parameters: { length: 100 } },
+				{ id: "T1", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "A1", type: "arc", parameters: { length: 100, curvature } },
+				{ id: "T2", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "S2", type: "straight", parameters: { length: 100 } },
+			],
+		},
+	});
+	const service = new AlignmentAxtranEvidenceService();
+	const result = service.evaluateChange({
+		beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350),
+		sampleCount: 10, maxIterations: 60, heldPoses: [{ afterElement: "S1", hold: ["theta"] }],
+	});
+	assert.equal(result.heldPoses.length, 1);
+	assert.ok(Math.abs(result.heldPoses[0].theta) < 1e-12, "the held heading is the pre-edit one, not a number the editor typed");
+	assert.equal(result.heldPoses[0].x, undefined, "only the named component is held");
+	assert.ok(Math.abs(result.diagnostics.heldPoseResiduals[0].residual) < 1e-8);
+	// a turnout: the arc held as the catalogue's branch, the toe held as the
+	// joint before it, the declaration carried as provenance. A held full
+	// pose needs three free quantities before it, which the curve supplies;
+	// on the five-element chain above the toe would be over-constrained.
+	const nine = (curvature) => ({
+		type: "AlignmentData", id: "A7", name: "A7", source: { kind: "editor", native: true },
+		editModel: {
+			startPose: { p: { x: 0, y: 0 }, t: { x: 1, y: 0 } },
+			elements: [
+				{ id: "S1", type: "straight", parameters: { length: 100 } },
+				{ id: "T1", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "A0", type: "arc", parameters: { length: 150, curvature: 1 / 400 } },
+				{ id: "T2", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "S2", type: "straight", parameters: { length: 80 } },
+				{ id: "T3", type: "transition", parameters: { length: 40, transitionType: "bloss" } },
+				{ id: "A1", type: "arc", parameters: { length: 41.6, curvature } },
+				{ id: "T4", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "A2", type: "arc", parameters: { length: 120, curvature: -1 / 600 } },
+				{ id: "T5", type: "transition", parameters: { length: 60, transitionType: "bloss" } },
+				{ id: "S3", type: "straight", parameters: { length: 100 } },
+			],
+		},
+	});
+	const branch = service.evaluateChange({
+		beforeAlignmentData: nine(-1 / 480), afterAlignmentData: nine(-1 / 500),
+		sampleCount: 16, maxIterations: 120,
+		heldElements: ["A1"], heldPoses: [{ afterElement: "T3", hold: ["x", "y", "theta"] }],
+		turnout: { elementId: "A1", designation: "EW 60-500-1:12", side: "right" },
+	});
+	assert.deepEqual(branch.heldElements, ["A1"]);
+	assert.ok(!branch.candidate.names.some((name) => name.startsWith("A1.")), "the branch has no free quantity");
+	assert.deepEqual(branch.turnout, { elementId: "A1", designation: "EW 60-500-1:12", side: "right" });
+	assert.equal(branch.heldPoses[0].afterElement, "T3");
+	assert.ok(["x", "y", "theta"].every((key) => Number.isFinite(branch.heldPoses[0][key])));
+	assert.ok(branch.ok, `${branch.proposalStatus} ${branch.diagnostics.reason ?? ""}`);
+	assert.ok(branch.diagnostics.heldPoseResiduals.every((row) => Math.abs(row.residual) < 1e-6), "the toe is met");
+	// the same hold on the short chain is refused with the count, not swallowed
+	assert.throws(() => service.evaluateChange({
+		beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), heldElements: ["A1"], heldPoses: [{ afterElement: "T1", hold: ["x", "y", "theta"] }],
+	}), /free variables against/);
+	// refusals, by name
+	assert.throws(() => service.evaluateChange({ beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), heldPoses: [{ afterElement: "S1", hold: ["z"] }] }), /components among/);
+	assert.throws(() => service.evaluateChange({ beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), heldElements: ["X9"] }), /not a declared element/);
+	assert.throws(() => service.evaluateChange({ beforeAlignmentData: five(1 / 300), afterAlignmentData: five(1 / 350), turnout: { designation: "EW 60-500-1:12" } }), /turnout must carry/);
+});
