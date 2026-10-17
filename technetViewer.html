@@ -1795,7 +1795,7 @@
 								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
 								<label class="gwb-input" title="Überhöhungsgrenze für den GWB-Vorschlag: die Ermessensgrenze nach Ril 800.0110 Tab. 4 (160 mm Schotter, 170 mm Feste Fahrbahn), oder der Genehmigungsbereich bis zur EBO-Grenze 180 mm (§ 6 (3) EBO) — ein Zustimmungswert, der die Zentrale braucht">Grenze <select id="gwbCantLimit"><option value="Ermessen">Ermessensgrenze (Tab. 4)</option><option value="EBO">Zustimmung bis EBO 180 mm</option></select></label>
-								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nicht modelliert">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option></select></label>
+								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nach Ril 800.0110 11 und Tab. 13: ufN 300 / 245 / 207 mm je Radsatzlast in überhöhten Bögen (u ≥ 30 mm) zwischen 70 und 160 km/h, sonst 150 mm; Zwangspunkte (Brücken ohne Schotterbett, Hilfsbrücken, feste Bahnübergänge) stehen in keiner Datei, jeder Bogen gilt als frei">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option><option value="NeiTech168">Neigetechnik ≤ 16,8 t (ufN ≤ 300)</option><option value="NeiTech175">Neigetechnik ≤ 17,5 t (ufN ≤ 245)</option><option value="NeiTech185">Neigetechnik ≤ 18,5 t (ufN ≤ 207)</option></select></label>
 									</div>
 								</details>
 								<details class="menu">
@@ -39448,12 +39448,31 @@ xlsx/xlsx.mjs:
 			// 800.0110 Tab. 5, zul uf = 130 mm is the Ermessensgrenze for Gleis;
 			// 150 mm only for vehicles with the corresponding Zulassung (Fn. 18)
 			// and r >= 650 m -- below 650 m the 150 is a Zustimmungswert and not
-			// offered. Neigetechnik (~300 mm) is a class of its own, not modelled.
-			// The vehicle class is in no geometry file, so the toolbar select sets
-			// it; "Regel" is the default.
+			// offered. The vehicle class is in no geometry file, so the toolbar
+			// select sets it; "Regel" is the default.
 			const CANT_DEFICIENCY_MM = 130;
 			const CANT_DEFICIENCY_ZULASSUNG_MM = 150;
 			const CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M = 650;
+			// Bogenschneller Betrieb (Neigetechnik), 800.0110 11 and Tab. 13: such
+			// vehicles are konventionell allowed uf = 150 mm (11 (1)); in überhöhten
+			// Gleisbogen (u >= 30 mm, the Ermessensgrenze; Regelwert 40) and between
+			// 70 and 160 km/h they may run with ufN = 300 / 245 / 207 mm by
+			// Radsatzlast <= 16,8 / 17,5 / 18,5 t (11 (2)). In Bögen with
+			// Zwangspunkten (Brücken ohne Schotterbett, Hilfsbrücken, BÜ with
+			// starren Belägen, Tab. 6) only 150 mm -- Zwangspunkte are in no
+			// geometry file, so every Bogen counts as free and the footnote says
+			// so. Übergangsbogen and Rampe are designed for the conventional speed
+			// (11 (4)); for NeiTech the ramp minima are Zustimmungswerte settled
+			// case by case (Tab. 13 Fn. 45 -> Tab. 8 Fn. 25), so the ramp is not
+			// judged in NeiTech mode. The Übergangsbogen is judged at vN for the
+			// NeiTech Fehlbetrag (Tab. 9 as the Ermessensgrenze of Tab. 13; the
+			// Regelwert 0,55 vN is not enforced), Krümmungswechsel at vN (11 (3)).
+			const NEITECH_UF_BY_RSL_MM = { NeiTech168: 300, NeiTech175: 245, NeiTech185: 207 };
+			const NEITECH_RSL_LABEL = { NeiTech168: "≤ 16,8 t", NeiTech175: "≤ 17,5 t", NeiTech185: "≤ 18,5 t" };
+			const NEITECH_CONVENTIONAL_UF_MM = 150;
+			const NEITECH_MIN_CANT_MM = 30;
+			const NEITECH_V_MIN_KMH = 70;
+			const NEITECH_V_MAX_KMH = 160;
 			// Cant a Bogen may be given, 800.0110 7 (1) and Tab. 4: not below 20 mm,
 			// multiples of 5, Ermessensgrenze 160 mm on Schotteroberbau, 170 mm on
 			// Fester Fahrbahn. Above that lies the Genehmigungsbereich up to the
@@ -39645,10 +39664,39 @@ xlsx/xlsx.mjs:
 				return gwbOberbauSelect && gwbOberbauSelect.value in CANT_MAX_BY_OBERBAU_MM ? gwbOberbauSelect.value : "Schotter";
 			}
 			function fahrzeugKey() {
-				return gwbFahrzeugSelect?.value === "Zulassung" ? "Zulassung" : "Regel";
+				const value = gwbFahrzeugSelect?.value;
+				return value in NEITECH_UF_BY_RSL_MM || value === "Zulassung" ? value : "Regel";
 			}
+			function isNeiTech() { return fahrzeugKey() in NEITECH_UF_BY_RSL_MM; }
+			// The conventional Fehlbetrag of the chosen vehicle at this radius.
 			function cantDeficiencyMm(radiusM) {
+				if (isNeiTech()) return NEITECH_CONVENTIONAL_UF_MM;
 				return fahrzeugKey() === "Zulassung" && radiusM >= CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M ? CANT_DEFICIENCY_ZULASSUNG_MM : CANT_DEFICIENCY_MM;
+			}
+			// The Fehlbetrag the vehicle may use at (u, v): the NeiTech window or
+			// the conventional value.
+			function cantDeficiencyAt(radiusM, u, v) {
+				if (isNeiTech() && u >= NEITECH_MIN_CANT_MM && v >= NEITECH_V_MIN_KMH && v <= NEITECH_V_MAX_KMH) return NEITECH_UF_BY_RSL_MM[fahrzeugKey()];
+				return cantDeficiencyMm(radiusM);
+			}
+			// Highest speed step a Bogen allows by its Fehlbetrag alone at cant u,
+			// the better of the conventional regime and the NeiTech window.
+			function allowedSpeedKmh(radiusM, u) {
+				let best = Math.min(Math.sqrt(radiusM * (u + cantDeficiencyMm(radiusM)) / 11.8), V_MAX_DE_KMH);
+				if (isNeiTech() && u >= NEITECH_MIN_CANT_MM) {
+					const vN = Math.min(Math.sqrt(radiusM * (u + NEITECH_UF_BY_RSL_MM[fahrzeugKey()]) / 11.8), NEITECH_V_MAX_KMH);
+					if (vN >= NEITECH_V_MIN_KMH) best = Math.max(best, vN);
+				}
+				return roundDownToSpeedStep(best);
+			}
+			function fahrzeugText(ascii = false) {
+				const key = fahrzeugKey();
+				const text = key === "Zulassung"
+					? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m (Fahrzeug mit Zulassung, Fn. 18), sonst ${CANT_DEFICIENCY_MM}`
+					: isNeiTech()
+						? `${NEITECH_UF_BY_RSL_MM[key]} mm Neigetechnik (11 (2), Tab. 13, Radsatzlast ${NEITECH_RSL_LABEL[key]}) in überhöhten Bögen u ≥ ${NEITECH_MIN_CANT_MM} mm zwischen ${NEITECH_V_MIN_KMH} und ${NEITECH_V_MAX_KMH} km/h, sonst ${NEITECH_CONVENTIONAL_UF_MM} (11 (1)); Zwangspunkte stehen in keiner Datei, jeder Bogen gilt als frei; Rampen sind Sache der konventionellen Auslegung (11 (4)) und für NeiTech Zustimmungswerte im Einzelfall (Tab. 13 Fn. 45), hier nicht geprüft; Übergangsbogen nach Tab. 9 und Krümmungswechsel nach Tab. 10 bei vN`
+						: `${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Regelfahrzeug)`;
+				return ascii ? text.replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/ü/g, "ue").replace(/ö/g, "oe").replace(/ä/g, "ae").replace(/ß/g, "ss") : text;
 			}
 			function cantLimitKey() {
 				return gwbCantLimitSelect?.value === "EBO" ? "EBO" : "Ermessen";
@@ -40588,7 +40636,7 @@ xlsx/xlsx.mjs:
 			// is 800.0110 9 / Tab. 10 Vergleichsradius, not modelled). Reads only
 			// the interpreted elements and the mm cant series; writes nothing back.
 			const GWB_VARIANTS = ["Klothoide", "Bloss"];
-			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m (Fahrzeug mit Zulassung, Fn. 18), sonst ${CANT_DEFICIENCY_MM}` : `${CANT_DEFICIENCY_MM} mm (Ermessensgrenze Gleis, Regelfahrzeug)`} · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (${cantLimitLabel()}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · ohne Übergangsbogen gegen den Vergleichsradius (9 (3), Tab. 10 Ermessensgrenze; über 200 km/h der Wert für 200) · Platz für die Bloss-Verlängerung nicht geprüft · Diagnose, kein Entwurf`;
+			const speedDiagnosticFootnote = () => `zul. v —: Ril 800.0110 Tab. 5 mit uf ≤ ${fahrzeugText()} · GWB-Vorschlag ┄: je Bogen u bis ${cantMaxMm()} mm (${cantLimitLabel()}) gegen Rampenlänge/-neigung (Tab. 7/8) und Übergangsbogenlänge (Tab. 9), Klothoide bleibt oder → Bloss mit gleichem f-Maß (8 (2)); Ermessensgrenze nach 4 (3), ohne bauliche Maßnahme · beide in ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h · ohne Übergangsbogen gegen den Vergleichsradius (9 (3), Tab. 10 Ermessensgrenze; über 200 km/h der Wert für 200) · Platz für die Bloss-Verlängerung nicht geprüft · Diagnose, kein Entwurf`;
 			function gwbElements(entry) {
 				const list = [];
 				const signOf = (radius, element) => radius < 0 ? -1 : radius > 0 ? curveRotationSign(element) : 0;
@@ -40622,7 +40670,7 @@ xlsx/xlsx.mjs:
 				const member = list[index];
 				const neighbour = list[index + step];
 				const cantAt = (x) => Math.abs(interpolateSeriesAt(cantMm, x));
-				const finish = (side) => ({ ...side, vMax: side.radius > 0 ? roundDownToSpeedStep(Math.min(Math.sqrt(side.radius * (side.cantMm + cantDeficiencyMm(side.radius)) / 11.8), V_MAX_DE_KMH)) : Infinity });
+				const finish = (side) => ({ ...side, vMax: side.radius > 0 ? allowedSpeedKmh(side.radius, side.cantMm) : Infinity });
 				if (!neighbour) return finish({ label, kind: "Ende", existing: "", lU: 0, cantMm: cantAt(step < 0 ? member.s0 : member.s1), radius: 0, opposite: false });
 				if (neighbour.type === "Spiral") {
 					const farRadius = step < 0 ? neighbour.radiusStart : neighbour.radiusEnd;
@@ -40640,8 +40688,8 @@ xlsx/xlsx.mjs:
 				if (v > V_MAX_DE_KMH) return `Deckel ${V_MAX_DE_KMH} km/h`;
 				const member = unit.members[memberIndex];
 				const uf = 11.8 * v * v / member.radius - u;
-				const ufLimit = cantDeficiencyMm(member.radius);
-				if (uf > ufLimit + 1e-9) return `Bogen r ${Math.round(member.radius)} m (uf > ${ufLimit} mm)`;
+				const ufLimit = cantDeficiencyAt(member.radius, u, v);
+				if (uf > ufLimit + 1e-9) return `Bogen r ${Math.round(member.radius)} m (uf > ${ufLimit} mm${isNeiTech() && ufLimit === NEITECH_CONVENTIONAL_UF_MM ? ", außerhalb des NeiTech-Fensters" : ""})`;
 				// Inside a Korbbogen the radii meet without Übergangsbogen (9 (3)).
 				for (const other of [unit.members[memberIndex - 1], unit.members[memberIndex + 1]]) {
 					if (!other || Math.abs(other.radius - member.radius) < 1e-9) continue;
@@ -40652,15 +40700,21 @@ xlsx/xlsx.mjs:
 				const sides = unit.sides.filter((side, sideIndex) => sideIndex === 0 ? memberIndex === 0 : memberIndex === unit.members.length - 1);
 				for (const side of sides) {
 					const vSide = Math.min(v, side.vMax);
+					// 11 (4): Übergangsbogen and Überhöhung are designed for the
+					// conventional speed; for the NeiTech v Tab. 13 refers the ramp
+					// minima to Zustimmungswerte settled case by case (Fn. 45, Tab. 8
+					// Fn. 25), which no formula covers -- so the ramp length and
+					// gradient are not judged in NeiTech mode, and the footnote says so.
+					const judgeRamp = !isNeiTech();
 					const deltaU = side.opposite ? u + side.cantMm : Math.abs(u - side.cantMm);
 					const type = side.existing === "Bloss" || variant === "Bloss" ? "Bloss" : "Klothoide";
 					const lR = side.existing === "Bloss" || variant === "Klothoide" ? side.lU : side.lU * BLOSS_LENGTH_FROM_KLOTHOIDE;
 					if (deltaU > 0.5) {
 						if (!(lR > 0)) return `${side.label}: kein Übergangsbogen für Δu ${Math.round(deltaU)} mm`;
 						if (type === "Bloss" && deltaU < BLOSS_MIN_DELTA_U_MM) return `${side.label}: Bloss braucht Δu ≥ ${BLOSS_MIN_DELTA_U_MM} mm`;
-						if (lR < RAMP_LENGTH_FACTOR[type] * vSide * deltaU / 1000) return `${side.label}: Rampe ${Math.round(lR)} m < ${RAMP_LENGTH_FACTOR[type]}·v·Δu/1000`;
+						if (judgeRamp && lR < RAMP_LENGTH_FACTOR[type] * vSide * deltaU / 1000) return `${side.label}: Rampe ${Math.round(lR)} m < ${RAMP_LENGTH_FACTOR[type]}·v·Δu/1000`;
 						const gradient = (type === "Bloss" ? BLOSS_GRADIENT_SHARE : 1) * lR * 1000 / deltaU;
-						if (gradient < RAMP_GRADIENT_MIN_M) return `${side.label}: Rampenneigung 1:${Math.round(gradient)} steiler als 1:${RAMP_GRADIENT_MIN_M}`;
+						if (judgeRamp && gradient < RAMP_GRADIENT_MIN_M) return `${side.label}: Rampenneigung 1:${Math.round(gradient)} steiler als 1:${RAMP_GRADIENT_MIN_M}`;
 					}
 					if (!(lR > 0)) {
 						// No Übergangsbogen on this side: the Krümmungswechsel is judged by
@@ -40765,7 +40819,7 @@ xlsx/xlsx.mjs:
 					const sides = [gwbSide(list, first, -1, cantMm, "Anfang"), gwbSide(list, last, 1, cantMm, "Ende")];
 					const unit = { from, to, radii, radiusMin: Math.min(...radii), radiusMax: Math.max(...radii), uToday, sides };
 					unit.members = members.map((member) => ({ s0: member.s0, s1: member.s1, radius: member.radiusStart }));
-					unit.memberSpeedsToday = unit.members.map((member) => roundDownToSpeedStep(Math.min(Math.sqrt(member.radius * (uToday + cantDeficiencyMm(member.radius)) / 11.8), V_MAX_DE_KMH)));
+					unit.memberSpeedsToday = unit.members.map((member) => allowedSpeedKmh(member.radius, uToday));
 					unit.vToday = Math.min(...unit.memberSpeedsToday);
 					unit.todayCheck = gwbBest(unit, "Klothoide", [uToday]);
 					unit.proposal = null;
@@ -42969,7 +43023,7 @@ xlsx/xlsx.mjs:
 				const lines = [
 					`GWB-Vorschlag je Bogen (Diagnose, kein Entwurf) - ${objectDisplayName(entry)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
-					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m, sonst ${CANT_DEFICIENCY_MM}` : CANT_DEFICIENCY_MM + " mm"} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (${cantLimitLabel()}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); Platz fuer die Bloss-Verlaengerung nach Tab. 3 geprueft (Spalte Bloss_Platz)`,
+					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugText(true)} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (${cantLimitLabel()}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); Platz fuer die Bloss-Verlaengerung nach Tab. 3 geprueft (Spalte Bloss_Platz)`,
 					"",
 					["Gleis", "km_von", "km_bis", "Radius_m", "u_heute_mm", "v_heute_kmh", "Bestand_haltbar_kmh", "Bestand_Grenze", "u_Vorschlag_mm", "v_Vorschlag_kmh", "Variante", "Anfang_Uebergangsbogen", "Anfang_Laenge_heute_m", "Anfang_Laenge_Vorschlag_m", "Ende_Uebergangsbogen", "Ende_Laenge_heute_m", "Ende_Laenge_Vorschlag_m", "Grenze_danach", "Korbbogen_Hinweis", "Bloss_Platz", "Potenzial"].join(";"),
 				];
