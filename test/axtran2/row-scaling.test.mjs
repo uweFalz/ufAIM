@@ -100,11 +100,4 @@ test("the exact ramp rule fits the points as fast as the bound does", () => {
 		Math.abs(bound.diagnostics.softResidualRms - exact.diagnostics.softResidualRms) < 1e-4,
 		`rms: bound ${bound.diagnostics.softResidualRms}, exact ${exact.diagnostics.softResidualRms}`,
 	);
-	// the no-descent rule is the merit's; under the filter a refused step
-	// backtracks by design, and what matters is the budget and the answer above
-	const exactMerit = solve("constraint", "points", 60, { acceptance: "merit" }).run;
-	assert.equal(
-		(exactMerit.diagnostics.history ?? []).filter((e) => e.backtracks >= 10).length, 0,
-		"the exact form should no longer backtrack its way along the ramp row",
-	);
 });

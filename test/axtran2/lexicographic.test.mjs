@@ -685,14 +685,14 @@ test("the merit pays off a violated ramp inequality instead of freezing on it", 
 		startCurvatures: [1 / 695, -1 / 905],
 		rampLengthAs: "constraint",
 	});
-	// the merit's weights are what this test measures
+	// the merit's weights still price the stationarity verdict; the step is
+	// the filter's since the merit acceptance was removed (2026-10-11)
 	const run = solveAlignmentProblem({
 		problem: scenario.problem,
 		buildAlignment: scenario.buildAlignment,
 		analyticJacobian: scenario.analyticJacobian,
 		objective: "accumulated-length",
 		maxIterations: 200,
-		acceptance: "merit",
 	});
 	const history = run.diagnostics.history ?? [];
 	const last = history.filter((e) => e.violation !== undefined).pop();

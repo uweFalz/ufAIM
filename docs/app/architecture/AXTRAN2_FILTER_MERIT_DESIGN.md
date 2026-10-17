@@ -1,5 +1,11 @@
 # AXTRAN2: a filter in place of the merit — design and measurement
 
+> Status 2026-10-11: the merit acceptance (`acceptance: "merit"`) was
+> removed from `solveSQP` after this measurement had decided for the filter;
+> the option is refused, not ignored. The l1 merit still prices the penalty
+> weights and the `merit_stationary` verdict. This document stays as the
+> measurement that decided it; the runner's `--acceptance` flag is gone.
+
 Design for the last open item of the scaling work (#23–#30): the length
 objective on 119 elements ends `infeasible_subproblem` with the end pose a
 kilometre off. A prototype was built behind an option, off by default, and
