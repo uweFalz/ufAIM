@@ -346,3 +346,26 @@ The removal changes nothing on the filter's path: the merit's no-descent
 rule and its Armijo branch of the search went, the penalty weights and
 the `merit_stationary` verdict stay. Corpus 0-235, both objectives,
 before and after: every row identical in verdict, iterations and rms.
+
+## The editor declares held poses and turnouts (2026-10-17)
+
+The last piece of the turnout case that was outside AXTRAN2: who
+declares the hold. The Alignment editor now has three controls beside
+the fit mode. "Pose nach dem Element halten" holds the pose at the joint
+after the edited element from the pre-edit realization - its heading
+(the turnout's tangent) or position and heading; the editor names only
+the components, the service takes the values from the pre-edit
+alignment at that station. "Weiche" fills an arc's length and curvature
+from the catalogue designation and side (`TurnoutCatalogue.js`), holds
+that element as the branch and the pose at the joint before it as the
+toe, and carries the designation as provenance. The evidence service
+takes `heldPoses` with `hold: [...]`, `heldElements` and `turnout`
+(version 0.4), and the receipt says in one sentence what was held and
+how far the fit met it; a declaration the geometry cannot carry - six
+equalities against four unknowns - comes back as a refusal the user
+reads, not as a missing receipt.
+
+Tests: the service holds the pre-edit heading after S1 to 1e-8 and a
+turnout branch with its toe on an eleven-element chain to 1e-6, and
+refuses the same toe on a five-element chain with the count; the
+receipt carries the hold sentence and the refusal.

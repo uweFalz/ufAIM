@@ -13,7 +13,8 @@ import { createAlignmentPoseJacobian } from "../../domain/optimization/alignment
 import { createTransitionMomentsCatalogue } from "../../domain/optimization/alignment/TransitionMomentsCatalogue.js";
 import { createFootMemory } from "../../domain/optimization/alignment/AlignmentPointProjection.js";
 
-export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.3";
+export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.4";
+export const HOLDABLE_COMPONENTS = Object.freeze(["x", "y", "theta"]);
 export const FIT_MODES = Object.freeze(["keep-plan", "measurements-only"]);
 // Decided for the app's main journey (AXTRAN2_LENGTH_PRIOR_PROPOSAL.md, A):
 // the edited plan is kept where the samples are indifferent, with sigma 5 %.
@@ -105,7 +106,7 @@ function sampleReference(alignment, count) {
 	});
 }
 
-function declaredElements(alignmentData) {
+function declaredElements(alignmentData, heldElements = new Set()) {
 	return alignmentData.editModel.elements.flatMap((element) => {
 		const kind = kindOf(element);
 		const length = lengthOf(element);
@@ -116,11 +117,12 @@ function declaredElements(alignmentData) {
 		if (!String(element?.id ?? "").trim() || !Number.isFinite(length) || length <= 0 || (kind === "arc" && !Number.isFinite(curvature))) {
 			throw new Error("AXTRAN evidence requires finite native horizontal elements");
 		}
+		const role = heldElements.has(String(element.id)) ? "held" : "free";
 		return [{
 			id: String(element.id),
 			quantities: {
-				length: "free",
-				...(kind === "arc" ? { curvature: "free" } : {}),
+				length: role,
+				...(kind === "arc" ? { curvature: role } : {}),
 			},
 			values: { length, ...(kind === "arc" ? { curvature } : {}) },
 		}];
@@ -128,23 +130,60 @@ function declaredElements(alignmentData) {
 }
 
 export class AlignmentAxtranEvidenceService {
-	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA, heldPoses = [] } = {}) {
+	/**
+	 * @param {Array} [input.heldPoses]     [{ afterElement, x?, y?, theta? }] explicit, or
+	 *        [{ afterElement, hold: ["theta"] | ["x", "y", "theta"] }] to hold the pose the
+	 *        pre-edit realization has at that joint - the turnout's tangent, as the editor declares it
+	 * @param {string[]} [input.heldElements]  element ids whose length and curvature are not free
+	 * @param {object|null} [input.turnout]    { elementId, designation, side } carried as provenance of a held branch
+	 */
+	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA, heldPoses = [], heldElements = [], turnout = null } = {}) {
 		if (!beforeAlignmentData?.editModel?.elements || !afterAlignmentData?.editModel?.elements) {
 			throw new Error("AXTRAN evidence requires before and after native AlignmentData");
 		}
 		if (!FIT_MODES.includes(fitMode)) throw new Error(`AXTRAN evidence fit mode must be one of ${FIT_MODES.join(", ")}`);
 		if (!(planSigma > 0)) throw new Error("AXTRAN evidence plan sigma must be positive");
 		const before = alignmentFromData(beforeAlignmentData);
-		const declarations = declaredElements(afterAlignmentData);
+		if (!Array.isArray(heldElements) || heldElements.some((id) => typeof id !== "string")) throw new Error("AXTRAN evidence heldElements must be an array of element ids");
+		const held = new Set(heldElements.map((id) => id.trim()));
+		const declarations = declaredElements(afterAlignmentData, held);
 		const declaredIds = new Set(declarations.map((element) => element.id));
+		for (const id of held) if (!declaredIds.has(id)) throw new Error(`AXTRAN evidence cannot hold "${id}": not a declared element`);
 		const codec = createAlignmentVariableCodec({ elements: declarations });
 		if (codec.freeCount < 3) throw new Error("AXTRAN evidence requires at least three free quantities");
 		const kinds = Object.fromEntries(afterAlignmentData.editModel.elements.map((element) => [String(element.id), kindOf(element)]));
 		// Poses held at element joints, in the alignment's own frame - a
 		// turnout's tangent or pose at its start or end - as the constraint
-		// builder takes them ({ afterElement, x?, y?, theta? }). Who declares
-		// them is the journey's question; here they are carried and reported.
+		// builder takes them ({ afterElement, x?, y?, theta? }). The editor
+		// declares them by component only ({ afterElement, hold }): the values
+		// are the pre-edit realization's at that joint, which is what "hold the
+		// turnout's tangent" means to the user.
 		if (!Array.isArray(heldPoses)) throw new Error("AXTRAN evidence heldPoses must be an array");
+		const beforeStationAfter = (elementId) => {
+			let station = 0;
+			let found = false;
+			for (const element of beforeAlignmentData.editModel.elements) {
+				if (!declaredIds.has(String(element.id))) continue;
+				station += lengthOf(element);
+				if (String(element.id) === elementId) { found = true; break; }
+			}
+			if (!found) throw new Error(`AXTRAN evidence cannot hold the pose after "${elementId}": not an element of the pre-edit alignment`);
+			return station;
+		};
+		const resolvedPoses = heldPoses.map((entry) => {
+			if (!entry || typeof entry.afterElement !== "string") return entry;
+			if (!Array.isArray(entry.hold)) return entry;
+			const components = entry.hold.map(String);
+			if (components.length === 0 || components.some((key) => !HOLDABLE_COMPONENTS.includes(key))) {
+				throw new Error(`AXTRAN evidence hold must name components among ${HOLDABLE_COMPONENTS.join(", ")}`);
+			}
+			const pose = before.poseAt(beforeStationAfter(entry.afterElement), { quality: "exact" });
+			const values = { x: pose.p.x, y: pose.p.y, theta: Math.atan2(pose.t.y, pose.t.x) };
+			return { afterElement: entry.afterElement, ...Object.fromEntries(components.map((key) => [key, values[key]])) };
+		});
+		if (turnout !== null && (typeof turnout?.elementId !== "string" || typeof turnout?.designation !== "string")) {
+			throw new Error("AXTRAN evidence turnout must carry elementId and designation");
+		}
 		const constraints = createAlignmentConstraintBuilder({
 			endPose: poseOf(before),
 			elementSequence: codec.elementSequence,
@@ -152,7 +191,7 @@ export class AlignmentAxtranEvidenceService {
 			elementKinds: kinds,
 			design: {},
 			admitUnconfirmedDesign: EVIDENCE_ONLY,
-			heldPoses,
+			heldPoses: resolvedPoses,
 		});
 		const residuals = createAlignmentResidualBuilder({
 			metricContext: createIntrinsicMetricContext(),
@@ -229,6 +268,8 @@ export class AlignmentAxtranEvidenceService {
 			planSigma: fitMode === "keep-plan" ? planSigma : null,
 			undetermined,
 			heldPoses: constraints.heldPoses,
+			heldElements: Object.freeze([...held]),
+			turnout: turnout === null ? null : Object.freeze({ elementId: turnout.elementId, designation: turnout.designation, side: turnout.side ?? null }),
 			candidate: proposal.candidate,
 			diagnostics,
 			note: observationOnly
