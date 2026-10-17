@@ -39481,6 +39481,8 @@ xlsx/xlsx.mjs:
 			// Bloss ramps want du >= 40 mm (Fn. 23).
 			const BLOSS_LENGTH_FROM_KLOTHOIDE = Math.sqrt(5 / 3);
 			const BLOSS_MIN_DELTA_U_MM = 40;
+			// 800.0110 Tab. 3: Mindestlänge of a Gleisbogen or Gerade by speed.
+			function minElementLengthM(v) { return (v <= 70 ? 0.10 : v <= 100 ? 0.15 : 0.20) * v; }
 			// Korbbogen keep one cant while the Fehlbetrag difference between the
 			// radii stays within 40 mm (800.0110 7 (4), v <= 200 km/h); beyond it
 			// each radius wants its own cant, i.e. a ramp between the Bögen. That
@@ -40576,8 +40578,11 @@ xlsx/xlsx.mjs:
 			// Gegenbogen neighbour adds instead of subtracts. Two variants: keep the
 			// existing Übergangsbogen, or reshape a Klothoide into a Bloss with the
 			// same f-Maß (8 (2), l_UB = sqrt(5/3) l_U) so the Bogen stays where it
-			// is. Whether the extra Bloss length fits into the neighbours, and the
-			// Fahrdynamik of the resulting steps (457.0201 5 (10)), are NOT checked.
+			// is. The extra Bloss length (half into the Bogen, half into the
+			// neighbour) must leave Bogen and Gerade their Mindestlänge after
+			// Tab. 3 (0,10/0,15/0,20 v for v <= 70 / <= 100 / > 100 km/h); a
+			// Bloss that does not fit is dropped and said so (blossRoomCheck).
+			// The Fahrdynamik of the resulting steps is 457.0201 5 (10), below.
 			// A Bogen side without Übergangsbogen keeps its cant (8 (1) wants ramps
 			// on the Übergangsbogen) and its Krümmungswechsel is not judged (that
 			// is 800.0110 9 / Tab. 10 Vergleichsradius, not modelled). Reads only
@@ -40699,6 +40704,45 @@ xlsx/xlsx.mjs:
 				}
 				return best;
 			}
+			// Platzprüfung for the Bloss variant: each Klothoide that becomes a
+			// Bloss grows by (sqrt(5/3) - 1) l_U, half into the Kreisbogen, half
+			// into whatever lies beyond -- a Gerade (which may also give the same
+			// to a Klothoide at its other end, taken as the worst case), the
+			// Gegenbogen behind a Wendebogen, or nothing (end of data). Bogen and
+			// Gerade must keep the Mindestlänge of Tab. 3 at the proposed v; two
+			// Übergangsbögen back to back leave no room at all.
+			function blossRoomCheck(list, first, last, unit, v) {
+				const m = (x) => `${Math.round(x)} m`;
+				const minLength = minElementLengthM(v);
+				const growthOf = (spiral) => spiral && spiral.type === "Spiral" && spiral.spiType !== "Bloss" && spiral.length > 0 ? spiral.length * (BLOSS_LENGTH_FROM_KLOTHOIDE - 1) : 0;
+				const arcLength = unit.members.reduce((sum, member) => sum + (member.s1 - member.s0), 0);
+				let arcLoss = 0;
+				const notes = [];
+				for (const [spiralIndex, beyondIndex, label] of [[first - 1, first - 2, "Anfang"], [last + 1, last + 2, "Ende"]]) {
+					const spiral = list[spiralIndex];
+					const half = growthOf(spiral) / 2;
+					if (!(half > 0)) continue;
+					arcLoss += half;
+					const beyond = list[beyondIndex];
+					if (!beyond) { notes.push(`${label}: Ende der Daten`); continue; }
+					if (beyond.type === "Spiral") return { ok: false, text: `${label}: zwei Übergangsbögen ohne Zwischengerade, kein Platz für ${m(half)}` };
+					if (beyond.type === "Line") {
+						const farSpiral = list[beyondIndex + (beyondIndex < spiralIndex ? -1 : 1)];
+						const farHalf = growthOf(farSpiral) / 2;
+						const remaining = beyond.length - half - farHalf;
+						if (remaining < minLength) return { ok: false, text: `${label}: Gerade ${m(beyond.length)} → ${m(remaining)} < min ${m(minLength)} (Tab. 3)` };
+						notes.push(`${label}: Gerade ${m(beyond.length)} → ${m(remaining)}`);
+						continue;
+					}
+					const remaining = beyond.length - half;
+					if (remaining < minLength) return { ok: false, text: `${label}: Gegenbogen ${m(beyond.length)} → ${m(remaining)} < min ${m(minLength)} (Tab. 3)` };
+					notes.push(`${label}: Nachbarbogen ${m(beyond.length)} → ${m(remaining)}`);
+				}
+				if (!(arcLoss > 0)) return { ok: true, text: "" };
+				const arcRemaining = arcLength - arcLoss;
+				if (arcRemaining < minLength) return { ok: false, text: `Bogen ${m(arcLength)} → ${m(arcRemaining)} < min ${m(minLength)} (Tab. 3)` };
+				return { ok: true, text: `Platz: Bogen ${m(arcLength)} → ${m(arcRemaining)}${notes.length ? `, ${notes.join(", ")}` : ""}` };
+			}
 			function deriveGwbProposal(alignmentEntry, cantEntry, selectedRange) {
 				const list = gwbElements(alignmentEntry);
 				const cantMm = cantEntry ? cantSeriesMm(cantEntry) : [];
@@ -40725,9 +40769,19 @@ xlsx/xlsx.mjs:
 					unit.vToday = Math.min(...unit.memberSpeedsToday);
 					unit.todayCheck = gwbBest(unit, "Klothoide", [uToday]);
 					unit.proposal = null;
+					unit.blossRejected = null;
 					for (const variant of GWB_VARIANTS) {
 						const best = gwbBest(unit, variant, candidates.includes(uToday) ? candidates : [...candidates, uToday]);
-						if (best && (!unit.proposal || best.v > unit.proposal.v)) unit.proposal = best;
+						if (!best) continue;
+						if (variant === "Bloss") {
+							const room = blossRoomCheck(list, first, last, unit, best.v);
+							if (!room.ok) {
+								if (best.v > (unit.proposal?.v ?? 0)) unit.blossRejected = { v: best.v, text: room.text };
+								continue;
+							}
+							best.room = room.text;
+						}
+						if (!unit.proposal || best.v > unit.proposal.v) unit.proposal = best;
 					}
 					// The proposed step spans the Bogen plus its Übergangsbögen -- that is
 					// the section a VzG entry would cover.
@@ -40761,7 +40815,10 @@ xlsx/xlsx.mjs:
 					const transitions = unit.sides.filter((side) => side.lU > 0).map((side) => proposal.variant === "Bloss" && side.existing !== "Bloss"
 						? `${side.label} ${side.existing} ${Math.round(side.lU)} m → Bloss ${Math.round(side.lU * BLOSS_LENGTH_FROM_KLOTHOIDE)} m`
 						: `${side.label} ${side.existing} ${Math.round(side.lU)} m bleibt`).join(", ");
-					lines.push(`▸ km ${km(unit.from)}–${km(unit.to)} · r ${unit.radii.map((radius) => Math.round(radius)).join("/")} m · u ${Math.round(unit.uToday)} → ${proposal.u} mm · v ${unit.memberSpeedsToday.join("/")} → ${proposal.memberSpeeds.join("/")} km/h · ${transitions || "ohne Übergangsbogen"} · danach bindend: ${proposal.binding}${korbbogenNote(unit, proposal.v, proposal.u)}`);
+					lines.push(`▸ km ${km(unit.from)}–${km(unit.to)} · r ${unit.radii.map((radius) => Math.round(radius)).join("/")} m · u ${Math.round(unit.uToday)} → ${proposal.u} mm · v ${unit.memberSpeedsToday.join("/")} → ${proposal.memberSpeeds.join("/")} km/h · ${transitions || "ohne Übergangsbogen"} · danach bindend: ${proposal.binding}${korbbogenNote(unit, proposal.v, proposal.u)}${proposal.room ? ` · ${proposal.room}` : ""}${unit.blossRejected ? ` · Bloss hätte ${unit.blossRejected.v} km/h gebracht, aber kein Platz: ${unit.blossRejected.text}` : ""}`);
+				}
+				for (const unit of units.filter((unit) => unit.blossRejected && !gains.includes(unit))) {
+					lines.push(`▫ km ${km(unit.from)}–${km(unit.to)} · r ${unit.radii.map((radius) => Math.round(radius)).join("/")} m · Bloss hätte ${unit.blossRejected.v} km/h gebracht, aber kein Platz: ${unit.blossRejected.text}`);
 				}
 				for (const unit of short) {
 					lines.push(`▹ km ${km(unit.from)}–${km(unit.to)} · r ${unit.radii.map((radius) => Math.round(radius)).join("/")} m · Bestand u ${Math.round(unit.uToday)} mm trägt nach 800.0110 (2021) nur ${unit.todayCheck.memberSpeeds.join("/")} km/h (${unit.todayCheck.binding}); die Bogenformel allein gäbe ${unit.memberSpeedsToday.join("/")}${korbbogenNote(unit, unit.todayCheck.v, unit.uToday)}`);
@@ -42912,9 +42969,9 @@ xlsx/xlsx.mjs:
 				const lines = [
 					`GWB-Vorschlag je Bogen (Diagnose, kein Entwurf) - ${objectDisplayName(entry)}`,
 					`Exportiert: ${new Date().toLocaleString("de-DE")}`,
-					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m, sonst ${CANT_DEFICIENCY_MM}` : CANT_DEFICIENCY_MM + " mm"} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (${cantLimitLabel()}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); nicht geprueft: Platz fuer die Bloss-Verlaengerung`,
+					`Annahmen: Ril 800.0110 V3.0 (2021) Ermessensgrenze - uf <= ${fahrzeugKey() === "Zulassung" ? `${CANT_DEFICIENCY_ZULASSUNG_MM} mm ab r ${CANT_DEFICIENCY_ZULASSUNG_MIN_RADIUS_M} m, sonst ${CANT_DEFICIENCY_MM}` : CANT_DEFICIENCY_MM + " mm"} (Tab. 5, Fahrzeug ${fahrzeugKey()}), u ${CANT_MIN_MM}..${cantMaxMm()} mm (${cantLimitLabel()}), Rampe l_R >= ${RAMP_LENGTH_FACTOR.Klothoide}/${RAMP_LENGTH_FACTOR.Bloss} v du/1000 (Tab. 8), Neigung <= 1:${RAMP_GRADIENT_MIN_M} (Tab. 7), Uebergangsbogen l_U >= ${TRANSITION_LENGTH_FACTOR.Klothoide}/${TRANSITION_LENGTH_FACTOR.Bloss} v duf/1000 (Tab. 9), Bloss = Klothoide x sqrt(5/3) bei gleichem f-Mass (8 (2)); ${SPEED_STEP_KMH}er-Stufen abgerundet (457.0201), Deckel ${V_MAX_DE_KMH} km/h; ohne Uebergangsbogen Vergleichsradius >= Tab. 10 Ermessensgrenze (ueber 200 km/h der Wert fuer 200); Platz fuer die Bloss-Verlaengerung nach Tab. 3 geprueft (Spalte Bloss_Platz)`,
 					"",
-					["Gleis", "km_von", "km_bis", "Radius_m", "u_heute_mm", "v_heute_kmh", "Bestand_haltbar_kmh", "Bestand_Grenze", "u_Vorschlag_mm", "v_Vorschlag_kmh", "Variante", "Anfang_Uebergangsbogen", "Anfang_Laenge_heute_m", "Anfang_Laenge_Vorschlag_m", "Ende_Uebergangsbogen", "Ende_Laenge_heute_m", "Ende_Laenge_Vorschlag_m", "Grenze_danach", "Korbbogen_Hinweis", "Potenzial"].join(";"),
+					["Gleis", "km_von", "km_bis", "Radius_m", "u_heute_mm", "v_heute_kmh", "Bestand_haltbar_kmh", "Bestand_Grenze", "u_Vorschlag_mm", "v_Vorschlag_kmh", "Variante", "Anfang_Uebergangsbogen", "Anfang_Laenge_heute_m", "Anfang_Laenge_Vorschlag_m", "Ende_Uebergangsbogen", "Ende_Laenge_heute_m", "Ende_Laenge_Vorschlag_m", "Grenze_danach", "Korbbogen_Hinweis", "Bloss_Platz", "Potenzial"].join(";"),
 				];
 				for (const track of gwbSpeedTracks(entry)) {
 					for (const unit of track.proposal ?? []) {
@@ -42943,6 +43000,7 @@ xlsx/xlsx.mjs:
 							...sideCells(unit.sides[1]),
 							csvField(proposal ? proposal.binding : ""),
 							csvField(proposal ? korbbogenNote(unit, proposal.v, proposal.u).replace(/^ · /, "") : ""),
+							csvField(proposal?.room ? proposal.room : unit.blossRejected ? `verworfen (${unit.blossRejected.v} km/h): ${unit.blossRejected.text}` : ""),
 							proposal && proposal.v > unit.vToday ? "ja" : "nein",
 						].join(";"));
 					}
