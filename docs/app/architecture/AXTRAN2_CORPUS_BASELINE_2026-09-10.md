@@ -369,3 +369,29 @@ Tests: the service holds the pre-edit heading after S1 to 1e-8 and a
 turnout branch with its toe on an eleven-element chain to 1e-6, and
 refuses the same toe on a five-element chain with the count; the
 receipt carries the hold sentence and the refusal.
+
+## The catalogue read: Ril 800.0120A01 (2026-10-18)
+
+Ril 800.0120 "Auswahl der Weichen, Kreuzungen und
+Hemmschuhauswurfvorrichtungen" arrived in the knowledge folder with its
+annexes; A01 "Zusammenstellung der Weichen und Kreuzungen, Regelbauarten"
+V3.0 (gültig ab 15.02.2018) holds the main dimensions. They are now the
+table `RIL_800_0120_A01` in `TurnoutCatalogue.js`: for each Regelbauart
+lt (Tangentenlänge), b and d where the frog is straight or the branch has
+a straight extension, lw (Weichenlänge; lKr, lKW for crossings), c (the
+branch's offset at the Weichenende), s (last through sleeper, per rail
+where the annex differs) and the admissible speeds. A designation the
+annex lists carries its row and the status "catalogue"; the main's held
+length is the Weichenlänge lw; any other designation stays a "candidate"
+built from R and 1:n.
+
+The annex and the geometry describe the same turnout: on every
+single-radius row lt equals R·tan(α/2) to 1e-4 m and c equals
+R·(1 − cos α) to 3 mm, which is what `turnout()` and `crossing()` had
+derived before the document was read. For the Kreuzungsweichen lt is the
+tangent point to the crossing centre (`centreOffset`), b = 16.615 m the
+crossing's own half length at 1:9, lKW = 2b with inner switches
+(190-1:9) and lt + b (EKW) or 2 lt (DKW) with outer ones (500-1:9). The
+two compound branches (6000/3700-1:32.5, 7000/6000-1:42) are listed and
+refused as one arc; "-fb" is read as its own row. Sonderbauarten (A02)
+are not transcribed.
