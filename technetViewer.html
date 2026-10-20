@@ -291,7 +291,7 @@
 			#viewer {
 				display: grid;
 				grid-template-columns: clamp(13rem, 21vw, 17.5rem) minmax(0, 1fr) clamp(12rem, 19vw, 16rem);
-				grid-template-rows: minmax(0, 1fr) clamp(6rem, var(--diagram-content-height, 13.5rem), calc(100% - 7rem));
+				grid-template-rows: minmax(0, 1fr);
 				min-height: 0;
 				height: 100%;
 				position: relative;
@@ -302,9 +302,17 @@
 			}
 			#workspace {
 				display: grid;
+				grid-template-rows: minmax(0, 1fr);
 				min-height: 0;
 				height: 100%;
 			}
+			/* Slides: every picture but the map is a glass panel over the whole
+			   viewer, Inbox and Outbox included, one at a time. The map is the stage and stays
+			   where it is; Esc, the × or "Karte" in the rail put the slide away. */
+			#viewer > .slide { position: relative; grid-column: 1 / -1; grid-row: 1; z-index: 5; align-self: center; justify-self: center; width: min(96%, 88rem); height: min(90%, 52rem); display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--hairline); border-radius: 0.85rem; box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.22); background: var(--panel-glass); backdrop-filter: blur(20px) saturate(1.2); }
+			#viewer > .slide.hidden { display: none; }
+			#toggleDiagram, #diagramResizeHandle { display: none; }
+			.slide-close { margin-left: var(--sp-2); min-width: 2rem; padding: 0.25rem 0.5rem; }
 			#workspace.mode-listing {
 				grid-template-rows: minmax(0, 1fr);
 			}
@@ -1150,8 +1158,9 @@
 			#viewer.inbox-collapsed.outbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 0; }
 			#viewer.inbox-collapsed #tables,
 			#viewer.outbox-collapsed #outbox { visibility: hidden; overflow: hidden; }
-			#viewer.diagram-collapsed { grid-template-rows: minmax(0, 1fr) 0; }
-			#viewer.diagram-collapsed #diagramPanel { visibility: hidden; }
+			/* The diagram drawer is gone: IVMG, IVHW and GWB are slides like the
+			   others. The class stays harmless. */
+			#viewer.diagram-collapsed { grid-template-rows: minmax(0, 1fr); }
 			#viewer.gis-fullscreen {
 				grid-template-columns: 0 minmax(0, 1fr) 0;
 				grid-template-rows: minmax(0, 1fr) 0;
@@ -1625,11 +1634,14 @@
 		<nav id="rail" aria-label="Ansichten">
 			<div class="rail-brand" title="Technet-Datei-Viewer">TV</div>
 			<div id="viewModes" class="hidden" aria-label="Ansicht">
-				<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span>Lieferung</button>
-				<button type="button" data-mode="crs" aria-pressed="true" title="GIS: Karte mit Präzision und Kilometersteinen"><span class="glyph">◎</span>GIS</button>
+				<button type="button" data-mode="crs" aria-pressed="true" title="Karte: die Bühne — Trassen mit Präzision und Kilometersteinen; schließt jedes Slide"><span class="glyph">◎</span>Karte</button>
+				<button type="button" data-mode="listing" aria-pressed="false" title="Text: die Zahlen des gewählten Objekts"><span class="glyph">≡</span>Text</button>
+				<button type="button" data-mode="ivmg" aria-pressed="false" title="IVMG: Trassenplan — Krümmung, Gradiente, Überhöhung, Gleisabstand über der Kilometrierung (Ril 883.5220)"><span class="glyph">∿</span>IVMG</button>
+				<button type="button" data-mode="ivhw" aria-pressed="false" title="IVHW: Weichenhöhenplan (Ril 883.5240)"><span class="glyph">⋀</span>IVHW</button>
+				<button type="button" data-mode="gwb" aria-pressed="false" title="GWB: Geschwindigkeitswegeband heute und Vorschlag (Ril 800.0110, Diagnose)"><span class="glyph">▥</span>GWB</button>
 				<button type="button" data-mode="spurplan" aria-pressed="false" title="Spurplan: der gerechnete Gleisgraph, GWB-gefärbt"><span class="glyph">⌥</span>Spurplan</button>
+				<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span>Lieferung</button>
 				<button type="button" data-mode="links" aria-pressed="false" title="Verknüpfung: jedes Objekt, jede Verbindung, ihr Grund"><span class="glyph">⌾</span>Verknüpfung</button>
-				<button type="button" data-mode="listing" aria-pressed="false" title="Listing: die Zahlen des gewählten Objekts"><span class="glyph">≡</span>Listing</button>
 			</div>
 			<div class="rail-bottom">
 				<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen."><span class="glyph">⇄</span>Kopplung</button>
@@ -1681,7 +1693,7 @@
 						<button id="toggleOutbox" class="edge-toggle" type="button" aria-label="Outbox ein- oder ausblenden" aria-pressed="false">‹</button>
 						<button id="toggleDiagram" class="edge-toggle" type="button" aria-label="Diagramm ein- oder ausblenden" aria-pressed="false">⌃</button>
 						<nav id="tables" aria-label="Inbox · geladene Technet-Daten"></nav>
-						<div id="dataPanel" class="hidden">
+						<div id="dataPanel" class="slide hidden">
 							<div id="toolbar">
 								<span id="tableTitle">Trasse / Gradiente</span>
 								<span id="tableMeta"></span>
@@ -1751,36 +1763,39 @@
 							<div class="box-head"><span>Outbox</span></div>
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
-						<div id="spurplanPanel" class="hidden">
+						<div id="spurplanPanel" class="slide hidden">
 							<div id="spurplanToolbar">
 								<strong>Spurplan · Hauptbild</strong>
 								<span id="spurplanNote"></span>
 								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
 								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
 								<span class="picture-export tb-group" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
 								<div id="spurplanLegend" class="legend"></div>
 							</div>
 							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
 						</div>
-						<div id="deliveryPanel" class="hidden">
+						<div id="deliveryPanel" class="slide hidden">
 							<div id="deliveryToolbar">
 								<strong>Lieferung · Bild</strong>
 								<span id="deliveryNote"></span>
 								<span class="picture-export tb-group" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
 								<div id="deliveryLegend" class="legend"><span class="legend-item swatch-box delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="legend-item swatch-box delivery-legend-item delivery-profile">Gradiente</span><span class="legend-item swatch-box delivery-legend-item delivery-cant">Überhöhung</span><span class="legend-item swatch-box delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="legend-item swatch-tri delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
 							</div>
 							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
 						</div>
-						<div id="linksPanel" class="hidden">
+						<div id="linksPanel" class="slide hidden">
 							<div id="linksToolbar">
 								<strong>Verknüpfung · Bild</strong>
 								<span id="linksNote"></span>
 								<span class="picture-export tb-group" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
 								<div id="linksLegend" class="legend"></div>
 							</div>
 							<div id="linksScroll"><div id="linksContent"></div></div>
 						</div>
-						<div id="diagramPanel">
+						<div id="diagramPanel" class="slide hidden">
 							<div id="diagramResizeHandle" role="separator" aria-label="Diagrammhöhe ändern" aria-orientation="horizontal" tabindex="0"></div>
 							<div id="diagramToolbar">
 								<strong id="diagramTitle">Diagramm</strong>
@@ -1798,7 +1813,7 @@
 								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nach Ril 800.0110 11 und Tab. 13: ufN 300 / 245 / 207 mm je Radsatzlast in überhöhten Bögen (u ≥ 30 mm) zwischen 70 und 160 km/h, sonst 150 mm; Zwangspunkte (Brücken ohne Schotterbett, Hilfsbrücken, feste Bahnübergänge) stehen in keiner Datei, jeder Bogen gilt als frei">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option><option value="NeiTech168">Neigetechnik ≤ 16,8 t (ufN ≤ 300)</option><option value="NeiTech175">Neigetechnik ≤ 17,5 t (ufN ≤ 245)</option><option value="NeiTech185">Neigetechnik ≤ 18,5 t (ufN ≤ 207)</option></select></label>
 									</div>
 								</details>
-								<details class="menu">
+								<details id="diagramExportMenu" class="menu">
 									<summary>Export ▾</summary>
 									<div class="menu-body" popover="manual">
 								<button id="gwbBogenCsv" type="button" class="menu-item" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
@@ -1810,6 +1825,7 @@
 									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
 									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
 								</div>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
 							</div>
 							<div id="diagramScroll">
 								<svg id="diagram" role="img" aria-label="Drei Abbildungen: IVMG-Trassenplan, IVHW-Weichenhöhenplan, GWB-Geschwindigkeitswegeband"></svg>
@@ -39382,6 +39398,7 @@ xlsx/xlsx.mjs:
 			const deliveryNote = document.querySelector("#deliveryNote");
 			const deliveryScroll = document.querySelector("#deliveryScroll");
 			const diagramResizeHandle = document.querySelector("#diagramResizeHandle");
+			const assumptionsMenu = document.querySelector("#assumptionsMenu");
 			const diagram = document.querySelector("#diagram");
 			const diagramScroll = document.querySelector("#diagramScroll");
 			const diagramTable = document.querySelector("#diagramTable");
@@ -39444,6 +39461,10 @@ xlsx/xlsx.mjs:
 			// sigma_r goes on the Ausschussliste, not just colored differently.
 			const PRECISION_REJECT_THRESHOLD = PRECISION_CLASSES[0].max;
 			const PRECISION_SOURCE = "Ril 883.3100 (1), 883.3000 (5)";
+			// Equilibrium cant u0 = s v² / (g r): with the dynamic gauge s = 1,5 m and
+			// g = 9,80665 m/s² (AIM's STANDARD_DYNAMIC_GAUGE) that is 11,80 v²/r in
+			// mm, km/h and m -- the 11,8 the Ril quotes, computed rather than copied.
+			const EQUILIBRIUM_CANT_FACTOR = 1.5 * 1000 / (3.6 * 3.6 * 9.80665);
 			// Überhöhungsfehlbetrag in the speed formula v = sqrt(r (u + uf) / 11.8):
 			// 800.0110 Tab. 5, zul uf = 130 mm is the Ermessensgrenze for Gleis;
 			// 150 mm only for vehicles with the corresponding Zulassung (Fn. 18)
@@ -39682,9 +39703,9 @@ xlsx/xlsx.mjs:
 			// Highest speed step a Bogen allows by its Fehlbetrag alone at cant u,
 			// the better of the conventional regime and the NeiTech window.
 			function allowedSpeedKmh(radiusM, u) {
-				let best = Math.min(Math.sqrt(radiusM * (u + cantDeficiencyMm(radiusM)) / 11.8), V_MAX_DE_KMH);
+				let best = Math.min(Math.sqrt(radiusM * (u + cantDeficiencyMm(radiusM)) / EQUILIBRIUM_CANT_FACTOR), V_MAX_DE_KMH);
 				if (isNeiTech() && u >= NEITECH_MIN_CANT_MM) {
-					const vN = Math.min(Math.sqrt(radiusM * (u + NEITECH_UF_BY_RSL_MM[fahrzeugKey()]) / 11.8), NEITECH_V_MAX_KMH);
+					const vN = Math.min(Math.sqrt(radiusM * (u + NEITECH_UF_BY_RSL_MM[fahrzeugKey()]) / EQUILIBRIUM_CANT_FACTOR), NEITECH_V_MAX_KMH);
 					if (vN >= NEITECH_V_MIN_KMH) best = Math.max(best, vN);
 				}
 				return roundDownToSpeedStep(best);
@@ -40353,6 +40374,15 @@ xlsx/xlsx.mjs:
 					const rotationSign = curveRotationSign(element);
 					const k0 = element.type === "Line" || !Number.isFinite(radiusStart) || radiusStart === 0 ? 0 : rotationSign / radiusStart;
 					const k1 = element.type === "Line" || !Number.isFinite(radiusEnd) || radiusEnd === 0 ? 0 : rotationSign / radiusEnd;
+					// A Bloss or Helmert spiral bends its curvature; eight steps draw it.
+					const shape = element.type === "Spiral" ? transitionShapeOf(element) : TRANSITION_SHAPES.clothoid;
+					if (shape !== TRANSITION_SHAPES.clothoid) {
+						for (let step = 0; step <= 8; step += 1) {
+							const u = step / 8;
+							points.push({ x: s0 + (s1 - s0) * u, y: k0 + (k1 - k0) * shape.k(u) });
+						}
+						continue;
+					}
 					points.push({ x: s0, y: k0 }, { x: s1, y: k1 });
 				}
 				return points;
@@ -40364,6 +40394,41 @@ xlsx/xlsx.mjs:
 			// when the source data has real values (confirmed against SCx_1720.xml).
 			const CANT_VALUE_KEYS = ["cant", "value", "superelevation", "u", "appliedCant"];
 
+			// Gradiente with its Ausrundungen: the GRA/GND points are the tangent
+			// intersections (PVI) with a vertical radius or a tangent length;
+			// between them the gradient is constant, around a PVI a parabola of
+			// radius R over ±T, T = R |g2 − g1| / 2 (or T as delivered and R from
+			// it), the small-angle arc AIM's vertical contract admits. Clamped to
+			// half the distance to the neighbours; without R and T the PVI stays
+			// the kink it was drawn as before.
+			function profileSeries(entry, stationOf = (point) => stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage)) {
+				const raw = (entry?.item?.payload?.points ?? []).map((point) => {
+					const semantics = point?.extras?.sourceSemantics ?? {};
+					const z = ["elevation", "height", "z"].map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
+					return { x: stationOf(point), z: numberValue(z), radius: Math.abs(numberValue(semantics.radius ?? point.radius)) || 0, tangent: Math.abs(numberValue(semantics.tangentLength ?? point.tangentLength)) || 0 };
+				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.z)).sort((a, b) => a.x - b.x);
+				const points = [];
+				for (let index = 0; index < raw.length; index += 1) {
+					const pvi = raw[index];
+					const prev = raw[index - 1];
+					const next = raw[index + 1];
+					if (!prev || !next || pvi.x <= prev.x || next.x <= pvi.x) { points.push({ x: pvi.x, y: pvi.z }); continue; }
+					const g1 = (pvi.z - prev.z) / (pvi.x - prev.x);
+					const g2 = (next.z - pvi.z) / (next.x - pvi.x);
+					const dg = g2 - g1;
+					let tangent = pvi.tangent > 0 ? pvi.tangent : pvi.radius > 0 ? pvi.radius * Math.abs(dg) / 2 : 0;
+					tangent = Math.min(tangent, (pvi.x - prev.x) / 2, (next.x - pvi.x) / 2);
+					if (!(tangent > 0.05) || Math.abs(dg) < 1e-9) { points.push({ x: pvi.x, y: pvi.z }); continue; }
+					const sA = pvi.x - tangent;
+					const zA = pvi.z - g1 * tangent;
+					const steps = Math.max(4, Math.min(24, Math.ceil(2 * tangent / 5)));
+					for (let step = 0; step <= steps; step += 1) {
+						const d = 2 * tangent * step / steps;
+						points.push({ x: sA + d, y: zA + g1 * d + dg * d * d / (4 * tangent) });
+					}
+				}
+				return points;
+			}
 			function pointSeries(entry, valueKeys) {
 				const points = entry?.item?.payload?.points ?? [];
 				return points.map((point) => {
@@ -40706,7 +40771,7 @@ xlsx/xlsx.mjs:
 			function gwbFailure(v, u, unit, variant, memberIndex) {
 				if (v > V_MAX_DE_KMH) return `Deckel ${V_MAX_DE_KMH} km/h`;
 				const member = unit.members[memberIndex];
-				const uf = 11.8 * v * v / member.radius - u;
+				const uf = EQUILIBRIUM_CANT_FACTOR * v * v / member.radius - u;
 				const ufLimit = cantDeficiencyAt(member.radius, u, v);
 				if (uf > ufLimit + 1e-9) return `Bogen r ${Math.round(member.radius)} m (uf > ${ufLimit} mm${isNeiTech() && ufLimit === NEITECH_CONVENTIONAL_UF_MM ? ", außerhalb des NeiTech-Fensters" : ""})`;
 				// Inside a Korbbogen the radii meet without Übergangsbogen (9 (3)).
@@ -40747,8 +40812,8 @@ xlsx/xlsx.mjs:
 						continue;
 					}
 					// Both Fehlbeträge at the speed the transition is actually run at.
-					const ufHere = 11.8 * vSide * vSide / member.radius - u;
-					const ufSide = side.radius > 0 ? 11.8 * vSide * vSide / side.radius - side.cantMm : 0;
+					const ufHere = EQUILIBRIUM_CANT_FACTOR * vSide * vSide / member.radius - u;
+					const ufSide = side.radius > 0 ? EQUILIBRIUM_CANT_FACTOR * vSide * vSide / side.radius - side.cantMm : 0;
 					const deltaUf = side.opposite ? Math.abs(ufHere) + Math.abs(ufSide) : Math.abs(ufHere - ufSide);
 					if (deltaUf > 0.5 && lR < TRANSITION_LENGTH_FACTOR[type] * vSide * deltaUf / 1000) return `${side.label}: Übergangsbogen ${Math.round(lR)} m < ${TRANSITION_LENGTH_FACTOR[type]}·v·Δuf/1000`;
 				}
@@ -40870,7 +40935,7 @@ xlsx/xlsx.mjs:
 			// spread between its radii stays within 40 mm -- reported, not enforced.
 			function korbbogenNote(unit, v, u) {
 				if (!(unit.radiusMax > unit.radiusMin)) return "";
-				const spread = Math.abs(11.8 * v * v / unit.radiusMin - 11.8 * v * v / unit.radiusMax);
+				const spread = Math.abs(EQUILIBRIUM_CANT_FACTOR * v * v / unit.radiusMin - EQUILIBRIUM_CANT_FACTOR * v * v / unit.radiusMax);
 				return spread > KORBBOGEN_MAX_DELTA_UF_MM ? ` · Korbbogen: Δuf ${Math.round(spread)} mm > ${KORBBOGEN_MAX_DELTA_UF_MM}, nach 7 (4) je Radius eigene Überhöhung (Rampe zwischen den Bögen)` : "";
 			}
 			// The PI's lines under the GWB figure: one per Bogen with potential, one
@@ -41147,9 +41212,9 @@ xlsx/xlsx.mjs:
 					["right", "profile", "Rechtes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 					["left", "cant", "Linkes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
-					["left", "alignment", "Linkes Gleis · Krümmung κ [1/m]", "diagram-curvature", null],
-					["kilometer", "alignment", "Kilometerlinie · Krümmung κ [1/m]", "diagram-curvature", null],
-					["right", "alignment", "Rechtes Gleis · Krümmung κ [1/m]", "diagram-curvature", null],
+					["left", "alignment", "Linkes Gleis · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
+					["kilometer", "alignment", "Kilometerlinie · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
+					["right", "alignment", "Rechtes Gleis · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
 					["right", "cant", "Rechtes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
 				];
 				const bands = [];
@@ -41159,7 +41224,7 @@ xlsx/xlsx.mjs:
 					const requiredMissing = side === "kilometer" && referenceRequired && !kmAlignment;
 					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired) && kilometerLinesVisible;
 					if (!sideVisible) continue;
-					const seriesOf = (alignment, profile, cant) => kind === "alignment" ? curvatureSeries(alignment) : kind === "cant" ? (cant ? cantSeriesMm(cant) : []) : (profile ? pointSeries(profile, valueKeys) : []);
+					const seriesOf = (alignment, profile, cant) => kind === "alignment" ? curvatureSeries(alignment) : kind === "cant" ? (cant ? cantSeriesMm(cant) : []) : (profile ? profileSeries(profile) : []);
 					const points = clipPointsToRange(loose
 						? seriesOf(loose, loose, loose)
 						: concatSeries(sideSegments.map((segment) => seriesOf(segment.alignment, segment.profile, segment.cant))), selectedRange);
@@ -41261,7 +41326,7 @@ xlsx/xlsx.mjs:
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
-					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : pointSeries(candidate, valueKeys), selectedRange)));
+					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : (kind === "profile" ? profileSeries(candidate) : pointSeries(candidate, valueKeys)), selectedRange)));
 				}
 				return bands;
 			}
@@ -41891,8 +41956,6 @@ xlsx/xlsx.mjs:
 				if (!entry) {
 					gwbBogenCsvButton.disabled = true;
 					gwbAbschnittCsvButton.disabled = true;
-					diagramPanel.dataset.autoHeight = "144";
-					if (!diagramHeightManual) viewer.style.setProperty("--diagram-content-height", "144px");
 					return;
 				}
 				const { anchor, entries, bands, hasUnknown, missingKilometerLine } = sevenLineTracks(entry);
@@ -41917,14 +41980,15 @@ xlsx/xlsx.mjs:
 				if (!Number.isFinite(xMax)) xMax = 1;
 				const footnotes = [...new Set(gwbTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter(Boolean))]
 					.flatMap((footnote) => wrapText(footnote, 165));
+				// One Plan per slide: the table and the chart show diagramKind only.
 				if (diagramPresentation === "table") {
 					renderDiagramTable([
-						...ivmgTracks.map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) })),
-						...(ivhw.trackData ?? []).flatMap((data) => [
+						...(diagramKind !== "ivmg" ? [] : ivmgTracks).map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) })),
+						...(diagramKind !== "ivhw" ? [] : ivhw.trackData ?? []).flatMap((data) => [
 							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideA ?? "A"}`, points: data.railA, valueLabel: "Höhe (m)" },
 							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideB ?? "B"}`, points: data.railB, valueLabel: "Höhe (m)" },
 						]),
-						...gwbTracks.flatMap((track) => {
+						...(diagramKind !== "gwb" ? [] : gwbTracks).flatMap((track) => {
 							const row = { label: `GWB · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) };
 							return track.overlay
 								? [row, { label: `GWB · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote }]
@@ -41933,55 +41997,30 @@ xlsx/xlsx.mjs:
 					]);
 				} else {
 					let y = 0;
-					y += drawFigureTitle(diagram, y, "IVMG · Trassenplan", "Krümmung · Gradiente · Überhöhung über der Kilometrierung · Ril 883.5220");
-					y += ivmgTracks.length
-						? drawBandStack(diagram, y, ivmgTracks, xMin, xMax)
-						: drawEmptyFigure(diagram, y, "keine Lage-, Höhen- oder Überhöhungsreihe sicher verknüpft");
-					y += drawFigureTitle(diagram, y, "IVHW · Weichenhöhenplan", ivhw.subtitle);
-					y += ivhw.trackData
-						? drawIvhwPlot(diagram, y, ivhw)
-						: drawEmptyFigure(diagram, y, ivhw.note);
-					y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis durchgehend · heute — / Vorschlag ┄ · Geraden mit Streckengeschwindigkeit · Ril 800.0110 (2021) / 457.0201 · Diagnose");
-					y += gwbTracks.length
-						? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
-						: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
-					const topology = deriveTopology();
-					const placed = topology.edges.filter((edge) => edge.from.km != null && edge.to.km != null);
-					const placedEdges = placed.length;
-					// The window follows the selected Gleis in the AXIS frame (its own
-					// stations may be local -- a Nebengleis runs 0..78 m -- while the
-					// topology's km are the Kilometerlinie's): its edges' km, padded by
-					// a quarter, at least 200 m, so a yard Gleis shows its yard and the
-					// Strecke shows the line. A Gleis without placed edges shows all.
-					const ownKm = placed.filter((edge) => edge.entry === entry).flatMap((edge) => [edge.from.km, edge.to.km]);
-					const allKm = placed.flatMap((edge) => [edge.from.km, edge.to.km]);
-					const spurplanRange = (() => {
-						if (!allKm.length) return [NaN, NaN];
-						const source = ownKm.length ? ownKm : allKm;
-						const low = Math.min(...source);
-						const high = Math.max(...source);
-						const pad = ownKm.length ? Math.max(200, (high - low) * 0.25) : 0;
-						return [Math.max(Math.min(...allKm), low - pad), Math.min(Math.max(...allKm), high + pad)];
-					})();
-					const count = (kind) => topology.nodes.filter((node) => node.kind === kind).length;
-					y += drawFigureTitle(diagram, y, "Spurplan · Topologie (gerechnet)", `${topology.gleise} Gleise · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen · ${placedEdges}/${topology.edges.length} Kanten · Achse: ${topology.axisIsGleis ? "längstes Gleis" : "Kilometerlinie"} · Fenster um das gewählte Gleis · Schema`);
-					y += placedEdges && Number.isFinite(spurplanRange[0])
-						? drawSpurplan(diagram, y, topology, spurplanRange[0], spurplanRange[1], entry)
-						: drawEmptyFigure(diagram, y, topology.gleise > 1 ? "kein Knoten an einer Achse · Spurplan nicht zeichenbar" : "ein Gleis allein hat keine Topologie");
+					if (diagramKind === "ivmg") {
+						y += drawFigureTitle(diagram, y, "IVMG · Trassenplan", "Krümmung · Gradiente · Überhöhung über der Kilometrierung · Ril 883.5220");
+						y += ivmgTracks.length
+							? drawBandStack(diagram, y, ivmgTracks, xMin, xMax)
+							: drawEmptyFigure(diagram, y, "keine Lage-, Höhen- oder Überhöhungsreihe sicher verknüpft");
+					}
+					if (diagramKind === "ivhw") {
+						y += drawFigureTitle(diagram, y, "IVHW · Weichenhöhenplan", ivhw.subtitle);
+						y += ivhw.trackData
+							? drawIvhwPlot(diagram, y, ivhw)
+							: drawEmptyFigure(diagram, y, ivhw.note);
+					}
+					if (diagramKind === "gwb") {
+						y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis durchgehend · heute — / Vorschlag ┄ · Geraden mit Streckengeschwindigkeit · Ril 800.0110 (2021) / 457.0201 · Diagnose");
+						y += gwbTracks.length
+							? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
+							: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
+					}
 					diagram.setAttribute("viewBox", `0 0 ${FIGURE_WIDTH} ${y}`);
 					if (cursorContext?.anchor !== anchor) cursorContext = { anchor };
 					Object.assign(cursorContext, { bands, inKm: inKilometerFrame(anchor), track: deliveryTrackOf(anchor) });
 					drawDiagramCursor();
 					updateCursorReadout();
 					scheduleStateSave();
-					// The SVG now sizes itself from the viewBox at the panel's width, so
-					// the panel's auto height is the rendered height (+72px chrome),
-					// clamped by setDiagramHeight() to what the window can show; past
-					// that, #diagramScroll scrolls instead of shrinking the figures.
-					const renderedWidth = diagram.getBoundingClientRect().width || FIGURE_WIDTH;
-					const autoHeight = Math.round(y * renderedWidth / FIGURE_WIDTH) + 72;
-					diagramPanel.dataset.autoHeight = String(autoHeight);
-					if (!diagramHeightManual) setDiagramHeight(autoHeight, { manual: false });
 				}
 				const tracks = bands;
 				const profile = entries.find((candidate) => candidate.item.kind === "profile");
@@ -42010,8 +42049,12 @@ xlsx/xlsx.mjs:
 					!cant && !outOfRangeNames.includes("EU") && (unresolved.cant || loadedHasFamily(anchor.loaded, "EU")) && "EU",
 				].filter(Boolean);
 				diagramTitle.textContent = objectDisplayName(anchor);
-				diagramCode.textContent = "IVMG · IVHW · GWB";
-				diagramCode.title = "Trassenplan (Ril 883.5220) · Weichenhöhenplan (Ril 883.5240) · Geschwindigkeitswegeband (Ril 800.0110, Diagnose)";
+				diagramCode.textContent = DIAGRAM_KINDS[diagramKind];
+				diagramCode.title = { ivmg: "Trassenplan (Ril 883.5220)", ivhw: "Weichenhöhenplan (Ril 883.5240)", gwb: "Geschwindigkeitswegeband (Ril 800.0110 / 457.0201, Diagnose)" }[diagramKind];
+				// Annahmen and the CSVs belong to the GWB; the picture export to all.
+				assumptionsMenu.classList.toggle("hidden", diagramKind !== "gwb");
+				gwbBogenCsvButton.classList.toggle("hidden", diagramKind !== "gwb");
+				gwbAbschnittCsvButton.classList.toggle("hidden", diagramKind !== "gwb");
 				const mainNote = missingKilometerLine
 					? "Kilometerlinie fehlt · zweigleisige Streckenzuordnung unvollständig"
 					: outOfRangeNames.length
@@ -42211,7 +42254,7 @@ xlsx/xlsx.mjs:
 					const own = referencingEntries(track);
 					const profile = own.find((candidate) => candidate.item.kind === "profile");
 					const cant = own.find((candidate) => candidate.item.kind === "cant");
-					const zSeries = profile ? seriesFor(profile, ["elevation", "height", "z"]) : [];
+					const zSeries = profile ? profileSeries(profile, stationOf) : [];
 					const uSeries = cant ? seriesFor(cant, CANT_VALUE_KEYS).map((point) => ({ x: point.x, y: cantMillimetres(point.raw) })) : [];
 					// A landXML junction sits on Gleise tens of km long with profile
 					// points hundreds of metres apart: the Weichenhöhenplan shows the
@@ -42554,7 +42597,49 @@ xlsx/xlsx.mjs:
 				return Math.atan2(pi.northing - start.northing, pi.easting - start.easting);
 			}
 
+			// Übergangsbogen families as AIM's registry has them: the normalised
+			// curvature shape k(u) and its integral K(u) over u = s/L, so that
+			// κ(s) = κ0 + Δκ k(u) and the heading is θ0 + κ0 s + Δκ L K(u). The viewer
+			// meets four names in VermEsn and GND: Klothoide (k = u), Bloss
+			// (3u² − 2u³, both half-waves), "Bloss (1f geschw.)" -- the einfach
+			// geschwungene Bloss, which is ONE half-wave of it (Uwe, 20.10.): alone
+			// the first, (3u² − u³)/2 with the flat end at its start, the registry's
+			// HW_BLOSS = BLOSS cropped to [0, 0.5]; following another 1f-Bloss the
+			// second, mirrored, flat at its end, so two of them compose the full
+			// S -- and "ÜB S-Form" = Helmert (2u² up to the middle, 1 − 2(1−u)²
+			// beyond). Anything else is read as a Klothoide, as it was before.
+			const TRANSITION_SHAPES = {
+				clothoid: { k: (u) => u, K: (u) => u * u / 2 },
+				bloss: { k: (u) => 3 * u * u - 2 * u * u * u, K: (u) => u * u * u - u * u * u * u / 2 },
+				blossHalf1: { k: (u) => (3 * u * u - u * u * u) / 2, K: (u) => u * u * u / 2 - u * u * u * u / 8 },
+				blossHalf2: { k: (u) => 1 - (3 * (1 - u) ** 2 - (1 - u) ** 3) / 2, K: (u) => u - 3 / 8 + ((1 - u) ** 3 / 2 - (1 - u) ** 4 / 8) },
+				helmert: { k: (u) => u <= 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u), K: (u) => u <= 0.5 ? 2 * u * u * u / 3 : (u - 0.5) + 2 * (1 - u) ** 3 / 3 },
+			};
+			function isHalfBloss(element) {
+				return element?.type === "Spiral" && /bloss/i.test(String(element.spiType ?? "")) && /1f|einfach/i.test(String(element.spiType ?? ""));
+			}
+			// Which half-wave a 1f-Bloss is follows from its neighbour: the first
+			// unless the element before it is a 1f-Bloss too. Marked once per object
+			// after import so every sampler reads the same answer.
+			function markBlossHalfWaves(elements) {
+				let previous = null;
+				for (const element of elements) {
+					if (isHalfBloss(element)) {
+						element.extras = element.extras ?? {};
+						element.extras.blossHalfWave = isHalfBloss(previous) && previous.extras?.blossHalfWave === 1 ? 2 : 1;
+					}
+					previous = element;
+				}
+			}
+			function transitionShapeOf(element) {
+				const name = String(element?.spiType ?? "").toLowerCase();
+				if (isHalfBloss(element)) return element.extras?.blossHalfWave === 2 ? TRANSITION_SHAPES.blossHalf2 : TRANSITION_SHAPES.blossHalf1;
+				if (/bloss/.test(name)) return TRANSITION_SHAPES.bloss;
+				if (/helmert|s-form/.test(name)) return TRANSITION_SHAPES.helmert;
+				return TRANSITION_SHAPES.clothoid;
+			}
 			function sampleSpiralElement(element, start, end, length, maximumStep) {
+				const shape = transitionShapeOf(element);
 				const rot = element?.extras?.rot;
 				const nativeHeading0 = (rot === "cw" || rot === "ccw") ? nativeHeadingFromPi(element, start) : null;
 				const radiusStart = numberValue(element?.radiusStart);
@@ -42571,8 +42656,8 @@ xlsx/xlsx.mjs:
 				if (nativeHeading0 != null) {
 					const sign = rot === "cw" ? -1 : 1;
 					const curvatureStart = sign * magnitudeStart;
-					const curvatureRate = sign * (magnitudeEnd - magnitudeStart) / length;
-					const headingAt = (s) => nativeHeading0 + curvatureStart * s + curvatureRate * s * s / 2;
+					const deltaKappa = sign * (magnitudeEnd - magnitudeStart);
+					const headingAt = (s) => nativeHeading0 + curvatureStart * s + deltaKappa * length * shape.K(s / length);
 					let previousHeading = headingAt(0);
 					for (let index = 1; index <= fineSteps; index += 1) {
 						const heading = headingAt(index * ds);
@@ -42585,9 +42670,9 @@ xlsx/xlsx.mjs:
 				}
 				const bearingGon = angleGon(element?.direction ?? element?.dirStart);
 				if (!Number.isFinite(bearingGon) || !(length > 0)) return [start, end];
-				const curvatureRate = (magnitudeEnd - magnitudeStart) / length;
+				const deltaKappa = magnitudeEnd - magnitudeStart;
 				const heading0 = bearingGon * Math.PI / 200;
-				const headingAt = (s) => heading0 + magnitudeStart * s + curvatureRate * s * s / 2;
+				const headingAt = (s) => heading0 + magnitudeStart * s + deltaKappa * length * shape.K(s / length);
 				let previousHeading = headingAt(0);
 				for (let index = 1; index <= fineSteps; index += 1) {
 					const heading = headingAt(index * ds);
@@ -43935,28 +44020,35 @@ xlsx/xlsx.mjs:
 			// before any single object. Later loads keep whatever view is open.
 			let firstLoadShown = false;
 			function startViewMode() {
+				// The map is the stage: after the first load the data lie on it; the
+				// other pictures are slides over it.
 				if (!firstLoadShown) {
 					firstLoadShown = true;
-					return "delivery";
+					return "crs";
 				}
 				return viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? "listing";
 			}
 
+			// The three Pläne are slides of their own; the diagram slide shows one.
+			const DIAGRAM_KINDS = { ivmg: "IVMG · Trassenplan", ivhw: "IVHW · Weichenhöhenplan", gwb: "GWB · Geschwindigkeitswegeband" };
+			let diagramKind = "ivmg";
 			function setViewMode(mode) {
 				const hasObjects = loadedFiles.length > 0;
+				if (mode in DIAGRAM_KINDS) diagramKind = mode;
+				const slide = mode in DIAGRAM_KINDS ? "diagram" : mode;
 				workspace.className = `mode-${mode}`;
 				viewer.classList.remove("hidden");
-				dataPanel.classList.toggle("hidden", mode !== "listing");
-				reopenText.classList.toggle("hidden", mode === "listing" || !hasObjects);
-				mapPanel.classList.toggle("hidden", mode !== "crs");
-				linksPanel.classList.toggle("hidden", mode !== "links");
-				if (mode === "links" && hasObjects) renderLinks();
-				deliveryPanel.classList.toggle("hidden", mode !== "delivery");
-				if (mode === "delivery" && hasObjects) renderDelivery();
-				spurplanPanel.classList.toggle("hidden", mode !== "spurplan");
-				if (mode === "spurplan" && hasObjects) renderSpurplanView();
-				diagramPanel.classList.toggle("hidden", !hasObjects);
-				toggleText.setAttribute("aria-pressed", String(mode === "listing"));
+				mapPanel.classList.remove("hidden");
+				dataPanel.classList.toggle("hidden", slide !== "listing");
+				reopenText.classList.toggle("hidden", slide === "listing" || !hasObjects);
+				linksPanel.classList.toggle("hidden", slide !== "links");
+				if (slide === "links" && hasObjects) renderLinks();
+				deliveryPanel.classList.toggle("hidden", slide !== "delivery");
+				if (slide === "delivery" && hasObjects) renderDelivery();
+				spurplanPanel.classList.toggle("hidden", slide !== "spurplan");
+				if (slide === "spurplan" && hasObjects) renderSpurplanView();
+				diagramPanel.classList.toggle("hidden", slide !== "diagram" || !hasObjects);
+				toggleText.setAttribute("aria-pressed", String(slide === "listing"));
 				for (const button of viewModeButtons) {
 					button.setAttribute("aria-pressed", String(button.dataset.mode === mode));
 				}
@@ -46447,6 +46539,7 @@ xlsx/xlsx.mjs:
 				loadedFiles.push(loadedFile);
 				geometryModelCache = new WeakMap();
 				if (objects[0]?.parser === "landXML") reconcileLandXmlStationing(objects);
+				for (const entry of objects) markBlossHalfWaves(entry.item?.payload?.coordGeom?.elements ?? []);
 				if (objects[0]?.parser === "vermEsn") reconcileVermEsnStationing();
 				validate7lButton.disabled = false;
 				exportLandxmlButton.disabled = !allViewerEntries().some((entry) => entry.item.kind === "alignment");
@@ -46723,7 +46816,11 @@ xlsx/xlsx.mjs:
 				}
 			});
 			document.addEventListener("keydown", (event) => {
-				if (event.key === "Escape") for (const menu of document.querySelectorAll("details.menu[open]")) menu.removeAttribute("open");
+				if (event.key !== "Escape") return;
+				const openMenus = document.querySelectorAll("details.menu[open]");
+				if (openMenus.length) { for (const menu of openMenus) menu.removeAttribute("open"); return; }
+				// No menu open: Esc puts the slide away and shows the map.
+				if (loadedFiles.length && !workspace.classList.contains("mode-crs") && !event.target?.closest?.("input, select, textarea")) setViewMode("crs");
 			});
 			// The open leaf goes to the top layer (Popover API) and sits under its
 			// summary, right-aligned, clamped to the viewport. Measured before:
@@ -46846,7 +46943,7 @@ xlsx/xlsx.mjs:
 				const svg = which === "spurplan" ? spurplanSvg : which === "delivery" ? deliverySvg : which === "links" ? linksContent.querySelector("svg") : diagram;
 				if (!svg || !svg.isConnected) { status.textContent = "Kein Bild zum Exportieren; die Ansicht ist leer."; return; }
 				const stamp = new Date().toISOString().slice(0, 10);
-				const label = { spurplan: "spurplan", delivery: "lieferung", links: "verknuepfung", diagram: "diagramm" }[which];
+				const label = { spurplan: "spurplan", delivery: "lieferung", links: "verknuepfung", diagram: diagramKind }[which];
 				const { text, width, height } = standaloneSvg(svg);
 				if (format === "svg") {
 					downloadBlob(`${label}-${stamp}.svg`, new Blob([text], { type: "image/svg+xml;charset=utf-8" }));
@@ -46927,8 +47024,8 @@ xlsx/xlsx.mjs:
 				return hits.slice(0, 8);
 			}
 			function stationLabel(value) { return station(value).trim(); }
-			function openDiagramPanel() {
-				if (viewer.classList.contains("diagram-collapsed")) toggleDiagram.click();
+			function openDiagramPanel(kind = "ivmg") {
+				setViewMode(kind);
 			}
 			function centerMapOnEntry(entry) {
 				if (maplibreMap && !maplibreMapElement.classList.contains("hidden") && globalThis.maplibregl) {
@@ -47001,7 +47098,7 @@ xlsx/xlsx.mjs:
 			function jumpToJunction(node) {
 				withFollowSuppressed(() => activateJunctionCluster(junctionFromNode(node)));
 				lastFollowedEntry = node.arms[0]?.entry ?? lastFollowedEntry;
-				openDiagramPanel();
+				openDiagramPanel("ivhw");
 				const entry = node.arms[0]?.entry;
 				if (entry) centerMapOnPoint(node.point, entry);
 				if (node.km != null && node.axis != null) spurplanFocus(deriveTopology().axes?.[node.axis]?.label ?? null, node.km - 250, node.km + 250);
@@ -47418,17 +47515,9 @@ xlsx/xlsx.mjs:
 				toggleDiagram.textContent = collapsed ? "⌃" : "⌄";
 				maplibreMap?.resize();
 			});
-			toggleText.addEventListener("click", () => {
-				const hidden = dataPanel.classList.toggle("hidden");
-				toggleText.setAttribute("aria-pressed", String(!hidden));
-				reopenText.classList.toggle("hidden", !hidden);
-				for (const button of viewModeButtons) button.setAttribute("aria-pressed", String(button.dataset.mode === (hidden ? "crs" : "listing")));
-			});
-			reopenText.addEventListener("click", () => {
-				dataPanel.classList.remove("hidden");
-				reopenText.classList.add("hidden");
-				toggleText.setAttribute("aria-pressed", "true");
-			});
+			toggleText.addEventListener("click", () => setViewMode(dataPanel.classList.contains("hidden") ? "listing" : "crs"));
+			reopenText.addEventListener("click", () => setViewMode("listing"));
+			for (const button of document.querySelectorAll(".slide-close")) button.addEventListener("click", () => setViewMode("crs"));
 			toggleTextOpacity.addEventListener("click", () => {
 				const transparent = dataPanel.classList.toggle("transparent");
 				toggleTextOpacity.setAttribute("aria-pressed", String(transparent));
