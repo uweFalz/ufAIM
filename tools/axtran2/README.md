@@ -27,6 +27,11 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   radius, transition floors, ramp rule). Without it the fastest profile the
   file admits is taken; where the file falls short of the profile, its own
   radii and lengths are inherited as exceptions, as the corpus does.
+- `--end-pose E,N,T` the end pose to hold instead of the TRA's own end: the
+  connecting alignment's, as the original AXTRAN took it from the
+  Anschlusstrasse. E and N in metres, T the direction clockwise from north
+  in gon, as a TRA states it. Without it the TRA's own end is held, which
+  is right only when the plan already ends where the track does.
 - `--iterations` (default 1000), `--hold-last` holds the last element's
   length as well.
 
@@ -47,6 +52,12 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
 Everything is computed in a local frame at the file's start and translated
 back, so the solver never sees a 5 000 km coordinate.
 
+A survey point beyond an end of the start alignment has no foot point on
+it and is excluded, as is a point within one and a half times the
+distance by which the plan's end misses the given end pose; the report
+lists them under `input.excludedPoints` and the residual list marks them
+`excluded`. A Zwangspunkt in that position is refused.
+
 ## What the verdict means
 
 `stationary/within_tolerance`: every point lies within its tolerance and
@@ -60,3 +71,11 @@ Modules: `pointLists.mjs` (the lists), `traWriter.mjs` (the file, the
 inverse of `src/import/parsers/technet/vermEsn/traAlignment.js`), `fitTra.mjs` (the
 fit, the same problem the corpus runs with real points). Tests:
 `test/axtran2/adapter.test.mjs`.
+
+## The Vorführung
+
+`tools/axtran2/demo.mjs --tra <strecke.TRA> [--out <folder>]` runs the whole
+story on one file: an Aufmaß derived from the track (and it says so), one
+Zwangspunkt, a plan deliberately off by ±2 % in length and ±3 % in
+curvature, the end pose from the track, the adapter, and a `summary.md`
+with the numbers. Nothing in the repository changes; the TRA is only read.
