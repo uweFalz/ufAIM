@@ -67,12 +67,12 @@ what is left is not determined by the points; the fit is done.
 reason says why; the output TRA is still written and the report says how
 far off it is.
 
-Modules: `pointLists.mjs` (the lists), `traWriter.mjs` (the file, the
-inverse of `src/import/parsers/technet/vermEsn/traAlignment.js`), `fitTra.mjs` (the
-fit, the same problem the corpus runs with real points), `nodeAliases.mjs`
-(the Node hook for the parsers' import-map aliases, and the one file read).
-Everything the adapter computes with comes from `src/`; nothing from
-`test/`. Tests: `test/axtran2/adapter.test.mjs`, `test/axtran2/demo.test.mjs`.
+Modules: the calculation lives in `src/services/axtran2/` (`fitTraCore.js`,
+`pointLists.js` for the lists, `traWriter.js` for the file, the inverse of
+`src/import/parsers/technet/vermEsn/traAlignment.js`) and is shared with the
+browser app in `axtran2/`; `fitTra.mjs` here only reads and writes files,
+`nodeAliases.mjs` is the Node hook for the parsers' import-map aliases.
+Tests: `test/axtran2/adapter.test.mjs`, `test/axtran2/demo.test.mjs`.
 
 ## The Vorführung
 
