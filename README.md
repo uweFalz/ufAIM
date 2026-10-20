@@ -48,3 +48,18 @@ Major topics under development:
 Major architectural decisions are documented in:
 
 docs/adr/
+
+## alignmentOS as a package
+
+`package.json` names `src/` as the ES module package `alignment-os`: the AIM
+kernel (`alignment-os/aim-core`), the AXTRAN2 calculation layer
+(`alignment-os/axtran2`), the SQP solver (`alignment-os/sqp`), the Verm.esn
+readers (`alignment-os/vermEsn`, `alignment-os/vermEsn/traAlignment`) and
+every area under `src/` by path (`alignment-os/domain/*`, `/lib/*`,
+`/import/*`, `/model/*`, `/services/*`, `/shared/*`, `/export/*`). Inside
+`src/` every import is relative; the aliases of `config/importmap.internal.json`
+belong to the app. `test/package` holds the test that keeps it so. The
+package is `private` until publishing is decided. Its only third-party
+needs are the GND import's (`mdb-reader`, `xlsx` and two build shims), declared
+as optional dependencies; the kernel, AXTRAN2 and the Verm.esn readers need
+none.

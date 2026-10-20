@@ -1,0 +1,43 @@
+{
+  "name": "alignment-os",
+  "version": "0.1.0",
+  "description": "alignmentOS: the AIM alignment kernel, the transition registry, the AXTRAN2 calculation layer and the Verm.esn readers of ufAIM, as one ES module package. The app in app/ builds on it.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Uwe Falz",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "src"
+  ],
+  "exports": {
+    ".": "./src/aim-core/index.js",
+    "./aim-core": "./src/aim-core/index.js",
+    "./aim-core/*": "./src/aim-core/*",
+    "./axtran2": "./src/domain/optimization/alignment/index.js",
+    "./sqp": "./src/lib/math/optim/sqp/solveSQP.js",
+    "./vermEsn": "./src/import/parsers/technet/vermEsn/index.js",
+    "./vermEsn/traAlignment": "./src/import/parsers/technet/vermEsn/traAlignment.js",
+    "./domain/*": "./src/domain/*",
+    "./lib/*": "./src/lib/*",
+    "./import/*": "./src/import/*",
+    "./model/*": "./src/model/*",
+    "./services/*": "./src/services/*",
+    "./shared/*": "./src/shared/*",
+    "./export/*": "./src/export/*"
+  },
+  "scripts": {
+    "test": "node --test 'test/**/*.test.mjs'",
+    "test:axtran2": "node --test 'test/axtran2/*.test.mjs'",
+    "test:package": "node --test 'test/package/*.test.mjs'",
+    "corpus": "node test/axtran2/corpus/runCorpus.mjs"
+  },
+  "optionalDependencies": {
+    "mdb-reader": "3.2.0",
+    "xlsx": "0.18.5",
+    "buffer": "^6.0.3",
+    "process": "^0.11.10"
+  }
+}
