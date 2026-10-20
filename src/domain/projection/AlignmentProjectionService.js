@@ -1,9 +1,9 @@
 // src/domain/projection/AlignmentProjectionService.js
 
-import { validateSparseAlignment } from "@spot/validation/validateSparseAlignment.js";
-import { makeAlignment2DFromSparse } from "@alignment/build/AlignmentFactory.js";
-import { RegistryResolver } from "@transition/registry/RegistryResolver.js";
-import { KappaFcnBuilder } from "@transition/build/KappaFcnBuilder.js";
+import { validateSparseAlignment } from "../../model/spot/validation/validateSparseAlignment.js";
+import { makeAlignment2DFromSparse } from "../alignment/build/AlignmentFactory.js";
+import { RegistryResolver } from "../transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "../transition/build/KappaFcnBuilder.js";
 
 const registryResolver = new RegistryResolver();
 const kappaBuilder = KappaFcnBuilder;

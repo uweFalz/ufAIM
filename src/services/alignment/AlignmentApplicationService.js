@@ -21,8 +21,8 @@
 // - SPOT storage implementation
 // - direct messaging orchestration
 
-import { createEmptyAlignmentData } from "@src/domain/alignment/editor/createEmptyAlignmentData.js";
-import { materializeAlignmentDataFromSparse } from "@src/domain/alignment/editor/materializeAlignmentDataFromSparse.js";
+import { createEmptyAlignmentData } from "../../domain/alignment/editor/createEmptyAlignmentData.js";
+import { materializeAlignmentDataFromSparse } from "../../domain/alignment/editor/materializeAlignmentDataFromSparse.js";
 
 import {
 	addStraightElement,
@@ -34,17 +34,17 @@ import {
 	removeElementById,
 	clearElements,
 	findElementById,
-} from "@src/domain/alignment/editor/alignmentEditOps.js";
+} from "../../domain/alignment/editor/alignmentEditOps.js";
 
 import {
 	isHorizontalConstructiveState,
 	assertEditableHorizontalSequence,
 	deriveSparseHorizontalRealization,
-} from "@src/domain/alignment/horizontal/HorizontalConstructiveState.js";
-import { RegistryResolver } from "@src/domain/transition/registry/RegistryResolver.js";
-import transitionLookup from "@src/domain/transition/transitionLookup.json" with { type: "json" };
+} from "../../domain/alignment/horizontal/HorizontalConstructiveState.js";
+import { RegistryResolver } from "../../domain/transition/registry/RegistryResolver.js";
+import transitionLookup from "../../domain/transition/transitionLookup.json" with { type: "json" };
 
-import { AlignmentMapper } from "@src/model/spot/model/AlignmentSpotObjectMapper.js";
+import { AlignmentMapper } from "../../model/spot/model/AlignmentSpotObjectMapper.js";
 
 import { SpotGateway } from "./SpotGateway.js";
 import { SpotAlignmentRepositoryAdapter } from "./SpotAlignmentRepositoryAdapter.js";
@@ -52,8 +52,8 @@ import {
 	ALIGNMENT_AUTHORING_CONTRACT_VERSION,
 	ALIGNMENT_AUTHORING_RESULT_VERSION,
 	validateAlignmentAuthoringRequest,
-} from "@src/aim-core/alignment/authoring/AlignmentAuthoringContract.js";
-import { assertAlignmentRepositoryPort } from "@src/aim-core/alignment/authoring/AlignmentRepositoryPort.js";
+} from "../../aim-core/alignment/authoring/AlignmentAuthoringContract.js";
+import { assertAlignmentRepositoryPort } from "../../aim-core/alignment/authoring/AlignmentRepositoryPort.js";
 
 const transitionDescriptorResolver = new RegistryResolver(transitionLookup);
 const histories = new WeakMap();

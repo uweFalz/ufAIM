@@ -2,27 +2,27 @@
 
 import { AlignmentApplicationService } from "./AlignmentApplicationService.js";
 import AlignmentProfileApplicationService from "./AlignmentProfileApplicationService.js";
-import { AlignmentMapper } from "@src/model/spot/model/AlignmentSpotObjectMapper.js";
-import { createAlignmentSpotObject } from "@src/model/spot/model/createAlignmentSpotObject.js";
-import { validateSparseAlignment } from "@spot/validation/validateSparseAlignment.js";
-import { projectFocusedSpotObject } from "@projection/ViewProjectionController.js";
-import { buildSparseFromEditModel } from "@src/domain/alignment/editor/buildSparseAlignment.js";
-import { makeAlignment2DFromSparse } from "@src/domain/alignment/build/AlignmentFactory.js";
-import { RegistryResolver } from "@src/domain/transition/registry/RegistryResolver.js";
-import { KappaFcnBuilder } from "@src/domain/transition/build/KappaFcnBuilder.js";
-import transitionLookup from "@src/domain/transition/transitionLookup.json" with { type: "json" };
+import { AlignmentMapper } from "../../model/spot/model/AlignmentSpotObjectMapper.js";
+import { createAlignmentSpotObject } from "../../model/spot/model/createAlignmentSpotObject.js";
+import { validateSparseAlignment } from "../../model/spot/validation/validateSparseAlignment.js";
+import { projectFocusedSpotObject } from "../../domain/projection/ViewProjectionController.js";
+import { buildSparseFromEditModel } from "../../domain/alignment/editor/buildSparseAlignment.js";
+import { makeAlignment2DFromSparse } from "../../domain/alignment/build/AlignmentFactory.js";
+import { RegistryResolver } from "../../domain/transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "../../domain/transition/build/KappaFcnBuilder.js";
+import transitionLookup from "../../domain/transition/transitionLookup.json" with { type: "json" };
 import {
 	appendVerticalElement,
 	createVerticalConstructiveState,
-} from "@src/aim-core/alignment/profile/VerticalConstructiveState.js";
+} from "../../aim-core/alignment/profile/VerticalConstructiveState.js";
 import {
 	appendCantElement,
 	createCantConstructiveState,
-} from "@src/aim-core/alignment/profile/CantConstructiveState.js";
+} from "../../aim-core/alignment/profile/CantConstructiveState.js";
 import {
 	appendChainageSegment,
 	createChainageMapping,
-} from "@src/aim-core/alignment/profile/ChainageMapping.js";
+} from "../../aim-core/alignment/profile/ChainageMapping.js";
 
 function assert(condition, message) {
 	if (!condition) {

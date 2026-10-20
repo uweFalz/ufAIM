@@ -45,7 +45,7 @@
 // objects instead of raw landFAT-like alignment blobs.
 
 import { buildSparseFromLandFAT } from "./buildSparseFromLandFAT.js";
-import { validateSparseAlignment } from "@src/model/spot/validation/validateSparseAlignment.js";
+import { validateSparseAlignment } from "../../model/spot/validation/validateSparseAlignment.js";
 import {
 	makeAlignmentImportItem,
 	makeRejectedImportItem,

@@ -2,10 +2,10 @@
 
 import { getParserIds, loadParserModule } from "./parserRegistry.js";
 import { validateParserModule } from "./validateParserModule.js";
-import { runImportPipeline } from "@src/import/runImportPipeline.js";
+import { runImportPipeline } from "../runImportPipeline.js";
 import { parseGND_XLSX } from "./technet/gndEdit/parseGND_XLSX.js";
 import { digestGndEnvelope } from "./technet/gndEdit/gnd/gndSourceEnvelope.js";
-import { assessSpotAdmission } from "@src/import/spot/assessSpotAdmission.js";
+import { assessSpotAdmission } from "../spot/assessSpotAdmission.js";
 import * as XLSX from "sheetjs";
 
 function assert(condition, message) {

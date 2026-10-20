@@ -19,7 +19,7 @@ import * as sw from "./sparseWriter.js";
 import {
 	poseFromHeading,
 	poseFromTwoPoints,
-} from "@src/lib/geom/frame/pose2.js";
+} from "../../lib/geom/frame/pose2.js";
 
 // -----------------------------------------------------------------------------
 // public

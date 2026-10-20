@@ -35,7 +35,7 @@
 // Diese Datei enthält nicht mehr die volle Winkel-/Typ-Semantik hartkodiert,
 // sondern liest sie aus einer kleinen shared semanticMap.
 
-import * as fat from "@kimport/landfat/landFatWriter.js";
+import * as fat from "../../../landfat/landFatWriter.js";
 
 // -----------------------------------------------------------------------------
 // helpers

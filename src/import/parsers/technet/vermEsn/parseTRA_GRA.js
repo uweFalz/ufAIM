@@ -30,7 +30,7 @@
 // parseTRA_GRA.js bleibt für TRA/GRA-Dateiimport, source-nahe Zusatzdaten,
 // Legacy-Vorschauen und landFAT-Dokumentaufbau zuständig.
 
-import * as fat from "@kimport/landfat/landFatWriter.js";
+import * as fat from "../../../landfat/landFatWriter.js";
 
 import {
 	buildCoordGeomFromTraLikeRecords,

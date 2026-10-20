@@ -63,7 +63,7 @@
 // - 7L-Logik wird weiterhin erst im sparseBuilder bzw. Folgeprozess erzwungen
 //
 
-import * as fat from "@kimport/landfat/landFatWriter.js";
+import * as fat from "../../landfat/landFatWriter.js";
 
 export function parseLandXML(text, sourceFile = "") {
 	const xmlSource = String(text ?? "").trim();
