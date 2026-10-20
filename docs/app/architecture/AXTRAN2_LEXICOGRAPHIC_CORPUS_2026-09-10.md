@@ -425,3 +425,49 @@ elsewhere. The problem they share - a curved inequality that the
 correction of one order cannot hold from a distance - is stated; its
 answer is not another rule in this file.
 
+
+## The ten, characterised (2026-10-20)
+
+What the ten strict files have in common, measured on the strict order
+of 2026-10-20 (225 of 235, unchanged since #53) with the features of
+every trusted file beside them. No rule was changed for this section.
+
+| | the ten | the other 225 |
+|---|---|---|
+| elements | 7 to 33, median 15 | median 6, up to 108 |
+| profile the file admits | V 80 on every one | V 80 on 212 |
+| transitions | median 1 | median 0, mean 3.2 |
+| smallest radius | 236 to 300 m | median 300, mean 439 |
+| inherited exceptions | 9 of 10 | 206 of 225 |
+| points fit, rms in tolerance units | 0.06 to 0.15 | – |
+| length gained before the tier fails | 0.03 to 0.43 m | – |
+
+Every one is a station track of the slowest profile, with a transition
+or two and a radius at the admissible limit. The points fit leaves them
+deep inside their tolerance - every point within a sixth of it - so
+the corridor rms ≤ 1 is wide and the length tier has room to move. It
+moves little: between three and forty-three centimetres of length come
+off before the tier fails, two metres over all ten. At the failure the
+iterate stands outside the corridor (rms 1.00 to 1.87) with the end
+pose 5e-7 to 7e-2 m open, and few bounds are active - none to five of
+ten to forty-four free quantities - so this is not the degenerate
+vertex of #44 but the corridor overshoot the sections above describe:
+the subproblem reports no step within the region that meets the
+linearised rows, or a restoration that stalls at 0.24.
+
+Two of the ten are one file: `AHRO_Gl_104_DBREF2016.TRA` lies in two
+folders. Its length tier fails `infeasible_subproblem` at a feasible
+point (end pose 3.6e-13, rms 1.002), the gate accepts it, the budget
+has a span of zero, and the budget-active phase settles at rms 0.999,
+feasible. The run has its answer; its status carries the failed tier's
+label because the status rule names the first phase that is not ok,
+and a tier that stopped short has not proved its optimum. That is
+stated, not changed: counted by the last phase the order would read
+227 of 235.
+
+What the ten say as a result: a station track built at the limits of
+its profile is already within half a metre of the shortest alignment
+the corridor admits, and the strict order cannot prove the last
+decimetres from where it stands. The item is closed as a finding; the
+answer, if one is wanted, is the curvature-aware correction the
+sections above name, measured and not taken.
