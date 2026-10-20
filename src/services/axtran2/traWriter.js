@@ -1,4 +1,4 @@
-// tools/axtran2/traWriter.mjs
+// src/services/axtran2/traWriter.js
 //
 // A kernel element sequence back into a Verm.esn TRA file: the inverse of
 // src/import/parsers/technet/vermEsn/traAlignment.js, so that a fitted

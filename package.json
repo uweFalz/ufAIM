@@ -17,6 +17,7 @@
     "./aim-core": "./src/aim-core/index.js",
     "./aim-core/*": "./src/aim-core/*",
     "./axtran2": "./src/domain/optimization/alignment/index.js",
+    "./axtran2/service": "./src/services/axtran2/fitTraCore.js",
     "./sqp": "./src/lib/math/optim/sqp/solveSQP.js",
     "./vermEsn": "./src/import/parsers/technet/vermEsn/index.js",
     "./vermEsn/traAlignment": "./src/import/parsers/technet/vermEsn/traAlignment.js",

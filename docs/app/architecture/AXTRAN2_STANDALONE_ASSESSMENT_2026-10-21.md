@@ -9,7 +9,9 @@ und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 > Stand 2026-10-23: Schritt 1 (#79) und 2 (#80) sind gebaut; der Paketschnitt
 > ist mit `package.json` (`alignment-os`, `exports`, `type: module`), relativen
 > Importen in `src/` und dem Grenztest `test/package/alignment-os-package.test.mjs`
-> umgesetzt. Offen bleibt die App-Hülle.
+> umgesetzt. Die App-Hülle ist gebaut (2026-10-24): `axtran2/index.html`,
+> `app.js`, `worker.js` auf `src/services/axtran2/fitTraCore.js`, dem aus
+> dem Werkzeug gehobenen Rechenkern des Adapters, den die Kommandozeile teilt.
 
 ## Urteil
 

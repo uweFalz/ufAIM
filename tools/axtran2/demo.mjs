@@ -28,10 +28,9 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import "./nodeAliases.mjs";
 import { fitTra } from "./fitTra.mjs";
-import { writeTra, cantLookup } from "./traWriter.mjs";
-
-import { readTraFile } from "./nodeAliases.mjs";
+import { writeTra, cantLookup } from "../../src/services/axtran2/traWriter.js";
 
 const ROOT = new URL("../../", import.meta.url);
 const load = (path) => import(new URL(path, ROOT));
@@ -64,7 +63,9 @@ const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digit
 export async function runDemo({ tra, out, spacing = 25, noise = 0.04, shift = 0.02, bend = 0.03, zwang = 2.0, seed = 7, maxIterations = 1000 } = {}) {
 	const t0 = Date.now();
 	await mkdir(out, { recursive: true });
-	const { bytes, loaded: surveyed } = await readTraFile(tra);
+	const bytes = await readFile(tra);
+	const { traAlignmentFromBytes } = await load("src/import/parsers/technet/vermEsn/traAlignment.js");
+	const surveyed = await traAlignmentFromBytes(bytes, basename(tra));
 	if (surveyed.unsupported.length) throw new Error(`${surveyed.name}: records the adapter cannot carry: ${surveyed.unsupported.map((u) => u.spiType ?? u.type).join(", ")}`);
 	const { rowsRaw } = decodeBinary(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "TRA");
 	const startStation = rowsRaw[1].station;
