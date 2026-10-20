@@ -155,7 +155,7 @@ test("AlignmentApplicationService remains unchanged on the reference-identical l
 	);
 	assert.match(
 		service,
-		/import\s*\{\s*createEmptyAlignmentData\s*\}\s*from\s*"@src\/domain\/alignment\/editor\/createEmptyAlignmentData\.js";/
+		/import\s*\{\s*createEmptyAlignmentData\s*\}\s*from\s*"(?:@src\/|\.\.\/\.\.\/)domain\/alignment\/editor\/createEmptyAlignmentData\.js";/
 	);
 	assert.doesNotMatch(
 		service,

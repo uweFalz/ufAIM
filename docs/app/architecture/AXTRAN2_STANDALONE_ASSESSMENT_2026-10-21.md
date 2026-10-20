@@ -6,6 +6,11 @@ Rechenkern AIM, darauf AXTRAN2 als die Rechnung, die über Gleis-zu-Welt
 und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 (Stand `origin/main` nach #76), nichts geändert.
 
+> Stand 2026-10-23: Schritt 1 (#79) und 2 (#80) sind gebaut; der Paketschnitt
+> ist mit `package.json` (`alignment-os`, `exports`, `type: module`), relativen
+> Importen in `src/` und dem Grenztest `test/package/alignment-os-package.test.mjs`
+> umgesetzt. Offen bleibt die App-Hülle.
+
 ## Urteil
 
 Beides geht, und beides ist näher, als der Baum aussehen lässt.
