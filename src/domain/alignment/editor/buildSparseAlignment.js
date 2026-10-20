@@ -1,12 +1,12 @@
 // src/domain/alignment/editor/buildSparseAlignment.js
 
-import transitionLookup from "@transition/transitionLookup.json" with { type: "json" };
-import { RegistryResolver } from "@transition/registry/RegistryResolver.js";
-import { KappaFcnBuilder } from "@src/aim-core/transition/runtime/KappaFcnBuilder.js";
+import transitionLookup from "../../transition/transitionLookup.json" with { type: "json" };
+import { RegistryResolver } from "../../transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "../../../aim-core/transition/runtime/KappaFcnBuilder.js";
 import {
 	buildSparseAlignment as buildSparseAlignmentCore,
 	buildSparseFromEditModel as buildSparseFromEditModelCore,
-} from "@src/aim-core/alignment/aggregate/SparseAlignmentBuilder.js";
+} from "../../../aim-core/alignment/aggregate/SparseAlignmentBuilder.js";
 
 const descriptorResolver = new RegistryResolver(transitionLookup);
 const dependencies = {

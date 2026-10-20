@@ -1,4 +1,4 @@
-import { assertAlignmentRepositoryPort } from "@src/aim-core/alignment/authoring/AlignmentRepositoryPort.js";
+import { assertAlignmentRepositoryPort } from "../../aim-core/alignment/authoring/AlignmentRepositoryPort.js";
 
 export class SpotAlignmentRepositoryAdapter {
 	constructor({ spotGateway, mapper } = {}) {

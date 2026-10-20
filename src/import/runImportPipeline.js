@@ -25,7 +25,7 @@
 import { sniffImportFile } from "./sniffers/sniffImportFile.js";
 import { loadParserModule } from "./parsers/parserRegistry.js";
 import { validateParserModule } from "./parsers/validateParserModule.js";
-import { validateLandFAT } from "@kimport/landfat/validateLandFAT.js";
+import { validateLandFAT } from "./landfat/validateLandFAT.js";
 import { buildImportResultFromParsed } from "./build/buildImportResultFromParsed.js";
 import { applyImportTruthfulnessEligibility } from "./evidence/applyImportTruthfulnessEligibility.js";
 import { assessGndReferenceEvidence } from "./evidence/assessGndReferenceEvidence.js";

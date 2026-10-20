@@ -3,7 +3,7 @@
 import {
 	makeAlignmentProjectionInput,
 	projectAlignmentPreview,
-} from "@projection/AlignmentProjectionService.js";
+} from "../domain/projection/AlignmentProjectionService.js";
 
 export function exportLandXML({ alignment, meta = {}, maxStep = 5 } = {}) {
 	if (!alignment) {

@@ -2,10 +2,10 @@
 
 import { makeAlignment2DFromSparse } from "./build/AlignmentFactory.js";
 
-import transitionLookup from "@transition/transitionLookup.json" with { type: "json" };
+import transitionLookup from "../transition/transitionLookup.json" with { type: "json" };
 
-import { KappaFcnBuilder } from "@transition/build/KappaFcnBuilder.js";
-import { RegistryResolver } from "@transition/registry/RegistryResolver.js";
+import { KappaFcnBuilder } from "../transition/build/KappaFcnBuilder.js";
+import { RegistryResolver } from "../transition/registry/RegistryResolver.js";
 
 import { Alignment2D } from "../../aim-core/geometry/Alignment2D.js";
 import { FixedElement } from "../../aim-core/geometry/FixedElement.js";

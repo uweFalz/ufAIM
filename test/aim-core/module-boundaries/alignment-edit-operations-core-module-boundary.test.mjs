@@ -159,7 +159,7 @@ test("productive consumers remain unchanged on the reference-identical legacy fa
 	for (const source of [service, controller]) {
 		assert.match(
 			source,
-			/@src\/domain\/alignment\/editor\/alignmentEditOps\.js/
+			/(?:@src\/|\.\.\/\.\.\/)domain\/alignment\/editor\/alignmentEditOps\.js/
 		);
 		assert.doesNotMatch(source, /aim-core\/alignment\/authoring\/alignmentEditOps/);
 	}

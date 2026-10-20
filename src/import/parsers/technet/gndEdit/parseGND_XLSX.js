@@ -2,7 +2,7 @@
 //
 // GND Edit XLSX -> landFAT (Analyse-Stufe / SequenceBuilder)
 
-import * as fat from "@kimport/landfat/landFatWriter.js";
+import * as fat from "../../../landfat/landFatWriter.js";
 
 import { readGndXlsxTables } from "./gnd/readGndXlsxTables.js";
 import { envelopeToGndTables } from "./gnd/gndSourceEnvelope.js";
@@ -26,7 +26,7 @@ import {
 	TECHNET_SHEET_NAMES as SHEET_NAMES,
 	TECHNET_EDGE_FAMILIES as EDGE_FAMILIES,
 } from "../sharedTechnet.js";
-import { resolveGndCrsIdentifier } from "@src/domain/crs/GndCrsResolver.js";
+import { resolveGndCrsIdentifier } from "../../../../domain/crs/GndCrsResolver.js";
 
 const DEBUG_GND_ANALYSIS_DEFAULT = false;
 

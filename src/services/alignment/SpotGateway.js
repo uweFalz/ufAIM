@@ -22,7 +22,7 @@
 import {
 	getWorkspacePrimaryId,
 	getWorkspaceContextIds,
-} from "@src/shared/runtime/workspaceSelectionAccess.js";
+} from "../../shared/runtime/workspaceSelectionAccess.js";
 
 export class SpotGateway {
 	constructor({

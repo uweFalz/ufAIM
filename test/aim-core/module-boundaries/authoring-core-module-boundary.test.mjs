@@ -162,19 +162,19 @@ test("productive service and adapter import canonical authoring paths only", asy
 	for (const source of [service, adapter]) {
 		assert.doesNotMatch(
 			source,
-			/@src\/domain\/alignment\/authoring|@src\/domain\/alignment\/ports\/AlignmentRepositoryPort/
+			/(?:@src\/|\.\.\/\.\.\/)domain\/alignment\/authoring|(?:@src\/|\.\.\/\.\.\/)domain\/alignment\/ports\/AlignmentRepositoryPort/
 		);
 	}
 	assert.match(
 		service,
-		/@src\/aim-core\/alignment\/authoring\/AlignmentAuthoringContract\.js/
+		/(?:@src\/|\.\.\/\.\.\/)aim-core\/alignment\/authoring\/AlignmentAuthoringContract\.js/
 	);
 	assert.match(
 		service,
-		/@src\/aim-core\/alignment\/authoring\/AlignmentRepositoryPort\.js/
+		/(?:@src\/|\.\.\/\.\.\/)aim-core\/alignment\/authoring\/AlignmentRepositoryPort\.js/
 	);
 	assert.match(
 		adapter,
-		/@src\/aim-core\/alignment\/authoring\/AlignmentRepositoryPort\.js/
+		/(?:@src\/|\.\.\/\.\.\/)aim-core\/alignment\/authoring\/AlignmentRepositoryPort\.js/
 	);
 });
