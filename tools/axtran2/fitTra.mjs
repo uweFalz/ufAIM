@@ -9,9 +9,9 @@
 //        [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] \
 //        [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last]
 //
-// The TRA is the start alignment and the end pose: its first element's
-// length is held, every other length and every arc curvature is free, the
-// file's own end is the end pose. Survey points are soft residuals in units
+// The TRA is the start alignment and, unless --end-pose gives the
+// connecting alignment's pose, the end pose: its first element's length is
+// held, every other length and every arc curvature is free. Survey points are soft residuals in units
 // of their tolerance; Zwangspunkte are equalities on the lateral offset.
 // Everything is computed in a local frame at the file's start and
 // translated back for the output, so the solver never sees a 5 000 km
@@ -42,7 +42,7 @@ const { createAlignmentOptimizationProblem } = await load("src/domain/optimizati
 const { createIntrinsicMetricContext } = await load("src/domain/optimization/alignment/MetricContext.js");
 const { solveAlignmentProblem } = await load("src/domain/optimization/alignment/AlignmentSQPSolver.js");
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.1";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.2";
 
 export class FitTraError extends Error {
 	constructor(code, message, detail = null) {
@@ -71,11 +71,13 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  * @param {boolean} [input.holdLast]         hold the last element's length too
  * @param {Array} [input.heldPoses]          [{ afterElement, x?, y?, theta? }] in world coordinates
  * @param {"en"|"ne"} [input.axes]           coordinate order of header-less lists
+ * @param {{x,y,theta}|null} [input.endPose]  the end pose to hold, in world coordinates (theta counter-clockwise
+ *        from east, radians): the connecting alignment's pose, as the original AXTRAN had it; the TRA's own end otherwise
  * @param {object} [input.solver]            further solveAlignmentProblem options
  */
 export async function fitTra({
 	tra, points, zwang = [], tolerance = 0.15, zwangTolerance = 0.01, speedKmh = null, cantMm = 130,
-	maxIterations = 1000, objective = "points", holdLast = false, heldPoses = [], axes = "en", solver = {},
+	maxIterations = 1000, objective = "points", holdLast = false, heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
 } = {}) {
 	if (typeof tra !== "string") error("NO_TRA", "fitTra needs the path of a TRA file");
 	const t0 = Date.now();
@@ -104,7 +106,8 @@ export async function fitTra({
 	const elementFloor = Math.max(0.05, Math.min(20, 0.5 * shortest));
 	const chainOf = (els) => createAlignmentPoseJacobian({ elements: els, startPose, momentsFor });
 	const fileAlignment = buildProductionAlignment({ elements, startPose, deps });
-	const endPose = poseOf(fileAlignment, fileAlignment.arcLength);
+	if (endPoseGiven !== null && ![endPoseGiven?.x, endPoseGiven?.y, endPoseGiven?.theta].every(Number.isFinite)) error("INVALID_END_POSE", "endPose needs finite x, y and theta");
+	const endPose = endPoseGiven === null ? poseOf(fileAlignment, fileAlignment.arcLength) : { x: endPoseGiven.x - origin.x, y: endPoseGiven.y - origin.y, theta: endPoseGiven.theta };
 
 	const beforeKink = (i) => elements[i + 1]?.type === "kink";
 	const role = (e, i) => ({
@@ -116,10 +119,31 @@ export async function fitTra({
 		elements: elements.map((e, i) => ({ id: e.id, quantities: role(e, i), values: { length: e.length, ...(e.type === "arc" ? { curvature: e.curvature } : {}) } })),
 	});
 
+	// A point beyond an end of the start alignment has no foot on it, and the
+	// residual builder refuses to measure it from an extended tangent. Where
+	// the end pose is given, the plan's end may lie short of it by metres;
+	// the corpus keeps its points clear of the ends by one and a half times
+	// that miss, and so does the adapter. Excluded points are listed, not lost.
+	const planEnd = poseOf(fileAlignment, fileAlignment.arcLength);
+	const shortBy = endPoseGiven === null ? 0 : (endPose.x - planEnd.x) * Math.cos(planEnd.theta) + (endPose.y - planEnd.y) * Math.sin(planEnd.theta);
+	const margin = Math.min(0.25 * fileAlignment.arcLength, Math.max(0, 1.5 * shortBy));
+	const startFeet = createFootMemory({ samples: 400, refineSteps: 40 });
+	const excluded = [];
+	const admitted = (p, kind) => {
+		const f = startFeet.project(fileAlignment, p.x - origin.x, p.y - origin.y);
+		const beyond = f.clamped && Math.abs(f.u ?? 0) > 1e-3;
+		const why = beyond ? `no foot point on the start alignment: ${Math.abs(f.u).toFixed(3)} m beyond an end`
+			: f.s < margin || f.s > fileAlignment.arcLength - margin ? `within ${margin.toFixed(1)} m of an end the plan misses by ${Math.abs(shortBy).toFixed(1)} m` : null;
+		if (why === null) return true;
+		if (kind === "zwangspunkt") error("ZWANGSPUNKT_WITHOUT_FOOT", `Zwangspunkt "${p.name}" cannot be held: ${why}`);
+		excluded.push(Object.freeze({ name: p.name, why }));
+		return false;
+	};
 	const problemPoints = [
-		...surveyed.map((p) => ({ name: p.name, x: p.x - origin.x, y: p.y - origin.y, target: 0, tolerance: p.tolerance ?? tolerance, enforcement: "soft", kind: "measured" })),
-		...zwangspunkte.map((z) => ({ name: z.name, x: z.x - origin.x, y: z.y - origin.y, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, enforcement: "hard", kind: "zwangspunkt" })),
+		...surveyed.filter((p) => admitted(p, "measured")).map((p) => ({ name: p.name, x: p.x - origin.x, y: p.y - origin.y, target: 0, tolerance: p.tolerance ?? tolerance, enforcement: "soft", kind: "measured" })),
+		...zwangspunkte.filter((z) => admitted(z, "zwangspunkt")).map((z) => ({ name: z.name, x: z.x - origin.x, y: z.y - origin.y, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, enforcement: "hard", kind: "zwangspunkt" })),
 	];
+	if (problemPoints.filter((p) => p.enforcement === "soft").length === 0) error("NO_POINTS", `every survey point lies beyond the start alignment or within ${margin.toFixed(1)} m of its ends`);
 	const profile = chooseProfile(elements, { cantMm, sourceName: loaded.name, speedKmh });
 	const problem = createAlignmentOptimizationProblem({
 		codec,
@@ -165,7 +189,8 @@ export async function fitTra({
 		const extrapolated = f.clamped && Math.abs(f.u ?? 0) > 1e-3;
 		return extrapolated ? { station: null, offset: null } : { station: startStation + f.s, offset: f.q };
 	};
-	const rows = [...surveyed.map((p) => ({ ...p, target: 0, tolerance: p.tolerance ?? tolerance, kind: "measured" })),
+	const excludedNames = new Set(excluded.map((e) => e.name));
+	const rows = [...surveyed.map((p) => ({ ...p, target: 0, tolerance: p.tolerance ?? tolerance, kind: excludedNames.has(p.name) ? "excluded" : "measured" })),
 		...zwangspunkte.map((z) => ({ ...z, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, kind: "zwangspunkt" }))].map((p) => {
 		const before = offsetOn(fileAlignment, p);
 		const after = offsetOn(fittedAlignment, p);
@@ -193,8 +218,9 @@ export async function fitTra({
 	const report = Object.freeze({
 		version: FIT_TRA_VERSION,
 		input: Object.freeze({
-			tra: basename(tra), elements: elements.length, free: codec.freeNames.length, points: surveyed.length, zwangspunkte: zwangspunkte.length,
-			heldPoses: heldPoses.length, tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
+			tra: basename(tra), elements: elements.length, free: codec.freeNames.length, points: surveyed.length - excluded.length, zwangspunkte: zwangspunkte.length,
+			excludedPoints: Object.freeze(excluded), endMargin: margin,
+			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
 			stationEquations: loaded.stationEquations, mergedRecords: loaded.mergedRecords, kinks: loaded.kinks,
 		}),
 		verdict: Object.freeze({ status: run.status, reason: d.reason ?? null, ok: run.ok, admissible: run.admissible, iterations: d.iterations, seconds: (Date.now() - t0) / 1000 }),
@@ -227,10 +253,17 @@ function parseArgs(argv) {
 	return args;
 }
 
+/** "E,N,T" or "E;N;T": easting, northing, direction clockwise from north in gon */
+function endPoseFromArgument(text) {
+	const parts = String(text).split(/[,;]\s*|\s+/).map((v) => Number(String(v).replace(",", ".")));
+	if (parts.length !== 3 || parts.some((v) => !Number.isFinite(v))) throw new FitTraError("INVALID_END_POSE", `--end-pose wants E,N,T; got "${text}"`);
+	return { x: parts[0], y: parts[1], theta: Math.PI / 2 - parts[2] * (Math.PI / 200) };
+}
+
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	if (!args.tra || !args.points) {
-		console.error("usage: node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv [--zwang z.csv] [--out fitted.TRA] [--report r.json] [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last]");
+		console.error("usage: node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv [--zwang z.csv] [--out fitted.TRA] [--report r.json] [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T] (T the direction clockwise from north in gon, as a TRA states it)");
 		process.exit(2);
 	}
 	const result = await fitTra({
@@ -243,13 +276,14 @@ async function main() {
 		maxIterations: args.iterations !== undefined ? Number(args.iterations) : 1000,
 		axes: args.axes ?? "en",
 		holdLast: args["hold-last"] === true,
+		endPose: args["end-pose"] ? endPoseFromArgument(args["end-pose"]) : null,
 	});
 	const out = args.out ?? args.tra.replace(/\.tra$/i, "") + "_axtran2.TRA";
 	await writeFile(out, result.tra);
 	if (args.report) await writeFile(args.report, JSON.stringify(result.report, null, 2));
 	if (args.csv) await writeFile(args.csv, result.csv);
 	const { verdict, fit, input } = result.report;
-	console.log(`${input.tra}: ${input.elements} elements, ${input.free} free, ${input.points} points, ${input.zwangspunkte} Zwangspunkte, V ${input.speedKmh} km/h`);
+	console.log(`${input.tra}: ${input.elements} elements, ${input.free} free, ${input.points} points${input.excludedPoints.length ? ` (${input.excludedPoints.length} excluded, see the report)` : ""}, ${input.zwangspunkte} Zwangspunkte, V ${input.speedKmh} km/h`);
 	console.log(`verdict ${verdict.status}${verdict.reason ? "/" + verdict.reason : ""} after ${verdict.iterations} iterations in ${verdict.seconds.toFixed(1)} s`);
 	console.log(`rms ${fit.rms?.toFixed(3)} (tolerance units), ${fit.outsideTolerance} outside, end pose ${fit.endPoseDistance?.toExponential(1)} m, length ${fit.lengthChange >= 0 ? "+" : ""}${fit.lengthChange?.toFixed(3)} m`);
 	for (const h of fit.hardPoints ?? []) console.log(`Zwangspunkt ${h.name}: residual ${h.residual?.toExponential(1)}`);
