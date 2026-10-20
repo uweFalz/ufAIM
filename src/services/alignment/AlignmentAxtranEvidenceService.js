@@ -1,8 +1,5 @@
-import transitionLookup from "../../domain/transition/transitionLookup.json" with { type: "json" };
 import { buildSparseFromEditModel } from "../../aim-core/alignment/aggregate/SparseAlignmentBuilder.js";
 import { makeAlignment2DFromSparse } from "../../aim-core/alignment/aggregate/AlignmentFactory.js";
-import { RegistryResolver } from "../../domain/transition/registry/RegistryResolver.js";
-import { KappaFcnBuilder } from "../../domain/transition/build/KappaFcnBuilder.js";
 import { createAlignmentVariableCodec } from "../../domain/optimization/alignment/AlignmentVariableCodec.js";
 import { createAlignmentConstraintBuilder, EVIDENCE_ONLY } from "../../domain/optimization/alignment/AlignmentConstraintBuilder.js";
 import { createAlignmentResidualBuilder } from "../../domain/optimization/alignment/AlignmentResidualBuilder.js";
@@ -10,8 +7,8 @@ import { createAlignmentOptimizationProblem } from "../../domain/optimization/al
 import { createIntrinsicMetricContext } from "../../domain/optimization/alignment/MetricContext.js";
 import { solveAlignmentProblem } from "../../domain/optimization/alignment/AlignmentSQPSolver.js";
 import { createAlignmentPoseJacobian } from "../../domain/optimization/alignment/AlignmentPoseJacobian.js";
-import { createTransitionMomentsCatalogue } from "../../domain/optimization/alignment/TransitionMomentsCatalogue.js";
 import { createFootMemory } from "../../domain/optimization/alignment/AlignmentPointProjection.js";
+import { deps as dependencies, momentsFor } from "../../domain/optimization/alignment/SolverDependencies.js";
 
 export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.4";
 export const HOLDABLE_COMPONENTS = Object.freeze(["x", "y", "theta"]);
@@ -22,9 +19,6 @@ export const DEFAULT_PLAN_SIGMA = 0.05;
 
 const MAX_INTERACTIVE_SOLVER_VARIABLES = 96;
 
-const resolver = new RegistryResolver(transitionLookup);
-const dependencies = Object.freeze({ descriptorResolver: resolver, kappaBuilder: KappaFcnBuilder });
-const momentsFor = createTransitionMomentsCatalogue(dependencies);
 
 function startPoseOf(alignmentData) {
 	const pose = alignmentData?.editModel?.startPose ?? {};
