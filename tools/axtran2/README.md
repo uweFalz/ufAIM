@@ -69,8 +69,10 @@ far off it is.
 
 Modules: `pointLists.mjs` (the lists), `traWriter.mjs` (the file, the
 inverse of `src/import/parsers/technet/vermEsn/traAlignment.js`), `fitTra.mjs` (the
-fit, the same problem the corpus runs with real points). Tests:
-`test/axtran2/adapter.test.mjs`.
+fit, the same problem the corpus runs with real points), `nodeAliases.mjs`
+(the Node hook for the parsers' import-map aliases, and the one file read).
+Everything the adapter computes with comes from `src/`; nothing from
+`test/`. Tests: `test/axtran2/adapter.test.mjs`, `test/axtran2/demo.test.mjs`.
 
 ## The Vorführung
 

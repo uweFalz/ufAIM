@@ -31,10 +31,12 @@ import { fileURLToPath } from "node:url";
 import { fitTra } from "./fitTra.mjs";
 import { writeTra, cantLookup } from "./traWriter.mjs";
 
+import { readTraFile } from "./nodeAliases.mjs";
+
 const ROOT = new URL("../../", import.meta.url);
 const load = (path) => import(new URL(path, ROOT));
-const { loadTraAlignment, buildProductionAlignment } = await load("test/axtran2/corpus/loadTraAlignment.mjs");
-const { deps, momentsFor } = await load("test/axtran2/corpus/createTraScenario.mjs");
+const { buildProductionAlignment } = await load("src/domain/optimization/alignment/ProductionAlignment.js");
+const { deps, momentsFor } = await load("src/domain/optimization/alignment/SolverDependencies.js");
 const { decodeBinary } = await load("src/import/parsers/technet/vermEsn/sharedVermesn.js");
 const { createAlignmentPoseJacobian } = await load("src/domain/optimization/alignment/AlignmentPoseJacobian.js");
 const { createFootMemory } = await load("src/domain/optimization/alignment/AlignmentPointProjection.js");
@@ -62,8 +64,7 @@ const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digit
 export async function runDemo({ tra, out, spacing = 25, noise = 0.04, shift = 0.02, bend = 0.03, zwang = 2.0, seed = 7, maxIterations = 1000 } = {}) {
 	const t0 = Date.now();
 	await mkdir(out, { recursive: true });
-	const bytes = await readFile(tra);
-	const surveyed = await loadTraAlignment(tra);
+	const { bytes, loaded: surveyed } = await readTraFile(tra);
 	if (surveyed.unsupported.length) throw new Error(`${surveyed.name}: records the adapter cannot carry: ${surveyed.unsupported.map((u) => u.spiType ?? u.type).join(", ")}`);
 	const { rowsRaw } = decodeBinary(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "TRA");
 	const startStation = rowsRaw[1].station;

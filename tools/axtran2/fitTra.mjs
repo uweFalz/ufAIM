@@ -18,8 +18,9 @@
 // coordinate.
 //
 // The lists are read by tools/axtran2/pointLists.mjs, the file is written
-// by tools/axtran2/traWriter.mjs, station equations included; the fit is the same problem the corpus
-// runs (test/axtran2/corpus/createTraScenario.mjs), with real points.
+// by tools/axtran2/traWriter.mjs, station equations included; the fit is the
+// same problem the corpus runs, built from src/domain/optimization alone, with
+// real points. Node resolves the parsers' aliases through ./nodeAliases.mjs.
 
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
@@ -28,10 +29,13 @@ import { fileURLToPath } from "node:url";
 import { parsePointList, formatResidualList } from "./pointLists.mjs";
 import { writeTra, cantLookup } from "./traWriter.mjs";
 
+import { readTraFile } from "./nodeAliases.mjs";
+
 const ROOT = new URL("../../", import.meta.url);
 const load = (path) => import(new URL(path, ROOT));
-const { loadTraAlignment, buildProductionAlignment } = await load("test/axtran2/corpus/loadTraAlignment.mjs");
-const { deps, momentsFor, chooseProfile } = await load("test/axtran2/corpus/createTraScenario.mjs");
+const { buildProductionAlignment } = await load("src/domain/optimization/alignment/ProductionAlignment.js");
+const { deps, momentsFor } = await load("src/domain/optimization/alignment/SolverDependencies.js");
+const { chooseProfile } = await load("src/domain/optimization/alignment/DesignProfileChoice.js");
 const { decodeBinary } = await load("src/import/parsers/technet/vermEsn/sharedVermesn.js");
 const { createFootMemory } = await load("src/domain/optimization/alignment/AlignmentPointProjection.js");
 const { createAlignmentPoseJacobian } = await load("src/domain/optimization/alignment/AlignmentPoseJacobian.js");
@@ -81,8 +85,7 @@ export async function fitTra({
 } = {}) {
 	if (typeof tra !== "string") error("NO_TRA", "fitTra needs the path of a TRA file");
 	const t0 = Date.now();
-	const bytes = await readFile(tra);
-	const loaded = await loadTraAlignment(tra);
+	const { bytes, loaded } = await readTraFile(tra);
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
 	}
