@@ -40407,46 +40407,65 @@ xlsx/xlsx.mjs:
 				return String(fileName ?? "").replace(/(?:_a)?\.(tra|gra)$/i, "").toLowerCase();
 			}
 
+			// BEGIN VERMESN NAME CONVENTIONS (test/technet-viewer-names.test.mjs runs this block)
 			// VermEsn-Bündelung nach 7L: a TRA/GRA file carries no Strecke and no
-			// side of its own, but the delivery names it -- "5500S074-082.TRA" is
-			// Strecke 5500, S = Streckenkilometrierung (Kilometerlinie), R =
-			// Richtungsgleis (rechts), L = Gegenrichtungsgleis (links), 074-082 the
-			// km-Abschnitt; "_Gls403" marks a Bahnhofsgleis stationed on that
-			// Strecke. "Gls401", "W403-404", "Abzw-li_DKW503" name no Strecke and
-			// stay singletons. This is the file-name convention of the Landshut
-			// delivery, not a VermEsn field: the frame it yields is labelled
-			// source "vermesn-name", and a user assignment (frameEdit) wins.
-			// The Eifel delivery names the same things its own way:
-			// "2631K139_Bestand_VR_DBREF03" -- K = Kilometerlinie (it is the one
-			// file carrying the Stationsgleichungen), R/L as above, 139 the km
-			// where the Abschnitt begins, the rest a description (Bestand or a
-			// Neuplanung variant, a trailing "_A"). Several variants of one side
-			// and Abschnitt then share a 7L lane, each under its own name.
-			// "Gleis2_Bf_Auw_Bestand_VR_DBREF03" is a Bahnhofsgleis of a named
-			// Bahnhof with no Strecke in the name: framed by the Bahnhof, side
-			// unknown, so it stays in the Inbox for the user like "_Gls403".
-			// A suffix is a Bahnhofsgleis only when it starts with "Gls"; any
-			// other suffix is the variant and leaves the side as the letter says.
-			const VERMESN_NAME_PATTERN = /^(\d{4})([KLRS])(\d{3})?(?:-(\d{3}))?(?:_(.+))?$/i;
-			const VERMESN_BAHNHOF_PATTERN = /^Gleis(\d+)_Bf_([^_]+)(?:_(.+))?$/i;
-			function vermEsnNameFrame(entry) {
-				if (entry?.parser !== "vermEsn") return null;
-				const stem = String(entry.loaded?.fileName ?? "").replace(/\.(tra|gra)$/i, "");
-				const match = VERMESN_NAME_PATTERN.exec(stem);
-				if (match) {
-					const [, track, letter, from, to, suffix] = match;
-					const gleis = suffix && /^gls/i.test(suffix) ? suffix : null;
-					const side = gleis ? "unknown" : { s: "kilometer", k: "kilometer", r: "right", l: "left" }[letter.toLowerCase()];
-					return { track, side, segment: from ? `${from}${to ? `-${to}` : ""}` : null, gleis, variant: gleis ? null : suffix ?? null };
-				}
-				const bahnhof = VERMESN_BAHNHOF_PATTERN.exec(stem);
-				if (bahnhof) {
-					const [, gleis, name, variant] = bahnhof;
-					return { track: `Bf ${name}`, side: "unknown", segment: null, gleis, variant: variant ?? null };
+			// side of its own, but the delivery names it. Each delivery has its
+			// own convention, and this table is the one place that knows them;
+			// a new delivery is a new entry, and the test names every file of the
+			// known deliveries with the frame it must yield. The frame is labelled
+			// source "vermesn-name"; a user assignment (frameEdit) wins over it.
+			//
+			// Landshut: "5500S074-082" -- Strecke 5500, S = Streckenkilometrierung
+			// (Kilometerlinie), R = Richtungsgleis (rechts), L = Gegenrichtungsgleis
+			// (links), 074-082 the km-Abschnitt; "_Gls403" a Bahnhofsgleis stationed
+			// on that Strecke (side unknown, stays in the Inbox for the user).
+			// "Gls401", "W403-404", "Abzw-li_DKW503" name no Strecke: singletons.
+			// Eifel: "2631K139_Bestand_VR_DBREF03" -- K = Kilometerlinie (the one
+			// file with the Stationsgleichungen), R/L as above, 139 the km where
+			// the Abschnitt begins, the rest a description (Bestand, a Neuplanung
+			// variant, a trailing "_A"); several variants of one side share a 7L
+			// lane. "Gleis2_Bf_Auw_Bestand_VR_DBREF03" is a Bahnhofsgleis of a named
+			// Bahnhof with no Strecke in the name: framed by the Bahnhof.
+			// Tolerated spellings, not observed: an optional "Str"/"Strecke" before
+			// the number and "-", "_" or a space between number, letter and km.
+			// A suffix is a Bahnhofsgleis only when it starts with "Gls"; any other
+			// suffix is the variant and leaves the side as the letter says.
+			const VERMESN_NAME_CONVENTIONS = [
+				{
+					id: "strecke",
+					label: "Strecke-Seite-km (Landshut 5500S074-082, Eifel 2631K139_…)",
+					pattern: /^(?:str(?:ecke)?[-_ ]?)?(\d{4})[-_ ]?([KLRS])[-_ ]?(\d{3})?(?:-(\d{3}))?(?:_(.+))?$/i,
+					frame: (match) => {
+						const [, track, letter, from, to, suffix] = match;
+						const gleis = suffix && /^gls/i.test(suffix) ? suffix : null;
+						const side = gleis ? "unknown" : { s: "kilometer", k: "kilometer", r: "right", l: "left" }[letter.toLowerCase()];
+						return { track, side, segment: from ? `${from}${to ? `-${to}` : ""}` : null, gleis, variant: gleis ? null : suffix ?? null };
+					},
+				},
+				{
+					id: "bahnhofsgleis",
+					label: "Bahnhofsgleis (Eifel Gleis2_Bf_Auw_…)",
+					pattern: /^Gleis[-_ ]?(\d+)[-_ ]?Bf[-_ ]?([^_]+)(?:_(.+))?$/i,
+					frame: (match) => {
+						const [, gleis, name, variant] = match;
+						return { track: `Bf ${name}`, side: "unknown", segment: null, gleis, variant: variant ?? null };
+					},
+				},
+			];
+			function vermEsnNameFrameOf(fileName) {
+				const stem = String(fileName ?? "").replace(/\.(tra|gra)$/i, "");
+				for (const convention of VERMESN_NAME_CONVENTIONS) {
+					const match = convention.pattern.exec(stem);
+					if (match) return { ...convention.frame(match), convention: convention.id };
 				}
 				return null;
 			}
-
+			// END VERMESN NAME CONVENTIONS
+			function vermEsnNameFrame(entry) {
+				if (entry?.parser !== "vermEsn") return null;
+				return vermEsnNameFrameOf(entry.loaded?.fileName);
+			}
+			
 			// VermEsn TRA/GRA pairs are delivered as separate files (unlike GND-Edit,
 			// where PAD identity joins alignment/profile/cant within one MDB) and each
 			// upload is parsed and related in isolation -- so a TRA's own stationReference
@@ -44097,7 +44116,7 @@ xlsx/xlsx.mjs:
 				const hint = document.createElement("span");
 				hint.className = "geo-frame-source";
 				hint.textContent = sources.join(", ");
-				if (sources.includes("aus Dateiname")) hint.title = "Strecke, Seite und km-Abschnitt aus der Dateinamen-Konvention: 5500S074-082 = Strecke 5500, S = Kilometerlinie, R = rechts, L = links, 074-082 = km-Abschnitt, _Gls403 = Bahnhofsgleis dieser Strecke. Ein Drag in eine andere Lane überschreibt.";
+				if (sources.includes("aus Dateiname")) hint.title = `Strecke, Seite und km-Abschnitt aus der Dateinamen-Konvention der Lieferung: ${VERMESN_NAME_CONVENTIONS.map((convention) => convention.label).join("; ")}. Keine VermEsn-Angabe, eine Zuordnung per Hand gewinnt.`;
 				return hint;
 			}
 
