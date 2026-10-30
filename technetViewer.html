@@ -90,7 +90,6 @@
 				font: 600 1.25rem system-ui, sans-serif;
 			}
 			#titlebar,
-			#viewModes,
 			#diagramModes,
 			#diagramPresentation {
 				display: flex;
@@ -132,19 +131,30 @@
 			#jumpResults li .jump-kind { color: GrayText; font-size: 0.76rem; white-space: nowrap; }
 			/* ---- Maßsystem: drei Schriftgrößen, ein Abstandsraster, ein Radius ---- */
 			:root { --fs-0: 0.62rem; --fs-1: 0.72rem; --fs-2: 0.82rem; --fs-3: 0.95rem; --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem; --r: 0.55rem; }
-			#app { display: grid; grid-template-columns: 4.4rem minmax(0, 1fr); height: 100vh; }
-			#rail { display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-1); background: var(--sidebar); border-right: 1px solid var(--hairline); }
-			.rail-brand { font: 700 var(--fs-3)/1 system-ui, sans-serif; letter-spacing: 0.04em; text-align: center; color: var(--accent); padding: var(--sp-2) 0 var(--sp-3); }
-			#viewModes { flex-direction: column; gap: var(--sp-1); }
-			#viewModes button, .rail-bottom button { display: flex; flex-direction: column; align-items: center; gap: 0.15rem; width: 100%; padding: 0.45rem 0.1rem; border: 0; border-radius: var(--r); background: transparent; color: var(--secondary); font-size: 0.62rem; line-height: 1.1; }
-			#viewModes button .glyph, .rail-bottom button .glyph { font-size: 1.15rem; line-height: 1; }
-			#viewModes button:hover, .rail-bottom button:hover { background: color-mix(in srgb, CanvasText 6%, transparent); color: var(--ink); }
-			#viewModes button[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
-			#viewModes.hidden { display: flex; }
+			#app { display: grid; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+			/* The navigation sits on top: one tab strip in the title bar, Karte first,
+			   then the slides; the tools (Kopplung, Erscheinungsbild, Vollbild) at the
+			   right next to Daten. Below 1180 px the tabs keep their glyphs only. */
+			#viewModes { display: flex; gap: 2px; padding: 2px; margin: 0 var(--sp-2); border-radius: var(--r); background: color-mix(in srgb, CanvasText 6%, transparent); flex: none; }
+			#viewModes button { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.55rem; border: 0; border-radius: calc(var(--r) - 0.15rem); background: transparent; color: var(--secondary); font-size: var(--fs-1); font-weight: 600; white-space: nowrap; line-height: 1.2; }
+			#viewModes button .glyph { font-size: 0.95rem; line-height: 1; }
+			#viewModes button:hover { background: color-mix(in srgb, CanvasText 8%, transparent); color: var(--ink); }
+			#viewModes button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+			/* Before data arrives the strip stays visible but dimmed: it announces the views. */
+			#viewModes.hidden { display: flex !important; }
 			#viewModes.hidden button { opacity: 0.35; pointer-events: none; }
-			.rail-bottom { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-1); }
+			#titleTools { display: flex; gap: var(--sp-1); flex: none; }
+			#titleTools button { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.5rem; font-size: var(--fs-1); white-space: nowrap; }
+			#titleTools button .glyph { font-size: 0.95rem; line-height: 1; }
+			#titlebar h1 .brand { display: none; font-weight: 700; letter-spacing: 0.04em; }
+			/* Staggered: below 1400 px the title and the tools shrink to their glyphs, below 1100 px the tabs too. */
+			@media (max-width: 1400px) { #titlebar h1 .label, #titleTools button .label { display: none; } #titlebar h1 .brand { display: inline; } }
+			@media (max-width: 1100px) { #viewModes button .label { display: none; } }
 			#coupleToggle[aria-pressed="true"] { color: var(--accent); }
 			#titlebar {
+				display: flex;
+				align-items: center;
+				gap: var(--sp-2);
 				min-height: 2.6rem;
 				padding: var(--sp-1) var(--sp-3);
 				background: var(--titlebar);
@@ -250,7 +260,6 @@
 			button:active { background: var(--button-active); }
 			#titlebar h1 { margin-right: var(--sp-2); }
 			#titlebar button:disabled { opacity: 0.45; }
-			#viewModes button[aria-pressed="true"],
 			#diagramModes button[aria-pressed="true"],
 			#diagramPresentation button[aria-pressed="true"] {
 				background: Highlight;
@@ -1631,32 +1640,29 @@
 	</head>
 	<body>
 		<div id="app">
-		<nav id="rail" aria-label="Ansichten">
-			<div class="rail-brand" title="Technet-Datei-Viewer">TV</div>
-			<div id="viewModes" class="hidden" aria-label="Ansicht">
-				<button type="button" data-mode="crs" aria-pressed="true" title="Karte: die Bühne — Trassen mit Präzision und Kilometersteinen; schließt jedes Slide"><span class="glyph">◎</span>Karte</button>
-				<button type="button" data-mode="listing" aria-pressed="false" title="Text: die Zahlen des gewählten Objekts"><span class="glyph">≡</span>Text</button>
-				<button type="button" data-mode="ivmg" aria-pressed="false" title="IVMG: Trassenplan — Krümmung, Gradiente, Überhöhung, Gleisabstand über der Kilometrierung (Ril 883.5220)"><span class="glyph">∿</span>IVMG</button>
-				<button type="button" data-mode="ivhw" aria-pressed="false" title="IVHW: Weichenhöhenplan (Ril 883.5240)"><span class="glyph">⋀</span>IVHW</button>
-				<button type="button" data-mode="gwb" aria-pressed="false" title="GWB: Geschwindigkeitswegeband heute und Vorschlag (Ril 800.0110, Diagnose)"><span class="glyph">▥</span>GWB</button>
-				<button type="button" data-mode="spurplan" aria-pressed="false" title="Spurplan: der gerechnete Gleisgraph, GWB-gefärbt"><span class="glyph">⌥</span>Spurplan</button>
-				<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span>Lieferung</button>
-				<button type="button" data-mode="links" aria-pressed="false" title="Verknüpfung: jedes Objekt, jede Verbindung, ihr Grund"><span class="glyph">⌾</span>Verknüpfung</button>
-			</div>
-			<div class="rail-bottom">
-				<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen."><span class="glyph">⇄</span>Kopplung</button>
-				<button id="themeToggle" type="button" title="Erscheinungsbild: System · Hell · Dunkel">◐ System</button>
-				<button id="toggleFullscreen" type="button" aria-label="GIS-Vollbild" aria-pressed="false" title="Karte im Vollbild">⛶</button>
-			</div>
-		</nav>
 		<main>
 			<div id="titlebar">
-				<h1>Technet-Datei-Viewer</h1>
+				<h1><span class="brand" aria-hidden="true">TV</span><span class="label">Technet-Datei-Viewer</span></h1>
+				<div id="viewModes" class="hidden" aria-label="Ansicht">
+					<button type="button" data-mode="crs" aria-pressed="true" title="Karte: die Bühne — Trassen mit Präzision und Kilometersteinen; schließt jedes Slide"><span class="glyph">◎</span><span class="label">Karte</span></button>
+					<button type="button" data-mode="listing" aria-pressed="false" title="Text: die Zahlen des gewählten Objekts"><span class="glyph">≡</span><span class="label">Text</span></button>
+					<button type="button" data-mode="ivmg" aria-pressed="false" title="IVMG: Trassenplan — Krümmung, Gradiente, Überhöhung, Gleisabstand über der Kilometrierung (Ril 883.5220)"><span class="glyph">∿</span><span class="label">IVMG</span></button>
+					<button type="button" data-mode="ivhw" aria-pressed="false" title="IVHW: Weichenhöhenplan (Ril 883.5240)"><span class="glyph">⋀</span><span class="label">IVHW</span></button>
+					<button type="button" data-mode="gwb" aria-pressed="false" title="GWB: Geschwindigkeitswegeband heute und Vorschlag (Ril 800.0110, Diagnose)"><span class="glyph">▥</span><span class="label">GWB</span></button>
+					<button type="button" data-mode="spurplan" aria-pressed="false" title="Spurplan: der gerechnete Gleisgraph, GWB-gefärbt"><span class="glyph">⌥</span><span class="label">Spurplan</span></button>
+					<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span><span class="label">Lieferung</span></button>
+					<button type="button" data-mode="links" aria-pressed="false" title="Verknüpfung: jedes Objekt, jede Verbindung, ihr Grund"><span class="glyph">⌾</span><span class="label">Verknüpfung</span></button>
+				</div>
 				<div id="jump" class="hidden">
 					<input id="jumpInput" type="search" placeholder="Suche: Gleis, Weiche, km 75,0+12" aria-label="Suche und Sprung" autocomplete="off" spellcheck="false" title="Gleis-, Weichen- oder Dateiname, oder eine Kilometrierung wie 75,0+12 · ⌘/Strg+K oder / springt hierher · ← → bewegen den Cursor 10 m, mit ⇧ 100 m · Esc löscht den Cursor">
 					<ul id="jumpResults" class="hidden" role="listbox"></ul>
 				</div>
 				<span id="status">Bereit · Daten hierher ziehen oder über „Daten“ laden.</span>
+				<div id="titleTools">
+					<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen."><span class="glyph">⇄</span><span class="label">Kopplung</span></button>
+					<button id="themeToggle" type="button" title="Erscheinungsbild: System · Hell · Dunkel"><span class="glyph">◐</span><span class="label">System</span></button>
+					<button id="toggleFullscreen" type="button" aria-label="GIS-Vollbild" aria-pressed="false" title="Karte im Vollbild">⛶</button>
+				</div>
 				<details id="dataMenu" class="menu">
 					<summary>Daten ▾</summary>
 					<div class="menu-body" popover="manual">
@@ -46854,11 +46860,12 @@ xlsx/xlsx.mjs:
 
 			// ---- Erscheinungsbild ------------------------------------------------------
 			const themeToggle = document.querySelector("#themeToggle");
-			const THEME_CYCLE = [["system", "◐ System"], ["light", "☀ Hell"], ["dark", "☾ Dunkel"]];
+			const THEME_CYCLE = [["system", "◐", "System"], ["light", "☀", "Hell"], ["dark", "☾", "Dunkel"]];
 			function applyTheme(value) {
 				if (value === "light" || value === "dark") document.documentElement.dataset.theme = value;
 				else delete document.documentElement.dataset.theme;
-				themeToggle.textContent = THEME_CYCLE.find(([key]) => key === value)?.[1] ?? THEME_CYCLE[0][1];
+				const [, glyph, label] = THEME_CYCLE.find(([key]) => key === value) ?? THEME_CYCLE[0];
+				themeToggle.replaceChildren(Object.assign(document.createElement("span"), { className: "glyph", textContent: glyph }), Object.assign(document.createElement("span"), { className: "label", textContent: label }));
 				try { localStorage.setItem("technetViewer.theme", value); } catch { /* no storage */ }
 			}
 			themeToggle.addEventListener("click", () => {
