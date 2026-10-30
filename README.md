@@ -73,4 +73,5 @@ the fit in a module worker, the fitted TRA, the report and the residual list
 as downloads. No storage, no canonical truth, no network. Serve the repository
 root statically and open `/axtran2/`; the calculation is
 `src/services/axtran2/fitTraCore.js`, shared with the command line in
-`tools/axtran2/`.
+`tools/axtran2/`. `node tools/axtran2/bundle.mjs` folds it into the single file
+`dist/axtran2.html`, which runs from a double-click.

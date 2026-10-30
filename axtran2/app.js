@@ -42,7 +42,11 @@ async function run() {
 		status("Rechnet …");
 		ticker = setInterval(() => status(`Rechnet … ${Math.round((Date.now() - started) / 1000)} s`), 1000);
 		worker?.terminate();
-		worker = new Worker(new URL("./worker.js", import.meta.url), { type: "module" });
+		// the single-file build (tools/axtran2/bundle.mjs) carries the worker as
+		// source text; the served app loads it as a module beside this file
+		worker = window.__AXTRAN2_WORKER_SOURCE
+			? new Worker(URL.createObjectURL(new Blob([window.__AXTRAN2_WORKER_SOURCE], { type: "text/javascript" })))
+			: new Worker("./worker.js", { type: "module" });
 		const id = String(started);
 		const message = await new Promise((resolve, reject) => {
 			worker.onmessage = (event) => (event.data.id === id ? resolve(event.data) : null);

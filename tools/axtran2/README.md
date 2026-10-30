@@ -81,3 +81,16 @@ story on one file: an Aufmaß derived from the track (and it says so), one
 Zwangspunkt, a plan deliberately off by ±2 % in length and ±3 % in
 curvature, the end pose from the track, the adapter, and a `summary.md`
 with the numbers. Nothing in the repository changes; the TRA is only read.
+
+## The single file
+
+`node tools/axtran2/bundle.mjs` (or `npm run bundle`) folds `axtran2/` and
+every module it reaches under `src/` into `dist/axtran2.html`: one file of
+about a megabyte that runs from a double-click, `file://` included, with the
+fit in a worker built from an embedded script. No bundler is installed or
+wanted; the script walks the static imports, turns each module into a
+function of a small registry, and refuses what it cannot carry (a dynamic
+import, top-level await, `import.meta`, a cycle). `test/axtran2/bundle.test.mjs`
+builds it and lets the embedded worker compute a fit in Node: the same
+iterations, rms and TRA bytes as the served modules. `dist/` is not under
+git; build the file and hand it over.
