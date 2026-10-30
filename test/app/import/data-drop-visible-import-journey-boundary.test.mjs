@@ -24,7 +24,7 @@ test("Workbench remains a read-model adapter with no parser storage geometry or 
 	assert.doesNotMatch(view, /auto.*promot|dispatchEvent|DragEvent/i);
 	assert.doesNotMatch(controller + view, /createOverlay|OverlayManager|technetViewer/i);
 	assert.doesNotMatch(controller + view, /IntroDirector|introRuntimeBridge|WindowRuntime|systemPrefs/);
-	assert.match(controller, /alignmentCreation\?\.create\?\.\(\)/);
+	assert.match(controller, /alignmentCreation\?\.create\?\.\(\{ name: explicitName \}\)/);
 	assert.match(controller, /cockpit\?\.activateSpotObject\?\.\(requestedId\)/);
 	assert.match(controller, /document\.getElementById\("btnImport"\)\?\.click\(\)/);
 });
@@ -54,7 +54,8 @@ test("the main stage owns an always-visible import activity rail with exact mult
 	assert.match(init, /open\.textContent = \["accepted", "processing"\]/);
 	assert.match(init, /Import abgeschlossen/);
 	assert.match(init, /Objekt.*erkannt/);
-	assert.match(drop, /publish\("completed", \{[\s\S]*fileNames:/);
+	assert.match(drop, /const state = outcome\?\.status === "cancelled" \? "cancelled"/);
+	assert.match(drop, /publish\(state, \{[\s\S]*fileNames:/);
 });
 
 test("S1 stays above alignmentOS and crosses promotion only through the existing facade and canonical readback", async () => {

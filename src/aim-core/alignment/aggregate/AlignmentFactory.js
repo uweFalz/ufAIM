@@ -124,16 +124,45 @@ function readDeltaDir(stub) {
 	return Number.isFinite(beta) ? beta : null;
 }
 
-function makeDescriptorResolverAdapter(descriptorResolver) {
-	if (!descriptorResolver?.resolveTransitionDescriptor) {
-		throw new Error("AlignmentFactory: missing descriptorResolver.resolveTransitionDescriptor");
+function transitionBuildFailure({ stub, index, stage, cause }) {
+	const elementId = String(stub?.id ?? mkId("T", index));
+	const transType = String(stub?.transType ?? "").toLowerCase();
+	const arcLength = readArcLength(stub);
+	const error = new Error(
+		`AlignmentFactory: positive-length transition refused at ${stage} ` +
+		`(element=${JSON.stringify(elementId)}, index=${index}, ` +
+		`transType=${JSON.stringify(transType)}, arcLength=${arcLength}): ` +
+		String(cause?.message ?? cause),
+		{ cause }
+	);
+	error.name = "AlignmentTransitionBuildError";
+	error.code = "ALIGNMENT_TRANSITION_BUILD_FAILED";
+	Object.assign(error, { stage, elementId, index, transType, arcLength });
+	return error;
+}
+
+function collaboratorFailure(sparse, stage, message) {
+	const cause = new Error(message);
+	const index = sparse.findIndex((stub) =>
+		normalizeSparseType(stub) === "transition" && readArcLength(stub) > 0
+	);
+	return index < 0 ? cause : transitionBuildFailure({
+		stub: sparse[index], index, stage, cause,
+	});
+}
+
+function makeDescriptorResolverAdapter(descriptorResolver, sparse) {
+	if (typeof descriptorResolver?.resolveTransitionDescriptor !== "function") {
+		throw collaboratorFailure(sparse, "descriptor",
+			"AlignmentFactory: missing descriptorResolver.resolveTransitionDescriptor");
 	}
 	return descriptorResolver;
 }
 
-function makeKappaBuilderAdapter(kappaBuilder) {
-	if (!kappaBuilder?.buildPresetFromDescriptor) {
-		throw new Error("AlignmentFactory: missing kappaBuilder.buildPresetFromDescriptor");
+function makeKappaBuilderAdapter(kappaBuilder, sparse) {
+	if (typeof kappaBuilder?.buildPresetFromDescriptor !== "function") {
+		throw collaboratorFailure(sparse, "preset",
+			"AlignmentFactory: missing kappaBuilder.buildPresetFromDescriptor");
 	}
 	return kappaBuilder;
 }
@@ -265,11 +294,9 @@ function buildContinuousTransitionElement({
 	const transType = String(stub?.transType ?? "").toLowerCase();
 
 	if (!transType) {
-		return buildImmediateElement({
-			stub,
-			index,
-			warnings,
-			msg: 'Transition missing transType -> treated as Immediate',
+		throw transitionBuildFailure({
+			stub, index, stage: "transType",
+			cause: new Error("Transition missing transType"),
 		});
 	}
 
@@ -315,6 +342,9 @@ function buildContinuousTransitionElement({
 	let descriptor;
 	try {
 		descriptor = descriptorResolver.resolveTransitionDescriptor(transType);
+		if (!descriptor || typeof descriptor !== "object" || Array.isArray(descriptor)) {
+			throw new Error("Descriptor resolver returned no descriptor object");
+		}
 
 		/*
 		if (DEBUG_ALIGNMENT_FACTORY) {
@@ -327,13 +357,8 @@ function buildContinuousTransitionElement({
 		}
 		*/
 	} catch (err) {
-		return buildImmediateElement({
-			stub,
-			index,
-			warnings,
-			kappaA,
-			kappaB,
-			msg: `Descriptor resolve failed -> Immediate (${String(err?.message ?? err)})`,
+		throw transitionBuildFailure({
+			stub, index, stage: "descriptor", cause: err,
 		});
 	}
 
@@ -343,6 +368,10 @@ function buildContinuousTransitionElement({
 		descriptor,
 		stub?.opts ?? {}
 		);
+		if (typeof runtimePreset?.kappa !== "function" ||
+			typeof runtimePreset?.kappaInt !== "function") {
+			throw new Error("Runtime preset missing callable kappa/kappaInt");
+		}
 
 		/*
 		console.log("[AlignmentFactory] runtimePreset RAW", runtimePreset);
@@ -368,13 +397,8 @@ function buildContinuousTransitionElement({
 		}
 		*/
 	} catch (err) {
-		return buildImmediateElement({
-			stub,
-			index,
-			warnings,
-			kappaA,
-			kappaB,
-			msg: `Runtime preset build failed -> Immediate (${String(err?.message ?? err)})`,
+		throw transitionBuildFailure({
+			stub, index, stage: "preset", cause: err,
 		});
 	}
 
@@ -418,13 +442,8 @@ function buildContinuousTransitionElement({
 		}
 		*/
 
-		return buildImmediateElement({
-			stub,
-			index,
-			warnings,
-			kappaA,
-			kappaB,
-			msg: `TransitionElement construction failed -> Immediate (${String(err?.message ?? err)})`,
+		throw transitionBuildFailure({
+			stub, index, stage: "element", cause: err,
 		});
 	}
 }
@@ -512,8 +531,8 @@ export function makeAlignment2DFromSparse({
 		throw new Error("AlignmentFactory: sparse must be an array");
 	}
 
-	const resolver = makeDescriptorResolverAdapter(descriptorResolver);
-	const builder = makeKappaBuilderAdapter(kappaBuilder);
+	const resolver = makeDescriptorResolverAdapter(descriptorResolver, sparse);
+	const builder = makeKappaBuilderAdapter(kappaBuilder, sparse);
 
 	const elements = [];
 

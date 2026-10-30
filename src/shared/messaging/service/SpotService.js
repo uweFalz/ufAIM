@@ -3,6 +3,12 @@
 import { buildSpotUiState } from "../../../model/spot/ui/buildSpotUiState.js";
 import { promoteImportItems } from "../../../model/spot/mutate/promoteImportItems.js";
 import { inspectCoordContext } from "../../../domain/coord/CoordAgent.js";
+import {
+	copyObservationData,
+	matchesPointObservationSnapshot,
+	sameObservationData,
+	validatePointObservationRecord,
+} from "../../../services/alignment/AlignmentPointObservationRecord.js";
 
 export function createSpotService({ spotStore, router, persistence = null } = {}) {
 	if (!spotStore) {
@@ -148,6 +154,7 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 			const diagnostics = receipt?.diagnostics;
 			const evidence = diagnostics?.evidence;
 			const diagnosticsValid = diagnostics?.status === "not-available" ? evidence == null
+				: diagnostics?.status === "refused" ? isRefusedHorizontalReceipt(receipt)
 				: diagnostics?.status === "evidence-only" && evidence?.type === "axtran2-consequence-evidence" && evidence.status === "evidence-only" && evidence.admissible === false;
 			const elements = alignmentData?.sparseAlignment?.elements ?? alignmentData?.sparseAlignment?.sparse;
 			if (current?.type !== "alignment" || savedEntry?.version !== 1 || receipt?.status !== "verified"
@@ -166,6 +173,40 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 				horizontalRealizationReceipts: matching ? previous : [...previous, savedEntry],
 			} } });
 			return { ok: true, spotObject: spotStore.getObject(objectId) };
+		}, (result) => result);
+	}
+
+	async function storePointObservationEvidence({ objectId, entry } = {}) {
+		// Snapshot before hydration/queueing; never retain caller-owned data.
+		const savedEntry = validatePointObservationRecord(entry);
+		await hydrate();
+		if (!persistence) throw new Error("SpotService.storePointObservationEvidence: durable storage unavailable");
+		return mutateAndPersist(() => {
+			const current = spotStore.getObject?.(objectId);
+			if (objectId !== savedEntry.request.objectId || !matchesPointObservationSnapshot(current, savedEntry.request)) {
+				throw new Error("SpotService.storePointObservationEvidence: stale or invalid alignment context");
+			}
+			const extended = current.data.extended ?? {};
+			const previous = extended.pointObservationEvidence ?? [];
+			if (!Array.isArray(previous)) throw new Error("SpotService.storePointObservationEvidence: invalid existing archive");
+			const source = savedEntry.request.pointObservationInput.observationSet;
+			for (const old of previous) {
+				const checked = validatePointObservationRecord(old);
+				if (checked.request.objectId !== objectId) throw new Error("SpotService.storePointObservationEvidence: cross-object archive");
+				const oldSource = checked.request.pointObservationInput.observationSet;
+				if (oldSource.id === source.id && oldSource.revision === source.revision && !sameObservationData(oldSource, source)) {
+					throw new Error("SpotService.storePointObservationEvidence: conflicting observation set revision");
+				}
+			}
+			const matching = previous.filter((item) => item.request.id === savedEntry.request.id);
+			if (matching.length > 1 || (matching.length === 1 && !sameObservationData(matching[0], savedEntry))) {
+				throw new Error("SpotService.storePointObservationEvidence: conflicting run identity");
+			}
+			spotStore.updateObject(objectId, { data: { extended: {
+				...extended,
+				pointObservationEvidence: matching.length ? previous : [...previous, savedEntry],
+			} } });
+			return { ok: true, entry: copyObservationData(savedEntry) };
 		}, (result) => result);
 	}
 
@@ -198,7 +239,22 @@ export function createSpotService({ spotStore, router, persistence = null } = {}
 		renameObject,
 		removeObject,
 		storeHorizontalReceipt,
+		storePointObservationEvidence,
 	};
+}
+
+function isRefusedHorizontalReceipt(receipt) {
+	const diagnostics = receipt?.diagnostics;
+	const refusal = diagnostics?.refusal;
+	return !Array.isArray(receipt) && !Array.isArray(diagnostics)
+		&& refusal !== null && typeof refusal === "object" && !Array.isArray(refusal)
+		&& typeof refusal.code === "string" && refusal.code.trim().length > 0
+		&& typeof refusal.message === "string" && refusal.message.trim().length > 0
+		&& typeof diagnostics.message === "string" && diagnostics.message.trim().length > 0
+		// A refusal is a failure declaration, never simultaneous solver evidence
+		// or an admissibility claim, even when a mixed field is null or false.
+		&& [receipt, diagnostics, refusal].every((record) =>
+			!Object.hasOwn(record, "evidence") && !Object.hasOwn(record, "admissible"));
 }
 
 function sameReceiptData(left, right) {

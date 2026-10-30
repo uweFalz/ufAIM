@@ -67,6 +67,15 @@ export function restoreHorizontalRealizationChangeReceipt({ spotObject, elementI
 				axtranRefusal: receipt.diagnostics?.refusal,
 			});
 			if (equal(rebuilt, receipt)) return rebuilt;
+			// Older receipts omitted this later display-only field. Accept only
+			// its absence when today's derivation is null; keep every other exact
+			// comparison and the saved archive unchanged. Return a current read model.
+			if (rebuilt.diagnostics.holdSentence === null && receipt.diagnostics
+				&& !Object.hasOwn(receipt.diagnostics, "holdSentence")) {
+				const diagnostics = { ...rebuilt.diagnostics };
+				delete diagnostics.holdSentence;
+				if (equal({ ...rebuilt, diagnostics }, receipt)) return rebuilt;
+			}
 		} catch { /* Malformed or stale saved evidence is never shown as verified. */ }
 	}
 	return null;

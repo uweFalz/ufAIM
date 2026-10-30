@@ -36,6 +36,7 @@
 // sondern liest sie aus einer kleinen shared semanticMap.
 
 import * as fat from "../../../landfat/landFatWriter.js";
+import { resolveTechnetType8TransitionId } from "./resolveTechnetType8TransitionId.js";
 
 // -----------------------------------------------------------------------------
 // helpers
@@ -254,6 +255,12 @@ function makeSpiral(ctx) {
 
 function resolveRecordSpiralType(rec, kind) {
 	const sourceQualified = String(rec?.transitionType ?? "").trim();
+	if (kind?.kindCode === 8) {
+		const resolved = resolveTechnetType8TransitionId({ ...rec, typeCode: 8 });
+		const explicit = rec?.transitionType;
+		return resolved && (explicit == null || explicit === resolved)
+			? resolved : "unresolved_technet_type8";
+	}
 	return sourceQualified || kind?.spiType || null;
 }
 
@@ -300,10 +307,10 @@ export function mapTraLikeRecordToElements(
 	const direction = makeDirectionAngle(rec?.direction, semanticMap);
 	const length = makeMeasure(rec?.arcLength, linearUnit);
 
-	const R1 = isFiniteNum(rec?.radiusA) ? Number(rec.radiusA) : null;
-	const R2 = isFiniteNum(rec?.radiusE) ? Number(rec.radiusE) : null;
-
 	const kind = resolveTraLikeKind(rec?.kindCode, semanticMap);
+	const isType8 = kind.kindCode === 8;
+	const R1 = (isType8 ? Number.isFinite(rec?.radiusA) : isFiniteNum(rec?.radiusA)) ? Number(rec.radiusA) : null;
+	const R2 = (isType8 ? Number.isFinite(rec?.radiusE) : isFiniteNum(rec?.radiusE)) ? Number(rec.radiusE) : null;
 	const source = makeSourceFromRecord(rec, index, {
 		formatId: semanticMap?.formatId ?? null,
 		fileType: semanticMap?.fileType ?? null,
@@ -373,7 +380,7 @@ export function mapTraLikeRecordToElements(
 	}
 
 	if (kind.targetType === "Spiral") {
-		if (R1 !== null && R2 !== null && nearlyEqual(R1, R2)) {
+		if (!isType8 && R1 !== null && R2 !== null && nearlyEqual(R1, R2)) {
 			out.push(makeCurve({
 				type: "Curve",
 				start,
@@ -391,18 +398,32 @@ export function mapTraLikeRecordToElements(
 			return out;
 		}
 
+		const transitionId = resolveRecordSpiralType(rec, kind);
+		const transitionResolution = isType8 ? {
+			status: transitionId === "unresolved_technet_type8" ? "unresolved" : "resolved",
+			code: transitionId === "unresolved_technet_type8" ? "type8-halfwave-direction-unresolved" : "type8-halfwave-resolved",
+			rule: "same-sign endpoint curvature magnitude; increasing=in, decreasing=out; zero radius=straight",
+			transitionId: transitionId === "unresolved_technet_type8" ? null : transitionId,
+			sourceTransitionType: rec?.transitionType ?? null,
+			sourceRadii: { radiusA: rec?.radiusA ?? null, radiusE: rec?.radiusE ?? null },
+		} : null;
+		if (transitionResolution?.status === "unresolved") {
+			ctx?.warnings?.push?.({ index, code: transitionResolution.code,
+				message: "Technet type 8 halfwave direction is unresolved; retain source, do not construct" });
+		}
 		out.push(makeSpiral({
 			type: "Spiral",
 			start,
 			end,
 			length,
 			direction,
-			radiusStart: makeRadius(R1),
-			radiusEnd: makeRadius(R2),
+			radiusStart: isType8 ? R1 : makeRadius(R1),
+			radiusEnd: isType8 ? R2 : makeRadius(R2),
 			spiType: resolveRecordSpiralType(rec, kind),
 			staStart,
 			source,
-			extras: makeElementExtras(rec, kind, semanticMap),
+			extras: makeElementExtras(rec, kind, semanticMap,
+				transitionResolution ? { transitionResolution } : {}),
 		}));
 		return out;
 	}

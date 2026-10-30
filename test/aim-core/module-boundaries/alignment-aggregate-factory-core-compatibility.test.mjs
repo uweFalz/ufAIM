@@ -88,19 +88,19 @@ test("a kink's turn is read from the sparse model's unit vector as well as from 
 	assert.ok(Math.abs(Math.atan2(endVector.t.y, endVector.t.x) - turn) < 1e-12, "and the heading turned by the angle");
 });
 
-test("warnings fallbacks and exact collaborator errors remain unchanged", () => {
-	const missingType = build([
+test("fixed warnings and exact non-transition collaborator errors remain unchanged", () => {
+	const missingCurvature = build([
 		{ id: "F", type: "fixed", arcLength: "bad", curvature: "bad" },
-		{ id: "T", type: "transition", arcLength: 2 },
 	]);
-	assert.equal(missingType.alignment.elements[0] instanceof ZeroLengthFixed, true);
-	assert.equal(missingType.alignment.elements[1] instanceof ImmediateElement, true);
+	assert.equal(missingCurvature.alignment.elements[0] instanceof ZeroLengthFixed, true);
 	assert.deepEqual(
-		missingType.warnings.map((entry) => entry.msg),
-		[
-			"FixedElement missing curvature -> set 0",
-			'Transition missing transType -> treated as Immediate',
-		]
+		missingCurvature.warnings.map((entry) => entry.msg),
+		["FixedElement missing curvature -> set 0"]
+	);
+	assert.throws(
+		() => build([{ id: "T", type: "transition", arcLength: 2 }]),
+		(error) => error.code === "ALIGNMENT_TRANSITION_BUILD_FAILED" &&
+			error.stage === "transType" && error.elementId === "T" && error.arcLength === 2
 	);
 	assert.throws(() => canonicalFactory(), /AlignmentFactory: missing startPose/);
 	assert.throws(
@@ -159,8 +159,8 @@ test("injected resolver and builder preserve call order references and options",
 	assert.equal(result.alignment.elements[1].kappaB, 0.02);
 });
 
-test("resolver builder and construction failures retain ordered Immediate fallbacks", () => {
-	for (const [collaborator, expected] of [
+test("positive-length resolver and builder failures refuse instead of Immediate fallback", () => {
+	for (const [collaborator, stage, message] of [
 		[
 			{
 				descriptorResolver: {
@@ -168,7 +168,8 @@ test("resolver builder and construction failures retain ordered Immediate fallba
 				},
 				kappaBuilder: KappaFcnBuilder,
 			},
-			"Descriptor resolve failed -> Immediate (resolve-x)",
+			"descriptor",
+			"resolve-x",
 		],
 		[
 			{
@@ -177,10 +178,11 @@ test("resolver builder and construction failures retain ordered Immediate fallba
 					buildPresetFromDescriptor() { throw new Error("build-x"); },
 				},
 			},
-			"Runtime preset build failed -> Immediate (build-x)",
+			"preset",
+			"build-x",
 		],
 	]) {
-		const result = canonicalFactory({
+		assert.throws(() => canonicalFactory({
 			startPose: START,
 			sparse: [
 				{ type: "fixed", arcLength: 1, curvature: 0 },
@@ -188,9 +190,8 @@ test("resolver builder and construction failures retain ordered Immediate fallba
 				{ type: "fixed", arcLength: 1, curvature: 0.01 },
 			],
 			...collaborator,
-		});
-		assert.equal(result.alignment.elements[1] instanceof ImmediateElement, true);
-		assert.equal(result.warnings[0].msg, expected);
+		}), (error) => error.code === "ALIGNMENT_TRANSITION_BUILD_FAILED" &&
+			error.stage === stage && error.cause?.message === message && error.arcLength === 1);
 	}
 });
 

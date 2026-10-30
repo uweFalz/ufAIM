@@ -236,6 +236,10 @@ function buildPiecewisePreset({ id, label, lambdas, families, anchors }) {
 			return segK1(uu - w2, l2, a2, a3, families[2]);
 		}
 
+		// With only the entering halfwave active, u=1 still belongs to it.
+		// Return its one-sided endpoint derivative, not that of an absent exit.
+		if (has1 && !hasC) return segK1(l1, l1, a0, a1, families[0]);
+
 		return 0;
 	};
 
@@ -253,6 +257,8 @@ function buildPiecewisePreset({ id, label, lambdas, families, anchors }) {
 		if (has2) {
 			return segK2(uu - w2, l2, a2, a3, families[2]);
 		}
+
+		if (has1 && !hasC) return segK2(l1, l1, a0, a1, families[0]);
 
 		return 0;
 	};

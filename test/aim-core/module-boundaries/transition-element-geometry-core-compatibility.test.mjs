@@ -257,7 +257,7 @@ test("poseAt restores Romberg after integration and runtime failures", () => {
 	}
 });
 
-test("reverse preserves identity data signs runtime alias and class", () => {
+test("reverse preserves element data signs and class while reversing the runtime law", () => {
 	const meta = { note: "same" };
 	const element = new canonical.TransitionElement({
 		id: "T",
@@ -272,7 +272,12 @@ test("reverse preserves identity data signs runtime alias and class", () => {
 	assert.notStrictEqual(reversed, element);
 	assert.equal(reversed.id, undefined);
 	assert.equal(reversed.arcLength, 12);
-	assert.strictEqual(reversed.runtime, linearRuntime);
+	assert.notStrictEqual(reversed.runtime, linearRuntime);
+	for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+		assert.equal(reversed.runtime.kappa(u), linearRuntime.kappa(u));
+		assert.equal(reversed.runtime.kappaInt(u), linearRuntime.kappaInt(u));
+	}
+	assert.strictEqual(reversed.reverse().runtime, linearRuntime);
 	assert.equal(reversed.meta, undefined);
 	assert.equal(reversed.kappaA, 0.3);
 	assert.equal(reversed.kappaB, -0.1);
@@ -306,7 +311,17 @@ test("legacy and canonical construction remain deeply identical", () => {
 		const oldElement = new legacy.TransitionElement(options);
 		const newElement = new canonical.TransitionElement(options);
 		assert.deepEqual(oldElement, newElement);
-		assert.deepEqual(oldElement.reverse(), newElement.reverse());
+		const oldReverse = oldElement.reverse();
+		const newReverse = newElement.reverse();
+		assert.deepEqual(
+			{ ...oldReverse, runtime: null },
+			{ ...newReverse, runtime: null }
+		);
+		for (const u of [0, 0.25, 0.5, 0.75, 1]) {
+			for (const method of ["kappa", "kappaInt", "kappa1", "kappa2"]) {
+				assert.equal(oldReverse.runtime[method](u), newReverse.runtime[method](u));
+			}
+		}
 	}
 });
 

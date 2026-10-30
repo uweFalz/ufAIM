@@ -19,6 +19,30 @@ function rot(v, angle) {
 	};
 }
 
+// Function-only runtime views: no unchanged descriptor or partition claim.
+// A second reversal reuses the original runtime without mutation. Fresh
+// reversals observe the current optional functions of a mutable runtime.
+const originalRuntimes = new WeakMap();
+
+function reverseRuntime(runtime) {
+	const original = originalRuntimes.get(runtime);
+	if (original) return original;
+	const reversed = {
+		kappa: (u) => 1 - runtime.kappa(1 - clamp01(u)),
+		kappaInt: (u) => {
+			const v = clamp01(u);
+			return v - runtime.kappaInt(1) + runtime.kappaInt(1 - v);
+		},
+	};
+	if (runtime.kappa1) reversed.kappa1 = (u) =>
+		runtime.kappa1 ? runtime.kappa1(1 - clamp01(u)) : 0;
+	if (runtime.kappa2) reversed.kappa2 = (u) =>
+		runtime.kappa2 ? -runtime.kappa2(1 - clamp01(u)) : 0;
+	Object.freeze(reversed);
+	originalRuntimes.set(reversed, runtime);
+	return reversed;
+}
+
 export class TransitionElement extends AlignmentElement {
 	constructor({
 		id = null,
@@ -129,7 +153,7 @@ export class TransitionElement extends AlignmentElement {
 		return new TransitionElement({
 			id: this.id,
 			arcLength: this.arcLength,
-			runtimePreset: this.runtime,
+			runtimePreset: reverseRuntime(this.runtime),
 			kappaA: -this.kappaB,
 			kappaB: -this.kappaA,
 			meta: this.meta ?? null,

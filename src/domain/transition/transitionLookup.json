@@ -391,6 +391,20 @@
 			"normLengthPartition": [0.5, 0.0, 0.5]
 		},
 
+		"bloss_halfwave_in": {
+			"label": "Bloss Halbwelle · einlaufend",
+			"halfWave1": "HW_BLOSS",
+			"halfWave2": "HW_BLOSS",
+			"normLengthPartition": [1.0, 0.0, 0.0]
+		},
+
+		"bloss_halfwave_out": {
+			"label": "Bloss Halbwelle · auslaufend",
+			"halfWave1": "HW_BLOSS",
+			"halfWave2": "HW_BLOSS",
+			"normLengthPartition": [0.0, 0.0, 1.0]
+		},
+
 		"bloss_k1": {
 			"halfWave1": "HW_REGULAR1",
 			"halfWave2": "HW_REGULAR1",

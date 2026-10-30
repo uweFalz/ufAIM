@@ -12,6 +12,16 @@ import { renderHorizontalRealizationChangeReceipt } from "@app/view/workspace/re
 function unwrap(raw) { return raw?.state ?? raw?.payload ?? raw ?? null; }
 function asNumber(value) { if (value == null || String(value).trim() === "") return undefined; const number = Number(value); return Number.isFinite(number) ? number : Number.NaN; }
 
+function radiusForDisplay(element) {
+	const number = (value) => typeof value === "number" || typeof value === "string" && value.trim() !== "" ? Number(value) : Number.NaN;
+	// Preserve the existing nullish display precedence, but never replace an
+	// explicit invalid radius with a seemingly valid curvature-derived value.
+	if (element?.parameters?.radius !== undefined || element?.radius !== undefined) return number(element?.parameters?.radius ?? element?.radius);
+	if (String(element?.type ?? "").toLowerCase() !== "arc") return Number.NaN;
+	const curvature = number(element?.parameters?.curvature ?? element?.curvature);
+	return Number.isFinite(curvature) && Math.abs(curvature) > 1e-12 ? 1 / curvature : Number.NaN;
+}
+
 export function resolveArcEditChange({ curvature, radius, authority } = {}) {
 	return authority === "radius"
 		? { radius: asNumber(radius) }
@@ -205,7 +215,7 @@ export function makeAlignmentEditorBridge({ store, ui, messaging, receiptSource 
 		const type = String(element.type ?? "").toLowerCase();
 		const length = Number(element?.parameters?.length ?? element?.length ?? element?.arcLength);
 		const curvature = Number(element?.parameters?.curvature ?? element?.curvature);
-		const radius = Number(element?.parameters?.radius ?? element?.radius);
+		const radius = radiusForDisplay(element);
 		if (fields.type) fields.type.value = t(`alignment_editor.element_type.${["straight", "arc", "transition"].includes(type) ? type : "unknown"}`);
 		if (fields.length) fields.length.value = Number.isFinite(length) ? String(length) : "";
 		if (fields.curvature) fields.curvature.value = Number.isFinite(curvature) ? String(curvature) : "";

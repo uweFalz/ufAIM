@@ -21,8 +21,14 @@ reducing it.
 Target:
 
 ```text
-30 September 2026
+31 October 2026
 ```
+
+Rescheduled by Uwe on 20 October 2026: “Zusammenführen! verschobene Deadline:
+Oct 31”. The original 30 September 2026 target was not met. This changes the
+Delivery 1 target date, not its scope or acceptance criteria; Delivery 2 and
+Delivery 3 dates remain unchanged. Consolidating independently checked local
+candidates is progress toward delivery, not evidence of complete acceptance.
 
 The delivery is recognizable as the intended product when a user can:
 
@@ -84,16 +90,74 @@ create or import
 → compare preserved engineering meaning
 ```
 
+## Execution Status — 30 October 2026
+
+Uwe's current priority order is:
+
+1. bring the selected branches together;
+2. maintain the AIM development timeline against this plan and the complete
+   work programme;
+3. clarify `AIMcoreFix` / “what is AIM?” without silently redefining the
+   existing AIM Core, alignmentOS, Knowledge Kernel, or product boundaries.
+
+Priority 1 currently exists as a local integration tree based on
+`6fb5f3bc54db0a725c53fc81c9897da8fad61106`. It combines the accepted 099
+alignmentOS consolidation semantics with the PR82/PR83 AXTRAN owner paths and
+the residual-chart content. Independent review has accepted the tree for
+bounded offline integration; the separate Git integration remains open, so
+this is not finished `main` content. During that work, `origin/main` was reported to
+have advanced independently to `fa1b893b61ceebb26fa1d4a1308fc957c218fc58`
+through PR84. That observation is provenance for the later integration gate,
+not a new remote verification by this plan.
+
+Delivery 1 remains **ROT** on 30 October 2026. Code capability, focused tests,
+isolated candidate evidence, and local integration are not interchangeable
+with delivery acceptance. The ten criteria above remain the complete Delivery
+1 gate. The currently documented remaining gates are:
+
+- one current, uninterrupted normal-application acceptance across the complete
+  Delivery 1 user path;
+- visible qualified-CRS geographic context through MapLibre, while retaining
+  explicit local-cartesian behavior when qualification is absent;
+- explicit retention of PR83's known 12 transition-junction divergences, up to
+  approximately 674 m, as an unresolved limitation rather than accepted
+  round-trip behavior.
+
+The adapter result contract and its persistence/readback boundary remain an
+implementation dependency within the existing programme. They support the ten
+criteria, especially calculated consequences and lossless reopen, but do not
+constitute an eleventh Delivery 1 criterion.
+
+Existing horizontal, vertical, cant, chainage, speed, synchronized-view,
+import, calculation, and reopen capabilities shall be described according to
+their actual constructive, partial-evidence, evidence-only, or accepted status.
+The plan does not infer missing capability merely because a current combined
+acceptance has not yet been run, and it does not infer acceptance from code or
+test presence.
+
+Priority 3 is Uwe's targeted clarification and design task, not a new delivery
+date or an authorization to change active authority without review. It must
+reconcile the intended AIM meaning
+with active Knowledge Kernel authority, the alignmentOS system/contract
+boundary, demonstrated implementation, and the complete work programme. No
+programme item may be removed or reclassified through terminology alone.
+
 ## Immediate Critical Path
 
-1. terminate and commit the truthful cancellable background import;
-2. establish the first physical AIM Core module boundary;
-3. separate additional Core modules incrementally;
-4. complete horizontal, vertical, cant, and chainage Core capability;
-5. expose task-oriented Core Services;
-6. complete the September user path across synchronized views;
-7. stabilize normal startup and persistence;
-8. integrate MapLibre as qualified World Context.
+The earlier route established the background-import and first physical
+AIM-Core boundaries and then separated additional Core modules and services.
+Those completed stages remain provenance; they are not newly reopened packages.
+
+The current sequence is:
+
+1. complete the authorized Git integration of the bounded-offline-reviewed
+   branch composition against the then-current Main lineage;
+2. run the current uninterrupted Delivery 1 normal-application acceptance and
+   repair only concrete defects exposed against the ten existing criteria;
+3. connect the resulting accepted Delivery 1 state to the Delivery 2 additions;
+4. carry unresolved adapter-result, persistence/readback and PR83 junction
+   limitations forward through their existing programme responsibilities,
+   without expanding Delivery 1 scope or hiding known evidence.
 
 ## Continuous Handover Rule
 
@@ -150,16 +214,15 @@ Activity, test count, document length, and commit count alone are not outcomes.
 
 ## Schedule Protection
 
-The September delivery is protected from:
+Delivery 1 is protected from:
 
 - broad cleanup;
 - Big-Bang refactors;
 - speculative application modules;
-- repeated repair chains unrelated to the September user path;
+- repeated repair chains unrelated to the Delivery 1 user path;
 - Kernel or Thesis work being used as a prerequisite without a demonstrated
   product dependency;
 - UI polish that does not improve orientation, action, feedback, or trust.
 
 The dates may only be changed through an explicit Uwe/Rock delivery decision
 based on observed evidence.
-

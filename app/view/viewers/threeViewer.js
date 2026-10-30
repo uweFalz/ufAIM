@@ -120,6 +120,7 @@ export function makeThreeViewer({ canvas }) {
 
 	// smooth zoom animation
 	let zoomAnim = null; // { t0, durationMs, r0, r1 }
+	let fittedSphere = null; // planar Fit extent; not a replacement for scene geometry
 
 	// animation loop control
 	let isStarted = false;
@@ -152,7 +153,12 @@ export function makeThreeViewer({ canvas }) {
 		"wheel",
 		(e) => {
 			e.preventDefault();
-			radius = Math.min(1200, Math.max(80, radius + e.deltaY * 0.4));
+			if (!Number.isFinite(e.deltaY)) return;
+			// Proportional steps remain useful after a kilometre-scale Fit.
+			const next = radius * Math.exp(Math.max(-1, Math.min(1, e.deltaY * 0.001)));
+			if (!Number.isFinite(next * 4)) return;
+			zoomAnim = null;
+			radius = Math.max(80, next);
 		},
 		{ passive: false }
 	);
@@ -176,6 +182,7 @@ export function makeThreeViewer({ canvas }) {
 
 	function resize() {
 		const rect = canvas.getBoundingClientRect();
+		if (!Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 0 || rect.height <= 0) return;
 		const w = Math.max(1, Math.floor(rect.width));
 		const h = Math.max(1, Math.floor(rect.height));
 
@@ -184,7 +191,8 @@ export function makeThreeViewer({ canvas }) {
 		lastResizeW = w;
 		lastResizeH = h;
 
-		renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+		const pixelRatio = window.devicePixelRatio;
+		renderer.setPixelRatio(Number.isFinite(pixelRatio) && pixelRatio > 0 ? Math.min(pixelRatio, 2) : 1);
 		renderer.setSize(w, h, false);
 		camera.aspect = w / h;
 		camera.updateProjectionMatrix();
@@ -658,6 +666,7 @@ export function makeThreeViewer({ canvas }) {
 
 	function setWorkspaceViewMode(mode) {
 		if (mode === "main") {
+			zoomAnim = null;
 			workspaceViewMode = "main";
 			pitch = Math.PI * 0.29;
 			radius = Math.max(radius, 80);
@@ -683,6 +692,7 @@ export function makeThreeViewer({ canvas }) {
 		const dy = Number(next?.y ?? 0) - Number(previous?.y ?? 0);
 		if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) === 0) return false;
 
+		zoomAnim = null;
 		workspaceViewMode = "q";
 		workspaceCameraAnchor = { x: marker.position.x, y: marker.position.y, z: marker.position.z };
 		workspaceCameraTangent = { x: dx, y: dy };
@@ -706,6 +716,23 @@ export function makeThreeViewer({ canvas }) {
 	}
 
 	canvas.addEventListener("click", handleCanvasClick);
+
+	function updateCameraClipping() {
+		// Fit distance can exceed the former fixed far plane. Recompute from the
+		// actual camera, also when q-mode keeps a nearby target inside a large box.
+		const distance = fittedSphere
+			? Math.hypot(camera.position.x - fittedSphere.x, camera.position.y - fittedSphere.y, camera.position.z)
+			: radius;
+		const extent = fittedSphere?.radius ?? 0;
+		// Retain the former far range for context geometry outside a small Fit.
+		const far = Math.max(100000, Math.max(radius * 2, distance + extent + 1) * 1.1);
+		const near = fittedSphere ? Math.max(0.1, Math.min(radius / 1000, (distance - extent) / 2)) : 0.1;
+		if (!Number.isFinite(far) || !Number.isFinite(near) || far <= near) return;
+		if (near === camera.near && far === camera.far) return;
+		camera.near = near;
+		camera.far = far;
+		camera.updateProjectionMatrix();
+	}
 
 	function render() {
 		// animate radius (zoom) smoothly
@@ -736,6 +763,7 @@ export function makeThreeViewer({ canvas }) {
 
 		camera.position.set(target.x + cx, target.y + cy, target.z + cz);
 		camera.lookAt(target);
+		updateCameraClipping();
 
 		renderer.render(scene, camera);
 	}
@@ -784,67 +812,62 @@ export function makeThreeViewer({ canvas }) {
 		setTrackFromXY(points);
 	}
 
-	function computeFitRadiusForBox(bbox, pad = 1.25) {
+	function computeFitForBox(bbox, pad = 1.25) {
 		if (!bbox) return null;
 		const minX = bbox.minX;
 		const minY = bbox.minY;
 		const maxX = bbox.maxX;
 		const maxY = bbox.maxY;
-		if (![minX, minY, maxX, maxY].every(Number.isFinite)) return null;
-
-		const dx = Math.max(1e-6, maxX - minX);
-		const dy = Math.max(1e-6, maxY - minY);
-
-		const aspect = camera.aspect || 1;
+		if (![minX, minY, maxX, maxY].every(Number.isFinite) || minX > maxX || minY > maxY) return null;
+		const aspect = camera.aspect;
 		const vFov = THREE.MathUtils.degToRad(camera.fov);
+		if (!Number.isFinite(aspect) || aspect <= 0 || !Number.isFinite(vFov) || vFov <= 0 || vFov >= Math.PI) return null;
 		const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-
-		const distV = (dy / 2) / Math.tan(vFov / 2);
-		const distH = (dx / 2) / Math.tan(hFov / 2);
-
-		let r = Math.max(distV, distH) * pad;
-		r = Math.min(1200, Math.max(80, r));
-		return r;
+		const sphere = {
+			x: minX / 2 + maxX / 2,
+			y: minY / 2 + maxY / 2,
+			radius: Math.hypot(maxX / 2 - minX / 2, maxY / 2 - minY / 2),
+		};
+		// A bounding sphere fits for every orbit direction, including its depth.
+		// A planar dx/tan(FOV) calculation alone is insufficient for tilted views.
+		const padding = Number.isFinite(pad) && pad >= 1 ? pad : 1.25;
+		const r = Math.max(80, sphere.radius / Math.sin(Math.min(vFov, hFov) / 2) * padding);
+		if (!Number.isFinite(r * 4 + Math.hypot(sphere.x, sphere.y) + sphere.radius)) return null;
+		return { radius: r, sphere };
 	}
 
 	function zoomToFitBox(bbox, opts = {}) {
-		if (!bbox) return;
-		const pad = Number.isFinite(opts.padding) ? opts.padding : 1.25;
-
-		const minX = bbox.minX;
-		const minY = bbox.minY;
-		const maxX = bbox.maxX;
-		const maxY = bbox.maxY;
-		if (![minX, minY, maxX, maxY].every(Number.isFinite)) return;
-
-		target.set((minX + maxX) * 0.5, (minY + maxY) * 0.5, 0);
-
-		const r1 = computeFitRadiusForBox(bbox, pad);
-		if (Number.isFinite(r1)) radius = r1;
+		resize();
+		const fit = computeFitForBox(bbox, opts.padding);
+		if (!fit) return;
+		zoomAnim = null;
+		fittedSphere = fit.sphere;
+		target.set(fit.sphere.x, fit.sphere.y, 0);
+		radius = fit.radius;
 	}
 
 	function zoomToFitBoxSoft(bbox, opts = {}) {
-		if (!bbox) return;
-		const pad = Number.isFinite(opts.padding) ? opts.padding : 1.25;
-
-		const r1 = computeFitRadiusForBox(bbox, pad);
-		if (Number.isFinite(r1)) radius = r1;
+		resize();
+		const fit = computeFitForBox(bbox, opts.padding);
+		if (!fit) return;
+		zoomAnim = null;
+		fittedSphere = fit.sphere;
+		// Soft Fit deliberately preserves the target; an offset target is not a
+		// promise that the complete box will lie inside the horizontal/vertical FOV.
+		radius = fit.radius;
 	}
 
 	function zoomToFitBoxSoftAnimated(bbox, opts = {}) {
-		if (!bbox) return;
-
-		const pad = Number.isFinite(opts.padding) ? opts.padding : 1.25;
+		resize();
+		const fit = computeFitForBox(bbox, opts.padding);
+		if (!fit) return;
 		const durationMs = Number.isFinite(opts.durationMs) ? opts.durationMs : 240;
-
-		const r1 = computeFitRadiusForBox(bbox, pad);
-		if (!Number.isFinite(r1)) return;
-
+		fittedSphere = fit.sphere;
 		zoomAnim = {
 			t0: performance.now(),
 			durationMs: Math.max(0, durationMs),
 			r0: radius,
-			r1,
+			r1: fit.radius,
 		};
 	}
 

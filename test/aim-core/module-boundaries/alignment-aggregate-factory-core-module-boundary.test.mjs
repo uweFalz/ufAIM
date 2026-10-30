@@ -12,10 +12,11 @@ const LEGACY = new URL(
 	"src/domain/alignment/build/AlignmentFactory.js",
 	ROOT
 );
-// the adopted body, plus readDeltaDir reading the sparse model's unit vector
-// (2026-09-11): the hash is the canonical body as it stands
+// The adopted body plus vector kink turns (2026-09-11) and package097's
+// explicit refusal of failed positive-length transitions (2026-10-20).
+// Only the reviewed body freeze changes; dependency/API guards below remain.
 const BASELINE_HASH =
-	"852c48c95e8544350b54b2e2fbb6632a39e743935d80a8f134aa90bb2c99a754";
+	"dad5ad20fe04a7b9f9721ea33b0f5e69455126fb48ef3fa69827dd4d1859f5ea";
 const IMPORTS = [
 	"../../geometry/Alignment2D.js",
 	"../../geometry/FixedElement.js",
@@ -96,7 +97,7 @@ test("legacy Factory is the exact one-line canonical facade", async () => {
 	);
 });
 
-test("canonical body mechanically preserves the adopted Factory baseline", async () => {
+test("canonical body preserves the reviewed Factory baseline including transition refusal", async () => {
 	const source = await readFile(CANONICAL, "utf8");
 	const restored = source
 		.replace(

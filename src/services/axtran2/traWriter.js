@@ -33,10 +33,15 @@
 // element a jump falls inside is written as two records again, split at
 // the jump's original distance from the element's start.
 
+import { resolveTechnetType8TransitionId } from "../../import/parsers/technet/shared/resolveTechnetType8TransitionId.js";
+
 export const TRA_RECORD_BYTES = 78;
 
-export const KZ = Object.freeze({ straight: 0, arc: 1, clothoid: 2, helmert: 3, bloss: 4, kink: 5, stationEquation: 6 });
-const FAMILY_KZ = Object.freeze({ clothoid: KZ.clothoid, helmert: KZ.helmert, bloss: KZ.bloss });
+export const KZ = Object.freeze({ straight: 0, arc: 1, clothoid: 2, helmert: 3, bloss: 4, kink: 5, stationEquation: 6, blossHalfwave: 8 });
+const FAMILY_KZ = Object.freeze({
+	clothoid: KZ.clothoid, helmert: KZ.helmert, bloss: KZ.bloss,
+	bloss_halfwave_in: KZ.blossHalfwave, bloss_halfwave_out: KZ.blossHalfwave,
+});
 
 export class TraWriterError extends Error {
 	constructor(code, message, detail = null) {
@@ -85,6 +90,34 @@ function curvatureBeside(elements, index, step) {
 	return 0;
 }
 
+function assertType8Representation(element, curvatureA, curvatureE, shape) {
+	const expected = element.family === "bloss_halfwave_in" ? [1, 0, 0] : [0, 0, 1];
+	for (const partition of [element.normLengthPartition, element.opts?.normLengthPartition]) {
+		if (partition === undefined) continue;
+		if (!Array.isArray(partition) || partition.length !== 3 ||
+			!expected.every((value, index) => Object.hasOwn(partition, index) && partition[index] === value)) {
+			error("UNREPRESENTABLE_TYPE8", `Kz 8 cannot encode the explicit partition of ${element.id}`);
+		}
+	}
+	if (element.opts != null) {
+		const opts = element.opts;
+		const cut = expected[0];
+		if (typeof opts !== "object" || Array.isArray(opts) ||
+			Object.keys(opts).some((key) => !["w1", "w2", "normLengthPartition"].includes(key)) ||
+			(("w1" in opts || "w2" in opts) && (opts.w1 !== cut || opts.w2 !== cut))) {
+			error("UNREPRESENTABLE_TYPE8", `Kz 8 cannot encode the transition options of ${element.id}`);
+		}
+	}
+	const decodedFamily = Number.isFinite(curvatureA) && Number.isFinite(curvatureE)
+		? resolveTechnetType8TransitionId({ typeCode: 8, radiusA: shape.radiusA, radiusE: shape.radiusE })
+		: null;
+	if (decodedFamily !== element.family) {
+		error("UNREPRESENTABLE_TYPE8",
+			`Kz 8 radii do not preserve the halfwave direction of ${element.id}`,
+			{ family: element.family, decodedFamily, radiusA: shape.radiusA, radiusE: shape.radiusE });
+	}
+}
+
 /**
  * @param {object} input
  * @param {Array} input.elements         kernel elements in order: { id, type, length, curvature?, family?, deltaDir?, held? }
@@ -117,6 +150,10 @@ export function writeTra({ elements, poseOfElement, endPose, poseAtStation = nul
 	};
 	for (let i = 0; i < elements.length; i++) {
 		const e = elements[i];
+		if (e.type === "transition" && FAMILY_KZ[e.family] === KZ.blossHalfwave &&
+			(!Number.isFinite(e.length) || e.length <= 0)) {
+			error("UNREPRESENTABLE_TYPE8", `Kz 8 needs a finite positive length for ${e.id}`);
+		}
 		const originalLength = e.originalLength ?? e.length;
 		// jumps at this element's start (or left over from an element that could not hold one)
 		while (pending.length && pending[0].distance <= originalStation + EPS) jumpRow(pending.shift(), poseOfElement(i));
@@ -146,8 +183,11 @@ export function writeTra({ elements, poseOfElement, endPose, poseAtStation = nul
 			const kz = FAMILY_KZ[e.family];
 			if (kz === undefined) error("UNKNOWN_FAMILY", `no Kz for the transition family "${e.family}" of ${e.id}`);
 			shape.kindCode = kz;
-			shape.radiusA = radiusOfCurvature(curvatureBeside(elements, i, -1));
-			shape.radiusE = radiusOfCurvature(curvatureBeside(elements, i, +1));
+			const curvatureA = curvatureBeside(elements, i, -1);
+			const curvatureE = curvatureBeside(elements, i, +1);
+			shape.radiusA = radiusOfCurvature(curvatureA);
+			shape.radiusE = radiusOfCurvature(curvatureE);
+			if (kz === KZ.blossHalfwave) assertType8Representation(e, curvatureA, curvatureE, shape);
 		} else error("UNKNOWN_ELEMENT", `cannot write an element of type "${e.type}" (${e.id})`);
 		// jumps inside this element split it: a straight or an arc into pieces
 		// of the same shape at the jump's original offset from the start; a

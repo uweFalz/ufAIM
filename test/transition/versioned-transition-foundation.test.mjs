@@ -68,7 +68,7 @@ test("inventory and strict validation report for versioned registry", () => {
 		simpleFcn: 20,
 		protoFcn: 28,
 		halfWave: 28,
-		transition: 31,
+		transition: 33,
 	});
 
 	assert.ok(report.warnings.some((w) => w.code === "VIENNA6_PARTV6_DUPLICATE"));
@@ -208,7 +208,7 @@ test("golden compatibility for all transition records and all quantities", () =>
 	const evaluator = createVersionedTransitionEvaluator({ registryResolver: resolver });
 
 	const ids = Object.keys(transitionLookup.transition);
-	assert.equal(ids.length, 31);
+	assert.equal(ids.length, 33);
 
 	const sampleU = [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1];
 	const checks = [

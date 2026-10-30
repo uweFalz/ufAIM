@@ -9,6 +9,8 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { createAlignmentPoseJacobian } from "../../domain/optimization/alignment/AlignmentPoseJacobian.js";
 import { createFootMemory } from "../../domain/optimization/alignment/AlignmentPointProjection.js";
 import { deps as dependencies, momentsFor } from "../../domain/optimization/alignment/SolverDependencies.js";
+import { preparePointObservationInput } from "./AlignmentPointEvidenceRequest.js";
+import { freezeObservationJson } from "../../domain/observation/PointObservationSet.js";
 
 export const ALIGNMENT_AXTRAN_EVIDENCE_VERSION = "alignment-axtran-evidence/0.4";
 export const HOLDABLE_COMPONENTS = Object.freeze(["x", "y", "theta"]);
@@ -130,8 +132,18 @@ export class AlignmentAxtranEvidenceService {
 	 *        pre-edit realization has at that joint - the turnout's tangent, as the editor declares it
 	 * @param {string[]} [input.heldElements]  element ids whose length and curvature are not free
 	 * @param {object|null} [input.turnout]    { elementId, designation, side } carried as provenance of a held branch
+	 * @param {object} [input.pointObservationInput] explicit source set, assignments and
+	 *        alignment metric context; only an omitted property uses pre-edit samples
 	 */
-	evaluateChange({ beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA, heldPoses = [], heldElements = [], turnout = null } = {}) {
+	evaluateChange(input = {}) {
+		const { beforeAlignmentData, afterAlignmentData, sampleCount = 12, maxIterations = 200, hessian = "gauss-newton", fitMode = "keep-plan", planSigma = DEFAULT_PLAN_SIGMA, heldPoses = [], heldElements = [], turnout = null } = input;
+		const pointInput = Object.hasOwn(input, "pointObservationInput") ? preparePointObservationInput(input.pointObservationInput) : null;
+		const evaluatedInput = pointInput ? freezeObservationJson(structuredClone({
+			beforeAlignmentData,
+			afterAlignmentData,
+			pointObservationInput: { observationSet: pointInput.observationSet, assignments: pointInput.assignments, alignmentMetricContext: pointInput.alignmentMetricContext },
+			options: { maxIterations, hessian, fitMode, planSigma, heldPoses, heldElements, turnout },
+		})) : null;
 		if (!beforeAlignmentData?.editModel?.elements || !afterAlignmentData?.editModel?.elements) {
 			throw new Error("AXTRAN evidence requires before and after native AlignmentData");
 		}
@@ -186,10 +198,11 @@ export class AlignmentAxtranEvidenceService {
 			design: {},
 			admitUnconfirmedDesign: EVIDENCE_ONLY,
 			heldPoses: resolvedPoses,
+			...(pointInput ? { hardPoints: pointInput.hardPoints } : {}),
 		});
 		const residuals = createAlignmentResidualBuilder({
-			metricContext: createIntrinsicMetricContext(),
-			points: sampleReference(before, sampleCount),
+			metricContext: pointInput ? pointInput.alignmentMetricContext : createIntrinsicMetricContext(),
+			points: pointInput ? pointInput.points : sampleReference(before, sampleCount),
 		});
 		const problem = createAlignmentOptimizationProblem({ codec, constraints, residuals });
 		const observationOnly = codec.freeCount > MAX_INTERACTIVE_SOLVER_VARIABLES;
@@ -266,7 +279,17 @@ export class AlignmentAxtranEvidenceService {
 			turnout: turnout === null ? null : Object.freeze({ elementId: turnout.elementId, designation: turnout.designation, side: turnout.side ?? null }),
 			candidate: proposal.candidate,
 			diagnostics,
-			note: observationOnly
+			...(pointInput ? { pointObservation: Object.freeze({
+				mode: "external-observations",
+				setId: pointInput.observationSet.id,
+				setRevision: pointInput.observationSet.revision,
+				pointIds: Object.freeze(pointInput.points.map((point) => point.name)),
+				metricContext: pointInput.alignmentMetricContext,
+				evaluatedInput,
+			}) } : {}),
+			note: pointInput
+				? `Evaluated against explicitly supplied external point observations in their declared shared planar frame; ${observationOnly ? "observation-only, " : ""}proposal-only and never applied automatically.`
+				: observationOnly
 				? "Derived from the pre-edit canonical realization at the edited point; observation-only, proposal-only, and never applied automatically."
 				: "Derived from the pre-edit canonical realization; proposal-only and never applied automatically.",
 		});

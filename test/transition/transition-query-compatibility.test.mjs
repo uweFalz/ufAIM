@@ -17,7 +17,7 @@ test("TransitionQueryService preserves catalogue and cuts semantics", () => {
 	assert.equal(catalogue.levels.find((x) => x.id === "simpleFcn")?.count, 20);
 	assert.equal(catalogue.levels.find((x) => x.id === "protoFcn")?.count, 28);
 	assert.equal(catalogue.levels.find((x) => x.id === "halfWave")?.count, 28);
-	assert.equal(catalogue.levels.find((x) => x.id === "transition")?.count, 31);
+	assert.equal(catalogue.levels.find((x) => x.id === "transition")?.count, 33);
 
 	const bloss = service.getPresetSpec("bloss");
 	assert.equal(bloss.cuts01.w1, 0.5);

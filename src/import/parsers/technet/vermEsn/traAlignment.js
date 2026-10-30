@@ -20,21 +20,32 @@
 // Validated against every representable file of the corpus: the moment chain
 // reaches the file's recorded end point to 1e-5 m or better on alignments of
 // up to 23 km (test/axtran2/corpus-validation.test.mjs). The inverse is
-// tools/axtran2/traWriter.mjs.
+// src/services/axtran2/traWriter.js.
 
 import { parseTraGraAuto } from "./parseTRA_GRA.js";
 import { decodeBinary } from "./sharedVermesn.js";
+import { resolveTechnetType8TransitionId } from "../shared/resolveTechnetType8TransitionId.js";
 
 /** what this loader can express; anything else is reported, not guessed at */
 // "ÜB S-Form" is the Helmert transition (also called S-Form); "S-Form (1f
 // geschw.)" is another record kind and stays unsupported until named
-export const FAMILIES = Object.freeze({ klothoide: "clothoid", clothoid: "clothoid", bloss: "bloss", "üb s-form": "helmert" });
+export const FAMILIES = Object.freeze({
+	klothoide: "clothoid", clothoid: "clothoid", bloss: "bloss", "üb s-form": "helmert",
+	bloss_halfwave_in: "bloss_halfwave_in", bloss_halfwave_out: "bloss_halfwave_out",
+});
 
 const measure = (m) => (m && typeof m === "object" && "value" in m ? Number(m.value) : Number(m));
 // R > 0 is a right-hand curve in Verm.esn; the kernel's heading grows to the left
 const curvatureOfRadius = (r) => (r == null || !Number.isFinite(Number(r)) || Number(r) === 0 ? 0 : -1 / Number(r));
 // cw from north, as the file states directions, into the kernel's frame
 const headingOf = (direction) => Math.PI / 2 - measure(direction);
+
+function boundaryCurvature(record, end) {
+	if (record?.type === "Line") return 0;
+	const radius = record?.type === "Curve" ? record.radius
+		: record?.type === "Spiral" ? (end ? record.radiusEnd : record.radiusStart) : null;
+	return Number.isFinite(radius) ? curvatureOfRadius(radius) : null;
+}
 
 /**
  * The file's station equations (Kz 6, Kilometersprung), placed by the
@@ -97,11 +108,41 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 			if (curvature === 0) elements.push({ id, type: "straight", length });
 			else elements.push({ id, type: "arc", length, curvature });
 		} else if (record.type === "Spiral") {
-			const family = FAMILIES[String(record.spiType ?? "").toLowerCase()];
-			if (!family) unsupported.push({ index: i, type: record.type, spiType: record.spiType ?? null });
+			const sourceFamily = String(record.spiType ?? "").toLowerCase();
+			let family = FAMILIES[sourceFamily];
+			const type8 = Number(record.source?.kindCode) === 8 || sourceFamily.startsWith("bloss_halfwave_");
+			let refusal = null;
+			const entryCurvature = curvatureOfRadius(record.radiusStart);
+			const exitCurvature = curvatureOfRadius(record.radiusEnd);
+			if (type8) {
+				const resolved = resolveTechnetType8TransitionId({
+					typeCode: 8, radiusA: record.radiusStart, radiusE: record.radiusEnd,
+				});
+				if (!resolved || family !== resolved) refusal = "type8-halfwave-direction-unresolved";
+				for (const [neighbor, end, curvature] of [
+					[records[i - 1], true, entryCurvature], [records[i + 1], false, exitCurvature],
+				]) {
+					if (!neighbor) continue;
+					const adjacent = boundaryCurvature(neighbor, end);
+					if (adjacent === null || Math.abs(adjacent - curvature) > 1e-12) {
+						refusal = "type8-neighbor-curvature-unresolved";
+					}
+				}
+				if (refusal) family = null;
+			}
+			if (!family) unsupported.push({ index: i, type: record.type, spiType: record.spiType ?? null,
+				...(refusal ? { why: refusal } : {}) });
 			families.add(family ?? String(record.spiType));
-			elements.push({ id, type: "transition", length, family: family ?? "clothoid",
-				entryCurvature: curvatureOfRadius(record.radiusStart), exitCurvature: curvatureOfRadius(record.radiusEnd) });
+			if (type8 && family && i === 0 && entryCurvature !== 0) {
+				elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: entryCurvature, held: true });
+				inserted += 1;
+			}
+			elements.push({ id, type: "transition", length, family: family ?? `unresolved:${sourceFamily || "transition"}`,
+				entryCurvature, exitCurvature });
+			if (type8 && family && i === records.length - 1 && exitCurvature !== 0) {
+				elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: exitCurvature, held: true });
+				inserted += 1;
+			}
 			// two transitions meeting at a curvature: the kernel reads a transition's
 			// ends from its neighbours, so the junction needs an element that has one
 			const next = records[i + 1];
@@ -175,4 +216,3 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 		recordCount: records.length,
 	});
 }
-

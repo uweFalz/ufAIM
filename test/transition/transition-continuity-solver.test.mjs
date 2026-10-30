@@ -308,10 +308,10 @@ test("repository evidence: nonzero three-component and asymmetric composition", 
 	assert.equal(gubar.joins.length, 2);
 });
 
-test("repository compatibility: all 31 transition records evaluate without mutation", () => {
+test("repository compatibility: all 33 transition records evaluate without mutation", () => {
 	const before = structuredClone(versioned);
 	const ids = Object.keys(versioned.records.transition);
-	assert.equal(ids.length, 31);
+	assert.equal(ids.length, 33);
 	for (const id of ids) {
 		const evaluation = registryModel.evaluate({ transitionRecord: versioned.records.transition[id], parameters: {} });
 		assert.equal(evaluation.ok, true, `${id} should evaluate`);

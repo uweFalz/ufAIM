@@ -137,7 +137,15 @@ export function installFileDrop({
 		});
 		try {
 			const outcome = await onFiles(files);
-			publish("completed", {
+			// Import batches can resolve with a terminal failure or cancellation.
+			// Settling the promise does not mean the import completed successfully.
+			const state = outcome?.status === "cancelled" ? "cancelled"
+				: outcome?.status === "failed" ? "failed" : "completed";
+			publish(state, {
+				code: state === "cancelled" ? "FILE_DROP_IMPORT_CANCELLED"
+					: state === "failed" ? "FILE_DROP_IMPORT_FAILED" : null,
+				message: state === "cancelled" ? "Import abgebrochen."
+					: state === "failed" ? "Import fehlgeschlagen; Einzeldatei-Ergebnisse im Import ansehen." : null,
 				fileCount: files.length,
 				fileNames: files.map((file) => String(file?.name ?? "")).filter(Boolean),
 				outcome,

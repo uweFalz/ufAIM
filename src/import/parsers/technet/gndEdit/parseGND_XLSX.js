@@ -21,6 +21,7 @@ import {
 	getTraLikeSemanticMapForGND,
 } from "../shared/traLikeSemanticMaps.js";
 import { resolveGndType7TransitionId } from "./gnd/resolveGndType7TransitionId.js";
+import { resolveTechnetType8TransitionId } from "../shared/resolveTechnetType8TransitionId.js";
 
 import {
 	TECHNET_SHEET_NAMES as SHEET_NAMES,
@@ -763,6 +764,9 @@ function assessConstructiveEdge(edge) {
 	}
 	if (typeCode === 7 && !resolveGndType7TransitionId(edge)) {
 		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}PAR2/${family}PAR3`, value: [edge?.radiusA ?? null, edge?.radiusE ?? null], code: "type7-halfwave-direction-unresolved", decision: "retain-unresolved-source-element; do-not-construct", geometryUsable: false });
+	}
+	if (typeCode === 8 && !resolveTechnetType8TransitionId(edge)) {
+		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}PAR2/${family}PAR3`, value: [edge?.radiusA ?? null, edge?.radiusE ?? null], code: "type8-halfwave-direction-unresolved", decision: "retain-unresolved-source-element; do-not-construct", geometryUsable: false });
 	}
 	if (TRANSITION_TYPES.has(typeCode) && Number.isFinite(edge?.radiusA) && Number.isFinite(edge?.radiusE) && Number(edge.radiusA) === Number(edge.radiusE)) {
 		return makeDiagnostic({ severity: "error", family, rowRef, field: `${family}PAR2/${family}PAR3`, value: [Number(edge.radiusA), Number(edge.radiusE)], code: "equal-radius-transition-unresolved", decision: "retain-unresolved-source-element; do-not-coerce-to-curve", geometryUsable: false });

@@ -109,3 +109,32 @@ test("directory traversal failure terminates visibly without invoking import", a
 	assert.equal(lifecycle.at(-1).state, "failed");
 	assert.equal(lifecycle.at(-1).code, "FILE_DROP_COLLECTION_FAILED");
 });
+
+for (const status of ["cancelled", "failed", "partial", "succeeded"]) {
+	test(`drop preserves a resolved ${status} import outcome instead of reporting false completion`, async () => {
+		const listeners = new Map();
+		const lifecycle = [];
+		const outcome = Object.freeze({ status, fileOutcomes: [] });
+		installFileDrop({
+			element: {
+				addEventListener(name, handler) { listeners.set(name, handler); },
+				removeEventListener() {},
+				dispatchEvent() {},
+			},
+			onFiles: async () => outcome,
+			onLifecycle: (entry) => lifecycle.push(entry),
+		});
+		await listeners.get("drop")({
+			preventDefault() {},
+			stopPropagation() {},
+			dataTransfer: { files: [{ name: "track.mdb" }] },
+		});
+		const terminal = lifecycle.at(-1);
+		assert.equal(terminal.state, ["cancelled", "failed"].includes(status) ? status : "completed");
+		assert.strictEqual(terminal.outcome, outcome);
+		assert.equal(terminal.fileCount, 1);
+		assert.deepEqual(terminal.fileNames, ["track.mdb"]);
+		if (status === "cancelled") assert.equal(terminal.code, "FILE_DROP_IMPORT_CANCELLED");
+		if (status === "failed") assert.equal(terminal.code, "FILE_DROP_IMPORT_FAILED");
+	});
+}

@@ -142,6 +142,11 @@ function setupImportUI(ctx) {
 				}
 				return;
 			}
+			if (state === "cancelled") {
+				ctx.ui.setStatus?.("Import abgebrochen");
+				ctx.ui.logInfo?.(`file drop: cancelled (${fileCount})`);
+				return;
+			}
 			ctx.ui.setStatusError?.();
 			ctx.ui.logInfo?.(
 				`file drop: ${state} :: ${code ?? "unknown"}${message ? ` :: ${message}` : ""}`
@@ -255,7 +260,7 @@ function updateImportActivityRail({ state, code, fileCount = 0, fileNames = [], 
 	rail.classList.toggle("is-busy", ["drag-active", "accepted", "processing"].includes(state));
 	rail.classList.toggle("is-error", ["failed", "rejected"].includes(state));
 	if (open) {
-		open.hidden = !["accepted", "processing", "completed", "failed", "rejected"].includes(state);
+		open.hidden = !["accepted", "processing", "completed", "cancelled", "failed", "rejected"].includes(state);
 		open.textContent = ["accepted", "processing"].includes(state) ? "Import öffnen" : "Import ansehen";
 	}
 	if (title) title.textContent = importActivityTitle(state, outcome);
@@ -278,6 +283,7 @@ function importActivityTitle(state, outcome) {
 	if (state === "drag-active") return "Hier ablegen";
 	if (state === "accepted") return "Drop-Inhalt wird gelesen …";
 	if (state === "processing") return "Import läuft";
+	if (state === "cancelled") return "Import abgebrochen";
 	if (state === "completed") {
 		const outcomes = outcome?.fileOutcomes ?? [];
 		return outcomes.some((entry) => ["failed", "rejected", "unsupported", "partial"].includes(String(entry?.status ?? "").toLowerCase()))
@@ -295,6 +301,7 @@ function importActivityDetail({ state, code, fileCount, message, outcome }) {
 		? `${fileCount} Datei${fileCount === 1 ? "" : "en"} werden gesammelt …`
 		: "Ordner und Dateien werden gesammelt. Das kann einen Moment dauern.";
 	if (state === "processing") return `${fileCount} Datei${fileCount === 1 ? "" : "en"} werden analysiert …`;
+	if (state === "cancelled") return message ?? "Die Importverarbeitung wurde abgebrochen. Einzelheiten im Import ansehen.";
 	if (state === "completed") {
 		const outcomes = outcome?.fileOutcomes ?? [];
 		const objects = outcomes.reduce((sum, entry) => sum + Number(entry?.itemCount ?? 0), 0);
