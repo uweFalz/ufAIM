@@ -63,3 +63,15 @@ package is `private` until publishing is decided. Its only third-party
 needs are the GND import's (`mdb-reader`, `xlsx` and two build shims), declared
 as optional dependencies; the kernel, AXTRAN2 and the Verm.esn readers need
 none.
+
+## AXTRAN2 as its own app
+
+`axtran2/index.html` is the adapter's journey in the browser, on the package
+alone: a Verm.esn TRA, the survey list and the Zwangspunkt list by file
+dialog, tolerance, speed and the connecting alignment's end pose as numbers,
+the fit in a module worker, the fitted TRA, the report and the residual list
+as downloads. No storage, no canonical truth, no network. Serve the repository
+root statically and open `/axtran2/`; the calculation is
+`src/services/axtran2/fitTraCore.js`, shared with the command line in
+`tools/axtran2/`. `node tools/axtran2/bundle.mjs` folds it into the single file
+`dist/axtran2.html`, which runs from a double-click.

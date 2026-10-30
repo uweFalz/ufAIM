@@ -17,6 +17,7 @@
     "./aim-core": "./src/aim-core/index.js",
     "./aim-core/*": "./src/aim-core/*",
     "./axtran2": "./src/domain/optimization/alignment/index.js",
+    "./axtran2/service": "./src/services/axtran2/fitTraCore.js",
     "./sqp": "./src/lib/math/optim/sqp/solveSQP.js",
     "./vermEsn": "./src/import/parsers/technet/vermEsn/index.js",
     "./vermEsn/traAlignment": "./src/import/parsers/technet/vermEsn/traAlignment.js",
@@ -32,7 +33,8 @@
     "test": "node --test 'test/**/*.test.mjs'",
     "test:axtran2": "node --test 'test/axtran2/*.test.mjs'",
     "test:package": "node --test 'test/package/*.test.mjs'",
-    "corpus": "node test/axtran2/corpus/runCorpus.mjs"
+    "corpus": "node test/axtran2/corpus/runCorpus.mjs",
+    "bundle": "node tools/axtran2/bundle.mjs"
   },
   "optionalDependencies": {
     "mdb-reader": "3.2.0",

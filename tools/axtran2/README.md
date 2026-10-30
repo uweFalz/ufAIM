@@ -67,12 +67,12 @@ what is left is not determined by the points; the fit is done.
 reason says why; the output TRA is still written and the report says how
 far off it is.
 
-Modules: `pointLists.mjs` (the lists), `traWriter.mjs` (the file, the
-inverse of `src/import/parsers/technet/vermEsn/traAlignment.js`), `fitTra.mjs` (the
-fit, the same problem the corpus runs with real points), `nodeAliases.mjs`
-(the Node hook for the parsers' import-map aliases, and the one file read).
-Everything the adapter computes with comes from `src/`; nothing from
-`test/`. Tests: `test/axtran2/adapter.test.mjs`, `test/axtran2/demo.test.mjs`.
+Modules: the calculation lives in `src/services/axtran2/` (`fitTraCore.js`,
+`pointLists.js` for the lists, `traWriter.js` for the file, the inverse of
+`src/import/parsers/technet/vermEsn/traAlignment.js`) and is shared with the
+browser app in `axtran2/`; `fitTra.mjs` here only reads and writes files,
+`nodeAliases.mjs` is the Node hook for the parsers' import-map aliases.
+Tests: `test/axtran2/adapter.test.mjs`, `test/axtran2/demo.test.mjs`.
 
 ## The Vorführung
 
@@ -81,3 +81,16 @@ story on one file: an Aufmaß derived from the track (and it says so), one
 Zwangspunkt, a plan deliberately off by ±2 % in length and ±3 % in
 curvature, the end pose from the track, the adapter, and a `summary.md`
 with the numbers. Nothing in the repository changes; the TRA is only read.
+
+## The single file
+
+`node tools/axtran2/bundle.mjs` (or `npm run bundle`) folds `axtran2/` and
+every module it reaches under `src/` into `dist/axtran2.html`: one file of
+about a megabyte that runs from a double-click, `file://` included, with the
+fit in a worker built from an embedded script. No bundler is installed or
+wanted; the script walks the static imports, turns each module into a
+function of a small registry, and refuses what it cannot carry (a dynamic
+import, top-level await, `import.meta`, a cycle). `test/axtran2/bundle.test.mjs`
+builds it and lets the embedded worker compute a fit in Node: the same
+iterations, rms and TRA bytes as the served modules. `dist/` is not under
+git; build the file and hand it over.

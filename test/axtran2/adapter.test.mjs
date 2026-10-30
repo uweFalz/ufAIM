@@ -11,8 +11,9 @@ import { join } from "node:path";
 // equations (Kilometersprünge) travel through the round trip by distance.
 
 const TOOLS = new URL("../../tools/axtran2/", import.meta.url);
-const { parsePointList, PointListError } = await import(new URL("pointLists.mjs", TOOLS));
-const { writeTra, cantLookup, directionOfHeading } = await import(new URL("traWriter.mjs", TOOLS));
+const SERVICE = new URL("../../src/services/axtran2/", import.meta.url);
+const { parsePointList, PointListError } = await import(new URL("pointLists.js", SERVICE));
+const { writeTra, cantLookup, directionOfHeading } = await import(new URL("traWriter.js", SERVICE));
 const { fitTra } = await import(new URL("fitTra.mjs", TOOLS));
 const { loadTraAlignment, buildProductionAlignment, listTraFiles } = await import(new URL("corpus/loadTraAlignment.mjs", import.meta.url));
 const { deps, momentsFor } = await import(new URL("corpus/createTraScenario.mjs", import.meta.url));

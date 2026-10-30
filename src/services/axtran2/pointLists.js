@@ -1,4 +1,4 @@
-// tools/axtran2/pointLists.mjs
+// src/services/axtran2/pointLists.js
 //
 // Survey points and Zwangspunkte as the field hands them over: a text file,
 // one point per line, columns separated by semicolon, comma, tab or spaces,
