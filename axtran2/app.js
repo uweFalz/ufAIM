@@ -3,6 +3,8 @@
 // The page: files and numbers in, a worker run, the result shown and
 // offered as downloads. No storage, no canonical truth, no network.
 
+import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
+
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
 const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digits) : "–");
@@ -83,6 +85,9 @@ function show({ report, csv }) {
 	].map(([big, small]) => { const d = document.createElement("div"); d.className = "number"; const b = document.createElement("b"); b.textContent = big; const s = document.createElement("span"); s.textContent = small; d.append(b, s); return d; }));
 	const zw = report.points.filter((p) => p.kind === "zwangspunkt");
 	el("zwangResult").textContent = zw.length ? "Zwangspunkte: " + zw.map((z) => `${z.name} ${fmt(z.offset, 4)} m (verlangt ${fmt(z.target)} m)`).join(", ") : "";
+	// the curve: the residualChartSvg string is built from numbers only and
+	// escapes its labels, so it is safe to set as markup
+	el("chart").innerHTML = residualChartSvg(report.points, { tolerance: Number(el("tolerance").value) || 0.15 }) || "<p>Keine Kurve: zu wenige Punkte mit Fußpunkt.</p>";
 	const table = el("residuals");
 	table.replaceChildren();
 	const head = document.createElement("tr");
