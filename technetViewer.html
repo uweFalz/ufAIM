@@ -575,6 +575,10 @@
 			.diagram-spacing { stroke: #8e44ad; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
+			.diagram-fzk-speed { stroke: #1f7a4d; }
+			.diagram-fzk-speed-potential { stroke: #1f7a4d; stroke-dasharray: 6 4; opacity: 0.7; }
+			.diagram-fzk-time { stroke: #b5601a; }
+			.diagram-fzk-time-potential { stroke: #b5601a; stroke-dasharray: 6 4; opacity: 0.7; }
 			.ivhw-rail-a { stroke: #2866c7; fill: #2866c7; }
 			.ivhw-rail-b { stroke: #b5601a; fill: #b5601a; }
 			.diagram-label {
@@ -1649,6 +1653,7 @@
 					<button type="button" data-mode="ivmg" aria-pressed="false" title="IVMG: Trassenplan — Krümmung, Gradiente, Überhöhung, Gleisabstand über der Kilometrierung (Ril 883.5220)"><span class="glyph">∿</span><span class="label">IVMG</span></button>
 					<button type="button" data-mode="ivhw" aria-pressed="false" title="IVHW: Weichenhöhenplan (Ril 883.5240)"><span class="glyph">⋀</span><span class="label">IVHW</span></button>
 					<button type="button" data-mode="gwb" aria-pressed="false" title="GWB: Geschwindigkeitswegeband heute und Vorschlag (Ril 800.0110, Diagnose)"><span class="glyph">▥</span><span class="label">GWB</span></button>
+					<button type="button" data-mode="fzk" aria-pressed="false" title="Fahrzeit: Fahrschaulinie v(s) und Fahrzeit t(s) über dem GWB heute und Vorschlag — vereinfachte Fahrdynamik je Zugart"><span class="glyph">◷</span><span class="label">Fahrzeit</span></button>
 					<button type="button" data-mode="spurplan" aria-pressed="false" title="Spurplan: der gerechnete Gleisgraph, GWB-gefärbt"><span class="glyph">⌥</span><span class="label">Spurplan</span></button>
 					<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span><span class="label">Lieferung</span></button>
 					<button type="button" data-mode="links" aria-pressed="false" title="Verknüpfung: jedes Objekt, jede Verbindung, ihr Grund"><span class="glyph">⌾</span><span class="label">Verknüpfung</span></button>
@@ -1817,6 +1822,8 @@
 								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
 								<label class="gwb-input" title="Überhöhungsgrenze für den GWB-Vorschlag: die Ermessensgrenze nach Ril 800.0110 Tab. 4 (160 mm Schotter, 170 mm Feste Fahrbahn), oder der Genehmigungsbereich bis zur EBO-Grenze 180 mm (§ 6 (3) EBO) — ein Zustimmungswert, der die Zentrale braucht">Grenze <select id="gwbCantLimit"><option value="Ermessen">Ermessensgrenze (Tab. 4)</option><option value="EBO">Zustimmung bis EBO 180 mm</option></select></label>
 								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nach Ril 800.0110 11 und Tab. 13: ufN 300 / 245 / 207 mm je Radsatzlast in überhöhten Bögen (u ≥ 30 mm) zwischen 70 und 160 km/h, sonst 150 mm; Zwangspunkte (Brücken ohne Schotterbett, Hilfsbrücken, feste Bahnübergänge) stehen in keiner Datei, jeder Bogen gilt als frei">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option><option value="NeiTech168">Neigetechnik ≤ 16,8 t (ufN ≤ 300)</option><option value="NeiTech175">Neigetechnik ≤ 17,5 t (ufN ≤ 245)</option><option value="NeiTech185">Neigetechnik ≤ 18,5 t (ufN ≤ 207)</option></select></label>
+								<label class="gwb-input fzk-only" title="Zugart für die Fahrzeitkurve — steht in keiner Geometriedatei; konstante Anfahrbeschleunigung a und Bremsverzögerung b, Höchstgeschwindigkeit des Zuges. Vereinfachte Fahrdynamik: keine Zugkraft- oder Widerstandskennlinie, keine Neigung">Zugart <select id="fzkZugart"><option value="Nah">Nahverkehr · Triebzug (a 1,0 · b 0,8)</option><option value="Regio">Regionalzug · lokbespannt (a 0,4 · b 0,6)</option><option value="Fern">Fernverkehr (a 0,5 · b 0,6)</option><option value="Gueter">Güterzug (a 0,15 · b 0,3 · 100 km/h)</option></select></label>
+								<label class="gwb-input fzk-only" title="Halt an beiden Enden des Stationsbereichs (Anfahren und Bremsen bis v = 0) oder Durchfahrt mit der zulässigen Geschwindigkeit">Halt <select id="fzkHalt"><option value="Halt">an beiden Enden</option><option value="Durchfahrt">Durchfahrt</option></select></label>
 									</div>
 								</details>
 								<details id="diagramExportMenu" class="menu">
@@ -1834,7 +1841,7 @@
 								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
 							</div>
 							<div id="diagramScroll">
-								<svg id="diagram" role="img" aria-label="Drei Abbildungen: IVMG-Trassenplan, IVHW-Weichenhöhenplan, GWB-Geschwindigkeitswegeband"></svg>
+								<svg id="diagram" role="img" aria-label="Vier Abbildungen: IVMG-Trassenplan, IVHW-Weichenhöhenplan, GWB-Geschwindigkeitswegeband, Fahrzeitkurve"></svg>
 							</div>
 							<div id="diagramTable" class="hidden" aria-label="Stationswerte als Tabelle"></div>
 						</div>
@@ -39612,6 +39619,125 @@ xlsx/xlsx.mjs:
 				const column = FAHRDYNAMIK_COLUMNS_KMH.indexOf(toKmh);
 				return row && column >= 0 ? row[column] : NaN;
 			}
+			// ---- Fahrzeit · Fahrschaulinie über dem GWB -----------------------------
+			// What the GWB step profile is worth in minutes. Deliberately simple and
+			// said so in the figure: constant Anfahrbeschleunigung a and Brems-
+			// verzögerung b per Zugart, no Zugkraft- or Widerstandskennlinie, no
+			// Neigung, run in Stationierungsrichtung over the selected range, Halt at
+			// both ends or Durchfahrt at the limit. Forward pass (accelerating),
+			// backward pass (braking), the lower of both is the Fahrschaulinie; the
+			// time integrates over it. Where the Gleis has a gap the run restarts and
+			// the clock keeps counting.
+			const FZK_ZUGARTEN = {
+				Nah: { label: "Nahverkehr · Triebzug", a: 1.0, b: 0.8, vMax: 160 },
+				Regio: { label: "Regionalzug · lokbespannt", a: 0.4, b: 0.6, vMax: 160 },
+				Fern: { label: "Fernverkehr", a: 0.5, b: 0.6, vMax: 300 },
+				Gueter: { label: "Güterzug", a: 0.15, b: 0.3, vMax: 100 },
+			};
+			const FZK_STEP_M = 10;
+			const fzkZugartSelect = document.getElementById("fzkZugart");
+			const fzkHaltSelect = document.getElementById("fzkHalt");
+			function zugart() {
+				const key = fzkZugartSelect?.value;
+				return FZK_ZUGARTEN[key in FZK_ZUGARTEN ? key : "Nah"];
+			}
+			function fzkHaltsAtEnds() { return fzkHaltSelect?.value !== "Durchfahrt"; }
+			// Continuous runs of a section result: consecutive sections that touch.
+			function sectionRuns(result) {
+				const sections = [...(result?.sections ?? [])].filter((section) => section.to > section.from).sort((p, q) => p.from - q.from);
+				const runs = [];
+				for (const section of sections) {
+					const run = runs[runs.length - 1];
+					if (run && !section.gap && Math.abs(section.from - run[run.length - 1].to) < 0.5) run.push(section);
+					else runs.push([section]);
+				}
+				return runs;
+			}
+			function simulateRun(run, train, halt) {
+				const from = run[0].from;
+				const to = run[run.length - 1].to;
+				const n = Math.max(1, Math.ceil((to - from) / FZK_STEP_M));
+				const ds = (to - from) / n;
+				// The limit at a node is the lower of every section that touches it: at
+				// a drop the train has to be slow by the time the slower section starts.
+				const limit = new Float64Array(n + 1).fill(train.vMax / 3.6);
+				for (const section of run) {
+					const first = Math.max(0, Math.ceil((section.from - from) / ds - 1e-6));
+					const last = Math.min(n, Math.floor((section.to - from) / ds + 1e-6));
+					for (let index = first; index <= last; index += 1) limit[index] = Math.min(limit[index], section.v / 3.6);
+				}
+				const forward = new Float64Array(n + 1);
+				const backward = new Float64Array(n + 1);
+				forward[0] = halt ? 0 : limit[0];
+				for (let index = 1; index <= n; index += 1) forward[index] = Math.min(limit[index], Math.sqrt(forward[index - 1] ** 2 + 2 * train.a * ds));
+				backward[n] = halt ? 0 : limit[n];
+				for (let index = n - 1; index >= 0; index -= 1) backward[index] = Math.min(limit[index], Math.sqrt(backward[index + 1] ** 2 + 2 * train.b * ds));
+				const v = new Float64Array(n + 1);
+				const t = new Float64Array(n + 1);
+				for (let index = 0; index <= n; index += 1) {
+					v[index] = Math.min(forward[index], backward[index]);
+					if (index) t[index] = t[index - 1] + ds / Math.max((v[index - 1] + v[index]) / 2, 0.25);
+				}
+				return { from, to, ds, v, t };
+			}
+			function fahrzeitCase(result, train, halt) {
+				const vPoints = [];
+				const tPoints = [];
+				let seconds = 0;
+				let length = 0;
+				for (const run of result ? sectionRuns(result) : []) {
+					const sim = simulateRun(run, train, halt);
+					for (let index = 0; index < sim.v.length; index += 1) {
+						const x = sim.from + index * sim.ds;
+						vPoints.push({ x, y: sim.v[index] * 3.6, gap: index === 0 });
+						tPoints.push({ x, y: (seconds + sim.t[index]) / 60, gap: index === 0 });
+					}
+					seconds += sim.t[sim.t.length - 1];
+					length += sim.to - sim.from;
+				}
+				return { vPoints, tPoints, seconds, length };
+			}
+			function minSec(seconds) {
+				const whole = Math.round(seconds);
+				return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")} min`;
+			}
+			function fahrzeitLines(prefix, today, proposal, train, halt) {
+				if (!today.length) return [];
+				const km = (today.length / 1000).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+				const mean = (seconds) => seconds > 0 ? `${Math.round(today.length / seconds * 3.6)} km/h` : "–";
+				const gain = Math.round(today.seconds - proposal.seconds);
+				return [
+					`${prefix} · Fahrzeit über ${km} km: heute ${minSec(today.seconds)} (im Mittel ${mean(today.seconds)}), Vorschlag ${minSec(proposal.seconds)} (${mean(proposal.seconds)}) · ${gain > 0 ? `Gewinn ${gain} s` : gain < 0 ? `Verlust ${-gain} s` : "kein Unterschied"}`,
+					`  Annahmen: ${train.label}, a ${train.a.toLocaleString("de-DE")} m/s², b ${train.b.toLocaleString("de-DE")} m/s², höchstens ${train.vMax} km/h · ${halt ? "Halt an beiden Enden" : "Durchfahrt mit zulässiger Geschwindigkeit"} · Fahrt in Stationierungsrichtung`,
+					"  Vereinfachte Fahrdynamik: konstante Beschleunigung und Verzögerung, keine Zugkraft- oder Widerstandskennlinie, keine Neigung, keine Fahrzeitzuschläge — eine Größenordnung, keine Fahrplanrechnung",
+				];
+			}
+			// Two bands per Gleis over the GWB bands: the Fahrschaulinie v(s) and the
+			// clock t(s), heute solid and Vorschlag dashed, like the GWB itself.
+			function deriveFahrzeitBands(gwbTracks) {
+				const train = zugart();
+				const halt = fzkHaltsAtEnds();
+				const bands = [];
+				for (const track of gwbTracks) {
+					const prefix = String(track.label ?? "").split(" · ")[0];
+					const today = fahrzeitCase(track.sections?.today, train, halt);
+					const proposal = fahrzeitCase(track.sections?.proposal, train, halt);
+					const emptyNote = "kein Geschwindigkeitsband · keine Fahrzeit ableitbar";
+					bands.push(makeBand(`${prefix} · Fahrschaulinie v(s) heute — / Vorschlag ┄ [km/h]`, "diagram-fzk-speed", today.vPoints, {
+						emptyNote,
+						overlay: { label: "Vorschlag", className: "diagram-fzk-speed-potential", points: proposal.vPoints },
+						unit: "km/h",
+						footnote: fahrzeitLines(prefix, today, proposal, train, halt),
+						fahrzeit: { today, proposal },
+					}));
+					bands.push(makeBand(`${prefix} · Fahrzeit t(s) heute — / Vorschlag ┄ [min]`, "diagram-fzk-time", today.tPoints, {
+						emptyNote,
+						overlay: { label: "Vorschlag", className: "diagram-fzk-time-potential", points: proposal.tPoints },
+						unit: "min",
+					}));
+				}
+				return bands;
+			}
 			// --------------------------------------------------------------------
 			// Each entry describes one filter dimension end-to-end: its checkbox options
 			// (static, or `dynamic` to derive them from loaded data via valueForEntry),
@@ -41905,6 +42031,16 @@ xlsx/xlsx.mjs:
 			}
 			function cursorBandText(band, x) {
 				const cls = band.className ?? "";
+				if (cls.includes("fzk-speed")) {
+					const v = bandValueAt(band.points, x, false);
+					const proposal = band.overlay ? bandValueAt(band.overlay.points, x, false) : null;
+					return v == null ? null : `v(s) ${Math.round(v)}${proposal != null && Math.round(proposal) !== Math.round(v) ? ` ┄ ${Math.round(proposal)}` : ""} km/h`;
+				}
+				if (cls.includes("fzk-time")) {
+					const t = bandValueAt(band.points, x, false);
+					const proposal = band.overlay ? bandValueAt(band.overlay.points, x, false) : null;
+					return t == null ? null : `t ${minSec(t * 60)}${proposal != null && Math.round(proposal * 60) !== Math.round(t * 60) ? ` ┄ ${minSec(proposal * 60)}` : ""}`;
+				}
 				if (cls.includes("curvature")) {
 					const kappa = bandValueAt(band.points, x, false);
 					if (kappa == null) return null;
@@ -41967,6 +42103,7 @@ xlsx/xlsx.mjs:
 				const { anchor, entries, bands, hasUnknown, missingKilometerLine } = sevenLineTracks(entry);
 				const ivmgTracks = bands.filter((track) => !track.className.startsWith("diagram-speed"));
 				const gwbTracks = bands.filter((track) => track.className.startsWith("diagram-speed"));
+				const fzkTracks = diagramKind === "fzk" ? deriveFahrzeitBands(gwbTracks) : [];
 				gwbBogenCsvButton.disabled = !gwbTracks.some((track) => track.proposal?.length);
 				gwbAbschnittCsvButton.disabled = !gwbTracks.some((track) => track.sections?.proposal);
 				const ivhw = buildIvhwData(entry);
@@ -42000,6 +42137,10 @@ xlsx/xlsx.mjs:
 								? [row, { label: `GWB · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote }]
 								: [row];
 						}),
+						...fzkTracks.flatMap((track) => [
+							{ label: `FZK · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) },
+							{ label: `FZK · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote },
+						]),
 					]);
 				} else {
 					let y = 0;
@@ -42021,9 +42162,16 @@ xlsx/xlsx.mjs:
 							? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
 							: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
 					}
+					if (diagramKind === "fzk") {
+						const fzkFootnotes = [...new Set(fzkTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter(Boolean))].flatMap((footnote) => wrapText(footnote, 165));
+						y += drawFigureTitle(diagram, y, "FZK · Fahrzeitkurve", "je Gleis über dem GWB · Fahrschaulinie v(s) und Fahrzeit t(s) · heute — / Vorschlag ┄ · vereinfachte Fahrdynamik je Zugart");
+						y += fzkTracks.length
+							? drawBandStack(diagram, y, fzkTracks, xMin, xMax, fzkFootnotes)
+							: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband · keine Fahrzeit ableitbar");
+					}
 					diagram.setAttribute("viewBox", `0 0 ${FIGURE_WIDTH} ${y}`);
 					if (cursorContext?.anchor !== anchor) cursorContext = { anchor };
-					Object.assign(cursorContext, { bands, inKm: inKilometerFrame(anchor), track: deliveryTrackOf(anchor) });
+					Object.assign(cursorContext, { bands: [...bands, ...fzkTracks], inKm: inKilometerFrame(anchor), track: deliveryTrackOf(anchor) });
 					drawDiagramCursor();
 					updateCursorReadout();
 					scheduleStateSave();
@@ -42056,9 +42204,10 @@ xlsx/xlsx.mjs:
 				].filter(Boolean);
 				diagramTitle.textContent = objectDisplayName(anchor);
 				diagramCode.textContent = DIAGRAM_KINDS[diagramKind];
-				diagramCode.title = { ivmg: "Trassenplan (Ril 883.5220)", ivhw: "Weichenhöhenplan (Ril 883.5240)", gwb: "Geschwindigkeitswegeband (Ril 800.0110 / 457.0201, Diagnose)" }[diagramKind];
+				diagramCode.title = { ivmg: "Trassenplan (Ril 883.5220)", ivhw: "Weichenhöhenplan (Ril 883.5240)", gwb: "Geschwindigkeitswegeband (Ril 800.0110 / 457.0201, Diagnose)", fzk: "Fahrzeitkurve über dem GWB (vereinfachte Fahrdynamik)" }[diagramKind];
 				// Annahmen and the CSVs belong to the GWB; the picture export to all.
-				assumptionsMenu.classList.toggle("hidden", diagramKind !== "gwb");
+				assumptionsMenu.classList.toggle("hidden", diagramKind !== "gwb" && diagramKind !== "fzk");
+				for (const control of assumptionsMenu.querySelectorAll(".fzk-only")) control.classList.toggle("hidden", diagramKind !== "fzk");
 				gwbBogenCsvButton.classList.toggle("hidden", diagramKind !== "gwb");
 				gwbAbschnittCsvButton.classList.toggle("hidden", diagramKind !== "gwb");
 				const mainNote = missingKilometerLine
@@ -42070,8 +42219,8 @@ xlsx/xlsx.mjs:
 					: hasUnknown
 						? `${entries.length} verknüpfte Objekte · Gleisseite noch zuzuordnen`
 						: (() => {
-							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed")).length;
-							const speedBandCount = tracks.length - sevenLineBandCount;
+							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed") && !track.className.includes("spacing")).length;
+							const speedBandCount = tracks.filter((track) => track.className.startsWith("diagram-speed") || track.className.includes("spacing")).length;
 							return `${sevenLineBandCount} von 7 Bändern${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""} · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
 						})();
 				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
@@ -44036,7 +44185,7 @@ xlsx/xlsx.mjs:
 			}
 
 			// The three Pläne are slides of their own; the diagram slide shows one.
-			const DIAGRAM_KINDS = { ivmg: "IVMG · Trassenplan", ivhw: "IVHW · Weichenhöhenplan", gwb: "GWB · Geschwindigkeitswegeband" };
+			const DIAGRAM_KINDS = { ivmg: "IVMG · Trassenplan", ivhw: "IVHW · Weichenhöhenplan", gwb: "GWB · Geschwindigkeitswegeband", fzk: "FZK · Fahrzeitkurve" };
 			let diagramKind = "ivmg";
 			function setViewMode(mode) {
 				const hasObjects = loadedFiles.length > 0;
@@ -47484,7 +47633,7 @@ xlsx/xlsx.mjs:
 			for (const button of diagramPresentationButtons) {
 				button.addEventListener("click", () => activateDiagramPresentation(button.dataset.diagramPresentation));
 			}
-			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect, gwbCantLimitSelect]) control.addEventListener("change", () => { renderDiagram(); if (workspace.classList.contains("mode-spurplan")) renderSpurplanView(); });
+			for (const control of [gwbLineSpeedInput, gwbBrakeDistanceInput, gwbOberbauSelect, gwbFahrzeugSelect, gwbCantLimitSelect, fzkZugartSelect, fzkHaltSelect]) control.addEventListener("change", () => { renderDiagram(); if (workspace.classList.contains("mode-spurplan")) renderSpurplanView(); });
 			spurplanColoring.addEventListener("change", () => renderSpurplanView());
 			// The three pictures size themselves to their panel; when the panel
 			// changes (Inbox/Outbox folded, window resized), the open one redraws.
