@@ -39727,13 +39727,16 @@ xlsx/xlsx.mjs:
 						emptyNote,
 						overlay: { label: "Vorschlag", className: "diagram-fzk-speed-potential", points: proposal.vPoints },
 						unit: "km/h",
+						valueLabel: "v (km/h)",
+						axisFormat: (v) => `${Math.round(v)} km/h`,
 						footnote: fahrzeitLines(prefix, today, proposal, train, halt),
 						fahrzeit: { today, proposal },
 					}));
-					bands.push(makeBand(`${prefix} · Fahrzeit t(s) heute — / Vorschlag ┄ [min]`, "diagram-fzk-time", today.tPoints, {
+					bands.push(makeBand(`${prefix} · Fahrzeit t(s) heute — / Vorschlag ┄ [min:s]`, "diagram-fzk-time", today.tPoints, {
 						emptyNote,
 						overlay: { label: "Vorschlag", className: "diagram-fzk-time-potential", points: proposal.tPoints },
-						unit: "min",
+						axisFormat: (minutes) => minSec(minutes * 60),
+						valueLabel: "Fahrzeit (min:s)",
 					}));
 				}
 				return bands;
@@ -41558,7 +41561,7 @@ xlsx/xlsx.mjs:
 						const stationCell = document.createElement("td");
 						stationCell.textContent = station(point.x).trim();
 						const valueCell = document.createElement("td");
-						valueCell.textContent = point.y.toFixed(3).replace(".", ",");
+						valueCell.textContent = series.valueFormat ? series.valueFormat(point.y) : point.y.toFixed(3).replace(".", ",");
 						row.append(stationCell, valueCell);
 						table.append(row);
 					}
@@ -41874,10 +41877,11 @@ xlsx/xlsx.mjs:
 					// is a shape, not a measurement; the PI needs to read "70" and
 					// "140" off it, not guess from the line height.
 					const unit = track.unit ? ` ${track.unit}` : "";
+					const readout = (value) => track.axisFormat ? track.axisFormat(value) : `${axisValue(value)}${unit}`;
 					const maxLabel = svgElement("text", { x: left - 8, y: yTop + 19, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
-					maxLabel.textContent = `${axisValue(yMax)}${unit}`;
+					maxLabel.textContent = readout(yMax);
 					const minLabel = svgElement("text", { x: left - 8, y: yBottom - 11, "text-anchor": "end", class: "diagram-label diagram-muted diagram-axis-value" });
-					minLabel.textContent = `${axisValue(yMin)}${unit}`;
+					minLabel.textContent = readout(yMin);
 					figure.append(maxLabel, minLabel);
 					for (const jump of track.jumps ?? []) {
 						const x = left + (jump - xMin) / xSpan * (width - left - right);
@@ -42138,8 +42142,8 @@ xlsx/xlsx.mjs:
 								: [row];
 						}),
 						...fzkTracks.flatMap((track) => [
-							{ label: `FZK · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) },
-							{ label: `FZK · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote },
+							{ label: `FZK · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track), valueLabel: track.valueLabel, valueFormat: track.axisFormat },
+							{ label: `FZK · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote, valueLabel: track.valueLabel, valueFormat: track.axisFormat },
 						]),
 					]);
 				} else {
