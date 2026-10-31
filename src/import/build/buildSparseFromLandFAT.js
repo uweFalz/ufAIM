@@ -52,6 +52,7 @@ export function buildSparseFromLandFAT(fatAlignment) {
 
 	const startPose = resolvePoseA(coordElements[0], 0);
 	const elements = ensureElementIds(sw.enforceAlternation(sparseRaw));
+	bindTraLikeEndpointCurvatures(elements, coordElements);
 
 	const bands = compactObject({
 		cant: buildCantBand(fatAlignment, elements),
@@ -87,6 +88,43 @@ export function buildSparseFromLandFAT(fatAlignment) {
 // -----------------------------------------------------------------------------
 // cGeom mapping
 // -----------------------------------------------------------------------------
+
+// TRA-like radii are signed engineering radii (positive turns right). Keep
+// this source contract local to the adapter; LandXML remains neighbor-driven.
+// Reuse alternation's holders so element IDs and cant target ordering stay stable.
+function bindTraLikeEndpointCurvatures(elements, sourceElements) {
+	const boundHolders = new Map();
+	for (let i = 0; i < elements.length; i += 1) {
+		const element = elements[i];
+		const sourceIndex = element.meta?.sourceIndex;
+		const source = sourceElements[sourceIndex];
+		if (source?.type !== "Spiral" ||
+			source.extras?.sourceSemantics?.formatClass !== "tra-like" ||
+			source.extras?.transitionResolution?.status === "unresolved") continue;
+
+		for (const [field, neighbor] of [
+			["radiusStart", elements[i - 1]], ["radiusEnd", elements[i + 1]],
+		]) {
+			const radius = source[field];
+			const curvature = radius === 0 ? 0 : -1 / radius;
+			if (typeof radius !== "number" || !Number.isFinite(radius) || !Number.isFinite(curvature)) {
+				throw new Error(`seg[${sourceIndex}]: invalid TRA-like ${field}`);
+			}
+			if (neighbor?.type !== "fixed") {
+				throw new Error(`seg[${sourceIndex}]: missing fixed neighbor for ${field}`);
+			}
+			const inserted = neighbor.meta?.insertedBy === "enforceAlternation" && neighbor.arcLength === 0;
+			const previous = inserted ? boundHolders.get(neighbor) : neighbor.curvature;
+			if (previous !== undefined && Math.abs(previous - curvature) > 1e-12) {
+				throw new Error(`seg[${sourceIndex}]: inconsistent TRA-like ${field} curvature`);
+			}
+			if (inserted) {
+				boundHolders.set(neighbor, curvature);
+				neighbor.curvature = curvature;
+			}
+		}
+	}
+}
 
 function mapSegment(seg, index) {
 	const poseA = resolvePoseA(seg, index);

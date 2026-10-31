@@ -14,16 +14,9 @@ import { basename, join } from "node:path";
 // through both - so what the adapter hands back is what alignmentOS will
 // import. This file only reads app/ and src/import; it changes nothing there.
 //
-// Measured on 2026-10-30 over the 248 trusted files: the contract holds to
-// 1e-8 m on 236 of them. The twelve others carry a transition pair meeting at
-// a curvature (two Spirals in a row with R2 != 0): the solver's reader
-// inserts a held arc of zero length carrying that curvature, the bridge
-// writes transitions without their end curvatures, the junction falls to
-// zero, and the app's axis misses the file's own recorded end by 0.8 m to
-// 674 m. That is a defect of the app importer, reported to its owners, not
-// of the adapter; the second test pins the divergence to exactly those
-// files so that a fix of the bridge flips it and this test can then be
-// folded into the first.
+// The twelve transition-junction files formerly diverged by 0.82–673.82 m.
+// They are now required to satisfy the same reader/writer contract, including
+// explicit endpoint checks against the file and the independently built axis.
 
 const ROOT = new URL("../../", import.meta.url);
 const load = (path) => import(new URL(path, ROOT));
@@ -59,7 +52,7 @@ async function solverAxis(bytes, name) {
 function worstGap(appAlignment, solver) {
 	const L = Math.min(appAlignment.arcLength, solver.alignment.arcLength);
 	let worst = 0;
-	for (let s = 0; s <= L; s += STEP) {
+	for (const s of [...Array.from({ length: Math.floor(L / STEP) + 1 }, (_, i) => i * STEP), L]) {
 		const a = appAlignment.poseAt(s, { quality: "exact" });
 		const b = solver.alignment.poseAt(s, { quality: "exact" });
 		worst = Math.max(worst, Math.hypot(a.p.x - (b.p.x + solver.origin.x), a.p.y - (b.p.y + solver.origin.y)));
@@ -101,9 +94,9 @@ async function writtenCopy(file, solver, bytes, scratch) {
 	return readFile(out);
 }
 
-test("the contract: on every trusted file without a transition junction the app's import and the solver's reader realise the same axis, from the file and from the file the adapter writes", async () => {
-	const files = (await trustedFiles()).filter((entry) => entry.loaded.insertedJunctionArcs === 0);
-	assert.ok(files.length >= 100, `${files.length} trusted files without junction arcs (test/samples)`);
+test("the contract: on every trusted file including transition junctions the app's import and the solver's reader realise the same axis, from the file and from the file the adapter writes", async () => {
+	const files = await trustedFiles();
+	assert.ok(files.length >= 100, `${files.length} trusted files (test/samples)`);
 	const scratch = await mkdtemp(join(tmpdir(), "axtran2-roundtrip-"));
 	let worstOriginal = 0, worstWritten = 0, worstBoth = 0;
 	for (const { file } of files) {
@@ -125,30 +118,22 @@ test("the contract: on every trusted file without a transition junction the app'
 	console.log(`  ${files.length} files: readers ${worstOriginal.toExponential(1)} m apart at worst; the written file ${worstWritten.toExponential(1)} m off through the app, ${worstBoth.toExponential(1)} m between readers`);
 });
 
-test("the reported divergence: a transition pair meeting at a curvature is lost by the app's import bridge, not by the solver's reader or the adapter's writer", async () => {
+test("transition junction regressions reach the recorded end through the app before and after writing", async () => {
 	const files = (await trustedFiles()).filter((entry) => entry.loaded.insertedJunctionArcs > 0);
-	assert.ok(files.length >= 1, "the corpus has files with transition junctions");
+	assert.ok(files.length >= 12, "all twelve known junction files must be present");
 	const scratch = await mkdtemp(join(tmpdir(), "axtran2-roundtrip-junction-"));
-	const rows = [];
 	for (const { file, loaded } of files) {
 		const name = basename(file);
 		const bytes = await readFile(file);
-		const app = await appAxis(bytes, name);
 		const solver = await solverAxis(bytes, name);
-		const appMiss = endMiss(app, loaded.endPoint);
-		const solverMiss = endMiss(solver.alignment, loaded.endPoint, solver.origin);
-		// our side holds: the written copy reads back onto the solver's axis
-		const writtenBytes = await writtenCopy(file, solver, bytes, scratch);
-		const solverAgain = await solverAxis(writtenBytes, name);
-		const ours = worstGap(solver.alignment ? { arcLength: solverAgain.alignment.arcLength, poseAt: (s, o) => { const p = solverAgain.alignment.poseAt(s, o); return { p: { x: p.p.x + solverAgain.origin.x, y: p.p.y + solverAgain.origin.y } }; } } : null, solver);
-		rows.push({ name, junctions: loaded.insertedJunctionArcs, appMiss, solverMiss, ours: ours.worst });
-	}
-	for (const r of rows) console.log(`  ${r.name.padEnd(44)} junctions ${r.junctions}  app misses the recorded end by ${r.appMiss.toFixed(2)} m, the solver's reader by ${r.solverMiss.toExponential(1)} m; written copy through the solver ${r.ours.toExponential(1)} m`);
-	for (const r of rows) {
-		assert.ok(r.solverMiss < 1e-3, `${r.name}: the solver's reader is trusted here`);
-		assert.ok(r.ours < AGREE, `${r.name}: the adapter's written copy reads back ${r.ours} m off`);
-		// the defect, pinned: once the bridge carries the junction curvature this
-		// assertion fails, and these files join the contract test above
-		assert.ok(r.appMiss >= 1e-3, `${r.name}: the app's import now reaches the recorded end (${r.appMiss} m) - move this file into the contract`);
+		const app = await appAxis(bytes, name);
+		const written = await writtenCopy(file, solver, bytes, scratch);
+		const appAgain = await appAxis(written, name);
+		const miss = endMiss(app, loaded.endPoint);
+		const writtenMiss = endMiss(appAgain, loaded.endPoint);
+		assert.ok(miss < 1e-3, `${name}: original App endpoint miss ${miss} m`);
+		assert.ok(writtenMiss < 1e-3, `${name}: written App endpoint miss ${writtenMiss} m`);
+		assert.ok(Math.abs(appAgain.arcLength - solver.alignment.arcLength) < 1e-6, name);
+		console.log(`  ${name}: original endpoint ${miss.toExponential(2)} m; written endpoint ${writtenMiss.toExponential(2)} m`);
 	}
 });

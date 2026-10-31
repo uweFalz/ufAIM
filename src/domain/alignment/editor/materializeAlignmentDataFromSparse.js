@@ -8,19 +8,22 @@ export function materializeAlignmentDataFromSparse(spotObject) {
 	const elements = sparse.map((element) => {
 		const kind = String(element?.kind ?? element?.meta?.sourceElementType ?? element?.type ?? "").toLowerCase();
 		const length = Number(element?.arcLength ?? element?.length);
+		// Preserve existing holder/source semantics through the edit representation.
+		const metadata = element?.meta && typeof element.meta === "object"
+			? { meta: structuredClone(element.meta) } : {};
 		if (kind === "straight" || element?.type === "fixed" && Number(element?.curvature) === 0) {
-			return { id: String(element.id), type: "straight", length, parameters: { length } };
+			return { ...metadata, id: String(element.id), type: "straight", length, parameters: { length } };
 		}
 		if (kind === "arc" || element?.type === "fixed") {
 			const curvature = Number(element?.curvature);
-			return { id: String(element.id), type: "arc", length, curvature, parameters: { length, curvature } };
+			return { ...metadata, id: String(element.id), type: "arc", length, curvature, parameters: { length, curvature } };
 		}
 		if (kind === "transition" || element?.type === "transition") {
 			const transitionType = String(element?.transType ?? element?.transitionType ?? "clothoid");
 			const w1 = element?.opts?.w1;
 			const w2 = element?.opts?.w2;
 			return {
-				id: String(element.id), type: "transition", length, transitionType,
+				...metadata, id: String(element.id), type: "transition", length, transitionType,
 				opts: { ...(element?.opts ?? {}) },
 				parameters: { length, transitionType, ...(w1 != null ? { w1 } : {}), ...(w2 != null ? { w2 } : {}) },
 			};

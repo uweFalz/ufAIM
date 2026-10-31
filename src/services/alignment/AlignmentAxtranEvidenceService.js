@@ -52,6 +52,20 @@ function lengthOf(element) {
 }
 
 function curvatureOf(element) {
+	if (isFixedHolder(element) && kindOf(element) === "arc") {
+		// Held quantities have no overlay to reconcile duplicate fields. Use the
+		// same radius-first authority as the production sparse builder.
+		const radiusRaw = element?.parameters?.radius ?? element?.radius ?? null;
+		const radius = radiusRaw === null ? null : Number(radiusRaw);
+		const curvature = radius === null
+			? Number(element?.parameters?.curvature ?? element?.curvature)
+			: 1 / radius;
+		if ((radius !== null && (!Number.isFinite(radius) || radius === 0)) ||
+			!Number.isFinite(curvature) || curvature === 0) {
+			throw new Error("AXTRAN evidence requires finite non-zero holder curvature and radius");
+		}
+		return curvature;
+	}
 	const curvature = Number(element?.parameters?.curvature ?? element?.curvature);
 	if (Number.isFinite(curvature)) return curvature;
 	const radius = Number(element?.parameters?.radius ?? element?.radius);
@@ -102,18 +116,30 @@ function sampleReference(alignment, count) {
 	});
 }
 
+// A sparse fixed holder contributes boundary curvature, never a free segment.
+// Qualification uses the existing explicit marker, not length zero alone.
+function isFixedHolder(element) {
+	return element?.meta?.zeroLength === true &&
+		["arc", "straight"].includes(kindOf(element)) &&
+		(element?.parameters?.length ?? element?.length ?? element?.arcLength) === 0;
+}
+
 function declaredElements(alignmentData, heldElements = new Set()) {
 	return alignmentData.editModel.elements.flatMap((element) => {
 		const kind = kindOf(element);
 		const length = lengthOf(element);
 		const curvature = kind === "arc" ? curvatureOf(element) : null;
+		const holder = isFixedHolder(element);
+		if (element?.meta?.zeroLength === true && !holder) {
+			throw new Error("AXTRAN evidence requires a marked fixed holder to retain zero length");
+		}
 		if (kind === "transition" && String(element?.parameters?.transitionType ?? element?.transitionType ?? "").trim().toLowerCase() === "immediate" && length === 0) {
 			return [];
 		}
-		if (!String(element?.id ?? "").trim() || !Number.isFinite(length) || length <= 0 || (kind === "arc" && !Number.isFinite(curvature))) {
+		if (!String(element?.id ?? "").trim() || !Number.isFinite(length) || (length <= 0 && !holder) || (kind === "arc" && !Number.isFinite(curvature))) {
 			throw new Error("AXTRAN evidence requires finite native horizontal elements");
 		}
-		const role = heldElements.has(String(element.id)) ? "held" : "free";
+		const role = holder || heldElements.has(String(element.id)) ? "held" : "free";
 		return [{
 			id: String(element.id),
 			quantities: {
@@ -153,6 +179,7 @@ export class AlignmentAxtranEvidenceService {
 		if (!Array.isArray(heldElements) || heldElements.some((id) => typeof id !== "string")) throw new Error("AXTRAN evidence heldElements must be an array of element ids");
 		const held = new Set(heldElements.map((id) => id.trim()));
 		const declarations = declaredElements(afterAlignmentData, held);
+		const holderIds = new Set(afterAlignmentData.editModel.elements.filter(isFixedHolder).map((element) => String(element.id)));
 		const declaredIds = new Set(declarations.map((element) => element.id));
 		for (const id of held) if (!declaredIds.has(id)) throw new Error(`AXTRAN evidence cannot hold "${id}": not a declared element`);
 		const codec = createAlignmentVariableCodec({ elements: declarations });
@@ -193,7 +220,7 @@ export class AlignmentAxtranEvidenceService {
 		const constraints = createAlignmentConstraintBuilder({
 			endPose: poseOf(before),
 			elementSequence: codec.elementSequence,
-			minimumElementLength: 0.001,
+			minimumElementLength: Object.fromEntries(declarations.map(({ id }) => [id, holderIds.has(id) ? 0 : 0.001])),
 			elementKinds: kinds,
 			design: {},
 			admitUnconfirmedDesign: EVIDENCE_ONLY,

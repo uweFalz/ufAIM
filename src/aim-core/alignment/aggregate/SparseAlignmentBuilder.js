@@ -117,7 +117,7 @@ function buildSparseElementFromEditor(element, index) {
 	const kind = normalizeElementKind(element);
 
 	if (kind === "straight") {
-		const length = readPositiveLength(
+		const length = readFixedLength(element,
 			element?.parameters?.length ?? element?.length ?? element?.arcLength ?? element?.L,
 			"buildSparseAlignment: straight length"
 		);
@@ -137,7 +137,7 @@ function buildSparseElementFromEditor(element, index) {
 	}
 
 	if (kind === "arc") {
-		const length = readPositiveLength(
+		const length = readFixedLength(element,
 			element?.parameters?.length ?? element?.length ?? element?.arcLength,
 			"buildSparseAlignment: arc length"
 		);
@@ -321,6 +321,18 @@ function normalizeElementKind(element) {
 	}
 
 	return s || "unknown";
+}
+
+// Existing sparse zero-length fixed holders carry endpoint curvature only.
+// Preserve that representation; editing their length must never create a segment.
+function readFixedLength(element, value, caller) {
+	if (element?.meta?.zeroLength === true) {
+		if (value !== 0) throw new Error(`${caller}: zero-length holder must remain zero`);
+		return 0;
+	}
+	const length = Number(isObject(value) ? value.value : value);
+	if (!Number.isFinite(length) || length <= 0) throw new Error(`${caller}: must be a positive number`);
+	return length;
 }
 
 function readPositiveLength(value, caller) {

@@ -142,6 +142,32 @@ with active Knowledge Kernel authority, the alignmentOS system/contract
 boundary, demonstrated implementation, and the complete work programme. No
 programme item may be removed or reclassified through terminology alone.
 
+## Execution Status — 31 October 2026
+
+The branch composition described above was subsequently integrated into local
+main. The 30 October section is dated provenance, not the current Git gate.
+The targeted TRA junction follow-up has repaired the source-to-App boundary:
+all 248 eligible corpus files now pass the reader/writer geometry contract,
+including the twelve formerly divergent junction cases. Their largest measured
+endpoint miss after writing/reimporting is approximately 0.016 mm. This is a
+bounded corpus result, not universal format or mathematical acceptance.
+
+Normal App testing exposed two further representation mismatches: imported
+zero-length fixed holders lost their marker during editor materialization, and
+the AXTRAN service refused those holders. The bounded corrections retain their
+boundary curvature and hold their quantities through existing solver contracts.
+The final acceptance and integration evidence is recorded in
+`docs/app/architecture/MISSION_REPORT_ROCK_TRA_JUNCTION_ACCEPTANCE_20261031.md`.
+
+Delivery 1 remains **ROT** on its 31 October target date. A normal physical TRA
+import, radius edit, consequence evidence and first save/close/reopen are a
+bounded acceptance step. This fixture has no constructive vertical or chainage
+model and no accepted constructive cant model; it cannot prove the full
+all-discipline route. Qualified geographic context and complete acceptance
+against all ten criteria remain open. Existing capabilities are not declared
+absent merely because this fixture cannot exercise them. Delivery 2 and 3 dates
+and the complete programme remain unchanged.
+
 ## Immediate Critical Path
 
 The earlier route established the background-import and first physical
@@ -150,14 +176,16 @@ Those completed stages remain provenance; they are not newly reopened packages.
 
 The current sequence is:
 
-1. complete the authorized Git integration of the bounded-offline-reviewed
-   branch composition against the then-current Main lineage;
-2. run the current uninterrupted Delivery 1 normal-application acceptance and
-   repair only concrete defects exposed against the ten existing criteria;
+1. retain the completed bounded TRA repair and reviewed local Main handover
+   as the baseline, preserving parallel work;
+2. complete the remaining Delivery 1 normal-application acceptance against all
+   ten criteria, including qualified geographic context and the all-discipline
+   path; repair only concrete defects within the authorized scope;
 3. connect the resulting accepted Delivery 1 state to the Delivery 2 additions;
-4. carry unresolved adapter-result, persistence/readback and PR83 junction
-   limitations forward through their existing programme responsibilities,
-   without expanding Delivery 1 scope or hiding known evidence.
+4. carry remaining adapter-result and persistence/readback limitations through
+   their existing programme responsibilities. The twelve measured PR83 junction
+   failures are closed in the bounded corpus; this does not close unrelated
+   format or delivery evidence gaps.
 
 ## Continuous Handover Rule
 

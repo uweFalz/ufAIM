@@ -1,0 +1,19 @@
+{
+  "sourceHashes": [
+    {
+      "url": "http://127.0.0.1:55168/src/import/build/buildSparseFromLandFAT.js",
+      "sha256": "d8d90e2843e9eb944a51c199b2d27564705940dffe9f840ef5ab08e1dca62a13"
+    }
+  ],
+  "objectId": "alignment_5500r074_082__src_00b02fa5-7d91-4de4-8ef4-1635a7dd619d_1f5f9041-b61a-4f4f-a985-5f0309533196",
+  "edit": {
+    "radius": -840,
+    "status": "Validierung fehlgeschlagen",
+    "stateUnchanged": true
+  },
+  "viewport": {
+    "width": 1500,
+    "height": 1000
+  },
+  "url": "http://127.0.0.1:55168/"
+}
