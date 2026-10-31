@@ -12,6 +12,11 @@ und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 > umgesetzt. Die App-Hülle ist gebaut (2026-10-24): `axtran2/index.html`,
 > `app.js`, `worker.js` auf `src/services/axtran2/fitTraCore.js`, dem aus
 > dem Werkzeug gehobenen Rechenkern des Adapters, den die Kommandozeile teilt.
+> Abbruch (2026-10-31): ein Knopf „Abbrechen" neben „Optimieren", sichtbar
+> nur während des Laufs; er beendet den Worker, die Rechnung muss nichts
+> davon wissen, die Seite meldet „Abgebrochen nach n s. Der Plan ist
+> unverändert." Geprüft an der Marke 1280_043-049 im Modul-Betrieb und im
+> Einzeldatei-Bündel, Neustart nach dem Abbruch läuft.
 
 ## Urteil
 

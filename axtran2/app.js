@@ -12,6 +12,16 @@ const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digit
 let worker = null;
 let ticker = null;
 let last = null;
+let abort = null;
+
+// the run is a worker; stopping it is terminating the worker, nothing in
+// the calculation has to cooperate. The page is told through the promise.
+function cancel() {
+	if (!worker) return;
+	worker.terminate();
+	worker = null;
+	abort?.(new Error("Abgebrochen."));
+}
 
 function endPoseFromFields() {
 	const e = el("endE").value.trim(), n = el("endN").value.trim(), t = el("endT").value.trim();
@@ -24,6 +34,7 @@ function endPoseFromFields() {
 async function readText(input) { return input.files?.[0] ? input.files[0].text() : ""; }
 
 async function run() {
+	const started = Date.now();
 	try {
 		const traFile = el("tra").files?.[0];
 		if (!traFile) throw new Error("Eine TRA-Datei fehlt.");
@@ -39,8 +50,8 @@ async function run() {
 		};
 		const bytes = await traFile.arrayBuffer();
 		el("run").disabled = true;
+		el("cancel").classList.remove("hidden");
 		el("result").classList.add("hidden");
-		const started = Date.now();
 		status("Rechnet …");
 		ticker = setInterval(() => status(`Rechnet … ${Math.round((Date.now() - started) / 1000)} s`), 1000);
 		worker?.terminate();
@@ -51,19 +62,25 @@ async function run() {
 			: new Worker("./worker.js", { type: "module" });
 		const id = String(started);
 		const message = await new Promise((resolve, reject) => {
+			abort = reject;
 			worker.onmessage = (event) => (event.data.id === id ? resolve(event.data) : null);
 			worker.onerror = (event) => reject(new Error(event.message || "Der Rechenlauf ist abgestürzt."));
 			worker.postMessage({ id, bytes, name: traFile.name, points: pointsText, zwang: zwangText || [], options }, [bytes]);
 		});
 		clearInterval(ticker);
+		worker.terminate();
+		worker = null;
 		if (!message.ok) throw new Error(`${message.code}: ${message.message}`);
 		last = message;
 		show(message);
 		status(`Fertig nach ${fmt(message.seconds, 1)} s.`, "ok");
 	} catch (error) {
 		clearInterval(ticker);
-		status(String(error?.message ?? error), "error");
+		const cancelled = error?.message === "Abgebrochen.";
+		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.` : String(error?.message ?? error), cancelled ? "info" : "error");
 	} finally {
+		abort = null;
+		el("cancel").classList.add("hidden");
 		el("run").disabled = false;
 	}
 }
@@ -111,6 +128,7 @@ function download(name, data, type) {
 }
 
 el("run").addEventListener("click", run);
+el("cancel").addEventListener("click", cancel);
 el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed"]) el(id).value = ""; el("result").classList.add("hidden"); status(""); last = null; });
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
