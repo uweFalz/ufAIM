@@ -215,9 +215,13 @@ test("a perturbed TRA is fitted back onto points taken from the original, with a
 	});
 	const perturbedFile = join(scratch, "perturbed.TRA");
 	await writeFile(perturbedFile, written.bytes);
+	await writeFile(join(scratch, "aufmass.csv"), pointsText);
+	await writeFile(join(scratch, "zwangspunkte.csv"), zwangText);
 
 	const result = await fitTra({ tra: perturbedFile, points: pointsText, zwang: zwangText, tolerance: 0.15, maxIterations: 300 });
 	const { report } = result;
+	assert.equal(report.order, null, "the single objective has no order to account for");
+	assert.equal(report.input.order, "points");
 	assert.ok(report.verdict.ok, `${report.verdict.status} ${report.verdict.reason ?? ""}`);
 	assert.equal(report.input.zwangspunkte, 1);
 	assert.ok(report.fit.rms < 1, `rms ${report.fit.rms} tolerance units`);
@@ -239,4 +243,37 @@ test("a perturbed TRA is fitted back onto points taken from the original, with a
 		assert.ok(Math.abs(back.elements[i].length - result.fitted[i].length) < 1e-6, `${back.elements[i].id} length`);
 	}
 	assert.ok(result.csv.startsWith("name;easting;northing;station;offset"), "the residual list");
+});
+
+test("the priority order runs through the adapter and accounts for its phases", async () => {
+	const perturbedFile = join(scratch, "perturbed.TRA");
+	const [pointsText, zwangText] = await Promise.all([readFile(join(scratch, "aufmass.csv"), "utf8"), readFile(join(scratch, "zwangspunkte.csv"), "utf8")]);
+	const { tiersOf, FitTraError } = await import(new URL("fitTraCore.js", SERVICE));
+	assert.equal(tiersOf("points"), null);
+	assert.deepEqual(tiersOf("strict"), [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }]);
+	assert.deepEqual(tiersOf("budget=2.5"), [{ objective: "accumulated-length", absolute: 2.5 }, { objective: "points" }]);
+	assert.deepEqual(tiersOf({ budget: 1 })[0], { objective: "accumulated-length", absolute: 1 });
+	assert.throws(() => tiersOf("longest"), (e) => e instanceof FitTraError && e.code === "INVALID_ORDER");
+
+	// reference: the points decide, the length tier adds the one number
+	const reference = await fitTra({ tra: perturbedFile, points: pointsText, zwang: zwangText, tolerance: 0.15, maxIterations: 300, order: "reference" });
+	const r = reference.report;
+	assert.equal(r.input.order, "reference");
+	assert.deepEqual(r.order.phases.map((p) => p.objective), ["points", "accumulated-length", "points"], "warm start, the length tier, the points tier");
+	assert.equal(r.order.budgetMode, "reference");
+	assert.ok(r.order.phases.every((p) => Number.isInteger(p.iterations)), "each phase reports its iterations");
+	assert.equal(r.verdict.iterations, r.order.phases.reduce((n, p) => n + p.iterations, 0), "the verdict counts every phase");
+	assert.ok(r.verdict.ok, `${r.verdict.status} ${r.verdict.reason ?? ""}`);
+	assert.ok(Number.isFinite(r.order.lengthCost), "what the points cost in length is a number");
+	assert.ok(r.fit.rms < 1, `rms ${r.fit.rms}`);
+
+	// strict: the points may not spend length; the status is the phases', whatever it is
+	const strict = await fitTra({ tra: perturbedFile, points: pointsText, zwang: zwangText, tolerance: 0.15, maxIterations: 300, order: "strict" });
+	const t = strict.report;
+	assert.equal(t.order.order, "strict");
+	assert.equal(t.order.tiers[0].absolute, 0);
+	assert.ok(t.order.phases.length >= 3, `phases ${t.order.phases.map((p) => p.label).join(", ")}`);
+	assert.ok(typeof t.verdict.status === "string" && t.verdict.status.length > 0);
+	if (t.verdict.ok) assert.ok(Math.abs(t.order.lengthCost) < 1e-6, `strict spends no length: ${t.order.lengthCost} m`);
+	else assert.match(t.verdict.reason ?? "", /\S/, "a failed phase is named");
 });

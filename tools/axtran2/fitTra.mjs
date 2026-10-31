@@ -10,7 +10,7 @@
 //   node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv \
 //        [--zwang zwangspunkte.csv] [--out fitted.TRA] [--report report.json] \
 //        [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] \
-//        [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T]
+//        [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T] [--order points|reference|strict|budget=<m>]
 
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
@@ -53,7 +53,7 @@ function endPoseFromArgument(text) {
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	if (!args.tra || !args.points) {
-		console.error("usage: node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv [--zwang z.csv] [--out fitted.TRA] [--report r.json] [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T] (T the direction clockwise from north in gon, as a TRA states it)");
+		console.error("usage: node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv [--zwang z.csv] [--out fitted.TRA] [--report r.json] [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T] [--order points|reference|strict|budget=<m>] (T the direction clockwise from north in gon, as a TRA states it)");
 		process.exit(2);
 	}
 	const result = await fitTra({
@@ -67,6 +67,7 @@ async function main() {
 		axes: args.axes ?? "en",
 		holdLast: args["hold-last"] === true,
 		endPose: args["end-pose"] ? endPoseFromArgument(args["end-pose"]) : null,
+		order: args.order ?? "points",
 	});
 	const out = args.out ?? args.tra.replace(/\.tra$/i, "") + "_axtran2.TRA";
 	await writeFile(out, result.tra);
@@ -76,6 +77,10 @@ async function main() {
 	console.log(`${input.tra}: ${input.elements} elements, ${input.free} free, ${input.points} points${input.excludedPoints.length ? ` (${input.excludedPoints.length} excluded, see the report)` : ""}, ${input.zwangspunkte} Zwangspunkte, V ${input.speedKmh} km/h`);
 	console.log(`verdict ${verdict.status}${verdict.reason ? "/" + verdict.reason : ""} after ${verdict.iterations} iterations in ${verdict.seconds.toFixed(1)} s`);
 	console.log(`rms ${fit.rms?.toFixed(3)} (tolerance units), ${fit.outsideTolerance} outside, end pose ${fit.endPoseDistance?.toExponential(1)} m, length ${fit.lengthChange >= 0 ? "+" : ""}${fit.lengthChange?.toFixed(3)} m`);
+	if (result.report.order) {
+		const o = result.report.order;
+		console.log(`order ${o.order}: ${o.phases.map((p) => `${p.label} ${p.status}@${p.iterations ?? "-"}`).join(", ")}${o.lengthCost === null ? "" : Math.abs(o.lengthCost) < 5e-4 ? "; the points cost no length over the shortest admissible alignment" : `; the points cost ${o.lengthCost > 0 ? "+" : ""}${o.lengthCost.toFixed(3)} m over the shortest admissible alignment`}${o.noBudget.length ? "; the length tier handed no budget down" : ""}`);
+	}
 	for (const h of fit.hardPoints ?? []) console.log(`Zwangspunkt ${h.name}: residual ${h.residual?.toExponential(1)}`);
 	console.log(`written ${out} (${result.report.output.records} records${result.report.output.stationEquations ? `, ${result.report.output.stationEquations} station equations` : ""})`);
 }

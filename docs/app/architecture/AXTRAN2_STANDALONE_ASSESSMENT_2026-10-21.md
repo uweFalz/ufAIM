@@ -17,6 +17,11 @@ und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 > davon wissen, die Seite meldet „Abgebrochen nach n s. Der Plan ist
 > unverändert." Geprüft an der Marke 1280_043-049 im Modul-Betrieb und im
 > Einzeldatei-Bündel, Neustart nach dem Abbruch läuft.
+> Ordnung (2026-10-31): Auswahl „Ordnung" unter Vorgaben: Punkte allein
+> (Vorgabe), Rangfolge mit Länge als Referenz, streng, oder mit Längenbudget
+> in Metern. Die Rangfolge läuft über `solveAlignmentLexicographic`; der
+> Bericht nennt jede Phase und was die Punkte an Länge kosten. Zahlen in
+> `AXTRAN2_LEXICOGRAPHIC_CORPUS_2026-09-10.md`, Abschnitt „In the adapter and the app".
 
 ## Urteil
 
