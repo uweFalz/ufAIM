@@ -471,3 +471,29 @@ the corridor admits, and the strict order cannot prove the last
 decimetres from where it stands. The item is closed as a finding; the
 answer, if one is wanted, is the curvature-aware correction the
 sections above name, measured and not taken.
+
+## In the adapter and the app (2026-10-31)
+
+The order is an option of `fitTraFromBytes` (`order`), of the command line
+(`--order points|reference|strict|budget=<m>`) and of the app (selector
+"Ordnung" under Vorgaben). "points" stays the default and runs the single
+objective as before; the others run `solveAlignmentLexicographic` with the
+tiers of the corpus runner. The report gains `order`: the tiers, every
+phase with its status and iterations, the budget mode, the shortest
+admissible length and what the points cost against it (`lengthCost`);
+the verdict counts every phase's iterations and names the first failed
+phase. Measured on the Eifel demo (2631R142, 42 elements, 129 points,
+plan 73 m off, recorded end pose given):
+
+| order | verdict | iterations | seconds | rms (tol. units) | outside | length spent over the shortest |
+|---|---|---|---|---|---|---|
+| points | stationary / within_tolerance | 189 | 2.9 | 0.178 | 0 | – |
+| reference | converged / within_tolerance | 416 | 5.4 | 0.178 | 0 | +0.995 m |
+| strict | converged / objective_settled | 600 | 8.7 | 1.000 | 56 of 129 | 0 |
+| budget=2 | converged / within_tolerance | 524 | 6.8 | 0.136 | 0 | +0.997 m |
+
+The strict order says what it costs: on this file the points need about
+one metre of length to be met, and without it 56 of 129 lie outside the
+tolerance. The reference order is the points fit plus that one number.
+Without the end pose (the plan's own end, 73 m off) every order fails in
+the length tier, as the single objective does.

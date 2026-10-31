@@ -47,6 +47,7 @@ async function run() {
 			speedKmh: el("speed").value ? Number(el("speed").value) : null,
 			maxIterations: Number(el("iterations").value) || 1000,
 			endPose: endPoseFromFields(),
+			order: el("order").value === "budget" ? { budget: Number(el("budget").value) || 0 } : el("order").value,
 		};
 		const bytes = await traFile.arrayBuffer();
 		el("run").disabled = true;
@@ -101,6 +102,9 @@ function show({ report, csv }) {
 		[`${fit.lengthChange >= 0 ? "+" : ""}${fmt(fit.lengthChange)} m`, "Längenänderung"],
 	].map(([big, small]) => { const d = document.createElement("div"); d.className = "number"; const b = document.createElement("b"); b.textContent = big; const s = document.createElement("span"); s.textContent = small; d.append(b, s); return d; }));
 	const zw = report.points.filter((p) => p.kind === "zwangspunkt");
+	const o = report.order;
+	const cost = o?.lengthCost === null || o === null ? null : Math.abs(o.lengthCost) < 5e-4 ? 0 : o.lengthCost;
+	el("orderResult").textContent = o ? `Ordnung ${o.order}: ${o.phases.map((p) => `${p.label} ${p.status}${p.iterations === null ? "" : " nach " + p.iterations}`).join(", ")}.${cost === null ? "" : cost === 0 ? " Die Punkte haben keine Länge gegenüber der kürzesten zulässigen Trasse gekostet." : ` Die Punkte kosten ${cost > 0 ? "+" : ""}${fmt(cost)} m gegenüber der kürzesten zulässigen Trasse.`}${o.noBudget.length ? " Die Längenstufe hat kein Budget weitergegeben; die Punkte haben allein entschieden." : ""}` : "";
 	el("zwangResult").textContent = zw.length ? "Zwangspunkte: " + zw.map((z) => `${z.name} ${fmt(z.offset, 4)} m (verlangt ${fmt(z.target)} m)`).join(", ") : "";
 	// the curve: the residualChartSvg string is built from numbers only and
 	// escapes its labels, so it is safe to set as markup
@@ -128,8 +132,9 @@ function download(name, data, type) {
 }
 
 el("run").addEventListener("click", run);
+el("order").addEventListener("change", () => el("budget").classList.toggle("hidden", el("order").value !== "budget"));
 el("cancel").addEventListener("click", cancel);
-el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed"]) el(id).value = ""; el("result").classList.add("hidden"); status(""); last = null; });
+el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed"]) el(id).value = ""; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; });
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
 el("dlCsv").addEventListener("click", () => last && download("residuen.csv", last.csv, "text/csv"));

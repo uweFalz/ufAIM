@@ -28,8 +28,28 @@ import { createAlignmentResidualBuilder } from "../../domain/optimization/alignm
 import { createAlignmentOptimizationProblem } from "../../domain/optimization/alignment/AlignmentOptimizationProblem.js";
 import { createIntrinsicMetricContext } from "../../domain/optimization/alignment/MetricContext.js";
 import { solveAlignmentProblem } from "../../domain/optimization/alignment/AlignmentSQPSolver.js";
+import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.3";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.4";
+
+/**
+ * The orders the adapter runs. "points" is the single objective; the
+ * others are the declared priority order of AlignmentLexicographicSolver
+ * (tier 0 the poses and the sequence, tier 1 the length, tier 2 the points)
+ * and differ in what the length tier hands down: nothing but a number
+ * ("reference"), an equality ("strict"), or a budget of metres ("budget=5").
+ */
+export const ORDERS = Object.freeze(["points", "reference", "strict", "budget"]);
+
+/** @returns {null|Array} the tiers for an order, null for the single objective */
+export function tiersOf(order) {
+	if (order === undefined || order === null || order === "points") return null;
+	if (order === "reference") return DEFAULT_TIERS;
+	if (order === "strict") return [{ objective: "accumulated-length", absolute: 0 }, { objective: "points" }];
+	const budget = typeof order === "object" ? order.budget : typeof order === "string" && order.startsWith("budget=") ? Number(order.slice(7)) : NaN;
+	if (Number.isFinite(budget) && budget >= 0) return [{ objective: "accumulated-length", absolute: budget }, { objective: "points" }];
+	error("INVALID_ORDER", `order wants one of ${ORDERS.join(", ")} (budget as "budget=<metres>"); got ${JSON.stringify(order)}`);
+}
 
 export class FitTraError extends Error {
 	constructor(code, message, detail = null) {
@@ -56,6 +76,10 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  * @param {number} [input.cantMm]
  * @param {number} [input.maxIterations]
  * @param {"points"} [input.objective]
+ * @param {"points"|"reference"|"strict"|string|{budget:number}} [input.order]
+ *        "points": the points as the one objective (default). The others run the priority
+ *        order: the length tier reports what the shortest admissible alignment would be
+ *        ("reference"), holds it ("strict"), or allows "budget=<metres>" over it.
  * @param {boolean} [input.holdLast]         hold the last element's length too
  * @param {Array} [input.heldPoses]          [{ afterElement, x?, y?, theta? }] in world coordinates
  * @param {"en"|"ne"} [input.axes]           coordinate order of header-less lists
@@ -65,9 +89,10 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  */
 export async function fitTraFromBytes({
 	bytes, name = "alignment.TRA", points, zwang = [], tolerance = 0.15, zwangTolerance = 0.01, speedKmh = null, cantMm = 130,
-	maxIterations = 1000, objective = "points", holdLast = false, heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
+	maxIterations = 1000, objective = "points", order = "points", holdLast = false, heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
 } = {}) {
 	if (!(bytes instanceof Uint8Array)) error("NO_TRA", "fitTraFromBytes needs the TRA's bytes as a Uint8Array");
+	const tiers = tiersOf(order);
 	const t0 = Date.now();
 	const loaded = await traAlignmentFromBytes(bytes, name);
 	if (loaded.unsupported.length) {
@@ -164,7 +189,21 @@ export async function fitTraFromBytes({
 	};
 	const analyticJacobian = (overlay) => chainOf(materialise(overlay));
 
-	const run = solveAlignmentProblem({ problem, buildAlignment, analyticJacobian, objective, maxIterations, ...solver });
+	const run = tiers === null
+		? solveAlignmentProblem({ problem, buildAlignment, analyticJacobian, objective, maxIterations, ...solver })
+		: solveAlignmentLexicographic({ problem, buildAlignment, analyticJacobian, tiers, maxIterations, solver });
+	// the order's own account: each phase with its verdict, and what the
+	// points cost in length against the shortest admissible alignment
+	const lengthBudget = run.budgets?.find((b) => b.objective === "accumulated-length") ?? null;
+	const orderReport = tiers === null ? null : Object.freeze({
+		order: typeof order === "object" ? `budget=${order.budget}` : order,
+		tiers: Object.freeze(tiers.map((t) => Object.freeze({ ...t }))),
+		phases: Object.freeze(run.phases.map((p) => Object.freeze({ label: p.label, objective: p.objective, status: p.status, ok: p.ok, reason: p.diagnostics?.reason ?? null, iterations: p.diagnostics?.iterations ?? null }))),
+		budgetMode: lengthBudget?.mode ?? null,
+		shortestLength: lengthBudget?.attained ?? null,
+		lengthCost: lengthBudget?.span ?? null,
+		noBudget: run.skippedBudgets?.length ? run.skippedBudgets.map((b) => b.objective ?? b) : [],
+	});
 	const fitted = run.candidate?.variables?.length ? materialise(codec.decode(run.candidate.variables)) : materialise(null);
 	const fittedAlignment = buildProductionAlignment({ elements: fitted, startPose, deps });
 	const fittedChain = chainOf(fitted);
@@ -199,7 +238,9 @@ export async function fitTraFromBytes({
 		header: bytes.subarray(0, 78),
 		cantAt: cantLookup(sourceRows, startStation, loaded.kilometreJumps),
 	});
-	const d = run.diagnostics;
+	const d = run.diagnostics ?? {};
+	const failedPhase = tiers === null ? null : run.phases.find((p) => p.label !== "warm-start" && !p.ok) ?? null;
+	const iterations = tiers === null ? d.iterations : run.phases.reduce((n, p) => n + (p.diagnostics?.iterations ?? 0), 0);
 	const sumBefore = elements.reduce((s, e) => s + e.length, 0);
 	const sumAfter = fitted.reduce((s, e) => s + e.length, 0);
 	const report = Object.freeze({
@@ -207,10 +248,11 @@ export async function fitTraFromBytes({
 		input: Object.freeze({
 			tra: name, elements: elements.length, free: codec.freeNames.length, points: surveyed.length - excluded.length, zwangspunkte: zwangspunkte.length,
 			excludedPoints: Object.freeze(excluded), endMargin: margin,
-			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
+			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", order: orderReport?.order ?? "points", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
 			stationEquations: loaded.stationEquations, mergedRecords: loaded.mergedRecords, kinks: loaded.kinks,
 		}),
-		verdict: Object.freeze({ status: run.status, reason: d.reason ?? null, ok: run.ok, admissible: run.admissible, iterations: d.iterations, seconds: (Date.now() - t0) / 1000 }),
+		verdict: Object.freeze({ status: run.status, reason: failedPhase ? `${failedPhase.label}: ${failedPhase.diagnostics?.reason ?? failedPhase.status}` : d.reason ?? null, ok: run.ok, admissible: run.admissible, iterations, seconds: (Date.now() - t0) / 1000 }),
+		order: orderReport,
 		fit: Object.freeze({
 			rms: d.softResidualRms, outsideTolerance: d.softOutsideTolerance, endPoseDistance: d.endPoseDistance,
 			hardPoints: d.hardPointResiduals, heldPoses: d.heldPoseResiduals ?? null, lengthChange: sumAfter - sumBefore,
