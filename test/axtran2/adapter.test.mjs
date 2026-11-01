@@ -221,6 +221,28 @@ test("a perturbed TRA is fitted back onto points taken from the original, with a
 	const result = await fitTra({ tra: perturbedFile, points: pointsText, zwang: zwangText, tolerance: 0.15, maxIterations: 300 });
 	const { report } = result;
 	assert.equal(report.order, null, "the single objective has no order to account for");
+	// the cant: carried, and judged at the fitted radius
+	const { GRAVITY } = await import(new URL("../../src/domain/optimization/alignment/AlignmentDesignProfile.js", import.meta.url));
+	const c = report.cant;
+	assert.equal(c.arcs.length, report.elements.filter((e) => e.type === "arc" && e.before.length > 0).length, "every arc with length is judged");
+	const V = report.input.speedKmh / 3.6;
+	for (const a of c.arcs) {
+		assert.ok(Math.abs(a.after.equilibriumMm - 1.5 * V * V / (GRAVITY * Math.abs(a.after.radius)) * 1000) < 1e-9, "u0 = s V^2 / (g R)");
+		assert.ok(Math.abs(a.after.deficiencyMm - (a.after.equilibriumMm - a.cantMm)) < 1e-12);
+		assert.equal(a.after.ok, a.after.deficiencyMm <= c.maximumDeficiencyMm);
+		const el = report.elements.find((e) => e.id === a.id);
+		assert.equal(a.before.radius, el.before.radius);
+		assert.equal(a.after.radius, el.after.radius);
+	}
+	assert.equal(c.exceededAfter, c.arcs.filter((a) => !a.after.ok).length);
+	assert.equal(c.maximumDeficiencyMm, 130, "Ril 800.0110 Tab. 5 as the profile declares it");
+	assert.equal(c.maximumCantMm, 180, "the EBO cap, not the cant the profile assumes");
+	assert.match(c.maximumCantSource, /EBO/);
+	assert.equal(c.present, rowsRaw.slice(1, -1).some((r) => r.cantA || r.cantE));
+	// the written file carries the source cant, not a recomputed one
+	const outRows = decodeBinary(result.tra.buffer.slice(result.tra.byteOffset, result.tra.byteOffset + result.tra.byteLength), "TRA").rowsRaw.slice(1, -1);
+	const srcRows = decodeBinary(written.bytes.buffer.slice(written.bytes.byteOffset, written.bytes.byteOffset + written.bytes.byteLength), "TRA").rowsRaw.slice(1, -1);
+	assert.deepEqual(outRows.map((r) => [r.cantA, r.cantE]), srcRows.map((r) => [r.cantA, r.cantE]), "U1/U2 unchanged");
 	assert.equal(report.input.order, "points");
 	assert.ok(report.verdict.ok, `${report.verdict.status} ${report.verdict.reason ?? ""}`);
 	assert.equal(report.input.zwangspunkte, 1);

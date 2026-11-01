@@ -81,6 +81,8 @@ async function main() {
 		const o = result.report.order;
 		console.log(`order ${o.order}: ${o.phases.map((p) => `${p.label} ${p.status}@${p.iterations ?? "-"}`).join(", ")}${o.lengthCost === null ? "" : Math.abs(o.lengthCost) < 5e-4 ? "; the points cost no length over the shortest admissible alignment" : `; the points cost ${o.lengthCost > 0 ? "+" : ""}${o.lengthCost.toFixed(3)} m over the shortest admissible alignment`}${o.noBudget.length ? "; the length tier handed no budget down" : ""}`);
 	}
+	const c = result.report.cant;
+	console.log(`cant ${c.present ? "carried from the file" : "none in the file"}, judged at V ${c.speedKmh} km/h against zul uf ${c.maximumDeficiencyMm} mm: ${c.exceededAfter} of ${c.arcs.length} arcs over the deficiency limit after the fit (${c.exceededBefore} before)${c.excessiveCant ? `, ${c.excessiveCant} over the cant limit of ${c.maximumCantMm} mm` : ""}`);
 	for (const h of fit.hardPoints ?? []) console.log(`Zwangspunkt ${h.name}: residual ${h.residual?.toExponential(1)}`);
 	console.log(`written ${out} (${result.report.output.records} records${result.report.output.stationEquations ? `, ${result.report.output.stationEquations} station equations` : ""})`);
 }

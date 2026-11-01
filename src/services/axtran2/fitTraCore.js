@@ -29,8 +29,9 @@ import { createAlignmentOptimizationProblem } from "../../domain/optimization/al
 import { createIntrinsicMetricContext } from "../../domain/optimization/alignment/MetricContext.js";
 import { solveAlignmentProblem } from "../../domain/optimization/alignment/AlignmentSQPSolver.js";
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
+import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.4";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.5";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -228,6 +229,51 @@ export async function fitTraFromBytes({
 		});
 	});
 
+	// The cant. The fit does not touch it: U1/U2 go back into the file as
+	// they were, since cant is a design decision of another discipline. But
+	// a radius that changed is judged against the cant it keeps: at the
+	// profile's speed the equilibrium cant is s V^2 / (g R), and what the
+	// carried cant leaves of it is the deficiency, which Ril 800.0110 limits.
+	// Every arc is listed, before and after, and the ones that exceed the
+	// limit are counted. A file without cant gets the same account, which
+	// then says what the deficiency would be at that speed with none.
+	const cantOf = cantLookup(sourceRows, startStation, loaded.kilometreJumps);
+	const design = profile.design;
+	const V = design.speed, gauge = design.dynamicGauge;
+	const equilibriumMm = (radius) => radius === null ? 0 : (gauge * V * V) / (GRAVITY * Math.abs(radius)) * 1000;
+	// the carried cant is judged against the regulatory cap the profile
+	// declares (EBO), not against the cant the profile assumes for its radius
+	// floor: that assumption is the adapter's, the cap is the rule's
+	const cantLimit = design.declared.regulatoryCantLimit ?? design.declared.maximumCant;
+	const maximumCantMm = cantLimit.value * 1000;
+	const maximumDeficiencyMm = design.declared.maximumCantDeficiency.value * 1000;
+	let originalStart = 0;
+	const cantArcs = [];
+	elements.forEach((e, i) => {
+		const start = originalStart;
+		originalStart += e.length;
+		if (e.type !== "arc" || !(e.length > 0)) return;
+		const carried = cantOf(start);
+		const cantMm = carried.cantA ?? 0;
+		const judge = (radius) => {
+			const equilibrium = equilibriumMm(radius);
+			const deficiency = equilibrium - cantMm;
+			return { radius, equilibriumMm: equilibrium, deficiencyMm: deficiency, ok: deficiency <= maximumDeficiencyMm + 1e-9 };
+		};
+		cantArcs.push(Object.freeze({ id: e.id, cantMm, cantOk: cantMm <= maximumCantMm + 1e-9, before: Object.freeze(judge(radiusOf(e))), after: Object.freeze(judge(radiusOf(fitted[i]))) }));
+	});
+	const cantReport = Object.freeze({
+		carried: "from the source file, unchanged by the fit",
+		present: sourceRows.some((r) => (r.cantA ?? 0) !== 0 || (r.cantE ?? 0) !== 0),
+		speedKmh: profile.speedKmh,
+		maximumCantMm, maximumCantSource: cantLimit.source,
+		maximumDeficiencyMm, maximumDeficiencySource: design.declared.maximumCantDeficiency.source,
+		arcs: Object.freeze(cantArcs),
+		exceededBefore: cantArcs.filter((a) => !a.before.ok).length,
+		exceededAfter: cantArcs.filter((a) => !a.after.ok).length,
+		excessiveCant: cantArcs.filter((a) => !a.cantOk).length,
+	});
+
 	const written = writeTra({
 		elements: fitted,
 		poseOfElement: (i) => toWorld(fittedChain.entryPose(i)),
@@ -262,6 +308,7 @@ export async function fitTraFromBytes({
 			before: { length: e.length, radius: radiusOf(e) }, after: { length: fitted[i].length, radius: radiusOf(fitted[i]) },
 		}))),
 		points: Object.freeze(rows),
+		cant: cantReport,
 		output: Object.freeze({ records: written.records, dropped: written.dropped, stationEquations: loaded.kilometreJumps.length }),
 	});
 	return Object.freeze({ report, tra: written.bytes, run, fitted, csv: formatResidualList(rows) });
