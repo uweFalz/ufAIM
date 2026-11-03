@@ -41366,6 +41366,8 @@ xlsx/xlsx.mjs:
 					bands.push(makeBand(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
+						valueLabel: kind === "alignment" ? "κ (1/m) · r" : undefined,
+						valueFormat: kind === "alignment" ? curvatureReadout : undefined,
 					}));
 				}
 				// Gleisabstand: where both Streckengleise are assigned, the distance
@@ -42033,6 +42035,16 @@ xlsx/xlsx.mjs:
 				}
 				return null;
 			}
+			// Table/cursor readout for a curvature value: three decimals hide every
+			// real-world κ (1e-3 .. 1e-5), so six decimals plus the radius and the
+			// side in the Vermessungskonvention (positive = Rechtsbogen).
+			function curvatureReadout(kappa) {
+				if (!Number.isFinite(kappa)) return "";
+				if (Math.abs(kappa) < 1e-6) return "0 · Gerade";
+				const sign = kappa > 0 ? "+" : "−";
+				return `${sign}${Math.abs(kappa).toFixed(6).replace(".", ",")} · r ${Math.round(1 / Math.abs(kappa))} m ${kappa > 0 ? "rechts" : "links"}`;
+			}
+
 			function cursorBandText(band, x) {
 				const cls = band.className ?? "";
 				if (cls.includes("fzk-speed")) {
@@ -42048,7 +42060,7 @@ xlsx/xlsx.mjs:
 				if (cls.includes("curvature")) {
 					const kappa = bandValueAt(band.points, x, false);
 					if (kappa == null) return null;
-					return Math.abs(kappa) < 1e-6 ? "Gerade" : `r ${Math.round(1 / Math.abs(kappa))} m`;
+					return Math.abs(kappa) < 1e-6 ? "Gerade" : `r ${Math.round(1 / Math.abs(kappa))} m ${kappa > 0 ? "rechts" : "links"}`;
 				}
 				if (cls.includes("height")) {
 					const z = bandValueAt(band.points, x, false);
@@ -42130,7 +42142,7 @@ xlsx/xlsx.mjs:
 				// One Plan per slide: the table and the chart show diagramKind only.
 				if (diagramPresentation === "table") {
 					renderDiagramTable([
-						...(diagramKind !== "ivmg" ? [] : ivmgTracks).map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track) })),
+						...(diagramKind !== "ivmg" ? [] : ivmgTracks).map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track), valueLabel: track.valueLabel, valueFormat: track.valueFormat })),
 						...(diagramKind !== "ivhw" ? [] : ivhw.trackData ?? []).flatMap((data) => [
 							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideA ?? "A"}`, points: data.railA, valueLabel: "Höhe (m)" },
 							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideB ?? "B"}`, points: data.railB, valueLabel: "Höhe (m)" },
@@ -42297,9 +42309,10 @@ xlsx/xlsx.mjs:
 			// the Gleis that continues past the junction point; the branch ends
 			// there (landXML), or -- GND chunks every alignment at the Weiche -- the
 			// pair of chunks that continue each other tangentially. Curvature sign
-			// follows curvatureSeries in km direction (positive = Linksbogen), so a
-			// Linksbogen raises the right rail. Form: branch curving the same way
-			// = IBW, the opposite way = ABW, through track straight = EW.
+			// follows curvatureSeries in km direction (Vermessungskonvention:
+			// positive = Rechtsbogen), so a Rechtsbogen raises the left rail. Form:
+			// branch curving the same way = IBW, the opposite way = ABW, through
+			// track straight = EW.
 			function junctionRailSides(junction, tracks) {
 				if (!junction?.point) return null;
 				const near = (end) => Math.hypot(end.easting - junction.point.easting, end.northing - junction.point.northing) < 1;
@@ -42372,8 +42385,8 @@ xlsx/xlsx.mjs:
 				return {
 					through,
 					throughName,
-					higher: straight ? null : kappa > 0 ? "rechts" : "links",
-					bogen: straight ? "Gerade" : kappa > 0 ? "Linksbogen" : "Rechtsbogen",
+					higher: straight ? null : kappa > 0 ? "links" : "rechts",
+					bogen: straight ? "Gerade" : kappa > 0 ? "Rechtsbogen" : "Linksbogen",
 					form: straight ? "EW" : Math.abs(kappaBranch) < 1e-6 ? null : Math.sign(kappaBranch) === Math.sign(kappa) ? "IBW" : "ABW",
 				};
 			}
@@ -42695,9 +42708,14 @@ xlsx/xlsx.mjs:
 			// without this every curve/spiral shows identical positive curvature
 			// regardless of which way it actually turns. VermEsn/GND never set
 			// rot (their radius is pre-signed instead), so this is a no-op there.
+			// Sign convention at the UI boundary (decided 2026-11-03): the diagram
+			// and every readout use the Vermessungskonvention, positive = Rechtsbogen
+			// (cw), which is how VermEsn/GND already pre-sign R (R > 0 = rechts).
+			// Internally the landXML bridge (resolveCurvature) stays mathematically
+			// signed (cw = -1/r); nothing there is touched.
 			function curveRotationSign(element) {
 				const rot = element?.type === "Spiral" ? element?.extras?.rot : element?.rot;
-				return rot === "cw" ? -1 : 1;
+				return rot === "cw" ? 1 : rot === "ccw" ? -1 : 1;
 			}
 
 			// landXML's dirStart/dirEnd on a Curve turn out not to be a reliable
