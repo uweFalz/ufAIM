@@ -87,3 +87,29 @@ node tools/axtran2/fitTra.mjs --tra plan.TRA --points aufmass.csv --zwang zwangs
 Korpusdatei aus und prüft, was ein Kollege fragen würde: der Plan lag
 sichtbar daneben, die Achse liegt wieder auf dem Aufmaß, der Zwangspunkt
 ist getroffen, die Dateien sind da.
+
+## Die Überhöhung (2026-11-01)
+
+Der Fit verändert die Überhöhung nicht: U1/U2 gehen so in die Datei
+zurück, wie sie kamen, denn die Überhöhung ist eine Entscheidung einer
+anderen Disziplin. Was der Adapter seit Version 0.5 tut: er beurteilt
+jeden Bogen mit seiner getragenen Überhöhung am gefitteten Radius. Bei der
+Geschwindigkeit des Profils ist die Ausgleichsüberhöhung u0 = s·V²/(g·R)
+(11,8·V²/R mm), der Fehlbetrag u_f = u0 − u, und Ril 800.0110 Tab. 5
+begrenzt ihn auf 130 mm. Der Bericht (`report.cant`) listet jeden Bogen
+vorher und nachher, zählt die Überschreitungen und nennt die Quellen der
+Grenzen; die getragene Überhöhung selbst wird an der EBO-Grenze von 180 mm
+gemessen, nicht an den 130 mm, die das Profil für seinen Radius-Boden
+annimmt. Kommandozeile und App geben eine Zeile aus.
+
+Gemessen auf der Eifel-Vorführung (V 80 km/h, 19 Bögen): vor dem Fit
+liegen 3 Bögen über 130 mm Fehlbetrag, nach dem Fit 1 (E0: R 301 m mit
+u 100 mm, u_f 151 mm, vorher wie nachher). Der Fit hat E6 (136 → 127 mm)
+und E30 (138 → 129 mm) unter die Grenze gebracht, weil er die Radien
+weitete. Kein Bogen trägt mehr als 180 mm. Die Marke 1280_043-049 trägt
+keine Überhöhung; dort sagt der Bericht, welcher Fehlbetrag bei V ohne
+Überhöhung stünde.
+
+Nicht beurteilt: der Überhöhungsüberschuss (u > u0) und die Rampen gegen
+die getragene statt der angenommenen Überhöhung. Beides braucht Zahlen,
+die das Profil nicht erklärt, und bleibt deshalb unerklärt.

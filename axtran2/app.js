@@ -105,6 +105,9 @@ function show({ report, csv }) {
 	const o = report.order;
 	const cost = o?.lengthCost === null || o === null ? null : Math.abs(o.lengthCost) < 5e-4 ? 0 : o.lengthCost;
 	el("orderResult").textContent = o ? `Ordnung ${o.order}: ${o.phases.map((p) => `${p.label} ${p.status}${p.iterations === null ? "" : " nach " + p.iterations}`).join(", ")}.${cost === null ? "" : cost === 0 ? " Die Punkte haben keine Länge gegenüber der kürzesten zulässigen Trasse gekostet." : ` Die Punkte kosten ${cost > 0 ? "+" : ""}${fmt(cost)} m gegenüber der kürzesten zulässigen Trasse.`}${o.noBudget.length ? " Die Längenstufe hat kein Budget weitergegeben; die Punkte haben allein entschieden." : ""}` : "";
+	const c = report.cant;
+	const worst = c.arcs.filter((a) => !a.after.ok).sort((a, b) => b.after.deficiencyMm - a.after.deficiencyMm).slice(0, 5);
+	el("cantResult").textContent = `Überhöhung: ${c.present ? "aus der Datei übernommen, vom Fit nicht verändert" : "die Datei trägt keine"}. Bei V ${c.speedKmh} km/h und zulässigem Fehlbetrag ${fmt(c.maximumDeficiencyMm, 0)} mm liegen nach dem Fit ${c.exceededAfter} von ${c.arcs.length} Bögen darüber (vorher ${c.exceededBefore}).${worst.length ? ` Am stärksten: ${worst.map((a) => `${a.id} mit ${fmt(a.after.deficiencyMm, 0)} mm bei R ${fmt(Math.abs(a.after.radius), 0)} m und u ${fmt(a.cantMm, 0)} mm`).join(", ")}.` : ""}${c.excessiveCant ? ` ${c.excessiveCant} Bögen tragen mehr als die ${fmt(c.maximumCantMm, 0)} mm der EBO.` : ""}`;
 	el("zwangResult").textContent = zw.length ? "Zwangspunkte: " + zw.map((z) => `${z.name} ${fmt(z.offset, 4)} m (verlangt ${fmt(z.target)} m)`).join(", ") : "";
 	// the curve: the residualChartSvg string is built from numbers only and
 	// escapes its labels, so it is safe to set as markup
