@@ -3,8 +3,28 @@
   "version": "0.1.0",
   "description": "alignmentOS: the AIM alignment kernel, the transition registry, the AXTRAN2 calculation layer and the Verm.esn readers of ufAIM, as one ES module package. The app in app/ builds on it.",
   "type": "module",
-  "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/uweFalz/ufAIM.git"
+  },
+  "homepage": "https://github.com/uweFalz/ufAIM#readme",
+  "bugs": {
+    "url": "https://github.com/uweFalz/ufAIM/issues"
+  },
+  "keywords": [
+    "railway",
+    "track",
+    "alignment",
+    "transition-curve",
+    "clothoid",
+    "sqp",
+    "verm.esn",
+    "axtran"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "Uwe Falz",
   "engines": {
     "node": ">=22"

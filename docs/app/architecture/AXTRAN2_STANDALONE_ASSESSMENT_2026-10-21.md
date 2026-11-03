@@ -111,6 +111,30 @@ blockiert und ein Worker im eigenen Paket die Antwort ist; die
 Katalogmaße mit Status „catalogue" sind aus der Richtlinie abgetippt
 und nicht gegen das Dokument maschinell geprüft.
 
+## Veröffentlichen (2026-11-03)
+
+Uwes Wort vom 2026-11-03: das Paket wird veröffentlicht. Vorbereitet in
+`package.json`: `private` entfernt, `repository`, `homepage`, `bugs`,
+`keywords`, `publishConfig.access: public`. `npm pack --dry-run` packt
+335 Dateien aus `src/` (589 kB, 2,4 MB entpackt): keine Tests, keine
+Werkzeuge, keine Proben, keine `node_modules`. Der Name `alignment-os`
+ist auf npmjs.org frei (404 am 2026-11-03). Das Repositorium ist
+öffentlich, der Quelltext also schon sichtbar; das Paket macht ihn nur
+installierbar.
+
+Was wer tut:
+
+- **npmjs.org** braucht Uwes Anmeldung; Zugangsdaten gibt kein Agent
+  ein. Nach dem Merge, im geteilten Checkout auf `main`:
+  `npm login`, dann `npm publish` (der Zugriff ist in `publishConfig`
+  als öffentlich erklärt, `npm pack --dry-run` zeigt vorher den Inhalt).
+- **GitHub Release** `v0.1.0` mit dem Tarball und `dist/axtran2.html`
+  (dem Einzeldatei-AXTRAN2) als Anhang: geht mit der bestehenden
+  `gh`-Anmeldung (Scope `repo`) und wird nach dem Merge auf Zuruf
+  angelegt.
+- **GitHub Packages** nicht: der `gh`-Token hat kein `write:packages`,
+  und der Name müsste `@uwefalz/alignment-os` heißen.
+
 ## Was nicht geprüft wurde
 
 Ob die Haupt-App nach dem Schnitt unverändert läuft, ist eine Frage an
