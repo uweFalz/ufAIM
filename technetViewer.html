@@ -90,13 +90,11 @@
 				font: 600 1.25rem system-ui, sans-serif;
 			}
 			#titlebar,
-			#diagramModes,
-			#diagramPresentation {
+			#diagramModes {
 				display: flex;
 				align-items: center;
 				gap: 0.5rem;
 			}
-			.picture-export { margin-left: auto; }
 			.gwb-input {
 				display: flex;
 				align-items: center;
@@ -212,10 +210,11 @@
 			.tb-group button:first-child { border-radius: var(--r) 0 0 var(--r); }
 			.tb-group button:last-child { border-radius: 0 var(--r) var(--r) 0; }
 			.tb-group button + button { border-left: 0; }
-			/* The picture bars, one rule for all five: the title, a note in the
-			   small step, the controls pushed right by a spacer or the export pair,
-			   the legend on a row of its own. */
-			#mapToolbar, #diagramToolbar, #spurplanToolbar, #deliveryToolbar, #linksToolbar {
+			/* The picture bars, one rule for all five. Every slide bar reads the
+			   same way: title · code · note on the left, then a spacer, then the
+			   controls in one order — Ansicht · Annahmen ▾ · Export ▾ · × — and the
+			   legend on a row of its own. The map bar keeps its own layout. */
+			#mapToolbar, .slide-toolbar {
 				display: flex;
 				flex-wrap: wrap;
 				align-items: center;
@@ -225,11 +224,23 @@
 				background: var(--surface);
 				font: var(--fs-2)/1.3 system-ui, sans-serif;
 			}
-			#mapToolbar strong, #diagramToolbar strong, #spurplanToolbar strong, #deliveryToolbar strong, #linksToolbar strong { font-size: var(--fs-2); white-space: nowrap; }
-			#mapToolbar button, #diagramToolbar button, #spurplanToolbar button, #deliveryToolbar button, #linksToolbar button { font-size: var(--fs-2); padding: 0.3rem 0.6rem; }
-			#diagramNote, #spurplanNote, #deliveryNote, #linksNote, #spurplanHint { color: var(--secondary); font-size: var(--fs-1); min-width: 0; }
+			#mapToolbar strong, .slide-toolbar strong { font-size: var(--fs-2); white-space: nowrap; }
+			#mapToolbar button, .slide-toolbar button { font-size: var(--fs-2); padding: 0.3rem 0.6rem; }
+			.slide-note, #spurplanHint { color: var(--secondary); font-size: var(--fs-1); min-width: 0; }
+			/* The note yields first: a zero flex basis keeps it from forcing a
+			   wrap, it grows to its own text and no further, and shrinks to an
+			   ellipsis (full text in its tooltip) before the controls would move
+			   to a second row. */
+			.slide-note { flex: 1 1 0; max-width: max-content; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.slide-note:empty { display: none; }
 			#spurplanHint { cursor: help; }
-			#spurplanLegend, #deliveryLegend, #linksLegend { flex-basis: 100%; }
+			/* The handling hint yields before the note does: below 1280 px it
+			   lives on in the title's tooltip only. */
+			@media (max-width: 1280px) { #spurplanHint { display: none; } }
+			.slide-controls { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; margin-left: auto; }
+			.slide-toolbar .legend { flex-basis: 100%; }
+			.slide-toolbar .legend:empty { display: none; }
+			.slide-toolbar .menu.hidden { display: none; }
 			#diagramCursor { font-size: var(--fs-1); }
 			#railwayOpacityControl.menu-item { display: flex; }
 			#railwayOpacityControl.hidden { display: none; }
@@ -1783,45 +1794,70 @@
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
 						<div id="spurplanPanel" class="slide hidden">
-							<div id="spurplanToolbar">
-								<strong>Spurplan · Hauptbild</strong>
-								<span id="spurplanNote"></span>
+							<div id="spurplanToolbar" class="slide-toolbar">
+								<strong title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">Spurplan · Hauptbild</strong>
+								<span id="spurplanNote" class="slide-note"></span>
 								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
+								<div class="slide-controls">
 								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
-								<span class="picture-export tb-group" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<details class="menu slide-export">
+									<summary title="Dieses Bild als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<span class="picture-export" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
 								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
 								<div id="spurplanLegend" class="legend"></div>
 							</div>
 							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
 						</div>
 						<div id="deliveryPanel" class="slide hidden">
-							<div id="deliveryToolbar">
+							<div id="deliveryToolbar" class="slide-toolbar">
 								<strong>Lieferung · Bild</strong>
-								<span id="deliveryNote"></span>
-								<span class="picture-export tb-group" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<span id="deliveryNote" class="slide-note"></span>
+								<div class="slide-controls">
+								<details class="menu slide-export">
+									<summary title="Dieses Bild als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<span class="picture-export" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
 								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
 								<div id="deliveryLegend" class="legend"><span class="legend-item swatch-box delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="legend-item swatch-box delivery-legend-item delivery-profile">Gradiente</span><span class="legend-item swatch-box delivery-legend-item delivery-cant">Überhöhung</span><span class="legend-item swatch-box delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="legend-item swatch-tri delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
 							</div>
 							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
 						</div>
 						<div id="linksPanel" class="slide hidden">
-							<div id="linksToolbar">
+							<div id="linksToolbar" class="slide-toolbar">
 								<strong>Verknüpfung · Bild</strong>
-								<span id="linksNote"></span>
-								<span class="picture-export tb-group" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<span id="linksNote" class="slide-note"></span>
+								<div class="slide-controls">
+								<details class="menu slide-export">
+									<summary title="Dieses Bild als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<span class="picture-export" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
 								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
 								<div id="linksLegend" class="legend"></div>
 							</div>
 							<div id="linksScroll"><div id="linksContent"></div></div>
 						</div>
 						<div id="diagramPanel" class="slide hidden">
 							<div id="diagramResizeHandle" role="separator" aria-label="Diagrammhöhe ändern" aria-orientation="horizontal" tabindex="0"></div>
-							<div id="diagramToolbar">
+							<div id="diagramToolbar" class="slide-toolbar">
 								<strong id="diagramTitle">Diagramm</strong>
 								<span id="diagramCode" title=""></span>
-								<span id="diagramNote"></span>
+								<span id="diagramNote" class="slide-note"></span>
 								<span id="diagramCursor" title="Cursor: eine Station in allen Bildern — Maus über IVMG, IVHW, GWB, Spurplan, Karte oder Lieferung"></span>
-								<span class="tb-spacer"></span>
+								<div class="slide-controls">
+								<div id="diagramPresentation" class="tb-group" aria-label="Ansicht">
+									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
+									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
+								</div>
 								<details id="assumptionsMenu" class="menu">
 									<summary title="Vier Werte, die in keiner Geometriedatei stehen — Annahmen für das GWB nach Ril 800.0110 / 457.0201">Annahmen ▾</summary>
 									<div class="menu-body row" popover="manual">
@@ -1834,19 +1870,16 @@
 								<label class="gwb-input fzk-only" title="Halt an beiden Enden des Stationsbereichs (Anfahren und Bremsen bis v = 0) oder Durchfahrt mit der zulässigen Geschwindigkeit">Halt <select id="fzkHalt"><option value="Halt">an beiden Enden</option><option value="Durchfahrt">Durchfahrt</option></select></label>
 									</div>
 								</details>
-								<details id="diagramExportMenu" class="menu">
-									<summary>Export ▾</summary>
+								<details id="diagramExportMenu" class="menu slide-export">
+									<summary title="Dieses Bild oder seine Werte als Datei speichern">Export ▾</summary>
 									<div class="menu-body" popover="manual">
 								<button id="gwbBogenCsv" type="button" class="menu-item" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
 								<button id="gwbAbschnittCsv" type="button" class="menu-item" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
-								<span class="picture-export tb-group" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+								<span class="picture-export" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
 									</div>
 								</details>
-								<div id="diagramPresentation" aria-label="Ansicht">
-									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
-									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
-								</div>
 								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
 							</div>
 							<div id="diagramScroll">
 								<svg id="diagram" role="img" aria-label="Vier Abbildungen: IVMG-Trassenplan, IVHW-Weichenhöhenplan, GWB-Geschwindigkeitswegeband, Fahrzeitkurve"></svg>
@@ -42249,6 +42282,7 @@ xlsx/xlsx.mjs:
 							return `${sevenLineBandCount} von 7 Bändern${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""} · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
 						})();
 				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
+				diagramNote.title = diagramNote.textContent;
 			}
 
 			// A Gleis's own Gradiente/Überhöhung should cover its Krümmung; the
@@ -46235,6 +46269,7 @@ xlsx/xlsx.mjs:
 					return item;
 				}));
 				linksNote.textContent = `${links.entries.length} Objekte · ${links.edges.length} Verknüpfungen · ${links.unlinked.length} unverknüpft`;
+				linksNote.title = linksNote.textContent;
 				recordPerformance("links-render", started, { objects: links.entries.length });
 			}
 
@@ -46417,6 +46452,7 @@ xlsx/xlsx.mjs:
 					return item;
 				})));
 				spurplanNote.textContent = `${bands} ${bands === 1 ? "Strecke" : "Strecken"} · ${topology.gleise} Gleise · ${junctions} Weichen/Kreuzungen · ${coloring === "none" ? "ohne Färbung" : `${speeds.size}/${topology.edges.length} Kanten nach GWB ${coloring === "proposal" ? "Vorschlag" : "heute"} gefärbt`}`;
+				spurplanNote.title = spurplanNote.textContent;
 				recordPerformance("spurplan-render", started, { bands, edges: topology.edges.length });
 				scheduleStateSave();
 			}
@@ -46604,6 +46640,7 @@ xlsx/xlsx.mjs:
 				const trassen = groups.reduce((sum, group) => sum + group.rows.length, 0);
 				const missing = groups.flatMap((group) => group.rows).filter((row) => !row.profiles.length || !row.cants.length).length;
 				deliveryNote.textContent = `${groups.filter((group) => !group.local).length} Strecken · ${trassen} Trassen · ${missing} ohne Gradiente oder Überhöhung · ${junctionCount} Weichenmarken`;
+				deliveryNote.title = deliveryNote.textContent;
 				recordPerformance("delivery-render", started, { trassen });
 			}
 
