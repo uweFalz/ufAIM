@@ -10,6 +10,13 @@
 // the same object with different tolerances and targets. No separate mechanism
 // is needed for the three kinds the requirement names.
 //
+// A Zwangspunkt is held one of three ways. "hard" is the equality: the axis
+// passes at exactly the target offset. "at-least" and "at-most" are the
+// one-sided rules a mast, a pier or a platform edge actually state: the axis
+// keeps at least, or at most, |target| from the point, on the side the sign of
+// the target names. The sign IS the side, so a one-sided target of zero names
+// no side and is refused.
+//
 // A MetricContext is required, not optional. Relating a world-domain point to
 // an intrinsic track reference is World-to-Track, and per the Knowledge Kernel
 // that projection is context-qualified: without a declared measurement
@@ -47,9 +54,34 @@ export const FOOT_POINT_TOLERANCE = 1e-9;
 export const FOOT_POINT_OVERSHOOT = 1e-6;
 
 export const ALIGNMENT_RESIDUAL_BUILDER_VERSION =
-	"axtran2/alignment-residual-builder/0.2";
+	"axtran2/alignment-residual-builder/0.3";
 
-export const POINT_ENFORCEMENT = Object.freeze(["soft", "hard"]);
+export const POINT_ENFORCEMENT = Object.freeze(["soft", "hard", "at-least", "at-most"]);
+
+/** The one-sided enforcements: held as inequalities, not as equalities. */
+export const BOUND_ENFORCEMENT = Object.freeze(["at-least", "at-most"]);
+
+/**
+ * The side a one-sided target names, as the sign of the offset: +1 left of the
+ * direction of travel, -1 right. The target itself is signed the same way, so
+ * the clearance the axis keeps is sign * offset, and the rule reads
+ * sign * offset >= |target| (at-least) or <= |target| (at-most).
+ */
+export function sideOf(target) {
+	return target < 0 ? -1 : 1;
+}
+
+/**
+ * The violation of a one-sided point, in metres: positive where the rule is
+ * broken, zero or negative where it holds, with the slack as the magnitude.
+ * This is the inequality row the solver holds at or below zero.
+ */
+export function boundViolation(enforcement, target, offset) {
+	const sign = sideOf(target);
+	if (enforcement === "at-least") return sign * (target - offset);
+	if (enforcement === "at-most") return sign * (offset - target);
+	return null;
+}
 
 export class AlignmentResidualBuilderError extends Error {
 	constructor(code, message) {
@@ -149,6 +181,10 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 		if (!POINT_ENFORCEMENT.includes(enforcement)) {
 			error("UNKNOWN_ENFORCEMENT", `point "${name}" has unknown enforcement "${enforcement}"`);
 		}
+		if (BOUND_ENFORCEMENT.includes(enforcement) && target === 0) {
+			error("INVALID_TARGET", `point "${name}" is held ${enforcement} but its target of 0 names no side; `
+				+ "a one-sided target is signed, left of the direction of travel positive");
+		}
 		// A point measured under a different authority cannot be divided by a
 		// tolerance stated under this one.
 		if (isObject(point.metricContext)) {
@@ -163,6 +199,7 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 
 	const soft = entries.filter((p) => p.enforcement === "soft");
 	const hard = entries.filter((p) => p.enforcement === "hard");
+	const bound = entries.filter((p) => BOUND_ENFORCEMENT.includes(p.enforcement));
 
 	return Object.freeze({
 		version: ALIGNMENT_RESIDUAL_BUILDER_VERSION,
@@ -170,6 +207,8 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 		points: Object.freeze(entries),
 		softPoints: Object.freeze(soft),
 		hardPoints: Object.freeze(hard),
+		// the one-sided Zwangspunkte, held as inequalities on the lateral offset
+		boundPoints: Object.freeze(bound),
 		count: entries.length,
 
 		/**
@@ -214,6 +253,9 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 					});
 				}
 				const deviation = projected.q - point.target;
+				// a one-sided point is met with slack: only a violation beyond its
+				// tolerance counts against it
+				const violation = boundViolation(point.enforcement, point.target, projected.q);
 				return Object.freeze({
 					...point,
 					projected: true,
@@ -223,7 +265,8 @@ export function createAlignmentResidualBuilder({ points, metricContext } = {}) {
 					offset: projected.q,
 					deviation,
 					residual: deviation / point.tolerance,
-					met: Math.abs(deviation) <= point.tolerance,
+					violation,
+					met: violation === null ? Math.abs(deviation) <= point.tolerance : violation <= point.tolerance,
 				});
 			}));
 		},

@@ -108,7 +108,8 @@ function show({ report, csv }) {
 	const c = report.cant;
 	const worst = c.arcs.filter((a) => !a.after.ok).sort((a, b) => b.after.deficiencyMm - a.after.deficiencyMm).slice(0, 5);
 	el("cantResult").textContent = `Überhöhung: ${c.present ? "aus der Datei übernommen, vom Fit nicht verändert" : "die Datei trägt keine"}. Bei V ${c.speedKmh} km/h und zulässigem Fehlbetrag ${fmt(c.maximumDeficiencyMm, 0)} mm liegen nach dem Fit ${c.exceededAfter} von ${c.arcs.length} Bögen darüber (vorher ${c.exceededBefore}).${worst.length ? ` Am stärksten: ${worst.map((a) => `${a.id} mit ${fmt(a.after.deficiencyMm, 0)} mm bei R ${fmt(Math.abs(a.after.radius), 0)} m und u ${fmt(a.cantMm, 0)} mm`).join(", ")}.` : ""}${c.excessiveCant ? ` ${c.excessiveCant} Bögen tragen mehr als die ${fmt(c.maximumCantMm, 0)} mm der EBO.` : ""}`;
-	el("zwangResult").textContent = zw.length ? "Zwangspunkte: " + zw.map((z) => `${z.name} ${fmt(z.offset, 4)} m (verlangt ${fmt(z.target)} m)`).join(", ") : "";
+	const rule = (z) => z.enforcement === "at-least" ? "mindestens" : z.enforcement === "at-most" ? "höchstens" : "verlangt";
+	el("zwangResult").textContent = zw.length ? "Zwangspunkte: " + zw.map((z) => `${z.name} ${fmt(z.offset, 4)} m (${rule(z)} ${fmt(z.target)} m${z.within === false ? ", verletzt" : ""})`).join(", ") : "";
 	// the curve: the residualChartSvg string is built from numbers only and
 	// escapes its labels, so it is safe to set as markup
 	el("chart").innerHTML = residualChartSvg(report.points, { tolerance: Number(el("tolerance").value) || 0.15 }) || "<p>Keine Kurve: zu wenige Punkte mit Fußpunkt.</p>";

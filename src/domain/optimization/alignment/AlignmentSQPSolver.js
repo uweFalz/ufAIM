@@ -22,14 +22,16 @@
 // than on which one the solver happens to allow.
 //
 // Constraints come from the problem document: poseE and every hardened
-// Zwangspunkt are equalities, the element sequence contributes lower bounds on
-// the element lengths. An inconsistent linearisation is not an error here: the
-// relaxed QP reports how far it had to give up through its slack.
+// Zwangspunkt are equalities, a one-sided Zwangspunkt (at least, or at most,
+// so far from the point) is an inequality on its lateral offset, the element
+// sequence contributes lower bounds on the element lengths. An inconsistent
+// linearisation is not an error here: the relaxed QP reports how far it had
+// to give up through its slack.
 //
 // The alignment builder and the projector are injected, so this module stays
 // free of geometry imports and of any realization binding.
 
-import { footPointOf } from "./AlignmentResidualBuilder.js";
+import { footPointOf, boundViolation, sideOf } from "./AlignmentResidualBuilder.js";
 import { solveSQP } from "../../../lib/math/optim/sqp/solveSQP.js";
 import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacobian.js";
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
@@ -228,6 +230,8 @@ export function solveAlignmentProblem({
 	}
 
 	const hardPoints = residuals.hardPoints;
+	// the one-sided Zwangspunkte; an older declaration carries none
+	const boundPoints = residuals.boundPoints ?? [];
 	// poses held at element joints, read off the chain at the exit station of
 	// the element they follow; a heading row is weighed by the length it
 	// accumulates on, as the end pose's is
@@ -438,7 +442,7 @@ export function solveAlignmentProblem({
 	/** Which declared points a candidate fails to carry, and why. */
 	function inadmissiblePoints(built) {
 		const failed = [];
-		for (const [role, points] of [["zwangspunkt", hardPoints], ["measured point", softPoints]]) {
+		for (const [role, points] of [["zwangspunkt", hardPoints], ["zwangspunkt", boundPoints], ["measured point", softPoints]]) {
 			for (const point of points) {
 				try {
 					project(built, point, role);
@@ -467,6 +471,30 @@ export function solveAlignmentProblem({
 			values.push(project(built, point, "zwangspunkt").q - point.target);
 		}
 		return values;
+	}
+
+	/**
+	 * The one-sided Zwangspunkte as rows g <= 0: each row is the violation in
+	 * metres, positive where the axis comes closer than at-least allows or
+	 * farther than at-most does, and the slack as a negative value otherwise.
+	 */
+	function boundResiduals(built) {
+		return boundPoints.map((point) =>
+			boundViolation(point.enforcement, point.target, project(built, point, "zwangspunkt").q));
+	}
+
+	/** The same rows with their Jacobian from the lateral derivative. */
+	function boundRows(built, geometry) {
+		const g = [];
+		const Jg = [];
+		for (const point of boundPoints) {
+			const projected = project(built, point, "zwangspunkt");
+			g.push(boundViolation(point.enforcement, point.target, projected.q));
+			// at-least reads sign * (target - q): the row falls with q on that side
+			const sign = sideOf(point.target) * (point.enforcement === "at-least" ? -1 : 1);
+			Jg.push(geometry.lateralDerivative(parameterSpecs, projected.s, projected.direction ?? null).map((value) => value * sign));
+		}
+		return { g, Jg };
 	}
 
 	/** Residuals of the equalities carried over from an earlier tier. */
@@ -592,11 +620,14 @@ export function solveAlignmentProblem({
 		scaleEqualityRows(h, Jh);
 
 		const ramps = rampRows(x);
+		const bounds = boundRows(built, geometry);
+		const g = [...ramps.g, ...bounds.g];
+		const Jg = [...ramps.Jg, ...bounds.Jg];
 
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
 			if (!corridorActive || softPoints.length === 0) {
-				return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
+				return { f: accumulatedLength(x), gradF, h, Jh, g, Jg };
 			}
 			const N = softPoints.length;
 			let sum = 0;
@@ -610,12 +641,12 @@ export function solveAlignmentProblem({
 				Jr.push(dr);
 				for (let j = 0; j < row.length; j++) row[j] += (2 / N) * r * dr[j];
 			}
-			// the corridor's row sits after the ramp rows; its multiplier is the
-			// last subproblem's, one before the first
-			const mu = context?.multipliers?.inequality?.[ramps.g.length];
+			// the corridor's row sits after the ramp and the one-sided point rows;
+			// its multiplier is the last subproblem's, one before the first
+			const mu = context?.multipliers?.inequality?.[g.length];
 			const weight = (Number.isFinite(mu) ? Math.max(mu, 0) : 1) * (2 / N);
 			const curvature = gaussNewton(Jr).map((hRow) => hRow.map((value) => value * weight));
-			return { f: accumulatedLength(x), gradF, h, Jh, g: [...ramps.g, sum / N - 1], Jg: [...ramps.Jg, row], hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
+			return { f: accumulatedLength(x), gradF, h, Jh, g: [...g, sum / N - 1], Jg: [...Jg, row], hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
 		}
 
 		const prior = priorRows(x);
@@ -631,7 +662,7 @@ export function solveAlignmentProblem({
 		// the largest residual in tolerance units: at most one, every point is
 		// within its tolerance, which is the adjustment's own notion of done
 		const residualMax = r.reduce((worst, value) => Math.max(worst, Math.abs(value)), 0);
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, residualJacobian: Jr, residualMax, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		return { f, gradF, h, Jh, g, Jg, residualJacobian: Jr, residualMax, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	/**
@@ -740,6 +771,9 @@ export function solveAlignmentProblem({
 
 		const built = realise(x);
 		const h = [...equalityResiduals(built), ...extraResiduals(x)];
+		// the one-sided point rows are differenced with the equalities: they
+		// read the same projection
+		const gBound = boundResiduals(built);
 		// Before any derivative work: a point that cannot be projected has to
 		// surface as itself, not as a differencing failure three frames later.
 		// This costs nothing - the residuals are needed below anyway.
@@ -751,7 +785,7 @@ export function solveAlignmentProblem({
 			relative: 1e-4,
 			residual: (probe) => {
 				const probed = realise(probe);
-				const base = [...equalityResiduals(probed), ...extraResiduals(probe)];
+				const base = [...equalityResiduals(probed), ...extraResiduals(probe), ...boundResiduals(probed)];
 				return objective === "points" ? [...base, ...softResiduals(probed)] : base;
 			},
 		});
@@ -763,18 +797,20 @@ export function solveAlignmentProblem({
 		scaleEqualityRows(h, Jh);
 		// exact and free: the ramp rule reads variables, not geometry
 		const ramps = rampRows(x);
+		const g = [...ramps.g, ...gBound];
+		const Jg = [...ramps.Jg, ...jacobian.J.slice(h.length, h.length + gBound.length)];
 
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
-			return { f: accumulatedLength(x), gradF, h, Jh, g: ramps.g, Jg: ramps.Jg };
+			return { f: accumulatedLength(x), gradF, h, Jh, g, Jg };
 		}
 
 		const prior = priorRows(x);
-		const Jr = [...jacobian.J.slice(h.length), ...prior.Jr];
+		const Jr = [...jacobian.J.slice(h.length + gBound.length), ...prior.Jr];
 		const rAll = [...r, ...prior.r];
 		const f = 0.5 * rAll.reduce((sum, value) => sum + value * value, 0);
 		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * rAll[i], 0));
-		return { f, gradF, h, Jh, g: ramps.g, Jg: ramps.Jg, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		return { f, gradF, h, Jh, g, Jg, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	// The solve runs in scaled coordinates. A length in metres and a curvature
@@ -879,6 +915,7 @@ export function solveAlignmentProblem({
 	}
 	let finalEquality = null;
 	let finalSoft = null;
+	let finalBound = null;
 	if (built !== null && inadmissible.length === 0) {
 		// Guarded even though inadmissiblePoints has just projected every one of
 		// them. That check and these residuals are two passes over the same
@@ -889,10 +926,12 @@ export function solveAlignmentProblem({
 		try {
 			finalEquality = equalityResiduals(built);
 			finalSoft = softResiduals(built);
+			finalBound = boundResiduals(built);
 		} catch (caught) {
 			if (!(caught instanceof AlignmentSqpSolverError)) throw caught;
 			finalEquality = null;
 			finalSoft = null;
+			finalBound = null;
 			inadmissible.push(Object.freeze({
 				name: caught.detail?.pointName ?? null,
 				role: caught.detail?.role ?? null,
@@ -950,6 +989,14 @@ export function solveAlignmentProblem({
 			hardPointResiduals: Object.freeze(hardPoints.map((point, i) => Object.freeze({
 				name: point.name,
 				residual: finalEquality?.[3 + i] ?? null,
+			}))),
+			// the one-sided Zwangspunkte: the violation in metres, positive where
+			// the rule is broken, negative by the slack where it holds
+			boundPointResiduals: Object.freeze(boundPoints.map((point, i) => Object.freeze({
+				name: point.name,
+				enforcement: point.enforcement,
+				target: point.target,
+				violation: finalBound?.[i] ?? null,
 			}))),
 			softOutsideTolerance: finalSoft
 				? finalSoft.filter((value) => Math.abs(value) > 1).length

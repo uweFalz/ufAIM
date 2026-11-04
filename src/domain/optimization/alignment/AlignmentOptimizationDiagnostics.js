@@ -58,6 +58,7 @@ export function evaluateAlignmentOptimizationProblem({
 
 	const soft = evaluated.filter((p) => p.enforcement === "soft");
 	const hard = evaluated.filter((p) => p.enforcement === "hard");
+	const bound = evaluated.filter((p) => p.enforcement === "at-least" || p.enforcement === "at-most");
 	const unprojected = evaluated.filter((p) => !p.projected);
 	// A point with no foot point at all and one that fell onto an extension of
 	// the alignment are both unscoreable, and they are not the same problem: the
@@ -112,6 +113,11 @@ export function evaluateAlignmentOptimizationProblem({
 			total: evaluated.length,
 			soft: soft.length,
 			hard: hard.length,
+			bound: bound.length,
+			// one-sided points broken beyond their tolerance, by name and by how much
+			boundViolated: Object.freeze(bound.filter((p) => p.projected && !p.met).map((p) => Object.freeze({
+				name: p.name, enforcement: p.enforcement, target: p.target, offset: p.offset, violation: p.violation,
+			}))),
 			unprojected: unprojected.length,
 			extrapolated: extrapolated.length,
 			extrapolatedPoints: Object.freeze(extrapolated.map((p) => Object.freeze({

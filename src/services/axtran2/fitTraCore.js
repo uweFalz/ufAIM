@@ -9,7 +9,8 @@
 // The TRA is the start alignment and, unless endPose gives the connecting
 // alignment's pose, the end pose: its first element's length is held, every
 // other length and every arc curvature is free. Survey points are soft
-// residuals in units of their tolerance; Zwangspunkte are equalities on the
+// residuals in units of their tolerance; Zwangspunkte are equalities or, as
+// "min"/"max" in the list, one-sided rules on the
 // lateral offset. Everything is computed in a local frame at the file's
 // start and translated back, so the solver never sees a 5 000 km coordinate.
 
@@ -24,14 +25,14 @@ import { createFootMemory } from "../../domain/optimization/alignment/AlignmentP
 import { createAlignmentPoseJacobian } from "../../domain/optimization/alignment/AlignmentPoseJacobian.js";
 import { createAlignmentVariableCodec } from "../../domain/optimization/alignment/AlignmentVariableCodec.js";
 import { createAlignmentConstraintBuilder } from "../../domain/optimization/alignment/AlignmentConstraintBuilder.js";
-import { createAlignmentResidualBuilder } from "../../domain/optimization/alignment/AlignmentResidualBuilder.js";
+import { createAlignmentResidualBuilder, boundViolation } from "../../domain/optimization/alignment/AlignmentResidualBuilder.js";
 import { createAlignmentOptimizationProblem } from "../../domain/optimization/alignment/AlignmentOptimizationProblem.js";
 import { createIntrinsicMetricContext } from "../../domain/optimization/alignment/MetricContext.js";
 import { solveAlignmentProblem } from "../../domain/optimization/alignment/AlignmentSQPSolver.js";
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.5";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.6";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -70,7 +71,7 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  * @param {Uint8Array} input.bytes           the TRA file
  * @param {string} [input.name]              its name, for the report
  * @param {Array|string} input.points        survey points [{ name, x, y, tolerance? }] or the list's text
- * @param {Array|string} [input.zwang]       Zwangspunkte [{ name, x, y, distance, tolerance? }] or text
+ * @param {Array|string} [input.zwang]       Zwangspunkte [{ name, x, y, distance, tolerance?, enforcement? }] or text; enforcement "hard" (default), "at-least" or "at-most"
  * @param {number} [input.tolerance]         default point tolerance, metres (0.15)
  * @param {number} [input.zwangTolerance]    scale of a Zwangspunkt's residual, metres (0.01)
  * @param {number|null} [input.speedKmh]     design speed; null picks the fastest Hauptbahn profile the file admits
@@ -154,7 +155,7 @@ export async function fitTraFromBytes({
 	};
 	const problemPoints = [
 		...surveyed.filter((p) => admitted(p, "measured")).map((p) => ({ name: p.name, x: p.x - origin.x, y: p.y - origin.y, target: 0, tolerance: p.tolerance ?? tolerance, enforcement: "soft", kind: "measured" })),
-		...zwangspunkte.filter((z) => admitted(z, "zwangspunkt")).map((z) => ({ name: z.name, x: z.x - origin.x, y: z.y - origin.y, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, enforcement: "hard", kind: "zwangspunkt" })),
+		...zwangspunkte.filter((z) => admitted(z, "zwangspunkt")).map((z) => ({ name: z.name, x: z.x - origin.x, y: z.y - origin.y, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, enforcement: z.enforcement ?? "hard", kind: "zwangspunkt" })),
 	];
 	if (problemPoints.filter((p) => p.enforcement === "soft").length === 0) error("NO_POINTS", `every survey point lies beyond the start alignment or within ${margin.toFixed(1)} m of its ends`);
 	const profile = chooseProfile(elements, { cantMm, sourceName: loaded.name, speedKmh });
@@ -164,7 +165,8 @@ export async function fitTraFromBytes({
 			endPose,
 			elementSequence: codec.elementSequence,
 			minimumElementLength: elementFloor,
-			hardPoints: zwangspunkte.map((z) => ({ name: z.name })),
+			// the equalities; a one-sided Zwangspunkt is an inequality and declares itself through the residuals
+			hardPoints: zwangspunkte.filter((z) => (z.enforcement ?? "hard") === "hard").map((z) => ({ name: z.name })),
 			heldPoses: heldPoses.map((h) => ({ ...h, ...(h.x !== undefined ? { x: h.x - origin.x } : {}), ...(h.y !== undefined ? { y: h.y - origin.y } : {}) })),
 			elementKinds: Object.fromEntries(elements.map((e) => [e.id, e.type])),
 			design: profile.design,
@@ -218,14 +220,16 @@ export async function fitTraFromBytes({
 	};
 	const excludedNames = new Set(excluded.map((e) => e.name));
 	const rows = [...surveyed.map((p) => ({ ...p, target: 0, tolerance: p.tolerance ?? tolerance, kind: excludedNames.has(p.name) ? "excluded" : "measured" })),
-		...zwangspunkte.map((z) => ({ ...z, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, kind: "zwangspunkt" }))].map((p) => {
+		...zwangspunkte.map((z) => ({ ...z, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, kind: "zwangspunkt", enforcement: z.enforcement ?? "hard" }))].map((p) => {
 		const before = offsetOn(fileAlignment, p);
 		const after = offsetOn(fittedAlignment, p);
 		const residual = after.offset === null ? null : after.offset - p.target;
+		// a one-sided Zwangspunkt is within when it is not violated beyond its tolerance
+		const violation = residual === null ? null : boundViolation(p.enforcement, p.target, after.offset);
 		return Object.freeze({
-			name: p.name, kind: p.kind, x: p.x, y: p.y, target: p.target, tolerance: p.tolerance,
+			name: p.name, kind: p.kind, enforcement: p.enforcement ?? "soft", x: p.x, y: p.y, target: p.target, tolerance: p.tolerance,
 			station: after.station, offset: after.offset, offsetBefore: before.offset, residual,
-			within: residual === null ? null : Math.abs(residual) <= p.tolerance,
+			within: residual === null ? null : violation === null ? Math.abs(residual) <= p.tolerance : violation <= p.tolerance,
 		});
 	});
 
@@ -301,7 +305,7 @@ export async function fitTraFromBytes({
 		order: orderReport,
 		fit: Object.freeze({
 			rms: d.softResidualRms, outsideTolerance: d.softOutsideTolerance, endPoseDistance: d.endPoseDistance,
-			hardPoints: d.hardPointResiduals, heldPoses: d.heldPoseResiduals ?? null, lengthChange: sumAfter - sumBefore,
+			hardPoints: d.hardPointResiduals, boundPoints: d.boundPointResiduals ?? [], heldPoses: d.heldPoseResiduals ?? null, lengthChange: sumAfter - sumBefore,
 		}),
 		elements: Object.freeze(elements.map((e, i) => Object.freeze({
 			id: e.id, type: e.type, family: e.family ?? null, held: Boolean(e.held),
