@@ -32,7 +32,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.6";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.7";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -141,7 +141,17 @@ export async function fitTraFromBytes({
 	const planEnd = poseOf(fileAlignment, fileAlignment.arcLength);
 	const shortBy = endPoseGiven === null ? 0 : (endPose.x - planEnd.x) * Math.cos(planEnd.theta) + (endPose.y - planEnd.y) * Math.sin(planEnd.theta);
 	const margin = Math.min(0.25 * fileAlignment.arcLength, Math.max(0, 1.5 * shortBy));
-	const startFeet = createFootMemory({ samples: 400, refineSteps: 40 });
+	// A station given with a point is a hint, in the file's chainage: the
+	// foot is searched from there, not for the nearest. Each projector of
+	// this fit is seeded with it on the start alignment.
+	const hinted = [...surveyed, ...zwangspunkte].filter((p) => p.station !== undefined);
+	for (const p of hinted) {
+		if (!Number.isFinite(p.station)) error("INVALID_STATION", `point "${p.name}": the station ${p.station} is not a number`);
+		const s = p.station - startStation;
+		if (s < 0 || s > fileAlignment.arcLength) error("STATION_OUTSIDE", `point "${p.name}": station ${p.station.toFixed(3)} lies outside the alignment, which runs from ${startStation.toFixed(3)} to ${(startStation + fileAlignment.arcLength).toFixed(3)}`);
+	}
+	const seeded = (memory) => { for (const p of hinted) memory.seed(fileAlignment, p.x - origin.x, p.y - origin.y, p.station - startStation); return memory; };
+	const startFeet = seeded(createFootMemory({ samples: 400, refineSteps: 40 }));
 	const excluded = [];
 	const admitted = (p, kind) => {
 		const f = startFeet.project(fileAlignment, p.x - origin.x, p.y - origin.y);
@@ -184,7 +194,7 @@ export async function fitTraFromBytes({
 			...(e.type === "arc" ? { curvature: Number.isFinite(patch.curvature) ? patch.curvature : e.curvature } : {}),
 		};
 	});
-	const feet = createFootMemory({ samples: 400, refineSteps: 40 });
+	const feet = seeded(createFootMemory({ samples: 400, refineSteps: 40 }));
 	const buildAlignment = (overlay) => {
 		const els = materialise(overlay);
 		const alignment = buildProductionAlignment({ elements: els, startPose, deps });
@@ -212,7 +222,7 @@ export async function fitTraFromBytes({
 	const fittedChain = chainOf(fitted);
 
 	// the residuals, before and after, in the kernel's frame: offset left positive
-	const reportFeet = createFootMemory({ samples: 400, refineSteps: 40 });
+	const reportFeet = seeded(createFootMemory({ samples: 400, refineSteps: 40 }));
 	const offsetOn = (alignment, p) => {
 		const f = reportFeet.project(alignment, p.x - origin.x, p.y - origin.y);
 		const extrapolated = f.clamped && Math.abs(f.u ?? 0) > 1e-3;
@@ -229,6 +239,8 @@ export async function fitTraFromBytes({
 		return Object.freeze({
 			name: p.name, kind: p.kind, enforcement: p.enforcement ?? "soft", x: p.x, y: p.y, target: p.target, tolerance: p.tolerance,
 			station: after.station, offset: after.offset, offsetBefore: before.offset, residual,
+			// what the list said beside the coordinates: the hint and the remark
+			stationGiven: p.station ?? null, remark: p.remark ?? null,
 			within: residual === null ? null : violation === null ? Math.abs(residual) <= p.tolerance : violation <= p.tolerance,
 		});
 	});
@@ -297,7 +309,7 @@ export async function fitTraFromBytes({
 		version: FIT_TRA_VERSION,
 		input: Object.freeze({
 			tra: name, elements: elements.length, free: codec.freeNames.length, points: surveyed.length - excluded.length, zwangspunkte: zwangspunkte.length,
-			excludedPoints: Object.freeze(excluded), endMargin: margin,
+			excludedPoints: Object.freeze(excluded), endMargin: margin, stationHints: hinted.length,
 			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", order: orderReport?.order ?? "points", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
 			stationEquations: loaded.stationEquations, mergedRecords: loaded.mergedRecords, kinks: loaded.kinks,
 		}),

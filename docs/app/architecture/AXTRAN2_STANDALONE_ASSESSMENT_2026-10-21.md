@@ -25,6 +25,8 @@ und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 > Mindestabstand (2026-11-04): Zwangspunkte mit Art `=`, `min`, `max` und
 > Seite als Buchstabe (`L 2.20`); `min`/`max` laufen als Ungleichung durch
 > den Löser. Gemessen auf der Eifel, siehe AXTRAN2_DEMO_ADAPTER.
+>
+> Station und Bemerkung (2026-11-04): die Punktliste nennt per Kopfzeile eine Station als Hinweis für den Fußpunkt (Schleifen) und eine Bemerkung, die bis in Bericht, Residuenliste und App-Tabelle durchgereicht wird; siehe `AXTRAN2_DEMO_ADAPTER_2026-10-20.md`.
 
 ## Urteil
 

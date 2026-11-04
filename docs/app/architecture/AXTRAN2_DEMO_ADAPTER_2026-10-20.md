@@ -153,9 +153,47 @@ braucht ebenso lange oder länger. Ein Punkt 0,3 m gegen das Aufmaß zu
 schieben lässt Punkte außerhalb der Toleranz, und dann greift der
 „within_tolerance"-Halt nicht mehr.
 
-Nicht gebaut: eine Station als Hinweis für Schleifen, eine Bemerkung je
-Punkt, das Formular in der App statt der Datei. Der Beobachtungsweg
+Nicht gebaut: das Formular in der App statt der Datei. Der Beobachtungsweg
 (`tools/axtran2/pointObservationAdapter.mjs`) nimmt weiter keine Regel aus
 der Quelle an; eine Liste mit `Art` weist er dort als Abweichung des
 Lesers ab, wie zuvor eine mit Toleranzvorgabe.
+
+## Station und Bemerkung (2026-11-04)
+
+Zwei weitere Spalten, die eine Kopfzeile nennen darf, für Aufmaß wie
+Zwangspunkte: `Station` und `Bemerkung`. Ohne Kopfzeile gibt es sie nicht,
+weil die vierte Zahl einer Zeile sonst nicht von der Toleranz zu
+unterscheiden wäre.
+
+Die Station ist ein Hinweis, keine Messung, in der Kilometrierung der
+Datei. Der Fußpunkt-Speicher (`AlignmentPointProjection.js`, `seed`) wird
+mit ihr vorbelegt: die erste Projektion sucht per Newton von dort aus statt
+mit dem Scan nach dem nächsten Fuß. Das ist für eine Trasse gedacht, die
+einen Punkt zweimal passiert und deren nächster Fuß auf der falschen
+Passage liegt. Ein Hinweis, der weiter als Newtons Fenster (200 m) vom
+wahren Fuß entfernt ist, wird nicht befolgt; dann läuft der Scan wie ohne
+Hinweis, und die CLI meldet es (`the hint did not take`). Eine Station
+außerhalb der Trasse wird abgewiesen (`STATION_OUTSIDE`).
+
+Die Bemerkung wird ungelesen durchgereicht: in die Zeile des Berichts
+(`remark`, daneben `stationGiven`), in die Residuenliste (letzte Spalte,
+Semikolon durch Komma ersetzt) und, wenn eine Liste eine trägt, als Spalte
+der App-Tabelle.
+
+Gemessen auf dem Eifel-Plan (129 Punkte, Z1 `= L 2,000`, Endpose gegeben):
+
+| Liste | Iterationen | rms | Fuß Z1 |
+|---|---|---|---|
+| ohne Station | 189 | 0,178 | 990,909 |
+| Station 990,9 | 173 | 0,208 | 990,906 |
+| Station 400 (falsch) | 189 | 0,178 | 990,908, Hinweis nicht befolgt |
+| Station 9999 | abgewiesen | | |
+
+Der richtige Hinweis trifft denselben Fuß wie der Scan, der Fit endet aber
+an einem anderen `within_tolerance`-Halt: der erste Fuß aus Newton ist auf
+1e-9 m genau, der aus dem Scan auf das, was 400 Stützstellen und 40
+Verfeinerungen hergeben, und der SQP-Weg trennt sich an diesem Unterschied.
+Beide Enden haben 0 Punkte außerhalb; der Halt nimmt das erste, das genügt.
+Die Eifel-Linie hat keine Schleife, der eigentliche Nutzen des Hinweises
+ist hier also nicht messbar, nur sein Preis: keiner.
 

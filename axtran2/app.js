@@ -116,12 +116,13 @@ function show({ report, csv }) {
 	const table = el("residuals");
 	table.replaceChildren();
 	const head = document.createElement("tr");
-	for (const h of ["Punkt", "Station", "vorher [m]", "nachher [m]", "Residuum [m]", "innerhalb"]) { const th = document.createElement("th"); th.textContent = h; head.append(th); }
+	const remarks = report.points.some((p) => p.remark);
+	for (const h of ["Punkt", "Station", "vorher [m]", "nachher [m]", "Residuum [m]", "innerhalb", ...(remarks ? ["Bemerkung"] : [])]) { const th = document.createElement("th"); th.textContent = h; head.append(th); }
 	table.append(head);
 	const rows = report.points.slice(0, 40);
 	for (const p of rows) {
 		const tr = document.createElement("tr");
-		for (const v of [p.name + (p.kind === "zwangspunkt" ? " (Z)" : p.kind === "excluded" ? " (draußen)" : ""), p.station === null ? "–" : fmt(p.station, 1), fmt(p.offsetBefore), fmt(p.offset), fmt(p.residual), p.within === null ? "–" : p.within ? "ja" : "nein"]) { const td = document.createElement("td"); td.textContent = String(v); tr.append(td); }
+		for (const v of [p.name + (p.kind === "zwangspunkt" ? " (Z)" : p.kind === "excluded" ? " (draußen)" : ""), p.station === null ? "–" : fmt(p.station, 1), fmt(p.offsetBefore), fmt(p.offset), fmt(p.residual), p.within === null ? "–" : p.within ? "ja" : "nein", ...(remarks ? [p.remark ?? ""] : [])]) { const td = document.createElement("td"); td.textContent = String(v); tr.append(td); }
 		table.append(tr);
 	}
 	el("more").textContent = report.points.length > rows.length ? `… und ${report.points.length - rows.length} weitere in residuen.csv.` : "";

@@ -22,6 +22,25 @@ test("a remembered foot is found again by Newton while the geometry moves a litt
 	assert.equal(feet.scans, 1, "a metre's move is Newton's, not a scan");
 });
 
+test("a seeded foot is found by Newton from the station told, and a hint too far off is not followed", () => {
+	const alignment = build(TRUE_LENGTHS, TRUE_CURVATURES);
+	const at = 0.6 * alignment.arcLength;
+	const pose = alignment.poseAt(at);
+	const point = { x: pose.p.x - 0.05 * pose.t.y, y: pose.p.y + 0.05 * pose.t.x };
+	const feet = createFootMemory();
+	assert.equal(feet.seed(alignment, point.x, point.y, at - 30), true);
+	assert.equal(feet.seed(alignment, point.x, point.y, alignment.arcLength + 1), false, "a station off the alignment seeds nothing");
+	const hinted = feet.project(alignment, point.x, point.y);
+	assert.equal(feet.scans, 0, "the hint spares the scan");
+	assert.ok(Math.abs(hinted.s - at) < 1e-6 && Math.abs(hinted.q - 0.05) < 1e-9, `foot ${hinted.s}/${hinted.q}`);
+	// a hint beyond Newton's window: the scan runs and finds the nearest foot
+	const misled = createFootMemory();
+	misled.seed(alignment, point.x, point.y, Math.max(0, at - 400));
+	const found = misled.project(alignment, point.x, point.y);
+	assert.equal(misled.scans, 1);
+	assert.ok(Math.abs(found.s - at) < 1e-6, `foot ${found.s}`);
+});
+
 test("a memory made on a wreck is not trusted: a station that moved far means a full scan", () => {
 	// The first attempt of a solve may leave the geometry hundreds of metres
 	// from where it started; the next evaluation, at the start again, reads
