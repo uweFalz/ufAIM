@@ -22,6 +22,9 @@ und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 > in Metern. Die Rangfolge läuft über `solveAlignmentLexicographic`; der
 > Bericht nennt jede Phase und was die Punkte an Länge kosten. Zahlen in
 > `AXTRAN2_LEXICOGRAPHIC_CORPUS_2026-09-10.md`, Abschnitt „In the adapter and the app".
+> Mindestabstand (2026-11-04): Zwangspunkte mit Art `=`, `min`, `max` und
+> Seite als Buchstabe (`L 2.20`); `min`/`max` laufen als Ungleichung durch
+> den Löser. Gemessen auf der Eifel, siehe AXTRAN2_DEMO_ADAPTER.
 
 ## Urteil
 

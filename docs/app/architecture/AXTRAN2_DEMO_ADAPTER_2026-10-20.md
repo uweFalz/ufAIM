@@ -113,3 +113,49 @@ keine Überhöhung; dort sagt der Bericht, welcher Fehlbetrag bei V ohne
 Nicht beurteilt: der Überhöhungsüberschuss (u > u0) und die Rampen gegen
 die getragene statt der angenommenen Überhöhung. Beides braucht Zahlen,
 die das Profil nicht erklärt, und bleibt deshalb unerklärt.
+
+## Der Mindestabstand (2026-11-04)
+
+Ein Zwangspunkt wird auf drei Arten gehalten. `=` ist die Gleichung: die
+Achse geht genau im Sollabstand vorbei (Nachbargleisachse). `min` ist der
+Mindestabstand, `max` der Höchstabstand: die Regel, die ein Mast, ein
+Pfeiler oder eine Bahnsteigkante tatsächlich stellt. Die Liste sagt es in
+einer Spalte `Art` oder vor dem Abstand (`>= L 2.20`); die Seite steht als
+Vorzeichen (links positiv) oder als Buchstabe (`L 2.20`, `R 2.20`). Eine
+Liste ohne Regel trägt keine; der Adapter hält sie dann als Gleichung.
+
+Im Kern ist der Mindestabstand eine Ungleichung `g <= 0` auf dem
+Seitenabstand, neben der Rampenregel und dem Korridor, nicht eine
+Gleichung: er kostet keinen Freiheitsgrad, und ein Punkt mit Spiel kostet
+den Fit nichts. Die Verletzung steht in Metern im Bericht
+(`fit.boundPoints[].violation`, negativ um das Spiel), die Gatestufe 0
+zählt sie wie eine verletzte Gleichung. Die Residuenliste trägt die Regel
+in der Spalte `rule`, `within` ist einseitig.
+
+Eifel, `plan.TRA` aus der Vorführung, 129 Punkte, V 80 km/h, derselbe
+Punkt Z1 bei Station 990,9, 2,00 m links der Achse:
+
+| Zwang | Urteil | Iterationen | s | rms | außerhalb | Z1 |
+|---|---|---|---|---|---|---|
+| keiner | stationary/within_tolerance | 172 | 3,0 | 0,150 | 0 | – |
+| `= 2,00` | stationary/within_tolerance | 189 | 2,9 | 0,178 | 0 | 2,0000 |
+| `min 1,70` | stationary/within_tolerance | 232 | 3,1 | 0,147 | 0 | 2,0087, 0,309 m Spiel |
+| `min 2,30` | max_iterations | 1000 | 43,2 | 0,278 | 2 | 2,3000, an der Grenze |
+| `= 2,30` | stationary | 458 | 20,7 | 0,272 | 2 | 2,3000 |
+| `max 1,70` | stationary | 733 | 24,2 | 0,348 | 5 | 1,7000, an der Grenze |
+| `= 1,70` | max_iterations | 1000 | 47,7 | 0,349 | 5 | 1,7000 |
+
+Mit Spiel liegt das Ergebnis beim freien Fit (rms 0,147 gegen 0,150).
+Ohne Spiel wird die Grenze auf den Zehntelmillimeter gehalten, und die
+Punkte zahlen dafür. Dass die geschobenen Fälle lange laufen, liegt an der
+Aufgabe, nicht an der Ungleichung: die Gleichung an derselben Stelle
+braucht ebenso lange oder länger. Ein Punkt 0,3 m gegen das Aufmaß zu
+schieben lässt Punkte außerhalb der Toleranz, und dann greift der
+„within_tolerance"-Halt nicht mehr.
+
+Nicht gebaut: eine Station als Hinweis für Schleifen, eine Bemerkung je
+Punkt, das Formular in der App statt der Datei. Der Beobachtungsweg
+(`tools/axtran2/pointObservationAdapter.mjs`) nimmt weiter keine Regel aus
+der Quelle an; eine Liste mit `Art` weist er dort als Abweichung des
+Lesers ab, wie zuvor eine mit Toleranzvorgabe.
+

@@ -120,6 +120,8 @@ export function createAlignmentOptimizationProblem({
 			derivedVariables: codec.derivedCount,
 			endPoseEqualities: 3,
 			hardenedPoints: hardFromPoints.size,
+			// one-sided Zwangspunkte: inequalities, so they cost no degree of freedom
+			boundedPoints: residuals.boundPoints?.length ?? 0,
 			equalities: equalityCount,
 			degreesOfFreedom,
 			sequenceBounds: constraints.bounds.length,

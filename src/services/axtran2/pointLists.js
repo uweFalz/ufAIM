@@ -16,13 +16,58 @@
 //
 // The distance of a Zwangspunkt is the lateral offset the axis has to keep
 // from the point, signed in the kernel's frame: left of the direction of
-// travel positive, right negative.
+// travel positive, right negative. A side letter says the same in the
+// surveyor's words: "L 2.20" is +2.20, "R 2.20" is -2.20.
+//
+// How the distance is held is the rule ("Art"): "=" exactly (the default,
+// a neighbouring track axis), "min" at least (a mast, a pier), "max" at most
+// (a platform edge the axis must not drift away from). The rule may stand in
+// its own column or in front of the distance, ">= L 2.20". A one-sided rule
+// needs a side, so its distance must not be zero. A list that states no rule
+// carries none: the default is the problem's to declare, not the file's.
 
 const NAME_HEADERS = ["name", "nr", "punkt", "pkt", "id", "nummer", "punktnummer"];
 const EAST_HEADERS = ["e", "east", "easting", "rechtswert", "rw", "y", "x"];
 const NORTH_HEADERS = ["n", "north", "northing", "hochwert", "hw"];
 const DISTANCE_HEADERS = ["abstand", "distance", "dist", "d", "a", "soll", "target", "q"];
 const TOLERANCE_HEADERS = ["toleranz", "tolerance", "tol", "t", "sigma"];
+const RULE_HEADERS = ["art", "regel", "bedingung", "relation", "rule", "kind", "typ", "type"];
+
+/** the rule words, as the field writes them, to the kernel's enforcement */
+const RULES = {
+	"": "hard", "=": "hard", "==": "hard", "genau": "hard", "gleich": "hard", "exakt": "hard", "exact": "hard", "eq": "hard", "hard": "hard",
+	">=": "at-least", "≥": "at-least", ">": "at-least", "min": "at-least", "mind": "at-least", "mindestens": "at-least", "least": "at-least", "at-least": "at-least", "atleast": "at-least",
+	"<=": "at-most", "≤": "at-most", "<": "at-most", "max": "at-most", "höchstens": "at-most", "hoechstens": "at-most", "most": "at-most", "at-most": "at-most", "atmost": "at-most",
+};
+export const ZWANG_RULES = Object.freeze(["hard", "at-least", "at-most"]);
+
+function ruleOf(cell, where) {
+	const key = String(cell ?? "").trim().toLowerCase();
+	const rule = RULES[key];
+	if (rule === undefined) error("INVALID_RULE", `${where}: the rule "${cell}" is not one of =, min, max`);
+	return rule;
+}
+
+/**
+ * A Zwangspunkt's distance cell: a signed number, or a number with a side
+ * letter (L left, R right) before or after it, with an optional rule in front.
+ * Returns { distance, rule } with rule null where the cell names none.
+ */
+function parseDistance(cell, where) {
+	const text = String(cell ?? "").trim();
+	const m = /^(>=|<=|≥|≤|min|max)?\s*(l|r|links|rechts)?\s*([-+]?[\d.,]+)\s*(l|r|links|rechts)?$/i.exec(text);
+	if (!m) {
+		const plain = toNumber(text);
+		if (Number.isNaN(plain)) error("INVALID_DISTANCE", `${where}: no readable distance: "${cell}"`);
+		return { distance: plain, rule: null };
+	}
+	const value = toNumber(m[3]);
+	if (Number.isNaN(value)) error("INVALID_DISTANCE", `${where}: no readable distance: "${cell}"`);
+	const side = (m[2] ?? m[4] ?? "").toLowerCase();
+	if (side && value < 0) error("INVALID_DISTANCE", `${where}: a distance with a side letter is not signed: "${cell}"`);
+	const distance = side ? (side.startsWith("r") ? -value : value) : value;
+	return { distance, rule: m[1] ? ruleOf(m[1], where) : null };
+}
 
 export class PointListError extends Error {
 	constructor(code, message, detail = null) {
@@ -58,14 +103,17 @@ function toNumber(cell) {
 	return Number.isFinite(value) ? value : NaN;
 }
 
+const DISTANCE_CELL = /^(>=|<=|≥|≤|min|max)?\s*(l|r|links|rechts)?\s*[-+]?[\d.,]+\s*(l|r|links|rechts)?$/i;
+
 function isHeader(cells) {
-	return cells.length >= 2 && cells.filter((c) => Number.isNaN(toNumber(c))).length >= 2;
+	// a distance with a side letter or a rule in front is a value, not a word
+	return cells.length >= 2 && cells.filter((c) => Number.isNaN(toNumber(c)) && !DISTANCE_CELL.test(String(c).trim())).length >= 2;
 }
 
 function columnsFromHeader(cells, kind) {
 	const lower = cells.map((c) => c.toLowerCase().replace(/[^a-zäöü_]/g, ""));
 	const find = (names) => lower.findIndex((h) => names.includes(h));
-	const columns = { name: find(NAME_HEADERS), tolerance: find(TOLERANCE_HEADERS) };
+	const columns = { name: find(NAME_HEADERS), tolerance: find(TOLERANCE_HEADERS), rule: kind === "zwang" ? find(RULE_HEADERS) : -1 };
 	const yAsEast = lower.includes("y") && lower.includes("x");
 	if (yAsEast) {
 		// Verm.esn order: Y is the Rechtswert, X the Hochwert
@@ -86,7 +134,7 @@ function columnsByOrder(cells, kind) {
 	const first = numeric[0] ? 0 : 1;
 	const needed = kind === "zwang" ? 3 : 2;
 	if (cells.length - first < needed) error("TOO_FEW_COLUMNS", `a ${kind === "zwang" ? "Zwangspunkt" : "point"} line needs ${needed} numbers: ${cells.join(" | ")}`);
-	const columns = { name: first === 1 ? 0 : -1, east: first, north: first + 1 };
+	const columns = { name: first === 1 ? 0 : -1, east: first, north: first + 1, rule: -1 };
 	let next = first + 2;
 	if (kind === "zwang") columns.distance = next++;
 	columns.tolerance = cells.length > next ? next : -1;
@@ -125,9 +173,16 @@ export function parsePointList(text, { kind = "points", axes = "en", tolerance =
 		const tol = cols.tolerance >= 0 ? toNumber(cells[cols.tolerance]) : NaN;
 		point.tolerance = Number.isNaN(tol) ? tolerance : tol;
 		if (kind === "zwang") {
-			const distance = toNumber(cells[cols.distance]);
-			if (Number.isNaN(distance)) error("INVALID_DISTANCE", `line ${i + 1}: the Zwangspunkt "${name}" has no readable distance`);
+			const where = `line ${i + 1}, Zwangspunkt "${name}"`;
+			const { distance, rule } = parseDistance(cells[cols.distance], where);
+			const column = cols.rule >= 0 ? ruleOf(cells[cols.rule], where) : null;
+			if (rule !== null && column !== null && rule !== column) error("INVALID_RULE", `${where}: the rule column says ${column} and the distance says ${rule}`);
+			// only a list that states a rule carries one; a plain list leaves
+			// the enforcement to whoever declares the problem
+			const enforcement = column ?? rule;
+			if (enforcement !== null && enforcement !== "hard" && distance === 0) error("INVALID_DISTANCE", `${where}: a one-sided rule needs a side, and a distance of 0 names none`);
 			point.distance = distance;
+			if (enforcement !== null) point.enforcement = enforcement;
 		}
 		out.push(Object.freeze(point));
 	}
@@ -136,9 +191,10 @@ export function parsePointList(text, { kind = "points", axes = "en", tolerance =
 
 /** residuals as the same kind of list, one line per point */
 export function formatResidualList(rows) {
-	const header = "name;easting;northing;station;offset;target;residual;tolerance;within";
+	const header = "name;easting;northing;station;offset;target;residual;tolerance;within;rule";
+	const rule = (r) => r.enforcement === "at-least" ? ">=" : r.enforcement === "at-most" ? "<=" : r.kind === "zwangspunkt" ? "=" : "";
 	const line = (r) => [r.name, r.x.toFixed(4), r.y.toFixed(4), r.station === null ? "" : r.station.toFixed(3),
 		r.offset === null ? "" : r.offset.toFixed(4), r.target.toFixed(4), r.residual === null ? "" : r.residual.toFixed(4),
-		r.tolerance.toFixed(4), r.within === null ? "" : (r.within ? "ja" : "nein")].join(";");
+		r.tolerance.toFixed(4), r.within === null ? "" : (r.within ? "ja" : "nein"), rule(r)].join(";");
 	return [header, ...rows.map(line)].join("\n") + "\n";
 }

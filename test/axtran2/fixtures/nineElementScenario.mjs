@@ -94,6 +94,11 @@ export function createNineElementScenario({
 	startLengths = [200, 95, 292, 86, 156, 84, 268, 76, 180],
 	startCurvatures = [1 / 660, -1 / 950],
 	hardPointNames = [],
+	// one-sided Zwangspunkte: { name, fraction, clearance, target, enforcement }
+	// places a point at that fraction of the truth's length, `clearance` left
+	// of the truth (right negative), and declares it at-least or at-most
+	// |target| on the side the target's sign names
+	boundPoints = [],
 	heldPoses = [],
 	// Tier 3, from a declared profile rather than from bare numbers. V = 100 km/h
 	// at 130 mm of cant gives a smallest radius of 453.9 m and, at the Ril
@@ -125,6 +130,17 @@ export function createNineElementScenario({
 			...(hardPointNames.includes(`M${i}`)
 				? { kind: "zwangspunkt", enforcement: "hard", target: 0 }
 				: {}),
+		});
+	}
+
+	for (const bound of boundPoints) {
+		const pose = truth.poseAt(truth.arcLength * bound.fraction);
+		points.push({
+			name: bound.name,
+			x: pose.p.x - bound.clearance * pose.t.y,
+			y: pose.p.y + bound.clearance * pose.t.x,
+			tolerance: bound.tolerance ?? 0.01,
+			kind: "zwangspunkt", enforcement: bound.enforcement, target: bound.target,
 		});
 	}
 

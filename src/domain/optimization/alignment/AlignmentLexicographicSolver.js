@@ -185,6 +185,11 @@ export function tierZeroReport(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
 	const worstHardPoint = Math.max(
 		0, ...(diagnostics.hardPointResiduals ?? []).map((point) => Math.abs(point.residual ?? Infinity))
 	);
+	// a one-sided Zwangspunkt is tier 0 too, but only its violation counts:
+	// slack is not an error
+	const worstBoundPoint = Math.max(
+		0, ...(diagnostics.boundPointResiduals ?? []).map((point) => point.violation ?? Infinity)
+	);
 	// A pose held at a joint is tier 0 as much as the end pose is: the turnout's
 	// tangent is a constraint of every phase, never an objective. Its heading is
 	// judged the way the end pose's is, as the drift it would accumulate over
@@ -201,7 +206,9 @@ export function tierZeroReport(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
 			? "end-pose heading"
 			: worstHardPoint > tolerance
 				? "hardened Zwangspunkt"
-				: worstHeldPose > tolerance ? "held pose" : null;
+				: worstBoundPoint > tolerance
+					? "one-sided Zwangspunkt"
+					: worstHeldPose > tolerance ? "held pose" : null;
 	return Object.freeze({
 		satisfied: failing === null,
 		failing,
@@ -212,6 +219,7 @@ export function tierZeroReport(diagnostics, tolerance = FEASIBILITY_TOLERANCE) {
 		headingRadians,
 		heading,
 		worstHardPoint,
+		worstBoundPoint,
 		worstHeldPose,
 	});
 }

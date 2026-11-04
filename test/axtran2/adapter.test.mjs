@@ -40,6 +40,18 @@ test("point lists are read as the field writes them", () => {
 	const zwang = parsePointList("Z1;2544200;5533000;-2.5\nZ2;2544300;5533100;0;0.005", { kind: "zwang", tolerance: 0.01 });
 	assert.deepEqual([zwang[0].distance, zwang[0].tolerance, zwang[1].distance, zwang[1].tolerance], [-2.5, 0.01, 0, 0.005]);
 	assert.throws(() => parsePointList("Z1;1;2", { kind: "zwang" }), (e) => e instanceof PointListError && e.code === "TOO_FEW_COLUMNS");
+	// the rule and the side, as the field writes them
+	const ruled = parsePointList("Nr;Y;X;Abstand;Art;Toleranz\nZ1;2544200;5533000;L 2,20;min;\nZ2;2544300;5533100;R 4.00;=;0.005\nZ3;2544400;5533200;-1.5;max;\nZ4;2544500;5533300;0;;", { kind: "zwang", tolerance: 0.01 });
+	assert.deepEqual(ruled.map((z) => [z.distance, z.enforcement, z.tolerance]), [[2.2, "at-least", 0.01], [-4, "hard", 0.005], [-1.5, "at-most", 0.01], [0, "hard", 0.01]]);
+	const inline = parsePointList("Z1 2544200 5533000 >=L2.2\nZ2 2544300 5533100 2.20R", { kind: "zwang" });
+	assert.throws(() => parsePointList("Z1 2544200 5533000 2.2\nZ3 2544400 5533200 mindestens", { kind: "zwang" }), (e) => e.code === "INVALID_DISTANCE");
+	assert.deepEqual(inline.map((z) => [z.distance, z.enforcement]), [[2.2, "at-least"], [-2.2, undefined]], "a list without a rule states none");
+	assert.equal(zwang[0].enforcement, undefined);
+	const H = "Nr;Y;X;Abstand;Art\n";
+	assert.throws(() => parsePointList(H + "Z1;1;2;0;min", { kind: "zwang" }), (e) => e.code === "INVALID_DISTANCE" && /names none/.test(e.message));
+	assert.throws(() => parsePointList(H + "Z1;1;2;>=2;max", { kind: "zwang" }), (e) => e.code === "INVALID_RULE");
+	assert.throws(() => parsePointList(H + "Z1;1;2;2;irgendwas", { kind: "zwang" }), (e) => e.code === "INVALID_RULE");
+	assert.throws(() => parsePointList("Z1;1;2;L -2", { kind: "zwang" }), (e) => e.code === "INVALID_DISTANCE");
 	assert.throws(() => parsePointList("A 1 2\nA 3 4"), /occurs twice/);
 	assert.throws(() => parsePointList("name;foo;bar\nA;1;2"), /no easting/);
 });
@@ -265,6 +277,37 @@ test("a perturbed TRA is fitted back onto points taken from the original, with a
 		assert.ok(Math.abs(back.elements[i].length - result.fitted[i].length) < 1e-6, `${back.elements[i].id} length`);
 	}
 	assert.ok(result.csv.startsWith("name;easting;northing;station;offset"), "the residual list");
+	assert.match(result.csv.split("\n")[0], /;rule$/);
+	assert.match(result.csv, /^Z1;.*;=$/m);
+});
+
+test("a one-sided Zwangspunkt runs through the adapter: slack costs nothing, a violation is paid for", async () => {
+	const [pointsText, zwangText] = await Promise.all([readFile(join(scratch, "aufmass.csv"), "utf8"), readFile(join(scratch, "zwangspunkte.csv"), "utf8")]);
+	const perturbedFile = join(scratch, "perturbed.TRA");
+	const [, zwangLine] = zwangText.trim().split("\n");
+	const [, e, n] = zwangLine.split(";");
+	// the same point, 3 m left of the axis the equality put there: at least
+	// 2.5 m is slack, at least 3.4 m moves the axis 0.4 m against the points
+	const slack = await fitTra({ tra: perturbedFile, points: pointsText, zwang: `name;easting;northing;abstand;art\nZ1;${e};${n};L 2.5;min\n`, tolerance: 0.15, maxIterations: 300 });
+	assert.ok(slack.report.verdict.ok, `${slack.report.verdict.status} ${slack.report.verdict.reason ?? ""}`);
+	assert.deepEqual(slack.report.fit.hardPoints, []);
+	assert.equal(slack.report.fit.boundPoints.length, 1);
+	assert.equal(slack.report.fit.boundPoints[0].enforcement, "at-least");
+	assert.ok(slack.report.fit.boundPoints[0].violation < 0, `slack ${-slack.report.fit.boundPoints[0].violation} m`);
+	const zs = slack.report.points.find((p) => p.name === "Z1");
+	assert.equal(zs.enforcement, "at-least");
+	assert.equal(zs.within, true);
+	assert.match(slack.csv, /^Z1;.*;ja;>=$/m);
+	const free = await fitTra({ tra: perturbedFile, points: pointsText, tolerance: 0.15, maxIterations: 300 });
+	assert.ok(Math.abs(free.report.fit.rms - slack.report.fit.rms) < 1e-3, `rms ${slack.report.fit.rms} against ${free.report.fit.rms} free`);
+
+	const pushed = await fitTra({ tra: perturbedFile, points: pointsText, zwang: `name;easting;northing;abstand;art\nZ1;${e};${n};L 3.4;min\n`, tolerance: 0.15, maxIterations: 300 });
+	assert.ok(pushed.report.verdict.ok, `${pushed.report.verdict.status} ${pushed.report.verdict.reason ?? ""}`);
+	const zp = pushed.report.points.find((p) => p.name === "Z1");
+	assert.ok(zp.offset >= 3.4 - 1e-5 && zp.offset < 3.45, `the axis keeps ${zp.offset} m, 3.4 asked`);
+	assert.ok(pushed.report.fit.boundPoints[0].violation <= 1e-6);
+	assert.ok(pushed.report.fit.rms > free.report.fit.rms, `rms ${pushed.report.fit.rms} against ${free.report.fit.rms} free`);
+	assert.ok(pushed.report.fit.endPoseDistance < 1e-6);
 });
 
 test("the priority order runs through the adapter and accounts for its phases", async () => {
