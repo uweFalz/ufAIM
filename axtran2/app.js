@@ -4,23 +4,39 @@
 // offered as downloads. No storage, no canonical truth, no network.
 
 import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
+import { runInWorker } from "../src/services/axtran2/workerRun.js";
 
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
 const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digits) : "–");
 
-let worker = null;
+let running = null;
 let ticker = null;
 let last = null;
-let abort = null;
 
 // the run is a worker; stopping it is terminating the worker, nothing in
 // the calculation has to cooperate. The page is told through the promise.
 function cancel() {
-	if (!worker) return;
-	worker.terminate();
-	worker = null;
-	abort?.(new Error("Abgebrochen."));
+	running?.cancel();
+}
+
+// the single-file build (tools/axtran2/bundle.mjs) carries the worker as
+// source text; the served app loads it as a module beside this file
+function createWorker() {
+	return window.__AXTRAN2_WORKER_SOURCE
+		? new Worker(URL.createObjectURL(new Blob([window.__AXTRAN2_WORKER_SOURCE], { type: "text/javascript" })))
+		: new Worker("./worker.js", { type: "module" });
+}
+
+// what went wrong with the worker, said so that the next step is clear
+function workerFailure(error) {
+	if (error?.code === "WORKER_NOT_LOADED") {
+		return `Das Rechenprogramm ließ sich nicht laden: der Server hat in ${error.attempts} Versuchen nicht alle Dateien geliefert. Gerechnet wurde nichts, der Plan ist unverändert. Noch einmal auf Optimieren, sonst die Seite neu laden.`;
+	}
+	if (error?.code === "WORKER_CRASHED") {
+		return `Der Rechenlauf ist abgestürzt: ${error.message}${error.where ? ` (${error.where})` : ""}. Der Plan ist unverändert.`;
+	}
+	return String(error?.message ?? error);
 }
 
 function endPoseFromFields() {
@@ -35,6 +51,8 @@ async function readText(input) { return input.files?.[0] ? input.files[0].text()
 
 async function run() {
 	const started = Date.now();
+	// before the files are read: a second click must not start a second run
+	el("run").disabled = true;
 	try {
 		const traFile = el("tra").files?.[0];
 		if (!traFile) throw new Error("Eine TRA-Datei fehlt.");
@@ -52,37 +70,40 @@ async function run() {
 			order: el("order").value === "budget" ? { budget: Number(el("budget").value) || 0 } : el("order").value,
 		};
 		const bytes = await traFile.arrayBuffer();
-		el("run").disabled = true;
 		el("cancel").classList.remove("hidden");
 		el("result").classList.add("hidden");
 		status("Rechnet …");
-		ticker = setInterval(() => status(`Rechnet … ${Math.round((Date.now() - started) / 1000)} s`), 1000);
-		worker?.terminate();
-		// the single-file build (tools/axtran2/bundle.mjs) carries the worker as
-		// source text; the served app loads it as a module beside this file
-		worker = window.__AXTRAN2_WORKER_SOURCE
-			? new Worker(URL.createObjectURL(new Blob([window.__AXTRAN2_WORKER_SOURCE], { type: "text/javascript" })))
-			: new Worker("./worker.js", { type: "module" });
+		let note = "";
+		ticker = setInterval(() => status(`Rechnet … ${Math.round((Date.now() - started) / 1000)} s${note}`), 1000);
+		running?.cancel();
 		const id = String(started);
-		const message = await new Promise((resolve, reject) => {
-			abort = reject;
-			worker.onmessage = (event) => (event.data.id === id ? resolve(event.data) : null);
-			worker.onerror = (event) => reject(new Error(event.message || "Der Rechenlauf ist abgestürzt."));
-			worker.postMessage({ id, bytes, name: traFile.name, points: pointsText, zwang: zwangText || [], options }, [bytes]);
+		// a worker whose script did not arrive has computed nothing: the start is
+		// repeated, each time with its own copy of the bytes (a post hands them over)
+		running = runInWorker({
+			create: createWorker,
+			attempts: 4,
+			pauseMs: 400,
+			job: () => {
+				const copy = bytes.slice(0);
+				return { message: { id, bytes: copy, name: traFile.name, points: pointsText, zwang: zwangText || [], options }, transfer: [copy] };
+			},
+			onRetry: ({ attempt, attempts }) => {
+				note = `, das Rechenprogramm lädt noch einmal (Versuch ${attempt} von ${attempts})`;
+				status(`Rechnet …${note}`);
+			},
 		});
+		const message = await running.promise;
 		clearInterval(ticker);
-		worker.terminate();
-		worker = null;
 		if (!message.ok) throw new Error(`${message.code}: ${message.message}`);
 		last = message;
 		show(message);
-		status(`Fertig nach ${fmt(message.seconds, 1)} s.`, "ok");
+		status(`Fertig nach ${fmt(message.seconds, 1)} s.${message.attempts > 1 ? ` Das Rechenprogramm lud erst im ${message.attempts}. Versuch.` : ""}`, "ok");
 	} catch (error) {
 		clearInterval(ticker);
-		const cancelled = error?.message === "Abgebrochen.";
-		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.` : String(error?.message ?? error), cancelled ? "info" : "error");
+		const cancelled = error?.code === "CANCELLED";
+		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.` : workerFailure(error), cancelled ? "info" : "error");
 	} finally {
-		abort = null;
+		running = null;
 		el("cancel").classList.add("hidden");
 		el("run").disabled = false;
 	}

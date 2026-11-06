@@ -283,3 +283,42 @@ und was die Datei kürzer oder enger hat, wird als Ausnahme übernommen und
 darf nicht kürzer werden. Drei Zwischengeraden liegen auf dieser Schranke
 (10,00 m, 18,60 m, 17,55 m). Ein Regelwerk für Bahnhofsgleise hat der
 Adapter nicht; das bleibt offen.
+
+## Der Ladefehler des Rechenprogramms (2026-11-06)
+
+Die ausgelieferte App (nicht die Einzeldatei) meldete gelegentlich beim
+ersten Lauf nur „Der Rechenlauf ist abgestürzt.“, ohne Grund. Gerechnet
+hatte sie da noch nichts. Der Worker ist ein Modul und holt sein Skript
+und 67 Module einzeln vom Server; kommt eine dieser Anfragen nicht an,
+stirbt er, bevor er rechnet, und die Seite bekommt ein Fehlerereignis ohne
+Text.
+
+Ausgelöst hat es der Testserver: `python3 -m http.server` nimmt höchstens
+5 wartende Verbindungen an und schließt nach jeder Antwort, der Browser
+öffnet 6 zugleich. Gemessen am Bahnhofsgleis, 60 Läufe ohne Cache: mit
+Warteschlange 5 stürzten 34 ab, mit Warteschlange 128 keiner. Im
+Serverprotokoll fehlte den abgestürzten Läufen jeweils eine Moduldatei.
+Die frühere Erklärung „Last durch die Testsuite“ war damit nur ein
+Begleitumstand: Last macht den Server langsamer, die Ursache ist die
+Warteschlange.
+
+Die App trennt das jetzt (`src/services/axtran2/workerRun.js`):
+
+- Fehlerereignis ohne Text, bevor der Worker `ready` gemeldet hat: das
+  Skript kam nicht an. Der Start wird wiederholt, bis zu vier Mal in allem,
+  mit wachsender Pause; jeder Versuch bekommt seine eigene Kopie der
+  TRA-Bytes. Die Statuszeile sagt es, und das Ergebnis nennt den Versuch.
+- Bleibt es dabei: „Das Rechenprogramm ließ sich nicht laden …“, mit dem
+  Hinweis, dass nichts gerechnet wurde und was zu tun ist.
+- Fehlerereignis mit Text, oder nach `ready`: der Rechenlauf selbst. Er
+  wird nicht wiederholt (ein langer Lauf startet nicht ungefragt neu) und
+  mit Text und Stelle gemeldet.
+
+Gegen denselben schwachen Server, 60 Läufe: 42 im ersten Anlauf, 17 nach
+dem zweiten bis vierten, einer gab nach vier Versuchen mit der klaren
+Meldung auf. Die Einzeldatei trägt den Worker als Text in sich und lädt
+nichts nach; dort kann der Fehler nicht entstehen.
+
+Nebenbei: der Knopf Optimieren wird jetzt gesperrt, bevor die Dateien
+gelesen werden. Vorher konnte ein zweiter Klick in dieser Lücke einen
+zweiten Lauf starten, und der erste blieb ohne Antwort hängen.
