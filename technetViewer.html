@@ -7,7 +7,11 @@
 		<style>
 			:root {
 				color-scheme: light;
-				font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+				/* system-ui first: San Francisco on macOS, Segoe UI on Windows. With
+				   only Apple names here, Chrome and Edge on Windows fell through to
+				   Arial for the title bar and the Inbox while the rest (system-ui)
+				   stood in Segoe UI. */
+				font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 				--glass: rgba(255,255,255,0.84);
 				--hairline: rgba(60,60,67,0.18);
 				--window: #f5f5f7;
@@ -528,28 +532,48 @@
 				margin: 0 auto;
 				height: auto;
 			}
+			/* Tabellenansicht: die Reihen stehen nebeneinander in einem Raster,
+			   das sich der Breite anpasst (eine Spalte je Reihe, so viele wie
+			   hineinpassen), statt als eine schmale Spalte untereinander. Jede
+			   Reihe scrollt in ihrem Fach (eine Fahrzeitreihe hat 600 Zeilen);
+			   Überschrift und Kopfzeile bleiben dabei oben stehen. Passen mehr
+			   Fächer-Zeilen als hoch ist, scrollt der Rahmen als Ganzes. */
 			#diagramTable {
+				--table-bg: color-mix(in srgb, CanvasText 3%, Canvas);
 				width: 100%;
 				height: 100%;
 				overflow: auto;
-				padding: 0.6rem 0.75rem;
-				background: color-mix(in srgb, CanvasText 3%, Canvas);
+				padding: 0 var(--sp-4) var(--sp-3);
+				background: var(--table-bg);
 				font-family: system-ui, sans-serif;
 				box-sizing: border-box;
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+				grid-auto-rows: minmax(14rem, 1fr);
+				gap: var(--sp-3) 1.5rem;
 			}
-			.diagram-table-section {
-				margin-bottom: 1rem;
-			}
+			/* The right padding keeps the value column off a classic (Windows)
+			   scrollbar, which takes its width out of the Fach. */
+			.diagram-table-section { min-width: 0; min-height: 0; overflow: auto; padding-right: var(--sp-2); }
 			.diagram-table-section strong {
+				position: sticky;
+				top: 0;
+				z-index: 1;
 				display: block;
+				padding: var(--sp-3) 0 0.3rem;
+				background: var(--table-bg);
 				font-size: 0.78rem;
-				margin-bottom: 0.3rem;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
 			}
 			.diagram-table-empty {
 				color: GrayText;
 				font-size: 0.76rem;
 			}
+			#diagramTable > .diagram-table-empty { grid-column: 1 / -1; align-self: start; padding-top: var(--sp-3); }
 			table.diagram-table {
+				width: 100%;
 				border-collapse: collapse;
 				font-size: 0.74rem;
 			}
@@ -558,12 +582,22 @@
 				padding: 0.15rem 0.6rem 0.15rem 0;
 				text-align: right;
 				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
 			}
+			table.diagram-table th:first-child,
+			table.diagram-table td:first-child { text-align: left; width: 6.5rem; }
+			table.diagram-table th:last-child,
+			table.diagram-table td:last-child { padding-right: 0; }
 			table.diagram-table th {
+				position: sticky;
+				top: 2.05rem;
+				z-index: 1;
+				background: var(--table-bg);
 				color: GrayText;
 				font-weight: 600;
 				border-bottom: 1px solid color-mix(in srgb, GrayText 30%, transparent);
 			}
+			table.diagram-table tr:nth-child(odd) td { background: color-mix(in srgb, CanvasText 2.5%, transparent); }
 			.diagram-axis,
 			.diagram-grid {
 				stroke: GrayText;
@@ -41579,13 +41613,21 @@ xlsx/xlsx.mjs:
 				return element;
 			}
 
-			function renderDiagramTable(seriesList) {
+			function renderDiagramTable(seriesList, emptyNote) {
 				diagramTable.replaceChildren();
+				if (!seriesList.length) {
+					const empty = document.createElement("span");
+					empty.className = "diagram-table-empty";
+					empty.textContent = emptyNote ?? "keine Werte";
+					diagramTable.append(empty);
+					return;
+				}
 				for (const series of seriesList) {
 					const section = document.createElement("div");
 					section.className = "diagram-table-section";
 					const heading = document.createElement("strong");
 					heading.textContent = series.label;
+					heading.title = series.label;
 					section.append(heading);
 					if (!series.points.length) {
 						const empty = document.createElement("span");
@@ -42199,7 +42241,9 @@ xlsx/xlsx.mjs:
 							{ label: `FZK · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track), valueLabel: track.valueLabel, valueFormat: track.axisFormat },
 							{ label: `FZK · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, emptyNote: track.emptyNote, valueLabel: track.valueLabel, valueFormat: track.axisFormat },
 						]),
-					]);
+					], diagramKind === "ivhw" ? ivhw.note
+						: diagramKind === "ivmg" ? "keine Lage-, Höhen- oder Überhöhungsreihe sicher verknüpft"
+						: "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
 				} else {
 					let y = 0;
 					if (diagramKind === "ivmg") {
