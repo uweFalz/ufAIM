@@ -34,6 +34,14 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   is right only when the plan already ends where the track does.
 - `--iterations` (default 1000), `--hold-last` holds the last element's
   length as well.
+- `--hold 1,2,13` holds records as they stand, length and radius, by the
+  numbers of the TRA's listing; ranges (`3-5`) and the word `turnouts`
+  work too. `turnouts` holds every record recognised as a Regelbauart of
+  Ril 800.0120A01: an arc of the turnout's radius, `R * atan(1/n)` long,
+  and the straight end piece beside it. A held record is not merged with
+  a neighbour, so the written file keeps its boundaries. The turnouts the
+  file shows are printed whether held or not.
+- `--hold-radii` holds every radius; the fit changes lengths only.
 
 ## Outputs
 

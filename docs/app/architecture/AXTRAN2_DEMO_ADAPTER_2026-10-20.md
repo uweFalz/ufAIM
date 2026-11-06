@@ -197,3 +197,56 @@ Beide Enden haben 0 Punkte außerhalb; der Halt nimmt das erste, das genügt.
 Die Eifel-Linie hat keine Schleife, der eigentliche Nutzen des Hinweises
 ist hier also nicht messbar, nur sein Preis: keiner.
 
+## Gehaltene Sätze: Weichen und Radien (2026-11-06)
+
+Anlass ist ein Anwendungsfall aus der Praxis: ein Bahnhofsgleis zwischen
+zwei Weichen, 77 Ist-Gleislagepunkte im 10-m-Abstand, dazu ein Entwurf
+aus 13 Sätzen (Geraden und Kreise mit runden Radien, keine Übergangsbögen,
+keine Überhöhung). Die Daten sind Kundendaten und liegen nicht im Repo.
+
+Der erste Bogen des Entwurfs ist R 190 mit L 21,025 m, gefolgt von einer
+Geraden von 6,092 m: das ist der Zweig einer EW 190-1:9 mit ihrem geraden
+Endstück (`R * atan(1/9)` und `d` aus Ril 800.0120A01). Der letzte Bogen,
+R 300 mit L 33,197 m, ist der Zweig einer EW 300-1:9. Der Adapter gab
+beide frei und verschmolz die Sätze 2+3 und 12+13 mit ihren Nachbarn
+gleicher Krümmung; in der geschriebenen Datei waren die Weichengrenzen
+weg, und der Fit zog R 190 auf 190,5.
+
+Zwei Vorgaben dafür, beide Erklärung des Aufrufers:
+
+- `hold`: Sätze, die bleiben, wie die Datei sie hat, Länge und Radius.
+  Satznummern wie im TRA-Ausdruck, Bereiche (`3-5`) oder das Wort
+  `turnouts` (`Weichen`). Ein gehaltener Satz wird nicht mit dem Nachbarn
+  verschmolzen (`traAlignment`, Option `fixedRecords`, Kennzeichen `fixed`
+  am Element; `held` bleibt den Platzhaltern des Lesers vorbehalten, die
+  der Schreiber fallen lässt).
+- `holdRadii`: alle Radien bleiben, der Fit verändert nur die Längen.
+
+Die Erkennung (`src/services/axtran2/heldRecords.js`) nennt jede Weiche,
+die die Datei zeigt, ob gehalten oder nicht: ein Bogen mit dem Radius einer
+Regelbauart, dessen Länge auf 2 mm `R * atan(1/n)` ist, und daneben die
+Gerade, deren Länge das Endstück `d` der Regelbauart ist. Sie hält nichts
+von sich aus; `hold turnouts` ohne erkannte Weiche wird abgewiesen
+(`NO_TURNOUT`), ein Aufruf, der nichts frei lässt, ebenso (`NOTHING_FREE`).
+
+Gemessen auf dem Bahnhofsgleis (Toleranz 3 mm, V 40, je 0,1 s):
+
+| Vorgabe | Sätze geschrieben | rms | max | R −1200 wird |
+|---|---|---|---|---|
+| der Entwurf selbst | 13 | 9,7 mm | 31,0 mm | |
+| nichts gehalten | 11 | 6,3 mm | 21,1 mm | −1349, R 190 wird 190,5 |
+| Weichen gehalten | 13 | 8,1 mm | 22,2 mm | −1326 |
+| Radien gehalten | 11 | 8,9 mm | 30,5 mm | −1200 |
+| Weichen und Radien gehalten | 13 | 8,9 mm | 30,5 mm | −1200 |
+
+Unter den Vorgaben des Entwurfs (Weichen und runde Radien) gewinnt der
+Fit 0,8 mm gegen ihn: die Zwischengerade vor R −1200 wird 13,8 m statt
+10,0 m, der Bogen 41,5 m statt 44,2 m. Die ersten sieben Punkte hinter der
+ersten Weiche liegen in allen gehaltenen Fällen im Mittel 15,6 mm
+einseitig neben der Achse; das ist der Preis der Weiche, nicht des Fits.
+Der größte Rest (30 mm) sitzt an einem Bogenanfang ohne Übergangsbogen.
+
+Nicht gebaut: der Leser für die Punktdatei `.pt` (die Datei wird
+abgewiesen, die Punkte wurden von Hand umgesetzt), Radien einzeln halten,
+Voreinstellungen für Toleranz und Geschwindigkeit eines Bahnhofsgleises,
+Gradiente und gemessene Überhöhung.

@@ -10,7 +10,7 @@
 //   node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv \
 //        [--zwang zwangspunkte.csv] [--out fitted.TRA] [--report report.json] \
 //        [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] \
-//        [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T] [--order points|reference|strict|budget=<m>]
+//        [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--hold 1,2,13|turnouts] [--hold-radii] [--end-pose E,N,T] [--order points|reference|strict|budget=<m>]
 
 import { readFile, writeFile } from "node:fs/promises";
 import { basename } from "node:path";
@@ -53,7 +53,7 @@ function endPoseFromArgument(text) {
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	if (!args.tra || !args.points) {
-		console.error("usage: node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv [--zwang z.csv] [--out fitted.TRA] [--report r.json] [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--end-pose E,N,T] [--order points|reference|strict|budget=<m>] (T the direction clockwise from north in gon, as a TRA states it)");
+		console.error("usage: node tools/axtran2/fitTra.mjs --tra in.TRA --points aufmass.csv [--zwang z.csv] [--out fitted.TRA] [--report r.json] [--csv residuen.csv] [--tolerance 0.15] [--zwang-tolerance 0.01] [--speed 120] [--iterations 1000] [--axes en|ne] [--hold-last] [--hold 1,2,13|turnouts] [--hold-radii] [--end-pose E,N,T] [--order points|reference|strict|budget=<m>] (T the direction clockwise from north in gon, as a TRA states it)");
 		process.exit(2);
 	}
 	const result = await fitTra({
@@ -66,6 +66,8 @@ async function main() {
 		maxIterations: args.iterations !== undefined ? Number(args.iterations) : 1000,
 		axes: args.axes ?? "en",
 		holdLast: args["hold-last"] === true,
+		hold: typeof args.hold === "string" ? args.hold : [],
+		holdRadii: args["hold-radii"] === true,
 		endPose: args["end-pose"] ? endPoseFromArgument(args["end-pose"]) : null,
 		order: args.order ?? "points",
 	});
@@ -75,6 +77,9 @@ async function main() {
 	if (args.csv) await writeFile(args.csv, result.csv);
 	const { verdict, fit, input } = result.report;
 	console.log(`${input.tra}: ${input.elements} elements, ${input.free} free, ${input.points} points${input.excludedPoints.length ? ` (${input.excludedPoints.length} excluded, see the report)` : ""}, ${input.zwangspunkte} Zwangspunkte, V ${input.speedKmh} km/h`);
+	const span = (records) => (records.length > 1 ? `records ${records[0]}-${records[records.length - 1]}` : `record ${records[0]}`);
+	if (input.turnouts.length) console.log(`turnouts seen: ${input.turnouts.map((t) => `${span(t.records)} ${t.designation} ${t.side} (${t.held ? "held" : "not held"})`).join(", ")}${input.turnouts.some((t) => !t.held) ? "; --hold turnouts holds them" : ""}`);
+	if (input.heldRecords.length || input.holdRadii) console.log(`held: ${input.heldRecords.length ? `records ${input.heldRecords.map((h) => h.record).join(", ")} as they stand` : "no record"}${input.holdRadii ? "; every radius" : ""}`);
 	console.log(`verdict ${verdict.status}${verdict.reason ? "/" + verdict.reason : ""} after ${verdict.iterations} iterations in ${verdict.seconds.toFixed(1)} s`);
 	console.log(`rms ${fit.rms?.toFixed(3)} (tolerance units), ${fit.outsideTolerance} outside, end pose ${fit.endPoseDistance?.toExponential(1)} m, length ${fit.lengthChange >= 0 ? "+" : ""}${fit.lengthChange?.toFixed(3)} m`);
 	if (result.report.order) {

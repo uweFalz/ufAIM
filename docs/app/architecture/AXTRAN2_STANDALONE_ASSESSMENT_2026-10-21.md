@@ -27,6 +27,8 @@ und Welt-zu-Gleis hinausgeht. Geprüft am Importgraphen des Repositoriums
 > den Löser. Gemessen auf der Eifel, siehe AXTRAN2_DEMO_ADAPTER.
 >
 > Station und Bemerkung (2026-11-04): die Punktliste nennt per Kopfzeile eine Station als Hinweis für den Fußpunkt (Schleifen) und eine Bemerkung, die bis in Bericht, Residuenliste und App-Tabelle durchgereicht wird; siehe `AXTRAN2_DEMO_ADAPTER_2026-10-20.md`.
+>
+> Gehaltene Sätze (2026-11-06): `hold` hält Sätze der Trasse, wie die Datei sie hat, und erkennt Weichen nach Ril 800.0120A01; `holdRadii` hält alle Radien. Gemessen an einem Bahnhofsgleis zwischen zwei Weichen, siehe `AXTRAN2_DEMO_ADAPTER_2026-10-20.md`.
 
 ## Urteil
 

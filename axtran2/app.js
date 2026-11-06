@@ -47,6 +47,8 @@ async function run() {
 			speedKmh: el("speed").value ? Number(el("speed").value) : null,
 			maxIterations: Number(el("iterations").value) || 1000,
 			endPose: endPoseFromFields(),
+			hold: el("hold").value.trim(),
+			holdRadii: el("holdRadii").checked,
 			order: el("order").value === "budget" ? { budget: Number(el("budget").value) || 0 } : el("order").value,
 		};
 		const bytes = await traFile.arrayBuffer();
@@ -110,6 +112,13 @@ function show({ report, csv }) {
 	el("cantResult").textContent = `Überhöhung: ${c.present ? "aus der Datei übernommen, vom Fit nicht verändert" : "die Datei trägt keine"}. Bei V ${c.speedKmh} km/h und zulässigem Fehlbetrag ${fmt(c.maximumDeficiencyMm, 0)} mm liegen nach dem Fit ${c.exceededAfter} von ${c.arcs.length} Bögen darüber (vorher ${c.exceededBefore}).${worst.length ? ` Am stärksten: ${worst.map((a) => `${a.id} mit ${fmt(a.after.deficiencyMm, 0)} mm bei R ${fmt(Math.abs(a.after.radius), 0)} m und u ${fmt(a.cantMm, 0)} mm`).join(", ")}.` : ""}${c.excessiveCant ? ` ${c.excessiveCant} Bögen tragen mehr als die ${fmt(c.maximumCantMm, 0)} mm der EBO.` : ""}`;
 	const rule = (z) => z.enforcement === "at-least" ? "mindestens" : z.enforcement === "at-most" ? "höchstens" : "verlangt";
 	el("zwangResult").textContent = zw.length ? "Zwangspunkte: " + zw.map((z) => `${z.name} ${fmt(z.offset, 4)} m (${rule(z)} ${fmt(z.target)} m${z.within === false ? ", verletzt" : ""})`).join(", ") : "";
+	const span = (records) => (records.length > 1 ? `Sätze ${records[0]}–${records[records.length - 1]}` : `Satz ${records[0]}`);
+	const inp = report.input;
+	el("holdResult").textContent = [
+		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
+		inp.heldRecords.length ? `Gehalten wie in der Datei: Satz ${inp.heldRecords.map((h) => h.record).join(", ")}.` : "",
+		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
+	].filter(Boolean).join(" ");
 	// the curve: the residualChartSvg string is built from numbers only and
 	// escapes its labels, so it is safe to set as markup
 	el("chart").innerHTML = residualChartSvg(report.points, { tolerance: Number(el("tolerance").value) || 0.15 }) || "<p>Keine Kurve: zu wenige Punkte mit Fußpunkt.</p>";
@@ -139,7 +148,7 @@ function download(name, data, type) {
 el("run").addEventListener("click", run);
 el("order").addEventListener("change", () => el("budget").classList.toggle("hidden", el("order").value !== "budget"));
 el("cancel").addEventListener("click", cancel);
-el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed"]) el(id).value = ""; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; });
+el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; });
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
 el("dlCsv").addEventListener("click", () => last && download("residuen.csv", last.csv, "text/csv"));
