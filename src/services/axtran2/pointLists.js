@@ -8,6 +8,11 @@
 //   points:        [name] easting northing [tolerance]
 //   Zwangspunkte:  [name] easting northing distance [tolerance]
 //
+// Two more columns a header may name, for either kind: a station, which is
+// a hint and not a measurement (the foot point is searched from there, for
+// an alignment that passes a point twice), and a remark, which is carried
+// through to the report and the residual list unread.
+//
 // Coordinates are easting then northing, which is the kernel's x then y. A
 // Verm.esn listing writes Y (Rechtswert, easting) before X (Hochwert,
 // northing), so a header "Y X" is read that way round; a header "X Y" is read
@@ -32,6 +37,8 @@ const NORTH_HEADERS = ["n", "north", "northing", "hochwert", "hw"];
 const DISTANCE_HEADERS = ["abstand", "distance", "dist", "d", "a", "soll", "target", "q"];
 const TOLERANCE_HEADERS = ["toleranz", "tolerance", "tol", "t", "sigma"];
 const RULE_HEADERS = ["art", "regel", "bedingung", "relation", "rule", "kind", "typ", "type"];
+const STATION_HEADERS = ["station", "stat", "st", "km", "kilometer", "chainage", "s"];
+const REMARK_HEADERS = ["bemerkung", "bem", "remark", "comment", "kommentar", "note", "notiz", "text"];
 
 /** the rule words, as the field writes them, to the kernel's enforcement */
 const RULES = {
@@ -113,7 +120,7 @@ function isHeader(cells) {
 function columnsFromHeader(cells, kind) {
 	const lower = cells.map((c) => c.toLowerCase().replace(/[^a-zäöü_]/g, ""));
 	const find = (names) => lower.findIndex((h) => names.includes(h));
-	const columns = { name: find(NAME_HEADERS), tolerance: find(TOLERANCE_HEADERS), rule: kind === "zwang" ? find(RULE_HEADERS) : -1 };
+	const columns = { name: find(NAME_HEADERS), tolerance: find(TOLERANCE_HEADERS), rule: kind === "zwang" ? find(RULE_HEADERS) : -1, station: find(STATION_HEADERS), remark: find(REMARK_HEADERS) };
 	const yAsEast = lower.includes("y") && lower.includes("x");
 	if (yAsEast) {
 		// Verm.esn order: Y is the Rechtswert, X the Hochwert
@@ -134,7 +141,8 @@ function columnsByOrder(cells, kind) {
 	const first = numeric[0] ? 0 : 1;
 	const needed = kind === "zwang" ? 3 : 2;
 	if (cells.length - first < needed) error("TOO_FEW_COLUMNS", `a ${kind === "zwang" ? "Zwangspunkt" : "point"} line needs ${needed} numbers: ${cells.join(" | ")}`);
-	const columns = { name: first === 1 ? 0 : -1, east: first, north: first + 1, rule: -1 };
+	// a station or a remark needs a header to be told from a tolerance
+	const columns = { name: first === 1 ? 0 : -1, east: first, north: first + 1, rule: -1, station: -1, remark: -1 };
 	let next = first + 2;
 	if (kind === "zwang") columns.distance = next++;
 	columns.tolerance = cells.length > next ? next : -1;
@@ -172,6 +180,14 @@ export function parsePointList(text, { kind = "points", axes = "en", tolerance =
 		const point = { name, x: east, y: north };
 		const tol = cols.tolerance >= 0 ? toNumber(cells[cols.tolerance]) : NaN;
 		point.tolerance = Number.isNaN(tol) ? tolerance : tol;
+		const stationCell = cols.station >= 0 ? String(cells[cols.station] ?? "").trim() : "";
+		if (stationCell !== "") {
+			const station = toNumber(stationCell);
+			if (Number.isNaN(station)) error("INVALID_STATION", `line ${i + 1}: the station "${stationCell}" is not a number`);
+			point.station = station;
+		}
+		const remark = cols.remark >= 0 ? String(cells[cols.remark] ?? "").trim() : "";
+		if (remark !== "") point.remark = remark;
 		if (kind === "zwang") {
 			const where = `line ${i + 1}, Zwangspunkt "${name}"`;
 			const { distance, rule } = parseDistance(cells[cols.distance], where);
@@ -191,10 +207,10 @@ export function parsePointList(text, { kind = "points", axes = "en", tolerance =
 
 /** residuals as the same kind of list, one line per point */
 export function formatResidualList(rows) {
-	const header = "name;easting;northing;station;offset;target;residual;tolerance;within;rule";
+	const header = "name;easting;northing;station;offset;target;residual;tolerance;within;rule;remark";
 	const rule = (r) => r.enforcement === "at-least" ? ">=" : r.enforcement === "at-most" ? "<=" : r.kind === "zwangspunkt" ? "=" : "";
 	const line = (r) => [r.name, r.x.toFixed(4), r.y.toFixed(4), r.station === null ? "" : r.station.toFixed(3),
 		r.offset === null ? "" : r.offset.toFixed(4), r.target.toFixed(4), r.residual === null ? "" : r.residual.toFixed(4),
-		r.tolerance.toFixed(4), r.within === null ? "" : (r.within ? "ja" : "nein"), rule(r)].join(";");
+		r.tolerance.toFixed(4), r.within === null ? "" : (r.within ? "ja" : "nein"), rule(r), String(r.remark ?? "").replace(/;/g, ",")].join(";");
 	return [header, ...rows.map(line)].join("\n") + "\n";
 }

@@ -46,6 +46,13 @@ test("point lists are read as the field writes them", () => {
 	const inline = parsePointList("Z1 2544200 5533000 >=L2.2\nZ2 2544300 5533100 2.20R", { kind: "zwang" });
 	assert.throws(() => parsePointList("Z1 2544200 5533000 2.2\nZ3 2544400 5533200 mindestens", { kind: "zwang" }), (e) => e.code === "INVALID_DISTANCE");
 	assert.deepEqual(inline.map((z) => [z.distance, z.enforcement]), [[2.2, "at-least"], [-2.2, undefined]], "a list without a rule states none");
+	// the station as a hint and the remark, by header only
+	const told = parsePointList("Nr;Y;X;Abstand;Art;Station;Bemerkung\nZ1;2544200;5533000;L 2,20;min;990,9;Mast 17\nZ2;2544300;5533100;R 4.00;=;;\n", { kind: "zwang", tolerance: 0.01 });
+	assert.deepEqual(told.map((z) => [z.station, z.remark]), [[990.9, "Mast 17"], [undefined, undefined]]);
+	const toldPoints = parsePointList("Nr;Y;X;Station;Bemerkung\nP1;1;2;12.5;Gleisachse\nP2;3;4;;", { kind: "points" });
+	assert.deepEqual(toldPoints.map((p) => [p.station, p.remark]), [[12.5, "Gleisachse"], [undefined, undefined]]);
+	assert.equal(parsePointList("P1;1;2;0.1\nP2;3;4;0.1", { kind: "points" })[0].station, undefined, "by order the fourth column is a tolerance, not a station");
+	assert.throws(() => parsePointList("Nr;Y;X;Station\nP1;1;2;km 3", { kind: "points" }), (e) => e.code === "INVALID_STATION");
 	assert.equal(zwang[0].enforcement, undefined);
 	const H = "Nr;Y;X;Abstand;Art\n";
 	assert.throws(() => parsePointList(H + "Z1;1;2;0;min", { kind: "zwang" }), (e) => e.code === "INVALID_DISTANCE" && /names none/.test(e.message));
@@ -277,8 +284,8 @@ test("a perturbed TRA is fitted back onto points taken from the original, with a
 		assert.ok(Math.abs(back.elements[i].length - result.fitted[i].length) < 1e-6, `${back.elements[i].id} length`);
 	}
 	assert.ok(result.csv.startsWith("name;easting;northing;station;offset"), "the residual list");
-	assert.match(result.csv.split("\n")[0], /;rule$/);
-	assert.match(result.csv, /^Z1;.*;=$/m);
+	assert.match(result.csv.split("\n")[0], /;rule;remark$/);
+	assert.match(result.csv, /^Z1;.*;=;$/m);
 });
 
 test("a one-sided Zwangspunkt runs through the adapter: slack costs nothing, a violation is paid for", async () => {
@@ -297,7 +304,7 @@ test("a one-sided Zwangspunkt runs through the adapter: slack costs nothing, a v
 	const zs = slack.report.points.find((p) => p.name === "Z1");
 	assert.equal(zs.enforcement, "at-least");
 	assert.equal(zs.within, true);
-	assert.match(slack.csv, /^Z1;.*;ja;>=$/m);
+	assert.match(slack.csv, /^Z1;.*;ja;>=;$/m);
 	const free = await fitTra({ tra: perturbedFile, points: pointsText, tolerance: 0.15, maxIterations: 300 });
 	assert.ok(Math.abs(free.report.fit.rms - slack.report.fit.rms) < 1e-3, `rms ${slack.report.fit.rms} against ${free.report.fit.rms} free`);
 
@@ -308,6 +315,32 @@ test("a one-sided Zwangspunkt runs through the adapter: slack costs nothing, a v
 	assert.ok(pushed.report.fit.boundPoints[0].violation <= 1e-6);
 	assert.ok(pushed.report.fit.rms > free.report.fit.rms, `rms ${pushed.report.fit.rms} against ${free.report.fit.rms} free`);
 	assert.ok(pushed.report.fit.endPoseDistance < 1e-6);
+});
+
+test("a station beside a point is a hint for the foot, a remark rides along", async () => {
+	const perturbedFile = join(scratch, "perturbed.TRA");
+	const [pointsText, zwangText] = await Promise.all([readFile(join(scratch, "aufmass.csv"), "utf8"), readFile(join(scratch, "zwangspunkte.csv"), "utf8")]);
+	const [, zwangLine] = zwangText.trim().split("\n");
+	const [, e, n, d] = zwangLine.split(";");
+	const plain = await fitTra({ tra: perturbedFile, points: pointsText, zwang: zwangText, tolerance: 0.15, maxIterations: 300 });
+	const z = plain.report.points.find((p) => p.name === "Z1");
+	assert.equal(z.stationGiven, null);
+	assert.equal(z.remark, null);
+	// the same point with its station named and a remark: the same fit, and
+	// the list's words in the row and the residual list
+	const told = await fitTra({ tra: perturbedFile, points: pointsText, zwang: `name;easting;northing;abstand;station;bemerkung\nZ1;${e};${n};${d};${z.station.toFixed(3)};Nachbargleis, Achse 2\n`, tolerance: 0.15, maxIterations: 300 });
+	const zt = told.report.points.find((p) => p.name === "Z1");
+	assert.ok(Math.abs(zt.offset - z.offset) < 1e-6 && Math.abs(zt.station - z.station) < 1e-6, `hinted ${zt.station}/${zt.offset}, plain ${z.station}/${z.offset}`);
+	assert.equal(zt.stationGiven, Number(z.station.toFixed(3)));
+	assert.equal(zt.remark, "Nachbargleis, Achse 2");
+	assert.equal(told.report.input.stationHints, 1);
+	assert.match(told.csv, /^Z1;.*;=;Nachbargleis, Achse 2$/m, "the remark ends the residual line");
+	// a hint off the alignment is refused; one far from the foot is not followed
+	await assert.rejects(fitTra({ tra: perturbedFile, points: pointsText, zwang: `name;easting;northing;abstand;station\nZ1;${e};${n};${d};99999\n` }), (err) => err.code === "STATION_OUTSIDE");
+	const far = Math.abs(z.station - 1) > Math.abs(z.station - (plain.report.elements.reduce((s, el) => s + el.before.length, 0) - 1)) ? 1 : plain.report.elements.reduce((s, el) => s + el.before.length, 0) - 1;
+	const misled = await fitTra({ tra: perturbedFile, points: pointsText, zwang: `name;easting;northing;abstand;station\nZ1;${e};${n};${d};${far}\n`, tolerance: 0.15, maxIterations: 300 });
+	const zm = misled.report.points.find((p) => p.name === "Z1");
+	assert.ok(Math.abs(zm.station - z.station) < 1e-6, `misled to ${far}, foot at ${zm.station}, plain ${z.station}`);
 });
 
 test("the priority order runs through the adapter and accounts for its phases", async () => {

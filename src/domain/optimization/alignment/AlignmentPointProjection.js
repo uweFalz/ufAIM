@@ -9,7 +9,7 @@
 
 import { normalize, rot90 } from "../../../aim-core/geometry/vec2.js";
 
-export const ALIGNMENT_POINT_PROJECTION_VERSION = "axtran2/alignment-point-projection/0.1";
+export const ALIGNMENT_POINT_PROJECTION_VERSION = "axtran2/alignment-point-projection/0.2";
 
 /** Newton on u(s) = (X − p(s))·t(s) from a remembered station; null when it leaves the window. */
 export function newtonFoot(alignment, x, y, s0, { window = 200, tolerance = 1e-9, maxSteps = 30 } = {}) {
@@ -131,6 +131,21 @@ export function createFootMemory({ samples = 400, refineSteps = 40, staleDistanc
 			if (projected && projected.dist <= staleDistance) feet.set(key, { s: projected.s, x: projected.point.x, y: projected.point.y });
 			else feet.delete(key);
 			return projected;
+		},
+		/**
+		 * A foot told in advance: the next projection of this point starts
+		 * Newton at `s` instead of scanning for the nearest foot. That is the
+		 * station hint of a point list, for an alignment that passes a point
+		 * twice and whose nearest foot is on the wrong pass. A hint farther
+		 * than Newton's window from the true foot is not followed, and the
+		 * scan runs as if none had been given. False for a station off the
+		 * alignment.
+		 */
+		seed(alignment, x, y, s) {
+			if (!(Number.isFinite(s) && s >= 0 && s <= alignment.arcLength)) return false;
+			const there = alignment.poseAt(s, { quality: "balanced" }).p;
+			feet.set(`${x},${y}`, { s, x: there.x, y: there.y });
+			return true;
 		},
 		forget() { feet.clear(); },
 		get size() { return feet.size; },

@@ -85,6 +85,7 @@ async function main() {
 	console.log(`cant ${c.present ? "carried from the file" : "none in the file"}, judged at V ${c.speedKmh} km/h against zul uf ${c.maximumDeficiencyMm} mm: ${c.exceededAfter} of ${c.arcs.length} arcs over the deficiency limit after the fit (${c.exceededBefore} before)${c.excessiveCant ? `, ${c.excessiveCant} over the cant limit of ${c.maximumCantMm} mm` : ""}`);
 	for (const h of fit.hardPoints ?? []) console.log(`Zwangspunkt ${h.name}: residual ${h.residual?.toExponential(1)}`);
 	for (const b of fit.boundPoints ?? []) console.log(`Zwangspunkt ${b.name} (${b.enforcement} ${Math.abs(b.target).toFixed(3)} m ${b.target < 0 ? "right" : "left"}): ${b.violation === null ? "not evaluated" : b.violation > 1e-6 ? `broken by ${b.violation.toFixed(4)} m` : `held, ${(-b.violation).toFixed(3)} m to spare`}`);
+	for (const p of result.report.points.filter((p) => p.stationGiven !== null && p.station !== null && Math.abs(p.station - p.stationGiven) > 200)) console.log(`point ${p.name}: station ${p.stationGiven.toFixed(1)} named, foot at ${p.station.toFixed(1)}: the hint did not take, the nearest foot was used`);
 	console.log(`written ${out} (${result.report.output.records} records${result.report.output.stationEquations ? `, ${result.report.output.stationEquations} station equations` : ""})`);
 }
 
