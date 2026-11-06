@@ -59,7 +59,7 @@
 		<div class="grid">
 			<div><label for="tolerance">Toleranz der Punkte [m]</label><input id="tolerance" type="number" step="0.01" value="0.15"></div>
 			<div><label for="zwangTolerance">Maßstab der Zwangspunkte [m]</label><input id="zwangTolerance" type="number" step="0.001" value="0.01"></div>
-			<div><label for="speed">Entwurfsgeschwindigkeit [km/h], optional</label><input id="speed" type="number" step="10" placeholder="aus der Trasse"><small>Leer: das schnellste Hauptbahn-Profil, das die Trasse zulässt.</small></div>
+			<div><label for="speed">Entwurfsgeschwindigkeit [km/h], optional</label><input id="speed" type="number" step="10" placeholder="aus der Trasse"><small>Leer ist eine Annahme, die das Ergebnis mit Grund nennt: was die langsamste Weiche der Trasse im Zweig zulässt, ohne Weiche das schnellste Hauptbahn-Profil, das die Trasse zulässt.</small></div>
 			<div><label for="hold">Sätze halten, optional</label><input id="hold" type="text" placeholder="z. B. 1,2,13 oder Weichen"><small>Satznummern wie im TRA-Ausdruck, Bereiche (3-5) oder „Weichen": gehaltene Sätze behalten Länge und Radius. Erkannte Weichen (Ril 800.0120A01) nennt das Ergebnis in jedem Fall.</small></div>
 			<div><label for="holdRadii"><input id="holdRadii" type="checkbox" style="width:auto;margin-right:6px">Radien halten</label><small>Alle Radien bleiben, wie die Trasse sie hat; der Fit verändert nur die Längen.</small></div>
 			<div><label for="iterations">Höchstens Schritte</label><input id="iterations" type="number" step="100" value="1000"></div>
@@ -88,6 +88,7 @@
 		<div class="numbers" id="numbers"></div>
 		<div id="zwangResult"></div>
 		<div id="holdResult"></div>
+		<div id="speedResult"></div>
 		<p id="orderResult"></p>
 		<p id="cantResult"></p>
 		<div class="actions" style="margin-top:16px">

@@ -250,3 +250,36 @@ Nicht gebaut: der Leser für die Punktdatei `.pt` (die Datei wird
 abgewiesen, die Punkte wurden von Hand umgesetzt), Radien einzeln halten,
 Voreinstellungen für Toleranz und Geschwindigkeit eines Bahnhofsgleises,
 Gradiente und gemessene Überhöhung.
+
+## Die Geschwindigkeit als Annahme (2026-11-06)
+
+Ohne Vorgabe nahm der Adapter das schnellste Hauptbahn-Profil, das die
+Trasse zulässt: für das Bahnhofsgleis V 80, ohne ein Wort dazu, und mit
+6 von 7 Bögen über dem zulässigen Fehlbetrag. Plausibel sind dort 40 km/h,
+und der Grund steht in der Trasse selbst: sie läuft durch den Zweig einer
+EW 190-1:9, und Ril 800.0120A01 lässt dort 40 km/h zu.
+
+Der Adapter leitet das jetzt ab und sagt es (`report.input.speed`):
+
+- `given`: die Geschwindigkeit des Aufrufers.
+- `turnout`: nicht vorgegeben, die Trasse zeigt Weichen; angenommen wird,
+  was die langsamste im Zweig zulässt, ob gehalten oder nicht.
+- `profile`: nicht vorgegeben, keine Weiche; wie bisher das schnellste
+  Hauptbahn-Profil.
+
+Dazu nennt der Bericht, was die Bögen selbst zulassen
+(`cant.admissibleSpeedKmh`, `cant.limitingArc`): die Geschwindigkeit, bei
+der der engste Bogen mit der Überhöhung, die er trägt, den zulässigen
+Fehlbetrag erreicht. Am Bahnhofsgleis sind das 45 km/h (R 190 ohne
+Überhöhung); die Annahme 40 liegt darunter. CLI und App zeigen beides und
+verweisen auf `--speed` beziehungsweise das Feld Entwurfsgeschwindigkeit.
+
+Gemessen am Bahnhofsgleis, Weichen gehalten: die Geometrie ist für V 25
+bis V 80 dieselbe (rms 8,9 mm mit, 8,1 mm ohne gehaltene Radien). Es ändert
+sich nur das Urteil über den Fehlbetrag: kein Bogen darüber bis V 40, einer
+bei V 50, sechs von sieben ab V 60. Der Grund: das Hauptbahn-Profil hat in
+diesem Bereich feste Schranken (Mindestradius 300 m, Mindestlänge 20 m),
+und was die Datei kürzer oder enger hat, wird als Ausnahme übernommen und
+darf nicht kürzer werden. Drei Zwischengeraden liegen auf dieser Schranke
+(10,00 m, 18,60 m, 17,55 m). Ein Regelwerk für Bahnhofsgleise hat der
+Adapter nicht; das bleibt offen.

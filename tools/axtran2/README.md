@@ -24,9 +24,12 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   an equality of the fit. `--zwang-tolerance` (default 0.01 m) scales its
   residual.
 - `--speed` the design speed in km/h for the Hauptbahn profile (minimum
-  radius, transition floors, ramp rule). Without it the fastest profile the
-  file admits is taken; where the file falls short of the profile, its own
-  radii and lengths are inherited as exceptions, as the corpus does.
+  radius, transition floors, ramp rule). Without it the speed is an
+  assumption, printed with its reason and with the speed the arcs
+  themselves admit: what the slowest turnout the file shows allows in its
+  branch (Ril 800.0120A01), and without a turnout the fastest profile the
+  file admits. Where the file falls short of the profile, its own radii
+  and lengths are inherited as exceptions, as the corpus does.
 - `--end-pose E,N,T` the end pose to hold instead of the TRA's own end: the
   connecting alignment's, as the original AXTRAN took it from the
   Anschlusstrasse. E and N in metres, T the direction clockwise from north

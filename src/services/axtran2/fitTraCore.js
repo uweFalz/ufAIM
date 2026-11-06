@@ -33,7 +33,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.8";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.9";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -75,7 +75,9 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  * @param {Array|string} [input.zwang]       Zwangspunkte [{ name, x, y, distance, tolerance?, enforcement? }] or text; enforcement "hard" (default), "at-least" or "at-most"
  * @param {number} [input.tolerance]         default point tolerance, metres (0.15)
  * @param {number} [input.zwangTolerance]    scale of a Zwangspunkt's residual, metres (0.01)
- * @param {number|null} [input.speedKmh]     design speed; null picks the fastest Hauptbahn profile the file admits
+ * @param {number|null} [input.speedKmh]     design speed. Null is an assumption the report states with its reason
+ *        (input.speed): what the slowest turnout the file shows allows in its branch (Ril 800.0120A01), and
+ *        without a turnout the fastest Hauptbahn profile the file admits
  * @param {number} [input.cantMm]
  * @param {number} [input.maxIterations]
  * @param {"points"} [input.objective]
@@ -180,7 +182,15 @@ export async function fitTraFromBytes({
 		...zwangspunkte.filter((z) => admitted(z, "zwangspunkt")).map((z) => ({ name: z.name, x: z.x - origin.x, y: z.y - origin.y, target: z.distance, tolerance: z.tolerance ?? zwangTolerance, enforcement: z.enforcement ?? "hard", kind: "zwangspunkt" })),
 	];
 	if (problemPoints.filter((p) => p.enforcement === "soft").length === 0) error("NO_POINTS", `every survey point lies beyond the start alignment or within ${margin.toFixed(1)} m of its ends`);
-	const profile = chooseProfile(elements, { cantMm, sourceName: loaded.name, speedKmh });
+	// The speed. Given, it is the caller's. Not given, it is an assumption,
+	// and the report says which and why, so that it can be judged and
+	// changed: a track that runs through a turnout's branch runs no faster
+	// than the annex allows there; a track without one gets the fastest
+	// Hauptbahn profile its radii and lengths admit.
+	const speedGiven = Number.isFinite(speedKmh) && speedKmh > 0;
+	const slowestTurnout = turnoutsSeen.filter((t) => Number.isFinite(t.branchSpeedKmh)).sort((a, b) => a.branchSpeedKmh - b.branchSpeedKmh)[0] ?? null;
+	const speedBasis = speedGiven ? "given" : slowestTurnout ? "turnout" : "profile";
+	const profile = chooseProfile(elements, { cantMm, sourceName: loaded.name, speedKmh: speedBasis === "turnout" ? slowestTurnout.branchSpeedKmh : speedKmh });
 	const problem = createAlignmentOptimizationProblem({
 		codec,
 		constraints: createAlignmentConstraintBuilder({
@@ -290,7 +300,14 @@ export async function fitTraFromBytes({
 		};
 		cantArcs.push(Object.freeze({ id: e.id, cantMm, cantOk: cantMm <= maximumCantMm + 1e-9, before: Object.freeze(judge(radiusOf(e))), after: Object.freeze(judge(radiusOf(fitted[i]))) }));
 	});
+	// what the arcs themselves admit: the speed at which the tightest of
+	// them, with the cant it carries, reaches the deficiency limit. A speed
+	// assumed or given above it shows in the counts below; this says by how much.
+	const admissibleOf = (arc) => Math.sqrt(((maximumDeficiencyMm + arc.cantMm) / 1000) * GRAVITY * Math.abs(arc.after.radius) / gauge) * 3.6;
+	const limiting = cantArcs.length ? cantArcs.reduce((a, b) => (admissibleOf(b) < admissibleOf(a) ? b : a)) : null;
 	const cantReport = Object.freeze({
+		admissibleSpeedKmh: limiting ? admissibleOf(limiting) : null,
+		limitingArc: limiting ? Object.freeze({ id: limiting.id, radius: limiting.after.radius, cantMm: limiting.cantMm }) : null,
 		carried: "from the source file, unchanged by the fit",
 		present: sourceRows.some((r) => (r.cantA ?? 0) !== 0 || (r.cantE ?? 0) !== 0),
 		speedKmh: profile.speedKmh,
@@ -322,6 +339,14 @@ export async function fitTraFromBytes({
 		input: Object.freeze({
 			tra: name, elements: elements.length, free: codec.freeNames.length, points: surveyed.length - excluded.length, zwangspunkte: zwangspunkte.length,
 			excludedPoints: Object.freeze(excluded), endMargin: margin, stationHints: hinted.length,
+			// the speed and where it comes from: "given", "turnout" or "profile"
+			speed: Object.freeze({
+				kmh: profile.speedKmh, basis: speedBasis,
+				why: speedBasis === "given" ? "given by the caller"
+					: speedBasis === "turnout" ? `assumed: the branch of ${slowestTurnout.designation} (record ${slowestTurnout.arc}) allows ${slowestTurnout.branchSpeedKmh} km/h (Ril 800.0120A01)`
+					: "assumed: the fastest Hauptbahn profile the file's radii and lengths admit",
+				turnout: speedBasis === "turnout" ? Object.freeze({ designation: slowestTurnout.designation, records: slowestTurnout.records, branchSpeedKmh: slowestTurnout.branchSpeedKmh }) : null,
+			}),
 			// what the fit may not touch: the records held whole, and whether every radius is
 			heldRecords: Object.freeze([...heldRecords].map(([record, why]) => Object.freeze({ record, element: loaded.recordElements[record - 1], why }))),
 			holdRadii: Boolean(holdRadii),
