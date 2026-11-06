@@ -17,3 +17,7 @@ self.onmessage = async (event) => {
 		self.postMessage({ id, ok: false, code: error?.code ?? error?.name ?? "ERROR", message: String(error?.message ?? error) });
 	}
 };
+
+// reached only when this script and every module behind it arrived: from
+// here on an error is the calculation's own, not a load failure
+self.postMessage({ ready: true });

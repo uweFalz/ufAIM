@@ -105,3 +105,11 @@ import, top-level await, `import.meta`, a cycle). `test/axtran2/bundle.test.mjs`
 builds it and lets the embedded worker compute a fit in Node: the same
 iterations, rms and TRA bytes as the served modules. `dist/` is not under
 git; build the file and hand it over.
+
+The served app (`axtran2/index.html` over a web server) loads the worker as
+a module with 67 files behind it. A server that drops one of those requests
+leaves a worker that never computed anything; the page starts it again, up
+to four times, says so, and otherwise reports that the program did not load
+(`src/services/axtran2/workerRun.js`). `python3 -m http.server` is such a
+server: it queues five connections and closes each after its answer. The
+single file loads nothing and is not affected.

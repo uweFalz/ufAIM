@@ -43,6 +43,9 @@ test("the bundle is one file whose worker computes the fit the served app comput
 	vm.createContext(scope);
 	vm.runInContext(workerSource, scope, { filename: "worker-bundle.js" });
 	assert.equal(typeof scope.onmessage, "function", "the worker installed its handler");
+	// loaded to its last line, the worker says so; the page tells a load failure from a crash by it
+	assert.ok(posted.length === 1 && posted[0].ready === true, "the worker reports that it is loaded");
+	posted.length = 0;
 	// a real alignment through it: the Vorführung's plan and lists
 	const file = await smallTrustedFile();
 	assert.ok(file, "a small corpus file (test/samples)");
