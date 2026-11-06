@@ -333,9 +333,15 @@
 			}
 			/* Slides: every picture but the map is a glass panel over the whole
 			   viewer, Inbox and Outbox included, one at a time. The map is the stage and stays
-			   where it is; Esc, the × or "Karte" in the rail put the slide away. */
-			#viewer > .slide { position: relative; grid-column: 1 / -1; grid-row: 1; z-index: 5; align-self: center; justify-self: center; width: min(96%, 88rem); height: min(90%, 52rem); display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--hairline); border-radius: 0.85rem; box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.22); background: var(--panel-glass); backdrop-filter: blur(20px) saturate(1.2); }
+			   where it is; Esc, the × or "Karte" in the rail put the slide away.
+			   A slide is as tall as its picture and no taller than the room it
+			   has (the old fixed height left two thirds of Spurplan, Lieferung and
+			   Verknüpfung blank). It hangs from a fixed top edge, so the bar stays
+			   put when the slides change; a picture taller than the room scrolls
+			   inside. The table view keeps the full height, its Fächer divide it. */
+			#viewer > .slide { --slide-top: 2.5rem; --slide-room: min(calc(100% - 2 * var(--slide-top)), 52rem); position: relative; grid-column: 1 / -1; grid-row: 1; z-index: 5; align-self: start; justify-self: center; margin-top: var(--slide-top); width: min(96%, 88rem); height: auto; max-height: var(--slide-room); display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--hairline); border-radius: 0.85rem; box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.22); background: var(--panel-glass); backdrop-filter: blur(20px) saturate(1.2); }
 			#viewer > .slide.hidden { display: none; }
+			#viewer > #diagramPanel:has(#diagramTable:not(.hidden)) { height: var(--slide-room); }
 			/* Under a slide the Inbox, Outbox and map dim to a quiet backdrop so
 			   their edges do not read as stray text beside the panel; a click on
 			   the backdrop puts the slide away, like Esc. */
