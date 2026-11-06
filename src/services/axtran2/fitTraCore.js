@@ -16,6 +16,7 @@
 
 import { parsePointList, formatResidualList } from "./pointLists.js";
 import { writeTra, cantLookup } from "./traWriter.js";
+import { recogniseTurnouts, resolveHold } from "./heldRecords.js";
 import { traAlignmentFromBytes } from "../../import/parsers/technet/vermEsn/traAlignment.js";
 import { decodeBinary } from "../../import/parsers/technet/vermEsn/sharedVermesn.js";
 import { buildProductionAlignment } from "../../domain/optimization/alignment/ProductionAlignment.js";
@@ -32,7 +33,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.7";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.8";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -83,6 +84,9 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  *        order: the length tier reports what the shortest admissible alignment would be
  *        ("reference"), holds it ("strict"), or allows "budget=<metres>" over it.
  * @param {boolean} [input.holdLast]         hold the last element's length too
+ * @param {Array|string} [input.hold]        records held as they stand, length and radius: numbers as the TRA's
+ *        listing counts them, ranges ("3-5"), and "turnouts" for every record recognised as a catalogue turnout
+ * @param {boolean} [input.holdRadii]        hold every radius; the lengths stay free
  * @param {Array} [input.heldPoses]          [{ afterElement, x?, y?, theta? }] in world coordinates
  * @param {"en"|"ne"} [input.axes]           coordinate order of header-less lists
  * @param {{x,y,theta}|null} [input.endPose]  the end pose to hold, in world coordinates (theta counter-clockwise
@@ -91,12 +95,19 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  */
 export async function fitTraFromBytes({
 	bytes, name = "alignment.TRA", points, zwang = [], tolerance = 0.15, zwangTolerance = 0.01, speedKmh = null, cantMm = 130,
-	maxIterations = 1000, objective = "points", order = "points", holdLast = false, heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
+	maxIterations = 1000, objective = "points", order = "points", holdLast = false, hold = [], holdRadii = false, heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
 } = {}) {
 	if (!(bytes instanceof Uint8Array)) error("NO_TRA", "fitTraFromBytes needs the TRA's bytes as a Uint8Array");
 	const tiers = tiersOf(order);
 	const t0 = Date.now();
-	const loaded = await traAlignmentFromBytes(bytes, name);
+	// The file is read twice where records are held: once to see its
+	// records and the turnouts among them, once more with the held ones
+	// kept apart from their neighbours.
+	const seen = await traAlignmentFromBytes(bytes, name);
+	const turnoutsSeen = recogniseTurnouts(seen.records);
+	const heldRecords = resolveHold(hold, seen.records, turnoutsSeen);
+	const loaded = heldRecords.size ? await traAlignmentFromBytes(bytes, name, { fixedRecords: heldRecords.keys() }) : seen;
+	for (const n of heldRecords.keys()) if (loaded.recordElements[n - 1] === null) error("INVALID_HOLD", `record ${n} carries no element this adapter can hold`);
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
 	}
@@ -125,10 +136,11 @@ export async function fitTraFromBytes({
 
 	const beforeKink = (i) => elements[i + 1]?.type === "kink";
 	const role = (e, i) => ({
-		length: i === 0 || (holdLast && i === last) || e.held || beforeKink(i) ? "held" : "free",
-		...(e.type === "arc" ? { curvature: e.held ? "held" : "free" } : {}),
+		length: i === 0 || (holdLast && i === last) || e.held || e.fixed || beforeKink(i) ? "held" : "free",
+		...(e.type === "arc" ? { curvature: e.held || e.fixed || holdRadii ? "held" : "free" } : {}),
 	});
 	if (!elements.some((e) => e.type === "arc" && !e.held)) error("NOTHING_TO_BEND", `${loaded.name}: straights only, nothing to fit`);
+	if (!elements.some((e, i) => Object.values(role(e, i)).includes("free"))) error("NOTHING_FREE", `${loaded.name}: every length and every radius is held, nothing is left to fit`);
 	const codec = createAlignmentVariableCodec({
 		elements: elements.map((e, i) => ({ id: e.id, quantities: role(e, i), values: { length: e.length, ...(e.type === "arc" ? { curvature: e.curvature } : {}) } })),
 	});
@@ -310,6 +322,11 @@ export async function fitTraFromBytes({
 		input: Object.freeze({
 			tra: name, elements: elements.length, free: codec.freeNames.length, points: surveyed.length - excluded.length, zwangspunkte: zwangspunkte.length,
 			excludedPoints: Object.freeze(excluded), endMargin: margin, stationHints: hinted.length,
+			// what the fit may not touch: the records held whole, and whether every radius is
+			heldRecords: Object.freeze([...heldRecords].map(([record, why]) => Object.freeze({ record, element: loaded.recordElements[record - 1], why }))),
+			holdRadii: Boolean(holdRadii),
+			turnouts: Object.freeze(turnoutsSeen.map((t) => Object.freeze({ ...t, held: t.records.every((n) => heldRecords.has(n)) }))),
+			records: loaded.recordCount,
 			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", order: orderReport?.order ?? "points", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
 			stationEquations: loaded.stationEquations, mergedRecords: loaded.mergedRecords, kinks: loaded.kinks,
 		}),
@@ -320,7 +337,7 @@ export async function fitTraFromBytes({
 			hardPoints: d.hardPointResiduals, boundPoints: d.boundPointResiduals ?? [], heldPoses: d.heldPoseResiduals ?? null, lengthChange: sumAfter - sumBefore,
 		}),
 		elements: Object.freeze(elements.map((e, i) => Object.freeze({
-			id: e.id, type: e.type, family: e.family ?? null, held: Boolean(e.held),
+			id: e.id, type: e.type, family: e.family ?? null, held: Boolean(e.held), fixed: Boolean(e.fixed),
 			before: { length: e.length, radius: radiusOf(e) }, after: { length: fitted[i].length, radius: radiusOf(fitted[i]) },
 		}))),
 		points: Object.freeze(rows),

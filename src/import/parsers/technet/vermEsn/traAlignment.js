@@ -71,27 +71,37 @@ export function kilometreJumpsOf(bytes) {
  * @param {Uint8Array} bytes  the file
  * @param {string} [name]
  * @returns {Promise<object>} { name, startPose, endPoint, elements, families, kilometreJumps, unsupported, stationEquations, ... }
- *   elements: [{ id, type, length, curvature?, family?, deltaDir?, held? }] in kernel terms;
- *   held marks zero-length arcs inserted at a transition-to-transition junction, and kinks
+ *   elements: [{ id, type, length, curvature?, family?, deltaDir?, held?, fixed? }] in kernel terms;
+ *   held marks zero-length arcs inserted at a transition-to-transition junction, and kinks;
+ *   fixed marks the element of a record the caller named in options.fixedRecords
  */
-export async function traAlignmentFromBytes(bytes, name = "alignment.TRA") {
+export async function traAlignmentFromBytes(bytes, name = "alignment.TRA", options = {}) {
 	const document = await parseTraGraAuto({
 		name,
 		arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
 	});
-	return traAlignmentFromDocument(document, bytes, name);
+	return traAlignmentFromDocument(document, bytes, name, options);
 }
 
 /**
  * The same, from a document the production parser already produced
  * (parseTraGraAuto), plus the file's bytes for the station equations.
  */
-export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA") {
+/**
+ * @param {object} [options]
+ * @param {Iterable<number>} [options.fixedRecords]  record numbers (1-based, in the file's order) whose element is
+ *        marked `fixed` and never merged with a neighbour: a turnout, or any record the caller holds as it stands.
+ *        `recordElements` says which element carries which record.
+ */
+export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA", { fixedRecords = [] } = {}) {
 	const alignment = document.alignments?.[0];
 	const records = alignment?.coordGeom?.elements ?? [];
 	if (records.length === 0) throw new Error(`${name}: no coordGeom elements`);
+	const fixed = new Set(fixedRecords);
 
 	const elements = [];
+	// which record an element came from; null for a junction holder the reader inserted
+	const sources = [];
 	const unsupported = [];
 	const families = new Set();
 	let inserted = 0;
@@ -100,6 +110,7 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 		const record = records[i];
 		const length = measure(record.length);
 		const id = `E${elements.length}`;
+		const before = elements.length;
 		if (record.type === "Line") {
 			elements.push({ id, type: "straight", length });
 		} else if (record.type === "Curve") {
@@ -178,6 +189,12 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 		} else {
 			unsupported.push({ index: i, type: record.type });
 		}
+		const added = elements.length - before;
+		for (let k = before; k < elements.length; k++) {
+			const own = added === 1 || elements[k].type === "transition";
+			sources[k] = own ? i : null;
+			if (own && fixed.has(i + 1)) elements[k] = { ...elements[k], fixed: true };
+		}
 	}
 
 	// A file splits an element where a kilometre marker or a station equation
@@ -187,17 +204,29 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 	// is singular - measured as qp_failed:reduced_system_failed at iteration
 	// 197. Consecutive straights, and consecutive arcs of one curvature, are
 	// one element here; the geometry is unchanged and the closure test below
-	// says so.
+	// says so. A fixed record is the exception: a turnout's arc beside a
+	// free arc of the same radius is two things, and stays two.
 	const merged = [];
+	const mergedSources = [];
 	let mergedCount = 0;
-	for (const e of elements) {
+	elements.forEach((e, k) => {
 		const prev = merged[merged.length - 1];
-		const same = prev && !prev.held && !e.held && prev.type === e.type
+		const same = prev && !prev.held && !e.held && !prev.fixed && !e.fixed && prev.type === e.type
 			&& (e.type === "straight" || (e.type === "arc" && Math.abs(prev.curvature - e.curvature) <= 1e-12 * Math.max(1, Math.abs(e.curvature))));
-		if (same) { merged[merged.length - 1] = { ...prev, length: prev.length + e.length }; mergedCount += 1; }
-		else merged.push(e);
-	}
+		if (same) { merged[merged.length - 1] = { ...prev, length: prev.length + e.length }; mergedSources[merged.length - 1].push(sources[k]); mergedCount += 1; }
+		else { merged.push(e); mergedSources.push([sources[k]]); }
+	});
 	const renumbered = merged.map((e, i) => ({ ...e, id: `E${i}` }));
+	const recordElements = records.map(() => null);
+	mergedSources.forEach((list, i) => { for (const r of list) if (r !== null) recordElements[r] = `E${i}`; });
+	// the records in kernel terms, before any merging: what a caller needs to
+	// say which of them it holds
+	const recordSummary = records.map((record, i) => {
+		const curvature = record.type === "Curve" ? curvatureOfRadius(record.radius) : null;
+		const type = record.type === "Line" || (record.type === "Curve" && curvature === 0) ? "straight"
+			: record.type === "Curve" ? "arc" : record.type === "Spiral" ? "transition" : record.type === "Kink" ? "kink" : "other";
+		return Object.freeze({ number: i + 1, type, length: measure(record.length), ...(type === "arc" ? { curvature } : {}) });
+	});
 
 	const first = records[0];
 	const last = records[records.length - 1];
@@ -214,5 +243,7 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 		stationEquations: alignment?.staEquations?.length ?? 0,
 		kilometreJumps: kilometreJumpsOf(bytes),
 		recordCount: records.length,
+		records: Object.freeze(recordSummary),
+		recordElements: Object.freeze(recordElements),
 	});
 }
