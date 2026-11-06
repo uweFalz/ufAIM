@@ -15,7 +15,7 @@
 
 import { RIL_800_0120_A01 } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.1";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.2";
 
 /** how far a record's length may lie from the catalogue's and still be the turnout, metres */
 export const TURNOUT_MATCH_TOLERANCE = 2e-3;
@@ -37,8 +37,10 @@ const SHAPES = (() => {
 	for (const row of RIL_800_0120_A01.rows) {
 		if (row.kind !== "EW" || !Number.isFinite(row.radius) || Number.isFinite(row.radiusEnd)) continue;
 		const key = `${row.radius}-1:${row.ratio}`;
-		const shape = shapes.get(key) ?? { designation: `EW ${key}`, radius: row.radius, ratio: row.ratio, branchLength: row.radius * Math.atan(1 / row.ratio), endPieces: [] };
+		const shape = shapes.get(key) ?? { designation: `EW ${key}`, radius: row.radius, ratio: row.ratio, branchLength: row.radius * Math.atan(1 / row.ratio), endPieces: [], branchSpeedKmh: row.vBranch };
 		if (Number.isFinite(row.d) && !shape.endPieces.includes(row.d)) shape.endPieces.push(row.d);
+		// zul. v in the branch; the slowest where the annex lists the pair twice
+		if (Number.isFinite(row.vBranch)) shape.branchSpeedKmh = Math.min(shape.branchSpeedKmh ?? Infinity, row.vBranch);
 		shapes.set(key, shape);
 	}
 	return [...shapes.values()];
@@ -50,7 +52,7 @@ const SHAPES = (() => {
  * straight end piece where the Regelbauart has one.
  *
  * @param {Array<{number:number,type:string,length:number,curvature?:number}>} records  as traAlignment gives them
- * @returns {Array<{designation,radius,ratio,side,arc,endPiece,records}>}
+ * @returns {Array<{designation,radius,ratio,side,arc,endPiece,branchSpeedKmh,records}>}
  */
 export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE } = {}) {
 	const found = [];
@@ -66,6 +68,8 @@ export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE
 			// the kernel's heading grows to the left
 			side: record.curvature > 0 ? "left" : "right",
 			arc: record.number, endPiece,
+			// what the annex allows in the branch, km/h: the track through it runs no faster
+			branchSpeedKmh: shape.branchSpeedKmh ?? null,
 			records: Object.freeze([record.number, ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b)),
 			source: RIL_800_0120_A01.source,
 		}));

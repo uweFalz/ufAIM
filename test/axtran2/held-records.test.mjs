@@ -141,6 +141,41 @@ test("held radii leave the lengths to the fit, and with the turnouts held it fin
 	assert.deepEqual(radii.report.input.heldRecords, []);
 });
 
+test("a speed not given is an assumption with its reason: the slowest turnout's branch, else the profile", async () => {
+	assert.deepEqual(recogniseTurnouts([{ number: 1, type: "arc", length: 190 * ALPHA, curvature: -1 / 190 }, { number: 2, type: "arc", length: 300 * ALPHA, curvature: -1 / 300 }, { number: 3, type: "arc", length: 500 * Math.atan(1 / 12), curvature: 1 / 500 }]).map((t) => t.branchSpeedKmh), [40, 50, 60]);
+	// the track runs through an EW 190-1:9 and an EW 300-1:9: 40 km/h, whether the turnouts are held or not
+	const assumed = await fit({ speedKmh: null });
+	const { speed } = assumed.report.input;
+	assert.equal(speed.kmh, 40);
+	assert.equal(speed.basis, "turnout");
+	assert.match(speed.why, /^assumed: the branch of EW 190-1:9 \(record 1\) allows 40 km\/h/);
+	assert.deepEqual({ ...speed.turnout, records: [...speed.turnout.records] }, { designation: "EW 190-1:9", records: [1, 2], branchSpeedKmh: 40 });
+	assert.equal(assumed.report.input.speedKmh, 40);
+	assert.equal(assumed.report.cant.speedKmh, 40);
+	// what the arcs admit: R 190 without cant reaches 130 mm of deficiency at 45.7 km/h
+	const { cant } = assumed.report;
+	assert.ok(Math.abs(cant.admissibleSpeedKmh - Math.sqrt(0.13 * 9.80665 * 190 / 1.5) * 3.6) < 0.05, `the arcs admit ${cant.admissibleSpeedKmh} km/h`);
+	assert.equal(cant.limitingArc.id, "E0");
+	assert.equal(cant.exceededAfter, 0, "the assumption stays below it");
+	// given, the speed is the caller's, and the report says what that costs
+	const given = await fit({ speedKmh: 60 });
+	assert.equal(given.report.input.speed.basis, "given");
+	assert.equal(given.report.input.speed.kmh, 60);
+	assert.equal(given.report.input.speed.turnout, null);
+	assert.ok(given.report.cant.exceededAfter > 0);
+	// the geometry is the same either way here: the Hauptbahn floors do not move below 80 km/h
+	assert.ok(Math.abs(given.report.fit.rms - assumed.report.fit.rms) < 1e-9);
+	// no turnout in the file: the profile's own choice, and it says so
+	const plain = track(TRUE_LENGTHS).slice(2, 8);
+	const plainChain = chainOf(plain);
+	const plainPoints = [];
+	for (let st = 30; st < 300; st += 10) { const p = world(plainChain.poseAt(st)); plainPoints.push({ name: `Q${plainPoints.length + 1}`, x: p.x, y: p.y }); }
+	const profile = await fitTraFromBytes({ bytes: traOf(plain), points: plainPoints, tolerance: 0.003, maxIterations: 50 });
+	assert.equal(profile.report.input.speed.basis, "profile");
+	assert.equal(profile.report.input.speed.kmh, profile.report.input.speedKmh);
+	assert.match(profile.report.input.speed.why, /^assumed: the fastest Hauptbahn profile/);
+});
+
 test("a hold that cannot be met is refused", async () => {
 	await assert.rejects(fit({ hold: "12" }), (e) => e.code === "INVALID_HOLD");
 	await assert.rejects(fit({ hold: "1-9" }), (e) => e instanceof FitTraError && e.code === "NOTHING_FREE");
