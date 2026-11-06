@@ -1054,6 +1054,11 @@
 				line-height: 1.3;
 			}
 			.outbox-object:hover { background: var(--button-hover) !important; }
+			/* Second witness of a Gleisseite: the Lage agrees, or contradicts. */
+			.outbox-object .side-witness { float: right; margin-left: var(--sp-2); font-size: var(--fs-1); white-space: nowrap; }
+			#outboxContent .outbox-object .side-witness.widerspruch,
+			#tables .object-row > button > span[data-kind].side-conflict { color: color-mix(in srgb, #d70015 78%, CanvasText); font-weight: 600; }
+			#outboxContent .outbox-object.selected .side-witness { color: inherit; opacity: 0.9; }
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
 			.outbox-object-row {
 				display: flex;
@@ -40282,8 +40287,13 @@ xlsx/xlsx.mjs:
 					: takenSides.has("left") && !takenSides.has("right") ? "right"
 					: null;
 				if (!missing) return null;
+				// The free side is a guess by elimination; the Lage can veto it
+				// (the Gleis lies on the other side) or back it.
+				const lage = sideEvidence(entry)?.lage;
+				const lageSide = lage?.verdict === "left" || lage?.verdict === "right" ? lage.verdict : null;
+				if (lageSide && lageSide !== missing) return null;
 				const groupDef = SEVEN_LINE_GROUPS.find((group) => group.role === roleBySide[missing]);
-				return groupDef ? { role: roleBySide[missing], groupDef } : null;
+				return groupDef ? { role: roleBySide[missing], groupDef, reason: lageSide ? lagePositionText(lage) : null } : null;
 			}
 
 			function isOutboxOrganized(entry) {
@@ -40833,35 +40843,325 @@ xlsx/xlsx.mjs:
 				const ids = new Set(relations.filter((relation) => relation.type === "stationReference" && relation.toId === alignment.item.id).map((relation) => relation.fromId));
 				return allViewerEntries().filter((candidate) => ids.has(candidate.item.id));
 			}
-			function sevenLineSide(entry) {
+			// BEGIN LAGE WITNESS (test/technet-viewer-lage.test.mjs runs this block)
+			// The Lage as a witness of its own. A name or an attribute says which
+			// side a Gleis is on; the coordinates say where it lies -- which side
+			// of a Kilometerlinie, how far off, beside which km. The two are
+			// independent, so where both speak they confirm or contradict each
+			// other, and where the name is silent the Lage still answers. It
+			// answers a position, not a role: 8 m to the right of the
+			// Kilometerlinie is a fact, "rechtes Streckengleis" is not (measured
+			// over nine deliveries: declared Streckengleise lie 2 m off, but also
+			// 5, 10 and 20 m; undeclared Gleise 2 m off are Weichenstraßen as often
+			// as Streckengleise).
+			// Reach: a Bahnhof's width, the same as the topology's km.
+			const LAGE_REACH_M = 60;
+			// Closer than this a sample sits on the line itself (single track:
+			// the Kilometerlinie is the Gleis).
+			const LAGE_ON_AXIS_M = 0.5;
+			// A Gleis lies "beside" a Kilometerlinie when this share of its
+			// samples finds the line within reach, away from the line's ends.
+			const LAGE_MIN_COVERAGE = 0.6;
+			// It lies on one side when this share of its samples off the axis
+			// agrees. Not all: a TRA that restarts its stations folds the line
+			// back for one sample (Billwerder 6100 LI, 1 of 9).
+			const LAGE_MAJORITY = 0.85;
+			// Segments are looked up through a grid of cells at least as wide as
+			// the reach, so a sample only meets the segments around it (310
+			// Gleise against 55 Kilometerlinien took 3,4 s without it).
+			const LAGE_CELL_M = 64;
+			function lageGrid(polyline) {
+				const cells = new Map();
+				for (let index = 0; index + 1 < polyline.length; index += 1) {
+					const a = polyline[index];
+					const b = polyline[index + 1];
+					const x0 = Math.floor(Math.min(a.easting, b.easting) / LAGE_CELL_M);
+					const x1 = Math.floor(Math.max(a.easting, b.easting) / LAGE_CELL_M);
+					const y0 = Math.floor(Math.min(a.northing, b.northing) / LAGE_CELL_M);
+					const y1 = Math.floor(Math.max(a.northing, b.northing) / LAGE_CELL_M);
+					for (let x = x0; x <= x1; x += 1) {
+						for (let y = y0; y <= y1; y += 1) {
+							const key = `${x},${y}`;
+							const cell = cells.get(key);
+							if (cell) cell.push(index);
+							else cells.set(key, [index]);
+						}
+					}
+				}
+				return cells;
+			}
+			function lageBounds(polyline) {
+				const bounds = { minE: Infinity, maxE: -Infinity, minN: Infinity, maxN: -Infinity };
+				for (const point of polyline) {
+					if (point.easting < bounds.minE) bounds.minE = point.easting;
+					if (point.easting > bounds.maxE) bounds.maxE = point.easting;
+					if (point.northing < bounds.minN) bounds.minN = point.northing;
+					if (point.northing > bounds.maxN) bounds.maxN = point.northing;
+				}
+				return bounds;
+			}
+			// Nearest point of the line: distance, station there, and the side in
+			// the direction of rising station (+1 left, -1 right). atEnd: the
+			// point lies past an end of the line (square to the end itself it is
+			// still beside it -- two pieces of one Kilometerlinie meet there).
+			// With a grid only the segments within reach are looked at; a point
+			// farther away than the reach then finds nothing.
+			function lageOffset(polyline, point, grid = null) {
+				let indices = null;
+				if (grid) {
+					indices = [];
+					const cx = Math.floor(point.easting / LAGE_CELL_M);
+					const cy = Math.floor(point.northing / LAGE_CELL_M);
+					for (let x = cx - 1; x <= cx + 1; x += 1) {
+						for (let y = cy - 1; y <= cy + 1; y += 1) {
+							const cell = grid.get(`${x},${y}`);
+							if (cell) for (const index of cell) indices.push(index);
+						}
+					}
+				}
+				let best = null;
+				const count = indices ? indices.length : polyline.length - 1;
+				for (let step = 0; step < count; step += 1) {
+					const index = indices ? indices[step] : step;
+					const a = polyline[index];
+					const b = polyline[index + 1];
+					const dx = b.easting - a.easting;
+					const dy = b.northing - a.northing;
+					const lengthSq = dx * dx + dy * dy;
+					if (lengthSq <= 1e-9) continue;
+					const along = ((point.easting - a.easting) * dx + (point.northing - a.northing) * dy) / lengthSq;
+					const t = Math.max(0, Math.min(1, along));
+					const distance = Math.hypot(point.easting - (a.easting + t * dx), point.northing - (a.northing + t * dy));
+					if (best && distance >= best.distance) continue;
+					const cross = dx * (point.northing - a.northing) - dy * (point.easting - a.easting);
+					best = {
+						distance,
+						station: a.station + t * (b.station - a.station),
+						side: (cross >= 0 ? 1 : -1) * (b.station >= a.station ? 1 : -1),
+						atEnd: (index === 0 && along < 0) || (index === polyline.length - 2 && along > 1),
+					};
+				}
+				return best;
+			}
+			// axes: [{ route, polyline, bounds }] (a grid is added on first use), several pieces of one
+			// Kilometerlinie share a route. The Gleis's own route wins as the
+			// reference, otherwise the nearest line that covers it.
+			function lageWitnessOf(gleisPolyline, axes, preferredRoute = "") {
+				if (!gleisPolyline || gleisPolyline.length < 2) return null;
+				const samples = Math.max(9, Math.min(25, Math.round(gleisPolyline.length / 4)));
+				const byRoute = new Map();
+				for (let index = 0; index < samples; index += 1) {
+					const point = gleisPolyline[Math.round((index + 0.5) / samples * (gleisPolyline.length - 1))];
+					const nearest = new Map();
+					for (const axis of axes) {
+						const bounds = axis.bounds;
+						if (point.easting < bounds.minE - LAGE_REACH_M || point.easting > bounds.maxE + LAGE_REACH_M || point.northing < bounds.minN - LAGE_REACH_M || point.northing > bounds.maxN + LAGE_REACH_M) continue;
+						axis.grid ??= lageGrid(axis.polyline);
+						const hit = lageOffset(axis.polyline, point, axis.grid);
+						if (!hit || hit.atEnd || hit.distance > LAGE_REACH_M) continue;
+						const known = nearest.get(axis.route);
+						if (!known || hit.distance < known.distance) nearest.set(axis.route, hit);
+					}
+					for (const [route, hit] of nearest) {
+						if (!byRoute.has(route)) byRoute.set(route, []);
+						byRoute.get(route).push(hit);
+					}
+				}
+				const needed = Math.ceil(samples * LAGE_MIN_COVERAGE);
+				let chosen = null;
+				for (const [route, hits] of byRoute) {
+					if (hits.length < needed) continue;
+					const distances = hits.map((hit) => hit.distance).sort((a, b) => a - b);
+					const candidate = { route, hits, median: distances[Math.floor(distances.length / 2)], min: distances[0], max: distances[distances.length - 1] };
+					const preferred = Boolean(preferredRoute) && route === preferredRoute;
+					const chosenPreferred = Boolean(preferredRoute) && chosen?.route === preferredRoute;
+					if (!chosen || (preferred && !chosenPreferred) || (preferred === chosenPreferred && candidate.median < chosen.median)) chosen = candidate;
+				}
+				if (!chosen) return { verdict: "none", samples };
+				const offAxis = chosen.hits.filter((hit) => hit.distance >= LAGE_ON_AXIS_M);
+				const left = offAxis.filter((hit) => hit.side > 0).length;
+				const right = offAxis.length - left;
+				// On the line as long as most samples are: a Neuplanung that leaves
+				// its Kilometerlinie by 1,5 m for a stretch is still the Gleis the
+				// line runs on (Eifel 2631 R, declared rechts), not one beside it.
+				const verdict = chosen.median < LAGE_ON_AXIS_M ? "axis"
+					: left >= offAxis.length * LAGE_MAJORITY ? "left"
+					: right >= offAxis.length * LAGE_MAJORITY ? "right"
+					: "crossing";
+				const stations = chosen.hits.map((hit) => hit.station);
+				return {
+					verdict,
+					route: chosen.route,
+					samples,
+					hits: chosen.hits.length,
+					median: chosen.median,
+					min: chosen.min,
+					max: chosen.max,
+					stationFrom: Math.min(...stations),
+					stationTo: Math.max(...stations),
+				};
+			}
+			// What two witnesses make of a Gleisseite. belegt: declared and Lage
+			// agree. widerspruch: they name opposite sides. erklaert: only the
+			// declaration speaks (no Kilometerlinie in reach, or the Gleis lies on
+			// it or crosses it). lage: only the Lage speaks. offen: neither.
+			function sideGradeOf(declaredSideValue, lage) {
+				const verdict = lage?.verdict ?? "none";
+				if (declaredSideValue === "left" || declaredSideValue === "right") {
+					if (verdict === declaredSideValue) return "belegt";
+					if (verdict === "left" || verdict === "right") return "widerspruch";
+					return "erklaert";
+				}
+				return verdict === "none" ? "offen" : "lage";
+			}
+			// END LAGE WITNESS
+
+			// The Kilometerlinien as reference axes, and each Gleis's witness, kept
+			// while the loaded objects, their Lagesystem and the set of
+			// Kilometerlinien stay the same. The key is taken once per run of
+			// rendering (a microtask), not per Gleis.
+			let lageCache = { key: null, axes: [], byEntry: new Map() };
+			let lageKeyMemo = null;
+			function lageState() {
+				if (lageKeyMemo == null) {
+					lageKeyMemo = allViewerEntries()
+						.filter((entry) => entry.item.kind === "alignment")
+						.map((entry) => `${entry.item.id}:${effectiveLsys(entry) || ""}:${sevenLineSide(entry) === "kilometer" ? "km" : ""}`)
+						.join("|");
+					queueMicrotask(() => { lageKeyMemo = null; });
+				}
+				if (lageCache.key !== lageKeyMemo) {
+					const axes = allViewerEntries()
+						.filter((entry) => entry.item.kind === "alignment" && alignmentEndpoints(entry) && sevenLineSide(entry) === "kilometer")
+						.map((entry) => {
+							const polyline = referenceStationPolyline(entry, 10);
+							return { entry, lsys: effectiveLsys(entry) || "", route: routeForEntry(entry) || objectDisplayName(entry), polyline, bounds: lageBounds(polyline) };
+						})
+						.filter((axis) => axis.polyline.length > 1);
+					lageCache = { key: lageKeyMemo, axes, byEntry: new Map() };
+				}
+				return lageCache;
+			}
+			// Coordinates of two Lagesysteme are not comparable, so a Gleis is
+			// only measured against Kilometerlinien of its own system.
+			function lageWitness(entry) {
+				if (entry?.item?.kind !== "alignment" || !alignmentEndpoints(entry) || sevenLineSide(entry) === "kilometer") return null;
+				const state = lageState();
+				if (!state.byEntry.has(entry)) {
+					const lsys = effectiveLsys(entry) || "";
+					const axes = state.axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
+					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, routeForEntry(entry)) : { verdict: "none", samples: 0 });
+				}
+				return state.byEntry.get(entry);
+			}
+			// The Gleisseite of an object with its witnesses; a Gradiente or
+			// Überhöhung speaks through its Gleis. null for a Kilometerlinie.
+			function sideEvidence(entry) {
+				const alignment = entry?.item?.kind === "alignment" ? entry : entry?.loaded ? relatedDiagramEntries(entry).anchor : null;
+				if (alignment?.item?.kind !== "alignment") return null;
+				const declared = declaredSide(alignment);
+				if (declared.side === "kilometer") return null;
+				const lage = lageWitness(alignment);
+				return { alignment, declared, lage, grade: sideGradeOf(declared.side, lage) };
+			}
+			const SIDE_WORDS = { left: "links", right: "rechts" };
+			function lageMeters(value) {
+				return value.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+			}
+			// "8,3 m rechts der Kilometerlinie 5500", "auf der Kilometerlinie 5500",
+			// "kreuzt die Kilometerlinie 5500"; without the line ("8,3 m rechts")
+			// where a band label has no room and the note beside it names it.
+			function lagePositionText(lage, { line = true } = {}) {
+				if (!lage || lage.verdict === "none") return "";
+				const name = line ? ` ${lage.route}` : "";
+				if (lage.verdict === "axis") return `auf der Kilometerlinie${name}`;
+				if (lage.verdict === "crossing") return `kreuzt die Kilometerlinie${name}`;
+				return `${lageMeters(lage.median)} m ${SIDE_WORDS[lage.verdict]}${line ? ` der Kilometerlinie${name}` : ""}`;
+			}
+			// The same for a narrow column: "8,3 m rechts von 5500".
+			function lageCompactText(lage) {
+				if (!lage || lage.verdict === "none") return "";
+				if (lage.verdict === "axis") return `auf ${lage.route}`;
+				if (lage.verdict === "crossing") return `kreuzt ${lage.route}`;
+				return `${lageMeters(lage.median)} m ${SIDE_WORDS[lage.verdict]} von ${lage.route}`;
+			}
+			// What a 7L says about its Gleisseiten: a contradiction first, then
+			// the Gleise without a declared side (placed by the Lage, or open),
+			// then how far the declared sides are confirmed.
+			function sevenLineSideNote(assignment) {
+				const gleise = (side) => assignment.bySide[side].filter((candidate) => candidate.item.kind === "alignment");
+				const declared = [...gleise("right"), ...gleise("left")].map(sideEvidence).filter(Boolean);
+				const conflict = declared.find((evidence) => evidence.grade === "widerspruch");
+				const undeclared = gleise("unknown").map(sideEvidence).filter(Boolean);
+				const placed = undeclared.filter((evidence) => evidence.grade === "lage");
+				const confirmedCount = declared.filter((evidence) => evidence.grade === "belegt").length;
+				return {
+					// No Streckengleis and no Kilometerlinie among them: a Gleis of
+					// its own, not an incomplete 7L.
+					standalone: !declared.length && !gleise("kilometer").length,
+					conflict: conflict ? `Gleisseite widersprüchlich: ${objectListName(conflict.alignment)} ist ${SIDE_WORDS[conflict.declared.side]} erklärt (${conflict.declared.source}), liegt aber ${lagePositionText(conflict.lage)}` : null,
+					open: undeclared.length - placed.length,
+					placed: placed.length === 1 ? `${objectListName(placed[0].alignment)} ohne Streckenrolle, ${lagePositionText(placed[0].lage)}`
+						: placed.length ? `${placed.length} Gleise ohne Streckenrolle, nach Lage eingeordnet`
+						: null,
+					confirmed: !declared.length ? null
+						: confirmedCount === declared.length ? `Gleisseite${declared.length > 1 ? "n" : ""} durch die Lage belegt`
+						: confirmedCount ? `Gleisseite bei ${confirmedCount} von ${declared.length} Gleisen durch die Lage belegt`
+						: declared.every((evidence) => evidence.lage?.verdict === "axis") ? "Gleis liegt auf der Kilometerlinie"
+						: "Gleisseite nur erklärt, von der Lage nicht belegt",
+				};
+			}
+			function lageDetailText(lage) {
+				if (!lage || lage.verdict === "none") return `keine Kilometerlinie desselben Lagesystems in ${LAGE_REACH_M} m`;
+				const km = (station) => (station / 1000).toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+				return [
+					lagePositionText(lage),
+					lage.max - lage.min > 0.5 ? `Abstand ${lageMeters(lage.min)}–${lageMeters(lage.max)} m` : null,
+					`km ${km(lage.stationFrom)}–${km(lage.stationTo)}`,
+					`${lage.hits} von ${lage.samples} Stichproben`,
+				].filter(Boolean).join(" · ");
+			}
+			// One sentence: what is said about the side, and by whom.
+			function sideEvidenceText(evidence) {
+				if (!evidence) return "";
+				const { declared, lage, grade } = evidence;
+				const word = SIDE_WORDS[declared.side];
+				if (grade === "belegt") return `Gleisseite ${word} belegt: ${declared.source} und Lage (${lageDetailText(lage)})`;
+				if (grade === "widerspruch") return `Gleisseite widersprüchlich: ${declared.source} sagt ${word}, die Lage ${lageDetailText(lage)}`;
+				if (grade === "erklaert") return `Gleisseite ${word} nur erklärt (${declared.source}); Lage: ${lageDetailText(lage)}`;
+				if (grade === "lage") return `Gleisseite nicht erklärt; Lage: ${lageDetailText(lage)}`;
+				return `Gleisseite offen: nicht erklärt, ${lageDetailText(lage)}`;
+			}
+
+			function declaredSide(entry) {
 				const gndSequence = gndSequenceForEntry(entry);
 				const strRikz = String(gndSequence?.strRikz ?? "").trim();
-				if (gndSequence?.family === "EK" && ["0", "3"].includes(strRikz)) return "kilometer";
-				if (strRikz === "1") return "right";
-				if (strRikz === "2") return "left";
+				if (gndSequence?.family === "EK" && ["0", "3"].includes(strRikz)) return { side: "kilometer", source: "GND STRRIKZ" };
+				if (strRikz === "1") return { side: "right", source: "GND STRRIKZ" };
+				if (strRikz === "2") return { side: "left", source: "GND STRRIKZ" };
 				// STRRIKZ 4/5 = Bahnhofsgleis (Gleisnummer in PSTRECKE, siehe
 				// VERM.ESN-Handbuch Satzart 11): kein Richtungsgleis, hat also
 				// keine feste links/rechts-Zuordnung. Faellt bewusst durch auf
 				// die Heuristik unten statt hier als "right" behauptet zu werden.
 				const preservedRole = entry.item?.payload?.extended?.viewer7L?.lineRole;
-				if (String(preservedRole).includes("Right")) return "right";
-				if (String(preservedRole).includes("Left")) return "left";
-				if (preservedRole === "curvatureKilometer") return "kilometer";
+				if (String(preservedRole).includes("Right")) return { side: "right", source: "gespeicherte Zuordnung" };
+				if (String(preservedRole).includes("Left")) return { side: "left", source: "gespeicherte Zuordnung" };
+				if (preservedRole === "curvatureKilometer") return { side: "kilometer", source: "gespeicherte Zuordnung" };
 				const nameFrame = vermEsnNameFrame(entry);
-				if (nameFrame && nameFrame.side !== "unknown") return nameFrame.side;
+				if (nameFrame && nameFrame.side !== "unknown") return { side: nameFrame.side, source: "Dateiname" };
 				// landXML carries the role in the Alignment desc ("Kilometrierungslinie
 				// 1720", "Richtungsgleis 1720 (DR0)", "Gegenrichtungsgleis 1720 (DR0)").
 				// Same convention as GND STRRIKZ: Richtungsgleis = 1 = rechts,
 				// Gegenrichtungsgleis = 2 = links. "gegen" must be tested first.
 				const desc = landXmlAlignmentDesc(entry).toLocaleLowerCase("de-DE");
-				if (desc.includes("kilometrierungslinie")) return "kilometer";
-				if (desc.includes("gegenrichtungsgleis")) return "left";
-				if (desc.includes("richtungsgleis")) return "right";
+				if (desc.includes("kilometrierungslinie")) return { side: "kilometer", source: "landXML-Beschreibung" };
+				if (desc.includes("gegenrichtungsgleis")) return { side: "left", source: "landXML-Beschreibung" };
+				if (desc.includes("richtungsgleis")) return { side: "right", source: "landXML-Beschreibung" };
 				const direction = String(geoFrameInfo(entry)?.direction ?? "").toLocaleLowerCase("de-DE");
 				const name = objectDisplayName(entry).toLocaleLowerCase("de-DE");
-				if (direction.includes("kilometer") || /(?:^|[\s_.-])km(?:$|[\s_.-])/.test(name)) return "kilometer";
-				if (direction.includes("rechts") || /(?:^|[\s_.-])(rechts|right|rg)(?:$|[\s_.-])/.test(name)) return "right";
-				if (direction.includes("links") || /(?:^|[\s_.-])(links|left|lg)(?:$|[\s_.-])/.test(name)) return "left";
+				if (direction.includes("kilometer") || /(?:^|[\s_.-])km(?:$|[\s_.-])/.test(name)) return { side: "kilometer", source: direction.includes("kilometer") ? "Zuordnung" : "Objektname" };
+				if (direction.includes("rechts") || /(?:^|[\s_.-])(rechts|right|rg)(?:$|[\s_.-])/.test(name)) return { side: "right", source: direction.includes("rechts") ? "Zuordnung" : "Objektname" };
+				if (direction.includes("links") || /(?:^|[\s_.-])(links|left|lg)(?:$|[\s_.-])/.test(name)) return { side: "left", source: direction.includes("links") ? "Zuordnung" : "Objektname" };
 				// A profile/cant/staEq object has no direction signal of its own -- it
 				// was never dragged into a 7L lane, its owning alignment was. Inherit
 				// that alignment's side instead of defaulting to "unknown" (confirmed
@@ -40869,9 +41169,14 @@ xlsx/xlsx.mjs:
 				// this ran, matching A101720R itself, which the user actually assigned).
 				if (entry.item?.kind !== "alignment") {
 					const owningAlignment = relatedDiagramEntries(entry).anchor;
-					if (owningAlignment && owningAlignment !== entry) return sevenLineSide(owningAlignment);
+					if (owningAlignment && owningAlignment !== entry) return { side: sevenLineSide(owningAlignment), source: "vom Gleis geerbt" };
 				}
-				return "unknown";
+				return { side: "unknown", source: null };
+			}
+			// The side as the 7L uses it: what the data declares -- an attribute, a
+			// name, an assignment. declaredSide() also says which of them spoke.
+			function sevenLineSide(entry) {
+				return declaredSide(entry).side;
 			}
 
 			function stationEquationPositions(entry) {
@@ -41536,7 +41841,9 @@ xlsx/xlsx.mjs:
 			// A Bahnhofsgleis bundled by file name has no side but a name.
 			function unknownSideLabel(entry) {
 				const frame = geoFrameInfo(entry);
-				return frame?.source === "vermesn-name" ? frame.direction : "Gleis · Zuordnung offen";
+				const position = lagePositionText(sideEvidence(entry)?.lage, { line: false });
+				if (frame?.source === "vermesn-name") return position ? `${frame.direction} · ${position}` : frame.direction;
+				return position ? `Gleis · ${position}` : "Gleis · Zuordnung offen";
 			}
 			function deriveUnknownTrassenplanBands(assignment) {
 				const { first, selectedRange } = assignment;
@@ -41545,7 +41852,7 @@ xlsx/xlsx.mjs:
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
-					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : (kind === "profile" ? profileSeries(candidate) : pointSeries(candidate, valueKeys)), selectedRange)));
+					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : (kind === "profile" ? profileSeries(candidate) : pointSeries(candidate, valueKeys)), selectedRange), { undeclared: true }));
 				}
 				return bands;
 			}
@@ -41572,7 +41879,7 @@ xlsx/xlsx.mjs:
 					...deriveUnknownSpeedBands(assignment),
 				];
 				const { anchor, entries, hasUnknown, missingKilometerLine } = assignment;
-				return { anchor, entries, bands, hasUnknown, missingKilometerLine };
+				return { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote: sevenLineSideNote(assignment) };
 			}
 
 			// SVG <text> never wraps. Band labels live in a 238-unit gutter and the
@@ -42206,7 +42513,7 @@ xlsx/xlsx.mjs:
 					gwbAbschnittCsvButton.disabled = true;
 					return;
 				}
-				const { anchor, entries, bands, hasUnknown, missingKilometerLine } = sevenLineTracks(entry);
+				const { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote } = sevenLineTracks(entry);
 				const ivmgTracks = bands.filter((track) => !track.className.startsWith("diagram-speed"));
 				const gwbTracks = bands.filter((track) => track.className.startsWith("diagram-speed"));
 				const fzkTracks = diagramKind === "fzk" ? deriveFahrzeitBands(gwbTracks) : [];
@@ -42318,18 +42625,30 @@ xlsx/xlsx.mjs:
 				for (const control of assumptionsMenu.querySelectorAll(".fzk-only")) control.classList.toggle("hidden", diagramKind !== "fzk");
 				gwbBogenCsvButton.classList.toggle("hidden", diagramKind !== "gwb");
 				gwbAbschnittCsvButton.classList.toggle("hidden", diagramKind !== "gwb");
-				const mainNote = missingKilometerLine
+				// A Gleis without a declared side is only "noch zuzuordnen" while the
+				// Lage is silent too; placed by the Lage it is named with its position.
+				const sideOpen = hasUnknown && (sideNote.open > 0 || !sideNote.placed);
+				const mainNote = sideNote.conflict
+					? sideNote.conflict
+					: missingKilometerLine
 					? "Kilometerlinie fehlt · zweigleisige Streckenzuordnung unvollständig"
 					: outOfRangeNames.length
 					? `${outOfRangeNames.join(" / ")} für diesen Streckenabschnitt nicht vorhanden · Datei deckt nur andere Abschnitte ab`
 					: unresolvedNames.length
 					? `${unresolvedNames.join(" / ")} vorhanden, aber noch nicht sicher dekodiert`
-					: hasUnknown
+					: sideOpen
 						? `${entries.length} verknüpfte Objekte · Gleisseite noch zuzuordnen`
 						: (() => {
-							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed") && !track.className.includes("spacing")).length;
+							// The bands of a Gleis without a declared side are no rows of
+							// the 7L; they count only where there is no 7L at all.
+							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed") && !track.className.includes("spacing") && (sideNote.standalone || !track.undeclared)).length;
 							const speedBandCount = tracks.filter((track) => track.className.startsWith("diagram-speed") || track.className.includes("spacing")).length;
-							return `${sevenLineBandCount} von 7 Bändern${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""} · ${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`;
+							return [
+								`${sideNote.standalone ? `${sevenLineBandCount} ${sevenLineBandCount === 1 ? "Band" : "Bänder"}` : `${sevenLineBandCount} von 7 Bändern`}${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""}`,
+								`${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`,
+								sideNote.placed,
+								sideNote.confirmed,
+							].filter(Boolean).join(" · ");
 						})();
 				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
 				diagramNote.title = diagramNote.textContent;
@@ -45004,6 +45323,17 @@ xlsx/xlsx.mjs:
 						button.title = "Zum Umsortieren in eine andere Zeile ziehen";
 						button.className = `outbox-object${entry === current ? " selected" : ""}`;
 						button.textContent = objectListName(entry);
+						// A Gleis sorted to a side shows whether the Lage agrees.
+						const evidence = entry.item.kind === "alignment" ? sideEvidence(entry) : null;
+						if (evidence) {
+							button.title = `${sideEvidenceText(evidence)}\n${button.title}`;
+							if (evidence.grade === "belegt" || evidence.grade === "widerspruch") {
+								const mark = document.createElement("span");
+								mark.className = `side-witness ${evidence.grade}`;
+								mark.textContent = evidence.grade === "belegt" ? "Lage ✓" : "Lage widerspricht";
+								button.append(mark);
+							}
+						}
 						entry.button = button;
 						button.addEventListener("click", () => selectObject(entry, button));
 						button.addEventListener("dragstart", (event) => {
@@ -45475,6 +45805,14 @@ xlsx/xlsx.mjs:
 				kind.dataset.kind = "true";
 				const family = sourceFamilyForEntry(entry);
 				kind.textContent = dependent ? `${family} · gehört zur Trasse` : organized ? `${family} · rechts einsortiert` : orphan ? `${family} · ohne Trasse` : `${family} · roh`;
+				// A Gleis says where it lies; the tooltip names the witnesses.
+				const evidence = entry.item.kind === "alignment" ? sideEvidence(entry) : null;
+				if (evidence) {
+					const position = evidence.grade === "widerspruch" ? "Gleisseite widersprüchlich" : lageCompactText(evidence.lage);
+					if (position) kind.textContent += ` · ${position}`;
+					if (evidence.grade === "widerspruch") kind.classList.add("side-conflict");
+					button.title = `${button.title}\n${sideEvidenceText(evidence)}`;
+				}
 				button.append(label, kind);
 				entry.button = button;
 				button.addEventListener("click", () => selectObject(entry, button));
@@ -45498,7 +45836,7 @@ xlsx/xlsx.mjs:
 					const hint = document.createElement("div");
 					hint.className = "row-suggestion";
 					const text = document.createElement("span");
-					text.textContent = `Vorschlag: ${suggestion.groupDef.title}`;
+					text.textContent = `Vorschlag: ${suggestion.groupDef.title}${suggestion.reason ? ` · ${suggestion.reason}` : ""}`;
 					const accept = document.createElement("button");
 					accept.type = "button";
 					accept.textContent = "Übernehmen";
