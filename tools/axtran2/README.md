@@ -56,7 +56,10 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   arc with the file's sign, `U:40:Bloss` a transition, `W:190-1/9:R` the
   branch of an EW 190-1:9 of Ril 800.0120A01 to the right, arc then end
   piece, held: `:L` to the left, `:WE` end piece first, `:Bogen` the arc
-  alone). Not the first or
+  alone, `:auf-800` bent onto a main track of R -800 as an Innen- or
+  Außenbogenweiche; `K:DKW:190-1/9:R` the curved route of a DKW 190-1:9
+  onto the crossing track to the right, `:gerade` the straight route over
+  the crossing). Not the first or
   the last record, not a turnout's, and no two transitions side by side.
   The file is not changed; an edited record keeps its own element. An edit
   holds nothing: `--hold 7L` with it keeps the value.
