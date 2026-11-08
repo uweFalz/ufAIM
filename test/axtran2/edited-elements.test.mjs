@@ -138,3 +138,24 @@ test("a crossing turnout is one route, a bent turnout the branch's curvature plu
 	assert.ok(Math.abs(b[0].length - 190 * alpha) < 1e-12 && Math.abs(b[1].length - 6.0917) < 1e-12);
 	assert.deepEqual(bent.turnouts.map((t) => [t.kind, t.bent.kind, t.bent.mainRadius, Number(t.bent.branchRadius.toFixed(3)), t.branchSpeedKmh]), [["IBW", "IBW", 800, 153.535, null], ["ABW", "ABW", 800, -249.180, null]], "the annex speaks for the straight turnout only: no speed for the bent one");
 });
+
+test("a turnout whose branch has two radii goes in as two arcs, backwards from the Weichenende, and bends as a whole", () => {
+	const k = parseStructure("+3=W:7000/6000-1/42:R +4=W:EW6000/3700-1:32,5:L:WE +5=W:7000/6000-1/42:L:auf-9000");
+	assert.deepEqual(k.inserted.get(3), [{ type: "turnout", radius: 7000, radiusEnd: 6000, ratio: 42, side: "right", orientation: "WA" }]);
+	assert.deepEqual(k.inserted.get(4), [{ type: "turnout", radius: 6000, radiusEnd: 3700, ratio: 32.5, side: "left", orientation: "WE" }]);
+	assert.equal(formatEdits("+3=W:7000/6000-1/42:R +4=W:EW6000/3700-1:32,5:L:WE"), "+3=W:7000/6000-1/42:R +4=W:6000/3700-1/32.5:L:WE");
+	for (const bad of ["+3=W:7000/6000-1/32,5", "+3=W:7000-1/42", "+3=W:6000/7000-1/42"]) assert.throws(() => parseStructure(bad), (e) => e.code === "INVALID_EDIT", bad);
+	assert.ok(isInsertKey("7+1c") && insertOf("7+1c").part === "c");
+	const put = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, k.inserted.get(3)], [3, k.inserted.get(4)]]) });
+	const ins = put.elements.filter((e) => e.inserted);
+	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, Number(e.length.toFixed(3)), Number((1 / e.curvature).toFixed(0)), e.heldTurnout, e.inserted.turnout, e.inserted.part]), [
+		["1+1a", "arc", 80.001, -7000, true, "EW 7000/6000-1:42", "arc"], ["1+1b", "arc", 74.258, -6000, true, "EW 7000/6000-1:42", "arc2"],
+		["3+1a", "arc", 100.738, 3700, true, "EW 6000/3700-1:32.5", "arc2"], ["3+1b", "arc", 21.197, 6000, true, "EW 6000/3700-1:32.5", "arc"],
+	], "from the toe R1 then R2; from the end R2 then R1");
+	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.radiusEnd, t.arc, [...t.arcs], t.endPiece, t.branchSpeedKmh, [...t.records]]), [["EW 7000/6000-1:42", "EW", 6000, "1+1a", ["1+1a", "1+1b"], null, 200, ["1+1a", "1+1b"]], ["EW 6000/3700-1:32.5", "EW", 3700, "3+1b", ["3+1a", "3+1b"], null, 160, ["3+1a", "3+1b"]]]);
+	// bent onto a line of R 9000 turning left: the branch to the left is the tighter IBW in both arcs
+	const bent = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, k.inserted.get(5)]]) });
+	const b = bent.elements.filter((e) => e.inserted);
+	assert.ok(Math.abs(b[0].curvature - (1 / 7000 + 1 / 9000)) < 1e-15 && Math.abs(b[1].curvature - (1 / 6000 + 1 / 9000)) < 1e-15);
+	assert.deepEqual(bent.turnouts.map((t) => [t.designation, t.kind, t.bent.kind, t.bent.branchRadii.map((r) => Number(r.toFixed(1))), t.branchSpeedKmh]), [["IBW 7000/6000-1:42 auf R -9000", "IBW", "IBW", [-3937.5, -3600], null]]);
+});

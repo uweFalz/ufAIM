@@ -165,3 +165,13 @@ test("a crossing turnout's route and a bent turnout go in like a turnout, held, 
 	assert.ok(Math.abs(report.elements[4].before.radius - 1 / (1 / 190 + 1 / 400)) < 1e-6, `branch radius ${report.elements[4].before.radius}`);
 	assert.match(recordListHtml(alignmentPictureModel(report)), /<tr data-record="3\+1a" class="inserted">.*?<td>IBW 190-1:9 auf R 400<\/td>.*?<td>eingefügt nach Satz 3, gehalten<\/td>/);
 });
+
+test("a turnout with two branch radii goes in as two held arcs, and the report carries both", async () => {
+	const report = (await fit({ edits: "+1=W:7000/6000-1/42:R", speedKmh: null })).report;
+	assert.deepEqual(report.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["arc", ["1+1a"]], ["arc", ["1+1b"]], ["transition", [2]], ["arc", [3]], ["straight", [4]]]);
+	assert.deepEqual(report.input.turnouts.map((t) => [t.designation, t.kind, t.radius, t.radiusEnd, [...t.arcs], t.held, [...t.records], t.branchSpeedKmh]), [["EW 7000/6000-1:42", "EW", 7000, 6000, ["1+1a", "1+1b"], true, ["1+1a", "1+1b"], 200]]);
+	assert.deepEqual([report.input.speed.basis, report.input.speed.kmh], ["turnout", 200], "the branch of the 7000/6000 allows 200 km/h");
+	const rows = report.planRecords.filter((r) => r.inserted);
+	assert.deepEqual(rows.map((r) => [r.number, r.type, Number(r.length.toFixed(3)), Number(r.radius.toFixed(0)), r.heldLength, r.heldRadius, r.inserted.part]), [["1+1a", "arc", 80.001, 7000, true, true, "arc"], ["1+1b", "arc", 74.258, 6000, true, true, "arc2"]]);
+	assert.match(recordListHtml(alignmentPictureModel(report), { insertAfter: 1 }), /<option value="7000\/6000-1\/42">EW 7000\/6000-1:42 \(Zweig 200 km\/h\)<\/option>/);
+});

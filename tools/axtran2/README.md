@@ -57,7 +57,8 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   branch of an EW 190-1:9 of Ril 800.0120A01 to the right, arc then end
   piece, held: `:L` to the left, `:WE` end piece first, `:Bogen` the arc
   alone, `:auf-800` bent onto a main track of R -800 as an Innen- or
-  Außenbogenweiche; `K:DKW:190-1/9:R` the curved route of a DKW 190-1:9
+  Außenbogenweiche; `W:7000/6000-1/42:R` a branch of two radii as two arcs,
+  split by the annex's tangent lengths; `K:DKW:190-1/9:R` the curved route of a DKW 190-1:9
   onto the crossing track to the right, `:gerade` the straight route over
   the crossing). Not the first or
   the last record, not a turnout's, and no two transitions side by side.
