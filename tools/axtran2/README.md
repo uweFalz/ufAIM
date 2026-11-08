@@ -48,9 +48,10 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
 - `--hold-radii` holds every radius; the fit changes lengths only.
 - `--edit "7L=45.2 7R=-1250"` starts the fit from these values instead of
   the file's: the record number, L for its length or R for its radius (with
-  the file's sign), `=` and the value. The file is not changed; an edited
-  record keeps its own element. An edit holds nothing: `--hold 7L` with it
-  keeps the value.
+  the file's sign), `=` and the value; `9T=Bloss` changes the type of a
+  transition (Klothoide, Bloss, S-Form: Kz 2, 4, 3). The file is not changed;
+  an edited record keeps its own element. An edit holds nothing: `--hold 7L`
+  with it keeps the value.
 
 ## Outputs
 

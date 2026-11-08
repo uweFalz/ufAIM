@@ -448,3 +448,24 @@ zurück, mit der Meldung, warum.
 
 Nicht gebaut: Bloss als Übergangsbogen im Kern (Stufe 4, Kern-Go), das
 Einfügen oder Entfernen von Sätzen, Werte an Weichen.
+
+## Klothoide nach Bloss (2026-11-08)
+
+Der Typ eines Übergangsbogens ist ein Wert wie seine Länge: `9T=Bloss` im
+Feld „Werte ändern“, in der Satzliste eine Auswahl neben dem Typ. Zur
+Wahl stehen Klothoide, Bloss und S-Form (Helmert), die drei, die der
+TRA-Schreiber als Kz 2, 4 und 3 trägt; ein Halbwellen-Übergang (Kz 8)
+behält seinen Typ. Der Fitter setzt die Familie des Elements vor der
+Startlage; der Kern kennt die Familien aus seiner Registry (Momenten-
+tafel je Familie), darum war dafür keine Kernänderung nötig. Der Bericht
+führt je Übergangsbogen `family` (womit der Fit begann) und `fileFamily`.
+
+Im Krümmungsband läuft der Übergangsbogen jetzt entlang seines Gesetzes:
+die Klothoide als Gerade, der Bloss als 3u²−2u³, die S-Form als zwei
+Parabeln; der Text unter dem Bild nennt den Typ. Geprüft auf einer
+erfundenen Trasse, deren Gleis ein Bloss ist, während der Plan eine
+Klothoide sagt: mit `2T=Bloss` trifft der Fit die Punkte enger, die
+geschriebene Datei liest sich als Bloss zurück.
+
+Nicht gebaut: Sätze einfügen oder entfernen, Werte und Typ an Weichen,
+weitere Familien der Registry (Wiener Bogen, Sinusoide) im Schreiber.

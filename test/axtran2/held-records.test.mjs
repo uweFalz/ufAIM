@@ -253,25 +253,29 @@ test("an edit is read as a person types it, and written back the same way", () =
 	assert.deepEqual([...parseEdits([{ record: 3, length: 20 }, { number: 3, radius: 300 }])], [[3, { length: 20, radius: 300 }]]);
 	assert.deepEqual([...parseEdits(new Map([["4", { radius: -480 }]]))], [[4, { radius: -480 }]]);
 	assert.deepEqual([...parseEdits("")], []);
+	// a transition's type, by any of its words
+	assert.deepEqual([...parseEdits("9T=Bloss 9L=60, 4T=klothoide 5T=S-Form")], [[9, { family: "bloss", length: 60 }], [4, { family: "clothoid" }], [5, { family: "helmert" }]]);
+	assert.equal(formatEdits("5T=helmert 9L=60 9T=bloss"), "5T=S-Form 9L=60 9T=Bloss");
+	assert.throws(() => parseEdits("9T=Wiener"), (e) => e.code === "INVALID_EDIT" && /Klothoide, Bloss, S-Form/.test(e.message));
 	assert.equal(formatEdits("9L=10.5 7R=-1250 7L=45,200"), "7L=45,2 7R=-1250 9L=10,5");
 	assert.equal(formatEdits([]), "");
 	for (const bad of ["7=45", "7X=1", "7L=abc", "L=4", "7L"]) assert.throws(() => parseEdits(bad), (e) => e instanceof RecordEditsError && e.code === "INVALID_EDIT", bad);
 	const records = [{ number: 1, type: "straight", length: 10 }, { number: 2, type: "arc", length: 20, curvature: 0.01 }, { number: 3, type: "kink", length: 0 }];
 	assert.deepEqual([...resolveEdits("2R=-150 1L=12", records)], [[2, { radius: -150 }], [1, { length: 12 }]]);
-	for (const bad of ["1R=100", "2R=0", "2L=0", "2L=-3", "3L=5", "4L=5"]) assert.throws(() => resolveEdits(bad, records), (e) => e.code === "INVALID_EDIT", bad);
+	for (const bad of ["1R=100", "2R=0", "2L=0", "2L=-3", "3L=5", "4L=5", "2T=Bloss"]) assert.throws(() => resolveEdits(bad, records), (e) => e.code === "INVALID_EDIT", bad);
 });
 
 test("an edited value is where the fit starts; the file is unchanged and the record keeps its element", async () => {
 	// record 4 is the arc R 300 that the start has 39,5 m long: started at the truth's 40 m
 	const edited = (await fit({ edits: "4L=40" })).report;
 	assert.ok(edited.verdict.ok, `${edited.verdict.status} ${edited.verdict.reason ?? ""}`);
-	assert.deepEqual(edited.input.edits, [{ record: 4, element: "E2", length: 40, radius: null }]);
+	assert.deepEqual(edited.input.edits, [{ record: 4, element: "E2", length: 40, radius: null, family: null }]);
 	const arc = edited.elements.find((e) => e.records.includes(4));
 	assert.equal(arc.before.length, 40, "the fit starts from the edited length");
 	assert.equal(arc.fixed, true, "an edited record is one element");
 	assert.deepEqual(edited.elements.map((e) => [...e.records]), [[1], [2, 3], [4], [5], [6], [7], [8, 9]]);
 	const r4 = edited.planRecords[3];
-	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false }, null, false]);
+	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false, family: false }, null, false]);
 	assert.ok(edited.planRecords.filter((r) => r.number !== 4).every((r) => r.edited === null && r.length === r.fileLength));
 	// an edit holds nothing: the fit may move the value again; with the hold it keeps it
 	const held = (await fit({ edits: "4L=40", hold: "4L" })).report;
