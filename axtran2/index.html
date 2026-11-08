@@ -44,6 +44,9 @@
 	.records input[data-field] { width: 8ch; text-align: right; font: inherit; font-variant-numeric: tabular-nums; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; }
 	.records input[data-field].edited { border-color: #8A5A00; font-weight: 600; }
 	.records input[data-field].pending { border-style: dashed; }
+	.records select[data-field] { width: auto; font: inherit; padding: 2px 4px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; }
+	.records select[data-field].edited { border-color: #8A5A00; font-weight: 600; }
+	.records select[data-field].pending { border-style: dashed; }
 	.records input.pending { outline: 2px dashed #8A5A00; outline-offset: 1px; }
 	th:first-child, td:first-child { text-align: left; }
 	.actions { display: flex; gap: 12px; flex-wrap: wrap; }
@@ -73,7 +76,7 @@
 			<div><label for="speed">Entwurfsgeschwindigkeit [km/h], optional</label><input id="speed" type="number" step="10" placeholder="aus der Trasse"><small>Leer ist eine Annahme, die das Ergebnis mit Grund nennt: was die langsamste Weiche der Trasse im Zweig zulässt, ohne Weiche das schnellste Hauptbahn-Profil, das die Trasse zulässt.</small></div>
 			<div><label for="hold">Sätze halten, optional</label><input id="hold" type="text" placeholder="z. B. 1,2,13 oder Weichen"><small>Satznummern wie im TRA-Ausdruck, Bereiche (3-5) oder „Weichen": gehaltene Sätze behalten Länge und Radius. Ein L oder R dahinter hält nur das eine: 7L die Länge, 7R den Radius (nur bei Bögen). Erkannte Weichen (Ril 800.0120A01) nennt das Ergebnis in jedem Fall.</small></div>
 			<div><label for="holdRadii"><input id="holdRadii" type="checkbox" style="width:auto;margin-right:6px">Radien halten</label><small>Alle Radien bleiben, wie die Trasse sie hat; der Fit verändert nur die Längen.</small></div>
-			<div><label for="edits">Werte ändern, optional</label><input id="edits" type="text" placeholder="z. B. 7L=45,2 7R=-1250"><small>Länge (L) oder Radius (R) eines Satzes, von dem der Fit ausgeht statt vom Wert der Datei; Radius mit dem Vorzeichen der Datei. Die Datei bleibt, wie sie ist. Ein geänderter Wert ist nicht gehalten: dazu das Schloss.</small></div>
+			<div><label for="edits">Werte ändern, optional</label><input id="edits" type="text" placeholder="z. B. 7L=45,2 7R=-1250 9T=Bloss"><small>Länge (L) oder Radius (R) eines Satzes, von dem der Fit ausgeht statt vom Wert der Datei; Radius mit dem Vorzeichen der Datei. T ändert den Typ eines Übergangsbogens: Klothoide, Bloss oder S-Form. Die Datei bleibt, wie sie ist. Ein geänderter Wert ist nicht gehalten: dazu das Schloss.</small></div>
 			<div><label for="iterations">Höchstens Schritte</label><input id="iterations" type="number" step="100" value="1000"></div>
 			<div><label for="order">Ordnung</label><select id="order">
 				<option value="points" selected>Punkte allein</option>
@@ -119,7 +122,7 @@
 		<small>Oben das Krümmungsband über der Station ab Trassenanfang: der Plan gestrichelt, der Fit ausgezogen, gehaltene Sätze unterlegt. Ein Bogen trägt zwei Schlösser, L für die Länge und R für den Radius; eine Gerade eines, eine Weiche eines für das Ganze. Ein Klick hält fest oder gibt frei; das Feld Sätze halten zeigt die Auswahl, und der Fit rechnet neu. Unten die Punkte gegen die Toleranz, der Plan als offener Kreis. Mit + wird das Bild breiter, dann bekommen auch kurze Sätze ihre Schlösser.</small>
 		<h2 style="margin-top:20px">Sätze: Plan, Fit und was gehalten ist</h2>
 		<div style="overflow:auto"><table id="records" class="records"></table></div>
-		<small>Jeder Satz der Datei mit Länge und Radius vor und nach dem Fit; fett, was der Fit geändert hat. Die Planwerte sind Felder: ein Wert, der dort steht, ist der, von dem der nächste Fit ausgeht (Feld Werte ändern); die Datei bleibt, und ihr Wert steht am Feld. Die Kästchen halten die Länge oder den Radius eines Satzes, eine Weiche als Ganzes, und schreiben dasselbe Feld wie die Schlösser im Bild.</small>
+		<small>Jeder Satz der Datei mit Länge und Radius vor und nach dem Fit; fett, was der Fit geändert hat. Die Planwerte sind Felder, der Typ eines Übergangsbogens eine Auswahl (Klothoide, Bloss, S-Form): was dort steht, ist das, wovon der nächste Fit ausgeht (Feld Werte ändern); die Datei bleibt, und ihr Wert steht am Feld. Die Kästchen halten die Länge oder den Radius eines Satzes, eine Weiche als Ganzes, und schreiben dasselbe Feld wie die Schlösser im Bild.</small>
 		<h2 style="margin-top:20px">Querabstand entlang der Station</h2>
 		<div id="chart" style="background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px"></div>
 		<small>Oben der Plan vor dem Fit in seinem eigenen Maßstab, unten der Fit im Toleranzband; ein Ring markiert einen Punkt außerhalb der Toleranz.</small>

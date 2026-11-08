@@ -13,7 +13,16 @@
 // (which record was clicked, which station the mouse is at); the app, the
 // bundle and a test draw the same picture.
 
-export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.2";
+import { TRANSITION_FAMILIES } from "./recordEdits.js";
+
+export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.3";
+
+/** the normalised curvature law of a transition family, for the band; a line otherwise */
+const CURVATURE_LAW = Object.freeze({
+	bloss: (u) => 3 * u * u - 2 * u * u * u,
+	helmert: (u) => (u < 0.5 ? 2 * u * u : 1 - 2 * (1 - u) * (1 - u)),
+});
+const LAW_STEPS = 8;
 
 /** the quantities a record can be held in */
 export const HOLD_QUANTITIES = Object.freeze(["length", "radius"]);
@@ -114,6 +123,7 @@ export function alignmentPictureModel(report) {
 			hasRadius, heldLength: Boolean(r.heldLength ?? r.held), heldRadius: hasRadius && Boolean(r.heldRadius ?? r.held),
 			// the file's values where the fit started from edited ones
 			fileLength: r.fileLength ?? r.length, fileRadius: r.fileRadius ?? r.radius ?? null, edited: r.edited ?? null,
+			family: r.family ?? null, fileFamily: r.fileFamily ?? r.family ?? null,
 		};
 		if (!e) return { ...base, fixed: false, lockable: false, s0: null, s1: null };
 		const from = used.get(e.id) ?? 0;
@@ -187,7 +197,7 @@ export function pictureProbe(model, width, px, { reachPx = 9 } = {}) {
 	return { station, record, point, x: sc.x(station), pointX: point ? sc.x(point.station) : null, pointY: point ? sc.yPoint(point.after) : null };
 }
 
-const describeRecord = (r) => (r.type === "arc" ? `Bogen R ${comma(Math.abs(r.radius), 0)}` : r.type === "straight" ? "Gerade" : r.type === "transition" ? "Übergangsbogen" : r.type);
+const describeRecord = (r) => (r.type === "arc" ? `Bogen R ${comma(Math.abs(r.radius), 0)}` : r.type === "straight" ? "Gerade" : r.type === "transition" ? `Übergangsbogen${r.family && TRANSITION_FAMILIES[r.family] ? ` (${TRANSITION_FAMILIES[r.family]})` : ""}` : r.type);
 
 /**
  * @param {object} model               from alignmentPictureModel
@@ -219,12 +229,16 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 		out.push(`<rect data-record="${r.number}" x="${f(x(r.s0))}" y="${BAND.top}" width="${f(Math.max(x(r.s1) - x(r.s0), 1))}" height="${BAND.height}" fill="${state === "frei" ? "transparent" : COLOURS.held}" style="cursor:pointer"><title>${escapeText(title)}</title></rect>`);
 	}
 
-	// the curvature: the plan dashed, the fit solid over a soft fill
+	// the curvature: the plan dashed, the fit solid over a soft fill; a transition
+	// runs along its family's law (a clothoid is the line)
 	const band = (s0, s1, k0, k1) => {
 		let d = "", last = 0;
 		for (const e of model.elements) {
 			if (!(e[s1] > e[s0])) continue;
-			d += `${d ? "L" : "M"}${f(x(e[s0]))} ${f(yBand(last))}L${f(x(e[s0]))} ${f(yBand(e[k0]))}L${f(x(e[s1]))} ${f(yBand(e[k1]))}`;
+			d += `${d ? "L" : "M"}${f(x(e[s0]))} ${f(yBand(last))}L${f(x(e[s0]))} ${f(yBand(e[k0]))}`;
+			const law = e.type === "transition" ? CURVATURE_LAW[e.family] : null;
+			if (law) for (let i = 1; i < LAW_STEPS; i++) { const u = i / LAW_STEPS; d += `L${f(x(e[s0] + u * (e[s1] - e[s0])))} ${f(yBand(e[k0] + law(u) * (e[k1] - e[k0])))}`; }
+			d += `L${f(x(e[s1]))} ${f(yBand(e[k1]))}`;
 			last = e[k1];
 		}
 		return d;

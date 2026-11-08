@@ -276,9 +276,9 @@ function editValue(number, field, text) {
 	if (!last || !picture.model || running) return false;
 	const record = picture.model.records.find((r) => r.number === number);
 	if (!record || !record.lockable || record.turnout) return false;
-	const value = Number(String(text).trim().replace("−", "-").replace(",", "."));
-	const file = field === "length" ? record.fileLength : record.fileRadius;
-	if (!Number.isFinite(value) || (field === "length" ? !(value > 0) : !(Math.abs(value) > 0))) {
+	const value = field === "family" ? String(text) : Number(String(text).trim().replace("−", "-").replace(",", "."));
+	const file = field === "length" ? record.fileLength : field === "radius" ? record.fileRadius : record.fileFamily;
+	if (field !== "family" && (!Number.isFinite(value) || (field === "length" ? !(value > 0) : !(Math.abs(value) > 0)))) {
 		status(field === "length" ? `„${text}“ ist keine Länge: eine Zahl größer als null, Dezimalkomma erlaubt.` : `„${text}“ ist kein Radius: eine Zahl ungleich null, mit dem Vorzeichen der Datei.`, "error");
 		drawList();
 		return false;
@@ -287,7 +287,8 @@ function editValue(number, field, text) {
 	const edits = parseEdits(picture.edits ?? last.report.input.edits ?? []);
 	const entry = { ...(edits.get(number) ?? {}) };
 	// back at the file's value, as the list shows it (centimetres, whole metres of radius), the edit is gone
-	if (Math.abs(value - file) < (field === "length" ? 0.005 : 0.5)) delete entry[field]; else entry[field] = value;
+	const same = field === "family" ? value === file : Math.abs(value - file) < (field === "length" ? 0.005 : 0.5);
+	if (same) delete entry[field]; else entry[field] = value;
 	Object.keys(entry).length ? edits.set(number, entry) : edits.delete(number);
 	const previous = fieldsOfLastRun("value");
 	el("edits").value = formatEdits(edits);
@@ -313,13 +314,13 @@ el("picture").addEventListener("click", (event) => {
 });
 // a box in the listing is the same click; one not taken (a run in progress) is drawn back
 el("records").addEventListener("change", (event) => {
-	const field = event.target.closest?.("input[data-field]");
+	const field = event.target.closest?.("[data-field]");
 	if (field) { if (!editValue(Number(field.dataset.record), field.dataset.field, field.value)) drawList(); return; }
 	const box = event.target.closest?.("input[data-record]");
 	if (box && !toggleLock(Number(box.dataset.record), box.dataset.quantity ?? "both")) drawList();
 });
 // Enter in a field is the change, without leaving it
-el("records").addEventListener("keydown", (event) => { if (event.key === "Enter" && event.target.matches?.("input[data-field]")) event.target.blur(); });
+el("records").addEventListener("keydown", (event) => { if (event.key === "Enter" && event.target.matches?.("[data-field]")) event.target.blur(); });
 // edits name records of one file: another file starts without them
 el("tra").addEventListener("change", () => { el("edits").value = ""; });
 const ZOOMS = [1, 2, 4, 8];

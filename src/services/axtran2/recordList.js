@@ -14,9 +14,9 @@
 // fields (`data-record`, `data-field`).
 
 import { describeHold, holdMap } from "./alignmentPicture.js";
-import { parseEdits } from "./recordEdits.js";
+import { parseEdits, TRANSITION_FAMILIES } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.2";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.3";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
@@ -55,6 +55,17 @@ export function recordListHtml(model, { held = null, edits = null } = {}) {
 		const cls = [changed ? "edited" : "", pending ? "pending" : ""].filter(Boolean).join(" ");
 		return `<td class="num plan"><input type="text" inputmode="decimal" data-record="${r.number}" data-field="${name}" value="${trim(value, digits)}" class="${cls}" title="${escape(title)}" aria-label="${escape(`Satz ${r.number}: ${label} Plan`)}"></td>`;
 	};
+	// a transition's type as a choice: what the fit started from, or what is chosen and not yet computed
+	const typeCell = (r) => {
+		if (r.type !== "transition" || !r.lockable || !TRANSITION_FAMILIES[r.fileFamily]) return cell(r.type === "transition" && TRANSITION_FAMILIES[r.family] ? `${TYPE.transition} (${TRANSITION_FAMILIES[r.family]})` : TYPE[r.type] ?? r.type);
+		const value = typed === null ? r.family : typed.get(r.number)?.family ?? r.fileFamily;
+		const pending = value !== r.family;
+		const changed = value !== r.fileFamily;
+		const title = `${changed ? `In der Datei: ${TRANSITION_FAMILIES[r.fileFamily]}` : "Typ wie in der Datei"}${pending ? "; noch nicht gerechnet" : ""}`;
+		const cls = [changed ? "edited" : "", pending ? "pending" : ""].filter(Boolean).join(" ");
+		const options = Object.entries(TRANSITION_FAMILIES).map(([key, label]) => `<option value="${key}"${key === value ? " selected" : ""}>${label}</option>`).join("");
+		return `<td>${TYPE.transition} <select data-record="${r.number}" data-field="family" class="${cls}" title="${escape(title)}" aria-label="${escape(`Satz ${r.number}: Typ des Übergangsbogens`)}">${options}</select></td>`;
+	};
 	const box = (r, quantity, label, want, have) => {
 		const pending = want !== have;
 		return `<td class="hold"><label title="${escape(`Satz ${r.number}, ${label}: ${want ? "gehalten" : "frei"}${pending ? ", noch nicht gerechnet" : ""}`)}">`
@@ -74,7 +85,7 @@ export function recordListHtml(model, { held = null, edits = null } = {}) {
 			: r.turnout ? `<td class="hold" colspan="2"><label title="${escape(`${r.turnout}: eine Weiche wird als Ganzes gehalten`)}"><input type="checkbox" data-record="${r.number}" data-quantity="both"${want.length && (want.radius || !r.hasRadius) ? " checked" : ""}${(want.length !== have.length || want.radius !== have.radius) ? ` class="pending"` : ""} aria-label="${escape(`Satz ${r.number}: Weiche halten`)}"> Weiche</label></td>`
 			: box(r, "length", "Länge", want.length, have.length) + (r.hasRadius ? box(r, "radius", "Radius", want.radius, have.radius) : `<td class="hold"></td>`);
 		return `<tr data-record="${r.number}"${state === "frei" ? "" : ` class="held"`}>`
-			+ cell(r.number, "num") + cell(TYPE[r.type] ?? r.type) + cell(r.turnout ?? "")
+			+ cell(r.number, "num") + typeCell(r) + cell(r.turnout ?? "")
 			+ planLength + number(lengthAfter, 2, r.length)
 			+ planRadius + number(radiusAfter, 0, r.radius)
 			+ holds + cell(state) + "</tr>";

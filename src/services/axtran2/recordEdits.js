@@ -9,9 +9,22 @@
 //
 // Written as a person types it: the record number, L or R for the quantity,
 // "=" and the value, several apart by space or comma: "7L=45,2 7R=-1250".
-// A decimal comma is read; the radius carries the file's sign.
+// A decimal comma is read; the radius carries the file's sign. A transition
+// may change its type: "7T=Bloss", with Klothoide, Bloss or S-Form (Helmert),
+// the three the TRA writer carries as Kz 2, 4 and 3.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.1";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.2";
+
+/** the transition families a record may be changed to, with the words for them */
+export const TRANSITION_FAMILIES = Object.freeze({ clothoid: "Klothoide", bloss: "Bloss", helmert: "S-Form" });
+const FAMILY_WORDS = Object.freeze({
+	klothoide: "clothoid", klotoide: "clothoid", clothoid: "clothoid", clothoide: "clothoid",
+	bloss: "bloss", "s-form": "helmert", sform: "helmert", helmert: "helmert", "üb s-form": "helmert", "ueb s-form": "helmert",
+});
+/** a word for a transition family to the family, or null */
+export function familyOf(word) {
+	return FAMILY_WORDS[String(word ?? "").trim().toLowerCase()] ?? null;
+}
 
 export class RecordEditsError extends Error {
 	constructor(code, message, detail = null) {
@@ -38,17 +51,25 @@ export function parseEdits(edits) {
 	const map = new Map();
 	const put = (n, field, value) => {
 		if (!Number.isInteger(n) || n < 1) error("INVALID_EDIT", `"${n}" is not a record number`);
+		if (field === "family") {
+			const family = familyOf(value) ?? (TRANSITION_FAMILIES[value] ? value : null);
+			if (!family) error("INVALID_EDIT", `record ${n}: "${value}" is not a transition type: ${Object.values(TRANSITION_FAMILIES).join(", ")}`);
+			map.set(n, { ...(map.get(n) ?? {}), family });
+			return;
+		}
 		if (!Number.isFinite(value)) error("INVALID_EDIT", `record ${n}: no readable ${field}: "${value}"`);
 		map.set(n, { ...(map.get(n) ?? {}), [field]: value });
 	};
 	if (edits === null || edits === undefined) return map;
 	if (typeof edits === "string") {
-		for (const token of edits.split(/[\s;]+|,(?=\s*\d+\s*[lr]\s*=)/i).map((t) => t.trim()).filter(Boolean)) {
-			const m = /^(\d+)\s*([lr])\s*=\s*(.+)$/i.exec(token);
-			if (!m) error("INVALID_EDIT", `cannot read "${token}": write the record number, L or R, "=" and the value, as in 7L=45,2`);
+		for (const token of edits.split(/[\s;]+|,(?=\s*\d+\s*[lrt]\s*=)/i).map((t) => t.trim()).filter(Boolean)) {
+			const m = /^(\d+)\s*([lrt])\s*=\s*(.+)$/i.exec(token);
+			if (!m) error("INVALID_EDIT", `cannot read "${token}": write the record number, L, R or T, "=" and the value, as in 7L=45,2 or 7T=Bloss`);
+			const kind = m[2].toUpperCase();
+			if (kind === "T") { put(Number(m[1]), "family", m[3]); continue; }
 			const value = toNumber(m[3]);
 			if (Number.isNaN(value)) error("INVALID_EDIT", `cannot read the value in "${token}"`);
-			put(Number(m[1]), m[2].toUpperCase() === "L" ? "length" : "radius", value);
+			put(Number(m[1]), kind === "L" ? "length" : "radius", value);
 		}
 		return map;
 	}
@@ -57,6 +78,7 @@ export function parseEdits(edits) {
 		const n = Number(e.record ?? e.number);
 		if (e.length !== undefined && e.length !== null) put(n, "length", Number(e.length));
 		if (e.radius !== undefined && e.radius !== null) put(n, "radius", Number(e.radius));
+		if (e.family !== undefined && e.family !== null) put(n, "family", e.family);
 	}
 	return map;
 }
@@ -68,7 +90,7 @@ export function formatEdits(edits) {
 	const map = parseEdits(edits);
 	return [...map.keys()].sort((a, b) => a - b).flatMap((n) => {
 		const e = map.get(n);
-		return [...(e.length !== undefined ? [`${n}L=${trim(e.length, 3)}`] : []), ...(e.radius !== undefined ? [`${n}R=${trim(e.radius, 3)}`] : [])];
+		return [...(e.length !== undefined ? [`${n}L=${trim(e.length, 3)}`] : []), ...(e.radius !== undefined ? [`${n}R=${trim(e.radius, 3)}`] : []), ...(e.family !== undefined ? [`${n}T=${TRANSITION_FAMILIES[e.family]}`] : [])];
 	}).join(" ");
 }
 
@@ -89,6 +111,7 @@ export function resolveEdits(edits, records) {
 			if (r.type !== "arc") error("INVALID_EDIT", `record ${n} is a ${r.type}: it has no radius to change`);
 			if (!(Math.abs(e.radius) > 0)) error("INVALID_EDIT", `record ${n}: a radius cannot be zero`);
 		}
+		if (e.family !== undefined && r.type !== "transition") error("INVALID_EDIT", `record ${n} is a ${r.type}: only a transition has a type to change`);
 		out.set(n, Object.freeze({ ...e }));
 	}
 	return out;
