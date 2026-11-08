@@ -1055,6 +1055,7 @@
 			}
 			.outbox-object:hover { background: var(--button-hover) !important; }
 			.spurplan-fold { fill: none; stroke: var(--secondary); stroke-width: 1.2; }
+			path.spurplan-edge, path.spurplan-halo { fill: none; stroke-linejoin: round; stroke-linecap: round; }
 			#outboxContent .outbox-junction-row.outbox-junction-off { color: color-mix(in srgb, #d70015 78%, CanvasText); }
 			.spurplan-fold-label { font-size: 9px; }
 			/* Second witness of a Gleisseite: the Lage agrees, or contradicts. */
@@ -42163,23 +42164,62 @@ xlsx/xlsx.mjs:
 					const key = edge.name ?? edge.entry;
 					if (!longestEdge.has(key) || length > longestEdge.get(key).length) longestEdge.set(key, { edge, length });
 				}
+				// The shape of an edge: from its node it leaves on a short diagonal
+				// to its own row, runs there, and comes back to the other node on a
+				// diagonal -- the Weiche's slant in a Spurplan. An edge too short for
+				// two slants (a Weichenverbindung between two parallel Gleise) is one
+				// straight slant from node to node.
+				const trackShapes = new Map();
+				const shapeOf = (edge) => {
+					if (trackShapes.has(edge)) return trackShapes.get(edge);
+					const forward = edge.from.km <= edge.to.km;
+					const [a, b] = forward ? [edge.from, edge.to] : [edge.to, edge.from];
+					const xa = xAt(a.km);
+					const xb = xAt(b.km);
+					const ya = yAt(a.row);
+					const yb = yAt(b.row);
+					const points = [[xa, ya]];
+					const rowY = edge.row == null ? null : yAt(edge.row);
+					if (rowY != null && xb - xa > 2 * SPURPLAN_SLANT_PX + 6) {
+						const slant = (fromY) => Math.min(SPURPLAN_SLANT_PX * Math.max(1, Math.abs(fromY - rowY) / rowPitch), (xb - xa) / 2.5);
+						if (Math.abs(ya - rowY) > 0.5) points.push([xa + slant(ya), rowY]);
+						else points[0] = [xa, rowY];
+						if (Math.abs(yb - rowY) > 0.5) points.push([xb - slant(yb), rowY], [xb, yb]);
+						else points.push([xb, rowY]);
+					} else {
+						points.push([xb, yb]);
+					}
+					// y along the shape at any x; x grows along the shape.
+					const yAtX = (x) => {
+						for (let index = 0; index + 1 < points.length; index += 1) {
+							const [px, py] = points[index];
+							const [qx, qy] = points[index + 1];
+							if (x <= qx || index === points.length - 2) return qx === px ? qy : py + (Math.max(px, Math.min(qx, x)) - px) / (qx - px) * (qy - py);
+						}
+						return points[0][1];
+					};
+					const shape = { points, forward, xa, xb, yAtX, path: points.map(([x, yy], index) => `${index ? "L" : "M"} ${x.toFixed(1)} ${yy.toFixed(1)}`).join(" ") };
+					trackShapes.set(edge, shape);
+					return shape;
+				};
+				// The piece of the shape between two x: its corners included.
+				const pathBetween = (shape, xFrom, xTo) => {
+					const [lo, hi] = xFrom <= xTo ? [xFrom, xTo] : [xTo, xFrom];
+					const corners = shape.points.map(([x]) => x).filter((x) => x > lo && x < hi);
+					return [lo, ...corners, hi].map((x, index) => `${index ? "L" : "M"} ${x.toFixed(1)} ${shape.yAtX(x).toFixed(1)}`).join(" ");
+				};
 				for (const edge of visible) {
-					const x1 = xAt(edge.from.km);
-					const x2 = xAt(edge.to.km);
-					const y1 = yAt(edge.from.row);
-					const y2 = yAt(edge.to.row);
+					const shape = shapeOf(edge);
 					const isSelected = edge.entry === selected;
 					const name = `${edge.name ?? objectDisplayName(edge.entry)}${edge.part ? ` (${edge.part})` : ""} · ${edge.from.label ?? edge.from.kind} → ${edge.to.label ?? edge.to.kind}`;
 					const segments = options.speeds?.get(edge);
 					if (segments?.length) {
-						// Station in the Gleis's own frame → position along the edge.
+						// Station in the Gleis's own frame → km on the edge → x on the shape.
 						const span = edge.stationTo - edge.stationFrom || 1;
-						const at = (station) => { const t = Math.max(0, Math.min(1, (station - edge.stationFrom) / span)); return [xAt(edge.from.km + t * (edge.to.km - edge.from.km)), y1 + t * (y2 - y1)]; };
-						if (isSelected) content.append(svgElement("line", { x1, x2, y1, y2, class: "spurplan-halo" }));
+						const xOf = (stationValue) => { const t = Math.max(0, Math.min(1, (stationValue - edge.stationFrom) / span)); return xAt(edge.from.km + t * (edge.to.km - edge.from.km)); };
+						if (isSelected) content.append(svgElement("path", { d: shape.path, class: "spurplan-halo" }));
 						for (const segment of segments) {
-							const [ax, ay] = at(segment.from);
-							const [bx, by] = at(segment.to);
-							const line = svgElement("line", { x1: ax, x2: bx, y1: ay, y2: by, class: "diagram-series spurplan-edge spurplan-speed", style: `stroke:${spurplanSpeedColor(segment.v)}` });
+							const line = svgElement("path", { d: pathBetween(shape, xOf(segment.from), xOf(segment.to)), class: "diagram-series spurplan-edge spurplan-speed", style: `stroke:${spurplanSpeedColor(segment.v)}` });
 							line.addEventListener("click", () => selectObject(edge.entry, edge.entry.button));
 							const title = svgElement("title");
 							title.textContent = `${name}\nv ${segment.v} km/h · ${station(segment.from).trim()} – ${station(segment.to).trim()}`;
@@ -42188,7 +42228,7 @@ xlsx/xlsx.mjs:
 						}
 						continue;
 					}
-					const line = svgElement("line", { x1, x2, y1, y2, class: `diagram-series spurplan-edge${isSelected ? " spurplan-selected" : ""}` });
+					const line = svgElement("path", { d: shape.path, class: `diagram-series spurplan-edge${isSelected ? " spurplan-selected" : ""}` });
 					line.addEventListener("click", () => selectObject(edge.entry, edge.entry.button));
 					const title = svgElement("title");
 					title.textContent = name;
@@ -42224,7 +42264,7 @@ xlsx/xlsx.mjs:
 					const ax = xAt(edge.from.km);
 					const bx = xAt(edge.to.km);
 					const centerX = (ax + bx) / 2;
-					const centerY = (yAt(edge.from.row) + yAt(edge.to.row)) / 2;
+					const centerY = shapeOf(edge).yAtX(centerX);
 					const spots = [];
 					for (const dy of [-5, 14]) {
 						spots.push([centerX, centerY + dy]);
@@ -45948,22 +45988,62 @@ xlsx/xlsx.mjs:
 					for (const node of [edge.from, edge.to]) node.names = [...new Set(node.names.map((name) => name === objectDisplayName(edge.entry) ? edge.name : name))];
 				}
 				const fromData = data.nodes.length || namedFromData ? { ...data.summary, nodes: data.nodes.filter((node) => node.knotenTyp != null).length, gleise: data.covered.size, named: namedFromData, offGleis: data.nodes.filter((node) => node.gap > TOPOLOGY_TOLERANCE_M).length } : null;
-				// Rows: node offsets sorted and split where a gap exceeds half a
-				// Gleisabstand -- 4,0 and 4,5 m spacing and curved yards all land in
-				// their own row without a fixed raster. Row 0 is the axis's row,
-				// larger rows lie to the left of the axis direction.
-				const placed = nodes.filter((node) => node.offset != null).sort((a, b) => a.offset - b.offset);
+				// An edge has a row of its own: the offset of its middle stretch from
+				// the axis (median of five samples between 20 and 80 % of its
+				// length). A Weiche sits on the Stammgleis, so a node's offset is
+				// the Stammgleis's; the Gleis that leaves it runs on its own row
+				// after the Weiche, and the plan draws it there with a short
+				// diagonal at each end instead of one long slant between the nodes.
+				const offsetAt = (axisIndex, point) => {
+					const reference = references[axisIndex];
+					if (!reference) return null;
+					const hit = referenceGrids ? lageOffset(reference, point, referenceGrids[axisIndex]) : distanceAndStationOnPolyline(reference, point);
+					if (!hit || hit.distance > (kmLines.length ? TOPOLOGY_KM_MAX_DISTANCE_M : TOPOLOGY_AXIS_MAX_DISTANCE_M)) return null;
+					return hit.side * hit.distance;
+				};
+				for (const edge of edges) {
+					edge.offset = null;
+					const axisIndex = edge.from.axis ?? edge.to.axis;
+					if (axisIndex == null) continue;
+					const polyline = polylineOf(edge.entry);
+					const low = Math.min(edge.stationFrom, edge.stationTo);
+					const high = Math.max(edge.stationFrom, edge.stationTo);
+					if (polyline.length < 2 || high - low < 1) continue;
+					const samples = [];
+					for (const fraction of [0.2, 0.35, 0.5, 0.65, 0.8]) {
+						const target = low + fraction * (high - low);
+						let index = polyline.findIndex((point) => point.station >= target);
+						if (index < 0) index = polyline.length - 1;
+						const offset = offsetAt(axisIndex, polyline[index]);
+						if (offset != null) samples.push(offset);
+					}
+					if (samples.length < 3) continue;
+					samples.sort((a, b) => a - b);
+					edge.offset = samples[Math.floor(samples.length / 2)];
+				}
+				// Rows: the offsets of nodes and edges sorted and split where a gap
+				// exceeds half a Gleisabstand -- 4,0 and 4,5 m spacing and curved
+				// yards all land in their own row without a fixed raster. Row 0 is
+				// the axis's row, larger rows lie to the left of the axis direction.
+				const placed = nodes.filter((node) => node.offset != null);
+				const rowed = [...placed, ...edges.filter((edge) => edge.offset != null)].sort((a, b) => a.offset - b.offset);
 				let rowIndex = -1;
 				let rowLast = null;
 				let axisRow = 0;
-				for (const node of placed) {
-					if (rowLast == null || node.offset - rowLast > TOPOLOGY_ROW_GAP_M) rowIndex += 1;
-					node.row = rowIndex;
-					rowLast = node.offset;
-					if (Math.abs(node.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
+				for (const item of rowed) {
+					if (rowLast == null || item.offset - rowLast > TOPOLOGY_ROW_GAP_M) rowIndex += 1;
+					item.row = rowIndex;
+					rowLast = item.offset;
+					if (Math.abs(item.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
 				}
-				for (const node of placed) node.row -= axisRow;
-				return { nodes, edges, axes, fromData, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: placed.length ? [Math.min(...placed.map((node) => node.row)), Math.max(...placed.map((node) => node.row))] : null };
+				for (const item of rowed) item.row -= axisRow;
+				// A Gleisende sits on its own Gleis, not on a neighbour's row.
+				for (const node of placed) {
+					if (node.arms.length !== 1) continue;
+					const own = edges.find((edge) => (edge.from === node || edge.to === node) && edge.row != null);
+					if (own) node.row = own.row;
+				}
+				return { nodes, edges, axes, fromData, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
 			}
 
 			function activateJunctionCluster(junction) {
@@ -47039,6 +47119,8 @@ xlsx/xlsx.mjs:
 			const SPURPLAN_GAP_M = 300;
 			// ... to this many pixels.
 			const SPURPLAN_FOLD_PX = 36;
+			// A Weiche's slant from the Stammgleis to the next row, in pixels.
+			const SPURPLAN_SLANT_PX = 10;
 			function spurplanSpeedColor(v) { return SPURPLAN_SPEED_CLASSES.find(([max]) => v <= max)[1]; }
 			const spurplanSpeedCache = new Map();
 			let spurplanSvg = null;
@@ -47175,7 +47257,8 @@ xlsx/xlsx.mjs:
 					const zoomed = window.xMin > full.xMin + 1e-6 || window.xMax < full.xMax - 1e-6;
 					const zoomFactor = (full.xMax - full.xMin) / Math.max(window.xMax - window.xMin, 1);
 					const rowPitch = Math.min(64, Math.round(22 * Math.max(1, Math.sqrt(zoomFactor))));
-					const bandRows = nodes.filter((node) => node.row != null).map((node) => node.row);
+					// The band is as tall as its nodes and its edges' own rows need.
+					const bandRows = [...nodes.filter((node) => node.row != null).map((node) => node.row), ...topology.edges.filter((edge) => edge.row != null && axis.axes.has(edge.from.axis ?? edge.to.axis)).map((edge) => edge.row)];
 					const rowsHere = bandRows.length ? [Math.min(...bandRows), Math.max(...bandRows)] : topology.rows;
 					const here = nodes.filter((node) => node.kind === "Weiche" || node.kind === "Kreuzung").length;
 					junctions += here;
