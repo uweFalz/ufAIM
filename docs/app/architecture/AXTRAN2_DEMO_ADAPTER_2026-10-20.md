@@ -501,3 +501,25 @@ haben kein Schloss, weil das Haltefeld die Sätze der Datei nennt.
 
 Nicht gebaut: Werte und Typ an Weichen, das Einfügen ganzer Weichen aus
 dem Katalog, weitere Familien der Registry im Schreiber.
+
+## Die Punktliste .pt (2026-11-08)
+
+Die Ist-Gleislage kam bisher als CSV; die Datei aus Verm.esn heißt `.pt`
+und wurde abgewiesen (die Punkte des Bahnhofsgleises wurden von Hand
+umgesetzt). Jetzt liest der Punktleser sie direkt
+(`src/services/axtran2/ptListing.js`, eingehängt in `parsePointList`):
+die Titelzeile `EB:`, die Vorlagenzeile, die die Spalten mit Buchstaben
+markiert (`PPPP` Nummer, `YYYY.YYYY` Rechtswert, `XXXX.XXXX` Hochwert,
+`HHHH` Höhe, `DDDD` Datum, `FFFF%` Text bis zum Zeilenende), dann je
+Zeile ein Punkt in diesen Spalten. Die Spalten kommen aus der Vorlage,
+darum übersteht ein Name mit Leerzeichen; eine Zeile, die nicht in die
+Spalten passt, wird nach Worten in der Reihenfolge der Vorlage gelesen,
+eine Liste ohne Vorlage ganz so. Y ist der Rechtswert, X der Hochwert,
+wie bei der Kopfzeile `Y X` der CSV; F wird zur Bemerkung, die Höhe
+reist als `height` mit, ohne dass der Fit sie ansieht. Zwangspunkte
+kommen nicht so: eine `.pt` trägt keinen Abstand und wird dafür
+abgewiesen.
+
+Geprüft an der Datei des Bahnhofsgleises: 77 Punkte, dieselben
+Koordinaten und Bemerkungen wie die von Hand umgesetzte CSV; der Fit
+darauf ist derselbe.

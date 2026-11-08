@@ -31,6 +31,8 @@
 // needs a side, so its distance must not be zero. A list that states no rule
 // carries none: the default is the problem's to declare, not the file's.
 
+import { isPtListing, parsePtListing } from "./ptListing.js";
+
 const NAME_HEADERS = ["name", "nr", "punkt", "pkt", "id", "nummer", "punktnummer"];
 const EAST_HEADERS = ["e", "east", "easting", "rechtswert", "rw", "y", "x"];
 const NORTH_HEADERS = ["n", "north", "northing", "hochwert", "hw"];
@@ -159,6 +161,13 @@ function columnsByOrder(cells, kind) {
 export function parsePointList(text, { kind = "points", axes = "en", tolerance = null } = {}) {
 	if (typeof text !== "string") error("INVALID_INPUT", "a point list is text");
 	if (!["en", "ne"].includes(axes)) error("INVALID_AXES", `axes must be "en" or "ne", not "${axes}"`);
+	// a byte-order mark at the top, as the file came decoded or not, is not a cell
+	text = text.replace(/^(\uFEFF|ï»¿)/, "");
+	// a Verm.esn .pt listing: its columns are its own, Y the easting, X the northing
+	if (isPtListing(text)) {
+		if (kind === "zwang") error("INVALID_INPUT", "a .pt listing carries no distances: Zwangspunkte come as a list with an Abstand column");
+		return Object.freeze(parsePtListing(text).points.map((p) => Object.freeze({ name: p.name, x: p.east, y: p.north, tolerance, ...(p.height !== null ? { height: p.height } : {}), ...(p.remark ? { remark: p.remark } : {}) })));
+	}
 	const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#") && !l.startsWith("//"));
 	if (lines.length === 0) error("EMPTY", "the point list has no lines");
 	let columns = null;
