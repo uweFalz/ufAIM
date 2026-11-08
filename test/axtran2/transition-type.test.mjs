@@ -175,3 +175,13 @@ test("a turnout with two branch radii goes in as two held arcs, and the report c
 	assert.deepEqual(rows.map((r) => [r.number, r.type, Number(r.length.toFixed(3)), Number(r.radius.toFixed(0)), r.heldLength, r.heldRadius, r.inserted.part]), [["1+1a", "arc", 80.001, 7000, true, true, "arc"], ["1+1b", "arc", 74.258, 6000, true, true, "arc2"]]);
 	assert.match(recordListHtml(alignmentPictureModel(report), { insertAfter: 1 }), /<option value="7000\/6000-1\/42">EW 7000\/6000-1:42 \(Zweig 200 km\/h\)<\/option>/);
 });
+
+test("a plain crossing goes in as a held straight, and the report knows it as a Kr", async () => {
+	const report = (await fit({ edits: "+1=K:Kr:1/9", speedKmh: null })).report;
+	assert.deepEqual(report.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["straight", ["1+1"]], ["transition", [2]], ["arc", [3]], ["straight", [4]]]);
+	assert.deepEqual(report.input.turnouts.map((t) => [t.designation, t.kind, t.radius, t.side, t.held, [...t.records], t.inserted.route, t.branchSpeedKmh]), [["Kr 1:9", "Kr", null, null, true, ["1+1"], "straight", 100]]);
+	assert.deepEqual([report.input.speed.basis, report.input.speed.kmh], ["turnout", 100], "the crossing's straight allows 100 km/h");
+	const rows = report.planRecords.filter((r) => r.inserted);
+	assert.deepEqual(rows.map((r) => [r.number, r.type, r.length, r.turnout, r.heldLength, r.inserted.part]), [["1+1", "straight", 33.23, "Kr 1:9", true, "straight"]]);
+	assert.match(recordListHtml(alignmentPictureModel(report), { insertAfter: 1 }), /<option value="Kr:1\/9">Kr 1:9 \(Kreuzung ohne Weiche, gerade 100 km\/h\)<\/option>/);
+});

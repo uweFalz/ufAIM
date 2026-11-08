@@ -615,3 +615,25 @@ nicht (`COMPOUND_BRANCH`). Jetzt sind sie Bauarten wie die anderen:
 
 Nicht gebaut: Kreuzungen (Kr) ohne Weiche, Werte und Typ an Weichen,
 Klothoiden im Zweig (der Kern kennt im Zweig nur Bögen).
+
+## Kreuzungen ohne Weiche (2026-11-09)
+
+Der Anhang führt zwei Kreuzungen mit starrem Doppelherzstück, Kr 1:9
+(lw 33,23 m, 100 km/h) und Kr 1:7,5 (26,50 m, 80 km/h). Eine Kreuzung
+hat keinen Zweig: zwei gerade Gleise schneiden sich unter 1:n, und das
+Gleis durch sie ist die Gerade von Kreuzungsanfang bis -ende, das lw des
+Anhangs.
+
+- `+7=K:Kr:1/9` setzt diese Gerade als Satz `7+1` ein, gehalten, ohne
+  Seite und ohne Fahrt (beides hat die Kreuzung nicht); zulässig ist das
+  V des Anhangs, und die Geschwindigkeitsannahme nimmt sie wie eine
+  erkannte Weiche. `input.turnouts` nennt `kind` „Kr“, `radius` null,
+  `route` „straight“, `side` null.
+- In der Liste steht die Kreuzung in der Auswahl der Kreuzungsweichen;
+  Fahrt und Seite werden für sie nicht gelesen.
+- Nicht erkannt wird sie in der Datei: eine Gerade von 33,23 m ist keine
+  Kreuzung, nur weil sie so lang ist. Wer eine hat, hält den Satz oder
+  fügt die Kreuzung ein.
+
+Nicht gebaut: Werte und Typ an Weichen, Klothoiden im Zweig (der Kern
+kennt im Zweig nur Bögen).

@@ -33,16 +33,22 @@
 // track to the right (the arc R * atan(1/n)), ":gerade" the straight route
 // over the crossing (2 R tan(alpha/2)); an EKW reads the same from its entry.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.6";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.7";
 
 import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 import { RIL_800_0120_A01, CROSSING_KINDS } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-/** the crossing turnouts of the annex: { kind, designation, radius, ratio, branchSpeedKmh, mainSpeedKmh } */
-export const CROSSING_SHAPES = Object.freeze(RIL_800_0120_A01.rows.filter((r) => CROSSING_KINDS.includes(r.kind) && Number.isFinite(r.radius))
-	.map((r) => Object.freeze({ kind: r.kind, designation: `${r.kind} ${r.radius}-1:${r.ratio}`, radius: r.radius, ratio: r.ratio, branchSpeedKmh: r.vBranch ?? null, mainSpeedKmh: typeof r.vMain === "object" ? Math.min(...Object.values(r.vMain)) : r.vMain ?? null })));
-/** the catalogue crossing turnout of a kind, radius and ratio, or null */
-export const crossingShape = (kind, radius, ratio) => CROSSING_SHAPES.find((s) => s.kind === String(kind).toUpperCase() && Math.abs(s.radius - Number(radius)) <= 2e-3 && Math.abs(s.ratio - Number(ratio)) <= 1e-9) ?? null;
+/**
+ * the crossing turnouts of the annex, and the plain crossings (Kr, no
+ * turnout: two straight tracks crossing at 1:n, the track through it a
+ * straight of the annex's lw): { kind, designation, radius, ratio, length,
+ * branchSpeedKmh, mainSpeedKmh }; radius and branchSpeedKmh are null for a Kr
+ */
+export const CROSSING_SHAPES = Object.freeze(RIL_800_0120_A01.rows.filter((r) => (CROSSING_KINDS.includes(r.kind) && Number.isFinite(r.radius)) || (r.kind === "Kr" && Number.isFinite(r.lw)))
+	.map((r) => Object.freeze({ kind: r.kind, designation: r.kind === "Kr" ? `Kr 1:${r.ratio}` : `${r.kind} ${r.radius}-1:${r.ratio}`, radius: r.radius ?? null, ratio: r.ratio, length: r.kind === "Kr" ? r.lw : null, branchSpeedKmh: r.vBranch ?? null, mainSpeedKmh: typeof r.vMain === "object" ? Math.min(...Object.values(r.vMain)) : r.vMain ?? null })));
+/** the catalogue crossing turnout of a kind, radius and ratio (the radius null for a Kr), or null */
+export const crossingShape = (kind, radius, ratio) => CROSSING_SHAPES.find((s) => s.kind.toUpperCase() === String(kind).toUpperCase() && Math.abs(s.ratio - Number(ratio)) <= 1e-9
+	&& (s.radius === null ? radius === null || radius === undefined : Math.abs(s.radius - Number(radius)) <= 2e-3)) ?? null;
 /** the two routes through a crossing turnout */
 export const CROSSING_ROUTES_WORDS = Object.freeze({ curved: "Bogenfahrt auf das kreuzende Gleis", straight: "gerade Fahrt über die Kreuzung" });
 
@@ -182,10 +188,19 @@ export function parseStructure(edits) {
 			continue;
 		}
 		if (type === "crossing") {
+			// a plain crossing: "+7=K:Kr:1/9", the straight over it; no side, no route
+			const kr = /^Kr[:\s]*1[:/](\d+(?:[.,]\d+)?)$/i.exec(put[3].trim());
+			if (kr) {
+				spec.kind = "Kr"; spec.radius = null; spec.ratio = toNumber(kr[1]); spec.side = null; spec.route = "straight";
+				if (!crossingShape("Kr", null, spec.ratio)) error("INVALID_EDIT", `"${token}": Kr 1:${kr[1]} is not a crossing of Ril 800.0120A01: ${CROSSING_SHAPES.filter((s) => s.kind === "Kr").map((s) => s.designation).join(", ")}`);
+				if (!inserted.has(after)) inserted.set(after, []);
+				inserted.get(after).push(spec);
+				continue;
+			}
 			const k = /^(EKW|DKW)[:\s]*(\d+(?:\.\d+)?)-1[:/](\d+(?:\.\d+)?)(?::(L|R|links|rechts))?(?::(gerade|Bogen|Bogenfahrt))?$/i.exec(put[3].trim());
-			if (!k) error("INVALID_EDIT", `"${token}": a crossing turnout is written +7=K:DKW:190-1/9, then :L or :R for the crossing track's side, then :Bogen (the curved route) or :gerade`);
+			if (!k) error("INVALID_EDIT", `"${token}": a crossing turnout is written +7=K:DKW:190-1/9, then :L or :R for the crossing track's side, then :Bogen (the curved route) or :gerade; a plain crossing +7=K:Kr:1/9`);
 			spec.kind = k[1].toUpperCase(); spec.radius = Number(k[2]); spec.ratio = Number(k[3]);
-			if (!crossingShape(spec.kind, spec.radius, spec.ratio)) error("INVALID_EDIT", `"${token}": ${spec.kind} ${k[2]}-1:${k[3]} is not a crossing turnout of Ril 800.0120A01: ${CROSSING_SHAPES.map((s) => s.designation).join(", ")}`);
+			if (!crossingShape(spec.kind, spec.radius, spec.ratio)) error("INVALID_EDIT", `"${token}": ${spec.kind} ${k[2]}-1:${k[3]} is not a crossing turnout of Ril 800.0120A01: ${CROSSING_SHAPES.filter((s) => s.kind !== "Kr").map((s) => s.designation).join(", ")}`);
 			spec.side = /^l/i.test(k[4] ?? "R") ? "left" : "right";
 			spec.route = /^g/i.test(k[5] ?? "Bogen") ? "straight" : "curved";
 			if (!inserted.has(after)) inserted.set(after, []);
@@ -217,6 +232,7 @@ export function parseAllEdits(edits) {
 }
 
 const insertToken = (after, spec) => spec.type === "turnout" ? `+${after}=W:${turnoutRef(spec)}:${spec.side === "left" ? "L" : "R"}${spec.orientation === "arc" ? ":Bogen" : spec.orientation === "WE" ? ":WE" : ""}${Number.isFinite(spec.mainRadius) ? `:auf${trim(spec.mainRadius, 3)}` : ""}`
+	: spec.type === "crossing" && spec.kind === "Kr" ? `+${after}=K:Kr:1/${spec.ratio}`
 	: spec.type === "crossing" ? `+${after}=K:${spec.kind}:${turnoutRef(spec)}:${spec.side === "left" ? "L" : "R"}${spec.route === "straight" ? ":gerade" : ""}`
 	: spec.type === "arc" ? `+${after}=B:${trim(spec.radius, 3)}:${trim(spec.length, 3)}`
 	: spec.type === "transition" ? `+${after}=U:${trim(spec.length, 3)}${spec.family && spec.family !== "clothoid" ? `:${TRANSITION_FAMILIES[spec.family]}` : ""}`
