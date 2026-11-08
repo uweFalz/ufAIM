@@ -112,6 +112,8 @@ export function alignmentPictureModel(report) {
 		const base = {
 			number: r.number, type: r.type, length: r.length, radius: r.radius ?? null, element: r.element ?? null, held: r.held ?? null, turnout: r.turnout ?? null,
 			hasRadius, heldLength: Boolean(r.heldLength ?? r.held), heldRadius: hasRadius && Boolean(r.heldRadius ?? r.held),
+			// the file's values where the fit started from edited ones
+			fileLength: r.fileLength ?? r.length, fileRadius: r.fileRadius ?? r.radius ?? null, edited: r.edited ?? null,
 		};
 		if (!e) return { ...base, fixed: false, lockable: false, s0: null, s1: null };
 		const from = used.get(e.id) ?? 0;

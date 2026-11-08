@@ -8,6 +8,7 @@ import { runInWorker } from "../src/services/axtran2/workerRun.js";
 import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap } from "../src/services/axtran2/alignmentPicture.js";
 import { recordListHtml } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
+import { parseEdits, formatEdits } from "../src/services/axtran2/recordEdits.js";
 
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
@@ -17,7 +18,7 @@ let running = null;
 let ticker = null;
 let last = null;
 // the picture: its model, how wide it is drawn, and the locks set but not yet computed
-const picture = { model: null, width: 0, zoom: 1, wanted: null };
+const picture = { model: null, width: 0, zoom: 1, wanted: null, edits: null };
 // a lock recomputes on its own while a run is this quick; a long run waits for Optimieren
 const LIVE_SECONDS = 3;
 
@@ -58,7 +59,9 @@ async function readText(input) { return input.files?.[0] ? input.files[0].text()
 
 // `lock`: the run a click on a lock started. The result stays on the page
 // while it runs, and a hold the fit refuses is taken back.
-async function run({ lock = null } = {}) {
+// `change`: a lock or a value from the picture or the list started this run; what the
+// fields held before, to go back to if the fit refuses it
+async function run({ change = null } = {}) {
 	const started = Date.now();
 	// before the files are read: a second click must not start a second run
 	el("run").disabled = true;
@@ -76,11 +79,12 @@ async function run({ lock = null } = {}) {
 			endPose: endPoseFromFields(),
 			hold: el("hold").value.trim(),
 			holdRadii: el("holdRadii").checked,
+			edits: el("edits").value.trim(),
 			order: el("order").value === "budget" ? { budget: Number(el("budget").value) || 0 } : el("order").value,
 		};
 		const bytes = await traFile.arrayBuffer();
 		el("cancel").classList.remove("hidden");
-		if (!lock) el("result").classList.add("hidden");
+		if (!change) el("result").classList.add("hidden");
 		status("Rechnet …");
 		let note = "";
 		ticker = setInterval(() => status(`Rechnet … ${Math.round((Date.now() - started) / 1000)} s${note}`), 1000);
@@ -106,21 +110,25 @@ async function run({ lock = null } = {}) {
 		if (!message.ok) throw Object.assign(new Error(`${message.code}: ${message.message}`), { code: message.code });
 		last = message;
 		picture.wanted = null;
+		picture.edits = null;
 		show(message);
 		status(`Fertig nach ${fmt(message.seconds, 1)} s.${message.attempts > 1 ? ` Das Rechenprogramm lud erst im ${message.attempts}. Versuch.` : ""}`, "ok");
 	} catch (error) {
 		clearInterval(ticker);
 		const cancelled = error?.code === "CANCELLED";
-		if (lock) {
-			// the picture shows the last fit: the field goes back to what that fit held
-			el("hold").value = lock.previous;
+		if (change) {
+			// the picture shows the last fit: the fields go back to what that fit had
+			el("hold").value = change.hold;
+			el("edits").value = change.edits;
 			picture.wanted = null;
+			picture.edits = null;
 			drawPicture();
 		}
-		const refused = lock && (error?.code === "NOTHING_FREE" || error?.code === "OVER_CONSTRAINED");
+		const what = change?.what === "value" ? "Der Wert" : "Das Schloss";
+		const refused = change && (error?.code === "NOTHING_FREE" || error?.code === "OVER_CONSTRAINED");
 		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.`
-			: refused ? "Das Schloss wurde nicht gesetzt: mit ihm bliebe zu wenig frei, um Anfang und Ende der Trasse noch zu treffen."
-			: lock ? `Das Schloss wurde nicht gesetzt. ${workerFailure(error)}` : workerFailure(error), cancelled ? "info" : "error");
+			: refused ? `${what} wurde nicht ${change.what === "value" ? "übernommen" : "gesetzt"}: so bliebe zu wenig frei, um Anfang und Ende der Trasse noch zu treffen.`
+			: change ? `${what} wurde nicht ${change.what === "value" ? "übernommen" : "gesetzt"}. ${workerFailure(error)}` : workerFailure(error), cancelled ? "info" : "error");
 	} finally {
 		running = null;
 		el("cancel").classList.add("hidden");
@@ -162,6 +170,7 @@ function show({ report, csv }) {
 	el("holdResult").textContent = [
 		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
+		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();
@@ -200,7 +209,7 @@ function drawPicture() {
 
 // the listing shows the same hold as the picture, from the same model
 function drawList() {
-	el("records").innerHTML = picture.model ? recordListHtml(picture.model, { held: picture.wanted }) : "";
+	el("records").innerHTML = picture.model ? recordListHtml(picture.model, { held: picture.wanted, edits: picture.edits }) : "";
 }
 
 function pictureX(event) {
@@ -245,13 +254,47 @@ function toggleLock(number, quantity = "both") {
 		for (const name of quantities) q[name] = !on;
 		q.length || q.radius ? wanted.set(n, q) : wanted.delete(n);
 	}
-	const previous = formatHold(last.report.input.heldRecords);
+	const previous = fieldsOfLastRun("lock");
 	el("hold").value = formatHold(wanted);
-	if (last.seconds <= LIVE_SECONDS) { run({ lock: { previous } }); return true; }
+	if (last.seconds <= LIVE_SECONDS) { run({ change: previous }); return true; }
 	// a long fit does not start unasked: the lock is noted, dashed, until Optimieren
 	picture.wanted = wanted;
 	drawPicture();
 	status(`Schloss vorgemerkt (Sätze halten: ${el("hold").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet ein Schloss nicht von selbst neu: Optimieren rechnet.`);
+	return true;
+}
+
+/** what the fields said for the last fit: where a refused change goes back to */
+function fieldsOfLastRun(what) {
+	return { what, hold: formatHold(last.report.input.heldRecords), edits: formatEdits(last.report.input.edits ?? []) };
+}
+
+// A value typed in the list: the length or radius a record starts from in
+// the next fit. The field Werte ändern is the one place the edits are kept;
+// the list writes into it. Returns whether the value was taken.
+function editValue(number, field, text) {
+	if (!last || !picture.model || running) return false;
+	const record = picture.model.records.find((r) => r.number === number);
+	if (!record || !record.lockable || record.turnout) return false;
+	const value = Number(String(text).trim().replace("−", "-").replace(",", "."));
+	const file = field === "length" ? record.fileLength : record.fileRadius;
+	if (!Number.isFinite(value) || (field === "length" ? !(value > 0) : !(Math.abs(value) > 0))) {
+		status(field === "length" ? `„${text}“ ist keine Länge: eine Zahl größer als null, Dezimalkomma erlaubt.` : `„${text}“ ist kein Radius: eine Zahl ungleich null, mit dem Vorzeichen der Datei.`, "error");
+		drawList();
+		return false;
+	}
+	// the edits as they stand: typed and not yet computed, else what the last fit started from
+	const edits = parseEdits(picture.edits ?? last.report.input.edits ?? []);
+	const entry = { ...(edits.get(number) ?? {}) };
+	// back at the file's value, as the list shows it (centimetres, whole metres of radius), the edit is gone
+	if (Math.abs(value - file) < (field === "length" ? 0.005 : 0.5)) delete entry[field]; else entry[field] = value;
+	Object.keys(entry).length ? edits.set(number, entry) : edits.delete(number);
+	const previous = fieldsOfLastRun("value");
+	el("edits").value = formatEdits(edits);
+	if (last.seconds <= LIVE_SECONDS) { run({ change: previous }); return true; }
+	picture.edits = formatEdits(edits);
+	drawPicture();
+	status(`Wert vorgemerkt (Werte ändern: ${el("edits").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet ein Wert nicht von selbst neu: Optimieren rechnet.`);
 	return true;
 }
 
@@ -270,9 +313,15 @@ el("picture").addEventListener("click", (event) => {
 });
 // a box in the listing is the same click; one not taken (a run in progress) is drawn back
 el("records").addEventListener("change", (event) => {
+	const field = event.target.closest?.("input[data-field]");
+	if (field) { if (!editValue(Number(field.dataset.record), field.dataset.field, field.value)) drawList(); return; }
 	const box = event.target.closest?.("input[data-record]");
 	if (box && !toggleLock(Number(box.dataset.record), box.dataset.quantity ?? "both")) drawList();
 });
+// Enter in a field is the change, without leaving it
+el("records").addEventListener("keydown", (event) => { if (event.key === "Enter" && event.target.matches?.("input[data-field]")) event.target.blur(); });
+// edits name records of one file: another file starts without them
+el("tra").addEventListener("change", () => { el("edits").value = ""; });
 const ZOOMS = [1, 2, 4, 8];
 el("zoomIn").addEventListener("click", () => { picture.zoom = ZOOMS[Math.min(ZOOMS.indexOf(picture.zoom) + 1, ZOOMS.length - 1)]; drawPicture(); });
 el("zoomOut").addEventListener("click", () => { picture.zoom = ZOOMS[Math.max(ZOOMS.indexOf(picture.zoom) - 1, 0)]; drawPicture(); });
@@ -281,7 +330,7 @@ let redraw = 0;
 new ResizeObserver(() => { cancelAnimationFrame(redraw); redraw = requestAnimationFrame(() => { if (last && !el("result").classList.contains("hidden")) drawPicture(); }); }).observe(el("pictureWrap"));
 el("order").addEventListener("change", () => el("budget").classList.toggle("hidden", el("order").value !== "budget"));
 el("cancel").addEventListener("click", cancel);
-el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.zoom = 1; });
+el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold", "edits"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.edits = null; picture.zoom = 1; });
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
 el("dlCsv").addEventListener("click", () => last && download("residuen.csv", last.csv, "text/csv"));

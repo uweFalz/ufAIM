@@ -46,6 +46,11 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   a neighbour, so the written file keeps its boundaries. The turnouts the
   file shows are printed whether held or not.
 - `--hold-radii` holds every radius; the fit changes lengths only.
+- `--edit "7L=45.2 7R=-1250"` starts the fit from these values instead of
+  the file's: the record number, L for its length or R for its radius (with
+  the file's sign), `=` and the value. The file is not changed; an edited
+  record keeps its own element. An edit holds nothing: `--hold 7L` with it
+  keeps the value.
 
 ## Outputs
 
@@ -68,7 +73,8 @@ which turnout it belongs to (`planRecords`), and every element's records
 that as curvature, lock per record and points over the station; the app
 turns a click on a lock into the hold field and fits again
 (`formatHold`, the inverse of `parseHold`). `src/services/axtran2/recordList.js`
-lists the same records as a table with a box per quantity.
+lists the same records as a table with a box per quantity and the plan's
+values as fields (`src/services/axtran2/recordEdits.js`).
 
 Everything is computed in a local frame at the file's start and translated
 back, so the solver never sees a 5 000 km coordinate.

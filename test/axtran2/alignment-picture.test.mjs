@@ -161,8 +161,8 @@ test("the element listing shows every record with plan and fit, and a box per qu
 	assert.ok(html.startsWith("<thead>") && html.endsWith("</tbody>"));
 	assert.equal((html.match(/<tr data-record=/g) || []).length, 8, "every record, the kink too");
 	assert.match(html, /<tr data-record="1" class="held"><td class="num">1<\/td><td>Bogen<\/td><td>EW 190-1:9<\/td><td class="num">21,00<\/td><td class="num">21,00<\/td><td class="num">190<\/td><td class="num">190<\/td><td class="hold" colspan="2">.*?data-quantity="both" checked.*?Weiche<\/label><\/td><td>gehalten<\/td>/);
-	// the merged arc: its records share the element's new length, the radius is the element's
-	assert.match(html, /<tr data-record="7"><td class="num">7<\/td><td>Bogen<\/td><td><\/td><td class="num">20,00<\/td><td class="num changed">22,00<\/td><td class="num">500<\/td><td class="num">500<\/td>/);
+	// the merged arc: its records share the element's new length, the radius is the element's; the plan's values are fields
+	assert.match(html, /<tr data-record="7"><td class="num">7<\/td><td>Bogen<\/td><td><\/td><td class="num plan"><input type="text" inputmode="decimal" data-record="7" data-field="length" value="20" class="" title="Länge wie in der Datei"[^>]*><\/td><td class="num changed">22,00<\/td><td class="num plan"><input [^>]*data-field="radius" value="500"[^>]*><\/td><td class="num">500<\/td>/);
 	assert.match(html, /data-record="7" data-quantity="length"(?! checked)/);
 	assert.match(html, /data-record="7" data-quantity="radius"(?! checked)/);
 	// a straight has no radius box, a kink no box at all
@@ -172,6 +172,16 @@ test("the element listing shows every record with plan and fit, and a box per qu
 	const pending = recordListHtml(m, { held: new Map([[1, { length: true, radius: true }], [2, { length: true, radius: true }], [5, { length: false, radius: true }]]) });
 	assert.match(pending, /data-record="5" data-quantity="radius" checked class="pending"/);
 	assert.match(pending, /data-record="5" data-quantity="length"(?! checked)/);
+	// a value the fit started from instead of the file's is marked, with the file's value to read
+	const e = report();
+	e.planRecords[4] = { ...e.planRecords[4], length: 45.25, fileLength: 40, fileRadius: -300, edited: { length: true, radius: false } };
+	const edited = recordListHtml(alignmentPictureModel(e));
+	assert.match(edited, /data-record="5" data-field="length" value="45,25" class="edited" title="Länge in der Datei: 40,00 m"/);
+	assert.match(edited, /data-record="5" data-field="radius" value="−300" class="" title="Radius wie in der Datei"/);
+	// a value typed but not yet computed
+	const typed = recordListHtml(alignmentPictureModel(e), { edits: "5R=-320" });
+	assert.match(typed, /data-record="5" data-field="radius" value="−320" class="edited pending" title="Radius in der Datei: −300 m; noch nicht gerechnet"/);
+	assert.match(typed, /data-record="5" data-field="length" value="40" class="pending" title="Länge wie in der Datei; noch nicht gerechnet"/, "an edit list without the length means back to the file's length, not yet computed");
 	// labels are escaped
 	const r = report();
 	r.planRecords[0].turnout = "EW <190>";
