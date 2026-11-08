@@ -17,6 +17,8 @@
 import { parsePointList, formatResidualList } from "./pointLists.js";
 import { writeTra, cantLookup } from "./traWriter.js";
 import { recogniseTurnouts, resolveHold } from "./heldRecords.js";
+import { RIL_800_0120_A01 } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
+const RIL_SOURCE = RIL_800_0120_A01.source;
 import { parseAllEdits, resolveEdits, TRANSITION_FAMILIES } from "./recordEdits.js";
 import { applyStructure } from "./editedElements.js";
 import { traAlignmentFromBytes } from "../../import/parsers/technet/vermEsn/traAlignment.js";
@@ -35,7 +37,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.14";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.15";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -113,8 +115,9 @@ export async function fitTraFromBytes({
 	// kept apart from their neighbours.
 	const seen = await traAlignmentFromBytes(bytes, name);
 	const turnoutsSeen = recogniseTurnouts(seen.records);
-	const heldRecords = resolveHold(hold, seen.records, turnoutsSeen);
 	const allEdits = parseAllEdits(edits);
+	const insertsTurnout = [...allEdits.inserted.values()].flat().some((s) => s.type === "turnout");
+	const heldRecords = resolveHold(hold, seen.records, turnoutsSeen, { tolerateNoTurnout: insertsTurnout });
 	const recordEdits = resolveEdits(allEdits.values, seen.records);
 	// held, edited, removed records and those a record goes in after stay apart from
 	// their neighbours: one record, one element
@@ -127,6 +130,9 @@ export async function fitTraFromBytes({
 	// the structure: records taken out and put in
 	const structure = applyStructure({ elements: loaded.elements, recordElements: loaded.recordElements, records: seen.records, removed: allEdits.removed, inserted: allEdits.inserted, turnouts: turnoutsSeen });
 	const elementOf = (key) => structure.recordElements.get(key) ?? null;
+	// the turnouts the fit knows: the file's, and those put in (held by themselves)
+	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, radius: t.radius, ratio: t.ratio, side: t.side, arc: t.arc, endPiece: t.endPiece, branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation }) }));
+	const turnoutsAll = [...turnoutsSeen, ...insertedTurnouts];
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
 	}
@@ -172,7 +178,8 @@ export async function fitTraFromBytes({
 		const have = holdOf.get(id) ?? { length: false, radius: false };
 		holdOf.set(id, { length: have.length || h.length, radius: have.radius || h.radius });
 	}
-	const heldIn = (e) => holdOf.get(e.id) ?? { length: false, radius: false };
+	// a turnout put in is catalogue geometry: held whole
+	const heldIn = (e) => (e.heldTurnout ? { length: true, radius: true } : holdOf.get(e.id) ?? { length: false, radius: false });
 	const role = (e, i) => ({
 		length: i === 0 || (holdLast && i === last) || e.held || heldIn(e).length || beforeKink(i) ? "held" : "free",
 		...(e.type === "arc" ? { curvature: e.held || heldIn(e).radius || holdRadii ? "held" : "free" } : {}),
@@ -224,7 +231,7 @@ export async function fitTraFromBytes({
 	// than the annex allows there; a track without one gets the fastest
 	// Hauptbahn profile its radii and lengths admit.
 	const speedGiven = Number.isFinite(speedKmh) && speedKmh > 0;
-	const slowestTurnout = turnoutsSeen.filter((t) => Number.isFinite(t.branchSpeedKmh)).sort((a, b) => a.branchSpeedKmh - b.branchSpeedKmh)[0] ?? null;
+	const slowestTurnout = turnoutsAll.filter((t) => Number.isFinite(t.branchSpeedKmh)).sort((a, b) => a.branchSpeedKmh - b.branchSpeedKmh)[0] ?? null;
 	const speedBasis = speedGiven ? "given" : slowestTurnout ? "turnout" : "profile";
 	const profile = chooseProfile(elements, { cantMm, sourceName: loaded.name, speedKmh: speedBasis === "turnout" ? slowestTurnout.branchSpeedKmh : speedKmh });
 	const problem = createAlignmentOptimizationProblem({
@@ -390,8 +397,8 @@ export async function fitTraFromBytes({
 			// what the fit started from where it is not the file: the edited values
 			edits: Object.freeze([...recordEdits].map(([record, e]) => Object.freeze({ record, element: elementOf(record), length: e.length ?? null, radius: e.radius ?? null, family: e.family ?? null }))),
 			// the structure: records taken out, records put in (under their keys, "7+1")
-			structure: Object.freeze({ removed: Object.freeze(structure.removed), inserted: Object.freeze(structure.inserted.map((i) => Object.freeze({ ...i }))) }),
-			turnouts: Object.freeze(turnoutsSeen.map((t) => Object.freeze({ ...t, held: t.records.every((n) => heldRecords.has(n)) }))),
+			structure: Object.freeze({ removed: Object.freeze(structure.removed), inserted: Object.freeze(structure.inserted.map((i) => Object.freeze({ ...i }))), turnouts: Object.freeze(structure.turnouts) }),
+			turnouts: Object.freeze(turnoutsAll.map((t) => Object.freeze({ ...t, held: t.inserted ? true : t.records.every((n) => heldRecords.has(n)) }))),
 			records: loaded.recordCount,
 			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", order: orderReport?.order ?? "points", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
 			stationEquations: loaded.stationEquations, mergedRecords: loaded.mergedRecords, kinks: loaded.kinks,
@@ -429,8 +436,8 @@ export async function fitTraFromBytes({
 			// the records put in after this one, under their keys
 			...structure.inserted.filter((i) => i.after === r.number).map((i) => Object.freeze({
 				number: i.key, type: i.type, length: i.length, radius: i.radius, fileLength: null, fileRadius: null,
-				family: i.family, fileFamily: null, edited: null, removed: false, inserted: Object.freeze({ after: i.after, index: i.index }),
-				element: i.element, held: null, heldLength: false, heldRadius: false, turnout: null,
+				family: i.family, fileFamily: null, edited: null, removed: false, inserted: Object.freeze({ after: i.after, index: i.index, ...(i.turnout ? { turnout: i.turnout, part: i.part } : {}) }),
+				element: i.element, held: i.turnout ?? null, heldLength: Boolean(i.turnout), heldRadius: Boolean(i.turnout) && i.type === "arc", turnout: i.turnout ?? null,
 			})),
 		])),
 		points: Object.freeze(rows),

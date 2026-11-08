@@ -18,21 +18,36 @@
 // 30 m (the file's sign), "+7=U:40" a clothoid of 40 m, "+7=U:40:Bloss" a
 // Bloss. Inserted records are named after the record they follow, "7+1",
 // "7+2"; a value of one of them is changed by changing its token.
+//
+// A turnout from the catalogue (Ril 800.0120A01) goes in as its branch:
+// "+7=W:190-1/9:R" is an EW 190-1:9, the branch to the right, the arc
+// first and its straight end piece after it (the track enters at the
+// Weichenanfang); ":L" the branch to the left, ":WE" the end piece first
+// (the track enters at the Weichenende), ":Bogen" the arc alone. Its two
+// records are "7+1a" and "7+1b"; both are held, as a turnout is.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.3";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.4";
+
+import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 
 /** the kinds a record may be inserted as, with their letters and words */
-export const INSERT_TYPES = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übergangsbogen" });
-const INSERT_LETTERS = Object.freeze({ g: "straight", b: "arc", u: "transition", "ü": "transition" });
-/** the key of the i-th record inserted after record n */
-export const insertKey = (after, index) => `${after}+${index}`;
+export const INSERT_TYPES = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übergangsbogen", turnout: "Weiche" });
+const INSERT_LETTERS = Object.freeze({ g: "straight", b: "arc", u: "transition", "ü": "transition", w: "turnout" });
+/** how an inserted turnout lies in the track */
+export const TURNOUT_ORIENTATIONS = Object.freeze({ WA: "Bogen, dann Endstück", WE: "Endstück, dann Bogen", arc: "nur der Bogen" });
+/** the key of the i-th record inserted after record n; `part` for the a/b of a turnout */
+export const insertKey = (after, index, part = "") => `${after}+${index}${part}`;
 /** true for the key of an inserted record */
-export const isInsertKey = (key) => /^\d+\+\d+$/.test(String(key));
-/** the record an insert key follows and the index of the insert, or null */
+export const isInsertKey = (key) => /^\d+\+\d+[ab]?$/.test(String(key));
+/** the record an insert key follows, the index of the insert and its part, or null */
 export function insertOf(key) {
-	const m = /^(\d+)\+(\d+)$/.exec(String(key));
-	return m ? { after: Number(m[1]), index: Number(m[2]) } : null;
+	const m = /^(\d+)\+(\d+)([ab]?)$/.exec(String(key));
+	return m ? { after: Number(m[1]), index: Number(m[2]), part: m[3] || null } : null;
 }
+/** "190-1/9" of a turnout spec, as the token writes it */
+export const turnoutDesignation = (spec) => `EW ${spec.radius}-1:${spec.ratio}`;
+const turnoutRef = (spec) => `${spec.radius}-1/${spec.ratio}`;
+export { TURNOUT_SHAPES };
 
 /** the transition families a record may be changed to, with the words for them */
 export const TRANSITION_FAMILIES = Object.freeze({ clothoid: "Klothoide", bloss: "Bloss", helmert: "S-Form" });
@@ -132,6 +147,17 @@ export function parseStructure(edits) {
 		if (!type) error("INVALID_EDIT", `"${token}": the kind is G (Gerade), B (Bogen) or U (Übergangsbogen)`);
 		const parts = put[3].split(":").map((t) => t.trim());
 		const spec = { type };
+		if (type === "turnout") {
+			const w = /^(?:EW\s*)?(\d+(?:\.\d+)?)-1[:/](\d+(?:\.\d+)?)(?::(L|R|links|rechts))?(?::(WA|WE|Bogen))?$/i.exec(put[3].trim());
+			if (!w) error("INVALID_EDIT", `"${token}": a turnout is written +7=W:190-1/9, then :L or :R for the branch's side, then :WA, :WE or :Bogen`);
+			spec.radius = Number(w[1]); spec.ratio = Number(w[2]);
+			if (!turnoutShape(spec.radius, spec.ratio)) error("INVALID_EDIT", `"${token}": EW ${w[1]}-1:${w[2]} is not a simple turnout of Ril 800.0120A01: ${TURNOUT_SHAPES.map((s) => s.designation).join(", ")}`);
+			spec.side = /^l/i.test(w[3] ?? "R") ? "left" : "right";
+			spec.orientation = (w[4] ?? "WA").toLowerCase() === "bogen" ? "arc" : (w[4] ?? "WA").toUpperCase();
+			if (!inserted.has(after)) inserted.set(after, []);
+			inserted.get(after).push(spec);
+			continue;
+		}
 		if (type === "arc") {
 			spec.radius = toNumber(parts[0]); spec.length = toNumber(parts[1] ?? "");
 			if (!Number.isFinite(spec.radius) || !(Math.abs(spec.radius) > 0)) error("INVALID_EDIT", `"${token}": an arc needs its radius, not zero, then its length: +7=B:-500:30`);
@@ -156,7 +182,8 @@ export function parseAllEdits(edits) {
 	return { values: parseEdits(edits), ...parseStructure(typeof edits === "string" ? edits : null) };
 }
 
-const insertToken = (after, spec) => spec.type === "arc" ? `+${after}=B:${trim(spec.radius, 3)}:${trim(spec.length, 3)}`
+const insertToken = (after, spec) => spec.type === "turnout" ? `+${after}=W:${turnoutRef(spec)}:${spec.side === "left" ? "L" : "R"}${spec.orientation === "arc" ? ":Bogen" : spec.orientation === "WE" ? ":WE" : ""}`
+	: spec.type === "arc" ? `+${after}=B:${trim(spec.radius, 3)}:${trim(spec.length, 3)}`
 	: spec.type === "transition" ? `+${after}=U:${trim(spec.length, 3)}${spec.family && spec.family !== "clothoid" ? `:${TRANSITION_FAMILIES[spec.family]}` : ""}`
 	: `+${after}=G:${trim(spec.length, 3)}`;
 

@@ -51,6 +51,14 @@ const SHAPES = (() => {
 	return [...shapes.values()];
 })();
 
+/** the simple turnouts of the annex, for a list to choose from: { designation, radius, ratio, branchLength, endPieces, branchSpeedKmh } */
+export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, endPieces: Object.freeze([...s.endPieces]) })));
+
+/** the catalogue turnout of a radius and a crossing ratio, or null */
+export function turnoutShape(radius, ratio) {
+	return TURNOUT_SHAPES.find((s) => Math.abs(s.radius - Number(radius)) <= TURNOUT_MATCH_TOLERANCE && Math.abs(s.ratio - Number(ratio)) <= 1e-9) ?? null;
+}
+
 /**
  * The records that are a catalogue turnout's branch: an arc of the
  * turnout's radius whose length is R * atan(1/n), and beside it the
@@ -145,7 +153,7 @@ export function formatHold(items) {
  * @returns {Map<number,{why: string, length: boolean, radius: boolean}>}
  *          record number -> why ("named" or the turnout's designation) and the quantities held
  */
-export function resolveHold(hold, records, turnouts) {
+export function resolveHold(hold, records, turnouts, { tolerateNoTurnout = false } = {}) {
 	const wanted = parseHold(hold);
 	const held = new Map();
 	for (const n of wanted.records) {
@@ -155,7 +163,8 @@ export function resolveHold(hold, records, turnouts) {
 		held.set(n, Object.freeze({ why: "named", ...q }));
 	}
 	if (wanted.turnouts) {
-		if (turnouts.length === 0) error("NO_TURNOUT", "no record of the file is a catalogue turnout (Ril 800.0120A01): name the records to hold by number");
+		// a turnout put in by an edit is held by itself: the word may stand without one in the file
+		if (turnouts.length === 0 && !tolerateNoTurnout) error("NO_TURNOUT", "no record of the file is a catalogue turnout (Ril 800.0120A01): name the records to hold by number");
 		// a turnout is catalogue geometry: held whole, whatever a number beside it said
 		for (const t of turnouts) for (const n of t.records) held.set(n, Object.freeze({ why: t.designation, ...BOTH }));
 	}

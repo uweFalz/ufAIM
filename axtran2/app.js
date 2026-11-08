@@ -169,11 +169,11 @@ function show({ report, csv }) {
 	const span = (records) => (records.length > 1 ? `Sätze ${records[0]}–${records[records.length - 1]}` : `Satz ${records[0]}`);
 	const inp = report.input;
 	el("holdResult").textContent = [
-		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
+		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${t.inserted ? `eingefügt nach Satz ${t.inserted.after}` : span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
 		inp.structure?.removed?.length ? `Herausgenommen: Satz ${inp.structure.removed.join(", ")}.` : "",
-		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
+		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout ? `${i.turnout} (${i.part === "arc" ? "Zweigbogen" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();
@@ -215,7 +215,7 @@ function drawList() {
 	el("records").innerHTML = picture.model ? recordListHtml(picture.model, { held: picture.wanted, edits: picture.edits, insertAfter: picture.insertAfter }) : "";
 	// the insert form shows the fields its kind needs
 	const form = el("records").querySelector("form[data-insert-after]");
-	if (form) { const kind = () => { for (const l of form.querySelectorAll("label[data-for]")) l.hidden = l.dataset.for !== form.elements.kind.value; }; form.elements.kind.addEventListener("change", kind); kind(); form.elements.len.focus(); }
+	if (form) { const kind = () => { for (const l of form.querySelectorAll("label[data-for]")) l.hidden = !l.dataset.for.split(" ").includes(form.elements.kind.value); }; form.elements.kind.addEventListener("change", kind); kind(); form.elements.len.focus(); }
 }
 
 function pictureX(event) {
@@ -270,14 +270,26 @@ function toggleLock(number, quantity = "both") {
 	return true;
 }
 
+// The edits the last fit started from, read back from its report: the
+// values, the records taken out, the records and turnouts put in
+function editsOfLastRun() {
+	const inp = last.report.input;
+	const values = new Map((inp.edits ?? []).map((e) => [e.record, { ...(e.length !== null ? { length: e.length } : {}), ...(e.radius !== null ? { radius: e.radius } : {}), ...(e.family ? { family: e.family } : {}) }]));
+	const inserted = new Map();
+	const put = (after, index, spec) => { const list = inserted.get(after) ?? []; list[index - 1] = spec; inserted.set(after, list); };
+	for (const i of inp.structure?.inserted ?? []) if (!i.turnout) put(i.after, i.index, { type: i.type, length: i.length, ...(i.radius !== null ? { radius: i.radius } : {}), ...(i.family ? { family: i.family } : {}) });
+	for (const t of inp.structure?.turnouts ?? []) put(t.after, t.index, { type: "turnout", radius: t.radius, ratio: t.ratio, side: t.side, orientation: t.orientation });
+	return { values, removed: new Set(inp.structure?.removed ?? []), inserted };
+}
+
 /** what the fields said for the last fit: where a refused change goes back to */
 function fieldsOfLastRun(what) {
-	return { what, hold: formatHold(last.report.input.heldRecords), edits: formatEdits(last.report.input.edits ?? []) };
+	return { what, hold: formatHold(last.report.input.heldRecords), edits: formatEdits(editsOfLastRun()) };
 }
 
 // The edits as they stand: typed and not yet computed, else what the last fit started from
 function editsNow() {
-	return parseAllEdits(picture.edits ?? { values: new Map((last.report.input.edits ?? []).map((e) => [e.record, { ...(e.length !== null ? { length: e.length } : {}), ...(e.radius !== null ? { radius: e.radius } : {}), ...(e.family ? { family: e.family } : {}) }])), removed: last.report.input.structure?.removed ?? [], inserted: new Map(Object.entries((last.report.input.structure?.inserted ?? []).reduce((m, i) => { (m[i.after] ??= []).push({ type: i.type, length: i.length, ...(i.radius !== null ? { radius: i.radius } : {}), ...(i.family ? { family: i.family } : {}) }); return m; }, {}))) });
+	return parseAllEdits(picture.edits ?? editsOfLastRun());
 }
 
 // Edits changed from the list: the field Werte ändern is the one place they are
@@ -348,11 +360,17 @@ function insertFromForm(form) {
 	const after = Number(form.dataset.insertAfter);
 	const read = (name) => Number(String(form.elements[name].value).trim().replace("−", "-").replace(",", "."));
 	const type = form.elements.kind.value;
+	const all = editsNow();
+	if (type === "turnout") {
+		const [radius, ratio] = form.elements.wshape.value.split("-1/").map(Number);
+		if (!all.inserted.has(after)) all.inserted.set(after, []);
+		all.inserted.get(after).push({ type, radius, ratio, side: form.elements.wside.value, orientation: form.elements.worient.value });
+		return applyEdits(all, "structure");
+	}
 	const spec = { type, length: read("len") };
 	if (!(spec.length > 0)) { status("Die Länge des neuen Satzes muss größer als null sein.", "error"); return false; }
 	if (type === "arc") { spec.radius = read("rad"); if (!(Math.abs(spec.radius) > 0)) { status("Der Bogen braucht einen Radius ungleich null, mit dem Vorzeichen der Datei.", "error"); return false; } }
 	if (type === "transition") spec.family = form.elements.fam.value;
-	const all = editsNow();
 	if (!all.inserted.has(after)) all.inserted.set(after, []);
 	all.inserted.get(after).push(spec);
 	return applyEdits(all, "structure");

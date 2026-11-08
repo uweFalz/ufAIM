@@ -19,7 +19,7 @@
 // and the form (`data-insert-after`).
 
 import { describeHold, holdMap } from "./alignmentPicture.js";
-import { parseEdits, TRANSITION_FAMILIES, INSERT_TYPES } from "./recordEdits.js";
+import { parseEdits, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_SHAPES } from "./recordEdits.js";
 
 export const RECORD_LIST_VERSION = "axtran2/record-list/0.4";
 
@@ -90,9 +90,12 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 	};
 	const insertForm = (after) => `<tr class="insert-form" data-after="${after}"><td colspan="11"><form data-insert-after="${after}" class="insert">`
 		+ `<span>Einfügen nach Satz ${after}:</span> <select name="kind" aria-label="Art">${Object.entries(INSERT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>`
-		+ ` <label>Länge [m] <input name="len" inputmode="decimal" value="20" size="7"></label>`
+		+ ` <label data-for="straight arc transition">Länge [m] <input name="len" inputmode="decimal" value="20" size="7"></label>`
 		+ ` <label data-for="arc">Radius [m] <input name="rad" inputmode="decimal" placeholder="wie in der Datei" size="9"></label>`
 		+ ` <label data-for="transition">Typ <select name="fam">${Object.entries(TRANSITION_FAMILIES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`
+		+ ` <label data-for="turnout">Bauart <select name="wshape">${TURNOUT_SHAPES.map((s) => `<option value="${s.radius}-1/${s.ratio}">${escape(s.designation)}${s.branchSpeedKmh ? ` (Zweig ${s.branchSpeedKmh} km/h)` : ""}</option>`).join("")}</select></label>`
+		+ ` <label data-for="turnout">Zweig <select name="wside"><option value="right">rechts</option><option value="left">links</option></select></label>`
+		+ ` <label data-for="turnout">Lage <select name="worient">${Object.entries(TURNOUT_ORIENTATIONS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`
 		+ ` <button type="submit" class="primary tiny">Einfügen</button> <button type="button" class="ghost tiny" data-action="cancel">Abbrechen</button></form></td></tr>`;
 	const rows = model.records.flatMap((r) => {
 		const e = r.element ? byId.get(r.element) : null;
@@ -103,7 +106,7 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 		}
 		const want = wanted.get(r.number) ?? { length: false, radius: false };
 		const have = computed.get(r.number) ?? { length: false, radius: false };
-		const state = r.inserted ? `eingefügt nach Satz ${r.inserted.after}` : describeHold(have, r.hasRadius);
+		const state = r.inserted ? `eingefügt nach Satz ${r.inserted.after}${r.turnout ? ", gehalten" : ""}` : describeHold(have, r.hasRadius);
 		const lengthAfter = r.lockable && r.s0 !== null ? r.s1 - r.s0 : null;
 		const radiusAfter = r.hasRadius && e ? e.radius : null;
 		const editable = r.lockable && !r.turnout;

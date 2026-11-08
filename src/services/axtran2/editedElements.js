@@ -17,7 +17,8 @@
 // no span there. Equal neighbours that meet where a record went out are
 // one element again, as the reader makes them.
 
-import { insertKey } from "./recordEdits.js";
+import { insertKey, turnoutDesignation } from "./recordEdits.js";
+import { turnoutShape } from "./heldRecords.js";
 
 export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.1";
 
@@ -66,7 +67,28 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 	const out = [];
 	const push = (e, keys) => out.push({ element: e, keys });
 	let insertCount = 0;
+	const turnoutsOut = [];
 	const addInserted = (after, list) => list.forEach((spec, i) => {
+		if (spec.type === "turnout") {
+			// the branch of a catalogue turnout: the arc R * atan(1/n), and the straight end piece the annex lists
+			const shape = turnoutShape(spec.radius, spec.ratio);
+			if (!shape) error("INVALID_EDIT", `after record ${after}: EW ${spec.radius}-1:${spec.ratio} is not a simple turnout of Ril 800.0120A01`);
+			const designation = turnoutDesignation(spec);
+			const endPiece = spec.orientation !== "arc" && shape.endPieces.length ? Math.min(...shape.endPieces) : null;
+			// the kernel's heading grows to the left: a branch to the right is a negative curvature
+			const arc = { type: "arc", length: shape.branchLength, curvature: (spec.side === "left" ? 1 : -1) / shape.radius, part: "arc" };
+			const parts = endPiece === null ? [arc] : spec.orientation === "WE" ? [{ type: "straight", length: endPiece, part: "endPiece" }, arc] : [arc, { type: "straight", length: endPiece, part: "endPiece" }];
+			const keys = parts.map((_, k) => insertKey(after, i + 1, parts.length > 1 ? "ab"[k] : ""));
+			parts.forEach((p, k) => {
+				const id = `I${++insertCount}`;
+				push({ id, type: p.type, length: p.length, ...(p.curvature !== undefined ? { curvature: p.curvature } : {}), fileSpan: 0, heldTurnout: true,
+					inserted: Object.freeze({ after, index: i + 1, key: keys[k], turnout: designation, part: p.part }) }, [keys[k]]);
+			});
+			turnoutsOut.push({ designation, radius: shape.radius, ratio: shape.ratio, side: spec.side, orientation: spec.orientation ?? "WA", after, index: i + 1,
+				arc: keys[parts.indexOf(arc)], endPiece: endPiece === null ? null : keys[parts.findIndex((p) => p.part === "endPiece")], endPieceLength: endPiece,
+				branchSpeedKmh: shape.branchSpeedKmh ?? null, records: keys });
+			return;
+		}
 		const key = insertKey(after, i + 1);
 		const id = `I${++insertCount}`;
 		const e = { id, type: spec.type, length: spec.length, inserted: Object.freeze({ after, index: i + 1, key }), fileSpan: 0,
@@ -107,5 +129,7 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 	for (const { element, keys } of merged) { elementRecords.set(element.id, keys); for (const k of keys) recordElementsOut.set(k, element.id); }
 	for (const n of removed) recordElementsOut.set(n, null);
 	const insertedOut = merged.flatMap(({ element }) => (element.inserted ? [{ ...element.inserted, type: element.type, length: element.length, radius: element.type === "arc" ? -1 / element.curvature : null, family: element.family ?? null, element: element.id }] : []));
-	return { elements: merged.map((m) => m.element), recordElements: recordElementsOut, elementRecords, inserted: insertedOut, removed: [...removed].sort((a, b) => a - b) };
+	const byKey = new Map(insertedOut.map((i) => [i.key, i.element]));
+	const insertedTurnouts = turnoutsOut.map((t) => Object.freeze({ ...t, records: Object.freeze(t.records), elements: Object.freeze(t.records.map((k) => byKey.get(k))) }));
+	return { elements: merged.map((m) => m.element), recordElements: recordElementsOut, elementRecords, inserted: insertedOut, turnouts: insertedTurnouts, removed: [...removed].sort((a, b) => a - b) };
 }
