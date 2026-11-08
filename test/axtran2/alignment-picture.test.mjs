@@ -6,7 +6,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, PICTURE_HEIGHT, ALIGNMENT_PICTURE_VERSION } from "../../src/services/axtran2/alignmentPicture.js";
+import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap, describeHold, PICTURE_HEIGHT, ALIGNMENT_PICTURE_VERSION } from "../../src/services/axtran2/alignmentPicture.js";
+import { recordListHtml } from "../../src/services/axtran2/recordList.js";
 
 const element = (id, type, records, before, after, extra = {}) => ({ id, type, family: null, held: false, fixed: false, records, before, after, ...extra });
 const point = (name, station, before, after, extra = {}) => ({ name, kind: "measured", station, offsetBefore: before, offset: after, residual: after, target: 0, within: Math.abs(after) <= 0.003, remark: null, ...extra });
@@ -91,16 +92,25 @@ test("the SVG marks every record that can be held, and draws the locks as they a
 	assert.match(svg, new RegExp(`viewBox="0 0 1200 ${PICTURE_HEIGHT}"`));
 	const columns = [...svg.matchAll(/<rect data-record="(\d+)"/g)].map((x) => Number(x[1]));
 	assert.deepEqual(columns, [1, 2, 3, 4, 5, 6, 7], "the kink has no column");
-	const locks = Object.fromEntries([...svg.matchAll(/<g data-record="(\d+)" data-lock="(on|off)"( data-pending="true")?/g)].map((x) => [x[1], [x[2], Boolean(x[3])]]));
-	assert.deepEqual(locks["1"], ["on", false]);
-	assert.deepEqual(locks["2"], ["on", false]);
-	assert.deepEqual(locks["5"], ["off", false]);
-	// a lock set but not computed yet is dashed
+	const locksOf = (markup) => Object.fromEntries([...markup.matchAll(/<g data-record="(\d+)" data-quantity="(\w+)" data-lock="(on|off|part)"( data-pending="true")?/g)].map((x) => [`${x[1]}${x[2][0].toUpperCase()}`, [x[3], Boolean(x[4])]]));
+	const locks = locksOf(svg);
+	// a turnout's records and a straight carry one lock; an arc wide enough carries L and R
+	assert.deepEqual(locks["1B"], ["on", false]);
+	assert.deepEqual(locks["2B"], ["on", false]);
+	assert.deepEqual(locks["3B"], ["off", false]);
+	assert.deepEqual([locks["5L"], locks["5R"]], [["off", false], ["off", false]]);
+	assert.equal(locks["5B"], undefined);
+	// a lock set but not computed yet is dashed; a whole record sets both
 	const pending = alignmentPictureSvg(m, { width: 1200, held: [1, 2, 5] });
-	assert.match(pending, /<g data-record="5" data-lock="on" data-pending="true"/);
-	// a picture too narrow for a record's lock still offers its column
+	assert.deepEqual([locksOf(pending)["5L"], locksOf(pending)["5R"]], [["on", true], ["on", true]]);
+	const radiusOnly = alignmentPictureSvg(m, { width: 1200, held: new Map([[1, { length: true, radius: true }], [2, { length: true, radius: true }], [5, { length: false, radius: true }]]) });
+	assert.deepEqual([locksOf(radiusOnly)["5L"], locksOf(radiusOnly)["5R"]], [["off", false], ["on", true]]);
+	// a picture too narrow for a record's lock still offers its column; an arc too narrow for two locks has one for both
 	const narrow = alignmentPictureSvg(m, { width: 300 });
 	assert.ok(!/<g data-record="2"/.test(narrow) && /<rect data-record="2"/.test(narrow));
+	assert.deepEqual(locksOf(narrow)["7B"], ["off", false]);
+	assert.deepEqual(locksOf(alignmentPictureSvg(m, { width: 300, held: new Map([[7, { length: false, radius: true }]]) }))["7B"], ["part", true]);
+	assert.ok(/data-record="5" data-quantity="length"[^>]*>.*?<text[^>]*>L</.test(narrow), "the split lock says which quantity it is");
 });
 
 test("labels are escaped", () => {
@@ -125,6 +135,48 @@ test("a position in the picture is a station, a record and the nearest point", (
 	const first = pictureProbe(m, width, 72 + (30 / 213) * (width - 88));
 	assert.equal(pictureReadout(m, first), "Station 30,0 m · Satz 3 Gerade, 60,00 m, frei · Punkt P1: +12,0 mm → +2,0 mm · Achse <2>");
 	assert.equal(pictureReadout(m, null), "");
+});
+
+test("a hold is read from numbers, objects, a Map or the report, and said in words", () => {
+	const m = alignmentPictureModel(report());
+	assert.deepEqual([...holdMap(m, null)], [[1, { length: true, radius: true }], [2, { length: true, radius: true }]], "a straight held in its length is held whole");
+	assert.deepEqual([...holdMap(m, [5, { record: 6, length: false, radius: true }, { number: 6, length: true, radius: false }])], [[5, { length: true, radius: true }], [6, { length: true, radius: true }]]);
+	assert.deepEqual([...holdMap(m, new Map([["7", { radius: true }]]))], [[7, { length: false, radius: true }]]);
+	assert.equal(describeHold({ length: true, radius: true }), "gehalten");
+	assert.equal(describeHold({ length: true, radius: false }, false), "gehalten");
+	assert.equal(describeHold({ length: true, radius: false }), "Länge gehalten");
+	assert.equal(describeHold({ length: false, radius: true }), "Radius gehalten");
+	assert.equal(describeHold(null), "frei");
+	// the report says a record is held in its radius: the readout and the column say so
+	const r = report();
+	r.planRecords[4] = { ...r.planRecords[4], held: "named", heldLength: false, heldRadius: true };
+	const held = alignmentPictureModel(r);
+	assert.equal(pictureReadout(held, pictureProbe(held, 1200, 72 + (130 / 213) * 1112)), "Station 130,0 m · Satz 5 Bogen R 300, 40,00 m, Radius gehalten");
+	assert.match(alignmentPictureSvg(held), /<rect data-record="5"[^>]*fill="#F6E7BE"/);
+});
+
+test("the element listing shows every record with plan and fit, and a box per quantity", () => {
+	const m = alignmentPictureModel(report());
+	const html = recordListHtml(m);
+	assert.ok(html.startsWith("<thead>") && html.endsWith("</tbody>"));
+	assert.equal((html.match(/<tr data-record=/g) || []).length, 8, "every record, the kink too");
+	assert.match(html, /<tr data-record="1" class="held"><td class="num">1<\/td><td>Bogen<\/td><td>EW 190-1:9<\/td><td class="num">21,00<\/td><td class="num">21,00<\/td><td class="num">190<\/td><td class="num">190<\/td><td class="hold" colspan="2">.*?data-quantity="both" checked.*?Weiche<\/label><\/td><td>gehalten<\/td>/);
+	// the merged arc: its records share the element's new length, the radius is the element's
+	assert.match(html, /<tr data-record="7"><td class="num">7<\/td><td>Bogen<\/td><td><\/td><td class="num">20,00<\/td><td class="num changed">22,00<\/td><td class="num">500<\/td><td class="num">500<\/td>/);
+	assert.match(html, /data-record="7" data-quantity="length"(?! checked)/);
+	assert.match(html, /data-record="7" data-quantity="radius"(?! checked)/);
+	// a straight has no radius box, a kink no box at all
+	assert.match(html, /<tr data-record="3">.*?data-quantity="length".*?<td class="hold"><\/td><td>frei<\/td>/);
+	assert.match(html, /<tr data-record="8">.*?<td class="num">—<\/td>.*?<td class="hold" colspan="2"><\/td><td>frei<\/td>/);
+	// a box set but not computed yet
+	const pending = recordListHtml(m, { held: new Map([[1, { length: true, radius: true }], [2, { length: true, radius: true }], [5, { length: false, radius: true }]]) });
+	assert.match(pending, /data-record="5" data-quantity="radius" checked class="pending"/);
+	assert.match(pending, /data-record="5" data-quantity="length"(?! checked)/);
+	// labels are escaped
+	const r = report();
+	r.planRecords[0].turnout = "EW <190>";
+	assert.ok(recordListHtml(alignmentPictureModel(r)).includes("EW &lt;190&gt;"));
+	assert.equal(recordListHtml(null), "");
 });
 
 test("a report without elements has no picture", () => {

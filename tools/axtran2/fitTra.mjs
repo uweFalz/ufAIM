@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 
 import "./nodeAliases.mjs";
 import { fitTraFromBytes, FitTraError, FIT_TRA_VERSION } from "../../src/services/axtran2/fitTraCore.js";
+import { formatHold } from "../../src/services/axtran2/heldRecords.js";
 
 export { FitTraError, FIT_TRA_VERSION };
 
@@ -79,7 +80,7 @@ async function main() {
 	console.log(`${input.tra}: ${input.elements} elements, ${input.free} free, ${input.points} points${input.excludedPoints.length ? ` (${input.excludedPoints.length} excluded, see the report)` : ""}, ${input.zwangspunkte} Zwangspunkte, V ${input.speedKmh} km/h`);
 	const span = (records) => (records.length > 1 ? `records ${records[0]}-${records[records.length - 1]}` : `record ${records[0]}`);
 	if (input.turnouts.length) console.log(`turnouts seen: ${input.turnouts.map((t) => `${span(t.records)} ${t.designation} ${t.side} (${t.held ? "held" : "not held"})`).join(", ")}${input.turnouts.some((t) => !t.held) ? "; --hold turnouts holds them" : ""}`);
-	if (input.heldRecords.length || input.holdRadii) console.log(`held: ${input.heldRecords.length ? `records ${input.heldRecords.map((h) => h.record).join(", ")} as they stand` : "no record"}${input.holdRadii ? "; every radius" : ""}`);
+	if (input.heldRecords.length || input.holdRadii) console.log(`held: ${input.heldRecords.length ? `records ${formatHold(input.heldRecords)} (L the length only, R the radius only)` : "no record"}${input.holdRadii ? "; every radius" : ""}`);
 	console.log(`verdict ${verdict.status}${verdict.reason ? "/" + verdict.reason : ""} after ${verdict.iterations} iterations in ${verdict.seconds.toFixed(1)} s`);
 	console.log(`rms ${fit.rms?.toFixed(3)} (tolerance units), ${fit.outsideTolerance} outside, end pose ${fit.endPoseDistance?.toExponential(1)} m, length ${fit.lengthChange >= 0 ? "+" : ""}${fit.lengthChange?.toFixed(3)} m`);
 	if (result.report.order) {

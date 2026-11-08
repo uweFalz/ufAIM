@@ -374,3 +374,42 @@ des Plans bleiben weg, und das Bild sagt es.
 Nicht gebaut: Länge und Radius einzeln halten (der Kern kennt die Rollen je
 Größe schon, die App reicht sie nicht durch), eine Elementliste zum
 Bearbeiten, Bloss als Übergangsbogen im Kern.
+
+## Länge oder Radius halten, und die Satzliste (2026-11-08)
+
+Der Schalter „Radien halten“ hielt alle Radien, ein Schloss einen Satz mit
+Länge und Radius. Dazwischen fehlte der Zugriff, den der Trassierer braucht:
+die Länge eines Satzes halten (ein Weichenelement, eine Bauwerkslänge) und
+den Radius freigeben, oder umgekehrt. Der Kern kannte die Rollen je Größe
+schon (`length` und `curvature` je Element, `held` oder `free`); die App
+reichte sie nicht durch.
+
+Jetzt sagt das Haltefeld, was gehalten wird: `7` Länge und Radius, `7L` nur
+die Länge, `7R` nur den Radius, auch als Bereich (`3-5L`), und `Weichen`
+wie bisher als Ganzes (`heldRecords` 0.4, `parseHold`/`formatHold`). Ein
+Satz, der in einer Größe gehalten ist, behält sein eigenes Element, die
+Satzgrenze bleibt in der geschriebenen Datei. `7R` auf einer Geraden wird
+abgewiesen: sie hat keinen Radius. Der Bericht (`fit-tra/0.11`) führt je
+gehaltenem Satz `length` und `radius`, je Satz der Datei `heldLength` und
+`heldRadius`.
+
+Im Bild trägt ein Bogen, der breit genug ist (30 px), zwei Schlösser, L und
+R; eine Gerade, ein Übergangsbogen und ein schmaler Bogen eines für das
+Ganze, halb gefüllt, wenn nur eine Größe gehalten ist. Eine Weiche hat ein
+Schloss: sie ist Kataloggeometrie und wird als Ganzes gehalten.
+
+Unter dem Bild steht die Satzliste (`src/services/axtran2/recordList.js`):
+jeder Satz der Datei mit Typ, Weiche, Länge und Radius vor und nach dem Fit
+(fett, was sich geändert hat), je Größe ein Kästchen und der Stand. Die
+Kästchen schreiben dasselbe Haltefeld wie die Schlösser; Liste, Bild und
+Feld zeigen einen Zustand.
+
+Beobachtet auf der erfundenen Bahnhofstrasse der Tests: `6L` (Bogen R 500,
+Länge 0,5 m zu lang gehalten) gibt R 504 und trifft die Punkte; `4L` auf dem
+ersten Bogen hinter der Weiche lässt der Löser bei R 300 stehen und meldet
+`converged` mit 7 mm rms, obwohl die Variable frei ist (numerische
+Ableitung: dasselbe). Das ist Löserverhalten im Kern und hier nicht
+geändert; der Test hält Satz 6.
+
+Nicht gebaut: Werte editieren (Länge, Radius als Startwerte ändern) und
+Bloss als Übergangsbogen im Kern; die nächsten Stufen.

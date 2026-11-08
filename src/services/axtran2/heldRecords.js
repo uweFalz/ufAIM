@@ -12,10 +12,15 @@
 // TRA's listing counts them, or by the word "turnouts", which holds every
 // record this module recognises as a Regelbauart of Ril 800.0120A01. The
 // recognition is reported either way; it holds nothing by itself.
+//
+// A record may also be held in one of its two quantities: "7L" holds its
+// length and leaves the radius to the fit, "7R" holds the radius and leaves
+// the length. A record held in either way keeps its own element, so the
+// file's boundaries around it survive the fit. A turnout is held whole.
 
 import { RIL_800_0120_A01 } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.3";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.4";
 
 /** how far a record's length may lie from the catalogue's and still be the turnout, metres */
 export const TURNOUT_MATCH_TOLERANCE = 2e-3;
@@ -77,56 +82,82 @@ export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE
 	return Object.freeze(found);
 }
 
+/** a quantity pair, both held */
+const BOTH = Object.freeze({ length: true, radius: true });
+const NONE = Object.freeze({ length: false, radius: false });
+const join = (a, b) => Object.freeze({ length: a.length || b.length, radius: a.radius || b.radius });
+
 /**
- * The caller's words: record numbers, ranges ("3-5") and the word
- * "turnouts" ("Weichen"), in a list or in one string.
- * @returns {{turnouts: boolean, records: number[]}}
+ * The caller's words: record numbers, ranges ("3-5"), either with L or R
+ * behind it for the length or the radius alone ("7R", "3-5L"), and the
+ * word "turnouts" ("Weichen"), in a list or in one string.
+ * @returns {{turnouts: boolean, records: number[], quantities: Object<number,{length:boolean,radius:boolean}>}}
+ *          records sorted; quantities per record, what of it is held
  */
 export function parseHold(hold) {
 	const tokens = (Array.isArray(hold) ? hold : String(hold ?? "").split(/[,;\s]+/)).map((t) => String(t).trim()).filter((t) => t !== "");
-	const records = new Set();
+	const records = new Map();
 	let turnouts = false;
 	for (const token of tokens) {
 		if (/^(turnouts?|weichen?)$/i.test(token)) { turnouts = true; continue; }
-		const range = /^(\d+)(?:\s*-\s*(\d+))?$/.exec(token);
-		if (!range) error("INVALID_HOLD", `cannot read "${token}" as a record number, a range or "turnouts"`);
+		const range = /^(\d+)(?:-(\d+))?([lr])?$/i.exec(token);
+		if (!range) error("INVALID_HOLD", `cannot read "${token}" as a record number, a range, one of them with L or R behind it, or "turnouts"`);
 		const from = Number(range[1]);
 		const to = range[2] === undefined ? from : Number(range[2]);
 		if (from < 1 || to < from) error("INVALID_HOLD", `"${token}" is not a range of record numbers`);
-		for (let n = from; n <= to; n++) records.add(n);
+		const part = (range[3] ?? "").toUpperCase();
+		const want = part === "" ? BOTH : Object.freeze({ length: part === "L", radius: part === "R" });
+		for (let n = from; n <= to; n++) records.set(n, join(records.get(n) ?? NONE, want));
 	}
-	return Object.freeze({ turnouts, records: Object.freeze([...records].sort((a, b) => a - b)) });
+	const sorted = [...records.keys()].sort((a, b) => a - b);
+	return Object.freeze({ turnouts, records: Object.freeze(sorted), quantities: Object.freeze(Object.fromEntries(sorted.map((n) => [n, records.get(n)]))) });
 }
 
 /**
- * Record numbers as the hold a person would type: runs as ranges, "1-2, 13".
- * The inverse of parseHold for numbers; an empty list is an empty string.
+ * The hold as a person would type it: runs as ranges, L or R behind what is
+ * held in one quantity, "1-2, 7R, 13". The inverse of parseHold. Takes
+ * record numbers (held whole), objects { record|number, length, radius },
+ * or a Map of number to { length, radius }; an empty hold is an empty string.
  */
-export function formatHold(numbers) {
-	const sorted = [...new Set([...numbers].map(Number))].filter((n) => Number.isInteger(n) && n >= 1).sort((a, b) => a - b);
-	const runs = [];
-	for (const n of sorted) {
-		const last = runs[runs.length - 1];
-		if (last && n === last[1] + 1) last[1] = n;
-		else runs.push([n, n]);
+export function formatHold(items) {
+	const entries = items instanceof Map ? [...items.entries()].map(([n, q]) => ({ record: n, ...q })) : [...items].map((it) => (typeof it === "object" && it !== null ? { record: it.record ?? it.number, length: it.length, radius: it.radius } : { record: it, ...BOTH }));
+	const held = new Map();
+	for (const e of entries) {
+		const n = Number(e.record);
+		if (!Number.isInteger(n) || n < 1) continue;
+		const want = Object.freeze({ length: e.length !== false, radius: e.radius !== false });
+		if (!want.length && !want.radius) continue;
+		held.set(n, join(held.get(n) ?? NONE, want));
 	}
-	return runs.map(([from, to]) => (from === to ? String(from) : `${from}-${to}`)).join(", ");
+	const suffix = (q) => (q.length && q.radius ? "" : q.length ? "L" : "R");
+	const runs = [];
+	for (const n of [...held.keys()].sort((a, b) => a - b)) {
+		const last = runs[runs.length - 1];
+		const tag = suffix(held.get(n));
+		if (last && n === last[1] + 1 && tag === last[2]) last[1] = n;
+		else runs.push([n, n, tag]);
+	}
+	return runs.map(([from, to, tag]) => `${from === to ? String(from) : `${from}-${to}`}${tag}`).join(", ");
 }
 
 /**
- * Which records are held, and why.
- * @returns {Map<number,string>} record number -> "named" or the turnout's designation
+ * Which records are held, in what, and why.
+ * @returns {Map<number,{why: string, length: boolean, radius: boolean}>}
+ *          record number -> why ("named" or the turnout's designation) and the quantities held
  */
 export function resolveHold(hold, records, turnouts) {
 	const wanted = parseHold(hold);
 	const held = new Map();
 	for (const n of wanted.records) {
 		if (n > records.length) error("INVALID_HOLD", `record ${n} does not exist: the file has ${records.length}`);
-		held.set(n, "named");
+		const q = wanted.quantities[n];
+		if (q.radius && !q.length && records[n - 1].type !== "arc") error("INVALID_HOLD", `record ${n} is a ${records[n - 1].type}: it has no radius to hold`);
+		held.set(n, Object.freeze({ why: "named", ...q }));
 	}
 	if (wanted.turnouts) {
 		if (turnouts.length === 0) error("NO_TURNOUT", "no record of the file is a catalogue turnout (Ril 800.0120A01): name the records to hold by number");
-		for (const t of turnouts) for (const n of t.records) if (!held.has(n)) held.set(n, t.designation);
+		// a turnout is catalogue geometry: held whole, whatever a number beside it said
+		for (const t of turnouts) for (const n of t.records) held.set(n, Object.freeze({ why: t.designation, ...BOTH }));
 	}
 	return held;
 }
