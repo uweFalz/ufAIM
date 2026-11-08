@@ -173,7 +173,7 @@ function show({ report, csv }) {
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
 		inp.structure?.removed?.length ? `Herausgenommen: Satz ${inp.structure.removed.join(", ")}.` : "",
-		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout ? `${i.turnout} (${i.part === "arc" ? "Zweigbogen" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
+		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout ? `${i.turnout} (${i.part === "arc" ? "Bogen" : i.part === "straight" ? "Gerade" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();
@@ -278,7 +278,7 @@ function editsOfLastRun() {
 	const inserted = new Map();
 	const put = (after, index, spec) => { const list = inserted.get(after) ?? []; list[index - 1] = spec; inserted.set(after, list); };
 	for (const i of inp.structure?.inserted ?? []) if (!i.turnout) put(i.after, i.index, { type: i.type, length: i.length, ...(i.radius !== null ? { radius: i.radius } : {}), ...(i.family ? { family: i.family } : {}) });
-	for (const t of inp.structure?.turnouts ?? []) put(t.after, t.index, { type: "turnout", radius: t.radius, ratio: t.ratio, side: t.side, orientation: t.orientation });
+	for (const t of inp.structure?.turnouts ?? []) put(t.after, t.index, t.route ? { type: "crossing", kind: t.kind, radius: t.radius, ratio: t.ratio, side: t.side, route: t.route } : { type: "turnout", radius: t.radius, ratio: t.ratio, side: t.side, orientation: t.orientation, ...(t.bent ? { mainRadius: t.bent.mainRadius } : {}) });
 	return { values, removed: new Set(inp.structure?.removed ?? []), inserted };
 }
 
@@ -363,8 +363,22 @@ function insertFromForm(form) {
 	const all = editsNow();
 	if (type === "turnout") {
 		const [radius, ratio] = form.elements.wshape.value.split("-1/").map(Number);
+		const spec = { type, radius, ratio, side: form.elements.wside.value, orientation: form.elements.worient.value };
+		const mainText = String(form.elements.wmain.value).trim();
+		if (mainText) {
+			const mainRadius = read("wmain");
+			if (!(Math.abs(mainRadius) > 0)) { status("Der Radius des Stammgleises ist eine Zahl ungleich null, mit dem Vorzeichen der Datei; leer für eine gerade Weiche.", "error"); return false; }
+			spec.mainRadius = mainRadius;
+		}
 		if (!all.inserted.has(after)) all.inserted.set(after, []);
-		all.inserted.get(after).push({ type, radius, ratio, side: form.elements.wside.value, orientation: form.elements.worient.value });
+		all.inserted.get(after).push(spec);
+		return applyEdits(all, "structure");
+	}
+	if (type === "crossing") {
+		const [kind, rest] = form.elements.kshape.value.split(":");
+		const [radius, ratio] = rest.split("-1/").map(Number);
+		if (!all.inserted.has(after)) all.inserted.set(after, []);
+		all.inserted.get(after).push({ type, kind, radius, ratio, side: form.elements.kside.value, route: form.elements.kroute.value });
 		return applyEdits(all, "structure");
 	}
 	const spec = { type, length: read("len") };

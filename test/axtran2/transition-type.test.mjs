@@ -120,7 +120,7 @@ test("the list shows a record taken out struck, a record put in under its key, a
 	assert.match(html, /data-action="insert-after" data-record="3" title="nach Satz 3 einen Satz einfügen">/);
 	// the form opens under the record named
 	const open = recordListHtml(model, { insertAfter: 3 });
-	assert.match(open, /<tr data-record="3">.*?<\/tr><tr class="insert-form" data-after="3"><td colspan="11"><form data-insert-after="3" class="insert">.*?<select name="kind"[^>]*><option value="straight">Gerade<\/option><option value="arc">Bogen<\/option><option value="transition">Übergangsbogen<\/option><option value="turnout">Weiche<\/option><\/select>.*?<input name="len"[^>]*>.*?<input name="rad"[^>]*>.*?<select name="fam">.*?<select name="wshape">.*?EW 190-1:9 \(Zweig 40 km\/h\).*?<select name="wside">.*?<select name="worient">.*?<button type="submit"/);
+	assert.match(open, /<tr data-record="3">.*?<\/tr><tr class="insert-form" data-after="3"><td colspan="11"><form data-insert-after="3" class="insert">.*?<select name="kind"[^>]*><option value="straight">Gerade<\/option><option value="arc">Bogen<\/option><option value="transition">Übergangsbogen<\/option><option value="turnout">Weiche<\/option><option value="crossing">Kreuzungsweiche<\/option><\/select>.*?<input name="len"[^>]*>.*?<input name="rad"[^>]*>.*?<select name="fam">.*?<select name="wshape">.*?EW 190-1:9 \(Zweig 40 km\/h\).*?<select name="wside">.*?<select name="worient">.*?<input name="wmain"[^>]*>.*?<select name="kshape">.*?DKW 190-1:9 \(Bogen 40, gerade 100 km\/h\).*?<select name="kroute">.*?<select name="kside">.*?<button type="submit"/);
 	assert.ok(!html.includes("insert-form"));
 	// the picture: the inserted records have columns, no locks; the removed one nothing
 	const svg = alignmentPictureSvg(model, { width: 1200 });
@@ -151,4 +151,17 @@ test("a turnout from the catalogue goes in after a record, held whole, and sets 
 	assert.match(html, /<tr data-record="1\+1b" class="inserted">.*?<td>eingefügt nach Satz 1, gehalten<\/td>/);
 	const svg = alignmentPictureSvg(model, { width: 1200 });
 	assert.ok(/<rect data-record="1\+1a"[^>]*fill="#F6E7BE"/.test(svg) && !/<g data-record="1\+1a"/.test(svg));
+});
+
+test("a crossing turnout's route and a bent turnout go in like a turnout, held, and the report knows what they are", async () => {
+	const report = (await fit({ edits: "+1=K:DKW:190-1/9:L +3=W:190-1/9:R:auf400", speedKmh: null })).report;
+	assert.deepEqual(report.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["arc", ["1+1"]], ["transition", [2]], ["arc", [3]], ["arc", ["3+1a"]], ["arc", ["3+1b"]], ["straight", [4]]]);
+	assert.equal(report.input.free, (await fit({})).report.input.free, "neither adds a free quantity");
+	assert.deepEqual(report.input.turnouts.map((t) => [t.designation, t.kind, t.held, [...t.records], t.inserted.route, t.inserted.bent?.kind ?? null]), [["DKW 190-1:9, Bogenfahrt", "DKW", true, ["1+1"], "curved", null], ["IBW 190-1:9 auf R 400", "IBW", true, ["3+1a", "3+1b"], null, "IBW"]]);
+	assert.deepEqual([report.input.speed.basis, report.input.speed.kmh], ["turnout", 40], "the DKW's curved route sets the speed; the bent turnout has no row");
+	const rows = report.planRecords.filter((r) => r.inserted);
+	assert.deepEqual(rows.map((r) => [r.number, r.type, r.turnout, r.heldLength, r.heldRadius, r.inserted.part]), [["1+1", "arc", "DKW 190-1:9, Bogenfahrt", true, true, "arc"], ["3+1a", "arc", "IBW 190-1:9 auf R 400", true, true, "arc"], ["3+1b", "arc", "IBW 190-1:9 auf R 400", true, true, "endPiece"]]);
+	// the arc R 400 of the file is a right-hand curve (file sign +400): the branch to the right on it is the tighter IBW
+	assert.ok(Math.abs(report.elements[4].before.radius - 1 / (1 / 190 + 1 / 400)) < 1e-6, `branch radius ${report.elements[4].before.radius}`);
+	assert.match(recordListHtml(alignmentPictureModel(report)), /<tr data-record="3\+1a" class="inserted">.*?<td>IBW 190-1:9 auf R 400<\/td>.*?<td>eingefügt nach Satz 3, gehalten<\/td>/);
 });

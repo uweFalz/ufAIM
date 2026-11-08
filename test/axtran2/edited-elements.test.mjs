@@ -109,3 +109,32 @@ test("what is refused: the ends, a turnout, a kink, a place outside, two transit
 	const kinked = { elements: [{ id: "E0", type: "straight", length: 10 }, { id: "E1", type: "kink", length: 0, held: true }, { id: "E2", type: "straight", length: 10 }], recordElements: ["E0", "E1", "E2"] };
 	assert.throws(() => applyStructure({ ...kinked, records: [{ number: 1, type: "straight", length: 10 }, { number: 2, type: "kink", length: 0 }, { number: 3, type: "straight", length: 10 }], removed: new Set([2]) }), /kink/);
 });
+
+test("a crossing turnout is one route, a bent turnout the branch's curvature plus the line's", () => {
+	// written and read back
+	const k = parseStructure("+3=K:DKW:190-1/9:L +4=K:EKW190-1:9:R:gerade +5=W:190-1/9:R:auf-800 +6=W:500-1/12:L:WE:auf1000");
+	assert.deepEqual(k.inserted.get(3), [{ type: "crossing", kind: "DKW", radius: 190, ratio: 9, side: "left", route: "curved" }]);
+	assert.deepEqual(k.inserted.get(4), [{ type: "crossing", kind: "EKW", radius: 190, ratio: 9, side: "right", route: "straight" }]);
+	assert.deepEqual(k.inserted.get(5), [{ type: "turnout", radius: 190, ratio: 9, side: "right", orientation: "WA", mainRadius: -800 }]);
+	assert.deepEqual(k.inserted.get(6), [{ type: "turnout", radius: 500, ratio: 12, side: "left", orientation: "WE", mainRadius: 1000 }]);
+	assert.equal(formatEdits("+3=K:DKW:190-1/9:L +4=K:EKW190-1:9:R:gerade +5=W:190-1/9:R:auf-800 +6=W:500-1/12:L:WE:auf1000"), "+3=K:DKW:190-1/9:L +4=K:EKW:190-1/9:R:gerade +5=W:190-1/9:R:auf-800 +6=W:500-1/12:L:WE:auf1000");
+	for (const bad of ["+3=K:DKW:300-1/9", "+3=K:XKW:190-1/9", "+3=W:190-1/9:R:auf0"]) assert.throws(() => parseStructure(bad), (e) => e.code === "INVALID_EDIT", bad);
+	// the routes: the connecting arc R * alpha onto the crossing track, or 2 R tan(alpha/2) straight over the crossing
+	const { elements, recordElements } = reader([1, 3]);
+	const alpha = Math.atan(1 / 9);
+	const put = applyStructure({ elements, recordElements, records, inserted: new Map([[1, [{ type: "crossing", kind: "DKW", radius: 190, ratio: 9, side: "left", route: "curved" }]], [3, [{ type: "crossing", kind: "DKW", radius: 190, ratio: 9, side: "right", route: "straight" }]]]) });
+	const ins = put.elements.filter((e) => e.inserted);
+	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, Number(e.length.toFixed(4)), e.curvature ?? null, e.heldTurnout, e.inserted.turnout]), [
+		["1+1", "arc", Number((190 * alpha).toFixed(4)), 1 / 190, true, "DKW 190-1:9, Bogenfahrt"],
+		["3+1", "straight", Number((2 * 190 * Math.tan(alpha / 2)).toFixed(4)), null, true, "DKW 190-1:9, gerade Fahrt"],
+	]);
+	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.route, t.branchSpeedKmh, [...t.records]]), [["DKW 190-1:9, Bogenfahrt", "DKW", "curved", 40, ["1+1"]], ["DKW 190-1:9, gerade Fahrt", "DKW", "straight", 100, ["3+1"]]]);
+	// bent onto the line: the branch's curvature is the turnout's plus the line's; to the same side an IBW, against it an ABW
+	const bent = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, [{ type: "turnout", radius: 190, ratio: 9, side: "right", orientation: "WA", mainRadius: 800 }]], [3, [{ type: "turnout", radius: 190, ratio: 9, side: "left", orientation: "WA", mainRadius: 800 }]]]) });
+	const b = bent.elements.filter((e) => e.inserted);
+	assert.deepEqual(b.map((e) => [e.inserted.key, e.type, e.inserted.turnout, e.inserted.part]), [["1+1a", "arc", "IBW 190-1:9 auf R 800", "arc"], ["1+1b", "arc", "IBW 190-1:9 auf R 800", "endPiece"], ["3+1a", "arc", "ABW 190-1:9 auf R 800", "arc"], ["3+1b", "arc", "ABW 190-1:9 auf R 800", "endPiece"]], "a bent turnout's end piece follows the branch");
+	assert.ok(Math.abs(b[0].curvature - (-1 / 190 - 1 / 800)) < 1e-15, "IBW to the right on a right-hand line: tighter");
+	assert.ok(Math.abs(b[2].curvature - (1 / 190 - 1 / 800)) < 1e-15, "ABW to the left on a right-hand line: the branch turns against the line");
+	assert.ok(Math.abs(b[0].length - 190 * alpha) < 1e-12 && Math.abs(b[1].length - 6.0917) < 1e-12);
+	assert.deepEqual(bent.turnouts.map((t) => [t.kind, t.bent.kind, t.bent.mainRadius, Number(t.bent.branchRadius.toFixed(3)), t.branchSpeedKmh]), [["IBW", "IBW", 800, 153.535, null], ["ABW", "ABW", 800, -249.180, null]], "the annex speaks for the straight turnout only: no speed for the bent one");
+});

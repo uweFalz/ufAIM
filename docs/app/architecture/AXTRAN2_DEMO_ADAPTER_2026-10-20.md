@@ -549,3 +549,37 @@ eingefügte EW 190-1:9 heißt V 40, wenn nichts vorgegeben ist. Das Wort
 Nicht gebaut: Kreuzungsweichen (EKW/DKW) und Bogenweichen aus dem
 Katalog, der Einbau in den Stammgleis-Strang (dort ist die Weiche eine
 Gerade), Werte und Typ an Weichen.
+
+## Kreuzungsweichen und Bogenweichen (2026-11-08)
+
+Zwei Griffe mehr am Einfügen, beide aus dem, was der Kern schon konnte
+(`TurnoutCatalogue.crossing`, `crossingElement`, `bentOnto`):
+
+- **Kreuzungsweiche** `+7=K:DKW:190-1/9:R`: die Fahrt durch eine EKW oder
+  DKW der Ril 800.0120A01 als ein Satz. Die Bogenfahrt ist der
+  Verbindungsbogen R·atan(1/n) auf das kreuzende Gleis (rechts oder `:L`),
+  `:gerade` die gerade Fahrt über die Kreuzung, 2R·tan(α/2) zwischen den
+  Tangentenpunkten. Zulässig ist im Bogen die Zweiggeschwindigkeit des
+  Anhangs (40 km/h bei 190-1:9), geradeaus die des Stammgleises (100); die
+  Annahme der Geschwindigkeit nimmt die eingefügte Fahrt wie eine erkannte
+  Weiche. Welche Diagonale die EKW krumm hat, weiß der Plan, nicht die
+  Bezeichnung; von einem Ende her liest sich die Fahrt gleich.
+- **Bogenweiche** `+7=W:190-1/9:R:auf-800`: dieselbe EW, auf ein
+  Stammgleis mit R −800 (Vorzeichen der Datei) gebogen. Die Krümmung des
+  Zweigs ist die der Weiche plus die der Strecke: gleicher Drehsinn ergibt
+  die Innenbogenweiche (enger), entgegengesetzter die Außenbogenweiche (der
+  Zweig kann gerader werden als die Strecke oder anders herum drehen). Die
+  Bogenlänge bleibt die der geraden Weiche, das Endstück folgt dem Zweig.
+  Der Anhang nennt für gebogene Weichen keine Zeile, darum trägt die
+  Bogenweiche keine Zweiggeschwindigkeit; die Annahme fällt auf das Profil
+  zurück und sagt es.
+
+In der Liste bietet die Eingabezeile die Art „Kreuzungsweiche“ (Bauart mit
+beiden Geschwindigkeiten, Fahrt, Seite des kreuzenden Gleises) und bei der
+Weiche das Feld „auf Stammgleis R“. Die Sätze heißen wie bisher (`7+1`,
+`7+1a`/`7+1b`), sind gehalten und ohne Schloss; `input.turnouts` nennt
+`kind` (EW, IBW, ABW, EKW, DKW), die Fahrt und die Biegung.
+
+Nicht gebaut: Bogenweichen mit zwei Zweigradien des Anhangs (keine Zeile
+mit `radiusEnd` ist eine einfache Weiche), Kreuzungen (Kr) ohne Weiche,
+Werte und Typ an Weichen.

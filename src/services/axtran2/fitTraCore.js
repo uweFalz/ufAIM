@@ -131,7 +131,7 @@ export async function fitTraFromBytes({
 	const structure = applyStructure({ elements: loaded.elements, recordElements: loaded.recordElements, records: seen.records, removed: allEdits.removed, inserted: allEdits.inserted, turnouts: turnoutsSeen });
 	const elementOf = (key) => structure.recordElements.get(key) ?? null;
 	// the turnouts the fit knows: the file's, and those put in (held by themselves)
-	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, radius: t.radius, ratio: t.ratio, side: t.side, arc: t.arc, endPiece: t.endPiece, branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation }) }));
+	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, kind: t.kind, radius: t.radius, ratio: t.ratio, side: t.side, arc: t.arc, endPiece: t.endPiece, branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation, route: t.route ?? null, bent: t.bent ?? null }) }));
 	const turnoutsAll = [...turnoutsSeen, ...insertedTurnouts];
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
