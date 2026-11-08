@@ -469,3 +469,35 @@ geschriebene Datei liest sich als Bloss zurück.
 
 Nicht gebaut: Sätze einfügen oder entfernen, Werte und Typ an Weichen,
 weitere Familien der Registry (Wiener Bogen, Sinusoide) im Schreiber.
+
+## Sätze herausnehmen und einfügen (2026-11-08)
+
+Der letzte Griff an der Satzliste: ein Satz geht heraus, ein neuer hinein.
+Im Feld „Werte ändern“ heißt das `-5` und `+3=G:20` (nach Satz 3 eine
+Gerade von 20 m; `B:-500:30` ein Bogen mit dem Vorzeichen der Datei,
+`U:40:Bloss` ein Übergangsbogen), in der Liste ein − und ein + je Zeile;
+unter dem + öffnet sich eine Zeile mit Art, Länge, Radius oder Typ.
+Eingefügte Sätze heißen nach dem Satz, dem sie folgen, `3+1`, `3+2`; ihre
+Werte sind Felder wie die der anderen, ihr − nimmt sie wieder heraus. Ein
+herausgenommener Satz bleibt durchgestrichen stehen, ↩ holt ihn zurück.
+
+Was bleibt (`src/services/axtran2/editedElements.js`): der erste und der
+letzte Satz (Anfang und Ende der Trasse stehen darauf), die Sätze einer
+Weiche, ein Knick; nichts vor dem ersten, nichts hinter dem letzten; und
+keine zwei Übergangsbögen nebeneinander, weil der Kern die Enden eines
+Übergangsbogens an seinen Nachbarn liest. Ein gehaltener oder geänderter
+Satz kann nicht zugleich herausgenommen sein.
+
+Die Datei behält ihre Sätze und Nummern; der Fit beginnt mit der
+geänderten Folge. Gleiche Nachbarn, die durch das Herausnehmen
+aneinanderstoßen, werden wieder ein Element, wie der Leser es hält. Die
+Spanne eines herausgenommenen Satzes in der Datei trägt das Element davor
+weiter (`fileSpan`), ein eingefügtes hat keine: so finden Kilometersprünge
+und Überhöhungen ihren Platz weiter nach dem Abstand in der Datei, auch
+wenn die Folge eine andere ist. Der Bericht (`fit-tra/0.14`) nennt
+`input.structure` (herausgenommen, eingefügt mit Schlüssel und Element)
+und führt eingefügte Sätze unter ihrem Schlüssel in `planRecords`; sie
+haben kein Schloss, weil das Haltefeld die Sätze der Datei nennt.
+
+Nicht gebaut: Werte und Typ an Weichen, das Einfügen ganzer Weichen aus
+dem Katalog, weitere Familien der Registry im Schreiber.

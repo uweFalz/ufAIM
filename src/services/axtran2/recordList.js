@@ -9,14 +9,19 @@
 // next fit starts (recordEdits.js); the file keeps its own, shown under
 // the field. A turnout is catalogue geometry and has no field.
 //
+// A record is taken out or put in from here too: a button on each row, a
+// struck row with a way back, an inserted row under its key ("7+1") with
+// its own fields, and a small form under the row a record goes in after.
+//
 // Pure: a picture model in, an HTML string out, every label escaped. The
-// page listens for the boxes (`data-record`, `data-quantity`) and the
-// fields (`data-record`, `data-field`).
+// page listens for the boxes (`data-record`, `data-quantity`), the fields
+// (`data-record`, `data-field`), the buttons (`data-action`, `data-record`)
+// and the form (`data-insert-after`).
 
 import { describeHold, holdMap } from "./alignmentPicture.js";
-import { parseEdits, TRANSITION_FAMILIES } from "./recordEdits.js";
+import { parseEdits, TRANSITION_FAMILIES, INSERT_TYPES } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.3";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.4";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
@@ -28,9 +33,10 @@ const TYPE = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übe
  * @param {Iterable|Map|null} [options.held]  the hold wanted where it differs from the report's (see holdMap)
  * @param {Array|Map|string|null} [options.edits]  the edits wanted where they differ from what the fit started from
  *                                          (see parseEdits): a value typed but not yet computed
+ * @param {number|null} [options.insertAfter]  the record a form to put a record in after is open under
  * @returns {string} the rows of a table (<thead> and <tbody>); "" without a model
  */
-export function recordListHtml(model, { held = null, edits = null } = {}) {
+export function recordListHtml(model, { held = null, edits = null, insertAfter = null } = {}) {
 	if (!model) return "";
 	const wanted = holdMap(model, held);
 	const computed = holdMap(model, null);
@@ -46,9 +52,10 @@ export function recordListHtml(model, { held = null, edits = null } = {}) {
 	// the plan's value as a field: what the fit started from, or what is typed and not yet computed
 	const field = (r, name, label, unit, digits) => {
 		const started = name === "length" ? r.length : r.radius;
-		const file = name === "length" ? r.fileLength : r.fileRadius;
+		// an inserted record has no file value: its own start is the measure
+		const file = r.inserted ? started : name === "length" ? r.fileLength : r.fileRadius;
 		// an edit list given is the whole of it: a record not in it starts from the file
-		const value = typed === null ? started : typed.get(r.number)?.[name] ?? file;
+		const value = typed === null || r.inserted ? started : typed.get(r.number)?.[name] ?? file;
 		const pending = Math.abs(value - started) > 1e-9;
 		const changed = Math.abs(value - file) > 1e-9;
 		const title = `${changed ? `${label} in der Datei: ${comma(file, digits)} ${unit}` : `${label} wie in der Datei`}${pending ? "; noch nicht gerechnet" : ""}`;
@@ -71,24 +78,47 @@ export function recordListHtml(model, { held = null, edits = null } = {}) {
 		return `<td class="hold"><label title="${escape(`Satz ${r.number}, ${label}: ${want ? "gehalten" : "frei"}${pending ? ", noch nicht gerechnet" : ""}`)}">`
 			+ `<input type="checkbox" data-record="${r.number}" data-quantity="${quantity}"${want ? " checked" : ""}${pending ? ` class="pending"` : ""} aria-label="${escape(`Satz ${r.number}: ${label} halten`)}"></label></td>`;
 	};
-	const rows = model.records.map((r) => {
+	const count = model.records.filter((r) => !r.inserted).length;
+	const button = (action, record, label, title, disabled = "") => `<button type="button" class="ghost tiny" data-action="${action}" data-record="${escape(record)}" title="${escape(disabled || title)}"${disabled ? " disabled" : ""}>${label}</button>`;
+	const structureCell = (r) => {
+		if (r.inserted) return `<td class="act">${button("drop", r.number, "−", `Satz ${r.number} wieder herausnehmen`)}</td>`;
+		if (r.removed) return `<td class="act">${button("restore", r.number, "↩", `Satz ${r.number} wieder hereinnehmen`)}</td>`;
+		const end = r.number === 1 ? "der erste" : r.number === count ? "der letzte" : null;
+		const noRemove = end ? `Satz ${r.number} ist ${end} der Datei: Anfang und Ende der Trasse stehen darauf` : r.turnout ? `Satz ${r.number} gehört zur Weiche ${r.turnout}` : !r.lockable ? "nichts herauszunehmen" : "";
+		const noInsert = r.number === count ? "hinter dem letzten Satz geht nichts hinein" : r.element === null ? "nichts einzufügen" : "";
+		return `<td class="act">${button("remove", r.number, "−", `Satz ${r.number} herausnehmen`, noRemove)} ${button("insert-after", r.number, "+", `nach Satz ${r.number} einen Satz einfügen`, noInsert)}</td>`;
+	};
+	const insertForm = (after) => `<tr class="insert-form" data-after="${after}"><td colspan="11"><form data-insert-after="${after}" class="insert">`
+		+ `<span>Einfügen nach Satz ${after}:</span> <select name="kind" aria-label="Art">${Object.entries(INSERT_TYPES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>`
+		+ ` <label>Länge [m] <input name="len" inputmode="decimal" value="20" size="7"></label>`
+		+ ` <label data-for="arc">Radius [m] <input name="rad" inputmode="decimal" placeholder="wie in der Datei" size="9"></label>`
+		+ ` <label data-for="transition">Typ <select name="fam">${Object.entries(TRANSITION_FAMILIES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`
+		+ ` <button type="submit" class="primary tiny">Einfügen</button> <button type="button" class="ghost tiny" data-action="cancel">Abbrechen</button></form></td></tr>`;
+	const rows = model.records.flatMap((r) => {
 		const e = r.element ? byId.get(r.element) : null;
+		if (r.removed) {
+			return [`<tr data-record="${r.number}" class="removed">` + cell(r.number, "num") + cell(TYPE[r.type] ?? r.type) + cell(r.turnout ?? "")
+				+ number(r.fileLength ?? r.length, 2) + cell("—", "num") + number(r.hasRadius ? r.fileRadius ?? r.radius : null, 0) + cell("—", "num")
+				+ `<td class="hold" colspan="2"></td>` + cell("herausgenommen") + structureCell(r) + "</tr>"];
+		}
 		const want = wanted.get(r.number) ?? { length: false, radius: false };
 		const have = computed.get(r.number) ?? { length: false, radius: false };
-		const state = describeHold(have, r.hasRadius);
+		const state = r.inserted ? `eingefügt nach Satz ${r.inserted.after}` : describeHold(have, r.hasRadius);
 		const lengthAfter = r.lockable && r.s0 !== null ? r.s1 - r.s0 : null;
 		const radiusAfter = r.hasRadius && e ? e.radius : null;
 		const editable = r.lockable && !r.turnout;
 		const planLength = editable ? field(r, "length", "Länge", "m", 2) : number(r.length, 2);
 		const planRadius = editable && r.hasRadius ? field(r, "radius", "Radius", "m", 0) : number(r.hasRadius ? r.radius : null, 0);
-		const holds = !r.lockable ? `<td class="hold" colspan="2"></td>`
+		const holds = !r.holdable ? `<td class="hold" colspan="2"></td>`
 			: r.turnout ? `<td class="hold" colspan="2"><label title="${escape(`${r.turnout}: eine Weiche wird als Ganzes gehalten`)}"><input type="checkbox" data-record="${r.number}" data-quantity="both"${want.length && (want.radius || !r.hasRadius) ? " checked" : ""}${(want.length !== have.length || want.radius !== have.radius) ? ` class="pending"` : ""} aria-label="${escape(`Satz ${r.number}: Weiche halten`)}"> Weiche</label></td>`
 			: box(r, "length", "Länge", want.length, have.length) + (r.hasRadius ? box(r, "radius", "Radius", want.radius, have.radius) : `<td class="hold"></td>`);
-		return `<tr data-record="${r.number}"${state === "frei" ? "" : ` class="held"`}>`
-			+ cell(r.number, "num") + typeCell(r) + cell(r.turnout ?? "")
+		const cls = r.inserted ? "inserted" : state === "frei" ? "" : "held";
+		const row = `<tr data-record="${escape(r.number)}"${cls ? ` class="${cls}"` : ""}>`
+			+ cell(r.inserted ? "+" : r.number, "num") + typeCell(r) + cell(r.turnout ?? "")
 			+ planLength + number(lengthAfter, 2, r.length)
 			+ planRadius + number(radiusAfter, 0, r.radius)
-			+ holds + cell(state) + "</tr>";
+			+ holds + cell(state) + structureCell(r) + "</tr>";
+		return insertAfter !== null && !r.inserted && Number(r.number) === Number(insertAfter) ? [row, insertForm(r.number)] : [row];
 	});
-	return `<thead><tr><th>Nr</th><th>Typ</th><th>Weiche</th><th class="num">Länge Plan [m]</th><th class="num">Länge Fit [m]</th><th class="num">Radius Plan [m]</th><th class="num">Radius Fit [m]</th><th>Länge halten</th><th>Radius halten</th><th>Stand</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+	return `<thead><tr><th>Nr</th><th>Typ</th><th>Weiche</th><th class="num">Länge Plan [m]</th><th class="num">Länge Fit [m]</th><th class="num">Radius Plan [m]</th><th class="num">Radius Fit [m]</th><th>Länge halten</th><th>Radius halten</th><th>Stand</th><th>Sätze</th></tr></thead><tbody>${rows.join("")}</tbody>`;
 }

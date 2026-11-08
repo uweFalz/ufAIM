@@ -8,7 +8,7 @@ import { runInWorker } from "../src/services/axtran2/workerRun.js";
 import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap } from "../src/services/axtran2/alignmentPicture.js";
 import { recordListHtml } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
-import { parseEdits, formatEdits } from "../src/services/axtran2/recordEdits.js";
+import { parseAllEdits, formatEdits, isInsertKey, insertOf, INSERT_TYPES, TRANSITION_FAMILIES } from "../src/services/axtran2/recordEdits.js";
 
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
@@ -18,7 +18,7 @@ let running = null;
 let ticker = null;
 let last = null;
 // the picture: its model, how wide it is drawn, and the locks set but not yet computed
-const picture = { model: null, width: 0, zoom: 1, wanted: null, edits: null };
+const picture = { model: null, width: 0, zoom: 1, wanted: null, edits: null, insertAfter: null };
 // a lock recomputes on its own while a run is this quick; a long run waits for Optimieren
 const LIVE_SECONDS = 3;
 
@@ -111,6 +111,7 @@ async function run({ change = null } = {}) {
 		last = message;
 		picture.wanted = null;
 		picture.edits = null;
+		picture.insertAfter = null;
 		show(message);
 		status(`Fertig nach ${fmt(message.seconds, 1)} s.${message.attempts > 1 ? ` Das Rechenprogramm lud erst im ${message.attempts}. Versuch.` : ""}`, "ok");
 	} catch (error) {
@@ -171,6 +172,8 @@ function show({ report, csv }) {
 		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
+		inp.structure?.removed?.length ? `Herausgenommen: Satz ${inp.structure.removed.join(", ")}.` : "",
+		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();
@@ -209,7 +212,10 @@ function drawPicture() {
 
 // the listing shows the same hold as the picture, from the same model
 function drawList() {
-	el("records").innerHTML = picture.model ? recordListHtml(picture.model, { held: picture.wanted, edits: picture.edits }) : "";
+	el("records").innerHTML = picture.model ? recordListHtml(picture.model, { held: picture.wanted, edits: picture.edits, insertAfter: picture.insertAfter }) : "";
+	// the insert form shows the fields its kind needs
+	const form = el("records").querySelector("form[data-insert-after]");
+	if (form) { const kind = () => { for (const l of form.querySelectorAll("label[data-for]")) l.hidden = l.dataset.for !== form.elements.kind.value; }; form.elements.kind.addEventListener("change", kind); kind(); form.elements.len.focus(); }
 }
 
 function pictureX(event) {
@@ -269,34 +275,87 @@ function fieldsOfLastRun(what) {
 	return { what, hold: formatHold(last.report.input.heldRecords), edits: formatEdits(last.report.input.edits ?? []) };
 }
 
-// A value typed in the list: the length or radius a record starts from in
-// the next fit. The field Werte ändern is the one place the edits are kept;
-// the list writes into it. Returns whether the value was taken.
-function editValue(number, field, text) {
+// The edits as they stand: typed and not yet computed, else what the last fit started from
+function editsNow() {
+	return parseAllEdits(picture.edits ?? { values: new Map((last.report.input.edits ?? []).map((e) => [e.record, { ...(e.length !== null ? { length: e.length } : {}), ...(e.radius !== null ? { radius: e.radius } : {}), ...(e.family ? { family: e.family } : {}) }])), removed: last.report.input.structure?.removed ?? [], inserted: new Map(Object.entries((last.report.input.structure?.inserted ?? []).reduce((m, i) => { (m[i.after] ??= []).push({ type: i.type, length: i.length, ...(i.radius !== null ? { radius: i.radius } : {}), ...(i.family ? { family: i.family } : {}) }); return m; }, {}))) });
+}
+
+// Edits changed from the list: the field Werte ändern is the one place they are
+// kept; it is written, and the fit runs again if the last one was short, else
+// the change is noted until Optimieren. `what` names it for the message.
+function applyEdits(all, what) {
+	const previous = fieldsOfLastRun(what);
+	picture.insertAfter = null;
+	el("edits").value = formatEdits(all);
+	if (last.seconds <= LIVE_SECONDS) { run({ change: previous }); return true; }
+	picture.edits = el("edits").value;
+	drawPicture();
+	status(`${what === "value" ? "Wert" : "Änderung"} vorgemerkt (Werte ändern: ${el("edits").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet das nicht von selbst neu: Optimieren rechnet.`);
+	return true;
+}
+
+// A value typed in the list: the length, radius or type a record starts from
+// in the next fit; for an inserted record its token. Returns whether the value was taken.
+function editValue(key, field, text) {
 	if (!last || !picture.model || running) return false;
-	const record = picture.model.records.find((r) => r.number === number);
+	const record = picture.model.records.find((r) => String(r.number) === String(key));
 	if (!record || !record.lockable || record.turnout) return false;
 	const value = field === "family" ? String(text) : Number(String(text).trim().replace("−", "-").replace(",", "."));
-	const file = field === "length" ? record.fileLength : field === "radius" ? record.fileRadius : record.fileFamily;
 	if (field !== "family" && (!Number.isFinite(value) || (field === "length" ? !(value > 0) : !(Math.abs(value) > 0)))) {
 		status(field === "length" ? `„${text}“ ist keine Länge: eine Zahl größer als null, Dezimalkomma erlaubt.` : `„${text}“ ist kein Radius: eine Zahl ungleich null, mit dem Vorzeichen der Datei.`, "error");
 		drawList();
 		return false;
 	}
-	// the edits as they stand: typed and not yet computed, else what the last fit started from
-	const edits = parseEdits(picture.edits ?? last.report.input.edits ?? []);
-	const entry = { ...(edits.get(number) ?? {}) };
+	const all = editsNow();
+	if (isInsertKey(key)) {
+		const { after, index } = insertOf(key);
+		const spec = all.inserted.get(after)?.[index - 1];
+		if (!spec) return false;
+		spec[field] = value;
+		return applyEdits(all, "value");
+	}
+	const number = Number(key);
+	const file = field === "length" ? record.fileLength : field === "radius" ? record.fileRadius : record.fileFamily;
+	const entry = { ...(all.values.get(number) ?? {}) };
 	// back at the file's value, as the list shows it (centimetres, whole metres of radius), the edit is gone
 	const same = field === "family" ? value === file : Math.abs(value - file) < (field === "length" ? 0.005 : 0.5);
 	if (same) delete entry[field]; else entry[field] = value;
-	Object.keys(entry).length ? edits.set(number, entry) : edits.delete(number);
-	const previous = fieldsOfLastRun("value");
-	el("edits").value = formatEdits(edits);
-	if (last.seconds <= LIVE_SECONDS) { run({ change: previous }); return true; }
-	picture.edits = formatEdits(edits);
-	drawPicture();
-	status(`Wert vorgemerkt (Werte ändern: ${el("edits").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet ein Wert nicht von selbst neu: Optimieren rechnet.`);
-	return true;
+	Object.keys(entry).length ? all.values.set(number, entry) : all.values.delete(number);
+	return applyEdits(all, "value");
+}
+
+// A button in the list: a record out, back in, a put-in record dropped, the form to put one in
+function structureAction(action, key) {
+	if (!last || !picture.model || running) return false;
+	const all = editsNow();
+	if (action === "remove") { all.removed.add(Number(key)); return applyEdits(all, "structure"); }
+	if (action === "restore") { all.removed.delete(Number(key)); return applyEdits(all, "structure"); }
+	if (action === "drop") {
+		const { after, index } = insertOf(key);
+		const list = all.inserted.get(after) ?? [];
+		list.splice(index - 1, 1);
+		list.length ? all.inserted.set(after, list) : all.inserted.delete(after);
+		return applyEdits(all, "structure");
+	}
+	if (action === "insert-after") { picture.insertAfter = picture.insertAfter === Number(key) ? null : Number(key); drawList(); return true; }
+	if (action === "cancel") { picture.insertAfter = null; drawList(); return true; }
+	return false;
+}
+
+// The form under a row: what goes in after that record
+function insertFromForm(form) {
+	if (!last || !picture.model || running) return false;
+	const after = Number(form.dataset.insertAfter);
+	const read = (name) => Number(String(form.elements[name].value).trim().replace("−", "-").replace(",", "."));
+	const type = form.elements.kind.value;
+	const spec = { type, length: read("len") };
+	if (!(spec.length > 0)) { status("Die Länge des neuen Satzes muss größer als null sein.", "error"); return false; }
+	if (type === "arc") { spec.radius = read("rad"); if (!(Math.abs(spec.radius) > 0)) { status("Der Bogen braucht einen Radius ungleich null, mit dem Vorzeichen der Datei.", "error"); return false; } }
+	if (type === "transition") spec.family = form.elements.fam.value;
+	const all = editsNow();
+	if (!all.inserted.has(after)) all.inserted.set(after, []);
+	all.inserted.get(after).push(spec);
+	return applyEdits(all, "structure");
 }
 
 function download(name, data, type) {
@@ -315,9 +374,17 @@ el("picture").addEventListener("click", (event) => {
 // a box in the listing is the same click; one not taken (a run in progress) is drawn back
 el("records").addEventListener("change", (event) => {
 	const field = event.target.closest?.("[data-field]");
-	if (field) { if (!editValue(Number(field.dataset.record), field.dataset.field, field.value)) drawList(); return; }
+	if (field) { if (!editValue(field.dataset.record, field.dataset.field, field.value)) drawList(); return; }
 	const box = event.target.closest?.("input[data-record]");
 	if (box && !toggleLock(Number(box.dataset.record), box.dataset.quantity ?? "both")) drawList();
+});
+el("records").addEventListener("click", (event) => {
+	const button = event.target.closest?.("button[data-action]");
+	if (button && !button.disabled) structureAction(button.dataset.action, button.dataset.record);
+});
+el("records").addEventListener("submit", (event) => {
+	const form = event.target.closest?.("form[data-insert-after]");
+	if (form) { event.preventDefault(); insertFromForm(form); }
 });
 // Enter in a field is the change, without leaving it
 el("records").addEventListener("keydown", (event) => { if (event.key === "Enter" && event.target.matches?.("[data-field]")) event.target.blur(); });
@@ -331,7 +398,7 @@ let redraw = 0;
 new ResizeObserver(() => { cancelAnimationFrame(redraw); redraw = requestAnimationFrame(() => { if (last && !el("result").classList.contains("hidden")) drawPicture(); }); }).observe(el("pictureWrap"));
 el("order").addEventListener("change", () => el("budget").classList.toggle("hidden", el("order").value !== "budget"));
 el("cancel").addEventListener("click", cancel);
-el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold", "edits"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.edits = null; picture.zoom = 1; });
+el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold", "edits"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.edits = null; picture.insertAfter = null; picture.zoom = 1; });
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
 el("dlCsv").addEventListener("click", () => last && download("residuen.csv", last.csv, "text/csv"));

@@ -49,9 +49,12 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
 - `--edit "7L=45.2 7R=-1250"` starts the fit from these values instead of
   the file's: the record number, L for its length or R for its radius (with
   the file's sign), `=` and the value; `9T=Bloss` changes the type of a
-  transition (Klothoide, Bloss, S-Form: Kz 2, 4, 3). The file is not changed;
-  an edited record keeps its own element. An edit holds nothing: `--hold 7L`
-  with it keeps the value.
+  transition (Klothoide, Bloss, S-Form: Kz 2, 4, 3); `-5` takes record 5
+  out, `+3=G:20` puts a straight of 20 m in after record 3 (`B:-500:30` an
+  arc with the file's sign, `U:40:Bloss` a transition). Not the first or
+  the last record, not a turnout's, and no two transitions side by side.
+  The file is not changed; an edited record keeps its own element. An edit
+  holds nothing: `--hold 7L` with it keeps the value.
 
 ## Outputs
 

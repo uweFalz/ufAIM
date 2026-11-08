@@ -15,7 +15,7 @@
 
 import { TRANSITION_FAMILIES } from "./recordEdits.js";
 
-export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.3";
+export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.4";
 
 /** the normalised curvature law of a transition family, for the band; a line otherwise */
 const CURVATURE_LAW = Object.freeze({
@@ -124,12 +124,16 @@ export function alignmentPictureModel(report) {
 			// the file's values where the fit started from edited ones
 			fileLength: r.fileLength ?? r.length, fileRadius: r.fileRadius ?? r.radius ?? null, edited: r.edited ?? null,
 			family: r.family ?? null, fileFamily: r.fileFamily ?? r.family ?? null,
+			// put in after a record (under its key), or taken out (no column)
+			inserted: r.inserted ?? null, removed: Boolean(r.removed),
 		};
-		if (!e) return { ...base, fixed: false, lockable: false, s0: null, s1: null };
+		if (!e) return { ...base, fixed: false, lockable: false, holdable: false, s0: null, s1: null };
 		const from = used.get(e.id) ?? 0;
 		used.set(e.id, from + r.length);
 		const scale = e.lengthBefore > 0 ? e.length / e.lengthBefore : 0;
-		return { ...base, fixed: e.fixed, lockable: r.length > 0 && r.type !== "kink", s0: e.s0 + from * scale, s1: e.s0 + (from + r.length) * scale };
+		const lockable = r.length > 0 && r.type !== "kink";
+		// an inserted record has a column and a value, but no lock: the hold names the file's records
+		return { ...base, fixed: e.fixed, lockable, holdable: lockable && !base.inserted, s0: e.s0 + from * scale, s1: e.s0 + (from + r.length) * scale };
 	});
 	// what is held together: a turnout's records move as one
 	const groups = (report.input?.turnouts ?? []).map((t) => [...t.records]);
@@ -224,8 +228,8 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 	// the records' columns: shaded where the fit held them, and the place to click
 	const lockable = model.records.filter((r) => r.lockable && r.s0 !== null);
 	for (const r of lockable) {
-		const state = describeHold(computed.get(r.number), r.hasRadius);
-		const title = `Satz ${r.number}: ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}: ${state}. Ein Klick ${state === "frei" ? "hält fest" : "gibt frei"}.`;
+		const state = r.inserted ? "eingefügt" : describeHold(computed.get(r.number), r.hasRadius);
+		const title = `Satz ${r.number}: ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}: ${state}.${r.holdable ? ` Ein Klick ${state === "frei" ? "hält fest" : "gibt frei"}.` : ""}`;
 		out.push(`<rect data-record="${r.number}" x="${f(x(r.s0))}" y="${BAND.top}" width="${f(Math.max(x(r.s1) - x(r.s0), 1))}" height="${BAND.height}" fill="${state === "frei" ? "transparent" : COLOURS.held}" style="cursor:pointer"><title>${escapeText(title)}</title></rect>`);
 	}
 
@@ -260,6 +264,7 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 	// the locks: one per record wide enough to carry one, in two rows so that
 	// short neighbours do not collide; an arc wide enough carries two, L and R
 	let row = 0;
+	const holdable = lockable.filter((r) => r.holdable);
 	const lock = ({ number, quantity, cx, cy, on, part, pending, letter }) => {
 		const colour = on || part ? COLOURS.lock : COLOURS.axis;
 		const dash = pending ? ` stroke-dasharray="2 2"` : "";
@@ -272,7 +277,7 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 			+ (letter ? `<text x="6" y="13.6" font-size="6.5" font-weight="700" font-family="sans-serif" text-anchor="middle" fill="${filled ? COLOURS.paper : colour}" pointer-events="none">${letter}</text>` : "")
 			+ `</g>`;
 	};
-	for (const r of lockable) {
+	for (const r of holdable) {
 		const w = x(r.s1) - x(r.s0);
 		if (w < 9) continue;
 		const cx = (x(r.s0) + x(r.s1)) / 2, cy = LOCK_ROWS[row++ % 2];
@@ -343,7 +348,7 @@ export function pictureReadout(model, probe) {
 	const value = (v) => (mm ? `${signed(v * 1000, 1)} mm` : `${signed(v, 3)} m`);
 	const parts = [`Station ${comma(probe.station, 1)} m`];
 	const r = probe.record;
-	if (r) parts.push(`Satz ${r.number} ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}, ${describeHold({ length: r.heldLength, radius: r.heldRadius }, r.hasRadius)}`);
+	if (r) parts.push(`Satz ${r.number} ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}, ${r.inserted ? `eingefügt nach Satz ${r.inserted.after}` : describeHold({ length: r.heldLength, radius: r.heldRadius }, r.hasRadius)}`);
 	const p = probe.point;
 	if (p) parts.push(`Punkt ${p.name}: ${p.before === null ? "" : `${value(p.before)} → `}${value(p.after)}${p.within ? "" : ", außerhalb"}${p.remark ? ` · ${p.remark}` : ""}`);
 	return parts.join(" · ");
