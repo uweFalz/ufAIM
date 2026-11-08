@@ -6,11 +6,44 @@
 // the file has a lock: what is held is visible, and a click says which
 // record is meant.
 //
+// A record is held in its length, its radius, or both: an arc wide enough
+// carries two locks, L and R; a straight or a transition one, its length.
+//
 // Pure: a report in, a model and an SVG string out. The page only listens
 // (which record was clicked, which station the mouse is at); the app, the
 // bundle and a test draw the same picture.
 
-export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.1";
+export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.2";
+
+/** the quantities a record can be held in */
+export const HOLD_QUANTITIES = Object.freeze(["length", "radius"]);
+const NO_HOLD = Object.freeze({ length: false, radius: false });
+
+/**
+ * A hold as a Map of record number to { length, radius }, from what the
+ * app keeps: numbers (held whole), objects { record|number, length, radius },
+ * such a Map, or null for what the report computed.
+ */
+export function holdMap(model, held = null) {
+	// a record without a radius held in its length is held whole: it writes back as "7", not "7L"
+	if (held === null || held === undefined) return new Map(model.records.filter((r) => r.heldLength || r.heldRadius).map((r) => [r.number, { length: r.heldLength, radius: r.heldRadius || (r.heldLength && !r.hasRadius) }]));
+	if (held instanceof Map) return new Map([...held].map(([n, q]) => [Number(n), { length: Boolean(q?.length), radius: Boolean(q?.radius) }]));
+	const map = new Map();
+	for (const it of held) {
+		const n = Number(typeof it === "object" && it !== null ? it.record ?? it.number : it);
+		const q = typeof it === "object" && it !== null ? { length: it.length !== false, radius: it.radius !== false } : { length: true, radius: true };
+		const have = map.get(n) ?? NO_HOLD;
+		map.set(n, { length: have.length || q.length, radius: have.radius || q.radius });
+	}
+	return map;
+}
+
+/** "gehalten", "Länge gehalten", "Radius gehalten" or "frei", for a record's hold */
+export function describeHold(q, hasRadius = true) {
+	if (!q || (!q.length && !q.radius)) return "frei";
+	if (q.length && (q.radius || !hasRadius)) return "gehalten";
+	return q.length ? "Länge gehalten" : "Radius gehalten";
+}
 
 const COLOURS = Object.freeze({
 	paper: "#FFFFFC", line: "#D9D4C7", axis: "#8A9099", text: "#5B6675", ink: "#1B2A41",
@@ -75,7 +108,11 @@ export function alignmentPictureModel(report) {
 	const used = new Map();
 	const records = (report.planRecords ?? []).map((r) => {
 		const e = byId.get(r.element);
-		const base = { number: r.number, type: r.type, length: r.length, radius: r.radius ?? null, element: r.element ?? null, held: r.held ?? null, turnout: r.turnout ?? null };
+		const hasRadius = r.type === "arc";
+		const base = {
+			number: r.number, type: r.type, length: r.length, radius: r.radius ?? null, element: r.element ?? null, held: r.held ?? null, turnout: r.turnout ?? null,
+			hasRadius, heldLength: Boolean(r.heldLength ?? r.held), heldRadius: hasRadius && Boolean(r.heldRadius ?? r.held),
+		};
 		if (!e) return { ...base, fixed: false, lockable: false, s0: null, s1: null };
 		const from = used.get(e.id) ?? 0;
 		used.set(e.id, from + r.length);
@@ -154,8 +191,8 @@ const describeRecord = (r) => (r.type === "arc" ? `Bogen R ${comma(Math.abs(r.ra
  * @param {object} model               from alignmentPictureModel
  * @param {object} [options]
  * @param {number} [options.width]     the picture's width in its own units; text and locks keep their size (1200)
- * @param {Iterable<number>} [options.held]  the records wanted held, where that differs from what the report computed:
- *                                     a lock set but not yet computed is drawn dashed
+ * @param {Iterable|Map|null} [options.held]  the hold wanted (see holdMap), where that differs from what the report
+ *                                     computed: a lock set but not yet computed is drawn dashed
  * @returns {string} an <svg>; `data-record` marks what a click means
  */
 export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
@@ -163,7 +200,8 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 	const sc = scales(model, width);
 	const { x, yBand, yPoint } = sc;
 	const f = (v) => v.toFixed(1);
-	const wanted = held ? new Set(held) : new Set(model.records.filter((r) => r.held !== null).map((r) => r.number));
+	const wanted = holdMap(model, held);
+	const computed = holdMap(model, null);
 	const text = (label, px, py, anchor = "start", { strong = false } = {}) => `<text x="${f(px)}" y="${f(py)}" font-size="12" fill="${strong ? COLOURS.ink : COLOURS.text}"${strong ? ` font-weight="600"` : ""} text-anchor="${anchor}" font-family="sans-serif" pointer-events="none">${escapeText(label)}</text>`;
 	const out = [`<svg viewBox="0 0 ${width} ${PICTURE_HEIGHT}" width="${width}" height="${PICTURE_HEIGHT}" role="img" aria-label="Krümmungsband mit den gehaltenen Sätzen und Abweichungen der Aufmaßpunkte über der Station" xmlns="http://www.w3.org/2000/svg">`];
 
@@ -174,8 +212,9 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 	// the records' columns: shaded where the fit held them, and the place to click
 	const lockable = model.records.filter((r) => r.lockable && r.s0 !== null);
 	for (const r of lockable) {
-		const title = `Satz ${r.number}: ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}. ${r.fixed ? "Gehalten; ein Klick gibt frei." : "Frei; ein Klick hält fest."}`;
-		out.push(`<rect data-record="${r.number}" x="${f(x(r.s0))}" y="${BAND.top}" width="${f(Math.max(x(r.s1) - x(r.s0), 1))}" height="${BAND.height}" fill="${r.fixed ? COLOURS.held : "transparent"}" style="cursor:pointer"><title>${escapeText(title)}</title></rect>`);
+		const state = describeHold(computed.get(r.number), r.hasRadius);
+		const title = `Satz ${r.number}: ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}: ${state}. Ein Klick ${state === "frei" ? "hält fest" : "gibt frei"}.`;
+		out.push(`<rect data-record="${r.number}" x="${f(x(r.s0))}" y="${BAND.top}" width="${f(Math.max(x(r.s1) - x(r.s0), 1))}" height="${BAND.height}" fill="${state === "frei" ? "transparent" : COLOURS.held}" style="cursor:pointer"><title>${escapeText(title)}</title></rect>`);
 	}
 
 	// the curvature: the plan dashed, the fit solid over a soft fill
@@ -202,21 +241,43 @@ export function alignmentPictureSvg(model, { width = 1200, held = null } = {}) {
 	const edge = model.kMax / 1.2;
 	out.push(text("1000/R", PAD.left - 6, yBand(0) + 4, "end"), text(signed(edge, 1), PAD.left - 6, yBand(edge) + 4, "end"), text(signed(-edge, 1), PAD.left - 6, yBand(-edge) + 4, "end"));
 
-	// the locks: one per record wide enough to carry one, in two rows so that short neighbours do not collide
+	// the locks: one per record wide enough to carry one, in two rows so that
+	// short neighbours do not collide; an arc wide enough carries two, L and R
 	let row = 0;
-	for (const r of lockable) {
-		if (x(r.s1) - x(r.s0) < 9) continue;
-		const cx = (x(r.s0) + x(r.s1)) / 2, cy = LOCK_ROWS[row++ % 2];
-		const on = wanted.has(r.number);
-		const pending = on !== r.fixed;
-		const colour = on ? COLOURS.lock : COLOURS.axis;
+	const lock = ({ number, quantity, cx, cy, on, part, pending, letter }) => {
+		const colour = on || part ? COLOURS.lock : COLOURS.axis;
 		const dash = pending ? ` stroke-dasharray="2 2"` : "";
-		out.push(`<line x1="${f(cx)}" y1="${cy + 9}" x2="${f(cx)}" y2="${BAND.top}" stroke="${COLOURS.line}" pointer-events="none"/>`);
-		out.push(`<g data-record="${r.number}" data-lock="${on ? "on" : "off"}"${pending ? ` data-pending="true"` : ""} transform="translate(${f(cx - 6)} ${cy - 8})" style="cursor:pointer">`
-			+ `<title>${escapeText(`Satz ${r.number}${r.turnout ? ` (${r.turnout})` : ""}: ${on ? "gehalten" : "frei"}${pending ? ", noch nicht gerechnet" : ""}`)}</title>`
+		const filled = on && !pending;
+		return `<g data-record="${number}" data-quantity="${quantity}" data-lock="${on ? "on" : part ? "part" : "off"}"${pending ? ` data-pending="true"` : ""} transform="translate(${f(cx - 6)} ${cy - 8})" style="cursor:pointer">`
 			+ `<rect x="-4" y="-3" width="20" height="22" fill="transparent"/>`
-			+ `<path d="M3 7V${on ? 4.5 : 2.5}a3 3 0 0 1 6 0${on ? "V7" : ""}" fill="none" stroke="${colour}" stroke-width="1.6"${dash}/>`
-			+ `<rect x="1" y="7" width="10" height="8" rx="1.5" fill="${on && !pending ? colour : COLOURS.paper}" stroke="${colour}" stroke-width="1.6"${dash}/></g>`);
+			+ `<path d="M3 7V${on || part ? 4.5 : 2.5}a3 3 0 0 1 6 0${on || part ? "V7" : ""}" fill="none" stroke="${colour}" stroke-width="1.6"${dash}/>`
+			+ `<rect x="1" y="7" width="10" height="8" rx="1.5" fill="${filled ? colour : COLOURS.paper}" stroke="${colour}" stroke-width="1.6"${dash}/>`
+			+ (part ? `<rect x="1" y="11" width="10" height="4" rx="1" fill="${colour}" pointer-events="none"/>` : "")
+			+ (letter ? `<text x="6" y="13.6" font-size="6.5" font-weight="700" font-family="sans-serif" text-anchor="middle" fill="${filled ? COLOURS.paper : colour}" pointer-events="none">${letter}</text>` : "")
+			+ `</g>`;
+	};
+	for (const r of lockable) {
+		const w = x(r.s1) - x(r.s0);
+		if (w < 9) continue;
+		const cx = (x(r.s0) + x(r.s1)) / 2, cy = LOCK_ROWS[row++ % 2];
+		const want = wanted.get(r.number) ?? NO_HOLD, have = computed.get(r.number) ?? NO_HOLD;
+		out.push(`<line x1="${f(cx)}" y1="${cy + 9}" x2="${f(cx)}" y2="${BAND.top}" stroke="${COLOURS.line}" pointer-events="none"/>`);
+		const name = `Satz ${r.number}${r.turnout ? ` (${r.turnout})` : ""}`;
+		if (r.hasRadius && w >= 30 && !r.turnout) {
+			// a turnout is held whole: one lock, as a straight has
+			for (const [q, letter, dx] of [["length", "L", -8], ["radius", "R", 8]]) {
+				const pending = want[q] !== have[q];
+				out.push(lock({ number: r.number, quantity: q, cx: cx + dx, cy, on: want[q], part: false, pending, letter })
+					.replace("<rect x=\"-4\"", `<title>${escapeText(`${name}, ${letter === "L" ? "Länge" : "Radius"}: ${want[q] ? "gehalten" : "frei"}${pending ? ", noch nicht gerechnet" : ""}`)}</title><rect x="-4"`));
+			}
+			continue;
+		}
+		const quantities = r.hasRadius ? HOLD_QUANTITIES : ["length"];
+		const on = quantities.every((q) => want[q]);
+		const part = !on && quantities.some((q) => want[q]);
+		const pending = quantities.some((q) => want[q] !== have[q]);
+		out.push(lock({ number: r.number, quantity: "both", cx, cy, on, part, pending, letter: null })
+			.replace("<rect x=\"-4\"", `<title>${escapeText(`${name}: ${describeHold(want, r.hasRadius)}${pending ? ", noch nicht gerechnet" : ""}`)}</title><rect x="-4"`));
 	}
 
 	// the points against the tolerance
@@ -266,7 +327,7 @@ export function pictureReadout(model, probe) {
 	const value = (v) => (mm ? `${signed(v * 1000, 1)} mm` : `${signed(v, 3)} m`);
 	const parts = [`Station ${comma(probe.station, 1)} m`];
 	const r = probe.record;
-	if (r) parts.push(`Satz ${r.number} ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}, ${r.fixed ? "gehalten" : "frei"}`);
+	if (r) parts.push(`Satz ${r.number} ${describeRecord(r)}, ${comma(r.length, 2)} m${r.turnout ? `, ${r.turnout}` : ""}, ${describeHold({ length: r.heldLength, radius: r.heldRadius }, r.hasRadius)}`);
 	const p = probe.point;
 	if (p) parts.push(`Punkt ${p.name}: ${p.before === null ? "" : `${value(p.before)} → `}${value(p.after)}${p.within ? "" : ", außerhalb"}${p.remark ? ` · ${p.remark}` : ""}`);
 	return parts.join(" · ");

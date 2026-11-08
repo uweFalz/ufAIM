@@ -65,17 +65,26 @@ test("a catalogue turnout is recognised by its radius and its branch length, wit
 	assert.equal(recogniseTurnouts([arc(1, 500, 500 * Math.atan(1 / 12))])[0].designation, "EW 500-1:12");
 });
 
-test("the words that hold: numbers, ranges and turnouts", () => {
-	assert.deepEqual(parseHold("1,2, 13"), { turnouts: false, records: [1, 2, 13] });
-	assert.deepEqual(parseHold("Weichen 4-6"), { turnouts: true, records: [4, 5, 6] });
-	assert.deepEqual(parseHold([3, "turnouts"]), { turnouts: true, records: [3] });
-	assert.deepEqual(parseHold(""), { turnouts: false, records: [] });
+const BOTH = { length: true, radius: true };
+test("the words that hold: numbers, ranges, L or R behind them, and turnouts", () => {
+	assert.deepEqual(parseHold("1,2, 13"), { turnouts: false, records: [1, 2, 13], quantities: { 1: BOTH, 2: BOTH, 13: BOTH } });
+	assert.deepEqual(parseHold("Weichen 4-6"), { turnouts: true, records: [4, 5, 6], quantities: { 4: BOTH, 5: BOTH, 6: BOTH } });
+	assert.deepEqual(parseHold([3, "turnouts"]), { turnouts: true, records: [3], quantities: { 3: BOTH } });
+	assert.deepEqual(parseHold(""), { turnouts: false, records: [], quantities: {} });
+	// one quantity: L the length, R the radius; named twice, the record is held in both
+	assert.deepEqual(parseHold("7R 3-4l 7L"), { turnouts: false, records: [3, 4, 7], quantities: { 3: { length: true, radius: false }, 4: { length: true, radius: false }, 7: BOTH } });
 	assert.throws(() => parseHold("alle"), (e) => e instanceof HeldRecordsError && e.code === "INVALID_HOLD");
 	assert.throws(() => parseHold("5-3"), (e) => e.code === "INVALID_HOLD");
+	assert.throws(() => parseHold("7X"), (e) => e.code === "INVALID_HOLD");
 	const records = [{ number: 1, type: "straight", length: 10 }, { number: 2, type: "arc", length: 20, curvature: 0.01 }];
 	assert.throws(() => resolveHold("3", records, []), (e) => e.code === "INVALID_HOLD");
 	assert.throws(() => resolveHold("turnouts", records, []), (e) => e.code === "NO_TURNOUT");
-	assert.deepEqual([...resolveHold("2", records, [])], [[2, "named"]]);
+	assert.deepEqual([...resolveHold("2", records, [])], [[2, { why: "named", ...BOTH }]]);
+	assert.deepEqual([...resolveHold("2R 1", records, [])], [[1, { why: "named", ...BOTH }], [2, { why: "named", length: false, radius: true }]]);
+	// a straight has no radius to hold alone
+	assert.throws(() => resolveHold("1R", records, []), (e) => e.code === "INVALID_HOLD" && /no radius/.test(e.message));
+	// a turnout is held whole, whatever a number beside it said
+	assert.deepEqual(resolveHold("turnouts 2L", records, [{ designation: "EW 190-1:9", records: [2] }]).get(2), { why: "EW 190-1:9", ...BOTH });
 });
 
 test("the reader keeps a fixed record apart from its neighbour and says which element carries it", async () => {
@@ -106,7 +115,7 @@ test("held turnouts keep their length and radius, their records and their place 
 	const held = await fit({ hold: "turnouts" });
 	const { report } = held;
 	assert.ok(report.verdict.ok, `${report.verdict.status} ${report.verdict.reason ?? ""}`);
-	assert.deepEqual(report.input.heldRecords, [{ record: 1, element: "E0", why: "EW 190-1:9" }, { record: 2, element: "E1", why: "EW 190-1:9" }, { record: 9, element: "E8", why: "EW 300-1:9" }]);
+	assert.deepEqual(report.input.heldRecords, [{ record: 1, element: "E0", why: "EW 190-1:9", ...BOTH }, { record: 2, element: "E1", why: "EW 190-1:9", ...BOTH }, { record: 9, element: "E8", why: "EW 300-1:9", ...BOTH }]);
 	assert.ok(report.input.turnouts.every((t) => t.held));
 	assert.equal(report.elements.length, 9);
 	for (const e of report.elements.filter((e) => e.fixed)) {
@@ -209,4 +218,31 @@ test("a hold is written back as a person would type it", () => {
 	assert.equal(formatHold([2, 2, 0, -1, 1.5]), "2", "only record numbers, each once");
 	assert.equal(formatHold([]), "");
 	assert.deepEqual([...parseHold(formatHold([13, 1, 2, 7])).records], [1, 2, 7, 13]);
+	// one quantity: the letter behind the number, a run only of equals
+	const held = new Map([[1, BOTH], [2, BOTH], [4, { length: false, radius: true }], [5, { length: false, radius: true }], [6, { length: true, radius: false }], [7, { length: false, radius: false }]]);
+	assert.equal(formatHold(held), "1-2, 4-5R, 6L");
+	assert.equal(formatHold([{ record: 3, length: true, radius: false }, { number: 9, length: true, radius: true }, 10]), "3L, 9-10");
+	assert.deepEqual(parseHold(formatHold(held)).quantities, { 1: BOTH, 2: BOTH, 4: { length: false, radius: true }, 5: { length: false, radius: true }, 6: { length: true, radius: false } });
+});
+
+test("a record held in one quantity keeps that one and leaves the other to the fit", async () => {
+	// record 6 is the arc R 500 that the start has 50,5 m long where the truth is 50 m
+	const radius = (await fit({ hold: "6R" })).report;
+	assert.ok(radius.verdict.ok, `${radius.verdict.status} ${radius.verdict.reason ?? ""}`);
+	assert.deepEqual(radius.input.heldRecords, [{ record: 6, element: "E4", why: "named", length: false, radius: true }]);
+	const arc = radius.elements.find((e) => e.records.includes(6));
+	assert.equal(arc.after.radius, arc.before.radius, "the radius stays");
+	assert.ok(Math.abs(arc.after.length - 50) < 0.05, `the length is fitted: ${arc.after.length}`);
+	assert.deepEqual(radius.planRecords.filter((r) => r.heldLength || r.heldRadius).map((r) => [r.number, r.held, r.heldLength, r.heldRadius]), [[6, "named", false, true]]);
+	// the length alone: it stays at the start's 50,5 m and the radius gives
+	const length = (await fit({ hold: "6L" })).report;
+	assert.ok(length.verdict.ok, `${length.verdict.status} ${length.verdict.reason ?? ""}`);
+	const held = length.elements.find((e) => e.records.includes(6));
+	assert.equal(held.after.length, held.before.length, "the length stays");
+	assert.ok(Math.abs(held.after.radius - held.before.radius) > 1, `the radius is fitted: ${held.after.radius}`);
+	assert.equal(length.input.free, radius.input.free, "one quantity held either way");
+	// a straight's radius cannot be held alone; a whole straight is its length
+	await assert.rejects(fit({ hold: "3R" }), (e) => e.code === "INVALID_HOLD");
+	const straight = (await fit({ hold: "3" })).report;
+	assert.deepEqual(straight.planRecords.filter((r) => r.heldLength).map((r) => [r.number, r.heldLength, r.heldRadius]), [[3, true, false]]);
 });

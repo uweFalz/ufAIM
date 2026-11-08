@@ -39,7 +39,8 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   length as well.
 - `--hold 1,2,13` holds records as they stand, length and radius, by the
   numbers of the TRA's listing; ranges (`3-5`) and the word `turnouts`
-  work too. `turnouts` holds every record recognised as a Regelbauart of
+  work too. An L or R behind a number or a range holds one quantity only:
+  `7L` the length, `7R` the radius (an arc's; a straight has none to hold). `turnouts` holds every record recognised as a Regelbauart of
   Ril 800.0120A01: an arc of the turnout's radius, `R * atan(1/n)` long,
   and the straight end piece beside it. A held record is not merged with
   a neighbour, so the written file keeps its boundaries. The turnouts the
@@ -66,7 +67,8 @@ which turnout it belongs to (`planRecords`), and every element's records
 (`elements[].records`). `src/services/axtran2/alignmentPicture.js` draws
 that as curvature, lock per record and points over the station; the app
 turns a click on a lock into the hold field and fits again
-(`formatHold`, the inverse of `parseHold`).
+(`formatHold`, the inverse of `parseHold`). `src/services/axtran2/recordList.js`
+lists the same records as a table with a box per quantity.
 
 Everything is computed in a local frame at the file's start and translated
 back, so the solver never sees a 5 000 km coordinate.

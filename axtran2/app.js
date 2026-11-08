@@ -5,7 +5,8 @@
 
 import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
 import { runInWorker } from "../src/services/axtran2/workerRun.js";
-import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup } from "../src/services/axtran2/alignmentPicture.js";
+import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap } from "../src/services/axtran2/alignmentPicture.js";
+import { recordListHtml } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
 
 const el = (id) => document.getElementById(id);
@@ -160,7 +161,7 @@ function show({ report, csv }) {
 	const inp = report.input;
 	el("holdResult").textContent = [
 		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
-		inp.heldRecords.length ? `Gehalten wie in der Datei: Satz ${inp.heldRecords.map((h) => h.record).join(", ")}.` : "",
+		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();
@@ -194,6 +195,12 @@ function drawPicture() {
 	picture.width = Math.max(640, Math.round((el("pictureWrap").clientWidth || 1000) * picture.zoom));
 	el("picture").innerHTML = alignmentPictureSvg(picture.model, { width: picture.width, held: picture.wanted });
 	el("zoomValue").textContent = `${picture.zoom}×`;
+	drawList();
+}
+
+// the listing shows the same hold as the picture, from the same model
+function drawList() {
+	el("records").innerHTML = picture.model ? recordListHtml(picture.model, { held: picture.wanted }) : "";
 }
 
 function pictureX(event) {
@@ -220,22 +227,32 @@ function pictureMove(event) {
 	el("pictureReadout").textContent = pictureReadout(picture.model, probe);
 }
 
-// A click on a record or its lock: the turnout it belongs to moves as one.
-// The field Sätze halten is the one place the hold is kept; the lock writes
-// into it, and what is typed there is what the next run holds.
-function toggleLock(number) {
-	if (!last || !picture.model || running) return;
-	const held = new Set(picture.wanted ?? last.report.input.heldRecords.map((h) => h.record));
+// A click on a record, its lock or its box: the quantity named, or the whole
+// record; a turnout moves as one, whole. The field Sätze halten is the one
+// place the hold is kept; the lock writes into it, and what is typed there is
+// what the next run holds. Returns whether the click was taken.
+function toggleLock(number, quantity = "both") {
+	if (!last || !picture.model || running) return false;
+	const record = picture.model.records.find((r) => r.number === number);
+	if (!record || !record.lockable) return false;
+	const wanted = holdMap(picture.model, picture.wanted);
 	const group = recordGroup(picture.model, number);
-	const on = group.every((n) => held.has(n));
-	for (const n of group) on ? held.delete(n) : held.add(n);
-	const previous = formatHold(last.report.input.heldRecords.map((h) => h.record));
-	el("hold").value = formatHold(held);
-	if (last.seconds <= LIVE_SECONDS) { run({ lock: { previous } }); return; }
+	const whole = quantity === "both" || group.length > 1 || record.turnout || !record.hasRadius;
+	const quantities = whole ? ["length", "radius"] : [quantity];
+	const on = group.every((n) => quantities.every((q) => wanted.get(n)?.[q]));
+	for (const n of group) {
+		const q = { ...(wanted.get(n) ?? { length: false, radius: false }) };
+		for (const name of quantities) q[name] = !on;
+		q.length || q.radius ? wanted.set(n, q) : wanted.delete(n);
+	}
+	const previous = formatHold(last.report.input.heldRecords);
+	el("hold").value = formatHold(wanted);
+	if (last.seconds <= LIVE_SECONDS) { run({ lock: { previous } }); return true; }
 	// a long fit does not start unasked: the lock is noted, dashed, until Optimieren
-	picture.wanted = held;
+	picture.wanted = wanted;
 	drawPicture();
 	status(`Schloss vorgemerkt (Sätze halten: ${el("hold").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet ein Schloss nicht von selbst neu: Optimieren rechnet.`);
+	return true;
 }
 
 function download(name, data, type) {
@@ -249,7 +266,12 @@ el("picture").addEventListener("mousemove", pictureMove);
 el("picture").addEventListener("mouseleave", () => pictureMove({ clientX: -1e9 }));
 el("picture").addEventListener("click", (event) => {
 	const target = event.target.closest?.("[data-record]");
-	if (target) toggleLock(Number(target.dataset.record));
+	if (target) toggleLock(Number(target.dataset.record), target.dataset.quantity ?? "both");
+});
+// a box in the listing is the same click; one not taken (a run in progress) is drawn back
+el("records").addEventListener("change", (event) => {
+	const box = event.target.closest?.("input[data-record]");
+	if (box && !toggleLock(Number(box.dataset.record), box.dataset.quantity ?? "both")) drawList();
 });
 const ZOOMS = [1, 2, 4, 8];
 el("zoomIn").addEventListener("click", () => { picture.zoom = ZOOMS[Math.min(ZOOMS.indexOf(picture.zoom) + 1, ZOOMS.length - 1)]; drawPicture(); });
