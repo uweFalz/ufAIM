@@ -53,7 +53,10 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   the file's sign), `=` and the value; `9T=Bloss` changes the type of a
   transition (Klothoide, Bloss, S-Form: Kz 2, 4, 3); `-5` takes record 5
   out, `+3=G:20` puts a straight of 20 m in after record 3 (`B:-500:30` an
-  arc with the file's sign, `U:40:Bloss` a transition). Not the first or
+  arc with the file's sign, `U:40:Bloss` a transition, `W:190-1/9:R` the
+  branch of an EW 190-1:9 of Ril 800.0120A01 to the right, arc then end
+  piece, held: `:L` to the left, `:WE` end piece first, `:Bogen` the arc
+  alone). Not the first or
   the last record, not a turnout's, and no two transitions side by side.
   The file is not changed; an edited record keeps its own element. An edit
   holds nothing: `--hold 7L` with it keeps the value.

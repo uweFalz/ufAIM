@@ -23,8 +23,34 @@ test("the structure is written as a person types it, beside the values", () => {
 	for (const bad of ["-x", "+3", "+3=X:20", "+3=G:0", "+3=B:0:20", "+3=B:300", "+3=U:40:Wiener"]) assert.throws(() => parseStructure(bad), (e) => e instanceof RecordEditsError && e.code === "INVALID_EDIT", bad);
 	assert.equal(insertKey(7, 2), "7+2");
 	assert.ok(isInsertKey("7+2") && !isInsertKey("7") && !isInsertKey("7L"));
-	assert.deepEqual(insertOf("7+2"), { after: 7, index: 2 });
+	assert.deepEqual(insertOf("7+2"), { after: 7, index: 2, part: null });
+	assert.deepEqual(insertOf("7+2b"), { after: 7, index: 2, part: "b" });
+	assert.ok(isInsertKey("7+2a"));
 	assert.equal(insertOf("7"), null);
+	// a turnout from the catalogue: its designation, the branch's side, how it lies
+	const w = parseStructure("+3=W:190-1/9 +3=W:EW500-1:12:L:WE +5=W:300-1/9:R:Bogen");
+	assert.deepEqual(w.inserted.get(3), [{ type: "turnout", radius: 190, ratio: 9, side: "right", orientation: "WA" }, { type: "turnout", radius: 500, ratio: 12, side: "left", orientation: "WE" }]);
+	assert.deepEqual(w.inserted.get(5), [{ type: "turnout", radius: 300, ratio: 9, side: "right", orientation: "arc" }]);
+	assert.equal(formatEdits("+3=W:190-1/9 +3=W:EW500-1:12:L:WE +5=W:300-1/9:R:Bogen"), "+3=W:190-1/9:R +3=W:500-1/12:L:WE +5=W:300-1/9:R:Bogen");
+	assert.throws(() => parseStructure("+3=W:250-1/9"), (e) => e.code === "INVALID_EDIT" && /Ril 800.0120A01/.test(e.message));
+	assert.throws(() => parseStructure("+3=W:190"), (e) => e.code === "INVALID_EDIT");
+});
+
+test("a turnout put in is its branch arc and end piece, held, under keys a and b", () => {
+	const { elements, recordElements } = reader([1]);
+	const put = applyStructure({ elements, recordElements, records, inserted: new Map([[1, [{ type: "turnout", radius: 190, ratio: 9, side: "right", orientation: "WA" }]], [4, [{ type: "turnout", radius: 300, ratio: 9, side: "left", orientation: "WA" }]]]) });
+	const alpha = Math.atan(1 / 9);
+	const ins = put.elements.filter((e) => e.inserted);
+	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, Number(e.length.toFixed(4)), e.curvature ?? null, e.heldTurnout, e.inserted.turnout, e.inserted.part]), [
+		["1+1a", "arc", Number((190 * alpha).toFixed(4)), -1 / 190, true, "EW 190-1:9", "arc"],
+		["1+1b", "straight", 6.0917, null, true, "EW 190-1:9", "endPiece"],
+		["4+1", "arc", Number((300 * alpha).toFixed(4)), 1 / 300, true, "EW 300-1:9", "arc"],
+	], "the right-hand branch is a negative curvature; the EW 300-1:9 has no end piece in the annex");
+	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.side, t.after, t.arc, t.endPiece, t.branchSpeedKmh, [...t.records]]), [["EW 190-1:9", "right", 1, "1+1a", "1+1b", 40, ["1+1a", "1+1b"]], ["EW 300-1:9", "left", 4, "4+1", null, 50, ["4+1"]]]);
+	// the end piece first: the track enters at the Weichenende
+	const we = applyStructure({ elements, recordElements, records, inserted: new Map([[1, [{ type: "turnout", radius: 190, ratio: 9, side: "left", orientation: "WE" }]]]) });
+	assert.deepEqual(we.elements.filter((e) => e.inserted).map((e) => [e.inserted.key, e.type]), [["1+1a", "straight"], ["1+1b", "arc"]]);
+	assert.equal(we.turnouts[0].arc, "1+1b");
 });
 
 // the reader's view of a small file: straight, straight (merged), arc, straight, transition, arc

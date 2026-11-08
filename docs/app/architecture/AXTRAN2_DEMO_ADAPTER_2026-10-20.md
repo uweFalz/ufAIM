@@ -523,3 +523,29 @@ abgewiesen.
 Geprüft an der Datei des Bahnhofsgleises: 77 Punkte, dieselben
 Koordinaten und Bemerkungen wie die von Hand umgesetzte CSV; der Fit
 darauf ist derselbe.
+
+## Weichen aus dem Katalog einfügen (2026-11-08)
+
+Was die Erkennung seit dem 6. November in der Datei findet, lässt sich
+jetzt auch hineinsetzen: eine einfache Weiche der Ril 800.0120A01 als ihr
+Zweig. Im Feld „Werte ändern“ heißt das `+3=W:190-1/9:R`: nach Satz 3 die
+EW 190-1:9, der Zweig nach rechts, zuerst der Zweigbogen (R, Länge
+R·atan(1/n)), dann das gerade Endstück d, das der Anhang nennt (das Gleis
+kommt am Weichenanfang an); `:L` legt den Zweig nach links, `:WE` setzt
+das Endstück voran (Ankunft am Weichenende), `:Bogen` lässt es weg. Eine
+Bauart ohne Endstück im Anhang (EW 300-1:9) ist nur der Bogen. In der
+Liste bietet die Eingabezeile unter dem + die Art „Weiche“ mit Bauart (und
+der zulässigen Geschwindigkeit im Zweig), Zweigseite und Lage.
+
+Die beiden Sätze heißen `3+1a` und `3+1b` und sind gehalten, wie eine
+Weiche gehalten ist: Kataloggeometrie, ohne freie Größe, ohne Schloss und
+ohne Felder; das − an einer der beiden Zeilen nimmt die Weiche wieder
+heraus. Der Bericht führt sie unter `input.turnouts` neben den erkannten
+(`inserted` mit Stelle und Lage) und in `input.structure.turnouts`; die
+Geschwindigkeitsannahme nimmt sie wie eine erkannte Weiche: eine
+eingefügte EW 190-1:9 heißt V 40, wenn nichts vorgegeben ist. Das Wort
+„Weichen“ im Haltefeld darf stehen, auch wenn die Datei keine hat.
+
+Nicht gebaut: Kreuzungsweichen (EKW/DKW) und Bogenweichen aus dem
+Katalog, der Einbau in den Stammgleis-Strang (dort ist die Weiche eine
+Gerade), Werte und Typ an Weichen.

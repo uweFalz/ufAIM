@@ -87,7 +87,7 @@ test("a record taken out or put in changes what the fit starts from; the file's 
 	// the transition out: the straight meets the arc; the file's spans stay with the straight
 	const out = (await fit({ edits: "-2" })).report;
 	assert.deepEqual(out.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["arc", [3]], ["straight", [4]]]);
-	assert.deepEqual(out.input.structure, { removed: [2], inserted: [] });
+	assert.deepEqual(out.input.structure, { removed: [2], inserted: [], turnouts: [] });
 	assert.deepEqual(out.planRecords.map((r) => [r.number, r.removed, r.element]), [[1, false, "E0"], [2, true, null], [3, false, "E2"], [4, false, "E3"]]);
 	assert.ok(out.verdict.ok, `${out.verdict.status} ${out.verdict.reason ?? ""}`);
 	assert.equal(out.output.records, 3, "the written file has three records");
@@ -120,11 +120,35 @@ test("the list shows a record taken out struck, a record put in under its key, a
 	assert.match(html, /data-action="insert-after" data-record="3" title="nach Satz 3 einen Satz einfügen">/);
 	// the form opens under the record named
 	const open = recordListHtml(model, { insertAfter: 3 });
-	assert.match(open, /<tr data-record="3">.*?<\/tr><tr class="insert-form" data-after="3"><td colspan="11"><form data-insert-after="3" class="insert">.*?<select name="kind"[^>]*><option value="straight">Gerade<\/option><option value="arc">Bogen<\/option><option value="transition">Übergangsbogen<\/option><\/select>.*?<input name="len"[^>]*>.*?<input name="rad"[^>]*>.*?<select name="fam">.*?<button type="submit"/);
+	assert.match(open, /<tr data-record="3">.*?<\/tr><tr class="insert-form" data-after="3"><td colspan="11"><form data-insert-after="3" class="insert">.*?<select name="kind"[^>]*><option value="straight">Gerade<\/option><option value="arc">Bogen<\/option><option value="transition">Übergangsbogen<\/option><option value="turnout">Weiche<\/option><\/select>.*?<input name="len"[^>]*>.*?<input name="rad"[^>]*>.*?<select name="fam">.*?<select name="wshape">.*?EW 190-1:9 \(Zweig 40 km\/h\).*?<select name="wside">.*?<select name="worient">.*?<button type="submit"/);
 	assert.ok(!html.includes("insert-form"));
 	// the picture: the inserted records have columns, no locks; the removed one nothing
 	const svg = alignmentPictureSvg(model, { width: 1200 });
 	assert.ok(/<rect data-record="1\+1"/.test(svg) && !/<g data-record="1\+1"/.test(svg) && !/data-record="2"/.test(svg));
 	const probe = pictureProbe(model, 1200, 72 + (75 / model.total) * 1112);
 	assert.match(pictureReadout(model, probe), /Satz 1\+1 Übergangsbogen \(Bloss\), 30,00 m, eingefügt nach Satz 1/);
+});
+
+test("a turnout from the catalogue goes in after a record, held whole, and sets the speed the branch allows", async () => {
+	// after the first straight: the branch of an EW 190-1:9 to the right, arc then end piece
+	const report = (await fit({ edits: "+1=W:190-1/9:R", speedKmh: null })).report;
+	assert.deepEqual(report.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["arc", ["1+1a"]], ["straight", ["1+1b"]], ["transition", [2]], ["arc", [3]], ["straight", [4]]]);
+	const arc = report.elements[1], end = report.elements[2];
+	assert.ok(Math.abs(arc.before.length - 190 * Math.atan(1 / 9)) < 1e-9 && arc.before.radius === 190, "the branch as the annex has it, R positive: a right-hand curve");
+	assert.equal(arc.after.length, arc.before.length); assert.equal(arc.after.radius, 190); assert.equal(end.after.length, end.before.length);
+	assert.equal(report.input.free, (await fit({})).report.input.free, "a turnout put in adds no free quantity");
+	assert.deepEqual(report.input.turnouts.map((t) => [t.designation, t.held, [...t.records], t.inserted?.after ?? null]), [["EW 190-1:9", true, ["1+1a", "1+1b"], 1]]);
+	assert.deepEqual([report.input.speed.basis, report.input.speed.kmh ?? report.input.speedKmh], ["turnout", 40]);
+	assert.deepEqual(report.input.structure.turnouts.map((t) => [t.designation, t.side, t.orientation, t.after]), [["EW 190-1:9", "right", "WA", 1]]);
+	const rows = report.planRecords.filter((r) => r.inserted);
+	assert.deepEqual(rows.map((r) => [r.number, r.type, r.turnout, r.held, r.heldLength, r.heldRadius, r.inserted.part]), [["1+1a", "arc", "EW 190-1:9", "EW 190-1:9", true, true, "arc"], ["1+1b", "straight", "EW 190-1:9", "EW 190-1:9", true, false, "endPiece"]]);
+	// the word Weichen may stand although the file has none: the turnout put in is held by itself
+	assert.ok((await fit({ edits: "+1=W:190-1/9:R", hold: "Weichen" })).report.verdict.status);
+	// the list: no fields, no boxes, shaded as held, one − for both rows; the picture: columns without locks
+	const model = alignmentPictureModel(report);
+	const html = recordListHtml(model);
+	assert.match(html, /<tr data-record="1\+1a" class="inserted"><td class="num">\+<\/td><td>Bogen<\/td><td>EW 190-1:9<\/td><td class="num">21,02<\/td><td class="num">21,02<\/td><td class="num">190<\/td><td class="num">190<\/td><td class="hold" colspan="2"><\/td><td>eingefügt nach Satz 1, gehalten<\/td><td class="act"><button type="button" class="ghost tiny" data-action="drop" data-record="1\+1a"/);
+	assert.match(html, /<tr data-record="1\+1b" class="inserted">.*?<td>eingefügt nach Satz 1, gehalten<\/td>/);
+	const svg = alignmentPictureSvg(model, { width: 1200 });
+	assert.ok(/<rect data-record="1\+1a"[^>]*fill="#F6E7BE"/.test(svg) && !/<g data-record="1\+1a"/.test(svg));
 });
