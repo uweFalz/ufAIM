@@ -13,7 +13,9 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   the first element's length is held, every other length and every arc
   curvature is free, the file's own end is the end pose. Kinks keep their
   station; zero-length junction arcs between two transitions are held.
-- `--points` the survey points, one per line: `[name] easting northing
+- `--points` the survey points: a Verm.esn `.pt` listing (title line `EB:`,
+  template line of P Y X H D F columns; Y is the easting, X the northing,
+  F the remark) is read as it is; otherwise one per line: `[name] easting northing
   [tolerance]`, separated by semicolon, comma, tab or spaces, decimal comma
   allowed. A header line names the columns; `Nr;Y;X` is read the Verm.esn
   way (Y the Rechtswert). Without a header, `--axes ne` swaps the order.
