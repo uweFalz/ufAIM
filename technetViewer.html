@@ -42242,7 +42242,9 @@ xlsx/xlsx.mjs:
 						const dot = svgElement("circle", { cx: xAt(node.km), cy: yAt(node.row), r: active ? 6 : node.kind === "Weiche" ? 3 : 4, class: `spurplan-node spurplan-${node.kind.toLowerCase()}${active ? " spurplan-active" : ""}` });
 						dot.addEventListener("click", () => activateJunctionCluster(junctionFromNode(node)));
 						const title = svgElement("title");
-						title.textContent = `${node.label ? `${node.label}${node.bauart ? ` · ${node.bauart}` : ""} · ` : ""}${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}${node.source === "daten" ? "\naus den Daten (GND Satzart 31)" : "\ngerechnet aus der Lage"}`;
+						const roles = node.roles?.spitze ? node.roles : null;
+						const legName = (leg) => leg.edge.name ?? objectDisplayName(leg.entry);
+						title.textContent = `${node.label ? `${node.label}${node.bauart ? ` · ${node.bauart}` : ""} · ` : ""}${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}${node.source === "daten" ? "\naus den Daten (GND Satzart 31)" : "\ngerechnet aus der Lage"}${roles ? `\n${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"} · Spitze ${legName(roles.spitze)} · Stamm ${legName(roles.stamm)} · Zweig ${legName(roles.zweig)}${roles.radius ? ` · r ${Math.round(roles.radius)} m${node.radiusCheck === "belegt" ? " ✓" : ""}` : ""}` : ""}`;
 						dot.append(title);
 						content.append(dot);
 					} else if (node.kind === "Ende") {
@@ -42886,8 +42888,14 @@ xlsx/xlsx.mjs:
 					// whose away-vectors are opposite (tangent continuity, within 2 gon);
 					// the outgoing chunk (junction at its start) carries the travel
 					// direction and curvature in km direction.
+					// Where the data names Spitze and Stamm, they are the through pair;
+					// otherwise the pair that continues each other within 2 gon.
 					let best = null;
-					for (let i = 0; i < arms.length; i += 1) for (let j = i + 1; j < arms.length; j += 1) {
+					const roleArm = (leg) => leg ? arms.find((arm) => arm.track === leg.entry) : null;
+					const spitzeArm = roleArm(junction.roles?.spitze);
+					const stammArm = roleArm(junction.roles?.stamm);
+					if (spitzeArm && stammArm && spitzeArm !== stammArm) best = { dot: -1, pair: [spitzeArm, stammArm] };
+					for (let i = 0; !best && i < arms.length; i += 1) for (let j = i + 1; j < arms.length; j += 1) {
 						const dot = arms[i].away.x * arms[j].away.x + arms[i].away.y * arms[j].away.y;
 						if (dot < -Math.cos(2 * Math.PI / 200) && (!best || dot < best.dot)) best = { dot, pair: [arms[i], arms[j]] };
 					}
@@ -44268,7 +44276,13 @@ xlsx/xlsx.mjs:
 			// A per-browser override, set from the consent card or "Kachelquelle"
 			// in the Ebenen menu, lives in localStorage and wins over this block.
 			const TILE_SOURCES_DEFAULT = {
-				base: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+				// tile.openstreetmap.org answers a page opened from disk (file://,
+				// no Referer) with the same 6,7-kB "access denied" tile for every
+				// request (measured 2026-11-08: identical bytes for neighbouring
+				// tiles, real tiles only from http://localhost). A handed-out copy is
+				// opened from disk, so the base map comes from the FOSSGIS mirror,
+				// same OpenStreetMap data, which serves file:// pages.
+				base: "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
 				railway: "https://tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png",
 				attribution: "© OpenStreetMap-Mitwirkende · © OpenRailwayMap",
 			};
@@ -45597,6 +45611,7 @@ xlsx/xlsx.mjs:
 					id: `topology-${node.id}`,
 					node,
 					entries: [...new Set(node.arms.map((arm) => arm.entry))],
+					roles: node.roles?.spitze ? node.roles : null,
 					point: node.point,
 					stationRaw: !axisIsGleis && node.km != null ? node.km : null,
 					window: !axisIsGleis && node.km != null ? JUNCTION_WINDOW_M : null,
@@ -45642,6 +45657,44 @@ xlsx/xlsx.mjs:
 					}
 				}
 				return portions;
+			}
+			// A Bauart as GND writes it: "EW 49-190-1:9", "ABW 60-500-1:12",
+			// "IBW 60-760-1:18,5-fb", "DKW 54-190-1:9", "Kr 60-1:18.5". Form,
+			// Schienenprofil, Zweigradius and Neigung, each only where the text has it.
+			function gndBauart(text) {
+				const value = gndKey(text);
+				if (!value) return null;
+				const form = (value.match(/^(DBKW|DKW|EKW|ABW|IBW|EW|Kr)\b/i) ?? [])[1] ?? null;
+				const numbers = value.match(/\b(49|54|60|S49|S54|UIC60)\b-?\s*(\d{2,5})?/i);
+				const rail = numbers ? numbers[1].replace(/^(S|UIC)/i, "") : null;
+				const radius = numbers?.[2] ? Number(numbers[2]) : (value.match(/(?:^|[\s-])(\d{3,5})-1:/) ?? [])[1] ? Number((value.match(/(?:^|[\s-])(\d{3,5})-1:/) ?? [])[1]) : null;
+				const slope = (value.match(/1:(\d+(?:[.,]\d+)?)/) ?? [])[1] ?? null;
+				return { text: value, form: form ? form.toUpperCase().replace("KR", "Kr") : null, rail, radius: Number.isFinite(radius) ? radius : null, slope: slope ? `1:${slope}` : null };
+			}
+			// Spitze, Stamm and Zweig of a Weiche from its three legs. Each leg:
+			// away (unit vector from the Knoten along the leg), deviation (signed
+			// angle in rad between that tangent and the chord to a point `length`
+			// metres along, + to the left), length. The Spitze is the leg that
+			// faces the other two; of those the Zweig bends more. The Zweig's
+			// radius follows from chord against tangent: r = length / (2 · angle).
+			function weichenRoles(legs) {
+				if (!Array.isArray(legs) || legs.length !== 3) return { spitze: null, stamm: null, zweig: null };
+				const dot = (a, b) => a.away.x * b.away.x + a.away.y * b.away.y;
+				const spitze = legs.find((leg) => legs.filter((other) => other !== leg).every((other) => dot(leg, other) < -0.5) && dot(...legs.filter((other) => other !== leg)) > 0.5) ?? null;
+				if (!spitze) return { spitze: null, stamm: null, zweig: null };
+				const [a, b] = legs.filter((leg) => leg !== spitze);
+				const bendA = Math.abs(a.deviation);
+				const bendB = Math.abs(b.deviation);
+				const zweig = bendA >= bendB ? a : b;
+				const stamm = zweig === a ? b : a;
+				const margin = Math.abs(bendA - bendB);
+				const side = zweig.deviation - stamm.deviation > 0 ? "links" : "rechts";
+				// The Zweig's radius relative to the Stamm (a Bogenweiche keeps its
+				// Grundform's radius against its curved Stamm): κ = 2·angle/length.
+				const curvature = (leg) => leg.length > 0 ? 2 * leg.deviation / leg.length : 0;
+				const relative = Math.abs(curvature(zweig) - curvature(stamm));
+				const radius = relative > 1e-6 ? 1 / relative : null;
+				return { spitze, stamm, zweig, side, radius, certain: margin > 0.003 };
 			}
 			// END GND TOPOLOGY
 			const gndTableCache = new WeakMap();
@@ -45734,6 +45787,8 @@ xlsx/xlsx.mjs:
 						node.bauart = gndKey(row.KNBE) || null;
 						node.pad = gndKey(row.PAD) || null;
 						node.coordinates = coordinates.get(node.pad) ?? null;
+						// KN0..KN3: the neighbouring Knoten, in the data's order.
+						node.neighbours = ["KN0", "KN1", "KN2", "KN3"].map((column) => gndKey(row[column]) || null);
 					}
 					const lists = new Map();
 					for (const row of gndTableRows(loaded, "X_ASC33_GS_L")) {
@@ -46037,6 +46092,71 @@ xlsx/xlsx.mjs:
 					if (Math.abs(item.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
 				}
 				for (const item of rowed) item.row -= axisRow;
+				// Spitze, Stamm, Zweig of every Weiche the data names: from the
+				// geometry of its three legs, 25 m along each; the Bauart's radius
+				// is the second witness for the Zweig.
+				const legLength = 25;
+				for (const node of placed) {
+					if (node.knotenTyp !== 1 || node.kind !== "Weiche") continue;
+					const legs = [];
+					for (const edge of edges) {
+						if (edge.from !== node && edge.to !== node) continue;
+						const atFrom = edge.from === node;
+						const stationHere = atFrom ? edge.stationFrom : edge.stationTo;
+						const stationThere = atFrom ? edge.stationTo : edge.stationFrom;
+						const polyline = polylineOf(edge.entry);
+						const length = Math.min(legLength, Math.abs(stationThere - stationHere));
+						if (length < 5 || polyline.length < 2) continue;
+						// Tangent and chord in the leg's own direction (a Streckengleis
+						// has two legs at one Weiche, one each way). The point of the
+						// Weiche is found by nearest station, the sample by walking the
+						// polyline -- stations of a GND Gleis jump at a Kilometersprung,
+						// so they are no index.
+						const forwardLeg = stationThere >= stationHere;
+						// Nearest station, and where a Kilometersprung repeats a station,
+						// the occurrence nearest the Knoten's point.
+						let here = 0;
+						let bestGap = Infinity;
+						for (let index = 0; index < polyline.length; index += 1) {
+							const gap = Math.abs(polyline[index].station - stationHere);
+							if (gap > bestGap + 1 || gap > 1 && gap >= bestGap) continue;
+							const near = Math.hypot(polyline[index].easting - node.point.easting, polyline[index].northing - node.point.northing);
+							const nearBest = Math.hypot(polyline[here].easting - node.point.easting, polyline[here].northing - node.point.northing);
+							if (gap < bestGap - 1 || near < nearBest) { here = index; bestGap = Math.min(bestGap, gap); }
+						}
+						const step = forwardLeg ? 1 : -1;
+						// Element seams repeat a point; the tangent needs a real step.
+						let next = here + step;
+						while (next >= 0 && next < polyline.length && Math.hypot(polyline[next].easting - polyline[here].easting, polyline[next].northing - polyline[here].northing) < 0.01) next += step;
+						if (next < 0 || next >= polyline.length) continue;
+						const away = unit(polyline[here], polyline[next]);
+						let walked = 0;
+						let at = here;
+						while (walked < length && at + step >= 0 && at + step < polyline.length) {
+							walked += Math.hypot(polyline[at + step].easting - polyline[at].easting, polyline[at + step].northing - polyline[at].northing);
+							at += step;
+						}
+						// Chord from the leg's own end: a Gleisstrang may end a Weichenlänge
+						// from the Knoten's point.
+						const sample = polyline[at];
+						const dx = sample.easting - polyline[here].easting;
+						const dy = sample.northing - polyline[here].northing;
+						const chord = Math.hypot(dx, dy) || 1;
+						const deviation = Math.atan2(away.x * dy / chord - away.y * dx / chord, away.x * dx / chord + away.y * dy / chord);
+						legs.push({ edge, entry: edge.entry, other: atFrom ? edge.to : edge.from, away, deviation, length: chord });
+					}
+					node.legs = legs;
+					node.roles = weichenRoles(legs);
+					node.bauartInfo = gndBauart(node.bauart);
+					// The Bauart's radius is the Zweig's radius against the Stamm for
+					// EW, ABW and IBW in a circular Stamm; a Kreuzungsweiche has two
+					// Zweige and "i.U." (im Übergangsbogen) a Stamm whose curvature
+					// changes under the Weiche -- there the check says nothing.
+					const declared = node.bauartInfo?.radius;
+					const measured = node.roles?.radius;
+					const checkable = ["EW", "ABW", "IBW", null].includes(node.bauartInfo?.form ?? null) && !/i\.?U\b|i\.U\.|iU\b|zTiU|i\.UB/i.test(node.bauart ?? "");
+					node.radiusCheck = declared && measured && checkable ? (Math.abs(measured - declared) / declared <= 0.15 ? "belegt" : "abweichend") : null;
+				}
 				// A Gleisende sits on its own Gleis, not on a neighbour's row.
 				for (const node of placed) {
 					if (node.arms.length !== 1) continue;
@@ -46081,9 +46201,14 @@ xlsx/xlsx.mjs:
 						// A Knoten of the data is checked against the Lage: its point lies on
 						// its Gleise, or the row says how far off it is.
 						const offGleis = item.gap > TOPOLOGY_TOLERANCE_M ? ` · liegt ${item.gap >= 10 ? Math.round(item.gap) : item.gap.toFixed(1).replace(".", ",")} m neben ${objectDisplayName(item.gapEntry)}` : "";
-						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"} · ${item.names.join(" / ")}${offGleis}`;
-						if (offGleis) row.classList.add("outbox-junction-off");
-						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}`;
+						// Spitze, Stamm, Zweig from the Lage; the Zweig's radius against
+						// the Bauart as the second witness.
+						const roles = item.roles?.spitze ? item.roles : null;
+						const legName = (leg) => leg.edge.name ?? objectDisplayName(leg.entry);
+						const rolesText = roles ? ` · ${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"}${roles.certain ? "" : " (unsicher)"} · Spitze ${legName(roles.spitze)} · Stamm ${legName(roles.stamm)} · Zweig ${legName(roles.zweig)}${roles.radius ? ` · r ${Math.round(roles.radius)} m${item.radiusCheck === "belegt" ? " ✓" : item.radiusCheck === "abweichend" ? ` statt ${item.bauartInfo.radius}` : ""}` : ""}` : "";
+						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${offGleis}`;
+						if (offGleis || item.radiusCheck === "abweichend") row.classList.add("outbox-junction-off");
+						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${roles ? `\nSpitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}` : item.knotenTyp === 1 ? "\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage" : ""}`;
 						if (activeJunction?.node === item) row.classList.add("outbox-junction-active");
 						row.addEventListener("click", () => activateJunctionCluster(junctionFromNode(item)));
 						list.append(row);

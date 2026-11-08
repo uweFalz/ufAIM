@@ -13,8 +13,8 @@ const begin = html.indexOf("// BEGIN GND TOPOLOGY");
 const end = html.indexOf("// END GND TOPOLOGY");
 assert.ok(begin > 0 && end > begin, "topology block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
-const { gndKey, gndKnotenLabel, gndStrandPortions, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
+const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
 
 test("fixed-width keys: blanks collapse, nothing else changes", () => {
 	assert.equal(gndKey("203695    24"), "203695 24");
@@ -73,4 +73,53 @@ test("a pair no element answers to leaves a gap; nothing matched, nothing return
 	assert.deepEqual(json(gndStrandPortions(["x", "y"], elementOf)), []);
 	assert.deepEqual(json(gndStrandPortions([], elementOf)), []);
 	assert.deepEqual(json(gndStrandPortions(["p1"], elementOf)), []);
+});
+
+test("Bauart: form, rail profile, radius, slope", () => {
+	assert.deepEqual(json(gndBauart("EW 49-190-1:9")), { text: "EW 49-190-1:9", form: "EW", rail: "49", radius: 190, slope: "1:9" });
+	assert.deepEqual(json(gndBauart("ABW 60-500-1:12")), { text: "ABW 60-500-1:12", form: "ABW", rail: "60", radius: 500, slope: "1:12" });
+	assert.equal(gndBauart("IBW 60-760-1:18,5-fb").radius, 760);
+	assert.equal(gndBauart("IBW 60-760-1:18,5-fb").slope, "1:18,5");
+	assert.equal(gndBauart("DKW 54-190-1:9").form, "DKW");
+	assert.equal(gndBauart("DBKW 54-500-1:9/1:12u.1:9").form, "DBKW");
+	assert.equal(gndBauart("Kr 60-1:18.5").form, "Kr");
+	assert.equal(gndBauart("Kr 60-1:18.5").radius, null);
+	assert.equal(gndBauart("60-500-1:12").form, null);
+	assert.equal(gndBauart("60-500-1:12").radius, 500);
+	assert.equal(gndBauart("  "), null);
+	assert.equal(gndBauart(null), null);
+});
+
+test("Spitze, Stamm, Zweig of a Weiche from its legs", () => {
+	// Spitze leg points west, Stamm straight east, Zweig east bending left (+).
+	const legs = [
+		{ name: "spitze", away: { x: -1, y: 0 }, deviation: 0, length: 25 },
+		{ name: "stamm", away: { x: 1, y: 0 }, deviation: 0.0005, length: 25 },
+		{ name: "zweig", away: { x: 1, y: 0 }, deviation: 25 / (2 * 190), length: 25 },
+	];
+	const roles = json(weichenRoles(legs));
+	assert.equal(roles.spitze.name, "spitze");
+	assert.equal(roles.stamm.name, "stamm");
+	assert.equal(roles.zweig.name, "zweig");
+	assert.equal(roles.side, "links");
+	assert.ok(Math.abs(roles.radius - 1 / (2 * (25 / (2 * 190)) / 25 - 2 * 0.0005 / 25)) < 1e-6);
+	assert.ok(Math.abs(roles.radius - 191.5) < 1, `relative radius ${roles.radius}`);
+	assert.equal(roles.certain, true);
+	// Bending right gives a Rechtsweiche; a curved Stamm keeps the relative radius.
+	const right = json(weichenRoles(legs.map((leg) => ({ ...leg, deviation: -leg.deviation }))));
+	assert.equal(right.side, "rechts");
+	const curved = json(weichenRoles([legs[0], { ...legs[1], deviation: 25 / (2 * 1000) }, { ...legs[2], deviation: 25 / (2 * 1000) + 25 / (2 * 190) }]));
+	assert.equal(curved.zweig.name, "zweig");
+	assert.ok(Math.abs(curved.radius - 190) < 1e-6);
+});
+
+test("no Spitze without a leg facing the other two; a close call is uncertain", () => {
+	assert.equal(json(weichenRoles([])).spitze, null);
+	assert.equal(json(weichenRoles([{ away: { x: 1, y: 0 }, deviation: 0, length: 25 }, { away: { x: 0, y: 1 }, deviation: 0, length: 25 }, { away: { x: -1, y: 0 }, deviation: 0, length: 25 }])).spitze, null);
+	const close = json(weichenRoles([
+		{ away: { x: -1, y: 0 }, deviation: 0, length: 25 },
+		{ away: { x: 1, y: 0 }, deviation: 0.001, length: 25 },
+		{ away: { x: 1, y: 0 }, deviation: 0.002, length: 25 },
+	]));
+	assert.equal(close.certain, false);
 });

@@ -61,7 +61,7 @@ Bilder laufen.
 Was den Rechner verlaesst
 -------------------------
 Nur die Kartenkacheln der Kartentafel, und nur nach einer Erlaubnis in
-der Kartentafel selbst. Standardquellen sind tile.openstreetmap.org und
+der Kartentafel selbst. Standardquellen sind tile.openstreetmap.de und
 tiles.openrailwaymap.org; die Kachelkoordinaten nennen diesen Servern
 den Kartenausschnitt, also die Lage des Projekts. Ohne Erlaubnis bleibt
 die Lageansicht als Vektorzeichnung ohne Hintergrund, die nichts abruft.
