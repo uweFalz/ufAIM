@@ -12,8 +12,27 @@
 // A decimal comma is read; the radius carries the file's sign. A transition
 // may change its type: "7T=Bloss", with Klothoide, Bloss or S-Form (Helmert),
 // the three the TRA writer carries as Kz 2, 4 and 3.
+//
+// The structure changes the same way: "-7" takes record 7 out, "+7=G:20"
+// puts a straight of 20 m in after it, "+7=B:-500:30" an arc R -500 of
+// 30 m (the file's sign), "+7=U:40" a clothoid of 40 m, "+7=U:40:Bloss" a
+// Bloss. Inserted records are named after the record they follow, "7+1",
+// "7+2"; a value of one of them is changed by changing its token.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.2";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.3";
+
+/** the kinds a record may be inserted as, with their letters and words */
+export const INSERT_TYPES = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übergangsbogen" });
+const INSERT_LETTERS = Object.freeze({ g: "straight", b: "arc", u: "transition", "ü": "transition" });
+/** the key of the i-th record inserted after record n */
+export const insertKey = (after, index) => `${after}+${index}`;
+/** true for the key of an inserted record */
+export const isInsertKey = (key) => /^\d+\+\d+$/.test(String(key));
+/** the record an insert key follows and the index of the insert, or null */
+export function insertOf(key) {
+	const m = /^(\d+)\+(\d+)$/.exec(String(key));
+	return m ? { after: Number(m[1]), index: Number(m[2]) } : null;
+}
 
 /** the transition families a record may be changed to, with the words for them */
 export const TRANSITION_FAMILIES = Object.freeze({ clothoid: "Klothoide", bloss: "Bloss", helmert: "S-Form" });
@@ -61,8 +80,10 @@ export function parseEdits(edits) {
 		map.set(n, { ...(map.get(n) ?? {}), [field]: value });
 	};
 	if (edits === null || edits === undefined) return map;
+	if (edits && typeof edits === "object" && edits.values instanceof Map) return parseEdits(edits.values);
 	if (typeof edits === "string") {
-		for (const token of edits.split(/[\s;]+|,(?=\s*\d+\s*[lrt]\s*=)/i).map((t) => t.trim()).filter(Boolean)) {
+		for (const token of tokens(edits)) {
+			if (/^[-+]/.test(token)) continue; // the structure: parseStructure reads it
 			const m = /^(\d+)\s*([lrt])\s*=\s*(.+)$/i.exec(token);
 			if (!m) error("INVALID_EDIT", `cannot read "${token}": write the record number, L, R or T, "=" and the value, as in 7L=45,2 or 7T=Bloss`);
 			const kind = m[2].toUpperCase();
@@ -83,14 +104,77 @@ export function parseEdits(edits) {
 	return map;
 }
 
+const tokens = (text) => text.split(/[\s;]+|,(?=\s*[-+]?\d+\s*[lrt=]|\s*[-+]\d)/i).map((t) => t.trim()).filter(Boolean);
 const trim = (value, digits) => value.toFixed(digits).replace(/\.?0+$/, "").replace(".", ",");
 
-/** The edits as a person would type them, "7L=45,2 7R=-1250"; the inverse of parseEdits. */
+/**
+ * What is taken out and what is put in: "-7" removes record 7, "+7=G:20"
+ * inserts after it. From a string, or from { removed, inserted } as this
+ * returns it.
+ * @returns {{removed: Set<number>, inserted: Map<number, Array<{type: string, length: number, radius?: number, family?: string}>>}}
+ */
+export function parseStructure(edits) {
+	const removed = new Set();
+	const inserted = new Map();
+	if (edits === null || edits === undefined) return { removed, inserted };
+	if (typeof edits === "object" && !(typeof edits === "string")) {
+		for (const n of edits.removed ?? []) removed.add(Number(n));
+		for (const [n, list] of edits.inserted instanceof Map ? edits.inserted : Object.entries(edits.inserted ?? {})) inserted.set(Number(n), list.map((spec) => ({ ...spec })));
+		return { removed, inserted };
+	}
+	for (const token of tokens(edits)) {
+		const out = /^-(\d+)$/.exec(token);
+		if (out) { removed.add(Number(out[1])); continue; }
+		const put = /^\+(\d+)\s*=\s*([a-zäöü])[^:]*:(.+)$/i.exec(token);
+		if (!put) { if (/^[-+]/.test(token)) error("INVALID_EDIT", `cannot read "${token}": write -7 to take a record out, or +7=G:20, +7=B:-500:30, +7=U:40:Bloss to put one in after it`); continue; }
+		const after = Number(put[1]);
+		const type = INSERT_LETTERS[put[2].toLowerCase()];
+		if (!type) error("INVALID_EDIT", `"${token}": the kind is G (Gerade), B (Bogen) or U (Übergangsbogen)`);
+		const parts = put[3].split(":").map((t) => t.trim());
+		const spec = { type };
+		if (type === "arc") {
+			spec.radius = toNumber(parts[0]); spec.length = toNumber(parts[1] ?? "");
+			if (!Number.isFinite(spec.radius) || !(Math.abs(spec.radius) > 0)) error("INVALID_EDIT", `"${token}": an arc needs its radius, not zero, then its length: +7=B:-500:30`);
+		} else {
+			spec.length = toNumber(parts[0]);
+			if (type === "transition") {
+				const family = parts[1] ? familyOf(parts[1]) : "clothoid";
+				if (!family) error("INVALID_EDIT", `"${token}": the type of a transition is ${Object.values(TRANSITION_FAMILIES).join(", ")}`);
+				spec.family = family;
+			}
+		}
+		if (!Number.isFinite(spec.length) || !(spec.length > 0)) error("INVALID_EDIT", `"${token}": a record needs a positive length`);
+		if (!inserted.has(after)) inserted.set(after, []);
+		inserted.get(after).push(spec);
+	}
+	return { removed, inserted };
+}
+
+/** values, removals and insertions in one: { values, removed, inserted } */
+export function parseAllEdits(edits) {
+	if (edits && typeof edits === "object" && edits.values instanceof Map) return { values: parseEdits(edits.values), ...parseStructure(edits) };
+	return { values: parseEdits(edits), ...parseStructure(typeof edits === "string" ? edits : null) };
+}
+
+const insertToken = (after, spec) => spec.type === "arc" ? `+${after}=B:${trim(spec.radius, 3)}:${trim(spec.length, 3)}`
+	: spec.type === "transition" ? `+${after}=U:${trim(spec.length, 3)}${spec.family && spec.family !== "clothoid" ? `:${TRANSITION_FAMILIES[spec.family]}` : ""}`
+	: `+${after}=G:${trim(spec.length, 3)}`;
+
+/**
+ * The edits as a person would type them, "7L=45,2 7R=-1250 -9 +9=G:20",
+ * record by record; the inverse of parseAllEdits (and of parseEdits for
+ * values alone).
+ */
 export function formatEdits(edits) {
-	const map = parseEdits(edits);
-	return [...map.keys()].sort((a, b) => a - b).flatMap((n) => {
-		const e = map.get(n);
-		return [...(e.length !== undefined ? [`${n}L=${trim(e.length, 3)}`] : []), ...(e.radius !== undefined ? [`${n}R=${trim(e.radius, 3)}`] : []), ...(e.family !== undefined ? [`${n}T=${TRANSITION_FAMILIES[e.family]}`] : [])];
+	const all = parseAllEdits(edits);
+	const numbers = [...new Set([...all.values.keys(), ...all.removed, ...all.inserted.keys()])].sort((a, b) => a - b);
+	return numbers.flatMap((n) => {
+		const e = all.values.get(n) ?? {};
+		return [
+			...(e.length !== undefined ? [`${n}L=${trim(e.length, 3)}`] : []), ...(e.radius !== undefined ? [`${n}R=${trim(e.radius, 3)}`] : []), ...(e.family !== undefined ? [`${n}T=${TRANSITION_FAMILIES[e.family]}`] : []),
+			...(all.removed.has(n) ? [`-${n}`] : []),
+			...(all.inserted.get(n) ?? []).map((spec) => insertToken(n, spec)),
+		];
 	}).join(" ");
 }
 

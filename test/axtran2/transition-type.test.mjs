@@ -82,3 +82,49 @@ test("the picture draws the transition along its law and names the type; the lis
 	const back = recordListHtml(model, { edits: "" });
 	assert.match(back, /data-record="2" data-field="family" class="pending" title="Typ wie in der Datei; noch nicht gerechnet"/);
 });
+
+test("a record taken out or put in changes what the fit starts from; the file's records keep their numbers", async () => {
+	// the transition out: the straight meets the arc; the file's spans stay with the straight
+	const out = (await fit({ edits: "-2" })).report;
+	assert.deepEqual(out.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["arc", [3]], ["straight", [4]]]);
+	assert.deepEqual(out.input.structure, { removed: [2], inserted: [] });
+	assert.deepEqual(out.planRecords.map((r) => [r.number, r.removed, r.element]), [[1, false, "E0"], [2, true, null], [3, false, "E2"], [4, false, "E3"]]);
+	assert.ok(out.verdict.ok, `${out.verdict.status} ${out.verdict.reason ?? ""}`);
+	assert.equal(out.output.records, 3, "the written file has three records");
+	// a straight put in after the transition, and a Bloss put in where the file has none
+	const put = (await fit({ edits: "+2=G:10 -2 +1=U:30:Bloss" })).report;
+	assert.deepEqual(put.elements.map((e) => [e.type, e.family ?? null, [...e.records]]), [["straight", null, [1]], ["transition", "bloss", ["1+1"]], ["straight", null, ["2+1"]], ["arc", null, [3]], ["straight", null, [4]]]);
+	assert.deepEqual(put.input.structure.inserted.map((i) => [i.key, i.after, i.type, i.length, i.family, i.element]), [["1+1", 1, "transition", 30, "bloss", "I1"], ["2+1", 2, "straight", 10, null, "I2"]]);
+	assert.deepEqual(put.planRecords.map((r) => r.number), [1, "1+1", 2, "2+1", 3, 4]);
+	const inserted = put.planRecords.find((r) => r.number === "2+1");
+	assert.deepEqual([inserted.type, inserted.length, inserted.inserted, inserted.element, inserted.fileLength, inserted.held], ["straight", 10, { after: 2, index: 1 }, "I2", null, null]);
+	assert.equal(put.output.records, 5);
+	// refused: the ends, a held record taken out, two transitions side by side
+	for (const bad of ["-1", "-4", "+4=G:5", "+1=U:20"]) await assert.rejects(fit({ edits: bad }), (e) => e.code === "INVALID_EDIT", bad);
+	await assert.rejects(fit({ edits: "-2", hold: "2L" }), (e) => e.code === "INVALID_EDIT");
+});
+
+test("the list shows a record taken out struck, a record put in under its key, and the form to put one in", async () => {
+	const report = (await fit({ edits: "+2=G:10 -2 +1=U:30:Bloss" })).report;
+	const model = alignmentPictureModel(report);
+	const html = recordListHtml(model);
+	assert.match(html, /<th>Sätze<\/th>/);
+	assert.match(html, /<tr data-record="2" class="removed"><td class="num">2<\/td><td>Übergangsbogen<\/td>.*?<td>herausgenommen<\/td><td class="act"><button type="button" class="ghost tiny" data-action="restore" data-record="2"/);
+	assert.match(html, /<tr data-record="1\+1" class="inserted"><td class="num">\+<\/td><td>Übergangsbogen <select data-record="1\+1" data-field="family"[^>]*>.*?<option value="bloss" selected>.*?<input type="text" inputmode="decimal" data-record="1\+1" data-field="length" value="30" class=""/);
+	assert.match(html, /<tr data-record="1\+1" class="inserted">.*?<td class="hold" colspan="2"><\/td><td>eingefügt nach Satz 1<\/td><td class="act"><button type="button" class="ghost tiny" data-action="drop" data-record="1\+1"/);
+	assert.match(html, /<tr data-record="2\+1" class="inserted">.*?data-field="length" value="10"/);
+	// the ends and the last record's + are disabled, with the reason
+	assert.match(html, /data-action="remove" data-record="1" title="Satz 1 ist der erste der Datei[^"]*" disabled/);
+	assert.match(html, /data-action="remove" data-record="4" title="Satz 4 ist der letzte der Datei[^"]*" disabled/);
+	assert.match(html, /data-action="insert-after" data-record="4" title="hinter dem letzten Satz geht nichts hinein" disabled/);
+	assert.match(html, /data-action="insert-after" data-record="3" title="nach Satz 3 einen Satz einfügen">/);
+	// the form opens under the record named
+	const open = recordListHtml(model, { insertAfter: 3 });
+	assert.match(open, /<tr data-record="3">.*?<\/tr><tr class="insert-form" data-after="3"><td colspan="11"><form data-insert-after="3" class="insert">.*?<select name="kind"[^>]*><option value="straight">Gerade<\/option><option value="arc">Bogen<\/option><option value="transition">Übergangsbogen<\/option><\/select>.*?<input name="len"[^>]*>.*?<input name="rad"[^>]*>.*?<select name="fam">.*?<button type="submit"/);
+	assert.ok(!html.includes("insert-form"));
+	// the picture: the inserted records have columns, no locks; the removed one nothing
+	const svg = alignmentPictureSvg(model, { width: 1200 });
+	assert.ok(/<rect data-record="1\+1"/.test(svg) && !/<g data-record="1\+1"/.test(svg) && !/data-record="2"/.test(svg));
+	const probe = pictureProbe(model, 1200, 72 + (75 / model.total) * 1112);
+	assert.match(pictureReadout(model, probe), /Satz 1\+1 Übergangsbogen \(Bloss\), 30,00 m, eingefügt nach Satz 1/);
+});
