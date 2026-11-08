@@ -5,6 +5,8 @@
 
 import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
 import { runInWorker } from "../src/services/axtran2/workerRun.js";
+import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup } from "../src/services/axtran2/alignmentPicture.js";
+import { formatHold } from "../src/services/axtran2/heldRecords.js";
 
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
@@ -13,6 +15,10 @@ const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digit
 let running = null;
 let ticker = null;
 let last = null;
+// the picture: its model, how wide it is drawn, and the locks set but not yet computed
+const picture = { model: null, width: 0, zoom: 1, wanted: null };
+// a lock recomputes on its own while a run is this quick; a long run waits for Optimieren
+const LIVE_SECONDS = 3;
 
 // the run is a worker; stopping it is terminating the worker, nothing in
 // the calculation has to cooperate. The page is told through the promise.
@@ -49,7 +55,9 @@ function endPoseFromFields() {
 
 async function readText(input) { return input.files?.[0] ? input.files[0].text() : ""; }
 
-async function run() {
+// `lock`: the run a click on a lock started. The result stays on the page
+// while it runs, and a hold the fit refuses is taken back.
+async function run({ lock = null } = {}) {
 	const started = Date.now();
 	// before the files are read: a second click must not start a second run
 	el("run").disabled = true;
@@ -71,7 +79,7 @@ async function run() {
 		};
 		const bytes = await traFile.arrayBuffer();
 		el("cancel").classList.remove("hidden");
-		el("result").classList.add("hidden");
+		if (!lock) el("result").classList.add("hidden");
 		status("Rechnet …");
 		let note = "";
 		ticker = setInterval(() => status(`Rechnet … ${Math.round((Date.now() - started) / 1000)} s${note}`), 1000);
@@ -94,14 +102,24 @@ async function run() {
 		});
 		const message = await running.promise;
 		clearInterval(ticker);
-		if (!message.ok) throw new Error(`${message.code}: ${message.message}`);
+		if (!message.ok) throw Object.assign(new Error(`${message.code}: ${message.message}`), { code: message.code });
 		last = message;
+		picture.wanted = null;
 		show(message);
 		status(`Fertig nach ${fmt(message.seconds, 1)} s.${message.attempts > 1 ? ` Das Rechenprogramm lud erst im ${message.attempts}. Versuch.` : ""}`, "ok");
 	} catch (error) {
 		clearInterval(ticker);
 		const cancelled = error?.code === "CANCELLED";
-		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.` : workerFailure(error), cancelled ? "info" : "error");
+		if (lock) {
+			// the picture shows the last fit: the field goes back to what that fit held
+			el("hold").value = lock.previous;
+			picture.wanted = null;
+			drawPicture();
+		}
+		const refused = lock && (error?.code === "NOTHING_FREE" || error?.code === "OVER_CONSTRAINED");
+		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.`
+			: refused ? "Das Schloss wurde nicht gesetzt: mit ihm bliebe zu wenig frei, um Anfang und Ende der Trasse noch zu treffen."
+			: lock ? `Das Schloss wurde nicht gesetzt. ${workerFailure(error)}` : workerFailure(error), cancelled ? "info" : "error");
 	} finally {
 		running = null;
 		el("cancel").classList.add("hidden");
@@ -145,6 +163,7 @@ function show({ report, csv }) {
 		inp.heldRecords.length ? `Gehalten wie in der Datei: Satz ${inp.heldRecords.map((h) => h.record).join(", ")}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
+	drawPicture();
 	// the curve: the residualChartSvg string is built from numbers only and
 	// escapes its labels, so it is safe to set as markup
 	el("chart").innerHTML = residualChartSvg(report.points, { tolerance: Number(el("tolerance").value) || 0.15 }) || "<p>Keine Kurve: zu wenige Punkte mit Fußpunkt.</p>";
@@ -165,16 +184,82 @@ function show({ report, csv }) {
 	void csv;
 }
 
+// The picture is built from the report's numbers and escapes its labels, so
+// it is safe to set as markup. Its width follows the page and the zoom; text
+// and locks keep their size, so a wider picture has room for more locks.
+function drawPicture() {
+	if (!last) return;
+	picture.model = alignmentPictureModel(last.report);
+	if (!picture.model) { el("picture").innerHTML = "<p style=\"padding:0 12px\">Kein Bild: der Bericht trägt keine Elemente.</p>"; return; }
+	picture.width = Math.max(640, Math.round((el("pictureWrap").clientWidth || 1000) * picture.zoom));
+	el("picture").innerHTML = alignmentPictureSvg(picture.model, { width: picture.width, held: picture.wanted });
+	el("zoomValue").textContent = `${picture.zoom}×`;
+}
+
+function pictureX(event) {
+	const svg = el("picture").querySelector("svg");
+	if (!svg || !picture.model) return null;
+	const box = svg.getBoundingClientRect();
+	return ((event.clientX - box.left) / box.width) * picture.width;
+}
+
+function pictureMove(event) {
+	const px = pictureX(event);
+	const probe = px === null ? null : pictureProbe(picture.model, picture.width, px);
+	const part = (role) => el("picture").querySelector(`[data-role="${role}"]`);
+	const set = (node, attributes) => { if (node) for (const [k, v] of Object.entries(attributes)) node.setAttribute(k, String(v)); };
+	if (!probe) {
+		for (const role of ["cursor", "highlight", "point"]) set(part(role), { visibility: "hidden" });
+		el("pictureReadout").textContent = "";
+		return;
+	}
+	set(part("cursor"), { x1: probe.x, x2: probe.x, visibility: "visible" });
+	const column = probe.record && el("picture").querySelector(`rect[data-record="${probe.record.number}"]`);
+	set(part("highlight"), column ? { x: column.getAttribute("x"), width: column.getAttribute("width"), visibility: "visible" } : { visibility: "hidden" });
+	set(part("point"), probe.point ? { cx: probe.pointX, cy: probe.pointY, visibility: "visible" } : { visibility: "hidden" });
+	el("pictureReadout").textContent = pictureReadout(picture.model, probe);
+}
+
+// A click on a record or its lock: the turnout it belongs to moves as one.
+// The field Sätze halten is the one place the hold is kept; the lock writes
+// into it, and what is typed there is what the next run holds.
+function toggleLock(number) {
+	if (!last || !picture.model || running) return;
+	const held = new Set(picture.wanted ?? last.report.input.heldRecords.map((h) => h.record));
+	const group = recordGroup(picture.model, number);
+	const on = group.every((n) => held.has(n));
+	for (const n of group) on ? held.delete(n) : held.add(n);
+	const previous = formatHold(last.report.input.heldRecords.map((h) => h.record));
+	el("hold").value = formatHold(held);
+	if (last.seconds <= LIVE_SECONDS) { run({ lock: { previous } }); return; }
+	// a long fit does not start unasked: the lock is noted, dashed, until Optimieren
+	picture.wanted = held;
+	drawPicture();
+	status(`Schloss vorgemerkt (Sätze halten: ${el("hold").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet ein Schloss nicht von selbst neu: Optimieren rechnet.`);
+}
+
 function download(name, data, type) {
 	const url = URL.createObjectURL(new Blob([data], { type }));
 	const a = document.createElement("a"); a.href = url; a.download = name; a.click();
 	setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-el("run").addEventListener("click", run);
+el("run").addEventListener("click", () => run());
+el("picture").addEventListener("mousemove", pictureMove);
+el("picture").addEventListener("mouseleave", () => pictureMove({ clientX: -1e9 }));
+el("picture").addEventListener("click", (event) => {
+	const target = event.target.closest?.("[data-record]");
+	if (target) toggleLock(Number(target.dataset.record));
+});
+const ZOOMS = [1, 2, 4, 8];
+el("zoomIn").addEventListener("click", () => { picture.zoom = ZOOMS[Math.min(ZOOMS.indexOf(picture.zoom) + 1, ZOOMS.length - 1)]; drawPicture(); });
+el("zoomOut").addEventListener("click", () => { picture.zoom = ZOOMS[Math.max(ZOOMS.indexOf(picture.zoom) - 1, 0)]; drawPicture(); });
+// the picture follows the page's width
+let redraw = 0;
+new ResizeObserver(() => { cancelAnimationFrame(redraw); redraw = requestAnimationFrame(() => { if (last && !el("result").classList.contains("hidden")) drawPicture(); }); }).observe(el("pictureWrap"));
 el("order").addEventListener("change", () => el("budget").classList.toggle("hidden", el("order").value !== "budget"));
 el("cancel").addEventListener("click", cancel);
-el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; });
+el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.zoom = 1; });
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
 el("dlCsv").addEventListener("click", () => last && download("residuen.csv", last.csv, "text/csv"));
