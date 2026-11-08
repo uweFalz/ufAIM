@@ -25,7 +25,7 @@ import { bentOnto, turnout as turnoutSpec, crossing as crossingSpec, crossingEle
 const curvatureOfRadius = (r) => (Number.isFinite(r) && r !== 0 ? -1 / r : 0);
 const radiusOfCurvature = (k) => (Math.abs(k) > 1e-15 ? -1 / k : null);
 
-export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.2";
+export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.3";
 
 export class EditedElementsError extends Error {
 	constructor(code, message, detail = null) {
@@ -76,16 +76,17 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 	const addInserted = (after, list) => list.forEach((spec, i) => {
 		if (spec.type === "crossing") {
 			// one route through a crossing turnout: the connecting arc onto the crossing track, or the straight over the crossing
-			const shape = crossingShape(spec.kind, spec.radius, spec.ratio);
-			if (!shape) error("INVALID_EDIT", `after record ${after}: ${spec.kind} ${spec.radius}-1:${spec.ratio} is not a crossing turnout of Ril 800.0120A01`);
-			const route = spec.route ?? "curved";
-			const element = crossingElement(crossingSpec({ kind: spec.kind, radius: spec.radius, ratio: spec.ratio, side: spec.side }), { route });
-			const designation = `${shape.designation}, ${route === "curved" ? "Bogenfahrt" : "gerade Fahrt"}`;
+			const shape = crossingShape(spec.kind, spec.radius ?? null, spec.ratio);
+			if (!shape) error("INVALID_EDIT", `after record ${after}: ${spec.kind} ${spec.radius === null || spec.radius === undefined ? `1:${spec.ratio}` : `${spec.radius}-1:${spec.ratio}`} is not a crossing${spec.kind === "Kr" ? "" : " turnout"} of Ril 800.0120A01`);
+			// a plain crossing (Kr) is the straight over it, the annex's lw; a crossing turnout one of its two routes
+			const route = shape.kind === "Kr" ? "straight" : spec.route ?? "curved";
+			const element = shape.kind === "Kr" ? { type: "straight", length: shape.length } : crossingElement(crossingSpec({ kind: spec.kind, radius: spec.radius, ratio: spec.ratio, side: spec.side }), { route });
+			const designation = shape.kind === "Kr" ? shape.designation : `${shape.designation}, ${route === "curved" ? "Bogenfahrt" : "gerade Fahrt"}`;
 			const key = insertKey(after, i + 1);
 			const id = `I${++insertCount}`;
 			push({ id, type: element.type, length: element.length, ...(element.curvature !== undefined ? { curvature: element.curvature } : {}), fileSpan: 0, heldTurnout: true,
 				inserted: Object.freeze({ after, index: i + 1, key, turnout: designation, part: route === "curved" ? "arc" : "straight" }) }, [key]);
-			turnoutsOut.push({ designation, kind: spec.kind, route, radius: shape.radius, ratio: shape.ratio, side: spec.side, orientation: null, after, index: i + 1,
+			turnoutsOut.push({ designation, kind: shape.kind, route, radius: shape.radius, ratio: shape.ratio, side: shape.kind === "Kr" ? null : spec.side, orientation: null, after, index: i + 1,
 				arc: route === "curved" ? key : null, endPiece: null, endPieceLength: null,
 				// what the annex allows: in the curved route the branch's, over the crossing the main's
 				branchSpeedKmh: route === "curved" ? shape.branchSpeedKmh : shape.mainSpeedKmh, records: [key] });

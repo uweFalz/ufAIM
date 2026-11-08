@@ -161,7 +161,7 @@ function show({ report, csv }) {
 	const sp = report.input.speed;
 	const admits = c.admissibleSpeedKmh === null ? "" : ` Die Bögen selbst lassen bis V ${Math.floor(c.admissibleSpeedKmh)} km/h zu (${c.limitingArc.id}, R ${fmt(Math.abs(c.limitingArc.radius), 0)} m, u ${fmt(c.limitingArc.cantMm, 0)} mm).`;
 	el("speedResult").textContent = sp.basis === "given" ? `Geschwindigkeit: V ${sp.kmh} km/h, wie vorgegeben.${admits}`
-		: sp.basis === "turnout" ? `Geschwindigkeit: V ${sp.kmh} km/h angenommen, weil der Zweig der ${sp.turnout.designation} (Satz ${sp.turnout.records.join(", ")}) nicht mehr zulässt (Ril 800.0120A01).${admits} Ändern im Feld Entwurfsgeschwindigkeit.`
+		: sp.basis === "turnout" ? `Geschwindigkeit: V ${sp.kmh} km/h angenommen, weil ${/^Kr\b|gerade Fahrt/.test(sp.turnout.designation) ? "die gerade Fahrt über die" : "der Zweig der"} ${sp.turnout.designation} (Satz ${sp.turnout.records.join(", ")}) nicht mehr zulässt (Ril 800.0120A01).${admits} Ändern im Feld Entwurfsgeschwindigkeit.`
 		: `Geschwindigkeit: V ${sp.kmh} km/h angenommen, das schnellste Hauptbahn-Profil, das Radien und Längen der Trasse zulassen.${admits} Ändern im Feld Entwurfsgeschwindigkeit.`;
 	el("cantResult").textContent = `Überhöhung: ${c.present ? "aus der Datei übernommen, vom Fit nicht verändert" : "die Datei trägt keine"}. Bei V ${c.speedKmh} km/h und zulässigem Fehlbetrag ${fmt(c.maximumDeficiencyMm, 0)} mm liegen nach dem Fit ${c.exceededAfter} von ${c.arcs.length} Bögen darüber (vorher ${c.exceededBefore}).${worst.length ? ` Am stärksten: ${worst.map((a) => `${a.id} mit ${fmt(a.after.deficiencyMm, 0)} mm bei R ${fmt(Math.abs(a.after.radius), 0)} m und u ${fmt(a.cantMm, 0)} mm`).join(", ")}.` : ""}${c.excessiveCant ? ` ${c.excessiveCant} Bögen tragen mehr als die ${fmt(c.maximumCantMm, 0)} mm der EBO.` : ""}`;
 	const rule = (z) => z.enforcement === "at-least" ? "mindestens" : z.enforcement === "at-most" ? "höchstens" : "verlangt";
@@ -377,10 +377,14 @@ function insertFromForm(form) {
 		return applyEdits(all, "structure");
 	}
 	if (type === "crossing") {
+		// "DKW:190-1/9", or "Kr:1/9" for a plain crossing (no side, no route)
 		const [kind, rest] = form.elements.kshape.value.split(":");
-		const [radius, ratio] = rest.split("-1/").map(Number);
 		if (!all.inserted.has(after)) all.inserted.set(after, []);
-		all.inserted.get(after).push({ type, kind, radius, ratio, side: form.elements.kside.value, route: form.elements.kroute.value });
+		if (kind === "Kr") all.inserted.get(after).push({ type, kind, radius: null, ratio: Number(rest.slice(2)), side: null, route: "straight" });
+		else {
+			const [radius, ratio] = rest.split("-1/").map(Number);
+			all.inserted.get(after).push({ type, kind, radius, ratio, side: form.elements.kside.value, route: form.elements.kroute.value });
+		}
 		return applyEdits(all, "structure");
 	}
 	const spec = { type, length: read("len") };

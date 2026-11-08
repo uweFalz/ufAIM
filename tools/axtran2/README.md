@@ -60,7 +60,8 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   Außenbogenweiche; `W:7000/6000-1/42:R` a branch of two radii as two arcs,
   split by the annex's tangent lengths; `K:DKW:190-1/9:R` the curved route of a DKW 190-1:9
   onto the crossing track to the right, `:gerade` the straight route over
-  the crossing). Not the first or
+  the crossing; `K:Kr:1/9` the straight over a plain crossing, the annex's
+  lw). Not the first or
   the last record, not a turnout's, and no two transitions side by side.
   The file is not changed; an edited record keeps its own element. An edit
   holds nothing: `--hold 7L` with it keeps the value.

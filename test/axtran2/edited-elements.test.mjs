@@ -159,3 +159,20 @@ test("a turnout whose branch has two radii goes in as two arcs, backwards from t
 	assert.ok(Math.abs(b[0].curvature - (1 / 7000 + 1 / 9000)) < 1e-15 && Math.abs(b[1].curvature - (1 / 6000 + 1 / 9000)) < 1e-15);
 	assert.deepEqual(bent.turnouts.map((t) => [t.designation, t.kind, t.bent.kind, t.bent.branchRadii.map((r) => Number(r.toFixed(1))), t.branchSpeedKmh]), [["IBW 7000/6000-1:42 auf R -9000", "IBW", "IBW", [-3937.5, -3600], null]]);
 });
+
+test("a plain crossing (Kr) goes in as the straight over it, held, with the annex's speed", async () => {
+	const { CROSSING_SHAPES, crossingShape } = await import(new URL("recordEdits.js", SERVICE));
+	assert.deepEqual(CROSSING_SHAPES.filter((s) => s.kind === "Kr").map((s) => [s.designation, s.radius, s.ratio, s.length, s.branchSpeedKmh, s.mainSpeedKmh]), [["Kr 1:9", null, 9, 33.23, null, 100], ["Kr 1:7.5", null, 7.5, 26.502, null, 80]]);
+	assert.equal(crossingShape("Kr", null, 9).designation, "Kr 1:9");
+	assert.equal(crossingShape("Kr", 190, 9), null, "a crossing has no radius");
+	assert.equal(crossingShape("DKW", null, 9), null);
+	const k = parseStructure("+3=K:Kr:1/9 +4=K:Kr1:7,5");
+	assert.deepEqual(k.inserted.get(3), [{ type: "crossing", kind: "Kr", radius: null, ratio: 9, side: null, route: "straight" }]);
+	assert.deepEqual(k.inserted.get(4), [{ type: "crossing", kind: "Kr", radius: null, ratio: 7.5, side: null, route: "straight" }]);
+	assert.equal(formatEdits("+3=K:Kr:1/9 +4=K:Kr1:7,5"), "+3=K:Kr:1/9 +4=K:Kr:1/7.5");
+	for (const bad of ["+3=K:Kr:1/12", "+3=K:Kr:190-1/9", "+3=K:Kr:1/9:L"]) assert.throws(() => parseStructure(bad), (e) => e.code === "INVALID_EDIT", bad);
+	const put = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, k.inserted.get(3)]]) });
+	const ins = put.elements.filter((e) => e.inserted);
+	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, e.length, e.curvature ?? null, e.heldTurnout, e.inserted.turnout, e.inserted.part]), [["1+1", "straight", 33.23, null, true, "Kr 1:9", "straight"]]);
+	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.route, t.radius, t.side, t.branchSpeedKmh, [...t.records]]), [["Kr 1:9", "Kr", "straight", null, null, 100, ["1+1"]]]);
+});
