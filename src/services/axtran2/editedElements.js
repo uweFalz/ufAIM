@@ -25,7 +25,7 @@ import { bentOnto, turnout as turnoutSpec, crossing as crossingSpec, crossingEle
 const curvatureOfRadius = (r) => (Number.isFinite(r) && r !== 0 ? -1 / r : 0);
 const radiusOfCurvature = (k) => (Math.abs(k) > 1e-15 ? -1 / k : null);
 
-export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.1";
+export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.2";
 
 export class EditedElementsError extends Error {
 	constructor(code, message, detail = null) {
@@ -92,33 +92,44 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 			return;
 		}
 		if (spec.type === "turnout") {
-			// the branch of a catalogue turnout: the arc R * atan(1/n), and the straight end piece the annex lists
-			const shape = turnoutShape(spec.radius, spec.ratio);
-			if (!shape) error("INVALID_EDIT", `after record ${after}: EW ${spec.radius}-1:${spec.ratio} is not a simple turnout of Ril 800.0120A01`);
+			// the branch of a catalogue turnout: the arc R * atan(1/n) - two arcs where the
+			// branch has two radii, split by the annex's tangent lengths - and the straight
+			// end piece the annex lists
+			const shape = turnoutShape(spec.radius, spec.ratio, spec.radiusEnd ?? null);
+			if (!shape) error("INVALID_EDIT", `after record ${after}: ${turnoutDesignation(spec)} is not a turnout of Ril 800.0120A01`);
 			const endPiece = spec.orientation !== "arc" && shape.endPieces.length ? Math.min(...shape.endPieces) : null;
 			// the kernel's heading grows to the left: a branch to the right is a negative curvature
-			let curvature = (spec.side === "left" ? 1 : -1) / shape.radius;
+			const sign = spec.side === "left" ? 1 : -1;
+			let curvatures = shape.radii.map((r) => sign / r);
 			let designation = turnoutDesignation(spec);
 			let bent = null;
 			if (Number.isFinite(spec.mainRadius)) {
-				// bent onto the main track's curvature: Innen- or Außenbogenweiche (TurnoutCatalogue.bentOnto)
-				const b = bentOnto(turnoutSpec({ radius: shape.radius, ratio: shape.ratio, side: spec.side }), curvatureOfRadius(spec.mainRadius));
-				curvature = b.curvature;
-				bent = Object.freeze({ kind: b.bent.kind, mainRadius: spec.mainRadius, branchRadius: radiusOfCurvature(curvature) });
-				designation = `${b.bent.kind} ${shape.radius}-1:${shape.ratio} auf R ${spec.mainRadius}`;
+				// bent onto the main track's curvature: Innen- or Außenbogenweiche (TurnoutCatalogue.bentOnto),
+				// every arc of the branch by the same line curvature
+				const mainCurvature = curvatureOfRadius(spec.mainRadius);
+				const bentArcs = curvatures.map((c, k) => bentOnto(k === 0 && shape.radiusEnd === null ? turnoutSpec({ radius: shape.radius, ratio: shape.ratio, side: spec.side }) : { id: `${shape.designation}[${k}]`, curvature: c }, mainCurvature));
+				curvatures = bentArcs.map((b) => b.curvature);
+				const branchRadii = curvatures.map((c) => radiusOfCurvature(c));
+				bent = Object.freeze({ kind: bentArcs[0].bent.kind, mainRadius: spec.mainRadius, branchRadius: branchRadii[0], branchRadii: Object.freeze(branchRadii) });
+				designation = `${bent.kind} ${shape.radius}${shape.radiusEnd !== null ? `/${shape.radiusEnd}` : ""}-1:${shape.ratio} auf R ${spec.mainRadius}`;
 			}
-			const bendable = (p) => (bent && Math.abs(curvature) > 1e-15 ? { ...p, type: "arc", curvature } : p);
-			const arc = Math.abs(curvature) > 1e-15 ? { type: "arc", length: shape.branchLength, curvature, part: "arc" } : { type: "straight", length: shape.branchLength, part: "arc" };
-			// a bent turnout's end piece follows the branch's curvature
-			const parts = endPiece === null ? [arc] : spec.orientation === "WE" ? [bendable({ type: "straight", length: endPiece, part: "endPiece" }), arc] : [arc, bendable({ type: "straight", length: endPiece, part: "endPiece" })];
-			const keys = parts.map((_, k) => insertKey(after, i + 1, parts.length > 1 ? "ab"[k] : ""));
+			// the end piece of a bent turnout follows the branch's curvature where it joins it
+			const bendable = (p, curvature) => (bent && Math.abs(curvature) > 1e-15 ? { ...p, type: "arc", curvature } : p);
+			const arcs = curvatures.map((curvature, k) => Math.abs(curvature) > 1e-15 ? { type: "arc", length: shape.branchLengths[k], curvature, part: k === 0 ? "arc" : "arc2" } : { type: "straight", length: shape.branchLengths[k], part: k === 0 ? "arc" : "arc2" });
+			// entered at the Weichenende the branch runs backwards: the end piece, then the last radius first
+			const parts = spec.orientation === "WE"
+				? [...(endPiece === null ? [] : [bendable({ type: "straight", length: endPiece, part: "endPiece" }, curvatures[curvatures.length - 1])]), ...arcs.slice().reverse()]
+				: [...arcs, ...(endPiece === null ? [] : [bendable({ type: "straight", length: endPiece, part: "endPiece" }, curvatures[curvatures.length - 1])])];
+			const keys = parts.map((_, k) => insertKey(after, i + 1, parts.length > 1 ? "abc"[k] : ""));
 			parts.forEach((p, k) => {
 				const id = `I${++insertCount}`;
 				push({ id, type: p.type, length: p.length, ...(p.curvature !== undefined ? { curvature: p.curvature } : {}), fileSpan: 0, heldTurnout: true,
 					inserted: Object.freeze({ after, index: i + 1, key: keys[k], turnout: designation, part: p.part }) }, [keys[k]]);
 			});
-			turnoutsOut.push({ designation, kind: bent ? bent.kind : "EW", radius: shape.radius, ratio: shape.ratio, side: spec.side, orientation: spec.orientation ?? "WA", after, index: i + 1,
-				arc: keys[parts.indexOf(arc)], endPiece: endPiece === null ? null : keys[parts.findIndex((p) => p.part === "endPiece")], endPieceLength: endPiece,
+			turnoutsOut.push({ designation, kind: bent ? bent.kind : "EW", radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio, side: spec.side, orientation: spec.orientation ?? "WA", after, index: i + 1,
+				// `arc` the record of the first radius, `arcs` the branch's arcs in the track's order
+				arc: keys[parts.indexOf(arcs[0])], arcs: parts.map((p, k) => (arcs.includes(p) ? keys[k] : null)).filter((k) => k !== null),
+				endPiece: endPiece === null ? null : keys[parts.findIndex((p) => p.part === "endPiece")], endPieceLength: endPiece,
 				// the annex speaks for the straight turnout; a bent branch has another radius and no row
 				branchSpeedKmh: bent ? null : shape.branchSpeedKmh ?? null, bent, records: keys });
 			return;

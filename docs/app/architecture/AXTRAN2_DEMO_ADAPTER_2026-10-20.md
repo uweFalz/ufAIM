@@ -583,3 +583,35 @@ Weiche das Feld „auf Stammgleis R“. Die Sätze heißen wie bisher (`7+1`,
 Nicht gebaut: Bogenweichen mit zwei Zweigradien des Anhangs (keine Zeile
 mit `radiusEnd` ist eine einfache Weiche), Kreuzungen (Kr) ohne Weiche,
 Werte und Typ an Weichen.
+
+## Weichen mit zwei Zweigradien (2026-11-08)
+
+Der Anhang führt zwei Weichen, deren Zweig aus zwei Radien besteht: die
+EW 60-7000/6000-1:42 und die EW 60-6000/3700-1:32,5 (beide fb, Zweig 200
+bzw. 160 km/h). Bisher wies `heldRecords` sie ab, und der Kern hält sie
+nicht (`COMPOUND_BRANCH`). Jetzt sind sie Bauarten wie die anderen:
+
+- **Geometrie aus den Tangentenlängen.** Der Anhang nennt lt (vom
+  Weichenanfang bis zum Schnitt der Anfangs- mit der Endtangente) und lt2
+  (von dort bis zum Weichenende). Mit R1, R2 und dem Kreuzungswinkel
+  α = atan(1/n) bleibt nur der Winkel α1 des ersten Bogens frei; er ist so
+  gewählt, dass die erste Tangente lt trifft (`compoundBranch`, Bisektion),
+  der zweite Bogen dreht den Rest. Die Probe an lt2: bei der 7000/6000
+  stimmt sie auf 0,1 mm (Bögen 80,00 m und 74,26 m), bei der 6000/3700
+  bleibt ein Rest von 0,31 m (`tangentResidual` der Bauart) – ihr Zweig
+  hat vermutlich einen Übergang zwischen den Radien, den die Spalten des
+  Anhangs nicht tragen. Annahme: zwei reine Kreisbögen (21,20 m R 6000,
+  100,74 m R 3700), der Rest steht an der Bauart und im Bericht.
+- **Einfügen** `+7=W:7000/6000-1/42:R`: zwei Sätze `7+1a` (R1) und `7+1b`
+  (R2), beide gehalten, `part` „arc“ und „arc2“; mit `:WE` läuft der Zweig
+  rückwärts (R2 vor R1, ein Endstück voran). Ein Endstück hat der Anhang
+  für diese Bauarten nicht; wo es eines gibt, heißt der dritte Satz `7+1c`.
+  `:auf-800` biegt beide Bögen um die Streckenkrümmung (`bent.branchRadii`).
+- **Erkennen** in der Datei: zwei benachbarte Bögen gleichen Drehsinns mit
+  den beiden Radien und Längen sind die Weiche, in beiden Reihenfolgen;
+  `turnouts[].arcs` nennt die Sätze, `arc` den des ersten Radius.
+- Die Liste bietet beide Bauarten in der Auswahl; `input.turnouts` trägt
+  `radiusEnd` und `arcs`.
+
+Nicht gebaut: Kreuzungen (Kr) ohne Weiche, Werte und Typ an Weichen,
+Klothoiden im Zweig (der Kern kennt im Zweig nur Bögen).

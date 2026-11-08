@@ -20,7 +20,7 @@
 
 import { RIL_800_0120_A01 } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.4";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.5";
 
 /** how far a record's length may lie from the catalogue's and still be the turnout, metres */
 export const TURNOUT_MATCH_TOLERANCE = 2e-3;
@@ -35,14 +35,59 @@ export class HeldRecordsError extends Error {
 }
 const error = (code, message, detail) => { throw new HeldRecordsError(code, message, detail); };
 
-// the simple turnouts with one radius: R, 1:n, and the straight end pieces
-// (d) the annex lists for that pair
+/**
+ * A branch of two radii (EW 60-7000/6000-1:42): the arc R1 from the toe
+ * turns by a1, the arc R2 by the rest of the crossing angle a = atan(1/n).
+ * The annex gives the two tangent lengths, lt from the toe to the point
+ * where the toe's tangent meets the end's, lt2 from there to the end. With
+ * R1, R2 and a fixed, a1 is what makes the first tangent lt (it grows with
+ * a1, so a bisection finds it); the second tangent then follows, and how
+ * far it lies from lt2 is the residual the shape reports (tangentResidual):
+ * 0 for the 7000/6000, 0.3 m for the 6000/3700, whose branch the annex may
+ * well describe with a transition between the two radii that its columns
+ * do not carry.
+ *
+ * @returns {{ angles:number[], lengths:number[], tangents:number[] }}
+ */
+export function compoundBranch(radii, ratio, tangent) {
+	const [R1, R2] = radii;
+	const a = Math.atan(1 / ratio);
+	const tangentsAt = (a1) => {
+		const x = R1 * Math.sin(a1) + R2 * (Math.sin(a) - Math.sin(a1));
+		const y = R1 * (1 - Math.cos(a1)) + R2 * (Math.cos(a1) - Math.cos(a));
+		return [x - y / Math.tan(a), y / Math.sin(a)];
+	};
+	const grows = tangentsAt(a)[0] > tangentsAt(0)[0];
+	let lo = 0, hi = a;
+	for (let i = 0; i < 60; i++) {
+		const mid = (lo + hi) / 2;
+		if ((tangentsAt(mid)[0] < tangent) === grows) lo = mid; else hi = mid;
+	}
+	const a1 = (lo + hi) / 2;
+	const tangents = tangentsAt(a1);
+	return Object.freeze({ angles: Object.freeze([a1, a - a1]), lengths: Object.freeze([R1 * a1, R2 * (a - a1)]), tangents: Object.freeze(tangents) });
+}
+
+// the simple turnouts: R, 1:n, and the straight end pieces (d) the annex
+// lists for that pair; and those whose branch has two radii (R1/R2), the
+// arcs split by the annex's tangent lengths
 const SHAPES = (() => {
 	const shapes = new Map();
 	for (const row of RIL_800_0120_A01.rows) {
-		if (row.kind !== "EW" || !Number.isFinite(row.radius) || Number.isFinite(row.radiusEnd)) continue;
-		const key = `${row.radius}-1:${row.ratio}`;
-		const shape = shapes.get(key) ?? { designation: `EW ${key}`, radius: row.radius, ratio: row.ratio, branchLength: row.radius * Math.atan(1 / row.ratio), endPieces: [], branchSpeedKmh: row.vBranch };
+		if (row.kind !== "EW" || !Number.isFinite(row.radius)) continue;
+		const compound = Number.isFinite(row.radiusEnd);
+		const key = `${row.radius}${compound ? `/${row.radiusEnd}` : ""}-1:${row.ratio}`;
+		let shape = shapes.get(key);
+		if (!shape) {
+			const radii = compound ? [row.radius, row.radiusEnd] : [row.radius];
+			let branchLengths = [row.radius * Math.atan(1 / row.ratio)], tangentResidual = null;
+			if (compound) {
+				const split = compoundBranch(radii, row.ratio, row.lt);
+				branchLengths = [...split.lengths];
+				tangentResidual = split.tangents[1] - row.lt2;
+			}
+			shape = { designation: `EW ${key}`, radius: row.radius, radiusEnd: compound ? row.radiusEnd : null, ratio: row.ratio, radii, branchLengths, branchLength: branchLengths.reduce((a, b) => a + b, 0), tangentResidual, endPieces: [], branchSpeedKmh: row.vBranch };
+		}
 		if (Number.isFinite(row.d) && !shape.endPieces.includes(row.d)) shape.endPieces.push(row.d);
 		// zul. v in the branch; the slowest where the annex lists the pair twice
 		if (Number.isFinite(row.vBranch)) shape.branchSpeedKmh = Math.min(shape.branchSpeedKmh ?? Infinity, row.vBranch);
@@ -51,12 +96,18 @@ const SHAPES = (() => {
 	return [...shapes.values()];
 })();
 
-/** the simple turnouts of the annex, for a list to choose from: { designation, radius, ratio, branchLength, endPieces, branchSpeedKmh } */
-export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, endPieces: Object.freeze([...s.endPieces]) })));
+/**
+ * the turnouts of the annex, for a list to choose from: { designation, radius,
+ * radiusEnd, ratio, radii, branchLengths, branchLength, tangentResidual,
+ * endPieces, branchSpeedKmh }; radiusEnd is null but for a branch of two radii
+ */
+export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, radii: Object.freeze([...s.radii]), branchLengths: Object.freeze([...s.branchLengths]), endPieces: Object.freeze([...s.endPieces]) })));
 
-/** the catalogue turnout of a radius and a crossing ratio, or null */
-export function turnoutShape(radius, ratio) {
-	return TURNOUT_SHAPES.find((s) => Math.abs(s.radius - Number(radius)) <= TURNOUT_MATCH_TOLERANCE && Math.abs(s.ratio - Number(ratio)) <= 1e-9) ?? null;
+/** the catalogue turnout of a radius (and the branch's second radius, if it has one) and a crossing ratio, or null */
+export function turnoutShape(radius, ratio, radiusEnd = null) {
+	const end = Number.isFinite(Number(radiusEnd)) && radiusEnd !== null ? Number(radiusEnd) : null;
+	return TURNOUT_SHAPES.find((s) => Math.abs(s.radius - Number(radius)) <= TURNOUT_MATCH_TOLERANCE && Math.abs(s.ratio - Number(ratio)) <= 1e-9
+		&& (end === null ? s.radiusEnd === null : s.radiusEnd !== null && Math.abs(s.radiusEnd - end) <= TURNOUT_MATCH_TOLERANCE)) ?? null;
 }
 
 /**
@@ -69,21 +120,34 @@ export function turnoutShape(radius, ratio) {
  */
 export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE } = {}) {
 	const found = [];
+	const taken = new Set();
+	const isArcOf = (r, radius, length) => r?.type === "arc" && Math.abs(r.curvature) > 0 && Math.abs(1 / Math.abs(r.curvature) - radius) <= tolerance && Math.abs(r.length - length) <= tolerance;
 	records.forEach((record, i) => {
-		if (record.type !== "arc" || !(Math.abs(record.curvature) > 0)) return;
-		const radius = 1 / Math.abs(record.curvature);
-		const shape = SHAPES.find((s) => Math.abs(s.radius - radius) <= tolerance && Math.abs(s.branchLength - record.length) <= tolerance);
+		if (taken.has(record.number) || record.type !== "arc" || !(Math.abs(record.curvature) > 0)) return;
+		// a branch of two radii: this arc and the next are the two arcs, turning
+		// the same way, R1 first from the toe or R2 first entered from the end
+		let arcs = [record], firstArc = record;
+		const next = records[i + 1];
+		let shape = next && Math.sign(next.curvature ?? 0) === Math.sign(record.curvature) ? SHAPES.find((s) => s.radiusEnd !== null && [[record, next], [next, record]].some(([r1, r2]) => {
+			if (!(isArcOf(r1, s.radii[0], s.branchLengths[0]) && isArcOf(r2, s.radii[1], s.branchLengths[1]))) return false;
+			arcs = [record, next]; firstArc = r1;
+			return true;
+		})) : null;
+		if (!shape) shape = SHAPES.find((s) => s.radiusEnd === null && isArcOf(record, s.radius, s.branchLength));
 		if (!shape) return;
 		const isEndPiece = (r) => r?.type === "straight" && shape.endPieces.some((d) => Math.abs(d - r.length) <= tolerance);
-		const endPiece = isEndPiece(records[i + 1]) ? records[i + 1].number : isEndPiece(records[i - 1]) ? records[i - 1].number : null;
+		const after = records[i + arcs.length], before = records[i - 1];
+		const endPiece = isEndPiece(after) ? after.number : isEndPiece(before) ? before.number : null;
+		arcs.forEach((a) => taken.add(a.number));
 		found.push(Object.freeze({
-			designation: shape.designation, radius: shape.radius, ratio: shape.ratio,
+			designation: shape.designation, radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio,
 			// the kernel's heading grows to the left
 			side: record.curvature > 0 ? "left" : "right",
-			arc: record.number, endPiece,
+			// `arc` is the record of the first radius (R1), `arcs` the branch's arcs in the file's order
+			arc: firstArc.number, arcs: Object.freeze(arcs.map((a) => a.number)), endPiece,
 			// what the annex allows in the branch, km/h: the track through it runs no faster
 			branchSpeedKmh: shape.branchSpeedKmh ?? null,
-			records: Object.freeze([record.number, ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b)),
+			records: Object.freeze([...arcs.map((a) => a.number), ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b)),
 			source: RIL_800_0120_A01.source,
 		}));
 	});

@@ -33,7 +33,7 @@
 // track to the right (the arc R * atan(1/n)), ":gerade" the straight route
 // over the crossing (2 R tan(alpha/2)); an EKW reads the same from its entry.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.5";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.6";
 
 import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 import { RIL_800_0120_A01, CROSSING_KINDS } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
@@ -54,15 +54,16 @@ export const TURNOUT_ORIENTATIONS = Object.freeze({ WA: "Bogen, dann Endstück",
 /** the key of the i-th record inserted after record n; `part` for the a/b of a turnout */
 export const insertKey = (after, index, part = "") => `${after}+${index}${part}`;
 /** true for the key of an inserted record */
-export const isInsertKey = (key) => /^\d+\+\d+[ab]?$/.test(String(key));
+export const isInsertKey = (key) => /^\d+\+\d+[abc]?$/.test(String(key));
 /** the record an insert key follows, the index of the insert and its part, or null */
 export function insertOf(key) {
-	const m = /^(\d+)\+(\d+)([ab]?)$/.exec(String(key));
+	const m = /^(\d+)\+(\d+)([abc]?)$/.exec(String(key));
 	return m ? { after: Number(m[1]), index: Number(m[2]), part: m[3] || null } : null;
 }
+/** "EW 190-1:9" of a turnout spec, "EW 7000/6000-1:42" where the branch has two radii */
+export const turnoutDesignation = (spec) => `EW ${spec.radius}${Number.isFinite(spec.radiusEnd) ? `/${spec.radiusEnd}` : ""}-1:${spec.ratio}`;
 /** "190-1/9" of a turnout spec, as the token writes it */
-export const turnoutDesignation = (spec) => `EW ${spec.radius}-1:${spec.ratio}`;
-const turnoutRef = (spec) => `${spec.radius}-1/${spec.ratio}`;
+const turnoutRef = (spec) => `${spec.radius}${Number.isFinite(spec.radiusEnd) ? `/${spec.radiusEnd}` : ""}-1/${spec.ratio}`;
 export { TURNOUT_SHAPES };
 
 /** the transition families a record may be changed to, with the words for them */
@@ -164,14 +165,16 @@ export function parseStructure(edits) {
 		const parts = put[3].split(":").map((t) => t.trim());
 		const spec = { type };
 		if (type === "turnout") {
-			const w = /^(?:EW\s*)?(\d+(?:\.\d+)?)-1[:/](\d+(?:\.\d+)?)(?::(L|R|links|rechts))?(?::(WA|WE|Bogen))?(?::auf\s*([-+]?\d+(?:[.,]\d+)?))?$/i.exec(put[3].trim());
-			if (!w) error("INVALID_EDIT", `"${token}": a turnout is written +7=W:190-1/9, then :L or :R for the branch's side, then :WA, :WE or :Bogen, then :auf-800 to bend it onto a main track of that radius`);
-			spec.radius = Number(w[1]); spec.ratio = Number(w[2]);
-			if (!turnoutShape(spec.radius, spec.ratio)) error("INVALID_EDIT", `"${token}": EW ${w[1]}-1:${w[2]} is not a simple turnout of Ril 800.0120A01: ${TURNOUT_SHAPES.map((s) => s.designation).join(", ")}`);
-			spec.side = /^l/i.test(w[3] ?? "R") ? "left" : "right";
-			spec.orientation = (w[4] ?? "WA").toLowerCase() === "bogen" ? "arc" : (w[4] ?? "WA").toUpperCase();
-			if (w[5] !== undefined) {
-				spec.mainRadius = toNumber(w[5]);
+			// "190-1/9", or "7000/6000-1/42" for a branch of two radii; the ratio may carry a comma (32,5)
+			const w = /^(?:EW\s*)?(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?-1[:/](\d+(?:[.,]\d+)?)(?::(L|R|links|rechts))?(?::(WA|WE|Bogen))?(?::auf\s*([-+]?\d+(?:[.,]\d+)?))?$/i.exec(put[3].trim());
+			if (!w) error("INVALID_EDIT", `"${token}": a turnout is written +7=W:190-1/9 (+7=W:7000/6000-1/42 for a branch of two radii), then :L or :R for the branch's side, then :WA, :WE or :Bogen, then :auf-800 to bend it onto a main track of that radius`);
+			spec.radius = Number(w[1]); spec.ratio = toNumber(w[3]);
+			if (w[2] !== undefined) spec.radiusEnd = Number(w[2]);
+			if (!turnoutShape(spec.radius, spec.ratio, spec.radiusEnd ?? null)) error("INVALID_EDIT", `"${token}": ${turnoutDesignation(spec)} is not a turnout of Ril 800.0120A01: ${TURNOUT_SHAPES.map((s) => s.designation).join(", ")}`);
+			spec.side = /^l/i.test(w[4] ?? "R") ? "left" : "right";
+			spec.orientation = (w[5] ?? "WA").toLowerCase() === "bogen" ? "arc" : (w[5] ?? "WA").toUpperCase();
+			if (w[6] !== undefined) {
+				spec.mainRadius = toNumber(w[6]);
 				if (!(Math.abs(spec.mainRadius) > 0)) error("INVALID_EDIT", `"${token}": the main track's radius to bend onto is not zero`);
 			}
 			if (!inserted.has(after)) inserted.set(after, []);

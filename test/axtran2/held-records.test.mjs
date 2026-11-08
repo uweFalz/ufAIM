@@ -66,6 +66,28 @@ test("a catalogue turnout is recognised by its radius and its branch length, wit
 	assert.equal(recogniseTurnouts([arc(1, 500, 500 * Math.atan(1 / 12))])[0].designation, "EW 500-1:12");
 });
 
+test("a branch of two radii is two arcs split by the annex's tangent lengths, and is recognised in either order", async () => {
+	const { TURNOUT_SHAPES, turnoutShape, compoundBranch } = await import(new URL("heldRecords.js", SERVICE));
+	const compound = TURNOUT_SHAPES.filter((s) => s.radiusEnd !== null);
+	assert.deepEqual(compound.map((s) => [s.designation, [...s.radii], s.branchSpeedKmh, [...s.endPieces]]), [["EW 6000/3700-1:32.5", [6000, 3700], 160, []], ["EW 7000/6000-1:42", [7000, 6000], 200, []]]);
+	// the 7000/6000 meets both tangent lengths of the annex (80.1040 / 74.1620); the 6000/3700 misses the second by 0.31 m
+	const w42 = turnoutShape(7000, 42, 6000);
+	assert.deepEqual(w42.branchLengths.map((l) => Number(l.toFixed(3))), [80.001, 74.258]);
+	assert.ok(Math.abs(w42.tangentResidual) < 2e-4, `residual ${w42.tangentResidual}`);
+	assert.ok(Math.abs(turnoutShape(6000, 32.5, 3700).tangentResidual + 0.308) < 1e-3);
+	const split = compoundBranch([7000, 6000], 42, 80.1040);
+	assert.ok(Math.abs(split.angles[0] + split.angles[1] - Math.atan(1 / 42)) < 1e-12 && Math.abs(split.tangents[0] - 80.1040) < 1e-6);
+	// a simple radius does not match a compound shape, nor the other way round
+	assert.equal(turnoutShape(7000, 42), null);
+	assert.equal(turnoutShape(190, 9, 300), null);
+	const [l1, l2] = w42.branchLengths;
+	const records = [{ number: 1, type: "straight", length: 50 }, { number: 2, type: "arc", length: l1, curvature: -1 / 7000 }, { number: 3, type: "arc", length: l2, curvature: -1 / 6000 },
+		{ number: 4, type: "straight", length: 20 }, { number: 5, type: "arc", length: l2, curvature: 1 / 6000 }, { number: 6, type: "arc", length: l1, curvature: 1 / 7000 }, { number: 7, type: "arc", length: l1, curvature: 1 / 7000 }];
+	assert.deepEqual(recogniseTurnouts(records).map((t) => [t.designation, t.side, t.arc, [...t.arcs], [...t.records]]), [["EW 7000/6000-1:42", "right", 2, [2, 3], [2, 3]], ["EW 7000/6000-1:42", "left", 6, [5, 6], [5, 6]]], "R1 then R2 from the toe, R2 then R1 from the end; a lone arc is none");
+	// the two arcs must turn the same way
+	assert.equal(recogniseTurnouts([{ number: 1, type: "arc", length: l1, curvature: -1 / 7000 }, { number: 2, type: "arc", length: l2, curvature: 1 / 6000 }]).length, 0);
+});
+
 const BOTH = { length: true, radius: true };
 test("the words that hold: numbers, ranges, L or R behind them, and turnouts", () => {
 	assert.deepEqual(parseHold("1,2, 13"), { turnouts: false, records: [1, 2, 13], quantities: { 1: BOTH, 2: BOTH, 13: BOTH } });
