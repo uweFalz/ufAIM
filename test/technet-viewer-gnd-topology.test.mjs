@@ -13,8 +13,8 @@ const begin = html.indexOf("// BEGIN GND TOPOLOGY");
 const end = html.indexOf("// END GND TOPOLOGY");
 assert.ok(begin > 0 && end > begin, "topology block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
-const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
+const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
 
 test("fixed-width keys: blanks collapse, nothing else changes", () => {
 	assert.equal(gndKey("203695    24"), "203695 24");
@@ -136,4 +136,51 @@ test("a Gleis without a number of its own: 0 in GND, 9000 and up in LIRA", () =>
 	assert.equal(gndUnnumbered("Gleis 15"), false);
 	assert.equal(gndUnnumbered("Gleis 405"), false);
 	assert.equal(gndUnnumbered("Strecke 5321 · rechts"), false);
+});
+
+// WueTreu Gleis 2: W 321 and W 322 sit 735.5 and 753.9 m into a Gerade that
+// runs 435.6-811.5; Billwerder ADA_401 220 m into one of Strecke 1150.
+test("a Knoten inside a Lage element takes its own point's station, not the element boundary", () => {
+	assert.equal(gndKnotenStation(811.5, { station: 735.5, distance: 0 }, 435.6, 811.5, 0.3), 735.5);
+	assert.equal(gndKnotenStation(435.6, { station: 753.9, distance: 0.1 }, 435.6, 811.5, 0.3), 753.9);
+	assert.equal(gndKnotenStation(155639.9, { station: 155419.4, distance: 0 }, 143800, 155639.9, 0.3), 155419.4);
+	// the point lies beside the Gleis, or outside the strand's elements (a Kilometersprung), or there is no hit
+	assert.equal(gndKnotenStation(811.5, { station: 735.5, distance: 2 }, 435.6, 811.5, 0.3), 811.5);
+	assert.equal(gndKnotenStation(811.5, { station: 1200, distance: 0 }, 435.6, 811.5, 0.3), 811.5);
+	assert.equal(gndKnotenStation(811.5, null, 435.6, 811.5), 811.5);
+	// half a metre of slack at the boundary, and the window works either way round
+	assert.equal(gndKnotenStation(811.5, { station: 811.9, distance: 0 }, 811.5, 435.6), 811.9);
+});
+
+// Billwerder: two Satzart-31 rows "_403", 29 km apart; the strand ending at
+// E 3564937 means the second.
+test("a shared Knoten name resolves to the Knoten at the strand's end point", () => {
+	const a = { knoten: "_403", own: { easting: 3593182.2, northing: 5933287.8 } };
+	const b = { knoten: "_403", own: { easting: 3564937.0, northing: 5941644.1 } };
+	const pointOf = (node) => node.own;
+	assert.equal(gndNearestNode([a, b], { easting: 3564940, northing: 5941640 }, pointOf), b);
+	assert.equal(gndNearestNode([a, b], { easting: 3593180, northing: 5933290 }, pointOf), a);
+	assert.equal(gndNearestNode([a, b], null, pointOf), a);
+	assert.equal(gndNearestNode([a], { easting: 0, northing: 0 }, pointOf), a);
+	assert.equal(gndNearestNode([], { easting: 0, northing: 0 }, pointOf), null);
+	// a candidate without a point of its own never wins against one with
+	assert.equal(gndNearestNode([{ own: null }, b], { easting: 0, northing: 0 }, pointOf), b);
+});
+
+// A 33 m stub across the Strecke: both ends get nearly the same km by the
+// perpendicular; along its own direction it keeps its 33 m around the mean km.
+test("a far group keeps its lengths along its own main direction", () => {
+	const across = gndGroupStations([{ easting: 0, northing: 0 }, { easting: 0, northing: 33 }], [1000, 1002]);
+	assert.equal(Math.round(Math.abs(across[1] - across[0]) * 10) / 10, 33);
+	assert.equal(Math.round((across[0] + across[1]) / 2 * 10) / 10, 1001);
+	assert.ok(across[1] > across[0], "the km grow in the sense the perpendicular's km grow");
+	// parallel to the Strecke nothing changes but rounding
+	const along = gndGroupStations([{ easting: 0, northing: 0 }, { easting: 33, northing: 0 }], [1000, 1033]);
+	assert.deepEqual(along.map((value) => Math.round(value * 10) / 10), [1000, 1033]);
+	// decreasing km across the group keep their sense
+	const reversed = gndGroupStations([{ easting: 0, northing: 0 }, { easting: 33, northing: 0 }], [1033, 1000]);
+	assert.deepEqual(reversed.map((value) => Math.round(value * 10) / 10), [1033, 1000]);
+	// a lone Knoten and mismatched input stay as they are
+	assert.deepEqual(gndGroupStations([{ easting: 0, northing: 0 }], [5]), [5]);
+	assert.deepEqual(gndGroupStations([{ easting: 0, northing: 0 }, { easting: 1, northing: 0 }], [5]), [5]);
 });

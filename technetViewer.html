@@ -45747,6 +45747,65 @@ xlsx/xlsx.mjs:
 				const number = gndGleisNumber(name);
 				return number != null && (number === 0 || number >= 9000);
 			}
+			// A Gleisstrang lists whole Lage elements (Satzart 33), but a Weiche
+			// is a point of its own (Satzart 31 PAD) and mostly sits inside an
+			// element, not on its boundary: WueTreu W 321 and W 322 are 18 m
+			// apart inside one 376 m Gerade of Gleis 2, Billwerder ADA_401 220 m
+			// into a Gerade of Strecke 1150. So an edge's station at such a
+			// Knoten is its point's station on the Gleis -- when the point lies on
+			// the Gleis (tolerance) and within the strand's own elements (low..high,
+			// a Kilometersprung may put it outside) -- else the element boundary.
+			function gndKnotenStation(boundary, hit, low, high, tolerance = 1) {
+				if (!hit || !Number.isFinite(hit.station) || !(hit.distance <= tolerance)) return boundary;
+				const slack = 0.5;
+				return hit.station >= Math.min(low, high) - slack && hit.station <= Math.max(low, high) + slack ? hit.station : boundary;
+			}
+			// A Knoten name without Betriebsstelle repeats within a delivery
+			// (Billwerder: "_403" twice, 29 km apart, each with its own PAD and
+			// Bauart). Each Satzart-31 row with a PAD of its own is a Knoten of its
+			// own; a Gleisstrang naming the shared key means the one at its end.
+			function gndNearestNode(candidates, point, pointOf) {
+				if (!candidates?.length) return null;
+				if (candidates.length === 1 || !point) return candidates[0];
+				let best = null;
+				for (const node of candidates) {
+					const own = pointOf(node);
+					const distance = own ? Math.hypot(own.easting - point.easting, own.northing - point.northing) : Infinity;
+					if (!best || distance < best.distance) best = { node, distance };
+				}
+				return best.node;
+			}
+			// A far Gleisgruppe no placed Knoten leads to (WueTreu: the stubs of
+			// the Ringlokschuppen, 33 m each, fanning from parallel to perpendicular
+			// to Strecke 1733) is foreshortened by the perpendicular -- a stub
+			// across the Strecke would be 2 m long on the band. So its km run along
+			// the group's own main direction (principal axis of its points), from
+			// the mean km of the group, in the sense in which the km grow across
+			// the group; every Gleis keeps its length on the band.
+			function gndGroupStations(points, kms) {
+				const count = points.length;
+				if (count < 2 || kms.length !== count) return kms.slice();
+				const cx = points.reduce((sum, point) => sum + point.easting, 0) / count;
+				const cy = points.reduce((sum, point) => sum + point.northing, 0) / count;
+				let sxx = 0;
+				let sxy = 0;
+				let syy = 0;
+				for (const point of points) {
+					const dx = point.easting - cx;
+					const dy = point.northing - cy;
+					sxx += dx * dx;
+					sxy += dx * dy;
+					syy += dy * dy;
+				}
+				const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+				const ux = Math.cos(theta);
+				const uy = Math.sin(theta);
+				const along = points.map((point) => (point.easting - cx) * ux + (point.northing - cy) * uy);
+				const km0 = kms.reduce((sum, km) => sum + km, 0) / count;
+				const slope = along.reduce((sum, value, index) => sum + value * (kms[index] - km0), 0);
+				const sign = slope < 0 ? -1 : 1;
+				return along.map((value) => km0 + sign * value);
+			}
 			// END GND TOPOLOGY
 			const gndTableCache = new WeakMap();
 			function gndTableRows(loaded, name) {
@@ -45763,7 +45822,7 @@ xlsx/xlsx.mjs:
 				const nodes = [];
 				const edges = [];
 				const covered = new Set();
-				const summary = { files: 0, strands: 0, strandsWithoutGleis: 0 };
+				const summary = { files: 0, strands: 0, strandsWithoutGleis: 0, samePoint: 0 };
 				const unitAt = (entry, stationValue, sign) => {
 					const polyline = polylineOf(entry);
 					if (polyline.length < 2) return { x: 1, y: 0 };
@@ -45821,22 +45880,34 @@ xlsx/xlsx.mjs:
 						return point ? { easting: numberValue(point.easting), northing: numberValue(point.northing) } : null;
 					};
 					const fileNodes = new Map();
-					const nodeOf = (key) => {
-						if (!fileNodes.has(key)) {
+					const homonyms = new Map();
+					const nodeOf = (key, mapKey = key) => {
+						if (!fileNodes.has(mapKey)) {
 							const tokens = key.split(" ");
 							const node = { id: -1, point: null, arms: [], source: "daten", knoten: key, knotenName: tokens[tokens.length - 1], betriebsstelle: tokens.length > 1 ? tokens[0] : null, knotenTyp: null, bauart: null, pad: null };
-							fileNodes.set(key, node);
+							fileNodes.set(mapKey, node);
 							nodes.push(node);
 						}
-						return fileNodes.get(key);
+						return fileNodes.get(mapKey);
 					};
+					// A strand's end names a Knoten; where the name is shared, the
+					// Knoten at the strand's end point (gndNearestNode).
+					const nodeAt = (key, point, lsys) => gndNearestNode(homonyms.get(key) ?? [nodeOf(key)], point, (node) => node.coordinates?.get(lsys) ?? null);
 					for (const row of knRows) {
 						const key = gndKey(row.KNOTEN);
 						if (!key) continue;
-						const node = nodeOf(key);
+						const pad = gndKey(row.PAD) || null;
+						let node = nodeOf(key);
+						if (node.knotenTyp != null && pad && node.pad && node.pad !== pad) {
+							// A second Satzart-31 row under the same name with a PAD of its
+							// own: a Knoten of its own.
+							if (!homonyms.has(key)) homonyms.set(key, [node]);
+							node = nodeOf(key, `${key}#${pad}`);
+							if (!homonyms.get(key).includes(node)) homonyms.get(key).push(node);
+						}
 						node.knotenTyp = Number(row.KNTYP);
 						node.bauart = gndKey(row.KNBE) || null;
-						node.pad = gndKey(row.PAD) || null;
+						node.pad = pad;
 						node.coordinates = coordinates.get(node.pad) ?? null;
 						// KN0..KN3: the neighbouring Knoten, in the data's order.
 						node.neighbours = ["KN0", "KN1", "KN2", "KN3"].map((column) => gndKey(row[column]) || null);
@@ -45862,23 +45933,45 @@ xlsx/xlsx.mjs:
 						const number = gndKey(row.LIRA_GLSNR) || gndKey(row.GLEISNR) || gndKey(row.STRECKE);
 						const strand = { strecke: gndKey(row.STRECKE), strRikz, text: gndKey(row.GTEXT) || null, name: ["4", "5"].includes(strRikz) && number && number !== "0" ? `Gleis ${number}` : null };
 						portions.forEach((portion, index) => {
-							const stationFrom = stationAt(portion.entry, portion.firstIndex, !portion.forward, portion.fromPad);
-							const stationTo = stationAt(portion.entry, portion.lastIndex, portion.forward, portion.toPad);
+							let stationFrom = stationAt(portion.entry, portion.firstIndex, !portion.forward, portion.fromPad);
+							let stationTo = stationAt(portion.entry, portion.lastIndex, portion.forward, portion.toPad);
 							if (stationFrom == null || stationTo == null) return;
 							const fromPoint = pointAt(portion.entry, portion.firstIndex, !portion.forward, portion.fromPad);
 							const toPoint = pointAt(portion.entry, portion.lastIndex, portion.forward, portion.toPad);
+							const lsys = gndKey(gndSequenceForEntry(portion.entry)?.lsys);
 							// Between two Gleise of one Gleisstrang sits a seam, not a Knoten
 							// of the data.
-							const from = index === 0 ? nodeOf(fromKey) : nodeOf(`Naht ${portion.fromPad}`);
-							const to = index === portions.length - 1 ? nodeOf(toKey) : nodeOf(`Naht ${portion.toPad}`);
-							const lsys = gndKey(gndSequenceForEntry(portion.entry)?.lsys);
+							const from = index === 0 ? nodeAt(fromKey, fromPoint, lsys) : nodeOf(`Naht ${portion.fromPad}`);
+							const to = index === portions.length - 1 ? nodeAt(toKey, toPoint, lsys) : nodeOf(`Naht ${portion.toPad}`);
 							for (const [node, fallback] of [[from, fromPoint], [to, toPoint]]) {
 								if (node.point) continue;
 								const own = node.pad ? coordinates.get(node.pad)?.get(lsys) : null;
 								node.point = own ?? fallback;
 							}
-							const direction = stationTo >= stationFrom ? 1 : -1;
+							// The strand's elements are whole; the edge ends where the Knoten's
+							// own point meets the Gleis (gndKnotenStation).
 							const polyline = polylineOf(portion.entry);
+							const [boundaryFrom, boundaryTo] = [stationFrom, stationTo];
+							const knotenStation = (node, boundary) => {
+								const own = node.pad ? coordinates.get(node.pad)?.get(lsys) : null;
+								return own ? gndKnotenStation(boundary, distanceAndStationOnPolyline(polyline, own), boundaryFrom, boundaryTo, TOPOLOGY_TOLERANCE_M) : boundary;
+							};
+							const refinedFrom = knotenStation(from, stationFrom);
+							const refinedTo = knotenStation(to, stationTo);
+							if (Math.abs(refinedTo - refinedFrom) >= TOPOLOGY_TOLERANCE_M || Math.abs(stationTo - stationFrom) < TOPOLOGY_TOLERANCE_M) {
+								stationFrom = refinedFrom;
+								stationTo = refinedTo;
+							} else {
+								// Two Weichen Spitze an Spitze share one point in the data
+								// (WueTreu W 125/W 126: PAD 41251 and 41261 at one place, the
+								// Gleisstrang between them 89 m of Lage). The point cannot say
+								// where on this strand each Knoten sits, so the strand's own
+								// elements do, as before; the Outbox names the pair.
+								if (!from.samePoint && !to.samePoint) summary.samePoint += 1;
+								from.samePoint ??= to;
+								to.samePoint ??= from;
+							}
+							const direction = stationTo >= stationFrom ? 1 : -1;
 							const startStation = polyline[0]?.station;
 							from.arms.push({ entry: portion.entry, station: stationFrom, atStart: Math.abs(stationFrom - startStation) < 1e-6, away: unitAt(portion.entry, stationFrom, direction) });
 							to.arms.push({ entry: portion.entry, station: stationTo, atStart: Math.abs(stationTo - startStation) < 1e-6, away: unitAt(portion.entry, stationTo, -direction) });
@@ -45958,6 +46051,7 @@ xlsx/xlsx.mjs:
 			// How an edge is called: its Gleisstrang's name, else its Gleis's; a
 			// Gleis without a number (0, LIRA ≥ 9000) by what it is -- a
 			// Verbindung between two Weichen, else a Gleis ohne Nummer.
+			function node_form(item) { return item.bauartInfo?.form ? `${item.bauartInfo.form} (Kreuzungsweiche)` : "Kreuzungsweiche"; }
 			function edgeLabelOf(edge) {
 				const name = edge.name ?? objectDisplayName(edge.entry);
 				if (!gndUnnumbered(name)) return name;
@@ -46140,6 +46234,27 @@ xlsx/xlsx.mjs:
 						});
 						if (best) place(node, best.hit, best.axisIndex, "linie");
 					}
+					// A group of such Knoten on one axis, joined by Gleise among
+					// themselves only, lies on the band along its own main direction
+					// (gndGroupStations), not foreshortened by the perpendicular.
+					const grouped = new Set();
+					for (const start of nodes) {
+						if (start.farVia !== "linie" || grouped.has(start)) continue;
+						const group = [start];
+						grouped.add(start);
+						for (let index = 0; index < group.length; index += 1) {
+							for (const edge of edges) {
+								for (const [here, there] of [[edge.from, edge.to], [edge.to, edge.from]]) {
+									if (here !== group[index] || there.farVia !== "linie" || there.axis !== start.axis || grouped.has(there)) continue;
+									grouped.add(there);
+									group.push(there);
+								}
+							}
+						}
+						if (group.length < 2) continue;
+						const stations = gndGroupStations(group.map((node) => node.point), group.map((node) => node.km));
+						group.forEach((node, index) => { node.km = stations[index]; node.farVia = "gruppe"; });
+					}
 				}
 				// A data node's Gleise go by their Gleisstrang's name where it has one.
 				for (const edge of data.edges) {
@@ -46218,8 +46333,11 @@ xlsx/xlsx.mjs:
 						const stationHere = atFrom ? edge.stationFrom : edge.stationTo;
 						const stationThere = atFrom ? edge.stationTo : edge.stationFrom;
 						const polyline = polylineOf(edge.entry);
-						const length = Math.min(legLength, Math.abs(stationThere - stationHere));
-						if (length < 5 || polyline.length < 2) continue;
+						// The leg follows the Gleis for 25 m, past a near neighbour too
+						// (WueTreu W 208 and W 209 are 4.8 m apart on Strecke 5321): the
+						// Gleis's own geometry gives the tangent and the bend.
+						const length = legLength;
+						if (polyline.length < 2 || Math.abs(stationThere - stationHere) < TOPOLOGY_TOLERANCE_M) continue;
 						// Tangent and chord in the leg's own direction (a Streckengleis
 						// has two legs at one Weiche, one each way). The point of the
 						// Weiche is found by nearest station, the sample by walking the
@@ -46249,6 +46367,7 @@ xlsx/xlsx.mjs:
 							walked += Math.hypot(polyline[at + step].easting - polyline[at].easting, polyline[at + step].northing - polyline[at].northing);
 							at += step;
 						}
+						if (walked < 5) continue;
 						// Chord from the leg's own end: a Gleisstrang may end a Weichenlänge
 						// from the Knoten's point.
 						const sample = polyline[at];
@@ -46256,11 +46375,24 @@ xlsx/xlsx.mjs:
 						const dy = sample.northing - polyline[here].northing;
 						const chord = Math.hypot(dx, dy) || 1;
 						const deviation = Math.atan2(away.x * dy / chord - away.y * dx / chord, away.x * dx / chord + away.y * dy / chord);
-						legs.push({ edge, entry: edge.entry, other: atFrom ? edge.to : edge.from, away, deviation, length: chord });
+						legs.push({ edge, entry: edge.entry, other: atFrom ? edge.to : edge.from, away, deviation, length: chord, sample: { easting: sample.easting, northing: sample.northing } });
 					}
-					node.legs = legs;
-					node.roles = weichenRoles(legs);
+					// Two Strecken on one track (WueTreu: 5321 and 5902 through Treuchtlingen)
+					// give a Weiche the same leg twice, one per Streckengleis: same
+					// point 25 m out and same bend. Stamm and Zweig of a flat Weiche are
+					// not that -- an EW 1200 puts its Zweig only 0.26 m beside the Stamm
+					// at 25 m, but bends it by 0.010. One leg per track, the one with the
+					// Knoten the data names as a neighbour (KN0..KN3), else the nearer.
+					const named = (leg) => node.neighbours?.includes(leg.other?.knoten) ? 0 : 1;
+					legs.sort((a, b) => named(a) - named(b) || Math.abs(a.edge.stationTo - a.edge.stationFrom) - Math.abs(b.edge.stationTo - b.edge.stationFrom));
+					const distinct = [];
+					for (const leg of legs) {
+						if (distinct.some((kept) => Math.abs(kept.deviation - leg.deviation) < 0.001 && Math.hypot(kept.sample.easting - leg.sample.easting, kept.sample.northing - leg.sample.northing) < 0.3)) continue;
+						distinct.push(leg);
+					}
+					node.legs = distinct;
 					node.bauartInfo = gndBauart(node.bauart);
+					node.roles = weichenRoles(distinct);
 					// The data's own word on the Spitze: KN0 of Satzart 31 is the
 					// neighbour at the Spitze (Lüneburg 165 of 165, Eifel 123 of 123,
 					// WueTreu 424 of 426 Weichen with roles from the Lage; KN1/KN2
@@ -46275,17 +46407,23 @@ xlsx/xlsx.mjs:
 						const dataLeg = legs.find((leg) => leg.other?.knoten === node.spitzeData) ?? null;
 						if (node.roles.spitze) node.spitzeCheck = node.roles.spitze.other?.knoten === node.spitzeData ? "belegt" : dataLeg ? "abweichend" : "offen";
 						else if (dataLeg) {
-							const rest = legs.filter((leg) => leg !== dataLeg);
+							const rest = distinct.filter((leg) => leg !== dataLeg);
 							let stamm = null;
 							let zweig = null;
 							const declared = node.bauartInfo?.radius;
-							if (rest.length === 1 && declared && (node.bauartInfo?.form ?? "EW") === "EW") {
-								const leg = rest[0];
-								const measured = leg.length > 0 && Math.abs(leg.deviation) > 1e-6 ? leg.length / (2 * Math.abs(leg.deviation)) : Infinity;
-								if (Math.abs(measured - declared) / declared <= 0.25) zweig = leg;
-								else if (measured > 2 * declared) stamm = leg;
+							if (declared && (node.bauartInfo?.form ?? "EW") === "EW") {
+								const measuredOf = (leg) => leg.length > 0 && Math.abs(leg.deviation) > 1e-6 ? leg.length / (2 * Math.abs(leg.deviation)) : Infinity;
+								const matching = rest.filter((leg) => Math.abs(measuredOf(leg) - declared) / declared <= 0.25);
+								const straight = rest.filter((leg) => measuredOf(leg) > 2 * declared);
+								if (rest.length === 1) {
+									if (matching.length) zweig = rest[0];
+									else if (straight.length) stamm = rest[0];
+								} else if (rest.length === 2 && matching.length === 1 && straight.length === 1 && matching[0] !== straight[0]) {
+									zweig = matching[0];
+									stamm = straight[0];
+								}
 							}
-							node.roles = { spitze: dataLeg, stamm, zweig, side: stamm && zweig ? null : zweig ? (zweig.deviation > 0 ? "links" : "rechts") : null, radius: null, certain: true, fromData: true };
+							node.roles = { spitze: dataLeg, stamm, zweig, side: stamm && zweig ? null : zweig ? (zweig.deviation > 0 ? "links" : "rechts") : null, radius: null, certain: true, fromData: true, kreuzung: /KW$/.test(node.bauartInfo?.form ?? "") };
 							node.spitzeCheck = "daten";
 						}
 					}
@@ -46307,7 +46445,7 @@ xlsx/xlsx.mjs:
 				const checks = nodes.filter((node) => node.spitzeCheck);
 				const spitze = checks.length ? { compared: checks.filter((node) => node.spitzeCheck === "belegt" || node.spitzeCheck === "abweichend").length, belegt: checks.filter((node) => node.spitzeCheck === "belegt").length, abweichend: checks.filter((node) => node.spitzeCheck === "abweichend").length, daten: checks.filter((node) => node.spitzeCheck === "daten").length } : null;
 				const farNodes = nodes.filter((node) => node.far != null);
-				const far = farNodes.length ? { count: farNodes.length, max: Math.max(...farNodes.map((node) => node.far)), open: nodes.filter((node) => node.km == null).length } : null;
+				const far = farNodes.length ? { count: farNodes.length, max: Math.max(...farNodes.map((node) => node.far)), open: nodes.filter((node) => node.km == null).length, gruppe: farNodes.filter((node) => node.farVia === "gruppe").length } : null;
 				return { nodes, edges, axes, fromData, far, spitze, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
 			}
 
@@ -46334,7 +46472,7 @@ xlsx/xlsx.mjs:
 					const origin = !topology.fromData ? "gerechnet" : topology.computedGleise ? "aus den Daten und gerechnet" : "aus den Daten";
 					const offGleis = topology.fromData?.offGleis ? ` · ${topology.fromData.offGleis} neben ihren Gleisen` : "";
 					summary.textContent = `Weichen · Topologie (${origin}) · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen${offGleis} · ${count("Ende")} Enden · ${topology.edges.length} Kanten`;
-					summary.title = `${topology.fromData ? `Aus den Daten (GND Satzart 31/33): ${topology.fromData.nodes} Knoten, ${topology.fromData.strands - topology.fromData.strandsWithoutGleis} von ${topology.fromData.strands} Gleissträngen mit Lage, ${topology.fromData.gleise} Gleise${topology.computedGleise ? ` · ${topology.computedGleise} Gleise ohne Gleisstrang gerechnet` : ""}\n` : ""}${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? ` · km von der nächsten Kilometerlinie (bis ${TOPOLOGY_KM_MAX_DISTANCE_M} m)` : " · keine Kilometerlinie, Stationen der Gleise"}${topology.spitze ? `\nSpitze: ${topology.spitze.belegt} von ${topology.spitze.compared} Weichen aus der Lage stimmen mit den Daten (KN0) überein${topology.spitze.abweichend ? `, ${topology.spitze.abweichend} weichen ab` : ""}${topology.spitze.daten ? ` · ${topology.spitze.daten} Spitzen nur aus den Daten` : ""}` : ""}${topology.far ? `\n${topology.far.count} Knoten weiter weg (bis ${Math.round(topology.far.max)} m): km über das Lot auf die Strecke ihrer Nachbarn, sonst auf die nächste Kilometerlinie (bis ${TOPOLOGY_KM_FAR_M} m)${topology.far.open ? ` · ${topology.far.open} ohne Lage` : ""}` : ""}`;
+					summary.title = `${topology.fromData ? `Aus den Daten (GND Satzart 31/33): ${topology.fromData.nodes} Knoten, ${topology.fromData.strands - topology.fromData.strandsWithoutGleis} von ${topology.fromData.strands} Gleissträngen mit Lage, ${topology.fromData.gleise} Gleise${topology.computedGleise ? ` · ${topology.computedGleise} Gleise ohne Gleisstrang gerechnet` : ""}${topology.fromData.samePoint ? ` · ${topology.fromData.samePoint} Weichenpaare auf einem Punkt (Spitze an Spitze; ihre Kante nach den Elementen des Gleisstrangs)` : ""}\n` : ""}${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? ` · km von der nächsten Kilometerlinie (bis ${TOPOLOGY_KM_MAX_DISTANCE_M} m)` : " · keine Kilometerlinie, Stationen der Gleise"}${topology.spitze ? `\nSpitze: ${topology.spitze.belegt} von ${topology.spitze.compared} Weichen aus der Lage stimmen mit den Daten (KN0) überein${topology.spitze.abweichend ? `, ${topology.spitze.abweichend} weichen ab` : ""}${topology.spitze.daten ? ` · ${topology.spitze.daten} Spitzen nur aus den Daten` : ""}` : ""}${topology.far ? `\n${topology.far.count} Knoten weiter weg (bis ${Math.round(topology.far.max)} m): km über das Lot auf die Strecke ihrer Nachbarn, sonst auf die nächste Kilometerlinie (bis ${TOPOLOGY_KM_FAR_M} m)${topology.far.gruppe ? `, ${topology.far.gruppe} davon in Gruppen längs ihrer eigenen Richtung` : ""}${topology.far.open ? ` · ${topology.far.open} ohne Lage` : ""}` : ""}`;
 					node.append(summary);
 					const list = document.createElement("div");
 					list.className = "outbox-junction-list";
@@ -46355,7 +46493,7 @@ xlsx/xlsx.mjs:
 						const farText = item.far != null ? ` · ${Math.round(item.far)} m neben der Kilometerlinie` : "";
 						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${farText}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${offGleis}`;
 						if (offGleis || item.radiusCheck === "abweichend" || item.spitzeCheck === "abweichend") row.classList.add("outbox-junction-off");
-						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${item.far != null ? `\nkm über das Lot auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (${item.farVia === "nachbar" ? "die Strecke der Nachbarknoten" : "nächste Kilometerlinie"}), ${Math.round(item.far)} m daneben` : ""}${roles ? `\n${roles.fromData ? `Spitze aus den Daten (KN0 der Satzart 31)${roles.stamm || roles.zweig ? `, ${roles.zweig ? "Zweig" : "Stamm"} aus dem Radius des einen Schenkels mit Lage gegen die Bauart` : ", Stamm und Zweig ohne Lage"}` : `Spitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${item.spitzeCheck === "belegt" ? "; die Daten (KN0) nennen dieselbe Spitze" : item.spitzeCheck === "abweichend" ? `; die Daten (KN0) nennen ${item.spitzeData} als Spitze` : ""}`}${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}` : item.knotenTyp === 1 ? "\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage" : ""}`;
+						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${item.samePoint ? `\nteilt seinen Punkt mit ${item.samePoint.label ?? item.samePoint.knoten} (Spitze an Spitze, PAD ${item.pad} und ${item.samePoint.pad}); die Kante dazwischen liegt nach den Elementen ihres Gleisstrangs` : ""}${item.far != null ? `\n${item.farVia === "gruppe" ? `km längs der eigenen Gleisgruppe, ab dem Lot ihrer Mitte auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (nächste Kilometerlinie)` : `km über das Lot auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (${item.farVia === "nachbar" ? "die Strecke der Nachbarknoten" : "nächste Kilometerlinie"})`}, ${Math.round(item.far)} m daneben` : ""}${roles ? `\n${roles.fromData ? `Spitze aus den Daten (KN0 der Satzart 31)${roles.kreuzung ? `; Stamm und Zweig bei einer ${node_form(item)} nicht aus der Bauart ableitbar` : roles.stamm && roles.zweig ? ", Stamm und Zweig aus den Radien der beiden Schenkel gegen die Bauart" : roles.stamm || roles.zweig ? `, ${roles.zweig ? "Zweig" : "Stamm"} aus dem Radius des einen Schenkels mit Lage gegen die Bauart` : ", Stamm und Zweig ohne Lage"}` : `Spitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${item.spitzeCheck === "belegt" ? "; die Daten (KN0) nennen dieselbe Spitze" : item.spitzeCheck === "abweichend" ? `; die Daten (KN0) nennen ${item.spitzeData} als Spitze` : ""}`}${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}` : item.knotenTyp === 1 ? "\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage" : ""}`;
 						if (activeJunction?.node === item) row.classList.add("outbox-junction-active");
 						row.addEventListener("click", () => activateJunctionCluster(junctionFromNode(item)));
 						list.append(row);
@@ -47104,6 +47242,11 @@ xlsx/xlsx.mjs:
 					const elementStart = stationScalar(element?.extras?.externalStation ?? element.staStart);
 					if (!Number.isFinite(elementStart)) continue;
 					const length = Math.abs(numberValue(element.length));
+					// A Knick (GND EKTYP 5) is an element of length 0 carrying the
+					// neighbouring Gerade's two points; sampled, it would lay a second,
+					// backwards run of that Gerade onto the polyline at one station
+					// (Billwerder Strecke 1150: 11 of them, stations jumping 1700 m).
+					if (length === 0) continue;
 					const sampled = sampleElementSource(element, maximumStep);
 					const segments = sampled.length - 1;
 					sampled.forEach((point, index) => {
