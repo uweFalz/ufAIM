@@ -440,6 +440,10 @@
 			.links-arc { fill: none; stroke: var(--link-color); stroke-width: 1.2; opacity: 0.55; cursor: pointer; }
 			.links-arc.links-arc-selected { stroke-width: 2.2; opacity: 1; }
 			.links-svg:has(.links-arc-selected) .links-arc:not(.links-arc-selected) { opacity: 0.16; }
+			/* Hover beats the selection's fading: the hovered arcs at full strength, the rest back. */
+			.links-svg.links-hovering .links-arc:not(.links-arc-hover) { opacity: 0.1; }
+			.links-svg .links-arc.links-arc-hover { opacity: 1; stroke-width: 2.4; }
+			.links-node:hover text, .links-node.links-row-hover text { font-weight: 700; }
 			.links-reason-identity { --link-color: #2b6cb0; }
 			.links-reason-relation { --link-color: #0f8a8a; }
 			.links-reason-file { --link-color: #3d9970; }
@@ -653,6 +657,7 @@
 			.diagram-figure-title { font-weight: 650; font-size: 14px; }
 			.diagram-figure-sub { font-size: 11px; }
 			.diagram-footnote { font-size: 11px; }
+			.diagram-footnote-head { font-weight: 600; }
 			.diagram-axis-value { font-size: 11px; font-variant-numeric: tabular-nums; }
 			#mapToolbar {
 				position: relative;
@@ -1295,6 +1300,9 @@
 			.inbox-top .inbox-filter { flex: 1; }
 			.inbox-crs { border-top: 1px solid var(--hairline); }
 			.inbox-crs > summary { padding: var(--sp-2) var(--sp-3); font: 600 var(--fs-2) system-ui, sans-serif; cursor: pointer; }
+			.inbox-crs-head { display: inline-flex; align-items: center; gap: var(--sp-2); max-width: calc(100% - 1.2rem); white-space: nowrap; overflow: hidden; vertical-align: bottom; }
+			.inbox-chip { padding: 0 0.5em; border-radius: 999px; font: 600 var(--fs-1)/1.6 system-ui, sans-serif; color: var(--secondary); background: color-mix(in srgb, Canvas 88%, CanvasText); }
+			.inbox-chip-missing { color: Canvas; background: #b42318; }
 			.object-row.dragging {
 				opacity: 0.45;
 				cursor: grabbing;
@@ -40139,34 +40147,20 @@ xlsx/xlsx.mjs:
 				return text.padStart(width);
 			}
 
+			// BEGIN GND STATION (test/technet-viewer-station.test.mjs runs this block)
+			// "km 0,4 + 60,91": a station in metres (or GND's encoded km, see
+			// stationScalar) as Kilometer, Hektometer and Meter. Before the zero
+			// point both parts count backwards: -471,96 m is "-0,4 - 71,96".
 			function station(value) {
-				const number = numberValue(value);
+				const number = stationScalar(value);
 				if (!Number.isFinite(number)) return "".padStart(14);
-				const intPart = Math.floor(number);
-				const fraction = number - intPart;
-				let km;
-				let meter;
-				let sign = "+";
-
-				if (intPart >= 100_000_000) {
-					const rest = intPart - 100_000_000;
-					km = Math.floor(rest / 10_000) / 10;
-					meter = intPart % 10_000 + fraction;
-				} else if (intPart >= 99_000_000) {
-					sign = "-";
-					const difference = 100_000_000 - number;
-					const differenceInt = Math.floor(difference);
-					km = Math.floor(differenceInt / 100) / 10;
-					meter = difference - Math.floor(differenceInt / 100) * 100;
-				} else {
-					const fullHundreds = Math.floor(intPart / 100);
-					km = fullHundreds / 10;
-					meter = intPart - fullHundreds * 100 + fraction;
-				}
-				const kmText = km.toFixed(1).replace(".", ",");
-				const meterText = meter.toFixed(2).replace(".", ",").padStart(5, "0");
-				return `${kmText} ${sign} ${meterText}`.padStart(14);
+				const magnitude = Math.abs(number);
+				const hundreds = Math.floor(magnitude / 100);
+				const kmText = (hundreds / 10).toFixed(1).replace(".", ",");
+				const meterText = (magnitude - hundreds * 100).toFixed(2).replace(".", ",").padStart(5, "0");
+				return `${number < 0 ? "-" : ""}${kmText} ${number < 0 ? "-" : "+"} ${meterText}`.padStart(14);
 			}
+			// END GND STATION
 
 			function isKilometrierung(value) {
 				const number = numberValue(value);
@@ -40585,17 +40579,22 @@ xlsx/xlsx.mjs:
 				return result;
 			}
 
+			// BEGIN GND STATION SCALAR (test/technet-viewer-station.test.mjs runs this block)
+			// GND writes a km as 1e8 + Hektometer·1e4 + Meter (100040060.908 =
+			// km 0,4 + 60,908). Before the Strecke's zero point the number falls
+			// below 1e8 and both parts turn negative: 99959928.04 is -4 hm and
+			// -71.96 m, km -0,4 - 71,96 = -471,96 m. Reading that remainder as
+			// plain metres (-40071.96) put WueTreu 5201 at km -60 with a 9,9 km
+			// jump at every Hektometer; the Hektometer decode holds for both signs.
 			function stationScalar(value) {
 				const number = numberValue(value);
 				if (!Number.isFinite(number)) return NaN;
-				if (number >= 100_000_000) {
-					const rest = number - 100_000_000;
-					const integer = Math.floor(rest);
-					return Math.floor(integer / 10_000) * 100 + integer % 10_000 + (rest - integer);
-				}
-				if (number >= 99_000_000) return -(100_000_000 - number);
-				return number;
+				if (number < 99_000_000) return number;
+				const rest = number - 100_000_000;
+				const hectometres = Math.trunc(rest / 10_000);
+				return hectometres * 100 + (rest - hectometres * 10_000);
 			}
+			// END GND STATION SCALAR
 
 			function curvatureSeries(entry) {
 				const points = [];
@@ -41626,7 +41625,7 @@ xlsx/xlsx.mjs:
 					band(`${prefix} · GWB heute — / Vorschlag ┄ [km/h]`, "diagram-speed diagram-speed-sections", sectionSeries(today), {
 						emptyNote: "kein Stationsbereich · kein Geschwindigkeitsband ableitbar",
 						overlay: { label: "Vorschlag", className: "diagram-speed-potential", points: sectionSeries(proposal) },
-						footnote: [speedDiagnosticFootnote(), ...gwbProposalLines(prefix, units), ...sectionLines(prefix, today, proposal)],
+						footnote: { gleis: prefix, assumptions: speedDiagnosticFootnote(), lines: [...gwbProposalLines(prefix, units), ...sectionLines(prefix, today, proposal)] },
 						unit: "km/h",
 						proposal: units,
 						sections: { today, proposal },
@@ -42161,6 +42160,7 @@ xlsx/xlsx.mjs:
 					const length = Math.abs(edge.to.km - edge.from.km);
 					// One label per name: a Gleisstrang's own (the data's "Gleis 31"),
 					// else the Gleis's.
+					if (gndUnnumbered(edge.name ?? objectDisplayName(edge.entry))) continue;
 					const key = edge.name ?? edge.entry;
 					if (!longestEdge.has(key) || length > longestEdge.get(key).length) longestEdge.set(key, { edge, length });
 				}
@@ -42211,7 +42211,7 @@ xlsx/xlsx.mjs:
 				for (const edge of visible) {
 					const shape = shapeOf(edge);
 					const isSelected = edge.entry === selected;
-					const name = `${edge.name ?? objectDisplayName(edge.entry)}${edge.part ? ` (${edge.part})` : ""} · ${edge.from.label ?? edge.from.kind} → ${edge.to.label ?? edge.to.kind}`;
+					const name = `${edgeLabelOf(edge)}${edge.part ? ` (${edge.part})` : ""} · ${edge.from.label ?? edge.from.kind} → ${edge.to.label ?? edge.to.kind}`;
 					const segments = options.speeds?.get(edge);
 					if (segments?.length) {
 						// Station in the Gleis's own frame → km on the edge → x on the shape.
@@ -42243,8 +42243,8 @@ xlsx/xlsx.mjs:
 						dot.addEventListener("click", () => activateJunctionCluster(junctionFromNode(node)));
 						const title = svgElement("title");
 						const roles = node.roles?.spitze ? node.roles : null;
-						const legName = (leg) => leg.edge.name ?? objectDisplayName(leg.entry);
-						title.textContent = `${node.label ? `${node.label}${node.bauart ? ` · ${node.bauart}` : ""} · ` : ""}${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}${node.source === "daten" ? "\naus den Daten (GND Satzart 31)" : "\ngerechnet aus der Lage"}${roles ? `\n${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"} · Spitze ${legName(roles.spitze)} · Stamm ${legName(roles.stamm)} · Zweig ${legName(roles.zweig)}${roles.radius ? ` · r ${Math.round(roles.radius)} m${node.radiusCheck === "belegt" ? " ✓" : ""}` : ""}` : ""}`;
+						const legName = (leg) => legLabelOf(leg);
+						title.textContent = `${node.label ? `${node.label}${node.bauart ? ` · ${node.bauart}` : ""} · ` : ""}${node.kind} · km ${station(node.km).trim()} · ${node.names.join(" / ")}${node.source === "daten" ? "\naus den Daten (GND Satzart 31)" : "\ngerechnet aus der Lage"}${roles ? `\n${roles.side ? `${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"} · ` : ""}Spitze ${legName(roles.spitze)}${node.spitzeCheck === "belegt" ? " ✓" : node.spitzeCheck === "daten" ? " (aus den Daten)" : ""}${roles.stamm ? ` · Stamm ${legName(roles.stamm)}` : ""}${roles.zweig ? ` · Zweig ${legName(roles.zweig)}` : ""}${roles.radius ? ` · r ${Math.round(roles.radius)} m${node.radiusCheck === "belegt" ? " ✓" : ""}` : ""}` : ""}`;
 						dot.append(title);
 						content.append(dot);
 					} else if (node.kind === "Ende") {
@@ -42329,12 +42329,33 @@ xlsx/xlsx.mjs:
 			// Bänderstapel über einer gemeinsamen Kilometrierungsachse; liefert die
 			// verbrauchte Höhe zurück. Labels umbrechen in <tspan>-Zeilen, Min/Max
 			// stehen rechtsbündig in der Beschriftungsspalte, Fußnoten einmal unten.
+			// Footnotes are plain lines (strings, wrapped) or blocks { head, lines }:
+			// the heading flush left, each line indented with a hanging indent for
+			// its wrapped remainder, sub-lines (leading blanks) one step further.
+			function layoutFootnotes(footnotes) {
+				const items = [];
+				let y = 0;
+				const push = (text, x, className) => { items.push({ text, x, y, className }); y += 15; };
+				for (const note of footnotes) {
+					if (typeof note === "string") { for (const piece of wrapText(note, 165)) push(piece, 12, ""); continue; }
+					if (items.length) y += 5;
+					push(note.head, 12, "diagram-footnote-head");
+					for (const line of note.lines ?? []) {
+						const trimmed = String(line).replace(/^\s+/, "");
+						const sub = trimmed.length !== String(line).length;
+						const indent = sub ? 40 : 24;
+						wrapText(trimmed, sub ? 148 : 152).forEach((piece, index) => push(piece, indent + (index ? 14 : 0), ""));
+					}
+				}
+				return { items, height: y ? y + 8 : 0 };
+			}
 			function drawBandStack(target, y, tracks, xMin, xMax, footnotes = []) {
 				const xSpan = Math.max(xMax - xMin, 1);
 				const width = FIGURE_WIDTH;
 				const trackHeight = 112;
 				const gap = 8;
-				const footnoteHeight = footnotes.length * 16;
+				const footnoteLayout = layoutFootnotes(footnotes);
+				const footnoteHeight = footnoteLayout.height;
 				const height = 42 + tracks.length * (trackHeight + gap) + footnoteHeight;
 				const left = 238;
 				const right = 30;
@@ -42349,11 +42370,11 @@ xlsx/xlsx.mjs:
 					label.textContent = mark.label;
 					figure.append(label);
 				}
-				footnotes.forEach((footnote, index) => {
-					const note = svgElement("text", { x: 12, y: height - 6 - (footnotes.length - 1 - index) * 16, class: "diagram-label diagram-muted diagram-footnote" });
-					note.textContent = footnote;
+				for (const item of footnoteLayout.items) {
+					const note = svgElement("text", { x: item.x, y: height - footnoteHeight + item.y + 12, class: `diagram-label diagram-footnote ${item.className || "diagram-muted"}` });
+					note.textContent = item.text;
 					figure.append(note);
-				});
+				}
 				tracks.forEach((track, index) => {
 					const yTop = top + index * (trackHeight + gap);
 					const yBottom = yTop + trackHeight;
@@ -42650,8 +42671,21 @@ xlsx/xlsx.mjs:
 				}
 				if (!Number.isFinite(xMin)) xMin = 0;
 				if (!Number.isFinite(xMax)) xMax = 1;
-				const footnotes = [...new Set(gwbTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter(Boolean))]
-					.flatMap((footnote) => wrapText(footnote, 165));
+				// One block per Gleis under the figure -- its name as heading, the
+				// Bogen lines as a list with hanging indent, the Abschnitte line on
+				// its own -- and the assumptions once, as the last block.
+				const notes = gwbTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter(Boolean);
+				const seenBlocks = new Set();
+				const footnotes = [];
+				for (const note of notes) {
+					if (typeof note === "string") { if (!seenBlocks.has(note)) { seenBlocks.add(note); footnotes.push(note); } continue; }
+					if (!note.lines?.length) continue;
+					const key = `${note.gleis}\n${note.lines.join("\n")}`;
+					if (seenBlocks.has(key)) continue;
+					seenBlocks.add(key);
+					footnotes.push({ head: note.gleis, lines: note.lines.map((line) => line.startsWith(`${note.gleis} · `) ? line.slice(note.gleis.length + 3) : line) });
+				}
+				for (const text of new Set(notes.map((note) => typeof note === "string" ? null : note.assumptions).filter(Boolean))) footnotes.push({ head: "Annahmen", lines: [text] });
 				// One Plan per slide: the table and the chart show diagramKind only.
 				if (diagramPresentation === "table") {
 					renderDiagramTable([
@@ -45586,6 +45620,10 @@ xlsx/xlsx.mjs:
 			// A node takes its km from a Kilometerlinie only when it lies within a
 			// Bahnhof's width of it; a projection from farther away is not its km.
 			const TOPOLOGY_KM_MAX_DISTANCE_M = 60;
+			// A Knoten farther than that still gets a km (over the foot of the
+			// perpendicular, marked as far) up to this distance -- a Gleisgruppe
+			// beside the Strecke, not the next Strecke over.
+			const TOPOLOGY_KM_FAR_M = 250;
 			const TOPOLOGY_AXIS_MAX_DISTANCE_M = 150;
 			// Rows split where neighbouring offsets differ by more than this. 1,5 m:
 			// the Kilometerlinie of a two-track Strecke runs 2 m from either Gleis
@@ -45695,6 +45733,19 @@ xlsx/xlsx.mjs:
 				const relative = Math.abs(curvature(zweig) - curvature(stamm));
 				const radius = relative > 1e-6 ? 1 / relative : null;
 				return { spitze, stamm, zweig, side, radius, certain: margin > 0.003 };
+			}
+			// A Gleis without a number of its own: GND writes Gleisnummer 0 for
+			// a Weichenverbindung or an unnumbered Gleis (WueTreu: 149 of 897
+			// Kanten, Billwerder 420), LIRA numbers connectors from 9000. Such a
+			// Gleis is known by its Weichen, so the Spurplan prints no "Gleis 0"
+			// on it and a Weiche's legs name the Knoten they lead to.
+			function gndGleisNumber(name) {
+				const match = /^Gleis (\d+)(?:\b|$)/.exec(name ?? "");
+				return match ? Number(match[1]) : null;
+			}
+			function gndUnnumbered(name) {
+				const number = gndGleisNumber(name);
+				return number != null && (number === 0 || number >= 9000);
 			}
 			// END GND TOPOLOGY
 			const gndTableCache = new WeakMap();
@@ -45904,6 +45955,22 @@ xlsx/xlsx.mjs:
 			}
 			// The name a Weiche or Kreuzung goes by: from the data's Knoten, else
 			// from a Gleis named after it (VermEsn: W403-404, DKW503, EKW410).
+			// How an edge is called: its Gleisstrang's name, else its Gleis's; a
+			// Gleis without a number (0, LIRA ≥ 9000) by what it is -- a
+			// Verbindung between two Weichen, else a Gleis ohne Nummer.
+			function edgeLabelOf(edge) {
+				const name = edge.name ?? objectDisplayName(edge.entry);
+				if (!gndUnnumbered(name)) return name;
+				const junction = (node) => node.kind === "Weiche" || node.kind === "Kreuzung";
+				return `${junction(edge.from) && junction(edge.to) ? "Verbindung" : "Gleis ohne Nummer"} (${name.replace(" · Nebengleis", "")})`;
+			}
+			// A Weiche's leg: the Gleis's name, or, without a number, the Knoten it leads to.
+			function legLabelOf(leg) {
+				const name = leg.edge.name ?? objectDisplayName(leg.entry);
+				if (!gndUnnumbered(name)) return name;
+				return `→ ${leg.other?.label ?? leg.other?.kind ?? name}`;
+			}
+
 			function junctionLabelOf(node) {
 				return node.label ?? node.names?.find((candidate) => /^(W|DKW|EKW|ABW|IBW)\s*-?\d/i.test(candidate)) ?? null;
 			}
@@ -46037,6 +46104,43 @@ xlsx/xlsx.mjs:
 					node.axis = within ? best.axisIndex : null;
 					node.names = [...new Set(arms.map((arm) => objectDisplayName(arm.entry)))];
 				}
+				// 3b. Far Knoten. A Gleisgruppe 60-150 m beside the Strecke (WueTreu:
+				// 121 of 756 Knoten, 105 of them Gleisenden) had no km so far. Its
+				// Gleise say which Strecke it belongs to: a Knoten with a placed
+				// neighbour takes that neighbour's axis and its km from the foot of
+				// the perpendicular onto it, chain by chain into the yard; a group
+				// without any placed Knoten takes the nearest Kilometerlinie within
+				// TOPOLOGY_KM_FAR_M. Both carry node.far (the distance) and
+				// node.farVia, and the Outbox says so.
+				if (kmLines.length) {
+					const farHit = (axisIndex, point) => {
+						const hit = lageOffset(references[axisIndex], point);
+						return hit && !hit.atEnd && hit.distance <= TOPOLOGY_KM_FAR_M ? hit : null;
+					};
+					const place = (node, hit, axisIndex, via) => Object.assign(node, { km: hit.station, offset: hit.side * hit.distance, axis: axisIndex, far: hit.distance, farVia: via });
+					let grew = true;
+					while (grew) {
+						grew = false;
+						for (const edge of edges) {
+							for (const [here, there] of [[edge.from, edge.to], [edge.to, edge.from]]) {
+								if (here.km != null || there.km == null) continue;
+								const hit = farHit(there.axis, here.point);
+								if (!hit) continue;
+								place(here, hit, there.axis, "nachbar");
+								grew = true;
+							}
+						}
+					}
+					for (const node of nodes) {
+						if (node.km != null) continue;
+						let best = null;
+						references.forEach((reference, axisIndex) => {
+							const hit = farHit(axisIndex, node.point);
+							if (hit && (!best || hit.distance < best.distance)) best = { hit, axisIndex };
+						});
+						if (best) place(node, best.hit, best.axisIndex, "linie");
+					}
+				}
 				// A data node's Gleise go by their Gleisstrang's name where it has one.
 				for (const edge of data.edges) {
 					if (!edge.name) continue;
@@ -46052,8 +46156,10 @@ xlsx/xlsx.mjs:
 				const offsetAt = (axisIndex, point) => {
 					const reference = references[axisIndex];
 					if (!reference) return null;
-					const hit = referenceGrids ? lageOffset(reference, point, referenceGrids[axisIndex]) : distanceAndStationOnPolyline(reference, point);
-					if (!hit || hit.distance > (kmLines.length ? TOPOLOGY_KM_MAX_DISTANCE_M : TOPOLOGY_AXIS_MAX_DISTANCE_M)) return null;
+					let hit = referenceGrids ? lageOffset(reference, point, referenceGrids[axisIndex]) : distanceAndStationOnPolyline(reference, point);
+					// Beyond the grid's reach (a far Knoten's Gleis) the whole line answers.
+					if (!hit && referenceGrids) hit = lageOffset(reference, point);
+					if (!hit || hit.distance > (kmLines.length ? TOPOLOGY_KM_FAR_M : TOPOLOGY_AXIS_MAX_DISTANCE_M)) return null;
 					return hit.side * hit.distance;
 				};
 				for (const edge of edges) {
@@ -46080,18 +46186,25 @@ xlsx/xlsx.mjs:
 				// exceeds half a Gleisabstand -- 4,0 and 4,5 m spacing and curved
 				// yards all land in their own row without a fixed raster. Row 0 is
 				// the axis's row, larger rows lie to the left of the axis direction.
+				// Rows are counted per Strecke (the band that draws them): a yard
+				// 150 m beside Strecke A must not open twenty empty rows in the
+				// band of Strecke B whose own Gleise fill those offsets.
 				const placed = nodes.filter((node) => node.offset != null);
-				const rowed = [...placed, ...edges.filter((edge) => edge.offset != null)].sort((a, b) => a.offset - b.offset);
-				let rowIndex = -1;
-				let rowLast = null;
-				let axisRow = 0;
-				for (const item of rowed) {
-					if (rowLast == null || item.offset - rowLast > TOPOLOGY_ROW_GAP_M) rowIndex += 1;
-					item.row = rowIndex;
-					rowLast = item.offset;
-					if (Math.abs(item.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
+				const rowed = [...placed, ...edges.filter((edge) => edge.offset != null)];
+				const bandOf = (item) => axes[item.axis ?? item.from?.axis ?? item.to?.axis]?.label ?? "";
+				for (const [, items] of groupBy(rowed, bandOf)) {
+					items.sort((a, b) => a.offset - b.offset);
+					let rowIndex = -1;
+					let rowLast = null;
+					let axisRow = 0;
+					for (const item of items) {
+						if (rowLast == null || item.offset - rowLast > TOPOLOGY_ROW_GAP_M) rowIndex += 1;
+						item.row = rowIndex;
+						rowLast = item.offset;
+						if (Math.abs(item.offset) < TOPOLOGY_ROW_GAP_M && axisRow === 0) axisRow = rowIndex;
+					}
+					for (const item of items) item.row -= axisRow;
 				}
-				for (const item of rowed) item.row -= axisRow;
 				// Spitze, Stamm, Zweig of every Weiche the data names: from the
 				// geometry of its three legs, 25 m along each; the Bauart's radius
 				// is the second witness for the Zweig.
@@ -46148,6 +46261,34 @@ xlsx/xlsx.mjs:
 					node.legs = legs;
 					node.roles = weichenRoles(legs);
 					node.bauartInfo = gndBauart(node.bauart);
+					// The data's own word on the Spitze: KN0 of Satzart 31 is the
+					// neighbour at the Spitze (Lüneburg 165 of 165, Eifel 123 of 123,
+					// WueTreu 424 of 426 Weichen with roles from the Lage; KN1/KN2
+					// are Stamm and Zweig in no fixed order). So the Lage's Spitze is
+					// checked against KN0, and a Weiche at the edge of the delivery,
+					// without three legs with Lage, still gets its Spitze from the
+					// data -- and, with one more leg and a straight Bauart, the
+					// Bauart's radius decides whether that leg is Zweig or Stamm.
+					node.spitzeData = node.neighbours?.[0] ?? null;
+					node.spitzeCheck = null;
+					if (node.spitzeData) {
+						const dataLeg = legs.find((leg) => leg.other?.knoten === node.spitzeData) ?? null;
+						if (node.roles.spitze) node.spitzeCheck = node.roles.spitze.other?.knoten === node.spitzeData ? "belegt" : dataLeg ? "abweichend" : "offen";
+						else if (dataLeg) {
+							const rest = legs.filter((leg) => leg !== dataLeg);
+							let stamm = null;
+							let zweig = null;
+							const declared = node.bauartInfo?.radius;
+							if (rest.length === 1 && declared && (node.bauartInfo?.form ?? "EW") === "EW") {
+								const leg = rest[0];
+								const measured = leg.length > 0 && Math.abs(leg.deviation) > 1e-6 ? leg.length / (2 * Math.abs(leg.deviation)) : Infinity;
+								if (Math.abs(measured - declared) / declared <= 0.25) zweig = leg;
+								else if (measured > 2 * declared) stamm = leg;
+							}
+							node.roles = { spitze: dataLeg, stamm, zweig, side: stamm && zweig ? null : zweig ? (zweig.deviation > 0 ? "links" : "rechts") : null, radius: null, certain: true, fromData: true };
+							node.spitzeCheck = "daten";
+						}
+					}
 					// The Bauart's radius is the Zweig's radius against the Stamm for
 					// EW, ABW and IBW in a circular Stamm; a Kreuzungsweiche has two
 					// Zweige and "i.U." (im Übergangsbogen) a Stamm whose curvature
@@ -46163,7 +46304,11 @@ xlsx/xlsx.mjs:
 					const own = edges.find((edge) => (edge.from === node || edge.to === node) && edge.row != null);
 					if (own) node.row = own.row;
 				}
-				return { nodes, edges, axes, fromData, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
+				const checks = nodes.filter((node) => node.spitzeCheck);
+				const spitze = checks.length ? { compared: checks.filter((node) => node.spitzeCheck === "belegt" || node.spitzeCheck === "abweichend").length, belegt: checks.filter((node) => node.spitzeCheck === "belegt").length, abweichend: checks.filter((node) => node.spitzeCheck === "abweichend").length, daten: checks.filter((node) => node.spitzeCheck === "daten").length } : null;
+				const farNodes = nodes.filter((node) => node.far != null);
+				const far = farNodes.length ? { count: farNodes.length, max: Math.max(...farNodes.map((node) => node.far)), open: nodes.filter((node) => node.km == null).length } : null;
+				return { nodes, edges, axes, fromData, far, spitze, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
 			}
 
 			function activateJunctionCluster(junction) {
@@ -46189,7 +46334,7 @@ xlsx/xlsx.mjs:
 					const origin = !topology.fromData ? "gerechnet" : topology.computedGleise ? "aus den Daten und gerechnet" : "aus den Daten";
 					const offGleis = topology.fromData?.offGleis ? ` · ${topology.fromData.offGleis} neben ihren Gleisen` : "";
 					summary.textContent = `Weichen · Topologie (${origin}) · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen${offGleis} · ${count("Ende")} Enden · ${topology.edges.length} Kanten`;
-					summary.title = `${topology.fromData ? `Aus den Daten (GND Satzart 31/33): ${topology.fromData.nodes} Knoten, ${topology.fromData.strands - topology.fromData.strandsWithoutGleis} von ${topology.fromData.strands} Gleissträngen mit Lage, ${topology.fromData.gleise} Gleise${topology.computedGleise ? ` · ${topology.computedGleise} Gleise ohne Gleisstrang gerechnet` : ""}\n` : ""}${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? " · km von der nächsten Kilometerlinie" : " · keine Kilometerlinie, Stationen der Gleise"}`;
+					summary.title = `${topology.fromData ? `Aus den Daten (GND Satzart 31/33): ${topology.fromData.nodes} Knoten, ${topology.fromData.strands - topology.fromData.strandsWithoutGleis} von ${topology.fromData.strands} Gleissträngen mit Lage, ${topology.fromData.gleise} Gleise${topology.computedGleise ? ` · ${topology.computedGleise} Gleise ohne Gleisstrang gerechnet` : ""}\n` : ""}${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? ` · km von der nächsten Kilometerlinie (bis ${TOPOLOGY_KM_MAX_DISTANCE_M} m)` : " · keine Kilometerlinie, Stationen der Gleise"}${topology.spitze ? `\nSpitze: ${topology.spitze.belegt} von ${topology.spitze.compared} Weichen aus der Lage stimmen mit den Daten (KN0) überein${topology.spitze.abweichend ? `, ${topology.spitze.abweichend} weichen ab` : ""}${topology.spitze.daten ? ` · ${topology.spitze.daten} Spitzen nur aus den Daten` : ""}` : ""}${topology.far ? `\n${topology.far.count} Knoten weiter weg (bis ${Math.round(topology.far.max)} m): km über das Lot auf die Strecke ihrer Nachbarn, sonst auf die nächste Kilometerlinie (bis ${TOPOLOGY_KM_FAR_M} m)${topology.far.open ? ` · ${topology.far.open} ohne Lage` : ""}` : ""}`;
 					node.append(summary);
 					const list = document.createElement("div");
 					list.className = "outbox-junction-list";
@@ -46204,11 +46349,13 @@ xlsx/xlsx.mjs:
 						// Spitze, Stamm, Zweig from the Lage; the Zweig's radius against
 						// the Bauart as the second witness.
 						const roles = item.roles?.spitze ? item.roles : null;
-						const legName = (leg) => leg.edge.name ?? objectDisplayName(leg.entry);
-						const rolesText = roles ? ` · ${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"}${roles.certain ? "" : " (unsicher)"} · Spitze ${legName(roles.spitze)} · Stamm ${legName(roles.stamm)} · Zweig ${legName(roles.zweig)}${roles.radius ? ` · r ${Math.round(roles.radius)} m${item.radiusCheck === "belegt" ? " ✓" : item.radiusCheck === "abweichend" ? ` statt ${item.bauartInfo.radius}` : ""}` : ""}` : "";
-						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${offGleis}`;
-						if (offGleis || item.radiusCheck === "abweichend") row.classList.add("outbox-junction-off");
-						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${roles ? `\nSpitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}` : item.knotenTyp === 1 ? "\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage" : ""}`;
+						const legName = (leg) => legLabelOf(leg);
+						const spitzeMark = item.spitzeCheck === "belegt" ? " ✓" : item.spitzeCheck === "abweichend" ? ` · Daten: Spitze → ${topology.nodes.find((candidate) => candidate.knoten === item.spitzeData)?.label ?? item.spitzeData}` : item.spitzeCheck === "daten" ? " (aus den Daten)" : "";
+						const rolesText = roles ? ` · ${roles.side ? `${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"}${roles.certain ? "" : " (unsicher)"} · ` : ""}Spitze ${legName(roles.spitze)}${spitzeMark}${roles.stamm ? ` · Stamm ${legName(roles.stamm)}` : ""}${roles.zweig ? ` · Zweig ${legName(roles.zweig)}` : ""}${!roles.stamm || !roles.zweig ? ` · ${!roles.stamm && !roles.zweig ? "Stamm/Zweig" : !roles.stamm ? "Stamm" : "Zweig"} offen` : ""}${roles.radius ? ` · r ${Math.round(roles.radius)} m${item.radiusCheck === "belegt" ? " ✓" : item.radiusCheck === "abweichend" ? ` statt ${item.bauartInfo.radius}` : ""}` : ""}` : "";
+						const farText = item.far != null ? ` · ${Math.round(item.far)} m neben der Kilometerlinie` : "";
+						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${farText}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${offGleis}`;
+						if (offGleis || item.radiusCheck === "abweichend" || item.spitzeCheck === "abweichend") row.classList.add("outbox-junction-off");
+						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${item.far != null ? `\nkm über das Lot auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (${item.farVia === "nachbar" ? "die Strecke der Nachbarknoten" : "nächste Kilometerlinie"}), ${Math.round(item.far)} m daneben` : ""}${roles ? `\n${roles.fromData ? `Spitze aus den Daten (KN0 der Satzart 31)${roles.stamm || roles.zweig ? `, ${roles.zweig ? "Zweig" : "Stamm"} aus dem Radius des einen Schenkels mit Lage gegen die Bauart` : ", Stamm und Zweig ohne Lage"}` : `Spitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${item.spitzeCheck === "belegt" ? "; die Daten (KN0) nennen dieselbe Spitze" : item.spitzeCheck === "abweichend" ? `; die Daten (KN0) nennen ${item.spitzeData} als Spitze` : ""}`}${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}` : item.knotenTyp === 1 ? "\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage" : ""}`;
 						if (activeJunction?.node === item) row.classList.add("outbox-junction-active");
 						row.addEventListener("click", () => activateJunctionCluster(junctionFromNode(item)));
 						list.append(row);
@@ -46434,8 +46581,20 @@ xlsx/xlsx.mjs:
 				const lsysMissing = allEntries.some((entry) => entry.item.kind === "alignment" && !effectiveLsys(entry));
 				crsSection.open = inboxCrsOpen ?? lsysMissing;
 				crsSection.addEventListener("toggle", () => { inboxCrsOpen = crsSection.open; });
+				// A short head and the state as a chip: at 1280 px the Inbox column
+				// is 270 px, and "Lage und Höhe zuweisen · Lage fehlt" broke into
+				// two lines and took the file list's room.
 				const crsSummary = document.createElement("summary");
-				crsSummary.textContent = `Lage und Höhe zuweisen${lsysMissing ? " · Lage fehlt" : ""}`;
+				const crsHead = document.createElement("span");
+				crsHead.className = "inbox-crs-head";
+				const crsTitle = document.createElement("span");
+				crsTitle.textContent = "Lage und Höhe";
+				const crsChip = document.createElement("span");
+				crsChip.className = `inbox-chip${lsysMissing ? " inbox-chip-missing" : ""}`;
+				crsChip.textContent = lsysMissing ? "Lage fehlt" : "zugewiesen";
+				crsChip.title = lsysMissing ? "Mindestens ein Gleis ohne Lagesystem: hier zuweisen" : "Jedes Gleis hat ein Lagesystem; hier ändern";
+				crsHead.append(crsTitle, crsChip);
+				crsSummary.append(crsHead);
 				crsSection.append(crsSummary, crsEditor);
 				const hasUnassigned = allEntries.some((entry) => !isOutboxOrganized(entry));
 				if (hasUnassigned && !dragHintUsed && !dragHintDismissed) {
@@ -47171,14 +47330,27 @@ xlsx/xlsx.mjs:
 				const started = performance.now();
 				const links = deriveLinks();
 				const rows = linkRows(links);
-				// Fit the panel: labels take what the arcs leave, arcs at least 70 px.
+				// Fit the panel: the label column is as wide as its longest name
+				// (at most 55 % of the panel), the arcs take all the rest; a short
+				// list spreads its rows over the panel's height (16-24 px) so the
+				// arcs are not a thumbnail in the corner.
 				const panelWidth = Math.max(320, linksScroll.clientWidth - 24);
-				const ROW = 16, TOP = 8;
-				const ARC_MAX = Math.max(70, Math.min(150, panelWidth - 330 - 36));
-				const LABEL_W = Math.max(200, panelWidth - ARC_MAX - 36);
+				const panelHeight = Math.max(200, linksScroll.clientHeight - 16);
+				const TOP = 8;
+				const ROW = Math.max(16, Math.min(24, Math.floor((panelHeight - TOP - 8) / Math.max(rows.length, 1))));
+				const labelOf = (row) => row.header ? `${row.header} · ${row.count}` : `${row.entry.loaded.fileName} · ${objectListName(row.entry)}${links.unlinked.includes(row.entry) ? " · unverknüpft" : ""}`;
+				const longest = Math.max(20, ...rows.map((row) => labelOf(row).length));
+				const LABEL_W = Math.min(Math.max(200, Math.ceil(longest * 6.1) + 40), Math.floor(panelWidth * 0.55));
+				const ARC_MAX = Math.max(70, panelWidth - LABEL_W - 36);
 				const LABEL_CHARS = Math.floor((LABEL_W - 30) / 6.1);
 				const WIDTH = LABEL_W + ARC_MAX + 36;
 				const height = TOP + rows.length * ROW + 8;
+				// Hover: a row lights its arcs and their far ends, an arc its two rows.
+				const arcsOf = new Map();
+				const rowOf = new Map();
+				const hovered = new Set();
+				const unhover = () => { for (const element of hovered) element.classList.remove("links-arc-hover", "links-row-hover"); hovered.clear(); svg.classList.remove("links-hovering"); };
+				const hover = (elements) => { unhover(); svg.classList.add("links-hovering"); for (const element of elements) { element.classList.add(element.classList.contains("links-arc") ? "links-arc-hover" : "links-row-hover"); hovered.add(element); } };
 				const svg = svgElement("svg", { class: "links-svg", width: WIDTH, height, viewBox: `0 0 ${WIDTH} ${height}` });
 				const yOf = new Map();
 				rows.forEach((row, index) => {
@@ -47200,6 +47372,9 @@ xlsx/xlsx.mjs:
 					title.textContent = `${name} · ${familyForEntry(row.entry)}${unlinked ? " · unverknüpft" : ""}`;
 					group.append(mark, text, title);
 					group.addEventListener("click", () => selectObject(row.entry, row.entry.button ?? null));
+					group.addEventListener("mouseenter", () => hover([group, ...(arcsOf.get(row.entry) ?? []).flatMap((arc) => [arc.path, rowOf.get(arc.other)].filter(Boolean))]));
+					group.addEventListener("mouseleave", unhover);
+					rowOf.set(row.entry, group);
 					svg.append(group);
 				});
 				const counts = {};
@@ -47218,6 +47393,12 @@ xlsx/xlsx.mjs:
 					title.textContent = `${LINK_REASONS[edge.reason]}${edge.detail ? ` · ${edge.detail}` : ""}\n${objectListName(edge.from)} ↔ ${objectListName(edge.to)}`;
 					path.append(title);
 					path.addEventListener("click", () => selectObject(edge.to.item.kind === "alignment" ? edge.to : edge.from, null));
+					path.addEventListener("mouseenter", () => hover([path, rowOf.get(edge.from), rowOf.get(edge.to)].filter(Boolean)));
+					path.addEventListener("mouseleave", unhover);
+					for (const [entry, other] of [[edge.from, edge.to], [edge.to, edge.from]]) {
+						if (!arcsOf.has(entry)) arcsOf.set(entry, []);
+						arcsOf.get(entry).push({ path, other });
+					}
 					svg.append(path);
 				}
 				linksContent.replaceChildren(svg);

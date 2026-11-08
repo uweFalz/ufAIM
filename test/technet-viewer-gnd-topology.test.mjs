@@ -13,8 +13,8 @@ const begin = html.indexOf("// BEGIN GND TOPOLOGY");
 const end = html.indexOf("// END GND TOPOLOGY");
 assert.ok(begin > 0 && end > begin, "topology block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
-const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
+const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
 
 test("fixed-width keys: blanks collapse, nothing else changes", () => {
 	assert.equal(gndKey("203695    24"), "203695 24");
@@ -122,4 +122,18 @@ test("no Spitze without a leg facing the other two; a close call is uncertain", 
 		{ away: { x: 1, y: 0 }, deviation: 0.002, length: 25 },
 	]));
 	assert.equal(close.certain, false);
+});
+
+test("a Gleis without a number of its own: 0 in GND, 9000 and up in LIRA", () => {
+	assert.equal(gndGleisNumber("Gleis 0 · Nebengleis"), 0);
+	assert.equal(gndGleisNumber("Gleis 9001"), 9001);
+	assert.equal(gndGleisNumber("Gleis 15"), 15);
+	assert.equal(gndGleisNumber("Strecke 5321 · rechts"), null);
+	assert.equal(gndGleisNumber("5904072S_ER0"), null);
+	assert.equal(gndGleisNumber(null), null);
+	assert.equal(gndUnnumbered("Gleis 0 · Nebengleis"), true);
+	assert.equal(gndUnnumbered("Gleis 9160"), true);
+	assert.equal(gndUnnumbered("Gleis 15"), false);
+	assert.equal(gndUnnumbered("Gleis 405"), false);
+	assert.equal(gndUnnumbered("Strecke 5321 · rechts"), false);
 });
