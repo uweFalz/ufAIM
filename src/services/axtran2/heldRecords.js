@@ -15,7 +15,7 @@
 
 import { RIL_800_0120_A01 } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.2";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.3";
 
 /** how far a record's length may lie from the catalogue's and still be the turnout, metres */
 export const TURNOUT_MATCH_TOLERANCE = 2e-3;
@@ -96,6 +96,21 @@ export function parseHold(hold) {
 		for (let n = from; n <= to; n++) records.add(n);
 	}
 	return Object.freeze({ turnouts, records: Object.freeze([...records].sort((a, b) => a - b)) });
+}
+
+/**
+ * Record numbers as the hold a person would type: runs as ranges, "1-2, 13".
+ * The inverse of parseHold for numbers; an empty list is an empty string.
+ */
+export function formatHold(numbers) {
+	const sorted = [...new Set([...numbers].map(Number))].filter((n) => Number.isInteger(n) && n >= 1).sort((a, b) => a - b);
+	const runs = [];
+	for (const n of sorted) {
+		const last = runs[runs.length - 1];
+		if (last && n === last[1] + 1) last[1] = n;
+		else runs.push([n, n]);
+	}
+	return runs.map(([from, to]) => (from === to ? String(from) : `${from}-${to}`)).join(", ");
 }
 
 /**

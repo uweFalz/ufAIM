@@ -15,7 +15,7 @@
 	header h1 { margin: 0; font-size: 28px; letter-spacing: 1px; }
 	header p { margin: 6px 0 0; color: #BFD8D5; max-width: 60ch; }
 	main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 24px; }
-	section { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+	section { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; min-width: 0; }
 	h2 { margin: 0 0 12px; font-size: 18px; }
 	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
 	label { display: block; font-weight: 600; margin-bottom: 4px; }
@@ -96,6 +96,15 @@
 			<button id="dlReport" class="ghost" type="button">report.json</button>
 			<button id="dlCsv" class="ghost" type="button">residuen.csv</button>
 		</div>
+		<h2 style="margin-top:20px">Bild: Krümmung, Schlösser und Punkte</h2>
+		<p id="pictureReadout" style="min-height:1.5em;margin:0 0 6px;color:var(--muted);font-size:14px"></p>
+		<div id="pictureWrap" style="overflow-x:auto;background:#FFFFFC;border:1px solid var(--line);border-radius:10px"><div id="picture" style="padding:8px 0"></div></div>
+		<div class="actions" style="margin-top:8px;align-items:center;gap:8px">
+			<button id="zoomOut" class="ghost" type="button" style="padding:4px 14px" aria-label="Bild schmaler">−</button>
+			<span id="zoomValue" style="min-width:3ch;text-align:center">1×</span>
+			<button id="zoomIn" class="ghost" type="button" style="padding:4px 14px" aria-label="Bild breiter">+</button>
+		</div>
+		<small>Oben das Krümmungsband über der Station ab Trassenanfang: der Plan gestrichelt, der Fit ausgezogen, gehaltene Sätze unterlegt. Ein Klick auf einen Satz oder sein Schloss hält ihn fest oder gibt ihn frei, eine Weiche als Ganzes; das Feld Sätze halten zeigt die Auswahl, und der Fit rechnet neu. Unten die Punkte gegen die Toleranz, der Plan als offener Kreis. Mit + wird das Bild breiter, dann bekommen auch kurze Sätze ihr Schloss.</small>
 		<h2 style="margin-top:20px">Querabstand entlang der Station</h2>
 		<div id="chart" style="background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px"></div>
 		<small>Oben der Plan vor dem Fit in seinem eigenen Maßstab, unten der Fit im Toleranzband; ein Ring markiert einen Punkt außerhalb der Toleranz.</small>

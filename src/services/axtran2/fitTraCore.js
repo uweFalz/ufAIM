@@ -33,7 +33,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.9";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.10";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -363,7 +363,17 @@ export async function fitTraFromBytes({
 		}),
 		elements: Object.freeze(elements.map((e, i) => Object.freeze({
 			id: e.id, type: e.type, family: e.family ?? null, held: Boolean(e.held), fixed: Boolean(e.fixed),
+			// the records of the file this element stands for: several where equal neighbours were merged
+			records: Object.freeze(loaded.recordElements.flatMap((id, r) => (id === e.id ? [r + 1] : []))),
 			before: { length: e.length, radius: radiusOf(e) }, after: { length: fitted[i].length, radius: radiusOf(fitted[i]) },
+		}))),
+		// the file's records as it lists them, each with the element that carries it: what a
+		// picture needs to offer a record to be held, also where the fit merged it away
+		planRecords: Object.freeze(seen.records.map((r) => Object.freeze({
+			number: r.number, type: r.type, length: r.length, radius: radiusOf(r),
+			element: loaded.recordElements[r.number - 1],
+			held: heldRecords.get(r.number) ?? null,
+			turnout: turnoutsSeen.find((t) => t.records.includes(r.number))?.designation ?? null,
 		}))),
 		points: Object.freeze(rows),
 		cant: cantReport,

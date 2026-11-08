@@ -10,7 +10,7 @@ import test from "node:test";
 const SERVICE = new URL("../../src/services/axtran2/", import.meta.url);
 const KERNEL = new URL("../../src/domain/optimization/alignment/", import.meta.url);
 const { fitTraFromBytes, FitTraError } = await import(new URL("fitTraCore.js", SERVICE));
-const { recogniseTurnouts, parseHold, resolveHold, HeldRecordsError } = await import(new URL("heldRecords.js", SERVICE));
+const { recogniseTurnouts, parseHold, resolveHold, formatHold, HeldRecordsError } = await import(new URL("heldRecords.js", SERVICE));
 const { writeTra } = await import(new URL("traWriter.js", SERVICE));
 const { traAlignmentFromBytes } = await import(new URL("../../src/import/parsers/technet/vermEsn/traAlignment.js", import.meta.url));
 const { createAlignmentPoseJacobian } = await import(new URL("AlignmentPoseJacobian.js", KERNEL));
@@ -181,4 +181,32 @@ test("a hold that cannot be met is refused", async () => {
 	await assert.rejects(fit({ hold: "1-9" }), (e) => e instanceof FitTraError && e.code === "NOTHING_FREE");
 	const noTurnout = traOf(track(TRUE_LENGTHS).slice(2, 7));
 	await assert.rejects(fitTraFromBytes({ bytes: noTurnout, points, hold: "turnouts" }), (e) => e.code === "NO_TURNOUT");
+});
+
+test("the report lists the file's records with the element that carries each, for a picture to offer them", async () => {
+	// nothing held: the end piece merges into the straight behind it, the last arc into the turnout's branch
+	const free = (await fit({})).report;
+	assert.equal(free.planRecords.length, 9);
+	assert.deepEqual(free.planRecords.map((r) => r.number), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+	assert.ok(free.planRecords.every((r) => r.element !== null && r.held === null));
+	assert.deepEqual(free.planRecords.filter((r) => r.turnout).map((r) => [r.number, r.turnout]), [[1, "EW 190-1:9"], [2, "EW 190-1:9"], [9, "EW 300-1:9"]]);
+	assert.deepEqual(free.elements.map((e) => [...e.records]), [[1], [2, 3], [4], [5], [6], [7], [8, 9]]);
+	assert.equal(free.planRecords[0].radius, 190, "the radius carries the file's sign: a right-hand curve is positive");
+	// each element's records add up to its length in the plan
+	for (const e of free.elements) {
+		const sum = e.records.reduce((s, n) => s + free.planRecords[n - 1].length, 0);
+		assert.ok(Math.abs(sum - e.before.length) < 1e-6, `${e.id}: ${sum} against ${e.before.length}`);
+	}
+	// held: every record keeps its own element, and the record says why it is held
+	const held = (await fit({ hold: "turnouts, 5" })).report;
+	assert.deepEqual(held.elements.map((e) => [...e.records]), [[1], [2], [3], [4], [5], [6], [7], [8], [9]]);
+	assert.deepEqual(held.planRecords.filter((r) => r.held).map((r) => [r.number, r.held]), [[1, "EW 190-1:9"], [2, "EW 190-1:9"], [5, "named"], [9, "EW 300-1:9"]]);
+});
+
+test("a hold is written back as a person would type it", () => {
+	assert.equal(formatHold([13, 1, 2]), "1-2, 13");
+	assert.equal(formatHold(new Set([3, 4, 5, 7, 9, 10])), "3-5, 7, 9-10");
+	assert.equal(formatHold([2, 2, 0, -1, 1.5]), "2", "only record numbers, each once");
+	assert.equal(formatHold([]), "");
+	assert.deepEqual([...parseHold(formatHold([13, 1, 2, 7])).records], [1, 2, 7, 13]);
 });

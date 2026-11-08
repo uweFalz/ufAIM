@@ -322,3 +322,55 @@ nichts nach; dort kann der Fehler nicht entstehen.
 Nebenbei: der Knopf Optimieren wird jetzt gesperrt, bevor die Dateien
 gelesen werden. Vorher konnte ein zweiter Klick in dieser Lücke einen
 zweiten Lauf starten, und der erste blieb ohne Antwort hängen.
+
+## Das Bild und die Schlösser (2026-11-07)
+
+Das Haltefeld (`hold`) war bis hier ein Textfeld mit Satznummern. Was es
+hält, sah man erst im Bericht. Die App zeigt jetzt die Trasse als Bild und
+macht das Halten zum Klick (`src/services/axtran2/alignmentPicture.js`,
+reine Funktion wie das Residuenbild: Bericht rein, SVG raus).
+
+Das Bild hat drei Zeilen über einer Stationsachse:
+
+- oben je Satz ein Schloss, offen oder geschlossen, in zwei Reihen, sobald
+  die Spalte schmaler als 9 px wird; darunter die Satzspalten, gehaltene
+  Sätze hinterlegt. Ein verschmolzenes Element trägt mehrere Sätze; jede
+  Satzspalte bekommt vom Element den Anteil, den der Satz vorher an der
+  Länge hatte.
+- die Krümmung als 1000/R, Entwurf und Fit übereinander; der Übergangsbogen
+  läuft zwischen den Krümmungen seiner Nachbarn.
+- die Punkte: Querabstand vorher und nachher, Toleranzband. Der Maßstab ist
+  das Größere aus 1,5 Toleranzen und dem größten Rest nach dem Fit; liegt
+  der Entwurf weiter als das Vierfache davon neben den Punkten, wird er
+  nicht gezeichnet und das Bild sagt es.
+
+Die Maus zeigt Station, Satz (Typ, Länge, gehalten oder frei) und den
+nächsten Punkt mit vorher → nachher als Text unter dem Bild. Breiter wird
+das Bild über 1×, 2×, 4×, 8× in der Spalte scrollbar; Schrift und Schlösser
+behalten ihre Größe, das Bild wird neu erzeugt, nicht gestreckt.
+
+Ein Klick auf ein Schloss schreibt das Haltefeld (`formatHold`, die Umkehr
+von `parseHold`: „1-2, 7, 13“) und rechnet neu, wenn der letzte Lauf
+höchstens 3 s brauchte; sonst merkt er das Schloss vor und sagt, dass
+Optimieren rechnet. Weist der Kern das Schloss ab (`NOTHING_FREE`,
+`OVER_CONSTRAINED`), nimmt die App es zurück und lässt das letzte Ergebnis
+stehen: „Das Schloss wurde nicht gesetzt: mit ihm bliebe zu wenig frei, um
+Anfang und Ende der Trasse noch zu treffen.“ Das Haltefeld bleibt die eine
+Wahrheit; das Bild liest es, der Bericht nennt es.
+
+Dafür sagt der Bericht (`fit-tra/0.10`) je Element seine Sätze
+(`elements[].records`) und je Satz der Datei Typ, Länge, Radius, Element,
+Haltegrund und Weiche (`planRecords`).
+
+Gemessen am Bahnhofsgleis, 1240 px breit: 12 Schlösser in einer Reihe
+(13 bei 2×), Klick auf Satz 7 → Feld „1-2, 7, 13“, Lauf 0,1 s, Text „Station
+322,8 m · Satz 7 Gerade, 426,87 m, gehalten · Punkt 4130: −3,2 mm →
+−2,3 mm“. Satz 11 und 12 zusätzlich zu halten weist der Kern ab, die App
+nimmt es zurück. Auf der Eifel-Trasse 2631R139 (109 Sätze, 52
+Übergangsbögen, 11,3 km, Vorführung mit Plan 120 m ab) zeichnet das Bild
+bei 1200 px alle 109 Spalten und die Schlösser der 54 breiten; die Punkte
+des Plans bleiben weg, und das Bild sagt es.
+
+Nicht gebaut: Länge und Radius einzeln halten (der Kern kennt die Rollen je
+Größe schon, die App reicht sie nicht durch), eine Elementliste zum
+Bearbeiten, Bloss als Übergangsbogen im Kern.
