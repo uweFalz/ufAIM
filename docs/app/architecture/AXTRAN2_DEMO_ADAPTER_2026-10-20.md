@@ -413,3 +413,38 @@ geändert; der Test hält Satz 6.
 
 Nicht gebaut: Werte editieren (Länge, Radius als Startwerte ändern) und
 Bloss als Übergangsbogen im Kern; die nächsten Stufen.
+
+## Werte ändern (2026-11-08)
+
+Halten sagt dem Fit, was er nicht anfassen darf. Was fehlte, war der andere
+Griff des Trassierers: einen Wert selbst setzen, eine Länge auf das runde
+Maß, einen Radius auf den der Nachbartrasse, und von dort aus rechnen
+lassen. Dafür steht jetzt das Feld „Werte ändern“ und, in der Satzliste,
+die Planwerte als Felder.
+
+Die Schreibweise ist die der Schlösser (`src/services/axtran2/recordEdits.js`):
+`7L=45,2` die Länge von Satz 7, `7R=-1250` sein Radius mit dem Vorzeichen
+der Datei, mehrere mit Leerzeichen; `parseEdits`/`formatEdits` sind
+zueinander invers, das Dezimalkomma wird gelesen. Geprüft wird gegen die
+Datei: der Satz muss da sein und eine Länge tragen, eine Länge ist positiv,
+ein Radius gehört zu einem Bogen und ist nicht null (`INVALID_EDIT`).
+
+Der Fitter (`fit-tra/0.12`) liest die Datei wie bisher und setzt die
+geänderten Werte in die Elemente, bevor die Startlage gebaut wird. Ein
+geänderter Satz bleibt, wie ein gehaltener, sein eigenes Element: die
+Satzgrenzen um ihn überleben. Die Datei selbst bleibt unverändert; der
+Bericht nennt `input.edits` und je Satz `fileLength`, `fileRadius`,
+`edited`, während `length` und `radius` das sind, womit der Fit begann.
+Eine Änderung hält nichts: `7L=45,2` mit `7L` startet bei 45,2 m und
+behält es; ohne das Schloss darf der Fit den Wert wieder verschieben.
+
+In der Liste steht der Planwert als Feld; getippt und mit Enter oder
+Verlassen bestätigt, schreibt er das Feld „Werte ändern“, und der Fit
+rechnet neu, wenn der letzte Lauf kurz war (sonst Vormerkung, gestrichelt).
+Ein geänderter Wert ist markiert und nennt den Wert der Datei; derselbe
+Wert wie in der Datei löscht die Änderung. Weichen haben kein Feld: sie
+sind Kataloggeometrie. Ein Wert, den der Fit nicht annehmen kann, geht
+zurück, mit der Meldung, warum.
+
+Nicht gebaut: Bloss als Übergangsbogen im Kern (Stufe 4, Kern-Go), das
+Einfügen oder Entfernen von Sätzen, Werte an Weichen.

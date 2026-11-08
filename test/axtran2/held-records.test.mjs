@@ -11,6 +11,7 @@ const SERVICE = new URL("../../src/services/axtran2/", import.meta.url);
 const KERNEL = new URL("../../src/domain/optimization/alignment/", import.meta.url);
 const { fitTraFromBytes, FitTraError } = await import(new URL("fitTraCore.js", SERVICE));
 const { recogniseTurnouts, parseHold, resolveHold, formatHold, HeldRecordsError } = await import(new URL("heldRecords.js", SERVICE));
+const { parseEdits, formatEdits, resolveEdits, RecordEditsError } = await import(new URL("recordEdits.js", SERVICE));
 const { writeTra } = await import(new URL("traWriter.js", SERVICE));
 const { traAlignmentFromBytes } = await import(new URL("../../src/import/parsers/technet/vermEsn/traAlignment.js", import.meta.url));
 const { createAlignmentPoseJacobian } = await import(new URL("AlignmentPoseJacobian.js", KERNEL));
@@ -245,4 +246,42 @@ test("a record held in one quantity keeps that one and leaves the other to the f
 	await assert.rejects(fit({ hold: "3R" }), (e) => e.code === "INVALID_HOLD");
 	const straight = (await fit({ hold: "3" })).report;
 	assert.deepEqual(straight.planRecords.filter((r) => r.heldLength).map((r) => [r.number, r.heldLength, r.heldRadius]), [[3, true, false]]);
+});
+
+test("an edit is read as a person types it, and written back the same way", () => {
+	assert.deepEqual([...parseEdits("7L=45,2 7R=-1250, 9L=10.5")], [[7, { length: 45.2, radius: -1250 }], [9, { length: 10.5 }]]);
+	assert.deepEqual([...parseEdits([{ record: 3, length: 20 }, { number: 3, radius: 300 }])], [[3, { length: 20, radius: 300 }]]);
+	assert.deepEqual([...parseEdits(new Map([["4", { radius: -480 }]]))], [[4, { radius: -480 }]]);
+	assert.deepEqual([...parseEdits("")], []);
+	assert.equal(formatEdits("9L=10.5 7R=-1250 7L=45,200"), "7L=45,2 7R=-1250 9L=10,5");
+	assert.equal(formatEdits([]), "");
+	for (const bad of ["7=45", "7X=1", "7L=abc", "L=4", "7L"]) assert.throws(() => parseEdits(bad), (e) => e instanceof RecordEditsError && e.code === "INVALID_EDIT", bad);
+	const records = [{ number: 1, type: "straight", length: 10 }, { number: 2, type: "arc", length: 20, curvature: 0.01 }, { number: 3, type: "kink", length: 0 }];
+	assert.deepEqual([...resolveEdits("2R=-150 1L=12", records)], [[2, { radius: -150 }], [1, { length: 12 }]]);
+	for (const bad of ["1R=100", "2R=0", "2L=0", "2L=-3", "3L=5", "4L=5"]) assert.throws(() => resolveEdits(bad, records), (e) => e.code === "INVALID_EDIT", bad);
+});
+
+test("an edited value is where the fit starts; the file is unchanged and the record keeps its element", async () => {
+	// record 4 is the arc R 300 that the start has 39,5 m long: started at the truth's 40 m
+	const edited = (await fit({ edits: "4L=40" })).report;
+	assert.ok(edited.verdict.ok, `${edited.verdict.status} ${edited.verdict.reason ?? ""}`);
+	assert.deepEqual(edited.input.edits, [{ record: 4, element: "E2", length: 40, radius: null }]);
+	const arc = edited.elements.find((e) => e.records.includes(4));
+	assert.equal(arc.before.length, 40, "the fit starts from the edited length");
+	assert.equal(arc.fixed, true, "an edited record is one element");
+	assert.deepEqual(edited.elements.map((e) => [...e.records]), [[1], [2, 3], [4], [5], [6], [7], [8, 9]]);
+	const r4 = edited.planRecords[3];
+	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false }, null, false]);
+	assert.ok(edited.planRecords.filter((r) => r.number !== 4).every((r) => r.edited === null && r.length === r.fileLength));
+	// an edit holds nothing: the fit may move the value again; with the hold it keeps it
+	const held = (await fit({ edits: "4L=40", hold: "4L" })).report;
+	assert.equal(held.elements.find((e) => e.records.includes(4)).after.length, 40);
+	assert.deepEqual(held.planRecords[3].heldLength, true);
+	// the radius, with the file's sign: record 6 is the left-hand arc the file writes as R −500
+	const radius = (await fit({ edits: "6R=-480" })).report;
+	assert.equal(radius.planRecords[5].fileRadius, -500);
+	assert.equal(radius.elements.find((e) => e.records.includes(6)).before.radius, -480);
+	assert.ok(radius.verdict.ok);
+	// refused: a straight's radius, a zero length, a record the file does not have
+	for (const bad of ["3R=100", "4L=0", "12L=5"]) await assert.rejects(fit({ edits: bad }), (e) => e.code === "INVALID_EDIT", bad);
 });

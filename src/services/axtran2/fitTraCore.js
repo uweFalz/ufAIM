@@ -17,6 +17,7 @@
 import { parsePointList, formatResidualList } from "./pointLists.js";
 import { writeTra, cantLookup } from "./traWriter.js";
 import { recogniseTurnouts, resolveHold } from "./heldRecords.js";
+import { resolveEdits } from "./recordEdits.js";
 import { traAlignmentFromBytes } from "../../import/parsers/technet/vermEsn/traAlignment.js";
 import { decodeBinary } from "../../import/parsers/technet/vermEsn/sharedVermesn.js";
 import { buildProductionAlignment } from "../../domain/optimization/alignment/ProductionAlignment.js";
@@ -33,7 +34,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.11";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.12";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -90,6 +91,8 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  *        with L or R behind one to hold its length or its radius alone ("7R"); otherwise length and radius. Also
  *        listing counts them, ranges ("3-5"), and "turnouts" for every record recognised as a catalogue turnout
  * @param {boolean} [input.holdRadii]        hold every radius; the lengths stay free
+ * @param {Array|Map|string} [input.edits]   values the fit starts from instead of the file's: "7L=45,2 7R=-1250"
+ *        (record, L length or R radius, the radius with the file's sign); an edited record keeps its own element
  * @param {Array} [input.heldPoses]          [{ afterElement, x?, y?, theta? }] in world coordinates
  * @param {"en"|"ne"} [input.axes]           coordinate order of header-less lists
  * @param {{x,y,theta}|null} [input.endPose]  the end pose to hold, in world coordinates (theta counter-clockwise
@@ -98,7 +101,7 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  */
 export async function fitTraFromBytes({
 	bytes, name = "alignment.TRA", points, zwang = [], tolerance = 0.15, zwangTolerance = 0.01, speedKmh = null, cantMm = 130,
-	maxIterations = 1000, objective = "points", order = "points", holdLast = false, hold = [], holdRadii = false, heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
+	maxIterations = 1000, objective = "points", order = "points", holdLast = false, hold = [], holdRadii = false, edits = [], heldPoses = [], axes = "en", endPose: endPoseGiven = null, solver = {},
 } = {}) {
 	if (!(bytes instanceof Uint8Array)) error("NO_TRA", "fitTraFromBytes needs the TRA's bytes as a Uint8Array");
 	const tiers = tiersOf(order);
@@ -109,8 +112,12 @@ export async function fitTraFromBytes({
 	const seen = await traAlignmentFromBytes(bytes, name);
 	const turnoutsSeen = recogniseTurnouts(seen.records);
 	const heldRecords = resolveHold(hold, seen.records, turnoutsSeen);
-	const loaded = heldRecords.size ? await traAlignmentFromBytes(bytes, name, { fixedRecords: heldRecords.keys() }) : seen;
+	const recordEdits = resolveEdits(edits, seen.records);
+	// held and edited records stay apart from their neighbours: one record, one element
+	const apart = new Set([...heldRecords.keys(), ...recordEdits.keys()]);
+	const loaded = apart.size ? await traAlignmentFromBytes(bytes, name, { fixedRecords: apart }) : seen;
 	for (const n of heldRecords.keys()) if (loaded.recordElements[n - 1] === null) error("INVALID_HOLD", `record ${n} carries no element this adapter can hold`);
+	for (const n of recordEdits.keys()) if (loaded.recordElements[n - 1] === null) error("INVALID_EDIT", `record ${n} carries no element this adapter can change`);
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
 	}
@@ -127,7 +134,13 @@ export async function fitTraFromBytes({
 	const toLocal = (p) => ({ ...p, x: p.x - origin.x, y: p.y - origin.y });
 	const toWorld = (p) => ({ ...p, x: p.x + origin.x, y: p.y + origin.y });
 	const startPose = Object.freeze({ x: 0, y: 0, theta: loaded.startPose.theta });
-	const elements = loaded.elements;
+	// the elements the fit starts from: the file's, with the edited values in place
+	const editOf = new Map([...recordEdits].map(([n, e]) => [loaded.recordElements[n - 1], e]));
+	const elements = loaded.elements.map((e) => {
+		const edit = editOf.get(e.id);
+		if (!edit) return e;
+		return { ...e, ...(edit.length !== undefined ? { length: edit.length } : {}), ...(edit.radius !== undefined ? { curvature: -1 / edit.radius } : {}) };
+	});
 	const last = elements.length - 1;
 
 	const shortest = Math.min(...elements.filter((e) => e.length > 0).map((e) => e.length));
@@ -146,7 +159,7 @@ export async function fitTraFromBytes({
 		const have = holdOf.get(id) ?? { length: false, radius: false };
 		holdOf.set(id, { length: have.length || h.length, radius: have.radius || h.radius });
 	}
-	const heldIn = (e) => holdOf.get(e.id) ?? { length: Boolean(e.fixed), radius: Boolean(e.fixed) };
+	const heldIn = (e) => holdOf.get(e.id) ?? { length: false, radius: false };
 	const role = (e, i) => ({
 		length: i === 0 || (holdLast && i === last) || e.held || heldIn(e).length || beforeKink(i) ? "held" : "free",
 		...(e.type === "arc" ? { curvature: e.held || heldIn(e).radius || holdRadii ? "held" : "free" } : {}),
@@ -360,6 +373,8 @@ export async function fitTraFromBytes({
 			// what the fit may not touch: the records held, in which quantities and why, and whether every radius is
 			heldRecords: Object.freeze([...heldRecords].map(([record, h]) => Object.freeze({ record, element: loaded.recordElements[record - 1], why: h.why, length: h.length, radius: h.radius }))),
 			holdRadii: Boolean(holdRadii),
+			// what the fit started from where it is not the file: the edited values
+			edits: Object.freeze([...recordEdits].map(([record, e]) => Object.freeze({ record, element: loaded.recordElements[record - 1], length: e.length ?? null, radius: e.radius ?? null }))),
 			turnouts: Object.freeze(turnoutsSeen.map((t) => Object.freeze({ ...t, held: t.records.every((n) => heldRecords.has(n)) }))),
 			records: loaded.recordCount,
 			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", order: orderReport?.order ?? "points", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
@@ -380,7 +395,10 @@ export async function fitTraFromBytes({
 		// the file's records as it lists them, each with the element that carries it: what a
 		// picture needs to offer a record to be held, also where the fit merged it away
 		planRecords: Object.freeze(seen.records.map((r) => Object.freeze({
-			number: r.number, type: r.type, length: r.length, radius: radiusOf(r),
+			// length and radius as the fit started from them; the file's where they differ
+			number: r.number, type: r.type, length: recordEdits.get(r.number)?.length ?? r.length, radius: recordEdits.get(r.number)?.radius ?? radiusOf(r),
+			fileLength: r.length, fileRadius: radiusOf(r),
+			edited: recordEdits.has(r.number) ? Object.freeze({ length: recordEdits.get(r.number).length !== undefined, radius: recordEdits.get(r.number).radius !== undefined }) : null,
 			element: loaded.recordElements[r.number - 1],
 			held: heldRecords.get(r.number)?.why ?? null,
 			heldLength: Boolean(heldRecords.get(r.number)?.length),
