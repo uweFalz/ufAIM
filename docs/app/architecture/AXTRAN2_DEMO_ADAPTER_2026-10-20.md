@@ -739,5 +739,47 @@ braucht keine Klothoide (zwei Bögen auf 0,1 mm).
   das kein Wertewechsel, sondern eine andere Geometrie, und wird abgelehnt
   – gebogen ebenso.
 
-Nicht gebaut: der App-Import für R1/R2 ungleich Nachbar (Befund oben), das
-Endstück einer Datei-Weiche von Gerade zu Bogen wechseln.
+Nicht gebaut: das Endstück einer Datei-Weiche von Gerade zu Bogen wechseln.
+Der App-Import für R1/R2 ungleich Nachbar folgt im nächsten Abschnitt.
+
+## App-Import: R1/R2 ungleich Nachbar (2026-11-09, Go)
+
+Der Import der App (`buildSparseFromLandFAT`) las die Krümmung eines
+Übergangsbogens bisher am Nachbarn ab und wies eine Datei ab, deren R1 oder
+R2 nicht die Krümmung des Nachbarn war („inconsistent TRA-like radius“, die
+Regel vom 31. Oktober). Der Befund vom Klothoiden-Auftrag zählt nach: **18
+der 292 Korpusdateien** tragen so einen Übergangsbogen (Eifel, Landshut,
+metroB, Hamburg/1234, 6100 RE/KM, Büchen), fast immer gegen einen Bogen oder
+eine Gerade, einmal (metroB Gl 4) zwischen zwei Übergangsbögen. Der Import
+las 274 Dateien, der Leser des Lösers seit dem 9. November alle 292.
+
+Jetzt gilt im Import dasselbe wie im Leser: **die Datei hat recht.** Wo R1
+oder R2 eines Übergangsbogens (TRA-artig, aufgelöst) von der Krümmung des
+Nachbarn abweicht – über 1e-9 in der Krümmung, die Schranke des Lesers –,
+setzt der Import einen Bogen der Länge null mit der Krümmung des
+Übergangsbogens an die Naht (`meta.insertedBy: "traLikeJunction"`,
+`junction: "start" | "end"`, `sourceIndex` des Übergangsbogens,
+`zeroLength`). `enforceAlternation` stellt zwischen den Bogen der Datei und
+den Träger die sofortige Krümmungsänderung (`immediate`), die die Datei
+meint. Zwei Übergangsbögen, die zueinander passen, und ein Übergangsbogen
+an einem Knick brauchen keinen eigenen Träger – dort bleibt der Träger der
+Alternation, der seine Krümmung wie bisher in
+`bindTraLikeEndpointCurvatures` bekommt. Was die Datei nicht hergibt,
+bleibt abgewiesen: ein R1/R2, das keine Zahl ist („invalid TRA-like“).
+
+Ergebnis: der Import liest alle 292 Dateien, der Endpunkt der App-Achse
+trifft den aufgezeichneten Endpunkt der Datei in allen 18 Fällen auf
+0,1 mm (vorher für die zehn, die der Leser erreichte: abgewiesen; für die
+übrigen acht, darunter metroB und Hamburg/1234, hatte der Leser andere
+Gründe). Der Vertragstest der beiden Leser (`tra-roundtrip-contract`)
+nimmt keine Datei mehr aus dem Vergleich heraus. Für die Bedienung der App
+ist der Träger ein gehaltener Satz der Länge null, wie ihn der Editor seit
+dem 31. Oktober kennt (`zeroLength`): nicht änderbar, keine freie Größe.
+
+Geändert: `src/import/build/buildSparseFromLandFAT.js` (`junctionHolders`,
+`boundaryCurvature`, `JUNCTION_TOLERANCE`; der Bindeschritt überspringt
+Nicht-Übergangsbögen); Tests in `test/import/tra-junction-curvature.test.mjs`
+(die vier Fälle, die bisher „fail closed“ waren, tragen jetzt den Träger;
+Geometrie der Naht; Toleranz; die Korpusdatei Landshut 5632R000-002 mit
+Satz 5) und `test/axtran2/tra-roundtrip-contract.test.mjs` (Ausnahme
+entfernt).

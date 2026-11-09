@@ -43,7 +43,12 @@ export function buildSparseFromLandFAT(fatAlignment) {
 	for (let i = 0; i < coordElements.length; i += 1) {
 		const seg = coordElements[i];
 		const mapped = mapSegment(seg, i);
-		if (mapped.length) sparseRaw.push(...mapped);
+		if (!mapped.length) continue;
+		sparseRaw.push(
+			...junctionHolders(seg, i, coordElements, "start", mapped[0].poseA),
+			...mapped,
+			...junctionHolders(seg, i, coordElements, "end", null),
+		);
 	}
 
 	if (!sparseRaw.length) {
@@ -91,23 +96,78 @@ export function buildSparseFromLandFAT(fatAlignment) {
 
 // TRA-like radii are signed engineering radii (positive turns right). Keep
 // this source contract local to the adapter; LandXML remains neighbor-driven.
+
+// Two curvatures this close are the same curvature - the bound the solver's
+// reader (traAlignment.js) uses at the same junctions.
+const JUNCTION_TOLERANCE = 1e-9;
+
+function isTraLikeSpiral(seg) {
+	return seg?.type === "Spiral" &&
+		seg.extras?.sourceSemantics?.formatClass === "tra-like" &&
+		seg.extras?.transitionResolution?.status !== "unresolved";
+}
+
+function curvatureOfRadius(radius) {
+	if (typeof radius !== "number" || !Number.isFinite(radius)) return null;
+	const curvature = radius === 0 ? 0 : -1 / radius;
+	return Number.isFinite(curvature) ? curvature : null;
+}
+
+// The curvature a source element states at its start (end = false) or its
+// end; null when the source states none (Kink, Immediate, a neighbour-driven
+// or unresolved Spiral, no element).
+function boundaryCurvature(seg, end) {
+	switch (seg?.type) {
+		case "Line": return 0;
+		case "Curve": return resolveCurvature(seg);
+		case "Spiral": return isTraLikeSpiral(seg) ? curvatureOfRadius(end ? seg.radiusEnd : seg.radiusStart) : null;
+		default: return null;
+	}
+}
+
+// A TRA-like transition states its own R1 and R2. Where the neighbour's
+// curvature is another one, the file means a curvature step at the junction
+// (sixteen corpus files, mostly against an arc or a straight): a zero-length
+// arc carries the transition's curvature there, and enforceAlternation puts
+// the immediate between the two fixed elements. The solver's reader does the
+// same since 2026-11-09, so both readings agree on the file. Two transitions
+// that agree, or a transition against a Kink, need no holder of their own:
+// alternation's holder gets its curvature in bindTraLikeEndpointCurvatures.
+function junctionHolders(seg, index, sourceElements, side, poseA) {
+	if (!isTraLikeSpiral(seg)) return [];
+	const start = side === "start";
+	const own = curvatureOfRadius(start ? seg.radiusStart : seg.radiusEnd);
+	const neighbourIndex = start ? index - 1 : index + 1;
+	const neighbour = boundaryCurvature(sourceElements[neighbourIndex], start);
+	if (own === null || neighbour === null || Math.abs(own - neighbour) <= JUNCTION_TOLERANCE) return [];
+
+	return [sw.zeroFixed({
+		poseA: poseA ?? resolvePoseA(sourceElements[neighbourIndex], neighbourIndex),
+		curvature: own,
+		meta: {
+			sourceType: "Spiral",
+			sourceIndex: index,
+			insertedBy: "traLikeJunction",
+			junction: side,
+		},
+	})];
+}
+
 // Reuse alternation's holders so element IDs and cant target ordering stay stable.
 function bindTraLikeEndpointCurvatures(elements, sourceElements) {
 	const boundHolders = new Map();
 	for (let i = 0; i < elements.length; i += 1) {
 		const element = elements[i];
+		if (element.type !== "transition") continue;
 		const sourceIndex = element.meta?.sourceIndex;
 		const source = sourceElements[sourceIndex];
-		if (source?.type !== "Spiral" ||
-			source.extras?.sourceSemantics?.formatClass !== "tra-like" ||
-			source.extras?.transitionResolution?.status === "unresolved") continue;
+		if (!isTraLikeSpiral(source)) continue;
 
 		for (const [field, neighbor] of [
 			["radiusStart", elements[i - 1]], ["radiusEnd", elements[i + 1]],
 		]) {
-			const radius = source[field];
-			const curvature = radius === 0 ? 0 : -1 / radius;
-			if (typeof radius !== "number" || !Number.isFinite(radius) || !Number.isFinite(curvature)) {
+			const curvature = curvatureOfRadius(source[field]);
+			if (curvature === null) {
 				throw new Error(`seg[${sourceIndex}]: invalid TRA-like ${field}`);
 			}
 			if (neighbor?.type !== "fixed") {
@@ -115,7 +175,7 @@ function bindTraLikeEndpointCurvatures(elements, sourceElements) {
 			}
 			const inserted = neighbor.meta?.insertedBy === "enforceAlternation" && neighbor.arcLength === 0;
 			const previous = inserted ? boundHolders.get(neighbor) : neighbor.curvature;
-			if (previous !== undefined && Math.abs(previous - curvature) > 1e-12) {
+			if (previous !== undefined && Math.abs(previous - curvature) > JUNCTION_TOLERANCE) {
 				throw new Error(`seg[${sourceIndex}]: inconsistent TRA-like ${field} curvature`);
 			}
 			if (inserted) {
