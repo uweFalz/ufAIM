@@ -24,9 +24,11 @@
 // for a turnout is none. The values of a declared turnout are the
 // catalogue's, the file keeps its own.
 
-import { RIL_800_0120_A01, bentOnto } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
+import { RIL_800_0120_A01, bentOnto, turnout as catalogueTurnout, compoundBranch } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.6";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.7";
+/** the kernel's split of a branch of two radii, for callers that had it from here */
+export { compoundBranch };
 
 /** how far a record's length may lie from the catalogue's and still be the turnout, metres */
 export const TURNOUT_MATCH_TOLERANCE = 2e-3;
@@ -41,42 +43,10 @@ export class HeldRecordsError extends Error {
 }
 const error = (code, message, detail) => { throw new HeldRecordsError(code, message, detail); };
 
-/**
- * A branch of two radii (EW 60-7000/6000-1:42): the arc R1 from the toe
- * turns by a1, the arc R2 by the rest of the crossing angle a = atan(1/n).
- * The annex gives the two tangent lengths, lt from the toe to the point
- * where the toe's tangent meets the end's, lt2 from there to the end. With
- * R1, R2 and a fixed, a1 is what makes the first tangent lt (it grows with
- * a1, so a bisection finds it); the second tangent then follows, and how
- * far it lies from lt2 is the residual the shape reports (tangentResidual):
- * 0 for the 7000/6000, 0.3 m for the 6000/3700, whose branch the annex may
- * well describe with a transition between the two radii that its columns
- * do not carry.
- *
- * @returns {{ angles:number[], lengths:number[], tangents:number[] }}
- */
-export function compoundBranch(radii, ratio, tangent) {
-	const [R1, R2] = radii;
-	const a = Math.atan(1 / ratio);
-	const tangentsAt = (a1) => {
-		const x = R1 * Math.sin(a1) + R2 * (Math.sin(a) - Math.sin(a1));
-		const y = R1 * (1 - Math.cos(a1)) + R2 * (Math.cos(a1) - Math.cos(a));
-		return [x - y / Math.tan(a), y / Math.sin(a)];
-	};
-	const grows = tangentsAt(a)[0] > tangentsAt(0)[0];
-	let lo = 0, hi = a;
-	for (let i = 0; i < 60; i++) {
-		const mid = (lo + hi) / 2;
-		if ((tangentsAt(mid)[0] < tangent) === grows) lo = mid; else hi = mid;
-	}
-	const a1 = (lo + hi) / 2;
-	const tangents = tangentsAt(a1);
-	return Object.freeze({ angles: Object.freeze([a1, a - a1]), lengths: Object.freeze([R1 * a1, R2 * (a - a1)]), tangents: Object.freeze(tangents) });
-}
-
 // the simple turnouts: R, 1:n, and the straight end pieces (d) the annex
-// lists for that pair; and those whose branch has two radii (R1/R2), the
-// arcs split by the annex's tangent lengths
+// lists for that pair; and those whose branch has two radii (R1/R2), split
+// by the kernel from the annex's tangent lengths (TurnoutCatalogue.turnout):
+// two arcs, with a clothoid between them where the lengths ask for one
 const SHAPES = (() => {
 	const shapes = new Map();
 	for (const row of RIL_800_0120_A01.rows) {
@@ -85,14 +55,14 @@ const SHAPES = (() => {
 		const key = `${row.radius}${compound ? `/${row.radiusEnd}` : ""}-1:${row.ratio}`;
 		let shape = shapes.get(key);
 		if (!shape) {
+			const spec = catalogueTurnout({ designation: `EW ${row.rails[0]}-${key}${row.suffix ? `-${row.suffix}` : ""}`, side: "right" });
+			// the branch from the toe: arcs by their radius (an arc of no length carries the curvature a
+			// clothoid starts from), the clothoid by its length; `branchLengths` the arcs' lengths in the order of the radii
+			const branchParts = spec.branchParts.map((p) => (p.type === "arc" ? { type: "arc", radius: Math.round(1 / Math.abs(p.curvature) * 1e6) / 1e6, length: p.length } : { type: "transition", family: p.family, length: p.length }));
 			const radii = compound ? [row.radius, row.radiusEnd] : [row.radius];
-			let branchLengths = [row.radius * Math.atan(1 / row.ratio)], tangentResidual = null;
-			if (compound) {
-				const split = compoundBranch(radii, row.ratio, row.lt);
-				branchLengths = [...split.lengths];
-				tangentResidual = split.tangents[1] - row.lt2;
-			}
-			shape = { designation: `EW ${key}`, radius: row.radius, radiusEnd: compound ? row.radiusEnd : null, ratio: row.ratio, radii, branchLengths, branchLength: branchLengths.reduce((a, b) => a + b, 0), tangentResidual, endPieces: [], branchSpeedKmh: row.vBranch };
+			shape = { designation: `EW ${key}`, radius: row.radius, radiusEnd: compound ? row.radiusEnd : null, ratio: row.ratio, radii,
+				branchParts, branchLengths: branchParts.filter((p) => p.type === "arc").map((p) => p.length), branchLength: spec.branchLength,
+				transitionLength: spec.transitionLength > 0 ? spec.transitionLength : null, tangentResidual: spec.tangentResidual, endPieces: [], branchSpeedKmh: row.vBranch };
 		}
 		if (Number.isFinite(row.d) && !shape.endPieces.includes(row.d)) shape.endPieces.push(row.d);
 		// zul. v in the branch; the slowest where the annex lists the pair twice
@@ -104,10 +74,11 @@ const SHAPES = (() => {
 
 /**
  * the turnouts of the annex, for a list to choose from: { designation, radius,
- * radiusEnd, ratio, radii, branchLengths, branchLength, tangentResidual,
- * endPieces, branchSpeedKmh }; radiusEnd is null but for a branch of two radii
+ * radiusEnd, ratio, radii, branchParts, branchLengths, branchLength,
+ * transitionLength, tangentResidual, endPieces, branchSpeedKmh }; radiusEnd is
+ * null but for a branch of two radii, transitionLength null without a clothoid
  */
-export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, radii: Object.freeze([...s.radii]), branchLengths: Object.freeze([...s.branchLengths]), endPieces: Object.freeze([...s.endPieces]) })));
+export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, radii: Object.freeze([...s.radii]), branchParts: Object.freeze(s.branchParts.map((p) => Object.freeze({ ...p }))), branchLengths: Object.freeze([...s.branchLengths]), endPieces: Object.freeze([...s.endPieces]) })));
 
 /** the catalogue turnout of a radius (and the branch's second radius, if it has one) and a crossing ratio, or null */
 export function turnoutShape(radius, ratio, radiusEnd = null) {
@@ -117,43 +88,79 @@ export function turnoutShape(radius, ratio, radiusEnd = null) {
 }
 
 /**
+ * The records a shape's branch is in a file, from the toe: its parts of a
+ * length (a zero-length arc is a curvature a clothoid starts from, which the
+ * file writes as the clothoid's R1, not as a record); `reversed` from the
+ * Weichenende. A clothoid part names the radii it joins, as the file's
+ * record does (radiusStart, radiusEnd).
+ */
+export function branchPattern(shape, reversed = false) {
+	const parts = [];
+	shape.branchParts.forEach((p, k) => {
+		if (p.type === "arc") { if (p.length > 1e-9) parts.push({ type: "arc", radius: p.radius, length: p.length }); return; }
+		const before = shape.branchParts[k - 1], after = shape.branchParts[k + 1];
+		parts.push({ type: "transition", length: p.length, radiusStart: before?.radius ?? null, radiusEnd: after?.radius ?? null });
+	});
+	return reversed ? parts.slice().reverse().map((p) => (p.type === "transition" ? { ...p, radiusStart: p.radiusEnd, radiusEnd: p.radiusStart } : p)) : parts;
+}
+
+/**
  * The records that are a catalogue turnout's branch: an arc of the
  * turnout's radius whose length is R * atan(1/n), and beside it the
- * straight end piece where the Regelbauart has one.
+ * straight end piece where the Regelbauart has one; for a branch of two
+ * radii its arcs, and the clothoid between them where the shape has one,
+ * side by side in either order.
  *
- * @param {Array<{number:number,type:string,length:number,curvature?:number}>} records  as traAlignment gives them
- * @returns {Array<{designation,radius,ratio,side,arc,endPiece,branchSpeedKmh,records}>}
+ * @param {Array<{number:number,type:string,length:number,curvature?:number,radiusStart?:number,radiusEnd?:number}>} records  as traAlignment gives them
+ * @returns {Array<{designation,radius,radiusEnd,ratio,side,arc,arcs,transition,endPiece,branchSpeedKmh,records}>}
  */
 export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE } = {}) {
 	const found = [];
 	const taken = new Set();
-	const isArcOf = (r, radius, length) => r?.type === "arc" && Math.abs(r.curvature) > 0 && Math.abs(1 / Math.abs(r.curvature) - radius) <= tolerance && Math.abs(r.length - length) <= tolerance;
+	const near = (a, b) => Math.abs(a - b) <= tolerance;
+	const isArcOf = (r, radius, length) => r?.type === "arc" && Math.abs(r.curvature) > 0 && near(1 / Math.abs(r.curvature), radius) && near(r.length, length);
+	// a file's clothoid record carries the radii it joins where the reader hands them on; checked where it does
+	const isTransitionOf = (r, part) => r?.type === "transition" && near(r.length, part.length)
+		&& (!Number.isFinite(r.radiusStart) || part.radiusStart === null || near(Math.abs(r.radiusStart), part.radiusStart))
+		&& (!Number.isFinite(r.radiusEnd) || part.radiusEnd === null || near(Math.abs(r.radiusEnd), part.radiusEnd));
+	const matches = (i, pattern) => {
+		if (i < 0 || i + pattern.length > records.length) return false;
+		let sign = 0;
+		return pattern.every((part, k) => {
+			const r = records[i + k];
+			if (taken.has(r.number)) return false;
+			if (part.type === "transition") return isTransitionOf(r, part);
+			if (!isArcOf(r, part.radius, part.length)) return false;
+			if (sign === 0) sign = Math.sign(r.curvature);
+			return Math.sign(r.curvature) === sign;
+		});
+	};
+	// the longer patterns first: a branch of two radii before the arc that could be a simple turnout's
+	const candidates = SHAPES.flatMap((s) => [false, true].filter((reversed) => !reversed || s.radiusEnd !== null).map((reversed) => ({ shape: s, reversed, pattern: branchPattern(s, reversed) })))
+		.sort((a, b) => b.pattern.length - a.pattern.length);
 	records.forEach((record, i) => {
-		if (taken.has(record.number) || record.type !== "arc" || !(Math.abs(record.curvature) > 0)) return;
-		// a branch of two radii: this arc and the next are the two arcs, turning
-		// the same way, R1 first from the toe or R2 first entered from the end
-		let arcs = [record], firstArc = record;
-		const next = records[i + 1];
-		let shape = next && Math.sign(next.curvature ?? 0) === Math.sign(record.curvature) ? SHAPES.find((s) => s.radiusEnd !== null && [[record, next], [next, record]].some(([r1, r2]) => {
-			if (!(isArcOf(r1, s.radii[0], s.branchLengths[0]) && isArcOf(r2, s.radii[1], s.branchLengths[1]))) return false;
-			arcs = [record, next]; firstArc = r1;
-			return true;
-		})) : null;
-		if (!shape) shape = SHAPES.find((s) => s.radiusEnd === null && isArcOf(record, s.radius, s.branchLength));
-		if (!shape) return;
-		const isEndPiece = (r) => r?.type === "straight" && shape.endPieces.some((d) => Math.abs(d - r.length) <= tolerance);
-		const after = records[i + arcs.length], before = records[i - 1];
+		if (taken.has(record.number)) return;
+		const hit = candidates.find((c) => matches(i, c.pattern));
+		if (!hit) return;
+		const { shape, pattern } = hit;
+		const own = pattern.map((_, k) => records[i + k]);
+		const arcs = own.filter((r) => r.type === "arc");
+		const transition = own.find((r) => r.type === "transition") ?? null;
+		// `arc` is the record of the first radius with a length from the toe (R1, or R2 where R1 is but a curvature)
+		const fromToe = hit.reversed ? own.slice().reverse() : own;
+		const firstArc = fromToe.find((r) => r.type === "arc");
+		const isEndPiece = (r) => r?.type === "straight" && shape.endPieces.some((d) => near(d, r.length));
+		const after = records[i + own.length], before = records[i - 1];
 		const endPiece = isEndPiece(after) ? after.number : isEndPiece(before) ? before.number : null;
-		arcs.forEach((a) => taken.add(a.number));
+		own.forEach((r) => taken.add(r.number));
 		found.push(Object.freeze({
 			designation: shape.designation, radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio,
 			// the kernel's heading grows to the left
-			side: record.curvature > 0 ? "left" : "right",
-			// `arc` is the record of the first radius (R1), `arcs` the branch's arcs in the file's order
-			arc: firstArc.number, arcs: Object.freeze(arcs.map((a) => a.number)), endPiece,
+			side: firstArc.curvature > 0 ? "left" : "right",
+			arc: firstArc.number, arcs: Object.freeze(arcs.map((a) => a.number)), transition: transition?.number ?? null, endPiece,
 			// what the annex allows in the branch, km/h: the track through it runs no faster
 			branchSpeedKmh: shape.branchSpeedKmh ?? null,
-			records: Object.freeze([...arcs.map((a) => a.number), ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b)),
+			records: Object.freeze([...own.map((r) => r.number), ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b)),
 			source: RIL_800_0120_A01.source,
 		}));
 	});
@@ -208,13 +215,21 @@ export function declareTurnouts(records, recognised, declarations, { tolerance =
 		if (was) turnouts.splice(wasAt, 1);
 		const sign = Math.sign(record.curvature);
 		const side = sign > 0 ? "left" : "right";
-		// the arcs of the branch: n carries the first radius; a second radius is on the arc beside it
-		let arcs = [n];
-		if (shape.radii.length === 2) {
-			const other = was && was.arcs.length === 2 ? was.arcs.find((m) => m !== n) : sameWayArc(at(n + 1), sign) ? n + 1 : sameWayArc(at(n - 1), sign) ? n - 1 : null;
-			if (other === null || !sameWayArc(at(other), sign)) error("INVALID_EDIT", `record ${n}: a branch of two radii (${shape.designation}) needs a second arc beside it, turning the same way`);
-			arcs = [n, other];
-		}
+		// the records of the branch around n, as the shape's pattern has them from the toe or from the end:
+		// n is the arc the pattern names first (R1, or R2 where R1 is but the curvature a clothoid starts from)
+		const laid = [false, true].filter((reversed) => !reversed || shape.radiusEnd !== null).map((reversed) => {
+			const pattern = branchPattern(shape, reversed);
+			const fromToe = reversed ? pattern.slice().reverse() : pattern;
+			const firstArc = fromToe.find((p) => p.type === "arc");
+			const start = n - pattern.indexOf(firstArc);
+			const own = pattern.map((_, k) => start + k);
+			const fits = pattern.every((p, k) => { const r = at(own[k]); return r && (p.type === "transition" ? r.type === "transition" : sameWayArc(r, sign)) && (own[k] === n || !turnouts.some((t) => t.records.includes(own[k]))); });
+			return { pattern, own, fits, preferred: was ? own.every((m) => was.records.includes(m)) : false };
+		}).filter((l) => l.fits).sort((a, b) => Number(b.preferred) - Number(a.preferred));
+		if (!laid.length) error("INVALID_EDIT", `record ${n}: the branch of ${shape.designation} is ${branchPattern(shape).map((p) => (p.type === "arc" ? `an arc R ${p.radius}` : `a clothoid of ${p.length.toFixed(2)} m`)).join(", then ")}; the records beside ${n} are not that`);
+		const { pattern, own: branchRecords } = laid[0];
+		const arcs = branchRecords.filter((m, k) => pattern[k].type === "arc");
+		const transitionRecord = branchRecords.find((m, k) => pattern[k].type === "transition") ?? null;
 		// the kernel's heading grows to the left; bent onto the main track, every arc by the line's curvature
 		let curvatures = shape.radii.map((r) => sign / r);
 		let bent = null;
@@ -227,11 +242,22 @@ export function declareTurnouts(records, recognised, declarations, { tolerance =
 		const kind = bent ? bent.kind : "EW";
 		const designation = bent ? `${kind} ${shape.radius}${shape.radiusEnd !== null ? `/${shape.radiusEnd}` : ""}-1:${shape.ratio} auf R ${spec.mainRadius}` : shape.designation;
 		if (curvatures.some((c) => !(Math.abs(c) > 1e-15))) error("INVALID_EDIT", `record ${n}: bent onto R ${spec.mainRadius} the branch of ${shape.designation} would be straight; the file's arc cannot carry that`);
-		arcs.forEach((m, k) => values.set(m, { length: shape.branchLengths[k], radius: -1 / curvatures[k] }));
+		const curvatureOfRadius = (r) => curvatures[shape.radii.indexOf(r)];
+		pattern.forEach((p, k) => {
+			const m = branchRecords[k];
+			if (p.type === "arc") { values.set(m, { length: p.length, radius: -1 / curvatureOfRadius(p.radius) }); return; }
+			// the clothoid: its length and family; the kernel reads the curvature it starts from off the record before it,
+			// which the reader carries from the file's R1 - so the file's clothoid has to start at that radius already
+			const r = at(m);
+			const outer = p.radiusStart !== null && !arcs.includes(m - 1) ? ["radiusStart", p.radiusStart] : p.radiusEnd !== null && !arcs.includes(m + 1) ? ["radiusEnd", p.radiusEnd] : null;
+			if (outer && Number.isFinite(r[outer[0]]) && !(Math.abs(Math.abs(r[outer[0]]) - outer[1]) <= 0.5)) error("INVALID_EDIT", `record ${m}: the clothoid of ${shape.designation} starts at R ${outer[1]}, the file's at R ${Math.abs(r[outer[0]])}; the reader carries the file's radius, so this record cannot be that clothoid${bent ? " (nor a bent one)" : ""}`);
+			if (bent) error("INVALID_EDIT", `record ${n}: ${shape.designation} bent onto R ${spec.mainRadius} would start its clothoid at another radius than the file's record ${m}; not from here`);
+			values.set(m, { length: p.length, family: "clothoid" });
+		});
 		// the end piece: where the recognised turnout had it, where the orientation says, or where a length fits
-		const first = Math.min(...arcs), lastArc = Math.max(...arcs);
+		const first = Math.min(...branchRecords), lastArc = Math.max(...branchRecords);
 		const d = shape.endPieces.length ? Math.min(...shape.endPieces) : null;
-		const fits = (m) => { const r = at(m); return r && (r.type === "straight" || (bent && sameWayArc(r, sign))) && !arcs.includes(m) && !turnouts.some((t) => t.records.includes(m)); };
+		const fits = (m) => { const r = at(m); return r && (r.type === "straight" || (bent && sameWayArc(r, sign))) && !branchRecords.includes(m) && !turnouts.some((t) => t.records.includes(m)); };
 		let endPiece = null;
 		if (d !== null && spec.orientation !== "arc") {
 			const wanted = spec.orientation === "WA" ? lastArc + 1 : spec.orientation === "WE" ? first - 1 : null;
@@ -245,12 +271,12 @@ export function declareTurnouts(records, recognised, declarations, { tolerance =
 			}
 		}
 		if (endPiece !== null) values.set(endPiece, { length: d, ...(at(endPiece).type === "arc" ? { radius: -1 / curvatures[curvatures.length - 1] } : {}) });
-		const own = [...arcs, ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b);
+		const own = [...branchRecords, ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b);
 		const clash = turnouts.find((t) => t.records.some((m) => own.includes(m)));
 		if (clash) error("INVALID_EDIT", `record ${n}: ${designation} would take record ${clash.records.find((m) => own.includes(m))} from the turnout ${clash.designation}`);
 		turnouts.push(Object.freeze({
 			designation, kind, radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio, side,
-			arc: n, arcs: Object.freeze(arcs.slice().sort((a, b) => a - b)), endPiece,
+			arc: n, arcs: Object.freeze(arcs.slice().sort((a, b) => a - b)), transition: transitionRecord, endPiece,
 			// the annex speaks for the straight turnout; a bent branch has another radius and no row
 			branchSpeedKmh: bent ? null : shape.branchSpeedKmh ?? null,
 			records: Object.freeze(own), source: RIL_800_0120_A01.source,

@@ -74,7 +74,11 @@ test("a branch of two radii is two arcs split by the annex's tangent lengths, an
 	const w42 = turnoutShape(7000, 42, 6000);
 	assert.deepEqual(w42.branchLengths.map((l) => Number(l.toFixed(3))), [80.001, 74.258]);
 	assert.ok(Math.abs(w42.tangentResidual) < 2e-4, `residual ${w42.tangentResidual}`);
-	assert.ok(Math.abs(turnoutShape(6000, 32.5, 3700).tangentResidual + 0.308) < 1e-3);
+	// the 6000/3700 meets lt2 only with a clothoid between the radii: from R 6000 at the toe (the first arc has no length) over 44,00 m to R 3700
+	const w325 = turnoutShape(6000, 32.5, 3700);
+	assert.ok(Math.abs(w325.tangentResidual) < 1e-6 && Math.abs(w325.transitionLength - 44.0007) < 1e-3, `residual ${w325.tangentResidual}, clothoid ${w325.transitionLength}`);
+	assert.deepEqual(w325.branchParts.map((p) => [p.type, p.radius ?? p.family, Number(p.length.toFixed(3))]), [["arc", 6000, 0], ["transition", "clothoid", 44.001], ["arc", 3700, 78.243]]);
+	assert.equal(w42.transitionLength, null);
 	const split = compoundBranch([7000, 6000], 42, 80.1040);
 	assert.ok(Math.abs(split.angles[0] + split.angles[1] - Math.atan(1 / 42)) < 1e-12 && Math.abs(split.tangents[0] - 80.1040) < 1e-6);
 	// a simple radius does not match a compound shape, nor the other way round
@@ -344,7 +348,7 @@ test("a turnout's type is declared on the arc of its branch: re-typed, made of a
 	assert.deepEqual(none.turnouts.map((t) => t.designation), ["EW 500-1:12"]);
 	assert.equal(none.values.size, 0);
 	// refused: a straight, a second radius without an arc beside, an end piece named where an arc is, a record of another turnout
-	for (const [bad, why] of [[{ 1: "300-1/9" }, /straight/], [{ 2: "7000/6000-1/42" }, /second arc/], [{ 5: "190-1/9:WA" }, /end piece.*record 6/], [{ 1: "keine" }, /no turnout/]]) {
+	for (const [bad, why] of [[{ 1: "300-1/9" }, /straight/], [{ 2: "7000/6000-1/42" }, /records beside 2 are not that/], [{ 5: "190-1/9:WA" }, /end piece.*record 6/], [{ 1: "keine" }, /no turnout/]]) {
 		assert.throws(() => declare(bad), (e) => e.code === "INVALID_EDIT" && why.test(e.message), JSON.stringify(bad));
 	}
 	assert.equal(turnoutShape(300, 9).endPieces.length, 0);

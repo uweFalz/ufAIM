@@ -174,7 +174,7 @@ function show({ report, csv }) {
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
 		inp.structure?.removed?.length ? `Herausgenommen: Satz ${inp.structure.removed.join(", ")}.` : "",
-		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout ? `${i.turnout} (${i.part === "arc" ? "Bogen" : i.part === "arc2" ? "zweiter Bogen" : i.part === "straight" ? "Gerade" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
+		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout ? `${i.turnout} (${i.part === "arc" ? "Bogen" : i.part === "arc2" ? "zweiter Bogen" : i.part === "transition" ? "Klothoide" : i.part === "junction" ? "Anfangskrümmung, 0 m" : i.part === "straight" ? "Gerade" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();

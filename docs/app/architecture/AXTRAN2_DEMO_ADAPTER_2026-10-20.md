@@ -683,6 +683,61 @@ Satz 1 auf R 300 und 33,20 m und gibt Satz 2 (6,09 m) als Gerade frei;
 `1W=keine` nimmt die EW 190-1:9 aus der Liste; `4W=190-1/9` macht den
 freien Bogen R 300 (39,5 m) zur Weiche, mit „Weichen“ gehalten.
 
-Nicht gebaut: Klothoiden im Zweig (der Kern kennt im Zweig nur Bögen), das
-Endstück einer Datei-Weiche von Gerade zu Bogen wechseln (ein Satz behält
-seinen Typ).
+Nicht gebaut: Klothoiden im Zweig (der nächste Abschnitt), das Endstück
+einer Datei-Weiche von Gerade zu Bogen wechseln (ein Satz behält seinen
+Typ).
+
+## Klothoiden im Zweig (2026-11-09, Kern-Go)
+
+Die Probe am 8. November ließ bei der EW 60-6000/3700-1:32,5 einen Rest
+von 0,31 m an der zweiten Tangentenlänge: zwei reine Kreisbögen treffen
+die Spalten des Anhangs nicht. Jetzt löst der Kern die beiden Längen mit
+einer Klothoide zwischen den Radien (`TurnoutCatalogue.compoundBranch`,
+Version 0.3): der Winkel des ersten Bogens trifft lt, die Länge der
+Klothoide lt2, beides durch Bisektion, die Klothoide nach ihrem
+Krümmungsgesetz (Simpson). Das Ergebnis ist eindeutig und spricht für
+sich: der erste Bogen hat die Länge null – der Zweig **beginnt am
+Weichenanfang mit der Klothoide von R 6000 auf R 3700**, 44,00 m, dann
+folgt der Bogen R 3700 mit 78,24 m; beide Tangentenlängen stimmen auf
+0,1 mm. Das ist die Klothoidenweiche, die der Anhang in seinen Spalten
+nicht nennt und deren zwei Zahlen sie doch festlegen. Die 7000/6000
+braucht keine Klothoide (zwei Bögen auf 0,1 mm).
+
+- **Kern.** `turnout()` nimmt die Doppelradien an (`radiusEnd`, auch aus
+  der Zeile des Anhangs oder aus der Bezeichnung `EW 60-7000/6000-1:42`),
+  liefert `branchParts` (Bogen, Klothoide, Bogen), `curvatureEnd`,
+  `transitionLength`, `tangentResidual`; `COMPOUND_BRANCH` gibt es nicht
+  mehr. `bentOnto` biegt beide Krümmungen, die Klothoide bleibt eine.
+  `turnoutElements` gibt `branchParts` als gehaltene Elemente, darunter
+  einen Bogen der Länge null: der Kern liest die Krümmungen eines
+  Übergangsbogens an seinen Nachbarn ab, und ein Zweig, der mit einer
+  Klothoide aus R 6000 beginnt, braucht den Nachbarn, der diese Krümmung
+  trägt. Das ist dasselbe Mittel, mit dem der Leser seit Oktober zwei
+  aneinanderstoßende Übergangsbögen trennt.
+- **Leser** (`traAlignment.js`). Der Krümmungsträger steht jetzt überall,
+  wo R1 oder R2 eines Übergangsbogens nicht die Krümmung des Nachbarn ist
+  – nicht nur zwischen zwei Übergangsbögen. Das war überfällig: zehn
+  Dateien des Korpus, die der Kern bisher am Ende um 0,11 bis 104,5 m
+  verfehlte (Eifel, Landshut, Büchen, 6100 RE/KM), erreichen ihr
+  aufgezeichnetes Ende jetzt auf 0,1 mm; keine andere Datei ändert sich.
+  Der Satzauszug (`records`) trägt an Übergangsbögen `radiusStart` und
+  `radiusEnd`. Befund dazu: dieselben zehn Dateien weist der Import der
+  App (`buildSparseFromLandFAT`, „inconsistent TRA-like radius“) ab – der
+  Vertragstest nimmt sie darum aus dem Vergleich beider Leser heraus; den
+  App-Import anzufassen ist ein eigener Auftrag.
+- **Einfügen** `+1=W:6000/3700-1/32,5:R`: drei Sätze `1+1a` (Anfangs-
+  krümmung, 0 m, R 6000), `1+1b` (Klothoide 44,00 m), `1+1c` (Bogen R 3700
+  78,24 m), alle gehalten; `:WE` kehrt die Folge um. Die geschriebene Datei
+  lässt den Satz von 0 m weg und trägt R1 6000 / R2 3700 an der Klothoide;
+  gelesen steht der Träger wieder, und die Erkennung findet die Weiche.
+- **Erkennen und Erklären** laufen über das Muster des Zweigs
+  (`branchPattern`: die Teile mit Länge, vorwärts oder rückwärts); eine
+  Klothoide der Datei muss nach Länge und – wo der Leser sie hergibt –
+  nach R1/R2 passen. `3W=6000/3700-1/32,5` auf dem Bogen R 3700 erklärt den
+  Übergangsbogen davor zur Klothoide der Weiche, wenn er in der Datei bei
+  R 6000 beginnt; beginnt er woanders (etwa bei R 0 aus der Geraden), ist
+  das kein Wertewechsel, sondern eine andere Geometrie, und wird abgelehnt
+  – gebogen ebenso.
+
+Nicht gebaut: der App-Import für R1/R2 ungleich Nachbar (Befund oben), das
+Endstück einer Datei-Weiche von Gerade zu Bogen wechseln.

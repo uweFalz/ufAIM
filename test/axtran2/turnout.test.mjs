@@ -15,9 +15,9 @@ const { createTraScenario, momentsFor } = await import(new URL("corpus/createTra
 
 test("a designation is its own catalogue: radius, ratio, angle and the branch arc follow from it", () => {
 	const parsed = parseTurnoutDesignation("EW 60-500-1:12");
-	assert.deepEqual(parsed, { kind: "EW", rail: 60, radius: 500, ratio: 12, suffix: null });
-	assert.deepEqual(parseTurnoutDesignation("EW60-1200-1:18,5"), { kind: "EW", rail: 60, radius: 1200, ratio: 18.5, suffix: null });
-	assert.deepEqual(parseTurnoutDesignation("EW 60-2500-1:26,5-fb"), { kind: "EW", rail: 60, radius: 2500, ratio: 26.5, suffix: "fb" });
+	assert.deepEqual(parsed, { kind: "EW", rail: 60, radius: 500, radiusEnd: null, ratio: 12, suffix: null });
+	assert.deepEqual(parseTurnoutDesignation("EW60-1200-1:18,5"), { kind: "EW", rail: 60, radius: 1200, radiusEnd: null, ratio: 18.5, suffix: null });
+	assert.deepEqual(parseTurnoutDesignation("EW 60-2500-1:26,5-fb"), { kind: "EW", rail: 60, radius: 2500, radiusEnd: null, ratio: 26.5, suffix: "fb" });
 	const right = turnout({ designation: "EW 60-500-1:12", side: "right" });
 	assert.ok(Math.abs(right.angle - Math.atan(1 / 12)) < 1e-15);
 	assert.ok(Math.abs(right.branchLength - 500 * Math.atan(1 / 12)) < 1e-12, "the branch runs from the toe to the crossing angle");
@@ -27,7 +27,8 @@ test("a designation is its own catalogue: radius, ratio, angle and the branch ar
 	assert.equal(right.status, "catalogue");
 	assert.match(right.source, /800\.0120A01/);
 	const elements = turnoutElements(right, { prefix: "W1" });
-	assert.deepEqual(Object.keys(elements), ["branch", "main"]);
+	assert.deepEqual(Object.keys(elements), ["branch", "branchParts", "main"]);
+	assert.deepEqual(elements.branchParts, [elements.branch], "one radius: the branch is its one part");
 	assert.ok(elements.branch.held && elements.main.held, "a turnout's elements have no free quantity");
 	assert.equal(elements.branch.type, "arc");
 	assert.equal(elements.main.type, "straight");
@@ -218,7 +219,7 @@ test("the Einrechnung of a DKW: its straight held between two fitted connections
 
 
 test("the Regelbauarten of Ril 800.0120A01 are the catalogue, and the geometry agrees with them", async () => {
-	const { RIL_800_0120_A01, catalogueRow, crossing, TurnoutCatalogueError } = await import(new URL("TurnoutCatalogue.js", BASE));
+	const { RIL_800_0120_A01, catalogueRow, crossing, compoundBranch, bentOnto, TurnoutCatalogueError } = await import(new URL("TurnoutCatalogue.js", BASE));
 	assert.match(RIL_800_0120_A01.source, /800\.0120A01 V3\.0/);
 	// every single-radius row: lt is R·tan(α/2) to a tenth of a millimetre,
 	// c is R·(1 - cos α) to three millimetres - the annex and the geometry
@@ -248,11 +249,32 @@ test("the Regelbauarten of Ril 800.0120A01 are the catalogue, and the geometry a
 	assert.deepEqual([r60.lt, r60.lw, r60.c, r60.s, r60.vBranch, r60.vMain, r60.page], [20.7973, 41.5946, 1.7286, 6.31, 60, 230, 5]);
 	assert.deepEqual([r49.s, r49.vMain], [6.30, 120]);
 	assert.equal(catalogueRow({ kind: "EW", rail: 49, radius: 760, ratio: 14 }), null, "no 49 kg/m rail for the 760-1:14");
-	// the fb suffix is its own row, a compound branch is listed and refused
+	// the fb suffix is its own row
 	const fb = turnout({ designation: "EW 60-500-1:12-fb", side: "left" });
 	assert.equal(fb.catalogue.form, "Bogenherzstück, gerade Verlängerung, fb");
 	assert.equal(fb.mainLength, 45.3610);
-	assert.throws(() => turnout({ designation: "EW 60-6000-1:32,5-fb", side: "left" }), (e) => e instanceof TurnoutCatalogueError && e.code === "COMPOUND_BRANCH");
+	// a branch of two radii is two arcs split by the annex's tangent lengths - the 7000/6000 meets both to 0.1 mm -
+	// and where two arcs cannot meet them, a clothoid between the radii: the 6000/3700 begins with one from R 6000 at
+	// the toe (the first arc has no length), 44,00 m to R 3700, then the arc; the annex prints no transition, its two
+	// tangent lengths imply it
+	const w42 = turnout({ designation: "EW 60-7000/6000-1:42-fb", side: "right" });
+	assert.deepEqual([w42.radius, w42.radiusEnd, w42.curvature, w42.curvatureEnd, w42.transitionLength], [7000, 6000, -1 / 7000, -1 / 6000, 0]);
+	assert.deepEqual(w42.branchParts.map((p) => [p.type, Number(p.length.toFixed(3))]), [["arc", 80.001], ["arc", 74.258]]);
+	assert.ok(Math.abs(w42.tangentResidual) < 2e-4 && Math.abs(w42.branchLength - 154.259) < 1e-3);
+	const w325 = turnout({ designation: "EW 60-6000-1:32,5-fb", side: "left" });
+	assert.equal(w325.radiusEnd, 3700, "the annex row carries the second radius where the designation names one");
+	assert.deepEqual(w325.branchParts.map((p) => [p.type, p.type === "arc" ? Number((1 / p.curvature).toFixed(0)) : p.family, Number(p.length.toFixed(3))]), [["arc", 6000, 0], ["transition", "clothoid", 44.001], ["arc", 3700, 78.243]]);
+	assert.ok(Math.abs(w325.tangentResidual) < 1e-6, `residual ${w325.tangentResidual}`);
+	const split = compoundBranch([6000, 3700], 32.5, 64.5688, 57.6841);
+	assert.ok(Math.abs(split.tangents[0] - 64.5688) < 2e-4 && Math.abs(split.tangents[1] - 57.6841) < 1e-6 && Math.abs(split.transitionLength - 44.0007) < 1e-3);
+	const twoArcs = compoundBranch([6000, 3700], 32.5, 64.5688);
+	assert.ok(twoArcs.residual === null && twoArcs.transitionLength === 0 && Math.abs(twoArcs.tangents[1] - 57.6841 + 0.308) < 1e-3, "two arcs alone miss lt2 by 0.31 m");
+	// as elements: the curvature holder, the clothoid and the arc, all held; bent, every curvature by the line's
+	const parts = turnoutElements(w325, { prefix: "W3" }).branchParts;
+	assert.deepEqual(parts.map((p) => [p.id, p.type, p.held, p.family ?? null]), [["W3.branch", "arc", true, null], ["W3.branch2", "transition", true, "clothoid"], ["W3.branch3", "arc", true, null]]);
+	const bent325 = bentOnto(w325, 1 / 9000);
+	assert.ok(Math.abs(bent325.branchParts[0].curvature - (1 / 6000 + 1 / 9000)) < 1e-15 && Math.abs(bent325.curvatureEnd - (1 / 3700 + 1 / 9000)) < 1e-15 && bent325.branchParts[1].type === "transition");
+	assert.throws(() => turnout({ radius: 500, radiusEnd: 300, ratio: 12, side: "left" }), (e) => e instanceof TurnoutCatalogueError && /one radius/.test(e.message));
 	// the straight-frog EW 49-190-1:9 carries b and d beside lw
 	const straightFrog = turnout({ designation: "EW 49-190-1:9", side: "right" });
 	assert.deepEqual([straightFrog.catalogue.b, straightFrog.catalogue.d, straightFrog.mainLength], [16.6149, 6.0917, 27.1381]);

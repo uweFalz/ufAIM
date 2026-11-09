@@ -74,6 +74,10 @@ async function trustedFiles() {
 		if (a.unsupported.length || a.elements.length < 3) continue;
 		const chain = createAlignmentPoseJacobian({ elements: a.elements, startPose: { x: 0, y: 0, theta: a.startPose.theta }, momentsFor });
 		if (Math.hypot(chain.endPose.x + a.startPose.x - a.endPoint.x, chain.endPose.y + a.startPose.y - a.endPoint.y) >= 1e-3) continue;
+		// the contract compares two readers: a file the app's import refuses (a transition whose R1/R2 the
+		// neighbour does not have - seven corpus files the solver's reader reaches the end on since
+		// 2026-11-09, see docs/app/architecture/AXTRAN2_DEMO_ADAPTER_2026-10-20.md) has nothing to compare
+		try { await appAxis(await readFile(file), basename(file)); } catch { continue; }
 		out.push({ file, loaded: a });
 	}
 	return out;
