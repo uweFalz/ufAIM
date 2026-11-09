@@ -78,9 +78,11 @@ test('the holder geometry follows the file: step at the junction, linear clothoi
  close(twoSpirals.curvatureAt(60), -1 / 1200);
 });
 
-test('radii within the reader tolerance are the same curvature and get no holder', () => {
- assert.equal(build([curve(1000), spiral(1000 + 1e-4, 500), curve(500)]).sparse.length, 3);
- assert.equal(build([curve(1000), spiral(1000 + 1e-2, 500), curve(500)]).sparse.length, 5);
+test('radii within the kernel junction tolerance are the same curvature and get no holder', async () => {
+ const { JUNCTION_CURVATURE_TOLERANCE } = await import('../../src/domain/optimization/alignment/CurvatureJunction.js');
+ const off = (delta) => 1 / (1 / 1000 - delta);
+ assert.equal(build([curve(1000), spiral(off(JUNCTION_CURVATURE_TOLERANCE / 2), 500), curve(500)]).sparse.length, 3);
+ assert.equal(build([curve(1000), spiral(off(JUNCTION_CURVATURE_TOLERANCE * 2), 500), curve(500)]).sparse.length, 5);
 });
 
 test('a corpus file with R1 unlike its arc imports and reaches its recorded end', async context => {

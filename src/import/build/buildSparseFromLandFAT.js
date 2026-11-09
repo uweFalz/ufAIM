@@ -21,6 +21,9 @@ import {
 	poseFromTwoPoints,
 } from "../../lib/geom/frame/pose2.js";
 
+// the one answer to "same curvature at a junction?" that the solver's reader gives too
+import { sameJunctionCurvature } from "../../domain/optimization/alignment/CurvatureJunction.js";
+
 // -----------------------------------------------------------------------------
 // public
 // -----------------------------------------------------------------------------
@@ -97,10 +100,6 @@ export function buildSparseFromLandFAT(fatAlignment) {
 // TRA-like radii are signed engineering radii (positive turns right). Keep
 // this source contract local to the adapter; LandXML remains neighbor-driven.
 
-// Two curvatures this close are the same curvature - the bound the solver's
-// reader (traAlignment.js) uses at the same junctions.
-const JUNCTION_TOLERANCE = 1e-9;
-
 function isTraLikeSpiral(seg) {
 	return seg?.type === "Spiral" &&
 		seg.extras?.sourceSemantics?.formatClass === "tra-like" &&
@@ -139,7 +138,7 @@ function junctionHolders(seg, index, sourceElements, side, poseA) {
 	const own = curvatureOfRadius(start ? seg.radiusStart : seg.radiusEnd);
 	const neighbourIndex = start ? index - 1 : index + 1;
 	const neighbour = boundaryCurvature(sourceElements[neighbourIndex], start);
-	if (own === null || neighbour === null || Math.abs(own - neighbour) <= JUNCTION_TOLERANCE) return [];
+	if (own === null || neighbour === null || sameJunctionCurvature(own, neighbour)) return [];
 
 	return [sw.zeroFixed({
 		poseA: poseA ?? resolvePoseA(sourceElements[neighbourIndex], neighbourIndex),
@@ -175,7 +174,7 @@ function bindTraLikeEndpointCurvatures(elements, sourceElements) {
 			}
 			const inserted = neighbor.meta?.insertedBy === "enforceAlternation" && neighbor.arcLength === 0;
 			const previous = inserted ? boundHolders.get(neighbor) : neighbor.curvature;
-			if (previous !== undefined && Math.abs(previous - curvature) > JUNCTION_TOLERANCE) {
+			if (previous !== undefined && !sameJunctionCurvature(previous, curvature)) {
 				throw new Error(`seg[${sourceIndex}]: inconsistent TRA-like ${field} curvature`);
 			}
 			if (inserted) {
