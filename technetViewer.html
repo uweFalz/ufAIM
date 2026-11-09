@@ -42077,9 +42077,12 @@ xlsx/xlsx.mjs:
 				const stops = [xMin, ...kms.filter((km) => km > xMin && km < xMax), xMax];
 				const folds = [];
 				let realSpan = 0;
+				// A zoomed window is the reader's own scale: nothing is folded there
+				// (Billwerder Achse 1150: one Weiche in 800 m stood on two folds, the
+				// rest of the band blank).
 				for (let index = 0; index + 1 < stops.length; index += 1) {
 					const span = stops[index + 1] - stops[index];
-					if (span > SPURPLAN_GAP_M) folds.push({ from: stops[index], to: stops[index + 1] });
+					if (span > SPURPLAN_GAP_M && options.fold !== false) folds.push({ from: stops[index], to: stops[index + 1] });
 					else realSpan += span;
 				}
 				const foldWidth = Math.min(SPURPLAN_FOLD_PX, plotWidth / Math.max(stops.length - 1, 1));
@@ -45595,8 +45598,10 @@ xlsx/xlsx.mjs:
 					const distance = Math.hypot(point.easting - (a.easting + t * dx), point.northing - (a.northing + t * dy));
 					if (!best || distance < best.distance) {
 						// side: +1 left of the polyline's direction, -1 right (cross product).
+						// run: the Lauflänge there (referenceStationPolyline); atEnd: the
+						// point lies beyond either end, the foot is the end itself.
 						const cross = dx * (point.northing - a.northing) - dy * (point.easting - a.easting);
-						best = { distance, station: a.station + t * (b.station - a.station), side: cross >= 0 ? 1 : -1 };
+						best = { distance, station: a.station + t * (b.station - a.station), run: (a.run ?? 0) + t * ((b.run ?? 0) - (a.run ?? 0)), side: cross >= 0 ? 1 : -1, atEnd: (index === 0 && t === 0) || (index === polyline.length - 2 && t === 1) };
 					}
 				}
 				return best;
@@ -45806,6 +45811,45 @@ xlsx/xlsx.mjs:
 				const sign = slope < 0 ? -1 : 1;
 				return along.map((value) => km0 + sign * value);
 			}
+			// A Weiche's leg ends at the next node of the graph; where that is a
+			// seam of the data (Naht between two Gleise of one Gleisstrang, a
+			// Gleis's Fortsetzung into the next Gleis, a Knick), the leg's target
+			// is the Knoten beyond it: WueTreu W 38 reaches W 37 across the seam
+			// of Strecke 5209 and 5910. A loop or a dead seam stops the walk.
+			function gndLegTarget(other, edge, edgesAt) {
+				let node = other;
+				let via = edge;
+				const seen = new Set([edge]);
+				while (node && node.knotenTyp == null && (edgesAt.get(node) ?? []).length === 2) {
+					const next = (edgesAt.get(node) ?? []).find((candidate) => candidate !== via);
+					if (!next || seen.has(next)) break;
+					seen.add(next);
+					via = next;
+					node = next.from === node ? next.to : next.from;
+				}
+				return node;
+			}
+			// Whether a Bauart's Stamm runs straight, so a leg's own bend tells
+			// Stamm from Zweig against the declared Zweigradius: EW, and the halves
+			// of a DKW or EKW (each a Weiche whose straight leg crosses the
+			// Kreuzung), unless the text puts the Weiche into an Übergangsbogen
+			// ("iU", "i.U.", "tlw. i.UB"). ABW, IBW and DBKW bend their Stamm.
+			function gndStraightStamm(bauartInfo, text) {
+				const form = bauartInfo?.form ?? null;
+				if (![null, "EW", "DKW", "EKW"].includes(form)) return false;
+				return !/i\.?U\b|i\.U\.|iU\b|zTiU|i\.UB/i.test(text ?? "");
+			}
+			// One leg against the Bauart's Zweigradius: its chord-to-tangent bend
+			// gives r = length / (2 · angle); within 25 % of the declared radius it
+			// is the Zweig, beyond twice the radius it is straight enough for the
+			// Stamm, in between nothing is said.
+			function gndLegByRadius(leg, declared) {
+				if (!leg || !(declared > 0)) return null;
+				const measured = leg.length > 0 && Math.abs(leg.deviation) > 1e-6 ? leg.length / (2 * Math.abs(leg.deviation)) : Infinity;
+				if (Math.abs(measured - declared) / declared <= 0.25) return "zweig";
+				if (measured > 2 * declared) return "stamm";
+				return null;
+			}
 			// END GND TOPOLOGY
 			const gndTableCache = new WeakMap();
 			function gndTableRows(loaded, name) {
@@ -45823,10 +45867,25 @@ xlsx/xlsx.mjs:
 				const edges = [];
 				const covered = new Set();
 				const summary = { files: 0, strands: 0, strandsWithoutGleis: 0, samePoint: 0 };
-				const unitAt = (entry, stationValue, sign) => {
+				// Every Knoten of the data by its key, with the label it goes by --
+				// the Outbox names a Weiche's neighbours without Lage through it.
+				const knotenLabels = new Map();
+				// Along a Gleis the topology measures by run (Lauflänge, see
+				// referenceStationPolyline); the data's station at a run is kept on
+				// arms and edges for what reads the Gleis's own frame (GWB speeds).
+				const stationOfRun = (polyline, run) => {
+					let index = polyline.findIndex((point) => point.run >= run);
+					if (index < 0) return polyline[polyline.length - 1]?.station ?? null;
+					if (index === 0) return polyline[0].station;
+					const p = polyline[index - 1];
+					const q = polyline[index];
+					const t = q.run > p.run ? (run - p.run) / (q.run - p.run) : 0;
+					return p.station + t * (q.station - p.station);
+				};
+				const unitAt = (entry, run, sign) => {
 					const polyline = polylineOf(entry);
 					if (polyline.length < 2) return { x: 1, y: 0 };
-					let index = polyline.findIndex((point) => point.station >= stationValue);
+					let index = polyline.findIndex((point) => point.run >= run);
 					if (index < 0) index = polyline.length - 1;
 					index = Math.max(1, index);
 					const p = polyline[index - 1];
@@ -45859,19 +45918,19 @@ xlsx/xlsx.mjs:
 							if (!elementOf.has(`${b}|${a}`)) elementOf.set(`${b}|${a}`, { entry, index, forward: false });
 						});
 					}
-					// Station of an element's start or end in its Gleis's own frame, the
-					// one referenceStationPolyline() uses. Where the element list and
-					// the point chain differ in length the point is projected instead.
-					const stationAt = (entry, index, atEnd, pad) => {
+					// Run of an element's start or end on its Gleis's polyline. Where the
+					// element list and the point chain differ in length, or the element
+					// has no points of its own (a Knick), the point is projected instead.
+					const runAt = (entry, index, atEnd, pad) => {
 						const elements = entry.item.payload.coordGeom.elements;
 						const sequence = gndSequenceForEntry(entry);
+						const polyline = polylineOf(entry);
 						if (elements.length === (sequence?.edgeChain ?? []).length) {
-							const element = elements[index];
-							const start = stationScalar(element?.extras?.externalStation ?? element?.staStart);
-							if (Number.isFinite(start)) return atEnd ? start + Math.abs(numberValue(element.length)) : start;
+							const own = polyline.filter((point) => point.element === index);
+							if (own.length) return atEnd ? own[own.length - 1].run : own[0].run;
 						}
 						const point = coordinates.get(pad)?.get(gndKey(sequence?.lsys));
-						return point ? distanceAndStationOnPolyline(polylineOf(entry), point)?.station ?? null : null;
+						return point ? distanceAndStationOnPolyline(polyline, point)?.run ?? null : null;
 					};
 					const pointAt = (entry, index, atEnd, pad) => {
 						const element = entry.item.payload.coordGeom.elements[index];
@@ -45909,6 +45968,7 @@ xlsx/xlsx.mjs:
 						node.bauart = gndKey(row.KNBE) || null;
 						node.pad = pad;
 						node.coordinates = coordinates.get(node.pad) ?? null;
+						if (!knotenLabels.has(key)) knotenLabels.set(key, gndKnotenLabel(node) ?? (node.knotenTyp === 2 ? `Gleisende ${node.knotenName}` : node.knotenTyp === 3 ? `Fortsetzung ${node.knotenName}` : node.knotenName));
 						// KN0..KN3: the neighbouring Knoten, in the data's order.
 						node.neighbours = ["KN0", "KN1", "KN2", "KN3"].map((column) => gndKey(row[column]) || null);
 					}
@@ -45933,9 +45993,9 @@ xlsx/xlsx.mjs:
 						const number = gndKey(row.LIRA_GLSNR) || gndKey(row.GLEISNR) || gndKey(row.STRECKE);
 						const strand = { strecke: gndKey(row.STRECKE), strRikz, text: gndKey(row.GTEXT) || null, name: ["4", "5"].includes(strRikz) && number && number !== "0" ? `Gleis ${number}` : null };
 						portions.forEach((portion, index) => {
-							let stationFrom = stationAt(portion.entry, portion.firstIndex, !portion.forward, portion.fromPad);
-							let stationTo = stationAt(portion.entry, portion.lastIndex, portion.forward, portion.toPad);
-							if (stationFrom == null || stationTo == null) return;
+							let runFrom = runAt(portion.entry, portion.firstIndex, !portion.forward, portion.fromPad);
+							let runTo = runAt(portion.entry, portion.lastIndex, portion.forward, portion.toPad);
+							if (runFrom == null || runTo == null) return;
 							const fromPoint = pointAt(portion.entry, portion.firstIndex, !portion.forward, portion.fromPad);
 							const toPoint = pointAt(portion.entry, portion.lastIndex, portion.forward, portion.toPad);
 							const lsys = gndKey(gndSequenceForEntry(portion.entry)?.lsys);
@@ -45949,18 +46009,19 @@ xlsx/xlsx.mjs:
 								node.point = own ?? fallback;
 							}
 							// The strand's elements are whole; the edge ends where the Knoten's
-							// own point meets the Gleis (gndKnotenStation).
+							// own point meets the Gleis (gndKnotenStation, by run).
 							const polyline = polylineOf(portion.entry);
-							const [boundaryFrom, boundaryTo] = [stationFrom, stationTo];
-							const knotenStation = (node, boundary) => {
+							const [boundaryFrom, boundaryTo] = [runFrom, runTo];
+							const knotenRun = (node, boundary) => {
 								const own = node.pad ? coordinates.get(node.pad)?.get(lsys) : null;
-								return own ? gndKnotenStation(boundary, distanceAndStationOnPolyline(polyline, own), boundaryFrom, boundaryTo, TOPOLOGY_TOLERANCE_M) : boundary;
+								const hit = own ? distanceAndStationOnPolyline(polyline, own) : null;
+								return hit ? gndKnotenStation(boundary, { distance: hit.distance, station: hit.run }, boundaryFrom, boundaryTo, TOPOLOGY_TOLERANCE_M) : boundary;
 							};
-							const refinedFrom = knotenStation(from, stationFrom);
-							const refinedTo = knotenStation(to, stationTo);
-							if (Math.abs(refinedTo - refinedFrom) >= TOPOLOGY_TOLERANCE_M || Math.abs(stationTo - stationFrom) < TOPOLOGY_TOLERANCE_M) {
-								stationFrom = refinedFrom;
-								stationTo = refinedTo;
+							const refinedFrom = knotenRun(from, runFrom);
+							const refinedTo = knotenRun(to, runTo);
+							if (Math.abs(refinedTo - refinedFrom) >= TOPOLOGY_TOLERANCE_M || Math.abs(runTo - runFrom) < TOPOLOGY_TOLERANCE_M) {
+								runFrom = refinedFrom;
+								runTo = refinedTo;
 							} else {
 								// Two Weichen Spitze an Spitze share one point in the data
 								// (WueTreu W 125/W 126: PAD 41251 and 41261 at one place, the
@@ -45971,11 +46032,10 @@ xlsx/xlsx.mjs:
 								from.samePoint ??= to;
 								to.samePoint ??= from;
 							}
-							const direction = stationTo >= stationFrom ? 1 : -1;
-							const startStation = polyline[0]?.station;
-							from.arms.push({ entry: portion.entry, station: stationFrom, atStart: Math.abs(stationFrom - startStation) < 1e-6, away: unitAt(portion.entry, stationFrom, direction) });
-							to.arms.push({ entry: portion.entry, station: stationTo, atStart: Math.abs(stationTo - startStation) < 1e-6, away: unitAt(portion.entry, stationTo, -direction) });
-							edges.push({ id: -1, entry: portion.entry, from, to, stationFrom, stationTo, part: "", source: "daten", strand, name: strand.name });
+							const direction = runTo >= runFrom ? 1 : -1;
+							from.arms.push({ entry: portion.entry, station: stationOfRun(polyline, runFrom), run: runFrom, atStart: runFrom < 1e-6, away: unitAt(portion.entry, runFrom, direction) });
+							to.arms.push({ entry: portion.entry, station: stationOfRun(polyline, runTo), run: runTo, atStart: runTo < 1e-6, away: unitAt(portion.entry, runTo, -direction) });
+							edges.push({ id: -1, entry: portion.entry, from, to, stationFrom: stationOfRun(polyline, runFrom), stationTo: stationOfRun(polyline, runTo), runFrom, runTo, part: "", source: "daten", strand, name: strand.name });
 							covered.add(portion.entry);
 						});
 					}
@@ -45998,21 +46058,21 @@ xlsx/xlsx.mjs:
 				for (const [entry, own] of groupBy(edges, (edge) => edge.entry)) {
 					const polyline = polylineOf(entry);
 					if (polyline.length < 2) continue;
-					const spans = own.map((edge) => edge.stationFrom <= edge.stationTo ? { low: edge.stationFrom, high: edge.stationTo, lowNode: edge.from, highNode: edge.to } : { low: edge.stationTo, high: edge.stationFrom, lowNode: edge.to, highNode: edge.from }).sort((a, b) => a.low - b.low);
+					const spans = own.map((edge) => edge.runFrom <= edge.runTo ? { low: edge.runFrom, high: edge.runTo, lowNode: edge.from, highNode: edge.to } : { low: edge.runTo, high: edge.runFrom, lowNode: edge.to, highNode: edge.from }).sort((a, b) => a.low - b.low);
 					const first = polyline[0];
 					const last = polyline[polyline.length - 1];
-					const rest = (fromNode, fromStation, toNode, toStation) => {
-						fromNode.arms.push({ entry, station: fromStation, atStart: Math.abs(fromStation - first.station) < 1e-6, away: unitAt(entry, fromStation, 1) });
-						toNode.arms.push({ entry, station: toStation, atStart: false, away: unitAt(entry, toStation, -1) });
-						edges.push({ id: -1, entry, from: fromNode, to: toNode, stationFrom: fromStation, stationTo: toStation, part: "", source: "rest" });
+					const rest = (fromNode, fromRun, toNode, toRun) => {
+						fromNode.arms.push({ entry, station: stationOfRun(polyline, fromRun), run: fromRun, atStart: fromRun < 1e-6, away: unitAt(entry, fromRun, 1) });
+						toNode.arms.push({ entry, station: stationOfRun(polyline, toRun), run: toRun, atStart: false, away: unitAt(entry, toRun, -1) });
+						edges.push({ id: -1, entry, from: fromNode, to: toNode, stationFrom: stationOfRun(polyline, fromRun), stationTo: stationOfRun(polyline, toRun), runFrom: fromRun, runTo: toRun, part: "", source: "rest" });
 					};
-					if (spans[0].low - first.station > 1) rest(restEndAt(first), first.station, spans[0].lowNode, spans[0].low);
+					if (spans[0].low - first.run > 1) rest(restEndAt(first), first.run, spans[0].lowNode, spans[0].low);
 					let reached = spans[0];
 					for (const span of spans.slice(1)) {
 						if (span.low - reached.high > 1) rest(reached.highNode, reached.high, span.lowNode, span.low);
 						if (span.high > reached.high) reached = span;
 					}
-					if (last.station - reached.high > 1) rest(reached.highNode, reached.high, restEndAt(last), last.station);
+					if (last.run - reached.high > 1) rest(reached.highNode, reached.high, restEndAt(last), last.run);
 				}
 				// A Knoten no Gleisstrang with a Lage reaches has no place in the plan
 				// by itself; it may still name a Weiche the geometry finds (see
@@ -46034,17 +46094,19 @@ xlsx/xlsx.mjs:
 					if (node.knotenTyp != null) {
 						node.gap = 0;
 						for (const entry of new Set(node.arms.map((arm) => arm.entry))) {
-							const distance = distanceAndStationOnPolyline(polylineOf(entry), node.point)?.distance;
-							if (distance != null && distance > node.gap) { node.gap = distance; node.gapEntry = entry; }
+							const hit = distanceAndStationOnPolyline(polylineOf(entry), node.point);
+							// gapAtEnd: the Gleis's Lage stops short of the Knoten (Eifel
+							// W 130B: Gleis 46 ends 451 m before it) rather than passing beside it.
+							if (hit && hit.distance > node.gap) { node.gap = hit.distance; node.gapEntry = entry; node.gapAtEnd = Boolean(hit.atEnd); }
 						}
 					}
 				}
 				// "2/5": the Gleis's second Gleisstrang of five, in station order.
 				for (const [, own] of groupBy(edges, (edge) => edge.entry)) {
 					if (own.length < 2) continue;
-					own.sort((a, b) => Math.min(a.stationFrom, a.stationTo) - Math.min(b.stationFrom, b.stationTo)).forEach((edge, index) => { edge.part = `${index + 1}/${own.length}`; });
+					own.sort((a, b) => Math.min(a.runFrom, a.runTo) - Math.min(b.runFrom, b.runTo)).forEach((edge, index) => { edge.part = `${index + 1}/${own.length}`; });
 				}
-				return { nodes: placed, edges, covered, summary, unplaced };
+				return { nodes: placed, edges, covered, summary, unplaced, knotenLabels };
 			}
 			// The name a Weiche or Kreuzung goes by: from the data's Knoten, else
 			// from a Gleis named after it (VermEsn: W403-404, DKW503, EKW410).
@@ -46062,7 +46124,7 @@ xlsx/xlsx.mjs:
 			function legLabelOf(leg) {
 				const name = leg.edge.name ?? objectDisplayName(leg.entry);
 				if (!gndUnnumbered(name)) return name;
-				return `→ ${leg.other?.label ?? leg.other?.kind ?? name}`;
+				return `→ ${leg.target?.label ?? leg.other?.label ?? leg.other?.kind ?? name}`;
 			}
 
 			function junctionLabelOf(node) {
@@ -46116,7 +46178,7 @@ xlsx/xlsx.mjs:
 					for (const [end, atStart] of [[ends.start, true], [ends.end, false]]) {
 						const node = nodeFor(end);
 						const [p, q] = atStart ? [polyline[0], polyline[1]] : [polyline[polyline.length - 1], polyline[polyline.length - 2]];
-						node.arms.push({ entry: gleis, atStart, station: p.station, away: unit(p, q) });
+						node.arms.push({ entry: gleis, atStart, station: p.station, run: p.run, away: unit(p, q) });
 						for (const other of computed) {
 							if (other === gleis) continue;
 							const otherEnds = alignmentEndpoints(other);
@@ -46124,7 +46186,7 @@ xlsx/xlsx.mjs:
 							const hit = distanceAndStationOnPolyline(polylineOf(other), end);
 							if (!hit || hit.distance > TOPOLOGY_TOLERANCE_M) continue;
 							if (!cuts.has(other)) cuts.set(other, []);
-							if (!cuts.get(other).some((cut) => cut.node === node)) cuts.get(other).push({ station: hit.station, node });
+							if (!cuts.get(other).some((cut) => cut.node === node)) cuts.get(other).push({ station: hit.station, run: hit.run, node });
 						}
 					}
 				}
@@ -46136,15 +46198,15 @@ xlsx/xlsx.mjs:
 					if (polyline.length < 2) continue;
 					const ends = alignmentEndpoints(gleis);
 					const stops = [
-						{ station: polyline[0].station, node: nodeFor(ends.start) },
-						...(cuts.get(gleis) ?? []).sort((a, b) => a.station - b.station),
-						{ station: polyline[polyline.length - 1].station, node: nodeFor(ends.end) },
+						{ station: polyline[0].station, run: polyline[0].run, node: nodeFor(ends.start) },
+						...(cuts.get(gleis) ?? []).sort((a, b) => a.run - b.run),
+						{ station: polyline[polyline.length - 1].station, run: polyline[polyline.length - 1].run, node: nodeFor(ends.end) },
 					];
 					for (let index = 0; index + 1 < stops.length; index += 1) {
-						edges.push({ id: edges.length, entry: gleis, from: stops[index].node, to: stops[index + 1].node, stationFrom: stops[index].station, stationTo: stops[index + 1].station, part: stops.length > 2 ? `${index + 1}/${stops.length - 1}` : "" });
+						edges.push({ id: edges.length, entry: gleis, from: stops[index].node, to: stops[index + 1].node, stationFrom: stops[index].station, stationTo: stops[index + 1].station, runFrom: stops[index].run, runTo: stops[index + 1].run, part: stops.length > 2 ? `${index + 1}/${stops.length - 1}` : "" });
 					}
 					for (const cut of cuts.get(gleis) ?? []) {
-						const index = Math.max(1, polyline.findIndex((point) => point.station >= cut.station));
+						const index = Math.max(1, polyline.findIndex((point) => point.run >= cut.run));
 						const dir = unit(polyline[index - 1], polyline[index]);
 						cut.node.arms.push({ entry: gleis, through: true, station: cut.station, away: dir }, { entry: gleis, through: true, station: cut.station, away: { x: -dir.x, y: -dir.y } });
 					}
@@ -46282,13 +46344,13 @@ xlsx/xlsx.mjs:
 					const axisIndex = edge.from.axis ?? edge.to.axis;
 					if (axisIndex == null) continue;
 					const polyline = polylineOf(edge.entry);
-					const low = Math.min(edge.stationFrom, edge.stationTo);
-					const high = Math.max(edge.stationFrom, edge.stationTo);
+					const low = Math.min(edge.runFrom, edge.runTo);
+					const high = Math.max(edge.runFrom, edge.runTo);
 					if (polyline.length < 2 || high - low < 1) continue;
 					const samples = [];
 					for (const fraction of [0.2, 0.35, 0.5, 0.65, 0.8]) {
 						const target = low + fraction * (high - low);
-						let index = polyline.findIndex((point) => point.station >= target);
+						let index = polyline.findIndex((point) => point.run >= target);
 						if (index < 0) index = polyline.length - 1;
 						const offset = offsetAt(axisIndex, polyline[index]);
 						if (offset != null) samples.push(offset);
@@ -46324,36 +46386,39 @@ xlsx/xlsx.mjs:
 				// geometry of its three legs, 25 m along each; the Bauart's radius
 				// is the second witness for the Zweig.
 				const legLength = 25;
+				const edgesAt = new Map();
+				for (const edge of edges) {
+					for (const node of [edge.from, edge.to]) {
+						if (!edgesAt.has(node)) edgesAt.set(node, []);
+						edgesAt.get(node).push(edge);
+					}
+				}
 				for (const node of placed) {
 					if (node.knotenTyp !== 1 || node.kind !== "Weiche") continue;
 					const legs = [];
-					for (const edge of edges) {
-						if (edge.from !== node && edge.to !== node) continue;
+					for (const edge of edgesAt.get(node) ?? []) {
 						const atFrom = edge.from === node;
-						const stationHere = atFrom ? edge.stationFrom : edge.stationTo;
-						const stationThere = atFrom ? edge.stationTo : edge.stationFrom;
+						const runHere = atFrom ? edge.runFrom : edge.runTo;
+						const runThere = atFrom ? edge.runTo : edge.runFrom;
 						const polyline = polylineOf(edge.entry);
 						// The leg follows the Gleis for 25 m, past a near neighbour too
 						// (WueTreu W 208 and W 209 are 4.8 m apart on Strecke 5321): the
 						// Gleis's own geometry gives the tangent and the bend.
 						const length = legLength;
-						if (polyline.length < 2 || Math.abs(stationThere - stationHere) < TOPOLOGY_TOLERANCE_M) continue;
+						if (polyline.length < 2 || Math.abs(runThere - runHere) < TOPOLOGY_TOLERANCE_M) continue;
 						// Tangent and chord in the leg's own direction (a Streckengleis
 						// has two legs at one Weiche, one each way). The point of the
-						// Weiche is found by nearest station, the sample by walking the
-						// polyline -- stations of a GND Gleis jump at a Kilometersprung,
-						// so they are no index.
-						const forwardLeg = stationThere >= stationHere;
-						// Nearest station, and where a Kilometersprung repeats a station,
-						// the occurrence nearest the Knoten's point.
+						// Weiche is found by run; a seam repeats a run at two indices,
+						// there the point nearer the Knoten's own point wins.
+						const forwardLeg = runThere >= runHere;
 						let here = 0;
 						let bestGap = Infinity;
 						for (let index = 0; index < polyline.length; index += 1) {
-							const gap = Math.abs(polyline[index].station - stationHere);
-							if (gap > bestGap + 1 || gap > 1 && gap >= bestGap) continue;
+							const gap = Math.abs(polyline[index].run - runHere);
+							if (gap > bestGap + 1e-6) continue;
 							const near = Math.hypot(polyline[index].easting - node.point.easting, polyline[index].northing - node.point.northing);
 							const nearBest = Math.hypot(polyline[here].easting - node.point.easting, polyline[here].northing - node.point.northing);
-							if (gap < bestGap - 1 || near < nearBest) { here = index; bestGap = Math.min(bestGap, gap); }
+							if (gap < bestGap - 1e-6 || near < nearBest) { here = index; bestGap = gap; }
 						}
 						const step = forwardLeg ? 1 : -1;
 						// Element seams repeat a point; the tangent needs a real step.
@@ -46375,7 +46440,9 @@ xlsx/xlsx.mjs:
 						const dy = sample.northing - polyline[here].northing;
 						const chord = Math.hypot(dx, dy) || 1;
 						const deviation = Math.atan2(away.x * dy / chord - away.y * dx / chord, away.x * dx / chord + away.y * dy / chord);
-						legs.push({ edge, entry: edge.entry, other: atFrom ? edge.to : edge.from, away, deviation, length: chord, sample: { easting: sample.easting, northing: sample.northing } });
+						const other = atFrom ? edge.to : edge.from;
+						// target: the Knoten the leg reaches, seams of the data crossed (gndLegTarget).
+						legs.push({ edge, entry: edge.entry, other, target: gndLegTarget(other, edge, edgesAt), away, deviation, length: chord, sample: { easting: sample.easting, northing: sample.northing } });
 					}
 					// Two Strecken on one track (WueTreu: 5321 and 5902 through Treuchtlingen)
 					// give a Weiche the same leg twice, one per Streckengleis: same
@@ -46383,8 +46450,9 @@ xlsx/xlsx.mjs:
 					// not that -- an EW 1200 puts its Zweig only 0.26 m beside the Stamm
 					// at 25 m, but bends it by 0.010. One leg per track, the one with the
 					// Knoten the data names as a neighbour (KN0..KN3), else the nearer.
-					const named = (leg) => node.neighbours?.includes(leg.other?.knoten) ? 0 : 1;
-					legs.sort((a, b) => named(a) - named(b) || Math.abs(a.edge.stationTo - a.edge.stationFrom) - Math.abs(b.edge.stationTo - b.edge.stationFrom));
+					const targetKey = (leg) => leg.target?.knoten ?? null;
+					const named = (leg) => node.neighbours?.includes(targetKey(leg)) ? 0 : 1;
+					legs.sort((a, b) => named(a) - named(b) || Math.abs(a.edge.runTo - a.edge.runFrom) - Math.abs(b.edge.runTo - b.edge.runFrom));
 					const distinct = [];
 					for (const leg of legs) {
 						if (distinct.some((kept) => Math.abs(kept.deviation - leg.deviation) < 0.001 && Math.hypot(kept.sample.easting - leg.sample.easting, kept.sample.northing - leg.sample.northing) < 0.3)) continue;
@@ -46395,36 +46463,44 @@ xlsx/xlsx.mjs:
 					node.roles = weichenRoles(distinct);
 					// The data's own word on the Spitze: KN0 of Satzart 31 is the
 					// neighbour at the Spitze (Lüneburg 165 of 165, Eifel 123 of 123,
-					// WueTreu 424 of 426 Weichen with roles from the Lage; KN1/KN2
+					// WueTreu 432 of 432 Weichen with roles from the Lage; KN1/KN2
 					// are Stamm and Zweig in no fixed order). So the Lage's Spitze is
 					// checked against KN0, and a Weiche at the edge of the delivery,
 					// without three legs with Lage, still gets its Spitze from the
-					// data -- and, with one more leg and a straight Bauart, the
-					// Bauart's radius decides whether that leg is Zweig or Stamm.
+					// data. A leg that reaches KN1 or KN2 is Stamm or Zweig; which
+					// one, the Bauart's Zweigradius says where the Stamm runs straight
+					// (gndStraightStamm, gndLegByRadius) -- EW, and the halves of a
+					// DKW or EKW (Lüneburg G_87B: the straight leg across the
+					// Kreuzung to G_87D is its Stamm).
 					node.spitzeData = node.neighbours?.[0] ?? null;
 					node.spitzeCheck = null;
-					if (node.spitzeData) {
-						const dataLeg = legs.find((leg) => leg.other?.knoten === node.spitzeData) ?? null;
-						if (node.roles.spitze) node.spitzeCheck = node.roles.spitze.other?.knoten === node.spitzeData ? "belegt" : dataLeg ? "abweichend" : "offen";
-						else if (dataLeg) {
-							const rest = distinct.filter((leg) => leg !== dataLeg);
+					if (node.neighbours?.some(Boolean)) {
+						const dataLeg = node.spitzeData ? legs.find((leg) => targetKey(leg) === node.spitzeData) ?? null : null;
+						if (node.roles.spitze) node.spitzeCheck = !node.spitzeData ? null : targetKey(node.roles.spitze) === node.spitzeData ? "belegt" : dataLeg ? "abweichend" : "offen";
+						else {
+							// Only a leg the data lists as a neighbour other than KN0 is
+							// Stamm or Zweig for sure; one ending where the Lage stops
+							// could still be the Spitze's. Without a KN0 (Lüneburg W 2108)
+							// the Stamm may still be told, the Spitze stays open.
+							const others = node.neighbours.slice(1).filter(Boolean);
+							const rest = distinct.filter((leg) => leg !== dataLeg && others.includes(targetKey(leg)));
+							const declared = node.bauartInfo?.radius;
+							const byRadius = (leg) => declared && gndStraightStamm(node.bauartInfo, node.bauart) ? gndLegByRadius(leg, declared) : null;
 							let stamm = null;
 							let zweig = null;
-							const declared = node.bauartInfo?.radius;
-							if (declared && (node.bauartInfo?.form ?? "EW") === "EW") {
-								const measuredOf = (leg) => leg.length > 0 && Math.abs(leg.deviation) > 1e-6 ? leg.length / (2 * Math.abs(leg.deviation)) : Infinity;
-								const matching = rest.filter((leg) => Math.abs(measuredOf(leg) - declared) / declared <= 0.25);
-								const straight = rest.filter((leg) => measuredOf(leg) > 2 * declared);
-								if (rest.length === 1) {
-									if (matching.length) zweig = rest[0];
-									else if (straight.length) stamm = rest[0];
-								} else if (rest.length === 2 && matching.length === 1 && straight.length === 1 && matching[0] !== straight[0]) {
-									zweig = matching[0];
-									stamm = straight[0];
-								}
+							if (rest.length === 1) {
+								const kind = byRadius(rest[0]);
+								if (kind === "zweig") zweig = rest[0];
+								else if (kind === "stamm") stamm = rest[0];
+							} else if (rest.length === 2) {
+								const kinds = rest.map(byRadius);
+								if (kinds[0] === "zweig" && kinds[1] === "stamm") [zweig, stamm] = rest;
+								else if (kinds[0] === "stamm" && kinds[1] === "zweig") [stamm, zweig] = rest;
 							}
-							node.roles = { spitze: dataLeg, stamm, zweig, side: stamm && zweig ? null : zweig ? (zweig.deviation > 0 ? "links" : "rechts") : null, radius: null, certain: true, fromData: true, kreuzung: /KW$/.test(node.bauartInfo?.form ?? "") };
-							node.spitzeCheck = "daten";
+							if (dataLeg || stamm || zweig) {
+								node.roles = { spitze: dataLeg, stamm, zweig, side: stamm && zweig ? null : zweig ? (zweig.deviation > 0 ? "links" : "rechts") : null, radius: null, certain: true, fromData: true, kreuzung: /KW$/.test(node.bauartInfo?.form ?? ""), straightStamm: gndStraightStamm(node.bauartInfo, node.bauart) };
+								node.spitzeCheck = node.spitzeData ? "daten" : null;
+							}
 						}
 					}
 					// The Bauart's radius is the Zweig's radius against the Stamm for
@@ -46446,7 +46522,7 @@ xlsx/xlsx.mjs:
 				const spitze = checks.length ? { compared: checks.filter((node) => node.spitzeCheck === "belegt" || node.spitzeCheck === "abweichend").length, belegt: checks.filter((node) => node.spitzeCheck === "belegt").length, abweichend: checks.filter((node) => node.spitzeCheck === "abweichend").length, daten: checks.filter((node) => node.spitzeCheck === "daten").length } : null;
 				const farNodes = nodes.filter((node) => node.far != null);
 				const far = farNodes.length ? { count: farNodes.length, max: Math.max(...farNodes.map((node) => node.far)), open: nodes.filter((node) => node.km == null).length, gruppe: farNodes.filter((node) => node.farVia === "gruppe").length } : null;
-				return { nodes, edges, axes, fromData, far, spitze, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
+				return { nodes, edges, axes, fromData, far, spitze, knotenLabels: data.knotenLabels, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
 			}
 
 			function activateJunctionCluster(junction) {
@@ -46483,17 +46559,45 @@ xlsx/xlsx.mjs:
 						row.className = "outbox-junction-row";
 						// A Knoten of the data is checked against the Lage: its point lies on
 						// its Gleise, or the row says how far off it is.
-						const offGleis = item.gap > TOPOLOGY_TOLERANCE_M ? ` · liegt ${item.gap >= 10 ? Math.round(item.gap) : item.gap.toFixed(1).replace(".", ",")} m neben ${objectDisplayName(item.gapEntry)}` : "";
+						const gapText = item.gap >= 10 ? Math.round(item.gap) : (item.gap ?? 0).toFixed(1).replace(".", ",");
+						const offGleis = item.gap > TOPOLOGY_TOLERANCE_M ? (item.gapAtEnd ? ` · Lage von ${objectDisplayName(item.gapEntry)} endet ${gapText} m vor dem Knoten` : ` · liegt ${gapText} m neben ${objectDisplayName(item.gapEntry)}`) : "";
 						// Spitze, Stamm, Zweig from the Lage; the Zweig's radius against
-						// the Bauart as the second witness.
-						const roles = item.roles?.spitze ? item.roles : null;
+						// the Bauart as the second witness. Without three legs the data
+						// name the Spitze (KN0) and the neighbours no leg with Lage reaches.
+						const roles = item.roles?.spitze || item.roles?.stamm || item.roles?.zweig ? item.roles : null;
 						const legName = (leg) => legLabelOf(leg);
-						const spitzeMark = item.spitzeCheck === "belegt" ? " ✓" : item.spitzeCheck === "abweichend" ? ` · Daten: Spitze → ${topology.nodes.find((candidate) => candidate.knoten === item.spitzeData)?.label ?? item.spitzeData}` : item.spitzeCheck === "daten" ? " (aus den Daten)" : "";
-						const rolesText = roles ? ` · ${roles.side ? `${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"}${roles.certain ? "" : " (unsicher)"} · ` : ""}Spitze ${legName(roles.spitze)}${spitzeMark}${roles.stamm ? ` · Stamm ${legName(roles.stamm)}` : ""}${roles.zweig ? ` · Zweig ${legName(roles.zweig)}` : ""}${!roles.stamm || !roles.zweig ? ` · ${!roles.stamm && !roles.zweig ? "Stamm/Zweig" : !roles.stamm ? "Stamm" : "Zweig"} offen` : ""}${roles.radius ? ` · r ${Math.round(roles.radius)} m${item.radiusCheck === "belegt" ? " ✓" : item.radiusCheck === "abweichend" ? ` statt ${item.bauartInfo.radius}` : ""}` : ""}` : "";
+						// A neighbour the file has no Satzart-31 row for (the next
+						// Betriebsstelle) goes by its name and Betriebsstelle.
+						const nameOf = (key) => topology.knotenLabels?.get(key) ?? topology.nodes.find((candidate) => candidate.knoten === key)?.label ?? (key?.includes(" ") ? `Knoten ${key.split(" ").pop()} (Bst ${key.split(" ")[0]})` : key);
+						const reached = new Set((item.legs ?? []).map((leg) => leg.target?.knoten ?? null));
+						const unreached = [...new Set((item.neighbours ?? []).slice(1).filter((key) => key && !reached.has(key)))];
+						const missingText = roles && (!roles.stamm || !roles.zweig) ? (() => {
+							const role = !roles.stamm && !roles.zweig ? "Stamm/Zweig" : !roles.stamm ? "Stamm" : "Zweig";
+							const fits = role === "Stamm/Zweig" ? unreached.length >= 1 : unreached.length === 1;
+							return fits ? ` · ${role} → ${unreached.map(nameOf).join(", ")} (Daten, ohne Lage)` : ` · ${role} offen`;
+						})() : "";
+						const spitzeMark = item.spitzeCheck === "belegt" ? " ✓" : item.spitzeCheck === "abweichend" ? ` · Daten: Spitze → ${nameOf(item.spitzeData)}` : item.spitzeCheck === "daten" ? " (aus den Daten)" : "";
+						const spitzeText = roles?.spitze ? `Spitze ${legName(roles.spitze)}${spitzeMark}` : item.spitzeData ? `Spitze → ${nameOf(item.spitzeData)} (Daten, ohne Lage)` : "Spitze offen (KN0 fehlt in den Daten)";
+						const rolesText = roles ? ` · ${roles.side ? `${roles.side === "links" ? "Linksweiche" : "Rechtsweiche"}${roles.certain ? "" : " (unsicher)"} · ` : ""}${spitzeText}${roles.stamm ? ` · Stamm ${legName(roles.stamm)}` : ""}${roles.zweig ? ` · Zweig ${legName(roles.zweig)}` : ""}${missingText}${roles.radius ? ` · r ${Math.round(roles.radius)} m${item.radiusCheck === "belegt" ? " ✓" : item.radiusCheck === "abweichend" ? ` statt ${item.bauartInfo.radius}` : ""}` : ""}` : "";
+						// Lage against data: where KN0 cannot be the Spitze by the geometry
+						// (metroB W 2: the two other legs run through in one line, the leg
+						// to KN0 bends like the Bauart's Zweig), the row says so.
+						const witness = (() => {
+							if (item.spitzeCheck !== "abweichend" || !roles?.spitze) return "";
+							const dataLeg = (item.legs ?? []).find((leg) => leg.target?.knoten === item.spitzeData);
+							if (!dataLeg) return "";
+							const rest = [roles.spitze, roles.stamm, roles.zweig].filter((leg) => leg && leg !== dataLeg);
+							const through = rest.length === 2 && rest[0].away.x * rest[1].away.x + rest[0].away.y * rest[1].away.y < -0.5;
+							const measured = dataLeg.length > 0 && Math.abs(dataLeg.deviation) > 1e-6 ? dataLeg.length / (2 * Math.abs(dataLeg.deviation)) : null;
+							const likeZweig = item.bauartInfo?.radius && gndLegByRadius(dataLeg, item.bauartInfo.radius) === "zweig";
+							const lageIndex = item.neighbours?.indexOf(roles.spitze.target?.knoten ?? null) ?? -1;
+							const pair = legName(rest[0]) === legName(rest[1]) ? `die beiden Schenkel auf ${legName(rest[0])}` : `${legName(rest[0])} und ${legName(rest[1])}`;
+							return `\nLage gegen Daten: ${through ? `${pair} laufen in einer Flucht durch den Knoten, dazwischen liegt keine Spitze` : `die Lage sieht die Spitze bei ${legName(roles.spitze)}`}${likeZweig && measured ? `; der Schenkel zu ${nameOf(item.spitzeData)} krümmt sich mit r ≈ ${Math.round(measured)} m wie der Zweig der Bauart (${item.bauartInfo.radius} m)` : ""}${lageIndex > 0 ? ` · in den Daten stehen KN0 und KN${lageIndex} wohl vertauscht` : ""}`;
+						})();
 						const farText = item.far != null ? ` · ${Math.round(item.far)} m neben der Kilometerlinie` : "";
 						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${farText}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${offGleis}`;
 						if (offGleis || item.radiusCheck === "abweichend" || item.spitzeCheck === "abweichend") row.classList.add("outbox-junction-off");
-						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${item.samePoint ? `\nteilt seinen Punkt mit ${item.samePoint.label ?? item.samePoint.knoten} (Spitze an Spitze, PAD ${item.pad} und ${item.samePoint.pad}); die Kante dazwischen liegt nach den Elementen ihres Gleisstrangs` : ""}${item.far != null ? `\n${item.farVia === "gruppe" ? `km längs der eigenen Gleisgruppe, ab dem Lot ihrer Mitte auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (nächste Kilometerlinie)` : `km über das Lot auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (${item.farVia === "nachbar" ? "die Strecke der Nachbarknoten" : "nächste Kilometerlinie"})`}, ${Math.round(item.far)} m daneben` : ""}${roles ? `\n${roles.fromData ? `Spitze aus den Daten (KN0 der Satzart 31)${roles.kreuzung ? `; Stamm und Zweig bei einer ${node_form(item)} nicht aus der Bauart ableitbar` : roles.stamm && roles.zweig ? ", Stamm und Zweig aus den Radien der beiden Schenkel gegen die Bauart" : roles.stamm || roles.zweig ? `, ${roles.zweig ? "Zweig" : "Stamm"} aus dem Radius des einen Schenkels mit Lage gegen die Bauart` : ", Stamm und Zweig ohne Lage"}` : `Spitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${item.spitzeCheck === "belegt" ? "; die Daten (KN0) nennen dieselbe Spitze" : item.spitzeCheck === "abweichend" ? `; die Daten (KN0) nennen ${item.spitzeData} als Spitze` : ""}`}${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}` : item.knotenTyp === 1 ? "\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage" : ""}`;
+						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${item.samePoint ? `\nteilt seinen Punkt mit ${item.samePoint.label ?? item.samePoint.knoten} (Spitze an Spitze, PAD ${item.pad} und ${item.samePoint.pad}); die Kante dazwischen liegt nach den Elementen ihres Gleisstrangs` : ""}${item.far != null ? `\n${item.farVia === "gruppe" ? `km längs der eigenen Gleisgruppe, ab dem Lot ihrer Mitte auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (nächste Kilometerlinie)` : `km über das Lot auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (${item.farVia === "nachbar" ? "die Strecke der Nachbarknoten" : "nächste Kilometerlinie"})`}, ${Math.round(item.far)} m daneben` : ""}${roles ? `\n${roles.fromData ? `${roles.spitze ? "Spitze aus den Daten (KN0 der Satzart 31)" : item.spitzeData ? `Spitze nach den Daten (KN0 der Satzart 31) bei ${nameOf(item.spitzeData)}, ohne Lage` : "Spitze offen: die Daten nennen keinen Nachbarn an KN0"}${roles.stamm && roles.zweig ? ", Stamm und Zweig aus den Radien der beiden Schenkel gegen die Bauart" : roles.stamm || roles.zweig ? `, ${roles.zweig ? "Zweig" : "Stamm"} aus dem Radius des Schenkels mit Lage gegen die Bauart${roles.kreuzung ? ` (${item.bauartInfo?.form}: der gerade Strang kreuzt, der Bogen zweigt ab)` : ""}` : roles.kreuzung && !roles.straightStamm ? `; Stamm und Zweig bei einer ${node_form(item)} im Bogen nicht aus der Bauart ableitbar` : roles.straightStamm === false ? "; Stamm und Zweig bei gebogenem Stamm nicht aus dem Radius ableitbar" : ", Stamm und Zweig ohne Lage oder aus dem Radius nicht entscheidbar"}` : `Spitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${item.spitzeCheck === "belegt" ? "; die Daten (KN0) nennen dieselbe Spitze" : item.spitzeCheck === "abweichend" ? `; die Daten (KN0) nennen ${nameOf(item.spitzeData)} als Spitze` : ""}`}${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}${witness}` : item.knotenTyp === 1 ? `\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage${item.spitzeData ? "" : ", die Daten nennen keinen Nachbarn an KN0"}` : ""}`;
 						if (activeJunction?.node === item) row.classList.add("outbox-junction-active");
 						row.addEventListener("click", () => activateJunctionCluster(junctionFromNode(item)));
 						list.append(row);
@@ -47238,7 +47342,9 @@ xlsx/xlsx.mjs:
 
 			function referenceStationPolyline(alignmentEntry, maximumStep = 10) {
 				const points = [];
-				for (const element of alignmentEntry?.item?.payload?.coordGeom?.elements ?? []) {
+				const elements = alignmentEntry?.item?.payload?.coordGeom?.elements ?? [];
+				for (let elementIndex = 0; elementIndex < elements.length; elementIndex += 1) {
+					const element = elements[elementIndex];
 					const elementStart = stationScalar(element?.extras?.externalStation ?? element.staStart);
 					if (!Number.isFinite(elementStart)) continue;
 					const length = Math.abs(numberValue(element.length));
@@ -47251,7 +47357,15 @@ xlsx/xlsx.mjs:
 					const segments = sampled.length - 1;
 					sampled.forEach((point, index) => {
 						const ratio = segments > 0 ? index / segments : 0;
-						points.push({ easting: point.easting, northing: point.northing, station: elementStart + ratio * length });
+						// run: the Lauflänge from the Gleis's first point, monotone and
+						// unique where the data's station is not -- GND gives the Bogen
+						// elements of a Weiche the Weiche's station (WueTreu Gleis 262:
+						// three 21-m Bögen all at 164,1), an unnumbered Gleis of several
+						// Verbindungen restarts at 0. The topology walks by run, the
+						// Spurplan still shows the station.
+						const last = points[points.length - 1];
+						const run = last ? last.run + Math.hypot(point.easting - last.easting, point.northing - last.northing) : 0;
+						points.push({ easting: point.easting, northing: point.northing, station: elementStart + ratio * length, run, element: elementIndex });
 					});
 				}
 				return points;
@@ -47706,12 +47820,20 @@ xlsx/xlsx.mjs:
 					const zoomed = window.xMin > full.xMin + 1e-6 || window.xMax < full.xMax - 1e-6;
 					const zoomFactor = (full.xMax - full.xMin) / Math.max(window.xMax - window.xMin, 1);
 					const rowPitch = Math.min(64, Math.round(22 * Math.max(1, Math.sqrt(zoomFactor))));
-					// The band is as tall as its nodes and its edges' own rows need.
-					const bandRows = [...nodes.filter((node) => node.row != null).map((node) => node.row), ...topology.edges.filter((edge) => edge.row != null && axis.axes.has(edge.from.axis ?? edge.to.axis)).map((edge) => edge.row)];
+					// The band is as tall as its nodes and its edges' own rows need --
+					// zoomed, only those in the window (Treuchtlingen on Strecke 5310:
+					// the yard's rows beyond the window made a 600-m window 1900 px tall).
+					const inWindow = (node) => !zoomed || (node.km >= window.xMin && node.km <= window.xMax);
+					const edgeInWindow = (edge) => !zoomed || (Math.max(edge.from.km ?? -Infinity, edge.to.km ?? -Infinity) >= window.xMin && Math.min(edge.from.km ?? Infinity, edge.to.km ?? Infinity) <= window.xMax);
+					const bandRows = [...nodes.filter((node) => node.row != null && inWindow(node)).map((node) => node.row), ...topology.edges.filter((edge) => edge.row != null && axis.axes.has(edge.from.axis ?? edge.to.axis) && axis.axes.has(edge.from.axis) && axis.axes.has(edge.to.axis) && edgeInWindow(edge)).map((edge) => edge.row)];
 					const rowsHere = bandRows.length ? [Math.min(...bandRows), Math.max(...bandRows)] : topology.rows;
 					const here = nodes.filter((node) => node.kind === "Weiche" || node.kind === "Kreuzung").length;
 					junctions += here;
-					y += drawFigureTitle(svg, y, axis.label, `km ${kmLabel(window.xMin)} – ${kmLabel(window.xMax)}${zoomed ? ` von ${kmLabel(full.xMin)} – ${kmLabel(full.xMax)} · Ausschnitt, Doppelklick zeigt alles` : ""} · ${nodes.length} Knoten · ${here} Weichen/Kreuzungen`, panelWidth);
+					// Zoomed, the title counts what the window holds (Billwerder Achse
+					// 1150: one Weiche in a 600-m window of a band with 24 Knoten).
+					const shown = zoomed ? nodes.filter((node) => node.km >= window.xMin && node.km <= window.xMax) : nodes;
+					const shownHere = zoomed ? shown.filter((node) => node.kind === "Weiche" || node.kind === "Kreuzung").length : here;
+					y += drawFigureTitle(svg, y, axis.label, `km ${kmLabel(window.xMin)} – ${kmLabel(window.xMax)}${zoomed ? ` von ${kmLabel(full.xMin)} – ${kmLabel(full.xMax)} · Ausschnitt, Doppelklick zeigt alles` : ""} · ${zoomed ? `${shown.length} von ${nodes.length} Knoten · ${shownHere} von ${here}` : `${nodes.length} Knoten · ${here}`} Weichen/Kreuzungen`, panelWidth);
 					y += drawSpurplan(svg, y, topology, window.xMin, window.xMax, selectedEntry, {
 						axes: axis.axes,
 						width: panelWidth,
@@ -47721,6 +47843,7 @@ xlsx/xlsx.mjs:
 						figureKey: axis.label,
 						rowPitch,
 						rows: rowsHere,
+						fold: !zoomed,
 					});
 					y += 10;
 					bands += 1;

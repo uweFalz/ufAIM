@@ -13,8 +13,8 @@ const begin = html.indexOf("// BEGIN GND TOPOLOGY");
 const end = html.indexOf("// END GND TOPOLOGY");
 assert.ok(begin > 0 && end > begin, "topology block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
-const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, gndLegTarget, gndStraightStamm, gndLegByRadius, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
+const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, gndLegTarget, gndStraightStamm, gndLegByRadius, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
 
 test("fixed-width keys: blanks collapse, nothing else changes", () => {
 	assert.equal(gndKey("203695    24"), "203695 24");
@@ -183,4 +183,64 @@ test("a far group keeps its lengths along its own main direction", () => {
 	// a lone Knoten and mismatched input stay as they are
 	assert.deepEqual(gndGroupStations([{ easting: 0, northing: 0 }], [5]), [5]);
 	assert.deepEqual(gndGroupStations([{ easting: 0, northing: 0 }, { easting: 1, northing: 0 }], [5]), [5]);
+});
+
+// A leg's target: across seams of the data (Naht, Fortsetzung without
+// Knoten) to the next Knoten; a Knoten of the data, a Gleisende or a
+// branching node stops the walk, a loop does not run forever.
+test("leg target crosses seams to the next Knoten", () => {
+	const w38 = { knoten: "22532624 38", knotenTyp: 1 };
+	const naht = { knoten: "Naht 5910FA 1006", knotenTyp: null };
+	const naht2 = { knoten: "Naht x", knotenTyp: null };
+	const w37 = { knoten: "22532624 37", knotenTyp: 1 };
+	const ende = { knoten: null, knotenTyp: null };
+	const e1 = { from: w38, to: naht };
+	const e2 = { from: naht, to: naht2 };
+	const e3 = { from: w37, to: naht2 };
+	const edgesAt = new Map([[w38, [e1]], [naht, [e1, e2]], [naht2, [e2, e3]], [w37, [e3]]]);
+	assert.equal(gndLegTarget(naht, e1, edgesAt), w37);
+	assert.equal(gndLegTarget(w37, e3, edgesAt), w37);
+	// A computed Ende (one edge) is its own target; a Fortsetzung of the data (Typ 3) too.
+	assert.equal(gndLegTarget(ende, { from: w38, to: ende }, new Map([[ende, [{}]]])), ende);
+	const typ3 = { knoten: "F", knotenTyp: 3 };
+	assert.equal(gndLegTarget(typ3, e1, new Map([[typ3, [e1, e2]]])), typ3);
+	// A seam branching into three edges is a node of its own.
+	const fork = { knoten: null, knotenTyp: null };
+	assert.equal(gndLegTarget(fork, e1, new Map([[fork, [e1, e2, e3]]])), fork);
+	// A loop of seams ends where it started to repeat.
+	const a = { knotenTyp: null };
+	const b = { knotenTyp: null };
+	const ab = { from: a, to: b };
+	const ba = { from: b, to: a };
+	const start = { from: w38, to: a };
+	assert.ok([a, b].includes(gndLegTarget(a, start, new Map([[a, [start, ab]], [b, [ab, ba]]]))));
+});
+
+test("straight Stamm: EW and the halves of DKW/EKW, not in an Übergangsbogen", () => {
+	assert.equal(gndStraightStamm(gndBauart("EW 49-190-1:9"), "EW 49-190-1:9"), true);
+	assert.equal(gndStraightStamm(gndBauart("54-300-1:9"), "54-300-1:9"), true);
+	assert.equal(gndStraightStamm(gndBauart("DKW 54-190-1:9"), "DKW 54-190-1:9"), true);
+	assert.equal(gndStraightStamm(gndBauart("EKW 54-190-1:9"), "EKW 54-190-1:9"), true);
+	assert.equal(gndStraightStamm(gndBauart("ABW 60-500-1:12"), "ABW 60-500-1:12"), false);
+	assert.equal(gndStraightStamm(gndBauart("IBW 60-760-1:18,5-fb"), "IBW 60-760-1:18,5-fb"), false);
+	assert.equal(gndStraightStamm(gndBauart("DBKW 54-500-1:9 iU"), "DBKW 54-500-1:9 iU"), false);
+	assert.equal(gndStraightStamm(gndBauart("DBKW 49-500-1:9/1:12u.1:9 tlw.i.UB"), "DBKW 49-500-1:9/1:12u.1:9 tlw.i.UB"), false);
+	assert.equal(gndStraightStamm(gndBauart("EW 60-1200-1:18.5 iU"), "EW 60-1200-1:18.5 iU"), false);
+	assert.equal(gndStraightStamm(null, null), true);
+});
+
+test("one leg against the Zweigradius: Zweig within 25 %, Stamm beyond twice the radius", () => {
+	// 25 m along, bend = length / (2 r): r 190 → 0.0658, r 500 → 0.025, straight → 0.
+	const leg = (deviation, length = 25) => ({ deviation, length });
+	assert.equal(gndLegByRadius(leg(0.0658), 190), "zweig");
+	assert.equal(gndLegByRadius(leg(-0.0658), 190), "zweig");
+	assert.equal(gndLegByRadius(leg(0.0391, 25.4), 300), "zweig"); // metroB W 2 → W 1: r 325
+	assert.equal(gndLegByRadius(leg(0), 190), "stamm");
+	assert.equal(gndLegByRadius(leg(0.0004, 25.2), 1200), "stamm"); // r 31 500
+	assert.equal(gndLegByRadius(leg(0.025), 190), "stamm"); // r 500 > 2 · 190
+	assert.equal(gndLegByRadius(leg(0.025), 300), null); // r 500: neither 300 nor straight enough
+	assert.equal(gndLegByRadius(leg(0.0381, 25.2), 190), null); // Lüneburg EKW half: r 331
+	assert.equal(gndLegByRadius(leg(0.0235, 26.6), 190), "stamm"); // r 566 > 380
+	assert.equal(gndLegByRadius(null, 190), null);
+	assert.equal(gndLegByRadius(leg(0), null), null);
 });
