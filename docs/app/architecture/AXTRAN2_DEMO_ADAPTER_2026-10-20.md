@@ -836,3 +836,41 @@ Typ-8-Übergangsbogen (bisher 1e-12, jetzt dieselbe Nahtschranke).
 Klothoide – Bogen R 400, verschiebt R2 im gelesenen Dokument um die halbe
 und die doppelte Schranke und lässt beide Leser darüber: unter der Schranke
 kein Träger, darüber bei beiden einer mit derselben Krümmung.
+
+## Der Löserbefund 4L (2026-11-09, Kern-Go)
+
+Der Befund vom 7. November: auf der erfundenen Bahnhofstrasse lässt der
+Löser bei „Länge gehalten, Radius frei“ am Bogen hinter der Weiche (`4L`)
+den Radius exakt bei 300 stehen und meldet `converged`, obwohl die Größe
+frei ist; an Bogen 6 (`6L`) rechnet er sauber (R 500 → 504). Die Suche:
+finite Differenzen statt analytischer Ableitung – dasselbe Ergebnis; Start
+bei R 310 – der Fit läuft auf exakt 300,000 und bleibt; Start bei R 299 –
+er bleibt bei 298,9997. Das ist kein toter Freiheitsgrad und kein Fehler
+im Löser: **die Entwurfsgrenze hält den Radius.** Das Profil (V 40) trägt
+den absoluten Mindestradius 300 m (EBO § 6 (1), `absoluteMinimumRadius`),
+der Constraint-Builder macht daraus die zweiseitige Schranke |κ| ≤ 1/300
+auf jeder freien Krümmung, und mit der Länge 39,5 m gehalten (wahr 40 m)
+will der Fit enger als 300 – darf aber nicht. Bei R 299 im Start erbt der
+Bogen seinen Radius als Ausnahme (`chooseProfile`, 299·(1−1e-6)) und sitzt
+auf der. Bogen 6 will weiter von der Grenze weg, darum stört ihn nichts.
+
+Richtig gerechnet, aber stumm: nichts im Vorschlag sagte, dass eine freie
+Größe auf einer Schranke sitzt. Jetzt sagt es der Kern:
+
+- `AlignmentSQPSolver` merkt sich, welche erklärten Schranken das Intervall
+  jeder freien Variable geformt haben, und nennt in `diagnostics.activeBounds`
+  die Variablen, die am Ende auf einer Schranke stehen – Seite, Wert,
+  Grenze und die Schranke selbst (`kind` design-limit/element-sequence,
+  `reason` minimum-radius/exception/design/element-sequence, `source`).
+  Angepinnte Variablen (`pinned`) sind die des Aufrufers, keine Grenze.
+- `fit-tra/0.20` trägt `fit.atLimits` (Element, Sätze, Größe als Radius mit
+  dem Vorzeichen der Datei oder Länge, Wert, Grenze, Grund, Quelle),
+  `elements[].atLimit` und `planRecords[].atLimit`.
+- Die Liste (0.10) unterstreicht den Fit-Wert gepunktet und sagt im Titel
+  „An der Grenze: Mindestradius des Entwurfs 300 m – EBO § 6 (1) …“; das
+  Verdikt der App nennt die Sätze an der Grenze.
+
+Geprüft: `4L` → `activeBounds` E2.curvature unten, design-limit,
+minimum-radius, R 300 = Grenze 300, Quelle EBO § 6 (1); `4R=299 4L` →
+exception 298,9997; `6L` → nichts an einer Grenze. Die Konstante der
+Nahtschranke (voriger Abschnitt) bleibt davon unberührt.

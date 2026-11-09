@@ -345,6 +345,11 @@ export function createAlignmentConstraintBuilder({
 			sequenceMinimum: sequence,
 			designMinimum,
 			binding: designMinimum > sequence ? "design" : "element-sequence",
+			// whose number the binding minimum is, where the profile says: the declared
+			// length floor of this element kind; the sequence's own floor has no source but itself
+			source: designMinimum > sequence
+				? built?.declared?.minimumLength?.[kind]?.source ?? built?.source ?? null
+				: null,
 			unit: "m",
 		});
 	});
@@ -370,9 +375,13 @@ export function createAlignmentConstraintBuilder({
 				minimum: -cap,
 				maximum: cap,
 				reason: built?.exceptionFor(id)?.minimumRadius ? "exception" : "minimum-radius",
+				// the source of the limit that speaks: the exception's, the rule-book floor's where it
+				// is the binding radius (EBO § 6 (1), 300 m), else the profile's for the kinematic radius
 				source: built?.exceptionFor(id)?.minimumRadius
 					? built.exceptionFor(id).source
-					: built?.source ?? null,
+					: built?.radiusBinding === "absolute-minimum" && built?.declared?.absoluteMinimumRadius?.source
+						? built.declared.absoluteMinimumRadius.source
+						: built?.source ?? null,
 				unit: "1/m",
 			}));
 		}

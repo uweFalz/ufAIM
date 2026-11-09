@@ -421,3 +421,33 @@ test("a declared type is where the fit starts: the catalogue's values on the tur
 	assert.deepEqual(straightBack.records.slice(0, 2).map((r) => [r.type, Number(r.length.toFixed(4))]), [["arc", Number((190 * ALPHA).toFixed(4))], ["straight", 6.0917]]);
 	assert.deepEqual(recogniseTurnouts(straightBack.records).map((t) => [t.designation, [...t.records]]), [["EW 190-1:9", [1, 2]], ["EW 300-1:9", [9]]]);
 });
+
+test("a radius the design floor holds is reported at its limit: the 4L finding is the EBO floor, not a dead variable", async () => {
+	const { recordListHtml } = await import(new URL("recordList.js", SERVICE));
+	const { alignmentPictureModel } = await import(new URL("alignmentPicture.js", SERVICE));
+	// record 4's length held at the start's 39,5 m, its radius free: the fit wants a tighter arc than R 300, and the
+	// profile's absolute minimum radius (EBO § 6 (1), 300 m) holds it there - converged, on the limit, and said so
+	const { report, run } = await fit({ hold: "4L" });
+	assert.equal(run.status, "converged");
+	const arc = report.elements.find((e) => e.records.includes(4));
+	assert.equal(arc.after.radius, 300);
+	// three radii sit on a limit: the turnout's (not held here) on its inherited exception, record 4 and the
+	// merged R 300 of records 8-9 on the EBO floor
+	assert.deepEqual(run.diagnostics.activeBounds.map((b) => [b.name, b.side, b.bound.kind, b.bound.reason]), [["E0.curvature", "lower", "design-limit", "exception"], ["E2.curvature", "lower", "design-limit", "minimum-radius"], ["E6.curvature", "lower", "design-limit", "minimum-radius"]]);
+	assert.ok(Math.abs(run.diagnostics.activeBounds[1].limit + 1 / 300) < 1e-15);
+	assert.deepEqual(report.fit.atLimits.map((l) => [l.element, [...l.records], l.quantity, Number(l.value.toFixed(4)), Number(l.limit.toFixed(4)), l.kind, l.reason]), [["E0", [1], "radius", 189.9998, 189.9998, "design-limit", "exception"], ["E2", [4], "radius", 300, 300, "design-limit", "minimum-radius"], ["E6", [8, 9], "radius", 300, 300, "design-limit", "minimum-radius"]]);
+	assert.match(report.fit.atLimits[1].source, /^EBO § 6 \(1\)/);
+	assert.match(report.fit.atLimits[0].source, /inherited radius/);
+	assert.deepEqual([arc.atLimit.quantity, report.planRecords[3].atLimit.quantity, report.planRecords[3].atLimit.limit], ["radius", "radius", 300]);
+	assert.deepEqual(report.planRecords.map((r) => r.atLimit?.quantity ?? null), ["radius", null, null, "radius", null, null, null, "radius", "radius"]);
+	assert.match(recordListHtml(alignmentPictureModel(report)), /<tr data-record="4" class="held">.*?<td title="An der Grenze: Mindestradius des Entwurfs 300 m – EBO § 6 \(1\)[^"]*" class="num limit">300<\/td>/);
+	// a start inside the floor gets the file's radius as its exception, and sits on that
+	const inherited = await fit({ hold: "4L", edits: "4R=299" });
+	assert.deepEqual(inherited.report.fit.atLimits.filter((l) => l.element === "E2").map((l) => [l.element, l.quantity, l.reason, Number(l.limit.toFixed(4))]), [["E2", "radius", "exception", Number((299 * (1 - 1e-6)).toFixed(4))]]);
+	// the length alone on record 6 moves the radius away from the floor: nothing on a limit
+	const free = await fit({ hold: "6L" });
+	assert.deepEqual(free.report.fit.atLimits, [], "the radii leave their limits: nothing on one");
+	assert.deepEqual(free.run.diagnostics.activeBounds, []);
+	assert.ok(free.report.planRecords.every((r) => r.atLimit === null));
+	assert.doesNotMatch(recordListHtml(alignmentPictureModel(free.report)), /class="num limit/);
+});
