@@ -739,8 +739,9 @@ braucht keine Klothoide (zwei Bögen auf 0,1 mm).
   das kein Wertewechsel, sondern eine andere Geometrie, und wird abgelehnt
   – gebogen ebenso.
 
-Nicht gebaut: das Endstück einer Datei-Weiche von Gerade zu Bogen wechseln.
-Der App-Import für R1/R2 ungleich Nachbar folgt im nächsten Abschnitt.
+Nicht gebaut: das Endstück einer Datei-Weiche von Gerade zu Bogen wechseln
+(der übernächste Abschnitt). Der App-Import für R1/R2 ungleich Nachbar
+folgt im nächsten.
 
 ## App-Import: R1/R2 ungleich Nachbar (2026-11-09, Go)
 
@@ -783,3 +784,37 @@ Nicht-Übergangsbögen); Tests in `test/import/tra-junction-curvature.test.mjs`
 Geometrie der Naht; Toleranz; die Korpusdatei Landshut 5632R000-002 mit
 Satz 5) und `test/axtran2/tra-roundtrip-contract.test.mjs` (Ausnahme
 entfernt).
+
+## Endstück Gerade→Bogen an Datei-Weichen (2026-11-09)
+
+Bisher behielt ein Satz der Datei seinen Typ: wer die EW 190-1:9 der Datei
+mit `1W=190-1/9:auf-800` auf das Stammgleis bog, bekam den Zweigbogen
+gebogen (R 249,18 auf R −800), das Endstück aber blieb die Gerade der
+Datei, 6,09 m – anders als beim Einfügen, wo das Endstück einer gebogenen
+Weiche von Anfang an der Bogen mit dem Endradius des Zweigs ist
+(`editedElements`). Jetzt ist der **Typ des Endstücks ein Wert der
+Erklärung** wie seine Länge:
+
+- `declareTurnouts` nimmt als Endstück eine Gerade oder einen Bogen gleichen
+  Drehsinns der Datei (wo das Endstück erkannt war, wo `:WA`/`:WE` ihn
+  nennen, oder wo die Länge ein d ist) und gibt ihm den Typ der Erklärung:
+  **gebogen ein Bogen** mit dem Endradius des Zweigs über d, **gerade eine
+  Gerade** von d – in beide Richtungen, auch ein Bogen der Datei wird wieder
+  die Gerade der geraden Weiche. `values` trägt `type` (und am Bogen
+  `radius`), die Weiche `endPieceType`.
+- Der Fit (`fit-tra/0.19`) wechselt das Element: aus der Geraden der Datei
+  ein Bogen mit der gegebenen Krümmung, aus dem Bogen eine Gerade; andere
+  Wechsel (ein Übergangsbogen) lehnt er ab. `planRecords` tragen `fileType`
+  und `edited.type`; ein Satz, der nicht mehr Bogen ist, hat `radius` null.
+- Die Liste (0.9) zeigt den Typ markiert mit „In der Datei: Gerade“ (oder
+  Bogen); die Felder bleiben weg, weil die Weiche gehalten ist. Die
+  geschriebene Datei trägt den Satz mit dem neuen Kz; gelesen und als
+  gerade Weiche erklärt, wird aus dem Bogen 6,09 m die Gerade zurück, und
+  die Erkennung findet die EW 190-1:9 wieder.
+
+Geprüft auf der erfundenen Bahnhofstrasse: `1W=190-1/9:auf-800` setzt
+Satz 2 auf Bogen R 249,18, 6,09 m, gehalten; die zurückgelesene Datei hat
+zwei Bögen; `1W=190-1/9` auf dieser Datei macht Satz 2 wieder zur Geraden,
+und die Erkennung sieht die EW 190-1:9 auf 1–2.
+
+Nicht gebaut: ein Endstück als Übergangsbogen (gibt es im Anhang nicht).

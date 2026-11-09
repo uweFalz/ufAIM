@@ -15,7 +15,7 @@
 
 import { TRANSITION_FAMILIES } from "./recordEdits.js";
 
-export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.4";
+export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.5";
 
 /** the normalised curvature law of a transition family, for the band; a line otherwise */
 const CURVATURE_LAW = Object.freeze({
@@ -121,7 +121,8 @@ export function alignmentPictureModel(report) {
 		const base = {
 			number: r.number, type: r.type, length: r.length, radius: r.radius ?? null, element: r.element ?? null, held: r.held ?? null, turnout: r.turnout ?? null,
 			hasRadius, heldLength: Boolean(r.heldLength ?? r.held), heldRadius: hasRadius && Boolean(r.heldRadius ?? r.held),
-			// the file's values where the fit started from edited ones
+			// the file's values where the fit started from edited ones; the file's kind where a declared end piece changed it
+			fileType: r.fileType === undefined ? r.type : r.fileType,
 			fileLength: r.fileLength ?? r.length, fileRadius: r.fileRadius ?? r.radius ?? null, edited: r.edited ?? null,
 			family: r.family ?? null, fileFamily: r.fileFamily ?? r.family ?? null,
 			// the turnout the recognition found on the record; on the arc a type stands on, the type as a token and the main track's radius

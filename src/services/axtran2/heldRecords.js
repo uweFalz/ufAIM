@@ -26,7 +26,7 @@
 
 import { RIL_800_0120_A01, bentOnto, turnout as catalogueTurnout, compoundBranch } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.7";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.8";
 /** the kernel's split of a branch of two radii, for callers that had it from here */
 export { compoundBranch };
 
@@ -112,7 +112,8 @@ export function branchPattern(shape, reversed = false) {
  * side by side in either order.
  *
  * @param {Array<{number:number,type:string,length:number,curvature?:number,radiusStart?:number,radiusEnd?:number}>} records  as traAlignment gives them
- * @returns {Array<{designation,radius,radiusEnd,ratio,side,arc,arcs,transition,endPiece,branchSpeedKmh,records}>}
+ * @returns {Array<{designation,radius,radiusEnd,ratio,side,arc,arcs,transition,endPiece,endPieceType,branchSpeedKmh,records}>}
+ *          endPieceType: "straight" where an end piece was found (the recognition sees straight ones only), else null
  */
 export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE } = {}) {
 	const found = [];
@@ -157,7 +158,7 @@ export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE
 			designation: shape.designation, radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio,
 			// the kernel's heading grows to the left
 			side: firstArc.curvature > 0 ? "left" : "right",
-			arc: firstArc.number, arcs: Object.freeze(arcs.map((a) => a.number)), transition: transition?.number ?? null, endPiece,
+			arc: firstArc.number, arcs: Object.freeze(arcs.map((a) => a.number)), transition: transition?.number ?? null, endPiece, endPieceType: endPiece === null ? null : "straight",
 			// what the annex allows in the branch, km/h: the track through it runs no faster
 			branchSpeedKmh: shape.branchSpeedKmh ?? null,
 			records: Object.freeze([...own.map((r) => r.number), ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b)),
@@ -180,18 +181,21 @@ export function recogniseTurnouts(records, { tolerance = TURNOUT_MATCH_TOLERANCE
  * a d of the type (as the recognition looks); `orientation` "WA" or "WE"
  * names the record after or before the arcs outright, "arc" none. A type
  * without an end piece in the annex releases the one the turnout had.
- * ":auf-800" bends every arc by the main track's curvature (bentOnto); an
- * end piece that is an arc in the file follows, a straight stays one.
+ * ":auf-800" bends every arc by the main track's curvature (bentOnto); the
+ * end piece follows the branch's end curvature and is an arc, whatever the
+ * file's record is - a straight turnout's end piece is a straight, whatever
+ * the file's record is. The record's type is a value of the declaration
+ * like its length (`type`); the fit changes the element accordingly.
  *
  * The values a declared turnout starts from are the catalogue's: for each
  * of its arcs the radius (the file's sign, the record's side) and the
- * branch length, for the end piece its d. "keine" takes the turnout off
- * the list; its records keep the file's values.
+ * branch length, for the end piece its d, its type and - bent - its radius.
+ * "keine" takes the turnout off the list; its records keep the file's values.
  *
  * @param {Array} records      the file's records [{ number, type, length, curvature? }]
  * @param {Array} recognised   from recogniseTurnouts
  * @param {Map<number, object|null>} declarations  record -> spec { radius, radiusEnd?, ratio, mainRadius?, orientation? } or null
- * @returns {{ turnouts: Array, values: Map<number, {length?: number, radius?: number}> }}
+ * @returns {{ turnouts: Array, values: Map<number, {length?: number, radius?: number, type?: "arc"|"straight", family?: string}> }}
  */
 export function declareTurnouts(records, recognised, declarations, { tolerance = TURNOUT_MATCH_TOLERANCE } = {}) {
 	const turnouts = [...recognised];
@@ -254,15 +258,18 @@ export function declareTurnouts(records, recognised, declarations, { tolerance =
 			if (bent) error("INVALID_EDIT", `record ${n}: ${shape.designation} bent onto R ${spec.mainRadius} would start its clothoid at another radius than the file's record ${m}; not from here`);
 			values.set(m, { length: p.length, family: "clothoid" });
 		});
-		// the end piece: where the recognised turnout had it, where the orientation says, or where a length fits
+		// the end piece: where the recognised turnout had it, where the orientation says, or where a length fits.
+		// The file's record may be a straight or an arc the branch's way; its type follows the declaration:
+		// a straight turnout's end piece is the straight d, a bent turnout's the arc that carries the
+		// branch's end curvature over d (editedElements puts one in the same way)
 		const first = Math.min(...branchRecords), lastArc = Math.max(...branchRecords);
 		const d = shape.endPieces.length ? Math.min(...shape.endPieces) : null;
-		const fits = (m) => { const r = at(m); return r && (r.type === "straight" || (bent && sameWayArc(r, sign))) && !branchRecords.includes(m) && !turnouts.some((t) => t.records.includes(m)); };
+		const fits = (m) => { const r = at(m); return r && (r.type === "straight" || sameWayArc(r, sign)) && !branchRecords.includes(m) && !turnouts.some((t) => t.records.includes(m)); };
 		let endPiece = null;
 		if (d !== null && spec.orientation !== "arc") {
 			const wanted = spec.orientation === "WA" ? lastArc + 1 : spec.orientation === "WE" ? first - 1 : null;
 			if (wanted !== null) {
-				if (!fits(wanted)) error("INVALID_EDIT", `record ${n}: the end piece of ${designation} would be record ${wanted}, which is ${at(wanted) ? `a ${at(wanted).type}${turnouts.some((t) => t.records.includes(wanted)) ? " of another turnout" : ""}` : "not in the file"}`);
+				if (!fits(wanted)) error("INVALID_EDIT", `record ${n}: the end piece of ${designation} would be record ${wanted}, which is ${at(wanted) ? `a ${at(wanted).type}${turnouts.some((t) => t.records.includes(wanted)) ? " of another turnout" : at(wanted).type === "arc" ? " the other way" : ""}` : "not in the file"}; an end piece is a straight or an arc the branch's way`);
 				endPiece = wanted;
 			} else if (was && was.endPiece !== null && fits(was.endPiece)) endPiece = was.endPiece;
 			else {
@@ -270,13 +277,14 @@ export function declareTurnouts(records, recognised, declarations, { tolerance =
 				endPiece = byLength(lastArc + 1) ? lastArc + 1 : byLength(first - 1) ? first - 1 : null;
 			}
 		}
-		if (endPiece !== null) values.set(endPiece, { length: d, ...(at(endPiece).type === "arc" ? { radius: -1 / curvatures[curvatures.length - 1] } : {}) });
+		const endPieceType = endPiece === null ? null : bent ? "arc" : "straight";
+		if (endPiece !== null) values.set(endPiece, { length: d, type: endPieceType, ...(endPieceType === "arc" ? { radius: -1 / curvatures[curvatures.length - 1] } : {}) });
 		const own = [...branchRecords, ...(endPiece === null ? [] : [endPiece])].sort((a, b) => a - b);
 		const clash = turnouts.find((t) => t.records.some((m) => own.includes(m)));
 		if (clash) error("INVALID_EDIT", `record ${n}: ${designation} would take record ${clash.records.find((m) => own.includes(m))} from the turnout ${clash.designation}`);
 		turnouts.push(Object.freeze({
 			designation, kind, radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio, side,
-			arc: n, arcs: Object.freeze(arcs.slice().sort((a, b) => a - b)), transition: transitionRecord, endPiece,
+			arc: n, arcs: Object.freeze(arcs.slice().sort((a, b) => a - b)), transition: transitionRecord, endPiece, endPieceType,
 			// the annex speaks for the straight turnout; a bent branch has another radius and no row
 			branchSpeedKmh: bent ? null : shape.branchSpeedKmh ?? null,
 			records: Object.freeze(own), source: RIL_800_0120_A01.source,
