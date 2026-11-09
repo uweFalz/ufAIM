@@ -37,7 +37,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.19";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.20";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -392,6 +392,19 @@ export async function fitTraFromBytes({
 		cantAt: cantLookup(sourceRows, startStation, loaded.kilometreJumps),
 	});
 	const d = run.diagnostics ?? {};
+	// free quantities the design or the sequence holds at a limit: the fit converged there, not freely -
+	// a radius at the EBO floor of 300 m is such a case (the 4L finding); radii with the file's sign
+	const atLimits = Object.freeze((d.activeBounds ?? []).map((b) => {
+		const radius = (k) => (Math.abs(k) > 1e-15 ? -1 / k : null);
+		return Object.freeze({
+			element: b.elementId, records: Object.freeze([...(structure.elementRecords.get(b.elementId) ?? [])]),
+			quantity: b.quantity === "curvature" ? "radius" : b.quantity,
+			value: b.quantity === "curvature" ? radius(b.value) : b.value, limit: b.quantity === "curvature" ? radius(b.limit) : b.limit,
+			kind: b.bound?.kind ?? null, reason: b.bound?.reason ?? null, source: b.bound?.source ?? null,
+		});
+	}));
+	const limitOf = (elementId, quantity) => atLimits.find((l) => l.element === elementId && l.quantity === quantity) ?? null;
+	const recordLimit = (elementId) => { const l = limitOf(elementId, "radius") ?? limitOf(elementId, "length"); return l ? Object.freeze({ quantity: l.quantity, reason: l.reason, source: l.source, limit: l.limit }) : null; };
 	const failedPhase = tiers === null ? null : run.phases.find((p) => p.label !== "warm-start" && !p.ok) ?? null;
 	const iterations = tiers === null ? d.iterations : run.phases.reduce((n, p) => n + (p.diagnostics?.iterations ?? 0), 0);
 	const sumBefore = elements.reduce((s, e) => s + e.length, 0);
@@ -430,12 +443,15 @@ export async function fitTraFromBytes({
 		fit: Object.freeze({
 			rms: d.softResidualRms, outsideTolerance: d.softOutsideTolerance, endPoseDistance: d.endPoseDistance,
 			hardPoints: d.hardPointResiduals, boundPoints: d.boundPointResiduals ?? [], heldPoses: d.heldPoseResiduals ?? null, lengthChange: sumAfter - sumBefore,
+			// the free quantities that ended on a limit of the design or the sequence, with the limit and its source
+			atLimits,
 		}),
 		elements: Object.freeze(elements.map((e, i) => Object.freeze({
 			id: e.id, type: e.type, family: e.family ?? null, held: Boolean(e.held), fixed: Boolean(e.fixed),
 			// the records of the file this element stands for: several where equal neighbours were merged
 			records: Object.freeze([...(structure.elementRecords.get(e.id) ?? [])]),
 			before: { length: e.length, radius: radiusOf(e) }, after: { length: fitted[i].length, radius: radiusOf(fitted[i]) },
+			atLimit: recordLimit(e.id),
 		}))),
 		// the file's records as it lists them, each with the element that carries it: what a
 		// picture needs to offer a record to be held, also where the fit merged it away
@@ -458,6 +474,8 @@ export async function fitTraFromBytes({
 					held: heldRecords.get(r.number)?.why ?? null,
 					heldLength: Boolean(heldRecords.get(r.number)?.length),
 					heldRadius: Boolean(heldRecords.get(r.number)?.radius) && type === "arc",
+					// a free quantity of this record's element the fit left on a limit of the design or the sequence
+					atLimit: recordLimit(elementOf(r.number)),
 					turnout: turnout?.designation ?? null,
 					// what the recognition found here, and - on the arc a type stands on - the type as a token and the main track's radius
 					fileTurnout: recognised.find((t) => t.records.includes(r.number))?.designation ?? null,
@@ -468,7 +486,7 @@ export async function fitTraFromBytes({
 				...structure.inserted.filter((i) => i.after === r.number).map((i) => Object.freeze({
 					number: i.key, type: i.type, fileType: null, length: i.length, radius: i.radius, fileLength: null, fileRadius: null,
 					family: i.family, fileFamily: null, edited: null, removed: false, inserted: Object.freeze({ after: i.after, index: i.index, ...(i.turnout ? { turnout: i.turnout, part: i.part } : {}) }),
-					element: i.element, held: i.turnout ?? null, heldLength: Boolean(i.turnout), heldRadius: Boolean(i.turnout) && i.type === "arc", turnout: i.turnout ?? null,
+					element: i.element, held: i.turnout ?? null, heldLength: Boolean(i.turnout), heldRadius: Boolean(i.turnout) && i.type === "arc", turnout: i.turnout ?? null, atLimit: i.turnout ? null : recordLimit(i.element),
 					fileTurnout: null, turnoutRef: null, turnoutMain: null,
 				})),
 			];

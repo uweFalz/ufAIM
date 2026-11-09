@@ -37,7 +37,7 @@ import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacob
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
 import { symmetricEigen } from "../../../lib/math/lina/symmetricEigen.js";
 
-export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.1";
+export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.2";
 
 export const OBJECTIVES = Object.freeze(["points", "accumulated-length"]);
 
@@ -254,11 +254,16 @@ export function solveAlignmentProblem({
 	const lower = codec.freeNames.map(() => -Infinity);
 	const upper = codec.freeNames.map(() => Infinity);
 	const indexOfName = new Map(codec.freeNames.map((name, i) => [name, i]));
+	// which declared bounds shaped each free variable's interval, so that a
+	// candidate sitting on a limit can say whose limit it is
+	const boundsOn = new Map();
 	for (const bound of [...constraints.bounds, ...(constraints.designBounds ?? [])]) {
-		const index = indexOfName.get(`${bound.elementId}.${bound.quantity ?? "length"}`);
+		const name = `${bound.elementId}.${bound.quantity ?? "length"}`;
+		const index = indexOfName.get(name);
 		if (index === undefined) continue;   // the quantity is held, not free
 		if (Number.isFinite(bound.minimum)) lower[index] = Math.max(lower[index], bound.minimum);
 		if (Number.isFinite(bound.maximum)) upper[index] = Math.min(upper[index], bound.maximum);
+		boundsOn.set(name, [...(boundsOn.get(name) ?? []), bound]);
 	}
 	if (!Array.isArray(pinned)) error("INVALID_PINNED", "pinned must be an array of free-variable names");
 	for (const name of pinned) {
@@ -941,6 +946,27 @@ export function solveAlignmentProblem({
 		}
 	}
 	const finalExtra = run.x ? extraResiduals(run.x) : [];
+	// The box bounds the candidate sits on. A free quantity the design or the
+	// sequence holds at its limit converges, and the verdict is right - but it
+	// did not move freely, and nothing else in this proposal says so: a radius
+	// pinned at the EBO floor of 300 m looked like a radius the fit left alone
+	// (the 4L finding, 2026-11-09). Pinned variables are the caller's, not a limit.
+	const activeBounds = run.x
+		? codec.freeNames.flatMap((name, i) => {
+			if (pinned.includes(name)) return [];
+			const x = run.x[i];
+			const at = (b) => Number.isFinite(b) && Math.abs(x - b) <= 1e-9 * Math.max(1, Math.abs(b));
+			const side = at(lower[i]) ? "lower" : at(upper[i]) ? "upper" : null;
+			if (side === null) return [];
+			const limit = side === "lower" ? lower[i] : upper[i];
+			const bound = (boundsOn.get(name) ?? []).find((b) => (side === "lower" ? b.minimum : b.maximum) === limit) ?? null;
+			const [elementId, quantity] = name.split(".");
+			return [Object.freeze({
+				name, elementId: bound?.elementId ?? elementId, quantity: bound?.quantity ?? quantity, side, value: x, limit,
+				bound: bound ? Object.freeze({ id: bound.id, kind: bound.kind, reason: bound.reason ?? bound.binding ?? null, source: bound.source ?? null }) : null,
+			})];
+		})
+		: [];
 
 	return Object.freeze({
 		version: ALIGNMENT_SQP_SOLVER_VERSION,
@@ -1028,6 +1054,8 @@ export function solveAlignmentProblem({
 			finalRelaxation: run.history?.at(-1)?.delta ?? null,
 			restorations: (run.history ?? []).filter((entry) => entry.status === "restored").length,
 			restorationSteps: run.restorationSteps ?? 0,
+			// the free variables that sit on a declared bound, and whose bound it is
+			activeBounds: Object.freeze(activeBounds),
 			history: Object.freeze(run.history ?? []),
 			reason: run.reason ?? null,
 		}),

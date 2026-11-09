@@ -25,11 +25,13 @@
 import { describeHold, holdMap } from "./alignmentPicture.js";
 import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.9";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.10";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
 const TYPE = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übergangsbogen", kink: "Knick" });
+// why a Fit value sits on a limit: the design's or the sequence's
+const LIMIT_WORDS = Object.freeze({ "minimum-radius": "Mindestradius des Entwurfs", exception: "übernommener Radius der Datei", design: "Mindestlänge des Entwurfs", "element-sequence": "kürzestes Element der Folge" });
 
 /**
  * @param {object} model  from alignmentPictureModel
@@ -53,6 +55,13 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 		return cell(comma(value, digits), changed ? "num changed" : "num");
 	};
 	const trim = (value, digits) => comma(value, digits).replace(/,?0+$/, (m) => (m.startsWith(",") ? "" : m));
+	// a Fit value the fit left on a limit of the design or the sequence: marked, with whose limit it is
+	const limited = (html, r, quantity) => {
+		const l = r.atLimit;
+		if (!l || l.quantity !== quantity) return html;
+		const title = `An der Grenze: ${LIMIT_WORDS[l.reason] ?? l.reason ?? "Grenze"}${Number.isFinite(l.limit) ? ` ${comma(Math.abs(l.limit), quantity === "radius" ? 0 : 2)} m` : ""}${l.source ? ` – ${l.source}` : ""}`;
+		return html.replace(/^<td class="num/, `<td title="${escape(title)}" class="num limit`);
+	};
 	// the plan's value as a field: what the fit started from, or what is typed and not yet computed
 	const field = (r, name, label, unit, digits) => {
 		const started = name === "length" ? r.length : r.radius;
@@ -150,8 +159,8 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 		const cls = r.inserted ? "inserted" : state === "frei" ? "" : "held";
 		const row = `<tr data-record="${escape(r.number)}"${cls ? ` class="${cls}"` : ""}>`
 			+ cell(r.inserted ? "+" : r.number, "num") + typeCell(r) + turnoutCell(r)
-			+ planLength + number(lengthAfter, 2, r.length)
-			+ planRadius + number(radiusAfter, 0, r.radius)
+			+ planLength + limited(number(lengthAfter, 2, r.length), r, "length")
+			+ planRadius + limited(number(radiusAfter, 0, r.radius), r, "radius")
 			+ holds + cell(state) + structureCell(r) + "</tr>";
 		return insertAfter !== null && !r.inserted && Number(r.number) === Number(insertAfter) ? [row, insertForm(r.number)] : [row];
 	});
