@@ -818,3 +818,21 @@ zwei Bögen; `1W=190-1/9` auf dieser Datei macht Satz 2 wieder zur Geraden,
 und die Erkennung sieht die EW 190-1:9 auf 1–2.
 
 Nicht gebaut: ein Endstück als Übergangsbogen (gibt es im Anhang nicht).
+
+## Die Nahtschranke als eine Konstante (2026-11-09, Kern-Go)
+
+Leser (`traAlignment.js`) und App-Import (`buildSparseFromLandFAT.js`)
+entschieden beide mit 1e-9 in der Krümmung, ob R1/R2 eines Übergangsbogens
+die Krümmung des Nachbarn ist – jeder mit seiner eigenen Zahl. Jetzt steht
+die Antwort einmal im Kern: `CurvatureJunction.js` nennt
+`JUNCTION_CURVATURE_TOLERANCE` (1e-9, zwei Radien 1000 und 1000,001 m) und
+`STRAIGHT_CURVATURE_TOLERANCE` (1e-12, darunter ist eine Krümmung die
+einer Geraden) und gibt `sameJunctionCurvature(a, b)` und
+`isStraightCurvature(k)`; der Kern-Index exportiert sie. Leser und Import
+fragen nur noch dort nach – auch die Prüfung der Nachbarkrümmung an einem
+Typ-8-Übergangsbogen (bisher 1e-12, jetzt dieselbe Nahtschranke).
+
+`test/axtran2/junction-tolerance.test.mjs` schreibt eine Trasse Gerade –
+Klothoide – Bogen R 400, verschiebt R2 im gelesenen Dokument um die halbe
+und die doppelte Schranke und lässt beide Leser darüber: unter der Schranke
+kein Träger, darüber bei beiden einer mit derselben Krümmung.

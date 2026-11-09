@@ -25,6 +25,8 @@
 import { parseTraGraAuto } from "./parseTRA_GRA.js";
 import { decodeBinary } from "./sharedVermesn.js";
 import { resolveTechnetType8TransitionId } from "../shared/resolveTechnetType8TransitionId.js";
+// the one answer to "same curvature at a junction?" and "a straight?" that the app's import gives too
+import { sameJunctionCurvature, isStraightCurvature } from "../../../../domain/optimization/alignment/CurvatureJunction.js";
 
 /** what this loader can express; anything else is reported, not guessed at */
 // "ÜB S-Form" is the Helmert transition (also called S-Form); "S-Form (1f
@@ -135,7 +137,7 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 				]) {
 					if (!neighbor) continue;
 					const adjacent = boundaryCurvature(neighbor, end);
-					if (adjacent === null || Math.abs(adjacent - curvature) > 1e-12) {
+					if (adjacent === null || !sameJunctionCurvature(adjacent, curvature)) {
 						refusal = "type8-neighbor-curvature-unresolved";
 					}
 				}
@@ -153,7 +155,7 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 			// to the kernel. The writer drops it again and writes R1/R2 off it.
 			const previous = elements[elements.length - 1];
 			const previousExit = previous ? (previous.type === "arc" ? previous.curvature : previous.type === "transition" ? previous.exitCurvature ?? 0 : 0) : null;
-			if (Number.isFinite(entryCurvature) && Math.abs(entryCurvature) > 1e-12 && (previous === undefined || previous.type === "kink" || Math.abs(previousExit - entryCurvature) > 1e-9)) {
+			if (Number.isFinite(entryCurvature) && !isStraightCurvature(entryCurvature) && (previous === undefined || previous.type === "kink" || !sameJunctionCurvature(previousExit, entryCurvature))) {
 				elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: entryCurvature, held: true });
 				inserted += 1;
 			}
@@ -163,7 +165,7 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 			// two transitions meeting at a curvature always get the holder (the next one reads it too);
 			// a file's end, or a neighbour of another curvature, the same way
 			const nextEntry = next ? boundaryCurvature(next, false) : null;
-			if (Number.isFinite(exitCurvature) && Math.abs(exitCurvature) > 1e-12 && (next === undefined || next.type === "Spiral" || next.type === "Kink" || nextEntry === null || Math.abs(nextEntry - exitCurvature) > 1e-9)) {
+			if (Number.isFinite(exitCurvature) && !isStraightCurvature(exitCurvature) && (next === undefined || next.type === "Spiral" || next.type === "Kink" || nextEntry === null || !sameJunctionCurvature(nextEntry, exitCurvature))) {
 				elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: exitCurvature, held: true });
 				inserted += 1;
 			}

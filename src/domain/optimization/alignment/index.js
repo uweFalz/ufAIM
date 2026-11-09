@@ -20,3 +20,4 @@ export { chooseProfile, SPEED_CANDIDATES } from "./DesignProfileChoice.js";
 export { buildProductionAlignment } from "./ProductionAlignment.js";
 export { hauptbahn } from "./profiles/index.js";
 export * from "./TurnoutCatalogue.js";
+export { JUNCTION_CURVATURE_TOLERANCE, STRAIGHT_CURVATURE_TOLERANCE, sameJunctionCurvature, isStraightCurvature } from "./CurvatureJunction.js";
