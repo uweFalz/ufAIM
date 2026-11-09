@@ -42,13 +42,67 @@ for (const sign of [1, -1]) {
  });
 }
 
-test('inconsistent transition junction and fixed neighbors fail closed', () => {
- for (const elements of [
-  [spiral(0, 500), spiral(600, 0)],
-  [curve(600), spiral(500, 0)],
-  [spiral(0, 500), curve(-500)],
-  [{ ...base, type: 'Line' }, spiral(500, 0)],
- ]) assert.throws(() => build(elements), /inconsistent TRA-like/);
+// The file's R1/R2 win over the neighbour: a zero-length holder carries the transition's
+// curvature at the junction, the immediate between the two fixed elements is the curvature
+// step the file states (the solver's reader does the same since 2026-11-09).
+const shape = sparse => sparse.map(e => e.type === 'fixed' ? [e.arcLength, e.curvature, e.meta?.insertedBy ?? 'source'] : e.transType);
+test('a transition whose R1/R2 the neighbour does not have gets a holder with the file curvature', () => {
+ const cases = [
+  [[spiral(0, 500), spiral(600, 0)], [[0, 0, 'enforceAlternation'], 'clothoid', [0, -1 / 500, 'traLikeJunction'], 'immediate', [0, -1 / 600, 'traLikeJunction'], 'clothoid', [0, 0, 'enforceAlternation']]],
+  [[curve(600), spiral(500, 0)], [[40, -1 / 600, 'source'], 'immediate', [0, -1 / 500, 'traLikeJunction'], 'clothoid', [0, 0, 'enforceAlternation']]],
+  [[spiral(0, 500), curve(-500)], [[0, 0, 'enforceAlternation'], 'clothoid', [0, -1 / 500, 'traLikeJunction'], 'immediate', [40, 1 / 500, 'source']]],
+  [[{ ...base, type: 'Line' }, spiral(500, 0)], [[40, 0, 'source'], 'immediate', [0, -1 / 500, 'traLikeJunction'], 'clothoid', [0, 0, 'enforceAlternation']]],
+ ];
+ for (const [elements, expected] of cases) {
+  const result = build(elements);
+  assert.deepEqual(shape(result.sparse), expected);
+  for (const holder of result.sparse.filter(e => e.meta?.insertedBy === 'traLikeJunction')) {
+   assert.equal(holder.meta.zeroLength, true);
+   assert.equal(holder.meta.sourceType, 'Spiral');
+   assert.ok(['start', 'end'].includes(holder.meta.junction));
+   assert.equal(elements[holder.meta.sourceIndex].type, 'Spiral');
+  }
+  assert.ok(result.sparse.every((e, i) => i === 0 || (e.type === 'fixed') !== (result.sparse[i - 1].type === 'fixed')), 'alternation holds');
+ }
+});
+
+test('the holder geometry follows the file: step at the junction, linear clothoid from R1', () => {
+ const geometry = elements => makeAlignment2DFromSparse({ ...deps, startPose: build(elements).startPose, sparse: build(elements).sparse }).alignment;
+ const stepped = geometry([curve(600), spiral(500, 0)]);
+ close(stepped.arcLength, 80);
+ close(stepped.curvatureAt(20), -1 / 600);
+ close(stepped.curvatureAt(60), -1 / 1000);
+ const twoSpirals = geometry([spiral(0, 500), spiral(600, 0)]);
+ close(twoSpirals.arcLength, 80);
+ close(twoSpirals.curvatureAt(20), -1 / 1000);
+ close(twoSpirals.curvatureAt(60), -1 / 1200);
+});
+
+test('radii within the reader tolerance are the same curvature and get no holder', () => {
+ assert.equal(build([curve(1000), spiral(1000 + 1e-4, 500), curve(500)]).sparse.length, 3);
+ assert.equal(build([curve(1000), spiral(1000 + 1e-2, 500), curve(500)]).sparse.length, 5);
+});
+
+test('a corpus file with R1 unlike its arc imports and reaches its recorded end', async context => {
+ const { readFile } = await import('node:fs/promises');
+ const { parseTraGraAuto } = await import('../../src/import/parsers/technet/vermEsn/parseTRA_GRA.js');
+ const { traAlignmentFromBytes } = await import('../../src/import/parsers/technet/vermEsn/traAlignment.js');
+ const name = '5632R000-002.TRA';
+ let bytes; try { bytes = await readFile(new URL(`../samples/Landshut/${name}`, import.meta.url)); } catch (e) { if (e.code === 'ENOENT') return context.skip('local TRA corpus unavailable'); throw e; }
+ const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+ const document = await parseTraGraAuto({ name, arrayBuffer: async () => buffer });
+ const sparse = buildSparseFromLandFAT(document.alignments[0]);
+ const holders = sparse.sparse.filter(e => e.meta?.insertedBy === 'traLikeJunction');
+ assert.equal(holders.length, 1);
+ assert.deepEqual([holders[0].meta.sourceIndex, holders[0].meta.junction, holders[0].arcLength], [4, 'start', 0]);
+ const at = sparse.sparse.indexOf(holders[0]);
+ assert.equal(sparse.sparse[at - 1].transType, 'immediate');
+ assert.equal(sparse.sparse[at - 2].meta.sourceType, 'Curve');
+ assert.ok(Math.abs(sparse.sparse[at - 2].curvature - holders[0].curvature) > 1e-3);
+ const { alignment } = makeAlignment2DFromSparse({ ...deps, startPose: sparse.startPose, sparse: sparse.sparse });
+ const reader = await traAlignmentFromBytes(new Uint8Array(buffer), name);
+ const end = alignment.poseAt(alignment.arcLength, { quality: 'exact' });
+ assert.ok(Math.hypot(end.p.x - reader.endPoint.x, end.p.y - reader.endPoint.y) < 1e-3);
 });
 
 for (const field of ['radiusStart', 'radiusEnd']) {
