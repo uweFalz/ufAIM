@@ -51,7 +51,7 @@ test("a clothoid in the file is fitted as a Bloss when the edit says so, and wri
 	assert.deepEqual(asBloss.input.edits, [{ record: 2, element: "E1", length: null, radius: null, family: "bloss" }]);
 	assert.equal(asBloss.elements[1].family, "bloss");
 	const r2 = asBloss.planRecords[1];
-	assert.deepEqual([r2.type, r2.family, r2.fileFamily, r2.edited], ["transition", "bloss", "clothoid", { length: false, radius: false, family: true }]);
+	assert.deepEqual([r2.type, r2.family, r2.fileFamily, r2.edited], ["transition", "bloss", "clothoid", { length: false, radius: false, family: true, turnout: false }]);
 	assert.deepEqual(asClothoid.planRecords.map((r) => [r.family, r.fileFamily]), [[null, null], ["clothoid", "clothoid"], [null, null], [null, null]]);
 	// the written file: Kz 4 for the transition, read back as a Bloss
 	const written = await fit({ edits: "2T=Bloss" });

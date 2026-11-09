@@ -297,7 +297,7 @@ test("an edited value is where the fit starts; the file is unchanged and the rec
 	assert.equal(arc.fixed, true, "an edited record is one element");
 	assert.deepEqual(edited.elements.map((e) => [...e.records]), [[1], [2, 3], [4], [5], [6], [7], [8, 9]]);
 	const r4 = edited.planRecords[3];
-	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false, family: false }, null, false]);
+	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false, family: false, turnout: false }, null, false]);
 	assert.ok(edited.planRecords.filter((r) => r.number !== 4).every((r) => r.edited === null && r.length === r.fileLength));
 	// an edit holds nothing: the fit may move the value again; with the hold it keeps it
 	const held = (await fit({ edits: "4L=40", hold: "4L" })).report;
@@ -310,4 +310,79 @@ test("an edited value is where the fit starts; the file is unchanged and the rec
 	assert.ok(radius.verdict.ok);
 	// refused: a straight's radius, a zero length, a record the file does not have
 	for (const bad of ["3R=100", "4L=0", "12L=5"]) await assert.rejects(fit({ edits: bad }), (e) => e.code === "INVALID_EDIT", bad);
+});
+
+test("a turnout's type is declared on the arc of its branch: re-typed, made of a plain arc, bent, or taken away", async () => {
+	const { declareTurnouts, turnoutShape } = await import(new URL("heldRecords.js", SERVICE));
+	const { parseTurnoutDeclaration } = await import(new URL("recordEdits.js", SERVICE));
+	const arc = (number, radius, length, sign = -1) => ({ number, type: "arc", length, curvature: sign / radius });
+	const straight = (number, length) => ({ number, type: "straight", length });
+	const records = [straight(1, 50), arc(2, 190, 190 * ALPHA), straight(3, 6.0917), straight(4, 40), arc(5, 300, 30, 1), arc(6, 500, 500 * Math.atan(1 / 12))];
+	const seen = recogniseTurnouts(records);
+	assert.deepEqual(seen.map((t) => [t.designation, [...t.records]]), [["EW 190-1:9", [2, 3]], ["EW 500-1:12", [6]]]);
+	const declare = (text) => declareTurnouts(records, seen, new Map(Object.entries(text).map(([n, t]) => [Number(n), parseTurnoutDeclaration(t)])));
+	const round = (v) => Number(v.toFixed(4));
+	// re-typed: the EW 300-1:9 has no end piece in the annex, so record 3 goes back to being a straight of the file
+	const retyped = declare({ 2: "300-1/9" });
+	assert.deepEqual(retyped.turnouts.map((t) => [t.designation, t.kind ?? null, t.side, t.arc, t.endPiece, [...t.records], t.branchSpeedKmh, t.declared?.was ?? "recognised"]), [["EW 300-1:9", "EW", "right", 2, null, [2], 50, "EW 190-1:9"], ["EW 500-1:12", null, "right", 6, null, [6], 60, "recognised"]]);
+	assert.deepEqual([...retyped.values].map(([n, v]) => [n, round(v.length), v.radius]), [[2, round(300 * ALPHA), 300]]);
+	// a plain arc becomes a turnout: the left-hand arc R -300 the branch of an EW 190-1:9 to the left; its neighbours are no end piece by length
+	const made = declare({ 5: "190-1/9" });
+	assert.deepEqual(made.turnouts.map((t) => [t.designation, t.side, [...t.records], t.declared ? t.declared.was : "recognised"]), [["EW 190-1:9", "right", [2, 3], "recognised"], ["EW 190-1:9", "left", [5], null], ["EW 500-1:12", "right", [6], "recognised"]]);
+	assert.deepEqual([...made.values].map(([n, v]) => [n, round(v.length), v.radius]), [[5, round(190 * ALPHA), -190]]);
+	// ":WE" names the straight before it as the end piece, re-measured to the annex's d
+	const we = declare({ 5: "190-1/9:WE" });
+	assert.deepEqual(we.turnouts[1].records, [4, 5]);
+	assert.deepEqual([...we.values].map(([n, v]) => [n, round(v.length), v.radius ?? null]), [[5, round(190 * ALPHA), -190], [4, 6.0917, null]]);
+	// bent onto a main track R -800 (a left-hand curve): the branch to the right on it is the Außenbogenweiche, wider than 190
+	const bent = declare({ 6: "190-1/9:auf-800" });
+	const abw = bent.turnouts.find((t) => t.arc === 6);
+	assert.deepEqual([abw.designation, abw.kind, abw.branchSpeedKmh, abw.declared.mainRadius, abw.declared.bent.kind], ["ABW 190-1:9 auf R -800", "ABW", null, -800, "ABW"]);
+	assert.ok(Math.abs(bent.values.get(6).radius - 1 / (1 / 190 - 1 / 800)) < 1e-9 && Math.abs(bent.values.get(6).length - 190 * ALPHA) < 1e-12);
+	// "keine": the recognised turnout is gone, its records keep the file's values
+	const none = declare({ 3: "keine" });
+	assert.deepEqual(none.turnouts.map((t) => t.designation), ["EW 500-1:12"]);
+	assert.equal(none.values.size, 0);
+	// refused: a straight, a second radius without an arc beside, an end piece named where an arc is, a record of another turnout
+	for (const [bad, why] of [[{ 1: "300-1/9" }, /straight/], [{ 2: "7000/6000-1/42" }, /second arc/], [{ 5: "190-1/9:WA" }, /end piece.*record 6/], [{ 1: "keine" }, /no turnout/]]) {
+		assert.throws(() => declare(bad), (e) => e.code === "INVALID_EDIT" && why.test(e.message), JSON.stringify(bad));
+	}
+	assert.equal(turnoutShape(300, 9).endPieces.length, 0);
+});
+
+test("a declared type is where the fit starts: the catalogue's values on the turnout's records, the file unchanged", async () => {
+	const { recordListHtml } = await import(new URL("recordList.js", SERVICE));
+	const { alignmentPictureModel } = await import(new URL("alignmentPicture.js", SERVICE));
+	// record 1, the EW 190-1:9, is said to be an EW 300-1:9: its arc takes R 300 and the branch length, its end piece is a straight of the file again
+	const retyped = (await fit({ edits: "1W=300-1/9", hold: "Weichen" })).report;
+	assert.deepEqual(retyped.input.turnouts.map((t) => [t.designation, [...t.records], t.held, t.declared?.was ?? null]), [["EW 300-1:9", [1], true, "EW 190-1:9"], ["EW 300-1:9", [9], true, null]]);
+	assert.deepEqual(retyped.input.edits, [{ record: 1, element: "E0", length: null, radius: null, family: null, turnout: { radius: 300, ratio: 9 } }]);
+	assert.deepEqual(retyped.input.heldRecords.map((h) => [h.record, h.why]), [[1, "EW 300-1:9"], [9, "EW 300-1:9"]]);
+	const r1 = retyped.planRecords[0], r2 = retyped.planRecords[1];
+	assert.deepEqual([r1.radius, r1.fileRadius, Number(r1.length.toFixed(4)), Number(r1.fileLength.toFixed(4)), r1.turnout, r1.fileTurnout, r1.turnoutRef, r1.turnoutMain, r1.edited, r1.heldLength], [300, 190, Number((300 * ALPHA).toFixed(4)), Number((190 * ALPHA).toFixed(4)), "EW 300-1:9", "EW 190-1:9", "300-1/9", null, { length: true, radius: true, family: false, turnout: true }, true]);
+	assert.deepEqual([r2.turnout, r2.fileTurnout, r2.length, r2.heldLength, r2.edited], [null, "EW 190-1:9", 6.0917, false, null]);
+	const arc = retyped.elements.find((e) => e.records.includes(1));
+	assert.deepEqual([arc.before.radius, arc.after.radius, Number(arc.before.length.toFixed(4))], [300, 300, Number((300 * ALPHA).toFixed(4))], "the fit starts from the catalogue's values and holds them");
+	// the list: the type chosen on record 1, marked as a change from what was recognised; record 2 is a straight with fields again
+	const html = recordListHtml(alignmentPictureModel(retyped));
+	assert.match(html, /<tr data-record="1" class="held">.*?<select data-record="1" data-field="turnout" class="edited" title="Erkannt in der Datei: EW 190-1:9"[^>]*>.*?<option value="300-1\/9" selected>EW 300-1:9<\/option>.*?<\/select> <input type="text" inputmode="decimal" data-record="1" data-field="turnoutMain" value="" size="5" placeholder="auf R"/);
+	assert.match(html, /<tr data-record="2"><td class="num">2<\/td><td>Gerade<\/td><td><\/td><td class="num plan"><input type="text" inputmode="decimal" data-record="2" data-field="length" value="6,09"/);
+	// a type typed and not yet computed: pending, with the main track's radius beside it
+	assert.match(recordListHtml(alignmentPictureModel(retyped), { edits: "4W=190-1/9:auf-800" }), /<select data-record="4" data-field="turnout" class="edited pending" title="Erkannt in der Datei: keine Weiche; noch nicht gerechnet"[^>]*>.*?<option value="190-1\/9" selected>.*?data-field="turnoutMain" value="−800" size="5"[^>]*class="edited pending"/);
+	assert.match(recordListHtml(alignmentPictureModel(retyped), { edits: "" }), /<select data-record="1" data-field="turnout" class="pending" title="Weiche wie erkannt; noch nicht gerechnet"[^>]*>.*?<option value="190-1\/9" selected>/);
+	// "keine": the turnout is off the list, its records free; the report says what was recognised
+	const none = (await fit({ edits: "1W=keine", hold: "Weichen" })).report;
+	assert.deepEqual(none.input.turnouts.map((t) => [t.designation, [...t.records]]), [["EW 300-1:9", [9]]]);
+	assert.deepEqual(none.input.releasedTurnouts, [{ designation: "EW 190-1:9", records: [1, 2], by: 1 }]);
+	assert.deepEqual([none.planRecords[0].turnout, none.planRecords[0].fileTurnout, none.planRecords[0].radius, none.planRecords[0].edited, none.planRecords[1].heldLength], [null, "EW 190-1:9", 190, { length: false, radius: false, family: false, turnout: true }, false]);
+	assert.match(recordListHtml(alignmentPictureModel(none)), /<select data-record="1" data-field="turnout" class="edited" title="Erkannt in der Datei: EW 190-1:9"[^>]*><option value="" selected>–<\/option>/);
+	// a plain arc made a turnout: record 4 (R 300, 39,5 m) as the branch of an EW 190-1:9, held with the word Weichen
+	const made = (await fit({ edits: "4W=190-1/9", hold: "Weichen" })).report;
+	assert.deepEqual(made.input.turnouts.map((t) => [t.designation, t.side, [...t.records], t.held, t.declared ? t.declared.was : "recognised"]), [["EW 190-1:9", "right", [1, 2], true, "recognised"], ["EW 190-1:9", "right", [4], true, null], ["EW 300-1:9", "right", [9], true, "recognised"]]);
+	const r4 = made.planRecords[3];
+	assert.deepEqual([r4.radius, r4.fileRadius, Number(r4.length.toFixed(4)), r4.fileLength, r4.turnout, r4.heldLength, r4.heldRadius], [190, 300, Number((190 * ALPHA).toFixed(4)), 39.5, "EW 190-1:9", true, true]);
+	assert.equal(made.elements.find((e) => e.records.includes(4)).after.radius, 190);
+	assert.match(recordListHtml(alignmentPictureModel(made)), /<select data-record="4" data-field="turnout" class="edited" title="Erkannt in der Datei: keine Weiche"[^>]*><option value="">–<\/option><option value="190-1\/9" selected>/);
+	// refused: a type on a straight, "keine" where nothing was recognised, a length beside a type
+	for (const bad of ["3W=190-1/9", "4W=keine", "4W=190-1/9 4L=20"]) await assert.rejects(fit({ edits: bad }), (e) => e.code === "INVALID_EDIT", bad);
 });

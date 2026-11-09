@@ -16,7 +16,7 @@
 
 import { parsePointList, formatResidualList } from "./pointLists.js";
 import { writeTra, cantLookup } from "./traWriter.js";
-import { recogniseTurnouts, resolveHold } from "./heldRecords.js";
+import { recogniseTurnouts, resolveHold, declareTurnouts } from "./heldRecords.js";
 import { RIL_800_0120_A01 } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 const RIL_SOURCE = RIL_800_0120_A01.source;
 import { parseAllEdits, resolveEdits, TRANSITION_FAMILIES } from "./recordEdits.js";
@@ -37,7 +37,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.16";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.17";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -96,6 +96,8 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  * @param {boolean} [input.holdRadii]        hold every radius; the lengths stay free
  * @param {Array|Map|string} [input.edits]   values the fit starts from instead of the file's: "7L=45,2 7R=-1250 9T=Bloss"
  *        (record, L length, R radius with the file's sign, T the type of a transition); an edited record keeps its own element.
+ *        "3W=300-1/9" declares record 3 the branch of that catalogue turnout (re-typing the one recognised there, or
+ *        making one of a plain arc; ":auf-800" bent, ":WE" the end piece before it), "3W=keine" that it is none (heldRecords.js).
  *        "-9" takes record 9 out, "+9=G:20" (or B:-500:30, U:40:Bloss) puts a record in after it (recordEdits.js)
  * @param {Array} [input.heldPoses]          [{ afterElement, x?, y?, theta? }] in world coordinates
  * @param {"en"|"ne"} [input.axes]           coordinate order of header-less lists
@@ -114,19 +116,23 @@ export async function fitTraFromBytes({
 	// records and the turnouts among them, once more with the held ones
 	// kept apart from their neighbours.
 	const seen = await traAlignmentFromBytes(bytes, name);
-	const turnoutsSeen = recogniseTurnouts(seen.records);
+	const recognised = recogniseTurnouts(seen.records);
 	const allEdits = parseAllEdits(edits);
+	const recordEdits = resolveEdits(allEdits.values, seen.records, recognised);
+	// the file's turnouts as declared: the recognition, re-typed or released where an edit says so;
+	// `declared.values` are the catalogue's values the records of a declared turnout start from
+	const declared = declareTurnouts(seen.records, recognised, new Map([...recordEdits].filter(([, e]) => e.turnout !== undefined).map(([n, e]) => [n, e.turnout])));
+	const turnoutsSeen = declared.turnouts;
 	const insertsTurnout = [...allEdits.inserted.values()].flat().some((s) => s.type === "turnout");
 	const heldRecords = resolveHold(hold, seen.records, turnoutsSeen, { tolerateNoTurnout: insertsTurnout });
-	const recordEdits = resolveEdits(allEdits.values, seen.records);
 	// held, edited, removed records and those a record goes in after stay apart from
 	// their neighbours: one record, one element
-	const apart = new Set([...heldRecords.keys(), ...recordEdits.keys(), ...allEdits.removed, ...allEdits.inserted.keys()]);
+	const apart = new Set([...heldRecords.keys(), ...recordEdits.keys(), ...declared.values.keys(), ...allEdits.removed, ...allEdits.inserted.keys()]);
 	const loaded = apart.size ? await traAlignmentFromBytes(bytes, name, { fixedRecords: apart }) : seen;
 	for (const n of heldRecords.keys()) if (loaded.recordElements[n - 1] === null) error("INVALID_HOLD", `record ${n} carries no element this adapter can hold`);
-	for (const n of recordEdits.keys()) if (loaded.recordElements[n - 1] === null) error("INVALID_EDIT", `record ${n} carries no element this adapter can change`);
+	for (const n of [...recordEdits.keys(), ...declared.values.keys()]) if (loaded.recordElements[n - 1] === null) error("INVALID_EDIT", `record ${n} carries no element this adapter can change`);
 	for (const n of heldRecords.keys()) if (allEdits.removed.has(n)) error("INVALID_EDIT", `record ${n} is held and taken out at once`);
-	for (const n of recordEdits.keys()) if (allEdits.removed.has(n)) error("INVALID_EDIT", `record ${n} is changed and taken out at once`);
+	for (const n of [...recordEdits.keys(), ...declared.values.keys()]) if (allEdits.removed.has(n)) error("INVALID_EDIT", `record ${n} is changed and taken out at once`);
 	// the structure: records taken out and put in
 	const structure = applyStructure({ elements: loaded.elements, recordElements: loaded.recordElements, records: seen.records, removed: allEdits.removed, inserted: allEdits.inserted, turnouts: turnoutsSeen });
 	const elementOf = (key) => structure.recordElements.get(key) ?? null;
@@ -149,11 +155,13 @@ export async function fitTraFromBytes({
 	const toLocal = (p) => ({ ...p, x: p.x - origin.x, y: p.y - origin.y });
 	const toWorld = (p) => ({ ...p, x: p.x + origin.x, y: p.y + origin.y });
 	const startPose = Object.freeze({ x: 0, y: 0, theta: loaded.startPose.theta });
-	// the elements the fit starts from: the file's, with the edited values in place
+	// the elements the fit starts from: the file's, with the edited values in place,
+	// and the catalogue's values on the records of a declared turnout
 	const editOf = new Map([...recordEdits].map(([n, e]) => [elementOf(n), e]));
+	const declaredOf = new Map([...declared.values].map(([n, v]) => [elementOf(n), v]));
 	const elements = structure.elements.map((e) => {
-		const edit = editOf.get(e.id);
-		if (!edit) return e;
+		const edit = { ...(editOf.get(e.id) ?? {}), ...(declaredOf.get(e.id) ?? {}) };
+		if (!Object.keys(edit).length) return e;
 		// a transition's type: one the writer carries, from one the writer carries (a half-wave is its own thing)
 		if (edit.family !== undefined && !TRANSITION_FAMILIES[e.family]) error("INVALID_EDIT", `${e.id}: a transition of type "${e.family}" cannot change its type`);
 		return { ...e, ...(edit.length !== undefined ? { length: edit.length } : {}), ...(edit.radius !== undefined ? { curvature: -1 / edit.radius } : {}), ...(edit.family !== undefined ? { family: edit.family } : {}) };
@@ -395,10 +403,14 @@ export async function fitTraFromBytes({
 			heldRecords: Object.freeze([...heldRecords].map(([record, h]) => Object.freeze({ record, element: elementOf(record), why: h.why, length: h.length, radius: h.radius }))),
 			holdRadii: Boolean(holdRadii),
 			// what the fit started from where it is not the file: the edited values
-			edits: Object.freeze([...recordEdits].map(([record, e]) => Object.freeze({ record, element: elementOf(record), length: e.length ?? null, radius: e.radius ?? null, family: e.family ?? null }))),
+			// `turnout` only where a type was declared: the spec, or null for "keine"
+			edits: Object.freeze([...recordEdits].map(([record, e]) => Object.freeze({ record, element: elementOf(record), length: e.length ?? null, radius: e.radius ?? null, family: e.family ?? null, ...(e.turnout !== undefined ? { turnout: e.turnout } : {}) }))),
 			// the structure: records taken out, records put in (under their keys, "7+1")
 			structure: Object.freeze({ removed: Object.freeze(structure.removed), inserted: Object.freeze(structure.inserted.map((i) => Object.freeze({ ...i }))), turnouts: Object.freeze(structure.turnouts) }),
-			turnouts: Object.freeze(turnoutsAll.map((t) => Object.freeze({ ...t, held: t.inserted ? true : t.records.every((n) => heldRecords.has(n)) }))),
+			// `declared` where an edit named the type: the record it stands on and what the recognition had there
+			turnouts: Object.freeze(turnoutsAll.map((t) => Object.freeze({ ...t, declared: t.declared ?? null, held: t.inserted ? true : t.records.every((n) => heldRecords.has(n)) }))),
+			// the turnouts the recognition found and a declaration took away
+			releasedTurnouts: Object.freeze(recognised.filter((t) => !turnoutsSeen.some((u) => u.records.some((n) => t.records.includes(n)) && u.designation === t.designation && u.declared === undefined)).map((t) => Object.freeze({ designation: t.designation, records: t.records, by: [...recordEdits].find(([n]) => t.records.includes(n))?.[0] ?? null }))),
 			records: loaded.recordCount,
 			heldPoses: heldPoses.length, endPose: endPoseGiven === null ? "the TRA's own end" : "given", order: orderReport?.order ?? "points", tolerance, zwangTolerance, speedKmh: profile.speedKmh, designExceptions: profile.exceptionCount,
 			stationEquations: loaded.stationEquations, mergedRecords: loaded.mergedRecords, kinks: loaded.kinks,
@@ -417,29 +429,38 @@ export async function fitTraFromBytes({
 		}))),
 		// the file's records as it lists them, each with the element that carries it: what a
 		// picture needs to offer a record to be held, also where the fit merged it away
-		planRecords: Object.freeze(seen.records.flatMap((r) => [
-			Object.freeze({
-				// length and radius as the fit started from them; the file's where they differ
-				number: r.number, type: r.type, length: recordEdits.get(r.number)?.length ?? r.length, radius: recordEdits.get(r.number)?.radius ?? radiusOf(r),
-				fileLength: r.length, fileRadius: radiusOf(r),
-				family: r.type === "transition" ? recordEdits.get(r.number)?.family ?? familyOfRecord(r.number) : null,
-				fileFamily: r.type === "transition" ? familyOfRecord(r.number) : null,
-				edited: recordEdits.has(r.number) ? Object.freeze({ length: recordEdits.get(r.number).length !== undefined, radius: recordEdits.get(r.number).radius !== undefined, family: recordEdits.get(r.number).family !== undefined }) : null,
-				removed: allEdits.removed.has(r.number),
-				inserted: null,
-				element: elementOf(r.number),
-				held: heldRecords.get(r.number)?.why ?? null,
-				heldLength: Boolean(heldRecords.get(r.number)?.length),
-				heldRadius: Boolean(heldRecords.get(r.number)?.radius) && r.type === "arc",
-				turnout: turnoutsSeen.find((t) => t.records.includes(r.number))?.designation ?? null,
-			}),
-			// the records put in after this one, under their keys
-			...structure.inserted.filter((i) => i.after === r.number).map((i) => Object.freeze({
-				number: i.key, type: i.type, length: i.length, radius: i.radius, fileLength: null, fileRadius: null,
-				family: i.family, fileFamily: null, edited: null, removed: false, inserted: Object.freeze({ after: i.after, index: i.index, ...(i.turnout ? { turnout: i.turnout, part: i.part } : {}) }),
-				element: i.element, held: i.turnout ?? null, heldLength: Boolean(i.turnout), heldRadius: Boolean(i.turnout) && i.type === "arc", turnout: i.turnout ?? null,
-			})),
-		])),
+		planRecords: Object.freeze(seen.records.flatMap((r) => {
+			const ed = recordEdits.get(r.number), dv = declared.values.get(r.number);
+			const turnout = turnoutsSeen.find((t) => t.records.includes(r.number)) ?? null;
+			return [
+				Object.freeze({
+					// length and radius as the fit started from them (the catalogue's on a declared turnout); the file's where they differ
+					number: r.number, type: r.type, length: dv?.length ?? ed?.length ?? r.length, radius: dv?.radius ?? ed?.radius ?? radiusOf(r),
+					fileLength: r.length, fileRadius: radiusOf(r),
+					family: r.type === "transition" ? ed?.family ?? familyOfRecord(r.number) : null,
+					fileFamily: r.type === "transition" ? familyOfRecord(r.number) : null,
+					edited: ed || dv ? Object.freeze({ length: (dv?.length ?? ed?.length) !== undefined, radius: (dv?.radius ?? ed?.radius) !== undefined, family: ed?.family !== undefined, turnout: ed?.turnout !== undefined }) : null,
+					removed: allEdits.removed.has(r.number),
+					inserted: null,
+					element: elementOf(r.number),
+					held: heldRecords.get(r.number)?.why ?? null,
+					heldLength: Boolean(heldRecords.get(r.number)?.length),
+					heldRadius: Boolean(heldRecords.get(r.number)?.radius) && r.type === "arc",
+					turnout: turnout?.designation ?? null,
+					// what the recognition found here, and - on the arc a type stands on - the type as a token and the main track's radius
+					fileTurnout: recognised.find((t) => t.records.includes(r.number))?.designation ?? null,
+					turnoutRef: turnout && turnout.arc === r.number ? `${turnout.radius}${turnout.radiusEnd !== null && turnout.radiusEnd !== undefined ? `/${turnout.radiusEnd}` : ""}-1/${turnout.ratio}` : null,
+					turnoutMain: turnout && turnout.arc === r.number ? turnout.declared?.mainRadius ?? null : null,
+				}),
+				// the records put in after this one, under their keys
+				...structure.inserted.filter((i) => i.after === r.number).map((i) => Object.freeze({
+					number: i.key, type: i.type, length: i.length, radius: i.radius, fileLength: null, fileRadius: null,
+					family: i.family, fileFamily: null, edited: null, removed: false, inserted: Object.freeze({ after: i.after, index: i.index, ...(i.turnout ? { turnout: i.turnout, part: i.part } : {}) }),
+					element: i.element, held: i.turnout ?? null, heldLength: Boolean(i.turnout), heldRadius: Boolean(i.turnout) && i.type === "arc", turnout: i.turnout ?? null,
+					fileTurnout: null, turnoutRef: null, turnoutMain: null,
+				})),
+			];
+		})),
 		points: Object.freeze(rows),
 		cant: cantReport,
 		output: Object.freeze({ records: written.records, dropped: written.dropped, stationEquations: loaded.kilometreJumps.length }),

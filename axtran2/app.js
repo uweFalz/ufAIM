@@ -169,7 +169,8 @@ function show({ report, csv }) {
 	const span = (records) => (records.length > 1 ? `Sätze ${records[0]}–${records[records.length - 1]}` : `Satz ${records[0]}`);
 	const inp = report.input;
 	el("holdResult").textContent = [
-		inp.turnouts.length ? `Weichen erkannt: ${inp.turnouts.map((t) => `${t.inserted ? `eingefügt nach Satz ${t.inserted.after}` : span(t.records)} ${t.designation} (${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
+		inp.turnouts.length ? `Weichen: ${inp.turnouts.map((t) => `${t.inserted ? `eingefügt nach Satz ${t.inserted.after}` : span(t.records)} ${t.designation} (${t.declared ? `Typ gesetzt, erkannt war ${t.declared.was ?? "keine Weiche"}; ` : t.inserted ? "" : "erkannt, "}${t.held ? "gehalten" : "nicht gehalten"})`).join(", ")}.${inp.turnouts.some((t) => !t.held) ? " Das Wort Weichen im Feld Sätze halten hält sie fest." : ""}` : "",
+		inp.releasedTurnouts?.length ? `Keine Weiche mehr: ${inp.releasedTurnouts.map((t) => `${span(t.records)} (erkannt war ${t.designation})`).join(", ")}.` : "",
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
 		inp.structure?.removed?.length ? `Herausgenommen: Satz ${inp.structure.removed.join(", ")}.` : "",
@@ -274,7 +275,8 @@ function toggleLock(number, quantity = "both") {
 // values, the records taken out, the records and turnouts put in
 function editsOfLastRun() {
 	const inp = last.report.input;
-	const values = new Map((inp.edits ?? []).map((e) => [e.record, { ...(e.length !== null ? { length: e.length } : {}), ...(e.radius !== null ? { radius: e.radius } : {}), ...(e.family ? { family: e.family } : {}) }]));
+	// `turnout` only where a type was declared: null for "keine", else the spec
+	const values = new Map((inp.edits ?? []).map((e) => [e.record, { ...(e.length !== null ? { length: e.length } : {}), ...(e.radius !== null ? { radius: e.radius } : {}), ...(e.family ? { family: e.family } : {}), ...(e.turnout !== undefined ? { turnout: e.turnout } : {}) }]));
 	const inserted = new Map();
 	const put = (after, index, spec) => { const list = inserted.get(after) ?? []; list[index - 1] = spec; inserted.set(after, list); };
 	for (const i of inp.structure?.inserted ?? []) if (!i.turnout) put(i.after, i.index, { type: i.type, length: i.length, ...(i.radius !== null ? { radius: i.radius } : {}), ...(i.family ? { family: i.family } : {}) });
@@ -311,7 +313,9 @@ function applyEdits(all, what) {
 function editValue(key, field, text) {
 	if (!last || !picture.model || running) return false;
 	const record = picture.model.records.find((r) => String(r.number) === String(key));
-	if (!record || !record.lockable || record.turnout) return false;
+	if (!record || !record.lockable) return false;
+	if (field === "turnout" || field === "turnoutMain") return editTurnout(record, field, text);
+	if (record.turnout) return false;
 	const value = field === "family" ? String(text) : Number(String(text).trim().replace("−", "-").replace(",", "."));
 	if (field !== "family" && (!Number.isFinite(value) || (field === "length" ? !(value > 0) : !(Math.abs(value) > 0)))) {
 		status(field === "length" ? `„${text}“ ist keine Länge: eine Zahl größer als null, Dezimalkomma erlaubt.` : `„${text}“ ist kein Radius: eine Zahl ungleich null, mit dem Vorzeichen der Datei.`, "error");
@@ -332,6 +336,41 @@ function editValue(key, field, text) {
 	// back at the file's value, as the list shows it (centimetres, whole metres of radius), the edit is gone
 	const same = field === "family" ? value === file : Math.abs(value - file) < (field === "length" ? 0.005 : 0.5);
 	if (same) delete entry[field]; else entry[field] = value;
+	Object.keys(entry).length ? all.values.set(number, entry) : all.values.delete(number);
+	return applyEdits(all, "value");
+}
+
+// A turnout's type chosen on an arc of the file, or the main track's radius beside
+// it: "3W=300-1/9:auf-800" in the field Werte ändern, "3W=keine" for no turnout where
+// the recognition found one; the type the recognition found, straight, is no edit.
+function editTurnout(record, field, text) {
+	if (record.inserted || isInsertKey(record.number)) return false;
+	const all = editsNow();
+	const number = Number(record.number);
+	const entry = { ...(all.values.get(number) ?? {}) };
+	const fileRef = /(\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)-1:(\d+(?:\.\d+)?)/.exec(record.fileTurnout ?? "");
+	// what stands now: the declaration, else what the recognition found on the record
+	const current = entry.turnout !== undefined ? entry.turnout : fileRef ? { radius: Number(fileRef[1].split("/")[0]), ...(fileRef[1].includes("/") ? { radiusEnd: Number(fileRef[1].split("/")[1]) } : {}), ratio: Number(fileRef[2]) } : null;
+	let next;
+	if (field === "turnout") {
+		const ref = String(text).trim();
+		if (ref === "") next = null;
+		else {
+			const [radii, ratio] = ref.split("-1/");
+			const [radius, radiusEnd] = radii.split("/").map(Number);
+			next = { radius, ...(radiusEnd ? { radiusEnd } : {}), ratio: Number(ratio), ...(current?.mainRadius !== undefined && current?.mainRadius !== null ? { mainRadius: current.mainRadius } : {}) };
+		}
+	} else {
+		if (!current) return false;
+		const mainText = String(text).trim();
+		const mainRadius = mainText === "" ? null : Number(mainText.replace("−", "-").replace(",", "."));
+		if (mainRadius !== null && !(Math.abs(mainRadius) > 0)) { status("Der Radius des Stammgleises ist eine Zahl ungleich null, mit dem Vorzeichen der Datei; leer für eine gerade Weiche.", "error"); drawList(); return false; }
+		next = { ...current };
+		if (mainRadius === null) delete next.mainRadius; else next.mainRadius = mainRadius;
+	}
+	// the type the recognition found, unbent, is the file's: no edit
+	const same = next === null ? !fileRef : fileRef && `${next.radius}${next.radiusEnd ? `/${next.radiusEnd}` : ""}-1/${next.ratio}` === `${fileRef[1]}-1/${fileRef[2]}` && next.mainRadius === undefined && next.orientation === undefined;
+	if (same) delete entry.turnout; else entry.turnout = next;
 	Object.keys(entry).length ? all.values.set(number, entry) : all.values.delete(number);
 	return applyEdits(all, "value");
 }

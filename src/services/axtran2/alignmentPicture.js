@@ -124,6 +124,8 @@ export function alignmentPictureModel(report) {
 			// the file's values where the fit started from edited ones
 			fileLength: r.fileLength ?? r.length, fileRadius: r.fileRadius ?? r.radius ?? null, edited: r.edited ?? null,
 			family: r.family ?? null, fileFamily: r.fileFamily ?? r.family ?? null,
+			// the turnout the recognition found on the record; on the arc a type stands on, the type as a token and the main track's radius
+			fileTurnout: r.fileTurnout !== undefined ? r.fileTurnout : r.turnout ?? null, turnoutRef: r.turnoutRef ?? null, turnoutMain: r.turnoutMain ?? null,
 			// put in after a record (under its key), or taken out (no column)
 			inserted: r.inserted ?? null, removed: Boolean(r.removed),
 		};
