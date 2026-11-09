@@ -25,7 +25,7 @@
 import { describeHold, holdMap } from "./alignmentPicture.js";
 import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.8";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.9";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
@@ -68,6 +68,8 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 	};
 	// a transition's type as a choice: what the fit started from, or what is chosen and not yet computed
 	const typeCell = (r) => {
+		// a declared turnout's end piece is a straight or an arc as the turnout says: marked where the file has the other kind
+		if (r.fileType && r.fileType !== r.type) return `<td class="edited" title="${escape(`In der Datei: ${TYPE[r.fileType] ?? r.fileType}`)}">${escape(TYPE[r.type] ?? r.type)}</td>`;
 		// a turnout's clothoid is catalogue geometry: its type is no choice
 		if (r.type !== "transition" || !r.lockable || r.turnout || !TRANSITION_FAMILIES[r.fileFamily]) return cell(r.type === "transition" && TRANSITION_FAMILIES[r.family] ? `${TYPE.transition} (${TRANSITION_FAMILIES[r.family]})` : TYPE[r.type] ?? r.type);
 		const value = typed === null ? r.family : typed.get(r.number)?.family ?? r.fileFamily;

@@ -301,7 +301,7 @@ test("an edited value is where the fit starts; the file is unchanged and the rec
 	assert.equal(arc.fixed, true, "an edited record is one element");
 	assert.deepEqual(edited.elements.map((e) => [...e.records]), [[1], [2, 3], [4], [5], [6], [7], [8, 9]]);
 	const r4 = edited.planRecords[3];
-	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false, family: false, turnout: false }, null, false]);
+	assert.deepEqual([r4.length, r4.fileLength, r4.radius, r4.fileRadius, r4.edited, r4.held, r4.heldLength], [40, 39.5, 300, 300, { length: true, radius: false, family: false, turnout: false, type: false }, null, false]);
 	assert.ok(edited.planRecords.filter((r) => r.number !== 4).every((r) => r.edited === null && r.length === r.fileLength));
 	// an edit holds nothing: the fit may move the value again; with the hold it keeps it
 	const held = (await fit({ edits: "4L=40", hold: "4L" })).report;
@@ -343,6 +343,18 @@ test("a turnout's type is declared on the arc of its branch: re-typed, made of a
 	const abw = bent.turnouts.find((t) => t.arc === 6);
 	assert.deepEqual([abw.designation, abw.kind, abw.branchSpeedKmh, abw.declared.mainRadius, abw.declared.bent.kind], ["ABW 190-1:9 auf R -800", "ABW", null, -800, "ABW"]);
 	assert.ok(Math.abs(bent.values.get(6).radius - 1 / (1 / 190 - 1 / 800)) < 1e-9 && Math.abs(bent.values.get(6).length - 190 * ALPHA) < 1e-12);
+	assert.deepEqual([abw.endPiece, abw.endPieceType], [null, null], "record 5 is an arc the other way, record 7 is not in the file: no end piece");
+	// the recognised turnout bent: its end piece, a straight of the file, becomes the arc that carries the branch's end curvature over d
+	const bentWithEnd = declare({ 2: "190-1/9:auf-800" });
+	const abwEnd = bentWithEnd.turnouts.find((t) => t.arc === 2);
+	assert.deepEqual([abwEnd.designation, [...abwEnd.records], abwEnd.endPiece, abwEnd.endPieceType], ["ABW 190-1:9 auf R -800", [2, 3], 3, "arc"]);
+	assert.deepEqual([bentWithEnd.values.get(3).type, bentWithEnd.values.get(3).length, round(bentWithEnd.values.get(3).radius)], ["arc", 6.0917, round(1 / (1 / 190 - 1 / 800))]);
+	assert.equal(bentWithEnd.values.get(2).type, undefined, "the arc of the branch keeps its kind");
+	assert.equal(we.turnouts[1].endPieceType, "straight");
+	// the straight turnout's end piece is a straight: an arc of the file the branch's way becomes one where the declaration names it
+	const withArcBeside = [...records.slice(0, 4), arc(5, 400, 6.0917), arc(6, 500, 500 * Math.atan(1 / 12))];
+	const fromArc = declareTurnouts(withArcBeside, recogniseTurnouts(withArcBeside), new Map([[6, parseTurnoutDeclaration("500-1/12:WE")]]));
+	assert.deepEqual([fromArc.turnouts.find((t) => t.arc === 6).endPieceType, fromArc.values.get(5)], ["straight", { length: 3.7664, type: "straight" }]);
 	// "keine": the recognised turnout is gone, its records keep the file's values
 	const none = declare({ 3: "keine" });
 	assert.deepEqual(none.turnouts.map((t) => t.designation), ["EW 500-1:12"]);
@@ -363,7 +375,7 @@ test("a declared type is where the fit starts: the catalogue's values on the tur
 	assert.deepEqual(retyped.input.edits, [{ record: 1, element: "E0", length: null, radius: null, family: null, turnout: { radius: 300, ratio: 9 } }]);
 	assert.deepEqual(retyped.input.heldRecords.map((h) => [h.record, h.why]), [[1, "EW 300-1:9"], [9, "EW 300-1:9"]]);
 	const r1 = retyped.planRecords[0], r2 = retyped.planRecords[1];
-	assert.deepEqual([r1.radius, r1.fileRadius, Number(r1.length.toFixed(4)), Number(r1.fileLength.toFixed(4)), r1.turnout, r1.fileTurnout, r1.turnoutRef, r1.turnoutMain, r1.edited, r1.heldLength], [300, 190, Number((300 * ALPHA).toFixed(4)), Number((190 * ALPHA).toFixed(4)), "EW 300-1:9", "EW 190-1:9", "300-1/9", null, { length: true, radius: true, family: false, turnout: true }, true]);
+	assert.deepEqual([r1.radius, r1.fileRadius, Number(r1.length.toFixed(4)), Number(r1.fileLength.toFixed(4)), r1.turnout, r1.fileTurnout, r1.turnoutRef, r1.turnoutMain, r1.edited, r1.heldLength], [300, 190, Number((300 * ALPHA).toFixed(4)), Number((190 * ALPHA).toFixed(4)), "EW 300-1:9", "EW 190-1:9", "300-1/9", null, { length: true, radius: true, family: false, turnout: true, type: false }, true]);
 	assert.deepEqual([r2.turnout, r2.fileTurnout, r2.length, r2.heldLength, r2.edited], [null, "EW 190-1:9", 6.0917, false, null]);
 	const arc = retyped.elements.find((e) => e.records.includes(1));
 	assert.deepEqual([arc.before.radius, arc.after.radius, Number(arc.before.length.toFixed(4))], [300, 300, Number((300 * ALPHA).toFixed(4))], "the fit starts from the catalogue's values and holds them");
@@ -378,7 +390,7 @@ test("a declared type is where the fit starts: the catalogue's values on the tur
 	const none = (await fit({ edits: "1W=keine", hold: "Weichen" })).report;
 	assert.deepEqual(none.input.turnouts.map((t) => [t.designation, [...t.records]]), [["EW 300-1:9", [9]]]);
 	assert.deepEqual(none.input.releasedTurnouts, [{ designation: "EW 190-1:9", records: [1, 2], by: 1 }]);
-	assert.deepEqual([none.planRecords[0].turnout, none.planRecords[0].fileTurnout, none.planRecords[0].radius, none.planRecords[0].edited, none.planRecords[1].heldLength], [null, "EW 190-1:9", 190, { length: false, radius: false, family: false, turnout: true }, false]);
+	assert.deepEqual([none.planRecords[0].turnout, none.planRecords[0].fileTurnout, none.planRecords[0].radius, none.planRecords[0].edited, none.planRecords[1].heldLength], [null, "EW 190-1:9", 190, { length: false, radius: false, family: false, turnout: true, type: false }, false]);
 	assert.match(recordListHtml(alignmentPictureModel(none)), /<select data-record="1" data-field="turnout" class="edited" title="Erkannt in der Datei: EW 190-1:9"[^>]*><option value="" selected>–<\/option>/);
 	// a plain arc made a turnout: record 4 (R 300, 39,5 m) as the branch of an EW 190-1:9, held with the word Weichen
 	const made = (await fit({ edits: "4W=190-1/9", hold: "Weichen" })).report;
@@ -389,4 +401,23 @@ test("a declared type is where the fit starts: the catalogue's values on the tur
 	assert.match(recordListHtml(alignmentPictureModel(made)), /<select data-record="4" data-field="turnout" class="edited" title="Erkannt in der Datei: keine Weiche"[^>]*><option value="">–<\/option><option value="190-1\/9" selected>/);
 	// refused: a type on a straight, "keine" where nothing was recognised, a length beside a type
 	for (const bad of ["3W=190-1/9", "4W=keine", "4W=190-1/9 4L=20"]) await assert.rejects(fit({ edits: bad }), (e) => e.code === "INVALID_EDIT", bad);
+	// bent onto R -800: the end piece, a straight of the file, is an arc of the branch's end radius now - in the fit, the report,
+	// the list and the written file; declared straight again on that file, it is a straight of d again
+	const bent = await fit({ edits: "1W=190-1/9:auf-800", hold: "Weichen" });
+	const bentRadius = Number((1 / (1 / 190 - 1 / 800)).toFixed(4));
+	assert.deepEqual(bent.report.input.turnouts.map((t) => [t.designation, [...t.records], t.endPiece, t.endPieceType, t.held]), [["ABW 190-1:9 auf R -800", [1, 2], 2, "arc", true], ["EW 300-1:9", [9], null, null, true]]);
+	const e2 = bent.report.planRecords[1];
+	assert.deepEqual([e2.type, e2.fileType, e2.length, Number(e2.radius.toFixed(4)), e2.fileRadius, e2.edited, e2.heldLength, e2.heldRadius, e2.turnout], ["arc", "straight", 6.0917, bentRadius, null, { length: true, radius: true, family: false, turnout: false, type: true }, true, true, "ABW 190-1:9 auf R -800"]);
+	assert.equal(bent.report.planRecords[0].edited.type, false, "the arc of the branch keeps its kind");
+	const endElement = bent.report.elements.find((e) => e.records.includes(2));
+	assert.deepEqual([endElement.type, Number(endElement.before.radius.toFixed(4)), Number(endElement.after.radius.toFixed(4)), endElement.after.length], ["arc", bentRadius, bentRadius, 6.0917]);
+	assert.match(recordListHtml(alignmentPictureModel(bent.report)), /<tr data-record="2" class="held"><td class="num">2<\/td><td class="edited" title="In der Datei: Gerade">Bogen<\/td><td>ABW 190-1:9 auf R -800<\/td><td class="num">6,09<\/td>/);
+	const back = await traAlignmentFromBytes(bent.tra, "bent.TRA");
+	assert.deepEqual(back.records.slice(0, 2).map((r) => [r.type, Number(r.length.toFixed(4)), Number((-1 / r.curvature).toFixed(4))]), [["arc", Number((190 * ALPHA).toFixed(4)), bentRadius], ["arc", 6.0917, bentRadius]]);
+	const straightAgain = await fitTraFromBytes({ bytes: bent.tra, name: "bent.TRA", points, tolerance: 0.003, speedKmh: 40, endPose: world(truthChain.endPose), maxIterations: 50, edits: "1W=190-1/9", hold: "Weichen" });
+	const s2 = straightAgain.report.planRecords[1];
+	assert.deepEqual([s2.type, s2.fileType, s2.length, s2.radius, Number(s2.fileRadius.toFixed(4)), s2.edited.type], ["straight", "arc", 6.0917, null, bentRadius, true]);
+	const straightBack = await traAlignmentFromBytes(straightAgain.tra, "straight.TRA");
+	assert.deepEqual(straightBack.records.slice(0, 2).map((r) => [r.type, Number(r.length.toFixed(4))]), [["arc", Number((190 * ALPHA).toFixed(4))], ["straight", 6.0917]]);
+	assert.deepEqual(recogniseTurnouts(straightBack.records).map((t) => [t.designation, [...t.records]]), [["EW 190-1:9", [1, 2]], ["EW 300-1:9", [9]]]);
 });

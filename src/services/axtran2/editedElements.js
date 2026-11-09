@@ -25,7 +25,7 @@ import { bentOnto, turnout as turnoutSpec, crossing as crossingSpec, crossingEle
 const curvatureOfRadius = (r) => (Number.isFinite(r) && r !== 0 ? -1 / r : 0);
 const radiusOfCurvature = (k) => (Math.abs(k) > 1e-15 ? -1 / k : null);
 
-export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.4";
+export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.5";
 
 export class EditedElementsError extends Error {
 	constructor(code, message, detail = null) {
@@ -87,7 +87,7 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 			push({ id, type: element.type, length: element.length, ...(element.curvature !== undefined ? { curvature: element.curvature } : {}), fileSpan: 0, heldTurnout: true,
 				inserted: Object.freeze({ after, index: i + 1, key, turnout: designation, part: route === "curved" ? "arc" : "straight" }) }, [key]);
 			turnoutsOut.push({ designation, kind: shape.kind, route, radius: shape.radius, ratio: shape.ratio, side: shape.kind === "Kr" ? null : spec.side, orientation: null, after, index: i + 1,
-				arc: route === "curved" ? key : null, endPiece: null, endPieceLength: null,
+				arc: route === "curved" ? key : null, endPiece: null, endPieceType: null, endPieceLength: null,
 				// what the annex allows: in the curved route the branch's, over the crossing the main's
 				branchSpeedKmh: route === "curved" ? shape.branchSpeedKmh : shape.mainSpeedKmh, records: [key] });
 			return;
@@ -143,7 +143,7 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 				// `arc` the record of the first radius with a length, `arcs` the branch's arcs in the track's order, `transition` its clothoid
 				arc: keys[parts.indexOf(withLength[0])], arcs: parts.map((p, k) => (arcs.includes(p) ? keys[k] : null)).filter((k) => k !== null),
 				transition: parts.some((p) => p.part === "transition") ? keys[parts.findIndex((p) => p.part === "transition")] : null,
-				endPiece: endPiece === null ? null : keys[parts.findIndex((p) => p.part === "endPiece")], endPieceLength: endPiece,
+				endPiece: endPiece === null ? null : keys[parts.findIndex((p) => p.part === "endPiece")], endPieceType: endPiece === null ? null : parts.find((p) => p.part === "endPiece").type, endPieceLength: endPiece,
 				// the annex speaks for the straight turnout; a bent branch has another radius and no row
 				branchSpeedKmh: bent ? null : shape.branchSpeedKmh ?? null, bent, records: keys });
 			return;
