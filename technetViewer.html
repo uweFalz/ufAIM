@@ -45850,6 +45850,35 @@ xlsx/xlsx.mjs:
 				if (measured > 2 * declared) return "stamm";
 				return null;
 			}
+			// The Gleis a Gleisstrang (Satzart 33) belongs to: a Streckengleis by
+			// Strecke and STRRIKZ (1 rechts, 2 links, 0/3 the Kilometerlinie), a
+			// Bahnhofsgleis (STRRIKZ 4/5) by its number; a Verbindung ("Gleis 0")
+			// belongs to no Gleis. Measured on five deliveries against the roles
+			// from the Lage, this Gleis does not follow the Stamm: at 16 % of the
+			// Weichen (WueTreu 78 of 405, ABW 23 of 93, EKW 8 of 21; Billwerder
+			// 14 of 129) it runs on through the Zweig, the Stamm enters a
+			// Verbindung or the other Streckengleis -- the number follows the
+			// Fahrweg. So the through Gleis is a finding about the Gleis's
+			// course, not a witness for Stamm and Zweig.
+			function gndStrandGleis(row) {
+				const strRikz = gndKey(row.STRRIKZ);
+				if (["4", "5"].includes(strRikz)) {
+					const number = gndKey(row.LIRA_GLSNR) || gndKey(row.GLEISNR) || gndKey(row.STRECKE);
+					return number && number !== "0" ? { key: `G ${number}`, label: `Gleis ${number}` } : null;
+				}
+				const strecke = gndKey(row.STRECKE);
+				if (!strecke) return null;
+				return { key: `S ${strecke}/${strRikz}`, label: `Strecke ${strecke} · ${{ 1: "rechts", 2: "links" }[strRikz] ?? "Kilometerlinie"}` };
+			}
+			// Which neighbour the Spitze's Gleis runs on to: the one, and only
+			// one, of KN1/KN2 whose strand carries the Gleis of the strand to
+			// KN0. Two strands of one pair with different Gleise say nothing.
+			function gndThroughGleis(gleise) {
+				const [spitze, ...others] = gleise;
+				if (!spitze?.key) return null;
+				const hits = others.map((gleis, index) => gleis?.key === spitze.key ? index + 1 : -1).filter((index) => index > 0);
+				return hits.length === 1 ? hits[0] : null;
+			}
 			// END GND TOPOLOGY
 			const gndTableCache = new WeakMap();
 			function gndTableRows(loaded, name) {
@@ -45978,11 +46007,20 @@ xlsx/xlsx.mjs:
 						if (!lists.has(key)) lists.set(key, []);
 						lists.get(key).push({ order: Number(row.LfdNr), pad: gndKey(row.L) });
 					}
+					// The Gleis of every strand by its pair of Knoten, Lage or not
+					// (gndStrandGleis); a pair with two different Gleise is ambiguous.
+					const strandGleis = new Map();
 					for (const row of gsRows) {
 						const fromKey = gndKey(row.AKNOTEN);
 						const toKey = gndKey(row.EKNOTEN);
 						if (!fromKey || !toKey) continue;
 						summary.strands += 1;
+						const gleisOf = gndStrandGleis(row);
+						for (const pair of [`${fromKey}|${toKey}`, `${toKey}|${fromKey}`]) {
+							const known = strandGleis.get(pair);
+							if (known === undefined || (known === null && gleisOf)) strandGleis.set(pair, gleisOf);
+							else if (known && gleisOf && known.key !== gleisOf.key) strandGleis.set(pair, { key: null, label: null, ambiguous: true });
+						}
 						const pads = (lists.get(String(row.ParseLfdNr)) ?? []).sort((a, b) => a.order - b.order).map((item) => item.pad);
 						const portions = gndStrandPortions(pads, elementOf);
 						if (!portions.length) { summary.strandsWithoutGleis += 1; continue; }
@@ -46038,6 +46076,13 @@ xlsx/xlsx.mjs:
 							edges.push({ id: -1, entry: portion.entry, from, to, stationFrom: stationOfRun(polyline, runFrom), stationTo: stationOfRun(polyline, runTo), runFrom, runTo, part: "", source: "daten", strand, name: strand.name });
 							covered.add(portion.entry);
 						});
+					}
+					// The Spitze's Gleis (strand to KN0) and the neighbour it runs on to.
+					for (const node of fileNodes.values()) {
+						if (!node.neighbours) continue;
+						const gleise = node.neighbours.slice(0, 3).map((key) => key ? strandGleis.get(`${node.knoten}|${key}`) ?? null : null);
+						const through = gndThroughGleis(gleise);
+						node.through = through ? { gleis: gleise[0], to: node.neighbours[through], via: null } : null;
 					}
 				}
 				// A Gleis runs on where the Gleisstränge end: a Bahnhof's file names
@@ -46503,6 +46548,12 @@ xlsx/xlsx.mjs:
 							}
 						}
 					}
+					// The Spitze's Gleis runs on to one neighbour (gndThroughGleis);
+					// by the Lage's roles that is the Stamm or the Zweig.
+					if (node.through) {
+						const to = node.through.to;
+						node.through.via = node.roles?.stamm && targetKey(node.roles.stamm) === to ? "stamm" : node.roles?.zweig && targetKey(node.roles.zweig) === to ? "zweig" : null;
+					}
 					// The Bauart's radius is the Zweig's radius against the Stamm for
 					// EW, ABW and IBW in a circular Stamm; a Kreuzungsweiche has two
 					// Zweige and "i.U." (im Übergangsbogen) a Stamm whose curvature
@@ -46520,9 +46571,11 @@ xlsx/xlsx.mjs:
 				}
 				const checks = nodes.filter((node) => node.spitzeCheck);
 				const spitze = checks.length ? { compared: checks.filter((node) => node.spitzeCheck === "belegt" || node.spitzeCheck === "abweichend").length, belegt: checks.filter((node) => node.spitzeCheck === "belegt").length, abweichend: checks.filter((node) => node.spitzeCheck === "abweichend").length, daten: checks.filter((node) => node.spitzeCheck === "daten").length } : null;
+				const throughNodes = nodes.filter((node) => node.through);
+				const durchgehend = throughNodes.length ? { stamm: throughNodes.filter((node) => node.through.via === "stamm").length, zweig: throughNodes.filter((node) => node.through.via === "zweig").length, offen: throughNodes.filter((node) => !node.through.via).length } : null;
 				const farNodes = nodes.filter((node) => node.far != null);
 				const far = farNodes.length ? { count: farNodes.length, max: Math.max(...farNodes.map((node) => node.far)), open: nodes.filter((node) => node.km == null).length, gruppe: farNodes.filter((node) => node.farVia === "gruppe").length } : null;
-				return { nodes, edges, axes, fromData, far, spitze, knotenLabels: data.knotenLabels, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
+				return { nodes, edges, axes, fromData, far, spitze, durchgehend, knotenLabels: data.knotenLabels, computedGleise: computed.length, gleise: gleise.length, kmLines: kmLines.length, axisIsGleis: !kmLines.length, rows: rowed.length ? [Math.min(...rowed.map((item) => item.row)), Math.max(...rowed.map((item) => item.row))] : null };
 			}
 
 			function activateJunctionCluster(junction) {
@@ -46548,7 +46601,7 @@ xlsx/xlsx.mjs:
 					const origin = !topology.fromData ? "gerechnet" : topology.computedGleise ? "aus den Daten und gerechnet" : "aus den Daten";
 					const offGleis = topology.fromData?.offGleis ? ` · ${topology.fromData.offGleis} neben ihren Gleisen` : "";
 					summary.textContent = `Weichen · Topologie (${origin}) · ${count("Weiche")} Weichen · ${count("Kreuzung")} Kreuzungen${offGleis} · ${count("Ende")} Enden · ${topology.edges.length} Kanten`;
-					summary.title = `${topology.fromData ? `Aus den Daten (GND Satzart 31/33): ${topology.fromData.nodes} Knoten, ${topology.fromData.strands - topology.fromData.strandsWithoutGleis} von ${topology.fromData.strands} Gleissträngen mit Lage, ${topology.fromData.gleise} Gleise${topology.computedGleise ? ` · ${topology.computedGleise} Gleise ohne Gleisstrang gerechnet` : ""}${topology.fromData.samePoint ? ` · ${topology.fromData.samePoint} Weichenpaare auf einem Punkt (Spitze an Spitze; ihre Kante nach den Elementen des Gleisstrangs)` : ""}\n` : ""}${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? ` · km von der nächsten Kilometerlinie (bis ${TOPOLOGY_KM_MAX_DISTANCE_M} m)` : " · keine Kilometerlinie, Stationen der Gleise"}${topology.spitze ? `\nSpitze: ${topology.spitze.belegt} von ${topology.spitze.compared} Weichen aus der Lage stimmen mit den Daten (KN0) überein${topology.spitze.abweichend ? `, ${topology.spitze.abweichend} weichen ab` : ""}${topology.spitze.daten ? ` · ${topology.spitze.daten} Spitzen nur aus den Daten` : ""}` : ""}${topology.far ? `\n${topology.far.count} Knoten weiter weg (bis ${Math.round(topology.far.max)} m): km über das Lot auf die Strecke ihrer Nachbarn, sonst auf die nächste Kilometerlinie (bis ${TOPOLOGY_KM_FAR_M} m)${topology.far.gruppe ? `, ${topology.far.gruppe} davon in Gruppen längs ihrer eigenen Richtung` : ""}${topology.far.open ? ` · ${topology.far.open} ohne Lage` : ""}` : ""}`;
+					summary.title = `${topology.fromData ? `Aus den Daten (GND Satzart 31/33): ${topology.fromData.nodes} Knoten, ${topology.fromData.strands - topology.fromData.strandsWithoutGleis} von ${topology.fromData.strands} Gleissträngen mit Lage, ${topology.fromData.gleise} Gleise${topology.computedGleise ? ` · ${topology.computedGleise} Gleise ohne Gleisstrang gerechnet` : ""}${topology.fromData.samePoint ? ` · ${topology.fromData.samePoint} Weichenpaare auf einem Punkt (Spitze an Spitze; ihre Kante nach den Elementen des Gleisstrangs)` : ""}\n` : ""}${topology.gleise} Gleise, ${topology.nodes.length} Knoten (${count("Fortsetzung")} Fortsetzungen, ${count("Knick")} Knicke, ${count("Knoten")} sonstige) · Berührung ≤ ${TOPOLOGY_TOLERANCE_M} m, Tangente 2 gon${topology.kmLines ? ` · km von der nächsten Kilometerlinie (bis ${TOPOLOGY_KM_MAX_DISTANCE_M} m)` : " · keine Kilometerlinie, Stationen der Gleise"}${topology.spitze ? `\nSpitze: ${topology.spitze.belegt} von ${topology.spitze.compared} Weichen aus der Lage stimmen mit den Daten (KN0) überein${topology.spitze.abweichend ? `, ${topology.spitze.abweichend} weichen ab` : ""}${topology.spitze.daten ? ` · ${topology.spitze.daten} Spitzen nur aus den Daten` : ""}` : ""}${topology.durchgehend ? `\nDurchgehendes Gleis (Satzart 33): das Gleis der Spitze läuft bei ${topology.durchgehend.stamm} Weichen über den Stamm weiter, bei ${topology.durchgehend.zweig} über den Zweig${topology.durchgehend.offen ? `, bei ${topology.durchgehend.offen} ohne Rollen aus der Lage` : ""} · die Gleisnummer folgt dem Fahrweg, nicht dem Stamm, und entscheidet Stamm und Zweig nicht` : ""}${topology.far ? `\n${topology.far.count} Knoten weiter weg (bis ${Math.round(topology.far.max)} m): km über das Lot auf die Strecke ihrer Nachbarn, sonst auf die nächste Kilometerlinie (bis ${TOPOLOGY_KM_FAR_M} m)${topology.far.gruppe ? `, ${topology.far.gruppe} davon in Gruppen längs ihrer eigenen Richtung` : ""}${topology.far.open ? ` · ${topology.far.open} ohne Lage` : ""}` : ""}`;
 					node.append(summary);
 					const list = document.createElement("div");
 					list.className = "outbox-junction-list";
@@ -46595,9 +46648,14 @@ xlsx/xlsx.mjs:
 							return `\nLage gegen Daten: ${through ? `${pair} laufen in einer Flucht durch den Knoten, dazwischen liegt keine Spitze` : `die Lage sieht die Spitze bei ${legName(roles.spitze)}`}${likeZweig && measured ? `; der Schenkel zu ${nameOf(item.spitzeData)} krümmt sich mit r ≈ ${Math.round(measured)} m wie der Zweig der Bauart (${item.bauartInfo.radius} m)` : ""}${lageIndex > 0 ? ` · in den Daten stehen KN0 und KN${lageIndex} wohl vertauscht` : ""}`;
 						})();
 						const farText = item.far != null ? ` · ${Math.round(item.far)} m neben der Kilometerlinie` : "";
-						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${farText}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${offGleis}`;
+						// The Spitze's Gleis runs on through the Zweig (the number follows
+						// the Fahrweg), or, without roles from the Lage, to a named neighbour.
+						const throughText = item.through?.via === "zweig" ? ` · ${item.through.gleis.label} läuft über den Zweig weiter` : item.through && !item.through.via && !(roles?.stamm && roles?.zweig) ? ` · ${item.through.gleis.label} läuft nach ${nameOf(item.through.to)} weiter (Daten)` : "";
+						const throughTitle = item.through ? `\nDurchgehendes Gleis (Satzart 33): ${item.through.gleis.label} von ${nameOf(item.spitzeData)} über ${item.through.via === "stamm" ? "den Stamm" : item.through.via === "zweig" ? "den Zweig" : "einen Schenkel ohne Rolle"} nach ${nameOf(item.through.to)}${item.through.via === "zweig" ? "; die Gleisnummer der Stränge folgt dem Fahrweg, nicht dem Stamm, und ist darum kein Zeuge für Stamm und Zweig" : ""}` : "";
+						row.textContent = `${item.label ? `${item.label}${item.bauart ? ` · ${item.bauart}` : ""}` : item.kind} · ${item.km != null ? `${topology.axisIsGleis ? "Station" : "km"} ${station(item.km).trim()}` : "Lage offen"}${farText}${roles ? rolesText : ` · ${item.names.join(" / ")}`}${throughText}${offGleis}`;
 						if (offGleis || item.radiusCheck === "abweichend" || item.spitzeCheck === "abweichend") row.classList.add("outbox-junction-off");
 						row.title = `${item.source === "daten" ? `${item.kind} aus den Daten · Knoten ${item.knoten}${item.neighbours ? ` · Nachbarn ${item.neighbours.filter(Boolean).join(", ")}` : ""} · ` : `${item.kind} gerechnet · `}Grad ${item.degree} · E ${item.point.easting.toFixed(2)} N ${item.point.northing.toFixed(2)}${item.samePoint ? `\nteilt seinen Punkt mit ${item.samePoint.label ?? item.samePoint.knoten} (Spitze an Spitze, PAD ${item.pad} und ${item.samePoint.pad}); die Kante dazwischen liegt nach den Elementen ihres Gleisstrangs` : ""}${item.far != null ? `\n${item.farVia === "gruppe" ? `km längs der eigenen Gleisgruppe, ab dem Lot ihrer Mitte auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (nächste Kilometerlinie)` : `km über das Lot auf ${topology.axes?.[item.axis]?.label ?? "die Achse"} (${item.farVia === "nachbar" ? "die Strecke der Nachbarknoten" : "nächste Kilometerlinie"})`}, ${Math.round(item.far)} m daneben` : ""}${roles ? `\n${roles.fromData ? `${roles.spitze ? "Spitze aus den Daten (KN0 der Satzart 31)" : item.spitzeData ? `Spitze nach den Daten (KN0 der Satzart 31) bei ${nameOf(item.spitzeData)}, ohne Lage` : "Spitze offen: die Daten nennen keinen Nachbarn an KN0"}${roles.stamm && roles.zweig ? ", Stamm und Zweig aus den Radien der beiden Schenkel gegen die Bauart" : roles.stamm || roles.zweig ? `, ${roles.zweig ? "Zweig" : "Stamm"} aus dem Radius des Schenkels mit Lage gegen die Bauart${roles.kreuzung ? ` (${item.bauartInfo?.form}: der gerade Strang kreuzt, der Bogen zweigt ab)` : ""}` : roles.kreuzung && !roles.straightStamm ? `; Stamm und Zweig bei einer ${node_form(item)} im Bogen nicht aus der Bauart ableitbar` : roles.straightStamm === false ? "; Stamm und Zweig bei gebogenem Stamm nicht aus dem Radius ableitbar" : ", Stamm und Zweig ohne Lage oder aus dem Radius nicht entscheidbar"}` : `Spitze, Stamm und Zweig aus der Lage (25 m je Schenkel)${item.spitzeCheck === "belegt" ? "; die Daten (KN0) nennen dieselbe Spitze" : item.spitzeCheck === "abweichend" ? `; die Daten (KN0) nennen ${nameOf(item.spitzeData)} als Spitze` : ""}`}${roles.radius ? `; Zweigradius gegen den Stamm ${Math.round(roles.radius)} m${item.bauartInfo?.radius ? `, Bauart ${item.bauartInfo.radius} m${item.radiusCheck ? ` (${item.radiusCheck})` : " (nicht prüfbar)"}` : ""}` : ""}${witness}` : item.knotenTyp === 1 ? `\nSpitze/Stamm/Zweig offen: nicht drei Schenkel mit Lage${item.spitzeData ? "" : ", die Daten nennen keinen Nachbarn an KN0"}` : ""}`;
+						if (throughTitle) row.title += throughTitle;
 						if (activeJunction?.node === item) row.classList.add("outbox-junction-active");
 						row.addEventListener("click", () => activateJunctionCluster(junctionFromNode(item)));
 						list.append(row);

@@ -13,8 +13,8 @@ const begin = html.indexOf("// BEGIN GND TOPOLOGY");
 const end = html.indexOf("// END GND TOPOLOGY");
 assert.ok(begin > 0 && end > begin, "topology block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, gndLegTarget, gndStraightStamm, gndLegByRadius, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
-const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, gndLegTarget, gndStraightStamm, gndLegByRadius, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, gndLegTarget, gndStraightStamm, gndLegByRadius, gndStrandGleis, gndThroughGleis, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M };`, { filename: "gnd-topology.js" }).runInContext(context);
+const { gndKey, gndKnotenLabel, gndStrandPortions, gndBauart, weichenRoles, gndGleisNumber, gndUnnumbered, gndKnotenStation, gndNearestNode, gndGroupStations, gndLegTarget, gndStraightStamm, gndLegByRadius, gndStrandGleis, gndThroughGleis, GND_KNOTEN_KINDS, GND_KNOTEN_MATCH_M } = context.api;
 
 test("fixed-width keys: blanks collapse, nothing else changes", () => {
 	assert.equal(gndKey("203695    24"), "203695 24");
@@ -243,4 +243,27 @@ test("one leg against the Zweigradius: Zweig within 25 %, Stamm beyond twice the
 	assert.equal(gndLegByRadius(leg(0.0235, 26.6), 190), "stamm"); // r 566 > 380
 	assert.equal(gndLegByRadius(null, 190), null);
 	assert.equal(gndLegByRadius(leg(0), null), null);
+});
+
+test("the Gleis of a Gleisstrang: Streckengleis by Strecke and side, Bahnhofsgleis by number, a Verbindung none", () => {
+	assert.deepEqual(json(gndStrandGleis({ STRECKE: "5501", STRRIKZ: "1" })), { key: "S 5501/1", label: "Strecke 5501 · rechts" });
+	assert.deepEqual(json(gndStrandGleis({ STRECKE: "1244 ", STRRIKZ: "2" })), { key: "S 1244/2", label: "Strecke 1244 · links" });
+	assert.deepEqual(json(gndStrandGleis({ STRECKE: "2631", STRRIKZ: "0" })), { key: "S 2631/0", label: "Strecke 2631 · Kilometerlinie" });
+	assert.deepEqual(json(gndStrandGleis({ STRECKE: "23", STRRIKZ: "4" })), { key: "G 23", label: "Gleis 23" });
+	assert.deepEqual(json(gndStrandGleis({ STRECKE: "0", STRRIKZ: "5", LIRA_GLSNR: "9038" })), { key: "G 9038", label: "Gleis 9038" });
+	assert.equal(gndStrandGleis({ STRECKE: "0", STRRIKZ: "4" }), null);
+	assert.equal(gndStrandGleis({ STRECKE: "", STRRIKZ: "1" }), null);
+});
+
+test("the Spitze's Gleis runs on to exactly one neighbour, or the data say nothing", () => {
+	const s = { key: "S 5501/1" };
+	const g0 = { key: "G 0" };
+	assert.equal(gndThroughGleis([s, s, null]), 1);
+	assert.equal(gndThroughGleis([s, null, s]), 2);
+	assert.equal(gndThroughGleis([s, { key: "G 2" }, s]), 2);
+	assert.equal(gndThroughGleis([s, s, s]), null, "both neighbours on the Gleis");
+	assert.equal(gndThroughGleis([s, { key: "G 1" }, g0]), null, "neither");
+	assert.equal(gndThroughGleis([null, s, s]), null, "Spitze on a Verbindung");
+	assert.equal(gndThroughGleis([{ key: null, ambiguous: true }, s, null]), null, "ambiguous Spitze strand");
+	assert.equal(gndThroughGleis([s, undefined, s]), 2, "a strand the file does not list");
 });
