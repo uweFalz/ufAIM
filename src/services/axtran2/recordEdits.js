@@ -32,8 +32,16 @@
 // "+7=K:DKW:190-1/9:R" the curved route of a DKW 190-1:9 onto the crossing
 // track to the right (the arc R * atan(1/n)), ":gerade" the straight route
 // over the crossing (2 R tan(alpha/2)); an EKW reads the same from its entry.
+//
+// A turnout of the file has a type too: "3W=300-1/9" says that record 3, an
+// arc, is the branch of an EW 300-1:9 - the turnout the recognition found
+// there is re-typed, or a plain arc becomes one; its values (radius, branch
+// length, end piece) are the catalogue's from then on (heldRecords.js,
+// declareTurnouts). ":auf-800" bends it onto a main track of that radius,
+// ":WA", ":WE" or ":Bogen" say where its end piece is where the lengths do
+// not; "3W=keine" says the arc is no turnout, whatever the recognition found.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.7";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.8";
 
 import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 import { RIL_800_0120_A01, CROSSING_KINDS } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
@@ -69,8 +77,37 @@ export function insertOf(key) {
 /** "EW 190-1:9" of a turnout spec, "EW 7000/6000-1:42" where the branch has two radii */
 export const turnoutDesignation = (spec) => `EW ${spec.radius}${Number.isFinite(spec.radiusEnd) ? `/${spec.radiusEnd}` : ""}-1:${spec.ratio}`;
 /** "190-1/9" of a turnout spec, as the token writes it */
-const turnoutRef = (spec) => `${spec.radius}${Number.isFinite(spec.radiusEnd) ? `/${spec.radiusEnd}` : ""}-1/${spec.ratio}`;
+export const turnoutRef = (spec) => `${spec.radius}${Number.isFinite(spec.radiusEnd) ? `/${spec.radiusEnd}` : ""}-1/${spec.ratio}`;
 export { TURNOUT_SHAPES };
+/** the words that say a record is no turnout: "3W=keine" */
+const RELEASE_WORDS = /^(keine|none|frei|-|–|—)$/i;
+
+/**
+ * A turnout declared on a record of the file, as "3W=..." carries it after
+ * the "=": null for "keine" (no turnout there), else { radius, radiusEnd?,
+ * ratio, mainRadius?, orientation? }; the shape has to be one of the annex.
+ */
+export function parseTurnoutDeclaration(text) {
+	const t = String(text ?? "").trim();
+	if (RELEASE_WORDS.test(t)) return null;
+	const w = /^(?:EW\s*)?(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?-1[:/](\d+(?:[.,]\d+)?)((?::(?:WA|WE|Bogen|auf\s*[-+]?\d+(?:[.,]\d+)?))*)$/i.exec(t);
+	if (!w) error("INVALID_EDIT", `"${t}": a turnout's type is written 300-1/9 (7000/6000-1/42 for a branch of two radii), then :auf-800 to bend it onto a main track of that radius, :WA, :WE or :Bogen for where its end piece is; "keine" for no turnout`);
+	const spec = { radius: Number(w[1]), ratio: toNumber(w[3]) };
+	if (w[2] !== undefined) spec.radiusEnd = Number(w[2]);
+	if (!turnoutShape(spec.radius, spec.ratio, spec.radiusEnd ?? null)) error("INVALID_EDIT", `${turnoutDesignation(spec)} is not a turnout of Ril 800.0120A01: ${TURNOUT_SHAPES.map((s) => s.designation).join(", ")}`);
+	for (const part of (w[4] ?? "").split(":").filter(Boolean)) {
+		const main = /^auf\s*([-+]?\d+(?:[.,]\d+)?)$/i.exec(part);
+		if (main) {
+			spec.mainRadius = toNumber(main[1]);
+			if (!(Math.abs(spec.mainRadius) > 0)) error("INVALID_EDIT", `"${t}": the main track's radius to bend onto is not zero`);
+		} else spec.orientation = part.toLowerCase() === "bogen" ? "arc" : part.toUpperCase();
+	}
+	return spec;
+}
+
+/** a declaration as the token writes it after the "=": "300-1/9:auf-800:WE", "keine" */
+export const formatTurnoutDeclaration = (spec) => spec === null ? "keine"
+	: `${turnoutRef(spec)}${Number.isFinite(spec.mainRadius) ? `:auf${trim(spec.mainRadius, 3)}` : ""}${spec.orientation === "arc" ? ":Bogen" : spec.orientation === "WE" || spec.orientation === "WA" ? `:${spec.orientation}` : ""}`;
 
 /** the transition families a record may be changed to, with the words for them */
 export const TRANSITION_FAMILIES = Object.freeze({ clothoid: "Klothoide", bloss: "Bloss", helmert: "S-Form" });
@@ -114,6 +151,12 @@ export function parseEdits(edits) {
 			map.set(n, { ...(map.get(n) ?? {}), family });
 			return;
 		}
+		if (field === "turnout") {
+			// a string as typed, or a spec (null for "keine") as the report carries it: read through the words either way
+			const turnout = typeof value === "string" ? parseTurnoutDeclaration(value) : value === null ? null : parseTurnoutDeclaration(formatTurnoutDeclaration(value));
+			map.set(n, { ...(map.get(n) ?? {}), turnout });
+			return;
+		}
 		if (!Number.isFinite(value)) error("INVALID_EDIT", `record ${n}: no readable ${field}: "${value}"`);
 		map.set(n, { ...(map.get(n) ?? {}), [field]: value });
 	};
@@ -122,10 +165,11 @@ export function parseEdits(edits) {
 	if (typeof edits === "string") {
 		for (const token of tokens(edits)) {
 			if (/^[-+]/.test(token)) continue; // the structure: parseStructure reads it
-			const m = /^(\d+)\s*([lrt])\s*=\s*(.+)$/i.exec(token);
-			if (!m) error("INVALID_EDIT", `cannot read "${token}": write the record number, L, R or T, "=" and the value, as in 7L=45,2 or 7T=Bloss`);
+			const m = /^(\d+)\s*([lrtw])\s*=\s*(.+)$/i.exec(token);
+			if (!m) error("INVALID_EDIT", `cannot read "${token}": write the record number, L, R, T or W, "=" and the value, as in 7L=45,2, 7T=Bloss or 3W=300-1/9`);
 			const kind = m[2].toUpperCase();
 			if (kind === "T") { put(Number(m[1]), "family", m[3]); continue; }
+			if (kind === "W") { put(Number(m[1]), "turnout", m[3]); continue; }
 			const value = toNumber(m[3]);
 			if (Number.isNaN(value)) error("INVALID_EDIT", `cannot read the value in "${token}"`);
 			put(Number(m[1]), kind === "L" ? "length" : "radius", value);
@@ -138,11 +182,12 @@ export function parseEdits(edits) {
 		if (e.length !== undefined && e.length !== null) put(n, "length", Number(e.length));
 		if (e.radius !== undefined && e.radius !== null) put(n, "radius", Number(e.radius));
 		if (e.family !== undefined && e.family !== null) put(n, "family", e.family);
+		if (e.turnout !== undefined) put(n, "turnout", e.turnout);
 	}
 	return map;
 }
 
-const tokens = (text) => text.split(/[\s;]+|,(?=\s*[-+]?\d+\s*[lrt=]|\s*[-+]\d)/i).map((t) => t.trim()).filter(Boolean);
+const tokens = (text) => text.split(/[\s;]+|,(?=\s*[-+]?\d+\s*[lrtw=]|\s*[-+]\d)/i).map((t) => t.trim()).filter(Boolean);
 const trim = (value, digits) => value.toFixed(digits).replace(/\.?0+$/, "").replace(".", ",");
 
 /**
@@ -250,6 +295,7 @@ export function formatEdits(edits) {
 		const e = all.values.get(n) ?? {};
 		return [
 			...(e.length !== undefined ? [`${n}L=${trim(e.length, 3)}`] : []), ...(e.radius !== undefined ? [`${n}R=${trim(e.radius, 3)}`] : []), ...(e.family !== undefined ? [`${n}T=${TRANSITION_FAMILIES[e.family]}`] : []),
+			...(e.turnout !== undefined ? [`${n}W=${formatTurnoutDeclaration(e.turnout)}`] : []),
 			...(all.removed.has(n) ? [`-${n}`] : []),
 			...(all.inserted.get(n) ?? []).map((spec) => insertToken(n, spec)),
 		];
@@ -259,15 +305,24 @@ export function formatEdits(edits) {
 /**
  * The edits checked against the file's records: the record exists and
  * carries a length, a length is positive, a radius belongs to an arc and is
- * not zero. Returns a Map of record number to frozen { length?, radius? }.
+ * not zero. A turnout's type goes on an arc, "keine" on a record of a
+ * turnout the recognition found (`turnouts`); a record declared a turnout
+ * takes no length or radius beside it, its values are the catalogue's.
+ * Returns a Map of record number to frozen { length?, radius?, family?, turnout? }.
  */
-export function resolveEdits(edits, records) {
+export function resolveEdits(edits, records, turnouts = []) {
 	const map = parseEdits(edits);
 	const out = new Map();
 	for (const [n, e] of map) {
 		if (n > records.length) error("INVALID_EDIT", `record ${n} does not exist: the file has ${records.length}`);
 		const r = records[n - 1];
 		if (r.type === "kink" || !(r.length > 0)) error("INVALID_EDIT", `record ${n} carries no length to change`);
+		if (e.turnout !== undefined) {
+			const of = turnouts.find((t) => t.records.includes(n));
+			if (e.turnout === null && !of) error("INVALID_EDIT", `record ${n} is no turnout the file shows: nothing to take the type from`);
+			if (e.turnout !== null && r.type !== "arc") error("INVALID_EDIT", `record ${n} is a ${r.type}: a turnout's type goes on the arc of its branch`);
+			if (e.turnout !== null && (e.length !== undefined || e.radius !== undefined)) error("INVALID_EDIT", `record ${n} is declared a turnout: its length and radius are the catalogue's, not to be changed beside it`);
+		}
 		if (e.length !== undefined && !(e.length > 0)) error("INVALID_EDIT", `record ${n}: a length has to be positive, not ${e.length}`);
 		if (e.radius !== undefined) {
 			if (r.type !== "arc") error("INVALID_EDIT", `record ${n} is a ${r.type}: it has no radius to change`);

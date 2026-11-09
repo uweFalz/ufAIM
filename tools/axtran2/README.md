@@ -63,6 +63,12 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   the crossing; `K:Kr:1/9` the straight over a plain crossing, the annex's
   lw). Not the first or
   the last record, not a turnout's, and no two transitions side by side.
+  `3W=300-1/9` declares record 3, an arc, the branch of that catalogue
+  turnout: the turnout recognised there is re-typed, a plain arc becomes
+  one; radius, branch length and end piece are the catalogue's from then
+  on (`:auf-800` bent onto a main track of that radius, `:WA`/`:WE` the
+  end piece after/before it, `:Bogen` none); `3W=keine` says there is no
+  turnout where the recognition found one.
   The file is not changed; an edited record keeps its own element. An edit
   holds nothing: `--hold 7L` with it keeps the value.
 

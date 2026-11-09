@@ -635,5 +635,54 @@ Anhangs.
   Kreuzung, nur weil sie so lang ist. Wer eine hat, hält den Satz oder
   fügt die Kreuzung ein.
 
-Nicht gebaut: Werte und Typ an Weichen, Klothoiden im Zweig (der Kern
-kennt im Zweig nur Bögen).
+Nicht gebaut: Werte und Typ an Weichen (der nächste Abschnitt), Klothoiden
+im Zweig (der Kern kennt im Zweig nur Bögen).
+
+## Typ und Werte an Weichen (2026-11-09)
+
+Die Erkennung sagt, welche Weiche sie in der Datei sieht; bisher war das
+nicht zu widersprechen, und eine Weiche hatte keine Felder. Jetzt ist der
+Typ einer Weiche ein Wert wie die Länge eines Satzes
+(`src/services/axtran2/recordEdits.js`, `heldRecords.js`):
+
+- **Umtypen** `3W=300-1/9`: Satz 3, der Bogen des Zweigs, ist eine
+  EW 300-1:9. Die dort erkannte Weiche wird ersetzt; Radius (mit dem
+  Vorzeichen der Datei), Zweiglänge R·atan(1/n) und das Endstück d sind
+  von da an die des Katalogs (`declareTurnouts`). Ein Typ ohne Endstück
+  im Anhang (die 300-1:9) gibt das Endstück frei: der Satz ist wieder
+  eine Gerade der Datei mit Feldern.
+- **Erklären**: derselbe Satz auf einem Bogen, den die Erkennung nicht
+  für eine Weiche hielt (Länge mehr als 2 mm daneben, oder gebogen), macht
+  ihn zu einer. Das Endstück ist die Gerade daneben, wenn ihre Länge ein d
+  des Typs ist; `:WA` oder `:WE` nennen den Satz dahinter oder davor
+  ausdrücklich, `:Bogen` keinen. Bei zwei Zweigradien ist der zweite Bogen
+  der Nachbar gleichen Drehsinns.
+- **Biegen** `:auf-800`: jeder Bogen des Zweigs um die Streckenkrümmung,
+  wie beim Einfügen (`bentOnto`, IBW/ABW); ein Endstück, das in der Datei
+  ein Bogen ist, folgt, eine Gerade bleibt eine. Die Bogenweiche trägt
+  keine Zweiggeschwindigkeit (keine Zeile im Anhang).
+- **Aufheben** `3W=keine`: dort ist keine Weiche; die Sätze behalten die
+  Werte der Datei und bekommen ihre Felder.
+
+Der Fit (`fit-tra/0.17`) rechnet mit der erklärten Liste: das Wort
+„Weichen“ hält, was erklärt ist, und nicht mehr, was aufgehoben ist; die
+Katalogwerte sind Startwerte wie andere Änderungen, gehalten wird mit dem
+Schloss. Der Bericht nennt an `input.edits` den Typ (`turnout`, null für
+„keine“), an `input.turnouts` `declared` (Satz, was erkannt war, Biegung),
+die aufgehobenen unter `input.releasedTurnouts`; `planRecords` tragen
+`fileTurnout`, auf dem Bogen des Zweigs `turnoutRef` und `turnoutMain`.
+
+In der Liste ist die Spalte Weiche auf jedem Bogen der Datei eine Auswahl:
+der erkannte Typ, ein anderer aus dem Katalog, – für keine; daneben das
+Feld „auf R“ für das Stammgleis. Eine Wahl, die von der Erkennung
+abweicht, ist markiert und nennt, was erkannt war; die Sätze einer Weiche
+haben weiter keine Felder für Länge und Radius – ihre Werte sind der Typ.
+
+Geprüft auf der erfundenen Bahnhofstrasse der Tests: `1W=300-1/9` setzt
+Satz 1 auf R 300 und 33,20 m und gibt Satz 2 (6,09 m) als Gerade frei;
+`1W=keine` nimmt die EW 190-1:9 aus der Liste; `4W=190-1/9` macht den
+freien Bogen R 300 (39,5 m) zur Weiche, mit „Weichen“ gehalten.
+
+Nicht gebaut: Klothoiden im Zweig (der Kern kennt im Zweig nur Bögen), das
+Endstück einer Datei-Weiche von Gerade zu Bogen wechseln (ein Satz behält
+seinen Typ).

@@ -162,7 +162,8 @@ test("the element listing shows every record with plan and fit, and a box per qu
 	assert.equal((html.match(/<tr data-record=/g) || []).length, 8, "every record, the kink too");
 	assert.match(html, /<tr data-record="1" class="held"><td class="num">1<\/td><td>Bogen<\/td><td>EW 190-1:9<\/td><td class="num">21,00<\/td><td class="num">21,00<\/td><td class="num">190<\/td><td class="num">190<\/td><td class="hold" colspan="2">.*?data-quantity="both" checked.*?Weiche<\/label><\/td><td>gehalten<\/td>/);
 	// the merged arc: its records share the element's new length, the radius is the element's; the plan's values are fields
-	assert.match(html, /<tr data-record="7"><td class="num">7<\/td><td>Bogen<\/td><td><\/td><td class="num plan"><input type="text" inputmode="decimal" data-record="7" data-field="length" value="20" class="" title="Länge wie in der Datei"[^>]*><\/td><td class="num changed">22,00<\/td><td class="num plan"><input [^>]*data-field="radius" value="500"[^>]*><\/td><td class="num">500<\/td>/);
+	// a plain arc offers the turnout types, none chosen
+	assert.match(html, /<tr data-record="7"><td class="num">7<\/td><td>Bogen<\/td><td><select data-record="7" data-field="turnout" class="" title="kein Weichentyp: ein Bogen der Datei"[^>]*><option value="" selected>–<\/option><option value="190-1\/9">EW 190-1:9<\/option>.*?<\/select><\/td><td class="num plan"><input type="text" inputmode="decimal" data-record="7" data-field="length" value="20" class="" title="Länge wie in der Datei"[^>]*><\/td><td class="num changed">22,00<\/td><td class="num plan"><input [^>]*data-field="radius" value="500"[^>]*><\/td><td class="num">500<\/td>/);
 	assert.match(html, /data-record="7" data-quantity="length"(?! checked)/);
 	assert.match(html, /data-record="7" data-quantity="radius"(?! checked)/);
 	// a straight has no radius box, a kink no box at all

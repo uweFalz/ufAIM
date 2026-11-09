@@ -7,7 +7,11 @@
 //
 // The plan's length and radius are fields: a value typed there is where the
 // next fit starts (recordEdits.js); the file keeps its own, shown under
-// the field. A turnout is catalogue geometry and has no field.
+// the field. A turnout is catalogue geometry and has no field for length or
+// radius; what it has is its type: on the arc of its branch, and on any arc
+// of the file, a choice of the annex's turnouts ("–" for none), and beside a
+// chosen type the main track's radius to bend it onto (recordEdits.js,
+// "3W=300-1/9:auf-800", "3W=keine").
 //
 // A record is taken out or put in from here too: a button on each row, a
 // struck row with a way back, an inserted row under its key ("7+1") with
@@ -19,9 +23,9 @@
 // and the form (`data-insert-after`).
 
 import { describeHold, holdMap } from "./alignmentPicture.js";
-import { parseEdits, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
+import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.6";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.7";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
@@ -73,6 +77,27 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 		const options = Object.entries(TRANSITION_FAMILIES).map(([key, label]) => `<option value="${key}"${key === value ? " selected" : ""}>${label}</option>`).join("");
 		return `<td>${TYPE.transition} <select data-record="${r.number}" data-field="family" class="${cls}" title="${escape(title)}" aria-label="${escape(`Satz ${r.number}: Typ des Übergangsbogens`)}">${options}</select></td>`;
 	};
+	// a turnout's type as a choice, on the arc of its branch or on a plain arc of the file: what the fit
+	// started from, or what is chosen and not yet computed; beside a type the main track's radius
+	const shapeRef = (s) => turnoutRef(s);
+	// "EW 190-1:9" or "IBW 190-1:9 auf R 400" -> "190-1/9"
+	const refOfDesignation = (designation) => { const m = /(\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)?)-1:(\d+(?:\.\d+)?)/.exec(designation ?? ""); return m ? `${m[1]}-1/${m[2]}` : ""; };
+	const turnoutCell = (r) => {
+		const choosable = r.type === "arc" && r.lockable && !r.inserted && (!r.turnout || r.turnoutRef);
+		if (!choosable) return cell(r.turnout ?? "");
+		const started = { ref: r.turnoutRef ?? "", main: r.turnoutMain ?? null };
+		const typedSpec = typed === null ? undefined : typed.get(r.number)?.turnout;
+		// an edit list given is the whole of it: a record not in it starts from what the recognition found
+		const value = typed === null ? started : typedSpec === undefined ? { ref: refOfDesignation(r.fileTurnout), main: null } : typedSpec === null ? { ref: "", main: null } : { ref: shapeRef(typedSpec), main: typedSpec.mainRadius ?? null };
+		const fileRef = refOfDesignation(r.fileTurnout);
+		const pending = value.ref !== started.ref || (value.main ?? null) !== (started.main ?? null);
+		const changed = value.ref !== fileRef || value.main !== null;
+		const title = `${changed ? `Erkannt in der Datei: ${r.fileTurnout ?? "keine Weiche"}` : r.fileTurnout ? "Weiche wie erkannt" : "kein Weichentyp: ein Bogen der Datei"}${pending ? "; noch nicht gerechnet" : ""}`;
+		const cls = [changed ? "edited" : "", pending ? "pending" : ""].filter(Boolean).join(" ");
+		const options = [`<option value=""${value.ref === "" ? " selected" : ""}>–</option>`, ...TURNOUT_SHAPES.map((s) => `<option value="${shapeRef(s)}"${shapeRef(s) === value.ref ? " selected" : ""}>${escape(s.designation)}</option>`)].join("");
+		const main = value.ref === "" ? "" : ` <input type="text" inputmode="decimal" data-record="${r.number}" data-field="turnoutMain" value="${value.main === null ? "" : trim(value.main, 3)}" size="5" placeholder="auf R" class="${cls}" title="${escape("Radius des Stammgleises mit dem Vorzeichen der Datei: die Weiche ist darauf gebogen (Innen- oder Außenbogenweiche); leer für eine gerade Weiche")}" aria-label="${escape(`Satz ${r.number}: Weiche auf Stammgleis R`)}">`;
+		return `<td><select data-record="${r.number}" data-field="turnout" class="${cls}" title="${escape(title)}" aria-label="${escape(`Satz ${r.number}: Weichentyp`)}">${options}</select>${main}</td>`;
+	};
 	const box = (r, quantity, label, want, have) => {
 		const pending = want !== have;
 		return `<td class="hold"><label title="${escape(`Satz ${r.number}, ${label}: ${want ? "gehalten" : "frei"}${pending ? ", noch nicht gerechnet" : ""}`)}">`
@@ -121,7 +146,7 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 			: box(r, "length", "Länge", want.length, have.length) + (r.hasRadius ? box(r, "radius", "Radius", want.radius, have.radius) : `<td class="hold"></td>`);
 		const cls = r.inserted ? "inserted" : state === "frei" ? "" : "held";
 		const row = `<tr data-record="${escape(r.number)}"${cls ? ` class="${cls}"` : ""}>`
-			+ cell(r.inserted ? "+" : r.number, "num") + typeCell(r) + cell(r.turnout ?? "")
+			+ cell(r.inserted ? "+" : r.number, "num") + typeCell(r) + turnoutCell(r)
 			+ planLength + number(lengthAfter, 2, r.length)
 			+ planRadius + number(radiusAfter, 0, r.radius)
 			+ holds + cell(state) + structureCell(r) + "</tr>";
