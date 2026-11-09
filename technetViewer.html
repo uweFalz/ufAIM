@@ -3290,6 +3290,160 @@ return maplibregl$1;
     };
   }
 
+  // BEGIN GENERATED GRA SOURCE RECORDS
+  // Copy of src/import/parsers/technet/vermEsn/extractGraSourceRecords.js;
+  // test/technet-viewer-gra.test.mjs checks it against the shared source.
+  const graSourceRecords = (() => {
+    const GRA_COUPLED_CANT_GRADIENT_EVIDENCE_VERSION =
+      "source-evidence/gra-coupled-cant-gradient/0.1";
+
+    function finite(value) {
+      return Number.isFinite(Number(value));
+    }
+
+    function nonNegativeInteger(value) {
+      const numeric = Number(value);
+      return Number.isInteger(numeric) && numeric >= 0 ? numeric : null;
+    }
+
+    function freeze(value) {
+      if (Array.isArray(value)) {
+        value.forEach(freeze);
+        return Object.freeze(value);
+      }
+      if (value && typeof value === "object") {
+        Object.values(value).forEach(freeze);
+        return Object.freeze(value);
+      }
+      return value;
+    }
+
+    function sourceCell(cycle, field, rawValue) {
+      return {
+        locator: { cycle, field },
+        state: finite(rawValue) ? "value" : "unreadable",
+        rawValue,
+      };
+    }
+
+    function decodePackedRampAndCant(rawValue) {
+      if (!finite(rawValue)) {
+        return { rampCode: null, cantMillimetres: null };
+      }
+
+      const value = Number(rawValue);
+      const rampCode = Math.round(value / 1000);
+      return {
+        rampCode,
+        cantMillimetres: value - rampCode * 1000,
+      };
+    }
+
+    function buildTrackScissorClaim(row, dataIndex, gradeBreakCount) {
+      const cycle = dataIndex + 1;
+      const packed = decodePackedRampAndCant(row?.tangentL);
+      const secondCant = finite(row?.pointNumber)
+        ? Number(row.pointNumber) / 10
+        : null;
+
+      return freeze({
+        contractVersion: GRA_COUPLED_CANT_GRADIENT_EVIDENCE_VERSION,
+        kind: "track-scissor-source-claim",
+        sourceIndex: dataIndex,
+        sourceCycle: cycle,
+        construction: {
+          rampEnd1Station: finite(row?.station) ? Number(row.station) : null,
+          rampIntersectionStation: finite(row?.height) ? Number(row.height) : null,
+          rampEnd2Station: finite(row?.radius) ? Number(row.radius) : null,
+          rampCode: packed.rampCode,
+          cant1Millimetres: packed.cantMillimetres,
+          cant2Millimetres: secondCant,
+        },
+        coupling: {
+          curvatureTransitionBinding: "not-established",
+          gradientCarrierTransfer: "source-claimed-not-evaluated",
+          railHeightConstruction: "not-evaluated",
+          profileAdmission: "prohibited-without-tra-binding",
+        },
+        provenance: {
+          headerGradeBreakCount: gradeBreakCount,
+          sourceCells: {
+            RE1: sourceCell(cycle, "S", row?.station),
+            RA: sourceCell(cycle, "H", row?.height),
+            RE2: sourceCell(cycle, "R", row?.radius),
+            packedRampAndCant1: sourceCell(cycle, "T", row?.tangentL),
+            packedCant2: sourceCell(cycle, "Pkt", row?.pointNumber),
+          },
+        },
+      });
+    }
+
+    /**
+     * Splits the overloaded GRA record stream according to its header counts.
+     * Track-scissor rows are preserved as coupled source claims and never exposed
+     * as ordinary vertical-profile points.
+     */
+    function extractGraSourceRecords(header, rows = []) {
+      const gradeBreakCount = nonNegativeInteger(header?.station);
+      const trackScissorCount = nonNegativeInteger(header?.pointNumber);
+      const diagnostics = [];
+
+      if (gradeBreakCount === null || trackScissorCount === null) {
+        diagnostics.push({
+          code: "GRA_HEADER_COUNTS_INVALID",
+          reason: "GRA header must provide non-negative integer grade-break and track-scissor counts",
+        });
+        return freeze({
+          gradeBreakCount: null,
+          trackScissorCount: null,
+          profileRows: [],
+          trackScissorClaims: [],
+          unclassifiedRows: rows.map((row, index) => ({ row, sourceIndex: index, sourceCycle: index + 1 })),
+          diagnostics,
+        });
+      }
+
+      const expected = gradeBreakCount + trackScissorCount;
+      if (rows.length !== expected) {
+        diagnostics.push({
+          code: "GRA_HEADER_DATA_COUNT_MISMATCH",
+          reason: `header declares ${expected} data records, file contains ${rows.length}`,
+          expected,
+          actual: rows.length,
+        });
+        return freeze({
+          gradeBreakCount,
+          trackScissorCount,
+          profileRows: [],
+          trackScissorClaims: [],
+          unclassifiedRows: rows.map((row, index) => ({ row, sourceIndex: index, sourceCycle: index + 1 })),
+          diagnostics,
+        });
+      }
+
+      const profileRows = rows.slice(0, Math.min(gradeBreakCount, rows.length));
+      const scissorStart = gradeBreakCount;
+      const scissorEnd = Math.min(expected, rows.length);
+      const trackScissorClaims = rows
+        .slice(scissorStart, scissorEnd)
+        .map((row, index) => buildTrackScissorClaim(row, scissorStart + index, gradeBreakCount));
+      const unclassifiedRows = rows
+        .slice(expected)
+        .map((row, index) => ({ row, sourceIndex: expected + index, sourceCycle: expected + index + 1 }));
+
+      return freeze({
+        gradeBreakCount,
+        trackScissorCount,
+        profileRows,
+        trackScissorClaims,
+        unclassifiedRows,
+        diagnostics,
+      });
+    }
+    return { extractGraSourceRecords, GRA_COUPLED_CANT_GRADIENT_EVIDENCE_VERSION };
+  })();
+  // END GENERATED GRA SOURCE RECORDS
+
   // src/import/parsers/technet/vermEsn/parseTRA_GRA.js
   function baseName(filename = "") {
     return String(filename).replace(/\.[^/.]+$/, "");
@@ -3571,6 +3725,8 @@ return maplibregl$1;
       meta: meta4 = {},
       profilePoints = [],
       specialCases = null,
+      cantRamps = [],
+      graRecordDiagnostics = [],
       grade = null,
       cant1d = null,
       rowsRaw = null,
@@ -3635,6 +3791,8 @@ return maplibregl$1;
             }
           },
           specialCases,
+          cantRamps,
+          graRecordDiagnostics,
           legacy: {
             grade,
             cant1d
@@ -3795,9 +3953,19 @@ return maplibregl$1;
     if (extension === "gra") {
       const decoded = decodeBinary(buffer, "GRA");
       const sliced = sliceDataRows(decoded.rowsRaw);
-      const specialCases = detectGraSpecialCases(sliced.rows);
-      const profilePoints = extractGraProfilePoints(sliced.rows, specialCases);
+      // The header counts the grade breaks (station field) and, after them,
+      // the Überhöhungsrampen the GRA carries along (pointNumber field):
+      // Rampenanfang, Schnittpunkt, Rampenende, Form·1000 + u1, u2·10. Read
+      // as grade breaks they put a "height" of 139944 m into the Gradiente
+      // (Eifel 2631R139: 47 points, 8 ramps). A file whose counts do not add
+      // up to its rows is read as before, every row a point, and says so.
+      const graRecords = graSourceRecords.extractGraSourceRecords(sliced.header, sliced.rows);
+      const split = !graRecords.diagnostics.length;
+      const profileRows = split ? graRecords.profileRows : sliced.rows;
+      const specialCases = detectGraSpecialCases(profileRows);
+      const profilePoints = extractGraProfilePoints(profileRows, specialCases);
       const grade = buildLegacyGradeFromProfilePoints(profilePoints);
+      const cantRamps = split ? graRecords.trackScissorClaims.map((claim) => ({ ...claim.construction })) : [];
       const parsedGra = {
         kind: "GRA",
         name,
@@ -3806,10 +3974,16 @@ return maplibregl$1;
           ...decoded.meta,
           profilePts: profilePoints?.length ?? 0,
           header: sliced.header ? "present" : "none",
-          dataRows: sliced.rows.length
+          dataRows: sliced.rows.length,
+          headerGradeBreaks: graRecords.gradeBreakCount,
+          headerCantRamps: graRecords.trackScissorCount,
+          cantRamps: cantRamps.length,
+          graRecordDiagnostics: graRecords.diagnostics.map((diagnostic) => diagnostic.code)
         },
         profilePoints,
         specialCases,
+        cantRamps,
+        graRecordDiagnostics: graRecords.diagnostics,
         grade,
         cant1d: null,
         rowsRaw: decoded.rowsRaw,
@@ -38548,7 +38722,10 @@ return maplibregl$1;
       extended: {
         ...(isObject10(profile2.extended) ? profile2.extended : {}),
         ...(isObject10(ctx?.alignment?.extras?.viewer7L) ? { viewer7L: ctx.alignment.extras.viewer7L } : {}),
-        ...(isObject10(ctx?.alignment?.extras?.gndSequence) ? { gndSequence: ctx.alignment.extras.gndSequence } : {})
+        ...(isObject10(ctx?.alignment?.extras?.gndSequence) ? { gndSequence: ctx.alignment.extras.gndSequence } : {}),
+        // A GRA's Überhöhungsrampen and its header diagnostics ride along for the listing.
+        ...(Array.isArray(ctx?.alignment?.extras?.cantRamps) && ctx.alignment.extras.cantRamps.length ? { cantRamps: ctx.alignment.extras.cantRamps } : {}),
+        ...(Array.isArray(ctx?.alignment?.extras?.graRecordDiagnostics) && ctx.alignment.extras.graRecordDiagnostics.length ? { graRecordDiagnostics: ctx.alignment.extras.graRecordDiagnostics } : {})
       }
     };
   }
@@ -40574,6 +40751,15 @@ xlsx/xlsx.mjs:
 					);
 				});
 				if (!points.length) lines.push("(keine vertikalen Punkte)");
+				// A GRA carries its Überhöhungsrampen behind the grade breaks; the
+				// header counts both. They are no part of the Gradiente.
+				const ramps = item?.payload?.extended?.cantRamps ?? [];
+				const diagnostics = item?.payload?.extended?.graRecordDiagnostics ?? [];
+				if (ramps.length) {
+					lines.push("", ` Überhöhungsrampen (${ramps.length}, hinter den ${points.length} Gradientenpunkten laut Kopfsatz; keine Gradientenpunkte)`, `${"Rampenanfang".padStart(14)}  ${"Schnittpunkt".padStart(14)}  ${"Rampenende".padStart(14)}   Form   u1 [mm]   u2 [mm]`);
+					ramps.forEach((ramp) => lines.push(`${station(ramp.rampEnd1Station)}  ${station(ramp.rampIntersectionStation)}  ${station(ramp.rampEnd2Station)}   ${String(ramp.rampCode ?? "").padStart(4)}   ${fixed(ramp.cant1Millimetres, 0, 7)}   ${fixed(ramp.cant2Millimetres, 0, 7)}`));
+				}
+				if (diagnostics.length) lines.push("", ` Kopfsatz und Satzzahl passen nicht zusammen (${diagnostics.map((diagnostic) => diagnostic.reason ?? diagnostic.code).join("; ")}); alle Sätze als Gradientenpunkte gelesen`);
 				const result = lines.join("\n");
 				cacheFor(listingCache, entry).set("profile", result);
 				return result;
