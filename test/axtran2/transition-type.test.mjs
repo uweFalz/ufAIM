@@ -185,3 +185,28 @@ test("a plain crossing goes in as a held straight, and the report knows it as a 
 	assert.deepEqual(rows.map((r) => [r.number, r.type, r.length, r.turnout, r.heldLength, r.inserted.part]), [["1+1", "straight", 33.23, "Kr 1:9", true, "straight"]]);
 	assert.match(recordListHtml(alignmentPictureModel(report), { insertAfter: 1 }), /<option value="Kr:1\/9">Kr 1:9 \(Kreuzung ohne Weiche, gerade 100 km\/h\)<\/option>/);
 });
+
+test("a turnout whose branch begins with a clothoid goes in as curvature holder, clothoid and arc, held; the written file reads back as the turnout", async () => {
+	const { recogniseTurnouts } = await import(new URL("heldRecords.js", SERVICE));
+	const report = (await fit({ edits: "+1=W:6000/3700-1/32,5:R", speedKmh: null })).report;
+	assert.deepEqual(report.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["arc", ["1+1a"]], ["transition", ["1+1b"]], ["arc", ["1+1c"]], ["transition", [2]], ["arc", [3]], ["straight", [4]]]);
+	const [holder, clothoid, arc] = report.elements.slice(1, 4);
+	assert.deepEqual([holder.before.length, holder.before.radius, clothoid.family, Number(clothoid.before.length.toFixed(3)), Number(arc.before.length.toFixed(3)), arc.before.radius], [0, 6000, "clothoid", 44.001, 78.243, 3700]);
+	assert.equal(report.input.free, (await fit({})).report.input.free, "the turnout adds no free quantity");
+	assert.deepEqual(report.input.turnouts.map((t) => [t.designation, t.arc, [...t.arcs], t.transition, t.held, t.branchSpeedKmh]), [["EW 6000/3700-1:32.5", "1+1c", ["1+1a", "1+1c"], "1+1b", true, 160]]);
+	assert.deepEqual([report.input.speed.basis, report.input.speed.kmh], ["turnout", 160]);
+	assert.deepEqual(report.planRecords.filter((r) => r.inserted).map((r) => [r.number, r.type, r.inserted.part, r.heldLength]), [["1+1a", "arc", "junction", true], ["1+1b", "transition", "transition", true], ["1+1c", "arc", "arc2", true]]);
+	// the written file: the holder is dropped, the clothoid carries R1 6000 and R2 3700; read back, the reader puts the
+	// holder in again (a clothoid starting at a radius the straight before it does not have) and the turnout is recognised
+	const result = await fit({ edits: "+1=W:6000/3700-1/32,5:R", speedKmh: null });
+	const back = await traAlignmentFromBytes(result.tra, "back.TRA");
+	assert.deepEqual(back.records.slice(0, 3).map((r) => [r.type, Number(r.length.toFixed(3)), r.radiusStart ?? null, r.radiusEnd ?? null]), [["straight", back.records[0].length, null, null], ["transition", 44.001, 6000, 3700], ["arc", 78.243, null, null]]);
+	assert.equal(back.insertedJunctionArcs, 1);
+	assert.deepEqual(back.elements.slice(0, 4).map((e) => [e.type, Number(e.length.toFixed(3)), e.type === "arc" ? Number((-1 / e.curvature).toFixed(0)) : null]), [["straight", Number(back.records[0].length.toFixed(3)), null], ["arc", 0, 6000], ["transition", 44.001, null], ["arc", 78.243, 3700]]);
+	assert.deepEqual(recogniseTurnouts(back.records).map((t) => [t.designation, t.side, t.arc, t.transition, [...t.records]]), [["EW 6000/3700-1:32.5", "right", 3, 2, [2, 3]]]);
+	// the picture draws the clothoid along its law between the holder's curvature and the arc's
+	const model = alignmentPictureModel(report);
+	const k = model.elements.find((e) => e.id === clothoid.id);
+	assert.ok(Math.abs(k.k0 - 1000 / 6000) < 1e-9 && Math.abs(k.k1 - 1000 / 3700) < 1e-9, `the clothoid runs from ${k.k0} to ${k.k1}`);
+	assert.match(recordListHtml(model), /<tr data-record="1\+1b" class="inserted"><td class="num">\+<\/td><td>Übergangsbogen \(Klothoide\)<\/td><td>EW 6000\/3700-1:32.5<\/td><td class="num">44,00<\/td>/);
+});

@@ -41,7 +41,7 @@
 // ":WA", ":WE" or ":Bogen" say where its end piece is where the lengths do
 // not; "3W=keine" says the arc is no turnout, whatever the recognition found.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.8";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.9";
 
 import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 import { RIL_800_0120_A01, CROSSING_KINDS } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
@@ -65,13 +65,13 @@ export const INSERT_TYPES = Object.freeze({ straight: "Gerade", arc: "Bogen", tr
 const INSERT_LETTERS = Object.freeze({ g: "straight", b: "arc", u: "transition", "ü": "transition", w: "turnout", k: "crossing" });
 /** how an inserted turnout lies in the track */
 export const TURNOUT_ORIENTATIONS = Object.freeze({ WA: "Bogen, dann Endstück", WE: "Endstück, dann Bogen", arc: "nur der Bogen" });
-/** the key of the i-th record inserted after record n; `part` for the a/b of a turnout */
+/** the key of the i-th record inserted after record n; `part` for the a/b/c/d of a turnout's pieces */
 export const insertKey = (after, index, part = "") => `${after}+${index}${part}`;
 /** true for the key of an inserted record */
-export const isInsertKey = (key) => /^\d+\+\d+[abc]?$/.test(String(key));
+export const isInsertKey = (key) => /^\d+\+\d+[a-d]?$/.test(String(key));
 /** the record an insert key follows, the index of the insert and its part, or null */
 export function insertOf(key) {
-	const m = /^(\d+)\+(\d+)([abc]?)$/.exec(String(key));
+	const m = /^(\d+)\+(\d+)([a-d]?)$/.exec(String(key));
 	return m ? { after: Number(m[1]), index: Number(m[2]), part: m[3] || null } : null;
 }
 /** "EW 190-1:9" of a turnout spec, "EW 7000/6000-1:42" where the branch has two radii */

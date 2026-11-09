@@ -144,25 +144,28 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 			if (!family) unsupported.push({ index: i, type: record.type, spiType: record.spiType ?? null,
 				...(refusal ? { why: refusal } : {}) });
 			families.add(family ?? String(record.spiType));
-			if (type8 && family && i === 0 && entryCurvature !== 0) {
+			// The kernel reads a transition's end curvatures from its neighbours; the
+			// file carries them as R1 and R2. Where the neighbour has another curvature
+			// - the file starts with a transition, two transitions meet at a peak, a
+			// clothoid starts at a radius the track before it does not have (the
+			// branch of an EW 60-6000/3700-1:32,5 begins with one from R 6000 on a
+			// straight main) - a held arc of no length carries the file's curvature
+			// to the kernel. The writer drops it again and writes R1/R2 off it.
+			const previous = elements[elements.length - 1];
+			const previousExit = previous ? (previous.type === "arc" ? previous.curvature : previous.type === "transition" ? previous.exitCurvature ?? 0 : 0) : null;
+			if (Number.isFinite(entryCurvature) && Math.abs(entryCurvature) > 1e-12 && (previous === undefined || previous.type === "kink" || Math.abs(previousExit - entryCurvature) > 1e-9)) {
 				elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: entryCurvature, held: true });
 				inserted += 1;
 			}
-			elements.push({ id, type: "transition", length, family: family ?? `unresolved:${sourceFamily || "transition"}`,
+			elements.push({ id: `E${elements.length}`, type: "transition", length, family: family ?? `unresolved:${sourceFamily || "transition"}`,
 				entryCurvature, exitCurvature });
-			if (type8 && family && i === records.length - 1 && exitCurvature !== 0) {
+			const next = records[i + 1];
+			// two transitions meeting at a curvature always get the holder (the next one reads it too);
+			// a file's end, or a neighbour of another curvature, the same way
+			const nextEntry = next ? boundaryCurvature(next, false) : null;
+			if (Number.isFinite(exitCurvature) && Math.abs(exitCurvature) > 1e-12 && (next === undefined || next.type === "Spiral" || next.type === "Kink" || nextEntry === null || Math.abs(nextEntry - exitCurvature) > 1e-9)) {
 				elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: exitCurvature, held: true });
 				inserted += 1;
-			}
-			// two transitions meeting at a curvature: the kernel reads a transition's
-			// ends from its neighbours, so the junction needs an element that has one
-			const next = records[i + 1];
-			if (next?.type === "Spiral") {
-				const junction = curvatureOfRadius(record.radiusEnd);
-				if (Math.abs(junction) > 1e-12) {
-					elements.push({ id: `E${elements.length}`, type: "arc", length: 0, curvature: junction, held: true });
-					inserted += 1;
-				}
 			}
 		} else if (record.type === "Kink") {
 			// A Knick: a heading jump of zero length between two elements, which
@@ -225,7 +228,9 @@ export function traAlignmentFromDocument(document, bytes, name = "alignment.TRA"
 		const curvature = record.type === "Curve" ? curvatureOfRadius(record.radius) : null;
 		const type = record.type === "Line" || (record.type === "Curve" && curvature === 0) ? "straight"
 			: record.type === "Curve" ? "arc" : record.type === "Spiral" ? "transition" : record.type === "Kink" ? "kink" : "other";
-		return Object.freeze({ number: i + 1, type, length: measure(record.length), ...(type === "arc" ? { curvature } : {}) });
+		// a transition carries the radii it joins, as the file has them (the file's sign)
+		return Object.freeze({ number: i + 1, type, length: measure(record.length), ...(type === "arc" ? { curvature } : {}),
+			...(type === "transition" ? { radiusStart: Number.isFinite(record.radiusStart) ? record.radiusStart : null, radiusEnd: Number.isFinite(record.radiusEnd) ? record.radiusEnd : null } : {}) });
 	});
 
 	const first = records[0];

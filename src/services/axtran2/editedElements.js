@@ -25,7 +25,7 @@ import { bentOnto, turnout as turnoutSpec, crossing as crossingSpec, crossingEle
 const curvatureOfRadius = (r) => (Number.isFinite(r) && r !== 0 ? -1 / r : 0);
 const radiusOfCurvature = (k) => (Math.abs(k) > 1e-15 ? -1 / k : null);
 
-export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.3";
+export const EDITED_ELEMENTS_VERSION = "axtran2/edited-elements/0.4";
 
 export class EditedElementsError extends Error {
 	constructor(code, message, detail = null) {
@@ -106,7 +106,7 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 			let bent = null;
 			if (Number.isFinite(spec.mainRadius)) {
 				// bent onto the main track's curvature: Innen- or Außenbogenweiche (TurnoutCatalogue.bentOnto),
-				// every arc of the branch by the same line curvature
+				// every arc of the branch by the same line curvature; a clothoid between bent curvatures is a clothoid still
 				const mainCurvature = curvatureOfRadius(spec.mainRadius);
 				const bentArcs = curvatures.map((c, k) => bentOnto(k === 0 && shape.radiusEnd === null ? turnoutSpec({ radius: shape.radius, ratio: shape.ratio, side: spec.side }) : { id: `${shape.designation}[${k}]`, curvature: c }, mainCurvature));
 				curvatures = bentArcs.map((b) => b.curvature);
@@ -116,20 +116,33 @@ export function applyStructure({ elements, recordElements, records, removed = ne
 			}
 			// the end piece of a bent turnout follows the branch's curvature where it joins it
 			const bendable = (p, curvature) => (bent && Math.abs(curvature) > 1e-15 ? { ...p, type: "arc", curvature } : p);
-			const arcs = curvatures.map((curvature, k) => Math.abs(curvature) > 1e-15 ? { type: "arc", length: shape.branchLengths[k], curvature, part: k === 0 ? "arc" : "arc2" } : { type: "straight", length: shape.branchLengths[k], part: k === 0 ? "arc" : "arc2" });
+			// the branch's parts from the toe (heldRecords, from the kernel's split): arcs by their radius -
+			// one of no length is the curvature the clothoid starts from, which the kernel reads off its
+			// neighbour - and the clothoid between two radii
+			let arcCount = 0;
+			const branch = shape.branchParts.map((p) => {
+				if (p.type === "transition") return { type: "transition", length: p.length, family: p.family ?? "clothoid", part: "transition" };
+				const curvature = curvatures[shape.radii.indexOf(p.radius)];
+				const part = p.length <= 1e-9 ? "junction" : arcCount === 0 ? "arc" : "arc2";
+				arcCount += 1;
+				return Math.abs(curvature) > 1e-15 ? { type: "arc", length: p.length, curvature, part } : { type: "straight", length: p.length, part };
+			});
+			const arcs = branch.filter((p) => p.part !== "transition");
 			// entered at the Weichenende the branch runs backwards: the end piece, then the last radius first
 			const parts = spec.orientation === "WE"
-				? [...(endPiece === null ? [] : [bendable({ type: "straight", length: endPiece, part: "endPiece" }, curvatures[curvatures.length - 1])]), ...arcs.slice().reverse()]
-				: [...arcs, ...(endPiece === null ? [] : [bendable({ type: "straight", length: endPiece, part: "endPiece" }, curvatures[curvatures.length - 1])])];
-			const keys = parts.map((_, k) => insertKey(after, i + 1, parts.length > 1 ? "abc"[k] : ""));
+				? [...(endPiece === null ? [] : [bendable({ type: "straight", length: endPiece, part: "endPiece" }, curvatures[curvatures.length - 1])]), ...branch.slice().reverse()]
+				: [...branch, ...(endPiece === null ? [] : [bendable({ type: "straight", length: endPiece, part: "endPiece" }, curvatures[curvatures.length - 1])])];
+			const keys = parts.map((_, k) => insertKey(after, i + 1, parts.length > 1 ? "abcd"[k] : ""));
 			parts.forEach((p, k) => {
 				const id = `I${++insertCount}`;
-				push({ id, type: p.type, length: p.length, ...(p.curvature !== undefined ? { curvature: p.curvature } : {}), fileSpan: 0, heldTurnout: true,
+				push({ id, type: p.type, length: p.length, ...(p.curvature !== undefined ? { curvature: p.curvature } : {}), ...(p.family !== undefined ? { family: p.family } : {}), fileSpan: 0, heldTurnout: true,
 					inserted: Object.freeze({ after, index: i + 1, key: keys[k], turnout: designation, part: p.part }) }, [keys[k]]);
 			});
+			const withLength = arcs.filter((p) => p.part !== "junction");
 			turnoutsOut.push({ designation, kind: bent ? bent.kind : "EW", radius: shape.radius, radiusEnd: shape.radiusEnd, ratio: shape.ratio, side: spec.side, orientation: spec.orientation ?? "WA", after, index: i + 1,
-				// `arc` the record of the first radius, `arcs` the branch's arcs in the track's order
-				arc: keys[parts.indexOf(arcs[0])], arcs: parts.map((p, k) => (arcs.includes(p) ? keys[k] : null)).filter((k) => k !== null),
+				// `arc` the record of the first radius with a length, `arcs` the branch's arcs in the track's order, `transition` its clothoid
+				arc: keys[parts.indexOf(withLength[0])], arcs: parts.map((p, k) => (arcs.includes(p) ? keys[k] : null)).filter((k) => k !== null),
+				transition: parts.some((p) => p.part === "transition") ? keys[parts.findIndex((p) => p.part === "transition")] : null,
 				endPiece: endPiece === null ? null : keys[parts.findIndex((p) => p.part === "endPiece")], endPieceLength: endPiece,
 				// the annex speaks for the straight turnout; a bent branch has another radius and no row
 				branchSpeedKmh: bent ? null : shape.branchSpeedKmh ?? null, bent, records: keys });

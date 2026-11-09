@@ -148,11 +148,13 @@ test("a turnout whose branch has two radii goes in as two arcs, backwards from t
 	assert.ok(isInsertKey("7+1c") && insertOf("7+1c").part === "c");
 	const put = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, k.inserted.get(3)], [3, k.inserted.get(4)]]) });
 	const ins = put.elements.filter((e) => e.inserted);
-	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, Number(e.length.toFixed(3)), Number((1 / e.curvature).toFixed(0)), e.heldTurnout, e.inserted.turnout, e.inserted.part]), [
+	// the 6000/3700 begins with a clothoid from R 6000 (the kernel's split of the annex's tangent lengths): an arc of no
+	// length carries the curvature it starts from, then the clothoid, then the arc R 3700; from the end the other way round
+	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, Number(e.length.toFixed(3)), e.type === "arc" ? Number((1 / e.curvature).toFixed(0)) : e.family, e.heldTurnout, e.inserted.turnout, e.inserted.part]), [
 		["1+1a", "arc", 80.001, -7000, true, "EW 7000/6000-1:42", "arc"], ["1+1b", "arc", 74.258, -6000, true, "EW 7000/6000-1:42", "arc2"],
-		["3+1a", "arc", 100.738, 3700, true, "EW 6000/3700-1:32.5", "arc2"], ["3+1b", "arc", 21.197, 6000, true, "EW 6000/3700-1:32.5", "arc"],
+		["3+1a", "arc", 78.243, 3700, true, "EW 6000/3700-1:32.5", "arc2"], ["3+1b", "transition", 44.001, "clothoid", true, "EW 6000/3700-1:32.5", "transition"], ["3+1c", "arc", 0, 6000, true, "EW 6000/3700-1:32.5", "junction"],
 	], "from the toe R1 then R2; from the end R2 then R1");
-	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.radiusEnd, t.arc, [...t.arcs], t.endPiece, t.branchSpeedKmh, [...t.records]]), [["EW 7000/6000-1:42", "EW", 6000, "1+1a", ["1+1a", "1+1b"], null, 200, ["1+1a", "1+1b"]], ["EW 6000/3700-1:32.5", "EW", 3700, "3+1b", ["3+1a", "3+1b"], null, 160, ["3+1a", "3+1b"]]]);
+	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.radiusEnd, t.arc, [...t.arcs], t.transition, t.endPiece, t.branchSpeedKmh, [...t.records]]), [["EW 7000/6000-1:42", "EW", 6000, "1+1a", ["1+1a", "1+1b"], null, null, 200, ["1+1a", "1+1b"]], ["EW 6000/3700-1:32.5", "EW", 3700, "3+1a", ["3+1a", "3+1c"], "3+1b", null, 160, ["3+1a", "3+1b", "3+1c"]]]);
 	// bent onto a line of R 9000 turning left: the branch to the left is the tighter IBW in both arcs
 	const bent = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, k.inserted.get(5)]]) });
 	const b = bent.elements.filter((e) => e.inserted);

@@ -37,7 +37,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.17";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.18";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -137,7 +137,7 @@ export async function fitTraFromBytes({
 	const structure = applyStructure({ elements: loaded.elements, recordElements: loaded.recordElements, records: seen.records, removed: allEdits.removed, inserted: allEdits.inserted, turnouts: turnoutsSeen });
 	const elementOf = (key) => structure.recordElements.get(key) ?? null;
 	// the turnouts the fit knows: the file's, and those put in (held by themselves)
-	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, kind: t.kind, radius: t.radius, radiusEnd: t.radiusEnd ?? null, ratio: t.ratio, side: t.side, arc: t.arc, arcs: Object.freeze([...(t.arcs ?? (t.arc === null ? [] : [t.arc]))]), endPiece: t.endPiece, branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation, route: t.route ?? null, bent: t.bent ?? null }) }));
+	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, kind: t.kind, radius: t.radius, radiusEnd: t.radiusEnd ?? null, ratio: t.ratio, side: t.side, arc: t.arc, arcs: Object.freeze([...(t.arcs ?? (t.arc === null ? [] : [t.arc]))]), transition: t.transition ?? null, endPiece: t.endPiece, branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation, route: t.route ?? null, bent: t.bent ?? null }) }));
 	const turnoutsAll = [...turnoutsSeen, ...insertedTurnouts];
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
