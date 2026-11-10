@@ -534,3 +534,28 @@ test("an inequality is held by its own residual, not by the subproblem's working
 	assert.ok(Math.abs(fromProblem.multipliers.inequality[0] - 1) < 1e-6,
 		`expected 1, got ${fromProblem.multipliers.inequality[0]}`);
 });
+
+test("SQP takes a lower bound the evaluator states for the step from its point", async () => {
+	// min (x-3)^2 + (y-3)^2 with y >= 4, the bound stated by the evaluator instead of declared: the answer is (3, 4)
+	const evaluate = ([x, y]) => ({
+		f: (x - 3) ** 2 + (y - 3) ** 2,
+		gradF: [2 * (x - 3), 2 * (y - 3)],
+		h: [], Jh: [],
+		lower: [-Infinity, 4],
+	});
+	for (const start of [[0, 0], [5, 9], [3, 4]]) {
+		const run = solveSQP({ x0: start, evaluate, maxIterations: 60 });
+		assert.equal(run.ok, true, `start ${start}: ${run.status}`);
+		closeAll(run.x, [3, 4], 1e-7, `solution from ${start}`);
+	}
+	// the unconstrained minimum (1, -2) lies below the stated bound: the answer sits on it
+	const below = ([x, y]) => ({ f: (x - 1) ** 2 + (y + 2) ** 2, gradF: [2 * (x - 1), 2 * (y + 2)], h: [], Jh: [], lower: [-Infinity, 0.5] });
+	closeAll(solveSQP({ x0: [0, 3], evaluate: below, maxIterations: 60 }).x, [1, 0.5], 1e-7, "held at the stated bound");
+	// the declared bound still holds beside it, and the stricter of the two wins
+	closeAll(solveSQP({ x0: [0, 9], evaluate, lower: [-9, 5], upper: [9, 9], maxIterations: 60 }).x, [3, 5], 1e-7, "the declared bound is the stricter one");
+	// into scaled coordinates: a bound is a value of x, not a derivative
+	const { scaleEvaluator } = await import(new URL("scale/variableScaling.js", OPTIM));
+	const scaled = scaleEvaluator(() => ({ f: 0, gradF: [1, 1], h: [], Jh: [], lower: [10, -Infinity] }), [10, 0.001])([0, 0]);
+	assert.deepEqual(scaled.lower, [1, -Infinity]);
+	assert.equal(scaleEvaluator(() => ({ f: 0, gradF: [1, 1], h: [], Jh: [] }), [10, 0.001])([0, 0]).lower, undefined);
+});

@@ -121,7 +121,45 @@ Variable sind an der Ecke linear abhängig.
 3. Erst danach lohnt die Frage, ob `constraint` Standard werden kann; dazu
    gehört der Korpus (`test/axtran2/corpus`), nicht nur diese Trasse.
 
-## 5. Nachrechnen
+## 5. Stand nach der Änderung vom 10. November (Kern-Go)
+
+Punkt 1 und der Versuch aus Punkt 2 sind gebaut:
+
+- **Die Bemerkung** im `AlignmentConstraintBuilder` nennt den heutigen Stand
+  statt der 2,47.
+- **Eine Rampenzeile, die an der aktuellen Stelle keine Krümmung liest**
+  (beide Nachbarn gehalten, gerade oder im gedeckelten Bereich), reist für
+  den Schritt von dieser Stelle als untere Schranke ihrer Länge
+  (`AlignmentSQPSolver.rampRows` gibt `lower`; die Zeile tritt beiseite, mit
+  Rest ≤ −1 und ohne Normale, damit Zeilenzahl, Multiplikatoren und
+  Warmstart ihren Platz behalten). Dazu nimmt `solveSQP` (0.2) eine untere
+  Schranke, die der Auswerter für den Schritt von seiner Stelle nennt, und
+  `scaleEvaluator` (0.2) rechnet sie in skalierte Koordinaten um. Die
+  Schranke ist über die Stelle hinaus sicher: verlässt eine Krümmung im
+  Schritt den gedeckelten Bereich, fällt Δu nur.
+- Der Bericht liest weiter die Regel selbst: `rampSlack` aus den wahren
+  Resten, und `activeBounds` nennt eine Länge auf der Rampenschranke mit
+  `reason` „ramp-rule“.
+
+Gemessen, Stufenfolge auf der Neun-Elemente-Trasse, Start nahe der Wahrheit:
+
+| Entwurf | Stufe 1 `bound` | Stufe 1 `constraint` vorher | Stufe 1 `constraint` jetzt |
+|---|---|---|---|
+| V 100 (Zeilen ohne Krümmung) | stationary, 79 Schritte, 1049,8198 m | max_iterations, 300 Schritte | stationary, 81 Schritte, 1049,8198 m, alle Teilprobleme gelöst |
+| V 80 (Zeilen lesen Krümmung) | stationary, 79 Schritte, 1049,8198 m | line_search_failed, 98 Schritte, 1049,8145 m | unverändert: line_search_failed, 98 Schritte, 1049,8145 m |
+
+Bei V 100 gibt die Folge auf beiden Wegen dieselbe Antwort und dieselben
+Kosten der Punkte in Länge (0,173 m). **Offen bleibt der Fall, in dem die
+Zeilen wirklich Krümmung lesen** (V 80: beide Bögen flacher als der Deckel
+bei R 581): dort endet die Längenstufe unter dem Korridor weiter ohne
+Urteil, 9 von 50 Teilproblemen an einer entarteten Ecke. Die exakte Form
+erlaubt dort kürzere Übergangsbögen (5 mm weniger Länge an der Stelle, an
+der sie abbricht) – das ist ihr eigentlicher Gewinn, und er ist noch nicht
+sicher zu haben. Der Test dazu steht als `todo` in
+`test/axtran2/lexicographic.test.mjs`. `bound` bleibt der Standard; der
+Dienst (`fitTraCore`) rechnet damit, für ihn ändert sich nichts.
+
+## 6. Nachrechnen
 
 ```js
 // node, aus dem Repo: Stufe 1 in beiden Formen

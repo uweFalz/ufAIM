@@ -187,12 +187,18 @@ export function createAlignmentConstraintBuilder({
 	//
 	// "bound" is the default, and not because it is the better statement of the
 	// requirement - it is the worse one. It is the default because the exact form
-	// is not yet safe to run: measured on the nine-element scenario the length
-	// tier reaches the identical answer either way, but the points tier ends at
-	// an rms of 2.47 against 0.083, from a feasible start with margin. Something
-	// in the interaction between these rows, the relaxation and the trust region
-	// is wrong, and it has not been found. Until it is, the exact form is
-	// available and measured, not relied on.
+	// is measured on one scenario and not yet on the corpus.
+	//
+	// What stood here from 2026-09-03 - the points tier ending at an rms of 2.47
+	// against 0.083 - no longer holds: on the nine-element scenario the points fit
+	// ends at 0.093 either way, the length fit at 1042.598 m either way. What was
+	// left on 2026-11-10 was the length tier under the corridor, which ran into
+	// its iteration limit with the exact form (135 of 284 subproblems at a
+	// degenerate vertex); a ramp row that reads no curvature at the current point
+	// now travels as a bound for that step (AlignmentSQPSolver.rampRows), and the
+	// tier ends where the bound form ends, 1049.820 m in 81 steps against 79
+	// (docs/app/architecture/AXTRAN2_EXACT_RAMP_RULE_2026-11-10.md). Before it
+	// becomes the default: the corpus, under both forms.
 	rampLengthAs = "bound",
 } = {}) {
 	if (!RAMP_LENGTH_MODES.includes(rampLengthAs)) {

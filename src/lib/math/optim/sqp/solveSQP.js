@@ -16,7 +16,7 @@ import { l1Merit, updatePenaltyWeights, createPenaltyWeights, constraintViolatio
 import { lineSearchArmijo } from "./lineSearchArmijo.js";
 import { restoreFeasibility } from "./restoreFeasibility.js";
 
-export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.1";
+export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.2";
 
 function dot(a, b) {
 	let sum = 0;
@@ -37,6 +37,15 @@ function dot(a, b) {
  *        of the length objective: rms 9 from 0.16 after the first steps).
  * @param {number[]} [input.lower]   bounds on x, not on the step
  * @param {number[]} [input.upper]
+ *
+ * The evaluator may return `lower` beside f, h and g: a lower bound on x that
+ * holds for the step taken from the point it evaluated, intersected with the
+ * declared one. An inequality that reads one variable alone at that point
+ * (z_k >= c) is a bound there and travels better as one: as a row with a
+ * slack it meets the trust region's bound on the same variable at the
+ * subproblem's vertex, and the active set stalls on the tie (measured on the
+ * exact ramp rule under the corridor: 135 of 284 subproblems ended
+ * stationary_on_working_set, against none with the bound).
  */
 export function solveSQP({
 	x0,
@@ -288,6 +297,12 @@ export function solveSQP({
 	}
 	const lo = lower ?? new Array(n).fill(-Infinity);
 	const up = upper ?? new Array(n).fill(Infinity);
+	// the lower bounds of the current step: the declared ones, raised where the
+	// evaluator stated one at the current point (never past the upper bound)
+	let loNow = lo;
+	const lowerAt = (evaluated) => (Array.isArray(evaluated?.lower)
+		? lo.map((value, i) => Math.min(Math.max(value, Number.isFinite(evaluated.lower[i]) ? evaluated.lower[i] : -Infinity), up[i]))
+		: lo);
 
 	let x = x0.map((value, i) => Math.min(Math.max(value, lo[i]), up[i]));
 	const nearBound = (value, bound) => Number.isFinite(bound)
@@ -295,7 +310,7 @@ export function solveSQP({
 	const heldByBounds = (point) => {
 		const held = [];
 		for (let i = 0; i < n; i++) {
-			if (nearBound(point[i], lo[i]) || nearBound(point[i], up[i])) held.push(i);
+			if (nearBound(point[i], loNow[i]) || nearBound(point[i], up[i])) held.push(i);
 		}
 		return held;
 	};
@@ -405,6 +420,7 @@ export function solveSQP({
 	}
 
 	for (let iteration = 0; iteration < maxIterations; iteration++) {
+		loNow = lowerAt(state);
 		const violation = constraintViolation(state);
 		const feasible = feasibilityTolerance * feasibilityScale();
 
@@ -417,7 +433,8 @@ export function solveSQP({
 			g: state.g ?? [],
 			Jg: state.Jg ?? [],
 			// bounds on the step: the bounds on x, tightened by the trust region
-			lower: x.map((value, i) => Math.max(lo[i] - value, -radius)),
+			// a bound the point sits below by more than the region reaches is met as far as the region goes
+			lower: x.map((value, i) => Math.min(Math.max(loNow[i] - value, -radius), Math.min(up[i] - value, radius))),
 			upper: x.map((value, i) => Math.min(up[i] - value, radius)),
 			relaxationWeight,
 			qpIterations,
@@ -502,7 +519,7 @@ export function solveSQP({
 			+ (state.Jh ?? []).reduce((sum, row, j) => sum + row[i] * step.multipliers.equality[j], 0)
 			+ (state.Jg ?? []).reduce((sum, row, j) => sum + row[i] * (step.multipliers.inequality[j] ?? 0), 0));
 		const reducedLagrange = lagrangeAt.map((value, i) => {
-			if (nearBound(x[i], lo[i]) && value > 0) return 0;
+			if (nearBound(x[i], loNow[i]) && value > 0) return 0;
 			if (nearBound(x[i], up[i]) && value < 0) return 0;
 			return value;
 		});
@@ -782,7 +799,7 @@ export function solveSQP({
 			return { merit: meritOfState(evaluated, 1), state: evaluated };
 		};
 		const clamp = (candidate) => candidate.map((value, i) =>
-			Math.min(Math.max(value, lo[i]), up[i]));
+			Math.min(Math.max(value, loNow[i]), up[i]));
 
 		const full = meritOf(clamp(x.map((value, i) => value + step.d[i])));
 		const armijo = (value, alpha) => value <= meritAt0 + 0.1 * alpha * predictedDecrease;
@@ -822,7 +839,7 @@ export function solveSQP({
 				h: full.state.h ?? [],
 				Jh: state.Jh ?? [],
 				...correctionInequalities(full.state),
-				lower: x.map((value, i) => Math.max(lo[i] - value - step.d[i], -radius)),
+				lower: x.map((value, i) => Math.min(Math.max(loNow[i] - value - step.d[i], -radius), Math.min(up[i] - value - step.d[i], radius))),
 				upper: x.map((value, i) => Math.min(up[i] - value - step.d[i], radius)),
 				relaxationWeight,
 			});
@@ -840,7 +857,7 @@ export function solveSQP({
 			predictedDecrease,
 			meritAt: (alpha) => {
 				const candidate = x.map((value, i) =>
-					Math.min(Math.max(value + alpha * step.d[i], lo[i]), up[i]));
+					Math.min(Math.max(value + alpha * step.d[i], loNow[i]), up[i]));
 				let evaluated;
 				try { evaluated = evaluate(candidate, { multipliers: step.multipliers }); } catch { return null; }
 				if (!Number.isFinite(evaluated?.f)) return null;
