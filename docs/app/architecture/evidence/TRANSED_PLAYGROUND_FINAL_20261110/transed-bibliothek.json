@@ -1,0 +1,82 @@
+{
+	"schema": {
+		"name": "ufAIM_transLookup_v3",
+		"version": "3.0.0",
+		"kind": "user-library"
+	},
+	"simpleFcn": {
+		"MY_QUINTIC": {
+			"op": "poly",
+			"coeff": [
+				0,
+				0,
+				0,
+				10,
+				-15,
+				6
+			]
+		}
+	},
+	"protoFcn": {
+		"PROTO_MY_QUINTIC": {
+			"op": "ref",
+			"id": "MY_QUINTIC",
+			"crop": [
+				0,
+				0.5
+			]
+		},
+		"PROTO_MY_MIX": {
+			"op": "add",
+			"args": [
+				{
+					"op": "ref",
+					"id": "MY_QUINTIC",
+					"crop": [
+						0,
+						0.5
+					]
+				},
+				{
+					"op": "mul",
+					"args": [
+						{
+							"op": "const",
+							"value": 0.2
+						},
+						{
+							"op": "ref",
+							"id": "IDENT",
+							"crop": [
+								0,
+								1
+							]
+						}
+					]
+				}
+			]
+		}
+	},
+	"halfWave": {
+		"HW_MY_QUINTIC": {
+			"proto": "PROTO_MY_QUINTIC",
+			"source": "kappa"
+		},
+		"HW_MY_MIX": {
+			"proto": "PROTO_MY_MIX",
+			"source": "kappa"
+		}
+	},
+	"transition": {
+		"my_bogen": {
+			"label": "Mein Bogen",
+			"halfWave1": "HW_MY_QUINTIC",
+			"halfWave2": "HW_MY_MIX",
+			"normLengthPartition": [
+				0.3,
+				0.3,
+				0.4
+			]
+		}
+	}
+}

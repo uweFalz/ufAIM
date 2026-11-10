@@ -201,6 +201,10 @@ test("the library stays outside the frozen core and off browser, messaging and s
 		"../../aim-core/transition/registry/RegistryResolver.js",
 		"../../aim-core/transition/query/createTransitionQueryService.js",
 		"../../aim-core/transition/runtime/KappaFcnBuilder.js",
+		"../../aim-core/transition/ast/buildProtoAst.js",
+		"../../aim-core/transition/ast/evalAst.js",
+		"../../aim-core/transition/ast/simplify.js",
+		"../../aim-core/transition/ast/symDiff.js",
 		"../../domain/transition/registry/validator.js",
 		"./cantCurvatureCoupling.js",
 	]);
@@ -209,7 +213,7 @@ test("the library stays outside the frozen core and off browser, messaging and s
 	assert.deepEqual(staticSpecifiers(plot), []);
 	for (const source of [service, coupling, plot]) assert.doesNotMatch(source, /\.json|window|document|Worker|localStorage|indexedDB|sendCmd/);
 	const barrel = await import("../../../src/services/transition-library/index.js");
-	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "HALFWAVE_QUANTITIES", "PLOT_SERIES", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "plotParameterAt", "transitionPlotSvg"]);
+	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "FUNCTION_SERIES", "HALFWAVE_QUANTITIES", "PLOT_SERIES", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "functionPlotSvg", "plotParameterAt", "transitionPlotSvg"]);
 });
 
 test("an unsaved combination of two halfWaves and a partition is described without saving", () => {
@@ -241,4 +245,72 @@ test("an unsaved combination of two halfWaves and a partition is described witho
 	createQuintic(service, { quantity: "cant" });
 	assert.equal(service.describeDraft({ halfWave1: "HW_MY_QUINTIC", halfWave2: "HW_MY_QUINTIC", normLengthPartition: [0.5, 0, 0.5] }).quantity, "cant");
 	assert.equal(service.describeDraft({ halfWave1: "HW_MY_QUINTIC", halfWave2: "HW_BLOSS", normLengthPartition: [0.5, 0, 0.5] }).code, "USER_LIBRARY_QUANTITY_MIXED");
+});
+
+test("mode 0: a function with an argument interval is described and stored in one step", () => {
+	const service = make();
+	const bloss = service.describeFunction({ value: { op: "poly", coeff: [0, 0, 3, -2] }, interval: [0, 0.5], range: [-0.5, 1.5], count: 5 });
+	assert.equal(bloss.ok, true);
+	assert.deepEqual(bloss.frame, { a: 0, b: 0.5, fa: 0, fb: 0.5 });
+	assert.deepEqual(bloss.samples.map((s) => [s.x, s.f, s.f1, s.f2]), [[-0.5, 1, -4.5, 12], [0, 0, 0, 6], [0.5, 0.5, 1.5, 0], [1, 1, 0, -6], [1.5, 0, -4.5, -12]]);
+	const sine = service.describeFunction({ value: { op: "sin", m: Math.PI, n: 0 }, interval: [0, 0.5], range: [0, 1], count: 3 });
+	assert.ok(Math.abs(sine.samples[1].f - 1) < 1e-12 && Math.abs(sine.samples[0].f1 - Math.PI) < 1e-12 && Math.abs(sine.samples[1].f2 + Math.PI ** 2) < 1e-9);
+	assert.ok(Math.abs(sine.frame.fb - 1) < 1e-12);
+	// a backwards interval is a frame too
+	assert.deepEqual(service.describeFunction({ value: { op: "poly", coeff: [0, 1] }, interval: [1, 0.4] }).frame, { a: 1, b: 0.4, fa: 1, fb: 0.4 });
+	assert.equal(service.describeFunction({ value: { op: "poly", coeff: [1] }, interval: [0, 1] }).usableAsPiece, false);
+	assert.equal(service.describeFunction({ value: { op: "tan" }, interval: [0, 1] }).code, "USER_LIBRARY_STRUCTURE_INVALID");
+	assert.equal(service.describeFunction({ value: { op: "poly", coeff: [0, 1] }, interval: [0.3, 0.3] }).code, "USER_LIBRARY_INTERVAL_INVALID");
+	assert.deepEqual(service.exportUserLibrary().simpleFcn, {}, "describing stores nothing");
+
+	const stored = service.putUserRecords([
+		{ level: "simpleFcn", id: "MY_F", value: { op: "poly", coeff: [0, 0, 3, -2] } },
+		{ level: "protoFcn", id: "PROTO_MY_F", value: { op: "ref", id: "MY_F", crop: [0, 0.5] } },
+		{ level: "halfWave", id: "HW_MY_F", value: { proto: "PROTO_MY_F", source: "kappa" } },
+	]);
+	assert.deepEqual(stored.records.map((r) => `${r.level}.${r.id}:${r.status}`), ["simpleFcn.MY_F:created", "protoFcn.PROTO_MY_F:created", "halfWave.HW_MY_F:created"]);
+	assert.deepEqual(service.listSimpleFunctions().find((f) => f.id === "MY_F"), { id: "MY_F", value: { op: "poly", coeff: [0, 0, 3, -2] }, origin: "user", interval: [0, 0.5] });
+	assert.deepEqual(service.listSimpleFunctions().find((f) => f.id === "BIQUA").interval, [0, 0.5]);
+	// the stored function is usable as a halfWave in mode 2 and equals Bloss there
+	const mine = service.describeDraft({ halfWave1: "HW_MY_F", halfWave2: "HW_MY_F", normLengthPartition: [0.5, 0, 0.5], count: 21 });
+	const bl = service.describeDraft({ halfWave1: "HW_BLOSS", halfWave2: "HW_BLOSS", normLengthPartition: [0.5, 0, 0.5], count: 21 });
+	mine.samples.forEach((sample, index) => assert.ok(Math.abs(sample.k - bl.samples[index].k) < 1e-12));
+
+	// all or nothing
+	const refused = service.putUserRecords([
+		{ level: "simpleFcn", id: "MY_G", value: { op: "poly", coeff: [0, 1] } },
+		{ level: "halfWave", id: "HW_MY_G", value: { proto: "PROTO_NOPE", source: "kappa" } },
+	]);
+	assert.equal(refused.ok, false);
+	assert.deepEqual(Object.keys(service.exportUserLibrary().simpleFcn), ["MY_F"]);
+	assert.equal(service.putUserRecords([]).code, "USER_LIBRARY_RECORD_INVALID");
+});
+
+test("mode 1: a halfWave composed of functions, each term with its own interval", () => {
+	const service = make();
+	// the built-in sine prototype rebuilt as a linear combination
+	const sineTree = { op: "add", args: [
+		{ op: "ref", id: "IDENT", crop: [0, 0.5] },
+		{ op: "mul", args: [{ op: "const", value: -1 / (2 * Math.PI) }, { op: "ref", id: "SIN2PI", crop: [0, 0.5] }] },
+	] };
+	const draft = service.describeHalfWave({ proto: sineTree, count: 21 });
+	assert.equal(draft.ok, true);
+	const builtInSine = service.describeDraft({ halfWave1: "HW_SINE", halfWave2: "HW_SINE", normLengthPartition: [1, 0, 0], count: 21 });
+	draft.samples.forEach((sample, index) => assert.ok(Math.abs(sample.k - builtInSine.samples[index].k) < 1e-12, `u=${sample.u}`));
+	assert.ok(Math.abs(draft.endSlopes.start) < 1e-12);
+
+	// terms with different intervals, a power, and a product (the Klauder pattern)
+	const mixed = service.describeHalfWave({ proto: { op: "add", args: [{ op: "ref", id: "BLOSS", crop: [0, 0.5] }, { op: "mul", args: [{ op: "const", value: 0.2 }, { op: "ref", id: "IDENT", crop: [0, 1] }] }] } });
+	assert.equal(mixed.ok, true);
+	const klauder = service.describeHalfWave({ proto: { op: "mul", args: [{ op: "pow", base: { op: "ref", id: "ROOTp1", crop: [-1, 0] }, exp: 2 }, { op: "pow", base: { op: "ref", id: "IDENT", crop: [-1, 0] }, exp: 3 }, { op: "pow", base: { op: "ref", id: "ROOTm1", crop: [-1, 0] }, exp: 2 }] }, source: "kappa2", count: 21 });
+	const builtInKlauder = service.describeDraft({ halfWave1: "HW_KLAU_2_3", halfWave2: "HW_KLAU_2_3", normLengthPartition: [1, 0, 0], count: 21 });
+	klauder.samples.forEach((sample, index) => assert.ok(Math.abs(sample.k - builtInKlauder.samples[index].k) < 1e-12));
+	assert.equal(service.describeHalfWave({ proto: sineTree, quantity: "cant" }).quantity, "cant");
+
+	assert.equal(service.describeHalfWave({ proto: { op: "ref", id: "CONST1", crop: [0, 1] } }).code, "USER_LIBRARY_HALFWAVE_UNSUITABLE");
+	const missing = service.describeHalfWave({ proto: { op: "ref", id: "NOPE", crop: [0, 1] } });
+	assert.equal(missing.code, "USER_LIBRARY_REFERENCE_MISSING");
+	assert.doesNotMatch(missing.reason, /zz_user_library_probe/);
+	assert.equal(service.describeHalfWave({ proto: sineTree, quantity: "speed" }).code, "USER_LIBRARY_QUANTITY_INVALID");
+	assert.deepEqual(service.exportUserLibrary().protoFcn, {}, "describing stores nothing");
 });

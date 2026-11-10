@@ -1,0 +1,84 @@
+{
+ "tag": "single",
+ "author": {
+  "mode0": {
+   "a": "0",
+   "b": "0.5",
+   "legend": "f -0.221 … 1.22f′ 0.000188 … 2.93f″ -28.1 … 28.1Rahmen x von 0 bis 0.5, Werte von 0 bis 0.5",
+   "frame": true,
+   "message": "",
+   "saved": "Gespeichert: MY_QUINTIC, PROTO_MY_QUINTIC, HW_MY_QUINTIC."
+  },
+  "mode1": {
+   "firstInterval": [
+    "0",
+    "0.5"
+   ],
+   "terms": 2,
+   "legend": "κ 0 … 1κ′ 0.286 … 1.63κ″ 0 … 2.06Steigung am Anfang 0.286, am Ende 1.625erklärt als Krümmung",
+   "message": "",
+   "saved": "Gespeichert: PROTO_MY_MIX, HW_MY_MIX."
+  },
+  "mode2": {
+   "hwIn": "HW_MY_QUINTIC",
+   "hwOut": "HW_MY_MIX",
+   "w1": "0.3",
+   "w2": "0.6",
+   "legend": "κ 0 … 1κ′ 0 … 1.42κ″ -4.49 … 7.27",
+   "verdict": "Rampe knickt an den Enden",
+   "message": "",
+   "saved": "„my_bogen“ gespeichert.",
+   "curve": "[0,0.016084,0.095107,0.22658,0.368192,0.509804,0.651416,0.788256,0.898654,0.967108,1]"
+  },
+  "library": [
+   "transition.my_bogen",
+   "halfWave.HW_MY_QUINTIC",
+   "halfWave.HW_MY_MIX",
+   "protoFcn.PROTO_MY_QUINTIC",
+   "protoFcn.PROTO_MY_MIX",
+   "simpleFcn.MY_QUINTIC"
+  ]
+ },
+ "file": {
+  "bytes": 1069,
+  "kind": "user-library",
+  "levels": {
+   "simpleFcn": [
+    "MY_QUINTIC"
+   ],
+   "protoFcn": [
+    "PROTO_MY_QUINTIC",
+    "PROTO_MY_MIX"
+   ],
+   "halfWave": [
+    "HW_MY_QUINTIC",
+    "HW_MY_MIX"
+   ],
+   "transition": [
+    "my_bogen"
+   ]
+  }
+ },
+ "reader": {
+  "before": 0,
+  "message": "6 Einträge geladen.",
+  "library": [
+   "transition.my_bogen",
+   "halfWave.HW_MY_QUINTIC",
+   "halfWave.HW_MY_MIX",
+   "protoFcn.PROTO_MY_QUINTIC",
+   "protoFcn.PROTO_MY_MIX",
+   "simpleFcn.MY_QUINTIC"
+  ],
+  "loaded": {
+   "mode": "2",
+   "hwIn": "HW_MY_QUINTIC",
+   "hwOut": "HW_MY_MIX",
+   "w1": "0.3",
+   "w2": "0.6",
+   "curve": "[0,0.016084,0.095107,0.22658,0.368192,0.509804,0.651416,0.788256,0.898654,0.967108,1]"
+  }
+ },
+ "sameCurve": true,
+ "problems": []
+}

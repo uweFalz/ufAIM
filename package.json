@@ -55,7 +55,9 @@
     "test:package": "node --test 'test/package/*.test.mjs'",
     "corpus": "node test/axtran2/corpus/runCorpus.mjs",
     "bundle": "node tools/axtran2/bundle.mjs",
-    "bundle:transed": "node tools/transed/bundle.mjs"
+    "bundle:check": "node tools/axtran2/bundle.mjs --check",
+    "bundle:transed": "node tools/transed/bundle.mjs",
+    "bundle:transed:check": "node tools/transed/bundle.mjs --check"
   },
   "optionalDependencies": {
     "mdb-reader": "3.2.0",

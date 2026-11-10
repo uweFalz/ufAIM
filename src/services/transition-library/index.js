@@ -12,4 +12,4 @@ export {
 	couplingEpsilon,
 	curvatureFromCant,
 } from "./cantCurvatureCoupling.js";
-export { PLOT_SERIES, couplingPlotSvg, formatRange, plotParameterAt, transitionPlotSvg } from "./transitionPlot.js";
+export { FUNCTION_SERIES, PLOT_SERIES, couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, transitionPlotSvg } from "./transitionPlot.js";
