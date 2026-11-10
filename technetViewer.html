@@ -41032,51 +41032,21 @@ xlsx/xlsx.mjs:
 				return relations;
 			}
 
+			// What hangs together with an entry by references: its Trasse as the
+			// anchor and the whole Verbund (einordnungVerbund), read from the
+			// Bezüge. A landXML Gleis references its Kilometerlinie and the other
+			// Gleis references the same line, so one Gleis shows the whole 7L;
+			// GND and VermEsn references are one hop. Resolved per file, never by
+			// an id across files.
 			function relatedDiagramEntries(entry) {
 				if (!entry?.loaded) return { anchor: entry, entries: [entry] };
-				const allEntries = allViewerEntries();
-				const relations = [...loadedFiles.flatMap((loaded) => loaded.relations), ...stemPairedRelations()];
-				let anchor = entry.item.kind === "alignment" ? entry : null;
-				if (!anchor) {
-					const relation = relations.find((candidate) =>
-						candidate.type === "stationReference" && candidate.fromId === entry.item.id
-					);
-					anchor = allEntries.find((candidate) => candidate.item.id === relation?.toId) ?? null;
-				}
-				anchor ??= entry.loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? entry;
-				// Follow stationReference relations transitively, not just one hop from
-				// the anchor: a landXML Kilometrierungslinie can itself be related to
-				// other alignments (e.g. Richtungs-/Gegenrichtungsgleis), and those
-				// alignments' OWN profile/cant would otherwise never be reached, even
-				// though the alignments themselves are (verified against SCx_1720.xml:
-				// A101720R's cant only surfaced once this closure ran two hops instead
-				// of one). GND/VermEsn relations are already flat (one hop), so this is
-				// a no-op for them -- confirmed no change in entry/band counts there.
-				// A landXML Gleis references its Kilometrierungslinie, and the other
-				// Gleis of the Strecke references the same line. Selecting one Gleis
-				// must still show the whole 7L, so the closure starts at the line the
-				// anchor references (GND/VermEsn have no alignment->alignment
-				// relations, so this is a no-op for them).
-				const outgoing = relations.find((candidate) => candidate.type === "stationReference" && candidate.fromId === anchor.item.id);
-				const referenced = outgoing ? allEntries.find((candidate) => candidate.item.id === outgoing.toId) : null;
-				const root = referenced?.item.kind === "alignment" ? referenced : anchor;
-				// Both start the walk: the anchor's own profile/cant reference the
-				// anchor, not the root, and the anchor is already "linked" so the walk
-				// from the root alone would never look at its referrers.
-				const linkedIds = new Set([anchor.item.id, root.item.id]);
-				const frontier = [...new Set([root.item.id, anchor.item.id])];
-				while (frontier.length) {
-					const currentId = frontier.pop();
-					for (const relation of relations) {
-						if (relation.type === "stationReference" && relation.toId === currentId && !linkedIds.has(relation.fromId)) {
-							linkedIds.add(relation.fromId);
-							frontier.push(relation.fromId);
-						}
-					}
-				}
+				const bezuege = einordnungBezuegeStand();
+				const key = einordnungKey(entry);
+				if (!bezuege.model.objects.has(key)) return { anchor: entry, entries: [entry] };
+				const verbund = einordnungVerbund(bezuege.model, key);
 				return {
-					anchor,
-					entries: allEntries.filter((candidate) => linkedIds.has(candidate.item.id)),
+					anchor: bezuege.entries.get(verbund.anchor.key) ?? entry,
+					entries: verbund.keys.map((candidateKey) => bezuege.entries.get(candidateKey)).filter(Boolean),
 				};
 			}
 
@@ -41084,9 +41054,8 @@ xlsx/xlsx.mjs:
 			// staEq) -- not the transitive 7L closure, which since the km-line root
 			// also holds the other Gleis's objects.
 			function referencingEntries(alignment) {
-				const relations = [...loadedFiles.flatMap((loaded) => loaded.relations), ...stemPairedRelations()];
-				const ids = new Set(relations.filter((relation) => relation.type === "stationReference" && relation.toId === alignment.item.id).map((relation) => relation.fromId));
-				return allViewerEntries().filter((candidate) => ids.has(candidate.item.id));
+				const bezuege = einordnungBezuegeStand();
+				return (bezuege.model.referrers.get(einordnungKey(alignment)) ?? []).map((key) => bezuege.entries.get(key)).filter(Boolean);
 			}
 			// BEGIN LAGE WITNESS (test/technet-viewer-lage.test.mjs runs this block)
 			// The Lage as a witness of its own. A name or an attribute says which
@@ -41898,10 +41867,8 @@ xlsx/xlsx.mjs:
 			//   role (the 7L Spur: gradientRight … cantRight, or "UNASSIGNED"),
 			//   section (an explicit Abschnitt id, or "") }
 			const EINORDNUNG_VERSION = "einordnung/0.1";
-			function einordnen(facts) {
-				const objects = new Map();
-				for (const fact of facts) objects.set(fact.key, { ...fact, trasse: fact.kind === "alignment" ? fact.key : null, dependents: [], orphan: false });
-				// Who references whom, turned round: the referrers of each object.
+			// Who references whom, turned round: the referrers of each object.
+			function einordnungReferrers(objects) {
 				const referrers = new Map();
 				for (const placed of objects.values()) {
 					for (const target of placed.refKeys ?? []) {
@@ -41910,6 +41877,20 @@ xlsx/xlsx.mjs:
 						referrers.get(target).push(placed.key);
 					}
 				}
+				return referrers;
+			}
+			// Die Bezüge allein: nodes { key, kind, refKeys, homeKey } and their
+			// referrers. Enough for einordnungVerbund and einordnungEigene, and it
+			// needs no Lage, side or Strecke -- so the resolvers that produce
+			// those can ask it while the full model is still being built.
+			function einordnungBezuege(nodes) {
+				const objects = new Map(nodes.map((node) => [node.key, node]));
+				return { objects, referrers: einordnungReferrers(objects) };
+			}
+			function einordnen(facts) {
+				const objects = new Map();
+				for (const fact of facts) objects.set(fact.key, { ...fact, trasse: fact.kind === "alignment" ? fact.key : null, dependents: [], orphan: false });
+				const referrers = einordnungReferrers(objects);
 				// Zugehörigkeit: every Trasse the object references lists it; the
 				// first one stands for it.
 				for (const placed of objects.values()) {
@@ -42156,6 +42137,12 @@ xlsx/xlsx.mjs:
 
 			// The adapter: facts from the entries and the decisions on them, the
 			// model cached until something changes (einordnungGeaendert()).
+			// The adapter, in two stages. Stage one, the Bezüge: who references
+			// whom, from the files alone; it changes only when files come or go.
+			// Stage two, the full model: facts from the resolvers and the
+			// decisions on the objects, cached until einordnungGeaendert(). The
+			// resolvers ask stage one (relatedDiagramEntries, referencingEntries),
+			// never stage two, so building the model cannot call itself.
 			let einordnungCache = null;
 			let einordnungStamp = 0;
 			function einordnungGeaendert() {
@@ -42175,11 +42162,12 @@ xlsx/xlsx.mjs:
 				}
 				return key;
 			}
-			function einordnung() {
-				if (einordnungCache && einordnungCache.stamp === einordnungStamp) return einordnungCache.model;
+			let bezuegeCache = null;
+			function einordnungBezuegeStand() {
+				const cached = bezuegeCache;
+				if (cached && cached.files.length === loadedFiles.length && loadedFiles.every((loaded, index) => loaded === cached.files[index] && loaded.objects.length === cached.counts[index][0] && (loaded.relations?.length ?? 0) === cached.counts[index][1])) return cached;
 				const entries = allViewerEntries();
 				const keyOf = einordnungKey;
-				const byKey = new Map(entries.map((entry) => [keyOf(entry), entry]));
 				// References are resolved inside the file that states them: ids are
 				// positions in a file (alignment_gnd_coordgeom_146), and two
 				// deliveries use one id for different Gleise (Billwerder
@@ -42187,12 +42175,23 @@ xlsx/xlsx.mjs:
 				// reference that finds nothing in its own file looks further; the
 				// VermEsn pairing by file stem is across files by design.
 				const refKeys = new Map(entries.map((entry) => [entry, []]));
+				const origin = new Map();
 				const everywhere = new Map();
 				for (const entry of entries) {
 					if (!everywhere.has(entry.item.id)) everywhere.set(entry.item.id, []);
 					everywhere.get(entry.item.id).push(entry);
 				}
-				const link = (from, to) => { const list = refKeys.get(from); const key = keyOf(to); if (!list.includes(key)) list.push(key); };
+				const link = (from, to, stem, detail) => {
+					const list = refKeys.get(from);
+					const key = keyOf(to);
+					if (list.includes(key)) {
+						// One pair, one reference; a stem pairing on top is remembered.
+						if (stem) origin.get(`${keyOf(from)}>${key}`).stem = true;
+						return;
+					}
+					list.push(key);
+					origin.set(`${keyOf(from)}>${key}`, { stem, detail });
+				};
 				for (const loaded of loadedFiles) {
 					const here = new Map();
 					for (const entry of loaded.objects) {
@@ -42203,35 +42202,51 @@ xlsx/xlsx.mjs:
 						if (relation.type !== "stationReference") continue;
 						const sources = here.get(relation.fromId) ?? everywhere.get(relation.fromId) ?? [];
 						const targets = here.get(relation.toId) ?? everywhere.get(relation.toId) ?? [];
-						for (const from of sources) for (const to of targets) if (from !== to) link(from, to);
+						for (const from of sources) for (const to of targets) if (from !== to) link(from, to, false, relation.method ?? relation.reason ?? "");
 					}
 				}
 				for (const relation of stemPairedRelations()) {
-					for (const from of everywhere.get(relation.fromId) ?? []) for (const to of everywhere.get(relation.toId) ?? []) if (from !== to) link(from, to);
+					for (const from of everywhere.get(relation.fromId) ?? []) for (const to of everywhere.get(relation.toId) ?? []) if (from !== to) link(from, to, true, "");
 				}
 				const homeOf = new Map(loadedFiles.map((loaded) => [loaded, loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? null]));
-				const facts = entries.map((entry) => {
+				const nodes = entries.map((entry) => {
+					const home = homeOf.get(entry.loaded);
+					return { key: keyOf(entry), kind: entry.item.kind, refKeys: refKeys.get(entry), homeKey: home ? keyOf(home) : null };
+				});
+				bezuegeCache = {
+					files: [...loadedFiles],
+					counts: loadedFiles.map((loaded) => [loaded.objects.length, loaded.relations?.length ?? 0]),
+					model: einordnungBezuege(nodes),
+					entries: new Map(entries.map((entry) => [keyOf(entry), entry])),
+					nodes: new Map(entries.map((entry, index) => [entry, nodes[index]])),
+					origin,
+				};
+				return bezuegeCache;
+			}
+			function einordnung() {
+				const bezuege = einordnungBezuegeStand();
+				if (einordnungCache && einordnungCache.stamp === einordnungStamp && einordnungCache.bezuege === bezuege) return einordnungCache.model;
+				const facts = allViewerEntries().map((entry) => {
+					const node = bezuege.nodes.get(entry);
 					const sequence = gndSequenceForEntry(entry);
 					const frame = geoFrameInfo(entry);
-					const home = homeOf.get(entry.loaded);
 					return {
-						key: keyOf(entry), kind: entry.item.kind, name: objectListName(entry), file: entry.loaded?.fileName ?? "",
+						key: node.key, kind: node.kind, name: objectListName(entry), file: entry.loaded?.fileName ?? "",
 						family: sourceFamilyForEntry(entry), label: familyForEntry(entry), route: routeForEntry(entry) ?? "",
 						gnd: isGndEntry(entry), gndSequence: Boolean(sequence), gndFamily: sequence?.family ?? null, gndRoute: sequence?.strRikz ?? null,
 						organized: isOutboxOrganized(entry), hidden: isEntryHidden(entry),
 						lsys: effectiveLsys(entry) || null, hsys: systemsForEntry(entry).hsys || null,
 						frame: frame ? { track: frame.track, direction: frame.direction, segment: frame.segment ?? null, source: frame.source, lsys: frame.lsys ?? null } : null,
 						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
-						refKeys: refKeys.get(entry), homeKey: home ? keyOf(home) : null,
+						refKeys: node.refKeys, homeKey: node.homeKey,
 						role: sevenLineRole(entry), section: explicitSectionForEntry(entry) || "",
 					};
 				});
-				einordnungCache = { model: einordnen(facts), entries: byKey, stamp: einordnungStamp };
+				einordnungCache = { model: einordnen(facts), bezuege, stamp: einordnungStamp };
 				return einordnungCache.model;
 			}
 			function einordnungEintrag(key) {
-				einordnung();
-				return key == null ? null : einordnungCache.entries.get(key) ?? null;
+				return key == null ? null : einordnungBezuegeStand().entries.get(key) ?? null;
 			}
 			// The 7L Spur of an entry as the model has it.
 			function einordnungRolle(entry) {
@@ -48264,20 +48279,31 @@ xlsx/xlsx.mjs:
 				const alignments = entries.filter((entry) => entry.item.kind === "alignment");
 				const edges = [];
 				const seen = new Set();
+				// Two objects are one pair by themselves, not by their ids: two
+				// deliveries reuse ids, and the second file's edges went missing.
 				const add = (from, to, reason, detail = "") => {
 					if (!from || !to || from === to) return;
-					if (seen.has(`${from.item.id}|${to.item.id}|${reason}`) || seen.has(`${to.item.id}|${from.item.id}|${reason}`)) return;
-					seen.add(`${from.item.id}|${to.item.id}|${reason}`);
+					const a = einordnungKey(from);
+					const b = einordnungKey(to);
+					if (seen.has(`${a}|${b}|${reason}`) || seen.has(`${b}|${a}|${reason}`)) return;
+					seen.add(`${a}|${b}|${reason}`);
 					edges.push({ from, to, reason, detail });
 				};
-				for (const loaded of loadedFiles) {
-					for (const relation of loaded.relations) {
-						if (relation.type !== "stationReference") continue;
-						const from = byId.get(relation.fromId);
-						add(from, byId.get(relation.toId), from?.parser === "gndEdit" ? "identity" : from?.parser === "vermEsn" ? "file" : "relation", relation.method ?? relation.reason ?? "");
+				// References as the Bezüge have them (per file), each pair once with
+				// its true reason: a VermEsn pair across two files hangs together by
+				// the file stem, not by "the same file". The stem pairs come last.
+				const bezuege = einordnungBezuegeStand();
+				for (const stemPass of [false, true]) {
+					for (const from of entries) {
+						for (const refKey of bezuege.nodes.get(from)?.refKeys ?? []) {
+							const to = bezuege.entries.get(refKey);
+							const how = bezuege.origin.get(`${einordnungKey(from)}>${refKey}`);
+							const byStem = Boolean(how?.stem) || (from.parser === "vermEsn" && to?.loaded !== from.loaded);
+							if (byStem !== stemPass) continue;
+							add(from, to, byStem ? "stem" : from.parser === "gndEdit" ? "identity" : from.parser === "vermEsn" ? "file" : "relation", how?.detail ?? "");
+						}
 					}
 				}
-				for (const relation of stemPairedRelations()) add(byId.get(relation.fromId), byId.get(relation.toId), "stem");
 				const isKm = (sequence) => ["0", "3"].includes(String(sequence?.strRikz ?? ""));
 				for (const entry of entries) {
 					const nameFrame = vermEsnNameFrame(entry);

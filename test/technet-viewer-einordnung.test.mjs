@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -261,3 +261,34 @@ test("Umfeld with Varianten: the hidden Trasse takes its own Gradiente along; ea
 	assert.deepEqual(json(einordnungUmfeld(unknown, "G1").varianten), []);
 	assert.deepEqual(json(einordnungUmfeld(unknown, "G1").bySide.unknown), ["G1", "G2"]);
 });
+
+test("Bezüge allein: the Verbund needs only kind and references, and is the same in the full model", () => {
+	const nodes = [
+		{ key: "K", kind: "alignment", refKeys: [], homeKey: "K" },
+		{ key: "L", kind: "alignment", refKeys: ["K"], homeKey: "K" },
+		{ key: "R", kind: "alignment", refKeys: ["K"], homeKey: "K" },
+		{ key: "LG", kind: "profile", refKeys: ["L"], homeKey: "K" },
+		{ key: "EK", kind: "staEq", refKeys: [], homeKey: "K" },
+		{ key: "other", kind: "alignment", refKeys: [], homeKey: "other" },
+		{ key: "otherG", kind: "profile", refKeys: ["other"], homeKey: "other" },
+	];
+	const bezuege = einordnungBezuege(nodes);
+	assert.deepEqual(json(bezuege.referrers.get("K")), ["L", "R"]);
+	assert.deepEqual(json(bezuege.referrers.get("L")), ["LG"]);
+	assert.equal(bezuege.referrers.get("LG"), undefined);
+	const verbund = einordnungVerbund(bezuege, "LG");
+	assert.equal(verbund.anchor.key, "L");
+	assert.deepEqual(json(verbund.keys), ["K", "L", "R", "LG"], "the whole 7L from one Gradiente, nothing of the other file");
+	assert.equal(einordnungVerbund(bezuege, "EK").anchor.key, "K", "no reference: the first Trasse of its file");
+	assert.deepEqual(json(einordnungVerbund(bezuege, "otherG").keys), ["other", "otherG"]);
+	assert.deepEqual(json(einordnungEigene(bezuege, "other")), ["otherG"]);
+	// a reference to something that is not there is ignored
+	const dangling = einordnungBezuege([{ key: "G", kind: "profile", refKeys: ["gone"], homeKey: null }]);
+	assert.equal(einordnungVerbund(dangling, "G").anchor.key, "G");
+	assert.deepEqual(json(einordnungVerbund(dangling, "G").keys), ["G"]);
+	// the full model answers the same
+	const full = einordnen(nodes.map((node) => fact(node.key, node.kind, { refKeys: node.refKeys, homeKey: node.homeKey })));
+	assert.deepEqual(json(einordnungVerbund(full, "LG").keys), json(verbund.keys));
+	assert.deepEqual(json([...full.referrers.entries()]), json([...bezuege.referrers.entries()]));
+});
+
