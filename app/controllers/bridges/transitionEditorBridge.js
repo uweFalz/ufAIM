@@ -2,6 +2,7 @@
 // SPOT lookup for explicit active Alignment preview context.
 import { clamp01 } from "@utils/helpers.js";
 import { t } from "../../i18n/strings.js";
+import { buildTransitionComparison, formatTransitionRange } from "./transitionComparisonModel.js";
 
 const LEVELS = ["constant", "simpleFcn", "protoFcn", "halfWave", "transition"];
 
@@ -63,7 +64,6 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view, preview
 		(open ? ui.openTransition : ui.closeTransition)?.();
 		store.actions?.setTeOpen?.(open);
 	}
-	function setPlot(mode) { store.actions?.setTePlot?.(mode); renderCompare(); }
 	function isVisible() {
 		const host = byId("transBoard");
 		return Boolean(
@@ -261,19 +261,30 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view, preview
 		await selectRecord(recordId); return catalogue;
 	}
 
-	function summary(samples, key) {
-		const values = samples?.samples?.map((x) => Number(x[key])).filter(Number.isFinite) ?? [];
-		return values.length ? { start: values[0], end: values.at(-1), min: Math.min(...values), max: Math.max(...values) } : null;
-	}
+	const SVG_NS = "http://www.w3.org/2000/svg";
 	async function renderCompare() {
 		if (!recordId || level !== "transition" || !compareId || !view?.samplePreset) return null;
 		const primary = await view.samplePreset(recordId); const secondary = await view.samplePreset(compareId); if (!primary || !secondary) return null;
-		const modes = ["k", "k1", "k2"];
-		nodes.compareSummary.innerHTML = `<table><thead><tr><th></th><th>${title(recordId)}</th><th>${title(compareId)}</th></tr></thead><tbody>${modes.map((mode) => `<tr><th>${mode === "k" ? "κ" : mode === "k1" ? "κ′" : "κ″"}</th><td>${JSON.stringify(summary(primary, mode))}</td><td>${JSON.stringify(summary(secondary, mode))}</td></tr>`).join("")}</tbody></table>`;
-		const mode = store.getState()?.te_plot ?? "k"; const all = [...primary.samples, ...secondary.samples].map((x) => x[mode]).filter(Number.isFinite); const lo = Math.min(...all), hi = Math.max(...all), span = hi - lo || 1;
-		const points = (sample) => sample.samples.map((x) => `${x.u * 600},${170 - ((x[mode] - lo) / span) * 160}`).join(" ");
-		nodes.compareGraph.innerHTML = `<polyline class="primary" points="${points(primary)}"></polyline><polyline class="secondary" points="${points(secondary)}"></polyline>`;
-		return { primary, secondary, modes };
+		const comparison = buildTransitionComparison(primary, secondary);
+		if (!comparison) return null;
+		const doc = nodes.compareSummary.ownerDocument;
+		const cell = (tag, value, color = null) => { const node = doc.createElement(tag); node.textContent = value; if (color) node.style.color = color; return node; };
+		const table = doc.createElement("table"); const head = doc.createElement("thead"); const body = doc.createElement("tbody");
+		const headRow = doc.createElement("tr"); headRow.append(cell("th", ""), cell("th", title(recordId)), cell("th", `${title(compareId)} ╌`)); head.append(headRow);
+		for (const row of comparison.rows) {
+			const tr = doc.createElement("tr"); tr.dataset.transedCompareMode = row.mode;
+			tr.append(cell("th", row.label, row.color), cell("td", formatTransitionRange(row.primary.summary)), cell("td", formatTransitionRange(row.secondary.summary)));
+			body.append(tr);
+		}
+		table.append(head, body); nodes.compareSummary.replaceChildren(table);
+		const lines = comparison.rows.flatMap((row) => ["primary", "secondary"].map((role) => {
+			const line = doc.createElementNS(SVG_NS, "polyline");
+			line.setAttribute("class", role); line.setAttribute("points", row[role].points);
+			line.dataset.transedCompareMode = row.mode; line.style.stroke = row.color;
+			return line;
+		}));
+		nodes.compareGraph.replaceChildren(...lines);
+		return { primary, secondary, modes: comparison.modes };
 	}
 
 	async function applyWorkingCopy(values = nodes.part.map((node) => Number(node.value))) {
@@ -286,10 +297,10 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view, preview
 		const result = await send("Transition.ResetWorkingCopy", { presetId: recordId }); text(nodes.editStatus, t("transed.feedback.reset"));
 		await view?.invalidatePreset?.(recordId); await reloadCatalogue(); await applyPreset(recordId, { force: true }); return result;
 	}
-	function snapshotState() { const st = store.getState(); return clone({ open: !!st.te_open, level, recordId, compareId, plot: st.te_plot ?? "k" }); }
+	function snapshotState() { const st = store.getState(); return clone({ open: !!st.te_open, level, recordId, compareId }); }
 	async function restoreState(snapshot) {
 		if (!snapshot) return;
-		level = snapshot.level; recordId = snapshot.recordId; compareId = snapshot.compareId; setPlot(snapshot.plot);
+		level = snapshot.level; recordId = snapshot.recordId; compareId = snapshot.compareId;
 		await reloadCatalogue();
 		if (snapshot.open) await open();
 		else close();
@@ -346,10 +357,6 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view, preview
 				previewStateSignature = nextSignature;
 				void refreshEngineeringPreview();
 			}
-		});
-		document.querySelectorAll('input[name="tePlot"]').forEach((node) => {
-			node.checked = node.value === (store.getState()?.te_plot ?? "k");
-			node.addEventListener("change", () => node.checked && setPlot(node.value));
 		});
 		window.addEventListener("ufaim:language-changed", async () => {
 			await reloadCatalogue();

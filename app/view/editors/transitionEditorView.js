@@ -2,10 +2,10 @@
 //
 // Normierter Transition-Editor: u ∈ [0,1]
 //
-// Plot modes (store.te_plot):
-//   "k"  -> κ(u)   (already normalized to [0,1])
-//   "k1" -> κ′(u)  (auto-ranged into [0,1] for display)
-//   "k2" -> κ″(u)  (auto-ranged into [0,1] for display)
+// The plot always shows κ(u), κ′(u) and κ″(u) together:
+//   κ   -> already normalized to [0,1], drawn in three segments
+//   κ′  -> scaled from its own range into [0,1] for display
+//   κ″  -> scaled from its own range into [0,1] for display
 //
 // Splits (store.te_w1 / store.te_w2):
 //   [0, w1]   -> segment 1 (dashed)
@@ -171,7 +171,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		const key = String(presetId ?? "");
 		if (!key) return null;
 		_presetCache.delete(key);
-		autoRange.key = "";
+		_modeRange.key = "";
 		const entry = await ensurePresetLoaded(key);
 		board?.fullUpdate?.();
 		return entry;
@@ -331,19 +331,8 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		};
 	}
 
-	function modeLabel(st) {
-		if (st?.te_plot === "k1") return "κ′";
-		if (st?.te_plot === "k2") return "κ″";
-		return "κ";
-	}
-
 	function plotValue(u, st) {
-		const p = getPreset(st);
-		if (!p) return 0;
-
-		if (st?.te_plot === "k1") return p.kappa1(u);
-		if (st?.te_plot === "k2") return p.kappa2(u);
-		return p.kappa(u);
+		return getPreset(st)?.kappa(u) ?? 0;
 	}
 
 	function plotValueForMode(u, st, mode) {
@@ -354,85 +343,39 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		return p.kappa(u);
 	}
 
+	const RANGE_STEPS = 120;
+	const _modeRange = { key: "", k1: null, k2: null };
+
+	// Value range of κ′ and κ″ for the current preset and splits, cached per state.
+	function modeRange(st, mode) {
+		const { w1, w2 } = getSplits(st);
+		const key = `${getPresetIdFromState(st)}|${_rev}|${Math.round(w1 * 1000)}|${Math.round(w2 * 1000)}|${getPreset(st) ? 1 : 0}`;
+		if (key !== _modeRange.key) {
+			_modeRange.key = key;
+			for (const id of ["k1", "k2"]) {
+				let lo = Infinity;
+				let hi = -Infinity;
+				for (let index = 0; index <= RANGE_STEPS; index += 1) {
+					const value = plotValueForMode(index / RANGE_STEPS, st, id);
+					if (!Number.isFinite(value)) continue;
+					lo = Math.min(lo, value);
+					hi = Math.max(hi, value);
+				}
+				_modeRange[id] = Number.isFinite(lo) && Number.isFinite(hi) ? { lo, hi } : null;
+			}
+		}
+		return _modeRange[mode];
+	}
+
 	function normalizedReferenceValue(u, st, mode) {
 		if (mode === "k") return clampNumber(plotValueForMode(u, st, mode), 0, 1);
-		let lo = Infinity;
-		let hi = -Infinity;
-		for (let index = 0; index <= 120; index += 1) {
-			const value = plotValueForMode(index / 120, st, mode);
-			if (!Number.isFinite(value)) continue;
-			lo = Math.min(lo, value);
-			hi = Math.max(hi, value);
-		}
-		if (!Number.isFinite(lo) || !Number.isFinite(hi)) return 0.5;
-		if (Math.abs(hi - lo) < 1e-12) return 0.5;
-		return clampNumber((plotValueForMode(u, st, mode) - lo) / (hi - lo), 0, 1);
+		const range = modeRange(st, mode);
+		if (!range || Math.abs(range.hi - range.lo) < 1e-12) return 0.5;
+		return clampNumber((plotValueForMode(u, st, mode) - range.lo) / (range.hi - range.lo), 0, 1);
 	}
 
-	// ------------------------------------------------------------
-	// auto-range
-	// ------------------------------------------------------------
-
-	const autoRange = { key: "", ymin: 0, ymax: 1 };
-
-	function makeRangeKey(st) {
-		const { w1, w2 } = getSplits(st);
-		const id = getPresetIdFromState(st);
-		const plot = String(st?.te_plot ?? "k");
-		const sw1 = Math.round(w1 * 1000) / 1000;
-		const sw2 = Math.round(w2 * 1000) / 1000;
-		return `${id}|${plot}|${sw1}|${sw2}`;
-	}
-
-	function computeRange(st) {
-		if (st?.te_plot === "k") return { ymin: 0, ymax: 1 };
-
-		const N = 260;
-		let ymin = +Infinity;
-		let ymax = -Infinity;
-
-		for (let i = 0; i <= N; i++) {
-			const u = i / N;
-			const y = plotValue(u, st);
-			if (!Number.isFinite(y)) continue;
-			if (y < ymin) ymin = y;
-			if (y > ymax) ymax = y;
-		}
-
-		if (!Number.isFinite(ymin) || !Number.isFinite(ymax)) {
-			return { ymin: -1, ymax: 1 };
-		}
-
-		const span = ymax - ymin;
-		if (span < 1e-10) {
-			const c = ymin;
-			return { ymin: c - 1, ymax: c + 1 };
-		}
-
-		const pad = span * 0.12;
-		return { ymin: ymin - pad, ymax: ymax + pad };
-	}
-
-	function ensureRange(st) {
-		const key = makeRangeKey(st);
-		if (key === autoRange.key) return;
-
-		autoRange.key = key;
-		const r = computeRange(st);
-		autoRange.ymin = r.ymin;
-		autoRange.ymax = r.ymax;
-	}
-
-	function yMap(y, st) {
-		if (st?.te_plot === "k") return clampNumber(y, 0, 1);
-
-		ensureRange(st);
-		const ymin = autoRange.ymin;
-		const ymax = autoRange.ymax;
-		const span = Math.max(1e-12, ymax - ymin);
-
-		const yn = (y - ymin) / span;
-		return clampNumber(yn, 0, 1);
+	function yMap(y) {
+		return clampNumber(y, 0, 1);
 	}
 
 	let legendEl = null;
@@ -440,15 +383,11 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 	function updateLegend(st) {
 		if (!legendEl) legendEl = document.getElementById("teLegend");
 		if (!legendEl) return;
-
-		if (st?.te_plot === "k") {
-			legendEl.textContent = `κ · κ′ · κ″  |  active: ${modeLabel(st)}  |  normalized comparison`;
-			return;
-		}
-
-		ensureRange(st);
-		legendEl.textContent =
-			`κ · κ′ · κ″  |  active: ${modeLabel(st)}  |  auto-range y∈[${autoRange.ymin.toFixed(3)} .. ${autoRange.ymax.toFixed(3)}] → [0..1]`;
+		const range = (mode) => {
+			const r = modeRange(st, mode);
+			return r ? `[${r.lo.toFixed(3)} .. ${r.hi.toFixed(3)}]` : "—";
+		};
+		legendEl.textContent = `κ ∈ [0 .. 1]  ·  κ′ ∈ ${range("k1")}  ·  κ″ ∈ ${range("k2")}  |  κ′, κ″ → [0..1]`;
 	}
 
 	// ------------------------------------------------------------
@@ -617,7 +556,6 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 	function updateSplitVisibility(st) {
 		const p = getPreset(st);
 		const show =
-			(st?.te_plot === "k") &&
 			!!p?.cutsCrv &&
 			Number.isFinite(p.cutsCrv.c1) &&
 			Number.isFinite(p.cutsCrv.c2);
@@ -767,7 +705,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 
 		function segY(u, st, a, b) {
 			if (u < a || u > b) return NaN;
-			return yMap(plotValue(u, st), st);
+			return yMap(plotValue(u, st));
 		}
 
 		curveIn = board.create("curve", [
@@ -811,8 +749,8 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			1,
 		], {
 			strokeColor: color,
-			strokeWidth: () => (store.getState()?.te_plot ?? "k") === mode ? 3 : 1.35,
-			strokeOpacity: () => (store.getState()?.te_plot ?? "k") === mode ? 0.95 : 0.55,
+			strokeWidth: mode === "k" ? 3 : 2,
+			strokeOpacity: mode === "k" ? 0.95 : 0.85,
 			dash,
 			highlight: false,
 			fixed: true,
@@ -912,7 +850,6 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 
 		let _pending = false;
 		let _lastPresetId = "";
-		let _lastPlot = "";
 		let _lastDescRef = null;
 		let _renderedPlotState = readPlotRenderState(store.getState());
 
@@ -921,7 +858,6 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 			return {
 				presetId: getPresetIdFromState(st),
 				descriptor: getDescriptor(st),
-				plot: String(st?.te_plot ?? "k"),
 				w1,
 				w2,
 			};
@@ -933,7 +869,6 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 				&& right
 				&& left.presetId === right.presetId
 				&& left.descriptor === right.descriptor
-				&& left.plot === right.plot
 				&& left.w1 === right.w1
 				&& left.w2 === right.w2
 			);
@@ -951,7 +886,6 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 				const nextPlotState = readPlotRenderState(st);
 				if (isSamePlotRenderState(nextPlotState, _renderedPlotState)) return;
 				const pid = getPresetIdFromState(st);
-				const plot = String(st?.te_plot ?? "k");
 
 				if (pid && pid !== _lastPresetId) {
 					_lastPresetId = pid;
@@ -961,10 +895,6 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 						board?.fullUpdate();
 						_renderedPlotState = readPlotRenderState(store.getState());
 					});
-				}
-
-				if (plot !== _lastPlot) {
-					_lastPlot = plot;
 				}
 
 				const descRef = getDescriptor(st);
@@ -1017,8 +947,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		_debug: {
 			getPreset: () => getPreset(store.getState()),
 			getCachedBasePreset,
-			ensureRange,
-			autoRange,
+			modeRange: (mode) => modeRange(store.getState(), mode),
 			plotValue,
 		},
 	};
