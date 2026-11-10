@@ -10,12 +10,12 @@
     "src/import/parsers/technet/gndEdit/gnd/extractGndDbb.js": "09456939572804c2be768107c06153d08baac40e4b5795613f1361c5fe3f4414",
     "src/import/parsers/technet/gndEdit/parseGND_DBB.js": "17268b27bdf84014c35aaf82fdfdda95411a69e143f24e2ab4fbce281132d4bb",
     "viewer/src/import-legacy.js.in": "ba17f307e342cc05de3f52ce526f175171c755da802dbdd2bd242c6aff4e9def",
-    "viewer/src/viewer.js": "d0d7dbc8812bc8d3c4858a2ebda40bb6742f0daab017e2a6110300ae344d9fa7",
+    "viewer/src/viewer.js": "613ad2f4a0ac004b67041cfbc5c7e30de715347634b4ce258c98044599040e1d",
     "tools/build-technet-viewer.mjs": "d6b125e678f436868c342ab964691e060ee293a4fb1042aced4c47e7ba35f490",
     "tools/technet-shared-blocks.mjs": "7a63a9aab48fa95e5b458d506dea82c232a91e6466b76f5f82bbe260211eec5d"
   },
   "output": {
     "path": "technetViewer.html",
-    "sha256": "cdc90821bbc16e223b07da533738ddfab72125d926a4d7c16be6c837b5f93d1d"
+    "sha256": "63b5d577dfa7680bf6a29000706faed1593324726c913b504604914c44ff9724"
   }
 }

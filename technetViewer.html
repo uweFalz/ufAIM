@@ -41891,6 +41891,8 @@ xlsx/xlsx.mjs:
 			//   side: "kilometer" | "right" | "left" | "unknown", range: { from, to } | null,
 			//   id, refIds: [id] (what it references, by object id: GND repeats ids across
 			//   files, and a Gradiente in one file belongs to every Trasse of that id),
+			//   role (the 7L Spur: gradientRight … cantRight, or "UNASSIGNED"),
+			//   section (an explicit Abschnitt id, or ""),
 			//   linked: [key], anchorKey: key }
 			const EINORDNUNG_VERSION = "einordnung/0.1";
 			function einordnen(facts) {
@@ -41915,17 +41917,73 @@ xlsx/xlsx.mjs:
 				}
 				// Der Haufen: what is not right yet -- Trassen and orphans; a dependent goes with its Trasse.
 				const pile = [...objects.values()].filter((placed) => !placed.organized && (placed.kind === "alignment" || placed.orphan)).map((placed) => placed.key);
-				// Die Strecken: organized objects by track, each side's keys in fact order.
+				// Die Ordnung: organized objects by Strecke. Under one Strecke the
+				// objects of one Lage form a Rahmen, and each Rahmen falls into
+				// Abschnitte (einordnungAbschnitte); a Strecke lists the Abschnitte
+				// of all its Rahmen in order, each with its Spuren (role -> keys).
 				const strecken = new Map();
+				const rahmen = new Map();
 				for (const placed of objects.values()) {
-					const track = placed.frame?.track;
-					if (!placed.organized || !track) continue;
-					if (!strecken.has(track)) strecken.set(track, { track, keys: [], sides: { kilometer: [], right: [], left: [], unknown: [] } });
+					if (!placed.organized || !placed.frame) continue;
+					const track = String(placed.frame.track);
+					const lsys = placed.lsys || placed.frame.lsys || "LSYS?";
+					if (!strecken.has(track)) strecken.set(track, { track, keys: [], sides: { kilometer: [], right: [], left: [], unknown: [] }, abschnitte: [] });
 					const strecke = strecken.get(track);
 					strecke.keys.push(placed.key);
 					strecke.sides[placed.side in strecke.sides ? placed.side : "unknown"].push(placed.key);
+					const rahmenKey = `${track} ${lsys}`;
+					if (!rahmen.has(rahmenKey)) rahmen.set(rahmenKey, { track, lsys, members: [] });
+					rahmen.get(rahmenKey).members.push(placed);
+				}
+				for (const { track, lsys, members } of rahmen.values()) {
+					for (const abschnitt of einordnungAbschnitte(members)) {
+						const spuren = {};
+						for (const key of abschnitt.keys) {
+							const role = objects.get(key).role ?? "UNASSIGNED";
+							(spuren[role] ??= []).push(key);
+						}
+						strecken.get(track).abschnitte.push({ ...abschnitt, lsys, spuren });
+					}
 				}
 				return { version: EINORDNUNG_VERSION, objects, strecken, pile };
+			}
+			// Abschnitte of one Rahmen: an explicit Abschnitt id bundles its objects
+			// (range = their hull); the rest is chained in km order, a new Abschnitt
+			// where a range begins more than 5 m behind the running end; objects
+			// without a range form one last Abschnitt with an open range.
+			function einordnungAbschnitte(members) {
+				const abschnitte = [];
+				const explicit = new Map();
+				for (const placed of members) {
+					if (!placed.section) continue;
+					if (!explicit.has(placed.section)) explicit.set(placed.section, []);
+					explicit.get(placed.section).push(placed);
+				}
+				for (const [sectionId, sectionMembers] of explicit) {
+					let from = Infinity;
+					let to = -Infinity;
+					for (const placed of sectionMembers) {
+						if (!placed.range) continue;
+						from = Math.min(from, placed.range.from);
+						to = Math.max(to, placed.range.to);
+					}
+					abschnitte.push({ sectionId, keys: sectionMembers.map((placed) => placed.key), range: Number.isFinite(from) ? { from, to } : null });
+				}
+				const inferred = members.filter((placed) => !placed.section);
+				const ranged = inferred.filter((placed) => placed.range).sort((a, b) => a.range.from - b.range.from);
+				let current = null;
+				for (const placed of ranged) {
+					if (current && placed.range.from <= current.range.to + 5) {
+						current.keys.push(placed.key);
+						current.range.to = Math.max(current.range.to, placed.range.to);
+					} else {
+						current = { sectionId: "", keys: [placed.key], range: { ...placed.range } };
+						abschnitte.push(current);
+					}
+				}
+				const unranged = inferred.filter((placed) => !placed.range).map((placed) => placed.key);
+				if (unranged.length) abschnitte.push({ sectionId: "", keys: unranged, range: null });
+				return abschnitte;
 			}
 			// Objects that reference `key` directly, by id (its own profile, cant, staEq).
 			function einordnungEigene(model, key) {
@@ -42059,6 +42117,7 @@ xlsx/xlsx.mjs:
 						frame: frame ? { track: frame.track, direction: frame.direction, segment: frame.segment ?? null, source: frame.source, lsys: frame.lsys ?? null } : null,
 						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
 						id: entry.item.id, refIds: [...new Set(refsById.get(entry.item.id) ?? [])],
+						role: sevenLineRole(entry), section: explicitSectionForEntry(entry) || "",
 						linked: related.entries.map(keyOf), anchorKey: keyOf(related.anchor),
 					};
 				});
@@ -42068,6 +42127,10 @@ xlsx/xlsx.mjs:
 			function einordnungEintrag(key) {
 				einordnung();
 				return key == null ? null : einordnungCache.entries.get(key) ?? null;
+			}
+			// The 7L Spur of an entry as the model has it.
+			function einordnungRolle(entry) {
+				return einordnung().objects.get(einordnungKey(entry))?.role ?? "UNASSIGNED";
 			}
 
 			// The 7L picture of an entry, read from the Einordnung: the same shape
@@ -45924,36 +45987,6 @@ xlsx/xlsx.mjs:
 				return Number.isFinite(from) ? { from, to } : null;
 			}
 
-			function sectionPackages(entries) {
-				const packages = [];
-				const explicit = groupBy(entries.filter(explicitSectionForEntry), explicitSectionForEntry);
-				for (const [sectionId, sectionEntries] of explicit) {
-					const ranges = sectionEntries.map(stationRangeForEntry).filter(Boolean);
-					let from = Infinity;
-					let to = -Infinity;
-					for (const range of ranges) {
-						from = Math.min(from, range.from);
-						to = Math.max(to, range.to);
-					}
-					packages.push({ sectionId, entries: sectionEntries, range: Number.isFinite(from) ? { from, to } : null });
-				}
-				const inferred = entries.filter((entry) => !explicitSectionForEntry(entry)).map((entry) => ({ entry, range: stationRangeForEntry(entry) }));
-				const ranged = inferred.filter((item) => item.range).sort((a, b) => a.range.from - b.range.from);
-				let currentPackage = null;
-				for (const item of ranged) {
-					if (currentPackage && item.range.from <= currentPackage.range.to + 5) {
-						currentPackage.entries.push(item.entry);
-						currentPackage.range.to = Math.max(currentPackage.range.to, item.range.to);
-					} else {
-						currentPackage = { sectionId: "", entries: [item.entry], range: { ...item.range } };
-						packages.push(currentPackage);
-					}
-				}
-				const unranged = inferred.filter((item) => !item.range).map((item) => item.entry);
-				if (unranged.length) packages.push({ sectionId: "", entries: unranged, range: null });
-				return packages;
-			}
-
 			function sectionLabel(sectionPackage) {
 				if (sectionPackage.sectionId) return `Abschnitt ${sectionPackage.sectionId}`;
 				if (!sectionPackage.range) return "Abschnitt · Bereich offen";
@@ -45966,7 +45999,7 @@ xlsx/xlsx.mjs:
 				strip.className = "lane-strip";
 				let filled = 0;
 				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
-					const laneEntries = entries.filter((entry) => sevenLineRole(entry) === groupDef.role);
+					const laneEntries = entries.filter((entry) => einordnungRolle(entry) === groupDef.role);
 					if (laneEntries.length) filled += 1;
 					const cell = document.createElement("span");
 					cell.className = `lane-cell${laneEntries.length ? " filled" : ""}${laneEntries.includes(current) ? " current" : ""}`;
@@ -45982,7 +46015,7 @@ xlsx/xlsx.mjs:
 				const fragment = document.createDocumentFragment();
 				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
 					const lane = document.createElement("div");
-					const laneEntries = entries.filter((entry) => sevenLineRole(entry) === groupDef.role);
+					const laneEntries = entries.filter((entry) => einordnungRolle(entry) === groupDef.role);
 					lane.className = `outbox-lane${laneEntries.includes(current) ? " contains-selection" : ""}`;
 					const title = document.createElement("div");
 					title.className = "outbox-lane-title";
@@ -47190,17 +47223,15 @@ xlsx/xlsx.mjs:
 					node.append(list);
 					outboxContent.append(node);
 				}
-				const organized = allViewerEntries().filter(isOutboxOrganized);
-				const baseFrames = groupBy(organized, (entry) => {
-					const frame = geoFrameInfo(entry);
-					return `${frame.track} ${effectiveLsys(entry) || frame.lsys || "LSYS?"}`;
-				});
-				if (!baseFrames.size) {
+				// The Ordnung comes from the Einordnung: Strecken, their Abschnitte,
+				// and in each the Spuren; this function only draws them.
+				const model = einordnung();
+				const entriesOf = (keys) => keys.map(einordnungEintrag).filter(Boolean);
+				if (!model.strecken.size) {
 					const empty = document.createElement("span");
 					empty.textContent = "Noch keine 7L-Struktur. GND/LandXML erzeugt sie automatisch, oder lege oben eine Gruppe manuell an.";
 					outboxContent.append(empty);
 				}
-				const packages = [...baseFrames.values()].flatMap((entries) => sectionPackages(entries));
 				// Compact: one closed row per Strecke. A Strecke delivered in many
 				// Abschnitte (Eifel 2631: 15) is one row with the strip over all of
 				// them and the Abschnitte inside; a single Abschnitt is its own row.
@@ -47220,36 +47251,34 @@ xlsx/xlsx.mjs:
 					summary.append(meta);
 					return summary;
 				};
-				const buildSectionFrame = (sectionPackage, nameWithTrack) => {
-					const entries = sectionPackage.entries;
+				const buildSectionFrame = (abschnitt, nameWithTrack) => {
+					const entries = entriesOf(abschnitt.keys);
 					const frame = geoFrameInfo(entries[0]);
-					const packageFrame = { ...frame, sectionId: sectionPackage.sectionId || null, stationFrom: sectionPackage.range?.from ?? null, stationTo: sectionPackage.range?.to ?? null };
+					const packageFrame = { ...frame, sectionId: abschnitt.sectionId || null, stationFrom: abschnitt.range?.from ?? null, stationTo: abschnitt.range?.to ?? null };
 					const node = document.createElement("details");
 					node.className = `outbox-frame${entries.includes(current) ? " contains-selection" : ""}`;
 					node.open = entries.includes(current);
-					node.append(buildSummary(`${nameWithTrack ? `${trackName(frame)} · ` : ""}${sectionLabel(sectionPackage)}`, entries, entries));
+					node.append(buildSummary(`${nameWithTrack ? `${trackName(frame)} · ` : ""}${sectionLabel(abschnitt)}`, entries, entries));
 					node.append(buildSevenLineLanes(packageFrame, entries, current));
 					return node;
 				};
-				const byTrack = groupBy(packages, (sectionPackage) => String(geoFrameInfo(sectionPackage.entries[0])?.track));
-				for (const [, trackPackages] of byTrack) {
-					if (trackPackages.length === 1) {
-						outboxContent.append(buildSectionFrame(trackPackages[0], true));
+				for (const strecke of model.strecken.values()) {
+					if (strecke.abschnitte.length === 1) {
+						outboxContent.append(buildSectionFrame(strecke.abschnitte[0], true));
 						continue;
 					}
-					const allEntries = trackPackages.flatMap((sectionPackage) => sectionPackage.entries);
+					const allEntries = entriesOf(strecke.abschnitte.flatMap((abschnitt) => abschnitt.keys));
 					const route = document.createElement("details");
 					route.className = `outbox-frame outbox-route${allEntries.includes(current) ? " contains-selection" : ""}`;
 					route.open = allEntries.includes(current);
-					route.append(buildSummary(`${trackName(geoFrameInfo(allEntries[0]))} · ${trackPackages.length} Abschnitte`, allEntries, allEntries));
+					route.append(buildSummary(`${trackName(geoFrameInfo(allEntries[0]))} · ${strecke.abschnitte.length} Abschnitte`, allEntries, allEntries));
 					const inner = document.createElement("div");
 					inner.className = "outbox-route-sections";
-					for (const sectionPackage of trackPackages) inner.append(buildSectionFrame(sectionPackage, false));
+					for (const abschnitt of strecke.abschnitte) inner.append(buildSectionFrame(abschnitt, false));
 					route.append(inner);
 					outboxContent.append(route);
 				}
-				const organizedTracks = new Set([...baseFrames.keys()].map((key) => key.split(" ")[0]));
-				draftSevenLineFrames = draftSevenLineFrames.filter((draft) => !organizedTracks.has(draft.track));
+				draftSevenLineFrames = draftSevenLineFrames.filter((draft) => !model.strecken.has(String(draft.track)));
 				for (const draft of draftSevenLineFrames) {
 					const frame = { track: draft.track, lsys: draft.lsys, direction: "unbekannt", source: "user" };
 					const node = document.createElement("details");

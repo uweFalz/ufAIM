@@ -14,15 +14,15 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults; `linked` defaults to itself, as relatedDiagramEntries gives for a lone object.
 const fact = (key, kind, extra = {}) => ({
 	key, kind, name: key, file: `${key}.f`, family: { alignment: "TRA", profile: "GRA", cant: "EU", staEq: "EK" }[kind], label: kind, route: "",
 	gnd: false, gndSequence: false, gndFamily: null, gndRoute: null, organized: false, hidden: false, lsys: null, hsys: null,
-	frame: null, side: "unknown", range: null, id: key, refIds: [], linked: [key], anchorKey: key, ...extra,
+	frame: null, side: "unknown", range: null, id: key, refIds: [], role: "UNASSIGNED", section: "", linked: [key], anchorKey: key, ...extra,
 });
 const frame = (track, direction, source, segment = null, lsys = null) => ({ track, direction, segment, source, lsys });
 
@@ -141,4 +141,47 @@ test("Suchtext carries the states as words", () => {
 	assert.doesNotMatch(text, /sichtbar/);
 	assert.match(einordnungSuchtext({ ...placed, lsys: "CR0", hidden: false }), /sichtbar/);
 	assert.match(einordnungSuchtext({ kind: "profile", name: "G", file: "", family: "GRA", label: "Gradiente", hsys: null, hidden: false }), /ohne höhe/);
+});
+
+test("Abschnitte: explicit ids bundle, the rest chains in km order with a 5 m seam, objects without a range come last", () => {
+	const members = [
+		{ key: "b", section: "", range: { from: 1000, to: 2000 } },
+		{ key: "x", section: "A1", range: { from: 0, to: 500 } },
+		{ key: "a", section: "", range: { from: 0, to: 996 } },
+		{ key: "c", section: "", range: { from: 2006, to: 3000 } },
+		{ key: "y", section: "A1", range: { from: 400, to: 900 } },
+		{ key: "n", section: "", range: null },
+		{ key: "z", section: "A2", range: null },
+	];
+	assert.deepEqual(json(einordnungAbschnitte(members)), [
+		{ sectionId: "A1", keys: ["x", "y"], range: { from: 0, to: 900 } },
+		{ sectionId: "A2", keys: ["z"], range: null },
+		{ sectionId: "", keys: ["a", "b"], range: { from: 0, to: 2000 } },
+		{ sectionId: "", keys: ["c"], range: { from: 2006, to: 3000 } },
+		{ sectionId: "", keys: ["n"], range: null },
+	], "a (to 996) and b (from 1000) share a seam within 5 m; c starts 6 m behind b");
+	assert.deepEqual(json(einordnungAbschnitte([])), []);
+});
+
+test("Ordnung: a Strecke lists the Abschnitte of each Lage, each with its Spuren; the pile is not in it", () => {
+	const organized = (key, kind, role, side, range, extra = {}) => fact(key, kind, { organized: true, role, side, range, frame: frame("2631", "x", "gnd", null, "CR0"), lsys: "CR0", ...extra });
+	const model = einordnen([
+		organized("K", "alignment", "curvatureKilometer", "kilometer", { from: 139000, to: 142000 }),
+		organized("R", "alignment", "curvatureRight", "right", { from: 139100, to: 141900 }),
+		organized("RG", "profile", "gradientRight", "right", { from: 139100, to: 141900 }),
+		organized("R2", "alignment", "curvatureRight", "right", { from: 148000, to: 150000 }),
+		organized("D", "alignment", "curvatureRight", "right", { from: 139100, to: 141900 }, { lsys: "DR0", frame: frame("2631", "x", "gnd", null, "DR0") }),
+		fact("naked", "alignment"),
+		organized("other", "alignment", "curvatureLeft", "left", null, { frame: frame("Bf Auw", "links", "user") , lsys: null }),
+	]);
+	assert.deepEqual(json([...model.strecken.keys()]), ["2631", "Bf Auw"]);
+	const strecke = model.strecken.get("2631");
+	assert.deepEqual(json(strecke.abschnitte), [
+		{ sectionId: "", keys: ["K", "R", "RG"], range: { from: 139000, to: 142000 }, lsys: "CR0", spuren: { curvatureKilometer: ["K"], curvatureRight: ["R"], gradientRight: ["RG"] } },
+		{ sectionId: "", keys: ["R2"], range: { from: 148000, to: 150000 }, lsys: "CR0", spuren: { curvatureRight: ["R2"] } },
+		{ sectionId: "", keys: ["D"], range: { from: 139100, to: 141900 }, lsys: "DR0", spuren: { curvatureRight: ["D"] } },
+	], "two Abschnitte in CR0, then the DR0 Rahmen of the same Strecke");
+	assert.deepEqual(json(strecke.sides.right), ["R", "RG", "R2", "D"]);
+	assert.deepEqual(json(model.strecken.get("Bf Auw").abschnitte), [{ sectionId: "", keys: ["other"], range: null, lsys: "LSYS?", spuren: { curvatureLeft: ["other"] } }]);
+	assert.deepEqual(json(model.pile), ["naked"]);
 });
