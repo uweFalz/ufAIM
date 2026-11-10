@@ -63,6 +63,7 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 	const builtIn = catalogue;
 	let user = emptyLayer();
 	const workingCopies = new Map(); // presetId -> normLengthPartition
+	const draftDescriptors = new Map(); // "hw1|hw2" -> descriptor of an unsaved combination
 	let merged = null;
 	let resolver = null;
 	let query = null;
@@ -78,6 +79,7 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		merged = mergeWith(user);
 		resolver = new RegistryResolver(merged);
 		query = createTransitionQueryService({ db: merged, registryResolver: resolver });
+		draftDescriptors.clear();
 		for (const [presetId, partition] of [...workingCopies]) {
 			if (!query.updateWorkingCopy({ presetId, normLengthPartition: partition }).ok) workingCopies.delete(presetId);
 		}
@@ -287,26 +289,16 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		return result;
 	}
 
-	/**
-	 * Both quantities of one transition under the declared coupling model.
-	 * A curvature transition yields its cant ramp and the end-slope verdict;
-	 * a cant transition yields the track curvature that goes with it.
-	 */
-	function evaluateCoupling({ presetId, assumption = null, epsilon = null, count = 201, tolerance } = {}) {
-		const spec = getPresetSpec(presetId);
-		if (!spec.meta.quantity) return reject("USER_LIBRARY_QUANTITY_MIXED", `transition.${spec.presetId}: mixed quantities`);
+	function couplingOf(preset, quantity, { assumption = null, epsilon = null, count = 201, tolerance } = {}) {
 		const usedAssumption = { ...DEFAULT_COUPLING_ASSUMPTION, ...(assumption ?? {}) };
 		const eps = epsilon == null ? couplingEpsilon(usedAssumption) : Number(epsilon);
-		const preset = KappaFcnBuilder.buildPresetFromDescriptor(spec.descriptor);
-		const result = spec.meta.quantity === "cant"
+		const result = quantity === "cant"
 			? curvatureFromCant({ cant: preset.kappa, cant1: preset.kappa1, cant2: preset.kappa2 }, eps, { count })
 			: cantFromCurvature(preset.kappa, eps, { count });
 		const curvatures = result.samples.map((sample) => sample.curvature);
 		return {
-			ok: true,
-			presetId: spec.presetId,
-			given: spec.meta.quantity,
-			derived: spec.meta.quantity === "cant" ? "curvature" : "cant",
+			given: quantity,
+			derived: quantity === "cant" ? "curvature" : "cant",
 			epsilon: result.epsilon,
 			assumption: epsilon == null ? usedAssumption : null,
 			samples: result.samples,
@@ -314,6 +306,68 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 			suitability: assessCouplingSuitability(result.endSlopes, tolerance == null ? {} : { tolerance }),
 			curvatureRange: { min: Math.min(...curvatures), max: Math.max(...curvatures) },
 		};
+	}
+
+	/**
+	 * Both quantities of one transition under the declared coupling model.
+	 * A curvature transition yields its cant ramp and the end-slope verdict;
+	 * a cant transition yields the track curvature that goes with it.
+	 */
+	function evaluateCoupling({ presetId, ...options } = {}) {
+		const spec = getPresetSpec(presetId);
+		if (!spec.meta.quantity) return reject("USER_LIBRARY_QUANTITY_MIXED", `transition.${spec.presetId}: mixed quantities`);
+		const preset = KappaFcnBuilder.buildPresetFromDescriptor(spec.descriptor);
+		return { ok: true, presetId: spec.presetId, ...couplingOf(preset, spec.meta.quantity, options) };
+	}
+
+	function listHalfWaves() {
+		return Object.entries(merged.halfWave).map(([id, record]) => ({
+			id,
+			proto: record.proto,
+			source: record.source ?? "kappa",
+			quantity: halfWaveQuantity(record),
+			origin: Object.hasOwn(user.halfWave, id) ? "user" : "built-in",
+		}));
+	}
+
+	// Descriptor of an unsaved combination; one resolver per halfWave pair.
+	function draftDescriptor(halfWave1, halfWave2) {
+		const key = `${halfWave1}|${halfWave2}`;
+		if (!draftDescriptors.has(key)) {
+			const draftDb = { ...merged, transition: { ...merged.transition, [PROBE_ID]: { halfWave1, halfWave2, normLengthPartition: [0.5, 0, 0.5] } } };
+			draftDescriptors.set(key, new RegistryResolver(draftDb).resolveTransitionDescriptor(PROBE_ID));
+		}
+		return draftDescriptors.get(key);
+	}
+
+	/**
+	 * An unsaved transition: two halfWaves and a partition. Returns the three
+	 * curvature-level curves and the coupling, or the reason it cannot be built.
+	 */
+	function describeDraft({ halfWave1, halfWave2, normLengthPartition, count = 201, ...options } = {}) {
+		for (const id of [halfWave1, halfWave2]) {
+			if (!Object.hasOwn(merged.halfWave, id ?? "")) return reject("USER_LIBRARY_REFERENCE_MISSING", `halfWave '${id}' not found`);
+		}
+		const shape = checkShape("transition", "draft", { halfWave1, halfWave2, normLengthPartition });
+		if (shape) return shape;
+		const record = { halfWave1, halfWave2, normLengthPartition: normLengthPartition.map(Number) };
+		const quantity = transitionQuantity(merged, record);
+		if (!quantity) return reject("USER_LIBRARY_QUANTITY_MIXED", "both halfWaves must describe the same quantity");
+		let preset;
+		try {
+			preset = KappaFcnBuilder.buildPresetFromDescriptor({ ...draftDescriptor(halfWave1, halfWave2), normLengthPartition: record.normLengthPartition });
+		} catch (error) {
+			return reject("USER_LIBRARY_TRANSITION_UNSUITABLE", String(error?.message ?? error));
+		}
+		const n = Math.max(3, Math.min(2001, Math.trunc(Number(count) || 201)));
+		const samples = Array.from({ length: n }, (_, index) => {
+			const u = index / (n - 1);
+			return { u, k: preset.kappa(u), k1: preset.kappa1(u), k2: preset.kappa2(u) };
+		});
+		if (!samples.every((sample) => Number.isFinite(sample.k) && Number.isFinite(sample.k1) && Number.isFinite(sample.k2))) {
+			return reject("USER_LIBRARY_TRANSITION_UNSUITABLE", "the combination is not finite everywhere");
+		}
+		return { ok: true, record, quantity, samples, coupling: couplingOf(preset, quantity, { count, ...options }) };
 	}
 
 	activate(emptyLayer());
@@ -333,6 +387,8 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		exportUserLibrary,
 		importUserLibrary,
 		evaluateCoupling,
+		listHalfWaves,
+		describeDraft,
 		resolveTransitionDescriptor: (presetId) => resolver.resolveTransitionDescriptor(presetId),
 	};
 }

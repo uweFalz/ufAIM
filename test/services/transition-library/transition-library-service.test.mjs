@@ -205,7 +205,40 @@ test("the library stays outside the frozen core and off browser, messaging and s
 		"./cantCurvatureCoupling.js",
 	]);
 	assert.deepEqual(staticSpecifiers(coupling), []);
-	for (const source of [service, coupling]) assert.doesNotMatch(source, /\.json|window|document|Worker|localStorage|indexedDB|sendCmd/);
+	const plot = await readFile(new URL("src/services/transition-library/transitionPlot.js", ROOT), "utf8");
+	assert.deepEqual(staticSpecifiers(plot), []);
+	for (const source of [service, coupling, plot]) assert.doesNotMatch(source, /\.json|window|document|Worker|localStorage|indexedDB|sendCmd/);
 	const barrel = await import("../../../src/services/transition-library/index.js");
-	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "HALFWAVE_QUANTITIES", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "createTransitionLibraryService", "curvatureFromCant"]);
+	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "HALFWAVE_QUANTITIES", "PLOT_SERIES", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "plotParameterAt", "transitionPlotSvg"]);
+});
+
+test("an unsaved combination of two halfWaves and a partition is described without saving", () => {
+	const service = make();
+	assert.equal(service.listHalfWaves().length, Object.keys(builtIn.halfWave).length);
+	assert.deepEqual(service.listHalfWaves().find((hw) => hw.id === "HW_SINE_K2"), { id: "HW_SINE_K2", proto: "PROTO_SINE_K2", source: "kappa2", quantity: "curvature", origin: "built-in" });
+
+	// The draft of Bloss equals the built-in Bloss.
+	const draft = service.describeDraft({ halfWave1: "HW_BLOSS", halfWave2: "HW_BLOSS", normLengthPartition: [0.5, 0, 0.5], count: 41, epsilon: 0.134 });
+	assert.equal(draft.ok, true);
+	assert.equal(draft.quantity, "curvature");
+	const builtInBloss = service.evaluateCoupling({ presetId: "bloss", count: 41, epsilon: 0.134 });
+	draft.samples.forEach((sample, index) => assert.ok(Math.abs(sample.k - builtInBloss.samples[index].curvature) < 1e-12));
+	assert.deepEqual(draft.coupling.endSlopes, builtInBloss.endSlopes);
+
+	// HalfWaves the DB holds without any transition become usable.
+	const regular = service.describeDraft({ halfWave1: "HW_REGULAR3", halfWave2: "HW_REGULAR4", normLengthPartition: [0.3, 0.4, 0.3] });
+	assert.equal(regular.ok, true);
+	assert.ok(Math.abs(regular.samples[0].k) < 1e-9 && Math.abs(regular.samples.at(-1).k - 1) < 1e-9);
+	// The partition moves the curve.
+	const moved = service.describeDraft({ halfWave1: "HW_REGULAR3", halfWave2: "HW_REGULAR4", normLengthPartition: [0.2, 0.4, 0.4] });
+	assert.notDeepEqual(moved.samples.map((s) => s.k), regular.samples.map((s) => s.k));
+
+	assert.equal(service.describeDraft({ halfWave1: "HW_NOPE", halfWave2: "HW_BLOSS", normLengthPartition: [0.5, 0, 0.5] }).code, "USER_LIBRARY_REFERENCE_MISSING");
+	assert.equal(service.describeDraft({ halfWave1: "HW_BLOSS", halfWave2: "HW_BLOSS", normLengthPartition: [0.6, 0, 0.5] }).code, "TRANSITION_PARTITION_INVALID");
+	assert.deepEqual(service.exportUserLibrary().transition, {}, "describing a draft stores nothing");
+
+	// A draft sees user halfWaves created meanwhile.
+	createQuintic(service, { quantity: "cant" });
+	assert.equal(service.describeDraft({ halfWave1: "HW_MY_QUINTIC", halfWave2: "HW_MY_QUINTIC", normLengthPartition: [0.5, 0, 0.5] }).quantity, "cant");
+	assert.equal(service.describeDraft({ halfWave1: "HW_MY_QUINTIC", halfWave2: "HW_BLOSS", normLengthPartition: [0.5, 0, 0.5] }).code, "USER_LIBRARY_QUANTITY_MIXED");
 });

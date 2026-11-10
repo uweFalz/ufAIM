@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TransEd</title>
+<meta name="description" content="Spielwiese für die transitionDB: Übergangsbögen aus zwei Halbwellen und Klothoiden-Kern zusammensetzen, ansehen, prüfen, speichern und weitergeben.">
+<style>
+	:root { --dark: #14213D; --light: #F7F5EF; --paper: #FFFFFC; --ink: #1B2A41; --muted: #5B6675; --line: #D9D4C7; --accent: #E36414; --good: #2E7D8C; --bad: #C8572A; }
+	@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --light: #0F1726; --paper: #16213A; --ink: #F3F1EA; --muted: #A9B3C2; --line: #2B3A57; } }
+	:root[data-theme="dark"] { --light: #0F1726; --paper: #16213A; --ink: #F3F1EA; --muted: #A9B3C2; --line: #2B3A57; }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--light); color: var(--ink); font: 16px/1.5 "Public Sans", "IBM Plex Sans", Arial, sans-serif; }
+	header { background: var(--dark); color: #F7F5EF; padding: 24px 16px; }
+	header h1 { margin: 0; font-size: 26px; letter-spacing: 1px; }
+	header p { margin: 6px 0 0; color: #BFD8D5; max-width: 70ch; }
+	main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 20px; }
+	section { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+	h2 { margin: 0 0 12px; font-size: 18px; }
+	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; align-items: end; }
+	label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
+	input[type=number], input[type=text], select { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--light); color: var(--ink); font: inherit; }
+	input[type=range] { width: 100%; }
+	small { color: var(--muted); display: block; margin-top: 4px; }
+	button { font: inherit; font-weight: 600; padding: 9px 16px; border: 0; border-radius: 10px; cursor: pointer; }
+	button.primary { background: var(--accent); color: #fff; }
+	button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+	.plot svg { width: 100%; height: auto; display: block; touch-action: none; }
+	#plot svg { cursor: ew-resize; }
+	.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+	.legend b { font-weight: 700; }
+	.message { font-weight: 600; min-height: 1.5em; margin: 8px 0 0; }
+	.message[data-kind=error] { color: var(--bad); }
+	.message[data-kind=ok] { color: var(--good); }
+	.verdict { display: inline-block; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+	.verdict[data-ok=true] { background: #2E7D8C22; color: var(--good); }
+	.verdict[data-ok=false] { background: #C8572A22; color: var(--bad); }
+	table { width: 100%; border-collapse: collapse; font-size: 14px; }
+	th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+	.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+	.overflow { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header>
+	<h1>TransEd</h1>
+	<p>Spielwiese für die transitionDB. Ein Übergangsbogen entsteht aus Halbwelle ein, Klothoiden-Kern und Halbwelle aus. Eingebaute Einträge bleiben unverändert, eigene kommen dazu.</p>
+</header>
+<main>
+	<section aria-labelledby="h-compose">
+		<h2 id="h-compose">Transition zusammensetzen</h2>
+		<div class="grid">
+			<div><label for="template">Vorlage</label><select id="template"></select><small>füllt Halbwellen und Aufteilung</small></div>
+			<div><label for="hwIn">Halbwelle ein</label><select id="hwIn"></select></div>
+			<div><label for="hwOut">Halbwelle aus</label><select id="hwOut"></select></div>
+		</div>
+		<div class="grid" style="margin-top:14px">
+			<div><label for="w1">w1 · Ende der Halbwelle ein</label><input type="range" id="w1Range" min="0" max="1" step="0.001" aria-label="w1"><input type="number" id="w1" min="0" max="1" step="0.001"></div>
+			<div><label for="w2">w2 · Beginn der Halbwelle aus</label><input type="range" id="w2Range" min="0" max="1" step="0.001" aria-label="w2"><input type="number" id="w2" min="0" max="1" step="0.001"></div>
+			<div><label>Aufteilung ein · Kern · aus</label><output id="partition"></output><small>Die Trennlinien lassen sich auch im Bild ziehen.</small></div>
+		</div>
+		<div id="plot" class="plot" style="margin-top:14px"></div>
+		<div id="legend" class="legend"></div>
+		<p id="draftMessage" class="message" role="status"></p>
+	</section>
+
+	<section aria-labelledby="h-coupling">
+		<h2 id="h-coupling">Krümmung und Überhöhung</h2>
+		<p id="couplingText" style="margin-top:0"></p>
+		<div class="grid">
+			<div><label for="aHeight">Bezugshöhe h [m]</label><input type="number" id="aHeight" min="0.1" step="0.1"></div>
+			<div><label for="aCant">Endüberhöhung [mm]</label><input type="number" id="aCant" min="1" step="5"></div>
+			<div><label for="aRadius">Radius R [m]</label><input type="number" id="aRadius" min="1" step="50"></div>
+			<div><label for="aLength">Länge L [m]</label><input type="number" id="aLength" min="1" step="5"></div>
+		</div>
+		<small>Annahme der Rechnung, Schienenabstand 1,5 m. Modell: k = f − ε²·f″ mit ε² = h·ψ_E·R/L².</small>
+		<div id="couplingPlot" class="plot" style="margin-top:14px"></div>
+		<div id="couplingLegend" class="legend"></div>
+	</section>
+
+	<section aria-labelledby="h-save">
+		<h2 id="h-save">Als eigene Transition speichern</h2>
+		<div class="grid">
+			<div><label for="saveId">Kennung</label><input type="text" id="saveId" placeholder="mein_bogen" autocomplete="off" spellcheck="false"><small>klein, Buchstaben, Ziffern, Unterstrich</small></div>
+			<div><label for="saveLabel">Bezeichnung</label><input type="text" id="saveLabel" placeholder="Mein Bogen"></div>
+			<div><button id="save" class="primary">Speichern</button></div>
+		</div>
+		<p id="saveMessage" class="message" role="status"></p>
+	</section>
+
+	<section aria-labelledby="h-library">
+		<h2 id="h-library">Eigene Bibliothek</h2>
+		<div class="overflow"><table id="library"></table></div>
+		<div class="row" style="margin-top:14px">
+			<button id="export" class="ghost">Bibliothek als Datei sichern</button>
+			<label class="ghost" style="margin:0"><input type="file" id="import" accept="application/json,.json" hidden><span role="button" tabindex="0" id="importButton" style="display:inline-block;padding:9px 16px;border:1px solid var(--line);border-radius:10px;cursor:pointer">Bibliothek laden</span></label>
+			<label style="margin:0;font-weight:400"><input type="checkbox" id="replace"> vorhandene Einträge ersetzen</label>
+		</div>
+		<p id="libraryMessage" class="message" role="status"></p>
+		<small id="storageNote"></small>
+	</section>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

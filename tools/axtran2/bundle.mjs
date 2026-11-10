@@ -43,7 +43,7 @@ function names(list) {
 }
 
 const ids = new Map();
-const idOf = (file) => { const key = relative(ROOT, file).split("\\").join("/"); return key; };
+export const idOf = (file) => { const key = relative(ROOT, file).split("\\").join("/"); return key; };
 
 /** one module: its source rewritten to the registry, and the files it depends on */
 async function transform(file) {
@@ -81,7 +81,7 @@ async function transform(file) {
 }
 
 /** every module reachable from the entries, in dependency order; a cycle is refused */
-async function graph(entries) {
+export async function graph(entries) {
 	const modules = new Map();
 	const order = [];
 	const visiting = new Set();
@@ -99,7 +99,7 @@ async function graph(entries) {
 	return { modules, order };
 }
 
-function registry(modules, order) {
+export function registry(modules, order) {
 	const lines = ["const __modules = Object.create(null); const __cache = Object.create(null);",
 		"function __require(id) { if (__cache[id]) return __cache[id]; const factory = __modules[id]; if (!factory) throw new Error('bundle: no module ' + id); const exports = {}; __cache[id] = exports; factory(exports, __require); return exports; }"];
 	for (const file of order) {
@@ -108,7 +108,7 @@ function registry(modules, order) {
 	return lines.join("\n");
 }
 
-const escapeForHtml = (js) => js.replace(/<\/script/gi, "<\\/script").replace(/<!--/g, "<\\!--");
+export const escapeForHtml = (js) => js.replace(/<\/script/gi, "<\\/script").replace(/<!--/g, "<\\!--");
 
 export async function bundle({ out = join(ROOT, "dist/axtran2.html") } = {}) {
 	const appEntry = join(ROOT, "axtran2/app.js");
