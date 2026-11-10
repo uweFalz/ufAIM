@@ -279,12 +279,12 @@ export function makeTransitionEditorBridge({ store, ui, messaging, view, preview
 	async function applyWorkingCopy(values = nodes.part.map((node) => Number(node.value))) {
 		const result = await send("Transition.UpdateWorkingCopy", { presetId: recordId, normLengthPartition: values });
 		text(nodes.editStatus, result.ok ? t("transed.feedback.applied") : `${result.code}: ${result.reason}`);
-		if (result.ok) { await reloadCatalogue(); await applyPreset(recordId, { force: true }); }
+		if (result.ok) { await view?.invalidatePreset?.(recordId); await reloadCatalogue(); await applyPreset(recordId, { force: true }); }
 		return result;
 	}
 	async function resetWorkingCopy() {
 		const result = await send("Transition.ResetWorkingCopy", { presetId: recordId }); text(nodes.editStatus, t("transed.feedback.reset"));
-		await reloadCatalogue(); await applyPreset(recordId, { force: true }); return result;
+		await view?.invalidatePreset?.(recordId); await reloadCatalogue(); await applyPreset(recordId, { force: true }); return result;
 	}
 	function snapshotState() { const st = store.getState(); return clone({ open: !!st.te_open, level, recordId, compareId, plot: st.te_plot ?? "k" }); }
 	async function restoreState(snapshot) {

@@ -165,6 +165,18 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 		return entry;
 	}
 
+	// A working-copy change replaces the descriptor behind a presetId; the
+	// cached base/variants were built from the old one and must be rebuilt.
+	async function invalidatePreset(presetId) {
+		const key = String(presetId ?? "");
+		if (!key) return null;
+		_presetCache.delete(key);
+		autoRange.key = "";
+		const entry = await ensurePresetLoaded(key);
+		board?.fullUpdate?.();
+		return entry;
+	}
+
 	function getCachedBasePreset(presetId) {
 		return _presetCache.get(String(presetId ?? ""))?.base ?? null;
 	}
@@ -978,6 +990,7 @@ export function makeTransitionEditorView(store, { messaging, kappaBuilder } = {}
 	return {
 		init,
 		samplePreset,
+		invalidatePreset,
 		renderEngineeringPreview,
 
 		async resize() {
