@@ -1175,6 +1175,27 @@
 				background: color-mix(in srgb, Highlight 14%, Canvas);
 				color: inherit;
 			}
+			/* A proposal that is a choice or unsure stands a little apart; its
+			   select shares the row. */
+			.row-suggestion-open { background: color-mix(in srgb, Canvas 94%, #b7791f); }
+			.row-suggestion { flex-wrap: wrap; }
+			.row-suggestion > span { flex: 1 1 8rem; min-width: 0; }
+			.row-suggestion select { flex: 1 1 6rem; min-width: 0; max-width: 100%; font: inherit; padding: 0.1rem 0.3rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: inherit; }
+			/* The pile in Bündel: one closed row per Bündel, its Gleise inside. */
+			.pile-bundle { border-bottom: 1px solid var(--hairline); }
+			.pile-bundle > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); padding: var(--sp-2) var(--sp-3); cursor: pointer; list-style: none; font: 600 var(--fs-2)/1.3 system-ui, sans-serif; background: color-mix(in srgb, Canvas 96%, CanvasText); }
+			.pile-bundle > summary::-webkit-details-marker { display: none; }
+			.pile-bundle > summary::before { content: "▸"; flex: none; color: var(--secondary); font-size: var(--fs-1); }
+			.pile-bundle[open] > summary::before { content: "▾"; }
+			/* The name takes the first line beside the marker; count, length and
+			   the buttons stand on the second, so a 270 px column cuts nothing. */
+			.pile-bundle-name { flex: 1 1 calc(100% - 1.6rem); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.pile-bundle-meta { flex: 1 1 auto; min-width: 0; padding-left: 1.2rem; color: var(--secondary); font-weight: 400; font-size: var(--fs-1); }
+			#tables .pile-bundle > summary button { flex: none; width: auto; padding: 0.1rem 0.5rem; border: 1px solid var(--hairline); border-radius: 999px; background: transparent; color: inherit; font: 500 var(--fs-1)/1.4 system-ui, sans-serif; cursor: pointer; }
+			#tables .pile-bundle > summary button:hover { background: color-mix(in srgb, Highlight 14%, Canvas); }
+			#tables .pile-bundle > summary .pile-bundle-take { border-color: var(--accent); color: var(--accent); }
+			#tables .object-row > button.object-unlink { color: var(--secondary); font-size: var(--fs-1); }
+			#multi2d path.map-object.in-bundle { stroke-width: 5; stroke: var(--accent); opacity: 1; }
 			.outbox-lane-placeholder {
 				margin: 0.3rem 0 0;
 				padding: 0.3rem 0.4rem;

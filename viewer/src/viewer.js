@@ -2614,6 +2614,122 @@ xlsx/xlsx.mjs:
 				];
 				return [placed.name, placed.file, placed.family, placed.label, placed.lsys ?? "", placed.hsys ?? "", placed.frame?.track ? `Strecke ${placed.frame.track}` : "", placed.frame?.direction ?? "", placed.route ?? "", ...states].join(" ").toLowerCase();
 			}
+			// ---- Vorschläge, nie Zuordnungen -----------------------------------------
+			// The Viewer shows and proposes; what is more than the files say comes
+			// from the user. Nothing below assigns anything: a proposal carries its
+			// reason, and it becomes a fact only when the user takes it over.
+			//
+			// Namensteile: a file name cut at _ - . blank and brackets. Parts that
+			// name a Lage- or Höhensystem (cr0, dr0, o00, r16, dbref2016, dhhn92),
+			// a way of stationing (glstat, kml, lokal), a date or a revision are
+			// not part of what the Gleis is called; suppliers put them in, and a
+			// GRA in another Höhensystem then misses its TRA by the plain stem
+			// (metroB 5904080R_O00.GRA and 5904080R_ER0.TRA). The list is read
+			// from four deliveries; it only ever feeds a proposal.
+			const NAMENSTEIL_NEBENSACHE = /^(?:[a-z]r\d|[a-z]\d{2}|dbref\w*|dhhn\w*|nhn|lokal|glstat|kml|\d{6}|febr\d+|[a-c]|mitw\d+|kurz|neu|alt)$/;
+			function einordnungNamensteile(fileName) {
+				const stem = String(fileName ?? "").replace(/^.*\//, "").replace(/\.(tra|gra)$/i, "").toLowerCase();
+				const parts = stem.split(/[_\-. ()]+/).filter(Boolean);
+				// The letter stands alone, after the Strecke (5904r), after Strecke
+				// and km (5904080r), or between them (2631k139, 5500s074-082).
+				const match = /(?:^|[_\-])(?:\d{4})?(?:\d{3})?([lrsk])(?:[_\-]|$)/.exec(stem) ?? /\d{4}(?:\d{3})?([lrsk])(?:[_\-]|$)/.exec(stem) ?? /(?:^|[_\-])\d{4}([lrsk])\d{3}(?:[_\-]|$)/.exec(stem);
+				const word = match ? null : parts.find((part) => part === "re" || part === "li" || part === "km");
+				const side = match ? (match[1] === "k" ? "s" : match[1]) : word ? { re: "r", li: "l", km: "s" }[word] : null;
+				return { stem, kern: parts.filter((part) => !NAMENSTEIL_NEBENSACHE.test(part)), side };
+			}
+			function einordnungZeichenabstand(a, b) {
+				let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+				for (let i = 1; i <= a.length; i += 1) {
+					const current = [i];
+					for (let j = 1; j <= b.length; j += 1) current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+					previous = current;
+				}
+				return previous[b.length];
+			}
+			// Which Trasse a Gradiente without one may belong to, by the names:
+			// the same Kern ("system"), the same but for one character ("zeichen",
+			// a typo: dbref206 for dbref2016), most parts shared ("teile"), or only
+			// a weak likeness ("schwach"). A Trasse named for the other side is
+			// out: the Gradiente of 5904L never goes to 5904S, however alike the
+			// rest (a plain similarity put four of them onto the Kilometerlinie).
+			// eindeutig only when one name leads and the reason is not weak; with
+			// several equal leaders (three deliveries of one Gleis) it is a choice.
+			function einordnungGradientenVorschlag(name, kandidaten) {
+				const own = einordnungNamensteile(name);
+				const ownKern = own.kern.join("_");
+				const ranked = [];
+				for (const kandidat of kandidaten) {
+					const teile = einordnungNamensteile(kandidat.name);
+					if (own.side && teile.side && own.side !== teile.side) continue;
+					const kern = teile.kern.join("_");
+					const gleich = kern.length > 0 && kern === ownKern;
+					const einZeichen = !gleich && kern.length > 3 && einordnungZeichenabstand(kern, ownKern) <= 1;
+					const all = new Set([...own.kern, ...teile.kern]);
+					const shared = own.kern.filter((part) => teile.kern.includes(part)).length;
+					const anteil = shared / Math.max(1, all.size);
+					ranked.push({ key: kandidat.key, stem: teile.stem, rang: gleich ? 3 : einZeichen ? 2 : anteil >= 0.6 ? 1 : 0, anteil });
+				}
+				ranked.sort((a, b) => b.rang - a.rang || b.anteil - a.anteil);
+				const best = ranked[0];
+				if (!best || (best.rang === 0 && best.anteil < 0.34)) return null;
+				const peers = ranked.filter((item) => item.rang === best.rang && Math.abs(item.anteil - best.anteil) < 1e-9);
+				const stems = [...new Set(peers.map((item) => item.stem))];
+				const keysOf = (stem) => peers.filter((item) => item.stem === stem).map((item) => item.key);
+				return {
+					keys: keysOf(stems[0]), stem: stems[0], grund: ["schwach", "teile", "zeichen", "system"][best.rang], anteil: best.anteil,
+					eindeutig: stems.length === 1 && best.rang > 0,
+					auswahl: stems.length > 1 ? stems.map((stem) => ({ stem, keys: keysOf(stem) })) : [],
+				};
+			}
+			// Bündel: what the eye does on the map. The longest line leads; a line
+			// that runs along a leader for at least BUENDEL_ANTEIL of its points,
+			// within BUENDEL_REICHWEITE_M, belongs to that leader's Bündel, else it
+			// leads one of its own. Lines in metres: { key, length, points, line }
+			// (points: the line thinned, to be tested; line: the leader's shape).
+			// A way of laying the pile out, nothing more: it says which Gleise lie
+			// together, not what they are.
+			const BUENDEL_REICHWEITE_M = 60;
+			const BUENDEL_ANTEIL = 0.5;
+			function einordnungPunktAbstand(point, line) {
+				let best = Infinity;
+				for (let index = 0; index + 1 < line.length; index += 1) {
+					const a = line[index];
+					const b = line[index + 1];
+					const dx = b[0] - a[0];
+					const dy = b[1] - a[1];
+					const lengthSq = dx * dx + dy * dy;
+					const t = lengthSq > 1e-9 ? Math.max(0, Math.min(1, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / lengthSq)) : 0;
+					const distance = Math.hypot(point[0] - (a[0] + t * dx), point[1] - (a[1] + t * dy));
+					if (distance < best) best = distance;
+				}
+				return best;
+			}
+			function einordnungBuendel(linien) {
+				const boxed = linien.map((linie, index) => {
+					const xs = linie.line.map((point) => point[0]);
+					const ys = linie.line.map((point) => point[1]);
+					return { ...linie, index, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+				}).sort((a, b) => b.length - a.length || a.index - b.index);
+				const leaders = [];
+				for (const linie of boxed) {
+					let best = null;
+					for (const leader of leaders) {
+						if (linie.box[0] > leader.box[2] + BUENDEL_REICHWEITE_M || linie.box[2] < leader.box[0] - BUENDEL_REICHWEITE_M || linie.box[1] > leader.box[3] + BUENDEL_REICHWEITE_M || linie.box[3] < leader.box[1] - BUENDEL_REICHWEITE_M) continue;
+						let inside = 0;
+						let sum = 0;
+						for (const point of linie.points) {
+							const distance = einordnungPunktAbstand(point, leader.line);
+							if (distance <= BUENDEL_REICHWEITE_M) { inside += 1; sum += distance; }
+						}
+						const share = linie.points.length ? inside / linie.points.length : 0;
+						const mean = inside ? sum / inside : Infinity;
+						if (share >= BUENDEL_ANTEIL && (!best || share > best.share || (share === best.share && mean < best.mean))) best = { leader, share, mean };
+					}
+					if (best) best.leader.members.push(linie);
+					else leaders.push({ ...linie, members: [] });
+				}
+				return leaders.map((leader) => ({ leader: leader.key, length: leader.length, members: leader.members.sort((a, b) => a.index - b.index).map((member) => member.key) }));
+			}
 			// END EINORDNUNG
 
 			// The adapter: facts from the entries and the decisions on them, the
@@ -2644,9 +2760,10 @@ xlsx/xlsx.mjs:
 				return key;
 			}
 			let bezuegeCache = null;
+			let bezuegeStamp = 0;
 			function einordnungBezuegeStand() {
 				const cached = bezuegeCache;
-				if (cached && cached.files.length === loadedFiles.length && loadedFiles.every((loaded, index) => loaded === cached.files[index] && loaded.objects.length === cached.counts[index][0] && (loaded.relations?.length ?? 0) === cached.counts[index][1])) return cached;
+				if (cached && cached.stamp === bezuegeStamp && cached.files.length === loadedFiles.length && loadedFiles.every((loaded, index) => loaded === cached.files[index] && loaded.objects.length === cached.counts[index][0] && (loaded.relations?.length ?? 0) === cached.counts[index][1])) return cached;
 				const entries = allViewerEntries();
 				const keyOf = einordnungKey;
 				// References are resolved inside the file that states them: ids are
@@ -2662,7 +2779,7 @@ xlsx/xlsx.mjs:
 					if (!everywhere.has(entry.item.id)) everywhere.set(entry.item.id, []);
 					everywhere.get(entry.item.id).push(entry);
 				}
-				const link = (from, to, stem, detail) => {
+				const link = (from, to, stem, detail, user = false) => {
 					const list = refKeys.get(from);
 					const key = keyOf(to);
 					if (list.includes(key)) {
@@ -2671,7 +2788,7 @@ xlsx/xlsx.mjs:
 						return;
 					}
 					list.push(key);
-					origin.set(`${keyOf(from)}>${key}`, { stem, detail });
+					origin.set(`${keyOf(from)}>${key}`, { stem, detail, user });
 				};
 				for (const loaded of loadedFiles) {
 					const here = new Map();
@@ -2689,12 +2806,22 @@ xlsx/xlsx.mjs:
 				for (const relation of stemPairedRelations()) {
 					for (const from of everywhere.get(relation.fromId) ?? []) for (const to of everywhere.get(relation.toId) ?? []) if (from !== to) link(from, to, true, "");
 				}
+				// What the user said: a Gradiente given to a Trasse by hand
+				// (entry.userTrasse, the Trasse's saved key). The only reference the
+				// files do not state themselves.
+				const bySavedKey = new Map();
+				for (const entry of entries) if (!bySavedKey.has(stateKey(entry))) bySavedKey.set(stateKey(entry), entry);
+				for (const entry of entries) {
+					const trasse = entry.userTrasse ? bySavedKey.get(entry.userTrasse) : null;
+					if (trasse && trasse !== entry) link(entry, trasse, false, "per Hand", true);
+				}
 				const homeOf = new Map(loadedFiles.map((loaded) => [loaded, loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? null]));
 				const nodes = entries.map((entry) => {
 					const home = homeOf.get(entry.loaded);
 					return { key: keyOf(entry), kind: entry.item.kind, refKeys: refKeys.get(entry), homeKey: home ? keyOf(home) : null };
 				});
 				bezuegeCache = {
+					stamp: bezuegeStamp,
 					files: [...loadedFiles],
 					counts: loadedFiles.map((loaded) => [loaded.objects.length, loaded.relations?.length ?? 0]),
 					model: einordnungBezuege(nodes),
@@ -2729,6 +2856,119 @@ xlsx/xlsx.mjs:
 			}
 			function einordnungEintrag(key) {
 				return key == null ? null : einordnungBezuegeStand().entries.get(key) ?? null;
+			}
+			// Proposals for Gradienten without a Trasse (VermEsn, on the pile), by
+			// the names: entry -> { trassen, grund, eindeutig, auswahl }. Proposals
+			// only; gradienteZuordnen() is the user taking one over.
+			let vorschlagCache = null;
+			function gradientenVorschlaege() {
+				const model = einordnung();
+				if (vorschlagCache?.model === model) return vorschlagCache.map;
+				const kandidaten = allViewerEntries().filter((entry) => entry.parser === "vermEsn" && entry.item.kind === "alignment").map((entry) => ({ key: einordnungKey(entry), name: entry.loaded?.fileName ?? "" }));
+				const map = new Map();
+				for (const key of model.pile) {
+					const placed = model.objects.get(key);
+					const entry = einordnungEintrag(key);
+					if (!entry || !placed?.orphan || entry.parser !== "vermEsn" || entry.item.kind !== "profile") continue;
+					const vorschlag = einordnungGradientenVorschlag(entry.loaded?.fileName ?? "", kandidaten);
+					if (!vorschlag) continue;
+					map.set(entry, {
+						...vorschlag,
+						trassen: vorschlag.keys.map(einordnungEintrag).filter(Boolean),
+						auswahl: vorschlag.auswahl.map((item) => ({ stem: item.stem, trassen: item.keys.map(einordnungEintrag).filter(Boolean) })),
+					});
+				}
+				vorschlagCache = { model, map };
+				return map;
+			}
+			function gradientenVorschlagText(vorschlag) {
+				return { system: "Name gleich bis auf System/Variante", zeichen: "Name bis auf ein Zeichen gleich", teile: `Namensteile zu ${Math.round(vorschlag.anteil * 100)} % gleich`, schwach: "nur schwache Namensähnlichkeit" }[vorschlag.grund];
+			}
+			// The Abbildung of a Gleis onto its Kilometerlinie, dropped: the Gleis
+			// and what was stationed with it read their own stations again.
+			function kmAbbildungLoesen(target) {
+				for (const sibling of referencingEntries(target)) {
+					if (sibling.kmAbbildung?.owner !== target) continue;
+					delete sibling.kmAbbildung;
+					listingCache.delete(sibling);
+				}
+				delete target.kmAbbildung;
+				target.externalStationReference = undefined;
+				listingCache.delete(target);
+			}
+			// The user gives Gradienten to Trassen (pairs of { profile, trasse }),
+			// or takes one back. The Trasse's Abbildung is renewed so that the
+			// Gradiente is stationed with its Trasse.
+			function trassenAbbildungErneuern(trassen) {
+				const vermEsn = trassen.filter((trasse) => trasse?.parser === "vermEsn");
+				for (const trasse of vermEsn) if (trasse.externalStationReference) kmAbbildungLoesen(trasse);
+				if (vermEsn.length) reconcileVermEsnStationing();
+			}
+			function gradienteZuordnen(pairs) {
+				const taken = pairs.filter((pair) => pair?.profile && pair?.trasse);
+				if (!taken.length) return;
+				for (const { profile, trasse } of taken) {
+					profile.userTrasse = stateKey(trasse);
+					listingCache.delete(profile);
+				}
+				bezuegeStamp += 1;
+				einordnungGeaendert();
+				trassenAbbildungErneuern(taken.map((pair) => pair.trasse));
+				status.classList.remove("error");
+				status.textContent = taken.length === 1
+					? `${objectListName(taken[0].profile)} gehört jetzt zu ${objectListName(taken[0].trasse)} · von Hand zugeordnet`
+					: `${taken.length} Gradienten ihren Trassen zugeordnet · von Hand übernommen`;
+				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
+			}
+			function gradienteLoesen(profile) {
+				const trasse = allViewerEntries().find((candidate) => stateKey(candidate) === profile.userTrasse) ?? null;
+				delete profile.userTrasse;
+				if (profile.kmAbbildung) delete profile.kmAbbildung;
+				listingCache.delete(profile);
+				bezuegeStamp += 1;
+				einordnungGeaendert();
+				if (trasse) trassenAbbildungErneuern([trasse]);
+				status.classList.remove("error");
+				status.textContent = `${objectListName(profile)} wieder ohne Trasse`;
+				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
+			}
+			// Bündel of all Trassen with a Lage on the map (einordnungBuendel), in
+			// metres around the delivery's middle. Recomputed when files or Lage
+			// decisions change, not on every render.
+			let buendelCache = null;
+			function buendelStand() {
+				const bezuege = einordnungBezuegeStand();
+				const trassen = allViewerEntries().filter((entry) => entry.item.kind === "alignment");
+				const signature = trassen.map((entry) => effectiveLsys(entry) || "-").join("|");
+				if (buendelCache && buendelCache.bezuege === bezuege && buendelCache.signature === signature) return buendelCache;
+				const located = trassen.map((entry) => ({ entry, coordinates: interpretedGeometry(entry).coordinates ?? [] })).filter((item) => item.coordinates.length >= 2);
+				const of = new Map();
+				let buendel = [];
+				if (located.length) {
+					const lat0 = located.reduce((sum, item) => sum + item.coordinates[0][1], 0) / located.length;
+					const lon0 = located.reduce((sum, item) => sum + item.coordinates[0][0], 0) / located.length;
+					const kx = 111320 * Math.cos(lat0 * Math.PI / 180);
+					const ky = 110540;
+					const thin = (points, most) => { const step = Math.max(1, Math.ceil(points.length / most)); return points.filter((_, index) => index % step === 0 || index === points.length - 1); };
+					const linien = located.map(({ entry, coordinates }) => {
+						const xy = coordinates.map(([lon, lat]) => [(lon - lon0) * kx, (lat - lat0) * ky]);
+						// The length the file itself states (its elements), not the one
+						// measured on the map: a guessed Lagesystem can stretch the latter.
+						const length = (entry.item.payload.coordGeom?.elements ?? []).reduce((sum, element) => sum + (Math.abs(numberValue(element.length)) || 0), 0);
+						return { key: einordnungKey(entry), length, points: thin(xy, 100), line: thin(xy, 400) };
+					});
+					buendel = einordnungBuendel(linien).map((item, index) => {
+						const leader = einordnungEintrag(item.leader);
+						const members = [leader, ...item.members.map(einordnungEintrag)].filter(Boolean);
+						const group = { id: `b:${stateKey(leader)}`, index, leader, length: item.length, members };
+						for (const member of members) of.set(member, group);
+						return group;
+					});
+				}
+				buendelCache = { bezuege, signature, buendel, of };
+				return buendelCache;
 			}
 			// The 7L Spur of an entry as the model has it.
 			function einordnungRolle(entry) {
@@ -6395,7 +6635,8 @@ xlsx/xlsx.mjs:
 				titleText.textContent = "Inbox · Grabbeltisch";
 				const titleSub = document.createElement("span");
 				titleSub.className = "grabbel-sub";
-				titleSub.textContent = `${rows.length ? `${rows.length} hier` : "leer"} · Rest ${rest} · GND ${gnd} fertig rechts`;
+				const bundleCount = new Set(rows.map((row) => row.entry.item.kind === "alignment" ? buendelStand().of.get(row.entry)?.id : null).filter(Boolean)).size;
+				titleSub.textContent = `${rows.length ? `${rows.length} hier${bundleCount > 1 ? ` in ${bundleCount} Bündeln` : ""}` : "leer"} · Rest ${rest} · GND ${gnd} fertig rechts`;
 				titleSub.title = "GND kommt mit Strecke, Seite und Lage und sortiert sich selbst nach rechts; der Rest (VermEsn, landXML) kommt ohne alles und liegt hier, bis er Lage und Höhe hat und nach rechts gezogen ist";
 				title.append(titleText, titleSub);
 
@@ -8080,7 +8321,8 @@ xlsx/xlsx.mjs:
 				const kind = document.createElement("span");
 				kind.dataset.kind = "true";
 				const family = sourceFamilyForEntry(entry);
-				kind.textContent = `${dependent ? `${family} · gehört zur Trasse` : organized ? `${family} · rechts einsortiert` : orphan ? `${family} · ohne Trasse` : `${family} · roh`}${hidden ? " · ausgeblendet" : ""}${fileName ? ` · ${fileName}` : ""}`;
+				const byHand = dependent && Boolean(entry.userTrasse);
+				kind.textContent = `${dependent ? `${family} · gehört zur Trasse${byHand ? " · von Hand zugeordnet" : ""}` : organized ? `${family} · rechts einsortiert` : orphan ? `${family} · ohne Trasse` : `${family} · roh`}${hidden ? " · ausgeblendet" : ""}${fileName ? ` · ${fileName}` : ""}`;
 				// A Gleis says where it lies; the tooltip names the witnesses.
 				const evidence = entry.item.kind === "alignment" ? sideEvidence(entry) : null;
 				if (evidence) {
@@ -8105,10 +8347,50 @@ xlsx/xlsx.mjs:
 					});
 				}
 				row.append(button);
-				// The eye: on the map or not. A dependent follows its Trasse.
+				// The eye: on the map or not. A dependent follows its Trasse; one
+				// the user put there can be taken back.
 				if (!dependent) row.append(eyeButton(entry));
+				else if (byHand) {
+					const unlink = document.createElement("button");
+					unlink.type = "button";
+					unlink.className = "object-eye object-unlink";
+					unlink.textContent = "✕";
+					unlink.title = "Von Hand zugeordnet · Zuordnung lösen";
+					unlink.setAttribute("aria-label", `${objectListName(entry)} von seiner Trasse lösen`);
+					unlink.addEventListener("click", (event) => { event.stopPropagation(); gradienteLoesen(entry); });
+					row.append(unlink);
+				}
 				container.append(row);
 				if (!draggable) return;
+				// A Gradiente without a Trasse: the proposal by the names, with its
+				// reason. It is the user who takes it over.
+				const vorschlag = orphan ? gradientenVorschlaege().get(entry) : null;
+				if (vorschlag) {
+					const hint = document.createElement("div");
+					hint.className = `row-suggestion${vorschlag.eindeutig ? "" : " row-suggestion-open"}`;
+					const text = document.createElement("span");
+					const accept = document.createElement("button");
+					accept.type = "button";
+					accept.textContent = "Übernehmen";
+					if (vorschlag.auswahl.length) {
+						text.textContent = `Vorschlag: gehört zu einer von ${vorschlag.auswahl.length} · ${gradientenVorschlagText(vorschlag)} `;
+						const choice = document.createElement("select");
+						choice.setAttribute("aria-label", `Trasse für ${objectListName(entry)}`);
+						vorschlag.auswahl.forEach((item, index) => {
+							const option = document.createElement("option");
+							option.value = String(index);
+							option.textContent = objectListName(item.trassen[0]);
+							choice.append(option);
+						});
+						hint.append(text, choice, accept);
+						accept.addEventListener("click", () => gradienteZuordnen([{ profile: entry, trasse: vorschlag.auswahl[Number(choice.value)]?.trassen[0] }]));
+					} else {
+						text.textContent = `Vorschlag: gehört zu ${objectListName(vorschlag.trassen[0])} · ${gradientenVorschlagText(vorschlag)}${vorschlag.eindeutig ? "" : " · unsicher"}`;
+						hint.append(text, accept);
+						accept.addEventListener("click", () => gradienteZuordnen([{ profile: entry, trasse: vorschlag.trassen[0] }]));
+					}
+					container.append(hint);
+				}
 				const suggestion = suggestRoleForEntry(entry);
 				if (suggestion) {
 					const hint = document.createElement("div");
@@ -8124,6 +8406,10 @@ xlsx/xlsx.mjs:
 				}
 			}
 
+			// Which Bündel of the pile stand open: what the user opened or closed
+			// stays so; untouched ones open when the pile is short or they hold
+			// the selection.
+			const pileBundleOpen = new Map();
 			function renderRawInbox(preferredFileName = null) {
 				const previousSelection = selectedEntry;
 				const allEntries = allViewerEntries();
@@ -8156,10 +8442,74 @@ xlsx/xlsx.mjs:
 					pile.append(done);
 				}
 				let firstPreferred = null;
+				// The pile is laid out the way the eye reads the map: Gleise that
+				// run together are one Bündel under its longest line. Gradienten
+				// without a Trasse come first, with their proposals; Trassen
+				// without a Lage on the map last. The Bündel order the pile, they
+				// assign nothing.
+				const stand = buendelStand();
+				const vorschlaege = gradientenVorschlaege();
+				const groups = new Map();
+				const groupFor = (id, make) => { if (!groups.has(id)) groups.set(id, { id, rows: [], ...make() }); return groups.get(id); };
 				for (const row of rows) {
-					appendInboxRow(pile, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent), fileName: row.loaded.fileKey ?? row.loaded.fileName });
-					for (const dependent of row.dependents) appendInboxRow(pile, dependent, { organized: row.organized, dependent: true, fileName: dependent.loaded?.fileKey ?? dependent.loaded?.fileName ?? row.loaded.fileName });
-					if (row.loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = row.entry;
+					const isTrasse = row.entry.item.kind === "alignment";
+					const bundle = isTrasse ? stand.of.get(row.entry) : null;
+					const group = bundle
+						? groupFor(bundle.id, () => ({ order: 1 + bundle.index, bundle }))
+						: isTrasse
+							? groupFor("ohne-lage", () => ({ order: 100000, title: "Trassen ohne Lage auf der Karte", sub: "kein Lagesystem erkannt oder gesetzt" }))
+							: groupFor("ohne-trasse", () => ({ order: 0, title: row.entry.item.kind === "profile" ? "Gradienten ohne Trasse" : "Ohne Trasse" }));
+					group.rows.push(row);
+				}
+				const ordered = [...groups.values()].sort((a, b) => a.order - b.order);
+				const few = rows.length <= 12 || ordered.length <= 1;
+				for (const group of ordered) {
+					const section = document.createElement("details");
+					section.className = "pile-bundle";
+					const holdsSelection = group.rows.some((row) => row.entry === previousSelection || row.dependents.includes(previousSelection));
+					section.open = pileBundleOpen.has(group.id) ? pileBundleOpen.get(group.id) : few || holdsSelection || group.id === "ohne-trasse";
+					section.addEventListener("toggle", () => pileBundleOpen.set(group.id, section.open));
+					const summary = document.createElement("summary");
+					const name = document.createElement("span");
+					name.className = "pile-bundle-name";
+					const meta = document.createElement("span");
+					meta.className = "pile-bundle-meta";
+					summary.append(name, meta);
+					if (group.bundle) {
+						const { leader, members, length } = group.bundle;
+						name.textContent = members.length > 1 ? `entlang ${objectListName(leader)}` : objectListName(leader);
+						name.title = `Bündel aus der Lage: ${members.length} ${members.length === 1 ? "Gleis" : "Gleise"} laufen zu mindestens ${Math.round(BUENDEL_ANTEIL * 100)} % innerhalb von ${BUENDEL_REICHWEITE_M} m an ${objectListName(leader)} entlang (der längsten Linie). Nur eine Anordnung des Haufens, keine Zuordnung.`;
+						meta.textContent = `${group.rows.length} hier · ${members.length} ${members.length === 1 ? "Gleis" : "Gleise"} · ${(length / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} km`;
+						const show = document.createElement("button");
+						show.type = "button";
+						show.className = "pile-bundle-show";
+						show.textContent = "⌖";
+						show.title = "Dieses Bündel auf der Karte zeigen";
+						show.setAttribute("aria-label", `Bündel entlang ${objectListName(leader)} auf der Karte zeigen`);
+						show.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); centerMapOnEntries(members); });
+						summary.append(show);
+					} else {
+						name.textContent = group.title;
+						const clear = group.rows.map((row) => ({ profile: row.entry, vorschlag: vorschlaege.get(row.entry) })).filter((item) => item.vorschlag?.eindeutig);
+						const proposed = group.rows.filter((row) => vorschlaege.has(row.entry)).length;
+						meta.textContent = group.id === "ohne-trasse" ? `${group.rows.length} hier${proposed ? ` · ${proposed} mit Vorschlag` : ""}` : `${group.rows.length} hier · ${group.sub}`;
+						if (clear.length) {
+							const takeAll = document.createElement("button");
+							takeAll.type = "button";
+							takeAll.className = "pile-bundle-take";
+							takeAll.textContent = `${clear.length} eindeutige übernehmen`;
+							takeAll.title = "Alle Vorschläge übernehmen, bei denen genau ein Name passt (Name gleich bis auf System/Variante oder bis auf ein Zeichen, oder die meisten Namensteile). Vorschläge mit Auswahl und unsichere bleiben stehen.";
+							takeAll.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); gradienteZuordnen(clear.map((item) => ({ profile: item.profile, trasse: item.vorschlag.trassen[0] }))); });
+							summary.append(takeAll);
+						}
+					}
+					section.append(summary);
+					for (const row of group.rows) {
+						appendInboxRow(section, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent), fileName: row.loaded.fileKey ?? row.loaded.fileName });
+						for (const dependent of row.dependents) appendInboxRow(section, dependent, { organized: row.organized, dependent: true, fileName: dependent.loaded?.fileKey ?? dependent.loaded?.fileName ?? row.loaded.fileName });
+						if (row.loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = row.entry;
+					}
+					pile.append(section);
 				}
 				tablesNav.append(pile);
 				appendPlanningTree();
@@ -8793,9 +9143,9 @@ xlsx/xlsx.mjs:
 						for (const refKey of bezuege.nodes.get(from)?.refKeys ?? []) {
 							const to = bezuege.entries.get(refKey);
 							const how = bezuege.origin.get(`${einordnungKey(from)}>${refKey}`);
-							const byStem = Boolean(how?.stem) || (from.parser === "vermEsn" && to?.loaded !== from.loaded);
+							const byStem = !how?.user && (Boolean(how?.stem) || (from.parser === "vermEsn" && to?.loaded !== from.loaded));
 							if (byStem !== stemPass) continue;
-							add(from, to, byStem ? "stem" : from.parser === "gndEdit" ? "identity" : from.parser === "vermEsn" ? "file" : "relation", how?.detail ?? "");
+							add(from, to, how?.user ? "user" : byStem ? "stem" : from.parser === "gndEdit" ? "identity" : from.parser === "vermEsn" ? "file" : "relation", how?.user ? "Gradiente von Hand zugeordnet" : how?.detail ?? "");
 						}
 					}
 				}
@@ -9407,16 +9757,7 @@ xlsx/xlsx.mjs:
 				// one when that arrives (Landshut loaded backwards: Gls404 on 5632 at
 				// km 0,5 to -0,3 until 5500 came). The Abbildung is dropped first, so
 				// the Gleis is measured in its own stations again.
-				const unproject = (target) => {
-					for (const sibling of referencingEntries(target)) {
-						if (sibling.kmAbbildung?.owner !== target) continue;
-						delete sibling.kmAbbildung;
-						listingCache.delete(sibling);
-					}
-					delete target.kmAbbildung;
-					target.externalStationReference = undefined;
-					listingCache.delete(target);
-				};
+				const unproject = kmAbbildungLoesen;
 				const settle = (target, reference, trustDelivered) => {
 					if (!reference || target.externalStationReference === reference.item.id) return;
 					if (target.externalStationReference) unproject(target);
@@ -10028,6 +10369,31 @@ xlsx/xlsx.mjs:
 				currentMapViewBox = { x: (Math.min(...xs) + Math.max(...xs)) / 2 - width / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 - height / 2, width, height };
 				applyMapViewBox();
 			}
+			// Several entries at once (a Bündel): the map goes to all of them, and
+			// their lines stand out for a moment in the Übersicht.
+			function centerMapOnEntries(entries) {
+				const list = entries.filter(Boolean);
+				if (!list.length) return;
+				if (maplibreMap && !maplibreMapElement.classList.contains("hidden") && globalThis.maplibregl) {
+					const bounds = new globalThis.maplibregl.LngLatBounds();
+					for (const entry of list) for (const coordinate of interpretedGeometry(entry).coordinates ?? []) bounds.extend(coordinate);
+					if (!bounds.isEmpty()) maplibreMap.fitBounds(bounds, { padding: 64, maxZoom: 17, duration: 500 });
+					return;
+				}
+				const points = list.flatMap((entry) => mapPathForEntry(entry, activeMapMode).points);
+				if (!points.length || !currentMapViewBox) return;
+				const xs = points.map((point) => point.x);
+				const ys = points.map((point) => point.y);
+				const rect = multi2d.getBoundingClientRect();
+				const aspect = rect.width && rect.height ? rect.width / rect.height : 1.5;
+				let width = Math.max(Math.max(...xs) - Math.min(...xs), 50) * 1.3;
+				let height = Math.max(Math.max(...ys) - Math.min(...ys), 50) * 1.3;
+				if (width / height < aspect) width = height * aspect; else height = width / aspect;
+				currentMapViewBox = { x: (Math.min(...xs) + Math.max(...xs)) / 2 - width / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 - height / 2, width, height };
+				applyMapViewBox();
+				for (const entry of list) entry.mapPath?.classList.add("in-bundle");
+				setTimeout(() => { for (const entry of list) entry.mapPath?.classList.remove("in-bundle"); }, 2600);
+			}
 			function centerMapOnPoint(point, entry) {
 				if (!point) return;
 				if (maplibreMap && !maplibreMapElement.classList.contains("hidden")) {
@@ -10289,7 +10655,7 @@ xlsx/xlsx.mjs:
 				const entries = {};
 				for (const entry of allViewerEntries()) {
 					const record = {};
-					for (const field of ["userFamily", "userLineRole", "frameEdit", "organizationEdit", "displayLsys", "displayHsys"]) {
+					for (const field of ["userFamily", "userLineRole", "frameEdit", "organizationEdit", "displayLsys", "displayHsys", "userTrasse"]) {
 						if (entry[field] !== undefined && entry[field] !== null) record[field] = entry[field];
 					}
 					if (Object.keys(record).length) entries[stateKey(entry)] = record;
@@ -10325,7 +10691,7 @@ xlsx/xlsx.mjs:
 					for (const [key, record] of Object.entries(state.entries ?? {})) {
 						const entry = byKey.get(key);
 						if (!entry) { missing += 1; continue; }
-						for (const field of ["userFamily", "userLineRole", "frameEdit", "organizationEdit", "displayLsys", "displayHsys"]) {
+						for (const field of ["userFamily", "userLineRole", "frameEdit", "organizationEdit", "displayLsys", "displayHsys", "userTrasse"]) {
 							if (record[field] !== undefined) entry[field] = record[field];
 						}
 						listingCache.delete(entry);
@@ -10356,6 +10722,11 @@ xlsx/xlsx.mjs:
 					if (typeof state.kilometerLinesVisible === "boolean" && state.kilometerLinesVisible !== kilometerLinesVisible) toggleKilometerLines();
 					if (typeof state.coupled === "boolean") setSelectionCoupled(state.coupled);
 					if (state.precisionKind === "height" || state.precisionKind === "point") precisionKindSelect.value = state.precisionKind;
+					// Gradienten the user gave to Trassen: the references change, and
+					// those Trassen are stationed anew with their Gradienten.
+					bezuegeStamp += 1;
+					einordnungGeaendert();
+					trassenAbbildungErneuern([...new Set(allViewerEntries().filter((entry) => entry.userTrasse).map((entry) => byKey.get(entry.userTrasse)).filter(Boolean))]);
 					hiddenEntryKeys.clear();
 					for (const key of Array.isArray(state.hidden) ? state.hidden : []) if (byKey.has(key)) hiddenEntryKeys.add(key);
 					if (state.inbox && typeof state.inbox === "object") inboxQuery = typeof state.inbox.query === "string" ? state.inbox.query : "";

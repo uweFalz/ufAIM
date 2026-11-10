@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -364,5 +364,76 @@ test("Umfeld in km: where both are stationed in the Strecke's km, the km decide,
 		f("other", "alignment", "unknown", "083-090", { from: 0, to: 700 }, { kmFrame: false, organized: false, frame: frame("5500", "Bahnhofsgleis", "vermesn-name", "083-090", "CR0") }),
 	]);
 	assert.deepEqual(json(einordnungUmfeld(local, "G").keys), ["G", "S"]);
+});
+
+test("Namensteile: system, stationing, date and revision are not what a Gleis is called; the side is read from the name", () => {
+	assert.deepEqual(json(einordnungNamensteile("5904080R_O00_lokal.GRA")), { stem: "5904080r_o00_lokal", kern: ["5904080r"], side: "r" });
+	assert.deepEqual(json(einordnungNamensteile("5904080R_ER0.TRA")), { stem: "5904080r_er0", kern: ["5904080r"], side: "r" });
+	assert.deepEqual(json(einordnungNamensteile("3250_4-11_L_O00_260402.GRA").kern), ["3250", "4", "11", "l"]);
+	assert.equal(einordnungNamensteile("3250_4-11_L_CR0_260402.TRA").side, "l");
+	assert.equal(einordnungNamensteile("AIT_5904S_b.Tra").side, "s");
+	assert.equal(einordnungNamensteile("2631K139_Bestand_VR_DBREF03.TRA").side, "s", "K is the Kilometerlinie");
+	assert.equal(einordnungNamensteile("5500R074-082.GRA").side, "r");
+	assert.equal(einordnungNamensteile("5500S074-082_Gls404.TRA").side, "s");
+	assert.equal(einordnungNamensteile("1280_043-049_DBREF2016_RE.TRA").side, "r");
+	assert.equal(einordnungNamensteile("6100_236-246_DBREF2016_KM.TRA").side, "s");
+	assert.equal(einordnungNamensteile("Gleis_3_Bf_Freihöls_O00.GRA").side, null);
+	assert.deepEqual(json(einordnungNamensteile("AIT_RöWV203_204_GlStat_b.Gra").kern), ["ait", "röwv203", "204"]);
+	assert.deepEqual(json(einordnungNamensteile("folder/sub/ALBG_Gl302_DHHN92.GRA").kern), ["albg", "gl302"]);
+});
+
+test("Gradienten-Vorschlag: the name without system and variant, never across sides, a choice where several lead", () => {
+	const k = (...names) => names.map((name) => ({ key: name, name }));
+	const metro = k("5904080R_ER0.TRA", "5904072S_ER0.TRA", "5904_R-DR0-210323.TRA", "5904_R_DBREF2003.TRA", "5904_R_R00.TRA", "5904_S-DR0-210323.TRA", "AIT_5904S_b.Tra", "AIT_5904R_b.Tra", "AIT_5904L_c_mitW207.Tra", "AIT_RöWV203_204_b.Tra", "AIT_RöWV244_245_b.Tra", "Gl3_DBREF2003.TRA");
+	const pick = (name, kandidaten = metro) => { const v = einordnungGradientenVorschlag(name, kandidaten); return v ? `${v.stem}|${v.grund}|${v.eindeutig}|${v.auswahl.length}` : null; };
+	assert.equal(pick("5904080R_O00.GRA"), "5904080r_er0|system|true|0");
+	assert.equal(pick("5904080R_O00_lokal.GRA"), "5904080r_er0|system|true|0");
+	// the trap a plain similarity fell into: the Gradiente of the left Gleis is not the Kilometerlinie's
+	assert.equal(pick("AIT_5904L_c.Gra"), "ait_5904l_c_mitw207|system|true|0");
+	assert.equal(pick("AIT_5904R_Febr26.Gra"), "ait_5904r_b|system|true|0");
+	// two ways of stationing the same Gradiente both go to their one Trasse
+	assert.equal(pick("AIT_RöWV203_204_GlStat_b.Gra"), "ait_röwv203_204_b|system|true|0");
+	assert.equal(pick("AIT_RöWV203_204_KmL_b.Gra"), "ait_röwv203_204_b|system|true|0");
+	// three deliveries of one Gleis: a choice, not a decision
+	const choice = einordnungGradientenVorschlag("5904_R-R16-210323.Gra", metro);
+	assert.equal(choice.eindeutig, false);
+	assert.deepEqual(json(choice.auswahl.map((item) => item.stem)), ["5904_r-dr0-210323", "5904_r_dbref2003", "5904_r_r00"]);
+	// a prefix more: weak, shown, never taken in a batch
+	assert.equal(pick("GGP_Gl3_DBREF2003.GRA"), "gl3_dbref2003|schwach|false|0");
+	// a typo in the system part and one in the name
+	assert.equal(pick("AHRO_W_146-147_DBREF206.GRA", k("AHRO_W_146-147_DBREF2016.TRA", "AHRO_W_148-149_DBREF2016.TRA")), "ahro_w_146-147_dbref2016|system|true|0");
+	assert.equal(pick("Ka_5811R_km2.6-3.0_kurz.GRA", k("Ka_5811R_km2.6_4.0_kurz.TRA", "Ka_5803R_km0-1.TRA")), "ka_5811r_km2.6_4.0_kurz|zeichen|true|0");
+	// the same TRA loaded twice is one name with two keys
+	const twice = einordnungGradientenVorschlag("ALBG_Gl302_DHHN92.GRA", [{ key: "a", name: "ALBG_Gl302_DBREF.TRA" }, { key: "b", name: "ALBG_Gl302_DBREF.TRA" }]);
+	assert.equal(twice.eindeutig, true);
+	assert.deepEqual(json(twice.keys), ["a", "b"]);
+	// nothing alike: no proposal
+	assert.equal(pick("W401-402.GRA", k("5500R074-082.TRA", "Gls404.TRA")), null);
+	assert.equal(einordnungGradientenVorschlag("x.GRA", []), null);
+});
+
+test("Bündel: the longest line leads, what runs along it within reach belongs to it, the rest leads its own", () => {
+	assert.equal(BUENDEL_REICHWEITE_M, 60);
+	assert.equal(BUENDEL_ANTEIL, 0.5);
+	const straight = (key, x0, x1, y) => { const points = []; for (let x = x0; x <= x1; x += 50) points.push([x, y]); return { key, length: x1 - x0, points, line: points }; };
+	const lines = [
+		straight("Gls401", 4000, 4800, 9),
+		straight("km", 0, 10000, 0),
+		straight("rechts", 0, 10000, -4.5),
+		straight("Anschluss", 9000, 9900, 300),
+		straight("halb", 9000, 11000, 20),
+		straight("Nachbarstrecke", 0, 6000, 2000),
+		straight("NS-Gleis", 1000, 2000, 2004),
+	];
+	const bundles = einordnungBuendel(lines);
+	assert.deepEqual(json(bundles.map((b) => [b.leader, b.members])), [
+		["km", ["Gls401", "rechts", "halb"]],
+		["Nachbarstrecke", ["NS-Gleis"]],
+		["Anschluss", []],
+	], "leaders by length, members in the order delivered; half alongside is enough, 300 m off is not");
+	assert.deepEqual(json(einordnungBuendel([])), []);
+	// a short line between two leaders goes to the one it lies nearer to
+	const between = einordnungBuendel([straight("A", 0, 5000, 0), straight("B", 0, 5000, 100), straight("x", 1000, 1500, 45)]);
+	assert.deepEqual(json(between.map((b) => [b.leader, b.members])), [["A", ["x"]], ["B", []]]);
 });
 
