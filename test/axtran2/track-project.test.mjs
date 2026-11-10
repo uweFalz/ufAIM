@@ -10,7 +10,7 @@ import { readFile } from "node:fs/promises";
 await import("./corpus/loadTraAlignment.mjs");
 const SERVICE = new URL("../../src/services/axtran2/", import.meta.url);
 const KERNEL = new URL("../../src/domain/optimization/alignment/", import.meta.url);
-const { PROJECT_LINES, FILE_LINES, roleOfFileName, assignProjectFiles, describeTra, describeGra, projectLinesModel, projectTableHtml, fitSummary } = await import(new URL("trackProject.js", SERVICE));
+const { PROJECT_LINES, FILE_LINES, roleOfFileName, assignProjectFiles, describeTra, describeGra, projectLinesModel, projectTableHtml, fitSummary, gradientSummary } = await import(new URL("trackProject.js", SERVICE));
 const { writeTra } = await import(new URL("traWriter.js", SERVICE));
 const { fitTraFromBytes } = await import(new URL("fitTraCore.js", SERVICE));
 const { createAlignmentPoseJacobian } = await import(new URL("AlignmentPoseJacobian.js", KERNEL));
@@ -19,7 +19,7 @@ const { momentsFor } = await import(new URL("SolverDependencies.js", KERNEL));
 test("a project is seven lines; five of them are files", () => {
 	assert.deepEqual(PROJECT_LINES.map((l) => l.key), ["km-TRA", "re-TRA", "li-TRA", "re-UEB", "li-UEB", "re-GRA", "li-GRA"]);
 	assert.deepEqual(FILE_LINES, ["km-TRA", "re-TRA", "li-TRA", "re-GRA", "li-GRA"]);
-	assert.deepEqual(PROJECT_LINES.filter((l) => l.fit).map((l) => l.key), ["km-TRA", "re-TRA", "li-TRA"], "stage one optimises the axes");
+	assert.deepEqual(PROJECT_LINES.filter((l) => l.fit).map((l) => l.key), ["km-TRA", "re-TRA", "li-TRA", "re-GRA", "li-GRA"], "the axes and the gradients are adjusted; the cant band is judged with its axis");
 });
 
 test("a file name says its kind and its track where KM, RE or LI stands as a word", () => {
@@ -95,6 +95,13 @@ test("the seven lines as they stand: empty, loaded, ready, fitted - and the line
 	assert.match(fitted["re-UEB"].state, /^mit der Achse geprüft, nicht verändert: bei V 80 km\/h liegen \d von 1 Bögen über \d+ mm Fehlbetrag \(vorher \d\)$/);
 	assert.match(fitted["re-GRA"].state, /^geladen; noch nicht im Ausgleich; die Achse ist nach dem Fit um 0,\d{3} m (länger|kürzer), die Stationen der Gradiente sind die vor dem Fit$/);
 
+	// a gradient adjusted: its row says the fit, how many heights were free and which line it is stationed along
+	const adjusted = gradientSummary({ verdict: { status: "converged", ok: true }, fit: { rmsBefore: 0.0312, rmsAfter: 0.0041, maxAfter: 0.0093, outsideAfter: 0 }, points: new Array(50).fill({}),
+		breaks: [{ free: false }, { free: true, determined: true }, { free: true, determined: false }, { free: false }], input: { stationing: { line: "P_KM.TRA" } } });
+	const graRow = projectLinesModel({ "re-GRA": { file: "P_RE.GRA", description: gra, gradient: adjusted } }).find((l) => l.key === "re-GRA");
+	assert.deepEqual([graRow.state, graRow.tone], ["Ausgleich converged: rms 0,004 m (vorher 0,031 m), max 0,009 m, 0 von 50 außerhalb; 2 von 4 Höhen frei, 1 davon ohne Messung am Plan geblieben; stationiert an P_KM.TRA", "ok"]);
+	assert.match(projectTableHtml(projectLinesModel({ "re-GRA": { file: "P_RE.GRA", description: gra } })), /<tr data-line="re-GRA" class="tone-loaded">.*?<button type="button" class="ghost tiny" data-gradient="re-GRA"[^>]*>ausgleichen<\/button><\/td><\/tr>/);
+
 	// the table: seven rows, a button on a loaded axis, the active one marked, every label escaped
 	const html = projectTableHtml(projectLinesModel({ "re-TRA": { file: "<b>_RE.TRA", description: re }, "km-TRA": { file: "plan.TRA", description: re, assumed: true } }, "re-TRA"));
 	assert.equal((html.match(/<tr data-line=/g) ?? []).length, 7);
@@ -113,7 +120,8 @@ test("a corpus project: the kilometre line, the right track and its gradient are
 	const dRe = describeTra(re), dKm = describeTra(km), dGra = await describeGra(gra, "6100_247-289_DBREF2016_RE.GRA");
 	assert.deepEqual([dRe.records, dRe.cant.records, dRe.cant.maxMm, dRe.stationEquations], [238, 157, 160, 0]);
 	assert.deepEqual([dKm.records, dKm.cant.records, dKm.stationEquations], [241, 0, 6], "the kilometre line carries the station equations and no cant");
-	assert.deepEqual([dGra.gradeBreaks, dGra.rounded, dGra.heightMin, dGra.heightMax, dGra.cantConstructions], [149, 80, 3.6, 41.01, 1]);
+	assert.deepEqual([dGra.gradeBreaks, dGra.rounded, dGra.heightMin, dGra.heightMax, dGra.kilometreJumps, dGra.cantConstructions], [143, 80, 3.6, 41.01, 6, 1], "149 records: 143 grade breaks, six of them a kilometre jump's two records");
+	assert.deepEqual([dGra.stationStart, dGra.stationEnd], [246976.16652999978, 289148.79082830943]);
 	const assigned = assignProjectFiles(["6100_247-289_DBREF2016_RE.TRA", "6100_247-289_DBREF2016_KM.TRA", "6100_247-289_DBREF2016_RE.GRA"]);
 	assert.deepEqual(Object.keys(assigned.lines).sort(), ["km-TRA", "re-GRA", "re-TRA"]);
 	await assert.rejects(describeGra(re, "x.GRA"));

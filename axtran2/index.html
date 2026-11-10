@@ -84,7 +84,14 @@
 		<div style="overflow:auto;margin-top:10px"><table id="projectLines" class="records project"></table></div>
 		<p id="projectNote" style="margin:8px 0 0;color:var(--muted);font-size:14px"></p>
 		<div class="actions" style="margin-top:10px"><button id="runAll" class="ghost" type="button">Alle Achsen mit Aufmaß rechnen</button></div>
-		<small>Optimiert werden die Achsen (km-TRA, re-TRA, li-TRA), jede mit ihrem eigenen Aufmaß und ihren eigenen Vorgaben: „bearbeiten“ holt eine Achse in die Felder darunter. Die Überhöhung wird mit ihrer Achse geprüft und nicht verändert. Die Gradiente wird geladen und gezeigt; ihr Ausgleich und das Nachführen ihrer Stationen sind noch nicht gebaut.</small>
+		<small>Optimiert werden die Achsen (km-TRA, re-TRA, li-TRA), jede mit ihrem eigenen Aufmaß und ihren eigenen Vorgaben: „bearbeiten“ holt eine Achse in die Felder darunter. Die Überhöhung wird mit ihrer Achse geprüft und nicht verändert.</small>
+		<h2 style="margin-top:16px">Gradiente ausgleichen</h2>
+		<div class="grid">
+			<div><label for="heightTolerance">Toleranz der Höhen [m]</label><input id="heightTolerance" type="number" step="0.005" value="0.02"></div>
+			<div><label for="breakHold">Neigungswechsel halten, optional</label><input id="breakHold" type="text" placeholder="z. B. 3, 7-9"><small>Nummern wie in der Liste der Neigungswechsel. Der erste und der letzte bleiben immer: dort schließt die Gradiente an.</small></div>
+			<div><label for="heightOffset">Gemessene Höhen liegen über der Gradiente um [m]</label><input id="heightOffset" type="text" inputmode="decimal" value="0"><small>Null, wenn das Aufmaß die Höhe der Gradiente selbst trägt.</small></div>
+		</div>
+		<small>„ausgleichen“ an re-GRA oder li-GRA passt die Höhen der Neigungswechsel an die gemessenen Höhen an; Stationen und Ausrundungen bleiben. Die Höhen kommen aus dem Aufmaß der Achse desselben Gleises (.pt, oder CSV mit einer Spalte H oder Höhe). Wo ein Punkt auf der Gradiente liegt, sagt sein Fußpunkt auf der Kilometrierungslinie, wenn die Gradiente an ihr stationiert ist, sonst auf der Achse des Gleises. Ein Neigungswechsel, den keine Messung erreicht, bleibt beim Plan. Das Nachführen der Stationen nach dem Fit der Achse ist noch nicht gebaut.</small>
 	</section>
 	<section>
 		<h2>Hinein <span id="activeLine" style="font-weight:400;color:var(--muted);font-size:15px"></span></h2>
@@ -155,6 +162,23 @@
 		<h2 style="margin-top:20px">Residuen je Punkt</h2>
 		<div style="overflow:auto"><table id="residuals"></table></div>
 		<p id="more"></p>
+	</section>
+	<section id="gradientResult" class="hidden">
+		<h2 id="gradientTitle">Gradiente</h2>
+		<p id="gradientVerdict"></p>
+		<div class="numbers" id="gradientNumbers"></div>
+		<p id="gradientNotes"></p>
+		<div class="actions" style="margin-top:16px">
+			<button id="dlGra" class="primary" type="button">ausgeglichene GRA herunterladen</button>
+			<button id="dlGraReport" class="ghost" type="button">report.json</button>
+			<button id="dlGraCsv" class="ghost" type="button">hoehen.csv</button>
+		</div>
+		<h2 style="margin-top:20px">Neigungswechsel: Plan und Ausgleich</h2>
+		<div style="overflow:auto"><table id="gradientBreaks" class="records"></table></div>
+		<small>Jeder Neigungswechsel mit seiner Höhe vor und nach dem Ausgleich; fett, was sich geändert hat. Gehalten bleibt an einer Ausrundung die Größe, die die Datei als runde Zahl trägt – der Halbmesser oder die Tangentenlänge –, die andere folgt den neuen Neigungen.</small>
+		<h2 style="margin-top:20px">Höhenabstand entlang der Gradiente</h2>
+		<div id="gradientChart" style="background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px"></div>
+		<small>Gemessene Höhe minus Gradiente, über der Lauflänge ab dem ersten Neigungswechsel: oben vor dem Ausgleich, unten danach im Maßstab der Toleranz.</small>
 	</section>
 </main>
 <footer>AXTRAN2 ist eine Dienstschicht: das Ergebnis ist ein Vorschlag als Datei, nie kanonische Wahrheit. Rechenkern AIM, Repositorium ufAIM.</footer>

@@ -41,6 +41,8 @@ const TOLERANCE_HEADERS = ["toleranz", "tolerance", "tol", "t", "sigma"];
 const RULE_HEADERS = ["art", "regel", "bedingung", "relation", "rule", "kind", "typ", "type"];
 const STATION_HEADERS = ["station", "stat", "st", "km", "kilometer", "chainage", "s"];
 const REMARK_HEADERS = ["bemerkung", "bem", "remark", "comment", "kommentar", "note", "notiz", "text"];
+// the measured height, for the gradient; only a header names it (a fourth number without one is the tolerance)
+const HEIGHT_HEADERS = ["h", "höhe", "hoehe", "hohe", "height", "z", "nhn", "hn"];
 
 /** the rule words, as the field writes them, to the kernel's enforcement */
 const RULES = {
@@ -122,7 +124,7 @@ function isHeader(cells) {
 function columnsFromHeader(cells, kind) {
 	const lower = cells.map((c) => c.toLowerCase().replace(/[^a-zäöü_]/g, ""));
 	const find = (names) => lower.findIndex((h) => names.includes(h));
-	const columns = { name: find(NAME_HEADERS), tolerance: find(TOLERANCE_HEADERS), rule: kind === "zwang" ? find(RULE_HEADERS) : -1, station: find(STATION_HEADERS), remark: find(REMARK_HEADERS) };
+	const columns = { name: find(NAME_HEADERS), tolerance: find(TOLERANCE_HEADERS), rule: kind === "zwang" ? find(RULE_HEADERS) : -1, station: find(STATION_HEADERS), remark: find(REMARK_HEADERS), height: find(HEIGHT_HEADERS) };
 	const yAsEast = lower.includes("y") && lower.includes("x");
 	if (yAsEast) {
 		// Verm.esn order: Y is the Rechtswert, X the Hochwert
@@ -197,6 +199,12 @@ export function parsePointList(text, { kind = "points", axes = "en", tolerance =
 		}
 		const remark = cols.remark >= 0 ? String(cells[cols.remark] ?? "").trim() : "";
 		if (remark !== "") point.remark = remark;
+		const heightCell = cols.height >= 0 ? String(cells[cols.height] ?? "").trim() : "";
+		if (heightCell !== "") {
+			const height = toNumber(heightCell);
+			if (Number.isNaN(height)) error("INVALID_HEIGHT", `line ${i + 1}: the height "${heightCell}" is not a number`);
+			point.height = height;
+		}
 		if (kind === "zwang") {
 			const where = `line ${i + 1}, Zwangspunkt "${name}"`;
 			const { distance, rule } = parseDistance(cells[cols.distance], where);
