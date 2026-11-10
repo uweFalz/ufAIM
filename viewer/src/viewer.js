@@ -1083,7 +1083,7 @@ xlsx/xlsx.mjs:
 				const gndSequence = gndSequenceForEntry(entry);
 				// Two station columns when the file's own stations are not the km:
 				// GND (äußere Referenz) and a Trasse projected onto a Kilometerlinie.
-				const projected = Boolean(entry.externalStationReference) && elements.some((element) => element?.extras?.externalStation != null);
+				const projected = Boolean(entry.externalStationReference) && elements.some((element) => elementKmStart(entry, element) != null);
 				const twoColumns = Boolean(gndSequence) || projected;
 				const stationLabel = gndSequence
 					? "äußere Referenz"
@@ -1101,7 +1101,7 @@ xlsx/xlsx.mjs:
 					const direction = element.direction ?? element.dirStart;
 					const type = elementDisplayType(element);
 					lines.push(
-						`${station(twoColumns ? element?.extras?.externalStation ?? element.staStart : element.staStart)} ` +
+						`${station(twoColumns ? elementKmStart(entry, element) ?? element.staStart : element.staStart)} ` +
 						(twoColumns ? `${station(element.staStart)} ` : "") +
 						`${fixed(element.start?.easting, 4, 13)} ` +
 						`${fixed(element.start?.northing, 4, 13)} ` +
@@ -1124,7 +1124,7 @@ xlsx/xlsx.mjs:
 				const item = entry.item;
 				const points = item?.payload?.points ?? [];
 				const isGndProfile = entry.parser === "gndEdit";
-				const projected = points.some((point) => point?.extras?.externalStation != null);
+				const projected = points.some((point) => pointKm(entry, point) != null);
 				const twoColumns = isGndProfile || projected;
 				const stationLabel = isGndProfile ? "äußere Referenz" : projected ? "Kilometerlinie" : points.some((point) => isKilometrierung(point.station))
 					? "Kilometrierung"
@@ -1143,7 +1143,7 @@ xlsx/xlsx.mjs:
 						.join(".");
 					lines.push(
 						`${String(index + 1).padStart(7)} ` +
-						`${station(twoColumns ? point?.extras?.externalStation ?? point.station : point.station)} ` +
+						`${station(twoColumns ? pointKm(entry, point) ?? point.station : point.station)} ` +
 						(twoColumns ? `${station(point.station)} ` : "") +
 						`${fixed(point.elevation, 4, 13)} ` +
 						`${fixed(semantics.radius ?? point.radius, 3, 13)} ` +
@@ -1183,11 +1183,53 @@ xlsx/xlsx.mjs:
 			}
 			// END GND STATION SCALAR
 
+			// ---- The km of a station -------------------------------------------------
+			// Three sources, in this order: what the delivery itself says (GND
+			// carries an äußere Referenz on every element and point), the entry's
+			// Abbildung onto its Kilometerlinie (entry.kmAbbildung: pairs of own
+			// station and km, measured by the Stations-Abgleich for VermEsn and
+			// landXML), and failing both the file's own station. The Abbildung
+			// lives on the entry, not in the delivered points: the payload stays
+			// what the file said, and taking a Gleis off a line is dropping the
+			// Abbildung. Each returns undefined where neither source nor Abbildung
+			// gives a km, so `?? own station` reads as it always did.
+			function kmAbbildungPairs(entry) {
+				return entry?.kmAbbildung?.pairs ?? null;
+			}
+			function elementKmStart(entry, element) {
+				const source = element?.extras?.externalStation;
+				if (source != null) return source;
+				const pairs = kmAbbildungPairs(entry);
+				return pairs ? mapLandXmlStation(pairs, numberValue(element?.staStart)) ?? undefined : undefined;
+			}
+			function elementKmEnd(entry, element) {
+				const source = element?.extras?.externalStationEnd;
+				if (source != null) return source;
+				const pairs = kmAbbildungPairs(entry);
+				if (!pairs) return undefined;
+				const localStart = numberValue(element?.staStart);
+				const length = Math.abs(numberValue(element?.length));
+				if (mapLandXmlStation(pairs, localStart) == null || !Number.isFinite(length)) return undefined;
+				return mapLandXmlStation(pairs, localStart + length) ?? undefined;
+			}
+			function pointKm(entry, point) {
+				const source = point?.extras?.externalStation;
+				if (source != null) return source;
+				const pairs = kmAbbildungPairs(entry);
+				return pairs ? mapLandXmlStation(pairs, numberValue(point?.station)) ?? undefined : undefined;
+			}
+			// An entry whose stations are shown in km that are not its own.
+			function hasKmOfItsOwnOrMapped(entry) {
+				if (kmAbbildungPairs(entry)) return true;
+				return (entry?.item?.payload?.coordGeom?.elements ?? []).some((element) => element?.extras?.externalStation != null)
+					|| (entry?.item?.payload?.points ?? []).some((point) => point?.extras?.externalStation != null);
+			}
+
 			function curvatureSeries(entry) {
 				const points = [];
 				for (const element of entry?.item?.payload?.coordGeom?.elements ?? []) {
-					const externalStart = element?.extras?.externalStation;
-					const externalEnd = element?.extras?.externalStationEnd;
+					const externalStart = elementKmStart(entry, element);
+					const externalEnd = elementKmEnd(entry, element);
 					const s0 = stationScalar(externalStart ?? element.staStart);
 					const length = Math.abs(numberValue(element.length));
 					if (!Number.isFinite(s0) || !Number.isFinite(length)) continue;
@@ -1224,7 +1266,7 @@ xlsx/xlsx.mjs:
 			// it), the small-angle arc AIM's vertical contract admits. Clamped to
 			// half the distance to the neighbours; without R and T the PVI stays
 			// the kink it was drawn as before.
-			function profileSeries(entry, stationOf = (point) => stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage)) {
+			function profileSeries(entry, stationOf = (point) => stationScalar(pointKm(entry, point) ?? point.station ?? point.sta ?? point.s ?? point.chainage)) {
 				const raw = (entry?.item?.payload?.points ?? []).map((point) => {
 					const semantics = point?.extras?.sourceSemantics ?? {};
 					const z = ["elevation", "height", "z"].map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
@@ -1255,7 +1297,7 @@ xlsx/xlsx.mjs:
 			function pointSeries(entry, valueKeys) {
 				const points = entry?.item?.payload?.points ?? [];
 				return points.map((point) => {
-					const x = stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage);
+					const x = stationScalar(pointKm(entry, point) ?? point.station ?? point.sta ?? point.s ?? point.chainage);
 					const raw = valueKeys.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
 					return { x, y: numberValue(raw) };
 				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
@@ -1280,7 +1322,7 @@ xlsx/xlsx.mjs:
 			function cantSeriesMm(entry) {
 				const points = entry?.item?.payload?.points ?? [];
 				return points.map((point) => {
-					const x = stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage);
+					const x = stationScalar(pointKm(entry, point) ?? point.station ?? point.sta ?? point.s ?? point.chainage);
 					const raw = CANT_VALUE_KEYS.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
 					return { x, y: cantMillimetres(raw) };
 				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
@@ -1288,7 +1330,7 @@ xlsx/xlsx.mjs:
 			// The Überhöhungsrampen a GRA carries behind its Gradientenpunkte ride
 			// on the profile item (payload.extended.cantRamps). Their stations are
 			// the GRA's own; when the profile's points were projected onto a
-			// Kilometerlinie (extras.externalStation), the Rampen follow the same
+			// Kilometerlinie (the profile's kmAbbildung), the Rampen follow the same
 			// mapping, interpolated over the points.
 			function graCantRamps(profileEntry) {
 				const ramps = profileEntry?.item?.payload?.extended?.cantRamps;
@@ -1296,7 +1338,7 @@ xlsx/xlsx.mjs:
 			}
 			function profileStationMapper(profileEntry) {
 				const pairs = (profileEntry?.item?.payload?.points ?? [])
-					.map((point) => ({ local: stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage), external: stationScalar(point?.extras?.externalStation) }))
+					.map((point) => ({ local: stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage), external: stationScalar(pointKm(profileEntry, point)) }))
 					.filter((pair) => Number.isFinite(pair.local) && Number.isFinite(pair.external))
 					.sort((a, b) => a.local - b.local);
 				if (pairs.length < 2) return (value) => value;
@@ -1845,10 +1887,10 @@ xlsx/xlsx.mjs:
 				const signOf = (radius, element) => radius < 0 ? -1 : radius > 0 ? curveRotationSign(element) : 0;
 				for (const element of entry?.item?.payload?.coordGeom?.elements ?? []) {
 					if (element.type !== "Line" && element.type !== "Curve" && element.type !== "Spiral") continue;
-					const s0 = stationScalar(element?.extras?.externalStation ?? element.staStart);
+					const s0 = stationScalar(elementKmStart(entry, element) ?? element.staStart);
 					const length = Math.abs(numberValue(element.length));
 					if (!Number.isFinite(s0) || !(length > 0)) continue;
-					const externalEnd = stationScalar(element?.extras?.externalStationEnd);
+					const externalEnd = stationScalar(elementKmEnd(entry, element));
 					const s1 = Number.isFinite(externalEnd) ? externalEnd : s0 + length;
 					const rawStart = element.type === "Line" ? 0 : numberValue(element.radius ?? element.radiusStart);
 					const rawEnd = element.type === "Line" ? 0 : numberValue(element.radius ?? element.radiusEnd);
@@ -4099,16 +4141,16 @@ xlsx/xlsx.mjs:
 				const tracks = activeJunction.entries.filter((candidate) => candidate.item?.kind === "alignment" && sevenLineSide(candidate) !== "kilometer");
 				const multiTrack = tracks.length > 1;
 
-				function stationOf(point) {
+				function stationOf(point, pointEntry) {
 					return multiTrack
-						? stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage)
+						? stationScalar(pointKm(pointEntry, point) ?? point.station ?? point.sta ?? point.s ?? point.chainage)
 						: stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage);
 				}
 				function seriesFor(pointEntry, valueKeys) {
 					const points = pointEntry?.item?.payload?.points ?? [];
 					return points.map((point) => {
 						const raw = valueKeys.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
-						return { x: stationOf(point), y: numberValue(raw), raw };
+						return { x: stationOf(point, pointEntry), y: numberValue(raw), raw };
 					}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y)).sort((a, b) => a.x - b.x);
 				}
 
@@ -4748,7 +4790,7 @@ xlsx/xlsx.mjs:
 						element,
 						coordinates: own,
 						precisionValue: precisionForElement(element),
-						station: stationScalar(element?.extras?.externalStation ?? element?.staStart),
+						station: stationScalar(elementKmStart(entry, element) ?? element?.staStart),
 						easting: numberValue(sourcePoint?.easting),
 						northing: numberValue(sourcePoint?.northing),
 					});
@@ -4818,7 +4860,7 @@ xlsx/xlsx.mjs:
 				for (const profile of referencingEntries(alignment).filter((candidate) => candidate.item.kind === "profile")) {
 					for (const point of profile.item?.payload?.points ?? []) {
 						const error = point?.extras?.meanHeightError;
-						const station = stationScalar(point?.extras?.externalStation ?? point.station ?? point.sta);
+						const station = stationScalar(pointKm(profile, point) ?? point.station ?? point.sta);
 						if (!error || !Number.isFinite(error.value) || !Number.isFinite(station)) continue;
 						points.push({ station, value: error.value });
 					}
@@ -5985,6 +6027,17 @@ xlsx/xlsx.mjs:
 				}
 			}
 
+			// The delivered payload as it is. Where the entry is shown in km that
+			// are not in its points (an Abbildung onto a Kilometerlinie), a first
+			// line says so and names the range; the points below are the file's.
+			function payloadListing(entry) {
+				const json = JSON.stringify(entry.item.payload, null, 2);
+				if (!kmAbbildungPairs(entry)) return json;
+				const range = stationRangeForEntry(entry);
+				const owner = entry.kmAbbildung.owner;
+				return `// km ${range ? `${station(range.from).trim()} – ${station(range.to).trim()}` : "offen"}: Abbildung auf die Kilometerlinie${owner && owner !== entry ? ` über ${objectDisplayName(owner)}` : ""}, nicht Teil der gelieferten Punkte\n${json}`;
+			}
+
 			function selectObject(entry, button) {
 				const started = performance.now();
 				clearPlanningPreview();
@@ -6016,7 +6069,7 @@ xlsx/xlsx.mjs:
 					? alignmentListing(entry)
 					: isProfile
 						? profileListing(entry)
-						: JSON.stringify(entry.item.payload, null, 2);
+						: payloadListing(entry);
 					renderDiagram(entry);
 					queueMicrotask(() => {
 						button?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
@@ -6553,10 +6606,10 @@ xlsx/xlsx.mjs:
 				// externalStationReference of its own, so the points decide.
 				const elements = entry?.item?.payload?.coordGeom?.elements ?? [];
 				const points = entry?.item?.payload?.points ?? [];
-				const projected = elements.some((element) => element?.extras?.externalStation != null) || points.some((point) => point?.extras?.externalStation != null);
+				const projected = hasKmOfItsOwnOrMapped(entry);
 				for (const element of elements) {
-					const externalStart = element?.extras?.externalStation;
-					const externalEnd = element?.extras?.externalStationEnd;
+					const externalStart = elementKmStart(entry, element);
+					const externalEnd = elementKmEnd(entry, element);
 					if (projected && externalStart == null) continue;
 					const start = stationScalar(externalStart ?? element.staStart);
 					const length = Math.abs(numberValue(element.length));
@@ -6567,8 +6620,9 @@ xlsx/xlsx.mjs:
 					}
 				}
 				for (const point of points) {
-					if (projected && point?.extras?.externalStation == null) continue;
-					add(point?.extras?.externalStation ?? point.station ?? point.sta ?? point.s ?? point.chainage);
+					const km = pointKm(entry, point);
+					if (projected && km == null) continue;
+					add(km ?? point.station ?? point.sta ?? point.s ?? point.chainage);
 				}
 				for (const equation of entry?.item?.payload?.equations ?? entry?.item?.payload?.staEquations ?? []) {
 					add(equation.stationBack ?? equation.staBack ?? equation.station);
@@ -8562,10 +8616,10 @@ xlsx/xlsx.mjs:
 			// station for that local station. Interpolating over those matched
 			// pairs gives a local-to-external mapping good for any local station,
 			// including profile/cant points (local-station-only, no coordinates of
-			// their own). Writing the result into extras.externalStation is
-			// deliberate: every consumer (curvatureSeries, pointSeries,
-			// stationRangeForEntry) already prefers that field over the raw local
-			// station, so nothing downstream needs to change.
+			// their own). The mapping is kept on the entry as its kmAbbildung and
+			// read through elementKmStart, elementKmEnd and pointKm; every consumer
+			// (curvatureSeries, pointSeries, stationRangeForEntry) asks those and
+			// falls back to the file's own station.
 			function landXmlAlignmentDesc(entry) {
 				return String(entry?.item?.payload?.meta?.desc ?? "");
 			}
@@ -8579,7 +8633,7 @@ xlsx/xlsx.mjs:
 				const elements = alignmentEntry?.item?.payload?.coordGeom?.elements ?? [];
 				for (let elementIndex = 0; elementIndex < elements.length; elementIndex += 1) {
 					const element = elements[elementIndex];
-					const elementStart = stationScalar(element?.extras?.externalStation ?? element.staStart);
+					const elementStart = stationScalar(elementKmStart(alignmentEntry, element) ?? element.staStart);
 					if (!Number.isFinite(elementStart)) continue;
 					const length = Math.abs(numberValue(element.length));
 					// A Knick (GND EKTYP 5) is an element of length 0 carrying the
@@ -8661,28 +8715,15 @@ xlsx/xlsx.mjs:
 				return pairs[pairs.length - 1].external;
 			}
 
+			// The Abbildung of an entry onto its Kilometerlinie: the pairs on the
+			// entry, read through elementKmStart/elementKmEnd/pointKm. Nothing is
+			// written into the delivered elements and points.
 			function applyLandXmlStationMapping(targetEntry, pairs) {
-				for (const element of targetEntry?.item?.payload?.coordGeom?.elements ?? []) {
-					const localStart = numberValue(element.staStart);
-					const length = Math.abs(numberValue(element.length));
-					const externalStart = mapLandXmlStation(pairs, localStart);
-					if (externalStart == null) continue;
-					element.extras = element.extras ?? {};
-					element.extras.externalStation = externalStart;
-					if (Number.isFinite(length)) {
-						const externalEnd = mapLandXmlStation(pairs, localStart + length);
-						if (externalEnd != null) element.extras.externalStationEnd = externalEnd;
-					}
-				}
+				if (targetEntry) targetEntry.kmAbbildung = { pairs, owner: targetEntry };
 			}
 
-			function applyLandXmlStationMappingToPoints(pointsEntry, pairs) {
-				for (const point of pointsEntry?.item?.payload?.points ?? []) {
-					const external = mapLandXmlStation(pairs, numberValue(point.station));
-					if (external == null) continue;
-					point.extras = point.extras ?? {};
-					point.extras.externalStation = external;
-				}
+			function applyLandXmlStationMappingToPoints(pointsEntry, pairs, owner = null) {
+				if (pointsEntry) pointsEntry.kmAbbildung = { pairs, owner };
 			}
 
 			function reconcileLandXmlStationing(objects) {
@@ -8702,7 +8743,7 @@ xlsx/xlsx.mjs:
 					// hand over the other Gleis's objects and map them twice.
 					for (const sibling of referencingEntries(target)) {
 						if (sibling.item.kind === "profile" || sibling.item.kind === "cant") {
-							applyLandXmlStationMappingToPoints(sibling, pairs);
+							applyLandXmlStationMappingToPoints(sibling, pairs, target);
 						}
 					}
 				}
@@ -9346,12 +9387,11 @@ xlsx/xlsx.mjs:
 					if (pairs.length < 2) return;
 					if (!einordnungLaengentreu(pairs[pairs.length - 1].local - pairs[0].local, pairs[pairs.length - 1].external - pairs[0].external)) return;
 					applyLandXmlStationMapping(target, pairs);
-					target.stationProjected = true;
 					listingCache.delete(target);
 					for (const sibling of referencingEntries(target)) {
 						if (sibling.item.kind !== "profile" && sibling.item.kind !== "cant") continue;
 						if (!within(stationRangeForEntry(sibling), localRange, 50)) continue;
-						applyLandXmlStationMappingToPoints(sibling, pairs);
+						applyLandXmlStationMappingToPoints(sibling, pairs, target);
 						listingCache.delete(sibling);
 					}
 					target.externalStationReference = reference.item.id;
@@ -9365,22 +9405,15 @@ xlsx/xlsx.mjs:
 				// And it is decided anew every time: a Gleis that was stationed on
 				// the only line known so far is taken off it and put onto the better
 				// one when that arrives (Landshut loaded backwards: Gls404 on 5632 at
-				// km 0,5 to -0,3 until 5500 came). What a projection wrote is taken
-				// back first, so the Gleis is measured in its own stations again.
+				// km 0,5 to -0,3 until 5500 came). The Abbildung is dropped first, so
+				// the Gleis is measured in its own stations again.
 				const unproject = (target) => {
-					if (target.stationProjected) {
-						for (const element of target.item?.payload?.coordGeom?.elements ?? []) {
-							if (!element.extras) continue;
-							delete element.extras.externalStation;
-							delete element.extras.externalStationEnd;
-						}
-						for (const sibling of referencingEntries(target)) {
-							if (sibling.item.kind !== "profile" && sibling.item.kind !== "cant") continue;
-							for (const point of sibling.item?.payload?.points ?? []) if (point.extras) delete point.extras.externalStation;
-							listingCache.delete(sibling);
-						}
+					for (const sibling of referencingEntries(target)) {
+						if (sibling.kmAbbildung?.owner !== target) continue;
+						delete sibling.kmAbbildung;
+						listingCache.delete(sibling);
 					}
-					target.stationProjected = false;
+					delete target.kmAbbildung;
 					target.externalStationReference = undefined;
 					listingCache.delete(target);
 				};
