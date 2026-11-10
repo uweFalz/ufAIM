@@ -874,3 +874,40 @@ Geprüft: `4L` → `activeBounds` E2.curvature unten, design-limit,
 minimum-radius, R 300 = Grenze 300, Quelle EBO § 6 (1); `4R=299 4L` →
 exception 298,9997; `6L` → nichts an einer Grenze. Die Konstante der
 Nahtschranke (voriger Abschnitt) bleibt davon unberührt.
+
+## Die Weiche im Stammgleis (2026-11-10)
+
+Seit dem 8. November geht eine Weiche als ihr Zweig in die Trasse; im
+durchgehenden Gleis fehlte sie. Dort ist sie ein Satz: die Gerade von
+Weichenanfang bis Weichenende, das lw des Anhangs (Ril 800.0120A01).
+
+- **Einfügen** `+7=W:190-1/9:R:Stamm`: nach Satz 7 die EW 190-1:9 im
+  Stammgleis, ein Satz `7+1`, Gerade 27,14 m, gehalten wie jede Weiche (ohne
+  freie Größe, ohne Schloss, das − nimmt sie wieder heraus). Die Seite
+  bleibt die des Zweigs; `:WA`/`:WE` hat ein Stammgleis nicht (es liest sich
+  von beiden Enden gleich) und wird abgewiesen.
+- **Zwei Bauarten, zwei Längen.** Wo der Anhang ein Paar zweimal führt –
+  die 500-1:12 und die 1200-1:18,5 je mit und ohne gerade Verlängerung –,
+  ist die Weiche mit Verlängerung um d länger (45,36 statt 41,59 m; 66,62
+  statt 64,82 m). `:Stamm` nimmt die Bauart, die der Zweig von sich aus
+  bekommt (mit Verlängerung), `:Stamm:Bogen` die ohne; ein Paar mit einer
+  Bauart hat die eine. `TURNOUT_SHAPES[].mains` nennt je Bauart Länge, d und
+  zul. V; `turnoutMain(shape, { endPiece })` wählt.
+- **Geschwindigkeit.** Im Stammgleis gilt das zul. V des Anhangs für das
+  Stammgleis, bei mehreren Schienenformen das der langsamsten (EW 190-1:9:
+  120 km/h). Ohne vorgegebenes V nimmt die Annahme es wie den Zweig einer
+  erkannten Weiche und sagt es: „weil das Stammgleis der EW 190-1:9 nicht
+  mehr zulässt“.
+- **Gebogen** `+7=W:190-1/9:R:Stamm:auf-800`: der Bogen des Stammgleises
+  selbst, R −800 über lw, IBW oder ABW nach der Seite des Zweigs; keine
+  Zeile im Anhang, darum kein V.
+- Bericht (`fit-tra/0.21`): `input.turnouts[]` mit `inserted.route` „main“,
+  `mainLength`, `mainEndPiece`, Bezeichnung „EW 190-1:9, Stammgleis“; der
+  Satz trägt `part` „main“. Liste (0.11): die Eingabezeile bietet bei der
+  Weiche die Fahrt „Zweig“ oder „Stammgleis“.
+
+Nicht gebaut: eine Stammgleis-Weiche auf einem Satz der Datei erklären
+(`3W=…:Stamm`) – im Stammgleis schneidet eine Datei selten an der Weiche,
+und wo doch, tun `3L=27,138` und das Schloss dasselbe; in der Datei erkannt
+wird sie nicht (eine Gerade von 27,14 m ist keine Weiche, nur weil sie so
+lang ist – wie bei der Kreuzung).

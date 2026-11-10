@@ -186,6 +186,26 @@ test("a plain crossing goes in as a held straight, and the report knows it as a 
 	assert.match(recordListHtml(alignmentPictureModel(report), { insertAfter: 1 }), /<option value="Kr:1\/9">Kr 1:9 \(Kreuzung ohne Weiche, gerade 100 km\/h\)<\/option>/);
 });
 
+test("a turnout in the main track goes in as one held straight of the annex's lw, and the main's speed is the assumption", async () => {
+	const report = (await fit({ edits: "+1=W:190-1/9:R:Stamm", speedKmh: null })).report;
+	assert.deepEqual(report.elements.map((e) => [e.type, [...e.records]]), [["straight", [1]], ["straight", ["1+1"]], ["transition", [2]], ["arc", [3]], ["straight", [4]]]);
+	const main = report.elements[1];
+	assert.deepEqual([main.before.length, main.after.length, main.before.radius], [27.1381, 27.1381, null], "held: Weichenanfang to Weichenende");
+	assert.equal(report.input.free, (await fit({})).report.input.free, "it adds no free quantity");
+	assert.deepEqual(report.input.turnouts.map((t) => [t.designation, t.kind, t.side, t.held, [...t.records], t.inserted.route, t.arc, t.mainLength, t.mainEndPiece, t.branchSpeedKmh]), [["EW 190-1:9, Stammgleis", "EW", "right", true, ["1+1"], "main", null, 27.1381, 6.0917, 120]]);
+	assert.deepEqual([report.input.speed.basis, report.input.speed.kmh], ["turnout", 120], "the main of an EW 190-1:9 allows 120 km/h on the slowest rail");
+	assert.match(report.input.speed.why, /^assumed: the main track through EW 190-1:9 \(record 1\+1\) allows 120 km\/h/);
+	const rows = report.planRecords.filter((r) => r.inserted);
+	assert.deepEqual(rows.map((r) => [r.number, r.type, r.length, r.turnout, r.heldLength, r.heldRadius, r.inserted.part]), [["1+1", "straight", 27.1381, "EW 190-1:9, Stammgleis", true, false, "main"]]);
+	const html = recordListHtml(alignmentPictureModel(report), { insertAfter: 1 });
+	assert.match(html, /<tr data-record="1\+1" class="inserted"><td class="num">\+<\/td><td>Gerade<\/td><td>EW 190-1:9, Stammgleis<\/td><td class="num">27,14<\/td><td class="num">27,14<\/td>.*?<td>eingefügt nach Satz 1, gehalten<\/td>/);
+	assert.match(html, /<label data-for="turnout">Fahrt <select name="wroute"[^>]*><option value="branch">Zweig<\/option><option value="main">Stammgleis<\/option><\/select><\/label>/);
+	// the written file carries it as a straight of its own; read back it is a straight, as the main of a turnout is
+	const written = await fit({ edits: "+1=W:190-1/9:R:Stamm" });
+	const back = await traAlignmentFromBytes(written.tra, "back.TRA");
+	assert.deepEqual(back.records.slice(0, 3).map((r) => [r.type, Number(r.length.toFixed(4))]).filter(([t]) => t === "straight").map(([, l]) => l).includes(27.1381), true);
+});
+
 test("a turnout whose branch begins with a clothoid goes in as curvature holder, clothoid and arc, held; the written file reads back as the turnout", async () => {
 	const { recogniseTurnouts } = await import(new URL("heldRecords.js", SERVICE));
 	const report = (await fit({ edits: "+1=W:6000/3700-1/32,5:R", speedKmh: null })).report;

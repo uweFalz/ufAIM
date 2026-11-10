@@ -28,7 +28,11 @@
 // bends it onto a main track of R -800 (the file's sign): the branch's
 // curvature is the turnout's plus the line's, an Innenbogenweiche where
 // both turn the same way, an Außenbogenweiche where they turn against each
-// other (TurnoutCatalogue.bentOnto). A crossing turnout is one route:
+// other (TurnoutCatalogue.bentOnto). ":Stamm" puts the turnout into the main
+// track instead: "+7=W:190-1/9:R:Stamm" is one held straight of the annex's
+// lw, from Weichenanfang to Weichenende (":Bogen" behind it the build without
+// the straight extension, where the annex has both); bent, the main track's
+// arc over that length. A crossing turnout is one route:
 // "+7=K:DKW:190-1/9:R" the curved route of a DKW 190-1:9 onto the crossing
 // track to the right (the arc R * atan(1/n)), ":gerade" the straight route
 // over the crossing (2 R tan(alpha/2)); an EKW reads the same from its entry.
@@ -41,7 +45,7 @@
 // ":WA", ":WE" or ":Bogen" say where its end piece is where the lengths do
 // not; "3W=keine" says the arc is no turnout, whatever the recognition found.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.9";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.10";
 
 import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 import { RIL_800_0120_A01, CROSSING_KINDS } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
@@ -63,6 +67,8 @@ export const CROSSING_ROUTES_WORDS = Object.freeze({ curved: "Bogenfahrt auf das
 /** the kinds a record may be inserted as, with their letters and words */
 export const INSERT_TYPES = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übergangsbogen", turnout: "Weiche", crossing: "Kreuzungsweiche" });
 const INSERT_LETTERS = Object.freeze({ g: "straight", b: "arc", u: "transition", "ü": "transition", w: "turnout", k: "crossing" });
+/** the track through an inserted turnout: its branch, or the main track (one held record of the annex's lw) */
+export const TURNOUT_ROUTES_WORDS = Object.freeze({ branch: "Zweig", main: "Stammgleis" });
 /** how an inserted turnout lies in the track */
 export const TURNOUT_ORIENTATIONS = Object.freeze({ WA: "Bogen, dann Endstück", WE: "Endstück, dann Bogen", arc: "nur der Bogen" });
 /** the key of the i-th record inserted after record n; `part` for the a/b/c/d of a turnout's pieces */
@@ -217,15 +223,20 @@ export function parseStructure(edits) {
 		const spec = { type };
 		if (type === "turnout") {
 			// "190-1/9", or "7000/6000-1/42" for a branch of two radii; the ratio may carry a comma (32,5)
-			const w = /^(?:EW\s*)?(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?-1[:/](\d+(?:[.,]\d+)?)(?::(L|R|links|rechts))?(?::(WA|WE|Bogen))?(?::auf\s*([-+]?\d+(?:[.,]\d+)?))?$/i.exec(put[3].trim());
-			if (!w) error("INVALID_EDIT", `"${token}": a turnout is written +7=W:190-1/9 (+7=W:7000/6000-1/42 for a branch of two radii), then :L or :R for the branch's side, then :WA, :WE or :Bogen, then :auf-800 to bend it onto a main track of that radius`);
+			const w = /^(?:EW\s*)?(\d+(?:\.\d+)?)(?:\/(\d+(?:\.\d+)?))?-1[:/](\d+(?:[.,]\d+)?)(?::(L|R|links|rechts))?(?::(Stamm|Stammgleis))?(?::(WA|WE|Bogen))?(?::auf\s*([-+]?\d+(?:[.,]\d+)?))?$/i.exec(put[3].trim());
+			if (!w) error("INVALID_EDIT", `"${token}": a turnout is written +7=W:190-1/9 (+7=W:7000/6000-1/42 for a branch of two radii), then :L or :R for the branch's side, then :Stamm for the main track through it instead of the branch, then :WA, :WE or :Bogen, then :auf-800 to bend it onto a main track of that radius`);
 			spec.radius = Number(w[1]); spec.ratio = toNumber(w[3]);
 			if (w[2] !== undefined) spec.radiusEnd = Number(w[2]);
 			if (!turnoutShape(spec.radius, spec.ratio, spec.radiusEnd ?? null)) error("INVALID_EDIT", `"${token}": ${turnoutDesignation(spec)} is not a turnout of Ril 800.0120A01: ${TURNOUT_SHAPES.map((s) => s.designation).join(", ")}`);
 			spec.side = /^l/i.test(w[4] ?? "R") ? "left" : "right";
-			spec.orientation = (w[5] ?? "WA").toLowerCase() === "bogen" ? "arc" : (w[5] ?? "WA").toUpperCase();
-			if (w[6] !== undefined) {
-				spec.mainRadius = toNumber(w[6]);
+			// the main track through the turnout instead of its branch; a main has no WA or WE, it reads the same both ways
+			if (w[5] !== undefined) {
+				spec.route = "main";
+				if (/^W[AE]$/i.test(w[6] ?? "")) error("INVALID_EDIT", `"${token}": the main track through a turnout is one record and reads the same from both ends; :${w[6].toUpperCase()} belongs to the branch`);
+			}
+			spec.orientation = (w[6] ?? "WA").toLowerCase() === "bogen" ? "arc" : (w[6] ?? "WA").toUpperCase();
+			if (w[7] !== undefined) {
+				spec.mainRadius = toNumber(w[7]);
 				if (!(Math.abs(spec.mainRadius) > 0)) error("INVALID_EDIT", `"${token}": the main track's radius to bend onto is not zero`);
 			}
 			if (!inserted.has(after)) inserted.set(after, []);
@@ -276,7 +287,7 @@ export function parseAllEdits(edits) {
 	return { values: parseEdits(edits), ...parseStructure(typeof edits === "string" ? edits : null) };
 }
 
-const insertToken = (after, spec) => spec.type === "turnout" ? `+${after}=W:${turnoutRef(spec)}:${spec.side === "left" ? "L" : "R"}${spec.orientation === "arc" ? ":Bogen" : spec.orientation === "WE" ? ":WE" : ""}${Number.isFinite(spec.mainRadius) ? `:auf${trim(spec.mainRadius, 3)}` : ""}`
+const insertToken = (after, spec) => spec.type === "turnout" ? `+${after}=W:${turnoutRef(spec)}:${spec.side === "left" ? "L" : "R"}${spec.route === "main" ? ":Stamm" : ""}${spec.orientation === "arc" ? ":Bogen" : spec.orientation === "WE" ? ":WE" : ""}${Number.isFinite(spec.mainRadius) ? `:auf${trim(spec.mainRadius, 3)}` : ""}`
 	: spec.type === "crossing" && spec.kind === "Kr" ? `+${after}=K:Kr:1/${spec.ratio}`
 	: spec.type === "crossing" ? `+${after}=K:${spec.kind}:${turnoutRef(spec)}:${spec.side === "left" ? "L" : "R"}${spec.route === "straight" ? ":gerade" : ""}`
 	: spec.type === "arc" ? `+${after}=B:${trim(spec.radius, 3)}:${trim(spec.length, 3)}`

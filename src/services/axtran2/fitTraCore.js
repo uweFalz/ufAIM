@@ -37,7 +37,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.20";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.21";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -99,7 +99,8 @@ const radiusOf = (e) => (e.type === "arc" && Number.isFinite(e.curvature) && e.c
  *        "3W=300-1/9" declares record 3 the branch of that catalogue turnout (re-typing the one recognised there, or
  *        making one of a plain arc; ":auf-800" bent, its end piece then an arc of the branch's end curvature whatever the
  *        file's record is, ":WE" the end piece before it), "3W=keine" that it is none (heldRecords.js).
- *        "-9" takes record 9 out, "+9=G:20" (or B:-500:30, U:40:Bloss) puts a record in after it (recordEdits.js)
+ *        "-9" takes record 9 out, "+9=G:20" (or B:-500:30, U:40:Bloss) puts a record in after it (recordEdits.js);
+ *        "+9=W:190-1/9:R" the branch of a catalogue turnout, "+9=W:190-1/9:R:Stamm" the main track through it
  * @param {Array} [input.heldPoses]          [{ afterElement, x?, y?, theta? }] in world coordinates
  * @param {"en"|"ne"} [input.axes]           coordinate order of header-less lists
  * @param {{x,y,theta}|null} [input.endPose]  the end pose to hold, in world coordinates (theta counter-clockwise
@@ -138,7 +139,7 @@ export async function fitTraFromBytes({
 	const structure = applyStructure({ elements: loaded.elements, recordElements: loaded.recordElements, records: seen.records, removed: allEdits.removed, inserted: allEdits.inserted, turnouts: turnoutsSeen });
 	const elementOf = (key) => structure.recordElements.get(key) ?? null;
 	// the turnouts the fit knows: the file's, and those put in (held by themselves)
-	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, kind: t.kind, radius: t.radius, radiusEnd: t.radiusEnd ?? null, ratio: t.ratio, side: t.side, arc: t.arc, arcs: Object.freeze([...(t.arcs ?? (t.arc === null ? [] : [t.arc]))]), transition: t.transition ?? null, endPiece: t.endPiece, endPieceType: t.endPieceType ?? null, branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation, route: t.route ?? null, bent: t.bent ?? null }) }));
+	const insertedTurnouts = structure.turnouts.map((t) => Object.freeze({ designation: t.designation, kind: t.kind, radius: t.radius, radiusEnd: t.radiusEnd ?? null, ratio: t.ratio, side: t.side, arc: t.arc, arcs: Object.freeze([...(t.arcs ?? (t.arc === null ? [] : [t.arc]))]), transition: t.transition ?? null, endPiece: t.endPiece, endPieceType: t.endPieceType ?? null, ...(t.route === "main" ? { mainLength: t.mainLength, mainEndPiece: t.mainEndPiece } : {}), branchSpeedKmh: t.branchSpeedKmh, records: t.records, source: RIL_SOURCE, inserted: Object.freeze({ after: t.after, index: t.index, orientation: t.orientation, route: t.route ?? null, bent: t.bent ?? null }) }));
 	const turnoutsAll = [...turnoutsSeen, ...insertedTurnouts];
 	if (loaded.unsupported.length) {
 		error("UNSUPPORTED_RECORDS", `${loaded.name}: records this adapter cannot carry: ${loaded.unsupported.map((u) => u.spiType ?? u.why ?? u.type).join(", ")}`, loaded.unsupported);
@@ -418,6 +419,7 @@ export async function fitTraFromBytes({
 			speed: Object.freeze({
 				kmh: profile.speedKmh, basis: speedBasis,
 				why: speedBasis === "given" ? "given by the caller"
+					: speedBasis === "turnout" && slowestTurnout.inserted?.route === "main" ? `assumed: the main track through ${slowestTurnout.designation.replace(/, Stammgleis$/, "")} (record ${slowestTurnout.records.join(", ")}) allows ${slowestTurnout.branchSpeedKmh} km/h (Ril 800.0120A01)`
 					: speedBasis === "turnout" ? `assumed: the branch of ${slowestTurnout.designation} (record ${slowestTurnout.arc}) allows ${slowestTurnout.branchSpeedKmh} km/h (Ril 800.0120A01)`
 					: "assumed: the fastest Hauptbahn profile the file's radii and lengths admit",
 				turnout: speedBasis === "turnout" ? Object.freeze({ designation: slowestTurnout.designation, records: slowestTurnout.records, branchSpeedKmh: slowestTurnout.branchSpeedKmh }) : null,

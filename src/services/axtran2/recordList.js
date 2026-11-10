@@ -23,9 +23,9 @@
 // and the form (`data-insert-after`).
 
 import { describeHold, holdMap } from "./alignmentPicture.js";
-import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
+import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_ROUTES_WORDS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.10";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.11";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
@@ -131,6 +131,7 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 		+ ` <label data-for="arc">Radius [m] <input name="rad" inputmode="decimal" placeholder="wie in der Datei" size="9"></label>`
 		+ ` <label data-for="transition">Typ <select name="fam">${Object.entries(TRANSITION_FAMILIES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`
 		+ ` <label data-for="turnout">Bauart <select name="wshape">${TURNOUT_SHAPES.map((s) => `<option value="${s.radius}${s.radiusEnd !== null ? `/${s.radiusEnd}` : ""}-1/${s.ratio}">${escape(s.designation)}${s.branchSpeedKmh ? ` (Zweig ${s.branchSpeedKmh} km/h)` : ""}</option>`).join("")}</select></label>`
+		+ ` <label data-for="turnout">Fahrt <select name="wroute" title="${escape("Zweig: der Zweigbogen mit seinem Endstück. Stammgleis: die Weiche im durchgehenden Gleis, ein gehaltener Satz von Weichenanfang bis Weichenende (lw des Anhangs)")}">${Object.entries(TURNOUT_ROUTES_WORDS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`
 		+ ` <label data-for="turnout">Zweig <select name="wside"><option value="right">rechts</option><option value="left">links</option></select></label>`
 		+ ` <label data-for="turnout">Lage <select name="worient">${Object.entries(TURNOUT_ORIENTATIONS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>`
 		+ ` <label data-for="turnout">auf Stammgleis R [m] <input name="wmain" inputmode="decimal" placeholder="leer: gerade Weiche" size="9" title="Radius des Stammgleises mit dem Vorzeichen der Datei: die Weiche wird darauf gebogen (Innen- oder Außenbogenweiche)"></label>`

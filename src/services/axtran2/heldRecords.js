@@ -26,7 +26,7 @@
 
 import { RIL_800_0120_A01, bentOnto, turnout as catalogueTurnout, compoundBranch } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
 
-export const HELD_RECORDS_VERSION = "axtran2/held-records/0.8";
+export const HELD_RECORDS_VERSION = "axtran2/held-records/0.9";
 /** the kernel's split of a branch of two radii, for callers that had it from here */
 export { compoundBranch };
 
@@ -62,9 +62,18 @@ const SHAPES = (() => {
 			const radii = compound ? [row.radius, row.radiusEnd] : [row.radius];
 			shape = { designation: `EW ${key}`, radius: row.radius, radiusEnd: compound ? row.radiusEnd : null, ratio: row.ratio, radii,
 				branchParts, branchLengths: branchParts.filter((p) => p.type === "arc").map((p) => p.length), branchLength: spec.branchLength,
-				transitionLength: spec.transitionLength > 0 ? spec.transitionLength : null, tangentResidual: spec.tangentResidual, endPieces: [], branchSpeedKmh: row.vBranch };
+				transitionLength: spec.transitionLength > 0 ? spec.transitionLength : null, tangentResidual: spec.tangentResidual, endPieces: [], mains: [], branchSpeedKmh: row.vBranch };
 		}
 		if (Number.isFinite(row.d) && !shape.endPieces.includes(row.d)) shape.endPieces.push(row.d);
+		// the main track through the turnout: the annex's lw, from Weichenanfang to Weichenende - one per build of the
+		// pair (with the straight extension d the turnout is longer by it); zul. v in the main, the slowest rail's
+		if (Number.isFinite(row.lw)) {
+			const endPiece = Number.isFinite(row.d) ? row.d : null;
+			const speedKmh = typeof row.vMain === "object" && row.vMain !== null ? Math.min(...Object.values(row.vMain)) : Number.isFinite(row.vMain) ? row.vMain : null;
+			const have = shape.mains.find((m) => m.endPiece === endPiece && Math.abs(m.length - row.lw) <= 1e-9);
+			if (have) have.speedKmh = have.speedKmh === null ? speedKmh : speedKmh === null ? have.speedKmh : Math.min(have.speedKmh, speedKmh);
+			else shape.mains.push({ length: row.lw, endPiece, speedKmh });
+		}
 		// zul. v in the branch; the slowest where the annex lists the pair twice
 		if (Number.isFinite(row.vBranch)) shape.branchSpeedKmh = Math.min(shape.branchSpeedKmh ?? Infinity, row.vBranch);
 		shapes.set(key, shape);
@@ -75,10 +84,24 @@ const SHAPES = (() => {
 /**
  * the turnouts of the annex, for a list to choose from: { designation, radius,
  * radiusEnd, ratio, radii, branchParts, branchLengths, branchLength,
- * transitionLength, tangentResidual, endPieces, branchSpeedKmh }; radiusEnd is
- * null but for a branch of two radii, transitionLength null without a clothoid
+ * transitionLength, tangentResidual, endPieces, mains, branchSpeedKmh }; radiusEnd is
+ * null but for a branch of two radii, transitionLength null without a clothoid;
+ * mains [{ length, endPiece, speedKmh }] the main track through each build of the
+ * pair: the annex's lw, the straight extension d that build has (or null), zul. v
  */
-export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, radii: Object.freeze([...s.radii]), branchParts: Object.freeze(s.branchParts.map((p) => Object.freeze({ ...p }))), branchLengths: Object.freeze([...s.branchLengths]), endPieces: Object.freeze([...s.endPieces]) })));
+export const TURNOUT_SHAPES = Object.freeze(SHAPES.map((s) => Object.freeze({ ...s, radii: Object.freeze([...s.radii]), branchParts: Object.freeze(s.branchParts.map((p) => Object.freeze({ ...p }))), branchLengths: Object.freeze([...s.branchLengths]), endPieces: Object.freeze([...s.endPieces]), mains: Object.freeze(s.mains.map((m) => Object.freeze({ ...m }))) })));
+
+/**
+ * The main track through a catalogue turnout: { length, endPiece, speedKmh }.
+ * Where the annex lists the pair in two builds, `endPiece` true takes the one
+ * with the straight extension the branch gets by default (the smallest d),
+ * false the one without; a pair with one build has that one either way.
+ */
+export function turnoutMain(shape, { endPiece = true } = {}) {
+	const d = shape.endPieces.length ? Math.min(...shape.endPieces) : null;
+	const wanted = endPiece && d !== null ? shape.mains.find((m) => m.endPiece === d) : shape.mains.find((m) => m.endPiece === null);
+	return wanted ?? shape.mains.find((m) => m.endPiece === d) ?? shape.mains[0] ?? null;
+}
 
 /** the catalogue turnout of a radius (and the branch's second radius, if it has one) and a crossing ratio, or null */
 export function turnoutShape(radius, ratio, radiusEnd = null) {
