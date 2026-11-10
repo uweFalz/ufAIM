@@ -564,7 +564,7 @@ html[dir="rtl"] #props {
 .te-detail-card dt { color: var(--muted); font-size: 11px; }
 .te-detail-card dd { margin: 3px 0 0; overflow-wrap: anywhere; }
 .te-detail-card pre { white-space: pre-wrap; max-height: 180px; overflow: auto; font-size: 11px; }
-.te-plot-modes, .te-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.te-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .te-partition { display: grid; grid-template-columns: auto minmax(70px, 1fr); gap: 6px 10px; }
 .te-preview { position: relative; display: grid; grid-template-rows: clamp(260px, 46vh, 420px) auto; gap: 6px; }
 .te-splits { position: absolute; z-index: 5; right: 14px; bottom: 34px; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 9px; background: rgba(10, 12, 16, 0.78); backdrop-filter: blur(8px); box-shadow: 0 5px 18px rgba(0, 0, 0, 0.28); }
@@ -575,6 +575,7 @@ html[dir="rtl"] #props {
 .te-depth > summary { cursor: pointer; color: var(--muted); font-size: 13px; user-select: none; }
 .te-depth[open] > summary { color: var(--text); margin-bottom: 10px; }
 .te-compare { padding-top: 2px; }
+#teCompareSummary th, #teCompareSummary td { padding: 2px 18px 2px 0; text-align: left; font-variant-numeric: tabular-nums; white-space: nowrap; }
 #teCompareGraph { width: 100%; height: 180px; border: 1px solid var(--borderSoft); border-radius: 8px; margin-top: 8px; }
 #teCompareGraph .primary { fill: none; stroke: #6bb7ff; stroke-width: 2.5; }
 #teCompareGraph .secondary { fill: none; stroke: #e28b45; stroke-width: 2; stroke-dasharray: 6 4; }

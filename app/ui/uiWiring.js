@@ -202,12 +202,6 @@ export function wireUI({ logElement, statusElement, prefs } = {}) {
 		teW2: document.getElementById("teW2"),
 		teW1Val: document.getElementById("teW1Val"),
 		teW2Val: document.getElementById("teW2Val"),
-
-		// transition plot controls
-		tePlotK: document.getElementById("tePlotK"),
-		tePlotK1: document.getElementById("tePlotK1"),
-		tePlotK2: document.getElementById("tePlotK2"),
-		tePlotNodes: document.querySelectorAll('input[name="tePlot"]'),
 	};
 	
 	function renderLanguageMenu() {
