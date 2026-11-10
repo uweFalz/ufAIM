@@ -1,0 +1,1735 @@
+
+			:root {
+				color-scheme: light;
+				/* system-ui first: San Francisco on macOS, Segoe UI on Windows. With
+				   only Apple names here, Chrome and Edge on Windows fell through to
+				   Arial for the title bar and the Inbox while the rest (system-ui)
+				   stood in Segoe UI. */
+				font-family: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+				--glass: rgba(255,255,255,0.84);
+				--hairline: rgba(60,60,67,0.18);
+				--window: #f5f5f7;
+				--surface: #ffffff;
+				--sidebar: #f1f1f3;
+				--secondary: rgba(60,60,67,0.62);
+				--accent: #0a84ff;
+				--ink: #1d1d1f;
+				--titlebar: rgba(250,250,252,0.88);
+				--panel-glass: rgba(255,255,255,0.94);
+				--button: linear-gradient(#fff, #f7f7f8);
+				--button-hover: #ececf0;
+				--button-active: #dfdfe4;
+				--map-ground: #e9eaec;
+				--stone-halo: #ffffff;
+			}
+			/* Dunkelmodus: follows the system unless the user picked one (◐ in the
+			   title bar, kept in localStorage). The page draws with system colours
+			   (Canvas, CanvasText, GrayText, Highlight), so color-scheme flips
+			   most of it; these tokens cover the rest. */
+			@media (prefers-color-scheme: dark) {
+				:root:not([data-theme="light"]) {
+					color-scheme: dark;
+					--glass: rgba(44,44,48,0.84);
+					--hairline: rgba(200,200,210,0.2);
+					--window: #1c1c1e;
+					--surface: #2a2a2d;
+					--sidebar: #232326;
+					--secondary: rgba(220,220,230,0.62);
+					--accent: #3c9cff;
+					--ink: #f2f2f5;
+					--titlebar: rgba(30,30,33,0.88);
+					--panel-glass: rgba(38,38,42,0.94);
+					--button: linear-gradient(#3a3a3e, #303034);
+					--button-hover: #454549;
+					--button-active: #505055;
+					--map-ground: #2c2c30;
+					--stone-halo: #1c1c1e;
+				}
+			}
+			:root[data-theme="dark"] {
+				color-scheme: dark;
+				--glass: rgba(44,44,48,0.84);
+				--hairline: rgba(200,200,210,0.2);
+				--window: #1c1c1e;
+				--surface: #2a2a2d;
+				--sidebar: #232326;
+				--secondary: rgba(220,220,230,0.62);
+				--accent: #3c9cff;
+				--ink: #f2f2f5;
+				--titlebar: rgba(30,30,33,0.88);
+				--panel-glass: rgba(38,38,42,0.94);
+				--button: linear-gradient(#3a3a3e, #303034);
+				--button-hover: #454549;
+				--button-active: #505055;
+				--map-ground: #2c2c30;
+				--stone-halo: #1c1c1e;
+			}
+			body {
+				margin: 0;
+				height: 100vh;
+				overflow: hidden;
+				background: var(--window);
+				color: var(--ink);
+			}
+			body.dragover {
+				outline: 4px solid Highlight;
+				outline-offset: -4px;
+			}
+			main {
+				display: grid;
+				grid-template-rows: auto auto minmax(0, 1fr);
+				gap: 0;
+				height: 100vh;
+				min-width: 0;
+				box-sizing: border-box;
+			}
+			h1 {
+				margin: 0;
+				font: 600 1.25rem system-ui, sans-serif;
+			}
+			#titlebar,
+			#diagramModes {
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+			}
+			.gwb-input {
+				display: flex;
+				align-items: center;
+				gap: 0.3rem;
+				font-size: var(--fs-2);
+				color: var(--secondary);
+				white-space: nowrap;
+			}
+			#gwbLineSpeedLabel { margin-left: 0; }
+			.gwb-input input,
+			.gwb-input select {
+				padding: 0.3rem 0.4rem;
+				border: 1px solid var(--hairline);
+				border-radius: 0.45rem;
+				background: var(--surface);
+			}
+			.gwb-input input { width: 4.6rem; }
+			#diagramToolbar button:disabled { opacity: 0.45; cursor: default; }
+			#themeToggle { margin-left: 0; }
+			#precisionKind { font: inherit; font-size: 0.8rem; }
+			#precisionKind.hidden { display: none; }
+			#coupleToggle.hidden { display: none; }
+			#coupleToggle[aria-pressed="true"] { background: color-mix(in srgb, Highlight 18%, Canvas); border-color: Highlight; }
+			#jump { position: relative; }
+			#jump.hidden { display: none; }
+			#titlebar h1 { white-space: nowrap; }
+			#jumpInput { width: 14rem; max-width: 24vw; min-width: 7rem; padding: 0.3rem 0.55rem; border: 1px solid var(--hairline); border-radius: 0.55rem; background: var(--glass); font-size: 0.86rem; }
+			#jumpResults { position: absolute; right: 0; top: calc(100% + 0.25rem); z-index: 20; min-width: 22rem; max-width: 40vw; margin: 0; padding: 0.25rem 0; list-style: none; background: Canvas; border: 1px solid var(--hairline); border-radius: 0.55rem; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+			#jumpResults.hidden { display: none; }
+			#jumpResults li { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.35rem 0.7rem; font-size: 0.84rem; cursor: pointer; }
+			#jumpResults li.active, #jumpResults li:hover { background: color-mix(in srgb, Highlight 16%, Canvas); }
+			#jumpResults li .jump-kind { color: GrayText; font-size: 0.76rem; white-space: nowrap; }
+			/* ---- Maßsystem: drei Schriftgrößen, ein Abstandsraster, ein Radius ---- */
+			:root { --fs-0: 0.62rem; --fs-1: 0.72rem; --fs-2: 0.82rem; --fs-3: 0.95rem; --sp-1: 0.25rem; --sp-2: 0.5rem; --sp-3: 0.75rem; --sp-4: 1rem; --r: 0.55rem; }
+			#app { display: grid; grid-template-columns: minmax(0, 1fr); height: 100vh; }
+			/* The navigation sits on top: one tab strip in the title bar, Karte first,
+			   then the slides; the tools (Kopplung, Erscheinungsbild, Vollbild) at the
+			   right next to Daten. Below 1180 px the tabs keep their glyphs only. */
+			#viewModes { display: flex; gap: 2px; padding: 2px; margin: 0 var(--sp-2); border-radius: var(--r); background: color-mix(in srgb, CanvasText 6%, transparent); flex: none; }
+			#viewModes button { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.55rem; border: 0; border-radius: calc(var(--r) - 0.15rem); background: transparent; color: var(--secondary); font-size: var(--fs-1); font-weight: 600; white-space: nowrap; line-height: 1.2; }
+			#viewModes button .glyph { font-size: 0.95rem; line-height: 1; }
+			#viewModes button:hover { background: color-mix(in srgb, CanvasText 8%, transparent); color: var(--ink); }
+			#viewModes button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+			/* Before data arrives the strip stays visible but dimmed: it announces the views. */
+			#viewModes.hidden { display: flex !important; }
+			#viewModes.hidden button { opacity: 0.35; pointer-events: none; }
+			#titleTools { display: flex; gap: var(--sp-1); flex: none; }
+			#titleTools button { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.25rem 0.5rem; font-size: var(--fs-1); white-space: nowrap; }
+			#titleTools button .glyph { font-size: 0.95rem; line-height: 1; }
+			#titlebar h1 .brand { display: none; font-weight: 700; letter-spacing: 0.04em; }
+			/* Staggered: below 1400 px the title and the tools shrink to their glyphs, below 1100 px the tabs too. */
+			@media (max-width: 1560px) { #titlebar h1 .label, #titleTools button .label { display: none; } #titlebar h1 .brand { display: inline; } }
+			@media (max-width: 1400px) { #jumpInput { width: 10rem; } }
+			@media (max-width: 1100px) { #viewModes button .label { display: none; } }
+			#coupleToggle[aria-pressed="true"] { color: var(--accent); }
+			#titlebar {
+				display: flex;
+				align-items: center;
+				gap: var(--sp-2);
+				min-height: 2.6rem;
+				padding: var(--sp-1) var(--sp-3);
+				background: var(--titlebar);
+				border-bottom: 1px solid var(--hairline);
+				backdrop-filter: blur(24px) saturate(1.5);
+			}
+			#titlebar h1 { margin: 0; font-size: var(--fs-3); }
+			#status { flex: 1 1 10rem; min-width: 0; text-align: right; font-size: var(--fs-1); color: var(--secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			/* ---- Menüs: ein Knopf, ein Blatt darunter ---- */
+			.menu { position: relative; }
+			.menu > summary { list-style: none; cursor: pointer; padding: 0.3rem 0.6rem; border: 1px solid var(--hairline); border-radius: var(--r); background: var(--button); font-size: var(--fs-2); white-space: nowrap; user-select: none; }
+			.menu > summary::-webkit-details-marker { display: none; }
+			.menu[open] > summary { background: var(--button-active); }
+			.menu-body { position: absolute; top: calc(100% + 0.3rem); right: 0; z-index: 40; min-width: 14rem; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); background: Canvas; border: 1px solid var(--hairline); border-radius: 0.65rem; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+			.menu-body.row { display: grid; grid-template-columns: auto auto; align-items: center; gap: var(--sp-2) var(--sp-4); min-width: 0; width: max-content; }
+			.menu-body.row .gwb-input { justify-content: space-between; }
+			/* Open, the leaf lives in the top layer (Popover API): nothing clips
+			   it (the map panel paints contained), nothing covers it (the welcome
+			   card, the panels), and it may be wider than its bar. Script sets top
+			   and left under the summary; the absolute rules above are the
+			   fallback without popover support. */
+			.menu-body:popover-open { position: fixed; inset: auto; margin: 0; max-width: calc(100vw - 1rem); overflow: auto; color: inherit; }
+			.menu-item, .menu-body > .menu-item, .menu-body label.menu-item { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 0.4rem 0.6rem; border: 0; border-radius: var(--r); background: transparent; color: inherit; font-size: var(--fs-2); text-align: left; cursor: pointer; white-space: nowrap; }
+			.menu-item:hover { background: color-mix(in srgb, CanvasText 7%, transparent); }
+			.menu-item:disabled { opacity: 0.4; cursor: default; }
+			.menu-item.hidden { display: none; }
+			#assignmentTools { display: contents; }
+			#assignmentTools.hidden { display: none; }
+			.menu-body .picture-export { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; }
+			.menu-body .picture-export button { text-align: left; border: 0; background: transparent; padding: 0.4rem 0.6rem; border-radius: var(--r); font-size: var(--fs-2); }
+			.menu-body .picture-export button:hover { background: color-mix(in srgb, CanvasText 7%, transparent); }
+			/* ---- Bühne und Willkommen ---- */
+			/* One definite row: without it the workspace sat in an auto row that
+			   grew with the tallest pane (a long Inbox), the percent heights below
+			   resolved against nothing, and the main view outgrew the window. */
+			#stage { position: relative; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+			#dropzone { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; padding: var(--sp-4); background: var(--window); }
+			#dropzone.loaded { display: none; }
+			.welcome { max-width: 34rem; padding: 2rem 2.2rem; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 1rem; background: var(--surface); text-align: center; box-shadow: 0 1rem 3rem rgba(0,0,0,0.08); }
+			body.dragover .welcome { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+			.welcome-eyebrow { margin: 0 0 var(--sp-2); font: 600 var(--fs-1) system-ui, sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+			.welcome h2 { margin: 0 0 var(--sp-2); font-size: 1.45rem; line-height: 1.2; }
+			.welcome-sub { margin: 0 auto var(--sp-3); max-width: 30rem; color: var(--secondary); font-size: var(--fs-2); line-height: 1.5; }
+			.welcome-formats { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-1); margin-bottom: var(--sp-4); }
+			.welcome-formats span { padding: 0.15rem 0.55rem; border-radius: 999px; border: 1px solid var(--hairline); font-size: var(--fs-1); color: var(--secondary); }
+			.welcome-actions { display: flex; justify-content: center; gap: var(--sp-2); }
+			.welcome .hint { margin-top: var(--sp-2); font-size: var(--fs-1); color: var(--secondary); }
+			.import-button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+			#sessionOffer { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--sp-2); margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--hairline); font-size: var(--fs-2); }
+			#sessionOffer.hidden { display: none; }
+			/* ---- Werkzeugleisten ---- */
+			.chip { padding: 0.1rem 0.55rem; border-radius: 999px; border: 1px solid var(--hairline); font-size: var(--fs-1); color: var(--secondary); max-width: 22rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			.chip:empty { display: none; }
+			.tb-spacer { flex: 1; }
+			.tb-group { display: inline-flex; }
+			.tb-group button { border-radius: 0; padding: 0.3rem 0.55rem; }
+			.tb-group button:first-child { border-radius: var(--r) 0 0 var(--r); }
+			.tb-group button:last-child { border-radius: 0 var(--r) var(--r) 0; }
+			.tb-group button + button { border-left: 0; }
+			/* The picture bars, one rule for all five. Every slide bar reads the
+			   same way: title · code · note on the left, then a spacer, then the
+			   controls in one order — Ansicht · Annahmen ▾ · Export ▾ · × — and the
+			   legend on a row of its own. The map bar keeps its own layout. */
+			#mapToolbar, .slide-toolbar {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: var(--sp-2) var(--sp-3);
+				padding: var(--sp-2) var(--sp-3);
+				border-bottom: 1px solid var(--hairline);
+				background: var(--surface);
+				font: var(--fs-2)/1.3 system-ui, sans-serif;
+			}
+			#mapToolbar strong, .slide-toolbar strong { font-size: var(--fs-2); white-space: nowrap; }
+			#mapToolbar button, .slide-toolbar button { font-size: var(--fs-2); padding: 0.3rem 0.6rem; }
+			.slide-note, #spurplanHint { color: var(--secondary); font-size: var(--fs-1); min-width: 0; }
+			/* The note yields first: a zero flex basis keeps it from forcing a
+			   wrap, it grows to its own text and no further, and shrinks to an
+			   ellipsis (full text in its tooltip) before the controls would move
+			   to a second row. */
+			.slide-note { flex: 1 1 0; max-width: max-content; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.slide-note:empty { display: none; }
+			#spurplanHint { cursor: help; }
+			/* The handling hint yields before the note does: below 1280 px it
+			   lives on in the title's tooltip only. */
+			@media (max-width: 1280px) { #spurplanHint { display: none; } }
+			.slide-controls { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; margin-left: auto; }
+			.slide-toolbar .legend { flex-basis: 100%; }
+			.slide-toolbar .legend:empty { display: none; }
+			.slide-toolbar .menu.hidden { display: none; }
+			#diagramCursor { font-size: var(--fs-1); }
+			#railwayOpacityControl.menu-item { display: flex; }
+			#railwayOpacityControl.hidden { display: none; }
+			#precisionKind.menu-item { border: 1px solid var(--hairline); background: var(--surface); }
+			#rejectListToggle { color: var(--accent); }
+			#rejectListToggle[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 16%, Canvas); }
+			/* Nothing in the chain may ask for more width than the pane: the
+			   diagram's 1000-unit SVG is the one that used to. */
+			main, #stage, #workspace, #diagramPanel, #diagramScroll { min-width: 0; }
+			main, #stage, #workspace { grid-template-columns: minmax(0, 1fr); }
+			main { overflow: hidden; }
+			#diagram { max-width: 100%; }
+			.raw-file-title { display: flex; align-items: baseline; gap: var(--sp-2); }
+			.raw-file-title > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.raw-file-title .workspace-section-count { flex: none; white-space: nowrap; }
+			.inbox-drag-hint { margin: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-1); color: var(--secondary); border: 1px dashed var(--hairline); border-radius: var(--r); background: transparent; }
+			button,
+			select,
+			input { font: inherit; }
+			button {
+				border: 1px solid var(--hairline);
+				border-radius: 0.55rem;
+				padding: 0.38rem 0.68rem;
+				background: var(--button);
+				color: inherit;
+				cursor: pointer;
+			}
+			button:hover { background: var(--button-hover); }
+			button:active { background: var(--button-active); }
+			#titlebar h1 { margin-right: var(--sp-2); }
+			#titlebar button:disabled { opacity: 0.45; }
+			#diagramModes button[aria-pressed="true"],
+			#diagramPresentation button[aria-pressed="true"] {
+				background: Highlight;
+				color: HighlightText;
+			}
+			#sessionOfferText { opacity: 0.85; }
+			button.import-button { font: inherit; font-size: 0.86rem; color: inherit; }
+			#files,
+			#folderFiles,
+			#assignmentImport {
+				position: absolute;
+				width: 1px;
+				height: 1px;
+				overflow: hidden;
+				opacity: 0;
+			}
+			.import-button {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.38rem 0.68rem;
+				border: 1px solid var(--hairline);
+				border-radius: 0.55rem;
+				background: var(--glass);
+				cursor: pointer;
+				font-size: 0.86rem;
+			}
+			#status {
+				min-height: 1.25rem;
+				font-family: system-ui, sans-serif;
+			}
+			#status.error {
+				color: #c62828;
+			}
+			#importProgress { position: relative; height: 1.15rem; margin: 0; border-radius: 0.4rem; background: color-mix(in srgb, GrayText 18%, transparent); overflow: hidden; font: 0.74rem system-ui, sans-serif; }
+			#importProgress.hidden { display: none; }
+			#importProgressBar { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); opacity: 0.55; transition: width 120ms linear; }
+			#importProgressText { position: relative; display: block; padding: 0 0.55rem; line-height: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+			#viewer {
+				display: grid;
+				grid-template-columns: clamp(13rem, 21vw, 17.5rem) minmax(0, 1fr) clamp(12rem, 19vw, 16rem);
+				grid-template-rows: minmax(0, 1fr);
+				min-height: 0;
+				height: 100%;
+				position: relative;
+				border: 0;
+				border-radius: 0;
+				background: var(--surface);
+				overflow: hidden;
+			}
+			#workspace {
+				display: grid;
+				grid-template-rows: minmax(0, 1fr);
+				min-height: 0;
+				height: 100%;
+			}
+			/* Slides: every picture but the map is a glass panel over the whole
+			   viewer, Inbox and Outbox included, one at a time. The map is the stage and stays
+			   where it is; Esc, the × or "Karte" in the rail put the slide away.
+			   A slide is as tall as its picture and no taller than the room it
+			   has (the old fixed height left two thirds of Spurplan, Lieferung and
+			   Verknüpfung blank). It hangs from a fixed top edge, so the bar stays
+			   put when the slides change; a picture taller than the room scrolls
+			   inside. The table view keeps the full height, its Fächer divide it. */
+			#viewer > .slide { --slide-top: 2.5rem; --slide-room: min(calc(100% - 2 * var(--slide-top)), 52rem); position: relative; grid-column: 1 / -1; grid-row: 1; z-index: 5; align-self: start; justify-self: center; margin-top: var(--slide-top); width: min(96%, 88rem); height: auto; max-height: var(--slide-room); display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--hairline); border-radius: 0.85rem; box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.22); background: var(--panel-glass); backdrop-filter: blur(20px) saturate(1.2); }
+			#viewer > .slide.hidden { display: none; }
+			#viewer > #diagramPanel:has(#diagramTable:not(.hidden)) { height: var(--slide-room); }
+			/* Under a slide the Inbox, Outbox and map dim to a quiet backdrop so
+			   their edges do not read as stray text beside the panel; a click on
+			   the backdrop puts the slide away, like Esc. */
+			#slideScrim { grid-column: 1 / -1; grid-row: 1; z-index: 4; background: rgba(0, 0, 0, 0.3); backdrop-filter: blur(5px); cursor: pointer; }
+			#slideScrim.hidden { display: none; }
+			#viewer:has(#slideScrim:not(.hidden)) .edge-toggle { display: none; }
+			#toggleDiagram, #diagramResizeHandle { display: none; }
+			.slide-close { margin-left: var(--sp-2); min-width: 2rem; padding: 0.25rem 0.5rem; }
+			#workspace.mode-listing {
+				grid-template-rows: minmax(0, 1fr);
+			}
+			#workspace.mode-split {
+				grid-template-rows: minmax(0, 3fr) minmax(12rem, 2fr);
+				gap: 0.5rem;
+			}
+			#workspace.mode-map {
+				grid-template-rows: minmax(0, 1fr);
+			}
+			#workspace.mode-crs,
+			#workspace.mode-links,
+			#workspace.mode-delivery,
+			#workspace.mode-spurplan {
+				grid-template-rows: minmax(0, 1fr);
+			}
+			#spurplanPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				grid-column: 2;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				background: Canvas;
+			}
+			.spurplan-svg { touch-action: pan-y; }
+			.spurplan-legend-item { --swatch: var(--speed-color); }
+			#spurplanScroll { overflow: auto; padding: 0.4rem 0.6rem; }
+			.spurplan-svg { display: block; }
+			.spurplan-speed { stroke-width: 3; }
+			.spurplan-speed:hover { stroke-width: 5; }
+			.spurplan-halo { stroke: Highlight; stroke-width: 9; opacity: 0.35; pointer-events: none; }
+			.spurplan-stub { stroke: GrayText; stroke-width: 1.5; stroke-dasharray: 3 3; }
+			.spurplan-junction-label { font-size: 9.5px; fill: #b8329a; }
+			#deliveryPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				grid-column: 2;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				background: Canvas;
+			}
+			.delivery-legend-item { --swatch: var(--delivery-color); }
+			.delivery-alignment { --delivery-color: #2b6cb0; }
+			.delivery-profile { --delivery-color: #2f855a; }
+			.delivery-cant { --delivery-color: #b7791f; }
+			.delivery-staeq { --delivery-color: #6b7280; }
+			.delivery-junction { --delivery-color: #b8329a; }
+			#deliveryScroll { overflow: auto; padding: 0.4rem 0.6rem; }
+			.delivery-svg { display: block; }
+			.delivery-header { font: 600 11px system-ui, sans-serif; fill: CanvasText; }
+			.delivery-axis line { stroke: GrayText; stroke-width: 0.8; }
+			.delivery-axis text { font: 9.5px system-ui, sans-serif; fill: GrayText; }
+			.delivery-grid { stroke: color-mix(in srgb, GrayText 25%, transparent); stroke-width: 0.6; }
+			.delivery-row text { font: 11px system-ui, sans-serif; fill: CanvasText; cursor: pointer; }
+			.delivery-row.delivery-selected text { font-weight: 700; }
+			.delivery-row rect { cursor: pointer; }
+			.delivery-row .delivery-alignment { fill: var(--delivery-color); }
+			.delivery-row .delivery-profile { fill: var(--delivery-color); }
+			.delivery-row .delivery-cant { fill: var(--delivery-color); }
+			.delivery-row .delivery-staeq { fill: var(--delivery-color); }
+			.delivery-row .delivery-junction { fill: var(--delivery-color); cursor: pointer; }
+			.delivery-row .delivery-local { fill: color-mix(in srgb, #2b6cb0 55%, transparent); }
+			#linksPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				grid-column: 2;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				background: Canvas;
+			}
+			.links-legend-item { --swatch: var(--link-color); }
+			#linksScroll { overflow: auto; padding: 0.4rem 0.6rem; }
+			.links-svg { display: block; }
+			.links-header { font: 600 11px system-ui, sans-serif; fill: GrayText; }
+			.links-node text { font: 11px system-ui, sans-serif; fill: CanvasText; cursor: pointer; }
+			.links-node.links-selected text { font-weight: 700; }
+			.links-node.links-unlinked text { fill: #b42318; }
+			.links-node.links-alignment rect { fill: #2b6cb0; }
+			.links-node.links-profile rect { fill: #2f855a; }
+			.links-node.links-cant rect { fill: #b7791f; }
+			.links-node.links-staEq rect { fill: #6b7280; }
+			.links-arc { fill: none; stroke: var(--link-color); stroke-width: 1.2; opacity: 0.55; cursor: pointer; }
+			.links-arc.links-arc-selected { stroke-width: 2.2; opacity: 1; }
+			.links-svg:has(.links-arc-selected) .links-arc:not(.links-arc-selected) { opacity: 0.16; }
+			/* Hover beats the selection's fading: the hovered arcs at full strength, the rest back. */
+			.links-svg.links-hovering .links-arc:not(.links-arc-hover) { opacity: 0.1; }
+			.links-svg .links-arc.links-arc-hover { opacity: 1; stroke-width: 2.4; }
+			.links-node:hover text, .links-node.links-row-hover text { font-weight: 700; }
+			.links-reason-identity { --link-color: #2b6cb0; }
+			.links-reason-relation { --link-color: #0f8a8a; }
+			.links-reason-file { --link-color: #3d9970; }
+			.links-reason-stem { --link-color: #7b5cbf; }
+			.links-reason-name { --link-color: #c77c02; }
+			.links-reason-projection { --link-color: #2f855a; }
+			.links-reason-strecke { --link-color: #4a6fa5; }
+			.links-reason-touch { --link-color: #8a8f98; }
+			.links-reason-user { --link-color: #b8329a; }
+			#mapPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				position: relative;
+				min-height: 0;
+				min-width: 0;
+				overflow: hidden;
+				contain: layout paint;
+				isolation: isolate;
+				z-index: 1;
+				grid-column: 2;
+				grid-row: 1;
+				background: var(--map-ground);
+			}
+			/* One legend for every picture: swatch, label, the small type step,
+			   secondary ink. The swatch is a line, a box, a dot or a triangle
+			   per picture; on the map the legend floats as a card. */
+			.legend { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); font-size: var(--fs-1); line-height: 1.3; color: var(--secondary); }
+			.legend-item { position: relative; padding-left: 1.05rem; white-space: nowrap; }
+			.legend-item::before { content: ""; position: absolute; left: 0; top: 50%; width: 0.75em; height: 0.28em; border-radius: 1px; background: var(--swatch); transform: translateY(-50%); }
+			.legend-item.swatch-box::before { width: 0.62em; height: 0.58em; border-radius: 2px; }
+			.legend-item.swatch-dot::before { width: 0.6em; height: 0.6em; border-radius: 50%; }
+			.legend-item.swatch-tri::before { width: 0; height: 0; border-radius: 0; background: none; border-left: 0.34em solid transparent; border-right: 0.34em solid transparent; border-bottom: 0.6em solid var(--swatch); }
+			.legend-source { flex-basis: 100%; margin-top: var(--sp-1); font-size: var(--fs-0); color: var(--secondary); }
+			.legend-card { position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 3; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--hairline); border-radius: var(--r); background: var(--panel-glass); backdrop-filter: blur(12px); box-shadow: 0 0.3rem 1rem rgba(0,0,0,0.12); color: CanvasText; pointer-events: none; }
+			#diagramPanel {
+				display: grid;
+				grid-template-rows: 0.45rem auto minmax(0, 1fr);
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				grid-column: 1 / -1;
+				grid-row: 2;
+				border-top: 1px solid GrayText;
+				position: relative;
+				z-index: 3;
+			}
+			#diagramResizeHandle {
+				cursor: row-resize;
+				touch-action: none;
+				background: transparent;
+				position: relative;
+			}
+			#diagramResizeHandle::after {
+				content: "";
+				position: absolute;
+				left: 46%;
+				right: 46%;
+				top: 0.16rem;
+				height: 0.12rem;
+				border-radius: 999px;
+				background: color-mix(in srgb, GrayText 55%, transparent);
+			}
+			#diagramResizeHandle:hover::after,
+			#diagramResizeHandle:focus-visible::after,
+			#viewer.diagram-resizing #diagramResizeHandle::after {
+				left: 40%;
+				right: 40%;
+				background: Highlight;
+			}
+			#diagramCode {
+				padding: 0.1rem 0.55rem;
+				border: 1px solid var(--hairline);
+				border-radius: 999px;
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				font-weight: 400;
+				white-space: nowrap;
+			}
+			#diagramCode:empty {
+				display: none;
+			}
+			/* Three stacked figures can be taller than any panel. Render the SVG at
+			   its natural height (width-driven, from the viewBox) inside a scrolling
+			   box instead of letting a "meet" downscale shrink all three to fit --
+			   measured 0.39x on a full 7L+IVHW+GWB stack, i.e. 5px labels. */
+			#diagramScroll {
+				min-height: 0;
+				overflow-y: auto;
+				overflow-x: hidden;
+				background: color-mix(in srgb, CanvasText 3%, Canvas);
+			}
+			#diagram {
+				display: block;
+				width: 100%;
+				max-width: 1250px;
+				margin: 0 auto;
+				height: auto;
+			}
+			/* Tabellenansicht: die Reihen stehen nebeneinander in einem Raster,
+			   das sich der Breite anpasst (eine Spalte je Reihe, so viele wie
+			   hineinpassen), statt als eine schmale Spalte untereinander. Jede
+			   Reihe scrollt in ihrem Fach (eine Fahrzeitreihe hat 600 Zeilen);
+			   Überschrift und Kopfzeile bleiben dabei oben stehen. Passen mehr
+			   Fächer-Zeilen als hoch ist, scrollt der Rahmen als Ganzes. */
+			#diagramTable {
+				--table-bg: color-mix(in srgb, CanvasText 3%, Canvas);
+				width: 100%;
+				height: 100%;
+				overflow: auto;
+				padding: 0 var(--sp-4) var(--sp-3);
+				background: var(--table-bg);
+				font-family: system-ui, sans-serif;
+				box-sizing: border-box;
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+				grid-auto-rows: minmax(14rem, 1fr);
+				gap: var(--sp-3) 1.5rem;
+			}
+			/* The right padding keeps the value column off a classic (Windows)
+			   scrollbar, which takes its width out of the Fach. */
+			.diagram-table-section { min-width: 0; min-height: 0; overflow: auto; padding-right: var(--sp-2); }
+			.diagram-table-section strong {
+				position: sticky;
+				top: 0;
+				z-index: 1;
+				display: block;
+				padding: var(--sp-3) 0 0.3rem;
+				background: var(--table-bg);
+				font-size: 0.78rem;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.diagram-table-empty {
+				color: GrayText;
+				font-size: 0.76rem;
+			}
+			#diagramTable > .diagram-table-empty { grid-column: 1 / -1; align-self: start; padding-top: var(--sp-3); }
+			table.diagram-table {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.74rem;
+			}
+			table.diagram-table th,
+			table.diagram-table td {
+				padding: 0.15rem 0.6rem 0.15rem 0;
+				text-align: right;
+				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
+			}
+			table.diagram-table th:first-child,
+			table.diagram-table td:first-child { text-align: left; width: 6.5rem; }
+			table.diagram-table th:last-child,
+			table.diagram-table td:last-child { padding-right: 0; }
+			table.diagram-table th {
+				position: sticky;
+				top: 2.05rem;
+				z-index: 1;
+				background: var(--table-bg);
+				color: GrayText;
+				font-weight: 600;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 30%, transparent);
+			}
+			table.diagram-table tr:nth-child(odd) td { background: color-mix(in srgb, CanvasText 2.5%, transparent); }
+			.diagram-axis,
+			.diagram-grid {
+				stroke: GrayText;
+				vector-effect: non-scaling-stroke;
+			}
+			.diagram-grid { opacity: 0.2; }
+			.diagram-band {
+				fill: color-mix(in srgb, CanvasText 2.5%, Canvas);
+			}
+			.diagram-band:nth-of-type(even) {
+				fill: transparent;
+			}
+			.diagram-jump {
+				stroke: #8a5a00;
+				stroke-width: 1.5;
+				stroke-dasharray: 4 3;
+				vector-effect: non-scaling-stroke;
+			}
+			.diagram-series {
+				fill: none;
+				stroke-width: 2.5;
+				vector-effect: non-scaling-stroke;
+			}
+			.diagram-curvature { stroke: #d14c32; }
+			.diagram-height { stroke: #2866c7; }
+			.diagram-cant { stroke: #2e8b57; }
+			.diagram-cant-ramp { stroke: #b7791f; stroke-width: 6; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
+			.diagram-spacing { stroke: #8e44ad; }
+			.diagram-speed { stroke: #7a2ea6; }
+			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
+			.diagram-fzk-speed { stroke: #1f7a4d; }
+			.diagram-fzk-speed-potential { stroke: #1f7a4d; stroke-dasharray: 6 4; opacity: 0.7; }
+			.diagram-fzk-time { stroke: #b5601a; }
+			.diagram-fzk-time-potential { stroke: #b5601a; stroke-dasharray: 6 4; opacity: 0.7; }
+			.ivhw-rail-a { stroke: #2866c7; fill: #2866c7; }
+			.ivhw-rail-b { stroke: #b5601a; fill: #b5601a; }
+			.diagram-label {
+				fill: CanvasText;
+				font: 13px system-ui, sans-serif;
+			}
+			.diagram-muted { fill: GrayText; }
+			.diagram-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
+			.diagram-cursor-label { fill: #d0433f; pointer-events: none; }
+			#diagramCursor { color: #d0433f; font-variant-numeric: tabular-nums; white-space: nowrap; }
+			.map-cursor circle { fill: #d0433f; stroke: var(--stone-halo); stroke-width: 1.5; pointer-events: none; }
+			.delivery-cursor { stroke: #d0433f; stroke-width: 1.2; pointer-events: none; }
+			.diagram-figure-strip { fill: color-mix(in srgb, CanvasText 7%, Canvas); }
+			.diagram-figure-title { font-weight: 650; font-size: 14px; }
+			.diagram-figure-sub { font-size: 11px; }
+			.diagram-footnote { font-size: 11px; }
+			.diagram-footnote-head { font-weight: 600; }
+			.diagram-axis-value { font-size: 11px; font-variant-numeric: tabular-nums; }
+			#mapToolbar {
+				position: relative;
+				z-index: 3;
+			}
+			#mapToolbar strong { margin-right: 0; }
+			#railwayOpacityControl {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35rem;
+				white-space: nowrap;
+			}
+			#railwayOpacity {
+				width: 6rem;
+			}
+			#mapFilterToggle[aria-pressed="true"] {
+				background: color-mix(in srgb, Highlight 16%, Canvas);
+				border-color: Highlight;
+			}
+			#mapFilterPanel {
+				position: absolute;
+				top: 100%;
+				right: 0.65rem;
+				z-index: 4;
+				width: 15rem;
+				max-height: 70vh;
+				overflow-y: auto;
+				padding: 0.6rem 0.75rem;
+				border: 1px solid GrayText;
+				border-radius: 0.5rem;
+				background: var(--surface);
+				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+				font-family: system-ui, sans-serif;
+				font-size: 0.8rem;
+			}
+			#mapFilterPanel fieldset {
+				border: 0;
+				padding: 0;
+				margin: 0 0 0.65rem;
+			}
+			#mapFilterPanel fieldset:last-child {
+				margin-bottom: 0;
+			}
+			#mapFilterPanel legend {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+				padding: 0;
+				margin-bottom: 0.3rem;
+				font-weight: 650;
+				font-size: 0.72rem;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				color: var(--secondary);
+			}
+			#mapFilterPanel legend button {
+				margin-left: auto;
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.1rem 0.4rem;
+				font: inherit;
+				font-size: 0.68rem;
+				text-transform: none;
+				letter-spacing: normal;
+				cursor: pointer;
+			}
+			#mapFilterPanel legend button + button {
+				margin-left: 0.25rem;
+			}
+			#mapFilterPanel label {
+				display: flex;
+				align-items: center;
+				gap: 0.4rem;
+				padding: 0.15rem 0;
+				cursor: pointer;
+			}
+			.map-filter-options {
+				max-height: 12rem;
+				overflow-y: auto;
+			}
+			.map-filter-options label span {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			#rejectListToggle[aria-pressed="true"] {
+				background: color-mix(in srgb, Highlight 16%, Canvas);
+				border-color: Highlight;
+			}
+			#rejectListCount {
+				display: inline-block;
+				min-width: 1.1em;
+				padding: 0 0.3em;
+				border-radius: 999px;
+				background: #d32f2f;
+				color: #fff;
+				font-size: 0.72rem;
+				font-weight: 650;
+				text-align: center;
+			}
+			#rejectListCount[data-empty="true"] {
+				background: color-mix(in srgb, GrayText 35%, transparent);
+			}
+			#rejectListPanel {
+				position: absolute;
+				top: 100%;
+				right: 0.65rem;
+				z-index: 4;
+				width: 19rem;
+				max-height: 70vh;
+				overflow-y: auto;
+				padding: 0.5rem;
+				border: 1px solid GrayText;
+				border-radius: 0.5rem;
+				background: var(--surface);
+				box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+				font-family: system-ui, sans-serif;
+				font-size: 0.8rem;
+			}
+			.reject-row {
+				display: grid;
+				grid-template-columns: 0.5rem 1fr auto;
+				align-items: center;
+				gap: 0.5rem;
+				width: 100%;
+				padding: 0.3rem 0.4rem;
+				border: 0;
+				border-radius: 0.35rem;
+				background: transparent;
+				color: inherit;
+				font: inherit;
+				text-align: left;
+				cursor: pointer;
+			}
+			.reject-row:hover {
+				background: color-mix(in srgb, Highlight 10%, transparent);
+			}
+			.reject-row-swatch {
+				width: 0.5rem;
+				height: 0.5rem;
+				border-radius: 999px;
+				flex-shrink: 0;
+			}
+			.reject-row-station {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+				color: var(--secondary);
+			}
+			.reject-row-value {
+				font-variant-numeric: tabular-nums;
+				font-weight: 650;
+				white-space: nowrap;
+			}
+			#rejectListPanel .reject-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.5rem;
+				padding: 0.1rem 0.4rem 0.5rem;
+				font-size: 0.72rem;
+				color: var(--secondary);
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				font-weight: 650;
+			}
+			.reject-export {
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.15rem 0.5rem;
+				font: inherit;
+				font-size: 0.68rem;
+				text-transform: none;
+				letter-spacing: normal;
+				font-weight: 500;
+				cursor: pointer;
+			}
+			.reject-export:hover {
+				background: color-mix(in srgb, Highlight 12%, transparent);
+				border-color: Highlight;
+			}
+			#rejectListPanel .reject-scope-note {
+				padding: 0.2rem 0.4rem 0.5rem;
+				color: var(--secondary);
+				font-size: 0.72rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 30%, transparent);
+				margin-bottom: 0.3rem;
+			}
+			#rejectListPanel .reject-empty {
+				padding: 0.5rem 0.4rem;
+				color: var(--secondary);
+			}
+			#multi2d {
+				grid-column: 1;
+				grid-row: 2;
+				width: 100%;
+				height: 100%;
+				background: color-mix(in srgb, CanvasText 3%, Canvas);
+				touch-action: none;
+				cursor: grab;
+			}
+			#multi2d.panning {
+				cursor: grabbing;
+			}
+			#maplibreMap {
+				position: relative;
+				inset: auto;
+				grid-column: 1;
+				grid-row: 2;
+				width: 100%;
+				height: 100%;
+				min-width: 0;
+				min-height: 0;
+				overflow: hidden;
+				z-index: 1;
+			}
+			#crsNote {
+				margin-left: auto;
+				color: GrayText;
+				font-size: 0.8rem;
+			}
+			.tile-consent { position: absolute; left: 50%; top: 50%; z-index: 6; width: min(26rem, calc(100% - 2rem)); padding: var(--sp-4); border: 1px solid var(--hairline); border-radius: var(--r); background: var(--panel-glass); backdrop-filter: blur(14px); box-shadow: 0 1rem 2.5rem rgba(0,0,0,0.18); transform: translate(-50%, -50%); font-size: var(--fs-2); line-height: 1.45; }
+			.tile-consent p { margin: 0 0 var(--sp-2); }
+			.tile-consent-title { font-weight: 650; font-size: var(--fs-3); }
+			.tile-consent code { font-size: var(--fs-1); }
+			.tile-consent-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-3) 0 var(--sp-2); }
+			.tile-consent-hint { color: var(--secondary); font-size: var(--fs-1); }
+			.tile-source { margin: var(--sp-2) 0; font-size: var(--fs-1); }
+			.tile-source > summary { cursor: pointer; color: var(--secondary); }
+			.tile-source label { display: grid; gap: 0.15rem; margin-top: var(--sp-2); color: var(--secondary); }
+			.tile-source input { width: 100%; min-width: 0; padding: 0.25rem 0.4rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: CanvasText; font: inherit; font-size: var(--fs-1); }
+			.tile-source-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+			#mapEmpty {
+				position: relative;
+				inset: auto;
+				grid-column: 1;
+				grid-row: 2;
+				display: grid;
+				place-items: center;
+				padding: 2rem;
+				text-align: center;
+				background: color-mix(in srgb, Canvas 92%, transparent);
+				font-family: system-ui, sans-serif;
+				pointer-events: none;
+				z-index: 2;
+			}
+			.map-object {
+				fill: none;
+				stroke: currentColor;
+				stroke-width: 1.8;
+				stroke-linecap: round;
+				stroke-linejoin: round;
+				filter: drop-shadow(0 0 1.25px rgba(12, 18, 24, 0.9));
+				vector-effect: non-scaling-stroke;
+				cursor: pointer;
+			}
+			.map-object:hover {
+				stroke-width: 3;
+			}
+			.map-object.active {
+				stroke: Highlight;
+				stroke-width: 4;
+			}
+			.map-object.kilometer-line {
+				stroke-dasharray: 10 6;
+			}
+			.km-lines-hidden .map-object.kilometer-line { display: none; }
+			.km-lines-hidden .km-stones { display: none; }
+			.km-stones { pointer-events: none; }
+			.km-stone-minor { fill: #1d5c8a; opacity: 0.75; }
+			.km-stone-major circle { fill: var(--stone-halo); stroke: #1d5c8a; stroke-width: 2; }
+			.km-stone-major text { font: 600 11px system-ui, sans-serif; fill: #4d9be0; paint-order: stroke; stroke: var(--stone-halo); stroke-width: 3px; }
+			.km-stone-label { font: 600 11px system-ui, sans-serif; color: #4d9be0; text-shadow: 0 0 3px var(--stone-halo), 0 0 3px var(--stone-halo), 0 0 3px var(--stone-halo); pointer-events: none; }
+			.km-labels-hidden .km-stone-label { display: none; }
+			.spurplan-edge { stroke: #4d9be0; stroke-width: 2; cursor: pointer; }
+			.spurplan-edge:hover { stroke-width: 4; }
+			.spurplan-selected { stroke: Highlight; stroke-width: 4; }
+			.spurplan-node { fill: Canvas; stroke: #4d9be0; stroke-width: 1.5; }
+			.spurplan-kreuzung, .spurplan-knoten { fill: #1d5c8a; }
+			.spurplan-end { stroke: #1d5c8a; stroke-width: 2; }
+			.spurplan-label { font-size: 11px; }
+			.spurplan-node { cursor: pointer; }
+			.spurplan-active { fill: Highlight; stroke: Highlight; }
+			.outbox-junction-active { background: color-mix(in srgb, Highlight 18%, Canvas); }
+			.map-object.inferred-crs {
+				color: #b26a00;
+				opacity: 0.5;
+				stroke-dasharray: 7 5;
+			}
+			.map-object.inferred-crs.active {
+				opacity: 0.62;
+			}
+			.map-object.quality-limited {
+				filter: drop-shadow(0 0 2.8px rgba(255, 69, 58, 0.95));
+			}
+			.map-object.quality-unknown {
+				filter: drop-shadow(0 0 2.4px rgba(142, 142, 147, 0.9));
+			}
+			.map-object.file-0 { color: #2866c7; }
+			.map-object.file-1 { color: #c34f21; }
+			.map-object.file-2 { color: #2e8b57; }
+			.map-object.file-3 { color: #8b55b5; }
+			.map-object.file-4 { color: #aa7a00; }
+			.map-object.file-5 { color: #25858b; }
+			.geo-grid {
+				stroke: GrayText;
+				stroke-width: 1;
+				opacity: 0.22;
+				vector-effect: non-scaling-stroke;
+			}
+			#tables {
+				overflow: auto;
+				min-height: 0;
+				grid-column: 1;
+				grid-row: 1;
+				border-right: 1px solid var(--hairline);
+				background: var(--sidebar);
+				position: relative;
+				z-index: 3;
+			}
+			#outbox {
+				grid-column: 3;
+				grid-row: 1;
+				min-width: 0;
+				min-height: 0;
+				overflow: auto;
+				border-left: 1px solid var(--hairline);
+				background: var(--sidebar);
+				font-family: system-ui, sans-serif;
+				position: relative;
+				z-index: 3;
+			}
+			.box-head {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: var(--sp-2) var(--sp-3);
+				border-bottom: 1px solid var(--hairline);
+				font-size: var(--fs-1);
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--secondary);
+			}
+			#outboxContent { padding: 0.8rem; }
+			#outboxContent strong,
+			#outboxContent span { display: block; }
+			#outboxContent span { margin-top: var(--sp-1); color: var(--secondary); font-size: var(--fs-1); }
+			#outboxContent button { margin-top: 0.8rem; }
+			#outboxContent.outbox-tree { padding: 0; }
+			.outbox-frame {
+				border-bottom: 1px solid color-mix(in srgb, GrayText 28%, transparent);
+			}
+			.outbox-frame > summary {
+				padding: var(--sp-2) var(--sp-3);
+				font: 650 var(--fs-2)/1.3 system-ui, sans-serif;
+				cursor: pointer;
+			}
+			#outboxContent .outbox-frame-name { display: inline; margin: 0; color: inherit; font-size: inherit; }
+			.outbox-route-sections { padding-left: 0.5rem; border-left: 2px solid color-mix(in srgb, GrayText 30%, transparent); }
+			.outbox-route-sections .outbox-frame > summary { font-weight: 550; }
+			#outboxContent .outbox-frame-meta { display: block; margin-top: 0.15rem; color: var(--secondary); font: 400 var(--fs-1)/1.35 system-ui, sans-serif; }
+			#outboxContent .outbox-frame-meta .geo-frame-source { display: inline; margin: 0; font-size: inherit; }
+			#outboxContent .lane-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: var(--sp-2); }
+			#outboxContent .lane-cell { display: block; margin: 0; padding: 0.12rem 0; border-radius: 3px; border: 1px solid var(--hairline); color: var(--secondary); font: 500 var(--fs-0)/1.15 system-ui, sans-serif; text-align: center; white-space: normal; position: relative; }
+			#outboxContent .lane-cell.filled { background: color-mix(in srgb, var(--accent) 18%, Canvas); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: CanvasText; }
+			#outboxContent .lane-cell.current { background: var(--accent); border-color: var(--accent); color: white; }
+			#outboxContent .lane-cell[data-count]::after { content: attr(data-count); position: absolute; top: -0.45rem; right: -0.2rem; min-width: 0.9rem; padding: 0 0.15rem; border-radius: 999px; background: var(--accent); color: white; font-size: 0.5rem; line-height: 0.9rem; }
+			.outbox-lane {
+				min-height: 2.25rem;
+				padding: var(--sp-2) var(--sp-3);
+				border-top: 1px solid var(--hairline);
+				transition: background 120ms, box-shadow 120ms;
+			}
+			.outbox-lane.drag-target {
+				background: color-mix(in srgb, Highlight 14%, Canvas);
+				box-shadow: inset 3px 0 Highlight;
+			}
+			.outbox-lane-title {
+				display: flex;
+				justify-content: space-between;
+				color: var(--secondary);
+				font: 600 var(--fs-1)/1.3 system-ui, sans-serif;
+				letter-spacing: 0.01em;
+			}
+			.outbox-object {
+				display: block !important;
+				width: 100%;
+				margin: var(--sp-1) 0 0 !important;
+				padding: 0.3rem var(--sp-2) !important;
+				border: 0 !important;
+				border-radius: calc(var(--r) - 0.15rem);
+				background: transparent !important;
+				text-align: left;
+				font-size: var(--fs-2);
+				line-height: 1.3;
+			}
+			.outbox-object:hover { background: var(--button-hover) !important; }
+			.spurplan-fold { fill: none; stroke: var(--secondary); stroke-width: 1.2; }
+			path.spurplan-edge, path.spurplan-halo { fill: none; stroke-linejoin: round; stroke-linecap: round; }
+			#outboxContent .outbox-junction-row.outbox-junction-off { color: color-mix(in srgb, #d70015 78%, CanvasText); }
+			.spurplan-fold-label { font-size: 9px; }
+			/* Second witness of a Gleisseite: the Lage agrees, or contradicts. */
+			.outbox-object .side-witness { float: right; margin-left: var(--sp-2); font-size: var(--fs-1); white-space: nowrap; }
+			#outboxContent .outbox-object .side-witness.widerspruch,
+			#tables .object-row > button > span[data-kind].side-conflict { color: color-mix(in srgb, #d70015 78%, CanvasText); font-weight: 600; }
+			#outboxContent .outbox-object.selected .side-witness { color: inherit; opacity: 0.9; }
+			.outbox-object.selected { color: white; background: var(--accent) !important; }
+			.outbox-object-row {
+				display: flex;
+				align-items: center;
+				gap: var(--sp-2);
+				margin-top: var(--sp-1);
+			}
+			.outbox-object-row .object-select {
+				flex: none;
+				margin: 0;
+			}
+			.outbox-object-row .outbox-object {
+				flex: 1;
+				margin: 0 !important;
+				cursor: grab;
+			}
+			.outbox-object-row.dragging .outbox-object {
+				opacity: 0.45;
+				cursor: grabbing;
+			}
+			.outbox-frame.contains-selection {
+				border-color: var(--accent);
+				box-shadow: inset 3px 0 0 var(--accent);
+			}
+			.outbox-lane.contains-selection {
+				background: color-mix(in srgb, var(--accent) 8%, transparent);
+			}
+			.outbox-junctions > summary { color: var(--secondary); font-size: var(--fs-2); }
+			.outbox-junction-list { padding: 0.3rem 0.55rem 0.6rem; }
+			.outbox-junction-row {
+				display: block;
+				width: 100%;
+				margin: var(--sp-1) 0 0;
+				padding: 0.3rem var(--sp-2);
+				border: 1px solid var(--hairline);
+				border-radius: calc(var(--r) - 0.15rem);
+				background: transparent;
+				text-align: left;
+				font-size: var(--fs-2);
+				cursor: pointer;
+			}
+			.outbox-junction-row:hover { background: color-mix(in srgb, Highlight 10%, Canvas); }
+			.file-group-done {
+				padding: var(--sp-2) var(--sp-3);
+				color: #237a43;
+				font-size: var(--fs-1);
+			}
+			.drag-handle {
+				color: var(--secondary);
+				opacity: 0.7;
+				margin-right: var(--sp-2);
+				font-size: var(--fs-2);
+				letter-spacing: -0.1em;
+			}
+			.object-row:hover .drag-handle { opacity: 0.9; }
+			.inbox-drag-hint {
+				display: flex;
+				align-items: flex-start;
+				gap: 0.5rem;
+				margin: 0.6rem;
+				padding: 0.55rem 0.65rem;
+				border-radius: 6px;
+				background: color-mix(in srgb, Highlight 10%, Canvas);
+				box-shadow: inset 3px 0 Highlight;
+				font: 0.76rem/1.35 system-ui, sans-serif;
+				color: var(--secondary);
+			}
+			.inbox-drag-hint p { margin: 0; flex: 1; }
+			#tables .inbox-drag-hint button {
+				flex: none;
+				width: auto;
+				border: 0;
+				background: transparent;
+				color: inherit;
+				opacity: 0.6;
+				cursor: pointer;
+				font-size: 0.85rem;
+				line-height: 1;
+				padding: 0.1rem 0.2rem;
+			}
+			#tables .inbox-drag-hint button:hover { opacity: 1; }
+			.row-suggestion {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--sp-2);
+				padding: var(--sp-1) var(--sp-3) var(--sp-2) calc(2rem + var(--sp-2));
+				border-bottom: 1px solid var(--hairline);
+				background: Canvas;
+				font-size: var(--fs-1);
+				color: var(--secondary);
+			}
+			#tables .row-suggestion button {
+				flex: none;
+				width: auto;
+				border: 1px solid var(--hairline);
+				border-radius: 999px;
+				background: transparent;
+				color: inherit;
+				padding: 0.15rem 0.55rem;
+				cursor: pointer;
+				font: inherit;
+			}
+			.row-suggestion button:hover {
+				background: color-mix(in srgb, Highlight 14%, Canvas);
+				color: inherit;
+			}
+			.outbox-lane-placeholder {
+				margin: 0.3rem 0 0;
+				padding: 0.3rem 0.4rem;
+				border: 1px dashed color-mix(in srgb, var(--secondary) 55%, transparent);
+				border-radius: 4px;
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				text-align: center;
+			}
+			.outbox-new-group {
+				padding: 0.5rem 0.75rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 28%, transparent);
+			}
+			.outbox-new-group-toggle {
+				border: 1px dashed color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				width: 100%;
+				padding: 0.3rem;
+				cursor: pointer;
+				font: 600 0.72rem system-ui, sans-serif;
+			}
+			.outbox-new-group-form {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+				margin-top: 0.4rem;
+			}
+			.outbox-new-group-form input {
+				font: inherit;
+				font-size: 0.75rem;
+				padding: 0.3rem 0.4rem;
+				border: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				border-radius: 4px;
+				background: Canvas;
+				color: inherit;
+			}
+			.outbox-new-group-form button {
+				border: 1px solid color-mix(in srgb, GrayText 45%, transparent);
+				border-radius: 4px;
+				background: transparent;
+				color: inherit;
+				padding: 0.25rem 0.5rem;
+				cursor: pointer;
+				font: inherit;
+				font-size: 0.72rem;
+			}
+			.outbox-frame-draft > summary {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+			}
+			.outbox-frame-draft-remove {
+				flex: none;
+				border: 0;
+				background: transparent;
+				color: inherit;
+				opacity: 0.6;
+				cursor: pointer;
+				font-size: 0.8rem;
+			}
+			.outbox-frame-draft-remove:hover { opacity: 1; }
+			#viewer.inbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 16rem; }
+			#viewer.outbox-collapsed { grid-template-columns: 17.5rem minmax(0, 1fr) 0; }
+			#viewer.inbox-collapsed.outbox-collapsed { grid-template-columns: 0 minmax(0, 1fr) 0; }
+			#viewer.inbox-collapsed #tables,
+			#viewer.outbox-collapsed #outbox { visibility: hidden; overflow: hidden; }
+			/* The diagram drawer is gone: IVMG, IVHW and GWB are slides like the
+			   others. The class stays harmless. */
+			#viewer.diagram-collapsed { grid-template-rows: minmax(0, 1fr); }
+			#viewer.gis-fullscreen {
+				grid-template-columns: 0 minmax(0, 1fr) 0;
+				grid-template-rows: minmax(0, 1fr) 0;
+			}
+			#viewer.gis-fullscreen #tables,
+			#viewer.gis-fullscreen #outbox,
+			#viewer.gis-fullscreen #diagramPanel,
+			#viewer.gis-fullscreen #dataPanel { visibility: hidden; }
+			#tables button {
+				display: flex;
+				justify-content: space-between;
+				gap: 1rem;
+				width: 100%;
+				padding: 0.6rem 0.75rem;
+				border: 0;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				background: transparent;
+				color: inherit;
+				text-align: left;
+				cursor: pointer;
+				font: inherit;
+			}
+			.object-family-group {
+				min-height: 2.35rem;
+				margin: 0;
+				border: 0;
+				border-bottom: 1px solid var(--hairline);
+				transition: border-color 120ms, background 120ms;
+			}
+			.object-family-group[data-family="UNASSIGNED"] {
+				background: color-mix(in srgb, CanvasText 3%, Canvas);
+			}
+			.object-family-group.drag-target {
+				background: color-mix(in srgb, Highlight 12%, Canvas);
+				box-shadow: inset 3px 0 Highlight;
+			}
+			/* An Inbox row: checkbox column, then the name over its kind, one line
+			   each, the name cut with an ellipsis rather than wrapped. */
+			.object-row {
+				display: grid;
+				grid-template-columns: 2rem minmax(0, 1fr) 1.7rem;
+				align-items: stretch;
+				margin: 0;
+				border: 0;
+				background: Canvas;
+				cursor: grab;
+			}
+			#tables .object-row.dependent > button { cursor: default; padding-left: 1.2rem !important; opacity: 0.85; }
+			.object-row.organized > button { cursor: default; opacity: 0.6; }
+			.inbox-filter { font: inherit; font-size: var(--fs-2); max-width: 100%; }
+			.inbox-top { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--hairline); }
+			.inbox-top .inbox-filter { flex: 1; }
+			.inbox-crs { border-top: 1px solid var(--hairline); }
+			.inbox-crs > summary { padding: var(--sp-2) var(--sp-3); font: 600 var(--fs-2) system-ui, sans-serif; cursor: pointer; }
+			.inbox-crs-head { display: inline-flex; align-items: center; gap: var(--sp-2); max-width: calc(100% - 1.2rem); white-space: nowrap; overflow: hidden; vertical-align: bottom; }
+			.inbox-chip { padding: 0 0.5em; border-radius: 999px; font: 600 var(--fs-1)/1.6 system-ui, sans-serif; color: var(--secondary); background: color-mix(in srgb, Canvas 88%, CanvasText); }
+			.inbox-chip-missing { color: Canvas; background: #b42318; }
+			/* Grabbeltisch bar: title, free-text filter, the two selects, the
+			   count with Alle/Keine, Lage and Höhe each with its apply button,
+			   and the two map-visibility buttons. */
+			.grabbel { border-bottom: 1px solid var(--hairline); }
+			.grabbel-title { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 var(--sp-2); font-weight: 600; }
+			.grabbel-sub { color: var(--secondary); font-weight: 400; font-size: var(--fs-1); }
+			.grabbel .bulk-crs-label { white-space: nowrap; }
+			.grabbel .bulk-crs-label .inbox-chip { vertical-align: middle; }
+			.outbox-object-row > span:last-child:empty { flex: none; width: 1.5rem; }
+			#outboxContent .outbox-object-row > button.object-eye { flex: none; width: 1.5rem; height: 1.5rem; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--secondary); font-size: var(--fs-2); line-height: 1; cursor: pointer; }
+			#outboxContent .outbox-object-row > button.object-eye[aria-pressed="false"] { color: #b42318; }
+			#outboxContent .outbox-object-row > button.object-eye:hover { color: var(--accent); }
+			.outbox-object-row.hidden-object .outbox-object { opacity: 0.5; }
+			/* Label, select, apply button in one row each; the select gives way.
+			   Written at higher specificity than .bulk-crs-fields, which it extends. */
+			.bulk-crs.grabbel .grabbel-fields { grid-template-columns: auto minmax(0, 1fr) auto; }
+			.bulk-crs.grabbel .grabbel-fields select { min-width: 0; width: 100%; text-overflow: ellipsis; }
+			#tables .bulk-crs.grabbel .grabbel-fields button { white-space: nowrap; flex: none; }
+			/* The eye is a button in the row too; the generic #tables button and
+			   #tables .object-row > button rules would stretch it across column 2,
+			   so it is pinned at matching specificity. */
+			#tables .object-row > button.object-eye { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; justify-content: center; margin: auto; padding: 0 !important; width: 1.5rem; height: 1.5rem; border: 0 !important; background: transparent; color: var(--secondary); font-size: var(--fs-2); line-height: 1; cursor: pointer; position: relative; z-index: 2; opacity: 1; }
+			#tables .object-row > button.object-eye[aria-pressed="false"] { color: #b42318; }
+			#tables .object-row:hover > button.object-eye, #tables .object-row > button.object-eye:hover { background: transparent; color: var(--accent); }
+			.object-row.hidden-object > button { opacity: 0.5; }
+			.object-row.dragging {
+				opacity: 0.45;
+				cursor: grabbing;
+			}
+			#tables .object-row > button {
+				grid-column: 2;
+				display: grid;
+				grid-template-columns: minmax(0, 1fr);
+				gap: 0.1rem;
+				padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2) !important;
+				border-bottom: 1px solid var(--hairline) !important;
+				font-size: var(--fs-2);
+				line-height: 1.3;
+			}
+			#tables .object-row > button > span:first-child { min-width: 0; }
+			#tables .object-row > button > span:first-child > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+			#tables .object-row > button > span[data-kind] { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--secondary); font-size: var(--fs-1); }
+			#tables .object-row:hover > button { background: var(--button-hover); }
+			.object-select {
+				grid-column: 1;
+				grid-row: 1;
+				margin: auto;
+				width: 1rem;
+				height: 1rem;
+				position: relative;
+				z-index: 2;
+				accent-color: var(--accent);
+			}
+			/* The CRS editor under "Lage und Höhe zuweisen": the count with Alle
+			   and Keine, then Lage and Höhe as labelled rows, then the two apply
+			   buttons side by side. On the frame's scale, tinted so it reads as
+			   the one editing area of the Inbox. */
+			.bulk-crs {
+				display: grid;
+				gap: var(--sp-2);
+				padding: var(--sp-2) var(--sp-3) var(--sp-3);
+				background: color-mix(in srgb, Canvas 94%, var(--accent));
+				font: var(--fs-2)/1.3 system-ui, sans-serif;
+			}
+			.bulk-crs-head,
+			.bulk-crs-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+			.bulk-crs-head strong { margin-right: auto; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+			#tables .bulk-crs button {
+				width: auto;
+				padding: 0.25rem 0.55rem;
+				border: 1px solid var(--hairline);
+				border-radius: calc(var(--r) - 0.15rem);
+				background: var(--button);
+				font-size: var(--fs-2);
+			}
+			#tables .bulk-crs button:hover { background: var(--button-hover); }
+			.bulk-crs-actions button { flex: 1; }
+			.bulk-crs-pair { display: inline-flex; gap: var(--sp-1); }
+			.bulk-crs-fields { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--sp-2) var(--sp-3); }
+			.bulk-crs-label { color: var(--secondary); font-size: var(--fs-1); }
+			.bulk-crs select,
+			.bulk-crs input { min-width: 0; width: 100%; padding: 0.25rem 0.4rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: inherit; font-size: var(--fs-2); }
+			.geo-frame-node {
+				padding: 0;
+				border: 0;
+			}
+			.geo-frame-title {
+				padding: 0.8rem 0.9rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 25%, transparent);
+				font: 600 0.84rem system-ui, sans-serif;
+				cursor: pointer;
+				list-style-position: inside;
+			}
+			#tables button:hover,
+			#tables button.selected {
+				background: rgba(10,132,255,0.16);
+				color: var(--ink);
+			}
+			#tables button.selected {
+				background: var(--accent);
+				color: white;
+			}
+			.file-group + .file-group {
+				border-top: 2px solid GrayText;
+			}
+			.file-name {
+				position: sticky;
+				top: 0;
+				z-index: 2;
+				padding: 0.65rem 0.75rem;
+				background: Canvas;
+				font-weight: 700;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.workspace-section-title {
+				position: sticky;
+				top: 0;
+				z-index: 3;
+				display: flex;
+				justify-content: space-between;
+				align-items: baseline;
+				padding: var(--sp-2) var(--sp-3);
+				background: color-mix(in srgb, CanvasText 6%, Canvas);
+				border-bottom: 1px solid var(--hairline);
+				font: 700 var(--fs-1)/1.3 system-ui, sans-serif;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+			}
+			.workspace-section-title.raw-file-title { font: 650 var(--fs-2)/1.3 system-ui, sans-serif; letter-spacing: 0; text-transform: none; }
+			.workspace-section-count {
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				font-weight: 500;
+				font-variant-numeric: tabular-nums;
+			}
+			.source-file-row {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) auto;
+				gap: 0.5rem;
+				padding: 0.48rem 0.8rem;
+				border-bottom: 1px solid color-mix(in srgb, GrayText 18%, transparent);
+				font: 0.78rem system-ui, sans-serif;
+			}
+			.source-file-name {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.source-file-summary { color: GrayText; }
+			.route-title { font-weight: 700; }
+			.geo-frame-source {
+				margin-left: 0.5rem;
+				font-weight: 400;
+				font-size: 0.76rem;
+				color: GrayText;
+				cursor: help;
+			}
+			.lsys-title {
+				padding-left: 1.35rem;
+				background: color-mix(in srgb, CanvasText 2%, Canvas);
+			}
+			.file-crs {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) auto;
+				gap: 0.35rem;
+				align-items: center;
+				padding: 0 0.75rem 0.65rem;
+				background: Canvas;
+				font: 0.8rem system-ui, sans-serif;
+			}
+			.file-crs select {
+				min-width: 0;
+				max-width: 11rem;
+			}
+			.object-group-title {
+				display: grid;
+				grid-template-columns: 2.2rem minmax(0, 1fr) auto;
+				align-items: center;
+				gap: 0.45rem;
+				padding: 0.62rem 0.9rem;
+				background: Canvas;
+				color: CanvasText;
+				font: 500 0.78rem system-ui, sans-serif;
+			}
+			.family-code {
+				font: 700 0.76rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+				letter-spacing: 0.04em;
+			}
+			.family-label { color: GrayText; }
+			.family-count {
+				min-width: 1.2rem;
+				text-align: right;
+				color: GrayText;
+			}
+			.object-group-title[role="button"] {
+				cursor: pointer;
+			}
+			.object-group-title[role="button"]:hover,
+			.object-group-title[role="button"]:focus-visible {
+				background: color-mix(in srgb, CanvasText 5%, Canvas);
+				color: CanvasText;
+			}
+			.object-group-title.empty {
+				opacity: 0.62;
+			}
+			.object-family-group:has(> .object-group-title.empty) { display: none; }
+			.crs-state {
+				white-space: nowrap;
+				color: GrayText;
+			}
+			#dataPanel {
+				display: grid;
+				grid-template-rows: auto minmax(0, 1fr);
+				min-width: 0;
+				min-height: 0;
+				grid-column: 2;
+				grid-row: 1;
+				z-index: 5;
+				align-self: center;
+				justify-self: center;
+				width: min(78%, 62rem);
+				height: min(70%, 40rem);
+				border: 1px solid var(--hairline);
+				border-radius: 0.85rem;
+				box-shadow: 0 1.2rem 3.2rem rgba(0,0,0,0.22);
+				background: var(--panel-glass);
+				backdrop-filter: blur(20px) saturate(1.2);
+				overflow: hidden;
+			}
+			.edge-toggle {
+				position: absolute;
+				z-index: 12;
+				width: 1.7rem;
+				height: 3.2rem;
+				padding: 0;
+				border-radius: 0.8rem;
+				background: var(--glass);
+				backdrop-filter: blur(18px);
+				box-shadow: 0 0.25rem 1rem rgba(0,0,0,0.12);
+			}
+			#toggleInbox { left: 0.35rem; top: calc(50% - 1.6rem); }
+			#toggleOutbox { right: 0.35rem; top: calc(50% - 1.6rem); }
+			#toggleDiagram {
+				left: calc(50% - 2rem);
+				bottom: 0.3rem;
+				width: 4rem;
+				height: 1.5rem;
+			}
+			.overlay-actions {
+				display: flex;
+				gap: 0.3rem;
+				margin-left: auto;
+			}
+			.overlay-actions button {
+				min-width: 2rem;
+				padding: 0.25rem 0.45rem;
+			}
+			#toggleFullscreen { margin-left: 0.2rem; }
+			#dataPanel.transparent {
+				opacity: 0.74;
+				backdrop-filter: blur(18px) saturate(1.3);
+			}
+			#toolbar,
+			#pager {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				padding: 0.6rem 0.75rem;
+				font-family: system-ui, sans-serif;
+			}
+			#toolbar {
+				border-bottom: 1px solid var(--hairline);
+				font-size: var(--fs-2);
+			}
+			#tableTitle {
+				font-weight: 650;
+			}
+			#tableMeta {
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
+			}
+			#listingZoomLabel {
+				margin-left: auto;
+				align-self: center;
+				color: var(--secondary);
+				font-size: var(--fs-1);
+				font-variant-numeric: tabular-nums;
+				white-space: nowrap;
+			}
+			#search {
+				margin-left: auto;
+				width: min(22rem, 45%);
+				padding: 0.35rem 0.5rem;
+			}
+			#gridWrap {
+				overflow: auto;
+			}
+			/* The listing: a monospace grid with tabular figures on the glass
+			   panel; the object line is the only bold one. Zoom scales this base. */
+			#listing {
+				min-width: max-content;
+				min-height: 100%;
+				padding: var(--sp-3) var(--sp-4);
+				border: 0;
+				border-radius: 0;
+				background: transparent;
+				color: CanvasText;
+				font: 0.8rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+				font-variant-numeric: tabular-nums;
+				white-space: pre;
+			}
+			#listing::first-line { font-weight: 700; }
+			.planning-preview {
+				display: block;
+				width: 100%;
+				height: 100%;
+				min-height: 24rem;
+				border: 0;
+				object-fit: contain;
+				background: Canvas;
+			}
+			.planning-file-row button span:first-child {
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.planning-file-row.related button {
+				background: color-mix(in srgb, Highlight 12%, transparent);
+				box-shadow: inset 3px 0 Highlight;
+			}
+			.planning-file-row.unrelated {
+				opacity: 0.48;
+			}
+			.planning-group-related > summary::after {
+				content: "passt zur Auswahl";
+				margin-left: 0.45rem;
+				color: Highlight;
+				font-size: 0.72rem;
+				font-weight: 600;
+			}
+			.related-foundations {
+				display: grid;
+				gap: 0.35rem;
+				margin-top: 0.8rem;
+				padding-top: 0.7rem;
+				border-top: 1px solid color-mix(in srgb, GrayText 30%, transparent);
+			}
+			.related-foundations button {
+				width: 100%;
+				padding: 0.45rem 0.55rem;
+				border: 0;
+				border-radius: 0.55rem;
+				text-align: left;
+				background: color-mix(in srgb, Highlight 10%, Canvas);
+				color: CanvasText;
+				cursor: pointer;
+			}
+			#grid {
+				border-collapse: collapse;
+				min-width: 100%;
+				white-space: nowrap;
+			}
+			#grid th,
+			#grid td {
+				padding: 0.35rem 0.55rem;
+				border-right: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				border-bottom: 1px solid color-mix(in srgb, GrayText 35%, transparent);
+				text-align: left;
+				max-width: 32rem;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			#grid th {
+				position: sticky;
+				top: 0;
+				z-index: 1;
+				background: Canvas;
+			}
+			#grid .ordinal {
+				color: GrayText;
+				text-align: right;
+			}
+			#pager {
+				border-top: 1px solid GrayText;
+			}
+			#pagerInfo {
+				margin-right: auto;
+			}
+			pre {
+				margin: 0;
+				padding: 1rem;
+				overflow: auto;
+				border: 1px solid GrayText;
+				border-radius: 0.5rem;
+				background: color-mix(in srgb, CanvasText 5%, Canvas);
+				white-space: pre-wrap;
+			}
+			.hint {
+				color: GrayText;
+				font: 0.875rem system-ui, sans-serif;
+			}
+			.hidden {
+				display: none !important;
+			}
+			@media (max-width: 800px) {
+				#viewer {
+					grid-template-columns: 1fr;
+					grid-template-rows: minmax(18rem, 1fr) minmax(12rem, 0.6fr);
+				}
+				#tables {
+					grid-column: 1;
+					grid-row: 1;
+					border-right: 0;
+					border-bottom: 1px solid GrayText;
+				}
+				#mapPanel {
+					grid-column: 1;
+					grid-row: 1;
+				}
+				#dataPanel { grid-column: 1; grid-row: 1; width: 90%; height: 80%; }
+				#outbox { display: none; }
+				#diagramPanel {
+					grid-column: 1;
+					grid-row: 3;
+				}
+			}
+		

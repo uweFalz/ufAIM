@@ -1,0 +1,162 @@
+- main:
+  - heading "Technet File Viewer" [level=1]:
+    - generic: Technet File Viewer
+  - generic "Opinion":
+    - button "◎ Map" [pressed]:
+      - generic: ◎
+      - generic: Map
+    - button "≡ text":
+      - generic: ≡
+      - generic: text
+    - button "∿ IVMG":
+      - generic: ∿
+      - generic: IVMG
+    - button "⋀ IVHW":
+      - generic: ⋀
+      - generic: IVHW
+    - button "▥ GWB":
+      - generic: ▥
+      - generic: GWB
+    - button "◷ Travel time":
+      - generic: ◷
+      - generic: Travel time
+    - button "⌥ Track plan":
+      - generic: ⌥
+      - generic: Track plan
+    - button "▤ Delivery":
+      - generic: ▤
+      - generic: Delivery
+    - button "⌾ Link":
+      - generic: ⌾
+      - generic: Link
+  - searchbox "Search and Jump"
+  - generic "4 Datendateien": 1 Objekte auf der Karte eingeblendet · 0 insgesamt ausgeblendet.
+  - button "⇄ Coupling" [pressed]:
+    - generic: ⇄
+    - generic: Coupling
+  - button "◐ system":
+    - generic: ◐
+    - generic: system
+  - button "GIS fullscreen":
+    - generic: ⛶
+  - generic "Data ▾":
+    - generic: Data ▾
+  - button "Show or hide inbox" [pressed]: ‹
+  - button "Show or hide the outbox" [pressed]: ›
+  - navigation "Inbox · Loaded TechNet data":
+    - generic: Inbox · Grabbeltisch
+    - generic "GND kommt mit Strecke, Seite und Lage und sortiert sich selbst nach rechts; der Rest (VermEsn, landXML) kommt ohne alles und liegt hier, bis er Lage und Höhe hat und nach rechts gezogen ist": 2 hier · Rest 7 · GND 0 fertig rechts
+    - searchbox "Grabbeltisch durchsuchen"
+    - strong: 2 Treffer
+    - button "◌ aus"
+    - button "◉ ein"
+    - generic: Lage 2
+    - combobox "Lagebezug für die Treffer":
+      - option "Automatisch erkennen" [selected]
+      - option "DBRef"
+      - option "Altdaten / anderes GK-System"
+      - option "Lokal oder unbekannt"
+    - button "→ Treffer"
+    - generic: Höhe
+    - combobox "Höhenbezug für die Treffer":
+      - option "Aus Datei übernehmen / unbekannt" [selected]
+      - option "Höhen über NHN"
+      - option "Ältere Höhen / NN"
+      - option "Lokales Höhensystem"
+    - button "→ Treffer"
+    - paragraph: Objekte per Ziehen (⠿) rechts in die Ordnung einsortieren, oder Vorschlag übernehmen, wo vorhanden.
+    - button "Hinweis ausblenden": ✕
+    - checkbox "InboxAlpha zur Mehrfachauswahl hinzufügen"
+    - button "InboxAlpha TRA · roh · ausgeblendet · InboxAlpha.TRA":
+      - generic: ⠿
+      - generic: InboxAlpha
+      - generic: TRA · roh · ausgeblendet · InboxAlpha.TRA
+    - button "InboxAlpha auf der Karte einblenden": ◌
+    - button "↳ InboxAlpha::cant EU · gehört zur Trasse · InboxAlpha.TRA":
+      - generic: ↳ InboxAlpha::cant
+      - generic: EU · gehört zur Trasse · InboxAlpha.TRA
+    - checkbox "InboxBeta zur Mehrfachauswahl hinzufügen"
+    - button "InboxBeta TRA · roh · InboxBeta.TRA":
+      - generic: ⠿
+      - generic: InboxBeta
+      - generic: TRA · roh · InboxBeta.TRA
+    - button "InboxBeta auf der Karte ausblenden" [pressed]: ◉
+    - button "↳ InboxBeta::cant EU · gehört zur Trasse · InboxBeta.TRA":
+      - generic: ↳ InboxBeta::cant
+      - generic: EU · gehört zur Trasse · InboxBeta.TRA
+  - strong:
+    - generic: GIS · DB_REF in ETRS89
+  - generic "0/3 DB_REF · 3 GK vermutet · 0 nur GIS · 3 Qualität offen"
+  - button "Assign location":
+    - generic: Assign location
+  - generic "Levels ▾":
+    - generic: Levels ▾
+  - button "Everything":
+    - generic: Everything
+  - button "Zoom out":
+    - generic: −
+  - button "Zoom in":
+    - generic: +
+  - img "Geographical location view of all transformable routes":
+    - generic "InboxBeta · GK-Lage vermutet · Punktqualität offen"
+  - complementary "Outbox · Current selection":
+    - generic: Outbox · Organization
+    - button "+ Neue Gruppe"
+    - generic "Weichen · Topologie (gerechnet) · 2 Weichen · 0 Kreuzungen · 0 Enden · 3 Kanten"
+    - generic "Strecke 2631 · 2 Abschnitte GRA re GRA li EU li TRA li km TRA re EU re LSYS? · aus Dateiname":
+      - text: Strecke 2631 · 2 Abschnitte
+      - generic "3 von 7 Zeilen belegt":
+        - 'generic "GRA re · Gradiente: 2631R139_Bestand_VR_DBREF03_A"': GRA re
+        - 'generic "GRA li · Gradiente: leer"': GRA li
+        - 'generic "EU li · Überhöhung: leer"': EU li
+        - 'generic "TRA li · Krümmung: leer"': TRA li
+        - 'generic "TRA km · Kilometerlinie: leer"': km
+        - 'generic "TRA re · Krümmung: 2631R139_Bestand_VR_DBREF03_A"': TRA re
+        - 'generic "EU re · Überhöhung: 2631R139_Bestand_VR_DBREF03_A::cant"': EU re
+      - generic: LSYS? · aus Dateiname
+    - generic "Abschnitt 0,0 + 00,00 – 11,2 + 75,90 GRA re GRA li EU li TRA li km TRA re EU re LSYS? · aus Dateiname":
+      - text: Abschnitt 0,0 + 00,00 – 11,2 + 75,90
+      - generic "2 von 7 Zeilen belegt":
+        - 'generic "GRA re · Gradiente: leer"': GRA re
+        - 'generic "GRA li · Gradiente: leer"': GRA li
+        - 'generic "EU li · Überhöhung: leer"': EU li
+        - 'generic "TRA li · Krümmung: leer"': TRA li
+        - 'generic "TRA km · Kilometerlinie: leer"': km
+        - 'generic "TRA re · Krümmung: 2631R139_Bestand_VR_DBREF03_A"': TRA re
+        - 'generic "EU re · Überhöhung: 2631R139_Bestand_VR_DBREF03_A::cant"': EU re
+      - generic: LSYS? · aus Dateiname
+    - generic: GRA re · Gradiente
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: GRA li · Gradiente
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: EU li · Überhöhung
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: TRA li · Krümmung
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: TRA km · Kilometerlinie
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: TRA re · Krümmung
+    - generic: "1"
+    - checkbox "2631R139_Bestand_VR_DBREF03_A zur Mehrfachauswahl hinzufügen"
+    - button "2631R139_Bestand_VR_DBREF03_A"
+    - button "2631R139_Bestand_VR_DBREF03_A auf der Karte einblenden": ◌
+    - generic: EU re · Überhöhung
+    - generic: "1"
+    - checkbox "2631R139_Bestand_VR_DBREF03_A::cant zur Mehrfachauswahl hinzufügen"
+    - button "2631R139_Bestand_VR_DBREF03_A::cant"
+    - generic "Abschnitt 139,1 + 62,00 – 150,5 + 81,00 GRA re GRA li EU li TRA li km TRA re EU re LSYS? · aus Dateiname":
+      - text: Abschnitt 139,1 + 62,00 – 150,5 + 81,00
+      - generic "1 von 7 Zeilen belegt":
+        - 'generic "GRA re · Gradiente: 2631R139_Bestand_VR_DBREF03_A"': GRA re
+        - 'generic "GRA li · Gradiente: leer"': GRA li
+        - 'generic "EU li · Überhöhung: leer"': EU li
+        - 'generic "TRA li · Krümmung: leer"': TRA li
+        - 'generic "TRA km · Kilometerlinie: leer"': km
+        - 'generic "TRA re · Krümmung: leer"': TRA re
+        - 'generic "EU re · Überhöhung: leer"': EU re
+      - generic: LSYS? · aus Dateiname

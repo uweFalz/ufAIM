@@ -55,3 +55,67 @@ test("a header whose counts do not add up leaves the rows unclassified, with a d
 	assert.deepEqual(json(result.profileRows), []);
 	assert.equal(result.unclassifiedRows.length, 2);
 });
+
+// The Überhöhungsband: sign from the Trasse's Krümmung, the GRA's Rampen as
+// one straight line through the Wendepunkt, and the footnote that measures
+// them against the Trasse's own Überhöhung.
+const rampBegin = html.indexOf("// BEGIN GRA CANT RAMPS");
+const rampEnd = html.indexOf("// END GRA CANT RAMPS");
+assert.ok(rampBegin > 0 && rampEnd > rampBegin, "cant ramp block present");
+const rampContext = vm.createContext({});
+new vm.Script(`${html.slice(rampBegin, rampEnd)}\nglobalThis.api = { bandValueAt, signedCantSeries, cantRampSeries, rampPoints, cantRampFootnote, CANT_RAMP_CANT_TOLERANCE_MM };`, { filename: "gra-cant-ramps.js" }).runInContext(rampContext);
+const ramps = rampContext.api;
+
+// Eifel 2631R139 around the first Rampe, in the Kilometerlinie's frame
+// (TRA local 0 = km 139,2 + 37,78): Rechtsbogen r 387 (u 120), Übergangsbogen
+// to the Gerade at 139944,29, Übergangsbogen into the Linksbogen r 323 (u 140).
+const curvature = [
+	{ x: 139808.49, y: 1 / 387 }, { x: 139858.49, y: 1 / 387 }, { x: 139944.29, y: 0 },
+	{ x: 139944.29, y: 0 }, { x: 140044.39, y: -1 / 323 }, { x: 140132.4, y: -1 / 323 },
+];
+const cantPoints = [{ x: 139808.49, y: 120 }, { x: 139858.49, y: 120 }, { x: 139944.29, y: 0 }, { x: 140044.39, y: 140 }, { x: 140132.4, y: 140 }];
+const eifelRamp = { rampEnd1Station: 139858.49, rampIntersectionStation: 139944.29, rampEnd2Station: 140044.39, rampCode: 2, cant1Millimetres: 120, cant2Millimetres: 140 };
+
+test("the cant series takes the sign of the element it starts in; zero stays zero", () => {
+	const signed = ramps.signedCantSeries(cantPoints, curvature);
+	assert.deepEqual(json(signed.map((point) => point.y)), [120, 120, 0, -140, -140]);
+	// a cant value on a Gerade keeps the sign of the element before it
+	const onStraight = ramps.signedCantSeries([{ x: 139944.29, y: 10 }, { x: 139990, y: 10 }], [{ x: 139900, y: 1 / 387 }, { x: 139944.29, y: 0 }, { x: 139944.29, y: 0 }, { x: 140000, y: 0 }]);
+	assert.deepEqual(json(onStraight.map((point) => point.y)), [10, 10]);
+	assert.deepEqual(json(ramps.signedCantSeries(cantPoints, [])).map((point) => point.y), [120, 120, 0, 140, 140], "no Trasse: magnitudes unchanged");
+});
+
+test("a Rampe through the Wendepunkt is one line from +u1 to −u2 with equal legs", () => {
+	const [ramp] = ramps.cantRampSeries([eifelRamp], curvature);
+	assert.equal(ramp.sideKnown, true);
+	assert.deepEqual(json(ramp.points), [{ x: 139858.49, y: 120, gap: true }, { x: 139944.29, y: 0 }, { x: 140044.39, y: -140 }]);
+	assert.equal(Math.round(ramp.slope1), 715);
+	assert.equal(Math.round(ramp.slope2), 715);
+	assert.equal(Math.round(ramps.bandValueAt(ramp.points, 139901.39, false)), 60);
+	// without a Trasse: positive first by convention, and the footnote says so
+	const [blind] = ramps.cantRampSeries([eifelRamp], []);
+	assert.equal(blind.sideKnown, false);
+	assert.deepEqual(json(blind.points.map((point) => point.y)), [120, 0, -140]);
+	assert.match(ramps.cantRampFootnote("Gleis", [blind], [], (value) => value.toFixed(2)).lines.at(-1), /ohne Trasse: Seite der Rampe unbestimmt/);
+	// a record with an unreadable station is skipped, not drawn at NaN
+	assert.deepEqual(json(ramps.cantRampSeries([{ ...eifelRamp, rampEnd2Station: null }], curvature)), []);
+	assert.deepEqual(json(ramps.rampPoints(ramps.cantRampSeries([eifelRamp, { ...eifelRamp, rampEnd1Station: 139000, rampIntersectionStation: 139050, rampEnd2Station: 139100 }], curvature))).map((point) => point.x)[0], 139000, "sorted by Rampenanfang");
+});
+
+test("the footnote measures the Rampe against the Trasse's Überhöhung", () => {
+	const [ramp] = ramps.cantRampSeries([eifelRamp], curvature);
+	const format = (value) => value.toFixed(2);
+	const agree = ramps.cantRampFootnote("Rechtes Gleis", [ramp], ramps.signedCantSeries(cantPoints, curvature), format);
+	assert.equal(agree.head, "Rechtes Gleis · Überhöhungsrampen aus der GRA (1 · Form 2)");
+	assert.equal(agree.lines.length, 2);
+	assert.equal(agree.lines[0], "139858.49 → 140044.39 · u +120 → −140 mm · Wendepunkt 139944.29 · Neigung 1:715 | 1:715 · Trasse deckt sich");
+	assert.match(agree.lines[1], /^Form 2: Kennzahl der GRA/);
+	const shifted = cantPoints.map((point) => ({ ...point, x: point.x + 20 }));
+	const differ = ramps.cantRampFootnote("Rechtes Gleis", [ramp], ramps.signedCantSeries(shifted, curvature), format);
+	assert.match(differ.lines[0], /Trasse weicht ab: Δu [+−]\d+ mm am (Rampenanfang|Wendepunkt|Rampenende)$/);
+	const silent = ramps.cantRampFootnote("Rechtes Gleis", [ramp], [], format);
+	assert.match(silent.lines[0], /ohne Überhöhungsreihe der Trasse$/);
+	const unequal = ramps.cantRampSeries([{ ...eifelRamp, rampEnd2Station: 140100 }], curvature);
+	assert.match(ramps.cantRampFootnote("Gleis", unequal, [], format).lines[0], /Neigung 1:715 \| 1:1112 \(ungleich\)/);
+	assert.equal(ramps.CANT_RAMP_CANT_TOLERANCE_MM, 5);
+});

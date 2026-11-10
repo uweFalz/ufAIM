@@ -1,0 +1,253 @@
+- main:
+  - heading "Technet File Viewer" [level=1]:
+    - generic: Technet File Viewer
+  - generic "Opinion":
+    - button "◎ Map":
+      - generic: ◎
+      - generic: Map
+    - button "≡ text" [pressed]:
+      - generic: ≡
+      - generic: text
+    - button "∿ IVMG":
+      - generic: ∿
+      - generic: IVMG
+    - button "⋀ IVHW":
+      - generic: ⋀
+      - generic: IVHW
+    - button "▥ GWB":
+      - generic: ▥
+      - generic: GWB
+    - button "◷ Travel time":
+      - generic: ◷
+      - generic: Travel time
+    - button "⌥ Track plan":
+      - generic: ⌥
+      - generic: Track plan
+    - button "▤ Delivery":
+      - generic: ▤
+      - generic: Delivery
+    - button "⌾ Link":
+      - generic: ⌾
+      - generic: Link
+  - searchbox "Search and Jump"
+  - generic "4 data files":
+    - generic: 4 data files · reopened
+  - button "⇄ Coupling" [pressed]:
+    - generic: ⇄
+    - generic: Coupling
+  - button "◐ system":
+    - generic: ◐
+    - generic: system
+  - button "GIS fullscreen":
+    - generic: ⛶
+  - generic "Data ▾":
+    - generic: Data ▾
+  - navigation "Inbox · Loaded TechNet data":
+    - generic: Inbox · Grabbeltisch
+    - generic "GND kommt mit Strecke, Seite und Lage und sortiert sich selbst nach rechts; der Rest (VermEsn, landXML) kommt ohne alles und liegt hier, bis er Lage und Höhe hat und nach rechts gezogen ist": 2 hier · Rest 7 · GND 0 fertig rechts
+    - searchbox "Grabbeltisch durchsuchen"
+    - strong: 2 Treffer
+    - button "◌ aus"
+    - button "◉ ein"
+    - generic: Lage 2
+    - combobox "Lagebezug für die Treffer":
+      - option "Automatisch erkennen" [selected]
+      - option "DBRef"
+      - option "Altdaten / anderes GK-System"
+      - option "Lokal oder unbekannt"
+    - button "→ Treffer"
+    - generic: Höhe
+    - combobox "Höhenbezug für die Treffer":
+      - option "Aus Datei übernehmen / unbekannt" [selected]
+      - option "Höhen über NHN"
+      - option "Ältere Höhen / NN"
+      - option "Lokales Höhensystem"
+    - button "→ Treffer"
+    - paragraph: Objekte per Ziehen (⠿) rechts in die Ordnung einsortieren, oder Vorschlag übernehmen, wo vorhanden.
+    - button "Hinweis ausblenden": ✕
+    - checkbox "InboxAlpha zur Mehrfachauswahl hinzufügen"
+    - button "InboxAlpha TRA · roh · InboxAlpha.TRA":
+      - generic: ⠿
+      - generic: InboxAlpha
+      - generic: TRA · roh · InboxAlpha.TRA
+    - button "InboxAlpha auf der Karte ausblenden" [pressed]: ◉
+    - button "↳ InboxAlpha::cant EU · gehört zur Trasse · InboxAlpha.TRA":
+      - generic: ↳ InboxAlpha::cant
+      - generic: EU · gehört zur Trasse · InboxAlpha.TRA
+    - checkbox "InboxBeta zur Mehrfachauswahl hinzufügen"
+    - button "InboxBeta TRA · roh · InboxBeta.TRA":
+      - generic: ⠿
+      - generic: InboxBeta
+      - generic: TRA · roh · InboxBeta.TRA
+    - button "InboxBeta auf der Karte ausblenden" [pressed]: ◉
+    - button "↳ InboxBeta::cant EU · gehört zur Trasse · InboxBeta.TRA":
+      - generic: ↳ InboxBeta::cant
+      - generic: EU · gehört zur Trasse · InboxBeta.TRA
+  - generic: GRA · 2631R139_Bestand_VR_DBREF03_A
+  - generic: 47 entries
+  - generic: 100%
+  - button "Reduce listing size":
+    - generic: −
+  - button "Enlarge listing":
+    - generic: +
+  - button "Text overlay transparent or opaque":
+    - generic: ◐
+  - button "Close text overlay" [pressed]:
+    - generic: ×
+  - generic: Gradient 2631R139_Inventory_VR_DBREF03_A
+  - generic: "Location: not assigned Elevation: unknown"
+  - generic: Item No. Station Height Radius Tangent Point
+  - generic: "----------------------------------------------------------------------------------"
+  - generic: 1 139.1 + 62.00 195.4050 0.000 0.000 0
+  - generic: 2,139.3 + 57.13 195.3350 16,000,000 10,070 0
+  - generic: 3 139.5 + 23.80 195.4850 0.000 0.000 0
+  - generic: 4 139.7 + 17.40 195.5450 0.000 0.000 0
+  - generic: 5 139.8 + 53.83 195.5000 -14000.000 10.056 0
+  - generic: 6 140.0 + 18.00 195.2100 -3000.000 10.058 0
+  - generic: 7 140.1 + 69.09 193.9300 0.000 0.000 0
+  - generic: 8 140.3 + 34.25 192.4600 -9590.000 13.557 0
+  - generic: 9 140.4 + 55.33 191.0400 6000.000 10.043 0
+  - generic: 10 140.7 + 26.21 188.7700 0.000 0.000 0
+  - generic: 11 140.9 + 04.00 187.4200 5100.000 10.017 0
+  - generic: 12 140.9 + 42.20 187.2800 -5000.000 10.141 0
+  - generic: 13 141.0 + 98.90 186.0700 4100.000 10.099 0
+  - generic: 14 141.2 + 20.53 185.7300 -6200.000 10.007 0
+  - generic: 15 141.3 + 88.21 184.7200 17500.000 10.060 0
+  - generic: 16 141.4 + 78.49 184.2800 -16300.000 10.034 0
+  - generic: 17 141.6 + 50.49 183.2300 -20823.000 12.292 0
+  - generic: 18 141.8 + 13.83 182.0400 16700.000 10.061 0
+  - generic: 19,141.9 + 75.00 181,060 3,800,000 10,191 0
+  - generic: 20 142.1 + 42.34 180.9400 0.000 0.000 0
+  - generic: 21 142.3 + 28.89 180.7400 0.000 0.000 0
+  - generic: 22 142.4 + 08.84 180.6200 7400.000 10.121 0
+  - generic: 23 142.5 + 46.55 180.7900 -3500.000 10.548 0
+  - generic: 24 142.7 + 00.95 180.0500 4800.000 10.049 0
+  - generic: 25 142.8 + 66.00 179.9500 -3800.000 10.185 0
+  - generic: 26 143.1 + 14.05 178.4700 -15400.000 10.086 0
+  - generic: 27 143.7 + 05.00 174.1700 3000.000 11.485 0
+  - generic: 28 144.0 + 20.54 174.2900 -19500.000 10.071 0
+  - generic: 29 144.1 + 73.76 174.1900 0.000 0.000 0
+  - generic: 30 144.4 + 02.29 174.2400 -7700.000 10.056 0
+  - generic: 31 144.7 + 70.00 173.3600 -3500.000 11.182 0
+  - generic: 32 145.2 + 07.22 169.5200 0.000 0.000 0
+  - generic: 33 145.6 + 22.37 166.1950 3000.000 12.135 0
+  - generic: 34 145.9 + 32.29 166.2200 -10000.000 31.867 0
+  - generic: 35 146.3 + 23.21 163.7600 3100.000 10.223 0
+  - generic: 36 146.7 + 52.46 163.8900 -17700.000 10.022 0
+  - generic: 37 147.2 + 94.92 163.4400 0.000 0.000 0
+  - generic: 38 147.6 + 82.26 162.8900 0.000 0.000 0
+  - generic: 39 148.3 + 44.83 161.5745 0.000 1000.000 0
+  - generic: 40 148.3 + 50.00 161.5745 0.000 0.000 0
+  - generic: 41 148.9 + 46.60 160.3900 11000.000 10.207 0
+  - generic: 42 149.1 + 47.16 160.3640 -5500.000 10.145 0
+  - generic: 43 149.2 + 84.37 159.8400 -5300.000 10.188 0
+  - generic: 44 149.6 + 24.95 157.2300 3428.000 12.587 0
+  - generic: 45 150.2 + 19.00 157.0400 -3800.000 10.067 0
+  - generic: 46 150.4 + 78.87 155.5800 18000.000 10.027 0
+  - generic: 47 150.5 + 81.00 155.1200 0.000 0.000 0
+  - generic: Superelevation ramps (8, behind the 47 gradient points according to the introductory theorem; no gradient points)
+  - generic: Ramp start Intersection Ramp end Shape u1 [mm] u2 [mm]
+  - generic: 139.8 + 58.49 139.9 + 44.29 140.0 + 44.39 2 120 140
+  - generic: 142.3 + 02.24 142.4 + 08.84 142.5 + 15.44 2 100 100
+  - generic: 143.1 + 84.79 143.2 + 76.79 143.3 + 68.79 2 140 140
+  - generic: 145.3 + 66.00 145.4 + 53.44 145.5 + 14.98 2 135 95
+  - generic: 145.8 + 23.42 145.8 + 88.96 145.9 + 96.91 2 85 140
+  - generic: 146.3 + 06.08 146.3 + 96.38 146.4 + 93.13 2 140 150
+  - generic: 147.7 + 09.55 147.8 + 01.35 147.8 + 96.55 2 135 140
+  - generic: 148.5 + 43.73 148.5 + 67.23 148.6 + 80.03 2 25 120
+  - strong:
+    - generic: GIS · DB_REF in ETRS89
+  - generic "0/3 DB_REF · 3 GK suspected · 0 GIS only · 3 Quality open":
+    - generic: 0/3 DB_REF · 3 GK suspected · 0 GIS only · 3 Quality open
+  - button "Assign location":
+    - generic: Assign location
+  - generic "Levels ▾":
+    - generic: Levels ▾
+  - button "Everything":
+    - generic: Everything
+  - button "Zoom out":
+    - generic: −
+  - button "Zoom in":
+    - generic: +
+  - img "Geographical location view of all transformable routes":
+    - generic "2631R139_Bestand_VR_DBREF03_A · GK-Lage vermutet · Punktqualität offen"
+    - generic "InboxAlpha · GK-Lage vermutet · Punktqualität offen"
+    - generic "InboxBeta · GK-Lage vermutet · Punktqualität offen"
+  - dialog "Load map tiles from outside?":
+    - paragraph:
+      - generic: Load map tiles from outside?
+    - paragraph:
+      - generic: The map layer retrieves tiles from [server name]
+      - code: tile.openstreetmap.de
+      - generic: and [
+      - code: tiles.openrailwaymap.org
+      - generic: server name]. The tile coordinates tell these servers the section, i.e., the location of the project. Everything else remains in the browser.
+    - button "Load now":
+      - generic: Load now
+    - button "Always in this browser":
+      - generic: Always in this browser
+    - button "Continue without a map":
+      - generic: Continue without a map
+    - generic "Use a different tile server":
+      - generic: Use a different tile server
+    - paragraph:
+      - generic: The map view without tiles still shows the routes; "Always" can be disabled in the "Layers" menu.
+  - complementary "Outbox · Current selection":
+    - generic: Outbox · Organization
+    - button "+ Neue Gruppe"
+    - generic "Weichen · Topologie (gerechnet) · 2 Weichen · 0 Kreuzungen · 0 Enden · 3 Kanten"
+    - generic "Strecke 2631 · 2 Abschnitte GRA re GRA li EU li TRA li km TRA re EU re LSYS? · aus Dateiname":
+      - text: Strecke 2631 · 2 Abschnitte
+      - generic "3 von 7 Zeilen belegt":
+        - 'generic "GRA re · Gradiente: 2631R139_Bestand_VR_DBREF03_A"': GRA re
+        - 'generic "GRA li · Gradiente: leer"': GRA li
+        - 'generic "EU li · Überhöhung: leer"': EU li
+        - 'generic "TRA li · Krümmung: leer"': TRA li
+        - 'generic "TRA km · Kilometerlinie: leer"': km
+        - 'generic "TRA re · Krümmung: 2631R139_Bestand_VR_DBREF03_A"': TRA re
+        - 'generic "EU re · Überhöhung: 2631R139_Bestand_VR_DBREF03_A::cant"': EU re
+      - generic: LSYS? · aus Dateiname
+    - generic "Abschnitt 0,0 + 00,00 – 11,2 + 75,90 GRA re GRA li EU li TRA li km TRA re EU re LSYS? · aus Dateiname":
+      - text: Abschnitt 0,0 + 00,00 – 11,2 + 75,90
+      - generic "2 von 7 Zeilen belegt":
+        - 'generic "GRA re · Gradiente: leer"': GRA re
+        - 'generic "GRA li · Gradiente: leer"': GRA li
+        - 'generic "EU li · Überhöhung: leer"': EU li
+        - 'generic "TRA li · Krümmung: leer"': TRA li
+        - 'generic "TRA km · Kilometerlinie: leer"': km
+        - 'generic "TRA re · Krümmung: 2631R139_Bestand_VR_DBREF03_A"': TRA re
+        - 'generic "EU re · Überhöhung: 2631R139_Bestand_VR_DBREF03_A::cant"': EU re
+      - generic: LSYS? · aus Dateiname
+    - generic "Abschnitt 139,1 + 62,00 – 150,5 + 81,00 GRA re GRA li EU li TRA li km TRA re EU re LSYS? · aus Dateiname":
+      - text: Abschnitt 139,1 + 62,00 – 150,5 + 81,00
+      - generic "1 von 7 Zeilen belegt":
+        - 'generic "GRA re · Gradiente: 2631R139_Bestand_VR_DBREF03_A"': GRA re
+        - 'generic "GRA li · Gradiente: leer"': GRA li
+        - 'generic "EU li · Überhöhung: leer"': EU li
+        - 'generic "TRA li · Krümmung: leer"': TRA li
+        - 'generic "TRA km · Kilometerlinie: leer"': km
+        - 'generic "TRA re · Krümmung: leer"': TRA re
+        - 'generic "EU re · Überhöhung: leer"': EU re
+      - generic: LSYS? · aus Dateiname
+    - generic: GRA re · Gradiente
+    - generic: "1"
+    - checkbox "2631R139_Bestand_VR_DBREF03_A zur Mehrfachauswahl hinzufügen"
+    - button "2631R139_Bestand_VR_DBREF03_A"
+    - generic: GRA li · Gradiente
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: EU li · Überhöhung
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: TRA li · Krümmung
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: TRA km · Kilometerlinie
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: TRA re · Krümmung
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen
+    - generic: EU re · Überhöhung
+    - generic: –
+    - generic: Objekt aus der Inbox hierher ziehen

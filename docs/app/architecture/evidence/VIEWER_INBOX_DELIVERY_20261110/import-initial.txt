@@ -1,0 +1,96 @@
+The following is a diff from the previous accessibility tree for Window: "ufAIM Technet File Viewer" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 127-130, 132-133, 136-146, 196-312
+~119 standard window ufAIM Technet File Viewer – Part of group 🔎 Viewer-Lieferung - Google Chrome, URL: localhost:58441/technetViewer.html, Secondary Actions: Raise
+~	120 container ufAIM Technet File Viewer – Part of group 🔎 Viewer-Lieferung - Google Chrome, URL: localhost:58441/technetViewer.html
+~		121 container
+~			122 toolbar
+~				123 button Back
+~				124 button (disabled) Forward
+~				125 button Reload
+~				126 container
++					127 pop-up button View site information
++					128 text field (settable) Address and search bar, Value: localhost:58441/technetViewer.html, Placeholder: Ask Google or type a URL
++					129 button Translate
++					130 button Bookmark this tab
+~				131 container
++					132 pop-up button ChatGPT
+Has access to this site
++					133 pop-up button Extensions
+~				134 button You
+~				135 pop-up button Chrome
++			136 container
++				137 scroll area
++					138 HTML content ufAIM Technet File Viewer, URL: localhost:58441/technetViewer.html
++						139 container
++							140 heading Technet File Viewer, Value: 1
++								141 text Technet File Viewer
++							142 container Opinion
++								143 toggle button ◎ Map, Help: Map: the stage — routes with precision and kilometer markers; closes each slide, Value: 1
++								144 toggle button ≡ text, Help: Text: the numbers of the selected object, Value: 0
++								145 toggle button ∿ IVMG, Value: 0, Help: IVMG: Route plan — Curvature, gradient, superelevation, track spacing above the kilometer markers (Ril 883.5220)
++								146 toggle button ⋀ IVHW, Help: IVHW: Switch height plan (Ril 883.5240), Value: 0
++								147 toggle button ▥ GWB, Help: GWB: Speed-related traffic flow today and proposal (Ril 800.0110, Diagnosis), Value: 0
++								148 toggle button ◷ Travel time, Value: 0, Help: Travel time: Driving curve v(s) and travel time t(s) above the GWB today and proposal — simplified driving dynamics per train type
++								149 toggle button ⌥ Track plan, Help: Track plan: the calculated track graph, GWB colored, Value: 0
++								150 toggle button ▤ Delivery, Help: Delivery: the entire delivery as one image, Value: 0
++								151 toggle button ⌾ Link, Help: Linkage: every object, every connection, its reason, Value: 0
++							152 text 2631R139_Bestand_VR_DBREF03_A.GRA: reading …
++							153 container
++								154 button ◐ system, Help: Appearance: System · Light · Dark
++								155 toggle button GIS fullscreen, Help: Map in full screen, Value: 0
++									156 text ⛶
++							157 container
++								158 disclosure triangle Data ▾
++									159 text Data ▾
++							160 progress indicator 55
++							161 container
++								162 text TECHNET FILE VIEWER · BUILD CD7D0E7+ 2026-11-10 SOURCE:CDC90821BBC1
++								163 heading See the railway survey before anyone calculates it., Value: 2
++									164 text See the railway survey before anyone calculates it.
++								165 text Route alignments, gradients, and superelevations from GND, VermEsn, and landXML — as a map, track diagram, delivery image, linking image, and 7L diagram. All in the browser. Only the map tiles from OpenStreetMap and OpenRailwayMap come from external sources, and only if you allow it. GND · MDB, DBB VermEsn · TRA, GRA landXML ZIP folder
++								166 button + Load files: eifel.zip
++								167 button Load folder: No file chosen
++								168 button Choose file: No file chosen
++								169 text + Load files
++								170 text Load folder
++								171 text or drag files, ZIPs and folders here
++							172 container
++								173 toggle button Show or hide inbox, Value: 0
++								174 toggle button Show or hide the outbox, Value: 0
++								175 container
++									176 text GIS · Orientation
++									177 disclosure triangle Levels ▾
++										178 text Levels ▾
++									179 button Everything, Help: Show all
++									180 button Zoom out
++									181 button Zoom in
++								182 image Geographical location view of all transformable routes
++			183 container Infobar Container
++				184 container Infobar
++					185 container
++						186 text 'ChatGPT' started debugging this browser
++						187 button Cancel
++					188 button Close
++			189 pop-up button Tab search
++			190 container
++				191 tab group
++					192 tab (settable, boolean) ufAIM - High memory usage - 892 MB, Value: off
++						193 button Close
++					194 tab (settable, boolean) ufAIM Technet-Datei-Viewer, Value: off
++						195 button Close
++					196 tab (settable, boolean) AXTRAN2, Value: off
++						197 button Close
++					198 tab (settable, boolean) Bid2Build – lokale Ein-Datei-Version, Value: off
++						199 button Close
++					200 tab group  group ⛰️ Portfolio QA – 2 Tabs, •  Bid2Build – lokale Ein-Datei-Version, •  about:blank – Expanded
++					201 tab (settable, boolean) Bid2Build – lokale Ein-Datei-Version – Part of group ⛰️ Portfolio QA, Value: off
++						202 button Close
++					203 tab (settable, boolean) about:blank – Part of group ⛰️ Portfolio QA, Value: off
++						204 button Close
++					205 tab group  group 🔎 Viewer-Lieferung – 1 Tab, •  ufAIM Technet File Viewer – Expanded
++					206 tab (selected, settable, boolean) ufAIM Technet File Viewer – Part of group 🔎 Viewer-Lieferung, Value: on
++						207 button Close
++			208 button New tab
++	209 close button
++	210 full screen button Help: this button also has an action to zoom the window, Secondary Actions: zoom the window
++	211 minimise button

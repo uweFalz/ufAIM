@@ -1,0 +1,68 @@
+✔ standalone DBB adapter is generated from shared source; every input route recognizes DBB (125.734625ms)
+[runImportPipeline] rejected {
+  fileName: 'invalid.DBB',
+  code: 'DBB_RECORD_UNSUPPORTED',
+  message: 'Unsupported DBB record type "99"'
+}
+✔ standalone DBB rejection retains its explicit reason (6.770583ms)
+✔ public standalone DBB produces linked profile/cant with declared metre units (16.884541ms)
+﹣ standalone full GND item/relationship parity: 4760_2-3_DA0-V00 (0.246542ms) # Set UFAIM_DBB_SAMPLE_DIR for the private paired fixtures
+﹣ standalone full GND item/relationship parity: 4760_5-7_DA0-V00 (0.066458ms) # Set UFAIM_DBB_SAMPLE_DIR for the private paired fixtures
+﹣ standalone full GND item/relationship parity: 4760_10-16_DA0-V00 (0.066917ms) # Set UFAIM_DBB_SAMPLE_DIR for the private paired fixtures
+﹣ standalone full GND item/relationship parity: 4760_38,8-46,0_DR0-R00 (0.053708ms) # Set UFAIM_DBB_SAMPLE_DIR for the private paired fixtures
+﹣ standalone full GND item/relationship parity: 4760_48-65_DA0-V00 (0.043583ms) # Set UFAIM_DBB_SAMPLE_DIR for the private paired fixtures
+✔ Zugehörigkeit: the first referenced Trasse owns a Gradiente; without one it is an orphan; the pile holds Trassen and orphans (5.214083ms)
+✔ Umfeld by VermEsn name: Kilometerlinie, both sides and their own Gradiente/Überhöhung; a Bahnhofsgleis stays unknown (1.2505ms)
+✔ Umfeld by GND: same Strecke only with the same Lage and an overlapping km range (0.23275ms)
+✔ a singleton (Weiche without Strecke) shows only its own relations; two alignments on one side pair by their own references (0.22975ms)
+✔ Suchtext carries the states as words (0.394875ms)
+✔ fixed-width keys: blanks collapse, nothing else changes (0.714291ms)
+✔ Knoten kinds and labels (3.706416ms)
+✔ a Gleisstrang along one Gleis is one portion (0.337ms)
+✔ against the Gleis's direction the portion runs backwards (0.171458ms)
+✔ a Gleisstrang over two Gleise gives two portions, in order (0.242833ms)
+✔ a pair no element answers to leaves a gap; nothing matched, nothing returned (0.351125ms)
+✔ Bauart: form, rail profile, radius, slope (10.046208ms)
+✔ Spitze, Stamm, Zweig of a Weiche from its legs (0.470584ms)
+✔ no Spitze without a leg facing the other two; a close call is uncertain (0.107125ms)
+✔ a Gleis without a number of its own: 0 in GND, 9000 and up in LIRA (0.173583ms)
+✔ a Knoten inside a Lage element takes its own point's station, not the element boundary (0.089125ms)
+✔ a shared Knoten name resolves to the Knoten at the strand's end point (0.113167ms)
+✔ a far group keeps its lengths along its own main direction (1.1715ms)
+✔ leg target crosses seams to the next Knoten (0.331958ms)
+✔ straight Stamm: EW and the halves of DKW/EKW, not in an Übergangsbogen (0.530417ms)
+✔ one leg against the Zweigradius: Zweig within 25 %, Stamm beyond twice the radius (0.144625ms)
+✔ the Gleis of a Gleisstrang: Streckengleis by Strecke and side, Bahnhofsgleis by number, a Verbindung none (0.138459ms)
+✔ the Spitze's Gleis runs on to exactly one neighbour, or the data say nothing (0.105875ms)
+✔ the embedded block is the shared source, export keyword and indentation aside (2.560959ms)
+✔ Eifel 2631R139: 47 grade breaks, then 8 Überhöhungsrampen (9.900541ms)
+✔ a header whose counts do not add up leaves the rows unclassified, with a diagnostic (0.245334ms)
+✔ the cant series takes the sign of the element it starts in; zero stays zero (0.311875ms)
+✔ a Rampe through the Wendepunkt is one line from +u1 to −u2 with equal legs (0.658375ms)
+✔ the footnote measures the Rampe against the Trasse's Überhöhung (0.744709ms)
+✔ a Gleis beside the Kilometerlinie: side, offset and km (3.684125ms)
+✔ the side follows the rising km, not the order of the points (3.971083ms)
+✔ on the line, across it, out of reach (2.054833ms)
+✔ mostly on the line with a stretch beside it is still on the line (1.372625ms)
+✔ the grid finds the same nearest point as the full search (70.104083ms)
+✔ past the end of the line is not beside it (0.72575ms)
+✔ one folded sample does not turn a side into a crossing (0.741542ms)
+✔ between two Kilometerlinien: the nearest, unless the Gleis names its own (0.903208ms)
+✔ lageOffset: distance, station, side, end (0.263791ms)
+✔ two witnesses grade a Gleisseite (0.109125ms)
+✔ two conventions, each with a label (1.98375ms)
+✔ Landshut: Strecke files frame, Bahnhofsgleise stay unknown, singletons yield nothing (5.186958ms)
+✔ Eifel: K is the Kilometerlinie, a start-only km, descriptions are variants, Bahnhofsgleise frame by Bahnhof (0.397459ms)
+✔ tolerated spellings resolve to the same frames; a description is never a Bahnhofsgleis (0.102291ms)
+✔ encoded km after the zero point: Hektometer and Meter (1.478291ms)
+✔ encoded km before the zero point: both parts negative (WueTreu 5201) (3.235417ms)
+✔ plain metres pass through (0.318292ms)
+✔ the km text: Kilometer, Hektometer, Meter (0.351792ms)
+ℹ tests 55
+ℹ suites 0
+ℹ pass 50
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 5
+ℹ todo 0
+ℹ duration_ms 476.818917

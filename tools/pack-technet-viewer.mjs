@@ -14,14 +14,18 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 
 const root = new URL("../", import.meta.url);
+execFileSync(process.execPath, ["tools/build-technet-viewer.mjs"], { cwd: root, stdio: "pipe" });
 const source = new URL("technetViewer.html", root);
 const distDir = new URL("dist/", root);
 
 const git = (...args) => { try { return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim(); } catch { return ""; } };
 const hash = git("rev-parse", "--short", "HEAD") || "ohne-git";
 const dirty = git("status", "--porcelain", "--", "technetViewer.html") ? "+" : "";
-const date = new Date().toISOString().slice(0, 10);
-const build = `${hash}${dirty} ${date}`;
+const dateIndex = process.argv.indexOf("--date");
+const date = dateIndex >= 0 ? process.argv[dateIndex + 1] : new Date().toISOString().slice(0, 10);
+if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Expected --date YYYY-MM-DD");
+const sourceHash = createHash("sha256").update(await fs.readFile(source)).digest("hex");
+const build = `${hash}${dirty} ${date} source:${sourceHash.slice(0,12)}`;
 
 let html = await fs.readFile(source, "utf8");
 const marker = '<meta name="viewport" content="width=device-width, initial-scale=1" />';
@@ -81,24 +85,45 @@ Wahl. Keine Datenbank, kein Backend, keine Anmeldung. Der Browser
 merkt sich die Sitzung (geladene Dateien, Zuordnungen) nur lokal in
 seinem eigenen Speicher.
 
+Rampen-Korrektur
+----------------
+GRA-Gradientpunkte und Ueberhoehungsrampen werden getrennt gelistet.
+Rampen stehen in ihrer eigenen Tabelle, nicht mehr in der Gradientpunktliste.
+Bei widerspruechlichem Kopfsatz bleibt der bisherige Lesepfad mit Hinweis.
+IVMG zeigt die GRA-Rampen auch als Band und Wertetabelle. Ohne passend
+zugeordnete Trasse bleibt die Rampenseite unbestimmt; Hinweise beachten.
+Darstellung und Tests sind keine konstruktive Freigabe.
+
+Inbox und Sichtbarkeit
+---------------------
+Der Grabbeltisch filtert unzugeordnete Objekte ueber Namen und Zustaende.
+Lage, Hoehe und Kartensichtbarkeit wirken auf Treffer oder angehakte Treffer.
+Ausblenden entfernt keine Quelldaten; die Sichtbarkeit betrifft die Karte,
+nicht automatisch Spurplan, Lieferung oder andere Diagramme.
+
 Pruefen
 -------
+QUELLEN.json dokumentiert die Repository-Quellen und deren SHA-256.
+Reproduktion: node tools/build-technet-viewer.mjs --write; danach
+node tools/pack-technet-viewer.mjs --date ${date} --out <neues-ZIP>.
+
 Der SHA-256 oben gehoert zur ausgelieferten Datei. Wer den Wert
 nachrechnet (PowerShell: Get-FileHash technetViewer.html), weiss, dass
 die Datei unveraendert ist.
 `;
 
 await fs.mkdir(distDir, { recursive: true });
-const stage = new URL(`stage-${hash}/`, distDir);
-await fs.rm(stage, { recursive: true, force: true });
-await fs.mkdir(stage, { recursive: true });
+const stage = new URL(`file://${await fs.mkdtemp(path.join(distDir.pathname, "viewer-stage-"))}/`);
 await fs.writeFile(new URL("technetViewer.html", stage), html);
 await fs.writeFile(new URL("LIESMICH.txt", stage), liesmich);
 
 const outIndex = process.argv.indexOf("--out");
 const out = outIndex >= 0 ? path.resolve(process.argv[outIndex + 1]) : path.join(distDir.pathname, `technetViewer-${date}-${hash}${dirty ? "-arbeitskopie" : ""}.zip`);
-await fs.rm(out, { force: true });
-execFileSync("zip", ["-q", "-X", "-j", out, path.join(stage.pathname, "technetViewer.html"), path.join(stage.pathname, "LIESMICH.txt")]);
+try { await fs.access(out); throw new Error(`Output already exists: ${out}`); } catch (e) { if (e.code !== "ENOENT") throw e; }
+const manifest = JSON.parse(await fs.readFile(new URL("viewer/source-manifest.json", root), "utf8"));
+await fs.writeFile(new URL("QUELLEN.json", stage), JSON.stringify({ build, sourceManifest: manifest, packagedHtmlSha256: sha256 }, null, 2)+"\n");
+for (const name of ["technetViewer.html", "LIESMICH.txt", "QUELLEN.json"]) await fs.utimes(new URL(name,stage),new Date("1980-01-01T00:00:00Z"),new Date("1980-01-01T00:00:00Z"));
+execFileSync("zip", ["-q", "-X", "-j", out, path.join(stage.pathname, "technetViewer.html"), path.join(stage.pathname, "LIESMICH.txt"), path.join(stage.pathname, "QUELLEN.json")]);
 await fs.rm(stage, { recursive: true, force: true });
 const zipped = await fs.stat(out);
 console.log(`${out}\n  Build ${build} · ${sizeMb} MB HTML · ZIP ${(zipped.size / 1048576).toFixed(1)} MB\n  SHA-256 technetViewer.html: ${sha256}`);

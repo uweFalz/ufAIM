@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="de">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+			<title>ufAIM Technet-Datei-Viewer</title>
+		<style>@@src/viewer.css@@</style>
+	<style id="maplibre-css">@@vendor/maplibre.css@@</style>
+	</head>
+	<body>
+		<div id="app">
+		<main>
+			<div id="titlebar">
+				<h1><span class="brand" aria-hidden="true">TV</span><span class="label">Technet-Datei-Viewer</span></h1>
+				<div id="viewModes" class="hidden" aria-label="Ansicht">
+					<button type="button" data-mode="crs" aria-pressed="true" title="Karte: die Bühne — Trassen mit Präzision und Kilometersteinen; schließt jedes Slide"><span class="glyph">◎</span><span class="label">Karte</span></button>
+					<button type="button" data-mode="listing" aria-pressed="false" title="Text: die Zahlen des gewählten Objekts"><span class="glyph">≡</span><span class="label">Text</span></button>
+					<button type="button" data-mode="ivmg" aria-pressed="false" title="IVMG: Trassenplan — Krümmung, Gradiente, Überhöhung, Gleisabstand über der Kilometrierung (Ril 883.5220)"><span class="glyph">∿</span><span class="label">IVMG</span></button>
+					<button type="button" data-mode="ivhw" aria-pressed="false" title="IVHW: Weichenhöhenplan (Ril 883.5240)"><span class="glyph">⋀</span><span class="label">IVHW</span></button>
+					<button type="button" data-mode="gwb" aria-pressed="false" title="GWB: Geschwindigkeitswegeband heute und Vorschlag (Ril 800.0110, Diagnose)"><span class="glyph">▥</span><span class="label">GWB</span></button>
+					<button type="button" data-mode="fzk" aria-pressed="false" title="Fahrzeit: Fahrschaulinie v(s) und Fahrzeit t(s) über dem GWB heute und Vorschlag — vereinfachte Fahrdynamik je Zugart"><span class="glyph">◷</span><span class="label">Fahrzeit</span></button>
+					<button type="button" data-mode="spurplan" aria-pressed="false" title="Spurplan: der gerechnete Gleisgraph, GWB-gefärbt"><span class="glyph">⌥</span><span class="label">Spurplan</span></button>
+					<button type="button" data-mode="delivery" aria-pressed="false" title="Lieferung: die ganze Lieferung als ein Bild"><span class="glyph">▤</span><span class="label">Lieferung</span></button>
+					<button type="button" data-mode="links" aria-pressed="false" title="Verknüpfung: jedes Objekt, jede Verbindung, ihr Grund"><span class="glyph">⌾</span><span class="label">Verknüpfung</span></button>
+				</div>
+				<div id="jump" class="hidden">
+					<input id="jumpInput" type="search" placeholder="Suche: Gleis, Weiche, km 75,0+12" aria-label="Suche und Sprung" autocomplete="off" spellcheck="false" title="Gleis-, Weichen- oder Dateiname, oder eine Kilometrierung wie 75,0+12 · ⌘/Strg+K oder / springt hierher · ← → bewegen den Cursor 10 m, mit ⇧ 100 m · Esc löscht den Cursor">
+					<ul id="jumpResults" class="hidden" role="listbox"></ul>
+				</div>
+				<span id="status">Bereit · Daten hierher ziehen oder über „Daten“ laden.</span>
+				<div id="titleTools">
+					<button id="coupleToggle" type="button" class="hidden" aria-pressed="true" title="Kopplung: eine Auswahl zieht die Bilder nach — die Karte zentriert auf das Objekt, der Spurplan zoomt das Band seiner Strecke darauf. Aus, wenn Karte und Spurplan stehen bleiben sollen."><span class="glyph">⇄</span><span class="label">Kopplung</span></button>
+					<button id="themeToggle" type="button" title="Erscheinungsbild: System · Hell · Dunkel"><span class="glyph">◐</span><span class="label">System</span></button>
+					<button id="toggleFullscreen" type="button" aria-label="GIS-Vollbild" aria-pressed="false" title="Karte im Vollbild">⛶</button>
+				</div>
+				<details id="dataMenu" class="menu">
+					<summary>Daten ▾</summary>
+					<div class="menu-body" popover="manual">
+						<label class="menu-item" for="files">＋ Dateien laden …</label>
+						<label class="menu-item" for="folderFiles" title="Ordner über den Dateidialog laden, ohne Drag &amp; Drop">＋ Ordner laden …</label>
+						<span id="assignmentTools" class="hidden"><button type="button" id="assignmentExport" class="menu-item" title="Handzuordnungen, Lage/Höhe je Datei und Objekt, Eingaben, Färbung und Zoom als JSON sichern">Zuordnung sichern ⤓</button><label class="menu-item" for="assignmentImport" title="Gesicherte Zuordnung auf die geladenen Dateien anwenden">Zuordnung anwenden ⤒</label></span>
+						<button id="exportLandxml" type="button" class="menu-item" disabled>landXML exportieren</button>
+						<button id="validate7l" class="hidden menu-item" type="button" disabled>7L prüfen</button>
+					</div>
+				</details>
+			</div>
+			<div id="importProgress" class="hidden" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="importProgressBar"></div><span id="importProgressText"></span></div>
+			<section id="stage">
+			<section id="dropzone">
+				<div class="welcome">
+					<p class="welcome-eyebrow" id="welcomeEyebrow">Technet-Datei-Viewer</p>
+					<h2>Bahnvermessung sehen, bevor jemand sie rechnet.</h2>
+					<p class="welcome-sub">Trassen, Gradienten und Überhöhungen aus GND, VermEsn und landXML — als Karte, Spurplan, Lieferungsbild, Verknüpfungsbild und 7L-Diagramm. Alles im Browser. Nur die Kartenkacheln von OpenStreetMap und OpenRailwayMap kommen von außen, und nur, wenn du es erlaubst.</p>
+					<div class="welcome-formats"><span>GND · MDB, DBB</span><span>VermEsn · TRA, GRA</span><span>landXML</span><span>ZIP, Ordner</span></div>
+					<input id="files" type="file" multiple />
+					<input id="folderFiles" type="file" webkitdirectory multiple />
+					<input id="assignmentImport" type="file" accept=".json,application/json" />
+					<div class="welcome-actions">
+						<label class="import-button primary" for="files">＋ Dateien laden</label>
+						<label class="import-button" for="folderFiles">Ordner laden</label>
+					</div>
+					<div class="hint">oder Dateien, ZIPs und Ordner hierher ziehen</div>
+					<span id="sessionOffer" class="hidden"><span id="sessionOfferText"></span><button type="button" id="reopenAccept" class="import-button primary">Wieder öffnen</button><button type="button" id="reopenDiscard" class="import-button" title="Gespeicherte Lieferung aus dem Browser löschen">Verwerfen</button></span>
+				</div>
+			</section>
+				<div id="workspace" class="mode-crs">
+					<div id="viewer" class="inbox-collapsed outbox-collapsed diagram-collapsed">
+						<button id="toggleInbox" class="edge-toggle" type="button" aria-label="Inbox ein- oder ausblenden" aria-pressed="false">›</button>
+						<button id="toggleOutbox" class="edge-toggle" type="button" aria-label="Outbox ein- oder ausblenden" aria-pressed="false">‹</button>
+						<div id="slideScrim" class="hidden" aria-hidden="true" title="Zurück zur Karte"></div>
+						<button id="toggleDiagram" class="edge-toggle" type="button" aria-label="Diagramm ein- oder ausblenden" aria-pressed="false">⌃</button>
+						<nav id="tables" aria-label="Inbox · geladene Technet-Daten"></nav>
+						<div id="dataPanel" class="slide hidden">
+							<div id="toolbar">
+								<span id="tableTitle">Trasse / Gradiente</span>
+								<span id="tableMeta"></span>
+								<div class="overlay-actions">
+									<span id="listingZoomLabel">100 %</span>
+									<button id="listingZoomOut" type="button" aria-label="Listing verkleinern">−</button>
+									<button id="listingZoomIn" type="button" aria-label="Listing vergrößern">+</button>
+									<button id="toggleTextOpacity" type="button" aria-label="Textoverlay transparent oder deckend" aria-pressed="false">◐</button>
+									<button id="toggleText" type="button" aria-label="Textoverlay schließen" aria-pressed="true">×</button>
+								</div>
+							</div>
+							<div id="gridWrap">
+								<pre id="listing">Keine Trasse oder Gradiente ausgewählt.</pre>
+							</div>
+						</div>
+						<div id="mapPanel">
+						<div id="mapToolbar">
+							<strong id="mapTitle">GIS · Orientierung</strong>
+							<span id="crsNote" class="chip"></span>
+							<button id="gisAssign" class="hidden" type="button">Lage zuordnen</button>
+							<span class="tb-spacer"></span>
+							<button id="rejectListToggle" class="hidden" type="button" aria-pressed="false" aria-haspopup="true" title="Alle Segmente über σ_r = 5 mm gemeldeter Punktgenauigkeit (meanPointError, Ril 883.3100), zur Einzelprüfung">Ausschuss <span id="rejectListCount">0</span></button>
+							<div id="rejectListPanel" class="hidden" aria-label="Ausschussliste nach Ril 883.3100"></div>
+							<details id="layersMenu" class="menu">
+								<summary>Ebenen ▾</summary>
+								<div class="menu-body" popover="manual">
+									<button id="baseMapLoad" type="button" class="menu-item" aria-pressed="false" title="Lädt Kacheln von OpenStreetMap und OpenRailwayMap — fragt vorher, weil der Ausschnitt die Projektlage verrät">OpenRailwayMap ein</button>
+									<button id="tileConsentForget" type="button" class="hidden menu-item" title="Die in diesem Browser gemerkte Erlaubnis für Kartenkacheln zurücknehmen">Kachel-Erlaubnis vergessen</button>
+									<button id="tileSourceOpen" type="button" class="menu-item" title="Welcher Server die Kacheln liefert — ein interner Kachelserver statt OpenStreetMap, je Browser gemerkt">Kachelquelle …</button>
+									<label id="railwayOpacityControl" class="hidden menu-item">Karte
+											<input id="railwayOpacity" type="range" min="0" max="100" value="15" step="5" aria-label="Intensität des gesamten Kartenhintergrunds" />
+											<span id="railwayOpacityValue">15 %</span>
+									</label>
+									<button id="kmLineToggle" type="button" class="menu-item" aria-pressed="true" title="Kilometerlinien auf der Karte und im Diagramm ein- oder ausblenden — die Gleise bleiben">km-Linien aus</button>
+									<button id="precisionToggle" class="hidden menu-item" type="button" aria-pressed="false" title="Gleis nach gemeldeter Genauigkeit einfärben (Skala nach Ril 883.3100), statt nach DB_REF/vermutet — Lage (meanPointError, MP) oder Höhe (meanHeightError, MH)">Präzision ein</button>
+									<select id="precisionKind" class="hidden menu-item" aria-label="Genauigkeit: Lage oder Höhe" title="Lage: mittlerer Punktfehler der Trassenpunkte (GND MP). Höhe: mittlerer Höhenfehler der Gradientenpunkte (GND MH), auf die Trasse gelegt über den nächsten Gradientenpunkt in Stationsrichtung"><option value="point">Genauigkeit: Lage (MP)</option><option value="height">Genauigkeit: Höhe (MH)</option></select>
+									<button id="mapFilterToggle" type="button" class="menu-item" aria-pressed="false" aria-haspopup="true">Filter …</button>
+									<button id="reopenText" class="hidden menu-item" type="button">Text</button>
+								</div>
+							</details>
+							<div id="mapFilterPanel" class="hidden" aria-label="Kartenfilter"></div>
+							<span class="tb-group"><button id="mapFit" type="button" title="Alles zeigen">Alles</button><button id="mapZoomOut" type="button" aria-label="Herauszoomen">−</button><button id="mapZoomIn" type="button" aria-label="Hineinzoomen">+</button></span>
+						</div>
+						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
+						<div id="maplibreMap" class="hidden" aria-label="Kartenebene mit geladenen Trassen"></div>
+						<div id="mapEmpty" class="hidden"></div>
+						<div id="tileConsent" class="tile-consent hidden" role="dialog" aria-label="Kartenkacheln von außen laden?">
+							<p class="tile-consent-title">Kartenkacheln von außen laden?</p>
+							<p id="tileConsentText"></p>
+							<div class="tile-consent-actions"><button type="button" id="tileConsentOnce" class="import-button primary">Jetzt laden</button><button type="button" id="tileConsentAlways" class="import-button">Immer in diesem Browser</button><button type="button" id="tileConsentNo" class="import-button">Ohne Karte weiter</button><button type="button" id="tileConsentClose" class="import-button hidden">Schließen</button></div>
+							<details id="tileSourceEditor" class="tile-source">
+								<summary>Anderen Kachelserver verwenden</summary>
+								<label>Basiskarte, URL-Vorlage mit {z}/{x}/{y}<input id="tileBaseInput" type="text" spellcheck="false" placeholder="https://kacheln.intern/osm/{z}/{x}/{y}.png" /></label>
+								<label>Bahn-Overlay, leer = keins<input id="tileRailwayInput" type="text" spellcheck="false" placeholder="https://kacheln.intern/bahn/{z}/{x}/{y}.png" /></label>
+								<label>Quellenvermerk<input id="tileAttributionInput" type="text" placeholder="© OpenStreetMap-Mitwirkende" /></label>
+								<div class="tile-source-actions"><button type="button" id="tileSourceApply" class="import-button primary">Übernehmen</button><button type="button" id="tileSourceReset" class="import-button">Standard (OpenStreetMap)</button></div>
+							</details>
+							<p class="tile-consent-hint">Die Lageansicht ohne Kacheln zeigt die Trassen weiterhin; „Immer“ lässt sich im Menü „Ebenen“ zurücknehmen.</p>
+						</div>
+						<div id="mapLegend" class="legend legend-card hidden" aria-label="Kartenlegende">
+							<span class="legend-item" style="--swatch:#00a651">DB_REF (bestätigt)</span>
+							<span class="legend-item" style="--swatch:#e6007e">nicht DB_REF (vermutet)</span>
+						</div>
+						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende nach Ril 883.3100"></div>
+						</div>
+						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
+							<div class="box-head"><span>Outbox · Ordnung</span></div>
+							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
+						</aside>
+						<div id="spurplanPanel" class="slide hidden">
+							<div id="spurplanToolbar" class="slide-toolbar">
+								<strong title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">Spurplan · Hauptbild</strong>
+								<span id="spurplanNote" class="slide-note"></span>
+								<span id="spurplanHint" title="Zoom je Strecke: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt den Ausschnitt, Doppelklick zeigt die ganze Strecke">⌘/Strg + Rad zoomt · Ziehen verschiebt · Doppelklick: alles</span>
+								<div class="slide-controls">
+								<label class="gwb-input" title="Kanten nach dem Geschwindigkeitswegeband einfärben: heute (zul. v aus Bogen und Überhöhung, Abschnitte nach 457.0201) oder Vorschlag (Ril 800.0110 Ermessensgrenze)">Färbung <select id="spurplanColoring"><option value="today">GWB heute</option><option value="proposal">GWB Vorschlag</option><option value="none">ohne</option></select></label>
+								<details class="menu slide-export">
+									<summary title="Dieses Bild als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<span class="picture-export" data-picture="spurplan"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
+								<div id="spurplanLegend" class="legend"></div>
+							</div>
+							<div id="spurplanScroll"><div id="spurplanContent"></div></div>
+						</div>
+						<div id="deliveryPanel" class="slide hidden">
+							<div id="deliveryToolbar" class="slide-toolbar">
+								<strong>Lieferung · Bild</strong>
+								<span id="deliveryNote" class="slide-note"></span>
+								<div class="slide-controls">
+								<details class="menu slide-export">
+									<summary title="Dieses Bild als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<span class="picture-export" data-picture="delivery"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
+								<div id="deliveryLegend" class="legend"><span class="legend-item swatch-box delivery-legend-item delivery-alignment">Krümmung (Trasse)</span><span class="legend-item swatch-box delivery-legend-item delivery-profile">Gradiente</span><span class="legend-item swatch-box delivery-legend-item delivery-cant">Überhöhung</span><span class="legend-item swatch-box delivery-legend-item delivery-staeq">Stationsgleichung</span><span class="legend-item swatch-tri delivery-legend-item delivery-junction">Weiche / Kreuzung</span></div>
+							</div>
+							<div id="deliveryScroll"><div id="deliveryContent"></div></div>
+						</div>
+						<div id="linksPanel" class="slide hidden">
+							<div id="linksToolbar" class="slide-toolbar">
+								<strong>Verknüpfung · Bild</strong>
+								<span id="linksNote" class="slide-note"></span>
+								<div class="slide-controls">
+								<details class="menu slide-export">
+									<summary title="Dieses Bild als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<span class="picture-export" data-picture="links"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
+								<div id="linksLegend" class="legend"></div>
+							</div>
+							<div id="linksScroll"><div id="linksContent"></div></div>
+						</div>
+						<div id="diagramPanel" class="slide hidden">
+							<div id="diagramResizeHandle" role="separator" aria-label="Diagrammhöhe ändern" aria-orientation="horizontal" tabindex="0"></div>
+							<div id="diagramToolbar" class="slide-toolbar">
+								<strong id="diagramTitle">Diagramm</strong>
+								<span id="diagramCode" title=""></span>
+								<span id="diagramNote" class="slide-note"></span>
+								<span id="diagramCursor" title="Cursor: eine Station in allen Bildern — Maus über IVMG, IVHW, GWB, Spurplan, Karte oder Lieferung"></span>
+								<div class="slide-controls">
+								<div id="diagramPresentation" class="tb-group" aria-label="Ansicht">
+									<button type="button" data-diagram-presentation="chart" aria-pressed="true" title="Kurve">Kurve</button>
+									<button type="button" data-diagram-presentation="table" aria-pressed="false" title="Stationswerte als Tabelle">Tabelle</button>
+								</div>
+								<details id="assumptionsMenu" class="menu">
+									<summary title="Vier Werte, die in keiner Geometriedatei stehen — Annahmen für das GWB nach Ril 800.0110 / 457.0201">Annahmen ▾</summary>
+									<div class="menu-body row" popover="manual">
+								<label class="gwb-input" id="gwbLineSpeedLabel" title="Streckengeschwindigkeit auf Geraden und weiten Bögen — steht in keiner Geometriedatei; Annahme für die Abschnittsbildung nach Ril 457.0201 (Tabellen bis 160 km/h)">Strecke <input id="gwbLineSpeed" type="number" inputmode="numeric" min="10" max="300" step="10" value="160"> km/h</label>
+								<label class="gwb-input" title="Regelbremsweg der Strecke — steht in keiner Geometriedatei; Mindestlänge jeder Geschwindigkeitsstufe nach Ril 457.0201 5 (10). 1000 m ist der Wert aus dem Beispiel der Ril, 700 m typisch für Nebenbahnen">Bremsweg <input id="gwbBrakeDistance" type="number" inputmode="numeric" min="300" max="3000" step="100" value="1000"> m</label>
+								<label class="gwb-input" title="Oberbauart — steht in keiner Geometriedatei; Ermessensgrenze der Überhöhung nach Ril 800.0110 Tab. 4: Schotteroberbau 160 mm, Feste Fahrbahn 170 mm">Oberbau <select id="gwbOberbau"><option value="Schotter">Schotter (u ≤ 160)</option><option value="FesteFahrbahn">Feste Fahrbahn (u ≤ 170)</option></select></label>
+								<label class="gwb-input" title="Überhöhungsgrenze für den GWB-Vorschlag: die Ermessensgrenze nach Ril 800.0110 Tab. 4 (160 mm Schotter, 170 mm Feste Fahrbahn), oder der Genehmigungsbereich bis zur EBO-Grenze 180 mm (§ 6 (3) EBO) — ein Zustimmungswert, der die Zentrale braucht">Grenze <select id="gwbCantLimit"><option value="Ermessen">Ermessensgrenze (Tab. 4)</option><option value="EBO">Zustimmung bis EBO 180 mm</option></select></label>
+								<label class="gwb-input" title="Fahrzeugklasse — steht in keiner Geometriedatei; Überhöhungsfehlbetrag nach Ril 800.0110 Tab. 5: Regel uf ≤ 130 mm, mit entsprechender Zulassung (Fn. 18) uf ≤ 150 mm bei r ≥ 650 m. Neigetechnik nach Ril 800.0110 11 und Tab. 13: ufN 300 / 245 / 207 mm je Radsatzlast in überhöhten Bögen (u ≥ 30 mm) zwischen 70 und 160 km/h, sonst 150 mm; Zwangspunkte (Brücken ohne Schotterbett, Hilfsbrücken, feste Bahnübergänge) stehen in keiner Datei, jeder Bogen gilt als frei">Fahrzeug <select id="gwbFahrzeug"><option value="Regel">Regel (uf ≤ 130)</option><option value="Zulassung">mit Zulassung (uf ≤ 150 ab r 650)</option><option value="NeiTech168">Neigetechnik ≤ 16,8 t (ufN ≤ 300)</option><option value="NeiTech175">Neigetechnik ≤ 17,5 t (ufN ≤ 245)</option><option value="NeiTech185">Neigetechnik ≤ 18,5 t (ufN ≤ 207)</option></select></label>
+								<label class="gwb-input fzk-only" title="Zugart für die Fahrzeitkurve — steht in keiner Geometriedatei; konstante Anfahrbeschleunigung a und Bremsverzögerung b, Höchstgeschwindigkeit des Zuges. Vereinfachte Fahrdynamik: keine Zugkraft- oder Widerstandskennlinie, keine Neigung">Zugart <select id="fzkZugart"><option value="Nah">Nahverkehr · Triebzug (a 1,0 · b 0,8)</option><option value="Regio">Regionalzug · lokbespannt (a 0,4 · b 0,6)</option><option value="Fern">Fernverkehr (a 0,5 · b 0,6)</option><option value="Gueter">Güterzug (a 0,15 · b 0,3 · 100 km/h)</option></select></label>
+								<label class="gwb-input fzk-only" title="Halt an beiden Enden des Stationsbereichs (Anfahren und Bremsen bis v = 0) oder Durchfahrt mit der zulässigen Geschwindigkeit">Halt <select id="fzkHalt"><option value="Halt">an beiden Enden</option><option value="Durchfahrt">Durchfahrt</option></select></label>
+									</div>
+								</details>
+								<details id="diagramExportMenu" class="menu slide-export">
+									<summary title="Dieses Bild oder seine Werte als Datei speichern">Export ▾</summary>
+									<div class="menu-body" popover="manual">
+								<button id="gwbBogenCsv" type="button" class="menu-item" disabled title="GWB-Vorschlag je Bogen als CSV (deutsches Excel-Format), alle Bögen im Stationsbereich">Bögen-CSV</button>
+								<button id="gwbAbschnittCsv" type="button" class="menu-item" disabled title="Geschwindigkeitsabschnitte heute und Vorschlag nach Ril 457.0201 als CSV (deutsches Excel-Format)">Abschnitte-CSV</button>
+								<span class="picture-export" data-picture="diagram"><button type="button" data-format="svg" title="Dieses Bild als SVG herunterladen (Vektor, in jedem Browser und Office-Programm)">Bild SVG</button><button type="button" data-format="png" title="Dieses Bild als PNG herunterladen (doppelte Auflösung)">Bild PNG</button></span>
+									</div>
+								</details>
+								<button class="slide-close" type="button" aria-label="Schließen" title="Schließen (Esc)">×</button>
+								</div>
+							</div>
+							<div id="diagramScroll">
+								<svg id="diagram" role="img" aria-label="Vier Abbildungen: IVMG-Trassenplan, IVHW-Weichenhöhenplan, GWB-Geschwindigkeitswegeband, Fahrzeitkurve"></svg>
+							</div>
+							<div id="diagramTable" class="hidden" aria-label="Stationswerte als Tabelle"></div>
+						</div>
+					</div>
+				</div>
+				<pre id="output" class="hidden">Noch keine Datei geladen.</pre>
+			</section>
+			</section>
+		</main>
+		</div>
+		<script id="insecure-context-shim">@@src/insecure-context-shim.js@@</script>
+		<script id="maplibre-js">@@vendor/maplibre.js@@</script>
+		<script>@@IMPORT@@@@VIEWER@@</script>
+	</body>
+</html>

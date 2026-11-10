@@ -190,7 +190,10 @@
 			.menu-body .picture-export button { text-align: left; border: 0; background: transparent; padding: 0.4rem 0.6rem; border-radius: var(--r); font-size: var(--fs-2); }
 			.menu-body .picture-export button:hover { background: color-mix(in srgb, CanvasText 7%, transparent); }
 			/* ---- Bühne und Willkommen ---- */
-			#stage { position: relative; min-height: 0; display: grid; }
+			/* One definite row: without it the workspace sat in an auto row that
+			   grew with the tallest pane (a long Inbox), the percent heights below
+			   resolved against nothing, and the main view outgrew the window. */
+			#stage { position: relative; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
 			#dropzone { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; padding: var(--sp-4); background: var(--window); }
 			#dropzone.loaded { display: none; }
 			.welcome { max-width: 34rem; padding: 2rem 2.2rem; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 1rem; background: var(--surface); text-align: center; box-shadow: 0 1rem 3rem rgba(0,0,0,0.08); }
@@ -634,6 +637,7 @@
 			.diagram-curvature { stroke: #d14c32; }
 			.diagram-height { stroke: #2866c7; }
 			.diagram-cant { stroke: #2e8b57; }
+			.diagram-cant-ramp { stroke: #b7791f; stroke-width: 6; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
 			.diagram-spacing { stroke: #8e44ad; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
@@ -986,6 +990,7 @@
 				grid-column: 3;
 				grid-row: 1;
 				min-width: 0;
+				min-height: 0;
 				overflow: auto;
 				border-left: 1px solid var(--hairline);
 				background: var(--sidebar);
@@ -1286,7 +1291,7 @@
 			   each, the name cut with an ellipsis rather than wrapped. */
 			.object-row {
 				display: grid;
-				grid-template-columns: 2rem minmax(0, 1fr);
+				grid-template-columns: 2rem minmax(0, 1fr) 1.7rem;
 				align-items: stretch;
 				margin: 0;
 				border: 0;
@@ -1303,6 +1308,31 @@
 			.inbox-crs-head { display: inline-flex; align-items: center; gap: var(--sp-2); max-width: calc(100% - 1.2rem); white-space: nowrap; overflow: hidden; vertical-align: bottom; }
 			.inbox-chip { padding: 0 0.5em; border-radius: 999px; font: 600 var(--fs-1)/1.6 system-ui, sans-serif; color: var(--secondary); background: color-mix(in srgb, Canvas 88%, CanvasText); }
 			.inbox-chip-missing { color: Canvas; background: #b42318; }
+			/* Grabbeltisch bar: title, free-text filter, the two selects, the
+			   count with Alle/Keine, Lage and Höhe each with its apply button,
+			   and the two map-visibility buttons. */
+			.grabbel { border-bottom: 1px solid var(--hairline); }
+			.grabbel-title { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 var(--sp-2); font-weight: 600; }
+			.grabbel-sub { color: var(--secondary); font-weight: 400; font-size: var(--fs-1); }
+			.grabbel .bulk-crs-label { white-space: nowrap; }
+			.grabbel .bulk-crs-label .inbox-chip { vertical-align: middle; }
+			.outbox-object-row > span:last-child:empty { flex: none; width: 1.5rem; }
+			#outboxContent .outbox-object-row > button.object-eye { flex: none; width: 1.5rem; height: 1.5rem; margin: 0 !important; padding: 0 !important; border: 0 !important; background: transparent !important; color: var(--secondary); font-size: var(--fs-2); line-height: 1; cursor: pointer; }
+			#outboxContent .outbox-object-row > button.object-eye[aria-pressed="false"] { color: #b42318; }
+			#outboxContent .outbox-object-row > button.object-eye:hover { color: var(--accent); }
+			.outbox-object-row.hidden-object .outbox-object { opacity: 0.5; }
+			/* Label, select, apply button in one row each; the select gives way.
+			   Written at higher specificity than .bulk-crs-fields, which it extends. */
+			.bulk-crs.grabbel .grabbel-fields { grid-template-columns: auto minmax(0, 1fr) auto; }
+			.bulk-crs.grabbel .grabbel-fields select { min-width: 0; width: 100%; text-overflow: ellipsis; }
+			#tables .bulk-crs.grabbel .grabbel-fields button { white-space: nowrap; flex: none; }
+			/* The eye is a button in the row too; the generic #tables button and
+			   #tables .object-row > button rules would stretch it across column 2,
+			   so it is pinned at matching specificity. */
+			#tables .object-row > button.object-eye { grid-column: 3; grid-row: 1; display: inline-flex; align-items: center; justify-content: center; margin: auto; padding: 0 !important; width: 1.5rem; height: 1.5rem; border: 0 !important; background: transparent; color: var(--secondary); font-size: var(--fs-2); line-height: 1; cursor: pointer; position: relative; z-index: 2; opacity: 1; }
+			#tables .object-row > button.object-eye[aria-pressed="false"] { color: #b42318; }
+			#tables .object-row:hover > button.object-eye, #tables .object-row > button.object-eye:hover { background: transparent; color: var(--accent); }
+			.object-row.hidden-object > button { opacity: 0.5; }
 			.object-row.dragging {
 				opacity: 0.45;
 				cursor: grabbing;
@@ -1847,7 +1877,7 @@
 						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende nach Ril 883.3100"></div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
-							<div class="box-head"><span>Outbox</span></div>
+							<div class="box-head"><span>Outbox · Ordnung</span></div>
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
 						<div id="spurplanPanel" class="slide hidden">
@@ -40531,6 +40561,7 @@ xlsx/xlsx.mjs:
 			}
 
 			function assignOrganization(entry, targetGroup, row, targetScope, targetFrame = null) {
+				einordnungGeaendert();
 				const group = typeof targetGroup === "string"
 					? { family: targetGroup, role: targetGroup }
 					: targetGroup;
@@ -40592,6 +40623,7 @@ xlsx/xlsx.mjs:
 			}
 
 			function refreshFileCrs(loaded) {
+				einordnungGeaendert();
 				loaded.crsState.textContent = loaded.sourceLsysMixed
 					? "objektweise erhalten"
 					: classifyLsys(loaded.displayLsys).label;
@@ -40883,6 +40915,23 @@ xlsx/xlsx.mjs:
 					const raw = CANT_VALUE_KEYS.map((key) => point?.[key]).find((value) => Number.isFinite(numberValue(value)));
 					return { x, y: cantMillimetres(raw) };
 				}).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+			}
+			// The Überhöhungsrampen a GRA carries behind its Gradientenpunkte ride
+			// on the profile item (payload.extended.cantRamps). Their stations are
+			// the GRA's own; when the profile's points were projected onto a
+			// Kilometerlinie (extras.externalStation), the Rampen follow the same
+			// mapping, interpolated over the points.
+			function graCantRamps(profileEntry) {
+				const ramps = profileEntry?.item?.payload?.extended?.cantRamps;
+				return Array.isArray(ramps) ? ramps : [];
+			}
+			function profileStationMapper(profileEntry) {
+				const pairs = (profileEntry?.item?.payload?.points ?? [])
+					.map((point) => ({ local: stationScalar(point.station ?? point.sta ?? point.s ?? point.chainage), external: stationScalar(point?.extras?.externalStation) }))
+					.filter((pair) => Number.isFinite(pair.local) && Number.isFinite(pair.external))
+					.sort((a, b) => a.local - b.local);
+				if (pairs.length < 2) return (value) => value;
+				return (value) => mapLandXmlStation(pairs, value) ?? value;
 			}
 
 			// The Eifel delivery marks one file of a pair with a trailing "_A"
@@ -41824,94 +41873,221 @@ xlsx/xlsx.mjs:
 			// the 7L structure, and which station range the diagram covers. No
 			// series, no formulas: this is the "linking" part of Main, and every
 			// band derivation below reads only from what it returns.
-			function sevenLineAssignment(entry) {
-				const related = relatedDiagramEntries(entry);
-				const selectedFrame = geoFrameInfo(entry);
-				const selectedRange = stationRangeForEntry(entry);
-				const overlapsSelectedRange = (candidate) => {
-					if (!selectedRange) return true;
-					const range = stationRangeForEntry(candidate);
-					return !range || range.from <= selectedRange.to + 5 && range.to >= selectedRange.from - 5;
-				};
-				// The station-range check above is only a real safety net for GND
-				// (source: "gnd"), whose Kilometrierung is externally anchored and
-				// globally comparable. VermEsn/TRA data (and any other manually-typed
-				// group, source: "user"/"landXML-7L") has no such guarantee -- a TRA
-				// file's own station column restarts near 0 for every independently
-				// surveyed segment, so two unrelated Weichen almost always show
-				// "overlapping" ranges (verified against real Landshut fixtures:
-				// W401-402.TRA spans 0-79m, W403-404.TRA spans 0-88m -- entirely
-				// different physical switches). Cross-file matching by name alone is
-				// therefore restricted to GND. VermEsn files named after the Landshut
-				// convention (source "vermesn-name") bundle by Strecke and km-Abschnitt
-				// from the name instead ("5500S074-082" + "5500R074-082" + "5500L074-082");
-				// a file without an Abschnitt ("5720S") joins every Abschnitt of its
-				// Strecke. Everything else relies solely on the already-safe, explicit
-				// relatedDiagramEntries relations below.
-				const sameLsys = (candidate, frame) => (effectiveLsys(candidate) || frame.lsys) === (effectiveLsys(entry) || selectedFrame.lsys);
-				const sameTrackEntries = selectedFrame?.source === "gnd"
-					? loadedFiles.flatMap((loaded) => loaded.objects).filter((candidate) => {
-						const frame = geoFrameInfo(candidate);
-						return frame?.track === selectedFrame.track && sameLsys(candidate, frame) && overlapsSelectedRange(candidate);
-					})
-					: selectedFrame?.source === "vermesn-name"
-					? loadedFiles.flatMap((loaded) => loaded.objects).filter((candidate) => {
-						const frame = geoFrameInfo(candidate);
-						return frame?.source === "vermesn-name" && frame.track === selectedFrame.track
-							&& (!frame.segment || !selectedFrame.segment || frame.segment === selectedFrame.segment)
-							&& sameLsys(candidate, frame);
-					})
-					: [];
-				const entries = [...new Set([...related.entries, ...sameTrackEntries])];
-				const anchor = related.anchor;
+			// BEGIN EINORDNUNG (test/technet-viewer-einordnung.test.mjs runs this block)
+			// Die Einordnung: einmal pro Änderung, aus Fakten je Objekt (Rohdaten
+			// plus Nutzerentscheidungen, vom Adapter darunter gesammelt), das
+			// Modell der Bahn statt der Dateien. Drei Fragen, einmal beantwortet:
+			// wem gehört es (Gradiente, Überhöhung, Stationsgleichung zu ihrer
+			// Trasse), wo liegt es (Strecke, Seite, Abschnitt, Lage, Höhe, km-
+			// Bereich), und was teilt das Bild mit ihm (das Umfeld eines Gleises:
+			// die 7L-Verwandten plus die Gleise derselben Strecke, für GND nur bei
+			// gleicher Lage und überlappendem km, für VermEsn-Namen bei
+			// verträglichem Abschnitt). Pure: Fakten rein, Modell raus. Die
+			// Ansichten lesen; keine schreibt in Daten.
+			//
+			// A fact: { key, kind, name, file, family, label, route, gnd, gndSequence,
+			//   gndFamily, gndRoute, organized, hidden, lsys, hsys,
+			//   frame: { track, direction, segment, source, lsys } | null,
+			//   side: "kilometer" | "right" | "left" | "unknown", range: { from, to } | null,
+			//   id, refIds: [id] (what it references, by object id: GND repeats ids across
+			//   files, and a Gradiente in one file belongs to every Trasse of that id),
+			//   linked: [key], anchorKey: key }
+			const EINORDNUNG_VERSION = "einordnung/0.1";
+			function einordnen(facts) {
+				const objects = new Map();
+				const byId = new Map();
+				for (const fact of facts) {
+					objects.set(fact.key, { ...fact, trasse: fact.kind === "alignment" ? fact.key : null, dependents: [], orphan: false });
+					if (!byId.has(fact.id)) byId.set(fact.id, []);
+					byId.get(fact.id).push(fact.key);
+				}
+				// Zugehörigkeit by id: every Trasse whose id the object references
+				// lists it; the first one stands for it.
+				for (const placed of objects.values()) {
+					if (placed.kind === "alignment") continue;
+					const owners = (placed.refIds ?? []).flatMap((id) => byId.get(id) ?? []).map((key) => objects.get(key)).filter((candidate) => candidate?.kind === "alignment");
+					if (owners.length) {
+						placed.trasse = owners[0].key;
+						for (const owner of owners) owner.dependents.push(placed.key);
+					} else {
+						placed.orphan = true;
+					}
+				}
+				// Der Haufen: what is not right yet -- Trassen and orphans; a dependent goes with its Trasse.
+				const pile = [...objects.values()].filter((placed) => !placed.organized && (placed.kind === "alignment" || placed.orphan)).map((placed) => placed.key);
+				// Die Strecken: organized objects by track, each side's keys in fact order.
+				const strecken = new Map();
+				for (const placed of objects.values()) {
+					const track = placed.frame?.track;
+					if (!placed.organized || !track) continue;
+					if (!strecken.has(track)) strecken.set(track, { track, keys: [], sides: { kilometer: [], right: [], left: [], unknown: [] } });
+					const strecke = strecken.get(track);
+					strecke.keys.push(placed.key);
+					strecke.sides[placed.side in strecke.sides ? placed.side : "unknown"].push(placed.key);
+				}
+				return { version: EINORDNUNG_VERSION, objects, strecken, pile };
+			}
+			// Objects that reference `key` directly, by id (its own profile, cant, staEq).
+			function einordnungEigene(model, key) {
+				const id = model.objects.get(key)?.id;
+				return [...model.objects.values()].filter((placed) => (placed.refIds ?? []).includes(id)).map((placed) => placed.key);
+			}
+			function einordnungStreckennummer(value) {
+				return /^\d{4}$/.test(String(value ?? "").trim());
+			}
+			// Das Umfeld eines Objekts: what the 7L picture shows with it.
+			function einordnungUmfeld(model, key) {
+				const self = model.objects.get(key);
+				if (!self) return null;
+				const get = (candidateKey) => model.objects.get(candidateKey) ?? null;
+				const selectedFrame = self.frame;
+				const selectedRange = self.range;
+				const overlaps = (candidate) => !selectedRange || !candidate.range || (candidate.range.from <= selectedRange.to + 5 && candidate.range.to >= selectedRange.from - 5);
+				const sameLsys = (candidate) => (candidate.lsys || candidate.frame?.lsys) === (self.lsys || selectedFrame?.lsys);
+				const sameTrack = [...model.objects.values()].filter((candidate) => {
+					if (!selectedFrame || !candidate.frame) return false;
+					if (selectedFrame.source === "gnd") return candidate.frame.track === selectedFrame.track && sameLsys(candidate) && overlaps(candidate);
+					if (selectedFrame.source === "vermesn-name") {
+						return candidate.frame.source === "vermesn-name" && candidate.frame.track === selectedFrame.track
+							&& (!candidate.frame.segment || !selectedFrame.segment || candidate.frame.segment === selectedFrame.segment)
+							&& sameLsys(candidate);
+					}
+					return false;
+				}).map((candidate) => candidate.key);
+				const anchor = get(self.anchorKey) ?? self;
+				const keys = [...new Set([...(self.linked ?? [self.key]), ...sameTrack])];
 				const bySide = { kilometer: [], right: [], left: [], unknown: [] };
-				for (const candidate of entries) bySide[sevenLineSide(candidate)].push(candidate);
-				if (!bySide[sevenLineSide(anchor)].includes(anchor)) bySide[sevenLineSide(anchor)].unshift(anchor);
-
-				const first = (side, kind) => bySide[side].find((candidate) => candidate.item.kind === kind);
+				for (const candidateKey of keys) {
+					const placed = get(candidateKey);
+					if (placed) bySide[placed.side in bySide ? placed.side : "unknown"].push(candidateKey);
+				}
+				const anchorSide = anchor.side in bySide ? anchor.side : "unknown";
+				if (!bySide[anchorSide].includes(anchor.key)) bySide[anchorSide].unshift(anchor.key);
+				const all = [...new Set([anchor.key, ...keys])];
+				const first = (side, kind) => bySide[side].map(get).find((placed) => placed?.kind === kind)?.key ?? null;
 				const kmAlignment = first("kilometer", "alignment");
 				const rightAlignment = first("right", "alignment");
 				const leftAlignment = first("left", "alignment");
-				const rightPresent = bySide.right.length > 0;
-				const leftPresent = bySide.left.length > 0;
 				const twoTrack = Boolean(rightAlignment && leftAlignment);
-				const gndRouteTrackNeedsReference = entries.some((candidate) => {
-					const sequence = gndSequenceForEntry(candidate);
-					return candidate.item.kind === "alignment" && sequence?.family === "EL" && ["1", "2"].includes(String(sequence.strRikz ?? ""));
+				const gndRouteTrackNeedsReference = all.some((candidateKey) => {
+					const placed = get(candidateKey);
+					return placed?.kind === "alignment" && placed.gndFamily === "EL" && ["1", "2"].includes(String(placed.gndRoute ?? ""));
 				});
-				// The twoTrack fallback below assumes "left + right present, no GND
-				// evidence either way" means a genuine double-track Strecke missing its
-				// Kilometerlinie. That only holds when the track id itself looks like a
-				// real Streckennummer -- a manually named group (a Weiche's own legs
-				// sorted into re/li, e.g. "W401-402" or "DKW510") is not a Strecke and
-				// has no Kilometerlinie to be missing.
-				const referenceRequired = gndRouteTrackNeedsReference || (!entries.some((candidate) => gndSequenceForEntry(candidate)) && twoTrack && isValidRouteNumber(selectedFrame?.track));
-				const equations = bySide.kilometer.find((candidate) => candidate.item.kind === "staEq")
-					?? entries.find((candidate) => candidate.item.kind === "staEq");
-				// A side is not one alignment: a Strecke that starts two-track, runs
-				// single-track and becomes two-track again (SCx_1720.xml: A101720L
-				// km 210,7-223,1 and A101720M km 228,6-273,0 are both the
-				// Gegenrichtungsgleis) has several alignments on the same side, each
-				// covering its own km range. segments(side) lists them in km order,
-				// each paired with the profile/cant that references it directly; a
-				// side with a single alignment keeps the old "first of that kind"
-				// pairing so GND/TRA groups without explicit relations still resolve.
+				const anyGnd = all.some((candidateKey) => get(candidateKey)?.gndSequence);
+				const referenceRequired = gndRouteTrackNeedsReference || (!anyGnd && twoTrack && einordnungStreckennummer(selectedFrame?.track));
+				const equations = bySide.kilometer.map(get).find((placed) => placed?.kind === "staEq")?.key
+					?? all.map(get).find((placed) => placed?.kind === "staEq")?.key ?? null;
+				// A side is not one alignment (SCx: two Gegenrichtungsgleise over
+				// different km): segments in km order, each paired with the
+				// profile/cant that references it; a lone alignment keeps the
+				// first-of-kind fallback so groups without relations still resolve.
 				const segments = (side) => {
-					const alignments = bySide[side]
-						.filter((candidate) => candidate.item.kind === "alignment")
-						.map((alignment) => ({ alignment, range: stationRangeForEntry(alignment) }))
+					const alignments = bySide[side].map(get)
+						.filter((placed) => placed?.kind === "alignment")
+						.map((placed) => ({ key: placed.key, range: placed.range }))
 						.sort((a, b) => (a.range?.from ?? 0) - (b.range?.from ?? 0));
 					return alignments.map((segment) => {
-						const own = referencingEntries(segment.alignment);
-						const pick = (kind) => bySide[side].find((candidate) => candidate.item.kind === kind && own.includes(candidate))
+						const own = einordnungEigene(model, segment.key);
+						const pick = (kind) => bySide[side].map(get).find((placed) => placed?.kind === kind && own.includes(placed.key))?.key
 							?? (alignments.length === 1 ? first(side, kind) : null);
 						return { ...segment, profile: pick("profile"), cant: pick("cant") };
 					});
 				};
 				return {
-					anchor, entries, bySide, first, segments, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations,
+					anchor: anchor.key, keys: all, bySide, first, segments, selectedRange, kmAlignment,
+					rightPresent: bySide.right.length > 0, leftPresent: bySide.left.length > 0,
+					referenceRequired, equations,
 					hasUnknown: bySide.unknown.length > 0,
 					missingKilometerLine: referenceRequired && !kmAlignment,
+				};
+			}
+			// Suchtext of a placed object for the Grabbeltisch filter: name, file,
+			// family, Lage, Höhe, Strecke, side, route and the states as words.
+			function einordnungSuchtext(placed) {
+				const states = [
+					placed.kind === "alignment" && !placed.lsys ? "ohne lage" : "",
+					placed.kind === "profile" && !placed.hsys ? "ohne höhe" : "",
+					placed.hidden ? "ausgeblendet" : "sichtbar",
+				];
+				return [placed.name, placed.file, placed.family, placed.label, placed.lsys ?? "", placed.hsys ?? "", placed.frame?.track ? `Strecke ${placed.frame.track}` : "", placed.frame?.direction ?? "", placed.route ?? "", ...states].join(" ").toLowerCase();
+			}
+			// END EINORDNUNG
+
+			// The adapter: facts from the entries and the decisions on them, the
+			// model cached until something changes (einordnungGeaendert()).
+			let einordnungCache = null;
+			let einordnungStamp = 0;
+			function einordnungGeaendert() {
+				einordnungStamp += 1;
+			}
+			// One key per object for the model's lifetime. The saved-state key
+			// (file|id) is not unique: Billwerder delivers the same files in two
+			// folders, and two copies of one object must stay two objects here.
+			const einordnungKeys = new WeakMap();
+			let einordnungKeySequence = 0;
+			function einordnungKey(entry) {
+				let key = einordnungKeys.get(entry);
+				if (!key) {
+					einordnungKeySequence += 1;
+					key = `${stateKey(entry)}#${einordnungKeySequence}`;
+					einordnungKeys.set(entry, key);
+				}
+				return key;
+			}
+			function einordnung() {
+				if (einordnungCache && einordnungCache.stamp === einordnungStamp) return einordnungCache.model;
+				const entries = allViewerEntries();
+				const keyOf = einordnungKey;
+				const byKey = new Map(entries.map((entry) => [keyOf(entry), entry]));
+				const relations = [...loadedFiles.flatMap((loaded) => loaded.relations), ...stemPairedRelations()];
+				const refsById = new Map();
+				for (const relation of relations) {
+					if (relation.type !== "stationReference") continue;
+					if (!refsById.has(relation.fromId)) refsById.set(relation.fromId, []);
+					refsById.get(relation.fromId).push(relation.toId);
+				}
+				const facts = entries.map((entry) => {
+					const related = relatedDiagramEntries(entry);
+					const sequence = gndSequenceForEntry(entry);
+					const frame = geoFrameInfo(entry);
+					return {
+						key: keyOf(entry), kind: entry.item.kind, name: objectListName(entry), file: entry.loaded?.fileName ?? "",
+						family: sourceFamilyForEntry(entry), label: familyForEntry(entry), route: routeForEntry(entry) ?? "",
+						gnd: isGndEntry(entry), gndSequence: Boolean(sequence), gndFamily: sequence?.family ?? null, gndRoute: sequence?.strRikz ?? null,
+						organized: isOutboxOrganized(entry), hidden: isEntryHidden(entry),
+						lsys: effectiveLsys(entry) || null, hsys: systemsForEntry(entry).hsys || null,
+						frame: frame ? { track: frame.track, direction: frame.direction, segment: frame.segment ?? null, source: frame.source, lsys: frame.lsys ?? null } : null,
+						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
+						id: entry.item.id, refIds: [...new Set(refsById.get(entry.item.id) ?? [])],
+						linked: related.entries.map(keyOf), anchorKey: keyOf(related.anchor),
+					};
+				});
+				einordnungCache = { model: einordnen(facts), entries: byKey, stamp: einordnungStamp };
+				return einordnungCache.model;
+			}
+			function einordnungEintrag(key) {
+				einordnung();
+				return key == null ? null : einordnungCache.entries.get(key) ?? null;
+			}
+
+			// The 7L picture of an entry, read from the Einordnung: the same shape
+			// the Ableitungen below have always consumed, keys mapped back to entries.
+			function sevenLineAssignment(entry) {
+				const model = einordnung();
+				const umfeld = einordnungUmfeld(model, einordnungKey(entry));
+				if (!umfeld) {
+					return { anchor: entry, entries: [entry], bySide: { kilometer: [], right: [], left: [], unknown: [entry] }, first: () => null, segments: () => [], selectedRange: stationRangeForEntry(entry), kmAlignment: null, rightPresent: false, leftPresent: false, referenceRequired: false, equations: null, hasUnknown: true, missingKilometerLine: false };
+				}
+				const get = (key) => einordnungEintrag(key);
+				const entries = umfeld.keys.map(get).filter(Boolean);
+				const bySide = Object.fromEntries(Object.entries(umfeld.bySide).map(([side, keys]) => [side, keys.map(get).filter(Boolean)]));
+				const first = (side, kind) => get(umfeld.first(side, kind));
+				const segments = (side) => umfeld.segments(side).map((segment) => ({ alignment: get(segment.key), range: segment.range, profile: get(segment.profile), cant: get(segment.cant) })).filter((segment) => segment.alignment);
+				return {
+					anchor: get(umfeld.anchor) ?? entry, entries, bySide, first, segments, selectedRange: umfeld.selectedRange,
+					kmAlignment: get(umfeld.kmAlignment), rightPresent: umfeld.rightPresent, leftPresent: umfeld.leftPresent,
+					referenceRequired: umfeld.referenceRequired, equations: get(umfeld.equations),
+					hasUnknown: umfeld.hasUnknown, missingKilometerLine: umfeld.missingKilometerLine,
 				};
 			}
 
@@ -41921,18 +42097,113 @@ xlsx/xlsx.mjs:
 			// concatenates them in the order the diagram has always shown.
 			const makeBand = (label, className, points, extra = {}) => ({ label, className, points, ...extra });
 
-			// IVMG · Trassenplan rows for the assigned sides: Gradiente, Überhöhung,
-			// Krümmung per Gleis plus the Kilometerlinie's curvature.
+			// BEGIN GRA CANT RAMPS (test/technet-viewer-gra.test.mjs runs this block)
+			// Überhöhungsrampen aus der GRA im Überhöhungsband. A GRA ramp record
+			// names Rampenanfang, Wendepunkt (Schnittpunkt) and Rampenende with
+			// u1 and u2 as magnitudes: the Rampe runs from u1 on the one Bogen
+			// through 0 at the Wendepunkt to u2 on the Gegenbogen. The sign comes
+			// from the Krümmung of the Trasse (positive = Rechtsbogen, as the
+			// Krümmungsband draws it), and the Überhöhung band is signed the same
+			// way, so a Rampe through the Wendepunkt is one straight line, not a V.
+			// Without a Trasse the Rampe starts positive by convention and the
+			// footnote says so. Pure: series in, series out.
+			const CANT_RAMP_SLOPE_TOLERANCE = 0.02; // the two legs of one Rampe, relative
+			const CANT_RAMP_CANT_TOLERANCE_MM = 5; // Trasse's Überhöhung against the Rampe
+			// Value of a band at x: linear between neighbours, or the left
+			// neighbour for step bands (speed); null across a gap or outside.
+			function bandValueAt(points, x, step) {
+				for (let index = 0; index + 1 < points.length; index += 1) {
+					const a = points[index];
+					const b = points[index + 1];
+					if (x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x) || b.gap) continue;
+					if (step || a.x === b.x) return a.y;
+					return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
+				}
+				return null;
+			}
+			function curvatureSignAt(curvature, x) {
+				const kappa = bandValueAt(curvature ?? [], x, false);
+				return kappa == null || Math.abs(kappa) < 1e-9 ? 0 : Math.sign(kappa);
+			}
+			// A cant point at station x belongs to the element that starts there,
+			// so its sign is read just inside that element; on a Gerade (κ = 0)
+			// the sign of the element before it, else the previous point's.
+			function signedCantSeries(points, curvature) {
+				let carried = 1;
+				return points.map((point) => {
+					if (!point.y) return point;
+					const sign = curvatureSignAt(curvature, point.x + 0.01) || curvatureSignAt(curvature, point.x - 0.01) || carried;
+					carried = sign;
+					return { ...point, y: sign * point.y };
+				});
+			}
+			// One object per Rampe: the three points and what the footnote says.
+			function cantRampSeries(ramps, curvature, mapStation = (value) => value) {
+				const out = [];
+				const numeric = (value) => value == null || value === "" ? NaN : Number(value); // Number(null) is 0, a km 0 that is not there
+				for (const ramp of ramps ?? []) {
+					const x1 = mapStation(numeric(ramp?.rampEnd1Station));
+					const xa = mapStation(numeric(ramp?.rampIntersectionStation));
+					const x2 = mapStation(numeric(ramp?.rampEnd2Station));
+					const u1 = Math.abs(numeric(ramp?.cant1Millimetres));
+					const u2 = Math.abs(numeric(ramp?.cant2Millimetres));
+					if (![x1, xa, x2, u1, u2].every(Number.isFinite)) continue;
+					let s1 = curvatureSignAt(curvature, (x1 + xa) / 2);
+					let s2 = curvatureSignAt(curvature, (xa + x2) / 2);
+					const sideKnown = Boolean(s1 || s2);
+					if (!s1 && !s2) { s1 = 1; s2 = -1; }
+					else if (!s1) s1 = -s2;
+					else if (!s2) s2 = -s1;
+					out.push({
+						x1, xa, x2, u1: s1 * u1, u2: s2 * u2, form: ramp?.rampCode ?? null, sideKnown,
+						slope1: u1 ? (xa - x1) / (u1 / 1000) : null,
+						slope2: u2 ? (x2 - xa) / (u2 / 1000) : null,
+						points: [{ x: x1, y: s1 * u1, gap: true }, { x: xa, y: 0 }, { x: x2, y: s2 * u2 }],
+					});
+				}
+				return out.sort((a, b) => a.x1 - b.x1);
+			}
+			function rampPoints(ramps) {
+				return ramps.flatMap((ramp) => ramp.points);
+			}
+			// The Trasse's own Überhöhung (TRA/GND/landXML series) read at the three
+			// points of each Rampe; a Rampe whose cant series is silent there is
+			// reported as such, not as a deviation.
+			function cantRampFootnote(head, ramps, cantSeries, formatStation) {
+				const mm = (value) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.round(Math.abs(value))}`;
+				const slope = (value) => value == null ? "–" : `1:${Math.round(value)}`;
+				const lines = ramps.map((ramp) => {
+					const legs = ramp.slope1 != null && ramp.slope2 != null && Math.abs(ramp.slope1 - ramp.slope2) > CANT_RAMP_SLOPE_TOLERANCE * Math.max(ramp.slope1, ramp.slope2) ? ` (ungleich)` : "";
+					const checks = [[ramp.x1, ramp.u1, "am Rampenanfang"], [ramp.xa, 0, "am Wendepunkt"], [ramp.x2, ramp.u2, "am Rampenende"]]
+						.map(([x, u, where]) => { const value = bandValueAt(cantSeries ?? [], x, false); return value == null ? null : { delta: value - u, where }; });
+					const silent = checks.every((check) => check == null);
+					const worst = checks.filter(Boolean).sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))[0];
+					const verdict = silent ? "ohne Überhöhungsreihe der Trasse"
+						: Math.abs(worst.delta) > CANT_RAMP_CANT_TOLERANCE_MM ? `Trasse weicht ab: Δu ${mm(worst.delta)} mm ${worst.where}`
+						: "Trasse deckt sich";
+					return `${formatStation(ramp.x1)} → ${formatStation(ramp.x2)} · u ${mm(ramp.u1)} → ${mm(ramp.u2)} mm · Wendepunkt ${formatStation(ramp.xa)} · Neigung ${slope(ramp.slope1)} | ${slope(ramp.slope2)}${legs} · ${verdict}`;
+				});
+				const forms = [...new Set(ramps.map((ramp) => ramp.form).filter((form) => form != null))];
+				const sides = ramps.every((ramp) => ramp.sideKnown) ? "Vorzeichen aus der Krümmung der Trasse, Rechtsbogen +" : "ohne Trasse: Seite der Rampe unbestimmt, Anfang als Rechtsbogen gezeichnet";
+				lines.push(`Form ${forms.length ? forms.join(", ") : "–"}: Kennzahl der GRA; in jeder bekannten Lieferung eine gerade Rampe mit einer Neigung durch den Wendepunkt des Gegenbogens · ${sides}`);
+				return { head: `${head} · Überhöhungsrampen aus der GRA (${ramps.length}${forms.length ? ` · Form ${forms.join(", ")}` : ""})`, lines };
+			}
+			// END GRA CANT RAMPS
+
+			// IVMG · Trassenplan rows for the assigned sides. Order (Uwe, 09.11.):
+			// the Kilometerlinie leads when there is one, then each Gleis as a
+			// block -- its Trasse (Krümmung) with the Überhöhung and the Gradiente
+			// directly under it -- Richtungsgleis (rechts) before Gegenrichtungsgleis.
 			function deriveTrassenplanBands(assignment) {
 				const { first, segments, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations } = assignment;
 				const definitions = [
-					["right", "profile", "Rechtes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
-					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
-					["left", "cant", "Linkes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
-					["left", "alignment", "Linkes Gleis · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
 					["kilometer", "alignment", "Kilometerlinie · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
 					["right", "alignment", "Rechtes Gleis · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
-					["right", "cant", "Rechtes Gleis · Überhöhung u [mm]", "diagram-cant", CANT_VALUE_KEYS],
+					["right", "cant", "Rechtes Gleis · Überhöhung u [mm], Rechtsbogen +", "diagram-cant", CANT_VALUE_KEYS],
+					["right", "profile", "Rechtes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
+					["left", "alignment", "Linkes Gleis · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
+					["left", "cant", "Linkes Gleis · Überhöhung u [mm], Rechtsbogen +", "diagram-cant", CANT_VALUE_KEYS],
+					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 				];
 				const bands = [];
 				for (const [side, kind, label, className, valueKeys] of definitions) {
@@ -41941,23 +42212,42 @@ xlsx/xlsx.mjs:
 					const requiredMissing = side === "kilometer" && referenceRequired && !kmAlignment;
 					const sideVisible = side === "right" ? rightPresent : side === "left" ? leftPresent : Boolean(kmAlignment || referenceRequired) && kilometerLinesVisible;
 					if (!sideVisible) continue;
-					const seriesOf = (alignment, profile, cant) => kind === "alignment" ? curvatureSeries(alignment) : kind === "cant" ? (cant ? cantSeriesMm(cant) : []) : (profile ? profileSeries(profile) : []);
-					const points = clipPointsToRange(loose
+					const seriesOf = (alignment, profile, cant) => kind === "alignment" ? curvatureSeries(alignment) : kind === "cant" ? (cant ? signedCantSeries(cantSeriesMm(cant), curvatureSeries(alignment)) : []) : (profile ? profileSeries(profile) : []);
+					let points = clipPointsToRange(loose
 						? seriesOf(loose, loose, loose)
 						: concatSeries(sideSegments.map((segment) => seriesOf(segment.alignment, segment.profile, segment.cant))), selectedRange);
+					// The GRA's Überhöhungsrampen of the same Gleis lie under the cant
+					// series as a halo; a Gleis with Rampen but no cant series shows
+					// the Rampen alone. The footnote measures them against the series.
+					const rampSources = kind !== "cant" ? [] : sideSegments.length
+						? sideSegments.map((segment) => ({ alignment: segment.alignment, profile: segment.profile }))
+						: [{ alignment: null, profile: first(side, "profile") }];
+					const ramps = rampSources.flatMap(({ alignment, profile }) => cantRampSeries(graCantRamps(profile), curvatureSeries(alignment), profileStationMapper(profile)))
+						.filter((ramp) => !selectedRange || (ramp.x1 <= selectedRange.to + 5 && ramp.x2 >= selectedRange.from - 5));
+					let overlay;
+					let footnote;
+					if (ramps.length) {
+						const gleis = label.split(" · ")[0];
+						footnote = cantRampFootnote(gleis, ramps, points, (value) => station(value).trim());
+						if (points.length) overlay = { label: "Überhöhungsrampen aus der GRA", className: "diagram-cant-ramp", points: clipPointsToRange(rampPoints(ramps), selectedRange) };
+						else points = clipPointsToRange(rampPoints(ramps), selectedRange);
+					}
 					bands.push(makeBand(label, className, points, {
 						requiredMissing,
 						jumps: side === "kilometer" ? stationEquationPositions(equations) : [],
 						valueLabel: kind === "alignment" ? "κ (1/m) · r" : undefined,
 						valueFormat: kind === "alignment" ? curvatureReadout : undefined,
+						...(overlay ? { overlay } : {}),
+						...(footnote ? { footnote } : {}),
 					}));
 				}
 				// Gleisabstand: where both Streckengleise are assigned, the distance
 				// from the rechtes Gleis to the linkes, measured in the plane every
-				// 20 m, as a band of its own next to the Kilometerlinie. The IVMG
-				// (Ril 883.5220) carries it where two Gleise run side by side; the
-				// band ends where the nearest point of the other Gleis sits on one
-				// of its ends or farther than TRACK_SPACING_MAX_M away.
+				// 20 m, as a band of its own under the Kilometerlinie (without one,
+				// after both Gleise). The IVMG (Ril 883.5220) carries it where two
+				// Gleise run side by side; the band ends where the nearest point of
+				// the other Gleis sits on one of its ends or farther than
+				// TRACK_SPACING_MAX_M away.
 				if (rightPresent && leftPresent) {
 					const rightSegments = segments("right");
 					const leftSegments = segments("left");
@@ -41965,8 +42255,7 @@ xlsx/xlsx.mjs:
 						const series = clipPointsToRange(trackSpacingSeries(rightSegments.map((segment) => segment.alignment), leftSegments.map((segment) => segment.alignment)), selectedRange);
 						const band = makeBand("Gleisabstand · rechtes zu linkem Gleis e [m]", "diagram-spacing", series, { emptyNote: `kein linkes Gleis innerhalb ${TRACK_SPACING_MAX_M} m neben dem rechten` });
 						const kmIndex = bands.findIndex((candidate) => candidate.label.startsWith("Kilometerlinie"));
-						const leftIndex = bands.findIndex((candidate) => candidate.label.startsWith("Linkes Gleis · Krümmung"));
-						bands.splice((kmIndex >= 0 ? kmIndex : leftIndex >= 0 ? leftIndex : bands.length - 1) + 1, 0, band);
+						bands.splice(kmIndex >= 0 ? kmIndex + 1 : bands.length, 0, band);
 					}
 				}
 				return bands;
@@ -42043,11 +42332,11 @@ xlsx/xlsx.mjs:
 			function deriveUnknownTrassenplanBands(assignment) {
 				const { first, selectedRange } = assignment;
 				const bands = [];
-				for (const kind of ["profile", "alignment", "cant"]) {
+				for (const kind of ["alignment", "cant", "profile"]) {
 					const candidate = first("unknown", kind);
 					if (!candidate) continue;
 					const valueKeys = kind === "profile" ? ["elevation", "height", "z"] : CANT_VALUE_KEYS;
-					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? cantSeriesMm(candidate) : (kind === "profile" ? profileSeries(candidate) : pointSeries(candidate, valueKeys)), selectedRange), { undeclared: true }));
+					bands.push(makeBand(`${unknownSideLabel(candidate)} · ${kind === "profile" ? "Gradiente" : kind === "cant" ? "Überhöhung, Rechtsbogen +" : "Krümmung"}`, kind === "profile" ? "diagram-height" : kind === "cant" ? "diagram-cant" : "diagram-curvature", clipPointsToRange(kind === "alignment" ? curvatureSeries(candidate) : kind === "cant" ? signedCantSeries(cantSeriesMm(candidate), curvatureSeries(first("unknown", "alignment"))) : (kind === "profile" ? profileSeries(candidate) : pointSeries(candidate, valueKeys)), selectedRange), { undeclared: true }));
 				}
 				return bands;
 			}
@@ -42746,18 +43035,6 @@ xlsx/xlsx.mjs:
 					layer.append(svgElement("line", { x1: x, x2: x, y1: group.top - 4, y2: group.bottom, class: "delivery-cursor" }));
 				}
 			}
-			// Value of a band at x: linear between neighbours, or the left
-			// neighbour for step bands (speed); null across a gap or outside.
-			function bandValueAt(points, x, step) {
-				for (let index = 0; index + 1 < points.length; index += 1) {
-					const a = points[index];
-					const b = points[index + 1];
-					if (x < Math.min(a.x, b.x) || x > Math.max(a.x, b.x) || b.gap) continue;
-					if (step || a.x === b.x) return a.y;
-					return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x);
-				}
-				return null;
-			}
 			// Table/cursor readout for a curvature value: three decimals hide every
 			// real-world κ (1e-3 .. 1e-5), so six decimals plus the radius and the
 			// side in the Vermessungskonvention (positive = Rechtsbogen).
@@ -42791,7 +43068,10 @@ xlsx/xlsx.mjs:
 				}
 				if (cls.includes("cant")) {
 					const u = bandValueAt(band.points, x, false);
-					return u == null ? null : `u ${Math.round(u)} mm`;
+					if (u == null) return null;
+					const ramp = band.overlay ? bandValueAt(band.overlay.points, x, false) : null;
+					const side = Math.round(u) ? (u > 0 ? " · Rechtsbogen" : " · Linksbogen") : "";
+					return `u ${Math.abs(Math.round(u))} mm${side}${ramp != null && Math.round(ramp) !== Math.round(u) ? ` · GRA-Rampe ${Math.abs(Math.round(ramp))}` : ""}`;
 				}
 				if (cls.includes("spacing")) {
 					const e = bandValueAt(band.points, x, false);
@@ -42878,7 +43158,12 @@ xlsx/xlsx.mjs:
 				// One Plan per slide: the table and the chart show diagramKind only.
 				if (diagramPresentation === "table") {
 					renderDiagramTable([
-						...(diagramKind !== "ivmg" ? [] : ivmgTracks).map((track) => ({ label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track), valueLabel: track.valueLabel, valueFormat: track.valueFormat })),
+						...(diagramKind !== "ivmg" ? [] : ivmgTracks).flatMap((track) => {
+							const row = { label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track), valueLabel: track.valueLabel, valueFormat: track.valueFormat };
+							return track.overlay
+								? [row, { label: `IVMG · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, valueLabel: track.valueLabel, valueFormat: track.valueFormat }]
+								: [row];
+						}),
 						...(diagramKind !== "ivhw" ? [] : ivhw.trackData ?? []).flatMap((data) => [
 							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideA ?? "A"}`, points: data.railA, valueLabel: "Höhe (m)" },
 							{ label: `IVHW · ${objectDisplayName(data.track)} · Schiene ${ivhw.rails?.sideB ?? "B"}`, points: data.railB, valueLabel: "Höhe (m)" },
@@ -42901,7 +43186,7 @@ xlsx/xlsx.mjs:
 					if (diagramKind === "ivmg") {
 						y += drawFigureTitle(diagram, y, "IVMG · Trassenplan", "Krümmung · Gradiente · Überhöhung über der Kilometrierung · Ril 883.5220");
 						y += ivmgTracks.length
-							? drawBandStack(diagram, y, ivmgTracks, xMin, xMax)
+							? drawBandStack(diagram, y, ivmgTracks, xMin, xMax, ivmgTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter((note) => note?.lines?.length))
 							: drawEmptyFigure(diagram, y, "keine Lage-, Höhen- oder Überhöhungsreihe sicher verknüpft");
 					}
 					if (diagramKind === "ivhw") {
@@ -43826,7 +44111,7 @@ xlsx/xlsx.mjs:
 				let featureIndex = 0;
 				for (const loaded of loadedFiles) {
 					for (const entry of loaded.objects) {
-						if (entry.item.kind !== "alignment") continue;
+						if (entry.item.kind !== "alignment" || isEntryHidden(entry)) continue;
 						const { confidence, coordinates } = interpretedGeometry(entry);
 						if (coordinates.length < 2) continue;
 						const id = String(featureIndex++);
@@ -43908,7 +44193,7 @@ xlsx/xlsx.mjs:
 				let featureIndex = 0;
 				for (const loaded of loadedFiles) {
 					for (const entry of loaded.objects) {
-						if (entry.item.kind !== "alignment") continue;
+						if (entry.item.kind !== "alignment" || isEntryHidden(entry)) continue;
 						for (const item of interpretedGeometry(entry).elements) {
 							if (item.coordinates.length < 2) continue;
 							const id = String(featureIndex++);
@@ -44879,7 +45164,7 @@ xlsx/xlsx.mjs:
 				const allPoints = [];
 				loadedFiles.forEach((loaded, fileIndex) => {
 					loaded.objects.forEach((entry) => {
-						if (entry.item.kind !== "alignment") return;
+						if (entry.item.kind !== "alignment" || isEntryHidden(entry)) return;
 						const geometry = mapPathForEntry(entry, mode);
 						if (!geometry.path) return;
 						for (const point of geometry.points) allPoints.push(point);
@@ -45380,47 +45665,79 @@ xlsx/xlsx.mjs:
 				tablesNav.append(section);
 			}
 
-			function renderBulkCrsEditor(allEntries) {
+			function renderGrabbeltischBar(allEntries, rows) {
 				for (const entry of [...bulkSelectedEntries]) {
 					if (!allEntries.includes(entry)) bulkSelectedEntries.delete(entry);
 				}
+				const hits = rows.map((row) => row.entry);
+				grabbelHitSet = new Set(hits);
+				// Lage, Höhe, Aus-/Einblenden work on the hits; ticked hits narrow it.
+				const targetsNow = () => {
+					const checked = [...bulkSelectedEntries].filter((entry) => grabbelHitSet.has(entry));
+					return checked.length ? checked : hits;
+				};
+				const rerender = () => renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				const reselect = () => { if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button); };
 				const editor = document.createElement("div");
-				editor.className = "bulk-crs";
+				editor.className = "bulk-crs grabbel";
+
+				const gnd = allEntries.filter(isGndEntry).length;
+				const rest = allEntries.length - gnd;
+				const title = document.createElement("div");
+				title.className = "grabbel-title";
+				const titleText = document.createElement("span");
+				titleText.textContent = "Inbox · Grabbeltisch";
+				const titleSub = document.createElement("span");
+				titleSub.className = "grabbel-sub";
+				titleSub.textContent = `${rows.length ? `${rows.length} hier` : "leer"} · Rest ${rest} · GND ${gnd} fertig rechts`;
+				titleSub.title = "GND kommt mit Strecke, Seite und Lage und sortiert sich selbst nach rechts; der Rest (VermEsn, landXML) kommt ohne alles und liegt hier, bis er Lage und Höhe hat und nach rechts gezogen ist";
+				title.append(titleText, titleSub);
+
+				const query = document.createElement("input");
+				query.type = "search";
+				query.className = "grabbel-query";
+				query.placeholder = "Filter: Name, Datei, Strecke · „ohne Lage“ · „ausgeblendet“";
+				query.title = "Mehrere Wörter: alle müssen passen. Sucht Name, Datei, Art, Lage, Höhe, Strecke und die Zustände „ohne Lage“, „ohne Höhe“, „ausgeblendet“, „sichtbar“.";
+				query.setAttribute("aria-label", "Grabbeltisch durchsuchen");
+				query.value = inboxQuery;
+				let queryTimer = 0;
+				query.addEventListener("input", () => {
+					inboxQuery = query.value;
+					clearTimeout(queryTimer);
+					queryTimer = setTimeout(() => {
+						rerender();
+						const again = tablesNav.querySelector(".grabbel-query");
+						if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); }
+					}, 220);
+				});
+
 				const head = document.createElement("div");
 				head.className = "bulk-crs-head";
-				const filter = document.createElement("select");
-				filter.className = "inbox-filter";
-				filter.setAttribute("aria-label", "Inbox-Filter");
-				filter.title = "Reste: was noch nicht rechts einsortiert ist. Sonst alles oder eine Objektart, einsortiert oder nicht.";
-				for (const [value, label] of INBOX_FILTERS) {
-					const option = document.createElement("option");
-					option.value = value;
-					option.textContent = label;
-					filter.append(option);
-				}
-				filter.value = inboxFilter;
-				filter.addEventListener("change", () => {
-					inboxFilter = filter.value;
-					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
-				});
-				head.append(filter);
 				const count = document.createElement("strong");
-				count.textContent = `${bulkSelectedEntries.size} ausgewählt`;
-				const selectAll = document.createElement("button");
-				selectAll.type = "button";
-				selectAll.textContent = "Alle";
-				const clear = document.createElement("button");
-				clear.type = "button";
-				clear.textContent = "Keine";
-				const pair = document.createElement("span");
-				pair.className = "bulk-crs-pair";
-				pair.append(selectAll, clear);
-				head.append(count, pair);
+				count.dataset.hits = String(hits.length);
+				const unhook = document.createElement("button");
+				unhook.type = "button";
+				unhook.className = "grabbel-unhook hidden";
+				unhook.textContent = "Haken weg";
+				unhook.title = "Haken entfernen: die Aktionen wirken wieder auf alle Treffer";
+				const hide = document.createElement("button");
+				hide.type = "button";
+				hide.textContent = "◌ aus";
+				hide.title = "Die Treffer von der Karte nehmen (GIS und Übersicht); Spurplan und Pläne bleiben";
+				const show = document.createElement("button");
+				show.type = "button";
+				show.textContent = "◉ ein";
+				show.title = "Die Treffer wieder auf die Karte";
+				const eyes = document.createElement("span");
+				eyes.className = "bulk-crs-pair";
+				eyes.append(hide, show);
+				head.append(count, unhook, eyes);
 
 				const fields = document.createElement("div");
-				fields.className = "bulk-crs-fields";
+				fields.className = "bulk-crs-fields grabbel-fields";
 				const lsys = document.createElement("select");
-				lsys.setAttribute("aria-label", "Lagebezug für Auswahl");
+				lsys.className = "grabbel-lsys";
+				lsys.setAttribute("aria-label", "Lagebezug für die Treffer");
 				for (const [value, label] of CRS_OPTIONS) {
 					const option = document.createElement("option");
 					option.value = value;
@@ -45428,51 +45745,52 @@ xlsx/xlsx.mjs:
 					lsys.append(option);
 				}
 				const hsys = document.createElement("select");
-				hsys.setAttribute("aria-label", "Höhenbezug für Auswahl");
+				hsys.setAttribute("aria-label", "Höhenbezug für die Treffer");
 				for (const [value, label] of HSYS_OPTIONS) {
 					const option = document.createElement("option");
 					option.value = value;
 					option.textContent = label;
 					hsys.append(option);
 				}
-				const labelFor = (text) => {
+				const withoutLsys = hits.filter((entry) => entry.item.kind === "alignment" && !effectiveLsys(entry)).length;
+				const withoutHsys = hits.flatMap((entry) => entry.item.kind === "profile" ? [entry] : entry.item.kind === "alignment" ? inboxDependents(entry).filter((dependent) => dependent.item.kind === "profile") : []).filter((entry) => !systemsForEntry(entry).hsys).length;
+				const labelFor = (text, missing) => {
 					const label = document.createElement("span");
 					label.className = "bulk-crs-label";
 					label.textContent = text;
+					if (missing) {
+						const chip = document.createElement("span");
+						chip.className = "inbox-chip inbox-chip-missing";
+						chip.textContent = String(missing);
+						chip.title = `${missing} der Treffer ohne ${text}`;
+						label.append(" ", chip);
+					}
 					return label;
 				};
-				fields.append(labelFor("Lage"), lsys, labelFor("Höhe"), hsys);
-
-				const actions = document.createElement("div");
-				actions.className = "bulk-crs-actions";
 				const applyLsys = document.createElement("button");
 				applyLsys.type = "button";
-				applyLsys.textContent = "Lage anwenden";
+				applyLsys.textContent = "→ Treffer";
+				applyLsys.title = "Diese Lage den Trassen unter den Treffern geben; Gradiente und Überhöhung folgen ihrer Trasse";
 				const applyHsys = document.createElement("button");
 				applyHsys.type = "button";
-				applyHsys.textContent = "Höhe anwenden";
-				actions.append(applyLsys, applyHsys);
-				editor.append(head, fields, actions);
+				applyHsys.textContent = "→ Treffer";
+				applyHsys.title = "Diese Höhe den Gradienten unter den Treffern geben, auch denen der getroffenen Trassen";
+				fields.append(labelFor("Lage", withoutLsys), lsys, applyLsys, labelFor("Höhe", withoutHsys), hsys, applyHsys);
+				editor.append(title, query, head, fields);
 
-				const rerender = () => renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
-				selectAll.addEventListener("click", () => {
-					for (const entry of allEntries) {
-						if (entry.item.kind === "alignment" || entry.item.kind === "profile") bulkSelectedEntries.add(entry);
-					}
-					rerender();
-				});
-				clear.addEventListener("click", () => {
+				unhook.addEventListener("click", () => {
 					bulkSelectedEntries.clear();
 					rerender();
 				});
 				// Lage: only a Trasse has one; its Gradiente/Überhöhung read it from
 				// the Trasse (effectiveLsys). Höhe: only a Gradiente has one; a
-				// selected Trasse passes it to its own Gradiente(n).
+				// targeted Trasse passes it to its own Gradiente(n).
 				applyLsys.addEventListener("click", () => {
-					if (!bulkSelectedEntries.size) return;
+					const targets = targetsNow();
+					if (!targets.length) { status.textContent = "Kein Treffer, nichts zu setzen."; return; }
 					let unresolved = 0;
 					let applied = 0;
-					for (const entry of bulkSelectedEntries) {
+					for (const entry of targets) {
 						if (entry.item.kind !== "alignment") continue;
 						applied += 1;
 						const value = userLsysForEntry(entry, lsys.value);
@@ -45484,39 +45802,56 @@ xlsx/xlsx.mjs:
 						else entry.displayLsys = value;
 						listingCache.delete(entry);
 						mapGeometryCache.delete(entry);
-					geometryModelCache.delete(entry);
+						geometryModelCache.delete(entry);
 					}
+					einordnungGeaendert();
 					status.classList.toggle("error", unresolved > 0);
 					status.textContent = !applied
-						? "Lage gilt für Trassen; keine Trasse ausgewählt."
+						? "Lage gilt für Trassen; unter den Treffern ist keine."
 						: unresolved
 						? `${unresolved} Trassen ohne erkennbaren Meridianstreifen; Lagezuordnung dort unverändert.`
 						: `${lsys.options[lsys.selectedIndex].textContent} für ${applied} Trassen gesetzt (Gradiente und Überhöhung folgen); Meridianstreifen automatisch erkannt.`;
+					if (activeMapMode === "crs") renderMap("crs");
+					renderBasemap();
 					rerender();
+					reselect();
 				});
 				applyHsys.addEventListener("click", () => {
-					if (!bulkSelectedEntries.size) return;
+					const targets = targetsNow();
+					if (!targets.length) { status.textContent = "Kein Treffer, nichts zu setzen."; return; }
 					const value = hsys.value;
-					const targets = new Set();
-					for (const entry of bulkSelectedEntries) {
-						if (entry.item.kind === "profile") targets.add(entry);
-						if (entry.item.kind === "alignment") for (const dependent of inboxDependents(entry)) if (dependent.item.kind === "profile") targets.add(dependent);
-					}
+					const profiles = new Set();
 					for (const entry of targets) {
+						if (entry.item.kind === "profile") profiles.add(entry);
+						if (entry.item.kind === "alignment") for (const dependent of inboxDependents(entry)) if (dependent.item.kind === "profile") profiles.add(dependent);
+					}
+					for (const entry of profiles) {
 						if (value === "AUTO") delete entry.displayHsys;
 						else entry.displayHsys = value;
 						listingCache.delete(entry);
 					}
+					einordnungGeaendert();
 					status.classList.remove("error");
-					status.textContent = targets.size
-						? `${hsys.options[hsys.selectedIndex].textContent} für ${targets.size} Gradienten gesetzt.`
-						: "Höhe gilt für Gradienten; die Auswahl hat keine.";
+					status.textContent = profiles.size
+						? `${hsys.options[hsys.selectedIndex].textContent} für ${profiles.size} Gradienten gesetzt.`
+						: "Höhe gilt für Gradienten; unter den Treffern ist keine.";
 					rerender();
+					reselect();
 				});
+				const setHidden = (hidden) => {
+					const targets = targetsNow().filter((entry) => entry.item.kind === "alignment" || !referencingEntries(entry).length);
+					if (!targets.length) { status.textContent = "Kein Treffer, nichts zu ändern."; return; }
+					setEntriesHidden(targets, hidden);
+					status.classList.remove("error");
+					status.textContent = `${targets.length} Objekte auf der Karte ${hidden ? "ausgeblendet" : "eingeblendet"} · ${hiddenEntryKeys.size} insgesamt ausgeblendet.`;
+				};
+				hide.addEventListener("click", () => setHidden(true));
+				show.addEventListener("click", () => setHidden(false));
 				return editor;
 			}
 
 			function assignEntryToSevenLine(entry, groupDef, frame) {
+				einordnungGeaendert();
 				const compatible = entry.item.kind === groupDef.kind
 					|| (groupDef.role === "curvatureKilometer" && entry.item.kind === "staEq");
 				if (!compatible) {
@@ -45664,8 +45999,7 @@ xlsx/xlsx.mjs:
 						checkbox.addEventListener("change", () => {
 							if (checkbox.checked) bulkSelectedEntries.add(entry);
 							else bulkSelectedEntries.delete(entry);
-							const label = tablesNav.querySelector(".bulk-crs-head strong");
-							if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+							updateGrabbelCount();
 							renderDiagram();
 						});
 						const button = document.createElement("button");
@@ -45697,7 +46031,14 @@ xlsx/xlsx.mjs:
 							objectRow.classList.remove("dragging");
 							draggedOrganizationEntry = null;
 						});
+						// The eye sits on the Trasse; a Gradiente, Überhöhung or
+						// Stationsgleichung has no line of its own on the map and dims
+						// with its Trasse.
+						const trasse = entry.item.kind === "alignment" ? entry : relatedDiagramEntries(entry).anchor;
 						objectRow.append(checkbox, button);
+						if (entry.item.kind === "alignment") objectRow.append(eyeButton(entry));
+						else objectRow.append(document.createElement("span"));
+						if (trasse?.item?.kind === "alignment" && isEntryHidden(trasse)) objectRow.classList.add("hidden-object");
 						lane.append(objectRow);
 					}
 					if (!laneEntries.length) {
@@ -46934,40 +47275,82 @@ xlsx/xlsx.mjs:
 				}
 			}
 
-			// Inbox = what is left. A Trasse is one row and takes its Gradiente,
-			// Überhöhung and Stationsgleichung with it -- they reference the Trasse
-			// and are never assigned on their own, they inherit its Strecke, side
-			// and Lage. An EH/EU/EK that references no Trasse at all is an orphan
-			// row. What is organized sits on the right and is gone from here,
-			// unless the filter asks for everything or for one family.
-			let inboxFilter = "rest";
-			const INBOX_FILTERS = [["rest", "Reste"], ["all", "alles"], ["EL", "Trassen (EL/TRA)"], ["EH", "Gradienten (EH/GRA)"], ["EU", "Überhöhungen (EU)"], ["EK", "Stationsgleichungen (EK)"]];
-			function inboxFamily(entry) {
-				return { alignment: "EL", profile: "EH", cant: "EU", staEq: "EK" }[entry.item.kind] ?? entry.item.kind;
+			// Inbox = Grabbeltisch. GND arrives fully qualified (Strecke, side,
+			// Lage) and sorts itself to the right; the rest (VermEsn, landXML)
+			// arrives naked and lies here until it has a Lage and a Höhe and is
+			// moved to the right by hand. So the pile is "what is not right yet",
+			// flat over all files, with one text filter; the words "ohne Lage",
+			// "ohne Höhe", "ausgeblendet", "sichtbar" are searchable states. Lage,
+			// Höhe and the map visibility are set for the hits in one go -- or,
+			// when rows are ticked, for the ticked hits only.
+			let inboxQuery = "";
+			// Hidden on the map (GIS and SVG); Spurplan, Lieferung and the Pläne
+			// follow the selection, not this flag. Keyed like the saved state so
+			// it survives a reopen. Toggled left (Inbox) and right (Outbox).
+			const hiddenEntryKeys = new Set();
+			function isEntryHidden(entry) {
+				return hiddenEntryKeys.has(stateKey(entry));
+			}
+			function setEntriesHidden(entries, hidden) {
+				for (const entry of entries) {
+					if (hidden) hiddenEntryKeys.add(stateKey(entry));
+					else hiddenEntryKeys.delete(stateKey(entry));
+				}
+				einordnungGeaendert();
+				if (activeMapMode === "crs") renderMap("crs");
+				renderBasemap();
+				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+			}
+			function eyeButton(entry) {
+				const hidden = isEntryHidden(entry);
+				const eye = document.createElement("button");
+				eye.type = "button";
+				eye.className = "object-eye";
+				eye.textContent = hidden ? "◌" : "◉";
+				eye.title = hidden ? "Auf der Karte ausgeblendet · einblenden" : "Auf der Karte sichtbar · ausblenden";
+				eye.setAttribute("aria-label", `${objectListName(entry)} auf der Karte ${hidden ? "einblenden" : "ausblenden"}`);
+				eye.setAttribute("aria-pressed", String(!hidden));
+				eye.addEventListener("click", (event) => { event.stopPropagation(); setEntriesHidden([entry], !hidden); });
+				return eye;
+			}
+			let grabbelHitSet = new Set();
+			function updateGrabbelCount() {
+				const label = tablesNav.querySelector(".bulk-crs-head strong");
+				if (!label) return;
+				const hits = Number(label.dataset.hits ?? 0);
+				const checked = [...bulkSelectedEntries].filter((entry) => grabbelHitSet.has(entry)).length;
+				label.textContent = checked ? `${checked} angehakt von ${hits} Treffern` : `${hits} Treffer`;
+				label.title = checked ? "Lage, Höhe, Aus- und Einblenden wirken auf die angehakten Treffer" : "Lage, Höhe, Aus- und Einblenden wirken auf alle Treffer; Haken grenzen ein";
+				const clear = tablesNav.querySelector(".grabbel-unhook");
+				if (clear) clear.classList.toggle("hidden", !checked);
+			}
+			function isGndEntry(entry) {
+				return entry.parser === "gndEdit" || Boolean(gndSequenceForEntry(entry));
 			}
 			function inboxDependents(alignment) {
 				return referencingEntries(alignment).filter((candidate) => candidate.item.kind !== "alignment");
 			}
-			function inboxRows(loaded) {
-				const claimed = new Set(allViewerEntries().filter((entry) => entry.item.kind === "alignment").flatMap(inboxDependents));
-				if (["EL", "EH", "EU", "EK"].includes(inboxFilter)) {
-					return loaded.objects
-						.filter((entry) => inboxFamily(entry) === inboxFilter)
-						.map((entry) => ({ entry, organized: isOutboxOrganized(entry), orphan: entry.item.kind !== "alignment" && !claimed.has(entry), dependent: claimed.has(entry), dependents: [] }));
-				}
+			function inboxRowsAll() {
+				const model = einordnung();
+				const terms = inboxQuery.toLowerCase().split(/\s+/).filter(Boolean);
 				const rows = [];
-				for (const entry of loaded.objects) {
-					const isAlignment = entry.item.kind === "alignment";
-					if (!isAlignment && claimed.has(entry)) continue;
-					const organized = isOutboxOrganized(entry);
-					if (inboxFilter === "rest" && organized) continue;
-					rows.push({ entry, organized, orphan: !isAlignment, dependents: isAlignment ? inboxDependents(entry) : [] });
+				for (const key of model.pile) {
+					const placed = model.objects.get(key);
+					const entry = einordnungEintrag(key);
+					if (!placed || !entry) continue;
+					const dependents = placed.dependents.map(einordnungEintrag).filter(Boolean);
+					if (terms.length) {
+						const hay = [placed, ...placed.dependents.map((dependentKey) => model.objects.get(dependentKey)).filter(Boolean)].map(einordnungSuchtext).join(" ");
+						if (!terms.every((term) => hay.includes(term))) continue;
+					}
+					rows.push({ entry, loaded: entry.loaded, organized: false, orphan: placed.orphan, dependent: false, dependents });
 				}
 				return rows;
 			}
-			function appendInboxRow(file, entry, { organized = false, orphan = false, dependent = false } = {}) {
+			function appendInboxRow(container, entry, { organized = false, orphan = false, dependent = false, fileName = "" } = {}) {
 				const row = document.createElement("div");
-				row.className = `object-row${dependent ? " dependent" : ""}${organized ? " organized" : ""}`;
+				const hidden = isEntryHidden(entry);
+				row.className = `object-row${dependent ? " dependent" : ""}${organized ? " organized" : ""}${hidden ? " hidden-object" : ""}`;
 				// Lage belongs to a Trasse, Höhe to a Gradiente; an Überhöhung or
 				// Stationsgleichung gets no checkbox -- there is nothing to assign.
 				const selectable = !dependent && (entry.item.kind === "alignment" || entry.item.kind === "profile");
@@ -46980,8 +47363,7 @@ xlsx/xlsx.mjs:
 					checkbox.addEventListener("change", () => {
 						if (checkbox.checked) bulkSelectedEntries.add(entry);
 						else bulkSelectedEntries.delete(entry);
-						const label = tablesNav.querySelector(".bulk-crs-head strong");
-						if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+						updateGrabbelCount();
 						renderDiagram();
 					});
 					row.append(checkbox);
@@ -47008,7 +47390,7 @@ xlsx/xlsx.mjs:
 				const kind = document.createElement("span");
 				kind.dataset.kind = "true";
 				const family = sourceFamilyForEntry(entry);
-				kind.textContent = dependent ? `${family} · gehört zur Trasse` : organized ? `${family} · rechts einsortiert` : orphan ? `${family} · ohne Trasse` : `${family} · roh`;
+				kind.textContent = `${dependent ? `${family} · gehört zur Trasse` : organized ? `${family} · rechts einsortiert` : orphan ? `${family} · ohne Trasse` : `${family} · roh`}${hidden ? " · ausgeblendet" : ""}${fileName ? ` · ${fileName}` : ""}`;
 				// A Gleis says where it lies; the tooltip names the witnesses.
 				const evidence = entry.item.kind === "alignment" ? sideEvidence(entry) : null;
 				if (evidence) {
@@ -47033,7 +47415,9 @@ xlsx/xlsx.mjs:
 					});
 				}
 				row.append(button);
-				file.append(row);
+				// The eye: on the map or not. A dependent follows its Trasse.
+				if (!dependent) row.append(eyeButton(entry));
+				container.append(row);
 				if (!draggable) return;
 				const suggestion = suggestRoleForEntry(entry);
 				if (suggestion) {
@@ -47046,48 +47430,22 @@ xlsx/xlsx.mjs:
 					accept.textContent = "Übernehmen";
 					accept.addEventListener("click", () => assignEntryToSevenLine(entry, suggestion.groupDef, geoFrameInfo(entry)));
 					hint.append(text, accept);
-					file.append(hint);
+					container.append(hint);
 				}
 			}
 
 			function renderRawInbox(preferredFileName = null) {
 				const previousSelection = selectedEntry;
 				const allEntries = allViewerEntries();
-				// Data first: the filter alone at the top, the Lage/Höhe editor as a
-				// collapsed section after the files -- open when something lacks a
-				// Lage, closed otherwise.
-				const crsEditor = renderBulkCrsEditor(allEntries);
-				const inboxTop = document.createElement("div");
-				inboxTop.className = "inbox-top";
-				const filterSelect = crsEditor.querySelector(".inbox-filter");
-				if (filterSelect) inboxTop.append(filterSelect);
-				tablesNav.replaceChildren(inboxTop);
-				const crsSection = document.createElement("details");
-				crsSection.className = "inbox-crs";
-				const lsysMissing = allEntries.some((entry) => entry.item.kind === "alignment" && !effectiveLsys(entry));
-				crsSection.open = inboxCrsOpen ?? lsysMissing;
-				crsSection.addEventListener("toggle", () => { inboxCrsOpen = crsSection.open; });
-				// A short head and the state as a chip: at 1280 px the Inbox column
-				// is 270 px, and "Lage und Höhe zuweisen · Lage fehlt" broke into
-				// two lines and took the file list's room.
-				const crsSummary = document.createElement("summary");
-				const crsHead = document.createElement("span");
-				crsHead.className = "inbox-crs-head";
-				const crsTitle = document.createElement("span");
-				crsTitle.textContent = "Lage und Höhe";
-				const crsChip = document.createElement("span");
-				crsChip.className = `inbox-chip${lsysMissing ? " inbox-chip-missing" : ""}`;
-				crsChip.textContent = lsysMissing ? "Lage fehlt" : "zugewiesen";
-				crsChip.title = lsysMissing ? "Mindestens ein Gleis ohne Lagesystem: hier zuweisen" : "Jedes Gleis hat ein Lagesystem; hier ändern";
-				crsHead.append(crsTitle, crsChip);
-				crsSummary.append(crsHead);
-				crsSection.append(crsSummary, crsEditor);
+				const rows = inboxRowsAll();
+				tablesNav.replaceChildren(renderGrabbeltischBar(allEntries, rows));
+				updateGrabbelCount();
 				const hasUnassigned = allEntries.some((entry) => !isOutboxOrganized(entry));
 				if (hasUnassigned && !dragHintUsed && !dragHintDismissed) {
 					const hint = document.createElement("div");
 					hint.className = "inbox-drag-hint";
 					const text = document.createElement("p");
-					text.textContent = "Objekte per Ziehen (⠿) rechts einsortieren, oder Vorschlag übernehmen, wo vorhanden.";
+					text.textContent = "Objekte per Ziehen (⠿) rechts in die Ordnung einsortieren, oder Vorschlag übernehmen, wo vorhanden.";
 					const dismiss = document.createElement("button");
 					dismiss.type = "button";
 					dismiss.textContent = "✕";
@@ -47099,41 +47457,38 @@ xlsx/xlsx.mjs:
 					hint.append(text, dismiss);
 					tablesNav.append(hint);
 				}
-				let firstPreferred = null;
-				for (const loaded of loadedFiles) {
-					const file = document.createElement("details");
-					file.className = "file-group workspace-section";
-					file.open = loaded.objects.includes(previousSelection) || loaded.fileName === preferredFileName;
-					const rows = inboxRows(loaded);
-					const openCount = rows.filter((row) => !row.organized).length;
-					const summary = document.createElement("summary");
-					summary.className = "workspace-section-title raw-file-title";
-					summary.innerHTML = `<span>${loaded.fileName}</span><span class="workspace-section-count">${inboxFilter === "rest" ? `${openCount} offen` : `${rows.length}`}</span>`;
-					file.append(summary);
-					if (!rows.length) {
-						const done = document.createElement("div");
-						done.className = "file-group-done";
-						done.textContent = inboxFilter === "rest" ? "Vollständig einsortiert · siehe rechts" : "nichts in dieser Auswahl";
-						file.append(done);
-					}
-					for (const row of rows) {
-						appendInboxRow(file, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent) });
-						for (const dependent of row.dependents) appendInboxRow(file, dependent, { organized: row.organized, dependent: true });
-						if (loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = row.entry;
-					}
-					tablesNav.append(file);
+				const pile = document.createElement("div");
+				pile.className = "inbox-pile";
+				if (!rows.length) {
+					const done = document.createElement("div");
+					done.className = "file-group-done";
+					done.textContent = inboxQuery ? "Kein Treffer für diesen Filter" : "Alles einsortiert · siehe rechts";
+					pile.append(done);
 				}
-				tablesNav.append(crsSection);
+				let firstPreferred = null;
+				for (const row of rows) {
+					appendInboxRow(pile, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent), fileName: row.loaded.fileName });
+					for (const dependent of row.dependents) appendInboxRow(pile, dependent, { organized: row.organized, dependent: true, fileName: row.loaded.fileName });
+					if (row.loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = row.entry;
+				}
+				tablesNav.append(pile);
 				appendPlanningTree();
 				renderSevenLineOutbox(previousSelection);
 				syncMapFilterState();
 				applyMapFilters();
 				if (!mapFilterPanel.classList.contains("hidden")) renderMapFilterPanel();
-				const next = previousSelection && allEntries.includes(previousSelection) ? previousSelection : firstPreferred ?? allEntries[0];
-				if (next?.button) selectObject(next, next.button);
+				// A filter keystroke must not re-select (and re-centre the map):
+				// the old selection just keeps its mark; a lost selection moves on.
+				const keep = previousSelection && allEntries.includes(previousSelection) ? previousSelection : null;
+				if (keep) keep.button?.classList.add("selected");
+				else {
+					const next = firstPreferred ?? rows[0]?.entry ?? allEntries[0];
+					if (next?.button) selectObject(next, next.button);
+				}
 			}
 
 			function renderObjectTree(preferredFileName = null) {
+				einordnungGeaendert();
 				scheduleStateSave();
 				return renderRawInbox(preferredFileName);
 				const previousSelection = selectedEntry;
@@ -47148,7 +47503,7 @@ xlsx/xlsx.mjs:
 					frames.get(key).entries.push(entry);
 				}
 
-				tablesNav.replaceChildren(renderBulkCrsEditor(allEntries));
+				tablesNav.replaceChildren(renderGrabbeltischBar(allEntries, []));
 				let firstPreferred = null;
 
 				function createRow(entry, scope) {
@@ -47165,8 +47520,7 @@ xlsx/xlsx.mjs:
 					checkbox.addEventListener("change", () => {
 						if (checkbox.checked) bulkSelectedEntries.add(entry);
 						else bulkSelectedEntries.delete(entry);
-						const label = tablesNav.querySelector(".bulk-crs-head strong");
-						if (label) label.textContent = `${bulkSelectedEntries.size} ausgewählt`;
+						updateGrabbelCount();
 					});
 					button.draggable = true;
 					const name = document.createElement("span");
@@ -48658,40 +49012,66 @@ xlsx/xlsx.mjs:
 				return new Promise((resolve, reject) => reader.readEntries(resolve, reject));
 			}
 
+			// What a drop hands over is taken synchronously: after the first await
+			// the drop's data store is protected and dataTransfer.files reads
+			// empty. Chrome on a file:// page (the Viewer's normal life) fails
+			// webkitGetAsEntry().file() with "EncodingError ... Data URL has
+			// exceeded the URL length limitations" for every file, so a drop of two
+			// Eifel files ended in "Keine Datei gefunden." (measured 09.11., Chrome
+			// 156). So: the File of each item (getAsFile), a FileSystem handle for
+			// folders (Chrome), the entry as the last resort (Safari, Firefox).
 			async function collectDroppedFiles(dataTransfer) {
+				let items = [];
+				let plainFiles = [];
 				try {
-					const items = Array.from(dataTransfer?.items ?? []);
-					const entries = items.map((item) => item.webkitGetAsEntry?.()).filter(Boolean);
-					if (entries.length) {
-						const files = [];
-						const pending = entries.slice();
-						for (let pendingIndex = 0; pendingIndex < pending.length; pendingIndex += 1) {
-							const entry = pending[pendingIndex];
-							if (entry?.isFile) {
-								files.push(await readEntryFile(entry));
-								continue;
-							}
-							if (!entry?.isDirectory) continue;
-							const reader = entry.createReader();
-							while (true) {
-								const children = await readDirectoryBatch(reader);
-								if (!children.length) break;
-								for (const child of children) pending.push(child);
-							}
-						}
-						return files;
-					}
+					items = Array.from(dataTransfer?.items ?? []).filter((item) => item.kind === "file").map((item) => ({
+						file: item.getAsFile?.() ?? null,
+						handle: typeof item.getAsFileSystemHandle === "function" ? item.getAsFileSystemHandle().catch(() => null) : null,
+						entry: item.webkitGetAsEntry?.() ?? null,
+					}));
+					plainFiles = Array.from(dataTransfer?.files ?? []);
 				} catch (error) {
 					// Chrome can throw while negotiating DataTransferItem flavors for very
-					// large native drags ("... Data URL has exceeded the URL length
-					// limitations ..."); dataTransfer.files below does not go through that
-					// per-item negotiation and is unaffected.
+					// large native drags; whatever was read before the throw is kept.
 				}
-				try {
-					return Array.from(dataTransfer?.files ?? []);
-				} catch {
-					throw new Error("Chrome konnte die Drop-Daten nicht lesen (bei sehr großen oder vielen Dateien/Ordnern). Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.");
+				const files = [];
+				const problems = [];
+				const named = (file, path) => path && path !== file.name ? new File([file], path, { type: file.type, lastModified: file.lastModified }) : file;
+				const walkHandle = async (handle, prefix) => {
+					for await (const child of handle.values()) {
+						if (child.kind === "file") files.push(named(await child.getFile(), `${prefix}${child.name}`));
+						else if (child.kind === "directory") await walkHandle(child, `${prefix}${child.name}/`);
+					}
+				};
+				const walkEntry = async (root) => {
+					const pending = [root];
+					for (let pendingIndex = 0; pendingIndex < pending.length; pendingIndex += 1) {
+						const entry = pending[pendingIndex];
+						if (entry?.isFile) { files.push(await readEntryFile(entry)); continue; }
+						if (!entry?.isDirectory) continue;
+						const reader = entry.createReader();
+						while (true) {
+							const children = await readDirectoryBatch(reader);
+							if (!children.length) break;
+							for (const child of children) pending.push(child);
+						}
+					}
+				};
+				for (const item of items) {
+					const handle = item.handle ? await item.handle : null;
+					const label = handle?.name ?? item.entry?.name ?? item.file?.name ?? "Eintrag";
+					try {
+						if (handle?.kind === "directory") { await walkHandle(handle, `${handle.name}/`); continue; }
+						if (!handle && item.entry?.isDirectory) { await walkEntry(item.entry); continue; }
+						if (item.file) { files.push(item.file); continue; }
+						if (item.entry?.isFile) { files.push(await readEntryFile(item.entry)); continue; }
+					} catch (error) {
+						problems.push(`${label}: ${error?.message ?? error}`);
+					}
 				}
+				if (!files.length && plainFiles.length) return plainFiles;
+				if (!files.length && problems.length) throw new Error(`Drop übergeben, aber nicht lesbar – ${problems.join("; ")}. Bitte stattdessen „+ Daten“ oder „Ordner …“ verwenden.`);
+				return files;
 			}
 
 			// ---- Menüs: Klick außerhalb oder Esc schließt ------------------------------
@@ -49199,6 +49579,8 @@ xlsx/xlsx.mjs:
 					gwb: { lineSpeed: gwbLineSpeedInput.value, brakeDistance: gwbBrakeDistanceInput.value, oberbau: gwbOberbauSelect.value, fahrzeug: gwbFahrzeugSelect.value, cantLimit: gwbCantLimitSelect.value },
 					spurplan: { coloring: spurplanColoring.value, zoom: [...spurplanZoom.entries()] },
 					kilometerLinesVisible,
+					hidden: [...hiddenEntryKeys],
+					inbox: { query: inboxQuery },
 					coupled: selectionCoupled,
 					precisionKind: precisionKind(),
 					viewMode: viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? null,
@@ -49207,6 +49589,7 @@ xlsx/xlsx.mjs:
 			}
 			function applyViewerState(state) {
 				if (!state || typeof state !== "object") return { applied: 0, missing: 0 };
+				einordnungGeaendert();
 				viewerStore.restoring = true;
 				let applied = 0;
 				let missing = 0;
@@ -49246,6 +49629,9 @@ xlsx/xlsx.mjs:
 					if (typeof state.kilometerLinesVisible === "boolean" && state.kilometerLinesVisible !== kilometerLinesVisible) toggleKilometerLines();
 					if (typeof state.coupled === "boolean") setSelectionCoupled(state.coupled);
 					if (state.precisionKind === "height" || state.precisionKind === "point") precisionKindSelect.value = state.precisionKind;
+					hiddenEntryKeys.clear();
+					for (const key of Array.isArray(state.hidden) ? state.hidden : []) if (byKey.has(key)) hiddenEntryKeys.add(key);
+					if (state.inbox && typeof state.inbox === "object") inboxQuery = typeof state.inbox.query === "string" ? state.inbox.query : "";
 					spurplanSpeedCache.clear();
 					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 					const selected = state.selected ? byKey.get(state.selected) : null;
@@ -49421,7 +49807,15 @@ xlsx/xlsx.mjs:
 			mapFit.addEventListener("click", fitMap);
 			mapZoomOut.addEventListener("click", () => zoomMap(1.25));
 			mapZoomIn.addEventListener("click", () => zoomMap(0.8));
-			gisAssign.addEventListener("click", () => setViewMode("listing"));
+			// "Lage zuordnen" opens the Grabbeltisch on the Trassen without a Lage.
+			gisAssign.addEventListener("click", () => {
+				inboxQuery = "ohne lage";
+				viewer.classList.remove("inbox-collapsed");
+				toggleInbox.setAttribute("aria-pressed", "true");
+				toggleInbox.textContent = "‹";
+				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				tablesNav.querySelector(".grabbel-lsys")?.focus();
+			});
 			baseMapLoad.addEventListener("click", () => toggleRailwayMap());
 			document.querySelector("#tileConsentOnce").addEventListener("click", () => answerTileConsent("once"));
 			document.querySelector("#tileConsentAlways").addEventListener("click", () => answerTileConsent("always"));
@@ -49504,10 +49898,15 @@ xlsx/xlsx.mjs:
 			}, true);
 			setViewMode("crs");
 			void toggleRailwayMap({ automatic: true });
-			document.addEventListener("dragover", (event) => {
-				event.preventDefault();
-				document.body.classList.add("dragover");
-			});
+			// dragenter and dragover both cancelled, dropEffect "copy": the pair
+			// the HTML spec and Chrome want before they show a drop as allowed.
+			for (const type of ["dragenter", "dragover"]) {
+				document.addEventListener(type, (event) => {
+					event.preventDefault();
+					if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+					document.body.classList.add("dragover");
+				});
+			}
 			document.addEventListener("dragleave", (event) => {
 				if (!event.relatedTarget) document.body.classList.remove("dragover");
 			});
