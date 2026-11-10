@@ -19,8 +19,8 @@ const frameOf = (name) => JSON.parse(JSON.stringify(context.frameOf(name) ?? nul
 const landshut = `5500L074-082.GRA 5500L074-082.TRA 5500R074-082.GRA 5500R074-082.TRA 5500S074-082.TRA 5500S074-082_Gls404.TRA 5632R000-002.GRA 5632R000-002.TRA 5632S000-002.TRA 5634R000-007.GRA 5634R000-007.TRA 5634R000-007_Gls403.GRA 5634R000-007_Gls403.TRA 5634S000-007.TRA 5634S000-007_Gls403.TRA 5720R000_Gls403.GRA 5720R000_Gls403.TRA 5720S.TRA Abzw-li_DKW503.TRA Abzw-li_DKW510.TRA Abzw-re_DKW503.TRA Abzw-re_DKW510.TRA Abzw_EKW410.TRA Gls031.GRA Gls031.TRA Gls095.TRA Gls401.GRA Gls401.TRA Gls401v.GRA Gls401v.TRA Gls402.GRA Gls402.TRA Gls402v.TRA Gls404.GRA Gls404.TRA Gls404v.GRA Gls404v.TRA Gls407.GRA Gls407.TRA Gls408.GRA Gls408.TRA Gls409.GRA Gls409.TRA Gls410.GRA Gls410.TRA Gls413.TRA Gls416.GRA Gls416.TRA Gls418.GRA Gls418.TRA Gls432.GRA Gls432.TRA Gls433.GRA Gls433.TRA Gls490.TRA Gls534.GRA Gls534.TRA Gls591.GRA Gls591.TRA W401-402.GRA W401-402.TRA W403-404.GRA W403-404.TRA W413-414.GRA W413-414.TRA W422-423.TRA W424-426.TRA W424-W429.GRA W424-W429.TRA W463-465.GRA W463-465.TRA W466-476.GRA W466-476.TRA W467-468.GRA W467-468.TRA W475-464.GRA W475-464.TRA W477-478.GRA W477-478.TRA W538-462.GRA W538-462.TRA`.split(" ");
 const eifel = `2631K139_Bestand_VR_DBREF03.TRA 2631R139_Bestand_VR_DBREF03_A.GRA 2631R139_Bestand_VR_DBREF03_A.TRA 2631R139_Philippsheimer+Friedrich-Wilhelm_Neuplanung_DBREF03.TRA 2631R139_Philippsheimer+Friedrich-Wilhelm_Neuplanung_DBREF03_A.GRA 2631R142_Loskyller+Heinzkyller_Neuplanung_DBREF03_A.GRA 2631R142_Loskyller+Heinzkyller_Neuplanung_DBREF03_A.TRA 2631R148_Kyller_mit_Weg_Neuplanung_DBREF03.GRA 2631R148_Kyller_mit_Weg_Neuplanung_DBREF03.TRA 2631R148_Kyller_ohne_Weg_Neuplanung_DBREF03.GRA 2631R148_Kyller_ohne_Weg_Neuplanung_DBREF03.TRA Gleis2_Bf_Auw_Bestand_VR_DBREF03.GRA Gleis2_Bf_Auw_Bestand_VR_DBREF03_A.TRA Gleis2_Bf_Speicher_Bestand_VR_DBREF03.GRA Gleis2_Bf_Speicher_Bestand_VR_DBREF03.TRA Gleis2_Bf_Speicher_Neuplanung_DBREF03.GRA Gleis2_Bf_Speicher_Neuplanung_DBREF03.TRA Gleis4_Bf_Speicher_Bestand_VR_DBREF03.GRA Gleis4_Bf_Speicher_Bestand_VR_DBREF03.TRA`.split(" ");
 
-test("two conventions, each with a label", () => {
-	assert.deepEqual(Array.from(context.conventions, (c) => c.id), ["strecke", "bahnhofsgleis"]);
+test("three conventions, each with a label", () => {
+	assert.deepEqual(Array.from(context.conventions, (c) => c.id), ["strecke", "strecke-km-seite", "bahnhofsgleis"]);
 	for (const c of Array.from(context.conventions)) assert.ok(c.label.length > 10);
 });
 
@@ -60,3 +60,32 @@ test("tolerated spellings resolve to the same frames; a description is never a B
 	assert.equal(frameOf(""), null);
 	assert.equal(frameOf(undefined), null);
 });
+
+// metroB, Strecke 5904: three ways of naming in one delivery. The first
+// convention (5904R, 5904_S_R00), the third (5904067R: Strecke, km, letter),
+// and names no convention reads (a variant after a hyphen, a prefix).
+const metroB5904 = "5904067R.GRA 5904067R.TRA 5904067S.TRA 5904072S_ER0.TRA 5904080R_ER0.TRA 5904080R_O00.GRA 5904080R_O00_lokal.GRA 5904L.TRA 5904R.GRA 5904R.TRA 5904S.TRA 5904_R-DR0-210323.TRA 5904_R-R00-201005.Gra 5904_R-R16-210323.Gra 5904_R_DBREF2003.GRA 5904_R_DBREF2003.TRA 5904_R_R00.GRA 5904_R_R00.TRA 5904_S-DR0-210323.TRA 5904_S.TRA 5904_S_R00.TRA AIT_5904L_Febr26.Gra AIT_5904L_c.Gra AIT_5904L_c_mitW207.Tra AIT_5904R_Febr26.Gra AIT_5904R_b.Tra AIT_5904R_c.Gra AIT_5904S_b.Tra".split(" ");
+
+test("metroB: Strecke-km-Seite frames like the first convention, km and letter the other way round", () => {
+	assert.deepEqual(frameOf("5904067R.TRA"), { track: "5904", side: "right", segment: "067", gleis: null, variant: null, convention: "strecke-km-seite" });
+	assert.deepEqual(frameOf("5904067R.GRA"), frameOf("5904067R.TRA"));
+	assert.deepEqual(frameOf("5904067S.TRA"), { track: "5904", side: "kilometer", segment: "067", gleis: null, variant: null, convention: "strecke-km-seite" });
+	assert.deepEqual(frameOf("5904072S_ER0.TRA"), { track: "5904", side: "kilometer", segment: "072", gleis: null, variant: "ER0", convention: "strecke-km-seite" });
+	assert.deepEqual(frameOf("5904080R_ER0.TRA"), { track: "5904", side: "right", segment: "080", gleis: null, variant: "ER0", convention: "strecke-km-seite" });
+	assert.deepEqual(frameOf("5904080R_O00_lokal.GRA"), { track: "5904", side: "right", segment: "080", gleis: null, variant: "O00_lokal", convention: "strecke-km-seite" });
+	assert.equal(metroB5904.filter((name) => frameOf(name)?.convention === "strecke-km-seite").length, 7);
+	// the first convention keeps what it read before
+	assert.deepEqual(frameOf("5904R.TRA"), { track: "5904", side: "right", segment: null, gleis: null, variant: null, convention: "strecke" });
+	assert.deepEqual(frameOf("5904_S_R00.TRA"), { track: "5904", side: "kilometer", segment: null, gleis: null, variant: "R00", convention: "strecke" });
+	assert.equal(metroB5904.filter((name) => frameOf(name)?.convention === "strecke").length, 10);
+	// a variant after a hyphen and a prefix stay unread: singletons, placed by their Lage
+	for (const name of ["5904_R-DR0-210323.TRA", "5904_S-DR0-210323.TRA", "5904_R-R00-201005.Gra", "AIT_5904R_b.Tra", "AIT_5904S_b.Tra"]) assert.equal(frameOf(name), null, name);
+	assert.equal(metroB5904.filter((name) => !frameOf(name)).length, 11);
+	// nothing of Landshut or Eifel changes its convention
+	for (const name of [...landshut, ...eifel]) assert.notEqual(frameOf(name)?.convention, "strecke-km-seite", name);
+	// seven digits and a letter is the whole pattern: no km range, no eighth digit
+	assert.equal(frameOf("59040671R.TRA"), null);
+	assert.equal(frameOf("590406R.TRA"), null);
+	assert.equal(frameOf("5904067X.TRA"), null);
+});
+

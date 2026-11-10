@@ -1348,6 +1348,21 @@ xlsx/xlsx.mjs:
 					},
 				},
 				{
+					// metroB: "5904067R" -- Strecke 5904, the km where the Abschnitt
+					// begins (067), then the letter; a suffix names the Lagesystem or
+					// a variant ("5904072S_ER0", "5904080R_O00_lokal"). Read from the
+					// delivery: 5904067S.TRA runs km 67,4-72,2, 5904072S_ER0.TRA km
+					// 72,0-90,3. The same parts as the first convention, km and letter
+					// the other way round.
+					id: "strecke-km-seite",
+					label: "Strecke-km-Seite (metroB 5904067R, 5904072S_ER0)",
+					pattern: /^(\d{4})(\d{3})([KLRS])(?:[-_ ](.+))?$/i,
+					frame: (match) => {
+						const [, track, from, letter, suffix] = match;
+						return { track, side: { s: "kilometer", k: "kilometer", r: "right", l: "left" }[letter.toLowerCase()], segment: from, gleis: null, variant: suffix ?? null };
+					},
+				},
+				{
 					id: "bahnhofsgleis",
 					label: "Bahnhofsgleis (Eifel Gleis2_Bf_Auw_…)",
 					pattern: /^Gleis[-_ ]?(\d+)[-_ ]?Bf[-_ ]?([^_]+)(?:_(.+))?$/i,
@@ -2233,7 +2248,9 @@ xlsx/xlsx.mjs:
 			//   for different objects),
 			//   homeKey (the first Trasse of its file, the anchor of last resort),
 			//   role (the 7L Spur: gradientRight … cantRight, or "UNASSIGNED"),
-			//   section (an explicit Abschnitt id, or "") }
+			//   section (an explicit Abschnitt id, or ""),
+			//   kmFrame (its range is in the Strecke's km: GND, a Kilometerlinie, a
+			//   Gleis stationed on one; false for file-local stations) }
 			const EINORDNUNG_VERSION = "einordnung/0.1";
 			// Wer ist es, on the level of files: a file is known by its name, and
 			// a second file of the same name (two deliveries, two folders) by its
@@ -2440,6 +2457,8 @@ xlsx/xlsx.mjs:
 			function einordnungStreckennummer(value) {
 				return /^\d{4}$/.test(String(value ?? "").trim());
 			}
+			// Two stretches share a picture when they share more than a seam.
+			const UMFELD_MIN_GEMEINSAM_M = 5;
 			// Das Umfeld eines Objekts: what the 7L picture shows with it.
 			function einordnungUmfeld(model, key) {
 				const self = model.objects.get(key);
@@ -2449,18 +2468,34 @@ xlsx/xlsx.mjs:
 				const selectedRange = self.range;
 				const overlaps = (candidate) => !selectedRange || !candidate.range || (candidate.range.from <= selectedRange.to + 5 && candidate.range.to >= selectedRange.from - 5);
 				const sameLsys = (candidate) => (candidate.lsys || candidate.frame?.lsys) === (self.lsys || selectedFrame?.lsys);
+				const verbund = einordnungVerbund(model, key);
+				const anchor = verbund.anchor;
+				// Where an object stands in the Strecke's km: its own range when it
+				// is stationed there (kmFrame), else its Trasse's; null when neither
+				// is -- a file-local station says nothing about km.
+				const kmOf = (placed) => {
+					if (placed.kmFrame) return placed.range;
+					const trasse = placed.kind === "alignment" ? null : get(placed.trasse);
+					return trasse?.kmFrame ? trasse.range : null;
+				};
+				const selfKm = kmOf(anchor.kmFrame ? anchor : self);
 				const sameTrack = [...model.objects.values()].filter((candidate) => {
 					if (!selectedFrame || !candidate.frame) return false;
 					if (selectedFrame.source === "gnd") return candidate.frame.track === selectedFrame.track && sameLsys(candidate) && overlaps(candidate);
 					if (selectedFrame.source === "vermesn-name") {
-						return candidate.frame.source === "vermesn-name" && candidate.frame.track === selectedFrame.track
-							&& (!candidate.frame.segment || !selectedFrame.segment || candidate.frame.segment === selectedFrame.segment)
-							&& sameLsys(candidate);
+						if (candidate.frame.source !== "vermesn-name" || candidate.frame.track !== selectedFrame.track || !sameLsys(candidate)) return false;
+						// The Abschnitt in a file name stands in for the km. Where both
+						// are stationed in the Strecke's km, the km decide: Eifel
+						// 2631R142 (km 141,9-145,2) belongs with the Kilometerlinie
+						// 2631K139 (km 139,2-150,5) though the names say 142 and 139,
+						// and metroB 5904L (km 65,5-67,4) does not belong with 5904067R
+						// (km 67,4-72,2) though its name names no Abschnitt at all.
+						const candidateKm = kmOf(candidate);
+						if (selfKm && candidateKm) return Math.min(selfKm.to, candidateKm.to) - Math.max(selfKm.from, candidateKm.from) > UMFELD_MIN_GEMEINSAM_M;
+						return !candidate.frame.segment || !selectedFrame.segment || candidate.frame.segment === selectedFrame.segment;
 					}
 					return false;
 				}).map((candidate) => candidate.key);
-				const verbund = einordnungVerbund(model, key);
-				const anchor = verbund.anchor;
 				const keys = [...new Set([...verbund.keys, ...sameTrack])];
 				const bySide = { kilometer: [], right: [], left: [], unknown: [] };
 				for (const candidateKey of keys) {
@@ -2644,6 +2679,7 @@ xlsx/xlsx.mjs:
 						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
 						refKeys: node.refKeys, homeKey: node.homeKey,
 						role: sevenLineRole(entry), section: explicitSectionForEntry(entry) || "",
+						kmFrame: isGndEntry(entry) || Boolean(entry.externalStationReference) || (frame?.source === "vermesn-name" && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"),
 					};
 				});
 				einordnungCache = { model: einordnen(facts), bezuege, stamp: einordnungStamp };
@@ -9310,6 +9346,7 @@ xlsx/xlsx.mjs:
 					if (pairs.length < 2) return;
 					if (!einordnungLaengentreu(pairs[pairs.length - 1].local - pairs[0].local, pairs[pairs.length - 1].external - pairs[0].external)) return;
 					applyLandXmlStationMapping(target, pairs);
+					target.stationProjected = true;
 					listingCache.delete(target);
 					for (const sibling of referencingEntries(target)) {
 						if (sibling.item.kind !== "profile" && sibling.item.kind !== "cant") continue;
@@ -9323,7 +9360,36 @@ xlsx/xlsx.mjs:
 				// (einordnungBezugslinie): each candidate line is measured from the
 				// Gleis's two ends, and a Gleis that fits none stays unprojected
 				// until its line is loaded. The name only narrows the candidates --
-				// same Strecke, compatible Abschnitt, longest line first.
+				// same Strecke, compatible Abschnitt, longest line first, equal ones
+				// by name so that the order of loading decides nothing.
+				// And it is decided anew every time: a Gleis that was stationed on
+				// the only line known so far is taken off it and put onto the better
+				// one when that arrives (Landshut loaded backwards: Gls404 on 5632 at
+				// km 0,5 to -0,3 until 5500 came). What a projection wrote is taken
+				// back first, so the Gleis is measured in its own stations again.
+				const unproject = (target) => {
+					if (target.stationProjected) {
+						for (const element of target.item?.payload?.coordGeom?.elements ?? []) {
+							if (!element.extras) continue;
+							delete element.extras.externalStation;
+							delete element.extras.externalStationEnd;
+						}
+						for (const sibling of referencingEntries(target)) {
+							if (sibling.item.kind !== "profile" && sibling.item.kind !== "cant") continue;
+							for (const point of sibling.item?.payload?.points ?? []) if (point.extras) delete point.extras.externalStation;
+							listingCache.delete(sibling);
+						}
+					}
+					target.stationProjected = false;
+					target.externalStationReference = undefined;
+					listingCache.delete(target);
+				};
+				const settle = (target, reference, trustDelivered) => {
+					if (!reference || target.externalStationReference === reference.item.id) return;
+					if (target.externalStationReference) unproject(target);
+					project(target, reference, trustDelivered);
+				};
+				const byLengthThenName = (a, b) => rangeLength(b) - rangeLength(a) || objectDisplayName(a).localeCompare(objectDisplayName(b)) || String(a.loaded?.fileKey ?? "").localeCompare(String(b.loaded?.fileKey ?? ""));
 				const pickReference = (target, references) => {
 					const ends = alignmentEndpoints(target);
 					if (!ends) return null;
@@ -9338,24 +9404,22 @@ xlsx/xlsx.mjs:
 				};
 				const allReferences = [];
 				for (const [, entries] of groupBy(named, (entry) => vermEsnNameFrame(entry).track)) {
-					const references = entries.filter((entry) => vermEsnNameFrame(entry).side === "kilometer").sort((a, b) => rangeLength(b) - rangeLength(a));
+					const references = entries.filter((entry) => vermEsnNameFrame(entry).side === "kilometer").sort(byLengthThenName);
 					allReferences.push(...references);
 					for (const target of entries) {
-						if (target.externalStationReference) continue;
 						const targetFrame = vermEsnNameFrame(target);
 						if (targetFrame.side === "kilometer") continue;
-						const reference = pickReference(target, references.filter((candidate) => compatibleSegment(vermEsnNameFrame(candidate), targetFrame)));
-						if (reference) project(target, reference, true);
+						settle(target, pickReference(target, references.filter((candidate) => compatibleSegment(vermEsnNameFrame(candidate), targetFrame))), true);
 					}
 				}
+				allReferences.sort(byLengthThenName);
 				// Where two Strecken run side by side (Landshut: 5500 and 5632 through
 				// the Bahnhof), a singleton's GRA decides -- W403-404.GRA is delivered
 				// at km 75008-75099, inside 5500's Kilometerlinie, so that one wins
 				// over the merely nearer 5632. Without a GRA, the nearer line wins.
 				for (const target of alignments) {
-					if (target.externalStationReference || vermEsnNameFrame(target)) continue;
-					const reference = pickReference(target, allReferences);
-					if (reference) project(target, reference, false);
+					if (vermEsnNameFrame(target)) continue;
+					settle(target, pickReference(target, allReferences), false);
 				}
 			}
 

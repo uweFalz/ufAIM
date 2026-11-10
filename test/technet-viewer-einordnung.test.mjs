@@ -22,7 +22,7 @@ const json = (value) => JSON.parse(JSON.stringify(value));
 const fact = (key, kind, extra = {}) => ({
 	key, kind, name: key, file: `${key}.f`, family: { alignment: "TRA", profile: "GRA", cant: "EU", staEq: "EK" }[kind], label: kind, route: "",
 	gnd: false, gndSequence: false, gndFamily: null, gndRoute: null, organized: false, hidden: false, lsys: null, hsys: null,
-	frame: null, side: "unknown", range: null, refKeys: [], homeKey: null, role: "UNASSIGNED", section: "", ...extra,
+	frame: null, side: "unknown", range: null, refKeys: [], homeKey: null, role: "UNASSIGNED", section: "", kmFrame: false, ...extra,
 });
 const frame = (track, direction, source, segment = null, lsys = null) => ({ track, direction, segment, source, lsys });
 
@@ -327,5 +327,42 @@ test("Längentreue: a projection that collapses the Gleis is none", () => {
 	assert.equal(einordnungLaengentreu(2000, 1100), true);
 	assert.equal(einordnungLaengentreu(2000, 900), false);
 	assert.equal(einordnungLaengentreu(0, 0), true, "nothing to keep");
+});
+
+test("Umfeld in km: where both are stationed in the Strecke's km, the km decide, not the Abschnitt in the name", () => {
+	const f = (key, kind, side, segment, range, extra = {}) => fact(key, kind, { organized: side !== "unknown", side, range, kmFrame: true, frame: frame("2631", side, "vermesn-name", segment, "CR0"), lsys: "CR0", ...extra });
+	// Eifel: one Kilometerlinie named 139 through all of it, Neuplanungen named after their start km
+	const eifel = einordnen([
+		f("K139", "alignment", "kilometer", "139", { from: 139237, to: 150517 }),
+		f("R139", "alignment", "right", "139", { from: 139237, to: 150517 }),
+		f("R142", "alignment", "right", "142", { from: 141929, to: 145245 }),
+		f("R142G", "profile", "right", "142", { from: 141950, to: 145200 }, { refKeys: ["R142"], kmFrame: false }),
+		f("R148", "alignment", "right", "148", { from: 147510, to: 150517 }),
+	]);
+	const picture = einordnungUmfeld(eifel, "R142");
+	assert.deepEqual(json(picture.bySide.kilometer), ["K139"], "the Kilometerlinie is in the picture though the names say 142 and 139");
+	assert.deepEqual(json(picture.bySide.right), ["R142", "R142G"]);
+	assert.deepEqual(json(picture.varianten), [{ key: "R139", wegen: "R142", side: "right" }], "the Bestand stands back as the Variante it is");
+	assert.ok(!picture.keys.includes("R148"), "another km, another picture");
+	assert.equal(einordnungUmfeld(eifel, "R142G").kmAlignment, "K139", "a Gradiente is placed by its Trasse");
+	assert.deepEqual(json(einordnungUmfeld(eifel, "R139").varianten.map((item) => item.key)), ["R142", "R148"]);
+	// metroB: names without an Abschnitt used to join every picture of their Strecke
+	const metro = einordnen([
+		f("5904067S", "alignment", "kilometer", "067", { from: 67400, to: 72154 }, { frame: frame("5904", "kilometer", "vermesn-name", "067", "ER0"), lsys: "ER0" }),
+		f("5904067R", "alignment", "right", "067", { from: 67400, to: 72154 }, { frame: frame("5904", "right", "vermesn-name", "067", "ER0"), lsys: "ER0" }),
+		f("5904L", "alignment", "left", null, { from: 65500, to: 67399 }, { frame: frame("5904", "left", "vermesn-name", null, "ER0"), lsys: "ER0" }),
+		f("5904_S_R00", "alignment", "kilometer", null, { from: 72000, to: 82000 }, { frame: frame("5904", "kilometer", "vermesn-name", null, "ER0"), lsys: "ER0" }),
+	]);
+	const metroPicture = einordnungUmfeld(metro, "5904067R");
+	assert.ok(!metroPicture.keys.includes("5904L"), "km 65,5-67,4 does not meet km 67,4-72,2");
+	assert.ok(metroPicture.keys.includes("5904_S_R00"), "the next Abschnitt laps 154 m: its stub is in the picture");
+	assert.equal(metroPicture.leftPresent, false);
+	// without stations in km on one side the name decides, as before
+	const local = einordnen([
+		f("S", "alignment", "kilometer", "074-082", { from: 73860, to: 82361 }, { frame: frame("5500", "kilometer", "vermesn-name", "074-082", "CR0") }),
+		f("G", "alignment", "unknown", "074-082", { from: 0, to: 800 }, { kmFrame: false, organized: false, frame: frame("5500", "Bahnhofsgleis", "vermesn-name", "074-082", "CR0") }),
+		f("other", "alignment", "unknown", "083-090", { from: 0, to: 700 }, { kmFrame: false, organized: false, frame: frame("5500", "Bahnhofsgleis", "vermesn-name", "083-090", "CR0") }),
+	]);
+	assert.deepEqual(json(einordnungUmfeld(local, "G").keys), ["G", "S"]);
 });
 
