@@ -40,6 +40,13 @@
 	.records td.changed { font-weight: 600; }
 	.records td.limit { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
 	.records td.hold { text-align: center; }
+	.project th, .project td { white-space: normal; vertical-align: top; }
+	.project td:first-child, .project td.act { white-space: nowrap; }
+	.project tr.active td { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+	.project tr.tone-empty td { color: var(--muted); }
+	.project tr.tone-ok td.state { color: var(--good); }
+	.project tr.tone-warn td.state, .project tr.tone-error td.state { color: var(--bad); }
+	.project button.tiny { padding: 2px 9px; font-size: 13px; line-height: 1.4; }
 	.records input[type=checkbox] { width: auto; margin: 0 4px 0 0; vertical-align: middle; }
 	.records td.plan { padding: 2px 4px; }
 	.records input[data-field] { width: 8ch; text-align: right; font: inherit; font-variant-numeric: tabular-nums; padding: 3px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: inherit; }
@@ -66,11 +73,21 @@
 <body>
 <header>
 	<h1>AXTRAN2</h1>
-	<p>Trasse als Elementfolge rein, Punkte rein, optimieren. Zurück kommen die gefittete Trasse im selben Format, der Bericht und die Residuen je Punkt.</p>
+	<p>Trasse als Elementfolge rein, Punkte rein, optimieren. Zurück kommen die gefittete Trasse im selben Format, der Bericht und die Residuen je Punkt. Eine Linie allein oder ein 7L-Projekt: Kilometrierungslinie, rechte und linke Achse, ihre Überhöhung und ihre Gradiente.</p>
 </header>
 <main>
 	<section>
-		<h2>Hinein</h2>
+		<h2>Projekt: bis zu sieben Linien</h2>
+		<div class="grid">
+			<div><label for="project">Dateien des Projekts (TRA und GRA, mehrere auf einmal)</label><input id="project" type="file" multiple accept=".tra,.TRA,.gra,.GRA"><small>KM, RE oder LI im Dateinamen sagt, welche Linie eine Datei ist (…_KM.TRA, …_RE.TRA, …_LI.GRA). Eine Datei ohne das nimmt die nächste freie Linie ihrer Art und ist als „angenommen“ gekennzeichnet. Die Überhöhung hat keine eigene Datei: sie steht in den U-Spalten der TRA und in den Rampen der GRA.</small></div>
+		</div>
+		<div style="overflow:auto;margin-top:10px"><table id="projectLines" class="records project"></table></div>
+		<p id="projectNote" style="margin:8px 0 0;color:var(--muted);font-size:14px"></p>
+		<div class="actions" style="margin-top:10px"><button id="runAll" class="ghost" type="button">Alle Achsen mit Aufmaß rechnen</button></div>
+		<small>Optimiert werden die Achsen (km-TRA, re-TRA, li-TRA), jede mit ihrem eigenen Aufmaß und ihren eigenen Vorgaben: „bearbeiten“ holt eine Achse in die Felder darunter. Die Überhöhung wird mit ihrer Achse geprüft und nicht verändert. Die Gradiente wird geladen und gezeigt; ihr Ausgleich und das Nachführen ihrer Stationen sind noch nicht gebaut.</small>
+	</section>
+	<section>
+		<h2>Hinein <span id="activeLine" style="font-weight:400;color:var(--muted);font-size:15px"></span></h2>
 		<div class="grid">
 			<div><label for="tra">Trasse (Verm.esn TRA)</label><input id="tra" type="file" accept=".tra,.TRA"><small>Der Plan: Startlage und, ohne Endpose unten, auch das Ende.</small></div>
 			<div><label for="points">Aufmaß (CSV oder Verm.esn .pt)</label><input id="points" type="file" accept=".csv,.txt,.pt,.PT"><small>CSV: Nummer, Rechtswert, Hochwert, wahlweise Toleranz. Kopfzeile Nr;Y;X wird verstanden; mit Kopfzeile auch Station (Hinweis, wo der Fußpunkt liegt, bei Schleifen) und Bemerkung. Eine Punktliste .pt aus Verm.esn (Zeile „EB:“, Spaltenvorlage P Y X H D F) wird direkt gelesen: Y ist der Rechtswert, X der Hochwert, F die Bemerkung.</small></div>
