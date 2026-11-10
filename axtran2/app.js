@@ -161,7 +161,7 @@ function show({ report, csv }) {
 	const sp = report.input.speed;
 	const admits = c.admissibleSpeedKmh === null ? "" : ` Die Bögen selbst lassen bis V ${Math.floor(c.admissibleSpeedKmh)} km/h zu (${c.limitingArc.id}, R ${fmt(Math.abs(c.limitingArc.radius), 0)} m, u ${fmt(c.limitingArc.cantMm, 0)} mm).`;
 	el("speedResult").textContent = sp.basis === "given" ? `Geschwindigkeit: V ${sp.kmh} km/h, wie vorgegeben.${admits}`
-		: sp.basis === "turnout" ? `Geschwindigkeit: V ${sp.kmh} km/h angenommen, weil ${/^Kr\b|gerade Fahrt/.test(sp.turnout.designation) ? "die gerade Fahrt über die" : "der Zweig der"} ${sp.turnout.designation} (Satz ${sp.turnout.records.join(", ")}) nicht mehr zulässt (Ril 800.0120A01).${admits} Ändern im Feld Entwurfsgeschwindigkeit.`
+		: sp.basis === "turnout" ? `Geschwindigkeit: V ${sp.kmh} km/h angenommen, weil ${/, Stammgleis$/.test(sp.turnout.designation) ? "das Stammgleis der" : /^Kr\b|gerade Fahrt/.test(sp.turnout.designation) ? "die gerade Fahrt über die" : "der Zweig der"} ${sp.turnout.designation.replace(/, Stammgleis$/, "")} (Satz ${sp.turnout.records.join(", ")}) nicht mehr zulässt (Ril 800.0120A01).${admits} Ändern im Feld Entwurfsgeschwindigkeit.`
 		: `Geschwindigkeit: V ${sp.kmh} km/h angenommen, das schnellste Hauptbahn-Profil, das Radien und Längen der Trasse zulassen.${admits} Ändern im Feld Entwurfsgeschwindigkeit.`;
 	el("cantResult").textContent = `Überhöhung: ${c.present ? "aus der Datei übernommen, vom Fit nicht verändert" : "die Datei trägt keine"}. Bei V ${c.speedKmh} km/h und zulässigem Fehlbetrag ${fmt(c.maximumDeficiencyMm, 0)} mm liegen nach dem Fit ${c.exceededAfter} von ${c.arcs.length} Bögen darüber (vorher ${c.exceededBefore}).${worst.length ? ` Am stärksten: ${worst.map((a) => `${a.id} mit ${fmt(a.after.deficiencyMm, 0)} mm bei R ${fmt(Math.abs(a.after.radius), 0)} m und u ${fmt(a.cantMm, 0)} mm`).join(", ")}.` : ""}${c.excessiveCant ? ` ${c.excessiveCant} Bögen tragen mehr als die ${fmt(c.maximumCantMm, 0)} mm der EBO.` : ""}`;
 	const rule = (z) => z.enforcement === "at-least" ? "mindestens" : z.enforcement === "at-most" ? "höchstens" : "verlangt";
@@ -174,7 +174,7 @@ function show({ report, csv }) {
 		inp.heldRecords.length ? `Gehalten wie in der Datei: ${formatHold(inp.heldRecords)} (L nur die Länge, R nur der Radius).` : "",
 		inp.edits?.length ? `Gestartet mit geänderten Werten statt der Datei: ${formatEdits(inp.edits)}.` : "",
 		inp.structure?.removed?.length ? `Herausgenommen: Satz ${inp.structure.removed.join(", ")}.` : "",
-		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout ? `${i.turnout} (${i.part === "arc" ? "Bogen" : i.part === "arc2" ? "zweiter Bogen" : i.part === "transition" ? "Klothoide" : i.part === "junction" ? "Anfangskrümmung, 0 m" : i.part === "straight" ? "Gerade" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
+		inp.structure?.inserted?.length ? `Eingefügt: ${inp.structure.inserted.map((i) => `nach Satz ${i.after} ${i.turnout && i.part === "main" ? i.turnout : i.turnout ? `${i.turnout} (${i.part === "arc" ? "Bogen" : i.part === "arc2" ? "zweiter Bogen" : i.part === "transition" ? "Klothoide" : i.part === "junction" ? "Anfangskrümmung, 0 m" : i.part === "straight" ? "Gerade" : "Endstück"})` : INSERT_TYPES[i.type]}${i.family && i.family !== "clothoid" ? ` (${TRANSITION_FAMILIES[i.family]})` : ""} ${fmt(i.length, 2)} m${i.radius !== null ? `, R ${fmt(i.radius, 0)}` : ""}`).join("; ")}.` : "",
 		inp.holdRadii ? "Alle Radien gehalten, nur die Längen sind frei." : "",
 	].filter(Boolean).join(" ");
 	drawPicture();
@@ -404,7 +404,8 @@ function insertFromForm(form) {
 		// "190-1/9", or "7000/6000-1/42" for a branch of two radii
 		const [radii, ratio] = form.elements.wshape.value.split("-1/");
 		const [radius, radiusEnd] = radii.split("/").map(Number);
-		const spec = { type, radius, ...(radiusEnd ? { radiusEnd } : {}), ratio: Number(ratio), side: form.elements.wside.value, orientation: form.elements.worient.value };
+		const spec = { type, radius, ...(radiusEnd ? { radiusEnd } : {}), ratio: Number(ratio), side: form.elements.wside.value, orientation: form.elements.worient.value, ...(form.elements.wroute.value === "main" ? { route: "main" } : {}) };
+		if (spec.route === "main" && spec.orientation !== "arc") spec.orientation = "WA"; // the main track reads the same from both ends
 		const mainText = String(form.elements.wmain.value).trim();
 		if (mainText) {
 			const mainRadius = read("wmain");

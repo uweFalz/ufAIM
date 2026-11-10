@@ -56,8 +56,10 @@ node tools/axtran2/fitTra.mjs --tra strecke.TRA --points aufmass.csv --zwang zwa
   arc with the file's sign, `U:40:Bloss` a transition, `W:190-1/9:R` the
   branch of an EW 190-1:9 of Ril 800.0120A01 to the right, arc then end
   piece, held: `:L` to the left, `:WE` end piece first, `:Bogen` the arc
-  alone, `:auf-800` bent onto a main track of R -800 as an Innen- or
-  Außenbogenweiche; `W:7000/6000-1/42:R` a branch of two radii as two arcs,
+  alone, `:Stamm` behind the side the main track through the turnout
+  instead of its branch (one held straight of the annex's lw; `:Bogen`
+  behind it the build without the straight extension), `:auf-800` bent
+  onto a main track of R -800 as an Innen- or Außenbogenweiche; `W:7000/6000-1/42:R` a branch of two radii as two arcs,
   split by the annex's tangent lengths, `W:6000/3700-1/32,5:R` one whose
   branch begins with a clothoid from R 6000 to R 3700 (a record of no
   length carries the entry curvature, then the clothoid, then the arc); `K:DKW:190-1/9:R` the curved route of a DKW 190-1:9

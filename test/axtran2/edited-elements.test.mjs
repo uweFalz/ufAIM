@@ -178,3 +178,41 @@ test("a plain crossing (Kr) goes in as the straight over it, held, with the anne
 	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, e.length, e.curvature ?? null, e.heldTurnout, e.inserted.turnout, e.inserted.part]), [["1+1", "straight", 33.23, null, true, "Kr 1:9", "straight"]]);
 	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.route, t.radius, t.side, t.branchSpeedKmh, [...t.records]]), [["Kr 1:9", "Kr", "straight", null, null, 100, ["1+1"]]]);
 });
+
+test("a turnout in the main track is one held record of the annex's lw; bent, the main track's arc over it", async () => {
+	const { TURNOUT_SHAPES, turnoutMain, turnoutShape } = await import(new URL("heldRecords.js", SERVICE));
+	// written and read back: :Stamm behind the side, :Bogen behind it for the build without the straight extension
+	const k = parseStructure("+3=W:190-1/9:R:Stamm +4=W:EW500-1:12:L:Stammgleis:Bogen +5=W:190-1/9:L:Stamm:auf-800");
+	assert.deepEqual(k.inserted.get(3), [{ type: "turnout", radius: 190, ratio: 9, side: "right", route: "main", orientation: "WA" }]);
+	assert.deepEqual(k.inserted.get(4), [{ type: "turnout", radius: 500, ratio: 12, side: "left", route: "main", orientation: "arc" }]);
+	assert.deepEqual(k.inserted.get(5), [{ type: "turnout", radius: 190, ratio: 9, side: "left", route: "main", orientation: "WA", mainRadius: -800 }]);
+	assert.equal(formatEdits("+3=W:190-1/9:R:Stamm +4=W:EW500-1:12:L:Stammgleis:Bogen +5=W:190-1/9:L:Stamm:auf-800"), "+3=W:190-1/9:R:Stamm +4=W:500-1/12:L:Stamm:Bogen +5=W:190-1/9:L:Stamm:auf-800");
+	// a main reads the same from both ends: no WA or WE; the side stands before :Stamm
+	for (const bad of ["+3=W:190-1/9:R:Stamm:WE", "+3=W:190-1/9:R:Stamm:WA", "+3=W:190-1/9:Stamm:R"]) assert.throws(() => parseStructure(bad), (e) => e.code === "INVALID_EDIT", bad);
+	// the annex's lw per build: the 500-1:12 is 41,59 m, with its straight extension of 3,77 m 45,36 m; a pair with one build has that one
+	assert.deepEqual(TURNOUT_SHAPES.map((s) => [s.designation, turnoutMain(s).length, turnoutMain(s, { endPiece: false }).length]), [
+		["EW 190-1:9", 27.1381, 27.1381], ["EW 300-1:9", 33.231, 33.231], ["EW 500-1:12", 45.361, 41.5946], ["EW 760-1:14", 54.2166, 54.2166], ["EW 1200-1:18.5", 66.6153, 64.8176],
+		["EW 2500-1:26.5", 94.306, 94.306], ["EW 6000/3700-1:32.5", 122.2529, 122.2529], ["EW 7000/6000-1:42", 154.266, 154.266], ["EW 190-1:7.5", 25.8617, 25.8617], ["EW 760-1:15", 54.2166, 54.2166],
+	]);
+	assert.deepEqual(turnoutMain(turnoutShape(500, 12)), { length: 45.361, endPiece: 3.7664, speedKmh: 230 });
+	const main = (radius, ratio, side, extra = {}) => ({ type: "turnout", radius, ratio, side, route: "main", orientation: "WA", ...extra });
+	const put = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[1, [main(190, 9, "right")]], [3, [main(500, 12, "left", { orientation: "arc" })]], [4, [main(500, 12, "left")]]]) });
+	const ins = put.elements.filter((e) => e.inserted);
+	assert.deepEqual(ins.map((e) => [e.inserted.key, e.type, e.length, e.curvature ?? null, e.heldTurnout, e.inserted.turnout, e.inserted.part]), [
+		["1+1", "straight", 27.1381, null, true, "EW 190-1:9, Stammgleis", "main"],
+		["3+1", "straight", 41.5946, null, true, "EW 500-1:12, Stammgleis", "main"],
+		["4+1", "straight", 45.361, null, true, "EW 500-1:12, Stammgleis", "main"],
+	], "one record each, not merged with the straight beside it");
+	assert.deepEqual(put.turnouts.map((t) => [t.designation, t.kind, t.route, t.side, t.arc, t.endPiece, t.mainLength, t.mainEndPiece, t.branchSpeedKmh, [...t.records]]), [
+		["EW 190-1:9, Stammgleis", "EW", "main", "right", null, null, 27.1381, 6.0917, 120, ["1+1"]],
+		["EW 500-1:12, Stammgleis", "EW", "main", "left", null, null, 41.5946, null, 120, ["3+1"]],
+		["EW 500-1:12, Stammgleis", "EW", "main", "left", null, null, 45.361, 3.7664, 230, ["4+1"]],
+	], "the speed is the annex's zul. v in the main, the slowest rail's");
+	// bent onto the line: the main track's own arc over lw; to the side the line turns an IBW, against it an ABW; no row, no speed
+	const bent = applyStructure({ ...reader([1, 3]), records, inserted: new Map([[3, [main(190, 9, "left", { mainRadius: -300 }), main(190, 9, "right", { mainRadius: -300 })]]]) });
+	assert.deepEqual(bent.elements.filter((e) => e.inserted).map((e) => [e.inserted.key, e.type, e.length, e.curvature, e.inserted.turnout, e.inserted.part]), [
+		["3+1", "arc", 27.1381, 1 / 300, "IBW 190-1:9 auf R -300, Stammgleis", "main"],
+		["3+2", "arc", 27.1381, 1 / 300, "ABW 190-1:9 auf R -300, Stammgleis", "main"],
+	]);
+	assert.deepEqual(bent.turnouts.map((t) => [t.kind, t.route, t.bent.mainRadius, t.branchSpeedKmh]), [["IBW", "main", -300, null], ["ABW", "main", -300, null]]);
+});
