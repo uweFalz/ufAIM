@@ -10,7 +10,7 @@
 //
 // Pure numerics: no dependencies.
 
-export const VARIABLE_SCALING_VERSION = "optim/scale/variableScaling/0.1";
+export const VARIABLE_SCALING_VERSION = "optim/scale/variableScaling/0.2";
 
 /** Map scaled coordinates back to the caller's units. */
 export function unscale(scaled, scales) {
@@ -49,6 +49,8 @@ export function scaleEvaluator(evaluate, scales) {
 			// the residual Jacobian of a least-squares objective, when the
 			// evaluator carries one, scales like any other row of derivatives
 			residualJacobian: state.residualJacobian?.map(scaleRow),
+			// a bound on x the evaluator states for the step from here is a value of x: into scaled coordinates
+			...(Array.isArray(state.lower) ? { lower: state.lower.map((value, i) => value / (scales[i] ?? 1)) } : {}),
 			// a second derivative carries one scale per index
 			hessian: state.hessian?.map((row, i) => row.map((value, j) => value * (scales[i] ?? 1) * (scales[j] ?? 1))),
 		};

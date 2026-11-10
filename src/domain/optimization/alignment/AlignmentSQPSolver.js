@@ -37,7 +37,7 @@ import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacob
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
 import { symmetricEigen } from "../../../lib/math/lina/symmetricEigen.js";
 
-export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.2";
+export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.3";
 
 export const OBJECTIVES = Object.freeze(["points", "accumulated-length"]);
 
@@ -563,11 +563,31 @@ export function solveAlignmentProblem({
 			: { value: x[index], index };
 	}
 
-	/** The ramp rows and their Jacobian, for one point. */
+	// A ramp row that reads no curvature at the current point - both neighbours
+	// held, straight, or in the capped region where the cant no longer grows -
+	// is L >= m |du| with du a constant there: a lower bound on one length, which
+	// is what the bound form carries for every ramp. It travels as that bound
+	// for the step from this point (solveSQP reads `lower` off the evaluation)
+	// and the row stands aside, strictly satisfied and without a normal, so the
+	// row count, the multipliers and the warm start keep their places. As a row
+	// with a slack it tied with the trust region's bound on the same length at
+	// the subproblem's vertex: under the corridor 135 of 284 subproblems ended
+	// stationary_on_working_set and the length tier ran into its iteration
+	// limit, where the bound form took 79 steps
+	// (docs/app/architecture/AXTRAN2_EXACT_RAMP_RULE_2026-11-10.md). The bound
+	// is safe beyond the point it was taken at: where a step carries a
+	// curvature out of the capped region, du only falls.
+	const RAMP_ROW_ASIDE = -1;
+
+	/** The ramp rows and their Jacobian, for one point; `lower` the lengths' bounds of the rows that stand aside. */
 	function rampRows(x) {
-		if (rampRules.length === 0 || !cantModel) return { g: [], Jg: [] };
+		if (rampRules.length === 0 || !cantModel) return { g: [], Jg: [], lower: null, asBound: [], residuals: [] };
 		const g = [];
+		// m |du| - L as it is, also for a row that stands aside: what the report's rampSlack reads
+		const residuals = [];
 		const Jg = [];
+		const lower = new Array(codec.freeCount).fill(-Infinity);
+		const asBound = [];
 		for (const rule of rampRules) {
 			const entry = curvatureOf(rule.entryElementId, x);
 			const exit = curvatureOf(rule.exitElementId, x);
@@ -577,14 +597,25 @@ export function solveAlignmentProblem({
 			const slopeOut = cantModel.cantSlopeAt(exit.value);
 
 			const sign = change < 0 ? -1 : 1;
-			g.push(sign * rule.gradient * change - length.value);
+			const residual = sign * rule.gradient * change - length.value;
+			residuals.push(residual);
+			const readsCurvature = (exit.index !== null && slopeOut !== 0) || (entry.index !== null && slopeIn !== 0);
+			if (!readsCurvature && length.index !== null) {
+				lower[length.index] = Math.max(lower[length.index], sign * rule.gradient * change);
+				asBound.push(true);
+				g.push(Math.min(residual, RAMP_ROW_ASIDE));
+				Jg.push(new Array(codec.freeCount).fill(0));
+				continue;
+			}
+			asBound.push(false);
+			g.push(residual);
 			const row = new Array(codec.freeCount).fill(0);
 			if (length.index !== null) row[length.index] = -1;
 			if (exit.index !== null) row[exit.index] += sign * rule.gradient * slopeOut;
 			if (entry.index !== null) row[entry.index] -= sign * rule.gradient * slopeIn;
 			Jg.push(row);
 		}
-		return { g, Jg };
+		return { g, Jg, lower: asBound.some(Boolean) ? lower : null, asBound, residuals };
 	}
 
 	function accumulatedLength(x) {
@@ -625,6 +656,8 @@ export function solveAlignmentProblem({
 		scaleEqualityRows(h, Jh);
 
 		const ramps = rampRows(x);
+		// the lengths' bounds of the ramp rows that travel as bounds for the step from here
+		const stepBounds = ramps.lower ? { lower: ramps.lower } : {};
 		const bounds = boundRows(built, geometry);
 		const g = [...ramps.g, ...bounds.g];
 		const Jg = [...ramps.Jg, ...bounds.Jg];
@@ -632,7 +665,7 @@ export function solveAlignmentProblem({
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
 			if (!corridorActive || softPoints.length === 0) {
-				return { f: accumulatedLength(x), gradF, h, Jh, g, Jg };
+				return { f: accumulatedLength(x), gradF, h, Jh, g, Jg, ...stepBounds };
 			}
 			const N = softPoints.length;
 			let sum = 0;
@@ -651,7 +684,7 @@ export function solveAlignmentProblem({
 			const mu = context?.multipliers?.inequality?.[g.length];
 			const weight = (Number.isFinite(mu) ? Math.max(mu, 0) : 1) * (2 / N);
 			const curvature = gaussNewton(Jr).map((hRow) => hRow.map((value) => value * weight));
-			return { f: accumulatedLength(x), gradF, h, Jh, g: [...g, sum / N - 1], Jg: [...Jg, row], hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
+			return { f: accumulatedLength(x), gradF, h, Jh, g: [...g, sum / N - 1], Jg: [...Jg, row], ...stepBounds, hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
 		}
 
 		const prior = priorRows(x);
@@ -667,7 +700,7 @@ export function solveAlignmentProblem({
 		// the largest residual in tolerance units: at most one, every point is
 		// within its tolerance, which is the adjustment's own notion of done
 		const residualMax = r.reduce((worst, value) => Math.max(worst, Math.abs(value)), 0);
-		return { f, gradF, h, Jh, g, Jg, residualJacobian: Jr, residualMax, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		return { f, gradF, h, Jh, g, Jg, ...stepBounds, residualJacobian: Jr, residualMax, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	/**
@@ -802,12 +835,14 @@ export function solveAlignmentProblem({
 		scaleEqualityRows(h, Jh);
 		// exact and free: the ramp rule reads variables, not geometry
 		const ramps = rampRows(x);
+		// the lengths' bounds of the ramp rows that travel as bounds for the step from here
+		const stepBounds = ramps.lower ? { lower: ramps.lower } : {};
 		const g = [...ramps.g, ...gBound];
 		const Jg = [...ramps.Jg, ...jacobian.J.slice(h.length, h.length + gBound.length)];
 
 		if (objective === "accumulated-length") {
 			const gradF = codec.freeNames.map((name) => (name.endsWith(".length") ? 1 : 0));
-			return { f: accumulatedLength(x), gradF, h, Jh, g, Jg };
+			return { f: accumulatedLength(x), gradF, h, Jh, g, Jg, ...stepBounds };
 		}
 
 		const prior = priorRows(x);
@@ -815,7 +850,7 @@ export function solveAlignmentProblem({
 		const rAll = [...r, ...prior.r];
 		const f = 0.5 * rAll.reduce((sum, value) => sum + value * value, 0);
 		const gradF = x.map((_, j) => Jr.reduce((sum, row, i) => sum + row[j] * rAll[i], 0));
-		return { f, gradF, h, Jh, g, Jg, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
+		return { f, gradF, h, Jh, g, Jg, ...stepBounds, ...(hessianMode === "gauss-newton" ? { hessian: gaussNewton(Jr) } : {}) };
 	}
 
 	// The solve runs in scaled coordinates. A length in metres and a curvature
@@ -951,12 +986,21 @@ export function solveAlignmentProblem({
 	// did not move freely, and nothing else in this proposal says so: a radius
 	// pinned at the EBO floor of 300 m looked like a radius the fit left alone
 	// (the 4L finding, 2026-11-09). Pinned variables are the caller's, not a limit.
+	const finalRamps = run.x ? rampRows(run.x) : { lower: null };
 	const activeBounds = run.x
 		? codec.freeNames.flatMap((name, i) => {
 			if (pinned.includes(name)) return [];
 			const x = run.x[i];
 			const at = (b) => Number.isFinite(b) && Math.abs(x - b) <= 1e-9 * Math.max(1, Math.abs(b));
 			const side = at(lower[i]) ? "lower" : at(upper[i]) ? "upper" : null;
+			// the exact ramp rule carried as a bound for the step: a length that sits on it is on the ramp rule's limit
+			if (side === null && finalRamps.lower && at(finalRamps.lower[i])) {
+				const rule = rampRules.find((r) => `${r.elementId}.length` === name);
+				return [Object.freeze({
+					name, elementId: rule?.elementId ?? name.split(".")[0], quantity: "length", side: "lower", value: x, limit: finalRamps.lower[i],
+					bound: Object.freeze({ id: rule?.id ?? null, kind: "design-limit", reason: rule?.reason === "exception" ? "exception" : "ramp-rule", source: rule?.source ?? null }),
+				})];
+			}
 			if (side === null) return [];
 			const limit = side === "lower" ? lower[i] : upper[i];
 			const bound = (boundsOn.get(name) ?? []).find((b) => (side === "lower" ? b.minimum : b.maximum) === limit) ?? null;
@@ -1041,7 +1085,7 @@ export function solveAlignmentProblem({
 			// worst ramp rule slack: positive means a transition is shorter than its
 			// cant change allows
 			rampSlack: run.x && rampRules.length
-				? Math.max(...rampRows(run.x).g)
+				? Math.max(...rampRows(run.x).residuals)
 				: null,
 			accumulatedLength: run.x ? accumulatedLength(run.x) : null,
 			// The whole alignment, held elements included. accumulatedLength is the

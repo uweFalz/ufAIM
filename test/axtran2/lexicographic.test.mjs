@@ -707,3 +707,35 @@ test("the merit pays off a violated ramp inequality instead of freezing on it", 
 	assert.ok(Math.max(...rows.inequalities.map((row) => row.residual)) <= 1e-9,
 		`a ramp row is still violated: ${rows.inequalities.map((r) => r.residual.toExponential(1)).join(" ")}`);
 });
+
+test("the exact ramp rule ends the length tier where the bound form ends it: a row that reads no curvature travels as a bound", () => {
+	// At V 100 the cant stops growing at R 907.87 and both arcs are tighter: every ramp row is L >= 78 m with
+	// no curvature in it. As rows with slacks they tied with the trust region at the subproblem's vertex -
+	// 135 of 284 subproblems ended stationary_on_working_set and the tier ran into its limit (2026-11-10).
+	const start = { startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180], startCurvatures: [1 / 695, -1 / 905] };
+	const order = (rampLengthAs) => {
+		const sc = createNineElementScenario({ pointCount: 12, ...start, rampLengthAs });
+		return solveAlignmentLexicographic({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, tiers: DEFAULT_TIERS, maxIterations: 300 });
+	};
+	const bound = order("bound"), exact = order("constraint");
+	assert.equal(exact.status, "converged");
+	const tier = (run) => run.phases.find((p) => p.label === "tier-1");
+	const d = tier(exact).diagnostics;
+	assert.ok(tier(exact).ok && d.iterations < 150, `${tier(exact).status} after ${d.iterations} steps`);
+	assert.ok(d.history.filter((e) => e.qpStatus).every((e) => e.qpStatus === "solved"), "no subproblem ends at a degenerate vertex");
+	assert.ok(Math.abs(d.accumulatedLength - tier(bound).diagnostics.accumulatedLength) < 1e-3, `${d.accumulatedLength} against ${tier(bound).diagnostics.accumulatedLength}`);
+	// the report reads the rule itself, not the row that stood aside: no ramp is violated, one sits on its limit
+	assert.ok(d.rampSlack <= 1e-9 && d.rampSlack > -1e-6, `rampSlack ${d.rampSlack}`);
+	assert.deepEqual(d.activeBounds.filter((b) => b.bound?.reason === "ramp-rule").map((b) => [b.name, b.side, Number(b.limit.toFixed(6)), b.bound.kind]), [["E7.length", "lower", 78, "design-limit"]]);
+	// and the order's answer is the bound form's
+	const last = (run) => run.phases.at(-1).diagnostics;
+	assert.ok(Math.abs(last(exact).softResidualRms - last(bound).softResidualRms) < 1e-3);
+	assert.ok(Math.abs(exact.budgets[0].span - bound.budgets[0].span) < 1e-3, "the same cost of the points in length");
+});
+
+test("the exact ramp rule under the corridor where the rows read curvature", { todo: "open: at V 80 both arcs lie where the cant still grows; the length tier ends line_search_failed after 98 steps, 9 of 50 subproblems at a degenerate vertex (docs/app/architecture/AXTRAN2_EXACT_RAMP_RULE_2026-11-10.md)" }, async () => {
+	const { hauptbahn } = await import(new URL("profiles/index.js", BASE));
+	const sc = createNineElementScenario({ pointCount: 12, startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180], startCurvatures: [1 / 695, -1 / 905], rampLengthAs: "constraint", design: hauptbahn({ speedKmh: 80, cantMm: 130 }) });
+	const run = solveAlignmentLexicographic({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, tiers: DEFAULT_TIERS, maxIterations: 300 });
+	assert.equal(run.status, "converged");
+});
