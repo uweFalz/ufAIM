@@ -55,4 +55,10 @@ test("the km text: Kilometer, Hektometer, Meter", () => {
 	assert.equal(station(99959928.04).trim(), "-0,4 - 71,96");
 	assert.equal(station("x"), "".padStart(14));
 	assert.equal(station(460.908).length, 14);
+	// the Meter part never rounds up to a full Hektometer
+	assert.equal(station(67499.9999).trim(), "67,5 + 00,00");
+	assert.equal(station(67499.994).trim(), "67,4 + 99,99");
+	assert.equal(station(99.996).trim(), "0,1 + 00,00");
+	assert.equal(station(-99.996).trim(), "-0,1 - 00,00");
+	assert.equal(station(139858.49).trim(), "139,8 + 58,49");
 });

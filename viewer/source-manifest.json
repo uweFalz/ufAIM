@@ -10,12 +10,12 @@
     "src/import/parsers/technet/gndEdit/gnd/extractGndDbb.js": "09456939572804c2be768107c06153d08baac40e4b5795613f1361c5fe3f4414",
     "src/import/parsers/technet/gndEdit/parseGND_DBB.js": "17268b27bdf84014c35aaf82fdfdda95411a69e143f24e2ab4fbce281132d4bb",
     "viewer/src/import-legacy.js.in": "ba17f307e342cc05de3f52ce526f175171c755da802dbdd2bd242c6aff4e9def",
-    "viewer/src/viewer.js": "d193ca544f80fb05b03df1e565d74123bda9ce7bc8510a3ed3538aaec9a6b7dc",
+    "viewer/src/viewer.js": "0736127d9a08b5bdd7b073d78b777986bce6c214ac1668451c24135ef0c4e05c",
     "tools/build-technet-viewer.mjs": "d6b125e678f436868c342ab964691e060ee293a4fb1042aced4c47e7ba35f490",
     "tools/technet-shared-blocks.mjs": "7a63a9aab48fa95e5b458d506dea82c232a91e6466b76f5f82bbe260211eec5d"
   },
   "output": {
     "path": "technetViewer.html",
-    "sha256": "57c2b0e110563a443da103f299b1b336b9c4fe93a472fd75a062e0ba6d242fc3"
+    "sha256": "a254f3c24c4c8ab75447fc798effc78b059f98608825ae4b3963d57255b130ec"
   }
 }

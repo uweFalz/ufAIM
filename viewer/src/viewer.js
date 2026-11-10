@@ -727,10 +727,13 @@ xlsx/xlsx.mjs:
 			function station(value) {
 				const number = stationScalar(value);
 				if (!Number.isFinite(number)) return "".padStart(14);
-				const magnitude = Math.abs(number);
-				const hundreds = Math.floor(magnitude / 100);
+				// Rounded to the centimetre first, then split: 67499,999 m is
+				// "67,5 + 00,00", not "67,4 + 100,00" (the Meter part rounded up
+				// to a full Hektometer after the Hektometer was already cut off).
+				const centimetres = Math.round(Math.abs(number) * 100);
+				const hundreds = Math.floor(centimetres / 10000);
 				const kmText = (hundreds / 10).toFixed(1).replace(".", ",");
-				const meterText = (magnitude - hundreds * 100).toFixed(2).replace(".", ",").padStart(5, "0");
+				const meterText = ((centimetres - hundreds * 10000) / 100).toFixed(2).replace(".", ",").padStart(5, "0");
 				return `${number < 0 ? "-" : ""}${kmText} ${number < 0 ? "-" : "+"} ${meterText}`.padStart(14);
 			}
 			// END GND STATION
@@ -2232,6 +2235,42 @@ xlsx/xlsx.mjs:
 			//   role (the 7L Spur: gradientRight … cantRight, or "UNASSIGNED"),
 			//   section (an explicit Abschnitt id, or "") }
 			const EINORDNUNG_VERSION = "einordnung/0.1";
+			// Wer ist es, on the level of files: a file is known by its name, and
+			// a second file of the same name (two deliveries, two folders) by its
+			// name and its turn -- "X.MDB", "X.MDB (2)". The first keeps the bare
+			// name, so what was saved before stays valid. The key names the file
+			// in the saved state, in the browser's store and on the screen; the
+			// file name itself stays what the delivery called it.
+			function einordnungDateischluessel(fileName, namesBefore) {
+				const earlier = namesBefore.filter((name) => name === fileName).length;
+				return earlier ? `${fileName} (${earlier + 1})` : fileName;
+			}
+			// Wo liegt es: the Kilometerlinie a Gleis is stationed on. The adapter
+			// measures each candidate line -- { key, distanceStart, distanceEnd }
+			// in metres from the Gleis's two ends to the line, holdsProfile where
+			// the Gleis's Gradiente is delivered inside the line's km range -- and
+			// this decides: only a line both ends lie on (within maxDistance);
+			// among those the one that holds the Gradiente, then the nearest, then
+			// the first offered. A Gleis no line fits gets none: a Strecke's name
+			// in the file name is no proof that the Gleis lies along a given line
+			// of that Strecke (metroB 5904_R_R00: 10 km long, 3 and 13 km off the
+			// first Kilometerlinie that happened to be loaded).
+			function einordnungBezugslinie(candidates, maxDistance) {
+				let best = null;
+				for (const candidate of candidates) {
+					if (!(candidate.distanceStart <= maxDistance) || !(candidate.distanceEnd <= maxDistance)) continue;
+					const distance = Math.max(candidate.distanceStart, candidate.distanceEnd);
+					const miss = candidate.holdsProfile ? 0 : 1;
+					if (!best || miss < best.miss || (miss === best.miss && distance < best.distance)) best = { key: candidate.key, distance, miss };
+				}
+				return best ? best.key : null;
+			}
+			// A projection that does not keep the Gleis's length is none: stations
+			// clamped at a line's end collapse onto one km.
+			const BEZUGSLINIE_MIN_LAENGENTREUE = 0.5;
+			function einordnungLaengentreu(localSpan, externalSpan) {
+				return !(localSpan > 0) || Math.abs(externalSpan) >= BEZUGSLINIE_MIN_LAENGENTREUE * localSpan;
+			}
 			// Who references whom, turned round: the referrers of each object.
 			function einordnungReferrers(objects) {
 				const referrers = new Map();
@@ -2777,6 +2816,19 @@ xlsx/xlsx.mjs:
 					let footnote;
 					// Varianten of this side that stand back: named under the figure,
 					// with what covers them and how to see them.
+					// A Gradiente or Überhöhung paired with a Gleis whose stations it
+					// never meets (metroB 5904R: TRA km 65,5-67,5, GRA km 87,0-90,3,
+					// paired by the file stem) is named instead of an anonymous gap.
+					let emptyNote;
+					if (!points.length && (kind === "profile" || kind === "cant")) {
+						const apart = sideSegments.map((segment) => ({ own: kind === "profile" ? segment.profile : segment.cant, alignment: segment.alignment }))
+							.find(({ own, alignment }) => { const a = own ? stationRangeForEntry(own) : null; const b = stationRangeForEntry(alignment); return a && b && (a.to < b.from - 5 || a.from > b.to + 5); });
+						if (apart) {
+							const a = stationRangeForEntry(apart.own);
+							const b = stationRangeForEntry(apart.alignment);
+							emptyNote = `${objectListName(apart.own)} liegt bei ${station(a.from).trim()} – ${station(a.to).trim()}, das Gleis bei ${station(b.from).trim()} – ${station(b.to).trim()}: gepaart, aber die Stationen treffen sich nicht`;
+						}
+					}
 					const hiddenHere = kind !== "alignment" ? [] : varianten.filter((item) => item.side === side);
 					if (hiddenHere.length) {
 						const rangeText = (entry) => { const range = stationRangeForEntry(entry); return range ? ` (${station(range.from).trim()} – ${station(range.to).trim()})` : ""; };
@@ -2784,7 +2836,7 @@ xlsx/xlsx.mjs:
 						footnote = {
 							head: `${label.split(" · ")[0]} · Varianten (${hiddenHere.length} nicht im Bild)`,
 							lines: [
-								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${sameName(item) ? `zweite Lieferung desselben Objekts (${item.entry.loaded?.fileName ?? "?"})` : `belegt denselben Abschnitt wie ${objectListName(item.wegen)}`}`),
+								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${sameName(item) ? `zweite Lieferung desselben Objekts (${item.entry.loaded?.fileKey ?? item.entry.loaded?.fileName ?? "?"})` : `belegt denselben Abschnitt wie ${objectListName(item.wegen)}`}`),
 								`Im Bild steht je Abschnitt eine Trasse: die gewählte, sonst die längste. Eine andere Variante anwählen, dann steht sie im Bild · Maß: Überdeckung ab ${VARIANTE_MIN_OVERLAP_M} m und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren`,
 							],
 						};
@@ -2802,6 +2854,7 @@ xlsx/xlsx.mjs:
 						valueFormat: kind === "alignment" ? curvatureReadout : undefined,
 						...(overlay ? { overlay } : {}),
 						...(footnote ? { footnote } : {}),
+						...(emptyNote ? { emptyNote } : {}),
 					}));
 				}
 				// Gleisabstand: where both Streckengleise are assigned, the distance
@@ -8014,8 +8067,8 @@ xlsx/xlsx.mjs:
 				}
 				let firstPreferred = null;
 				for (const row of rows) {
-					appendInboxRow(pile, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent), fileName: row.loaded.fileName });
-					for (const dependent of row.dependents) appendInboxRow(pile, dependent, { organized: row.organized, dependent: true, fileName: row.loaded.fileName });
+					appendInboxRow(pile, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent), fileName: row.loaded.fileKey ?? row.loaded.fileName });
+					for (const dependent of row.dependents) appendInboxRow(pile, dependent, { organized: row.organized, dependent: true, fileName: dependent.loaded?.fileKey ?? dependent.loaded?.fileName ?? row.loaded.fileName });
 					if (row.loaded.fileName === preferredFileName && !firstPreferred) firstPreferred = row.entry;
 				}
 				tablesNav.append(pile);
@@ -9255,6 +9308,7 @@ xlsx/xlsx.mjs:
 					if (polyline.length < 2) return;
 					const pairs = landXmlStationMapping(target, polyline);
 					if (pairs.length < 2) return;
+					if (!einordnungLaengentreu(pairs[pairs.length - 1].local - pairs[0].local, pairs[pairs.length - 1].external - pairs[0].external)) return;
 					applyLandXmlStationMapping(target, pairs);
 					listingCache.delete(target);
 					for (const sibling of referencingEntries(target)) {
@@ -9265,6 +9319,23 @@ xlsx/xlsx.mjs:
 					}
 					target.externalStationReference = reference.item.id;
 				};
+				// The Kilometerlinie of a Gleis is decided by where it lies
+				// (einordnungBezugslinie): each candidate line is measured from the
+				// Gleis's two ends, and a Gleis that fits none stays unprojected
+				// until its line is loaded. The name only narrows the candidates --
+				// same Strecke, compatible Abschnitt, longest line first.
+				const pickReference = (target, references) => {
+					const ends = alignmentEndpoints(target);
+					if (!ends) return null;
+					const profile = referencingEntries(target).find((sibling) => sibling.item.kind === "profile");
+					const profileRange = profile ? stationRangeForEntry(profile) : null;
+					const candidates = references.map((reference) => {
+						const polyline = polylineOf(reference);
+						const hits = polyline.length < 2 ? [null, null] : [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(polyline, point));
+						return { key: reference, distanceStart: hits[0]?.distance ?? NaN, distanceEnd: hits[1]?.distance ?? NaN, holdsProfile: Boolean(within(profileRange, stationRangeForEntry(reference), 50)) };
+					});
+					return einordnungBezugslinie(candidates, TOPOLOGY_KM_MAX_DISTANCE_M);
+				};
 				const allReferences = [];
 				for (const [, entries] of groupBy(named, (entry) => vermEsnNameFrame(entry).track)) {
 					const references = entries.filter((entry) => vermEsnNameFrame(entry).side === "kilometer").sort((a, b) => rangeLength(b) - rangeLength(a));
@@ -9272,7 +9343,8 @@ xlsx/xlsx.mjs:
 					for (const target of entries) {
 						if (target.externalStationReference) continue;
 						const targetFrame = vermEsnNameFrame(target);
-						const reference = targetFrame.side === "kilometer" ? null : references.find((candidate) => compatibleSegment(vermEsnNameFrame(candidate), targetFrame));
+						if (targetFrame.side === "kilometer") continue;
+						const reference = pickReference(target, references.filter((candidate) => compatibleSegment(vermEsnNameFrame(candidate), targetFrame)));
 						if (reference) project(target, reference, true);
 					}
 				}
@@ -9282,21 +9354,8 @@ xlsx/xlsx.mjs:
 				// over the merely nearer 5632. Without a GRA, the nearer line wins.
 				for (const target of alignments) {
 					if (target.externalStationReference || vermEsnNameFrame(target)) continue;
-					const ends = alignmentEndpoints(target);
-					if (!ends) continue;
-					const profile = referencingEntries(target).find((sibling) => sibling.item.kind === "profile");
-					const profileRange = profile ? stationRangeForEntry(profile) : null;
-					let best = null;
-					for (const reference of allReferences) {
-						const polyline = polylineOf(reference);
-						if (polyline.length < 2) continue;
-						const hits = [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(polyline, point));
-						if (hits.some((hit) => !hit || hit.distance > TOPOLOGY_KM_MAX_DISTANCE_M)) continue;
-						const distance = Math.max(hits[0].distance, hits[1].distance);
-						const holdsProfile = within(profileRange, stationRangeForEntry(reference), 50) ? 0 : 1;
-						if (!best || holdsProfile < best.holdsProfile || (holdsProfile === best.holdsProfile && distance < best.distance)) best = { reference, distance, holdsProfile };
-					}
-					if (best) project(target, best.reference, false);
+					const reference = pickReference(target, allReferences);
+					if (reference) project(target, reference, false);
 				}
 			}
 
@@ -9317,6 +9376,7 @@ xlsx/xlsx.mjs:
 				const sourceLsys = sourceLsysList.length === 1 ? sourceLsysList[0] : "";
 				const loadedFile = {
 					fileName,
+					fileKey: einordnungDateischluessel(fileName, loadedFiles.map((loaded) => loaded.fileName)),
 					objects,
 					relations: Array.isArray(result?.relationCandidates) ? result.relationCandidates : [],
 					importDiagnostics: Array.isArray(result?.meta?.diagnostics) ? result.meta.diagnostics : [],
@@ -9460,7 +9520,7 @@ xlsx/xlsx.mjs:
 						warnings.push(`${file.name}: ${importFailure}`);
 					} else {
 						lastLoadedFileName = file.name;
-						void viewerStore.rememberFile(file);
+						void viewerStore.rememberFile(file, loadedFiles[loadedFiles.length - 1]?.fileKey ?? file.name);
 					}
 				}
 				progress.end();
@@ -10092,15 +10152,25 @@ xlsx/xlsx.mjs:
 						db.close();
 					}
 				},
-				async rememberFile(file) {
+				// One record per file key: stored by name alone, the second of two
+				// files of one name replaced the first and was the only one to come
+				// back. `name` stays the key path (the first file's key is its
+				// name, so older stores read as before), `fileName` is the real name.
+				async rememberFile(file, fileKey = file.name) {
 					try {
-						await this.run("files", "readwrite", (store) => store.put({ name: file.name, blob: file, lastModified: file.lastModified ?? Date.now(), addedAt: Date.now() }));
+						viewerStore.sequence = (viewerStore.sequence ?? 0) + 1;
+						await this.run("files", "readwrite", (store) => store.put({ name: fileKey, fileName: file.name, blob: file, lastModified: file.lastModified ?? Date.now(), addedAt: Date.now(), order: viewerStore.sequence }));
 					} catch (error) {
 						console.warn("Lieferung nicht gespeichert:", error);
 					}
 				},
+				// In the order of loading, so that the turn of two files of one name
+				// (and with it their keys) is the same after a reopen.
 				async files() {
-					try { return (await this.run("files", "readonly", (store) => store.getAll())) ?? []; } catch { return []; }
+					try {
+						const records = (await this.run("files", "readonly", (store) => store.getAll())) ?? [];
+						return records.map((record, index) => ({ record, index })).sort((a, b) => (a.record.addedAt ?? 0) - (b.record.addedAt ?? 0) || (a.record.order ?? 0) - (b.record.order ?? 0) || a.index - b.index).map((item) => item.record);
+					} catch { return []; }
 				},
 				async saveState(state) {
 					try { await this.run("state", "readwrite", (store) => store.put(state, "current")); } catch (error) { console.warn("Zustand nicht gespeichert:", error); }
@@ -10115,7 +10185,9 @@ xlsx/xlsx.mjs:
 					} catch { /* nothing stored */ }
 				},
 			};
-			const stateKey = (entry) => `${entry.loaded?.fileName ?? "?"}|${entry.item?.id ?? "?"}`;
+			// An object is known by its file's key and its id in that file; two
+			// deliveries of one file name stay two (einordnungDateischluessel).
+			const stateKey = (entry) => `${entry.loaded?.fileKey ?? entry.loaded?.fileName ?? "?"}|${entry.item?.id ?? "?"}`;
 			function captureViewerState() {
 				const entries = {};
 				for (const entry of allViewerEntries()) {
@@ -10126,7 +10198,7 @@ xlsx/xlsx.mjs:
 					if (Object.keys(record).length) entries[stateKey(entry)] = record;
 				}
 				const files = {};
-				for (const loaded of loadedFiles) files[loaded.fileName] = { displayLsys: loaded.displayLsys, displayLsysSource: loaded.displayLsysSource };
+				for (const loaded of loadedFiles) files[loaded.fileKey ?? loaded.fileName] = { displayLsys: loaded.displayLsys, displayLsysSource: loaded.displayLsysSource };
 				return {
 					version: 1,
 					savedAt: new Date().toISOString(),
@@ -10165,7 +10237,7 @@ xlsx/xlsx.mjs:
 						applied += 1;
 					}
 					for (const loaded of loadedFiles) {
-						const record = state.files?.[loaded.fileName];
+						const record = state.files?.[loaded.fileKey ?? loaded.fileName];
 						if (!record || record.displayLsys === undefined) continue;
 						loaded.displayLsys = record.displayLsys;
 						loaded.displayLsysSource = record.displayLsysSource ?? loaded.displayLsysSource;
@@ -10221,7 +10293,7 @@ xlsx/xlsx.mjs:
 			document.querySelector("#reopenAccept").addEventListener("click", async () => {
 				sessionOffer.classList.add("hidden");
 				const stored = await viewerStore.files();
-				const files = stored.map((record) => new File([record.blob], record.name, { lastModified: record.lastModified ?? Date.now() }));
+				const files = stored.map((record) => new File([record.blob], record.fileName ?? record.name, { lastModified: record.lastModified ?? Date.now() }));
 				const state = await viewerStore.state();
 				await inspectFiles(files, { reopening: true });
 				const result = applyViewerState(state);

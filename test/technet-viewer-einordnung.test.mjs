@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -290,5 +290,42 @@ test("Bezüge allein: the Verbund needs only kind and references, and is the sam
 	const full = einordnen(nodes.map((node) => fact(node.key, node.kind, { refKeys: node.refKeys, homeKey: node.homeKey })));
 	assert.deepEqual(json(einordnungVerbund(full, "LG").keys), json(verbund.keys));
 	assert.deepEqual(json([...full.referrers.entries()]), json([...bezuege.referrers.entries()]));
+});
+
+test("Dateischlüssel: the first file keeps its name, later files of that name get their turn", () => {
+	const loaded = [];
+	const keys = ["6100_246-289.MDB", "5500R.TRA", "6100_246-289.MDB", "6100_246-289.MDB", "5500R.GRA"].map((name) => {
+		const key = einordnungDateischluessel(name, loaded);
+		loaded.push(name);
+		return key;
+	});
+	assert.deepEqual(keys, ["6100_246-289.MDB", "5500R.TRA", "6100_246-289.MDB (2)", "6100_246-289.MDB (3)", "5500R.GRA"]);
+	assert.equal(new Set(keys).size, keys.length);
+	assert.equal(einordnungDateischluessel("x.tra", ["X.TRA"]), "x.tra", "names are compared as they are delivered");
+});
+
+test("Bezugslinie: only a line both ends lie on; then the one that holds the Gradiente, then the nearest, then the first offered", () => {
+	const line = (key, distanceStart, distanceEnd, holdsProfile = false) => ({ key, distanceStart, distanceEnd, holdsProfile });
+	// metroB 5904_R_R00 against the first Kilometerlinie that happened to be loaded: 3 and 13 km off
+	assert.equal(einordnungBezugslinie([line("5904S", 3216.2, 13021.6)], 60), null, "the Strecke in the name is no proof of the Lage");
+	assert.equal(einordnungBezugslinie([line("5904S", 3216.2, 13021.6), line("5904_S_R00", 2.1, 4.4)], 60), "5904_S_R00");
+	// Landshut W403-404 between two Strecken: 5632 is nearer, 5500 holds the Gradiente
+	assert.equal(einordnungBezugslinie([line("5632S", 3, 5), line("5500S", 20, 31, true)], 60), "5500S");
+	assert.equal(einordnungBezugslinie([line("5632S", 3, 5), line("5500S", 20, 31)], 60), "5632S", "without a Gradiente the nearer line");
+	assert.equal(einordnungBezugslinie([line("long", 0, 0), line("short", 0, 0)], 60), "long", "a tie goes to the first offered, the longest");
+	assert.equal(einordnungBezugslinie([line("oneEnd", 2, 400)], 60), null, "one end on the line is not lying along it");
+	assert.equal(einordnungBezugslinie([line("unmeasured", NaN, NaN), line("gap", 5, undefined)], 60), null, "what could not be measured does not qualify");
+	assert.equal(einordnungBezugslinie([line("edge", 60, 60)], 60), "edge");
+	assert.equal(einordnungBezugslinie([], 60), null);
+});
+
+test("Längentreue: a projection that collapses the Gleis is none", () => {
+	assert.equal(BEZUGSLINIE_MIN_LAENGENTREUE, 0.5);
+	assert.equal(einordnungLaengentreu(10000, 0), false, "10 km clamped onto km 67,5");
+	assert.equal(einordnungLaengentreu(10000, 10000), true);
+	assert.equal(einordnungLaengentreu(8500, -8497), true, "a Gleis stationed against the line");
+	assert.equal(einordnungLaengentreu(2000, 1100), true);
+	assert.equal(einordnungLaengentreu(2000, 900), false);
+	assert.equal(einordnungLaengentreu(0, 0), true, "nothing to keep");
 });
 
