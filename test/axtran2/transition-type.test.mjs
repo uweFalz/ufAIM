@@ -230,3 +230,30 @@ test("a turnout whose branch begins with a clothoid goes in as curvature holder,
 	assert.ok(Math.abs(k.k0 - 1000 / 6000) < 1e-9 && Math.abs(k.k1 - 1000 / 3700) < 1e-9, `the clothoid runs from ${k.k0} to ${k.k1}`);
 	assert.match(recordListHtml(model), /<tr data-record="1\+1b" class="inserted"><td class="num">\+<\/td><td>Übergangsbogen \(Klothoide\)<\/td><td>EW 6000\/3700-1:32.5<\/td><td class="num">44,00<\/td>/);
 });
+
+test("a length the fit ends on is named by whose limit it is: the file's own length taken over, or the design's", async () => {
+	const { describeLimit } = await import(new URL("recordList.js", SERVICE));
+	// a clothoid track, measured; the plan's free lengths off by decimetres
+	const clothoidTruth = track("clothoid");
+	const chain = chainOf(clothoidTruth);
+	const measured = [];
+	for (let s = 20; s < total - 20; s += 10) { const p = world(chain.poseAt(s)); measured.push({ name: `P${measured.length + 1}`, x: p.x, y: p.y }); }
+	const run = (lengths) => fitTraFromBytes({ bytes: traOf(track("clothoid", lengths)), name: "limit.TRA", points: measured, tolerance: 0.003, speedKmh: 80, endPose: world(chain.endPose), maxIterations: 300 });
+	// the plan's clothoid of 50 m is shorter than the ramp rule asks (78 m): it keeps the length the file has, as an exception,
+	// and the fit cannot shorten it - that is the file's number, not the design's
+	const inherited = (await run([60.4, 50, 79.6, 60])).report;
+	assert.deepEqual(inherited.fit.atLimits.map((l) => [[...l.records], l.quantity, Number(l.limit.toFixed(3)), l.kind, l.reason]), [[[2], "length", 50, "design-limit", "exception"]]);
+	assert.match(inherited.fit.atLimits[0].source, /inherited transition of limit\.TRA/);
+	assert.equal(inherited.planRecords[1].atLimit.reason, "exception");
+	assert.match(recordListHtml(alignmentPictureModel(inherited)), /<td title="An der Grenze: übernommene Länge der Datei 50,00 m – corpus: inherited transition of limit\.TRA" class="num limit">50,00<\/td>/);
+	// an arc the fit shortens to the 20 m the profile declares for an arc: the design's number, with the project as its source
+	const declared = (await run([30, 110, 79.6, 60])).report;
+	assert.deepEqual(declared.fit.atLimits.map((l) => [[...l.records], l.quantity, l.limit, l.kind, l.reason, l.source]), [[[3], "length", 20, "design-limit", "minimum-length", "project: shortest element the sequence keeps"]]);
+	assert.match(recordListHtml(alignmentPictureModel(declared)), /<td title="An der Grenze: Mindestlänge des Entwurfs 20,00 m – project: shortest element the sequence keeps" class="num limit changed">20,00<\/td>/);
+	// the words, by quantity and reason
+	assert.deepEqual([
+		describeLimit({ quantity: "radius", reason: "exception", limit: -299.9997 }), describeLimit({ quantity: "length", reason: "exception", limit: 49.99995 }),
+		describeLimit({ quantity: "radius", reason: "minimum-radius", limit: 300 }), describeLimit({ quantity: "length", reason: "ramp-rule", limit: 78 }),
+		describeLimit({ quantity: "length", reason: "minimum-length", limit: 20 }), describeLimit({ quantity: "length", reason: "element-sequence", limit: 0.05 }),
+	], ["übernommener Radius der Datei 300 m", "übernommene Länge der Datei 50,00 m", "Mindestradius des Entwurfs 300 m", "Rampenregel des Entwurfs 78,00 m", "Mindestlänge des Entwurfs 20,00 m", "kürzestes Element der Folge 0,05 m"]);
+});

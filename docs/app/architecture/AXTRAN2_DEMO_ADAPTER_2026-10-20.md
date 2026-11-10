@@ -911,3 +911,43 @@ Nicht gebaut: eine Stammgleis-Weiche auf einem Satz der Datei erklären
 und wo doch, tun `3L=27,138` und das Schloss dasselbe; in der Datei erkannt
 wird sie nicht (eine Gerade von 27,14 m ist keine Weiche, nur weil sie so
 lang ist – wie bei der Kreuzung).
+
+## Wessen Grenze: die Länge an der Schranke (2026-11-10)
+
+Seit dem 9. November nennt der Bericht die freien Größen, die auf einer
+Schranke enden (`fit.atLimits`). Bei Längen stimmte das Wort nicht: eine
+Klothoide von 50 m hieß „Mindestlänge des Entwurfs 50,00 m – EBO § 6 …“.
+Die 50 m sind aber die Länge der Datei: die Rampenregel verlangt in der
+Schrankenform 78 m, der Übergangsbogen ist kürzer und bekommt seine eigene
+Länge als Ausnahme (`chooseProfile`, „inherited transition“) – **der Fit
+kann ihn darum nie kürzer machen, als er in der Datei ist.** Das betrifft
+jeden Übergangsbogen unter 78 m und ist wissenswert, nur eben nicht als
+Vorgabe des Entwurfs.
+
+Der Kern sagt an der Längenschranke für drei Fälle dasselbe („design“, mit
+der Quelle des Profils). Der Dienst (`fit-tra/0.22`) unterscheidet sie:
+
+- `exception` – die übernommene Länge der Datei, Quelle die der Ausnahme;
+- `ramp-rule` – der Boden der Rampenregel an einem Übergangsbogen, Quelle
+  Ril 800.0110 Tab. 7;
+- `minimum-length` – die erklärte Mindestlänge einer Geraden oder eines
+  Bogens (20 m), Quelle das Projekt.
+
+`kind` ist für alle drei `design-limit`. Liste (0.12) und App nehmen die
+Worte aus einer Stelle, `describeLimit` in `recordList.js`: „übernommene
+Länge der Datei 50,00 m“, „übernommener Radius der Datei 300 m“,
+„Rampenregel des Entwurfs 78,00 m“, „Mindestlänge des Entwurfs 20,00 m“.
+
+Geprüft auf der erfundenen Klothoiden-Trasse: Plan mit 50 m →
+`exception`; ein Bogen, den der Fit auf 20 m kürzt → `minimum-length`. Ein
+Lauf, der auf dem Boden der Rampenregel endet, ließ sich nicht erzeugen;
+die Zuordnung `ramp-rule` ist nur an den Worten geprüft. Sauberer wäre die
+Unterscheidung an der Schranke im Kern (`AlignmentConstraintBuilder`, wie
+beim Radius) – das braucht ein Kern-Go und ist nicht angefasst.
+
+Dazu ein Befund ohne Bau: „weitere Familien im Schreiber“ ist erledigt,
+soweit das Format reicht. Die TRA kennt an Übergangsbögen Kz 2, 3, 4, 7
+und 8; der Schreiber trägt 2, 3, 4 und 8. Kz 7 (S-Form, 1f geschwungen)
+kommt in den 292 Dateien des Korpus nicht vor, Kz 8 auch nicht; die
+übrigen Familien der Registry (Watorek, Wiener Bogen, Sinus, Cosinus, …)
+haben in der TRA kein Kz. Ohne eine Datei mit Kz 7 ist nichts zu prüfen.

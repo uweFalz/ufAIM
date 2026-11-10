@@ -6,7 +6,7 @@
 import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
 import { runInWorker } from "../src/services/axtran2/workerRun.js";
 import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap } from "../src/services/axtran2/alignmentPicture.js";
-import { recordListHtml } from "../src/services/axtran2/recordList.js";
+import { recordListHtml, describeLimit } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
 import { parseAllEdits, formatEdits, isInsertKey, insertOf, INSERT_TYPES, TRANSITION_FAMILIES } from "../src/services/axtran2/recordEdits.js";
 
@@ -139,7 +139,7 @@ async function run({ change = null } = {}) {
 
 function show({ report, csv }) {
 	const { verdict, fit, input } = report;
-	el("verdict").textContent = `${input.tra}: ${input.elements} Elemente, ${input.free} freie Größen, ${input.points} Punkte im Fit${input.excludedPoints?.length ? ` (${input.excludedPoints.length} ohne Fußpunkt am Plan ausgeschlossen)` : ""}, V ${input.speedKmh} km/h. Verdikt: ${verdict.status}${verdict.reason ? " / " + verdict.reason : ""} nach ${verdict.iterations} Schritten.${fit.atLimits?.length ? ` An der Grenze: ${fit.atLimits.map((l) => `${l.records.length === 1 ? "Satz" : "Sätze"} ${l.records.join(", ")} ${l.quantity === "radius" ? `R ${fmt(Math.abs(l.value), 0)}` : `L ${fmt(l.value, 2)} m`} (${l.reason === "minimum-radius" ? "Mindestradius des Entwurfs" : l.reason === "exception" ? "übernommener Radius der Datei" : l.reason === "design" ? "Mindestlänge des Entwurfs" : "kürzestes Element"})`).join("; ")}.` : ""}`;
+	el("verdict").textContent = `${input.tra}: ${input.elements} Elemente, ${input.free} freie Größen, ${input.points} Punkte im Fit${input.excludedPoints?.length ? ` (${input.excludedPoints.length} ohne Fußpunkt am Plan ausgeschlossen)` : ""}, V ${input.speedKmh} km/h. Verdikt: ${verdict.status}${verdict.reason ? " / " + verdict.reason : ""} nach ${verdict.iterations} Schritten.${fit.atLimits?.length ? ` An der Grenze: ${fit.atLimits.map((l) => `${l.records.length === 1 ? "Satz" : "Sätze"} ${l.records.join(", ")}: ${describeLimit(l)}`).join("; ")}.` : ""}`;
 	const measured = report.points.filter((p) => p.kind === "measured");
 	const before = measured.map((p) => p.offsetBefore).filter(Number.isFinite);
 	const after = measured.map((p) => p.offset).filter(Number.isFinite);

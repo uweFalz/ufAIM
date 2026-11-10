@@ -25,13 +25,27 @@
 import { describeHold, holdMap } from "./alignmentPicture.js";
 import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_ROUTES_WORDS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.11";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.12";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
 const TYPE = Object.freeze({ straight: "Gerade", arc: "Bogen", transition: "Übergangsbogen", kink: "Knick" });
 // why a Fit value sits on a limit: the design's or the sequence's
-const LIMIT_WORDS = Object.freeze({ "minimum-radius": "Mindestradius des Entwurfs", exception: "übernommener Radius der Datei", design: "Mindestlänge des Entwurfs", "element-sequence": "kürzestes Element der Folge" });
+const LIMIT_WORDS = Object.freeze({
+	"minimum-radius": "Mindestradius des Entwurfs", "ramp-rule": "Rampenregel des Entwurfs", "minimum-length": "Mindestlänge des Entwurfs", design: "Mindestlänge des Entwurfs",
+	"element-sequence": "kürzestes Element der Folge",
+});
+/**
+ * The words for a limit a free quantity ended on ({ quantity, reason, limit }, as `fit.atLimits` and a
+ * record's `atLimit` carry it): whose limit, and its value - "Mindestradius des Entwurfs 300 m",
+ * "übernommene Länge der Datei 50,00 m". An exception is the file's own value taken over where the
+ * design would ask for more: the fit cannot go below it.
+ */
+export function describeLimit(l) {
+	const radius = l.quantity === "radius";
+	const words = l.reason === "exception" ? (radius ? "übernommener Radius der Datei" : "übernommene Länge der Datei") : LIMIT_WORDS[l.reason] ?? l.reason ?? "Grenze";
+	return `${words}${Number.isFinite(l.limit) ? ` ${comma(Math.abs(l.limit), radius ? 0 : 2)} m` : ""}`;
+}
 
 /**
  * @param {object} model  from alignmentPictureModel
@@ -59,7 +73,7 @@ export function recordListHtml(model, { held = null, edits = null, insertAfter =
 	const limited = (html, r, quantity) => {
 		const l = r.atLimit;
 		if (!l || l.quantity !== quantity) return html;
-		const title = `An der Grenze: ${LIMIT_WORDS[l.reason] ?? l.reason ?? "Grenze"}${Number.isFinite(l.limit) ? ` ${comma(Math.abs(l.limit), quantity === "radius" ? 0 : 2)} m` : ""}${l.source ? ` – ${l.source}` : ""}`;
+		const title = `An der Grenze: ${describeLimit(l)}${l.source ? ` – ${l.source}` : ""}`;
 		return html.replace(/^<td class="num/, `<td title="${escape(title)}" class="num limit`);
 	};
 	// the plan's value as a field: what the fit started from, or what is typed and not yet computed
