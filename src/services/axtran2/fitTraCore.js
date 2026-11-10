@@ -37,7 +37,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.21";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.22";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -395,13 +395,26 @@ export async function fitTraFromBytes({
 	const d = run.diagnostics ?? {};
 	// free quantities the design or the sequence holds at a limit: the fit converged there, not freely -
 	// a radius at the EBO floor of 300 m is such a case (the 4L finding); radii with the file's sign
+	const kindOfElement = new Map(elements.map((e) => [e.id, e.type]));
 	const atLimits = Object.freeze((d.activeBounds ?? []).map((b) => {
 		const radius = (k) => (Math.abs(k) > 1e-15 ? -1 / k : null);
+		let kind = b.bound?.kind ?? null, reason = b.bound?.reason ?? null, source = b.bound?.source ?? null;
+		// A length the design holds: whose number it is. The kernel's bound says "design" for all three - the
+		// file's own length taken over as an exception (a transition shorter than the ramp rule asks keeps the
+		// length it has, and cannot get shorter), the ramp rule's floor of a transition, or the length the
+		// profile declares for a straight or an arc - and names the profile as the source of each.
+		if (b.quantity === "length" && reason === "design") {
+			kind = "design-limit";
+			const exception = design.exceptionFor?.(b.elementId) ?? null;
+			if (Number.isFinite(exception?.minimumLength) && Math.abs(exception.minimumLength - b.limit) <= 1e-9 * Math.max(1, Math.abs(b.limit))) { reason = "exception"; source = exception.source ?? source; }
+			else if (kindOfElement.get(b.elementId) === "transition") { reason = "ramp-rule"; source = design.declared?.cantGradient?.source ?? source; }
+			else { reason = "minimum-length"; source = design.declared?.minimumLength?.[kindOfElement.get(b.elementId)]?.source ?? source; }
+		}
 		return Object.freeze({
 			element: b.elementId, records: Object.freeze([...(structure.elementRecords.get(b.elementId) ?? [])]),
 			quantity: b.quantity === "curvature" ? "radius" : b.quantity,
 			value: b.quantity === "curvature" ? radius(b.value) : b.value, limit: b.quantity === "curvature" ? radius(b.limit) : b.limit,
-			kind: b.bound?.kind ?? null, reason: b.bound?.reason ?? null, source: b.bound?.source ?? null,
+			kind, reason, source,
 		});
 	}));
 	const limitOf = (elementId, quantity) => atLimits.find((l) => l.element === elementId && l.quantity === quantity) ?? null;
