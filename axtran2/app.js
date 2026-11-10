@@ -9,6 +9,7 @@ import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadou
 import { recordListHtml, describeLimit } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
 import { parseAllEdits, formatEdits, isInsertKey, insertOf, INSERT_TYPES, TRANSITION_FAMILIES } from "../src/services/axtran2/recordEdits.js";
+import { PROJECT_LINES, FILE_LINES, assignProjectFiles, describeTra, describeGra, projectLinesModel, projectTableHtml, fitSummary } from "../src/services/axtran2/trackProject.js";
 
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
@@ -21,6 +22,109 @@ let last = null;
 const picture = { model: null, width: 0, zoom: 1, wanted: null, edits: null, insertAfter: null };
 // a lock recomputes on its own while a run is this quick; a long run waits for Optimieren
 const LIVE_SECONDS = 3;
+
+// The 7L project: up to seven lines, five of them files. The form below works on one
+// axis at a time - the active line; every axis keeps its own Aufmaß, its own fields
+// and its own result, and takes them back when it becomes the active one again.
+const AXES = PROJECT_LINES.filter((line) => line.kind === "TRA").map((line) => line.key);
+const LINE_FIELDS = ["tolerance", "zwangTolerance", "speed", "hold", "edits", "iterations", "order", "budget", "endE", "endN", "endT"];
+const newLine = () => ({ file: null, description: null, error: null, assumed: false, points: null, zwang: null, fields: null, last: null });
+const project = { active: "re-TRA", lines: new Map(FILE_LINES.map((key) => [key, newLine()])) };
+const setFiles = (input, file) => { const transfer = new DataTransfer(); if (file) transfer.items.add(file); input.files = transfer.files; };
+
+function drawProject() {
+	const state = {};
+	for (const [key, line] of project.lines) {
+		const active = key === project.active;
+		const result = active ? last : line.last;
+		state[key] = { file: line.file?.name ?? null, description: line.description, error: line.error, assumed: line.assumed,
+			points: Boolean(active ? el("points").files?.[0] : line.points), ...(result ? { fit: fitSummary(result.report) } : {}) };
+	}
+	// built from numbers and escaped labels: safe to set as markup
+	el("projectLines").innerHTML = projectTableHtml(projectLinesModel(state, project.active));
+	const line = PROJECT_LINES.find((l) => l.key === project.active);
+	el("activeLine").textContent = `– ${project.active}, ${line.words}`;
+}
+
+/** what a file holds, kept on its line; an unreadable file says why */
+async function describeLine(line, kind) {
+	line.description = null; line.error = null;
+	if (!line.file) return;
+	try {
+		const bytes = new Uint8Array(await line.file.arrayBuffer());
+		line.description = kind === "TRA" ? describeTra(bytes) : await describeGra(bytes, line.file.name);
+	} catch (error) { line.error = String(error?.message ?? error); }
+}
+
+/** the active axis' Aufmaß, fields and result go back onto its line */
+function saveActive() {
+	const line = project.lines.get(project.active);
+	line.points = el("points").files?.[0] ?? null;
+	line.zwang = el("zwang").files?.[0] ?? null;
+	line.fields = { ...Object.fromEntries(LINE_FIELDS.map((id) => [id, el(id).value])), holdRadii: el("holdRadii").checked };
+	line.last = last;
+}
+
+/** another axis becomes the one the form works on */
+function switchLine(key) {
+	if (!AXES.includes(key) || key === project.active) return false;
+	if (running) { status("Ein Lauf rechnet noch: die Linie wechselt danach.", "info"); return false; }
+	saveActive();
+	project.active = key;
+	const line = project.lines.get(key);
+	setFiles(el("tra"), line.file); setFiles(el("points"), line.points); setFiles(el("zwang"), line.zwang);
+	if (line.fields) { for (const id of LINE_FIELDS) el(id).value = line.fields[id]; el("holdRadii").checked = line.fields.holdRadii; }
+	// a line seen for the first time: the tolerances and the order stay as they are, what names records or a place does not
+	else { for (const id of ["speed", "hold", "edits", "endE", "endN", "endT"]) el(id).value = ""; el("holdRadii").checked = false; }
+	el("budget").classList.toggle("hidden", el("order").value !== "budget");
+	last = line.last;
+	picture.model = null; picture.wanted = null; picture.edits = null; picture.insertAfter = null;
+	if (last) show(last); else el("result").classList.add("hidden");
+	drawProject();
+	status(`${key}: ${line.file ? line.file.name : "noch keine Datei"}${last ? ", mit dem Ergebnis des letzten Laufs" : ""}.`);
+	return true;
+}
+
+/** the files of a project onto their lines */
+async function loadProject(files) {
+	if (running || files.length === 0) return;
+	saveActive();
+	const byName = new Map(files.map((file) => [file.name, file]));
+	const taken = Object.fromEntries([...project.lines].filter(([, line]) => line.file).map(([key, line]) => [key, line.file.name]));
+	const assigned = assignProjectFiles(files.map((file) => file.name), taken);
+	for (const [key, name] of Object.entries(assigned.lines)) {
+		const line = project.lines.get(key);
+		// another file on the line: its Aufmaß stays, what named the old file's records goes
+		Object.assign(line, { file: byName.get(name), assumed: assigned.assumed.some((a) => a.name === name), last: null, fields: line.fields ? { ...line.fields, hold: "", edits: "" } : null });
+		await describeLine(line, key.endsWith("TRA") ? "TRA" : "GRA");
+		if (key === project.active) { setFiles(el("tra"), line.file); el("hold").value = ""; el("edits").value = ""; last = null; el("result").classList.add("hidden"); }
+	}
+	el("projectNote").textContent = [
+		...assigned.assumed.map((a) => `${a.name} als ${a.line} genommen: der Name nennt weder KM noch RE noch LI.`),
+		assigned.unassigned.length ? `Nicht zugeordnet: ${assigned.unassigned.map((u) => `${u.name} (${u.why})`).join("; ")}.` : "",
+	].filter(Boolean).join(" ");
+	// the form works on an axis that has a file, if there is one
+	const firstLoaded = AXES.find((key) => project.lines.get(key).file);
+	if (!project.lines.get(project.active).file && firstLoaded && switchLine(firstLoaded)) return;
+	drawProject();
+	status(`Projekt: ${[...project.lines.values()].filter((line) => line.file).length} von ${FILE_LINES.length} Dateien geladen.`);
+}
+
+/** every axis that has its file and its Aufmaß, one after the other */
+async function runAll() {
+	if (running) return;
+	saveActive();
+	const todo = AXES.filter((key) => { const line = project.lines.get(key); return line.file && line.points; });
+	if (todo.length === 0) { status("Keine Achse hat Datei und Aufmaß: „bearbeiten“ an einer Achse, dann ihr Aufmaß wählen.", "error"); return; }
+	const done = [];
+	for (const key of todo) {
+		switchLine(key);
+		const before = last;
+		await run();
+		done.push(last && last !== before ? `${key} ${last.report.verdict.status}` : `${key} nicht gerechnet (${el("status").textContent})`);
+	}
+	status(`Achsen gerechnet: ${done.join("; ")}.`, done.some((d) => d.includes("nicht gerechnet")) ? "error" : "ok");
+}
 
 // the run is a worker; stopping it is terminating the worker, nothing in
 // the calculation has to cooperate. The page is told through the promise.
@@ -109,10 +213,12 @@ async function run({ change = null } = {}) {
 		clearInterval(ticker);
 		if (!message.ok) throw Object.assign(new Error(`${message.code}: ${message.message}`), { code: message.code });
 		last = message;
+		project.lines.get(project.active).last = message;
 		picture.wanted = null;
 		picture.edits = null;
 		picture.insertAfter = null;
 		show(message);
+		drawProject();
 		status(`Fertig nach ${fmt(message.seconds, 1)} s.${message.attempts > 1 ? ` Das Rechenprogramm lud erst im ${message.attempts}. Versuch.` : ""}`, "ok");
 	} catch (error) {
 		clearInterval(ticker);
@@ -466,8 +572,20 @@ el("records").addEventListener("submit", (event) => {
 });
 // Enter in a field is the change, without leaving it
 el("records").addEventListener("keydown", (event) => { if (event.key === "Enter" && event.target.matches?.("[data-field]")) event.target.blur(); });
-// edits name records of one file: another file starts without them
-el("tra").addEventListener("change", () => { el("edits").value = ""; });
+// edits name records of one file: another file starts without them, and is the active line's file
+el("tra").addEventListener("change", async () => {
+	el("edits").value = "";
+	const line = project.lines.get(project.active);
+	Object.assign(line, { file: el("tra").files?.[0] ?? null, assumed: false, last: null });
+	last = null;
+	el("result").classList.add("hidden");
+	await describeLine(line, "TRA");
+	drawProject();
+});
+el("points").addEventListener("change", drawProject);
+el("project").addEventListener("change", async () => { const files = [...(el("project").files ?? [])]; el("project").value = ""; await loadProject(files); });
+el("projectLines").addEventListener("click", (event) => { const button = event.target.closest?.("button[data-line]"); if (button) switchLine(button.dataset.line); });
+el("runAll").addEventListener("click", runAll);
 const ZOOMS = [1, 2, 4, 8];
 el("zoomIn").addEventListener("click", () => { picture.zoom = ZOOMS[Math.min(ZOOMS.indexOf(picture.zoom) + 1, ZOOMS.length - 1)]; drawPicture(); });
 el("zoomOut").addEventListener("click", () => { picture.zoom = ZOOMS[Math.max(ZOOMS.indexOf(picture.zoom) - 1, 0)]; drawPicture(); });
@@ -476,7 +594,10 @@ let redraw = 0;
 new ResizeObserver(() => { cancelAnimationFrame(redraw); redraw = requestAnimationFrame(() => { if (last && !el("result").classList.contains("hidden")) drawPicture(); }); }).observe(el("pictureWrap"));
 el("order").addEventListener("change", () => el("budget").classList.toggle("hidden", el("order").value !== "budget"));
 el("cancel").addEventListener("click", cancel);
-el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold", "edits"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.edits = null; picture.insertAfter = null; picture.zoom = 1; });
+el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold", "edits"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.edits = null; picture.insertAfter = null; picture.zoom = 1;
+	// and the project: every line empty, the right axis the one to work on
+	for (const key of FILE_LINES) project.lines.set(key, newLine()); project.active = "re-TRA"; el("project").value = ""; el("projectNote").textContent = ""; drawProject(); });
+drawProject();
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));
 el("dlCsv").addEventListener("click", () => last && download("residuen.csv", last.csv, "text/csv"));
