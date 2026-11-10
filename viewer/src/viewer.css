@@ -1066,6 +1066,7 @@
 			.outbox-object .side-witness { float: right; margin-left: var(--sp-2); font-size: var(--fs-1); white-space: nowrap; }
 			#outboxContent .outbox-object .side-witness.widerspruch,
 			#tables .object-row > button > span[data-kind].side-conflict { color: color-mix(in srgb, #d70015 78%, CanvasText); font-weight: 600; }
+			#outboxContent .outbox-object .side-witness.variante { color: var(--secondary); font-style: italic; }
 			#outboxContent .outbox-object.selected .side-witness { color: inherit; opacity: 0.9; }
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
 			.outbox-object-row {

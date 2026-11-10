@@ -1072,6 +1072,7 @@
 			.outbox-object .side-witness { float: right; margin-left: var(--sp-2); font-size: var(--fs-1); white-space: nowrap; }
 			#outboxContent .outbox-object .side-witness.widerspruch,
 			#tables .object-row > button > span[data-kind].side-conflict { color: color-mix(in srgb, #d70015 78%, CanvasText); font-weight: 600; }
+			#outboxContent .outbox-object .side-witness.variante { color: var(--secondary); font-style: italic; }
 			#outboxContent .outbox-object.selected .side-witness { color: inherit; opacity: 0.9; }
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
 			.outbox-object-row {
@@ -41889,25 +41890,31 @@ xlsx/xlsx.mjs:
 			//   gndFamily, gndRoute, organized, hidden, lsys, hsys,
 			//   frame: { track, direction, segment, source, lsys } | null,
 			//   side: "kilometer" | "right" | "left" | "unknown", range: { from, to } | null,
-			//   id, refIds: [id] (what it references, by object id: GND repeats ids across
-			//   files, and a Gradiente in one file belongs to every Trasse of that id),
+			//   refKeys: [key] (the objects it references -- its Trasse, a Gleis its
+			//   Kilometerlinie -- resolved by the adapter inside its own file first:
+			//   object ids are positions in a file, and two deliveries reuse them
+			//   for different objects),
+			//   homeKey (the first Trasse of its file, the anchor of last resort),
 			//   role (the 7L Spur: gradientRight … cantRight, or "UNASSIGNED"),
-			//   section (an explicit Abschnitt id, or ""),
-			//   linked: [key], anchorKey: key }
+			//   section (an explicit Abschnitt id, or "") }
 			const EINORDNUNG_VERSION = "einordnung/0.1";
 			function einordnen(facts) {
 				const objects = new Map();
-				const byId = new Map();
-				for (const fact of facts) {
-					objects.set(fact.key, { ...fact, trasse: fact.kind === "alignment" ? fact.key : null, dependents: [], orphan: false });
-					if (!byId.has(fact.id)) byId.set(fact.id, []);
-					byId.get(fact.id).push(fact.key);
+				for (const fact of facts) objects.set(fact.key, { ...fact, trasse: fact.kind === "alignment" ? fact.key : null, dependents: [], orphan: false });
+				// Who references whom, turned round: the referrers of each object.
+				const referrers = new Map();
+				for (const placed of objects.values()) {
+					for (const target of placed.refKeys ?? []) {
+						if (!objects.has(target)) continue;
+						if (!referrers.has(target)) referrers.set(target, []);
+						referrers.get(target).push(placed.key);
+					}
 				}
-				// Zugehörigkeit by id: every Trasse whose id the object references
-				// lists it; the first one stands for it.
+				// Zugehörigkeit: every Trasse the object references lists it; the
+				// first one stands for it.
 				for (const placed of objects.values()) {
 					if (placed.kind === "alignment") continue;
-					const owners = (placed.refIds ?? []).flatMap((id) => byId.get(id) ?? []).map((key) => objects.get(key)).filter((candidate) => candidate?.kind === "alignment");
+					const owners = (placed.refKeys ?? []).map((key) => objects.get(key)).filter((candidate) => candidate?.kind === "alignment");
 					if (owners.length) {
 						placed.trasse = owners[0].key;
 						for (const owner of owners) owner.dependents.push(placed.key);
@@ -41945,7 +41952,7 @@ xlsx/xlsx.mjs:
 						strecken.get(track).abschnitte.push({ ...abschnitt, lsys, spuren });
 					}
 				}
-				return { version: EINORDNUNG_VERSION, objects, strecken, pile };
+				return { version: EINORDNUNG_VERSION, objects, referrers, strecken, pile };
 			}
 			// Abschnitte of one Rahmen: an explicit Abschnitt id bundles its objects
 			// (range = their hull); the rest is chained in km order, a new Abschnitt
@@ -41985,10 +41992,65 @@ xlsx/xlsx.mjs:
 				if (unranged.length) abschnitte.push({ sectionId: "", keys: unranged, range: null });
 				return abschnitte;
 			}
-			// Objects that reference `key` directly, by id (its own profile, cant, staEq).
+			// Varianten: two Trassen of one side that occupy the same stretch of
+			// km are alternatives, not consecutive pieces -- a Bestand and its
+			// Neuplanung (Eifel 2631R139 …), an older and a newer delivery of one
+			// Gleis, the same file loaded from two folders (Billwerder). Pieces
+			// that only meet or lap at a seam are not. The measure is an
+			// assumption, set here: an overlap of at least VARIANTE_MIN_OVERLAP_M
+			// and of at least VARIANTE_MIN_SHARE of the shorter one.
+			const VARIANTE_MIN_OVERLAP_M = 20;
+			const VARIANTE_MIN_SHARE = 0.2;
+			function einordnungUeberdeckt(a, b) {
+				if (!a || !b) return false;
+				const overlap = Math.min(a.to, b.to) - Math.max(a.from, b.from);
+				const shorter = Math.min(a.to - a.from, b.to - b.from);
+				return overlap >= VARIANTE_MIN_OVERLAP_M && overlap >= VARIANTE_MIN_SHARE * shorter;
+			}
+			// One side's Trassen: which stand in the picture, which stand back.
+			// The preferred one (the selection's own Trasse) first, then the
+			// longest, then the order of delivery; each takes its place unless a
+			// Trasse already shown covers it.
+			function einordnungVarianten(alignments, preferredKey) {
+				const order = alignments
+					.map((placed, index) => ({ placed, index, length: placed.range ? placed.range.to - placed.range.from : -1 }))
+					.sort((a, b) => Number(b.placed.key === preferredKey) - Number(a.placed.key === preferredKey) || b.length - a.length || a.index - b.index);
+				const shown = [];
+				const hidden = [];
+				const track = (placed) => placed.frame?.track ?? null;
+				for (const { placed } of order) {
+					// Only Trassen of one Strecke are alternatives of each other.
+					const rival = shown.find((kept) => track(kept) === track(placed) && einordnungUeberdeckt(kept.range, placed.range));
+					if (rival) hidden.push({ key: placed.key, wegen: rival.key });
+					else shown.push(placed);
+				}
+				return { shown: alignments.filter((placed) => shown.includes(placed)).map((placed) => placed.key), hidden };
+			}
+			// Objects that reference `key` directly (its own profile, cant, staEq).
 			function einordnungEigene(model, key) {
-				const id = model.objects.get(key)?.id;
-				return [...model.objects.values()].filter((placed) => (placed.refIds ?? []).includes(id)).map((placed) => placed.key);
+				return model.referrers.get(key) ?? [];
+			}
+			// What hangs together by references: the anchor (the object's Trasse),
+			// the root (the Kilometerlinie a landXML Gleis references, so that one
+			// Gleis shows the whole 7L), and everything that references them,
+			// transitively.
+			function einordnungVerbund(model, key) {
+				const get = (candidateKey) => model.objects.get(candidateKey) ?? null;
+				const self = get(key);
+				let anchor = self.kind === "alignment" ? self : get((self.refKeys ?? [])[0]);
+				anchor ??= get(self.homeKey) ?? self;
+				const referenced = get((anchor.refKeys ?? [])[0]);
+				const root = referenced?.kind === "alignment" ? referenced : anchor;
+				const linked = new Set([anchor.key, root.key]);
+				const frontier = [...linked];
+				while (frontier.length) {
+					for (const from of model.referrers.get(frontier.pop()) ?? []) {
+						if (linked.has(from)) continue;
+						linked.add(from);
+						frontier.push(from);
+					}
+				}
+				return { anchor, keys: [...model.objects.keys()].filter((candidateKey) => linked.has(candidateKey)) };
 			}
 			function einordnungStreckennummer(value) {
 				return /^\d{4}$/.test(String(value ?? "").trim());
@@ -42012,8 +42074,9 @@ xlsx/xlsx.mjs:
 					}
 					return false;
 				}).map((candidate) => candidate.key);
-				const anchor = get(self.anchorKey) ?? self;
-				const keys = [...new Set([...(self.linked ?? [self.key]), ...sameTrack])];
+				const verbund = einordnungVerbund(model, key);
+				const anchor = verbund.anchor;
+				const keys = [...new Set([...verbund.keys, ...sameTrack])];
 				const bySide = { kilometer: [], right: [], left: [], unknown: [] };
 				for (const candidateKey of keys) {
 					const placed = get(candidateKey);
@@ -42022,6 +42085,26 @@ xlsx/xlsx.mjs:
 				const anchorSide = anchor.side in bySide ? anchor.side : "unknown";
 				if (!bySide[anchorSide].includes(anchor.key)) bySide[anchorSide].unshift(anchor.key);
 				const all = [...new Set([anchor.key, ...keys])];
+				// Varianten leave the picture, with what belongs to them alone. Not
+				// on "unknown": Gleise without a side are different Gleise, not
+				// alternatives of one.
+				const varianten = [];
+				for (const side of ["kilometer", "right", "left"]) {
+					const alignments = bySide[side].map(get).filter((placed) => placed?.kind === "alignment");
+					if (alignments.length < 2) continue;
+					const { hidden } = einordnungVarianten(alignments, anchor.key);
+					if (!hidden.length) continue;
+					const gone = new Set(hidden.map((item) => item.key));
+					const shownKeys = new Set(alignments.filter((placed) => !gone.has(placed.key)).map((placed) => placed.key));
+					bySide[side] = bySide[side].filter((candidateKey) => {
+						if (gone.has(candidateKey)) return false;
+						const placed = get(candidateKey);
+						if (!placed || placed.kind === "alignment") return true;
+						const refKeys = placed.refKeys ?? [];
+						return !refKeys.some((refKey) => gone.has(refKey)) || refKeys.some((refKey) => shownKeys.has(refKey));
+					});
+					for (const item of hidden) varianten.push({ ...item, side });
+				}
 				const first = (side, kind) => bySide[side].map(get).find((placed) => placed?.kind === kind)?.key ?? null;
 				const kmAlignment = first("kilometer", "alignment");
 				const rightAlignment = first("right", "alignment");
@@ -42054,7 +42137,7 @@ xlsx/xlsx.mjs:
 				return {
 					anchor: anchor.key, keys: all, bySide, first, segments, selectedRange, kmAlignment,
 					rightPresent: bySide.right.length > 0, leftPresent: bySide.left.length > 0,
-					referenceRequired, equations,
+					referenceRequired, equations, varianten,
 					hasUnknown: bySide.unknown.length > 0,
 					missingKilometerLine: referenceRequired && !kmAlignment,
 				};
@@ -42097,17 +42180,40 @@ xlsx/xlsx.mjs:
 				const entries = allViewerEntries();
 				const keyOf = einordnungKey;
 				const byKey = new Map(entries.map((entry) => [keyOf(entry), entry]));
-				const relations = [...loadedFiles.flatMap((loaded) => loaded.relations), ...stemPairedRelations()];
-				const refsById = new Map();
-				for (const relation of relations) {
-					if (relation.type !== "stationReference") continue;
-					if (!refsById.has(relation.fromId)) refsById.set(relation.fromId, []);
-					refsById.get(relation.fromId).push(relation.toId);
+				// References are resolved inside the file that states them: ids are
+				// positions in a file (alignment_gnd_coordgeom_146), and two
+				// deliveries use one id for different Gleise (Billwerder
+				// 6100_246-289: km 247-282 in one, km 284-289 in the other). Only a
+				// reference that finds nothing in its own file looks further; the
+				// VermEsn pairing by file stem is across files by design.
+				const refKeys = new Map(entries.map((entry) => [entry, []]));
+				const everywhere = new Map();
+				for (const entry of entries) {
+					if (!everywhere.has(entry.item.id)) everywhere.set(entry.item.id, []);
+					everywhere.get(entry.item.id).push(entry);
 				}
+				const link = (from, to) => { const list = refKeys.get(from); const key = keyOf(to); if (!list.includes(key)) list.push(key); };
+				for (const loaded of loadedFiles) {
+					const here = new Map();
+					for (const entry of loaded.objects) {
+						if (!here.has(entry.item.id)) here.set(entry.item.id, []);
+						here.get(entry.item.id).push(entry);
+					}
+					for (const relation of loaded.relations ?? []) {
+						if (relation.type !== "stationReference") continue;
+						const sources = here.get(relation.fromId) ?? everywhere.get(relation.fromId) ?? [];
+						const targets = here.get(relation.toId) ?? everywhere.get(relation.toId) ?? [];
+						for (const from of sources) for (const to of targets) if (from !== to) link(from, to);
+					}
+				}
+				for (const relation of stemPairedRelations()) {
+					for (const from of everywhere.get(relation.fromId) ?? []) for (const to of everywhere.get(relation.toId) ?? []) if (from !== to) link(from, to);
+				}
+				const homeOf = new Map(loadedFiles.map((loaded) => [loaded, loaded.objects.find((candidate) => candidate.item.kind === "alignment") ?? null]));
 				const facts = entries.map((entry) => {
-					const related = relatedDiagramEntries(entry);
 					const sequence = gndSequenceForEntry(entry);
 					const frame = geoFrameInfo(entry);
+					const home = homeOf.get(entry.loaded);
 					return {
 						key: keyOf(entry), kind: entry.item.kind, name: objectListName(entry), file: entry.loaded?.fileName ?? "",
 						family: sourceFamilyForEntry(entry), label: familyForEntry(entry), route: routeForEntry(entry) ?? "",
@@ -42116,9 +42222,8 @@ xlsx/xlsx.mjs:
 						lsys: effectiveLsys(entry) || null, hsys: systemsForEntry(entry).hsys || null,
 						frame: frame ? { track: frame.track, direction: frame.direction, segment: frame.segment ?? null, source: frame.source, lsys: frame.lsys ?? null } : null,
 						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
-						id: entry.item.id, refIds: [...new Set(refsById.get(entry.item.id) ?? [])],
+						refKeys: refKeys.get(entry), homeKey: home ? keyOf(home) : null,
 						role: sevenLineRole(entry), section: explicitSectionForEntry(entry) || "",
-						linked: related.entries.map(keyOf), anchorKey: keyOf(related.anchor),
 					};
 				});
 				einordnungCache = { model: einordnen(facts), entries: byKey, stamp: einordnungStamp };
@@ -42139,7 +42244,7 @@ xlsx/xlsx.mjs:
 				const model = einordnung();
 				const umfeld = einordnungUmfeld(model, einordnungKey(entry));
 				if (!umfeld) {
-					return { anchor: entry, entries: [entry], bySide: { kilometer: [], right: [], left: [], unknown: [entry] }, first: () => null, segments: () => [], selectedRange: stationRangeForEntry(entry), kmAlignment: null, rightPresent: false, leftPresent: false, referenceRequired: false, equations: null, hasUnknown: true, missingKilometerLine: false };
+					return { anchor: entry, entries: [entry], bySide: { kilometer: [], right: [], left: [], unknown: [entry] }, first: () => null, segments: () => [], selectedRange: stationRangeForEntry(entry), kmAlignment: null, rightPresent: false, leftPresent: false, referenceRequired: false, equations: null, varianten: [], hasUnknown: true, missingKilometerLine: false };
 				}
 				const get = (key) => einordnungEintrag(key);
 				const entries = umfeld.keys.map(get).filter(Boolean);
@@ -42150,6 +42255,7 @@ xlsx/xlsx.mjs:
 					anchor: get(umfeld.anchor) ?? entry, entries, bySide, first, segments, selectedRange: umfeld.selectedRange,
 					kmAlignment: get(umfeld.kmAlignment), rightPresent: umfeld.rightPresent, leftPresent: umfeld.leftPresent,
 					referenceRequired: umfeld.referenceRequired, equations: get(umfeld.equations),
+					varianten: umfeld.varianten.map((item) => ({ side: item.side, entry: get(item.key), wegen: get(item.wegen) })).filter((item) => item.entry && item.wegen),
 					hasUnknown: umfeld.hasUnknown, missingKilometerLine: umfeld.missingKilometerLine,
 				};
 			}
@@ -42258,7 +42364,7 @@ xlsx/xlsx.mjs:
 			// block -- its Trasse (Krümmung) with the Überhöhung and the Gradiente
 			// directly under it -- Richtungsgleis (rechts) before Gegenrichtungsgleis.
 			function deriveTrassenplanBands(assignment) {
-				const { first, segments, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations } = assignment;
+				const { first, segments, selectedRange, kmAlignment, rightPresent, leftPresent, referenceRequired, equations, varianten = [] } = assignment;
 				const definitions = [
 					["kilometer", "alignment", "Kilometerlinie · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
 					["right", "alignment", "Rechtes Gleis · Krümmung κ [1/m], rechts +", "diagram-curvature", null],
@@ -42289,6 +42395,20 @@ xlsx/xlsx.mjs:
 						.filter((ramp) => !selectedRange || (ramp.x1 <= selectedRange.to + 5 && ramp.x2 >= selectedRange.from - 5));
 					let overlay;
 					let footnote;
+					// Varianten of this side that stand back: named under the figure,
+					// with what covers them and how to see them.
+					const hiddenHere = kind !== "alignment" ? [] : varianten.filter((item) => item.side === side);
+					if (hiddenHere.length) {
+						const rangeText = (entry) => { const range = stationRangeForEntry(entry); return range ? ` (${station(range.from).trim()} – ${station(range.to).trim()})` : ""; };
+						const sameName = (item) => objectListName(item.entry) === objectListName(item.wegen);
+						footnote = {
+							head: `${label.split(" · ")[0]} · Varianten (${hiddenHere.length} nicht im Bild)`,
+							lines: [
+								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${sameName(item) ? `zweite Lieferung desselben Objekts (${item.entry.loaded?.fileName ?? "?"})` : `belegt denselben Abschnitt wie ${objectListName(item.wegen)}`}`),
+								`Im Bild steht je Abschnitt eine Trasse: die gewählte, sonst die längste. Eine andere Variante anwählen, dann steht sie im Bild · Maß: Überdeckung ab ${VARIANTE_MIN_OVERLAP_M} m und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren`,
+							],
+						};
+					}
 					if (ramps.length) {
 						const gleis = label.split(" · ")[0];
 						footnote = cantRampFootnote(gleis, ramps, points, (value) => station(value).trim());
@@ -42426,7 +42546,7 @@ xlsx/xlsx.mjs:
 					...deriveUnknownSpeedBands(assignment),
 				];
 				const { anchor, entries, hasUnknown, missingKilometerLine } = assignment;
-				return { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote: sevenLineSideNote(assignment) };
+				return { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote: sevenLineSideNote(assignment), varianten: assignment.varianten ?? [] };
 			}
 
 			// SVG <text> never wraps. Band labels live in a 238-unit gutter and the
@@ -43182,7 +43302,7 @@ xlsx/xlsx.mjs:
 					gwbAbschnittCsvButton.disabled = true;
 					return;
 				}
-				const { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote } = sevenLineTracks(entry);
+				const { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote, varianten } = sevenLineTracks(entry);
 				const ivmgTracks = bands.filter((track) => !track.className.startsWith("diagram-speed"));
 				const gwbTracks = bands.filter((track) => track.className.startsWith("diagram-speed"));
 				const fzkTracks = diagramKind === "fzk" ? deriveFahrzeitBands(gwbTracks) : [];
@@ -43335,6 +43455,7 @@ xlsx/xlsx.mjs:
 								`${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`,
 								sideNote.placed,
 								sideNote.confirmed,
+								varianten.length ? `${varianten.length} ${varianten.length === 1 ? "Variante" : "Varianten"} nicht im Bild` : null,
 							].filter(Boolean).join(" · ");
 						})();
 				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
@@ -46016,6 +46137,14 @@ xlsx/xlsx.mjs:
 				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
 					const lane = document.createElement("div");
 					const laneEntries = entries.filter((entry) => einordnungRolle(entry) === groupDef.role);
+					// Trassen of one Spur that cover each other are Varianten; the ones
+					// that stand back in a picture until they are selected get a mark.
+					const standBack = new Map();
+					if (groupDef.kind === "alignment" && laneEntries.length > 1) {
+						const model = einordnung();
+						const placed = laneEntries.map((entry) => model.objects.get(einordnungKey(entry))).filter(Boolean);
+						for (const item of einordnungVarianten(placed, null).hidden) standBack.set(item.key, item.wegen);
+					}
 					lane.className = `outbox-lane${laneEntries.includes(current) ? " contains-selection" : ""}`;
 					const title = document.createElement("div");
 					title.className = "outbox-lane-title";
@@ -46052,6 +46181,14 @@ xlsx/xlsx.mjs:
 								button.append(mark);
 							}
 						}
+						const coveredBy = standBack.get(einordnungKey(entry));
+						if (coveredBy) {
+							const mark = document.createElement("span");
+							mark.className = "side-witness variante";
+							mark.textContent = "Variante";
+							button.append(mark);
+							button.title = `Variante: belegt denselben Abschnitt wie ${objectListName(einordnungEintrag(coveredBy))}. Im Bild steht die längste Trasse, bis diese hier gewählt wird.\n${button.title}`;
+						}
 						entry.button = button;
 						button.addEventListener("click", () => selectObject(entry, button));
 						button.addEventListener("dragstart", (event) => {
@@ -46067,7 +46204,7 @@ xlsx/xlsx.mjs:
 						// The eye sits on the Trasse; a Gradiente, Überhöhung or
 						// Stationsgleichung has no line of its own on the map and dims
 						// with its Trasse.
-						const trasse = entry.item.kind === "alignment" ? entry : relatedDiagramEntries(entry).anchor;
+						const trasse = entry.item.kind === "alignment" ? entry : einordnungEintrag(einordnung().objects.get(einordnungKey(entry))?.trasse);
 						objectRow.append(checkbox, button);
 						if (entry.item.kind === "alignment") objectRow.append(eyeButton(entry));
 						else objectRow.append(document.createElement("span"));
@@ -47356,8 +47493,9 @@ xlsx/xlsx.mjs:
 			function isGndEntry(entry) {
 				return entry.parser === "gndEdit" || Boolean(gndSequenceForEntry(entry));
 			}
+			// What goes with a Trasse, as the Einordnung has it.
 			function inboxDependents(alignment) {
-				return referencingEntries(alignment).filter((candidate) => candidate.item.kind !== "alignment");
+				return (einordnung().objects.get(einordnungKey(alignment))?.dependents ?? []).map(einordnungEintrag).filter(Boolean);
 			}
 			function inboxRowsAll() {
 				const model = einordnung();

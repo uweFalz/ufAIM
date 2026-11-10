@@ -14,23 +14,23 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
-// A fact with defaults; `linked` defaults to itself, as relatedDiagramEntries gives for a lone object.
+// A fact with defaults: no references, no home, no frame.
 const fact = (key, kind, extra = {}) => ({
 	key, kind, name: key, file: `${key}.f`, family: { alignment: "TRA", profile: "GRA", cant: "EU", staEq: "EK" }[kind], label: kind, route: "",
 	gnd: false, gndSequence: false, gndFamily: null, gndRoute: null, organized: false, hidden: false, lsys: null, hsys: null,
-	frame: null, side: "unknown", range: null, id: key, refIds: [], role: "UNASSIGNED", section: "", linked: [key], anchorKey: key, ...extra,
+	frame: null, side: "unknown", range: null, refKeys: [], homeKey: null, role: "UNASSIGNED", section: "", ...extra,
 });
 const frame = (track, direction, source, segment = null, lsys = null) => ({ track, direction, segment, source, lsys });
 
 test("Zugehörigkeit: the first referenced Trasse owns a Gradiente; without one it is an orphan; the pile holds Trassen and orphans", () => {
 	const model = einordnen([
 		fact("T1", "alignment"),
-		fact("G1", "profile", { refIds: ["T1"], linked: ["T1", "G1"], anchorKey: "T1" }),
-		fact("U1", "cant", { refIds: ["T1"], linked: ["T1", "U1"], anchorKey: "T1" }),
+		fact("G1", "profile", { refKeys: ["T1"] }),
+		fact("U1", "cant", { refKeys: ["T1"] }),
 		fact("G2", "profile"),
 		fact("T2", "alignment", { organized: true, frame: frame("5500", "rechts", "vermesn-name", "074-082"), side: "right" }),
 	]);
@@ -42,16 +42,21 @@ test("Zugehörigkeit: the first referenced Trasse owns a Gradiente; without one 
 	assert.deepEqual(json([...model.strecken.keys()]), ["5500"]);
 	assert.deepEqual(json(model.strecken.get("5500").sides.right), ["T2"]);
 	assert.deepEqual(json(einordnungEigene(model, "T1")), ["G1", "U1"]);
-	// GND repeats ids across files: a Gradiente belongs to every Trasse of that id, the first stands for it
+	// two deliveries reuse an id for different Gleise: the Gradiente belongs to the Trasse of its own file only
 	const twice = einordnen([
-		fact("A|T", "alignment", { id: "T", file: "A.MDB" }),
-		fact("B|T", "alignment", { id: "T", file: "B.MDB" }),
-		fact("B|G", "profile", { id: "G", file: "B.MDB", refIds: ["T"] }),
+		fact("A|T", "alignment", { file: "A.MDB" }),
+		fact("B|T", "alignment", { file: "B.MDB" }),
+		fact("B|G", "profile", { file: "B.MDB", refKeys: ["B|T"] }),
 	]);
-	assert.equal(twice.objects.get("B|G").trasse, "A|T");
-	assert.deepEqual(json(twice.objects.get("A|T").dependents), ["B|G"]);
+	assert.equal(twice.objects.get("B|G").trasse, "B|T");
+	assert.deepEqual(json(twice.objects.get("A|T").dependents), []);
 	assert.deepEqual(json(twice.objects.get("B|T").dependents), ["B|G"]);
 	assert.deepEqual(json(twice.pile), ["A|T", "B|T"]);
+	// a VermEsn pair by file stem, the TRA loaded twice: the GRA belongs to both, the first stands for it
+	const paired = einordnen([fact("T#1", "alignment"), fact("T#2", "alignment"), fact("G", "profile", { refKeys: ["T#1", "T#2"] })]);
+	assert.equal(paired.objects.get("G").trasse, "T#1");
+	assert.deepEqual(json(paired.objects.get("T#2").dependents), ["G"]);
+	assert.deepEqual(json(paired.referrers.get("T#1")), ["G"]);
 });
 
 test("Umfeld by VermEsn name: Kilometerlinie, both sides and their own Gradiente/Überhöhung; a Bahnhofsgleis stays unknown", () => {
@@ -59,16 +64,13 @@ test("Umfeld by VermEsn name: Kilometerlinie, both sides and their own Gradiente
 	const facts = [
 		named("S", "alignment", "kilometer", "Kilometerlinie", { range: { from: 73860, to: 82361 } }),
 		named("R", "alignment", "right", "rechts", { range: { from: 73900, to: 82300 } }),
-		named("RG", "profile", "right", "rechts", { refIds: ["R"], linked: ["R", "RG"], anchorKey: "R", hsys: "NHN" }),
-		named("RU", "cant", "right", "rechts", { refIds: ["R"], linked: ["R", "RU"], anchorKey: "R" }),
+		named("RG", "profile", "right", "rechts", { refKeys: ["R"], hsys: "NHN" }),
+		named("RU", "cant", "right", "rechts", { refKeys: ["R"] }),
 		named("L", "alignment", "left", "links", { range: { from: 73900, to: 82300 } }),
-		named("LG", "profile", "left", "links", { refIds: ["L"], linked: ["L", "LG"], anchorKey: "L" }),
-		named("EK", "staEq", "kilometer", "Kilometerlinie", { refIds: ["S"], linked: ["S", "EK"], anchorKey: "S" }),
+		named("LG", "profile", "left", "links", { refKeys: ["L"] }),
+		named("EK", "staEq", "kilometer", "Kilometerlinie", { refKeys: ["S"] }),
 		named("Gls404", "alignment", "unknown", "Bahnhofsgleis 404", { organized: false }),
 	];
-	facts.find((f) => f.key === "R").linked = ["R", "RG", "RU"];
-	facts.find((f) => f.key === "L").linked = ["L", "LG"];
-	facts.find((f) => f.key === "S").linked = ["S", "EK"];
 	const model = einordnen(facts);
 	const umfeld = einordnungUmfeld(model, "R");
 	assert.equal(umfeld.anchor, "R");
@@ -108,8 +110,8 @@ test("Umfeld by GND: same Strecke only with the same Lage and an overlapping km 
 
 test("a singleton (Weiche without Strecke) shows only its own relations; two alignments on one side pair by their own references", () => {
 	const facts = [
-		fact("W", "alignment", { linked: ["W", "WG"], side: "unknown" }),
-		fact("WG", "profile", { refIds: ["W"], linked: ["W", "WG"], anchorKey: "W" }),
+		fact("W", "alignment", { side: "unknown" }),
+		fact("WG", "profile", { refKeys: ["W"] }),
 		fact("X", "alignment", { side: "unknown" }),
 	];
 	const model = einordnen(facts);
@@ -119,17 +121,22 @@ test("a singleton (Weiche without Strecke) shows only its own relations; two ali
 	assert.equal(umfeld.referenceRequired, false, "no Streckennummer, no Kilometerlinie demanded");
 	// SCx: two Gegenrichtungsgleise on the left, each with its own Gradiente
 	const two = einordnen([
-		fact("K", "alignment", { organized: true, side: "kilometer", frame: frame("1720", "Kilometerlinie", "landXML-7L"), linked: ["K", "L1", "L2", "G1", "G2"] }),
-		fact("L1", "alignment", { organized: true, side: "left", frame: frame("1720", "links", "landXML-7L"), range: { from: 210700, to: 223100 }, refIds: ["K"], linked: ["K", "L1", "L2", "G1", "G2"], anchorKey: "L1" }),
-		fact("L2", "alignment", { organized: true, side: "left", frame: frame("1720", "links", "landXML-7L"), range: { from: 228600, to: 273000 }, refIds: ["K"], linked: ["K", "L1", "L2", "G1", "G2"], anchorKey: "L2" }),
-		fact("G1", "profile", { organized: true, side: "left", refIds: ["L1"], linked: ["K", "L1", "L2", "G1", "G2"], anchorKey: "L1" }),
-		fact("G2", "profile", { organized: true, side: "left", refIds: ["L2"], linked: ["K", "L1", "L2", "G1", "G2"], anchorKey: "L2" }),
+		fact("K", "alignment", { organized: true, side: "kilometer", frame: frame("1720", "Kilometerlinie", "landXML-7L") }),
+		fact("L1", "alignment", { organized: true, side: "left", frame: frame("1720", "links", "landXML-7L"), range: { from: 210700, to: 223100 }, refKeys: ["K"] }),
+		fact("L2", "alignment", { organized: true, side: "left", frame: frame("1720", "links", "landXML-7L"), range: { from: 228600, to: 273000 }, refKeys: ["K"] }),
+		fact("G1", "profile", { organized: true, side: "left", refKeys: ["L1"] }),
+		fact("G2", "profile", { organized: true, side: "left", refKeys: ["L2"] }),
 	]);
 	assert.deepEqual(json(einordnungUmfeld(two, "L1").segments("left")), [
 		{ key: "L1", range: { from: 210700, to: 223100 }, profile: "G1", cant: null },
 		{ key: "L2", range: { from: 228600, to: 273000 }, profile: "G2", cant: null },
 	], "no first-of-kind fallback with two alignments on a side");
 	assert.equal(einordnungUmfeld(two, "L1").referenceRequired, false, "landXML with one Gegenrichtungsgleis only: no two-track demand");
+	assert.deepEqual(json(einordnungUmfeld(two, "G2").keys), ["L2", "K", "L1", "G1", "G2"], "one Gleis shows the whole 7L: the walk starts at the Kilometerlinie it references");
+	assert.equal(einordnungUmfeld(two, "G2").anchor, "L2");
+	// an object that references nothing falls back to the first Trasse of its file
+	const lone = einordnen([fact("T", "alignment"), fact("E", "staEq", { homeKey: "T" })]);
+	assert.equal(einordnungUmfeld(lone, "E").anchor, "T");
 });
 
 test("Suchtext carries the states as words", () => {
@@ -184,4 +191,73 @@ test("Ordnung: a Strecke lists the Abschnitte of each Lage, each with its Spuren
 	assert.deepEqual(json(strecke.sides.right), ["R", "RG", "R2", "D"]);
 	assert.deepEqual(json(model.strecken.get("Bf Auw").abschnitte), [{ sectionId: "", keys: ["other"], range: null, lsys: "LSYS?", spuren: { curvatureLeft: ["other"] } }]);
 	assert.deepEqual(json(model.pile), ["naked"]);
+});
+
+test("Überdeckung: a seam is no Variante, a shared stretch is", () => {
+	assert.equal(VARIANTE_MIN_OVERLAP_M, 20);
+	assert.equal(VARIANTE_MIN_SHARE, 0.2);
+	const r = (from, to) => ({ from, to });
+	assert.equal(einordnungUeberdeckt(r(0, 1000), r(1000, 2000)), false, "pieces that meet");
+	assert.equal(einordnungUeberdeckt(r(0, 1000), r(990, 2000)), false, "a 10 m lap at a Weiche");
+	assert.equal(einordnungUeberdeckt(r(0, 10000), r(9900, 20000)), false, "100 m of two 10 km pieces is under a fifth of the shorter");
+	assert.equal(einordnungUeberdeckt(r(139237, 150517), r(139237, 142044)), true, "Bestand and Neuplanung");
+	assert.equal(einordnungUeberdeckt(r(0, 80), r(0, 88)), true, "two short Gleise over the same stations");
+	assert.equal(einordnungUeberdeckt(r(0, 100), null), false);
+});
+
+test("Varianten: the selected Trasse stands, else the longest; what it covers stands back, the rest stays", () => {
+	const t = (key, from, to) => ({ key, range: { from, to } });
+	const bestand = t("Bestand", 139237, 150517);
+	const n139 = t("N139", 139237, 142044);
+	const n142 = t("N142", 142300, 143400);
+	const mit = t("mitWeg", 147700, 148700);
+	const ohne = t("ohneWeg", 147700, 148700);
+	const side = [bestand, n139, n142, mit, ohne];
+	assert.deepEqual(json(einordnungVarianten(side, null)), { shown: ["Bestand"], hidden: [{ key: "N139", wegen: "Bestand" }, { key: "N142", wegen: "Bestand" }, { key: "mitWeg", wegen: "Bestand" }, { key: "ohneWeg", wegen: "Bestand" }] });
+	assert.deepEqual(json(einordnungVarianten(side, "N142")), { shown: ["N139", "N142", "mitWeg"], hidden: [{ key: "Bestand", wegen: "N142" }, { key: "ohneWeg", wegen: "mitWeg" }] }, "the Neuplanung chain without the Bestand; of two equal ones the first delivered");
+	assert.deepEqual(json(einordnungVarianten([t("L1", 210700, 223100), t("L2", 228600, 273000)], "L2")), { shown: ["L1", "L2"], hidden: [] }, "consecutive pieces are no Varianten");
+	assert.deepEqual(json(einordnungVarianten([{ key: "a", range: null }, { key: "b", range: null }], null)), { shown: ["a", "b"], hidden: [] }, "without a range nothing is known to overlap");
+	const on = (key, track) => ({ key, range: { from: 0, to: 1500 }, frame: { track } });
+	assert.deepEqual(json(einordnungVarianten([on("km3300", "3300"), on("km3302", "3302")], null)), { shown: ["km3300", "km3302"], hidden: [] }, "Trassen of two Strecken are no Varianten, whatever their km");
+	assert.deepEqual(json(einordnungVarianten([on("a", "3300"), on("b", "3300")], "b")), { shown: ["b"], hidden: [{ key: "a", wegen: "b" }] });
+});
+
+test("Umfeld with Varianten: the hidden Trasse takes its own Gradiente along; each copy of a doubled delivery keeps its own", () => {
+	const f = (key, kind, extra = {}) => fact(key, kind, { organized: true, side: "right", frame: frame("2631", "rechts", "vermesn-name", "139", "CR0"), lsys: "CR0", ...extra });
+	const facts = [
+		f("K", "alignment", { side: "kilometer", range: { from: 139237, to: 150517 } }),
+		f("B", "alignment", { range: { from: 139237, to: 150517 } }),
+		f("BG", "profile", { refKeys: ["B"] }),
+		f("N", "alignment", { range: { from: 139237, to: 142044 } }),
+		f("NG", "profile", { refKeys: ["N"] }),
+	];
+	const model = einordnen(facts);
+	const forBestand = einordnungUmfeld(model, "B");
+	assert.deepEqual(json(forBestand.bySide.right), ["B", "BG"]);
+	assert.deepEqual(json(forBestand.varianten), [{ key: "N", wegen: "B", side: "right" }]);
+	assert.deepEqual(json(forBestand.segments("right")), [{ key: "B", range: { from: 139237, to: 150517 }, profile: "BG", cant: null }]);
+	assert.ok(forBestand.keys.includes("N"), "the Variante is still linked, only not in the picture");
+	const forNeu = einordnungUmfeld(model, "NG");
+	assert.deepEqual(json(forNeu.bySide.right), ["N", "NG"], "selecting the Neuplanung's Gradiente shows the Neuplanung");
+	assert.deepEqual(json(forNeu.varianten), [{ key: "B", wegen: "N", side: "right" }]);
+	assert.deepEqual(json(einordnungUmfeld(model, "K").bySide.right), ["B", "BG"], "from the Kilometerlinie the longest stands");
+	// one Gleis in two deliveries: each copy with the Gradiente of its own file
+	const doubled = einordnen([
+		f("A|T", "alignment", { range: { from: 0, to: 5000 } }),
+		f("A|G", "profile", { refKeys: ["A|T"] }),
+		f("B|T", "alignment", { range: { from: 0, to: 5000 } }),
+		f("B|G", "profile", { refKeys: ["B|T"] }),
+	]);
+	assert.deepEqual(json(einordnungUmfeld(doubled, "A|T").bySide.right), ["A|T", "A|G"]);
+	assert.deepEqual(json(einordnungUmfeld(doubled, "A|T").varianten), [{ key: "B|T", wegen: "A|T", side: "right" }]);
+	assert.deepEqual(json(einordnungUmfeld(doubled, "B|T").bySide.right), ["B|T", "B|G"]);
+	assert.deepEqual(json(einordnungUmfeld(doubled, "B|T").segments("right")), [{ key: "B|T", range: { from: 0, to: 5000 }, profile: "B|G", cant: null }]);
+	// a Gradiente both copies reference (VermEsn pair, TRA loaded twice) stays with the copy shown
+	const shared = einordnen([f("T#1", "alignment", { range: { from: 0, to: 900 } }), f("T#2", "alignment", { range: { from: 0, to: 900 } }), f("G", "profile", { refKeys: ["T#1", "T#2"] })]);
+	assert.deepEqual(json(einordnungUmfeld(shared, "T#2").bySide.right), ["T#2", "G"]);
+	// Gleise without a side are not Varianten of each other
+	const station = (key, to) => fact(key, "alignment", { range: { from: 0, to }, frame: frame("5500", "Bahnhofsgleis", "vermesn-name", "074-082", "CR0"), lsys: "CR0" });
+	const unknown = einordnen([station("G1", 80), station("G2", 88)]);
+	assert.deepEqual(json(einordnungUmfeld(unknown, "G1").varianten), []);
+	assert.deepEqual(json(einordnungUmfeld(unknown, "G1").bySide.unknown), ["G1", "G2"]);
 });
