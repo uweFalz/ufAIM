@@ -93,6 +93,12 @@
 	<section data-mode="1" aria-labelledby="h-halfwave" hidden>
 		<h2 id="h-halfwave">Halbwelle aus Funktionen</h2>
 		<div class="grid">
+			<div><label for="klM">Klauder-Familie: m</label><input type="number" id="klM" min="0" max="24" step="1" value="2"><small>Potenz von (1+x) und (1−x)</small></div>
+			<div><label for="klN">n</label><input type="number" id="klN" min="0" max="24" step="1" value="3"><small>Potenz von x</small></div>
+			<div><button id="klApply" class="ghost">Einsetzen</button><small>κ″ ∼ (1+x)<sup>m</sup>·x<sup>n</sup>·(1−x)<sup>m</sup> auf [−1, 0]</small></div>
+		</div>
+		<p id="klMessage" class="message" role="status"></p>
+		<div class="grid">
 			<div><label for="hwCombine">Verknüpfung</label><select id="hwCombine"><option value="add">Summe der Glieder</option><option value="mul">Produkt der Glieder</option></select></div>
 			<div><label for="hwSource">Das Ergebnis beschreibt</label><select id="hwSource"><option value="kappa">κ</option><option value="kappa1">κ′</option><option value="kappa2">κ″</option></select></div>
 			<div><label for="hwQuantity">Größe</label><select id="hwQuantity"><option value="curvature">Krümmung</option><option value="cant">Überhöhung</option></select></div>

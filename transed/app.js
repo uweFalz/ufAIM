@@ -11,6 +11,8 @@ import {
 	couplingPlotSvg,
 	createTransitionLibraryService,
 	formatRange,
+	klauderName,
+	klauderTerms,
 	functionPlotSvg,
 	plotParameterAt,
 	transitionPlotSvg,
@@ -451,6 +453,16 @@ el("hwTerms").addEventListener("click", (event) => {
 	renderTermRows(); renderHalfWave();
 });
 el("hwSave").addEventListener("click", saveHalfWave);
+el("klApply").addEventListener("click", () => {
+	// The generator only fills the composer: the user sees the three factors
+	// and can change them before saving.
+	const built = klauderTerms({ m: el("klM").value, n: el("klN").value });
+	if (!built.ok) { say(el("klMessage"), "Nicht eingesetzt: m und n sind ganze Zahlen von 0 bis 24.", "error"); return; }
+	Object.assign(state.hw, { combine: built.combine, source: built.source, terms: built.terms.map((term) => ({ ...term })) });
+	el("hwId").value = klauderName(built);
+	say(el("klMessage"), `Eingesetzt: m = ${built.m}, n = ${built.n}. Das Ergebnis beschreibt κ″.`, "ok");
+	renderTermRows(); renderHalfWave();
+});
 
 el("export").addEventListener("click", () => {
 	const url = URL.createObjectURL(new Blob([JSON.stringify(service.exportUserLibrary(), null, "\t")], { type: "application/json" }));

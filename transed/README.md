@@ -18,7 +18,9 @@ A page of its own for the transitionDB, independent of the app shell.
 - Mode 1, halfWave: a sum or product of terms, each
   `factor · function(interval) ^ power` with its own interval; the result is
   declared as κ, κ′ or κ″ and as curvature or cant. Stored as `PROTO_<id>` and
-  `HW_<id>`.
+  `HW_<id>`. The Klauder family is offered as a generator: two whole numbers
+  m and n fill the composer with κ″ ∼ (1+x)^m · x^n · (1−x)^m on [−1, 0]
+  (`src/services/transition-library/klauderFamily.js`); the terms stay editable.
 - Mode 2, transition: halfWave in and out from all halfWaves, w1 and w2 by
   slider, number or dragging the cut lines; stored as a transition.
 

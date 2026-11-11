@@ -1,0 +1,19 @@
+{
+  "tag": "served",
+  "message23": "Eingesetzt: m = 2, n = 3. Das Ergebnis beschreibt κ″.",
+  "equalsBuiltIn": 0,
+  "refused": "Nicht eingesetzt: m und n sind ganze Zahlen von 0 bis 24.",
+  "message34": "Eingesetzt: m = 3, n = 4. Das Ergebnis beschreibt κ″.",
+  "rows": "[[\"1\",\"ROOTp1\",\"-1\",\"0\",\"3\"],[\"1\",\"IDENT\",\"-1\",\"0\",\"4\"],[\"1\",\"ROOTm1\",\"-1\",\"0\",\"3\"]]",
+  "source": "kappa2",
+  "combine": "mul",
+  "id": "KLAUDER_3_4",
+  "legend": "κ 0 … 1κ′ 0 … 1.66κ″ 0 … 4.15Steigung am Anfang 0.000, am Ende 1.662erklärt als Krümmung",
+  "saved": "Gespeichert: PROTO_KLAUDER_3_4, HW_KLAUDER_3_4.",
+  "mode2": {
+    "first": 0,
+    "last": 1,
+    "finite": true
+  },
+  "problems": []
+}
