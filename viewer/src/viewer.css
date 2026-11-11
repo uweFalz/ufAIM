@@ -1195,6 +1195,15 @@
 			#tables .pile-bundle > summary button:hover { background: color-mix(in srgb, Highlight 14%, Canvas); }
 			#tables .pile-bundle > summary .pile-bundle-take { border-color: var(--accent); color: var(--accent); }
 			#tables .object-row > button.object-unlink { color: var(--secondary); font-size: var(--fs-1); }
+			/* The Sortiervorschlag of a Bündel and the line that takes the last
+			   take-over back: the same shape as a row's proposal, across the pile. */
+			.bundle-suggestion, .pile-undo { padding-left: var(--sp-3); background: color-mix(in srgb, Canvas 95%, var(--accent)); }
+			.bundle-suggestion > span { flex: 1 1 12rem; line-height: 1.6; }
+			.bundle-suggestion strong { color: var(--ink, inherit); font-weight: 600; }
+			#tables .bundle-suggestion input.bundle-strecke { width: 4.2rem; font: inherit; padding: 0 0.3rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: inherit; }
+			#tables .bundle-suggestion button, #tables .pile-undo button { border-color: var(--accent); color: var(--accent); }
+			#tables .bundle-suggestion button:disabled { opacity: 0.45; cursor: default; }
+			.bundle-rest { padding: var(--sp-1) var(--sp-3) var(--sp-2); border-bottom: 1px solid var(--hairline); font-size: var(--fs-1); color: var(--secondary); }
 			#multi2d path.map-object.in-bundle { stroke-width: 5; stroke: var(--accent); opacity: 1; }
 			.outbox-lane-placeholder {
 				margin: 0.3rem 0 0;

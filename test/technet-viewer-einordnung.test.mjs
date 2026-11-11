@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -437,3 +437,59 @@ test("Bündel: the longest line leads, what runs along it within reach belongs t
 	assert.deepEqual(json(between.map((b) => [b.leader, b.members])), [["A", ["x"]], ["B", []]]);
 });
 
+
+test("Sortiervorschlag: the Strecke from the Kilometerlinie, the side from the Lage beside it; what the Lage cannot say stays", () => {
+	// the Strecke a name states: four digits standing alone
+	assert.deepEqual(["6100_247-289_DBREF2016_KM", "Ka_5810S_km-", "Str_5801_R_184,0-190,0_(ER0_O00)", "3250_4-11_S_CR0_260402", "Kilometrierungslinie 1720"].map(einordnungStreckeAusName), ["6100", "5810", "5801", "3250", "1720"]);
+	assert.deepEqual(["AHBI_Gl_041_DBREF2016", "A705904R", "Gleis2_Bf_Auw", "", null].map(einordnungStreckeAusName), ["", "", "", "", ""], "not the year in DBREF2016, not six digits");
+	const g = (key, verdict, route, declared = "unknown", nameSide = null) => ({ key, verdict, route, declared, nameSide });
+	const KM = "6100_247-289_DBREF2016_KM";
+	const plan = einordnungBuendelVorschlag([
+		g("km", "self", KM, "kilometer"),
+		g("re", "right", KM, "unknown", "right"),
+		g("li", "left", KM, "unknown", "left"),
+		g("Gl 041", "left", KM),
+		g("verdreht", "left", KM, "unknown", "right"),
+		g("Weichenstraße", "crossing", KM),
+		g("Variante", "axis", KM),
+		g("fern", "none", ""),
+		g("Nachbar", "right", "5500"),
+		g("Nachbar R", "axis", "5500", "right"),
+	]);
+	assert.deepEqual(json(plan.ziele.map((ziel) => [ziel.id, ziel.track, ziel.trackAusName, ziel.bezug, ziel.counts])), [
+		["6100", "6100", true, [KM], { kilometer: 1, left: 2, right: 1 }],
+		["5500", "5500", false, ["5500"], { kilometer: 0, left: 0, right: 2 }],
+	], "one target per Strecke; a Strecke read from a name is marked as such");
+	assert.deepEqual(json(plan.ziele[0].items.map((item) => [item.key, item.side, item.grund])), [
+		["km", "kilometer", "name"], ["re", "right", "name+lage"], ["li", "left", "name+lage"], ["Gl 041", "left", "lage"],
+	]);
+	assert.deepEqual(json(plan.ziele[1].items.map((item) => [item.key, item.side, item.grund])), [["Nachbar", "right", "lage"], ["Nachbar R", "right", "name"]], "a declared side on its own Kilometerlinie keeps the side");
+	assert.deepEqual(json(plan.bleiben), { kreuzt: ["Weichenstraße"], achse: ["Variante"], ohne: ["fern"], widerspruch: ["verdreht"] });
+	// a Kilometerlinie whose name states no Strecke: a target without one, for the user to name
+	const open = einordnungBuendelVorschlag([g("Achse", "self", "Hauptachse", "kilometer"), g("G1", "right", "Hauptachse")]);
+	assert.deepEqual(json(open.ziele.map((ziel) => [ziel.id, ziel.track, ziel.trackAusName, ziel.items.length])), [["Hauptachse", "", false, 2]]);
+	// two pieces of one Kilometerlinie are one target
+	const pieces = einordnungBuendelVorschlag([g("a", "self", "6100_236-246_KM", "kilometer"), g("b", "self", "6100_247-289_KM", "kilometer"), g("c", "left", "6100_236-246_KM")]);
+	assert.deepEqual(json(pieces.ziele.map((ziel) => [ziel.track, ziel.counts, ziel.bezug])), [["6100", { kilometer: 2, left: 1, right: 0 }, ["6100_236-246_KM"]]]);
+	assert.deepEqual(json(einordnungBuendelVorschlag([])), { ziele: [], bleiben: { kreuzt: [], achse: [], ohne: [], widerspruch: [] } });
+});
+
+test("Umfeld: what the user sorted into a Strecke shares its picture through the km, never through a name", () => {
+	const sorted = (key, track, direction, source, range, kmFrame) => fact(key, "alignment", {
+		organized: true, frame: frame(track, direction, source), range, kmFrame,
+		side: { Kilometerlinie: "kilometer", rechts: "right", links: "left" }[direction],
+		role: { Kilometerlinie: "curvatureKilometer", rechts: "curvatureRight", links: "curvatureLeft" }[direction],
+	});
+	const model = einordnen([
+		sorted("km", "6100", "Kilometerlinie", "user", { from: 247000, to: 289000 }, true),
+		sorted("re", "6100", "rechts", "user", { from: 247100, to: 288900 }, true),
+		sorted("lokal", "6100", "rechts", "user", { from: 0, to: 300 }, false),
+		sorted("name", "6100", "links", "vermesn-name", { from: 250000, to: 260000 }, true),
+		sorted("fremd", "1280", "rechts", "user", { from: 247100, to: 288900 }, true),
+	]);
+	const umfeld = (key) => { const u = einordnungUmfeld(model, key); return [json([...u.keys].sort()), u.kmAlignment]; };
+	assert.deepEqual(umfeld("re"), [["km", "name", "re"], "km"], "by hand and by name meet where their km meet; another Strecke stays out");
+	assert.deepEqual(umfeld("name"), [["km", "name", "re"], "km"]);
+	assert.deepEqual(umfeld("lokal"), [["lokal"], null], "a Gleis still in its own stations stays alone");
+	assert.equal(json([...einordnungUmfeld(model, "km").keys].sort()).includes("lokal"), false);
+});

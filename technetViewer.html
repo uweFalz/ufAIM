@@ -1201,6 +1201,15 @@
 			#tables .pile-bundle > summary button:hover { background: color-mix(in srgb, Highlight 14%, Canvas); }
 			#tables .pile-bundle > summary .pile-bundle-take { border-color: var(--accent); color: var(--accent); }
 			#tables .object-row > button.object-unlink { color: var(--secondary); font-size: var(--fs-1); }
+			/* The Sortiervorschlag of a Bündel and the line that takes the last
+			   take-over back: the same shape as a row's proposal, across the pile. */
+			.bundle-suggestion, .pile-undo { padding-left: var(--sp-3); background: color-mix(in srgb, Canvas 95%, var(--accent)); }
+			.bundle-suggestion > span { flex: 1 1 12rem; line-height: 1.6; }
+			.bundle-suggestion strong { color: var(--ink, inherit); font-weight: 600; }
+			#tables .bundle-suggestion input.bundle-strecke { width: 4.2rem; font: inherit; padding: 0 0.3rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: inherit; }
+			#tables .bundle-suggestion button, #tables .pile-undo button { border-color: var(--accent); color: var(--accent); }
+			#tables .bundle-suggestion button:disabled { opacity: 0.45; cursor: default; }
+			.bundle-rest { padding: var(--sp-1) var(--sp-3) var(--sp-2); border-bottom: 1px solid var(--hairline); font-size: var(--fs-1); color: var(--secondary); }
 			#multi2d path.map-object.in-bundle { stroke-width: 5; stroke: var(--accent); opacity: 1; }
 			.outbox-lane-placeholder {
 				margin: 0.3rem 0 0;
@@ -42180,8 +42189,13 @@ xlsx/xlsx.mjs:
 				const sameTrack = [...model.objects.values()].filter((candidate) => {
 					if (!selectedFrame || !candidate.frame) return false;
 					if (selectedFrame.source === "gnd") return candidate.frame.track === selectedFrame.track && sameLsys(candidate) && overlaps(candidate);
-					if (selectedFrame.source === "vermesn-name") {
-						if (candidate.frame.source !== "vermesn-name" || candidate.frame.track !== selectedFrame.track || !sameLsys(candidate)) return false;
+					// A Strecke named by a file or by the user's hand. What the user
+					// sorted in shares a picture only through the km: it carries no
+					// Abschnitt in a name, and a Gleis still in its file-local
+					// stations would stretch the picture from 0 to the Strecke's km.
+					const named = (frame) => frame.source === "vermesn-name" || frame.source === "user";
+					if (named(selectedFrame)) {
+						if (!named(candidate.frame) || String(candidate.frame.track) !== String(selectedFrame.track) || !sameLsys(candidate)) return false;
 						// The Abschnitt in a file name stands in for the km. Where both
 						// are stationed in the Strecke's km, the km decide: Eifel
 						// 2631R142 (km 141,9-145,2) belongs with the Kilometerlinie
@@ -42190,6 +42204,7 @@ xlsx/xlsx.mjs:
 						// (km 67,4-72,2) though its name names no Abschnitt at all.
 						const candidateKm = kmOf(candidate);
 						if (selfKm && candidateKm) return Math.min(selfKm.to, candidateKm.to) - Math.max(selfKm.from, candidateKm.from) > UMFELD_MIN_GEMEINSAM_M;
+						if (selectedFrame.source === "user" || candidate.frame.source === "user") return false;
 						return !candidate.frame.segment || !selectedFrame.segment || candidate.frame.segment === selectedFrame.segment;
 					}
 					return false;
@@ -42386,6 +42401,57 @@ xlsx/xlsx.mjs:
 				}
 				return leaders.map((leader) => ({ leader: leader.key, length: leader.length, members: leader.members.sort((a, b) => a.index - b.index).map((member) => member.key) }));
 			}
+			// The Strecke a line's name states: the first group of exactly four
+			// digits standing on its own ("6100_247-289_DBREF2016_KM" -> 6100,
+			// "Ka_5810S_km-" -> 5810; not the 2016 in DBREF2016, not 705904).
+			function einordnungStreckeAusName(name) {
+				const match = /(?:^|[^0-9A-Za-z])(\d{4})(?![0-9])/.exec(String(name ?? ""));
+				return match ? match[1] : "";
+			}
+			// Sortiervorschlag für ein Bündel: where its Gleise would go if the
+			// user sorts the Bündel in as a whole. gleise: [{ key, declared,
+			// nameSide, verdict, route }] -- declared and nameSide are what an
+			// attribute and the file name say ("kilometer", "right", "left",
+			// else unknown/null); verdict is the Lage beside a Kilometerlinie
+			// ("left", "right", "axis", "crossing", "none") and route that line,
+			// or "self" with the Gleis's own route when it is a Kilometerlinie.
+			// A side comes from the Lage beside a Kilometerlinie only: measured
+			// over six deliveries, left or right of any other Leitlinie is not
+			// the side of the Strecke (Billwerder 1280: 21 right of the
+			// Kilometerlinie, 21 left of the right-hand Streckengleis). Name and
+			// Lage naming opposite sides stay, as does what crosses the line,
+			// lies on it or finds none. The Strecke is the line's own, or read
+			// from its name (trackAusName: a proposal the user can change).
+			// Nothing here assigns: { ziele: [{ id, track, trackAusName, bezug,
+			// items: [{ key, side, grund, route }], counts }], bleiben }.
+			function einordnungBuendelVorschlag(gleise) {
+				const ziele = new Map();
+				const bleiben = { kreuzt: [], achse: [], ohne: [], widerspruch: [] };
+				for (const gleis of gleise) {
+					const stated = gleis.declared === "left" || gleis.declared === "right" ? gleis.declared
+						: gleis.nameSide === "left" || gleis.nameSide === "right" ? gleis.nameSide : null;
+					let side = null;
+					let grund = "";
+					if (gleis.verdict === "self") { side = "kilometer"; grund = "name"; }
+					else if (!gleis.route || !gleis.verdict || gleis.verdict === "none") { bleiben.ohne.push(gleis.key); continue; }
+					else if (gleis.verdict === "left" || gleis.verdict === "right") {
+						if (stated && stated !== gleis.verdict) { bleiben.widerspruch.push(gleis.key); continue; }
+						side = gleis.verdict;
+						grund = stated ? "name+lage" : "lage";
+					} else if (stated) { side = stated; grund = "name"; }
+					else { bleiben[gleis.verdict === "axis" ? "achse" : "kreuzt"].push(gleis.key); continue; }
+					const route = String(gleis.route ?? "");
+					const known = einordnungStreckennummer(route);
+					const track = known ? route : einordnungStreckeAusName(route);
+					const id = track || route;
+					if (!ziele.has(id)) ziele.set(id, { id, track, trackAusName: !known && Boolean(track), bezug: [], items: [], counts: { kilometer: 0, left: 0, right: 0 } });
+					const ziel = ziele.get(id);
+					if (side !== "kilometer" && !ziel.bezug.includes(route)) ziel.bezug.push(route);
+					ziel.items.push({ key: gleis.key, side, grund, route });
+					ziel.counts[side] += 1;
+				}
+				return { ziele: [...ziele.values()], bleiben };
+			}
 			// END EINORDNUNG
 
 			// The adapter: facts from the entries and the decisions on them, the
@@ -42504,7 +42570,7 @@ xlsx/xlsx.mjs:
 						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
 						refKeys: node.refKeys, homeKey: node.homeKey,
 						role: sevenLineRole(entry), section: explicitSectionForEntry(entry) || "",
-						kmFrame: isGndEntry(entry) || Boolean(entry.externalStationReference) || (frame?.source === "vermesn-name" && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"),
+						kmFrame: isGndEntry(entry) || Boolean(entry.externalStationReference) || ((frame?.source === "vermesn-name" || frame?.source === "user") && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"),
 					};
 				});
 				einordnungCache = { model: einordnen(facts), bezuege, stamp: einordnungStamp };
@@ -42625,6 +42691,88 @@ xlsx/xlsx.mjs:
 				}
 				buendelCache = { bezuege, signature, buendel, of };
 				return buendelCache;
+			}
+			// Sortiervorschlag (einordnungBuendelVorschlag) for Trassen of the
+			// pile: each with what its name says and where it lies beside a
+			// Kilometerlinie. A proposal only; buendelEinsortieren() is the user
+			// taking it over.
+			function buendelVorschlag(entries) {
+				const seite = { r: "right", l: "left", s: "kilometer" };
+				const gleise = entries.filter((entry) => entry.item.kind === "alignment" && !isOutboxOrganized(entry)).map((entry) => {
+					const declared = declaredSide(entry).side;
+					const nameSide = entry.parser === "vermEsn" ? seite[einordnungNamensteile(entry.loaded?.fileName ?? "").side] ?? null : null;
+					const isKilometer = declared === "kilometer" || (declared === "unknown" && nameSide === "kilometer");
+					const lage = isKilometer ? null : lageWitness(entry);
+					return {
+						key: einordnungKey(entry), declared, nameSide,
+						verdict: isKilometer ? "self" : lage?.verdict ?? "none",
+						route: String(isKilometer ? routeForEntry(entry) || objectDisplayName(entry) : lage?.route ?? ""),
+					};
+				});
+				return einordnungBuendelVorschlag(gleise);
+			}
+			const BUENDEL_SPUR = { kilometer: "curvatureKilometer", right: "curvatureRight", left: "curvatureLeft" };
+			function buendelVorschlagGrund(entry, item) {
+				if (item.side === "kilometer") return `laut ${declaredSide(entry).source ?? "Dateiname"}`;
+				const lage = lagePositionText(lageWitness(entry));
+				return item.grund === "name" ? `Seite aus dem Namen${lage ? ` · ${lage}` : ""}`
+					: item.grund === "name+lage" ? `${lage} · der Name sagt dasselbe`
+					: lage;
+			}
+			// The user sorts Trassen into a Strecke, each onto the side given
+			// (items: [{ entry, side }]) -- the same as dragging each onto its
+			// Spur. What stood before is kept so that the last take-over can be
+			// taken back as a whole.
+			let buendelRuecknahmen = [];
+			function buendelEinsortieren(items, track) {
+				const strecke = String(track ?? "").trim();
+				const before = [];
+				if (!strecke) return;
+				for (const { entry, side } of items) {
+					const groupDef = SEVEN_LINE_GROUPS.find((group) => group.role === BUENDEL_SPUR[side]);
+					if (!entry || !groupDef || entry.item.kind !== "alignment") continue;
+					const frameEdit = { track: strecke, direction: groupDef.direction, lsys: effectiveLsys(entry) || "LSYS?", hsys: systemsForEntry(entry).hsys || "HSYS?", source: "user" };
+					before.push({ entry, frameEdit, userFamily: entry.userFamily, userLineRole: entry.userLineRole, previousFrame: entry.frameEdit, organizationEdit: entry.organizationEdit, stationReference: entry.externalStationReference });
+					entry.userFamily = groupDef.family;
+					entry.userLineRole = groupDef.role;
+					entry.frameEdit = frameEdit;
+					entry.organizationEdit = { family: groupDef.family, lineRole: groupDef.role, source: "user", originalFamily: sourceFamilyForEntry(entry) };
+				}
+				if (!before.length) return;
+				const name = isValidRouteNumber(strecke) ? `Strecke ${strecke}` : strecke;
+				const taken = { before, text: before.length === 1 ? `${objectListName(before[0].entry)} nach ${name}` : `${before.length} Gleise nach ${name}` };
+				buendelRuecknahmen.push(taken);
+				einordnungGeaendert();
+				// Sorted in, a Gleis is stationed on its Strecke's Kilometerlinie.
+				reconcileVermEsnStationing();
+				dragHintUsed = true;
+				status.classList.remove("error");
+				status.textContent = `${taken.text} einsortiert · von Hand übernommen`;
+				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
+			}
+			// Takes the last take-over back, then the one before it; a Gleis the
+			// user has moved on by hand since keeps what it has now.
+			function buendelZuruecknehmen() {
+				const taken = buendelRuecknahmen.pop();
+				if (!taken) return;
+				let count = 0;
+				for (const item of taken.before) {
+					if (item.entry.frameEdit !== item.frameEdit) continue;
+					for (const [field, value] of [["userFamily", item.userFamily], ["userLineRole", item.userLineRole], ["frameEdit", item.previousFrame], ["organizationEdit", item.organizationEdit]]) {
+						if (value === undefined) delete item.entry[field];
+						else item.entry[field] = value;
+					}
+					// Its stationing on the Strecke goes with it.
+					if (item.entry.externalStationReference !== item.stationReference && item.entry.externalStationReference) kmAbbildungLoesen(item.entry);
+					count += 1;
+				}
+				einordnungGeaendert();
+				reconcileVermEsnStationing();
+				status.classList.remove("error");
+				status.textContent = `${count} ${count === 1 ? "Gleis liegt" : "Gleise liegen"} wieder im Haufen`;
+				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
 			}
 			// The 7L Spur of an entry as the model has it.
 			function einordnungRolle(entry) {
@@ -45988,6 +46136,14 @@ xlsx/xlsx.mjs:
 					hsys: viewer7L.HSYS || systemsForEntry(entry).hsys || "HSYS?",
 					source: "landXML-7L",
 				};
+				// A Gradiente goes where its Trasse goes: a Trasse the user has sorted
+				// by hand takes its Gradiente along, whatever the Gradiente's own
+				// file name says (Eifel Gleis2_Bf_Auw.GRA stayed under "Bf Auw"
+				// while its TRA went to Strecke 2631).
+				if (entry.item?.kind !== "alignment") {
+					const inherited = inheritedFrame(entry);
+					if (inherited?.source === "user") return inherited;
+				}
 				const nameFrame = vermEsnNameFrame(entry);
 				if (nameFrame) {
 					const directionNames = { kilometer: "Kilometerlinie", right: "rechts", left: "links" };
@@ -46471,6 +46627,7 @@ xlsx/xlsx.mjs:
 					source: "user",
 					originalFamily: sourceFamilyForEntry(entry),
 				};
+				if (entry.parser === "vermEsn") reconcileVermEsnStationing();
 				status.classList.remove("error");
 				status.textContent = `${objectListName(entry)} → ${groupDef.title}`;
 				dragHintUsed = true;
@@ -48060,6 +48217,104 @@ xlsx/xlsx.mjs:
 					hint.append(text, accept);
 					container.append(hint);
 				}
+				// The Gleis's share of its Bündel's Sortiervorschlag, to take over
+				// alone; the Strecke is the one standing in the Bündel's line.
+				const sortier = suggestion || dependent ? null : buendelVorschlagJeEintrag.get(entry);
+				const spur = sortier ? SEVEN_LINE_GROUPS.find((group) => group.role === BUENDEL_SPUR[sortier.side]) : null;
+				if (spur) {
+					const hint = document.createElement("div");
+					hint.className = "row-suggestion";
+					const text = document.createElement("span");
+					text.textContent = `Vorschlag: ${spur.title} · ${buendelVorschlagGrund(entry, sortier)}`;
+					const accept = document.createElement("button");
+					accept.type = "button";
+					accept.textContent = "Übernehmen";
+					accept.title = "Dieses Gleis allein in die Strecke einsortieren, die oben im Bündel steht";
+					accept.addEventListener("click", () => {
+						const strecke = sortier.strecke();
+						if (!strecke) {
+							status.classList.add("error");
+							status.textContent = "Die Strecke fehlt: oben im Bündel eintragen, dann übernehmen.";
+							return;
+						}
+						buendelEinsortieren([{ entry, side: sortier.side }], strecke);
+					});
+					hint.append(text, accept);
+					container.append(hint);
+				}
+			}
+
+			// The Sortiervorschlag of a Bündel, drawn above its rows: one line
+			// per Strecke with what would go where and why, and what stays. The
+			// Strecke read from a name stands in a field the user can change;
+			// what is typed there is kept while the pile is redrawn.
+			const buendelStrecken = new Map();
+			let buendelVorschlagJeEintrag = new Map();
+			function appendBuendelVorschlag(section, group) {
+				const { ziele, bleiben } = group.sortier;
+				const anzahl = (count, one, many) => count === 1 ? one : `${count} ${many}`;
+				for (const ziel of ziele) {
+					const fest = Boolean(ziel.track) && !ziel.trackAusName;
+					const stateId = `${group.id}|${ziel.id}`;
+					const strecke = () => String(fest ? ziel.track : buendelStrecken.get(stateId) ?? ziel.track).trim();
+					const items = ziel.items.map((item) => ({ entry: einordnungEintrag(item.key), side: item.side, grund: item.grund })).filter((item) => item.entry);
+					if (!items.length) continue;
+					for (const item of items) buendelVorschlagJeEintrag.set(item.entry, { ...item, strecke });
+					const line = document.createElement("div");
+					line.className = "row-suggestion bundle-suggestion";
+					const text = document.createElement("span");
+					const accept = document.createElement("button");
+					accept.type = "button";
+					accept.textContent = `${items.length} einsortieren`;
+					accept.title = "Diese Gleise in die Strecke einsortieren, jedes auf die genannte Seite. Es gilt als von Hand zugeordnet und lässt sich als Ganzes zurücknehmen.";
+					text.append(`Vorschlag: ${anzahl(items.length, "1 Gleis", "Gleise")} nach Strecke `);
+					if (fest) {
+						const name = document.createElement("strong");
+						name.textContent = ziel.track;
+						text.append(name);
+					} else {
+						const input = document.createElement("input");
+						input.type = "text";
+						input.className = "bundle-strecke";
+						input.size = 6;
+						input.value = strecke();
+						input.placeholder = "Nummer";
+						input.setAttribute("aria-label", "Strecke, in die das Bündel einsortiert wird");
+						input.title = ziel.track
+							? "Aus dem Namen der Kilometerlinie gelesen. Änderbar; die Strecke gilt erst mit dem Einsortieren."
+							: "Der Name der Kilometerlinie nennt keine Strecke: hier eintragen.";
+						input.addEventListener("input", () => {
+							buendelStrecken.set(stateId, input.value);
+							accept.disabled = !input.value.trim();
+						});
+						text.append(input);
+						accept.disabled = !strecke();
+					}
+					const sides = [ziel.counts.left ? `${ziel.counts.left} links` : "", ziel.counts.right ? `${ziel.counts.right} rechts` : ""].filter(Boolean).join(", ");
+					const bezug = ziel.bezug.length === 1 ? `der Kilometerlinie ${ziel.bezug[0]}` : `von ${ziel.bezug.length} Kilometerlinien`;
+					const linien = anzahl(ziel.counts.kilometer, "die Kilometerlinie", "Kilometerlinien");
+					text.append(sides
+						? ` · ${sides} ${bezug}${ziel.counts.kilometer ? `, dazu ${linien}` : ""}`
+						: ` · ${linien} laut Name`);
+					accept.addEventListener("click", () => buendelEinsortieren(items, strecke()));
+					line.append(text, accept);
+					section.append(line);
+				}
+				const rest = [
+					[bleiben.kreuzt.length, "kreuzt die Kilometerlinie"],
+					[bleiben.achse.length, "liegt auf der Kilometerlinie"],
+					[bleiben.widerspruch.length, "Name und Lage nennen verschiedene Seiten"],
+					[bleiben.ohne.length, "ohne Kilometerlinie in Reichweite"],
+				].filter(([count]) => count);
+				const left = rest.reduce((sum, [count]) => sum + count, 0);
+				if (!left || (!ziele.length && left < 2)) return;
+				const note = document.createElement("div");
+				note.className = "bundle-rest";
+				const reasons = rest.map(([count, reason]) => `${count} × ${reason}`).join(" · ");
+				note.textContent = ziele.length
+					? `${left} ${left === 1 ? "bleibt" : "bleiben"} hier: ${reasons}`
+					: `Kein Sortiervorschlag: ${reasons}.${bleiben.ohne.length === left ? " Ist die Kilometerlinie einsortiert, folgen die Seiten der übrigen aus der Lage." : ""}`;
+				section.append(note);
 			}
 
 			// Which Bündel of the pile stand open: what the user opened or closed
@@ -48091,6 +48346,24 @@ xlsx/xlsx.mjs:
 				}
 				const pile = document.createElement("div");
 				pile.className = "inbox-pile";
+				buendelVorschlagJeEintrag = new Map();
+				// A step is offered only while something of it still stands as taken.
+				const loadedNow = new Set(allEntries);
+				buendelRuecknahmen = buendelRuecknahmen.filter((step) => step.before.some((item) => loadedNow.has(item.entry) && item.entry.frameEdit === item.frameEdit));
+				if (buendelRuecknahmen.length) {
+					const undo = document.createElement("div");
+					undo.className = "row-suggestion pile-undo";
+					const text = document.createElement("span");
+					const steps = buendelRuecknahmen.length;
+					text.textContent = `Zuletzt einsortiert: ${buendelRuecknahmen[steps - 1].text} · von Hand übernommen${steps > 1 ? ` · ${steps} Schritte zurücknehmbar` : ""}`;
+					const back = document.createElement("button");
+					back.type = "button";
+					back.textContent = "Zurücknehmen";
+					back.title = "Diese Gleise wieder in den Haufen legen. Was seither von Hand weiter umsortiert wurde, bleibt.";
+					back.addEventListener("click", buendelZuruecknehmen);
+					undo.append(text, back);
+					pile.append(undo);
+				}
 				if (!rows.length) {
 					const done = document.createElement("div");
 					done.className = "file-group-done";
@@ -48144,6 +48417,9 @@ xlsx/xlsx.mjs:
 						show.setAttribute("aria-label", `Bündel entlang ${objectListName(leader)} auf der Karte zeigen`);
 						show.addEventListener("click", (event) => { event.preventDefault(); event.stopPropagation(); centerMapOnEntries(members); });
 						summary.append(show);
+						group.sortier = buendelVorschlag(group.rows.map((row) => row.entry));
+						const sortierbar = group.sortier.ziele.reduce((sum, ziel) => sum + ziel.items.length, 0);
+						if (sortierbar) meta.textContent += ` · ${sortierbar} mit Vorschlag`;
 					} else {
 						name.textContent = group.title;
 						const clear = group.rows.map((row) => ({ profile: row.entry, vorschlag: vorschlaege.get(row.entry) })).filter((item) => item.vorschlag?.eindeutig);
@@ -48160,6 +48436,7 @@ xlsx/xlsx.mjs:
 						}
 					}
 					section.append(summary);
+					if (group.sortier) appendBuendelVorschlag(section, group);
 					for (const row of group.rows) {
 						appendInboxRow(section, row.entry, { organized: row.organized, orphan: row.orphan, dependent: Boolean(row.dependent), fileName: row.loaded.fileKey ?? row.loaded.fileName });
 						for (const dependent of row.dependents) appendInboxRow(section, dependent, { organized: row.organized, dependent: true, fileName: dependent.loaded?.fileKey ?? dependent.loaded?.fileName ?? row.loaded.fileName });
@@ -49447,9 +49724,22 @@ xlsx/xlsx.mjs:
 				// the Bahnhof), a singleton's GRA decides -- W403-404.GRA is delivered
 				// at km 75008-75099, inside 5500's Kilometerlinie, so that one wins
 				// over the merely nearer 5632. Without a GRA, the nearer line wins.
+				const namedByHand = (entry) => entry.frameEdit?.source === "user" && sevenLineSide(entry) === "kilometer";
 				for (const target of alignments) {
 					if (vermEsnNameFrame(target)) continue;
+					// A line the user named a Kilometerlinie is stationed on nothing.
+					if (namedByHand(target)) { if (target.externalStationReference) unproject(target); continue; }
 					settle(target, pickReference(target, allReferences), false);
+				}
+				// What the user sorted by hand: a Gleis sorted into a Strecke is
+				// stationed on that Strecke's Kilometerlinie, be it named by a file
+				// or by the user. The user's word comes last and so wins over the
+				// name's; a Gleis whose stations already lie in the line's km
+				// keeps them (Billwerder 6100 RE beside 6100 KM).
+				const sortedByHand = alignments.filter((entry) => entry.frameEdit?.source === "user" && !namedByHand(entry));
+				for (const [track, entries] of groupBy(sortedByHand, (entry) => String(entry.frameEdit.track))) {
+					const references = alignments.filter((entry) => sevenLineSide(entry) === "kilometer" && String(geoFrameInfo(entry)?.track) === track).sort(byLengthThenName);
+					for (const target of entries) settle(target, pickReference(target, references), true);
 				}
 			}
 
@@ -50383,6 +50673,8 @@ xlsx/xlsx.mjs:
 					bezuegeStamp += 1;
 					einordnungGeaendert();
 					trassenAbbildungErneuern([...new Set(allViewerEntries().filter((entry) => entry.userTrasse).map((entry) => byKey.get(entry.userTrasse)).filter(Boolean))]);
+					// Gleise the user sorted into a Strecke are stationed on its Kilometerlinie.
+					if (allViewerEntries().some((entry) => entry.parser === "vermEsn" && entry.frameEdit?.source === "user")) reconcileVermEsnStationing();
 					hiddenEntryKeys.clear();
 					for (const key of Array.isArray(state.hidden) ? state.hidden : []) if (byKey.has(key)) hiddenEntryKeys.add(key);
 					if (state.inbox && typeof state.inbox === "object") inboxQuery = typeof state.inbox.query === "string" ? state.inbox.query : "";
