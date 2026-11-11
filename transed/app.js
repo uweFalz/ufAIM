@@ -145,6 +145,7 @@ function render() {
 	el("legend").innerHTML = PLOT_SERIES.map((series) => `<span><b style="color:${series.color}">${series.label}</b> ${formatRange(picture.ranges[series.key])}</span>`).join("");
 
 	const c = draft.coupling;
+	el("readAs").value = c.given;
 	const given = c.given === "cant" ? "Überhöhung" : "Krümmung";
 	const derived = c.derived === "cant" ? "Überhöhung" : "Krümmung";
 	el("couplingText").innerHTML = `Diese Kombination ist als <b>${given}</b> erklärt. Daraus folgt die <b>${derived}</b>. `
@@ -453,6 +454,21 @@ el("hwTerms").addEventListener("click", (event) => {
 	renderTermRows(); renderHalfWave();
 });
 el("hwSave").addEventListener("click", saveHalfWave);
+el("readAs").addEventListener("change", () => {
+	// Both halfWaves change together: a transition describes one quantity.
+	const quantity = el("readAs").value;
+	const ids = [];
+	for (const id of [state.halfWave1, state.halfWave2]) {
+		const result = service.declareHalfWaveAs({ id, quantity });
+		if (!result.ok) { say(el("readAsMessage"), `Nicht umgestellt: ${refusal(result)}`, "error"); fillSelects(); renderLibrary(); render(); return; }
+		ids.push(result);
+	}
+	[state.halfWave1, state.halfWave2] = ids.map((result) => result.id);
+	const created = [...new Set(ids.filter((result) => result.changed).map((result) => result.id))];
+	say(el("readAsMessage"), `Gelesen als ${quantity === "cant" ? "Überhöhung" : "Krümmung"}: ${[...new Set(ids.map((result) => result.id))].join(", ")}.${created.length ? ` Neu in der eigenen Bibliothek: ${created.join(", ")}.` : ""}`, "ok");
+	el("template").value = "";
+	storeLibrary(); fillSelects(); renderLibrary(); render();
+});
 el("klApply").addEventListener("click", () => {
 	// The generator only fills the composer: the user sees the three factors
 	// and can change them before saving.

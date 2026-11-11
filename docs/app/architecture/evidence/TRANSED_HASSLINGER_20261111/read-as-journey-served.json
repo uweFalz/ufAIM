@@ -1,0 +1,43 @@
+{
+  "tag": "served",
+  "before": {
+    "in": "HW_VIEN2",
+    "out": "HW_VIEN2",
+    "readAs": "curvature",
+    "coupling": {
+      "given": "curvature",
+      "min": 0,
+      "max": 1,
+      "suitable": false,
+      "eps": 0.1342
+    },
+    "text": "Diese Kombination ist als Krümmung erklärt. Daraus folgt die Überhöhung. Rampe knickt an den Enden"
+  },
+  "after": {
+    "in": "HW_VIEN2_CANT",
+    "out": "HW_VIEN2_CANT",
+    "readAs": "cant",
+    "message": "Gelesen als Überhöhung: HW_VIEN2_CANT. Neu in der eigenen Bibliothek: HW_VIEN2_CANT.",
+    "coupling": {
+      "given": "cant",
+      "min": -0.0083,
+      "max": 1.0083,
+      "suitable": true,
+      "eps": 0.062
+    },
+    "text": "Diese Kombination ist als Überhöhung erklärt. Daraus folgt die Krümmung. Rampe läuft tangential ein"
+  },
+  "library": "[\"HW_VIEN2_CANT\"]",
+  "back": {
+    "in": "HW_VIEN2",
+    "message": "Gelesen als Krümmung: HW_VIEN2.",
+    "coupling": {
+      "given": "curvature",
+      "min": 0,
+      "max": 1,
+      "suitable": false,
+      "eps": 0.062
+    }
+  },
+  "problems": []
+}

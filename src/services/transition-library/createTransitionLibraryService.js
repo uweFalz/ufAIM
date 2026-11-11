@@ -345,6 +345,28 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		}));
 	}
 
+	/**
+	 * The same halfWave read as the other quantity. Built-in entries stay as
+	 * they are: an existing halfWave with the same prototype and source and the
+	 * wanted quantity is used, otherwise a user copy `<id>_CANT` / `<id>_CURV`
+	 * is stored that points at the same prototype.
+	 */
+	function declareHalfWaveAs({ id, quantity } = {}) {
+		if (!HALFWAVE_QUANTITIES.includes(quantity)) return reject("USER_LIBRARY_QUANTITY_INVALID", `quantity must be one of ${HALFWAVE_QUANTITIES.join(", ")}`);
+		const record = merged.halfWave[id ?? ""];
+		if (!record || !Object.hasOwn(merged.halfWave, id)) return reject("USER_LIBRARY_REFERENCE_MISSING", `halfWave '${id}' not found`);
+		if (halfWaveQuantity(record) === quantity) return { ok: true, id, changed: false, status: "unchanged" };
+		const source = record.source ?? "kappa";
+		const twins = listHalfWaves().filter((hw) => hw.proto === record.proto && hw.source === source && hw.quantity === quantity);
+		const twin = twins.find((hw) => hw.origin === "built-in") ?? twins[0];
+		if (twin) return { ok: true, id: twin.id, changed: false, status: "existing" };
+		const copyId = `${id}_${quantity === "cant" ? "CANT" : "CURV"}`;
+		if (Object.hasOwn(merged.halfWave, copyId)) return reject("USER_LIBRARY_RECORD_EXISTS", `halfWave '${copyId}' exists with another definition`);
+		const stored = putUserRecords([{ level: "halfWave", id: copyId, value: { proto: record.proto, source, ...(quantity === "cant" ? { quantity } : {}) } }]);
+		if (!stored.ok) return stored;
+		return { ok: true, id: copyId, changed: true, status: "created" };
+	}
+
 	// Descriptor of an unsaved combination; one resolver per halfWave pair.
 	function draftDescriptor(halfWave1, halfWave2) {
 		const key = `${halfWave1}|${halfWave2}`;
@@ -476,6 +498,7 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		importUserLibrary,
 		evaluateCoupling,
 		listHalfWaves,
+		declareHalfWaveAs,
 		listSimpleFunctions,
 		describeDraft,
 		describeFunction,

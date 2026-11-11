@@ -137,6 +137,10 @@
 		<p class="note"><b>Modellvorbehalt:</b> Die Kopplung von Krümmung und Überhöhung ist ein reduziertes Bezugspunktmodell. Vorzeichen und Kleinwinkelnäherung sind fachlich noch nicht bestätigt. Die Ergebnisse dieses Abschnitts sind Kandidaten, keine Nachweise.</p>
 		<p id="couplingText" style="margin-top:0"></p>
 		<div class="grid">
+			<div><label for="readAs">Die Halbwellen lesen als</label><select id="readAs"><option value="curvature">Krümmung</option><option value="cant">Überhöhung</option></select><small>Eingebaute Einträge bleiben unverändert; für die andere Lesart entsteht ein eigener Eintrag …_CANT, der auf denselben Prototyp zeigt.</small></div>
+		</div>
+		<p id="readAsMessage" class="message" role="status"></p>
+		<div class="grid">
 			<div><label for="aHeight">Bezugshöhe h [m]</label><input type="number" id="aHeight" min="0.1" step="0.1"></div>
 			<div><label for="aCant">Endüberhöhung [mm]</label><input type="number" id="aCant" min="1" step="5"></div>
 			<div><label for="aRadius">Radius R [m]</label><input type="number" id="aRadius" min="1" step="50"></div>

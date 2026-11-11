@@ -23,6 +23,11 @@ A page of its own for the transitionDB, independent of the app shell.
   (`src/services/transition-library/klauderFamily.js`); the terms stay editable.
 - Mode 2, transition: halfWave in and out from all halfWaves, w1 and w2 by
   slider, number or dragging the cut lines; stored as a transition.
+  "Die Halbwellen lesen als" switches both halfWaves between curvature and
+  cant. Built-in entries stay unchanged: the other reading is a user halfWave
+  `<id>_CANT` on the same prototype (`declareHalfWaveAs` of the service). This
+  is how the built-in `vienna` entries, which are Hasslinger's cant functions
+  (AT 412 975 B), show their swerving curvature.
 
 The coupling of curvature and cant shown in mode 2 is a reduced
 reference-point model. Its sign convention and small-angle approximation are
