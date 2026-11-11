@@ -9,7 +9,8 @@ import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadou
 import { recordListHtml, describeLimit } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
 import { parseAllEdits, formatEdits, isInsertKey, insertOf, INSERT_TYPES, TRANSITION_FAMILIES } from "../src/services/axtran2/recordEdits.js";
-import { PROJECT_LINES, FILE_LINES, assignProjectFiles, describeTra, describeGra, projectLinesModel, projectTableHtml, fitSummary } from "../src/services/axtran2/trackProject.js";
+import { PROJECT_LINES, FILE_LINES, assignProjectFiles, describeTra, describeGra, projectLinesModel, projectTableHtml, fitSummary, gradientSummary } from "../src/services/axtran2/trackProject.js";
+import { fitGraFromBytes } from "../src/services/axtran2/fitGraCore.js";
 
 const el = (id) => document.getElementById(id);
 const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
@@ -28,7 +29,7 @@ const LIVE_SECONDS = 3;
 // and its own result, and takes them back when it becomes the active one again.
 const AXES = PROJECT_LINES.filter((line) => line.kind === "TRA").map((line) => line.key);
 const LINE_FIELDS = ["tolerance", "zwangTolerance", "speed", "hold", "edits", "iterations", "order", "budget", "endE", "endN", "endT"];
-const newLine = () => ({ file: null, description: null, error: null, assumed: false, points: null, zwang: null, fields: null, last: null });
+const newLine = () => ({ file: null, description: null, error: null, assumed: false, points: null, zwang: null, fields: null, last: null, gradient: null });
 const project = { active: "re-TRA", lines: new Map(FILE_LINES.map((key) => [key, newLine()])) };
 const setFiles = (input, file) => { const transfer = new DataTransfer(); if (file) transfer.items.add(file); input.files = transfer.files; };
 
@@ -38,7 +39,8 @@ function drawProject() {
 		const active = key === project.active;
 		const result = active ? last : line.last;
 		state[key] = { file: line.file?.name ?? null, description: line.description, error: line.error, assumed: line.assumed,
-			points: Boolean(active ? el("points").files?.[0] : line.points), ...(result ? { fit: fitSummary(result.report) } : {}) };
+			points: Boolean(active ? el("points").files?.[0] : line.points), ...(result ? { fit: fitSummary(result.report) } : {}),
+			...(line.gradient ? { gradient: gradientSummary(line.gradient.report) } : {}) };
 	}
 	// built from numbers and escaped labels: safe to set as markup
 	el("projectLines").innerHTML = projectTableHtml(projectLinesModel(state, project.active));
@@ -95,7 +97,7 @@ async function loadProject(files) {
 	for (const [key, name] of Object.entries(assigned.lines)) {
 		const line = project.lines.get(key);
 		// another file on the line: its Aufmaß stays, what named the old file's records goes
-		Object.assign(line, { file: byName.get(name), assumed: assigned.assumed.some((a) => a.name === name), last: null, fields: line.fields ? { ...line.fields, hold: "", edits: "" } : null });
+		Object.assign(line, { file: byName.get(name), assumed: assigned.assumed.some((a) => a.name === name), last: null, gradient: null, fields: line.fields ? { ...line.fields, hold: "", edits: "" } : null });
 		await describeLine(line, key.endsWith("TRA") ? "TRA" : "GRA");
 		if (key === project.active) { setFiles(el("tra"), line.file); el("hold").value = ""; el("edits").value = ""; last = null; el("result").classList.add("hidden"); }
 	}
@@ -108,6 +110,86 @@ async function loadProject(files) {
 	if (!project.lines.get(project.active).file && firstLoaded && switchLine(firstLoaded)) return;
 	drawProject();
 	status(`Projekt: ${[...project.lines.values()].filter((line) => line.file).length} von ${FILE_LINES.length} Dateien geladen.`);
+}
+
+// The gradient of a track adjusted to the measured heights: the heights come from the Aufmaß of the
+// track's axis, a point's place from its foot on the line the gradient is stationed along - the
+// kilometre line where it carries the gradient's stations, the track's own axis otherwise. Quick
+// (a linear least squares), so it runs on the page.
+async function fitGradientLine(key) {
+	if (running) { status("Ein Lauf rechnet noch: die Gradiente danach.", "info"); return; }
+	const gradient = project.lines.get(key);
+	if (!gradient?.file || gradient.error) return;
+	saveActive();
+	const track = key.slice(0, 2);
+	const axis = project.lines.get(`${track}-TRA`);
+	try {
+		if (!axis.points) throw new Error(`das Aufmaß von ${track}-TRA fehlt. Die Höhen kommen aus dem Aufmaß der Achse dieses Gleises: „bearbeiten“ an ${track}-TRA, dann das Aufmaß wählen`);
+		const graBytes = new Uint8Array(await gradient.file.arrayBuffer());
+		const points = await axis.points.text();
+		const options = { tolerance: Number(el("heightTolerance").value) || 0.02, hold: el("breakHold").value.trim(), heightOffset: Number(String(el("heightOffset").value).trim().replace("−", "-").replace(",", ".")) || 0 };
+		const lines = [["km-TRA", project.lines.get("km-TRA")], [`${track}-TRA`, axis]].filter(([, line]) => line.file && !line.error);
+		if (lines.length === 0) throw new Error("keine Achse ist geladen, an der die Gradiente stationiert sein kann (km-TRA oder die Achse des Gleises)");
+		let found = null;
+		const off = [];
+		for (const [lineKey, line] of lines) {
+			try {
+				const result = await fitGraFromBytes({ graBytes, graName: gradient.file.name, lineBytes: new Uint8Array(await line.file.arrayBuffer()), lineName: line.file.name, points, ...options });
+				found = { report: result.report, gra: result.gra, csv: result.csv, lineKey };
+				break;
+			} catch (error) { if (error?.code !== "GRADIENT_OFF_LINE") throw error; off.push(`${lineKey} (${line.file.name})`); }
+		}
+		if (!found) throw new Error(`die Stationen der Gradiente liegen auf keiner geladenen Achse: ${off.join(", ")}`);
+		gradient.gradient = found;
+		showGradient(key);
+		drawProject();
+		const f = found.report.fit;
+		status(`${key} ausgeglichen: rms ${fmt(f.rmsAfter)} m (vorher ${fmt(f.rmsBefore)} m), stationiert an ${found.lineKey}.`, "ok");
+	} catch (error) {
+		status(`${key}: ${String(error?.message ?? error)}.`, "error");
+	}
+}
+
+let gradientShown = null;
+function showGradient(key) {
+	const result = project.lines.get(key)?.gradient;
+	if (!result) { el("gradientResult").classList.add("hidden"); gradientShown = null; return; }
+	gradientShown = key;
+	const { report } = result;
+	const { input, fit, verdict, checks } = report;
+	el("gradientTitle").textContent = `Gradiente: ${key}`;
+	el("gradientVerdict").textContent = `${input.gra}: ${input.breaks} Neigungswechsel, ${input.free} Höhen frei, ${input.points} von ${input.listed} Punkten mit Höhe auf der Gradiente. Stationiert an ${result.lineKey} (${input.stationing.line}); die Gradiente beginnt ${fmt(input.stationing.gradientBeginsAt, 2)} m hinter deren Anfang${input.kilometreJumps ? `, ${input.kilometreJumps} Kilometersprünge` : ""}. Verdikt: ${verdict.status} nach ${verdict.iterations} Schritten.`;
+	el("gradientNumbers").replaceChildren(...[
+		[`${fmt(fit.rmsBefore)} m`, `rms vorher, max ${fmt(fit.maxBefore)} m`],
+		[`${fmt(fit.rmsAfter)} m`, `rms nachher, max ${fmt(fit.maxAfter)} m`],
+		[`${fit.outsideAfter} von ${input.points}`, `außerhalb der Toleranz (vorher ${fit.outsideBefore})`],
+		[`${fmt(checks.steepestPermille, 2)} ‰`, "steilste Neigung nach dem Ausgleich"],
+	].map(([big, small]) => { const d = document.createElement("div"); d.className = "number"; const b = document.createElement("b"); b.textContent = big; const s = document.createElement("span"); s.textContent = small; d.append(b, s); return d; }));
+	const undetermined = report.breaks.filter((b) => b.free && b.determined === false);
+	el("gradientNotes").textContent = [
+		undetermined.length ? `Ohne Messung am Plan geblieben: Neigungswechsel ${undetermined.map((b) => b.number).join(", ")}.` : "",
+		input.excluded.length ? `Nicht im Ausgleich: ${input.excluded.length} Punkte (${[...new Set(input.excluded.map((e) => e.why))].join("; ")}).` : "",
+		checks.overlaps.length ? `Ausrundungen überschneiden sich zwischen den Neigungswechseln ${checks.overlaps.map((o) => `${o.between[0]} und ${o.between[1]} (um ${fmt(o.by, 2)} m)`).join(", ")}.` : "",
+		input.carriedRecords ? `${input.carriedRecords} Rampensätze hinter den Neigungswechseln sind unverändert übernommen.` : "",
+	].filter(Boolean).join(" ");
+	const table = el("gradientBreaks");
+	table.replaceChildren();
+	const head = document.createElement("tr");
+	for (const h of ["Nr", "Station", "Höhe Plan [m]", "Höhe Ausgleich [m]", "Änderung [mm]", "Neigung danach [‰]", "Ausrundung", "Punkte", "Stand"]) { const th = document.createElement("th"); th.textContent = h; head.append(th); }
+	table.append(head);
+	for (const b of report.breaks) {
+		const tr = document.createElement("tr");
+		const rounding = b.holds === "radius" ? `R ${fmt(b.radiusAfter, 0)} gehalten, T ${fmt(b.tangentAfter, 2)}` : b.holds === "tangent" ? `T ${fmt(b.tangentAfter, 2)} gehalten, R ${fmt(b.radiusAfter, 0)}` : "–";
+		const state = !b.free ? b.why : b.determined === false ? "frei, ohne Messung am Plan" : "frei";
+		const changed = Math.abs(b.change) > 5e-5;
+		[b.number, fmt(b.station, 3), fmt(b.heightBefore, 4), fmt(b.heightAfter, 4), changed ? `${b.change >= 0 ? "+" : ""}${fmt(b.change * 1000, 1)}` : "0", b.gradeAfter === null ? "–" : fmt(Math.abs(b.gradeAfter) < 5e-7 ? 0 : b.gradeAfter * 1000, 3), rounding, b.points, state].forEach((v, c) => {
+			const td = document.createElement("td"); td.textContent = String(v); if (c >= 1 && c <= 5) td.className = c === 3 && changed ? "num changed" : "num"; tr.append(td);
+		});
+		table.append(tr);
+	}
+	// the chart is built from numbers only and escapes its labels: safe to set as markup
+	el("gradientChart").innerHTML = residualChartSvg(report.points.map((p) => ({ kind: "measured", station: p.u, offsetBefore: p.before, offset: p.after, within: p.within })), { tolerance: input.tolerance }) || "<p>Keine Kurve: zu wenige Punkte.</p>";
+	el("gradientResult").classList.remove("hidden");
 }
 
 /** every axis that has its file and its Aufmaß, one after the other */
@@ -584,7 +666,16 @@ el("tra").addEventListener("change", async () => {
 });
 el("points").addEventListener("change", drawProject);
 el("project").addEventListener("change", async () => { const files = [...(el("project").files ?? [])]; el("project").value = ""; await loadProject(files); });
-el("projectLines").addEventListener("click", (event) => { const button = event.target.closest?.("button[data-line]"); if (button) switchLine(button.dataset.line); });
+el("projectLines").addEventListener("click", (event) => {
+	const adjust = event.target.closest?.("button[data-gradient]");
+	if (adjust) { fitGradientLine(adjust.dataset.gradient); return; }
+	const button = event.target.closest?.("button[data-line]");
+	if (button) switchLine(button.dataset.line);
+});
+const gradientNow = () => (gradientShown ? project.lines.get(gradientShown)?.gradient : null);
+el("dlGra").addEventListener("click", () => { const g = gradientNow(); if (g) download((g.report.input.gra || "gradient.GRA").replace(/\.gra$/i, "") + "_axtran2.GRA", g.gra, "application/octet-stream"); });
+el("dlGraReport").addEventListener("click", () => { const g = gradientNow(); if (g) download("gradiente_report.json", JSON.stringify(g.report, null, 2), "application/json"); });
+el("dlGraCsv").addEventListener("click", () => { const g = gradientNow(); if (g) download("hoehen.csv", g.csv, "text/csv"); });
 el("runAll").addEventListener("click", runAll);
 const ZOOMS = [1, 2, 4, 8];
 el("zoomIn").addEventListener("click", () => { picture.zoom = ZOOMS[Math.min(ZOOMS.indexOf(picture.zoom) + 1, ZOOMS.length - 1)]; drawPicture(); });
@@ -596,7 +687,7 @@ el("order").addEventListener("change", () => el("budget").classList.toggle("hidd
 el("cancel").addEventListener("click", cancel);
 el("reset").addEventListener("click", () => { for (const id of ["tra", "points", "zwang", "endE", "endN", "endT", "speed", "hold", "edits"]) el(id).value = ""; el("holdRadii").checked = false; el("order").value = "points"; el("budget").classList.add("hidden"); el("result").classList.add("hidden"); status(""); last = null; picture.model = null; picture.wanted = null; picture.edits = null; picture.insertAfter = null; picture.zoom = 1;
 	// and the project: every line empty, the right axis the one to work on
-	for (const key of FILE_LINES) project.lines.set(key, newLine()); project.active = "re-TRA"; el("project").value = ""; el("projectNote").textContent = ""; drawProject(); });
+	for (const key of FILE_LINES) project.lines.set(key, newLine()); project.active = "re-TRA"; el("project").value = ""; el("projectNote").textContent = ""; showGradient(null); drawProject(); });
 drawProject();
 el("dlTra").addEventListener("click", () => last && download((last.report.input.tra || "plan.TRA").replace(/\.tra$/i, "") + "_axtran2.TRA", last.tra, "application/octet-stream"));
 el("dlReport").addEventListener("click", () => last && download("report.json", JSON.stringify(last.report, null, 2), "application/json"));

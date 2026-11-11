@@ -13,26 +13,28 @@
 // This module knows which file is which line, what a file holds, and how
 // the seven lines stand after the fits - as a model and as the rows of a
 // table. It fits nothing: the axes go through fitTraCore one by one, the
-// cant band is judged with its axis, and the gradient is carried and shown
-// (stage one, 2026-11-10; see docs/app/architecture/AXTRAN2_7L_PROJECT_2026-11-10.md).
+// gradients through fitGraCore (their heights to the measured heights), and
+// the cant band is judged with its axis
+// (2026-11-10; see docs/app/architecture/AXTRAN2_7L_PROJECT_2026-11-10.md).
 //
-// Pure but for the two describe functions, which read bytes with the
-// production parsers. Every label of the table is escaped.
+// Pure but for the two describe functions, which read bytes: a TRA's
+// records with the production decoder, a GRA as the adjustment reads it.
+// Every label of the table is escaped.
 
-import { parseTraGraAuto } from "../../import/parsers/technet/vermEsn/parseTRA_GRA.js";
 import { decodeBinary } from "../../import/parsers/technet/vermEsn/sharedVermesn.js";
+import { readGra, stationAt } from "./gradientProfile.js";
 
-export const TRACK_PROJECT_VERSION = "axtran2/track-project/0.1";
+export const TRACK_PROJECT_VERSION = "axtran2/track-project/0.2";
 
-/** the seven lines, in the order a project names them; `fit` where stage one optimises */
+/** the seven lines, in the order a project names them; `fit` where the app adjusts: the axes and the gradients */
 export const PROJECT_LINES = Object.freeze([
 	{ key: "km-TRA", track: "km", kind: "TRA", words: "Kilometrierungslinie", fit: true },
 	{ key: "re-TRA", track: "re", kind: "TRA", words: "Achse, rechtes Gleis", fit: true },
 	{ key: "li-TRA", track: "li", kind: "TRA", words: "Achse, linkes Gleis", fit: true },
 	{ key: "re-UEB", track: "re", kind: "UEB", words: "Überhöhung, rechtes Gleis", fit: false },
 	{ key: "li-UEB", track: "li", kind: "UEB", words: "Überhöhung, linkes Gleis", fit: false },
-	{ key: "re-GRA", track: "re", kind: "GRA", words: "Gradiente, rechtes Gleis", fit: false },
-	{ key: "li-GRA", track: "li", kind: "GRA", words: "Gradiente, linkes Gleis", fit: false },
+	{ key: "re-GRA", track: "re", kind: "GRA", words: "Gradiente, rechtes Gleis", fit: true },
+	{ key: "li-GRA", track: "li", kind: "GRA", words: "Gradiente, linkes Gleis", fit: true },
 ].map(Object.freeze));
 
 /** the lines a file can be: the TRA and GRA ones; the UEB lines are read off them */
@@ -115,26 +117,25 @@ export function describeTra(bytes) {
 
 /**
  * What a GRA holds: its grade breaks, how many are rounded, the stations
- * and heights it spans, and the cant ramp constructions it carries.
+ * and heights it spans, its kilometre jumps and the cant ramp constructions
+ * it carries behind the grade breaks. Read as the adjustment reads it
+ * (gradientProfile.readGra), so the table and the fit speak of the same
+ * grade breaks: a kilometre jump's two records are one.
  * @param {Uint8Array} bytes
- * @param {string} [name]
- * @returns {Promise<{ kind: "GRA", gradeBreaks, rounded, stationStart, stationEnd, heightMin, heightMax, cantConstructions }>}
+ * @returns {Promise<{ kind: "GRA", gradeBreaks, rounded, stationStart, stationEnd, heightMin, heightMax, kilometreJumps, cantConstructions }>}
  */
-export async function describeGra(bytes, name = "gradient.GRA") {
-	const document = await parseTraGraAuto({ name, arrayBuffer: async () => toBuffer(bytes) });
-	const alignment = document.alignments?.[0];
-	const pvis = alignment?.profile?.profAlign?.pvis ?? [];
-	if (pvis.length === 0) throw new Error("die GRA trägt keine Neigungswechsel");
-	const value = (m) => (m && typeof m === "object" ? Number(m.value) : Number(m));
-	const stations = pvis.map((p) => value(p.station)).filter(Number.isFinite);
-	const heights = pvis.map((p) => value(p.elevation)).filter(Number.isFinite);
+export async function describeGra(bytes) {
+	const gra = readGra(bytes);
+	const heights = gra.breaks.map((b) => b.height);
+	const last = gra.breaks[gra.breaks.length - 1];
 	return Object.freeze({
 		kind: "GRA",
-		gradeBreaks: pvis.length,
-		rounded: pvis.filter((p) => Math.abs(Number(p.extras?.sourceSemantics?.radius) || 0) > 0).length,
-		stationStart: Math.min(...stations), stationEnd: Math.max(...stations),
+		gradeBreaks: gra.breaks.length,
+		rounded: gra.breaks.filter((b) => b.holds !== null).length,
+		stationStart: gra.breaks[0].station, stationEnd: stationAt(gra, last.u),
 		heightMin: Math.min(...heights), heightMax: Math.max(...heights),
-		cantConstructions: (alignment?.extras?.coupledCantGradientConstructions ?? []).length,
+		kilometreJumps: gra.jumps.length,
+		cantConstructions: gra.trailing,
 	});
 }
 
@@ -147,7 +148,8 @@ const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;
  * @param {Object<string, object>} state  line key (a TRA or GRA line) -> {
  *     file?: string, description?: object (describeTra / describeGra), error?: string,
  *     points?: boolean (an Aufmaß is there), fit?: { status, ok, rms, max, outside, points, lengthChange,
- *     cant?: { arcs, exceededBefore, exceededAfter, maximumDeficiencyMm, speedKmh } }, assumed?: boolean }
+ *     cant?: { arcs, exceededBefore, exceededAfter, maximumDeficiencyMm, speedKmh } }, assumed?: boolean,
+ *     gradient?: (a GRA line) from gradientSummary }
  * @param {string|null} [active]  the line the form below works on
  * @returns {Array<{ key, kind, track, words, file, content, state, tone, fit, active, loaded }>}
  *          tone: "empty", "loaded", "ready", "ok", "warn" or "error"
@@ -187,10 +189,13 @@ export function projectLinesModel(state = {}, active = null) {
 		const d = own.description;
 		if (!own.file) return { ...base, file: null, loaded: false, content: "", state: "—", tone: "empty" };
 		if (own.error) return { ...base, file: own.file, loaded: false, content: "", state: `nicht lesbar: ${own.error}`, tone: "error" };
+		const g = own.gradient ?? null;
 		const moved = tra.fit ? `; die Achse ist nach dem Fit um ${comma(Math.abs(tra.fit.lengthChange), 3)} m ${tra.fit.lengthChange >= 0 ? "länger" : "kürzer"}, die Stationen der Gradiente sind die vor dem Fit` : "";
 		return { ...base, file: own.file, assumed: Boolean(own.assumed), loaded: true,
-			content: `${d.gradeBreaks} Neigungswechsel, ${d.rounded} ausgerundet, Station ${comma(d.stationStart, 3)} bis ${comma(d.stationEnd, 3)}, Höhe ${comma(d.heightMin, 2)} bis ${comma(d.heightMax, 2)} m`,
-			state: `geladen; noch nicht im Ausgleich${moved}`, tone: tra.fit && Math.abs(tra.fit.lengthChange) > 5e-4 ? "warn" : "loaded" };
+			content: `${d.gradeBreaks} Neigungswechsel, ${d.rounded} ausgerundet, Station ${comma(d.stationStart, 3)} bis ${comma(d.stationEnd, 3)}${d.kilometreJumps ? `, ${d.kilometreJumps} ${d.kilometreJumps === 1 ? "Kilometersprung" : "Kilometersprünge"}` : ""}, Höhe ${comma(d.heightMin, 2)} bis ${comma(d.heightMax, 2)} m`,
+			state: g ? `Ausgleich ${g.status}: rms ${comma(g.rmsAfter, 3)} m (vorher ${comma(g.rmsBefore, 3)} m), max ${comma(g.maxAfter, 3)} m, ${g.outside} von ${g.points} außerhalb; ${g.free} von ${g.breaks} Höhen frei${g.undetermined ? `, ${g.undetermined} davon ohne Messung am Plan geblieben` : ""}; stationiert an ${g.line}`
+				: `geladen; noch nicht im Ausgleich${moved}`,
+			tone: g ? (g.ok && g.outside === 0 ? "ok" : "warn") : tra.fit && Math.abs(tra.fit.lengthChange) > 5e-4 ? "warn" : "loaded" };
 	});
 }
 
@@ -204,12 +209,25 @@ export function projectTableHtml(model) {
 		const pick = line.kind === "TRA" && line.loaded
 			? `<button type="button" class="${line.active ? "primary" : "ghost"} tiny" data-line="${line.key}" title="${escape(line.active ? `${line.key} ist die Linie, an der unten gearbeitet wird` : `an ${line.key} arbeiten: Aufmaß, Vorgaben und Ergebnis dieser Linie`)}"${line.active ? ` aria-pressed="true"` : ""}>${line.active ? "in Arbeit" : "bearbeiten"}</button>`
 			: "";
+		const adjust = line.kind === "GRA" && line.loaded
+			? `<button type="button" class="ghost tiny" data-gradient="${line.key}" title="${escape(`die Höhen der Neigungswechsel von ${line.key} an die gemessenen Höhen anpassen: das Aufmaß der Achse dieses Gleises, mit Höhen`)}">ausgleichen</button>`
+			: "";
 		return `<tr data-line="${line.key}" class="${[`tone-${line.tone}`, line.active ? "active" : ""].filter(Boolean).join(" ")}">`
 			+ `<td><b>${escape(line.key)}</b></td><td>${escape(line.words)}</td>`
 			+ `<td${line.assumed ? ` title="${escape("Der Dateiname nennt weder KM noch RE noch LI: als diese Linie genommen")}"` : ""}>${escape(line.file ?? "—")}${line.assumed ? " (angenommen)" : ""}</td>`
-			+ `<td>${escape(line.content)}</td><td class="state">${escape(line.state)}</td><td class="act">${pick}</td></tr>`;
+			+ `<td>${escape(line.content)}</td><td class="state">${escape(line.state)}</td><td class="act">${pick}${adjust}</td></tr>`;
 	});
 	return `<thead><tr><th>Linie</th><th>was</th><th>Datei</th><th>Inhalt</th><th>Stand</th><th></th></tr></thead><tbody>${rows.join("")}</tbody>`;
+}
+
+/** what the page keeps of a gradient's adjustment for the project table, from fitGraCore's report */
+export function gradientSummary(report) {
+	const free = report.breaks.filter((b) => b.free);
+	return Object.freeze({
+		status: report.verdict.status, ok: Boolean(report.verdict.ok),
+		rmsBefore: report.fit.rmsBefore, rmsAfter: report.fit.rmsAfter, maxAfter: report.fit.maxAfter, outside: report.fit.outsideAfter, points: report.points.length,
+		breaks: report.breaks.length, free: free.length, undetermined: free.filter((b) => b.determined === false).length, line: report.input.stationing.line,
+	});
 }
 
 /** what the page keeps of a fit for the project table, from fitTraCore's report */
