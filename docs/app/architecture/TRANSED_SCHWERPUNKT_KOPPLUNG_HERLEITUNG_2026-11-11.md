@@ -3,8 +3,10 @@
 Stand 2026-11-11. Status: **Modellvorbehalt**. Diese Notiz legt die Herleitung
 offen, die in `src/services/transition-library/cantCurvatureCoupling.js` gerechnet
 wird, damit Uwe Vorzeichen und Näherungen prüfen kann. Die Herleitung stammt von
-Claude. Der Originaltext Hasslinger 2002 lag dabei nicht vor; der Abgleich mit dem
-Original ist Teil der Prüfung.
+Claude und entstand ohne das Original. Nachträglich ist sie mit der Patentschrift
+AT 412 975 B (Hasslinger, angemeldet 2002-07-23) abgeglichen: Gleichung, Vorzeichen
+und Näherung stimmen überein, siehe Abschnitt 8. Die förmliche Bestätigung bleibt
+bei Uwe.
 
 ## 1. Ergebnis
 
@@ -108,16 +110,52 @@ Das Modul löst die Gleichung mit finiten Differenzen und liest die Endsteigunge
 
 - Kein Fahrzeugmodell: keine Federung, kein Wankpol, keine Massenverteilung.
 - Keine kinematische Bewertung. Die Geschwindigkeit käme erst dort ins Spiel.
-- Keine Aussage, welche Höhe h fachlich die richtige ist (Schwerpunkt, Kopfhöhe,
-  anderer Bezug).
-- Kein Abgleich mit Hasslinger 2002 im Wortlaut.
 
-## 8. Fragen an Uwe
+## 8. Abgleich mit AT 412 975 B
 
-1. A2: Versatz nach innen, also k = f − ε²·f″. Stimmt das Vorzeichen mit Hasslinger?
-2. A3/A4: Reichen Kleinwinkel und κ·d ≪ 1, oder soll der genaue Ausdruck
-   (κ + d″)/(1 − κd) mit d = h·sin ψ gerechnet werden?
-3. A5: Ist „Bezugspunktbahn proportional zur Überhöhung“ die Forderung, die du
-   meinst, oder ist die Kopplung bei Hasslinger anders gefasst?
-4. A1: Worauf bezieht sich h (Schienenoberkante oder Gleisachse, Schwerpunkt oder
-   anderer Punkt)?
+Quelle: `/Users/uwefalz/Documents/knowledge/bib/2002_Hasslinger_AT_412975_B.pdf`.
+Nachrechnung: `docs/app/architecture/evidence/TRANSED_HASSLINGER_20261111/patent-check.mjs`,
+Ausgabe `patent-check.txt` daneben.
+
+| Punkt | Patent | Diese Notiz | Befund |
+| --- | --- | --- | --- |
+| Gleichung | (1): κ_H(s) = (κ_C/ψ_C)·ψ(s) − h·d²ψ/ds² | κ = κ_ref − h·ψ″ mit κ_ref = (κ_E/ψ_E)·ψ | gleich, auch im Vorzeichen (A2) |
+| Forderung | Die unausgeglichene Seitenbeschleunigung in Trassierungshöhe, (8) β_Q = (κ_H·v² + h·α)/g − ψ mit (9) α = v²·ψ″, soll wie f verlaufen | A5: Krümmung der Bezugspunktbahn proportional zur Überhöhung | gleichwertig: Die Seitenbeschleunigung des Punkts in Höhe h ist v²·(κ + h·ψ″), also v² mal der Krümmung der versetzten Linie |
+| Näherung | (8) rechnet mit ψ als Winkel, linear | A3, A4 | gleich: Das Patent ist selbst die Kleinwinkelform |
+| Geschwindigkeit | fällt heraus; Beschreibung „von allen kinematischen Größen völlig unabhängig“ | kommt nicht vor | gleich |
+| h | „Trassierungshöhe“: die Höhe, in der die unausgeglichene Seitenbeschleunigung betrachtet wird, etwa die des Schwerpunkts; in Fig. 1 senkrecht zur Gleisebene bis zum Punkt M | A1 | gleich; die Wahl von h bleibt frei |
+| Allgemeine Form | (10), (11): ψ = ψ₁ + Δψ·f, κ_H = κ₁ + Δκ·f − h·Δψ·f″ | Gerade → Kreis | Verallgemeinerung: ε² = h·Δψ / (Δκ·l²) |
+
+**Tabelle des Patents nachgerechnet.** l = 200 m, R₁ = −2000 m, u₁ = −64 mm,
+R₂ = +800 m, u₂ = +160 mm, b = 1,5 m, Funktion (2). Die Höhe h nennt der Text nicht;
+aus der Zeile s = 4 m folgt h = 1,7999 m. Mit h = 1,8 m treffen alle acht geprüften
+Zeilen die Krümmung auf sieben Stellen (größte Abweichung 4,5·10⁻⁷ 1/km). Für diesen
+Fall ist ε² = 0,00384, ε = 0,062; die normierte Krümmung läuft von −0,008 bis 1,008.
+
+**Die `vienna`-Einträge der Datenbank sind Hasslingers Überhöhungsfunktionen.**
+`vienna2` bis `vienna7` decken sich mit den Funktionen (2) bis (7) des Patents
+(größte Abweichung 3·10⁻¹⁰, sonst unter 10⁻¹³). Die Datenbank führt sie als
+Krümmung. Das ist der Fall h = 0 (Anspruch 3) und erklärt, warum der
+Tauglichkeits-Scan auch dort keinen Gegenschwung fand. Als Überhöhung erklärt und
+mit h > 0 über Gleichung (1) gerechnet, liefern dieselben Funktionen den
+ausschwingenden Krümmungsverlauf von Fig. 3. Die Konstante der Funktion (3) ist
+Z = 2 · 4,49340946; die Datenbank hat sie richtig.
+
+**Glattheit.** Das Patent verlangt von f mindestens drei, für die Biegetheorie der
+Schiene vier Ableitungen mit endlichen Werten. Die Tauglichkeitsprüfung im Modul
+liest bisher nur die Endsteigung f′. Aus f″ = (f − k)/ε² folgt: f″ ist an den Enden
+null, sobald k dort 0 und 1 trifft; f‴ ist null, sobald zusätzlich f′ und k′ dort
+null sind. Eine Verschärfung der Prüfung auf diese Ordnungen ist möglich, aber
+nicht gebaut.
+
+## 9. Was noch bei Uwe liegt
+
+1. Förmliche Bestätigung des Modells. Der Abgleich oben stützt Vorzeichen (A2),
+   Näherung (A3, A4), Forderung (A5) und die Bedeutung von h (A1).
+2. Soll für AIM die Kleinwinkelform des Patents gelten, oder der genaue Ausdruck
+   (κ + d″)/(1 − κd) mit d = h·sin ψ?
+3. Welche Höhe h ist die Voreinstellung? Die Tabelle des Patents rechnet mit 1,8 m,
+   dem Wert, den auch das Modul voreinstellt.
+4. Sollen die `vienna`-Halbwellen in der Bibliothek als Überhöhung erklärbar werden?
+   Die eingebauten Einträge sind unveränderlich; es ginge über eigene Einträge mit
+   `quantity: "cant"`.
