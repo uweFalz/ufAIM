@@ -17,10 +17,14 @@ follow the reading, and the suitability check on f′, f″, f‴ at the ramp en
 
 - Worktree `/Users/uwefalz/Developer/ufAIM-transed-playground`, local branch
   `claude/transed-playground`, clean.
-- Eight local commits on top of `ec1e6d3`, oldest first: `97c13e1`, `907b066`,
-  `4a5a043`, `1b699ed`, `16a7199`, `f989b8f`, `bf6f04f`, `5661cb5`, plus the
-  commit that adds this file. Nothing is pushed. I have no order for remote
-  writes, merge or cleanup.
+- Commits on top of `ec1e6d3`, oldest first: `97c13e1`, `907b066`, `4a5a043`,
+  `1b699ed`, `16a7199`, `f989b8f`, `bf6f04f`, `5661cb5`, `8633e6b`, `732af63`,
+  `8e7df90`, `5fa7d36`, `3193313`, `c364793`, `d6f3fb1`, `c370c85`, plus the
+  commit that brings this file to its present state.
+- On Uwe's order the branch is pushed to `origin` and pull request
+  https://github.com/uweFalz/ufAIM/pull/122 against `main` is open. Take the
+  tip of `origin/claude/transed-playground`. I have no order to merge or to
+  clean up, and each further push needs Uwe's word.
 
 ## 3. The files
 
@@ -52,12 +56,12 @@ suitability check added `cantCurvatureCoupling.js` and its test.
   `evidence/TRANSED_LABELS_20261112/`, `evidence/TRANSED_SMOOTHNESS_20261112/`. The older `handover-sha256.txt` files in
   the first three folders are superseded.
 
-## 4. State of `/AIM` as I found it (read-only, 2026-11-12)
+## 4. State of `/AIM` as I found it (read-only, 2026-11-13)
 
-- `origin/main` is `771433e`. None of the 18 files changed there since
+- `origin/main` is `8ff46eb`. None of the 18 files changed there since
   `ec1e6d3`, so the branch applies onto `origin/main` without conflict.
-- The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `4b34c80`,
-  21 commits ahead of and 72 behind `origin/main`. It has no `transed/`, no
+- The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `b1206f2`,
+  26 commits ahead of and 87 behind `origin/main`. It has no `transed/`, no
   `tools/transed/`, no `test/transed/`, no `transed.html`.
 - `src/services/transition-library/` and `test/services/transition-library/`
   exist there untracked. `cantCurvatureCoupling.js` and its test equal
@@ -105,7 +109,11 @@ Run in `/AIM`:
   same environment (missing untracked modules, `test/samples/`, `rg`, and eight
   assertion failures in app, aim-core and AXTRAN2 tests). List:
   `docs/app/architecture/evidence/TRANSED_LABELS_20261112/full-suite-result.txt`.
-- Nothing was tested inside `/AIM`.
+- Inside `/AIM` only the seven test files with assertion failures ran
+  (2026-11-12, HEAD `b629df0` plus the uncommitted work of other streams,
+  read-only): of the eight assertion failures seven fail there as well, one
+  passes (`test/app/workspace/promoted-alignment-main-q-l-journey.test.mjs`).
+  The full suite and the TransEd tests did not run there.
 
 ## 8. Open, not part of the takeover
 
