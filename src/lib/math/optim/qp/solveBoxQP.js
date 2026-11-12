@@ -16,7 +16,7 @@
 //
 // Pure numerics: no domain knowledge, no dependencies.
 
-export const SOLVE_BOX_QP_VERSION = "optim/qp/solveBoxQP/0.1";
+export const SOLVE_BOX_QP_VERSION = "optim/qp/solveBoxQP/0.2";
 
 const EPS = 1e-12;
 
@@ -163,13 +163,34 @@ function solveFreeBlock({ H, c, A, b, z, free, damping }) {
 	const { nullBasis } = orthogonalDecomposition(Af, m);
 	let particular = new Array(m).fill(0);
 	if (Af.length > 0) {
-		const gram = Af.map((rowA) => Af.map((rowB) => dot(rowA, rowB)));
-		const gramScale = Math.max(...gram.map((row, r) => Math.abs(row[r])), 1);
-		for (let r = 0; r < gram.length; r++) gram[r][r] += 1e-12 * gramScale;
-		const weights = solveSpd(gram, rhs);
+		// Row by row at unit norm: the minimum-norm solution is the same one, and
+		// the regularisation of the Gram matrix is then relative to every row
+		// instead of to the largest. Unscaled, a row of norm 763 beside rows of
+		// norm one put 6e-7 on every diagonal, and where the right-hand side was
+		// large - the slacks of ramp rows twenty metres from binding - the
+		// solution missed the equalities by 5e-5: the subproblem reported
+		// "solved" at a point that broke its own linear constraints, and the SQP
+		// could not take the violation below 1e-4 (measured on the exact ramp
+		// rule under the corridor, 2026-11-10).
+		const norms = Af.map((row) => { const norm = Math.hypot(...row); return norm > 0 && Number.isFinite(norm) ? norm : 1; });
+		const An = Af.map((row, r) => row.map((value) => value / norms[r]));
+		const rn = rhs.map((value, r) => value / norms[r]);
+		const gram = An.map((rowA) => An.map((rowB) => dot(rowA, rowB)));
+		for (let r = 0; r < gram.length; r++) gram[r][r] += 1e-12;
+		const weights = solveSpd(gram, rn);
 		if (!weights) return null;
-		for (let r = 0; r < Af.length; r++) {
-			for (let i = 0; i < m; i++) particular[i] += Af[r][i] * weights[r];
+		const lift = (w) => { const out = new Array(m).fill(0); for (let r = 0; r < An.length; r++) for (let i = 0; i < m; i++) out[i] += An[r][i] * w[r]; return out; };
+		const residualOf = (y) => An.map((row, r) => rn[r] - dot(row, y));
+		particular = lift(weights);
+		// one step of refinement on what the regularisation left, kept where it helps
+		const left = residualOf(particular);
+		const leftNorm = Math.hypot(...left);
+		if (leftNorm > 0) {
+			const correction = solveSpd(gram, left);
+			if (correction) {
+				const refined = lift(correction).map((value, i) => particular[i] + value);
+				if (refined.every(isFiniteNumber) && Math.hypot(...residualOf(refined)) < leftNorm) particular = refined;
+			}
 		}
 	}
 

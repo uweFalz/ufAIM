@@ -697,8 +697,12 @@ test("the merit pays off a violated ramp inequality instead of freezing on it", 
 	const history = run.diagnostics.history ?? [];
 	const last = history.filter((e) => e.violation !== undefined).pop();
 	assert.ok(last, "the run recorded no violation at all");
-	assert.ok(last.violation < 1e-9,
-		`expected the violation driven below 1e-9, got ${last.violation.toExponential(2)}`);
+	// to the verdict's own feasibility (1e-9 of the variables' 1-norm, about 1e-6 here), not frozen at
+	// 4.6e-5: the run ends "converged" on a last full step whose second-order rest is 9e-7 since the
+	// subproblem's free-block solve was equilibrated (2026-11-10); the rows themselves are checked below
+	assert.equal(run.status, "converged");
+	assert.ok(last.violation < 1e-6,
+		`expected the violation driven below 1e-6, got ${last.violation.toExponential(2)}`);
 	// and the row itself, not just the aggregate. Taken from the last iteration
 	// that reported rows: a run that reaches "converged" ends on a terminal entry
 	// which carries the violation but not the per-row breakdown.
@@ -733,9 +737,27 @@ test("the exact ramp rule ends the length tier where the bound form ends it: a r
 	assert.ok(Math.abs(exact.budgets[0].span - bound.budgets[0].span) < 1e-3, "the same cost of the points in length");
 });
 
-test("the exact ramp rule under the corridor where the rows read curvature", { todo: "open: at V 80 both arcs lie where the cant still grows; the length tier ends line_search_failed after 98 steps, 9 of 50 subproblems at a degenerate vertex (docs/app/architecture/AXTRAN2_EXACT_RAMP_RULE_2026-11-10.md)" }, async () => {
+test("the exact ramp rule under the corridor where the rows read curvature: the order ends, and shorter than the bound form", async () => {
+	// At V 80 the cant grows up to R 581 and both arcs are flatter: the ramp rows couple a length to a curvature.
+	// Until 2026-11-10 the length tier collapsed here after 98 steps with the violation stuck at 1e-4: the
+	// subproblem's free-block solve missed its own equalities by 5e-5 (rows of very different norm, the
+	// regularisation taken from the largest). It ends now, slowly - 465 steps against 79, half of the
+	// subproblems at a degenerate vertex - and 9.6 mm shorter than the bound form, which is what the exact
+	// rule is for.
 	const { hauptbahn } = await import(new URL("profiles/index.js", BASE));
-	const sc = createNineElementScenario({ pointCount: 12, startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180], startCurvatures: [1 / 695, -1 / 905], rampLengthAs: "constraint", design: hauptbahn({ speedKmh: 80, cantMm: 130 }) });
-	const run = solveAlignmentLexicographic({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, tiers: DEFAULT_TIERS, maxIterations: 300 });
-	assert.equal(run.status, "converged");
+	const start = { pointCount: 12, startLengths: [200, 92, 298, 88, 152, 82, 258, 78, 180], startCurvatures: [1 / 695, -1 / 905], design: hauptbahn({ speedKmh: 80, cantMm: 130 }) };
+	const order = (rampLengthAs) => {
+		const sc = createNineElementScenario({ ...start, rampLengthAs });
+		return solveAlignmentLexicographic({ problem: sc.problem, buildAlignment: sc.buildAlignment, analyticJacobian: sc.analyticJacobian, tiers: DEFAULT_TIERS, maxIterations: 1000 });
+	};
+	const bound = order("bound"), exact = order("constraint");
+	assert.equal(exact.status, "converged");
+	const tier = (run) => run.phases.find((p) => p.label === "tier-1");
+	const d = tier(exact).diagnostics;
+	assert.ok(tier(exact).ok, `${tier(exact).status} ${d.reason ?? ""}`);
+	assert.ok(d.rampSlack <= 1e-9, `no ramp is violated: ${d.rampSlack}`);
+	assert.ok(d.accumulatedLength < tier(bound).diagnostics.accumulatedLength - 5e-3, `${d.accumulatedLength} against the bound form's ${tier(bound).diagnostics.accumulatedLength}`);
+	assert.ok(exact.budgets[0].span > bound.budgets[0].span, "the points cost more against a shorter reference");
+	const last = (run) => run.phases.at(-1).diagnostics;
+	assert.ok(Math.abs(last(exact).softResidualRms - last(bound).softResidualRms) < 1e-3, "the order's answer is the same fit");
 });
