@@ -37,7 +37,7 @@ import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacob
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
 import { symmetricEigen } from "../../../lib/math/lina/symmetricEigen.js";
 
-export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.3";
+export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.4";
 
 export const OBJECTIVES = Object.freeze(["points", "accumulated-length"]);
 
@@ -152,6 +152,39 @@ export function solveAlignmentProblem({
 	// with that Hessian (Gauss-Newton mode), whatever the hessian option says.
 	// A no-op on the points objective, which carries the points already.
 	corridor = false,
+	// Which multiplier weighs the corridor's curvature in the model.
+	//
+	//   "multiplier"  the last subproblem's, as it came back - zero whenever
+	//                 that subproblem did not hold the row.
+	//   "held"        the last positive one a subproblem returned, kept while
+	//                 the row is not held; as it came back until one has.
+	//
+	// A subproblem that does not hold the row returns a multiplier of zero,
+	// and the next model then has no curvature along the row at all: the
+	// length is linear, so that model is a linear programme in the directions
+	// the points determine, and its step runs to the region's edge. Measured
+	// on 92 station tracks of 7 to 33 elements (corpus places 130-221), from a
+	// warm start deep inside the corridor (rms 0.1): on 90 of them the tier
+	// left the corridor at rms 3 to 10 within its first steps, and the eighty
+	// to two hundred iterations back are where the tier's verdict was lost -
+	// to a filter that refuses the small steps back, a region halved forty
+	// times, a subproblem relaxed to nothing. The length has no interior
+	// optimum; where the corridor is what stops it the row is held at the
+	// answer and its multiplier there is positive, and keeping the last
+	// positive estimate is keeping the Lagrangian's curvature where the
+	// answer needs it. Six runs each, the point tolerance moved by 10 to 30 pm
+	// between them (the verdicts are that sensitive): 76.7 of 92 with a
+	// verdict under "multiplier" (sd 2.1, 33 files whose verdict depends on
+	// the run), 86.5 with the curvature kept (sd 1.4, 13 files).
+	//
+	// Kept from the start - a weight of one before any subproblem had held
+	// the row - it cost the small alignments: where bounds stop the length
+	// and the corridor is never reached, the tier crept under a curvature it
+	// had no evidence for, 2.5 times the iterations on 130 alignments of 3 to
+	// 7 elements, and settled up to 6 mm long. Kept only once returned, those
+	// are as before (docs/app/architecture/
+	// AXTRAN2_LENGTH_TIER_STABILITY_2026-11-12.md).
+	corridorCurvature = "held",
 	// { steps, absolute, feasibility? }: the objective is done when it has
 	// settled (solveSQP's objectiveSettled). Set by the solver itself for the
 	// length objective under the corridor; a caller may set it for a phase
@@ -192,6 +225,9 @@ export function solveAlignmentProblem({
 	// the analytic Jacobian
 	if (corridor && objective === "accumulated-length" && typeof analyticJacobian !== "function") {
 		error("INVALID_OPTION", "the corridor needs the analytic Jacobian for its row");
+	}
+	if (corridorCurvature !== "held" && corridorCurvature !== "multiplier") {
+		error("INVALID_OPTION", `corridorCurvature must be "held" or "multiplier", got ${JSON.stringify(corridorCurvature)}`);
 	}
 	if (hessian !== "bfgs" && hessian !== "gauss-newton" && hessian !== "auto") {
 		error("INVALID_OPTION", `hessian must be "bfgs" or "gauss-newton", got ${JSON.stringify(hessian)}`);
@@ -289,6 +325,9 @@ export function solveAlignmentProblem({
 	let builds = 0;
 	let jacobianEvaluations = 0;
 	let hessianMode = hessian === "auto" ? "bfgs" : hessian;
+	// the last positive multiplier a subproblem returned for the corridor's row;
+	// null until one has held it
+	let corridorMultiplier = null;
 	// set when a projector offered neither a longitudinal residual nor a
 	// distance, so the extrapolation check could not be made for at least one
 	// point
@@ -682,7 +721,9 @@ export function solveAlignmentProblem({
 			// the corridor's row sits after the ramp and the one-sided point rows;
 			// its multiplier is the last subproblem's, one before the first
 			const mu = context?.multipliers?.inequality?.[g.length];
-			const weight = (Number.isFinite(mu) ? Math.max(mu, 0) : 1) * (2 / N);
+			if (Number.isFinite(mu) && mu > 0) corridorMultiplier = mu;
+			const asReturned = Number.isFinite(mu) ? Math.max(mu, 0) : 1;
+			const weight = (corridorCurvature === "held" ? (asReturned > 0 ? asReturned : corridorMultiplier ?? 0) : asReturned) * (2 / N);
 			const curvature = gaussNewton(Jr).map((hRow) => hRow.map((value) => value * weight));
 			return { f: accumulatedLength(x), gradF, h, Jh, g: [...g, sum / N - 1], Jg: [...Jg, row], ...stepBounds, hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
 		}
@@ -888,7 +929,14 @@ export function solveAlignmentProblem({
 		...(hybridSwitch === undefined ? (corridorActive ? { hybridSwitch: 0 } : {}) : { hybridSwitch }),
 		...(qpIterations === undefined ? {} : { qpIterations }),
 		...(filterMargin === undefined ? {} : { filterMargin }),
-		...(filterCeiling === undefined ? {} : { filterCeiling }),
+		// Under the corridor the filter's ceiling is the corridor's own width:
+		// the row is rms^2 - 1, so a violation of one is rms 1.41. The solve's
+		// default of a hundred let the tier out to rms 10 (see corridorCurvature
+		// above). The ceiling alone: 83.0 of 92 with a verdict (sd 1.9) against
+		// 76.7; with the curvature kept, the closure and the settled window:
+		// 91.7 (sd 0.5), one file whose verdict depends on the run, a third
+		// fewer iterations.
+		...(filterCeiling === undefined ? (corridorActive ? { filterCeiling: 1 } : {}) : { filterCeiling }),
 		...(filterSwitching === undefined ? {} : { filterSwitching }),
 		...(correctionClosure === undefined ? {} : { correctionClosure }),
 		...(correctionRows === undefined ? {} : { correctionRows }),
@@ -906,7 +954,18 @@ export function solveAlignmentProblem({
 		// centimetres of the measurements. The constraints are closed to 1e-8
 		// for the lexicographic gate; 1e-9 sat at the noise floor of a 7.5 km
 		// chain (a restoration from 1.2e-9 took no step it could accept).
-		...(objectiveSettled ? { objectiveSettled } : corridorActive ? { objectiveSettled: { steps: 20, absolute: 1e-3, feasibility: 1e-8 } } : {}),
+		// "within": a step that ends 1e-5 beside the constraints counts for
+		// the window too - the corridor at rms 1.000005. The tier creeps along
+		// the corridor a few 1e-6 outside it, every step closing the linearised
+		// row and reopening it at second order, and held to the solve's
+		// relative feasibility the window fills late or not at all. Measured
+		// on the 92 station tracks, six runs each: 91.7 with a verdict (sd 0.5,
+		// one file whose verdict depends on the run) against 90.7 (sd 1.5, six
+		// files), a tenth fewer iterations, no length more than 0.7 mm
+		// different. At 1e-4 the tiers end in half the iterations and a tenth
+		// of them more than a millimetre long, which is more than the rule
+		// promises.
+		...(objectiveSettled ? { objectiveSettled } : corridorActive ? { objectiveSettled: { steps: 20, absolute: 1e-3, feasibility: 1e-8, within: 1e-5 } } : {}),
 		});
 		attempts.push(Object.freeze({
 			hessian: attempt.hessian, restoration: attempt.restoration ?? "on-verdict",

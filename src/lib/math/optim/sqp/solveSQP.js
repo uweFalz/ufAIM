@@ -16,7 +16,7 @@ import { l1Merit, updatePenaltyWeights, createPenaltyWeights, constraintViolatio
 import { lineSearchArmijo } from "./lineSearchArmijo.js";
 import { restoreFeasibility } from "./restoreFeasibility.js";
 
-export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.2";
+export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.3";
 
 function dot(a, b) {
 	let sum = 0;
@@ -212,7 +212,11 @@ export function solveSQP({
 	// end pose at 4e-6 for hundreds of iterations; one restoration step
 	// closes it). This is not a rate test on a residual norm (that one was
 	// tried and rejected): it is the caller saying what a millimetre of
-	// length is worth. Null: never.
+	// length is worth. Null: never. `within` (default 0) lets a point whose
+	// violation is at most that much count for the window as well, for a
+	// caller whose solve creeps just beside a curved constraint; the closure
+	// then has to leave the objective where it had settled, or the window
+	// starts over.
 	objectiveSettled = null,
 	filterSTheta = 1.1,
 	filterSF = 2.3,
@@ -368,7 +372,12 @@ export function solveSQP({
 		// a best-effort closure at a verdict is not one of the restorations
 		// the limit counts, which are answers to a subproblem that relaxed
 		if (counted) restorations += 1;
-		const restored = restoreFeasibility({ evaluate, x, lower: lo, upper: up, feasibilityTolerance: tolerance });
+		// under the bounds of the current step, not only the declared ones: a
+		// row the evaluator carries as a lower bound at this point has stepped
+		// aside as a row, and a restoration under the declared bounds alone
+		// does not see it - measured on the exact ramp rule, the closure of a
+		// settled tier took a transition 1.1e-7 m under its ramp length
+		const restored = restoreFeasibility({ evaluate, x, lower: lowerAt(state), upper: up, feasibilityTolerance: tolerance });
 		restorationSteps += restored.steps;
 		// A restoration that stalls short of the tolerance but inside the
 		// region is a start the solve can finish from; measured on 71 elements
@@ -413,6 +422,18 @@ export function solveSQP({
 		filterCeilingValue = null;
 		return null;
 	}
+
+	// A verdict that ends the solve at a point feasible to the solve's relative
+	// tolerance closes it to the absolute one the caller asked for with
+	// objectiveSettled.feasibility, best effort and uncounted. "converged" and
+	// "objective_settled" did; "merit_stationary" and the zero step did not, and
+	// they are how most length tiers end: measured on 92 station tracks, 7 of 12
+	// tiers that still failed ended stationary with the end pose at 2e-8 to
+	// 2e-7 m and lost their budget at the order's gate of 1e-8.
+	const closeToAsked = (iteration) => {
+		const asked = objectiveSettled?.feasibility ?? Infinity;
+		if (constraintViolation(state).total > asked && restoration !== "off") restoreFrom(iteration, asked, false);
+	};
 
 	if (restoration === "eager" && constraintViolation(state).total > eagerViolationRadii * radius) {
 		const failure = restoreFrom(0);
@@ -536,7 +557,7 @@ export function solveSQP({
 		// one: a least-squares fit in tolerance units under one is within noise
 		const lastDecrease = previousF === null ? null : (previousF - state.f) / Math.max(Math.abs(state.f), 1);
 		previousF = state.f;
-		if (objectiveSettled && violation.total <= feasible) {
+		if (objectiveSettled && (violation.total <= feasible || violation.total <= (objectiveSettled.within ?? 0))) {
 			settledWindow.push(state.f);
 			if (settledWindow.length > objectiveSettled.steps + 1) settledWindow.shift();
 			if (settledWindow.length === objectiveSettled.steps + 1) {
@@ -548,8 +569,12 @@ export function solveSQP({
 						// to the absolute standard asked, not the solve's relative one;
 						// best effort - a restoration that cannot reach it does not
 						// fail a solve that has settled, the window starts over
+						const ceilingF = Math.max(...settledWindow) + objectiveSettled.absolute;
+						const floorF = Math.min(...settledWindow) - objectiveSettled.absolute;
 						restoreFrom(iteration, asked, false);
-						closed = constraintViolation(state).total <= asked;
+						// a window filled beside the constraints holds only if the
+						// closure leaves the objective where it had settled
+						closed = constraintViolation(state).total <= asked && state.f <= ceilingF && state.f >= floorF;
 					}
 					if (closed) {
 						history.push({ iteration, status: "stationary", reason: "objective_settled", kkt, violation: constraintViolation(state).total, swing, steps: objectiveSettled.steps });
@@ -679,8 +704,9 @@ export function solveSQP({
 		// any purpose and only the last of them small enough to say so.
 		if (stepNorm <= stepTolerance * stepScale && violation.total <= feasible
 			&& (stationary || pinnedByModel)) {
+			closeToAsked(iteration);
 			history.push({
-				iteration, status: "step_too_small", kkt, violation: violation.total,
+				iteration, status: "step_too_small", kkt, violation: constraintViolation(state).total,
 				reason: stationary
 					? "stationary"
 					: step.qpStatus === "solved" ? "no_admissible_direction" : "degenerate_vertex",
@@ -708,7 +734,8 @@ export function solveSQP({
 			&& Math.abs(previousMerit - meritAt0) <= meritTolerance * (1 + Math.abs(meritAt0))) {
 			stalls += 1;
 			if (stalls >= stallLimit) {
-				history.push({ iteration, status: "merit_stationary", kkt, violation: violation.total });
+				closeToAsked(iteration);
+				history.push({ iteration, status: "merit_stationary", kkt, violation: constraintViolation(state).total });
 				return {
 					ok: true, status: "stationary", x, state, history,
 					iterations: iteration, restorationSteps, multipliers: step.multipliers, hessian: H,

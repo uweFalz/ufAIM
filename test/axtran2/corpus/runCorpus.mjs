@@ -4,7 +4,14 @@
 //
 //   node test/axtran2/corpus/runCorpus.mjs [--from 0] [--to 206] \
 //        [--objectives points,accumulated-length,lexicographic] [--ramp bound|constraint] \
-//        [--iterations 1000] [--hessian auto|bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--qpWarmStart false] [--undeterminedVerdict false] [--corridor true] [--json out.json]
+//        [--iterations 1000] [--hessian auto|bfgs|gauss-newton] [--restoration on-verdict|eager|off] [--lengthPrior sigma] [--correctionClosure 0.1] [--kinkStation held|free] [--qpWarmStart false] [--undeterminedVerdict false] [--corridor true] [--tolerance 0.15] [--json out.json]
+//
+// One run is one sample. The verdict of a length tier can turn on the last
+// digit of an input: measured on places 130-221, moving the point tolerance
+// by 10 pm changed 11 to 15 of 92 verdicts on one and the same solver
+// (AXTRAN2_LENGTH_TIER_STABILITY_2026-11-12.md). To compare two solvers by
+// their verdict counts, run each several times with --tolerance 0.15,
+// 0.15000000001, 0.14999999999, ... and compare the means against the spread.
 //
 // "Trusted" means the loader's chain reaches the file's own recorded end
 // point to a millimetre; the files that do not are inconsistent as-built
@@ -46,6 +53,7 @@ const filterCeiling = args.filterCeiling === undefined ? undefined : Number(args
 const filterSwitching = args.filterSwitching === undefined ? undefined : args.filterSwitching !== "false";
 const correctionClosure = args.correctionClosure === undefined ? undefined : Number(args.correctionClosure);
 const kinkStation = args.kinkStation ?? "held";
+const tolerance = args.tolerance === undefined ? undefined : Number(args.tolerance);
 const qpWarmStart = args.qpWarmStart === undefined ? undefined : args.qpWarmStart !== "false";
 const undeterminedVerdict = args.undeterminedVerdict === undefined ? undefined : args.undeterminedVerdict !== "false";
 const corridor = args.corridor === undefined ? undefined : args.corridor !== "false";
@@ -72,7 +80,7 @@ console.log("file                                       n free pts  V exc | obje
 const rows = [];
 for (const { file, n } of trusted.slice(from, to)) {
 	let sc;
-	try { sc = await createTraScenario(file, { rampLengthAs, kinkStation }); }
+	try { sc = await createTraScenario(file, { rampLengthAs, kinkStation, ...(tolerance === undefined ? {} : { tolerance }) }); }
 	catch (error) { console.log(`${rel(file).slice(-42).padEnd(42)} scenario: ${error.message.slice(0, 90)}`); rows.push({ file: rel(file), n, error: error.message }); continue; }
 	for (const objective of objectives) {
 		const t0 = Date.now();
