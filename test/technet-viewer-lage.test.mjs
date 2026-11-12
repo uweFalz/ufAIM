@@ -12,8 +12,8 @@ const begin = html.indexOf("// BEGIN LAGE WITNESS");
 const end = html.indexOf("// END LAGE WITNESS");
 assert.ok(begin > 0 && end > begin, "witness block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
-const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, sideGradeOf } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, lageAbstandReihe, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
+const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, lageAbstandReihe, sideGradeOf } = context.api;
 
 // A line along the easting axis, one point every `step` metres. `offset`
 // shifts it to the left (+) or right (-) of that direction; `reverse`
@@ -160,4 +160,31 @@ test("how far one line runs from another: beside it, on it, leaving it, out of r
 	assert.deepEqual(abstand(line({ from: 200, to: 600, offset: 80 }), strecke), { samples: 10, hits: 0 });
 	assert.equal(lageAbstandOf([{ easting: 0, northing: 0, station: 0 }], { polyline: strecke }), null);
 	assert.equal(lageAbstandOf(line(), null), null);
+});
+
+test("a Gleis beside a Trasse as a line over the Trasse's stations: side, distance, and a break where it is away", () => {
+	const strecke = line();
+	const reihe = (gleis, other = strecke) => JSON.parse(JSON.stringify(lageAbstandReihe(gleis, { polyline: other })));
+	// Left of the rising stations is +, right is -, x is the station on the Trasse.
+	const links = reihe(line({ from: 200, to: 600, offset: 4.5 }));
+	assert.equal(links.length, 41);
+	assert.ok(links.every((point) => point.y === 4.5));
+	assert.equal(links[0].x, 100200);
+	assert.equal(links[links.length - 1].x, 100600);
+	assert.equal(links[0].gap, true);
+	assert.ok(links.slice(1).every((point) => !point.gap));
+	assert.ok(reihe(line({ from: 200, to: 600, offset: -9 })).every((point) => point.y === -9));
+	// A Trasse digitised against its stations keeps left and right by the stations.
+	assert.ok(reihe(line({ from: 200, to: 600, offset: 4.5 }), line({ reverse: true })).every((point) => point.y === 4.5));
+	// A Gleis that leaves the reach and comes back is two pieces.
+	const weg = [];
+	for (let x = 200; x <= 600; x += 10) weg.push({ easting: x, northing: x > 350 && x < 450 ? 80 : 5, station: x });
+	const stuecke = reihe(weg);
+	assert.equal(stuecke.filter((point) => point.gap).length, 2);
+	assert.ok(stuecke.every((point) => point.y === 5));
+	assert.ok(!stuecke.some((point) => point.x > 100350 && point.x < 100450));
+	// Past the end of the Trasse there is nothing beside it; nothing to measure gives no line.
+	assert.equal(reihe(line({ from: 1200, to: 1400, offset: 4 })).length, 0);
+	assert.equal(lageAbstandReihe(line(), null).length, 0);
+	assert.equal(lageAbstandReihe([{ easting: 0, northing: 0, station: 0 }], { polyline: strecke }).length, 0);
 });

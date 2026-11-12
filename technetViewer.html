@@ -639,6 +639,12 @@
 			.diagram-cant { stroke: #2e8b57; }
 			.diagram-cant-ramp { stroke: #b7791f; stroke-width: 6; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
 			.diagram-spacing { stroke: #8e44ad; }
+			.diagram-neben { stroke: #4f6d8f; stroke-width: 1.8; }
+			.diagram-line.variante .diagram-neben { stroke-dasharray: 5 4; opacity: 0.75; }
+			.diagram-line { cursor: pointer; }
+			.diagram-line:hover .diagram-neben { stroke-width: 3.6; opacity: 1; }
+			.diagram-line-hit { fill: none; stroke: transparent; stroke-width: 9; pointer-events: stroke; vector-effect: non-scaling-stroke; }
+			.diagram-zero { stroke: #d14c32; stroke-width: 1.2; opacity: 0.7; vector-effect: non-scaling-stroke; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
 			.diagram-fzk-speed { stroke: #1f7a4d; }
@@ -41323,6 +41329,25 @@ xlsx/xlsx.mjs:
 				distances.sort((a, b) => a - b);
 				return { samples, hits: distances.length, median: distances[Math.floor(distances.length / 2)], min: distances[0], max: distances[distances.length - 1] };
 			}
+			// Where one line runs beside another, along the other's stations:
+			// one point per point of the line that finds the other within reach
+			// and away from its ends -- x the station there, y the distance,
+			// left of the rising stations +. Where the line finds nothing the
+			// series breaks (gap), so a Gleis that leaves and comes back is two
+			// pieces, not a line through the air.
+			function lageAbstandReihe(polyline, other) {
+				if (!polyline || polyline.length < 2 || !other?.polyline || other.polyline.length < 2) return [];
+				other.grid ??= lageGrid(other.polyline);
+				const points = [];
+				let open = false;
+				for (const point of polyline) {
+					const hit = lageOffset(other.polyline, point, other.grid);
+					if (!hit || hit.atEnd || hit.distance > LAGE_REACH_M) { open = false; continue; }
+					points.push({ x: hit.station, y: Math.round(hit.side * hit.distance * 1000) / 1000, ...(open ? {} : { gap: true }) });
+					open = true;
+				}
+				return points;
+			}
 			// What two witnesses make of a Gleisseite. belegt: declared and Lage
 			// agree. widerspruch: they name opposite sides. erklaert: only the
 			// declaration speaks (no Kilometerlinie in reach, or the Gleis lies on
@@ -42897,6 +42922,44 @@ xlsx/xlsx.mjs:
 					count.offen ? `${count.offen} mit gleichen km` : null,
 				].filter(Boolean).join(", ");
 			}
+			// The Trassen that stand back on one side, as lines beside the Trasse
+			// in the picture: each one's distance from it over its km. Measured
+			// against the Trasse it stands back for, in that Trasse's stations
+			// as they are now (the km of a Gleis sorted in by hand can change).
+			// A band only where another Gleis lies beside it; a Variante alone
+			// lies on the line and would be a band at 0.
+			const nebenSeite = (value) => `${lageMeters(Math.abs(value))} m${Math.abs(value) < 0.05 ? "" : value > 0 ? " links" : " rechts"}`;
+			function nebenBand(gleis, items, selectedRange) {
+				const others = new Map();
+				const other = (entry) => {
+					if (!others.has(entry)) {
+						const polyline = alignmentEndpoints(entry) ? referenceStationPolyline(entry, 10) : [];
+						others.set(entry, polyline.length > 1 ? { polyline } : null);
+					}
+					return others.get(entry);
+				};
+				const lines = [];
+				for (const item of items) {
+					const neben = nebenArt(item.entry, item.wegen);
+					if (neben.art === "offen" || (effectiveLsys(item.entry) || "") !== (effectiveLsys(item.wegen) || "")) continue;
+					const own = lageState().linien?.get(item.entry)?.polyline ?? (alignmentEndpoints(item.entry) ? referenceStationPolyline(item.entry, 10) : null);
+					const points = clipPointsToRange(lageAbstandReihe(own, other(item.wegen)), selectedRange);
+					if (!points.length) continue;
+					const name = objectListName(item.entry);
+					lines.push({
+						entry: item.entry, art: neben.art, name, points,
+						title: `${name} · ${nebenText(item.entry, neben)}\nAnklicken: dann steht dieses Gleis im Bild`,
+						pick: () => { if (item.entry.button) selectObject(item.entry, item.entry.button); },
+					});
+				}
+				if (!lines.some((line) => line.art === "gleis")) return null;
+				return makeBand(`${gleis} · daneben · Abstand a [m] zur Trasse im Bild, links +`, "diagram-neben", lines.flatMap((line) => line.points), {
+					lines, zeroLine: true, derived: true,
+					axisFormat: nebenSeite,
+					valueLabel: "a (m), links +",
+					valueFormat: (value) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(2).replace(".", ",")}`,
+				});
+			}
 
 			// The 7L picture of an entry, read from the Einordnung: the same shape
 			// the Ableitungen below have always consumed, keys mapped back to entries.
@@ -43035,6 +43098,7 @@ xlsx/xlsx.mjs:
 					["left", "profile", "Linkes Gleis · Gradiente z [m]", "diagram-height", ["elevation", "height", "z"]],
 				];
 				const bands = [];
+				const nebenBySide = {};
 				for (const [side, kind, label, className, valueKeys] of definitions) {
 					const sideSegments = segments(side);
 					const loose = sideSegments.length ? null : first(side, kind);
@@ -43073,11 +43137,12 @@ xlsx/xlsx.mjs:
 					const hiddenHere = kind !== "alignment" ? [] : varianten.filter((item) => item.side === side);
 					if (hiddenHere.length) {
 						const rangeText = (entry) => { const range = stationRangeForEntry(entry); return range ? ` (${station(range.from).trim()} – ${station(range.to).trim()})` : ""; };
+						nebenBySide[side] = nebenBand(label.split(" · ")[0], hiddenHere, selectedRange);
 						footnote = {
-							head: `${label.split(" · ")[0]} · nicht im Bild: ${nebenZaehlung(hiddenHere)}`,
+							head: `${label.split(" · ")[0]} · neben der Trasse im Bild: ${nebenZaehlung(hiddenHere)}`,
 							lines: [
 								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${nebenText(item.entry, nebenArt(item.entry, item.wegen))}`),
-								`Im Bild steht je Seite und Abschnitt eine Trasse: die gewählte, sonst die längste. Eine andere anwählen, dann steht sie im Bild · Maß: gleiche km ab ${VARIANTE_MIN_OVERLAP_M} m Überdeckung und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren; Variante, wenn sie auf der anderen liegt (unter ${lageMeters(NEBEN_AUF_M)} m bei ${Math.round(NEBEN_MIN_ANTEIL * 100)} % der Stichproben), sonst ein anderes Gleis`,
+								`Mit Krümmung, Überhöhung und Gradiente steht je Seite und Abschnitt eine Trasse im Bild: die gewählte, sonst die längste. ${nebenBySide[side] ? "Die anderen zeigt das Band „daneben“ mit ihrem Abstand zu ihr, Varianten gestrichelt; eine Linie dort anklicken oder das Gleis anwählen, dann steht es im Bild" : "Eine andere anwählen, dann steht sie im Bild"} · Maß: gleiche km ab ${VARIANTE_MIN_OVERLAP_M} m Überdeckung und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren; Variante, wenn sie auf der anderen liegt (unter ${lageMeters(NEBEN_AUF_M)} m bei ${Math.round(NEBEN_MIN_ANTEIL * 100)} % der Stichproben), sonst ein anderes Gleis`,
 							],
 						};
 					}
@@ -43096,6 +43161,8 @@ xlsx/xlsx.mjs:
 						...(footnote ? { footnote } : {}),
 						...(emptyNote ? { emptyNote } : {}),
 					}));
+					// The other Gleise of this side close its block, under the Gradiente.
+					if (nebenBySide[side] && (side === "kilometer" || kind === "profile")) bands.push(nebenBySide[side]);
 				}
 				// Gleisabstand: where both Streckengleise are assigned, the distance
 				// from the rechtes Gleis to the linkes, measured in the plane every
@@ -43730,6 +43797,8 @@ xlsx/xlsx.mjs:
 						yMin = Math.min(yMin, point.y);
 						yMax = Math.max(yMax, point.y);
 					}
+					// A band of distances keeps its reference in view: the line at 0.
+					if (track.zeroLine) { yMin = Math.min(yMin, 0); yMax = Math.max(yMax, 0); }
 					const ySpan = Math.max(yMax - yMin, Math.abs(yMax) * 0.1, 1e-9);
 					// A point flagged `gap` starts a new sub-path: the speed series only
 					// exist where there is curvature, and joining two Bögen across a
@@ -43742,7 +43811,23 @@ xlsx/xlsx.mjs:
 					if (track.overlay?.points?.length) {
 						figure.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
 					}
-					figure.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
+					if (track.zeroLine) {
+						const zeroY = yBottom - 15 - (0 - yMin) / ySpan * (trackHeight - 30);
+						figure.append(svgElement("line", { x1: left, x2: width - right, y1: zeroY, y2: zeroY, class: "diagram-zero" }));
+					}
+					// Several lines in one band (the Gleise beside a Trasse): each its
+					// own path with a name on hover and a wider, invisible one to hit.
+					if (track.lines) {
+						for (const line of track.lines) {
+							const group = svgElement("g", { class: `diagram-line${line.art ? ` ${line.art}` : ""}` });
+							const title = svgElement("title", {});
+							title.textContent = line.title ?? line.name ?? "";
+							const d = pathFor(line.points);
+							group.append(title, svgElement("path", { d, class: `diagram-series ${track.className}` }), svgElement("path", { d, class: "diagram-line-hit" }));
+							if (line.pick) group.addEventListener("click", line.pick);
+							figure.append(group);
+						}
+					} else figure.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
 					// Min/max readouts in the label gutter -- a band without numbers
 					// is a shape, not a measurement; the PI needs to read "70" and
 					// "140" off it, not guess from the line height.
@@ -43929,6 +44014,11 @@ xlsx/xlsx.mjs:
 					const side = Math.round(u) ? (u > 0 ? " · Rechtsbogen" : " · Linksbogen") : "";
 					return `u ${Math.abs(Math.round(u))} mm${side}${ramp != null && Math.round(ramp) !== Math.round(u) ? ` · GRA-Rampe ${Math.abs(Math.round(ramp))}` : ""}`;
 				}
+				if (band.lines) {
+					const at = band.lines.map((line) => ({ line, a: bandValueAt(line.points, x, false) })).filter((item) => item.a != null);
+					if (!at.length) return null;
+					return `daneben ${at.slice(0, 3).map((item) => `${item.line.name} ${nebenSeite(item.a)}`).join(", ")}${at.length > 3 ? ` und ${at.length - 3} weitere` : ""}`;
+				}
 				if (cls.includes("spacing")) {
 					const e = bandValueAt(band.points, x, false);
 					return e == null ? null : `e ${e.toFixed(2)} m`;
@@ -44015,6 +44105,7 @@ xlsx/xlsx.mjs:
 				if (diagramPresentation === "table") {
 					renderDiagramTable([
 						...(diagramKind !== "ivmg" ? [] : ivmgTracks).flatMap((track) => {
+							if (track.lines) return track.lines.map((line) => ({ label: `IVMG · ${track.label} · ${line.name}${line.art === "variante" ? " (Variante)" : ""}`, points: line.points, valueLabel: track.valueLabel, valueFormat: track.valueFormat }));
 							const row = { label: `IVMG · ${track.label}`, points: track.points, emptyNote: bandEmptyNote(track), valueLabel: track.valueLabel, valueFormat: track.valueFormat };
 							return track.overlay
 								? [row, { label: `IVMG · ${track.label} · ${track.overlay.label}`, points: track.overlay.points, valueLabel: track.valueLabel, valueFormat: track.valueFormat }]
@@ -44121,14 +44212,14 @@ xlsx/xlsx.mjs:
 						: (() => {
 							// The bands of a Gleis without a declared side are no rows of
 							// the 7L; they count only where there is no 7L at all.
-							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed") && !track.className.includes("spacing") && (sideNote.standalone || !track.undeclared)).length;
-							const speedBandCount = tracks.filter((track) => track.className.startsWith("diagram-speed") || track.className.includes("spacing")).length;
+							const sevenLineBandCount = tracks.filter((track) => !track.className.startsWith("diagram-speed") && !track.className.includes("spacing") && !track.derived && (sideNote.standalone || !track.undeclared)).length;
+							const speedBandCount = tracks.filter((track) => track.className.startsWith("diagram-speed") || track.className.includes("spacing") || track.derived).length;
 							return [
 								`${sideNote.standalone ? `${sevenLineBandCount} ${sevenLineBandCount === 1 ? "Band" : "Bänder"}` : `${sevenLineBandCount} von 7 Bändern`}${speedBandCount ? ` + ${speedBandCount} abgeleitet` : ""}`,
 								`${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`,
 								sideNote.placed,
 								sideNote.confirmed,
-								varianten.length ? `${nebenZaehlung(varianten)} nicht im Bild` : null,
+								varianten.length ? `${nebenZaehlung(varianten)} neben der Trasse im Bild` : null,
 							].filter(Boolean).join(" · ");
 						})();
 				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");

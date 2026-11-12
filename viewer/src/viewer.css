@@ -633,6 +633,12 @@
 			.diagram-cant { stroke: #2e8b57; }
 			.diagram-cant-ramp { stroke: #b7791f; stroke-width: 6; opacity: 0.45; stroke-linecap: round; stroke-linejoin: round; }
 			.diagram-spacing { stroke: #8e44ad; }
+			.diagram-neben { stroke: #4f6d8f; stroke-width: 1.8; }
+			.diagram-line.variante .diagram-neben { stroke-dasharray: 5 4; opacity: 0.75; }
+			.diagram-line { cursor: pointer; }
+			.diagram-line:hover .diagram-neben { stroke-width: 3.6; opacity: 1; }
+			.diagram-line-hit { fill: none; stroke: transparent; stroke-width: 9; pointer-events: stroke; vector-effect: non-scaling-stroke; }
+			.diagram-zero { stroke: #d14c32; stroke-width: 1.2; opacity: 0.7; vector-effect: non-scaling-stroke; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
 			.diagram-fzk-speed { stroke: #1f7a4d; }
