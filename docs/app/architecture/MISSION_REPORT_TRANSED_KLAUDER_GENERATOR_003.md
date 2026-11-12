@@ -61,7 +61,7 @@ Thesis impact: follow-up-required
 - Model reservation: the comparison with the patent supports sign, approximation and the meaning of h; the page still shows the reservation until Uwe confirms (OD-1).
 - The handover list of `TRANSED_PLAYGROUND_FINAL_002` is superseded for six of its 13 files; `docs/app/architecture/evidence/TRANSED_KLAUDER_20261111/handover-sha256.txt` holds the eight current checksums (two files are new). The takeover is now 17 files; `docs/app/architecture/evidence/TRANSED_HASSLINGER_20261111/handover-sha256.txt` was the list after addendum 2. After addendum 3 `docs/app/architecture/evidence/TRANSED_LABELS_20261112/handover-sha256.txt` is the current list: twelve files changed since `TRANSED_PLAYGROUND_FINAL_002`; the two added ones (`transitionPlot.js` and its test) were already part of the takeover, so its size does not change.
 - The built-in database still lists its seven Klauder records; replacing them by the generator would change `transitionLookup.json` and was not ordered.
-- OD-1 (Uwe): section 9 of the note — formal confirmation, small-angle form or exact expression, default h, whether the `vienna` halfWaves should be declarable as cant.
+- OD-1 (Uwe): section 9 of the note — formal confirmation, small-angle form or exact expression, default h. The fourth point (the `vienna` halfWaves declarable as cant) is settled by addendum 2 and marked so in the note.
 - OD-2 (Rock): take over from the tip of `claude/transed-playground`; `transed.html` must then report source `ca1dd6821983`.
 
 ## 9. Handover

@@ -156,6 +156,11 @@ nicht gebaut.
    (κ + d″)/(1 − κd) mit d = h·sin ψ?
 3. Welche Höhe h ist die Voreinstellung? Die Tabelle des Patents rechnet mit 1,8 m,
    dem Wert, den auch das Modul voreinstellt.
-4. Sollen die `vienna`-Halbwellen in der Bibliothek als Überhöhung erklärbar werden?
-   Die eingebauten Einträge sind unveränderlich; es ginge über eigene Einträge mit
-   `quantity: "cant"`.
+
+Erledigt (Stand 2026-11-12): Die Frage, ob die `vienna`-Halbwellen als Überhöhung
+erklärbar werden sollen, hat Uwe mit einem Auftrag beantwortet. In Modus 2 der
+Spielwiese gibt es „Die Halbwellen lesen als“ (Krümmung oder Überhöhung). Die
+eingebauten Einträge bleiben unverändert; die andere Lesart ist ein eigener Eintrag
+`<Kennung>_CANT` mit `quantity: "cant"` auf demselben Prototyp. Mit `vienna2` und
+dem Beispiel des Patents ergibt sich die Krümmung −0,0083 … 1,0083 bei ε = 0,062,
+wie in Abschnitt 8 nachgerechnet.
