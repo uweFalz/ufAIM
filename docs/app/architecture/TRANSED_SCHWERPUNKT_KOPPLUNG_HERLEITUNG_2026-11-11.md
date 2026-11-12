@@ -179,6 +179,12 @@ nicht null ist.
    (κ + d″)/(1 − κd) mit d = h·sin ψ?
 3. Welche Höhe h ist die Voreinstellung? Die Tabelle des Patents rechnet mit 1,8 m,
    dem Wert, den auch das Modul voreinstellt.
+4. Welche Glattheit der Rampe an den Enden soll verlangt sein, und mit welchen
+   Grenzen? Voreingestellt ist Ordnung 2 (f′ = f″ = 0), die Mindestforderung des
+   Patents; Ordnung 3 (zusätzlich f‴ = 0) ist die Forderung der Biegetheorie. Die
+   Grenzen sind eine Annahme: f′ gegen 0,02, f″ und f‴ gegen 0,02 mal ihren
+   größten Betrag auf der Rampe, mindestens 1 (Abschnitt 8, „Glattheit“). Auf der
+   Seite ist die Ordnung wählbar, die Grenzen stehen in `cantCurvatureCoupling.js`.
 
 Erledigt (Stand 2026-11-12): Die Frage, ob die `vienna`-Halbwellen als Überhöhung
 erklärbar werden sollen, hat Uwe mit einem Auftrag beantwortet. In Modus 2 der
