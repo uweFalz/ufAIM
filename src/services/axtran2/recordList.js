@@ -7,7 +7,9 @@
 //
 // The plan's length and radius are fields: a value typed there is where the
 // next fit starts (recordEdits.js); the file keeps its own, shown under
-// the field. A turnout is catalogue geometry and has no field for length or
+// the field. A length or radius typed here is held as well: the page sets
+// the box beside it (alignmentPicture.js, holdTyped), and the box lets it
+// go again. A turnout is catalogue geometry and has no field for length or
 // radius; what it has is its type: on the arc of its branch, and on any arc
 // of the file, a choice of the annex's turnouts ("–" for none), and beside a
 // chosen type the main track's radius to bend it onto (recordEdits.js,
