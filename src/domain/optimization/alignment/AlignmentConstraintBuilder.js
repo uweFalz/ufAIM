@@ -187,7 +187,7 @@ export function createAlignmentConstraintBuilder({
 	//
 	// "bound" is the default, and not because it is the better statement of the
 	// requirement - it is the worse one. It is the default because the exact form
-	// is measured on one scenario and not yet on the corpus.
+	// does not hold on the corpus: unusable from 109 elements on (2026-11-11).
 	//
 	// What stood here from 2026-09-03 - the points tier ending at an rms of 2.47
 	// against 0.083 - no longer holds: on the nine-element scenario the points fit
@@ -197,8 +197,12 @@ export function createAlignmentConstraintBuilder({
 	// degenerate vertex); a ramp row that reads no curvature at the current point
 	// now travels as a bound for that step (AlignmentSQPSolver.rampRows), and the
 	// tier ends where the bound form ends, 1049.820 m in 81 steps against 79
-	// (docs/app/architecture/AXTRAN2_EXACT_RAMP_RULE_2026-11-10.md). Before it
-	// becomes the default: the corpus, under both forms.
+	// (docs/app/architecture/AXTRAN2_EXACT_RAMP_RULE_2026-11-10.md). Where the
+	// rows do read curvature (V 80 on that scenario) the tier ends too since the
+	// subproblem's free-block solve was equilibrated, 9.6 mm shorter than the
+	// bound form and slowly: 465 steps. On the corpus (section 7 there) the exact
+	// form then carries alignments of 20-108 elements, fails on most from 109
+	// on, and where both forms end the length is the same in nine of ten.
 	rampLengthAs = "bound",
 } = {}) {
 	if (!RAMP_LENGTH_MODES.includes(rampLengthAs)) {

@@ -559,3 +559,15 @@ test("SQP takes a lower bound the evaluator states for the step from its point",
 	assert.deepEqual(scaled.lower, [1, -Infinity]);
 	assert.equal(scaleEvaluator(() => ({ f: 0, gradF: [1, 1], h: [], Jh: [] }), [10, 0.001])([0, 0]).lower, undefined);
 });
+
+test("box QP meets its equalities where the rows differ by orders of magnitude and a right-hand side is large", () => {
+	// z = (x1, x2, s): x1 + x2 = 0 at unit norm, 1000 x1 - 1000 x2 = 0 at norm 1414, x1 + s = 25 - a slack far
+	// from binding. The answer is (0, 0, 25). With the regularisation of the Gram matrix taken from the largest
+	// row the free-block solve returned x1 = x2 = 1.25e-5 and called it solved: 2.5e-5 off the first equality,
+	// 5e-5 off the third - the size of the violation the exact ramp rule could not get below (2026-11-10).
+	const A = [[1, 1, 0], [1000, -1000, 0], [1, 0, 1]], b = [0, 0, 25];
+	const run = solveBoxQP({ H: [[1e-4, 0, 0], [0, 1e-4, 0], [0, 0, 0]], c: [1, 1, 0], A, b, lower: [-99, -99, 0], upper: [99, 99, 99], z0: [0, 0, 25] });
+	assert.equal(run.status, "solved");
+	closeAll(run.z, [0, 0, 25], 1e-10, "the solution");
+	A.forEach((row, k) => close(row.reduce((sum, value, i) => sum + value * run.z[i], 0), b[k], 1e-10, `equality ${k}`));
+});
