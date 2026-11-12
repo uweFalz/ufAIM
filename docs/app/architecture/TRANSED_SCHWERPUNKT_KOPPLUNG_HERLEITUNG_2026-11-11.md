@@ -142,11 +142,11 @@ ausschwingenden Krümmungsverlauf von Fig. 3. Die Konstante der Funktion (3) ist
 Z = 2 · 4,49340946; die Datenbank hat sie richtig.
 
 **Glattheit.** Das Patent verlangt von f mindestens drei, für die Biegetheorie der
-Schiene vier Ableitungen mit endlichen Werten. Die Tauglichkeitsprüfung im Modul
-liest bisher nur die Endsteigung f′. Aus f″ = (f − k)/ε² folgt: f″ ist an den Enden
-null, sobald k dort 0 und 1 trifft; f‴ ist null, sobald zusätzlich f′ und k′ dort
-null sind. Diese Verschärfung ist seit 2026-11-12 gebaut (Auftrag Uwe): Die Prüfung liest
-f′, f″ und f‴ an beiden Enden und nennt die erreichte Ordnung.
+Schiene vier Ableitungen mit endlichen Werten. Aus f″ = (f − k)/ε² folgt: f″ ist an
+den Enden null, sobald k dort 0 und 1 trifft; f‴ ist null, sobald zusätzlich f′ und
+k′ dort null sind. Die Tauglichkeitsprüfung im Modul las zunächst nur die
+Endsteigung f′. Seit 2026-11-12 (Auftrag Uwe) liest sie f′, f″ und f‴ an beiden
+Enden und nennt die erreichte Ordnung.
 
 | Ordnung | Bedingung an den Enden | Bedeutung |
 | --- | --- | --- |
