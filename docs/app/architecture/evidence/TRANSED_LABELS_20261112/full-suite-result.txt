@@ -1,0 +1,42 @@
+Full suite, node --test 'test/**/*.test.mjs', worktree ufAIM-transed-playground at 8633e6b, 2026-11-12
+ℹ tests 2404
+ℹ pass 2349
+ℹ fail 30
+ℹ cancelled 0
+ℹ skipped 24
+ℹ todo 1
+
+Failing tests (file | name | first error line):
+test/aim-core/alignment-services/alignment-profile-developer-entry.test.mjs:172:1 | ✖ dependency/scope scan confirms only fixed fixture access and authorized imports, no runtime reference from app/ or src/ to the tool/fixture, and no browser, DOM, Worker, Messaging, SPOT, storage, persistence, import, GND, LandXML, selection, UI, network, environment, argv option parsing, or private-data dependency | Error: spawn rg ENOENT
+test/aim-core/module-boundaries/horizontal-alignment-realization-core-module-boundary.test.mjs:58:1 | ✖ canonical Sparse body mechanically preserves the productive baseline | AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+test/app/import/gnd-relation-review-confirm.test.mjs:1:1 | ✖ test/app/import/gnd-relation-review-confirm.test.mjs | (no error line captured)
+test/app/workspace/alignment-intelligence-progressive-disclosure.test.mjs:9:1 | ✖ alignment intelligence starts compact while preserving an explicit details control | AssertionError [ERR_ASSERTION]: The input did not match the regular expression /class="uf-shell is-intelligence-collapsed"/. Input:
+test/app/workspace/alignment-workspace-guided-start-boundary.test.mjs:8:1 | ✖ guided start remains an App orchestration surface over existing actions | AssertionError [ERR_ASSERTION]: The input did not match the regular expression /refreshWorkspaceState\(\)\.then\(showOverlay, showOverlay\)/. Input:
+test/app/workspace/canonical-workspace-reopen-profile-readback.test.mjs:25:1 | ✖ canonical reopen resolves only after exact synchronized profile readback | AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+test/app/workspace/canonical-workspace-reopen-profile-readback.test.mjs:41:1 | ✖ canonical reopen also waits for Main horizontal completion | AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+test/app/workspace/canonical-workspace-reopen-profile-readback.test.mjs:59:1 | ✖ context switch, refresh failure, and every malformed readback fail closed | AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+test/app/workspace/gnd-promoted-evidence-workspace.test.mjs:27:1 | ✖ exact promoted identity refreshes SPOT surfaces and receives persisted evidence | AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+test/app/workspace/gnd-route-workspace-cockpit.test.mjs:1:1 | ✖ test/app/workspace/gnd-route-workspace-cockpit.test.mjs | (no error line captured)
+test/app/workspace/gnd-seven-line-role-assembly.test.mjs:1:1 | ✖ test/app/workspace/gnd-seven-line-role-assembly.test.mjs | (no error line captured)
+test/app/workspace/promoted-alignment-main-q-l-journey.test.mjs:5:1 | ✖ canonical promoted Alignment becomes the one Main workspace context | AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+test/axtran2/adapter.test.mjs:109:1 | ✖ a TRA survives the round trip through the writer | Error: ENOENT: no such file or directory, scandir 'test/samples/'
+test/axtran2/adapter.test.mjs:186:1 | ✖ a perturbed TRA is fitted back onto points taken from the original, with a Zwangspunkt held | Error: ENOENT: no such file or directory, scandir 'test/samples/'
+test/axtran2/adapter.test.mjs:291:1 | ✖ a one-sided Zwangspunkt runs through the adapter: slack costs nothing, a violation is paid for | Error: ENOENT: no such file or directory, open '<tmp>/axtran2-adapter-60CMCT/aufmass.csv'
+test/axtran2/adapter.test.mjs:320:1 | ✖ a station beside a point is a hint for the foot, a remark rides along | Error: ENOENT: no such file or directory, open '<tmp>/axtran2-adapter-60CMCT/aufmass.csv'
+test/axtran2/adapter.test.mjs:346:1 | ✖ the priority order runs through the adapter and accounts for its phases | Error: ENOENT: no such file or directory, open '<tmp>/axtran2-adapter-60CMCT/aufmass.csv'
+test/axtran2/bundle.test.mjs:26:1 | ✖ the bundle is one file whose worker computes the fit the served app computes | Error: ENOENT: no such file or directory, scandir 'test/samples/'
+test/axtran2/demo.test.mjs:25:1 | ✖ the Vorführung brings a plan metres off back onto the survey, with the Zwangspunkt met | Error: ENOENT: no such file or directory, scandir 'test/samples/'
+test/axtran2/lexicographic.test.mjs:736:1 | ✖ the exact ramp rule under the corridor where the rows read curvature | AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+test/axtran2/tra-roundtrip-contract.test.mjs:99:1 | ✖ the contract: on every trusted file including transition junctions the app's import and the solver's reader realise the same axis, from the file and from the file the adapter writes | Error: ENOENT: no such file or directory, scandir 'test/samples/'
+test/axtran2/tra-roundtrip-contract.test.mjs:123:1 | ✖ transition junction regressions reach the recorded end through the app before and after writing | Error: ENOENT: no such file or directory, scandir 'test/samples/'
+test/gnd-dbb-import.test.mjs:1:1 | ✖ test/gnd-dbb-import.test.mjs | (no error line captured)
+test/gnd-mdb-production.test.mjs:1:1 | ✖ test/gnd-mdb-production.test.mjs | (no error line captured)
+test/gnd-mdb-spike/gnd-mdb-spike.test.mjs:1:1 | ✖ test/gnd-mdb-spike/gnd-mdb-spike.test.mjs | (no error line captured)
+test/gnd-productive-attachment-relations.test.mjs:1:1 | ✖ test/gnd-productive-attachment-relations.test.mjs | (no error line captured)
+test/gra-coupled-cant-gradient-source-evidence.test.mjs:64:1 | ✖ public metroB GRA retains its real Gleisschere outside the profile sequence | Error: ENOENT: no such file or directory, open 'test/samples/metroB/5904067R.GRA'
+test/import-truthfulness-eligibility.test.mjs:1:1 | ✖ test/import-truthfulness-eligibility.test.mjs | (no error line captured)
+test/import/import-get-state-large-evidence.test.mjs:1:1 | ✖ test/import/import-get-state-large-evidence.test.mjs | (no error line captured)
+test/technet-viewer-dbb.test.mjs:1:1 | ✖ test/technet-viewer-dbb.test.mjs | (no error line captured)
+test/technet-viewer-gra.test.mjs:32:1 | ✖ Eifel 2631R139: 47 grade breaks, then 8 Überhöhungsrampen | Error: ENOENT: no such file or directory, open 'test/samples/eifel/2631R139_Bestand_VR_DBREF03_A.GRA'
+
+Comparison: the same 24 test files run on the base commit ec1e6d3 in a temporary worktree (same machine, same missing untracked files): 99 tests, 68 pass, 30 fail; the failing names are identical to the list above.

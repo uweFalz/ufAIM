@@ -96,9 +96,11 @@ Run in `/AIM`:
 - Visible journeys ran in headless Chrome on the single file and on the served
   page, without console errors; nobody watched, selects were set by value,
   Safari, Firefox and narrow screens are untested.
-- The full suite was last run before the read-as switch: 30 failures out of
-  2400, all from this worktree's missing untracked `test/samples/`, GND
-  `node_modules` and `rg`, none in TransEd. It was not repeated since.
+- The full suite was repeated at `8633e6b`: 2404 tests, 30 failures, none in
+  TransEd. The same failures occur by name on the base commit `ec1e6d3` in the
+  same environment (missing untracked modules, `test/samples/`, `rg`, and eight
+  assertion failures in app, aim-core and AXTRAN2 tests). List:
+  `docs/app/architecture/evidence/TRANSED_LABELS_20261112/full-suite-result.txt`.
 - Nothing was tested inside `/AIM`.
 
 ## 8. Open, not part of the takeover
