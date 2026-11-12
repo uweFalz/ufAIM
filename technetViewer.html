@@ -1072,7 +1072,8 @@
 			.outbox-object .side-witness { float: right; margin-left: var(--sp-2); font-size: var(--fs-1); white-space: nowrap; }
 			#outboxContent .outbox-object .side-witness.widerspruch,
 			#tables .object-row > button > span[data-kind].side-conflict { color: color-mix(in srgb, #d70015 78%, CanvasText); font-weight: 600; }
-			#outboxContent .outbox-object .side-witness.variante { color: var(--secondary); font-style: italic; }
+			#outboxContent .outbox-object .side-witness.neben { color: var(--secondary); }
+			#outboxContent .outbox-object .side-witness.neben.variante { font-style: italic; }
 			#outboxContent .outbox-object.selected .side-witness { color: inherit; opacity: 0.9; }
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
 			.outbox-object-row {
@@ -41305,6 +41306,23 @@ xlsx/xlsx.mjs:
 					stationTo: Math.max(...stations),
 				};
 			}
+			// How far one line runs from another: the distances of its samples
+			// that find the other within reach, away from the other's ends.
+			// hits 0: nothing of it lies beside the other. other: { polyline }
+			// (a grid is added on first use).
+			function lageAbstandOf(polyline, other) {
+				if (!polyline || polyline.length < 2 || !other?.polyline || other.polyline.length < 2) return null;
+				other.grid ??= lageGrid(other.polyline);
+				const samples = Math.max(9, Math.min(25, Math.round(polyline.length / 4)));
+				const distances = [];
+				for (let index = 0; index < samples; index += 1) {
+					const hit = lageOffset(other.polyline, polyline[Math.round((index + 0.5) / samples * (polyline.length - 1))], other.grid);
+					if (hit && !hit.atEnd && hit.distance <= LAGE_REACH_M) distances.push(hit.distance);
+				}
+				if (!distances.length) return { samples, hits: 0 };
+				distances.sort((a, b) => a - b);
+				return { samples, hits: distances.length, median: distances[Math.floor(distances.length / 2)], min: distances[0], max: distances[distances.length - 1] };
+			}
 			// What two witnesses make of a Gleisseite. belegt: declared and Lage
 			// agree. widerspruch: they name opposite sides. erklaert: only the
 			// declaration speaks (no Kilometerlinie in reach, or the Gleis lies on
@@ -42135,6 +42153,41 @@ xlsx/xlsx.mjs:
 				}
 				return { shown: alignments.filter((placed) => shown.includes(placed)).map((placed) => placed.key), hidden };
 			}
+			// The same km are not the same Gleis. Of two Trassen of one side that
+			// cover the same km, one is a Variante of the other only when it lies
+			// on it: a Bestand and its Neuplanung, a second delivery (measured
+			// 0,00-0,02 m). A Bahnhofsgleis or a Weichenverbindung beside the
+			// Streckengleis covers the same km too, but lies beside it (measured
+			// 0,3-13 m over Billwerder, Landshut, metroB, Eifel). The Lage decides,
+			// with the measure of the Lage witness, set here as an assumption: on
+			// the line means a median distance below NEBEN_AUF_M over at least
+			// NEBEN_MIN_ANTEIL of the samples -- or, for a piece that runs with
+			// the other only part of its way (metroB 5904080R, 7 of 25 samples,
+			// all at 0,00 m), no sample in reach farther off than NEBEN_AUF_M. A
+			// Weichenverbindung that touches a Gleis (Billwerder: 3 of 22 samples,
+			// 0-2,9 m) is neither.
+			const NEBEN_AUF_M = 0.5;
+			const NEBEN_MIN_ANTEIL = 0.6;
+			const NEBEN_MIN_TREFFER = 3;
+			// messungen: [{ key, samples, hits, median, min, max }], the Trasse
+			// against the others of its Spur that cover its km; none when the
+			// Lage cannot be compared (no coordinates, another Lagesystem).
+			// variante: lies on `zu`. gleis: another Gleis, `abstand` to the one
+			// in the picture (wegenKey) where that is in reach, else to the
+			// nearest; null when none is in reach. offen: the Lage is silent.
+			// anteil: the share of the Trasse that runs beside `zu`.
+			function einordnungNebenArt(messungen, wegenKey) {
+				const list = (messungen ?? []).filter(Boolean);
+				if (!list.length) return { art: "offen", zu: wegenKey ?? null, abstand: null, anteil: null };
+				const reach = list.filter((m) => m.hits > 0);
+				const auf = reach
+					.filter((m) => m.median < NEBEN_AUF_M && (m.hits >= NEBEN_MIN_ANTEIL * m.samples || (m.hits >= NEBEN_MIN_TREFFER && m.max < NEBEN_AUF_M)))
+					.sort((a, b) => a.median - b.median || b.hits / b.samples - a.hits / a.samples || Number(b.key === wegenKey) - Number(a.key === wegenKey))[0];
+				const result = (art, m) => ({ art, zu: m.key, abstand: { median: m.median, min: m.min, max: m.max }, anteil: m.hits / m.samples });
+				if (auf) return result("variante", auf);
+				const neben = reach.find((m) => m.key === wegenKey) ?? reach.sort((a, b) => a.median - b.median)[0];
+				return neben ? result("gleis", neben) : { art: "gleis", zu: wegenKey ?? null, abstand: null, anteil: null };
+			}
 			// Objects that reference `key` directly (its own profile, cant, staEq).
 			function einordnungEigene(model, key) {
 				return model.referrers.get(key) ?? [];
@@ -42779,6 +42832,72 @@ xlsx/xlsx.mjs:
 				return einordnung().objects.get(einordnungKey(entry))?.role ?? "UNASSIGNED";
 			}
 
+			// What a Trasse that stands back is to the others of its Spur: a
+			// Variante (it lies on one of them) or another Gleis beside them.
+			// Measured against the Trassen of the same Strecke and Spur that cover
+			// its km and rank before it (longer, or earlier in the delivery), so
+			// of two deliveries of one Bahnhofsgleis the first is the Gleis and
+			// the second its Variante; and always against the one in the picture.
+			function nebenArt(entry, wegen) {
+				const model = einordnung();
+				const self = model.objects.get(einordnungKey(entry));
+				const wegenKey = wegen ? einordnungKey(wegen) : null;
+				if (!self) return { art: "offen", zu: wegen ?? null, abstand: null, anteil: null };
+				const state = lageState();
+				state.linien ??= new Map();
+				state.neben ??= new Map();
+				const linie = (candidate) => {
+					if (!state.linien.has(candidate)) {
+						const polyline = alignmentEndpoints(candidate) ? referenceStationPolyline(candidate, 10) : null;
+						state.linien.set(candidate, polyline && polyline.length > 1 ? { polyline } : null);
+					}
+					return state.linien.get(candidate);
+				};
+				const order = [...model.objects.keys()];
+				const length = (placed) => placed.range ? placed.range.to - placed.range.from : -1;
+				const before = (placed) => length(placed) > length(self) || (length(placed) === length(self) && order.indexOf(placed.key) < order.indexOf(self.key));
+				const own = linie(entry);
+				const messungen = [];
+				for (const placed of model.objects.values()) {
+					if (placed.key === self.key || placed.kind !== "alignment" || placed.role !== self.role) continue;
+					if (String(placed.frame?.track ?? "") !== String(self.frame?.track ?? "") || !einordnungUeberdeckt(placed.range, self.range)) continue;
+					if (placed.key !== wegenKey && !before(placed)) continue;
+					const other = einordnungEintrag(placed.key);
+					if (!other || !own || !linie(other) || (effectiveLsys(other) || "") !== (effectiveLsys(entry) || "")) continue;
+					const id = `${entry.item.id}|${other.item.id}`;
+					if (!state.neben.has(id)) state.neben.set(id, lageAbstandOf(own.polyline, linie(other)));
+					const messung = state.neben.get(id);
+					if (messung) messungen.push({ key: placed.key, ...messung });
+				}
+				const result = einordnungNebenArt(messungen, wegenKey);
+				return { ...result, zu: (result.zu ? einordnungEintrag(result.zu) : null) ?? wegen ?? null };
+			}
+			const NEBEN_MARKE = { variante: "Variante", gleis: "weiteres Gleis", offen: "gleiche km" };
+			function nebenText(entry, neben) {
+				const zu = neben.zu ? objectListName(neben.zu) : "einer anderen Trasse";
+				if (neben.art === "variante") {
+					if (neben.zu && objectListName(entry) === zu) return `zweite Lieferung desselben Objekts (${entry.loaded?.fileKey ?? entry.loaded?.fileName ?? "?"})`;
+					const teil = neben.anteil < NEBEN_MIN_ANTEIL ? ` auf ${Math.round(neben.anteil * 100)} % ihrer Länge` : "";
+					return `Variante: liegt${teil} auf ${zu}${neben.abstand.max >= 0.05 ? `, Abstand bis ${lageMeters(neben.abstand.max)} m` : ""}`;
+				}
+				if (neben.art === "gleis") {
+					if (!neben.abstand) return `anderes Gleis dieser Seite, nicht in ${LAGE_REACH_M} m neben ${zu}`;
+					const spanne = neben.abstand.max - neben.abstand.min > 0.5 ? ` (${lageMeters(neben.abstand.min)}–${lageMeters(neben.abstand.max)} m)` : "";
+					return `anderes Gleis dieser Seite, ${lageMeters(neben.abstand.median)} m neben ${zu}${spanne}`;
+				}
+				return `belegt dieselben km wie ${zu}; die Lage sagt nichts dazu (keine Koordinaten oder ein anderes Lagesystem)`;
+			}
+			// "2 Varianten, 5 weitere Gleise" for what stands back in a picture.
+			function nebenZaehlung(items) {
+				const count = { variante: 0, gleis: 0, offen: 0 };
+				for (const item of items) count[nebenArt(item.entry, item.wegen).art] += 1;
+				return [
+					count.variante ? `${count.variante} ${count.variante === 1 ? "Variante" : "Varianten"}` : null,
+					count.gleis ? `${count.gleis} ${count.gleis === 1 ? "weiteres Gleis" : "weitere Gleise"}` : null,
+					count.offen ? `${count.offen} mit gleichen km` : null,
+				].filter(Boolean).join(", ");
+			}
+
 			// The 7L picture of an entry, read from the Einordnung: the same shape
 			// the Ableitungen below have always consumed, keys mapped back to entries.
 			function sevenLineAssignment(entry) {
@@ -42936,8 +43055,8 @@ xlsx/xlsx.mjs:
 						.filter((ramp) => !selectedRange || (ramp.x1 <= selectedRange.to + 5 && ramp.x2 >= selectedRange.from - 5));
 					let overlay;
 					let footnote;
-					// Varianten of this side that stand back: named under the figure,
-					// with what covers them and how to see them.
+					// Trassen of this side that stand back: named under the figure,
+					// with what they are to the one shown and how to see them.
 					// A Gradiente or Überhöhung paired with a Gleis whose stations it
 					// never meets (metroB 5904R: TRA km 65,5-67,5, GRA km 87,0-90,3,
 					// paired by the file stem) is named instead of an anonymous gap.
@@ -42954,12 +43073,11 @@ xlsx/xlsx.mjs:
 					const hiddenHere = kind !== "alignment" ? [] : varianten.filter((item) => item.side === side);
 					if (hiddenHere.length) {
 						const rangeText = (entry) => { const range = stationRangeForEntry(entry); return range ? ` (${station(range.from).trim()} – ${station(range.to).trim()})` : ""; };
-						const sameName = (item) => objectListName(item.entry) === objectListName(item.wegen);
 						footnote = {
-							head: `${label.split(" · ")[0]} · Varianten (${hiddenHere.length} nicht im Bild)`,
+							head: `${label.split(" · ")[0]} · nicht im Bild: ${nebenZaehlung(hiddenHere)}`,
 							lines: [
-								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${sameName(item) ? `zweite Lieferung desselben Objekts (${item.entry.loaded?.fileKey ?? item.entry.loaded?.fileName ?? "?"})` : `belegt denselben Abschnitt wie ${objectListName(item.wegen)}`}`),
-								`Im Bild steht je Abschnitt eine Trasse: die gewählte, sonst die längste. Eine andere Variante anwählen, dann steht sie im Bild · Maß: Überdeckung ab ${VARIANTE_MIN_OVERLAP_M} m und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren`,
+								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${nebenText(item.entry, nebenArt(item.entry, item.wegen))}`),
+								`Im Bild steht je Seite und Abschnitt eine Trasse: die gewählte, sonst die längste. Eine andere anwählen, dann steht sie im Bild · Maß: gleiche km ab ${VARIANTE_MIN_OVERLAP_M} m Überdeckung und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren; Variante, wenn sie auf der anderen liegt (unter ${lageMeters(NEBEN_AUF_M)} m bei ${Math.round(NEBEN_MIN_ANTEIL * 100)} % der Stichproben), sonst ein anderes Gleis`,
 							],
 						};
 					}
@@ -44010,7 +44128,7 @@ xlsx/xlsx.mjs:
 								`${entries.length} sicher verknüpfte${entries.length === 1 ? "s Objekt" : " Objekte"}`,
 								sideNote.placed,
 								sideNote.confirmed,
-								varianten.length ? `${varianten.length} ${varianten.length === 1 ? "Variante" : "Varianten"} nicht im Bild` : null,
+								varianten.length ? `${nebenZaehlung(varianten)} nicht im Bild` : null,
 							].filter(Boolean).join(" · ");
 						})();
 				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
@@ -46714,12 +46832,15 @@ xlsx/xlsx.mjs:
 				for (const groupDef of SEVEN_LINE_GROUPS.filter((group) => group.family !== "UNASSIGNED")) {
 					const lane = document.createElement("div");
 					const laneEntries = entries.filter((entry) => einordnungRolle(entry) === groupDef.role);
-					// Trassen of one Spur that cover each other are Varianten; the ones
-					// that stand back in a picture until they are selected get a mark.
+					// Trassen of one Spur that cover the same km stand back in a
+					// picture until they are selected; the mark says what they are to
+					// the one shown: a Variante of it, or another Gleis beside it.
 					const standBack = new Map();
 					if (groupDef.kind === "alignment" && laneEntries.length > 1) {
 						const model = einordnung();
-						const placed = laneEntries.map((entry) => model.objects.get(einordnungKey(entry))).filter(Boolean);
+						// Only Trassen: the Kilometersprünge of a Kilometerlinie sit in
+						// its Spur and cover its km, but are no Trasse beside it.
+						const placed = laneEntries.filter((entry) => entry.item.kind === "alignment").map((entry) => model.objects.get(einordnungKey(entry))).filter(Boolean);
 						for (const item of einordnungVarianten(placed, null).hidden) standBack.set(item.key, item.wegen);
 					}
 					lane.className = `outbox-lane${laneEntries.includes(current) ? " contains-selection" : ""}`;
@@ -46760,11 +46881,14 @@ xlsx/xlsx.mjs:
 						}
 						const coveredBy = standBack.get(einordnungKey(entry));
 						if (coveredBy) {
+							const shown = einordnungEintrag(coveredBy);
+							const neben = nebenArt(entry, shown);
 							const mark = document.createElement("span");
-							mark.className = "side-witness variante";
-							mark.textContent = "Variante";
+							mark.className = `side-witness neben ${neben.art}`;
+							mark.textContent = NEBEN_MARKE[neben.art];
 							button.append(mark);
-							button.title = `Variante: belegt denselben Abschnitt wie ${objectListName(einordnungEintrag(coveredBy))}. Im Bild steht die längste Trasse, bis diese hier gewählt wird.\n${button.title}`;
+							const text = nebenText(entry, neben);
+							button.title = `${text.charAt(0).toUpperCase()}${text.slice(1)}. Im Bild steht je Seite die längste Trasse dieser km (${objectListName(shown)}), bis diese hier gewählt wird.\n${button.title}`;
 						}
 						entry.button = button;
 						button.addEventListener("click", () => selectObject(entry, button));

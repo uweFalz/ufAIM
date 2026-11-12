@@ -12,8 +12,8 @@ const begin = html.indexOf("// BEGIN LAGE WITNESS");
 const end = html.indexOf("// END LAGE WITNESS");
 assert.ok(begin > 0 && end > begin, "witness block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
-const { lageBounds, lageOffset, lageGrid, lageWitnessOf, sideGradeOf } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
+const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, sideGradeOf } = context.api;
 
 // A line along the easting axis, one point every `step` metres. `offset`
 // shifts it to the left (+) or right (-) of that direction; `reverse`
@@ -140,4 +140,24 @@ test("two witnesses grade a Gleisseite", () => {
 	assert.equal(sideGradeOf("unknown", { verdict: "crossing" }), "lage");
 	assert.equal(sideGradeOf("unknown", { verdict: "none" }), "offen");
 	assert.equal(sideGradeOf("unknown", null), "offen");
+});
+
+test("how far one line runs from another: beside it, on it, leaving it, out of reach", () => {
+	const abstand = (gleis, other) => JSON.parse(JSON.stringify(lageAbstandOf(gleis, { polyline: other })));
+	const strecke = line();
+	const beside = abstand(line({ from: 200, to: 600, offset: -4.5 }), strecke);
+	assert.equal(beside.hits, beside.samples);
+	assert.ok(Math.abs(beside.median - 4.5) < 1e-9 && Math.abs(beside.max - beside.min) < 1e-9);
+	// a second delivery lies on the line
+	assert.ok(abstand(line({ from: 200, to: 600 }), strecke).max < 1e-9);
+	// a Weichenverbindung starts on the line and leaves it
+	const leaving = line({ from: 200, to: 300 }).map((point, index, all) => ({ ...point, northing: 5 * index / (all.length - 1) }));
+	const left = abstand(leaving, strecke);
+	assert.ok(left.min < 1 && left.max > 4 && left.median > 1 && left.median < 4);
+	// only the part beside the other counts; its ends are not "beside"
+	const lapping = abstand(line({ from: 900, to: 1400, offset: 3 }), strecke);
+	assert.ok(lapping.hits > 0 && lapping.hits < lapping.samples && Math.abs(lapping.median - 3) < 1e-9);
+	assert.deepEqual(abstand(line({ from: 200, to: 600, offset: 80 }), strecke), { samples: 10, hits: 0 });
+	assert.equal(lageAbstandOf([{ easting: 0, northing: 0, station: 0 }], { polyline: strecke }), null);
+	assert.equal(lageAbstandOf(line(), null), null);
 });

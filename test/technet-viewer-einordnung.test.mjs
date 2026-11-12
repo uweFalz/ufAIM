@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -492,4 +492,31 @@ test("Umfeld: what the user sorted into a Strecke shares its picture through the
 	assert.deepEqual(umfeld("name"), [["km", "name", "re"], "km"]);
 	assert.deepEqual(umfeld("lokal"), [["lokal"], null], "a Gleis still in its own stations stays alone");
 	assert.equal(json([...einordnungUmfeld(model, "km").keys].sort()).includes("lokal"), false);
+});
+
+test("the same km are not the same Gleis: a Variante lies on the other, another Gleis beside it", () => {
+	const m = (key, median, hits = 9, samples = 9, min = median, max = median) => ({ key, samples, hits, median, min, max });
+	const art = (messungen, wegen) => json(einordnungNebenArt(messungen, wegen));
+	const flat = (median) => ({ median, min: median, max: median });
+	// a second delivery, a Neuplanung that leaves its Bestand for a stretch
+	assert.deepEqual(art([m("Strecke", 0)], "Strecke"), { art: "variante", zu: "Strecke", abstand: flat(0), anteil: 1 });
+	assert.equal(art([m("Bestand", 0.02, 9, 9, 0, 1.5)], "Bestand").art, "variante");
+	// a Bahnhofsgleis beside the Streckengleis, with the distance to the one in the picture
+	assert.deepEqual(art([m("Strecke", 4.5), m("Gl 2", 9)], "Strecke"), { art: "gleis", zu: "Strecke", abstand: flat(4.5), anteil: 1 });
+	// the second delivery of a Bahnhofsgleis is a Variante of the first, not of the Streckengleis
+	assert.deepEqual(art([m("Strecke", 4.5), m("Gl 2", 0)], "Strecke"), { art: "variante", zu: "Gl 2", abstand: flat(0), anteil: 1 });
+	// a piece that runs with the other part of its way and lies on it there (metroB 5904080R)
+	assert.deepEqual(art([m("Strecke", 0, 7, 25)], "Strecke"), { art: "variante", zu: "Strecke", abstand: flat(0), anteil: 7 / 25 });
+	// a Weichenverbindung touching another Gleis with 3 of 22 samples is not its Variante
+	assert.equal(art([m("Abzweig", 0.46, 3, 22, 0, 2.9), m("Strecke", 7)], "Strecke").art, "gleis");
+	assert.equal(art([m("Gls", 0.32, 3, 9, 0.04, 0.96)], "Gls").art, "gleis");
+	assert.equal(art([m("Gls", 0, 2, 25)], "Gls").art, "gleis", `fewer than ${NEBEN_MIN_TREFFER} samples say nothing`);
+	assert.equal(art([m("Gls", NEBEN_AUF_M, 9, 9)], "Gls").art, "gleis", "the bound itself is beside");
+	assert.equal(art([m("Gls", 0.1, 5, 9, 0, 3)], "Gls").art, "gleis", `below ${NEBEN_MIN_ANTEIL * 100} % of the samples and off the line elsewhere`);
+	// out of reach of the one in the picture: the nearest other speaks; none in reach is still another Gleis
+	assert.deepEqual(art([{ key: "Strecke", samples: 9, hits: 0 }, m("Gl 5", 5)], "Strecke"), { art: "gleis", zu: "Gl 5", abstand: flat(5), anteil: 1 });
+	assert.deepEqual(art([{ key: "Strecke", samples: 9, hits: 0 }], "Strecke"), { art: "gleis", zu: "Strecke", abstand: null, anteil: null });
+	// the Lage is silent (no coordinates, another Lagesystem): neither is claimed
+	assert.deepEqual(art([], "Strecke"), { art: "offen", zu: "Strecke", abstand: null, anteil: null });
+	assert.deepEqual(art(null, undefined), { art: "offen", zu: null, abstand: null, anteil: null });
 });
