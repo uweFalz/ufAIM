@@ -40,3 +40,19 @@ test/technet-viewer-dbb.test.mjs:1:1 | ✖ test/technet-viewer-dbb.test.mjs | (n
 test/technet-viewer-gra.test.mjs:32:1 | ✖ Eifel 2631R139: 47 grade breaks, then 8 Überhöhungsrampen | Error: ENOENT: no such file or directory, open 'test/samples/eifel/2631R139_Bestand_VR_DBREF03_A.GRA'
 
 Comparison: the same 24 test files run on the base commit ec1e6d3 in a temporary worktree (same machine, same missing untracked files): 99 tests, 68 pass, 30 fail; the failing names are identical to the list above.
+
+Note on the count: the list has 31 rows; the row of test/axtran2/lexicographic.test.mjs is a test marked open (todo) and is not among the 30 counted failures. Counted: 10 files that do not load, 12 missing files or tools, 8 assertion failures.
+
+Check in the common checkout /Users/uwefalz/Developer/ufAIM, 2026-11-12, HEAD b629df0 with the uncommitted work of other streams present, read-only (git status identical before and after): the seven test files with assertion failures, 58 tests, 51 pass, 7 fail.
+Fail there as well (7):
+  test/aim-core/module-boundaries/horizontal-alignment-realization-core-module-boundary.test.mjs | canonical Sparse body mechanically preserves the productive baseline
+  test/app/workspace/alignment-intelligence-progressive-disclosure.test.mjs | alignment intelligence starts compact while preserving an explicit details control
+  test/app/workspace/alignment-workspace-guided-start-boundary.test.mjs | guided start remains an App orchestration surface over existing actions
+  test/app/workspace/canonical-workspace-reopen-profile-readback.test.mjs | canonical reopen resolves only after exact synchronized profile readback
+  test/app/workspace/canonical-workspace-reopen-profile-readback.test.mjs | canonical reopen also waits for Main horizontal completion
+  test/app/workspace/canonical-workspace-reopen-profile-readback.test.mjs | context switch, refresh failure, and every malformed readback fail closed
+  test/app/workspace/gnd-promoted-evidence-workspace.test.mjs | exact promoted identity refreshes SPOT surfaces and receives persisted evidence
+Pass there (2):
+  test/app/workspace/promoted-alignment-main-q-l-journey.test.mjs | canonical promoted Alignment becomes the one Main workspace context
+  test/axtran2/lexicographic.test.mjs | the exact ramp rule under the corridor where the rows read curvature (the open one)
+None of these tests reads a file of the TransEd takeover.
