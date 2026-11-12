@@ -12,5 +12,5 @@ export {
 	couplingEpsilon,
 	curvatureFromCant,
 } from "./cantCurvatureCoupling.js";
-export { FUNCTION_SERIES, PLOT_SERIES, couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, transitionPlotSvg } from "./transitionPlot.js";
+export { FUNCTION_SERIES, PLOT_SERIES, couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, plotSeries, transitionPlotSvg } from "./transitionPlot.js";
 export { KLAUDER_EXPONENT_MAX, KLAUDER_INTERVAL, KLAUDER_SOURCE, klauderName, klauderPrototype, klauderRecords, klauderTerms } from "./klauderFamily.js";

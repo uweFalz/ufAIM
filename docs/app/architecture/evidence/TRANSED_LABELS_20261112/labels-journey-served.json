@@ -1,0 +1,59 @@
+{
+  "tag": "served",
+  "mode2Curvature": {
+    "in": "HW_VIEN2",
+    "aria": "κ, κ′, κ″ über u",
+    "quantity": "curvature",
+    "legend": [
+      "gelesen als Krümmung",
+      "κ 0 … 1",
+      "κ′ 0 … 2.19",
+      "κ″ -7.51 … 7.51"
+    ]
+  },
+  "mode2Cant": {
+    "in": "HW_VIEN2_CANT",
+    "aria": "ψ, ψ′, ψ″ über u",
+    "quantity": "cant",
+    "legend": [
+      "gelesen als Überhöhung",
+      "ψ 0 … 1",
+      "ψ′ 0 … 2.19",
+      "ψ″ -7.51 … 7.51"
+    ]
+  },
+  "mode2Back": {
+    "in": "HW_VIEN2",
+    "aria": "κ, κ′, κ″ über u",
+    "quantity": "curvature",
+    "legend": [
+      "gelesen als Krümmung",
+      "κ 0 … 1",
+      "κ′ 0 … 2.19",
+      "κ″ -7.51 … 7.51"
+    ]
+  },
+  "mode1Curvature": {
+    "aria": "κ, κ′, κ″ über u",
+    "quantity": "curvature",
+    "legend": [
+      "gelesen als Krümmung",
+      "κ 0 … 1",
+      "κ′ 0 … 1.5",
+      "κ″ 0 … 3",
+      "Steigung am Anfang 0.000, am Ende 1.500"
+    ]
+  },
+  "mode1Cant": {
+    "aria": "ψ, ψ′, ψ″ über u",
+    "quantity": "cant",
+    "legend": [
+      "gelesen als Überhöhung",
+      "ψ 0 … 1",
+      "ψ′ 0 … 1.5",
+      "ψ″ 0 … 3",
+      "Steigung am Anfang 0.000, am Ende 1.500"
+    ]
+  },
+  "problems": []
+}

@@ -7,7 +7,6 @@ import transitionLookup from "../src/domain/transition/transitionLookup.json" wi
 import {
 	DEFAULT_COUPLING_ASSUMPTION,
 	FUNCTION_SERIES,
-	PLOT_SERIES,
 	couplingPlotSvg,
 	createTransitionLibraryService,
 	formatRange,
@@ -15,6 +14,7 @@ import {
 	klauderTerms,
 	functionPlotSvg,
 	plotParameterAt,
+	plotSeries,
 	transitionPlotSvg,
 } from "../src/services/transition-library/index.js";
 
@@ -126,6 +126,12 @@ function syncInputs() {
 	el("aLength").value = String(state.assumption.length);
 }
 
+// Legend of the κ/κ′/κ″ picture, named after the reading of the halfWaves.
+function seriesLegend(reading, ranges) {
+	return `<span data-reading="${reading.quantity}">gelesen als ${reading.name}</span>`
+		+ reading.series.map((series) => `<span><b style="color:${series.color}">${series.label}</b> ${formatRange(ranges[series.key])}</span>`).join("");
+}
+
 function render() {
 	syncInputs();
 	const draft = service.describeDraft({ halfWave1: state.halfWave1, halfWave2: state.halfWave2, normLengthPartition: partition(), assumption: state.assumption });
@@ -140,9 +146,10 @@ function render() {
 		return;
 	}
 	say(el("draftMessage"), "");
-	const picture = transitionPlotSvg({ samples: draft.samples, w1: state.w1, w2: state.w2 });
+	const reading = plotSeries(draft.coupling.given);
+	const picture = transitionPlotSvg({ samples: draft.samples, w1: state.w1, w2: state.w2, quantity: reading.quantity });
 	el("plot").innerHTML = picture.svg;
-	el("legend").innerHTML = PLOT_SERIES.map((series) => `<span><b style="color:${series.color}">${series.label}</b> ${formatRange(picture.ranges[series.key])}</span>`).join("");
+	el("legend").innerHTML = seriesLegend(reading, picture.ranges);
 
 	const c = draft.coupling;
 	el("readAs").value = c.given;
@@ -315,11 +322,11 @@ function renderHalfWave() {
 		return;
 	}
 	say(el("hwMessage"), "");
-	const picture = transitionPlotSvg({ samples: draft.samples });
+	const reading = plotSeries(draft.quantity);
+	const picture = transitionPlotSvg({ samples: draft.samples, quantity: reading.quantity });
 	el("hwPlot").innerHTML = picture.svg;
-	el("hwLegend").innerHTML = PLOT_SERIES.map((series) => `<span><b style="color:${series.color}">${series.label}</b> ${formatRange(picture.ranges[series.key])}</span>`).join("")
-		+ `<span>Steigung am Anfang ${draft.endSlopes.start.toFixed(3)}, am Ende ${draft.endSlopes.end.toFixed(3)}</span>`
-		+ `<span>erklärt als ${draft.quantity === "cant" ? "Überhöhung" : "Krümmung"}</span>`;
+	el("hwLegend").innerHTML = seriesLegend(reading, picture.ranges)
+		+ `<span>Steigung am Anfang ${draft.endSlopes.start.toFixed(3)}, am Ende ${draft.endSlopes.end.toFixed(3)}</span>`;
 }
 
 function saveHalfWave() {

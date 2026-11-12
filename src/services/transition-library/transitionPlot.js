@@ -7,6 +7,22 @@ export const PLOT_SERIES = Object.freeze([
 	Object.freeze({ key: "k2", label: "κ″", color: "#7A6BE0", width: 1.8, dash: "2 4" }),
 ]);
 
+// The same three curves, named after what the halfWaves are read as: a
+// normalised curvature function κ or a normalised cant function ψ.
+const SERIES_SYMBOL = Object.freeze({ curvature: "κ", cant: "ψ" });
+const SERIES_NAME = Object.freeze({ curvature: "Krümmung", cant: "Überhöhung" });
+
+export function plotSeries(quantity = "curvature") {
+	const key = quantity === "cant" ? "cant" : "curvature";
+	const symbol = SERIES_SYMBOL[key];
+	return {
+		quantity: key,
+		name: SERIES_NAME[key],
+		symbol,
+		series: PLOT_SERIES.map((series, index) => ({ ...series, label: `${symbol}${["", "′", "″"][index]}` })),
+	};
+}
+
 const W = 720;
 const H = 300;
 const PAD = { left: 44, right: 14, top: 14, bottom: 30 };
@@ -51,8 +67,9 @@ function polyline(points, { color, width, dash }, attributes = "") {
  * κ, κ′ and κ″ of one transition in one frame. κ keeps its own scale (the
  * frame follows its range, so a counter-swerve stays visible); κ′ and κ″ are
  * each scaled into the frame, their true ranges are returned for the legend.
+ * `quantity` only names the curves (κ or ψ); the drawing is the same.
  */
-export function transitionPlotSvg({ samples, w1 = null, w2 = null } = {}) {
+export function transitionPlotSvg({ samples, w1 = null, w2 = null, quantity = "curvature" } = {}) {
 	if (!Array.isArray(samples) || samples.length < 2) return { svg: "", ranges: null };
 	const ranges = Object.fromEntries(PLOT_SERIES.map(({ key }) => [key, rangeOf(samples.map((sample) => sample[key]))]));
 	const yMin = Math.min(0, ranges.k.min);
@@ -66,7 +83,7 @@ export function transitionPlotSvg({ samples, w1 = null, w2 = null } = {}) {
 	});
 	const cuts = [["w1", w1], ["w2", w2]].filter(([, w]) => Number.isFinite(w) && w > 0 && w < 1)
 		.map(([name, w]) => `<line data-cut="${name}" x1="${scale.x(w)}" y1="${PAD.top}" x2="${scale.x(w)}" y2="${H - PAD.bottom}" stroke="var(--accent, #E36414)" stroke-width="1.5" stroke-dasharray="4 3"/>`);
-	const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="κ, κ′, κ″ über u">${axes(scale, { yMin, yMax })}${cuts.join("")}${lines.reverse().join("")}</svg>`;
+	const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${plotSeries(quantity).series.map((series) => series.label).join(", ")} über u" data-quantity="${plotSeries(quantity).quantity}">${axes(scale, { yMin, yMax })}${cuts.join("")}${lines.reverse().join("")}</svg>`;
 	return { svg, ranges };
 }
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, transitionPlotSvg } from "../../../src/services/transition-library/transitionPlot.js";
+import { couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, plotSeries, transitionPlotSvg } from "../../../src/services/transition-library/transitionPlot.js";
 
 const samples = Array.from({ length: 11 }, (_, index) => { const u = index / 10; return { u, k: 3 * u * u - 2 * u ** 3, k1: 6 * u - 6 * u * u, k2: 6 - 12 * u }; });
 const pointsOf = (svg, series) => svg.match(new RegExp(`<polyline data-series="${series}" points="([^"]+)"`))[1].split(" ").map((p) => p.split(",").map(Number));
@@ -17,6 +17,20 @@ test("the transition picture carries κ, κ′, κ″ and both cut lines", () =>
 	const k = pointsOf(svg, "k");
 	assert.ok(k[0][1] > k.at(-1)[1]);
 	assert.ok(!svg.includes("<script"));
+});
+
+test("the curves are named after the reading: κ for curvature, ψ for cant", () => {
+	assert.deepEqual(plotSeries().series.map((series) => series.label), ["κ", "κ′", "κ″"]);
+	assert.deepEqual(plotSeries("cant").series.map((series) => series.label), ["ψ", "ψ′", "ψ″"]);
+	assert.equal(plotSeries("cant").name, "Überhöhung");
+	assert.equal(plotSeries("nonsense").quantity, "curvature");
+	assert.deepEqual(plotSeries("cant").series.map((series) => series.key), ["k", "k1", "k2"]);
+	const asCurvature = transitionPlotSvg({ samples }).svg;
+	const asCant = transitionPlotSvg({ samples, quantity: "cant" }).svg;
+	assert.match(asCurvature, /aria-label="κ, κ′, κ″ über u" data-quantity="curvature"/);
+	assert.match(asCant, /aria-label="ψ, ψ′, ψ″ über u" data-quantity="cant"/);
+	// Only the naming differs, not the drawing.
+	assert.deepEqual(pointsOf(asCant, "k"), pointsOf(asCurvature, "k"));
 });
 
 test("cut lines at the ends are not drawn, and a counter-swerve widens the frame", () => {
