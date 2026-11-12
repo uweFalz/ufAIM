@@ -40629,6 +40629,8 @@ xlsx/xlsx.mjs:
 					source: "user",
 					originalFamily: sourceFamilyForEntry(entry),
 				} : null;
+				// A GND Nebengleis put into a Strecke, or taken out of it again.
+				if (gndEigenstationiert(entry)) reconcileVermEsnStationing();
 				const target = targetScope.querySelector(`.object-family-group[data-role="${sevenLineRole(entry)}"]`);
 				target?.append(row);
 				if (sourceScope) refreshOrganizationGroups(sourceScope);
@@ -40870,16 +40872,19 @@ xlsx/xlsx.mjs:
 			function kmAbbildungPairs(entry) {
 				return entry?.kmAbbildung?.pairs ?? null;
 			}
+			// The Abbildung onto a Kilometerlinie comes before a station the file
+			// gives: only a Gleis whose own stations are not the Strecke's km is
+			// ever put onto a line (a GND Nebengleis counted from its own start).
 			function elementKmStart(entry, element) {
-				const source = element?.extras?.externalStation;
-				if (source != null) return source;
 				const pairs = kmAbbildungPairs(entry);
+				const source = element?.extras?.externalStation;
+				if (source != null && !pairs) return source;
 				return pairs ? mapLandXmlStation(pairs, numberValue(element?.staStart)) ?? undefined : undefined;
 			}
 			function elementKmEnd(entry, element) {
-				const source = element?.extras?.externalStationEnd;
-				if (source != null) return source;
 				const pairs = kmAbbildungPairs(entry);
+				const source = element?.extras?.externalStationEnd;
+				if (source != null && !pairs) return source;
 				if (!pairs) return undefined;
 				const localStart = numberValue(element?.staStart);
 				const length = Math.abs(numberValue(element?.length));
@@ -40887,9 +40892,9 @@ xlsx/xlsx.mjs:
 				return mapLandXmlStation(pairs, localStart + length) ?? undefined;
 			}
 			function pointKm(entry, point) {
-				const source = point?.extras?.externalStation;
-				if (source != null) return source;
 				const pairs = kmAbbildungPairs(entry);
+				const source = point?.extras?.externalStation;
+				if (source != null && !pairs) return source;
 				return pairs ? mapLandXmlStation(pairs, numberValue(point?.station)) ?? undefined : undefined;
 			}
 			// An entry whose stations are shown in km that are not its own.
@@ -42002,7 +42007,8 @@ xlsx/xlsx.mjs:
 			//   role (the 7L Spur: gradientRight … cantRight, or "UNASSIGNED"),
 			//   section (an explicit Abschnitt id, or ""),
 			//   kmFrame (its range is in the Strecke's km: GND, a Kilometerlinie, a
-			//   Gleis stationed on one; false for file-local stations) }
+			//   Gleis stationed on one; false for file-local stations, and for a
+			//   GND Nebengleis sorted into a Strecke that fits none of its lines) }
 			const EINORDNUNG_VERSION = "einordnung/0.1";
 			// Wer ist es, on the level of files: a file is known by its name, and
 			// a second file of the same name (two deliveries, two folders) by its
@@ -42672,7 +42678,7 @@ xlsx/xlsx.mjs:
 						side: sevenLineSide(entry), range: stationRangeForEntry(entry),
 						refKeys: node.refKeys, homeKey: node.homeKey,
 						role: sevenLineRole(entry), section: explicitSectionForEntry(entry) || "",
-						kmFrame: isGndEntry(entry) || Boolean(entry.externalStationReference) || ((frame?.source === "vermesn-name" || frame?.source === "user") && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"),
+						kmFrame: (isGndEntry(entry) && !(gndEigenstationiert(entry) && frame?.source === "user" && !kmAbbildungPairs(entry))) || Boolean(entry.externalStationReference) || ((frame?.source === "vermesn-name" || frame?.source === "user") && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"),
 					};
 				});
 				einordnungCache = { model: einordnen(facts), bezuege, stamp: einordnungStamp };
@@ -47007,7 +47013,7 @@ xlsx/xlsx.mjs:
 					source: "user",
 					originalFamily: sourceFamilyForEntry(entry),
 				};
-				if (entry.parser === "vermEsn") reconcileVermEsnStationing();
+				if (entry.parser === "vermEsn" || gndEigenstationiert(entry)) reconcileVermEsnStationing();
 				status.classList.remove("error");
 				status.textContent = `${objectListName(entry)} → ${groupDef.title}`;
 				dragHintUsed = true;
@@ -48455,6 +48461,11 @@ xlsx/xlsx.mjs:
 			}
 			function isGndEntry(entry) {
 				return entry.parser === "gndEdit" || Boolean(gndSequenceForEntry(entry));
+			}
+			// A GND Gleis stationed in itself: a Nebengleis or Bahnhofsgleis
+			// (STRRIKZ 4, 5) counts from its own start, not in a Strecke's km.
+			function gndEigenstationiert(entry) {
+				return entry?.parser === "gndEdit" && ["4", "5"].includes(String(gndSequenceForEntry(entry)?.strRikz ?? ""));
 			}
 			// What goes with a Trasse, as the Einordnung has it.
 			function inboxDependents(alignment) {
@@ -50140,6 +50151,28 @@ xlsx/xlsx.mjs:
 					const references = alignments.filter((entry) => sevenLineSide(entry) === "kilometer" && String(geoFrameInfo(entry)?.track) === track).sort(byLengthThenName);
 					for (const target of entries) settle(target, pickReference(target, references), true);
 				}
+				// GND: a Nebengleis or Bahnhofsgleis counts its stations from its
+				// own start. Sorted into a Strecke by hand it is put onto the
+				// Kilometerlinie of that Strecke it lies beside, in its own
+				// Lagesystem (WueTreu carries a Strecke in up to four), like a TRA
+				// that names no Strecke; its own stations are never the Strecke's km
+				// (WueTreu: 179 of 194 lie beside their line, at km 94,3 or 139,8,
+				// each counted from 0). One that fits no line stays in its own
+				// stations and is no km there (kmFrame in the Einordnung); taken
+				// out of the Strecke again it has its own stations back.
+				let gndChanged = false;
+				for (const target of allViewerEntries()) {
+					if (target.item.kind !== "alignment" || !gndEigenstationiert(target)) continue;
+					const before = target.externalStationReference;
+					const byHand = target.frameEdit?.source === "user" && sevenLineSide(target) !== "kilometer";
+					const lsys = effectiveLsys(target) || "";
+					const reference = !byHand ? null : pickReference(target, allViewerEntries().filter((entry) => entry !== target && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"
+						&& String(geoFrameInfo(entry)?.track) === String(target.frameEdit.track) && (effectiveLsys(entry) || "") === lsys).sort(byLengthThenName));
+					if (reference) settle(target, reference, false);
+					else if (kmAbbildungPairs(target)) unproject(target);
+					if (target.externalStationReference !== before) gndChanged = true;
+				}
+				if (gndChanged) einordnungGeaendert();
 			}
 
 			function renderResultObjects(result, fileName, { deferRender = false } = {}) {
@@ -51073,7 +51106,7 @@ xlsx/xlsx.mjs:
 					einordnungGeaendert();
 					trassenAbbildungErneuern([...new Set(allViewerEntries().filter((entry) => entry.userTrasse).map((entry) => byKey.get(entry.userTrasse)).filter(Boolean))]);
 					// Gleise the user sorted into a Strecke are stationed on its Kilometerlinie.
-					if (allViewerEntries().some((entry) => entry.parser === "vermEsn" && entry.frameEdit?.source === "user")) reconcileVermEsnStationing();
+					if (allViewerEntries().some((entry) => (entry.parser === "vermEsn" || gndEigenstationiert(entry)) && entry.frameEdit?.source === "user")) reconcileVermEsnStationing();
 					hiddenEntryKeys.clear();
 					for (const key of Array.isArray(state.hidden) ? state.hidden : []) if (byKey.has(key)) hiddenEntryKeys.add(key);
 					if (state.inbox && typeof state.inbox === "object") inboxQuery = typeof state.inbox.query === "string" ? state.inbox.query : "";
