@@ -42040,6 +42040,28 @@ xlsx/xlsx.mjs:
 			function einordnungLaengentreu(localSpan, externalSpan) {
 				return !(localSpan > 0) || Math.abs(externalSpan) >= BEZUGSLINIE_MIN_LAENGENTREUE * localSpan;
 			}
+			// Stations as delivered are the Strecke's km only where the Lage
+			// agrees: both ends of the Gleis, put onto the Kilometerlinie, lie at
+			// the km the file gives them. A Weichenverbindung stationed from 0 on
+			// a Strecke that begins near km 0 lies "within the line's km" by its
+			// numbers alone (Landshut W403-404: 0-88 m, on 5632 at km 0,993-1,081).
+			// Measured: real km agree to the metre, file-local stations miss by
+			// 80 m and more; the tolerance is the slack a Gleis may reach beyond
+			// its line.
+			const BEZUGSLINIE_STATION_TOLERANZ_M = 50;
+			function einordnungStationenGelten(delivered, projected, tolerance = BEZUGSLINIE_STATION_TOLERANZ_M) {
+				if (!delivered || !projected) return true;
+				return Math.abs(delivered.from - projected.from) <= tolerance && Math.abs(delivered.to - projected.to) <= tolerance;
+			}
+			// How the station runs along one element of a Trasse: up by its
+			// length, or down to its km end where the Gleis is laid against the
+			// km (a Bahnhofsgleis put onto its Kilometerlinie from the far end).
+			// Counting up from the element's start there made a sawtooth: every
+			// element began at its km and ran the wrong way (Billwerder
+			// AHBI_Gl_021_034, km 47,6 down to 46,0: stations up to 48,1).
+			function einordnungStationsgang(start, end, length) {
+				return Number.isFinite(start) && Number.isFinite(end) && end < start ? end - start : length;
+			}
 			// Who references whom, turned round: the referrers of each object.
 			function einordnungReferrers(objects) {
 				const referrers = new Map();
@@ -49280,9 +49302,16 @@ xlsx/xlsx.mjs:
 				const elements = alignmentEntry?.item?.payload?.coordGeom?.elements ?? [];
 				for (let elementIndex = 0; elementIndex < elements.length; elementIndex += 1) {
 					const element = elements[elementIndex];
-					const elementStart = stationScalar(elementKmStart(alignmentEntry, element) ?? element.staStart);
+					const kmStart = elementKmStart(alignmentEntry, element);
+					const elementStart = stationScalar(kmStart ?? element.staStart);
 					if (!Number.isFinite(elementStart)) continue;
 					const length = Math.abs(numberValue(element.length));
+					// Only where the km are the Abbildung onto a Kilometerlinie, which
+					// runs one way through the whole Gleis. GND gives a Gleis made of
+					// several Verbindungen stations that turn from element to element
+					// (WueTreu Gleis 0, 262, 406); following them there would turn the
+					// side of everything beside it with each element.
+					const stationRun = einordnungStationsgang(elementStart, kmAbbildungPairs(alignmentEntry) ? stationScalar(elementKmEnd(alignmentEntry, element)) : NaN, length);
 					// A Knick (GND EKTYP 5) is an element of length 0 carrying the
 					// neighbouring Gerade's two points; sampled, it would lay a second,
 					// backwards run of that Gerade onto the polyline at one station
@@ -49300,7 +49329,7 @@ xlsx/xlsx.mjs:
 						// Spurplan still shows the station.
 						const last = points[points.length - 1];
 						const run = last ? last.run + Math.hypot(point.easting - last.easting, point.northing - last.northing) : 0;
-						points.push({ easting: point.easting, northing: point.northing, station: elementStart + ratio * length, run, element: elementIndex });
+						points.push({ easting: point.easting, northing: point.northing, station: elementStart + ratio * stationRun, run, element: elementIndex });
 					});
 				}
 				return points;
@@ -50027,8 +50056,13 @@ xlsx/xlsx.mjs:
 					const localRange = stationRangeForEntry(target);
 					const referenceRange = stationRangeForEntry(reference);
 					if (!localRange || !referenceRange) return;
-					if (trustDelivered && within(localRange, referenceRange, 50)) { target.externalStationReference = reference.item.id; return; }
 					const polyline = polylineOf(reference);
+					// Delivered stations are kept where they are the line's km by the
+					// Lage too, not by their numbers alone (einordnungStationenGelten).
+					const ends = alignmentEndpoints(target);
+					const onLine = ends && polyline.length > 1 ? [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(polyline, point).station) : null;
+					const projectedRange = onLine ? { from: Math.min(...onLine), to: Math.max(...onLine) } : null;
+					if (trustDelivered && within(localRange, referenceRange, 50) && einordnungStationenGelten(localRange, projectedRange)) { target.externalStationReference = reference.item.id; return; }
 					if (polyline.length < 2) return;
 					const pairs = landXmlStationMapping(target, polyline);
 					if (pairs.length < 2) return;
@@ -50098,8 +50132,9 @@ xlsx/xlsx.mjs:
 				// What the user sorted by hand: a Gleis sorted into a Strecke is
 				// stationed on that Strecke's Kilometerlinie, be it named by a file
 				// or by the user. The user's word comes last and so wins over the
-				// name's; a Gleis whose stations already lie in the line's km
-				// keeps them (Billwerder 6100 RE beside 6100 KM).
+				// name's; a Gleis whose stations already lie in the line's km,
+				// by their numbers and by the Lage, keeps them (Billwerder 6100 RE
+				// beside 6100 KM).
 				const sortedByHand = alignments.filter((entry) => entry.frameEdit?.source === "user" && !namedByHand(entry));
 				for (const [track, entries] of groupBy(sortedByHand, (entry) => String(entry.frameEdit.track))) {
 					const references = alignments.filter((entry) => sevenLineSide(entry) === "kilometer" && String(geoFrameInfo(entry)?.track) === track).sort(byLengthThenName);

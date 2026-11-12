@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -519,4 +519,29 @@ test("the same km are not the same Gleis: a Variante lies on the other, another 
 	// the Lage is silent (no coordinates, another Lagesystem): neither is claimed
 	assert.deepEqual(art([], "Strecke"), { art: "offen", zu: "Strecke", abstand: null, anteil: null });
 	assert.deepEqual(art(null, undefined), { art: "offen", zu: null, abstand: null, anteil: null });
+});
+
+test("delivered stations are the Strecke's km only where the Lage agrees", () => {
+	// Landshut 5634R000-007 beside its Kilometerlinie: the file's km are the line's km
+	assert.equal(einordnungStationenGelten({ from: 0, to: 7000 }, { from: 0, to: 7000 }), true);
+	// W403-404: 0-88 m in the file, on 5632 at km 0,993-1,081 -- within the line's km by its numbers alone
+	assert.equal(einordnungStationenGelten({ from: 0, to: 88 }, { from: 993, to: 1081 }), false);
+	// metroB Ka_NCH_Gl2: 0-515 m, on 5810 at km 0,080-0,594 -- the smallest miss measured
+	assert.equal(einordnungStationenGelten({ from: 0, to: 515 }, { from: 80, to: 594 }), false);
+	// a Gleis that reaches a little beyond its line's end: the foot is the end itself
+	assert.equal(einordnungStationenGelten({ from: 73860, to: 82400 }, { from: 73860, to: 82361 }), true);
+	assert.equal(einordnungStationenGelten({ from: 73860, to: 82400 }, { from: 73860, to: 82361 }, 20), false);
+	// nothing to measure against: the numbers stand
+	assert.equal(einordnungStationenGelten({ from: 0, to: 88 }, null), true);
+	assert.equal(BEZUGSLINIE_STATION_TOLERANZ_M, 50);
+});
+
+test("the station runs down along an element laid against the km", () => {
+	// with the km: up by the element's length, whatever the km end says to the centimetre
+	assert.equal(einordnungStationsgang(46010, 46510.2, 510), 510);
+	// against the km (Billwerder AHBI_Gl_021_034): from 47559 down to 47049, not up to 48069
+	assert.equal(einordnungStationsgang(47559, 47049, 510), -510);
+	// file-local stations, no km end: up by the length
+	assert.equal(einordnungStationsgang(0, NaN, 88), 88);
+	assert.equal(einordnungStationsgang(120, undefined, 30), 30);
 });
