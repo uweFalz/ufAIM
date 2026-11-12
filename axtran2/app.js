@@ -5,7 +5,7 @@
 
 import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
 import { runInWorker } from "../src/services/axtran2/workerRun.js";
-import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap } from "../src/services/axtran2/alignmentPicture.js";
+import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap, holdTyped } from "../src/services/axtran2/alignmentPicture.js";
 import { recordListHtml, describeLimit } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
 import { parseAllEdits, formatEdits, isInsertKey, insertOf, INSERT_TYPES, TRANSITION_FAMILIES } from "../src/services/axtran2/recordEdits.js";
@@ -485,19 +485,25 @@ function editsNow() {
 // Edits changed from the list: the field Werte ändern is the one place they are
 // kept; it is written, and the fit runs again if the last one was short, else
 // the change is noted until Optimieren. `what` names it for the message.
-function applyEdits(all, what) {
+// `hold`: the hold that goes with it (a typed value is held), written to Sätze halten.
+function applyEdits(all, what, hold = null) {
 	const previous = fieldsOfLastRun(what);
 	picture.insertAfter = null;
 	el("edits").value = formatEdits(all);
+	if (hold) el("hold").value = formatHold(hold);
 	if (last.seconds <= LIVE_SECONDS) { run({ change: previous }); return true; }
 	picture.edits = el("edits").value;
+	if (hold) picture.wanted = hold;
 	drawPicture();
-	status(`${what === "value" ? "Wert" : "Änderung"} vorgemerkt (Werte ändern: ${el("edits").value || "keine"}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet das nicht von selbst neu: Optimieren rechnet.`);
+	status(`${what === "value" ? "Wert" : "Änderung"} vorgemerkt (Werte ändern: ${el("edits").value || "keine"}${hold ? `; Sätze halten: ${el("hold").value || "keine"}` : ""}). Der letzte Lauf dauerte ${fmt(last.seconds, 0)} s, darum rechnet das nicht von selbst neu: Optimieren rechnet.`);
 	return true;
 }
 
 // A value typed in the list: the length, radius or type a record starts from
-// in the next fit; for an inserted record its token. Returns whether the value was taken.
+// in the next fit; for an inserted record its token. A typed length or radius of a
+// record of the file is held as well - its box shows it and lets it go again (a value
+// only started from went back to the fit's own; Uwe, 2026-11-12). Returns whether the
+// value was taken.
 function editValue(key, field, text) {
 	if (!last || !picture.model || running) return false;
 	const record = picture.model.records.find((r) => String(r.number) === String(key));
@@ -525,7 +531,7 @@ function editValue(key, field, text) {
 	const same = field === "family" ? value === file : Math.abs(value - file) < (field === "length" ? 0.005 : 0.5);
 	if (same) delete entry[field]; else entry[field] = value;
 	Object.keys(entry).length ? all.values.set(number, entry) : all.values.delete(number);
-	return applyEdits(all, "value");
+	return applyEdits(all, "value", field === "family" ? null : holdTyped(picture.model, picture.wanted, number, field));
 }
 
 // A turnout's type chosen on an arc of the file, or the main track's radius beside

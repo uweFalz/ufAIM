@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap, describeHold, PICTURE_HEIGHT, ALIGNMENT_PICTURE_VERSION } from "../../src/services/axtran2/alignmentPicture.js";
+import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap, holdTyped, describeHold, PICTURE_HEIGHT, ALIGNMENT_PICTURE_VERSION } from "../../src/services/axtran2/alignmentPicture.js";
 import { recordListHtml } from "../../src/services/axtran2/recordList.js";
 
 const element = (id, type, records, before, after, extra = {}) => ({ id, type, family: null, held: false, fixed: false, records, before, after, ...extra });
@@ -153,6 +153,26 @@ test("a hold is read from numbers, objects, a Map or the report, and said in wor
 	const held = alignmentPictureModel(r);
 	assert.equal(pictureReadout(held, pictureProbe(held, 1200, 72 + (130 / 213) * 1112)), "Station 130,0 m · Satz 5 Bogen R 300, 40,00 m, Radius gehalten");
 	assert.match(alignmentPictureSvg(held), /<rect data-record="5"[^>]*fill="#F6E7BE"/);
+});
+
+test("a value typed in the list is held: the quantity typed, a record without a radius whole", () => {
+	const m = alignmentPictureModel(report());
+	const arc = m.records.find((r) => r.hasRadius && r.holdable && !r.turnout && !r.heldLength && !r.heldRadius);
+	const straight = m.records.find((r) => !r.hasRadius && r.holdable && !r.heldLength);
+	assert.ok(arc && straight, "the report has a free arc and a free straight");
+	const before = holdMap(m, null);
+	// the radius typed: the radius held, the length left to the fit, the rest of the hold as it was
+	const radius = holdTyped(m, null, arc.number, "radius");
+	assert.deepEqual(radius.get(arc.number), { length: false, radius: true });
+	assert.deepEqual([...radius].filter(([n]) => n !== arc.number), [...before]);
+	// the length typed after it: both, as two boxes ticked
+	assert.deepEqual(holdTyped(m, radius, arc.number, "length").get(arc.number), { length: true, radius: true });
+	// a straight is held whole, as a lock holds it ("7", not "7L")
+	assert.deepEqual(holdTyped(m, null, straight.number, "length").get(straight.number), { length: true, radius: true });
+	// nothing to hold: a type chosen, a record that is not the file's
+	assert.deepEqual([...holdTyped(m, null, arc.number, "family")], [...before]);
+	assert.deepEqual([...holdTyped(m, null, 999, "radius")], [...before]);
+	assert.equal(before.has(arc.number), false, "the hold given is not changed");
 });
 
 test("the element listing shows every record with plan and fit, and a box per quantity", () => {

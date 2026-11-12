@@ -15,7 +15,7 @@
 
 import { TRANSITION_FAMILIES } from "./recordEdits.js";
 
-export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.6";
+export const ALIGNMENT_PICTURE_VERSION = "axtran2/alignment-picture/0.7";
 
 /** the normalised curvature law of a transition family, for the band; a line otherwise */
 const CURVATURE_LAW = Object.freeze({
@@ -169,6 +169,21 @@ export function alignmentPictureModel(report) {
 		total: Math.max(after, before) || 1, lengthAfter: after, lengthBefore: before,
 		elements, records, groups, points, tolerance, reach, showBefore, maxBefore, maxAfter, kMax,
 	};
+}
+
+/**
+ * The hold with a typed value in it. What a person types in the list is what they want
+ * kept: the quantity typed ("length" or "radius") is held, the box beside it shows it and
+ * lets it go again. A record without a radius is held whole, as a lock holds it; a record
+ * that cannot be held (put in, a kink, none of the file's) leaves the hold as it is.
+ * `wanted` as holdMap takes it; returns a new Map.
+ */
+export function holdTyped(model, wanted, number, quantity) {
+	const map = holdMap(model, wanted);
+	const record = model.records.find((r) => r.number === number);
+	if (!record?.holdable || !HOLD_QUANTITIES.includes(quantity)) return map;
+	map.set(number, record.hasRadius ? { ...(map.get(number) ?? NO_HOLD), [quantity]: true } : { length: true, radius: true });
+	return map;
 }
 
 /** The records a click on `number` means: the turnout it belongs to, or itself. */
