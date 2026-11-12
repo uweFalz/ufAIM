@@ -9,7 +9,8 @@
 //
 // Written as a person types it: the record number, L or R for the quantity,
 // "=" and the value, several apart by space or comma: "7L=45,2 7R=-1250".
-// A decimal comma is read; the radius carries the file's sign. A transition
+// A decimal comma is read; the radius carries the file's sign, and one of
+// the other sign is refused (the arc would turn the other way). A transition
 // may change its type: "7T=Bloss", with Klothoide, Bloss or S-Form (Helmert),
 // the three the TRA writer carries as Kz 2, 4 and 3.
 //
@@ -45,7 +46,7 @@
 // ":WA", ":WE" or ":Bogen" say where its end piece is where the lengths do
 // not; "3W=keine" says the arc is no turnout, whatever the recognition found.
 
-export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.10";
+export const RECORD_EDITS_VERSION = "axtran2/record-edits/0.11";
 
 import { turnoutShape, TURNOUT_SHAPES } from "./heldRecords.js";
 import { RIL_800_0120_A01, CROSSING_KINDS } from "../../domain/optimization/alignment/TurnoutCatalogue.js";
@@ -338,6 +339,9 @@ export function resolveEdits(edits, records, turnouts = []) {
 		if (e.radius !== undefined) {
 			if (r.type !== "arc") error("INVALID_EDIT", `record ${n} is a ${r.type}: it has no radius to change`);
 			if (!(Math.abs(e.radius) > 0)) error("INVALID_EDIT", `record ${n}: a radius cannot be zero`);
+			// the sign is the side the arc turns to: a value changes how tight it is, not which way it goes
+			const fileRadius = Number.isFinite(r.radius) && r.radius !== 0 ? r.radius : Number.isFinite(r.curvature) && r.curvature !== 0 ? -1 / r.curvature : null;
+			if (fileRadius !== null && Math.sign(e.radius) !== Math.sign(fileRadius)) error("INVALID_EDIT", `record ${n}: the radius carries the file's sign, ${fileRadius < 0 ? "negative" : "positive"} there (R ${Math.round(fileRadius)}), not ${e.radius}: an arc does not change its side by a value`);
 		}
 		if (e.family !== undefined && r.type !== "transition") error("INVALID_EDIT", `record ${n} is a ${r.type}: only a transition has a type to change`);
 		out.set(n, Object.freeze({ ...e }));
