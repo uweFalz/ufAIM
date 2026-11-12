@@ -37,6 +37,9 @@ test("vienna2 read as cant gives the swerving curvature of the patent's example"
 	assert.ok(Math.abs(c.epsilon ** 2 - 0.00384) < 1e-9);
 	assert.ok(Math.abs(c.curvatureRange.min + 0.0083) < 2e-4 && Math.abs(c.curvatureRange.max - 1.0083) < 2e-4, JSON.stringify(c.curvatureRange));
 	assert.equal(c.suitability.suitable, true);
+	assert.equal(c.suitability.order, 3, "vienna2 as cant is smooth up to f‴");
+	assert.equal(c.suitability.requiredOrder, 2);
+	assert.ok(Math.abs(c.endDerivatives.second.start) < 1e-9);
 	// read as curvature the same function has no swerve
 	const plain = service.describeDraft({ halfWave1: "HW_VIEN2", halfWave2: "HW_VIEN2", normLengthPartition: [0.5, 0, 0.5], assumption });
 	assert.equal(plain.coupling.given, "curvature");

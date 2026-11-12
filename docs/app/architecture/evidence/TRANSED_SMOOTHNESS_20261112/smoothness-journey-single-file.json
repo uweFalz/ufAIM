@@ -1,0 +1,103 @@
+{
+  "tag": "single-file",
+  "requiredAtStart": "2",
+  "vienna2Curvature": {
+    "in": "HW_VIEN2",
+    "given": "curvature",
+    "eps": 0.062,
+    "order": 0,
+    "required": 2,
+    "suitable": false,
+    "verdict": "Rampe knickt an den Enden",
+    "ok": "false",
+    "checks": [
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.127)",
+      "f‴ am Anfang 23.8, am Ende 23.8 (Grenze 0.885)"
+    ]
+  },
+  "vienna2Cant": {
+    "in": "HW_VIEN2_CANT",
+    "given": "cant",
+    "eps": 0.062,
+    "order": 3,
+    "required": 2,
+    "suitable": true,
+    "verdict": "Rampe läuft glatt ein, bis f‴",
+    "ok": "true",
+    "checks": [
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.15)",
+      "f‴ am Anfang 0.0824, am Ende 0.0824 (Grenze 1.05)"
+    ]
+  },
+  "vienna2CantRequired3": {
+    "in": "HW_VIEN2_CANT",
+    "given": "cant",
+    "eps": 0.062,
+    "order": 3,
+    "required": 3,
+    "suitable": true,
+    "verdict": "Rampe läuft glatt ein, bis f‴",
+    "ok": "true",
+    "checks": [
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.15)",
+      "f‴ am Anfang 0.0824, am Ende 0.0824 (Grenze 1.05)"
+    ]
+  },
+  "vienna4CantRequired3": {
+    "in": "HW_VIEN4_CANT",
+    "given": "cant",
+    "eps": 0.062,
+    "order": 2,
+    "required": 3,
+    "suitable": false,
+    "verdict": "Rampe läuft glatt ein, bis f″; f‴ springt, verlangt ist bis f‴",
+    "ok": "false",
+    "checks": [
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.123)",
+      "f‴ am Anfang 43.5, am Ende 43.5 (Grenze 0.87)"
+    ]
+  },
+  "vienna4CantRequired2": {
+    "in": "HW_VIEN4_CANT",
+    "given": "cant",
+    "eps": 0.062,
+    "order": 2,
+    "required": 2,
+    "suitable": true,
+    "verdict": "Rampe läuft glatt ein, bis f″",
+    "ok": "true",
+    "checks": [
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.123)",
+      "f‴ am Anfang 43.5, am Ende 43.5 (Grenze 0.87)"
+    ]
+  },
+  "blossCantRequired2": {
+    "in": "HW_BLOSS_CANT",
+    "given": "cant",
+    "eps": 0.062,
+    "order": 1,
+    "required": 2,
+    "suitable": false,
+    "verdict": "Rampe läuft tangential ein; f″ springt, verlangt ist bis f″",
+    "ok": "false",
+    "checks": [
+      "f″ am Anfang 6, am Ende -6 (Grenze 0.12)",
+      "f‴ am Anfang -12, am Ende -12 (Grenze 0.24)"
+    ]
+  },
+  "blossCantRequired1": {
+    "in": "HW_BLOSS_CANT",
+    "given": "cant",
+    "eps": 0.062,
+    "order": 1,
+    "required": 1,
+    "suitable": true,
+    "verdict": "Rampe läuft tangential ein",
+    "ok": "true",
+    "checks": [
+      "f″ am Anfang 6, am Ende -6 (Grenze 0.12)",
+      "f‴ am Anfang -12, am Ende -12 (Grenze 0.24)"
+    ]
+  },
+  "problems": []
+}

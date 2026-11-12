@@ -304,7 +304,7 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		return result;
 	}
 
-	function couplingOf(preset, quantity, { assumption = null, epsilon = null, count = 201, tolerance } = {}) {
+	function couplingOf(preset, quantity, { assumption = null, epsilon = null, count = 201, tolerance, requiredOrder } = {}) {
 		const usedAssumption = { ...DEFAULT_COUPLING_ASSUMPTION, ...(assumption ?? {}) };
 		const eps = epsilon == null ? couplingEpsilon(usedAssumption) : Number(epsilon);
 		const result = quantity === "cant"
@@ -318,7 +318,13 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 			assumption: epsilon == null ? usedAssumption : null,
 			samples: result.samples,
 			endSlopes: result.endSlopes,
-			suitability: assessCouplingSuitability(result.endSlopes, tolerance == null ? {} : { tolerance }),
+			endDerivatives: result.endDerivatives,
+			suitability: assessCouplingSuitability(result.endSlopes, {
+				endDerivatives: result.endDerivatives,
+				peaks: result.peaks,
+				...(tolerance == null ? {} : { tolerance }),
+				...(requiredOrder == null ? {} : { requiredOrder }),
+			}),
 			curvatureRange: { min: Math.min(...curvatures), max: Math.max(...curvatures) },
 		};
 	}

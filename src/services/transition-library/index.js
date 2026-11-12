@@ -7,6 +7,8 @@ export {
 export {
 	DEFAULT_COUPLING_ASSUMPTION,
 	DEFAULT_END_SLOPE_TOLERANCE,
+	DEFAULT_REQUIRED_SMOOTHNESS_ORDER,
+	SMOOTHNESS_ORDER_MAX,
 	assessCouplingSuitability,
 	cantFromCurvature,
 	couplingEpsilon,

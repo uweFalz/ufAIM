@@ -145,8 +145,31 @@ Z = 2 · 4,49340946; die Datenbank hat sie richtig.
 Schiene vier Ableitungen mit endlichen Werten. Die Tauglichkeitsprüfung im Modul
 liest bisher nur die Endsteigung f′. Aus f″ = (f − k)/ε² folgt: f″ ist an den Enden
 null, sobald k dort 0 und 1 trifft; f‴ ist null, sobald zusätzlich f′ und k′ dort
-null sind. Eine Verschärfung der Prüfung auf diese Ordnungen ist möglich, aber
-nicht gebaut.
+null sind. Diese Verschärfung ist seit 2026-11-12 gebaut (Auftrag Uwe): Die Prüfung liest
+f′, f″ und f‴ an beiden Enden und nennt die erreichte Ordnung.
+
+| Ordnung | Bedingung an den Enden | Bedeutung |
+| --- | --- | --- |
+| 1 | f′ = 0 | kein Knick der Rampe |
+| 2 | zusätzlich f″ = 0 | drei endliche Ableitungen, Mindestforderung des Patents |
+| 3 | zusätzlich f‴ = 0 | vier endliche Ableitungen, Biegetheorie der Schiene |
+
+Verlangt ist in der Voreinstellung Ordnung 2; auf der Seite lässt sich 1, 2 oder 3
+wählen. Grenzen: f′ gegen 0,02 wie bisher; f″ und f‴ gegen 0,02 mal ihren
+größten Betrag auf der Rampe (mindestens 1), weil ihre Größe mit 1/ε² wächst. Ist
+die Krümmung gegeben, kommt f″ aus der Gleichung, f‴ aus der Ableitung davon; ist
+die Überhöhung gegeben, ist f″ die erklärte Funktion und f‴ ihre numerische
+Ableitung. Mit dem Beispiel des Patents (ε = 0,062), als Überhöhung gelesen:
+
+| Eintrag | f″ an den Enden | f‴ an den Enden | erreichte Ordnung |
+| --- | --- | --- | --- |
+| `vienna2`, `vienna3`, `vienna5`, `vienna6`, `vienna7` | 0 | 0 (numerischer Rest unter 0,12) | 3 |
+| `vienna4` | 0 | 43,5 | 2 |
+| `bloss` | ±6 | −12 | 1 |
+| `clothoid` | 0 | 0 | 0 (f′ = 1) |
+
+Als Krümmung gelesen bleibt jeder dieser Einträge bei Ordnung 0, weil schon f′
+nicht null ist.
 
 ## 9. Was noch bei Uwe liegt
 

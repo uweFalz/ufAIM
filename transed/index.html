@@ -146,6 +146,9 @@
 			<div><label for="aRadius">Radius R [m]</label><input type="number" id="aRadius" min="1" step="50"></div>
 			<div><label for="aLength">Länge L [m]</label><input type="number" id="aLength" min="1" step="5"></div>
 		</div>
+		<div class="grid" style="margin-top:14px">
+			<div><label for="smoothOrder">Verlangte Glattheit der Rampe an den Enden</label><select id="smoothOrder"><option value="1">f′ = 0 · kein Knick</option><option value="2">f′ = f″ = 0 · drei endliche Ableitungen</option><option value="3">f′ = f″ = f‴ = 0 · vier endliche Ableitungen</option></select><small>Voreinstellung nach AT 412 975 B: mindestens drei endliche Ableitungen, für die Biegetheorie der Schiene vier.</small></div>
+		</div>
 		<small>Annahme der Rechnung, Schienenabstand 1,5 m. Modell: Bezugspunkt um h·ψ nach innen versetzt, kleine Winkel; k = f − ε²·f″ mit ε² = h·ψ_E·R/L².</small>
 		<div id="couplingPlot" class="plot" style="margin-top:14px"></div>
 		<div id="couplingLegend" class="legend"></div>

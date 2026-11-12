@@ -213,7 +213,7 @@ test("the library stays outside the frozen core and off browser, messaging and s
 	assert.deepEqual(staticSpecifiers(plot), []);
 	for (const source of [service, coupling, plot]) assert.doesNotMatch(source, /\.json|window|document|Worker|localStorage|indexedDB|sendCmd/);
 	const barrel = await import("../../../src/services/transition-library/index.js");
-	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "FUNCTION_SERIES", "HALFWAVE_QUANTITIES", "KLAUDER_EXPONENT_MAX", "KLAUDER_INTERVAL", "KLAUDER_SOURCE", "PLOT_SERIES", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "functionPlotSvg", "klauderName", "klauderPrototype", "klauderRecords", "klauderTerms", "plotParameterAt", "plotSeries", "transitionPlotSvg"]);
+	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "DEFAULT_REQUIRED_SMOOTHNESS_ORDER", "FUNCTION_SERIES", "HALFWAVE_QUANTITIES", "KLAUDER_EXPONENT_MAX", "KLAUDER_INTERVAL", "KLAUDER_SOURCE", "PLOT_SERIES", "SMOOTHNESS_ORDER_MAX", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "functionPlotSvg", "klauderName", "klauderPrototype", "klauderRecords", "klauderTerms", "plotParameterAt", "plotSeries", "transitionPlotSvg"]);
 });
 
 test("an unsaved combination of two halfWaves and a partition is described without saving", () => {

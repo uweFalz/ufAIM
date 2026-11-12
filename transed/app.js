@@ -6,6 +6,7 @@
 import transitionLookup from "../src/domain/transition/transitionLookup.json" with { type: "json" };
 import {
 	DEFAULT_COUPLING_ASSUMPTION,
+	DEFAULT_REQUIRED_SMOOTHNESS_ORDER,
 	FUNCTION_SERIES,
 	couplingPlotSvg,
 	createTransitionLibraryService,
@@ -28,6 +29,7 @@ const state = {
 	w1: 0.5,
 	w2: 0.5,
 	assumption: { ...DEFAULT_COUPLING_ASSUMPTION },
+	requiredOrder: DEFAULT_REQUIRED_SMOOTHNESS_ORDER,
 	draft: null,
 	mode: "2",
 	fn: { kind: "poly", coeff: "0, 0, 3, -2", m: Math.PI, n: 0, a: 0, b: 0.5, x0: -0.25, x1: 1.25, draft: null },
@@ -124,6 +126,7 @@ function syncInputs() {
 	el("aCant").value = String(Math.round(state.assumption.endCant * 1000));
 	el("aRadius").value = String(state.assumption.radius);
 	el("aLength").value = String(state.assumption.length);
+	el("smoothOrder").value = String(state.requiredOrder);
 }
 
 // Legend of the κ/κ′/κ″ picture, named after the reading of the halfWaves.
@@ -132,9 +135,20 @@ function seriesLegend(reading, ranges) {
 		+ reading.series.map((series) => `<span><b style="color:${series.color}">${series.label}</b> ${formatRange(ranges[series.key])}</span>`).join("");
 }
 
+const DERIVATIVE_NAMES = ["", "f′", "f″", "f‴"];
+const endValue = (value) => { const rounded = Number(Number(value).toPrecision(3)); return Object.is(rounded, -0) || Math.abs(rounded) < 5e-4 ? "0" : String(rounded); };
+
+// Verdict on the ramp ends: how far the ramp is smooth and what was asked for.
+function rampVerdict(suitability) {
+	const { order, requiredOrder, suitable } = suitability;
+	if (order === 0) return "Rampe knickt an den Enden";
+	const reached = order === 1 ? "Rampe läuft tangential ein" : `Rampe läuft glatt ein, bis ${DERIVATIVE_NAMES[order]}`;
+	return suitable ? reached : `${reached}; ${DERIVATIVE_NAMES[order + 1]} springt, verlangt ist bis ${DERIVATIVE_NAMES[requiredOrder]}`;
+}
+
 function render() {
 	syncInputs();
-	const draft = service.describeDraft({ halfWave1: state.halfWave1, halfWave2: state.halfWave2, normLengthPartition: partition(), assumption: state.assumption });
+	const draft = service.describeDraft({ halfWave1: state.halfWave1, halfWave2: state.halfWave2, normLengthPartition: partition(), assumption: state.assumption, requiredOrder: state.requiredOrder });
 	state.draft = draft.ok ? draft : null;
 	if (!draft.ok) {
 		el("plot").replaceChildren();
@@ -156,11 +170,12 @@ function render() {
 	const given = c.given === "cant" ? "Überhöhung" : "Krümmung";
 	const derived = c.derived === "cant" ? "Überhöhung" : "Krümmung";
 	el("couplingText").innerHTML = `Diese Kombination ist als <b>${given}</b> erklärt. Daraus folgt die <b>${derived}</b>. `
-		+ `<span class="verdict" data-ok="${c.suitability.suitable}">${c.suitability.suitable ? "Rampe läuft tangential ein" : "Rampe knickt an den Enden"}</span>`;
+		+ `<span class="verdict" data-ok="${c.suitability.suitable}" data-order="${c.suitability.order}">${rampVerdict(c.suitability)}</span>`;
 	el("couplingPlot").innerHTML = couplingPlotSvg({ samples: c.samples, given: c.given }).svg;
 	el("couplingLegend").innerHTML = [
 		`<span><b style="color:#0F9D94">Krümmung</b> ${formatRange(c.curvatureRange)}</span>`,
 		`<span><b style="color:#C8572A">Überhöhung</b> Steigung am Anfang ${c.endSlopes.start.toFixed(3)}, am Ende ${c.endSlopes.end.toFixed(3)}</span>`,
+		...c.suitability.checks.slice(1).map((check) => `<span data-check="${check.order}" data-ok="${check.ok}">${DERIVATIVE_NAMES[check.order]} am Anfang ${endValue(check.start)}, am Ende ${endValue(check.end)} (Grenze ${endValue(check.limit)})</span>`),
 		`<span>ε = ${c.epsilon.toFixed(3)}</span>`,
 	].join("");
 }
@@ -361,6 +376,7 @@ el("template").addEventListener("change", () => applyTemplate(el("template").val
 el("hwIn").addEventListener("change", () => { state.halfWave1 = el("hwIn").value; el("template").value = ""; render(); });
 el("hwOut").addEventListener("change", () => { state.halfWave2 = el("hwOut").value; el("template").value = ""; render(); });
 
+el("smoothOrder").addEventListener("change", () => { state.requiredOrder = Number(el("smoothOrder").value); render(); });
 for (const [id, key, factor] of [["aHeight", "referenceHeight", 1], ["aCant", "endCant", 0.001], ["aRadius", "radius", 1], ["aLength", "length", 1]]) {
 	el(id).addEventListener("change", () => {
 		const value = Number(el(id).value) * factor;

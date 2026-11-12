@@ -16,6 +16,15 @@
 //   the stations, so the end slopes of f are a result. Zero end slopes mean
 //   the ramp runs in tangentially: the curvature suits this eps.
 //
+//
+// Smoothness of the ramp at its ends (AT 412 975 B asks for at least three,
+// for the bending theory of the rail four derivatives of f with finite
+// values): the ramp joins constant cant on both sides, so
+//   order 1: f'   = 0 at both ends, no kink;
+//   order 2: f''  = 0 as well, three finite derivatives (the patent's minimum);
+//   order 3: f''' = 0 as well, four finite derivatives (bending theory).
+// With curvature given, f'' = (f - k) / eps^2 holds pointwise.
+//
 // The outputs are candidates of this model. Speed does not occur.
 
 export const DEFAULT_COUPLING_ASSUMPTION = Object.freeze({
@@ -27,6 +36,9 @@ export const DEFAULT_COUPLING_ASSUMPTION = Object.freeze({
 });
 
 export const DEFAULT_END_SLOPE_TOLERANCE = 0.02;
+// The patent's minimum: f' and f'' vanish at the ends.
+export const DEFAULT_REQUIRED_SMOOTHNESS_ORDER = 2;
+export const SMOOTHNESS_ORDER_MAX = 3;
 
 function finitePositive(value, name) {
 	const number = Number(value);
@@ -64,10 +76,12 @@ export function curvatureFromCant({ cant, cant1 = null, cant2 }, epsilon, { coun
 		const f = Number(cant(u));
 		return { u, cant: f, curvature: f - eps * eps * Number(cant2(u)) };
 	});
-	const endSlopes = typeof cant1 === "function"
-		? { start: Number(cant1(0)), end: Number(cant1(1)) }
-		: endSlopesFromSamples(samples.map((sample) => sample.cant));
-	return { epsilon: eps, samples, endSlopes };
+	const f = samples.map((sample) => sample.cant);
+	const f1 = typeof cant1 === "function" ? samples.map((sample) => Number(cant1(sample.u))) : derivativeOfSamples(f);
+	const f2 = samples.map((sample) => Number(cant2(sample.u)));
+	const f3 = derivativeOfSamples(f2);
+	const endSlopes = typeof cant1 === "function" ? endsOf(f1) : endSlopesFromSamples(f);
+	return { epsilon: eps, samples, endSlopes, ...smoothnessOf(endSlopes, f1, f2, f3) };
 }
 
 /** Curvature given: solve f - eps^2 f'' = k with f(0) = 0, f(1) = 1. */
@@ -79,6 +93,7 @@ export function cantFromCurvature(curvature, epsilon, { count } = {}) {
 	const h = 1 / intervals;
 	const k = Array.from({ length: n }, (_, index) => Number(curvature(index / intervals)));
 	let f;
+	let f2 = null;
 	if (eps * eps < 1e-14) {
 		f = k.slice();
 		f[0] = 0;
@@ -103,9 +118,40 @@ export function cantFromCurvature(curvature, epsilon, { count } = {}) {
 		f[intervals] = 1;
 		f[m] = d[m - 1];
 		for (let i = m - 1; i >= 1; i -= 1) f[i] = d[i - 1] - c[i - 1] * f[i + 1];
+		// The equation itself gives f'' without differentiating twice.
+		f2 = f.map((value, index) => (value - k[index]) / (eps * eps));
 	}
 	const samples = k.map((value, index) => ({ u: index / intervals, curvature: value, cant: f[index] }));
-	return { epsilon: eps, samples, endSlopes: endSlopesFromSamples(f) };
+	const f1 = derivativeOfSamples(f);
+	if (!f2) f2 = derivativeOfSamples(f1);
+	const endSlopes = endSlopesFromSamples(f);
+	return { epsilon: eps, samples, endSlopes, ...smoothnessOf(endSlopes, f1, f2, derivativeOfSamples(f2)) };
+}
+
+// Derivative of equally spaced samples on [0, 1]; second order, one-sided at the ends.
+function derivativeOfSamples(values) {
+	const n = values.length - 1;
+	const h = 1 / n;
+	return values.map((_, i) => {
+		if (i === 0) return (-3 * values[0] + 4 * values[1] - values[2]) / (2 * h);
+		if (i === n) return (3 * values[n] - 4 * values[n - 1] + values[n - 2]) / (2 * h);
+		return (values[i + 1] - values[i - 1]) / (2 * h);
+	});
+}
+
+function endsOf(values) {
+	return { start: values[0], end: values[values.length - 1] };
+}
+
+function peakOf(values) {
+	return values.reduce((peak, value) => (Number.isFinite(value) ? Math.max(peak, Math.abs(value)) : peak), 0);
+}
+
+function smoothnessOf(endSlopes, f1, f2, f3) {
+	return {
+		endDerivatives: { first: endSlopes, second: endsOf(f2), third: endsOf(f3) },
+		peaks: { first: peakOf(f1), second: peakOf(f2), third: peakOf(f3) },
+	};
 }
 
 function endSlopesFromSamples(values) {
@@ -117,14 +163,37 @@ function endSlopesFromSamples(values) {
 	};
 }
 
-/** The ramp suits when it leaves and reaches its end values tangentially. */
-export function assessCouplingSuitability(endSlopes, { tolerance = DEFAULT_END_SLOPE_TOLERANCE } = {}) {
+/**
+ * The ramp suits when it leaves and reaches its end values smoothly up to the
+ * required order. Order 1 is the end slope against `tolerance`, as before.
+ * Orders 2 and 3 compare f'' and f''' at the ends with `tolerance` times their
+ * largest value on the ramp (at least 1), because their size grows with 1/eps^2.
+ * Without `endDerivatives` only order 1 can be judged.
+ */
+export function assessCouplingSuitability(endSlopes, { tolerance = DEFAULT_END_SLOPE_TOLERANCE, endDerivatives = null, peaks = null, requiredOrder = DEFAULT_REQUIRED_SMOOTHNESS_ORDER } = {}) {
 	const start = Number(endSlopes?.start);
 	const end = Number(endSlopes?.end);
 	const maxEndSlope = Math.max(Math.abs(start), Math.abs(end));
+	const checks = [{ order: 1, start, end, limit: tolerance }];
+	for (const [order, key] of [[2, "second"], [3, "third"]]) {
+		const ends = endDerivatives?.[key];
+		if (!ends) break;
+		checks.push({ order, start: Number(ends.start), end: Number(ends.end), limit: tolerance * Math.max(1, Number(peaks?.[key]) || 0) });
+	}
+	for (const check of checks) {
+		const worst = Math.max(Math.abs(check.start), Math.abs(check.end));
+		check.ok = Number.isFinite(worst) && worst <= check.limit;
+	}
+	let order = 0;
+	while (order < checks.length && checks[order].ok) order += 1;
+	const wanted = Math.trunc(Number(requiredOrder));
+	const required = Math.min(checks.length, Math.max(1, Math.min(SMOOTHNESS_ORDER_MAX, Number.isFinite(wanted) ? wanted : DEFAULT_REQUIRED_SMOOTHNESS_ORDER)));
 	return {
-		suitable: Number.isFinite(maxEndSlope) && maxEndSlope <= tolerance,
+		suitable: order >= required,
 		maxEndSlope,
 		tolerance,
+		order,
+		requiredOrder: required,
+		checks,
 	};
 }

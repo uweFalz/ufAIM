@@ -7,8 +7,8 @@ Ordered by Uwe ("schreib Rock die Übergabe für die Übernahme nach /AIM").
 ## 1. What is handed over
 
 TransEd playground with modes 0, 1, 2, the root artifact `transed.html`, the
-Klauder generator, the reading of halfWaves as cant, and curve names that
-follow the reading. Reports:
+Klauder generator, the reading of halfWaves as cant, curve names that
+follow the reading, and the suitability check on f′, f″, f‴ at the ramp ends. Reports:
 `docs/app/architecture/MISSION_REPORT_TRANSED_PLAYGROUND_FINAL_002.md` and
 `docs/app/architecture/MISSION_REPORT_TRANSED_KLAUDER_GENERATOR_003.md`
 (both `review-required`).
@@ -24,16 +24,19 @@ follow the reading. Reports:
 
 ## 3. The files
 
-16 files outside `docs/`, with SHA-256 in
-`docs/app/architecture/evidence/TRANSED_LABELS_20261112/takeover-sha256.txt`
-(check with `shasum -a 256 -c` from the worktree root). Earlier messages said
-"17 files"; the count that the diff against `ec1e6d3` gives is 16.
+18 files outside `docs/`, with SHA-256 in
+`docs/app/architecture/evidence/TRANSED_SMOOTHNESS_20261112/takeover-sha256.txt`
+(check with `shasum -a 256 -c` from the worktree root). The list in
+`evidence/TRANSED_LABELS_20261112/` with 16 files is superseded: the sharpened
+suitability check added `cantCurvatureCoupling.js` and its test.
 
 - New relative to `origin/main`: `transed.html`,
   `src/services/transition-library/klauderFamily.js`,
   `test/services/transition-library/klauder-family.test.mjs`,
   `test/services/transition-library/declare-halfwave-as.test.mjs`.
 - Changed relative to `origin/main`: `package.json`,
+  `src/services/transition-library/cantCurvatureCoupling.js`,
+  `test/services/transition-library/cant-curvature-coupling.test.mjs`,
   `src/services/transition-library/createTransitionLibraryService.js`,
   `src/services/transition-library/index.js`,
   `src/services/transition-library/transitionPlot.js`,
@@ -46,12 +49,12 @@ follow the reading. Reports:
   `TRANSED_SCHWERPUNKT_KOPPLUNG_HERLEITUNG_2026-11-11.md`, this file, and the
   evidence folders `evidence/TRANSED_PLAYGROUND_FINAL_20261110/`,
   `evidence/TRANSED_KLAUDER_20261111/`, `evidence/TRANSED_HASSLINGER_20261111/`,
-  `evidence/TRANSED_LABELS_20261112/`. The older `handover-sha256.txt` files in
+  `evidence/TRANSED_LABELS_20261112/`, `evidence/TRANSED_SMOOTHNESS_20261112/`. The older `handover-sha256.txt` files in
   the first three folders are superseded.
 
 ## 4. State of `/AIM` as I found it (read-only, 2026-11-12)
 
-- `origin/main` is `771433e`. None of the 16 files changed there since
+- `origin/main` is `771433e`. None of the 18 files changed there since
   `ec1e6d3`, so the branch applies onto `origin/main` without conflict.
 - The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `4b34c80`,
   21 commits ahead of and 72 behind `origin/main`. It has no `transed/`, no
@@ -73,17 +76,17 @@ follow the reading. Reports:
   manifest and `--check`, written after yours. Yours in `/AIM` is the
   reference; keep it and drop mine if they disagree.
 
-The other 14 files are mine alone and can be taken byte-identically.
+The other 16 files are mine alone and can be taken byte-identically.
 
 ## 6. Checks after the takeover
 
 Run in `/AIM`:
 
 - `node --test test/services/transition-library/*.test.mjs test/transed/*.test.mjs`
-  — 38 of 38 pass in the worktree.
-- `npm run bundle:transed:check` — must report source `ca1dd6821983`;
+  — 41 of 41 pass in the worktree.
+- `npm run bundle:transed:check` — must report source `f606c6956d3e`;
   `transed.html` SHA-256
-  `540700632386e60d857946cf43b27035ed9aaed6a4cd7b84a1c5d47c7e865db7`. If
+  `c90f4b1ce575a2213eb933e69a507707ca1a92b0e038f14e3a4e4a64012a8054`. If
   `tools/transed/bundle.mjs` or a source differs, the hash differs: then
   `npm run bundle:transed` and report the new one.
 - `npm run bundle` once and `npm run bundle:check`: the AXTRAN2 source manifest
@@ -96,6 +99,8 @@ Run in `/AIM`:
 - Visible journeys ran in headless Chrome on the single file and on the served
   page, without console errors; nobody watched, selects were set by value,
   Safari, Firefox and narrow screens are untested.
+- The suitability check was sharpened after the full-suite run; since then only
+  the 41 library and TransEd tests ran.
 - The full suite was repeated at `8633e6b`: 2404 tests, 30 failures, none in
   TransEd. The same failures occur by name on the base commit `ec1e6d3` in the
   same environment (missing untracked modules, `test/samples/`, `rg`, and eight

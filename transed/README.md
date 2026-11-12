@@ -28,6 +28,8 @@ A page of its own for the transitionDB, independent of the app shell.
   `<id>_CANT` on the same prototype (`declareHalfWaveAs` of the service). This
   is how the built-in `vienna` entries, which are Hasslinger's cant functions
   (AT 412 975 B), show their swerving curvature.
+  The verdict on the ramp reads f′, f″ and f‴ at both ends; "Verlangte Glattheit"
+  picks the required order (default 2, the minimum of AT 412 975 B).
   The pictures of modes 1 and 2 name their curves after the reading: κ, κ′, κ″
   for curvature, ψ, ψ′, ψ″ for cant (`plotSeries`).
 
