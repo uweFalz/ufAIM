@@ -56,3 +56,5 @@ Pass there (2):
   test/app/workspace/promoted-alignment-main-q-l-journey.test.mjs | canonical promoted Alignment becomes the one Main workspace context
   test/axtran2/lexicographic.test.mjs | the exact ramp rule under the corridor where the rows read curvature (the open one)
 None of these tests reads a file of the TransEd takeover.
+
+Repeated on 2026-11-13 at 3193313 (after the sharpened suitability check), same command, same worktree: 2407 tests, 2352 pass, 30 fail, 24 skipped, 1 todo. The failing names are identical to the list above; none is in test/services/transition-library/ or test/transed/. The three additional tests are the new ones of the suitability check and pass.

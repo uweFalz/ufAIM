@@ -99,10 +99,9 @@ Run in `/AIM`:
 - Visible journeys ran in headless Chrome on the single file and on the served
   page, without console errors; nobody watched, selects were set by value,
   Safari, Firefox and narrow screens are untested.
-- The suitability check was sharpened after the full-suite run; since then only
-  the 41 library and TransEd tests ran.
-- The full suite was repeated at `8633e6b`: 2404 tests, 30 failures, none in
-  TransEd. The same failures occur by name on the base commit `ec1e6d3` in the
+- The full suite was repeated at `8633e6b` and again at `3193313`, after the
+  sharpened suitability check: 2407 tests, 30 failures, none in TransEd, the
+  same names both times. The same failures occur by name on the base commit `ec1e6d3` in the
   same environment (missing untracked modules, `test/samples/`, `rg`, and eight
   assertion failures in app, aim-core and AXTRAN2 tests). List:
   `docs/app/architecture/evidence/TRANSED_LABELS_20261112/full-suite-result.txt`.
