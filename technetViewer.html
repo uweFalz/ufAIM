@@ -42040,6 +42040,41 @@ xlsx/xlsx.mjs:
 				}
 				return best ? best.key : null;
 			}
+			// What the user sorted into a Strecke by hand reaches farther than what
+			// the viewer places by itself: the user has said which Strecke, the
+			// Lage only has to say where along it. A line fits such a Gleis when
+			// the foot of both its ends lies on the line (onLine: not beyond the
+			// line's ends), neither end is farther than farDistance -- a Gleisgruppe
+			// beside the Strecke, not the next Strecke over, as the Spurplan has it
+			// -- and at least minShare of the Gleis runs within the Lage's reach of
+			// the line (share). Measured: Bahnhofsgleise with one end 62-134 m off
+			// run 69-94 % beside their line (Billwerder, WueTreu). Among those the
+			// line that holds the Gradiente, then the larger share, then the nearer.
+			const BEZUGSLINIE_VON_HAND_MIN_ANTEIL = 0.5;
+			function einordnungBezugslinieVonHand(candidates, farDistance, minShare = BEZUGSLINIE_VON_HAND_MIN_ANTEIL) {
+				let best = null;
+				for (const candidate of candidates) {
+					if (!candidate.onLine || !(candidate.share >= minShare)) continue;
+					const distance = Math.max(candidate.distanceStart, candidate.distanceEnd);
+					if (!(distance <= farDistance)) continue;
+					const miss = candidate.holdsProfile ? 0 : 1;
+					if (!best || miss < best.miss || (miss === best.miss && (candidate.share > best.share || (candidate.share === best.share && distance < best.distance)))) best = { key: candidate.key, distance, share: candidate.share, miss };
+				}
+				return best ? best.key : null;
+			}
+			// Why no line of the Strecke fits a Gleis sorted in by hand, for the
+			// one that came closest: { grund: "keine" } (no line offered),
+			// "fern" (no part of it beside any line), "ende" (it runs out beyond
+			// the line's end), "abstand" (an end farther than farDistance) or
+			// "anteil" (too little of it beside the line), with key and share.
+			function einordnungOhneBezugslinie(candidates, farDistance, minShare = BEZUGSLINIE_VON_HAND_MIN_ANTEIL) {
+				if (!candidates.length) return { grund: "keine" };
+				const closest = candidates.filter((candidate) => candidate.share > 0).sort((a, b) => b.share - a.share)[0];
+				if (!closest) return { grund: "fern" };
+				const distance = Math.max(closest.distanceStart, closest.distanceEnd);
+				const grund = !closest.onLine ? "ende" : !(distance <= farDistance) ? "abstand" : closest.share < minShare ? "anteil" : "sonst";
+				return { grund, key: closest.key, share: closest.share, distance };
+			}
 			// A projection that does not keep the Gleis's length is none: stations
 			// clamped at a line's end collapse onto one km.
 			const BEZUGSLINIE_MIN_LAENGENTREUE = 0.5;
@@ -42855,7 +42890,8 @@ xlsx/xlsx.mjs:
 				reconcileVermEsnStationing();
 				dragHintUsed = true;
 				status.classList.remove("error");
-				status.textContent = `${taken.text} einsortiert · von Hand übernommen`;
+				const ohneLinie = before.filter((item) => item.entry.kmHinweis && item.entry.kmHinweis.art !== "fern").length;
+				status.textContent = `${taken.text} einsortiert · von Hand übernommen${ohneLinie ? ` · ${ohneLinie} an keiner Kilometerlinie der Strecke (Grund steht über dem Bild)` : ""}`;
 				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
 			}
@@ -44399,8 +44435,33 @@ xlsx/xlsx.mjs:
 								varianten.length ? `${nebenZaehlung(varianten)} neben der Trasse im Bild` : null,
 							].filter(Boolean).join(" · ");
 						})();
-				diagramNote.textContent = [mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
+				diagramNote.textContent = [mainNote, coverageNote(anchor), kmHinweisText(entry)].filter(Boolean).join(" · ");
 				diagramNote.title = diagramNote.textContent;
+			}
+
+			// What the stationing of a Gleis sorted in by hand rests on, where it
+			// is not the plain case (both ends beside the line): stationed from
+			// farther away, with the km of another Strecke's line, or without km,
+			// and why. The reason and
+			// the measure stand in the picture's header; the user changes it by
+			// sorting the Gleis elsewhere or taking it out again.
+			function kmHinweisText(entry) {
+				const hinweis = entry?.kmHinweis;
+				if (!hinweis) return "";
+				const linie = hinweis.linie ? objectListName(hinweis.linie) : "";
+				const anteil = hinweis.anteil != null ? `${Math.round(hinweis.anteil * 100)} %` : "";
+				const strecke = entry.frameEdit?.track ? `Strecke ${entry.frameEdit.track}` : "der Strecke";
+				if (hinweis.art === "fern") return `km über den Lotfußpunkt auf ${linie}: ${anteil} des Gleises in ${LAGE_REACH_M} m daneben, ein Ende ${Math.round(hinweis.abstand)} m`;
+				const grund = {
+					keine: `keine Kilometerlinie der ${strecke} in seinem Lagesystem geladen`,
+					fern: `liegt an keiner Kilometerlinie der ${strecke}`,
+					ende: `reicht über das Ende von ${linie} hinaus (${anteil} daneben)`,
+					abstand: `ein Ende ${Math.round(hinweis.abstand ?? 0)} m von ${linie}, weiter als ${TOPOLOGY_KM_FAR_M} m`,
+					anteil: `nur ${anteil} des Gleises in ${LAGE_REACH_M} m neben ${linie}`,
+					laenge: `die Abbildung auf ${linie} hält seine Länge nicht`,
+				}[hinweis.grund] ?? `passt an keine Kilometerlinie der ${strecke}`;
+				if (hinweis.art === "fremd") return `km von ${hinweis.von ? objectListName(hinweis.von) : "einer anderen Kilometerlinie"}, nicht von ${strecke}: ${grund}`;
+				return `ohne km der ${strecke}, eigene Stationen: ${grund}`;
 			}
 
 			// A Gleis's own Gradiente/Überhöhung should cover its Krümmung; the
@@ -50106,7 +50167,18 @@ xlsx/xlsx.mjs:
 					project(target, reference, trustDelivered);
 				};
 				const byLengthThenName = (a, b) => rangeLength(b) - rangeLength(a) || objectDisplayName(a).localeCompare(objectDisplayName(b)) || String(a.loaded?.fileKey ?? "").localeCompare(String(b.loaded?.fileKey ?? ""));
-				const pickReference = (target, references) => {
+				// byHand: the Gleis was sorted into this Strecke by the user. Then a
+				// line it does not fit end to end may still be its line
+				// (einordnungBezugslinieVonHand), and what was decided is kept on the
+				// Gleis for the picture to say (kmHinweis): stationed from farther
+				// away, or without km and why.
+				const lagen = new Map();
+				const lageOf = (reference) => {
+					if (!lagen.has(reference)) lagen.set(reference, { polyline: polylineOf(reference) });
+					return lagen.get(reference);
+				};
+				const pickReference = (target, references, byHand = false) => {
+					if (byHand) delete target.kmHinweis;
 					const ends = alignmentEndpoints(target);
 					if (!ends) return null;
 					const profile = referencingEntries(target).find((sibling) => sibling.item.kind === "profile");
@@ -50114,9 +50186,26 @@ xlsx/xlsx.mjs:
 					const candidates = references.map((reference) => {
 						const polyline = polylineOf(reference);
 						const hits = polyline.length < 2 ? [null, null] : [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(polyline, point));
-						return { key: reference, distanceStart: hits[0]?.distance ?? NaN, distanceEnd: hits[1]?.distance ?? NaN, holdsProfile: Boolean(within(profileRange, stationRangeForEntry(reference), 50)) };
+						return { key: reference, distanceStart: hits[0]?.distance ?? NaN, distanceEnd: hits[1]?.distance ?? NaN, onLine: Boolean(hits[0] && hits[1]) && !hits[0].atEnd && !hits[1].atEnd, holdsProfile: Boolean(within(profileRange, stationRangeForEntry(reference), 50)) };
 					});
-					return einordnungBezugslinie(candidates, TOPOLOGY_KM_MAX_DISTANCE_M);
+					const fits = einordnungBezugslinie(candidates, TOPOLOGY_KM_MAX_DISTANCE_M);
+					if (fits || !byHand) return fits;
+					// How much of the Gleis runs beside a line, for the lines one of
+					// its ends comes near at all.
+					const own = referenceStationPolyline(target, 10);
+					for (const candidate of candidates) {
+						const measured = Math.min(candidate.distanceStart, candidate.distanceEnd) <= TOPOLOGY_KM_FAR_M ? lageAbstandOf(own, lageOf(candidate.key)) : null;
+						candidate.share = measured?.samples ? measured.hits / measured.samples : 0;
+					}
+					const far = einordnungBezugslinieVonHand(candidates, TOPOLOGY_KM_FAR_M);
+					if (far) {
+						const candidate = candidates.find((item) => item.key === far);
+						target.kmHinweis = { art: "fern", linie: far, anteil: candidate.share, abstand: Math.max(candidate.distanceStart, candidate.distanceEnd) };
+						return far;
+					}
+					const why = einordnungOhneBezugslinie(candidates, TOPOLOGY_KM_FAR_M);
+					target.kmHinweis = { art: "ohne", grund: why.grund, linie: why.key ?? null, anteil: why.share ?? null, abstand: why.distance ?? null };
+					return null;
 				};
 				const allReferences = [];
 				for (const [, entries] of groupBy(named, (entry) => vermEsnNameFrame(entry).track)) {
@@ -50147,9 +50236,22 @@ xlsx/xlsx.mjs:
 				// by their numbers and by the Lage, keeps them (Billwerder 6100 RE
 				// beside 6100 KM).
 				const sortedByHand = alignments.filter((entry) => entry.frameEdit?.source === "user" && !namedByHand(entry));
+				for (const entry of alignments) if (entry.kmHinweis && !sortedByHand.includes(entry)) delete entry.kmHinweis;
 				for (const [track, entries] of groupBy(sortedByHand, (entry) => String(entry.frameEdit.track))) {
 					const references = alignments.filter((entry) => sevenLineSide(entry) === "kilometer" && String(geoFrameInfo(entry)?.track) === track).sort(byLengthThenName);
-					for (const target of entries) settle(target, pickReference(target, references), true);
+					for (const target of entries) {
+						const reference = pickReference(target, references, true);
+						// No line of the Strecke the user named, but the Lage alone had
+						// found one of another Strecke (Landshut Gls409, sorted into
+						// 5632, lies end to end on 5500 and its GRA is in 5500's km):
+						// the km stay, they are what the files say, and the picture
+						// names the contradiction instead of dropping either side.
+						if (!reference && target.externalStationReference && target.kmHinweis) {
+							target.kmHinweis = { ...target.kmHinweis, art: "fremd", von: alignments.find((entry) => entry.item.id === target.externalStationReference) ?? null };
+						}
+						settle(target, reference, true);
+						if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference };
+					}
 				}
 				// GND: a Nebengleis or Bahnhofsgleis counts its stations from its
 				// own start. Sorted into a Strecke by hand it is put onto the
@@ -50167,9 +50269,11 @@ xlsx/xlsx.mjs:
 					const byHand = target.frameEdit?.source === "user" && sevenLineSide(target) !== "kilometer";
 					const lsys = effectiveLsys(target) || "";
 					const reference = !byHand ? null : pickReference(target, allViewerEntries().filter((entry) => entry !== target && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"
-						&& String(geoFrameInfo(entry)?.track) === String(target.frameEdit.track) && (effectiveLsys(entry) || "") === lsys).sort(byLengthThenName));
+						&& String(geoFrameInfo(entry)?.track) === String(target.frameEdit.track) && (effectiveLsys(entry) || "") === lsys).sort(byLengthThenName), true);
+					if (!byHand) delete target.kmHinweis;
 					if (reference) settle(target, reference, false);
 					else if (kmAbbildungPairs(target)) unproject(target);
+					if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference };
 					if (target.externalStationReference !== before) gndChanged = true;
 				}
 				if (gndChanged) einordnungGeaendert();

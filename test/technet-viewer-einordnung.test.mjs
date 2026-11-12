@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungBezugslinieVonHand, einordnungOhneBezugslinie, BEZUGSLINIE_VON_HAND_MIN_ANTEIL, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungBezugslinieVonHand, einordnungOhneBezugslinie, BEZUGSLINIE_VON_HAND_MIN_ANTEIL, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -544,4 +544,29 @@ test("the station runs down along an element laid against the km", () => {
 	// file-local stations, no km end: up by the length
 	assert.equal(einordnungStationsgang(0, NaN, 88), 88);
 	assert.equal(einordnungStationsgang(120, undefined, 30), 30);
+});
+
+test("sorted in by hand, a Gleis takes the line it runs beside though one end lies farther off", () => {
+	const line = (key, distanceStart, distanceEnd, onLine, share, holdsProfile = false) => ({ key, distanceStart, distanceEnd, onLine, share, holdsProfile });
+	// Billwerder ABCH_Gl_124: 9 m and 134 m from the Kilometerlinie, 51 of 67 samples beside it
+	assert.equal(einordnungBezugslinie([line("6100KM", 9, 134, true, 0.76)], 60), null, "not by the viewer's own measure");
+	assert.equal(einordnungBezugslinieVonHand([line("6100KM", 9, 134, true, 0.76)], 250), "6100KM");
+	// WueTreu Gleis 12: runs 450 m out beyond the end of its line
+	assert.equal(einordnungBezugslinieVonHand([line("5321KM", 450, 5, false, 0.58)], 250), null, "beyond the line's end there is no km");
+	// a Gleis that only touches the line
+	assert.equal(einordnungBezugslinieVonHand([line("KM", 3, 180, true, 0.3)], 250), null);
+	// the next Strecke over
+	assert.equal(einordnungBezugslinieVonHand([line("KM", 20, 300, true, 0.7)], 250), null);
+	// two lines fit: the one that holds the Gradiente, else the one it runs beside for longer
+	assert.equal(einordnungBezugslinieVonHand([line("a", 10, 90, true, 0.9), line("b", 10, 120, true, 0.6, true)], 250), "b");
+	assert.equal(einordnungBezugslinieVonHand([line("a", 10, 90, true, 0.6), line("b", 10, 120, true, 0.9)], 250), "b");
+	assert.equal(einordnungBezugslinieVonHand([line("a", 10, 120, true, 0.8), line("b", 10, 90, true, 0.8)], 250), "b", "the same share: the nearer");
+	assert.equal(BEZUGSLINIE_VON_HAND_MIN_ANTEIL, 0.5);
+
+	// and why not, for the line that came closest
+	assert.equal(einordnungOhneBezugslinie([], 250).grund, "keine");
+	assert.equal(einordnungOhneBezugslinie([line("KM", 5000, 5200, true, 0)], 250).grund, "fern");
+	assert.deepEqual(JSON.parse(JSON.stringify(einordnungOhneBezugslinie([line("5321KM", 450, 5, false, 0.58), line("other", 900, 700, true, 0)], 250))), { grund: "ende", key: "5321KM", share: 0.58, distance: 450 });
+	assert.equal(einordnungOhneBezugslinie([line("KM", 20, 300, true, 0.7)], 250).grund, "abstand");
+	assert.equal(einordnungOhneBezugslinie([line("KM", 3, 180, true, 0.3)], 250).grund, "anteil");
 });
