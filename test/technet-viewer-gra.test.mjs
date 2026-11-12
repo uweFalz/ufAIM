@@ -119,3 +119,53 @@ test("the footnote measures the Rampe against the Trasse's Überhöhung", () => 
 	assert.match(ramps.cantRampFootnote("Gleis", unequal, [], format).lines[0], /Neigung 1:715 \| 1:1112 \(ungleich\)/);
 	assert.equal(ramps.CANT_RAMP_CANT_TOLERANCE_MM, 5);
 });
+
+// The Ausschnitt of the band figures (IVMG, GWB, FZK): pure window
+// arithmetic, run together with the ramp block for bandValueAt.
+const windowBegin = html.indexOf("// BEGIN DIAGRAM WINDOW");
+const windowEnd = html.indexOf("// END DIAGRAM WINDOW");
+assert.ok(windowBegin > rampEnd && windowEnd > windowBegin, "diagram window block present");
+const windowContext = vm.createContext({});
+new vm.Script(`${html.slice(rampBegin, rampEnd)}\n${html.slice(windowBegin, windowEnd)}\nglobalThis.api = { windowWithin, windowZoomed, windowShifted, seriesRangeIn, DIAGRAM_MIN_WINDOW_M };`, { filename: "diagram-window.js" }).runInContext(windowContext);
+const ausschnitt = windowContext.api;
+
+test("an Ausschnitt stays inside the picture, keeps the station under the mouse, and ends at the whole", () => {
+	const full = { xMin: 1000, xMax: 23000 };
+	assert.deepEqual(json(ausschnitt.windowWithin(full, null)), { xMin: 1000, xMax: 23000, zoomed: false });
+	assert.deepEqual(json(ausschnitt.windowWithin(full, { xMin: 10000, xMax: 11500 })), { xMin: 10000, xMax: 11500, zoomed: true });
+	// the same window on a Gleis of the Strecke that is shorter than it: the whole Gleis
+	assert.deepEqual(json(ausschnitt.windowWithin({ xMin: 10200, xMax: 10900 }, { xMin: 10000, xMax: 11500 })), { xMin: 10200, xMax: 10900, zoomed: false });
+	// on a longer one it is pushed inside, with its width
+	assert.deepEqual(json(ausschnitt.windowWithin({ xMin: 10500, xMax: 20000 }, { xMin: 10000, xMax: 11500 })), { xMin: 10500, xMax: 12000, zoomed: true });
+	// another Abschnitt of the Strecke: no Ausschnitt there
+	assert.equal(ausschnitt.windowWithin({ xMin: 30000, xMax: 40000 }, { xMin: 10000, xMax: 11500 }).zoomed, false);
+	// a window narrower than the minimum is widened to it
+	assert.equal(ausschnitt.windowWithin(full, { xMin: 5000, xMax: 5010 }).xMax - 5000, ausschnitt.DIAGRAM_MIN_WINDOW_M);
+
+	const shown = { xMin: 1000, xMax: 23000 };
+	const once = ausschnitt.windowZoomed(shown, full, 12000, 0.5);
+	assert.deepEqual(json(once), { xMin: 6500, xMax: 17500 }, "km 12,0 keeps its place in the middle");
+	const edge = ausschnitt.windowZoomed(shown, full, 1000, 0.5);
+	assert.deepEqual(json(edge), { xMin: 1000, xMax: 12000 }, "the left edge stays the left edge");
+	assert.equal(ausschnitt.windowZoomed(once, full, 12000, 2), null, "zoomed out to the whole: no Ausschnitt");
+	let narrow = once;
+	for (let step = 0; step < 40; step += 1) narrow = ausschnitt.windowZoomed(narrow, full, 12000, 0.5);
+	assert.equal(Math.round((narrow.xMax - narrow.xMin) * 1000) / 1000, ausschnitt.DIAGRAM_MIN_WINDOW_M, "never narrower than the minimum");
+	assert.ok(narrow.xMin <= 12000 && narrow.xMax >= 12000);
+
+	assert.deepEqual(json(ausschnitt.windowShifted(once, full, 2000)), { xMin: 8500, xMax: 19500 });
+	assert.deepEqual(json(ausschnitt.windowShifted(once, full, 99999)), { xMin: 12000, xMax: 23000 }, "a drag ends at the picture's end");
+	assert.deepEqual(json(ausschnitt.windowShifted(once, full, -99999)), { xMin: 1000, xMax: 12000 });
+});
+
+test("a band in an Ausschnitt is scaled to what it shows there, edges included", () => {
+	const series = [{ x: 0, y: 0 }, { x: 100, y: 10 }, { x: 200, y: -4 }, { x: 300, y: 2, gap: true }, { x: 400, y: 6 }];
+	assert.deepEqual(json(ausschnitt.seriesRangeIn(series, 0, 400)), { min: -4, max: 10 });
+	// between two points: the values at the edges, not the points outside
+	assert.deepEqual(json(ausschnitt.seriesRangeIn(series, 20, 50)), { min: 2, max: 5 });
+	assert.deepEqual(json(ausschnitt.seriesRangeIn(series, 150, 200)), { min: -4, max: 3 });
+	// across the gap the series is silent
+	assert.equal(ausschnitt.seriesRangeIn(series, 220, 280), null);
+	assert.deepEqual(json(ausschnitt.seriesRangeIn(series, 220, 320)), { min: 2, max: 2.8 });
+	assert.equal(ausschnitt.seriesRangeIn([], 0, 100), null);
+});

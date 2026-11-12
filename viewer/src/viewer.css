@@ -639,6 +639,8 @@
 			.diagram-line:hover .diagram-neben { stroke-width: 3.6; opacity: 1; }
 			.diagram-line-hit { fill: none; stroke: transparent; stroke-width: 9; pointer-events: stroke; vector-effect: non-scaling-stroke; }
 			.diagram-zero { stroke: #d14c32; stroke-width: 1.2; opacity: 0.7; vector-effect: non-scaling-stroke; }
+			#diagram.ausschnitt { cursor: grab; user-select: none; -webkit-user-select: none; }
+			#diagram.ausschnitt:active { cursor: grabbing; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
 			.diagram-fzk-speed { stroke: #1f7a4d; }

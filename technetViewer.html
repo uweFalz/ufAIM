@@ -645,6 +645,8 @@
 			.diagram-line:hover .diagram-neben { stroke-width: 3.6; opacity: 1; }
 			.diagram-line-hit { fill: none; stroke: transparent; stroke-width: 9; pointer-events: stroke; vector-effect: non-scaling-stroke; }
 			.diagram-zero { stroke: #d14c32; stroke-width: 1.2; opacity: 0.7; vector-effect: non-scaling-stroke; }
+			#diagram.ausschnitt { cursor: grab; user-select: none; -webkit-user-select: none; }
+			#diagram.ausschnitt:active { cursor: grabbing; }
 			.diagram-speed { stroke: #7a2ea6; }
 			.diagram-speed-potential { stroke: #7a2ea6; stroke-dasharray: 6 4; opacity: 0.7; }
 			.diagram-fzk-speed { stroke: #1f7a4d; }
@@ -43082,6 +43084,50 @@ xlsx/xlsx.mjs:
 			}
 			// END GRA CANT RAMPS
 
+			// BEGIN DIAGRAM WINDOW (test/technet-viewer-gra.test.mjs runs this block with the one above)
+			// Ausschnitt: a station window narrower than the picture's full extent,
+			// as the Spurplan has it. Pure: the extent and what the reader chose in,
+			// the window to draw out. A stored window that does not touch the extent
+			// (another Abschnitt of the Strecke) is no Ausschnitt of this picture.
+			const DIAGRAM_MIN_WINDOW_M = 50;
+			function windowWithin(full, zoom, minSpan = DIAGRAM_MIN_WINDOW_M) {
+				const fullSpan = full.xMax - full.xMin;
+				const whole = { xMin: full.xMin, xMax: full.xMax, zoomed: false };
+				if (!zoom || !(fullSpan > 0) || zoom.xMax <= full.xMin || zoom.xMin >= full.xMax) return whole;
+				const span = Math.min(fullSpan, Math.max(minSpan, zoom.xMax - zoom.xMin));
+				if (span >= fullSpan - 1e-6) return whole;
+				const xMin = Math.max(full.xMin, Math.min(zoom.xMin, full.xMax - span));
+				return { xMin, xMax: xMin + span, zoomed: true };
+			}
+			// One wheel step around the station under the mouse, which keeps its
+			// place; null when the step shows everything again.
+			function windowZoomed(shown, full, at, factor, minSpan = DIAGRAM_MIN_WINDOW_M) {
+				const span = shown.xMax - shown.xMin;
+				const fullSpan = full.xMax - full.xMin;
+				const next = Math.max(Math.min(minSpan, fullSpan), Math.min(fullSpan, span * factor));
+				if (!(span > 0) || next >= fullSpan - 1e-6) return null;
+				const xMin = Math.max(full.xMin, Math.min(full.xMax - next, at - (at - shown.xMin) * next / span));
+				return { xMin, xMax: xMin + next };
+			}
+			function windowShifted(shown, full, shift) {
+				const span = shown.xMax - shown.xMin;
+				const xMin = Math.max(full.xMin, Math.min(full.xMax - span, shown.xMin + shift));
+				return { xMin, xMax: xMin + span };
+			}
+			// What a series takes inside a window: its points there and its values
+			// at the two edges, so a line that only crosses the window still sets
+			// the scale. null where the series is silent.
+			function seriesRangeIn(points, xMin, xMax) {
+				let min = Infinity;
+				let max = -Infinity;
+				const take = (y) => { if (y != null && Number.isFinite(y)) { min = Math.min(min, y); max = Math.max(max, y); } };
+				for (const point of points) if (point.x >= xMin && point.x <= xMax) take(point.y);
+				take(bandValueAt(points, xMin, false));
+				take(bandValueAt(points, xMax, false));
+				return Number.isFinite(min) ? { min, max } : null;
+			}
+			// END DIAGRAM WINDOW
+
 			// IVMG · Trassenplan rows for the assigned sides. Order (Uwe, 09.11.):
 			// the Kilometerlinie leads when there is one, then each Gleis as a
 			// block -- its Trasse (Krümmung) with the Überhöhung and the Gradiente
@@ -43142,7 +43188,7 @@ xlsx/xlsx.mjs:
 							head: `${label.split(" · ")[0]} · neben der Trasse im Bild: ${nebenZaehlung(hiddenHere)}`,
 							lines: [
 								...hiddenHere.map((item) => `${objectListName(item.entry)}${rangeText(item.entry)} · ${nebenText(item.entry, nebenArt(item.entry, item.wegen))}`),
-								`Mit Krümmung, Überhöhung und Gradiente steht je Seite und Abschnitt eine Trasse im Bild: die gewählte, sonst die längste. ${nebenBySide[side] ? "Die anderen zeigt das Band „daneben“ mit ihrem Abstand zu ihr, Varianten gestrichelt; eine Linie dort anklicken oder das Gleis anwählen, dann steht es im Bild" : "Eine andere anwählen, dann steht sie im Bild"} · Maß: gleiche km ab ${VARIANTE_MIN_OVERLAP_M} m Überdeckung und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren; Variante, wenn sie auf der anderen liegt (unter ${lageMeters(NEBEN_AUF_M)} m bei ${Math.round(NEBEN_MIN_ANTEIL * 100)} % der Stichproben), sonst ein anderes Gleis`,
+								`Mit Krümmung, Überhöhung und Gradiente steht je Seite und Abschnitt eine Trasse im Bild: die gewählte, sonst die längste. ${nebenBySide[side] ? "Die anderen zeigt das Band „daneben“ mit ihrem Abstand zu ihr, Varianten gestrichelt; eine Linie dort anklicken oder das Gleis anwählen, dann steht es im Bild; liegen viele beieinander, trennt sie ein Ausschnitt (⌘/Strg + Mausrad)" : "Eine andere anwählen, dann steht sie im Bild"} · Maß: gleiche km ab ${VARIANTE_MIN_OVERLAP_M} m Überdeckung und ${Math.round(VARIANTE_MIN_SHARE * 100)} % der kürzeren; Variante, wenn sie auf der anderen liegt (unter ${lageMeters(NEBEN_AUF_M)} m bei ${Math.round(NEBEN_MIN_ANTEIL * 100)} % der Stichproben), sonst ein anderes Gleis`,
 							],
 						};
 					}
@@ -43750,7 +43796,8 @@ xlsx/xlsx.mjs:
 				}
 				return { items, height: y ? y + 8 : 0 };
 			}
-			function drawBandStack(target, y, tracks, xMin, xMax, footnotes = []) {
+			function drawBandStack(target, y, tracks, xMin, xMax, footnotes = [], ausschnitt = null) {
+				const zoomed = Boolean(ausschnitt?.zoomed);
 				const xSpan = Math.max(xMax - xMin, 1);
 				const width = FIGURE_WIDTH;
 				const trackHeight = 112;
@@ -43763,7 +43810,7 @@ xlsx/xlsx.mjs:
 				const top = 25;
 				const axisY = height - footnoteHeight - 12;
 				const figure = nestedFigure(target, y, height);
-				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: "diagram" });
+				registerCursorFigure({ y, height, left, right, xMin, xMax, frame: "diagram", key: ausschnitt?.key ?? null });
 				for (const mark of roundTicks(xMin, xMax, width - left - right)) {
 					const x = left + (width - left - right) * (mark.value - xMin) / xSpan;
 					figure.append(svgElement("line", { x1: x, x2: x, y1: top, y2: axisY - 23, class: "diagram-grid" }));
@@ -43793,7 +43840,19 @@ xlsx/xlsx.mjs:
 					}
 					let yMin = Infinity;
 					let yMax = -Infinity;
-					for (const point of [...track.points, ...(track.overlay?.points ?? [])]) {
+					if (zoomed) {
+						// An Ausschnitt scales each band to what it shows there.
+						for (const series of [...(track.lines ? track.lines.map((line) => line.points) : [track.points]), ...(track.overlay?.points?.length ? [track.overlay.points] : [])]) {
+							const range = seriesRangeIn(series, xMin, xMax);
+							if (range) { yMin = Math.min(yMin, range.min); yMax = Math.max(yMax, range.max); }
+						}
+						if (!Number.isFinite(yMin)) {
+							const silent = svgElement("text", { x: left + 12, y: yTop + trackHeight / 2, class: "diagram-label diagram-muted" });
+							silent.textContent = "im Ausschnitt keine Werte";
+							figure.append(silent);
+							return;
+						}
+					} else for (const point of [...track.points, ...(track.overlay?.points ?? [])]) {
 						yMin = Math.min(yMin, point.y);
 						yMax = Math.max(yMax, point.y);
 					}
@@ -43808,8 +43867,18 @@ xlsx/xlsx.mjs:
 						const py = yBottom - 15 - (point.y - yMin) / ySpan * (trackHeight - 30);
 						return `${pointIndex && !point.gap ? "L" : "M"} ${x} ${py}`;
 					}).join(" ");
+					// An Ausschnitt cuts the series at the plot's edge; the whole picture
+					// is drawn as it always was.
+					let plot = figure;
+					if (zoomed) {
+						const clipId = `band-clip-${Math.random().toString(36).slice(2, 9)}`;
+						const clip = svgElement("clipPath", { id: clipId });
+						clip.append(svgElement("rect", { x: left, y: yTop, width: width - left - right, height: trackHeight }));
+						plot = svgElement("g", { "clip-path": `url(#${clipId})` });
+						figure.append(clip, plot);
+					}
 					if (track.overlay?.points?.length) {
-						figure.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
+						plot.append(svgElement("path", { d: pathFor(track.overlay.points), class: `diagram-series ${track.overlay.className}` }));
 					}
 					if (track.zeroLine) {
 						const zeroY = yBottom - 15 - (0 - yMin) / ySpan * (trackHeight - 30);
@@ -43825,9 +43894,9 @@ xlsx/xlsx.mjs:
 							const d = pathFor(line.points);
 							group.append(title, svgElement("path", { d, class: `diagram-series ${track.className}` }), svgElement("path", { d, class: "diagram-line-hit" }));
 							if (line.pick) group.addEventListener("click", line.pick);
-							figure.append(group);
+							plot.append(group);
 						}
-					} else figure.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
+					} else plot.append(svgElement("path", { d: pathFor(track.points), class: `diagram-series ${track.className}` }));
 					// Min/max readouts in the label gutter -- a band without numbers
 					// is a shape, not a measurement; the PI needs to read "70" and
 					// "140" off it, not guess from the line height.
@@ -43839,6 +43908,7 @@ xlsx/xlsx.mjs:
 					minLabel.textContent = readout(yMin);
 					figure.append(maxLabel, minLabel);
 					for (const jump of track.jumps ?? []) {
+						if (jump < xMin || jump > xMax) continue;
 						const x = left + (jump - xMin) / xSpan * (width - left - right);
 						figure.append(svgElement("line", { x1: x, x2: x, y1: yTop + 7, y2: yBottom - 7, class: "diagram-jump" }));
 					}
@@ -44056,22 +44126,88 @@ xlsx/xlsx.mjs:
 				});
 			}
 
-			function renderDiagram(entry = selectedEntry) {
+			// Ausschnitt im Bild (IVMG, GWB, FZK): one window per Strecke in km, or
+			// per Trasse where the stations are its own; kept while the reader
+			// moves between the Gleise of a Strecke, reset by a double click.
+			// ⌘/Strg + wheel zooms around the station under the mouse, a drag
+			// shifts. A gesture redraws what was derived for the last picture;
+			// every other caller derives anew.
+			const diagramZoom = new Map();
+			let diagramExtent = null;
+			let diagramDerived = null;
+			function diagramWindowKey(anchor) {
+				const track = inKilometerFrame(anchor) ? deliveryTrackOf(anchor) : null;
+				return track ? `km|${track}` : `own|${einordnungKey(anchor)}`;
+			}
+			function diagramFigureAt(event) {
+				const point = svgPointFromEvent(diagram, event);
+				if (!point || !diagramExtent) return null;
+				const figure = cursorFigures.find((candidate) => candidate.target === diagram && candidate.key === diagramExtent.key && point.y >= candidate.y && point.y <= candidate.y + candidate.height);
+				if (!figure) return null;
+				const plotWidth = figure.width - figure.left - figure.right;
+				const ratio = Math.max(0, Math.min(1, (point.x - figure.left) / plotWidth));
+				return { figure, point, plotWidth, at: figure.xMin + ratio * (figure.xMax - figure.xMin) };
+			}
+			function wireDiagramZoom() {
+				const redraw = () => scheduleCursor(() => renderDiagram(selectedEntry, true));
+				diagram.addEventListener("wheel", (event) => {
+					if (!event.ctrlKey && !event.metaKey) return;
+					const hit = diagramFigureAt(event);
+					if (!hit) return;
+					event.preventDefault();
+					const factor = Math.exp(Math.max(-1, Math.min(1, event.deltaY / 100)) * 0.35);
+					const next = windowZoomed(hit.figure, diagramExtent, hit.at, factor);
+					if (next) diagramZoom.set(diagramExtent.key, next);
+					else diagramZoom.delete(diagramExtent.key);
+					redraw();
+				}, { passive: false });
+				let drag = null;
+				diagram.addEventListener("pointerdown", (event) => {
+					if (event.button !== 0) return;
+					const hit = diagramFigureAt(event);
+					if (!hit || !diagramZoom.has(diagramExtent.key)) return;
+					drag = { key: diagramExtent.key, startX: hit.point.x, shown: { xMin: hit.figure.xMin, xMax: hit.figure.xMax }, plotWidth: hit.plotWidth, moved: false };
+				});
+				diagram.addEventListener("pointermove", (event) => {
+					if (!drag || drag.key !== diagramExtent?.key) return;
+					const point = svgPointFromEvent(diagram, event);
+					if (!point || (!drag.moved && Math.abs(point.x - drag.startX) < 3)) return;
+					drag.moved = true;
+					diagramZoom.set(drag.key, windowShifted(drag.shown, diagramExtent, (drag.startX - point.x) / drag.plotWidth * (drag.shown.xMax - drag.shown.xMin)));
+					redraw();
+				});
+				const endDrag = () => { drag = null; };
+				diagram.addEventListener("pointerup", endDrag);
+				diagram.addEventListener("pointercancel", endDrag);
+				diagram.addEventListener("pointerleave", endDrag);
+				diagram.addEventListener("dblclick", (event) => {
+					if (!diagramFigureAt(event) || !diagramZoom.has(diagramExtent.key)) return;
+					diagramZoom.delete(diagramExtent.key);
+					renderDiagram(selectedEntry, true);
+				});
+			}
+
+			function renderDiagram(entry = selectedEntry, redraw = false) {
 				diagram.replaceChildren();
 				diagramTable.replaceChildren();
 				cursorFigures = cursorFigures.filter((figure) => figure.target !== diagram);
 				if (!entry) {
 					gwbBogenCsvButton.disabled = true;
 					gwbAbschnittCsvButton.disabled = true;
+					diagramExtent = null;
+					diagramDerived = null;
 					return;
 				}
-				const { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote, varianten } = sevenLineTracks(entry);
+				const reuse = redraw && diagramDerived?.entry === entry && diagramDerived.kind === diagramKind ? diagramDerived : null;
+				const seven = reuse?.seven ?? sevenLineTracks(entry);
+				const { anchor, entries, bands, hasUnknown, missingKilometerLine, sideNote, varianten } = seven;
 				const ivmgTracks = bands.filter((track) => !track.className.startsWith("diagram-speed"));
 				const gwbTracks = bands.filter((track) => track.className.startsWith("diagram-speed"));
-				const fzkTracks = diagramKind === "fzk" ? deriveFahrzeitBands(gwbTracks) : [];
+				const fzkTracks = reuse?.fzkTracks ?? (diagramKind === "fzk" ? deriveFahrzeitBands(gwbTracks) : []);
 				gwbBogenCsvButton.disabled = !gwbTracks.some((track) => track.proposal?.length);
 				gwbAbschnittCsvButton.disabled = !gwbTracks.some((track) => track.sections?.proposal);
-				const ivhw = buildIvhwData(entry);
+				const ivhw = reuse?.ivhw ?? buildIvhwData(entry);
+				diagramDerived = { entry, kind: diagramKind, seven, fzkTracks, ivhw };
 				let xMin = Infinity;
 				let xMax = -Infinity;
 				for (const track of bands) {
@@ -44086,6 +44222,18 @@ xlsx/xlsx.mjs:
 				}
 				if (!Number.isFinite(xMin)) xMin = 0;
 				if (!Number.isFinite(xMax)) xMax = 1;
+				// The Ausschnitt of the band figures; the IVHW keeps its own extent
+				// and the table lists everything.
+				const windowKey = diagramWindowKey(anchor);
+				const banded = diagramPresentation !== "table" && diagramKind !== "ivhw";
+				diagramExtent = banded ? { key: windowKey, xMin, xMax } : null;
+				const shown = banded ? windowWithin({ xMin, xMax }, diagramZoom.get(windowKey)) : { xMin, xMax, zoomed: false };
+				const ausschnitt = { key: windowKey, zoomed: shown.zoomed };
+				const inKm = inKilometerFrame(anchor);
+				// Whole metres below 2 km, else the km to one decimal as the axis has them.
+				const edge = (value) => shown.xMax - shown.xMin >= 2000 ? kmLabel(value) : station(Math.round(value)).trim().replace(/,00$/, "");
+				const ausschnittNote = shown.zoomed ? `Ausschnitt ${inKm ? "km" : "Station"} ${edge(shown.xMin)} – ${edge(shown.xMax)} von ${kmLabel(xMin)} – ${kmLabel(xMax)} · Ziehen verschiebt · Doppelklick zeigt alles` : null;
+				diagram.classList.toggle("ausschnitt", shown.zoomed);
 				// One block per Gleis under the figure -- its name as heading, the
 				// Bogen lines as a list with hanging indent, the Abschnitte line on
 				// its own -- and the assumptions once, as the last block.
@@ -44131,9 +44279,9 @@ xlsx/xlsx.mjs:
 				} else {
 					let y = 0;
 					if (diagramKind === "ivmg") {
-						y += drawFigureTitle(diagram, y, "IVMG · Trassenplan", "Krümmung · Gradiente · Überhöhung über der Kilometrierung · Ril 883.5220");
+						y += drawFigureTitle(diagram, y, "IVMG · Trassenplan", ausschnittNote ?? "Krümmung · Gradiente · Überhöhung über der Kilometrierung · Ril 883.5220 · ⌘/Strg + Rad zoomt");
 						y += ivmgTracks.length
-							? drawBandStack(diagram, y, ivmgTracks, xMin, xMax, ivmgTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter((note) => note?.lines?.length))
+							? drawBandStack(diagram, y, ivmgTracks, shown.xMin, shown.xMax, ivmgTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter((note) => note?.lines?.length), ausschnitt)
 							: drawEmptyFigure(diagram, y, "keine Lage-, Höhen- oder Überhöhungsreihe sicher verknüpft");
 					}
 					if (diagramKind === "ivhw") {
@@ -44143,21 +44291,21 @@ xlsx/xlsx.mjs:
 							: drawEmptyFigure(diagram, y, ivhw.note);
 					}
 					if (diagramKind === "gwb") {
-						y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", "je Gleis durchgehend · heute — / Vorschlag ┄ · Geraden mit Streckengeschwindigkeit · Ril 800.0110 (2021) / 457.0201 · Diagnose");
+						y += drawFigureTitle(diagram, y, "GWB · Geschwindigkeitswegeband", ausschnittNote ?? "je Gleis durchgehend · heute — / Vorschlag ┄ · Geraden mit Streckengeschwindigkeit · Ril 800.0110 (2021) / 457.0201 · Diagnose");
 						y += gwbTracks.length
-							? drawBandStack(diagram, y, gwbTracks, xMin, xMax, footnotes)
+							? drawBandStack(diagram, y, gwbTracks, shown.xMin, shown.xMax, footnotes, ausschnitt)
 							: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband ableitbar");
 					}
 					if (diagramKind === "fzk") {
 						const fzkFootnotes = [...new Set(fzkTracks.flatMap((track) => [].concat(track.footnote ?? [])).filter(Boolean))].flatMap((footnote) => wrapText(footnote, 165));
-						y += drawFigureTitle(diagram, y, "FZK · Fahrzeitkurve", "je Gleis über dem GWB · Fahrschaulinie v(s) und Fahrzeit t(s) · heute — / Vorschlag ┄ · vereinfachte Fahrdynamik je Zugart");
+						y += drawFigureTitle(diagram, y, "FZK · Fahrzeitkurve", ausschnittNote ?? "je Gleis über dem GWB · Fahrschaulinie v(s) und Fahrzeit t(s) · heute — / Vorschlag ┄ · vereinfachte Fahrdynamik je Zugart");
 						y += fzkTracks.length
-							? drawBandStack(diagram, y, fzkTracks, xMin, xMax, fzkFootnotes)
+							? drawBandStack(diagram, y, fzkTracks, shown.xMin, shown.xMax, fzkFootnotes, ausschnitt)
 							: drawEmptyFigure(diagram, y, "keine Krümmungsreihe · kein Geschwindigkeitsband · keine Fahrzeit ableitbar");
 					}
 					diagram.setAttribute("viewBox", `0 0 ${FIGURE_WIDTH} ${y}`);
 					if (cursorContext?.anchor !== anchor) cursorContext = { anchor };
-					Object.assign(cursorContext, { bands: [...bands, ...fzkTracks], inKm: inKilometerFrame(anchor), track: deliveryTrackOf(anchor) });
+					Object.assign(cursorContext, { bands: [...bands, ...fzkTracks], inKm, track: deliveryTrackOf(anchor) });
 					drawDiagramCursor();
 					updateCursorReadout();
 					scheduleStateSave();
@@ -44190,7 +44338,8 @@ xlsx/xlsx.mjs:
 				].filter(Boolean);
 				diagramTitle.textContent = objectDisplayName(anchor);
 				diagramCode.textContent = DIAGRAM_KINDS[diagramKind];
-				diagramCode.title = { ivmg: "Trassenplan (Ril 883.5220)", ivhw: "Weichenhöhenplan (Ril 883.5240)", gwb: "Geschwindigkeitswegeband (Ril 800.0110 / 457.0201, Diagnose)", fzk: "Fahrzeitkurve über dem GWB (vereinfachte Fahrdynamik)" }[diagramKind];
+				diagramCode.title = { ivmg: "Trassenplan (Ril 883.5220)", ivhw: "Weichenhöhenplan (Ril 883.5240)", gwb: "Geschwindigkeitswegeband (Ril 800.0110 / 457.0201, Diagnose)", fzk: "Fahrzeitkurve über dem GWB (vereinfachte Fahrdynamik)" }[diagramKind]
+					+ (diagramKind === "ivhw" ? "" : " · Ausschnitt: ⌘/Strg + Mausrad oder Pinch zoomt um die Mausposition, Ziehen verschiebt, Doppelklick zeigt alles");
 				// Annahmen and the CSVs belong to the GWB; the picture export to all.
 				assumptionsMenu.classList.toggle("hidden", diagramKind !== "gwb" && diagramKind !== "fzk");
 				for (const control of assumptionsMenu.querySelectorAll(".fzk-only")) control.classList.toggle("hidden", diagramKind !== "fzk");
@@ -51147,6 +51296,7 @@ xlsx/xlsx.mjs:
 				cursorFromMap(point.x, point.y, tolerance, activeMapMode);
 			}));
 			diagram.addEventListener("mousemove", (event) => scheduleCursor(() => cursorFromFigureEvent(diagram, event)));
+			wireDiagramZoom();
 			multi2d.addEventListener("pointerdown", startMapPan);
 			multi2d.addEventListener("pointermove", moveMapPan);
 			multi2d.addEventListener("pointerup", endMapPan);
