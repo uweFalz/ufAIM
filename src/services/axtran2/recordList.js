@@ -27,7 +27,7 @@
 import { describeHold, holdMap } from "./alignmentPicture.js";
 import { parseEdits, turnoutRef, TRANSITION_FAMILIES, INSERT_TYPES, TURNOUT_ORIENTATIONS, TURNOUT_ROUTES_WORDS, TURNOUT_SHAPES, CROSSING_SHAPES, CROSSING_ROUTES_WORDS } from "./recordEdits.js";
 
-export const RECORD_LIST_VERSION = "axtran2/record-list/0.12";
+export const RECORD_LIST_VERSION = "axtran2/record-list/0.13";
 
 const escape = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const comma = (value, digits) => value.toFixed(digits).replace(".", ",").replace("-", "−");
@@ -47,6 +47,18 @@ export function describeLimit(l) {
 	const radius = l.quantity === "radius";
 	const words = l.reason === "exception" ? (radius ? "übernommener Radius der Datei" : "übernommene Länge der Datei") : LIMIT_WORDS[l.reason] ?? l.reason ?? "Grenze";
 	return `${words}${Number.isFinite(l.limit) ? ` ${comma(Math.abs(l.limit), radius ? 0 : 2)} m` : ""}`;
+}
+
+/** the fitted end counts as reached within a millimetre of the end to hold */
+export const END_REACHED_WITHIN = 1e-3;
+/**
+ * How far the fit ends from the end it had to reach, in metres, where that is a failure; null where
+ * it closed. A verdict may be poor for other reasons and still be a result to show - an end not
+ * reached is no alignment. A change from the list or the picture that leaves it so is not taken.
+ */
+export function endMiss(report) {
+	const d = report?.fit?.endPoseDistance;
+	return Number.isFinite(d) && d > END_REACHED_WITHIN ? d : null;
 }
 
 /**

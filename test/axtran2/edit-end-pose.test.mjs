@@ -15,6 +15,7 @@ const SERVICE = new URL("../../src/services/axtran2/", import.meta.url);
 const KERNEL = new URL("../../src/domain/optimization/alignment/", import.meta.url);
 const { fitTraFromBytes } = await import(new URL("fitTraCore.js", SERVICE));
 const { writeTra } = await import(new URL("traWriter.js", SERVICE));
+const { endMiss, END_REACHED_WITHIN } = await import(new URL("recordList.js", SERVICE));
 const { createAlignmentPoseJacobian } = await import(new URL("AlignmentPoseJacobian.js", KERNEL));
 const { momentsFor } = await import(new URL("SolverDependencies.js", KERNEL));
 
@@ -37,7 +38,7 @@ for (let s = 20; s < 1180; s += 20) { const p = world(chain.poseAt(s)); points.p
 // no end pose given: the file's own end is the one to hold
 const fit = (input) => fitTraFromBytes({ bytes, name: "plan.TRA", points, tolerance: 0.15, speedKmh: 100, ...input });
 // the fitted elements run from the same start: where their chain ends against where the file's does
-const endMiss = (run) => {
+const chainMiss = (run) => {
 	const end = createAlignmentPoseJacobian({ elements: run.fitted, startPose, momentsFor }).endPose;
 	return Math.hypot(end.x - chain.endPose.x, end.y - chain.endPose.y) + Math.abs(end.theta - chain.endPose.theta);
 };
@@ -53,7 +54,7 @@ test("a typed radius leaves the end where the file has it", async () => {
 	const free = await fit({ edits: "3R=-908" });
 	assert.ok(free.report.verdict.ok, `${free.report.verdict.status} ${free.report.verdict.reason ?? ""}`);
 	assert.equal(free.report.input.endPose, "the TRA's own end");
-	assert.ok(endMiss(free) < 1e-6, `the fitted end lies ${endMiss(free)} m from the file's`);
+	assert.ok(chainMiss(free) < 1e-6, `the fitted end lies ${chainMiss(free)} m from the file's`);
 	// the radius is free and the points lie on R 900: the fit goes back to it
 	assert.ok(Math.abs(arc(free).radius + 900) < 0.5, `R ${arc(free).radius}`);
 	assert.ok(worst(free) < 0.01, `worst offset ${worst(free)} m`);
@@ -63,7 +64,7 @@ test("a typed radius that is held is kept, and the neighbours close the end", as
 	const held = await fit({ edits: "3R=-908", hold: "3R" });
 	assert.ok(held.report.verdict.ok, `${held.report.verdict.status} ${held.report.verdict.reason ?? ""}`);
 	assert.ok(Math.abs(arc(held).radius + 908) < 1e-6, `R ${arc(held).radius}`);
-	assert.ok(endMiss(held) < 1e-6, `the fitted end lies ${endMiss(held)} m from the file's`);
+	assert.ok(chainMiss(held) < 1e-6, `the fitted end lies ${chainMiss(held)} m from the file's`);
 	// two arcs of 400 m, R 900 and R 908, between the same tangents: decimetres apart, not metres
 	assert.ok(worst(held) > 0.01 && worst(held) < 0.3, `worst offset ${worst(held)} m`);
 });
@@ -72,12 +73,30 @@ test("a typed length and a record put in leave the end where the file has it too
 	for (const edits of ["3L=380", "5L=300", "+3=G:15"]) {
 		const run = await fit({ edits });
 		assert.ok(run.report.verdict.ok, `${edits}: ${run.report.verdict.status} ${run.report.verdict.reason ?? ""}`);
-		assert.ok(endMiss(run) < 1e-6, `${edits}: the fitted end lies ${endMiss(run)} m from the file's`);
+		assert.ok(chainMiss(run) < 1e-6, `${edits}: the fitted end lies ${chainMiss(run)} m from the file's`);
 	}
+});
+
+test("a radius of the other sign is refused: a value does not turn the arc the other way", async () => {
+	await assert.rejects(fit({ edits: "3R=908" }), (e) => e.code === "INVALID_EDIT" && /file's sign, negative there \(R -900\)/.test(e.message));
+	// an arc put in has no sign of the file's to keep
+	const put = await fit({ edits: "+1=B:2000:20" });
+	assert.equal(put.report.input.structure.inserted.length, 1);
+});
+
+test("a held value the neighbours cannot close leaves the end unreached, and the report says by how much", async () => {
+	// the first straight is held and the transitions stand on the ramp rule: R -1000 held has no room
+	const far = await fit({ edits: "3R=-1000", hold: "3R", speedKmh: 140 });
+	assert.equal(far.report.verdict.ok, false);
+	assert.ok(endMiss(far.report) > 1, `the end is missed by ${far.report.fit.endPoseDistance} m`);
+	// a value the neighbours can close is none
+	assert.equal(endMiss((await fit({ edits: "3R=-908", hold: "3R" })).report), null);
+	assert.equal(endMiss(null), null);
+	assert.equal(endMiss({ fit: { endPoseDistance: END_REACHED_WITHIN } }), null, "a millimetre is reached");
 });
 
 test("without an edit nothing changes: the plan on its own points stays the plan", async () => {
 	const run = await fit({});
 	assert.ok(run.report.verdict.ok);
-	assert.ok(endMiss(run) < 1e-9 && worst(run) < 1e-6, `end ${endMiss(run)} m, worst offset ${worst(run)} m`);
+	assert.ok(chainMiss(run) < 1e-9 && worst(run) < 1e-6, `end ${chainMiss(run)} m, worst offset ${worst(run)} m`);
 });

@@ -6,14 +6,18 @@
 import { residualChartSvg } from "../src/services/axtran2/residualChart.js";
 import { runInWorker } from "../src/services/axtran2/workerRun.js";
 import { alignmentPictureModel, alignmentPictureSvg, pictureProbe, pictureReadout, recordGroup, holdMap, holdTyped } from "../src/services/axtran2/alignmentPicture.js";
-import { recordListHtml, describeLimit } from "../src/services/axtran2/recordList.js";
+import { recordListHtml, describeLimit, endMiss } from "../src/services/axtran2/recordList.js";
 import { formatHold } from "../src/services/axtran2/heldRecords.js";
 import { parseAllEdits, formatEdits, isInsertKey, insertOf, INSERT_TYPES, TRANSITION_FAMILIES } from "../src/services/axtran2/recordEdits.js";
 import { PROJECT_LINES, FILE_LINES, assignProjectFiles, describeTra, describeGra, projectLinesModel, projectTableHtml, fitSummary, gradientSummary } from "../src/services/axtran2/trackProject.js";
 import { fitGraFromBytes } from "../src/services/axtran2/fitGraCore.js";
 
 const el = (id) => document.getElementById(id);
-const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; };
+// what the list or the picture could not take is said at the list as well: the status line is a
+// screen above it, and a field that only went back to its value said nothing
+const listNote = (text = "") => { el("listNote").textContent = text; el("listNote").classList.toggle("hidden", !text); };
+const status = (text, kind = "info") => { el("status").textContent = text; el("status").dataset.kind = kind; listNote(); };
+const refuse = (text) => { status(text, "error"); listNote(text); };
 const fmt = (value, digits = 3) => (Number.isFinite(value) ? value.toFixed(digits) : "–");
 
 let running = null;
@@ -294,6 +298,9 @@ async function run({ change = null } = {}) {
 		const message = await running.promise;
 		clearInterval(ticker);
 		if (!message.ok) throw Object.assign(new Error(`${message.code}: ${message.message}`), { code: message.code });
+		// a value or a lock the geometry cannot close is not taken: the picture stays with the last fit
+		const miss = change ? endMiss(message.report) : null;
+		if (miss !== null) throw Object.assign(new Error("the fit does not reach the end"), { code: "END_NOT_REACHED", miss });
 		last = message;
 		project.lines.get(project.active).last = message;
 		picture.wanted = null;
@@ -315,9 +322,12 @@ async function run({ change = null } = {}) {
 		}
 		const what = change?.what === "value" ? "Der Wert" : "Das Schloss";
 		const refused = change && (error?.code === "NOTHING_FREE" || error?.code === "OVER_CONSTRAINED");
+		const unclosed = change && error?.code === "END_NOT_REACHED";
 		status(cancelled ? `Abgebrochen nach ${Math.round((Date.now() - started) / 1000)} s. Der Plan ist unverändert.`
+			: unclosed ? `${what} wurde nicht ${change.what === "value" ? "übernommen" : "gesetzt"}: so erreicht die Trasse ihr Ende nicht mehr, der Fit endete ${fmt(error.miss, error.miss < 1 ? 3 : 1)} m daneben. Was sonst gehalten ist, lässt dafür zu wenig Spiel${change.what === "value" ? "; ein Wert näher am Bestand oder ein gelöstes Schloss hilft" : ""}. Bild und Liste zeigen den letzten Fit.`
 			: refused ? `${what} wurde nicht ${change.what === "value" ? "übernommen" : "gesetzt"}: so bliebe zu wenig frei, um Anfang und Ende der Trasse noch zu treffen.`
 			: change ? `${what} wurde nicht ${change.what === "value" ? "übernommen" : "gesetzt"}. ${workerFailure(error)}` : workerFailure(error), cancelled ? "info" : "error");
+		if (change && !cancelled) listNote(el("status").textContent);
 	} finally {
 		running = null;
 		el("cancel").classList.add("hidden");
@@ -512,7 +522,13 @@ function editValue(key, field, text) {
 	if (record.turnout) return false;
 	const value = field === "family" ? String(text) : Number(String(text).trim().replace("−", "-").replace(",", "."));
 	if (field !== "family" && (!Number.isFinite(value) || (field === "length" ? !(value > 0) : !(Math.abs(value) > 0)))) {
-		status(field === "length" ? `„${text}“ ist keine Länge: eine Zahl größer als null, Dezimalkomma erlaubt.` : `„${text}“ ist kein Radius: eine Zahl ungleich null, mit dem Vorzeichen der Datei.`, "error");
+		refuse(field === "length" ? `„${text}“ ist keine Länge: eine Zahl größer als null, Dezimalkomma erlaubt.` : `„${text}“ ist kein Radius: eine Zahl ungleich null, mit dem Vorzeichen der Datei.`);
+		drawList();
+		return false;
+	}
+	// the sign is the side the arc turns to: a value does not change it
+	if (field === "radius" && !isInsertKey(key) && Number.isFinite(record.fileRadius) && record.fileRadius !== 0 && Math.sign(value) !== Math.sign(record.fileRadius)) {
+		refuse(`„${text}“ wurde nicht übernommen: der Radius von Satz ${record.number} ist in der Datei ${record.fileRadius < 0 ? "negativ" : "positiv"} (${fmt(record.fileRadius, 0)} m), und das Vorzeichen ist die Seite, nach der der Bogen dreht. Gemeint ist wohl ${fmt(-value, 0)}.`);
 		drawList();
 		return false;
 	}
@@ -558,7 +574,7 @@ function editTurnout(record, field, text) {
 		if (!current) return false;
 		const mainText = String(text).trim();
 		const mainRadius = mainText === "" ? null : Number(mainText.replace("−", "-").replace(",", "."));
-		if (mainRadius !== null && !(Math.abs(mainRadius) > 0)) { status("Der Radius des Stammgleises ist eine Zahl ungleich null, mit dem Vorzeichen der Datei; leer für eine gerade Weiche.", "error"); drawList(); return false; }
+		if (mainRadius !== null && !(Math.abs(mainRadius) > 0)) { refuse("Der Radius des Stammgleises ist eine Zahl ungleich null, mit dem Vorzeichen der Datei; leer für eine gerade Weiche."); drawList(); return false; }
 		next = { ...current };
 		if (mainRadius === null) delete next.mainRadius; else next.mainRadius = mainRadius;
 	}
@@ -603,7 +619,7 @@ function insertFromForm(form) {
 		const mainText = String(form.elements.wmain.value).trim();
 		if (mainText) {
 			const mainRadius = read("wmain");
-			if (!(Math.abs(mainRadius) > 0)) { status("Der Radius des Stammgleises ist eine Zahl ungleich null, mit dem Vorzeichen der Datei; leer für eine gerade Weiche.", "error"); return false; }
+			if (!(Math.abs(mainRadius) > 0)) { refuse("Der Radius des Stammgleises ist eine Zahl ungleich null, mit dem Vorzeichen der Datei; leer für eine gerade Weiche."); return false; }
 			spec.mainRadius = mainRadius;
 		}
 		if (!all.inserted.has(after)) all.inserted.set(after, []);
@@ -622,8 +638,8 @@ function insertFromForm(form) {
 		return applyEdits(all, "structure");
 	}
 	const spec = { type, length: read("len") };
-	if (!(spec.length > 0)) { status("Die Länge des neuen Satzes muss größer als null sein.", "error"); return false; }
-	if (type === "arc") { spec.radius = read("rad"); if (!(Math.abs(spec.radius) > 0)) { status("Der Bogen braucht einen Radius ungleich null, mit dem Vorzeichen der Datei.", "error"); return false; } }
+	if (!(spec.length > 0)) { refuse("Die Länge des neuen Satzes muss größer als null sein."); return false; }
+	if (type === "arc") { spec.radius = read("rad"); if (!(Math.abs(spec.radius) > 0)) { refuse("Der Bogen braucht einen Radius ungleich null, mit dem Vorzeichen der Datei."); return false; } }
 	if (type === "transition") spec.family = form.elements.fam.value;
 	if (!all.inserted.has(after)) all.inserted.set(after, []);
 	all.inserted.get(after).push(spec);
