@@ -7,7 +7,8 @@
 // both call this; nothing here knows where the bytes came from.
 //
 // The TRA is the start alignment and, unless endPose gives the connecting
-// alignment's pose, the end pose: its first element's length is held, every
+// alignment's pose, the end pose - the file's own end, whatever the edits
+// make of the plan the fit starts from: its first element's length is held, every
 // other length and every arc curvature is free. Survey points are soft
 // residuals in units of their tolerance; Zwangspunkte are equalities or, as
 // "min"/"max" in the list, one-sided rules on the
@@ -37,7 +38,7 @@ import { solveAlignmentProblem } from "../../domain/optimization/alignment/Align
 import { solveAlignmentLexicographic, DEFAULT_TIERS } from "../../domain/optimization/alignment/AlignmentLexicographicSolver.js";
 import { GRAVITY } from "../../domain/optimization/alignment/AlignmentDesignProfile.js";
 
-export const FIT_TRA_VERSION = "axtran2/fit-tra/0.22";
+export const FIT_TRA_VERSION = "axtran2/fit-tra/0.23";
 
 /**
  * The orders the adapter runs. "points" is the single objective; the
@@ -186,7 +187,13 @@ export async function fitTraFromBytes({
 	const chainOf = (els) => createAlignmentPoseJacobian({ elements: els, startPose, momentsFor });
 	const fileAlignment = buildProductionAlignment({ elements, startPose, deps });
 	if (endPoseGiven !== null && ![endPoseGiven?.x, endPoseGiven?.y, endPoseGiven?.theta].every(Number.isFinite)) error("INVALID_END_POSE", "endPose needs finite x, y and theta");
-	const endPose = endPoseGiven === null ? poseOf(fileAlignment, fileAlignment.arcLength) : { x: endPoseGiven.x - origin.x, y: endPoseGiven.y - origin.y, theta: endPoseGiven.theta };
+	// The end the fit holds is the file's own, as the file has it: a value typed or a record
+	// put in or taken out changes where the plan starts from, not where the track connects.
+	// (Taken from the changed plan it moved with every edit - R -902 typed as -910 on an arc
+	// of 400 m swung it by metres, and the fit was held to that.)
+	const untouched = elements.every((e, i) => e === loaded.elements[i]) && elements.length === loaded.elements.length;
+	const recordedAlignment = untouched ? fileAlignment : buildProductionAlignment({ elements: loaded.elements, startPose, deps });
+	const endPose = endPoseGiven === null ? poseOf(recordedAlignment, recordedAlignment.arcLength) : { x: endPoseGiven.x - origin.x, y: endPoseGiven.y - origin.y, theta: endPoseGiven.theta };
 
 	const beforeKink = (i) => elements[i + 1]?.type === "kink";
 	// what of a fixed element is held: the quantities of its record (a fixed
@@ -215,7 +222,7 @@ export async function fitTraFromBytes({
 	// the corpus keeps its points clear of the ends by one and a half times
 	// that miss, and so does the adapter. Excluded points are listed, not lost.
 	const planEnd = poseOf(fileAlignment, fileAlignment.arcLength);
-	const shortBy = endPoseGiven === null ? 0 : (endPose.x - planEnd.x) * Math.cos(planEnd.theta) + (endPose.y - planEnd.y) * Math.sin(planEnd.theta);
+	const shortBy = endPoseGiven === null && untouched ? 0 : (endPose.x - planEnd.x) * Math.cos(planEnd.theta) + (endPose.y - planEnd.y) * Math.sin(planEnd.theta);
 	const margin = Math.min(0.25 * fileAlignment.arcLength, Math.max(0, 1.5 * shortBy));
 	// A station given with a point is a hint, in the file's chainage: the
 	// foot is searched from there, not for the nearest. Each projector of
