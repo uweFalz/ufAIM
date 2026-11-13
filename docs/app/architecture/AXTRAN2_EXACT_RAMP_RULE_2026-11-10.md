@@ -213,32 +213,34 @@ Abschnitt 7.
 ## 7. Der Korpus unter beiden Formen
 
 Vier Läufe über die 266 vertrauenswürdigen Trassen des Korpus, Stufenfolge
-(`--objectives lexicographic`), 10. und 11. November: beide Formen auf
+(`--objectives lexicographic`), 10. bis 13. November: beide Formen auf
 origin/main (`effaa03`, mit #115) und beide mit der Korrektur aus
 Abschnitt 6. Ein Neustart des Rechners hat die Läufe bei Datei 253–257
-unterbrochen; der Rest ist mit `--from` nachgerechnet. **Der vierte Lauf
-(`constraint` mit Korrektur) steht bei 263 von 266**: die drei größten
-Trassen (238 Elemente, je mehrere Stunden) fehlen noch.
+unterbrochen; der Rest ist mit `--from` nachgerechnet. Der vierte Lauf
+(`constraint` mit Korrektur) ist seit dem 13. November vollständig: die
+drei größten Trassen (238 Elemente) kamen zuletzt dazu.
 
-| | `bound` main | `constraint` main | `bound` + Korrektur | `constraint` + Korrektur (263) |
+| | `bound` main | `constraint` main | `bound` + Korrektur | `constraint` + Korrektur |
 |---|---|---|---|---|
 | converged | 253 | 211 | 250 | 234 |
-| Längenstufe ohne Urteil, Punkte ohne Budget gerechnet (`tier_established_no_budget`) | 10 | 46 | 15 | 19 |
+| Längenstufe ohne Urteil, Punkte ohne Budget gerechnet (`tier_established_no_budget`) | 10 | 46 | 15 | 22 |
 | anderes Ende (`line_search_failed`, `infeasible_subproblem`, `max_iterations`) | 3 | 9 | 1 | 10 |
-| Ergebnis unbrauchbar (rms > 0,4 Toleranzeinheiten) | 0 | 8 | 0 | 5 |
-| Rechenzeit | 11,4 h | 22,7 h | 13,0 h | 18,7 h |
+| Ergebnis unbrauchbar (rms > 0,4 Toleranzeinheiten) | 0 | 8 | 0 | 8 |
+| Rechenzeit | 11,4 h | 22,7 h | 13,0 h | 58,2 h |
 
 Die Zeiten sind nur ein Anhalt: vier Läufe liefen zugleich, und fast alle
-Zeit steckt in den 17 Trassen ab 109 Elementen.
+Zeit steckt in den 17 Trassen ab 109 Elementen. Im vierten Lauf liefen
+die drei zuletzt gerechneten Trassen neben bis zu fünf anderen
+Rechnungen; sie allein machen 39,5 der 58,2 h aus.
 
-Converged nach Größe, auf den 263 Dateien, die alle vier Läufe haben:
+Converged nach Größe, alle 266 Trassen:
 
 | Elemente | Dateien | `bound` main | `constraint` main | `bound` + Korrektur | `constraint` + Korrektur |
 |---|---|---|---|---|---|
 | unter 20 | 193 | 184 | 181 | 185 | 178 |
 | 20–49 | 46 | 43 | 20 | 39 | 42 |
 | 50–108 | 10 | 10 | 4 | 10 | 10 |
-| ab 109 | 14 | 14 | 6 | 14 | 4 |
+| ab 109 | 17 | 16 | 6 | 16 | 4 |
 
 Was das heißt:
 
@@ -246,10 +248,12 @@ Was das heißt:
    Trassen mit 20–108 Elementen enden 52 mit Urteil statt 24. Der Fall V 80
    war kein Einzelfall.
 2. **Auf großen Trassen ist die exakte Form nicht zu gebrauchen, mit und
-   ohne Korrektur.** Ab 109 Elementen enden 4 von 14 mit Urteil, fünf
+   ohne Korrektur.** Ab 109 Elementen enden 4 von 17 mit Urteil, acht
    Ergebnisse sind unbrauchbar (rms 0,5–1,0, Länge bis 0,70 m neben dem
-   Bestand), die Rechenzeit ist die vierfache. Die Schrankenform löst alle
-   14.
+   Bestand), die Rechenzeit ist das Vier- bis Fünffache. Die drei größten
+   Trassen enden alle ohne Längenbudget mit rms 0,66–0,82. Die
+   Schrankenform löst 16 der 17; die eine ohne Urteil (Platz 264) hat
+   auch in der exakten Form keines.
 3. **Der Gewinn der exakten Form zeigt sich im Korpus nicht.** Wo beide
    Formen mit Urteil enden (228 Trassen, mit Korrektur), ist die Länge in
    202 Fällen auf 5 mm dieselbe, in 6 kürzer, in 20 länger.
