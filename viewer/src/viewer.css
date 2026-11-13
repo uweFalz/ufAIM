@@ -1076,6 +1076,9 @@
 			#tables .object-row > button > span[data-kind].side-conflict { color: color-mix(in srgb, #d70015 78%, CanvasText); font-weight: 600; }
 			#outboxContent .outbox-object .side-witness.neben { color: var(--secondary); }
 			#outboxContent .outbox-object .side-witness.neben.variante { font-style: italic; }
+			#outboxContent .outbox-object .side-witness.km-hinweis { color: var(--secondary); }
+			#outboxContent .outbox-object:not(.selected) .side-witness.km-hinweis.ohne,
+			#outboxContent .outbox-object:not(.selected) .side-witness.km-hinweis.fremd { color: #b3541e; }
 			#outboxContent .outbox-object.selected .side-witness { color: inherit; opacity: 0.9; }
 			.outbox-object.selected { color: white; background: var(--accent) !important; }
 			.outbox-object-row {

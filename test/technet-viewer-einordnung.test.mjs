@@ -106,6 +106,15 @@ test("Umfeld by GND: same Strecke only with the same Lage and an overlapping km 
 	assert.equal(umfeld.referenceRequired, true, "GND Streckengleise need their Kilometerlinie");
 	assert.equal(umfeld.missingKilometerLine, true);
 	assert.equal(umfeld.kmAlignment, null);
+	// a Nebengleis the user sorted into the Strecke: in the picture through its km, not through stations counted from 0
+	const byHand = (key, range, kmFrame) => fact(key, "alignment", { gnd: true, organized: true, side: "right", role: "curvatureRight", frame: frame("1720", "rechts", "user", null, "CR0"), lsys: "CR0", range, kmFrame });
+	const start = einordnen([
+		gnd("A0", "alignment", "right", { gndRoute: "1", range: { from: 0, to: 12000 } }),
+		byHand("N1", { from: 300, to: 900 }, true),
+		byHand("N2", { from: 0, to: 784 }, false),
+	]);
+	assert.deepEqual(json([...einordnungUmfeld(start, "A0").keys].sort()), ["A0", "N1"], "own stations 0-784 are not km 0,0-0,8 of the Strecke");
+	assert.deepEqual(json(einordnungUmfeld(start, "N2").keys), ["N2"]);
 });
 
 test("a singleton (Weiche without Strecke) shows only its own relations; two alignments on one side pair by their own references", () => {
@@ -220,6 +229,9 @@ test("Varianten: the selected Trasse stands, else the longest; what it covers st
 	const on = (key, track) => ({ key, range: { from: 0, to: 1500 }, frame: { track } });
 	assert.deepEqual(json(einordnungVarianten([on("km3300", "3300"), on("km3302", "3302")], null)), { shown: ["km3300", "km3302"], hidden: [] }, "Trassen of two Strecken are no Varianten, whatever their km");
 	assert.deepEqual(json(einordnungVarianten([on("a", "3300"), on("b", "3300")], "b")), { shown: ["b"], hidden: [{ key: "a", wegen: "b" }] });
+	// one in the Strecke's km, one still counted from its own start: no common km, whatever the numbers
+	assert.deepEqual(json(einordnungVarianten([{ ...on("strecke", "5321"), range: { from: 0, to: 1203 }, kmFrame: true }, { ...on("eigen", "5321"), range: { from: 0, to: 784 }, kmFrame: false }], null)), { shown: ["strecke", "eigen"], hidden: [] });
+	assert.deepEqual(json(einordnungVarianten([{ ...on("x", "5321"), range: { from: 0, to: 1203 }, kmFrame: false }, { ...on("y", "5321"), range: { from: 0, to: 784 }, kmFrame: false }], null)), { shown: ["x"], hidden: [{ key: "y", wegen: "x" }] }, "two in their own stations compare as before");
 });
 
 test("Umfeld with Varianten: the hidden Trasse takes its own Gradiente along; each copy of a doubled delivery keeps its own", () => {

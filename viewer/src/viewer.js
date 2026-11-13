@@ -2562,8 +2562,11 @@ xlsx/xlsx.mjs:
 				const hidden = [];
 				const track = (placed) => placed.frame?.track ?? null;
 				for (const { placed } of order) {
-					// Only Trassen of one Strecke are alternatives of each other.
-					const rival = shown.find((kept) => track(kept) === track(placed) && einordnungUeberdeckt(kept.range, placed.range));
+					// Only Trassen of one Strecke are alternatives of each other, and
+					// only where their stations mean the same: a Gleis in the Strecke's
+					// km and one still counted from its own start cover no common km,
+					// whatever the numbers say (WueTreu 5321 begins at km 0).
+					const rival = shown.find((kept) => track(kept) === track(placed) && Boolean(kept.kmFrame) === Boolean(placed.kmFrame) && einordnungUeberdeckt(kept.range, placed.range));
 					if (rival) hidden.push({ key: placed.key, wegen: rival.key });
 					else shown.push(placed);
 				}
@@ -2657,7 +2660,11 @@ xlsx/xlsx.mjs:
 				const selfKm = kmOf(anchor.kmFrame ? anchor : self);
 				const sameTrack = [...model.objects.values()].filter((candidate) => {
 					if (!selectedFrame || !candidate.frame) return false;
-					if (selectedFrame.source === "gnd") return candidate.frame.track === selectedFrame.track && sameLsys(candidate) && overlaps(candidate);
+					// A Nebengleis the user sorted into this Strecke that fits none of
+					// its Kilometerlinien is still in its own stations (kmFrame false):
+					// counted from 0, they would meet a Strecke that begins at km 0 by
+					// their numbers alone (WueTreu 5321: seven of them).
+					if (selectedFrame.source === "gnd") return candidate.frame.track === selectedFrame.track && sameLsys(candidate) && overlaps(candidate) && !(candidate.frame.source === "user" && candidate.kmFrame === false);
 					// A Strecke named by a file or by the user's hand. What the user
 					// sorted in shares a picture only through the km: it carries no
 					// Abschnitt in a name, and a Gleis still in its file-local
@@ -3217,7 +3224,7 @@ xlsx/xlsx.mjs:
 				dragHintUsed = true;
 				status.classList.remove("error");
 				const ohneLinie = before.filter((item) => item.entry.kmHinweis && item.entry.kmHinweis.art !== "fern").length;
-				status.textContent = `${taken.text} einsortiert · von Hand übernommen${ohneLinie ? ` · ${ohneLinie} an keiner Kilometerlinie der Strecke (Grund steht über dem Bild)` : ""}`;
+				status.textContent = `${taken.text} einsortiert · von Hand übernommen${ohneLinie ? ` · ${ohneLinie} an keiner Kilometerlinie der Strecke (in der Outbox markiert, Grund im Tooltip und über dem Bild)` : ""}`;
 				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
 			}
@@ -3277,7 +3284,7 @@ xlsx/xlsx.mjs:
 				const messungen = [];
 				for (const placed of model.objects.values()) {
 					if (placed.key === self.key || placed.kind !== "alignment" || placed.role !== self.role) continue;
-					if (String(placed.frame?.track ?? "") !== String(self.frame?.track ?? "") || !einordnungUeberdeckt(placed.range, self.range)) continue;
+					if (String(placed.frame?.track ?? "") !== String(self.frame?.track ?? "") || Boolean(placed.kmFrame) !== Boolean(self.kmFrame) || !einordnungUeberdeckt(placed.range, self.range)) continue;
 					if (placed.key !== wegenKey && !before(placed)) continue;
 					const other = einordnungEintrag(placed.key);
 					if (!other || !own || !linie(other) || (effectiveLsys(other) || "") !== (effectiveLsys(entry) || "")) continue;
@@ -4761,7 +4768,8 @@ xlsx/xlsx.mjs:
 								varianten.length ? `${nebenZaehlung(varianten)} neben der Trasse im Bild` : null,
 							].filter(Boolean).join(" · ");
 						})();
-				diagramNote.textContent = [mainNote, coverageNote(anchor), kmHinweisText(entry)].filter(Boolean).join(" · ");
+				// The km hint leads: the header is one line and cuts what is long.
+				diagramNote.textContent = [kmHinweisText(entry), mainNote, coverageNote(anchor)].filter(Boolean).join(" · ");
 				diagramNote.title = diagramNote.textContent;
 			}
 
@@ -4787,7 +4795,14 @@ xlsx/xlsx.mjs:
 					laenge: `die Abbildung auf ${linie} hält seine Länge nicht`,
 				}[hinweis.grund] ?? `passt an keine Kilometerlinie der ${strecke}`;
 				if (hinweis.art === "fremd") return `km von ${hinweis.von ? objectListName(hinweis.von) : "einer anderen Kilometerlinie"}, nicht von ${strecke}: ${grund}`;
-				return `ohne km der ${strecke}, eigene Stationen: ${grund}`;
+				const passt = hinweis.passt ? ` · von Ende zu Ende liegt es an ${objectListName(hinweis.passt)}${isValidRouteNumber(geoFrameInfo(hinweis.passt)?.track) ? ` (Strecke ${geoFrameInfo(hinweis.passt).track})` : ""}` : "";
+				return `ohne km der ${strecke}, eigene Stationen: ${grund}${passt}`;
+			}
+			// The same in two words for the Outbox row; null where the km are
+			// the Strecke's own.
+			function kmHinweisMarke(entry) {
+				const art = entry?.kmHinweis?.art;
+				return art === "ohne" ? "ohne km" : art === "fremd" ? "km fremd" : art === "fern" ? "km fern" : null;
 			}
 
 			// A Gleis's own Gradiente/Überhöhung should cover its Krümmung; the
@@ -7495,7 +7510,10 @@ xlsx/xlsx.mjs:
 						const model = einordnung();
 						// Only Trassen: the Kilometersprünge of a Kilometerlinie sit in
 						// its Spur and cover its km, but are no Trasse beside it.
-						const placed = laneEntries.filter((entry) => entry.item.kind === "alignment").map((entry) => model.objects.get(einordnungKey(entry))).filter(Boolean);
+						// Nor a Gleis sorted in by hand that has no km there: it shares a
+						// picture with nobody, so it stands back for nobody.
+						const placed = laneEntries.filter((entry) => entry.item.kind === "alignment").map((entry) => model.objects.get(einordnungKey(entry)))
+							.filter((item) => item && !(item.frame?.source === "user" && item.kmFrame === false));
 						for (const item of einordnungVarianten(placed, null).hidden) standBack.set(item.key, item.wegen);
 					}
 					lane.className = `outbox-lane${laneEntries.includes(current) ? " contains-selection" : ""}`;
@@ -7533,6 +7551,17 @@ xlsx/xlsx.mjs:
 								mark.textContent = evidence.grade === "belegt" ? "Lage ✓" : "Lage widerspricht";
 								button.append(mark);
 							}
+						}
+						// A Gleis sorted in by hand whose km are not plainly the Strecke's:
+						// without km, with another Strecke's, or stationed from farther away.
+						const kmMarke = entry.item.kind === "alignment" ? kmHinweisMarke(entry) : null;
+						if (kmMarke) {
+							const mark = document.createElement("span");
+							mark.className = `side-witness km-hinweis ${entry.kmHinweis.art}`;
+							mark.textContent = kmMarke;
+							button.append(mark);
+							const text = kmHinweisText(entry);
+							button.title = `${text.charAt(0).toUpperCase()}${text.slice(1)}.\n${button.title}`;
 						}
 						const coveredBy = standBack.get(einordnungKey(entry));
 						if (coveredBy) {
@@ -10600,6 +10629,14 @@ xlsx/xlsx.mjs:
 					if (reference) settle(target, reference, false);
 					else if (kmAbbildungPairs(target)) unproject(target);
 					if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference };
+					// Without km in the Strecke it was sorted into: the Kilometerlinie
+					// of another Strecke it lies along end to end is named, so that
+					// the user can sort it there. Named only; nothing is moved.
+					if (target.kmHinweis?.art === "ohne") {
+						const passt = pickReference(target, allViewerEntries().filter((entry) => entry !== target && entry.item.kind === "alignment" && sevenLineSide(entry) === "kilometer"
+							&& String(geoFrameInfo(entry)?.track) !== String(target.frameEdit.track) && (effectiveLsys(entry) || "") === lsys).sort(byLengthThenName));
+						if (passt) target.kmHinweis.passt = passt;
+					}
 					if (target.externalStationReference !== before) gndChanged = true;
 				}
 				if (gndChanged) einordnungGeaendert();
