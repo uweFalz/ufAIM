@@ -197,10 +197,30 @@ anderes Bild:
 Zwei der vier größten Trassen verlieren also im Einzellauf ihr Urteil. Ob
 das Rauschen ist oder an den Änderungen liegt, sagt ein Einzellauf nicht
 (Abschnitt 1): die Plätze 262 und 263 werden darum je zweimal mit dem
-neuen und dem alten Stand wiederholt, die Toleranz um 10 pm gestört; das
-Ergebnis wird hier nachgetragen. Bis dahin gilt: der Gewinn auf den
-Bahnhofsgleisen ist durch sechsfache Rechnung belegt (Abschnitt 5), bei
-den größten Trassen steht ein Einzellauf mit zwei Verlusten dagegen.
+neuen und dem alten Stand wiederholt, die Toleranz um 10 pm gestört
+(0,15 m ± 10 pm).
+
+Platz 262, drei Rechnungen je Stand (Einzellauf und zwei Wiederholungen):
+
+| Toleranz | alt | neu |
+| --- | --- | --- |
+| 0,15 m (Einzellauf) | Urteil, `stationary` nach 725 | ohne Längenbudget, `restoration_failed` nach 647 |
+| + 10 pm | Urteil, `stationary` nach 694 | Urteil, `stationary` nach 628 |
+| − 10 pm | Urteil, `stationary` nach 617 | ohne Längenbudget, `line_search_failed` nach 575 |
+| mit Urteil | 3 von 3 | 1 von 3 |
+
+Bei + 10 pm haben beide Stände ein Urteil, und es ist dasselbe (Länge
+kostet 4,98 m, Restfehler 0,151 m); der neue braucht weniger Schritte. Der
+neue Stand ist auf dieser Trasse aber nicht mehr verlässlich: zwei von
+drei Rechnungen enden ohne Längenbudget, mit zwei verschiedenen
+Abbrüchen, der alte Stand endet dreimal mit Urteil. Drei gegen drei
+Rechnungen sind wenig – das Bild spricht aber gegen bloßes Rauschen und
+dafür, dass die Änderungen bei rund 240 Elementen kosten, was sie bei
+den Bahnhofsgleisen bringen. Platz 263 rechnet und wird nachgetragen.
+
+Bis dahin gilt: der Gewinn auf den Bahnhofsgleisen ist durch sechsfache
+Rechnung belegt (Abschnitt 5); bei den größten Trassen steht dem ein
+Verlust auf Platz 262 gegenüber, der sich in der Wiederholung zeigt.
 
 Über alle 265: 261 mit Urteil gegen 249, Schritte über alle Phasen 39 478
 gegen 46 692. Was die Punkte in Länge kosten, ändert sich auf den 247
@@ -241,9 +261,10 @@ ohne die Änderung (App-Seite).
   nur die exakte Form der Rampenregel.
 - **Platz 213** und die Frage, warum die Region dort zusammenfällt.
 - **Die größten Trassen** (ab 237 Elementen): zwei verlieren im
-  Einzellauf ihr Urteil, eine hat in beiden keines (Abschnitt 6). Die
-  Wiederholungen entscheiden, ob die Längenstufe dort schlechter
-  geworden ist.
+  Einzellauf ihr Urteil, eine hat in beiden keines (Abschnitt 6). Auf
+  Platz 262 bestätigt die Wiederholung den Verlust (1 von 3 gegen 3 von
+  3 mit Urteil); Platz 263 steht aus. Ob und wie die Längenstufe für
+  diese Größe nachgebessert wird, ist zu entscheiden.
 
 ## 9. Nachrechnen
 
