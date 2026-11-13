@@ -1751,19 +1751,28 @@ xlsx/xlsx.mjs:
 			// while the loaded objects, their Lagesystem and the set of
 			// Kilometerlinien stay the same. The key is taken once per run of
 			// rendering (a microtask), not per Gleis.
+			// A Trasse no attribute declares, whose file name says Kilometerlinie
+			// ("Ka_5810S_km-0.2_2.5"): what the Sortiervorschlag offers as "die
+			// Kilometerlinie laut Name". It is measured against like a declared
+			// one, so the proposals for the Gleise beside it do not depend on the
+			// order in which the user takes them over (metroB: the Gleise of 5810
+			// went to 5800 when its line was sorted in first).
+			function nameSagtKilometerlinie(entry) {
+				return entry?.item?.kind === "alignment" && entry.parser === "vermEsn" && declaredSide(entry).side === "unknown" && einordnungNamensteile(entry.loaded?.fileName ?? "").side === "s";
+			}
 			let lageCache = { key: null, axes: [], byEntry: new Map() };
 			let lageKeyMemo = null;
 			function lageState() {
 				if (lageKeyMemo == null) {
 					lageKeyMemo = allViewerEntries()
 						.filter((entry) => entry.item.kind === "alignment")
-						.map((entry) => `${entry.item.id}:${effectiveLsys(entry) || ""}:${sevenLineSide(entry) === "kilometer" ? "km" : ""}:${routeForEntry(entry)}`)
+						.map((entry) => `${entry.item.id}:${effectiveLsys(entry) || ""}:${sevenLineSide(entry) === "kilometer" ? "km" : nameSagtKilometerlinie(entry) ? "name" : ""}:${routeForEntry(entry)}`)
 						.join("|");
 					queueMicrotask(() => { lageKeyMemo = null; });
 				}
 				if (lageCache.key !== lageKeyMemo) {
 					const axes = allViewerEntries()
-						.filter((entry) => entry.item.kind === "alignment" && alignmentEndpoints(entry) && sevenLineSide(entry) === "kilometer")
+						.filter((entry) => entry.item.kind === "alignment" && alignmentEndpoints(entry) && (sevenLineSide(entry) === "kilometer" || nameSagtKilometerlinie(entry)))
 						.map((entry) => {
 							const polyline = referenceStationPolyline(entry, 10);
 							return { entry, lsys: effectiveLsys(entry) || "", route: routeForEntry(entry) || objectDisplayName(entry), polyline, bounds: lageBounds(polyline) };
@@ -1923,7 +1932,7 @@ xlsx/xlsx.mjs:
 				if (desc.includes("richtungsgleis")) return { side: "right", source: "landXML-Beschreibung" };
 				const direction = String(geoFrameInfo(entry)?.direction ?? "").toLocaleLowerCase("de-DE");
 				const name = objectDisplayName(entry).toLocaleLowerCase("de-DE");
-				if (direction.includes("kilometer") || /(?:^|[\s_.-])km(?:$|[\s_.-])/.test(name)) return { side: "kilometer", source: direction.includes("kilometer") ? "Zuordnung" : "Objektname" };
+				if (direction.includes("kilometer") || einordnungNameKilometerlinie(name)) return { side: "kilometer", source: direction.includes("kilometer") ? "Zuordnung" : "Objektname" };
 				if (direction.includes("rechts") || /(?:^|[\s_.-])(rechts|right|rg)(?:$|[\s_.-])/.test(name)) return { side: "right", source: direction.includes("rechts") ? "Zuordnung" : "Objektname" };
 				if (direction.includes("links") || /(?:^|[\s_.-])(links|left|lg)(?:$|[\s_.-])/.test(name)) return { side: "left", source: direction.includes("links") ? "Zuordnung" : "Objektname" };
 				// A profile/cant/staEq object has no direction signal of its own -- it
@@ -2967,6 +2976,15 @@ xlsx/xlsx.mjs:
 			function einordnungStreckeAusName(name) {
 				const match = /(?:^|[^0-9A-Za-z])(\d{4})(?![0-9])/.exec(String(name ?? ""));
 				return match ? match[1] : "";
+			}
+			// "KM" standing on its own in a name says Kilometerlinie
+			// ("6100_247-289_DBREF2016_KM"). Before a number it is the unit of a
+			// km range and says nothing about the role: "Ka_5810R_km-0.2_2.5" is
+			// the right Gleis from km -0,2 to 2,5. Read as a Kilometerlinie it
+			// gave metroB 5810 two of them, on the same axis and 237 m apart in
+			// their count.
+			function einordnungNameKilometerlinie(name) {
+				return /(?:^|[\s_.-])km(?:$|[\s_.-](?!\d))/.test(String(name ?? "").toLocaleLowerCase("de-DE"));
 			}
 			// Sortiervorschlag für ein Bündel: where its Gleise would go if the
 			// user sorts the Bündel in as a whole. gleise: [{ key, declared,
