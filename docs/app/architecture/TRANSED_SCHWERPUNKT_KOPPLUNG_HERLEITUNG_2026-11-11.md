@@ -1,12 +1,13 @@
 # Kopplung von Krümmung und Überhöhung über einen Bezugspunkt: Herleitung zur Prüfung
 
-Stand 2026-11-11. Status: **Modellvorbehalt**. Diese Notiz legt die Herleitung
-offen, die in `src/services/transition-library/cantCurvatureCoupling.js` gerechnet
-wird, damit Uwe Vorzeichen und Näherungen prüfen kann. Die Herleitung stammt von
-Claude und entstand ohne das Original. Nachträglich ist sie mit der Patentschrift
-AT 412 975 B (Hasslinger, angemeldet 2002-07-23) abgeglichen: Gleichung, Vorzeichen
-und Näherung stimmen überein, siehe Abschnitt 8. Die förmliche Bestätigung bleibt
-bei Uwe.
+Stand 2026-11-13. Status: **Modell bestätigt** (Uwe, 2026-11-13). Gerechnet wird
+seitdem der genaue Ausdruck statt der Kleinwinkelform, siehe Abschnitte 1, 3 und 9.
+Diese Notiz legt die Herleitung offen, die in
+`src/services/transition-library/cantCurvatureCoupling.js` gerechnet wird. Die
+Herleitung stammt von Claude und entstand ohne das Original. Nachträglich ist sie
+mit der Patentschrift AT 412 975 B (Hasslinger, angemeldet 2002-07-23) abgeglichen:
+Gleichung, Vorzeichen und Näherung der Kleinwinkelform stimmen überein, siehe
+Abschnitt 8.
 
 ## 1. Ergebnis
 
@@ -19,17 +20,27 @@ Mit x = s/L auf [0, 1], normierter Krümmung k(x) und normierter Überhöhung f(
 - R: Radius am Bogenende, L: Länge des Übergangsbogens
 - Die Geschwindigkeit kommt nicht vor.
 
-Beispiel: h = 1,8 m, Überhöhung 150 mm, Stützweite 1,5 m (ψ_E = 0,1), R = 1000 m,
-L = 100 m ergibt ε² = 0,018, ε = 0,134.
+Das ist die Kleinwinkelform (das Patent). Gerechnet wird seit 2026-11-13 der
+genaue Ausdruck (Entscheidung Uwe), mit a = ψ_E, ρ = h/R und c = 1/(1 − ρ·sin a):
 
-## 2. Annahmen, die zu bestätigen sind
+    k = (c·f − ε²·(f″·cos(a·f) − a·f′²·sin(a·f))) / (1 + c·f·ρ·sin(a·f))
+
+- sin ψ_E = Überhöhung / Stützweite, also ψ_E = arcsin(u/b) statt u/b
+- Für a → 0 und ρ → 0 bei festem ε wird daraus die Kleinwinkelform.
+- Vernachlässigt bleibt allein d′², das Quadrat der Versatzneigung (im Beispiel
+  des Patents rund 6·10⁻⁶).
+
+Beispiel: h = 1,8 m, Überhöhung 150 mm, Stützweite 1,5 m (ψ_E = arcsin 0,1 = 0,1002),
+R = 1000 m, L = 100 m ergibt ε² = 0,01803, ε = 0,134.
+
+## 2. Annahmen (von Uwe bestätigt am 2026-11-13)
 
 | Nr. | Annahme | Wo sie eingeht |
 | --- | --- | --- |
 | A1 | Der Bezugspunkt liegt um h über der Gleisachse, auf der Hochachse des geneigten Fahrzeugs. Er dreht um die Gleisachse, ohne Federung und ohne Wankpol. | Versatz d |
 | A2 | Positive Überhöhung neigt zur Bogeninnenseite. Der Grundriss des Bezugspunkts liegt deshalb um d **nach innen** versetzt. | Vorzeichen von ε² |
-| A3 | Kleiner Winkel: d = h · sin ψ ≈ h · ψ. | Versatz d |
-| A4 | Der Versatz ist klein gegen den Radius: κ·d ≪ 1 und d′ ≪ 1. Im Beispiel ist κ·d = 1,8 · 10⁻⁴. | Krümmung der versetzten Linie |
+| A3 | Versatz d = h · sin ψ. Die Kleinwinkelform setzt d ≈ h · ψ; gerechnet wird der Sinus. | Versatz d |
+| A4 | Die Versatzneigung ist klein: d′² ≪ 1. Die Kleinwinkelform setzt zusätzlich κ·d ≪ 1 (im Beispiel 1,8 · 10⁻⁴); gerechnet wird mit dem Nenner 1 − κd. | Krümmung der versetzten Linie |
 | A5 | Hasslingers Forderung: Die Krümmung der Bezugspunktbahn ist an jeder Stelle proportional zur Überhöhung, κ_ref / ψ = κ_E / ψ_E. | Kopplung |
 | A6 | Rampe und Übergangsbogen haben dieselben Stationen (Vorgabe Uwe). | Randbedingungen |
 | A7 | h ist über den Bogen konstant. Gradiente und Längsneigung bleiben außen vor. | alles |
@@ -57,6 +68,17 @@ und mit d = h·ψ:
 
 Division durch κ_E = 1/R gibt die Gleichung aus Abschnitt 1.
 
+**Genauer Ausdruck (seit 2026-11-13).** Ohne die beiden Näherungen bleibt
+κ_ref = (κ + d″)/(1 − κd) mit d = h · sin ψ. Aufgelöst nach der Gleiskrümmung:
+
+    κ = (κ_ref − d″) / (1 + κ_ref · d)
+    d″ = (h / L²) · (ψ_E · f″ · cos(ψ_E f) − ψ_E² · f′² · sin(ψ_E f))
+
+A5 heißt jetzt κ_ref = κ_ref,E · f. Am Bogenende ist d″ = 0 und κ = κ_E, also
+κ_ref,E = κ_E / (1 − κ_E · d_E) mit d_E = h · sin ψ_E. Mal R genommen und mit
+a = ψ_E, ρ = h/R, c = 1/(1 − ρ · sin a) folgt die Gleichung aus Abschnitt 1. Sie
+trifft an den Enden weiter k = 0 und k = 1, sobald dort f′ = f″ = 0 gilt.
+
 **Vorzeichen (A2).** Läge der Bezugspunkt nach außen versetzt, hieße es
 k = f + ε²·f″. Die Probe: Eine weiche Rampe hat am Anfang f″ > 0 bei f ≈ 0. Mit dem
 Minuszeichen wird k dort negativ. Das ist der Gegenschwung des Wiener Bogens und
@@ -69,7 +91,11 @@ weich (f′ = 0 und f″ = 0), schließt k stetig an Gerade und Kreis an.
 
 **Umgekehrt (k gegeben, Uwes Richtung).** Zu lösen ist f − ε²·f″ = k. Mit A6 sind
 beide freien Konstanten verbraucht: f(0) = 0, f(1) = 1. Die Endsteigungen f′(0) und
-f′(1) sind dann ein Ergebnis und keine Wahl.
+f′(1) sind dann ein Ergebnis und keine Wahl. Für den genauen Ausdruck ist die
+Gleichung nicht mehr linear. Das Modul löst zuerst die Kleinwinkelform und
+verbessert die Rampe dann schrittweise mit demselben linearen Löser, bis der Schritt
+unter 10⁻¹² fällt (im Beispiel des Patents wenige Schritte). Schwingt die Rechnung
+nicht ein, sagt die Seite das.
 
 - f′(0) = f′(1) = 0: Die Rampe läuft tangential ein und aus. Die Krümmungsfunktion
   ist für dieses ε schwerpunkt-tauglich.
@@ -77,6 +103,9 @@ f′(1) sind dann ein Ergebnis und keine Wahl.
   Station einen Richtungssprung der Größe h · ψ_E · f′(0) / L.
 
 ## 5. Warum eine Krümmungsfunktion ohne Gegenschwung nie tauglich ist
+
+Dieser Abschnitt und die Integrale gelten für die Kleinwinkelform. Der genaue
+Ausdruck ändert die Zahlen um Größen der Ordnung ψ_E² und h/R, nicht den Schluss.
 
 Die Lösung mit f(0) = 0 und f′(0) = 0 lässt sich geschlossen schreiben:
 
@@ -171,20 +200,31 @@ Ableitung. Mit dem Beispiel des Patents (ε = 0,062), als Überhöhung gelesen:
 Als Krümmung gelesen bleibt jeder dieser Einträge bei Ordnung 0, weil schon f′
 nicht null ist.
 
-## 9. Was noch bei Uwe liegt
+**Mit dem genauen Ausdruck (seit 2026-11-13).** Die Tabelle des Patents ist die
+Kleinwinkelform und bleibt so nachgerechnet. Die Seite rechnet für dasselbe
+Beispiel mit ψ_E = arcsin(224/1500) = 0,1499 und h/R = 0,00315: ε = 0,0621 statt
+0,0620, und `vienna2` als Überhöhung gibt die Krümmung −0,00835 … 1,0082 statt
+−0,0083 … 1,0083. Die Ordnungen der Tabelle oben ändern sich nicht. Mit h = 2,5 m
+statt 1,8 m wird daraus −0,0141 … 1,0139. Die Klothoide als Krümmung gibt die
+Endsteigungen 0,9995 und 1,0021: die Rampe ist fast, aber nicht mehr genau linear.
+Werte: `docs/app/architecture/evidence/TRANSED_EXACT_20261113/exact-journey-single-file.json`.
 
-1. Förmliche Bestätigung des Modells. Der Abgleich oben stützt Vorzeichen (A2),
-   Näherung (A3, A4), Forderung (A5) und die Bedeutung von h (A1).
-2. Soll für AIM die Kleinwinkelform des Patents gelten, oder der genaue Ausdruck
-   (κ + d″)/(1 − κd) mit d = h·sin ψ?
-3. Welche Höhe h ist die Voreinstellung? Die Tabelle des Patents rechnet mit 1,8 m,
-   dem Wert, den auch das Modul voreinstellt.
-4. Welche Glattheit der Rampe an den Enden soll verlangt sein, und mit welchen
-   Grenzen? Voreingestellt ist Ordnung 2 (f′ = f″ = 0), die Mindestforderung des
-   Patents; Ordnung 3 (zusätzlich f‴ = 0) ist die Forderung der Biegetheorie. Die
-   Grenzen sind eine Annahme: f′ gegen 0,02, f″ und f‴ gegen 0,02 mal ihren
-   größten Betrag auf der Rampe, mindestens 1 (Abschnitt 8, „Glattheit“). Auf der
-   Seite ist die Ordnung wählbar, die Grenzen stehen in `cantCurvatureCoupling.js`.
+## 9. Entschieden von Uwe (2026-11-13)
+
+1. **Modell bestätigt.** Der Modellvorbehalt auf der Seite entfällt.
+2. **Der genaue Ausdruck gilt**, (κ + d″)/(1 − κd) mit d = h·sin ψ, nicht die
+   Kleinwinkelform des Patents. Umgesetzt wie in Abschnitt 1 und 3; die
+   Kleinwinkelform bleibt im Modul für den Aufruf mit bloßem ε. Annahme von Claude
+   dabei: Auch ψ_E wird genau genommen, ψ_E = arcsin(Überhöhung / Stützweite); und
+   d′² bleibt vernachlässigt, weil der Ausdruck es nicht enthält.
+3. **h = 1,8 m ist die Voreinstellung, editierbar.** So steht es auf der Seite
+   (Feld „Bezugshöhe h“) und in `DEFAULT_COUPLING_ASSUMPTION`.
+4. **f″ = 0 reicht aus** (Ordnung 2, die Voreinstellung). f‴ = 0 geht an der
+   Realität vorbei: Die allermeisten Übergangsbögen sind Klothoiden, deren Rampe an
+   den Enden knickt. Ordnung 3 bleibt auf der Seite wählbar, verlangt ist sie
+   nicht. Die Grenzen (f′ gegen 0,02; f″ gegen 0,02 mal den größten Betrag auf der
+   Rampe, mindestens 1) sind weiter eine Annahme von Claude und stehen in
+   `cantCurvatureCoupling.js`.
 
 Erledigt (Stand 2026-11-12): Die Frage, ob die `vienna`-Halbwellen als Überhöhung
 erklärbar werden sollen, hat Uwe mit einem Auftrag beantwortet. In Modus 2 der

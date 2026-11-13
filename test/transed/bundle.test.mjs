@@ -134,7 +134,8 @@ test("the served page and the bundle start from the same sources", async () => {
 	const app = await readFile(new URL("transed/app.js", ROOT), "utf8");
 	assert.ok(page.includes('<script type="module" src="./app.js"></script>'));
 	assert.doesNotMatch(page, /https?:\/\//, "the page loads nothing from outside");
-	assert.match(page, /Modellvorbehalt/, "the coupling is shown under a model reservation");
+	assert.doesNotMatch(page, /Modellvorbehalt/, "the model is confirmed, the reservation is gone");
+	assert.match(page, /id="couplingModel"[^>]*>.*\(κ \+ d″\)\/\(1 − κd\).*Von Uwe bestätigt/, "the page names the model and its exact expression");
 	const specifiers = [...app.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
 	assert.deepEqual(specifiers, ["../src/domain/transition/transitionLookup.json", "../src/services/transition-library/index.js"]);
 	assert.doesNotMatch(app, /fetch\(|XMLHttpRequest|WebSocket|import\(/);

@@ -188,7 +188,12 @@ test("the user declares a creation as curvature or as cant", () => {
 test("the default coupling assumption is reported with the result", () => {
 	const result = make().evaluateCoupling({ presetId: "bloss" });
 	assert.deepEqual(result.assumption, { referenceHeight: 1.8, endCant: 0.15, railBase: 1.5, radius: 1000, length: 100 });
-	assert.ok(Math.abs(result.epsilon - Math.sqrt(0.018)) < 1e-12);
+	assert.ok(Math.abs(result.epsilon - Math.sqrt(1.8 * Math.asin(0.1) * 1000) / 100) < 1e-12);
+	// an assumption means the exact expression, an epsilon alone the small-angle form
+	assert.equal(result.exact, true);
+	assert.ok(Math.abs(result.endAngle - Math.asin(0.1)) < 1e-15 && result.offsetRatio === 0.0018);
+	assert.equal(result.converged, true);
+	assert.equal(make().evaluateCoupling({ presetId: "bloss", epsilon: 0.2 }).exact, false);
 	assert.equal(make().evaluateCoupling({ presetId: "bloss", assumption: { length: 200 } }).epsilon, result.epsilon / 2);
 	assert.equal(make().evaluateCoupling({ presetId: "bloss", epsilon: 0.2 }).assumption, null);
 });
@@ -213,7 +218,7 @@ test("the library stays outside the frozen core and off browser, messaging and s
 	assert.deepEqual(staticSpecifiers(plot), []);
 	for (const source of [service, coupling, plot]) assert.doesNotMatch(source, /\.json|window|document|Worker|localStorage|indexedDB|sendCmd/);
 	const barrel = await import("../../../src/services/transition-library/index.js");
-	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "DEFAULT_REQUIRED_SMOOTHNESS_ORDER", "FUNCTION_SERIES", "HALFWAVE_QUANTITIES", "KLAUDER_EXPONENT_MAX", "KLAUDER_INTERVAL", "KLAUDER_SOURCE", "PLOT_SERIES", "SMOOTHNESS_ORDER_MAX", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "functionPlotSvg", "klauderName", "klauderPrototype", "klauderRecords", "klauderTerms", "plotParameterAt", "plotSeries", "transitionPlotSvg"]);
+	assert.deepEqual(Object.keys(barrel).sort(), ["DEFAULT_COUPLING_ASSUMPTION", "DEFAULT_END_SLOPE_TOLERANCE", "DEFAULT_REQUIRED_SMOOTHNESS_ORDER", "FUNCTION_SERIES", "HALFWAVE_QUANTITIES", "KLAUDER_EXPONENT_MAX", "KLAUDER_INTERVAL", "KLAUDER_SOURCE", "PLOT_SERIES", "SMOOTHNESS_ORDER_MAX", "USER_LIBRARY_KIND", "USER_LIBRARY_LEVELS", "assessCouplingSuitability", "cantFromCurvature", "couplingEpsilon", "couplingGeometry", "couplingPlotSvg", "createTransitionLibraryService", "curvatureFromCant", "formatRange", "functionPlotSvg", "klauderName", "klauderPrototype", "klauderRecords", "klauderTerms", "plotParameterAt", "plotSeries", "transitionPlotSvg"]);
 });
 
 test("an unsaved combination of two halfWaves and a partition is described without saving", () => {

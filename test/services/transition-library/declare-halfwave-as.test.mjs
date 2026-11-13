@@ -34,7 +34,10 @@ test("vienna2 read as cant gives the swerving curvature of the patent's example"
 	const c = draft.coupling;
 	assert.equal(c.given, "cant");
 	assert.equal(c.derived, "curvature");
-	assert.ok(Math.abs(c.epsilon ** 2 - 0.00384) < 1e-9);
+	// exact expression: psiE = asin(224/1500); the patent's own 0.00384 is the small-angle value
+	assert.equal(c.exact, true);
+	assert.ok(Math.abs(c.epsilon ** 2 - (1.8 * Math.asin(0.224 / 1.5)) / (1.75e-3 * 200 ** 2)) < 1e-12);
+	assert.ok(Math.abs(c.epsilon ** 2 - 0.00384) < 2e-5);
 	assert.ok(Math.abs(c.curvatureRange.min + 0.0083) < 2e-4 && Math.abs(c.curvatureRange.max - 1.0083) < 2e-4, JSON.stringify(c.curvatureRange));
 	assert.equal(c.suitability.suitable, true);
 	assert.equal(c.suitability.order, 3, "vienna2 as cant is smooth up to f‴");

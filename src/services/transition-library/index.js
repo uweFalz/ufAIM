@@ -12,6 +12,7 @@ export {
 	assessCouplingSuitability,
 	cantFromCurvature,
 	couplingEpsilon,
+	couplingGeometry,
 	curvatureFromCant,
 } from "./cantCurvatureCoupling.js";
 export { FUNCTION_SERIES, PLOT_SERIES, couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, plotSeries, transitionPlotSvg } from "./transitionPlot.js";

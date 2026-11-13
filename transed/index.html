@@ -134,7 +134,7 @@
 
 	<section data-mode="2" aria-labelledby="h-coupling">
 		<h2 id="h-coupling">Krümmung und Überhöhung</h2>
-		<p class="note"><b>Modellvorbehalt:</b> Die Kopplung von Krümmung und Überhöhung ist ein reduziertes Bezugspunktmodell. Vorzeichen und Kleinwinkelnäherung sind fachlich noch nicht bestätigt. Die Ergebnisse dieses Abschnitts sind Kandidaten, keine Nachweise.</p>
+		<p id="couplingModel" style="margin-top:0;font-size:14px"><b>Modell:</b> Bezugspunkt in der Höhe h über der Gleisachse, um d = h·sin ψ zur Bogeninnenseite versetzt; seine Bahn hat die Krümmung (κ + d″)/(1 − κd) und folgt der Überhöhung. Von Uwe bestätigt am 13.11.2026, gerechnet mit dem genauen Ausdruck. Kein Fahrzeugmodell, die Geschwindigkeit kommt nicht vor.</p>
 		<p id="couplingText" style="margin-top:0"></p>
 		<div class="grid">
 			<div><label for="readAs">Die Halbwellen lesen als</label><select id="readAs"><option value="curvature">Krümmung</option><option value="cant">Überhöhung</option></select><small>Eingebaute Einträge bleiben unverändert; für die andere Lesart entsteht ein eigener Eintrag …_CANT, der auf denselben Prototyp zeigt.</small></div>
@@ -147,9 +147,9 @@
 			<div><label for="aLength">Länge L [m]</label><input type="number" id="aLength" min="1" step="5"></div>
 		</div>
 		<div class="grid" style="margin-top:14px">
-			<div><label for="smoothOrder">Verlangte Glattheit der Rampe an den Enden</label><select id="smoothOrder"><option value="1">f′ = 0 · kein Knick</option><option value="2">f′ = f″ = 0 · drei endliche Ableitungen</option><option value="3">f′ = f″ = f‴ = 0 · vier endliche Ableitungen</option></select><small>Voreinstellung nach AT 412 975 B: mindestens drei endliche Ableitungen, für die Biegetheorie der Schiene vier.</small></div>
+			<div><label for="smoothOrder">Verlangte Glattheit der Rampe an den Enden</label><select id="smoothOrder"><option value="1">f′ = 0 · kein Knick</option><option value="2">f′ = f″ = 0 · drei endliche Ableitungen</option><option value="3">f′ = f″ = f‴ = 0 · vier endliche Ableitungen</option></select><small>Voreinstellung: f″ = 0 genügt (Uwe, 13.11.2026; zugleich die Mindestforderung von AT 412 975 B). f‴ = 0 verlangt die Biegetheorie der Schiene; an der Praxis geht das vorbei, es bleibt wählbar.</small></div>
 		</div>
-		<small>Annahme der Rechnung, Schienenabstand 1,5 m. Modell: Bezugspunkt um h·ψ nach innen versetzt, kleine Winkel; k = f − ε²·f″ mit ε² = h·ψ_E·R/L².</small>
+		<small>Annahme der Rechnung, Schienenabstand 1,5 m; sin ψ_E = Endüberhöhung / Schienenabstand, ε² = h·ψ_E·R/L². Für kleine Winkel und kleinen Versatz wird daraus k = f − ε²·f″. Vernachlässigt bleibt allein das Quadrat der Versatzneigung d′.</small>
 		<div id="couplingPlot" class="plot" style="margin-top:14px"></div>
 		<div id="couplingLegend" class="legend"></div>
 	</section>

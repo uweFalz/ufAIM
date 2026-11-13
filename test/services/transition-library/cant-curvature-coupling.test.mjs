@@ -6,6 +6,7 @@ import {
 	assessCouplingSuitability,
 	cantFromCurvature,
 	couplingEpsilon,
+	couplingGeometry,
 	curvatureFromCant,
 } from "../../../src/services/transition-library/cantCurvatureCoupling.js";
 
@@ -15,7 +16,9 @@ const f7d2 = (x) => 420 * x ** 2 - 1680 * x ** 3 + 2100 * x ** 4 - 840 * x ** 5;
 const EPS = 0.134;
 
 test("epsilon follows from reference height, end cant, radius and length", () => {
-	assert.ok(Math.abs(couplingEpsilon() - Math.sqrt(1.8 * 0.1 * 1000) / 100) < 1e-15);
+	// sin(psiE) = cant / rail base, so psiE = asin(0.1), not 0.1
+	assert.ok(Math.abs(couplingEpsilon() - Math.sqrt(1.8 * Math.asin(0.1) * 1000) / 100) < 1e-15);
+	assert.throws(() => couplingEpsilon({ endCant: 1.5 }), /smaller than railBase/);
 	assert.equal(couplingEpsilon({ length: 200 }), couplingEpsilon() / 2);
 	assert.throws(() => couplingEpsilon({ radius: 0 }));
 });
@@ -117,4 +120,71 @@ test("without the higher derivatives the verdict is the end-slope verdict as bef
 	assert.equal(verdict.checks.length, 1);
 	assert.equal(assessCouplingSuitability({ start: 0.5, end: 0 }).suitable, false);
 	assert.equal(assessCouplingSuitability({ start: 0, end: 0 }, { requiredOrder: "x" }).requiredOrder, 1);
+});
+
+// The exact expression, written out independently of the module.
+function exactCurvature(f, f1, f2, { epsilon, endAngle: a, offsetRatio: rho }) {
+	const refEnd = 1 / (1 - rho * Math.sin(a)); // kappaRef at the end, times R
+	const ref = refEnd * f;
+	const d = rho * Math.sin(a * f); // kappaE * d
+	const d2 = epsilon ** 2 * (f2 * Math.cos(a * f) - a * f1 ** 2 * Math.sin(a * f)); // R * d''
+	return (ref - d2) / (1 + ref * d);
+}
+const f7d1 = (x) => 140 * x ** 3 - 420 * x ** 4 + 420 * x ** 5 - 140 * x ** 6;
+
+test("the geometry of an assumption: epsilon, end angle, offset ratio", () => {
+	const g = couplingGeometry({ referenceHeight: 1.8, endCant: 0.224, railBase: 1.5, radius: 1 / 1.75e-3, length: 200 });
+	assert.ok(Math.abs(g.endAngle - Math.asin(0.224 / 1.5)) < 1e-15);
+	assert.ok(Math.abs(g.offsetRatio - 1.8 * 1.75e-3) < 1e-15);
+	assert.ok(Math.abs(g.epsilon ** 2 - (1.8 * g.endAngle) / (1.75e-3 * 200 ** 2)) < 1e-15);
+});
+
+test("exact expression, cant given: matches the written-out formula and still joins 0 and 1", () => {
+	const g = couplingGeometry({ endCant: 0.224, radius: 1 / 1.75e-3, length: 200 });
+	const exact = curvatureFromCant({ cant: f7, cant1: f7d1, cant2: f7d2 }, g.epsilon, { count: 201, endAngle: g.endAngle, offsetRatio: g.offsetRatio });
+	assert.equal(exact.exact, true);
+	for (const sample of exact.samples) {
+		const want = exactCurvature(f7(sample.u), f7d1(sample.u), f7d2(sample.u), g);
+		assert.ok(Math.abs(sample.curvature - want) < 1e-13, `u=${sample.u}`);
+	}
+	assert.ok(Math.abs(exact.samples[0].curvature) < 1e-12);
+	assert.ok(Math.abs(exact.samples.at(-1).curvature - 1) < 1e-12);
+	// against the small-angle form the difference is small but not zero
+	const linear = curvatureFromCant({ cant: f7, cant1: f7d1, cant2: f7d2 }, g.epsilon, { count: 201 });
+	assert.equal(linear.exact, false);
+	const gap = Math.max(...exact.samples.map((sample, i) => Math.abs(sample.curvature - linear.samples[i].curvature)));
+	assert.ok(gap > 1e-6 && gap < 5e-3, `gap ${gap}`);
+});
+
+test("exact expression: angle and offset zero give the small-angle form bit for bit", () => {
+	const a = curvatureFromCant({ cant: f7, cant2: f7d2 }, EPS, { count: 101, endAngle: 0, offsetRatio: 0 });
+	const b = curvatureFromCant({ cant: f7, cant2: f7d2 }, EPS, { count: 101 });
+	assert.deepEqual(a.samples, b.samples);
+	const k = (x) => 3 * x * x - 2 * x ** 3;
+	assert.deepEqual(cantFromCurvature(k, EPS, { count: 101, endAngle: 0, offsetRatio: 0 }).samples, cantFromCurvature(k, EPS, { count: 101 }).samples);
+});
+
+test("exact expression, curvature given: the iteration converges and inverts the forward direction", () => {
+	const g = couplingGeometry({ endCant: 0.224, radius: 1 / 1.75e-3, length: 200 });
+	const shape = { count: 2001, endAngle: g.endAngle, offsetRatio: g.offsetRatio };
+	const k = (x) => exactCurvature(f7(x), f7d1(x), f7d2(x), g);
+	const reverse = cantFromCurvature(k, g.epsilon, shape);
+	assert.equal(reverse.exact, true);
+	assert.equal(reverse.converged, true);
+	assert.ok(reverse.iterations >= 1 && reverse.iterations < 20, `iterations ${reverse.iterations}`);
+	reverse.samples.forEach((sample) => assert.ok(Math.abs(sample.cant - f7(sample.u)) < 1e-5, `u=${sample.u}`));
+	const verdict = assessCouplingSuitability(reverse.endSlopes, { endDerivatives: reverse.endDerivatives, peaks: reverse.peaks });
+	assert.equal(verdict.suitable, true);
+	assert.ok(verdict.order >= 2);
+	// the small-angle solve of the same curvature misses the ramp by more
+	const linear = cantFromCurvature(k, g.epsilon, { count: 2001 });
+	const missLinear = Math.max(...linear.samples.map((sample) => Math.abs(sample.cant - f7(sample.u))));
+	const missExact = Math.max(...reverse.samples.map((sample) => Math.abs(sample.cant - f7(sample.u))));
+	assert.ok(missLinear > 10 * missExact, `${missLinear} against ${missExact}`);
+});
+
+test("exact expression: a steep cant angle still converges, an impossible one is refused", () => {
+	const steep = cantFromCurvature((x) => 3 * x * x - 2 * x ** 3, 0.2, { count: 401, endAngle: 0.5, offsetRatio: 0.01 });
+	assert.equal(steep.converged, true);
+	assert.throws(() => cantFromCurvature((x) => x, 0.1, { endAngle: 2 }), /endAngle/);
 });

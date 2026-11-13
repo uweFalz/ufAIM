@@ -17,7 +17,7 @@ import {
 	DEFAULT_COUPLING_ASSUMPTION,
 	assessCouplingSuitability,
 	cantFromCurvature,
-	couplingEpsilon,
+	couplingGeometry,
 	curvatureFromCant,
 } from "./cantCurvatureCoupling.js";
 
@@ -306,15 +306,22 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 
 	function couplingOf(preset, quantity, { assumption = null, epsilon = null, count = 201, tolerance, requiredOrder } = {}) {
 		const usedAssumption = { ...DEFAULT_COUPLING_ASSUMPTION, ...(assumption ?? {}) };
-		const eps = epsilon == null ? couplingEpsilon(usedAssumption) : Number(epsilon);
+		// From an assumption: the exact expression. An epsilon alone carries no
+		// angle and no offset, so it means the small-angle form.
+		const geometry = epsilon == null ? couplingGeometry(usedAssumption) : { epsilon: Number(epsilon), endAngle: 0, offsetRatio: 0 };
+		const shape = { count, endAngle: geometry.endAngle, offsetRatio: geometry.offsetRatio };
 		const result = quantity === "cant"
-			? curvatureFromCant({ cant: preset.kappa, cant1: preset.kappa1, cant2: preset.kappa2 }, eps, { count })
-			: cantFromCurvature(preset.kappa, eps, { count });
+			? curvatureFromCant({ cant: preset.kappa, cant1: preset.kappa1, cant2: preset.kappa2 }, geometry.epsilon, shape)
+			: cantFromCurvature(preset.kappa, geometry.epsilon, shape);
 		const curvatures = result.samples.map((sample) => sample.curvature);
 		return {
 			given: quantity,
 			derived: quantity === "cant" ? "curvature" : "cant",
 			epsilon: result.epsilon,
+			exact: result.exact,
+			endAngle: geometry.endAngle,
+			offsetRatio: geometry.offsetRatio,
+			converged: result.converged !== false,
 			assumption: epsilon == null ? usedAssumption : null,
 			samples: result.samples,
 			endSlopes: result.endSlopes,

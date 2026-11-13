@@ -8,7 +8,9 @@ Ordered by Uwe ("schreib Rock die Übergabe für die Übernahme nach /AIM").
 
 TransEd playground with modes 0, 1, 2, the root artifact `transed.html`, the
 Klauder generator, the reading of halfWaves as cant, curve names that
-follow the reading, and the suitability check on f′, f″, f‴ at the ramp ends. Reports:
+follow the reading, the suitability check on f′, f″, f‴ at the ramp ends, and
+(2026-11-13) the coupling model confirmed by Uwe and computed with the exact
+expression. Reports:
 `docs/app/architecture/MISSION_REPORT_TRANSED_PLAYGROUND_FINAL_002.md` and
 `docs/app/architecture/MISSION_REPORT_TRANSED_KLAUDER_GENERATOR_003.md`
 (both `review-required`).
@@ -19,20 +21,24 @@ follow the reading, and the suitability check on f′, f″, f‴ at the ramp en
   `claude/transed-playground`, clean.
 - Commits on top of `ec1e6d3`, oldest first: `97c13e1`, `907b066`, `4a5a043`,
   `1b699ed`, `16a7199`, `f989b8f`, `bf6f04f`, `5661cb5`, `8633e6b`, `732af63`,
-  `8e7df90`, `5fa7d36`, `3193313`, `c364793`, `d6f3fb1`, `c370c85`, plus the
-  commit that brings this file to its present state.
+  `8e7df90`, `5fa7d36`, `3193313`, `c364793`, `d6f3fb1`, `c370c85`, `03a9a97`,
+  `47e8055`, plus the commit of 2026-11-13 with the exact expression, which
+  also brings this file to its present state.
 - On Uwe's order the branch is pushed to `origin` and pull request
   https://github.com/uweFalz/ufAIM/pull/122 against `main` is open. Take the
-  tip of `origin/claude/transed-playground`. I have no order to merge or to
+  tip of `origin/claude/transed-playground`. The commit of 2026-11-13 is local
+  until Uwe orders its push; `origin` then still ends at `47e8055` with source
+  `f606c6956d3e`. I have no order to merge or to
   clean up, and each further push needs Uwe's word.
 
 ## 3. The files
 
 18 files outside `docs/`, with SHA-256 in
-`docs/app/architecture/evidence/TRANSED_SMOOTHNESS_20261112/takeover-sha256.txt`
-(check with `shasum -a 256 -c` from the worktree root). The list in
-`evidence/TRANSED_LABELS_20261112/` with 16 files is superseded: the sharpened
-suitability check added `cantCurvatureCoupling.js` and its test.
+`docs/app/architecture/evidence/TRANSED_EXACT_20261113/takeover-sha256.txt`
+(check with `shasum -a 256 -c` from the worktree root). The lists in
+`evidence/TRANSED_LABELS_20261112/` (16 files) and
+`evidence/TRANSED_SMOOTHNESS_20261112/` (18 files, before the exact expression)
+are superseded.
 
 - New relative to `origin/main`: `transed.html`,
   `src/services/transition-library/klauderFamily.js`,
@@ -53,7 +59,8 @@ suitability check added `cantCurvatureCoupling.js` and its test.
   `TRANSED_SCHWERPUNKT_KOPPLUNG_HERLEITUNG_2026-11-11.md`, this file, and the
   evidence folders `evidence/TRANSED_PLAYGROUND_FINAL_20261110/`,
   `evidence/TRANSED_KLAUDER_20261111/`, `evidence/TRANSED_HASSLINGER_20261111/`,
-  `evidence/TRANSED_LABELS_20261112/`, `evidence/TRANSED_SMOOTHNESS_20261112/`. The older `handover-sha256.txt` files in
+  `evidence/TRANSED_LABELS_20261112/`, `evidence/TRANSED_SMOOTHNESS_20261112/`,
+  `evidence/TRANSED_EXACT_20261113/`. The older `handover-sha256.txt` files in
   the first three folders are superseded.
 
 ## 4. State of `/AIM` as I found it (read-only, 2026-11-13)
@@ -87,10 +94,10 @@ The other 16 files are mine alone and can be taken byte-identically.
 Run in `/AIM`:
 
 - `node --test test/services/transition-library/*.test.mjs test/transed/*.test.mjs`
-  — 41 of 41 pass in the worktree.
-- `npm run bundle:transed:check` — must report source `f606c6956d3e`;
+  — 46 of 46 pass in the worktree.
+- `npm run bundle:transed:check` — must report source `30946d8eb748`;
   `transed.html` SHA-256
-  `c90f4b1ce575a2213eb933e69a507707ca1a92b0e038f14e3a4e4a64012a8054`. If
+  `0a23fbeae3a6d79f35e2aceebedf0ef300addfaa09eac8b24dd5eacef1aa9b99`. If
   `tools/transed/bundle.mjs` or a source differs, the hash differs: then
   `npm run bundle:transed` and report the new one.
 - `npm run bundle` once and `npm run bundle:check`: the AXTRAN2 source manifest
@@ -109,6 +116,8 @@ Run in `/AIM`:
   same environment (missing untracked modules, `test/samples/`, `rg`, and eight
   assertion failures in app, aim-core and AXTRAN2 tests). List:
   `docs/app/architecture/evidence/TRANSED_LABELS_20261112/full-suite-result.txt`.
+- After the exact expression (2026-11-13) only the 46 TransEd and library tests
+  and the visible journey ran; the full suite was not repeated.
 - Inside `/AIM` only the seven test files with assertion failures ran
   (2026-11-12, HEAD `b629df0` plus the uncommitted work of other streams,
   read-only): of the eight assertion failures seven fail there as well, one
@@ -117,11 +126,13 @@ Run in `/AIM`:
 
 ## 8. Open, not part of the takeover
 
-- Uwe has not confirmed the coupling model ("Noch nicht"). The page shows the
-  reservation "Modellvorbehalt"; it stays until he confirms. Section 9 of the
-  note lists his open points.
+- Uwe confirmed the coupling model on 2026-11-13 and decided: the exact
+  expression (κ + d″)/(1 − κd) with d = h·sin ψ, h 1.8 m editable, f″ = 0 at
+  the ramp ends is enough. The page no longer shows "Modellvorbehalt". Section 9
+  of the note records the decisions. Still my assumptions: the limits of the
+  check and ψ_E = arcsin(cant / rail base).
 - Not ordered: replacing the seven built-in Klauder records, wiring the library
-  into the app shell, a sharper suitability check.
+  into the app shell.
 - `src/domain/transition/transitionLookup.json`, `src/aim-core/**` and
   `docs/knowledgeKernel/` are untouched.
 

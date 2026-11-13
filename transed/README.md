@@ -29,13 +29,17 @@ A page of its own for the transitionDB, independent of the app shell.
   is how the built-in `vienna` entries, which are Hasslinger's cant functions
   (AT 412 975 B), show their swerving curvature.
   The verdict on the ramp reads f′, f″ and f‴ at both ends; "Verlangte Glattheit"
-  picks the required order (default 2, the minimum of AT 412 975 B).
+  picks the required order (default 2: f″ = 0 is enough, decided by Uwe on
+  2026-11-13 and the minimum of AT 412 975 B; order 3 stays selectable).
   The pictures of modes 1 and 2 name their curves after the reading: κ, κ′, κ″
   for curvature, ψ, ψ′, ψ″ for cant (`plotSeries`).
 
-The coupling of curvature and cant shown in mode 2 is a reduced
-reference-point model. Its sign convention and small-angle approximation are
-not yet confirmed; its results are candidates.
+The coupling of curvature and cant shown in mode 2 is a reference-point model,
+confirmed by Uwe on 2026-11-13. The page computes the exact expression
+κ_ref = (κ + d″)/(1 − κd) with d = h·sin ψ and sin ψ_E = cant / rail base
+(`couplingGeometry`); only the square of the offset slope d′ is left out. The
+small-angle form k = f − ε²·f″ remains in the module for a bare ε. Reference
+height h defaults to 1.8 m and is editable. It is no vehicle model.
 
 ## Served and single file
 

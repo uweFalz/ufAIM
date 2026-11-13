@@ -176,7 +176,8 @@ function render() {
 		`<span><b style="color:#0F9D94">Krümmung</b> ${formatRange(c.curvatureRange)}</span>`,
 		`<span><b style="color:#C8572A">Überhöhung</b> Steigung am Anfang ${c.endSlopes.start.toFixed(3)}, am Ende ${c.endSlopes.end.toFixed(3)}</span>`,
 		...c.suitability.checks.slice(1).map((check) => `<span data-check="${check.order}" data-ok="${check.ok}">${DERIVATIVE_NAMES[check.order]} am Anfang ${endValue(check.start)}, am Ende ${endValue(check.end)} (Grenze ${endValue(check.limit)})</span>`),
-		`<span>ε = ${c.epsilon.toFixed(3)}</span>`,
+		`<span data-exact="${c.exact}">ε = ${c.epsilon.toFixed(3)}, ψ_E = ${c.endAngle.toFixed(4)}, h/R = ${c.offsetRatio.toFixed(5)} · ${c.exact ? "genauer Ausdruck" : "Kleinwinkelform"}</span>`,
+		...(c.converged ? [] : [`<span data-converged="false"><b>Die Rechnung ist nicht eingeschwungen.</b> Die Rampe ist für diese Werte nicht verlässlich.</span>`]),
 	].join("");
 }
 
