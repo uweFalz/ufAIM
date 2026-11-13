@@ -1193,7 +1193,7 @@
 			.row-suggestion { flex-wrap: wrap; }
 			.row-suggestion > span { flex: 1 1 8rem; min-width: 0; }
 			.row-suggestion select { flex: 1 1 6rem; min-width: 0; max-width: 100%; font: inherit; padding: 0.1rem 0.3rem; border: 1px solid var(--hairline); border-radius: calc(var(--r) - 0.15rem); background: var(--button); color: inherit; }
-			.row-suggestion select.linienwahl { flex: 0 1 11rem; }
+			.row-suggestion select.linienwahl { width: auto; max-width: 100%; margin: 0; padding: 0 0.1rem; border: 0; border-bottom: 1px dotted currentColor; border-radius: 0; background: transparent; color: inherit; text-overflow: ellipsis; cursor: pointer; }
 			/* The pile in Bündel: one closed row per Bündel, its Gleise inside. */
 			.pile-bundle { border-bottom: 1px solid var(--hairline); }
 			.pile-bundle > summary { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-2); padding: var(--sp-2) var(--sp-3); cursor: pointer; list-style: none; font: 600 var(--fs-2)/1.3 system-ui, sans-serif; background: color-mix(in srgb, Canvas 96%, CanvasText); }

@@ -12,8 +12,8 @@ const begin = html.indexOf("// BEGIN LAGE WITNESS");
 const end = html.indexOf("// END LAGE WITNESS");
 assert.ok(begin > 0 && end > begin, "witness block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageGanzDaneben, lageAbstandOf, lageAbstandReihe, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
-const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageGanzDaneben, lageAbstandOf, lageAbstandReihe, sideGradeOf } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageGanzDaneben, lageLinienwahl, lageAbstandOf, lageAbstandReihe, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
+const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageGanzDaneben, lageLinienwahl, lageAbstandOf, lageAbstandReihe, sideGradeOf } = context.api;
 
 // A line along the easting axis, one point every `step` metres. `offset`
 // shifts it to the left (+) or right (-) of that direction; `reverse`
@@ -209,5 +209,42 @@ test("beside the nearest line in part, beside another from end to end: the other
 	assert.equal(lageGanzDaneben(witness(gleis, [axis("5634", { offset: -2 }), whole])), null);
 	assert.equal(lageGanzDaneben(witness(gleis, [near])), null);
 	assert.equal(lageGanzDaneben(witness(gleis, [])), null);
+	// One sample past the line's end is the grain of the measure, not a doubt.
+	const almost = witness(gleis, [axis("5632", { from: 0, to: 570, offset: -2 }), whole]);
+	assert.equal(almost.route, "5632");
+	assert.equal(almost.samples - almost.hits, 1);
+	assert.equal(almost.weitere[0].route, "5500");
+	assert.equal(lageGanzDaneben(almost), null);
 	assert.equal(lageGanzDaneben(null), null);
+});
+
+test("the choice of line: one per Strecke, the doubt only between Strecken", () => {
+	const plain = (value) => JSON.parse(JSON.stringify(value));
+	const gleis = line({ from: 200, to: 600 });
+	const near = axis("5634", { from: 0, to: 470, offset: -2 });
+	const whole = axis("5500", { from: 0, to: 1000, offset: -20 });
+	const far = axis("5632", { from: 0, to: 1000, offset: -40 });
+	const wahl = plain(lageLinienwahl(witness(gleis, [near, whole, far])));
+	assert.deepEqual(wahl.linien.map((linie) => linie.route), ["5634", "5500", "5632"]);
+	assert.equal(wahl.naechste, "5634");
+	assert.equal(wahl.zweifel, true);
+	assert.equal(wahl.ganz, "5500");
+	// Beside both from end to end: a choice, no doubt.
+	const quiet = plain(lageLinienwahl(witness(gleis, [axis("5634", { offset: -2 }), whole])));
+	assert.deepEqual(quiet.linien.map((linie) => linie.route), ["5634", "5500"]);
+	assert.equal(quiet.zweifel, false);
+	assert.equal(quiet.ganz, null);
+	// Two lines of one Strecke are no choice; with a third of another Strecke one of them stays.
+	const strecke = (route) => route.slice(0, 4);
+	assert.equal(lageLinienwahl(witness(gleis, [axis("5810S", { offset: -2 }), axis("5810R", { offset: -6 })]), strecke), null);
+	assert.deepEqual(plain(lageLinienwahl(witness(gleis, [axis("5810S", { offset: -2 }), axis("5810R", { offset: -6 }), whole]), strecke)).linien.map((linie) => linie.route), ["5810S", "5500"]);
+	// The nearest piece covers part, another piece of the same Strecke all of it: no doubt about the Strecke.
+	const pieces = plain(lageLinienwahl(witness(gleis, [axis("6100_a", { from: 0, to: 470, offset: -2 }), axis("6100_b", { from: 300, to: 1000, offset: -2 }), axis("6100_c", { offset: -3 }), whole]), strecke));
+	assert.equal(pieces.zweifel, false);
+	assert.deepEqual(pieces.linien.map((linie) => linie.route), ["6100_a", "5500"]);
+	// One line, the Gleis's own line, no line: nothing to choose.
+	assert.equal(lageLinienwahl(witness(gleis, [near])), null);
+	assert.equal(lageLinienwahl(witness(gleis, [near, whole], "5500")), null);
+	assert.equal(lageLinienwahl(witness(gleis, [])), null);
+	assert.equal(lageLinienwahl(null), null);
 });

@@ -2,7 +2,7 @@
   "version": 1,
   "inputs": {
     "viewer/index.html.in": "86f3f78d73773ddb2e9320fee2ec5203882c05896343e0236b9618578198af3f",
-    "viewer/src/viewer.css": "2ae2b0b1ffbe9a6bca5798e314d1901457a35043aa1af4236012b139602f98e8",
+    "viewer/src/viewer.css": "45b96e8b95031df2dc267a77755beafc9ce4609d71a718d15201e82f767557a7",
     "viewer/vendor/maplibre.css": "415e1f53a6d25857a851ab4fe0e836075c22bef142748bc2898ec824fc35f7ea",
     "viewer/src/insecure-context-shim.js": "1d6dfb47bdbd3233914496efc64797567aaa28f2db4f376c98efbe8e569de399",
     "viewer/vendor/maplibre.js": "3ccfa3b6cbb8676a9cec25b1b1ee127b325f4a9117dbe8e7379ec36160c9f300",
@@ -10,12 +10,12 @@
     "src/import/parsers/technet/gndEdit/gnd/extractGndDbb.js": "09456939572804c2be768107c06153d08baac40e4b5795613f1361c5fe3f4414",
     "src/import/parsers/technet/gndEdit/parseGND_DBB.js": "17268b27bdf84014c35aaf82fdfdda95411a69e143f24e2ab4fbce281132d4bb",
     "viewer/src/import-legacy.js.in": "ba17f307e342cc05de3f52ce526f175171c755da802dbdd2bd242c6aff4e9def",
-    "viewer/src/viewer.js": "78ab630b81083632e2d3c0c2fbb3c067da4d7bfa5617d7e43f4e30585289b2d8",
+    "viewer/src/viewer.js": "493f65f2f22f57a337e5f0e22aa88286b15ce5e48af3785facd1864678947531",
     "tools/build-technet-viewer.mjs": "d6b125e678f436868c342ab964691e060ee293a4fb1042aced4c47e7ba35f490",
     "tools/technet-shared-blocks.mjs": "7a63a9aab48fa95e5b458d506dea82c232a91e6466b76f5f82bbe260211eec5d"
   },
   "output": {
     "path": "technetViewer.html",
-    "sha256": "7e767101c9cda67dd1445745dd70ce2a8464c7ccbb4348e28b8530776f11af81"
+    "sha256": "24ae728d67de9fe5d6802de24fd967bf78d277aa3235d0148bad0977bbcd7195"
   }
 }
