@@ -116,8 +116,8 @@ Run in `/AIM`:
   same environment (missing untracked modules, `test/samples/`, `rg`, and eight
   assertion failures in app, aim-core and AXTRAN2 tests). List:
   `docs/app/architecture/evidence/TRANSED_LABELS_20261112/full-suite-result.txt`.
-- After the exact expression (2026-11-13) only the 46 TransEd and library tests
-  and the visible journey ran; the full suite was not repeated.
+- After the exact expression the full suite was repeated at `1c54e04`: 2412
+  tests, 30 failures, the same names again, none in TransEd.
 - Inside `/AIM` only the seven test files with assertion failures ran
   (2026-11-12, HEAD `b629df0` plus the uncommitted work of other streams,
   read-only): of the eight assertion failures seven fail there as well, one

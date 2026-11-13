@@ -58,3 +58,5 @@ Pass there (2):
 None of these tests reads a file of the TransEd takeover.
 
 Repeated on 2026-11-13 at 3193313 (after the sharpened suitability check), same command, same worktree: 2407 tests, 2352 pass, 30 fail, 24 skipped, 1 todo. The failing names are identical to the list above; none is in test/services/transition-library/ or test/transed/. The three additional tests are the new ones of the suitability check and pass.
+
+Repeated on 2026-11-13 at 1c54e04 (after the exact expression of the coupling), same command, same worktree: 2412 tests, 2357 pass, 30 fail, 24 skipped, 1 todo. The failing names are identical to the list above (31 rows including the open one); none is in test/services/transition-library/ or test/transed/. The five additional tests are the new ones for the exact expression.
