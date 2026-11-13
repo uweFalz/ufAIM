@@ -88,14 +88,21 @@ are superseded.
   `package.json` and `tools/axtran2/bundle.mjs`, already equal the tip.
 - I only read in `/AIM` (one `bundle.mjs --check`, which writes nothing).
 
-## 5. Two files that must not be copied blindly
+## 5. Two files shared with your work (re-checked 2026-11-14)
 
-- `package.json`: TransEd needs only two script lines,
-  `"bundle:transed": "node tools/transed/bundle.mjs"` and
+- `package.json`: against `origin/main` (`f4c7dfc`) the branch changes the
+  scripts only. `origin/main` already has
+  `"bundle:transed": "node tools/transed/bundle.mjs"`; the branch adds
+  `"bundle:check": "node tools/axtran2/bundle.mjs --check"` and
   `"bundle:transed:check": "node tools/transed/bundle.mjs --check"`.
 - `tools/axtran2/bundle.mjs`: my version adds the root output, the source
-  manifest and `--check`, written after yours. Yours in `/AIM` is the
-  reference; keep it and drop mine if they disagree.
+  manifest and `--check` (17 lines added, 8 removed against `origin/main`).
+
+Both files in the `/AIM` checkout now equal the branch tip byte for byte, and
+neither changed on `origin/main` since `ec1e6d3`. So there is no second version
+in `/AIM` to weigh against mine any more. If you change either file before the
+takeover, yours is the reference: keep it and carry over only the script lines
+above.
 
 The other 16 files are mine alone and can be taken byte-identically.
 
