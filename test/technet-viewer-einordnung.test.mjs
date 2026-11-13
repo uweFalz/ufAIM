@@ -544,6 +544,12 @@ test("delivered stations are the Strecke's km only where the Lage agrees", () =>
 	assert.equal(einordnungStationenGelten({ from: 73860, to: 82400 }, { from: 73860, to: 82361 }), true);
 	assert.equal(einordnungStationenGelten({ from: 73860, to: 82400 }, { from: 73860, to: 82361 }, 20), false);
 	// nothing to measure against: the numbers stand
+	// Both ends off by the same little: the Gleis counts for itself (metroB Ka_NCH_Gl11).
+	assert.equal(einordnungStationenGelten({ from: 0, to: 468.7 }, { from: 34, to: 504 }), false);
+	// One end to the metre, the other within the slack: real km reaching past the line.
+	assert.equal(einordnungStationenGelten({ from: 1000, to: 1540 }, { from: 1001.5, to: 1500 }), true);
+	assert.equal(einordnungStationenGelten({ from: 1000, to: 1540 }, { from: 1003, to: 1500 }), false);
+	assert.equal(einordnungStationenGelten({ from: 1000, to: 1540 }, { from: 1003, to: 1500 }, 50, 5), true);
 	assert.equal(einordnungStationenGelten({ from: 0, to: 88 }, null), true);
 	assert.equal(BEZUGSLINIE_STATION_TOLERANZ_M, 50);
 });

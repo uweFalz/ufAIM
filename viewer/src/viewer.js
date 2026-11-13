@@ -2507,11 +2507,20 @@ xlsx/xlsx.mjs:
 			// numbers alone (Landshut W403-404: 0-88 m, on 5632 at km 0,993-1,081).
 			// Measured: real km agree to the metre, file-local stations miss by
 			// 80 m and more; the tolerance is the slack a Gleis may reach beyond
-			// its line.
+			// its line. That slack is for one end: where both ends miss, the
+			// Gleis counts for itself, however little it misses by (metroB
+			// Ka_NCH_Gl11 counts from 0 and lies at km 0,034 to 0,504 of 5810:
+			// 34 and 35 m off, inside the tolerance, and its stations stood as
+			// km). So one end at least has to agree to the metre. Measured over
+			// seven deliveries: the five Gleise with real km agree within 1 m at
+			// both ends, the sixth is that one.
 			const BEZUGSLINIE_STATION_TOLERANZ_M = 50;
-			function einordnungStationenGelten(delivered, projected, tolerance = BEZUGSLINIE_STATION_TOLERANZ_M) {
+			const BEZUGSLINIE_STATION_GENAU_M = 2;
+			function einordnungStationenGelten(delivered, projected, tolerance = BEZUGSLINIE_STATION_TOLERANZ_M, genau = BEZUGSLINIE_STATION_GENAU_M) {
 				if (!delivered || !projected) return true;
-				return Math.abs(delivered.from - projected.from) <= tolerance && Math.abs(delivered.to - projected.to) <= tolerance;
+				const from = Math.abs(delivered.from - projected.from);
+				const to = Math.abs(delivered.to - projected.to);
+				return from <= tolerance && to <= tolerance && Math.min(from, to) <= genau;
 			}
 			// How the station runs along one element of a Trasse: up by its
 			// length, or down to its km end where the Gleis is laid against the
