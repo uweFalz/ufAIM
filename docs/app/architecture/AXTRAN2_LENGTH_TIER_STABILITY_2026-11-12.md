@@ -163,17 +163,80 @@ Ein Lauf über alle 266 Trassen mit dem Endstand
 dem Lauf von origin/main vom 11. November – beides Einzelläufe, also je
 eine Stichprobe.
 
-Stand beim Schreiben: 253 von 266 Trassen gerechnet (alle bis 119
-Elemente). **252 mit Urteil gegen 238**; vierzehn gewonnen (Plätze 170
-bis 219, alle im alten Lauf `infeasible_subproblem` oder
-`restoration_failed` in der Längenstufe), keine verloren; die eine ohne
-Urteil ist in beiden Läufen dieselbe (Platz 213). Schritte über alle
-Phasen 29 513 gegen 36 105. Was die Punkte in Länge kosten, ändert sich
-auf den 239 Trassen mit Urteil in beiden Läufen um höchstens 3 cm, im
-Median nicht.
+| Elemente | Trassen | mit Urteil alt | neu | Schritte der Längenstufe alt | neu |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 3–7 | 130 | 130 | 130 | 1 735 | 1 664 |
+| 7–33 | 92 | 77 | 91 | 17 789 | 13 658 |
+| 33–119 | 31 | 31 | 31 | 6 657 | 4 267 |
+| 146–238 | 13 | 12 | 9 | 6 428 | 5 892 |
+| zusammen | 266 | 250 | 261 | 32 609 | 25 481 |
 
-Die dreizehn größten Trassen (146–238 Elemente) rechnen noch; ihr
-Ergebnis wird hier nachgetragen.
+**Bis 119 Elemente** (253 Trassen): 252 mit Urteil gegen 238; vierzehn
+gewonnen (Plätze 170 bis 219, alle im alten Lauf `infeasible_subproblem`
+oder `restoration_failed` in der Längenstufe), keine verloren; die eine
+ohne Urteil ist in beiden Läufen dieselbe (Platz 213). Schritte über alle
+Phasen 29 513 gegen 36 105.
+
+**Die großen Trassen** (Plätze 253 bis 265, 146–238 Elemente) zeigen ein
+anderes Bild:
+
+- Plätze 253 bis 261 (146–164 Elemente): alle neun mit Urteil wie zuvor,
+  sieben davon mit weniger Schritten in der Längenstufe, zwei mit mehr.
+- Platz 262 (237 Elemente): alt mit Urteil (`stationary` nach 725
+  Schritten), neu ohne Längenbudget – `restoration_failed` nach 647.
+- Platz 263 (238 Elemente): alt mit Urteil (`stationary` nach 914), neu
+  ohne Längenbudget – die Längenstufe läuft in die Grenze von 1 000
+  Schritten.
+- Platz 264 (238 Elemente): in beiden Läufen ohne Urteil
+  (`restoration_failed` in der Längenstufe, alt nach 741, neu nach 474
+  Schritten).
+- Platz 265 (238 Elemente): dieselbe Trasse wie Platz 263 aus einer
+  zweiten Lieferung – beide Läufe enden dort bis auf die letzte Stelle
+  wie auf Platz 263, also alt mit Urteil, neu ohne. Als eigene
+  Stichprobe zählt sie nicht.
+
+Zwei der drei verschiedenen größten Trassen verlieren also im
+Einzellauf ihr Urteil. Ob das Rauschen ist oder an den Änderungen liegt,
+sagt ein Einzellauf nicht (Abschnitt 1): die Plätze 262 und 263 sind
+darum je zweimal mit dem neuen und dem alten Stand wiederholt, die
+Toleranz um 10 pm gestört (0,15 m ± 10 pm).
+
+Platz 262, drei Rechnungen je Stand (Einzellauf und zwei Wiederholungen):
+
+| Toleranz | alt | neu |
+| --- | --- | --- |
+| 0,15 m (Einzellauf) | Urteil, `stationary` nach 725 | ohne Längenbudget, `restoration_failed` nach 647 |
+| + 10 pm | Urteil, `stationary` nach 694 | Urteil, `stationary` nach 628 |
+| − 10 pm | Urteil, `stationary` nach 617 | ohne Längenbudget, `line_search_failed` nach 575 |
+| mit Urteil | 3 von 3 | 1 von 3 |
+
+Platz 263, ebenso:
+
+| Toleranz | alt | neu |
+| --- | --- | --- |
+| 0,15 m (Einzellauf) | Urteil, `stationary` nach 914 | ohne Längenbudget, Grenze von 1 000 Schritten |
+| + 10 pm | Urteil, `stationary` nach 664 | ohne Urteil, `restoration_failed` nach 320 |
+| − 10 pm | Urteil, `stationary` nach 701 | Urteil, `stationary` nach 868 |
+| mit Urteil | 3 von 3 | 1 von 3 |
+
+Beide Trassen zeigen dasselbe: der alte Stand endet in allen sechs
+Rechnungen mit Urteil, der neue in zwei von sechs, und seine vier
+Abbrüche sind drei verschiedene (`restoration_failed` zweimal,
+`line_search_failed`, Schrittgrenze). Wären beide Stände gleich gut,
+käme ein so deutlicher Unterschied nur in etwa 3 % der Fälle zustande
+(exakter Test nach Fisher, einseitig). Wo beide Stände ein Urteil haben, ist es dasselbe
+(Platz 262 bei + 10 pm: Länge kostet 4,98 m, Restfehler 0,151 m; Platz
+263 bei − 10 pm: 4,95 m, 0,190 m).
+
+Damit gilt für den Endstand: er macht die Längenstufe auf den
+Bahnhofsgleisen verlässlich (Abschnitt 5, sechsfach gerechnet) und verliert bis
+164 Elemente kein Urteil, auf den Trassen mit 237 und 238
+Elementen aber unzuverlässiger als zuvor. Welche der vier Änderungen das
+bewirkt, ist nicht untersucht.
+
+Über alle 266: 261 mit Urteil gegen 250, Schritte über alle Phasen 40 912
+gegen 48 040. Was die Punkte in Länge kosten, ändert sich auf den 247
+Trassen mit Urteil in beiden Läufen um höchstens 3 cm, im Median nicht.
 
 ## 7. Tests
 
@@ -209,6 +272,11 @@ ohne die Änderung (App-Seite).
   Wiederherstellung, bei der der Auswerter eine Schranke nennt; das ist
   nur die exakte Form der Rampenregel.
 - **Platz 213** und die Frage, warum die Region dort zusammenfällt.
+- **Die größten Trassen** (237 und 238 Elemente): der Endstand verliert
+  dort Urteile – in der Wiederholung 2 von 6 gegen 6 von 6 mit Urteil
+  (Abschnitt 6); eine dritte Trasse hat in beiden Ständen keines. Welche
+  der vier Änderungen das bewirkt und ob sie sich für diese Größe
+  zurücknehmen oder nachbessern lässt, ist offen und zu entscheiden.
 
 ## 9. Nachrechnen
 
