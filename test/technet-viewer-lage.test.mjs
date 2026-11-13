@@ -12,8 +12,8 @@ const begin = html.indexOf("// BEGIN LAGE WITNESS");
 const end = html.indexOf("// END LAGE WITNESS");
 assert.ok(begin > 0 && end > begin, "witness block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, lageAbstandReihe, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
-const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageAbstandOf, lageAbstandReihe, sideGradeOf } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageGanzDaneben, lageAbstandOf, lageAbstandReihe, sideGradeOf };`, { filename: "lage-witness.js" }).runInContext(context);
+const { lageBounds, lageOffset, lageGrid, lageWitnessOf, lageGanzDaneben, lageAbstandOf, lageAbstandReihe, sideGradeOf } = context.api;
 
 // A line along the easting axis, one point every `step` metres. `offset`
 // shifts it to the left (+) or right (-) of that direction; `reverse`
@@ -187,4 +187,27 @@ test("a Gleis beside a Trasse as a line over the Trasse's stations: side, distan
 	assert.equal(reihe(line({ from: 1200, to: 1400, offset: 4 })).length, 0);
 	assert.equal(lageAbstandReihe(line(), null).length, 0);
 	assert.equal(lageAbstandReihe([{ easting: 0, northing: 0, station: 0 }], { polyline: strecke }).length, 0);
+});
+
+test("beside the nearest line in part, beside another from end to end: the other is named", () => {
+	const gleis = line({ from: 200, to: 600 });
+	const near = axis("5634", { from: 0, to: 470, offset: -2 });
+	const whole = axis("5500", { from: 0, to: 1000, offset: -20 });
+	const lage = witness(gleis, [near, whole]);
+	assert.equal(lage.route, "5634");
+	assert.ok(lage.hits < lage.samples && lage.hits >= 0.6 * lage.samples);
+	assert.equal(lage.eigen, false);
+	assert.deepEqual(lage.weitere.map((linie) => [linie.route, linie.hits === lage.samples, Math.round(linie.median)]), [["5500", true, 20]]);
+	assert.equal(lageGanzDaneben(lage).route, "5500");
+	// Picked, the other line stands as the Gleis's own: nothing is in doubt.
+	const picked = witness(gleis, [near, whole], "5500");
+	assert.equal(picked.route, "5500");
+	assert.equal(picked.eigen, true);
+	assert.equal(picked.hits, picked.samples);
+	assert.equal(lageGanzDaneben(picked), null);
+	// Beside both from end to end, or beside the nearest alone: no doubt.
+	assert.equal(lageGanzDaneben(witness(gleis, [axis("5634", { offset: -2 }), whole])), null);
+	assert.equal(lageGanzDaneben(witness(gleis, [near])), null);
+	assert.equal(lageGanzDaneben(witness(gleis, [])), null);
+	assert.equal(lageGanzDaneben(null), null);
 });

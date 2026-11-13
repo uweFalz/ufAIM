@@ -1613,10 +1613,12 @@ xlsx/xlsx.mjs:
 				}
 				const needed = Math.ceil(samples * LAGE_MIN_COVERAGE);
 				let chosen = null;
+				const candidates = [];
 				for (const [route, hits] of byRoute) {
 					if (hits.length < needed) continue;
 					const distances = hits.map((hit) => hit.distance).sort((a, b) => a - b);
 					const candidate = { route, hits, median: distances[Math.floor(distances.length / 2)], min: distances[0], max: distances[distances.length - 1] };
+					candidates.push(candidate);
 					const preferred = Boolean(preferredRoute) && route === preferredRoute;
 					const chosenPreferred = Boolean(preferredRoute) && chosen?.route === preferredRoute;
 					if (!chosen || (preferred && !chosenPreferred) || (preferred === chosenPreferred && candidate.median < chosen.median)) chosen = candidate;
@@ -1643,7 +1645,26 @@ xlsx/xlsx.mjs:
 					max: chosen.max,
 					stationFrom: Math.min(...stations),
 					stationTo: Math.max(...stations),
+					// eigen: the line is the Gleis's own route, not the nearest by
+					// measure. weitere: the other Kilometerlinien it lies beside, the
+					// fullest first, then the nearest.
+					eigen: Boolean(preferredRoute) && chosen.route === preferredRoute,
+					weitere: candidates.filter((candidate) => candidate !== chosen)
+						.sort((a, b) => b.hits.length - a.hits.length || a.median - b.median)
+						.map((candidate) => ({ route: candidate.route, hits: candidate.hits.length, median: candidate.median })),
 				};
+			}
+			// The nearest Kilometerlinie is the proposal; it is in doubt where the
+			// Gleis lies beside it only in part and beside another from end to
+			// end (Landshut Gls401v: 12 of 19 samples at 9 m beside 5634, all 19
+			// at 27 m beside 5500). That other line, the nearest of them; null
+			// where the line is the Gleis's own or covers it entirely. Measured
+			// over nine deliveries a rule "entire beats part" would move ten
+			// Gleise, among them one that lies 96 % at 11 m beside its line: so
+			// this names the other line and leaves the choice to the user.
+			function lageGanzDaneben(lage) {
+				if (!lage || !lage.route || lage.eigen || !(lage.hits < lage.samples)) return null;
+				return (lage.weitere ?? []).filter((candidate) => candidate.hits === lage.samples).sort((a, b) => a.median - b.median)[0] ?? null;
 			}
 			// How far one line runs from another: the distances of its samples
 			// that find the other within reach, away from the other's ends.
@@ -1706,7 +1727,7 @@ xlsx/xlsx.mjs:
 				if (lageKeyMemo == null) {
 					lageKeyMemo = allViewerEntries()
 						.filter((entry) => entry.item.kind === "alignment")
-						.map((entry) => `${entry.item.id}:${effectiveLsys(entry) || ""}:${sevenLineSide(entry) === "kilometer" ? "km" : ""}`)
+						.map((entry) => `${entry.item.id}:${effectiveLsys(entry) || ""}:${sevenLineSide(entry) === "kilometer" ? "km" : ""}:${routeForEntry(entry)}`)
 						.join("|");
 					queueMicrotask(() => { lageKeyMemo = null; });
 				}
@@ -1733,6 +1754,30 @@ xlsx/xlsx.mjs:
 					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, routeForEntry(entry)) : { verdict: "none", samples: 0 });
 				}
 				return state.byEntry.get(entry);
+			}
+			// The Kilometerlinie the user picked for a Gleis's Sortiervorschlag
+			// instead of the nearest one (entry -> route). A choice inside the
+			// proposal: nothing is assigned until the user takes it over.
+			const vorschlagLinie = new Map();
+			// Where a proposal has that choice (lageGanzDaneben): the lines the
+			// Gleis lies beside, the nearest first, and the one that stands.
+			function vorschlagLinienwahl(entry) {
+				const lage = lageWitness(entry);
+				const ganz = lageGanzDaneben(lage);
+				if (!ganz) return null;
+				const linien = [{ route: lage.route, hits: lage.hits, median: lage.median }, ...lage.weitere];
+				const wahl = vorschlagLinie.get(entry);
+				return { linien, samples: lage.samples, naechste: lage.route, ganz: ganz.route, gewaehlt: linien.some((linie) => linie.route === wahl) ? wahl : lage.route };
+			}
+			// The witness the proposal goes by: beside the line the user picked,
+			// otherwise the nearest.
+			function lageWitnessVorschlag(entry) {
+				const lage = lageWitness(entry);
+				const wahl = vorschlagLinienwahl(entry);
+				if (!wahl || wahl.gewaehlt === wahl.naechste) return lage;
+				const lsys = effectiveLsys(entry) || "";
+				const axes = lageState().axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
+				return lageWitnessOf(referenceStationPolyline(entry, 10), axes, wahl.gewaehlt) ?? lage;
 			}
 			// The Gleisseite of an object with its witnesses; a Gradiente or
 			// Überhöhung speaks through its Gleis. null for a Kilometerlinie.
@@ -3178,7 +3223,7 @@ xlsx/xlsx.mjs:
 					const declared = declaredSide(entry).side;
 					const nameSide = entry.parser === "vermEsn" ? seite[einordnungNamensteile(entry.loaded?.fileName ?? "").side] ?? null : null;
 					const isKilometer = declared === "kilometer" || (declared === "unknown" && nameSide === "kilometer");
-					const lage = isKilometer ? null : lageWitness(entry);
+					const lage = isKilometer ? null : lageWitnessVorschlag(entry);
 					return {
 						key: einordnungKey(entry), declared, nameSide,
 						verdict: isKilometer ? "self" : lage?.verdict ?? "none",
@@ -3190,7 +3235,7 @@ xlsx/xlsx.mjs:
 			const BUENDEL_SPUR = { kilometer: "curvatureKilometer", right: "curvatureRight", left: "curvatureLeft" };
 			function buendelVorschlagGrund(entry, item) {
 				if (item.side === "kilometer") return `laut ${declaredSide(entry).source ?? "Dateiname"}`;
-				const lage = lagePositionText(lageWitness(entry));
+				const lage = lagePositionText(lageWitnessVorschlag(entry));
 				return item.grund === "name" ? `Seite aus dem Namen${lage ? ` · ${lage}` : ""}`
 					: item.grund === "name+lage" ? `${lage} · der Name sagt dasselbe`
 					: lage;
@@ -9034,11 +9079,53 @@ xlsx/xlsx.mjs:
 				// alone; the Strecke is the one standing in the Bündel's line.
 				const sortier = suggestion || dependent ? null : buendelVorschlagJeEintrag.get(entry);
 				const spur = sortier ? SEVEN_LINE_GROUPS.find((group) => group.role === BUENDEL_SPUR[sortier.side]) : null;
+				// Beside the nearest Kilometerlinie only in part, beside another from
+				// end to end: both are named and the user picks; the pick changes
+				// the proposal, not the Gleis.
+				const wahl = suggestion || dependent || entry.item.kind !== "alignment" ? null : vorschlagLinienwahl(entry);
+				const linienwahl = () => {
+					const anteil = (linie) => linie.hits >= wahl.samples ? "ganz" : `${Math.round(100 * linie.hits / wahl.samples)} %`;
+					const choice = document.createElement("select");
+					choice.className = "linienwahl";
+					choice.setAttribute("aria-label", `Kilometerlinie für den Vorschlag zu ${objectListName(entry)}`);
+					choice.title = "Das Gleis liegt neben mehreren Kilometerlinien: an der nächsten nur teilweise, an einer anderen von Ende zu Ende. Vorgeschlagen ist die nächste. Die Wahl ändert den Vorschlag; zugeordnet wird erst mit dem Übernehmen.";
+					for (const linie of wahl.linien) {
+						const option = document.createElement("option");
+						option.value = linie.route;
+						option.textContent = `${linie.route} · ${anteil(linie)} · ${lageMeters(linie.median)} m`;
+						option.selected = linie.route === wahl.gewaehlt;
+						choice.append(option);
+					}
+					choice.addEventListener("click", (event) => event.stopPropagation());
+					choice.addEventListener("change", () => {
+						if (choice.value === wahl.naechste) vorschlagLinie.delete(entry);
+						else vorschlagLinie.set(entry, choice.value);
+						renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+					});
+					return choice;
+				};
+				const wahlGrund = () => {
+					const naechste = wahl.linien[0];
+					return wahl.gewaehlt === wahl.naechste
+						? ` · daran ${Math.round(100 * naechste.hits / wahl.samples)} % des Gleises, ganz an ${wahl.ganz} · Kilometerlinie:`
+						: ` · gewählt statt der nächsten (${wahl.naechste}) · Kilometerlinie:`;
+				};
+				if (wahl && !spur) {
+					// The picked line gives no side (the Gleis crosses it, lies on it):
+					// the choice stays in reach.
+					const hint = document.createElement("div");
+					hint.className = "row-suggestion row-suggestion-open";
+					const text = document.createElement("span");
+					const lage = lagePositionText(lageWitnessVorschlag(entry));
+					text.textContent = `Kein Vorschlag an dieser Kilometerlinie${lage ? `: ${lage}` : ""}${wahlGrund()}`;
+					hint.append(text, linienwahl());
+					container.append(hint);
+				}
 				if (spur) {
 					const hint = document.createElement("div");
-					hint.className = "row-suggestion";
+					hint.className = `row-suggestion${wahl ? " row-suggestion-open" : ""}`;
 					const text = document.createElement("span");
-					text.textContent = `Vorschlag: ${spur.title} · ${buendelVorschlagGrund(entry, sortier)}`;
+					text.textContent = `Vorschlag: ${spur.title} · ${buendelVorschlagGrund(entry, sortier)}${wahl ? wahlGrund() : ""}`;
 					const accept = document.createElement("button");
 					accept.type = "button";
 					accept.textContent = "Übernehmen";
@@ -9052,7 +9139,8 @@ xlsx/xlsx.mjs:
 						}
 						buendelEinsortieren([{ entry, side: sortier.side }], strecke);
 					});
-					hint.append(text, accept);
+					if (wahl) hint.append(text, linienwahl(), accept);
+					else hint.append(text, accept);
 					container.append(hint);
 				}
 			}
@@ -9109,6 +9197,10 @@ xlsx/xlsx.mjs:
 					text.append(sides
 						? ` · ${sides} ${bezug}${ziel.counts.kilometer ? `, dazu ${linien}` : ""}`
 						: ` · ${linien} laut Name`);
+					// Gleise that lie beside this line only in part and beside another
+					// from end to end: counted here, the choice stands at the Gleis.
+					const teilweise = items.filter((item) => { const wahl = vorschlagLinienwahl(item.entry); return wahl && wahl.gewaehlt === wahl.naechste; }).length;
+					if (teilweise) text.append(` · ${teilweise} davon ${teilweise === 1 ? "liegt" : "liegen"} nur teilweise daran (andere Kilometerlinie am Gleis wählbar)`);
 					accept.addEventListener("click", () => buendelEinsortieren(items, strecke()));
 					line.append(text, accept);
 					section.append(line);
