@@ -22,14 +22,13 @@ expression. Reports:
 - Commits on top of `ec1e6d3`, oldest first: `97c13e1`, `907b066`, `4a5a043`,
   `1b699ed`, `16a7199`, `f989b8f`, `bf6f04f`, `5661cb5`, `8633e6b`, `732af63`,
   `8e7df90`, `5fa7d36`, `3193313`, `c364793`, `d6f3fb1`, `c370c85`, `03a9a97`,
-  `47e8055`, plus the commit of 2026-11-13 with the exact expression, which
-  also brings this file to its present state.
+  `47e8055`, `1c54e04` (the exact expression), `103aa43`, `84031f3`, `e4873de`,
+  plus the commit that brings this file to its present state.
 - On Uwe's order the branch is pushed to `origin` and pull request
   https://github.com/uweFalz/ufAIM/pull/122 against `main` is open. Take the
-  tip of `origin/claude/transed-playground`. The commit of 2026-11-13 is local
-  until Uwe orders its push; `origin` then still ends at `47e8055` with source
-  `f606c6956d3e`. I have no order to merge or to
-  clean up, and each further push needs Uwe's word.
+  tip of `origin/claude/transed-playground`; the commits up to `e4873de` are
+  pushed, and the tip carries source `30946d8eb748`. I have no order to merge
+  or to clean up, and each further push needs Uwe's word.
 
 ## 3. The files
 
