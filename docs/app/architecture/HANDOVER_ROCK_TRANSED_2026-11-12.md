@@ -62,20 +62,31 @@ are superseded.
   `evidence/TRANSED_EXACT_20261113/`. The older `handover-sha256.txt` files in
   the first three folders are superseded.
 
-## 4. State of `/AIM` as I found it (read-only, 2026-11-13)
+## 4. State of `/AIM` as I found it (read-only, re-checked 2026-11-14)
 
-- `origin/main` is `8ff46eb`. None of the 18 files changed there since
-  `ec1e6d3`, so the branch applies onto `origin/main` without conflict.
-- The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `b1206f2`,
-  26 commits ahead of and 87 behind `origin/main`. It has no `transed/`, no
-  `tools/transed/`, no `test/transed/`, no `transed.html`.
-- `src/services/transition-library/` and `test/services/transition-library/`
-  exist there untracked. `cantCurvatureCoupling.js` and its test equal
-  `origin/main`; `createTransitionLibraryService.js`, `index.js` and
-  `transition-library-service.test.mjs` differ from both `origin/main` and this
-  branch. I did not touch them.
-- `package.json` and `tools/axtran2/bundle.mjs` in the checkout differ from
-  `origin/main` and from this branch (your bundler work).
+- `origin/main` is `f4c7dfc`. None of the 18 files changed there since
+  `ec1e6d3`, so the branch applies onto `origin/main` without conflict
+  (`git merge-tree origin/main HEAD` exits 0).
+- The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `5a809d8`,
+  30 commits ahead of and 98 behind `origin/main`.
+- All 18 files now lie in the checkout, uncommitted: `transed/`,
+  `tools/transed/`, `test/transed/`, `transed.html`,
+  `src/services/transition-library/` and `test/services/transition-library/`
+  untracked, `package.json` and `tools/axtran2/bundle.mjs` modified. No commit
+  says who put them there.
+- Every one of the 18 is byte-identical to this branch at `47e8055` (the same
+  as `3193313` for these files). `node tools/transed/bundle.mjs --check` there
+  reports source `f606c6956d3e`, up to date. That is the state **before** the
+  confirmed model and the exact expression (`1c54e04`).
+- Against the branch tip, 11 of the 18 are stale in `/AIM` and must be taken
+  again: `src/services/transition-library/cantCurvatureCoupling.js`,
+  `createTransitionLibraryService.js`, `index.js`;
+  `test/services/transition-library/cant-curvature-coupling.test.mjs`,
+  `declare-halfwave-as.test.mjs`, `transition-library-service.test.mjs`;
+  `test/transed/bundle.test.mjs`; `transed.html`, `transed/README.md`,
+  `transed/app.js`, `transed/index.html`. The other 7, among them
+  `package.json` and `tools/axtran2/bundle.mjs`, already equal the tip.
+- I only read in `/AIM` (one `bundle.mjs --check`, which writes nothing).
 
 ## 5. Two files that must not be copied blindly
 
