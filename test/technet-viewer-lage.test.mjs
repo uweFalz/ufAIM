@@ -248,3 +248,22 @@ test("the choice of line: one per Strecke, the doubt only between Strecken", () 
 	assert.equal(lageLinienwahl(witness(gleis, [])), null);
 	assert.equal(lageLinienwahl(null), null);
 });
+
+test("the Gleis's own lines by a test: the nearest of its Strecke wins over a nearer line of another", () => {
+	const gleis = line({ from: 200, to: 600 });
+	const other = axis("6100_236-246_KM", { offset: -9 });
+	const ownFar = axis("1150_160-161_KM", { offset: 14 });
+	const ownFarther = axis("1150_150-160_KM", { offset: 30 });
+	const own = (route) => route.startsWith("1150");
+	assert.equal(witness(gleis, [other, ownFar, ownFarther]).route, "6100_236-246_KM");
+	const lage = witness(gleis, [other, ownFar, ownFarther], own);
+	assert.equal(lage.route, "1150_160-161_KM");
+	assert.equal(lage.verdict, "right");
+	assert.equal(lage.eigen, true);
+	assert.deepEqual(lage.weitere.map((linie) => linie.route), ["6100_236-246_KM", "1150_150-160_KM"]);
+	assert.equal(lageLinienwahl(lage), null);
+	// No line of its own in reach: the nearest, and not its own.
+	const none = witness(gleis, [other], own);
+	assert.equal(none.route, "6100_236-246_KM");
+	assert.equal(none.eigen, false);
+});

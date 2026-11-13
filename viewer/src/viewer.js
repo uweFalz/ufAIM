@@ -1589,9 +1589,13 @@ xlsx/xlsx.mjs:
 			}
 			// axes: [{ route, polyline, bounds }] (a grid is added on first use), several pieces of one
 			// Kilometerlinie share a route. The Gleis's own route wins as the
-			// reference, otherwise the nearest line that covers it.
+			// reference, otherwise the nearest line that covers it. preferredRoute:
+			// that route, or a test for it (route) => boolean where several lines
+			// are the Gleis's own (the lines of its Strecke); the nearest of them
+			// wins.
 			function lageWitnessOf(gleisPolyline, axes, preferredRoute = "") {
 				if (!gleisPolyline || gleisPolyline.length < 2) return null;
+				const isPreferred = typeof preferredRoute === "function" ? (route) => Boolean(preferredRoute(route)) : (route) => Boolean(preferredRoute) && route === preferredRoute;
 				const samples = Math.max(9, Math.min(25, Math.round(gleisPolyline.length / 4)));
 				const byRoute = new Map();
 				for (let index = 0; index < samples; index += 1) {
@@ -1619,8 +1623,8 @@ xlsx/xlsx.mjs:
 					const distances = hits.map((hit) => hit.distance).sort((a, b) => a - b);
 					const candidate = { route, hits, median: distances[Math.floor(distances.length / 2)], min: distances[0], max: distances[distances.length - 1] };
 					candidates.push(candidate);
-					const preferred = Boolean(preferredRoute) && route === preferredRoute;
-					const chosenPreferred = Boolean(preferredRoute) && chosen?.route === preferredRoute;
+					const preferred = isPreferred(route);
+					const chosenPreferred = Boolean(chosen) && isPreferred(chosen.route);
 					if (!chosen || (preferred && !chosenPreferred) || (preferred === chosenPreferred && candidate.median < chosen.median)) chosen = candidate;
 				}
 				if (!chosen) return { verdict: "none", samples };
@@ -1648,7 +1652,7 @@ xlsx/xlsx.mjs:
 					// eigen: the line is the Gleis's own route, not the nearest by
 					// measure. weitere: the other Kilometerlinien it lies beside, the
 					// fullest first, then the nearest.
-					eigen: Boolean(preferredRoute) && chosen.route === preferredRoute,
+					eigen: isPreferred(chosen.route),
 					weitere: candidates.filter((candidate) => candidate !== chosen)
 						.sort((a, b) => b.hits.length - a.hits.length || a.median - b.median)
 						.map((candidate) => ({ route: candidate.route, hits: candidate.hits.length, median: candidate.median })),
@@ -1769,15 +1773,26 @@ xlsx/xlsx.mjs:
 				}
 				return lageCache;
 			}
+			// The Strecke of a Kilometerlinie's route: the number itself, or the
+			// one its name states ("1150_160-161_DBREF2016_KM" -> 1150).
+			function kilometerlinieStrecke(route) {
+				const name = String(route ?? "");
+				return einordnungStreckennummer(name) ? name : einordnungStreckeAusName(name) || name;
+			}
 			// Coordinates of two Lagesysteme are not comparable, so a Gleis is
-			// only measured against Kilometerlinien of its own system.
+			// only measured against Kilometerlinien of its own system. Its own
+			// are the lines of its Strecke, whether they carry the number or a
+			// name that states it: sorted into 1150 by hand, a Gleis is measured
+			// beside "1150_160-161_DBREF2016_KM", not beside a nearer line of
+			// another Strecke.
 			function lageWitness(entry) {
 				if (entry?.item?.kind !== "alignment" || !alignmentEndpoints(entry) || sevenLineSide(entry) === "kilometer") return null;
 				const state = lageState();
 				if (!state.byEntry.has(entry)) {
 					const lsys = effectiveLsys(entry) || "";
 					const axes = state.axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
-					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, routeForEntry(entry)) : { verdict: "none", samples: 0 });
+					const own = routeForEntry(entry);
+					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, own ? (route) => route === own || kilometerlinieStrecke(route) === own : "") : { verdict: "none", samples: 0 });
 				}
 				return state.byEntry.get(entry);
 			}
@@ -1788,7 +1803,7 @@ xlsx/xlsx.mjs:
 			// The choice a Gleis's proposal has (lageLinienwahl) and the line that
 			// stands: the one the user picked, otherwise the nearest.
 			function vorschlagLinienwahl(entry) {
-				const wahl = lageLinienwahl(lageWitness(entry), (route) => { const name = String(route ?? ""); return einordnungStreckennummer(name) ? name : einordnungStreckeAusName(name) || name; });
+				const wahl = lageLinienwahl(lageWitness(entry), kilometerlinieStrecke);
 				if (!wahl) return null;
 				const picked = vorschlagLinie.get(entry);
 				return { ...wahl, gewaehlt: wahl.linien.some((linie) => linie.route === picked) ? picked : wahl.naechste };
