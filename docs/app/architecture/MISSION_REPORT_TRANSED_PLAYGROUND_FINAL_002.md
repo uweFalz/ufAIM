@@ -7,12 +7,12 @@
 
 ## 2. Status
 
-`review-required` — the authorized work is finished and validated in the work state; takeover into the common `/AIM` is Rock's to coordinate, and the coupling model awaits Uwe's confirmation (OD-1).
+`review-required` — the authorized work is finished and validated in the work state; takeover into the common `/AIM` is Rock's to coordinate, and Uwe confirmed the coupling model on 2026-11-13 (OD-1 closed, see `MISSION_REPORT_TRANSED_KLAUDER_GENERATOR_003.md`, addendum 5).
 
 ## 3. Baseline and Scope
 
 - Repository root: `/Users/uwefalz/Developer/ufAIM`; work state: worktree `/Users/uwefalz/Developer/ufAIM-transed-playground`, local branch `claude/transed-playground`.
-- Source commit: `97c13e1b3d3ace0801dcb938ccbe07380f7f91d0`, tree `cfe0a7d94b3ec9b945be8d5f748c23cbcde9ad8e`, parent `origin/main` `ec1e6d3`. Local only; not pushed. This report is a second local commit on top.
+- Source commit: `97c13e1b3d3ace0801dcb938ccbe07380f7f91d0`, tree `cfe0a7d94b3ec9b945be8d5f748c23cbcde9ad8e`, parent `origin/main` `ec1e6d3`. Local only at the time of this report; pushed since on Uwe's order, pull request https://github.com/uweFalz/ufAIM/pull/122 open, not merged. This report is a second commit on top.
 - Common `/AIM` at the time: `main` `e9257a7`, with Rock's uncommitted integration of #110, #114, #116 (`MISSION_REPORT_ROCK_TRANSED_INTEGRATION_20261110.md`); the playground (#118) is not there. Nothing in `/AIM` was changed by this mission.
 - Deviation to report: the playground worktree and the local branch had been removed on Uwe's earlier cleanup order minutes before this mission arrived; both were recreated from `origin/main`, which contains the merged playground (#118). No work was lost. The remote branch `origin/claude/transed-playground` (`412b86b`) still exists and was left alone.
 - Authorized: `transed/`, `tools/transed/`, `src/services/transition-library/`, their tests, `tools/axtran2/bundle.mjs` (interface only), `package.json` scripts, root artifact `transed.html`, this report and its evidence. Excluded: app shell, `src/aim-core/**`, `docs/knowledgeKernel/`, AXTRAN2 sources and `axtran2.html`, any remote write, merge, cleanup.
@@ -65,7 +65,7 @@ Thesis impact: follow-up-required
 - Takeover effect on AXTRAN2: the root `axtran2.html` records the hash of `tools/axtran2/bundle.mjs`; taking the four exports makes it stale until `npm run bundle` is run once in `/AIM`. `npm run bundle:check` passed in `/AIM` before (read-only run).
 - Risk: `KappaFcnBuilder` ignores `quantity`; a cant-declared halfWave used by a consumer outside this page would be read as curvature. Inside the page it is always shown with its declaration.
 - Risk: `/AIM/dist/transed.html` is an ignored copy of the first build placed there earlier by this stream; it is older than this state and is not the delivery artifact. It was left in place (no cleanup).
-- OD-1 (Uwe): confirm or correct sign convention and small-angle approximation of the coupling model.
+- OD-1 (Uwe): closed on 2026-11-13 — model confirmed, computed with the exact expression instead of the small-angle form (see `MISSION_REPORT_TRANSED_KLAUDER_GENERATOR_003.md`, addendum 5).
 - OD-2 (Rock): take over the 13 files listed in `handover-sha256.txt` byte-identically, then build in `/AIM`.
 
 ## 9. Handover

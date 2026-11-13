@@ -7,11 +7,11 @@
 
 ## 2. Status
 
-`review-required` — built and validated in the work state; Uwe confirmed the model and decided the four points of the note on 2026-11-13 (OD-1 closed, addendum 5); takeover into the common `/AIM` is Rock's to coordinate (OD-2). Addendum 5 is committed locally and not pushed.
+`review-required` — built and validated in the work state; Uwe confirmed the model and decided the four points of the note on 2026-11-13 (OD-1 closed, addendum 5); takeover into the common `/AIM` is Rock's to coordinate (OD-2). Addendum 5 is pushed with `1c54e04`.
 
 ## 3. Baseline and Scope
 
-- Repository root: `/Users/uwefalz/Developer/ufAIM`; work state: worktree `/Users/uwefalz/Developer/ufAIM-transed-playground`, local branch `claude/transed-playground`, on top of `4a5a043` (`TRANSED_PLAYGROUND_FINAL_002`). Local only; not pushed, no merge, no cleanup.
+- Repository root: `/Users/uwefalz/Developer/ufAIM`; work state: worktree `/Users/uwefalz/Developer/ufAIM-transed-playground`, local branch `claude/transed-playground`, on top of `4a5a043` (`TRANSED_PLAYGROUND_FINAL_002`). Local only at the time of this report; pushed since on Uwe's order, pull request https://github.com/uweFalz/ufAIM/pull/122 open, not merged, no cleanup.
 - Authorized: `src/services/transition-library/`, `transed/`, their tests, root artifact `transed.html`, this report, the note and evidence. Excluded and untouched: app shell, `src/aim-core/**`, `docs/knowledgeKernel/`, `src/domain/transition/transitionLookup.json`, AXTRAN2, the common `/AIM` checkout, any remote.
 
 ## 4. Work Performed

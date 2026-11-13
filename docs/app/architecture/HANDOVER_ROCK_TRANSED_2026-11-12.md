@@ -1,6 +1,6 @@
 # Handover to Rock: TransEd takeover into `/AIM`
 
-Date: 2026-11-12. From: Claude (stream `app`, TransEd). To: Rock, who coordinates
+Date: 2026-11-12, last updated 2026-11-14. From: Claude (stream `app`, TransEd). To: Rock, who coordinates
 the takeover into the common repository `/Users/uwefalz/Developer/ufAIM`.
 Ordered by Uwe ("schreib Rock die Übergabe für die Übernahme nach /AIM").
 
@@ -23,10 +23,11 @@ expression. Reports:
   `1b699ed`, `16a7199`, `f989b8f`, `bf6f04f`, `5661cb5`, `8633e6b`, `732af63`,
   `8e7df90`, `5fa7d36`, `3193313`, `c364793`, `d6f3fb1`, `c370c85`, `03a9a97`,
   `47e8055`, `1c54e04` (the exact expression), `103aa43`, `84031f3`, `e4873de`,
-  plus the commit that brings this file to its present state.
+  `6ed86b9`, `8c1eac5`, `cbac53c`, plus the commit that brings this file to its
+  present state. Since `1c54e04` only documents and evidence changed.
 - On Uwe's order the branch is pushed to `origin` and pull request
   https://github.com/uweFalz/ufAIM/pull/122 against `main` is open. Take the
-  tip of `origin/claude/transed-playground`; the commits up to `e4873de` are
+  tip of `origin/claude/transed-playground`; the commits up to `cbac53c` are
   pushed, and the tip carries source `30946d8eb748`. I have no order to merge
   or to clean up, and each further push needs Uwe's word.
 
@@ -60,7 +61,7 @@ are superseded.
   `evidence/TRANSED_KLAUDER_20261111/`, `evidence/TRANSED_HASSLINGER_20261111/`,
   `evidence/TRANSED_LABELS_20261112/`, `evidence/TRANSED_SMOOTHNESS_20261112/`,
   `evidence/TRANSED_EXACT_20261113/`. The older `handover-sha256.txt` files in
-  the first three folders are superseded.
+  the first four of these folders are superseded.
 
 ## 4. State of `/AIM` as I found it (read-only, re-checked 2026-11-14)
 
@@ -127,9 +128,9 @@ Run in `/AIM`:
 - Visible journeys ran in headless Chrome on the single file and on the served
   page, without console errors; nobody watched, selects were set by value,
   Safari, Firefox and narrow screens are untested.
-- The full suite was repeated at `8633e6b` and again at `3193313`, after the
-  sharpened suitability check: 2407 tests, 30 failures, none in TransEd, the
-  same names both times. The same failures occur by name on the base commit `ec1e6d3` in the
+- The full suite ran at `8633e6b` (2404 tests) and again at `3193313`, after
+  the sharpened suitability check (2407 tests): 30 failures each time, none in
+  TransEd, the same names both times. The same failures occur by name on the base commit `ec1e6d3` in the
   same environment (missing untracked modules, `test/samples/`, `rg`, and eight
   assertion failures in app, aim-core and AXTRAN2 tests). List:
   `docs/app/architecture/evidence/TRANSED_LABELS_20261112/full-suite-result.txt`.
@@ -139,7 +140,9 @@ Run in `/AIM`:
   (2026-11-12, HEAD `b629df0` plus the uncommitted work of other streams,
   read-only): of the eight assertion failures seven fail there as well, one
   passes (`test/app/workspace/promoted-alignment-main-q-l-journey.test.mjs`).
-  The full suite and the TransEd tests did not run there.
+  The full suite and the TransEd tests did not run there. That run is not
+  repeated: the checkout is now on `5a809d8` and holds the TransEd files in
+  the state of `47e8055` (section 4), so a run there would test the old state.
 
 ## 8. Open, not part of the takeover
 
@@ -147,7 +150,7 @@ Run in `/AIM`:
   expression (κ + d″)/(1 − κd) with d = h·sin ψ, h 1.8 m editable, f″ = 0 at
   the ramp ends is enough. The page no longer shows "Modellvorbehalt". Section 9
   of the note records the decisions. Still my assumptions: the limits of the
-  check and ψ_E = arcsin(cant / rail base).
+  check, ψ_E = arcsin(cant / rail base), and d′² left out.
 - Not ordered: replacing the seven built-in Klauder records, wiring the library
   into the app shell.
 - `src/domain/transition/transitionLookup.json`, `src/aim-core/**` and
