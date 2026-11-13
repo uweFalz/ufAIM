@@ -197,9 +197,9 @@ anderes Bild:
 
 Zwei der drei verschiedenen größten Trassen verlieren also im
 Einzellauf ihr Urteil. Ob das Rauschen ist oder an den Änderungen liegt,
-sagt ein Einzellauf nicht (Abschnitt 1): die Plätze 262 und 263 werden darum je zweimal mit dem
-neuen und dem alten Stand wiederholt, die Toleranz um 10 pm gestört
-(0,15 m ± 10 pm).
+sagt ein Einzellauf nicht (Abschnitt 1): die Plätze 262 und 263 sind
+darum je zweimal mit dem neuen und dem alten Stand wiederholt, die
+Toleranz um 10 pm gestört (0,15 m ± 10 pm).
 
 Platz 262, drei Rechnungen je Stand (Einzellauf und zwei Wiederholungen):
 
@@ -210,18 +210,29 @@ Platz 262, drei Rechnungen je Stand (Einzellauf und zwei Wiederholungen):
 | − 10 pm | Urteil, `stationary` nach 617 | ohne Längenbudget, `line_search_failed` nach 575 |
 | mit Urteil | 3 von 3 | 1 von 3 |
 
-Bei + 10 pm haben beide Stände ein Urteil, und es ist dasselbe (Länge
-kostet 4,98 m, Restfehler 0,151 m); der neue braucht weniger Schritte. Der
-neue Stand ist auf dieser Trasse aber nicht mehr verlässlich: zwei von
-drei Rechnungen enden ohne Längenbudget, mit zwei verschiedenen
-Abbrüchen, der alte Stand endet dreimal mit Urteil. Drei gegen drei
-Rechnungen sind wenig – das Bild spricht aber gegen bloßes Rauschen und
-dafür, dass die Änderungen bei rund 240 Elementen kosten, was sie bei
-den Bahnhofsgleisen bringen. Platz 263 rechnet und wird nachgetragen.
+Platz 263, ebenso:
 
-Bis dahin gilt: der Gewinn auf den Bahnhofsgleisen ist durch sechsfache
-Rechnung belegt (Abschnitt 5); bei den größten Trassen steht dem ein
-Verlust auf Platz 262 gegenüber, der sich in der Wiederholung zeigt.
+| Toleranz | alt | neu |
+| --- | --- | --- |
+| 0,15 m (Einzellauf) | Urteil, `stationary` nach 914 | ohne Längenbudget, Grenze von 1 000 Schritten |
+| + 10 pm | Urteil, `stationary` nach 664 | ohne Urteil, `restoration_failed` nach 320 |
+| − 10 pm | Urteil, `stationary` nach 701 | Urteil, `stationary` nach 868 |
+| mit Urteil | 3 von 3 | 1 von 3 |
+
+Beide Trassen zeigen dasselbe: der alte Stand endet in allen sechs
+Rechnungen mit Urteil, der neue in zwei von sechs, und seine vier
+Abbrüche sind drei verschiedene (`restoration_failed` zweimal,
+`line_search_failed`, Schrittgrenze). Wären beide Stände gleich gut,
+käme ein so deutlicher Unterschied nur in etwa 3 % der Fälle zustande
+(exakter Test nach Fisher, einseitig). Wo beide Stände ein Urteil haben, ist es dasselbe
+(Platz 262 bei + 10 pm: Länge kostet 4,98 m, Restfehler 0,151 m; Platz
+263 bei − 10 pm: 4,95 m, 0,190 m).
+
+Damit gilt für den Endstand: er macht die Längenstufe auf den
+Bahnhofsgleisen verlässlich (Abschnitt 5, sechsfach gerechnet) und verliert bis
+164 Elemente kein Urteil, auf den Trassen mit 237 und 238
+Elementen aber unzuverlässiger als zuvor. Welche der vier Änderungen das
+bewirkt, ist nicht untersucht.
 
 Über alle 266: 261 mit Urteil gegen 250, Schritte über alle Phasen 40 912
 gegen 48 040. Was die Punkte in Länge kosten, ändert sich auf den 247
@@ -261,12 +272,11 @@ ohne die Änderung (App-Seite).
   Wiederherstellung, bei der der Auswerter eine Schranke nennt; das ist
   nur die exakte Form der Rampenregel.
 - **Platz 213** und die Frage, warum die Region dort zusammenfällt.
-- **Die größten Trassen** (ab 237 Elementen): zwei von drei
-  verschiedenen verlieren im Einzellauf ihr Urteil, eine hat in beiden
-  keines (Abschnitt 6). Auf
-  Platz 262 bestätigt die Wiederholung den Verlust (1 von 3 gegen 3 von
-  3 mit Urteil); Platz 263 steht aus. Ob und wie die Längenstufe für
-  diese Größe nachgebessert wird, ist zu entscheiden.
+- **Die größten Trassen** (237 und 238 Elemente): der Endstand verliert
+  dort Urteile – in der Wiederholung 2 von 6 gegen 6 von 6 mit Urteil
+  (Abschnitt 6); eine dritte Trasse hat in beiden Ständen keines. Welche
+  der vier Änderungen das bewirkt und ob sie sich für diese Größe
+  zurücknehmen oder nachbessern lässt, ist offen und zu entscheiden.
 
 ## 9. Nachrechnen
 
