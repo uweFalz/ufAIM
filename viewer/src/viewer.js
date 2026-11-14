@@ -1606,7 +1606,11 @@ xlsx/xlsx.mjs:
 			// that route, or a test for it (route) => boolean where several lines
 			// are the Gleis's own (the lines of its Strecke); the nearest of them
 			// wins.
-			function lageWitnessOf(gleisPolyline, axes, preferredRoute = "", reach = LAGE_REACH_M) {
+			// grenzen: the three limits of the measure, where the user has changed
+			// them -- anteil (share of samples beside a line), mehrheit (share that
+			// names one side), aufLinie (metres within which a sample is on it).
+			function lageWitnessOf(gleisPolyline, axes, preferredRoute = "", reach = LAGE_REACH_M, grenzen = {}) {
+				const { anteil = LAGE_MIN_COVERAGE, mehrheit = LAGE_MAJORITY, aufLinie = LAGE_ON_AXIS_M } = grenzen ?? {};
 				if (!gleisPolyline || gleisPolyline.length < 2) return null;
 				const isPreferred = typeof preferredRoute === "function" ? (route) => Boolean(preferredRoute(route)) : (route) => Boolean(preferredRoute) && route === preferredRoute;
 				const samples = Math.max(9, Math.min(25, Math.round(gleisPolyline.length / 4)));
@@ -1628,7 +1632,7 @@ xlsx/xlsx.mjs:
 						byRoute.get(route).push(hit);
 					}
 				}
-				const needed = Math.ceil(samples * LAGE_MIN_COVERAGE);
+				const needed = Math.ceil(samples * anteil);
 				let chosen = null;
 				const candidates = [];
 				for (const [route, hits] of byRoute) {
@@ -1641,15 +1645,15 @@ xlsx/xlsx.mjs:
 					if (!chosen || (preferred && !chosenPreferred) || (preferred === chosenPreferred && candidate.median < chosen.median)) chosen = candidate;
 				}
 				if (!chosen) return { verdict: "none", samples };
-				const offAxis = chosen.hits.filter((hit) => hit.distance >= LAGE_ON_AXIS_M);
+				const offAxis = chosen.hits.filter((hit) => hit.distance >= aufLinie);
 				const left = offAxis.filter((hit) => hit.side > 0).length;
 				const right = offAxis.length - left;
 				// On the line as long as most samples are: a Neuplanung that leaves
 				// its Kilometerlinie by 1,5 m for a stretch is still the Gleis the
 				// line runs on (Eifel 2631 R, declared rechts), not one beside it.
-				const verdict = chosen.median < LAGE_ON_AXIS_M ? "axis"
-					: left >= offAxis.length * LAGE_MAJORITY ? "left"
-					: right >= offAxis.length * LAGE_MAJORITY ? "right"
+				const verdict = chosen.median < aufLinie ? "axis"
+					: left >= offAxis.length * mehrheit ? "left"
+					: right >= offAxis.length * mehrheit ? "right"
 					: "crossing";
 				const stations = chosen.hits.map((hit) => hit.station);
 				return {
@@ -1807,6 +1811,9 @@ xlsx/xlsx.mjs:
 			// name that states it: sorted into 1150 by hand, a Gleis is measured
 			// beside "1150_160-161_DBREF2016_KM", not beside a nearer line of
 			// another Strecke.
+			function lageGrenzen() {
+				return { anteil: ordnungAnnahmen.deckung / 100, mehrheit: ordnungAnnahmen.mehrheit / 100, aufLinie: ordnungAnnahmen.aufLinie };
+			}
 			function lageWitness(entry) {
 				if (entry?.item?.kind !== "alignment" || !alignmentEndpoints(entry) || sevenLineSide(entry) === "kilometer") return null;
 				const state = lageState();
@@ -1814,7 +1821,7 @@ xlsx/xlsx.mjs:
 					const lsys = effectiveLsys(entry) || "";
 					const axes = state.axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
 					const own = routeForEntry(entry);
-					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, own ? (route) => route === own || kilometerlinieStrecke(route) === own : "", ordnungAnnahmen.reichweite) : { verdict: "none", samples: 0 });
+					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, own ? (route) => route === own || kilometerlinieStrecke(route) === own : "", ordnungAnnahmen.reichweite, lageGrenzen()) : { verdict: "none", samples: 0 });
 				}
 				return state.byEntry.get(entry);
 			}
@@ -1838,7 +1845,7 @@ xlsx/xlsx.mjs:
 				if (!wahl || wahl.gewaehlt === wahl.naechste) return lage;
 				const lsys = effectiveLsys(entry) || "";
 				const axes = lageState().axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
-				return lageWitnessOf(referenceStationPolyline(entry, 10), axes, wahl.gewaehlt, ordnungAnnahmen.reichweite) ?? lage;
+				return lageWitnessOf(referenceStationPolyline(entry, 10), axes, wahl.gewaehlt, ordnungAnnahmen.reichweite, lageGrenzen()) ?? lage;
 			}
 			// The Gleisseite of an object with its witnesses; a Gradiente or
 			// Überhöhung speaks through its Gleis. null for a Kilometerlinie.
@@ -7960,6 +7967,12 @@ xlsx/xlsx.mjs:
 			const ORDNUNG_ANNAHMEN = [
 				{ key: "reichweite", label: "Kilometerlinie in Reichweite bis", unit: "m", standard: LAGE_REACH_M, min: 10, max: 500, step: 10,
 					grund: "So weit darf eine Kilometerlinie neben einem Gleis liegen, damit seine Lage an ihr gemessen wird: die Seite, der Sortiervorschlag und der Anteil neben der Linie. Gemessen in neun Lieferungen: mit 60 m bleiben in WueTreu 95 und in Billwerder 19 Gleise ohne Vorschlag; bei 62 und bei allen 19 davon läuft die Kilometerlinie weiter daneben (WueTreu 47 in 60 bis 100 m, 15 bis 150 m; Billwerder 11, 4 und 4 bis 250 m). Ein größerer Wert lässt in Bahnhöfen mehr Kilometerlinien zur Wahl." },
+				{ key: "deckung", label: "Linie daneben ab", unit: "%", standard: LAGE_MIN_COVERAGE * 100, min: 10, max: 100, step: 5,
+					grund: "Ein Gleis liegt neben einer Kilometerlinie, wenn so viele seiner 9 bis 25 Stichproben sie in Reichweite finden, abseits ihrer Enden. Gemessen an 583 Gleisen in neun Lieferungen: 550 liegen bei 70 % und mehr, 15 zwischen 50 und 70 %, 18 darunter." },
+				{ key: "mehrheit", label: "eine Seite ab", unit: "%", standard: LAGE_MAJORITY * 100, min: 51, max: 100, step: 1,
+					grund: "Ein Gleis liegt links oder rechts der Kilometerlinie, wenn so viele seiner Stichproben abseits der Linie dieselbe Seite nennen; darunter kreuzt es sie. Nicht alle: eine TRA, die ihre Stationen neu beginnt, faltet die Linie für eine Stichprobe zurück. Gemessen: 397 Gleise bei 95 % und mehr, 17 zwischen 75 und 95 %, 96 darunter." },
+				{ key: "aufLinie", label: "auf der Linie bis", unit: "m", standard: LAGE_ON_AXIS_M, min: 0, max: 5, step: 0.1,
+					grund: "Näher als dies liegt eine Stichprobe auf der Kilometerlinie selbst (eingleisig: die Linie ist das Gleis). Gemessen: 44 Gleise bis 0,3 m, 15 zwischen 0,3 und 1,0 m, 500 darüber." },
 				{ key: "kmFern", label: "km von Hand bis", unit: "m", standard: TOPOLOGY_KM_FAR_M, min: 60, max: 2000, step: 10,
 					grund: "Ein von Hand einsortiertes Gleis bekommt die km seiner Strecke über den Lotfußpunkt auch dann, wenn ein Ende weiter als 60 m neben der Kilometerlinie liegt — bis zu diesem Abstand. Gemessen an Bahnhofsgleisen in breiten Gleisfeldern (Billwerder, WueTreu)." },
 				{ key: "anteil", label: "dabei neben der Linie ab", unit: "%", standard: BEZUGSLINIE_VON_HAND_MIN_ANTEIL * 100, min: 0, max: 100, step: 5,
@@ -8023,7 +8036,7 @@ xlsx/xlsx.mjs:
 					label.title = `${annahme.grund} Standard: ${annahme.standard} ${annahme.unit}.`;
 					const input = document.createElement("input");
 					input.type = "number";
-					input.inputMode = "numeric";
+					input.inputMode = annahme.step < 1 ? "decimal" : "numeric";
 					input.min = String(annahme.min);
 					input.max = String(annahme.max);
 					input.step = String(annahme.step);

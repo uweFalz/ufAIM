@@ -306,3 +306,24 @@ test("a reach beyond the grid's cells is honoured: 200 m beside the line is foun
 	// The standard ring is unchanged: 60 m, found as before.
 	assert.equal(witness(line({ from: 200, to: 600, offset: 59 }), [km]).verdict, "left");
 });
+
+test("the limits of the measure are Annahmen: share beside the line, majority of a side, on the line", () => {
+	const km = axis("5500");
+	const w = (gleis, grenzen) => JSON.parse(JSON.stringify(lageWitnessOf(gleis, [km], "", 60, grenzen)));
+	// beside the line for half its length: none at 60 %, a side at 50 %
+	const half = line({ from: 800, to: 1200, offset: 3 });
+	assert.equal(w(half).verdict, "none");
+	assert.equal(w(half, { anteil: 0.5 }).verdict, "left");
+	// one sample in five on the other side: crossing at 85 %, a side at 75 %
+	const mostly = line({ from: 200, to: 600 }).map((point, index, all) => ({ ...point, northing: index > all.length * 0.8 ? -3 : 3 }));
+	assert.equal(w(mostly).verdict, "crossing");
+	assert.equal(w(mostly, { mehrheit: 0.75 }).verdict, "left");
+	// 0,8 m beside the line: a side at 0,5 m, on the line at 1 m
+	const close = line({ from: 200, to: 600, offset: 0.8 });
+	assert.equal(w(close).verdict, "left");
+	assert.equal(w(close, { aufLinie: 1 }).verdict, "axis");
+	assert.equal(w(line({ from: 200, to: 600, offset: 0.4 }), { aufLinie: 0.3 }).verdict, "left");
+	// nothing given, or null: the standard
+	assert.deepEqual(w(close, null), w(close));
+	assert.deepEqual(w(close, {}), w(close));
+});
