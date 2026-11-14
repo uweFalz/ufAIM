@@ -179,6 +179,10 @@
 			#ordnungAnnahmenMenu { flex: none; }
 			#ordnungAnnahmenBody .gwb-input.geaendert input { border-color: #b3541e; }
 			#ordnungAnnahmenBody button { justify-self: start; }
+			#ordnungAnnahmenBody .annahmen-gruppe { margin-top: 0.35rem; font-size: var(--fs-1); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--secondary); }
+			#ordnungAnnahmenBody .annahmen-gruppe:first-child { margin-top: 0; }
+			#ordnungAnnahmenBody .gwb-input.wahl { grid-template-columns: 1fr max-content; }
+			#ordnungAnnahmenBody .gwb-input.geaendert select { border-color: #b3541e; }
 			/* Open, the leaf lives in the top layer (Popover API): nothing clips
 			   it (the map panel paints contained), nothing covers it (the welcome
 			   card, the panels), and it may be wider than its bar. Script sets top

@@ -7965,25 +7965,28 @@ xlsx/xlsx.mjs:
 			// measured again; what differs from the standard is saved with the
 			// state. (The Spurplan keeps TOPOLOGY_KM_FAR_M for its Knoten.)
 			const ORDNUNG_ANNAHMEN = [
-				{ key: "reichweite", label: "Kilometerlinie in Reichweite bis", unit: "m", standard: LAGE_REACH_M, min: 10, max: 500, step: 10,
+				{ key: "reichweite", gruppe: "lage", label: "Kilometerlinie in Reichweite bis", unit: "m", standard: LAGE_REACH_M, min: 10, max: 500, step: 10,
 					grund: "So weit darf eine Kilometerlinie neben einem Gleis liegen, damit seine Lage an ihr gemessen wird: die Seite, der Sortiervorschlag und der Anteil neben der Linie. Gemessen in neun Lieferungen: mit 60 m bleiben in WueTreu 95 und in Billwerder 19 Gleise ohne Vorschlag; bei 62 und bei allen 19 davon läuft die Kilometerlinie weiter daneben (WueTreu 47 in 60 bis 100 m, 15 bis 150 m; Billwerder 11, 4 und 4 bis 250 m). Ein größerer Wert lässt in Bahnhöfen mehr Kilometerlinien zur Wahl." },
-				{ key: "deckung", label: "Linie daneben ab", unit: "%", standard: LAGE_MIN_COVERAGE * 100, min: 10, max: 100, step: 5,
+				{ key: "deckung", gruppe: "lage", label: "Linie daneben ab", unit: "%", standard: LAGE_MIN_COVERAGE * 100, min: 10, max: 100, step: 5,
 					grund: "Ein Gleis liegt neben einer Kilometerlinie, wenn so viele seiner 9 bis 25 Stichproben sie in Reichweite finden, abseits ihrer Enden. Gemessen an 583 Gleisen in neun Lieferungen: 550 liegen bei 70 % und mehr, 15 zwischen 50 und 70 %, 18 darunter." },
-				{ key: "mehrheit", label: "eine Seite ab", unit: "%", standard: LAGE_MAJORITY * 100, min: 51, max: 100, step: 1,
+				{ key: "mehrheit", gruppe: "lage", label: "eine Seite ab", unit: "%", standard: LAGE_MAJORITY * 100, min: 51, max: 100, step: 1,
 					grund: "Ein Gleis liegt links oder rechts der Kilometerlinie, wenn so viele seiner Stichproben abseits der Linie dieselbe Seite nennen; darunter kreuzt es sie. Nicht alle: eine TRA, die ihre Stationen neu beginnt, faltet die Linie für eine Stichprobe zurück. Gemessen: 397 Gleise bei 95 % und mehr, 17 zwischen 75 und 95 %, 96 darunter." },
-				{ key: "aufLinie", label: "auf der Linie bis", unit: "m", standard: LAGE_ON_AXIS_M, min: 0, max: 5, step: 0.1,
+				{ key: "aufLinie", gruppe: "lage", label: "auf der Linie bis", unit: "m", standard: LAGE_ON_AXIS_M, min: 0, max: 5, step: 0.1,
 					grund: "Näher als dies liegt eine Stichprobe auf der Kilometerlinie selbst (eingleisig: die Linie ist das Gleis). Gemessen: 44 Gleise bis 0,3 m, 15 zwischen 0,3 und 1,0 m, 500 darüber." },
-				{ key: "kmFern", label: "km von Hand bis", unit: "m", standard: TOPOLOGY_KM_FAR_M, min: 60, max: 2000, step: 10,
+				{ key: "kmFern", gruppe: "km", label: "km von Hand bis", unit: "m", standard: TOPOLOGY_KM_FAR_M, min: 60, max: 2000, step: 10,
 					grund: "Ein von Hand einsortiertes Gleis bekommt die km seiner Strecke über den Lotfußpunkt auch dann, wenn ein Ende weiter als 60 m neben der Kilometerlinie liegt — bis zu diesem Abstand. Gemessen an Bahnhofsgleisen in breiten Gleisfeldern (Billwerder, WueTreu)." },
-				{ key: "anteil", label: "dabei neben der Linie ab", unit: "%", standard: BEZUGSLINIE_VON_HAND_MIN_ANTEIL * 100, min: 0, max: 100, step: 5,
+				{ key: "anteil", gruppe: "km", label: "dabei neben der Linie ab", unit: "%", standard: BEZUGSLINIE_VON_HAND_MIN_ANTEIL * 100, min: 0, max: 100, step: 5,
 					grund: "Anteil des Gleises, der dafür in Reichweite neben der Kilometerlinie liegen muss. Darunter bleibt das Gleis ohne km und trägt die Marke „ohne km“." },
-				{ key: "genau", label: "Stationen sind km: ein Ende auf", unit: "m", standard: BEZUGSLINIE_STATION_GENAU_M, min: 0, max: 50, step: 1,
+				{ key: "genau", gruppe: "km", label: "Stationen sind km: ein Ende auf", unit: "m", standard: BEZUGSLINIE_STATION_GENAU_M, min: 0, max: 50, step: 1,
 					grund: "Gelieferte Stationen gelten als km der Strecke, wenn ein Ende des Gleises, auf die Kilometerlinie gelotet, auf diesen Betrag bei seinem km liegt. Gemessen in sieben Lieferungen: echte km stimmen auf 1 m, eigene Zählungen liegen 34 m und mehr daneben." },
-				{ key: "ueberstand", label: "das andere Ende bis", unit: "m", standard: BEZUGSLINIE_STATION_TOLERANZ_M, min: 0, max: 500, step: 10,
+				{ key: "ueberstand", gruppe: "km", label: "das andere Ende bis", unit: "m", standard: BEZUGSLINIE_STATION_TOLERANZ_M, min: 0, max: 500, step: 10,
 					grund: "Spielraum für das andere Ende: ein Gleis darf über das Ende seiner Kilometerlinie hinausreichen, dort endet der Lotfußpunkt am Linienende." },
-				{ key: "zweifel", label: "Zweifel an der Strecke ab", unit: "Stichproben", standard: LAGE_ZWEIFEL_MIN_FEHLEND, min: 1, max: 25, step: 1,
+				{ key: "zweifel", gruppe: "vorschlag", label: "Zweifel an der Strecke ab", unit: "Stichproben", standard: LAGE_ZWEIFEL_MIN_FEHLEND, min: 1, max: 25, step: 1,
 					grund: "Ein Sortiervorschlag wird hervorgehoben, wenn das Gleis an der nächsten Kilometerlinie mit so vielen seiner 9 bis 25 Stichproben fehlt und an der Linie einer anderen Strecke ganz liegt. Eine einzelne fehlende Stichprobe ist die Körnung der Messung." },
+				{ key: "linienwahl", gruppe: "vorschlag", label: "Kilometerlinie wählbar", unit: "", standard: "immer", optionen: [["immer", "an jedem Gleis"], ["zweifel", "nur im Zweifel"]],
+					grund: "Liegt ein Gleis neben den Kilometerlinien mehrerer Strecken, steht die Linie im Sortiervorschlag als Auswahlfeld. An jedem solchen Gleis, oder nur wo das Gleis an der nächsten Linie teilweise und an einer anderen ganz liegt. Gemessen im Haufen: Landshut 37 von 41 Gleisen mit Feld, Billwerder 75 von 171, WueTreu 185 von 355; im Zweifel sind es 2, 2 und 5." },
 			];
+			const ORDNUNG_GRUPPEN = [["lage", "Lage an der Kilometerlinie"], ["km", "km der Strecke"], ["vorschlag", "Sortiervorschlag"]];
 			const ordnungAnnahmen = Object.fromEntries(ORDNUNG_ANNAHMEN.map((annahme) => [annahme.key, annahme.standard]));
 			function ordnungAnnahmenGeaendert() {
 				return ORDNUNG_ANNAHMEN.filter((annahme) => ordnungAnnahmen[annahme.key] !== annahme.standard);
@@ -7992,6 +7995,11 @@ xlsx/xlsx.mjs:
 			// whether anything changed.
 			function ordnungAnnahmeSetzen(key, value) {
 				const annahme = ORDNUNG_ANNAHMEN.find((item) => item.key === key);
+				if (annahme?.optionen) {
+					if (!annahme.optionen.some(([option]) => option === value) || ordnungAnnahmen[key] === value) return false;
+					ordnungAnnahmen[key] = value;
+					return true;
+				}
 				const number = Number(value);
 				if (!annahme || value === "" || value == null || !Number.isFinite(number)) return false;
 				const clamped = Math.max(annahme.min, Math.min(annahme.max, number));
@@ -8025,29 +8033,51 @@ xlsx/xlsx.mjs:
 					renderOrdnungAnnahmen();
 					status.classList.remove("error");
 					const now = ordnungAnnahmenGeaendert();
-					status.textContent = now.length ? `Annahmen der Ordnung geändert (${now.map((annahme) => `${annahme.label} ${ordnungAnnahmen[annahme.key]} ${annahme.unit}`).join(" · ")}) · alle Gleise neu stationiert` : "Annahmen der Ordnung wieder auf dem Standard · alle Gleise neu stationiert";
+					status.textContent = now.length ? `Annahmen der Ordnung geändert (${now.map((annahme) => `${annahme.label} ${annahme.optionen ? annahme.optionen.find(([option]) => option === ordnungAnnahmen[annahme.key])?.[1] ?? "" : `${ordnungAnnahmen[annahme.key]} ${annahme.unit}`}`).join(" · ")}) · alle Gleise neu stationiert` : "Annahmen der Ordnung wieder auf dem Standard · alle Gleise neu stationiert";
 					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 					if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
 				};
 				body.replaceChildren();
-				for (const annahme of ORDNUNG_ANNAHMEN) {
-					const label = document.createElement("label");
-					label.className = `gwb-input${ordnungAnnahmen[annahme.key] !== annahme.standard ? " geaendert" : ""}`;
-					label.title = `${annahme.grund} Standard: ${annahme.standard} ${annahme.unit}.`;
-					const input = document.createElement("input");
-					input.type = "number";
-					input.inputMode = annahme.step < 1 ? "decimal" : "numeric";
-					input.min = String(annahme.min);
-					input.max = String(annahme.max);
-					input.step = String(annahme.step);
-					input.value = String(ordnungAnnahmen[annahme.key]);
-					input.dataset.annahme = annahme.key;
-					input.addEventListener("change", () => {
-						if (ordnungAnnahmeSetzen(annahme.key, input.value)) anwenden();
-						else input.value = String(ordnungAnnahmen[annahme.key]);
-					});
-					label.append(`${annahme.label} `, input, ` ${annahme.unit}`);
-					body.append(label);
+				for (const [gruppe, titel] of ORDNUNG_GRUPPEN) {
+					const head = document.createElement("div");
+					head.className = "annahmen-gruppe";
+					head.textContent = titel;
+					body.append(head);
+					for (const annahme of ORDNUNG_ANNAHMEN.filter((item) => item.gruppe === gruppe)) {
+						const label = document.createElement("label");
+						label.className = `gwb-input${ordnungAnnahmen[annahme.key] !== annahme.standard ? " geaendert" : ""}`;
+						const standard = annahme.optionen ? annahme.optionen.find(([option]) => option === annahme.standard)?.[1] : `${annahme.standard} ${annahme.unit}`;
+						label.title = `${annahme.grund} Standard: ${standard}.`;
+						if (annahme.optionen) {
+							const select = document.createElement("select");
+							select.dataset.annahme = annahme.key;
+							for (const [value, text] of annahme.optionen) {
+								const option = document.createElement("option");
+								option.value = value;
+								option.textContent = text;
+								option.selected = value === ordnungAnnahmen[annahme.key];
+								select.append(option);
+							}
+							select.addEventListener("change", () => { if (ordnungAnnahmeSetzen(annahme.key, select.value)) anwenden(); });
+							label.classList.add("wahl");
+							label.append(`${annahme.label} `, select);
+						} else {
+							const input = document.createElement("input");
+							input.type = "number";
+							input.inputMode = annahme.step < 1 ? "decimal" : "numeric";
+							input.min = String(annahme.min);
+							input.max = String(annahme.max);
+							input.step = String(annahme.step);
+							input.value = String(ordnungAnnahmen[annahme.key]);
+							input.dataset.annahme = annahme.key;
+							input.addEventListener("change", () => {
+								if (ordnungAnnahmeSetzen(annahme.key, input.value)) anwenden();
+								else input.value = String(ordnungAnnahmen[annahme.key]);
+							});
+							label.append(`${annahme.label} `, input, ` ${annahme.unit}`);
+						}
+						body.append(label);
+					}
 				}
 				const reset = document.createElement("button");
 				reset.type = "button";
@@ -9392,6 +9422,9 @@ xlsx/xlsx.mjs:
 				// says so and stands out.
 				const wahl = suggestion || dependent || entry.item.kind !== "alignment" ? null : vorschlagLinienwahl(entry);
 				const gewaehlt = Boolean(wahl) && wahl.gewaehlt !== wahl.naechste;
+				// The field stands at every such Gleis, or only in doubt (an Annahme
+				// of the Ordnung); what the user picked stays in reach either way.
+				const feld = Boolean(wahl) && (ordnungAnnahmen.linienwahl !== "zweifel" || wahl.zweifel || gewaehlt);
 				const anteil = (linie) => linie.hits >= wahl.samples ? "ganz" : `${Math.round(100 * linie.hits / wahl.samples)} %`;
 				const linienwahl = () => {
 					const choice = document.createElement("select");
@@ -9432,7 +9465,7 @@ xlsx/xlsx.mjs:
 				const wahlGrund = () => gewaehlt ? ` · gewählt statt der nächsten (${wahl.naechste})`
 					: wahl.zweifel ? ` · daran ${anteil(wahl.linien[0])} des Gleises, ganz an ${wahl.ganz}`
 					: "";
-				const bleibt = wahl && !spur ? buendelBleibtJeEintrag.get(entry) : null;
+				const bleibt = feld && !spur ? buendelBleibtJeEintrag.get(entry) : null;
 				if (bleibt) {
 					// No side at this line (the Gleis crosses it, lies on it, or its
 					// name says the other side): another line may give one.
@@ -9445,9 +9478,9 @@ xlsx/xlsx.mjs:
 				}
 				if (spur) {
 					const hint = document.createElement("div");
-					hint.className = `row-suggestion${wahl && (wahl.zweifel || gewaehlt) ? " row-suggestion-open" : ""}`;
+					hint.className = `row-suggestion${feld && (wahl.zweifel || gewaehlt) ? " row-suggestion-open" : ""}`;
 					const text = document.createElement("span");
-					if (wahl) text.append(`Vorschlag: ${spur.title} · ${sortier.grund === "name" ? "Seite aus dem Namen · " : sortier.grund === "name+lage" ? "Name und Lage: " : ""}${lageOhneLinie()} `, linienwahl(), wahlGrund());
+					if (feld) text.append(`Vorschlag: ${spur.title} · ${sortier.grund === "name" ? "Seite aus dem Namen · " : sortier.grund === "name+lage" ? "Name und Lage: " : ""}${lageOhneLinie()} `, linienwahl(), wahlGrund());
 					else text.textContent = `Vorschlag: ${spur.title} · ${buendelVorschlagGrund(entry, sortier)}`;
 					const accept = document.createElement("button");
 					accept.type = "button";
