@@ -64,9 +64,11 @@ function polyPow(a, exp) {
 }
 
 function isPoly(n) { return isObj(n) && n.op==='poly' && Array.isArray(n.coeff); }
-function isTrig(n) { return isObj(n) && (n.op==='sin' || n.op==='cos'); }
+// functions of an affine argument m*u + n: trigonometric, hyperbolic, exponential
+const AFFINE_FCN_OPS = new Set(['sin', 'cos', 'sinh', 'cosh', 'exp']);
+function isTrig(n) { return isObj(n) && AFFINE_FCN_OPS.has(n.op); }
 
-// trig nodes are normalized to {op:'sin'|'cos', m:number, n:number}
+// these nodes are normalized to {op, m:number, n:number}
 function normTrig(node) {
 	if (!isTrig(node)) return node;
 	const m = ('m' in node) ? Number(node.m) : 1;
@@ -94,7 +96,10 @@ export function simplify(node) {
 		}
 
 		case 'sin':
-		case 'cos': {
+		case 'cos':
+		case 'sinh':
+		case 'cosh':
+		case 'exp': {
 			// accept legacy {op:'sin', arg:expr} but prefer affine form
 			if ('arg' in node && node.arg) {
 				// We only expect arg to be affine in u; try to fold it into (m,n)

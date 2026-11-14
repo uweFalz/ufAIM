@@ -177,7 +177,7 @@ export function validateVersionedTransitionRegistry({ versionedRegistry, legacyD
 				errors.push({ code: "SIMPLEFCN_POLY_COEFF_NONFINITE", message: `simpleFcn '${id}' coeff must be finite` });
 			}
 		}
-		if ((legacy.op === "sin" || legacy.op === "cos") && (!finite(legacy.m) || !finite(legacy.n))) {
+		if (["sin", "cos", "sinh", "cosh", "exp"].includes(legacy.op) && (!finite(legacy.m) || !finite(legacy.n))) {
 			errors.push({ code: "SIMPLEFCN_TRIG_PARAM_NONFINITE", message: `simpleFcn '${id}' trig params must be finite` });
 		}
 	}

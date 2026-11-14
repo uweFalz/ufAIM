@@ -226,6 +226,9 @@ function showMode(mode) {
 
 // --- mode 0: function with argument interval ----------------------------
 
+// kinds with the argument m·x + n; everything else in mode 0 is a polynomial
+const AFFINE_KINDS = ["sin", "cos", "sinh", "cosh", "exp"];
+
 function functionValue() {
 	const fn = state.fn;
 	if (fn.kind === "poly") {
@@ -272,7 +275,7 @@ function applyFunctionTemplate(id) {
 	if (!entry) return;
 	const fn = state.fn;
 	if (entry.value.op === "poly") { fn.kind = "poly"; fn.coeff = entry.value.coeff.join(", "); }
-	else if (entry.value.op === "sin" || entry.value.op === "cos") { fn.kind = entry.value.op; fn.m = Number(entry.value.m ?? 1); fn.n = Number(entry.value.n ?? 0); }
+	else if (AFFINE_KINDS.includes(entry.value.op)) { fn.kind = entry.value.op; fn.m = Number(entry.value.m ?? 1); fn.n = Number(entry.value.n ?? 0); }
 	else return;
 	[fn.a, fn.b] = entry.interval;
 	const lo = Math.min(fn.a, fn.b); const hi = Math.max(fn.a, fn.b); const pad = (hi - lo) * 0.5;

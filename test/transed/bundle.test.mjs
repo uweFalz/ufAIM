@@ -140,3 +140,30 @@ test("the served page and the bundle start from the same sources", async () => {
 	assert.deepEqual(specifiers, ["../src/domain/transition/transitionLookup.json", "../src/services/transition-library/index.js"]);
 	assert.doesNotMatch(app, /fetch\(|XMLHttpRequest|WebSocket|import\(/);
 });
+
+test("mode 0 in the single file offers sinh, cosh and exp and stores a sinh", async () => {
+	const dir = await mkdtemp(join(tmpdir(), "transed-bundle-"));
+	const built = await bundleTransEd({ out: join(dir, "transed.html") });
+	const html = await readFile(built.out, "utf8");
+	for (const kind of ["sinh", "cosh", "exp"]) assert.match(html, new RegExp(`<option value="${kind}">`), kind);
+	const { document, transed } = await run(html);
+	const { service, state } = transed;
+	const el = (id) => document.getElementById(id);
+	const fire = (id, type) => { for (const fn of el(id).listeners[type] ?? []) fn({ target: el(id), preventDefault() {} }); };
+
+	state.mode = "0";
+	el("fnKind").value = "sinh"; fire("fnKind", "change");
+	assert.equal(state.fn.kind, "sinh");
+	state.fn.m = 3; state.fn.n = 0; state.fn.a = 0; state.fn.b = 1; state.fn.x0 = -0.25; state.fn.x1 = 1.25;
+	fire("fnKind", "change");
+	assert.equal(state.fn.draft?.ok, true, el("fnMessage").textContent);
+	assert.ok(Math.abs(state.fn.draft.frame.fb - Math.sinh(3)) < 1e-12);
+	assert.equal(el("fnMessage").textContent, "");
+
+	el("fnId").value = "MY_SINH"; el("fnAsHalfWave").checked = true; el("fnSource").value = "kappa"; el("fnQuantity").value = "curvature";
+	el("fnSave").click();
+	assert.match(el("fnSaveMessage").textContent, /MY_SINH, PROTO_MY_SINH, HW_MY_SINH/);
+	assert.deepEqual(service.exportUserLibrary().simpleFcn.MY_SINH, { op: "sinh", m: 3, n: 0 });
+	const draft = service.describeDraft({ halfWave1: "HW_MY_SINH", halfWave2: "HW_MY_SINH", normLengthPartition: [0.5, 0, 0.5], count: 11 });
+	assert.equal(draft.ok, true);
+});

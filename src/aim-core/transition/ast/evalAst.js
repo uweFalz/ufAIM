@@ -37,6 +37,13 @@ function evalNode(node, u) {
 			const n = ('n' in node) ? Number(node.n) : 0;
 			return Math.cos(m*u + n);
 		}
+		case 'sinh':
+		case 'cosh':
+		case 'exp': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+			return Math[node.op](m*u + n);
+		}
 		case 'neg': return -evalNode(node.arg, u);
 		case 'sc': return Number(node.value) * evalNode(node.arg, u);
 		case 'add': {

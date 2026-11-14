@@ -4,6 +4,9 @@
 
 function isObj(v) {return v&&typeof v==='object'&&!Array.isArray(v);} 
 
+// functions of an affine argument m*x + n
+const AFFINE_FCN_OPS = new Set(['sin', 'cos', 'sinh', 'cosh', 'exp']);
+
 export function validateLookupV3(db){
 	if (!isObj(db)) throw new Error('lookup: root must be an object');
 	if (!isObj(db.schema)) throw new Error('lookup: missing schema');
@@ -20,7 +23,7 @@ export function validateLookupV3(db){
 			if (!Array.isArray(def.coeff)) throw new Error(`simpleFcn.${id}: poly.coeff must be array`);
 			continue;
 		}
-		if (def.op==='sin' || def.op==='cos') {
+		if (AFFINE_FCN_OPS.has(def.op)) {
 			if ('m' in def && !Number.isFinite(Number(def.m))) throw new Error(`simpleFcn.${id}: trig.m must be finite`);
 			if ('n' in def && !Number.isFinite(Number(def.n))) throw new Error(`simpleFcn.${id}: trig.n must be finite`);
 			continue;
@@ -119,7 +122,7 @@ function validateAst(node, path){
 		validateAst(node.divisor ?? node.b, `${path}.divisor`);
 		return;
 	}
-	if (op==='sin' || op==='cos') {
+	if (AFFINE_FCN_OPS.has(op)) {
 		if (node.arg) validateAst(node.arg, `${path}.arg`);
 		if ('m' in node && !Number.isFinite(Number(node.m))) throw new Error(`${path}: trig.m must be finite`);
 		if ('n' in node && !Number.isFinite(Number(node.n))) throw new Error(`${path}: trig.n must be finite`);
