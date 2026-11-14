@@ -1,0 +1,38 @@
+Read and export compatibility of the kinds sinh, cosh, exp (pull request #132)
+Run 2026-11-14 with docs/app/architecture/evidence/TRANSED_HYPERBOLIC_20261114/export-compat.mjs
+old = f097ea2 (parent of 798e470, before #132), new = ff08105 (origin/main)
+usage: node export-compat.mjs <repo root> export:<op>|import <library file>
+
+exported export:sinh schema {"name":"ufAIM_transLookup_v3","version":"3.0.0","kind":"user-library"}
+  old reads it:
+    import -> {"ok":false,"changed":false,"status":"rejected","code":"USER_LIBRARY_STRUCTURE_INVALID","reason":"simpleFcn.MY_F: unsupported op 'sinh'"} | library unchanged: true
+    start with library: throws: createTransitionLibraryService: USER_LIBRARY_STRUCTURE_INVALID: simpleFcn.MY_F: unsupported op 'sinh'
+  new reads it:
+    import -> {"ok":true,"changed":true,"status":"imported","imported":["simpleFcn.MY_F","protoFcn.PROTO_MY_F","halfWave.HW_MY_F","transition.my_f"]} | library unchanged: false
+    draft ok: true 0 0.1063 0.5 0.8937 1
+    start with library: ok
+exported export:cosh schema {"name":"ufAIM_transLookup_v3","version":"3.0.0","kind":"user-library"}
+  old reads it:
+    import -> {"ok":false,"changed":false,"status":"rejected","code":"USER_LIBRARY_STRUCTURE_INVALID","reason":"simpleFcn.MY_F: unsupported op 'cosh'"} | library unchanged: true
+    start with library: throws: createTransitionLibraryService: USER_LIBRARY_STRUCTURE_INVALID: simpleFcn.MY_F: unsupported op 'cosh'
+  new reads it:
+    import -> {"ok":true,"changed":true,"status":"imported","imported":["simpleFcn.MY_F","protoFcn.PROTO_MY_F","halfWave.HW_MY_F","transition.my_f"]} | library unchanged: false
+    draft ok: true 0 0.0746 0.5 0.9254 1
+    start with library: ok
+exported export:exp schema {"name":"ufAIM_transLookup_v3","version":"3.0.0","kind":"user-library"}
+  old reads it:
+    import -> {"ok":false,"changed":false,"status":"rejected","code":"USER_LIBRARY_STRUCTURE_INVALID","reason":"simpleFcn.MY_F: unsupported op 'exp'"} | library unchanged: true
+    start with library: throws: createTransitionLibraryService: USER_LIBRARY_STRUCTURE_INVALID: simpleFcn.MY_F: unsupported op 'exp'
+  new reads it:
+    import -> {"ok":true,"changed":true,"status":"imported","imported":["simpleFcn.MY_F","protoFcn.PROTO_MY_F","halfWave.HW_MY_F","transition.my_f"]} | library unchanged: false
+    draft ok: true 0 0.0912 0.5 0.9088 1
+    start with library: ok
+exported export:sin schema {"name":"ufAIM_transLookup_v3","version":"3.0.0","kind":"user-library"}
+  new reads the old file:
+    import -> {"ok":true,"changed":true,"status":"imported","imported":["simpleFcn.MY_F","protoFcn.PROTO_MY_F","halfWave.HW_MY_F","transition.my_f"]} | library unchanged: false
+    draft ok: true 0 0.3417 0.5 0.6583 1
+    start with library: ok
+old reads a file with one sin record set and one extra sinh function:
+    import -> {"ok":false,"changed":false,"status":"rejected","code":"USER_LIBRARY_STRUCTURE_INVALID","reason":"simpleFcn.MY_SINH: unsupported op 'sinh'"} | library unchanged: true
+    start with library: throws: createTransitionLibraryService: USER_LIBRARY_STRUCTURE_INVALID: simpleFcn.MY_SINH: unsupported op 'sinh'
+src/domain/transition/transitionLookup.json: byte-identical in old and new
