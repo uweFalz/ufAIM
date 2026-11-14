@@ -38,6 +38,8 @@ xlsx/xlsx.mjs:
 			const mapPanel = document.querySelector("#mapPanel");
 			const multi2d = document.querySelector("#multi2d");
 			const mapFit = document.querySelector("#mapFit");
+			const mapNorth = document.querySelector("#mapNorth");
+			const mapNorthArrow = document.querySelector("#mapNorthArrow");
 			const mapZoomOut = document.querySelector("#mapZoomOut");
 			const mapZoomIn = document.querySelector("#mapZoomIn");
 			const mapTitle = document.querySelector("#mapTitle");
@@ -111,6 +113,12 @@ xlsx/xlsx.mjs:
 			let planningPreviewUrl = null;
 			let fullMapViewBox = null;
 			let currentMapViewBox = null;
+			// The own map turned by the user: degrees clockwise on the screen,
+			// about the middle of everything drawn. Everything of the map lives in
+			// one group (mapWorld) that carries the rotation; zoom and pan stay a
+			// matter of the viewBox. 0 leaves every number as it was.
+			let mapRotation = 0;
+			let mapWorld = null;
 			let activeMapMode = "map";
 			let maplibreMap = null;
 			let railwayMapActive = false;
@@ -4542,7 +4550,7 @@ xlsx/xlsx.mjs:
 				const scale = currentMapViewBox.width / Math.max(multi2d.getBoundingClientRect().width, 1);
 				const marker = svgElement("g", { class: "map-cursor", transform: `translate(${mapped.x} ${mapped.y}) scale(${scale})` });
 				marker.append(svgElement("circle", { r: 6 }));
-				multi2d.append(marker);
+				(mapWorld ?? multi2d).append(marker);
 			}
 			function drawDeliveryCursor() {
 				if (!deliverySvg) return;
@@ -5618,6 +5626,56 @@ xlsx/xlsx.mjs:
 				return result;
 			}
 
+			function mapPivot() {
+				return fullMapViewBox ? { x: fullMapViewBox.x + fullMapViewBox.width / 2, y: fullMapViewBox.y + fullMapViewBox.height / 2 } : { x: 0, y: 0 };
+			}
+			// Map coordinates to the SVG's own (what the viewBox speaks) and back.
+			function mapWorldToView(point, angle = mapRotation) {
+				if (!angle) return point;
+				const pivot = mapPivot();
+				const radians = angle * Math.PI / 180;
+				const dx = point.x - pivot.x;
+				const dy = point.y - pivot.y;
+				return { x: pivot.x + dx * Math.cos(radians) - dy * Math.sin(radians), y: pivot.y + dx * Math.sin(radians) + dy * Math.cos(radians) };
+			}
+			function mapViewToWorld(point) {
+				return mapWorldToView(point, -mapRotation);
+			}
+			// The box around points as the turned map shows them.
+			function mapViewBounds(points) {
+				const shown = mapRotation ? points.map((point) => mapWorldToView(point)) : points;
+				const xs = shown.map((point) => point.x);
+				const ys = shown.map((point) => point.y);
+				return { minX: Math.min(...xs), maxX: Math.max(...xs), minY: Math.min(...ys), maxY: Math.max(...ys) };
+			}
+			function mapNorthAngle() {
+				return maplibreMap && !maplibreMapElement.classList.contains("hidden") ? -(maplibreMap.getBearing?.() ?? 0) : mapRotation;
+			}
+			function applyMapRotation() {
+				if (mapWorld) {
+					const pivot = mapPivot();
+					if (mapRotation) mapWorld.setAttribute("transform", `rotate(${mapRotation} ${pivot.x} ${pivot.y})`);
+					else mapWorld.removeAttribute("transform");
+				}
+				const angle = mapNorthAngle();
+				const rounded = Math.round(angle);
+				mapNorthArrow.style.transform = angle ? `rotate(${angle}deg)` : "";
+				mapNorth.classList.toggle("gedreht", rounded !== 0);
+				mapNorth.title = `${rounded ? `Ansicht um ${Math.abs(rounded)}° ${rounded > 0 ? "im" : "gegen den"} Uhrzeigersinn gedreht. Klick: Norden nach oben.` : "Nordpfeil: Norden ist oben."} Drehen: Alt + Ziehen oder rechte Maustaste ziehen.`;
+			}
+			// Turns the own map to an angle; what stands in the middle of the view
+			// stays there.
+			function setMapRotation(angle) {
+				const next = ((angle % 360) + 540) % 360 - 180;
+				if (!currentMapViewBox) { mapRotation = next; applyMapRotation(); return; }
+				const center = { x: currentMapViewBox.x + currentMapViewBox.width / 2, y: currentMapViewBox.y + currentMapViewBox.height / 2 };
+				const world = mapViewToWorld(center);
+				mapRotation = next;
+				const moved = mapWorldToView(world);
+				currentMapViewBox = { ...currentMapViewBox, x: currentMapViewBox.x + moved.x - center.x, y: currentMapViewBox.y + moved.y - center.y };
+				applyMapRotation();
+				applyMapViewBox();
+			}
 			function applyMapViewBox() {
 				if (!currentMapViewBox) return;
 				const { x, y, width, height } = currentMapViewBox;
@@ -5625,7 +5683,7 @@ xlsx/xlsx.mjs:
 				// Stones keep their pixel size: rescale their groups with the view.
 				const scale = width / Math.max(multi2d.getBoundingClientRect().width, 1);
 				for (const group of multi2d.querySelectorAll(".km-stone-major")) {
-					group.setAttribute("transform", `translate(${group.dataset.x} ${group.dataset.y}) scale(${scale})`);
+					group.setAttribute("transform", `translate(${group.dataset.x} ${group.dataset.y}) scale(${scale})${mapRotation ? ` rotate(${-mapRotation})` : ""}`);
 				}
 				drawMapCursor();
 			}
@@ -5636,7 +5694,11 @@ xlsx/xlsx.mjs:
 					return;
 				}
 				if (!fullMapViewBox) return;
-				currentMapViewBox = { ...fullMapViewBox };
+				if (mapRotation) {
+					const { x, y, width, height } = fullMapViewBox;
+					const box = mapViewBounds([{ x, y }, { x: x + width, y }, { x, y: y + height }, { x: x + width, y: y + height }]);
+					currentMapViewBox = { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY };
+				} else currentMapViewBox = { ...fullMapViewBox };
 				applyMapViewBox();
 			}
 
@@ -5646,20 +5708,19 @@ xlsx/xlsx.mjs:
 					return;
 				}
 				if (!currentMapViewBox) return;
-				const rect = multi2d.getBoundingClientRect();
-				const ratioX = clientPoint && rect.width
-					? Math.min(1, Math.max(0, (clientPoint.x - rect.left) / rect.width))
-					: 0.5;
-				const ratioY = clientPoint && rect.height
-					? Math.min(1, Math.max(0, (clientPoint.y - rect.top) / rect.height))
-					: 0.5;
-				const anchorX = currentMapViewBox.x + currentMapViewBox.width * ratioX;
-				const anchorY = currentMapViewBox.y + currentMapViewBox.height * ratioY;
+				// The point under the pointer stays where it is. It is read through
+				// the SVG's own matrix: the picture is fitted into the panel whole
+				// (meet), so a share of the panel's width is not a share of the
+				// viewBox when their shapes differ, and the point drifted (9 px a
+				// step in Landshut).
+				const centerX = currentMapViewBox.x + currentMapViewBox.width / 2;
+				const centerY = currentMapViewBox.y + currentMapViewBox.height / 2;
+				const anchor = (clientPoint ? svgPointFromEvent(multi2d, { clientX: clientPoint.x, clientY: clientPoint.y }) : null) ?? { x: centerX, y: centerY };
 				const width = currentMapViewBox.width * factor;
 				const height = currentMapViewBox.height * factor;
 				currentMapViewBox = {
-					x: anchorX - width * ratioX,
-					y: anchorY - height * ratioY,
+					x: anchor.x - factor * (anchor.x - centerX) - width / 2,
+					y: anchor.y - factor * (anchor.y - centerY) - height / 2,
 					width,
 					height,
 				};
@@ -5667,16 +5728,23 @@ xlsx/xlsx.mjs:
 			}
 
 			function startMapPan(event) {
-				if (!currentMapViewBox || event.button !== 0) return;
+				// Alt + Ziehen, Strg + Ziehen or the right button turn the view about
+				// its middle (the grips MapLibre has with the Kartenunterlage on).
+				const rotate = event.button === 2 || (event.button === 0 && (event.altKey || event.ctrlKey));
+				if (!currentMapViewBox || (event.button !== 0 && !rotate)) return;
+				const box = multi2d.getBoundingClientRect();
 				mapDrag = {
+					rotate,
+					angle: Math.atan2(event.clientY - (box.top + box.height / 2), event.clientX - (box.left + box.width / 2)),
+					rotation: mapRotation,
 					pointerId: event.pointerId,
 					x: event.clientX,
 					y: event.clientY,
 					origin: { ...currentMapViewBox },
 					moved: false,
 				};
-				multi2d.setPointerCapture(event.pointerId);
-				multi2d.classList.add("panning");
+				try { multi2d.setPointerCapture(event.pointerId); } catch { /* no such pointer */ }
+				multi2d.classList.add(rotate ? "rotating" : "panning");
 			}
 
 			function moveMapPan(event) {
@@ -5686,9 +5754,18 @@ xlsx/xlsx.mjs:
 				const deltaX = event.clientX - mapDrag.x;
 				const deltaY = event.clientY - mapDrag.y;
 				mapDrag.moved ||= Math.hypot(deltaX, deltaY) > 3;
+				if (mapDrag.rotate) {
+					const now = Math.atan2(event.clientY - (rect.top + rect.height / 2), event.clientX - (rect.left + rect.width / 2));
+					setMapRotation(mapDrag.rotation + (now - mapDrag.angle) * 180 / Math.PI);
+					return;
+				}
+				// One scale for both directions, the one the picture is drawn with
+				// (meet): with a scale per axis the map followed the pointer by 58 %
+				// where the viewBox is narrower than the panel.
+				const unit = Math.max(mapDrag.origin.width / rect.width, mapDrag.origin.height / rect.height);
 				currentMapViewBox = {
-					x: mapDrag.origin.x - deltaX * mapDrag.origin.width / rect.width,
-					y: mapDrag.origin.y - deltaY * mapDrag.origin.height / rect.height,
+					x: mapDrag.origin.x - deltaX * unit,
+					y: mapDrag.origin.y - deltaY * unit,
 					width: mapDrag.origin.width,
 					height: mapDrag.origin.height,
 				};
@@ -5697,8 +5774,8 @@ xlsx/xlsx.mjs:
 
 			function endMapPan(event) {
 				if (!mapDrag || event.pointerId !== mapDrag.pointerId) return;
-				multi2d.releasePointerCapture?.(event.pointerId);
-				multi2d.classList.remove("panning");
+				try { multi2d.releasePointerCapture?.(event.pointerId); } catch { /* no such pointer */ }
+				multi2d.classList.remove("panning", "rotating");
 				const moved = mapDrag.moved;
 				mapDrag = null;
 				if (moved) multi2d.dataset.suppressClick = "true";
@@ -6395,7 +6472,7 @@ xlsx/xlsx.mjs:
 
 			function deactivateRailwayMap() {
 				railwayMapActive = false;
-				maplibreMapElement.classList.add("hidden");
+				maplibreMapElement.classList.add("hidden"); applyMapRotation();
 				multi2d.classList.remove("hidden");
 				railwayOpacityControl.classList.add("hidden");
 				mapLegend.classList.add("hidden");
@@ -6555,6 +6632,7 @@ xlsx/xlsx.mjs:
 							zoom: 5,
 						});
 						maplibreMap.addControl(new globalThis.maplibregl.NavigationControl(), "top-right");
+						maplibreMap.on("rotate", applyMapRotation);
 						await new Promise((resolve) => maplibreMap.once("load", resolve));
 						maplibreMap.addSource("underlay-dimmer", {
 							type: "geojson",
@@ -6713,7 +6791,7 @@ xlsx/xlsx.mjs:
 					}
 					railwayMapActive = true;
 					multi2d.classList.add("hidden");
-					maplibreMapElement.classList.remove("hidden");
+					maplibreMapElement.classList.remove("hidden"); applyMapRotation();
 					railwayOpacityControl.classList.remove("hidden");
 					mapLegend.classList.remove("hidden");
 					precisionToggle.classList.remove("hidden");
@@ -6804,6 +6882,9 @@ xlsx/xlsx.mjs:
 				gisAssign.classList.toggle("hidden", mode !== "crs" || compatibleObjects === alignmentEntries.length);
 				mapEmpty.classList.add("hidden");
 				multi2d.replaceChildren();
+				mapWorld = document.createElementNS("http://www.w3.org/2000/svg", "g");
+				mapWorld.setAttribute("class", "map-world");
+				multi2d.append(mapWorld);
 				const allPoints = [];
 				loadedFiles.forEach((loaded, fileIndex) => {
 					loaded.objects.forEach((entry) => {
@@ -6817,7 +6898,7 @@ xlsx/xlsx.mjs:
 						path.setAttribute("class", `map-object file-${fileIndex % 6}${sevenLineSide(entry) === "kilometer" ? " kilometer-line" : ""}${geometry.inferred ? " inferred-crs" : ""}${pointQuality === "limited" ? " quality-limited" : pointQuality === "unknown" ? " quality-unknown" : ""}${entry === selectedEntry ? " active" : ""}`);
 						path.setAttribute("aria-label", `${objectDisplayName(entry)}${geometry.inferred ? " · GK-Lage vermutet" : ""}${pointQuality === "limited" ? " · mittlerer Punktfehler über 1 Meter, nur GIS" : ["unknown", "unreported"].includes(pointQuality) ? " · Punktqualität offen" : ""}`);
 						path.addEventListener("click", () => selectObject(entry, entry.button));
-						multi2d.append(path);
+						mapWorld.append(path);
 						entry.mapPath = path;
 					});
 				});
@@ -6850,7 +6931,7 @@ xlsx/xlsx.mjs:
 						stoneLayer.append(group);
 					}
 				}
-				multi2d.append(stoneLayer);
+				mapWorld.append(stoneLayer);
 				if (!allPoints.length) {
 					fullMapViewBox = null;
 					currentMapViewBox = null;
@@ -6879,7 +6960,10 @@ xlsx/xlsx.mjs:
 					width: spanX + padding * 2,
 					height: spanY + padding * 2,
 				};
-				if (mode === "crs") multi2d.prepend(geographicGrid(fullMapViewBox));
+				// The grid reaches beyond the box of the data, so that a turned view
+				// does not show its corners.
+				if (mode === "crs") mapWorld.prepend(geographicGrid(mapRotation ? { x: fullMapViewBox.x - fullMapViewBox.width / 2, y: fullMapViewBox.y - fullMapViewBox.height / 2, width: fullMapViewBox.width * 2, height: fullMapViewBox.height * 2 } : fullMapViewBox));
+				applyMapRotation();
 				fitMap();
 				recordPerformance("render-map", started, { mode, objects: alignmentEntries.length, points: allPoints.length });
 			}
@@ -6925,11 +7009,11 @@ xlsx/xlsx.mjs:
 					if (hasObjects) renderMap("crs");
 					if (maplibreMap && railwayMapActive) {
 						multi2d.classList.add("hidden");
-						maplibreMapElement.classList.remove("hidden");
+						maplibreMapElement.classList.remove("hidden"); applyMapRotation();
 						maplibreMap.resize();
 						renderBasemap();
 					} else if (hasObjects) {
-						maplibreMapElement.classList.add("hidden");
+						maplibreMapElement.classList.add("hidden"); applyMapRotation();
 						multi2d.classList.remove("hidden");
 					}
 					if (pendingMapFocus && hasObjects) {
@@ -11489,14 +11573,13 @@ xlsx/xlsx.mjs:
 				}
 				const points = mapPathForEntry(entry, activeMapMode).points;
 				if (!points.length || !currentMapViewBox) return;
-				const xs = points.map((point) => point.x);
-				const ys = points.map((point) => point.y);
+				const { minX, maxX, minY, maxY } = mapViewBounds(points);
 				const rect = multi2d.getBoundingClientRect();
 				const aspect = rect.width && rect.height ? rect.width / rect.height : 1.5;
-				let width = Math.max(Math.max(...xs) - Math.min(...xs), 50) * 1.3;
-				let height = Math.max(Math.max(...ys) - Math.min(...ys), 50) * 1.3;
+				let width = Math.max(maxX - minX, 50) * 1.3;
+				let height = Math.max(maxY - minY, 50) * 1.3;
 				if (width / height < aspect) width = height * aspect; else height = width / aspect;
-				currentMapViewBox = { x: (Math.min(...xs) + Math.max(...xs)) / 2 - width / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 - height / 2, width, height };
+				currentMapViewBox = { x: (minX + maxX) / 2 - width / 2, y: (minY + maxY) / 2 - height / 2, width, height };
 				applyMapViewBox();
 			}
 			// Several entries at once (a Bündel): the map goes to all of them, and
@@ -11512,14 +11595,13 @@ xlsx/xlsx.mjs:
 				}
 				const points = list.flatMap((entry) => mapPathForEntry(entry, activeMapMode).points);
 				if (!points.length || !currentMapViewBox) return;
-				const xs = points.map((point) => point.x);
-				const ys = points.map((point) => point.y);
+				const { minX, maxX, minY, maxY } = mapViewBounds(points);
 				const rect = multi2d.getBoundingClientRect();
 				const aspect = rect.width && rect.height ? rect.width / rect.height : 1.5;
-				let width = Math.max(Math.max(...xs) - Math.min(...xs), 50) * 1.3;
-				let height = Math.max(Math.max(...ys) - Math.min(...ys), 50) * 1.3;
+				let width = Math.max(maxX - minX, 50) * 1.3;
+				let height = Math.max(maxY - minY, 50) * 1.3;
 				if (width / height < aspect) width = height * aspect; else height = width / aspect;
-				currentMapViewBox = { x: (Math.min(...xs) + Math.max(...xs)) / 2 - width / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 - height / 2, width, height };
+				currentMapViewBox = { x: (minX + maxX) / 2 - width / 2, y: (minY + maxY) / 2 - height / 2, width, height };
 				applyMapViewBox();
 				for (const entry of list) entry.mapPath?.classList.add("in-bundle");
 				setTimeout(() => { for (const entry of list) entry.mapPath?.classList.remove("in-bundle"); }, 2600);
@@ -12132,14 +12214,21 @@ xlsx/xlsx.mjs:
 			}, { passive: false });
 			multi2d.addEventListener("pointermove", (event) => scheduleCursor(() => {
 				if (mapDrag || !currentMapViewBox) return;
-				const point = svgPointFromEvent(multi2d, event);
-				if (!point) return;
+				const shown = svgPointFromEvent(multi2d, event);
+				if (!shown) return;
+				const point = mapViewToWorld(shown);
 				const tolerance = 25 * currentMapViewBox.width / Math.max(multi2d.getBoundingClientRect().width, 1);
 				cursorFromMap(point.x, point.y, tolerance, activeMapMode);
 			}));
 			diagram.addEventListener("mousemove", (event) => scheduleCursor(() => cursorFromFigureEvent(diagram, event)));
 			wireDiagramZoom();
 			multi2d.addEventListener("pointerdown", startMapPan);
+			// The right button turns the view; its menu would only be in the way.
+			multi2d.addEventListener("contextmenu", (event) => event.preventDefault());
+			mapNorth.addEventListener("click", () => {
+				if (maplibreMap && !maplibreMapElement.classList.contains("hidden")) { maplibreMap.easeTo?.({ bearing: 0, pitch: 0 }); return; }
+				setMapRotation(0);
+			});
 			multi2d.addEventListener("pointermove", moveMapPan);
 			multi2d.addEventListener("pointerup", endMapPan);
 			multi2d.addEventListener("pointercancel", endMapPan);

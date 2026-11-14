@@ -892,6 +892,10 @@
 			#multi2d.panning {
 				cursor: grabbing;
 			}
+			#multi2d.rotating { cursor: alias; }
+			#mapNorth { display: inline-grid; place-items: center; min-width: 2rem; }
+			#mapNorthArrow { display: block; fill: currentColor; }
+			#mapNorth.gedreht #mapNorthArrow { fill: var(--accent); }
 			#maplibreMap {
 				position: relative;
 				inset: auto;

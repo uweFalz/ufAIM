@@ -112,7 +112,7 @@
 								</div>
 							</details>
 							<div id="mapFilterPanel" class="hidden" aria-label="Kartenfilter"></div>
-							<span class="tb-group"><button id="mapFit" type="button" title="Alles zeigen">Alles</button><button id="mapZoomOut" type="button" aria-label="Herauszoomen">−</button><button id="mapZoomIn" type="button" aria-label="Hineinzoomen">+</button></span>
+							<span class="tb-group"><button id="mapNorth" type="button" aria-label="Norden nach oben drehen" title="Nordpfeil. Klick: Norden nach oben. Drehen: Alt + Ziehen oder rechte Maustaste ziehen."><svg id="mapNorthArrow" viewBox="-8 -8 16 16" width="14" height="14" aria-hidden="true"><path d="M0 -7 L4.6 6 L0 3.4 L-4.6 6 Z"></path></svg></button><button id="mapFit" type="button" title="Alles zeigen">Alles</button><button id="mapZoomOut" type="button" aria-label="Herauszoomen">−</button><button id="mapZoomIn" type="button" aria-label="Hineinzoomen">+</button></span>
 						</div>
 						<svg id="multi2d" role="img" aria-label="Geografische Lageansicht aller transformierbaren Trassen"></svg>
 						<div id="maplibreMap" class="hidden" aria-label="Kartenebene mit geladenen Trassen"></div>

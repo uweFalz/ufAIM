@@ -1,8 +1,8 @@
 {
   "version": 1,
   "inputs": {
-    "viewer/index.html.in": "0e12978f87ec01eb2217c14e193539aaa882e95c9958f22a94fca3a72aec2c1e",
-    "viewer/src/viewer.css": "5e3d07f7fff80ee19f49cb8b3cb6ca6e7c19f912ef0618cd57aa61992e7b6aab",
+    "viewer/index.html.in": "222069d5c31ca684e86e4ea5a8fae9383ff8a945971cf78d54186169b85ca0d9",
+    "viewer/src/viewer.css": "a2c23a74618ba7561e67c433b439acf89de47fc9dd4b109a460fb473c101d0b7",
     "viewer/vendor/maplibre.css": "415e1f53a6d25857a851ab4fe0e836075c22bef142748bc2898ec824fc35f7ea",
     "viewer/src/insecure-context-shim.js": "1d6dfb47bdbd3233914496efc64797567aaa28f2db4f376c98efbe8e569de399",
     "viewer/vendor/maplibre.js": "3ccfa3b6cbb8676a9cec25b1b1ee127b325f4a9117dbe8e7379ec36160c9f300",
@@ -10,12 +10,12 @@
     "src/import/parsers/technet/gndEdit/gnd/extractGndDbb.js": "09456939572804c2be768107c06153d08baac40e4b5795613f1361c5fe3f4414",
     "src/import/parsers/technet/gndEdit/parseGND_DBB.js": "17268b27bdf84014c35aaf82fdfdda95411a69e143f24e2ab4fbce281132d4bb",
     "viewer/src/import-legacy.js.in": "ba17f307e342cc05de3f52ce526f175171c755da802dbdd2bd242c6aff4e9def",
-    "viewer/src/viewer.js": "5811fa1aff925f585d7efc827a450ce7ca8d5352e4bc68ecb9313f6d9cf59dfb",
+    "viewer/src/viewer.js": "b0105e1e85e8d624aa8121922a4b51245b8ba59220762314a8c68934148b22de",
     "tools/build-technet-viewer.mjs": "d6b125e678f436868c342ab964691e060ee293a4fb1042aced4c47e7ba35f490",
     "tools/technet-shared-blocks.mjs": "7a63a9aab48fa95e5b458d506dea82c232a91e6466b76f5f82bbe260211eec5d"
   },
   "output": {
     "path": "technetViewer.html",
-    "sha256": "70aa543b9c8b70c43cb85fb3b677298e2fd22dec559ddecaf37648e3ac345f67"
+    "sha256": "c01f3a8791e946b1b740d1eee3d9e07411a6bb76aad73f98162774aa1c580506"
   }
 }
