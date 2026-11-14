@@ -28,11 +28,26 @@
 // solveBoxQP with H = J'J + mu I and c = J'r, then Armijo on |r| with the
 // trial point projected into the box. mu is Levenberg-Marquardt damping.
 //
+// A violated inequality that is curved adds its Newton term, g_j times its
+// second derivative, where the evaluator states one (state.rowCurvature, see
+// solveSQP). The Hessian of 1/2 max(0, g_j)^2 is grad grad' + g_j Hess g_j,
+// and the Gauss-Newton step keeps the first part only. For one strongly
+// curved row that step is the row's gradient direction, the direction in
+// which the row curves most, and it overshoots. Measured on the corridor of
+// the length tier over 237 elements (rms^2 - 1, a sum of squares over 42 km):
+// the row's gradient is 1e3 and its curvature along it 6e9, the step of
+// 2e-6 that closes the linearised row reopens it at second order, the search
+// takes an eighth of it, and thirty steps take the violation from 2.7e-3 to
+// 4.6e-4 or from 1.30e-4 to 1.25e-4 - restoration_stalled, at the two points
+// where the tier most needed to be put back. With the term the step is the
+// Gauss-Newton step of the residuals behind the row, (J'J)^-1 J'r scaled to
+// close it, along the squares' own geometry.
+//
 // Pure numerics: depends only on the box QP.
 
 import { solveBoxQP } from "../qp/solveBoxQP.js";
 
-export const RESTORE_FEASIBILITY_VERSION = "optim/sqp/restoreFeasibility/0.1";
+export const RESTORE_FEASIBILITY_VERSION = "optim/sqp/restoreFeasibility/0.2";
 
 function dot(a, b) {
 	let sum = 0;
@@ -49,6 +64,21 @@ function residualOf(state) {
 		if (value > 0) { rows.push(value); jacobian.push(state.Jg[j]); }
 	});
 	return { rows, jacobian };
+}
+
+/**
+ * the violated inequalities whose second derivative the evaluator states,
+ * each with its violation as the weight of that derivative; asked for once a
+ * step, at the point the step starts from, not at every trial
+ */
+function curvedRowsOf(state) {
+	const curved = [];
+	if (typeof state.rowCurvature !== "function" || !(state.g ?? []).some((value) => value > 0)) return curved;
+	for (const entry of state.rowCurvature() ?? []) {
+		const value = state.g?.[entry?.row];
+		if (value > 0 && Array.isArray(entry.hessian)) curved.push({ weight: value, hessian: entry.hessian });
+	}
+	return curved;
 }
 
 /**
@@ -97,9 +127,11 @@ export function restoreFeasibility({
 		if (norm <= feasibilityTolerance) return done(true, "restored");
 		if (rows.length === 0) return done(true, "restored");
 
+		const curved = curvedRowsOf(state);
 		const H = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => {
 			let sum = 0;
 			for (const row of jacobian) sum += row[i] * row[j];
+			for (const entry of curved) sum += entry.weight * entry.hessian[i][j];
 			return sum + (i === j ? mu : 0);
 		}));
 		const c = Array.from({ length: n }, (_, i) => jacobian.reduce((sum, row, r) => sum + row[i] * rows[r], 0));
