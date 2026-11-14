@@ -4939,7 +4939,7 @@ xlsx/xlsx.mjs:
 					ende: `reicht über das Ende von ${linie} hinaus (${anteil} daneben)`,
 					abstand: `ein Ende ${Math.round(hinweis.abstand ?? 0)} m von ${linie}, weiter als ${ordnungAnnahmen.kmFern} m`,
 					anteil: `nur ${anteil} des Gleises in ${ordnungAnnahmen.reichweite} m neben ${linie}`,
-					laenge: `die Abbildung auf ${linie} hält seine Länge nicht`,
+					laenge: hinweis.eigen > 0 ? `läuft quer zu ${linie}: ${lageMeters(hinweis.eigen)} m lang, auf der Linie nur ${lageMeters(hinweis.aufLinie ?? 0)} m` : `die Abbildung auf ${linie} hält seine Länge nicht`,
 				}[hinweis.grund] ?? `passt an keine Kilometerlinie der ${strecke}`;
 				if (hinweis.art === "fremd") return `km von ${hinweis.von ? objectListName(hinweis.von) : "einer anderen Kilometerlinie"}, nicht von ${strecke}: ${grund}`;
 				const passt = hinweis.passt ? ` · von Ende zu Ende liegt es an ${objectListName(hinweis.passt)}${isValidRouteNumber(geoFrameInfo(hinweis.passt)?.track) ? ` (Strecke ${geoFrameInfo(hinweis.passt).track})` : ""}` : "";
@@ -10871,6 +10871,11 @@ xlsx/xlsx.mjs:
 				// trustDelivered: a named Gleis whose stations already lie in the
 				// Kilometerlinie's range keeps them; a singleton's stations are
 				// file-local by nature (W403-404.TRA: 0-88 m) and are always projected.
+				// Gleise the length rule kept off their line (einordnungLaengentreu),
+				// with both lengths: WueTreu has 17 short Gleise standing at 61 to 87
+				// degrees to the Kilometerlinie of 5201, two fans of 8 and 9 -- on the
+				// line they would be 2 to 22 m long instead of 32 to 45 m.
+				const laengen = new Map();
 				const project = (target, reference, trustDelivered) => {
 					const localRange = stationRangeForEntry(target);
 					const referenceRange = stationRangeForEntry(reference);
@@ -10885,7 +10890,12 @@ xlsx/xlsx.mjs:
 					if (polyline.length < 2) return;
 					const pairs = landXmlStationMapping(target, polyline);
 					if (pairs.length < 2) return;
-					if (!einordnungLaengentreu(pairs[pairs.length - 1].local - pairs[0].local, pairs[pairs.length - 1].external - pairs[0].external)) return;
+					if (!einordnungLaengentreu(pairs[pairs.length - 1].local - pairs[0].local, pairs[pairs.length - 1].external - pairs[0].external)) {
+						// Kept for the picture to say: how long the Gleis is and how
+						// little of that the line would make of it.
+						laengen.set(target, { eigen: Math.abs(pairs[pairs.length - 1].local - pairs[0].local), aufLinie: Math.abs(pairs[pairs.length - 1].external - pairs[0].external) });
+						return;
+					}
 					applyLandXmlStationMapping(target, pairs);
 					listingCache.delete(target);
 					for (const sibling of referencingEntries(target)) {
@@ -11020,7 +11030,7 @@ xlsx/xlsx.mjs:
 							target.kmHinweis = { ...target.kmHinweis, art: "fremd", von: alignments.find((entry) => entry.item.id === target.externalStationReference) ?? null };
 						}
 						settle(target, reference, true);
-						if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference };
+						if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference, ...laengen.get(target) };
 					}
 				}
 				// GND: a Nebengleis or Bahnhofsgleis counts its stations from its
@@ -11043,7 +11053,7 @@ xlsx/xlsx.mjs:
 					if (!byHand) delete target.kmHinweis;
 					if (reference) settle(target, reference, false);
 					else if (kmAbbildungPairs(target)) unproject(target);
-					if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference };
+					if (reference && !target.externalStationReference) target.kmHinweis = { art: "ohne", grund: "laenge", linie: reference, ...laengen.get(target) };
 					// Without km in the Strecke it was sorted into: the Kilometerlinie
 					// of another Strecke it lies along end to end is named, so that
 					// the user can sort it there. Named only; nothing is moved.
