@@ -7,8 +7,11 @@ Adds to `docs/app/architecture/HANDOVER_ROCK_TRANSED_2026-11-12.md`, sections 4 
 ## What I ask
 
 Take the eleven files below again from the tip of
-`origin/claude/transed-playground` (`26a0c5c` or later; pull request
-https://github.com/uweFalz/ufAIM/pull/122) into `/Users/uwefalz/Developer/ufAIM`.
+`origin/claude/transed-playground` (`fa0015e`, the commit that added this
+note, or later; pull request https://github.com/uweFalz/ufAIM/pull/122) into
+`/Users/uwefalz/Developer/ufAIM`. Since `1c54e04` only documents and evidence
+changed on the branch, so the eleven files and their checksums are the same at
+every later commit.
 
 ## Why
 
