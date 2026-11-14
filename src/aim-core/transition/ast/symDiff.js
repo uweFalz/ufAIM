@@ -58,6 +58,15 @@ function diffExpr(node){
 			// d cos(m u + n) = -m sin(m u + n)
 			return mkSc(-m, { op: 'sin', m, n });
 		}
+		case 'sinh':
+		case 'cosh':
+		case 'exp': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+			// d sinh = m cosh, d cosh = m sinh, d exp = m exp
+			const op = node.op==='sinh' ? 'cosh' : node.op==='cosh' ? 'sinh' : 'exp';
+			return mkSc(m, { op, m, n });
+		}
 		default:
 		throw new Error(`symDiff: unsupported op '${node.op}'`);
 	}

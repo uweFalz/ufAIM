@@ -11,7 +11,8 @@ A page of its own for the transitionDB, independent of the app shell.
 
 ## Modes
 
-- Mode 0, function with argument interval: a polynomial or sin/cos, shown with
+- Mode 0, function with argument interval: a polynomial or sin, cos, sinh,
+  cosh, exp of m·x + n, shown with
   f′ and f″; the argument interval is typed or dragged open in the picture and
   cuts the frame out of the function. Stored as `simpleFcn`, as the plain piece
   `PROTO_<id>` and, if wanted, as halfWave `HW_<id>`.

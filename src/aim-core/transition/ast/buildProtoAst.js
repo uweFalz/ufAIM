@@ -2,7 +2,7 @@
 // Responsibilities:
 // - Resolve {op:'ref', id, crop:[a,b]} against simpleFcn ONLY (proto-internal refs intentionally not supported yet)
 // - Apply crop as affine reparam: x = a + (b-a)*u  (a>b allowed)
-// - Produce only ops that downstream can handle: const, pi, 2pi, poly, sin, cos, add, sc, neg, pow
+// - Produce only ops that downstream can handle: const, pi, 2pi, poly, sin, cos, sinh, cosh, exp, add, sc, neg, pow
 
 import { simplify, mkConst, mkPoly, mkAdd, mkMul, mkSc, mkNeg } from "./simplify.js";
 
@@ -61,6 +61,8 @@ function normCrop(crop){
 	return { a, b };
 }
 
+const AFFINE_FCN_OPS = new Set(['sin', 'cos', 'sinh', 'cosh', 'exp']);
+
 function compileSimpleWithCrop(simpleDef, crop) {
 	// crop: map u in [0,1] to x in [a,b]
 	const { a, b } = crop;
@@ -74,8 +76,8 @@ function compileSimpleWithCrop(simpleDef, crop) {
 	}
 
 	// trig
-	if (simpleDef.op==='sin' || simpleDef.op==='cos') {
-		// normalize to sin(m*u + n)
+	if (AFFINE_FCN_OPS.has(simpleDef.op)) {
+		// normalize to sin(m*u + n); sinh, cosh and exp take the same affine argument
 		const sm = ('m' in simpleDef) ? Number(simpleDef.m) : 1;
 		const sn = ('n' in simpleDef) ? Number(simpleDef.n) : 0;
 		if (!Number.isFinite(sm) || !Number.isFinite(sn)) throw new Error('simpleFcn trig m/n must be finite');
@@ -106,7 +108,10 @@ function compileNode(node, simpleFcn, path) {
 			return mkPoly(node.coeff.map(Number));
 		}
 		case 'sin':
-		case 'cos': {
+		case 'cos':
+		case 'sinh':
+		case 'cosh':
+		case 'exp': {
 			// allow explicit arg, but prefer affine form
 			if (node.arg){
 				const a = simplify(compileNode(node.arg, simpleFcn, `${path}.arg`));

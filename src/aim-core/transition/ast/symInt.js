@@ -3,6 +3,7 @@
 // This is intentionally NOT a general CAS. It supports the restricted family:
 // - polynomials in implicit u only (poly.arg absent)
 // - trig affine-only: sin(m*u+n), cos(m*u+n) (no explicit arg)
+// - hyperbolic and exponential affine-only: sinh, cosh, exp of (m*u+n)
 // - scalar factors via {op:'sc', value, arg}
 // - add/neg/sc wrappers
 //
@@ -70,6 +71,24 @@ export function symInt(node) {
 			// ∫0^u cos(m t + n) dt = (sin(m u + n) - sin(n)) / m
 			const termU = mkSc(1 / m, { op: 'sin', m, n });
 			const term0 = mkConst(-Math.sin(n) / m);
+			return mkAdd([termU, term0]);
+		}
+
+		case 'sinh':
+		case 'cosh':
+		case 'exp': {
+			const m = ('m' in node) ? Number(node.m) : 1;
+			const n = ('n' in node) ? Number(node.n) : 0;
+
+			if (!Number.isFinite(m) || Math.abs(m) < 1e-15) {
+				// constant -> value * u
+				return mkPoly([0, Math[node.op](n)]);
+			}
+
+			// ∫0^u sinh(m t + n) dt = (cosh(m u + n) - cosh(n)) / m, cosh and exp alike
+			const op = node.op==='sinh' ? 'cosh' : node.op==='cosh' ? 'sinh' : 'exp';
+			const termU = mkSc(1 / m, { op, m, n });
+			const term0 = mkConst(-Math[op](n) / m);
 			return mkAdd([termU, term0]);
 		}
 
