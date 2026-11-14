@@ -205,6 +205,15 @@
 			   grew with the tallest pane (a long Inbox), the percent heights below
 			   resolved against nothing, and the main view outgrew the window. */
 			#stage { position: relative; min-height: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
+			/* Each child of main has its row by name. Placed automatically, the
+			   Bühne took the second row whenever the progress bar was hidden
+			   (display: none) -- an auto row, as tall as the taller of Inbox and
+			   Outbox -- and the filling third row stayed empty: with both sides
+			   thinly filled the main view ended above the window's bottom (posN,
+			   pile filtered to nothing: 632 of 949 px). */
+			main > #titlebar { grid-row: 1; }
+			main > #importProgress { grid-row: 2; }
+			main > #stage { grid-row: 3; }
 			#dropzone { position: absolute; inset: 0; z-index: 25; display: grid; place-items: center; padding: var(--sp-4); background: var(--window); }
 			#dropzone.loaded { display: none; }
 			.welcome { max-width: 34rem; padding: 2rem 2.2rem; border: 1.5px dashed color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 1rem; background: var(--surface); text-align: center; box-shadow: 0 1rem 3rem rgba(0,0,0,0.08); }
