@@ -215,6 +215,11 @@ test("beside the nearest line in part, beside another from end to end: the other
 	assert.equal(almost.samples - almost.hits, 1);
 	assert.equal(almost.weitere[0].route, "5500");
 	assert.equal(lageGanzDaneben(almost), null);
+	// The number of missing samples that makes a doubt is an Annahme the user can change.
+	assert.equal(lageGanzDaneben(almost, 1).route, "5500");
+	assert.equal(lageLinienwahl(almost).zweifel, false);
+	assert.equal(lageLinienwahl(almost, (route) => route, 1).zweifel, true);
+	assert.equal(lageGanzDaneben(lage, 5), null);
 	assert.equal(lageGanzDaneben(null), null);
 });
 

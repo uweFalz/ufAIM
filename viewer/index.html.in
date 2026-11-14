@@ -137,7 +137,7 @@
 						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende nach Ril 883.3100"></div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
-							<div class="box-head"><span>Outbox · Ordnung</span></div>
+							<div class="box-head"><span>Outbox · Ordnung</span><details id="ordnungAnnahmenMenu" class="menu"><summary id="ordnungAnnahmenSummary" title="Schwellen der Ordnung, die in keiner Datei stehen — jede mit ihrem Grund im Tooltip. Geändert, werden alle Gleise neu stationiert und die Vorschläge neu gerechnet.">Annahmen ▾</summary><div id="ordnungAnnahmenBody" class="menu-body row" popover="manual"></div></details></div>
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
 						<div id="spurplanPanel" class="slide hidden">

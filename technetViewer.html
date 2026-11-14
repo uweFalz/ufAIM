@@ -174,6 +174,14 @@
 			.menu-body { position: absolute; top: calc(100% + 0.3rem); right: 0; z-index: 40; min-width: 14rem; display: flex; flex-direction: column; gap: var(--sp-1); padding: var(--sp-2); background: Canvas; border: 1px solid var(--hairline); border-radius: 0.65rem; box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
 			.menu-body.row { display: grid; grid-template-columns: auto auto; align-items: center; gap: var(--sp-2) var(--sp-4); min-width: 0; width: max-content; }
 			.menu-body.row .gwb-input { justify-content: space-between; }
+			#ordnungAnnahmenMenu { font-weight: 400; letter-spacing: 0; text-transform: none; }
+			#ordnungAnnahmenMenu.geaendert > summary { color: #b3541e; }
+			#ordnungAnnahmenBody { grid-template-columns: auto; }
+			#ordnungAnnahmenBody .gwb-input { display: grid; grid-template-columns: 1fr max-content 5.6rem; }
+			#ordnungAnnahmenMenu > summary { padding-inline: 0.45rem; font-size: var(--fs-2); white-space: nowrap; }
+			#outbox .box-head > span { white-space: nowrap; }
+			#ordnungAnnahmenBody .gwb-input.geaendert input { border-color: #b3541e; }
+			#ordnungAnnahmenBody button { justify-self: start; }
 			/* Open, the leaf lives in the top layer (Popover API): nothing clips
 			   it (the map panel paints contained), nothing covers it (the welcome
 			   card, the panels), and it may be wider than its bar. Script sets top
@@ -1921,7 +1929,7 @@
 						<div id="precisionLegend" class="legend legend-card hidden" aria-label="Präzisionslegende nach Ril 883.3100"></div>
 						</div>
 						<aside id="outbox" aria-label="Outbox · aktuelle Auswahl">
-							<div class="box-head"><span>Outbox · Ordnung</span></div>
+							<div class="box-head"><span>Outbox · Ordnung</span><details id="ordnungAnnahmenMenu" class="menu"><summary id="ordnungAnnahmenSummary" title="Schwellen der Ordnung, die in keiner Datei stehen — jede mit ihrem Grund im Tooltip. Geändert, werden alle Gleise neu stationiert und die Vorschläge neu gerechnet.">Annahmen ▾</summary><div id="ordnungAnnahmenBody" class="menu-body row" popover="manual"></div></details></div>
 							<div id="outboxContent"><span>Noch nichts ausgewählt.</span></div>
 						</aside>
 						<div id="spurplanPanel" class="slide hidden">
@@ -41348,8 +41356,8 @@ xlsx/xlsx.mjs:
 			// the Gleis passes the line's end by less than a sample's spacing,
 			// that Gls410 with 24 of 25), not a doubt; two are.
 			const LAGE_ZWEIFEL_MIN_FEHLEND = 2;
-			function lageGanzDaneben(lage) {
-				if (!lage || !lage.route || lage.eigen || !(lage.samples - lage.hits >= LAGE_ZWEIFEL_MIN_FEHLEND)) return null;
+			function lageGanzDaneben(lage, minFehlend = LAGE_ZWEIFEL_MIN_FEHLEND) {
+				if (!lage || !lage.route || lage.eigen || !(lage.samples - lage.hits >= minFehlend)) return null;
 				return (lage.weitere ?? []).filter((candidate) => candidate.hits === lage.samples).sort((a, b) => a.median - b.median)[0] ?? null;
 			}
 			// The choice a proposal has: the Kilometerlinien the Gleis lies
@@ -41359,7 +41367,7 @@ xlsx/xlsx.mjs:
 			// lies beside the nearest only in part (zweifel) -- unless another
 			// piece of the nearest's own Strecke covers it entirely. null where
 			// one Strecke is in reach, or the line is the Gleis's own.
-			function lageLinienwahl(lage, streckeVon = (route) => route) {
+			function lageLinienwahl(lage, streckeVon = (route) => route, minFehlend = LAGE_ZWEIFEL_MIN_FEHLEND) {
 				if (!lage?.route || lage.eigen || !lage.weitere?.length) return null;
 				const seen = new Set();
 				const linien = [{ route: lage.route, hits: lage.hits, median: lage.median }, ...lage.weitere].filter((linie) => {
@@ -41370,7 +41378,7 @@ xlsx/xlsx.mjs:
 				});
 				if (linien.length < 2) return null;
 				const eigene = streckeVon(lage.route);
-				const offen = Boolean(lageGanzDaneben(lage)) && !lage.weitere.some((linie) => linie.hits === lage.samples && streckeVon(linie.route) === eigene);
+				const offen = Boolean(lageGanzDaneben(lage, minFehlend)) && !lage.weitere.some((linie) => linie.hits === lage.samples && streckeVon(linie.route) === eigene);
 				const ganz = offen ? linien.slice(1).filter((linie) => linie.hits === lage.samples).sort((a, b) => a.median - b.median)[0] ?? null : null;
 				return { linien, samples: lage.samples, naechste: lage.route, ganz: ganz?.route ?? null, zweifel: Boolean(ganz) };
 			}
@@ -41490,7 +41498,7 @@ xlsx/xlsx.mjs:
 			// The choice a Gleis's proposal has (lageLinienwahl) and the line that
 			// stands: the one the user picked, otherwise the nearest.
 			function vorschlagLinienwahl(entry) {
-				const wahl = lageLinienwahl(lageWitness(entry), kilometerlinieStrecke);
+				const wahl = lageLinienwahl(lageWitness(entry), kilometerlinieStrecke, ordnungAnnahmen.zweifel);
 				if (!wahl) return null;
 				const picked = vorschlagLinie.get(entry);
 				return { ...wahl, gewaehlt: wahl.linien.some((linie) => linie.route === picked) ? picked : wahl.naechste };
@@ -44579,7 +44587,7 @@ xlsx/xlsx.mjs:
 					keine: `keine Kilometerlinie der ${strecke} in seinem Lagesystem geladen`,
 					fern: `liegt an keiner Kilometerlinie der ${strecke}`,
 					ende: `reicht über das Ende von ${linie} hinaus (${anteil} daneben)`,
-					abstand: `ein Ende ${Math.round(hinweis.abstand ?? 0)} m von ${linie}, weiter als ${TOPOLOGY_KM_FAR_M} m`,
+					abstand: `ein Ende ${Math.round(hinweis.abstand ?? 0)} m von ${linie}, weiter als ${ordnungAnnahmen.kmFern} m`,
 					anteil: `nur ${anteil} des Gleises in ${LAGE_REACH_M} m neben ${linie}`,
 					laenge: `die Abbildung auf ${linie} hält seine Länge nicht`,
 				}[hinweis.grund] ?? `passt an keine Kilometerlinie der ${strecke}`;
@@ -47500,6 +47508,100 @@ xlsx/xlsx.mjs:
 			// perpendicular, marked as far) up to this distance -- a Gleisgruppe
 			// beside the Strecke, not the next Strecke over.
 			const TOPOLOGY_KM_FAR_M = 250;
+			// Die Annahmen der Ordnung: thresholds no file states. Each has its
+			// reason from the measurements and a field in "Annahmen" above the
+			// Outbox -- a plausible value, shown with why, and changeable where it
+			// is used. Changed, every Gleis is stationed anew and the proposals are
+			// measured again; what differs from the standard is saved with the
+			// state. (The Spurplan keeps TOPOLOGY_KM_FAR_M for its Knoten.)
+			const ORDNUNG_ANNAHMEN = [
+				{ key: "kmFern", label: "km von Hand bis", unit: "m", standard: TOPOLOGY_KM_FAR_M, min: 60, max: 2000, step: 10,
+					grund: "Ein von Hand einsortiertes Gleis bekommt die km seiner Strecke über den Lotfußpunkt auch dann, wenn ein Ende weiter als 60 m neben der Kilometerlinie liegt — bis zu diesem Abstand. Gemessen an Bahnhofsgleisen in breiten Gleisfeldern (Billwerder, WueTreu)." },
+				{ key: "anteil", label: "dabei neben der Linie ab", unit: "%", standard: BEZUGSLINIE_VON_HAND_MIN_ANTEIL * 100, min: 0, max: 100, step: 5,
+					grund: "Anteil des Gleises, der dafür in 60 m neben der Kilometerlinie liegen muss. Darunter bleibt das Gleis ohne km und trägt die Marke „ohne km“." },
+				{ key: "genau", label: "Stationen sind km: ein Ende auf", unit: "m", standard: BEZUGSLINIE_STATION_GENAU_M, min: 0, max: 50, step: 1,
+					grund: "Gelieferte Stationen gelten als km der Strecke, wenn ein Ende des Gleises, auf die Kilometerlinie gelotet, auf diesen Betrag bei seinem km liegt. Gemessen in sieben Lieferungen: echte km stimmen auf 1 m, eigene Zählungen liegen 34 m und mehr daneben." },
+				{ key: "ueberstand", label: "das andere Ende bis", unit: "m", standard: BEZUGSLINIE_STATION_TOLERANZ_M, min: 0, max: 500, step: 10,
+					grund: "Spielraum für das andere Ende: ein Gleis darf über das Ende seiner Kilometerlinie hinausreichen, dort endet der Lotfußpunkt am Linienende." },
+				{ key: "zweifel", label: "Zweifel an der Strecke ab", unit: "Stichproben", standard: LAGE_ZWEIFEL_MIN_FEHLEND, min: 1, max: 25, step: 1,
+					grund: "Ein Sortiervorschlag wird hervorgehoben, wenn das Gleis an der nächsten Kilometerlinie mit so vielen seiner 9 bis 25 Stichproben fehlt und an der Linie einer anderen Strecke ganz liegt. Eine einzelne fehlende Stichprobe ist die Körnung der Messung." },
+			];
+			const ordnungAnnahmen = Object.fromEntries(ORDNUNG_ANNAHMEN.map((annahme) => [annahme.key, annahme.standard]));
+			function ordnungAnnahmenGeaendert() {
+				return ORDNUNG_ANNAHMEN.filter((annahme) => ordnungAnnahmen[annahme.key] !== annahme.standard);
+			}
+			// Takes a value if it is a number within the field's range; says
+			// whether anything changed.
+			function ordnungAnnahmeSetzen(key, value) {
+				const annahme = ORDNUNG_ANNAHMEN.find((item) => item.key === key);
+				const number = Number(value);
+				if (!annahme || value === "" || value == null || !Number.isFinite(number)) return false;
+				const clamped = Math.max(annahme.min, Math.min(annahme.max, number));
+				if (ordnungAnnahmen[key] === clamped) return false;
+				ordnungAnnahmen[key] = clamped;
+				return true;
+			}
+			// Every Gleis is measured against the values that stand now: what is
+			// stationed on a Kilometerlinie is taken off it first, then decided
+			// anew as when the files were loaded and sorted.
+			function ordnungNeuStationieren() {
+				for (const entry of allViewerEntries()) {
+					if (entry.item.kind === "alignment" && entry.externalStationReference && (entry.parser === "vermEsn" || gndEigenstationiert(entry))) kmAbbildungLoesen(entry);
+				}
+				einordnungGeaendert();
+				reconcileVermEsnStationing();
+			}
+			function renderOrdnungAnnahmen() {
+				const menu = document.querySelector("#ordnungAnnahmenMenu");
+				const body = document.querySelector("#ordnungAnnahmenBody");
+				const summary = document.querySelector("#ordnungAnnahmenSummary");
+				if (!menu || !body || !summary) return;
+				const changed = ordnungAnnahmenGeaendert();
+				menu.classList.toggle("geaendert", changed.length > 0);
+				summary.textContent = "Annahmen ▾";
+				summary.setAttribute("aria-label", changed.length ? `Annahmen der Ordnung, ${changed.length} geändert` : "Annahmen der Ordnung");
+				const anwenden = () => {
+					ordnungNeuStationieren();
+					renderOrdnungAnnahmen();
+					status.classList.remove("error");
+					const now = ordnungAnnahmenGeaendert();
+					status.textContent = now.length ? `Annahmen der Ordnung geändert (${now.map((annahme) => `${annahme.label} ${ordnungAnnahmen[annahme.key]} ${annahme.unit}`).join(" · ")}) · alle Gleise neu stationiert` : "Annahmen der Ordnung wieder auf dem Standard · alle Gleise neu stationiert";
+					renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
+					if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
+				};
+				body.replaceChildren();
+				for (const annahme of ORDNUNG_ANNAHMEN) {
+					const label = document.createElement("label");
+					label.className = `gwb-input${ordnungAnnahmen[annahme.key] !== annahme.standard ? " geaendert" : ""}`;
+					label.title = `${annahme.grund} Standard: ${annahme.standard} ${annahme.unit}.`;
+					const input = document.createElement("input");
+					input.type = "number";
+					input.inputMode = "numeric";
+					input.min = String(annahme.min);
+					input.max = String(annahme.max);
+					input.step = String(annahme.step);
+					input.value = String(ordnungAnnahmen[annahme.key]);
+					input.dataset.annahme = annahme.key;
+					input.addEventListener("change", () => {
+						if (ordnungAnnahmeSetzen(annahme.key, input.value)) anwenden();
+						else input.value = String(ordnungAnnahmen[annahme.key]);
+					});
+					label.append(`${annahme.label} `, input, ` ${annahme.unit}`);
+					body.append(label);
+				}
+				const reset = document.createElement("button");
+				reset.type = "button";
+				reset.className = "menu-item";
+				reset.textContent = "Standard";
+				reset.title = "Alle Annahmen der Ordnung auf die gemessenen Standardwerte zurücksetzen";
+				reset.disabled = !changed.length;
+				reset.addEventListener("click", () => {
+					for (const annahme of ORDNUNG_ANNAHMEN) ordnungAnnahmen[annahme.key] = annahme.standard;
+					anwenden();
+				});
+				body.append(reset);
+			}
+			renderOrdnungAnnahmen();
 			const TOPOLOGY_AXIS_MAX_DISTANCE_M = 150;
 			// Rows split where neighbouring offsets differ by more than this. 1,5 m:
 			// the Kilometerlinie of a two-track Strecke runs 2 m from either Gleis
@@ -50349,7 +50451,7 @@ xlsx/xlsx.mjs:
 					const ends = alignmentEndpoints(target);
 					const onLine = ends && polyline.length > 1 ? [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(polyline, point).station) : null;
 					const projectedRange = onLine ? { from: Math.min(...onLine), to: Math.max(...onLine) } : null;
-					if (trustDelivered && within(localRange, referenceRange, 50) && einordnungStationenGelten(localRange, projectedRange)) { target.externalStationReference = reference.item.id; return; }
+					if (trustDelivered && within(localRange, referenceRange, 50) && einordnungStationenGelten(localRange, projectedRange, ordnungAnnahmen.ueberstand, ordnungAnnahmen.genau)) { target.externalStationReference = reference.item.id; return; }
 					if (polyline.length < 2) return;
 					const pairs = landXmlStationMapping(target, polyline);
 					if (pairs.length < 2) return;
@@ -50409,16 +50511,16 @@ xlsx/xlsx.mjs:
 					// its ends comes near at all.
 					const own = referenceStationPolyline(target, 10);
 					for (const candidate of candidates) {
-						const measured = Math.min(candidate.distanceStart, candidate.distanceEnd) <= TOPOLOGY_KM_FAR_M ? lageAbstandOf(own, lageOf(candidate.key)) : null;
+						const measured = Math.min(candidate.distanceStart, candidate.distanceEnd) <= ordnungAnnahmen.kmFern ? lageAbstandOf(own, lageOf(candidate.key)) : null;
 						candidate.share = measured?.samples ? measured.hits / measured.samples : 0;
 					}
-					const far = einordnungBezugslinieVonHand(candidates, TOPOLOGY_KM_FAR_M);
+					const far = einordnungBezugslinieVonHand(candidates, ordnungAnnahmen.kmFern, ordnungAnnahmen.anteil / 100);
 					if (far) {
 						const candidate = candidates.find((item) => item.key === far);
 						target.kmHinweis = { art: "fern", linie: far, anteil: candidate.share, abstand: Math.max(candidate.distanceStart, candidate.distanceEnd) };
 						return far;
 					}
-					const why = einordnungOhneBezugslinie(candidates, TOPOLOGY_KM_FAR_M);
+					const why = einordnungOhneBezugslinie(candidates, ordnungAnnahmen.kmFern, ordnungAnnahmen.anteil / 100);
 					target.kmHinweis = { art: "ohne", grund: why.grund, linie: why.key ?? null, anteil: why.share ?? null, abstand: why.distance ?? null };
 					return null;
 				};
@@ -51382,6 +51484,8 @@ xlsx/xlsx.mjs:
 					// What the user chose inside the proposals of the pile: the
 					// Kilometerlinie for a Gleis, the Strecke typed for a Bündel. No
 					// assignments; kept so that reopening does not undo the choice.
+					// The Annahmen of the Ordnung that differ from the standard.
+					annahmen: Object.fromEntries(ordnungAnnahmenGeaendert().map((annahme) => [annahme.key, ordnungAnnahmen[annahme.key]])),
 					vorschlaege: {
 						linien: (() => { const live = new Set(allViewerEntries()); return [...vorschlagLinie].filter(([entry, route]) => live.has(entry) && typeof route === "string").map(([entry, route]) => [stateKey(entry), route]); })(),
 						strecken: [...buendelStrecken].filter(([, value]) => typeof value === "string"),
@@ -51419,6 +51523,12 @@ xlsx/xlsx.mjs:
 						for (const entry of loaded.objects) { listingCache.delete(entry); mapGeometryCache.delete(entry); geometryModelCache.delete(entry); }
 					}
 					if (Array.isArray(state.drafts)) draftSevenLineFrames = state.drafts;
+					// The Annahmen first: what is stationed below is measured by them.
+					if (state.annahmen && typeof state.annahmen === "object") {
+						let changed = false;
+						for (const [key, value] of Object.entries(state.annahmen)) changed = ordnungAnnahmeSetzen(key, value) || changed;
+						if (changed) { ordnungNeuStationieren(); renderOrdnungAnnahmen(); }
+					}
 					for (const [key, route] of Array.isArray(state.vorschlaege?.linien) ? state.vorschlaege.linien : []) {
 						const entry = byKey.get(key);
 						if (entry && typeof route === "string") vorschlagLinie.set(entry, route);
