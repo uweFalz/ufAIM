@@ -172,8 +172,11 @@
 			#ordnungAnnahmenMenu.geaendert > summary { color: #b3541e; }
 			#ordnungAnnahmenBody { grid-template-columns: auto; }
 			#ordnungAnnahmenBody .gwb-input { display: grid; grid-template-columns: 1fr max-content 5.6rem; }
-			#ordnungAnnahmenMenu > summary { padding-inline: 0.45rem; font-size: var(--fs-2); white-space: nowrap; }
-			#outbox .box-head > span { white-space: nowrap; }
+			#ordnungAnnahmenMenu > summary { padding-inline: 0.3rem; font-size: var(--fs-2); white-space: nowrap; }
+			/* The head keeps one line in a narrow window: the title gives way, the menu stays whole. */
+			#outbox .box-head { gap: 0.25rem; }
+			#outbox .box-head > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			#ordnungAnnahmenMenu { flex: none; }
 			#ordnungAnnahmenBody .gwb-input.geaendert input { border-color: #b3541e; }
 			#ordnungAnnahmenBody button { justify-self: start; }
 			/* Open, the leaf lives in the top layer (Popover API): nothing clips
