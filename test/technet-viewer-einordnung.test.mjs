@@ -14,8 +14,8 @@ const begin = html.indexOf("// BEGIN EINORDNUNG");
 const end = html.indexOf("// END EINORDNUNG");
 assert.ok(begin > 0 && end > begin, "Einordnung block present");
 const context = vm.createContext({});
-new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungNameKilometerlinie, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungBezugslinieVonHand, einordnungOhneBezugslinie, BEZUGSLINIE_VON_HAND_MIN_ANTEIL, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
-const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungNameKilometerlinie, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungBezugslinieVonHand, einordnungOhneBezugslinie, BEZUGSLINIE_VON_HAND_MIN_ANTEIL, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
+new vm.Script(`${html.slice(begin, end)}\nglobalThis.api = { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungNameKilometerlinie, einordnungStueckfolgen, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungBezugslinieVonHand, einordnungOhneBezugslinie, BEZUGSLINIE_VON_HAND_MIN_ANTEIL, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION };`, { filename: "einordnung.js" }).runInContext(context);
+const { einordnungNebenArt, NEBEN_AUF_M, NEBEN_MIN_ANTEIL, NEBEN_MIN_TREFFER, einordnungStreckeAusName, einordnungNameKilometerlinie, einordnungStueckfolgen, einordnungBuendelVorschlag, einordnen, einordnungUmfeld, einordnungEigene, einordnungSuchtext, einordnungAbschnitte, einordnungVarianten, einordnungUeberdeckt, einordnungBezuege, einordnungVerbund, einordnungDateischluessel, einordnungBezugslinie, einordnungBezugslinieVonHand, einordnungOhneBezugslinie, BEZUGSLINIE_VON_HAND_MIN_ANTEIL, einordnungLaengentreu, einordnungStationenGelten, einordnungStationsgang, BEZUGSLINIE_STATION_TOLERANZ_M, einordnungNamensteile, einordnungGradientenVorschlag, einordnungBuendel, BUENDEL_REICHWEITE_M, BUENDEL_ANTEIL, BEZUGSLINIE_MIN_LAENGENTREUE, VARIANTE_MIN_OVERLAP_M, VARIANTE_MIN_SHARE, EINORDNUNG_VERSION } = context.api;
 const json = (value) => JSON.parse(JSON.stringify(value));
 
 // A fact with defaults: no references, no home, no frame.
@@ -592,4 +592,24 @@ test("sorted in by hand, a Gleis takes the line it runs beside though one end li
 test("KM in a name: the role when it stands alone, a unit before a number", () => {
 	for (const name of ["6100_247-289_DBREF2016_KM", "1280_043-049_dbref2016_km", "km", "KM Strecke 5500", "5500.km.tra", "Gleis_km_links"]) assert.equal(einordnungNameKilometerlinie(name), true, name);
 	for (const name of ["Ka_5810R_km-0.2_2.5", "Ka_5810S_km-0.2_2.5", "STR_1153_KM_134-138", "Gleis 3 km 12,4", "Ka_5800R_km45-66", "AIT_RöGl4_kmL_b", "Kmoch", "", null]) assert.equal(einordnungNameKilometerlinie(name), false, String(name));
+});
+
+test("pieces of a Kilometerlinie that meet end to start are one line across the joint", () => {
+	const piece = (key, from, to, km) => ({ key, first: { x: from, y: 0, station: km }, last: { x: to, y: 0, station: km + (to - from) } });
+	// WueTreu 5330: [31400, 40551] and [40550, 46000] meet without a gap, 1 m apart in their km
+	const a = piece("a", 0, 9151, 31400);
+	const b = piece("b", 9151, 14601, 40550);
+	const far = piece("c", 20000, 21000, 46000);
+	const folgen = JSON.parse(JSON.stringify(einordnungStueckfolgen([a, b, far])));
+	assert.deepEqual(folgen.map((folge) => [folge.a, folge.b]), [["a", "b"]]);
+	assert.equal(folgen[0].fuge, 0);
+	assert.equal(folgen[0].sprung, 1);
+	// a gap in Lage, or a jump in km (a Kilometersprung is not a joint), keeps them apart
+	assert.equal(einordnungStueckfolgen([a, piece("b", 9160, 14601, 40550)]).length, 0);
+	assert.equal(einordnungStueckfolgen([a, piece("b", 9151, 14601, 40600)]).length, 0);
+	assert.equal(einordnungStueckfolgen([a, piece("b", 9160, 14601, 40550)], 10).length, 1);
+	// one piece, none, or a piece without ends: nothing to join
+	assert.equal(einordnungStueckfolgen([a]).length, 0);
+	assert.equal(einordnungStueckfolgen([]).length, 0);
+	assert.equal(einordnungStueckfolgen([a, { key: "x" }]).length, 0);
 });

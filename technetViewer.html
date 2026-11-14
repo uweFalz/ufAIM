@@ -42209,6 +42209,28 @@ xlsx/xlsx.mjs:
 				const grund = !closest.onLine ? "ende" : !(distance <= farDistance) ? "abstand" : closest.share < minShare ? "anteil" : "sonst";
 				return { grund, key: closest.key, share: closest.share, distance };
 			}
+			// Stücke einer Kilometerlinie: a Strecke's line is delivered in pieces.
+			// Two pieces that meet end to start, in Lage and in km, are one line to
+			// a Gleis lying across the joint (WueTreu Gleis 31, 204 m: from km
+			// 40,421 on one piece of 5330 to km 40,624 on the next; they meet
+			// without a gap at km 40,551/40,550). Measured over nine deliveries it
+			// is that one Gleis; the limits are the slack of a joint, not tuned.
+			// stuecke: [{ key, first: { x, y, station }, last: { x, y, station } }]
+			// in the direction they are drawn; returns [{ a, b, fuge, sprung }].
+			const STUECK_FUGE_M = 5;
+			const STUECK_KM_SPRUNG_M = 5;
+			function einordnungStueckfolgen(stuecke, fuge = STUECK_FUGE_M, sprung = STUECK_KM_SPRUNG_M) {
+				const folgen = [];
+				for (const a of stuecke) {
+					for (const b of stuecke) {
+						if (a === b || !a?.last || !b?.first) continue;
+						const gap = Math.hypot(a.last.x - b.first.x, a.last.y - b.first.y);
+						const jump = Math.abs(a.last.station - b.first.station);
+						if (gap <= fuge && jump <= sprung) folgen.push({ a: a.key, b: b.key, fuge: gap, sprung: jump });
+					}
+				}
+				return folgen;
+			}
 			// A projection that does not keep the Gleis's length is none: stations
 			// clamped at a line's end collapse onto one km.
 			const BEZUGSLINIE_MIN_LAENGENTREUE = 0.5;
@@ -43049,7 +43071,7 @@ xlsx/xlsx.mjs:
 				reconcileVermEsnStationing();
 				dragHintUsed = true;
 				status.classList.remove("error");
-				const ohneLinie = before.filter((item) => item.entry.kmHinweis && item.entry.kmHinweis.art !== "fern").length;
+				const ohneLinie = before.filter((item) => item.entry.kmHinweis && item.entry.kmHinweis.art !== "fern" && item.entry.kmHinweis.art !== "stuecke").length;
 				status.textContent = `${taken.text} einsortiert · von Hand übernommen${ohneLinie ? ` · ${ohneLinie} an keiner Kilometerlinie der Strecke (in der Outbox markiert, Grund im Tooltip und über dem Bild)` : ""}`;
 				renderObjectTree(selectedEntry?.loaded?.fileName ?? null);
 				if (selectedEntry?.button) selectObject(selectedEntry, selectedEntry.button);
@@ -44611,6 +44633,7 @@ xlsx/xlsx.mjs:
 				const linie = hinweis.linie ? objectListName(hinweis.linie) : "";
 				const anteil = hinweis.anteil != null ? `${Math.round(hinweis.anteil * 100)} %` : "";
 				const strecke = entry.frameEdit?.track ? `Strecke ${entry.frameEdit.track}` : "der Strecke";
+				if (hinweis.art === "stuecke") return `km über zwei Stücke der Kilometerlinie von ${strecke}, die bei km ${(hinweis.stoss / 1000).toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} aneinanderstoßen`;
 				if (hinweis.art === "fern") return `km über den Lotfußpunkt auf ${linie}: ${anteil} des Gleises in ${ordnungAnnahmen.reichweite} m daneben, ein Ende ${Math.round(hinweis.abstand)} m`;
 				const grund = {
 					keine: `keine Kilometerlinie der ${strecke} in seinem Lagesystem geladen`,
@@ -50554,7 +50577,7 @@ xlsx/xlsx.mjs:
 					const localRange = stationRangeForEntry(target);
 					const referenceRange = stationRangeForEntry(reference);
 					if (!localRange || !referenceRange) return;
-					const polyline = polylineOf(reference);
+					const polyline = verbunden.get(target)?.polyline ?? polylineOf(reference);
 					// Delivered stations are kept where they are the line's km by the
 					// Lage too, not by their numbers alone (einordnungStationenGelten).
 					const ends = alignmentEndpoints(target);
@@ -50603,6 +50626,9 @@ xlsx/xlsx.mjs:
 					if (!lagen.has(reference)) lagen.set(reference, { polyline: polylineOf(reference) });
 					return lagen.get(reference);
 				};
+				// Gleise lying across the joint of two pieces of their line: the two
+				// pieces as one polyline, for project() to station them on.
+				const verbunden = new Map();
 				const pickReference = (target, references, byHand = false) => {
 					if (byHand) delete target.kmHinweis;
 					const ends = alignmentEndpoints(target);
@@ -50616,6 +50642,26 @@ xlsx/xlsx.mjs:
 					});
 					const fits = einordnungBezugslinie(candidates, TOPOLOGY_KM_MAX_DISTANCE_M);
 					if (fits || !byHand) return fits;
+					// No single line from end to end: two pieces of the Strecke's line
+					// that meet, with the Gleis across their joint.
+					const stuecke = references.map((reference) => {
+						const polyline = polylineOf(reference);
+						const point = (item) => ({ x: item.easting, y: item.northing, station: item.station });
+						return polyline.length < 2 ? null : { key: reference, first: point(polyline[0]), last: point(polyline[polyline.length - 1]) };
+					}).filter(Boolean);
+					for (const folge of einordnungStueckfolgen(stuecke)) {
+						const first = polylineOf(folge.a);
+						const run = first[first.length - 1].run ?? 0;
+						const joined = [...first, ...polylineOf(folge.b).map((item) => ({ ...item, run: (item.run ?? 0) + run }))];
+						const hits = [ends.start, ends.end].map((point) => distanceAndStationOnPolyline(joined, point));
+						if (hits.some((hit) => !hit || hit.atEnd || hit.distance > TOPOLOGY_KM_MAX_DISTANCE_M)) continue;
+						const stoss = first[first.length - 1].station;
+						verbunden.set(target, { polyline: joined });
+						target.kmHinweis = { art: "stuecke", linie: folge.a, zweite: folge.b, stoss };
+						// The piece that carries more of the Gleis stands as its line.
+						const stations = hits.map((hit) => hit.station);
+						return Math.abs(stoss - Math.min(...stations)) >= Math.abs(Math.max(...stations) - stoss) ? folge.a : folge.b;
+					}
 					// How much of the Gleis runs beside a line, for the lines one of
 					// its ends comes near at all.
 					const own = referenceStationPolyline(target, 10);
