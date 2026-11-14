@@ -5674,8 +5674,22 @@ xlsx/xlsx.mjs:
 			function mapNorthAngle() {
 				return maplibreMap && !maplibreMapElement.classList.contains("hidden") ? -(maplibreMap.getBearing?.() ?? 0) : mapRotation;
 			}
+			// The Gradnetz reaches as far as the turned view of everything needs:
+			// a square about the middle that holds the box around the turned data
+			// at any angle (its corners lie up to the diagonal of the data away).
+			// Unturned it is the box itself, as before.
+			function mapGrid() {
+				const wide = Boolean(mapRotation);
+				const pivot = mapPivot();
+				const half = Math.hypot(fullMapViewBox.width, fullMapViewBox.height) / Math.SQRT2;
+				const grid = wide ? geographicGrid({ x: pivot.x - half, y: pivot.y - half, width: 2 * half, height: 2 * half }, fullMapViewBox) : geographicGrid(fullMapViewBox);
+				grid.dataset.wide = wide ? "1" : "";
+				return grid;
+			}
 			function applyMapRotation() {
 				if (mapWorld) {
+					const grid = mapWorld.querySelector(":scope > .geo-grid");
+					if (grid && fullMapViewBox && (grid.dataset.wide === "1") !== Boolean(mapRotation)) grid.replaceWith(mapGrid());
 					const pivot = mapPivot();
 					if (mapRotation) mapWorld.setAttribute("transform", `rotate(${mapRotation} ${pivot.x} ${pivot.y})`);
 					else mapWorld.removeAttribute("transform");
@@ -5800,6 +5814,7 @@ xlsx/xlsx.mjs:
 				try { multi2d.releasePointerCapture?.(event.pointerId); } catch { /* no such pointer */ }
 				multi2d.classList.remove("panning", "rotating");
 				const moved = mapDrag.moved;
+				if (mapDrag.rotate && moved) scheduleStateSave();
 				mapDrag = null;
 				if (moved) multi2d.dataset.suppressClick = "true";
 			}
@@ -6844,13 +6859,15 @@ xlsx/xlsx.mjs:
 				await toggleRailwayMap({ automatic: true });
 			}
 
-			function geographicGrid(viewBox) {
+			function geographicGrid(viewBox, stepBox = viewBox) {
 				const radius = 6378137;
 				const west = viewBox.x / radius * 180 / Math.PI;
 				const east = (viewBox.x + viewBox.width) / radius * 180 / Math.PI;
 				const north = (2 * Math.atan(Math.exp(-viewBox.y / radius)) - Math.PI / 2) * 180 / Math.PI;
 				const south = (2 * Math.atan(Math.exp(-(viewBox.y + viewBox.height) / radius)) - Math.PI / 2) * 180 / Math.PI;
-				const span = Math.max(east - west, north - south);
+				// The mesh keeps the width the data give it, however far the box reaches.
+				const span = stepBox === viewBox ? Math.max(east - west, north - south)
+					: Math.max(stepBox.width / radius * 180 / Math.PI, (2 * Math.atan(Math.exp(-stepBox.y / radius)) - 2 * Math.atan(Math.exp(-(stepBox.y + stepBox.height) / radius))) * 180 / Math.PI);
 				const steps = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5];
 				const step = steps.find((candidate) => candidate >= span / 8) ?? 10;
 				const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -6985,7 +7002,7 @@ xlsx/xlsx.mjs:
 				};
 				// The grid reaches beyond the box of the data, so that a turned view
 				// does not show its corners.
-				if (mode === "crs") mapWorld.prepend(geographicGrid(mapRotation ? { x: fullMapViewBox.x - fullMapViewBox.width / 2, y: fullMapViewBox.y - fullMapViewBox.height / 2, width: fullMapViewBox.width * 2, height: fullMapViewBox.height * 2 } : fullMapViewBox));
+				if (mode === "crs") mapWorld.prepend(mapGrid());
 				applyMapRotation();
 				fitMap();
 				recordPerformance("render-map", started, { mode, objects: alignmentEntries.length, points: allPoints.length });
@@ -11942,6 +11959,8 @@ xlsx/xlsx.mjs:
 					kilometerLinesVisible,
 					hidden: [...hiddenEntryKeys],
 					inbox: { query: inboxQuery },
+					// How the user turned the own map (degrees clockwise); 0 is north up.
+					karte: { drehung: Math.round(mapRotation * 10) / 10 },
 					// What the user chose inside the proposals of the pile: the
 					// Kilometerlinie for a Gleis, the Strecke typed for a Bündel. No
 					// assignments; kept so that reopening does not undo the choice.
@@ -11984,6 +12003,7 @@ xlsx/xlsx.mjs:
 						for (const entry of loaded.objects) { listingCache.delete(entry); mapGeometryCache.delete(entry); geometryModelCache.delete(entry); }
 					}
 					if (Array.isArray(state.drafts)) draftSevenLineFrames = state.drafts;
+					if (Number.isFinite(state.karte?.drehung) && state.karte.drehung !== mapRotation) { setMapRotation(state.karte.drehung); fitMap(); }
 					// The Annahmen first: what is stationed below is measured by them.
 					if (state.annahmen && typeof state.annahmen === "object") {
 						let changed = false;
@@ -12284,6 +12304,7 @@ xlsx/xlsx.mjs:
 			mapNorth.addEventListener("click", () => {
 				if (maplibreMap && !maplibreMapElement.classList.contains("hidden")) { maplibreMap.easeTo?.({ bearing: 0, pitch: 0 }); return; }
 				setMapRotation(0);
+				scheduleStateSave();
 			});
 			multi2d.addEventListener("pointermove", moveMapPan);
 			multi2d.addEventListener("pointerup", endMapPan);
