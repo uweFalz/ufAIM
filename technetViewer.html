@@ -48952,6 +48952,7 @@ xlsx/xlsx.mjs:
 							: "Der Name der Kilometerlinie nennt keine Strecke: hier eintragen.";
 						input.addEventListener("input", () => {
 							buendelStrecken.set(stateId, input.value);
+							scheduleStateSave();
 							accept.disabled = !input.value.trim();
 						});
 						text.append(input);
@@ -51378,6 +51379,13 @@ xlsx/xlsx.mjs:
 					kilometerLinesVisible,
 					hidden: [...hiddenEntryKeys],
 					inbox: { query: inboxQuery },
+					// What the user chose inside the proposals of the pile: the
+					// Kilometerlinie for a Gleis, the Strecke typed for a Bündel. No
+					// assignments; kept so that reopening does not undo the choice.
+					vorschlaege: {
+						linien: (() => { const live = new Set(allViewerEntries()); return [...vorschlagLinie].filter(([entry, route]) => live.has(entry) && typeof route === "string").map(([entry, route]) => [stateKey(entry), route]); })(),
+						strecken: [...buendelStrecken].filter(([, value]) => typeof value === "string"),
+					},
 					coupled: selectionCoupled,
 					precisionKind: precisionKind(),
 					viewMode: viewModeButtons.find((button) => button.getAttribute("aria-pressed") === "true")?.dataset.mode ?? null,
@@ -51411,6 +51419,13 @@ xlsx/xlsx.mjs:
 						for (const entry of loaded.objects) { listingCache.delete(entry); mapGeometryCache.delete(entry); geometryModelCache.delete(entry); }
 					}
 					if (Array.isArray(state.drafts)) draftSevenLineFrames = state.drafts;
+					for (const [key, route] of Array.isArray(state.vorschlaege?.linien) ? state.vorschlaege.linien : []) {
+						const entry = byKey.get(key);
+						if (entry && typeof route === "string") vorschlagLinie.set(entry, route);
+					}
+					for (const [id, value] of Array.isArray(state.vorschlaege?.strecken) ? state.vorschlaege.strecken : []) {
+						if (typeof id === "string" && typeof value === "string") buendelStrecken.set(id, value);
+					}
 					if (state.gwb) {
 						if (state.gwb.lineSpeed) gwbLineSpeedInput.value = state.gwb.lineSpeed;
 						if (state.gwb.brakeDistance) gwbBrakeDistanceInput.value = state.gwb.brakeDistance;
