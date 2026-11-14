@@ -63,31 +63,30 @@ are superseded.
   `evidence/TRANSED_EXACT_20261113/`. The older `handover-sha256.txt` files in
   the first four of these folders are superseded.
 
-## 4. State of `/AIM` as I found it (read-only, re-checked 2026-11-14)
+## 4. State of `/AIM` as I found it (read-only, re-checked 2026-11-14, second time)
 
-- `origin/main` is `f4c7dfc`. None of the 18 files changed there since
+- Both `origin/main` and the checkout move while I write; the hashes are
+  those of the check. `origin/main` is `36ad695`. None of the 18 files changed there since
   `ec1e6d3`, so the branch applies onto `origin/main` without conflict
   (`git merge-tree origin/main HEAD` exits 0).
-- The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `5a809d8`,
-  30 commits ahead of and 98 behind `origin/main`.
-- All 18 files now lie in the checkout, uncommitted: `transed/`,
-  `tools/transed/`, `test/transed/`, `transed.html`,
-  `src/services/transition-library/` and `test/services/transition-library/`
-  untracked, `package.json` and `tools/axtran2/bundle.mjs` modified. No commit
-  says who put them there.
-- Every one of the 18 is byte-identical to this branch at `47e8055` (the same
-  as `3193313` for these files). `node tools/transed/bundle.mjs --check` there
-  reports source `f606c6956d3e`, up to date. That is the state **before** the
-  confirmed model and the exact expression (`1c54e04`).
-- Against the branch tip, 11 of the 18 are stale in `/AIM` and must be taken
-  again: `src/services/transition-library/cantCurvatureCoupling.js`,
-  `createTransitionLibraryService.js`, `index.js`;
-  `test/services/transition-library/cant-curvature-coupling.test.mjs`,
-  `declare-halfwave-as.test.mjs`, `transition-library-service.test.mjs`;
-  `test/transed/bundle.test.mjs`; `transed.html`, `transed/README.md`,
-  `transed/app.js`, `transed/index.html`. The other 7, among them
-  `package.json` and `tools/axtran2/bundle.mjs`, already equal the tip.
-- I only read in `/AIM` (one `bundle.mjs --check`, which writes nothing).
+- The checkout `/Users/uwefalz/Developer/ufAIM` is on local `main` `28cb38a`,
+  43 commits ahead of and 102 behind `origin/main`.
+- All 18 files lie in the checkout, uncommitted: `transed/`, `tools/transed/`,
+  `test/transed/`, `transed.html`, `src/services/transition-library/` and
+  `test/services/transition-library/` untracked, `package.json` and
+  `tools/axtran2/bundle.mjs` modified. No commit says who put them there.
+- Every one of the 18 now matches the checksum list of the branch tip
+  (`docs/app/architecture/evidence/TRANSED_EXACT_20261113/takeover-sha256.txt`).
+  Earlier on 2026-11-14 they were at the state of `47e8055`, before the exact
+  expression, with eleven files stale; that is what
+  `docs/app/architecture/NOTE_ROCK_TRANSED_RETAKE_2026-11-14.md` asked to take
+  again. The eleven are taken.
+- `node tools/transed/bundle.mjs --check` there reports source `30946d8eb748`,
+  up to date. The TransEd tests ran there for the first time: 46 of 46 pass.
+- Still missing: the commit in `/AIM` that carries the files, and the merge of
+  the pull request. Neither is on `origin/main`.
+- I only read in `/AIM` (`bundle.mjs --check` and the test run write nothing).
+  `npm run bundle` for `axtran2.html` I did not run there, because it writes.
 
 ## 5. Two files shared with your work (re-checked 2026-11-14)
 
@@ -140,9 +139,8 @@ Run in `/AIM`:
   (2026-11-12, HEAD `b629df0` plus the uncommitted work of other streams,
   read-only): of the eight assertion failures seven fail there as well, one
   passes (`test/app/workspace/promoted-alignment-main-q-l-journey.test.mjs`).
-  The full suite and the TransEd tests did not run there. That run is not
-  repeated: the checkout is now on `5a809d8` and holds the TransEd files in
-  the state of `47e8055` (section 4), so a run there would test the old state.
+  The full suite did not run there. The TransEd tests ran there on 2026-11-14
+  at `1e4447f` with the files of the branch tip: 46 of 46 pass (section 4).
 
 ## 8. Open, not part of the takeover
 
