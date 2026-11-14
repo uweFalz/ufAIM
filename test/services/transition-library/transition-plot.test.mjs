@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { couplingPlotSvg, formatRange, plotParameterAt, transitionPlotSvg } from "../../../src/services/transition-library/transitionPlot.js";
+import { couplingPlotSvg, formatRange, functionPlotSvg, plotParameterAt, plotSeries, transitionPlotSvg } from "../../../src/services/transition-library/transitionPlot.js";
 
 const samples = Array.from({ length: 11 }, (_, index) => { const u = index / 10; return { u, k: 3 * u * u - 2 * u ** 3, k1: 6 * u - 6 * u * u, k2: 6 - 12 * u }; });
 const pointsOf = (svg, series) => svg.match(new RegExp(`<polyline data-series="${series}" points="([^"]+)"`))[1].split(" ").map((p) => p.split(",").map(Number));
@@ -17,6 +17,20 @@ test("the transition picture carries κ, κ′, κ″ and both cut lines", () =>
 	const k = pointsOf(svg, "k");
 	assert.ok(k[0][1] > k.at(-1)[1]);
 	assert.ok(!svg.includes("<script"));
+});
+
+test("the curves are named after the reading: κ for curvature, ψ for cant", () => {
+	assert.deepEqual(plotSeries().series.map((series) => series.label), ["κ", "κ′", "κ″"]);
+	assert.deepEqual(plotSeries("cant").series.map((series) => series.label), ["ψ", "ψ′", "ψ″"]);
+	assert.equal(plotSeries("cant").name, "Überhöhung");
+	assert.equal(plotSeries("nonsense").quantity, "curvature");
+	assert.deepEqual(plotSeries("cant").series.map((series) => series.key), ["k", "k1", "k2"]);
+	const asCurvature = transitionPlotSvg({ samples }).svg;
+	const asCant = transitionPlotSvg({ samples, quantity: "cant" }).svg;
+	assert.match(asCurvature, /aria-label="κ, κ′, κ″ über u" data-quantity="curvature"/);
+	assert.match(asCant, /aria-label="ψ, ψ′, ψ″ über u" data-quantity="cant"/);
+	// Only the naming differs, not the drawing.
+	assert.deepEqual(pointsOf(asCant, "k"), pointsOf(asCurvature, "k"));
 });
 
 test("cut lines at the ends are not drawn, and a counter-swerve widens the frame", () => {
@@ -45,4 +59,20 @@ test("pointer fractions map onto the plotted parameter", () => {
 	assert.ok(Math.abs(plotParameterAt((44 + 0.5 * (720 - 58)) / 720) - 0.5) < 1e-12);
 	assert.equal(formatRange({ min: -5.99999, max: 1 / 3 }), "-6 … 0.333");
 	assert.equal(formatRange(null), "—");
+});
+
+test("the function picture shows f, f′, f″ and the frame cut out by the argument interval", () => {
+	const fn = Array.from({ length: 21 }, (_, index) => { const x = -0.5 + index * 0.1; return { x, f: 3 * x * x - 2 * x ** 3, f1: 6 * x - 6 * x * x, f2: 6 - 12 * x }; });
+	const { svg, ranges } = functionPlotSvg({ samples: fn, frame: { a: 0, b: 0.5, fa: 0, fb: 0.5 } });
+	for (const series of ["f", "f1", "f2"]) assert.equal(pointsOf(svg, series).length, 21);
+	assert.ok(Math.abs(ranges.f.max - 1) < 1e-9);
+	const frame = svg.match(/<rect data-frame="1" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/).slice(1).map(Number);
+	// x from 0 to 0.5 on a range of -0.5 .. 1.5 is the second quarter of the plot width
+	const inner = 720 - 44 - 14;
+	assert.ok(Math.abs(frame[0] - (44 + 0.25 * inner)) < 0.01 && Math.abs(frame[2] - 0.25 * inner) < 0.01);
+	assert.ok(frame[3] > 1);
+	// a backwards interval draws the same box
+	assert.equal(functionPlotSvg({ samples: fn, frame: { a: 0.5, b: 0, fa: 0.5, fb: 0 } }).svg.match(/<rect data-frame[^>]*>/)[0], svg.match(/<rect data-frame[^>]*>/)[0]);
+	assert.equal((functionPlotSvg({ samples: fn }).svg.match(/data-frame/g) ?? []).length, 0);
+	assert.ok(functionPlotSvg({ samples: fn.map((s) => ({ ...s, f: 2 })) }).svg.length > 0, "a constant function still gets a picture");
 });

@@ -17,7 +17,8 @@
 	main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; display: grid; gap: 20px; }
 	section { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
 	h2 { margin: 0 0 12px; font-size: 18px; }
-	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; align-items: end; }
+	.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; align-items: start; }
+	.grid > div > button { margin-top: 23px; }
 	label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 14px; }
 	input[type=number], input[type=text], select { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--light); color: var(--ink); font: inherit; }
 	input[type=range] { width: 100%; }
@@ -39,6 +40,14 @@
 	th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
 	.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 	.overflow { overflow-x: auto; }
+	nav.modes { display: flex; flex-wrap: wrap; gap: 8px; }
+	nav.modes button { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+	nav.modes button[aria-pressed=true] { background: var(--dark); color: #F7F5EF; border-color: var(--dark); }
+	[data-mode][hidden] { display: none; }
+	#fnPlot svg { cursor: crosshair; }
+	.terms input, .terms select { min-width: 5.5em; }
+	.terms td { padding: 4px 6px 4px 0; border: 0; }
+	.note { background: #E3641418; border-left: 4px solid var(--accent); padding: 8px 12px; border-radius: 6px; font-size: 14px; margin: 0 0 12px; }
 </style>
 </head>
 <body>
@@ -47,7 +56,66 @@
 	<p>Spielwiese für die transitionDB. Ein Übergangsbogen entsteht aus Halbwelle ein, Klothoiden-Kern und Halbwelle aus. Eingebaute Einträge bleiben unverändert, eigene kommen dazu.</p>
 </header>
 <main>
-	<section aria-labelledby="h-compose">
+	<nav class="modes" aria-label="Modus">
+		<button type="button" data-mode-button="0" aria-pressed="false">Modus 0 · Funktion</button>
+		<button type="button" data-mode-button="1" aria-pressed="false">Modus 1 · Halbwelle</button>
+		<button type="button" data-mode-button="2" aria-pressed="true">Modus 2 · Transition</button>
+	</nav>
+
+	<section data-mode="0" aria-labelledby="h-function" hidden>
+		<h2 id="h-function">Funktion mit Argumentintervall</h2>
+		<div class="grid">
+			<div><label for="fnTemplate">Vorlage</label><select id="fnTemplate"></select><small>füllt Art, Parameter und Intervall</small></div>
+			<div><label for="fnKind">Art</label><select id="fnKind"><option value="poly">Polynom</option><option value="sin">Sinus · sin(m·x + n)</option><option value="cos">Kosinus · cos(m·x + n)</option></select></div>
+			<div data-fn="poly"><label for="fnCoeff">Koeffizienten a0, a1, a2, …</label><input type="text" id="fnCoeff" autocomplete="off" spellcheck="false"><small>f(x) = a0 + a1·x + a2·x² + …</small></div>
+			<div data-fn="trig" hidden><label for="fnM">m</label><input type="number" id="fnM" step="any"></div>
+			<div data-fn="trig" hidden><label for="fnN">n</label><input type="number" id="fnN" step="any"></div>
+		</div>
+		<div class="grid" style="margin-top:14px">
+			<div><label for="fnA">Argumentintervall von</label><input type="number" id="fnA" step="0.01"></div>
+			<div><label for="fnB">bis</label><input type="number" id="fnB" step="0.01"><small>Im Bild aufziehen setzt beide Enden. Rückwärts ist erlaubt.</small></div>
+			<div><label for="fnX0">Bild von x</label><input type="number" id="fnX0" step="0.1"></div>
+			<div><label for="fnX1">bis x</label><input type="number" id="fnX1" step="0.1"></div>
+		</div>
+		<div id="fnPlot" class="plot" style="margin-top:14px"></div>
+		<div id="fnLegend" class="legend"></div>
+		<p id="fnMessage" class="message" role="status"></p>
+		<div class="grid" style="margin-top:6px">
+			<div><label for="fnId">Kennung</label><input type="text" id="fnId" placeholder="MEINE_FKT" autocomplete="off" spellcheck="false"><small>Buchstaben, Ziffern, Unterstrich</small></div>
+			<div><label style="font-weight:400"><input type="checkbox" id="fnAsHalfWave" checked> zugleich als Halbwelle anlegen</label>
+				<select id="fnSource" aria-label="Die Funktion beschreibt"><option value="kappa">beschreibt κ</option><option value="kappa1">beschreibt κ′</option><option value="kappa2">beschreibt κ″</option></select></div>
+			<div><label for="fnQuantity">Größe</label><select id="fnQuantity"><option value="curvature">Krümmung</option><option value="cant">Überhöhung</option></select></div>
+			<div><button id="fnSave" class="primary">Speichern</button></div>
+		</div>
+		<p id="fnSaveMessage" class="message" role="status"></p>
+	</section>
+
+	<section data-mode="1" aria-labelledby="h-halfwave" hidden>
+		<h2 id="h-halfwave">Halbwelle aus Funktionen</h2>
+		<div class="grid">
+			<div><label for="klM">Klauder-Familie: m</label><input type="number" id="klM" min="0" max="24" step="1" value="2"><small>Potenz von (1+x) und (1−x)</small></div>
+			<div><label for="klN">n</label><input type="number" id="klN" min="0" max="24" step="1" value="3"><small>Potenz von x</small></div>
+			<div><button id="klApply" class="ghost">Einsetzen</button><small>κ″ ∼ (1+x)<sup>m</sup>·x<sup>n</sup>·(1−x)<sup>m</sup> auf [−1, 0]</small></div>
+		</div>
+		<p id="klMessage" class="message" role="status"></p>
+		<div class="grid">
+			<div><label for="hwCombine">Verknüpfung</label><select id="hwCombine"><option value="add">Summe der Glieder</option><option value="mul">Produkt der Glieder</option></select></div>
+			<div><label for="hwSource">Das Ergebnis beschreibt</label><select id="hwSource"><option value="kappa">κ</option><option value="kappa1">κ′</option><option value="kappa2">κ″</option></select></div>
+			<div><label for="hwQuantity">Größe</label><select id="hwQuantity"><option value="curvature">Krümmung</option><option value="cant">Überhöhung</option></select></div>
+		</div>
+		<div class="overflow" style="margin-top:14px"><table class="terms" id="hwTerms"></table></div>
+		<div class="row" style="margin-top:8px"><button id="hwAddTerm" class="ghost">Glied hinzufügen</button><small style="margin:0">Jedes Glied: Faktor · Funktion(Argumentintervall) hoch Potenz</small></div>
+		<div id="hwPlot" class="plot" style="margin-top:14px"></div>
+		<div id="hwLegend" class="legend"></div>
+		<p id="hwMessage" class="message" role="status"></p>
+		<div class="grid" style="margin-top:6px">
+			<div><label for="hwId">Kennung</label><input type="text" id="hwId" placeholder="MEINE_WELLE" autocomplete="off" spellcheck="false"><small>gespeichert als PROTO_… und HW_…</small></div>
+			<div><button id="hwSave" class="primary">Speichern</button></div>
+		</div>
+		<p id="hwSaveMessage" class="message" role="status"></p>
+	</section>
+
+	<section data-mode="2" aria-labelledby="h-compose">
 		<h2 id="h-compose">Transition zusammensetzen</h2>
 		<div class="grid">
 			<div><label for="template">Vorlage</label><select id="template"></select><small>füllt Halbwellen und Aufteilung</small></div>
@@ -64,21 +132,29 @@
 		<p id="draftMessage" class="message" role="status"></p>
 	</section>
 
-	<section aria-labelledby="h-coupling">
+	<section data-mode="2" aria-labelledby="h-coupling">
 		<h2 id="h-coupling">Krümmung und Überhöhung</h2>
+		<p id="couplingModel" style="margin-top:0;font-size:14px"><b>Modell:</b> Bezugspunkt in der Höhe h über der Gleisachse, um d = h·sin ψ zur Bogeninnenseite versetzt; seine Bahn hat die Krümmung (κ + d″)/(1 − κd) und folgt der Überhöhung. Von Uwe bestätigt am 13.11.2026, gerechnet mit dem genauen Ausdruck. Kein Fahrzeugmodell, die Geschwindigkeit kommt nicht vor.</p>
 		<p id="couplingText" style="margin-top:0"></p>
+		<div class="grid">
+			<div><label for="readAs">Die Halbwellen lesen als</label><select id="readAs"><option value="curvature">Krümmung</option><option value="cant">Überhöhung</option></select><small>Eingebaute Einträge bleiben unverändert; für die andere Lesart entsteht ein eigener Eintrag …_CANT, der auf denselben Prototyp zeigt.</small></div>
+		</div>
+		<p id="readAsMessage" class="message" role="status"></p>
 		<div class="grid">
 			<div><label for="aHeight">Bezugshöhe h [m]</label><input type="number" id="aHeight" min="0.1" step="0.1"></div>
 			<div><label for="aCant">Endüberhöhung [mm]</label><input type="number" id="aCant" min="1" step="5"></div>
 			<div><label for="aRadius">Radius R [m]</label><input type="number" id="aRadius" min="1" step="50"></div>
 			<div><label for="aLength">Länge L [m]</label><input type="number" id="aLength" min="1" step="5"></div>
 		</div>
-		<small>Annahme der Rechnung, Schienenabstand 1,5 m. Modell: k = f − ε²·f″ mit ε² = h·ψ_E·R/L².</small>
+		<div class="grid" style="margin-top:14px">
+			<div><label for="smoothOrder">Verlangte Glattheit der Rampe an den Enden</label><select id="smoothOrder"><option value="1">f′ = 0 · kein Knick</option><option value="2">f′ = f″ = 0 · drei endliche Ableitungen</option><option value="3">f′ = f″ = f‴ = 0 · vier endliche Ableitungen</option></select><small>Voreinstellung: f″ = 0 genügt (Uwe, 13.11.2026; zugleich die Mindestforderung von AT 412 975 B). f‴ = 0 verlangt die Biegetheorie der Schiene; an der Praxis geht das vorbei, es bleibt wählbar.</small></div>
+		</div>
+		<small>Annahme der Rechnung, Schienenabstand 1,5 m; sin ψ_E = Endüberhöhung / Schienenabstand, ε² = h·ψ_E·R/L². Für kleine Winkel und kleinen Versatz wird daraus k = f − ε²·f″. Vernachlässigt bleibt allein das Quadrat der Versatzneigung d′.</small>
 		<div id="couplingPlot" class="plot" style="margin-top:14px"></div>
 		<div id="couplingLegend" class="legend"></div>
 	</section>
 
-	<section aria-labelledby="h-save">
+	<section data-mode="2" aria-labelledby="h-save">
 		<h2 id="h-save">Als eigene Transition speichern</h2>
 		<div class="grid">
 			<div><label for="saveId">Kennung</label><input type="text" id="saveId" placeholder="mein_bogen" autocomplete="off" spellcheck="false"><small>klein, Buchstaben, Ziffern, Unterstrich</small></div>

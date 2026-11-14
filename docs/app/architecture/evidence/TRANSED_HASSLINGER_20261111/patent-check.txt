@@ -1,0 +1,22 @@
+A. database entries named vienna* against the patent functions (as curvature, whole transition)
+  vienna2 (HW_VIEN2): closest patent function (2), largest deviation 1.70e-14
+  vienna7 (HW_VIEN7): closest patent function (7), largest deviation 5.23e-14
+  vienna3 (HW_VIEN3): closest patent function (3), largest deviation 3.06e-10
+  vienna4 (HW_VIEN4): closest patent function (4), largest deviation 4.44e-16
+  vienna5 (HW_VIEN5): closest patent function (5), largest deviation 2.55e-15
+  vienna6 (HW_VIEN6): closest patent function (6), largest deviation 2.61e-14
+B. the patent's table: l = 200 m, R1 = -2000 m, u1 = -64 mm, R2 = 800 m, u2 = 160 mm, b = 1.5 m, function (2)
+  h read back from the row s = 4 m: 1.7999 m
+  s = 4 m: computed -5.010315e-1 1/km, patent -5.010315e-1 1/km
+  s = 20 m: computed -5.135152e-1 1/km, patent -5.135152e-1 1/km
+  s = 40 m: computed -4.850001e-1 1/km, patent -4.850001e-1 1/km
+  s = 80 m: computed -2.537805e-2 1/km, patent -2.537805e-2 1/km
+  s = 100 m: computed 3.750000e-1 1/km, patent 3.750000e-1 1/km
+  s = 140 m: computed 1.079224e+0 1/km, patent 1.079224e+0 1/km
+  s = 172 m: computed 1.262949e+0 1/km, patent 1.262949e+0 1/km
+  s = 196 m: computed 1.251032e+0 1/km, patent 1.251032e+0 1/km
+  largest deviation with h = 1.8 m: 4.54e-7 1/km
+  eps^2 = h*dPsi/(dKappa*l^2) = 0.00384, eps = 0.0620
+C. normalised curvature k = f - eps^2 f'' for function (2)
+  patent table, eps^2 = 0.00384: min -0.0083, max 1.0083
+  playground default, eps^2 = 0.01800: min -0.0831, max 1.0831

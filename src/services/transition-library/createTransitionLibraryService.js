@@ -8,12 +8,16 @@
 import { RegistryResolver } from "../../aim-core/transition/registry/RegistryResolver.js";
 import { createTransitionQueryService } from "../../aim-core/transition/query/createTransitionQueryService.js";
 import { KappaFcnBuilder } from "../../aim-core/transition/runtime/KappaFcnBuilder.js";
+import { buildProtoAst } from "../../aim-core/transition/ast/buildProtoAst.js";
+import { makeEvalFn } from "../../aim-core/transition/ast/evalAst.js";
+import { simplify } from "../../aim-core/transition/ast/simplify.js";
+import { symDiff } from "../../aim-core/transition/ast/symDiff.js";
 import { validateLookupV3 } from "../../domain/transition/registry/validator.js";
 import {
 	DEFAULT_COUPLING_ASSUMPTION,
 	assessCouplingSuitability,
 	cantFromCurvature,
-	couplingEpsilon,
+	couplingGeometry,
 	curvatureFromCant,
 } from "./cantCurvatureCoupling.js";
 
@@ -190,16 +194,27 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		return found;
 	}
 
-	function putUserRecord({ level, id, value } = {}) {
-		const shape = checkShape(level, id, value);
-		if (shape) return shape;
+	// All or nothing: either every record is stored or none.
+	function putUserRecords(records = []) {
+		if (!Array.isArray(records) || !records.length) return reject("USER_LIBRARY_RECORD_INVALID", "no records given");
 		const next = clone(user);
-		const existed = Object.hasOwn(next[level], id);
-		next[level][id] = clone(value);
+		const stored = [];
+		for (const { level, id, value } of records) {
+			const shape = checkShape(level, id, value);
+			if (shape) return shape;
+			stored.push({ level, id, status: Object.hasOwn(next[level], id) ? "updated" : "created" });
+			next[level][id] = clone(value);
+		}
 		const invalid = validateLayer(next);
 		if (invalid) return invalid;
 		activate(next);
-		return { ok: true, changed: true, status: existed ? "updated" : "created", level, id, record: clone(value) };
+		return { ok: true, changed: true, status: "stored", records: stored };
+	}
+
+	function putUserRecord({ level, id, value } = {}) {
+		const result = putUserRecords([{ level, id, value }]);
+		if (!result.ok) return result;
+		return { ok: true, changed: true, status: result.records[0].status, level, id, record: clone(value) };
 	}
 
 	function removeUserRecord({ level, id } = {}) {
@@ -289,21 +304,34 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		return result;
 	}
 
-	function couplingOf(preset, quantity, { assumption = null, epsilon = null, count = 201, tolerance } = {}) {
+	function couplingOf(preset, quantity, { assumption = null, epsilon = null, count = 201, tolerance, requiredOrder } = {}) {
 		const usedAssumption = { ...DEFAULT_COUPLING_ASSUMPTION, ...(assumption ?? {}) };
-		const eps = epsilon == null ? couplingEpsilon(usedAssumption) : Number(epsilon);
+		// From an assumption: the exact expression. An epsilon alone carries no
+		// angle and no offset, so it means the small-angle form.
+		const geometry = epsilon == null ? couplingGeometry(usedAssumption) : { epsilon: Number(epsilon), endAngle: 0, offsetRatio: 0 };
+		const shape = { count, endAngle: geometry.endAngle, offsetRatio: geometry.offsetRatio };
 		const result = quantity === "cant"
-			? curvatureFromCant({ cant: preset.kappa, cant1: preset.kappa1, cant2: preset.kappa2 }, eps, { count })
-			: cantFromCurvature(preset.kappa, eps, { count });
+			? curvatureFromCant({ cant: preset.kappa, cant1: preset.kappa1, cant2: preset.kappa2 }, geometry.epsilon, shape)
+			: cantFromCurvature(preset.kappa, geometry.epsilon, shape);
 		const curvatures = result.samples.map((sample) => sample.curvature);
 		return {
 			given: quantity,
 			derived: quantity === "cant" ? "curvature" : "cant",
 			epsilon: result.epsilon,
+			exact: result.exact,
+			endAngle: geometry.endAngle,
+			offsetRatio: geometry.offsetRatio,
+			converged: result.converged !== false,
 			assumption: epsilon == null ? usedAssumption : null,
 			samples: result.samples,
 			endSlopes: result.endSlopes,
-			suitability: assessCouplingSuitability(result.endSlopes, tolerance == null ? {} : { tolerance }),
+			endDerivatives: result.endDerivatives,
+			suitability: assessCouplingSuitability(result.endSlopes, {
+				endDerivatives: result.endDerivatives,
+				peaks: result.peaks,
+				...(tolerance == null ? {} : { tolerance }),
+				...(requiredOrder == null ? {} : { requiredOrder }),
+			}),
 			curvatureRange: { min: Math.min(...curvatures), max: Math.max(...curvatures) },
 		};
 	}
@@ -328,6 +356,28 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 			quantity: halfWaveQuantity(record),
 			origin: Object.hasOwn(user.halfWave, id) ? "user" : "built-in",
 		}));
+	}
+
+	/**
+	 * The same halfWave read as the other quantity. Built-in entries stay as
+	 * they are: an existing halfWave with the same prototype and source and the
+	 * wanted quantity is used, otherwise a user copy `<id>_CANT` / `<id>_CURV`
+	 * is stored that points at the same prototype.
+	 */
+	function declareHalfWaveAs({ id, quantity } = {}) {
+		if (!HALFWAVE_QUANTITIES.includes(quantity)) return reject("USER_LIBRARY_QUANTITY_INVALID", `quantity must be one of ${HALFWAVE_QUANTITIES.join(", ")}`);
+		const record = merged.halfWave[id ?? ""];
+		if (!record || !Object.hasOwn(merged.halfWave, id)) return reject("USER_LIBRARY_REFERENCE_MISSING", `halfWave '${id}' not found`);
+		if (halfWaveQuantity(record) === quantity) return { ok: true, id, changed: false, status: "unchanged" };
+		const source = record.source ?? "kappa";
+		const twins = listHalfWaves().filter((hw) => hw.proto === record.proto && hw.source === source && hw.quantity === quantity);
+		const twin = twins.find((hw) => hw.origin === "built-in") ?? twins[0];
+		if (twin) return { ok: true, id: twin.id, changed: false, status: "existing" };
+		const copyId = `${id}_${quantity === "cant" ? "CANT" : "CURV"}`;
+		if (Object.hasOwn(merged.halfWave, copyId)) return reject("USER_LIBRARY_RECORD_EXISTS", `halfWave '${copyId}' exists with another definition`);
+		const stored = putUserRecords([{ level: "halfWave", id: copyId, value: { proto: record.proto, source, ...(quantity === "cant" ? { quantity } : {}) } }]);
+		if (!stored.ok) return stored;
+		return { ok: true, id: copyId, changed: true, status: "created" };
 	}
 
 	// Descriptor of an unsaved combination; one resolver per halfWave pair.
@@ -370,6 +420,78 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		return { ok: true, record, quantity, samples, coupling: couplingOf(preset, quantity, { count, ...options }) };
 	}
 
+	function listSimpleFunctions() {
+		return Object.entries(merged.simpleFcn).map(([id, value]) => {
+			// the argument interval of the plain piece cut from this function, if there is one
+			const piece = Object.values(merged.protoFcn).find((proto) => proto?.op === "ref" && proto.id === id && Array.isArray(proto.crop));
+			return { id, value: clone(value), origin: Object.hasOwn(user.simpleFcn, id) ? "user" : "built-in", interval: piece ? piece.crop.map(Number) : [0, 1] };
+		});
+	}
+
+	/**
+	 * An unsaved elementary function: f, f′ and f″ over `range`, and the frame
+	 * that the argument interval `interval` cuts out of it.
+	 */
+	function describeFunction({ value, interval = [0, 1], range = null, count = 201 } = {}) {
+		if (!isObj(value)) return reject("USER_LIBRARY_RECORD_INVALID", "the function must be an object");
+		const [a, b] = (interval ?? []).map(Number);
+		if (!Number.isFinite(a) || !Number.isFinite(b) || a === b) return reject("USER_LIBRARY_INTERVAL_INVALID", "the argument interval needs two different finite ends");
+		const [x0, x1] = (range ?? [Math.min(a, b), Math.max(a, b)]).map(Number);
+		if (!Number.isFinite(x0) || !Number.isFinite(x1) || !(x1 > x0)) return reject("USER_LIBRARY_INTERVAL_INVALID", "the plot range must be an increasing finite interval");
+		let f; let f1; let f2;
+		try {
+			validateLookupV3({ ...builtIn, simpleFcn: { ...builtIn.simpleFcn, [PROBE_ID]: value } });
+			// compiled over u in [0,1] with x = x0 + (x1 - x0) u
+			const expr = simplify(buildProtoAst({ op: "ref", id: PROBE_ID, crop: [x0, x1] }, { [PROBE_ID]: value }));
+			const d1 = simplify(symDiff(expr));
+			const d2 = simplify(symDiff(d1));
+			const span = x1 - x0;
+			const e0 = makeEvalFn(expr); const e1 = makeEvalFn(d1); const e2 = makeEvalFn(d2);
+			f = (x) => e0((x - x0) / span); f1 = (x) => e1((x - x0) / span) / span; f2 = (x) => e2((x - x0) / span) / (span * span);
+		} catch (error) {
+			return reject("USER_LIBRARY_STRUCTURE_INVALID", String(error?.message ?? error));
+		}
+		const n = Math.max(3, Math.min(2001, Math.trunc(Number(count) || 201)));
+		const samples = Array.from({ length: n }, (_, index) => {
+			const x = x0 + ((x1 - x0) * index) / (n - 1);
+			return { x, f: f(x), f1: f1(x), f2: f2(x) };
+		});
+		if (!samples.every((sample) => Number.isFinite(sample.f))) return reject("USER_LIBRARY_STRUCTURE_INVALID", "the function is not finite on the plot range");
+		const frame = { a, b, fa: f(a), fb: f(b) };
+		const rises = Number.isFinite(frame.fa) && Number.isFinite(frame.fb) && Math.abs(frame.fb - frame.fa) > 1e-12;
+		return { ok: true, samples, frame, usableAsPiece: rises, reason: rises ? null : "the function has the same value at both ends of the interval" };
+	}
+
+	/**
+	 * An unsaved halfWave: a prototype tree over elementary functions, the
+	 * quantity level it describes and its declaration. It is built and checked
+	 * exactly like a stored one and shown as a lone entry halfWave.
+	 */
+	function describeHalfWave({ proto, source = "kappa", quantity = "curvature", count = 201 } = {}) {
+		const protoId = `${PROBE_ID}_proto`; const halfWaveId = `${PROBE_ID}_hw`;
+		if (!isObj(proto)) return reject("USER_LIBRARY_RECORD_INVALID", "the prototype must be an object");
+		if (!HALFWAVE_QUANTITIES.includes(quantity)) return reject("USER_LIBRARY_QUANTITY_INVALID", `quantity must be one of ${HALFWAVE_QUANTITIES.join(", ")}`);
+		const layer = clone(user);
+		layer.protoFcn[protoId] = clone(proto);
+		layer.halfWave[halfWaveId] = { proto: protoId, source, quantity };
+		const invalid = validateLayer(layer);
+		if (invalid) return { ...invalid, reason: invalid.reason.replaceAll(halfWaveId, "draft").replaceAll(protoId, "draft") };
+		const draftDb = mergeWith(layer);
+		draftDb.transition = { ...draftDb.transition, [PROBE_ID]: { halfWave1: halfWaveId, halfWave2: halfWaveId, normLengthPartition: [1, 0, 0] } };
+		let preset;
+		try {
+			preset = KappaFcnBuilder.buildPresetFromDescriptor(new RegistryResolver(draftDb).resolveTransitionDescriptor(PROBE_ID));
+		} catch (error) {
+			return reject("USER_LIBRARY_HALFWAVE_UNSUITABLE", String(error?.message ?? error));
+		}
+		const n = Math.max(3, Math.min(2001, Math.trunc(Number(count) || 201)));
+		const samples = Array.from({ length: n }, (_, index) => {
+			const u = index / (n - 1);
+			return { u, k: preset.kappa(u), k1: preset.kappa1(u), k2: preset.kappa2(u) };
+		});
+		return { ok: true, quantity, source, samples, endSlopes: { start: preset.kappa1(0), end: preset.kappa1(1) } };
+	}
+
 	activate(emptyLayer());
 	if (userLibrary) {
 		const loaded = importUserLibrary(userLibrary);
@@ -383,12 +505,17 @@ export function createTransitionLibraryService({ catalogue, userLibrary = null }
 		updateWorkingCopy,
 		resetWorkingCopy,
 		putUserRecord,
+		putUserRecords,
 		removeUserRecord,
 		exportUserLibrary,
 		importUserLibrary,
 		evaluateCoupling,
 		listHalfWaves,
+		declareHalfWaveAs,
+		listSimpleFunctions,
 		describeDraft,
+		describeFunction,
+		describeHalfWave,
 		resolveTransitionDescriptor: (presetId) => resolver.resolveTransitionDescriptor(presetId),
 	};
 }

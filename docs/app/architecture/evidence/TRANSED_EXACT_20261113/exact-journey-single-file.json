@@ -1,0 +1,120 @@
+{
+  "tag": "single-file",
+  "reservationOnPage": false,
+  "modelText": "Modell: Bezugspunkt in der Höhe h über der Gleisachse, um d = h·sin ψ zur Bogeninnenseite versetzt; seine Bahn hat die Krümmung (κ + d″)/(1 − κd) und folgt der Überhöhung. Von Uwe bestätigt am 13.11.2026, gerechnet mit dem genauen Ausdruck. Kein Fahrzeugmodell, die Geschwindigkeit kommt nicht vor.",
+  "heightAtStart": "1.8",
+  "requiredAtStart": "2",
+  "blossCurvatureDefaults": {
+    "in": "HW_BLOSS",
+    "given": "curvature",
+    "exact": true,
+    "converged": true,
+    "eps": 0.13428,
+    "endAngle": 0.100167,
+    "offsetRatio": 0.0018,
+    "curvature": [
+      0,
+      1
+    ],
+    "endSlopes": [
+      0.5896,
+      0.59
+    ],
+    "order": 0,
+    "required": 2,
+    "suitable": false,
+    "verdict": "Rampe knickt an den Enden",
+    "legend": [
+      "Krümmung 0 … 1",
+      "Überhöhung Steigung am Anfang 0.590, am Ende 0.590",
+      "f″ am Anfang 0, am Ende 0.0035 (Grenze 0.0457)",
+      "f‴ am Anfang 32.7, am Ende 32.9 (Grenze 0.658)",
+      "ε = 0.134, ψ_E = 0.1002, h/R = 0.00180 · genauer Ausdruck"
+    ]
+  },
+  "vienna2CantPatent": {
+    "in": "HW_VIEN2_CANT",
+    "given": "cant",
+    "exact": true,
+    "converged": true,
+    "eps": 0.06208,
+    "endAngle": 0.149894,
+    "offsetRatio": 0.00315,
+    "curvature": [
+      -0.00835,
+      1.0082
+    ],
+    "endSlopes": [
+      0,
+      0
+    ],
+    "order": 3,
+    "required": 2,
+    "suitable": true,
+    "verdict": "Rampe läuft glatt ein, bis f‴",
+    "legend": [
+      "Krümmung -0.00835 … 1.01",
+      "Überhöhung Steigung am Anfang 0.000, am Ende 0.000",
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.15)",
+      "f‴ am Anfang 0.0824, am Ende 0.0824 (Grenze 1.05)",
+      "ε = 0.062, ψ_E = 0.1499, h/R = 0.00315 · genauer Ausdruck"
+    ]
+  },
+  "vienna2CantHeight25": {
+    "in": "HW_VIEN2_CANT",
+    "given": "cant",
+    "exact": true,
+    "converged": true,
+    "eps": 0.07317,
+    "endAngle": 0.149894,
+    "offsetRatio": 0.004375,
+    "curvature": [
+      -0.01411,
+      1.01387
+    ],
+    "endSlopes": [
+      0,
+      0
+    ],
+    "order": 3,
+    "required": 2,
+    "suitable": true,
+    "verdict": "Rampe läuft glatt ein, bis f‴",
+    "legend": [
+      "Krümmung -0.0141 … 1.01",
+      "Überhöhung Steigung am Anfang 0.000, am Ende 0.000",
+      "f″ am Anfang 0, am Ende 0 (Grenze 0.15)",
+      "f‴ am Anfang 0.0824, am Ende 0.0824 (Grenze 1.05)",
+      "ε = 0.073, ψ_E = 0.1499, h/R = 0.00438 · genauer Ausdruck"
+    ]
+  },
+  "clothoidCurvature": {
+    "in": "HW_CLOTHO",
+    "given": "curvature",
+    "exact": true,
+    "converged": true,
+    "eps": 0.06208,
+    "endAngle": 0.149894,
+    "offsetRatio": 0.00315,
+    "curvature": [
+      0,
+      1
+    ],
+    "endSlopes": [
+      0.9995,
+      1.0021
+    ],
+    "order": 0,
+    "required": 2,
+    "suitable": false,
+    "verdict": "Rampe knickt an den Enden",
+    "legend": [
+      "Krümmung 0 … 1",
+      "Überhöhung Steigung am Anfang 0.999, am Ende 1.002",
+      "f″ am Anfang 0, am Ende 0.0227 (Grenze 0.02)",
+      "f‴ am Anfang 0.00283, am Ende 0.326 (Grenze 0.02)",
+      "ε = 0.062, ψ_E = 0.1499, h/R = 0.00315 · genauer Ausdruck"
+    ]
+  },
+  "problems": []
+}
