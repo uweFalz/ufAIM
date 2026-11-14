@@ -41248,14 +41248,19 @@ xlsx/xlsx.mjs:
 			// still beside it -- two pieces of one Kilometerlinie meet there).
 			// With a grid only the segments within reach are looked at; a point
 			// farther away than the reach then finds nothing.
-			function lageOffset(polyline, point, grid = null) {
+			// reach: how far a segment may lie to be looked at through the grid --
+			// the ring of cells follows it. One ring (the standard) reaches 64 m
+			// for certain; a wider reach looked at through one ring found nothing
+			// beyond it (150 m and 250 m gave the same as 100 m).
+			function lageOffset(polyline, point, grid = null, reach = LAGE_REACH_M) {
 				let indices = null;
 				if (grid) {
 					indices = [];
 					const cx = Math.floor(point.easting / LAGE_CELL_M);
 					const cy = Math.floor(point.northing / LAGE_CELL_M);
-					for (let x = cx - 1; x <= cx + 1; x += 1) {
-						for (let y = cy - 1; y <= cy + 1; y += 1) {
+					const ring = Math.max(1, Math.ceil(reach / LAGE_CELL_M));
+					for (let x = cx - ring; x <= cx + ring; x += 1) {
+						for (let y = cy - ring; y <= cy + ring; y += 1) {
 							const cell = grid.get(`${x},${y}`);
 							if (cell) for (const index of cell) indices.push(index);
 						}
@@ -41291,7 +41296,7 @@ xlsx/xlsx.mjs:
 			// that route, or a test for it (route) => boolean where several lines
 			// are the Gleis's own (the lines of its Strecke); the nearest of them
 			// wins.
-			function lageWitnessOf(gleisPolyline, axes, preferredRoute = "") {
+			function lageWitnessOf(gleisPolyline, axes, preferredRoute = "", reach = LAGE_REACH_M) {
 				if (!gleisPolyline || gleisPolyline.length < 2) return null;
 				const isPreferred = typeof preferredRoute === "function" ? (route) => Boolean(preferredRoute(route)) : (route) => Boolean(preferredRoute) && route === preferredRoute;
 				const samples = Math.max(9, Math.min(25, Math.round(gleisPolyline.length / 4)));
@@ -41301,10 +41306,10 @@ xlsx/xlsx.mjs:
 					const nearest = new Map();
 					for (const axis of axes) {
 						const bounds = axis.bounds;
-						if (point.easting < bounds.minE - LAGE_REACH_M || point.easting > bounds.maxE + LAGE_REACH_M || point.northing < bounds.minN - LAGE_REACH_M || point.northing > bounds.maxN + LAGE_REACH_M) continue;
+						if (point.easting < bounds.minE - reach || point.easting > bounds.maxE + reach || point.northing < bounds.minN - reach || point.northing > bounds.maxN + reach) continue;
 						axis.grid ??= lageGrid(axis.polyline);
-						const hit = lageOffset(axis.polyline, point, axis.grid);
-						if (!hit || hit.atEnd || hit.distance > LAGE_REACH_M) continue;
+						const hit = lageOffset(axis.polyline, point, axis.grid, reach);
+						if (!hit || hit.atEnd || hit.distance > reach) continue;
 						const known = nearest.get(axis.route);
 						if (!known || hit.distance < known.distance) nearest.set(axis.route, hit);
 					}
@@ -41398,14 +41403,14 @@ xlsx/xlsx.mjs:
 			// that find the other within reach, away from the other's ends.
 			// hits 0: nothing of it lies beside the other. other: { polyline }
 			// (a grid is added on first use).
-			function lageAbstandOf(polyline, other) {
+			function lageAbstandOf(polyline, other, reach = LAGE_REACH_M) {
 				if (!polyline || polyline.length < 2 || !other?.polyline || other.polyline.length < 2) return null;
 				other.grid ??= lageGrid(other.polyline);
 				const samples = Math.max(9, Math.min(25, Math.round(polyline.length / 4)));
 				const distances = [];
 				for (let index = 0; index < samples; index += 1) {
-					const hit = lageOffset(other.polyline, polyline[Math.round((index + 0.5) / samples * (polyline.length - 1))], other.grid);
-					if (hit && !hit.atEnd && hit.distance <= LAGE_REACH_M) distances.push(hit.distance);
+					const hit = lageOffset(other.polyline, polyline[Math.round((index + 0.5) / samples * (polyline.length - 1))], other.grid, reach);
+					if (hit && !hit.atEnd && hit.distance <= reach) distances.push(hit.distance);
 				}
 				if (!distances.length) return { samples, hits: 0 };
 				distances.sort((a, b) => a - b);
@@ -41499,7 +41504,7 @@ xlsx/xlsx.mjs:
 					const lsys = effectiveLsys(entry) || "";
 					const axes = state.axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
 					const own = routeForEntry(entry);
-					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, own ? (route) => route === own || kilometerlinieStrecke(route) === own : "") : { verdict: "none", samples: 0 });
+					state.byEntry.set(entry, axes.length ? lageWitnessOf(referenceStationPolyline(entry, 10), axes, own ? (route) => route === own || kilometerlinieStrecke(route) === own : "", ordnungAnnahmen.reichweite) : { verdict: "none", samples: 0 });
 				}
 				return state.byEntry.get(entry);
 			}
@@ -41523,7 +41528,7 @@ xlsx/xlsx.mjs:
 				if (!wahl || wahl.gewaehlt === wahl.naechste) return lage;
 				const lsys = effectiveLsys(entry) || "";
 				const axes = lageState().axes.filter((axis) => axis.entry !== entry && axis.lsys === lsys);
-				return lageWitnessOf(referenceStationPolyline(entry, 10), axes, wahl.gewaehlt) ?? lage;
+				return lageWitnessOf(referenceStationPolyline(entry, 10), axes, wahl.gewaehlt, ordnungAnnahmen.reichweite) ?? lage;
 			}
 			// The Gleisseite of an object with its witnesses; a Gradiente or
 			// Überhöhung speaks through its Gleis. null for a Kilometerlinie.
@@ -41583,7 +41588,7 @@ xlsx/xlsx.mjs:
 				};
 			}
 			function lageDetailText(lage) {
-				if (!lage || lage.verdict === "none") return `keine Kilometerlinie desselben Lagesystems in ${LAGE_REACH_M} m`;
+				if (!lage || lage.verdict === "none") return `keine Kilometerlinie desselben Lagesystems in ${ordnungAnnahmen.reichweite} m`;
 				const km = (station) => (station / 1000).toLocaleString("de-DE", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 				return [
 					lagePositionText(lage),
@@ -44594,13 +44599,13 @@ xlsx/xlsx.mjs:
 				const linie = hinweis.linie ? objectListName(hinweis.linie) : "";
 				const anteil = hinweis.anteil != null ? `${Math.round(hinweis.anteil * 100)} %` : "";
 				const strecke = entry.frameEdit?.track ? `Strecke ${entry.frameEdit.track}` : "der Strecke";
-				if (hinweis.art === "fern") return `km über den Lotfußpunkt auf ${linie}: ${anteil} des Gleises in ${LAGE_REACH_M} m daneben, ein Ende ${Math.round(hinweis.abstand)} m`;
+				if (hinweis.art === "fern") return `km über den Lotfußpunkt auf ${linie}: ${anteil} des Gleises in ${ordnungAnnahmen.reichweite} m daneben, ein Ende ${Math.round(hinweis.abstand)} m`;
 				const grund = {
 					keine: `keine Kilometerlinie der ${strecke} in seinem Lagesystem geladen`,
 					fern: `liegt an keiner Kilometerlinie der ${strecke}`,
 					ende: `reicht über das Ende von ${linie} hinaus (${anteil} daneben)`,
 					abstand: `ein Ende ${Math.round(hinweis.abstand ?? 0)} m von ${linie}, weiter als ${ordnungAnnahmen.kmFern} m`,
-					anteil: `nur ${anteil} des Gleises in ${LAGE_REACH_M} m neben ${linie}`,
+					anteil: `nur ${anteil} des Gleises in ${ordnungAnnahmen.reichweite} m neben ${linie}`,
 					laenge: `die Abbildung auf ${linie} hält seine Länge nicht`,
 				}[hinweis.grund] ?? `passt an keine Kilometerlinie der ${strecke}`;
 				if (hinweis.art === "fremd") return `km von ${hinweis.von ? objectListName(hinweis.von) : "einer anderen Kilometerlinie"}, nicht von ${strecke}: ${grund}`;
@@ -47527,10 +47532,12 @@ xlsx/xlsx.mjs:
 			// measured again; what differs from the standard is saved with the
 			// state. (The Spurplan keeps TOPOLOGY_KM_FAR_M for its Knoten.)
 			const ORDNUNG_ANNAHMEN = [
+				{ key: "reichweite", label: "Kilometerlinie in Reichweite bis", unit: "m", standard: LAGE_REACH_M, min: 10, max: 500, step: 10,
+					grund: "So weit darf eine Kilometerlinie neben einem Gleis liegen, damit seine Lage an ihr gemessen wird: die Seite, der Sortiervorschlag und der Anteil neben der Linie. Gemessen in neun Lieferungen: mit 60 m bleiben in WueTreu 95 und in Billwerder 19 Gleise ohne Vorschlag; bei 62 und bei allen 19 davon läuft die Kilometerlinie weiter daneben (WueTreu 47 in 60 bis 100 m, 15 bis 150 m; Billwerder 11, 4 und 4 bis 250 m). Ein größerer Wert lässt in Bahnhöfen mehr Kilometerlinien zur Wahl." },
 				{ key: "kmFern", label: "km von Hand bis", unit: "m", standard: TOPOLOGY_KM_FAR_M, min: 60, max: 2000, step: 10,
 					grund: "Ein von Hand einsortiertes Gleis bekommt die km seiner Strecke über den Lotfußpunkt auch dann, wenn ein Ende weiter als 60 m neben der Kilometerlinie liegt — bis zu diesem Abstand. Gemessen an Bahnhofsgleisen in breiten Gleisfeldern (Billwerder, WueTreu)." },
 				{ key: "anteil", label: "dabei neben der Linie ab", unit: "%", standard: BEZUGSLINIE_VON_HAND_MIN_ANTEIL * 100, min: 0, max: 100, step: 5,
-					grund: "Anteil des Gleises, der dafür in 60 m neben der Kilometerlinie liegen muss. Darunter bleibt das Gleis ohne km und trägt die Marke „ohne km“." },
+					grund: "Anteil des Gleises, der dafür in Reichweite neben der Kilometerlinie liegen muss. Darunter bleibt das Gleis ohne km und trägt die Marke „ohne km“." },
 				{ key: "genau", label: "Stationen sind km: ein Ende auf", unit: "m", standard: BEZUGSLINIE_STATION_GENAU_M, min: 0, max: 50, step: 1,
 					grund: "Gelieferte Stationen gelten als km der Strecke, wenn ein Ende des Gleises, auf die Kilometerlinie gelotet, auf diesen Betrag bei seinem km liegt. Gemessen in sieben Lieferungen: echte km stimmen auf 1 m, eigene Zählungen liegen 34 m und mehr daneben." },
 				{ key: "ueberstand", label: "das andere Ende bis", unit: "m", standard: BEZUGSLINIE_STATION_TOLERANZ_M, min: 0, max: 500, step: 10,
@@ -47557,6 +47564,8 @@ xlsx/xlsx.mjs:
 			// stationed on a Kilometerlinie is taken off it first, then decided
 			// anew as when the files were loaded and sorted.
 			function ordnungNeuStationieren() {
+				// The Lage of every Gleis is measured anew: the reach may have changed.
+				lageCache = { key: null, axes: [], byEntry: new Map() };
 				for (const entry of allViewerEntries()) {
 					if (entry.item.kind === "alignment" && entry.externalStationReference && (entry.parser === "vermEsn" || gndEigenstationiert(entry))) kmAbbildungLoesen(entry);
 				}
@@ -50523,7 +50532,7 @@ xlsx/xlsx.mjs:
 					// its ends comes near at all.
 					const own = referenceStationPolyline(target, 10);
 					for (const candidate of candidates) {
-						const measured = Math.min(candidate.distanceStart, candidate.distanceEnd) <= ordnungAnnahmen.kmFern ? lageAbstandOf(own, lageOf(candidate.key)) : null;
+						const measured = Math.min(candidate.distanceStart, candidate.distanceEnd) <= ordnungAnnahmen.kmFern ? lageAbstandOf(own, lageOf(candidate.key), ordnungAnnahmen.reichweite) : null;
 						candidate.share = measured?.samples ? measured.hits / measured.samples : 0;
 					}
 					const far = einordnungBezugslinieVonHand(candidates, ordnungAnnahmen.kmFern, ordnungAnnahmen.anteil / 100);

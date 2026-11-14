@@ -272,3 +272,37 @@ test("the Gleis's own lines by a test: the nearest of its Strecke wins over a ne
 	assert.equal(none.route, "6100_236-246_KM");
 	assert.equal(none.eigen, false);
 });
+
+test("the reach is an Annahme: a line farther than 60 m counts when the reach says so", () => {
+	const gleis = line({ from: 200, to: 600, offset: 80 });
+	const km = axis("1280");
+	assert.equal(witness(gleis, [km]).verdict, "none");
+	const reached = (reach) => JSON.parse(JSON.stringify(lageWitnessOf(gleis, [km], "", reach)));
+	const wide = reached(100);
+	assert.equal(wide.verdict, "left");
+	assert.equal(wide.route, "1280");
+	assert.ok(Math.abs(wide.median - 80) < 1e-9);
+	assert.equal(reached(79).verdict, "none");
+	// The share beside a line follows the same reach.
+	const other = { polyline: km.polyline };
+	assert.equal(lageAbstandOf(gleis, other).hits, 0);
+	const beside = lageAbstandOf(gleis, other, 100);
+	assert.equal(beside.hits, beside.samples);
+	assert.ok(Math.abs(beside.median - 80) < 1e-9);
+});
+
+test("a reach beyond the grid's cells is honoured: 200 m beside the line is found at 250 m", () => {
+	const gleis = line({ from: 200, to: 600, offset: 200 });
+	const km = axis("1280");
+	const reached = (reach) => JSON.parse(JSON.stringify(lageWitnessOf(gleis, [km], "", reach)));
+	assert.equal(reached(150).verdict, "none");
+	const far = reached(250);
+	assert.equal(far.verdict, "left");
+	assert.equal(far.hits, far.samples);
+	assert.ok(Math.abs(far.median - 200) < 1e-9);
+	const other = { polyline: km.polyline, grid: lageGrid(km.polyline) };
+	assert.equal(lageAbstandOf(gleis, other, 150).hits, 0);
+	assert.equal(lageAbstandOf(gleis, other, 250).hits, lageAbstandOf(gleis, other, 250).samples);
+	// The standard ring is unchanged: 60 m, found as before.
+	assert.equal(witness(line({ from: 200, to: 600, offset: 59 }), [km]).verdict, "left");
+});
