@@ -16,7 +16,7 @@ import { l1Merit, updatePenaltyWeights, createPenaltyWeights, constraintViolatio
 import { lineSearchArmijo } from "./lineSearchArmijo.js";
 import { restoreFeasibility } from "./restoreFeasibility.js";
 
-export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.3";
+export const SOLVE_SQP_VERSION = "optim/sqp/solveSQP/0.4";
 
 function dot(a, b) {
 	let sum = 0;
@@ -46,6 +46,11 @@ function dot(a, b) {
  * subproblem's vertex, and the active set stalls on the tie (measured on the
  * exact ramp rule under the corridor: 135 of 284 subproblems ended
  * stationary_on_working_set, against none with the bound).
+ *
+ * The evaluator may also return `rowCurvature`: a function that states, for
+ * the inequalities that are curved, their second derivative at the point,
+ * [{ row, hessian }]. Only the restoration asks for it (see
+ * restoreFeasibility: the Newton term of a violated curved row).
  */
 export function solveSQP({
 	x0,
@@ -387,7 +392,14 @@ export function solveSQP({
 		// A restoration that did not move is not one, whatever the region says:
 		// measured on 110 elements, two of them returned in zero steps and were
 		// counted as restored. Progress is required as well as the region.
-		const withinRegion = restored.violationAfter <= eagerViolationRadii * radius
+		// The region is the one the solve goes on with: the restoration hands
+		// back a fresh start, the region with it, and a region that had
+		// collapsed on the way to the verdict says nothing about the point
+		// reached. Measured on 237 elements: a restoration that took the
+		// corridor from 2.7e-3 to 4.6e-4 beside it - where the tier walks at
+		// every step - was a failure against a region of 1e-8.
+		const resumeRadius = Number.isFinite(trustRadius) ? trustRadius : Math.max(1, 0.1 * Math.max(...restored.x.map(Math.abs), 0));
+		const withinRegion = restored.violationAfter <= eagerViolationRadii * Math.max(radius, resumeRadius)
 			&& restored.violationAfter < restored.violationBefore;
 		history.push({
 			iteration, status: restored.ok || withinRegion ? "restored" : restored.status, restoration: restorations,
@@ -433,6 +445,27 @@ export function solveSQP({
 	const closeToAsked = (iteration) => {
 		const asked = objectiveSettled?.feasibility ?? Infinity;
 		if (constraintViolation(state).total > asked && restoration !== "off") restoreFrom(iteration, asked, false);
+	};
+
+	// A region that has collapsed at a point beside the constraints is the
+	// filter's trap, not the model's limit. An h-type step may buy a lower
+	// objective with a violation; the way back raises the objective again, and
+	// every point the solve left behind on its way along the constraints sits
+	// in the filter with a lower violation and a lower objective than any
+	// point on that way. No step of any length is then acceptable, the search
+	// fails, the region halves to its floor. Measured on 237 elements under
+	// the corridor, every tier: a dozen such excursions a run, each ended by
+	// chance (a corrected step that happened to land under every entry), and
+	// the run without a verdict where one did not. A filter method answers a
+	// search that finds no step with the restoration (Wächter-Biegler 2006:
+	// the restoration phase entered when the step size falls under its
+	// minimum); here it had been called only when the subproblem relaxed. It
+	// counts against the same limit.
+	const restoreCollapsed = (iteration, violationNow, feasibleNow) => {
+		if (!(violationNow > feasibleNow)) return undefined;
+		if (!(restoration === "on-verdict" || restoration === "eager") || restorations >= restorationLimit) return undefined;
+		history.push({ iteration, status: "region_collapsed", violation: violationNow, radius });
+		return restoreFrom(iteration);
 	};
 
 	if (restoration === "eager" && constraintViolation(state).total > eagerViolationRadii * radius) {
@@ -779,6 +812,9 @@ export function solveSQP({
 			// the budget, not a verdict. Shrink the region as after a failed
 			// search, and stop at its floor.
 			if (radius <= minTrustRadius) {
+				const failure = restoreCollapsed(iteration, violation.total, feasible);
+				if (failure === null) continue;
+				if (failure) return failure;
 				history.push({ iteration, status: "line_search_failed", reason: "region_collapsed", delta: step.delta, violation: violation.total, radius });
 				return { ok: false, status: "line_search_failed", reason: "region_collapsed", x, state, history, iterations: iteration, restorationSteps };
 			}
@@ -904,6 +940,11 @@ export function solveSQP({
 				radius = Math.max(minTrustRadius, radius * trustShrink);
 				history.push({ iteration, status: "trust_shrunk", reason: search.status, radius });
 				continue;
+			}
+			{
+				const failure = restoreCollapsed(iteration, violation.total, feasible);
+				if (failure === null) continue;
+				if (failure) return failure;
 			}
 			history.push({
 				iteration, status: "line_search_failed", reason: search.status,

@@ -37,7 +37,7 @@ import { finiteDiffJacobian } from "../../../lib/math/optim/diff/finiteDiffJacob
 import { scaleEvaluator, scale as toScaled, unscale } from "../../../lib/math/optim/scale/variableScaling.js";
 import { symmetricEigen } from "../../../lib/math/lina/symmetricEigen.js";
 
-export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.4";
+export const ALIGNMENT_SQP_SOLVER_VERSION = "axtran2/alignment-sqp-solver/0.5";
 
 export const OBJECTIVES = Object.freeze(["points", "accumulated-length"]);
 
@@ -724,8 +724,14 @@ export function solveAlignmentProblem({
 			if (Number.isFinite(mu) && mu > 0) corridorMultiplier = mu;
 			const asReturned = Number.isFinite(mu) ? Math.max(mu, 0) : 1;
 			const weight = (corridorCurvature === "held" ? (asReturned > 0 ? asReturned : corridorMultiplier ?? 0) : asReturned) * (2 / N);
-			const curvature = gaussNewton(Jr).map((hRow) => hRow.map((value) => value * weight));
-			return { f: accumulatedLength(x), gradF, h, Jh, g: [...g, sum / N - 1], Jg: [...Jg, row], ...stepBounds, hessian: curvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
+			const squares = gaussNewton(Jr);
+			const curvature = squares.map((hRow) => hRow.map((value) => value * weight));
+			// the corridor row's own second derivative, (2/N) J'J to the residuals'
+			// first order, for whoever has to put a point back inside it (the
+			// restoration's Newton term); on demand, it is rarely asked for
+			const corridorRow = g.length;
+			const rowCurvature = () => [{ row: corridorRow, hessian: squares.map((hRow) => hRow.map((value) => value * (2 / N))) }];
+			return { f: accumulatedLength(x), gradF, h, Jh, g: [...g, sum / N - 1], Jg: [...Jg, row], ...stepBounds, hessian: curvature, rowCurvature, residualJacobian: Jr, residualMax: Math.sqrt(sum / N) };
 		}
 
 		const prior = priorRows(x);

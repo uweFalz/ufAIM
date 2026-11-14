@@ -10,7 +10,7 @@
 //
 // Pure numerics: no dependencies.
 
-export const VARIABLE_SCALING_VERSION = "optim/scale/variableScaling/0.2";
+export const VARIABLE_SCALING_VERSION = "optim/scale/variableScaling/0.3";
 
 /** Map scaled coordinates back to the caller's units. */
 export function unscale(scaled, scales) {
@@ -53,6 +53,13 @@ export function scaleEvaluator(evaluate, scales) {
 			...(Array.isArray(state.lower) ? { lower: state.lower.map((value, i) => value / (scales[i] ?? 1)) } : {}),
 			// a second derivative carries one scale per index
 			hessian: state.hessian?.map((row, i) => row.map((value, j) => value * (scales[i] ?? 1) * (scales[j] ?? 1))),
+			// the second derivatives of curved rows, stated on demand, likewise
+			...(typeof state.rowCurvature === "function" ? {
+				rowCurvature: () => (state.rowCurvature() ?? []).map((entry) => ({
+					...entry,
+					hessian: entry.hessian.map((row, i) => row.map((value, j) => value * (scales[i] ?? 1) * (scales[j] ?? 1))),
+				})),
+			} : {}),
 		};
 	};
 }
